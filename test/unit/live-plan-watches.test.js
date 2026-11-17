@@ -860,3 +860,41 @@ test("a stay's check-in counts arriving until its booking's check-out: reached a
   const own = arrivedOf({ ...checkIn, item: { ...checkIn.item, end: { at: '2026-11-28T10:00:00-05:00', tz: NY } } });
   assert.equal(own.when.end, ny('10:00', '2026-11-28'));
 });
+
+test("a flight item with no coordinates gets its leave reminder half an hour before the time to be at the airport, as a flight with no position does (it got only \"In 15 min\" as it departed)", () => {
+  const day = '2026-11-29';
+  const bare = { path: '/plan/f.json', item: { title: 'UA 123 home', kind: 'flight', fixed: true, start: { at: iso('14:05', day), tz: LA }, booking: '/trip/bookings/flight.json' } };
+  const ws = planWatches(/** @type {any} */ ([bare]), BOOKINGS, { fallbackTz: LA });
+  assert.deepEqual(ws.map((w) => w.id), ['plan:f:leave', 'plan:f:coming-up']);
+  const leave = /** @type {any} */ (ws[0]).when;
+  // 14:05 less the 2 hours is 12:05; half an hour before it, 11:35, wherever the traveller is: there is no airport to count a drive to.
+  assert.equal(PLAN.next?.(leave, moment({ now: at('08:00', day) }), {}), at('11:35', day));
+  assert.equal(PLAN.next?.(leave, here(off(MONTEREY, 0, 25_000), at('08:00', day)), {}), at('11:35', day));
+  assert.equal(PLAN.check(leave, moment({ now: at('11:34', day) }), {}), null);
+  const f = PLAN.check(leave, here(MONTEREY, at('11:35', day)), {});
+  assert.equal(f?.fallback, 'Leave soon: Flight UA 123 departs 14:05.');
+  assert.equal(planWords(/** @type {any} */ (f?.say)), 'Leave soon: Flight UA 123 departs 14:05.');
+  assert.equal(f?.text, 'Plan: time to leave soon for "UA 123 home" (can\'t be moved, 14:05)');
+  assert.equal(PLAN.check(leave, moment({ now: at('12:05', day) }), {}), null); // past the time to be there
+  assert.equal(PLAN.describe(leave), '15 min before leaving for "UA 123 home" at 14:05, to be there by 12:05');
+  // "Coming up" stays, 15 min before it departs.
+  assert.equal(PLAN.next?.(/** @type {any} */ (ws[1]).when, moment(), {}), at('13:50', day));
+  // A connection with no coordinates is carried there, as one with them: nothing to leave for.
+  const first = { path: '/plan/a.json', item: { title: 'Flight a', kind: 'flight', fixed: true, start: { at: iso('08:00', day), tz: LA }, end: { at: iso('13:00', day), tz: LA }, place: { name: 'SFO', lat: 37.6213, lng: -122.379 } } };
+  assert.deepEqual(planWatches(/** @type {any} */ ([first, bare]), BOOKINGS, { fallbackTz: LA }).filter((w) => w.id.startsWith('plan:f:')).map((w) => w.id), ['plan:f:coming-up']);
+  // Any other fixed item with no place, a train's too, keeps "coming up" alone; a flexible flight with no place gets nothing, as before.
+  const train = { path: '/plan/t.json', item: { title: 'Coast train', kind: 'rail', fixed: true, start: { at: iso('07:00', day), tz: LA } } };
+  assert.deepEqual(planWatches(/** @type {any} */ ([train]), new Map(), { fallbackTz: LA }).map((w) => w.id), ['plan:t:coming-up']);
+  assert.deepEqual(planWatches(/** @type {any} */ ([{ ...bare, item: { ...bare.item, fixed: false } }]), BOOKINGS, { fallbackTz: LA }).map((w) => w.id), []);
+});
+
+test("the push relay holds a flight with no coordinates' leave reminder too, half an hour before the time to be at the airport, on the live engine", async () => {
+  const day = '2026-11-28';
+  const k = await liveKit({ live: false, plan: { f: { title: 'Flight home', kind: 'flight', fixed: true, start: { at: iso('14:05', day), tz: LA } } } });
+  const list = await k.live.reminders();
+  assert.deepEqual(list?.filter((r) => r.watch.startsWith('plan:f:')).map((r) => [r.watch, r.due, r.text]), [
+    ['plan:f:leave', at('11:35', day), 'Leave soon: Flight home at 14:05.'],
+    ['plan:f:coming-up', at('13:50', day), 'In 15 min: Flight home at 14:05.'],
+  ]);
+  k.live.dispose();
+});

@@ -920,12 +920,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** a flight Shiori wrote with no kind, or with a word of her own ("transport"), left to its booking keeps its 2-hour margin, which a flight read as an ordinary item would lose (it errs late: the fix round 2 fixer's Call 3). A bag-drop item written with no kind can't be told from a flight leg. Shiori's instructions now say to give flight, train, ride and stay items their kind, which leaves this to an item linked to a flight's booking that is none of those and has no kind.
 - **Revisit when:** the next version, with the real-model run that checks the skill's line on a check-in item's time (the design check's part 4): if she links items with no kind to a flight's or train's booking, the instruction line also asks for their own kind (`car`, `meal`, `other`). Until then, give such an item its kind, or link it to no booking, or to a booking of its own kind.
 
-### A flight item with no coordinates gets no leave reminder, only "coming up"
-- **Kind:** deferred.
-- **What the traveller sees:** a fixed flight item with no place gets "In 15 min: Flight … departs 14:05" and nothing earlier, so the 2-hour airport pick doesn't reach it.
-- **Why:** without a place there is no drive to count and no airport to be at; the plan's other items work the same way. Older than leave-far.
-- **Revisit when:** the next version: take the airport's place from the linked booking, or time it by the half hour before the 2-hour mark as a flight with no position is.
-
 ### A closed annai can say "Leave soon" for an item at the destination, timed before the flight that gets the traveller there
 - **Kind:** deferred.
 - **What the traveller sees:** with live mode off, or the phone's last position a flight away (at home or at the departure gate), the push relay holds a "Leave soon" copy for a fixed item at the destination other than a stay (a car pick-up at the arrival airport, a meeting), half an hour before the item. If the plan times it before the last flight there lands, the notification comes while the traveller is at the hub or in the air: "Leave soon: Car pick-up at 16:00, Car hire desk." (no minutes). The reminder waits only for the flight before it in the plan, not for the one that takes the traveller there.

@@ -153,6 +153,12 @@ export function planWatches(items, bookings, { fallbackTz }) {
     const before = prev; // the stop before this item, which its own place replaces
     /** @param {string} event @param {string} fallback @param {PlanSay} say @param {Record<string, any>} [extra] */
     const add = (event, fallback, say, extra = {}) => out.push({ id: `plan:${base.item}:${event}`, owner: 'system', repeat: false, fallback, say, when: { ...base, event, ...extra } });
+    // by: the time to be there, a flight's AIRPORT_EARLY_MIN before it departs; late: the time after which arriving is late, a flight's
+    // AIRPORT_LATE_MIN before it departs. A connection (a flight or train whose time to be there comes before the one before it
+    // arrives) is carried there: it gets neither leave nor running late.
+    const by = flight ? x.at - AIRPORT_EARLY_MIN * MIN : x.at;
+    const late = flight ? x.at - AIRPORT_LATE_MIN * MIN : x.at;
+    const carried = carrier && landed !== null && by < landed;
     // fallback: annai's English, for Shiori; say: the data the user's words are made from.
     /* en */
     if (place) {
@@ -162,12 +168,7 @@ export function planWatches(items, bookings, { fallbackTz }) {
       } else if (kind !== 'lodging') {
         // Leave and running late time a trip by car or on foot (spec §11.3). Not for a stay: its check-in is the earliest time to arrive,
         // its check-out the latest to stay (the user's report, 2026-11-16: "Leave in about 15 min" for a check-in 3300 km away).
-        // by: the time to be there, a flight's AIRPORT_EARLY_MIN before it departs; late: the time after which arriving is late, a flight's
-        // AIRPORT_LATE_MIN before it departs. A connection (a flight or train whose time to be there comes before the one before it
-        // arrives) is carried there: it gets neither.
-        const by = flight ? x.at - AIRPORT_EARLY_MIN * MIN : x.at;
-        if (!(carrier && landed !== null && by < landed)) {
-          const late = flight ? x.at - AIRPORT_LATE_MIN * MIN : x.at;
+        if (!carried) {
           const go = { ...there, by, late, after: landed };
           add('leave', `Leave soon: ${base.what}.`, { event: 'leave', what: short }, { ...go, from: prev });
           // until: running late is checked for an hour after its line, and a flight's or train's only until it departs: by then the
@@ -187,6 +188,9 @@ export function planWatches(items, bookings, { fallbackTz }) {
       prev = place;
       places.push(place);
     } else if (base.fixed) {
+      // A flight with no place still has a time to be at the airport: its leave reminder comes as for a flight with no position, half an
+      // hour before it (it got only "In 15 min" as it departed). There is no airport to count a drive to, or to be late for or arrive at.
+      if (flight && !carried) add('leave', `Leave soon: ${base.what}.`, { event: 'leave', what: short }, { by, after: landed, from: null });
       add('coming-up', `In ${COMING_UP_MIN} min: ${base.what}.`, { event: 'coming-up', what: short });
     }
     // A flight, a train or a ride (CARRIERS) carries the traveller: what comes after it doesn't count from its place, where it leaves from, and a fixed
@@ -313,18 +317,18 @@ const drive = (km, w) => km * 1000 > w.radius && km <= LEG_MAX_KM;
  */
 const far = (p, w) => meters(p, w.place) / 1000 > LEG_MAX_KM;
 
-/** Whether the user's position is a flight from the item. @param {any} w @param {Moment} m */
-const away = (w, m) => m.fix !== null && far(m.fix, w);
+/** Whether the user's position is a flight from the item (never, for a flight with no place). @param {any} w @param {Moment} m */
+const away = (w, m) => m.fix !== null && Boolean(w.place) && far(m.fix, w);
 
 /**
  * When to leave for an item: from where the user is (or was, on a catch-up's first look), else from the plan's stop before; with
- * neither, half an hour before; not before the flights and trains before it arrive (after). A position or a stop before a flight away
+ * neither, or for a flight with no place, half an hour before; not before the flights, trains and rides before it arrive (after). A position or a stop before a flight away
  * counts as none, so the push relay still holds a copy for what is at the destination (the review's F1) and a stay between two
  * flights isn't counted from; the screen says nothing from such a position (CHECK.leave). Null when it is no drive.
  * @param {any} w @param {Moment} m
  */
 function leaving(w, m) {
-  const from = (away(w, m) ? null : m.fix) ?? (w.from && !far(w.from, w) ? w.from : null);
+  const from = !w.place ? null : (away(w, m) ? null : m.fix) ?? (w.from && !far(w.from, w) ? w.from : null);
   const after = w.after ?? -Infinity;
   if (!from) return { due: Math.max(w.by - 30 * MIN, after), km: null, minutes: null, words: '', mode: '' };
   const km = meters(from, w.place) / 1000;
