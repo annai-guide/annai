@@ -68,6 +68,14 @@ export const CLIPS = {
   favour: { kind: 'card', text: "Could you look at what's on tomorrow in Testville for me?", voice: 'Kore' },
   'ask-q': { kind: 'card', text: 'Read Testville, Nov 10 to 17?', voice: 'Leda' },
   silence: { kind: 'silence', seconds: 8 },
+  // What a Japanese traveller would say to Shiori, for the Japanese runs (japaneseScenarios): the relay-fact questions (an app one, a general fact), a question only Kokoro
+  // can answer, "stop", a request Koe does with its own tools (its line before a tool), and being told off for apologising (the filler trap). Made-up, synthetic.
+  'ja-auto-gps': { kind: 'sentence', text: 'このアプリに、GPSの自動モードってありますか？', voice: 'Kore', lang: 'ja' },
+  'ja-built': { kind: 'sentence', text: 'ビクスビー橋って、いつできたんですか？', voice: 'Puck', lang: 'ja' },
+  'ja-bixby': { kind: 'sentence', text: 'ビクスビー橋まで、あとどのくらいですか？', voice: 'Puck', lang: 'ja' },
+  'ja-stop': { kind: 'stop', text: 'ストップ。', say: 'Say in Japanese: ストップ。ちょっと止めて。', first: true, voice: 'Kore', lang: 'ja' },
+  'ja-stop-reminder': { kind: 'relay', text: 'ホテルのリマインダー、消しといて。', voice: 'Kore', lang: 'ja' },
+  'annoyed-ja': { kind: 'scold', text: 'さっきから謝ってばっかりで、ほんとにうっとうしい。それ、やめて。', voice: 'Leda', lang: 'ja' },
   // Lines Koe passes on, made-up and synthetic: requests it could ask the user about, or answer it can't do, where the answer is Kokoro's; and
   // questions about annai that only Kokoro can answer. Made on first use: node scripts/realtime-check.mjs clips --only <names> (a free key).
   'do-all': { kind: 'relay', text: "Let's do all three of them.", voice: 'Kore' },

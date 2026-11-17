@@ -14,11 +14,10 @@ import { ME } from '../scopes.js';
 import { fixedWords } from '../plan.js';
 import { AllFailedError, failedText } from '../llm/fallback.js';
 import { ProviderError, explain } from '../llm/contract.js';
-import { t, lang } from '../l10n.js';
+import { t } from '../l10n.js';
 import { sentences } from '../intl.js';
 import { summaryLanguage } from '../agent/compaction.js';
-import { languageSettings } from '../languages.js';
-import { NO_WORDS } from '../agent/loop.js';
+import { languageSettings, NATIVE } from '../languages.js';
 
 /**
  * The recap (spec §13): the utility model writes /trip/recap.md from the trip as it went (the
@@ -40,15 +39,19 @@ export const LINE_CHARS = 300;
 /** Each note and the trip's memory, at most. */
 export const NOTE_CHARS = 4000;
 
-/** The model's instructions: English, as every model's are (localization design, section 7). */
+/**
+ * The model's instructions: English, as every model's are (localization design, section 7). The highlights' heading is described, not quoted: quoted, it
+ * stayed "## Highlights" in English in every Japanese recap (7 of 7, Gemini 3.5 Flash Lite, 2026-11-17); the native-speaker sentence (NATIVE) gave the title
+ * and the days Japanese words, and the prose fewer translated turns.
+ */
 export const RECAP_SYSTEM = /* en */ 'You write the recap of a trip for the traveler who took it, from what the annai app recorded on the way: '
   + 'where they stayed and for how long, how they moved between, the stamps they earned at places they visited, what they said and what Shiori, their guide, showed them, '
   + 'their notes, and some of their photos. Write Markdown: a first line "# " with a title for the trip; then one "## " section for each day, in order, '
   + 'telling the day in a few short paragraphs: the places, what happened there, and the photos by their paths where they belong; '
-  + 'then "## Highlights" with three to five short bullet points. Be warm, concrete and brief, about 150 words a day. '
+  + 'then a last "## " section, its heading the trip\'s highlights in the recap\'s language, with three to five short bullet points. Be warm, concrete and brief, about 150 words a day. '
   + 'Use only what the record says, and leave out what you don\'t know rather than guess. '
   + 'Never write coordinates: name a stop that has no name by what the record says around it, or call it a stop. Shiori may read the recap aloud, so write sentences that are easy to say. '
-  + 'Write in the language the record names at its start. Reply with the recap only.';
+  + `Write in the language the record names at its start. ${NATIVE} Reply with the recap only.`;
 
 /**
  * What goes to the model, as the Recap screen says it (spec §11.7: it must be true). Photos go as Shiori's
@@ -179,11 +182,13 @@ export function recapError(e, { names } = {}) {
 /**
  * Writes /trip/recap.md with the utility model (spec §13), and logs a recap entry that names
  * the photo copies it sent (§4.9). Errors are plain: what happened and what to do next.
+ * locale: the phone's language (navigator.language), which Shiori's answers and compaction take when nothing else names one. Required, so the typecheck
+ * pins every caller: without it the request says the phone is English, a false claim on a Japanese phone.
  * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, llm: any, trip: string,
- *   codec?: import('../photos.js').Codec | null, namer?: (p: { lat: number, lng: number }) => { name: string, m: number } | null, signal?: AbortSignal }} c
+ *   codec?: import('../photos.js').Codec | null, namer?: (p: { lat: number, lng: number }) => { name: string, m: number } | null, locale: string, signal?: AbortSignal }} c
  * @returns {Promise<{ text: string, photos: number, chars: number }>}
  */
-export async function writeRecap({ store, ws, llm, trip, codec = null, namer, signal }) {
+export async function writeRecap({ store, ws, llm, trip, codec = null, namer, locale, signal }) {
   const cfg = await llm.config();
   const models = recapModels(cfg);
   if (!models.length) throw new Error(t`No model is set up to write the recap. Add one in Settings → Models.`);
@@ -196,14 +201,10 @@ export async function writeRecap({ store, ws, llm, trip, codec = null, namer, si
     if (/\.(md|txt)$/i.test(f.path)) notes.push({ path: `/trip${f.path}`, text: (await ws.readText(trip, f.path).catch(() => '')) ?? '' });
   }
   const app = await readAppSettings(ws);
-  // The language a summary is written in (the Languages setting, then the user's own words), as compaction's is: without annai's own
-  // lines for no words (a photo or files sent alone, a heard line it couldn't write down), which read as English.
-  const said = j.entries.flatMap((e) => (e.kind === 'said' && !NO_WORDS.includes(e.text.trim()) ? [e.text] : []));
-  // Their own words may name no language, and the Languages setting none: then the screens' language, the one thing annai knows of them.
-  const settings = languageSettings(app, lang());
-  const language = !settings.explicit && !settings.answer && !said.length
-    ? /* en */ `${settings.spoken[0].name}, the language of annai's screens (the user hasn't written anything yet)`
-    : summaryLanguage(said, settings);
+  // The language a summary is written in, compaction's rule (summaryLanguage): the Languages setting, then the user's own words; with neither,
+  // the phone's language, as Shiori's answers take it.
+  const said = j.entries.flatMap((e) => (e.kind === 'said' ? [e.text] : []));
+  const language = summaryLanguage(said, languageSettings(app, locale));
   const text = recapText(j, { profile, memory, notes, language });
   /** @type {import('../llm/contract.js').Part[]} */
   const parts = [{ type: 'text', text }];

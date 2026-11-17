@@ -179,6 +179,9 @@ test('a note cut by a spoken "stop": a word like "Okay." after it at most, nothi
   const okay = stopRec([f(8000, 'in', 'audio', { bytes: 4800 })], [[8000, 8400]], [speak(8500, 'Okay.')]);
   assert.equal(check(okay).ok, true, 'a word is fine');
   assert.match(check(okay).detail, /^after the "stop": "Okay\."/);
+  // Gemini writes a curly apostrophe: "It’s okay." is two words, as the first drive counted it, not three.
+  for (const word of ['It’s okay.', 'I’ll stop.', "It's okay."]) assert.equal(check(stopRec([f(8000, 'in', 'audio', { bytes: 4800 })], [[8000, 8400]], [speak(8500, word)])).ok, true, word);
+  assert.equal(check(stopRec([f(8000, 'in', 'audio', { bytes: 4800 })], [[8000, 8400]], [speak(8500, 'It’s okay, got it.')])).ok, false, 'four words are not an okay');
   const letGo = stopRec([], [], [{ at: 16_000, type: 'error', data: { kind: 'live-silent', message: 'The live session gave nothing back within 8 seconds of a turn: taken as let go.' } }]);
   assert.equal(check(letGo).ok, true, 'a turn the session let go is its choice');
   assert.match(check(letGo).detail, /the turn was let go/);
@@ -190,6 +193,31 @@ test('a note cut by a spoken "stop": a word like "Okay." after it at most, nothi
   assert.equal(check(fresh).ok, false, 'retried on a fresh session');
   assert.match(check(fresh).detail, /1 fresh session; live-silent: The live session gave no answer/);
   assert.equal(check(stopRec([], [], [{ at: 22_000, type: 'error', data: { kind: 'live-dropped', message: 'Live voice was dropped.' } }])).ok, false, 'live voice dropped');
+});
+
+// Japanese and Chinese have no spaces between words (the languages build's entry 1): the checks read them by character, as the recall check does.
+test('in Japanese, a question back is told by 「？」 as by "?", and after 「ストップ。」 an okay passes while a line of the note fails "stopped when told"', () => {
+  const JA = { ...CLIPS, 'ja-bixby': { kind: 'question', words: 'ビクスビー橋まで、あとどのくらいですか？', lang: 'ja' }, 'ja-stop': { kind: 'stop', words: 'ストップ。', lang: 'ja' } };
+  // A question back in a full-width mark, before Kokoro's note went in.
+  const asked = line('do-all', 1000, [f(3500, 'in', 'audio', { bytes: 4800 }), f(3550, 'in', 'said', { text: '三つ全部ですか？' }), f(3700, 'in', 'toolCall', { name: 'tell_kokoro' }), f(4200, 'in', 'turnComplete')]);
+  const ra = rec({ plays: [asked.play], frames: asked.frames, kokoro: [{ at: 3800, kind: 'request', text: '[Koe asks] "Let\'s do all three of them."' }] });
+  const out = analyseRelay(ra, analyse(ra, JA), /** @type {any} */ ({ passOn: true, steps: [] }), JA);
+  assert.equal(out.checks.find((c) => c.name === 'passed on')?.ok, false);
+  assert.match(out.text[0], /do-all: ASKED BACK; she said "三つ全部ですか？"/);
+  // Told to stop over the note, in Japanese.
+  const q = { play: { name: 'ja-bixby', at: 1000, end: 2500, gainDb: 0 }, frames: [f(1200, 'out', 'activityStart'), f(3200, 'out', 'activityEnd'), f(3000, 'in', 'heard', { text: JA['ja-bixby'].words }), f(3500, 'in', 'toolCall', { name: 'tell_kokoro' }), f(5600, 'out', 'text', { text: '<from_kokoro id="n1">ビクスビー橋までは、ハイウェイ1号線を南へあと20分ほどです（出典: example.org）。</from_kokoro>' }), f(6000, 'in', 'audio', { bytes: 9600 }), f(6050, 'in', 'said', { text: 'ビクスビー橋までは' })] };
+  const stop = { name: 'ja-stop', at: 6100, end: 6600, gainDb: 0 };
+  const after = [f(6300, 'out', 'activityStart'), f(6350, 'in', 'interrupted'), f(7300, 'out', 'activityEnd')];
+  /** @param {string} said */
+  const stopRec = (said) => rec({ route: 'headphones', plays: [q.play, stop], frames: [...q.frames, ...after, f(8000, 'in', 'audio', { bytes: 4800 })], level: levels([[6000, 6400], [8000, 8400]]), trace: [speak(6400, 'ビクスビー✂', { cut: true }), card(6290), speak(8500, said)] });
+  const check = (/** @type {any} */ r) => analyseRelay(r, analyse(r, JA, { expectCut: true }), /** @type {any} */ ({ noteCut: 'stop', steps: [] }), JA).checks[0];
+  // The okays a Japanese or Chinese speaker hears (the 2026-11-14 live run's 「分かりました。」; the longest, 「はい、かしこまりました。」, 10 characters).
+  for (const okay of ['分かりました。', 'はい。', 'かしこまりました。', 'はい、かしこまりました。', '好的。', '明白了。']) assert.equal(check(stopRec(okay)).ok, true, okay);
+  for (const more of ['ビクスビー橋までは、あと20分ほどです。', '分かりました。また何かあれば聞いてください。', 'はい、かしこまりましたね。']) {
+    const c = check(stopRec(more));
+    assert.equal(c.ok, false, more);
+    assert.match(c.detail, /^she said ".+" after the "stop"/);
+  }
 });
 
 test('a typed line gets no more lines of hers than it needs: one for a greeting, two for a request; none is a failure too', () => {

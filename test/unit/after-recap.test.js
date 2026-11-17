@@ -12,8 +12,7 @@ import { saveModel } from '../../src/core/llm/config.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { ME } from '../../src/core/scopes.js';
 import { NOT_TRANSCRIBED } from '../../src/core/voice/resolve.js';
-import { PHOTO_ONLY } from '../../src/core/agent/loop.js';
-import { FILES_ONLY } from '../../src/core/handover.js';
+import { FILES_ONLY, PHOTO_ONLY } from '../../src/core/handover.js';
 import { setWords } from '../../src/core/l10n.js';
 
 const RECAP = '# Big Sur, Thanksgiving\n\n## Friday, November 27\n\nBixby Bridge in the morning sun.';
@@ -105,7 +104,7 @@ test('the recap prompt tells the model never to write coordinates, and what to c
 
 test('the utility model writes /trip/recap.md, with request copies of the photos; the log names what was sent (spec §13, §4.8, §4.9)', async () => {
   const k = await aTrip();
-  const r = await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, codec: fakeCodec() });
+  const r = await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, codec: fakeCodec(), locale: 'en-US' });
   assert.equal(r.photos, 6);
   assert.equal(await k.ws.readText(k.trip, '/recap.md'), `${RECAP}\n`);
   assert.equal((await k.ws.read(k.trip, '/recap.md'))?.entry.author, 'shiori');
@@ -128,77 +127,101 @@ test('the recap is written in the language the Languages setting and the user\'s
   await k.ws.write(ME, '/profile.md', '# Profile\n\n- Language: English\n', { author: 'user' });
   await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
   await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: '明日は何時に出発する？' } }, at('10:30'));
-  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip });
+  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'en-US' });
   assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language the user wrote in last\.$/m);
   await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'], answer: 'en' } });
-  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip });
+  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'en-US' });
   assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in English, the language Shiori answers in\.$/m);
   assert.doesNotMatch(RECAP_SYSTEM, /profile/);
   assert.match(RECAP_SYSTEM, /Write in the language the record names at its start\./);
 });
 
+// The languages build (2026-11-17): a real Japanese recap (Gemini 3.5 Flash Lite, Gemini's utility model) read translated, with "# Big Sur", "## 2026-11-27"
+// and "## Highlights" in English in every one of four; with the Languages section's native-speaker sentence the title and days came in Japanese, and with
+// the highlights' heading described rather than quoted, it did too (3 of 3).
+test("the recap's request carries the native-speaker sentence, and quotes no heading's English words", async () => {
+  const { NATIVE } = await import('../../src/core/languages.js');
+  assert.ok(NATIVE && RECAP_SYSTEM.includes(NATIVE), 'the Languages section\'s sentence');
+  assert.doesNotMatch(RECAP_SYSTEM, /Highlights/);
+  assert.match(RECAP_SYSTEM, /a last "## " section, its heading the trip's highlights in the recap's language/);
+});
+
 // The language a summary is written in reads the user's words. annai's own placeholder for a heard line it couldn't write down is not
-// theirs, and reads as English: compaction leaves it out of what it reads (loop.js), and the recap does the same.
+// theirs, and reads as English: summaryLanguage leaves it out for both callers, the recap's and compaction's.
 test("a heard line annai couldn't write down is not the user's words: the recap's language is read from what they wrote or said", async () => {
   const k = await aTrip([{ text: RECAP }]);
   await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
   await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: '明日は何時に出発する？' } }, at('10:30'));
   await logEvent(k.store, k.trip, { type: 'heard', data: { id: 'h-1' } }, at('11:00'));
   await logEvent(k.store, k.trip, { type: 'heard.text', actor: 'system', data: { of: 'h-1', text: NOT_TRANSCRIBED, by: null } }, at('11:00'));
-  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip });
+  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'en-US' });
   assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language the user wrote in last\.$/m);
 });
 
-// With nothing chosen and none of the user's words in the trip, the one thing annai knows of them is the screens' language (they chose it,
-// or their phone gave it): not English, which a Japanese speaker on Japanese screens would get a recap in.
-test("with nothing chosen and none of the user's words, the recap is written in the screens' language", async () => {
-  const k = await agentKit([[{ text: '' }]], { utility: [{ text: RECAP }, { text: RECAP }, { text: RECAP }] });
+// With nothing chosen and none of the user's words in the trip, the recap is in the phone's language, as Shiori's answers and compaction's summary
+// are (summaryLanguage, one answer: the languages build's entry 3), never English by default; the screens' language doesn't decide it, as it
+// doesn't decide hers.
+test("with nothing chosen and none of the user's words, the recap is written in the phone's language, not the screens'", async () => {
+  const k = await agentKit([[{ text: '' }]], { utility: [{ text: RECAP }, { text: RECAP }, { text: RECAP }, { text: RECAP }] });
   try {
+    await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'ja-JP' });
+    assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language of the user's phone \(the user hasn't written anything yet\)\.$/m);
     setWords('ja', null);
-    await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip });
-    assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language of annai's screens \(the user hasn't written anything yet\)\.$/m);
+    await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'en-US' });
+    assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in English, the language of the user's phone \(the user hasn't written anything yet\)\.$/m);
     // Their words decide when there are some; a setting decides before either.
     await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: 'Where should we eat tonight?' } }, at('10:30'));
-    await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip });
+    await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'ja-JP' });
     assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in English, the language the user wrote in last\.$/m);
     await updateAppSettings(k.ws, { languages: { spoken: ['ko'] } });
-    await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip });
+    await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'ja-JP' });
     assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Korean, the first language the user speaks \(Korean\)\.$/m);
   } finally {
     setWords('en', null);
   }
 });
 
+// A trip's last lines are often "OK", "thanks" or an emoji: a line of fewer than 3 words decides only when no longer line names a language, so the recap of
+// a Japanese trip is in Japanese, as main's (which read the whole trip) was, and not a quoted "sure" or English because of a "thanks" (the final review of
+// langs-next, second opinion 3; the re-review of fix round 1, R1). A longer line in English is what they wrote in last.
+test("a Japanese trip whose last lines are short replies is recapped in Japanese; a last line of 3 words or more in English is English", async () => {
+  const k = await agentKit([[{ text: '' }]], { utility: [{ text: RECAP }, { text: RECAP }, { text: RECAP }] });
+  for (const [i, text] of ['今日は楽しかった', '明日は雨ですか', 'ok', 'hmm', 'sure'].entries()) await logEvent(k.store, k.trip, { type: 'msg.user', data: { text } }, at(`10:3${i}`));
+  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'ja-JP' });
+  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language the user wrote in last\.$/m);
+  await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: 'thanks' } }, at('10:36'));
+  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'ja-JP' });
+  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language the user wrote in last\.$/m);
+  await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: 'Thank you, that is all for today.' } }, at('10:37'));
+  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'ja-JP' });
+  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in English, the language the user wrote in last\.$/m);
+});
+
 // annai's own lines for a message with no words ("(a photo)", "(files)") are not the user's words either: a trip of only photos and files
-// has none, so the screens' language decides, not a recap in whatever "(a photo)" reads as.
-test("a trip whose only lines are photos and files has none of the user's words: the recap is written in the screens' language", async () => {
+// has none, so the phone's language decides, not a recap in whatever "(a photo)" reads as.
+test("a trip whose only lines are photos and files has none of the user's words: the recap is written in the phone's language", async () => {
   const k = await agentKit([[{ text: '' }]], { utility: [{ text: RECAP }, { text: RECAP }] });
-  try {
-    setWords('ja', null);
-    await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: PHOTO_ONLY } }, at('10:30'));
-    await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip });
-    assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language of annai's screens \(the user hasn't written anything yet\)\.$/m);
-    await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: FILES_ONLY } }, at('10:31'));
-    await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip });
-    assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language of annai's screens \(the user hasn't written anything yet\)\.$/m);
-  } finally {
-    setWords('en', null);
-  }
+  await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: PHOTO_ONLY } }, at('10:30'));
+  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'ja-JP' });
+  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language of the user's phone \(the user hasn't written anything yet\)\.$/m);
+  await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: FILES_ONLY } }, at('10:31'));
+  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'ja-JP' });
+  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language of the user's phone \(the user hasn't written anything yet\)\.$/m);
 });
 
 test('no photos go to a model that takes none; a model that answers nothing, or none at all, is a plain error and nothing is written', async () => {
   const k = await aTrip([{ text: RECAP }], { models: [{ input: ['text'] }] });
   await saveModel(k.ws, { id: 'm-u', provider: 'pv-u', ability: 'chat', template: null, user: { providerId: 'model-u', prices: { input: 1, output: 1 }, input: ['text'] }, created: 0 });
-  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, codec: fakeCodec() });
+  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, codec: fakeCodec(), locale: 'en-US' });
   assert.equal(k.requests.at(-1).messages[0].parts.length, 1);
 
   const empty = await aTrip([{ text: '   ' }]);
-  await assert.rejects(writeRecap({ store: empty.store, ws: empty.ws, llm: empty.llm, trip: empty.trip }), /The model sent back an empty recap\. Try again, or put another model first in the utility role \(Settings → Models\)\./);
+  await assert.rejects(writeRecap({ store: empty.store, ws: empty.ws, llm: empty.llm, trip: empty.trip, locale: 'en-US' }), /The model sent back an empty recap\. Try again, or put another model first in the utility role \(Settings → Models\)\./);
   assert.equal(await empty.ws.read(empty.trip, '/recap.md'), undefined);
   assert.deepEqual(await empty.events(['recap']), []);
 
   const none = await agentKit([]);
-  await assert.rejects(writeRecap({ store: none.store, ws: none.ws, llm: none.llm, trip: none.trip }), /No model is set up to write the recap\. Add one in Settings → Models\./);
+  await assert.rejects(writeRecap({ store: none.store, ws: none.ws, llm: none.llm, trip: none.trip, locale: 'en-US' }), /No model is set up to write the recap\. Add one in Settings → Models\./);
 });
 
 test('an arrival whose stay the road doesn\'t show is "arrived" in the recap, not a stay of no time', async () => {

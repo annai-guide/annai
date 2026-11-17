@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { framesOf } from '../../scripts/realtime/frames.mjs';
 import { startKokoro } from '../../scripts/realtime/kokoro.mjs';
-import { parseArgs } from '../../scripts/realtime/args.mjs';
+import { parseArgs, choice } from '../../scripts/realtime/args.mjs';
 
 const j = (/** @type {any} */ o) => Buffer.from(JSON.stringify(o));
 
@@ -55,6 +55,36 @@ test('the stand-in Kokoro refuses an empty request as a real server does, gives 
 test('parseArgs: words, --name value, and flags that take no value; a missing value is an error', () => {
   assert.deepEqual(parseArgs(['run', '--only', 'a,b', '--force', '--lines', '1-11'], { flags: ['force'] }), { words: ['run'], opts: { only: 'a,b', force: true, lines: '1-11' } });
   assert.throws(() => parseArgs(['run', '--only']), /needs a value/);
+});
+
+// The wiring of choice() in the command (scripts/realtime-check.mjs): a typo in --real-model ran Claude Opus 5.5, the paid default, and said nothing. The run is
+// given a scenario that doesn't exist, so a command that went past the check would stop at that, with another message, before it made a folder or a browser, and
+// the key is a made-up one: nothing is started and nothing is sent.
+test('the command stops, exit 2, on a --real-model or --kokoro value it does not know, naming what it takes', async () => {
+  const { execFile } = await import('node:child_process');
+  const { promisify } = await import('node:util');
+  const run = async (/** @type {string[]} */ ...args) => promisify(execFile)(process.execPath, ['scripts/realtime-check.mjs', 'run', '--only', 'no-such-scenario', ...args], { cwd: new URL('../../', import.meta.url), env: { PATH: process.env.PATH, GEMINI_KEY: 'not-a-key' } })
+    .then(() => ({ code: 0, stderr: '' }), (/** @type {any} */ e) => ({ code: e.code, stderr: String(e.stderr) }));
+  const model = await run('--real-model', 'sonet');
+  assert.equal(model.code, 2);
+  assert.match(model.stderr, /--real-model takes sonnet or opus, not "sonet"/);
+  const kokoro = await run('--kokoro', 'gemni');
+  assert.equal(kokoro.code, 2);
+  assert.match(kokoro.stderr, /--kokoro takes gemini or stand-in, not "gemni"/);
+  const known = await run('--real-model', 'Sonnet');
+  assert.equal(known.code, 2);
+  assert.match(known.stderr, /There is no scenario "no-such-scenario"/, 'a known value (any case) goes on, to the scenario that is not there');
+});
+
+// --real-model sonet ran Claude Opus 5.5 (the paid one) and said nothing; "Sonnet" was dropped the same way (the final review of langs-next, F7).
+test('choice: a named value in any case, none when not given, and a value the run does not know stops it', () => {
+  const allowed = ['sonnet', 'opus'];
+  assert.equal(choice({}, 'real-model', allowed), undefined);
+  assert.equal(choice({ 'real-model': 'sonnet' }, 'real-model', allowed), 'sonnet');
+  assert.equal(choice({ 'real-model': 'Sonnet' }, 'real-model', allowed), 'sonnet');
+  assert.equal(choice({ 'real-model': 'OPUS' }, 'real-model', allowed), 'opus');
+  assert.throws(() => choice({ 'real-model': 'sonet' }, 'real-model', allowed), /--real-model takes sonnet or opus, not "sonet"/);
+  assert.throws(() => choice({ kokoro: 'gemni' }, 'kokoro', ['gemini', 'stand-in']), /--kokoro takes gemini or stand-in/);
 });
 
 test('the setup frame says which language hints it carried and whether its instructions name the languages, never the instructions themselves (phase 2)', () => {

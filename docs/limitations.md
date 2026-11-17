@@ -743,35 +743,35 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the restart wake takes the reader's `handover`, the newest hand-over no turn's end has answered, whoever's turn was cut; `#open` passes it on without asking whose turn it was.
 - **Revisit when:** the next version, as its own change, in the reader's `handover` getter and `#open`: the turn's own `wake` records name the hand-over it carries (its first, and since 2026-11-17 a later one where it takes one up partway), so a turn under way can hand back its own, not the conversation's newest owed one; read those rather than its replies' records, which say it only from the reply after a take-up, and miss a turn cut before its first reply. Then a test of this shape.
 
-### The real-voice check measures Koe's words in English
+### The realtime check's Japanese promise words miss some promises and flag some ordinary sentences
 - **Kind:** deferred.
-- **What the user sees:** nothing. Three checks in `scripts/realtime/` read Koe's words as English: "stopped when told" counts words by spaces, so a long Japanese reply passes; the passed-on question test sees only an ASCII "?", so 「？」 passes; the filler check knows English words only.
-- **Why:** found on 2026-11-14 while checking Koe's new pass-on words in Japanese; each check predates that change and none is in the app.
-- **Revisit when:** the next version: count CJK by character as the recall check already does, accept 「？」, and give the filler check its Japanese and Chinese words (with a recorded Japanese clip to test them).
-
-### Shiori's written recap gets no native-speaker sentence
-- **Kind:** deferred.
-- **What the user sees:** a recap written in Japanese or Chinese may still read translated: its request names the language but carries no sentence on how it should sound, unlike her answers since 2026-11-14.
-- **Why:** no real run has written a recap in Japanese, so whether it reads translated is not known.
-- **Revisit when:** the next version: run one real Japanese recap; if it reads translated, add the Languages section's native-speaker sentence to the recap's request.
-
-### Summaries pick their language two different ways when no words decide it
-- **Kind:** deferred.
-- **What the user sees:** nothing on screen today: with nothing chosen in Settings → Languages, compaction and Shiori's own answers fall back to the phone's language (one rule since timeline stage 7), and the recap to the screens' language; with languages chosen, all three take the first listed. Compaction also counts annai's "(files)" placeholder as words the user wrote.
-- **Why:** each rule was written for its own place; one answer to one question belongs in one place (RULES #10).
-- **Revisit when:** the next version: one shared function for "the language the user wrote in", used by compaction and the recap, with annai's placeholders left out everywhere.
-
-### A live Koe's line before a tool has no language rule
-- **Kind:** deferred.
-- **What the user sees:** possibly, with live voice in Japanese, a word in English before Koe looks something up. Not seen: no live run has exercised that line in Japanese.
-- **Why:** Koe's pass-on and okay words name the answer's language since 2026-11-14; the pre-tool line (koe/instructions.js) was left as it was.
-- **Revisit when:** the next version: describe it the same way, then one live run in Japanese.
+- **What the user sees:** nothing in annai. A tester running the realtime check's Japanese filler trap (`relay-filler-ja`) can see "no filler" pass a promise the list doesn't name (「今後は改めます。」, 「以後は改めます。」, 「もうしません。」, 「二度と言いません。」), or fail an ordinary sentence that names 以後 or 今後 with a promise-like verb in the same clause (「今後はこのルートを案内します。」). 「ご承知おきください。」 fails too (承知 has no guard for ご, as 理解 has).
+- **Why:** the check reads Koe's words through a word list (`FILLER_CJK`, scripts/realtime/analyse.mjs); every round of langs-next (2026-11-17) moved its edge (the bare words, then a clause scan), and each move traded one wrong shape for another. Found by the second opinions on rounds 1 and 2; a dev tool only, so it waits for its own change rather than a third patch.
+- **Revisit when:** the next change to the realtime check: decide whether the trap reads promises by a word list at all (bare 以後/今後 flag every use, which costs a tester one read of the record; a false pass hides the rule), with a pinned sentence for each form kept.
 
 ### Kokoro can write its notes to Koe in English in a Japanese conversation
 - **Kind:** deferred.
-- **What the user sees:** with Koe and Kokoro, Koe's Japanese can come out stiff when Kokoro's note to it was English ("Tell the user in Japanese: …"), seen once in a live run on 2026-11-14.
-- **Why:** nothing tells Kokoro which language its notes to Koe are in.
-- **Revisit when:** the next version: say it in the note tool's description or the halves' text, then a live run in Japanese.
+- **What the user sees:** with Koe and Kokoro on Claude Sonnet 5.5, Koe's Japanese can come out stiff when Kokoro's note to it was English ("Tell the user in Japanese: …"), seen once in a live run on 2026-11-14. Since 2026-11-17 Kokoro's instructions say to write its notes in the language it answers in; with Kokoro on Gemini its notes were Japanese both before that line and after it (7 of 7, then 6 of 6, `real-relay-fact-ja`), so whether the line moves Sonnet, the model that showed the shape, is not yet known.
+- **Why:** the run on Sonnet couldn't be made: the Anthropic key had no credit on 2026-11-17 (a credit 400 on the first request).
+- **Revisit when:** the Anthropic key has credit: `real-relay-fact-ja` with `--real-model sonnet --anthropic-key <file> --ui ja --times 5` (docs/testing/realtime-check.md, "Koe's own words in Japanese"). Five runs, because on 2026-11-14 English notes came in 1 of 2 runs, so two runs with the line doing nothing show no English note about 1 time in 4 (five, about 3%). Every note's words for Koe in Japanese, with no English text to translate, closes this entry; an English note needs other words.
+
+### A realtime model's markup in its transcript can leave a word of it on screen as Koe's
+- **Kind:** deferred.
+- **What the user sees:** once in about 22 live sessions (`relay-stop-request-ja`, run on main, 2026-11-17) Koe's transcript was `かしこまりました。<ratings>\n<rating>positive</rating>\n</ratings>`: `cleanSaid` strips each tag and keeps what is between them, so the bubble shows 「かしこまりました。 positive」, the conversation logs it as her line, and Kokoro reads it in its "[Koe said]" (and annai's own voice would say it if her sound stalled). Whether her audio said "positive" isn't known: no recording was kept. Found in the final review of the languages build.
+- **Why:** `cleanSaid` (src/core/koe/live.js:129) drops every tag on its own and keeps the text inside a pair.
+- **Revisit when:** the next version, as its own change: drop a paired element with its content before dropping lone tags, with this real sample as the test. It is the only sample there is, so the rule stays that narrow.
+
+### With Ukrainian listed before Russian, a Russian line is placed as Ukrainian
+- **Kind:** deferred.
+- **What the user sees:** a traveller who lists both Ukrainian and Russian, Ukrainian first, and writes a line in Russian (no і, ї, є or ґ): annai places it as Ukrainian. The summary and the recap are asked for in Ukrainian (`summaryLanguage`), the line's `lang` is Ukrainian (`tagOf`), and the phone's voice for it is the Ukrainian one (`speechLocale`: "uk-UA", checked on `listedFor('Russian', [uk, ru])` and `speechLocale` with the Languages setting [uk, ru]). Listed the other way round (Russian first) a Ukrainian line is right, because `languageOf` names Ukrainian by its letters. Older than langs-next (the same on main); found in the re-review of its fix round 1.
+- **Why:** `listedFor` (src/core/languages.js) takes the first listed language whose name matches or that shares the script (`SHARED`: Russian is ru, uk, bg or sr), so with [uk, ru] the Ukrainian row comes before the exact match, Russian.
+- **Revisit when:** the next version, as its own change, in `listedFor`: an exact name match before a shared-script match (`spoken.find((l) => guess === l.name) ?? spoken.find((l) => SHARED[guess]?.includes(l.id))`), with a test of [uk, ru] and a Russian line for `listedFor`, `summaryLanguage` and `speechLocale`.
+
+### With languages chosen, a newest line in a language that isn't listed hides the listed one before it
+- **Kind:** deferred.
+- **What the user sees:** with the Languages setting chosen (say English and Japanese), a trip written in Japanese whose newest line of 3 words or more is in a language not listed (Spanish, a pasted menu in French) is summarized and recapped in the first listed language, English ("the first language the user speaks"), where the Japanese before it is what they wrote in. Checked: three Japanese lines then a Spanish line, [en, ja]: English. Older than langs-next (the same on main: it read the last line, which named Spanish); found in the re-review of its fix round 1.
+- **Why:** `summaryLanguage` (src/core/agent/compaction.js) picks the newest line of 3 words or more that names a language, then asks whether that language is listed; a line in an unlisted language is that line, and the listed language before it is never looked at.
+- **Revisit when:** the next version, as its own change: with languages chosen (`languages.explicit`), a line decides only if its language is listed (`lines.findLast((x) => units(x) >= 3 && listedFor(languageOf(x), languages.spoken, x))`), so the newest line the user could have written in one of their languages decides, and when no line is in a listed language the existing first-listed answer stands. With nothing chosen any language a line names still decides (a Spanish talk on an English phone gets a Spanish summary). A test of that shape.
 
 ### Her reply to the "you haven't answered" cue can still be private text
 - **Kind:** deferred.

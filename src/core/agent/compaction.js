@@ -1,5 +1,6 @@
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
-import { languageOf, listedFor, named } from '../languages.js';
+import { NO_WORDS } from '../handover.js';
+import { languageOf, listedFor, named, units } from '../languages.js';
 import { nativeOverlap } from '../llm/contract.js';
 
 export { languageOf };
@@ -81,26 +82,30 @@ export const coldSystem = (language) => /* en */ 'You summarize a conversation b
   + /* en */ `For every photo, write one line with its path and what was said about it. Reply with the summary only, as plain text, in ${language}.`;
 
 /**
- * The language a summary is written in, named ("the user's language" got a Spanish summary of an English conversation). With the
- * languages setting: the one Shiori answers in if it is fixed; else the listed language the user wrote in last, told from their last
- * message, else their last few together; else the first they speak. With none: the language the user wrote in last, guessed so; else, the
- * same answer as for her first message in a conversation (languagesText): the phone's (with no settings given, the app's: spec §14.3, it ships in English).
- * @param {string | string[]} said their last messages, the newest last @param {import('../languages.js').LanguageSettings} [languages]
+ * The language a summary is written in, named ("the user's language" got a Spanish summary of an English conversation): compaction's and the
+ * recap's, one answer for both (RULES #10). annai's own lines for no words (NO_WORDS: a photo or files sent alone, a heard line it couldn't
+ * write down) are never the user's, and are left out here for every caller. The newest line of 3 words or more (units: a Chinese, Japanese or
+ * Korean character is a word, the size a stray short reply has, spec §10.9) that names a language decides: a trip's last lines may be "OK", "thanks",
+ * an emoji or a place's name of one or two words, and such a place in kanji is no Chinese. Only when no such line does, all the lines together (a lone "新宿" is then Chinese).
+ * With the languages setting: the one Shiori answers in if it is fixed; else the listed language that text is in; else the first they speak. With
+ * none: that text's language, where a script several languages share is placed by the phone's (listedFor: Han alone is a Japanese phone's Japanese,
+ * Cyrillic a Bulgarian phone's Bulgarian, as for a listed language); else, the same answer as for her first message in a conversation
+ * (languagesText): the phone's (with no settings given, the app's: spec §14.3, it ships in English).
+ * @param {string | string[]} said what the user wrote and said, the newest last, as the log keeps them @param {import('../languages.js').LanguageSettings} [languages]
  */
 export function summaryLanguage(said, languages) {
-  const lines = (Array.isArray(said) ? said : [said]).map((x) => x.trim()).filter(Boolean);
-  const last = lines.at(-1);
+  const lines = (Array.isArray(said) ? said : [said]).map((x) => String(x ?? '').trim()).filter((x) => !NO_WORDS.includes(x));
   if (languages?.answer) /* en */ return `${languages.answer.name}, the language Shiori answers in`;
-  if (languages?.explicit) {
-    const text = last && languageOf(last) ? last : lines.join('\n');
-    const guess = text ? languageOf(text) : '';
-    const wrote = guess ? listedFor(guess, languages.spoken, text) : null;
-    /* en */ return wrote ? `${wrote.name}, the language the user wrote in last` : `${languages.spoken[0].name}, the first language the user speaks (${named(languages.spoken)})`;
-  }
-  // With no line of theirs, the same answer as the Languages section's (languagesText): the first language listed (above), with nothing chosen the phone's.
-  if (!last) /* en */ return languages ? `${languages.spoken[0].name}, the language of the user's phone (the user hasn't written anything yet)` : "English, the app's language (the user hasn't written anything yet)";
-  const name = languageOf(last) || languageOf(lines.join('\n'));
-  /* en */ return name ? `${name}, the language the user wrote in last` : `the language the user wrote in last: ${JSON.stringify(last.slice(0, 80))}`;
+  const text = lines.findLast((x) => units(x) >= 3 && languageOf(x)) ?? lines.join('\n');
+  const guess = text ? languageOf(text) : '';
+  const wrote = guess && languages ? listedFor(guess, languages.spoken, text) : null;
+  if (languages?.explicit) /* en */ return wrote ? `${wrote.name}, the language the user wrote in last` : `${languages.spoken[0].name}, the first language the user speaks (${named(languages.spoken)})`;
+  if (guess) /* en */ return `${wrote?.name ?? guess}, the language the user wrote in last`;
+  // Nothing chosen and no line of theirs names a language: the same answer as the Languages section's (languagesText), the phone's. Never a quoted line.
+  /* en */
+  const why = lines.length ? 'nothing the user wrote names a language' : "the user hasn't written anything yet";
+  /* en */
+  return `${languages ? `${languages.spoken[0].name}, the language of the user's phone` : "English, the app's language"} (${why})`;
 }
 
 /** The most text a cold summary is written from when the utility model's window isn't known, in characters (about 100,000 tokens). */

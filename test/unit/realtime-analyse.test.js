@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { analyse, timeline, wordRecall, summary, detail } from '../../scripts/realtime/analyse.mjs';
+import { analyse, timeline, wordRecall, summary, detail, FILLER_CJK, kokoroUsed } from '../../scripts/realtime/analyse.mjs';
 
 /** A level track: 0 except where she sounds (from, to in ms), every 20 ms. @param {[number, number][]} sounding @param {number} [until] */
 const levels = (sounding, until = 20_000) => Array.from({ length: until / 20 }, (_, i) => [i * 20, sounding.some(([a, b]) => i * 20 >= a && i * 20 < b) ? 0.1 : 0.0005]);
@@ -331,11 +331,21 @@ test('language kept: a Japanese sentence answered in Japanese passes, answered i
   assert.match(ok('zh', '附近有什么好吃的餐馆吗', '駅の近くに人気のお店がありますよ。').detail, /zh answered in Japanese/);
 });
 
-test('language kept: an answer too short to place passes; no transcript of her words is a note, not a failure', () => {
-  assert.equal(check(analyse(spoke('sure', 'Sure.', 'Mm.'), LANGS))?.ok, true);
+test("language kept: an answer too short to place is no failure, but a check that placed none is a warning, not a pass; no transcript of her words is a note", () => {
+  const short = analyse(spoke('sure', 'Sure.', 'Mm.'), LANGS);
+  assert.deepEqual([check(short)?.ok, check(short)?.soft, short.pass], [false, true, true], 'nothing placed: a warning, the scenario still passes');
+  assert.deepEqual(short.warnings, ['language kept']);
+  assert.match(check(short)?.detail ?? '', /^no answer could be placed \(1 asked\)/);
+  assert.match(summary([{ rec: spoke('sure', 'Sure.', 'Mm.'), a: short }], { sessions: 1, lines: [1] }), /WARN language kept/);
+  // One placed answer among short ones is read, and passes.
+  assert.equal(check(analyse(spoke('sure', 'Sure.', 'Great, I will look into that.'), LANGS))?.ok, true);
   const none = analyse(spoke('sure', 'Sure.', ''), LANGS);
-  assert.equal(check(none)?.ok, true);
+  assert.equal(check(none)?.ok, false);
+  assert.equal(none.pass, true);
   assert.ok(none.notes.some((n) => /sure: no transcript of what she said/.test(n)), none.notes.join(' | '));
+  // A scenario with no clip to answer (typed lines only) has nothing to read: the same warning, never "ok (0 of 0 could be placed)".
+  const typedOnly = analyse(clean({ plays: [], languages: { spoken: ['ja'], answer: 'follow', applied: true } }), LANGS);
+  assert.deepEqual([check(typedOnly)?.ok, check(typedOnly)?.soft], [false, true]);
 });
 
 test('wordRecall reads Japanese and Chinese by character, as they have no spaces between words', () => {
@@ -354,6 +364,20 @@ test('the notes carry what annai did with the languages: the setup frame\'s hint
   const old = analyse(spoke('sure', 'Sure.', 'Great.', { languages: { spoken: ['en'], answer: 'follow', applied: false, why: 'this build of annai has no languages setting' } }), LANGS);
   assert.ok(old.notes.some((n) => /languages setting not applied: this build of annai has no languages setting/.test(n)), old.notes.join(' | '));
   assert.match(detail(r, a), /languages set: en, zh, ja; she answers in: follow\n/);
+});
+
+// A scenario for a real Kokoro run with --kokoro gemini and an Anthropic key ran Gemini's chat model for both halves, and its report said "a real Kokoro (Opus
+// 5.5)" (the second opinion on fix round 1 of langs-next): the record names the Kokoro it ran with, and the report's line for the scenario says so.
+test('the Kokoro a real scenario ran with is in its record and in the report line, so --kokoro gemini is not read as a real Kokoro', () => {
+  assert.equal(kokoroUsed({ standIn: true, real: {} }), 'Claude Opus 5.5');
+  assert.equal(kokoroUsed({ standIn: true, real: { model: 'opus' } }), 'Claude Opus 5.5');
+  assert.equal(kokoroUsed({ standIn: true, real: { model: 'sonnet' } }), 'Claude Sonnet 5.5');
+  assert.equal(kokoroUsed({ standIn: false, real: { model: 'sonnet' } }), "Gemini's chat model", '--kokoro gemini with a key: no stand-in sets the real one up');
+  assert.equal(kokoroUsed({ standIn: false }), "Gemini's chat model");
+  const r = spoke('sure', 'Sure.', 'Great.', { model: { requests: 0, capped: false, kokoro: kokoroUsed({ standIn: false, real: {} }) } });
+  assert.match(detail(r, analyse(r, LANGS), 'the real Kokoro (Opus 5.5) answers'), /^== q: .*the real Kokoro \(Opus 5\.5\) answers \[Kokoro used: Gemini's chat model\]\n/);
+  const none = spoke('sure', 'Sure.', 'Great.');
+  assert.doesNotMatch(detail(none, analyse(none, LANGS), 'a scenario'), /Kokoro used/, 'a scenario with no real Kokoro says nothing of one');
 });
 
 test('detail names the language each clip was heard and answered in, when it is not the clip\'s', () => {
@@ -406,6 +430,74 @@ test('a scold she answers with "Okay." passes; "Understood. I will stop.", "I\'l
     const a = analyse(scolded(said), SCOLD);
     assert.equal(filler(a)?.ok, false, said);
     assert.equal(a.pass, false, said);
+  }
+});
+
+// The filler trap in Japanese (the languages build's entry 1), with the recorded clip annoyed-ja (the scold the scenario relay-filler-ja plays): an apology,
+// an "I understood" or a promise, in Japanese or Chinese, fails as its English does; an okay passes, as "Okay." does: the polite okay too (かしこまりました),
+// which Koe's instructions allow and main's Koe answered the scold with in 2 of 2 live runs. 承知しました is the "understood" those instructions forbid by name.
+/** The scold clip annoyed-ja as the language scenarios play it, and one scold run with what she said. @param {string | null} said */
+async function scoldedJa(said) {
+  const { loadClips } = await import('../../scripts/realtime/clips.mjs');
+  const recorded = (await loadClips())['annoyed-ja'];
+  assert.equal(recorded?.lang, 'ja', 'the clip is recorded, and listed as Japanese');
+  const JA = { ...CLIPS, 'annoyed-ja': { kind: 'scold', words: recorded.words, lang: 'ja' } };
+  const r = spoke('annoyed-ja', recorded.words, said ?? '');
+  if (said === null) {
+    r.frames = r.frames.filter((/** @type {any} */ x) => !(x.dir === 'in' && ['audio', 'said'].includes(x.kind)));
+    r.level = levels([]);
+  }
+  return analyse(r, JA);
+}
+test('a scold in Japanese: an apology, an "understood" or a promise fails "no filler"; an okay (分かりました, かしこまりました) or silence passes', async () => {
+  assert.equal(filler(await scoldedJa(null))?.ok, true);
+  for (const said of ['分かりました。', 'はい。', 'かしこまりました。', 'はい、かしこまりました。', '好的。', 'ご理解いただきありがとうございます。']) assert.equal(filler(await scoldedJa(said))?.ok, true, said);
+  for (const said of ['申し訳ありません。', 'すみません、以後気をつけます。', '承知しました。', '承知しました。もう謝らないようにします。', '对不起。', '抱歉，我会注意的。', '明白了，以后不会再说了。']) {
+    const a = await scoldedJa(said);
+    assert.equal(filler(a)?.ok, false, said);
+    assert.equal(a.pass, false, said);
+  }
+  // 以後, 以后 and 今後 are ordinary words ("after three", "from now on the route is"), no promise by themselves: her answer to the first question is read too.
+  for (const said of ['三点以后开门。', '以後はこのルートが便利です。', '以後は会社に行きます。', '以后会议室见。', '以後は会えますか。', '以後は静かです。', '今後は雨の予報です。']) assert.equal(filler(await scoldedJa(said))?.ok, true, said);
+  // With a promise after them they are one (the alternative that stood for them alone is gone, and the promises with it, until the promise had its own).
+  for (const said of ['以後は注意します。', '以後は静かにします。', '以後は言いません。', '以後は同じことはしません。', '我以后会注意的。', '以后会小心的。', '好的，以后注意。', '今後は気をつけます。']) {
+    const a = await scoldedJa(said);
+    assert.equal(filler(a)?.ok, false, said);
+    assert.equal(a.pass, false, said);
+  }
+});
+
+// One sentence for each alternative of FILLER_CJK, which no other alternative matches: the check that reads Japanese and Chinese fails each of them as "no
+// filler", so taking any alternative out (or breaking it) fails its own sentence here (the second opinion of 2026-11-17: only 3 of 33 were held).
+const SENTENCES = {
+  'すみません': 'すみません。', 'すいません': 'すいません。', 'ごめん': 'ごめんね。', '申し訳': '申し訳ありません。', '失礼(?:しました|いたしました)': '失礼しました。',
+  'お詫び': 'お詫びします。', '承知': '承知しました。', '(?<!ご)理解': '理解しました。', 'お気持ち': 'お気持ちはわかります。', '気を(?:つけ|付け)ます': '気をつけます。',
+  '以[後后]は?[^。]*(?:します|ません|注意|小心)': '以後は静かにします。', '今後は?[^。]*(?:します|ません|注意|小心)': '今後は静かにします。',
+  'ないようにします': 'もう言わないようにします。', 'やめます': 'もうやめます。', '止めます': 'それは止めます。', '控えます': '口数を控えます。',
+  '对不起': '对不起。', '對不起': '對不起。', '抱歉': '抱歉。', '不好意思': '不好意思。', '道歉': '我向你道歉。', '明白': '明白。', '知道了': '知道了。', '收到': '收到。',
+  '我会': '我会安静。', '我會': '我會安靜。', '我将': '我将保持安静。', '我將': '我將保持安靜。', '不会再': '不会再说了。', '不會再': '不會再說了。',
+};
+/** The alternatives of a regex's source, split where `|` is not inside a group. @param {string} source */
+const alternatives = (source) => {
+  const out = [''];
+  let depth = 0;
+  for (const c of source) {
+    if (c === '(') depth++;
+    if (c === ')') depth--;
+    if (c === '|' && !depth) out.push('');
+    else out[out.length - 1] += c;
+  }
+  return out;
+};
+test('every alternative of the Japanese and Chinese filler list has a sentence only it matches, and that sentence fails "no filler"', async () => {
+  const alts = alternatives(FILLER_CJK.source);
+  assert.deepEqual(Object.keys(SENTENCES).sort(), [...alts].sort(), 'a sentence for each alternative, and none for one that is gone');
+  for (const alt of alts) {
+    const said = /** @type {Record<string, string>} */ (SENTENCES)[alt];
+    assert.match(said, new RegExp(alt, 'u'), `${alt} matches its sentence`);
+    assert.doesNotMatch(said, new RegExp(alts.filter((x) => x !== alt).join('|'), 'u'), `${said} is matched by another alternative too`);
+    const a = await scoldedJa(said);
+    assert.equal(filler(a)?.ok, false, `${alt}: ${said}`);
   }
 });
 

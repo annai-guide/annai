@@ -301,6 +301,61 @@
       "seconds": 2.62,
       "bytes": 83884,
       "sha256": "2abdc45ab72f1ddf"
+    },
+    "ja-auto-gps": {
+      "words": "このアプリに、GPSの自動モードってありますか？",
+      "voice": "Kore",
+      "lang": "ja",
+      "seconds": 3.39,
+      "bytes": 108554,
+      "sha256": "481b1c0c1189822b"
+    },
+    "ja-built": {
+      "words": "ビクスビー橋って、いつできたんですか？",
+      "voice": "Puck",
+      "lang": "ja",
+      "seconds": 2.42,
+      "bytes": 77484,
+      "sha256": "29eef63c6eaa7379"
+    },
+    "ja-bixby": {
+      "words": "ビクスビー橋まで、あとどのくらいですか？",
+      "voice": "Puck",
+      "lang": "ja",
+      "seconds": 2.58,
+      "bytes": 82604,
+      "sha256": "98ecc99fb65e170b"
+    },
+    "ja-stop": {
+      "words": "ストップ。",
+      "voice": "Kore",
+      "lang": "ja",
+      "seconds": 0.7,
+      "bytes": 22444,
+      "sha256": "bba2ed3fdce8694f"
+    },
+    "stop": {
+      "words": "Stop.",
+      "voice": "Kore",
+      "seconds": 0.94,
+      "bytes": 30124,
+      "sha256": "5efdd7d4bcde2be4"
+    },
+    "ja-stop-reminder": {
+      "words": "ホテルのリマインダー、消しといて。",
+      "voice": "Kore",
+      "lang": "ja",
+      "seconds": 1.84,
+      "bytes": 58924,
+      "sha256": "c35cf46f7df6b7c8"
+    },
+    "annoyed-ja": {
+      "words": "さっきから謝ってばっかりで、ほんとにうっとうしい。それ、やめて。",
+      "voice": "Leda",
+      "lang": "ja",
+      "seconds": 4.08,
+      "bytes": 130604,
+      "sha256": "6a487d2e380e9813"
     }
   }
 }

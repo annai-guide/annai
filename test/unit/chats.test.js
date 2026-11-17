@@ -7,7 +7,7 @@ import { kindOf, ensureBaseScopes, createTrip, listTrips, setTripStatus, removeT
 import { ensureDraft, chatName, Chats, DRAFT_TITLE, herDatings, undoDating } from '../../src/core/chats.js';
 import { record, INLINE_MAX } from '../../src/core/agent/log.js';
 import { NOT_TRANSCRIBED } from '../../src/core/voice/resolve.js';
-import { PHOTO_ONLY } from '../../src/core/agent/loop.js';
+import { PHOTO_ONLY } from '../../src/core/handover.js';
 import { changedSince } from '../../src/core/backup-auto.js';
 import { exportArchive, peekArchive, importArchive, PRESETS } from '../../src/core/archive.js';
 import { updateAppSettings, readAppSettings } from '../../src/core/settings.js';
