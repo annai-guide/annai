@@ -583,11 +583,14 @@ export async function renderTalk(ctx, route) {
   let wasShown = false;
   const stop = await follow(agent, scope, {
     read: async () => {
-      const got = (await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ tx) => tx.listEvents(scope, { types: SHOWN, reverse: true, limit: 400 }))).reverse();
+      // The newest 400 it draws and, for a trip's conversation (not `me`'s), the turn ends the Undo line follows from the oldest of them on: in one transaction,
+      // so both see the same log, and what is written meanwhile is all shown after them (follow).
+      const [got, ends] = await ctx.store.tx(['events'], 'readonly', async (/** @type {any} */ tx) => {
+        const got = (await tx.listEvents(scope, { types: SHOWN, reverse: true, limit: 400 })).reverse();
+        return [got, undo ? await tx.listEvents(scope, { types: [TURN_END], after: got.length >= 400 ? got[0].seq - 1 : 0 }) : []];
+      });
       if (got.length >= 400) dates?.from(got[0].seq);
-      // The turn ends the Undo line follows (talk.js undoLine): those from the oldest line read on.
-      const ends = undo ? await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ tx) => tx.listEvents(scope, { types: [TURN_END], after: got.length >= 400 ? got[0].seq - 1 : 0 })) : [];
-      return ends.length ? [...got, ...ends].sort((a, b) => a.seq - b.seq) : got;
+      return ends.length ? [...got, ...ends].sort((/** @type {any} */ a, /** @type {any} */ b) => a.seq - b.seq) : got;
     },
     show: async (e) => {
       if (!SHOWN.includes(e.type) && e.type !== TURN_END) return;
@@ -601,7 +604,7 @@ export async function renderTalk(ctx, route) {
         }
         empty.remove();
         list.append(node);
-        undo?.saw(e);
+        undo?.saw(e, node);
         dates?.saw(e, node);
         if (e.type === 'heard') {
           const l = unheard.get(e.data?.id);
@@ -631,7 +634,7 @@ export async function renderTalk(ctx, route) {
         if (follow) toEnd();
         // A plugin's dock may have no avatar of annai's.
         if (built && e.actor === 'shiori') ctx.dock?.avatar?.glance?.(0, 1.5);
-      } else if (e.type === 'wake' || e.type === 'turn.end' || e.type === 'error') undo?.saw(e); // a turn's start and end (a stop or a let-go too, quiet), with no line of their own, place the Undo line
+      } else if (e.type === 'wake' || e.type === 'turn.end' || e.type === 'error') undo?.saw(e, null); // a turn's start and end (a stop or a let-go too, quiet), with no line of their own
       if (built) showCost();
     },
     state: () => {
@@ -811,21 +814,27 @@ function datesLine(ctx, scope, list) {
 }
 
 /**
- * The Undo line of the newest hand-over in a conversation: under her last line after it, moving down as she adds lines while her turn carries it (its wake
- * names the hand-over, loop.js #steps), so her question, the user's answer and what she then does keep it moving, and a Try again or the user's next line after a
- * turn that failed or was let go takes it on. Once that turn has ended, the user's next words stop it (Koe's lines before them still move it); a turn of hers
- * that carries none stops it too (a reminder's). A log from before wakes named one: until the user writes or speaks again. There only while there is something
- * to take back, which is looked at again where her turn ends (turn.end, or the error that ends a failed, silent or stopped one), as well as at her lines: her last
- * write may come after her last line. A trip she started for the files, with nothing of the user's in it, goes, its files back with Shiori.
+ * The Undo line of the newest hand-over (spec §16.2): under the hand-over's line, then under each record of her work on it. Her turns carry it when their wake
+ * names it (loop.js #steps) or their turn.end does (one that took it up partway: the line goes under its last line). Her lines move it while she tells of the
+ * work: from the hand-over and each such turn's start, until a turn of hers that carries none starts or the user's words come with none running; her turn's
+ * card moves it too. Two halves: Kokoro's turns carry it, Koe's lines tell of them. Nothing else moves it (another turn, another job, the user). In a log from
+ * before wakes named their hand-over, her lines move it until the user writes or speaks again. Shown while there is something to take back, looked at at each
+ * move and where her turn on it ends (turn.end, or the error that ends one with none): her last write may come after her last line. A trip she started for the
+ * files, with nothing of the user's in it, goes, its files back with Shiori.
  * @param {any} ctx @param {string} scope the conversation's @param {HTMLElement} list its lines
  */
 function undoLine(ctx, scope, list) {
   /** @type {string | null} */
   let handover = null;
-  let placing = false;
-  /** The newest of her turns named the hand-over it carries (its wake's `handover` key); and it has ended (turn.end): only then do the user's words stop the line. */
-  let named = false;
-  let ended = false;
+  /** Her lines move the line: she tells of the hand-over's work. */
+  let telling = false;
+  /**
+   * The newest turn of the half that files (one Shiori's, or Kokoro's; Koe's turns only talk): its wake's id, the hand-over its wake names (undefined for
+   * a wake written before 2026-11-16, or for one whose turn never ran: it carries none), whether it has ended, and its last line after the hand-over.
+   * @type {{ id: string, handover: unknown, ended: boolean, node: Element | null }}
+   */
+  let turn = { id: '', handover: undefined, ended: false, node: null };
+  const carries = () => handover !== null && turn.handover === handover;
   let used = false;
   /** The trips each hand-over's files went to (handover.moved). @type {Map<string, Set<string>>} */
   const went = new Map();
@@ -851,7 +860,7 @@ function undoLine(ctx, scope, list) {
       const { removed, waiting, back } = outcome;
       // Files with nowhere to go back to go into a conversation of their own, before home is drawn (timeline stage 7): never nowhere, never in two places.
       if (waiting) await ctx.moveWaiting().catch((/** @type {unknown} */ e) => console.warn(/* en */ "the files waiting with Shiori couldn't be moved into a conversation", e));
-      done();
+      if (hh === handover) done(); // a newer hand-over drawn while it waited for her keeps its own line
       // Said where the files went, whether or not a trip went (both places, when some went back and the rest wait). Shown there: with no file waiting, the trip they
       // went back to opens; with some, home, where the new Waiting with Shiori chat is, at now.
       ctx.notices.toast(undoneWords(outcome));
@@ -885,43 +894,45 @@ function undoLine(ctx, scope, list) {
     get handover() { return handover; },
     done,
     /**
-     * A line just shown, or a turn's start or end: a hand-over starts its Undo; a turn of hers that carries another (or none) stops it moving, and so do the
-     * user's own words once her turn has ended (in an older log, at once); her lines after it, and the end of her turn, take it down with them. @param {any} e
+     * A record just shown (node, its line), or one that draws nothing (a turn's start or end, a quiet error): a hand-over starts its Undo line under its own line;
+     * the records of her work on it take the line down to them. @param {any} e @param {Element | null} node
      */
-    saw(e) {
+    saw(e, node) {
       const d = e.data ?? {};
-      // A turn of the half that files (one Shiori, or Kokoro; Koe's turns only talk) starts, or ends. A wake the loop wrote before 2026-11-16 has no key.
+      // A turn of the half that files starts. One whose wake names a hand-over, or none, says whether she tells of this one.
       if (e.type === 'wake' && !d.meanwhile && d.half !== 'koe') {
-        named = 'handover' in d;
-        ended = false;
-        if (named) placing = Boolean(handover) && d.handover === handover;
+        turn = { id: String(d.id ?? ''), handover: d.handover, ended: false, node: null };
+        if ('handover' in d) telling = carries();
       }
-      if (e.type === 'turn.end' && d.half !== 'koe') ended = true;
       if (e.type === 'msg.user' && typeof d.handover === 'string') {
         handover = d.handover;
-        placing = true;
-        ended = false;
+        telling = true;
+        turn.node = null; // her lines before it are not of its work
         used = false;
         line.hidden = true;
         line.replaceChildren(button);
         button.disabled = false;
-        line.remove();
+        node?.after(line);
         return;
       }
-      if ((!named || ended) && (e.type === 'msg.user' || (e.type === 'heard' && !d.dismissed))) placing = false;
+      if ((e.type === 'msg.user' || (e.type === 'heard' && !d.dismissed)) && (!carries() || turn.ended)) telling = false;
       if (e.type === 'handover.moved' && typeof d.handover === 'string') went.set(d.handover, new Set([...(went.get(d.handover) ?? []), String(d.to)]));
-      if (!handover || used) return;
-      // Her turn on it ended (turn.end names the hand-over it ended with: also one that took it up partway, with no wake of its own naming it): her last write may
-      // have come after her last line, and none of her lines may have put the line in the list. It goes at the end, and is looked at again.
-      if (e.type === 'turn.end' && d.half !== 'koe' && d.handover === handover) {
-        list.append(line);
-        check();
-        return;
-      }
-      // Her lines, and the end of a turn that has no turn.end: a failed or silent one's card, or the quiet record of a Stop or a let-go (nothing drawn, so the line goes under her last line); after her turn ended, an error is another job's.
-      const lines = ['out.speak', 'out.show', 'out.ask', 'handover.moved', 'conversation.moved'].includes(e.type) || (e.type === 'error' && !ended);
-      if (!placing || !lines) return;
-      list.append(line);
+      const ours = typeof d.wake === 'string' && d.wake === turn.id;
+      const hers = ['out.speak', 'out.show', 'out.ask', 'handover.moved', 'conversation.moved'].includes(e.type);
+      if (ours && hers) turn.node = node;
+      // Her turn on it ends: at its turn.end, which names the hand-over the turn ended with (also one it took up partway), or at the error that ends one with
+      // none. Another job's error names no turn of hers, and Koe's records name Koe's turns.
+      const end = ours && (e.type === 'turn.end' ? handover !== null && d.handover === handover : e.type === 'error' && carries());
+      /** Where the line goes: under the record; at the end of a turn that took the hand-over up partway, under that turn's last line. @type {Element | null} */
+      let under = null;
+      if (end) {
+        under = carries() ? node : turn.node;
+        turn.handover = handover;
+        turn.ended = true;
+        telling = true; // after a turn that took it up partway too: what she says of it next (Koe's "Filed.") tells of it
+      } else if (telling && hers) under = node;
+      if (!handover || used || !(end || under)) return;
+      under?.after(line);
       check();
     },
   };

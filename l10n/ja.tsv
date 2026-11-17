@@ -2435,36 +2435,36 @@ e34nbi	ok	Started fresh	新しく始めました	src/ui/screens/talk.js:539	Note
 1o41up	ok	A budget ended her turn	上限に達したため、Shioriが応答を終えました	src/ui/screens/talk.js:550	
 1p4yyw7	ok	Her turn ended	Shioriの応答が終わりました	src/ui/screens/talk.js:550	
 1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	まだ会話はありません。下の「Shiori」か「入力」をタップして話しかけてください。	src/ui/screens/talk.js:565	Note: "Type" is the dock's button: its words must match it.
-4fzxin	ok	From {0}.	{0}より。	src/ui/screens/talk.js:628	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
-1pm5i13	ok	Back to Trips	「旅」に戻る	src/ui/screens/talk.js:660	Note: The Trips screen, quoted so it reads apart from 旅に戻る (Back to trip).
-16zeyyr	ok	Next: {0} {1}	次の予定：{0} {1}	src/ui/screens/talk.js:705	{0} = r.time; {1} = name
-puj2r7	ok	Next: {0} {1} {2}	次の予定：{0} {1} {2}	src/ui/screens/talk.js:705	{0} = day(r.day, true); {1} = r.time; {2} = name
-1frlw7l	ok	Undo the dates Shiori set	Shioriが設定した日付を元に戻す	src/ui/screens/talk.js:763	
-1l3merh	ok	Shiori set the dates	Shioriが日付を設定しました	src/ui/screens/talk.js:782	
-159f82q	ok	Undone	元に戻しました	src/ui/screens/talk.js:784	
-1v37fcy	ok	Undo what Shiori did with these files	このファイルについてShioriがしたことを元に戻す	src/ui/screens/talk.js:876	Note: the Undo button's label for screen readers; 元に戻す as Undo.
-1nl0tpx	ok	Conversation menu	会話メニュー	src/ui/screens/talk.js:941	
-7flpxf	ok	Summarizing…	要約中…	src/ui/screens/talk.js:1008	
-12707g	ok	She couldn't summarize it. A card says why.	要約できませんでした。理由はカードに表示されています。	src/ui/screens/talk.js:1010	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	これまでの会話を要約しました。会話はすべてここに残り、Shioriもあとから見返せます。	src/ui/screens/talk.js:1010	
-u82uid	ok	Shiori is working. Try again in a moment.	Shioriは作業中です。少ししてからもう一度お試しください。	src/ui/screens/talk.js:1010	
-va2k72	ok	There is not enough yet to summarize.	まだ要約するほどの内容がありません。	src/ui/screens/talk.js:1010	
-mienoe	ok	Summarize now	今すぐ要約	src/ui/screens/talk.js:1013	
-10sfmur	ok	Starting fresh…	新しく始めています…	src/ui/screens/talk.js:1015	
-va77q0	ok	Start fresh?	新しく始めますか？	src/ui/screens/talk.js:1028	Note: the glossary's 新しく始める, conjugated as a question (始めますか).
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shioriはこれまでのやり取りを踏まえず、ここから新しく始めます。やり取りはすべて会話に残るので、読んだり検索したりでき、Shioriも見返せます。削除されるものはありません。ライブ音声のセッションも開始し直します。	src/ui/screens/talk.js:1029	
-czdqlz	ok	Start fresh	新しく始める	src/ui/screens/talk.js:1030	
-1h9wwbn	ok	She couldn't start fresh: {0}	新しく始められませんでした：{0}	src/ui/screens/talk.js:1040	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	新しく始めたあと、まだ何も話していません。	src/ui/screens/talk.js:1043	
-3fntk0	ok	Started fresh.	新しく始めました。	src/ui/screens/talk.js:1043	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	会話を開いているところです。少ししてからもう一度お試しください。	src/ui/screens/talk.js:1043	
-p5pj7b	ok	There is nothing to start fresh from yet.	まだ何も話していないため、新しく始められません。	src/ui/screens/talk.js:1043	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	今すぐ要約：これまでの会話をShioriが要約して、会話を短く保ちます。やり取りはすべてここに残り、Shioriもあとから見返せます。	src/ui/screens/talk.js:1065	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	新しく始める：Shioriはこれまでのやり取りを踏まえず、ここから新しく始めます。やり取りはすべて区切り線の上に残ります。	src/ui/screens/talk.js:1066	
-15ve7m7	ok	What each half sees	KoeとKokoroに見えているもの	src/ui/screens/talk.js:1067	
-1u5l4hx	ok	Details: the trip's name and dates, Export, Archive and Remove.	詳細：旅の名前と日付、エクスポート、アーカイブ、削除。	src/ui/screens/talk.js:1078	
-o7tevg	ok	Details: the chat's name and dates, Export, Archive and Remove.	詳細：チャットの名前と日付、エクスポート、アーカイブ、削除。	src/ui/screens/talk.js:1078	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	元に戻しました。前の性格は、Shioriが次に起動したときから反映されます。	src/ui/screens/talk.js:1094	
+4fzxin	ok	From {0}.	{0}より。	src/ui/screens/talk.js:631	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
+1pm5i13	ok	Back to Trips	「旅」に戻る	src/ui/screens/talk.js:663	Note: The Trips screen, quoted so it reads apart from 旅に戻る (Back to trip).
+16zeyyr	ok	Next: {0} {1}	次の予定：{0} {1}	src/ui/screens/talk.js:708	{0} = r.time; {1} = name
+puj2r7	ok	Next: {0} {1} {2}	次の予定：{0} {1} {2}	src/ui/screens/talk.js:708	{0} = day(r.day, true); {1} = r.time; {2} = name
+1frlw7l	ok	Undo the dates Shiori set	Shioriが設定した日付を元に戻す	src/ui/screens/talk.js:766	
+1l3merh	ok	Shiori set the dates	Shioriが日付を設定しました	src/ui/screens/talk.js:785	
+159f82q	ok	Undone	元に戻しました	src/ui/screens/talk.js:787	
+1v37fcy	ok	Undo what Shiori did with these files	このファイルについてShioriがしたことを元に戻す	src/ui/screens/talk.js:885	Note: the Undo button's label for screen readers; 元に戻す as Undo.
+1nl0tpx	ok	Conversation menu	会話メニュー	src/ui/screens/talk.js:952	
+7flpxf	ok	Summarizing…	要約中…	src/ui/screens/talk.js:1019	
+12707g	ok	She couldn't summarize it. A card says why.	要約できませんでした。理由はカードに表示されています。	src/ui/screens/talk.js:1021	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	これまでの会話を要約しました。会話はすべてここに残り、Shioriもあとから見返せます。	src/ui/screens/talk.js:1021	
+u82uid	ok	Shiori is working. Try again in a moment.	Shioriは作業中です。少ししてからもう一度お試しください。	src/ui/screens/talk.js:1021	
+va2k72	ok	There is not enough yet to summarize.	まだ要約するほどの内容がありません。	src/ui/screens/talk.js:1021	
+mienoe	ok	Summarize now	今すぐ要約	src/ui/screens/talk.js:1024	
+10sfmur	ok	Starting fresh…	新しく始めています…	src/ui/screens/talk.js:1026	
+va77q0	ok	Start fresh?	新しく始めますか？	src/ui/screens/talk.js:1039	Note: the glossary's 新しく始める, conjugated as a question (始めますか).
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shioriはこれまでのやり取りを踏まえず、ここから新しく始めます。やり取りはすべて会話に残るので、読んだり検索したりでき、Shioriも見返せます。削除されるものはありません。ライブ音声のセッションも開始し直します。	src/ui/screens/talk.js:1040	
+czdqlz	ok	Start fresh	新しく始める	src/ui/screens/talk.js:1041	
+1h9wwbn	ok	She couldn't start fresh: {0}	新しく始められませんでした：{0}	src/ui/screens/talk.js:1051	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	新しく始めたあと、まだ何も話していません。	src/ui/screens/talk.js:1054	
+3fntk0	ok	Started fresh.	新しく始めました。	src/ui/screens/talk.js:1054	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	会話を開いているところです。少ししてからもう一度お試しください。	src/ui/screens/talk.js:1054	
+p5pj7b	ok	There is nothing to start fresh from yet.	まだ何も話していないため、新しく始められません。	src/ui/screens/talk.js:1054	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	今すぐ要約：これまでの会話をShioriが要約して、会話を短く保ちます。やり取りはすべてここに残り、Shioriもあとから見返せます。	src/ui/screens/talk.js:1076	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	新しく始める：Shioriはこれまでのやり取りを踏まえず、ここから新しく始めます。やり取りはすべて区切り線の上に残ります。	src/ui/screens/talk.js:1077	
+15ve7m7	ok	What each half sees	KoeとKokoroに見えているもの	src/ui/screens/talk.js:1078	
+1u5l4hx	ok	Details: the trip's name and dates, Export, Archive and Remove.	詳細：旅の名前と日付、エクスポート、アーカイブ、削除。	src/ui/screens/talk.js:1089	
+o7tevg	ok	Details: the chat's name and dates, Export, Archive and Remove.	詳細：チャットの名前と日付、エクスポート、アーカイブ、削除。	src/ui/screens/talk.js:1089	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	元に戻しました。前の性格は、Shioriが次に起動したときから反映されます。	src/ui/screens/talk.js:1105	
 11gkctr	ok	Places	場所	src/ui/screens/tools.js:12	context: tool group
 13mxqrp	ok	Talk	会話	src/ui/screens/tools.js:12	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	移動	src/ui/screens/tools.js:12	context: tool group; Note: the tools for getting somewhere (routes, maps).
