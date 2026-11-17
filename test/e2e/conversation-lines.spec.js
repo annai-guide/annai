@@ -114,6 +114,36 @@ test('words still coming become the line they are, drawn from the log; with "Sho
   await expect(said.getByText('Four minutes off your route.')).toBeVisible();
 });
 
+// The user, 2026-11-16: the provider's name before a model's. Her line labels and the halves' notes name a model the config has by its
+// provider (the fixtures above name models no config has, so they show the bare path); at 360 px the longest label wraps inside its bubble.
+test("a Koe line, a Kokoro line and a halves' note name a configured model by its provider's name first; at 360 px they wrap inside their bubbles", async ({ page }, testInfo) => {
+  const llm = await startModelServer({});
+  try {
+    await page.setViewportSize({ width: 360, height: 780 });
+    await modelSetUp(page, llm.origin, 'Sample trip', { look: false }); // the provider "Stand-in", its model "b-model"
+    const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    const by = { name: 'b-model', first: null, tried: false };
+    await writeEvent(page, trip, { type: 'out.speak', data: { id: 's1', half: 'koe', by, text: 'Leave by 8:40.' } });
+    await writeEvent(page, trip, { type: 'note', data: { id: 'n1', from: 'koe', mode: 'append', why: 'tool', wake: 'w-1', text: 'Where do bookings go?', by } });
+    // Kokoro's answer, which a model no config has now (removed since) didn't give first: the removed one stays as it was stored.
+    await writeEvent(page, trip, { type: 'out.speak', data: { id: 's2', half: 'kokoro', by: { name: 'b-model', first: 'Gone model', tried: true }, text: 'The train is on time today.' } });
+    await page.goto('/#/talk');
+    await expect(page.locator('.convo .shiori .line-label')).toHaveText(['Koe · text · Stand-in / b-model', "Kokoro directly · Stand-in / b-model · Gone model didn't answer"]);
+    await expect(page.locator('.convo .halves-note .by')).toHaveText(['Stand-in / b-model']);
+    const fit = await page.evaluate(() => [...document.querySelectorAll('.convo > li')].flatMap((li) => {
+      const box = li.getBoundingClientRect();
+      const out = [...li.querySelectorAll('.line-label, .line-label span, .by')].filter((x) => { const r = x.getBoundingClientRect(); return r.right > box.right + 0.5 || r.left < box.left - 0.5; });
+      return out.length || box.right > innerWidth || li.scrollWidth > li.clientWidth + 1 ? [li.textContent] : [];
+    }));
+    expect(fit).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.evaluate(() => document.querySelectorAll('.toasts, .notices').forEach((x) => { /** @type {HTMLElement} */ (x).style.display = 'none'; })); // the picture is of the lines
+    await page.locator('.convo').screenshot({ path: `.superpowers/evidence/model-provider/koe-lines-360-${testInfo.project.name}.png` });
+  } finally {
+    await llm.stop();
+  }
+});
+
 test('"This was for Shiori" on an old line: a tap sends the words as a spoken line, the quiet line loses its button, and the model reads what happened', async ({ page }) => {
   const llm = await startModelServer({ '/b/v1/messages': [{ status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'speak', input: { text: 'Got it.' } }, { name: 'sleep', input: {} }]) }] });
   try {

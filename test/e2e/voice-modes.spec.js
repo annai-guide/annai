@@ -74,10 +74,10 @@ async function sheSpeaks(/** @type {import('@playwright/test').Page} */ page, /*
     await waitForServiceWorker(page);
     await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${server.origin}/b`, key: 'sk-chat-test', model: 'b-model' });
     await addProvider(page, 'Custom provider', { ability: 'Voice', name: 'Voice', url: `${server.origin}/voice`, key: 'sk-voice-test', model: 'voice' });
-    await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in / b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
-    await expect(page.getByText('1. b-model')).toBeVisible();
-    await page.getByLabel('Add a model to speech-out').selectOption({ label: 'voice' });
+    await expect(page.getByText('1. Stand-in / b-model')).toBeVisible();
+    await page.getByLabel('Add a model to speech-out').selectOption({ label: 'Voice / voice' });
     await page.getByRole('button', { name: 'Add to speech-out' }).click();
     await page.locator('.voice-chip').click();
     await expect(page.locator('.voice-chip')).toHaveText('Voice on');

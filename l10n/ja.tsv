@@ -453,12 +453,12 @@ imb4zw	ok	How far you drove or walked between, the stamps, and the itinerary.	�
 5lqjwd	ok	Shiori's cards and your words, typed or spoken, each shortened.	Shioriのカードと、入力したり話したりした言葉（それぞれ短くしたもの）。	src/core/after/recap.js:60	
 10xm6na	ok	This conversation's notes and memory, and your profile.	この会話のメモと記憶、プロフィール。	src/core/after/recap.js:61	
 1nvz32n	ok	Up to {0} photos, if the model takes photos. A photo kept as taken (Settings → Photos → Keep originals) can still hold where it was taken.	モデルが写真を受け付ける場合、写真を最大{0}枚。オリジナルのまま保存した写真（「設定 → 写真 → オリジナルを残す」）には、撮影場所の情報が残っていることがあります。	src/core/after/recap.js:62	{0} = RECAP_PHOTOS; Note: the setting's own label, オリジナルを残す.
-rntcrc	ok	No model is set for the utility or main role. Add one in Settings → Models.	補助とメインのどちらの役割にもモデルが設定されていません。「設定 → モデル」で追加してください。	src/core/after/recap.js:169	
-1hy1f74	ok	No model could write it.	どのモデルも振り返りを書けませんでした。	src/core/after/recap.js:170	Note: "it" is the recap (振り返り / 回顾).
-h5o9ec	ok	Check Settings → Models, then try again.	「設定 → モデル」を確認してから、もう一度お試しください。	src/core/after/recap.js:170	
-1ocmp3v	ok	Try again in a while.	しばらくしてからもう一度お試しください。	src/core/after/recap.js:172	
-11vzyc7	ok	No model is set up to write the recap. Add one in Settings → Models.	振り返りを書くモデルが設定されていません。「設定 → モデル」で追加してください。	src/core/after/recap.js:186	
-tbxeeg	ok	The model sent back an empty recap. Try again, or put another model first in the utility role (Settings → Models).	モデルから空の振り返りが返ってきました。もう一度試すか、「設定 → モデル」で補助の役割の先頭に別のモデルを置いてください。	src/core/after/recap.js:236	
+rntcrc	ok	No model is set for the utility or main role. Add one in Settings → Models.	補助とメインのどちらの役割にもモデルが設定されていません。「設定 → モデル」で追加してください。	src/core/after/recap.js:172	
+1hy1f74	ok	No model could write it.	どのモデルも振り返りを書けませんでした。	src/core/after/recap.js:173	Note: "it" is the recap (振り返り / 回顾).
+h5o9ec	ok	Check Settings → Models, then try again.	「設定 → モデル」を確認してから、もう一度お試しください。	src/core/after/recap.js:173	
+1ocmp3v	ok	Try again in a while.	しばらくしてからもう一度お試しください。	src/core/after/recap.js:175	
+11vzyc7	ok	No model is set up to write the recap. Add one in Settings → Models.	振り返りを書くモデルが設定されていません。「設定 → モデル」で追加してください。	src/core/after/recap.js:189	
+tbxeeg	ok	The model sent back an empty recap. Try again, or put another model first in the utility role (Settings → Models).	モデルから空の振り返りが返ってきました。もう一度試すか、「設定 → モデル」で補助の役割の先頭に別のモデルを置いてください。	src/core/after/recap.js:239	
 1sob3wf	ok	1 hour a second	1秒で1時間	src/core/after/replay.js:22	Note: a playback speed: one hour of the trip a second.
 6jq1bh	ok	1 minute a second	1秒で1分	src/core/after/replay.js:22	
 7013qq	ok	10 minutes a second	1秒で10分	src/core/after/replay.js:22	
@@ -533,25 +533,25 @@ ssozn1	ok	A photo wasn't sent to Shiori	写真をShioriに送れませんでし�
 pydksy	ok	Shiori stopped repeating herself	Shioriは同じことの繰り返しをやめました	src/core/agent/loop.js:2578	
 1nvuxc8	ok	Her model finished without saying anything to you.	Shioriのモデルが、何も返事をしないまま終了しました。	src/core/agent/loop.js:2622	Note: "Her" is Shiori's in ja.
 2bgbpn	ok	Shiori didn't answer	Shioriから返事がありませんでした	src/core/agent/loop.js:2626	
-1mjdfzn	ok	Shiori can't reach her model	Shioriがモデルに接続できません	src/core/agent/loop.js:2700	
-12qfj9m	ok	This model takes photos only as {0}, which this browser can't make. Try another model in Settings → Models.	このモデルが受け付ける写真の形式は{0}だけですが、このブラウザでは作成できません。「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:2727	{0} = names
-1uhz9dg	ok	Shiori couldn't send the photo	Shioriは写真を送れませんでした	src/core/agent/loop.js:2786	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	このブラウザでは、タップしないと音が出ません。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3423	
-1h2ina6	ok	Shiori couldn't speak aloud	Shioriは声に出して話せませんでした	src/core/agent/loop.js:3424	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	「設定 → モデル → 読み上げ」の声がどれも使えませんでした。理由は「記録」にあります。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3424	
-1r1dhd7	ok	Shiori can't hear you yet	Shioriはまだ声を聞き取れません	src/core/agent/loop.js:3581	
-8wd0xv	ok	Listening stopped	聞き取りが止まりました	src/core/agent/loop.js:3786	
-43klog	ok	at most {0} MB	最大{0} MB	src/core/agent/loop.js:4075	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	一辺#ピクセルまで	src/core/agent/loop.js:4076	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一度に#枚まで	src/core/agent/loop.js:4077	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	{0}のみ	src/core/agent/loop.js:4078	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず（受け付けるのは{0}）、受け付けられる形のコピーも作れませんでした。「設定 → 写真 → Shioriに送る写真」で写真を小さくするか、「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:4079	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず、受け付けられる形のコピーも作れませんでした。「設定 → 写真 → Shioriに送る写真」で写真を小さくするか、「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:4080	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	会話が長すぎて、整理するまではShioriのモデルで扱えません。「設定 → モデル」でモデルを確認するか、しばらくしてからもう一度お試しください。	src/core/agent/loop.js:4087	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	プラグイン「{0}」が、設定した上限（1時間に#回）を超えてShioriを起動しようとしました。	src/core/agent/loop.js:4097	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守り中の出来事が、設定した上限（1時間に#回）を超えてShioriを起動しようとしました（{0}）。	src/core/agent/loop.js:4098	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	追加したファイルが、設定した上限（1時間に#回）を超えてShioriを起動しようとしました（{0}）。	src/core/agent/loop.js:4099	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	何かが、設定した上限（1時間に#回）を超えてShioriを起動しようとしました。	src/core/agent/loop.js:4100	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+1mjdfzn	ok	Shiori can't reach her model	Shioriがモデルに接続できません	src/core/agent/loop.js:2711	
+12qfj9m	ok	This model takes photos only as {0}, which this browser can't make. Try another model in Settings → Models.	このモデルが受け付ける写真の形式は{0}だけですが、このブラウザでは作成できません。「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:2738	{0} = names
+1uhz9dg	ok	Shiori couldn't send the photo	Shioriは写真を送れませんでした	src/core/agent/loop.js:2797	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	このブラウザでは、タップしないと音が出ません。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3434	
+1h2ina6	ok	Shiori couldn't speak aloud	Shioriは声に出して話せませんでした	src/core/agent/loop.js:3435	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	「設定 → モデル → 読み上げ」の声がどれも使えませんでした。理由は「記録」にあります。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3435	
+1r1dhd7	ok	Shiori can't hear you yet	Shioriはまだ声を聞き取れません	src/core/agent/loop.js:3592	
+8wd0xv	ok	Listening stopped	聞き取りが止まりました	src/core/agent/loop.js:3797	
+43klog	ok	at most {0} MB	最大{0} MB	src/core/agent/loop.js:4086	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	一辺#ピクセルまで	src/core/agent/loop.js:4087	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一度に#枚まで	src/core/agent/loop.js:4088	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	{0}のみ	src/core/agent/loop.js:4089	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず（受け付けるのは{0}）、受け付けられる形のコピーも作れませんでした。「設定 → 写真 → Shioriに送る写真」で写真を小さくするか、「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:4090	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず、受け付けられる形のコピーも作れませんでした。「設定 → 写真 → Shioriに送る写真」で写真を小さくするか、「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:4091	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	会話が長すぎて、整理するまではShioriのモデルで扱えません。「設定 → モデル」でモデルを確認するか、しばらくしてからもう一度お試しください。	src/core/agent/loop.js:4101	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	プラグイン「{0}」が、設定した上限（1時間に#回）を超えてShioriを起動しようとしました。	src/core/agent/loop.js:4111	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守り中の出来事が、設定した上限（1時間に#回）を超えてShioriを起動しようとしました（{0}）。	src/core/agent/loop.js:4112	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	追加したファイルが、設定した上限（1時間に#回）を超えてShioriを起動しようとしました（{0}）。	src/core/agent/loop.js:4113	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	何かが、設定した上限（1時間に#回）を超えてShioriを起動しようとしました。	src/core/agent/loop.js:4114	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	メッセージにキーが含まれていたため、表示しません。	src/core/agent/net.js:94	
 157dl17	ok	Shiori wants to adjust her personality	Shioriが性格の調整を提案しています	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	やめておく	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
@@ -696,10 +696,11 @@ mlh3jc	ok	Main	メイン	src/core/llm/check.js:178
 1q9bibx	ok	It also answers at {0}'s level ({1}).	{0}のレベル（{1}）でも答えます。	src/core/llm/check.js:180	{0} = roleName(role); {1} = role.level; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
 1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	{0}のレベル（{1}）では、このモデルは拒否しました：{2}	src/core/llm/check.js:182	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
 1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	「設定 → モデル」で{0}のレベルを下げるか、このモデルのページで推論レベルを変えてください。	src/core/llm/check.js:184	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
-1nuav0n	ok	That provider no longer exists.	そのプロバイダーはもうありません。	src/core/llm/config.js:383	
-1qjc2dh	ok	That provider has no ability called {0}.	そのプロバイダーに{0}という機能はありません。	src/core/llm/config.js:385	{0} = rec.ability
-4iiule	ok	Give the provider's model id.	プロバイダーのモデルIDを入力してください。	src/core/llm/config.js:388	
-3i9i3z	ok	"{0}" is already used by another model	「{0}」はほかのモデルがすでに使っています	src/core/llm/config.js:392	{0} = name
+1f43jmt	ok	{0} / {1}	{0} / {1}	src/core/llm/config.js:107	context: a model, after its provider; {0} = provider; {1} = model; Note: a provider's name, then its model's, both Latin names: a spaced slash, not the middle dot that tells a label's parts apart, as in 「Koe · チャット · Anthropic / Claude Opus 5.5」, so the pair reads as one name.
+1nuav0n	ok	That provider no longer exists.	そのプロバイダーはもうありません。	src/core/llm/config.js:409	
+1qjc2dh	ok	That provider has no ability called {0}.	そのプロバイダーに{0}という機能はありません。	src/core/llm/config.js:411	{0} = rec.ability
+4iiule	ok	Give the provider's model id.	プロバイダーのモデルIDを入力してください。	src/core/llm/config.js:414	
+3i9i3z	ok	"{0}" is already used by another model	「{0}」はほかのモデルがすでに使っています	src/core/llm/config.js:418	{0} = name
 1lqr9y5	ok	The key was rejected. Check it in Settings → Models.	キーが拒否されました。「設定 → モデル」で確認してください。	src/core/llm/contract.js:112	
 1do8abu	ok	This account is out of credit.	このアカウントのクレジットが残っていません。	src/core/llm/contract.js:113	
 99g6ol	ok	The provider says too many requests for now.	プロバイダーへのリクエストが多すぎるため、いまは受け付けられません。	src/core/llm/contract.js:114	
@@ -768,10 +769,10 @@ uxj42v	ok	It doesn't take audio.	音声に対応していません。	src/core/l
 10vxomx	ok	It was removed.	削除されました。	src/core/llm/fallback.js:133	
 s8uown	ok	The speech couldn't be sent to it.	音声をこのモデルに送れませんでした。	src/core/llm/fallback.js:134	
 13y0hea	ok	Its daily limit is used up; it rests until {0}.	1日の上限に達したため、{0}まで休止します。	src/core/llm/fallback.js:153	{0} = at; Note: {0} is a time, or a weekday and a time.
-22cbmy	ok	This device is offline.	この端末はオフラインです。	src/core/llm/fallback.js:179	
-1av83fe	ok	No model is set for the utility role. Add one in Settings → Models.	補助の役割にモデルが設定されていません。「設定 → モデル」で追加してください。	src/core/llm/fallback.js:228	Note: the role by its screen name (補助 / 辅助).
-35l8v	ok	No model is set for Koe · Chat. Add one in Settings → Models.	Koe · チャットにモデルが設定されていません。「設定 → モデル」で追加してください。	src/core/llm/fallback.js:229	
-1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	メインの役割にモデルが設定されていません。「設定 → モデル」で追加してください。	src/core/llm/fallback.js:230	Note: the role by its screen name (メイン / 主要).
+22cbmy	ok	This device is offline.	この端末はオフラインです。	src/core/llm/fallback.js:181	
+1av83fe	ok	No model is set for the utility role. Add one in Settings → Models.	補助の役割にモデルが設定されていません。「設定 → モデル」で追加してください。	src/core/llm/fallback.js:231	Note: the role by its screen name (補助 / 辅助).
+35l8v	ok	No model is set for Koe · Chat. Add one in Settings → Models.	Koe · チャットにモデルが設定されていません。「設定 → モデル」で追加してください。	src/core/llm/fallback.js:232	
+1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	メインの役割にモデルが設定されていません。「設定 → モデル」で追加してください。	src/core/llm/fallback.js:233	Note: the role by its screen name (メイン / 主要).
 g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	プラグインの一覧を読み込めませんでした。ネットワーク接続を確認して、もう一度お試しください。	src/core/llm/official.js:33	
 2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	プラグインの一覧を読み込めませんでした（HTTP {0}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:35	{0} = res.status
 mprjic	ok	couldn't be downloaded. Check the connection and try again.	ダウンロードできませんでした。ネットワーク接続を確認して、もう一度お試しください。	src/core/llm/official.js:156	Note: said of a plugin, whose name is the card's title.
@@ -923,34 +924,34 @@ d3i18u	ok	Voice on · driving	音声オン · 運転中	src/core/voice/mode.js:5
 t042iv	ok	Voice off: you stopped driving	音声オフ：運転が終わりました	src/core/voice/mode.js:60	
 tgf1x2	ok	Voice off: the microphone disconnected	音声オフ：マイクの接続が切れました	src/core/voice/mode.js:61	
 xonbcn	ok	Voice off: {0} disconnected	音声オフ：{0}の接続が切れました	src/core/voice/mode.js:61	{0} = name
-xi9ch6	ok	Shiori can't hear you: the speech-in list is empty. Add an entry in Settings → Models → Speech in.	聞き取りのリストが空のため、Shioriは声を聞き取れません。「設定 → モデル → 聞き取り」で追加してください。	src/core/voice/resolve.js:155	
-1da2r7t	ok	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works.	{0}は音声を受け付けず、聞き取りのリストにも使える文字起こしモデルがないため、Shioriはまだ声を聞き取れません。	src/core/voice/resolve.js:161	{0} = model.name
-1j6uoln	ok	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works.	メインのモデルが設定されておらず、聞き取りのリストにも使える文字起こしモデルがないため、Shioriはまだ声を聞き取れません。	src/core/voice/resolve.js:162	
-1oy92m8	ok	This browser has no phone dictation either.	このブラウザでは端末の音声入力も使えません。	src/core/voice/resolve.js:163	
-l80ifa	ok	Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	「設定 → モデル」で、OpenAIやGroqなどの文字起こしモデルか、音声を受け付けるメインのモデルを追加してください。	src/core/voice/resolve.js:163	
+xi9ch6	ok	Shiori can't hear you: the speech-in list is empty. Add an entry in Settings → Models → Speech in.	聞き取りのリストが空のため、Shioriは声を聞き取れません。「設定 → モデル → 聞き取り」で追加してください。	src/core/voice/resolve.js:156	
+1da2r7t	ok	Shiori can't hear you yet: {0} doesn't take audio, and the speech-in list has no transcription model that works.	{0}は音声を受け付けず、聞き取りのリストにも使える文字起こしモデルがないため、Shioriはまだ声を聞き取れません。	src/core/voice/resolve.js:162	{0} = names(model.name)
+1j6uoln	ok	Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works.	メインのモデルが設定されておらず、聞き取りのリストにも使える文字起こしモデルがないため、Shioriはまだ声を聞き取れません。	src/core/voice/resolve.js:163	
+1oy92m8	ok	This browser has no phone dictation either.	このブラウザでは端末の音声入力も使えません。	src/core/voice/resolve.js:164	
+l80ifa	ok	Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	「設定 → モデル」で、OpenAIやGroqなどの文字起こしモデルか、音声を受け付けるメインのモデルを追加してください。	src/core/voice/resolve.js:164	
 m5s9f4	ok	This browser can't play a voice as it arrives.	このブラウザでは、声をストリーミング再生できません。	src/core/voice/speaker.js:128	
 jo5o9d	ok	This browser can't play sound here.	このブラウザでは、ここで音声を再生できません。	src/core/voice/voice.js:442	
 ocv5zw	ok	This browser can't use the microphone here.	このブラウザでは、ここでマイクを使えません。	src/core/voice/voice.js:485	
-55949q	ok	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	音声が止まったため、声を聞き取れません。画面をタップすると再開します。	src/core/voice/voice.js:807	
+55949q	ok	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	音声が止まったため、声を聞き取れません。画面をタップすると再開します。	src/core/voice/voice.js:808	
 pib2vo	ok	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	ブラウザに組み込まれた音声サービスが聞き取ります。Androidでは多くの場合Googleのサーバー、iPhoneではAppleのサーバーで処理されます（端末上で処理されることもあります）。このリクエストはannaiが送るものではないため、記録には表示されません。	src/core/voice/where.js:15	
 m93xm3	ok	On this phone only: the browser recognizes your speech on the device.	ブラウザがこの端末上で音声を認識します。端末の外には送られません。	src/core/voice/where.js:16	
 1m5zm0a	ok	Phone dictation	端末の音声入力	src/core/voice/where.js:18	
 1vi25zs	ok	Send audio to the model	音声をモデルに送る	src/core/voice/where.js:18	
 742sn5	ok	Browser voice	ブラウザの声	src/core/voice/where.js:18	
 2pflf	ok	{0} ({1})	{0}（{1}）	src/core/voice/where.js:37	{0} = provider.name; {1} = host; Note: a name and a detail in brackets: a provider's name and its host (where.js), and a stack of cards' title and how many (notices.js).
-jyk16a	ok	As sound, to the model that hears it: {0}.	音声のまま、声を聞くモデルに送られます：{0}。	src/core/voice/where.js:55	{0} = list(places, 'or')
-l00mfq	ok	Only to a model that takes audio, and none of the models that hear you takes audio now: nothing goes this way.	音声を受け取れるモデルにだけ送られますが、いまメインとクイック判定のモデルはどれも音声を受け付けないため、この経路では何も送られません。	src/core/voice/where.js:55	
-ppm2mg	ok	This browser has no dictation: it is skipped.	このブラウザは音声入力に対応していないため、スキップされます。	src/core/voice/where.js:58	
-1ed9jam	ok	This model is gone: it is skipped.	このモデルはもうないため、スキップされます。	src/core/voice/where.js:60	
-1y3s50o	ok	As sound, to {0}, to be written down.	音声のまま{0}に送られ、文字に起こされます。	src/core/voice/where.js:60	{0} = placeOf(cfg, id)
-2o1a5s	ok	This browser has no voice of its own: it is skipped.	このブラウザには独自の声がないため、スキップされます。	src/core/voice/where.js:73	
-1pvxdq0	ok	The browser's choice of voice: annai can't tell whether it speaks on this phone or sends her words to a service.	ブラウザが選んだ声です。この端末上で読み上げるのか、言葉をサービスに送るのかは、annaiからはわかりません。	src/core/voice/where.js:74	
-11mo7a8	ok	Spoken on this phone ({0}): her words stay on it.	この端末上で読み上げます（{0}）。言葉は端末の外に出ません。	src/core/voice/where.js:75	{0} = voice.name
-ihf6hd	ok	Her words go to the service behind {0} (Google's), to be spoken; they aren't spoken on this phone.	{0}を提供するGoogleのサービスに言葉が送られ、音声に変換されます。この端末内では変換しません。	src/core/voice/where.js:76	{0} = voice.name
-1tsyo5q	ok	Her words go to the service behind {0} (Microsoft's), to be spoken; they aren't spoken on this phone.	{0}を提供するMicrosoftのサービスに言葉が送られ、音声に変換されます。この端末内では変換しません。	src/core/voice/where.js:77	{0} = voice.name
-14jkvn5	ok	Her words go to the service behind {0}, to be spoken; they aren't spoken on this phone.	{0}を提供するサービスに言葉が送られ、音声に変換されます。この端末内では変換しません。	src/core/voice/where.js:78	{0} = voice.name
-i7rrx1	ok	This voice is gone: it is skipped.	この声はもうないため、スキップされます。	src/core/voice/where.js:80	
-mf44l1	ok	Her words go to {0}, which sends back the sound.	言葉は{0}に送られ、音声になって返ってきます。	src/core/voice/where.js:80	{0} = placeOf(cfg, id)
+jyk16a	ok	As sound, to the model that hears it: {0}.	音声のまま、声を聞くモデルに送られます：{0}。	src/core/voice/where.js:56	{0} = list(places, 'or')
+l00mfq	ok	Only to a model that takes audio, and none of the models that hear you takes audio now: nothing goes this way.	音声を受け取れるモデルにだけ送られますが、いまメインとクイック判定のモデルはどれも音声を受け付けないため、この経路では何も送られません。	src/core/voice/where.js:56	
+ppm2mg	ok	This browser has no dictation: it is skipped.	このブラウザは音声入力に対応していないため、スキップされます。	src/core/voice/where.js:59	
+1ed9jam	ok	This model is gone: it is skipped.	このモデルはもうないため、スキップされます。	src/core/voice/where.js:61	
+1y3s50o	ok	As sound, to {0}, to be written down.	音声のまま{0}に送られ、文字に起こされます。	src/core/voice/where.js:61	{0} = placeOf(cfg, id)
+2o1a5s	ok	This browser has no voice of its own: it is skipped.	このブラウザには独自の声がないため、スキップされます。	src/core/voice/where.js:75	
+1pvxdq0	ok	The browser's choice of voice: annai can't tell whether it speaks on this phone or sends her words to a service.	ブラウザが選んだ声です。この端末上で読み上げるのか、言葉をサービスに送るのかは、annaiからはわかりません。	src/core/voice/where.js:76	
+11mo7a8	ok	Spoken on this phone ({0}): her words stay on it.	この端末上で読み上げます（{0}）。言葉は端末の外に出ません。	src/core/voice/where.js:77	{0} = voice.name
+ihf6hd	ok	Her words go to the service behind {0} (Google's), to be spoken; they aren't spoken on this phone.	{0}を提供するGoogleのサービスに言葉が送られ、音声に変換されます。この端末内では変換しません。	src/core/voice/where.js:78	{0} = voice.name
+1tsyo5q	ok	Her words go to the service behind {0} (Microsoft's), to be spoken; they aren't spoken on this phone.	{0}を提供するMicrosoftのサービスに言葉が送られ、音声に変換されます。この端末内では変換しません。	src/core/voice/where.js:79	{0} = voice.name
+14jkvn5	ok	Her words go to the service behind {0}, to be spoken; they aren't spoken on this phone.	{0}を提供するサービスに言葉が送られ、音声に変換されます。この端末内では変換しません。	src/core/voice/where.js:80	{0} = voice.name
+i7rrx1	ok	This voice is gone: it is skipped.	この声はもうないため、スキップされます。	src/core/voice/where.js:82	
+mf44l1	ok	Her words go to {0}, which sends back the sound.	言葉は{0}に送られ、音声になって返ってきます。	src/core/voice/where.js:82	{0} = placeOf(cfg, id)
 jy2arc	draft	Waiting with Shiori	Shioriに預けたファイル	src/core/waiting.js:46	context: a conversation's name; Note: the name annai gives the conversation the files handed to Shiori while no trip was open move into (timeline stage 7); a chat's name, so no です・ます; 預けた (handed to her to keep), as 預かる names the old list.
 1izzjz4	ok	Trip record checks	旅データのチェック	src/plugins/core-schemas/index.js:7	
 19upcdj	ok	Checks trip.json, itinerary items, bookings and watches when they are saved.	trip.json、旅程の項目、予約、見守りを保存するときにチェックします。	src/plugins/core-schemas/index.js:10	Note: A watch is what live mode watches for (a time, a place, a change); no screen names one yet, so ja ウォッチ and zh 监测项 are a first pick.
@@ -1269,30 +1270,30 @@ dc30do	ok	annai shows English until it is online.	オンラインになるまで
 8rqn0k	ok	Restart to show annai in {0}	再起動してannaiを{0}で表示	src/ui/languages.js:314	{0} = name
 150k2hg	ok	Your settings say annai's screens are in {0}, but this device is showing something else.	設定ではannaiの表示言語は{0}ですが、この端末では別の言語で表示されています。	src/ui/languages.js:315	{0} = name
 1of7r8x	ok	Restart annai	annaiを再起動	src/ui/languages.js:316	
-1242x07	ok	{0} · {1} didn't answer	{0} · {1}は応答なし	src/ui/line-kind.js:15	{0} = b.name; {1} = b.first; Note: under one of her lines, small: {0} is the model that wrote it, {1} the role's first model, which was asked and gave no answer. Both are model names as the user has them.
-141y2ts	ok	{0} · instead of {1}	{0} · {1}の代わりに応答	src/ui/line-kind.js:15	{0} = b.name; {1} = b.first; Note: under one of her lines, small: {0}, the model that wrote it, answered in place of {1}, the first model of the role, which was not asked (a model with a warm cache went first). Both are model names as the user has them.
-1yysv2r	ok	spoken	音声	src/ui/line-kind.js:32	
-jsl5hz	ok	tapped	タップで選択	src/ui/line-kind.js:33	
-1t64j2j	ok	typed	文字入力	src/ui/line-kind.js:35	
-1ec2jy4	ok	heard · she didn't answer	聞き取り · 返事なし	src/ui/line-kind.js:39	
-1u1gp6u	ok	heard · judged not for her	聞き取り · 話しかけではないと判断	src/ui/line-kind.js:39	
-xsou0a	ok	spoken · no words yet	音声 · 文字起こし前	src/ui/line-kind.js:41	
-1fa3yuu	ok	spoken · live voice	ライブ音声	src/ui/line-kind.js:42	
-1ghff07	ok	spoken · phone dictation	端末の音声入力	src/ui/line-kind.js:42	
-1xwq37m	ok	Koe · live · {0}	Koe · ライブ · {0}	src/ui/line-kind.js:47	{0} = model
-9fmy4t	ok	Koe · live	Koe · ライブ	src/ui/line-kind.js:47	
-3ig4tx	ok	Koe · said aloud	Koe · 読み上げ	src/ui/line-kind.js:48	
-y7y6ka	ok	Koe · said aloud · {0}	Koe · 読み上げ · {0}	src/ui/line-kind.js:48	{0} = model
-1q4d8o0	ok	Koe · text	Koe · テキスト	src/ui/line-kind.js:49	
-jd5wod	ok	Koe · text · {0}	Koe · テキスト · {0}	src/ui/line-kind.js:49	{0} = model
-1fv2jmd	ok	Kokoro directly · {0}	Kokoroから直接 · {0}	src/ui/line-kind.js:50	{0} = model
-p9cdy0	ok	Kokoro directly	Kokoroから直接	src/ui/line-kind.js:50	
-139mu54	ok	said aloud · {0}	読み上げ · {0}	src/ui/line-kind.js:52	{0} = model
-u35e3n	ok	said aloud	読み上げ	src/ui/line-kind.js:52	Note: the mark on a line of hers that was said aloud.
-eivwvh	ok	Kokoro's words · shown	Kokoroの言葉 · 表示	src/ui/line-kind.js:56	
-r9j2ry	ok	Kokoro's words · said aloud	Kokoroの言葉 · 読み上げ	src/ui/line-kind.js:56	
-1nbcw78	ok	annai · shown	annai · 表示	src/ui/line-kind.js:57	
-1t160od	ok	annai · said aloud	annai · 読み上げ	src/ui/line-kind.js:57	
+1242x07	ok	{0} · {1} didn't answer	{0} · {1}は応答なし	src/ui/line-kind.js:18	{0} = names(b.name); {1} = names(b.first); Note: under one of her lines, small: {0} is the model that wrote it, {1} the role's first model, which was asked and gave no answer. Both are model names as the user has them.
+141y2ts	ok	{0} · instead of {1}	{0} · {1}の代わりに応答	src/ui/line-kind.js:18	{0} = names(b.name); {1} = names(b.first); Note: under one of her lines, small: {0}, the model that wrote it, answered in place of {1}, the first model of the role, which was not asked (a model with a warm cache went first). Both are model names as the user has them.
+1yysv2r	ok	spoken	音声	src/ui/line-kind.js:36	
+jsl5hz	ok	tapped	タップで選択	src/ui/line-kind.js:37	
+1t64j2j	ok	typed	文字入力	src/ui/line-kind.js:39	
+1ec2jy4	ok	heard · she didn't answer	聞き取り · 返事なし	src/ui/line-kind.js:43	
+1u1gp6u	ok	heard · judged not for her	聞き取り · 話しかけではないと判断	src/ui/line-kind.js:43	
+xsou0a	ok	spoken · no words yet	音声 · 文字起こし前	src/ui/line-kind.js:45	
+1fa3yuu	ok	spoken · live voice	ライブ音声	src/ui/line-kind.js:46	
+1ghff07	ok	spoken · phone dictation	端末の音声入力	src/ui/line-kind.js:46	
+1xwq37m	ok	Koe · live · {0}	Koe · ライブ · {0}	src/ui/line-kind.js:51	{0} = model
+9fmy4t	ok	Koe · live	Koe · ライブ	src/ui/line-kind.js:51	
+3ig4tx	ok	Koe · said aloud	Koe · 読み上げ	src/ui/line-kind.js:52	
+y7y6ka	ok	Koe · said aloud · {0}	Koe · 読み上げ · {0}	src/ui/line-kind.js:52	{0} = model
+1q4d8o0	ok	Koe · text	Koe · テキスト	src/ui/line-kind.js:53	
+jd5wod	ok	Koe · text · {0}	Koe · テキスト · {0}	src/ui/line-kind.js:53	{0} = model
+1fv2jmd	ok	Kokoro directly · {0}	Kokoroから直接 · {0}	src/ui/line-kind.js:54	{0} = model
+p9cdy0	ok	Kokoro directly	Kokoroから直接	src/ui/line-kind.js:54	
+139mu54	ok	said aloud · {0}	読み上げ · {0}	src/ui/line-kind.js:56	{0} = model
+u35e3n	ok	said aloud	読み上げ	src/ui/line-kind.js:56	Note: the mark on a line of hers that was said aloud.
+eivwvh	ok	Kokoro's words · shown	Kokoroの言葉 · 表示	src/ui/line-kind.js:60	
+r9j2ry	ok	Kokoro's words · said aloud	Kokoroの言葉 · 読み上げ	src/ui/line-kind.js:60	
+1nbcw78	ok	annai · shown	annai · 表示	src/ui/line-kind.js:61	
+1t160od	ok	annai · said aloud	annai · 読み上げ	src/ui/line-kind.js:61	
 15kmah9	ok	Simulation · moving fast	シミュレーション · 高速で移動中	src/ui/live-chip.js:20	
 17gqu8c	ok	Simulation · stopped	シミュレーション · 静止中	src/ui/live-chip.js:20	
 he6p5i	ok	Simulation · walking	シミュレーション · 歩行中	src/ui/live-chip.js:20	
@@ -1872,30 +1873,30 @@ y7dwt8#other	ok	# models	モデル#個	src/ui/screens/models.js:99	plural; # = n
 awnddp	ok	Providers	プロバイダー	src/ui/screens/models.js:101	
 rwmbqk	ok	No providers yet. Add one below.	プロバイダーはまだありません。下で追加してください。	src/ui/screens/models.js:103	
 1cjfpwc	ok	Add a provider	プロバイダーを追加	src/ui/screens/models.js:104	
-hbz43i	ok	Roles	役割	src/ui/screens/models.js:132	
-1r5c1sj	ok	Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list, except Koe's.	各役割は上から順にモデルを試し、失敗すると次のモデルが答えます。空の役割はメインのリストを使います（Koeの役割を除く）。	src/ui/screens/models.js:134	
-7uxkel	ok	The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.	音声のリストも上から順に試します。聞き取りは聞いているモデルで使える最初の項目を、読み上げは最初に応答した声を使います。	src/ui/screens/models.js:137	
-1erapbm	ok	Remove {0} from {1}	{1}から{0}を削除	src/ui/screens/models.js:161	{0} = nameOf(id); {1} = called
-1w3dq5v	ok	No models yet. Add one.	モデルはまだありません。追加してください。	src/ui/screens/models.js:167	
-14zzm1c	ok	Empty: Koe has no live voice, so Koe · Chat answers. Add one, such as Gemini Live, from a provider with live voice.	ライブ音声のモデルがないため、Koe · チャットが答えます。ライブ音声に対応したプロバイダーから、Gemini Liveなどを追加してください。	src/ui/screens/models.js:168	
-12bm0vn	ok	Empty: with Live off, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.	モデルがないため、ライブがオフのときは、Shioriはメインのモデルだけを使って一人で動きます。ここに速いモデルを追加すると、メインより先に素早く話す声になります。	src/ui/screens/models.js:169	Note: "one half" is 一人で, per the glossary's halves note. The main model in brackets: it is her one half, not half of the main model.
-wer5y9	ok	Nothing here, so annai can't hear you. Add an entry.	何も登録されていないため、声を聞き取れません。項目を追加してください。	src/ui/screens/models.js:170	
-1n694n2	ok	Nothing here, so Shiori can't speak aloud. Add a voice.	何も登録されていないため、Shioriは声に出して話せません。声を追加してください。	src/ui/screens/models.js:171	
-el9rbx	ok	Uses the main list.	メインのリストを使います。	src/ui/screens/models.js:172	
-1rqw64m	ok	Wait for the voice (seconds)	声を待つ時間（秒）	src/ui/screens/models.js:173	
-48wtk9	ok	Wait for the words (seconds)	聞き取り結果を待つ時間（秒）	src/ui/screens/models.js:173	
-796n77	ok	Wait for the first words (seconds)	最初の応答を待つ時間（秒）	src/ui/screens/models.js:173	
-1xx9c0t	ok	When Shiori's model can't see a photo or read a PDF, a model of Koe's that can reads it, else one here, else Main's. With the PDF pages plugin, a model that sees photos reads a PDF's pages.	Shioriのモデルが写真を見たりPDFを読んだりできないときは、それができるKoeのモデルが代わりに読みます。なければこのリストのモデル、それもなければメインのモデルが読みます。「PDFページ」プラグインを入れると、写真を見られるモデルがPDFのページを読めるようになります。	src/ui/screens/models.js:178	Note: "one here" is a model of this role (補助), so ここにあるモデル; PDF ページ is the plugin's name in Japanese (its pdf-pages:@name).
-14w2ppx	ok	Add a provider for {0}	{0}のプロバイダーを追加	src/ui/screens/models.js:180	{0} = called
-17olz31	ok	Add a model to {0}	{0}にモデルを追加	src/ui/screens/models.js:182	{0} = called
-58mvoq	ok	Reasoning for {0}	{0}の推論レベル	src/ui/screens/models.js:190	{0} = called
-1cwghfv	ok	Wait from 1 to 600 seconds; leave it empty for the usual.	1〜600秒で指定してください。空欄の場合は標準の時間になります。	src/ui/screens/models.js:191	
-8nhvom	ok	Reorder {0}, {1} of {2}	{0}を並べ替え、{2}個中{1}番目	src/ui/screens/models.js:206	{0} = name; {1} = num(i + 1); {2} = num(n)
-17wwgww	ok	 ({0})	（{0}）	src/ui/screens/models.js:219	{0} = note; Note: no space before the full-width bracket.
-1r8iepd	ok	Drag, or use the arrow keys	ドラッグまたは矢印キーで移動	src/ui/screens/models.js:224	
-1ln5v12	ok	Move {0}	{0}を移動	src/ui/screens/models.js:226	{0} = name
-1rvkqip	ok	Move up	上へ移動	src/ui/screens/models.js:227	
-c2tjmw	ok	Move down	下へ移動	src/ui/screens/models.js:228	
+hbz43i	ok	Roles	役割	src/ui/screens/models.js:134	
+1r5c1sj	ok	Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list, except Koe's.	各役割は上から順にモデルを試し、失敗すると次のモデルが答えます。空の役割はメインのリストを使います（Koeの役割を除く）。	src/ui/screens/models.js:136	
+7uxkel	ok	The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.	音声のリストも上から順に試します。聞き取りは聞いているモデルで使える最初の項目を、読み上げは最初に応答した声を使います。	src/ui/screens/models.js:139	
+1erapbm	ok	Remove {0} from {1}	{1}から{0}を削除	src/ui/screens/models.js:163	{0} = nameOf(id); {1} = called
+1w3dq5v	ok	No models yet. Add one.	モデルはまだありません。追加してください。	src/ui/screens/models.js:169	
+14zzm1c	ok	Empty: Koe has no live voice, so Koe · Chat answers. Add one, such as Gemini Live, from a provider with live voice.	ライブ音声のモデルがないため、Koe · チャットが答えます。ライブ音声に対応したプロバイダーから、Gemini Liveなどを追加してください。	src/ui/screens/models.js:170	
+12bm0vn	ok	Empty: with Live off, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.	モデルがないため、ライブがオフのときは、Shioriはメインのモデルだけを使って一人で動きます。ここに速いモデルを追加すると、メインより先に素早く話す声になります。	src/ui/screens/models.js:171	Note: "one half" is 一人で, per the glossary's halves note. The main model in brackets: it is her one half, not half of the main model.
+wer5y9	ok	Nothing here, so annai can't hear you. Add an entry.	何も登録されていないため、声を聞き取れません。項目を追加してください。	src/ui/screens/models.js:172	
+1n694n2	ok	Nothing here, so Shiori can't speak aloud. Add a voice.	何も登録されていないため、Shioriは声に出して話せません。声を追加してください。	src/ui/screens/models.js:173	
+el9rbx	ok	Uses the main list.	メインのリストを使います。	src/ui/screens/models.js:174	
+1rqw64m	ok	Wait for the voice (seconds)	声を待つ時間（秒）	src/ui/screens/models.js:175	
+48wtk9	ok	Wait for the words (seconds)	聞き取り結果を待つ時間（秒）	src/ui/screens/models.js:175	
+796n77	ok	Wait for the first words (seconds)	最初の応答を待つ時間（秒）	src/ui/screens/models.js:175	
+1xx9c0t	ok	When Shiori's model can't see a photo or read a PDF, a model of Koe's that can reads it, else one here, else Main's. With the PDF pages plugin, a model that sees photos reads a PDF's pages.	Shioriのモデルが写真を見たりPDFを読んだりできないときは、それができるKoeのモデルが代わりに読みます。なければこのリストのモデル、それもなければメインのモデルが読みます。「PDFページ」プラグインを入れると、写真を見られるモデルがPDFのページを読めるようになります。	src/ui/screens/models.js:180	Note: "one here" is a model of this role (補助), so ここにあるモデル; PDF ページ is the plugin's name in Japanese (its pdf-pages:@name).
+14w2ppx	ok	Add a provider for {0}	{0}のプロバイダーを追加	src/ui/screens/models.js:182	{0} = called
+17olz31	ok	Add a model to {0}	{0}にモデルを追加	src/ui/screens/models.js:184	{0} = called
+58mvoq	ok	Reasoning for {0}	{0}の推論レベル	src/ui/screens/models.js:192	{0} = called
+1cwghfv	ok	Wait from 1 to 600 seconds; leave it empty for the usual.	1〜600秒で指定してください。空欄の場合は標準の時間になります。	src/ui/screens/models.js:193	
+8nhvom	ok	Reorder {0}, {1} of {2}	{0}を並べ替え、{2}個中{1}番目	src/ui/screens/models.js:208	{0} = name; {1} = num(i + 1); {2} = num(n)
+17wwgww	ok	 ({0})	（{0}）	src/ui/screens/models.js:221	{0} = note; Note: no space before the full-width bracket.
+1r8iepd	ok	Drag, or use the arrow keys	ドラッグまたは矢印キーで移動	src/ui/screens/models.js:226	
+1ln5v12	ok	Move {0}	{0}を移動	src/ui/screens/models.js:228	{0} = name
+1rvkqip	ok	Move up	上へ移動	src/ui/screens/models.js:229	
+c2tjmw	ok	Move down	下へ移動	src/ui/screens/models.js:230	
 1yveacd	ok	Notifications are turned off for annai on this iPhone. Turn them on in Settings → Notifications → annai, then come back here.	このiPhoneではannaiの通知がオフになっています。「設定 → 通知 → annai」でオンにしてから、ここに戻ってください。	src/ui/screens/notifications.js:9	
 x5n8yx	ok	Notifications are blocked for annai. Touch and hold annai's icon, then App info → Notifications, and allow them; then come back here.	annaiの通知がブロックされています。annaiのアイコンを長押しして、「アプリ情報 → 通知」で許可してから、ここに戻ってください。	src/ui/screens/notifications.js:10	
 3e712g	ok	Notifications are blocked for this site. Allow them in the browser's site settings (the icon beside the address), then come back here.	このサイトの通知がブロックされています。ブラウザのサイトの設定（アドレスの横のアイコン）で許可してから、ここに戻ってください。	src/ui/screens/notifications.js:11	Note: "site settings" as the glossary's Site settings (サイトの設定 / 网站设置).
@@ -2160,21 +2161,21 @@ vam64u	ok	Use the recommended models	おすすめのモデルを使う	src/ui/sc
 1szeqxt	ok	Roles updated.	役割を更新しました。	src/ui/screens/provider.js:585	
 1egvjs1	ok	{0} couldn't be switched on: {1}	{0}をオンにできませんでした：{1}	src/ui/screens/provider.js:586	{0} = f.name; {1} = messageOf(f.error)
 wlh055	ok	Use the {0} models	{0}のモデルを使う	src/ui/screens/provider.js:592	{0} = which
-1qocxbg	ok	Writing it: {0} is reading the conversation. This can take a minute.	作成中：{0}が会話を読んでいます。1分ほどかかることがあります。	src/ui/screens/recap.js:29	{0} = m.name
-1lrfe9k	ok	Write the recap	振り返りを書く	src/ui/screens/recap.js:31	
-h6huep	ok	Write it again	書き直す	src/ui/screens/recap.js:31	
-ez9tf4	ok	The recap is written.	振り返りができました。	src/ui/screens/recap.js:44	
-mm3zdg	ok	The recap wasn't written	振り返りを書けませんでした	src/ui/screens/recap.js:46	
-70ec7n	ok	Shiori is getting ready to tell it.	Shioriが話す準備をしています。	src/ui/screens/recap.js:62	
-3hcj41	ok	Hear Shiori tell it	Shioriに話してもらう	src/ui/screens/recap.js:64	
-9ioii4	ok	No recap yet. annai's utility model writes it from everything in this conversation: where you stayed and went, the stamps, what you and Shiori said, your notes and some photos.	まだ振り返りはありません。annaiの補助モデルが、この会話のすべて（滞在した場所や訪れた場所、スタンプ、Shioriとの会話、メモ、写真の一部）をもとに書きます。	src/ui/screens/recap.js:71	Note: a stay is any stop, so 滞在した, not 泊まった.
-1v25lb0	ok	Written {0}.	作成：{0}。	src/ui/screens/recap.js:72	{0} = relTime(got.entry.modified)
-nsh8oa	ok	Written {0}, then edited by you.	作成：{0}（その後、自分が編集）。	src/ui/screens/recap.js:72	{0} = relTime(got.entry.modified)
-1i1lcq9	ok	Edit	編集	src/ui/screens/recap.js:74	
-1ywsgdu	ok	Replay	リプレイ	src/ui/screens/recap.js:75	
-1xmt4f6	ok	What goes to {0}	{0}に送られるもの	src/ui/screens/recap.js:79	{0} = model.name
-1cw9uku	ok	Add one in Settings → Models.	「設定 → モデル」で追加してください。	src/ui/screens/recap.js:81	
-1izysa3	ok	No model is set up to write it yet.	振り返りを書くモデルがまだ設定されていません。	src/ui/screens/recap.js:81	
+1qocxbg	ok	Writing it: {0} is reading the conversation. This can take a minute.	作成中：{0}が会話を読んでいます。1分ほどかかることがあります。	src/ui/screens/recap.js:33	{0} = names(m.name)
+1lrfe9k	ok	Write the recap	振り返りを書く	src/ui/screens/recap.js:35	
+h6huep	ok	Write it again	書き直す	src/ui/screens/recap.js:35	
+ez9tf4	ok	The recap is written.	振り返りができました。	src/ui/screens/recap.js:48	
+mm3zdg	ok	The recap wasn't written	振り返りを書けませんでした	src/ui/screens/recap.js:50	
+70ec7n	ok	Shiori is getting ready to tell it.	Shioriが話す準備をしています。	src/ui/screens/recap.js:66	
+3hcj41	ok	Hear Shiori tell it	Shioriに話してもらう	src/ui/screens/recap.js:68	
+9ioii4	ok	No recap yet. annai's utility model writes it from everything in this conversation: where you stayed and went, the stamps, what you and Shiori said, your notes and some photos.	まだ振り返りはありません。annaiの補助モデルが、この会話のすべて（滞在した場所や訪れた場所、スタンプ、Shioriとの会話、メモ、写真の一部）をもとに書きます。	src/ui/screens/recap.js:75	Note: a stay is any stop, so 滞在した, not 泊まった.
+1v25lb0	ok	Written {0}.	作成：{0}。	src/ui/screens/recap.js:76	{0} = relTime(got.entry.modified)
+nsh8oa	ok	Written {0}, then edited by you.	作成：{0}（その後、自分が編集）。	src/ui/screens/recap.js:76	{0} = relTime(got.entry.modified)
+1i1lcq9	ok	Edit	編集	src/ui/screens/recap.js:78	
+1ywsgdu	ok	Replay	リプレイ	src/ui/screens/recap.js:79	
+1xmt4f6	ok	What goes to {0}	{0}に送られるもの	src/ui/screens/recap.js:83	{0} = names(model.name)
+1cw9uku	ok	Add one in Settings → Models.	「設定 → モデル」で追加してください。	src/ui/screens/recap.js:85	
+1izysa3	ok	No model is set up to write it yet.	振り返りを書くモデルがまだ設定されていません。	src/ui/screens/recap.js:85	
 1ryjzrz	ok	Whole trip	旅全体	src/ui/screens/replay.js:43	
 2m5fua	ok	Nothing to replay yet. While GPS is on, annai records where you go; Shiori's cards, your messages and your photos show here too.	まだリプレイできるものはありません。GPSがオンの間、annaiは訪れた場所を記録します。Shioriのカードや、送ったメッセージ、写真もここに表示されます。	src/ui/screens/replay.js:47	
 wl73p3	ok	The route: {0}	ルート：{0}	src/ui/screens/replay.js:73	{0} = r.words
@@ -2374,96 +2375,96 @@ g9ytfz	ok	Shiori wakes with your own models, as she would with GPS on: the sampl
 amwn2j	ok	The track	経路	src/ui/screens/simulate.js:161	
 ckmlfc	ok	Itinerary file	旅程ファイル	src/ui/screens/simulate.js:161	
 nicd80	ok	That file isn't an itinerary annai can read: it needs to be JSON like the Big Sur sample (a start, a route of places, and times).	このファイルは旅程として読み込めません。ビッグサーのサンプルのようなJSON（出発地、経由する場所のルート、時刻）が必要です。	src/ui/screens/simulate.js:175	
-r4z2l4	ok	a photo	写真	src/ui/screens/talk.js:55	Note: read by a screen reader for a card that is only a photo: "Shiori: a photo".
-xekru5	ok	Choices: {0}.	選択肢：{0}。	src/ui/screens/talk.js:56	{0} = listed(choices, 'plain'); Note: read by a screen reader after a card or a question.
-1kr7agr	ok	Shiori ({0}): {1}	Shiori（{0}）：{1}	src/ui/screens/talk.js:57	{0} = kind; {1} = WORDS; Note: read by a screen reader: {0} is a plugin's kind of card, {1} her words.
-d6m2fp	ok	Shiori asks: {0}	Shioriの質問：{0}	src/ui/screens/talk.js:57	{0} = WORDS; Note: read by a screen reader; {0} is her question.
-xb4wcg	ok	annai asks: {0}	annaiの質問：{0}	src/ui/screens/talk.js:57	{0} = WORDS; Note: the screen reader's lead-in for annai's own question card (before Shiori reads another trip), as "Shiori asks: {0}" is for hers; annai stays as written.
-hadl9d	ok	Shiori woke to look at the files you added.	追加されたファイルを確認するため、Shioriが起動しました。	src/ui/screens/talk.js:103	
-15n0e2d	ok	Shiori woke to pick up where she left off.	中断した作業を続けるため、Shioriが起動しました。	src/ui/screens/talk.js:104	
-1xhnipt	ok	Shiori woke to merge a new version of her personality.	性格の新しいバージョンを取り込むため、Shioriが起動しました。	src/ui/screens/talk.js:105	
-1ul7xke	ok	Shiori woke for a reminder, or something she watches for.	リマインダーまたは見守り中の項目のため、Shioriが起動しました。	src/ui/screens/talk.js:106	
-o6uw4x	ok	Shiori woke to catch up on what happened while annai was out of sight.	annaiが表示されていなかった間の出来事を確認するため、Shioriが起動しました。	src/ui/screens/talk.js:107	
-1xllewb	ok	Shiori woke because you turned GPS on.	GPSがオンになったため、Shioriが起動しました。	src/ui/screens/talk.js:108	
-susy7u	ok	Shiori woke to tell you the recap.	振り返りを伝えるため、Shioriが起動しました。	src/ui/screens/talk.js:109	
-drekzl#other	ok	Shiori woke to look at the # files you added.	追加されたファイル#件を確認するため、Shioriが起動しました。	src/ui/screens/talk.js:115	plural; # = files.length; English: "Shiori woke to look at the file you added." (one), "Shiori woke to look at the # files you added." (other)
-9c8dtz#other	ok	Shiori woke to look at the # files you added: {0}.	追加されたファイル#件（{0}）を確認するため、Shioriが起動しました。	src/ui/screens/talk.js:116	plural; # = files.length; {0} = listed(files.map((p) => p.split('/').pop() ?? p)); English: "Shiori woke to look at the file you added: {0}." (one), "Shiori woke to look at the # files you added: {0}." (other); Note: {0} is the files' names, as a list.
-18v7cvz#other	ok	Shiori woke for # reminders, or things she watches for: {0}.	リマインダーまたは見守り中の項目#件（{0}）のため、Shioriが起動しました。	src/ui/screens/talk.js:117	plural; # = titles.length; {0} = listed(titles); English: "Shiori woke for a reminder, or something she watches for: {0}." (one), "Shiori woke for # reminders, or things she watches for: {0}." (other); Note: {0} is what fired: a plan item's title, or a reminder in Shiori's own words, as a list.
-18rv8j7	ok	Shiori woke.	Shioriが起動しました。	src/ui/screens/talk.js:118	
-gofzl2	ok	Shiori woke for the plugin {0}.	プラグイン「{0}」のため、Shioriが起動しました。	src/ui/screens/talk.js:118	{0} = nameOf(String(r.plugin ?? ''))
-friaxa	ok	Shiori took these files to a conversation that has since been removed.	Shioriはファイルを別の会話に移しましたが、その会話は削除されています。	src/ui/screens/talk.js:128	Note: a line in the conversation the files left; 削除 as Remove trip (旅を削除).
-8obrdi	ok	Shiori started {0} with these files.	Shioriがファイルをもとに「{0}」を始めました。	src/ui/screens/talk.js:129	{0} = title; Note: {0} is the trip's name, quoted; 始める as Start a trip (旅を始める).
-yrkvc6	ok	Shiori started {0}.	Shioriが「{0}」を始めました。	src/ui/screens/talk.js:129	{0} = title; Note: a trip she started with no files (the user asked for one); {0} is its name, quoted.
-1tio19k#other	ok	Shiori took # files to {0}.	Shioriがファイル#件を「{0}」に移しました。	src/ui/screens/talk.js:130	plural; # = d.count; {0} = title; English: "Shiori took # file to {0}." (one), "Shiori took # files to {0}." (other); Note: {0} is the trip's name; 件 counts files, as elsewhere (ファイル1件).
-197gx5s	ok	Shiori moved this to a conversation that has since been removed.	Shioriがこの会話の続きを別の会話に移しましたが、その会話はもう削除されています。	src/ui/screens/talk.js:134	Note: the same line once that trip is removed; 削除/移除 as Remove trip.
-6labnj	ok	Shiori moved this to {0}.	Shioriがこの会話の続きを「{0}」に移しました。	src/ui/screens/talk.js:134	{0} = title; Note: the last line of a conversation Shiori took the user from (open_trip); the conversation stays, and they carry on in {0}, a trip or another conversation.
-pykhn0	ok	Undone. Some of your files are back in {0}, and the rest are waiting with Shiori.	元に戻しました。一部のファイルは{0}に戻り、残りはShioriが預かっています。	src/ui/screens/talk.js:148	{0} = home; Note: Undo put some of the files back in the trips they came from and sent the rest to wait with Shiori (the chat 「Shioriに預けたファイル」); {0} is the trips' names as a list; 元に戻しました as Undone, 預かっています as the other Waiting with Shiori rows; 戻り and 預かっています both say where the files are now.
-184j8yg	ok	Undone. Your files are back in {0}.	元に戻しました。ファイルは{0}に戻りました。	src/ui/screens/talk.js:149	{0} = home; Note: Undo put the files back in the trips they came from; {0} is their names as a list; 元に戻しました as Undone.
-1a3hizo	ok	Undone.	元に戻しました。	src/ui/screens/talk.js:149	Note: as the Undone row, a sentence.
-mpifrf	ok	Undone. Your files are waiting with Shiori again.	元に戻しました。ファイルは再びShioriが預かっています。	src/ui/screens/talk.js:149	Note: Undo sent the files back to wait with Shiori; they go into a chat named 「Shioriに預けたファイル」 (Waiting with Shiori).
-4d58q9#other	ok	Undone. {0} are removed. Some of your files are back in {1}, and the rest are waiting with Shiori.	元に戻しました。{0}を削除しました。一部のファイルは{1}に戻り、残りはShioriが預かっています。	src/ui/screens/talk.js:151	plural; # = removed.length; {0} = gone; {1} = home; English: "Undone. {0} is removed. Some of your files are back in {1}, and the rest are waiting with Shiori." (one), "Undone. {0} are removed. Some of your files are back in {1}, and the rest are waiting with Shiori." (other); Note: Undo removed the trips she started, put some of the files back in the trips they came from and sent the rest to wait with Shiori; {0} and {1} are trip names as lists; three short sentences (the guide: split a long one) in place of one chain of 、; 元に戻しました as Undone, 預かっています as the other Waiting with Shiori rows.
-141utsf#other	ok	Undone. {0} are removed, and your files are waiting with Shiori.	元に戻しました。{0}を削除し、ファイルはShioriが預かっています。	src/ui/screens/talk.js:153	plural; # = removed.length; {0} = gone; English: "Undone. {0} is removed, and your files are waiting with Shiori." (one), "Undone. {0} are removed, and your files are waiting with Shiori." (other); Note: Undo removed the trips she started; {0} is their names as a list (「…」と「…」); 元に戻しました as Undone, 預かっています as Waiting with Shiori.
-1d428yv#other	ok	Undone. {0} are removed, and your files are back in {1}.	元に戻しました。{0}を削除し、ファイルは{1}に戻しました。	src/ui/screens/talk.js:155	plural; # = removed.length; {0} = gone; {1} = home; English: "Undone. {0} is removed, and your files are back in {1}." (one), "Undone. {0} are removed, and your files are back in {1}." (other); Note: Undo removed the trips she started, and the files went back to the trips they came from; {0} and {1} are trip names as lists.
-svlg0f#other	ok	Undone. {0} are removed.	元に戻しました。{0}を削除しました。	src/ui/screens/talk.js:157	plural; # = removed.length; {0} = gone; English: "Undone. {0} is removed." (one), "Undone. {0} are removed." (other); Note: Undo removed the trips she started, with no files to put anywhere; {0} is their names as a list.
-cjb6wo	ok	What Shiori did in {0} is undone too.	{0}でShioriがしたことも元に戻しました。	src/ui/screens/talk.js:159	{0} = listed(changed.map((c) => c.title)); Note: the trips that stay whose files or bookings from the hand-over Undo took back too; {0} is their names as a list.
-urusz7#other	ok	Left # files as you changed them.	自分で変更したファイル#件は、そのままにしました。	src/ui/screens/talk.js:160	plural; # = kept; English: "Left # file as you changed it." (one), "Left # files as you changed them." (other); Note: after Undone.: the files the user had changed since, which Undo left; 件 counts files.
-1oe5z73	ok	Reminder, said aloud: {0}	リマインダー（読み上げ）：{0}	src/ui/screens/talk.js:182	{0} = WORDS; Note: {0} is the reminder's words.
-7ew4gb	ok	Shiori's answer: {0}	Shioriの答え：{0}	src/ui/screens/talk.js:182	{0} = WORDS; Note: {0} is her answer, shown by annai.
-n22tq9	ok	Reminder: {0}	リマインダー：{0}	src/ui/screens/talk.js:182	{0} = WORDS; Note: {0} is the reminder's words.
-y16fvl	ok	Shiori's answer, said aloud: {0}	Shioriの答え（読み上げ）：{0}	src/ui/screens/talk.js:182	{0} = WORDS; Note: {0} is her answer, shown by annai.
-qjf670	ok	Three identical tool calls in a row with identical results.	同じ内容のツール呼び出しが3回続き、結果も同じでした。	src/ui/screens/talk.js:211	
-10lkfvk	ok	The watch for "{0}" can't be checked: {1}.	「{0}」の見守りを確認できません：{1}。	src/ui/screens/talk.js:215	{0} = name; {1} = String(d.why ?? '').replace(/[.!?。！？]$/u, ''); Note: a watch is named by its reminder, {0}, in her words; {1} is the trigger's own words.
-1m8lxbu	ok	Google Search	Google 検索	src/ui/screens/talk.js:223	Note: the grounded card's source, "From {0}" (1gblst7) and read aloud (4fzxin): as Google writes it, the glossary's Google row; the same as Settings → Tools.
-6xevdr	ok	Search suggestions from Google	Googleの検索候補	src/ui/screens/talk.js:233	
-v84pjn	ok	Shiori, no trip	Shiori（旅なし）	src/ui/screens/talk.js:297	Note: the name of `me`'s row among the chats on Trips, and the title of its read-only lines: the old conversation outside any trip (from before every conversation belonged to a trip), a row of old lines to read, not a button back to a conversation; 旅 / 旅行 as the glossary's trip.
-137bppl	ok	Heard, not for Shiori: {0}	聞こえた言葉（Shiori宛てではありません）：{0}	src/ui/screens/talk.js:313	{0} = WORDS; Note: {0} is the words annai heard.
-1re6l79	ok	Heard: {0}	聞こえた言葉：{0}	src/ui/screens/talk.js:313	{0} = WORDS; Note: read by a screen reader; {0} is the words annai heard.
-yexh35	ok	Heard, she didn't answer: {0}	聞こえた言葉（返事なし）：{0}	src/ui/screens/talk.js:313	{0} = WORDS
-1v011e1	ok	This trip so far: {0}	この旅のここまでの費用：{0}	src/ui/screens/talk.js:321	{0} = formatCost(c.total)
-glbwh5	ok	This conversation so far: {0}	この会話のここまでの費用：{0}	src/ui/screens/talk.js:321	{0} = formatCost(c.total)
-45z4a3	ok	This was for Shiori	Shiori宛てに送る	src/ui/screens/talk.js:353	
-td8u17	ok	A photo you sent	送った写真	src/ui/screens/talk.js:370	
-9e5yo5	ok	(a photo)	（写真）	src/ui/screens/talk.js:417	
-1sjvjoo	ok	From {0}	「{0}」から	src/ui/screens/talk.js:428	context: a conversation; {0} = scopeTitle(src); Note: under a line the user said in another conversation, copied here when Shiori took them here; a link to that conversation.
-n8s7gz	ok	Tap to answer	タップして答える	src/ui/screens/talk.js:485	Note: a small line under the buttons of annai's own card (Allow, Always for my trips, Not now; Open, Not now) while it waits: only a tap on a button answers it, not a spoken or typed yes. Built as "Tap to talk" is.
-fv3xhc	ok	Kokoro to Koe:	KokoroからKoeへ：	src/ui/screens/talk.js:500	Note: a note from Kokoro to Koe; its words follow.
-upsxi0	ok	Koe to Kokoro:	KoeからKokoroへ：	src/ui/screens/talk.js:500	Note: a note from Koe to Kokoro; its words follow.
-16ol023	ok	Shiori read {0}	Shioriが「{0}」を読みました	src/ui/screens/talk.js:529	{0} = scopeTitle({ id: String(d.trip), title: String(d.title ?? '') })
-e34nbi	ok	Started fresh	新しく始めました	src/ui/screens/talk.js:533	Note: the divider where a fresh start began.
-3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	これまでの会話を要約しました。会話の全文は「記録」にあります。	src/ui/screens/talk.js:534	
-1o41up	ok	A budget ended her turn	上限に達したため、Shioriが応答を終えました	src/ui/screens/talk.js:544	
-1p4yyw7	ok	Her turn ended	Shioriの応答が終わりました	src/ui/screens/talk.js:544	
-1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	まだ会話はありません。下の「Shiori」か「入力」をタップして話しかけてください。	src/ui/screens/talk.js:559	Note: "Type" is the dock's button: its words must match it.
-4fzxin	ok	From {0}.	{0}より。	src/ui/screens/talk.js:620	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
-1pm5i13	ok	Back to Trips	「旅」に戻る	src/ui/screens/talk.js:652	Note: The Trips screen, quoted so it reads apart from 旅に戻る (Back to trip).
-16zeyyr	ok	Next: {0} {1}	次の予定：{0} {1}	src/ui/screens/talk.js:697	{0} = r.time; {1} = name
-puj2r7	ok	Next: {0} {1} {2}	次の予定：{0} {1} {2}	src/ui/screens/talk.js:697	{0} = day(r.day, true); {1} = r.time; {2} = name
-1frlw7l	ok	Undo the dates Shiori set	Shioriが設定した日付を元に戻す	src/ui/screens/talk.js:755	
-1l3merh	ok	Shiori set the dates	Shioriが日付を設定しました	src/ui/screens/talk.js:774	
-159f82q	ok	Undone	元に戻しました	src/ui/screens/talk.js:776	
-1v37fcy	ok	Undo what Shiori did with these files	このファイルについてShioriがしたことを元に戻す	src/ui/screens/talk.js:861	Note: the Undo button's label for screen readers; 元に戻す as Undo.
-1nl0tpx	ok	Conversation menu	会話メニュー	src/ui/screens/talk.js:905	
-7flpxf	ok	Summarizing…	要約中…	src/ui/screens/talk.js:972	
-12707g	ok	She couldn't summarize it. A card says why.	要約できませんでした。理由はカードに表示されています。	src/ui/screens/talk.js:974	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	これまでの会話を要約しました。会話はすべてここに残り、Shioriもあとから見返せます。	src/ui/screens/talk.js:974	
-u82uid	ok	Shiori is working. Try again in a moment.	Shioriは作業中です。少ししてからもう一度お試しください。	src/ui/screens/talk.js:974	
-va2k72	ok	There is not enough yet to summarize.	まだ要約するほどの内容がありません。	src/ui/screens/talk.js:974	
-mienoe	ok	Summarize now	今すぐ要約	src/ui/screens/talk.js:977	
-10sfmur	ok	Starting fresh…	新しく始めています…	src/ui/screens/talk.js:979	
-va77q0	ok	Start fresh?	新しく始めますか？	src/ui/screens/talk.js:992	Note: the glossary's 新しく始める, conjugated as a question (始めますか).
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shioriはこれまでのやり取りを踏まえず、ここから新しく始めます。やり取りはすべて会話に残るので、読んだり検索したりでき、Shioriも見返せます。削除されるものはありません。ライブ音声のセッションも開始し直します。	src/ui/screens/talk.js:993	
-czdqlz	ok	Start fresh	新しく始める	src/ui/screens/talk.js:994	
-1h9wwbn	ok	She couldn't start fresh: {0}	新しく始められませんでした：{0}	src/ui/screens/talk.js:1004	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	新しく始めたあと、まだ何も話していません。	src/ui/screens/talk.js:1007	
-3fntk0	ok	Started fresh.	新しく始めました。	src/ui/screens/talk.js:1007	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	会話を開いているところです。少ししてからもう一度お試しください。	src/ui/screens/talk.js:1007	
-p5pj7b	ok	There is nothing to start fresh from yet.	まだ何も話していないため、新しく始められません。	src/ui/screens/talk.js:1007	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	今すぐ要約：これまでの会話をShioriが要約して、会話を短く保ちます。やり取りはすべてここに残り、Shioriもあとから見返せます。	src/ui/screens/talk.js:1029	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	新しく始める：Shioriはこれまでのやり取りを踏まえず、ここから新しく始めます。やり取りはすべて区切り線の上に残ります。	src/ui/screens/talk.js:1030	
-15ve7m7	ok	What each half sees	KoeとKokoroに見えているもの	src/ui/screens/talk.js:1031	
-1u5l4hx	ok	Details: the trip's name and dates, Export, Archive and Remove.	詳細：旅の名前と日付、エクスポート、アーカイブ、削除。	src/ui/screens/talk.js:1042	
-o7tevg	ok	Details: the chat's name and dates, Export, Archive and Remove.	詳細：チャットの名前と日付、エクスポート、アーカイブ、削除。	src/ui/screens/talk.js:1042	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	元に戻しました。前の性格は、Shioriが次に起動したときから反映されます。	src/ui/screens/talk.js:1058	
+r4z2l4	ok	a photo	写真	src/ui/screens/talk.js:56	Note: read by a screen reader for a card that is only a photo: "Shiori: a photo".
+xekru5	ok	Choices: {0}.	選択肢：{0}。	src/ui/screens/talk.js:57	{0} = listed(choices, 'plain'); Note: read by a screen reader after a card or a question.
+1kr7agr	ok	Shiori ({0}): {1}	Shiori（{0}）：{1}	src/ui/screens/talk.js:58	{0} = kind; {1} = WORDS; Note: read by a screen reader: {0} is a plugin's kind of card, {1} her words.
+d6m2fp	ok	Shiori asks: {0}	Shioriの質問：{0}	src/ui/screens/talk.js:58	{0} = WORDS; Note: read by a screen reader; {0} is her question.
+xb4wcg	ok	annai asks: {0}	annaiの質問：{0}	src/ui/screens/talk.js:58	{0} = WORDS; Note: the screen reader's lead-in for annai's own question card (before Shiori reads another trip), as "Shiori asks: {0}" is for hers; annai stays as written.
+hadl9d	ok	Shiori woke to look at the files you added.	追加されたファイルを確認するため、Shioriが起動しました。	src/ui/screens/talk.js:104	
+15n0e2d	ok	Shiori woke to pick up where she left off.	中断した作業を続けるため、Shioriが起動しました。	src/ui/screens/talk.js:105	
+1xhnipt	ok	Shiori woke to merge a new version of her personality.	性格の新しいバージョンを取り込むため、Shioriが起動しました。	src/ui/screens/talk.js:106	
+1ul7xke	ok	Shiori woke for a reminder, or something she watches for.	リマインダーまたは見守り中の項目のため、Shioriが起動しました。	src/ui/screens/talk.js:107	
+o6uw4x	ok	Shiori woke to catch up on what happened while annai was out of sight.	annaiが表示されていなかった間の出来事を確認するため、Shioriが起動しました。	src/ui/screens/talk.js:108	
+1xllewb	ok	Shiori woke because you turned GPS on.	GPSがオンになったため、Shioriが起動しました。	src/ui/screens/talk.js:109	
+susy7u	ok	Shiori woke to tell you the recap.	振り返りを伝えるため、Shioriが起動しました。	src/ui/screens/talk.js:110	
+drekzl#other	ok	Shiori woke to look at the # files you added.	追加されたファイル#件を確認するため、Shioriが起動しました。	src/ui/screens/talk.js:116	plural; # = files.length; English: "Shiori woke to look at the file you added." (one), "Shiori woke to look at the # files you added." (other)
+9c8dtz#other	ok	Shiori woke to look at the # files you added: {0}.	追加されたファイル#件（{0}）を確認するため、Shioriが起動しました。	src/ui/screens/talk.js:117	plural; # = files.length; {0} = listed(files.map((p) => p.split('/').pop() ?? p)); English: "Shiori woke to look at the file you added: {0}." (one), "Shiori woke to look at the # files you added: {0}." (other); Note: {0} is the files' names, as a list.
+18v7cvz#other	ok	Shiori woke for # reminders, or things she watches for: {0}.	リマインダーまたは見守り中の項目#件（{0}）のため、Shioriが起動しました。	src/ui/screens/talk.js:118	plural; # = titles.length; {0} = listed(titles); English: "Shiori woke for a reminder, or something she watches for: {0}." (one), "Shiori woke for # reminders, or things she watches for: {0}." (other); Note: {0} is what fired: a plan item's title, or a reminder in Shiori's own words, as a list.
+18rv8j7	ok	Shiori woke.	Shioriが起動しました。	src/ui/screens/talk.js:119	
+gofzl2	ok	Shiori woke for the plugin {0}.	プラグイン「{0}」のため、Shioriが起動しました。	src/ui/screens/talk.js:119	{0} = nameOf(String(r.plugin ?? ''))
+friaxa	ok	Shiori took these files to a conversation that has since been removed.	Shioriはファイルを別の会話に移しましたが、その会話は削除されています。	src/ui/screens/talk.js:129	Note: a line in the conversation the files left; 削除 as Remove trip (旅を削除).
+8obrdi	ok	Shiori started {0} with these files.	Shioriがファイルをもとに「{0}」を始めました。	src/ui/screens/talk.js:130	{0} = title; Note: {0} is the trip's name, quoted; 始める as Start a trip (旅を始める).
+yrkvc6	ok	Shiori started {0}.	Shioriが「{0}」を始めました。	src/ui/screens/talk.js:130	{0} = title; Note: a trip she started with no files (the user asked for one); {0} is its name, quoted.
+1tio19k#other	ok	Shiori took # files to {0}.	Shioriがファイル#件を「{0}」に移しました。	src/ui/screens/talk.js:131	plural; # = d.count; {0} = title; English: "Shiori took # file to {0}." (one), "Shiori took # files to {0}." (other); Note: {0} is the trip's name; 件 counts files, as elsewhere (ファイル1件).
+197gx5s	ok	Shiori moved this to a conversation that has since been removed.	Shioriがこの会話の続きを別の会話に移しましたが、その会話はもう削除されています。	src/ui/screens/talk.js:135	Note: the same line once that trip is removed; 削除/移除 as Remove trip.
+6labnj	ok	Shiori moved this to {0}.	Shioriがこの会話の続きを「{0}」に移しました。	src/ui/screens/talk.js:135	{0} = title; Note: the last line of a conversation Shiori took the user from (open_trip); the conversation stays, and they carry on in {0}, a trip or another conversation.
+pykhn0	ok	Undone. Some of your files are back in {0}, and the rest are waiting with Shiori.	元に戻しました。一部のファイルは{0}に戻り、残りはShioriが預かっています。	src/ui/screens/talk.js:149	{0} = home; Note: Undo put some of the files back in the trips they came from and sent the rest to wait with Shiori (the chat 「Shioriに預けたファイル」); {0} is the trips' names as a list; 元に戻しました as Undone, 預かっています as the other Waiting with Shiori rows; 戻り and 預かっています both say where the files are now.
+184j8yg	ok	Undone. Your files are back in {0}.	元に戻しました。ファイルは{0}に戻りました。	src/ui/screens/talk.js:150	{0} = home; Note: Undo put the files back in the trips they came from; {0} is their names as a list; 元に戻しました as Undone.
+1a3hizo	ok	Undone.	元に戻しました。	src/ui/screens/talk.js:150	Note: as the Undone row, a sentence.
+mpifrf	ok	Undone. Your files are waiting with Shiori again.	元に戻しました。ファイルは再びShioriが預かっています。	src/ui/screens/talk.js:150	Note: Undo sent the files back to wait with Shiori; they go into a chat named 「Shioriに預けたファイル」 (Waiting with Shiori).
+4d58q9#other	ok	Undone. {0} are removed. Some of your files are back in {1}, and the rest are waiting with Shiori.	元に戻しました。{0}を削除しました。一部のファイルは{1}に戻り、残りはShioriが預かっています。	src/ui/screens/talk.js:152	plural; # = removed.length; {0} = gone; {1} = home; English: "Undone. {0} is removed. Some of your files are back in {1}, and the rest are waiting with Shiori." (one), "Undone. {0} are removed. Some of your files are back in {1}, and the rest are waiting with Shiori." (other); Note: Undo removed the trips she started, put some of the files back in the trips they came from and sent the rest to wait with Shiori; {0} and {1} are trip names as lists; three short sentences (the guide: split a long one) in place of one chain of 、; 元に戻しました as Undone, 預かっています as the other Waiting with Shiori rows.
+141utsf#other	ok	Undone. {0} are removed, and your files are waiting with Shiori.	元に戻しました。{0}を削除し、ファイルはShioriが預かっています。	src/ui/screens/talk.js:154	plural; # = removed.length; {0} = gone; English: "Undone. {0} is removed, and your files are waiting with Shiori." (one), "Undone. {0} are removed, and your files are waiting with Shiori." (other); Note: Undo removed the trips she started; {0} is their names as a list (「…」と「…」); 元に戻しました as Undone, 預かっています as Waiting with Shiori.
+1d428yv#other	ok	Undone. {0} are removed, and your files are back in {1}.	元に戻しました。{0}を削除し、ファイルは{1}に戻しました。	src/ui/screens/talk.js:156	plural; # = removed.length; {0} = gone; {1} = home; English: "Undone. {0} is removed, and your files are back in {1}." (one), "Undone. {0} are removed, and your files are back in {1}." (other); Note: Undo removed the trips she started, and the files went back to the trips they came from; {0} and {1} are trip names as lists.
+svlg0f#other	ok	Undone. {0} are removed.	元に戻しました。{0}を削除しました。	src/ui/screens/talk.js:158	plural; # = removed.length; {0} = gone; English: "Undone. {0} is removed." (one), "Undone. {0} are removed." (other); Note: Undo removed the trips she started, with no files to put anywhere; {0} is their names as a list.
+cjb6wo	ok	What Shiori did in {0} is undone too.	{0}でShioriがしたことも元に戻しました。	src/ui/screens/talk.js:160	{0} = listed(changed.map((c) => c.title)); Note: the trips that stay whose files or bookings from the hand-over Undo took back too; {0} is their names as a list.
+urusz7#other	ok	Left # files as you changed them.	自分で変更したファイル#件は、そのままにしました。	src/ui/screens/talk.js:161	plural; # = kept; English: "Left # file as you changed it." (one), "Left # files as you changed them." (other); Note: after Undone.: the files the user had changed since, which Undo left; 件 counts files.
+1oe5z73	ok	Reminder, said aloud: {0}	リマインダー（読み上げ）：{0}	src/ui/screens/talk.js:183	{0} = WORDS; Note: {0} is the reminder's words.
+7ew4gb	ok	Shiori's answer: {0}	Shioriの答え：{0}	src/ui/screens/talk.js:183	{0} = WORDS; Note: {0} is her answer, shown by annai.
+n22tq9	ok	Reminder: {0}	リマインダー：{0}	src/ui/screens/talk.js:183	{0} = WORDS; Note: {0} is the reminder's words.
+y16fvl	ok	Shiori's answer, said aloud: {0}	Shioriの答え（読み上げ）：{0}	src/ui/screens/talk.js:183	{0} = WORDS; Note: {0} is her answer, shown by annai.
+qjf670	ok	Three identical tool calls in a row with identical results.	同じ内容のツール呼び出しが3回続き、結果も同じでした。	src/ui/screens/talk.js:213	
+10lkfvk	ok	The watch for "{0}" can't be checked: {1}.	「{0}」の見守りを確認できません：{1}。	src/ui/screens/talk.js:217	{0} = name; {1} = String(d.why ?? '').replace(/[.!?。！？]$/u, ''); Note: a watch is named by its reminder, {0}, in her words; {1} is the trigger's own words.
+1m8lxbu	ok	Google Search	Google 検索	src/ui/screens/talk.js:225	Note: the grounded card's source, "From {0}" (1gblst7) and read aloud (4fzxin): as Google writes it, the glossary's Google row; the same as Settings → Tools.
+6xevdr	ok	Search suggestions from Google	Googleの検索候補	src/ui/screens/talk.js:235	
+v84pjn	ok	Shiori, no trip	Shiori（旅なし）	src/ui/screens/talk.js:301	Note: the name of `me`'s row among the chats on Trips, and the title of its read-only lines: the old conversation outside any trip (from before every conversation belonged to a trip), a row of old lines to read, not a button back to a conversation; 旅 / 旅行 as the glossary's trip.
+137bppl	ok	Heard, not for Shiori: {0}	聞こえた言葉（Shiori宛てではありません）：{0}	src/ui/screens/talk.js:317	{0} = WORDS; Note: {0} is the words annai heard.
+1re6l79	ok	Heard: {0}	聞こえた言葉：{0}	src/ui/screens/talk.js:317	{0} = WORDS; Note: read by a screen reader; {0} is the words annai heard.
+yexh35	ok	Heard, she didn't answer: {0}	聞こえた言葉（返事なし）：{0}	src/ui/screens/talk.js:317	{0} = WORDS
+1v011e1	ok	This trip so far: {0}	この旅のここまでの費用：{0}	src/ui/screens/talk.js:325	{0} = formatCost(c.total)
+glbwh5	ok	This conversation so far: {0}	この会話のここまでの費用：{0}	src/ui/screens/talk.js:325	{0} = formatCost(c.total)
+45z4a3	ok	This was for Shiori	Shiori宛てに送る	src/ui/screens/talk.js:357	
+td8u17	ok	A photo you sent	送った写真	src/ui/screens/talk.js:374	
+9e5yo5	ok	(a photo)	（写真）	src/ui/screens/talk.js:421	
+1sjvjoo	ok	From {0}	「{0}」から	src/ui/screens/talk.js:432	context: a conversation; {0} = scopeTitle(src); Note: under a line the user said in another conversation, copied here when Shiori took them here; a link to that conversation.
+n8s7gz	ok	Tap to answer	タップして答える	src/ui/screens/talk.js:489	Note: a small line under the buttons of annai's own card (Allow, Always for my trips, Not now; Open, Not now) while it waits: only a tap on a button answers it, not a spoken or typed yes. Built as "Tap to talk" is.
+fv3xhc	ok	Kokoro to Koe:	KokoroからKoeへ：	src/ui/screens/talk.js:504	Note: a note from Kokoro to Koe; its words follow.
+upsxi0	ok	Koe to Kokoro:	KoeからKokoroへ：	src/ui/screens/talk.js:504	Note: a note from Koe to Kokoro; its words follow.
+16ol023	ok	Shiori read {0}	Shioriが「{0}」を読みました	src/ui/screens/talk.js:533	{0} = scopeTitle({ id: String(d.trip), title: String(d.title ?? '') })
+e34nbi	ok	Started fresh	新しく始めました	src/ui/screens/talk.js:537	Note: the divider where a fresh start began.
+3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	これまでの会話を要約しました。会話の全文は「記録」にあります。	src/ui/screens/talk.js:538	
+1o41up	ok	A budget ended her turn	上限に達したため、Shioriが応答を終えました	src/ui/screens/talk.js:548	
+1p4yyw7	ok	Her turn ended	Shioriの応答が終わりました	src/ui/screens/talk.js:548	
+1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	まだ会話はありません。下の「Shiori」か「入力」をタップして話しかけてください。	src/ui/screens/talk.js:563	Note: "Type" is the dock's button: its words must match it.
+4fzxin	ok	From {0}.	{0}より。	src/ui/screens/talk.js:624	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
+1pm5i13	ok	Back to Trips	「旅」に戻る	src/ui/screens/talk.js:656	Note: The Trips screen, quoted so it reads apart from 旅に戻る (Back to trip).
+16zeyyr	ok	Next: {0} {1}	次の予定：{0} {1}	src/ui/screens/talk.js:701	{0} = r.time; {1} = name
+puj2r7	ok	Next: {0} {1} {2}	次の予定：{0} {1} {2}	src/ui/screens/talk.js:701	{0} = day(r.day, true); {1} = r.time; {2} = name
+1frlw7l	ok	Undo the dates Shiori set	Shioriが設定した日付を元に戻す	src/ui/screens/talk.js:759	
+1l3merh	ok	Shiori set the dates	Shioriが日付を設定しました	src/ui/screens/talk.js:778	
+159f82q	ok	Undone	元に戻しました	src/ui/screens/talk.js:780	
+1v37fcy	ok	Undo what Shiori did with these files	このファイルについてShioriがしたことを元に戻す	src/ui/screens/talk.js:865	Note: the Undo button's label for screen readers; 元に戻す as Undo.
+1nl0tpx	ok	Conversation menu	会話メニュー	src/ui/screens/talk.js:909	
+7flpxf	ok	Summarizing…	要約中…	src/ui/screens/talk.js:976	
+12707g	ok	She couldn't summarize it. A card says why.	要約できませんでした。理由はカードに表示されています。	src/ui/screens/talk.js:978	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	これまでの会話を要約しました。会話はすべてここに残り、Shioriもあとから見返せます。	src/ui/screens/talk.js:978	
+u82uid	ok	Shiori is working. Try again in a moment.	Shioriは作業中です。少ししてからもう一度お試しください。	src/ui/screens/talk.js:978	
+va2k72	ok	There is not enough yet to summarize.	まだ要約するほどの内容がありません。	src/ui/screens/talk.js:978	
+mienoe	ok	Summarize now	今すぐ要約	src/ui/screens/talk.js:981	
+10sfmur	ok	Starting fresh…	新しく始めています…	src/ui/screens/talk.js:983	
+va77q0	ok	Start fresh?	新しく始めますか？	src/ui/screens/talk.js:996	Note: the glossary's 新しく始める, conjugated as a question (始めますか).
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shioriはこれまでのやり取りを踏まえず、ここから新しく始めます。やり取りはすべて会話に残るので、読んだり検索したりでき、Shioriも見返せます。削除されるものはありません。ライブ音声のセッションも開始し直します。	src/ui/screens/talk.js:997	
+czdqlz	ok	Start fresh	新しく始める	src/ui/screens/talk.js:998	
+1h9wwbn	ok	She couldn't start fresh: {0}	新しく始められませんでした：{0}	src/ui/screens/talk.js:1008	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	新しく始めたあと、まだ何も話していません。	src/ui/screens/talk.js:1011	
+3fntk0	ok	Started fresh.	新しく始めました。	src/ui/screens/talk.js:1011	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	会話を開いているところです。少ししてからもう一度お試しください。	src/ui/screens/talk.js:1011	
+p5pj7b	ok	There is nothing to start fresh from yet.	まだ何も話していないため、新しく始められません。	src/ui/screens/talk.js:1011	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	今すぐ要約：これまでの会話をShioriが要約して、会話を短く保ちます。やり取りはすべてここに残り、Shioriもあとから見返せます。	src/ui/screens/talk.js:1033	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	新しく始める：Shioriはこれまでのやり取りを踏まえず、ここから新しく始めます。やり取りはすべて区切り線の上に残ります。	src/ui/screens/talk.js:1034	
+15ve7m7	ok	What each half sees	KoeとKokoroに見えているもの	src/ui/screens/talk.js:1035	
+1u5l4hx	ok	Details: the trip's name and dates, Export, Archive and Remove.	詳細：旅の名前と日付、エクスポート、アーカイブ、削除。	src/ui/screens/talk.js:1046	
+o7tevg	ok	Details: the chat's name and dates, Export, Archive and Remove.	詳細：チャットの名前と日付、エクスポート、アーカイブ、削除。	src/ui/screens/talk.js:1046	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	元に戻しました。前の性格は、Shioriが次に起動したときから反映されます。	src/ui/screens/talk.js:1062	
 11gkctr	ok	Places	場所	src/ui/screens/tools.js:12	context: tool group
 13mxqrp	ok	Talk	会話	src/ui/screens/tools.js:12	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	移動	src/ui/screens/tools.js:12	context: tool group; Note: the tools for getting somewhere (routes, maps).
@@ -2497,111 +2498,111 @@ s81kp3	ok	Save key	キーを保存	src/ui/screens/tools.js:105
 r654x7	ok	Servers that give Shiori tools of their own, with a token or headers kept on this device.	Shioriに独自のツールを追加するサーバーです。トークンやヘッダーはこの端末に保存されます。	src/ui/screens/tools.js:116	
 vayo7x	ok	Tool switches	ツールのオン/オフ	src/ui/screens/tools.js:118	
 a2pqv8	ok	Every tool Shiori has, including plugins' tools. A switched-off tool is left out of her next request.	Shioriが使えるすべてのツール（プラグインのツールも含む）です。オフにしたツールは、次のリクエストから外されます。	src/ui/screens/tools.js:120	
-1unt64g	ok	Everything	すべて	src/ui/screens/trace.js:36	
-6qsrkg	ok	Halves	KoeとKokoro	src/ui/screens/trace.js:36	Note: Shiori's two halves (glossary: halves).
-1swmtuu	ok	Errors	エラー	src/ui/screens/trace.js:37	
-pghiva	ok	Location	位置情報	src/ui/screens/trace.js:37	
-1ocm8xt	ok	System · {0}	システム · {0}	src/ui/screens/trace.js:52	{0} = scopeTitle(s)
-1jije2k	ok	Nothing here yet.	まだ何もありません。	src/ui/screens/trace.js:89	
-zixzwp	ok	Everything annai recorded: file changes, model calls, imports, plugin problems and errors. Newest first.	annaiが記録したすべての内容（ファイルの変更、モデルの呼び出し、読み込み、プラグインの問題、エラー）を、新しい順に表示します。	src/ui/screens/trace.js:100	
-vv1pu6	ok	Type contains	タイプに含まれる文字	src/ui/screens/trace.js:101	Note: The entry's type (a code like file.write), apart from the Kind filter just before it (種類 / 类型).
-g9esrd	ok	a newer backup from an Android phone is there	別のAndroidスマートフォンからの新しいバックアップがあります	src/ui/screens/trace.js:162	
-obwhc7	ok	a newer backup from an iPhone is there	別のiPhoneからの新しいバックアップがあります	src/ui/screens/trace.js:162	
-oh532o	ok	a newer backup from an iPad is there	別のiPadからの新しいバックアップがあります	src/ui/screens/trace.js:162	
-1ds6m85	ok	a newer backup from a computer is there	別のパソコンからの新しいバックアップがあります	src/ui/screens/trace.js:163	
-1r6qy12	ok	the user wrote	ユーザーが入力	src/ui/screens/trace.js:184	
-yyq6of	ok	the user tapped a choice	ユーザーが選択肢をタップ	src/ui/screens/trace.js:184	
-1eo2nlm	ok	Kokoro to Koe	KokoroからKoeへ	src/ui/screens/trace.js:188	
-l7yvjm	ok	Koe to Kokoro	KoeからKokoroへ	src/ui/screens/trace.js:188	
-omff16	ok	annai to Kokoro	annaiからKokoroへ	src/ui/screens/trace.js:189	
-hnbn63	ok	this was for Shiori	Shiori宛て	src/ui/screens/trace.js:190	
-1larmkq	ok	phone dictation	端末の音声入力	src/ui/screens/trace.js:193	
-piy3vo	ok	{0} from the microphone	マイクから{0}	src/ui/screens/trace.js:193	{0} = duration(d.ms ?? 0)
-1sfeb1g	ok	an answer	返答	src/ui/screens/trace.js:194	
-1x13vat	ok	not for Shiori	Shiori宛てではない	src/ui/screens/trace.js:194	
-k9shc3	ok	while she was thinking	考えている間	src/ui/screens/trace.js:194	
-mj6pnh	ok	she didn't answer	Shioriは答えなかった	src/ui/screens/trace.js:194	
-an9lly	ok	clip kept: {0}, {1}	録音を保存：{0}、{1}	src/ui/screens/trace.js:195	{0} = d.clipFormat; {1} = size(d.clipBytes ?? 0)
-voav2t	ok	clip kept	録音を保存	src/ui/screens/trace.js:195	
-1gqj9yn	ok	written down by {0}	{0}で文字起こし	src/ui/screens/trace.js:197	{0} = d.by
-o1nqez	ok	from {0}	{0}から	src/ui/screens/trace.js:200	{0} = sourceOf(d)
-v0l7oi#other	ok	# links	#件のリンク	src/ui/screens/trace.js:200	plural; # = (d.links ?? []).length; English: "# link" (one), "# links" (other)
-9bb0pd	ok	error	エラー	src/ui/screens/trace.js:202	
-scvxkf	ok	ok	成功	src/ui/screens/trace.js:202	
-1qafm6e	ok	kept turn not deleted yet	保持されたターンは未削除	src/ui/screens/trace.js:206	
-7lsal4	ok	no answer	応答なし	src/ui/screens/trace.js:206	
-udpknx	ok	kept turn deleted	保持されたターンを削除	src/ui/screens/trace.js:206	
-hnu5xn	ok	kept turn looked up	保持されたターンを確認	src/ui/screens/trace.js:207	
-1b5ygaa	ok	photo uploads listed	アップロードした写真の一覧を取得	src/ui/screens/trace.js:209	Note: a Trace line, beside "kept turn looked up".
-lx223x	ok	photo upload deleted	アップロードした写真を削除	src/ui/screens/trace.js:210	Note: a Trace line, as "kept turn deleted".
-rpu62e	ok	photo upload not deleted yet	アップロードした写真は未削除	src/ui/screens/trace.js:210	Note: a Trace line, as "kept turn not deleted yet".
-1t1zawl	ok	a refused photo sent again as a new copy ({0})	拒否された写真を新しいコピーとして再送（{0}）	src/ui/screens/trace.js:211	{0} = d.mediaType
-gjjwcl	ok	a PDF's words kept for models that can't read PDFs	PDFを読めないモデル用に残したPDFの内容（文字）	src/ui/screens/trace.js:213	Note: a Trace line: what was kept of a PDF, told in words, for models that can't read PDFs.
-kbptqr	ok	a photo's description kept for models that can't see photos	写真を見られないモデル用に残した写真の説明	src/ui/screens/trace.js:213	Note: a Trace line, as above, for a photo's description.
-y6qkfy	ok	a PDF's pages kept for models that can't read PDFs	PDFを読めないモデル用に残したPDFのページ（画像）	src/ui/screens/trace.js:213	Note: a Trace line, as above, for a PDF's pages as pictures.
-12y45gf	ok	from a backup, annai {0}	バックアップから（annai {0}）	src/ui/screens/trace.js:217	{0} = app
-hq4bg1	ok	from an export, annai {0}	エクスポートから（annai {0}）	src/ui/screens/trace.js:217	{0} = app
-fgylb4#other	ok	# pieces of content it didn't hold left out	ファイルにない内容#件を除外	src/ui/screens/trace.js:218	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
-1vkhbgw	ok	asked for content that isn't here, and got none	ここにない内容を求めたが、何も得られなかった	src/ui/screens/trace.js:221	
-17ybebf	ok	a turn cut off by opening another conversation	別の会話を開いたため途中で止まったターン	src/ui/screens/trace.js:222	
-z082y3	ok	read {0}	「{0}」を読んだ	src/ui/screens/trace.js:224	{0} = d.title
-1g60658	ok	said	発話	src/ui/screens/trace.js:225	
-1s3wptl	ok	reading {0} allowed	{0}の読み取りを許可	src/ui/screens/trace.js:225	{0} = d.trip
-guv93	ok	moved to {0}	「{0}」へ移動	src/ui/screens/trace.js:227	{0} = d.title; Note: a Trace line: Shiori took the user from this conversation to {0}.
-130nh2w	ok	events {0}–{1} summarized ({2})	イベント{0}–{1}を要約（{2}）	src/ui/screens/trace.js:228	{0} = d.from; {1} = d.to; {2} = d.mode
-vgv0s2	ok	started fresh after event {0}	イベント{0}のあとで新しく始めた	src/ui/screens/trace.js:228	{0} = d.to
-1nulaw8	ok	late by {0} min	{0}分遅れ	src/ui/screens/trace.js:230	{0} = d.late
-1vzfabu	ok	no connection	接続なし	src/ui/screens/trace.js:230	
-1l7ac5y	ok	shown	表示	src/ui/screens/trace.js:231	
-1yfde5	ok	no name	名前なし	src/ui/screens/trace.js:233	
-1nk1wxu	ok	audio route {0}	音声の経路：{0}	src/ui/screens/trace.js:234	{0} = d.route
-1yo1hz0	ok	the microphone in use: {0}	使用中のマイク：{0}	src/ui/screens/trace.js:234	{0} = d.using || unnamed
-swjwya	ok	judged by the devices present	接続中のデバイスから判断	src/ui/screens/trace.js:234	Note: the Trace: the audio route was told from the devices present, not from the microphone in use.
-1rzyxvu	ok	disconnected: {0}	切断：{0}	src/ui/screens/trace.js:235	{0} = d.gone.join(', ')
-3gdj21	ok	no devices	デバイスなし	src/ui/screens/trace.js:235	
-1ijsnzq	ok	voice on	音声オン	src/ui/screens/trace.js:256	
-z2w914	ok	voice off	音声オフ	src/ui/screens/trace.js:256	
-1g1k3by	ok	{0} waiting	{0}件待機中	src/ui/screens/trace.js:259	{0} = d.waiting ?? 0
-xy6oxk	ok	{0} sent, {1} called off	{0}件送信、{1}件取り消し	src/ui/screens/trace.js:259	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
-1efflnv	ok	notification shown	通知を表示	src/ui/screens/trace.js:260	
-cjmncb	ok	notification opened	通知を開いた	src/ui/screens/trace.js:261	
-3m7wpo#other	ok	# attempts	#回試行	src/ui/screens/trace.js:271	plural; # = n; English: "# attempt" (one), "# attempts" (other)
-r42rpw	ok	{0} ms processing latency	処理遅延{0} ms	src/ui/screens/trace.js:275	{0} = Math.round(d.baseLatency * 1000)
-1y5g6mq	ok	{0} ms output latency	出力遅延{0} ms	src/ui/screens/trace.js:276	{0} = Math.round(d.outputLatency * 1000)
-a1oech	ok	live session {0}	ライブセッション：{0}	src/ui/screens/trace.js:277	{0} = d.state
-beya44	ok	sound at {0} kHz	音声{0} kHz	src/ui/screens/trace.js:279	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
-1u50qqt	ok	her voice: {0} played	Shioriの声：{0}再生	src/ui/screens/trace.js:284	{0} = duration(d.ms ?? 0); Note: "her" is written as Shiori: 彼女 reads distant in Japanese.
-1wcl60z	ok	cut	中断	src/ui/screens/trace.js:284	
-njy1uz	ok	her voice: cut before it played	Shioriの声：再生前に中断	src/ui/screens/trace.js:284	Note: "her" is written as Shiori.
-9atabi	ok	started after {0} ms	{0} ms後に開始	src/ui/screens/trace.js:285	{0} = d.waitMs
-j43x3k	ok	stalled	停滞	src/ui/screens/trace.js:285	
-1qyanji#other	ok	# holes, {0} ms	途切れ#回、{0} ms	src/ui/screens/trace.js:286	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
-gw0cwm#other	ok	# holes	途切れ#回	src/ui/screens/trace.js:286	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
-1bx4bl6	ok	on {0}	{0}で	src/ui/screens/trace.js:287	{0} = d.player
-1jhbzkn	ok	your voice {0} dB, least to start {1} dB, {2} frames kept out (loudest {3} dB)	ユーザーの声{0} dB、開始に必要な最小{1} dB、{2}フレームを除外（最大{3} dB）	src/ui/screens/trace.js:292	{0} = d.voiceDb ?? '?'; {1} = d.minDb ?? '–'; {2} = d.keptFrames; {3} = d.keptPeakDb ?? '?'
-1mxp5c6	ok	a sound dropped as her voice began: {0} of speech · floor {1} dB, loudest {2} dB	Shioriの声が始まったときに破棄した音：発話{0} · 下限{1} dB、最大{2} dB	src/ui/screens/trace.js:293	{0} = duration(d.speechMs ?? 0); {1} = d.floorDb ?? '?'; {2} = d.peakDb ?? '?'; Note: "her" is written as Shiori.
-1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	ユーザーのターン終了：{0} · {1}送信 · 下限{2} dB、最大{3} dB	src/ui/screens/trace.js:294	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
-7ovnj9	ok	no turn	ターンなし	src/ui/screens/trace.js:294	
-khxbvb	ok	audio: {0}	音声：{0}	src/ui/screens/trace.js:298	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
-1wy37ql	ok	{0} sent	{0}送信	src/ui/screens/trace.js:300	{0} = size(d.bytes)
-l04i5	ok	{0} sent, after a kept turn	{0}送信（保持されたターンのあと）	src/ui/screens/trace.js:300	{0} = size(d.bytes)
-1n96vkk	ok	earlier thinking not sent: something before it changed	前のステップの思考は送り返さず（それより前の内容が変わったため）	src/ui/screens/trace.js:302	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
-yfywm0#other	ok	thinking of # earlier steps sent back	前の#ステップの思考を送り返した	src/ui/screens/trace.js:302	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
-15hqi4k#other	ok	# guides	#件のガイド	src/ui/screens/trace.js:306	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
-4k86ja	ok	{0} failed	{0}件失敗	src/ui/screens/trace.js:306	{0} = d.failed
-1waoe51	ok	at its limit	上限に達した	src/ui/screens/trace.js:307	
-66h5i6	ok	by itself on Wi-Fi	Wi-Fiで自動	src/ui/screens/trace.js:307	
-rfe2ef	ok	{0} files sent, {1}	{0}個のファイルを送信、{1}	src/ui/screens/trace.js:309	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
-2601w8	ok	a newer backup from another device is there	別の端末からの新しいバックアップがあります	src/ui/screens/trace.js:310	
-uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	{0}をダウンロード、{1}、停止したため破棄	src/ui/screens/trace.js:312	{0} = d.backup; {1} = size(d.bytes ?? 0)
-wgniil	ok	downloaded {0}, {1}	{0}をダウンロード、{1}	src/ui/screens/trace.js:312	{0} = d.backup; {1} = size(d.bytes ?? 0)
-1gauo2f	ok	{0} can't be opened: {1}	{0}を開けません：{1}	src/ui/screens/trace.js:313	{0} = d.backup; {1} = cut(d.problem)
-1rrq0vn	ok	deleted an older backup, {0}	古いバックアップを削除：{0}	src/ui/screens/trace.js:314	{0} = d.backup
-57gz9u#other	ok	# secrets	シークレット#件	src/ui/screens/trace.js:316	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
-scekw#other	ok	# settings	設定#件	src/ui/screens/trace.js:316	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
-mp7j1w#other	ok	({0}, # bytes)	（{0}、#バイト）	src/ui/screens/trace.js:339	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
-tqj8t3	ok	(no longer stored)	（もう保存されていません）	src/ui/screens/trace.js:339	
-1kfziuy	ok	Show what was stored	保存された内容を表示	src/ui/screens/trace.js:356	
+1unt64g	ok	Everything	すべて	src/ui/screens/trace.js:39	
+6qsrkg	ok	Halves	KoeとKokoro	src/ui/screens/trace.js:39	Note: Shiori's two halves (glossary: halves).
+1swmtuu	ok	Errors	エラー	src/ui/screens/trace.js:40	
+pghiva	ok	Location	位置情報	src/ui/screens/trace.js:40	
+1ocm8xt	ok	System · {0}	システム · {0}	src/ui/screens/trace.js:57	{0} = scopeTitle(s)
+1jije2k	ok	Nothing here yet.	まだ何もありません。	src/ui/screens/trace.js:94	
+zixzwp	ok	Everything annai recorded: file changes, model calls, imports, plugin problems and errors. Newest first.	annaiが記録したすべての内容（ファイルの変更、モデルの呼び出し、読み込み、プラグインの問題、エラー）を、新しい順に表示します。	src/ui/screens/trace.js:105	
+vv1pu6	ok	Type contains	タイプに含まれる文字	src/ui/screens/trace.js:106	Note: The entry's type (a code like file.write), apart from the Kind filter just before it (種類 / 类型).
+g9esrd	ok	a newer backup from an Android phone is there	別のAndroidスマートフォンからの新しいバックアップがあります	src/ui/screens/trace.js:178	
+obwhc7	ok	a newer backup from an iPhone is there	別のiPhoneからの新しいバックアップがあります	src/ui/screens/trace.js:178	
+oh532o	ok	a newer backup from an iPad is there	別のiPadからの新しいバックアップがあります	src/ui/screens/trace.js:178	
+1ds6m85	ok	a newer backup from a computer is there	別のパソコンからの新しいバックアップがあります	src/ui/screens/trace.js:179	
+1r6qy12	ok	the user wrote	ユーザーが入力	src/ui/screens/trace.js:201	
+yyq6of	ok	the user tapped a choice	ユーザーが選択肢をタップ	src/ui/screens/trace.js:201	
+1eo2nlm	ok	Kokoro to Koe	KokoroからKoeへ	src/ui/screens/trace.js:205	
+l7yvjm	ok	Koe to Kokoro	KoeからKokoroへ	src/ui/screens/trace.js:205	
+omff16	ok	annai to Kokoro	annaiからKokoroへ	src/ui/screens/trace.js:206	
+hnbn63	ok	this was for Shiori	Shiori宛て	src/ui/screens/trace.js:207	
+1larmkq	ok	phone dictation	端末の音声入力	src/ui/screens/trace.js:210	
+piy3vo	ok	{0} from the microphone	マイクから{0}	src/ui/screens/trace.js:210	{0} = duration(d.ms ?? 0)
+1sfeb1g	ok	an answer	返答	src/ui/screens/trace.js:211	
+1x13vat	ok	not for Shiori	Shiori宛てではない	src/ui/screens/trace.js:211	
+k9shc3	ok	while she was thinking	考えている間	src/ui/screens/trace.js:211	
+mj6pnh	ok	she didn't answer	Shioriは答えなかった	src/ui/screens/trace.js:211	
+an9lly	ok	clip kept: {0}, {1}	録音を保存：{0}、{1}	src/ui/screens/trace.js:212	{0} = d.clipFormat; {1} = size(d.clipBytes ?? 0)
+voav2t	ok	clip kept	録音を保存	src/ui/screens/trace.js:212	
+1gqj9yn	ok	written down by {0}	{0}で文字起こし	src/ui/screens/trace.js:214	{0} = names(d.by)
+o1nqez	ok	from {0}	{0}から	src/ui/screens/trace.js:217	{0} = sourceOf(d)
+v0l7oi#other	ok	# links	#件のリンク	src/ui/screens/trace.js:217	plural; # = (d.links ?? []).length; English: "# link" (one), "# links" (other)
+9bb0pd	ok	error	エラー	src/ui/screens/trace.js:219	
+scvxkf	ok	ok	成功	src/ui/screens/trace.js:219	
+1qafm6e	ok	kept turn not deleted yet	保持されたターンは未削除	src/ui/screens/trace.js:223	
+7lsal4	ok	no answer	応答なし	src/ui/screens/trace.js:223	
+udpknx	ok	kept turn deleted	保持されたターンを削除	src/ui/screens/trace.js:223	
+hnu5xn	ok	kept turn looked up	保持されたターンを確認	src/ui/screens/trace.js:224	
+1b5ygaa	ok	photo uploads listed	アップロードした写真の一覧を取得	src/ui/screens/trace.js:226	Note: a Trace line, beside "kept turn looked up".
+lx223x	ok	photo upload deleted	アップロードした写真を削除	src/ui/screens/trace.js:227	Note: a Trace line, as "kept turn deleted".
+rpu62e	ok	photo upload not deleted yet	アップロードした写真は未削除	src/ui/screens/trace.js:227	Note: a Trace line, as "kept turn not deleted yet".
+1t1zawl	ok	a refused photo sent again as a new copy ({0})	拒否された写真を新しいコピーとして再送（{0}）	src/ui/screens/trace.js:228	{0} = d.mediaType
+gjjwcl	ok	a PDF's words kept for models that can't read PDFs	PDFを読めないモデル用に残したPDFの内容（文字）	src/ui/screens/trace.js:230	Note: a Trace line: what was kept of a PDF, told in words, for models that can't read PDFs.
+kbptqr	ok	a photo's description kept for models that can't see photos	写真を見られないモデル用に残した写真の説明	src/ui/screens/trace.js:230	Note: a Trace line, as above, for a photo's description.
+y6qkfy	ok	a PDF's pages kept for models that can't read PDFs	PDFを読めないモデル用に残したPDFのページ（画像）	src/ui/screens/trace.js:230	Note: a Trace line, as above, for a PDF's pages as pictures.
+12y45gf	ok	from a backup, annai {0}	バックアップから（annai {0}）	src/ui/screens/trace.js:234	{0} = app
+hq4bg1	ok	from an export, annai {0}	エクスポートから（annai {0}）	src/ui/screens/trace.js:234	{0} = app
+fgylb4#other	ok	# pieces of content it didn't hold left out	ファイルにない内容#件を除外	src/ui/screens/trace.js:235	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
+1vkhbgw	ok	asked for content that isn't here, and got none	ここにない内容を求めたが、何も得られなかった	src/ui/screens/trace.js:238	
+17ybebf	ok	a turn cut off by opening another conversation	別の会話を開いたため途中で止まったターン	src/ui/screens/trace.js:239	
+z082y3	ok	read {0}	「{0}」を読んだ	src/ui/screens/trace.js:241	{0} = d.title
+1g60658	ok	said	発話	src/ui/screens/trace.js:242	
+1s3wptl	ok	reading {0} allowed	{0}の読み取りを許可	src/ui/screens/trace.js:242	{0} = d.trip
+guv93	ok	moved to {0}	「{0}」へ移動	src/ui/screens/trace.js:244	{0} = d.title; Note: a Trace line: Shiori took the user from this conversation to {0}.
+130nh2w	ok	events {0}–{1} summarized ({2})	イベント{0}–{1}を要約（{2}）	src/ui/screens/trace.js:245	{0} = d.from; {1} = d.to; {2} = d.mode
+vgv0s2	ok	started fresh after event {0}	イベント{0}のあとで新しく始めた	src/ui/screens/trace.js:245	{0} = d.to
+1nulaw8	ok	late by {0} min	{0}分遅れ	src/ui/screens/trace.js:247	{0} = d.late
+1vzfabu	ok	no connection	接続なし	src/ui/screens/trace.js:247	
+1l7ac5y	ok	shown	表示	src/ui/screens/trace.js:248	
+1yfde5	ok	no name	名前なし	src/ui/screens/trace.js:250	
+1nk1wxu	ok	audio route {0}	音声の経路：{0}	src/ui/screens/trace.js:251	{0} = d.route
+1yo1hz0	ok	the microphone in use: {0}	使用中のマイク：{0}	src/ui/screens/trace.js:251	{0} = d.using || unnamed
+swjwya	ok	judged by the devices present	接続中のデバイスから判断	src/ui/screens/trace.js:251	Note: the Trace: the audio route was told from the devices present, not from the microphone in use.
+1rzyxvu	ok	disconnected: {0}	切断：{0}	src/ui/screens/trace.js:252	{0} = d.gone.join(', ')
+3gdj21	ok	no devices	デバイスなし	src/ui/screens/trace.js:252	
+1ijsnzq	ok	voice on	音声オン	src/ui/screens/trace.js:273	
+z2w914	ok	voice off	音声オフ	src/ui/screens/trace.js:273	
+1g1k3by	ok	{0} waiting	{0}件待機中	src/ui/screens/trace.js:276	{0} = d.waiting ?? 0
+xy6oxk	ok	{0} sent, {1} called off	{0}件送信、{1}件取り消し	src/ui/screens/trace.js:276	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
+1efflnv	ok	notification shown	通知を表示	src/ui/screens/trace.js:277	
+cjmncb	ok	notification opened	通知を開いた	src/ui/screens/trace.js:278	
+3m7wpo#other	ok	# attempts	#回試行	src/ui/screens/trace.js:288	plural; # = n; English: "# attempt" (one), "# attempts" (other)
+r42rpw	ok	{0} ms processing latency	処理遅延{0} ms	src/ui/screens/trace.js:292	{0} = Math.round(d.baseLatency * 1000)
+1y5g6mq	ok	{0} ms output latency	出力遅延{0} ms	src/ui/screens/trace.js:293	{0} = Math.round(d.outputLatency * 1000)
+a1oech	ok	live session {0}	ライブセッション：{0}	src/ui/screens/trace.js:294	{0} = d.state
+beya44	ok	sound at {0} kHz	音声{0} kHz	src/ui/screens/trace.js:296	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
+1u50qqt	ok	her voice: {0} played	Shioriの声：{0}再生	src/ui/screens/trace.js:301	{0} = duration(d.ms ?? 0); Note: "her" is written as Shiori: 彼女 reads distant in Japanese.
+1wcl60z	ok	cut	中断	src/ui/screens/trace.js:301	
+njy1uz	ok	her voice: cut before it played	Shioriの声：再生前に中断	src/ui/screens/trace.js:301	Note: "her" is written as Shiori.
+9atabi	ok	started after {0} ms	{0} ms後に開始	src/ui/screens/trace.js:302	{0} = d.waitMs
+j43x3k	ok	stalled	停滞	src/ui/screens/trace.js:302	
+1qyanji#other	ok	# holes, {0} ms	途切れ#回、{0} ms	src/ui/screens/trace.js:303	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
+gw0cwm#other	ok	# holes	途切れ#回	src/ui/screens/trace.js:303	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
+1bx4bl6	ok	on {0}	{0}で	src/ui/screens/trace.js:304	{0} = d.player
+1jhbzkn	ok	your voice {0} dB, least to start {1} dB, {2} frames kept out (loudest {3} dB)	ユーザーの声{0} dB、開始に必要な最小{1} dB、{2}フレームを除外（最大{3} dB）	src/ui/screens/trace.js:309	{0} = d.voiceDb ?? '?'; {1} = d.minDb ?? '–'; {2} = d.keptFrames; {3} = d.keptPeakDb ?? '?'
+1mxp5c6	ok	a sound dropped as her voice began: {0} of speech · floor {1} dB, loudest {2} dB	Shioriの声が始まったときに破棄した音：発話{0} · 下限{1} dB、最大{2} dB	src/ui/screens/trace.js:310	{0} = duration(d.speechMs ?? 0); {1} = d.floorDb ?? '?'; {2} = d.peakDb ?? '?'; Note: "her" is written as Shiori.
+1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	ユーザーのターン終了：{0} · {1}送信 · 下限{2} dB、最大{3} dB	src/ui/screens/trace.js:311	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
+7ovnj9	ok	no turn	ターンなし	src/ui/screens/trace.js:311	
+khxbvb	ok	audio: {0}	音声：{0}	src/ui/screens/trace.js:315	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
+1wy37ql	ok	{0} sent	{0}送信	src/ui/screens/trace.js:317	{0} = size(d.bytes)
+l04i5	ok	{0} sent, after a kept turn	{0}送信（保持されたターンのあと）	src/ui/screens/trace.js:317	{0} = size(d.bytes)
+1n96vkk	ok	earlier thinking not sent: something before it changed	前のステップの思考は送り返さず（それより前の内容が変わったため）	src/ui/screens/trace.js:319	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
+yfywm0#other	ok	thinking of # earlier steps sent back	前の#ステップの思考を送り返した	src/ui/screens/trace.js:319	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
+15hqi4k#other	ok	# guides	#件のガイド	src/ui/screens/trace.js:323	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
+4k86ja	ok	{0} failed	{0}件失敗	src/ui/screens/trace.js:323	{0} = d.failed
+1waoe51	ok	at its limit	上限に達した	src/ui/screens/trace.js:324	
+66h5i6	ok	by itself on Wi-Fi	Wi-Fiで自動	src/ui/screens/trace.js:324	
+rfe2ef	ok	{0} files sent, {1}	{0}個のファイルを送信、{1}	src/ui/screens/trace.js:326	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
+2601w8	ok	a newer backup from another device is there	別の端末からの新しいバックアップがあります	src/ui/screens/trace.js:327	
+uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	{0}をダウンロード、{1}、停止したため破棄	src/ui/screens/trace.js:329	{0} = d.backup; {1} = size(d.bytes ?? 0)
+wgniil	ok	downloaded {0}, {1}	{0}をダウンロード、{1}	src/ui/screens/trace.js:329	{0} = d.backup; {1} = size(d.bytes ?? 0)
+1gauo2f	ok	{0} can't be opened: {1}	{0}を開けません：{1}	src/ui/screens/trace.js:330	{0} = d.backup; {1} = cut(d.problem)
+1rrq0vn	ok	deleted an older backup, {0}	古いバックアップを削除：{0}	src/ui/screens/trace.js:331	{0} = d.backup
+57gz9u#other	ok	# secrets	シークレット#件	src/ui/screens/trace.js:333	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
+scekw#other	ok	# settings	設定#件	src/ui/screens/trace.js:333	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
+mp7j1w#other	ok	({0}, # bytes)	（{0}、#バイト）	src/ui/screens/trace.js:356	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
+tqj8t3	ok	(no longer stored)	（もう保存されていません）	src/ui/screens/trace.js:356	
+1kfziuy	ok	Show what was stored	保存された内容を表示	src/ui/screens/trace.js:373	
 1cnmmj7	ok	Archived	アーカイブ済み	src/ui/screens/trip.js:44	
 jz8mjk	ok	Unarchive	アーカイブを解除	src/ui/screens/trip.js:56	
 qeuftp	ok	Tap again to archive	もう一度タップでアーカイブ	src/ui/screens/trip.js:58	
@@ -2657,70 +2658,70 @@ cdoxxa	ok	A new version of annai	annaiの新しいバージョン	src/ui/screens
 1ng2wty	ok	It is ready, and annai uses it the next time it starts. Restart now to use it at once: if Shiori is in the middle of something, annai restarts once she has finished.	準備ができました。次にannaiを起動したときから使われます。すぐに使うには「今すぐ再起動」をタップしてください。Shioriが作業の途中なら、終わってから再起動します。	src/ui/screens/updates.js:59	
 1wl12tq	ok	It is downloading. Restart now shows here once it is ready.	ダウンロード中です。準備ができると、ここに「今すぐ再起動」が表示されます。	src/ui/screens/updates.js:61	
 1t0nu5g	ok	Plugins installed from a file have nowhere to check for updates: {0}.	ファイルからインストールしたプラグインは、更新を確認できません：{0}。	src/ui/screens/updates.js:67	{0} = fromFile
-1rehz51	ok	Speech leaves this phone in the smallest format each service takes. Made here: {0} (recorded: {1}). Played here: {2}.	音声は、各サービスが受け付けるいちばん小さい形式でこの端末から送られます。この端末で作れる形式：{0}（録音：{1}）。再生できる形式：{2}。	src/ui/screens/voice.js:33	{0} = made; {1} = list(records, 'plain'); {2} = played
-1jptowo	ok	Speech leaves this phone in the smallest format each service takes. Made here: {0}. Played here: {1}.	音声は、各サービスが受け付けるいちばん小さい形式でこの端末から送られます。この端末で作れる形式：{0}。再生できる形式：{1}。	src/ui/screens/voice.js:34	{0} = made; {1} = played
-8wro44	ok	Voice is off.	音声はオフです。	src/ui/screens/voice.js:44	
-sns8o2	ok	Voice is on.	音声はオンです。	src/ui/screens/voice.js:44	
-fceyoz	ok	Voice	音声	src/ui/screens/voice.js:45	context: voice mode; Note: voice on, off or auto (the glossary's Voice on, Voice off).
-12k3pw4	ok	Show what she says	話した言葉を表示	src/ui/screens/voice.js:52	
-3gprw9	ok	Keep voice clips	音声クリップを保存	src/ui/screens/voice.js:53	
-1r528n6	ok	Keep the screen on while GPS is on	GPSがオンの間は画面を消さない	src/ui/screens/voice.js:59	
-o7g54g	ok	Cut her off by speaking	話しかけて割り込む	src/ui/screens/voice.js:60	
-1maeag1	ok	Speaking…	話しています…	src/ui/screens/voice.js:68	
-1rasxdf	ok	This browser didn't let annai play sound yet. Tap anywhere on the page, then try again.	このブラウザでは、まだ音を再生できません。ページのどこかをタップしてから、もう一度お試しください。	src/ui/screens/voice.js:72	
-39tqta	ok	No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.	どの声も再生できませんでした。各声の応答は「記録」で確認できます。「設定 → モデル」で声を確認してください。	src/ui/screens/voice.js:73	
-m6lqjc	ok	{0} couldn't speak: {1}	{0}は話せませんでした：{1}	src/ui/screens/voice.js:75	{0} = f.name; {1} = speechProblem(f.error)
-1v88hol	ok	{0}, then {1}	{0}、次に{1}	src/ui/screens/voice.js:76	context: one voice, then the next; {0} = a; {1} = b; Note: voices in the order they spoke: "A, then B, then C".
-1w6xnpw	ok	Spoken by {0}.	話した声：{0}。	src/ui/screens/voice.js:76	{0} = r.voices.reduce((/** @type {string} */ a, /** @type {string} */ b) => tc('one voice, then the next')`${a}, then ${b}`)
-1l6oe5c	ok	Test the voice	声をテスト	src/ui/screens/voice.js:83	
-1bbvn6f	ok	Automatic: one on this phone when there is one	自動（この端末の声があればそれを使用）	src/ui/screens/voice.js:90	
-1swzhj6	ok	{0} ({1}, online)	{0}（{1}、オンライン）	src/ui/screens/voice.js:91	{0} = v.name; {1} = v.lang; Note: a browser voice, its language code, and that it sends her words online.
-1er0uz6	ok	How loud the microphone hears you	マイクの入力レベル	src/ui/screens/voice.js:101	
-1v58i1s	ok	Say something…	何か話してください…	src/ui/screens/voice.js:107	
-bjwya4	ok	Hearing you…	聞き取り中…	src/ui/screens/voice.js:111	
-1hsov55	ok	Nothing was heard in 15 seconds. Check that the microphone is on and that no other app is using it, then try again.	15秒間、音声が聞き取れませんでした。マイクがオンになっていて、ほかのアプリが使っていないことを確認してから、もう一度お試しください。	src/ui/screens/voice.js:113	
-1plbhzy	ok	Heard {0} of speech.	{0}の音声を聞き取りました。	src/ui/screens/voice.js:116	{0} = seconds(seg.ms, 'long')
-u495xc	ok	Writing it down…	文字起こし中…	src/ui/screens/voice.js:119	
-1fnqjaw	ok	{0} heard: "{1}"	{0}の文字起こし：「{1}」	src/ui/screens/voice.js:123	{0} = name; {1} = text
-1rgfjj8	ok	{0} heard speech but wrote nothing down.	{0}は音声を受け取りましたが、文字起こしの結果は空でした。	src/ui/screens/voice.js:123	{0} = name; Note: "wrote nothing down" is the transcription: 文字にする, not 書き出す (export).
-1rec7os	ok	Add a transcription model in Settings → Models to see the words.	言葉を表示するには、「設定 → モデル」で文字起こしモデルを追加してください。	src/ui/screens/voice.js:125	
-5uf1sa	ok	Test the microphone	マイクをテスト	src/ui/screens/voice.js:136	
-1du6nik	ok	Settings → Models	設定 → モデル	src/ui/screens/voice.js:138	
-1tl20ub	ok	How Shiori speaks and hears you. Which voices and which transcription models she uses, and in what order, is in Settings → Models.	Shioriの話し方と聞き取り方の設定です。使う声と文字起こしモデル、その順番は、「設定 → モデル」で決められます。	src/ui/screens/voice.js:142	
-1nt5zac	ok	On or off	オン/オフ	src/ui/screens/voice.js:143	
-u0woti	ok	On: Shiori speaks aloud and listens for your answer. Off: she writes. A tap on Shiori always turns voice on until that exchange ends; the keyboard button is how to type. With GPS on, voice is on while driving. It goes off by itself when a drive ends or headphones disconnect. The chip on the dock changes it too.	オン：Shioriが声に出して話し、返事を聞き取ります。オフ：文字で答えます。Shioriをタップすると、どちらの設定でもそのやり取りが終わるまで音声がオンになります。文字で入力するときはキーボードのボタンを使います。GPSがオンなら、運転中は音声がオンになります。運転が終わったときやヘッドホンの接続が切れたときは、自動でオフになります。ドックの音声ボタンでも切り替えられます。	src/ui/screens/voice.js:144	
-1hwskdv	ok	Listen for 2 to 60 seconds.	2〜60秒にしてください。	src/ui/screens/voice.js:147	
-qyfmia	ok	Listen for an answer (seconds)	返事を待つ時間（秒）	src/ui/screens/voice.js:147	
-1f9vvmr	ok	Wait for her first words (seconds)	Shioriの最初の言葉を待つ時間（秒）	src/ui/screens/voice.js:148	
-1sz04rq	ok	Wait 5 to 120 seconds.	5〜120秒にしてください。	src/ui/screens/voice.js:148	
-17b2a79	ok	On the screen	画面での表示	src/ui/screens/voice.js:149	
-4xxyqf	ok	On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".	オン：Shioriが声に出して話した言葉が、「読み上げ」の印付きで会話に表示され、話している間はShioriの上に吹き出しでも表示されます。オフ：画面は静かなままです。読み上げた言葉は、「話した言葉を見る」をタップするまで会話の中でたたまれます。	src/ui/screens/voice.js:151	Note: "said aloud" and "Show what she said" are the conversation's own words: they must match those rows.
-y61lbz	ok	Shiori's voice	Shioriの声	src/ui/screens/voice.js:152	
-1879vb9	ok	Voices, tried in order: none.	声（この順に試します）：なし。	src/ui/screens/voice.js:153	
-1su08w7	ok	Voices, tried in order: {0}.	声（この順に試します）：{0}。	src/ui/screens/voice.js:153	{0} = list(entries.map((/** @type {any} */ e) => e.name), 'plain')
-1oc2cqc	ok	The browser’s own voice. Some of its voices speak on this phone; those marked online send her words to their service.	ブラウザに内蔵の声です。端末内で話す声もあります。「オンライン」と表示された声は、Shioriの言葉をそのサービスに送ります。	src/ui/screens/voice.js:156	
-t9jotl	ok	This browser has no voice of its own.	このブラウザには内蔵の声がありません。	src/ui/screens/voice.js:156	
-154la7x	ok	The speed goes from 0.5 (slow) to 2 (fast); 1 is normal.	速さは0.5（ゆっくり）から2（速い）までです。1が標準です。	src/ui/screens/voice.js:159	
-1r7xlh3	ok	Speed (0.5 to 2)	速さ（0.5〜2）	src/ui/screens/voice.js:159	
-1hnhxk8	ok	Listening	聞き取り	src/ui/screens/voice.js:160	context: section; Note: Settings → Voice's section on how annai hears you (the glossary's Speech in), not Shiori's state.
-rwdfwh	ok	annai hears that you finished a sentence when you pause. A longer pause lets you think mid-sentence; a shorter one answers sooner.	少し間を置くと、annaiは文が終わったと判断します。長めにすると文の途中で考える余裕ができ、短めにすると早く答えが返ってきます。	src/ui/screens/voice.js:161	
-11q2yij	ok	Pause that ends a sentence (ms)	文の終わりとみなす間（ミリ秒）	src/ui/screens/voice.js:162	
-mfkrny	ok	The pause goes from 300 to 3000 milliseconds; 700 is the usual.	間は300〜3000ミリ秒です。標準は700です。	src/ui/screens/voice.js:162	
-d3o3oq	ok	Off: what the microphone hears is sent to be written down, then let go. On: each clip is kept with the conversation, and in backups.	オフ：マイクが拾った音は文字起こしのために送られ、その後は保存されません。オン：音声クリップを会話と一緒に保存し、バックアップにも含めます。	src/ui/screens/voice.js:165	
-1xjm3fg	ok	Live on: Shiori hears you and answers in one stream, with a live model. Live off: what you say is written down, then answered. The Live chip on the dock switches it.	ライブオン：Shioriがライブモデルを使い、1つのストリームで聞きながら答えます。ライブオフ：話した言葉を文字にしてから答えます。ドックのライブボタンで切り替えられます。	src/ui/screens/voice.js:168	
-byedp9	ok	While a live session listens, what you say goes straight to {0} as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.	ライブセッションが聞いている間、話した言葉は音声のまま{0}に直接送られます。送られるのは誰かが話している間だけで、ボタンには「ライブで聞き取り中」と表示されます。セッションは、下の時間だけやり取りがなかったとき、Shioriに休むよう頼んだとき、音声をオフにしたとき、annaiが画面から離れたときに閉じます。音楽のように音が鳴り続けるときは、いつ休むかをShioriが判断します。	src/ui/screens/voice.js:170	{0} = list(live, 'or')
-8znos	ok	While a live session listens, what you say goes straight to its provider as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.	ライブセッションが聞いている間、話した言葉は音声のままそのプロバイダーに直接送られます。送られるのは誰かが話している間だけで、ボタンには「ライブで聞き取り中」と表示されます。セッションは、下の時間だけやり取りがなかったとき、Shioriに休むよう頼んだとき、音声をオフにしたとき、annaiが画面から離れたときに閉じます。音楽のように音が鳴り続けるときは、いつ休むかをShioriが判断します。	src/ui/screens/voice.js:171	
-lqovw2	ok	While she listens, set her voice's volume with the iPhone's volume buttons: iPhone may keep it apart from the volume of music and videos.	Shioriが聞いている間に、iPhoneの音量ボタンで声の音量を調整してください。iPhoneでは、この音量が音楽やビデオの音量と別に設定されることがあります。	src/ui/screens/voice.js:173	
-18jgtvh	ok	Close after 10 to 300 seconds with no exchange.	やり取りがないまま閉じるまでの時間を、10〜300秒の範囲で入力してください。	src/ui/screens/voice.js:174	
-csv386	ok	Close a live session after (seconds with no exchange)	やり取りがないときにライブセッションを閉じるまでの時間（秒）	src/ui/screens/voice.js:174	
-w195po	ok	Only with headphones or car audio: on the phone's own speaker the microphone hears her, so there only a tap cuts her off. Off: only a tap, everywhere, for a car whose speakers echo her voice back.	ヘッドホンかカーオーディオのときだけ使えます。端末のスピーカーではマイクがShioriの声を拾ってしまうため、タップでしか割り込めません。オフ：どこでもタップだけで割り込みます。スピーカーの音がマイクに戻ってしまう車向けです。	src/ui/screens/voice.js:176	Note: car audio is the glossary's カーオーディオ, as on the voice chip.
-10ndarn	ok	GPS	GPS	src/ui/screens/voice.js:177	
-15itdyc	ok	The chip on the dock turns GPS on and off. Keeping the screen on uses more battery; without it, a locked phone stops following where you are.	ドックのGPSボタンでGPSのオン/オフを切り替えられます。画面をつけたままにするとバッテリーを多く使いますが、オフにすると、端末がロックされたときに現在地を追えなくなります。	src/ui/screens/voice.js:179	
-ph6h35	ok	Where your voice goes	声の送り先	src/ui/screens/voice.js:180	
-rfzxba	ok	What you say goes to the first of these that can hear it; what she says, to the first voice that works. To change the order, go to {0}.	話した言葉は、この中で聞き取れる最初のものに送られます。Shioriの言葉は、使える最初の声で読み上げられます。順番は「{0}」で変更できます。	src/ui/screens/voice.js:181	{0} = models
-283rev	ok	What you say	話した言葉	src/ui/screens/voice.js:182	
-127uny	ok	To keep your voice on the phone, type with your keyboard's microphone key: iPhone and most Android keyboards can dictate on the phone itself.	声を端末の外に出したくないときは、キーボードのマイクキーで音声入力してください。iPhoneと多くのAndroidのキーボードは、端末上で音声入力できます。	src/ui/screens/voice.js:184	
-bewa4v	ok	What she says	Shioriの言葉	src/ui/screens/voice.js:185	
+1rehz51	ok	Speech leaves this phone in the smallest format each service takes. Made here: {0} (recorded: {1}). Played here: {2}.	音声は、各サービスが受け付けるいちばん小さい形式でこの端末から送られます。この端末で作れる形式：{0}（録音：{1}）。再生できる形式：{2}。	src/ui/screens/voice.js:35	{0} = made; {1} = list(records, 'plain'); {2} = played
+1jptowo	ok	Speech leaves this phone in the smallest format each service takes. Made here: {0}. Played here: {1}.	音声は、各サービスが受け付けるいちばん小さい形式でこの端末から送られます。この端末で作れる形式：{0}。再生できる形式：{1}。	src/ui/screens/voice.js:36	{0} = made; {1} = played
+8wro44	ok	Voice is off.	音声はオフです。	src/ui/screens/voice.js:46	
+sns8o2	ok	Voice is on.	音声はオンです。	src/ui/screens/voice.js:46	
+fceyoz	ok	Voice	音声	src/ui/screens/voice.js:47	context: voice mode; Note: voice on, off or auto (the glossary's Voice on, Voice off).
+12k3pw4	ok	Show what she says	話した言葉を表示	src/ui/screens/voice.js:54	
+3gprw9	ok	Keep voice clips	音声クリップを保存	src/ui/screens/voice.js:55	
+1r528n6	ok	Keep the screen on while GPS is on	GPSがオンの間は画面を消さない	src/ui/screens/voice.js:61	
+o7g54g	ok	Cut her off by speaking	話しかけて割り込む	src/ui/screens/voice.js:62	
+1maeag1	ok	Speaking…	話しています…	src/ui/screens/voice.js:70	
+1rasxdf	ok	This browser didn't let annai play sound yet. Tap anywhere on the page, then try again.	このブラウザでは、まだ音を再生できません。ページのどこかをタップしてから、もう一度お試しください。	src/ui/screens/voice.js:74	
+39tqta	ok	No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.	どの声も再生できませんでした。各声の応答は「記録」で確認できます。「設定 → モデル」で声を確認してください。	src/ui/screens/voice.js:75	
+m6lqjc	ok	{0} couldn't speak: {1}	{0}は話せませんでした：{1}	src/ui/screens/voice.js:77	{0} = names(f.name); {1} = speechProblem(f.error)
+1v88hol	ok	{0}, then {1}	{0}、次に{1}	src/ui/screens/voice.js:78	context: one voice, then the next; {0} = a; {1} = b; Note: voices in the order they spoke: "A, then B, then C".
+1w6xnpw	ok	Spoken by {0}.	話した声：{0}。	src/ui/screens/voice.js:78	{0} = r.voices.map(names).reduce((/** @type {string} */ a, /** @type {string} */ b) => tc('one voice, then the next')`${a}, then ${b}`)
+1l6oe5c	ok	Test the voice	声をテスト	src/ui/screens/voice.js:85	
+1bbvn6f	ok	Automatic: one on this phone when there is one	自動（この端末の声があればそれを使用）	src/ui/screens/voice.js:92	
+1swzhj6	ok	{0} ({1}, online)	{0}（{1}、オンライン）	src/ui/screens/voice.js:93	{0} = v.name; {1} = v.lang; Note: a browser voice, its language code, and that it sends her words online.
+1er0uz6	ok	How loud the microphone hears you	マイクの入力レベル	src/ui/screens/voice.js:103	
+1v58i1s	ok	Say something…	何か話してください…	src/ui/screens/voice.js:109	
+bjwya4	ok	Hearing you…	聞き取り中…	src/ui/screens/voice.js:113	
+1hsov55	ok	Nothing was heard in 15 seconds. Check that the microphone is on and that no other app is using it, then try again.	15秒間、音声が聞き取れませんでした。マイクがオンになっていて、ほかのアプリが使っていないことを確認してから、もう一度お試しください。	src/ui/screens/voice.js:115	
+1plbhzy	ok	Heard {0} of speech.	{0}の音声を聞き取りました。	src/ui/screens/voice.js:118	{0} = seconds(seg.ms, 'long')
+u495xc	ok	Writing it down…	文字起こし中…	src/ui/screens/voice.js:121	
+1fnqjaw	ok	{0} heard: "{1}"	{0}の文字起こし：「{1}」	src/ui/screens/voice.js:125	{0} = name; {1} = text
+1rgfjj8	ok	{0} heard speech but wrote nothing down.	{0}は音声を受け取りましたが、文字起こしの結果は空でした。	src/ui/screens/voice.js:125	{0} = name; Note: "wrote nothing down" is the transcription: 文字にする, not 書き出す (export).
+1rec7os	ok	Add a transcription model in Settings → Models to see the words.	言葉を表示するには、「設定 → モデル」で文字起こしモデルを追加してください。	src/ui/screens/voice.js:127	
+5uf1sa	ok	Test the microphone	マイクをテスト	src/ui/screens/voice.js:138	
+1du6nik	ok	Settings → Models	設定 → モデル	src/ui/screens/voice.js:140	
+1tl20ub	ok	How Shiori speaks and hears you. Which voices and which transcription models she uses, and in what order, is in Settings → Models.	Shioriの話し方と聞き取り方の設定です。使う声と文字起こしモデル、その順番は、「設定 → モデル」で決められます。	src/ui/screens/voice.js:144	
+1nt5zac	ok	On or off	オン/オフ	src/ui/screens/voice.js:145	
+u0woti	ok	On: Shiori speaks aloud and listens for your answer. Off: she writes. A tap on Shiori always turns voice on until that exchange ends; the keyboard button is how to type. With GPS on, voice is on while driving. It goes off by itself when a drive ends or headphones disconnect. The chip on the dock changes it too.	オン：Shioriが声に出して話し、返事を聞き取ります。オフ：文字で答えます。Shioriをタップすると、どちらの設定でもそのやり取りが終わるまで音声がオンになります。文字で入力するときはキーボードのボタンを使います。GPSがオンなら、運転中は音声がオンになります。運転が終わったときやヘッドホンの接続が切れたときは、自動でオフになります。ドックの音声ボタンでも切り替えられます。	src/ui/screens/voice.js:146	
+1hwskdv	ok	Listen for 2 to 60 seconds.	2〜60秒にしてください。	src/ui/screens/voice.js:149	
+qyfmia	ok	Listen for an answer (seconds)	返事を待つ時間（秒）	src/ui/screens/voice.js:149	
+1f9vvmr	ok	Wait for her first words (seconds)	Shioriの最初の言葉を待つ時間（秒）	src/ui/screens/voice.js:150	
+1sz04rq	ok	Wait 5 to 120 seconds.	5〜120秒にしてください。	src/ui/screens/voice.js:150	
+17b2a79	ok	On the screen	画面での表示	src/ui/screens/voice.js:151	
+4xxyqf	ok	On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".	オン：Shioriが声に出して話した言葉が、「読み上げ」の印付きで会話に表示され、話している間はShioriの上に吹き出しでも表示されます。オフ：画面は静かなままです。読み上げた言葉は、「話した言葉を見る」をタップするまで会話の中でたたまれます。	src/ui/screens/voice.js:153	Note: "said aloud" and "Show what she said" are the conversation's own words: they must match those rows.
+y61lbz	ok	Shiori's voice	Shioriの声	src/ui/screens/voice.js:154	
+1879vb9	ok	Voices, tried in order: none.	声（この順に試します）：なし。	src/ui/screens/voice.js:155	
+1su08w7	ok	Voices, tried in order: {0}.	声（この順に試します）：{0}。	src/ui/screens/voice.js:155	{0} = list(entries.map((/** @type {any} */ e) => e.name), 'plain')
+1oc2cqc	ok	The browser’s own voice. Some of its voices speak on this phone; those marked online send her words to their service.	ブラウザに内蔵の声です。端末内で話す声もあります。「オンライン」と表示された声は、Shioriの言葉をそのサービスに送ります。	src/ui/screens/voice.js:158	
+t9jotl	ok	This browser has no voice of its own.	このブラウザには内蔵の声がありません。	src/ui/screens/voice.js:158	
+154la7x	ok	The speed goes from 0.5 (slow) to 2 (fast); 1 is normal.	速さは0.5（ゆっくり）から2（速い）までです。1が標準です。	src/ui/screens/voice.js:161	
+1r7xlh3	ok	Speed (0.5 to 2)	速さ（0.5〜2）	src/ui/screens/voice.js:161	
+1hnhxk8	ok	Listening	聞き取り	src/ui/screens/voice.js:162	context: section; Note: Settings → Voice's section on how annai hears you (the glossary's Speech in), not Shiori's state.
+rwdfwh	ok	annai hears that you finished a sentence when you pause. A longer pause lets you think mid-sentence; a shorter one answers sooner.	少し間を置くと、annaiは文が終わったと判断します。長めにすると文の途中で考える余裕ができ、短めにすると早く答えが返ってきます。	src/ui/screens/voice.js:163	
+11q2yij	ok	Pause that ends a sentence (ms)	文の終わりとみなす間（ミリ秒）	src/ui/screens/voice.js:164	
+mfkrny	ok	The pause goes from 300 to 3000 milliseconds; 700 is the usual.	間は300〜3000ミリ秒です。標準は700です。	src/ui/screens/voice.js:164	
+d3o3oq	ok	Off: what the microphone hears is sent to be written down, then let go. On: each clip is kept with the conversation, and in backups.	オフ：マイクが拾った音は文字起こしのために送られ、その後は保存されません。オン：音声クリップを会話と一緒に保存し、バックアップにも含めます。	src/ui/screens/voice.js:167	
+1xjm3fg	ok	Live on: Shiori hears you and answers in one stream, with a live model. Live off: what you say is written down, then answered. The Live chip on the dock switches it.	ライブオン：Shioriがライブモデルを使い、1つのストリームで聞きながら答えます。ライブオフ：話した言葉を文字にしてから答えます。ドックのライブボタンで切り替えられます。	src/ui/screens/voice.js:170	
+byedp9	ok	While a live session listens, what you say goes straight to {0} as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.	ライブセッションが聞いている間、話した言葉は音声のまま{0}に直接送られます。送られるのは誰かが話している間だけで、ボタンには「ライブで聞き取り中」と表示されます。セッションは、下の時間だけやり取りがなかったとき、Shioriに休むよう頼んだとき、音声をオフにしたとき、annaiが画面から離れたときに閉じます。音楽のように音が鳴り続けるときは、いつ休むかをShioriが判断します。	src/ui/screens/voice.js:172	{0} = list(live, 'or')
+8znos	ok	While a live session listens, what you say goes straight to its provider as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.	ライブセッションが聞いている間、話した言葉は音声のままそのプロバイダーに直接送られます。送られるのは誰かが話している間だけで、ボタンには「ライブで聞き取り中」と表示されます。セッションは、下の時間だけやり取りがなかったとき、Shioriに休むよう頼んだとき、音声をオフにしたとき、annaiが画面から離れたときに閉じます。音楽のように音が鳴り続けるときは、いつ休むかをShioriが判断します。	src/ui/screens/voice.js:173	
+lqovw2	ok	While she listens, set her voice's volume with the iPhone's volume buttons: iPhone may keep it apart from the volume of music and videos.	Shioriが聞いている間に、iPhoneの音量ボタンで声の音量を調整してください。iPhoneでは、この音量が音楽やビデオの音量と別に設定されることがあります。	src/ui/screens/voice.js:175	
+18jgtvh	ok	Close after 10 to 300 seconds with no exchange.	やり取りがないまま閉じるまでの時間を、10〜300秒の範囲で入力してください。	src/ui/screens/voice.js:176	
+csv386	ok	Close a live session after (seconds with no exchange)	やり取りがないときにライブセッションを閉じるまでの時間（秒）	src/ui/screens/voice.js:176	
+w195po	ok	Only with headphones or car audio: on the phone's own speaker the microphone hears her, so there only a tap cuts her off. Off: only a tap, everywhere, for a car whose speakers echo her voice back.	ヘッドホンかカーオーディオのときだけ使えます。端末のスピーカーではマイクがShioriの声を拾ってしまうため、タップでしか割り込めません。オフ：どこでもタップだけで割り込みます。スピーカーの音がマイクに戻ってしまう車向けです。	src/ui/screens/voice.js:178	Note: car audio is the glossary's カーオーディオ, as on the voice chip.
+10ndarn	ok	GPS	GPS	src/ui/screens/voice.js:179	
+15itdyc	ok	The chip on the dock turns GPS on and off. Keeping the screen on uses more battery; without it, a locked phone stops following where you are.	ドックのGPSボタンでGPSのオン/オフを切り替えられます。画面をつけたままにするとバッテリーを多く使いますが、オフにすると、端末がロックされたときに現在地を追えなくなります。	src/ui/screens/voice.js:181	
+ph6h35	ok	Where your voice goes	声の送り先	src/ui/screens/voice.js:182	
+rfzxba	ok	What you say goes to the first of these that can hear it; what she says, to the first voice that works. To change the order, go to {0}.	話した言葉は、この中で聞き取れる最初のものに送られます。Shioriの言葉は、使える最初の声で読み上げられます。順番は「{0}」で変更できます。	src/ui/screens/voice.js:183	{0} = models
+283rev	ok	What you say	話した言葉	src/ui/screens/voice.js:184	
+127uny	ok	To keep your voice on the phone, type with your keyboard's microphone key: iPhone and most Android keyboards can dictate on the phone itself.	声を端末の外に出したくないときは、キーボードのマイクキーで音声入力してください。iPhoneと多くのAndroidのキーボードは、端末上で音声入力できます。	src/ui/screens/voice.js:186	
+bewa4v	ok	What she says	Shioriの言葉	src/ui/screens/voice.js:187	
 12fg67m	ok	Searching the web	Web検索	src/ui/screens/welcome.js:20	
 13sqoog	ok	Shiori, Koe and Kokoro	Shiori、Koe、Kokoro	src/ui/screens/welcome.js:20	
 1okgje1	ok	What annai can do	annaiでできること	src/ui/screens/welcome.js:20	

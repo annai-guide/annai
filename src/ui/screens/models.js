@@ -1,7 +1,7 @@
 import { h, crumb, t, field, savedField, savedRadios, numberIn, queueSave, plural } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { wantedTtl } from '../../core/agent/warmth.js';
-import { providerOf, abilityName, modelOf, abilityOf, saveRoles, SPEECH_ROLES, STAND_INS } from '../../core/llm/config.js';
+import { providerOf, abilityName, modelOf, modelNames, abilityOf, saveRoles, SPEECH_ROLES, STAND_INS } from '../../core/llm/config.js';
 import { LEVELS } from '../../core/llm/reasoning.js';
 import { ROLE_KINDS } from '../../core/llm/provider-desc.js';
 import { speechAdd } from '../../core/llm/providers.js';
@@ -106,7 +106,9 @@ function providersSection(ctx, cfg) {
 
 /** @param {any} ctx @param {import('../../core/llm/config.js').ModelConfig} cfg */
 function rolesSection(ctx, cfg) {
-  const models = Object.values(cfg.models).map(modelOf);
+  // By their provider's name too: the lists and choices mix providers, which often have the same model.
+  const named = modelNames(cfg);
+  const models = Object.values(cfg.models).map(modelOf).map((m) => ({ ...m, name: named(m.name) }));
   /** The ability kind a model belongs to: a role takes models of its own kind. @param {string} id */
   const kind = (id) => abilityOf(cfg, id)?.kind;
   const nameOf = (/** @type {string} */ id) => STAND_IN_NAMES[id] ?? models.find((m) => m.id === id)?.name ?? id;

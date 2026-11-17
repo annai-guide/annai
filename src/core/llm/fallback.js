@@ -162,9 +162,11 @@ export function attemptWhy(a, { now = Date.now(), plain = false } = {}) {
 /**
  * Why every model failed, for a card: one line per model, each reason once and in words; a failure to
  * connect is annai's words, not the browser's, and with no connection on the device, that is said once instead.
- * @param {Parameters<typeof attemptWhy>[0][]} attempts @param {{ offline?: boolean, now?: number, plain?: boolean }} [o] plain: for a model to read, in annai's English and never the screens' words
+ * @param {Parameters<typeof attemptWhy>[0][]} attempts @param {{ offline?: boolean, now?: number, plain?: boolean, names?: (name: string) => string }} [o] plain: for a model
+ *   to read, in annai's English and never the screens' words, each model by its own name unless names says otherwise (the Trace's error rows
+ *   do); names: the screens' names for models (config.js modelNames)
  */
-export function failedText(attempts, { offline = false, now = Date.now(), plain = false } = {}) {
+export function failedText(attempts, { offline = false, now = Date.now(), plain = false, names = (n) => n } = {}) {
   /** @type {Map<string, Set<string>>} */
   const lines = new Map();
   for (const [i, a] of attempts.entries()) {
@@ -177,7 +179,7 @@ export function failedText(attempts, { offline = false, now = Date.now(), plain 
   }
   /* en */
   const offlineLine = plain ? 'This device is offline.' : t`This device is offline.`;
-  return [...(offline ? [offlineLine] : []), ...[...lines].map(([name, why]) => named(name, plain ? [...why].join(' ') : sentences(...why), plain))].join('\n');
+  return [...(offline ? [offlineLine] : []), ...[...lines].map(([name, why]) => named(names(name), plain ? [...why].join(' ') : sentences(...why), plain))].join('\n');
 }
 
 /** "Name: words", a label and what it says: in the screens' punctuation, or annai's English for a model. @param {string} name @param {string} words @param {boolean} plain */
@@ -205,14 +207,15 @@ export function whyOf(e, { role = 'main', online = true } = {}) {
 
 /**
  * Why's words: for the user in the screens' language, or (plain) annai's English for a model and the log. @param {Why} why @param {boolean} [plain]
+ * @param {{ names?: (name: string) => string }} [o] names: as failedText's
  * @returns {string}
  */
-export function whyWords(why, plain = false) {
+export function whyWords(why, plain = false, { names } = {}) {
   if (why.halves) {
-    const lines = (/** @type {string} */ name, /** @type {Why} */ w) => whyWords(w, plain).split('\n').map((l) => named(name, l, plain));
+    const lines = (/** @type {string} */ name, /** @type {Why} */ w) => whyWords(w, plain, { names }).split('\n').map((l) => named(name, l, plain));
     return [...lines(/* en */ 'Koe', why.halves.koe), ...lines(/* en */ 'Kokoro', why.halves.kokoro)].join('\n');
   }
-  if (why.attempts) return failedText(why.attempts, { offline: why.offline, plain });
+  if (why.attempts) return failedText(why.attempts, { offline: why.offline, plain, names });
   if (why.role !== undefined) return noModel(why.role, plain);
   if (why.kind) {
     const e = new ProviderError(/** @type {any} */ (why.kind), String(why.message ?? ''), { provider: why.provider, said: why.said });

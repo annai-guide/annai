@@ -1685,8 +1685,13 @@ export class LiveKoe {
     const first = h.logged === null;
     h.logged = text;
     if (first && !dismissed) this.#watched = true;
+    const modelId = this.modelId; // as it is now: a close clears it before the write below runs
     return this.#write(async () => {
-      if (!first) return { type: 'heard.text', actor: 'system', data: { of: h.id, wake: this.#wake, text, by: this.modelId } };
+      if (!first) {
+        // By the model's name, as her line names it (the Trace's "written down by").
+        const rec = (await this.c.llm.config()).models[modelId ?? ''];
+        return { type: 'heard.text', actor: 'system', data: { of: h.id, wake: this.#wake, text, by: rec ? modelOf(rec).name : null } };
+      }
       const clip = await this.#clip(h);
       // A word or two plainly in a language the user doesn't speak is Gemini mishearing a short reply ("¿Qué?" for "What?"): flagged, never a change of language.
       const stray = this.#languages ? strayLanguage(text, this.#languages) : '';

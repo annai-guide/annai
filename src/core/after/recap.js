@@ -162,12 +162,15 @@ export function recapText(j, { profile = '', memory = '', notes = [], language =
   return text.length > RECAP_CHARS ? `${text.slice(0, RECAP_CHARS - 1)}…` : text;
 }
 
-/** Why the recap wasn't written, in plain words with what to do next. @param {unknown} e */
-export function recapError(e) {
+/**
+ * Why the recap wasn't written, in plain words with what to do next. @param {unknown} e
+ * @param {{ names?: (name: string) => string }} [o] names: as failedText's
+ */
+export function recapError(e, { names } = {}) {
   if (e instanceof AllFailedError) {
     // Each model's failure in words, as a card says it (failedText): a provider's own, else annai's by its kind.
     if (!e.attempts.length) return t`No model is set for the utility or main role. Add one in Settings → Models.`;
-    return sentences(t`No model could write it.`, ...failedText(e.attempts).split('\n'), t`Check Settings → Models, then try again.`);
+    return sentences(t`No model could write it.`, ...failedText(e.attempts, { names }).split('\n'), t`Check Settings → Models, then try again.`);
   }
   if (e instanceof ProviderError) return sentences(explain(e), t`Try again in a while.`);
   return String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e);

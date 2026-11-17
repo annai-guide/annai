@@ -3,7 +3,7 @@ import { voiceMode, routeOf, offNote } from './mode.js';
 import { SYS, SYS_DEVICE, ensureDeviceScope, newId } from '../scopes.js';
 import { ProviderError } from '../llm/contract.js';
 import { COOLDOWN_MS, NETWORK_RETRIES, chatCandidates } from '../llm/fallback.js';
-import { speechKind, modelOf, abilityOf, STAND_INS } from '../llm/config.js';
+import { speechKind, modelOf, modelNames, abilityOf, STAND_INS } from '../llm/config.js';
 import { Speaker, speechOutEntries, Arrivals, playStream } from './speaker.js';
 import { estimateSeconds } from './stream-start.js';
 import { voicePlatform } from './platform.js';
@@ -789,6 +789,7 @@ export class Voice {
       model: mainId ? modelOf(cfg.models[mainId]) : null,
       asr: (id) => speechKind(cfg, types, id) === 'in' && free(id),
       dictation: Boolean(this.platform?.dictation.available()) && !this.dictationFailed,
+      names: modelNames(cfg),
     });
   }
 

@@ -24,11 +24,11 @@ test("Models shows Koe's two lists right after Main, each with a line on when it
   await expect(classic.getByLabel('Wait for the first words (seconds)')).toHaveAttribute('placeholder', '8');
   await addProvider(page, 'Custom provider', { ability: 'Chat Completions', name: 'Fast', url: 'https://fast.example.test/v1', key: 'sk-fast', model: 'fast-model', look: false });
   await expect(page.getByLabel('Add a model to Koe · Live')).toHaveCount(0);
-  await page.getByLabel('Add a model to Koe · Chat').selectOption({ label: 'fast-model' });
+  await page.getByLabel('Add a model to Koe · Chat').selectOption({ label: 'Fast / fast-model' });
   await page.getByRole('button', { name: 'Add to Koe · Chat' }).click();
-  await expect(roles.locator('.role').nth(2).getByText('1. fast-model')).toBeVisible();
+  await expect(roles.locator('.role').nth(2).getByText('1. Fast / fast-model')).toBeVisible();
   await page.reload();
-  await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(2).getByText('1. fast-model')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(2).getByText('1. Fast / fast-model')).toBeVisible();
   await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(0).getByText('No models yet. Add one.')).toBeVisible();
 });
 
@@ -150,8 +150,8 @@ test("Trace shows both halves' turns and their notes; the notes show in the conv
     await expect(page.getByText('Koe to Kokoro · append · Is Nepenthe open now?')).toBeVisible();
     await expect(page.getByText('Kokoro to Koe · append · Nepenthe is open till 10 tonight (nepenthe.com).')).toBeVisible();
     await filterTrace(page, { kind: 'Models', type: 'model.turn' });
-    await expect(page.getByText(/Koe · koe-classic: koe-model · 1 attempt/).first()).toBeVisible();
-    await expect(page.getByText(/Kokoro · main: kokoro-model · 1 attempt/).first()).toBeVisible();
+    await expect(page.getByText(/Koe · koe-classic: Koe stand-in \/ koe-model · 1 attempt/).first()).toBeVisible();
+    await expect(page.getByText(/Kokoro · main: Kokoro stand-in \/ kokoro-model · 1 attempt/).first()).toBeVisible();
     // On by default (the user, 2026-10-23: "always on by default and able to be turned off in the settings"), and no switch on the conversation.
     await page.goto('/#/talk');
     await atConversation(page);

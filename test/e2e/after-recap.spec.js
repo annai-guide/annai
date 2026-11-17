@@ -13,10 +13,10 @@ async function models(page, origin) {
   await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
   await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Writer', url: `${origin}/u`, key: 'sk-test-u', model: 'u-model' });
   // Each role's list is drawn again once a model joins it: wait for that before the next.
-  await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+  await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in / b-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   await expect(page.getByLabel('Add a model to main').locator('option', { hasText: 'b-model' })).toHaveCount(0);
-  await page.getByLabel('Add a model to utility').selectOption({ label: 'u-model' });
+  await page.getByLabel('Add a model to utility').selectOption({ label: 'Writer / u-model' });
   await page.getByRole('button', { name: 'Add to utility' }).click();
   await expect(page.getByLabel('Add a model to utility').locator('option', { hasText: 'u-model' })).toHaveCount(0);
 }
@@ -37,7 +37,7 @@ test('the recap: written by the utility model from the trip in words, shown safe
     await page.getByRole('link', { name: 'Recap' }).click();
     await expect(page.getByRole('heading', { name: 'Recap' })).toBeVisible();
     await expect(page.getByText('No recap yet.')).toBeVisible();
-    await expect(page.getByText(/^What goes to u-model/)).toBeVisible();
+    await expect(page.getByText(/^What goes to Writer \/ u-model/)).toBeVisible();
     await page.getByRole('button', { name: 'Write the recap' }).click();
     const text = page.locator('.recap-text');
     await expect(text).toContainText('The fog lifted over Bixby Creek Bridge.', { timeout: 20_000 });
@@ -74,7 +74,10 @@ test("a recap that can't be written says why and what to do; with no model the b
     await models(page, llm.origin);
     await page.goto(`/#/trip/${encodeURIComponent(bare)}/recap`);
     await page.getByRole('button', { name: 'Write the recap' }).click();
-    await expect(page.locator('.notice', { hasText: "The recap wasn't written" })).toContainText('Check Settings → Models, then try again.');
+    const card = page.locator('.notice', { hasText: "The recap wasn't written" });
+    await expect(card).toContainText('Check Settings → Models, then try again.');
+    // Each model that failed, by its provider's name first (the user, 2026-11-16).
+    await expect(card).toContainText('No model could write it. Writer / u-model: ');
     await expect(page.getByRole('button', { name: 'Write the recap' })).toBeEnabled();
   } finally {
     await llm.stop();

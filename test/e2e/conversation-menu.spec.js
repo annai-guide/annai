@@ -11,7 +11,7 @@ async function setUp(page, origin) {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
   await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
-  await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+  await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in / b-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   await page.goto('/#/trips');
   await startTrip(page, 'Big Sur');

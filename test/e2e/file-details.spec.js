@@ -327,7 +327,7 @@ test('a PDF Shiori read in the conversation: Delete keeps it under Deleted, and 
     const trip = decodeURIComponent(home.split('#/trip/')[1].split(/[/?]/)[0]);
     // The stand-in reads PDFs, so the conversation keeps the PDF itself.
     await page.goto('/#/models');
-    await page.getByRole('link', { name: /Stand-in/ }).click();
+    await page.getByRole('region', { name: 'Providers' }).getByRole('link', { name: /Stand-in/ }).click();
     await page.getByRole('link', { name: /^b-model/ }).click();
     await page.getByLabel('Takes PDFs').check();
     await expect(savedBy(page.getByLabel('Takes PDFs'))).toHaveText('Saved');

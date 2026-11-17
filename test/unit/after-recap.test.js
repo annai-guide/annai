@@ -219,6 +219,13 @@ test("why a recap wasn't written, in plain words with what to do next", () => {
   assert.equal(recapError(new Error('The model sent back an empty recap.')), 'The model sent back an empty recap.');
 });
 
+test("the card for a recap that wasn't written names each model by its provider's name first (the user, 2026-11-16)", () => {
+  const names = (/** @type {string} */ n) => `Acme / ${n}`;
+  assert.equal(recapError(new AllFailedError([{ model: 'm', name: 'Haiku', outcome: 'auth', ms: 1, error: 'invalid x-api-key' }]), { names }),
+    'No model could write it. Acme / Haiku: Invalid x-api-key. Check Settings → Models, then try again.');
+  assert.equal(recapError(new AllFailedError([{ model: 'm', name: 'Haiku', outcome: 'auth', ms: 1, error: 'invalid x-api-key' }])), 'No model could write it. Haiku: Invalid x-api-key. Check Settings → Models, then try again.');
+});
+
 test('what the Recap screen says goes to the model is true of photos too: one kept as taken can hold where it was taken (review 6)', async () => {
   const { RECAP_SENDS } = /** @type {any} */ (await import('../../src/core/after/recap.js'));
   assert.ok(Array.isArray(RECAP_SENDS) && RECAP_SENDS.length >= 5);

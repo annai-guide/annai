@@ -19,8 +19,8 @@ const heard = { status: 200, type: 'application/json', body: JSON.stringify({ te
 const roleItems = (page, heading) => page.locator('.role', { has: page.getByRole('heading', { name: heading }) }).locator('.role-item > span');
 const IN = 'Speech in: how Shiori hears you';
 const OUT = "Speech out: Shiori's voice";
-const PHONE_IN = ['1. Send audio to the model (when the model takes audio)', "2. Phone dictation (the browser's own; your voice usually goes to Google or Apple)", '3. OpenAI: Whisper Large V3 Turbo'];
-const PHONE_OUT = ["1. Browser voice (the browser's own; some voices go online)", '2. Fish Audio: S2.1 Pro Free (free)', '3. SpaceXAI: Grok Voice TTS 1.0 (Ara)'];
+const PHONE_IN = ['1. Send audio to the model (when the model takes audio)', "2. Phone dictation (the browser's own; your voice usually goes to Google or Apple)", '3. OpenRouter / OpenAI: Whisper Large V3 Turbo'];
+const PHONE_OUT = ["1. Browser voice (the browser's own; some voices go online)", '2. OpenRouter / Fish Audio: S2.1 Pro Free (free)', '3. OpenRouter / SpaceXAI: Grok Voice TTS 1.0 (Ara)'];
 const KEY = 'sk-or-test-key-123';
 /** The ids of the secrets annai keeps, read through its own modules in the page. @param {import('@playwright/test').Page} page @returns {Promise<string[]>} */
 const secretIds = (page) => page.evaluate(async () => {
@@ -36,14 +36,14 @@ async function testBoth(page) {
   // Each page is waited for by its heading before the next press: the provider's page has a Play a sample and a Say something
   // of its own (for its first voice and ear), so a press made while the page being left was still there tested the wrong page,
   // and the model's page drew over it still saying "Not tested yet." (found by running the test on 2 CPUs).
-  await page.getByRole('link', { name: /^OpenRouter/ }).click();
+  await page.getByRole('region', { name: 'Providers' }).getByRole('link', { name: /^OpenRouter/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'OpenRouter' })).toBeVisible();
   await page.getByRole('region', { name: 'Voice', exact: true }).getByRole('link', { name: /^SpaceXAI: Grok Voice TTS 1\.0 \(Ara\)/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'SpaceXAI: Grok Voice TTS 1.0 (Ara)' })).toBeVisible();
   await page.getByRole('button', { name: 'Play a sample' }).click();
   await expect(page.getByText('It works: that was this voice.')).toBeVisible();
   await page.goto('/#/models');
-  await page.getByRole('link', { name: /^OpenRouter/ }).click();
+  await page.getByRole('region', { name: 'Providers' }).getByRole('link', { name: /^OpenRouter/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'OpenRouter' })).toBeVisible();
   await page.getByRole('region', { name: 'Transcription', exact: true }).getByRole('link', { name: /^OpenAI: Whisper Large V3 Turbo/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'OpenAI: Whisper Large V3 Turbo' })).toBeVisible();
@@ -101,7 +101,7 @@ test("Sign in with OpenRouter makes one provider with one key: free chat models,
     await expect(card).toContainText('move them up under Roles');
     await card.getByRole('button', { name: 'Dismiss' }).click();
     await expect(page.getByRole('button', { name: 'Sign in with OpenRouter' })).toBeHidden();
-    await expect(page.getByText('1. Google: Gemma 4 31B (free)')).toBeVisible();
+    await expect(page.getByText('1. OpenRouter / Google: Gemma 4 31B (free)')).toBeVisible();
     await expect(roleItems(page, IN)).toHaveText(PHONE_IN);
     await expect(roleItems(page, OUT)).toHaveText(PHONE_OUT);
     // One provider, with its three abilities, and one key.
@@ -260,7 +260,7 @@ test("OpenRouter's page has its plugin's sign-in in the key's place, the key fie
     return route.fulfill({ status: 200, contentType: 'application/json', headers: cors, body: JSON.stringify({ key: KEY }) });
   });
   await page.goto('/#/models');
-  await page.getByRole('link', { name: /^OpenRouter/ }).click();
+  await page.getByRole('region', { name: 'Providers' }).getByRole('link', { name: /^OpenRouter/ }).click();
   await page.getByRole('region', { name: 'Provider' }).getByRole('button', { name: 'Sign in again' }).click();
   await expect.poll(() => authUrl).toContain('code_challenge_method=S256');
   await page.goto(`/?code=test-code&state=${new URL(authUrl).searchParams.get('state')}`);

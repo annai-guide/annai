@@ -3,7 +3,7 @@ import { seconds, numField, list, sentences, speaksScreens } from '../format.js'
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { shownSettings } from '../../core/shown.js';
 import { voiceSettings } from '../../core/voice/settings.js';
-import { modelOf, abilityOf, providerOf, KOE_REALTIME } from '../../core/llm/config.js';
+import { modelOf, modelNames, abilityOf, providerOf, KOE_REALTIME } from '../../core/llm/config.js';
 import { sample, speechProblem } from '../speech-check.js';
 import { shownWithoutSecrets } from '../../core/agent/net.js';
 import { whereHeard, whereSaid } from '../../core/voice/where.js';
@@ -24,6 +24,8 @@ export async function renderVoice(ctx) {
   const entries = await voice.outEntries();
   const synth = voice.platform?.synth;
   const cfg = await ctx.llm.config();
+  // The tests' models, by their provider's name too.
+  const names = modelNames(cfg);
   const dictation = { available: Boolean(voice.platform?.dictation.available()), local: await voice.dictationLocal() };
   // What this phone makes and plays (spec §10.6), for the device checks.
   const records = (voice.platform?.encoder?.records?.() ?? []).map((/** @type {any} */ r) => r.format);
@@ -72,8 +74,8 @@ export async function renderVoice(ctx) {
         sayStatus.textContent = r.failed === 'blocked' ? t`This browser didn't let annai play sound yet. Tap anywhere on the page, then try again.`
           : r.failed ? t`No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.`
             // A provider's own words may hold a key (spec §9.9), as in a model's Test.
-            : await shownWithoutSecrets(ctx.store, sentences(...r.failedVoices.map((/** @type {any} */ f) => t`${f.name} couldn't speak: ${speechProblem(f.error)}`),
-              r.voices.length ? t`Spoken by ${r.voices.reduce((/** @type {string} */ a, /** @type {string} */ b) => tc('one voice, then the next')`${a}, then ${b}`)}.` : ''));
+            : await shownWithoutSecrets(ctx.store, sentences(...r.failedVoices.map((/** @type {any} */ f) => t`${names(f.name)} couldn't speak: ${speechProblem(f.error)}`),
+              r.voices.length ? t`Spoken by ${r.voices.map(names).reduce((/** @type {string} */ a, /** @type {string} */ b) => tc('one voice, then the next')`${a}, then ${b}`)}.` : ''));
       } catch (e) {
         sayStatus.textContent = speechProblem(e);
       } finally {
@@ -119,7 +121,7 @@ export async function renderVoice(ctx) {
           micStatus.textContent = sentences(lines[0], t`Writing it down…`);
           const text = await voice.transcribe(seg, first);
           const rec = (await ctx.llm.config()).models[first];
-          const name = rec ? modelOf(rec).name : first;
+          const name = rec ? names(modelOf(rec).name) : first;
           lines.push(text ? t`${name} heard: "${text}"` : t`${name} heard speech but wrote nothing down.`);
         } else {
           lines.push(t`Add a transcription model in Settings → Models to see the words.`);

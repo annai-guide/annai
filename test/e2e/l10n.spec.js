@@ -79,7 +79,7 @@ test('a conversation with a Chinese line, a Japanese line and an English one: ea
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
     await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: 'sk-test-b', model: 'b-model' });
-    await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in / b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
     await page.goto('/#/trips');
     await startTrip(page, 'Big Sur');
@@ -289,7 +289,7 @@ test('the announcer tags only her words: the label before them, the choices afte
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
     await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: 'sk-test-b', model: 'b-model' });
-    await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in / b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
     await page.goto('/#/trips');
     await startTrip(page, 'Big Sur');
@@ -817,7 +817,7 @@ test('Don\'t restart, on the card that waits for Shiori, gives the row back and 
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
     await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: 'sk-test-b', model: 'b-model' });
-    await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in / b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
     await page.goto('/#/trips');
     await startTrip(page, 'Big Sur');
@@ -850,7 +850,7 @@ for (const [spoken, sent] of /** @type {const} */ ([['en', 'Where can we eat alo
       await openApp(page, '#/models');
       await waitForServiceWorker(page);
       await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: 'sk-test-b', model: 'b-model' });
-      await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+      await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in / b-model' });
       await page.getByRole('button', { name: 'Add to main' }).click();
       await page.goto('/#/trips');
       await startTrip(page, 'Big Sur');

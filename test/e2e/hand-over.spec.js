@@ -18,7 +18,7 @@ async function setUp(page, origin) {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
   await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
-  await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+  await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in / b-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   await expect(page.getByLabel('Add a model to main').locator('option', { hasText: 'b-model' })).toHaveCount(0);
   await page.goto('/#/talk'); // the open conversation: the new one, as nothing else is open; the dock at rest on home has no type button

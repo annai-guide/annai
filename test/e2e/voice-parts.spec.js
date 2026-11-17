@@ -18,11 +18,11 @@ test("a voice in the speech-out list: added, put first, and its Test plays a sam
     await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(["1. Browser voice (the browser's own; some voices go online)"]);
     await expect(roleItems(page, 'Speech in: how Shiori hears you')).toHaveText(['1. Send audio to the model (when the model takes audio)', "2. Phone dictation (the browser's own; your voice usually goes to Google or Apple)"]);
     await expect(page.getByLabel('Add a model to main').locator('option', { hasText: 'tts-test' })).toHaveCount(0);
-    await page.getByLabel('Add a model to speech-out').selectOption({ label: 'tts-test' });
+    await page.getByLabel('Add a model to speech-out').selectOption({ label: 'Stand-in voice / tts-test' });
     await page.getByRole('button', { name: 'Add to speech-out' }).click();
     // A voice goes ahead of the browser voice, which stays last.
-    await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(['1. tts-test', "2. Browser voice (the browser's own; some voices go online)"]);
-    await page.getByRole('link', { name: /Stand-in voice/ }).click();
+    await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(['1. Stand-in voice / tts-test', "2. Browser voice (the browser's own; some voices go online)"]);
+    await page.getByRole('region', { name: 'Providers' }).getByRole('link', { name: /Stand-in voice/ }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Stand-in voice' })).toBeVisible();
     await page.getByRole('link', { name: /^tts-test/ }).click();
     // The provider's page has a Play a sample too: the model's page first, or the press tests the page being left (CI, 2026-10-19).
@@ -65,7 +65,7 @@ test("a transcription model's Test: you say something and it writes it down, sen
     await page.goto('/#/trace');
     await filterTrace(page, { kind: 'Web' });
     const line = page.locator('.trace li').filter({ hasText: 'asr-test' }).first().locator('.d');
-    await expect(line).toHaveText(/^asr-test · ok \(200\) · \d+ ms · webm, \d+(\.\d)? kB$/);
+    await expect(line).toHaveText(/^Stand-in ears \/ asr-test · ok \(200\) · \d+ ms · webm, \d+(\.\d)? kB$/);
     expect(Number(/webm, ([\d.]+) kB/.exec(await line.innerText())?.[1])).toBeLessThan(15); // the same speech as WAV is about 70 KB
   } finally {
     await asr.stop();
@@ -85,15 +85,15 @@ test('Settings → Voice: a voice that fails gives its sentence to the next one;
     await addProvider(page, 'Custom provider', { ability: 'Voice', name: 'Voice A', url: `${server.origin}/bad`, key: 'sk-a-test', model: 'voice-a' });
     await addProvider(page, 'Custom provider', { ability: 'Voice', name: 'Voice B', url: `${server.origin}/good`, key: 'sk-b-test', model: 'voice-b' });
     await addProvider(page, 'Custom provider', { ability: 'Transcription', name: 'Ears', url: `${server.origin}/ears`, key: 'sk-e-test', model: 'ears' });
-    for (const m of ['voice-a', 'voice-b']) {
+    for (const m of ['Voice A / voice-a', 'Voice B / voice-b']) {
       await page.getByLabel('Add a model to speech-out').selectOption({ label: m });
       await page.getByRole('button', { name: 'Add to speech-out' }).click();
       // The screen is drawn again: once the voice has left the picker, the next choice is safe.
       await expect(page.getByLabel('Add a model to speech-out').locator('option', { hasText: m })).toHaveCount(0);
     }
-    await page.getByLabel('Add a model to speech-in').selectOption({ label: 'ears' });
+    await page.getByLabel('Add a model to speech-in').selectOption({ label: 'Ears / ears' });
     await page.getByRole('button', { name: 'Add to speech-in' }).click();
-    await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(['1. voice-a', '2. voice-b', "3. Browser voice (the browser's own; some voices go online)"]);
+    await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(['1. Voice A / voice-a', '2. Voice B / voice-b', "3. Browser voice (the browser's own; some voices go online)"]);
     await page.goto('/#/settings');
     await page.getByRole('link', { name: 'Voice', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Voice', exact: true })).toBeVisible();
@@ -102,14 +102,14 @@ test('Settings → Voice: a voice that fails gives its sentence to the next one;
     await expect(page.getByText(/^Speech leaves this phone in the smallest format each service takes\. Made here: ogg, webm, (.+, )?wav( \(recorded: [a-z0-9, ]+\))?\. Played here: .*\bogg\b.*\.$/)).toBeVisible();
     await page.getByRole('button', { name: 'Test the voice' }).click();
     // Says the first voice failed, then who spoke (the second emulator re-check: it said only "Spoken by Browser voice.").
-    await expect(page.getByText(/^voice-a couldn't speak: .+ Spoken by voice-b\.$/)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(/^Voice A \/ voice-a couldn't speak: .+ Spoken by Voice B \/ voice-b\.$/)).toBeVisible({ timeout: 20_000 });
     expect(await page.locator('main').innerText(), "a provider's words that echo the key never reach the page").not.toContain('sk-a-test');
     expect(server.bodies('/bad/audio/speech')).toHaveLength(1);
     expect(server.bodies('/good/audio/speech')).toHaveLength(2);
     await page.getByLabel('Pause that ends a sentence (ms)').fill('900');
     await leaveSaved(page.getByLabel('Pause that ends a sentence (ms)'));
     await page.getByRole('button', { name: 'Test the microphone' }).click();
-    await expect(page.getByText(/ears heard: "Is there a gas station nearby\?"/)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(/Ears \/ ears heard: "Is there a gas station nearby\?"/)).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(/^Heard \d\.\d seconds of speech\./)).toBeVisible();
     await page.goto('/#/trace');
     await filterTrace(page, { kind: 'Web' });

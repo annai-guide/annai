@@ -106,7 +106,7 @@ test("a provider plugin's own Add flow, by hand: OpenRouter's Add shows its sign
   // (the second emulator re-check: a summary was paid for that nobody had chosen).
   await page.getByRole('link', { name: 'Models', exact: true }).click();
   const roles = page.getByRole('region', { name: 'Roles' });
-  await expect(roles.locator('.role').first().getByText(/^1\. Google: Gemma 4 31B/)).toBeVisible();
+  await expect(roles.locator('.role').first().getByText(/^1\. OpenRouter \/ Google: Gemma 4 31B/)).toBeVisible();
   await expect(roles.locator('.role-item > span').filter({ hasText: /Claude/ })).toHaveCount(0);
 });
 

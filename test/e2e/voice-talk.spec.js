@@ -26,15 +26,15 @@ test('a spoken back-and-forth: tap, ask aloud, hear her answer, answer her, and 
     await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${server.origin}/b`, key: 'sk-chat-test', model: 'b-model' });
     await addProvider(page, 'Custom provider', { ability: 'Transcription', name: 'Ears', url: `${server.origin}/ears`, key: 'sk-ears-test', model: 'ears' });
     await addProvider(page, 'Custom provider', { ability: 'Voice', name: 'Voice', url: `${server.origin}/voice`, key: 'sk-voice-test', model: 'voice' });
-    await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in / b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
-    await expect(page.getByText('1. b-model')).toBeVisible();
-    await page.getByLabel('Add a model to speech-in').selectOption({ label: 'ears' });
+    await expect(page.getByText('1. Stand-in / b-model')).toBeVisible();
+    await page.getByLabel('Add a model to speech-in').selectOption({ label: 'Ears / ears' });
     await page.getByRole('button', { name: 'Add to speech-in' }).click();
-    await expect(page.getByText('2. ears')).toBeVisible(); // ahead of phone dictation, which comes last
-    await page.getByLabel('Add a model to speech-out').selectOption({ label: 'voice' });
+    await expect(page.getByText('2. Ears / ears')).toBeVisible(); // ahead of phone dictation, which comes last
+    await page.getByLabel('Add a model to speech-out').selectOption({ label: 'Voice / voice' });
     await page.getByRole('button', { name: 'Add to speech-out' }).click();
-    await expect(page.getByText('1. voice')).toBeVisible();
+    await expect(page.getByText('1. Voice / voice')).toBeVisible();
     await page.goto('/#/voice');
     await page.getByRole('radio', { name: 'On', exact: true }).check();
     await expect(page.getByText('Voice is on.')).toBeVisible();
@@ -80,7 +80,7 @@ async function setUpVoice(page, origin, { decide = false } = {}) {
   await addProvider(page, 'Custom provider', { ability: 'Voice', name: 'Voice', url: `${origin}/voice`, key: 'sk-voice-test', model: 'voice' });
   if (decide) await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Decider', url: `${origin}/d`, key: 'sk-decide-test', model: 'd-model' });
   /** @type {[string, string][]} */
-  const roles = [['main', 'b-model'], ['speech-in', 'ears'], ['speech-out', 'voice'], ...(decide ? [/** @type {[string, string]} */ (['decide', 'd-model'])] : [])];
+  const roles = [['main', 'Stand-in / b-model'], ['speech-in', 'Ears / ears'], ['speech-out', 'Voice / voice'], ...(decide ? [/** @type {[string, string]} */ (['decide', 'Decider / d-model'])] : [])];
   for (const [role, model] of roles) {
     await page.getByLabel(`Add a model to ${role}`).selectOption({ label: model });
     await page.getByRole('button', { name: `Add to ${role}` }).click();

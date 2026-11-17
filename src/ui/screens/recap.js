@@ -8,6 +8,7 @@ import { text } from '../../core/bytes.js';
 import { codec } from '../photo-codec.js';
 import { fileHref, relTime, wording, sentenceGap } from '../format.js';
 import { tripStamps, stampMarks } from '../stamps.js';
+import { modelNames } from '../../core/llm/config.js';
 
 /** Recaps being written, by trip: the screen drawn again finds its own, and leaving the screen stops it. @type {Map<string, AbortController>} */
 const writing = new Map();
@@ -24,9 +25,12 @@ export async function renderRecap(ctx, route) {
   const got = await ctx.ws.read(id, RECAP_FILE).catch(() => undefined);
   const recap = got ? text(got.bytes) : '';
   const stamps = await tripStamps(ctx, id);
-  const model = ctx.llm ? recapModels(await ctx.llm.config().catch(() => null))[0] ?? null : null;
+  const cfg = ctx.llm ? await ctx.llm.config().catch(() => null) : null;
+  const model = recapModels(cfg)[0] ?? null;
+  // By its provider's name too: what goes to it goes to that provider.
+  const names = modelNames(cfg);
   const trip = `#/trip/${encodeURIComponent(id)}`;
-  const busy = (/** @type {{ name: string }} */ m) => t`Writing it: ${m.name} is reading the conversation. This can take a minute.`;
+  const busy = (/** @type {{ name: string }} */ m) => t`Writing it: ${names(m.name)} is reading the conversation. This can take a minute.`;
   const status = h('p', { class: 'sub', role: 'status', text: model && writing.has(id) ? busy(model) : '' });
   const write = h('button', { class: recap ? 'btn' : 'btn pri', type: 'button', disabled: !model || writing.has(id) }, recap ? t`Write it again` : t`Write the recap`);
   const here = () => location.hash.startsWith(`${trip}/recap`);
@@ -43,7 +47,7 @@ export async function renderRecap(ctx, route) {
       await writeRecap({ store: ctx.store, ws: ctx.ws, llm: ctx.llm, trip: id, codec, namer: (p) => pack?.name(p) ?? null, signal: abort.signal });
       ctx.notices.toast(t`The recap is written.`);
     } catch (e) {
-      if (!abort.signal.aborted) ctx.notices.card({ tone: 'warn', title: t`The recap wasn't written`, body: await shownWithoutSecrets(ctx.store, recapError(e)) });
+      if (!abort.signal.aborted) ctx.notices.card({ tone: 'warn', title: t`The recap wasn't written`, body: await shownWithoutSecrets(ctx.store, recapError(e, { names })) });
     } finally {
       writing.delete(id);
       removeEventListener('hashchange', leave);
@@ -76,7 +80,7 @@ export async function renderRecap(ctx, route) {
     status,
     model
       ? h('details', { class: 'sent' },
-        h('summary', { text: t`What goes to ${model.name}` }),
+        h('summary', { text: t`What goes to ${names(model.name)}` }),
         h('ul', {}, ...RECAP_SENDS.map((line) => h('li', { text: line }))))
       : h('p', { class: 'sub' }, t`No model is set up to write it yet.`, sentenceGap(), h('a', { href: '#/models' }, t`Add one in Settings → Models.`)));
 }

@@ -5,6 +5,9 @@ import { toolSwitchList } from './tools.js';
 import { sourceOf } from './talk.js';
 import { readBlob } from '../../core/reach.js';
 import { scopeTitle } from '../../core/scopes.js';
+import { modelNames, withProvider } from '../../core/llm/config.js';
+import { whyWords } from '../../core/llm/fallback.js';
+import { tidyFailed } from '../../core/agent/loop.js';
 
 /** The trace's time: numeric, to the second, as the phone writes it. */
 const STAMP = /** @type {Intl.DateTimeFormatOptions} */ ({ year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' });
@@ -49,6 +52,8 @@ export function newestFirst(events, limit) {
 /** @param {any} ctx @param {{ params: Record<string, string> }} route */
 export async function renderTrace(ctx, route) {
   const scopes = await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.listScopes());
+  // A model a line names by its name alone gets its provider's too.
+  const names = modelNames(await ctx.llm?.config().catch(() => null));
   const titles = new Map(scopes.map((/** @type {any} */ s) => [s.id, s.kind === 'sys' ? t`System · ${scopeTitle(s)}` : scopeTitle(s)]));
   // To choose from: me, the system scopes, the dated trips, the 30 newest chats, and the one asked for. Everything still means every scope.
   const chats = scopes.filter((/** @type {any} */ s) => s.kind === 'trip' && !s.start).sort((/** @type {any} */ a, /** @type {any} */ b) => b.updated - a.updated).slice(0, CHATS_LISTED);
@@ -86,7 +91,7 @@ export async function renderTrace(ctx, route) {
     const perWake = new Map();
     for (const id of new Set(rows.map((e) => e.scope))) for (const [w, c] of (await costs(ctx.store, id)).byWake) perWake.set(w, c);
     if (my !== pending) return;
-    entries.replaceChildren(...(rows.length ? rows.map((e) => row(ctx, e, titles, perWake)) : [h('li', { class: 'empty', text: t`Nothing here yet.` })]));
+    entries.replaceChildren(...(rows.length ? rows.map((e) => row(ctx, e, titles, perWake, names)) : [h('li', { class: 'empty', text: t`Nothing here yet.` })]));
     entries.setAttribute('aria-busy', 'false');
   };
   /** @type {ReturnType<typeof setTimeout> | undefined} */
@@ -103,26 +108,37 @@ export async function renderTrace(ctx, route) {
     ctx.agent ? h('section', { class: 'panel', 'aria-label': t`Tool switches` }, h('h2', { class: 'section', text: t`Tool switches` }), await toolSwitchList(ctx)) : null);
 }
 
-/** @param {any} ctx @param {any} e @param {Map<string, string>} titles @param {Map<string, number>} [perWake] */
-function row(ctx, e, titles, perWake) {
+/** @param {any} ctx @param {any} e @param {Map<string, string>} titles @param {Map<string, number>} [perWake] @param {(name: string) => string} [names] */
+function row(ctx, e, titles, perWake, names) {
   return h('li', {}, h('details', {},
     h('summary', {},
       h('span', { class: 'tm', text: when(e.ts, undefined, STAMP) }),
       // Its type and who wrote it are codes, as the log keeps them (decision 11).
       h('span', { class: 'k', lang: 'en', text: e.type }),
       h('span', { class: 'sub' }, titles.get(e.scope) ?? e.scope, ' · ', h('span', { lang: 'en', text: e.actor })),
-      h('span', { class: 'd' }, ...summaryShown(e, perWake))),
+      h('span', { class: 'd' }, ...summaryShown(e, perWake, names))),
     // The entry as it is stored, a developer's words.
     h('pre', { lang: 'en', text: JSON.stringify(e, null, 2) }),
     e.refs?.length ? storedText(ctx, e) : null));
 }
 
 /**
+ * An error entry's words, in annai's English as the log keeps them, but a model by its provider's name first (config.js modelNames):
+ * made again from the why a model failure or a tidy-up failure kept; an older entry, which kept none, as it stored them.
+ * @param {any} d the entry's data @param {(name: string) => string} [names]
+ */
+function errorMessage(d, names) {
+  if (d.why && d.kind === 'model') return whyWords(d.why, true, { names });
+  if (d.why && d.kind === 'compaction') return tidyFailed(d.why, true, { names });
+  return d.message;
+}
+
+/**
  * The words an entry keeps as they were written, which its line shows: a model's wake reasons and notes, errors, reasons, tools'
  * results. They are English (a model's, or annai's for the log), so the line marks them so (decision 11); the user's own words are
- * not among them. Cut as the line cuts them. @param {any} e @returns {string[]}
+ * not among them. Cut as the line cuts them. @param {any} e @param {{ names?: (name: string) => string }} [o] names: as traceSummary's @returns {string[]}
  */
-export function traceStored(e) {
+export function traceStored(e, { names } = {}) {
   const d = e.data ?? {};
   const cut = (/** @type {unknown} */ x, n = 100) => {
     const text = String(x ?? '');
@@ -136,7 +152,7 @@ export function traceStored(e) {
   else if (e.type === 'reading') kept = [d.text ? cut(d.text) : ''];
   else if (e.type === 'net.request' || e.type === 'push.sync') kept = [d.error ? cut(d.error) : ''];
   else if (e.type === 'live.session') kept = [d.why ? cut(d.why) : ''];
-  else if (e.type === 'error') kept = [`${d.kind ?? /* en */ 'error'}: ${cut(d.message)}`];
+  else if (e.type === 'error') kept = [`${d.kind ?? /* en */ 'error'}: ${cut(errorMessage(d, names))}`];
   else if (e.type === 'backup.error') kept = [cut(d.message)];
   else if (e.type === 'backup.peek') kept = [cut(d.problem)];
   else if (e.type === 'state') kept = [d.why];
@@ -144,10 +160,10 @@ export function traceStored(e) {
   return kept.filter((x) => typeof x === 'string' && x.trim() !== '').map(String);
 }
 
-/** An entry's line, with the words it keeps as written marked English where they show. @param {any} e @param {Map<string, number>} [perWake] */
-function summaryShown(e, perWake) {
-  const line = traceSummary(e, { costs: perWake });
-  const kept = [...new Set(traceStored(e))].filter((x) => line.includes(x));
+/** An entry's line, with the words it keeps as written marked English where they show. @param {any} e @param {Map<string, number>} [perWake] @param {(name: string) => string} [names] */
+function summaryShown(e, perWake, names) {
+  const line = traceSummary(e, { costs: perWake, names });
+  const kept = [...new Set(traceStored(e, { names }))].filter((x) => line.includes(x));
   return linkIn(line, ...kept.map((x) => h('span', { lang: 'en', text: x })));
 }
 
@@ -165,10 +181,11 @@ const NEWER_FROM = /** @type {Record<string, string>} */ ({
 
 /**
  * One line about an event: what Shiori did, sent and read (spec §15). costs: the cost of each wake. annai's words are the screens';
- * what the entry holds (types, names, codes, texts, addresses) is shown as it is kept.
- * @param {any} e @param {{ costs?: Map<string, number> }} [o]
+ * what the entry holds (types, names, codes, texts, addresses) is shown as it is kept; a model after its provider's name, the one the
+ * entry kept, else names' (config.js modelNames).
+ * @param {any} e @param {{ costs?: Map<string, number>, names?: (name: string) => string }} [o]
  */
-export function traceSummary(e, { costs: perWake } = {}) {
+export function traceSummary(e, { costs: perWake, names = (n) => n } = {}) {
   const d = e.data ?? {};
   const cut = (/** @type {unknown} */ s, n = 100) => {
     const text = String(s ?? '');
@@ -194,7 +211,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
       d.answer ? t`an answer` : d.meanwhile ? t`while she was thinking` : null, d.dismissed ? (d.source === 'live' ? t`she didn't answer` : t`not for Shiori`) : null,
       d.clip ? (d.clipFormat ? t`clip kept: ${d.clipFormat}, ${size(d.clipBytes ?? 0)}` : t`clip kept`) : null);
   }
-  if (e.type === 'heard.text') return line(quoted(d.text), d.by ? t`written down by ${d.by}` : null);
+  if (e.type === 'heard.text') return line(quoted(d.text), d.by ? t`written down by ${names(d.by)}` : null);
   if (e.type === 'out.show') return cut(d.card?.title ?? d.card?.text ?? '');
   if (e.type === 'out.ask') return cut(d.question);
   if (e.type === 'grounded') return line(t`from ${sourceOf(d)}`, cut(d.text), plural((d.links ?? []).length, '# link', '# links'));
@@ -263,18 +280,18 @@ export function traceSummary(e, { costs: perWake } = {}) {
     const [best, p] = Object.entries(d.result ?? {}).sort((a, b) => Number(b[1]) - Number(a[1]))[0] ?? ['?', 0];
     return line(`${best} (${Math.round(Number(p) * 100)}%)`, t`by ${d.by}`);
   }
-  if (e.type === 'error') return `${d.kind ?? /* en */ 'error'}: ${cut(d.message)}`;
+  if (e.type === 'error') return `${d.kind ?? /* en */ 'error'}: ${cut(errorMessage(d, names))}`;
   if (e.type === 'model.turn') {
     const n = (d.attempts ?? []).length;
     // Whose turn: Koe's, Kokoro's, or Shiori's as one half.
     const who = d.tag === 'koe' ? /* en */ 'Koe · ' : d.half === 'kokoro' ? /* en */ 'Kokoro · ' : d.tag === 'conversation' ? /* en */ 'Shiori · ' : '';
-    return `${who}${line(`${d.role}: ${d.answeredBy ?? t`no answer`}`, plural(n, '# attempt', '# attempts'), d.cost !== undefined ? formatCost(d.cost) : null)}`;
+    return `${who}${line(`${d.role}: ${d.answeredBy ? names(d.answeredBy) : t`no answer`}`, plural(n, '# attempt', '# attempts'), d.cost !== undefined ? formatCost(d.cost) : null)}`;
   }
   // A live session's life (K4): never its address or key, which annai never keeps.
   if (e.type === 'live.session') {
     const latency = [d.baseLatency === undefined || d.baseLatency === null ? null : t`${Math.round(d.baseLatency * 1000)} ms processing latency`,
       d.outputLatency === undefined || d.outputLatency === null ? null : t`${Math.round(d.outputLatency * 1000)} ms output latency`].filter((x) => x !== null);
-    return line(t`live session ${d.state}`, d.model, d.ms !== undefined ? duration(d.ms) : null, d.why ? cut(d.why) : null, d.kind,
+    return line(t`live session ${d.state}`, d.model ? withProvider(d.endpoint ?? '', d.model) : null, d.ms !== undefined ? duration(d.ms) : null, d.why ? cut(d.why) : null, d.kind,
       d.bytesIn !== undefined ? t`${size(d.bytesIn)} in, ${size(d.bytesOut ?? 0)} out` : null, d.cost !== undefined ? formatCost(d.cost) : null,
       d.sampleRate ? list([t`sound at ${num(d.sampleRate / 1000, { maximumFractionDigits: 1 })} kHz`, ...latency], 'plain') : null);
   }
@@ -300,7 +317,7 @@ export function traceSummary(e, { costs: perWake } = {}) {
     const sent = !d.format && d.bytes ? (d.kept ? t`${size(d.bytes)} sent, after a kept turn` : t`${size(d.bytes)} sent`) : null;
     // Claude's earlier thinking sent back within a turn, counted (the keep-reasoning design §5): never the thinking itself.
     const natives = d.natives ? (d.natives.changed ? t`earlier thinking not sent: something before it changed` : plural(d.natives.sent ?? 0, 'thinking of # earlier step sent back', 'thinking of # earlier steps sent back')) : null;
-    return line(d.model ?? '', `${d.outcome ?? ''}${d.status ? ` (${d.status})` : ''}`, `${d.ms ?? '?'} ms`, clips, sent, natives);
+    return line(d.model ? withProvider(d.endpoint ?? '', d.model) : '', `${d.outcome ?? ''}${d.status ? ` (${d.status})` : ''}`, `${d.ms ?? '?'} ms`, clips, sent, natives);
   }
   if (e.type === 'pack.download') {
     return line(plural(d.files ?? 0, '# file', '# files'), size(d.bytes ?? 0), plural(d.guides ?? 0, '# guide', '# guides'), d.failed ? t`${d.failed} failed` : null,

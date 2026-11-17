@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit } from './agent-kit.js';
+import { agentKit, until } from './agent-kit.js';
 import { compactionNeed, cutAt, renderForSummary, coldSystem, summaryLanguage } from '../../src/core/agent/compaction.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { ME } from '../../src/core/scopes.js';
@@ -82,6 +82,24 @@ test('due at a pause: housekeeping waits until shortly before the cache expires'
   await k.agent.idle();
   assert.equal(timers.length, 1);
   assert.ok(timers[0].ms > 250_000 && timers[0].ms <= 255_000, String(timers[0].ms));
+});
+
+test("housekeeping from the timer that fails says so in a notice that names its model by its provider's name first (the user, 2026-11-16; the final review's finding A)", async () => {
+  /** @type {(() => void)[]} */
+  const timers = [];
+  // Shortly before the cache goes cold, the model that holds it writes the summary: here it fails.
+  const small = (/** @type {string} */ text) => say(text, { usage: { input: 50, output: 5 } });
+  const k = await agentKit([[small('1'), small('2'), small('3'), small('4'), say('5', { usage: { input: 7500, output: 5 } }), { error: 'auth', status: 401, message: 'bad main key' }]], {
+    models: [{ contextWindow: 10000 }], agent: { timers: { set: (/** @type {() => void} */ fn) => timers.push(fn), clear: () => {} } },
+  });
+  for (let i = 1; i <= 5; i++) {
+    k.agent.send(`Turn ${i}`);
+    await k.agent.idle();
+  }
+  timers[0]();
+  await until(() => k.notices.length > 0);
+  assert.equal(k.notices[0].title, "Shiori couldn't tidy up the conversation");
+  assert.match(k.notices[0].body, /^E0 \/ model-0: .*bad main key.* She will try again later\.$/is);
 });
 
 test('forced: a turn about to overflow is compacted before its next call', async () => {

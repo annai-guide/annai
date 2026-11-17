@@ -16,15 +16,15 @@ test('providers, models and roles are set in Settings → Models, survive a relo
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
   await addProvider(page, 'Custom provider', { ability: 'Chat Completions', name: 'Endpoint A', url: 'https://a.example.test/v1', key: 'sk-test-secret-a', model: 'a-model', look: false });
-  await page.getByLabel('Add a model to main').selectOption({ label: 'a-model' });
+  await page.getByLabel('Add a model to main').selectOption({ label: 'Endpoint A / a-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
-  await expect(page.getByText('1. a-model')).toBeVisible();
+  await expect(page.getByText('1. Endpoint A / a-model')).toBeVisible();
   await page.getByLabel('Reasoning for main').selectOption('high');
   await expect(savedBy(page.getByLabel('Reasoning for main'))).toHaveText('Saved');
   await page.reload();
-  await expect(page.getByText('1. a-model')).toBeVisible();
+  await expect(page.getByText('1. Endpoint A / a-model')).toBeVisible();
   await expect(page.getByLabel('Reasoning for main')).toHaveValue('high');
-  await page.getByRole('link', { name: /Endpoint A/ }).click();
+  await page.getByRole('region', { name: 'Providers' }).getByRole('link', { name: /Endpoint A/ }).click();
   await expect(page.getByLabel('API key')).toHaveValue('');
   await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /saved/);
   expect(await page.content()).not.toContain('sk-test-secret-a');
@@ -80,11 +80,11 @@ test('a conversation falls back from one provider to another, and the trace show
     await waitForServiceWorker(page);
     await addProvider(page, 'Custom provider', { ability: 'Chat Completions', name: 'Endpoint A', url: `${llm.origin}/a/v1`, key: 'sk-test-secret-a', model: 'a-model' });
     await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Endpoint B', url: `${llm.origin}/b`, key: 'sk-test-secret-b', model: 'b-model' });
-    for (const m of ['a-model', 'b-model']) {
+    for (const m of ['Endpoint A / a-model', 'Endpoint B / b-model']) {
       await page.getByLabel('Add a model to main').selectOption({ label: m });
       await page.getByRole('button', { name: 'Add to main' }).click();
     }
-    await expect(page.getByText('2. b-model')).toBeVisible();
+    await expect(page.getByText('2. Endpoint B / b-model')).toBeVisible();
     // Talking to the models is Shiori's conversation now; each model's page has "Try this model" (the user, 2026-10-18).
     await page.getByRole('button', { name: 'Type' }).click();
     await page.getByLabel('Message to Shiori').fill('Hello');
@@ -92,7 +92,7 @@ test('a conversation falls back from one provider to another, and the trace show
     await expect(page.locator('.convo .shiori p').last()).toHaveText('Hello from B.');
     await goToHash(page, '#/trace');
     await page.getByLabel('Type contains').fill('model.turn');
-    await expect(page.getByText(/main: b-model · 2 attempts/)).toBeVisible();
+    await expect(page.getByText(/main: Endpoint B \/ b-model · 2 attempts/)).toBeVisible();
     await filterTrace(page, { kind: 'Models', type: 'net.request' });
     // The two attempts (Custom provider's look at each server is in the trace too, as web requests without a key).
     await expect(page.locator('ol.trace > li').filter({ hasText: /[ab]-model · / })).toHaveCount(2);
@@ -100,6 +100,145 @@ test('a conversation falls back from one provider to another, and the trace show
     await expect(page.getByText(/b-model · ok \(200\)/)).toBeVisible();
     for (const summary of await page.locator('ol.trace summary').all()) await summary.click();
     expect(await page.locator('ol.trace').innerText()).not.toContain('sk-test-secret');
+  } finally {
+    await llm.stop();
+  }
+});
+
+// The user, 2026-11-16: "for the models, maybe put the provider also before the model name? I have official a\ api and openrouter, they both
+// have opus 5.5 and stuff, hard to distinguish which one if from openrouter and which one if from official api". Both official providers, at
+// the stand-in: nothing reaches a real service.
+test("Opus from Anthropic and from OpenRouter are told apart by their provider's name: in a role's list and picker, to a screen reader, at a phone's width, on her line and in the Trace", async ({ page }, testInfo) => {
+  const llm = await startModelServer({
+    '/api/v1/chat/completions': { status: 402, type: 'application/json', body: JSON.stringify({ error: { message: 'Insufficient credits', code: 402 } }) },
+    '/anthropic/v1/messages': { status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'speak', input: { text: 'Hello from Anthropic.' } }, { name: 'sleep', input: {} }]) },
+  });
+  try {
+    await openApp(page, '#/models');
+    await waitForServiceWorker(page);
+    for (const [provider, path] of [['Anthropic', '/anthropic'], ['OpenRouter', '/api/v1']]) {
+      await pickProvider(page, provider);
+      await page.getByLabel('Address', { exact: true }).fill(`${llm.origin}${path}`);
+      await page.getByLabel('API key').fill(`sk-test-${provider.toLowerCase()}`);
+      await page.getByRole('button', { name: 'Save' }).click();
+      await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+      await page.getByRole('link', { name: 'Models', exact: true }).click();
+    }
+    const router = 'OpenRouter / Anthropic: Claude Opus 5.5';
+    const anthropic = 'Anthropic / Claude Opus 5.5';
+    // Main's picker offers both, each by its provider's name first.
+    const pick = page.getByLabel('Add a model to main');
+    await expect.poll(() => pick.locator('option').allTextContents()).toEqual(expect.arrayContaining([router, anthropic]));
+    // Main had Anthropic's recommended model: OpenRouter's Opus goes first, then Anthropic's. Each change draws Models again: the next
+    // choice waits for it.
+    const main = page.locator('.role', { has: page.getByRole('heading', { name: 'Main: talks with you' }) });
+    await page.getByRole('button', { name: 'Remove Anthropic / Claude Sonnet 5.5 from main' }).click();
+    await expect(main.locator('.role-item')).toHaveCount(0);
+    for (const m of [router, anthropic]) {
+      await pick.selectOption({ label: m });
+      await page.getByRole('button', { name: 'Add to main' }).click();
+      await expect(pick.locator('option', { hasText: m })).toHaveCount(0);
+    }
+    await expect(main.locator('.role-item > span')).toHaveText([`1. ${router}`, `2. ${anthropic}`]);
+    // A screen reader hears the provider too: in the link to the model's page, and on its handle.
+    await expect(main.getByRole('link', { name: router, exact: true })).toBeVisible();
+    await expect(main.getByRole('button', { name: `Reorder ${anthropic}, 2 of 2` })).toBeVisible();
+    // At 360 px (a small phone), the longest entry wraps inside the list: nothing is cut, and the page doesn't scroll sideways.
+    await page.setViewportSize({ width: 360, height: 780 });
+    const fits = () => page.evaluate(() => {
+      const wide = document.documentElement.scrollWidth <= innerWidth;
+      const items = [...document.querySelectorAll('.role-item')].every((li) => [...li.querySelectorAll('*')].every((x) => x.getBoundingClientRect().right <= li.getBoundingClientRect().right + 0.5));
+      return { wide, items };
+    });
+    expect(await fits()).toEqual({ wide: true, items: true });
+    await main.scrollIntoViewIfNeeded();
+    await main.screenshot({ path: `.superpowers/evidence/model-provider/main-role-360-${testInfo.project.name}.png` });
+
+    // Her line says which answered, and which didn't: OpenRouter's is out of credit, so Anthropic's answers.
+    await page.getByRole('button', { name: 'Type' }).click();
+    await page.getByLabel('Message to Shiori').fill('Hello');
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
+    const line = page.locator('.convo .shiori').last();
+    await expect(line.locator('p')).toHaveText('Hello from Anthropic.');
+    await expect(line.locator('.line-label')).toHaveText(`${anthropic} · ${router} didn't answer`);
+    expect(await fits()).toEqual({ wide: true, items: true });
+    const box = /** @type {any} */ (await line.boundingBox());
+    const label = /** @type {any} */ (await line.locator('.line-label').boundingBox());
+    expect(label.x + label.width).toBeLessThanOrEqual(box.x + box.width + 0.5);
+    await line.screenshot({ path: `.superpowers/evidence/model-provider/her-line-360-${testInfo.project.name}.png` });
+    // The Trace names them the same way.
+    await page.getByRole('link', { name: 'Trace' }).click();
+    await filterTrace(page, { kind: 'Models', type: 'model.turn' });
+    await expect(page.getByText(`main: ${anthropic} · 2 attempts`, { exact: false })).toBeVisible();
+    await filterTrace(page, { kind: 'Models', type: 'net.request' });
+    await expect(page.getByText(`${router} · credit (402)`, { exact: false })).toBeVisible();
+    await expect(page.getByText(`${anthropic} · ok (200)`, { exact: false })).toBeVisible();
+  } finally {
+    await llm.stop();
+  }
+});
+
+/**
+ * Anthropic and OpenRouter, both pointed at the stand-in: nothing reaches a real service.
+ * @param {import('@playwright/test').Page} page @param {string} origin
+ */
+async function bothProviders(page, origin) {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  for (const [provider, path] of [['Anthropic', '/anthropic'], ['OpenRouter', '/api/v1']]) {
+    await pickProvider(page, provider);
+    await page.getByLabel('Address', { exact: true }).fill(`${origin}${path}`);
+    await page.getByLabel('API key').fill(`sk-test-${provider.toLowerCase()}`);
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+    await page.getByRole('link', { name: 'Models', exact: true }).click();
+  }
+}
+
+// Settings → Tools names a provider tool by its own name, and the models that have it by theirs: the provider is in the tool's name already
+// (the final review of the provider-first names, finding 3).
+test("Settings → Tools lists the models of a provider's tool by their own names, without the provider's name before each", async ({ page }) => {
+  const llm = await startModelServer({});
+  try {
+    await bothProviders(page, llm.origin);
+    await page.goto('/#/tools');
+    const own = page.locator('.tool-switches > div').filter({ has: page.getByRole('heading', { name: "Your models' own tools" }) });
+    const row = own.locator('li', { hasText: 'Anthropic web search' });
+    await expect(row).toHaveCount(1);
+    await expect(row.locator('.sub')).toHaveText(/^ \(Claude (Sonnet|Haiku|Opus) 5\.5(, Claude (Sonnet|Haiku|Opus) 5\.5)*\)$/);
+    await expect(own).not.toContainText(' / ');
+  } finally {
+    await llm.stop();
+  }
+});
+
+// A tool's note ("(Claude Sonnet 5.5, Claude Haiku 5.5, ...)") is long: the checkbox beside it was squeezed to 2 to 10 px, so a phone showed
+// hardly whether the tool was on (found in the final review of the provider-first names; main's own bug).
+test("Settings → Tools: a switch's checkbox keeps its size beside a long note, which wraps; at 360 and 393 px", async ({ page }, testInfo) => {
+  const llm = await startModelServer({});
+  try {
+    await bothProviders(page, llm.origin);
+    for (const width of [360, 393]) {
+      await page.setViewportSize({ width, height: 780 });
+      await page.goto('/#/tools');
+      const own = page.locator('.tool-switches > div').filter({ has: page.getByRole('heading', { name: "Your models' own tools" }) });
+      await expect(own.locator('li')).not.toHaveCount(0);
+      const sizes = await page.evaluate(() => [...document.querySelectorAll('.tool-switches input[type=checkbox]')].map((x) => {
+        const r = x.getBoundingClientRect();
+        return [Math.round(r.width), Math.round(r.height)];
+      }));
+      expect(sizes.length).toBeGreaterThan(5);
+      expect(sizes.filter(([w, h]) => w !== 22 || h !== 22), `every switch is 22 px at ${width}`).toEqual([]);
+      // The note wraps inside its row: nothing sticks out of it, and the page doesn't scroll sideways.
+      const fits = await page.evaluate(() => [...document.querySelectorAll('.tool-switches li')].every((li) => [...li.querySelectorAll('*')].every((x) => x.getBoundingClientRect().right <= li.getBoundingClientRect().right + 0.5)));
+      expect(fits).toBe(true);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      if (width === 360) {
+        await page.evaluate(() => document.querySelectorAll('.toasts, .notices').forEach((x) => { /** @type {HTMLElement} */ (x).style.display = 'none'; })); // the picture is of the rows, not of what floats over them
+        await own.scrollIntoViewIfNeeded();
+        await own.screenshot({ path: `.superpowers/evidence/model-provider/tools-rows-360-${testInfo.project.name}.png` });
+      }
+    }
   } finally {
     await llm.stop();
   }
@@ -116,15 +255,15 @@ test('"Try this model" on a model\'s page answers from that model alone: one tha
     await waitForServiceWorker(page);
     await addProvider(page, 'Custom provider', { ability: 'Chat Completions', name: 'Endpoint A', url: `${llm.origin}/a/v1`, key: 'sk-test-secret-a', model: 'a-model' });
     await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Endpoint B', url: `${llm.origin}/b`, key: 'sk-test-secret-b', model: 'b-model' });
-    for (const m of ['a-model', 'b-model']) {
+    for (const m of ['Endpoint A / a-model', 'Endpoint B / b-model']) {
       await page.getByLabel('Add a model to main').selectOption({ label: m });
       await page.getByRole('button', { name: 'Add to main' }).click();
     }
-    await expect(page.getByText('2. b-model')).toBeVisible();
+    await expect(page.getByText('2. Endpoint B / b-model')).toBeVisible();
     await expect(page.getByRole('region', { name: 'Talk to your models' })).toHaveCount(0);
     await expect(page.getByLabel('Message', { exact: true })).toHaveCount(0);
     // B answers itself, with its tokens and cost.
-    await page.getByRole('link', { name: /Endpoint B/ }).click();
+    await page.getByRole('region', { name: 'Providers' }).getByRole('link', { name: /Endpoint B/ }).click();
     await page.getByRole('link', { name: /^b-model/ }).click();
     const tryIt = page.getByRole('region', { name: 'Try this model' });
     await expect(tryIt).toContainText('no other model answers');
@@ -135,7 +274,7 @@ test('"Try this model" on a model\'s page answers from that model alone: one tha
     expect(llm.bodies('/b/v1/messages')).toHaveLength(1);
     // A is out of credit: it says so, and B, next in the main role, isn't asked.
     await page.goto('/#/models');
-    await page.getByRole('link', { name: /Endpoint A/ }).click();
+    await page.getByRole('region', { name: 'Providers' }).getByRole('link', { name: /Endpoint A/ }).click();
     await page.getByRole('link', { name: /^a-model/ }).click();
     await tryIt.getByLabel('Message', { exact: true }).fill('Hello');
     await tryIt.getByRole('button', { name: 'Send', exact: true }).click();
@@ -146,7 +285,7 @@ test('"Try this model" on a model\'s page answers from that model alone: one tha
     // Nothing is kept but the trace.
     await goToHash(page, '#/trace');
     await page.getByLabel('Type contains').fill('model.turn');
-    await expect(page.getByText(/try: b-model · 1 attempt/)).toBeVisible();
+    await expect(page.getByText(/try: Endpoint B \/ b-model · 1 attempt/)).toBeVisible();
     await expect(page.getByText(/try: no answer · 1 attempt/)).toBeVisible();
   } finally {
     await llm.stop();
@@ -178,7 +317,7 @@ test('Sign in with OpenRouter: the key arrives and free models fill the roles (O
   expect(sent.searchParams.get('callback_url')).toBe(`${origin}/`);
   await page.goto(`/?code=test-code&state=${sent.searchParams.get('state')}`);
   await expect(page.getByText(/Signed in with OpenRouter/)).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText('1. Google: Gemma 4 31B (free)')).toBeVisible();
+  await expect(page.getByText('1. OpenRouter / Google: Gemma 4 31B (free)')).toBeVisible();
   expect(new URL(page.url()).search).toBe('');
   expect(await page.content()).not.toContain('sk-or-test-key-123');
 });
@@ -364,9 +503,9 @@ test('Custom provider with OpenAI Responses switched on: its model list, the Tes
     expect(photo.find((/** @type {any} */ c) => c.type === 'input_image').image_url).toMatch(/^data:image\/png;base64,/);
     // A conversation: Shiori shows a card, then says she has.
     await page.getByRole('link', { name: 'Models', exact: true }).click();
-    await page.getByLabel('Add a model to main').selectOption({ label: 'gpt-6-luna' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'Responses stand-in / gpt-6-luna' });
     await page.getByRole('button', { name: 'Add to main' }).click();
-    await expect(page.getByText('1. gpt-6-luna')).toBeVisible();
+    await expect(page.getByText('1. Responses stand-in / gpt-6-luna')).toBeVisible();
     await page.goto('/#/trips');
     await startTrip(page, 'Big Sur');
     await page.getByRole('button', { name: 'Type' }).click();

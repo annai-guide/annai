@@ -702,7 +702,7 @@ export async function modelSetUp(page, origin, trip = 'Big Sur', { look = true, 
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
   await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model', look });
-  await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+  await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in / b-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   await page.goto('/#/trips');
   await startTrip(page, trip, dates);
@@ -719,12 +719,12 @@ export async function koeSetUp(page, origin, trip = 'Big Sur') {
   await waitForServiceWorker(page);
   await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Kokoro stand-in', url: `${origin}/kokoro`, key: 'sk-test-kokoro', model: 'kokoro-model' });
   await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Koe stand-in', url: `${origin}/koe`, key: 'sk-test-koe', model: 'koe-model' });
-  await page.getByLabel('Add a model to main').selectOption({ label: 'kokoro-model' });
+  await page.getByLabel('Add a model to main').selectOption({ label: 'Kokoro stand-in / kokoro-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
-  await expect(page.getByText('1. kokoro-model')).toBeVisible();
-  await page.getByLabel('Add a model to Koe · Chat').selectOption({ label: 'koe-model' });
+  await expect(page.getByText('1. Kokoro stand-in / kokoro-model')).toBeVisible();
+  await page.getByLabel('Add a model to Koe · Chat').selectOption({ label: 'Koe stand-in / koe-model' });
   await page.getByRole('button', { name: 'Add to Koe · Chat' }).click();
-  await expect(page.getByText('1. koe-model')).toBeVisible();
+  await expect(page.getByText('1. Koe stand-in / koe-model')).toBeVisible();
   await page.goto('/#/trips');
   await startTrip(page, trip);
 }

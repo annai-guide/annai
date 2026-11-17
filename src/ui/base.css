@@ -99,6 +99,9 @@ input[type='checkbox'], input[type='radio'] { width: 22px; height: 22px; min-hei
 /* A field shares a row; in a column it keeps its own height. */
 .row > .field { flex: 1 1 160px; }
 .check { display: flex; gap: 10px; align-items: center; min-height: 44px; }
+/* The box keeps its size, and a note beside its label goes under it when the two don't fit, and wraps there (Settings → Tools' rows, on a phone: the box was 2 to 10 px wide). A label with no note wraps beside its box as before. */
+.check > input { flex: none; }
+.check:has(> .sub) { flex-wrap: wrap; row-gap: 0; }
 .checks { display: flex; flex-direction: column; }
 .radios { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; }
 .radios legend { font-size: 14px; font-weight: 500; color: var(--ink-2); padding: 0; margin-bottom: 2px; }
