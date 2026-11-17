@@ -1024,21 +1024,21 @@ zsz4na	ok	Backed up.	备份完成。	src/ui/auto-backup.js:106
 183eg6b	ok	The backup didn't finish	备份未完成	src/ui/auto-backup.js:108	
 rs50uy	ok	Opening the backup…	正在打开备份…	src/ui/auto-backup.js:125	
 12sejli	ok	Waiting for the backup that's running to finish…	正在等待当前备份完成…	src/ui/auto-backup.js:144	
-151rypw#other	ok	# photos	# 张照片	src/ui/bring-in.js:49	plural; # = n; English: "# photo" (one), "# photos" (other); Note: with the space after the number (zh-style 7); it sits inside 添加 {0} and 已添加 {0}, which keep their space before the value.
-1lybcwo#other	ok	Added # photos	已添加 # 张照片	src/ui/bring-in.js:49	plural; # = n; English: "Added # photo" (one), "Added # photos" (other); Note: a toast after photos were shared to annai and added.
-1az0mug	ok	Added a file	已添加一个文件	src/ui/bring-in.js:50	Note: a toast after one file was shared to annai and added.
-8w8k36	ok	a file	1 个文件	src/ui/bring-in.js:50	Note: 1 个文件, not 一个文件: "添加 {0}" and "已添加 {0}，…" keep the space before the value (the same rows serve a plugin's name), and a value that starts with a digit takes it (zh-style 7), as "3 个文件" does.
-q61zku#other	ok	Added # files	已添加 # 个文件	src/ui/bring-in.js:50	plural; # = n; English: "Added # file" (one), "Added # files" (other)
-wa8d8i#other	ok	# files	# 个文件	src/ui/bring-in.js:50	plural; # = n; English: "# file" (one), "# files" (other); Note: with the space after the number (zh-style 7); it sits inside 添加 {0} and 已添加 {0}, which keep their space before the value, as #张照片 does.
+151rypw#other	ok	# photos	# 张照片	src/ui/bring-in.js:50	plural; # = n; English: "# photo" (one), "# photos" (other); Note: with the space after the number (zh-style 7); it sits inside 添加 {0} and 已添加 {0}, which keep their space before the value.
+1lybcwo#other	ok	Added # photos	已添加 # 张照片	src/ui/bring-in.js:50	plural; # = n; English: "Added # photo" (one), "Added # photos" (other); Note: a toast after photos were shared to annai and added.
+1az0mug	ok	Added a file	已添加一个文件	src/ui/bring-in.js:51	Note: a toast after one file was shared to annai and added.
+8w8k36	ok	a file	1 个文件	src/ui/bring-in.js:51	Note: 1 个文件, not 一个文件: "添加 {0}" and "已添加 {0}，…" keep the space before the value (the same rows serve a plugin's name), and a value that starts with a digit takes it (zh-style 7), as "3 个文件" does.
+q61zku#other	ok	Added # files	已添加 # 个文件	src/ui/bring-in.js:51	plural; # = n; English: "Added # file" (one), "Added # files" (other)
+wa8d8i#other	ok	# files	# 个文件	src/ui/bring-in.js:51	plural; # = n; English: "# file" (one), "# files" (other); Note: with the space after the number (zh-style 7); it sits inside 添加 {0} and 已添加 {0}, which keep their space before the value, as #张照片 does.
 1jpt0cn	ok	Shiori	Shiori	src/ui/cards.js:45	
 1qg198k	ok	Shiori · {0}	Shiori · {0}	src/ui/cards.js:45	{0} = String(typed.item.name); Note: The label over a card from a plugin; {0} is the plugin's own name for its kind of card, as written.
 1dn0kon	ok	Open in Maps	在地图中打开	src/ui/cards.js:77	
 io1qx	ok	Open the booking	打开预订	src/ui/cards.js:82	
 1ghy26u	ok	A photo Shiori showed	Shiori 展示的照片	src/ui/cards.js:85	
 1hvdy8q	ok	This card's kind ({0}) comes from a plugin that isn't on.	此卡片类型（{0}）所属的插件未开启。	src/ui/cards.js:97	{0} = card.type
-rcp6ga	ok	A photo was kept as it is	照片已按原图保存	src/ui/composer.js:67	
-36fatd	ok	A calendar file couldn't be read	无法读取日历文件	src/ui/composer.js:68	
-17olkn2#other	ok	# files weren't kept	# 个文件未能保存	src/ui/composer.js:72	plural; # = left; English: "# file wasn't kept" (one), "# files weren't kept" (other); Note: a card when there was no room for some handed files; 保存 as files are kept on the device.
+rcp6ga	ok	A photo was kept as it is	照片已按原图保存	src/ui/composer.js:68	
+36fatd	ok	A calendar file couldn't be read	无法读取日历文件	src/ui/composer.js:69	
+17olkn2#other	ok	# files weren't kept	# 个文件未能保存	src/ui/composer.js:73	plural; # = left; English: "# file wasn't kept" (one), "# files weren't kept" (other); Note: a card when there was no room for some handed files; 保存 as files are kept on the device.
 1mv1z9a	ok	Put back as text	改回文字	src/ui/composer.js:129	Note: a pasted text's chip in the type box: turns the file back into words in the box.
 1e5dete	ok	Remove {0}	移除{0}	src/ui/composer.js:130	context: a file in the message; {0} = name; Note: a chip's button: takes the file out of the message only; {0} is a file name, so no spaces around it as the other Remove row.
 1il2ncj	ok	Give Shiori photos or files	把照片或文件交给 Shiori	src/ui/composer.js:141	Note: the + in the type box: 交给 (hand over to), as to a travel agent.
@@ -1063,11 +1063,11 @@ abxwjc	ok	Your files didn't reach Shiori	文件没能交给 Shiori	src/ui/dock.j
 1m2zofh	ok	Type	输入	src/ui/dock.js:143	Note: The dock's keyboard button: it opens the box to type in (a verb).
 1dcb0v0	ok	The photo wasn't added	未能添加照片	src/ui/dock.js:186	
 1nyg58x	draft	Take the photo again.	请重新拍摄。	src/ui/dock.js:186	
-1xmvmzh	ok	Kokoro is working	Kokoro 正在工作	src/ui/dock.js:294	
-1ndyc8s	ok	Stop Kokoro	停止 Kokoro	src/ui/dock.js:295	
-ky4lc5	ok	Stop	停止	src/ui/dock.js:295	
-snj02s	ok	In {0} ›	{0} 的对话 ›	src/ui/dock.js:313	{0} = scopeTitle(typeof title === 'string' ? { ...rec, title } : rec)
-1s6dmy6	ok	Camera	相机	src/ui/dock.js:328	
+1xmvmzh	ok	Kokoro is working	Kokoro 正在工作	src/ui/dock.js:295	
+1ndyc8s	ok	Stop Kokoro	停止 Kokoro	src/ui/dock.js:296	
+ky4lc5	ok	Stop	停止	src/ui/dock.js:296	
+snj02s	ok	In {0} ›	{0} 的对话 ›	src/ui/dock.js:314	{0} = scopeTitle(typeof title === 'string' ? { ...rec, title } : rec)
+1s6dmy6	ok	Camera	相机	src/ui/dock.js:329	
 1rm0t76	ok	{0} isn't valid JSON.	“{0}”不是有效的 JSON。	src/ui/dom.js:155	{0} = label; Note: {0} is a field's label.
 1a791in	ok	{0} has to be an object: { … }.	“{0}”必须是对象：{ … }。	src/ui/dom.js:157	{0} = label; Note: {0} is a field's label.
 1gkm7i5	ok	Saving…	正在保存…	src/ui/dom.js:266	
@@ -1772,13 +1772,13 @@ o7fto4	ok	Import	导入	src/ui/screens/import.js:266
 1p9jpyr	ok	Installed what your providers use: {0}.	已安装提供商所需的插件：{0}。	src/ui/screens/import.js:304	{0} = list(g.installed, 'plain')
 c0u62t#other	ok	Kept your own API keys for {0}; the ones in the file weren't used.	已保留原有的 {0} API 密钥，未使用文件中的密钥。	src/ui/screens/import.js:313	plural; # = n; {0} = list(names, 'plain'); English: "Kept your own API key for {0}; the one in the file wasn't used." (one), "Kept your own API keys for {0}; the ones in the file weren't used." (other)
 jsttcj#other	ok	Kept your own API keys; the ones in the file weren't used.	已保留原有的 API 密钥，未使用文件中的密钥。	src/ui/screens/import.js:314	plural; # = n; English: "Kept your own API key; the one in the file wasn't used." (one), "Kept your own API keys; the ones in the file weren't used." (other)
-ci7mt7	ok	Add to {0}	添加到“{0}”	src/ui/screens/import.js:349	{0} = trip.title
-odevmc	ok	Adding {0} of {1}…	正在添加（{0}/{1}）…	src/ui/screens/import.js:362	{0} = num(Math.min(done + 1, total)); {1} = num(total)
-6u51xq#other	ok	Added {0}, and # itinerary items from the calendar	已添加 {0}，日历中的 # 项已加入行程	src/ui/screens/import.js:371	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); Note: {0} is what was added: a count phrase ("1 个文件", "3 个文件", "2 张照片"), never a path, so the space after the verb is right.
-1ol4sj	draft	Adding {0} failed	未能添加 {0}	src/ui/screens/import.js:378	{0} = what; Note: a card's title when the share screen's add failed after the traveller left it; {0} is what was being added, as in "Add {0}" ("a file", "3 files", "2 photos"); worded as "{0} wasn't added".
-f30m7u#other	ok	and # more photos	还有 # 张照片	src/ui/screens/import.js:399	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
-1cj3r6h	ok	Add only what you just shared yourself.	只添加你自己刚刚分享的内容。	src/ui/screens/import.js:402	
-1eim38p	ok	Also here: {0}, an annai backup or export. It isn't added with the rest; open it on its own.	这里还有 {0}，是 annai 的备份或导出文件。它不会和其他内容一起添加，请单独打开。	src/ui/screens/import.js:406	{0} = a.file.name
+ci7mt7	ok	Add to {0}	添加到“{0}”	src/ui/screens/import.js:362	{0} = trip.title
+f30m7u#other	ok	and # more photos	还有 # 张照片	src/ui/screens/import.js:379	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
+odevmc	ok	Adding {0} of {1}…	正在添加（{0}/{1}）…	src/ui/screens/import.js:392	{0} = num(Math.min(done + 1, total)); {1} = num(total)
+6u51xq#other	ok	Added {0}, and # itinerary items from the calendar	已添加 {0}，日历中的 # 项已加入行程	src/ui/screens/import.js:403	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); Note: {0} is what was added: a count phrase ("1 个文件", "3 个文件", "2 张照片"), never a path, so the space after the verb is right.
+1ol4sj	draft	Adding {0} failed	未能添加 {0}	src/ui/screens/import.js:422	{0} = what; Note: a card's title when the share screen's add failed after the traveller left it; {0} is what was being added, as in "Add {0}" ("a file", "3 files", "2 photos"); worded as "{0} wasn't added".
+1cj3r6h	ok	Add only what you just shared yourself.	只添加你自己刚刚分享的内容。	src/ui/screens/import.js:442	
+1eim38p	ok	Also here: {0}, an annai backup or export. It isn't added with the rest; open it on its own.	这里还有 {0}，是 annai 的备份或导出文件。它不会和其他内容一起添加，请单独打开。	src/ui/screens/import.js:446	{0} = a.file.name
 qqpumv	ok	This isn't on the itinerary	这不在行程中	src/ui/screens/item.js:24	Note: a heading where a link names no plan item.
 15biluu	ok	Go to the itinerary	前往行程	src/ui/screens/item.js:25	Note: a link to the trip's Plan.
 1wp3w0c	ok	All day, {0}	全天（{0}）	src/ui/screens/item.js:41	{0} = start; Note: {0} is the day.
@@ -2632,13 +2632,13 @@ ty94lb	ok	It hasn't been backed up since it last changed.	最近的更改还没�
 436oi1	ok	That was already removed.	已经移除过了。	src/ui/screens/trip.js:244	
 1mbp8t6	ok	It wasn't removed	未能移除	src/ui/screens/trip.js:248	
 1pzhsw4	ok	Nothing was removed. Try again.	没有移除任何内容。请重试。	src/ui/screens/trip.js:248	
-knyqwh	ok	Add photos or files	添加照片或文件	src/ui/screens/trip.js:317	
-12n59th	ok	Take a photo	拍照	src/ui/screens/trip.js:318	
-1kuasfa	ok	That file doesn't match its format: {0}	文件格式不符：{0}	src/ui/screens/trip.js:330	{0} = why; Note: {0} is the format check's own words, in English.
-1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0} 已存在。如需编辑，请从列表中打开。	src/ui/screens/trip.js:340	{0} = p
-ecy82r	ok	Add a file	添加文件	src/ui/screens/trip.js:348	
-1bmm5eq	ok	File path	文件路径	src/ui/screens/trip.js:349	
-16gte2l	ok	Create	创建	src/ui/screens/trip.js:351	
+knyqwh	ok	Add photos or files	添加照片或文件	src/ui/screens/trip.js:322	
+12n59th	ok	Take a photo	拍照	src/ui/screens/trip.js:323	
+1kuasfa	ok	That file doesn't match its format: {0}	文件格式不符：{0}	src/ui/screens/trip.js:335	{0} = why; Note: {0} is the format check's own words, in English.
+1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0} 已存在。如需编辑，请从列表中打开。	src/ui/screens/trip.js:345	{0} = p
+ecy82r	ok	Add a file	添加文件	src/ui/screens/trip.js:353	
+1bmm5eq	ok	File path	文件路径	src/ui/screens/trip.js:354	
+16gte2l	ok	Create	创建	src/ui/screens/trip.js:356	
 aoc0k0#other	ok	{0}: # chats	{0}：# 个对话	src/ui/screens/trips.js:66	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
 33pqd9	ok	Last backup {0}, to {1}.	上次备份：{0}，备份到 {1}。	src/ui/screens/trips.js:73	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: {1} is the backup place's name.
 12mubvb	ok	Now	现在	src/ui/screens/trips.js:79	

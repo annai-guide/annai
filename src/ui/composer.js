@@ -58,15 +58,16 @@ export async function handOver(ctx, text, items, o = {}) {
   /** @type {HandedFile[]} */
   const handed = [];
   const files = items.flatMap((a) => ('file' in a ? [a.file] : []));
-  /** @type {{ path: string, name: string, planned: number }[]} */
+  /** @type {{ path: string, type: string, name: string, planned: number }[]} */
   const kept = [];
   for (const [i, file] of files.entries()) {
     o.progress?.(i, files.length);
     try {
-      const { paths, notes, problems, plannedBy } = await keepFiles(ctx, scope, [file]);
+      const { paths, types, notes, problems, plannedBy, failed } = await keepFiles(ctx, scope, [file]);
+      if (failed) throw failed;
       for (const note of notes) ctx.notices.card({ tone: 'warn', title: t`A photo was kept as it is`, body: note });
       for (const problem of problems) ctx.notices.card({ tone: 'warn', title: t`A calendar file couldn't be read`, body: problem });
-      for (const p of paths) kept.push({ path: p, name: file.name || p.split('/').pop() || p, planned: plannedBy[p] ?? 0 });
+      for (const p of paths) kept.push({ path: p, type: types[p], name: file.name || p.split('/').pop() || p, planned: plannedBy[p] ?? 0 });
     } catch (e) {
       const left = files.length - i;
       ctx.notices.card({ tone: 'warn', title: plural(left, "# file wasn't kept", "# files weren't kept"), body: messageOf(e) });
@@ -74,8 +75,7 @@ export async function handOver(ctx, text, items, o = {}) {
     }
   }
   o.progress?.(files.length, files.length);
-  const types = new Map((await ctx.ws.list(scope, '/files/')).map((/** @type {any} */ f) => [f.path, f.type]));
-  for (const k of kept) handed.push({ path: shownPath(k.path), type: types.get(k.path) ?? 'application/octet-stream', name: k.name, new: true, ...(k.planned ? { planned: k.planned } : {}) });
+  for (const k of kept) handed.push({ path: shownPath(k.path), type: k.type, name: k.name, new: true, ...(k.planned ? { planned: k.planned } : {}) });
   for (const a of items) {
     if ('file' in a || a.scope !== scope) continue;
     const entry = await ctx.store.tx(['files'], 'readonly', (/** @type {any} */ x) => x.getFile(a.scope, a.path));

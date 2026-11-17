@@ -331,17 +331,30 @@ async function inboxFiles() {
 }
 
 /**
+ * Adds what is left of a share, or of files dropped on annai, to a trip or a conversation (bringIn), then lets go of what was kept: out of
+ * `items`, and out of annai's inbox once its calendars are read and Shiori is told. An add that stops partway (no room) leaves only the
+ * rest, so an add again, from the share screen, its failure card, Back to the share's address or a reload, keeps, reads and tells nothing twice.
+ * @param {any} ctx @param {string} id the trip's or conversation's @param {InboxFile[]} items what is left to add, which this shortens
+ * @param {(done: number, total: number) => void} [progress]
+ * @returns {Promise<{ kept: InboxFile[], notes: string[], problems: string[], planned: string[], failed?: unknown }>} failed: why the rest wasn't added
+ */
+export async function addLeft(ctx, id, items, progress) {
+  const { paths, notes, problems, planned, failed } = await bringIn(ctx, id, items.map((i) => i.file), progress);
+  const kept = items.splice(0, paths.length);
+  const inbox = await caches.open('annai-inbox');
+  for (const i of kept) if (i.key) await inbox.delete(i.key);
+  return { kept, notes, problems, planned, failed };
+}
+
+/**
  * Files shared from another app (Android's share sheet) or dropped on annai: the user sees them,
  * then chooses the trip they belong to (spec §7.3, §12.3). A share can come from any site, so
  * nothing is added before that. An annai file that came with them is named, and opens on its own.
  * @param {any} ctx @param {InboxFile[]} items @param {any[]} trips @param {InboxFile[]} archives
  */
 function fileInbox(ctx, items, trips, archives) {
-  const named = items.map((i) => ({ name: i.file.name, type: i.file.type }));
-  const photos = items.filter((_, k) => isPhoto(named[k]));
-  const others = items.filter((i) => !photos.includes(i));
-  // What came, as the title and the toasts name it: said once, in bring-in.js, as the trip's own toast says it.
-  const { what, added } = addedWords(named);
+  // What is left to add, as the title, the toasts and the card name it: said once, in bring-in.js, as the trip's own toast says it.
+  const words = (/** @type {InboxFile[]} */ these) => addedWords(these.map((i) => i.file));
   const status = h('p', { class: 'sub', role: 'status' });
   // The dated trips, and a new conversation: with chats there could be hundreds of undated ones, and a share opens one of its own.
   /** @type {HTMLButtonElement[]} */
@@ -351,6 +364,23 @@ function fileInbox(ctx, items, trips, archives) {
   ];
   // A share's files wait in annai's inbox until they are added; dropped ones are only here.
   const shared = items.some((i) => i.key);
+  /** @type {string[]} the photos' thumbnails, let go of when they are drawn again and once all is added */
+  const urls = [];
+  /** The title and the files left to add, drawn again when an add kept some of them and stopped. @returns {HTMLElement[]} */
+  function left() {
+    for (const url of urls.splice(0)) URL.revokeObjectURL(url);
+    const photos = items.filter((i) => isPhoto(i.file));
+    const others = items.filter((i) => !photos.includes(i));
+    const shown = photos.slice(0, 12);
+    urls.push(...shown.map((i) => URL.createObjectURL(i.file)));
+    return [
+      h('h1', { class: 'title', text: t`Add ${words(items).what}` }),
+      ...(shown.length ? [h('ul', { class: 'thumbs' }, ...shown.map((i, k) => h('li', {}, h('img', { src: urls[k], alt: i.file.name, decoding: 'async' }))))] : []),
+      ...(photos.length > shown.length ? [h('p', { class: 'sub', text: plural(photos.length - shown.length, 'and # more photo', 'and # more photos') })] : []),
+      ...(others.length ? [h('ul', { class: 'file-names' }, ...others.map((i) => h('li', {}, h('span', { text: `${i.file.name} · ${size(i.file.size)}` }), sharedText(i.file))))] : []),
+    ];
+  }
+  let drawn = left();
   /** @param {() => string | Promise<string>} which the trip's id @param {boolean} chat a new conversation: it opens, as the + does */
   async function add(which, chat) {
     const here = location.hash; // a screen the traveller goes to while the files are added stands (as composer.js's handOver does)
@@ -358,25 +388,40 @@ function fileInbox(ctx, items, trips, archives) {
     if (shared) adding = screen;
     try {
       const id = await which();
-      const { notes, problems, planned } = await bringIn(ctx, id, items.map((i) => i.file), (done, total) => {
+      const { kept, notes, problems, planned, failed } = await addLeft(ctx, id, items, (done, total) => {
         status.textContent = t`Adding ${num(Math.min(done + 1, total))} of ${num(total)}…`;
       });
-      const inbox = await caches.open('annai-inbox');
-      for (const i of items) if (i.key) await inbox.delete(i.key);
-      for (const url of urls) URL.revokeObjectURL(url);
-      if (chat && location.hash === here) updateAppSettings(ctx.ws, { activeTrip: id }).catch(() => {});
-      if (location.hash === here) ctx.go(chat ? talkHref(id) : `#/trip/${encodeURIComponent(id)}`);
+      if (!failed) {
+        for (const url of urls) URL.revokeObjectURL(url);
+        if (chat && location.hash === here) updateAppSettings(ctx.ws, { activeTrip: id }).catch(() => {});
+        if (location.hash === here) ctx.go(chat ? talkHref(id) : `#/trip/${encodeURIComponent(id)}`);
+      }
+      // What was kept is said, whatever stopped the rest; the rest is what this screen shows now, and the error says why.
       for (const note of notes) ctx.notices.card({ tone: 'warn', title: t`A photo was kept as it is`, body: note });
       for (const problem of problems) ctx.notices.card({ tone: 'warn', title: t`A calendar file couldn't be read`, body: problem });
-      ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # itinerary item from the calendar', 'Added {0}, and # itinerary items from the calendar', what) : added);
+      const { what, added } = words(kept);
+      if (kept.length) ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # itinerary item from the calendar', 'Added {0}, and # itinerary items from the calendar', what) : added);
+      if (failed) {
+        if (kept.length) {
+          const now = left();
+          drawn[0].before(...now);
+          for (const el of drawn) el.remove();
+          drawn = now;
+        }
+        throw failed;
+      }
     } catch (e) {
       const full = explainStorageFull(ctx, e);
       status.textContent = messageOf(e);
       for (const b of buttons) b.disabled = false;
-      // A traveller who left this screen doesn't see its words: a card says so, as full storage's does, and a share, still in the inbox, opens again from it.
-      if (!full && !screen.isConnected) {
-        ctx.notices.card({ tone: 'warn', title: t`Adding ${what} failed`, body: messageOf(e), errors: [e],
-          actions: shared ? [{ label: t`Add ${what}`, primary: true, run: () => ctx.go('#/import?inbox=1') }] : [] });
+      if (!screen.isConnected) {
+        for (const url of urls) URL.revokeObjectURL(url); // no one sees these thumbnails now, those drawn again for the rest too
+        // They don't see its words either: a card says so, as full storage's does, and a share, still in the inbox, opens again from it.
+        if (!full) {
+          const { what } = words(items);
+          ctx.notices.card({ tone: 'warn', title: t`Adding ${what} failed`, body: messageOf(e), errors: [e],
+            actions: shared ? [{ label: t`Add ${what}`, primary: true, run: () => ctx.go('#/import?inbox=1') }] : [] });
+        }
       }
     } finally {
       if (adding === screen) adding = null;
@@ -389,15 +434,10 @@ function fileInbox(ctx, items, trips, archives) {
     setPendingImport([a.file], { archive: true });
     ctx.go('#/import');
   }
-  const shown = photos.slice(0, 12);
-  const urls = shown.map((i) => URL.createObjectURL(i.file));
   const screen = h('div', { class: 'screen' },
     // The way out without adding: a share from Android or a dropped file opens here, and nothing else on the screen leads home.
     h('p', { class: 'crumbs' }, crumb('#/trips', t`Trips`)),
-    h('h1', { class: 'title', text: t`Add ${what}` }),
-    shown.length ? h('ul', { class: 'thumbs' }, ...shown.map((i, k) => h('li', {}, h('img', { src: urls[k], alt: i.file.name, decoding: 'async' })))) : null,
-    photos.length > shown.length ? h('p', { class: 'sub', text: plural(photos.length - shown.length, 'and # more photo', 'and # more photos') }) : null,
-    others.length ? h('ul', { class: 'file-names' }, ...others.map((i) => h('li', {}, h('span', { text: `${i.file.name} · ${size(i.file.size)}` }), sharedText(i.file)))) : null,
+    ...drawn,
     // Any site can post to the share target (spec §12.3), so the user is asked to add only their own share.
     shared ? h('p', { class: 'sub', text: t`Add only what you just shared yourself.` }) : null,
     h('div', { class: 'acts' }, ...buttons),

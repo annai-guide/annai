@@ -293,14 +293,19 @@ function adders(ctx, id) {
     if (!files.length) return;
     error.hidden = true;
     try {
-      const { paths, notes, problems, planned } = await bringIn(ctx, id, files, (done, total) => {
+      const { paths, notes, problems, planned, failed } = await bringIn(ctx, id, files, (done, total) => {
         status.textContent = total > 1 && done < total ? t`Adding ${num(done + 1)} of ${num(total)}…` : '';
       });
-      await ctx.render();
+      // Said of what was kept, whatever stopped the rest: nothing else says it.
       for (const note of notes) ctx.notices.card({ tone: 'warn', title: t`A photo was kept as it is`, body: note });
       for (const problem of problems) ctx.notices.card({ tone: 'warn', title: t`A calendar file couldn't be read`, body: problem });
-      const { what, added } = addedWords(paths.map((name) => ({ name })));
-      ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # itinerary item from the calendar', 'Added {0}, and # itinerary items from the calendar', what) : added);
+      if (paths.length) {
+        const { what, added } = addedWords(paths.map((name) => ({ name })));
+        ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # itinerary item from the calendar', 'Added {0}, and # itinerary items from the calendar', what) : added);
+      }
+      // The files listed stay as they were when the rest failed, because the screen drawn again would lose the error written here.
+      if (failed) throw failed;
+      await ctx.render();
     } catch (e) {
       status.textContent = '';
       explainStorageFull(ctx, e);
