@@ -33,7 +33,7 @@ import { renderSimulate } from './screens/simulate.js';
 import { renderNotifications } from './screens/notifications.js';
 import { createDock } from './dock.js';
 import { newConversation } from './plus.js';
-import { tapKeepsKeyboard } from './tap-keeps-keyboard.js';
+import { tapKeepsKeyboard, takesTyping } from './tap-keeps-keyboard.js';
 import { keepRows } from './keep-rows.js';
 import { isStandalone } from './platform.js';
 import { dockHidesWhileTyping } from './dock-hides.js';
@@ -423,7 +423,13 @@ export function startShell(root, core) {
         // installed it opens at its top too, the data-safety banner first: a long past would put the banner far above the screen, unseen.
         const home = route.name === 'trips' && firstVisit && !want;
         const now = home && homeY === null && isStandalone() && main.querySelector('.past > li') ? main.querySelector('.now-line') : null;
-        scrollTo(0, now ? Math.max(0, scrollY + now.getBoundingClientRect().top - 0.4 * innerHeight) : home && homeY !== null ? homeY : want);
+        const to = now ? Math.max(0, scrollY + now.getBoundingClientRect().top - 0.4 * innerHeight) : home && homeY !== null ? homeY : want;
+        // While a field is typed in, a page already there is not scrolled, nor one a phone's keyboard holds past its end, which is there as far as
+        // the page goes: + opens the dock's box in its tap (plus.js), and the iPhone is bringing the dock above its keyboard as this screen lands.
+        // A page's own scroll stops that one where it is, then goes where the page said, the box under the keyboard (WebKit,
+        // -[WKWebView _scrollToContentScrollPosition:scrollOrigin:animated:]); left alone, the keyboard's scroll puts the page.
+        const held = takesTyping(document.activeElement) && Math.min(scrollY, Math.max(0, document.documentElement.scrollHeight - innerHeight)) === to;
+        if (!held) scrollTo(0, to);
         // A screen that fills in a moment later is scrolled again as it grows, for up to 2 seconds or until you
         // touch it; not the Conversation, which goes to its last message itself, nor home, drawn whole.
         if (want && route.name !== 'talk' && route.name !== 'trips') follow(my, want);
