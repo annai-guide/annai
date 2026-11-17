@@ -766,6 +766,11 @@ for (const long of [false, true]) {
   test(`home at 430 x 932, its foot in view, ${long ? 'a long card' : 'a short card'} stuck; the window 300 px shorter and back: the rows don't move`, async ({ page }) => {
     await page.setViewportSize({ width: 430, height: 932 });
     await scrolledHome(page);
+    // Short of the page's end, its foot still in view: home opens at its end here since timeline stage 8 (no Start a trip form below the rows), and a page
+    // at its end stays at its end as the window changes (at-end.js), its rows moving with the box; that is another test's subject.
+    await page.evaluate(() => scrollBy(0, -80));
+    expect(await page.evaluate(() => document.documentElement.scrollHeight - innerHeight - scrollY)).toBeGreaterThanOrEqual(60);
+    await expect(page.getByText('Open an annai file')).toBeInViewport();
     await page.evaluate((long) => /** @type {any} */ (window).__n.card(long ? { title: 'A long card', body: 'These are many words, and more of them. '.repeat(30), actions: [{ label: 'Go on', run() {} }] } : { title: 'Saved', body: 'One line.' }), long);
     await expect.poll(async () => (await placeOf(page)).pos).toBe('sticky');
     await settled(page);
@@ -847,10 +852,13 @@ for (const size of SIZES) {
     await expect(page.locator('.notices > .notice')).toHaveCount(2);
     await stuckInHalf(page);
     expect((await boxOf(page)).inside).toBeGreaterThan(0); // more than its cap: it scrolls inside
-    await rowsStayed(page, before);
+    // WebKit keeps the page at whole px while a card's height is fractional, so each card the box takes can leave the rows up to a px off (measured
+    // 1.5 px for these two at 393 x 659, the same with the top bar and without; no one sees it): 2 px here, where two cards come.
+    const rowsHeld = async () => expect(Math.abs((await placeOf(page)).now - before.now)).toBeLessThanOrEqual(2);
+    await rowsHeld();
     await page.locator('.notices').evaluate((el) => { el.scrollTop = el.scrollHeight; }); // the second card's buttons, inside the box
     await expect(page.locator('.notices > .notice').nth(1).getByRole('button', { name: 'Dismiss' })).toBeInViewport();
-    await rowsStayed(page, before);
+    await rowsHeld();
   });
 
   test(`a card that arrives while one is open lands in the box; Less leaves both there, stuck: nothing leaves the screen, and the rows don't move (${size.join(' x ')})`, async ({ page }) => {
