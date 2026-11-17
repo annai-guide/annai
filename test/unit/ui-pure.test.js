@@ -332,6 +332,32 @@ test('bookingFacts: text of only spaces and an empty list are not there, as null
   assert.deepEqual(labels({ kind: 'flight', unsure: [], fields: { travellers: ['A', 'B'] } }), [['travellers', 'A and B']]);
 });
 
+test("bookingFacts: a list is there when one of its items is, and draws only those; a place with no name draws its address alone; what is checked is what is drawn (small-next)", () => {
+  const drawn = (/** @type {any} */ b) => bookingFacts(b).map((x) => [x.key, x.value, x.unsure]);
+  // An old unverified booking marks every part it has (checkOf): a list of blank or null items is no part, so it has no line and no check.
+  for (const travellers of [[''], [null], ['  ', null]]) {
+    const b = { kind: 'flight', status: 'unverified', fields: { travellers, seat: '14C' } };
+    assert.deepEqual(drawn(b), [['seat', '14C', true]], JSON.stringify(travellers));
+    assert.deepEqual(checkOf(b), { fields: ['seat'] }, JSON.stringify(travellers));
+    assert.equal(checkCount(b), 1, JSON.stringify(travellers));
+  }
+  // A list with something in it draws only that: no "A and " after a blank item, no "null".
+  assert.deepEqual(drawn({ kind: 'flight', status: 'unverified', fields: { travellers: ['A', ''] } }), [['travellers', 'A', true]]);
+  assert.deepEqual(drawn({ kind: 'flight', status: 'unverified', fields: { travellers: ['A', null, ' ', 'B'] } }), [['travellers', 'A and B', true]]);
+  // A place named only with spaces draws its address, and its check is on that line, as Shiori is told of it.
+  const stay = (/** @type {any} */ place) => ({ kind: 'lodging', status: 'unverified', place });
+  assert.deepEqual(drawn(stay({ name: '  ', address: '1 Test Street' })), [['place', '1 Test Street', true]]);
+  assert.deepEqual(checkOf(stay({ name: '  ', address: '1 Test Street' })), { fields: ['place'] });
+  assert.equal(checkCount(stay({ name: '  ', address: '1 Test Street' })), 1);
+  // With no address either, it is no place: no line, and nothing to check.
+  for (const place of [{ name: '  ' }, { name: '  ', address: ' ' }]) {
+    assert.deepEqual(drawn(stay(place)), [], JSON.stringify(place));
+    assert.deepEqual(checkOf(stay(place)), { fields: [] }, JSON.stringify(place));
+  }
+  // A name that is a copy of the address (annai names a place from its address) is said once.
+  assert.deepEqual(drawn(stay({ name: '1 Test Street', address: '1 Test Street' })), [['place', '1 Test Street', true]]);
+});
+
 test("bookingFacts: a flight's place has a line, as a stay's has: an old flight's place, which Shiori asks about, is on screen and counted (words-next)", () => {
   const at = { at: '2026-11-20T11:20:00-08:00', tz: 'America/Los_Angeles' };
   const old = { kind: 'flight', status: 'unverified', title: 'ANNAI AIR AN 123', start: at, end: at, place: { name: 'Testville International', address: '1 Runway Road' }, confirmation: 'TESTQ1', fields: { terminal: '2', gate: 'B12' } };
@@ -368,8 +394,9 @@ test("checkCount: the checks the details draw, which the Plan's chip says: a fli
   // A blank name or extra is no part, so no check: an old stay with only a blank name, and an old flight with a blank seat and a null gate.
   assert.equal(checkCount({ kind: 'lodging', status: 'unverified', title: '  ' }), 0);
   assert.equal(checkCount({ kind: 'flight', status: 'unverified', title: 'AN 1', fields: { seat: '', gate: null } }), 1);
-  // A marked part the details have no line for is no check: a place with only an address, a cost with no amount, a time that can't be read.
-  assert.equal(checkCount({ kind: 'lodging', status: 'unverified', unsure: ['place', 'cost', 'start', 'end'], place: { address: '1 Test Street' }, cost: { currency: 'USD' }, start: { at: 'not a time', tz: 'America/Los_Angeles' }, end: at }), 1, 'only the check-out is drawn');
+  // A marked part the details have no line for is no check: a cost with no amount, a time that can't be read. A place with only an address
+  // has its line, the address (small-next).
+  assert.equal(checkCount({ kind: 'lodging', status: 'unverified', unsure: ['place', 'cost', 'start', 'end'], place: { address: '1 Test Street' }, cost: { currency: 'USD' }, start: { at: 'not a time', tz: 'America/Los_Angeles' }, end: at }), 2, 'only the place and the check-out are drawn');
   // A time with no zone of its own reads in the trip's: the chip is given the Plan's.
   assert.equal(checkCount({ kind: 'lodging', status: 'unverified', unsure: ['start'], start: { at: '2026-11-20T11:20:00' } }), 0);
   assert.equal(checkCount({ kind: 'lodging', status: 'unverified', unsure: ['start'], start: { at: '2026-11-20T11:20:00' } }, { fallbackTz: 'America/Los_Angeles' }), 1);

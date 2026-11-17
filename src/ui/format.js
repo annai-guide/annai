@@ -185,8 +185,8 @@ const ORDER = /** @type {Record<string, string[]>} */ ({
 });
 const OTHER = ['start', 'end', 'place', 'confirmation', 'cost'];
 
-/** A field's value in words: a list joined, anything else as text. @param {unknown} v */
-const valueText = (v) => (Array.isArray(v) ? list(v.map((x) => (typeof x === 'string' ? x : JSON.stringify(x)))) : typeof v === 'string' ? v : JSON.stringify(v) ?? '');
+/** A field's value in words: a list's items that are there, joined; anything else as text. @param {unknown} v */
+const valueText = (v) => (Array.isArray(v) ? list(v.filter(there).map((x) => (typeof x === 'string' ? x : JSON.stringify(x)))) : typeof v === 'string' ? v : JSON.stringify(v) ?? '');
 
 /**
  * What a booking says, as labelled facts for its details (the bookings-and-trips design, goal 6), in the order a person checks them for
@@ -218,7 +218,11 @@ export function bookingFacts(b, o = {}) {
     route: () => ({ label: tc('flight')`Route`, value: [fields.from, fields.to].filter(words).join(' → ') || null, unsure: marked.has('from') || marked.has('to') }),
     start: () => ({ label: flight ? t`Departs` : stay ? t`Check-in` : tc('booking')`Starts`, ...(at(b.start) ?? { value: null }) }),
     end: () => ({ label: flight ? t`Arrives` : stay ? t`Check-out` : tc('booking')`Ends`, ...(at(b.end) ?? { value: null }) }),
-    place: () => ({ label: t`Place`, value: there(b.place?.name) ? (there(b.place.address) ? tc('booking')`${String(b.place.name)}, ${String(b.place.address)}` : String(b.place.name)) : null }),
+    // Its name and address, each that is there; an address that is only a copy of the name (annai names a place from its address) once.
+    place: () => {
+      const [name, address] = [b.place?.name, b.place?.address].map((x) => (there(x) ? String(x) : ''));
+      return { label: t`Place`, value: name && address && name !== address ? tc('booking')`${name}, ${address}` : name || address || null };
+    },
     nights: () => {
       if (has('nights')) return null; // hers, among the fields
       const tz = (/** @type {any} */ x) => (validZone(x?.tz) ? x.tz : null);

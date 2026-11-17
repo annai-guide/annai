@@ -125,8 +125,13 @@ const LIFT_S = LIVE_ANSWER_S;
 /** Past the end of her sound, the wait for the turnComplete of a turn whose tool call was answered silently (measured: the design, section 3, item 6). */
 const TURN_END_S = 2;
 
-/** A realtime model's transcript as annai keeps it: no markup (measured: `<!-- … -->`, `<no speech>`, `{pause}`, even cut off), escaped. @param {string} text */
-export const cleanSaid = (text) => escapeTags(String(text ?? '').replace(/<!--[\s\S]*?(?:-->|$)|<[^>]*(?:>|$)|\{[^}]*(?:\}|$)/g, ' ').replace(/\s+/g, ' ').trim());
+/**
+ * A realtime model's transcript as annai keeps it: no markup (measured: `<!-- … -->`, `<no speech>`, `{pause}`, even cut off), escaped.
+ * A pair of tags goes with what is between them, before any lone tag goes (measured, once in about 22 live sessions: 「かしこまりました。
+ * <ratings>\n<rating>positive</rating>\n</ratings>」, whose "positive" would show as hers); a lone tag goes alone, leaving the words beside it.
+ * @param {string} text
+ */
+export const cleanSaid = (text) => escapeTags(String(text ?? '').replace(/<!--[\s\S]*?(?:-->|$)|<([A-Za-z][\w.:-]*)(?:\s[^>]*)?>[\s\S]*?<\/\1\s*>|<[^>]*(?:>|$)|\{[^}]*(?:\}|$)/g, ' ').replace(/\s+/g, ' ').trim());
 /** Whether a transcript holds a word: a letter or a digit. @param {string} text */
 export const realWord = (text) => /[\p{L}\p{N}]/u.test(cleanSaid(text));
 /** Her whole line is only a bracketed stage direction, "(No speech)" or "[silence]": Gemini's own mark for sound with no words in it (real, 1 of 563 lines, 2026-11-12), as `<no speech>` is, which cleanSaid strips. */

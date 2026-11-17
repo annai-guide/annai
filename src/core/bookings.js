@@ -14,8 +14,12 @@ import { validZone, instantAt, isoInZone, offsetMinutes } from './time.js';
 /** A booking's own fields, besides those in its `fields` object, that `unsure` may name. */
 const TOP = ['title', 'start', 'end', 'place', 'confirmation', 'cost'];
 
-/** Whether a value is there: not null, no blank text, no empty list. The one rule for a booking's own fields and the keys of `fields`: what is marked (checkOf) and what the details draw (format.js bookingFacts). @param {unknown} v */
-export const there = (v) => v !== undefined && v !== null && !(typeof v === 'string' && !v.trim()) && !(Array.isArray(v) && !v.length);
+/**
+ * Whether a value is there: not null, no blank text, and a list or an object only when one of its items is (`['']` and a place `{ name: ' ' }`
+ * are not). The one rule for a booking's own fields and the keys of `fields`: what is marked (checkOf) and what the details draw (format.js
+ * bookingFacts, which draws a list's items that are there, and a place by its name or its address). @param {unknown} v @returns {boolean}
+ */
+export const there = (v) => v !== undefined && v !== null && !(typeof v === 'string' && !v.trim()) && !(typeof v === 'object' && !(Array.isArray(v) ? v : Object.values(v)).some(there));
 
 /**
  * What of a booking the screens mark for the user to check: the names in `unsure` of fields it has (its own, or keys of `fields`, as

@@ -33,6 +33,15 @@ test('transcripts: markup never reaches the log, words stay escaped, and only a 
   assert.equal(realWord('42'), true);
 });
 
+test("transcripts: a paired element goes with what is inside it, so none of its words show as hers; a lone tag still goes alone (a real transcript, relay-stop-request-ja, 2026-11-17)", () => {
+  assert.equal(cleanSaid('かしこまりました。<ratings>\n<rating>positive</rating>\n</ratings>'), 'かしこまりました。');
+  assert.equal(cleanSaid('<rating>positive</rating> Sure.'), 'Sure.');
+  // Only a pair goes whole: a lone tag (an opening one with no end yet, an end with no opening one) keeps the words beside it, as before.
+  assert.equal(cleanSaid('かしこまりました。<rating>positive'), 'かしこまりました。 positive');
+  assert.equal(cleanSaid('Sure.</rating> Next.'), 'Sure. Next.');
+  assert.equal(cleanSaid('<a>Sure.</b>'), 'Sure.', 'two names are no pair');
+});
+
 test('what was heard and what Koe said are logged per turn; Kokoro reads "[heard]" and "[Koe said aloud]", and wakes once, for the answer', async () => {
   const k = await liveKit([{ heard: 'Where should we eat?', said: "There's a taco stand ahead.", audio: tone() }]);
   try {
