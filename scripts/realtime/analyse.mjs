@@ -16,11 +16,19 @@ import { languageOf, vietnameseMarks } from '../../src/core/languages.js';
  *   languages?: { spoken: string[], answer: string, applied: boolean, why?: string },
  *   media?: { at: number, kind: string, seconds: number, time: number }[], taps?: { at: number, label: string, ok: boolean }[],
  *   lines?: { who: string, text: string, buttons: { name: string, disabled: boolean }[] }[], kokoro?: { at: number, kind: string, text?: string, heard?: string[], ms?: number, status?: number | null, bytes?: number }[],
- *   mode?: 'live' | 'classic' | 'chat', model?: { requests: number, capped: boolean } }} Rec  level: [at, rms of what annai plays];
+ *   mode?: 'live' | 'classic' | 'chat', model?: { requests: number, capped: boolean, kokoro?: string } }} Rec  level: [at, rms of what annai plays];
+ *   model: a scenario for a real Kokoro: the requests it made to the real model, whether the cap refused one, and the Kokoro it ran with (kokoroUsed);
  *   micLevel: the same for what the microphone carried; cards: the titles of the cards annai showed once she was listening;
  *   languages: the setting the scenario asked for (phase 2), and whether this build took it (applied); stage 5's card (card scenarios): media: the page's own player
  *   (the question's playing and ending), taps: the taps on the card, lines: the conversation's lines as the page ends with them, kokoro: what the stand-in Kokoro was asked and did
  */
+
+/**
+ * The Kokoro a scenario for a real one ran with, said in its record: a real Claude (Opus 5.5, or Sonnet 5.5 with --real-model sonnet) only when the run has the
+ * stand-in server, the one thing that sets the real Kokoro up; with --kokoro gemini there is none, and Gemini's chat model is Kokoro for it, whatever Anthropic key was given.
+ * @param {{ standIn: boolean, real?: { model?: string } }} run
+ */
+export const kokoroUsed = ({ standIn, real }) => (standIn && real ? (real.model === 'sonnet' ? 'Claude Sonnet 5.5' : 'Claude Opus 5.5') : "Gemini's chat model");
 
 /** The loudness (rms, 0..1) from which what annai plays is sound; and the quiet that ends a run of it. */
 export const SOUND = 0.01;
@@ -81,12 +89,13 @@ export function soundRuns(level) {
 const FILLER = /\b(sorry|apolog\w*|understand\w*|understood|noted|my bad|i['’]ll|i will|i['’]m going to)\b/i;
 /**
  * The same in Japanese and Chinese, which have no spaces to mark a word: an apology (すみません, 申し訳, 失礼しました; 对不起, 抱歉, 不好意思), an "I understood" or
- * "I understand" (理解しました, not ご理解; 明白, 知道了, 收到) and a promise (気をつけます, 今後は, …ないようにします, やめます; 我会, 不会再). An okay passes, as "Okay."
- * does: 分かりました, はい, 了解です; 好的, 好; and so do かしこまりました and 承知しました, the polite okay that Koe's instructions allow ("say okay in the language you answer
- * in"; main's Koe answered the scold with 「かしこまりました。」 in 2 of 2 live runs, 2026-11-17). 以後 and 以后 are no promise on their own ("三点以后开门").
+ * "I understand" (承知, 理解しました, not ご理解; 明白, 知道了, 收到) and a promise (気をつけます, …ないようにします, やめます; 我会, 不会再; 以後 or 今後 with a promise after it
+ * in the sentence: 以後は注意します, 以后会小心的; they are ordinary words alone: 「三点以后开门」). An okay passes, as "Okay." does: 分かりました, はい, 了解です; 好的, 好; and so does
+ * かしこまりました, the polite okay that Koe's instructions allow ("say okay in the language you answer in"; main's Koe answered the scold with 「かしこまりました。」 in 2 of 2
+ * live runs, 2026-11-17). 承知 is the "understood" those instructions name and forbid ("no \"I understand\" or \"understood\"", src/core/koe/instructions.js), so it is no okay.
  * Each alternative has a test sentence of its own (realtime-analyse.test.js).
  */
-export const FILLER_CJK = /すみません|すいません|ごめん|申し訳|失礼(?:しました|いたしました)|お詫び|(?<!ご)理解|お気持ち|気を(?:つけ|付け)ます|今後は|ないようにします|やめます|止めます|控えます|对不起|對不起|抱歉|不好意思|道歉|明白|知道了|收到|我会|我會|我将|我將|不会再|不會再/;
+export const FILLER_CJK = /すみません|すいません|ごめん|申し訳|失礼(?:しました|いたしました)|お詫び|承知|(?<!ご)理解|お気持ち|気を(?:つけ|付け)ます|以[後后]は?[^。]*(?:します|ません|注意|小心)|今後は?[^。]*(?:します|ません|注意|小心)|ないようにします|やめます|止めます|控えます|对不起|對不起|抱歉|不好意思|道歉|明白|知道了|收到|我会|我會|我将|我將|不会再|不會再/;
 
 /**
  * @param {Rec} rec @param {Record<string, { kind: string, words: string, lang?: string }>} clips
@@ -358,7 +367,7 @@ export function timeline(rec, a) {
  * @param {Rec} rec @param {ReturnType<typeof analyse>} a @param {string} [about]
  */
 export function detail(rec, a, about = '') {
-  const out = [`== ${rec.scenario}: ${a.pass ? 'PASS' : 'FAIL'} (${rec.route}${rec.echoDb === null ? '' : `, her voice back into the microphone at ${rec.echoDb} dB`})${about ? ` ${about}` : ''}`];
+  const out = [`== ${rec.scenario}: ${a.pass ? 'PASS' : 'FAIL'} (${rec.route}${rec.echoDb === null ? '' : `, her voice back into the microphone at ${rec.echoDb} dB`})${about ? ` ${about}` : ''}${rec.model?.kokoro ? ` [Kokoro used: ${rec.model.kokoro}]` : ''}`];
   if (rec.languages) out.push(`   languages set: ${rec.languages.spoken.join(', ')}; she answers in: ${rec.languages.answer}${rec.languages.applied ? '' : ' (NOT applied: this build has no such setting)'}`);
   for (const c of a.clips) {
     if (c.expect === 'nothing') {

@@ -1,6 +1,6 @@
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 import { NO_WORDS } from '../handover.js';
-import { languageOf, listedFor, named } from '../languages.js';
+import { languageOf, listedFor, named, units } from '../languages.js';
 import { nativeOverlap } from '../llm/contract.js';
 
 export { languageOf };
@@ -84,17 +84,19 @@ export const coldSystem = (language) => /* en */ 'You summarize a conversation b
 /**
  * The language a summary is written in, named ("the user's language" got a Spanish summary of an English conversation): compaction's and the
  * recap's, one answer for both (RULES #10). annai's own lines for no words (NO_WORDS: a photo or files sent alone, a heard line it couldn't
- * write down) are never the user's, and are left out here for every caller. The newest line that names a language decides (a trip's last lines
- * may be "OK", an emoji or a place's name); only when no single line does, all the lines together. With the languages setting: the one Shiori
- * answers in if it is fixed; else the listed language that line is in; else the first they speak. With none: that line's language, where Han
- * characters alone are the phone's Japanese (listedFor, as above; a Japanese phone's 「了解」 is no Chinese); else, the same answer as for her
- * first message in a conversation (languagesText): the phone's (with no settings given, the app's: spec §14.3, it ships in English).
+ * write down) are never the user's, and are left out here for every caller. The newest line of 3 words or more (units: a Chinese, Japanese or
+ * Korean character is a word, the size a stray short reply has, spec §14) that names a language decides: a trip's last lines may be "OK", "thanks",
+ * an emoji or a place's name, and a place in kanji is no Chinese. Only when no such line does, all the lines together (a lone "新宿" is then Chinese).
+ * With the languages setting: the one Shiori answers in if it is fixed; else the listed language that text is in; else the first they speak. With
+ * none: that text's language, where a script several languages share is placed by the phone's (listedFor: Han alone is a Japanese phone's Japanese,
+ * Cyrillic a Bulgarian phone's Bulgarian, as for a listed language); else, the same answer as for her first message in a conversation
+ * (languagesText): the phone's (with no settings given, the app's: spec §14.3, it ships in English).
  * @param {string | string[]} said what the user wrote and said, the newest last, as the log keeps them @param {import('../languages.js').LanguageSettings} [languages]
  */
 export function summaryLanguage(said, languages) {
   const lines = (Array.isArray(said) ? said : [said]).map((x) => String(x ?? '').trim()).filter((x) => !NO_WORDS.includes(x));
   if (languages?.answer) /* en */ return `${languages.answer.name}, the language Shiori answers in`;
-  const text = lines.findLast((x) => languageOf(x)) ?? lines.join('\n');
+  const text = lines.findLast((x) => units(x) >= 3 && languageOf(x)) ?? lines.join('\n');
   const guess = text ? languageOf(text) : '';
   const wrote = guess && languages ? listedFor(guess, languages.spoken, text) : null;
   if (languages?.explicit) /* en */ return wrote ? `${wrote.name}, the language the user wrote in last` : `${languages.spoken[0].name}, the first language the user speaks (${named(languages.spoken)})`;

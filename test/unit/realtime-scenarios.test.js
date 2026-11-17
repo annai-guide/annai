@@ -38,6 +38,17 @@ test('a real-Kokoro scenario with no Anthropic key and the stand-in Kokoro is re
   for (const [name, sc] of Object.entries(SCENARIOS)) if (sc.real) assert.throws(() => realKokoroGiven([name], {}), /--anthropic-key/, name);
 });
 
+// The same refusal at its call site: runChecks calls realKokoroGiven before the folder, the servers and the browser (the third second opinion of fix round 1:
+// a unit test of the function alone passes with the call taken out). The output folder is one that cannot be made, so a run that got past the refusal would stop
+// at making it, with another error and still before the server and the browser: the test needs the refusal's own words, and starts nothing.
+test('runChecks refuses a real-Kokoro scenario with no Anthropic key before it makes anything', async () => {
+  const { runChecks } = await import('../../scripts/realtime/run.mjs');
+  const { Keys } = await import('../../scripts/realtime/keys.mjs');
+  const keys = new Keys([{ line: null, key: 'not-a-key' }]);
+  const out = new URL('file:///proc/annai-realtime-check-never-made/');
+  await assert.rejects(runChecks({ keys, only: ['real-stop-ja'], out, log: () => {} }), /real-stop-ja asks for a real Kokoro.*--anthropic-key.*--kokoro gemini/);
+});
+
 // Under --ui the harness looks buttons up by the screens' words (drive.mjs `w`), and a word with no entry silently stays English: every button a scenario taps or the
 // harness presses has one in each catalog the screens come in (the final review of langs-next, second opinion 4: the card's buttons were looked up in English).
 test('the buttons a scenario taps and the harness presses have words in each screens language, so --ui finds them', async () => {
@@ -45,10 +56,14 @@ test('the buttons a scenario taps and the harness presses have words in each scr
   const { key } = await import('../../src/core/l10n.js');
   const taps = [...new Set(Object.values(SCENARIOS).flatMap((sc) => sc.steps.flatMap((st) => ('tap' in st ? [st.tap] : []))))];
   assert.ok(taps.includes('Allow') && taps.includes('Not now'), taps.join(', '));
+  // The voice switch (drive.mjs voiceSwitch, which ends every live run): the Voice group's name (context "voice mode"), its Off button, and the chip's "Voice off".
+  /** @type {[string, string][]} */
+  const pressed = [...taps, 'Shiori', 'Type', 'Send', 'Listening live', 'Off', 'Voice off'].map((en) => [en, '']);
+  pressed.push(['Voice', 'voice mode']);
   for (const tag of ['ja', 'zh-Hans', 'zh-Hant']) {
     const words = JSON.parse(await readFile(new URL(`../../l10n/${tag}.json`, import.meta.url), 'utf8'));
-    for (const en of [...taps, 'Shiori', 'Type', 'Send', 'Listening live']) assert.ok(words[key(en, '')], `${tag}: no words for "${en}"`);
-    assert.notEqual(words[key('Allow', '')], 'Allow');
-    assert.notEqual(words[key('Not now', '')], 'Not now');
+    for (const [en, context] of pressed) assert.ok(words[key(en, context)], `${tag}: no words for "${en}"${context ? ` (${context})` : ''}`);
+    for (const en of ['Allow', 'Not now', 'Off', 'Voice off']) assert.notEqual(words[key(en, '')], en, `${tag}: "${en}" is still English`);
+    assert.notEqual(words[key('Voice', 'voice mode')], 'Voice', tag);
   }
 });

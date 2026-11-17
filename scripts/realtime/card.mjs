@@ -167,7 +167,8 @@ export function analyseCard(rec, base, sc = {}) {
   const expect = sc.expect?.grant ?? 'any';
   /** @type {import('./analyse.mjs').Check[]} */
   const checks = [];
-  checks.push({ name: 'card shown', ok: Boolean(c.card && /^Read Testville/.test(c.card.question) && c.card.options.includes('Allow')), detail: c.card ? `"${c.card.question}" ${c.card.options.join(' / ')}` : 'annai showed no card of its own' });
+  // In any language of the screens (--ui ja, zh): the question names the trip, and the card has the grant first and Not now last (trip-tools.js, `allowed`: [Allow, Always for my trips, Not now], or [Allow, Not now]), so a second option says there is an Allow.
+  checks.push({ name: 'card shown', ok: Boolean(c.card && c.card.question.includes('Testville') && c.card.options.length >= 2), detail: c.card ? `"${c.card.question}" ${c.card.options.join(' / ')}` : 'annai showed no card of its own' });
   checks.push({ name: 'question said', ok: c.qEnd !== null, detail: c.qEnd !== null ? `the stand-in voice's clip played ${sec(c.cardToQuestionEnd)} after the card, to ${((c.qEnd - rec.startedAt) / 1000).toFixed(2)} s` : 'the page never heard its own player end after the card' });
   checks.push({ name: 'card resolved', ok: c.kind !== 'none' || sc.expect?.open === true, detail: c.kind === 'none' ? 'read_trip never got its result: the card was still waiting at the end' : `${c.kind}${c.resultAt ? `, ${((c.resultAt - rec.startedAt) / 1000).toFixed(2)} s in` : ''}` });
   const got = c.kind === 'granted-voice' ? 'voice' : c.kind === 'granted-tap' ? 'tap' : false;

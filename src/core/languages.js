@@ -142,7 +142,7 @@ export const modelLanguages = (s) => ({ spoken: s.explicit ? s.spoken.map((l) =>
 /** Han, kana and Hangul by script (so Extension A, 々, half-width katakana and jamo count), and the prolonged sound mark. */
 const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u30fc]/gu;
 /** How many words a text has, counting each Chinese, Japanese or Korean character as one (they have no spaces between words). @param {string} text */
-const units = (text) => (text.match(CJK)?.length ?? 0) + (text.replace(CJK, ' ').match(/[\p{L}\p{N}]+/gu)?.length ?? 0);
+export const units = (text) => (text.match(CJK)?.length ?? 0) + (text.replace(CJK, ' ').match(/[\p{L}\p{N}]+/gu)?.length ?? 0);
 
 /* en */
 /**

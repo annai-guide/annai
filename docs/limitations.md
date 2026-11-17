@@ -755,6 +755,18 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** `cleanSaid` (src/core/koe/live.js:129) drops every tag on its own and keeps the text inside a pair.
 - **Revisit when:** the next version, as its own change: drop a paired element with its content before dropping lone tags, with this real sample as the test. It is the only sample there is, so the rule stays that narrow.
 
+### With Ukrainian listed before Russian, a Russian line is placed as Ukrainian
+- **Kind:** deferred.
+- **What the user sees:** a traveller who lists both Ukrainian and Russian, Ukrainian first, and writes a line in Russian (no і, ї, є or ґ): annai places it as Ukrainian. The summary and the recap are asked for in Ukrainian (`summaryLanguage`), the line's `lang` is Ukrainian (`tagOf`), and the phone's voice for it is the Ukrainian one (`speechLocale`: "uk-UA", checked on `listedFor('Russian', [uk, ru])` and `speechLocale` with the Languages setting [uk, ru]). Listed the other way round (Russian first) a Ukrainian line is right, because `languageOf` names Ukrainian by its letters. Older than langs-next (the same on main); found in the re-review of its fix round 1.
+- **Why:** `listedFor` (src/core/languages.js) takes the first listed language whose name matches or that shares the script (`SHARED`: Russian is ru, uk, bg or sr), so with [uk, ru] the Ukrainian row comes before the exact match, Russian.
+- **Revisit when:** the next version, as its own change, in `listedFor`: an exact name match before a shared-script match (`spoken.find((l) => guess === l.name) ?? spoken.find((l) => SHARED[guess]?.includes(l.id))`), with a test of [uk, ru] and a Russian line for `listedFor`, `summaryLanguage` and `speechLocale`.
+
+### With languages chosen, a newest line in a language that isn't listed hides the listed one before it
+- **Kind:** deferred.
+- **What the user sees:** with the Languages setting chosen (say English and Japanese), a trip written in Japanese whose newest line of 3 words or more is in a language not listed (Spanish, a pasted menu in French) is summarized and recapped in the first listed language, English ("the first language the user speaks"), where the Japanese before it is what they wrote in. Checked: three Japanese lines then a Spanish line, [en, ja]: English. Older than langs-next (the same on main: it read the last line, which named Spanish); found in the re-review of its fix round 1.
+- **Why:** `summaryLanguage` (src/core/agent/compaction.js) picks the newest line of 3 words or more that names a language, then asks whether that language is listed; a line in an unlisted language is that line, and the listed language before it is never looked at.
+- **Revisit when:** the next version, as its own change: with languages chosen (`languages.explicit`), a line decides only if its language is listed (`lines.findLast((x) => units(x) >= 3 && listedFor(languageOf(x), languages.spoken, x))`), so the newest line the user could have written in one of their languages decides, and when no line is in a listed language the existing first-listed answer stands. With nothing chosen any language a line names still decides (a Spanish talk on an English phone gets a Spanish summary). A test of that shape.
+
 ### Her reply to the "you haven't answered" cue can still be private text
 - **Kind:** deferred.
 - **What the user sees:** after answering her question card, if her reply showed nothing and the cue followed, in about 1 of 9 forced runs she answered again in plain text the user never sees, and "Shiori didn't answer" showed.

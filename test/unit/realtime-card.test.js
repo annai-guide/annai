@@ -59,6 +59,24 @@ test('the card: a spoken yes is a grant by voice, and the times are from the end
   assert.match(a.text.join('\n'), /outcome: granted-voice \(grant how=voice, 6\.36 s after the last clip ended/);
 });
 
+test('the card shown is checked in the screens\' own words: a Japanese or Chinese card is a card (--ui ja, zh), one with no Testville in its question or no grant to tap is not', () => {
+  const strings = {
+    ja: ['Shioriが「Testville」を読んでもいいですか？', ['許可', '自分の旅はいつでも許可', '今はしない']],
+    'zh-Hant': ['允許 Shiori 讀取「Testville」嗎？', ['允許', '我的旅行一律允許', '現在不要']],
+    'zh-Hans': ['允许 Shiori 读取“Testville”吗？', ['允许', '我的旅行一律允许', '现在不要']],
+  };
+  /** @param {string} question @param {string[]} options */
+  const shown = (question, options) => {
+    const rec = granted({ trace: granted().trace.map((t) => (t.type === 'out.ask' ? { ...t, data: { ...t.data, question, options } } : t)) });
+    return analyseCard(rec, analyse(rec, CLIPS), { expect: { grant: 'voice' } }).checks.find((x) => x.name === 'card shown');
+  };
+  for (const [ui, [question, options]] of Object.entries(strings)) assert.equal(shown(/** @type {string} */ (question), /** @type {string[]} */ (options))?.ok, true, ui);
+  assert.equal(shown('Read Testville, Nov 10 – 17?', ['Allow', 'Always for my trips', 'Not now'])?.ok, true, 'en');
+  assert.equal(shown('Shioriが「Testville」を読んでもいいですか？', ['許可', '今はしない'])?.ok, true, 'an imported trip has two options');
+  assert.equal(shown('Shioriが「Bigville」を読んでもいいですか？', ['許可', '今はしない'])?.ok, false, 'another trip');
+  assert.equal(shown('Read Testville?', ['Allow'])?.ok, false, 'nothing to say no with: not annai\'s card');
+});
+
 test('a no that the rule says no to is a failure when it granted, and one that never resolved says so', () => {
   const rec = granted({ scenario: 'card-yes-but' });
   const base = analyse(rec, CLIPS);

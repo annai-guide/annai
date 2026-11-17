@@ -181,14 +181,18 @@ test("with nothing chosen and none of the user's words, the recap is written in 
   }
 });
 
-// A trip's last lines are often "OK" or an emoji: the newest line that names a language decides, so the recap of a Japanese trip is in Japanese, as main's
-// (which read the whole trip) was, and not a quoted "sure" (the final review of langs-next, second opinion 3).
-test("a Japanese trip whose last lines name no language is recapped in Japanese; its last words in English are English", async () => {
-  const k = await agentKit([[{ text: '' }]], { utility: [{ text: RECAP }, { text: RECAP }] });
+// A trip's last lines are often "OK", "thanks" or an emoji: a line of fewer than 3 words decides only when no longer line names a language, so the recap of
+// a Japanese trip is in Japanese, as main's (which read the whole trip) was, and not a quoted "sure" or English because of a "thanks" (the final review of
+// langs-next, second opinion 3; the re-review of fix round 1, R1). A longer line in English is what they wrote in last.
+test("a Japanese trip whose last lines are short replies is recapped in Japanese; a last line of 3 words or more in English is English", async () => {
+  const k = await agentKit([[{ text: '' }]], { utility: [{ text: RECAP }, { text: RECAP }, { text: RECAP }] });
   for (const [i, text] of ['今日は楽しかった', '明日は雨ですか', 'ok', 'hmm', 'sure'].entries()) await logEvent(k.store, k.trip, { type: 'msg.user', data: { text } }, at(`10:3${i}`));
   await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'ja-JP' });
   assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language the user wrote in last\.$/m);
   await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: 'thanks' } }, at('10:36'));
+  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'ja-JP' });
+  assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in Japanese, the language the user wrote in last\.$/m);
+  await logEvent(k.store, k.trip, { type: 'msg.user', data: { text: 'Thank you, that is all for today.' } }, at('10:37'));
   await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'ja-JP' });
   assert.match(k.requests.at(-1).messages[0].parts[0].text, /^Write the recap in English, the language the user wrote in last\.$/m);
 });

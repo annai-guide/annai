@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { chromium, devices } from '@playwright/test';
 import { installMic } from './page-mic.mjs';
-import { SOUND, SOUND_GAP_MS } from './analyse.mjs';
+import { SOUND, SOUND_GAP_MS, kokoroUsed } from './analyse.mjs';
 import { framesOf } from './frames.mjs';
 import { LANGUAGES } from '../../src/core/languages.js';
 import { key } from '../../src/core/l10n.js';
@@ -489,7 +489,7 @@ export async function runScenario(browser, name, sc, env) {
     // The conversation's own lines (a card's too, with its buttons and whether they are on), as the page shows them at the end.
     const lines = sc.card ? await page.evaluate(() => [...document.querySelectorAll('.convo li')].map((e) => ({ who: (e.querySelector('.who')?.textContent ?? '').trim(), text: (e.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 300), buttons: [...e.querySelectorAll('button')].map((b) => ({ name: (b.textContent ?? '').trim(), disabled: /** @type {HTMLButtonElement} */ (b).disabled })) }))).catch(() => []) : [];
     const kokoro = (env.kokoro?.log ?? []).filter((x) => x.at >= began).map((x) => ({ ...x, text: env.scrub(x.text ?? '') }));
-    return { scenario: name, route: sc.route, echoDb: sc.echoDb, startedAt: opened, endedAt: Date.now(), keyLine: null, plays: rt.plays, frames, level: rt.level, micLevel: rt.mic, trace, errors, notes, cards, convo, ...(sc.mode ? { mode: sc.mode } : {}), ...(sc.real ? { model: { requests: modelRequests, capped } } : {}), ...(sc.card ? { media: rt.media, taps, lines, kokoro } : sc.passOn ? { kokoro } : {}), ...(typed.length ? { typed } : {}), ...(languages ? { languages } : {}) };
+    return { scenario: name, route: sc.route, echoDb: sc.echoDb, startedAt: opened, endedAt: Date.now(), keyLine: null, plays: rt.plays, frames, level: rt.level, micLevel: rt.mic, trace, errors, notes, cards, convo, ...(sc.mode ? { mode: sc.mode } : {}), ...(sc.real ? { model: { requests: modelRequests, capped, kokoro: kokoroUsed({ standIn: Boolean(env.standIn), real: env.real }) } } : {}), ...(sc.card ? { media: rt.media, taps, lines, kokoro } : sc.passOn ? { kokoro } : {}), ...(typed.length ? { typed } : {}), ...(languages ? { languages } : {}) };
   };
   let opened = began;
   /** Requests to the real model so far, and whether the cap refused one. */

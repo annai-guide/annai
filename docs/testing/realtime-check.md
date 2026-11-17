@@ -161,14 +161,15 @@ change to Japanese before she listens. The clips are synthetic (Gemini TTS, `lan
 | relay-stop-request-ja | stand-in | a request Koe does with its own tools (`watch_list`; the clip, 「ホテルのリマインダー、消しといて。」, has no stop word, so it doesn't test the stop): **acted on it**; the language of her word before a tool of her own is read by eye in the record |
 | relay-filler-ja | stand-in | the filler trap: a Japanese question, then the scold: **no filler**, read over every line she says in the scenario, as in the English one |
 
-A real Kokoro is Claude Opus 5.5 with the Anthropic key, or Claude Sonnet 5.5 with `--real-model sonnet`; with `--kokoro gemini` (no Anthropic key) it is
-Gemini's chat model on the free key, as for typed-live. A scenario for a real Kokoro with no Anthropic key and `--kokoro stand-in` (the default) stops before the
+A real Kokoro is Claude Opus 5.5 with the Anthropic key, or Claude Sonnet 5.5 with `--real-model sonnet`; with `--kokoro gemini` it is
+Gemini's chat model on the free key, as for typed-live, whether or not an Anthropic key is given (the stand-in server that sets the real Kokoro up is not run). The record
+(`model.kokoro`) and the report's line for the scenario (`[Kokoro used: …]`) say which Kokoro ran, so a run with Gemini is not read as one with Claude. A scenario for a real Kokoro with no Anthropic key and `--kokoro stand-in` (the default) stops before the
 browser starts, naming `--anthropic-key <file>` and `--kokoro gemini`; `--real-model` and `--kokoro` take their values in any case, and a value they don't know stops
 the run. The checks read Japanese and Chinese by character, as the recall check does: **passed on** takes 「？」 as
 a question back as it takes "?"; **stopped when told** allows 10 characters after the stop in a Chinese or Japanese line (「はい、かしこまりました。」, the longest
-two-part okay; two words between spaces in English); **no filler** knows the Japanese and Chinese apologies, "I understood"s (理解しました; 明白, 知道了, 收到) and
-promises, and lets an okay pass (分かりました, はい, かしこまりました, 承知しました; 好的): Koe's instructions allow an okay, and main's Koe answered the scold with
-「かしこまりました。」 in 2 of 2 runs. A check that could place none of her answers in a language (**language kept**) is a warning, not a pass.
+two-part okay; two words between spaces in English); **no filler** knows the Japanese and Chinese apologies, "I understood"s (承知, 理解しました; 明白, 知道了, 收到) and
+promises (気をつけます, 以後 or 今後 with a promise after it in the sentence: 以後は注意します, 以后会小心的; 「三点以后开门」 is no promise), and lets an okay pass (分かりました, はい,
+かしこまりました; 好的): Koe's instructions allow an okay, and main's Koe answered the scold with 「かしこまりました。」 in 2 of 2 runs; they forbid "understood" by name, so 承知しました fails. A check that could place none of her answers in a language (**language kept**) is a warning, not a pass.
 
 ```sh
 ...  scripts/realtime-check.mjs run --keys-file /keys --lines 1-11 --ui ja --only relay-stop-request-ja,relay-filler-ja --times 2
