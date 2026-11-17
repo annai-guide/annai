@@ -135,7 +135,9 @@ export function createNotices() {
   // Every card fitted again when the screen changes size, or once web fonts swapped in (their words take other room; WebKit says `loading`, not `loadingdone`).
   const refit = () => { for (const n of el.querySelectorAll('.notice')) fitters.get(/** @type {HTMLElement} */ (n))?.(); scrolls(); };
   addEventListener('resize', refit);
-  document.fonts?.addEventListener('loading', () => document.fonts.ready.then(refit));
+  const refitAfterFonts = () => document.fonts.ready.then(refit);
+  document.fonts?.addEventListener('loading', refitAfterFonts);
+  if (document.fonts?.status === 'loading') refitAfterFonts(); // a cycle already running gets no `loading` after this
   /** One kind of card: the same title and tone. Cards don't say which trip raised them, so that is not part of it. @param {string} title @param {string} tone */
   const kindOf = (title, tone) => `${tone}\n${title}`;
   /** The lone card of a kind, while there is only one. @type {Map<string, HTMLElement>} */

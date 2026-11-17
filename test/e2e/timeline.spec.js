@@ -487,8 +487,12 @@ test("home opened at the now line: a card that arrives sticks at the top of the 
   expect(await page.evaluate(() => document.querySelector('.notices')?.getBoundingClientRect().height)).toBe(0);
 });
 
-/** Home with a long past, opened at the now line, its box replaced by one the test fills (createNotices). @param {import('@playwright/test').Page} page */
-async function scrolledHome(page) {
+/**
+ * Home with a long past, opened at the now line, its box replaced by one the test fills (createNotices). With slowFont, a face is already loading when the box is made
+ * (its file waits for the test's release, which the test has set up with page.route): the browser's `loading` event came before the box listened for it.
+ * @param {import('@playwright/test').Page} page @param {{ slowFont?: boolean }} [o]
+ */
+async function scrolledHome(page, { slowFont = false } = {}) {
   await openApp(page, '#/settings');
   /** @type {Record<string, number>} */
   const chats = {};
@@ -496,12 +500,19 @@ async function scrolledHome(page) {
   await seed(page, { chats, trips: { Laterton: { from: 3, to: 4 } } });
   await page.goto('/#/trips');
   await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(300);
-  await page.evaluate(async () => {
+  await page.evaluate(async (slowFont) => {
     const { createNotices } = await import(/** @type {string} */ ('/src/ui/notices.js'));
+    if (slowFont) {
+      const started = new Promise((r) => document.fonts.addEventListener('loading', r, { once: true }));
+      const face = new FontFace('Slow Probe', 'url(/assets/fonts/ibm-plex-mono-400.woff2?slow=1)');
+      document.fonts.add(face);
+      face.load();
+      await started;
+    }
     const n = createNotices();
     document.querySelector('.notices')?.replaceWith(n.el);
     /** @type {any} */ (window).__n = n;
-  });
+  }, slowFont);
 }
 const placeOf = (/** @type {import('@playwright/test').Page} */ page) => page.evaluate(() => ({ y: Math.round(scrollY), now: Math.round(/** @type {Element} */ (document.querySelector('.now-line')).getBoundingClientRect().top),
   pos: getComputedStyle(/** @type {Element} */ (document.querySelector('.notices'))).position }));
@@ -1031,6 +1042,26 @@ test("a web font that swaps in after a card was fitted fits it again: its words 
     await face.load();
   });
   await expect(card.getByRole('button', { name: 'More' })).toBeVisible();
+});
+
+test.describe('a web font already loading when the notices are made', () => {
+  test.use({ serviceWorkers: 'block' }); // the delay is the test's page.route, which sees the page's requests and not the service worker's own
+
+  test("the browser's `loading` came before the box listened: a card drawn meanwhile is fitted again once the font has arrived", async ({ page }) => {
+    let arrive = () => {};
+    const late = new Promise((r) => { arrive = () => r(undefined); });
+    await page.route(/ibm-plex-mono-400\.woff2\?slow=1/, async (route) => { await late; await route.continue(); });
+    await page.setViewportSize({ width: 360, height: 640 });
+    await scrolledHome(page, { slowFont: true });
+    expect(await page.evaluate(() => document.fonts.status)).toBe('loading'); // the face is on its way: the test is the case it names
+    await page.evaluate(() => /** @type {any} */ (window).__n.card({ title: 'An update is ready', body: 'It is used at the next start.' }));
+    await settled(page);
+    const card = page.locator('.notices > .notice');
+    await expect(card.getByRole('button', { name: 'More' })).toBeHidden(); // its words show whole, as the fallback font sets them
+    await page.evaluate(() => { /** @type {HTMLElement} */ (document.querySelector('.notices .notice p')).style.fontSize = '30px'; }); // what the web font will make of them: two lines
+    arrive();
+    await expect(card.getByRole('button', { name: 'More' })).toBeVisible();
+  });
 });
 
 test("on home, a button focused inside the stuck box doesn't move the page: what sticks needs no room above it", async ({ page }) => {
