@@ -811,18 +811,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** one turns up in the Trace, or the user misses one (the user: "Revisit if one turns up in the Trace or you miss one").
 - **Approved:** 2026-11-14, the user's pick "Known limitation (Recommended)", on the final review of timeline stage 7.
 
-### A 408 is read as a bad request
-- **Kind:** deferred.
-- **What the user sees:** if a provider answers 408 (request timeout), annai's reading of failed answers has no row for it (`kindOf`, src/core/llm/contract.js:309-319), so Test's first step and a call say the provider didn't accept the request ("Check the tunables"); Test's own photo-upload step keeps its 408 row and says annai couldn't reach the address. No real 408 answer is in hand.
-- **Why:** reading a 408 as no answer everywhere would also bench the model (fallback.js gives a bad request no wait, other kinds a cool-down), so it is a choice, not a one-line fix. Found by the second opinion on openrouter-f1's last round (2026-11-15).
-- **Revisit when:** the next version, or the first real 408 in a Trace.
-
-### Two of Test's upload readings have no test of their own
-- **Kind:** deferred.
-- **What the user sees:** nothing. OpenRouter's free-model limit read through its own layered reading (a 402 or 429 "free-models-per-day" says too many requests) and Anthropic's out-of-credit 400 (says out of credit) on Test's photo-upload step are right by probe and by reading, but no test row pins them on that step.
-- **Why:** the agreed stop rule for openrouter-f1's last review (2026-11-15): a test gap is written down once and the branch merges.
-- **Revisit when:** the next version: two rows in test/unit/llm-check.test.js, the type built as `adjusted()` builds it for OpenRouter, and Anthropic's `classify`.
-
 ### annai's photos can outlive 48 hours at OpenRouter
 - **Kind:** known limitation.
 - **What the user sees:** files named `annai-….webp` (or `.jpg`, or `annai-test.png`) in the OpenRouter workspace's files after their 48 hours, whenever annai can't delete them: until annai next starts, comes online, or makes its daily check while it is open (an annai left open and online for days deletes once a day); for good, if this phone's annai data is lost and no annai signs in to that workspace again; for good, if OpenRouter is removed, its key or address changed or Erase used while annai can't reach OpenRouter; for good, if Erase reaches OpenRouter but has more uploads from the last 48 hours than the 10 seconds it waits can delete (about 140, at the 427 ms a deletion took when measured, six at a time; fewer on a slow connection): the rest stay, as the page reloads with the key gone; for good, after Sign in again into another workspace; and for good, if OpenRouter changes its beta files list so annai can't read it (uploads then stop too, so no more are made). A photo whose upload was still on its way as a new key or address was saved, and was answered only after annai finished the change, stays for good when the new key belongs to another workspace (with the same workspace it goes at 48 hours as usual). An older annai running the new plugins before it restarts into its new version uploads with no sweep, and files from a removal, Erase, a key into another workspace (Sign in again or typed) or an address change made in that window stay for good. And for good, while OpenRouter's key is kept outside its key field (only in Extra headers, or added by a server of one's own at its address): annai's sweeps use the key it keeps, so they skip it, though Test says annai deletes them.

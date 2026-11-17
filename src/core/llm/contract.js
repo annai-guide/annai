@@ -310,6 +310,8 @@ function kindOf(status, message, body = '') {
   if (status === 401 || status === 403 || (status === 400 && (BAD_KEY.test(message) || BAD_KEY_REASON.test(body)))) return 'auth';
   if (status === 402) return 'credit';
   if (status === 404) return 'not-found';
+  // The provider's own time limit (OpenRouter: "408: Your request timed out"), read as annai's is: the model rests and the next answers.
+  if (status === 408) return 'timeout';
   if (status === 413) return 'context';
   if (status === 429) return /quota|billing|credit|balance/i.test(message) ? 'credit' : 'rate';
   if (status === 503 || status === 529) return 'overloaded';
