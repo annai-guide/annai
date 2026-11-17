@@ -461,15 +461,14 @@ test("home opened at the now line: a card that arrives sticks under the top bar,
   await expect(page.locator('.now-line')).toBeVisible();
   await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(300);
   /** What is at the top of the screen, just under the top bar: the box (and its card), or home's own. */
-  const top = await stuckTop(page);
-  const under = () => page.evaluate((top) => {
-    const hit = document.elementFromPoint(innerWidth / 2, top + 4);
+  const under = () => page.evaluate(() => {
+    const bar = /** @type {HTMLElement} */ (document.querySelector('.topbar')).getBoundingClientRect();
+    const hit = document.elementFromPoint(innerWidth / 2, bar.bottom + 4);
     const card = document.querySelector('.notices:not(:empty)')?.getBoundingClientRect(); // the box: its card sits in its padding
-    // onBar: what is just above where things stick (the top bar, while there is one) is neither the box nor home's own.
-    return { barBottom: top, onBar: !document.elementFromPoint(innerWidth / 2, top - 4)?.closest('.notices, main'),
+    return { barTop: bar.top, barBottom: bar.bottom, onBar: document.elementFromPoint(innerWidth / 2, bar.top + 4)?.closest('.topbar') !== null,
       card: card ? { top: card.top, bottom: card.bottom } : null, hitCard: hit?.closest('.notices') !== null, onHome: hit?.closest('main') !== null,
       kept: Math.round(document.querySelector('.now-line')?.getBoundingClientRect().top ?? NaN) };
-  }, top);
+  });
   const before = await under();
   expect(before.onBar).toBe(true);
   expect(before.hitCard).toBe(false);
