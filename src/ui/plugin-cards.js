@@ -1,5 +1,5 @@
 import { t, plural, messageOf } from './dom.js';
-import { list, sentences, num } from './format.js';
+import { list, sentences, asSentence, num } from './format.js';
 
 /**
  * The card when a running plugin is switched off after repeated errors (spec §5.5). A system card,
@@ -12,7 +12,7 @@ export function disabledCard({ name, why, message }) {
     tone: /** @type {const} */ ('warn'),
     title: t`The plugin "${name}" was turned off`,
     body: sentences(why.kind === 'loop' ? t`Its hooks were handed more than ${num(why.entries)} log entries in ${num(why.seconds)} seconds, which looks like a loop.`
-      : plural(why.count, 'It failed # time in a row.', 'It failed # times in a row.'), why.kind === 'loop' ? '' : t`The last error: ${message}`, t`You can turn it back on in Settings → Plugins.`),
+      : plural(why.count, 'It failed # time in a row.', 'It failed # times in a row.'), why.kind === 'loop' ? '' : asSentence(t`The last error: ${message}`), t`You can turn it back on in Settings → Plugins.`),
   };
 }
 

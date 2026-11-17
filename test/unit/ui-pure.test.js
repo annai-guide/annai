@@ -775,8 +775,12 @@ test('the card when a plugin is switched off says which, why and where to turn i
   const { disabledCard } = await import('../../src/ui/plugin-cards.js');
   assert.deepEqual(disabledCard({ name: 'Tides', why: { kind: 'failed', count: 3 }, message: 'boom' }), {
     tone: 'warn', title: 'The plugin "Tides" was turned off',
-    body: 'It failed 3 times in a row. The last error: boom You can turn it back on in Settings → Plugins.',
+    body: 'It failed 3 times in a row. The last error: boom. You can turn it back on in Settings → Plugins.',
   });
+  // The last error is a plugin's own words, ended as a sentence so the next one doesn't run into it, unless it ends in a stop of its own.
+  for (const [message, ended] of [['boom', 'boom.'], ['boom.', 'boom.'], ['Really?', 'Really?'], ['boom\n', 'boom.']]) {
+    assert.equal(disabledCard({ name: 'Tides', why: { kind: 'failed', count: 1 }, message }).body, `It failed 1 time in a row. The last error: ${ended} You can turn it back on in Settings → Plugins.`);
+  }
   // A hook loop says so whole: once "It its hooks were handed…", glued (localization L5f), and its last error is that reason, in English: not said twice.
   assert.equal(disabledCard({ name: 'Tides', why: { kind: 'loop', entries: 1000, seconds: 10 }, message: 'its hooks were handed more than 1000 log entries in 10 seconds, which looks like a loop' }).body,
     'Its hooks were handed more than 1,000 log entries in 10 seconds, which looks like a loop. You can turn it back on in Settings → Plugins.');

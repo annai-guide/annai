@@ -28,6 +28,8 @@ export function sentences(...parts) {
 }
 /** What sentences() puts between two: a space, or nothing in Chinese and Japanese; for a sentence drawn apart, as one in bold. */
 export const sentenceGap = () => sentences('.', '.').replace(/[.\u2068\u2069]/g, '');
+/** A text as a sentence of its own, ended as sentences() reads an end: a full stop after it unless it ends in one, so the next sentence is joined as after any other. A plugin's error is no sentence. @param {string} text */
+export const asSentence = (text) => (ENDED.test(text.trimEnd()) ? text.trimEnd() : `${text.trimEnd()}.`);
 
 /** A number the way this language writes it. @param {number} n @param {Intl.NumberFormatOptions} [options] */
 export const num = (n, options) => make(Intl.NumberFormat, options).format(n);

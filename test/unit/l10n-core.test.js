@@ -146,6 +146,8 @@ test("scopes' titles, storage errors, a provider that keeps turns and a plugin s
   assert.equal(scopeTitle({ id: 'trip-1', title: 'Big Sur' }), 'Big Sur');
   assert.deepEqual(keeperOf({ holds: 'at least 30 days', provider: 'provider-openai' }, 'provider-another-address', 'My server'), { name: 'My server', holds: null, server: true, note: '' });
   assert.match(disabledCard({ name: 'Tides', why: { kind: 'failed', count: 3 }, message: 'boom' }).body, /^3回続けて失敗しました。最後のエラー：boom/);
+  // The last error is ended as a sentence, and Japanese puts no space before the next one (sentences()).
+  assert.match(disabledCard({ name: 'Tides', why: { kind: 'failed', count: 3 }, message: 'boom' }).body, /最後のエラー：boom\.\S/);
 });
 
 test("an error a model may read keeps annai's English in message; the screens show its shown words (LESSONS 2026-10-27)", async () => {
