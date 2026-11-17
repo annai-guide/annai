@@ -61,7 +61,7 @@ test('leave: 15 min before the estimated departure, from where the user is, else
   assert.equal(PLAN.next?.(call, moment(), {}), at('17:45'));
   assert.equal(PLAN.check(call, moment({ now: at('17:44') }), {}), null);
   const on = PLAN.check(call, moment({ now: at('17:45') }), {});
-  assert.deepEqual(on, { text: 'Plan: "Call Grandma" (can\'t be moved) starts at 18:00, in 15 min', at: at('17:45'), fallback: 'In 15 min: Call Grandma at 18:00.', say: { event: 'coming-up', what: /** @type {any} */ (find('plan:call:coming-up').say).what, minutes: 15 } });
+  assert.deepEqual(on, { text: 'Plan: "Call Grandma" (can\'t be moved) starts at 18:00, in 15 min', at: at('17:45'), fallback: 'In 15 min: Call Grandma at 18:00.', say: { event: 'coming-up', what: /** @type {any} */ (find('plan:call:coming-up').say).what, left: 15 } });
 });
 
 test('arrived: stopped 2 min there, or 5 min inside; driving past is not arriving; inferred on coming back on screen', () => {
@@ -306,7 +306,7 @@ test("the coming-up reminder says the minutes left when it fires: 15 on time, 8 
     const f = PLAN.check(call, moment({ now: at(hhmm) }), {});
     assert.equal(f?.fallback, `In ${left} min: Call Grandma at 18:00.`, hhmm);
     assert.equal(planWords(/** @type {any} */ (f?.say)), f?.fallback, hhmm);
-    assert.equal(/** @type {any} */ (f?.say).minutes, left, hhmm);
+    assert.equal(/** @type {any} */ (f?.say).left, left, hhmm);
     assert.match(String(f?.text), new RegExp(`starts at 18:00, in ${left} min$`), hhmm); // Shiori's text said it already
   }
   // Half a minute before the start still says one minute, as Shiori's text and the phone's notification do.
@@ -314,7 +314,7 @@ test("the coming-up reminder says the minutes left when it fires: 15 on time, 8 
   // The watch's own words, for the notification made for its due time (the phone counts the minutes left itself): 15; and an entry written before.
   const say = /** @type {any} */ (find('plan:call:coming-up').say);
   assert.equal(planWords(say), 'In 15 min: Call Grandma at 18:00.');
-  assert.equal(planWords({ event: 'coming-up', what: say.what, minutes: 8 }), 'In 8 min: Call Grandma at 18:00.');
+  assert.equal(planWords({ event: 'coming-up', what: say.what, left: 8 }), 'In 8 min: Call Grandma at 18:00.');
 });
 
 test("a reopened annai says the minutes left of the plan's reminders, on the live engine, in Shiori's fallback and the user's words (it said \"In 15 min\" at 17:52)", async () => {
@@ -324,6 +324,38 @@ test("a reopened annai says the minutes left of the plan's reminders, on the liv
     await k.to(at(hhmm));
     const words = k.agent.wakes.flatMap((w) => (w.fallbacks ?? []).map((/** @type {any} */ f) => [f.text, planWords(f.plan)]));
     assert.deepEqual(words, [[`In ${left} min: Call Grandma at 18:00.`, `In ${left} min: Call Grandma at 18:00.`]], hhmm);
+    k.live.dispose();
+  }
+});
+
+test("the leave reminder on a catch-up's first look says \"soon\": the place it counts from is where the traveller was before the phone locked, so a count would be false (it said \"about 8 min\" at 11:40)", () => {
+  const leave = find('plan:nepenthe:leave').when;
+  const soon = 'Leave soon: Lunch at Nepenthe at 12:00.';
+  // The first look: the fix is the one from before annai went away (River Inn, 12 min by car, so the time to leave was 11:48), no new fix yet.
+  const first = PLAN.check(leave, moment({ now: at('11:40'), past: true, fix: here(RIVER_INN, at('11:20')).fix }), {});
+  assert.equal(first?.fallback, soon);
+  assert.equal(planWords(/** @type {any} */ (first?.say)), soon);
+  assert.equal(/** @type {any} */ (first?.say).left, undefined);
+  assert.match(String(first?.text), /about 12 min by car$/); // Shiori's own text keeps the real distance, from the place it names
+  // The same moment from a current fix keeps its count.
+  assert.equal(PLAN.check(leave, here(RIVER_INN, at('11:40')), {})?.fallback, 'Leave in about 8 min: Lunch at Nepenthe at 12:00. About 12 min by car.');
+});
+
+test("a reopened annai says \"soon\" for the leave reminder wherever the traveller is by its first fix, on the live engine (it said \"about 8 min\" from the place before the lock)", async () => {
+  const soon = 'Leave soon: Lunch at Nepenthe at 12:00.';
+  // On the live engine: on screen at the River Inn until 11:20, the phone locks, annai is back at 11:40 and the traveller is 12 km north of Nepenthe,
+  // or at the place they were, or at Nepenthe itself; in every shape the leave reminder says "soon", beside whatever else fires.
+  for (const [where, p] of /** @type {[string, { lat: number, lng: number }][]} */ ([['12 km north', off(NEPENTHE, 0, 12_000)], ['the old place', RIVER_INN], ['Nepenthe', NEPENTHE]])) {
+    const k = await liveKit({ plan: { nepenthe: ITEMS[0].item } });
+    await k.stay(RIVER_INN, at('11:00'), at('11:20'));
+    k.sensors.visible(false);
+    await k.settle();
+    await k.to(at('11:40'));
+    k.sensors.visible(true);
+    await k.settle();
+    await k.fix(at('11:40:05'), p);
+    const said = k.agent.wakes.flatMap((w) => (w.fallbacks ?? []).filter((/** @type {any} */ f) => f.plan?.event === 'leave').map((/** @type {any} */ f) => [f.text, planWords(f.plan)]));
+    assert.deepEqual(said, [[soon, soon]], where);
     k.live.dispose();
   }
 });
