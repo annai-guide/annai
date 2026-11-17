@@ -134,11 +134,27 @@ against the code before its row was written. The ones with a question are listed
 | **Shiori compacting her own context** (Kokoro has no tool for it today; compaction runs by itself at 70% of the context window, and from the conversation's menu: Summarize now, Start fresh). | not started; a design question first (what she would gain, what a compaction mid-task loses, the prompt cache) | src/core/agent/loop.js (`compaction.threshold` 0.7). | the user, 2026-11-16 ~20:55 PST: "also for compact, does kokoro have way to call the compact tool? should we let shiori able to optimize her own context?" |
 | **A cost display with ranges** (a day, 7 days, a month, all time), across trips: today the cost shows per trip ("This trip so far", in Details and the conversation's menu) and per call in Trace, and a daily budget can be set in Settings → Models. | not started; design (where it lives on the new home, which ranges) | src/core/agent/budgets.js already sums model.turn costs per day. | the user, 2026-11-16 ~20:55 PST: "also seems like a good idea to have a cost display available to be checked somewhere? like 1d 7d 1m total or similar ranges" |
 
+### The next version: the Deferred entries, in builds
+
+The current scope is released (b6db88d4), so the next version starts (RULES: a deferral is planned work, built in the next version).
+The entries are grouped into builds by the code they share; each build's entries are named in docs/limitations.md by their headings.
+
+| Part | State | Where it stands | Entries |
+|---|---|---|---|
+| **Screens after stage 8** | building (branch screens-next from main 5f53a5e3, an Opus xhigh builder, 2026-11-17) | brief and report in the `.superpowers` notes (screens-next-*) | a cold load at `#/now`; Driving only from today's tab; a share's add failing after leaving; the share add twice; Driving missing a card |
+| **Leave, running late and carriers** | waiting on the design check above (its options go to the user) | — | the leave reminder beside the arrival; a delayed flight; ferries, buses, coaches; the kinds `lodging`, `flight`, `rail`; a non-flight linked to a flight; a check-in 3 hours late; a flight item with no coordinates; "Leave soon" before the flight there; the Driving strip's two flight entries |
+| **The Undo line** | waiting on its design check (row above) | — | the Undo line misses what a partway turn writes |
+| **Turn records in the loop** | not started | — | a line typed into her `wait`; tool results' `end` and `awake`; the restart carrying an older hand-over (it reads the hand-over the Undo check looks at: after that check); her reply to the "you haven't answered" cue |
+| **Languages** | not started; live runs in Japanese | — | the real-voice check in English; the recap's native-speaker sentence; summaries' two ways; Koe's line before a tool; Kokoro's notes to Koe in English |
+| **Words and names** | not started | — | the testing docs' "Realtime"/"Classic"; plugin errors in lower case; the translation pass's second look; an old flight's place and six details; OpenAI's and Groq's speech names |
+| **Small fixes** | not started | — | the search order's two rare ways; a 408; Test's two upload readings |
+| **The gate under extreme load** | not started | — | the scaled-clock unit tests |
+
 ### Standing
 
 | Part | State | Where it stands |
 |---|---|---|
-| **Deferred work** | open | `docs/limitations.md`, every entry with "Kind: deferred" (12 on 2026-11-14). Each is planned for the next version; none is repeated here. |
+| **Deferred work** | open | `docs/limitations.md`, every entry with "Kind: deferred". The ones planned for the next version are grouped in the section above; the rest (photo encoders, `item.says`) have their own rows. |
 
 ## Waiting for the user
 
