@@ -10,9 +10,9 @@ import { FILES_ONLY } from '../core/handover.js';
 
 /**
  * The model that wrote a line, in words: "" for a line stored with none (`by: null`). names: the screens' names for models (config.js
- * modelNames). @param {By} b @param {(name: string) => string} [names]
+ * modelNames). @param {By} b @param {{ names?: (name: string) => string }} [o]
  */
-export function modelWords(b, names = (n) => n) {
+export function modelWords(b, { names = (n) => n } = {}) {
   if (!b?.name) return '';
   if (!b.first || b.first === b.name) return names(b.name);
   return b.tried ? t`${names(b.name)} · ${names(b.first)} didn't answer` : t`${names(b.name)} · instead of ${names(b.first)}`;
@@ -47,7 +47,7 @@ export function lineKind(e, { names } = {}) {
     return line('spoken', 'blue', 'mic', words);
   }
   if (e.type === 'out.speak' || e.type === 'out.show' || e.type === 'out.ask') {
-    const model = modelWords(d.by, names);
+    const model = modelWords(d.by, { names });
     if (d.live) return line('koe-live', 'teal', 'wave', model ? t`Koe · live · ${model}` : t`Koe · live`);
     if (d.half === 'koe' && d.voice) return line('koe-aloud', 'blue', 'wave', model ? t`Koe · said aloud · ${model}` : t`Koe · said aloud`);
     if (d.half === 'koe') return line('koe-text', '', 'text', model ? t`Koe · text · ${model}` : t`Koe · text`);

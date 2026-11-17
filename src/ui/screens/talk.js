@@ -379,7 +379,7 @@ export async function renderTalk(ctx, route) {
   };
   /** A note of the halves', quietly naming the model that wrote it (her own lines say it in their label). @param {any} d @param {HTMLElement} li */
   const by = (d, li) => {
-    const who = modelWords(d.by, names);
+    const who = modelWords(d.by, { names });
     if (who) li.append(h('span', { class: 'sub by', text: who }));
     return li;
   };

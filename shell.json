@@ -1,5 +1,5 @@
 {
-  "build": "03ce0c574ff1",
+  "build": "8272d36bb0ea",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -43,7 +43,7 @@
     "/src/core/agent/instructions.js": "8790067e9f5d",
     "/src/core/agent/listen.js": "ace64ee6f6c6",
     "/src/core/agent/log.js": "be1f6eedd6f8",
-    "/src/core/agent/loop.js": "96c8eb933e09",
+    "/src/core/agent/loop.js": "34714d4c2a81",
     "/src/core/agent/reading.js": "dfcf146e5005",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/her-instructions.js": "b90fb982b678",
@@ -222,7 +222,7 @@
     "/src/ui/install.js": "5890fbdf8367",
     "/src/ui/keep-rows.js": "dd7f8328f3b1",
     "/src/ui/languages.js": "cb9ec09656d6",
-    "/src/ui/line-kind.js": "39f8518082c4",
+    "/src/ui/line-kind.js": "21fd36ddf202",
     "/src/ui/live-chip.js": "78c506c5de22",
     "/src/ui/live-help.js": "b7ec5d428f1c",
     "/src/ui/markdown.js": "f07c8d58f557",
@@ -273,7 +273,7 @@
     "/src/ui/screens/simulate.js": "cbdebdf221a5",
     "/src/ui/screens/shiori.js": "6296aaccc836",
     "/src/ui/screens/sees.js": "6a674fc473ae",
-    "/src/ui/screens/talk.js": "76cffbd6bb38",
+    "/src/ui/screens/talk.js": "d6f349492df3",
     "/src/ui/screens/tools.js": "ca7d2b0977e0",
     "/src/ui/screens/trace.js": "f2851e46d02a",
     "/src/ui/screens/trip.js": "5e463aa96888",

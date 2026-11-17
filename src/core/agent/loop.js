@@ -2657,7 +2657,7 @@ export class Agent {
       // Leaving the page, or a tap on Shiori that cut it short: nothing failed, so no card and no error.
       if (this.#leaving || (e instanceof ProviderError && e.kind === 'cancelled')) return null;
       const why = await this.#whyOf(e, mode === 'cold' ? 'utility' : 'main');
-      const names = modelNames(await this.llm.config());
+      const names = modelNames(await this.llm.config().catch(() => null));
       if (!o.forced) {
         await this.#notice({ tone: 'info', title: t`Shiori couldn't tidy up the conversation`, body: sentences(whyWords(why, false, { names }), t`She will try again later.`) });
         return false;
@@ -2697,7 +2697,7 @@ export class Agent {
       // said elsewhere, or its card already says why
     } else if (last?.outcome === 'image') await this.#cantSend(refusedText(readRefusal(last.error ?? '')), wakeId); // repairs ran out
     // The card for both halves has a key of its own (Halves takes it down at either half's good turn).
-    else await this.#notice({ tone: 'warn', title: t`Shiori can't reach her model`, body: whyWords(why, false, { names: modelNames(await this.llm.config()) }), key: why.halves ? 'model:both' : 'model' });
+    else await this.#notice({ tone: 'warn', title: t`Shiori can't reach her model`, body: whyWords(why, false, { names: modelNames(await this.llm.config().catch(() => null)) }), key: why.halves ? 'model:both' : 'model' });
     // The log keeps why as data, for the Conversation's words, and annai's English for the Trace.
     await this.#log({ type: 'error', actor: 'system', data: { kind: 'model', wake: wakeId, why, message: whyWords(why, true), ...(quiet ? { quiet: true } : {}) } });
   }
