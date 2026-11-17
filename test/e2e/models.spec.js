@@ -212,6 +212,38 @@ test("Settings → Tools lists the models of a provider's tool by their own name
   }
 });
 
+// A tool's note ("(Claude Sonnet 5.5, Claude Haiku 5.5, ...)") is long: the checkbox beside it was squeezed to 2 to 10 px, so a phone showed
+// hardly whether the tool was on (found in the final review of the provider-first names; main's own bug).
+test("Settings → Tools: a switch's checkbox keeps its size beside a long note, which wraps; at 360 and 393 px", async ({ page }, testInfo) => {
+  const llm = await startModelServer({});
+  try {
+    await bothProviders(page, llm.origin);
+    for (const width of [360, 393]) {
+      await page.setViewportSize({ width, height: 780 });
+      await page.goto('/#/tools');
+      const own = page.locator('.tool-switches > div').filter({ has: page.getByRole('heading', { name: "Your models' own tools" }) });
+      await expect(own.locator('li')).not.toHaveCount(0);
+      const sizes = await page.evaluate(() => [...document.querySelectorAll('.tool-switches input[type=checkbox]')].map((x) => {
+        const r = x.getBoundingClientRect();
+        return [Math.round(r.width), Math.round(r.height)];
+      }));
+      expect(sizes.length).toBeGreaterThan(5);
+      expect(sizes.filter(([w, h]) => w !== 22 || h !== 22), `every switch is 22 px at ${width}`).toEqual([]);
+      // The note wraps inside its row: nothing sticks out of it, and the page doesn't scroll sideways.
+      const fits = await page.evaluate(() => [...document.querySelectorAll('.tool-switches li')].every((li) => [...li.querySelectorAll('*')].every((x) => x.getBoundingClientRect().right <= li.getBoundingClientRect().right + 0.5)));
+      expect(fits).toBe(true);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      if (width === 360) {
+        await page.evaluate(() => document.querySelectorAll('.toasts, .notices').forEach((x) => { /** @type {HTMLElement} */ (x).style.display = 'none'; })); // the picture is of the rows, not of what floats over them
+        await own.scrollIntoViewIfNeeded();
+        await own.screenshot({ path: `.superpowers/evidence/model-provider/tools-rows-360-${testInfo.project.name}.png` });
+      }
+    }
+  } finally {
+    await llm.stop();
+  }
+});
+
 test('"Try this model" on a model\'s page answers from that model alone: one that fails says so, and no other model is asked; Models has no "Talk to your models"', async ({ page }) => {
   const reply = await readFile(new URL('../fixtures/llm/anthropic/text.sse', import.meta.url), 'utf8');
   const llm = await startModelServer({
