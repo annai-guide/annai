@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { planWatches, PLAN } from '../../src/core/live/plan-watches.js';
-import { MONTEREY, BIXBY, RIVER_INN, NEPENTHE, off, at, LA } from './live-kit.js';
+import { planWatches, planWords, PLAN } from '../../src/core/live/plan-watches.js';
+import { MONTEREY, BIXBY, RIVER_INN, NEPENTHE, HEARST, off, at, iso, LA, liveKit } from './live-kit.js';
 
 /** @param {Partial<import('../../src/core/live/triggers.js').Moment>} o @returns {import('../../src/core/live/triggers.js').Moment} */
 const moment = (o = {}) => ({ now: at('08:00'), fix: null, newFix: false, past: false, live: true, activity: 'still', change: null, odometer: 0, stop: null, gap: null, fastEnded: null, fired: () => false, ...o });
@@ -60,7 +60,8 @@ test('leave: 15 min before the estimated departure, from where the user is, else
   const call = find('plan:call:coming-up').when;
   assert.equal(PLAN.next?.(call, moment(), {}), at('17:45'));
   assert.equal(PLAN.check(call, moment({ now: at('17:44') }), {}), null);
-  assert.deepEqual(PLAN.check(call, moment({ now: at('17:45') }), {}), { text: 'Plan: "Call Grandma" (can\'t be moved) starts at 18:00, in 15 min', at: at('17:45') });
+  const on = PLAN.check(call, moment({ now: at('17:45') }), {});
+  assert.deepEqual(on, { text: 'Plan: "Call Grandma" (can\'t be moved) starts at 18:00, in 15 min', at: at('17:45'), fallback: 'In 15 min: Call Grandma at 18:00.', say: { event: 'coming-up', what: /** @type {any} */ (find('plan:call:coming-up').say).what, left: 15 } });
 });
 
 test('arrived: stopped 2 min there, or 5 min inside; driving past is not arriving; inferred on coming back on screen', () => {
@@ -169,4 +170,192 @@ test("the off-plan wake shows a flexible item's end too, so an unsure end of its
     'Plan: you arrived at Nepenthe for "Dinner" (19:00)',
   ]);
   assert.match(String(wakes({ ...table, unsure: ['start'] })[1]), /\(not sure the time was read right, 19:00\)$/);
+});
+
+/** The off-plan wake's words for a flexible item, with the user at the Big Sur River Inn. @param {any} item @param {number} now @param {Map<string, any>} [bookings] */
+const offPlanSaid = (item, now, bookings = new Map()) => {
+  const w = planWatches([{ path: '/plan/x.json', item: { fixed: false, ...item } }], bookings, { fallbackTz: LA }).find((x) => x.when.event === 'off-plan');
+  return PLAN.check(/** @type {any} */ (w).when, here(RIVER_INN, now), {})?.text ?? null;
+};
+
+test("the off-plan wake says no end for an item with none (it said an hour after the start: the scope audit's off-plan range)", () => {
+  const bixby = { title: 'Bixby Bridge photo stop', start: { at: '2026-11-27T09:45:00-08:00', tz: LA }, place: { name: 'Bixby Creek Bridge', ...BIXBY } };
+  const said = 'Off plan: "Bixby Bridge photo stop" is planned for 09:45 at Bixby Creek Bridge, and the user is 14.1 km away. The replanning skill says what to do';
+  assert.equal(offPlanSaid(bixby, at('10:40')), said); // it said "09:45–10:45"
+  assert.equal(offPlanSaid(bixby, at('10:46')), null); // the hour after the start stays as when it may wake her
+  assert.equal(offPlanSaid({ ...bixby, end: { at: '2026-11-27T09:00:00-08:00', tz: LA } }, at('09:56')), said); // an end that isn't after the start is none
+});
+
+test("the off-plan wake names both days of an item that ends on a later day, on the item's own clock (it said \"19:00–11:00\": the scope audit's off-plan range)", () => {
+  const night = { title: 'Night at Nepenthe', start: { at: '2026-11-27T19:00:00-08:00', tz: LA }, end: { at: '2026-11-28T11:00:00-08:00', tz: LA }, place: { name: 'Nepenthe', ...NEPENTHE } };
+  const said = 'Off plan: "Night at Nepenthe" is planned from Fri 2026-11-27 19:00 (GMT-8) to Sat 2026-11-28 11:00 (GMT-8) at Nepenthe, and the user is 7.0 km away. The replanning skill says what to do';
+  assert.equal(offPlanSaid(night, at('19:15')), said);
+  // After midnight, "23:30" alone would read as today's.
+  assert.equal(offPlanSaid({ ...night, start: { at: '2026-11-27T23:30:00-08:00', tz: LA } }, at('00:15', '2026-11-28')),
+    'Off plan: "Night at Nepenthe" is planned from Fri 2026-11-27 23:30 (GMT-8) to Sat 2026-11-28 11:00 (GMT-8) at Nepenthe, and the user is 7.0 km away. The replanning skill says what to do');
+  // Over a clock change, each time with its own offset.
+  assert.equal(offPlanSaid({ ...night, start: { at: '2026-10-31T19:00:00-07:00', tz: LA }, end: { at: '2026-11-01T11:00:00-08:00', tz: LA } }, Date.parse('2026-10-31T19:15:00-07:00')),
+    'Off plan: "Night at Nepenthe" is planned from Sat 2026-10-31 19:00 (GMT-7) to Sun 2026-11-01 11:00 (GMT-8) at Nepenthe, and the user is 7.0 km away. The replanning skill says what to do');
+});
+
+test("the off-plan wake's doubt follows the times it says: an unsure end it doesn't say doesn't mark a sure start", () => {
+  const table = { id: 'table', kind: 'restaurant', status: 'unverified', source: '/files/t.pdf', title: 'Nepenthe', unsure: ['end'], start: { at: '2026-11-27T19:00:00-08:00', tz: LA }, end: { at: '2026-11-27T07:00:00-08:00', tz: LA } };
+  const dinner = { title: 'Dinner', booking: '/trip/bookings/table.json', start: table.start, end: table.end, place: { name: 'Nepenthe', ...NEPENTHE } };
+  assert.equal(offPlanSaid(dinner, at('19:15'), new Map([['/bookings/table.json', table]])),
+    'Off plan: "Dinner" is planned for 19:00 at Nepenthe, and the user is 7.0 km away. The replanning skill says what to do');
+  assert.equal(offPlanSaid(dinner, at('19:15'), new Map([['/bookings/table.json', { ...table, unsure: ['start'] }]])),
+    'Off plan: "Dinner" (not sure the time was read right) is planned for 19:00 at Nepenthe, and the user is 7.0 km away. The replanning skill says what to do');
+});
+
+test("the off-plan wake asks in an item's first hour: far 30 min into a long flexible item wakes her, 90 min in doesn't", () => {
+  const long = { title: 'Afternoon at Bixby Creek', start: { at: '2026-11-27T13:00:00-08:00', tz: LA }, end: { at: '2026-11-27T17:00:00-08:00', tz: LA }, place: { name: 'Bixby Creek Bridge', ...BIXBY } };
+  assert.equal(offPlanSaid(long, at('13:30')),
+    'Off plan: "Afternoon at Bixby Creek" is planned for 13:00–17:00 at Bixby Creek Bridge, and the user is 14.1 km away. The replanning skill says what to do');
+  assert.equal(offPlanSaid(long, at('14:30')), null); // past its first hour: a stop off the plan is linger's
+  const w = planWatches([{ path: '/plan/long.json', item: { fixed: false, ...long } }], new Map(), { fallbackTz: LA })[0];
+  assert.equal(PLAN.describe(w.when), 'when far from "Afternoon at Bixby Creek" in the first 60 min of its time');
+});
+
+/** A flexible stay from 15:00 to 11:00 the next day at the Big Sur River Inn, and dinner at Nepenthe from 19:00. */
+const STAY = { title: 'Stay at Big Sur River Inn', fixed: false, start: { at: '2026-11-27T15:00:00-08:00', tz: LA }, end: { at: '2026-11-28T11:00:00-08:00', tz: LA }, place: { name: 'Big Sur River Inn', ...RIVER_INN } };
+const DINNER = { title: 'Dinner at Nepenthe', fixed: true, start: { at: '2026-11-27T19:00:00-08:00', tz: LA }, end: { at: '2026-11-27T20:30:00-08:00', tz: LA }, place: { name: 'Nepenthe', ...NEPENTHE } };
+/**
+ * What wakes her when annai is opened at dinner: live mode's first fixes are at Nepenthe from 19:30, 7.0 km from the inn, which the
+ * traveller hasn't reached yet. @param {Record<string, any>} plan @returns {Promise<string[]>}
+ */
+async function openedAtDinner(plan) {
+  const k = await liveKit({ plan, start: at('19:25') });
+  await k.stay(NEPENTHE, at('19:30'), at('19:40'), 60);
+  k.live.dispose();
+  return k.agent.wakes.map((x) => String(x.text));
+}
+
+test("a stay that runs overnight doesn't wake her \"off plan\" at the dinner the plan has (it did: the stay was planned too)", async () => {
+  const texts = await openedAtDinner({ stay: STAY, dinner: DINNER });
+  assert.deepEqual(texts.filter((x) => x.includes('Off plan')), []);
+  assert.ok(texts.some((x) => x.startsWith('Plan: you arrived at Nepenthe for "Dinner at Nepenthe"')), texts.join('\n'));
+});
+
+test("a stay that runs overnight doesn't wake her \"off plan\" at a dinner the plan doesn't have, 4 h after the stay's start", async () => {
+  assert.deepEqual((await openedAtDinner({ stay: STAY })).filter((x) => x.includes('Off plan')), []);
+});
+
+/** The linger watch of a plan with Bixby's photo stop today and the Hearst Castle tour on the day after (fixed, 16:30). */
+const lingerOf = () => planWatches([
+  { path: '/plan/bixby.json', item: { id: 'bixby', title: 'Bixby Bridge photo stop', fixed: false, start: { at: '2026-11-27T09:45:00-08:00', tz: LA }, end: { at: '2026-11-27T10:05:00-08:00', tz: LA }, place: { name: 'Bixby Creek Bridge', ...BIXBY } } },
+  { path: '/plan/castle.json', item: { id: 'castle', title: 'Hearst Castle tour', fixed: true, start: { at: '2026-11-28T16:30:00-08:00', tz: LA }, place: { name: 'Hearst Castle', ...HEARST } } },
+], new Map(), { fallbackTz: LA }).find((x) => x.id === 'plan:linger');
+
+test("the linger wake names the day of the next item when it isn't the moment's day, in Shiori's words and in the data the user's are made from (it said \"at 16:30\" for tomorrow's)", () => {
+  const linger = /** @type {any} */ (lingerOf()).when;
+  const stopped = (/** @type {string} */ hhmm, /** @type {string} */ since) => PLAN.check(linger, here(RIVER_INN, at(hhmm), { stop: { ...RIVER_INN, since: at(since) } }), { home: MONTEREY });
+  // 13:20 on the 27th: the day's timed items are over, and the next is tomorrow's, at a clock time later than now.
+  const f = stopped('13:20', '13:00');
+  assert.equal(f?.text, "Off plan: the user has been stopped for 20 min at a place that isn't on the plan (36.2700, -121.8070); next on the plan: \"Hearst Castle tour\" at Sat 2026-11-28 16:30 (GMT-8). The replanning skill says what to do");
+  assert.equal(f?.fallback, 'Next on the plan: Hearst Castle tour at Sat 2026-11-28 16:30 (GMT-8).');
+  assert.deepEqual(/** @type {any} */ (f?.say).next, { title: 'Hearst Castle tour', at: at('16:30', '2026-11-28'), tz: LA, later: true });
+  assert.equal(planWords(/** @type {any} */ (f?.say)), 'Next on the itinerary: Hearst Castle tour at Sat, Nov 28, 16:30.'); // the user's own line says it too
+  // The same item on the moment's own day names no day, as before: the time alone is true.
+  const same = PLAN.check(linger, here(RIVER_INN, at('13:20', '2026-11-28'), { stop: { ...RIVER_INN, since: at('13:00', '2026-11-28') } }), { home: MONTEREY });
+  assert.equal(same?.fallback, 'Next on the plan: Hearst Castle tour at 16:30.');
+  assert.deepEqual(/** @type {any} */ (same?.say).next, { title: 'Hearst Castle tour', at: at('16:30', '2026-11-28'), tz: LA });
+  assert.equal(planWords(/** @type {any} */ (same?.say)), 'Next on the itinerary: Hearst Castle tour at 16:30.');
+  // An entry written before the day was carried reads as it did.
+  assert.equal(planWords({ event: 'linger', next: { title: 'Hearst Castle tour', at: at('16:30', '2026-11-28'), tz: LA } }), 'Next on the itinerary: Hearst Castle tour at 16:30.');
+});
+
+/** The reminder's words for a moment: its fallback (Shiori's), and the user's, made from its data; they say the same, in English. @param {import('../../src/core/live/watches.js').Watch} watch @param {number} now */
+const wordsAt = (watch, now, o = {}) => {
+  const f = PLAN.check(watch.when, here(RIVER_INN, now, o), {});
+  return f ? [f.fallback, planWords(/** @type {any} */ (f.say))] : null;
+};
+
+test("the leave reminder says the minutes left to leave when it fires: on time 15, 7 min late 8, past its time \"soon\" (it said \"about 15\" however late it fired)", () => {
+  const leave = find('plan:nepenthe:leave').when;
+  const soon = 'Leave soon: Lunch at Nepenthe at 12:00.';
+  // From the River Inn (12 min by car) it is due at 11:33, and the time to leave is 11:48.
+  const lunch = (/** @type {number} */ n) => `Leave in about ${n} min: Lunch at Nepenthe at 12:00. About 12 min by car.`;
+  for (const [hhmm, left] of /** @type {[string, number][]} */ ([['11:33', 15], ['11:35', 13], ['11:36', 12], ['11:40', 8], ['11:47', 1]])) {
+    const f = PLAN.check(leave, here(RIVER_INN, at(hhmm)), {});
+    assert.equal(f?.fallback, lunch(left), hhmm);
+    assert.equal(planWords(/** @type {any} */ (f?.say)), lunch(left), hhmm);
+    assert.equal(/** @type {any} */ (f?.say).left, left, hhmm);
+    assert.match(String(f?.text), /about 12 min by car$/); // Shiori's own text says the real distances, and no lead
+  }
+  // At the time to leave and past it: "soon", with no lead and no travel time beside "Running late".
+  for (const hhmm of ['11:48', '11:50', '11:59']) {
+    assert.deepEqual(wordsAt(find('plan:nepenthe:leave'), at(hhmm)), [soon, soon], hhmm);
+  }
+  // Opened at 11:50, 44 km (about 75 min) from the lunch, with no model to reach: the review's input.
+  const far = PLAN.check(leave, here(off(NEPENTHE, 0, 44_000), at('11:50')), {});
+  assert.equal(far?.fallback, soon);
+  assert.equal(planWords(/** @type {any} */ (far?.say)), soon);
+  // No position and no stop before: no travel time to count from, so no lead is said.
+  const none = planWatches([{ path: '/plan/lunch.json', item: { title: 'Lunch', fixed: true, start: { at: iso('12:00'), tz: LA }, place: { name: 'Nepenthe', ...NEPENTHE } } }], new Map(), { fallbackTz: LA }).find((x) => x.id === 'plan:lunch:leave');
+  assert.equal(PLAN.check(/** @type {any} */ (none).when, moment({ now: at('11:40') }), {})?.fallback, 'Leave soon: Lunch at 12:00, Nepenthe.');
+  // An entry written before the minutes left were carried reads as it did: "about 15" with a travel time, else "soon".
+  const what = /** @type {any} */ (find('plan:nepenthe:leave').say).what;
+  assert.equal(planWords({ event: 'leave', what, minutes: 12, mode: 'drive' }), lunch(15));
+  assert.equal(planWords({ event: 'leave', what, minutes: 12, mode: 'walk' }), 'Leave in about 15 min: Lunch at Nepenthe at 12:00. About 12 min on foot.');
+  assert.equal(planWords({ event: 'leave', what }), soon);
+});
+
+test("the coming-up reminder says the minutes left when it fires: 15 on time, 8 when annai was opened at 17:52 (it said \"In 15 min\" for 18:00)", () => {
+  const call = find('plan:call:coming-up').when;
+  for (const [hhmm, left] of /** @type {[string, number][]} */ ([['17:45', 15], ['17:48', 12], ['17:52', 8], ['17:59', 1]])) {
+    const f = PLAN.check(call, moment({ now: at(hhmm) }), {});
+    assert.equal(f?.fallback, `In ${left} min: Call Grandma at 18:00.`, hhmm);
+    assert.equal(planWords(/** @type {any} */ (f?.say)), f?.fallback, hhmm);
+    assert.equal(/** @type {any} */ (f?.say).left, left, hhmm);
+    assert.match(String(f?.text), new RegExp(`starts at 18:00, in ${left} min$`), hhmm); // Shiori's text said it already
+  }
+  // Half a minute before the start still says one minute, as Shiori's text and the phone's notification do.
+  assert.equal(PLAN.check(call, moment({ now: at('17:59:40') }), {})?.fallback, 'In 1 min: Call Grandma at 18:00.');
+  // The watch's own words, for the notification made for its due time (the phone counts the minutes left itself): 15; and an entry written before.
+  const say = /** @type {any} */ (find('plan:call:coming-up').say);
+  assert.equal(planWords(say), 'In 15 min: Call Grandma at 18:00.');
+  assert.equal(planWords({ event: 'coming-up', what: say.what, left: 8 }), 'In 8 min: Call Grandma at 18:00.');
+});
+
+test("a reopened annai says the minutes left of the plan's reminders, on the live engine, in Shiori's fallback and the user's words (it said \"In 15 min\" at 17:52)", async () => {
+  const CALL = { title: 'Call Grandma', fixed: true, start: { at: iso('18:00'), tz: LA } };
+  for (const [hhmm, left] of /** @type {[string, number][]} */ ([['17:45', 15], ['17:52', 8]])) {
+    const k = await liveKit({ live: false, plan: { call: CALL }, start: at(hhmm) });
+    await k.to(at(hhmm));
+    const words = k.agent.wakes.flatMap((w) => (w.fallbacks ?? []).map((/** @type {any} */ f) => [f.text, planWords(f.plan)]));
+    assert.deepEqual(words, [[`In ${left} min: Call Grandma at 18:00.`, `In ${left} min: Call Grandma at 18:00.`]], hhmm);
+    k.live.dispose();
+  }
+});
+
+test("the leave reminder on a catch-up's first look says \"soon\": the place it counts from is where the traveller was before the phone locked, so a count would be false (it said \"about 8 min\" at 11:40)", () => {
+  const leave = find('plan:nepenthe:leave').when;
+  const soon = 'Leave soon: Lunch at Nepenthe at 12:00.';
+  // The first look: the fix is the one from before annai went away (River Inn, 12 min by car, so the time to leave was 11:48), no new fix yet.
+  const first = PLAN.check(leave, moment({ now: at('11:40'), past: true, fix: here(RIVER_INN, at('11:20')).fix }), {});
+  assert.equal(first?.fallback, soon);
+  assert.equal(planWords(/** @type {any} */ (first?.say)), soon);
+  assert.equal(/** @type {any} */ (first?.say).left, undefined);
+  assert.match(String(first?.text), /about 12 min by car$/); // Shiori's own text keeps the real distance, from the place it names
+  // The same moment from a current fix keeps its count.
+  assert.equal(PLAN.check(leave, here(RIVER_INN, at('11:40')), {})?.fallback, 'Leave in about 8 min: Lunch at Nepenthe at 12:00. About 12 min by car.');
+});
+
+test("a reopened annai says \"soon\" for the leave reminder wherever the traveller is by its first fix, on the live engine (it said \"about 8 min\" from the place before the lock)", async () => {
+  const soon = 'Leave soon: Lunch at Nepenthe at 12:00.';
+  // On the live engine: on screen at the River Inn until 11:20, the phone locks, annai is back at 11:40 and the traveller is 12 km north of Nepenthe,
+  // or at the place they were, or at Nepenthe itself; in every shape the leave reminder says "soon", beside whatever else fires.
+  for (const [where, p] of /** @type {[string, { lat: number, lng: number }][]} */ ([['12 km north', off(NEPENTHE, 0, 12_000)], ['the old place', RIVER_INN], ['Nepenthe', NEPENTHE]])) {
+    const k = await liveKit({ plan: { nepenthe: ITEMS[0].item } });
+    await k.stay(RIVER_INN, at('11:00'), at('11:20'));
+    k.sensors.visible(false);
+    await k.settle();
+    await k.to(at('11:40'));
+    k.sensors.visible(true);
+    await k.settle();
+    await k.fix(at('11:40:05'), p);
+    const said = k.agent.wakes.flatMap((w) => (w.fallbacks ?? []).filter((/** @type {any} */ f) => f.plan?.event === 'leave').map((/** @type {any} */ f) => [f.text, planWords(f.plan)]));
+    assert.deepEqual(said, [[soon, soon]], where);
+    k.live.dispose();
+  }
 });

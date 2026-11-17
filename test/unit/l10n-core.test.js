@@ -86,9 +86,18 @@ test("a plan's reminder: Shiori reads annai's English, the user's words are made
   const [w] = planWatches(items, new Map(), { fallbackTz: 'UTC' });
   assert.equal(w.fallback, 'In 15 min: Tea at the inn at 12:00.');
   assert.equal(planWords(/** @type {any} */ (w.say)), 'あと15分：Tea at the inn（12:00）。');
+  // Fired later, it counts the minutes left to the start, and a leave reminder those to the time to leave, in the same rows.
+  assert.equal(planWords({ ...w.say, event: 'coming-up', left: 8 }), 'あと8分：Tea at the inn（12:00）。');
+  const what = { title: 'Lunch', at, tz: 'America/Los_Angeles' };
+  assert.equal(planWords({ event: 'leave', what, minutes: 12, mode: 'drive', left: 8 }), '約8分後に出発：Lunch（12:00）。車で約12分です。');
+  assert.equal(planWords({ event: 'leave', what, minutes: 12, mode: 'drive' }), '約15分後に出発：Lunch（12:00）。車で約12分です。');
   // Worked out as it fires (late, from where the user is): data too.
   const late = { event: 'late', what: { title: 'Lunch', at, tz: 'America/Los_Angeles' }, minutes: 36 };
   assert.equal(planWords(late), '遅れています：Lunch（12:00）。到着まであと約36分です。');
+  // The linger reminder's next item, on a later day than the moment's: its day in the screens' own form for a day and a time, as the Conversation's Next line writes it.
+  const castle = { title: 'Hearst Castle tour', at: Date.parse('2026-11-28T16:30:00-08:00'), tz: 'America/Los_Angeles' };
+  assert.equal(planWords({ event: 'linger', next: castle }), '次の予定：Hearst Castle tour（16:30）。');
+  assert.equal(planWords({ event: 'linger', next: { ...castle, later: true } }), '次の予定：Hearst Castle tour（11月28日(土) 16:30）。');
   assert.equal(PLAN.validate({}), 'the plan sets its own watches');
   // The Conversation's line: from the data; an older entry's English as stored, marked as English.
   const mine = () => ({});

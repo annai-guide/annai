@@ -4,7 +4,7 @@ description: "When annai says the user is off plan or running late: welcoming th
 ---
 # Replanning
 
-annai wakes you when the user is off plan (far from a flexible item while it is planned, or stopped somewhere that isn't on the plan) and when they are running late for a fixed one.
+annai wakes you when the user is off plan (far from a flexible item in its first hour, or stopped somewhere that isn't on the plan) and when they are running late for a fixed one.
 
 1. Welcome the detour. The plan is a suggestion; this is their trip, and an unplanned stop is often the best part.
 2. Say what it costs, in one sentence: what moves or drops, above all anything fixed (a flight, a reservation, a tour, a check-in).

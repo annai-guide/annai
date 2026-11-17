@@ -1,8 +1,8 @@
 import { meters, travelMinutes, modeFor, kmText, TRAVEL } from './geo.js';
-import { timeIn, validZone, instantAt } from '../time.js';
+import { timeIn, validZone, instantAt, dayIn, dueWords, isoInZone } from '../time.js';
 import { bookingRef, fixedWords, timeUnsure } from '../plan.js';
 import { t } from '../l10n.js';
-import { sentences, num, when as clockAt } from '../intl.js';
+import { sentences, num, when as clockAt, dayClock } from '../intl.js';
 
 /**
  * The plan's own watches (spec §11.3): leave in X minutes, arrived, running late, coming up; and off plan (§11.5). Worked out from the plan
@@ -13,14 +13,17 @@ import { sentences, num, when as clockAt } from '../intl.js';
  * @typedef {import('./triggers.js').Firing} Firing
  * @typedef {{ name: string, lat: number, lng: number }} Place
  * @typedef {{ title: string, at: number, tz: string, flight?: string, place?: string }} What  an item in a few words: a flight by its name
- * @typedef {{ event: string, what?: What, title?: string, place?: string, notes?: string, minutes?: number, mode?: string,
- *   next?: { title: string, at: number, tz: string } | null }} PlanSay  what a plan reminder says, as data: its event, the item, and for
- *   one worked out as it fired, the minutes away and how (mode), or what is next on the plan (null: nothing)
+ * @typedef {{ event: string, what?: What, title?: string, place?: string, notes?: string, minutes?: number, left?: number, mode?: string,
+ *   next?: { title: string, at: number, tz: string, later?: true } | null }} PlanSay  what a plan reminder says, as data: its event, the item, and for
+ *   one worked out as it fired, the minutes it names (minutes: a trip's, away for a late, the trip there for a leave, with how: mode; left: the
+ *   minutes left, to the time to leave for a leave, to the start for a coming-up), or what is next on the plan (null: nothing; later: it isn't
+ *   on the moment's day). One with none of these (an older entry, or the words made for the due time) says: a coming-up, the lead it comes with,
+ *   15 min; a leave, "soon" (it has no trip to count from). A leave with its trip and no left (an older entry) says "about 15 min".
  */
 
-/** The leave reminder comes this long before the estimated departure ("leave in X minutes"). */
+/** The leave reminder comes this long before the estimated departure ("leave in X minutes"; one that fires later says the minutes left). */
 export const LEAVE_LEAD_MIN = 15;
-/** A fixed item without coordinates is announced this long before it starts. */
+/** A fixed item without coordinates is announced this long before it starts (the words made for that moment; one that fires later says the minutes left). */
 export const COMING_UP_MIN = 15;
 /** Arriving up to this long after the start isn't late. */
 export const LATE_GRACE_MIN = 5;
@@ -35,6 +38,14 @@ export const WINDOW_MIN = 180;
 /** Off plan: this far from a flexible item, this long into its time. */
 export const OFF_PLAN_KM = 3;
 export const OFF_PLAN_AFTER_MIN = 10;
+/**
+ * Off plan: asked until this long after the start (or the item's end, if sooner). The hour running late gives a fixed item, and the one
+ * an item with no end always had. Past it nothing asks about that item: annai sees the traveller only while it is on screen (spec §11.1),
+ * so being far late in an item proves little (they may have been and gone). The linger watch wakes her only for a stop made after annai
+ * saw them somewhere else (it takes the first place it sees as home): opened 14 km from a 13:00-17:00 item at 14:25, nothing wakes her.
+ * Not the whole item: a stay until the next morning woke her "off plan" at the traveller's dinner (the main session's call, 2026-11-16).
+ */
+export const OFF_PLAN_FOR_MIN = 60;
 /** Off plan: stopped this long, this far from every plan place. */
 export const LINGER_MIN = 20;
 export const NOT_PLANNED_M = 500;
@@ -75,7 +86,7 @@ export function planWatches(items, bookings, { fallbackTz }) {
     const short = whatOf(title, booking, flight, x.at, tz, place?.name ?? '');
     const base = {
       type: 'plan', item: slug(x.path), title, at: x.at, end: Number.isFinite(end) && end > x.at ? end : null, tz, fixed: it.fixed === true,
-      unsure: timeUnsure([it.start], booking, { fallbackTz }), // the start: the time a wake says (the off-plan wake, which says the end too, reads both)
+      unsure: timeUnsure([it.start], booking, { fallbackTz }), // the start: the time a wake says (the off-plan wake reads the end too, when it says one)
       what: whatText(short), short,
     };
     const notes = typeof it.notes === 'string' && it.notes.trim() ? it.notes.trim() : '';
@@ -89,7 +100,7 @@ export function planWatches(items, bookings, { fallbackTz }) {
         add('leave', `Leave soon: ${base.what}.`, { event: 'leave', what: short }, { ...there, from: prev });
         add('late', `Running late: ${base.what}.`, { event: 'late', what: short }, there);
       } else {
-        add('off-plan', `Planned now: ${title}, at ${place.name}.`, { event: 'off-plan', title, place: place.name }, { ...there, unsure: timeUnsure([it.start, it.end], booking, { fallbackTz }) });
+        add('off-plan', `Planned now: ${title}, at ${place.name}.`, { event: 'off-plan', title, place: place.name }, { ...there, unsure: timeUnsure(base.end === null ? [it.start] : [it.start, it.end], booking, { fallbackTz }) });
       }
       add('arrived', `${place.name}: ${title}.${notes ? ` ${notes}` : ''}`, { event: 'arrived', title, place: place.name, ...(notes ? { notes } : {}) }, there);
       prev = place;
@@ -149,14 +160,15 @@ export function planWords(say) {
   switch (say.event) {
     case 'leave':
       if (say.minutes === undefined) return t`Leave soon: ${what}.`;
-      return sentences(t`Leave in about ${num(LEAVE_LEAD_MIN)} min: ${what}.`, say.mode === 'walk' ? t`About ${num(say.minutes)} min on foot.` : t`About ${num(say.minutes)} min by car.`);
+      return sentences(t`Leave in about ${num(say.left ?? LEAVE_LEAD_MIN)} min: ${what}.`, say.mode === 'walk' ? t`About ${num(say.minutes)} min on foot.` : t`About ${num(say.minutes)} min by car.`);
     case 'late': return say.minutes === undefined ? t`Running late: ${what}.` : sentences(t`Running late: ${what}.`, t`About ${num(say.minutes)} min away.`);
     case 'off-plan': return t`Planned now: ${String(say.title)}, at ${String(say.place)}.`;
     case 'arrived': return sentences(t`${String(say.place)}: ${String(say.title)}.`, say.notes ?? '');
-    case 'coming-up': return t`In ${num(COMING_UP_MIN)} min: ${what}.`;
+    case 'coming-up': return t`In ${num(say.left ?? COMING_UP_MIN)} min: ${what}.`;
     case 'linger':
       if (say.next === undefined) return t`You've stopped somewhere that isn't on the itinerary.`;
-      return say.next ? t`Next on the itinerary: ${say.next.title} at ${clock(say.next.at, say.next.tz)}.` : t`Nothing more is on the itinerary.`;
+      if (!say.next) return t`Nothing more is on the itinerary.`;
+      return t`Next on the itinerary: ${say.next.title} at ${say.next.later ? dayClock(say.next.at, say.next.tz) : clock(say.next.at, say.next.tz)}.`;
     default: return '';
   }
 }
@@ -166,6 +178,18 @@ export const planItemWords = (say) => (say.what ? whatWords(say.what) : '');
 
 /** @param {any} w @param {number} [t] */
 const hhmm = (w, t = w.at) => timeIn(t, w.tz);
+/**
+ * An item's planned time, on its own clock, as the off-plan wake says it: "for 09:45–10:05"; "for 09:45" with no end (none is made up);
+ * and an end on a later day names both days, in the words a reminder's time is read in (dueWords), so it can't be read as one day.
+ * @param {any} w
+ */
+/* en */
+const span = (w) => {
+  if (w.end === null) return `for ${hhmm(w)}`;
+  if (dayIn(w.end, w.tz) === dayIn(w.at, w.tz)) return `for ${hhmm(w)}–${hhmm(w, w.end)}`;
+  const day = (/** @type {number} */ t) => dueWords(isoInZone(t, w.tz));
+  return `from ${day(w.at)} to ${day(w.end)}`;
+};
 /**
  * What a wake says of an item beside its title: "(can't be moved, 12:00)", "(09:45)" for a flexible one, and a time Shiori isn't sure of
  * says so (fixedWords). @param {any} w @param {(string | null)[]} more
@@ -200,16 +224,23 @@ const CHECK = {
     const l = leaving(w, m);
     if (!l || m.now < l.due || m.now >= w.at) return null;
     const how = l.km === null ? '' : `: ${kmText(l.km * 1000)} away in a straight line, about ${l.minutes} min ${l.words}`;
+    // The words name the minutes left to the time to leave as of now (the reminder may fire late: annai was closed, or the user moved away).
+    // With no estimate to count from, or once the time is here or past, they say "soon"; so they do on a catch-up's first look, which
+    // counts from where the user was when annai went away: a count from there may be false by the time they read it.
+    const left = l.km === null ? 0 : Math.round((w.at - l.minutes * MIN - m.now) / MIN);
+    const lead = l.km !== null && !m.past && left >= 1;
     return {
       text: `Plan: time to leave soon for "${w.title}"${tag(w, hhmm(w))}${how}`, at: l.due,
-      fallback: l.km === null ? `Leave soon: ${w.what}.` : `Leave in about ${LEAVE_LEAD_MIN} min: ${w.what}. About ${l.minutes} min ${l.words}.`,
-      say: l.km === null ? { event: 'leave', what: w.short } : { event: 'leave', what: w.short, minutes: l.minutes, mode: l.mode },
+      fallback: lead ? `Leave in about ${left} min: ${w.what}. About ${l.minutes} min ${l.words}.` : `Leave soon: ${w.what}.`,
+      say: lead ? { event: 'leave', what: w.short, minutes: l.minutes, mode: l.mode, left } : { event: 'leave', what: w.short },
     };
   },
   'coming-up'(w, m) {
     const due = w.at - COMING_UP_MIN * MIN;
     if (m.now < due || m.now >= w.at) return null;
-    return { text: `Plan: "${w.title}"${tag(w)} starts at ${hhmm(w)}, in ${Math.max(1, Math.round((w.at - m.now) / MIN))} min`, at: due };
+    // The minutes left now (it may fire late), for Shiori's text, her fallback and the user's words alike.
+    const left = Math.max(1, Math.round((w.at - m.now) / MIN));
+    return { text: `Plan: "${w.title}"${tag(w)} starts at ${hhmm(w)}, in ${left} min`, at: due, fallback: `In ${left} min: ${w.what}.`, say: { event: 'coming-up', what: w.short, left } };
   },
   arrived(w, m, mem) {
     const fix = now(m);
@@ -245,11 +276,11 @@ const CHECK = {
   },
   'off-plan'(w, m) {
     const fix = now(m);
-    const end = w.end ?? w.at + 60 * MIN;
-    if (!fix || m.fired(`plan:${w.item}:arrived`) || m.now < w.at + OFF_PLAN_AFTER_MIN * MIN || m.now > end) return null;
+    // Its first hour, or until it ends if sooner: when it may fire, never an end she is told (span).
+    if (!fix || m.fired(`plan:${w.item}:arrived`) || m.now < w.at + OFF_PLAN_AFTER_MIN * MIN || m.now > Math.min(w.end ?? Infinity, w.at + OFF_PLAN_FOR_MIN * MIN)) return null;
     const km = meters(fix, w.place) / 1000;
     if (km <= OFF_PLAN_KM) return null;
-    return { text: `Off plan: "${w.title}"${tag(w)} is planned for ${hhmm(w)}–${hhmm(w, end)} at ${w.place.name}, and the user is ${kmText(km * 1000)} away. The replanning skill says what to do` };
+    return { text: `Off plan: "${w.title}"${tag(w)} is planned ${span(w)} at ${w.place.name}, and the user is ${kmText(km * 1000)} away. The replanning skill says what to do` };
   },
   linger(w, m, mem) {
     const fix = now(m);
@@ -260,12 +291,14 @@ const CHECK = {
     const far = (/** @type {any} */ p) => !p || meters(p, s) > NOT_PLANNED_M;
     if (!w.places.every(far) || !far(mem.home) || !far(mem.lastPlace)) return null;
     const next = w.upcoming.find((/** @type {any} */ u) => u.at > m.now);
-    const nextText = next ? `"${next.title}" at ${timeIn(next.at, next.tz)}` : '';
+    // A next item on another day than the moment's names its day (its time alone reads as today's): worked out once, for Shiori's words and the user's.
+    const later = Boolean(next) && dayIn(next.at, next.tz) !== dayIn(m.now, next.tz);
+    const nextAt = next ? (later ? dueWords(isoInZone(next.at, next.tz)) : timeIn(next.at, next.tz)) : '';
     return {
-      text: `Off plan: the user has been stopped for ${Math.round((m.now - s.since) / MIN)} min at a place that isn't on the plan (${s.lat.toFixed(4)}, ${s.lng.toFixed(4)})${next ? `; next on the plan: ${nextText}` : ''}. The replanning skill says what to do`,
+      text: `Off plan: the user has been stopped for ${Math.round((m.now - s.since) / MIN)} min at a place that isn't on the plan (${s.lat.toFixed(4)}, ${s.lng.toFixed(4)})${next ? `; next on the plan: "${next.title}" at ${nextAt}` : ''}. The replanning skill says what to do`,
       at: s.since + LINGER_MIN * MIN, place: { lat: s.lat, lng: s.lng },
-      fallback: next ? `Next on the plan: ${next.title} at ${timeIn(next.at, next.tz)}.` : 'Nothing more is on the plan.',
-      say: { event: 'linger', next: next ? { title: next.title, at: next.at, tz: next.tz } : null },
+      fallback: next ? `Next on the plan: ${next.title} at ${nextAt}.` : 'Nothing more is on the plan.',
+      say: { event: 'linger', next: next ? { title: next.title, at: next.at, tz: next.tz, ...(later ? { later: /** @type {const} */ (true) } : {}) } : null },
     };
   },
 };
@@ -299,7 +332,7 @@ const DESCRIBE = {
   'coming-up': (w) => `${COMING_UP_MIN} min before "${w.title}" at ${hhmm(w)}`,
   arrived: (w) => `on arriving at ${w.place.name} for "${w.title}"`,
   late: (w) => `when running late for "${w.title}" at ${hhmm(w)}`,
-  'off-plan': (w) => `when far from "${w.title}" while it is planned`,
+  'off-plan': (w) => `when far from "${w.title}" in the first ${OFF_PLAN_FOR_MIN} min of its time`,
   linger: () => `on stopping ${LINGER_MIN} min somewhere not on the plan`,
 };
 
