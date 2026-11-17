@@ -872,6 +872,18 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** with the top bar and Now gone (timeline stage 8) the top has one home, today's tab, as the spec says; a top on every tab when today has none is a design call for the traveller's checks on the phone, not a bug found by one. Found by the final review of stage 8 (two Haiku slices).
 - **Revisit when:** the next version: the top, or a Driving link, on every tab when today has none (the stage 8 re-review: a deferral is planned, not waiting on a check).
 
+### A share's add that fails after the traveller left its screen is told only when storage is full
+- **Kind:** deferred.
+- **What the user sees:** shared files are being added, the traveller taps "← Trips" (or Back), and the add then fails for a reason other than full storage: the error shows only on the share screen they left (src/ui/screens/import.js `add()`), and the share stays in annai's inbox with nothing listing it until the next share replaces it or they open the share screen again. Older than stage 8's crumb, which makes leaving one tap; found by reading (stage8-f2's re-review), not run.
+- **Why:** the screen owns its error line; a failure after leaving needs a card, a small change of its own with a test that makes the add fail late.
+- **Revisit when:** the next version: an add that fails after its screen was left shows a warning card, as full storage already does.
+
+### Coming back to the share screen while its add runs lets the files be added twice
+- **Kind:** deferred.
+- **What the user sees:** the traveller leaves the share screen while its files are being added and comes back before the add ends: the buttons are live again, and a second tap adds the same files a second time, kept with "(2)" in their names. Older than stage 8; found by reading (stage8-f2's re-review), not run.
+- **Why:** the screen is drawn fresh from the inbox and knows nothing of an add still running from its earlier drawing.
+- **Revisit when:** the next version: the share screen draws an add in progress (its status, the buttons off) until it ends.
+
 ### Driving can miss a card that arrives while it opens
 - **Kind:** deferred.
 - **What the user sees:** a card or a reminder of Shiori's that arrives in the instant Driving is opening (between the read of the latest card and the subscription to new ones, src/ui/screens/drive.js:112-126) is not shown there until the next one arrives. Older than stage 8; the gap runs from the store read through the settings read that drawing the card waits for (drive.js `latestCard`, `eventCard`), not measured.

@@ -105,6 +105,43 @@ test('a share still being added does not pull the traveller back when they have 
   await expect(page.getByRole('link', { name: /\/files\/flight\.pkpass/ })).toBeVisible();
 });
 
+test('a share added as a new conversation, left while it is added, does not become the conversation annai reopens', async ({ page }) => {
+  await openApp(page);
+  await waitForServiceWorker(page);
+  const trip = await startTrip(page, 'Thanksgiving');
+  /** The conversation annai reopens at a plain start (resume.js): the app settings' activeTrip, read through the page's own modules. */
+  const reopens = () => page.evaluate(async () => {
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+    const { readAppSettings } = await import(/** @type {string} */ ('/src/core/settings.js'));
+    const store = await createIdbStore();
+    try { return (await readAppSettings(new Workspace(store))).activeTrip; } finally { store.close(); }
+  });
+  await goToHash(page, `#/trip/${encodeURIComponent(trip)}/talk`); // the conversation open when the share comes
+  await expect.poll(reopens).toBe(trip);
+  const pass = [...(await passBytes())];
+  await page.evaluate(async (bytes) => {
+    const form = new FormData();
+    form.append('files', new File([new Uint8Array(bytes)], 'flight.pkpass', { type: 'application/vnd.apple.pkpass' }));
+    await fetch('/share-target', { method: 'POST', body: form, redirect: 'manual' });
+  }, pass);
+  await page.goto('/#/import?inbox=1');
+  await expect(page.getByRole('heading', { name: 'Add a file' })).toBeVisible();
+  await page.evaluate(() => {
+    const real = Cache.prototype.delete;
+    const held = new Promise((go) => { /** @type {any} */ (window).release = go; });
+    Cache.prototype.delete = function (request, options) { return held.then(() => real.call(this, request, options)); };
+  });
+  await page.getByRole('button', { name: 'New conversation' }).click();
+  await expect(page.getByText('Adding 1 of 1…')).toBeVisible();
+  await page.locator('main .crumbs').getByRole('link', { name: 'Trips' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips', exact: true })).toBeVisible();
+  await page.evaluate(() => /** @type {any} */ (window).release());
+  await expect(page.getByText('Added a file')).toBeVisible();
+  await page.waitForTimeout(500); // add() doesn't wait for its settings write: time for one that shouldn't come to land
+  expect(await reopens()).toBe(trip); // still the one that was open, not the new conversation the traveller never saw
+});
+
 test('a pass dropped on annai goes to a trip, not to the archive reader', async ({ page }) => {
   await openApp(page);
   await startTrip(page, 'Thanksgiving');

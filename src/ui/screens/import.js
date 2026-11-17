@@ -353,7 +353,7 @@ function fileInbox(ctx, items, trips, archives) {
       const inbox = await caches.open('annai-inbox');
       for (const i of items) if (i.key) await inbox.delete(i.key);
       for (const url of urls) URL.revokeObjectURL(url);
-      if (chat) updateAppSettings(ctx.ws, { activeTrip: id }).catch(() => {});
+      if (chat && location.hash === here) updateAppSettings(ctx.ws, { activeTrip: id }).catch(() => {});
       if (location.hash === here) ctx.go(chat ? talkHref(id) : `#/trip/${encodeURIComponent(id)}`);
       for (const note of notes) ctx.notices.card({ tone: 'warn', title: t`A photo was kept as it is`, body: note });
       for (const problem of problems) ctx.notices.card({ tone: 'warn', title: t`A calendar file couldn't be read`, body: problem });
