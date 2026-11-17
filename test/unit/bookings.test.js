@@ -148,6 +148,7 @@ test('checkOf: an old unverified booking reads as if unsure named every part it 
   // nothing to check, and the details would draw a check beside nothing (the unit review of booking-say's round 4, items 4 and 5).
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: '  ', confirmation: ' \t', fields: { seat: '  ', gate: null, airline: 'Test Air' } }), { fields: ['airline'] }, 'a blank title, confirmation or extra is no part');
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', unsure: ['title', 'seat', 'airline'], title: ' ', fields: { seat: '', airline: 'Test Air' } }), { fields: ['airline'] }, 'nor a named one: a name with nothing written under it has no line to mark');
+  assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', fields: { travellers: [], bags: [0], airline: 'Test Air' } }), { fields: ['bags', 'airline'] }, 'an empty list is no part; a list with something in it is');
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: 'AN 1', fields: { seat: '14C', airline: 'Test Air' } }), { fields: ['title', 'seat', 'airline'] });
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: '', start: null, confirmation: undefined }), { fields: [] }, 'an empty own field is no part');
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: 'AN 1', fields: 'not an object' }), { fields: ['title'] }, 'fields that is no object adds none');

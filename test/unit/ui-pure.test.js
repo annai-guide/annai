@@ -312,6 +312,23 @@ test("bookingFacts: a detail whose value is null or blank is no line, as checkOf
   assert.equal(checkCount({ kind: 'flight', status: 'unverified', fields: { terminal: null, seat: '14C' } }), 1);
 });
 
+test('bookingFacts: text of only spaces and an empty list are not there, as null is not: no blank Route, Place or Confirmation line, no blank detail, no check on one (words-next)', () => {
+  const labels = (/** @type {any} */ b) => bookingFacts(b).map((x) => [x.key, x.value]);
+  // A route of blank parts has no line; one blank part leaves the other.
+  assert.deepEqual(labels({ kind: 'flight', unsure: [], fields: { from: '  ', to: '  ' } }), []);
+  assert.deepEqual(labels({ kind: 'flight', unsure: ['from', 'to'], fields: { from: '  ', to: 'Osaka' } }), [['route', 'Osaka']]);
+  // A place with a blank name has no line, and a blank address is not added after a name.
+  assert.deepEqual(labels({ kind: 'lodging', unsure: [], place: { name: '  ' } }), []);
+  assert.deepEqual(labels({ kind: 'lodging', unsure: [], place: { name: 'Hotel Aurora Test', address: '  ' } }), [['place', 'Hotel Aurora Test']]);
+  assert.deepEqual(labels({ kind: 'lodging', unsure: [], confirmation: '  ' }), []);
+  // An empty list is no detail either (travellers: []), and no check lands on it.
+  assert.deepEqual(labels({ kind: 'flight', unsure: ['travellers'], fields: { travellers: [], seat: '14C' } }), [['seat', '14C']]);
+  assert.deepEqual(bookingFacts({ kind: 'flight', status: 'unverified', fields: { travellers: [], seat: '14C' } }).filter((x) => x.unsure).map((x) => x.key), ['seat']);
+  assert.equal(checkCount({ kind: 'flight', status: 'unverified', fields: { travellers: [], seat: '14C' } }), 1);
+  // A list with something in it still draws.
+  assert.deepEqual(labels({ kind: 'flight', unsure: [], fields: { travellers: ['A', 'B'] } }), [['travellers', 'A and B']]);
+});
+
 test("bookingFacts: a flight's place has a line, as a stay's has: an old flight's place, which Shiori asks about, is on screen and counted (words-next)", () => {
   const at = { at: '2026-11-20T11:20:00-08:00', tz: 'America/Los_Angeles' };
   const old = { kind: 'flight', status: 'unverified', title: 'ANNAI AIR AN 123', start: at, end: at, place: { name: 'Testville International', address: '1 Runway Road' }, confirmation: 'TESTQ1', fields: { terminal: '2', gate: 'B12' } };

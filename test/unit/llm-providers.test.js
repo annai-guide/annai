@@ -521,6 +521,50 @@ test("an add and a sync that run together never give one free name to two models
   assert.equal(new Set(all).size, all.length, 'no two models are named alike');
 });
 
+test("the Models screen's adds (a model from a list, a model by its id) and a sync that run together never give one name to two models: the sync waits its turn behind the add (words-next)", async () => {
+  const adds = /** @type {[string, (k: any, yId: string) => Promise<string>][]} */ ([
+    ['by id', (k, yId) => k.llm.addModelById(yId, 'chat', 'Z two')],
+    ['from a list', (k, yId) => k.llm.addListedModel(yId, 'chat', { providerId: 'z-new', name: 'Z two' })],
+  ]);
+  for (const [how, add] of adds) {
+    const k = await serviceKit();
+    await k.llm.addProvider('provider-x', { key: 'sk-x' });
+    const yId = await k.llm.addProvider('provider-y', {});
+    // provider-x 1.1.0 renames its chat model to the name the add is about to take.
+    const next = PX('1.1.0', { chat: { kind: 'chat', type: 'type-a', models: [{ providerId: 'x-1', name: 'Z two' }] } });
+    await k.host.install(new Map(Object.entries(next).map(([n, t]) => [n, new TextEncoder().encode(t)])), { source: 'official' });
+    await k.host.start('provider-x');
+    // The add is held where it has read the names taken and is about to write its model.
+    const write = k.ws.write.bind(k.ws);
+    /** @type {() => void} */
+    let release = () => {};
+    /** @type {() => void} */
+    let reached = () => {};
+    const held = new Promise((resolve) => { reached = () => resolve(undefined); });
+    let first = true;
+    k.ws.write = async (scope, path, ...rest) => {
+      if (first && String(path).startsWith('/llm/models/')) {
+        first = false;
+        reached();
+        await new Promise((go) => { release = () => go(undefined); });
+      }
+      return write(scope, path, ...rest);
+    };
+    const adding = add(k, yId);
+    await held;
+    const syncing = k.llm.syncProviders();
+    // A sync that doesn't wait would read the names and write its rename within this wait: it is all in memory, so a few ms at the most.
+    await new Promise((r) => setTimeout(r, 25));
+    release();
+    await Promise.all([adding, syncing]);
+    const cfg = await readConfig(k.ws);
+    const chat = (/** @type {string} */ plugin) => Object.values(cfg.models).filter((m) => cfg.providers[m.provider].plugin === plugin && m.ability === 'chat').map((m) => modelOf(m).name).sort();
+    assert.deepEqual([chat('provider-y'), chat('provider-x')], [['Y one', 'Z two'], ['Z two (2)']], `${how}: the add came first, the sync after it took the next free name`);
+    const all = Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase());
+    assert.equal(new Set(all).size, all.length, `${how}: no two models are named alike`);
+  }
+});
+
 test("listing an ability's models: by its address, with the provider's key; an address that doesn't allow web apps says so by its host, not the browser's \"Load failed\"", async () => {
   let answers = true;
   const k = await serviceKit({ probe: async () => answers, fetch: async (/** @type {string} */ url) => { if (url.startsWith('https://blocked.example/')) throw new TypeError('Load failed'); return new Response(JSON.stringify({ data: [{ id: 'listed-1' }] })); } });

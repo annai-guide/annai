@@ -67,7 +67,7 @@ test('a plugin that never finishes starting: the frame and the reason are both i
   const body = page.locator('.notice p', { hasText: '起動に失敗しました' });
   await expect(body).toBeVisible({ timeout: 20_000 });
   await expect(body.locator('span[lang="en"]')).toHaveCount(0);
-  expect(await body.textContent()).toMatch(/^起動に失敗しました：.*秒以内に起動が完了しませんでした。/);
+  expect(await body.textContent()).toMatch(/^起動に失敗しました：.*秒以内に完了しませんでした。/);
   expect(await body.textContent()).not.toContain("didn't finish");
 });
 

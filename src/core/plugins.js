@@ -803,7 +803,7 @@ export class PluginHost {
     const late = new Promise((_, reject) => {
       timer = setTimeout(() => {
         const s = Math.round(this.startTimeout / 100) / 10;
-        reject(Object.assign(new Error(/* en */ `it didn't finish starting within ${s} seconds`), { shown: plural(s, "It didn't finish starting within # second.", "It didn't finish starting within # seconds.") }));
+        reject(Object.assign(new Error(/* en */ `it didn't finish starting within ${s} seconds`), { shown: plural(s, "It didn't finish within # second.", "It didn't finish within # seconds.") }));
         work.then((r) => {
           if (this.active.has(id)) return;
           try {

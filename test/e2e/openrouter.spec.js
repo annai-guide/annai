@@ -6,7 +6,7 @@ import { openApp, waitForServiceWorker, startModelServer, startOpenRouterFiles, 
 import { encodeWav } from '../../src/core/voice/pcm.js';
 
 // Sign in with OpenRouter sets up one provider, OpenRouter, with one key for its chat, transcription and
-// voice; its speech models go behind the browser's own dictation and voice (the user, 2026-10-18:
+// voice; its speech models go behind Phone dictation and Browser voice (the user, 2026-10-18:
 // "Add, behind phone"). OpenRouter is stood in for by a server on its own port; no request reaches the real one.
 
 /** The version the page names: the plugin's own, so a version bump doesn't break this test. */

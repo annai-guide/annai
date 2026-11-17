@@ -16,8 +16,11 @@ test('bookingFacts in ja: the labels are words, not keys', () => {
   assert.deepEqual([labels.wifi, f.find((x) => x.key === 'wifi')?.lang], ['wifi', 'en']);
 });
 
-test("bookingFacts in ja: a rental's `car` is the car, a train's is its coach (the same key, labelled by the booking's kind)", () => {
+test("bookingFacts in ja: a rental's `car` is its model, a train's is its coach, and on any other kind it is a car (the same key, labelled by the booking's kind)", () => {
   const label = (/** @type {string} */ kind) => bookingFacts({ kind, unsure: [], fields: { car: 'Compact' } }).find((x) => x.key === 'car')?.label;
-  assert.equal(label('car'), 'レンタカー');
+  assert.equal(label('car'), '車種');
   assert.equal(label('rail'), '号車');
+  for (const kind of ['flight', 'lodging', 'event', 'restaurant', 'other']) assert.equal(label(kind), '車', kind);
+  // A booking with no kind at all is not a train either.
+  assert.equal(bookingFacts({ unsure: [], fields: { car: 'Compact' } }).find((x) => x.key === 'car')?.label, '車');
 });

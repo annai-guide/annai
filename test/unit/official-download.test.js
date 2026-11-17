@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { download, installOfficial, DOWNLOADS_AT_ONCE } from '../../src/core/llm/official.js';
+import { download, installOfficial, ensureProvided, DOWNLOADS_AT_ONCE } from '../../src/core/llm/official.js';
+import { messageOf } from '../../src/ui/dom.js';
 import { sha256Hex } from '../../src/core/hash.js';
 
 const bytes = (/** @type {string} */ s) => new TextEncoder().encode(s);
@@ -46,4 +47,25 @@ test("one file that doesn't match the catalog installs nothing, with the same wo
 
 test('a file the site refuses: the same words as before, naming it', async () => {
   await assert.rejects(download(await entryOf(10), { fetch: stub({ 'f3.js': 404 }).fetch }), /couldn't be downloaded \(f3\.js: HTTP 404\)/);
+});
+
+test("what a screen shows of a download that failed names the plugin, as a sentence with its full stop (words-next: a bare 'It' read as the place being added)", async () => {
+  const offline = async () => { throw new TypeError('Failed to fetch'); };
+  await assert.rejects(download(await entryOf(3), { fetch: offline }), (/** @type {any} */ e) => messageOf(e) === "The plugin couldn't be downloaded. Check the connection and try again.");
+  await assert.rejects(download(await entryOf(10), { fetch: stub({ 'f3.js': 404 }).fetch }), (/** @type {any} */ e) => messageOf(e) === "The plugin couldn't be downloaded (f3.js: HTTP 404). Try again later.");
+  await assert.rejects(download(await entryOf(20, 7), { fetch: stub().fetch }), (/** @type {any} */ e) => messageOf(e) === "The plugin wasn't installed: f7.js doesn't match annai's catalog.");
+});
+
+test("a plugin that starts and gives no type of the kind asked for: the screen says the plugin didn't provide it, by kind, with its full stop (words-next)", async () => {
+  const host = /** @type {any} */ ({
+    registry: { list: () => [], owner: () => undefined, isDisabled: () => false },
+    builtins: new Map(),
+    installed: async () => ({ hollow: { source: 'official', version: '1.0.0', enabled: true } }),
+    verifyOfficial: async () => true,
+    start: async () => {},
+  });
+  const catalog = { plugins: [{ id: 'hollow', name: 'Hollow', version: '1.0.0', files: {}, provides: { 'storage-type': ['void'], 'endpoint-type': ['void'] } }] };
+  const fetch = async () => new Response(JSON.stringify(catalog));
+  await assert.rejects(ensureProvided(host, 'storage-type', 'void', { fetch }), (/** @type {any} */ e) => messageOf(e) === "The plugin didn't provide a kind of backup place void.");
+  await assert.rejects(ensureProvided(host, 'endpoint-type', 'void', { fetch }), (/** @type {any} */ e) => messageOf(e) === "The plugin didn't provide an endpoint type void.");
 });

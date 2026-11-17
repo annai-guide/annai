@@ -255,7 +255,8 @@ export class Registry {
     const n = (this.#failures.get(pluginId) ?? 0) + 1;
     this.#failures.set(pluginId, n);
     this.#safeLog({ type: 'plugin.error', actor: `plugin:${pluginId}`, data: { name, message: String(e?.message ?? e), count: n } });
-    if (n >= this.maxFailures) this.disable(pluginId, { kind: 'failed', count: n }, String(e?.message ?? e));
+    // The card's last error is annai's own words for it where it has them (shown: a sentence in the screens' language), else the message.
+    if (n >= this.maxFailures) this.disable(pluginId, { kind: 'failed', count: n }, typeof e?.shown === 'string' ? e.shown : String(e?.message ?? e));
   }
 
   /**

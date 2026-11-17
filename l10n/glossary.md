@@ -95,7 +95,6 @@ This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row
 | Koe · Live | Koe · ライブ | Koe · 实时 | Koe · 即時 |
 | Listening live | ライブで聞き取り中 | 正在实时收听 | 正在即時收聽 |
 | Live voice | ライブ音声 | 实时语音 | 即時語音 |
-| Voice auto | 音声自動 | 语音自动 | 語音自動 |
 | Voice off | 音声オフ | 语音关闭 | 語音關閉 |
 | Voice on | 音声オン | 语音开启 | 語音開啟 |
 

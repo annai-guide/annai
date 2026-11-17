@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { startCards, reloadCard } from '../../src/ui/plugin-cards.js';
+import { PluginError } from '../../src/core/registry.js';
 
 const NAMES = /** @type {Record<string, string>} */ ({ hello: 'Hello checks', hola: 'Hola checks', old: 'Old tool' });
 const name = (/** @type {string} */ id) => NAMES[id] ?? id;
@@ -9,8 +10,14 @@ const failed = (/** @type {string} */ id, disabled = false) => ({ id, error: new
 test('plugins that did not start get a card each, by name; one turned off after failing to start says so', () => {
   const { cards, unloaded } = startCards([failed('hello'), failed('old', true)], { name, taken: true });
   assert.deepEqual(cards.map((c) => c.title), ['The plugin "Hello checks" didn\'t start', 'The plugin "Old tool" was turned off']);
-  assert.match(cards[1].body, /^It didn't start the last few times annai opened: Failed to fetch/);
+  assert.match(cards[1].body, /^It didn't start the last few times annai opened\. Failed to fetch/);
   assert.deepEqual(unloaded, []);
+});
+
+test("a plugin turned off after failing to start: the lead is a sentence of its own and the start error follows it, not nested after a colon (words-next)", () => {
+  const error = new PluginError('slow', "starting failed: it didn't finish starting within 10 seconds", { shown: "Starting failed: It didn't finish within 10 seconds." });
+  const { cards } = startCards([{ id: 'slow', error, disabled: true }], { name, taken: true });
+  assert.equal(cards[0].body, "It didn't start the last few times annai opened. Starting failed: It didn't finish within 10 seconds. You can turn it back on in Settings → Plugins.");
 });
 
 test('on a page no service worker controls, those that failed share the one reload card; one turned off keeps its own', () => {

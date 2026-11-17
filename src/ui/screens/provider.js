@@ -1,7 +1,6 @@
 import { h, crumb, linkIn, field, twoStep, jsonField, messageOf, showError, savedField, savedCheck, savedRadios, autosave, savingNote, whenGone, t, plural, otherLang } from '../dom.js';
 import { providerOf, abilityName, providerBase, modelOf, saveProvider, setKey, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
 import { mergePatch } from '../../core/patch.js';
-import { addListedModel, addModelById } from '../../core/llm/providers.js';
 import { officialPlugins, officialName, pluginName as shownPluginName } from '../../core/llm/official.js';
 import { testPanel } from '../model-check.js';
 import { speechTestPanel } from '../speech-check.js';
@@ -499,7 +498,7 @@ function modelsPart(ctx, id, abilityId, models) {
       const value = providerId.value.trim();
       if (!value) return;
       try {
-        await addModelById(ctx, id, abilityId, value);
+        await ctx.llm.addModelById(id, abilityId, value);
         ctx.render();
       } catch (e) {
         showError(status, e);
@@ -556,7 +555,7 @@ function listedModels(ctx, id, abilityId, listed, have, cfg) {
         on !== undefined ? h('span', { class: 'sub', text: on ? t`Already added, on ${on}` : t`Already added, on another provider` }) : h('button', {
           class: 'btn', type: 'button', 'aria-label': t`Add ${m.providerId}`,
           onclick: async () => {
-            await addListedModel(ctx, id, abilityId, model);
+            await ctx.llm.addListedModel(id, abilityId, model);
             ctx.render();
           },
         }, t`Add`));
