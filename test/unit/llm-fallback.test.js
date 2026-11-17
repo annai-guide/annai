@@ -9,7 +9,7 @@ import { sse } from '../../src/core/llm/sse.js';
 import { parsePartialJSON } from '../../src/core/llm/partial-json.js';
 import { retry } from '../../src/core/llm/retry.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
-import { callRole, candidates, Bench, AllFailedError, COOLDOWN_MS, continueAfter, failedText, restText, whyWords } from '../../src/core/llm/fallback.js';
+import { callRole, candidates, Bench, AllFailedError, COOLDOWN_MS, continueAfter, failedText, attemptWhy, restText, whyWords } from '../../src/core/llm/fallback.js';
 import { activate as scripted } from '../../plugins-official/scripted-model/index.js';
 
 /** A fresh scripted endpoint type, as the plugin registers it. @returns {any} */
@@ -130,6 +130,12 @@ test('why every model failed, for a card: one line per model, each reason once, 
   // With no connection, that is the reason; models that couldn't have answered anyway still say why.
   assert.deepEqual(failedText([attempts[5], attempts[7], { model: 'm-0', name: 'E0', outcome: 'network', ms: 1, error: 'The connection dropped.' }], { offline: true }).split('\n'),
     ['This device is offline.', "step-5-preview: It doesn't take photos."]);
+});
+
+test("a provider's own words end as a sentence on the failure card: a stop after them unless they end in one, a ?, a ! or an ellipsis (a closing quote or bracket after it too), the same rule as every card", () => {
+  for (const [error, shown] of [['boom', 'Boom.'], ['boom.', 'Boom.'], ['wait…', 'Wait…'], ['Really?"', 'Really?"'], ['Not supported (see docs).', 'Not supported (see docs).'], ['"stop…"', '"stop…"'], ['not supported (see docs)', 'Not supported (see docs).']]) {
+    assert.equal(attemptWhy({ model: 'm', name: 'A', outcome: 'server', ms: 1, error }), shown, error);
+  }
 });
 
 test("a failure card names each model by its provider's name first; a model reads only its name (the user, 2026-11-16)", () => {

@@ -72,7 +72,10 @@ test("a provider error annai writes keeps what it was: a card makes Japanese fro
   assert.equal(whyWords(why), 'Haiku：そのモデルはもうありません。');
   assert.equal(whyWords(why, true), 'Haiku: That model no longer exists.');
   // A provider's own words stay as given; an attempt kept before L5h (no said) shows what it kept.
-  assert.equal(failedText([{ name: 'Haiku', outcome: 'server', error: 'Internal error' }]), 'Haiku：Internal error.');
+  // The stop is the screens' own (。), and annai's English for a model and the log keeps its ".".
+  assert.equal(failedText([{ name: 'Haiku', outcome: 'server', error: 'Internal error' }]), 'Haiku：Internal error。');
+  assert.equal(failedText([{ name: 'Haiku', outcome: 'server', error: 'Internal error' }], { plain: true }), 'Haiku: Internal error.');
+  assert.equal(failedText([{ name: 'Haiku', outcome: 'server', error: 'wait…' }]), 'Haiku：Wait…');
 });
 
 test("a typed address, prices and a server's answer: the screens' words, and English for a description's errors and the log", async () => {
