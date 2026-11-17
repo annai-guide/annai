@@ -241,9 +241,9 @@ test("nearby names the circle to ask again with: half the one cut, which held fe
   const one = await cutAt({ radius: 200 }, 20, 190);
   assert.deepEqual(one.first, [200]);
   assert.equal(one.line, cutLine(100));
-  // The driving companion's 15 km look ahead, on a synthetic ring with the dense area inside the 7500 m circle (the live call of
-  // 2026-11-16, a point in Lake Michigan, held fewer than 40 up to 7500 m, was cut at 15 km and named 7500 m): here 7500 m is cut, so
-  // 3750 m is asked, where half the radius (7500) would repeat the answer.
+  // The driving companion's 15 km look ahead, on a synthetic ring with the dense area inside the 7500 m circle (at the live call of
+  // 2026-11-16, a point in Lake Michigan, the circles up to 7500 m held fewer than 40 and the 15 km one was cut; nearby names 7500 m on
+  // that saved answer): here 7500 m is cut, so 3750 m is asked, where half the radius (7500) would repeat the answer.
   const drive = await cutAt({ radius: 15000 }, 4000, 7400);
   assert.deepEqual(drive.first, [235, 469, 938, 1875, 3750, 7500, 15000]);
   assert.equal(drive.line, cutLine(3750));
