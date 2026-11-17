@@ -149,7 +149,7 @@ test('guard: a start that failed is framed in annai\'s own words, a sentence on 
   const { Registry } = await import('../../src/core/registry.js');
   const reg = new Registry();
   const own = await reg.guard('p', 'starting', () => { throw new Error('their words'); })().catch((e) => e);
-  assert.equal(own.shown, 'Starting failed: their words');
+  assert.equal(own.shown, 'Starting failed: their words.'); // ended as a sentence, so the next one is joined as after any other
   assert.equal(own.en, false);
   assert.equal(englishOf(own), '');
   assert.equal(own.message, 'p: starting failed: their words');
@@ -160,13 +160,13 @@ test('guard: a start that failed is framed in annai\'s own words, a sentence on 
   assert.equal(late.message, "p: starting failed: it didn't finish starting within 10 seconds");
   // annai's own check, in a developer's English, without its plugin's id in the middle: the frame is the screens' words, the check's is marked.
   const ours = await reg.guard('p', 'starting', () => { throw new PluginError('p', 'its module has no activate() function'); })().catch((e) => e);
-  assert.equal(ours.shown, 'Starting failed: its module has no activate() function');
+  assert.equal(ours.shown, 'Starting failed: its module has no activate() function.');
   assert.equal(englishOf(ours), 'its module has no activate() function');
   assert.equal(messageOf(ours), ours.shown);
   // An English part annai named inside its words stays the one marked.
   const named = await new Registry().guard('p', 'starting', () => { throw new PluginError('p', 'x', { shown: 'Not valid: this is not a zip', en: 'this is not a zip' }); })().catch((e) => e);
   assert.equal(englishOf(named), 'this is not a zip');
-  assert.equal(messageOf(named), 'Starting failed: Not valid: this is not a zip');
+  assert.equal(messageOf(named), 'Starting failed: Not valid: this is not a zip.');
   // A hook's error is counted and logged; no words of the screens' are made for it.
   const hook = await new Registry().guard('p', 'hook', () => { throw new Error('their words'); })().catch((e) => e);
   assert.equal(hook.shown, undefined);

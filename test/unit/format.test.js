@@ -2,7 +2,7 @@ import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { setWords, plural, key } from '../../src/core/l10n.js';
 import {
-  locale, sentences, sentenceGap, num, numField, parseNum, money, size, distance, setDistances, duration, seconds, relTime, relChange, day, dateRange, when, zone, list, languageName, sortWords, formatCost, BOOKING_KINDS, kindName,
+  locale, sentences, sentenceGap, asSentence, num, numField, parseNum, money, size, distance, setDistances, duration, seconds, relTime, relChange, day, dateRange, when, zone, list, languageName, sortWords, formatCost, BOOKING_KINDS, kindName,
 } from '../../src/ui/format.js';
 
 // The helpers speak the interface language with the phone's region: `as('en', 'de-DE')` is English screens on a German phone.
@@ -346,6 +346,42 @@ test('sentences: a part with no full stop of its own (a plugin\'s error, say) ke
   assert.equal(sentences('annai.foo is not a function', '設定 → プラグインでオフにできます。'), 'annai.foo is not a function 設定 → プラグインでオフにできます。');
   assert.equal(sentences('Steps used up.', 'もう一度お試しください。'), 'Steps used up.もう一度お試しください。');
   assert.equal(sentences('止まりました！', '「ok」でした。', '次へ'), '止まりました！「ok」でした。次へ');
+});
+
+test('sentences: a part ending in an ellipsis (also inside a closing quote) ends there like a full stop: English keeps its space, Japanese and Chinese join with none', () => {
+  as('en');
+  assert.equal(sentences('Wait…', 'You can turn it off.'), 'Wait… You can turn it off.');
+  assert.equal(sentences('He said "wait…"', 'You can turn it off.'), 'He said "wait…" You can turn it off.');
+  for (const ui of ['ja', 'zh-Hans', 'zh-Hant']) {
+    as(ui);
+    setWords(ui, { [key('{0} {1}', 'sentences')]: '{0}{1}' });
+    assert.equal(sentences('待っています…', '設定でオフにできます。'), '待っています…設定でオフにできます。', ui);
+    assert.equal(sentences('「待っています…」', '設定でオフにできます。'), '「待っています…」設定でオフにできます。', ui);
+    assert.equal(sentences('boom', '設定でオフにできます。'), 'boom 設定でオフにできます。', `${ui}: a part with no end keeps its space`);
+  }
+});
+
+test("asSentence ends a text as a sentence: a full stop unless it ends in one or in an ellipsis; no words, no sentence", () => {
+  for (const [text, ended] of [['boom', 'boom.'], ['boom.', 'boom.'], ['boom\n', 'boom.'], ['Really?', 'Really?'], ['wait…', 'wait…'], ['wait…\n', 'wait…'], ['He said "wait…"', 'He said "wait…"'], ['止まりました。', '止まりました。'], ['', ''], [' \n', '']]) {
+    assert.equal(asSentence(text), ended, JSON.stringify(text));
+  }
+});
+
+test("asSentence follows the screens' language: Japanese and Chinese end a text with 。, any other language with a full stop, so no ASCII stop is left before a Japanese sentence or glued to a Latin name after it", () => {
+  const join = { [key('{0} {1}', 'sentences')]: '{0}{1}' };
+  for (const ui of ['ja', 'zh-Hans', 'zh-Hant']) {
+    as(ui);
+    setWords(ui, join);
+    for (const [text, ended] of [['止まりました', '止まりました。'], ['boom', 'boom。'], ['boom\n', 'boom。'], ['止まりました。', '止まりました。'], ['boom.', 'boom.'], ['Really?', 'Really?'], ['好吗？', '好吗？'], ['wait…', 'wait…'], ['Error (code 5)', 'Error (code 5)。'], ['', ''], [' \n', '']]) {
+      assert.equal(asSentence(text), ended, `${ui} ${JSON.stringify(text)}`);
+    }
+    assert.equal(sentences(asSentence('Tide pools: boom'), asSentence('Rock pools: fail')), 'Tide pools: boom。Rock pools: fail。', ui);
+  }
+  for (const ui of ['en', 'de', 'fr']) {
+    as(ui);
+    assert.equal(asSentence('止まりました'), '止まりました.', ui);
+    assert.equal(asSentence('boom'), 'boom.', ui);
+  }
 });
 
 test('under Traditional Chinese screens, formats follow the phone\'s region: Taiwan\'s, Hong Kong\'s, or a US phone\'s (l10n-zh-Hant)', () => {

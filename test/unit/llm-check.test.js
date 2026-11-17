@@ -11,12 +11,14 @@ import { ProviderError, errorFromResponse } from '../../src/core/llm/contract.js
 import { sse } from '../../src/core/llm/sse.js';
 import { parsePartialJSON } from '../../src/core/llm/partial-json.js';
 import { retry } from '../../src/core/llm/retry.js';
+import { setWords } from '../../src/core/l10n.js';
 import { testModel, testLevels, TEST_IMAGE } from '../../src/core/llm/check.js';
 import { REQUEST_MS, Uploads } from '../../src/core/llm/uploads.js';
 import { readConfig, modelOf, saveProvider, saveModel, saveRoles, setKey } from '../../src/core/llm/config.js';
 import { addProvider } from '../../src/core/llm/providers.js';
 import { official } from './provider-kit.js';
 import { createLlm } from '../../src/core/llm/service.js';
+import { adjusted } from '../../src/core/llm/setup.js';
 import { activate as scripted } from '../../plugins-official/scripted-model/index.js';
 
 /** @returns {any} */
@@ -59,6 +61,54 @@ test('"this address blocks web apps" is told apart from "annai couldn\'t reach i
   assert.match(blocked.steps[0].detail, /doesn't allow web apps/);
   const down = await testModel({ ...base, probe: async () => false });
   assert.match(down.steps[0].detail, /couldn't reach this address/);
+});
+
+test("a 408 is the provider's own time limit, not a request it refused: Test says the model took too long, and sends no one to the tunables", async () => {
+  const type = /** @type {any} */ ({ type: 'http', name: 'HTTP', pluginId: 'p', build: () => ({ url: 'https://llm.test/v1/chat', headers: {}, body: {} }), read: async function* () {} });
+  const c = scriptedCase([]);
+  // OpenRouter's shape for it (its error list: "408: Your request timed out").
+  const timedOut = async () => Response.json({ error: { code: 408, message: 'Your request timed out' } }, { status: 408 });
+  const r = await testModel({ ...c, endpoint: { ...c.endpoint, baseUrl: 'https://llm.test/v1' }, type, fetch: /** @type {any} */ (timedOut) });
+  assert.deepEqual(r.steps.map((s) => [s.step, s.ok, s.detail]), [['access', false, 'The model took too long to start answering.']]);
+});
+
+test("Test's level step says the model refused only for an answer that refused the request at that level: a time limit, a rate limit, a server's failure or a bad key is told as the other steps tell it, and sends no one to lower the level", async () => {
+  const ok = [{ text: 'OK' }, { toolCalls: [{ name: 'report_color', input: { color: 'red' } }] }];
+  const at = async (/** @type {any} */ failure, role = { id: 'main', level: 'high' }) => (await testModel({ ...scriptedCase([...ok, failure], { reasoning: { off: { a: 0 }, high: { a: 1 } } }), role })).steps.find((s) => s.step === 'level');
+  assert.deepEqual(await at({ error: 'bad-request', status: 400, message: 'Unsupported reasoning effort' }), {
+    step: 'level', ok: false, detail: "At Main's level (high), this model refused: Unsupported reasoning effort. Lower Main's level in Settings → Models, or change this model's Reasoning levels on its page.",
+  });
+  // A 400 or a 413 that the core read by its words (or its status) as another kind is still the provider refusing the request.
+  assert.match(String((await at({ error: 'context', status: 400, message: 'The thinking budget is too long' }, { id: 'utility', level: 'high' }))?.detail), /^At Utility's level \(high\), this model refused: The thinking budget is too long\. Lower Utility's level/);
+  // A 404 too: the access step has just reached this model at this address, so a 404 now is the level's (a router with no route for it, say).
+  assert.match(String((await at({ error: 'not-found', status: 404, message: 'No route for this reasoning setting' }))?.detail), /^At Main's level \(high\), this model refused: No route for this reasoning setting\. Lower Main's level/);
+  // A refusal that ends as a sentence already (a Chinese 。, a "?", an ellipsis) gets no second stop, and the next sentence follows it as after any other.
+  for (const [said, ended] of [['API 调用参数有误，请检查文档。', 'API 调用参数有误，请检查文档。'], ['Is reasoning supported?', 'Is reasoning supported?'], ['Not supported…', 'Not supported…'], ['Unsupported reasoning effort.', 'Unsupported reasoning effort.']]) {
+    assert.equal((await at({ error: 'bad-request', status: 400, message: said }))?.detail, `At Main's level (high), this model refused: ${ended} Lower Main's level in Settings → Models, or change this model's Reasoning levels on its page.`, said);
+  }
+  for (const [failure, words] of /** @type {[any, string][]} */ ([
+    [{ error: 'timeout', status: 408, message: 'Your request timed out' }, 'The model took too long to start answering.'],
+    [{ error: 'rate', status: 429, message: 'Slow down' }, 'The provider says too many requests for now.'],
+    [{ error: 'server', status: 500, message: 'Boom' }, 'The provider had a problem on its side.'],
+    [{ error: 'auth', status: 401, message: 'Bad key' }, 'The key was rejected. Check it in Settings → Models.'],
+  ])) assert.deepEqual(await at(failure), { step: 'level', ok: false, detail: words }, failure.error);
+});
+
+test("Test's level step on Japanese and Chinese screens ends the provider's refusal with 。 and no ASCII stop, whatever language it came in, and the next sentence follows it as after any other", async () => {
+  const ok = [{ text: 'OK' }, { toolCalls: [{ name: 'report_color', input: { color: 'red' } }] }];
+  try {
+    for (const tag of ['ja', 'zh-Hans', 'zh-Hant']) {
+      setWords(tag, JSON.parse(await readFile(new URL(`../../l10n/${tag}.json`, import.meta.url), 'utf8')));
+      for (const said of ['Unsupported reasoning effort', 'API 调用参数有误，请检查文档。', 'Is reasoning supported?']) {
+        const r = await testModel({ ...scriptedCase([...ok, { error: 'bad-request', status: 400, message: said }], { reasoning: { off: { a: 0 }, high: { a: 1 } } }), role: { id: 'main', level: 'high' } });
+        const detail = String(r.steps.find((x) => x.step === 'level')?.detail);
+        const ended = said.endsWith('?') || said.endsWith('。') ? said : `${said}。`;
+        const at = detail.indexOf(ended);
+        assert.ok(at > 0, `${tag}: ${detail}`);
+        assert.match(detail.slice(at + ended.length), /^[^ .]/, `${tag} joins the next sentence with no space and no ASCII stop: ${detail}`);
+      }
+    }
+  } finally { setWords('en', null); }
 });
 
 test("a model that ignores the tool and doesn't see the square fails those steps only", async () => {
@@ -235,6 +285,35 @@ test("a Test whose photo upload is answered 408, 402, 429 or with a server error
   // A 429's body that breaks off is read as empty: the answer still came, so it is "too many requests", not no answer.
   const broken = /** @type {any} */ ((await testModel({ ...withUploads(scriptedCase(script)), fetch: /** @type {any} */ (async () => new Response(new ReadableStream({ start(c) { c.error(new TypeError('network error')); } }), { status: 429 })) })).steps.at(-1));
   assert.equal(broken.detail, `The provider says too many requests for now. ${PHOTOS_INSTEAD}`);
+});
+
+test("a Test's photo upload reads OpenRouter's free-model limit by its own layered reading (too many requests, as a 429 or a 402), and Anthropic's out-of-credit 400 by its classify (out of credit), not as the key's", async () => {
+  const script = [{ text: 'OK' }, { toolCalls: [{ name: 'report_color', input: { color: 'red' } }] }];
+  /** A protocol plugin's registered type. @param {(annai: any) => unknown} activate @returns {any} */
+  const protocol = (activate) => {
+    /** @type {any} */
+    let t = null;
+    activate({ providers: { register: (/** @type {any} */ x) => { t = x; return () => {}; } }, helpers: { sse, parsePartialJSON, ProviderError, errorFromResponse, retry } });
+    return t;
+  };
+  // OpenRouter: Chat Completions' reading, with the provider's own classify asked first, as adjusted() builds the type for every call of its abilities.
+  const { activate: chatCompletions } = await import('../../plugins-official/chat-completions/index.js');
+  const { freeLimit } = await import('../../plugins-official/provider-openrouter/index.js');
+  const registry = new Registry();
+  registry.add('provider-openrouter', 'provider-setup', { keyField: true, classify: freeLimit });
+  const daily = JSON.stringify({ error: { code: 429, message: 'Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day' } });
+  for (const status of [429, 402]) {
+    const c = withUploads(scriptedCase(script));
+    const { type } = adjusted(registry, 'provider-openrouter', { ...c.type, classify: protocol(chatCompletions).classify }, c.endpoint);
+    const last = /** @type {any} */ ((await testModel({ ...c, type, fetch: async () => new Response(daily, { status }) })).steps.at(-1));
+    assert.deepEqual([status, last.step, last.ok, last.detail], [status, 'upload', false, `The provider says too many requests for now. ${PHOTOS_INSTEAD}`]);
+  }
+  // Anthropic: out of credit is a 400 whose words say so (its classify), which core alone would read as the key's.
+  const { activate: anthropic } = await import('../../plugins-official/anthropic-messages/index.js');
+  const credit = JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.' } });
+  const c = withUploads(scriptedCase(script));
+  const last = /** @type {any} */ ((await testModel({ ...c, type: { ...c.type, classify: protocol(anthropic).classify }, fetch: async () => new Response(credit, { status: 400 }) })).steps.at(-1));
+  assert.deepEqual([last.step, last.ok, last.detail], ['upload', false, `This account is out of credit. ${PHOTOS_INSTEAD}`]);
 });
 
 test("a Test whose photo upload failed turns uploads off there, as a call's failed upload does, so \"annai will send photos in each request instead\" is true; one that passes turns them on (review of openrouter-f1, the second opinion's lead 3)", async () => {

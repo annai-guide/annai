@@ -1,4 +1,5 @@
 import { t } from './l10n.js';
+import { asSentence } from './intl.js';
 
 /** Words said of plugins in several places, in annai's English for models and the log; the screens' words are the functions below. */
 /* en */
@@ -230,7 +231,7 @@ export class Registry {
         // What went wrong: annai's words for the screens where it has them (shown), else the plugin's own, or annai's own English check (en).
         const why = typeof was?.shown === 'string' ? was.shown : message.startsWith(`${pluginId}: `) ? message.slice(pluginId.length + 2) : message;
         // annai's own words are the frame, in the screens' words; only a start reaches a screen (a hook's error is counted and logged, nothing more).
-        const shown = name === 'starting' ? t`Starting failed: ${why}` : undefined;
+        const shown = name === 'starting' ? asSentence(t`Starting failed: ${why}`) : undefined;
         // The English inside it, for lang="en": all of `why` where annai marked all of it, or the part it named; the plugin's own words never.
         const en = was?.en === true ? (shown === undefined ? true : why) : typeof was?.en === 'string' ? was.en : false;
         throw new PluginError(pluginId, /* en */ `${name} failed: ${message}`, { cause: e, shown, en });

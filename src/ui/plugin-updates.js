@@ -3,7 +3,7 @@ import { addressUpdates, updateFromAddress } from '../core/package-updates.js';
 import { addsAnything } from '../core/packages.js';
 import { whatItBrings, FULL_ACCESS, keyNames, keysRisk, semicolons } from './screens/plugin-install.js';
 import { t, messageOf } from './dom.js';
-import { list, sentences } from './format.js';
+import { list, sentences, asSentence } from './format.js';
 
 /**
  * Plugin updates (spec §5.3): annai's own, from its catalog, and packages installed from an address,
@@ -114,7 +114,7 @@ export async function applyUpdates(ctx, updates, env) {
       knownOf(ctx.plugins).delete(u.id);
       if (how === 'restart') waiting.push(nameOf(u));
     } catch (e) {
-      failed.push(t`${nameOf(u)}: ${messageOf(e)}`);
+      failed.push(asSentence(t`${nameOf(u)}: ${messageOf(e)}`)); // a raw error may have no stop
       errors.push(e);
     }
   }

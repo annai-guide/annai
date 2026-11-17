@@ -387,8 +387,11 @@ test('S9: when every service that ran failed by timeout or network, nobody climb
 
 test('S10: a search ends by its deadline, with a reserve kept for the floor, which answers', async () => {
   const was = [CHAIN.ms, CHAIN.reserve];
-  CHAIN.ms = 400;
-  CHAIN.reserve = 150;
+  // In seconds, not a fraction of one: on a host loaded far past its CPUs (load about 300 on 32 CPUs) the event loop stalled for 200 to 400 ms, a
+  // stall ate the old 150 ms reserve, and the floor was left out (this test failed once in a real `npm run check` at that load). The stuck provider
+  // gets 2.5 s; the floor's 1.5 s holds its 100 ms least room past three such stalls.
+  CHAIN.ms = 4_000;
+  CHAIN.reserve = 1_500;
   try {
     const t = await setup();
     await alone(t, { search: () => ignoring(60_000) });
@@ -396,7 +399,10 @@ test('S10: a search ends by its deadline, with a reserve kept for the floor, whi
     const out = await t.run('web_search', { query: 'nepenthe hours' }, services);
     assert.match(out, /Wikivoyage/);
     const took = Date.now() - started;
-    assert.ok(took >= 200 && took < 600, `took ${took} ms`);
+    // At least the stuck provider's 2.5 s (the deadline is fixed when the search starts, so it is given the 4 s less the floor's 1.5 s whenever it is
+    // asked; the 100 ms under that is slack); at most the deadline and 2 s of stalls, where a search that waited on the provider would take its
+    // 60 s, or the 25 s step limit (STEP_MS).
+    assert.ok(took >= 2_400 && took < 6_000, `took ${took} ms`);
   } finally {
     [CHAIN.ms, CHAIN.reserve] = was;
   }
@@ -480,9 +486,11 @@ test('a server that wants a session first is given one once: two searches make o
 
 test('ready() is charged to the search\'s deadline: several slow ones cannot hold it past its time, and the floor still answers', async () => {
   const was = [CHAIN.ms, CHAIN.reserve, READY_MS.ms];
-  CHAIN.ms = 500;
-  CHAIN.reserve = 150;
-  READY_MS.ms = 1_000;
+  // In seconds, as S10 (a stall of a loaded host ate a 150 ms reserve): the floor's 1.5 s past three 400 ms stalls. Each ready() may take twice
+  // the whole search, so only the search's deadline can end the four of them in time.
+  CHAIN.ms = 5_000;
+  CHAIN.reserve = 1_500;
+  READY_MS.ms = 10_000;
   try {
     const t = await setup();
     for (const n of ['a', 'b', 'c', 'd']) t.registry.add(`third-${n}`, 'search', { id: `slow-${n}`, name: `Slow ${n}`, ready: () => new Promise(() => {}), search: async () => [] });
@@ -491,7 +499,8 @@ test('ready() is charged to the search\'s deadline: several slow ones cannot hol
     const out = await t.run('web_search', { query: 'nepenthe hours' }, services);
     assert.match(out, /Wikivoyage/);
     const took = Date.now() - started;
-    assert.ok(took < 700, `took ${took} ms`);
+    // The deadline and 2 s of stalls; one ready() given its own limit would take 10 s.
+    assert.ok(took < 7_000, `took ${took} ms`);
   } finally {
     [CHAIN.ms, CHAIN.reserve, READY_MS.ms] = was;
   }

@@ -22,6 +22,16 @@ test('the floor is last whatever was saved: a saved list that has it first, in t
   assert.deepEqual(orderSearch([{ id: 'a', kind: 'knowledge' }, { id: 'b', kind: 'knowledge' }, { id: 'c' }], { search: ['b', 'a', 'c'] }).map((p) => p.id), ['c', 'b', 'a'], 'several floors keep their saved order, after the rest');
 });
 
+test('a search plugin installed later lands where it would with the floor last, wherever a saved list put the floor (an older order, or one saved before the screen kept it last)', () => {
+  const list = [{ id: 'jina' }, { id: 'exa', free: true }, { id: 'parallel', free: true }, { id: 'firecrawl', free: true }, { id: 'wiki', kind: 'knowledge' }];
+  // An older order had the floor above Jina: a keyed one goes after Jina, before the free ones, as the screen's order (the floor last) places it.
+  assert.deepEqual(orderSearch([...list, { id: 'tavily' }], { search: ['wiki', 'jina', 'exa', 'parallel', 'firecrawl'] }).map((p) => p.id), ['jina', 'tavily', 'exa', 'parallel', 'firecrawl', 'wiki']);
+  // The floor saved above the last row (ArrowDown on it, before the screen kept it last): a free one goes after that row, not above it.
+  const free = [...list, { id: 'later', free: true }];
+  assert.deepEqual(orderSearch(free, { search: ['jina', 'exa', 'parallel', 'wiki', 'firecrawl'] }).map((p) => p.id), ['jina', 'exa', 'parallel', 'firecrawl', 'later', 'wiki']);
+  assert.deepEqual(orderSearch(free, { search: ['jina', 'exa', 'parallel', 'wiki', 'firecrawl'] }).map((p) => p.id), orderSearch(free, { search: ['jina', 'exa', 'parallel', 'firecrawl', 'wiki'] }).map((p) => p.id));
+});
+
 test('rows: tags and entities stripped, whitespace folded, tracking parameters dropped, duplicates (by host and path) once, at most 8 rows', () => {
   const rows = [
     { title: 'Nepenthe <b>Big Sur</b> &amp; more', url: 'https://www.nepenthe.com/hours/?utm_source=x&srsltid=abc&msockid=1&keep=1', snippet: 'Open\tdaily\n11:30 <span class="searchmatch">am</span>' },

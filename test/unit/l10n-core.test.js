@@ -43,7 +43,7 @@ test("an error's kind is the screens' words; a model reads annai's English, and 
   const redirect = new ProviderError('redirect', 'P answered with a redirect.', { provider: 'P' });
   assert.match(explain(redirect), /^Pからリダイレクトが返されました。/);
   const attempts = [{ name: 'Gemini', outcome: 'benched' }, { name: 'Groq', outcome: 'rate', error: 'Rate limit reached' }];
-  assert.equal(failedText(attempts), 'Gemini：エラーが起きたため、数分間休止しています。\nGroq：Rate limit reached.');
+  assert.equal(failedText(attempts), 'Gemini：エラーが起きたため、数分間休止しています。\nGroq：Rate limit reached。');
   assert.equal(failedText(attempts, { plain: true }), 'Gemini: It is resting for a few minutes after an error.\nGroq: Rate limit reached.');
   assert.equal(failedText([], { offline: true }), 'この端末はオフラインです。');
 });
@@ -146,6 +146,14 @@ test("scopes' titles, storage errors, a provider that keeps turns and a plugin s
   assert.equal(scopeTitle({ id: 'trip-1', title: 'Big Sur' }), 'Big Sur');
   assert.deepEqual(keeperOf({ holds: 'at least 30 days', provider: 'provider-openai' }, 'provider-another-address', 'My server'), { name: 'My server', holds: null, server: true, note: '' });
   assert.match(disabledCard({ name: 'Tides', why: { kind: 'failed', count: 3 }, message: 'boom' }).body, /^3回続けて失敗しました。最後のエラー：boom/);
+  // The last error is ended as a sentence, with the screens' own stop (。, not an ASCII one), and Japanese puts no space before the next one (sentences()).
+  assert.match(disabledCard({ name: 'Tides', why: { kind: 'failed', count: 3 }, message: 'boom' }).body, /最後のエラー：boom。「/);
+  assert.match(disabledCard({ name: 'Tides', why: { kind: 'failed', count: 3 }, message: '止まりました' }).body, /最後のエラー：止まりました。「/);
+  assert.match(disabledCard({ name: 'Tides', why: { kind: 'failed', count: 3 }, message: '止まりました。' }).body, /最後のエラー：止まりました。「/);
+  try {
+    setWords('zh-Hans', ZH);
+    for (const message of ['boom', '已停止']) assert.match(disabledCard({ name: 'Tides', why: { kind: 'failed', count: 3 }, message }).body, new RegExp(`${message}。[^ .]`));
+  } finally { setWords('ja', JA); }
 });
 
 test("an error a model may read keeps annai's English in message; the screens show its shown words (LESSONS 2026-10-27)", async () => {

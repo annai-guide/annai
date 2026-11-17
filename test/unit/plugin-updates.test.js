@@ -122,6 +122,19 @@ test('the card offers updates, applies them on Update, and offers a restart; off
   assert.equal(cards.length, 2);
 });
 
+test("two updates that fail with words of their own (no stop) each end as a sentence on the card, so one plugin's error doesn't run into the next name", async () => {
+  // A host whose every call throws a raw error, as a failed import of a plugin's module does: its message has no stop of its own.
+  const host = new Proxy({}, { get: () => () => { throw new Error('boom'); } });
+  /** @type {any[]} */
+  const cards = [];
+  const ctx = { plugins: host, notices: { card: (/** @type {any} */ c) => { cards.push(c); return () => {}; }, toast: () => {} } };
+  const fail = async () => { throw new Error('boom'); };
+  const updates = /** @type {any} */ ([{ id: 'a', name: 'Tide pools', url: 'https://x.example/a', added: null }, { id: 'b', name: 'Rock pools', url: 'https://x.example/b', added: null }]);
+  await applyUpdates(/** @type {any} */ (ctx), updates, /** @type {any} */ ({ addressFetch: fail, fetch: fail }));
+  assert.equal(cards[0].title, "Some plugins weren't updated");
+  assert.equal(cards[0].body, 'Tide pools: boom. Rock pools: boom.');
+});
+
 const ADDR = 'https://trails.example/tide-pools/SKILL.md';
 
 test('a package from an address is checked there, offered when it changed, and changes only on Update (spec §5.3)', async () => {

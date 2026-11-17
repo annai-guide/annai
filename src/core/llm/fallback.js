@@ -1,6 +1,6 @@
 import { callOnce, enabledProviderTools, withoutNatives } from './call.js';
 import { t } from '../l10n.js';
-import { when, sentences } from '../intl.js';
+import { when, sentences, asSentence } from '../intl.js';
 import { dayIn, timeIn, deviceZone } from '../time.js';
 import { ProviderError, portable, nativeExtra, explain, explainPlain, saidWords } from './contract.js';
 import { NO_USAGE, addUsage, addCost } from './cost.js';
@@ -154,7 +154,7 @@ export function attemptWhy(a, { now = Date.now(), plain = false } = {}) {
   } else if (said) {
     // A provider's words as a sentence, though annai's name stays lower case.
     if (!why.startsWith('annai')) why = why.charAt(0).toUpperCase() + why.slice(1);
-    if (!/[.!?。！？]$/u.test(why)) why += '.';
+    why = asSentence(why, plain);
   }
   return why;
 }

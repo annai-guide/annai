@@ -10,6 +10,10 @@ test('error responses become error kinds the fallback acts on (spec §9.9)', () 
   assert.equal(kind(403), 'auth');
   assert.equal(kind(402, json({ error: { message: 'Insufficient credits' } })), 'credit');
   assert.equal(kind(404), 'not-found');
+  // A 408 is the provider's own time limit (OpenRouter's error list: "408: Your request timed out"), not a request it refused: it is read as
+  // annai's own time limit is, so the model rests and the next answers, and Test doesn't send anyone to the tunables.
+  assert.equal(kind(408, json({ error: { code: 408, message: 'Your request timed out' } })), 'timeout');
+  assert.equal(kind(408), 'timeout');
   assert.equal(kind(413), 'context');
   assert.equal(kind(429), 'rate');
   // OpenAI says "out of quota" with a 429: that is no reason to wait.

@@ -9,6 +9,8 @@ import { readWatches } from '../../src/core/live/watches.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { logEvent } from '../../src/core/events.js';
+import { record } from '../../src/core/agent/log.js';
+import { createTrip } from '../../src/core/scopes.js';
 
 const sleep = { name: 'sleep', input: {} };
 const say = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }, sleep] });
@@ -251,6 +253,121 @@ test('a reminder annai says while the conversation is still being opened (as ann
   await k.agent.idle();
   assert.ok(JSON.stringify(k.requests[0].messages).includes('Leave for the airport now.'));
   assert.deepEqual((await k.events(['reminder'])).length, 1);
+});
+
+test("a reminder written while its conversation is being opened, before its log is read, is told to the screens once (Driving's latest card hears it), and is in what Shiori knows once", async () => {
+  const k = await agentKit([[say('Hi.')]], { open: false });
+  /** @type {any[]} */
+  const told = [];
+  k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'reminder') told.push(e); });
+  // The open has begun (its trip is the target) and nothing of its log is read yet: the reminder is written first, so the reading has it.
+  let reminded = false;
+  const tx = k.store.tx.bind(k.store);
+  k.store.tx = (/** @type {any} */ names, /** @type {any} */ mode, /** @type {any} */ fn) => {
+    if (reminded || k.agent.target !== k.trip) return tx(names, mode, fn);
+    reminded = true; // before remind, whose own write comes through here
+    return k.agent.remind([{ watch: 'w-1', text: 'Leave for the airport now.' }]).then(() => tx(names, mode, fn));
+  };
+  await k.agent.open(k.trip);
+  assert.ok(reminded, 'written in the opening window');
+  const [r] = await k.events(['reminder']);
+  assert.ok(r.seq <= k.agent.transcript.through, 'the reading had it');
+  assert.deepEqual(told.map((e) => [e.scope, e.seq, e.data.text]), [[k.trip, r.seq, 'Leave for the airport now.']]);
+  k.agent.send('Hello');
+  await k.agent.idle();
+  assert.equal(JSON.stringify(k.requests[0].messages).split('Leave for the airport now.').length, 2, 'Shiori is given it once');
+});
+
+test("a reminder written while its conversation is being opened is told to the screens too when another open overtakes that one: it is then a write to a conversation that isn't open", async () => {
+  const k = await agentKit([[say('Hi.')]], { open: false });
+  const other = await createTrip(k.ws, { title: 'Kyoto' });
+  /** @type {any[]} */
+  const told = [];
+  k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'reminder') told.push(e); });
+  let reminded = false;
+  /** @type {Promise<void> | null} */
+  let overtaking = null;
+  const tx = k.store.tx.bind(k.store);
+  k.store.tx = (/** @type {any} */ names, /** @type {any} */ mode, /** @type {any} */ fn) => {
+    if (reminded || k.agent.target !== k.trip) return tx(names, mode, fn);
+    reminded = true;
+    return k.agent.remind([{ watch: 'w-1', text: 'Leave for the airport now.' }]).then(() => {
+      overtaking = k.agent.open(other); // the user moved on before the first open was read
+      return tx(names, mode, fn);
+    });
+  };
+  await k.agent.open(k.trip);
+  await overtaking;
+  assert.equal(k.agent.scope, other);
+  const [r] = await k.events(['reminder']);
+  assert.deepEqual(told.map((e) => [e.scope, e.seq, e.data.text]), [[k.trip, r.seq, 'Leave for the airport now.']]);
+  // Its seq is above Kyoto's last, so only the scope keeps it out of Kyoto's transcript and so out of what Shiori is given there.
+  assert.ok(!JSON.stringify(k.agent.transcript.messages).includes('Leave for the airport now.'), "the left trip's reminder is not in Kyoto's transcript");
+  k.agent.send('Hello');
+  await k.agent.idle();
+  assert.ok(!JSON.stringify(k.requests[0].messages).includes('Leave for the airport now.'), "nor in Kyoto's first request");
+});
+
+/**
+ * A reminder written while the trip that is open is being opened again, right after the reading listed its log: the reading lacks it, as a
+ * long line in the log (over 2,000 characters, kept as a blob) is read from its blob after the write is queued. failRead: the open's first
+ * read of a stored text fails, so the open fails. @param {any} k @param {{ failRead?: boolean }} [o] @returns {Promise<{ reminding: () => Promise<void> | null }>}
+ */
+async function remindWhileReopening(k, { failRead = false } = {}) {
+  await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'Please remember this. '.repeat(120)]] });
+  /** @type {Promise<void> | null} */
+  let reminding = null;
+  let failed = false;
+  const tx = k.store.tx.bind(k.store);
+  k.store.tx = (/** @type {any} */ names, /** @type {any} */ mode, /** @type {any} */ fn) => tx(names, mode, (/** @type {any} */ t) => fn(new Proxy(t, {
+    get(o, key) {
+      const v = o[key];
+      if (key === 'getBlob' && failRead && reminding && !failed && mode === 'readonly') {
+        failed = true; // once: the turn after reads again
+        return async () => { throw new Error('the read failed'); };
+      }
+      if (key !== 'listEvents') return typeof v === 'function' ? v.bind(o) : v;
+      return async (/** @type {string} */ scope, /** @type {any} */ q = {}) => {
+        const out = await o.listEvents(scope, q);
+        if (!reminding && scope === k.trip && q.types?.includes('msg.user')) reminding = k.agent.remind([{ watch: 'w-1', text: 'Leave for the airport now.' }]);
+        return out;
+      };
+    },
+  })));
+  return { reminding: () => reminding };
+}
+
+test("a reminder written while the trip that is open is being opened again is in what Shiori knows once, though the reading was made before it was written (a long line in the log is read from its blob, after the write is queued)", async () => {
+  const k = await agentKit([[say('Hi.')]]);
+  /** @type {any[]} */
+  const told = [];
+  k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'reminder') told.push(e); });
+  const { reminding } = await remindWhileReopening(k);
+  await k.agent.open(k.trip);
+  await reminding();
+  assert.ok(reminding(), 'written in the opening window, after the log was listed');
+  k.agent.send('Hello');
+  await k.agent.idle();
+  assert.equal(JSON.stringify(k.requests[0].messages).split('Leave for the airport now.').length, 2, 'Shiori is given it once');
+  assert.equal((await k.events(['reminder'])).length, 1, 'stored once');
+  assert.deepEqual(told.map((e) => e.data.text), ['Leave for the airport now.'], 'told to the screens once');
+});
+
+test("a reminder written while the trip that is open is being opened again is in the transcript that stays open when that open fails: #write applies it there, as the splice never comes", async () => {
+  const k = await agentKit([[say('Hi.')]]);
+  /** @type {any[]} */
+  const told = [];
+  k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'reminder') told.push(e); });
+  const { reminding } = await remindWhileReopening(k, { failRead: true });
+  await assert.rejects(k.agent.open(k.trip), /the read failed/);
+  await reminding();
+  assert.ok(reminding(), 'written in the opening window, after the log was listed');
+  assert.equal(JSON.stringify(k.agent.transcript.messages).split('Leave for the airport now.').length, 2, 'in the transcript still open, once');
+  k.agent.send('Hello');
+  await k.agent.idle();
+  assert.equal(JSON.stringify(k.requests[0].messages).split('Leave for the airport now.').length, 2, 'Shiori is given it once');
+  assert.equal((await k.events(['reminder'])).length, 1, 'stored once');
+  assert.deepEqual(told.map((e) => e.data.text), ['Leave for the airport now.'], 'told to the screens once');
 });
 
 test("one reminder, one time: Kokoro's watch_set result and Koe's view name it in the same words, its weekday and zone said, whatever the phone's zone (real models: Koe took it back from its own view, item 6)", async () => {

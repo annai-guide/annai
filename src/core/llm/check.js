@@ -4,7 +4,7 @@ import { LEVELS, nearestLevel } from './reasoning.js';
 import { fromBase64 } from '../bytes.js';
 import { TEST_UPLOAD, REQUEST_MS, deleteUpload, sweepUploads } from './uploads.js';
 import { t } from '../l10n.js';
-import { sentences } from '../intl.js';
+import { sentences, asSentence } from '../intl.js';
 
 /** A 16×16 red PNG: the small image the Test button sends (spec §9.8). */
 export const TEST_IMAGE = 'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAFklEQVR42mO4IydHEmIY1TCqYfhqAACaMxgQdrf9VwAAAABJRU5ErkJggg==';
@@ -108,7 +108,9 @@ export async function testModel(c) {
       steps.push({ step: 'level', ok: true, detail: alsoAnswers(role) });
     } catch (e) {
       const err = asError(e);
-      steps.push({ step: 'level', ok: false, detail: sentences(refusedAt(role, err.message.replace(/[.\s]*$/, '.')), lowerLevel(role)) });
+      // Only a provider that read the request and refused it (REFUSALS: a 400, a 413 or a 404) refused the level, and the level is the
+      // traveller's to lower; a key, credit, a rate or time limit, a server's failure or a dropped connection says nothing about it.
+      steps.push({ step: 'level', ok: false, detail: REFUSALS.has(err.kind) ? sentences(refusedAt(role, asSentence(err.message)), lowerLevel(role)) : explain(err) });
     }
   }
   if (useImage && type.uploadRequest && type.readUpload && endpoint.tunables?.uploads !== false) steps.push(await testUpload(c));
@@ -174,6 +176,11 @@ async function testUpload({ type, endpoint, model, key, fetch: get = (url, init)
   return { step: 'upload', ok: false, detail: sentences(t`Photos upload, but annai couldn't delete the test photo with this key.`, t`annai will send photos in each request instead.`) };
 }
 
+/**
+ * The error kinds of an answer that refused the request itself (kindOf: a 400 by its words, a 413 by its status). Not-found is one too: the
+ * access step just reached this model at this address, so a 404 at the level step is the level's.
+ */
+const REFUSALS = new Set(['bad-request', 'context', 'image', 'not-found']);
 /** A role by the name the screens give it, a label of its own. @param {{ id: string }} role */
 const roleName = ({ id }) => (id === 'koe-classic' ? t`Koe · Chat` : id === 'utility' ? t`Utility` : t`Main`);
 /** @param {{ id: string, level: string }} role */
