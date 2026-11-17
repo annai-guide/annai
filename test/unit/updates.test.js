@@ -277,6 +277,7 @@ test('a check that hangs (a connection that stalls) ends after a time limit, in 
   const r = await updates.checkNow();
   assert.deepEqual(r?.failed, ["The check took too long. Check the connection, and try again."]);
   assert.equal(updates.checking, false);
+  updates.limitMs = 45_000; // the shipped limit for the check that answers: at 20 ms a starved CPU's check gives up too
   updates.app = { check: async () => {}, state: () => 'none' };
   assert.deepEqual((await updates.checkNow())?.failed, []);
 });
@@ -330,6 +331,7 @@ test('a check the time limit gave up on writes nothing when it answers late: no 
   k.t += DAILY;
   const given = await k.updates.auto();
   assert.deepEqual(given?.failed, ['The check took too long. Check the connection, and try again.']);
+  k.updates.limitMs = 45_000; // the shipped limit for the check that answers: at 20 ms a starved CPU's check gave up too, and wrote that it had
   k.appCheck = async () => {};
   k.t += 1000;
   await k.updates.checkNow();

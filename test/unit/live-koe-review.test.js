@@ -16,6 +16,25 @@ function slowSettings(k, ms) {
   const orig = k.voice.settings.bind(k.voice);
   k.voice.settings = async () => { await wait(ms); return orig(); };
 }
+/**
+ * Voice settings read while the session is open (listen()'s) wait until go(), so a listen() spans what the test does meanwhile; waiting() says
+ * one waits. With a 60 ms read instead, a starved CPU's test was 60 ms late to close it, and the microphone opened.
+ * @param {any} k
+ */
+function heldSettings(k) {
+  const orig = k.voice.settings.bind(k.voice);
+  let n = 0;
+  let go = () => {};
+  const gate = new Promise((r) => { go = () => r(undefined); });
+  k.voice.settings = async () => {
+    if (k.agent.live.state === 'open') {
+      n++;
+      await gate;
+    }
+    return orig();
+  };
+  return { waiting: () => n > 0, go };
+}
 const speak = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }] });
 
 test("item 1 (probe K2): a typed message when no live session can open: Kokoro is woken to answer directly, at once, and a card says Koe's voice couldn't start", async () => {
@@ -94,13 +113,13 @@ test('item 3 (probe A3): a close while listen() waits opens no microphone and th
   process.on('unhandledRejection', onRejection);
   const k = await liveKit([{ said: 'Sunset soon.', audio: tone(0.1) }]);
   try {
-    slowSettings(k, 60);
+    const held = heldSettings(k);
     await k.voice.unlock();
     const p = k.agent.live.open('tap', { mic: true });
-    await until(() => k.agent.live.state === 'open', 3000);
-    await wait(5);
+    await until(() => held.waiting(), 3000); // listen() waits for the settings
     hidden(true);
     k.agent.hush('away');
+    held.go();
     assert.equal(await p, true);
     await wait(120);
     hidden(false);
@@ -149,7 +168,9 @@ test('item 4 (probe H): a tap that cuts Koe off tells the provider how much of h
 });
 
 test('item 5 (probe L): a server that drops every session it resumes is given up on after three tries with no turn between them, waiting longer each time; Koe goes on without it', async () => {
-  const k = await liveKit([{ said: 'Hi.', audio: tone(0.1), handle: 'h' }]);
+  // The session's clock is the real one: at the kit's 10 ms a second its 30 s quiet spell is 300 ms from each resume, and a starved CPU's test, that
+  // much later to drop the session again, found it closed for quiet (no resume to count).
+  const k = await liveKit([{ said: 'Hi.', audio: tone(0.1), handle: 'h' }], { agent: { secondMs: 1000 } });
   try {
     await k.voice.unlock();
     k.agent.send('Hello');

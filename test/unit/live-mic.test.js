@@ -47,9 +47,9 @@ test('a user turn beginning after the quiet spell ran out on one wakes Kokoro on
     let done = false;
     const feeding = feedOn(k, () => done); // sound that never stops: the spell runs out in the first turn, and a second begins at its cap
     try {
-      // The wake comes about 6.5 s in on a quiet host (the turn's cap, then the second turn), 7 to 16 s with 16 copies of this file beside 128 CPU
-      // hogs on a busy host: 8 s left 1.5 s on a quiet one.
-      await soon(async () => (await kokoroWakes(k, /non-stop sound/)).length === 1, 20_000);
+      // The wake comes about 6.5 s in on a quiet host (the turn's cap, then the second turn), as fast as the music is fed: 7 to 16 s with 16 copies
+      // of this file beside 128 CPU hogs on a busy host, about 20 s with the event loop held 0 to 100 ms every 20 ms. soon's limit only ends a failing test.
+      await soon(async () => (await kokoroWakes(k, /non-stop sound/)).length === 1);
       await wait(1500); // more of it: the same stretch
     } finally {
       done = true;
@@ -302,11 +302,18 @@ test('a non-urgent note waits for the user turn going on to end (at most the 15 
   }
 });
 
-/** Sound fed in real time, a tenth of a second at a time. @param {any} k @param {Int16Array | Float32Array} pcm */
+/**
+ * Sound fed in real time, a tenth of a second at a time, each piece when its time comes from the start, as a microphone gives it: after a stall,
+ * what came meanwhile at once. A wait of 100 ms after each piece made the sound late by every wait's overshoot, against the session's timers and
+ * the stand-in's delays: with the event loop held 0 to 100 ms every 20 ms, 3 s of sound took 5.1 s, and the tests timed by it failed 19 of 30 runs.
+ * @param {any} k @param {Int16Array | Float32Array} pcm
+ */
 async function realtime(k, pcm) {
+  const t0 = Date.now();
   for (let i = 0; i < pcm.length; i += 1600) {
     if (k.platform.mic.isOpen()) k.platform.mic.feed(pcm.subarray(i, i + 1600), RATE);
-    await wait(100);
+    const next = t0 + ((i + 1600) * 1000) / RATE;
+    if (Date.now() < next) await wait(next - Date.now());
   }
 }
 
@@ -355,7 +362,8 @@ test('non-stop sound: Kokoro is woken once the turn that began after the lapse r
     let done = false;
     const feeding = feedOn(k, () => done);
     try {
-      await soon(async () => (await kokoroWakes(k, /non-stop sound/)).length === 1, 12_000);
+      // As fast as the music is fed: 6.4 to 6.7 s on a quiet host, 10.8 to 13.7 s on a busy one, where 12 s failed. soon's limit only ends a failing test.
+      await soon(async () => (await kokoroWakes(k, /non-stop sound/)).length === 1);
     } finally {
       done = true;
       await feeding;
@@ -1352,8 +1360,10 @@ test("Kokoro's sleep note, arriving while a note for the user is in flight and h
     await realtime(k, quiet(0.9));
     await realtime(k, hum(1.5)); // let go as the next begins: Kokoro is woken, its call waits
     await soon(async () => k.agent.live.stretching, 3000).catch(() => assert.fail('the music made no stretch'));
-    await realtime(k, quiet(1));
+    // The note comes while that turn goes on, so it waits for the turn's verdict and goes in with it. Sent once the turn had ended, it raced that
+    // verdict (300 ms after the end, when the session, its spell run out, closes for quiet with nothing in flight): 100 ms late, it lost every time.
     await tell(k);
+    await realtime(k, quiet(1));
     await soon(async () => notesIn(k).length === 1, 3000).catch(() => assert.fail(`the note never went in: ${JSON.stringify(texts(k))}`));
     assert.equal(k.agent.live.stretching, true, 'the stretch is still on');
     const t0 = Date.now();
