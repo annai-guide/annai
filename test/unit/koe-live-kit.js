@@ -10,7 +10,9 @@ export const tone = (seconds = 0.6) => new Uint8Array(Int16Array.from({ length: 
 
 /**
  * Shiori as two halves with a realtime model (m-live) first in Koe's list, at a stand-in Gemini Live server
- * that answers with turns; a voice (on unless voice says otherwise), and Kokoro's scripts.
+ * that answers with turns; a voice (on unless voice says otherwise), and Kokoro's scripts. The quiet spell that closes a session is the
+ * setting's longest, 300 s: 3 s on the agent's 10 ms second (agentKit), not the default's 300 ms, which an event-loop stall of a loaded host
+ * (200 to 400 ms) could run out while a test waits on something else. A test about the spell itself gives its own (voice.closeAfterSeconds).
  * @param {any[]} turns @param {{ pace?: number, kokoro?: any[], koe?: any, voice?: any, live?: any, agent?: any, open?: boolean, ready?: Promise<void>, server?: { expired?: boolean, onText?: { match: RegExp, turn: any } }, hold?: (c: any) => Promise<unknown> }} [o]
  *   server: the stand-in's options; hold: agentKit's, before each scripted model call
  */
@@ -20,7 +22,7 @@ export async function liveKit(turns, o = {}) {
   let k;
   try {
     k = await agentKit(o.kokoro ?? [{ rules: [{ match: '.', reply: sleep }] }], {
-      live: { origin: server.origin, ...o.live }, koe: o.koe, agent: o.agent, voice: { speechIn: ['m-hear'], ...o.voice }, open: o.open, ready: o.ready, hold: o.hold,
+      live: { origin: server.origin, ...o.live }, koe: o.koe, agent: o.agent, voice: { speechIn: ['m-hear'], closeAfterSeconds: 300, ...o.voice }, open: o.open, ready: o.ready, hold: o.hold,
     });
     if (!o.ready) await k.agent.idle();
   } catch (e) {

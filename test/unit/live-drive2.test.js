@@ -156,8 +156,8 @@ test('item 6: a note a session never answers is still the watchdog\'s: a fresh s
 });
 
 test('section 2: a dismissed live turn at the user\'s own level wakes Kokoro; a quieter one, lyrics, does not', async () => {
-  // The session's clock is the real one: at the kit's 10 ms a second its 30 s quiet spell is 300 ms, which a dismissed turn doesn't re-arm, and on a
-  // starved CPU it closed the session before the second turn was fed.
+  // The session's clock is the real one: at the kit's 10 ms a second its quiet spell was the default's 30 s, 300 ms (the kit's is 300 s now), which a
+  // dismissed turn doesn't re-arm, and on a starved CPU it closed the session before the second turn was fed.
   const k = await liveKit([{ heard: 'Okay, cool.' }, { heard: 'la la la' }], { agent: { secondMs: 1000 } });
   const cues = async () => (await k.events(['wake'])).filter((/** @type {any} */ e) => (e.data.reasons ?? []).some((/** @type {any} */ w) => /didn't answer/.test(String(w.text ?? ''))));
   try {

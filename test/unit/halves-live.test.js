@@ -66,8 +66,8 @@ test("Realtime chosen: voice off, Koe types through Classic (a live reply would 
 });
 
 test("the voice chip's switch applies at once: Classic chosen closes an open session ('pathway') and the loop answers; Realtime chosen again, Koe is live", async () => {
-  // The session's clock is the real one: at the kit's 10 ms a second its 30 s quiet spell is 300 ms from her line, and on a starved CPU it closed
-  // the session for quiet before Classic was chosen.
+  // The session's clock is the real one: at the kit's 10 ms a second its quiet spell was the default's 30 s, 300 ms from her line (the kit's is 300 s
+  // now), and on a starved CPU it closed the session for quiet before Classic was chosen.
   const k = await liveKit([{ said: 'A taco stand, two minutes ahead.', audio: tone(0.2) }], { koe: { type: { rules: [{ match: '.', reply: sleep }] } }, agent: { secondMs: 1000 } });
   try {
     k.agent.send('Where can we eat?');
@@ -366,11 +366,13 @@ test("voice on with a realtime Koe: a tap opens a session with Koe's live instru
 });
 
 test('a quiet spell closes it: the microphone closes, full-quality playback comes back, and Kokoro is told', async () => {
-  const k = await liveKit([]);
+  // The spell is what this waits for: 1 s (100 s at the kit's 10 ms a second), long enough that the session is seen listening first, past an
+  // event-loop stall of a loaded host (up to 400 ms), and well inside the 3 s this waits.
+  const k = await liveKit([], { voice: { closeAfterSeconds: 100 } });
   try {
     k.agent.tap();
     await until(() => k.agent.live.listening);
-    await until(() => k.agent.live.state === 'closed', 3000); // 30 seconds, at 10 ms a second
+    await until(() => k.agent.live.state === 'closed', 3000);
     assert.equal(k.platform.log.at(-1), 'mic close');
     assert.equal(k.platform.sessions.at(-1), 'playback');
     await soon(async () => (await lives(k, 'closed')).length === 1);
