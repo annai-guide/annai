@@ -4,7 +4,7 @@
 // hand-over. Nothing of the record reaches the model.
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { startModelServer, anthropicToolReply, modelSetUp, startTrip } from './helpers.js';
+import { startModelServer, anthropicToolReply, modelSetUp, startTrip, openApp } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 const MESSAGES = '/b/v1/messages';
@@ -45,6 +45,9 @@ async function undo(page, trip) {
   await expect(page.getByText('Undone.', { exact: true })).toBeVisible();
   return (await filed(page, trip)).there;
 }
+
+/** The words (or with `part` 'strong', the title) of the line just above the hand-over's Undo line. @param {import('@playwright/test').Page} page @param {'p' | 'strong'} [part] */
+const above = (page, part = 'p') => page.locator('.convo li.undo-line').evaluate((li, part) => li.previousElementSibling?.querySelector(part)?.textContent ?? null, part);
 
 /** The text of a request's last user message. @param {any} body */
 const lastUser = (body) => JSON.stringify([...(body?.messages ?? [])].reverse().find((/** @type {any} */ m) => m.role === 'user')?.content ?? '');
@@ -206,13 +209,338 @@ test('another trip opened while her card waits: let go, no line and no request o
     await expect(page.locator('.convo').getByText('Filed.')).toBeVisible({ timeout: 30_000 });
     const { writes } = await filed(page, bigSur);
     expect(writes).toEqual([['/notes/f.md', expect.any(String)]]);
-    // The Undo line stays where it was when the user wrote (under her question), drawn as it was then: the conversation drawn again shows it.
-    await page.reload();
-    await expect(page.locator('.convo').getByText('Filed.')).toBeVisible({ timeout: 30_000 });
+    // Her next turn carries the hand-over, so the Undo line follows it: under what she did, with no reload.
+    await expect(page.getByRole('button', { name: 'Undo what Shiori did with these files' })).toBeVisible();
+    expect(await above(page)).toBe('Filed.');
     expect(await undo(page, bigSur)).toEqual([]);
   } finally {
     await llm.stop();
   }
+});
+
+test('her question card first, the user taps Yes, and she files: the Undo line shows under what she said she did, with no reload and after one, and Undo takes back what she filed', async ({ page }) => {
+  const llm = await startModelServer({ [MESSAGES]: [
+    sse(anthropicToolReply([{ name: 'ask', input: { question: 'File it in your notes?', options: ['Yes', 'No'] } }, sleep])),
+    sse(anthropicToolReply([write('f.md'), speak('Filed.'), sleep])),
+  ] });
+  try {
+    await modelSetUp(page, llm.origin, 'Big Sur');
+    const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    await handOver(page, 'Here is my flight');
+    await expect(page.locator('.convo').getByText('File it in your notes?')).toBeVisible({ timeout: 30_000 });
+    await page.locator('.convo').getByRole('button', { name: 'Yes', exact: true }).click();
+    await expect(page.locator('.convo').getByText('Filed.')).toBeVisible({ timeout: 30_000 });
+    const { writes } = await filed(page, trip);
+    expect(writes).toEqual([['/notes/f.md', expect.any(String)]]);
+    await expect(page.getByRole('button', { name: 'Undo what Shiori did with these files' })).toBeVisible();
+    expect(await above(page)).toBe('Filed.');
+    // Drawn again, the line is where it was.
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'Undo what Shiori did with these files' })).toBeVisible({ timeout: 30_000 });
+    expect(await above(page)).toBe('Filed.');
+    expect(await undo(page, trip)).toEqual([]);
+    expect(llm.bodies(MESSAGES).length).toBe(2);
+  } finally {
+    await llm.stop();
+  }
+});
+
+test('her turn silent twice after a hand-over, and the user writes again instead of Try again: that turn carries the hand-over, and the Undo line shows under what she did', async ({ page }) => {
+  const llm = await startModelServer({ [MESSAGES]: [
+    sse(anthropicToolReply([sleep])),
+    sse(anthropicToolReply([sleep])),
+    sse(anthropicToolReply([write('f.md'), speak('Filed.'), sleep])),
+  ] });
+  try {
+    await modelSetUp(page, llm.origin, 'Big Sur');
+    const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    await handOver(page, 'Here is my flight');
+    await expect(page.getByText("Shiori didn't answer").first()).toBeVisible({ timeout: 30_000 });
+    await page.getByRole('button', { name: 'Type', exact: true }).click();
+    await page.getByLabel('Message to Shiori').fill('Please file it');
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect(page.locator('.convo').getByText('Filed.')).toBeVisible({ timeout: 30_000 });
+    const { writes } = await filed(page, trip);
+    expect(writes).toEqual([['/notes/f.md', expect.any(String)]]);
+    await expect(page.getByRole('button', { name: 'Undo what Shiori did with these files' })).toBeVisible();
+    expect(await above(page)).toBe('Filed.');
+    expect(await undo(page, trip)).toEqual([]);
+  } finally {
+    await llm.stop();
+  }
+});
+
+/** What a model that can't be reached answers. */
+const refused = { status: 401, type: 'application/json', body: '{"type":"error","error":{"type":"authentication_error","message":"bad key"}}' };
+
+// Her last line, or the card that ends her turn, comes before her last write: the Undo line is there to tap anyway (it is looked at again where her turn ends
+// or its card shows), with no reload and after one, where her turn ended, and Undo takes back exactly what she did.
+for (const shape of [
+  { name: 'her card, the user taps Yes, then she speaks, writes and sleeps', ask: true, replies: [[{ name: 'ask', input: { question: 'File it in your notes?', options: ['Yes', 'No'] } }, sleep], [speak('Filing it.'), write('f.md'), sleep]], under: ['p', 'Filing it.'] },
+  { name: 'she speaks, writes and sleeps (no question)', replies: [[speak('I will file it now.'), write('f.md'), sleep]], under: ['p', 'I will file it now.'] },
+  { name: 'a reply that only speaks, then one that writes and sleeps', replies: [[speak('Looking at it.')], [write('f.md'), sleep]], under: ['p', 'Looking at it.'] },
+  { name: 'she writes and sleeps, then sleeps again ("Her turn ended", with no line of hers)', replies: [[write('f.md'), sleep], [sleep]], under: ['strong', 'Her turn ended'] },
+  { name: "she writes, then her model can't be reached (no line of hers)", replies: [[write('f.md')], refused], under: ['strong', "Shiori can't reach her model"] },
+  { name: "she speaks and writes, then her model can't be reached", replies: [[speak('Filing it.'), write('f.md')], refused], under: ['strong', "Shiori can't reach her model"] },
+  { name: 'she writes, then the user stops her (no card, no turn end)', stop: true, replies: [[write('f.md')], held()], under: ['p', 'Here is my flight'] },
+]) {
+  test(`the Undo line shows where her turn ended, though her last line came before her last write: ${shape.name}`, async ({ page }) => {
+    const llm = await startModelServer({ [MESSAGES]: shape.replies.map((r) => (Array.isArray(r) ? sse(anthropicToolReply(r)) : r)) });
+    try {
+      await modelSetUp(page, llm.origin, 'Big Sur');
+      const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+      await handOver(page, 'Here is my flight');
+      if (shape.ask) {
+        await expect(page.locator('.convo').getByText('File it in your notes?')).toBeVisible({ timeout: 30_000 });
+        await page.locator('.convo').getByRole('button', { name: 'Yes', exact: true }).click();
+      }
+      const button = page.getByRole('button', { name: 'Undo what Shiori did with these files' });
+      if (shape.stop) {
+        await expect.poll(() => llm.bodies(MESSAGES).length, { timeout: 30_000 }).toBe(2); // the write is made, the next request is held
+        await page.getByRole('button', { name: 'Shiori', exact: true }).click();
+      }
+      await expect(button).toBeVisible({ timeout: 30_000 });
+      expect((await filed(page, trip)).writes).toEqual([['/notes/f.md', expect.any(String)]]);
+      expect(await above(page, /** @type {'p' | 'strong'} */ (shape.under[0]))).toBe(shape.under[1]);
+      // Drawn again from the log, the line is where it was.
+      await page.reload();
+      await expect(button).toBeVisible({ timeout: 30_000 });
+      expect(await above(page, /** @type {'p' | 'strong'} */ (shape.under[0]))).toBe(shape.under[1]);
+      expect(await undo(page, trip)).toEqual([]);
+    } finally {
+      await llm.stop();
+    }
+  });
+}
+
+test('drawn from the log: while she is two halves, Kokoro\'s turns place the Undo line (words to Koe while Kokoro files don\'t stop it, the next ones after Kokoro\'s turn ended do, nor does a turn that carries no hand-over); a turn that took the hand-over up partway ends with the line; a log from before wakes named their hand-over keeps the user\'s words as the stop', async ({ page }) => {
+  await openApp(page, '#/trips');
+  // No model is set, so opening a conversation wakes nothing. Each log is written by hand, with only the records the Undo line goes by, in the order the loop writes them (a
+  // real two-halves turn: Koe's wake, the user's line, Koe's words, Kokoro's wake naming the hand-over, her write, her turn.end naming it, then Koe's "Filed."; left out are
+  // Koe's turn ends, Kokoro's note and Koe's wake for it, which it doesn't go by; the first log adds words to Koe while Kokoro files, "Thanks" and its answer; the partway
+  // turn's order is the one agent-handover.test.js reads from the loop), with a write of hers under the hand-over so Undo has something to take back.
+  const [halves, older, gap, partway] = await page.evaluate(async () => {
+    const load = (/** @type {string} */ u) => import(u);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { createTrip } = await load('/src/core/scopes.js');
+    const { record } = await load('/src/core/agent/log.js');
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    const handed = [{ path: '/trip/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true }];
+    /** @param {string} trip @param {string} type @param {any} data @param {string} [text] */
+    const put = (trip, type, data, text) => record(store, trip, { type, actor: type === 'msg.user' ? 'user' : type.startsWith('out.') ? 'shiori' : 'system', data, ...(text ? { texts: [['text', text]] } : {}) });
+    /** A Stop's record (quiet, no line of its own) settles all before it, so that opening the conversation takes nothing up. @param {string} trip */
+    const stopped = (trip) => put(trip, 'error', { kind: 'stopped', wake: 'stop', message: 'Stopped.', quiet: true });
+    const a = await createTrip(ws, { title: 'Big Sur' });
+    await put(a, 'wake', { id: 'w1', half: 'koe', reasons: [{ kind: 'user', text: 'typed', handover: 'h-1' }], handover: 'h-1' });
+    await put(a, 'msg.user', { wake: 'w1', handed, handover: 'h-1', split: true }, '(files)');
+    await put(a, 'out.speak', { id: 's1', half: 'koe', wake: 'w1' }, 'Let me look.');
+    await put(a, 'wake', { id: 'w2', half: 'kokoro', reasons: [{ kind: 'user', text: 'typed', handover: 'h-1' }], handover: 'h-1' });
+    await put(a, 'wake', { id: 'w3', half: 'koe', reasons: [{ kind: 'user', text: 'typed' }], handover: null });
+    await put(a, 'msg.user', { wake: 'w3', split: true }, 'Thanks');
+    await put(a, 'out.speak', { id: 's2', half: 'koe', wake: 'w3' }, 'You are welcome.');
+    await ws.write(a, '/notes/flight.md', 'AN 123', { author: 'shiori', handover: 'h-1' });
+    await put(a, 'turn.end', { half: 'kokoro', wake: 'w2', handover: 'h-1' });
+    await put(a, 'out.speak', { id: 's3', half: 'koe', wake: 'w4' }, 'Filed it in your notes.');
+    // A turn of Kokoro's that carries no hand-over (a cue), then Koe's line from it: the line stays under "Filed it in your notes."
+    await put(a, 'wake', { id: 'w7', half: 'kokoro', reasons: [{ kind: 'cue', text: 'Koe answered the user' }], handover: null });
+    await put(a, 'out.speak', { id: 's5', half: 'koe', wake: 'w7' }, 'Reminder: leave for the airport.');
+    await put(a, 'wake', { id: 'w5', half: 'koe', reasons: [{ kind: 'user', text: 'typed' }], handover: null });
+    await put(a, 'msg.user', { wake: 'w5', split: true }, 'What time is the flight?');
+    await put(a, 'out.speak', { id: 's4', half: 'koe', wake: 'w5' }, 'At nine.');
+    await put(a, 'wake', { id: 'w6', half: 'kokoro', reasons: [{ kind: 'cue', text: 'Koe answered the user' }], handover: null });
+    await stopped(a);
+    const b = await createTrip(ws, { title: 'Kyoto' });
+    await put(b, 'wake', { id: 'w1', reasons: [{ kind: 'user', text: 'typed', handover: 'h-2' }] });
+    await put(b, 'msg.user', { wake: 'w1', handed, handover: 'h-2' }, '(files)');
+    await put(b, 'out.ask', { id: 'q', wake: 'w1', question: 'File it?', options: ['Yes'] });
+    await put(b, 'msg.user', { wake: 'w1', answer: 'q' }, 'Yes');
+    await ws.write(b, '/notes/flight.md', 'AN 123', { author: 'shiori', handover: 'h-2' });
+    await put(b, 'out.speak', { id: 's1', wake: 'w1' }, 'Filed.');
+    await stopped(b);
+    // Two halves, the user speaking after Kokoro's turn ended and before Koe says what she filed: the line sits under what was last when Kokoro's turn ended, not under Koe's "Filed it"
+    // (a finished log has every write in the store already, so this pins the place; that the turn's end shows the line when her write came after her last line is the live shapes above).
+    const c = await createTrip(ws, { title: 'Lisbon' });
+    await put(c, 'wake', { id: 'w1', half: 'koe', reasons: [{ kind: 'user', text: 'typed', handover: 'h-3' }], handover: 'h-3' });
+    await put(c, 'msg.user', { wake: 'w1', handed, handover: 'h-3', split: true }, '(files)');
+    await put(c, 'out.speak', { id: 's1', half: 'koe', wake: 'w1' }, 'Let me look.');
+    await put(c, 'wake', { id: 'w2', half: 'kokoro', reasons: [{ kind: 'user', text: 'typed', handover: 'h-3' }], handover: 'h-3' });
+    await ws.write(c, '/notes/flight.md', 'AN 123', { author: 'shiori', handover: 'h-3' });
+    await put(c, 'turn.end', { half: 'kokoro', wake: 'w2', handover: 'h-3' });
+    await put(c, 'wake', { id: 'w3', half: 'koe', reasons: [{ kind: 'user', text: 'typed' }], handover: null });
+    await put(c, 'msg.user', { wake: 'w3', split: true }, 'Thanks');
+    await put(c, 'out.speak', { id: 's2', half: 'koe', wake: 'w3' }, 'Filed it in your notes.');
+    await stopped(c);
+    // Her hand-over turn ended silent (its card), a reminder's turn (it carries none) took it up partway when the user typed meanwhile and wrote under it: its turn.end names it.
+    const d = await createTrip(ws, { title: 'Oslo' });
+    await put(d, 'wake', { id: 'w1', reasons: [{ kind: 'user', text: 'typed', handover: 'h-4' }], handover: 'h-4' });
+    await put(d, 'msg.user', { wake: 'w1', handed, handover: 'h-4' }, '(files)');
+    await put(d, 'error', { kind: 'silent', wake: 'w1', message: 'Her model finished without saying anything to you.' });
+    await put(d, 'wake', { id: 'w2', reasons: [{ kind: 'cue', text: 'Reminder: leave for the airport at 9.' }], handover: null });
+    await put(d, 'out.speak', { id: 's1', wake: 'w2' }, 'Reminder: leave at 9.');
+    await put(d, 'msg.user', { wake: 'w2', meanwhile: true }, 'Please file it');
+    await ws.write(d, '/notes/flight.md', 'AN 123', { author: 'shiori', handover: 'h-4' });
+    await put(d, 'out.speak', { id: 's2', wake: 'w2' }, 'Filed.');
+    await put(d, 'turn.end', { wake: 'w2', handover: 'h-4' });
+    await stopped(d);
+    store.close();
+    return [a, b, c, d];
+  });
+  for (const [trip, last, under] of [[halves, 'At nine.', 'Filed it in your notes.'], [older, 'Filed.', 'File it?'], [gap, 'Filed it in your notes.', 'Let me look.'], [partway, 'Filed.', 'Filed.']]) {
+    await page.goto(`/#/trip/${encodeURIComponent(trip)}/talk`);
+    await expect(page.locator('.convo').getByText(last, { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Undo what Shiori did with these files' })).toBeVisible();
+    expect(await above(page)).toBe(under);
+  }
+});
+
+test('drawn from the log: only the records of her turn that carries the hand-over move the Undo line, not another job\'s card, the user\'s words before her turn ends, Koe\'s answer after Kokoro was stopped, or the next turn\'s tidy-up card; after a turn of Kokoro\'s that took it up partway, Koe\'s line moves it', async ({ page }) => {
+  await openApp(page, '#/trips');
+  // Written by hand as the loop writes them, as in the test above; each log ends with a Stop's record, so opening it takes nothing up.
+  const logs = await page.evaluate(async () => {
+    const load = (/** @type {string} */ u) => import(u);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { createTrip } = await load('/src/core/scopes.js');
+    const { record } = await load('/src/core/agent/log.js');
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    const handed = [{ path: '/trip/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true }];
+    /** @param {string} trip @param {string} type @param {any} data @param {string} [text] */
+    const put = (trip, type, data, text) => record(store, trip, { type, actor: type === 'msg.user' ? 'user' : type.startsWith('out.') ? 'shiori' : 'system', data, ...(text ? { texts: [['text', text]] } : {}) });
+    const stopped = (/** @type {string} */ trip) => put(trip, 'error', { kind: 'stopped', wake: 'stop', message: 'Stopped.', quiet: true });
+    /** One Shiori's hand-over and her line in its turn. @param {string} title */
+    const start = async (title) => {
+      const id = await createTrip(ws, { title });
+      await put(id, 'wake', { id: 'w1', reasons: [{ kind: 'user', text: 'typed', handover: 'h-1' }], handover: 'h-1' });
+      await put(id, 'msg.user', { wake: 'w1', handed, handover: 'h-1' }, '(files)');
+      await put(id, 'out.speak', { id: 's1', wake: 'w1' }, 'Filing it.');
+      return id;
+    };
+    // Another job's card while her turn runs (a watch that can't be checked, live.js): it names no turn of hers.
+    const a = await start('Big Sur');
+    await ws.write(a, '/notes/flight.md', 'AN 123', { author: 'shiori', handover: 'h-1' });
+    await put(a, 'error', { kind: 'trigger', message: "A watch can't be checked." });
+    await stopped(a);
+    // The user's words while her turn runs, then her turn ends after her write: the line stays under her line, not under their words.
+    const b = await start('Kyoto');
+    await put(b, 'msg.user', { wake: 'w1', meanwhile: true }, 'Thanks');
+    await ws.write(b, '/notes/flight.md', 'AN 123', { author: 'shiori', handover: 'h-1' });
+    await put(b, 'turn.end', { wake: 'w1', handover: 'h-1' });
+    await stopped(b);
+    // Two halves: the user stops Kokoro after its write (no turn.end), then asks Koe something else: Koe's answer doesn't move the line.
+    const c = await createTrip(ws, { title: 'Lisbon' });
+    await put(c, 'wake', { id: 'w1', half: 'koe', reasons: [{ kind: 'user', text: 'typed', handover: 'h-1' }], handover: 'h-1' });
+    await put(c, 'msg.user', { wake: 'w1', handed, handover: 'h-1', split: true }, '(files)');
+    await put(c, 'out.speak', { id: 's1', half: 'koe', wake: 'w1' }, 'Let me look.');
+    await put(c, 'wake', { id: 'w2', half: 'kokoro', reasons: [{ kind: 'user', text: 'typed', handover: 'h-1' }], handover: 'h-1' });
+    await ws.write(c, '/notes/flight.md', 'AN 123', { author: 'shiori', handover: 'h-1' });
+    await put(c, 'error', { kind: 'stopped', half: 'kokoro', wake: 'w2', message: 'Stopped.', quiet: true });
+    await put(c, 'wake', { id: 'w3', half: 'koe', reasons: [{ kind: 'user', text: 'typed' }], handover: null });
+    await put(c, 'msg.user', { wake: 'w3', split: true }, 'What about the hotel?');
+    await put(c, 'out.speak', { id: 's2', half: 'koe', wake: 'w3' }, 'It is on Main Street.');
+    await stopped(c);
+    // Her "Filed.", her turn's end, then a reminder's turn whose tidy-up failed (its card): the line stays under "Filed.".
+    const d = await start('Oslo');
+    await ws.write(d, '/notes/flight.md', 'AN 123', { author: 'shiori', handover: 'h-1' });
+    await put(d, 'out.speak', { id: 's2', wake: 'w1' }, 'Filed.');
+    await put(d, 'turn.end', { wake: 'w1', handover: 'h-1' });
+    await put(d, 'wake', { id: 'w2', reasons: [{ kind: 'cue', text: 'Reminder: leave for the airport at 9.' }], handover: null });
+    await put(d, 'error', { kind: 'compaction', wake: 'w2', why: 'server', message: "Shiori couldn't tidy up the conversation." });
+    await stopped(d);
+    // Two halves: Kokoro's turn for the hand-over ended silent; a reminder's turn of Kokoro's took it up partway when the user typed, and filed: Koe's "Filed" after it tells of it.
+    const e = await createTrip(ws, { title: 'Nara' });
+    await put(e, 'wake', { id: 'w1', half: 'koe', reasons: [{ kind: 'user', text: 'typed', handover: 'h-1' }], handover: 'h-1' });
+    await put(e, 'msg.user', { wake: 'w1', handed, handover: 'h-1', split: true }, '(files)');
+    await put(e, 'wake', { id: 'w2', half: 'kokoro', reasons: [{ kind: 'user', text: 'typed', handover: 'h-1' }], handover: 'h-1' });
+    await put(e, 'error', { kind: 'silent', half: 'kokoro', aside: true, wake: 'w2', message: 'Her model finished without saying anything to you.' });
+    await put(e, 'wake', { id: 'w3', half: 'kokoro', reasons: [{ kind: 'cue', text: 'Reminder: leave for the airport at 9.' }], handover: null });
+    await put(e, 'wake', { id: 'w4', half: 'koe', reasons: [{ kind: 'user', text: 'typed' }], handover: null });
+    await put(e, 'msg.user', { wake: 'w4', split: true }, 'Please file it');
+    await put(e, 'out.speak', { id: 's1', half: 'koe', wake: 'w4' }, 'Let me ask Kokoro.');
+    await ws.write(e, '/notes/flight.md', 'AN 123', { author: 'shiori', handover: 'h-1' });
+    await put(e, 'turn.end', { half: 'kokoro', wake: 'w3', handover: 'h-1' });
+    await put(e, 'out.speak', { id: 's2', half: 'koe', wake: 'w5' }, 'Filed it in your notes.');
+    await stopped(e);
+    store.close();
+    return [[a, "A watch can't be checked.", 'Filing it.'], [b, 'Thanks', 'Filing it.'], [c, 'It is on Main Street.', 'Let me look.'], [d, "Shiori couldn't tidy up the conversation", 'Filed.'], [e, 'Filed it in your notes.', 'Filed it in your notes.']];
+  });
+  for (const [trip, last, under] of logs) {
+    await page.goto(`/#/trip/${encodeURIComponent(trip)}/talk`);
+    await expect(page.locator('.convo').getByText(last, { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Undo what Shiori did with these files' })).toBeVisible();
+    expect.soft(await above(page), last).toBe(under);
+  }
+});
+
+test('Undo tapped while she works, with more files handed over and waiting: the newer hand-over keeps its own Undo line, which takes back what she filed for it', async ({ page }) => {
+  const llm = await startModelServer({ [MESSAGES]: [
+    sse(anthropicToolReply([write('a.md'), speak('Filed.')])),
+    held(),
+    sse(anthropicToolReply([write('b.md'), speak('Filed the second.'), sleep])),
+  ] });
+  try {
+    await modelSetUp(page, llm.origin, 'Big Sur');
+    const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    await handOver(page, 'File this');
+    const button = page.getByRole('button', { name: 'Undo what Shiori did with these files' });
+    await expect(button).toBeVisible({ timeout: 30_000 });
+    await expect.poll(() => llm.bodies(MESSAGES).length, { timeout: 30_000 }).toBe(2); // her turn goes on: the next request is held
+    await handOver(page, 'And this');
+    await expect(page.locator('.type-sheet')).toBeHidden(); // the box closes once the files are kept and sent: they wait for her turn
+    // Undo stops her turn and waits for her to be done: the waiting hand-over's turn runs first, and its line is drawn before Undo goes on.
+    await button.click();
+    await expect(page.locator('.convo').getByText('Filed the second.')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText('Undone.', { exact: true })).toBeVisible({ timeout: 30_000 }); // the first hand-over's
+    expect((await filed(page, trip)).there).toEqual(['/notes/b.md']);
+    // The newer hand-over's line still offers its Undo, under what she said she filed for it.
+    await expect(button).toBeVisible();
+    expect(await above(page)).toBe('Filed the second.');
+    await button.click();
+    await expect(page.locator('.convo li.undo-line')).toHaveText('Undone');
+    expect((await filed(page, trip)).there).toEqual([]);
+  } finally {
+    await llm.stop();
+  }
+});
+
+test('a long conversation draws as many lines as before turn ends were read: the newest 400 records it draws, her turns\' ends read apart, and the Undo line of a hand-over at the end still follows them', async ({ page }) => {
+  await openApp(page, '#/trips');
+  // 200 exchanges of wake, the user's line and hers (three records the screen draws, two of them lines), each with its turn.end, then a hand-over she files with her line before her write.
+  const trip = await page.evaluate(async () => {
+    const load = (/** @type {string} */ u) => import(u);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { createTrip } = await load('/src/core/scopes.js');
+    const { record } = await load('/src/core/agent/log.js');
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    /** @param {string} trip @param {string} type @param {any} data @param {string} [text] */
+    const put = (trip, type, data, text) => record(store, trip, { type, actor: type === 'msg.user' ? 'user' : type.startsWith('out.') ? 'shiori' : 'system', data, ...(text ? { texts: [['text', text]] } : {}) });
+    const id = await createTrip(ws, { title: 'Big Sur' });
+    for (let i = 0; i < 200; i++) {
+      await put(id, 'wake', { id: `w${i}`, reasons: [{ kind: 'user', text: 'typed' }], handover: null });
+      await put(id, 'msg.user', { wake: `w${i}` }, `Question ${i}`);
+      await put(id, 'out.speak', { id: `s${i}`, wake: `w${i}` }, `Answer ${i}`);
+      await put(id, 'turn.end', { wake: `w${i}`, handover: null });
+    }
+    await put(id, 'wake', { id: 'wh', reasons: [{ kind: 'user', text: 'typed', handover: 'h-1' }], handover: 'h-1' });
+    await put(id, 'msg.user', { wake: 'wh', handed: [{ path: '/trip/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true }], handover: 'h-1' }, '(files)');
+    await put(id, 'out.speak', { id: 'sh', wake: 'wh' }, 'Filing it.');
+    await ws.write(id, '/notes/flight.md', 'AN 123', { author: 'shiori', handover: 'h-1' });
+    await put(id, 'turn.end', { wake: 'wh', handover: 'h-1' });
+    await put(id, 'error', { kind: 'stopped', wake: 'stop', message: 'Stopped.', quiet: true }); // settles all before it: opening takes nothing up
+    store.close();
+    return id;
+  });
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/talk`);
+  await expect(page.locator('.convo').getByText('Filing it.', { exact: true })).toBeVisible();
+  // The newest 400 of the 604 records it draws (with the Stop's): that one, the 3 of the hand-over's exchange and 132 whole exchanges before them, 2 lines each; with turn.end among
+  // the 400 there would be about 200 lines.
+  await expect(page.locator('.convo > li:not(.undo-line)')).toHaveCount(2 * 133);
+  await expect(page.getByRole('button', { name: 'Undo what Shiori did with these files' })).toBeVisible();
+  expect(await above(page)).toBe('Filing it.');
 });
 
 test('her reply silent twice after a hand-over ("Shiori didn\'t answer"): Try again carries the hand-over, and Undo takes back what she files', async ({ page }) => {
