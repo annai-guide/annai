@@ -300,6 +300,11 @@ test("a reminder written while its conversation is being opened is told to the s
   assert.equal(k.agent.scope, other);
   const [r] = await k.events(['reminder']);
   assert.deepEqual(told.map((e) => [e.scope, e.seq, e.data.text]), [[k.trip, r.seq, 'Leave for the airport now.']]);
+  // Its seq is above Kyoto's last, so only the scope keeps it out of Kyoto's transcript and so out of what Shiori is given there.
+  assert.ok(!JSON.stringify(k.agent.transcript.messages).includes('Leave for the airport now.'), "the left trip's reminder is not in Kyoto's transcript");
+  k.agent.send('Hello');
+  await k.agent.idle();
+  assert.ok(!JSON.stringify(k.requests[0].messages).includes('Leave for the airport now.'), "nor in Kyoto's first request");
 });
 
 test("one reminder, one time: Kokoro's watch_set result and Koe's view name it in the same words, its weekday and zone said, whatever the phone's zone (real models: Koe took it back from its own view, item 6)", async () => {
