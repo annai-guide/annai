@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { isBookingPath, shioriBooking, checkOf, checkWords, checkNote } from '../../src/core/bookings.js';
-import { FIELD_WORDS } from '../../src/ui/format.js';
+import { FIELD_WORDS, checkCount } from '../../src/ui/format.js';
 
 const b = { id: 'hotel', kind: 'lodging', status: 'unverified', source: '/files/hotel.pdf', unsure: [] };
 
@@ -152,7 +152,13 @@ test('checkOf: an old unverified booking reads as if unsure named every part it 
   // A list is there when one of its items is, and a place when its name or its address is: what Shiori is told of is what the details draw (small-next).
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', fields: { travellers: [''], bags: [null], seat: ['  ', null], gate: ['A', ''] } }), { fields: ['gate'] }, 'a list of blank or null items is no part');
   assert.equal(checkWords({ kind: 'flight', status: 'unverified', fields: { travellers: [''] }, place: { name: '  ' } }), '', 'nothing drawn, nothing told');
-  assert.equal(checkWords({ kind: 'lodging', status: 'unverified', place: { name: '  ', address: '1 Test Street' } }), 'not sure the place was read right', 'the place is drawn by its address');
+  // A place is there by its name or its address (not its coordinates), as the details draw it: Shiori is told of it when an address stands in for
+  // the name (the drawing of that shape is ui-pure.test.js, "bookingFacts: a list is there ..."), and not when only coordinates are left.
+  assert.equal(checkWords({ kind: 'lodging', status: 'unverified', place: { name: '  ', address: '1 Test Street' } }), 'not sure the place was read right', 'told of the place, as its address is what the details draw');
+  const coords = { kind: 'lodging', status: 'confirmed', unsure: ['place'], place: { name: ' ', lat: 51.5, lng: -0.1 } };
+  assert.deepEqual(checkOf(coords), { fields: [] }, 'a name of spaces with only coordinates is no place');
+  assert.equal(checkWords(coords), '', 'nothing drawn, nothing told');
+  assert.equal(checkCount(coords), 0, "and the Plan's chip counts nothing");
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: 'AN 1', fields: { seat: '14C', airline: 'Test Air' } }), { fields: ['title', 'seat', 'airline'] });
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: '', start: null, confirmation: undefined }), { fields: [] }, 'an empty own field is no part');
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: 'AN 1', fields: 'not an object' }), { fields: ['title'] }, 'fields that is no object adds none');

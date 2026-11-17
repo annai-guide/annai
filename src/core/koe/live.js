@@ -127,11 +127,14 @@ const TURN_END_S = 2;
 
 /**
  * A realtime model's transcript as annai keeps it: no markup (measured: `<!-- … -->`, `<no speech>`, `{pause}`, even cut off), escaped.
- * A pair of tags goes with what is between them, before any lone tag goes (measured, once in about 22 live sessions: 「かしこまりました。
- * <ratings>\n<rating>positive</rating>\n</ratings>」, whose "positive" would show as hers); a lone tag goes alone, leaving the words beside it.
+ * A pair of tags whose content begins with another tag goes whole, with that content, before any lone tag goes: an element of elements is
+ * data, not words (measured, once in about 22 live sessions: 「かしこまりました。<ratings>\n<rating>positive</rating>\n</ratings>」, whose
+ * "positive" would show as hers). A pair around plain words keeps the words and loses only its tags, as a lone tag does: Koe says such
+ * words aloud (measured, 2 of 7,350 turns of hers: `Highway <number>1</number>.`, and a sentence inside annai's own
+ * `<from_kokoro id="…">…</from_kokoro>` note form).
  * @param {string} text
  */
-export const cleanSaid = (text) => escapeTags(String(text ?? '').replace(/<!--[\s\S]*?(?:-->|$)|<([A-Za-z][\w.:-]*)(?:\s[^>]*)?>[\s\S]*?<\/\1\s*>|<[^>]*(?:>|$)|\{[^}]*(?:\}|$)/g, ' ').replace(/\s+/g, ' ').trim());
+export const cleanSaid = (text) => escapeTags(String(text ?? '').replace(/<!--[\s\S]*?(?:-->|$)|<([A-Za-z][\w.:-]*)(?:\s[^>]*)?>\s*<[\s\S]*?<\/\1\s*>|<[^>]*(?:>|$)|\{[^}]*(?:\}|$)/g, ' ').replace(/\s+/g, ' ').trim());
 /** Whether a transcript holds a word: a letter or a digit. @param {string} text */
 export const realWord = (text) => /[\p{L}\p{N}]/u.test(cleanSaid(text));
 /** Her whole line is only a bracketed stage direction, "(No speech)" or "[silence]": Gemini's own mark for sound with no words in it (real, 1 of 563 lines, 2026-11-12), as `<no speech>` is, which cleanSaid strips. */

@@ -1,5 +1,5 @@
 {
-  "build": "c6a30a43a19d",
+  "build": "76551b7b50a9",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -62,7 +62,7 @@
     "/src/core/backup.js": "644832139162",
     "/src/core/backup-auto.js": "64ed2407b9ec",
     "/src/core/backup-targets.js": "91309d766eea",
-    "/src/core/bookings.js": "fe4e94b646ba",
+    "/src/core/bookings.js": "7c2e8aa20b5f",
     "/src/core/bytes.js": "b935dfe86a7a",
     "/src/core/catalog-facts.js": "3b27021930f3",
     "/src/core/crc32.js": "0bfef7a8eb00",
@@ -110,7 +110,7 @@
     "/src/core/intl.js": "4a00dbb168de",
     "/src/core/koe/context.js": "b28a5844a1c0",
     "/src/core/koe/instructions.js": "b5886ea21f8a",
-    "/src/core/koe/live.js": "7f6087cc26c2",
+    "/src/core/koe/live.js": "591da6a175ce",
     "/src/core/koe/loud.js": "5ef2922e048e",
     "/src/core/koe/tools.js": "957f5c629f45",
     "/src/core/l10n-list.js": "98de5dc21171",

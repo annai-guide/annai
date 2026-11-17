@@ -34,7 +34,8 @@ export function checkOf(b) {
   const extra = b.fields && typeof b.fields === 'object' && !Array.isArray(b.fields) ? b.fields : {};
   const named = 'unsure' in b ? b.unsure : b.status !== 'confirmed' ? [...TOP, ...Object.keys(extra)] : [];
   if (!Array.isArray(named)) return { fields: [] };
-  const has = (/** @type {string} */ k) => (TOP.includes(k) ? there(b[k]) : Object.hasOwn(extra, k) && there(extra[k]));
+  // A place is there by its name or its address, as the details draw it (format.js bookingFacts): a name of spaces with only coordinates is not.
+  const has = (/** @type {string} */ k) => (k === 'place' ? there(b.place?.name) || there(b.place?.address) : TOP.includes(k) ? there(b[k]) : Object.hasOwn(extra, k) && there(extra[k]));
   /** @type {string[]} */
   const fields = [];
   for (const k of named) if (typeof k === 'string' && !fields.includes(k) && has(k)) fields.push(k);
