@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, goToHash, goHome, startTrip, atConversation, writeEvent, pickFile, fixtureFiles, zipOf, FIRST_DRAW } from './helpers.js';
+import { openApp, goToHash, goHome, startTrip, happeningTrip, atConversation, writeEvent, writeRecords, pickFile, fixtureFiles, zipOf, FIRST_DRAW } from './helpers.js';
 import { fileTrip } from './file-details-fixture.js';
 
 // Timeline stage 8: the top bar goes. Home holds the gear and Trace, every screen the bar reached has its own way back, `#/now` opens today's
@@ -274,4 +274,80 @@ test('a trip ahead gets the lighter tint; a chat, a past trip and the happening 
   const dark = await paint();
   expect(new Set(dark).size).toBe(3);
   expect(dark).not.toEqual(light);
+});
+
+/** Home is drawn and the trip in play is known to live mode: its happening card shows. @param {import('@playwright/test').Page} page @param {string} name */
+async function homeWith(page, name) {
+  await goHome(page);
+  await expect(page.locator('.trip-card.happening', { has: page.locator('.name', { hasText: name }) })).toBeVisible();
+}
+
+test("#/now opens today's Itinerary of the trip in play (where you are, the chips, Driving), by replace: Back never lands on it", async ({ page }) => {
+  await openApp(page);
+  const id = await happeningTrip(page, 'Testville');
+  await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
+  await homeWith(page, 'Testville');
+  await goToHash(page, '#/now');
+  await expect.poll(() => new URL(page.url()).hash).toBe(`#/trip/${id}/plan`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Itinerary', exact: true })).toBeVisible();
+  await expect(page.locator('.today-top')).toBeVisible(); // shown on today's tab only
+  await expect(page.locator('.today-top .now-place')).toHaveText("GPS is off, so annai isn't following where you are.");
+  await expect(page.locator('.today-top .chips')).toBeAttached();
+  await expect(page.locator('.today-top').getByRole('link', { name: 'Driving' })).toBeVisible();
+  await page.goBack();
+  await expect.poll(() => new URL(page.url()).hash).toBe('#/trips');
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips', exact: true })).toBeVisible();
+});
+
+test('#/now with nothing in play goes home, by replace', async ({ page }) => {
+  await openApp(page, '#/settings');
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings', exact: true })).toBeVisible();
+  await goToHash(page, '#/now');
+  await expect.poll(() => new URL(page.url()).hash).toBe('#/trips');
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips', exact: true })).toBeVisible();
+  await page.goBack();
+  await expect.poll(() => new URL(page.url()).hash).toBe('#/settings');
+});
+
+test("a plugin's ui.go('#/now') lands on today's Itinerary of the trip in play too", async ({ page }) => {
+  await openApp(page);
+  const id = await happeningTrip(page, 'Testville');
+  await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
+  const manifest = { id: 'go-now', name: 'Go now', version: '1.0.0', api: 1, entry: 'index.js', files: ['index.js'], description: 'Test plugin: a dock action that goes to #/now.', author: 'annai tests' };
+  const code = "export function activate(annai) { const off = annai.ui.slot('dock-action', { id: 'go', label: 'Go now', icon: '→', run: (ui) => ui.go('#/now') }); return () => off(); }";
+  await pickFile(page, { name: 'go-now.zip', mimeType: 'application/zip', buffer: await zipOf({ 'annai-plugin.json': Buffer.from(JSON.stringify(manifest)), 'index.js': Buffer.from(code) }) });
+  await page.getByRole('button', { name: 'Install anyway', exact: true }).click();
+  await expect(page.locator('.card', { hasText: 'Go now' }).getByText('On', { exact: true })).toBeVisible();
+  await homeWith(page, 'Testville');
+  await goToHash(page, `#/trip/${id}`); // Details: the dock's row is up there
+  await expect(page.getByRole('heading', { level: 1, name: 'Testville', exact: true })).toBeVisible();
+  await page.getByRole('navigation', { name: 'Shiori' }).getByRole('button', { name: 'Go now' }).click();
+  await expect.poll(() => new URL(page.url()).hash).toBe(`#/trip/${id}/plan`);
+  await expect(page.locator('.today-top .now-place')).toBeVisible();
+  await page.goBack();
+  await expect.poll(() => new URL(page.url()).hash).toBe(`#/trip/${id}`);
+});
+
+test("a file opened from Now's old address crumbs back to its trip's Details", async ({ page }) => {
+  await openApp(page);
+  const trip = await fileTrip(page);
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/file?path=${encodeURIComponent('/files/itinerary.pdf')}&from=${encodeURIComponent('#/now')}`);
+  const back = page.locator('main .crumbs').getByRole('link');
+  await expect(back).toHaveText(/Details$/);
+  await expect(back).toHaveAttribute('href', `#/trip/${encodeURIComponent(trip)}`);
+});
+
+test("the offline pack's line, Now's until stage 8, is on the Itinerary of a trip with places and no pack", async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Big Sur');
+  await writeRecords(page, trip, { write: {
+    '/plan/bixby.json': { id: 'bixby', title: 'Bixby Bridge photo stop', fixed: false, start: { at: '2030-11-27T17:00:00Z', tz: 'America/Los_Angeles' }, place: { name: 'Bixby Creek Bridge', lat: 36.3715, lng: -121.9017 } },
+  } });
+  await page.reload();
+  await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
+  await goToHash(page, `#/trip/${trip}/plan`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Itinerary', exact: true })).toBeVisible();
+  const line = page.locator('main .pack-line');
+  await expect(line).toContainText('No offline pack yet.');
+  await expect(line.getByRole('link', { name: 'Offline pack' })).toHaveAttribute('href', `#/trip/${encodeURIComponent(trip)}`);
 });

@@ -2,7 +2,7 @@ import { planRows, PLAN_FILE, BOOKING_FILE } from '../core/plan.js';
 import { validZone, deviceZone } from '../core/time.js';
 
 /**
- * A trip's plan as the Plan screen's rows, for Now and Driving: its scope record, trip.json, the zone
+ * A trip's plan as the Itinerary's rows, for Driving, the conversation's Next line and home's happening card: its scope record, trip.json, the zone
  * for a time whose own zone annai doesn't know, and the rows. A file that can't be read is left out.
  * @param {any} ctx @param {string} id
  */

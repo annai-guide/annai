@@ -30,13 +30,17 @@ function parse(hash) {
 
 /**
  * Where an address that names no trip goes: "#/talk" and "#/plan" are the open conversation's, at its own address, so phone Back never shows
- * another conversation; with none open (no draft could be made), home. An old "#/waiting/…" (a file that waited with Shiori, whose screen is gone) goes
- * home too. Null for anything else: "#/talk/me", `me`'s read-only lines, included.
+ * another conversation; with none open (no draft could be made), home. "#/now", the Now screen's address until timeline stage 8 (an old bookmark,
+ * a history entry, a plugin's `ui.go`), is today's Itinerary of the trip in play, which opens that trip as its address does; with none in play, home.
+ * An old "#/waiting/…" (a file that waited with Shiori, whose screen is gone) goes home too. Null for anything else: "#/talk/me", `me`'s
+ * read-only lines, included.
  * @param {{ parts: string[] }} route @param {string | null} target the conversation being opened, or open
+ * @param {{ play?: string | null }} [o] play: the trip in play (live mode's: the happening trip last talked in, else the open conversation)
  * @returns {string | null}
  */
-export function redirectOf(route, target) {
+export function redirectOf(route, target, { play = null } = {}) {
   if (route.parts[0] === 'waiting') return '#/trips';
+  if (route.parts.length === 1 && route.parts[0] === 'now') return play ? `#/trip/${encodeURIComponent(play)}/plan` : '#/trips';
   if (route.parts.length !== 1 || !['talk', 'plan'].includes(route.parts[0])) return null;
   return target ? `#/trip/${encodeURIComponent(target)}/${route.parts[0]}` : '#/trips';
 }

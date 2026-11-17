@@ -1,13 +1,16 @@
 import { h, crumb, t, tc, asUser, messageOf } from '../dom.js';
+import { reminderParts } from './talk.js';
+import { storedTexts } from '../../core/agent/log.js';
+import { shownSettings } from '../../core/shown.js';
+import { shownCard, cardWho } from '../cards.js';
 import { explainStorageFull } from '../storage-full.js';
 import { routeStrip } from '../../core/now.js';
 import { loadLinks, mapsLinks } from '../../core/links.js';
 import { tripRows } from '../trip-rows.js';
 import { readAppSettings } from '../../core/settings.js';
-import { distance, duration, sentenceGap, sentences, speaksScreens } from '../format.js';
+import { distance, duration, sentenceGap, sentences, speaksScreens, wording } from '../format.js';
 import { knownFix } from '../live-chip.js';
 import { PLAN_FILE } from '../../core/plan.js';
-import { latestCard, eventCard } from './now.js';
 import { nowOf, driveBack, drivingTrip, askIn } from '../today.js';
 
 /** Big quick-ask buttons (spec §16.2): what each says to Shiori, as the user's own words. @param {boolean} speaks @param {{ name: string } | undefined} next */
@@ -135,4 +138,27 @@ export async function renderDrive(ctx) {
     h('h1', { class: 'title', text: t`Driving` }),
     strip, maps, ask, latest, where, gps,
     h('p', {}, crumb(back.href, back.label)));
+}
+
+/** The conversation's latest card: Shiori's card or words, or a reminder annai showed. @param {any} ctx @param {string} scope */
+async function latestCard(ctx, scope) {
+  const [e] = await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types: ['out.show', 'out.speak', 'reminder'], reverse: true, limit: 1 }));
+  return e ? eventCard(ctx, e) : null;
+}
+
+/** One of those, drawn: model output as text or through the card renderer, never innerHTML. @param {any} ctx @param {any} e */
+async function eventCard(ctx, e) {
+  const d = e.data ?? {};
+  const app = await readAppSettings(ctx.ws);
+  const hers = wording(app, true);
+  const who = () => h('span', { class: 'who', text: t`Shiori` });
+  if (e.type === 'out.show') return h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), shownCard(d, { ctx, onChoice: (o) => ctx.agent.send(o, { chose: true }), say: hers }));
+  if (e.type === 'reminder') return h('p', { class: 'system-line' }, ...reminderParts(d, wording(app)));
+  const text = String({ ...d, ...(await storedTexts(ctx.store, e)) }.text ?? '');
+  if (!d.voice) return h('div', { class: 'shiori-card' }, who(), h('p', { ...hers(text), text }));
+  // Said aloud: its words show, marked; with "Show what she says" off they fold away until asked (spec §2 principle 4, §16.1).
+  if (shownSettings(app).showWords) return h('div', { class: 'shiori-card' }, h('span', { class: 'who-row' }, who(), h('span', { class: 'sub said-mark', text: t`said aloud` })), h('p', { ...hers(text), class: 'said-words', text }));
+  const words = h('p', { ...hers(text), text, hidden: true });
+  const show = h('button', { class: 'btn ghost', type: 'button', onclick: () => { words.hidden = false; show.remove(); } }, t`Show what she said`);
+  return h('div', { class: 'shiori-card' }, who(), h('span', { class: 'sub', text: t`Said aloud` }), show, words);
 }

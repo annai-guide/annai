@@ -21,7 +21,7 @@ export function gpsProblem(where, installed = false) {
       ? t`On Android: tap the icon left of the address (in the installed app: hold the annai icon, then App info → Permissions) and allow Location.`
       : t`Allow location for this site in your browser's site settings.`;
   const refused = t`Location isn't allowed, so GPS has only its time reminders.`;
-  const again = t`Then turn GPS off and on again. Or tell annai where you are: Now → Driving → Where are you?`;
+  const again = t`Then turn GPS off and on again. Or tell annai where you are.`;
   return { title: t`annai can't see where you are`, body: sentences(refused, steps, again) };
 }
 
@@ -50,14 +50,15 @@ const kept = {
 
 /**
  * Shows that card once when live mode's GPS is refused, not again at each start while it stays
- * refused; again only once something changed: location worked, or live mode was turned off.
+ * refused; again only once something changed: location worked, or live mode was turned off. Its button
+ * goes to Driving, where "Where are you?" is (a tap, in place of a path in words; Driving says so when no trip is in play).
  * @param {{ live: { on: boolean, gps: string, onChange: (fn: () => void) => () => void }, notices: { card: (c: any) => unknown }, where?: 'ios' | 'android' | 'desktop', installed?: boolean,
  *   memo?: { told: () => boolean, set: (v: boolean) => void } }} c  memo: where it is remembered (this browser's storage)
  */
 export function tellGps({ live, notices, where = platform(), installed = where === 'ios' && isStandalone(), memo = kept }) {
   return live.onChange(() => {
     if (live.on && live.gps === 'denied') {
-      if (!memo.told()) notices.card({ tone: 'warn', ...gpsProblem(where, installed) });
+      if (!memo.told()) notices.card({ tone: 'warn', ...gpsProblem(where, installed), actions: [{ label: t`Say where you are`, run: () => { location.hash = '#/drive'; } }] });
       memo.set(true);
     } else if ((live.gps === 'ok' || !live.on) && memo.told()) memo.set(false);
   });

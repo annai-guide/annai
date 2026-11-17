@@ -24,7 +24,6 @@ import { renderPlan } from './screens/plan.js';
 import { renderBooking } from './screens/booking.js';
 import { renderItem } from './screens/item.js';
 import { renderVoice } from './screens/voice.js';
-import { renderNow } from './screens/now.js';
 import { renderDrive } from './screens/drive.js';
 import { renderBackups } from './screens/backups.js';
 import { renderRecap } from './screens/recap.js';
@@ -48,7 +47,7 @@ import { renderLanguages } from './languages.js';
 import { renderExperimental } from './screens/experimental.js';
 import { uiSignature, syncThemes, cleanUp, slotEntries, component, dockKey, pluginUi, made } from './slots.js';
 
-const SCREENS = { sees: renderSees, trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, add: renderAdd, 'plugin-install': renderPluginInstall, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, item: renderItem, voice: renderVoice, now: renderNow, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications, ext: renderExt, 'plugin-page': renderPluginPage, 'trip-ext': renderTripTab, mcp: renderMcp, welcome: renderWelcome, about: renderAbout, experimental: renderExperimental, updates: renderUpdates, languages: renderLanguages };
+const SCREENS = { sees: renderSees, trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, add: renderAdd, 'plugin-install': renderPluginInstall, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, item: renderItem, voice: renderVoice, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications, ext: renderExt, 'plugin-page': renderPluginPage, 'trip-ext': renderTripTab, mcp: renderMcp, welcome: renderWelcome, about: renderAbout, experimental: renderExperimental, updates: renderUpdates, languages: renderLanguages };
 
 /**
  * @param {HTMLElement} root
@@ -254,11 +253,12 @@ export function startShell(root, core) {
   const superseded = (my) => (landedAt > my ? undefined : landing.promise);
   /** @param {{ moved?: boolean }} [o] moved: a new screen or an entry of the history, not a redraw of this one */
   async function render(o = {}) {
-    // An address that names no trip goes to the open one's, in place of this entry, so Back never lands on it again and bounces. A
-    // redraw of another trip's conversation (Shiori moved on: a hand-over, an Undo) goes to the open one's the same way, opening nothing.
+    // An address that names no trip goes to the open one's, in place of this entry, so Back never lands on it again and bounces ("#/now": today's
+    // Itinerary of the trip in play). A redraw of another trip's conversation (Shiori moved on: a hand-over, an Undo) goes to the open one's the
+    // same way, opening nothing.
     const asked = parseHash(location.hash);
     const target = core.agent?.target ?? null;
-    const to = redirectOf(asked, target)
+    const to = redirectOf(asked, target, { play: drivingTrip(core) })
       ?? (!o.moved && asked.name === 'talk' && asked.parts[0] === 'trip' && asked.parts[1] !== target ? talkOf(ctx) : null);
     if (to) return replaceHash(to);
     const my = ++seq;

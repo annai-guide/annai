@@ -82,8 +82,11 @@ test('today without live mode is the phone\'s own', () => {
 });
 
 const go = { activity: 'moving-fast', was: 'walking', screens: [], on: true, hash: '#/trips', typing: false, trip: 'trip-a', same: false };
-test('moving fast begins: Driving takes over from home, the conversation, the Itinerary and Now', () => {
-  for (const hash of ['', '#/trips', '#/talk', '#/plan', '#/trip/trip-a/plan', '#/now']) assert.equal(takeover({ ...go, hash }), '#/drive', hash);
+test('moving fast begins: Driving takes over from home, the conversation and the Itinerary', () => {
+  for (const hash of ['', '#/trips', '#/talk', '#/plan', '#/trip/trip-a/plan']) assert.equal(takeover({ ...go, hash }), '#/drive', hash);
+});
+test('#/now is no screen to take over from (Now went in timeline stage 8; the shell sends it to the Itinerary first)', () => {
+  assert.equal(takeover({ ...go, hash: '#/now' }), null);
 });
 test('it stays put elsewhere, while typing, with GPS off, and with nothing open', () => {
   for (const o of [{ hash: '#/settings' }, { hash: '#/trip/trip-a' }, { hash: '#/drive' }, { typing: true }, { on: false }, { trip: null }]) assert.equal(takeover({ ...go, ...o }), null);
@@ -103,9 +106,9 @@ test("a plugin's screen for the activity takes over, with no trip open too", () 
   const screens = [{ pluginId: 'p', item: { id: 's', homeFor: 'walking' } }];
   assert.equal(takeover({ ...go, activity: 'walking', was: 'still', screens, trip: null }), '#/ext/p/s');
 });
-test('← on Driving: Now by name, anywhere else as Back, and Now when nothing says where it was entered from', () => {
-  assert.deepEqual(driveBack(undefined), { href: '#/now', label: 'Now' });
-  assert.deepEqual(driveBack('#/now'), { href: '#/now', label: 'Now' });
+test('← on Driving: Trips by name, anywhere else as Back, and Trips when nothing says where it was entered from', () => {
+  assert.deepEqual(driveBack(undefined), { href: '#/trips', label: 'Trips' });
+  assert.deepEqual(driveBack('#/trips'), { href: '#/trips', label: 'Trips' });
   assert.deepEqual(driveBack('#/trip/trip-a/plan'), { href: '#/trip/trip-a/plan', label: 'Back' });
 });
 

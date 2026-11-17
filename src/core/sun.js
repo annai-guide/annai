@@ -68,7 +68,7 @@ export function sunTimes(ms, lat, lng) {
 }
 
 /**
- * What the sun is doing, as chips for the Now screen (spec §16.2): the next sunrise, golden hour,
+ * What the sun is doing, as chips for the top of the Itinerary's today (spec §16.2): the next sunrise, golden hour,
  * sunset or dusk, in the place's own time zone.
  * @param {number} now @param {number} lat @param {number} lng @param {string} tz @returns {string[]}
  */

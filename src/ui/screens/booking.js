@@ -147,7 +147,7 @@ export function checkMark() {
 }
 
 /**
- * The crumb of a details screen: back to where it was opened from (the trip, the Plan, Now, the Conversation, a plan item), else the
+ * The crumb of a details screen: back to where it was opened from (the trip, the Plan, the Conversation, a plan item), else the
  * trip when `o.trip` (its title) is given, else the trip's Plan.
  * @param {any} ctx @param {string} id @param {string | undefined} from @param {{ trip?: string }} [o]
  */
