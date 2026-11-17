@@ -612,7 +612,7 @@ test("an Itinerary left open past midnight: the new day's tab has the top and th
   await openItinerary(page);
   await expect(page.getByRole('tab', { selected: true })).toHaveText('Wed, Nov 27');
   await expect(page.locator('.today-top .now-place')).toBeVisible();
-  // Half past midnight on the 28th where the test runs (the tab names the day in the browser's own zone, which is this host's), with no reload: the tap on the new day's tab is what reads the day (the checks below are that tap's result).
+  // Half past midnight on the 28th where the test runs (the tab names the day in the browser's own zone, which is this host's), with no reload: the tap on the new day's tab is what reads the day (the two checks after it are that tap's result).
   await page.clock.setFixedTime(new Date(2030, 10, 28, 0, 30));
   await page.getByRole('tab', { name: 'Thu, Nov 28' }).click();
   await expect(page.getByRole('tab', { selected: true })).toHaveText('Thu, Nov 28');
