@@ -71,6 +71,22 @@ test("a 408 is the provider's own time limit, not a request it refused: Test say
   assert.deepEqual(r.steps.map((s) => [s.step, s.ok, s.detail]), [['access', false, 'The model took too long to start answering.']]);
 });
 
+test("Test's level step says the model refused only for an answer that refused the request at that level: a time limit, a rate limit, a server's failure or a bad key is told as the other steps tell it, and sends no one to lower the level", async () => {
+  const ok = [{ text: 'OK' }, { toolCalls: [{ name: 'report_color', input: { color: 'red' } }] }];
+  const at = async (/** @type {any} */ failure, role = { id: 'main', level: 'high' }) => (await testModel({ ...scriptedCase([...ok, failure], { reasoning: { off: { a: 0 }, high: { a: 1 } } }), role })).steps.find((s) => s.step === 'level');
+  assert.deepEqual(await at({ error: 'bad-request', status: 400, message: 'Unsupported reasoning effort' }), {
+    step: 'level', ok: false, detail: "At Main's level (high), this model refused: Unsupported reasoning effort. Lower Main's level in Settings → Models, or change this model's Reasoning levels on its page.",
+  });
+  // A 400 or a 413 that the core read by its words as another kind is still the provider refusing the request.
+  assert.match(String((await at({ error: 'context', status: 400, message: 'The thinking budget is too long' }, { id: 'utility', level: 'high' }))?.detail), /^At Utility's level \(high\), this model refused: The thinking budget is too long\. Lower Utility's level/);
+  for (const [failure, words] of /** @type {[any, string][]} */ ([
+    [{ error: 'timeout', status: 408, message: 'Your request timed out' }, 'The model took too long to start answering.'],
+    [{ error: 'rate', status: 429, message: 'Slow down' }, 'The provider says too many requests for now.'],
+    [{ error: 'server', status: 500, message: 'Boom' }, 'The provider had a problem on its side.'],
+    [{ error: 'auth', status: 401, message: 'Bad key' }, 'The key was rejected. Check it in Settings → Models.'],
+  ])) assert.deepEqual(await at(failure), { step: 'level', ok: false, detail: words }, failure.error);
+});
+
 test("a model that ignores the tool and doesn't see the square fails those steps only", async () => {
   const r = await testModel(scriptedCase([{ text: 'OK' }, { text: 'It is blue.' }]));
   assert.deepEqual(r.steps.map((s) => [s.step, s.ok]), [['access', true], ['key', true], ['tools', false], ['images', false]]);
