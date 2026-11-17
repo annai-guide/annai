@@ -2003,11 +2003,7 @@ export class Agent {
     }
   }
 
-  /**
-   * An entry written while a conversation was being opened: added to the transcript if it is the open one's and the reading didn't have it
-   * (another open may have overtaken the one it was held for). This half's own is told to the screens either way, as nothing told them yet
-   * (Driving's latest card); the conversation screen skips a seq it drew (follow). The other half's writer told them. @param {any} e @param {Resolved} [r] the other half's
-   */
+  /** An entry written while a conversation was being opened: added to the open one's transcript unless the reading had it; this half's own told to the screens either way, as nothing told them yet (Driving's card; the conversation screen skips a seq it drew). @param {any} e @param {Resolved} [r] the other half's, its writer told them */
   #joinLate(e, r) {
     const missing = e.scope === this.scope && e.seq > this.transcript.through;
     if (r) {
