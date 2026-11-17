@@ -516,7 +516,7 @@ function modelsPart(ctx, id, abilityId, models) {
       try {
         const listed = await ctx.llm.listModels(id, abilityId);
         status.textContent = plural(listed.length, '# model.', '# models.');
-        listSlot.replaceChildren(listedModels(ctx, id, abilityId, listed, models, await ctx.llm.config(), status));
+        listSlot.replaceChildren(listedModels(ctx, id, abilityId, listed, models, await ctx.llm.config()));
       } catch (e) {
         showError(status, e);
       } finally {
@@ -537,11 +537,12 @@ function modelsPart(ctx, id, abilityId, models) {
 
 /**
  * The models an ability listed, minus those already added, with a filter. One whose name another model has says where
- * that is, as adding it by id refuses it, rather than adding it again as "name (2)". An Add that fails says why in status, as Add model does.
+ * that is, as adding it by id refuses it, rather than adding it again as "name (2)". An Add that fails says why in its own row: the list can
+ * be screens below the models' status line, where Add model says why.
  * @param {any} ctx @param {string} id @param {string} abilityId @param {import('../../core/llm/contract.js').ListedModel[]} listed @param {import('../../core/llm/config.js').Model[]} have
- * @param {import('../../core/llm/config.js').ModelConfig} cfg @param {HTMLElement} status the models' status line
+ * @param {import('../../core/llm/config.js').ModelConfig} cfg
  */
-function listedModels(ctx, id, abilityId, listed, have, cfg, status) {
+function listedModels(ctx, id, abilityId, listed, have, cfg) {
   const owned = new Set(have.map((m) => m.providerId));
   const taken = new Map(Object.values(cfg.models).map(modelOf).map((m) => [m.name.toLowerCase(), cfg.providers[m.provider] ? providerOf(cfg.providers[m.provider]).name : '']));
   const filter = h('input', { id: `model-filter-${abilityId}`, autocomplete: 'off', placeholder: t`for example: haiku` });
@@ -555,6 +556,7 @@ function listedModels(ctx, id, abilityId, listed, have, cfg, status) {
       const named = m.name && m.name !== m.providerId ? `${m.name} (${m.providerId})` : m.providerId;
       const label = h('span', { text: loaded ? t`${named} · loaded` : named });
       if (on !== undefined) return h('li', { class: 'acts' }, label, h('span', { class: 'sub', text: on ? t`Already added, on ${on}` : t`Already added, on another provider` }));
+      const why = h('p', { class: 'error', role: 'alert', hidden: true });
       const add = h('button', {
         class: 'btn', type: 'button', 'aria-label': t`Add ${m.providerId}`,
         onclick: async () => {
@@ -564,12 +566,14 @@ function listedModels(ctx, id, abilityId, listed, have, cfg, status) {
             await ctx.llm.addListedModel(id, abilityId, model);
             ctx.render();
           } catch (e) {
-            showError(status, e);
+            showError(why, e);
+            why.hidden = false;
+            why.scrollIntoView({ block: 'nearest' }); // the last row's line comes in under the list's own edge
             add.disabled = false;
           }
         },
       }, t`Add`);
-      return h('li', { class: 'acts' }, label, add);
+      return h('li', { class: 'acts' }, label, add, why);
     }));
   };
   filter.addEventListener('input', show);

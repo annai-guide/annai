@@ -280,6 +280,15 @@ test("a model added by id or from a list starts with its ability's modelDefaults
   await assert.rejects(addModelById(ctx, claude, 'voice', 'x'), /ability/);
 });
 
+test("a model added to a provider that was removed meanwhile is refused with the words for that, whichever add it was (model-names-next)", async () => {
+  const ctx = await setup();
+  const id = await addProvider(ctx, OPENAI_SRC, { key: 'sk-o' });
+  await removeProviderRecords(ctx.ws, ctx.store, id);
+  const gone = (/** @type {any} */ e) => e.shown === 'That provider no longer exists.' && e.message === 'That provider no longer exists.';
+  await assert.rejects(addModelById(ctx, id, 'chat', 'x'), gone);
+  await assert.rejects(addListedModel(ctx, id, 'chat', { providerId: 'x', name: 'X' }), gone);
+});
+
 test("a default new to an ability's modelDefaults reaches the models added from its list or by id before it, unless the user set that field (phone-fixes-1 item 2: Claude read only text)", async () => {
   const ctx = await setup();
   const claude = await addProvider(ctx, ANTHROPIC_SRC, { key: 'sk-ant' });
@@ -484,6 +493,36 @@ test('a started data-only provider plugin registers its description, and a newer
   assert.ok(Object.values(cfg.models).some((m) => modelOf(m).name === 'X ears'));
 });
 
+/**
+ * Watches a workspace for the first thing every name-taker does, listing the providers (readConfig), and lets the work in memory that
+ * can run, run. All of it is promises (no timer and no I/O in the memory store or the Workspace), so one turn of the event loop ends
+ * only once every chain has come to a wait, however slow the host: a name-taker that is not held back by the one before it has read by
+ * then, and one that is has not (a fixed wait was a guess at how long that takes). The test after the helper checks that premise.
+ * @param {import('../../src/core/workspace.js').Workspace} ws
+ */
+function watchReads(ws) {
+  let reads = 0;
+  /** @type {any} */
+  const watched = ws;
+  const list = ws.list.bind(ws);
+  watched.list = (/** @type {any[]} */ ...a) => {
+    if (a[1] === '/llm/providers/') reads++;
+    return /** @type {any} */ (list)(...a);
+  };
+  return { reads: () => reads, settle: () => new Promise((done) => setImmediate(done)) };
+}
+
+test("a sync that nothing holds has read within one turn of the event loop: what the lock tests wait on", async () => {
+  const k = await serviceKit();
+  await k.llm.addProvider('provider-x', { key: 'sk-x' });
+  await k.llm.syncProviders(); // after the start-up sync and the add: the line is empty
+  const watch = watchReads(k.ws);
+  const syncing = k.llm.syncProviders();
+  await watch.settle();
+  assert.ok(watch.reads() > 0, 'a sync with nothing in its way had not read after one turn: the lock tests would no longer catch a lock that lets it through');
+  await syncing;
+});
+
 test("an add and a sync that run together never give one free name to two models: the sync waits its turn behind the add (words-next)", async () => {
   const k = await serviceKit();
   await k.llm.addProvider('provider-x', { key: 'sk-x' });
@@ -509,9 +548,10 @@ test("an add and a sync that run together never give one free name to two models
   };
   const adding = k.llm.addProvider('provider-y', { key: 'sk-y' });
   await held;
+  const watch = watchReads(k.ws);
   const syncing = k.llm.syncProviders();
-  // A sync that doesn't wait would read the names and write its rename within this wait: it is all in memory, so a few ms at the most.
-  await new Promise((r) => setTimeout(r, 25));
+  await watch.settle();
+  assert.equal(watch.reads(), 0, 'the sync read the names while the add, which was about to write its models, still held its turn');
   release();
   await Promise.all([adding, syncing]);
   const cfg = await readConfig(k.ws);
@@ -552,9 +592,10 @@ test("the Models screen's adds (a model from a list, a model by its id) and a sy
     };
     const adding = add(k, yId);
     await held;
+    const watch = watchReads(k.ws);
     const syncing = k.llm.syncProviders();
-    // A sync that doesn't wait would read the names and write its rename within this wait: it is all in memory, so a few ms at the most.
-    await new Promise((r) => setTimeout(r, 25));
+    await watch.settle();
+    assert.equal(watch.reads(), 0, `${how}: the sync read the names while the add, which was about to write its model, still held its turn`);
     release();
     await Promise.all([adding, syncing]);
     const cfg = await readConfig(k.ws);
@@ -631,6 +672,27 @@ test("the Models screen's adds run at once while a provider's Add waits on a dow
   assert.equal(new Set(all.map((n) => n.toLowerCase())).size, all.length, 'no two models are named alike');
 });
 
+test("a refused name-taker leaves the lock free: the add after it saves, so do a page's save and a sync (model-names-next)", async () => {
+  const k = await serviceKit();
+  const xId = await k.llm.addProvider('provider-x', { key: 'sk-x' });
+  await k.llm.addModelById(xId, 'chat', 'taken-id');
+  // An add refused for its name, then another: the first one's failure is not carried to it.
+  await assert.rejects(k.llm.addModelById(xId, 'chat', 'taken-id'), /already used by another model/);
+  const second = await k.llm.addModelById(xId, 'chat', 'free-id');
+  assert.ok(modelNames(await readConfig(k.ws)).includes('free-id'), 'the add after a refused add saved');
+  // A page's save refused for its name, then one that is fine.
+  await assert.rejects(updateModel(k.ws, second, (rec) => ({ ...rec, user: { ...rec.user, name: 'taken-id' } })), /already used by another model/);
+  await updateModel(k.ws, second, (rec) => ({ ...rec, user: { ...rec.user, name: 'Free one' } }));
+  assert.ok(modelNames(await readConfig(k.ws)).includes('Free one'), 'the page save after a refused one saved');
+  // A refused add, then a plugin update's refresh brings its new model in.
+  await assert.rejects(k.llm.addModelById(xId, 'chat', 'taken-id'), /already used by another model/);
+  const next = PX('1.1.0', { chat: { kind: 'chat', type: 'type-a', models: [{ providerId: 'x-1', name: 'X one' }, { providerId: 'x-3', name: 'X three' }] } });
+  await k.host.install(new Map(Object.entries(next).map(([n, t]) => [n, new TextEncoder().encode(t)])), { source: 'official' });
+  await k.host.start('provider-x');
+  assert.equal(await k.llm.syncProviders(), 1, 'the sync after a refused add ran');
+  assert.ok(modelNames(await readConfig(k.ws)).includes('X three'), 'and brought the update in');
+});
+
 test("a rename saved on a model's page and a sync that renames another model to the same name: the names stay unique (model-names-next, P4)", async () => {
   const k = await serviceKit();
   await k.llm.addProvider('provider-x', { key: 'sk-x' });
@@ -658,9 +720,10 @@ test("a rename saved on a model's page and a sync that renames another model to 
   const next = PX('1.1.0', { chat: { kind: 'chat', type: 'type-a', models: [{ providerId: 'x-1', name: 'Renamed' }] } });
   await k.host.install(new Map(Object.entries(next).map(([n, t]) => [n, new TextEncoder().encode(t)])), { source: 'official' });
   await k.host.start('provider-x');
+  const watch = watchReads(k.ws);
   const syncing = k.llm.syncProviders();
-  // A sync that doesn't wait would read the names and write its rename within this wait: it is all in memory, so a few ms at the most.
-  await new Promise((r) => setTimeout(r, 25));
+  await watch.settle();
+  assert.equal(watch.reads(), 0, 'the sync read the names while the rename, which was about to write its name, still held its turn');
   release();
   await Promise.all([renaming, syncing]);
   const cfg = await readConfig(k.ws);

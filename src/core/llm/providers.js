@@ -300,7 +300,8 @@ export async function useSuggestion({ ws }, providerId, src, which) {
 /** What a model added by id or from a list starts with: its ability's modelDefaults. @param {import('./config.js').ModelConfig} cfg @param {string} providerId @param {string} abilityId */
 function startFor(cfg, providerId, abilityId) {
   const rec = cfg.providers[providerId];
-  const a = rec ? providerOf(rec).abilities[abilityId] : undefined;
+  if (!rec) throw Object.assign(new Error(/* en */ 'That provider no longer exists.'), { shown: t`That provider no longer exists.` });
+  const a = providerOf(rec).abilities[abilityId];
   if (!a) throw Object.assign(new Error(/* en */ `That provider has no ability called ${abilityId}.`), { shown: t`That provider has no ability called ${abilityId}.` });
   return structuredClone(a.modelDefaults ?? {});
 }

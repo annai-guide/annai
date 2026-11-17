@@ -172,6 +172,8 @@ test('a fetched list marks a model another provider already has, as adding it by
         await chat.getByRole('button', { name: 'Add model' }).click();
         await expect(chat.getByText('"utils" is already used by another model')).toBeVisible();
         await expect(page.getByRole('link', { name: /utils \(2\)/ })).toHaveCount(0);
+        // The refusal frees the button again (model-names-next: it is busy from the tap): a corrected id can be added.
+        await expect(chat.getByRole('button', { name: 'Add model' })).toBeEnabled();
       }
       await page.getByRole('link', { name: 'Models', exact: true }).click();
       await expect(page.getByRole('heading', { level: 1, name: 'Models' })).toBeVisible();

@@ -401,8 +401,10 @@ const naming = new WeakMap();
  * Runs work once every name-taker started before it on ws has ended, so a name it works out from what it reads is still free when it
  * writes it: no two models share a name (checkModel; the screens name a model by it, modelNames). Models are a file each, so reading
  * every name and writing one can't be one transaction. The name-takers: adding a provider or a model, a plugin update's refresh
- * (providers.js), a model's page (updateModel). Nothing in one waits on the network (a key, a download, is had before it), so it holds
- * for milliseconds. A promise chain in memory, as the Workspace's locks are: annai is one running copy per device (lock.js).
+ * (providers.js), a model's page and the agent loop's photo-limit write (both updateModel). Nothing in one waits on the network (a key, a
+ * download, is had before it), so it holds for milliseconds. No workspace listener may await a name-taker: a write awaits its listeners
+ * (the Workspace's #emit) before it ends, inside the lock, so a listener awaiting a name-taker would wait for the lock held by the write
+ * that waits for it. A promise chain in memory, as the Workspace's locks are: annai is one running copy per device (lock.js).
  * @template T @param {Workspace} ws @param {() => Promise<T>} work @returns {Promise<T>}
  */
 export function takingNames(ws, work) {
