@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp } from './helpers.js';
+import { openApp, atConversation } from './helpers.js';
 
 // A smart text box (the user, 2026-10-23): "the send and close are on the left side … put it at the right side … do we need the close
 // button? maybe click on the keyboard button again closes the input box? … maybe we can also close the box when the message is sent?
@@ -8,7 +8,7 @@ import { openApp } from './helpers.js';
 /** In a conversation: on home at rest the dock is the chips and the + alone (timeline stage 4). @param {import('@playwright/test').Page} page */
 async function inConversation(page) {
   await openApp(page, '#/talk');
-  await expect(page.getByRole('heading', { name: 'Conversation', exact: true })).toBeVisible();
+  await atConversation(page);
 }
 const typeButton = (/** @type {import('@playwright/test').Page} */ page) => page.getByRole('button', { name: 'Type', exact: true });
 const box = (/** @type {import('@playwright/test').Page} */ page) => page.getByLabel('Message to Shiori');
@@ -34,7 +34,7 @@ test('the box is a single line whose keyboard key says Send; Enter sends, and th
   await expect(box(page)).toHaveAttribute('enterkeyhint', 'send');
   await box(page).fill('Where is the nearest petrol station?');
   await box(page).press('Enter');
-  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+  await atConversation(page);
   await expect(page.locator('.convo .you').first()).toContainText('Where is the nearest petrol station?');
   await expect(box(page)).toBeHidden();
   // Opened again, it is empty.
@@ -56,7 +56,7 @@ test('a small send arrow sits inside the box, on its right, for a keyboard with 
   expect(arrow.y + arrow.height).toBeLessThanOrEqual(field.y + field.height + 1);
   await box(page).fill('Hello Shiori');
   await send.click();
-  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+  await atConversation(page);
   await expect(page.locator('.convo .you').first()).toContainText('Hello Shiori');
   await expect(box(page)).toBeHidden();
 });
@@ -135,7 +135,7 @@ test('Enter while an IME is composing does not send; nothing is sent until a rea
   // A real Enter, later, sends.
   await page.waitForTimeout(300);
   await box(page).press('Enter');
-  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+  await atConversation(page);
   await expect(page.locator('.convo .you').first()).toContainText('にほん');
 });
 
@@ -145,7 +145,7 @@ test('after a send from the box, focus is on the keyboard button, and keys typed
   await typeButton(page).click();
   await box(page).fill('first');
   await box(page).press('Enter');
-  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+  await atConversation(page);
   await expect(box(page)).toBeHidden();
   await expect(typeButton(page)).toBeFocused();
   await page.keyboard.type('unseen'); // no space: a space on the focused button opens the box, as it should
@@ -157,7 +157,7 @@ test('a press elsewhere closes the empty box only with its click, so nothing mov
   await inConversation(page);
   await typeButton(page).click();
   await expect(box(page)).toBeVisible();
-  const at = /** @type {{ x: number, y: number }} */ (await page.getByRole('heading', { name: 'Conversation', exact: true }).boundingBox());
+  const at = /** @type {{ x: number, y: number }} */ (await page.locator('main p.empty').boundingBox()); // plain content: the empty conversation's note
   await page.mouse.move(at.x + 5, at.y + 5);
   await page.mouse.down();
   await page.waitForTimeout(100);
@@ -225,7 +225,7 @@ test('a press elsewhere that brings no click (iOS, on plain content) still close
   // test can come after that on a slow machine. The page's timers fire in the order of their times, so a wait of 100 ms there always comes
   // before the 400 ms close; and a close in a microtask or a zero-delay timer would be caught by it (NO_CLICK_MS at 0 fails this).
   const stillOpen = await page.evaluate(async () => {
-    const el = /** @type {HTMLElement} */ (document.querySelector('main h1'));
+    const el = /** @type {HTMLElement} */ (document.querySelector('main p.empty'));
     for (const type of ['pointerdown', 'pointerup']) el.dispatchEvent(new PointerEvent(type, { bubbles: true, isPrimary: true, pointerType: 'touch' }));
     await new Promise((r) => setTimeout(r, 100));
     return /** @type {HTMLElement} */ (document.getElementById('dock-text')).offsetParent !== null;
@@ -240,7 +240,7 @@ test('a drag elsewhere, or a mouse press with no click, leaves the empty box ope
   await typeButton(page).click();
   await expect(box(page)).toBeVisible();
   await page.evaluate(() => {
-    const el = /** @type {HTMLElement} */ (document.querySelector('main h1'));
+    const el = /** @type {HTMLElement} */ (document.querySelector('main p.empty'));
     el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, isPrimary: true, pointerType: 'touch', clientX: 20, clientY: 100 }));
     el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, isPrimary: true, pointerType: 'touch', clientX: 20, clientY: 160 }));
     el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, isPrimary: true, pointerType: 'mouse', clientX: 20, clientY: 100 }));

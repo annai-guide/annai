@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, watchConsole, pastWelcome } from './helpers.js';
+import { openApp, watchConsole, pastWelcome, goHome, goToHash } from './helpers.js';
 
 test('starts without errors and shows Trips', async ({ page }) => {
   const errors = watchConsole(page);
@@ -51,8 +51,7 @@ test('an unexpected error shows a card and annai keeps running', async ({ page }
   await page.evaluate(() => { setTimeout(() => { throw new Error('test boom'); }, 0); });
   await expect(page.getByText('Something went wrong')).toBeVisible();
   await expect(page.getByText('annai kept running. The details are in Trace.')).toBeVisible();
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
-  await expect(page.getByRole('heading', { name: 'Trips' })).toBeVisible();
+  await goHome(page);
 });
 
 test("an unexpected error whose details can't be written down says so, rather than that they are in Trace", async ({ page }) => {
@@ -86,7 +85,7 @@ test('dropping a file on annai opens it', async ({ page }) => {
 
 test('Erase everything starts annai again as on a new device, the welcome then an empty Trips, with no error on the way', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('link', { name: 'Settings' }).click();
+  await goToHash(page, '#/settings');
   await page.evaluate(() => {
     new MutationObserver(() => {
       if (/couldn't open|Something went wrong/.test(document.body.textContent ?? '')) sessionStorage.setItem('erase-error', '1');

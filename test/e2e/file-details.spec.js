@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, allFiles, putFile, writeRecords, startModelServer, anthropicToolReply, modelSetUp, savedBy } from './helpers.js';
+import { openApp, allFiles, putFile, writeRecords, startModelServer, anthropicToolReply, modelSetUp, savedBy, openTalk, stuckTop } from './helpers.js';
 import { fileTrip } from './file-details-fixture.js';
 
 test('Files: one row per file, by its first booking day then name, each one link with what it is; no record names, no Ask; a plain photo is not listed', async ({ page }) => {
@@ -64,8 +64,8 @@ test('a link to the second flight opens the file at its block, focused and in vi
   await expect(h).toBeFocused();
   await expect(h).toBeInViewport();
   // In view means below the top bar, not behind it.
-  const [bar, top] = await Promise.all([page.locator('header.topbar').boundingBox(), h.boundingBox()]);
-  expect(top?.y ?? 0).toBeGreaterThanOrEqual((bar?.y ?? 0) + (bar?.height ?? 0));
+  const [bar, top] = await Promise.all([stuckTop(page), h.boundingBox()]);
+  expect(top?.y ?? 0).toBeGreaterThanOrEqual(bar);
 });
 
 test('one booking reads as the booking details did: the stay, its photo as the preview, Change it and Open in Maps at the foot; Open shows the photo', async ({ page }) => {
@@ -335,7 +335,7 @@ test('a PDF Shiori read in the conversation: Delete keeps it under Deleted, and 
     await page.getByLabel('Add photos or files').setInputFiles({ name: 'booking.pdf', mimeType: 'application/pdf', buffer: await readFile(new URL('../fixtures/pdf/booking.pdf', import.meta.url)) });
     await expect.poll(() => llm.bodies('/b/v1/messages').length, { timeout: 60_000 }).toBeGreaterThanOrEqual(2);
     expect(JSON.stringify(llm.bodies('/b/v1/messages')[1])).toContain('"type":"document"');
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
+    await openTalk(page);
     await expect(page.getByText('A stay at Hotel Aurora Test.')).toBeVisible({ timeout: 30_000 });
     await writeRecords(page, trip, { write: {
       '/bookings/stay.json': { id: 'stay', kind: 'lodging', status: 'confirmed', source: '/trip/files/booking.pdf', title: 'Hotel Aurora Test', unsure: [] },

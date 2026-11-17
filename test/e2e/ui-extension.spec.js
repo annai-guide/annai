@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { startModelServer, anthropicToolReply, fixtureFiles, zipOf, modelSetUp, pickFile } from './helpers.js';
+import { startModelServer, anthropicToolReply, fixtureFiles, zipOf, modelSetUp, pickFile, atConversation } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 
@@ -162,7 +162,7 @@ test("Shiori shows a plugin's kind of card: the plugin draws it, and its label n
     await modelSetUp(page, llm.origin);
     await install(page, await zipOf(await fixtureFiles('trail-ui')), 'Trail UI', 'Install anyway and use it');
     await page.goto('/#/talk');
-    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await atConversation(page);
     await page.evaluate(() => {
       const w = /** @type {any} */ (window);
       const announcer = /** @type {HTMLElement} */ (document.querySelector('main [aria-live="polite"]'));

@@ -226,7 +226,7 @@ test("a card whose text is longer than the box gets More, which opens it to its 
     const { createNotices } = await import(/** @type {string} */ ('/src/ui/notices.js'));
     const notices = createNotices();
     notices.el.id = 'test-notices';
-    document.querySelector('header.topbar')?.after(notices.el);
+    document.querySelector('.notices')?.before(notices.el); // where annai's own box is
     notices.card({ tone: 'ok', title: 'Signed in with OpenRouter', body });
     notices.card({ tone: 'info', title: 'A short card', body: 'Nothing to expand here.' });
   }, OPENROUTER_CARD);
@@ -385,7 +385,7 @@ async function raise(page, cards) {
     const { createNotices } = await import(/** @type {string} */ ('/src/ui/notices.js'));
     const notices = createNotices();
     notices.el.id = 'test-notices';
-    document.querySelector('header.topbar')?.after(notices.el);
+    document.querySelector('.notices')?.before(notices.el); // where annai's own box is
     for (const c of cards) notices.card({ tone: 'info', ...c });
   }, cards);
 }

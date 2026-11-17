@@ -1,16 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, FIRST_DRAW, turnOnSwipes, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, filterTrace, happeningTrip, writeRecords, catchAgent } from './helpers.js';
+import { openApp, FIRST_DRAW, turnOnSwipes, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, filterTrace, happeningTrip, writeRecords, catchAgent, startTrip, atConversation, goHome, goToHash, openItinerary } from './helpers.js';
 import { ZipWriter } from '../../src/core/zip.js';
 import { utf8 } from '../../src/core/bytes.js';
-
-/** @param {import('@playwright/test').Page} page @param {string} title */
-async function startTrip(page, title) {
-  await page.getByLabel('Trip name').fill(title);
-  await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('heading', { name: title })).toBeVisible();
-  return decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
-}
 
 /**
  * Writes trip records through annai's own modules in the page, as the user's (no format check, so a
@@ -54,8 +46,7 @@ test('the Plan: day tabs, ● fixed and ○ flexible, legs with directions, Chec
   await openApp(page);
   const trip = await startTrip(page, 'Thanksgiving');
   await records(page, trip, THANKSGIVING);
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
-  await expect(page.getByRole('heading', { name: 'Itinerary' })).toBeVisible();
+  await openItinerary(page);
   const tabs = page.getByRole('tab');
   await expect(tabs).toHaveText(['Wed, Nov 25', 'Thu, Nov 26', 'Fri, Nov 27', 'Sat, Nov 28', 'Sun, Nov 29', 'No time yet (1)']);
   await tabs.first().click(); // the open tab is today's when the trip is on, so pick one
@@ -297,7 +288,7 @@ test("today's tab of a trip happening now starts with where you are and Driving;
   await openApp(page);
   const trip = await startTrip(page, 'Testville');
   await records(page, trip, HAPPENING);
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
+  await openItinerary(page);
   await expect(page.locator('.today-top .now-place')).toBeVisible();
   await expect(page.locator('.today-top').getByRole('link', { name: 'Driving' })).toBeVisible();
   await page.getByRole('tab').first().click(); // yesterday
@@ -315,7 +306,7 @@ test("today's top keeps up after its tab is left and come back to", async ({ pag
   await records(page, trip, HAPPENING);
   await page.reload(); // written outside the app's own files layer: live mode reads the plan again as it starts
   await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
+  await openItinerary(page);
   await page.locator('.live-chip').click();
   await expect(page.locator('.today-top .now-place')).toHaveText('At Testville Bridge');
   await page.getByRole('tab').first().click();
@@ -346,7 +337,7 @@ const manyRows = (day, stem) => Object.fromEntries(Array.from({ length: 14 }, (_
 }));
 
 /**
- * A two-week trip around today, longer than the strip on a phone, whose today and late day have many rows, one on each changed by Shiori. Its Itinerary is shown, by the top bar.
+ * A two-week trip around today, longer than the strip on a phone, whose today and late day have many rows, one on each changed by Shiori. Its Itinerary is shown, by its address.
  * @param {import('@playwright/test').Page} page
  */
 async function longTrip(page) {
@@ -356,7 +347,7 @@ async function longTrip(page) {
   await records(page, trip, { patch: { '/trip.json': { start: '2030-11-20', end: '2030-12-03' } }, write });
   const changed = (/** @type {string} */ path) => ({ ...write[path], notes: 'Shiori was here.' });
   await writeRecords(page, trip, { author: 'shiori', write: { '/plan/today6.json': changed('/plan/today6.json'), '/plan/late6.json': changed('/plan/late6.json') } });
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
+  await openItinerary(page);
   await expect(page.getByRole('tab', { selected: true })).toHaveText(TODAY_TAB);
   return trip;
 }
@@ -452,7 +443,7 @@ test("play moving to the trip on screen shows its Driving link in place: a row k
   await hear('Good morning');
   await page.goto(`/#/trip/${encodeURIComponent(second)}`); // looking: it opens, and play stays with the other
   await expect(page.getByRole('heading', { name: 'Second' })).toBeVisible();
-  await page.getByRole('link', { name: 'Itinerary' }).first().click();
+  await openItinerary(page);
   const link = page.locator('.today-top').getByRole('link', { name: 'Driving' });
   const row = page.locator('.plan-row').first();
   await expect(row).toBeVisible();
@@ -485,7 +476,7 @@ async function longBridge(page, context) {
   });
   await page.reload();
   await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
+  await openItinerary(page);
   await page.locator('.live-chip').click();
   await expect(page.locator('.today-top .now-place')).toHaveText('At The Long Named Testville Bridge');
 }
@@ -603,7 +594,7 @@ test('a trip that ended has no today top', async ({ page }) => {
   await openApp(page);
   const trip = await startTrip(page, 'Testville');
   await records(page, trip, { patch: { '/trip.json': { start: '2030-11-20', end: '2030-11-22' } }, write: { '/plan/tea.json': { id: 'tea', title: 'Tea', fixed: false, start: { at: '2030-11-21T13:00:00Z', tz: 'UTC' } } } });
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
+  await openItinerary(page);
   await expect(page.getByRole('tab').first()).toBeVisible();
   await expect(page.locator('.today-top')).toHaveCount(0);
 });
@@ -615,7 +606,7 @@ test('the Plan with nothing in it: the new conversation\'s, open when nothing el
   await expect(page.getByText('No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) in Details.')).toBeVisible();
   await page.goto('/#/trips');
   await startTrip(page, 'Empty');
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
+  await openItinerary(page);
   await expect(page.getByText('No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) in Details.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add to calendar' })).toBeDisabled();
 });
@@ -741,7 +732,7 @@ test('a booking whose file is gone says so, with no preview, and can still be as
   await expect(page.locator('.file-preview, .file-card')).toHaveCount(0);
   await expect(page.locator('dl.facts dt')).toHaveText(['Place', 'Check-in', 'Check-out', 'Nights']);
   await page.getByRole('button', { name: 'Ask Shiori about this' }).click();
-  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+  await atConversation(page);
   await expect(page.locator('.type-sheet .attach-chip .attach-name')).toHaveText(['Hotel Aurora Test']);
   await expect(page.getByRole('button', { name: 'Read it again' })).toBeVisible();
 });
@@ -814,7 +805,7 @@ test('milestone 4 done: a pass and a calendar are added, Shiori writes the booki
 
     // Its crumb goes back to the Conversation it was opened from. The plan: the flight and the calendar's dinner, nothing left to check; and it goes to the calendar.
     await expect(page.getByRole('main').locator('.crumbs a')).toContainText('Conversation');
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
+    await openItinerary(page);
     await page.getByRole('tab', { name: 'Wed, Nov 25' }).click();
     await expect(page.getByRole('tabpanel')).toContainText('UA 123 to Newark');
     await expect(page.getByRole('tabpanel').getByRole('link', { name: /Check \d+ details?/ })).toHaveCount(0);
@@ -828,7 +819,7 @@ test('milestone 4 done: a pass and a calendar are added, Shiori writes the booki
     expect(saved).toContain('SUMMARY:Thanksgiving dinner');
 
     // The trace has the read of the pass and the refused confirmation, and no key.
-    await page.getByRole('link', { name: 'Trace' }).click();
+    await goToHash(page, '#/trace');
     await filterTrace(page, { kind: 'Tools' });
     await expect(page.getByText(/^read \{"path":"\/trip\/files\/flight\.pkpass"/)).toBeVisible();
     await expect(page.getByText(/^patch · error · .*Only the user confirms a booking/)).toBeVisible();
@@ -905,7 +896,7 @@ test('the Itinerary opens over the conversation: phone Back closes it, the dock 
 test('#/trip/<id>/plan of another trip opens that conversation', async ({ page }) => {
   await openApp(page);
   const a = await startTrip(page, 'Big Sur');
-  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  await goHome(page);
   const b = await startTrip(page, 'Point Reyes');
   await page.evaluate((a) => { location.hash = `#/trip/${a}/talk`; }, a);
   await expect(page.locator('.talk-head')).toContainText('Big Sur');

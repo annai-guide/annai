@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, atConversation } from './helpers.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
 
 const wav = { status: 200, type: 'audio/wav', body: Buffer.from(encodeWav(Float32Array.from({ length: 4800 }, (_, i) => 0.3 * Math.sin(i / 3)), 16000)) };
@@ -83,7 +83,7 @@ async function sheSpeaks(/** @type {import('@playwright/test').Page} */ page, /*
     await expect(page.locator('.voice-chip')).toHaveText('Voice on');
     await before();
     await page.goto('/#/talk'); // the Models screen has a Send button of its own
-    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await atConversation(page);
     await page.evaluate(() => {
       const w = /** @type {any} */ (window);
       // The bubble above Shiori: the words it showed while she was speaking ("Tap to interrupt"), if it ever did.

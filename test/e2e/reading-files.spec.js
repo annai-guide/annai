@@ -2,7 +2,7 @@
 // PDF pages plugin, and the note naming the setting when nothing here can read it.
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { startModelServer, anthropicToolReply, modelSetUp, savedBy } from './helpers.js';
+import { startModelServer, anthropicToolReply, modelSetUp, savedBy, openTalk } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 const booking = async () => ({ name: 'booking.pdf', mimeType: 'application/pdf', buffer: await readFile(new URL('../fixtures/pdf/booking.pdf', import.meta.url)) });
@@ -39,7 +39,7 @@ test("installed from the catalog, PDF pages shows a PDF's pages to a model that 
     await page.goto(trip);
     await page.getByLabel('Add photos or files').setInputFiles(await booking());
     await expect.poll(() => llm.bodies('/b/v1/messages').length, { timeout: 60_000 }).toBeGreaterThanOrEqual(2);
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
+    await openTalk(page);
     await expect(page.getByText('Your flight leaves at 8:05.')).toBeVisible({ timeout: 30_000 });
     const second = JSON.stringify(llm.bodies('/b/v1/messages')[1].messages.at(-1));
     expect(second.match(/"type":"image"/g) ?? []).toHaveLength(3); // the pages, wherever Anthropic Messages puts a tool's pictures
@@ -59,7 +59,7 @@ test('with nothing here that reads it, Shiori is told which setting fixes it, an
     await page.goto(trip);
     await page.getByLabel('Add photos or files').setInputFiles(await booking());
     await expect.poll(() => llm.bodies('/b/v1/messages').length, { timeout: 60_000 }).toBeGreaterThanOrEqual(2);
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
+    await openTalk(page);
     await expect(page.getByText('Your flight leaves at 8:05.')).toBeVisible({ timeout: 30_000 });
     const second = JSON.stringify(llm.bodies('/b/v1/messages')[1].messages.at(-1));
     expect(second).toContain('Takes PDFs on its page in Settings → Models');

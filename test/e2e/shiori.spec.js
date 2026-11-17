@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, startServer, addProvider, anthropicToolReply, filterTrace, savedBy, modelSetUp, writeEvent, startTrip, allFiles } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, startServer, addProvider, anthropicToolReply, filterTrace, savedBy, modelSetUp, writeEvent, startTrip, allFiles, atConversation, goHome, goToHash } from './helpers.js';
 
 test('the avatar: states change her look, the level reaches the seat, and there is no innerHTML or style attribute', async ({ page }) => {
   await page.goto('/#/trips');
@@ -262,9 +262,7 @@ async function setUp(page, origin) {
   await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   await page.goto('/#/trips');
-  await page.getByLabel('Trip name').fill('Big Sur');
-  await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+  await startTrip(page, 'Big Sur');
 }
 
 test('the dock is on every screen; typing to Shiori shows her answer in the conversation', async ({ page }) => {
@@ -278,7 +276,7 @@ test('the dock is on every screen; typing to Shiori shows her answer in the conv
     await page.getByRole('button', { name: 'Type' }).click();
     await page.getByLabel('Message to Shiori').fill('Where should we eat?');
     await page.getByRole('button', { name: 'Send' }).click();
-    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await atConversation(page);
     await expect(page.locator('.convo .you:not(.quiet) p')).toHaveText('Where should we eat?');
     await expect(page.locator('.convo .shiori p')).toHaveText('Nepenthe is 25 minutes south.');
     await expect(page.locator('.talk-label')).toHaveText('Tap to talk');
@@ -295,7 +293,7 @@ test("a turn that said nothing: the conversation's own note offers Try again (th
     await page.getByRole('button', { name: 'Type' }).click();
     await page.getByLabel('Message to Shiori').fill('What is Big Sur known for?');
     await page.getByRole('button', { name: 'Send' }).click();
-    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await atConversation(page);
     const card = page.locator('.notice', { hasText: "Shiori didn't answer" });
     await expect(card).toBeVisible();
     const note = page.locator('.convo .system', { hasText: 'Her turn ended' });
@@ -316,7 +314,7 @@ test("no model answers: the card and the conversation's note say the same, \"Shi
     await page.getByRole('button', { name: 'Type' }).click();
     await page.getByLabel('Message to Shiori').fill('Hello?');
     await page.getByRole('button', { name: 'Send' }).click();
-    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await atConversation(page);
     const card = page.locator('.notice', { hasText: "Shiori can't reach her model" });
     await expect(card).toBeVisible();
     const note = page.locator('.convo .system', { hasText: "Shiori can't reach her model" });
@@ -357,7 +355,7 @@ test('the announcer reads a card with choices, a card with nothing to read and a
   try {
     await setUp(page, llm.origin);
     await page.goto('/#/talk');
-    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await atConversation(page);
     await page.evaluate(() => {
       const w = /** @type {any} */ (window);
       const announcer = /** @type {HTMLElement} */ (document.querySelector('main [aria-live="polite"]'));
@@ -424,9 +422,7 @@ test('done: a conversation with tool use, with fallback across two providers, su
       await page.getByRole('button', { name: 'Add to main' }).click();
     }
     await page.goto('/#/trips');
-    await page.getByLabel('Trip name').fill('Big Sur');
-    await page.getByRole('button', { name: 'Start trip' }).click();
-    await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+    await startTrip(page, 'Big Sur');
 
     // A turn with tool use: A is out of credit, B answers, writes a note, then speaks.
     await page.getByRole('button', { name: 'Type' }).click();
@@ -448,14 +444,14 @@ test('done: a conversation with tool use, with fallback across two providers, su
     await expect(page.locator('.convo .shiori p').last()).toHaveText('Yes, still here.', { timeout: 15_000 });
 
     // The note is a file in the trip.
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Trips' }).click();
+    await goHome(page);
     await page.getByRole('link', { name: /Big Sur/ }).click(); // its conversation (timeline stage 4)
     await page.locator('.talk-head .talk-name').click(); // its Details
     await allFiles(page);
     await expect(page.getByText('/notes/dinner.md')).toBeVisible();
 
     // The trace: every model request, every tool call with what it sent, and what it read.
-    await page.getByRole('link', { name: 'Trace' }).click();
+    await goToHash(page, '#/trace');
     await filterTrace(page, { kind: 'Models' });
     await expect(page.getByText(/a-model · credit \(402\)/).first()).toBeVisible();
     await expect(page.getByText(/b-model · ok \(200\)/).first()).toBeVisible();
@@ -532,9 +528,7 @@ test('milestone 2 done: a photo conversation with tool use and fallback across t
       await page.getByRole('button', { name: 'Add to main' }).click();
     }
     await page.goto('/#/trips');
-    await page.getByLabel('Trip name').fill('Big Sur');
-    await page.getByRole('button', { name: 'Start trip' }).click();
-    await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+    await startTrip(page, 'Big Sur');
     // A photo over the request limits (2000 px), so Shiori is sent a copy, which the refusal then replaces.
     const big = await page.evaluate(async () => {
       const c = new OffscreenCanvas(3000, 2000);
@@ -551,7 +545,7 @@ test('milestone 2 done: a photo conversation with tool use and fallback across t
     await page.goto('/#/talk');
     await expect(page.locator('.convo .you img')).toBeVisible();
     expect(await page.locator('.convo .you img').evaluate((/** @type {HTMLImageElement} */ i) => i.decode().then(() => i.naturalWidth))).toBeGreaterThan(0);
-    await page.getByRole('link', { name: 'Trace' }).click();
+    await goToHash(page, '#/trace');
     await page.getByLabel('Type contains').fill('photo.replace');
     await expect(page.locator('ol.trace > li')).toHaveCount(1);
     await filterTrace(page, { type: '', kind: 'Models' });

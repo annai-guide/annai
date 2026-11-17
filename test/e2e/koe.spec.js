@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, addProvider, koeSetUp, startModelServer, anthropicToolReply, filterTrace } from './helpers.js';
+import { openApp, waitForServiceWorker, addProvider, koeSetUp, startModelServer, anthropicToolReply, filterTrace, atConversation, goToHash } from './helpers.js';
 
 // Koe and Kokoro, K1: the text split (docs/superpowers/specs/2026-10-19-koe-kokoro-design.md).
 
@@ -88,7 +88,7 @@ test("Trace shows both halves' turns and their notes; the notes show in the conv
     await koeSetUp(page, llm.origin);
     await type(page, 'Is Nepenthe open?');
     await expect(page.locator('.convo .shiori p').last()).toHaveText("Good news: it's open till 10 tonight.", { timeout: 15_000 });
-    await page.getByRole('link', { name: 'Trace' }).click();
+    await goToHash(page, '#/trace');
     await filterTrace(page, { kind: 'Halves' });
     await expect(page.getByText('Koe to Kokoro · append · Is Nepenthe open now?')).toBeVisible();
     await expect(page.getByText('Kokoro to Koe · append · Nepenthe is open till 10 tonight (nepenthe.com).')).toBeVisible();
@@ -97,7 +97,7 @@ test("Trace shows both halves' turns and their notes; the notes show in the conv
     await expect(page.getByText(/Kokoro · main: kokoro-model · 1 attempt/).first()).toBeVisible();
     // On by default (the user, 2026-10-23: "always on by default and able to be turned off in the settings"), and no switch on the conversation.
     await page.goto('/#/talk');
-    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await atConversation(page);
     await expect(page.locator('.convo .halves-note').filter({ hasText: 'Koe to Kokoro: Is Nepenthe open now?' })).toBeVisible();
     await expect(page.locator('.convo .halves-note').filter({ hasText: 'Kokoro to Koe: Nepenthe is open till 10 tonight' })).toBeVisible();
     await expect(page.getByLabel('Show what the halves tell each other')).toHaveCount(0);
@@ -107,11 +107,11 @@ test("Trace shows both halves' turns and their notes; the notes show in the conv
     await toggle.uncheck();
     await expect(page.getByRole('status').filter({ hasText: 'Saved' }).first()).toBeVisible();
     await page.goto('/#/talk');
-    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await atConversation(page);
     await expect(page.locator('.convo .shiori p').last()).toHaveText("Good news: it's open till 10 tonight.");
     await expect(page.locator('.convo .halves-note')).toHaveCount(0);
     await page.reload();
-    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await atConversation(page);
     await expect(page.locator('.convo .shiori p').last()).toBeVisible();
     await expect(page.locator('.convo .halves-note')).toHaveCount(0);
     await page.goto('/#/shiori');
@@ -126,7 +126,7 @@ test("the halves' notes are notes of their own, set apart from her reminders; an
   try {
     await koeSetUp(page, llm.origin);
     await page.goto('/#/talk');
-    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await atConversation(page);
     await page.evaluate(() => {
       const w = /** @type {any} */ (window);
       const announcer = /** @type {HTMLElement} */ (document.querySelector('main [aria-live="polite"]'));

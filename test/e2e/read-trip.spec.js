@@ -2,7 +2,7 @@
 // tapped; the conversation shows a quiet line, the Trace lists the read, and Settings → Shiori holds Always. The stand-in model plays her
 // part. Synthetic data only: Testville is made up.
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, startTrip, writeRecords, filterTrace, savedBy } from './helpers.js';
+import { openApp, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, startTrip, writeRecords, filterTrace, savedBy, atConversation } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 const NOTE = 'Ramen at the corner of 3rd and Elm.';
@@ -26,7 +26,7 @@ async function askIn(page, name, line) {
   await page.goto('/#/trips');
   const id = await startTrip(page, name);
   await page.goto(`/#/trip/${id}/talk`);
-  await expect(page.getByRole('heading', { level: 1, name: 'Conversation' })).toBeVisible();
+  await atConversation(page);
   await expect(page.locator('main').getByRole('link', { name, exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Type', exact: true }).click();
   await page.getByLabel('Message to Shiori').fill(line);

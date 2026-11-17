@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, buildAndSave, savedBy, leaveSaved, allFiles } from './helpers.js';
+import { openApp, waitForServiceWorker, buildAndSave, savedBy, leaveSaved, allFiles, startTrip, atConversation, goToHash } from './helpers.js';
 import { readZip } from '../../src/core/zip.js';
 import { readPhotoMeta } from '../../src/core/photo-meta.js';
 import { text } from '../../src/core/bytes.js';
@@ -9,18 +9,6 @@ import { text } from '../../src/core/bytes.js';
 async function photo(name) {
   const mimeType = { heic: 'image/heic', png: 'image/png', webp: 'image/webp' }[/** @type {string} */ (name.split('.').pop())] ?? 'image/jpeg';
   return { name, mimeType, buffer: await readFile(new URL(`../fixtures/photos/${name}`, import.meta.url)) };
-}
-
-/** @param {import('@playwright/test').Page} page @param {string} title @param {{ start: string, end: string }} [dates] */
-async function startTrip(page, title, dates) {
-  await page.getByLabel('Trip name').fill(title);
-  if (dates) {
-    await page.getByText('Add dates (optional)').click();
-    await page.getByLabel('Starts').fill(dates.start);
-    await page.getByLabel('Ends').fill(dates.end);
-  }
-  await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('heading', { name: title })).toBeVisible();
 }
 
 test('several photos and files are added at once', async ({ page }) => {
@@ -142,7 +130,7 @@ test('Keep originals stores photos as taken, and JPEG can be chosen over WebP', 
   await openApp(page);
   await startTrip(page, 'Big Sur');
   const trip = page.url();
-  await page.getByRole('link', { name: 'Settings' }).click();
+  await goToHash(page, '#/settings');
   const keep = page.getByLabel('Keep originals: store photos exactly as taken');
   await keep.check();
   await expect(savedBy(keep)).toHaveText('Saved'); // saved as it changes: no Save button
@@ -152,7 +140,7 @@ test('Keep originals stores photos as taken, and JPEG can be chosen over WebP', 
   await page.getByRole('link', { name: /\/files\/2026-11-26-1904\.jpg/ }).click();
   await expect(page.locator('figcaption')).toContainText('Stored as taken');
 
-  await page.getByRole('link', { name: 'Settings' }).click();
+  await goToHash(page, '#/settings');
   await page.getByLabel('Keep originals: store photos exactly as taken').uncheck();
   await page.getByLabel('Save photos as').selectOption('jpeg');
   await expect(savedBy(page.getByLabel('Save photos as'))).toHaveText('Saved');
@@ -304,7 +292,7 @@ test('Show Shiori this part: zoomed in, the part on screen goes to her in your m
   await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
   await expect(viewer).toHaveAttribute('data-zoom', '2.5');
   await viewer.getByRole('button', { name: 'Show Shiori this part' }).click();
-  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+  await atConversation(page);
   await expect(page.locator('.convo .you p').last()).toHaveText(/^Look at this part of \/trip\/files\/2026-11-26-1904\.\w+\.$/);
   await expect(page.locator('.convo .you img').last()).toBeVisible();
   await expect(viewer).toHaveCount(0);

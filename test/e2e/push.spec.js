@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { startModelServer, anthropicToolReply, writeRecords, filterTrace } from './helpers.js';
+import { startModelServer, anthropicToolReply, writeRecords, filterTrace, goToHash } from './helpers.js';
 import { pushKit, fakeSubscription, notificationsOn, setUp, say, plus, sse, sleep } from './push-helpers.js';
 
 test('a reminder Shiori sets waits at the relay, encrypted, reaches the push service at its time, and opening it starts a catch-up wake (spec §11.6, §20 row 6)', async ({ page }) => {
@@ -16,7 +16,7 @@ test('a reminder Shiori sets waits at the relay, encrypted, reaches the push ser
     await fakeSubscription(page, kit.sub);
     const trip = await setUp(page, llm.origin);
     await notificationsOn(page, kit.relay.origin);
-    await page.goto('/#/now');
+    await goToHash(page, `#/trip/${encodeURIComponent(trip)}`); // a screen with the dock and its Type
     await say(page, 'Remind me to call Grandma.');
     await expect.poll(async () => (await kit.waiting()).length).toBe(1);
     const [w] = await kit.waiting();
@@ -71,9 +71,9 @@ test('with annai open, a reminder that comes due is said on the phone and called
   const kit = await pushKit();
   try {
     await fakeSubscription(page, kit.sub);
-    await setUp(page, llm.origin);
+    const trip = await setUp(page, llm.origin);
     await notificationsOn(page, kit.relay.origin);
-    await page.goto('/#/now');
+    await goToHash(page, `#/trip/${encodeURIComponent(trip)}`); // a screen with the dock and its Type
     await say(page, 'Remind me to stretch.');
     await expect.poll(async () => (await kit.waiting()).length).toBe(1);
     await expect.poll(() => llm.bodies('/b/v1/messages').length, { timeout: 70_000 }).toBe(2);

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, writeRecords } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, writeRecords, startTrip } from './helpers.js';
 
 // "I kinda want to check kokoro and koe's prompt template. maybe should also be viewable and adjustable by user?" and "is there way to see kokoro's transcript?" (the user, 2026-11-04).
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
@@ -58,9 +58,7 @@ test("the Conversation's ⋯ opens what each half sees: its instructions and its
     await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
     await page.goto('/#/trips');
-    await page.getByLabel('Trip name').fill('Test coast');
-    await page.getByRole('button', { name: 'Start trip' }).click();
-    await expect(page.getByRole('heading', { name: 'Test coast' })).toBeVisible();
+    await startTrip(page, 'Test coast');
     await page.getByRole('button', { name: 'Type', exact: true }).click();
     await page.getByLabel('Message to Shiori').fill('Tell me about pelicans');
     await page.getByRole('button', { name: 'Send', exact: true }).click();

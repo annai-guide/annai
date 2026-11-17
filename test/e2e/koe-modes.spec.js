@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
-import { openApp, waitForServiceWorker, addProvider, pickProvider, savedBy, leaveSaved, startModelServer, anthropicToolReply, fakeMicrophone } from './helpers.js';
+import { openApp, waitForServiceWorker, addProvider, pickProvider, savedBy, leaveSaved, startModelServer, anthropicToolReply, fakeMicrophone, startTrip } from './helpers.js';
 import { startRealtimeServer } from '../fakes/realtime-server.js';
 
 // Koe's two lists, Koe · Live and Koe · Chat, and the Live chip's switch (the user, 2026-11-04: "also the realtime mode on and off"). Gemini Live at the stand-in realtime server, Kokoro and Koe · Chat at a stand-in
@@ -42,9 +42,7 @@ async function setUp(page, models, live) {
   await page.getByRole('button', { name: 'Add to Koe · Live' }).click();
   await expect(page.getByRole('region', { name: 'Roles' }).locator('.role').nth(1).getByText('1. Gemini 3.8 Live')).toBeVisible();
   await page.goto('/#/trips');
-  await page.getByLabel('Trip name').fill('Big Sur');
-  await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+  await startTrip(page, 'Big Sur');
 }
 
 test("the Live chip: one tap switches which of Koe's lists talks, kept across a reload and in koeMode's stored values; shown only with a live model; a tap with Voice off and Live on opens live; Live off, Classic's microphone", async ({ page }) => {

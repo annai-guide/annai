@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, turnOnSwipes, waitForServiceWorker, pickFile, zipOf, writeRecords } from './helpers.js';
+import { openApp, turnOnSwipes, waitForServiceWorker, pickFile, zipOf, writeRecords, stuckTop, startTrip } from './helpers.js';
 
 // In headless WebKit no tap unlocks sound, so every tap, a swipe's pointerup too, starts the silent clip again; and a
 // page that goes away while one starts can wedge WebKit's process on Linux (the Erase hang, 2026-10-18). A swipe test
@@ -286,9 +286,8 @@ test('swiping back into a tab brings back the screen you last had open in it, wh
  * The controls of the screen (main) whose middle is on screen, above the dock, but under something else: a card, say.
  * @param {import('@playwright/test').Page} page
  */
-const coveredControls = (page) => page.evaluate(() => {
+const coveredControls = async (page) => page.evaluate((barBottom) => {
   const dockTop = document.querySelector('nav.dock')?.getBoundingClientRect().top ?? innerHeight;
-  const barBottom = document.querySelector('.topbar')?.getBoundingClientRect().bottom ?? 0;
   return [...document.querySelectorAll('main.view :is(a[href], button, input, select, textarea, summary)')].flatMap((el) => {
     const r = el.getBoundingClientRect();
     const x = r.left + r.width / 2;
@@ -297,7 +296,7 @@ const coveredControls = (page) => page.evaluate(() => {
     const hit = document.elementFromPoint(x, y);
     return hit && (el === hit || el.contains(hit) || [.../** @type {any} */ (el).labels ?? []].some((l) => l.contains(hit))) ? [] : [`${el.textContent?.trim() || el.getAttribute('aria-label') || el.tagName} under ${hit?.closest('.notice, .toast') ? 'a card' : hit?.tagName}`];
   });
-});
+}, await stuckTop(page));
 
 const PNG1 = { name: 'gate.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64') };
 /** The card annai raises when the camera has no conversation to keep its photo in and none can be made (a store that fails), with Dismiss alone. */
@@ -368,9 +367,8 @@ test('review S1: scrolled down, a card coming or going keeps the screen where it
 // The re-review of defer-home (R2): the rows (main) ignore taps for a moment when a card's coming or going moves them on screen, and they move when the
 // page was at its top, or scrolled by less than the box changes (the scroll back is clamped at 0). Scrolled further, the scroll absorbs the change and
 // nothing moves. A phone 360 x 640, one card, Dismiss clicked from up there: the rows measured in the same task as the click, before any 400 ms.
-/** In the page: whether a tap in the middle of the screen, between the top bar and the dock, lands on the rows (main, and the data-safety warning above it), or goes through them (they ignore taps a moment). */
-const landsOnRows = () => {
-  const bar = document.querySelector('.topbar')?.getBoundingClientRect().bottom ?? 0;
+/** In the page: whether a tap in the middle of the screen, between where stuck things stop (bar, by stuckTop) and the dock, lands on the rows (main, and the data-safety warning above it), or goes through them (they ignore taps a moment). */
+const landsOnRows = (/** @type {number} */ bar) => {
   const dock = document.querySelector('nav.dock')?.getBoundingClientRect().top ?? innerHeight;
   return document.elementFromPoint(innerWidth / 2, (bar + dock) / 2)?.closest('main.view, .risk') != null;
 };
@@ -384,14 +382,15 @@ for (const [scrolled, moves] of /** @type {const} */ ([[0, true], [40, true], [4
     await expect(page.locator('.notices.landed, .notices.over')).toHaveCount(0); // the card's own moment is over
     await page.evaluate((y) => scrollTo(0, y), scrolled);
     expect(await page.evaluate(() => scrollY)).toBe(scrolled);
-    expect(await page.evaluate(landsOnRows), 'before: a tap lands on the rows').toBe(true);
+    const top = await stuckTop(page);
+    expect(await page.evaluate(landsOnRows, top), 'before: a tap lands on the rows').toBe(true);
     /** @type {{ rose: number, held: boolean, lands: boolean }} */
     const after = await page.evaluate(`(() => {
       const landsOnRows = ${landsOnRows};
       const rows = document.querySelector('main.view');
       const was = rows.getBoundingClientRect().top;
       [...document.querySelectorAll('.notice .btn.ghost')].find((b) => b.textContent === 'Dismiss').click();
-      return { rose: was - rows.getBoundingClientRect().top, held: document.querySelector('.notices').classList.contains('landed'), lands: landsOnRows() };
+      return { rose: was - rows.getBoundingClientRect().top, held: document.querySelector('.notices').classList.contains('landed'), lands: landsOnRows(${top}) };
     })()`);
     if (moves) {
       expect(after.rose, 'the rows rose on screen').toBeGreaterThan(40);
@@ -404,7 +403,7 @@ for (const [scrolled, moves] of /** @type {const} */ ([[0, true], [40, true], [4
     }
     // After the moment, the rows take taps again.
     await expect(page.locator('.notices')).not.toHaveClass(/landed/);
-    expect(await page.evaluate(landsOnRows), 'after the moment').toBe(true);
+    expect(await page.evaluate(landsOnRows, top), 'after the moment').toBe(true);
   });
 }
 
@@ -624,11 +623,11 @@ test('landscape at SE size (568 × 296) with the dock\'s text box open: the page
   await page.getByRole('button', { name: 'Type' }).click();
   const box = page.getByLabel('Message to Shiori');
   await expect(box).toBeVisible();
-  const room = () => page.evaluate(() => {
-    const bar = document.querySelector('header, .topbar, nav[aria-label="Main"]')?.getBoundingClientRect();
+  const top = await stuckTop(page);
+  const room = () => page.evaluate((top) => {
     const dock = /** @type {HTMLElement} */ (document.querySelector('nav.dock')).getBoundingClientRect();
-    return { dock: dock.height, page: dock.top - (bar?.bottom ?? 0), barBottom: bar?.bottom ?? 0 };
-  });
+    return { dock: dock.height, page: dock.top - top, barBottom: top };
+  }, top);
   const open = await room();
   expect(open.page).toBeGreaterThanOrEqual(296 * 0.32);
   // Everything in the panel is on screen and can be tapped.
@@ -649,9 +648,7 @@ test('the type box with three chips, and a trip without dates, fit a phone 320 p
   await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
   const long = 'Your flight is booked- TESTQ1 to Anchorage on 11:20:2026 with a very long confirmation name.pdf';
   // A trip with no dates.
-  await page.getByLabel('旅の名前').fill('アンカレッジとその周辺をめぐる長い名前の旅');
-  await page.getByRole('button', { name: '旅を始める' }).last().click();
-  await expect(page.getByRole('heading', { name: 'アンカレッジとその周辺をめぐる長い名前の旅' })).toBeVisible();
+  await startTrip(page, 'アンカレッジとその周辺をめぐる長い名前の旅');
   const wide = async () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(await wide()).toBeLessThanOrEqual(0);
   await page.goto('/#/trips');

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, addProvider, savedBy } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addProvider, savedBy, startTrip } from './helpers.js';
 
 // Item 24 (2026-10-18): a server that never streams, as the user's own LLM router doesn't, answers `stream: true` with
 // one whole application/json reply. annai reads it as a stream's events: the Test button passes, and Shiori talks.
@@ -56,9 +56,7 @@ for (const kind of /** @type {const} */ (['Chat Completions', 'OpenAI Responses'
       await page.getByRole('button', { name: 'Add to main' }).click();
       await expect(page.getByText('1. router-model')).toBeVisible();
       await page.goto('/#/trips');
-      await page.getByLabel('Trip name').fill('Big Sur');
-      await page.getByRole('button', { name: 'Start trip' }).click();
-      await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+      await startTrip(page, 'Big Sur');
       await page.getByRole('button', { name: 'Type' }).click();
       await page.getByLabel('Message to Shiori').fill('When does Nepenthe close?');
       await page.getByRole('button', { name: 'Send' }).click();

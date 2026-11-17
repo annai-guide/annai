@@ -2,7 +2,7 @@
 // playing Shiori. The booking files are synthetic (scripts/make-booking-fixtures.mjs): ANNAI AIR, TESTQ1, Hotel Aurora Test.
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply } from './helpers.js';
+import { openApp, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, atConversation, openItinerary } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 const fixture = async (/** @type {string} */ name, /** @type {string} */ mimeType) => ({ name, mimeType, buffer: await readFile(new URL(`../fixtures/bookings/${name}`, import.meta.url)) });
@@ -47,7 +47,7 @@ test("the user's evening: with no trip open, the type box with the flight PDF an
     await page.getByRole('button', { name: 'Add to main' }).click();
     await expect(page.getByLabel('Add a model to main').locator('option', { hasText: 'b-model' })).toHaveCount(0);
     await page.goto('/#/talk'); // the open conversation: the new one, as nothing else is open; the dock at rest on home has no type button
-    await expect(page.getByRole('heading', { name: 'Conversation', exact: true })).toBeAttached();
+    await atConversation(page);
     const id = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
 
     // 1. No trip open: the box's + with the flight PDF and the hotel screenshot, no words.
@@ -63,8 +63,7 @@ test("the user's evening: with no trip open, the type box with the flight PDF an
     await expect(page.locator('.convo .shiori .acts button')).toHaveCount(0);
 
     // 3. The Plan: the flight on Nov 20 at each airport's time, the stay's check-in, a line for each night, its check-out.
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
-    await expect(page.getByRole('heading', { name: 'Itinerary' })).toBeVisible();
+    await openItinerary(page);
     const day = page.getByRole('tabpanel');
     await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
     await expect(day.locator('.plan-row', { hasText: 'ANNAI AIR AN 123' })).toContainText(/11:20–14:05 AK/);

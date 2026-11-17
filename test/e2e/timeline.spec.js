@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { writeFile, readFile } from 'node:fs/promises';
-import { openApp, FIRST_DRAW, startModelServer, modelSetUp, anthropicToolReply, fakeMicrophone, waitForServiceWorker, addProvider } from './helpers.js';
+import { openApp, FIRST_DRAW, startModelServer, modelSetUp, anthropicToolReply, fakeMicrophone, waitForServiceWorker, addProvider, stuckTop } from './helpers.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
 
 // Timeline stage 4: home is a timeline of trips and chats, and a + drops you into a new conversation with no naming step.
@@ -511,12 +511,11 @@ async function scrolledHome(page) {
 const placeOf = (/** @type {import('@playwright/test').Page} */ page) => page.evaluate(() => ({ y: Math.round(scrollY), now: Math.round(/** @type {Element} */ (document.querySelector('.now-line')).getBoundingClientRect().top),
   pos: getComputedStyle(/** @type {Element} */ (document.querySelector('.notices'))).position }));
 /** The box as the user sees it: under the bar, at most half the room under it (the page's own height, as notices.js measures it), and what scrolls inside it. @param {import('@playwright/test').Page} page */
-const boxOf = (page) => page.evaluate(() => {
+const boxOf = async (page) => page.evaluate((bar) => {
   const box = /** @type {HTMLElement} */ (document.querySelector('.notices'));
   const r = box.getBoundingClientRect();
-  const bar = /** @type {HTMLElement} */ (document.querySelector('.topbar')).getBoundingClientRect().bottom;
   return { top: r.top, bottom: r.bottom, bar, half: (document.documentElement.clientHeight - bar) / 2, inside: box.scrollHeight - box.clientHeight };
-});
+}, await stuckTop(page));
 /** The box is stuck under the bar, in view, at most half the room under it. @param {import('@playwright/test').Page} page */
 const stuckInHalf = async (page) => {
   expect((await placeOf(page)).pos).toBe('sticky');
@@ -643,14 +642,14 @@ for (const [width, height] of [[320, 568], [360, 640]]) {
   test(`a card whose buttons need more than a quarter of the screen sticks while it fits in half the screen under the bar (${width} x ${height}): in view, the rows stay, nothing stays covered`, async ({ page }) => {
     await page.setViewportSize({ width, height });
     await scrolledHome(page);
-    const state = () => page.evaluate(() => {
+    const top = await stuckTop(page);
+    const state = () => page.evaluate((top) => {
       const box = /** @type {HTMLElement} */ (document.querySelector('.notices'));
-      const bar = /** @type {HTMLElement} */ (document.querySelector('.topbar')).getBoundingClientRect();
-      const hit = document.elementFromPoint(innerWidth / 2, bar.bottom + 4);
+      const hit = document.elementFromPoint(innerWidth / 2, top + 4);
       const r = box.getBoundingClientRect();
       return { y: Math.round(scrollY), now: Math.round(/** @type {Element} */ (document.querySelector('.now-line')).getBoundingClientRect().top), pos: getComputedStyle(box).position,
-        top: r.top, bottom: r.bottom, barBottom: bar.bottom, room: innerHeight - bar.bottom, hitBox: hit?.closest('.notices') !== null, grow: box.querySelectorAll('.notice.grow').length };
-    });
+        top: r.top, bottom: r.bottom, barBottom: top, room: innerHeight - top, hitBox: hit?.closest('.notices') !== null, grow: box.querySelectorAll('.notice.grow').length };
+    }, top);
     const before = await state();
     await page.evaluate(() => /** @type {any} */ (window).__n.card({ tone: 'warn', title: 'A newer backup is on Test place', body: 'A backup made on another phone is newer than this one. Import it as a copy, or back this phone up over it.',
       actions: [{ label: 'Import it as a copy', primary: true, run() {} }, { label: 'Back up this phone over it', run() {} }] }));
@@ -2148,7 +2147,7 @@ test("a card's \"backed up … ago\" above the rows in view takes another line a
   expect(width).toBeGreaterThan(0);
   await page.setViewportSize({ width, height: 740 });
   // Read on past Testville: it is above the top bar, the trips ahead in view.
-  await row(page, 'Testville').evaluate((el) => scrollBy(0, el.getBoundingClientRect().bottom - /** @type {Element} */ (document.querySelector('.topbar')).getBoundingClientRect().bottom + 20));
+  await row(page, 'Testville').evaluate((el, top) => scrollBy(0, el.getBoundingClientRect().bottom - top + 20), await stuckTop(page));
   const topOf = () => row(page, 'Farville').evaluate((el) => Math.round(el.getBoundingClientRect().top));
   const before = await topOf();
   await page.clock.fastForward('00:25');

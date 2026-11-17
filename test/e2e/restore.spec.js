@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { startModelServer, anthropicToolReply, modelSetUp, buildAndSave, pastWelcome } from './helpers.js';
+import { startModelServer, anthropicToolReply, modelSetUp, buildAndSave, pastWelcome, goToHash, FIRST_DRAW } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 
@@ -9,7 +9,7 @@ test('a restore brings the providers back with the plugins they use, in one step
   const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'speak', input: { text: 'Welcome back to Big Sur.' } }, { name: 'sleep', input: {} }]))] });
   try {
     await modelSetUp(page, llm.origin);
-    await page.getByRole('link', { name: 'Settings' }).click();
+    await goToHash(page, '#/settings');
     await page.getByRole('button', { name: 'Export everything' }).click();
     const file = await buildAndSave(page);
     await page.getByLabel('Type ERASE to confirm').fill('ERASE');
@@ -29,7 +29,7 @@ test('a restore brings the providers back with the plugins they use, in one step
     const restarted = page.waitForEvent('load');
     await page.getByRole('button', { name: 'Restart annai' }).click();
     await restarted;
-    await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
+    await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
     // It starts on Trips, not on the import screen with nothing left to open (the third emulator pass).
     await expect(page.getByRole('heading', { name: 'Trips', level: 1 })).toBeVisible();
     expect(new URL(page.url()).hash).toBe('#/trips');

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import http from 'node:http';
 import { extname } from 'node:path';
 import { readFile } from 'node:fs/promises';
-import { openApp, unmarked, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, startTrip, writeRecords, writeEvent, startServer, modelSetUp, buildAndSave, pastWelcome } from './helpers.js';
+import { openApp, unmarked, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, startTrip, writeRecords, writeEvent, startServer, modelSetUp, buildAndSave, pastWelcome, atConversation, goToHash } from './helpers.js';
 import { parseHeaders, headersFor } from '../../scripts/headers.mjs';
 import { key } from '../../src/core/l10n.js';
 import { accented } from '../../src/core/l10n-pseudo.js';
@@ -89,7 +89,7 @@ test('a conversation with a Chinese line, a Japanese line and an English one: ea
       await page.getByRole('button', { name: 'Type', exact: true }).click();
       await page.getByLabel('Message to Shiori').fill(words);
       await page.getByRole('button', { name: 'Send', exact: true }).click();
-      await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+      await atConversation(page);
       n += 2;
       await expect(lines).toHaveCount(n, { timeout: 20_000 });
       await expect(page.locator('.talk-label')).toHaveText('Tap to talk');
@@ -208,7 +208,7 @@ test('Shiori\'s cards, the card on Now and the recap carry the language of their
   await writeEvent(page, trip, { type: 'out.speak', data: { text: '直角三角形の骨組みです。' } });
   await writeRecords(page, trip, { text: { '/recap.md': '# 京都\n\n直角三角形の骨組みです。' } });
   await page.goto('/#/talk');
-  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+  await atConversation(page);
   const card = page.locator('.convo .card');
   await expect(card.locator('.card-title')).toHaveAttribute('lang', 'zh-Hans');
   await expect(card.locator('.md')).toHaveAttribute('lang', 'zh-Hans');
@@ -275,7 +275,7 @@ test('the language Shiori answers in does not override what her words are: a Jap
   await writeEvent(page, trip, { type: 'out.show', data: { card: { title: 'Kiyomizu-dera', place: { name: 'Kiyomizu-dera', address: '1 Chome-294 Kiyomizu' }, links: [{ label: 'https://example.com/kiyomizu', url: 'https://example.com/kiyomizu' }] } } });
   await writeEvent(page, trip, { type: 'grounded', data: { source: 'Google Search', text: 'Le temple ouvre à six heures.' } });
   await page.goto('/#/talk');
-  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+  await atConversation(page);
   const lines = page.locator('.convo li.shiori > p');
   await expect(lines).toHaveCount(3);
   expect(await lines.evaluateAll((els) => els.map((el) => el.getAttribute('lang')))).toEqual(['en', 'ja', null]);
@@ -304,7 +304,7 @@ test('the announcer tags only her words: the label before them, the choices afte
       store.close();
     });
     await page.goto('/#/talk');
-    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await atConversation(page);
     await page.evaluate(() => {
       const w = /** @type {any} */ (window);
       const announcer = /** @type {HTMLElement} */ (document.querySelector('main [aria-live="polite"]'));
@@ -315,7 +315,7 @@ test('the announcer tags only her words: the label before them, the choices afte
       await page.getByRole('button', { name: 'Type', exact: true }).click();
       await page.getByLabel('Message to Shiori').fill(words);
       await page.getByRole('button', { name: 'Send', exact: true }).click();
-      await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+      await atConversation(page);
       if (words.startsWith('Tell')) await expect(page.locator('.convo li.shiori > p')).toHaveCount(1, { timeout: 20_000 });
     }
     await expect(page.locator('.convo li.system')).toHaveCount(1, { timeout: 30_000 });
@@ -686,7 +686,7 @@ test('a restore writes the device\'s copy of the screens\' language before its r
       await updateAppSettings(new Workspace(store), { languages: { ui: 'ja' } });
       store.close();
     });
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Settings' }).click();
+    await goToHash(page, '#/settings');
     await page.getByRole('button', { name: 'Export everything' }).click();
     const file = await buildAndSave(page);
     await page.getByLabel('Type ERASE to confirm').fill('ERASE');

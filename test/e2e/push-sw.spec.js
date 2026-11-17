@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { startModelServer, anthropicToolReply, openApp, waitForServiceWorker } from './helpers.js';
+import { startModelServer, anthropicToolReply, openApp, waitForServiceWorker, goToHash } from './helpers.js';
 import { pushKit, fakeSubscription, notificationsOn, setUp, say, away, plus, sse, sleep, APP } from './push-helpers.js';
 
 // The phone's side of a push, which only Chromium's DevTools protocol can drive: it runs in the
@@ -21,7 +21,7 @@ test('a push for a reminder reaches the service worker while annai is away: a no
     await fakeSubscription(page, kit.sub);
     const trip = await setUp(page, llm.origin);
     await notificationsOn(page, kit.relay.origin);
-    await page.goto('/#/now');
+    await goToHash(page, `#/trip/${encodeURIComponent(trip)}`); // a screen with the dock and its Type
     await say(page, 'Remind me to call Grandma.');
     await expect.poll(async () => (await kit.waiting()).length).toBe(1);
     await away(page, true);

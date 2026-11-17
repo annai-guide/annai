@@ -18,7 +18,7 @@ async function fastBackups(page) {
 
 /** Settings → Automatic backups → Forgejo / Gitea, filled in; then Save and test. @param {import('@playwright/test').Page} page @param {any} fj */
 async function addForgejo(page, fj) {
-  await page.getByRole('link', { name: 'Settings' }).click();
+  await goToHash(page, '#/settings');
   await page.getByRole('link', { name: 'Automatic backups' }).click();
   await expect(page.getByRole('heading', { name: 'Backups' })).toBeVisible();
   await page.getByLabel('Add a place to back up to').selectOption({ label: 'Forgejo / Gitea' });
@@ -70,14 +70,14 @@ test('backups go to a Forgejo server, only what changed is sent, and a wiped pho
     expect(posted.slice(1).flat()).not.toContain(photo);
 
     // The trace shows each request annai sent to the server.
-    await page.getByRole('link', { name: 'Trace' }).click();
+    await goToHash(page, '#/trace');
     await filterTrace(page, { kind: 'Web' });
     await expect(page.locator('.trace li', { hasText: 'plugin:storage-forgejo · POST' }).first()).toBeVisible();
 
     // This phone is wiped. The same place, set up again, brings everything back. What the place holds now:
     const had = fj.commits(REPO).length;
     const head = fj.commits(REPO)[0].sha;
-    await page.getByRole('link', { name: 'Settings' }).click();
+    await goToHash(page, '#/settings');
     await page.getByLabel('Type ERASE to confirm').fill('ERASE');
     await page.getByRole('button', { name: 'Erase now' }).click();
     await pastWelcome(page);
@@ -144,7 +144,7 @@ test('an owner and a repository left empty: Save and test lists the private repo
   const host = new URL(fj.origin).host;
   try {
     await openApp(page);
-    await page.getByRole('link', { name: 'Settings' }).click();
+    await goToHash(page, '#/settings');
     await page.getByRole('link', { name: 'Automatic backups' }).click();
     await page.getByLabel('Add a place to back up to').selectOption({ label: 'Forgejo / Gitea' });
     await page.getByRole('button', { name: 'Add', exact: true }).click();

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, pickProvider, savedBy, leaveSaved, fakeMicrophone, filterTrace, startTrip, writeEvent } from './helpers.js';
+import { openApp, waitForServiceWorker, pickProvider, savedBy, leaveSaved, fakeMicrophone, filterTrace, startTrip, writeEvent, openTalk } from './helpers.js';
 import { startGeminiServer } from '../fakes/gemini-server.js';
 
 // Gemini through its own API (G1), against the stand-in Gemini server on a port of its own: the catalog's Google Gemini
@@ -287,8 +287,7 @@ test('Google Search (G4): Shiori\'s request offers it; a grounded reply shows "F
     await expect(page.getByRole('heading', { level: 1, name: 'Google Gemini' })).toBeVisible();
     await expect(search).toBeDisabled();
     await expect(search).not.toBeChecked();
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Conversation' })).toBeVisible();
+    await openTalk(page);
     const before = s.bodies().length;
     await type(page, 'And tomorrow?');
     await expect.poll(() => s.bodies().length, { timeout: 30_000 }).toBeGreaterThan(before);

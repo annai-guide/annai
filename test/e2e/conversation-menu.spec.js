@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, startTrip, writeRecords, writeEvent, goToHash } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, startTrip, writeRecords, writeEvent, goToHash, atConversation, goHome, stuckTop } from './helpers.js';
 
 // "do you think we should have some way to let the user compact or clear the transcript / session manually?" (the user, 2026-10-23):
 // a menu on the Conversation screen, Summarize now and Start fresh (spec §6.5, §16.2).
@@ -14,9 +14,7 @@ async function setUp(page, origin) {
   await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   await page.goto('/#/trips');
-  await page.getByLabel('Trip name').fill('Big Sur');
-  await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+  await startTrip(page, 'Big Sur');
 }
 
 /** Types one message and waits for her answer to it. @param {import('@playwright/test').Page} page @param {string} text @param {number} n her lines so far, after this one */
@@ -24,7 +22,7 @@ async function say(page, text, n) {
   await page.getByRole('button', { name: 'Type', exact: true }).click();
   await page.getByLabel('Message to Shiori').fill(text);
   await page.getByRole('button', { name: 'Send', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+  await atConversation(page);
   await expect(page.locator('.convo .shiori p')).toHaveCount(n, { timeout: 20_000 });
   await expect(page.locator('.talk-label')).toHaveText('Tap to talk');
 }
@@ -137,7 +135,7 @@ test('the conversation menu (⋯) is a disclosure whose buttons say what they do
 
 test('the menu closes on Escape and on a tap elsewhere', async ({ page }) => {
   await openApp(page, '#/talk');
-  await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+  await atConversation(page);
   const toggle = page.getByRole('button', { name: 'Conversation menu', exact: true });
   const menu = page.getByRole('group', { name: 'Conversation menu' });
   await toggle.click();
@@ -149,7 +147,7 @@ test('the menu closes on Escape and on a tap elsewhere', async ({ page }) => {
   await expect(menu).toBeHidden();
   // At the click, never at the press: nothing moves under a finger still down (as the dock's box, fix pass 2).
   await toggle.click();
-  const at = /** @type {{ x: number, y: number }} */ (await page.getByRole('heading', { name: 'Conversation' }).boundingBox());
+  const at = /** @type {{ x: number, y: number }} */ (await page.locator('main p.empty').boundingBox()); // plain content: the empty conversation's note
   await page.mouse.move(at.x + 5, at.y + 5);
   await page.mouse.down();
   await page.waitForTimeout(100);
@@ -159,7 +157,7 @@ test('the menu closes on Escape and on a tap elsewhere', async ({ page }) => {
   // A press that brings no click (iOS, on plain content) closes it a moment after it ends (fix pass 3).
   await toggle.click();
   await page.evaluate(() => {
-    const el = /** @type {HTMLElement} */ (document.querySelector('main h1'));
+    const el = /** @type {HTMLElement} */ (document.querySelector('main p.empty'));
     for (const type of ['pointerdown', 'pointerup']) el.dispatchEvent(new PointerEvent(type, { bubbles: true, isPrimary: true, pointerType: 'touch' }));
   });
   await expect(menu).toBeHidden({ timeout: 2000 });
@@ -170,7 +168,7 @@ test('the header: ← goes home, the name goes to Details, the ⋯ is there', as
   await openApp(page);
   const id = await startTrip(page, 'Big Sur');
   await goToHash(page, `#/trip/${id}/talk`);
-  await expect(page.getByRole('heading', { level: 1, name: 'Conversation' })).toBeVisible(); // hidden, for stage 8
+  await atConversation(page);
   const head = page.locator('.talk-head');
   await expect(head.getByRole('button', { name: 'Conversation menu', exact: true })).toBeVisible();
   await head.getByRole('link', { name: 'Big Sur' }).click();
@@ -187,7 +185,7 @@ test('a trip with plan rows shows "Next: 13:00 Lunch", which opens the Itinerary
   await goToHash(page, `#/trip/${none}/talk`);
   await expect(page.locator('.talk-head')).toBeVisible();
   await expect(page.locator('.next-line')).toHaveCount(0);
-  await page.getByRole('link', { name: 'Trips', exact: true }).first().click();
+  await goHome(page);
   const id = await startTrip(page, 'Big Sur');
   await writeRecords(page, id, { write: {
     '/plan/lunch.json': { id: 'lunch', title: 'Lunch', fixed: true, start: { at: '2099-03-03T13:00:00Z', tz: 'UTC' } },
@@ -219,7 +217,7 @@ test('the header stays in view as the conversation scrolls', async ({ page }) =>
   const head = page.locator('.talk-head');
   await expect(head.getByRole('link', { name: 'Back to Trips' })).toBeInViewport();
   const top = await head.evaluate((el) => el.getBoundingClientRect().top);
-  const bar = await page.locator('header.topbar').evaluate((el) => el.getBoundingClientRect().bottom);
+  const bar = await stuckTop(page);
   expect(Math.abs(top - bar)).toBeLessThanOrEqual(2);
 });
 

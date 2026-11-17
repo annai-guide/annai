@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
-import { openApp, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, fakeMicrophone } from './helpers.js';
+import { openApp, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, fakeMicrophone, startTrip, openTalk, atConversation } from './helpers.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
 
 // Koe and Kokoro, K2: voice through the speech pipeline (docs/superpowers/specs/2026-10-19-koe-kokoro-design.md).
@@ -41,14 +41,11 @@ test("spoken: a live question gets \"checking\" aloud, then the answer aloud; a 
       await expect(page.getByLabel(`Add a model to ${role}`).locator('option', { hasText: model })).toHaveCount(0);
     }
     await page.goto('/#/trips');
-    await page.getByLabel('Trip name').fill('Big Sur');
-    await page.getByRole('button', { name: 'Start trip' }).click();
-    await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+    await startTrip(page, 'Big Sur');
     await page.locator('.voice-chip').click();
     await expect(page.locator('.voice-chip')).toHaveText('Voice on');
     // What the conversation's announcer says (fix pass 2, S2: the words heard, once they are in).
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
-    await expect(page.getByRole('heading', { name: 'Conversation' })).toBeVisible();
+    await openTalk(page);
     await page.evaluate(() => {
       const w = /** @type {any} */ (window);
       const announcer = /** @type {HTMLElement} */ (document.querySelector('main [aria-live="polite"]'));
@@ -76,7 +73,7 @@ test("spoken: a live question gets \"checking\" aloud, then the answer aloud; a 
     expect(koe).toContain('Did you lock the car?');
     // Chatter no longer ends her turn, so the words heard come as it ends: their lines are announced a moment after her last.
     await expect.poll(() => page.evaluate(() => /** @type {any} */ (window).announced.filter((/** @type {string} */ t) => /^Heard/.test(t)).length), { timeout: 10_000 }).toBe(2);
-    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Conversation' }).click();
+    await atConversation(page);
     await expect(page.locator('.convo .you:not(.quiet) p')).toHaveText(['Is Nepenthe open now?']);
     await expect(page.locator('.convo .you.quiet p')).toHaveText('Did you lock the car?');
     await expect(page.locator('.convo .you.quiet .line-label')).toHaveText('heard · judged not for her');

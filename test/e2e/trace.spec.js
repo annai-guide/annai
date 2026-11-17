@@ -1,12 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { openApp, filterTrace } from './helpers.js';
+import { openApp, filterTrace, startTrip, goToHash } from './helpers.js';
 
 test('the trace shows what happened, newest first, and filters by type', async ({ page }) => {
   await openApp(page);
-  await page.getByLabel('Trip name').fill('Trace trip');
-  await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('heading', { name: 'Trace trip' })).toBeVisible();
-  await page.getByRole('link', { name: 'Trace' }).click();
+  await startTrip(page, 'Trace trip');
+  await goToHash(page, '#/trace');
   await expect(page.getByRole('heading', { name: 'Trace' })).toBeVisible();
   await expect(page.getByText('/trip.json').first()).toBeVisible();
   await page.getByLabel('Type contains').fill('scope.create');
@@ -20,9 +18,7 @@ test('the trace shows what happened, newest first, and filters by type', async (
 
 test('a read that failed and tried again by itself is a line in the Trace under Errors, "read: …", in the device log', async ({ page }) => {
   await openApp(page);
-  await page.getByLabel('Trip name').fill('Trace trip');
-  await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('heading', { name: 'Trace trip' })).toBeVisible();
+  await startTrip(page, 'Trace trip');
   // As Live and the push mirror write it when a read fails and is tried again by itself.
   await page.evaluate(async () => {
     const load = (/** @type {string} */ url) => import(url);
@@ -43,9 +39,7 @@ test('a read that failed and tried again by itself is a line in the Trace under 
 test('a read that failed with the write of its Trace line failing too still leaves its line, once, and no card', async ({ page }) => {
   await page.clock.install(); // the page's own timers: the line is tried again a minute later
   await openApp(page);
-  await page.getByLabel('Trip name').fill('Trace trip');
-  await page.getByRole('button', { name: 'Start trip' }).click();
-  await expect(page.getByRole('heading', { name: 'Trace trip' })).toBeVisible();
+  await startTrip(page, 'Trace trip');
   await page.evaluate(() => {
     const real = IDBDatabase.prototype.transaction;
     Object.assign(window, { rvFail: true, rvReads: 0, rvWrites: 0 });
