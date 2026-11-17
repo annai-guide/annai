@@ -313,9 +313,15 @@ async function threeModels(page) {
   return { main, order };
 }
 
-test('Roles: a model\'s name links to its page; the up and down buttons are gone', async ({ page }) => {
+test('Roles: a model\'s name links to its page; the up and down buttons are gone until a handle is tapped', async ({ page }) => {
   const { main } = await threeModels(page);
-  await expect(main.getByRole('button', { name: /Move Endpoint a1 \/ a1 (up|down)/ })).toHaveCount(0);
+  // The buttons are named "Move up" and "Move down" (inside the group "Move <model>"): none is there, and the same locator finds them once a handle is tapped.
+  const moves = main.getByRole('button', { name: /^Move (up|down)$/ });
+  await expect(moves).toHaveCount(0);
+  await main.getByRole('button', { name: /^Reorder Endpoint a2 \/ a2/ }).click();
+  await expect(moves).toHaveCount(2);
+  await page.keyboard.press('Escape');
+  await expect(moves).toHaveCount(0);
   await main.getByRole('link', { name: 'a2' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'a2' })).toBeVisible();
   await expect(page.getByLabel('Provider model id')).toHaveValue('a2');
