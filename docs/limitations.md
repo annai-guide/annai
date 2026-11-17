@@ -885,6 +885,12 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the screen is drawn fresh from the inbox and knows nothing of an add still running from its earlier drawing.
 - **Revisit when:** the next version: the share screen draws an add in progress (its status, the buttons off) until it ends.
 
+### Some unit tests on a scaled clock fail when the host is loaded far past its CPUs
+- **Kind:** deferred.
+- **What the user sees:** nothing in annai. For whoever runs `npm run check`: on a host loaded far past its CPUs (load 130 to 200 on 32 CPUs), a few tests that run time faster than real (a 200 or 250 ms second) can fail on a wait or a race and pass when run again: in test/unit/live-mic.test.js the sleep note "arriving while a note for the user is in flight" (3 of 80 runs after its neighbours, 0 of 176 alone: the session closed for quiet on its 2 s spell before the note went in), the first non-stop-sound test (its 12 s wait), and four more on the scaled clock; gemini-live.test.js:86 and live-drive2.test.js:158 once each. At the host's usual load they pass.
+- **Why:** test timing, not the product: the scaled clock makes a session's spells a fraction of real time while the work around them still takes real time. live-mic-flake moved the ones that failed under ordinary load to the real clock; the rest failed only under extreme load.
+- **Revisit when:** the next version, or sooner if `npm run check` fails at the host's usual load (under about 70): the same real-clock line (`agent: { secondMs: 1000 }`) or a fix to the sleep-note test's race.
+
 ### Driving can miss a card that arrives while it opens
 - **Kind:** deferred.
 - **What the user sees:** a card or a reminder of Shiori's that arrives in the instant Driving is opening (between the read of the latest card and the subscription to new ones, src/ui/screens/drive.js:112-126) is not shown there until the next one arrives. Older than stage 8; the gap runs from the store read through the settings read that drawing the card waits for (drive.js `latestCard`, `eventCard`), not measured.

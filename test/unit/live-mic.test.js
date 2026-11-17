@@ -20,10 +20,16 @@ async function feedWhile(k, stop, amp = 0.1) {
   }
 }
 
+/**
+ * The music's 120 s of sound, made once as the file loads: made on every feedOn call, it took 0.9 to 1.9 s of a loaded host's event loop (84 to
+ * 96 ms on a quiet one), which stalled the session as a note went in. Read only: the detector copies each frame into its own, the resampler reads.
+ */
+const MUSIC = hum(120);
+
 /** Sound with no gap in it (music, talk radio), fed 5 times faster than it plays, until stop() says so. @param {any} k @param {() => boolean} stop */
 async function feedOn(k, stop) {
   if (k.platform.mic.isOpen()) k.platform.mic.feed(quiet(0.3), RATE);
-  const pcm = hum(120);
+  const pcm = MUSIC;
   for (let i = 0; i < pcm.length && !stop(); i += 1600) {
     if (k.platform.mic.isOpen()) k.platform.mic.feed(pcm.subarray(i, i + 1600), RATE);
     await wait(20);
@@ -41,7 +47,9 @@ test('a user turn beginning after the quiet spell ran out on one wakes Kokoro on
     let done = false;
     const feeding = feedOn(k, () => done); // sound that never stops: the spell runs out in the first turn, and a second begins at its cap
     try {
-      await soon(async () => (await kokoroWakes(k, /non-stop sound/)).length === 1, 8000);
+      // The wake comes about 6.5 s in on a quiet host (the turn's cap, then the second turn), 7 to 16 s with 16 copies of this file beside 128 CPU
+      // hogs on a busy host: 8 s left 1.5 s on a quiet one.
+      await soon(async () => (await kokoroWakes(k, /non-stop sound/)).length === 1, 20_000);
       await wait(1500); // more of it: the same stretch
     } finally {
       done = true;
@@ -394,7 +402,15 @@ test("Kokoro's sleep note, late, to a session that closed in a gap meanwhile is 
 
 test('two urgent notes sent before any answer: the second reply is said whole over the music (re-review 3)', async () => {
   const { updateAppSettings } = await import('../../src/core/settings.js');
-  const k = await liveKit([{ heard: 'la la' }, { said: 'Turn left in two hundred meters.', audio: tone(1.5) }, { said: 'Turn right now.', audio: tone(1.5) }, { heard: 'la' }]);
+  // The stand-in answers the first note at once and cuts that reply for the second, which makes the cut; the second reply comes a model's latency
+  // later (Gemini's first sound: 0.75 to 1.4 s after a turn, design §10.8; the quickest here). Real Gemini's own cut, and the 0.97 to 1.09 s gap
+  // after it, were recorded for a reply begun just after a text went in; two notes in the same tick gave it one turn and no cut (13 of 13). With no
+  // delay the stand-in sent both replies in one burst, and only a starved CPU parted them: then the cut freed the microphone, and the music cut the second.
+  const k = await liveKit([{ heard: 'la la' }, { said: 'Turn left in two hundred meters.', audio: tone(1.5) }, { said: 'Turn right now.', audio: tone(1.5), delayMs: 750 }, { heard: 'la' }], {
+    // The session's clock is the real one, as her voice's is (streamSpeed 1): at the kit's 125 ms a second its 8 s bounds (the urgent mark with
+    // no sound of hers, the silence watchdog) are 1 s, of which the reply's latency leaves 250 ms, and a starved CPU's stall of 1 s took all.
+    agent: { secondMs: 1000 },
+  });
   try {
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
     k.agent.live.answerSeconds = 40;
@@ -415,6 +431,86 @@ test('two urgent notes sent before any answer: the second reply is said whole ov
     }
     const right = (await k.events(['out.speak'])).find((e) => /Turn right/.test(JSON.stringify(e)));
     assert.equal(right.data.cut, undefined, 'not cut by the music');
+    const replies = await k.events(['live.reply']);
+    assert.equal(replies[0]?.data.cut, true, `the first reply was cut by the second note (else this does not reach the cut): ${JSON.stringify(replies.map((e) => e.data))}`);
+  } finally {
+    await k.done();
+  }
+});
+
+test("two urgent notes, the first reply cut by the second, which is never answered: the microphone hears again at the note's cap, not the ceiling", async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  // The cut reply is no sound of hers for the second note: the mark runs 8 s from the cut (as the cut comes with the note, its cap with no sound), not to the 20 s ceiling.
+  const k = await liveKit([{ heard: 'la la' }, { said: 'Turn left in two hundred meters.', audio: tone(1.5) }, { silent: true }, { heard: 'la' }], {
+    // The cap is 4 s here and the ceiling 10 s: each check below is 3 s or more from both, room for a starved CPU's stalls (up to 1.7 s seen).
+    agent: { secondMs: 500 },
+  });
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.live.answerSeconds = 40;
+    await k.voice.unlock();
+    k.voice.route = async () => 'car';
+    k.platform.streamSpeed = 1;
+    k.agent.tap();
+    await until(() => k.agent.live.listening, 3000);
+    let done = false;
+    const feeding = feedOn(k, () => done);
+    try {
+      await until(() => k.agent.live.view.name === 'hearing', 3000);
+      const t0 = Date.now();
+      await Promise.all([k.agent.live.note('Say now: turn left in 200 m.', 'immediate'), k.agent.live.note('Say now: turn right.', 'immediate')]);
+      await wait(500);
+      assert.notEqual(k.agent.live.view.name, 'hearing', 'deaf while the second reply may come');
+      // Past the ceiling, so a mark held to it fails on the check below, by its time.
+      await until(() => k.agent.live.view.name === 'hearing', 15_000).catch(() => assert.fail('the microphone stayed deaf'));
+      assert.ok(Date.now() - t0 < 7000, `heard again ${Date.now() - t0} ms after the notes: the ceiling, not the cap`);
+      const replies = await k.events(['live.reply']);
+      assert.equal(replies[0]?.data.cut, true, `the first reply was cut by the second note (else this does not reach the cut): ${JSON.stringify(replies.map((e) => e.data))}`);
+    } finally {
+      done = true;
+      await feeding;
+    }
+  } finally {
+    await k.done();
+  }
+});
+
+test("a line the user sends late in an urgent reply, past the note's own cap: the provider cuts the reply, and the answer is said whole over the music", async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  // The cut gives the mark 8 s from the cut, never past 20 s from the note: a mark re-capped at the note's own 8 s (4 s here) was over at once,
+  // the music took the microphone, and the provider dropped the answer to the line (a reply long enough to be cut 5 s in; the answer 0.8 s later).
+  const k = await liveKit([{ heard: 'la la' }, { said: 'Turn left in two hundred meters, then keep right.', audio: tone(8) }, { said: 'Yes, the next exit is open.', audio: tone(1), delayMs: 800 }, { heard: 'la' }], {
+    // The cap is 4 s here and the ceiling 10 s; the line goes in 5 s after the note, past the cap and 5 s short of the ceiling, room for a starved
+    // CPU's stalls (up to 1.9 s seen). Her reply's turn stays open as long as its sound plays (pace 1), so the line cuts it.
+    pace: 1,
+    agent: { secondMs: 500 },
+  });
+  try {
+    await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
+    k.agent.live.answerSeconds = 40;
+    await k.voice.unlock();
+    k.voice.route = async () => 'car';
+    k.platform.streamSpeed = 1;
+    k.agent.tap();
+    await until(() => k.agent.live.listening, 3000);
+    let done = false;
+    const feeding = feedOn(k, () => done);
+    try {
+      await until(() => k.agent.live.view.name === 'hearing', 3000);
+      const t0 = Date.now();
+      await k.agent.live.note('Say now: turn left in 200 m, then keep right.', 'immediate');
+      await until(() => k.agent.live.view.name === 'speaking', 3000);
+      await wait(Math.max(0, 5000 - (Date.now() - t0)));
+      k.agent.send('Is the next exit open?');
+      await soon(async () => (await k.events(['out.speak'])).some((e) => /next exit is open/.test(JSON.stringify(e))), 6000);
+    } finally {
+      done = true;
+      await feeding;
+    }
+    const replies = await k.events(['live.reply']);
+    assert.equal(replies[0]?.data.cut, true, `her urgent reply was cut by the user's line: ${JSON.stringify(replies.map((e) => e.data))}`);
+    const answer = (await k.events(['out.speak'])).find((e) => /next exit is open/.test(JSON.stringify(e)));
+    assert.equal(answer.data.cut, undefined, 'the answer to the line is not cut by the music');
   } finally {
     await k.done();
   }
@@ -422,7 +518,10 @@ test('two urgent notes sent before any answer: the second reply is said whole ov
 
 test('an urgent note and an appended one from one Kokoro reply: the urgent is said whole first, the other after it (re-review 3)', async () => {
   const { updateAppSettings } = await import('../../src/core/settings.js');
-  const k = await liveKit([{ heard: 'la la' }, { said: 'Turn left in two hundred meters.', audio: tone(1.5) }, { said: 'The exit after is closed.', audio: tone(0.6) }, { heard: 'la' }]);
+  const k = await liveKit([{ heard: 'la la' }, { said: 'Turn left in two hundred meters.', audio: tone(1.5) }, { said: 'The exit after is closed.', audio: tone(0.6) }, { heard: 'la' }], {
+    // The session's clock real, as her voice's is: at the kit's 125 ms a second its 8 s bounds are 1 s, and a stall that long lost the urgent reply.
+    agent: { secondMs: 1000 },
+  });
   try {
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
     k.agent.live.answerSeconds = 40;
@@ -524,7 +623,11 @@ test('talk radio whose dips are shorter than her verdict: a late turn whose answ
 for (const music of [false, true]) {
   test(`a closed session, ${music ? 'music' : 'quiet'}: an urgent note and an appended one from one Kokoro reply, the urgent goes in first and is said whole (re-review 3)`, async () => {
     const { updateAppSettings } = await import('../../src/core/settings.js');
-    const k = await liveKit([{ said: 'Turn left in two hundred meters.', audio: tone(1.5) }, { said: 'The exit after is closed.', audio: tone(0.6) }, { heard: 'la' }]);
+    const k = await liveKit([{ said: 'Turn left in two hundred meters.', audio: tone(1.5) }, { said: 'The exit after is closed.', audio: tone(0.6) }, { heard: 'la' }], {
+      // The session's clock real, as her voice's is: at the kit's 125 ms a second, a starved CPU stalled 1.2 to 1.7 s making the music's sound
+      // (feedOn) as the note went in, its 8 s silence watchdog ran out (1 s here), and a fresh session got the note again: the urgent line was lost.
+      agent: { secondMs: 1000 },
+    });
     try {
       await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
       k.agent.live.answerSeconds = 40;
@@ -938,7 +1041,12 @@ for (const [how, o] of /** @type {[string, any][]} */ ([['typed', {}], ['a choic
 test('an urgent note answered in two turns, the second with no word yet as the first ends: the second is said whole over the music too (fix 5)', async () => {
   const { updateAppSettings } = await import('../../src/core/settings.js');
   // In real time (pace 1): the second turn's sound comes over 1.2 s, its first word 0.9 s in, after the first has played out.
-  const k = await liveKit([{ heard: 'la la' }, { said: 'Turn left now.', audio: tone(0.3), andThen: true }, { said: 'Then keep right for the bridge.', audio: tone(1.2), saidAt: 900 }], { pace: 1 });
+  const k = await liveKit([{ heard: 'la la' }, { said: 'Turn left now.', audio: tone(0.3), andThen: true }, { said: 'Then keep right for the bridge.', audio: tone(1.2), saidAt: 900 }], {
+    pace: 1,
+    // The session's clock real, as her voice's is: her second part ends 2.4 s after the note, and at the kit's 125 ms a second the mark's 20 s
+    // ceiling is 2.5 s, so 100 ms of lateness on a starved CPU ended the mark and the music cut the part (3 of 176 loaded runs).
+    agent: { secondMs: 1000 },
+  });
   try {
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
     k.agent.live.answerSeconds = 40;
@@ -971,8 +1079,13 @@ test('an urgent note answered with words and a tool she speaks after: the microp
   const k = await liveKit([
     { heard: 'la la' },
     { said: 'Turn left now.', audio: tone(0.3), tool: { name: 'list', args: { path: '/trip/' } }, andThen: true },
-    { said: 'Then keep right for the bridge.', audio: tone(0.6), delayMs: 500 }, // inside the 8-second wait (a second is 125 ms here): a later one finds the microphone listening again
-  ], { pace: 1 });
+    { said: 'Then keep right for the bridge.', audio: tone(0.6), delayMs: 500 }, // inside the 8-second wait: a later one finds the microphone listening again
+  ], {
+    pace: 1,
+    // The session's clock real, as her voice's is: at the kit's 125 ms a second the 8-second wait is 1 s, and the part comes 0.8 s in, so a
+    // starved CPU's stall ended the wait before it (1 of 176 loaded runs: "still waiting after 6000 ms").
+    agent: { secondMs: 1000 },
+  });
   try {
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
     k.agent.live.answerSeconds = 40;
