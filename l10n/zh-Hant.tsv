@@ -1189,7 +1189,7 @@ upnba7	ok	From	出發地	src/ui/format.js:172	context: booking; Note: Taiwan wor
 1jn3vqu	ok	Nights	住宿晚數	src/ui/format.js:173	Note: Taiwan wording; how many nights a stay is.
 ean645	ok	Travellers	旅客	src/ui/format.js:173	Note: Taiwan wording; the people a flight or train booking is for.
 vpb928	ok	Guests	入住人數	src/ui/format.js:173	Note: Taiwan wording; the people a stay is booked for.
-1ozvdw3	ok	Car	汽車	src/ui/format.js:174	context: booking; Note: a booking's detail: the car, as people label it, on a booking that is not a train or a rental (a flight, a stay, an event); a plain word, not a coach number or the kind of booking.
+1ozvdw3	ok	Car	車輛	src/ui/format.js:174	context: booking; Note: a booking's detail: the car, as people label it, on a booking that is not a train or a rental (a flight, a stay, an event); a plain word, not a coach number or the kind of booking.
 1v8ms9v	ok	Train	車次	src/ui/format.js:174	context: booking; Note: Taiwan wording; a booking's detail: the train's number.
 3uyuz4	ok	Drop-off	還車	src/ui/format.js:174	Note: Taiwan wording; where and when a rental car goes back.
 4f76ga	ok	Notes	備註	src/ui/format.js:174	Note: Taiwan wording; notes on a booking or a plan item.

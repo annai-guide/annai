@@ -790,7 +790,7 @@ y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127
 1xwbser	ok	It is turned off.	已关闭。	src/core/llm/service.js:305	Note: said of a plugin named before it on the screen.
 1pqsrb3	ok	It isn't running. Look at it in Settings → Plugins.	没有运行。请在设置 → 插件中查看。	src/core/llm/service.js:307	Note: said of a plugin named before it on the screen.
 sejc5h	ok	{0} was switched off after errors.	{0} 因多次出错已被关闭。	src/core/llm/service.js:322	{0} = shown
-xzxdhp	ok	The plugin didn't provide a model provider.	该插件没有提供模型提供商。	src/core/llm/service.js:323	Note: said of a plugin.
+xzxdhp	ok	The plugin didn't provide a model provider.	该插件不含模型提供商。	src/core/llm/service.js:323	Note: said of a plugin.
 2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	该插件不是 annai 官方的。请从原来的来源重新安装。	src/core/llm/service.js:402	
 1k9wkd0	ok	The plugin it names doesn't provide models, so it wasn't installed.	指定的插件不提供模型，所以没有安装。	src/core/llm/service.js:411	Note: said after the provider's name ("OpenRouter: …"); the plugin its record names, with no 它.
 3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:70	{0} = p.title
@@ -1189,7 +1189,7 @@ upnba7	ok	From	出发地	src/ui/format.js:172	context: booking; Note: a booking'
 1jn3vqu	ok	Nights	入住晚数	src/ui/format.js:173	Note: how many nights a stay is.
 ean645	ok	Travellers	乘客	src/ui/format.js:173	Note: the people a flight or train booking is for.
 vpb928	ok	Guests	入住人数	src/ui/format.js:173	Note: the people a stay is booked for.
-1ozvdw3	ok	Car	汽车	src/ui/format.js:174	context: booking; Note: a booking's detail: the car, as people label it, on a booking that is not a train or a rental (a flight, a stay, an event); a plain word, not a coach number or the kind of booking.
+1ozvdw3	ok	Car	车辆	src/ui/format.js:174	context: booking; Note: a booking's detail: the car, as people label it, on a booking that is not a train or a rental (a flight, a stay, an event); a plain word, not a coach number or the kind of booking.
 1v8ms9v	ok	Train	车次	src/ui/format.js:174	context: booking; Note: a booking's detail: the train's number.
 3uyuz4	ok	Drop-off	还车	src/ui/format.js:174	Note: where and when a rental car goes back.
 4f76ga	ok	Notes	备注	src/ui/format.js:174	Note: notes on a booking or a plan item.
