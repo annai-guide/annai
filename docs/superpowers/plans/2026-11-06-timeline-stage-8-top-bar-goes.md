@@ -1,10 +1,10 @@
 # Timeline stage 8: the top bar goes (the plan to build, 2026-11-16)
 
-> Written 2026-11-16 in place of the 2026-11-06 sketch at this path, against main c765b6a6 (line numbers are that commit's, checked by
+> Written 2026-11-16 in place of the 2026-11-06 sketch at this path, against main e36ae0d2 (line numbers are that commit's, checked by
 > reading). Nothing here is built. The build waits on the user's phone look of stages 4 and 7; the e2e task's first half does not (Task 2A).
 >
 > Fix pass 1, 2026-11-16: the corrections of the plan's spec check, each verified against the code first. Main's src, test, sw.js and
-> index.html are still c765b6a6's, so the line numbers hold; the booking-say-r4 branch (bd51850b, not on main yet) edits base.css, booking.js
+> index.html are still e36ae0d2's, so the line numbers hold; the booking-say-r4 branch (9233f9c4, not on main yet) edits base.css, booking.js
 > (3 lines out above :120), file.js (a comment) and plan.js (near :156) as well as two e2e specs: find each place by what it says if a line
 > has moved. Paths without a directory are in src/ui/, src/ui/screens/ or test/e2e/ as the step says; `live.js` is src/core/live/live.js and
 > `main.js` is src/app/main.js.
@@ -320,7 +320,7 @@ screen moves:
 ### Step 8: The suite meets the shell (Task 2B)
 
 Merge main (with Task 2A in it, and whatever else has merged since this plan) into `stage8`. The recount and the 2B table are of main
-c765b6a6; branches merged after it add lines (booking-say-r4 already edits plan.spec.js and phone-fixes.spec.js, both on 2A's list).
+e36ae0d2; branches merged after it add lines (booking-say-r4 already edits plan.spec.js and phone-fixes.spec.js, both on 2A's list).
 
 - [ ] Rerun the recount's greps (below, "How the recount was made") on the merged main. Every hit the recount didn't have goes into the
   2B list or, if it only reads the bar's clicks, is converted as 2A converts them; write the additions in the report.
@@ -332,7 +332,7 @@ c765b6a6; branches merged after it add lines (booking-say-r4 already edits plan.
 
 ## Task 2: The e2e rewrite
 
-### The recount (main c765b6a6, 2026-11-16; 791 tests in 92 files of test/e2e)
+### The recount (main e36ae0d2, 2026-11-16; 791 tests in 92 files of test/e2e)
 
 Measured with `grep` on test/e2e/*.js; the commands are under "How the recount was made", below the table, for Step 8's rerun.
 "Keeps working" means the shell still answers that address.
@@ -350,7 +350,7 @@ Measured with `grep` on test/e2e/*.js; the commands are under "How the recount w
 | `startTrip(` calls | 160, and 6 definitions (helpers.js and 5 local copies) | 36 | the form goes |
 | the form used inline ("Start trip" clicked) | 32 | 20 | the form goes |
 
-Against the earlier counts (progress, main 5e2c6565: 230 `#/trips`, 88 `#/talk`, 25 `#/now`, 304 h1 lines, 54 top-bar clicks, 153 `startTrip`
+Against the earlier counts (progress, main 0e567c5c: 230 `#/trips`, 88 `#/talk`, 25 `#/now`, 304 h1 lines, 54 top-bar clicks, 153 `startTrip`
 calls; the spec's 2026-11-06: 133, 68, 22, 98 h1 assertions, 43 clicks, 130): `#/trips`, `#/talk` and h1 lines need no rewrite, since the
 addresses stay and one h1 goes; the work is the bar, the form, Now and the hidden heading.
 
@@ -490,7 +490,7 @@ changes no shipped file, so the app and its coverage are as they were, whatever 
 3. Step 8 merges main into `stage8`; the whole suite's failures are the 2B list, plus what Step 8's rerun of the recount finds. Both browsers,
    `--retries=2`.
 4. **2A's merge order against other branches.** 2A touches about 48 spec files, so any branch that edits one of them conflicts with it, and
-   whichever merges second resolves it. Known now (`git diff --stat main...<branch> -- test/e2e`): booking-say-r4 (bd51850b, not on main yet)
+   whichever merges second resolves it. Known now (`git diff --stat main...<branch> -- test/e2e`): booking-say-r4 (9233f9c4, not on main yet)
    edits plan.spec.js (58 lines) and phone-fixes.spec.js (4 lines); model-provider, nearby-lighter and dock-box have no e2e change. As this
    is written round 4 has its commit and 2A has none, so the cheaper order is round 4 first and 2A taking main in before its own review,
    rerunning plan.spec.js and phone-fixes.spec.js in both browsers; in the other order round 4 does the same. The order is chief's call (the main session asks

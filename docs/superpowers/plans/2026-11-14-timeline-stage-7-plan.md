@@ -1,10 +1,10 @@
 # Timeline stage 7: the plan to build (2026-11-14)
 
-> Copied into the repo on 2026-11-14 from the project's working notes, as the builder started stage 7. Line numbers are main 5e2c6565's.
+> Copied into the repo on 2026-11-14 from the project's working notes, as the builder started stage 7. Line numbers are main 0e567c5c's.
 
 This is the builder's plan. It replaces docs/superpowers/plans/2026-11-06-timeline-stage-7-opening-and-no-trip.md and section 4 of
 the re-plan of 2026-11-14 (the project's working notes, outside the repo). It is built from the re-plan, its spec check and the user's three answers of
-2026-11-14. Code references are main 5e2c6565, checked by reading. Nothing here is built.
+2026-11-14. Code references are main 0e567c5c, checked by reading. Nothing here is built.
 
 > For the builder: superpowers:subagent-driven-development or superpowers:executing-plans, task by task, `- [ ]` steps.
 

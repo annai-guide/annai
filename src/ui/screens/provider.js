@@ -44,7 +44,7 @@ export const freeTierLabel = (freeTier, pluginName) => t`This key is on the free
 /**
  * Whether an ability's own address lets go of what the provider holds for it first, with the old address and key: the turns a protocol
  * keeps, and the photo uploads where it deletes them and the ability has the switch for them. Not an ability that can delete uploads but has
- * no switch (OpenAI's Chat Completions): letting go there would delete the kept turns of the provider's other abilities (6a986115).
+ * no switch (OpenAI's Chat Completions): letting go there would delete the kept turns of the provider's other abilities (2f467adc).
  * @param {{ keeps?: unknown, deleteUploadRequest?: unknown }} type @param {boolean} uploadsSwitch whether the ability shows the uploads switch
  */
 export const releasesAtAddress = (type, uploadsSwitch) => Boolean(type.keeps) || (Boolean(type.deleteUploadRequest) && uploadsSwitch);

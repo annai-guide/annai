@@ -1088,7 +1088,7 @@ test("an ability's own address lets go first of what its provider holds for it: 
   const responses = { keeps: { days: 30 } };
   const anthropicMessages = {};
   assert.equal(releasesAtAddress(chatCompletions, true), true, "OpenRouter's chat: its uploads are deleted at the old address, with the old key");
-  assert.equal(releasesAtAddress(chatCompletions, false), false, "OpenAI's Chat Completions has no switch: its address must not delete the Responses ability's kept turns (6a986115)");
+  assert.equal(releasesAtAddress(chatCompletions, false), false, "OpenAI's Chat Completions has no switch: its address must not delete the Responses ability's kept turns (2f467adc)");
   assert.equal(releasesAtAddress(responses, false), true, 'turns kept at the old address');
   assert.equal(releasesAtAddress(responses, true), true);
   assert.equal(releasesAtAddress(anthropicMessages, true), false, 'a type that keeps nothing and deletes nothing');

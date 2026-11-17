@@ -1,7 +1,7 @@
 # Plan: the loop records when a turn of Shiori's ends (route A, second step)
 
-2026-11-14. Revised the same day after its spec check, the user's two answers to it, the merge of ask-owed (d84b9e39) and
-the docs round (0d6ed7a5). No real model was called. Copied into the repo by the build; where the build differs, its report
+2026-11-14. Revised the same day after its spec check, the user's two answers to it, the merge of ask-owed (ef833e39) and
+the docs round (1732caad). No real model was called. Copied into the repo by the build; where the build differs, its report
 says so.
 
 ## The goal, in the user's words
@@ -22,21 +22,21 @@ The user's picks (2026-11-14):
 
 ## Base, and what this plan was checked against
 
-- **Build on main d84b9e39** (ask-owed merged). Its src is cd354d02's, so the line numbers below hold; check them first.
-- I tried this plan in a scratch `git archive` of d84b9e39 (one sitting, not reviewed). Its src change, kept as a trial
-  diff with the plan's notes, applies cleanly to d84b9e39 and has the names this revision uses.
+- **Build on main ef833e39** (ask-owed merged). Its src is 093e637b's, so the line numbers below hold; check them first.
+- I tried this plan in a scratch `git archive` of ef833e39 (one sitting, not reviewed). Its src change, kept as a trial
+  diff with the plan's notes, applies cleanly to ef833e39 and has the names this revision uses.
   - **Unit suite, no test changed:** 5111 pass, 8 fail, 0 cancelled. The 8 are exactly the hand-built logs of §6.1. With
     the rewrites of §6.1 that I tried (agent-loop ×3, agent-owed ×1, agent-transcript ×3, the owed table and the one-Shiori
     asserts after it), those files pass.
   - **Shapes the build must bring back, run on the trial:**
-    - F2's 8 shapes and N1's 4 (the 5e7bca68 test, its loop widened to "a wait, then a sleep"): pass.
+    - F2's 8 shapes and N1's 4 (the ae00b9da test, its loop widened to "a wait, then a sleep"): pass.
     - L1, open and Stop (the docs round's probe): taken up with h-1; the next file is h-1's, and Undo takes it.
     - L1w and L1n: taken up.
     - L2's four variants: the file is h-1's, and Undo takes it.
     - The silent-twice shape: the write carries h-1.
-    - The move case: e17900f5's tests pass.
+    - The move case: 1fc7cba3's tests pass.
   - **Typecheck:** `tsc -p tsconfig.json` clean.
-  - **Shipped size:** 3268.9 KiB, against 3269.6 on d84b9e39 and a 3270 budget.
+  - **Shipped size:** 3268.9 KiB, against 3269.6 on ef833e39 and a 3270 budget.
   - **Not run:** tsconfig.test.json, e2e, a device.
 
 ## 1. The record
@@ -64,7 +64,7 @@ The user's picks (2026-11-14):
 written after the unsaid notes are shown, just before `if (silent && unanswered())` (2585):
 `if (ended && !(silent && unanswered())) await this.#log({ type: 'turn.end', actor: 'system', data: { wake: wakeId, handover: this.#handover } });`
 
-| # | How the turn ends (d84b9e39 line) | Written | Read after a reload | Hand-over (h-1) |
+| # | How the turn ends (ef833e39 line) | Written | Read after a reload | Hand-over (h-1) |
 |---|---|---|---|---|
 | 1 | A reply with no calls, the nudge declines (2501-2502) | `turn.end` (`ended = true` before `break`) | ended | answered |
 | 2 | `asleep` or `endTurn`, the nudge declines (2563) | `turn.end` | ended | answered |
@@ -147,7 +147,7 @@ sleep it answers. An older page reads them (§5), and their removal is Deferred 
 | The settle at a reply (:224-233, the sleep-in-the-reply rule: "it sleeps, or calls no tool") | **goes now**; only an old reply is read as an end, every one of them (§5) |
 | The `#reached = true` lines at `note` (:244) and `out.*` (:256); the Undo's clear of `#settled` (:279) | **go now** (the Undo's own `#handover` clear stays) |
 | The result rules (:374-389: `end`, the Stop's words without `cut`, `awake`, `cut` with its name table, the give-back, the "results in, no end → owed 'turn'" block) | **go now** |
-| The wake give-back and the `ask` exemption | gone already (e17900f5) |
+| The wake give-back and the `ask` exemption | gone already (1fc7cba3) |
 | `end: true` (`#runCall`), `awake: true` (`#runCall`, and `repair()`'s stamp, which the design check's trial took out) | **written one more version**, unread here; Deferred (§7) |
 | `cut` on results | **stays** (halves.js:1289 reads it) |
 | `#asked`, the "Not asleep" results, the nudge and `answeredAt`, `repair()` answering open calls, `#open` taking up a turn it repaired (loop.js:763), the error records, `#heardOwed`/`#koeCalls` | **stay**, untouched |
@@ -179,7 +179,7 @@ From the design check (§2, "What the record does not decide by itself"):
    the decline would end the turn but not what Koe owes (`#owes`).
 
 From the spec check's §3:
-1. **Base:** d84b9e39 (above).
+1. **Base:** ef833e39 (above).
 2. **`turn.end` and an error both:** they can come together and that's fine (row 10). Run: a Stop landing on the reply's
    `sleep` logs both, and the hand-over is answered, as main reads it. Start fresh logs both for Koe (read).
 3. **The restart words after a reply with no calls:** `waiting` '' (§2), which gives words annai already has.
@@ -211,14 +211,14 @@ From the spec check's §3:
 - **An older page** (a rollback, an old tab) reads a newer log as its own. `turn.end` is not in its `SAID`, so
   `Transcript.load` never lists it, and it ignores `endLogged`. It reads `end`, `awake`, `cut` and her words, which this
   version keeps writing (§3). What it misreads is exactly what this change fixes.
-- **Probe, not committed:** load logs this build's loop wrote (dumped from agentKit stores for rows 1-14) with d84b9e39's
-  `Transcript.load`. Pass: each reads as d84b9e39 reads its own log for the same turn.
+- **Probe, not committed:** load logs this build's loop wrote (dumped from agentKit stores for rows 1-14) with ef833e39's
+  `Transcript.load`. Pass: each reads as ef833e39 reads its own log for the same turn.
 
 ## 6. Tests
 
 ### 6.1 Rewritten to logs as the loop now writes them (every rewrite here was run on the trial)
 
-| Test (d84b9e39) | Change |
+| Test (ef833e39) | Change |
 |---|---|
 | agent-loop: "a typed message wakes Shiori…" (:20) | `types` ends with `'turn.end'` |
 | agent-loop: "killed after her tool calls came back…" (≈:836) | `endLogged: true` in the hand-built turn record |
@@ -226,7 +226,7 @@ From the spec check's §3:
 | agent-owed: "a hand-over, annai restarted while her card waited…" | `endLogged: true` in its `info` |
 | agent-transcript: "a msg.user with handed…" (:101) | Replies with `endLogged: true`, plus the sleep's result. The hand-over stays owed after the `sleep` reply; a `turn.end` with `handover: null` leaves it owed, and one with `'h-1'` answers it. Rename: "…until her turn's end record answers it" |
 | agent-transcript: `askAndSleep` and its two tests (:121-152) | The reply gets `endLogged: true`; `gaveWay: false` adds `turn.end` with `'h-1'`. Rename the first: "the hand-over is answered by her turn's end record, not by a sleep among her calls" |
-| agent-transcript: "annai restarted while her question waited…" (:154) | `killed(old)` adds `endLogged: true` unless `old`. Before the repair the result is now `['h-1', 'h-1', true]` ("under way: no end was logged"). The stored-`awake` assertion stays (one version). The R2 half uses `killed(true)` and is otherwise as e17900f5 wrote it |
+| agent-transcript: "annai restarted while her question waited…" (:154) | `killed(old)` adds `endLogged: true` unless `old`. Before the repair the result is now `['h-1', 'h-1', true]` ("under way: no end was logged"). The stored-`awake` assertion stays (one version). The R2 half uses `killed(true)` and is otherwise as 1fc7cba3 wrote it |
 | halves-transcript: the owed table (:413) and the one-Shiori asserts after it | See below |
 
 The owed table follows the design check's trial of it:
@@ -245,7 +245,7 @@ The owed table follows the design check's trial of it:
 
 ### 6.2 New (all in the build; the first four close the Deferred entries, §7)
 
-- **F2:** bring back 5e7bca68's agent-owed test (:191-228). Its silent replies widen to three (`[{ text }]`,
+- **F2:** bring back ae00b9da's agent-owed test (:191-228). Its silent replies widen to three (`[{ text }]`,
   `[{ toolCalls: [sleep] }]`, and N1's `[{ toolCalls: [{ name: 'wait', input: { seconds: 1 } }] }, { toolCalls: [sleep] }]`,
   as agent-owed's `silent` table), so `...reply` and the request indexes `1 + reply.length` / `2 + reply.length`. That is 12
   shapes: `[ask]` and `[ask, sleep]` × the three replies × the request failing (Try again) or cut (an open and back). Pass
@@ -259,7 +259,7 @@ The owed table follows the design check's trial of it:
   - Stop: the next line's write carries h-1, and Undo takes it back.
 - **Silent twice:** the design check's silent-again probe as a test, plain text and a bare sleep: the
   write after Try again carries h-1, and `undoHandover(..., 'h-1')` takes it back.
-- **The move case:** keep e17900f5's three (agent-owed's Kyoto move ×2, agent-transcript's R1 at the reader, the R2 half),
+- **The move case:** keep 1fc7cba3's three (agent-owed's Kyoto move ×2, agent-transcript's R1 at the reader, the R2 half),
   and add R1 at the reader with the record (`endLogged: true`, a `turn.end` with `'h-0'`, then the move's `meanwhile` wake:
   null).
 - **agent-turn-end.test.js, one row per way `#steps` ends** (§1's rows 1-14, with a hand-over h-1):
@@ -429,8 +429,8 @@ needed.
 ## 9. Size
 
 - **Src:** +34 −43 in the trial (transcript.js +16 −37, loop.js +16 −4, halves.js and fallback.js one line each). The
-  design check's trial was +31 −46 against 5e7bca68.
-- **Shipped size:** 3268.9 KiB against the 3270 budget (d84b9e39: 3269.6). Reword comments in place; don't add any. If the
+  design check's trial was +31 −46 against ae00b9da.
+- **Shipped size:** 3268.9 KiB against the 3270 budget (ef833e39: 3269.6). Reword comments in place; don't add any. If the
   build goes over, cut comments; don't raise the budget for comments.
 - **Tests:** about +350 −40 (§6.2 about 300 new, with the probes it carries over).
 - **E2e:** about +150.
@@ -444,7 +444,7 @@ needed.
 3. Run `node scripts/strings.mjs`, `npm run -s catalog`, then `npm run stamp` (after any src change). Then
    `systemd-run --scope --collect -q -p MemoryMax=16G -p MemorySwapMax=16G -- npm run check`. Then §8 in Docker, then §5's
    probe in scratch.
-4. Fail first: run on d84b9e39 the new tests that assert the record or a fix, and say which fail there. They are the table's
+4. Fail first: run on ef833e39 the new tests that assert the record or a fix, and say which fail there. They are the table's
    `turn.end` and hand-over columns, F2 with N1, L1, L2, the silent-card shape, and Koe's `turn.end` at the switch. The
    old-log, R1 and R2 tests pass on both.
 5. Review and a Haiku second opinion after the build. No real-model run (§8).
