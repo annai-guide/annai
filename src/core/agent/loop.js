@@ -479,8 +479,8 @@ export class Agent {
   /** Every hand-over the turn running took, oldest first (ToolCall.handovers). @type {string[]} */
   #handovers = [];
   /**
-   * What the running turn did (Half.ended). answeredAt: how often she had reached the user when they last answered her question; that line is owed a reply
-   * while she hasn't reached them since (#answerAsk).
+   * What the running turn did (Half.ended). answeredAt: how often she had reached the user when they last answered her question, or typed into her wait or
+   * the listening after her line; that line is owed a reply while she hasn't reached them since (#answerAsk, #answer).
    */
   #facts = { finalText: '', told: false, slept: false, closed: false, spoke: false, aloud: false, wrote: false, answeredAt: /** @type {number | null} */ (null), watched: false, kinds: /** @type {string[]} */ ([]) };
   /** The user stopped the running turn (a tap, or the sign's Stop), not annai opening another conversation. */
@@ -2281,8 +2281,8 @@ export class Agent {
     };
     const owes = () => notes.length > 0 || wrote;
     /**
-     * The user's own words wait for an answer: their message, or their answer to her question that nothing she has made reached them since
-     * (unless the turn told the other half), or what they wrote in Koe's wait.
+     * The user's own words wait for an answer: their message, or their answer to her question or a line they typed into her wait, that nothing she
+     * has made reached them since (unless the turn told the other half), or what they wrote in Koe's wait.
      */
     const unanswered = () => wrote || ((theirs || this.#facts.answeredAt === this.#reached) && !this.#facts.told);
     /**
@@ -3486,12 +3486,12 @@ export class Agent {
   /**
    * What her question got, as its result. Their answer (a tap, typing, speech) is a line of theirs she owes a reply to, as one that joins her turn is: owed
    * until she reaches them again (spec §7.1). Her question put something up, so what says so is this count, not that nothing has reached them since her
-   * turn began. A word said into a wait or after her line may be no one's (owesAnswer), so those are not.
+   * turn began. A word said into a wait or after her line may be no one's (owesAnswer), so those are not; a typed one is theirs wherever it came (#answer).
    * @param {Got} got @param {any} call
    */
   async #answerAsk(got, call) {
     const result = await this.#answer('', got, call, '');
-    if (got.chosen !== undefined || got.heard || got.text !== undefined) this.#facts.answeredAt = this.#reached;
+    if (got.chosen !== undefined || got.heard) this.#facts.answeredAt = this.#reached;
     return result;
   }
 
@@ -3518,6 +3518,7 @@ export class Agent {
     if (got.text !== undefined) {
       const wrote = typedAs(got);
       await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text]] });
+      this.#facts.answeredAt = this.#reached; // typed into her wait or after her line, as at her card: theirs, owed a reply (spec §7.1)
       if (this.#half.listenLast) this.#facts.wrote = true; // Koe's: a message of theirs it owes an answer
       return `${lead}${wrote.said}`;
     }

@@ -718,12 +718,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the user finds the repeat annoying.
 - **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)".
 
-### A line typed into her `wait` is not asked again when her reply shows nothing
-- **Kind:** deferred.
-- **What the user sees:** voice off, with no question card up. Shiori says "Which day?" and waits (`speak` then `wait`), and the user types "Friday". Her reply is plain text only or a bare `sleep`: nothing is shown, she is not asked again, and no "Shiori didn't answer" card shows. (The same line typed to Koe's own `wait` is owed, as is a typed line that comes while she works. An answer to her question card is owed since 2026-11-14.)
-- **Why:** the ask-owed fix marks only an answer to her question card; a word said into her `wait` or the window after her line "may be no one's" (spec §7.1), and voice tests pin a bare `sleep` after a heard word with no cue. That reason does not hold for typed text: marking only what was typed leaves every heard word as it is.
-- **Revisit when:** the next version, as its own change: one line in `#answer`'s typed branch (`#facts.answeredAt = this.#reached`), a test from the final review's probe g (the `wait` shape), the spec's §7.1 clause, and a look at the next real run. Tried in a scratch copy: the unit suite passed 5109 of 5109 with no test changed.
-
 ### Turns the version before this update left unfinished are read as finished
 - **Kind:** known limitation.
 - **What the user sees:** once per update, and only in a conversation where it happened, in a turn of hers the previous version left unfinished when the update installed: (a) a turn left paused by opening another conversation ("She picks it up when you come back") and not yet returned to is not picked up, and they ask again; (b) the same for a turn annai closed after her calls had come back or during her next model call (no "picks it up" line there); (c) a hand-over in such a turn reads as answered, so what she files when they ask again is outside its Undo; (d) a turn killed while her calls were still running is picked up, but what she files in it is outside the hand-over's Undo; (e) Try again on a "Shiori didn't answer" card, or a model-failure card, left from before the update carries no hand-over, so what she files is outside its Undo. Undo never takes back too much here: it leaves a file, which can be deleted by hand. A line of theirs she never replied to is still answered.

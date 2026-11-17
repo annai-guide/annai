@@ -145,6 +145,27 @@ test('a line the user typed to her, not at a card, still needs its own reply: th
   assert.equal(k.notices.length, 1);
 });
 
+// A line typed into her `wait` (no card up) is a line of theirs she owes a reply, as one typed at her card is: typed, it is no one else's (spec §7.1).
+// The ask-owed final review's probe g: voice off, "Which day?" then a wait, "Friday" typed, and her reply shows them nothing.
+for (const [shape, reply] of Object.entries({ 'plain text': [{ text: 'Booked Friday.' }], 'sleep only': [{ toolCalls: [sleep] }] })) {
+  for (const voice of [false, true]) {
+    test(`a line typed into her wait (no card, voice ${voice ? 'on: typed while it listens' : 'off'}), then a reply that shows them nothing (${shape}): she is asked once more, and answers`, async (t) => {
+      useClock(t);
+      const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text: 'Which day?' } }, { name: 'wait', input: { seconds: 30 } }] }, ...reply, say('Booked Friday.')]], voice ? { voice: { playMs: 5, speechIn: ['m-hear'], hears: ['friday'] } } : {});
+      k.agent.send('Book us a table');
+      if (voice) await until(() => k.agent.state.name === 'listening');
+      else await until(() => k.agent.waiting);
+      k.agent.send('Friday');
+      await k.agent.idle();
+      assert.equal(k.requests.length, 2 + reply.length, 'the answer, her reply, then the one request more');
+      assert.match(JSON.stringify(k.requests[1].messages), /The user wrote: Friday/, 'typed into the wait: its result');
+      assert.match(k.requests.at(-1).tail, /The user hasn't been answered/);
+      assert.equal((await k.events(['out.speak'])).at(-1).data.text, 'Booked Friday.');
+      assert.deepEqual(k.notices, [], 'she answered at the second asking: no card');
+    });
+  }
+}
+
 test("her ask and sleep answered, her hand-over's turn goes on: what she does after the answer is the hand-over's, so its Undo takes it back (Try again after her next call fails)", async (t) => {
   useClock(t);
   const flight = { path: '/trip/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true };
