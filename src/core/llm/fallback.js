@@ -163,7 +163,8 @@ export function attemptWhy(a, { now = Date.now(), plain = false } = {}) {
  * Why every model failed, for a card: one line per model, each reason once and in words; a failure to
  * connect is annai's words, not the browser's, and with no connection on the device, that is said once instead.
  * @param {Parameters<typeof attemptWhy>[0][]} attempts @param {{ offline?: boolean, now?: number, plain?: boolean, names?: (name: string) => string }} [o] plain: for a model
- *   to read, in annai's English and never the screens' words; names: the screens' names for models (config.js modelNames)
+ *   to read, in annai's English and never the screens' words, each model by its own name unless names says otherwise (the Trace's error rows
+ *   do); names: the screens' names for models (config.js modelNames)
  */
 export function failedText(attempts, { offline = false, now = Date.now(), plain = false, names = (n) => n } = {}) {
   /** @type {Map<string, Set<string>>} */
@@ -178,7 +179,7 @@ export function failedText(attempts, { offline = false, now = Date.now(), plain 
   }
   /* en */
   const offlineLine = plain ? 'This device is offline.' : t`This device is offline.`;
-  return [...(offline ? [offlineLine] : []), ...[...lines].map(([name, why]) => (plain ? named(name, [...why].join(' '), true) : named(names(name), sentences(...why), false)))].join('\n');
+  return [...(offline ? [offlineLine] : []), ...[...lines].map(([name, why]) => named(names(name), plain ? [...why].join(' ') : sentences(...why), plain))].join('\n');
 }
 
 /** "Name: words", a label and what it says: in the screens' punctuation, or annai's English for a model. @param {string} name @param {string} words @param {boolean} plain */

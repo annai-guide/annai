@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { renderForSummary } from '../../src/core/agent/compaction.js';
 import { record } from '../../src/core/agent/log.js';
-import { traceSummary } from '../../src/ui/screens/trace.js';
+import { traceSummary, traceStored } from '../../src/ui/screens/trace.js';
+import { whyWords } from '../../src/core/llm/fallback.js';
+import { tidyFailed } from '../../src/core/agent/loop.js';
 import { agentKit } from './agent-kit.js';
 
 /** @param {number} seq @param {string} type @param {any} data */
@@ -64,6 +66,22 @@ test('the trace says what was heard, and what it turned out to say', () => {
   assert.equal(traceSummary({ type: 'net.request', data: { kind: 'speech-in', model: 'Groq: Whisper', outcome: 'ok', status: 200, ms: 410, format: 'webm', bytes: 5745 } }), 'Groq: Whisper · ok (200) · 410 ms · webm, 5.6 kB');
   assert.equal(traceSummary({ type: 'net.request', data: { kind: 'speech-out', model: 'GPT-4o mini TTS', outcome: 'ok', status: 200, ms: 800, format: 'ogg', bytes: 30_000 } }), 'GPT-4o mini TTS · ok (200) · 800 ms · ogg, 29 kB');
   assert.equal(traceSummary({ type: 'net.request', data: { kind: 'model', model: 'Gemini 3.8 Flash', outcome: 'ok', status: 200, ms: 2100, audio: [{ format: 'wav', bytes: 53_392 }] } }), 'Gemini 3.8 Flash · ok (200) · 2100 ms · audio: wav, 52 kB');
+});
+
+test("the Trace's Errors rows are made again from the why an entry kept, each model by its provider's name first, in annai's English; an entry with no why keeps its stored words (the final review's finding src1-B)", () => {
+  const names = (/** @type {string} */ n) => ({ 'Claude Opus 5.5': 'Anthropic / Claude Opus 5.5' })[n] ?? n;
+  const why = { attempts: [{ model: 'm-0', name: 'Claude Opus 5.5', outcome: 'credit', ms: 1 }] };
+  const stored = whyWords(why, true); // what the log kept: the model's name alone
+  const model = { type: 'error', data: { kind: 'model', why, message: stored } };
+  assert.equal(traceSummary(model, { names }), `model: ${whyWords(why, true, { names })}`);
+  assert.match(traceSummary(model, { names }), /^model: Anthropic \/ Claude Opus 5\.5: /);
+  assert.match(traceSummary({ type: 'error', data: { kind: 'compaction', why, message: tidyFailed(why, true) } }, { names }), /^compaction: Anthropic \/ Claude Opus 5\.5: .* Until it is tidied up/);
+  // The words the line marks as English are the ones it shows.
+  for (const kept of traceStored(model, { names })) assert.ok(traceSummary(model, { names }).includes(kept), kept);
+  // An older entry has no why: its stored words, as before; so has one that is not about a model.
+  assert.equal(traceSummary({ type: 'error', data: { kind: 'model', message: 'Claude Opus 5.5: Out of credit.' } }, { names }), 'model: Claude Opus 5.5: Out of credit.');
+  assert.equal(traceSummary({ type: 'error', data: { kind: 'budget', message: 'Steps used up.' } }, { names }), 'budget: Steps used up.');
+  assert.equal(traceSummary(model), `model: ${stored}`, 'with no names it reads as it was stored');
 });
 
 test("the Trace names a model by its provider's name first: the one its request kept, else the one that has the name now (the user, 2026-11-16)", () => {

@@ -878,6 +878,16 @@ test("the Trace's line marks what an entry keeps as written (English) apart from
   }
 });
 
+test("a failure line in the Conversation names each model by its provider's name first, whichever failed: a turn's models and a tidy-up's (the final review's finding src1-B)", async () => {
+  const { errorWords } = await import('../../src/ui/screens/talk.js');
+  const names = (/** @type {string} */ n) => `Acme / ${n}`;
+  const why = { attempts: [{ model: 'm-0', name: 'Haiku', outcome: 'auth', ms: 1, error: 'bad key' }] };
+  assert.match(String(errorWords({ kind: 'model', why, message: 'Haiku: Bad key.' }, { names })), /^Acme \/ Haiku: /);
+  assert.match(String(errorWords({ kind: 'compaction', why, message: 'Haiku: Bad key.' }, { names })), /^Acme \/ Haiku: .* Until it is tidied up/);
+  assert.match(String(errorWords({ kind: 'model', why, message: 'Haiku: Bad key.' })), /^Haiku: /);
+  assert.equal(errorWords({ kind: 'model', message: 'Haiku: Bad key.' }, { names }), null, 'an older entry is shown as stored');
+});
+
 test("undoneWords: what Undo of a hand-over did, and each trip that stays that it changed beyond where the files went back", () => {
   const none = { removed: [], kept: 0, waiting: false, back: [], changed: [] };
   assert.equal(undoneWords({ ...none, removed: ['Testville'], back: [{ id: 'a', title: 'Anchorage' }], changed: [{ id: 'k', title: 'Kyoto' }] }),

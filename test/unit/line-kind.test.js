@@ -73,6 +73,18 @@ test("a line names its model by its provider's name first, the one it failed ove
   assert.equal(label({ by: { name: 'Gone', first: null, tried: false } }), 'Gone', 'a model removed since: its name as stored');
 });
 
+test("Koe's kinds (live, said aloud, text) and Kokoro's name their model by its provider's name first, after the kind's own words and before a failed-over one", () => {
+  const names = (/** @type {string} */ n) => `Acme / ${n}`;
+  const by = { name: 'B', first: null, tried: false };
+  const label = (/** @type {any} */ data) => lineKind({ type: 'out.speak', data }, { names })?.label;
+  assert.equal(label({ live: true, voice: true, by }), 'Koe · live · Acme / B');
+  assert.equal(label({ half: 'koe', voice: true, by }), 'Koe · said aloud · Acme / B');
+  assert.equal(label({ half: 'koe', by }), 'Koe · text · Acme / B');
+  assert.equal(label({ half: 'kokoro', by }), 'Kokoro directly · Acme / B');
+  assert.equal(label({ half: 'kokoro', by: { name: 'B', first: 'A', tried: true } }), "Kokoro directly · Acme / B · Acme / A didn't answer");
+  assert.equal(label({ half: 'koe', by: null }), 'Koe · text', 'a line no model wrote names none');
+});
+
 test('anything else is not one of these lines', () => {
   assert.equal(lineKind({ type: 'wake', data: {} }), null);
   assert.equal(lineKind({ type: 'note', data: {} }), null);

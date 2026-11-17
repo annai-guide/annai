@@ -6,6 +6,8 @@ import { sourceOf } from './talk.js';
 import { readBlob } from '../../core/reach.js';
 import { scopeTitle } from '../../core/scopes.js';
 import { modelNames, withProvider } from '../../core/llm/config.js';
+import { whyWords } from '../../core/llm/fallback.js';
+import { tidyFailed } from '../../core/agent/loop.js';
 
 /** The trace's time: numeric, to the second, as the phone writes it. */
 const STAMP = /** @type {Intl.DateTimeFormatOptions} */ ({ year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' });
@@ -121,11 +123,22 @@ function row(ctx, e, titles, perWake, names) {
 }
 
 /**
+ * An error entry's words, in annai's English as the log keeps them, but a model by its provider's name first (config.js modelNames):
+ * made again from the why a model failure or a tidy-up failure kept; an older entry, which kept none, as it stored them.
+ * @param {any} d the entry's data @param {(name: string) => string} [names]
+ */
+function errorMessage(d, names) {
+  if (d.why && d.kind === 'model') return whyWords(d.why, true, { names });
+  if (d.why && d.kind === 'compaction') return tidyFailed(d.why, true, { names });
+  return d.message;
+}
+
+/**
  * The words an entry keeps as they were written, which its line shows: a model's wake reasons and notes, errors, reasons, tools'
  * results. They are English (a model's, or annai's for the log), so the line marks them so (decision 11); the user's own words are
- * not among them. Cut as the line cuts them. @param {any} e @returns {string[]}
+ * not among them. Cut as the line cuts them. @param {any} e @param {{ names?: (name: string) => string }} [o] names: as traceSummary's @returns {string[]}
  */
-export function traceStored(e) {
+export function traceStored(e, { names } = {}) {
   const d = e.data ?? {};
   const cut = (/** @type {unknown} */ x, n = 100) => {
     const text = String(x ?? '');
@@ -139,7 +152,7 @@ export function traceStored(e) {
   else if (e.type === 'reading') kept = [d.text ? cut(d.text) : ''];
   else if (e.type === 'net.request' || e.type === 'push.sync') kept = [d.error ? cut(d.error) : ''];
   else if (e.type === 'live.session') kept = [d.why ? cut(d.why) : ''];
-  else if (e.type === 'error') kept = [`${d.kind ?? /* en */ 'error'}: ${cut(d.message)}`];
+  else if (e.type === 'error') kept = [`${d.kind ?? /* en */ 'error'}: ${cut(errorMessage(d, names))}`];
   else if (e.type === 'backup.error') kept = [cut(d.message)];
   else if (e.type === 'backup.peek') kept = [cut(d.problem)];
   else if (e.type === 'state') kept = [d.why];
@@ -150,7 +163,7 @@ export function traceStored(e) {
 /** An entry's line, with the words it keeps as written marked English where they show. @param {any} e @param {Map<string, number>} [perWake] @param {(name: string) => string} [names] */
 function summaryShown(e, perWake, names) {
   const line = traceSummary(e, { costs: perWake, names });
-  const kept = [...new Set(traceStored(e))].filter((x) => line.includes(x));
+  const kept = [...new Set(traceStored(e, { names }))].filter((x) => line.includes(x));
   return linkIn(line, ...kept.map((x) => h('span', { lang: 'en', text: x })));
 }
 
@@ -267,7 +280,7 @@ export function traceSummary(e, { costs: perWake, names = (n) => n } = {}) {
     const [best, p] = Object.entries(d.result ?? {}).sort((a, b) => Number(b[1]) - Number(a[1]))[0] ?? ['?', 0];
     return line(`${best} (${Math.round(Number(p) * 100)}%)`, t`by ${d.by}`);
   }
-  if (e.type === 'error') return `${d.kind ?? /* en */ 'error'}: ${cut(d.message)}`;
+  if (e.type === 'error') return `${d.kind ?? /* en */ 'error'}: ${cut(errorMessage(d, names))}`;
   if (e.type === 'model.turn') {
     const n = (d.attempts ?? []).length;
     // Whose turn: Koe's, Kokoro's, or Shiori's as one half.

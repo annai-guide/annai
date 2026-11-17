@@ -143,9 +143,14 @@ test("a failure card names each model by its provider's name first; a model read
   assert.equal(card[1], 'OpenRouter / Anthropic: Claude Opus 5.5: It is resting for a few minutes after an error.');
   assert.deepEqual(whyWords({ halves: { koe: { attempts: [attempts[1]] }, kokoro: { attempts: [attempts[0]] } } }, false, { names }).split('\n').map((l) => l.split(': ').slice(0, 2).join(': ')),
     ['Koe: OpenRouter / Anthropic', 'Kokoro: Anthropic / Claude Opus 5.5'], 'both halves name theirs');
-  const plain = whyWords({ attempts }, true, { names });
+  // What a model reads names each model alone; annai's English made with names (the Trace's error rows) names its provider too.
+  const plain = whyWords({ attempts }, true);
   assert.doesNotMatch(plain, / \/ /, 'what a model reads is as before');
-  assert.equal(plain, whyWords({ attempts }, true));
+  assert.match(plain.split('\n')[0], /^Claude Opus 5\.5: /);
+  assert.match(plain.split('\n')[1], /^Anthropic: Claude Opus 5\.5: /);
+  const named = whyWords({ attempts }, true, { names }).split('\n');
+  assert.match(named[0], /^Anthropic \/ Claude Opus 5\.5: /);
+  assert.match(named[1], /^OpenRouter \/ Anthropic: Claude Opus 5\.5: /);
 });
 
 test('a model that declines has still answered', async () => {
