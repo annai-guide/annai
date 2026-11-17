@@ -193,7 +193,8 @@ test('item 5 (probe L): a server that drops every session it resumes is given up
 });
 
 test('item 14 (K6): a drop with no resume handle (OpenAI has none) still goes on, in a fresh session', async () => {
-  const k = await liveKit([{ said: 'Hi.', audio: tone(0.1) }, { said: 'Still here.', audio: tone(0.1) }], { live: { type: 'openai-realtime' } });
+  // The session's clock is the real one, as item 5's: at the kit's 10 ms a second its quiet spell is 300 ms from her line, and the drop came after it.
+  const k = await liveKit([{ said: 'Hi.', audio: tone(0.1) }, { said: 'Still here.', audio: tone(0.1) }], { live: { type: 'openai-realtime' }, agent: { secondMs: 1000 } });
   try {
     k.agent.send('Hello');
     await soon(async () => (await k.events(['out.speak'])).length === 1);

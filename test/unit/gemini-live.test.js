@@ -86,8 +86,8 @@ test('setup: instructions, tools as parametersJsonSchema, manual activity, both 
 test('what the server says becomes events: audio, both transcripts, the turn, a tool call, the handle, goAway, interrupted', async () => {
   const audio = Uint8Array.from({ length: 24_000 }, (_, i) => (i * 7) % 256);
   const s = await startRealtimeServer({
-    // Her turns stay open as long as their sound plays (pace 1, as Gemini's), so the user's start below cuts the 3 s one. At pace 0.02 it stayed
-    // open 60 ms, and a client starved that long between her first words and its start (100 ms, forced) saw that turn end first: no cut.
+    // Her turns stay open as long as their sound plays (pace 1, as Gemini's), so the activityStart below cuts the second (3 s of sound). At pace 0.02
+    // it stayed open 60 ms, and a client held 100 ms as her first words came saw that turn end first: no cut, and the wait for it timed out.
     flavour: 'gemini', key: KEY, pace: 1,
     turns: [
       { heard: 'Is Nepenthe open now?', said: "I'm checking on that.", audio, tool: { name: 'tell_kokoro', args: { text: 'Is Nepenthe open now?' } }, handle: 'h-2', goAway: 30 },

@@ -993,7 +993,9 @@ for (const late of [false, true]) {
     const k = await liveKit([
       { heard: 'la la', delayMs: 1500 },
       { heard: 'la la la', delayMs: 1500 },
-      { heard: 'la la la la', delayMs: 1500, ...(late ? { interruptOn: /** @type {const} */ ('text') } : {}) },
+      // Its verdict 1 s after it ends: the question has begun (0.2 s after) and goes on (to 1.5 s after). At 1.5 s it met the question's end, and
+      // when it came after it the session, nothing going on, closed for quiet (3 of 16 runs with the event loop held now and then).
+      { heard: 'la la la la', delayMs: 1000, ...(late ? { interruptOn: /** @type {const} */ ('text') } : {}) },
       { heard: 'where should we eat', said: 'Tacos ahead, two miles.', audio: tone(0.5), delayMs: 600 },
       { tool: { name: 'sleep', args: {} } },
     ], { kokoro: [{ rules: [{ match: 'non-stop sound', reply: { delayMs: 300, toolCalls: [{ name: 'tell_koe', input: { text: 'Only music: go to sleep.' } }, { name: 'sleep', input: {} }] } }, { match: '.', reply: sleep }] }] });
@@ -1361,7 +1363,7 @@ test("Kokoro's sleep note, arriving while a note for the user is in flight and h
     await realtime(k, hum(1.5)); // let go as the next begins: Kokoro is woken, its call waits
     await soon(async () => k.agent.live.stretching, 3000).catch(() => assert.fail('the music made no stretch'));
     // The note comes while that turn goes on, so it waits for the turn's verdict and goes in with it. Sent once the turn had ended, it raced that
-    // verdict (300 ms after the end, when the session, its spell run out, closes for quiet with nothing in flight): 100 ms late, it lost every time.
+    // verdict (300 ms after the end, when the session, its spell run out, closes for quiet with nothing in flight): sent 100 ms later, it lost 8 of 8.
     await tell(k);
     await realtime(k, quiet(1));
     await soon(async () => notesIn(k).length === 1, 3000).catch(() => assert.fail(`the note never went in: ${JSON.stringify(texts(k))}`));
