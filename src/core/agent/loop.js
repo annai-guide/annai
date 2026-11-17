@@ -42,9 +42,9 @@ import { FILES_ONLY, PHOTO_ONLY, handoverOf } from '../handover.js';
  * role, runs the tool calls in order (sleep last), appends the results and calls again, until she
  * sleeps, calls no tool, or something stops her. She reaches the user only through output tools
  * (§7.1); everything else she writes stays in the trace.
- * @typedef {'user' | 'choice' | 'plugin' | 'file' | 'restart' | 'personality' | 'heard' | 'trigger' | 'catch-up' | 'live' | 'recap' | 'note' | 'cue' | 'halves'} WakeKind
+ * @typedef {'user' | 'choice' | 'plugin' | 'file' | 'restart' | 'personality' | 'heard' | 'trigger' | 'catch-up' | 'live' | 'recap' | 'note' | 'cue' | 'halves' | 'move'} WakeKind
  *   trigger and catch-up: live mode's watches fired (spec §11.3, §11.4); live: the user turned live mode on; recap: the user asked to hear the trip's recap (spec §13);
- *   note, cue, halves: from the other half, or Halves (the Koe and Kokoro design)
+ *   note, cue, halves: from the other half, or Halves (the Koe and Kokoro design); move: annai's line for a move (open_trip) with no files, no one's act (the reader takes a kept cue as Try again's)
  * @typedef {{ watch: string, text: string, cue?: boolean, answer?: boolean, plan?: import('../live/plan-watches.js').PlanSay }} Reminder  a watch's fallback (spec §11.3), owed until she tells the user;
  *   cue: a cue's for her (a place, the road), not a reminder: owed only until a model answers; answer: her words annai shows for her, called "Shiori's
  *   answer" in place of "Reminder"; plan: a plan watch's, the data its words for the user are made from (text is the English a model reads)
@@ -479,8 +479,8 @@ export class Agent {
   /** Every hand-over the turn running took, oldest first (ToolCall.handovers). @type {string[]} */
   #handovers = [];
   /**
-   * What the running turn did (Half.ended). answeredAt: how often she had reached the user when they last answered her question; that line is owed a reply
-   * while she hasn't reached them since (#answerAsk).
+   * What the running turn did (Half.ended). answeredAt: how often she had reached the user when they last answered her question, or typed into her wait or
+   * the listening after her line; that line is owed a reply while she hasn't reached them since (#answerAsk, #answer).
    */
   #facts = { finalText: '', told: false, slept: false, closed: false, spoke: false, aloud: false, wrote: false, answeredAt: /** @type {number | null} */ (null), watched: false, kinds: /** @type {string[]} */ ([]) };
   /** The user stopped the running turn (a tap, or the sign's Stop), not annai opening another conversation. */
@@ -1276,7 +1276,7 @@ export class Agent {
     // A wake for another conversation than the one open (files added to another trip) is written
     // into it now, and answered when it opens (spec §6.1, §7.3).
     if (w.scope && w.scope !== (this.#target ?? ME)) return this.#keepFor(w.scope, w);
-    if (['user', 'choice', 'restart', 'file', 'live', 'recap', 'note', 'cue', 'halves'].includes(w.kind)) {
+    if (['user', 'choice', 'restart', 'file', 'live', 'recap', 'note', 'cue', 'halves', 'move'].includes(w.kind)) {
       this.enqueue(w);
       return Promise.resolve();
     }
@@ -2281,8 +2281,8 @@ export class Agent {
     };
     const owes = () => notes.length > 0 || wrote;
     /**
-     * The user's own words wait for an answer: their message, or their answer to her question that nothing she has made reached them since
-     * (unless the turn told the other half), or what they wrote in Koe's wait.
+     * The user's own words wait for an answer: their message, or their answer to her question or a line they typed into her wait, that nothing she
+     * has made reached them since (unless the turn told the other half), or what they wrote in Koe's wait.
      */
     const unanswered = () => wrote || ((theirs || this.#facts.answeredAt === this.#reached) && !this.#facts.told);
     /**
@@ -2937,7 +2937,7 @@ export class Agent {
       if ((output.images?.length && o.model && !o.model.input?.includes('image')) || (output.document && o.model && !o.model.input?.includes('pdf'))) output = await this.#described(output, o.wakeId, o.signal, o.model, undefined, scope, c.name === 'read', o.reads);
     }
     // Cut short (the turn aborted, the call an error): the user's Stop, or another conversation opening, which is no Stop. Every result
-    // says whether (`cut`), which a refusal or a failure is not. `end` and `awake` are for a page one version older (deferred).
+    // says whether (`cut`), which a refusal or a failure is not. Where her turn ends is its turn.end record, not a result's.
     // The user's Open on open_trip's card ends that call by opening the trip, which is what it was for: no cut, no error.
     const chose = Boolean(o.signal.aborted && output.isError && this.#cutMoved && !this.#userStop && !unrun && c.name === 'open_trip');
     const cut = Boolean(o.signal.aborted && output.isError) && !chose;
@@ -2976,7 +2976,7 @@ export class Agent {
     }
     await this.#log({
       type: 'tool.result', actor: 'system',
-      data: { id: c.id, name: c.name, ok: !output.isError, ms, wake: o.wakeId, cut, ...(images.length ? { images } : {}), ...(document ? { document } : {}), ...(output.heard?.length ? { heard: output.heard } : {}), ...(output.endTurn ? { end: true } : {}), ...(o.awake ? { awake: true } : {}) },
+      data: { id: c.id, name: c.name, ok: !output.isError, ms, wake: o.wakeId, cut, ...(images.length ? { images } : {}), ...(document ? { document } : {}), ...(output.heard?.length ? { heard: output.heard } : {}) },
       texts: [['content', output.content]], blobs,
     });
     return output;
@@ -3486,12 +3486,12 @@ export class Agent {
   /**
    * What her question got, as its result. Their answer (a tap, typing, speech) is a line of theirs she owes a reply to, as one that joins her turn is: owed
    * until she reaches them again (spec §7.1). Her question put something up, so what says so is this count, not that nothing has reached them since her
-   * turn began. A word said into a wait or after her line may be no one's (owesAnswer), so those are not.
+   * turn began. A word said into a wait or after her line may be no one's (owesAnswer), so those are not; a typed one is theirs wherever it came (#answer).
    * @param {Got} got @param {any} call
    */
   async #answerAsk(got, call) {
     const result = await this.#answer('', got, call, '');
-    if (got.chosen !== undefined || got.heard || got.text !== undefined) this.#facts.answeredAt = this.#reached;
+    if (got.chosen !== undefined || got.heard) this.#facts.answeredAt = this.#reached;
     return result;
   }
 
@@ -3518,6 +3518,7 @@ export class Agent {
     if (got.text !== undefined) {
       const wrote = typedAs(got);
       await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text]] });
+      this.#facts.answeredAt = this.#reached; // typed into her wait or after her line, as at her card: theirs, owed a reply (spec §7.1)
       if (this.#half.listenLast) this.#facts.wrote = true; // Koe's: a message of theirs it owes an answer
       return `${lead}${wrote.said}`;
     }

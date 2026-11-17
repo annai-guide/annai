@@ -142,7 +142,7 @@ test("a malformed ask beside her sleep isn't a question that came back: the turn
   assert.equal(k.requests.length, 2);
   const sleep = (await k.events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === 'sleep');
   assert.equal(sleep.data.content, 'Not asleep: a call in this reply failed (its error is above), so your turn goes on.');
-  assert.equal(sleep.data.awake, true, 'the stored result says the sleep gave way, for a failed call as for an answered question');
+  assert.equal('awake' in sleep.data, false, 'its words say the sleep gave way; the stored result carries no `awake` (her turn\'s end is its turn.end record)');
 });
 
 /** The answer is in, her next model call is running, and the page is left or reloaded: with her ask alone the stored log reads the turn as owed (taken up on return); with a sleep beside the ask it must read the same (the reply's words said "sleep", its result said "Not asleep"). */
@@ -170,7 +170,7 @@ for (const withSleep of [true, false]) {
   });
 }
 
-test("a sleep that didn't run says so in its stored result (awake), and one that ran doesn't", async (t) => {
+test("a sleep that didn't run says so in its result's words, and one that ran says asleep; neither stores `awake` or `end` (her turn's end is its turn.end record)", async (t) => {
   useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'ask', input: { question: 'Keep it?', options: ['Yes', 'No'] } }, { name: 'sleep', input: {} }] }, say('Kept.')]]);
   k.agent.send('Dinner');
@@ -178,7 +178,7 @@ test("a sleep that didn't run says so in its stored result (awake), and one that
   k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'Yes');
   await k.agent.idle();
   const sleeps = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'sleep');
-  assert.deepEqual(sleeps.map((/** @type {any} */ e) => [e.data.awake === true, e.data.content]), [[true, 'Not asleep: your question came back answered or closed (its result is above), so your turn goes on.'], [false, 'asleep']]);
+  assert.deepEqual(sleeps.map((/** @type {any} */ e) => [e.data.content, 'awake' in e.data, 'end' in e.data]), [['Not asleep: your question came back answered or closed (its result is above), so your turn goes on.', false, false], ['asleep', false, false]]);
 });
 
 test('the dock is told "Waiting for your OK" only while an ask waits; a wait is the user\'s turn (phone-fixes-1 item 5: IMG_3017)', async (t) => {

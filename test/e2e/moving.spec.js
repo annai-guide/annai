@@ -5,7 +5,7 @@
 // the card) decides what the screen does: from home the address follows, as a new entry, so Back returns home; Details and Settings stay
 // where they are. The stand-in model plays her part. Synthetic data only: Kyoto and the ramen place are made up.
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, startTrip, goToHash, atConversation } from './helpers.js';
+import { openApp, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, startTrip, goToHash, atConversation, writeEvent } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 const LINE = "Let's carry on in Kyoto";
@@ -188,3 +188,13 @@ for (const where of ['Details', 'Settings']) {
     }
   });
 }
+
+test("annai's own line to her for a move with no files and no recap (a wake of kind move) draws nothing in the conversation, as a cue does, where a watch's wake says why she woke", async ({ page }) => {
+  await openApp(page, '#/trips');
+  const trip = await startTrip(page, 'Kyoto', { start: '2027-04-01', end: '2027-04-08' });
+  for (const [id, kind, text] of [['w-1', 'move', 'You moved the user here from another conversation.'], ['w-2', 'cue', 'Koe answered the user'], ['w-3', 'trigger', 'A watch fired.']]) await writeEvent(page, trip, { type: 'wake', data: { id, reasons: [{ kind, text }] } });
+  await page.goto(`/#/trip/${trip}/talk`);
+  await atConversation(page);
+  await expect(page.locator('.convo .system-line', { hasText: 'Shiori woke for a reminder, or something she watches for.' })).toHaveCount(1);
+  await expect(page.locator('.convo .system-line', { hasText: /^Shiori woke\.$/ })).toHaveCount(0);
+});

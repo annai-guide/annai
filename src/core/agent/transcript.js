@@ -49,6 +49,8 @@ export const KOE_WINDOW = 12;
 export const KOE_JUMP = 6;
 /** Wake reasons that are lines of their own elsewhere. */
 const OWN_LINES = ['user', 'heard', 'note', 'halves'];
+/** Wake reasons of the user's, which take up a hand-over still owed (loop.js owesAnswer); Try again is a cue. */
+const TAKES_OWED = ['user', 'choice', 'heard', 'cue'];
 
 export class Transcript {
   /** @type {Message[]} */
@@ -104,6 +106,8 @@ export class Transcript {
   #carry = null;
   /** The newest hand-over since her last turn ended (handover.js). @type {string | null} */
   #handover = null;
+  /** What the restart carries: a cut turn's own, as its wakes and the user's lines it took up name it; undefined when nothing says (the newest owed). @type {string | null | undefined} */
+  #carried = undefined;
   /** @type {Map<string, string>} Shiori's tool calls by id, to their tool names */
   #calls = new Map();
   /** @type {Set<string>} */
@@ -140,7 +144,7 @@ export class Transcript {
     const koe = this.half === 'koe';
     this.#at = e.seq;
     if (e.type === 'msg.user') this.newestPhoto = r.images.length > 0;
-    if (e.type === 'msg.user' && typeof d.handover === 'string') this.#handover = d.handover;
+    if (e.type === 'msg.user' && typeof d.handover === 'string') this.#handover = this.#carried = d.handover;
     if (e.type === 'compaction') {
       this.messages = [];
       this.#calls.clear();
@@ -158,7 +162,15 @@ export class Transcript {
       else if (!koe) /* en */ this.#add('user', [{ type: 'text', text: `[Earlier conversation, summarized (events ${d.from}–${d.to}); recall brings back the exact words]\n${texts.summary ?? ''}` }]);
     } else if (e.type === 'wake') {
       if (!this.#mine(d)) return;
-      for (const w of d.reasons ?? []) if (typeof w?.handover === 'string') this.#handover = w.handover;
+      const reasons = Array.isArray(d.reasons) ? d.reasons : [];
+      /** @type {string | null} */
+      let brought = null;
+      for (const w of reasons) if (typeof w?.handover === 'string') this.#handover = brought = w.handover;
+      // Her turn's first wake, or a take-up, names what it carries; one written while the conversation was closed (no key) joins it as join()
+      // would, taking up an older owed one only for the user's (never a watch's, a reminder's, a plugin's or a move's), and keeping what it took.
+      if ('handover' in d) this.#carried = typeof d.handover === 'string' ? d.handover : null;
+      else if (brought || this.#carried || d.meanwhile) this.#carried = brought ?? this.#carried;
+      else this.#carried = reasons.some((/** @type {any} */ w) => TAKES_OWED.includes(w?.kind)) ? this.#handover : null;
       const others = (d.reasons ?? []).filter((/** @type {any} */ w) => !OWN_LINES.includes(w.kind) && w.text);
       if (others.length) {
         // Two halves read it quoted, so it can't pass for a label; one half as before.
@@ -170,6 +182,7 @@ export class Transcript {
       this.#line([{ type: 'text', text: /** @type {string} */ (blockFor(e, texts)) }, ...r.images, ...this.#handed(d)]);
       this.unanswered = true;
       this.waiting = 'user';
+      this.#joined();
     } else if (e.type === 'msg.user') {
       // A message that answered an ask or a wait is already in that tool's result.
       if (texts.text && !(d.answer && (this.half === 'one' || this.#calls.has(d.answer)))) {
@@ -180,6 +193,7 @@ export class Transcript {
         if (!koe || d.split) {
           this.unanswered = true;
           this.waiting = 'user';
+          this.#joined();
         }
       }
     } else if (e.type === 'model.turn' && this.half === 'one' && d.tag === KOE_TAG) {
@@ -223,11 +237,15 @@ export class Transcript {
       // Her turn is under way until the loop logs its end. A reply from before the loop logged one (no `endLogged` key) is read as its turn's end.
       this.#underway = 'endLogged' in d;
       if (this.#underway) this.waiting = this.#last.length ? 'turn' : '';
-      else if (this.#mine(d) && (!('handover' in d) || d.handover === this.#handover)) this.#handover = null;
+      else if (this.#mine(d)) {
+        if (!('handover' in d) || d.handover === this.#handover) this.#handover = null;
+        this.#carried = undefined;
+      }
     } else if (e.type === 'turn.end') {
       // The loop's record that her turn ended by its own rule: the hand-over it carried is answered.
       if (!this.#mine(d)) return;
       this.#underway = false;
+      this.#carried = undefined;
       if (d.handover === this.#handover) this.#handover = null;
       return;
     } else if (e.type === 'note') {
@@ -270,6 +288,7 @@ export class Transcript {
     } else if (e.type === 'handover.undo') {
       // The user undid a hand-over (handover.js): she knows what was taken back, and owes it nothing more.
       if (d.handover === this.#handover) this.#handover = null;
+      if (d.handover === this.#carried) this.#carried = null;
       const n = Number(d.undone) || 0;
       const kept = Array.isArray(d.kept) ? d.kept.length : 0;
       const trips = (Array.isArray(d.removed) ? d.removed : typeof d.removed === 'string' ? [d.removed] : []).map((x) => JSON.stringify(String(x)));
@@ -295,10 +314,14 @@ export class Transcript {
       // So nothing before it is owed here either (a heard yes Koe hadn't answered): opened again, nobody wakes.
       this.unanswered = false;
       this.#underway = false;
+      this.#carried = undefined;
     } else if (e.type === 'error' && d.wake) {
       // A turn that ended in an error (no model, a budget, housekeeping that failed) is over: the user
       // saw a card, and a later start doesn't wake her again for it (spec §6.7). It isn't in the context.
-      if (this.#mine(d)) this.#underway = false; // the turn it ended is over
+      if (this.#mine(d)) {
+        this.#underway = false; // the turn it ended is over
+        this.#carried = undefined;
+      }
       if (this.#mine(d) && d.kind === 'stopped') this.unanswered = false; // her Stop settles all before it, a line Koe heard too
       else if (this.#mine(d)) this.#owes = false; // another error read nothing: it settles only what she owed
       else if (this.half === 'one' && d.kind === 'stopped') this.#heardSettled(); // the user stopped Koe's reply
@@ -374,14 +397,20 @@ export class Transcript {
     this.to = e.seq;
   }
 
+  /** A line of the user's joined a turn that carries none: join() (loop.js) takes the owed hand-over up for it, though its record may not be written yet (an older log, a kill between the writes). */
+  #joined() {
+    if (this.#carried === null) this.#carried = this.#handover;
+  }
+
   #heardSettled() {
     this.#heardOwed = 0;
     this.#koeCalls = null;
   }
 
-  /** The hand-over the conversation still owes an answer, or null (the restart wake carries it). */
+  /** The hand-over the restart wake carries, or null: never an older one a failed turn left owed to the user's next line, for annai's own wake. */
   get handover() {
-    return this.unanswered ? this.#handover : null;
+    if (!this.unanswered) return null;
+    return this.#carried === undefined ? this.#handover : this.#carried;
   }
 
   /**
@@ -561,15 +590,15 @@ export function linesOf(messages) {
 
 /**
  * After a crash or reload mid-turn, every tool call without a result gets one (spec §6.7), so the
- * transcript stays valid for every provider. A sleep among them never ran, and the restart takes her turn up: stored as one that gave way
- * (`awake`), for a page one version older. @param {Store} store @param {string} scope @param {Transcript} t
+ * transcript stays valid for every provider. A sleep among them never ran, and the restart takes her turn up (no turn.end was logged).
+ * @param {Store} store @param {string} scope @param {Transcript} t
  * @param {Record<string, string>} [mark] its results' half mark
  * @returns {Promise<number>} how many were answered
  */
 export async function repair(store, scope, t, mark = {}) {
   const open = t.open();
   for (const c of open) {
-    const ev = await record(store, scope, { type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: false, cut: true, ms: 0, ...(c.name === 'sleep' ? { awake: true } : {}), ...mark, content: RESTARTED } });
+    const ev = await record(store, scope, { type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: false, cut: true, ms: 0, ...mark, content: RESTARTED } });
     t.apply(ev, { texts: {}, images: [] });
   }
   return open.length;

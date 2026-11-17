@@ -6,7 +6,7 @@ import { tripTools } from '../../src/core/agent/trip-tools.js';
 import { Agent } from '../../src/core/agent/loop.js';
 import { Transcript, SAID } from '../../src/core/agent/transcript.js';
 import { createTrip, listTrips, removeTrip, setTripStatus } from '../../src/core/scopes.js';
-import { readAppSettings } from '../../src/core/settings.js';
+import { readAppSettings, updateAppSettings } from '../../src/core/settings.js';
 import { readNames } from '../../src/core/names.js';
 import { utf8 } from '../../src/core/bytes.js';
 import { storedTexts, record } from '../../src/core/agent/log.js';
@@ -457,8 +457,8 @@ test("Open, tapped: Kyoto opens at the tap, with the user's line, her recap belo
   ]);
   assert.equal(there[1].data.from, k.trip);
   assert.equal(new Set(there.slice(0, 3).map((/** @type {any} */ e) => e.data.id ?? e.data.wake)).size, 1, 'one wake: one turn');
-  // With no files, annai's own line (a cue), so the screen says nothing of files added; no restart wake ("you haven't answered") either.
-  assert.equal(there[2].data.reasons[0].kind, 'cue');
+  // With no files, annai's own line, of its own kind (not a cue, which a restart reads as Try again's), so the screen says nothing of files added; no restart wake ("you haven't answered") either.
+  assert.equal(there[2].data.reasons[0].kind, 'move');
   const kyotos = k.requests.filter((/** @type {any} */ r) => JSON.stringify(r.messages).includes('You moved the user here'));
   assert.equal(kyotos.length, 1, 'one request there, her answer');
   assert.doesNotMatch(JSON.stringify(kyotos[0]), /haven't answered this yet|annai restarted/);
@@ -704,6 +704,55 @@ test("a Stop in the moment after Open: nothing opens, and what is written into t
     'user', "Let's carry on in Kyoto", RECAP,
   ]);
 });
+
+test("a move's line with no files and no line of theirs to copy, written into a conversation that was closed where an older hand-over is still owed (a Stop after Open): its restart takes nothing up, so what she files for the move is outside that hand-over's Undo", async (t) => {
+  useClock(t);
+  const k = await chatKit();
+  const log = (/** @type {string} */ type, /** @type {any} */ data, /** @type {any} */ texts = []) => record(k.store, k.kyoto, { type, actor: type === 'msg.user' ? 'user' : 'system', data, texts });
+  // Kyoto: the user handed her a file there and her turn failed ("Shiori can't reach her model"); nothing took it up since.
+  await log('wake', { id: 'w-0', reasons: [{ kind: 'user', text: 'typed', handover: 'h-1' }], handover: 'h-1' });
+  await log('msg.user', { wake: 'w-0', handed: [handedFlight], handover: 'h-1' }, [['text', 'Our trip']]);
+  await log('error', { kind: 'model', wake: 'w-0', message: "Shiori can't reach her model." });
+  const reads = async () => { const r = await Transcript.load(k.store, k.kyoto); return [r.unanswered, r.handover, r.owedHandover]; };
+  assert.deepEqual(await reads(), [false, null, 'h-1'], "her turn failed and ended: nothing is owed, and the user's next turn would carry it");
+  const stop = new AbortController();
+  const opening = k.agent.kokoro.loopTools().find((/** @type {any} */ x) => x.name === 'open_trip').run({ trip: k.kyoto, recap: RECAP }, {
+    id: 'c', scope: k.agent.scope, trip: k.agent.trip, signal: stop.signal, model: null, wake: 'w', author: 'shiori',
+  });
+  await until(() => k.asks.length === 1);
+  k.agent.answer(k.asks[0].data.tap, 'Open');
+  stop.abort(); // before the files have moved: nothing opens, the lines wait in Kyoto
+  await opening;
+  await k.agent.idle();
+  assert.equal(k.agent.target, k.trip, 'nothing opened');
+  assert.deepEqual((await eventsIn(k, k.kyoto, ['msg.user', 'wake'])).slice(2).map((/** @type {any} */ e) => e.data.reasons.map((/** @type {any} */ r) => [r.kind, r.recap])), [[['move', RECAP]]], 'no line of theirs to copy: annai\'s own line, with her recap');
+  assert.deepEqual(await reads(), [true, null, 'h-1'], 'a move\'s line is no one\'s: it takes nothing up, and the hand-over stays owed to the user\'s next line');
+});
+
+// A move's line skips quiet hours and the hourly limit, as a cue does (wake()'s list in loop.js): the user tapped Open and is waiting in Kyoto. With no
+// line of theirs to copy, nothing else wakes her there, so it is the move's own wake that the budgets would hold or drop.
+for (const [what, budgets, spent] of /** @type {[string, Record<string, any>, boolean][]} */ ([
+  ['quiet hours on all day', { quietHours: { from: '00:00', to: '23:59' } }, false],
+  ['the hour\'s one wake already spent', { wakesPerHour: 1 }, true],
+])) {
+  test(`Open on a move with no line of theirs to copy, ${what}: Kyoto's turn runs at once, one request there, no "skipped a wake" card`, async (t) => {
+    useClock(t);
+    const k = await chatKit({ agent: { now: () => Date.parse('2026-11-26T12:00:00Z') } }); // a clock pinned at noon, inside the first row's quiet hours (00:00 to 23:59), so no minute of the day lets it pass
+    await rescript(k, { rules: [{ match: 'You moved the user here', reply: say(ANSWER) }, { match: 'a tide', reply: sleep }] });
+    await updateAppSettings(k.ws, { shiori: { budgets } });
+    if (spent) { // one wake of annai's admitted this hour; the move is the next
+      k.agent.wake({ kind: 'plugin', plugin: 'tides', text: 'a tide' });
+      await k.agent.idle();
+    }
+    await openBy(k, { trip: k.kyoto, recap: RECAP });
+    await until(() => k.agent.target === k.kyoto);
+    await k.agent.idle();
+    const kyotos = k.requests.filter((/** @type {any} */ r) => JSON.stringify(r.messages).includes('You moved the user here'));
+    assert.equal(kyotos.length, 1, 'her turn in Kyoto ran at once, on the move');
+    assert.deepEqual((await eventsIn(k, k.kyoto, ['out.speak'])).map((/** @type {any} */ e) => e.data.text), [ANSWER]);
+    assert.deepEqual(k.notices.filter((/** @type {any} */ n) => n.title === 'Shiori skipped a wake'), []);
+  });
+}
 
 test("open_trip's description says annai asks, so she doesn't ask or announce the move", async (t) => {
   useClock(t);

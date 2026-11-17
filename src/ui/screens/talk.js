@@ -34,8 +34,8 @@ const HEARD_MS = 600;
 const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'tool.result', 'wake', 'compaction', 'error', 'paused', 'reminder', 'note', 'halves', 'handover.moved', 'handover.undo', 'trip.read', 'conversation.moved'];
 /** A turn's end draws nothing, so it is read apart from the 400 records a conversation draws: it never takes one of their places. */
 const TURN_END = 'turn.end';
-/** Wakes that are lines of their own: the user's, typed or heard, and what the halves tell each other. */
-const NOT_WOKE = ['user', 'choice', 'heard', 'note', 'cue', 'halves'];
+/** Wakes that are lines of their own: the user's, typed or heard, what the halves tell each other, and annai's own lines to her (a cue, a move's). */
+const NOT_WOKE = ['user', 'choice', 'heard', 'note', 'cue', 'halves', 'move'];
 /** Where a message puts a line's words, a node of their own: its translation places them where its language does (around). */
 const WORDS = '\uE000';
 /** A message holding WORDS, as the words before them, the node, and the words after. @param {string} message @param {Node | string} node @returns {[string, Node | string, string]} */

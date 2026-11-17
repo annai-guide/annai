@@ -718,12 +718,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the user finds the repeat annoying.
 - **Approved:** 2026-11-13, the user picked "Known limitation (Recommended)".
 
-### A line typed into her `wait` is not asked again when her reply shows nothing
-- **Kind:** deferred.
-- **What the user sees:** voice off, with no question card up. Shiori says "Which day?" and waits (`speak` then `wait`), and the user types "Friday". Her reply is plain text only or a bare `sleep`: nothing is shown, she is not asked again, and no "Shiori didn't answer" card shows. (The same line typed to Koe's own `wait` is owed, as is a typed line that comes while she works. An answer to her question card is owed since 2026-11-14.)
-- **Why:** the ask-owed fix marks only an answer to her question card; a word said into her `wait` or the window after her line "may be no one's" (spec §7.1), and voice tests pin a bare `sleep` after a heard word with no cue. That reason does not hold for typed text: marking only what was typed leaves every heard word as it is.
-- **Revisit when:** the next version, as its own change: one line in `#answer`'s typed branch (`#facts.answeredAt = this.#reached`), a test from the final review's probe g (the `wait` shape), the spec's §7.1 clause, and a look at the next real run. Tried in a scratch copy: the unit suite passed 5109 of 5109 with no test changed.
-
 ### Turns the version before this update left unfinished are read as finished
 - **Kind:** known limitation.
 - **What the user sees:** once per update, and only in a conversation where it happened, in a turn of hers the previous version left unfinished when the update installed: (a) a turn left paused by opening another conversation ("She picks it up when you come back") and not yet returned to is not picked up, and they ask again; (b) the same for a turn annai closed after her calls had come back or during her next model call (no "picks it up" line there); (c) a hand-over in such a turn reads as answered, so what she files when they ask again is outside its Undo; (d) a turn killed while her calls were still running is picked up, but what she files in it is outside the hand-over's Undo; (e) Try again on a "Shiori didn't answer" card, or a model-failure card, left from before the update carries no hand-over, so what she files is outside its Undo. Undo never takes back too much here: it leaves a file, which can be deleted by hand. A line of theirs she never replied to is still answered.
@@ -731,24 +725,12 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** a user reports a "She picks it up when you come back" line that was never picked up after an update, or an Undo after the update that left a file.
 - **Approved:** 2026-11-14, the user picked "Treat as finished (Recommended)" for old logs, and "Approve the wider entry (Recommended)" for this entry with all five effects.
 
-### Tool results still carry `end` and `awake`, which this version doesn't read
-- **Kind:** deferred.
-- **What the user sees:** nothing. Each tool result still stores `end: true` (her line's listening heard chatter) and, for a sleep that gave way, `awake: true` (also stamped by a restart's repair), as the version before this one reads them; this version reads her turn's end from its `turn.end` record.
-- **Why:** a page one version older (a rollback, a tab not yet updated) reads her turn's end from them, and would misread a newer log without them.
-- **Revisit when:** the next version, as its own change: drop `end` and `awake` from `#runCall`'s and `repair()`'s writes, and from the tests that pin them.
-
 ### In a conversation saved before the take-up record, the Undo line of a turn that took a hand-over up partway can sit higher
 - **Kind:** known limitation.
 - **What the user sees:** opening a conversation saved before the update with the take-up record (2026-11-17), where a file was handed over while Shiori was working, the Undo line of that hand-over can sit under an earlier line of hers or under an earlier turn's card ("Her turn ended"), above the user's later words and her last line, where the version before put it under her last line. It shows, Undo takes back exactly what she filed under the hand-over, and nothing moves while the user looks.
 - **Why:** such a log has no record of when the turn took the hand-over up, so the line is looked at only at the turn's `turn.end` and stays where it was; keeping the old placement for these logs would bring back the screen state the take-up record removed (spec §16.2), kept for good for conversations of a few days.
 - **Revisit when:** the user sees it and it bothers them.
 - **Approved:** 2026-11-17, chief's decision C96 (the user's question "Accept it as a known limitation (Recommended)", decided by chief; not the user's words).
-
-### The restart of a turn annai started carries a hand-over still owed by an older failed turn
-- **Kind:** deferred.
-- **What the user sees:** the user hands Shiori a file, her turn fails ("Shiori can't reach her model") and they don't tap Try again. Later a turn annai starts by itself in that conversation (a watch or a reminder firing, a plugin's wake) is cut by a reload or a kill, or a wake written while the conversation was closed is taken up when it opens. The turn that takes it up carries the old hand-over, so what she files for the watch counts as filed under that hand-over, and tapping its Undo takes that note back too. It needs a failed hand-over left alone, a turn of annai's own, a cut, a write, and then the Undo. Found on 2026-11-14 in the final review of the turn-end record; the same on the version before it (run on both).
-- **Why:** the restart wake takes the reader's `handover`, the newest hand-over no turn's end has answered, whoever's turn was cut; `#open` passes it on without asking whose turn it was.
-- **Revisit when:** the next version, as its own change, in the reader's `handover` getter and `#open`: the turn's own `wake` records name the hand-over it carries (its first, and since 2026-11-17 a later one where it takes one up partway), so a turn under way can hand back its own, not the conversation's newest owed one; read those rather than its replies' records, which say it only from the reply after a take-up, and miss a turn cut before its first reply. Then a test of this shape.
 
 ### The realtime check's Japanese promise words miss some promises and flag some ordinary sentences
 - **Kind:** deferred.
