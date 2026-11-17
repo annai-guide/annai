@@ -812,7 +812,7 @@ export class Agent {
       const owed = those.flatMap((w) => w.fallbacks ?? []);
       if (owed.length) await this.remind(owed, s);
       for (const w of those) w.fallbacks = [];
-      await this.#logWakes(those, newId('w'), false, this.#keptIn(s), s === ME ? null : s);
+      await this.#logWakes(those, newId('w'), false, { log: this.#keptIn(s), trip: s === ME ? null : s });
       this.#leftClosed(s);
       this.#queue = this.#queue.filter((w) => !those.includes(w)); // a failed write keeps them
     }
@@ -835,7 +835,7 @@ export class Agent {
   /** Writes a wake into a conversation that isn't open. idle() waits for it, and so can the caller. @param {string} scope @param {Wake} w */
   #keepFor(scope, w) {
     this.#checking++;
-    return this.#logWakes([{ ...w, scope }], newId('w'), false, this.#keptIn(scope), scope === ME ? null : scope)
+    return this.#logWakes([{ ...w, scope }], newId('w'), false, { log: this.#keptIn(scope), trip: scope === ME ? null : scope })
       .then(() => this.#leftClosed(scope))
       .catch(() => {})
       .finally(() => {
@@ -2081,9 +2081,11 @@ export class Agent {
   /**
    * Logs wakes: a user's text as msg.user, anything else as a wake reason. Into the open conversation,
    * or with log, into another one. @param {Wake[]} wakes @param {string} wakeId @param {boolean} meanwhile
-   * @param {(ev: Parameters<typeof record>[2]) => Promise<unknown>} [log] @param {string | null} [trip] the trip paths in photos refer to
+   * @param {{ log?: (ev: Parameters<typeof record>[2]) => Promise<unknown>, trip?: string | null, handover?: string | null }} [o] trip: the trip paths
+   *   in photos refer to; handover: at a turn's start (#steps), the hand-over the turn works on, null for none, named on its wake's record (the
+   *   Conversation's Undo line follows her lines while her turn works on its hand-over); a wake no turn takes now (kept, stopped) names none
    */
-  async #logWakes(wakes, wakeId, meanwhile, log = (ev) => this.#log(ev), trip = this.trip) {
+  async #logWakes(wakes, wakeId, meanwhile, { log = (ev) => this.#log(ev), trip = this.trip, handover } = {}) {
     const reasonOf = (/** @type {Wake} */ w) => ({
       kind: w.kind, text: told(w), ...(w.plugin ? { plugin: w.plugin } : {}), ...(w.files?.length ? { files: w.files } : {}), ...(w.titles?.length ? { titles: w.titles } : {}),
       ...(w.handover ? { handover: w.handover } : {}), ...(w.recap ? { recap: w.recap } : {}),
@@ -2092,7 +2094,7 @@ export class Agent {
     // Her recap is her line, shown where it is written: below the user's line it came with (a move's arrival).
     const below = wakes.some((w) => theirs(w) && !w.logged) ? wakes.filter((w) => w.recap) : [];
     const first = wakes.filter((w) => !below.includes(w));
-    if (!meanwhile) await log({ type: 'wake', actor: 'system', data: { id: wakeId, reasons: first.map(reasonOf) } });
+    if (!meanwhile) await log({ type: 'wake', actor: 'system', data: { id: wakeId, reasons: first.map(reasonOf), ...(handover !== undefined ? { handover } : {}) } });
     else {
       // A cue already in the log (a review, "Koe answered the user") is still a line here: "woke for" gives it only once.
       const others = first.filter((w) => !theirs(w) && (!w.logged || w.kind === 'cue'));
@@ -2219,7 +2221,8 @@ export class Agent {
     // one a failed turn left owed: never a reminder's or a note's turn, whose writes Undo would then take back.
     this.#handover = wakes.some(owesAnswer) ? this.transcript.owedHandover : null;
     this.#handovers = this.#handover ? [this.#handover] : [];
-    await this.#logWakes(wakes, wakeId, false);
+    // Its wake's record names the hand-over the turn works on, as join takes it below: the Conversation's Undo line follows it.
+    await this.#logWakes(wakes, wakeId, false, { handover: handoverOf(wakes) ?? this.#handover });
     const settings = await this.settings();
     const last = this.#warmth.last;
     const cold = !last || this.now() >= last.at + last.ttlMs - SOON_MS;

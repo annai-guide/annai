@@ -31,7 +31,7 @@ import { NOT_TRANSCRIBED } from '../../core/voice/resolve.js';
 
 /** How long a heard line waits for more of its words before it is announced, once (Gemini revises them as it hears). */
 const HEARD_MS = 600;
-const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'tool.result', 'wake', 'compaction', 'error', 'paused', 'reminder', 'note', 'halves', 'handover.moved', 'handover.undo', 'trip.read', 'conversation.moved'];
+const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'tool.result', 'wake', 'compaction', 'error', 'paused', 'reminder', 'note', 'halves', 'handover.moved', 'handover.undo', 'trip.read', 'conversation.moved', 'turn.end'];
 /** Wakes that are lines of their own: the user's, typed or heard, and what the halves tell each other. */
 const NOT_WOKE = ['user', 'choice', 'heard', 'note', 'cue', 'halves'];
 /** Where a message puts a line's words, a node of their own: its translation places them where its language does (around). */
@@ -627,7 +627,7 @@ export async function renderTalk(ctx, route) {
         if (follow) toEnd();
         // A plugin's dock may have no avatar of annai's.
         if (built && e.actor === 'shiori') ctx.dock?.avatar?.glance?.(0, 1.5);
-      }
+      } else if (e.type === 'wake' || e.type === 'turn.end') undo?.saw(e); // a turn's start and end, with no line of their own, place the Undo line
       if (built) showCost();
     },
     state: () => {
@@ -807,14 +807,20 @@ function datesLine(ctx, scope, list) {
 }
 
 /**
- * The Undo line of the newest hand-over in a conversation: under her last line after it, moving down as she adds lines until the user writes or speaks again; there only
- * while there is something to take back. A trip she started for the files, with nothing of the user's in it, goes, its files back with Shiori.
+ * The Undo line of the newest hand-over in a conversation: under her last line after it, moving down as she adds lines while her turn carries it (its wake
+ * names the hand-over, loop.js #steps), so her question, the user's answer and what she then does keep it moving, and a Try again or the user's next line after a
+ * turn that failed or was let go takes it on. Once that turn has ended, the user's next words stop it (Koe's lines before them still move it); a turn of hers
+ * that carries none stops it too (a reminder's). A log from before wakes named one: until the user writes or speaks again. There only while there is something
+ * to take back. A trip she started for the files, with nothing of the user's in it, goes, its files back with Shiori.
  * @param {any} ctx @param {string} scope the conversation's @param {HTMLElement} list its lines
  */
 function undoLine(ctx, scope, list) {
   /** @type {string | null} */
   let handover = null;
   let placing = false;
+  /** The newest of her turns named the hand-over it carries (its wake's `handover` key); and it has ended (turn.end): only then do the user's words stop the line. */
+  let named = false;
+  let ended = false;
   let used = false;
   /** The trips each hand-over's files went to (handover.moved). @type {Map<string, Set<string>>} */
   const went = new Map();
@@ -873,12 +879,23 @@ function undoLine(ctx, scope, list) {
   return {
     get handover() { return handover; },
     done,
-    /** A line just shown: a hand-over starts its Undo; the user's own words stop it moving; her lines after it take it down with them. @param {any} e */
+    /**
+     * A line just shown, or a turn's start or end: a hand-over starts its Undo; a turn of hers that carries another (or none) stops it moving, and so do the
+     * user's own words once her turn has ended (in an older log, at once); her lines after it take it down with them. @param {any} e
+     */
     saw(e) {
       const d = e.data ?? {};
+      // A turn of the half that files (one Shiori, or Kokoro; Koe's turns only talk) starts, or ends. A wake the loop wrote before 2026-11-16 has no key.
+      if (e.type === 'wake' && !d.meanwhile && d.half !== 'koe') {
+        named = 'handover' in d;
+        ended = false;
+        if (named) placing = Boolean(handover) && d.handover === handover;
+      }
+      if (e.type === 'turn.end' && d.half !== 'koe') ended = true;
       if (e.type === 'msg.user' && typeof d.handover === 'string') {
         handover = d.handover;
         placing = true;
+        ended = false;
         used = false;
         line.hidden = true;
         line.replaceChildren(button);
@@ -886,7 +903,7 @@ function undoLine(ctx, scope, list) {
         line.remove();
         return;
       }
-      if (e.type === 'msg.user' || (e.type === 'heard' && !d.dismissed)) placing = false;
+      if ((!named || ended) && (e.type === 'msg.user' || (e.type === 'heard' && !d.dismissed))) placing = false;
       if (e.type === 'handover.moved' && typeof d.handover === 'string') went.set(d.handover, new Set([...(went.get(d.handover) ?? []), String(d.to)]));
       if (!placing || !handover || used || !['out.speak', 'out.show', 'out.ask', 'handover.moved', 'conversation.moved'].includes(e.type)) return;
       list.append(line);

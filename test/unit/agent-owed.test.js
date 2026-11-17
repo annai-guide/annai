@@ -369,6 +369,8 @@ test("a hand-over, annai restarted while her card waited (or between her answer 
     await k.agent.idle();
     const hers = (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(k.trip, { types: ['file.write'] }))).filter((/** @type {any} */ e) => e.actor === 'shiori' && e.data.path === '/notes/f.md');
     assert.deepEqual(hers.map((/** @type {any} */ e) => e.data.handover ?? null), ['h-1'], `${what}: the turn taken up carries the hand-over`);
+    const restart = (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(k.trip, { types: ['wake'] }))).filter((/** @type {any} */ e) => !e.data.meanwhile).at(-1);
+    assert.equal(restart.data.handover, 'h-1', `${what}: the restart's wake names it, so the Undo line follows it`);
   }
 });
 

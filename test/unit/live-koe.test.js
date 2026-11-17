@@ -1435,6 +1435,9 @@ test('a hand-over typed while Koe is live is logged with its files, and Kokoro i
     assert.ok(read(k.agent.kokoro).some((/** @type {string} */ t) => /^\[annai\] The user handed you a file: "\/trip\/files\/flight\.pdf"/.test(t)));
     const wrote = (await k.events(['file.write'])).find((/** @type {any} */ e) => e.data.path === '/notes/flight.md');
     assert.equal(wrote.data.handover, 'h-1');
+    // Kokoro's turn's wake names it, so the Conversation's Undo line follows Kokoro's turn.
+    const woke = (await k.events(['wake'])).filter((/** @type {any} */ e) => e.data.half === 'kokoro' && !e.data.meanwhile);
+    assert.equal(woke[0]?.data.handover, 'h-1');
   } finally {
     await k.done();
   }

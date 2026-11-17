@@ -207,6 +207,25 @@ test("an owed hand-over goes only to a turn of the user's (their message, a choi
   assert.deepEqual((await hers(k)).map((e) => [e.data.path, e.data.handover ?? null]), [['/notes/reminder.md', null], ['/notes/flight.md', 'h-1']]);
 });
 
+test("each turn's wake names the hand-over the turn carries, null for none: the hand-over's, a reminder's after it failed, the user's next line, and the one after her turn for it ended", async (t) => {
+  useClock(t);
+  const fails = { error: 'server', status: 500, message: 'Scripted failure.' };
+  const w = (/** @type {string} */ path) => ({ toolCalls: [{ name: 'write', input: { path, content: 'x' } }, { name: 'speak', input: { text: 'ok' } }, { name: 'sleep', input: {} }] });
+  const k = await agentKit([[fails, fails, fails, fails, w('/trip/notes/reminder.md'), w('/trip/notes/flight.md'), say('You are welcome.')]]);
+  k.agent.send('', { handed: [flight], handover: 'h-1' });
+  await k.agent.idle();
+  k.agent.wake({ kind: 'cue', text: 'Reminder: leave for the airport at 9.', scope: k.agent.scope });
+  await k.agent.idle();
+  k.agent.send('Please file it');
+  await k.agent.idle();
+  k.agent.send('Thanks');
+  await k.agent.idle();
+  const wakes = (await k.events(['wake'])).filter((/** @type {any} */ e) => !e.data.meanwhile);
+  assert.ok(wakes.every((/** @type {any} */ e) => 'handover' in e.data), 'every turn\'s wake has the key');
+  assert.deepEqual(wakes.map((/** @type {any} */ e) => e.data.handover), ['h-1', null, 'h-1', null]);
+  assert.deepEqual((await hers(k)).map((e) => [e.data.path, e.data.handover ?? null]), [['/notes/reminder.md', null], ['/notes/flight.md', 'h-1']]);
+});
+
 test('an Undo is told to her as a line of annai\'s, and settles the hand-over it undid', async (t) => {
   useClock(t);
   const k = await agentKit([[

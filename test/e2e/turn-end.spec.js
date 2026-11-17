@@ -4,7 +4,7 @@
 // hand-over. Nothing of the record reaches the model.
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { startModelServer, anthropicToolReply, modelSetUp, startTrip } from './helpers.js';
+import { startModelServer, anthropicToolReply, modelSetUp, startTrip, openApp } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 const MESSAGES = '/b/v1/messages';
@@ -45,6 +45,9 @@ async function undo(page, trip) {
   await expect(page.getByText('Undone.', { exact: true })).toBeVisible();
   return (await filed(page, trip)).there;
 }
+
+/** The words of the line just above the hand-over's Undo line. @param {import('@playwright/test').Page} page */
+const above = (page) => page.locator('.convo li.undo-line').evaluate((li) => li.previousElementSibling?.querySelector('p')?.textContent ?? null);
 
 /** The text of a request's last user message. @param {any} body */
 const lastUser = (body) => JSON.stringify([...(body?.messages ?? [])].reverse().find((/** @type {any} */ m) => m.role === 'user')?.content ?? '');
@@ -206,12 +209,111 @@ test('another trip opened while her card waits: let go, no line and no request o
     await expect(page.locator('.convo').getByText('Filed.')).toBeVisible({ timeout: 30_000 });
     const { writes } = await filed(page, bigSur);
     expect(writes).toEqual([['/notes/f.md', expect.any(String)]]);
-    // The Undo line stays where it was when the user wrote (under her question), drawn as it was then: the conversation drawn again shows it.
-    await page.reload();
-    await expect(page.locator('.convo').getByText('Filed.')).toBeVisible({ timeout: 30_000 });
+    // Her next turn carries the hand-over, so the Undo line follows it: under what she did, with no reload.
+    await expect(page.getByRole('button', { name: 'Undo what Shiori did with these files' })).toBeVisible();
+    expect(await above(page)).toBe('Filed.');
     expect(await undo(page, bigSur)).toEqual([]);
   } finally {
     await llm.stop();
+  }
+});
+
+test('her question card first, the user taps Yes, and she files: the Undo line shows under what she said she did, with no reload and after one, and Undo takes back what she filed', async ({ page }) => {
+  const llm = await startModelServer({ [MESSAGES]: [
+    sse(anthropicToolReply([{ name: 'ask', input: { question: 'File it in your notes?', options: ['Yes', 'No'] } }, sleep])),
+    sse(anthropicToolReply([write('f.md'), speak('Filed.'), sleep])),
+  ] });
+  try {
+    await modelSetUp(page, llm.origin, 'Big Sur');
+    const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    await handOver(page, 'Here is my flight');
+    await expect(page.locator('.convo').getByText('File it in your notes?')).toBeVisible({ timeout: 30_000 });
+    await page.locator('.convo').getByRole('button', { name: 'Yes', exact: true }).click();
+    await expect(page.locator('.convo').getByText('Filed.')).toBeVisible({ timeout: 30_000 });
+    const { writes } = await filed(page, trip);
+    expect(writes).toEqual([['/notes/f.md', expect.any(String)]]);
+    await expect(page.getByRole('button', { name: 'Undo what Shiori did with these files' })).toBeVisible();
+    expect(await above(page)).toBe('Filed.');
+    // Drawn again, the line is where it was.
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'Undo what Shiori did with these files' })).toBeVisible({ timeout: 30_000 });
+    expect(await above(page)).toBe('Filed.');
+    expect(await undo(page, trip)).toEqual([]);
+    expect(llm.bodies(MESSAGES).length).toBe(2);
+  } finally {
+    await llm.stop();
+  }
+});
+
+test('her turn silent twice after a hand-over, and the user writes again instead of Try again: that turn carries the hand-over, and the Undo line shows under what she did', async ({ page }) => {
+  const llm = await startModelServer({ [MESSAGES]: [
+    sse(anthropicToolReply([sleep])),
+    sse(anthropicToolReply([sleep])),
+    sse(anthropicToolReply([write('f.md'), speak('Filed.'), sleep])),
+  ] });
+  try {
+    await modelSetUp(page, llm.origin, 'Big Sur');
+    const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    await handOver(page, 'Here is my flight');
+    await expect(page.getByText("Shiori didn't answer").first()).toBeVisible({ timeout: 30_000 });
+    await page.getByRole('button', { name: 'Type', exact: true }).click();
+    await page.getByLabel('Message to Shiori').fill('Please file it');
+    await page.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect(page.locator('.convo').getByText('Filed.')).toBeVisible({ timeout: 30_000 });
+    const { writes } = await filed(page, trip);
+    expect(writes).toEqual([['/notes/f.md', expect.any(String)]]);
+    await expect(page.getByRole('button', { name: 'Undo what Shiori did with these files' })).toBeVisible();
+    expect(await above(page)).toBe('Filed.');
+    expect(await undo(page, trip)).toEqual([]);
+  } finally {
+    await llm.stop();
+  }
+});
+
+test('drawn from the log: while she is two halves, Kokoro\'s turns place the Undo line (words to Koe while Kokoro files don\'t stop it, the next ones after Kokoro\'s turn ended do); a log from before wakes named their hand-over keeps the user\'s words as the stop', async ({ page }) => {
+  await openApp(page, '#/trips');
+  // No model is set, so opening a conversation wakes nothing. Each log as the loop writes it, with one write of hers under the hand-over so Undo has something to take back.
+  const [halves, older] = await page.evaluate(async () => {
+    const load = (/** @type {string} */ u) => import(u);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { createTrip } = await load('/src/core/scopes.js');
+    const { record } = await load('/src/core/agent/log.js');
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    const handed = [{ path: '/trip/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true }];
+    /** @param {string} trip @param {string} type @param {any} data @param {string} [text] */
+    const put = (trip, type, data, text) => record(store, trip, { type, actor: type === 'msg.user' ? 'user' : type.startsWith('out.') ? 'shiori' : 'system', data, ...(text ? { texts: [['text', text]] } : {}) });
+    const a = await createTrip(ws, { title: 'Big Sur' });
+    await put(a, 'wake', { id: 'w1', half: 'koe', reasons: [{ kind: 'user', text: 'typed', handover: 'h-1' }], handover: 'h-1' });
+    await put(a, 'msg.user', { wake: 'w1', handed, handover: 'h-1', split: true }, '(files)');
+    await put(a, 'out.speak', { id: 's1', half: 'koe', wake: 'w1' }, 'Let me look.');
+    await put(a, 'wake', { id: 'w2', half: 'kokoro', reasons: [{ kind: 'user', text: 'typed', handover: 'h-1' }], handover: 'h-1' });
+    await put(a, 'wake', { id: 'w3', half: 'koe', reasons: [{ kind: 'user', text: 'typed' }], handover: null });
+    await put(a, 'msg.user', { wake: 'w3', split: true }, 'Thanks');
+    await put(a, 'out.speak', { id: 's2', half: 'koe', wake: 'w3' }, 'You are welcome.');
+    await ws.write(a, '/notes/flight.md', 'AN 123', { author: 'shiori', handover: 'h-1' });
+    await put(a, 'turn.end', { half: 'kokoro', wake: 'w2', handover: 'h-1' });
+    await put(a, 'out.speak', { id: 's3', half: 'koe', wake: 'w4' }, 'Filed it in your notes.');
+    await put(a, 'wake', { id: 'w5', half: 'koe', reasons: [{ kind: 'user', text: 'typed' }], handover: null });
+    await put(a, 'msg.user', { wake: 'w5', split: true }, 'What time is the flight?');
+    await put(a, 'out.speak', { id: 's4', half: 'koe', wake: 'w5' }, 'At nine.');
+    await put(a, 'wake', { id: 'w6', half: 'kokoro', reasons: [{ kind: 'cue', text: 'Koe answered the user' }], handover: null });
+    const b = await createTrip(ws, { title: 'Kyoto' });
+    await put(b, 'wake', { id: 'w1', reasons: [{ kind: 'user', text: 'typed', handover: 'h-2' }] });
+    await put(b, 'msg.user', { wake: 'w1', handed, handover: 'h-2' }, '(files)');
+    await put(b, 'out.ask', { id: 'q', wake: 'w1', question: 'File it?', options: ['Yes'] });
+    await put(b, 'msg.user', { wake: 'w1', answer: 'q' }, 'Yes');
+    await ws.write(b, '/notes/flight.md', 'AN 123', { author: 'shiori', handover: 'h-2' });
+    await put(b, 'out.speak', { id: 's1', wake: 'w1' }, 'Filed.');
+    store.close();
+    return [a, b];
+  });
+  for (const [trip, under] of [[halves, 'Filed it in your notes.'], [older, 'File it?']]) {
+    await page.goto(`/#/trip/${encodeURIComponent(trip)}/talk`);
+    await expect(page.locator('.convo').getByText(under === 'File it?' ? 'Filed.' : 'At nine.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Undo what Shiori did with these files' })).toBeVisible();
+    expect(await above(page)).toBe(under);
   }
 });
 
