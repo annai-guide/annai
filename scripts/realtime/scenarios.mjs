@@ -19,11 +19,12 @@
 // route: the audio the microphone stands for (speaker: the phone's own, half-duplex; headphones: she can be cut by speaking);
 // echoDb: her voice mixed back into the microphone at that level (the phone's speaker), null for none.
 /** @typedef {{ say: string, gainDb?: number } | { answered: number } | { sounding: number } | { wait: number } | { ask: number } | { asked: number } | { asking: number } | { tap: string, afterHeard?: number } | { settled: number } | { shiori: true } | { type: string, lines?: number } | { noteSounding: number }} Step */
-/** @typedef {{ about: string, route: 'speaker' | 'headphones' | 'car', echoDb: number | null, echoDelayMs?: number, expectCut?: boolean, extra?: boolean, repeatNote?: boolean, card?: boolean, measure?: boolean, real?: boolean, mode?: 'live' | 'classic' | 'chat', speechIn?: 'default', asrDelayMs?: number, expect?: { grant: 'voice' | 'tap' | false | 'any', words?: boolean, open?: boolean, next?: boolean, declined?: boolean }, languages?: { spoken: string[], answer: string }, passOn?: boolean, acted?: boolean, acks?: string[], noteCut?: true | 'stop', seed?: { plan?: boolean, reminderInS?: number }, once?: string, steps: Step[] }} Scenario
+/** @typedef {{ about: string, route: 'speaker' | 'headphones' | 'car', echoDb: number | null, echoDelayMs?: number, expectCut?: boolean, extra?: boolean, repeatNote?: boolean, card?: boolean, measure?: boolean, real?: boolean, mode?: 'live' | 'classic' | 'chat', speechIn?: 'default', asrDelayMs?: number, expect?: { grant: 'voice' | 'tap' | false | 'any', words?: boolean, open?: boolean, next?: boolean, declined?: boolean }, languages?: { spoken: string[], answer: string }, locale?: string, zone?: string, passOn?: boolean, acted?: boolean, acks?: string[], noteCut?: true | 'stop', seed?: { plan?: boolean, reminderInS?: number }, once?: string, steps: Step[] }} Scenario
  *   repeatNote: the stand-in Kokoro sends its note again once Koe has said it; extra: not in a plain run, only by name (--only); languages (phase 2): the languages setting the run sets in Settings → Shiori before she listens (the browser's
  *   English is the list's first; the others are added), and the scenario is held to answering in the language each clip is spoken in; passOn: every line said is
  *   one Koe passes on (the checks "passed on" and "passed on as said"); acted: the line is a request Koe may do itself with a tool of its own or pass on (the check "acted on it": silence, or words with no act, fail); acks: the clips that are only acknowledgements here (the check "acknowledgements left
  *   quiet"); noteCut: a noise cuts a note as she says it (the check "cut note heard once at most"), or 'stop': a spoken "stop" does (the check "stopped when told");
+ *   locale, zone: the phone's language and time zone (the browser context's), when not Playwright's default English and the host's own time zone (no zone is set otherwise);
  *   seed: synthetic files written into the conversation's trip before she listens (plan: three plan items from now on; reminderInS: a time watch due that many
  *   seconds on, the page reloaded so annai reads it as stored); once: words a reminder says, which one line of hers or annai's voice holds (the check "reminder said once") */
 
@@ -125,11 +126,38 @@ export const SCENARIOS = {
     steps: [{ say: 'lunch' }, { answered: 1500 }, { say: 'bixby' }, { answered: 1500 }],
   },
   ...relayScenarios(),
+  ...japaneseScenarios(),
   ...cardScenarios(),
   ...classicScenarios(),
   ...realScenarios(),
   ...lineScenarios(),
 };
+
+/**
+ * Koe's own words in Japanese (2026-11-14 and the languages build of 2026-11-17), and English counterparts. With a real Kokoro (Claude Opus 5.5, or Sonnet 5.5 with
+ * --real-model sonnet) behind a live Koe on Gemini Live: relay-fact's two questions (Koe's hold-on words, the language of Kokoro's notes and Koe's saying of them),
+ * the typed greeting and request (real-typed-live is the English one), and a spoken "Stop." over Kokoro's note (real-stop: cut-note-stop with a real Kokoro's own
+ * note). With the stand-in Kokoro: a request Koe does with its own tools (relay-stop-request's, in Japanese: its line before a tool) and the filler trap
+ * (relay-filler's, in Japanese). The -ja ones are a Japanese speaker's: the phone ja-JP (Asia/Tokyo), the languages list [Japanese], and the screens Japanese when
+ * run with --ui ja. By name only.
+ * @returns {Record<string, Scenario>}
+ */
+function japaneseScenarios() {
+  const speaker = /** @type {const} */ ({ route: 'speaker', echoDb: null, extra: true, real: true });
+  /** @type {Pick<Scenario, 'locale' | 'zone' | 'languages'>} */
+  const ja = { locale: 'ja-JP', zone: 'Asia/Tokyo', languages: { spoken: ['ja'], answer: 'follow' } };
+  /** The original typed-live's waits: 90 s after each line for a late note. @param {string} hello @param {string} request @returns {Step[]} */
+  const typed = (hello, request) => [{ type: hello, lines: 1 }, { answered: 1500 }, { wait: 90_000 }, { type: request, lines: 2 }, { answered: 1500 }, { wait: 90_000 }];
+  return {
+    'real-relay-fact': { ...speaker, about: "relay-fact with a real Kokoro: a question about annai and a general fact; Koe tells them to hold on (its words, in what language) and passes them on", steps: [{ say: 'auto-gps' }, { answered: 1500 }, { say: 'built' }, { answered: 1500 }] },
+    'real-relay-fact-ja': { ...speaker, ...ja, about: "real-relay-fact as a Japanese speaker says it (ja-JP phone, Japanese list, and Japanese screens with --ui ja): Koe's hold-on words, and the language of Kokoro's notes", steps: [{ say: 'ja-auto-gps' }, { answered: 1500 }, { say: 'ja-built' }, { answered: 1500 }] },
+    'real-typed-live-ja': { ...speaker, ...ja, about: "real-typed-live as a Japanese speaker types it: a greeting (one line, Koe's) and a request to save a note (two: Koe's wait and the result); the lines' count is checked, their language is read by eye in the record", steps: typed('こんにちは。', '駐車場は3階に停めたって、メモに追加しておいて。') },
+    'real-stop': { route: 'headphones', echoDb: null, extra: true, real: true, expectCut: true, noteCut: 'stop', about: "a real Kokoro, headphones: a question, then \"Stop.\" 100 ms into Kokoro's own note as she says it: what Koe says after the stop (an okay, in its language, or nothing)", steps: [{ say: 'bixby' }, { noteSounding: 100 }, { say: 'stop' }, { wait: 25_000 }] },
+    'real-stop-ja': { route: 'headphones', echoDb: null, extra: true, real: true, expectCut: true, noteCut: 'stop', ...ja, about: "real-stop as a Japanese speaker says it: a question, then 「ストップ。」 100 ms into Kokoro's own note", steps: [{ say: 'ja-bixby' }, { noteSounding: 100 }, { say: 'ja-stop' }, { wait: 25_000 }] },
+    'relay-stop-request-ja': { route: 'speaker', echoDb: null, extra: true, acted: true, ...ja, about: "relay-stop-request as a Japanese speaker says it (「ホテルのリマインダー、消しといて。」, a request with no stop word in it): she acts on it (the check \"acted on it\"); the language of her word before a tool of her own is read by eye in the record", steps: [{ say: 'ja-stop-reminder' }, { answered: 1500 }] },
+    'relay-filler-ja': { route: 'speaker', echoDb: null, extra: true, ...ja, about: "the filler trap as a Japanese speaker says it: a question, then being told off for apologising. Silence is right; no apology, no promise in what she says, her answer to the question too, as in the English scenario (the check \"no filler\"); an okay, かしこまりました among them, is fine, but 承知, the \"understood\" her instructions forbid, is not", steps: [{ say: 'ja' }, { answered: 1500 }, { say: 'annoyed-ja' }, { wait: 9000 }] },
+  };
+}
 
 /**
  * One answer, and the right half's: Koe passes on what it can't answer, as said, and asks nothing of its own; an acknowledgement gets no reply; a note cut

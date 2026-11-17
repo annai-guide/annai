@@ -435,7 +435,7 @@ export class PluginHost {
   /** @param {string} id */
   async #startNow(id) {
     if (this.active.has(id)) return;
-    if (this.#removing.has(id)) throw new PluginError(id, /* en */ 'is being removed', { shown: t`is being removed` });
+    if (this.#removing.has(id)) throw new PluginError(id, /* en */ 'is being removed', { shown: t`It is being removed.` });
     if (this.#stale.has(id)) throw new PluginError(id, /* en */ 'was updated. Restart annai to run the new version.', { shown: t`It was updated. Restart annai to run the new version.` });
     const manifest = await this.#stored(id);
     const state = await this.installed();
@@ -604,9 +604,9 @@ export class PluginHost {
    * @param {string} id @returns {Promise<{ file: boolean, keys: string[], secrets: string[], bytes: number }>}
    */
   async reset(id) {
-    if (this.#removing.has(id)) throw new PluginError(id, /* en */ 'is being removed', { shown: t`is being removed` });
+    if (this.#removing.has(id)) throw new PluginError(id, /* en */ 'is being removed', { shown: t`It is being removed.` });
     const had = await this.saved(id);
-    if (!had) throw new PluginError(id, /* en */ 'keeps MCP servers, not settings: remove a server on its own screen.', { shown: t`keeps MCP servers, not settings: remove a server on its own screen.` });
+    if (!had) throw new PluginError(id, /* en */ 'keeps MCP servers, not settings: remove a server on its own screen.', { shown: t`It keeps MCP servers, not settings: remove a server on its own screen.` });
     const isSettings = (/** @type {string} */ p) => p === SETTINGS(id);
     const bytes = had.file ? (await forget(this.ws.store, SYS_SETTINGS, { files: isSettings, history: isSettings })).bytes : 0;
     await this.ws.store.tx(['secrets'], 'readwrite', async (t) => {
@@ -690,7 +690,7 @@ export class PluginHost {
   /** A bare skill's SKILL.md as stored, read again (choice 2). @param {string} id */
   async #storedSkill(id) {
     const t = await this.ws.readText(SYS_PLUGINS, `/${id}/${SKILL_FILE}`).catch(() => undefined);
-    if (t === undefined) /* en */ throw new PluginError(id, 'is not installed');
+    if (t === undefined) /* en */ throw new PluginError(id, 'It is not installed');
     /** @type {import('./skills.js').Skill} */
     let skill;
     try {
@@ -698,7 +698,7 @@ export class PluginHost {
     } catch (e) {
       throw new PluginError(id, String(/** @type {any} */ (e)?.message ?? e));
     }
-    if (skill.name !== id) /* en */ throw new PluginError(id, `its ${SKILL_FILE} names "${skill.name}", not the folder it is installed in`);
+    if (skill.name !== id) /* en */ throw new PluginError(id, `Its ${SKILL_FILE} names "${skill.name}", not the folder it is installed in`);
     return skill;
   }
 
@@ -713,11 +713,11 @@ export class PluginHost {
       const dir = `/${id}/${folder ? `${folder}/` : ''}`;
       const read = async () => {
         const t = await this.ws.readText(SYS_PLUGINS, `${dir}${SKILL_FILE}`);
-        if (t === undefined) /* en */ throw new PluginError(id, `its skill folder ${f} has no ${SKILL_FILE}`);
+        if (t === undefined) /* en */ throw new PluginError(id, `Its skill folder ${f} has no ${SKILL_FILE}`);
         try {
           return parseSkill(t);
         } catch (e) {
-          /* en */ throw new PluginError(id, `its skill ${f}: ${/** @type {any} */ (e)?.message ?? e}`);
+          /* en */ throw new PluginError(id, `Its skill ${f}: ${/** @type {any} */ (e)?.message ?? e}`);
         }
       };
       const skill = await read();
@@ -739,7 +739,7 @@ export class PluginHost {
     }
     for (const p of manifest.personalities ?? []) {
       const t = await this.ws.readText(SYS_PLUGINS, `/${id}/${p}`);
-      if (t === undefined) /* en */ throw new PluginError(id, `its personality ${p} is missing`);
+      if (t === undefined) /* en */ throw new PluginError(id, `Its personality ${p} is missing`);
       this.registry.add(id, 'personality', { name: String(p).split('/').pop()?.replace(/\.md$/, ''), text: t, plugin: manifest.name });
     }
     // A model provider's description (spec §9.1): its providers in Settings → Models are made from it.
@@ -759,11 +759,11 @@ export class PluginHost {
     try {
       manifest = await this.ws.readJSON(SYS_PLUGINS, `/${id}/${MANIFEST_FILE}`);
     } catch {
-      /* en */ throw new PluginError(id, `its ${MANIFEST_FILE} is not valid JSON`);
+      /* en */ throw new PluginError(id, `Its ${MANIFEST_FILE} is not valid JSON`);
     }
-    if (!manifest) /* en */ throw new PluginError(id, 'is not installed');
+    if (!manifest) /* en */ throw new PluginError(id, 'It is not installed');
     checkManifest(manifest);
-    if (manifest.id !== id) /* en */ throw new PluginError(id, `its ${MANIFEST_FILE} names "${manifest.id}", not the folder it is installed in`);
+    if (manifest.id !== id) /* en */ throw new PluginError(id, `Its ${MANIFEST_FILE} names "${manifest.id}", not the folder it is installed in`);
     return manifest;
   }
 
@@ -776,7 +776,7 @@ export class PluginHost {
         const r = await this.registry.guard(id, 'starting', (/** @type {any} */ api) => this.#inTime(id, () => mod.activate(api)))(this.#api(id, manifest));
         if (typeof r === 'function') dispose = r;
       } else if (manifest.entry) {
-        /* en */ throw new PluginError(id, 'its module has no activate() function');
+        /* en */ throw new PluginError(id, 'Its module has no activate() function');
       }
       if (!builtin) await this.#content(id, manifest);
     } catch (e) {
@@ -803,7 +803,7 @@ export class PluginHost {
     const late = new Promise((_, reject) => {
       timer = setTimeout(() => {
         const s = Math.round(this.startTimeout / 100) / 10;
-        reject(Object.assign(new Error(/* en */ `it didn't finish starting within ${s} seconds`), { shown: plural(s, "it didn't finish starting within # second", "it didn't finish starting within # seconds") }));
+        reject(Object.assign(new Error(/* en */ `it didn't finish starting within ${s} seconds`), { shown: plural(s, "It didn't finish within # second.", "It didn't finish within # seconds.") }));
         work.then((r) => {
           if (this.active.has(id)) return;
           try {
@@ -846,7 +846,7 @@ export class PluginHost {
         const call = String(kind).startsWith('ui:') ? 'annai.ui' : Object.hasOwn(OWN_CALL, kind) ? OWN_CALL[kind] : '';
         if (call) /* en */ throw new PluginError(id, `annai.register can't add ${kind}: use ${call}`);
         // An always-on microphone feed, with no sign of it on the phone: annai's own and its official plugins only.
-        if (kind === 'heard-clips' && !this.builtins.has(id) && this.#known[id]?.source !== 'official') /* en */ throw new PluginError(id, "only annai's official plugins can hear the microphone (heard-clips)");
+        if (kind === 'heard-clips' && !this.builtins.has(id) && this.#known[id]?.source !== 'official') /* en */ throw new PluginError(id, "Only annai's official plugins can hear the microphone (heard-clips)");
         return registry.add(id, kind, item);
       },
       schemas: Object.freeze({ register: (/** @type {any} */ entry) => registry.add(id, 'schema', entry) }),
@@ -868,7 +868,7 @@ export class PluginHost {
                 // A fetch the browser couldn't make (offline: "Failed to fetch", Safari's "Load failed") is an answer too (§17).
                 if (!isPluginBug(e)) throw e;
                 registry.fail(id, /* en */ `tool ${tool.name}`, e);
-                throw new PluginError(id, /* en */ `the tool ${tool.name} failed: ${/** @type {any} */ (e)?.message ?? e}`, { cause: e });
+                throw new PluginError(id, /* en */ `The tool ${tool.name} failed: ${/** @type {any} */ (e)?.message ?? e}`, { cause: e });
               }
             },
           });
@@ -882,7 +882,7 @@ export class PluginHost {
       /** Log appends, as frozen copies, never this plugin's own (spec §5.4: read-only in v1). */
       hooks: Object.freeze({
         on: (/** @type {any} */ fn, /** @type {{ types?: string[] }} */ o = {}) => {
-          if (typeof fn !== 'function') /* en */ throw new PluginError(id, 'hooks.on needs a function');
+          if (typeof fn !== 'function') /* en */ throw new PluginError(id, 'It called hooks.on without a function');
           return registry.add(id, 'hook', { fn, ...(Array.isArray(o?.types) ? { types: o.types.map(String) } : {}) });
         },
       }),
@@ -944,7 +944,7 @@ export class PluginHost {
         /** An endpoint type (spec §9.1): build() and read(), or run() for types that need no network; a realtime one open() and attach(). */
         register: (/** @type {any} */ type) => {
           if (typeof type?.type !== 'string' || !/^[a-z0-9][a-z0-9-]{0,40}$/.test(type.type)) {
-            /* en */ throw new PluginError(id, 'an endpoint type needs a "type" id of lowercase letters, digits and dashes');
+            /* en */ throw new PluginError(id, 'An endpoint type needs a "type" id of lowercase letters, digits and dashes');
           }
           const chat = typeof type.run === 'function' || (typeof type.build === 'function' && typeof type.read === 'function');
           const hears = type.speech === 'in' && typeof type.transcribeRequest === 'function' && typeof type.readTranscript === 'function';
@@ -952,26 +952,26 @@ export class PluginHost {
           // A realtime voice type (K4): annai opens its socket; it builds the address and drives what is sent.
           const formats = (/** @type {any} */ l) => Array.isArray(l) && l.length > 0 && l.every((f) => typeof f?.format === 'string' && Number.isInteger(f?.rate));
           if (type.realtime && !(typeof type.open === 'function' && typeof type.attach === 'function' && formats(type.audio?.in) && formats(type.audio?.out))) {
-            /* en */ throw new PluginError(id, `the realtime type "${type.type}" needs open() and attach(), and the audio it takes and gives`);
+            /* en */ throw new PluginError(id, `The realtime type "${type.type}" needs open() and attach(), and the audio it takes and gives`);
           }
           // Choices the provider page offers in words (G3): each a label, and a switch or options of words.
           const words = (/** @type {any} */ x) => typeof x === 'string' && x.trim() !== '';
           const choice = (/** @type {any} */ c) => c && typeof c === 'object' && words(c.label) && (c.options === undefined
             || (c.options && typeof c.options === 'object' && !Array.isArray(c.options) && Object.keys(c.options).length > 0 && Object.values(c.options).every(words)));
           if (type.choices !== undefined && !(type.choices && typeof type.choices === 'object' && !Array.isArray(type.choices) && Object.values(type.choices).every(choice))) {
-            /* en */ throw new PluginError(id, `the endpoint type "${type.type}" offers choices on its provider page that aren't each a label with a switch or options in words`);
+            /* en */ throw new PluginError(id, `The endpoint type "${type.type}" offers choices on its provider page that aren't each a label with a switch or options in words`);
           }
           if (!chat && !hears && !speaks && !type.realtime) {
-            /* en */ throw new PluginError(id, `the endpoint type "${type.type}" needs build() and read(), or run(); a speech type needs transcribeRequest() and readTranscript(), or speechRequest() and readSpeech(); a realtime type open() and attach()`);
+            /* en */ throw new PluginError(id, `The endpoint type "${type.type}" needs build() and read(), or run(); a speech type needs transcribeRequest() and readTranscript(), or speechRequest() and readSpeech(); a realtime type open() and attach()`);
           }
           return registry.add(id, 'endpoint-type', Object.freeze({ ...type, name: String(type.name ?? type.type), pluginId: id }));
         },
         /** A provider plugin's own setup and quirks, once (decision 15; docs/plugins.md, "Model providers with code"). */
         setup: (/** @type {any} */ item) => {
-          if (!manifest.provider) /* en */ throw new PluginError(id, 'providers.setup is for a plugin that describes a model provider (its manifest has no provider)');
+          if (!manifest.provider) /* en */ throw new PluginError(id, 'It called providers.setup, which is for a plugin that describes a model provider (its manifest has no provider)');
           const wrong = checkSetup(item);
           if (wrong) throw new PluginError(id, wrong);
-          if (registry.entries('provider-setup', { all: true }).some((e) => e.pluginId === id)) /* en */ throw new PluginError(id, 'called providers.setup twice: a plugin has one setup');
+          if (registry.entries('provider-setup', { all: true }).some((e) => e.pluginId === id)) /* en */ throw new PluginError(id, 'It called providers.setup twice: a plugin has one setup');
           return registry.add(id, 'provider-setup', Object.freeze({ ...item, keyField: item.keyField !== false }));
         },
       }),

@@ -1,4 +1,4 @@
-import { CHAT_ROLES, readConfig, newProvider, newModel, saveProvider, saveModel, saveRoles, setKey, modelOf, providerOf, SPEECH_ROLES, SPEECH_DEFAULTS, STAND_INS, KOE_ROLES, KOE_REALTIME, KOE_CLASSIC } from './config.js';
+import { CHAT_ROLES, readConfig, newProvider, newModel, saveProvider, saveModel, saveRoles, setKey, modelOf, modelBase, providerOf, SPEECH_ROLES, SPEECH_DEFAULTS, STAND_INS, KOE_ROLES, KOE_REALTIME, KOE_CLASSIC } from './config.js';
 import { ROLE_KINDS } from './provider-desc.js';
 import { pricesAt } from './cost.js';
 import { t } from '../l10n.js';
@@ -38,14 +38,34 @@ export function providerValues(src) {
 /** The description's models, by "<ability>/<provider model id>". @param {ProviderSource} src */
 const descModels = (src) => Object.entries(src.provider.abilities).flatMap(([ability, a]) => (a.models ?? []).map((m) => ({ ability, key: `${ability}/${m.providerId}`, values: m })));
 
-/** A model under its name, or "name (2)", "name (3)"…: the first no other model has. @param {ModelRecord} rec @param {Set<string>} taken lower-case names */
-function named(rec, taken) {
-  const name = modelOf(rec).name;
+/** A name, or "name (2)", "name (3)"…: the first not taken, which it takes. @param {string} name @param {Set<string>} taken lower-case names */
+function freeName(name, taken) {
   let unique = name;
   for (let i = 2; taken.has(unique.toLowerCase()); i++) unique = `${name} (${i})`;
   taken.add(unique.toLowerCase());
+  return unique;
+}
+
+/** A model under its name, or the first "name (2)"… no other model has. @param {ModelRecord} rec @param {Set<string>} taken lower-case names */
+function named(rec, taken) {
+  const name = modelOf(rec).name;
+  const unique = freeName(name, taken);
   if (unique !== name) rec.user = { ...rec.user, name: unique };
   return rec;
+}
+
+/**
+ * A model whose description renamed it (a plugin update), under its new name or the first "name (2)"… no other model has: names stay unique,
+ * which the screens' names rest on (config.js modelNames). A "(2)" annai gave it for its old name follows to the new one; a name the user
+ * gave it stays. @param {ModelRecord} was @param {ModelRecord} next @param {Set<string>} taken lower-case names, its own among them
+ */
+function renamed(was, next, taken) {
+  const old = modelBase(was).name;
+  if (modelBase(next).name === old) return next;
+  taken.delete(modelOf(was).name.toLowerCase());
+  const { name, ...rest } = next.user ?? {};
+  const ours = typeof name === 'string' && name.startsWith(`${old} (`) && /^\(\d+\)$/.test(name.slice(old.length + 1)); // named()'s "<old> (2)"
+  return named({ ...next, user: ours ? rest : next.user }, taken);
 }
 
 /**
@@ -145,7 +165,9 @@ export async function addProvider({ ws, store }, src, { key = null, roles = 'fre
   const values = providerValues(src);
   /** @type {ProviderValues} */
   const user = {};
-  if (name) user.name = name;
+  // A name given is the user's; with none, the plugin's, or "<plugin's> (2)"… where a provider has it (a second key of one plugin), as its models get.
+  const unique = freeName(src.name, new Set(Object.values(cfg.providers).map((p) => providerOf(p).name.toLowerCase())));
+  if (name || unique !== src.name) user.name = name || unique;
   if (baseUrl) user.baseUrl = baseUrl;
   if (onFree) user.free = true;
   for (const [id, a] of Object.entries(abilities)) {
@@ -196,7 +218,8 @@ function liveInstead(src, ability, models) {
  * Brings providers up to date when their plugin's version changed: new template layers,
  * models new to the description (in no role), and new abilities switched off. The user's
  * layers stay; models gone from the description, or removed by the user, stay as they are, except that a model leaves Koe · Realtime (a refused session first)
- * at the update that dropped it: the previous description named it, this one doesn't, and lists that ability's models. A list it would empty gets the description's model. @param {{ ws: Workspace }} c @param {ProviderSource[]} sources @returns {Promise<number>} the providers refreshed
+ * at the update that dropped it: the previous description named it, this one doesn't, and lists that ability's models. A list it would empty gets the description's model.
+ * A model the description renames, or a new one, takes the first free name (renamed, named). @param {{ ws: Workspace }} c @param {ProviderSource[]} sources @returns {Promise<number>} the providers refreshed
  */
 export async function syncProviders({ ws }, sources) {
   const bySrc = new Map(sources.map((s) => [s.plugin, s]));
@@ -225,7 +248,7 @@ export async function syncProviders({ ws }, sources) {
     const dropped = new Set();
     for (const m of mine) {
       const d = listed.find((x) => m.template?.id === `${src.plugin}/${x.key}`);
-      if (d && m.template) changed.push({ ...m, template: { id: m.template.id, version: src.version, values: d.values } });
+      if (d && m.template) changed.push(renamed(m, { ...m, template: { id: m.template.id, version: src.version, values: d.values } }, taken));
       else if (!m.template || m.template.id.startsWith('list/')) {
         // A model added from the list or by id started with its ability's modelDefaults then: a default new since (Claude's photos
         // and PDFs) reaches it, in the layer that holds its start, unless it or the user has that field.

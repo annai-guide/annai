@@ -14,6 +14,9 @@ import { validZone, instantAt, isoInZone, offsetMinutes } from './time.js';
 /** A booking's own fields, besides those in its `fields` object, that `unsure` may name. */
 const TOP = ['title', 'start', 'end', 'place', 'confirmation', 'cost'];
 
+/** Whether a value is there: not null, no blank text, no empty list. The one rule for a booking's own fields and the keys of `fields`: what is marked (checkOf) and what the details draw (format.js bookingFacts). @param {unknown} v */
+export const there = (v) => v !== undefined && v !== null && !(typeof v === 'string' && !v.trim()) && !(Array.isArray(v) && !v.length);
+
 /**
  * What of a booking the screens mark for the user to check: the names in `unsure` of fields it has (its own, or keys of `fields`, as
  * written), once each. A record from before (no `unsure` key) not confirmed reads as if `unsure` named every part it has: its own fields
@@ -27,8 +30,6 @@ export function checkOf(b) {
   const extra = b.fields && typeof b.fields === 'object' && !Array.isArray(b.fields) ? b.fields : {};
   const named = 'unsure' in b ? b.unsure : b.status !== 'confirmed' ? [...TOP, ...Object.keys(extra)] : [];
   if (!Array.isArray(named)) return { fields: [] };
-  // A part is a value that is there: not null, no blank text. The same rule for a booking's own fields and for the keys of `fields`.
-  const there = (/** @type {unknown} */ v) => v !== undefined && v !== null && !(typeof v === 'string' && !v.trim());
   const has = (/** @type {string} */ k) => (TOP.includes(k) ? there(b[k]) : Object.hasOwn(extra, k) && there(extra[k]));
   /** @type {string[]} */
   const fields = [];
@@ -41,7 +42,8 @@ export function checkOf(b) {
  * Its times by its kind, as people say them (the user's words, 2026-11-14: "how people will actually say"): the screens' own words for a flight
  * and a stay (Departs, Arrives; Check-in, Check-out), and for a car and a train the Plan's (Pick up, Return; Arrive), though the booking
  * screen says Starts and Ends there. Only annai's own words, from its own tables: a key of `fields` is the booking's text, which can hold a
- * line break, brackets or 40,000 characters, so a key annai has no words for is one phrase and never itself (booking-say's fix 3).
+ * line break, brackets or 40,000 characters, so a key annai has no words for is one phrase and never itself (booking-say's fix 3). The keys of
+ * `fields` here are the details screen's (format.js FIELD_WORDS), each named as its label there, so the user finds the line she asks about.
  */
 /* en */ const TIME_PARTS = /** @type {Record<string, [string, string]>} */ ({
   flight: ['the departure time', 'the arrival time'], rail: ['the departure time', 'the arrival time'],
@@ -50,7 +52,8 @@ export function checkOf(b) {
 /* en */ const PARTS = /** @type {Record<string, string>} */ ({
   title: 'the name', confirmation: 'the confirmation number', place: 'the place', cost: 'the cost', // its own fields (TOP)
   flight: 'the flight number', from: 'where it leaves from', to: 'where it arrives', class: 'the cabin', nights: 'the number of nights',
-  pickup: 'the pick-up place', dropoff: 'the drop-off place', party: 'the party size',
+  pickup: 'the pick-up place', dropoff: 'the drop-off place', party: 'the party size', travellers: 'the travellers', bags: 'the bags',
+  terminal: 'the terminal', gate: 'the gate', train: 'the train', car: 'the car',
   // The names annai files into `fields` itself (EXTRAS).
   notes: 'the notes', room: 'the room', phone: 'the phone number', guests: 'the guests', passengers: 'the passengers', airline: 'the airline',
   company: 'the company', seat: 'the seat', flights: 'the flights',

@@ -12,9 +12,14 @@ import { NAMES_FILE, readNames } from './names.js';
 import { moveFile, FILE_HERE, PASTED_TEXT } from './waiting.js';
 import { blobJSON, blobBytes } from './reach.js';
 import { SYS_WAITING, DRAFT_TITLE, talks } from './scopes.js';
+import { NOT_TRANSCRIBED } from './voice/resolve.js';
 
 /** The stored words of a hand-over with no words of the user's (the screens show none). */
 export const FILES_ONLY = /* en */ '(files)';
+/** What a user sends with nothing but photos, as the log keeps it: the words a model reads (the Conversation shows its own). */
+export const PHOTO_ONLY = /* en */ '(a photo)';
+/** Lines that hold none of the user's words: annai's own for a photo or files sent alone, a heard line it couldn't write down, an empty one. */
+export const NO_WORDS = Object.freeze([NOT_TRANSCRIBED, FILES_ONLY, PHOTO_ONLY, '']);
 /** How many handed files Shiori is told of by name; the rest are counted. */
 const NAMED = 20;
 

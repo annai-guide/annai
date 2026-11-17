@@ -5,7 +5,7 @@ import { storedTexts, record } from './log.js';
 import { moveFile } from '../waiting.js';
 import { validate } from '../schema.js';
 import { tsv } from '../tsv.js';
-import { quotedPath, FILES_ONLY } from '../handover.js';
+import { quotedPath, FILES_ONLY, NO_WORDS } from '../handover.js';
 import { deviceZone, isoInZone } from '../time.js';
 import { timelineRows, talkedAt } from '../timeline.js';
 import { normPath, isTextType } from '../paths.js';
@@ -13,7 +13,6 @@ import { theirs, quote, conversationLines } from './blocks.js';
 import { readAppSettings, updateAppSettings } from '../settings.js';
 import { spokenYes, spokenNo } from './spoken-yes.js';
 import { STOPPED, MOVED } from './transcript.js';
-import { NO_WORDS } from './loop.js';
 import { planItems } from './context.js';
 import { checkNote } from '../bookings.js';
 import { t } from '../l10n.js';
@@ -246,7 +245,7 @@ export function tripTools(app) {
     return wakes;
   };
   /**
-   * Says in the call's conversation where the files went, with her turn's wake as her lines have it (the Undo line tells her turn's records by it).
+   * Says in the call's conversation where the files went, with her turn's wake as her lines have it (the Undo line reads it now only on a turn's end and error records; an older page tells these move records by it).
    * @param {string} to @param {boolean} started @param {number} count @param {ToolCall} call
    */
   const moved = (to, started, count, call) => logIn(call, { type: 'handover.moved', actor: 'shiori', data: { handover: call.handover ?? null, wake: call.wake, to, started, count } });

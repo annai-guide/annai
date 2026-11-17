@@ -255,8 +255,8 @@ test('a suggested speech model joins its list: transcription after "Send audio t
   await addProvider({ ws, store }, await official('provider-openai'));
   const cfg = await readConfig(ws);
   const name = (/** @type {string} */ id) => (cfg.models[id] ? modelOf(cfg.models[id]).name : id);
-  assert.deepEqual(cfg.roles['speech-in'].models.map(name), ['send-audio', 'dictation', 'Groq: Whisper large v3 turbo', 'OpenAI: GPT Transcribe']);
-  assert.deepEqual(cfg.roles['speech-out'].models.map(name), ['browser-voice', 'OpenAI: GPT-4o mini TTS (Marin)']);
+  assert.deepEqual(cfg.roles['speech-in'].models.map(name), ['send-audio', 'dictation', 'Whisper large v3 turbo', 'GPT Transcribe']);
+  assert.deepEqual(cfg.roles['speech-out'].models.map(name), ['browser-voice', 'GPT-4o mini TTS (Marin)']);
   assert.deepEqual(cfg.roles.main.models.map(name), ['GPT-6.1 Sol'], "Groq suggests nothing for chat roles; OpenAI has nothing free, so Main, which must not stay empty, gets its recommended model");
 });
 

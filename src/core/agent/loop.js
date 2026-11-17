@@ -35,7 +35,7 @@ import { planWords } from '../live/plan-watches.js';
 import { scopeTitle } from '../scopes.js';
 import { readFile } from './reading.js';
 import { runningPdfPages } from '../pdf-pages.js';
-import { FILES_ONLY, handoverOf } from '../handover.js';
+import { FILES_ONLY, PHOTO_ONLY, handoverOf } from '../handover.js';
 
 /**
  * Shiori's loop (spec §6). Wakes go into one queue. A turn builds the context, calls the main
@@ -150,10 +150,6 @@ export const LABELS = Object.freeze({
 const TIDYING = 'tidying';
 /** Shiori's lines: each names the model that wrote it (data.by). */
 const LINES = new Set(['out.speak', 'out.show', 'out.ask', 'note']);
-/** What a user sends with nothing but photos, as the log keeps it: the words a model reads (the Conversation shows its own). */
-export const PHOTO_ONLY = /* en */ '(a photo)';
-/** Lines that hold none of the user's words: annai's own for a photo or files sent alone, a heard line it couldn't write down, an empty one. */
-export const NO_WORDS = [NOT_TRANSCRIBED, FILES_ONLY, PHOTO_ONLY, ''];
 export const SPEAK_RESULT = /* en */ "Shown on screen. Voice is off, so you didn't listen; the user may type.";
 /** What Start fresh did: done; nothing, no line yet; already, none since the last fresh start; opening, the conversation still opens. @typedef {'done' | 'nothing' | 'already' | 'opening'} Fresh */
 
@@ -1745,7 +1741,7 @@ export class Agent {
     const events = (await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: [...SAID], ...(latest ? { after: latest.data.to } : {}) })))
       .filter((e) => !NOT_SAID.has(e.type) && (e.data?.half !== 'koe' || e.type === 'heard') && e.data?.tag !== 'koe' && (split || !['note', 'halves'].includes(e.type)) && !e.type.startsWith('out.'));
     const items = [];
-    /** What the user wrote last, their last few messages, for the summary's language. @type {string[]} */
+    /** What the user wrote and said, the newest last, for the summary's language: summaryLanguage leaves annai's own lines out and takes the newest of 3 words or more that names a language. @type {string[]} */
     const said = [];
     /** Heard lines the gate set aside as chatter, whose words may be written down later. @type {Set<string>} */
     const aside = new Set();
@@ -1755,7 +1751,7 @@ export class Agent {
       // What the user wrote, and what they said aloud (a heard line with its words, or the words written down for it later).
       if (e.type === 'heard' && e.data?.dismissed) aside.add(e.data.id); // talk among themselves: not the user's to this
       const spoken = (e.type === 'heard' && !e.data?.dismissed) || (e.type === 'heard.text' && !aside.has(e.data?.of));
-      if (((e.type === 'msg.user' && text !== PHOTO_ONLY) || (spoken && text !== NOT_TRANSCRIBED)) && typeof text === 'string' && text && said.push(text) > 3) said.shift();
+      if ((e.type === 'msg.user' || spoken) && typeof text === 'string') said.push(text);
       const size = JSON.stringify(e.data ?? {}).length + Object.values(texts).reduce((n, s) => n + s.length, 0);
       items.push({ seq: e.seq, tokens: Math.ceil(size / 3.5) + (e.data?.images?.length ?? 0) * 1600, exchange: e.type === 'wake' && !e.data?.meanwhile });
     }
@@ -2291,18 +2287,22 @@ export class Agent {
     const unanswered = () => wrote || ((theirs || this.#facts.answeredAt === this.#reached) && !this.#facts.told);
     /**
      * Wakes joining the turn (first: those that began it): what they owe; not a note a reply that reached the user had read already (a
-     * wake can trail its note). @param {Wake[]} more @param {boolean} [first]
+     * wake can trail its note). A hand-over the turn takes up here (one that joins it, or one still owed that the user's words take up) is
+     * written where it is taken up, after the lines that joined: a wake record of the turn that names it, as the turn's first names the one
+     * it began with (the Conversation's Undo line follows it from there). @param {Wake[]} more @param {boolean} [first]
      */
-    const join = (more, first = false) => {
+    const join = async (more, first = false) => {
       if (!first) this.#half.joined?.(wakeId);
+      const had = this.#handover;
       this.#handover = handoverOf(more) ?? this.#handover ?? (more.some(owesAnswer) ? this.transcript.owedHandover : null);
       for (const h of [this.#handover, ...more.map((w) => w.handover)]) if (h && !this.#handovers.includes(h)) this.#handovers.push(h);
       theirs ||= more.some(owesAnswer);
       this.#facts.watched ||= more.some(isWatched); // someone is watching: a wake from the user began the turn or joined it; it stays so
       const read = this.#reachedTo.scope === this.scope ? this.#reachedTo.to : 0;
       notes.push(...more.filter((w) => isForUser(w) && !((w.seq ?? Infinity) <= read)));
+      if (!first && this.#handover !== had) await this.#log({ type: 'wake', actor: 'system', data: { id: wakeId, meanwhile: true, reasons: [], handover: this.#handover } });
     };
-    join(wakes, true);
+    await join(wakes, true);
     let nudged = false;
     let silent = false;
     /** The turn was cut (an open, a Stop) while she still owed the user, before she was asked once more: that is no end, so no record. */
@@ -2481,7 +2481,7 @@ export class Agent {
             reasons.push(...more.map((w) => this.#reason(w)));
             owed.push(...more.flatMap((w) => w.fallbacks ?? []));
             this.#annais &&= more.every(byAnnai);
-            join(more);
+            await join(more);
           }
           continue;
         }
@@ -2606,7 +2606,7 @@ export class Agent {
         owed.push(...more.flatMap((w) => w.fallbacks ?? []));
         this.#facts.kinds.push(...more.map((w) => w.kind));
         this.#annais &&= more.every(byAnnai);
-        join(more);
+        await join(more);
       }
     }
     settle();

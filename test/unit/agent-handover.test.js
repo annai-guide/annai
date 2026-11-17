@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { agentKit } from './agent-kit.js';
 import { useClock } from './clock.js';
 import { record } from '../../src/core/agent/log.js';
-import { Transcript } from '../../src/core/agent/transcript.js';
+import { Transcript, SAID as LOGGED, resolveEvent } from '../../src/core/agent/transcript.js';
 import { Agent } from '../../src/core/agent/loop.js';
 import { handOverText, FILES_ONLY, undoHandover } from '../../src/core/handover.js';
 import { utf8 } from '../../src/core/bytes.js';
@@ -15,6 +15,44 @@ const flight = { path: '/trip/files/flight.pdf', type: 'application/pdf', name: 
 const lastWords = (req) => req.messages.at(-1).parts.map((/** @type {any} */ p) => p.text ?? '').join('\n');
 /** Shiori's file writes and deletes in a scope. @param {any} k @param {string} [scope] */
 const hers = async (k, scope = k.trip) => (await k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types: ['file.write', 'file.delete'] }))).filter((/** @type {any} */ e) => e.actor === 'shiori');
+/** Where a running turn took a hand-over up (loop.js join): a later wake record of the turn that names it. @param {any} e */
+const tookUp = (e) => e.type === 'wake' && Boolean(e.data.meanwhile) && 'handover' in e.data;
+/**
+ * The records the Undo line goes by, in order: each turn's first wake and where it took a hand-over up (its half, the turn's number in order, and
+ * the hand-over named), the user's lines (the hand-over they hand), her writes and deletes (their paths, and the hand-over they carry) and each turn's end. @param {any} k
+ */
+const story = async (k) => {
+  /** @type {string[]} */
+  const turns = [];
+  const turn = (/** @type {string} */ id) => (turns.includes(id) ? turns.indexOf(id) : turns.push(id) - 1);
+  const half = (/** @type {any} */ d) => (d.half ? `${d.half} ` : '');
+  return (await k.events(['wake', 'msg.user', 'file.write', 'file.delete', 'turn.end'])).flatMap((/** @type {any} */ e) => {
+    const d = e.data;
+    if (e.type === 'wake') return d.meanwhile && !tookUp(e) ? [] : [`${tookUp(e) ? 'took' : 'wake'} ${half(d)}${turn(d.id)} ${d.handover}`];
+    if (e.type === 'msg.user') return [`user ${d.handover ?? '-'}`];
+    if (e.type === 'file.write' || e.type === 'file.delete') return e.actor === 'shiori' ? [`${e.type.slice('file.'.length)} ${d.path} ${d.handover ?? '-'}`] : [];
+    return [`end ${half(d)}${turn(d.wake)} ${d.handover}`];
+  });
+};
+/** What a request is made of: the transcript's messages, and what it says is owed. @param {Transcript} t */
+const reading = (t) => ({ messages: t.messages, unanswered: t.unanswered, waiting: t.waiting, owed: t.owedHandover, turnStart: t.turnStart });
+/**
+ * The log read into a half's transcript as a reload reads it, once with every record and once without the take-ups, compared after each record:
+ * nothing of a take-up reaches the model. @param {any} k @param {'one' | 'koe' | 'kokoro'} half @returns {Promise<number>} the take-ups passed over
+ */
+async function readsAlike(k, half) {
+  const all = new Transcript({ half });
+  const without = new Transcript({ half });
+  let took = 0;
+  for (const e of await k.events([...LOGGED])) {
+    const r = await resolveEvent(k.store, e);
+    all.apply(e, r);
+    if (tookUp(e)) took++;
+    else without.apply(e, r);
+    assert.deepEqual(reading(all), reading(without), `${half}, after #${e.seq} ${e.type}`);
+  }
+  return took;
+}
 
 test("a message with files: the user's line keeps them and its hand-over, and Shiori is told what was handed and what to do", async (t) => {
   useClock(t);
@@ -226,7 +264,7 @@ test("each turn's wake names the hand-over the turn carries, null for none: the 
   assert.deepEqual((await hers(k)).map((e) => [e.data.path, e.data.handover ?? null]), [['/notes/reminder.md', null], ['/notes/flight.md', 'h-1']]);
 });
 
-test("the user's words join a turn of hers that carries none while a hand-over is owed: that turn takes it up, what it writes carries it, and its turn.end names it (the Conversation's Undo line reads that)", async (t) => {
+test("the user's words join a turn of hers that carries none while a hand-over is owed: that turn takes it up, written right after their line as a wake record of the turn that names it, what it writes carries it, and its turn.end names it", async (t) => {
   useClock(t);
   const fails = { error: 'server', status: 500, message: 'Scripted failure.' };
   let calls = 0;
@@ -247,10 +285,177 @@ test("the user's words join a turn of hers that carries none while a hand-over i
   await k.agent.idle();
   const wakes = (await k.events(['wake'])).filter((/** @type {any} */ e) => !e.data.meanwhile);
   assert.deepEqual(wakes.map((/** @type {any} */ e) => e.data.handover), ['h-1', null], 'the reminder\'s turn started with none');
-  assert.deepEqual((await hers(k)).map((e) => [e.data.path, e.data.handover ?? null]), [['/notes/flight.md', 'h-1']]);
-  const [end] = await k.events(['turn.end']);
-  assert.equal(end.data.wake, wakes[1].data.id);
-  assert.equal(end.data.handover, 'h-1');
+  assert.deepEqual(await story(k), ['wake 0 h-1', 'user h-1', 'wake 1 null', 'user -', 'took 1 h-1', 'write /notes/flight.md h-1', 'end 1 h-1']);
+  const [took] = (await k.events(['wake'])).filter(tookUp);
+  assert.deepEqual(took.data, { id: wakes[1].data.id, meanwhile: true, reasons: [], handover: 'h-1' });
+  const [line] = (await k.events(['msg.user'])).filter((/** @type {any} */ e) => e.data.meanwhile);
+  assert.equal(took.seq, line.seq + 1, 'right after the line that took it up');
+});
+
+test('a hand-over that joins her running turn: that turn takes it up, written right after the hand-over\'s line as a wake record of the turn that names it; what she writes after carries it; the user\'s words that join it later write no other', async (t) => {
+  useClock(t);
+  let calls = 0;
+  /** @type {(() => void)[]} */
+  const releases = [];
+  const k = await agentKit([[
+    { toolCalls: [{ name: 'speak', input: { text: 'Looking it up.' } }] },
+    { toolCalls: [{ name: 'speak', input: { text: 'Let me look at those.' } }, { name: 'write', input: { path: '/trip/notes/flight.md', content: 'AN 123' } }] },
+    say('Filed.'),
+  ]], { hold: async () => { if (++calls < 3) await new Promise((r) => releases.push(() => r(undefined))); } }); // her first two requests wait for the test
+  await k.ws.write(k.trip, '/files/flight.pdf', utf8('%PDF-1.4 flight'), { author: 'user', type: 'application/pdf' });
+  k.agent.send('Where is Nepenthe?');
+  await new Promise((r) => setTimeout(r, 30));
+  k.agent.send('', { handed: [flight], handover: 'h-1' });
+  releases[0]();
+  await new Promise((r) => setTimeout(r, 30));
+  k.agent.send('Thanks');
+  releases[1]();
+  await k.agent.idle();
+  assert.equal(k.requests.length, 3, 'one turn: the hand-over and the user\'s words joined it');
+  assert.deepEqual(await story(k), ['wake 0 null', 'user -', 'user h-1', 'took 0 h-1', 'write /notes/flight.md h-1', 'user -', 'end 0 h-1']);
+  const [took] = (await k.events(['wake'])).filter(tookUp);
+  const [first] = await k.events(['wake']);
+  assert.deepEqual(took.data, { id: first.data.id, meanwhile: true, reasons: [], handover: 'h-1' });
+  const [, line] = await k.events(['msg.user']);
+  assert.equal(took.seq, line.seq + 1, 'right after the hand-over\'s line');
+});
+
+test('a second hand-over that joins the turn while it carries the first: written as another wake record of the turn that names it, and what she writes after carries the newer', async (t) => {
+  useClock(t);
+  let calls = 0;
+  /** @type {(() => void)[]} */
+  const releases = [];
+  const hotel = { path: '/trip/files/hotel.pdf', type: 'application/pdf', name: 'hotel.pdf', new: true };
+  const k = await agentKit([[
+    { toolCalls: [{ name: 'speak', input: { text: 'Looking it up.' } }] },
+    { toolCalls: [{ name: 'speak', input: { text: 'Let me look at those.' } }] },
+    { toolCalls: [{ name: 'write', input: { path: '/trip/notes/flight.md', content: 'AN 123' } }, { name: 'speak', input: { text: 'Filed.' } }, { name: 'sleep', input: {} }] },
+  ]], { hold: async () => { if (++calls < 3) await new Promise((r) => releases.push(() => r(undefined))); } }); // her first two requests wait for the test
+  await k.ws.write(k.trip, '/files/flight.pdf', utf8('%PDF-1.4 flight'), { author: 'user', type: 'application/pdf' });
+  await k.ws.write(k.trip, '/files/hotel.pdf', utf8('%PDF-1.4 hotel'), { author: 'user', type: 'application/pdf' });
+  k.agent.send('Where is Nepenthe?');
+  await new Promise((r) => setTimeout(r, 30));
+  k.agent.send('', { handed: [flight], handover: 'h-1' });
+  releases[0]();
+  await new Promise((r) => setTimeout(r, 30));
+  k.agent.send('', { handed: [hotel], handover: 'h-2' });
+  releases[1]();
+  await k.agent.idle();
+  assert.equal(k.requests.length, 3, 'one turn: both hand-overs joined it');
+  assert.deepEqual(await story(k), ['wake 0 null', 'user -', 'user h-1', 'took 0 h-1', 'user h-2', 'took 0 h-2', 'write /notes/flight.md h-2', 'end 0 h-2']);
+  const [first] = await k.events(['wake']);
+  assert.deepEqual((await k.events(['wake'])).filter(tookUp).map((e) => e.data), [1, 2].map((n) => ({ id: first.data.id, meanwhile: true, reasons: [], handover: `h-${n}` })));
+});
+
+test('a hand-over that cuts in on her model call: the turn takes it up as a wake record of the turn right after the hand-over\'s line, before what she writes for it', async (t) => {
+  useClock(t);
+  const k = await agentKit([[
+    { delayMs: 500, text: 'thinking' },
+    { toolCalls: [{ name: 'write', input: { path: '/trip/notes/flight.md', content: 'AN 123' } }, { name: 'speak', input: { text: 'Filed.' } }, { name: 'sleep', input: {} }] },
+  ]]);
+  await k.ws.write(k.trip, '/files/flight.pdf', utf8('%PDF-1.4 flight'), { author: 'user', type: 'application/pdf' });
+  k.agent.send('Where is Nepenthe?');
+  await new Promise((r) => setTimeout(r, 50)); // her first call is still thinking
+  k.agent.send('', { handed: [flight], handover: 'h-1' });
+  k.agent.cutIn(); // the cut path (loop.js: cut.signal.aborted), not the step's end
+  await k.agent.idle();
+  assert.equal(k.requests.length, 2, 'the cut call went on to a second request, in the same turn');
+  assert.deepEqual(await story(k), ['wake 0 null', 'user -', 'user h-1', 'took 0 h-1', 'write /notes/flight.md h-1', 'end 0 h-1']);
+  const [took, ...more] = (await k.events(['wake'])).filter(tookUp);
+  assert.equal(more.length, 0, 'one take-up');
+  const [first] = await k.events(['wake']);
+  assert.deepEqual(took.data, { id: first.data.id, meanwhile: true, reasons: [], handover: 'h-1' });
+  const [, line] = await k.events(['msg.user']);
+  assert.equal(took.seq, line.seq + 1, 'right after the hand-over\'s line');
+});
+
+for (const owed of [false, true]) {
+  test(`two halves: ${owed ? 'an owed hand-over that the user\'s words take up into a reminder\'s turn of Kokoro\'s' : 'a hand-over that joins a running turn of Kokoro\'s'} is written in Kokoro's turn, with its wake id and half, before what it files for it`, async (t) => {
+    useClock(t);
+    let calls = 0;
+    /** @type {() => void} */
+    let release = () => {};
+    const held = new Promise((r) => { release = () => r(undefined); });
+    const fails = { error: 'server', status: 500, message: 'Scripted failure.' };
+    const kokoro = [...(owed ? [fails, fails, fails, fails] : []),
+      { toolCalls: [{ name: 'read', input: { path: '/trip/trip.json' } }] },
+      { toolCalls: [{ name: 'write', input: { path: '/trip/notes/flight.md', content: 'AN 123' } }, { name: 'tell_koe', input: { text: 'Filed the flight.' } }] },
+      sleep];
+    const koe = { rules: [{ match: '.', reply: { toolCalls: [{ name: 'speak', input: { text: 'Koe speaks.' } }, { name: 'sleep', input: {} }] } }] };
+    // Kokoro's turn (the user's question's, or the reminder's) waits at its first request while the files, or the user's words, reach it.
+    const k = await agentKit([kokoro], { koe: { type: koe }, hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-0' && ++calls === (owed ? 5 : 1)) await held; } });
+    await k.ws.write(k.trip, '/files/flight.pdf', utf8('%PDF-1.4'), { author: 'user', type: 'application/pdf' });
+    if (owed) {
+      k.agent.send('', { handed: [flight], handover: 'h-1' });
+      await k.agent.idle();
+      k.agent.wake({ kind: 'cue', text: 'Reminder: leave for the airport at 9.', scope: k.agent.scope });
+      await new Promise((r) => setTimeout(r, 80));
+      k.agent.send('Please file it');
+    } else {
+      k.agent.send('Is Nepenthe open?');
+      await new Promise((r) => setTimeout(r, 80));
+      k.agent.send('', { handed: [flight], handover: 'h-1' });
+    }
+    await new Promise((r) => setTimeout(r, 80));
+    release();
+    await k.agent.idle();
+    const kokoros = (await k.events(['wake'])).filter((/** @type {any} */ e) => e.data.half === 'kokoro' && !e.data.meanwhile);
+    const [took, ...more] = (await k.events(['wake'])).filter(tookUp);
+    assert.equal(more.length, 0, 'one take-up');
+    assert.deepEqual(took?.data, { id: kokoros.at(-1).data.id, half: 'kokoro', meanwhile: true, reasons: [], handover: 'h-1' });
+    const [write] = await hers(k);
+    assert.equal(write.data.handover, 'h-1');
+    assert.ok(took.seq < write.seq, 'written before what it files');
+    const [end] = (await k.events(['turn.end'])).filter((/** @type {any} */ e) => e.data.wake === took.data.id);
+    assert.equal(end.data.handover, 'h-1');
+  });
+}
+
+test('the take-up record reaches no model: a reload reads the same transcript as the live one, and the log read without it gives every half the same transcript at every record', async (t) => {
+  useClock(t);
+  const fails = { error: 'server', status: 500, message: 'Scripted failure.' };
+  let calls = 0;
+  /** @type {() => void} */
+  let release = () => {};
+  const held = new Promise((r) => { release = () => r(undefined); });
+  const one = await agentKit([[fails, fails, fails, fails,
+    { toolCalls: [{ name: 'speak', input: { text: 'Reminder: leave at 9.' } }] },
+    { toolCalls: [{ name: 'write', input: { path: '/trip/notes/flight.md', content: 'AN 123' } }, { name: 'speak', input: { text: 'Filed.' } }, { name: 'sleep', input: {} }] },
+    say('You are welcome.'),
+  ]], { hold: async () => { if (++calls === 5) await held; } });
+  one.agent.send('', { handed: [flight], handover: 'h-1' });
+  await one.agent.idle();
+  one.agent.wake({ kind: 'cue', text: 'Reminder: leave for the airport at 9.', scope: one.agent.scope });
+  await new Promise((r) => setTimeout(r, 30));
+  one.agent.send('Please file it');
+  await new Promise((r) => setTimeout(r, 30));
+  release();
+  await one.agent.idle();
+  one.agent.send('Thanks');
+  await one.agent.idle();
+  assert.equal(await readsAlike(one, 'one'), 1);
+  const loaded = await Transcript.load(one.store, one.trip);
+  assert.deepEqual(reading(loaded), reading(one.agent.transcript), 'a reload reads what the live one holds');
+  assert.equal(loaded.owedHandover, null, 'answered');
+  // Two halves: a hand-over joins Kokoro's running turn; Koe's transcript and Kokoro's.
+  let n = 0;
+  /** @type {() => void} */
+  let go = () => {};
+  const gate = new Promise((r) => { go = () => r(undefined); });
+  const koe = { rules: [{ match: '.', reply: { toolCalls: [{ name: 'speak', input: { text: 'Koe speaks.' } }, { name: 'sleep', input: {} }] } }] };
+  const two = await agentKit([[
+    { toolCalls: [{ name: 'read', input: { path: '/trip/trip.json' } }] },
+    { toolCalls: [{ name: 'write', input: { path: '/trip/notes/flight.md', content: 'AN 123' } }, { name: 'tell_koe', input: { text: 'Filed the flight.' } }] },
+    sleep,
+  ]], { koe: { type: koe }, hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-0' && ++n === 1) await gate; } });
+  two.agent.send('Is Nepenthe open?');
+  await new Promise((r) => setTimeout(r, 80));
+  two.agent.send('', { handed: [flight], handover: 'h-1' });
+  await new Promise((r) => setTimeout(r, 80));
+  go();
+  await two.agent.idle();
+  assert.equal(await readsAlike(two, 'kokoro'), 1);
+  assert.equal(await readsAlike(two, 'koe'), 1);
 });
 
 test('an Undo is told to her as a line of annai\'s, and settles the hand-over it undid', async (t) => {

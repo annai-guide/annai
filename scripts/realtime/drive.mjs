@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { chromium, devices } from '@playwright/test';
 import { installMic } from './page-mic.mjs';
-import { SOUND, SOUND_GAP_MS } from './analyse.mjs';
+import { SOUND, SOUND_GAP_MS, kokoroUsed } from './analyse.mjs';
 import { framesOf } from './frames.mjs';
 import { LANGUAGES } from '../../src/core/languages.js';
 import { key } from '../../src/core/l10n.js';
@@ -89,6 +89,14 @@ export async function addGemini(page, key) {
   await free.locator('xpath=ancestor::*[contains(concat(" ", @class, " "), " saving ")][1]').getByRole('status').filter({ hasText: 'Saved' }).waitFor();
 }
 
+/** A model as Settings → Models names it in a role's list and picker: "<provider> / <model>" since 2026-11-16 (d0dbf452), its name alone before. @param {string} model */
+const named = (model) => new RegExp(`^(?:.+ / )?${model.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`);
+/** Picks a model in a role's picker by its name, with its provider's before it or not. @param {import('@playwright/test').Locator} list @param {string} model */
+async function pick(list, model) {
+  const value = await list.locator('option').filter({ hasText: named(model) }).first().getAttribute('value', { timeout: 10_000 });
+  await list.selectOption(value ?? { label: model });
+}
+
 /**
  * Adds a model to Koe's list on the Models screen: "Koe · Realtime" where Koe has two lists (a realtime one and a classic one),
  * else "Koe" (the build with one). @param {import('@playwright/test').Page} page @param {string} model its name in the list
@@ -99,9 +107,9 @@ export async function addToKoe(page, model) {
   let name = 'Koe';
   for (const n of ['Koe · Live', 'Koe · Realtime']) if (await page.getByLabel(new RegExp(`^Add a model to ${n}`)).count()) { name = n; break; }
   const list = page.getByLabel(name === 'Koe' ? 'Add a model to Koe' : new RegExp(`^Add a model to ${name}`));
-  await list.selectOption({ label: model });
+  await pick(list, model);
   await page.getByRole('button', { name: `Add to ${name}` }).click();
-  await list.locator('option', { hasText: new RegExp(`^${model.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) }).waitFor({ state: 'detached' });
+  await list.locator('option', { hasText: named(model) }).waitFor({ state: 'detached' });
 }
 
 /**
@@ -114,13 +122,13 @@ export async function addToKoe(page, model) {
  * classic (with a stand-in, and card): classic voice, no live session: Koe has no live model (Gemini's Live voice stays off), the user's own speech-to-text
  * server is Speech in (Local speech server, at the stand-in's /asr, which passes transcription requests on), and Gemini 3.5 Flash Lite, which adding
  * Gemini puts in Quick decision, is the gate.
- * real (with a stand-in, for its voice, and card): Kokoro is the real model, Claude Opus 5.5 through the Anthropic provider (given its key), and the utility
+ * real (with a stand-in, for its voice, and card): Kokoro is the real model, Claude Opus 5.5 (Claude Sonnet 5.5 with real.model 'sonnet': --real-model sonnet) through the Anthropic provider (given its key), and the utility
  * and quick-decision models Claude Haiku 5.5, which adding the provider put there; Koe is on Gemini Live as before, and Gemini's chat models are taken out of
  * Main, Utility and Quick decision so that no free model answers for a real one that fails.
  * koeChat (with classic): Koe on a chat model, Gemini 3.5 Flash Lite in Koe · Chat, so the two halves talk through classic voice.
  * asr (with classic, default true): speech in on the user's server; false: no transcription model at all, the speech-in list annai starts with (send audio,
  * then phone dictation), so the two that adding Gemini put last (Gemini 3.5 Transcribe, Gemini 3.5 Flash Lite (transcription)) are taken out.
- * @param {import('@playwright/test').Page} page @param {string} key @param {(s: string) => void} log @param {{ standIn?: string, card?: boolean, classic?: boolean, koeChat?: boolean, asr?: boolean, real?: { anthropic: string } | null }} [o]
+ * @param {import('@playwright/test').Page} page @param {string} key @param {(s: string) => void} log @param {{ standIn?: string, card?: boolean, classic?: boolean, koeChat?: boolean, asr?: boolean, real?: { anthropic: string, model?: string } | null }} [o]
  * @returns {Promise<{ testville?: string, chat: string }>} the trips' ids
  */
 export async function setUp(page, key, log, { standIn, card = false, classic = false, koeChat = false, asr = true, real = null } = {}) {
@@ -131,9 +139,13 @@ export async function setUp(page, key, log, { standIn, card = false, classic = f
   if (standIn && real) {
     await addAnthropic(page, real.anthropic);
     await page.goto('/#/models');
-    await page.getByRole('button', { name: 'Remove Claude Sonnet 5.5 from main' }).click();
-    await page.getByRole('button', { name: 'Remove Claude Sonnet 5.5 from main' }).waitFor({ state: 'detached' });
-    await addToRole(page, 'main', 'Claude Opus 5.5');
+    // real.model 'sonnet' (--real-model sonnet): Kokoro stays on Claude Sonnet 5.5, which adding the provider put in Main; else Claude Opus 5.5.
+    if (real.model !== 'sonnet') {
+      const sonnet = page.getByRole('button', { name: /^Remove (?:.+ \/ )?Claude Sonnet 5\.5 from main$/ });
+      await sonnet.click();
+      await sonnet.waitFor({ state: 'detached' });
+      await addToRole(page, 'main', 'Claude Opus 5.5');
+    }
     await addGemini(page, key);
     const live = page.getByRole('region', { name: 'Live voice', exact: true }).getByLabel('Use Live voice');
     await live.check();
@@ -144,13 +156,13 @@ export async function setUp(page, key, log, { standIn, card = false, classic = f
     // Gemini's chat models were put behind the real ones in Main, Utility and Quick decision: out, so a real model that fails is not answered for by a free one.
     await page.goto('/#/models');
     for (const role of ['main', 'utility', 'decide']) {
-      const gone = page.getByRole('button', { name: new RegExp(`^Remove Gemini .* from ${role}$`) });
+      const gone = page.getByRole('button', { name: new RegExp(`^Remove (?:.+ / )?Gemini .* from ${role}$`) });
       for (let i = 0; i < 6 && (await gone.count()); i++) {
         await gone.first().click();
         await page.waitForTimeout(400);
       }
     }
-    log('    providers: Kokoro is Claude Opus 5.5 (Anthropic), utility and quick decision Claude Haiku 5.5, Koe on Gemini Live, speech out on a stand-in voice');
+    log(`    providers: Kokoro is Claude ${real.model === 'sonnet' ? 'Sonnet' : 'Opus'} 5.5 (Anthropic), utility and quick decision Claude Haiku 5.5, Koe on Gemini Live, speech out on a stand-in voice`);
   } else if (standIn) {
     await page.getByRole('heading', { level: 1, name: 'Models' }).waitFor();
     await page.getByRole('button', { name: 'Getting the sign-in ready…' }).waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {});
@@ -175,9 +187,9 @@ export async function setUp(page, key, log, { standIn, card = false, classic = f
     await panel.getByRole('button', { name: 'Add model' }).click();
     await page.getByRole('link', { name: /^kokoro-model/ }).waitFor();
     await page.getByRole('link', { name: 'Models', exact: true }).click();
-    await page.getByLabel('Add a model to main').selectOption({ label: 'kokoro-model' });
+    await pick(page.getByLabel('Add a model to main'), 'kokoro-model');
     await page.getByRole('button', { name: 'Add to main' }).click();
-    await page.getByText('1. kokoro-model').waitFor();
+    await page.getByText(/^1\. (?:.+ \/ )?kokoro-model$/).waitFor();
     await addGemini(page, key);
     if (classic) {
       // No Koe: Shiori is the one model. The gate is Gemini's small model (adding the provider put it in Quick decision), and her ears are the user's own server.
@@ -188,7 +200,7 @@ export async function setUp(page, key, log, { standIn, card = false, classic = f
       if (asr) await addTranscription(page, standIn);
       else {
         for (const name of ['Gemini 3.5 Transcribe', 'Gemini 3.5 Flash Lite (transcription)']) {
-          const out = page.getByRole('button', { name: `Remove ${name} from speech-in`, exact: true });
+          const out = page.getByRole('button', { name: new RegExp(`^Remove ${named(name).source.slice(1, -1)} from speech-in$`) });
           await out.click();
           await out.waitFor({ state: 'detached' });
         }
@@ -211,25 +223,37 @@ export async function setUp(page, key, log, { standIn, card = false, classic = f
   }
   /** @type {string | undefined} */
   let testville;
+  // Another trip of the user's, dated this week (a trip, not a chat: it has dates); then the conversation Koe talks in. Made as annai makes one, in the page
+  // (timeline stage 8 took the Trips screen's form away; the e2e's startTrip does the same), and opened at its address.
   if (card) {
-    // Another trip of the user's, dated this week (a trip, not a chat: it has dates); then the conversation Koe talks in.
     const day = (/** @type {number} */ plus) => new Date(Date.now() + plus * 86_400_000).toISOString().slice(0, 10);
-    await page.goto('/#/trips');
-    await page.getByLabel('Trip name').fill('Testville');
-    await page.getByText('Add dates (optional)').click();
-    await page.getByLabel('Starts').fill(day(0));
-    await page.getByLabel('Ends').fill(day(7));
-    await page.getByRole('button', { name: 'Start trip' }).click();
-    await page.getByRole('heading', { name: 'Testville' }).waitFor();
-    testville = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    testville = await makeTrip(page, 'Testville', { start: day(0), end: day(7) });
   }
-  await page.goto('/#/trips');
-  await page.getByLabel('Trip name').fill('Big Sur');
-  await page.getByRole('button', { name: 'Start trip' }).click();
-  await page.getByRole('heading', { name: 'Big Sur' }).waitFor();
-  const chat = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+  const chat = await makeTrip(page, 'Big Sur');
   await voiceSwitch(page, 'On');
   return { ...(testville ? { testville } : {}), chat };
+}
+
+/**
+ * A trip made as annai makes one, in the page (its own store and createTrip), then opened at its address. @param {import('@playwright/test').Page} page
+ * @param {string} title @param {{ start: string, end: string }} [dates] yyyy-mm-dd @returns {Promise<string>} its id
+ */
+async function makeTrip(page, title, dates) {
+  const id = await page.evaluate(async ({ title, dates }) => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { createTrip } = await load('/src/core/scopes.js');
+    const store = await createIdbStore();
+    try {
+      return /** @type {string} */ (await createTrip(new Workspace(store), { title, start: dates?.start, end: dates?.end }));
+    } finally {
+      store.close();
+    }
+  }, { title, dates });
+  await page.goto(`/#/trip/${encodeURIComponent(id)}`);
+  await page.getByRole('heading', { level: 1, name: title, exact: true }).waitFor({ timeout: 30_000 });
+  return id;
 }
 
 /** Adds the Anthropic provider from the catalog and types its key in. @param {import('@playwright/test').Page} page @param {string} key */
@@ -255,9 +279,9 @@ async function addAnthropic(page, key) {
  */
 export async function addToRole(page, role, model) {
   const list = page.getByLabel(new RegExp(`^Add a model to ${role}`));
-  await list.selectOption({ label: model });
+  await pick(list, model);
   await page.getByRole('button', { name: `Add to ${role}` }).click();
-  await list.locator('option', { hasText: new RegExp(`^${model.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) }).waitFor({ state: 'detached' });
+  await list.locator('option', { hasText: named(model) }).waitFor({ state: 'detached' });
 }
 
 /**
@@ -321,9 +345,9 @@ export async function addVoiceStandIn(page, standIn) {
   await page.getByRole('link', { name: /^voice/ }).waitFor();
   await page.getByRole('link', { name: 'Models', exact: true }).click();
   const list = page.getByLabel('Add a model to speech-out');
-  await list.selectOption({ label: 'voice' });
+  await pick(list, 'voice');
   await page.getByRole('button', { name: 'Add to speech-out' }).click();
-  await list.locator('option', { hasText: /^voice$/ }).waitFor({ state: 'detached' });
+  await list.locator('option', { hasText: named('voice') }).waitFor({ state: 'detached' });
 }
 
 /**
@@ -368,11 +392,13 @@ export async function setLanguages(page, want) {
   }
   // The browser's language alone is only a default, which no model is given as a hint: a user who means it picks it, which is a list of the user's own.
   if (await panel.getByText('None picked').count()) {
-    await panel.getByLabel('Add a language').selectOption('ja');
+    // On a Japanese phone (a scenario's locale) the list is [Japanese] already: English is the throwaway; else Japanese is.
+    const [probe, probeName] = shown.some((t) => /Japanese/.test(t)) ? ['en', 'English'] : ['ja', 'Japanese'];
+    await panel.getByLabel('Add a language').selectOption(probe);
     await panel.getByRole('button', { name: 'Add', exact: true }).click();
-    await list.getByRole('listitem').filter({ hasText: 'Japanese' }).waitFor();
-    await panel.getByRole('button', { name: 'Remove Japanese' }).click();
-    await list.getByRole('listitem').filter({ hasText: 'Japanese' }).waitFor({ state: 'detached' });
+    await list.getByRole('listitem').filter({ hasText: probeName }).waitFor();
+    await panel.getByRole('button', { name: `Remove ${probeName}` }).click();
+    await list.getByRole('listitem').filter({ hasText: probeName }).waitFor({ state: 'detached' });
     await panel.getByText('None picked').waitFor({ state: 'detached' });
   }
   if (want.answer !== 'follow') {
@@ -414,7 +440,7 @@ export async function setScreens(page, tag) {
   return (/** @type {string} */ en, /** @type {string} */ context = '') => words[key(en, context)] ?? en;
 }
 
-/** What one scenario run is given. ui: the screens' language (localization L6); kokoro: the stand-in Kokoro itself (stage 5: it is told which trip a marked question reads); real: the Anthropic key (read by the script, typed into the page, never written) and the most model requests a scenario may make (the 31st is refused). @typedef {{ origin: string, standIn?: string, kokoro?: { readTrip: (id: string | null) => void, slowAsr: (ms: number) => void, log: any[] }, real?: { anthropic: string, cap: number }, key: string, clips: Record<string, string>, roomDb: number | null, settleMs: number, answerTimeoutMs: number, ui?: string, log: (s: string) => void, scrub: (s: string) => string }} Env */
+/** What one scenario run is given. ui: the screens' language (localization L6); kokoro: the stand-in Kokoro itself (stage 5: it is told which trip a marked question reads); real: the Anthropic key (read by the script, typed into the page, never written), the most model requests a scenario may make (the 31st is refused), and Kokoro's model (sonnet, else Opus). @typedef {{ origin: string, standIn?: string, kokoro?: { readTrip: (id: string | null) => void, slowAsr: (ms: number) => void, log: any[] }, real?: { anthropic: string, cap: number, model?: string }, key: string, clips: Record<string, string>, roomDb: number | null, settleMs: number, answerTimeoutMs: number, ui?: string, log: (s: string) => void, scrub: (s: string) => string }} Env */
 
 /**
  * One scenario in a fresh context.
@@ -423,7 +449,10 @@ export async function setScreens(page, tag) {
  */
 export async function runScenario(browser, name, sc, env) {
   const { log } = env;
-  const context = await browser.newContext({ ...devices['Pixel 7'], baseURL: env.origin, permissions: ['microphone'] });
+  // sc.locale / sc.zone: the phone's language and time zone (a Japanese traveller's: ja-JP, Asia/Tokyo). annai's setup screens are driven in English by this harness's
+  // locators: until the user's own choice of screens is saved ('annai.ui'), the device's choice is English; setScreens() (--ui) then makes that choice in Settings → Languages, as a user would.
+  const context = await browser.newContext({ ...devices['Pixel 7'], baseURL: env.origin, permissions: ['microphone'], ...(sc.locale ? { locale: sc.locale } : {}), ...(sc.zone ? { timezoneId: sc.zone } : {}) });
+  if (sc.locale) await context.addInitScript(`try { if (!localStorage.getItem('annai.ui')) localStorage.setItem('annai.ui', 'en'); } catch {}`);
   const page = await context.newPage();
   /** @type {import('./analyse.mjs').Frame[]} */
   const frames = [];
@@ -460,7 +489,7 @@ export async function runScenario(browser, name, sc, env) {
     // The conversation's own lines (a card's too, with its buttons and whether they are on), as the page shows them at the end.
     const lines = sc.card ? await page.evaluate(() => [...document.querySelectorAll('.convo li')].map((e) => ({ who: (e.querySelector('.who')?.textContent ?? '').trim(), text: (e.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 300), buttons: [...e.querySelectorAll('button')].map((b) => ({ name: (b.textContent ?? '').trim(), disabled: /** @type {HTMLButtonElement} */ (b).disabled })) }))).catch(() => []) : [];
     const kokoro = (env.kokoro?.log ?? []).filter((x) => x.at >= began).map((x) => ({ ...x, text: env.scrub(x.text ?? '') }));
-    return { scenario: name, route: sc.route, echoDb: sc.echoDb, startedAt: opened, endedAt: Date.now(), keyLine: null, plays: rt.plays, frames, level: rt.level, micLevel: rt.mic, trace, errors, notes, cards, convo, ...(sc.mode ? { mode: sc.mode } : {}), ...(sc.real ? { model: { requests: modelRequests, capped } } : {}), ...(sc.card ? { media: rt.media, taps, lines, kokoro } : sc.passOn ? { kokoro } : {}), ...(typed.length ? { typed } : {}), ...(languages ? { languages } : {}) };
+    return { scenario: name, route: sc.route, echoDb: sc.echoDb, startedAt: opened, endedAt: Date.now(), keyLine: null, plays: rt.plays, frames, level: rt.level, micLevel: rt.mic, trace, errors, notes, cards, convo, ...(sc.mode ? { mode: sc.mode } : {}), ...(sc.real ? { model: { requests: modelRequests, capped, kokoro: kokoroUsed({ standIn: Boolean(env.standIn), real: env.real }) } } : {}), ...(sc.card ? { media: rt.media, taps, lines, kokoro } : sc.passOn ? { kokoro } : {}), ...(typed.length ? { typed } : {}), ...(languages ? { languages } : {}) };
   };
   let opened = began;
   /** Requests to the real model so far, and whether the cap refused one. */
@@ -477,7 +506,14 @@ export async function runScenario(browser, name, sc, env) {
   try {
     // Koe on a chat model hears through classic voice's microphone too: a tap on Shiori opens it, and there is no live session.
     const classic = sc.mode === 'classic' || sc.mode === 'chat';
-    const trips = await setUp(page, env.key, log, env.standIn ? { standIn: env.standIn, card: sc.card === true, classic, koeChat: sc.mode === 'chat', asr: sc.speechIn !== 'default', ...(sc.real && env.real ? { real: { anthropic: env.real.anthropic } } : {}) } : {});
+    if (sc.locale) {
+      // English in the settings too, as in the device's copy: else every start offers a restart into the phone's language (screensAtStart, 2026-11).
+      // The first load, so the microphone's init script is in it.
+      await page.goto('/#/languages');
+      await page.locator('#language-ui').selectOption('en', { timeout: 30_000 });
+      await page.getByText('Saved', { exact: true }).first().waitFor({ timeout: 30_000 });
+    }
+    const trips = await setUp(page, env.key, log, env.standIn ? { standIn: env.standIn, card: sc.card === true, classic, koeChat: sc.mode === 'chat', asr: sc.speechIn !== 'default', ...(sc.real && env.real ? { real: { anthropic: env.real.anthropic, model: env.real.model } } : {}) } : {});
     if (sc.card && !sc.real) env.kokoro?.readTrip(trips.testville ?? null);
     env.kokoro?.slowAsr(sc.asrDelayMs ?? 0);
     // A real model is asked at most cap times (the 31st is refused, and the record says so): a runaway loop of tool calls stops here.
@@ -562,16 +598,20 @@ export async function runScenario(browser, name, sc, env) {
         await wait(ms);
       } else if ('type' in step) {
         // A typed line, in the box under the conversation (as the e2e's read-trip types one).
-        await page.getByRole('button', { name: 'Type', exact: true }).click();
-        await page.getByLabel('Message to Shiori').fill(step.type);
-        await page.getByRole('button', { name: 'Send', exact: true }).click();
+        // The screens may be in another language (--ui): the buttons are found by the screens' words, the box by its id.
+        const typeBtn = page.getByRole('button', { name: w('Type'), exact: true });
+        const box = page.locator('#dock-text');
+        await typeBtn.or(box.and(page.locator(':visible'))).first().waitFor({ state: 'visible', timeout: 20_000 });
+        if (!(await box.isVisible())) await typeBtn.click();
+        await box.fill(step.type);
+        await page.getByRole('button', { name: w('Send'), exact: true }).click();
         lastEnd = lastAt = Date.now();
         lastTyped = true;
         typed.push({ at: lastAt, text: step.type, ...(step.lines ? { lines: step.lines } : {}) });
         log(`    + ${((Date.now() - opened) / 1000).toFixed(1)} s  types "${step.type}"`);
       } else if ('shiori' in step) {
         // A tap on Shiori: classic voice listens for a window at a time, and asleep she hears nothing until tapped.
-        await page.getByRole('button', { name: 'Shiori' }).click({ timeout: 8000 }).catch(() => notes.push('no Shiori button to tap'));
+        await page.getByRole('button', { name: w('Shiori') }).click({ timeout: 8000 }).catch(() => notes.push('no Shiori button to tap'));
         log(`    + ${((Date.now() - opened) / 1000).toFixed(1)} s  taps Shiori`);
       } else if ('tap' in step) {
         if (step.afterHeard !== undefined) {
@@ -589,7 +629,8 @@ export async function runScenario(browser, name, sc, env) {
           await wait(Math.max(0, step.afterHeard - (Date.now() - (heard || Date.now()))));
         }
         const at = Date.now();
-        const button = page.locator('.convo li').filter({ hasText: /Read Testville/ }).last().getByRole('button', { name: step.tap, exact: true });
+        // The card's buttons are named by the screens' words (--ui): found by the button's name, in the conversation, the newest first.
+        const button = page.locator('.convo').getByRole('button', { name: w(step.tap), exact: true }).last();
         const ok = await button.click({ timeout: 5000 }).then(() => true, () => false);
         taps.push({ at, label: step.tap, ok });
         log(`    + ${((at - opened) / 1000).toFixed(1)} s  taps ${step.tap}${ok ? '' : ' (the button was not there to tap)'}`);

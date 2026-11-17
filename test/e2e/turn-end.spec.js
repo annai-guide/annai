@@ -363,13 +363,14 @@ test('a hand-over that joins her running turn, which ends on her moving its file
   }
 });
 
-test('drawn from the log: while she is two halves, Kokoro\'s turns place the Undo line (words to Koe while Kokoro files don\'t stop it, the next ones after Kokoro\'s turn ended do, nor does a turn that carries no hand-over); a turn that took the hand-over up partway ends with the line, and ends on a move of the files without lifting it above Koe\'s words or a card; a log from before wakes named their hand-over keeps the user\'s words as the stop', async ({ page }) => {
+test('drawn from the log: while she is two halves, Kokoro\'s turns place the Undo line (words to Koe while Kokoro files don\'t stop it, the next ones after Kokoro\'s turn ended do, nor does a turn that carries no hand-over); a turn that took the hand-over up partway (its take-up written) places the line from there, and ends on a move of the files without lifting it above Koe\'s words or a card; a log from before wakes named their hand-over keeps the user\'s words as the stop; one from before take-ups were written shows the line where her lines left it', async ({ page }) => {
   await openApp(page, '#/trips');
   // No model is set, so opening a conversation wakes nothing. Each log is written by hand, with only the records the Undo line goes by, in the order the loop writes them (a
   // real two-halves turn: Koe's wake, the user's line, Koe's words, Kokoro's wake naming the hand-over, her write, her turn.end naming it, then Koe's "Filed."; left out are
   // Koe's turn ends, Kokoro's note and Koe's wake for it, which it doesn't go by; the first log adds words to Koe while Kokoro files, "Thanks" and its answer; the partway
-  // turn's order is the one agent-handover.test.js reads from the loop), with a write of hers under the hand-over so Undo has something to take back.
-  const [halves, older, gap, partway, koeFirst, card, reminded] = await page.evaluate(async () => {
+  // turn's order, its take-up record (a later wake record of the turn naming the hand-over) included, is the one agent-handover.test.js reads from the loop), with a write
+  // of hers under the hand-over so Undo has something to take back.
+  const [halves, older, gap, partway, koeFirst, card, reminded, partwayOld] = await page.evaluate(async () => {
     const load = (/** @type {string} */ u) => import(u);
     const { createIdbStore } = await load('/src/core/store-idb.js');
     const { Workspace } = await load('/src/core/workspace.js');
@@ -422,18 +423,27 @@ test('drawn from the log: while she is two halves, Kokoro\'s turns place the Und
     await put(c, 'msg.user', { wake: 'w3', split: true }, 'Thanks');
     await put(c, 'out.speak', { id: 's2', half: 'koe', wake: 'w3' }, 'Filed it in your notes.');
     await stopped(c);
-    // Her hand-over turn ended silent (its card), a reminder's turn (it carries none) took it up partway when the user typed meanwhile and wrote under it: its turn.end names it.
-    const d = await createTrip(ws, { title: 'Oslo' });
-    await put(d, 'wake', { id: 'w1', reasons: [{ kind: 'user', text: 'typed', handover: 'h-4' }], handover: 'h-4' });
-    await put(d, 'msg.user', { wake: 'w1', handed, handover: 'h-4' }, '(files)');
-    await put(d, 'error', { kind: 'silent', wake: 'w1', message: 'Her model finished without saying anything to you.' });
-    await put(d, 'wake', { id: 'w2', reasons: [{ kind: 'cue', text: 'Reminder: leave for the airport at 9.' }], handover: null });
-    await put(d, 'out.speak', { id: 's1', wake: 'w2' }, 'Reminder: leave at 9.');
-    await put(d, 'msg.user', { wake: 'w2', meanwhile: true }, 'Please file it');
-    await ws.write(d, '/notes/flight.md', 'AN 123', { author: 'shiori', handover: 'h-4' });
-    await put(d, 'out.speak', { id: 's2', wake: 'w2' }, 'Filed.');
-    await put(d, 'turn.end', { wake: 'w2', handover: 'h-4' });
-    await stopped(d);
+    // Her hand-over turn ended silent (its card), a reminder's turn (it carries none) took it up partway when the user typed meanwhile and wrote under it: its take-up
+    // and its turn.end name it. The same log from before take-ups were written (between the turn's wake naming its hand-over and this) has only the turn.end: the line
+    // is looked at there, where her lines left it (under the first turn's card), and shows.
+    /** @param {string} title @param {boolean} took */
+    const reminder = async (title, took) => {
+      const d = await createTrip(ws, { title });
+      await put(d, 'wake', { id: 'w1', reasons: [{ kind: 'user', text: 'typed', handover: 'h-4' }], handover: 'h-4' });
+      await put(d, 'msg.user', { wake: 'w1', handed, handover: 'h-4' }, '(files)');
+      await put(d, 'error', { kind: 'silent', wake: 'w1', message: 'Her model finished without saying anything to you.' });
+      await put(d, 'wake', { id: 'w2', reasons: [{ kind: 'cue', text: 'Reminder: leave for the airport at 9.' }], handover: null });
+      await put(d, 'out.speak', { id: 's1', wake: 'w2' }, 'Reminder: leave at 9.');
+      await put(d, 'msg.user', { wake: 'w2', meanwhile: true }, 'Please file it');
+      if (took) await put(d, 'wake', { id: 'w2', meanwhile: true, reasons: [], handover: 'h-4' });
+      await ws.write(d, '/notes/flight.md', 'AN 123', { author: 'shiori', handover: 'h-4' });
+      await put(d, 'out.speak', { id: 's2', wake: 'w2' }, 'Filed.');
+      await put(d, 'turn.end', { wake: 'w2', handover: 'h-4' });
+      await stopped(d);
+      return d;
+    };
+    const d = await reminder('Oslo', true);
+    const dOld = await reminder('Bergen', false);
     // Two halves, a hand-over joins Kokoro's running turn (a reminder's), which moves its file to Kyoto (b) and tells Koe: Koe says so, or annai shows Kokoro's card, before
     // Kokoro's turn ends. The move record carries Kokoro's wake, so that turn's end would put the line back under it, above what came after: it stays under the last line.
     /** @param {string} title @param {string} handover @param {(trip: string) => Promise<unknown>} after what is drawn after the move, before Kokoro's turn ends */
@@ -443,6 +453,7 @@ test('drawn from the log: while she is two halves, Kokoro\'s turns place the Und
       await put(id, 'wake', { id: 'w1', half: 'koe', reasons: [{ kind: 'user', text: 'typed', handover }], handover });
       await put(id, 'msg.user', { wake: 'w1', handed, handover, split: true }, '(files)');
       await put(id, 'out.speak', { id: 's1', half: 'koe', wake: 'w1' }, 'Let me look.');
+      await put(id, 'wake', { id: 'k0', half: 'kokoro', meanwhile: true, reasons: [], handover });
       await ws.write(id, '/notes/flight.md', 'AN 123', { author: 'shiori', handover });
       await put(id, 'handover.moved', { handover, wake: 'k0', half: 'kokoro', to: b, started: false, count: 1 });
       await after(id);
@@ -462,17 +473,19 @@ test('drawn from the log: while she is two halves, Kokoro\'s turns place the Und
     await put(g, 'wake', { id: 'w2', reasons: [{ kind: 'cue', text: 'Reminder: leave for the airport at 9.' }], handover: null });
     await put(g, 'out.speak', { id: 's1', wake: 'w2' }, 'Reminder: leave at 9.');
     await put(g, 'msg.user', { wake: 'w2', meanwhile: true }, 'Please file it');
+    await put(g, 'wake', { id: 'w2', meanwhile: true, reasons: [], handover: 'h-7' });
     await put(g, 'out.speak', { id: 's2', wake: 'w2' }, 'Let me look.');
     await ws.write(g, '/notes/flight.md', 'AN 123', { author: 'shiori', handover: 'h-7' });
     await put(g, 'handover.moved', { handover: 'h-7', wake: 'w2', to: nagoya, started: false, count: 1 });
     await put(g, 'turn.end', { wake: 'w2', handover: 'h-7' });
     await stopped(g);
     store.close();
-    return [a, b, c, d, e, f, g];
+    return [a, b, c, d, e, f, g, dOld];
   });
   for (const [trip, last, under, part] of [
     [halves, 'At nine.', 'Filed it in your notes.', 'p'], [older, 'Filed.', 'File it?', 'p'], [gap, 'Filed it in your notes.', 'Let me look.', 'p'], [partway, 'Filed.', 'Filed.', 'p'],
     [koeFirst, 'I took it to Kyoto.', 'I took it to Kyoto.', 'p'], [card, 'Flight', 'Flight', 'strong'], [reminded, 'Shiori took 1 file to Nagoya.', 'Shiori took 1 file to Nagoya.', 'a'],
+    [partwayOld, 'Filed.', 'Her turn ended', 'strong'],
   ]) {
     await page.goto(`/#/trip/${encodeURIComponent(trip)}/talk`);
     await expect(page.locator('.convo').getByText(last, { exact: true })).toBeVisible();
@@ -545,6 +558,7 @@ test('drawn from the log: only the records of her turn that carries the hand-ove
     await put(e, 'wake', { id: 'w4', half: 'koe', reasons: [{ kind: 'user', text: 'typed' }], handover: null });
     await put(e, 'msg.user', { wake: 'w4', split: true }, 'Please file it');
     await put(e, 'out.speak', { id: 's1', half: 'koe', wake: 'w4' }, 'Let me ask Kokoro.');
+    await put(e, 'wake', { id: 'w3', half: 'kokoro', meanwhile: true, reasons: [], handover: 'h-1' });
     await ws.write(e, '/notes/flight.md', 'AN 123', { author: 'shiori', handover: 'h-1' });
     await put(e, 'turn.end', { half: 'kokoro', wake: 'w3', handover: 'h-1' });
     await put(e, 'out.speak', { id: 's2', half: 'koe', wake: 'w5' }, 'Filed it in your notes.');

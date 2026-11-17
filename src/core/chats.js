@@ -1,7 +1,7 @@
 import { createTrip, talks, DRAFT_TITLE } from './scopes.js';
 import { storedTexts } from './agent/log.js';
 import { NOT_TRANSCRIBED } from './voice/resolve.js';
-import { PHOTO_ONLY } from './agent/loop.js';
+import { PHOTO_ONLY } from './handover.js';
 import { timeIn } from './time.js';
 import { isPhotoType } from './photos.js';
 import { blobJSON } from './reach.js';

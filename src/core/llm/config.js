@@ -108,18 +108,15 @@ export const withProvider = (provider, model) => (provider ? tc('a model, after 
 
 /**
  * How the screens name a model from its name (all a line, a failure or the Trace keeps of it): withProvider, by the provider of the model
- * that has the name now; names are unique (checkModel). A name no model has now (removed, renamed, a stand-in) stays as it is, and so
- * does one that models of two providers have (a catalog update can rename a model to another's name): no provider is better than a wrong one.
- * @param {ModelConfig | null | undefined} cfg @returns {(name: string) => string}
+ * that has the name now; names are unique (checkModel, and a plugin update's rename takes a free one: providers.js renamed). A name no model
+ * has now (removed, renamed, a stand-in) stays as it is. @param {ModelConfig | null | undefined} cfg @returns {(name: string) => string}
  */
 export function modelNames(cfg) {
-  /** @type {Map<string, string>} a name's provider's name; '' where two providers' models have the name */
+  /** @type {Map<string, string>} a name's provider's name */
   const of = new Map();
   for (const rec of Object.values(cfg?.models ?? {})) {
     const p = cfg?.providers[rec.provider];
-    if (!p) continue;
-    const [name, provider] = [modelOf(rec).name, providerOf(p).name];
-    of.set(name, of.has(name) && of.get(name) !== provider ? '' : provider);
+    if (p) of.set(modelOf(rec).name, providerOf(p).name);
   }
   return (name) => withProvider(of.get(name) ?? '', name);
 }

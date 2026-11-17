@@ -121,7 +121,7 @@ test("Koe's prompts, fix pass 1: no filler asked for, the told list is whole, no
     assert.ok(k.split('\n').every((l) => l.length < 520), 'no line holds a pile of rules');
   }
   assert.match(KOE_CORE, /get no reply: no words, no sound; call sleep\. Never change language because of a stray word\./);
-  assert.match(KOE_LIVE, /\n- Before a tool call other than already_told and sleep, say a word or two aloud, then make the call; look in the trip's files/);
+  assert.match(KOE_LIVE, /\n- Before a tool call other than already_told and sleep, say a word or two aloud in the language you answer in, then make the call; look in the trip's files/);
   // A live session's <now> and <today> come once; for the time or place now, Kokoro is asked.
   assert.match(KOE_LIVE, /<now> and <today> are from when this session opened: for the time or place now, ask Kokoro\./);
   assert.doesNotMatch(KOE_CORE, /from when this session opened/);
@@ -142,7 +142,7 @@ test("Koe's prompts, fix pass 2: a language the user speaks, speech recognition 
   }
   assert.match(KOE_CORE, /\[heard\] lines, and the words after "The user said:", are speech recognition, may be wrong/);
   // Live: one line for the word before a call, with the two calls that stay silent left out of it; the clock names who to ask.
-  assert.match(KOE_LIVE, /\n- Before a tool call other than already_told and sleep, say a word or two aloud, then make the call/);
+  assert.match(KOE_LIVE, /\n- Before a tool call other than already_told and sleep, say a word or two aloud in the language you answer in, then make the call/);
   assert.equal(KOE_LIVE.split('\n').filter((l) => /a (couple of|word or two)/.test(l)).length, 2, 'two lines, not three');
   const lines = KOE_LIVE.split('\n');
   assert.ok(lines.findIndex((l) => l.startsWith('- <now> and <today>')) > lines.findIndex((l) => l.startsWith('- Anything else')), 'the clock line does not sit between the told list and the question rule');
@@ -651,4 +651,11 @@ test("a live Koe's lines since escape her logged lines the way the transcript do
   } finally {
     await k.done();
   }
+});
+
+// The languages build (2026-11-17): Koe's own word before a tool names its language, as its wait and its okay do; Kokoro writes its notes to Koe in the
+// language it answers in (a Japanese conversation's notes came in English, and Koe's Japanese said from them read stiff: the 2026-11-14 live run).
+test("Koe's word before a tool, and Kokoro's notes to Koe, are in the language they answer in", () => {
+  assert.match(KOE_LIVE, /\n- Before a tool call other than already_told and sleep, say a word or two aloud in the language you answer in, then make the call/);
+  assert.match(KOKORO_PART, /\n- Tell Koe exactly what to say, in one or two sentences in the language you answer in, each fact with its source/);
 });

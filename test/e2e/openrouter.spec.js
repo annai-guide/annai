@@ -6,7 +6,7 @@ import { openApp, waitForServiceWorker, startModelServer, startOpenRouterFiles, 
 import { encodeWav } from '../../src/core/voice/pcm.js';
 
 // Sign in with OpenRouter sets up one provider, OpenRouter, with one key for its chat, transcription and
-// voice; its speech models go behind the browser's own dictation and voice (the user, 2026-10-18:
+// voice; its speech models go behind Phone dictation and Browser voice (the user, 2026-10-18:
 // "Add, behind phone"). OpenRouter is stood in for by a server on its own port; no request reaches the real one.
 
 /** The version the page names: the plugin's own, so a version bump doesn't break this test. */
@@ -96,7 +96,7 @@ test("Sign in with OpenRouter makes one provider with one key: free chat models,
     release();
     const card = page.locator('.notice', { hasText: 'Signed in with OpenRouter' });
     await expect(card).toBeVisible({ timeout: 30_000 });
-    await expect(card).toContainText("behind the browser's own dictation and voice. Its free voice comes first");
+    await expect(card).toContainText("behind Phone dictation and Browser voice. Its free voice comes first");
     await expect(card).toContainText('uses one of the free requests a day the chat models use too');
     await expect(card).toContainText('move them up under Roles');
     await card.getByRole('button', { name: 'Dismiss' }).click();

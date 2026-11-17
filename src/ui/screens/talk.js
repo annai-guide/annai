@@ -5,7 +5,7 @@ import { shownCard, cardWho, cardKind } from '../cards.js';
 import { costs, budgetWords } from '../../core/agent/budgets.js';
 import { whyWords } from '../../core/llm/fallback.js';
 import { modelNames } from '../../core/llm/config.js';
-import { tidyFailed, PHOTO_ONLY } from '../../core/agent/loop.js';
+import { tidyFailed } from '../../core/agent/loop.js';
 import { planWords } from '../../core/live/plan-watches.js';
 import { storedTexts } from '../../core/agent/log.js';
 import { blobBytes } from '../../core/reach.js';
@@ -20,7 +20,7 @@ import { nowOf, todayOf } from '../today.js';
 import { ask } from '../ask.js';
 import { ME, scopeTitle, talks, tripMirror, kindOf } from '../../core/scopes.js';
 import { readNames } from '../../core/names.js';
-import { FILES_ONLY, undoable, undoEverywhere } from '../../core/handover.js';
+import { FILES_ONLY, PHOTO_ONLY, undoable, undoEverywhere } from '../../core/handover.js';
 import { removeTripNow } from './trip.js';
 import { onTap } from '../dock-hides.js';
 import { MOVED_MS } from '../notices.js';
@@ -813,13 +813,14 @@ function datesLine(ctx, scope, list) {
 }
 
 /**
- * The Undo line of the newest hand-over (spec §16.2): under the hand-over's line, then under each record of her work on it. Her turns carry it when their wake
- * names it (loop.js #steps) or their turn.end does (one that took it up partway: the line goes under its last record if her lines didn't already place it). Her lines move it while she tells of the
- * work: from the hand-over and each such turn's start, until a turn of hers that carries none starts or the user's words come with none running; her turn's
- * card moves it too. Two halves: Kokoro's turns carry it, Koe's lines tell of them. Nothing else moves it (another turn, another job, the user). In a log from
- * before wakes named their hand-over, her lines move it until the user writes or speaks again. Shown while there is something to take back, looked at at each
- * move and where her turn on it ends (turn.end, or the error that ends one with none): her last write may come after her last line. A trip she started for the
- * files, with nothing of the user's in it, goes, its files back with Shiori.
+ * The Undo line of the newest hand-over (spec §16.2): under the hand-over's line, then under each record of her work on it. Her turns carry it from a wake record
+ * of theirs that names it: their first (loop.js #steps), or a later one where the turn took it up partway (join). Her lines move it while she tells of the
+ * work: from the hand-over and from where a turn takes it up, until a turn of hers that carries none starts or the user's words come with none running; her
+ * turn's card moves it too. Two halves: Kokoro's turns carry it, Koe's lines tell of them. Nothing else moves it (another turn, another job, the user). In a
+ * log from before wakes named their hand-over, her lines move it until the user writes or speaks again; in one from before a turn's take-up was written, the
+ * turn's turn.end names it, and the line is looked at where it was left (under an earlier card, or above later lines). Shown while there is something to take back, looked at at each move and where
+ * her turn on it ends (turn.end, or the error that ends one with none): her last write may come after her last line. A trip she started for the files, with
+ * nothing of the user's in it, goes, its files back with Shiori.
  * @param {any} ctx @param {string} scope the conversation's @param {HTMLElement} list its lines
  */
 function undoLine(ctx, scope, list) {
@@ -828,11 +829,11 @@ function undoLine(ctx, scope, list) {
   /** Her lines move the line: she tells of the hand-over's work. */
   let telling = false;
   /**
-   * The newest turn of the half that files (one Shiori's, or Kokoro's; Koe's turns only talk): its wake's id, the hand-over its wake names (undefined for
-   * a wake written before 2026-11-16, or for one whose turn never ran: it carries none), whether it has ended, and its last line after the hand-over.
-   * @type {{ id: string, handover: unknown, ended: boolean, node: Element | null }}
+   * The newest turn of the half that files (one Shiori's, or Kokoro's; Koe's turns only talk): its wake's id, the hand-over its wake records name (undefined
+   * for a wake written before 2026-11-16, or for one whose turn never ran: it carries none), and whether it has ended.
+   * @type {{ id: string, handover: unknown, ended: boolean }}
    */
-  let turn = { id: '', handover: undefined, ended: false, node: null };
+  let turn = { id: '', handover: undefined, ended: false };
   const carries = () => handover !== null && turn.handover === handover;
   let used = false;
   /** The trips each hand-over's files went to (handover.moved). @type {Map<string, Set<string>>} */
@@ -898,15 +899,15 @@ function undoLine(ctx, scope, list) {
      */
     saw(e, node) {
       const d = e.data ?? {};
-      // A turn of the half that files starts. One whose wake names a hand-over, or none, says whether she tells of this one.
-      if (e.type === 'wake' && !d.meanwhile && d.half !== 'koe') {
-        turn = { id: String(d.id ?? ''), handover: d.handover, ended: false, node: null };
+      // A turn of the half that files starts, or the newest takes a hand-over up partway (a later wake record of it that names one). A wake record that
+      // names a hand-over, or none, says whether she tells of this one from here.
+      if (e.type === 'wake' && d.half !== 'koe' && (!d.meanwhile || (d.id === turn.id && 'handover' in d))) {
+        turn = { id: String(d.id ?? ''), handover: d.handover, ended: false };
         if ('handover' in d) telling = carries();
       }
       if (e.type === 'msg.user' && typeof d.handover === 'string') {
         handover = d.handover;
         telling = true;
-        turn.node = null; // her lines before it are not of its work
         used = false;
         line.hidden = true;
         line.replaceChildren(button);
@@ -918,20 +919,17 @@ function undoLine(ctx, scope, list) {
       if (e.type === 'handover.moved' && typeof d.handover === 'string') went.set(d.handover, new Set([...(went.get(d.handover) ?? []), String(d.to)]));
       const ours = typeof d.wake === 'string' && d.wake === turn.id;
       const hers = ['out.speak', 'out.show', 'out.ask', 'handover.moved', 'conversation.moved'].includes(e.type);
-      if (ours && hers) turn.node = node;
-      // Her turn on it ends: at its turn.end, which names the hand-over the turn ended with (also one it took up partway), or at the error that ends one with
-      // none. Another job's error names no turn of hers, and Koe's records name Koe's turns.
+      // Her turn on it ends: at its turn.end, which names the hand-over the turn ended with (in a log from before take-ups were written, also one it took
+      // up partway), or at the error that ends one with none. Another job's error names no turn of hers, and Koe's records name Koe's turns.
       const end = ours && (e.type === 'turn.end' ? handover !== null && d.handover === handover : e.type === 'error' && carries());
-      /** Where the line goes: under the record; at the end of a turn that took the hand-over up partway, under that turn's last line, unless her lines placed it as drawn (telling). @type {Element | null} */
-      let under = null;
       if (end) {
-        under = carries() ? node : telling ? null : turn.node;
         turn.handover = handover;
         turn.ended = true;
-        telling = true; // after a turn that took it up partway too: what she says of it next (Koe's "Filed.") tells of it
-      } else if (telling && hers) under = node;
-      if (!handover || used || !(end || under)) return;
-      under?.after(line);
+        telling = true; // what she says of it next (Koe's "Filed." after Kokoro's turn ended) tells of it
+      }
+      // The line goes under the record (her line, her card), or stays where it is (a turn's end that draws nothing), and is looked at.
+      if (!handover || used || !(end || (telling && hers))) return;
+      node?.after(line);
       check();
     },
   };

@@ -1,7 +1,7 @@
 {
   "id": "provider-openai",
   "name": "OpenAI",
-  "version": "1.6.3",
+  "version": "1.6.4",
   "api": 1,
   "description": "GPT models through OpenAI's Responses API, with OpenAI's transcription and voices, and its live voice for Koe, on one key.",
   "category": "providers",
@@ -277,21 +277,21 @@
         "models": [
           {
             "providerId": "gpt-transcribe",
-            "name": "OpenAI: GPT Transcribe",
+            "name": "GPT Transcribe",
             "prices": {
               "perMinute": 0.0045
             }
           },
           {
             "providerId": "gpt-4o-mini-transcribe",
-            "name": "OpenAI: GPT-4o mini Transcribe",
+            "name": "GPT-4o mini Transcribe",
             "prices": {
               "perMinute": 0.003
             }
           },
           {
             "providerId": "whisper-1",
-            "name": "OpenAI: Whisper",
+            "name": "Whisper",
             "prices": {
               "perMinute": 0.006
             }
@@ -305,7 +305,7 @@
         "models": [
           {
             "providerId": "gpt-4o-mini-tts",
-            "name": "OpenAI: GPT-4o mini TTS (Marin)",
+            "name": "GPT-4o mini TTS (Marin)",
             "tunables": {
               "voice": "marin",
               "style": "Speak in a young, cheerful and lively, yet calm and gentle tone.",
@@ -331,7 +331,7 @@
           },
           {
             "providerId": "tts-1",
-            "name": "OpenAI: TTS-1 (Nova)",
+            "name": "TTS-1 (Nova)",
             "tunables": {
               "voice": "nova",
               "styled": false,
@@ -353,7 +353,7 @@
           },
           {
             "providerId": "tts-1-hd",
-            "name": "OpenAI: TTS-1 HD (Nova)",
+            "name": "TTS-1 HD (Nova)",
             "tunables": {
               "voice": "nova",
               "styled": false,

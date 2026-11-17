@@ -176,6 +176,8 @@ test("the trace's lines for her live voice (the pops fix): the sound's rate and 
 test("the trace's one-line summaries say what Shiori did, sent and read", () => {
   const e = (/** @type {string} */ type, /** @type {any} */ data) => ({ type, data, ts: 0, seq: 1, actor: 'x', scope: 's' });
   assert.equal(traceSummary(e('wake', { id: 'w-1', reasons: [{ kind: 'user', text: 'typed' }, { kind: 'file', text: 'A new file' }] }), { costs: new Map([['w-1', 0.0123]]) }), `the user wrote; A new file · ${formatCost(0.0123)}`);
+  // Where a running turn takes a hand-over up (loop.js join): a wake record of the turn with the hand-over and no reasons.
+  assert.equal(traceSummary(e('wake', { id: 'w-1', half: 'kokoro', meanwhile: true, reasons: [], handover: 'h-1' })), 'Kokoro · takes up the files handed over');
   assert.equal(traceSummary(e('msg.user', { text: 'Where should we eat?' })), 'Where should we eat?');
   assert.equal(traceSummary(e('out.speak', { text: 'Nepenthe.' })), 'Nepenthe.');
   assert.equal(traceSummary(e('out.show', { card: { title: 'Dinner', text: 'At 6:30' } })), 'Dinner');
@@ -286,8 +288,9 @@ test("bookingFacts: an old unverified booking (no unsure key) has a check on eve
   const at = { at: '2026-11-20T11:20:00-08:00', tz: 'America/Los_Angeles' };
   const marked = (/** @type {any} */ b) => bookingFacts(b).filter((x) => x.unsure).map((x) => x.key);
   const old = { kind: 'flight', status: 'unverified', title: 'ANNAI AIR AN 123', start: at, end: at, confirmation: 'TESTQ1', fields: { from: 'Seattle (SEA)', to: 'Anchorage (ANC)', seat: '14C', gate: '  ', bags: null } };
-  // Every line the details draw for it has a check: the Route (from and to), the times, the seat, the confirmation; the blank gate and the null bags have none.
-  assert.deepEqual(bookingFacts(old).map((x) => x.key), ['route', 'start', 'end', 'seat', 'bags', 'confirmation', 'gate']);
+  // Every line the details draw for it has a check: the Route (from and to), the times, the seat, the confirmation; the blank gate and the null bags
+  // are no lines (a value that is not there is never drawn: "null" is not words).
+  assert.deepEqual(bookingFacts(old).map((x) => x.key), ['route', 'start', 'end', 'seat', 'confirmation']);
   assert.deepEqual(marked(old), ['route', 'start', 'end', 'seat', 'confirmation']);
   assert.deepEqual(marked({ ...old, status: 'confirmed' }), [], 'an old confirmed one: none');
   assert.deepEqual(marked({ ...old, unsure: [] }), [], 'unsure: []: none');
@@ -296,6 +299,49 @@ test("bookingFacts: an old unverified booking (no unsure key) has a check on eve
   // A stay: the place, the times and the confirmation are marked too (its name is the heading's, which checkCount adds).
   const stay = { kind: 'lodging', status: 'unverified', title: 'Hotel Aurora Test', start: at, end: at, place: { name: 'Hotel Aurora Test' }, confirmation: 'TQ1' };
   assert.deepEqual(marked(stay), ['place', 'start', 'end', 'confirmation']);
+});
+
+test("bookingFacts: a detail whose value is null or blank is no line, as checkOf marks no part there; a nights that is not there leaves the computed one (words-next)", () => {
+  const at = (/** @type {string} */ iso) => ({ at: iso, tz: 'America/Los_Angeles' });
+  const flight = { kind: 'flight', unsure: [], fields: { terminal: null, gate: '  ', bags: '', seat: '14C', wifi: null, from: '', to: null } };
+  assert.deepEqual(bookingFacts(flight).map((x) => [x.key, x.value]), [['seat', '14C']]);
+  assert.equal(JSON.stringify(bookingFacts(flight)).includes('null'), false);
+  // Zero and false are values; a line is drawn for them.
+  assert.deepEqual(bookingFacts({ kind: 'flight', unsure: [], fields: { bags: 0, wifi: false } }).map((x) => [x.key, x.value]), [['bags', '0'], ['wifi', 'false']]);
+  const stay = { kind: 'lodging', unsure: [], start: at('2026-11-20T15:00:00-08:00'), end: at('2026-11-22T11:00:00-08:00'), fields: { nights: null, room: null } };
+  assert.deepEqual(bookingFacts(stay).filter((x) => x.key === 'nights').map((x) => x.value), ['2'], 'a null nights is not hers: the computed count shows');
+  assert.equal(bookingFacts(stay).some((x) => x.key === 'room'), false);
+  // What the Plan's chip counts is what is drawn: nothing for a value that is not there.
+  assert.equal(checkCount({ kind: 'flight', status: 'unverified', fields: { terminal: null, seat: '14C' } }), 1);
+});
+
+test('bookingFacts: text of only spaces and an empty list are not there, as null is not: no blank Route, Place or Confirmation line, no blank detail, no check on one (words-next)', () => {
+  const labels = (/** @type {any} */ b) => bookingFacts(b).map((x) => [x.key, x.value]);
+  // A route of blank parts has no line; one blank part leaves the other.
+  assert.deepEqual(labels({ kind: 'flight', unsure: [], fields: { from: '  ', to: '  ' } }), []);
+  assert.deepEqual(labels({ kind: 'flight', unsure: ['from', 'to'], fields: { from: '  ', to: 'Osaka' } }), [['route', 'Osaka']]);
+  // A place with a blank name has no line, and a blank address is not added after a name.
+  assert.deepEqual(labels({ kind: 'lodging', unsure: [], place: { name: '  ' } }), []);
+  assert.deepEqual(labels({ kind: 'lodging', unsure: [], place: { name: 'Hotel Aurora Test', address: '  ' } }), [['place', 'Hotel Aurora Test']]);
+  assert.deepEqual(labels({ kind: 'lodging', unsure: [], confirmation: '  ' }), []);
+  // An empty list is no detail either (travellers: []), and no check lands on it.
+  assert.deepEqual(labels({ kind: 'flight', unsure: ['travellers'], fields: { travellers: [], seat: '14C' } }), [['seat', '14C']]);
+  assert.deepEqual(bookingFacts({ kind: 'flight', status: 'unverified', fields: { travellers: [], seat: '14C' } }).filter((x) => x.unsure).map((x) => x.key), ['seat']);
+  assert.equal(checkCount({ kind: 'flight', status: 'unverified', fields: { travellers: [], seat: '14C' } }), 1);
+  // A list with something in it still draws.
+  assert.deepEqual(labels({ kind: 'flight', unsure: [], fields: { travellers: ['A', 'B'] } }), [['travellers', 'A and B']]);
+});
+
+test("bookingFacts: a flight's place has a line, as a stay's has: an old flight's place, which Shiori asks about, is on screen and counted (words-next)", () => {
+  const at = { at: '2026-11-20T11:20:00-08:00', tz: 'America/Los_Angeles' };
+  const old = { kind: 'flight', status: 'unverified', title: 'ANNAI AIR AN 123', start: at, end: at, place: { name: 'Testville International', address: '1 Runway Road' }, confirmation: 'TESTQ1', fields: { terminal: '2', gate: 'B12' } };
+  const f = bookingFacts(old);
+  assert.deepEqual(f.map((x) => x.key), ['start', 'end', 'place', 'confirmation', 'terminal', 'gate']);
+  assert.deepEqual(f.map((x) => x.label), ['Departs', 'Arrives', 'Place', 'Confirmation', 'Terminal', 'Gate']);
+  assert.equal(f.find((x) => x.key === 'place')?.value, 'Testville International, 1 Runway Road');
+  assert.deepEqual(f.filter((x) => x.unsure).map((x) => x.key), ['start', 'end', 'place', 'confirmation', 'terminal', 'gate'], 'every part of an old one is checked, its place too');
+  assert.equal(checkCount(old), 7, "the Plan's chip counts the place: the name, both times, the place, the confirmation, the terminal, the gate");
+  assert.equal(checkCount(old), checkOf(old).fields.length, 'one check for each part Shiori is told of');
 });
 
 test("checkCount: the checks the details draw, which the Plan's chip says: a flight's from and to are one Route line, one check; an old flight with a route says one fewer than the parts it marks (booking-say's round 4, fix 1)", () => {
@@ -731,9 +777,9 @@ test('the card when a plugin is switched off says which, why and where to turn i
     tone: 'warn', title: 'The plugin "Tides" was turned off',
     body: 'It failed 3 times in a row. The last error: boom You can turn it back on in Settings → Plugins.',
   });
-  // A hook loop says so whole: once "It its hooks were handed…", glued (localization L5f).
-  assert.equal(disabledCard({ name: 'Tides', why: { kind: 'loop', entries: 1000, seconds: 10 }, message: 'boom' }).body,
-    'Its hooks were handed more than 1,000 log entries in 10 seconds, which looks like a loop. The last error: boom You can turn it back on in Settings → Plugins.');
+  // A hook loop says so whole: once "It its hooks were handed…", glued (localization L5f), and its last error is that reason, in English: not said twice.
+  assert.equal(disabledCard({ name: 'Tides', why: { kind: 'loop', entries: 1000, seconds: 10 }, message: 'its hooks were handed more than 1000 log entries in 10 seconds, which looks like a loop' }).body,
+    'Its hooks were handed more than 1,000 log entries in 10 seconds, which looks like a loop. You can turn it back on in Settings → Plugins.');
 });
 
 test("routes for plugins' screens, settings pages and trip tabs", () => {

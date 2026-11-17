@@ -16,11 +16,19 @@ import { languageOf, vietnameseMarks } from '../../src/core/languages.js';
  *   languages?: { spoken: string[], answer: string, applied: boolean, why?: string },
  *   media?: { at: number, kind: string, seconds: number, time: number }[], taps?: { at: number, label: string, ok: boolean }[],
  *   lines?: { who: string, text: string, buttons: { name: string, disabled: boolean }[] }[], kokoro?: { at: number, kind: string, text?: string, heard?: string[], ms?: number, status?: number | null, bytes?: number }[],
- *   mode?: 'live' | 'classic' | 'chat', model?: { requests: number, capped: boolean } }} Rec  level: [at, rms of what annai plays];
+ *   mode?: 'live' | 'classic' | 'chat', model?: { requests: number, capped: boolean, kokoro?: string } }} Rec  level: [at, rms of what annai plays];
+ *   model: a scenario for a real Kokoro: the requests it made to the real model, whether the cap refused one, and the Kokoro it ran with (kokoroUsed);
  *   micLevel: the same for what the microphone carried; cards: the titles of the cards annai showed once she was listening;
  *   languages: the setting the scenario asked for (phase 2), and whether this build took it (applied); stage 5's card (card scenarios): media: the page's own player
  *   (the question's playing and ending), taps: the taps on the card, lines: the conversation's lines as the page ends with them, kokoro: what the stand-in Kokoro was asked and did
  */
+
+/**
+ * The Kokoro a scenario for a real one ran with, said in its record: a real Claude (Opus 5.5, or Sonnet 5.5 with --real-model sonnet) only when the run has the
+ * stand-in server, the one thing that sets the real Kokoro up; with --kokoro gemini there is none, and Gemini's chat model is Kokoro for it, whatever Anthropic key was given.
+ * @param {{ standIn: boolean, real?: { model?: string } }} run
+ */
+export const kokoroUsed = ({ standIn, real }) => (standIn && real ? (real.model === 'sonnet' ? 'Claude Sonnet 5.5' : 'Claude Opus 5.5') : "Gemini's chat model");
 
 /** The loudness (rms, 0..1) from which what annai plays is sound; and the quiet that ends a run of it. */
 export const SOUND = 0.01;
@@ -31,11 +39,11 @@ const ECHO_WINDOW_MS = 1000;
 export const END_LAG_MS = 2000;
 
 /** The words of a text, lower case, no punctuation. @param {string} text */
-const words = (text) => String(text).toLowerCase().replace(/[^\p{L}\p{N}' ]+/gu, ' ').split(/\s+/).filter(Boolean);
+export const words = (text) => String(text).toLowerCase().replace(/[^\p{L}\p{N}' ]+/gu, ' ').split(/\s+/).filter(Boolean);
 
 /** Japanese and Chinese have no spaces between words: they are read by character. @param {string} text */
-const characters = (text) => [...String(text).replace(/[^\p{L}\p{N}]/gu, '')];
-const CJK = /[\u3040-\u30ff\u4e00-\u9fff]/;
+export const characters = (text) => [...String(text).replace(/[^\p{L}\p{N}]/gu, '')];
+export const CJK = /[\u3040-\u30ff\u4e00-\u9fff]/;
 
 /** How much of what was said was heard: the share of its words (a Japanese or Chinese text's characters) found among the heard. @param {string} said @param {string} heard */
 export function wordRecall(said, heard) {
@@ -79,6 +87,15 @@ export function soundRuns(level) {
 
 /** Filler: an apology, "I understand" or "understood", a promise ("I'll adjust", "I will stop"), "noted". */
 const FILLER = /\b(sorry|apolog\w*|understand\w*|understood|noted|my bad|i['’]ll|i will|i['’]m going to)\b/i;
+/**
+ * The same in Japanese and Chinese, which have no spaces to mark a word: an apology (すみません, 申し訳, 失礼しました; 对不起, 抱歉, 不好意思), an "I understood" or
+ * "I understand" (承知, 理解しました, not ご理解; 明白, 知道了, 收到) and a promise (気をつけます, …ないようにします, やめます; 我会, 不会再; 以後 or 今後 with a promise after it
+ * in the sentence: 以後は注意します, 以后会小心的; they are ordinary words alone: 「三点以后开门」). An okay passes, as "Okay." does: 分かりました, はい, 了解です; 好的, 好; and so does
+ * かしこまりました, the polite okay that Koe's instructions allow ("say okay in the language you answer in"; main's Koe answered the scold with 「かしこまりました。」 in 2 of 2
+ * live runs, 2026-11-17). 承知 is the "understood" those instructions name and forbid ("no \"I understand\" or \"understood\"", src/core/koe/instructions.js), so it is no okay.
+ * Each alternative has a test sentence of its own (realtime-analyse.test.js).
+ */
+export const FILLER_CJK = /すみません|すいません|ごめん|申し訳|失礼(?:しました|いたしました)|お詫び|承知|(?<!ご)理解|お気持ち|気を(?:つけ|付け)ます|以[後后]は?[^。]*(?:します|ません|注意|小心)|今後は?[^。]*(?:します|ません|注意|小心)|ないようにします|やめます|止めます|控えます|对不起|對不起|抱歉|不好意思|道歉|明白|知道了|收到|我会|我會|我将|我將|不会再|不會再/;
 
 /**
  * @param {Rec} rec @param {Record<string, { kind: string, words: string, lang?: string }>} clips
@@ -223,13 +240,16 @@ export function analyse(rec, clips, { endLagMs = END_LAG_MS, expectCut = false, 
     { name: 'turn ends in time', ok: lagged.length === 0, detail: lagged.length ? `late: ${lagged.map((r) => `${r.name} ${r.endLagMs === null ? 'never ended' : `${(r.endLagMs / 1000).toFixed(2)} s`}`).join(', ')}` : `every turn ended within ${endLagMs / 1000} s of the user stopping` },
     { name: 'no errors', ok: errors.length === 0, detail: errors.length ? errors.join('; ') : 'none' },
   ];
-  // Her language (phase 2): each answer in the language its clip was spoken in. An answer too short to place passes: it can't be told.
+  // Her language (phase 2): each answer in the language its clip was spoken in. An answer too short to place can't be told, and is no failure; but a check that
+  // placed none (no clip was answered, or every answer was too short) read nothing, so it is a warning, not a pass: her language is read in the record.
   if (rec.languages) {
-    const wrong = asked.filter((r) => r.answered && r.saidLang && r.saidLang !== LANGUAGE_NAME[r.lang ?? 'en']);
+    const placed = asked.filter((r) => r.answered && r.saidLang);
+    const wrong = placed.filter((r) => r.saidLang !== LANGUAGE_NAME[r.lang ?? 'en']);
     checks.push({
-      name: 'language kept', ok: wrong.length === 0,
+      name: 'language kept', ok: wrong.length === 0 && placed.length > 0, soft: wrong.length === 0,
       detail: wrong.length ? wrong.map((r) => `${r.name} answered in ${r.saidLang} (spoken in ${LANGUAGE_NAME[r.lang ?? 'en']}): "${r.said.slice(0, 80)}"`).join('; ')
-        : `every answer that could be placed was in the language it was spoken in (${asked.filter((r) => r.saidLang).length} of ${asked.length} could be placed)`,
+        : placed.length ? `every answer that could be placed was in the language it was spoken in (${placed.length} of ${asked.length} could be placed)`
+          : `no answer could be placed (${asked.length} asked): her language is not read here, read it in the record`,
     });
   }
   // Whether all that was said reached Gemini: a sentence cut at its pause, or a question begun over her voice, arrives in part.
@@ -244,7 +264,7 @@ export function analyse(rec, clips, { endLagMs = END_LAG_MS, expectCut = false, 
   if (strays.length) checks.push({ name: 'strays left alone', ok: strays.every((r) => r.firstSoundMs === null), detail: strays.map((r) => `${r.name}: ${r.firstSoundMs !== null ? `she answered "${String(r.said ?? '').slice(0, 80)}"` : `no sound${r.said ? ` (silent audio, "${String(r.said).slice(0, 40)}")` : ''}`}`).join('; ') });
   // What she should say little of (the second drive): told off for filler, silence is right and filler is the failure. Whatever she said in the scenario is read.
   if (results.some((r) => r.expect === 'scold')) {
-    const filled = results.filter((r) => FILLER.test(r.said)).map((r) => `${r.name}: "${r.said.slice(0, 80)}"`);
+    const filled = results.filter((r) => FILLER.test(r.said) || FILLER_CJK.test(r.said)).map((r) => `${r.name}: "${r.said.slice(0, 80)}"`);
     checks.push({ name: 'no filler', ok: filled.length === 0, detail: filled.length ? filled.join('; ') : results.filter((r) => r.expect === 'scold').map((r) => `${r.name}: ${r.firstSoundMs !== null ? `she said "${r.said.slice(0, 80)}"` : 'no sound'}`).join('; ') });
   }
   if (expectCut) checks.push({ name: 'she is cut by the user', ok: cuts.some((c) => c.cause === 'user'), detail: cuts.some((c) => c.cause === 'user') ? 'the user speaking over her cut her off' : 'the user spoke over her and she was not cut' });
@@ -347,7 +367,7 @@ export function timeline(rec, a) {
  * @param {Rec} rec @param {ReturnType<typeof analyse>} a @param {string} [about]
  */
 export function detail(rec, a, about = '') {
-  const out = [`== ${rec.scenario}: ${a.pass ? 'PASS' : 'FAIL'} (${rec.route}${rec.echoDb === null ? '' : `, her voice back into the microphone at ${rec.echoDb} dB`})${about ? ` ${about}` : ''}`];
+  const out = [`== ${rec.scenario}: ${a.pass ? 'PASS' : 'FAIL'} (${rec.route}${rec.echoDb === null ? '' : `, her voice back into the microphone at ${rec.echoDb} dB`})${about ? ` ${about}` : ''}${rec.model?.kokoro ? ` [Kokoro used: ${rec.model.kokoro}]` : ''}`];
   if (rec.languages) out.push(`   languages set: ${rec.languages.spoken.join(', ')}; she answers in: ${rec.languages.answer}${rec.languages.applied ? '' : ' (NOT applied: this build has no such setting)'}`);
   for (const c of a.clips) {
     if (c.expect === 'nothing') {

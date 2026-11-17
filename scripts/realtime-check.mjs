@@ -7,10 +7,11 @@
 //   node scripts/realtime-check.mjs cards <run folder>...                              stage 5's card runs as a table, a row a scenario (no network)
 //   node scripts/realtime-check.mjs lateness <folder>... [--settle s] [--rows f.json]  how late the words of a live line arrive, from finished runs (no network)
 // A key: GEMINI_KEY, or --keys-file <path> --lines <1-11>; a real Kokoro's: ANNAI_LIVE_ANTHROPIC_KEY, or --anthropic-key <file> (its first line).
+// --real-model sonnet: that real Kokoro on Claude Sonnet 5.5, not Opus 5.5.
 // Each is read inside the process, never printed or written.
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
-import { parseArgs, keysFrom } from './realtime/args.mjs';
+import { parseArgs, keysFrom, choice } from './realtime/args.mjs';
 
 /** A folder given on the command line, as an address with its slash. @param {string} path */
 const folder = (path) => pathToFileURL(`${resolve(path)}/`);
@@ -67,12 +68,14 @@ if (command === 'clips') {
   const anthropic = await anthropicFrom(opts, process.env);
   const out = new URL(`../.superpowers/evidence/realtime-harness/${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}/`, import.meta.url);
   try {
+    const kokoro = choice(opts, 'kokoro', ['gemini', 'stand-in']);
+    const realModel = choice(opts, 'real-model', ['sonnet', 'opus']);
     const r = await runChecks({
       keys, out: typeof opts.out === 'string' ? folder(opts.out) : out,
       ...(typeof opts.only === 'string' ? { only: opts.only.split(',') } : {}),
       ...(typeof opts.port === 'string' ? { port: Number(opts.port) } : {}),
       ...(typeof opts['room-db'] === 'string' ? { roomDb: opts['room-db'] === 'off' ? null : Number(opts['room-db']) } : {}),
-      ...(opts.kokoro === 'gemini' || opts.kokoro === 'stand-in' ? { kokoro: opts.kokoro } : {}),
+      ...(kokoro ? { kokoro: /** @type {'gemini' | 'stand-in'} */ (kokoro) } : {}),
       ...(typeof opts.app === 'string' ? { app: resolve(opts.app) } : {}),
       ...(typeof opts['answer-timeout'] === 'string' ? { answerTimeoutMs: Number(opts['answer-timeout']) * 1000 } : {}),
       ...(typeof opts['max-sessions'] === 'string' ? { maxSessions: Number(opts['max-sessions']) } : {}),
@@ -80,6 +83,7 @@ if (command === 'clips') {
       ...(typeof opts.asr === 'string' ? { asr: opts.asr } : {}),
       ...(typeof opts.times === 'string' ? { times: Math.max(1, Number(opts.times) || 1) } : {}),
       ...(anthropic ? { anthropic } : {}),
+      ...(realModel ? { realModel } : {}),
     });
     process.exit(r.pass ? 0 : 1);
   } catch (e) {

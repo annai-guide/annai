@@ -42,3 +42,15 @@ export async function anthropicFrom(opts, env) {
   if (key) return new Keys([{ line: null, key }]);
   return typeof opts['anthropic-key'] === 'string' ? Keys.fromPath(opts['anthropic-key'], '1') : undefined;
 }
+
+/**
+ * One of a few named values, in any case ("Sonnet"), or undefined when the option isn't given. A value the run doesn't know stops it: a typo would otherwise run
+ * the default (--real-model sonet ran Claude Opus 5.5, the paid one, and said nothing). @param {Record<string, string | true>} opts @param {string} name @param {string[]} allowed
+ */
+export function choice(opts, name, allowed) {
+  const value = opts[name];
+  if (value === undefined) return undefined;
+  const lower = String(value).toLowerCase();
+  if (!allowed.includes(lower)) throw new Error(`--${name} takes ${allowed.join(' or ')}, not "${value}".`);
+  return lower;
+}
