@@ -1,6 +1,6 @@
 import { meters, travelMinutes, modeFor, kmText, TRAVEL } from './geo.js';
 import { timeIn, validZone, instantAt, dayIn, dueWords, isoInZone } from '../time.js';
-import { bookingRef, fixedWords, timeUnsure, LEG_MAX_KM } from '../plan.js';
+import { bookingRef, fixedWords, timeUnsure, LEG_MAX_KM, kindOf, kindWord } from '../plan.js';
 import { t } from '../l10n.js';
 import { sentences, num, when as clockAt, dayClock } from '../intl.js';
 
@@ -65,28 +65,8 @@ export const NOT_PLANNED_M = 500;
 const MIN = 60_000;
 /** @param {any} p @returns {p is { lat: number, lng: number }} */
 const hasPoint = (p) => Boolean(p) && typeof p.lat === 'number' && typeof p.lng === 'number' && Number.isFinite(p.lat) && Number.isFinite(p.lng);
-/**
- * What a kind word is, for the reminders: one table of the words written for a plan item's kind (free text) and a booking's (a fixed
- * list), in any case. The booking format's kinds, as the instructions name them and an item may carry its booking's; their everyday
- * words (an item "hotel" on a stay's booking stays a stay: the plan check's); the rides that carry the traveller as a train does, for
- * which a booking has no kind (a ferry's is "other"); and "meal", the plan-a-trip skill's own example.
- */
-export const KINDS = new Map(Object.entries({
-  flight: 'flight', lodging: 'lodging', car: 'car', rail: 'rail', event: 'event', restaurant: 'restaurant', other: 'other',
-  plane: 'flight', hotel: 'lodging', stay: 'lodging', train: 'rail',
-  ferry: 'ferry', bus: 'bus', coach: 'coach',
-  meal: 'meal',
-}));
 /** The kinds that carry the traveller: what comes after one doesn't count from where it leaves, and a fixed one is waited for. */
 const CARRIERS = new Set(['flight', 'rail', 'ferry', 'bus', 'coach']);
-/** A kind word as the table reads it: "Train" and " hotel " too. @param {unknown} k */
-const known = (k) => (typeof k === 'string' ? KINDS.get(k.trim().toLowerCase()) : undefined);
-/**
- * A plan item's kind: its own word when the table knows it, else its booking's, else ''. Its own decides, so a car pick-up or a
- * check-out on a flight's booking is no flight; an unknown word or none takes the booking's, so a flight written "transport" on its
- * booking keeps the 2-hour margin (fix round 2's Call 3). @param {any} it @param {any} booking @returns {string}
- */
-const kindOf = (it, booking) => known(it.kind) ?? known(booking?.kind) ?? '';
 /** "/plan/nepenthe.json" → "nepenthe". @param {string} path */
 const slug = (path) => path.replace(/^\/plan\//, '').replace(/\.json$/, '');
 
@@ -169,7 +149,7 @@ export function planWatches(items, bookings, { fallbackTz }) {
       }
       // A stay with no end of its own is arrived at until its booking's check-out, not only 3 hours past its start: a check-in at 16:00
       // reached at 21:55 after a late landing got no "arrived", and so no notes.
-      const checkOut = kind === 'lodging' && base.end === null && known(booking?.kind) === 'lodging' ? instant(booking.end) : NaN;
+      const checkOut = kind === 'lodging' && base.end === null && kindWord(booking?.kind) === 'lodging' ? instant(booking.end) : NaN;
       add('arrived', `${place.name}: ${title}.${notes ? ` ${notes}` : ''}`, { event: 'arrived', title, place: place.name, ...(notes ? { notes } : {}) }, checkOut > x.at ? { ...there, end: checkOut } : there);
       // Every place is the stop before the next item, a stay's too: with no position, it is the best guess of where the traveller is (the
       // flight home after a stay 100 km from the airport counts from the stay; with the stay left out it said "Leave soon" 1 h 44 min late).

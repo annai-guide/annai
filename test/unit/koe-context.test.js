@@ -82,6 +82,16 @@ test("the compact view lists today's ends of things over several days at their t
   assert.doesNotMatch(view, /Pick up|day \d of/);
 });
 
+test("a car rental of kind car on a flight's booking with no times ends as a car in Koe's view, as on the Plan and in the reminders: \"Return · Car rental\" at its place, not a flight's \"Arrive\" with none (the Deferred entry \"The Plan screen reads a booking's kind first\")", async () => {
+  const k = await agentKit([[{ text: '' }]], { open: true });
+  const write = (/** @type {string} */ path, /** @type {any} */ v) => k.ws.write(k.trip, path, v, { author: 'user' });
+  await write('/bookings/ua.json', { id: 'ua', kind: 'flight', status: 'unverified', source: '/files/ua.pdf', unsure: [], title: 'ANNAI AIR AN 123' });
+  await write('/plan/car.json', { id: 'car', title: 'Car rental', kind: 'car', fixed: true, booking: '/trip/bookings/ua.json', start: at('2026-11-20T10:00:00'), end: at('2026-11-23T10:00:00'), place: { name: 'Airport lot' } });
+  const view = await compactView({ ws: k.ws, trip: k.trip, now: Date.parse('2026-11-23T08:00:00-08:00'), timeZone: LA, next: null });
+  assert.match(view, /\n2026-11-23 10:00\t\tReturn · Car rental\tcan't be moved\tAirport lot\n/);
+  assert.doesNotMatch(view, /Arrive/);
+});
+
 test("\"can't be moved\" in Koe's view only for a plan item stored as fixed: a hotel with nothing marked and a flexible trek's end say nothing (the user's answer, 2026-11-15: only what was said fixed)", async () => {
   const k = await agentKit([[{ text: '' }]], { open: true });
   const hotel = { id: 'hotel', kind: 'lodging', status: 'unverified', source: '/files/h.pdf', title: 'Test Harbor Hotel', unsure: [], start: at('2026-11-26T15:00:00'), end: at('2026-11-27T11:00:00') };

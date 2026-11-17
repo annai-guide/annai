@@ -1,6 +1,6 @@
 import { validZone, dayIn, instantAt } from '../core/time.js';
 import { checkOf, there } from '../core/bookings.js';
-import { BOOKING_FILE, PLAN_FILE } from '../core/plan.js';
+import { BOOKING_FILE, PLAN_FILE, kindWord } from '../core/plan.js';
 import { isGivenFile } from '../core/paths.js';
 import { TIMINGS } from '../core/backup-auto.js';
 import { holdWords, oldHold } from '../core/backup.js';
@@ -109,23 +109,22 @@ export function lineName(r) {
 }
 
 /**
- * A booking's kind in words, and a plan item's: every word the reminders' table reads (KINDS, src/core/live/plan-watches.js), so a kind Shiori
- * writes for an item shows in the screens' language: "ferry", "bus", "coach" and "meal" have a name of their own, and the everyday words
- * ("plane", "hotel", "stay", "train") the name of the kind they stand for.
+ * A booking's kind in words, and a plan item's: a name for every kind the one table of kind words gives (KINDS, src/core/plan.js), so a
+ * kind Shiori writes for an item shows in the screens' language: "ferry", "bus", "coach" and "meal" have a name of their own.
  */
 export const BOOKING_KINDS = /** @type {Record<string, string>} */ ({
   flight: t`Flight`, lodging: t`Stay`, car: t`Car`, rail: t`Train`, event: t`Event`, restaurant: t`Restaurant`, other: t`Other`,
-  plane: t`Flight`, hotel: t`Stay`, stay: t`Stay`, train: t`Train`, ferry: t`Ferry`, bus: t`Bus`, coach: t`Coach`, meal: t`Meal`,
+  ferry: t`Ferry`, bus: t`Bus`, coach: t`Coach`, meal: t`Meal`,
 });
 
 /**
- * A plan item's kind in the screens' language, the word read as the reminders read it (trimmed, in any case: "Ferry" and " bus " are a ferry
- * and a bus); undefined for a word annai has no name for. @param {string} kind
+ * A plan item's kind in the screens' language, the word read by the table every reader takes (kindWord: "Ferry" and " bus " are a ferry
+ * and a bus, "plane" a flight); undefined for a word annai has no name for. @param {string} kind
  * @returns {string | undefined}
  */
 export function kindName(kind) {
-  const word = kind.trim().toLowerCase();
-  return Object.hasOwn(BOOKING_KINDS, word) ? BOOKING_KINDS[word] : undefined;
+  const k = kindWord(kind);
+  return k === undefined ? undefined : BOOKING_KINDS[k];
 }
 
 /** How many of a kind of booking, by its kind. */

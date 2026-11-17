@@ -653,22 +653,22 @@ bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 會用你對她
 k4u05v	ok	The language you speak to her	你對她說的語言	src/core/languages.js:366	
 cc69cl	ok	None picked: annai uses the browser’s language.	未選擇時，annai 使用瀏覽器的語言。	src/core/languages.js:367	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
 1dyfzsg	ok	A simulation is already running.	已有模擬正在執行。	src/core/live/live.js:323	
-157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0} 於 {1} 起飛（{2}）	src/core/live/plan-watches.js:241	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
-1tvx4k9	ok	Flight {0} departs {1}	航班 {0} 於 {1} 起飛	src/core/live/plan-watches.js:241	{0} = w.flight; {1} = time
-1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}，{2}）	src/core/live/plan-watches.js:242	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
-1wwrs1d	ok	{0} at {1}	{0}（{1}）	src/core/live/plan-watches.js:242	{0} = w.title; {1} = time; Note: an item in a few words: its title, then its time.
-ypynbt	ok	Leave soon: {0}.	該出發了：{0}。	src/core/live/plan-watches.js:253	{0} = what
-1nq6h1n	ok	About {0} min by car.	開車約 {0} 分鐘。	src/core/live/plan-watches.js:254	{0} = num(say.minutes)
-1s9ayzz	ok	About {0} min on foot.	步行約 {0} 分鐘。	src/core/live/plan-watches.js:254	{0} = num(say.minutes)
-osmwu5	ok	Leave in about {0} min: {1}.	約 {0} 分鐘後出發：{1}。	src/core/live/plan-watches.js:254	{0} = num(say.left ?? LEAVE_LEAD_MIN); {1} = what
-12cmqu6	ok	Running late: {0}.	要遲到了：{0}。	src/core/live/plan-watches.js:255	{0} = what
-3qig1w	ok	About {0} min away.	還有約 {0} 分鐘路程。	src/core/live/plan-watches.js:255	{0} = num(say.minutes)
-ub25px	ok	Planned now: {0}, at {1}.	現在的行程：{0}（{1}）。	src/core/live/plan-watches.js:256	{0} = String(say.title); {1} = String(say.place); Note: label: value, the place in brackets.
-195jjr0	ok	{0}: {1}.	{0}：{1}。	src/core/live/plan-watches.js:257	{0} = String(say.place); {1} = String(say.title); Note: a place, then the plan item there.
-1yqg2at	ok	In {0} min: {1}.	{0} 分鐘後：{1}。	src/core/live/plan-watches.js:258	{0} = num(say.left ?? COMING_UP_MIN); {1} = what
-9s8no9	ok	You've stopped somewhere that isn't on the itinerary.	你停留的地方不在行程中。	src/core/live/plan-watches.js:260	
-4lxlla	ok	Nothing more is on the itinerary.	接下來沒有其他行程了。	src/core/live/plan-watches.js:261	
-yc6345	ok	Next on the itinerary: {0} at {1}.	下一項行程：{0}（{1}）。	src/core/live/plan-watches.js:262	{0} = say.next.title; {1} = say.next.later ? dayClock(say.next.at, say.next.tz) : clock(say.next.at, say.next.tz)
+157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0} 於 {1} 起飛（{2}）	src/core/live/plan-watches.js:221	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
+1tvx4k9	ok	Flight {0} departs {1}	航班 {0} 於 {1} 起飛	src/core/live/plan-watches.js:221	{0} = w.flight; {1} = time
+1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}，{2}）	src/core/live/plan-watches.js:222	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
+1wwrs1d	ok	{0} at {1}	{0}（{1}）	src/core/live/plan-watches.js:222	{0} = w.title; {1} = time; Note: an item in a few words: its title, then its time.
+ypynbt	ok	Leave soon: {0}.	該出發了：{0}。	src/core/live/plan-watches.js:233	{0} = what
+1nq6h1n	ok	About {0} min by car.	開車約 {0} 分鐘。	src/core/live/plan-watches.js:234	{0} = num(say.minutes)
+1s9ayzz	ok	About {0} min on foot.	步行約 {0} 分鐘。	src/core/live/plan-watches.js:234	{0} = num(say.minutes)
+osmwu5	ok	Leave in about {0} min: {1}.	約 {0} 分鐘後出發：{1}。	src/core/live/plan-watches.js:234	{0} = num(say.left ?? LEAVE_LEAD_MIN); {1} = what
+12cmqu6	ok	Running late: {0}.	要遲到了：{0}。	src/core/live/plan-watches.js:235	{0} = what
+3qig1w	ok	About {0} min away.	還有約 {0} 分鐘路程。	src/core/live/plan-watches.js:235	{0} = num(say.minutes)
+ub25px	ok	Planned now: {0}, at {1}.	現在的行程：{0}（{1}）。	src/core/live/plan-watches.js:236	{0} = String(say.title); {1} = String(say.place); Note: label: value, the place in brackets.
+195jjr0	ok	{0}: {1}.	{0}：{1}。	src/core/live/plan-watches.js:237	{0} = String(say.place); {1} = String(say.title); Note: a place, then the plan item there.
+1yqg2at	ok	In {0} min: {1}.	{0} 分鐘後：{1}。	src/core/live/plan-watches.js:238	{0} = num(say.left ?? COMING_UP_MIN); {1} = what
+9s8no9	ok	You've stopped somewhere that isn't on the itinerary.	你停留的地方不在行程中。	src/core/live/plan-watches.js:240	
+4lxlla	ok	Nothing more is on the itinerary.	接下來沒有其他行程了。	src/core/live/plan-watches.js:241	
+yc6345	ok	Next on the itinerary: {0} at {1}.	下一項行程：{0}（{1}）。	src/core/live/plan-watches.js:242	{0} = say.next.title; {1} = say.next.later ? dayClock(say.next.at, say.next.tz) : clock(say.next.at, say.next.tz)
 1jok3pb	ok	A simulation is already running. Stop it first.	已有模擬正在執行，請先停止。	src/core/live/sim-run.js:90	
 ujhqxv	ok	Untitled trip	未命名旅行	src/core/live/sim-run.js:237	Note: a new simulated trip's name when its itinerary has none, before " (simulation)" is added.
 1426icm	ok	That trip isn't on this device any more.	這台裝置上已經沒有這趟旅行了。	src/core/live/sim-run.js:277	
@@ -834,7 +834,7 @@ tqmba2	ok	an address your searches are sent to: {0}	會接收搜尋內容的網�
 d57q3n	ok	Flight	航班	src/core/plan.js:67	
 jj8u9s	ok	Stay	住宿	src/core/plan.js:67	Note: A kind of booking: a hotel or other lodging.
 sksosh	ok	Car	租車	src/core/plan.js:67	Note: A kind of booking: a car, nearly always a rental.
-1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	無法辨識時區「{0}」，改以 {1} 顯示。	src/core/plan.js:101	{0} = String(own ?? ''); {1} = fallbackTz
+1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	無法辨識時區「{0}」，改以 {1} 顯示。	src/core/plan.js:124	{0} = String(own ?? ''); {1} = fallbackTz
 o6vv9a	ok	"{0}" is a name annai uses for one of its own parts, so a skill can't have it.	「{0}」已被 annai 自身的某個部分使用，不能用作技能名稱。	src/core/plugins.js:179	{0} = id; Note: {0} is the skill's name.
 1fdobr5	ok	It has the same id as a plugin built into annai.	與 annai 內建外掛程式的 ID 相同。	src/core/plugins.js:180	
 wq5ezj	ok	Its name, "{0}", is annai's own name, or the name of one of its parts. Ask its author to rename it.	名稱「{0}」與 annai 或其某個部分的名稱相同。請聯絡作者改名。	src/core/plugins.js:184	{0} = pkg.name; Note: Ask here is the plain verb (to ask the author), not Safari's permission choice.
@@ -1162,92 +1162,92 @@ jn2a2i	ok	Pick up · {0}	取車 · {0}	src/ui/format.js:88	{0} = name; Note: Tai
 tdmj58	ok	Flexible:	時間可調：	src/ui/format.js:99	Note: Read aloud before a plan item whose time can move.
 cdkfoc	ok	Staying at {0} · night {1} of {2}	住在 {0} · 第 {1} 晚（共 {2} 晚）	src/ui/format.js:108	{0} = name; {1} = n; {2} = of; Note: Taiwan wording; a quiet line on each night of a stay, nights counted with 晚.
 lraa4q	ok	{0} · day {1} of {2}	{0} · 第 {1} 天（共 {2} 天）	src/ui/format.js:108	{0} = name; {1} = n; {2} = of; Note: Taiwan wording; a quiet line on each day between, for a car or anything over several days.
-ukzedx	ok	Other	其他	src/ui/format.js:117	
-1cyh7n5	draft	Coach	長途客運	src/ui/format.js:118	Note: a plan item's kind, shown under its title: a long-distance coach, not a train carriage.
-1imb8nt	draft	Bus	巴士	src/ui/format.js:118	Note: a plan item's kind, shown under its title: a bus or shuttle ride.
-1lq4x97	draft	Ferry	渡輪	src/ui/format.js:118	Note: a plan item's kind, shown under its title: a ferry ride.
-25bpne	draft	Meal	用餐	src/ui/format.js:118	Note: a plan item's kind, shown under its title: a meal.
-1q4rwjo#other	ok	# stays	# 處住宿	src/ui/format.js:133	plural; # = n; English: "# stay" (one), "# stays" (other); Note: shows in a Files row's second line, as the count of stays a file became.
-1saywzu#other	ok	# flights	# 個航班	src/ui/format.js:133	plural; # = n; English: "# flight" (one), "# flights" (other); Note: shows in a Files row's second line, as the count of flights a file became ("2 flights · Nov 20, Nov 27").
-1usugy8#other	ok	# cars	# 輛租車	src/ui/format.js:133	plural; # = n; English: "# car" (one), "# cars" (other); Note: shows in a Files row's second line, as the count of car rentals a file became.
-132sfp8#other	ok	# events	# 個活動	src/ui/format.js:134	plural; # = n; English: "# event" (one), "# events" (other); Note: shows in a Files row's second line, as the count of events a file became.
-7f6248#other	ok	# restaurants	# 家餐廳	src/ui/format.js:134	plural; # = n; English: "# restaurant" (one), "# restaurants" (other); Note: shows in a Files row's second line, as the count of restaurant bookings a file became.
-qicqbg#other	ok	# trains	# 趟火車	src/ui/format.js:134	plural; # = n; English: "# train" (one), "# trains" (other); Note: shows in a Files row's second line, as the count of train trips a file became.
-25ugc5	ok	Itinerary items from a calendar	來自行事曆的行程項目	src/ui/format.js:160	Note: Taiwan wording: 行事曆 for a calendar; Plan is 行程.
-1gfvwcc	ok	Nothing yet	尚無	src/ui/format.js:161	Note: Taiwan wording; what a file became: nothing so far.
-jgspu5	ok	Waiting for Shiori to read it	等待 Shiori 讀取	src/ui/format.js:161	Note: Taiwan wording; a file Shiori hasn't read yet.
-1hlojji	ok	To	目的地	src/ui/format.js:172	context: booking; Note: Taiwan wording; a booking's detail: where a flight or train goes.
-1uq5tvs	ok	Seat	座位	src/ui/format.js:172	Note: Taiwan wording; a booking's detail.
-1yz1r2o	ok	Cabin	艙等	src/ui/format.js:172	context: booking; Note: Taiwan wording: 艙等, as airlines there say; a flight's cabin class.
-9ihsg5	ok	Airline	航空公司	src/ui/format.js:172	Note: Taiwan wording; a booking's detail.
-qoo2zd	ok	Flight	航班編號	src/ui/format.js:172	context: booking; Note: Taiwan wording; the flight's number (AN 123), not the kind of booking.
-upnba7	ok	From	出發地	src/ui/format.js:172	context: booking; Note: Taiwan wording; a booking's detail: where a flight or train leaves from.
-1501knl	ok	Terminal	航廈	src/ui/format.js:173	Note: Taiwan wording: 航廈 for an airport's terminal.
-15rtgdu	ok	Gate	登機門	src/ui/format.js:173	Note: Taiwan wording: 登機門 for an airport's gate.
-193ku12	ok	Bags	行李	src/ui/format.js:173	Note: Taiwan wording; a booking's detail: the bags included.
-1ipbaqc	ok	Room	房間	src/ui/format.js:173	context: booking; Note: Taiwan wording; a stay's room.
-1jn3vqu	ok	Nights	住宿晚數	src/ui/format.js:173	Note: Taiwan wording; how many nights a stay is.
-ean645	ok	Travellers	旅客	src/ui/format.js:173	Note: Taiwan wording; the people a flight or train booking is for.
-vpb928	ok	Guests	入住人數	src/ui/format.js:173	Note: Taiwan wording; the people a stay is booked for.
-1ozvdw3	ok	Car	車輛	src/ui/format.js:174	context: booking; Note: a booking's detail: the car, as people label it, on a booking that is not a train or a rental (a flight, a stay, an event); a plain word, not a coach number or the kind of booking.
-1v8ms9v	ok	Train	車次	src/ui/format.js:174	context: booking; Note: Taiwan wording; a booking's detail: the train's number.
-3uyuz4	ok	Drop-off	還車	src/ui/format.js:174	Note: Taiwan wording; where and when a rental car goes back.
-4f76ga	ok	Notes	備註	src/ui/format.js:174	Note: Taiwan wording; notes on a booking or a plan item.
-95yu2i	ok	Pick-up	取車	src/ui/format.js:174	Note: Taiwan wording; where and when a rental car is picked up.
-vzzxl8	ok	Party size	用餐人數	src/ui/format.js:174	Note: Taiwan wording; how many people a restaurant booking is for.
-1hra0d8	ok	Company	公司	src/ui/format.js:175	Note: a booking's detail: the company a car or ride is booked with.
-1lwerby	ok	Flights	航班	src/ui/format.js:175	context: booking; Note: a booking's detail: the flights of one booking (a connection), not a count.
-7gnwg	ok	Passengers	乘客	src/ui/format.js:175	Note: a booking's detail: the people a ride is for.
-gc0vlk	ok	Phone number	電話號碼	src/ui/format.js:175	Note: a booking's detail: a phone number annai filed from the booking.
-8xrrng	ok	Car	車型	src/ui/format.js:179	context: rental; Note: a rental's detail: the car's model (the make and model, or the class), not the kind of booking (its own Car row) and not a train's coach.
-b2la2e	ok	Car	車廂	src/ui/format.js:179	context: train; Note: Taiwan wording; a train's car (coach), not a rental car.
-1jtckn3	ok	Route	航線	src/ui/format.js:218	context: flight; Note: Taiwan wording; a flight's from → to, as one line.
-13ne04w	ok	Departs	出發	src/ui/format.js:219	Note: Taiwan wording; a flight's departure, its time in that airport's zone.
-j6u2ti	ok	Starts	開始	src/ui/format.js:219	context: booking; Note: A booking's start, its day and time shown beside it.
-vjjlq9	ok	Check-in	入住	src/ui/format.js:219	Note: Taiwan wording; a stay's check-in.
-1pcvk9l	ok	Ends	結束	src/ui/format.js:220	context: booking
-8md94n	ok	Arrives	抵達	src/ui/format.js:220	Note: Taiwan wording: 抵達; a flight's arrival.
-8nuh1e	ok	Check-out	退房	src/ui/format.js:220	Note: Taiwan wording; a stay's check-out.
-16ygujg	ok	Place	地點	src/ui/format.js:221	
-lypvx6	ok	{0}, {1}	{0}（{1}）	src/ui/format.js:221	context: booking; {0} = String(b.place.name); {1} = String(b.place.address); Note: A booking's place: its name, then its address in brackets.
-p3snlg	ok	Confirmation	確認碼	src/ui/format.js:232	Note: A booking's confirmation code.
-t05i6w	ok	Cost	費用	src/ui/format.js:233	
-1vdspge	ok	Getting files: {0} of {1}	正在取得檔案：{0}/{1}	src/ui/format.js:270	{0} = num(p.done); {1} = num(p.total)
-zo1gq	ok	Getting the backup…	正在取得備份…	src/ui/format.js:270	
-fuj1qb	ok	Getting the backup ready…	正在準備備份…	src/ui/format.js:274	
-1a0lh7c	ok	Comparing files {0} of {1}…	正在比較檔案（{0}/{1}）…	src/ui/format.js:275	{0} = num(p.done); {1} = num(p.total)
-1ofggks	ok	Comparing files…	正在比較檔案…	src/ui/format.js:275	
-1jbhw8o	ok	Uploading…	正在上傳…	src/ui/format.js:276	
-sg0mn0	ok	Uploading {0} of {1}…	正在上傳（{0}/{1}）…	src/ui/format.js:276	{0} = num(p.done); {1} = num(p.total)
-11y7c1u	ok	Paused: there is a newer backup from an iPad	已暫停：有來自 iPad 的較新備份	src/ui/format.js:281	
-1815ss7	ok	Paused: there is a newer backup from an iPhone	已暫停：有來自 iPhone 的較新備份	src/ui/format.js:281	
-1kc2l15	ok	Paused: there is a newer backup from a computer	已暫停：有來自電腦的較新備份	src/ui/format.js:282	
-1ytn3n1	ok	Paused: there is a newer backup from an Android phone	已暫停：有來自 Android 手機的較新備份	src/ui/format.js:282	
-14m1y56	ok	Paused: there is a newer backup from another device	已暫停：有來自另一台裝置的較新備份	src/ui/format.js:283	
-12hcbva	ok	An iPhone backed up to {0} {1}.	{1}，一支 iPhone 備份到了 {0}。	src/ui/format.js:287	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
-1exdtuz	ok	An iPad backed up to {0} {1}.	{1}，一台 iPad 備份到了 {0}。	src/ui/format.js:287	{0} = where; {1} = ago
-1hmrpdo	ok	A computer backed up to {0} {1}.	{1}，一台電腦備份到了 {0}。	src/ui/format.js:288	{0} = where; {1} = ago
-dc7u48	ok	An Android phone backed up to {0} {1}.	{1}，一支 Android 手機備份到了 {0}。	src/ui/format.js:288	{0} = where; {1} = ago
-19kyaez	ok	Another device backed up to {0} {1}.	{1}，另一台裝置備份到了 {0}。	src/ui/format.js:289	{0} = where; {1} = ago
-mbc651	ok	That was after this phone's last backup.	這比這支手機上次備份的時間更晚。	src/ui/format.js:293	
-vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	可以作為副本匯入，把其中的旅行帶到這裡；也可以用這支手機的備份覆蓋它。	src/ui/format.js:293	Note: "Back up this phone over it": this phone's backup replaces the newer one there.
-1ce0smb	ok	That was after this iPad's last backup.	這比這台 iPad 上次備份的時間更晚。	src/ui/format.js:294	
-nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	可以作為副本匯入，把其中的旅行帶到這裡；也可以用這台 iPad 的備份覆蓋它。	src/ui/format.js:294	
-hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	可以作為副本匯入，把其中的旅行帶到這裡；也可以用這台電腦的備份覆蓋它。	src/ui/format.js:295	
-wn3ejs	ok	That was after this computer's last backup.	這比這台電腦上次備份的時間更晚。	src/ui/format.js:295	
-1n6qjpw	ok	Working…	正在處理…	src/ui/format.js:310	
-1sw982j	ok	Last backup {0}.	上次備份：{0}。	src/ui/format.js:315	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
-d1smo3	ok	Not backed up yet.	尚未備份。	src/ui/format.js:315	
-10ouos4	ok	Waiting for your OK to upload {0}	正在等待你同意上傳 {0}	src/ui/format.js:316	{0} = size(h.bytes)
-nbshf0	ok	The last try failed.	上次嘗試失敗了。	src/ui/format.js:318	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
-osg3je	ok	The last try failed: {0}	上次嘗試失敗：{0}	src/ui/format.js:319	{0} = holdWords(h, target.name)
-1qmdzit	ok	Not set up yet: fill it in, then Save and test	尚未設定：請填寫後點「儲存並測試」	src/ui/format.js:320	Note: "Save and test" is the backup place's button.
-1e2pygg	ok	Automatic backups are off	自動備份已關閉	src/ui/format.js:321	
-173tgfr	ok	Last backup {0}	上次備份：{0}	src/ui/format.js:322	{0} = at
-1uajbr3	ok	Not backed up yet	尚未備份	src/ui/format.js:322	
-1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	那裡的自動備份已暫停，以免兩台裝置互相覆蓋。	src/ui/format.js:334	
-hmr3pn	ok	The other backup stays in its history.	另一個備份仍會保留在歷史中。	src/ui/format.js:334	
-8091b1	ok	no limit	不限	src/ui/format.js:359	
+ukzedx	ok	Other	其他	src/ui/format.js:116	
+1cyh7n5	draft	Coach	長途客運	src/ui/format.js:117	Note: a plan item's kind, shown under its title: a long-distance coach, not a train carriage.
+1imb8nt	draft	Bus	巴士	src/ui/format.js:117	Note: a plan item's kind, shown under its title: a bus or shuttle ride.
+1lq4x97	draft	Ferry	渡輪	src/ui/format.js:117	Note: a plan item's kind, shown under its title: a ferry ride.
+25bpne	draft	Meal	用餐	src/ui/format.js:117	Note: a plan item's kind, shown under its title: a meal.
+1q4rwjo#other	ok	# stays	# 處住宿	src/ui/format.js:132	plural; # = n; English: "# stay" (one), "# stays" (other); Note: shows in a Files row's second line, as the count of stays a file became.
+1saywzu#other	ok	# flights	# 個航班	src/ui/format.js:132	plural; # = n; English: "# flight" (one), "# flights" (other); Note: shows in a Files row's second line, as the count of flights a file became ("2 flights · Nov 20, Nov 27").
+1usugy8#other	ok	# cars	# 輛租車	src/ui/format.js:132	plural; # = n; English: "# car" (one), "# cars" (other); Note: shows in a Files row's second line, as the count of car rentals a file became.
+132sfp8#other	ok	# events	# 個活動	src/ui/format.js:133	plural; # = n; English: "# event" (one), "# events" (other); Note: shows in a Files row's second line, as the count of events a file became.
+7f6248#other	ok	# restaurants	# 家餐廳	src/ui/format.js:133	plural; # = n; English: "# restaurant" (one), "# restaurants" (other); Note: shows in a Files row's second line, as the count of restaurant bookings a file became.
+qicqbg#other	ok	# trains	# 趟火車	src/ui/format.js:133	plural; # = n; English: "# train" (one), "# trains" (other); Note: shows in a Files row's second line, as the count of train trips a file became.
+25ugc5	ok	Itinerary items from a calendar	來自行事曆的行程項目	src/ui/format.js:159	Note: Taiwan wording: 行事曆 for a calendar; Plan is 行程.
+1gfvwcc	ok	Nothing yet	尚無	src/ui/format.js:160	Note: Taiwan wording; what a file became: nothing so far.
+jgspu5	ok	Waiting for Shiori to read it	等待 Shiori 讀取	src/ui/format.js:160	Note: Taiwan wording; a file Shiori hasn't read yet.
+1hlojji	ok	To	目的地	src/ui/format.js:171	context: booking; Note: Taiwan wording; a booking's detail: where a flight or train goes.
+1uq5tvs	ok	Seat	座位	src/ui/format.js:171	Note: Taiwan wording; a booking's detail.
+1yz1r2o	ok	Cabin	艙等	src/ui/format.js:171	context: booking; Note: Taiwan wording: 艙等, as airlines there say; a flight's cabin class.
+9ihsg5	ok	Airline	航空公司	src/ui/format.js:171	Note: Taiwan wording; a booking's detail.
+qoo2zd	ok	Flight	航班編號	src/ui/format.js:171	context: booking; Note: Taiwan wording; the flight's number (AN 123), not the kind of booking.
+upnba7	ok	From	出發地	src/ui/format.js:171	context: booking; Note: Taiwan wording; a booking's detail: where a flight or train leaves from.
+1501knl	ok	Terminal	航廈	src/ui/format.js:172	Note: Taiwan wording: 航廈 for an airport's terminal.
+15rtgdu	ok	Gate	登機門	src/ui/format.js:172	Note: Taiwan wording: 登機門 for an airport's gate.
+193ku12	ok	Bags	行李	src/ui/format.js:172	Note: Taiwan wording; a booking's detail: the bags included.
+1ipbaqc	ok	Room	房間	src/ui/format.js:172	context: booking; Note: Taiwan wording; a stay's room.
+1jn3vqu	ok	Nights	住宿晚數	src/ui/format.js:172	Note: Taiwan wording; how many nights a stay is.
+ean645	ok	Travellers	旅客	src/ui/format.js:172	Note: Taiwan wording; the people a flight or train booking is for.
+vpb928	ok	Guests	入住人數	src/ui/format.js:172	Note: Taiwan wording; the people a stay is booked for.
+1ozvdw3	ok	Car	車輛	src/ui/format.js:173	context: booking; Note: a booking's detail: the car, as people label it, on a booking that is not a train or a rental (a flight, a stay, an event); a plain word, not a coach number or the kind of booking.
+1v8ms9v	ok	Train	車次	src/ui/format.js:173	context: booking; Note: Taiwan wording; a booking's detail: the train's number.
+3uyuz4	ok	Drop-off	還車	src/ui/format.js:173	Note: Taiwan wording; where and when a rental car goes back.
+4f76ga	ok	Notes	備註	src/ui/format.js:173	Note: Taiwan wording; notes on a booking or a plan item.
+95yu2i	ok	Pick-up	取車	src/ui/format.js:173	Note: Taiwan wording; where and when a rental car is picked up.
+vzzxl8	ok	Party size	用餐人數	src/ui/format.js:173	Note: Taiwan wording; how many people a restaurant booking is for.
+1hra0d8	ok	Company	公司	src/ui/format.js:174	Note: a booking's detail: the company a car or ride is booked with.
+1lwerby	ok	Flights	航班	src/ui/format.js:174	context: booking; Note: a booking's detail: the flights of one booking (a connection), not a count.
+7gnwg	ok	Passengers	乘客	src/ui/format.js:174	Note: a booking's detail: the people a ride is for.
+gc0vlk	ok	Phone number	電話號碼	src/ui/format.js:174	Note: a booking's detail: a phone number annai filed from the booking.
+8xrrng	ok	Car	車型	src/ui/format.js:178	context: rental; Note: a rental's detail: the car's model (the make and model, or the class), not the kind of booking (its own Car row) and not a train's coach.
+b2la2e	ok	Car	車廂	src/ui/format.js:178	context: train; Note: Taiwan wording; a train's car (coach), not a rental car.
+1jtckn3	ok	Route	航線	src/ui/format.js:217	context: flight; Note: Taiwan wording; a flight's from → to, as one line.
+13ne04w	ok	Departs	出發	src/ui/format.js:218	Note: Taiwan wording; a flight's departure, its time in that airport's zone.
+j6u2ti	ok	Starts	開始	src/ui/format.js:218	context: booking; Note: A booking's start, its day and time shown beside it.
+vjjlq9	ok	Check-in	入住	src/ui/format.js:218	Note: Taiwan wording; a stay's check-in.
+1pcvk9l	ok	Ends	結束	src/ui/format.js:219	context: booking
+8md94n	ok	Arrives	抵達	src/ui/format.js:219	Note: Taiwan wording: 抵達; a flight's arrival.
+8nuh1e	ok	Check-out	退房	src/ui/format.js:219	Note: Taiwan wording; a stay's check-out.
+16ygujg	ok	Place	地點	src/ui/format.js:220	
+lypvx6	ok	{0}, {1}	{0}（{1}）	src/ui/format.js:220	context: booking; {0} = String(b.place.name); {1} = String(b.place.address); Note: A booking's place: its name, then its address in brackets.
+p3snlg	ok	Confirmation	確認碼	src/ui/format.js:231	Note: A booking's confirmation code.
+t05i6w	ok	Cost	費用	src/ui/format.js:232	
+1vdspge	ok	Getting files: {0} of {1}	正在取得檔案：{0}/{1}	src/ui/format.js:269	{0} = num(p.done); {1} = num(p.total)
+zo1gq	ok	Getting the backup…	正在取得備份…	src/ui/format.js:269	
+fuj1qb	ok	Getting the backup ready…	正在準備備份…	src/ui/format.js:273	
+1a0lh7c	ok	Comparing files {0} of {1}…	正在比較檔案（{0}/{1}）…	src/ui/format.js:274	{0} = num(p.done); {1} = num(p.total)
+1ofggks	ok	Comparing files…	正在比較檔案…	src/ui/format.js:274	
+1jbhw8o	ok	Uploading…	正在上傳…	src/ui/format.js:275	
+sg0mn0	ok	Uploading {0} of {1}…	正在上傳（{0}/{1}）…	src/ui/format.js:275	{0} = num(p.done); {1} = num(p.total)
+11y7c1u	ok	Paused: there is a newer backup from an iPad	已暫停：有來自 iPad 的較新備份	src/ui/format.js:280	
+1815ss7	ok	Paused: there is a newer backup from an iPhone	已暫停：有來自 iPhone 的較新備份	src/ui/format.js:280	
+1kc2l15	ok	Paused: there is a newer backup from a computer	已暫停：有來自電腦的較新備份	src/ui/format.js:281	
+1ytn3n1	ok	Paused: there is a newer backup from an Android phone	已暫停：有來自 Android 手機的較新備份	src/ui/format.js:281	
+14m1y56	ok	Paused: there is a newer backup from another device	已暫停：有來自另一台裝置的較新備份	src/ui/format.js:282	
+12hcbva	ok	An iPhone backed up to {0} {1}.	{1}，一支 iPhone 備份到了 {0}。	src/ui/format.js:286	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
+1exdtuz	ok	An iPad backed up to {0} {1}.	{1}，一台 iPad 備份到了 {0}。	src/ui/format.js:286	{0} = where; {1} = ago
+1hmrpdo	ok	A computer backed up to {0} {1}.	{1}，一台電腦備份到了 {0}。	src/ui/format.js:287	{0} = where; {1} = ago
+dc7u48	ok	An Android phone backed up to {0} {1}.	{1}，一支 Android 手機備份到了 {0}。	src/ui/format.js:287	{0} = where; {1} = ago
+19kyaez	ok	Another device backed up to {0} {1}.	{1}，另一台裝置備份到了 {0}。	src/ui/format.js:288	{0} = where; {1} = ago
+mbc651	ok	That was after this phone's last backup.	這比這支手機上次備份的時間更晚。	src/ui/format.js:292	
+vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	可以作為副本匯入，把其中的旅行帶到這裡；也可以用這支手機的備份覆蓋它。	src/ui/format.js:292	Note: "Back up this phone over it": this phone's backup replaces the newer one there.
+1ce0smb	ok	That was after this iPad's last backup.	這比這台 iPad 上次備份的時間更晚。	src/ui/format.js:293	
+nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	可以作為副本匯入，把其中的旅行帶到這裡；也可以用這台 iPad 的備份覆蓋它。	src/ui/format.js:293	
+hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	可以作為副本匯入，把其中的旅行帶到這裡；也可以用這台電腦的備份覆蓋它。	src/ui/format.js:294	
+wn3ejs	ok	That was after this computer's last backup.	這比這台電腦上次備份的時間更晚。	src/ui/format.js:294	
+1n6qjpw	ok	Working…	正在處理…	src/ui/format.js:309	
+1sw982j	ok	Last backup {0}.	上次備份：{0}。	src/ui/format.js:314	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
+d1smo3	ok	Not backed up yet.	尚未備份。	src/ui/format.js:314	
+10ouos4	ok	Waiting for your OK to upload {0}	正在等待你同意上傳 {0}	src/ui/format.js:315	{0} = size(h.bytes)
+nbshf0	ok	The last try failed.	上次嘗試失敗了。	src/ui/format.js:317	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
+osg3je	ok	The last try failed: {0}	上次嘗試失敗：{0}	src/ui/format.js:318	{0} = holdWords(h, target.name)
+1qmdzit	ok	Not set up yet: fill it in, then Save and test	尚未設定：請填寫後點「儲存並測試」	src/ui/format.js:319	Note: "Save and test" is the backup place's button.
+1e2pygg	ok	Automatic backups are off	自動備份已關閉	src/ui/format.js:320	
+173tgfr	ok	Last backup {0}	上次備份：{0}	src/ui/format.js:321	{0} = at
+1uajbr3	ok	Not backed up yet	尚未備份	src/ui/format.js:321	
+1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	那裡的自動備份已暫停，以免兩台裝置互相覆蓋。	src/ui/format.js:333	
+hmr3pn	ok	The other backup stays in its history.	另一個備份仍會保留在歷史中。	src/ui/format.js:333	
+8091b1	ok	no limit	不限	src/ui/format.js:358	
 lpx0cl#other	ok	# trips and conversations	# 個旅行和對話	src/ui/import-state.js:47	plural; # = titles.length; English: "# trip or conversation" (one), "# trips and conversations" (other); Note: a git backup's preview, from its manifest alone, can't tell trips from chats: this is the one row they fold under; also the toast "Imported # trips and conversations" when the user left the import screen (import-state.js).
 12lprg	ok	Imported {0} from {1}.	已從 {1} 匯入 {0}。	src/ui/import-state.js:48	{0} = what; {1} = place
 1hzaym7	ok	Imported {0}.	已匯入 {0}。	src/ui/import-state.js:48	{0} = what

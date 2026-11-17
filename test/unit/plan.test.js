@@ -532,3 +532,41 @@ test('review 10: an Arrive row names its zone when it differs from the departure
   // A red-eye's start row has none.
   assert.equal(f(NY, '2026-11-21T07:30:00-05:00')[0].endZone, '');
 });
+
+test("a car rental of kind car, 20 to 23 November, linked to a flight's booking with no times draws as a car's set, as the reminders read it: Pick up and Return at its place, not a flight's Arrive with no place (the Deferred entry \"The Plan screen reads a booking's kind first\")", async () => {
+  const { planWatches } = await import('../../src/core/live/plan-watches.js');
+  const ua = { path: '/bookings/ua.json', booking: { id: 'ua', kind: 'flight', status: 'unverified', source: '/files/ua.pdf', unsure: [], title: 'ANNAI AIR AN 123' } };
+  const rental = (/** @type {unknown} */ kind) => ({ path: '/plan/car.json', item: { id: 'car', title: 'Car rental', kind, fixed: true, booking: '/trip/bookings/ua.json',
+    start: { at: '2026-11-20T10:00:00-09:00', tz: AK }, end: { at: '2026-11-23T10:00:00-09:00', tz: AK }, place: { name: 'Airport lot', lat: 61.17, lng: -149.99 } } });
+  for (const kind of ['car', ' Car ']) {
+    const rows = planRows([rental(kind)], [ua], { fallbackTz: 'UTC' });
+    assert.deepEqual(shown(rows), [
+      'item@2026-11-20 10:00 Pick up · Car rental', 'end@2026-11-23 10:00 Return · Car rental',
+      'line@2026-11-21  Car rental · day 2 of 4', 'line@2026-11-22  Car rental · day 3 of 4'], kind);
+    assert.deepEqual(rows.map((r) => r.set?.kind), ['car', 'car', 'car', 'car'], kind);
+    assert.equal(rows[1].item.place?.name, 'Airport lot', kind); // returned where it was picked up, as a car is
+    // The reminders read the same kind from the same table: a car's, with no flight's 2-hour margin and no airport's circle.
+    const watches = planWatches([rental(kind)], new Map([[ua.path, ua.booking]]), { fallbackTz: 'UTC' });
+    const when = (/** @type {string} */ event) => /** @type {any} */ (watches.find((w) => w.id === `plan:car:${event}`)).when;
+    assert.deepEqual([when('leave').by, when('arrived').radius], [Date.parse('2026-11-20T10:00:00-09:00'), 300], kind);
+  }
+  // With no kind, or a word the table doesn't have, it takes its booking's on the Plan as in the reminders (the neighbour entry, still
+  // open): a flight's set, ending with Arrive and no place, and the flight's 2-hour margin.
+  for (const kind of [undefined, 'transfer']) {
+    const rows = planRows([rental(kind)], [ua], { fallbackTz: 'UTC' });
+    assert.deepEqual(shown(rows).slice(0, 2), ['item@2026-11-20 10:00 Car rental', 'end@2026-11-23 10:00 Arrive · Car rental'], String(kind));
+    assert.equal(rows[1].item.place, undefined, String(kind));
+    const watches = planWatches([rental(kind)], new Map([[ua.path, ua.booking]]), { fallbackTz: 'UTC' });
+    assert.equal(/** @type {any} */ (watches.find((w) => w.id === 'plan:car:leave')).when.by, Date.parse('2026-11-20T08:00:00-09:00'), String(kind));
+  }
+});
+
+test("an item's everyday kind word draws its kind's set, read by the reminders' table: a \"Hotel\" over two nights with no booking is a stay (Check in, Check out, nights), a \"train\" overnight Arrives with no place", () => {
+  const item = (/** @type {string} */ kind, /** @type {string} */ title, /** @type {string} */ end) => ({ path: `/plan/${kind.trim()}.json`, item: { id: kind.trim(), title, kind, fixed: true,
+    start: { at: '2026-11-20T15:00:00-09:00', tz: AK }, end: { at: end, tz: AK }, place: { name: title, lat: 61.2, lng: -149.9 } } });
+  assert.deepEqual(shown(planRows([item(' Hotel ', 'Harbor Inn', '2026-11-22T11:00:00-09:00')], [], { fallbackTz: 'UTC' })), [
+    'item@2026-11-20 15:00 Check in · Harbor Inn', 'end@2026-11-22 11:00 Check out · Harbor Inn', 'line@2026-11-21  Staying at Harbor Inn · night 2 of 2']);
+  const train = planRows([item('train', 'Night train', '2026-11-21T08:00:00-09:00')], [], { fallbackTz: 'UTC' });
+  assert.deepEqual(shown(train), ['item@2026-11-20 15:00 Night train', 'end@2026-11-21 08:00 Arrive · Night train']);
+  assert.equal(train[1].item.place, undefined);
+});
