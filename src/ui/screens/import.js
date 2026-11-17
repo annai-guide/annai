@@ -343,6 +343,7 @@ function fileInbox(ctx, items, trips, archives) {
   ];
   /** @param {() => string | Promise<string>} which the trip's id @param {boolean} chat a new conversation: it opens, as the + does */
   async function add(which, chat) {
+    const here = location.hash; // a screen the traveller goes to while the files are added stands (as composer.js's handOver does)
     for (const b of buttons) b.disabled = true;
     try {
       const id = await which();
@@ -353,7 +354,7 @@ function fileInbox(ctx, items, trips, archives) {
       for (const i of items) if (i.key) await inbox.delete(i.key);
       for (const url of urls) URL.revokeObjectURL(url);
       if (chat) updateAppSettings(ctx.ws, { activeTrip: id }).catch(() => {});
-      ctx.go(chat ? talkHref(id) : `#/trip/${encodeURIComponent(id)}`);
+      if (location.hash === here) ctx.go(chat ? talkHref(id) : `#/trip/${encodeURIComponent(id)}`);
       for (const note of notes) ctx.notices.card({ tone: 'warn', title: t`A photo was kept as it is`, body: note });
       for (const problem of problems) ctx.notices.card({ tone: 'warn', title: t`A calendar file couldn't be read`, body: problem });
       ctx.notices.toast(planned.length ? plural(planned.length, 'Added {0}, and # itinerary item from the calendar', 'Added {0}, and # itinerary items from the calendar', what) : added);

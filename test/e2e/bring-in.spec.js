@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, allFiles, startTrip as startNamed } from './helpers.js';
+import { openApp, waitForServiceWorker, allFiles, goToHash, startTrip as startNamed } from './helpers.js';
 import { ZipWriter } from '../../src/core/zip.js';
 import { utf8 } from '../../src/core/bytes.js';
 
-/** A dated trip: Share and a dropped file offer dated trips (timeline stage 4). @param {import('@playwright/test').Page} page @param {string} title */
+/** A dated trip: Share and a dropped file offer dated trips (timeline stage 4). @param {import('@playwright/test').Page} page @param {string} title @returns {Promise<string>} its id */
 async function startTrip(page, title) {
-  await startNamed(page, title, { start: '2026-11-25', end: '2026-11-29' });
+  return startNamed(page, title, { start: '2026-11-25', end: '2026-11-29' });
 }
 
 /** A small Wallet pass. */
@@ -70,6 +70,39 @@ test('a shared pass and shared text go to the trip you choose', async ({ page })
   await expect(page.getByRole('link', { name: /\/files\/flight\.pkpass/ })).toBeVisible();
   await page.getByRole('link', { name: /\/files\/shared text\.txt/ }).click();
   await expect(page.locator('#file-content')).toHaveValue('Your stay at Hoboken Inn\n\nConfirmation 7788, Nov 25–29');
+});
+
+test('a share still being added does not pull the traveller back when they have left its screen', async ({ page }) => {
+  await openApp(page);
+  await waitForServiceWorker(page);
+  const trip = await startTrip(page, 'Thanksgiving');
+  const pass = [...(await passBytes())];
+  await page.evaluate(async (bytes) => {
+    const form = new FormData();
+    form.append('files', new File([new Uint8Array(bytes)], 'flight.pkpass', { type: 'application/vnd.apple.pkpass' }));
+    await fetch('/share-target', { method: 'POST', body: form, redirect: 'manual' });
+  }, pass);
+  await page.goto('/#/import?inbox=1');
+  await expect(page.getByRole('heading', { name: 'Add a file' })).toBeVisible();
+  // Hold the add at its end (it empties the share inbox there), as a slow phone would: the page's own Cache API, held until released.
+  await page.evaluate(() => {
+    const real = Cache.prototype.delete;
+    const held = new Promise((go) => { /** @type {any} */ (window).release = go; });
+    Cache.prototype.delete = function (request, options) { return held.then(() => real.call(this, request, options)); };
+  });
+  await page.getByRole('button', { name: 'Add to Thanksgiving' }).click();
+  await expect(page.getByText('Adding 1 of 1…')).toBeVisible();
+  await page.locator('main .crumbs').getByRole('link', { name: 'Trips' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips', exact: true })).toBeVisible();
+  await page.evaluate(() => /** @type {any} */ (window).release());
+  // The add finishes and says so (its toast comes right after where it would have gone to the trip), and the traveller is still on Trips.
+  await expect(page.getByText('Added a file')).toBeVisible();
+  expect(new URL(page.url()).hash).toBe('#/trips');
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips', exact: true })).toBeVisible();
+  expect(await page.evaluate(async () => (await (await caches.open('annai-inbox')).keys()).length)).toBe(0);
+  await goToHash(page, `#/trip/${encodeURIComponent(trip)}`); // the files were kept, in the trip it was added to
+  await allFiles(page);
+  await expect(page.getByRole('link', { name: /\/files\/flight\.pkpass/ })).toBeVisible();
 });
 
 test('a pass dropped on annai goes to a trip, not to the archive reader', async ({ page }) => {

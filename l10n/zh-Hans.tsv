@@ -1761,11 +1761,11 @@ o7fto4	ok	Import	导入	src/ui/screens/import.js:258
 c0u62t#other	ok	Kept your own API keys for {0}; the ones in the file weren't used.	已保留原有的 {0} API 密钥，未使用文件中的密钥。	src/ui/screens/import.js:305	plural; # = n; {0} = list(names, 'plain'); English: "Kept your own API key for {0}; the one in the file wasn't used." (one), "Kept your own API keys for {0}; the ones in the file weren't used." (other)
 jsttcj#other	ok	Kept your own API keys; the ones in the file weren't used.	已保留原有的 API 密钥，未使用文件中的密钥。	src/ui/screens/import.js:306	plural; # = n; English: "Kept your own API key; the one in the file wasn't used." (one), "Kept your own API keys; the ones in the file weren't used." (other)
 ci7mt7	ok	Add to {0}	添加到“{0}”	src/ui/screens/import.js:341	{0} = trip.title
-odevmc	ok	Adding {0} of {1}…	正在添加（{0}/{1}）…	src/ui/screens/import.js:350	{0} = num(Math.min(done + 1, total)); {1} = num(total)
-6u51xq#other	ok	Added {0}, and # itinerary items from the calendar	已添加 {0}，日历中的 # 项已加入行程	src/ui/screens/import.js:359	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); Note: {0} is what was added: a count phrase ("1 个文件", "3 个文件", "2 张照片"), never a path, so the space after the verb is right.
-f30m7u#other	ok	and # more photos	还有 # 张照片	src/ui/screens/import.js:380	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
-1cj3r6h	ok	Add only what you just shared yourself.	只添加你自己刚刚分享的内容。	src/ui/screens/import.js:383	
-1eim38p	ok	Also here: {0}, an annai backup or export. It isn't added with the rest; open it on its own.	这里还有 {0}，是 annai 的备份或导出文件。它不会和其他内容一起添加，请单独打开。	src/ui/screens/import.js:387	{0} = a.file.name
+odevmc	ok	Adding {0} of {1}…	正在添加（{0}/{1}）…	src/ui/screens/import.js:351	{0} = num(Math.min(done + 1, total)); {1} = num(total)
+6u51xq#other	ok	Added {0}, and # itinerary items from the calendar	已添加 {0}，日历中的 # 项已加入行程	src/ui/screens/import.js:360	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); Note: {0} is what was added: a count phrase ("1 个文件", "3 个文件", "2 张照片"), never a path, so the space after the verb is right.
+f30m7u#other	ok	and # more photos	还有 # 张照片	src/ui/screens/import.js:381	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
+1cj3r6h	ok	Add only what you just shared yourself.	只添加你自己刚刚分享的内容。	src/ui/screens/import.js:384	
+1eim38p	ok	Also here: {0}, an annai backup or export. It isn't added with the rest; open it on its own.	这里还有 {0}，是 annai 的备份或导出文件。它不会和其他内容一起添加，请单独打开。	src/ui/screens/import.js:388	{0} = a.file.name
 qqpumv	ok	This isn't on the itinerary	这不在行程中	src/ui/screens/item.js:24	Note: a heading where a link names no plan item.
 15biluu	ok	Go to the itinerary	前往行程	src/ui/screens/item.js:25	Note: a link to the trip's Plan.
 1wp3w0c	ok	All day, {0}	全天（{0}）	src/ui/screens/item.js:41	{0} = start; Note: {0} is the day.
