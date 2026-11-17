@@ -268,7 +268,7 @@ test('a plugin registers a realtime type only with open(), attach() and the audi
   assert.ok(registry.list('endpoint-type').some((t) => t.type === 'live-ok' && t.realtime));
   for (const [i, wrong] of [{ realtime: true, open() {} }, { realtime: true, open() {}, attach() {}, audio: { in: [], out: [] } }].entries()) {
     const bad = { manifest: { ...manifest, id: `livey-bad-${i}` }, activate: (/** @type {any} */ a) => a.providers.register({ type: `live-bad-${i}`, ...wrong }) };
-    await assert.rejects(new PluginHost({ registry, workspace: ws, importModule: async () => bad }).addBuiltin('bad'), /the realtime type "live-bad-\d" needs open\(\) and attach\(\), and the audio it takes and gives/);
+    await assert.rejects(new PluginHost({ registry, workspace: ws, importModule: async () => bad }).addBuiltin('bad'), /The realtime type "live-bad-\d" needs open\(\) and attach\(\), and the audio it takes and gives/);
   }
 });
 

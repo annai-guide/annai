@@ -56,7 +56,7 @@ test('a manifest\'s search is refused when it names no id or kind, an address th
   assert.match(checkSearchDesc({ ...good, origins: ['https://api.example.com/search'] }, m).join(), /must be an https origin/);
   assert.match(checkSearchDesc({ ...good, origins: ['nope'] }, m).join(), /isn't an address/);
   assert.match(checkSearchDesc({ ...good, key: { setting: 'plain' } }, m).join(), /plain must be a writeOnly setting/);
-  assert.throws(() => checkManifest({ id: 'x-search', name: 'X', version: '1.0.0', api: 1, search: { ...good, kind: 'news' } }), /its search isn't valid/);
+  assert.throws(() => checkManifest({ id: 'x-search', name: 'X', version: '1.0.0', api: 1, search: { ...good, kind: 'news' } }), /Its search isn't valid/);
 });
 
 test('the install screen says where searches and the key go, and an update that adds an origin is told', async () => {

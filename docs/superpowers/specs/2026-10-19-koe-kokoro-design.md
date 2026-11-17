@@ -1,5 +1,7 @@
 # Koe and Kokoro: Shiori as two halves, design
 
+> **Names since changed (2026-11-17):** Koe's two lists, "Koe · Realtime" and "Koe · Classic", are **Koe · Live** and **Koe · Chat** on the screens, and the mode is the **Live** chip beside the voice chip ("Live" or "Live off"), not a choice on the voice chip. The text below keeps the names it was written with.
+
 Date: 2026-10-19. Status: agreed with the user in chat ("looks right"), with the builder check's questions answered on 2026-10-19. This document is the description to plan from.
 
 ## Why

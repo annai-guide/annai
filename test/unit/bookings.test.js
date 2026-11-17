@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { isBookingPath, shioriBooking, checkOf, checkWords, checkNote } from '../../src/core/bookings.js';
+import { FIELD_WORDS } from '../../src/ui/format.js';
 
 const b = { id: 'hotel', kind: 'lodging', status: 'unverified', source: '/files/hotel.pdf', unsure: [] };
 
@@ -72,7 +73,7 @@ test("checkWords names each part Shiori is unsure of by what it is, as the scree
     [words({ kind: 'lodging', unsure: ['title', 'confirmation', 'room'], title: 'Test Inn', confirmation: 'TQ1', fields: { room: '204' } }), 'not sure the name, the confirmation number or the room was read right'],
     // A key annai has no words for is one phrase, once, never the key's text (booking-say's fix 3: a key is the booking's own text).
     [words({ kind: 'lodging', unsure: ['mealPlan', 'late_checkout'], fields: { mealPlan: 'breakfast', late_checkout: 'yes' } }), 'not sure some other detail was read right'],
-    [words({ kind: 'lodging', unsure: ['room', 'mealPlan', 'terminal'], fields: { room: '204', mealPlan: 'breakfast', terminal: '2' } }), 'not sure the room or some other detail was read right'],
+    [words({ kind: 'lodging', unsure: ['room', 'mealPlan', 'wifi'], fields: { room: '204', mealPlan: 'breakfast', wifi: 'yes' } }), 'not sure the room or some other detail was read right'],
     // A booking's own top-level fields and the names annai files into `fields` (EXTRAS) have their words.
     [words({ kind: 'flight', unsure: ['place', 'cost', 'airline'], place: { name: 'SFO' }, cost: { amount: 1, currency: 'USD' }, fields: { airline: 'Test Air' } }), 'not sure the place, the cost or the airline was read right'],
     // Only what the screens mark: a name that is no field of it marks nothing, and says nothing.
@@ -105,6 +106,7 @@ test("checkWords: each key whose own words would mislead has its words, never th
   const said = {
     title: 'the name', confirmation: 'the confirmation number', flight: 'the flight number', from: 'where it leaves from', to: 'where it arrives',
     class: 'the cabin', nights: 'the number of nights', pickup: 'the pick-up place', dropoff: 'the drop-off place', party: 'the party size',
+    travellers: 'the travellers', bags: 'the bags', terminal: 'the terminal', gate: 'the gate', train: 'the train', car: 'the car',
     // The names annai files into `fields` itself (EXTRAS): its words, as before the other-detail phrase.
     notes: 'the notes', room: 'the room', phone: 'the phone number', guests: 'the guests', passengers: 'the passengers', airline: 'the airline',
     company: 'the company', seat: 'the seat', flights: 'the flights',
@@ -114,6 +116,22 @@ test("checkWords: each key whose own words would mislead has its words, never th
     const got = checkWords({ status: 'unverified', kind: 'flight', unsure: [key], title: 'Test Air', confirmation: 'TQ1', fields: { [key]: 'x' } });
     assert.equal(got, `not sure ${words} was read right`, key);
   }
+});
+
+test("Shiori's words for a booking's parts and the details screen's labels cover the same keys of `fields`: what she asks about has a line by that name (words-next, the old flight's six details)", () => {
+  // A booking's own fields (title, confirmation, place, cost) have lines of their own on the details screen (bookingFacts' own), not labels.
+  const own = new Set(['title', 'confirmation', 'place', 'cost']);
+  const named = (/** @type {string} */ key) => checkWords({ status: 'unverified', kind: 'flight', unsure: [key], fields: { [key]: 'x' } });
+  // Every label the details screen has, Shiori has words for: never "some other detail" for a line the user can see by name.
+  for (const key of Object.keys(FIELD_WORDS)) assert.doesNotMatch(named(key), /some other detail/, `the screen labels ${key}; Shiori's words name it`);
+  // And every key of fields Shiori has words for (the table's every entry, above), the screen labels: never a raw key beside her words.
+  const hers = ['flight', 'from', 'to', 'class', 'nights', 'pickup', 'dropoff', 'party', 'travellers', 'bags', 'terminal', 'gate', 'train', 'car',
+    'notes', 'room', 'phone', 'guests', 'passengers', 'airline', 'company', 'seat', 'flights'];
+  for (const key of hers) {
+    assert.doesNotMatch(named(key), /some other detail/, key);
+    assert.ok(Object.hasOwn(FIELD_WORDS, key) && !own.has(key), `Shiori names ${key}; the screen labels it`);
+  }
+  assert.deepEqual(Object.keys(FIELD_WORDS).sort(), [...hers].sort(), 'the same keys');
 });
 
 test('checkOf: an old unverified booking reads as if unsure named every part it has; an old confirmed one, a bare one and unsure: [] mark nothing; a new one by its unsure fields', () => {
@@ -130,6 +148,7 @@ test('checkOf: an old unverified booking reads as if unsure named every part it 
   // nothing to check, and the details would draw a check beside nothing (the unit review of booking-say's round 4, items 4 and 5).
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: '  ', confirmation: ' \t', fields: { seat: '  ', gate: null, airline: 'Test Air' } }), { fields: ['airline'] }, 'a blank title, confirmation or extra is no part');
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', unsure: ['title', 'seat', 'airline'], title: ' ', fields: { seat: '', airline: 'Test Air' } }), { fields: ['airline'] }, 'nor a named one: a name with nothing written under it has no line to mark');
+  assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', fields: { travellers: [], bags: [0], airline: 'Test Air' } }), { fields: ['bags', 'airline'] }, 'an empty list is no part; a list with something in it is');
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: 'AN 1', fields: { seat: '14C', airline: 'Test Air' } }), { fields: ['title', 'seat', 'airline'] });
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: '', start: null, confirmation: undefined }), { fields: [] }, 'an empty own field is no part');
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: 'AN 1', fields: 'not an object' }), { fields: ['title'] }, 'fields that is no object adds none');

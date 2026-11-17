@@ -218,17 +218,22 @@ export class Registry {
    */
   guard(pluginId, name, fn) {
     return async (...args) => {
-      if (this.#disabled.has(pluginId)) throw new PluginError(pluginId, /* en */ 'is switched off after repeated errors', { shown: t`is switched off after repeated errors` });
+      if (this.#disabled.has(pluginId)) throw new PluginError(pluginId, /* en */ 'is switched off after repeated errors', { shown: t`It is switched off after repeated errors.` });
       try {
         const result = await fn(...args);
         this.#failures.set(pluginId, 0);
         return result;
       } catch (e) {
         this.#fail(pluginId, name, e);
-        // annai's own words are the frame, "starting failed"; the rest is the plugin's, unless annai made it (its own check, or words of its own).
-        const ours = /** @type {any} */ (e)?.en === true && typeof (/** @type {any} */ (e).shown) !== 'string';
-        const shown = typeof (/** @type {any} */ (e)?.shown) === 'string' ? `${name} failed: ${/** @type {any} */ (e).shown}` : undefined;
-        throw new PluginError(pluginId, /* en */ `${name} failed: ${/** @type {any} */ (e)?.message ?? e}`, { cause: e, shown, en: ours || `${name} failed` });
+        const was = /** @type {any} */ (e);
+        const message = String(was?.message ?? e);
+        // What went wrong: annai's words for the screens where it has them (shown), else the plugin's own, or annai's own English check (en).
+        const why = typeof was?.shown === 'string' ? was.shown : message.startsWith(`${pluginId}: `) ? message.slice(pluginId.length + 2) : message;
+        // annai's own words are the frame, in the screens' words; only a start reaches a screen (a hook's error is counted and logged, nothing more).
+        const shown = name === 'starting' ? t`Starting failed: ${why}` : undefined;
+        // The English inside it, for lang="en": all of `why` where annai marked all of it, or the part it named; the plugin's own words never.
+        const en = was?.en === true ? (shown === undefined ? true : why) : typeof was?.en === 'string' ? was.en : false;
+        throw new PluginError(pluginId, /* en */ `${name} failed: ${message}`, { cause: e, shown, en });
       }
     };
   }
@@ -250,7 +255,8 @@ export class Registry {
     const n = (this.#failures.get(pluginId) ?? 0) + 1;
     this.#failures.set(pluginId, n);
     this.#safeLog({ type: 'plugin.error', actor: `plugin:${pluginId}`, data: { name, message: String(e?.message ?? e), count: n } });
-    if (n >= this.maxFailures) this.disable(pluginId, { kind: 'failed', count: n }, String(e?.message ?? e));
+    // The card's last error is annai's own words for it where it has them (shown: a sentence in the screens' language), else the message.
+    if (n >= this.maxFailures) this.disable(pluginId, { kind: 'failed', count: n }, typeof e?.shown === 'string' ? e.shown : String(e?.message ?? e));
   }
 
   /**

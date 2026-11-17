@@ -12,7 +12,7 @@ release that touches the providers' plugins or the loop, with the user's OK each
 
 - **annai in Node:** annai's own Halves (Koe and Kokoro), the loop, `callRole` and the real endpoint types (anthropic-messages and
   chat-completions), in memory. The providers are set up from their descriptions in `plugins-official/` (provider-anthropic,
-  provider-openrouter), as an install makes them. Kokoro runs on Claude Sonnet 5.5 (main, level high in this run, since adaptive thinking may skip thinking on easy steps at medium), Koe · Classic on Claude
+  provider-openrouter), as an install makes them. Kokoro runs on Claude Sonnet 5.5 (main, level high in this run, since adaptive thinking may skip thinking on easy steps at medium), Koe · Chat on Claude
   Haiku 5.5 (level low). Voice is off.
 - **The trip is synthetic:** a `trip.json` and two notes (a hotel and a dinner), no real data.
 - **The conversation, on each provider given:**

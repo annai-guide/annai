@@ -186,7 +186,7 @@ export function overLine(previous, from) {
   if (samePlace(previous.from, from)) return t`Version ${v} is installed now. Installing replaces it.`;
   const { kind, value } = placeOf(previous.from);
   // Where it came from, as a value: its address, an address, a file (by name), or annai.
-  const place = kind === 'host' ? value : kind === 'address' ? t`an address` : kind === 'named file' ? t`a file: ${value}` : kind === 'file' ? t`a file` : /* en */ 'annai';
+  const place = kind === 'host' ? value : kind === 'address' ? t`an address` : kind === 'named file' ? t`a file: ${value}` : kind === 'file' ? tc('installed from')`a file` : /* en */ 'annai';
   return sentences(t`Version ${v} is installed now, from ${place}, not where this one comes from.`,
     t`If you keep them, its settings, keys and your choices under Names go to this one; installing fresh removes them.`);
 }

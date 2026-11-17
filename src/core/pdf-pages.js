@@ -33,7 +33,7 @@ export function runningPdfPages(registry) {
       } catch (e) {
         if (!isPluginBug(e)) throw e;
         registry.fail(pluginId, /* en */ 'pdf pages', e);
-        throw new PluginError(pluginId, /* en */ `its PDF pages failed: ${/** @type {any} */ (e)?.message ?? e}`, { cause: e });
+        throw new PluginError(pluginId, /* en */ `Its PDF pages failed: ${/** @type {any} */ (e)?.message ?? e}`, { cause: e });
       }
     },
   };

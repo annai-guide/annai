@@ -6,7 +6,7 @@ import { logEvent } from '../events.js';
 import { testModel, testLevels } from './check.js';
 import { endpointTypes, ProviderError, typeError, sameOrigin, noRedirect, explain } from './contract.js';
 import { ensureType } from './official.js';
-import { addProvider as addProviderRecords, syncProviders, useSuggestion } from './providers.js';
+import { addProvider as addProviderRecords, syncProviders, useSuggestion, addListedModel, addModelById } from './providers.js';
 import { addFromCatalog, prune, pruneable } from '../requires.js';
 import { officialPlugins, makesProvider, pluginName } from './official.js';
 import { PluginError, NOT_OWN, TURN_ON, isPluginBug, notOwnShown, turnOnShown } from '../registry.js';
@@ -260,8 +260,11 @@ export function createLlm({
       if ((await plugins.manifestOf(id))?.provider) await drop(id);
     }
   };
-  /** Brings providers up to date with their plugins' descriptions (decision 4); writes only when a version differs. */
-  const sync = () => syncProviders({ ws }, providers());
+  /**
+   * Brings providers up to date with their plugins' descriptions (decision 4); writes only when a version differs. In the line adding goes in:
+   * each takes the free names from the models there are, so one that ran beside another could give one name to two models.
+   */
+  const sync = () => queued(() => syncProviders({ ws }, providers()));
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let syncing;
   ready.then(() => {
@@ -317,7 +320,7 @@ export function createLlm({
       const shown = await pluginName(plugins, now, plugin, name);
       /* en */
       if (!src && plugins.registry.isDisabled(plugin)) throw Object.assign(new Error(`${name} was switched off after errors. ${TURN_ON}`), { shown: sentences(t`${shown} was switched off after errors.`, turnOnShown()) });
-      if (!src) throw new PluginError(plugin, /* en */ "didn't provide a model provider.", { shown: t`It didn't provide a model provider.` });
+      if (!src) throw new PluginError(plugin, /* en */ "didn't provide a model provider.", { shown: t`The plugin didn't provide a model provider.` });
       return src;
     },
     /**
@@ -343,6 +346,14 @@ export function createLlm({
       /* en */ await tidy().catch((e) => console.warn("a provider plugin with no provider couldn't be removed", e));
       return id;
     }),
+    /**
+     * Adds a model from an ability's list, or by the provider's own id (the Models screen's adds), in the line adding goes in: each takes the free
+     * names from the models there are, so a sync between the check of a name and the write could give one name to two models.
+     * @param {string} providerId @param {string} abilityId @param {import('./contract.js').ListedModel} listed @returns {Promise<string>} the model's id
+     */
+    addListedModel: (providerId, abilityId, listed) => queued(() => addListedModel({ ws }, providerId, abilityId, listed)),
+    /** @param {string} providerId @param {string} abilityId @param {string} providerModelId @returns {Promise<string>} the model's id */
+    addModelById: (providerId, abilityId, providerModelId) => queued(() => addModelById({ ws }, providerId, abilityId, providerModelId)),
     /**
      * Add's tap on a provider with code: its plugin, with what it requires; then null when the plugin has its own
      * Add flow (a panel, decision 15), which adds it, or the provider added. @param {string} plugin
@@ -388,7 +399,7 @@ export function createLlm({
         if (entry) return makesProvider(entry);
         if (had[id]) return Boolean((await plugins.manifestOf(id).catch(() => null))?.provider);
         if (!Array.isArray(catalog)) throw catalog;
-        throw Object.assign(new Error(/* en */ "its plugin isn't annai's own. Install it again from where it came from."), { shown: t`Its plugin isn't annai's own. Install it again from where it came from.` });
+        throw new PluginError(id, /* en */ "its plugin isn't annai's own. Install it again from where it came from.", { shown: t`Its plugin isn't annai's own. Install it again from where it came from.` });
       };
       /** @type {Map<string, string[]>} each reason, and the providers it holds back */
       const failed = new Map();
@@ -397,7 +408,7 @@ export function createLlm({
         if (imported && had[rec.plugin]?.enabled === false) continue;
         try {
           /* en */
-          if (!(await isProvider(rec.plugin))) throw Object.assign(new Error("the plugin it names doesn't provide models, so it wasn't installed."), { shown: t`the plugin it names doesn't provide models, so it wasn't installed.` });
+          if (!(await isProvider(rec.plugin))) throw new PluginError(rec.plugin, "the plugin it names doesn't provide models, so it wasn't installed.", { shown: t`The plugin it names doesn't provide models, so it wasn't installed.` });
           await service.installProvider(rec.plugin);
           for (const a of Object.values(p.abilities)) if (a.on) await ensure(a.type);
         } catch (e) {

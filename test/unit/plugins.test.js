@@ -8,6 +8,7 @@ import { kindOf, ensureBaseScopes, createTrip, SYS_PLUGINS } from '../../src/cor
 import { Registry, PluginError } from '../../src/core/registry.js';
 import { PluginHost, PLUGIN_MAX_BYTES } from '../../src/core/plugins.js';
 import { utf8 } from '../../src/core/bytes.js';
+import { messageOf } from '../../src/ui/dom.js';
 
 /** @param {string} dir @param {string} [prefix] */
 async function fixture(dir, prefix = '') {
@@ -156,8 +157,17 @@ test('host: a plugin that never finishes starting is given up on, and annai carr
   const failures = await host.startInstalled();
   assert.deepEqual(failures.map((f) => f.id), ['hang']);
   assert.match(String(/** @type {any} */ (failures[0].error)?.message), /didn't finish starting/);
+  // What a screen shows is annai's own sentence, with its full stop, after the frame (words-next: it said "starting" twice, and had none).
+  assert.equal(messageOf(failures[0].error), "Starting failed: It didn't finish within 0.1 seconds.");
   assert.equal(host.active.has('hang'), false);
   assert.equal(logged.at(-1).type, 'plugin.error');
+});
+
+test("host: a start given up on after one second says '1 second', in the screens' words and with its full stop", async () => {
+  const { host } = await setup({ startTimeout: 1000 });
+  await host.install(await fixture('hang'));
+  const failures = await host.startInstalled();
+  assert.equal(messageOf(failures[0].error), "Starting failed: It didn't finish within 1 second.");
 });
 
 test('host: what a plugin sets up after it timed out is taken down again', async () => {
@@ -302,4 +312,19 @@ test('registry: switching a plugin off after repeated errors is told once, with 
   const f = r.guard('flaky', 'tool x', () => { throw new TypeError('boom 3'); });
   for (let i = 0; i < 4; i++) await f().catch(() => {});
   assert.deepEqual(told, [{ pluginId: 'flaky', why: { kind: 'failed', count: 3 }, message: 'boom 3' }]);
+});
+
+test("registry: the last error a card shows is annai's own sentence where the error carries one (shown), not its English log message", async () => {
+  const r = new Registry();
+  /** @type {any[]} */
+  const told = [];
+  r.onDisabled((d) => told.push(d));
+  const late = r.guard('slow', 'starting', () => { throw Object.assign(new Error("it didn't finish starting within 10 seconds"), { shown: "It didn't finish within 10 seconds." }); });
+  for (let i = 0; i < 3; i++) await late().catch(() => {});
+  assert.deepEqual(told.map((d) => d.message), ["It didn't finish within 10 seconds."]);
+  // An error counted from outside guard() is told the same way.
+  r.fail('read', 'a stream', new Error('x'));
+  r.fail('read', 'a stream', new Error('x'));
+  r.fail('read', 'a stream', Object.assign(new Error('the stream broke'), { shown: 'The stream broke.' }));
+  assert.deepEqual(told.map((d) => d.message), ["It didn't finish within 10 seconds.", 'The stream broke.']);
 });

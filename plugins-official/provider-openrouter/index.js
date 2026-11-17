@@ -162,7 +162,7 @@ export function openRouter(env) {
     env.card?.({
       tone: 'ok', title: t`Signed in with OpenRouter`,
       body: provider ? t`annai keeps the new key for OpenRouter's chat, transcription and voices.`
-        : t`Shiori thinks with free models to start, so trying annai costs nothing. annai also added OpenRouter's transcription and voices, behind the browser's own dictation and voice. Its free voice comes first: each sentence it says uses one of the free requests a day the chat models use too. The others cost a little, from credits you buy at OpenRouter. To use them first, move them up under Roles.`,
+        : t`Shiori thinks with free models to start, so trying annai costs nothing. annai also added OpenRouter's transcription and voices, behind Phone dictation and Browser voice. Its free voice comes first: each sentence it says uses one of the free requests a day the chat models use too. The others cost a little, from credits you buy at OpenRouter. To use them first, move them up under Roles.`,
     });
   };
   return {
@@ -250,7 +250,7 @@ export function openRouter(env) {
       }
       return h('div', {},
         h('p', provider ? { class: 'sub', text: provider.key ? t`Sign in again for a new key, in place of the one saved.` : t`Sign in with OpenRouter for a key, or give one below.` }
-          : { text: t`Sign in with OpenRouter to get one key for many models. annai starts you on free models (50 requests a day), so trying it costs nothing. It also adds OpenRouter's transcription and voices, a free one among them; the browser's own dictation and voice stay first.` }),
+          : { text: t`Sign in with OpenRouter to get one key for many models. annai starts you on free models (50 requests a day), so trying it costs nothing. It also adds OpenRouter's transcription and voices, a free one among them; Phone dictation and Browser voice stay first.` }),
         h('div', { class: 'acts' }, btn),
         codeSlot,
         status);

@@ -17,7 +17,7 @@ Note what you see in the trip's Trace (kind: Live) after each part.
 - [ ] Allow location again, turn live mode off and on: the GPS works.
 
 ## The drive
-- [ ] Drive off: within a minute the chip says "GPS on · moving fast", voice Auto turns on ("Voice on · moving") and Now hands over to Driving.
+- [ ] Drive off: within a minute the chip says "GPS on · moving fast", voice turns on by itself ("Voice on · driving") and Now hands over to Driving.
 - [ ] Driving shows You, the next stops with distances and minutes, Directions in Apple or Google Maps, and the quick-ask buttons; each button gets an answer, aloud.
 - [ ] Shiori narrates: a moved watch fires every 10–20 km and she says something worth hearing, or nothing.
 - [ ] Arriving at a plan stop: after about two minutes stopped, she knows you arrived.
