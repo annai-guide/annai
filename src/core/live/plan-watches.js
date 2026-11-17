@@ -172,7 +172,7 @@ export function planWatches(items, bookings, { fallbackTz }) {
 /**
  * The item for a reminder, as data (spec §11.3): a flight by its name (its booking's title), the place where it says more than the title.
  * The words for a named flight are "Flight <name> departs <time>", in Shiori's English and the user's alike, so a name that already begins
- * with "Flight" ("Flight to Seattle") is an item's title instead: "Flight to Seattle at 09:05", with no word said twice, in every language.
+ * with the word for a flight (flight, flights, フライト, 航班, 班機: add a new language's here) is an item's title instead: "Flight to Seattle at 09:05".
  * @param {string} title @param {any} booking @param {boolean} flight named by its booking @param {number} at @param {string} tz @param {string} placeName
  * @returns {What}
  */
@@ -181,7 +181,7 @@ function whatOf(title, booking, flight, at, tz, placeName) {
   if (flight) {
     const name = String(booking?.title ?? title);
     const place = placeName ? { place: `${placeName}${terminal}` } : {};
-    return /^\s*flight\b/i.test(name) ? { title: name, at, tz, ...place } : { title, at, tz, flight: name, ...place };
+    return /^\s*(?:flights?\b|フライト|航班|班機)/i.test(name) ? { title: name, at, tz, ...place } : { title, at, tz, flight: name, ...place };
   }
   return { title, at, tz, ...(placeName && !title.toLowerCase().includes(placeName.toLowerCase()) ? { place: placeName } : {}) };
 }

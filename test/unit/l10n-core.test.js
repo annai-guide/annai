@@ -7,7 +7,9 @@ import { setWords } from '../../src/core/l10n.js';
 // ship, beside what a model and the log read of the same things: that stays English. What is stored is data, and the screens make
 // their words from it; an entry stored before has its English, shown as it is.
 
-setWords('ja', JSON.parse(await readFile(new URL('../../l10n/ja.json', import.meta.url), 'utf8')));
+const JA = JSON.parse(await readFile(new URL('../../l10n/ja.json', import.meta.url), 'utf8'));
+const ZH = JSON.parse(await readFile(new URL('../../l10n/zh-Hans.json', import.meta.url), 'utf8'));
+setWords('ja', JA);
 after(() => setWords('en', null));
 // Imported once the words are set, as boot.js sets them before main.js loads: words made at a module's top level are Japanese too.
 const { ProviderError, explain, explainPlain } = await import('../../src/core/llm/contract.js');
@@ -94,9 +96,20 @@ test("a plan's reminder: Shiori reads annai's English, the user's words are made
   // Worked out as it fires (late, from where the user is): data too.
   const late = { event: 'late', what: { title: 'Lunch', at, tz: 'America/Los_Angeles' }, minutes: 36 };
   assert.equal(planWords(late), '遅れています：Lunch（12:00）。到着まであと約36分です。');
-  // A flight whose name already begins with "Flight" reads as an item's title in her words too, not "フライトFlight to Seattle" (no new string).
+  // A flight whose name already begins with "Flight" reads as an item's title in the user's words too, not "フライトFlight to Seattle" (no new string).
   const flown = planWatches(/** @type {any} */ ([{ path: '/plan/f.json', item: { title: 'Flight to Seattle', kind: 'flight', fixed: true, start: { at: new Date(at).toISOString(), tz: 'America/Los_Angeles' }, place: { name: 'SFO', lat: 37.6213, lng: -122.379 } } }]), new Map(), { fallbackTz: 'UTC' });
   assert.equal(planWords(/** @type {any} */ (flown.find((x) => x.id === 'plan:f:leave')?.say)), 'そろそろ出発：Flight to Seattle（12:00、SFO）。');
+  // The same with the local word of a language that ships: a title that begins with フライト, 航班 or 班機 is not given it again ("フライトフライト 羽田→新千歳", "航班 航班 CA981").
+  const leaveWords = (/** @type {string} */ title) => {
+    const ws = planWatches(/** @type {any} */ ([{ path: '/plan/f.json', item: { title, kind: 'flight', fixed: true, start: { at: new Date(at).toISOString(), tz: 'America/Los_Angeles' }, place: { name: 'SFO', lat: 37.6213, lng: -122.379 } } }]), new Map(), { fallbackTz: 'UTC' });
+    return planWords(/** @type {any} */ (ws.find((x) => x.id === 'plan:f:leave')?.say));
+  };
+  assert.equal(leaveWords('フライト 羽田→新千歳'), 'そろそろ出発：フライト 羽田→新千歳（12:00、SFO）。');
+  assert.equal(leaveWords('Out to Seattle'), 'そろそろ出発：フライトOut to Seattle（12:00発、SFO）。');
+  try {
+    setWords('zh-Hans', ZH);
+    assert.equal(leaveWords('航班 CA981'), '该出发了：航班 CA981（12:00，SFO）。');
+  } finally { setWords('ja', JA); }
   // The linger reminder's next item, on a later day than the moment's: its day in the screens' own form for a day and a time, as the Conversation's Next line writes it.
   const castle = { title: 'Hearst Castle tour', at: Date.parse('2026-11-28T16:30:00-08:00'), tz: 'America/Los_Angeles' };
   assert.equal(planWords({ event: 'linger', next: castle }), '次の予定：Hearst Castle tour（16:30）。');

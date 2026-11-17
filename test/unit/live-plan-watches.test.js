@@ -568,7 +568,7 @@ test("several flight items on one booking: a leg is named by its own item, not b
   const hop = planWatches(/** @type {any} */ ([l1, transfer]), withCar, { fallbackTz: LA });
   assert.equal(hop.find((w) => w.id === 'plan:l1:leave')?.fallback, 'Leave soon: Flight AB 123 and a car departs 09:05, SFO T3.');
   // On a booking of kind "flight" every item on it is of the booking's kind too, so the car is a second flight leg and each is named by its own title
-  // (D1 of the second re-review; the kinds entry in docs/limitations.md says what else follows from it).
+  // (D1 of the second re-review; what else follows from it is in docs/limitations.md, "An item that is not a flight, linked to a flight booking, takes the flight's rules").
   const onFlight = planWatches(/** @type {any} */ ([l1, transfer]), four, { fallbackTz: LA });
   assert.equal(onFlight.find((w) => w.id === 'plan:l1:leave')?.fallback, 'Leave soon: Out to Seattle at 09:05, SFO.');
   // The legs still count as flights: the airport's wide circle, and the 2 h margin.
@@ -595,8 +595,16 @@ test('a flight whose name already begins with "Flight" is not given the word aga
   // Any other name keeps "Flight <name> departs", with a booking or without one.
   assert.equal(said([flight('Out to Seattle')], new Map())[0][0], 'Leave soon: Flight Out to Seattle departs 09:05, SFO.');
   assert.equal(said([flight('Out to Seattle', { booking: '/trip/bookings/b.json' })], ofBooking('AB 123'))[0][0], 'Leave soon: Flight AB 123 departs 09:05, SFO T3.');
-  // The word is a word: "Flights" and "Flightseeing" don't begin with it.
+  // The plural is the word too, with a booking or without one; "Flightseeing" is not: the word is a word.
+  assert.equal(said([flight('Flights SFO to SEA')], new Map())[0][0], 'Leave soon: Flights SFO to SEA at 09:05, SFO.');
+  assert.equal(said([flight('Out to Seattle', { booking: '/trip/bookings/b.json' })], ofBooking('Flights SFO to SEA'))[0][0], 'Leave soon: Flights SFO to SEA at 09:05, SFO T3.');
   assert.equal(said([flight('Flightseeing')], new Map())[0][0], 'Leave soon: Flight Flightseeing departs 09:05, SFO.');
+  // The local words of the shipped languages (フライト, 航班, 班機) are the word as well, as the user's own title: the data holds the title, not a flight's name.
+  for (const name of ['フライト 羽田→新千歳', 'フライトJL 123', '航班 CA981', '班機 CI 5']) {
+    const [w] = planWatches(/** @type {any} */ ([flight(name)]), new Map(), { fallbackTz: LA }).filter((x) => x.id === 'plan:f:leave');
+    assert.deepEqual([w.say.what.title, w.say.what.flight], [name, undefined], name);
+    assert.equal(w.fallback, `Leave soon: ${name} at 09:05, SFO.`, name);
+  }
 });
 
 /** A flight in, a stop on the way, and a flight on: the plan check's shape (made-up places; the airport 2475 km from the stop, so a flight away). */
