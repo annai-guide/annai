@@ -178,6 +178,40 @@ test("Opus from Anthropic and from OpenRouter are told apart by their provider's
   }
 });
 
+/**
+ * Anthropic and OpenRouter, both pointed at the stand-in: nothing reaches a real service.
+ * @param {import('@playwright/test').Page} page @param {string} origin
+ */
+async function bothProviders(page, origin) {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  for (const [provider, path] of [['Anthropic', '/anthropic'], ['OpenRouter', '/api/v1']]) {
+    await pickProvider(page, provider);
+    await page.getByLabel('Address', { exact: true }).fill(`${origin}${path}`);
+    await page.getByLabel('API key').fill(`sk-test-${provider.toLowerCase()}`);
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+    await page.getByRole('link', { name: 'Models', exact: true }).click();
+  }
+}
+
+// Settings → Tools names a provider tool by its own name, and the models that have it by theirs: the provider is in the tool's name already
+// (the final review of the provider-first names, finding 3).
+test("Settings → Tools lists the models of a provider's tool by their own names, without the provider's name before each", async ({ page }) => {
+  const llm = await startModelServer({});
+  try {
+    await bothProviders(page, llm.origin);
+    await page.goto('/#/tools');
+    const own = page.locator('.tool-switches > div').filter({ has: page.getByRole('heading', { name: "Your models' own tools" }) });
+    const row = own.locator('li', { hasText: 'Anthropic web search' });
+    await expect(row).toHaveCount(1);
+    await expect(row.locator('.sub')).toHaveText(/^ \(Claude (Sonnet|Haiku|Opus) 5\.5(, Claude (Sonnet|Haiku|Opus) 5\.5)*\)$/);
+    await expect(own).not.toContainText(' / ');
+  } finally {
+    await llm.stop();
+  }
+});
+
 test('"Try this model" on a model\'s page answers from that model alone: one that fails says so, and no other model is asked; Models has no "Talk to your models"', async ({ page }) => {
   const reply = await readFile(new URL('../fixtures/llm/anthropic/text.sse', import.meta.url), 'utf8');
   const llm = await startModelServer({
