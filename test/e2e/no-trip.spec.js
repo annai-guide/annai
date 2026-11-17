@@ -83,7 +83,7 @@ test('#/talk/me shows the old lines and no type box; no button on them talks or 
   await expect(page).toHaveURL(/#\/trip\/trip-[0-9a-z]+\/talk$/);
   expect((await recordOf(page, decodeURIComponent(hashOf(page).split('/')[2])))?.draft).toBe(true);
   await box(page).fill('A new question');
-  await box(page).press('Enter');
+  await box(page).press('Control+Enter');
   await expect(page.locator('ol.convo')).toContainText('A new question');
   expect(await userLines(page, 'me')).toBe(1); // nothing went into `me`
 });
@@ -161,7 +161,7 @@ test('with nothing open the new conversation is: at a fresh start, and after the
   // Typed there, its first line makes it a chat.
   await page.getByRole('button', { name: 'Type', exact: true }).click();
   await box(page).fill('Ramen near the station?');
-  await box(page).press('Enter');
+  await box(page).press('Control+Enter');
   await expect.poll(async () => (await recordOf(page, after))?.draft).toBeUndefined();
 });
 
@@ -180,7 +180,7 @@ test('with no conversation possible (the store failing), a typed line stays in t
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
   await page.getByRole('button', { name: 'Type', exact: true }).click();
   await box(page).fill('Hello there');
-  await box(page).press('Enter');
+  await box(page).press('Control+Enter');
   await expect(page.locator('.notices')).toContainText("That conversation didn't open");
   await expect(box(page)).toHaveValue('Hello there');
   await expect(box(page)).toBeVisible();

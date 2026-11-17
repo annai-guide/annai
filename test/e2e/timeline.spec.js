@@ -35,7 +35,7 @@ test('+ on home, voice off: the draft opens with the box ready; the first line n
   expect((await record(page, first))?.draft).toBe(true);
   await expect(plus(page)).toBeHidden(); // home only
   await box(page).fill('Where should we eat tonight? Somewhere quiet.');
-  await box(page).press('Enter');
+  await box(page).press('Control+Enter');
   await expect.poll(async () => (await record(page, first))?.title).toBe('Where should we eat tonight?');
   expect((await record(page, first))?.draft).toBeUndefined();
   await page.goto('/#/trips');
@@ -303,7 +303,7 @@ test("Shiori's patch dates the open chat: its row becomes a card below now, and 
     await plus(page).click();
     const id = draftOf(page.url());
     await box(page).fill('Plan our weekend in Testville');
-    await box(page).press('Enter');
+    await box(page).press('Control+Enter');
     const line = page.locator('.dates-line');
     await expect(line).toContainText('Shiori set the dates');
     await expect(page.locator('.convo')).toContainText('I set it for the 10th to the 12th.');
@@ -1304,7 +1304,7 @@ test("the conversation's name follows its first line while it shows, and Shiori'
     const name = page.locator('.talk-head .talk-name');
     await expect(name).toHaveText('New conversation');
     await box(page).fill('Where should we eat tonight? Somewhere quiet.');
-    await box(page).press('Enter');
+    await box(page).press('Control+Enter');
     await expect(name).toHaveText(/^(Where should we eat tonight\?|Quiet dinner)$/); // named by its first line, then hers: the header follows
     await expect(page.locator('.convo')).toContainText('I called it Quiet dinner.');
     await expect(name).toHaveText('Quiet dinner');
@@ -1404,7 +1404,7 @@ test('home while she works: the dock says the name of the conversation as it is 
     await plus(page).click();
     const id = draftOf(page.url());
     await box(page).fill('Where is the pier?');
-    await box(page).press('Enter');
+    await box(page).press('Control+Enter');
     await expect.poll(() => llm.bodies('/b/v1/messages').length).toBeGreaterThan(0); // her turn waits on the model
     await page.getByRole('link', { name: 'Back to Trips' }).click();
     await expect(page.locator('.dock .in-convo')).toHaveText('In Where is the pier? ›');
@@ -1733,7 +1733,7 @@ test("the dock's name of the open conversation has one source, trip.json: a stat
     await plus(page).click();
     const id = draftOf(page.url());
     await box(page).fill('Where is the pier?');
-    await box(page).press('Enter');
+    await box(page).press('Control+Enter');
     await expect(page.locator('.convo')).toContainText('Down the road.');
     await expect(page.locator('.talk-name')).toHaveText('Where is the pier?');
     // The record's mirror of the title lags trip.json's by a moment, as it does while a first line names a chat: made stale by hand here.
@@ -1776,13 +1776,13 @@ test("Shiori set the dates stays at its place when the user writes again, and af
     await plus(page).click();
     const id = draftOf(page.url());
     await box(page).fill('Plan our weekend in Testville');
-    await box(page).press('Enter');
+    await box(page).press('Control+Enter');
     const line = page.locator('.dates-line');
     await expect(line).toContainText('Shiori set the dates');
     await expect(page.locator('.convo')).toContainText('I set it for the 10th to the 12th.');
     await box(page).isVisible() || await page.getByRole('button', { name: 'Type', exact: true }).click();
     await box(page).fill('And dinner?');
-    await box(page).press('Enter');
+    await box(page).press('Control+Enter');
     await expect(page.locator('.convo')).toContainText('Dinner is at seven.');
     await expect(line).toBeVisible();
     await expect.poll(lines).toEqual(placed);
@@ -1822,7 +1822,7 @@ test("Shiori set the dates stays at its place without its Undo once the user cha
     await plus(page).click();
     const id = draftOf(page.url());
     await box(page).fill('Plan our weekend in Testville');
-    await box(page).press('Enter');
+    await box(page).press('Control+Enter');
     const line = page.locator('.dates-line');
     await expect(line.getByRole('button', { name: 'Undo' })).toBeVisible();
     await expect(page.locator('.convo')).toContainText('I set it for the 10th to the 12th.');
@@ -1860,7 +1860,7 @@ test("she dates the chat again: each of her datings keeps its line at its place,
   const say = async (/** @type {string} */ text) => {
     await box(page).isVisible() || await page.getByRole('button', { name: 'Type', exact: true }).click();
     await box(page).fill(text);
-    await box(page).press('Enter');
+    await box(page).press('Control+Enter');
   };
   try {
     await modelSetUp(page, llm.origin, 'Elsewhere');
@@ -1931,7 +1931,7 @@ test("the draft's Details: a name and dates saved there put it on home; Archive 
   expect([named, archived, removed]).not.toContain(fresh);
   expect((await record(page, fresh))?.status).toBe('active');
   await box(page).fill('Where is the ramen place?');
-  await box(page).press('Enter');
+  await box(page).press('Control+Enter');
   await expect.poll(async () => (await record(page, fresh))?.title).toBe('Where is the ramen place?');
   await page.goto('/#/trips');
   await expect(row(page, 'Where is the ramen place?')).toHaveCount(1);

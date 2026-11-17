@@ -80,6 +80,14 @@ const KOKORO_CARD = 'model:kokoro';
 const ANNAI_NOTES = ['kokoro-failed', 'nothing-to-add', 'stopped'];
 /** The key of the card for both halves' models failing. */
 const BOTH_CARD = 'model:both';
+/**
+ * The dock while Kokoro works behind a Koe that rests or waits for the user's turn (the user, 2026-11-16: "when kokoro is thinking and koe is
+ * ready, it currently says your turn. maybe that is confusing? maybe put thinking"). No "tap to stop": a tap talks to Koe; the sign's Stop stops Kokoro.
+ */
+const THINKING = Object.freeze({ name: /** @type {const} */ ('thinking'), label: t`Thinking` });
+
+/** What the dock shows of a state: a change of either is told. @param {import('./loop.js').State} s */
+const shownKey = (s) => `${s.name}\n${s.label}\n${s.over ?? ''}`;
 
 export class Channel {
   /**
@@ -204,7 +212,8 @@ export class Halves {
   /** A turn at the user's own level, let go, has cued Kokoro since the last exchange. */
   #ownCued = false;
   #lastHalves = '';
-  #lastView = '';
+  /** The dock's state as it was told last (name and words): a change of Kokoro's, or of a live session's, tells the new one (#restate). */
+  #lastState = '';
   /** The realtime model of Koe's pathway now, and whether voice was on when it was worked out. @type {string | null} */
   #liveId = null;
   #voiceWas = false;
@@ -401,6 +410,7 @@ export class Halves {
         await this.#refresh();
       });
     });
+    this.#lastState = shownKey(this.state);
     this.#ready = this.#refresh({ tell: false }).catch(() => {});
   }
 
@@ -418,7 +428,20 @@ export class Halves {
   get opening() { return Promise.all([this.kokoro.opening, this.koe.opening]).then(() => {}); }
   /** The half that talks with the user now. */
   get talking() { return this.koeState === 'text' ? this.koe : this.kokoro; }
-  get state() { return this.koeState === 'live' ? this.live.view : this.talking.state; }
+  /**
+   * The dock's state: the talking half's, or a live session's, as it is when no one works behind it. While the sign says Kokoro is working (kokoroWorking:
+   * the one answer to that, busy before its own state says thinking) and Koe rests or waits for the user's turn, "Your turn" and "Tap to talk" would
+   * say the opposite of the sign: THINKING stands over them, and Kokoro's own state where it waits for the user (its card). `over` is Koe's own name
+   * beneath it (home shows its whole dock for Koe's states only: shell.js).
+   * @returns {import('./loop.js').State}
+   */
+  get state() {
+    const s = this.koeState === 'live' ? this.live.view : this.talking.state;
+    if (!this.kokoroWorking || !(s.name === 'sleeping' || (s.name === 'waiting' && s.wait === 'wait'))) return s;
+    const k = this.kokoro.state;
+    if (k.name === 'waiting') return s.name === 'sleeping' ? { ...k, over: s.name } : s; // Kokoro's card waits for the user: Koe's wait says so already
+    return k.name === 'thinking' || k.name === 'away' || k.name === 'sleeping' ? { ...THINKING, over: s.name } : s;
+  }
   /** A live session is open or opening, which opening another conversation would close (koeState 'live' only means the route can go live). */
   get sessionOpen() { return this.live.state !== 'closed'; }
   /** The dock's sign: never for a turn still stopping in the conversation being left. */
@@ -502,14 +525,27 @@ export class Halves {
   #stateOf(half, s) {
     queueMicrotask(() => this.#endTapHold());
     if (half === this.koe) this.kokoro.poke(); // the user speaking to Koe holds Kokoro
-    if (half === this.talking && this.koeState !== 'live') this.#emit('state', s);
-    if (half === this.kokoro) this.#emitHalves();
+    if (half === this.talking && this.koeState !== 'live') this.#emitState();
+    if (half === this.kokoro) this.#emitHalves(); // the dock's words too, when Kokoro's own change them (#restate)
     // Koe waits on a Kokoro with nothing to do: nothing to add (the wait is set up right after its state).
     if (half === this.koe && (s.name === 'waiting' || s.name === 'listening')) queueMicrotask(() => { if (this.koe.waiting && !this.kokoro.busy && this.koeState === 'text') this.#nothingToAdd(); });
   }
 
-  /** The sign, and the chip's "Listening live" (a session's microphone is open) and the Live chip's switch. */
+  /** The dock's state, as it is now. */
+  #emitState() {
+    const s = this.state;
+    this.#lastState = shownKey(s);
+    this.#emit('state', s);
+  }
+
+  /** The dock's state, if it changed since it was told last: Kokoro starting or ending its work changes it with Koe's unchanged. */
+  #restate() {
+    if (shownKey(this.state) !== this.#lastState) this.#emitState();
+  }
+
+  /** The sign, and the chip's "Listening live" (a session's microphone is open) and the Live chip's switch; the dock's words with the sign. */
   #emitHalves() {
+    this.#restate();
     const w = this.#way;
     const now = { koe: this.koeState, kokoroWorking: this.kokoroWorking, live: this.live.listening ? 'listening' : this.live.state === 'open' ? 'open' : null,
       way: w ? { mode: w.mode, live: w.live } : null };
@@ -519,13 +555,10 @@ export class Halves {
     this.#emit('halves', now);
   }
 
-  /** A live session's state changed: the dock's, and the chip's. */
+  /** A live session's state changed: the dock's (#restate: told when what it shows changed), and the chip's. */
   #liveChanged() {
     this.#endTapHold();
     this.kokoro.poke(); // the user speaking into it holds Kokoro
-    const name = this.live.view.name;
-    if (this.koeState === 'live' && name !== this.#lastView) this.#emit('state', this.live.view);
-    this.#lastView = name;
     this.#emitHalves();
   }
 
@@ -594,7 +627,7 @@ export class Halves {
     }
     else if (voiceOn) this.live.unmute();
     this.#voiceWas = voiceOn;
-    if (this.state.name !== was) this.#emit('state', this.state);
+    if (this.state.name !== was) this.#emitState();
     if (this.#split && tell) await this.#tell(told);
     this.#emitHalves();
   }

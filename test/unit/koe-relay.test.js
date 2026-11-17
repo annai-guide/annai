@@ -446,7 +446,7 @@ test("voice on, Koe has spoken and listens for the user, voice goes off, and Kok
   k.agent.send('A sunset drink in Carmel');
   await until(() => k.agent.koe.pendingId !== null && k.agent.state.name === 'listening', 8000);
   await k.voice.choose('off');
-  await until(() => k.agent.state.label === 'Your turn', 1500);
+  await until(() => k.agent.koe.state.label === 'Your turn', 1500); // Koe's own words: the dock says Thinking while Kokoro's call is held (halves.js: state)
   go = true;
   await until(() => k.agent.koe.pendingId === null, 1500);
   await k.agent.idle();

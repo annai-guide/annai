@@ -183,7 +183,7 @@ test('a tap on any row opens its details, never the raw file', async ({ page }) 
   await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
   await page.getByRole('tabpanel').getByRole('link', { name: /ANNAI AIR AN 123/ }).click();
   await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
-  await expect(page.locator('textarea')).toHaveCount(0);
+  await expect(page.locator('textarea:not(#dock-text)')).toHaveCount(0);
   await page.goBack();
   await expect(page.getByRole('heading', { name: 'Itinerary' })).toBeVisible();
   await page.getByRole('region', { name: 'Not on a day' }).getByRole('link', { name: /Museum pass/ }).click();
@@ -198,7 +198,7 @@ test('a tap on any row opens its details, never the raw file', async ({ page }) 
   await page.getByRole('tab', { name: 'Sat, Nov 21' }).click();
   await page.getByRole('tabpanel').getByRole('link', { name: /Dinner with Sam/ }).click();
   await expect(page.getByRole('heading', { name: 'Dinner with Sam' })).toBeVisible();
-  await expect(page.locator('textarea')).toHaveCount(0);
+  await expect(page.locator('textarea:not(#dock-text)')).toHaveCount(0);
 });
 
 test('an old unverified booking says Check 2 details (every part it has); a new one with an unsure seat says Check 1 detail; an old confirmed one says neither', async ({ page }) => {
@@ -703,7 +703,7 @@ test("a plain item's details: what, when, where, notes and its calendar file; ne
   await page.getByRole('tab', { name: 'Sun, Nov 22' }).click();
   await page.getByRole('tabpanel').getByRole('link', { name: /Aurora walk/ }).click();
   await expect(page.getByRole('heading', { name: 'Aurora walk' })).toBeVisible();
-  await expect(page.locator('textarea')).toHaveCount(0);
+  await expect(page.locator('textarea:not(#dock-text)')).toHaveCount(0);
   await expect(page.locator('dl.facts dt')).toHaveText(['Starts', 'Ends', 'Place']);
   await expect(page.locator('dl.facts')).toContainText('(AKT)');
   await expect(page.locator('dl.facts')).toContainText('Testville Park');

@@ -139,8 +139,9 @@ export function startShell(root, core) {
   // The + is the shell's, shown on home whatever the dock (a plugin's has none): a new conversation, with no naming step.
   const plus = core.agent && core.chats ? h('button', { class: 'plus', type: 'button', 'aria-label': t`New conversation`, onclick: () => newConversation(ctx) }, '+') : null;
   root.replaceChildren(header, notices.el, installBanner(), main, notices.toasts, ...(dock ? [dock.el] : []), ...(plus ? [plus] : []));
-  // She speaks, listens or works: on home the whole dock shows, so an open microphone can be stopped there (shiori.css).
-  const busy = (/** @type {{ name: string }} */ s) => document.body.classList.toggle('dock-busy', s.name !== 'sleeping' && s.name !== 'offline');
+  // She speaks, listens or works: on home the whole dock shows, so an open microphone can be stopped there (shiori.css). Koe's own state decides (`over`
+  // is it, beneath the dock's Thinking while Kokoro works behind a Koe at rest): Kokoro's work alone shows on home as the sign.
+  const busy = (/** @type {{ name: string, over?: string }} */ s) => document.body.classList.toggle('dock-busy', (s.over ?? s.name) !== 'sleeping' && (s.over ?? s.name) !== 'offline');
   if (core.agent) {
     busy(core.agent.state);
     core.agent.on('state', busy);

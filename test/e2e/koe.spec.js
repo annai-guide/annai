@@ -82,6 +82,63 @@ test('a typed question: Koe\'s bubble at once, the "Kokoro is working" sign, the
   }
 });
 
+// The user, 2026-11-16: "when kokoro is thinking and koe is ready, it currently says your turn. maybe that is confusing? maybe put thinking".
+test("while Kokoro works behind a Koe waiting for the user's turn, the dock says Thinking, not Your turn; once Kokoro is done and Koe waits, Your turn", async ({ page }) => {
+  const sse = (/** @type {{ name: string, input: any }[]} */ calls) => ({ status: 200, type: 'text/event-stream', body: anthropicToolReply(calls) });
+  const wait = { name: 'wait', input: { seconds: 60 } };
+  /** @type {() => void} */
+  let release = () => {};
+  const kokoroAnswers = new Promise((r) => { release = () => r(undefined); });
+  const llm = await startModelServer({
+    '/koe/v1/messages': [
+      sse([{ name: 'speak', input: { text: 'Let me look.' } }, { name: 'tell_kokoro', input: { text: 'Is Nepenthe open now?' } }, wait]),
+      sse([{ name: 'speak', input: { text: "Good news: it's open till 10 tonight." } }, wait]),
+      sse([wait]),
+    ],
+    '/kokoro/v1/messages': [
+      { ...sse([{ name: 'tell_koe', input: { text: 'Nepenthe is open till 10 tonight (nepenthe.com).' } }, { name: 'sleep', input: {} }]), until: kokoroAnswers },
+      sse([{ name: 'sleep', input: {} }]),
+    ],
+  });
+  try {
+    await koeSetUp(page, llm.origin);
+    await type(page, 'Is Nepenthe open?');
+    const label = page.locator('.talk-label');
+    await expect(page.locator('.convo .shiori p').first()).toHaveText('Let me look.');
+    await expect(page.getByRole('status').filter({ hasText: 'Kokoro is working' })).toBeVisible();
+    await expect(label).toHaveText('Thinking');
+    release();
+    await expect(page.locator('.convo .shiori p').last()).toHaveText("Good news: it's open till 10 tonight.", { timeout: 15_000 });
+    await expect(page.getByRole('status').filter({ hasText: 'Kokoro is working' })).toBeHidden();
+    await expect(label).toHaveText('Your turn');
+  } finally {
+    release();
+    await llm.stop();
+  }
+});
+
+// Home shows its whole dock for Koe's own states (she speaks, listens, thinks, waits), as before; Kokoro's work behind a Koe that sleeps shows on
+// home as the sign alone, where the dock's words, Thinking now, are the conversation's (the main session told the user, 2026-11-16).
+test("on home, while Kokoro works behind a Koe that has gone to sleep, only the sign shows: the dock's words say Thinking in the conversation, and home's dock stays at rest", async ({ page }) => {
+  const llm = await startModelServer(halves(8000));
+  try {
+    await koeSetUp(page, llm.origin);
+    await type(page, 'Is Nepenthe open?');
+    const sign = page.getByRole('status').filter({ hasText: 'Kokoro is working' });
+    // Koe has answered and its turn is over: until then its own "Thinking · tap to stop" is on the dock, and plain Thinking only before its turn begins.
+    await expect(page.locator('.convo .shiori p').first()).toHaveText("I'm checking.");
+    await expect(sign).toBeVisible();
+    await expect(page.locator('.talk-label')).toHaveText('Thinking'); // Koe asleep behind Kokoro
+    await goToHash(page, '#/trips');
+    await expect(page.locator('body')).toHaveClass(/\bhome\b/);
+    await expect(sign).toBeVisible();
+    // Read once, while Kokoro's turn is held (8 s): a check that retries would pass once it was over and the dock was at rest anyway.
+    expect(await page.evaluate(() => [document.body.classList.contains('dock-busy'), getComputedStyle(/** @type {Element} */ (document.querySelector('.dock-row'))).display])).toEqual([false, 'none']);
+  } finally {
+    await llm.stop();
+  }
+});
+
 test("Trace shows both halves' turns and their notes; the notes show in the conversation by default, and Settings → Shiori hides them", async ({ page }) => {
   const llm = await startModelServer(halves(300));
   try {
