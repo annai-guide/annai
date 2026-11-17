@@ -529,29 +529,29 @@ nxpady	ok	The message went without it.	訊息已送出，但不含這張照片�
 sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:2142	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
 ssozn1	ok	A photo wasn't sent to Shiori	有一張照片沒有傳給 Shiori	src/core/agent/loop.js:2142	
 311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 剛才的事還沒做完，你回來後她會接著做。	src/core/agent/loop.js:2212	
-1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她三次呼叫同一個工具，結果都一樣，所以這一輪結束了。請換個說法再問。	src/core/agent/loop.js:2581	Note: "Ask again" is the verb (再問), not the glossary's Ask, Safari's 詢問 choice.
-pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重複操作	src/core/agent/loop.js:2581	
-1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什麼也沒對你說就結束了。	src/core/agent/loop.js:2625	
-2bgbpn	ok	Shiori didn't answer	Shiori 沒有回答	src/core/agent/loop.js:2629	
-1mjdfzn	ok	Shiori can't reach her model	Shiori 無法連線到模型	src/core/agent/loop.js:2714	
-12qfj9m	ok	This model takes photos only as {0}, which this browser can't make. Try another model in Settings → Models.	這個模型只接受 {0} 格式的照片，但這個瀏覽器無法產生。可以在設定 → 模型中換一個模型。	src/core/agent/loop.js:2741	{0} = names
-1uhz9dg	ok	Shiori couldn't send the photo	Shiori 無法傳送照片	src/core/agent/loop.js:2800	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	這個瀏覽器要點一下才能播放聲音。她說的話在對話裡。	src/core/agent/loop.js:3437	
-1h2ina6	ok	Shiori couldn't speak aloud	Shiori 無法朗讀	src/core/agent/loop.js:3438	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → 模型 → 朗讀中的聲音都無法使用，原因見「記錄」。她說的話在對話裡。	src/core/agent/loop.js:3438	
-1r1dhd7	ok	Shiori can't hear you yet	Shiori 還聽不到你	src/core/agent/loop.js:3595	
-8wd0xv	ok	Listening stopped	聆聽已停止	src/core/agent/loop.js:3800	
-43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:4089	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	每邊最多 # 畫素	src/core/agent/loop.js:4090	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一次最多 # 張照片	src/core/agent/loop.js:4091	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	僅限 {0}	src/core/agent/loop.js:4092	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受這張照片（它的要求：{0}），也無法轉換成它能接受的照片。可以在設定 → 照片 → 傳給 Shiori 的照片中把照片調小，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:4093	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受這張照片，也無法轉換成它能接受的照片。可以在設定 → 照片 → 傳給 Shiori 的照片中把照片調小，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:4094	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	對話太長，整理之前她的模型處理不了。請在設定 → 模型中檢查模型，或稍後再試。	src/core/agent/loop.js:4104	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	外掛程式 {0} 喚醒她的次數超過了你設定的上限（每小時 # 次）。	src/core/agent/loop.js:4114	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她在留意的事情喚醒她的次數超過了你設定的上限（每小時 # 次）：{0}。	src/core/agent/loop.js:4115	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你新增的檔案喚醒她的次數超過了你設定的上限（每小時 # 次）：{0}。	src/core/agent/loop.js:4116	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	她被喚醒的次數超過了你設定的上限（每小時 # 次）。	src/core/agent/loop.js:4117	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她三次呼叫同一個工具，結果都一樣，所以這一輪結束了。請換個說法再問。	src/core/agent/loop.js:2585	Note: "Ask again" is the verb (再問), not the glossary's Ask, Safari's 詢問 choice.
+pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重複操作	src/core/agent/loop.js:2585	
+1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什麼也沒對你說就結束了。	src/core/agent/loop.js:2629	
+2bgbpn	ok	Shiori didn't answer	Shiori 沒有回答	src/core/agent/loop.js:2633	
+1mjdfzn	ok	Shiori can't reach her model	Shiori 無法連線到模型	src/core/agent/loop.js:2718	
+12qfj9m	ok	This model takes photos only as {0}, which this browser can't make. Try another model in Settings → Models.	這個模型只接受 {0} 格式的照片，但這個瀏覽器無法產生。可以在設定 → 模型中換一個模型。	src/core/agent/loop.js:2745	{0} = names
+1uhz9dg	ok	Shiori couldn't send the photo	Shiori 無法傳送照片	src/core/agent/loop.js:2804	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	這個瀏覽器要點一下才能播放聲音。她說的話在對話裡。	src/core/agent/loop.js:3441	
+1h2ina6	ok	Shiori couldn't speak aloud	Shiori 無法朗讀	src/core/agent/loop.js:3442	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → 模型 → 朗讀中的聲音都無法使用，原因見「記錄」。她說的話在對話裡。	src/core/agent/loop.js:3442	
+1r1dhd7	ok	Shiori can't hear you yet	Shiori 還聽不到你	src/core/agent/loop.js:3599	
+8wd0xv	ok	Listening stopped	聆聽已停止	src/core/agent/loop.js:3804	
+43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:4093	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	每邊最多 # 畫素	src/core/agent/loop.js:4094	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一次最多 # 張照片	src/core/agent/loop.js:4095	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	僅限 {0}	src/core/agent/loop.js:4096	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受這張照片（它的要求：{0}），也無法轉換成它能接受的照片。可以在設定 → 照片 → 傳給 Shiori 的照片中把照片調小，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:4097	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受這張照片，也無法轉換成它能接受的照片。可以在設定 → 照片 → 傳給 Shiori 的照片中把照片調小，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:4098	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	對話太長，整理之前她的模型處理不了。請在設定 → 模型中檢查模型，或稍後再試。	src/core/agent/loop.js:4108	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	外掛程式 {0} 喚醒她的次數超過了你設定的上限（每小時 # 次）。	src/core/agent/loop.js:4118	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她在留意的事情喚醒她的次數超過了你設定的上限（每小時 # 次）：{0}。	src/core/agent/loop.js:4119	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你新增的檔案喚醒她的次數超過了你設定的上限（每小時 # 次）：{0}。	src/core/agent/loop.js:4120	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	她被喚醒的次數超過了你設定的上限（每小時 # 次）。	src/core/agent/loop.js:4121	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	這則訊息含有金鑰，所以不顯示。	src/core/agent/net.js:94	
 157dl17	ok	Shiori wants to adjust her personality	Shiori 想調整自己的性格	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	不用了	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
@@ -2440,29 +2440,29 @@ puj2r7	ok	Next: {0} {1} {2}	接下來：{0} {1} {2}	src/ui/screens/talk.js:707	{
 1frlw7l	ok	Undo the dates Shiori set	復原 Shiori 設定的日期	src/ui/screens/talk.js:765	
 1l3merh	ok	Shiori set the dates	Shiori 設定了日期	src/ui/screens/talk.js:784	
 159f82q	ok	Undone	已復原	src/ui/screens/talk.js:786	
-1v37fcy	ok	Undo what Shiori did with these files	復原 Shiori 對這些檔案的操作	src/ui/screens/talk.js:884	Note: Taiwan wording: 復原 as Undo, 檔案.
-1nl0tpx	ok	Conversation menu	對話選單	src/ui/screens/talk.js:951	
-7flpxf	ok	Summarizing…	正在總結…	src/ui/screens/talk.js:1018	
-12707g	ok	She couldn't summarize it. A card says why.	她沒能完成總結，原因請見卡片。	src/ui/screens/talk.js:1020	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	之前的對話已總結。每句話都還留在這裡，她也隨時能查到。	src/ui/screens/talk.js:1020	
-u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在忙，請稍後再試。	src/ui/screens/talk.js:1020	
-va2k72	ok	There is not enough yet to summarize.	內容還太少，無法總結。	src/ui/screens/talk.js:1020	
-mienoe	ok	Summarize now	立即總結	src/ui/screens/talk.js:1023	
-10sfmur	ok	Starting fresh…	正在重新開始…	src/ui/screens/talk.js:1025	
-va77q0	ok	Start fresh?	要重新開始嗎？	src/ui/screens/talk.js:1038	
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 會從這裡重新開始，不再記著之前的內容。之前的每句話都會留在對話裡，你可以隨時查看和搜尋，她也仍能查到。不會刪除任何內容。即時語音連線也會重新開始。	src/ui/screens/talk.js:1039	Note: "A live voice session" is the glossary's Live voice (即時語音) and a live session (即時連線), not a voice she speaks with.
-czdqlz	ok	Start fresh	重新開始	src/ui/screens/talk.js:1040	
-1h9wwbn	ok	She couldn't start fresh: {0}	她沒能重新開始：{0}	src/ui/screens/talk.js:1050	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	已經重新開始過了，之後還沒有新的對話。	src/ui/screens/talk.js:1053	
-3fntk0	ok	Started fresh.	已重新開始。	src/ui/screens/talk.js:1053	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	對話還在載入，請稍後再試。	src/ui/screens/talk.js:1053	
-p5pj7b	ok	There is nothing to start fresh from yet.	還沒有可以重新開始的內容。	src/ui/screens/talk.js:1053	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即總結：Shiori 現在就把之前的對話總結一下，讓對話保持精簡。每句話都還留在這裡，她也隨時能查到。	src/ui/screens/talk.js:1075	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新開始：Shiori 不再記著之前的內容，從這裡重新開始。之前的每句話都會留在分隔線上方。	src/ui/screens/talk.js:1076	
-15ve7m7	ok	What each half sees	Koe 和 Kokoro 各自看到的內容	src/ui/screens/talk.js:1077	
-1u5l4hx	ok	Details: the trip's name and dates, Export, Archive and Remove.	詳細資料：旅行的名稱和日期、匯出、封存和移除。	src/ui/screens/talk.js:1088	
-o7tevg	ok	Details: the chat's name and dates, Export, Archive and Remove.	詳細資料：對話的名稱和日期、匯出、封存和移除。	src/ui/screens/talk.js:1088	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	已復原。下次喚醒時，她會恢復原來的性格。	src/ui/screens/talk.js:1104	
+1v37fcy	ok	Undo what Shiori did with these files	復原 Shiori 對這些檔案的操作	src/ui/screens/talk.js:885	Note: Taiwan wording: 復原 as Undo, 檔案.
+1nl0tpx	ok	Conversation menu	對話選單	src/ui/screens/talk.js:949	
+7flpxf	ok	Summarizing…	正在總結…	src/ui/screens/talk.js:1016	
+12707g	ok	She couldn't summarize it. A card says why.	她沒能完成總結，原因請見卡片。	src/ui/screens/talk.js:1018	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	之前的對話已總結。每句話都還留在這裡，她也隨時能查到。	src/ui/screens/talk.js:1018	
+u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在忙，請稍後再試。	src/ui/screens/talk.js:1018	
+va2k72	ok	There is not enough yet to summarize.	內容還太少，無法總結。	src/ui/screens/talk.js:1018	
+mienoe	ok	Summarize now	立即總結	src/ui/screens/talk.js:1021	
+10sfmur	ok	Starting fresh…	正在重新開始…	src/ui/screens/talk.js:1023	
+va77q0	ok	Start fresh?	要重新開始嗎？	src/ui/screens/talk.js:1036	
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 會從這裡重新開始，不再記著之前的內容。之前的每句話都會留在對話裡，你可以隨時查看和搜尋，她也仍能查到。不會刪除任何內容。即時語音連線也會重新開始。	src/ui/screens/talk.js:1037	Note: "A live voice session" is the glossary's Live voice (即時語音) and a live session (即時連線), not a voice she speaks with.
+czdqlz	ok	Start fresh	重新開始	src/ui/screens/talk.js:1038	
+1h9wwbn	ok	She couldn't start fresh: {0}	她沒能重新開始：{0}	src/ui/screens/talk.js:1048	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	已經重新開始過了，之後還沒有新的對話。	src/ui/screens/talk.js:1051	
+3fntk0	ok	Started fresh.	已重新開始。	src/ui/screens/talk.js:1051	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	對話還在載入，請稍後再試。	src/ui/screens/talk.js:1051	
+p5pj7b	ok	There is nothing to start fresh from yet.	還沒有可以重新開始的內容。	src/ui/screens/talk.js:1051	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即總結：Shiori 現在就把之前的對話總結一下，讓對話保持精簡。每句話都還留在這裡，她也隨時能查到。	src/ui/screens/talk.js:1073	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新開始：Shiori 不再記著之前的內容，從這裡重新開始。之前的每句話都會留在分隔線上方。	src/ui/screens/talk.js:1074	
+15ve7m7	ok	What each half sees	Koe 和 Kokoro 各自看到的內容	src/ui/screens/talk.js:1075	
+1u5l4hx	ok	Details: the trip's name and dates, Export, Archive and Remove.	詳細資料：旅行的名稱和日期、匯出、封存和移除。	src/ui/screens/talk.js:1086	
+o7tevg	ok	Details: the chat's name and dates, Export, Archive and Remove.	詳細資料：對話的名稱和日期、匯出、封存和移除。	src/ui/screens/talk.js:1086	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	已復原。下次喚醒時，她會恢復原來的性格。	src/ui/screens/talk.js:1102	
 11gkctr	ok	Places	地點	src/ui/screens/tools.js:12	context: tool group
 13mxqrp	ok	Talk	對話	src/ui/screens/tools.js:12	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	交通	src/ui/screens/tools.js:12	context: tool group; Note: the tools for getting somewhere (routes, maps).
@@ -2509,6 +2509,7 @@ obwhc7	ok	a newer backup from an iPhone is there	有來自 iPhone 的較新備�
 oh532o	ok	a newer backup from an iPad is there	有來自 iPad 的較新備份	src/ui/screens/trace.js:179	
 1ds6m85	ok	a newer backup from a computer is there	有來自電腦的較新備份	src/ui/screens/trace.js:180	
 1r6qy12	ok	the user wrote	使用者傳來訊息	src/ui/screens/trace.js:202	
+vkcgb2	draft	takes up the files handed over	開始處理交給她的檔案	src/ui/screens/trace.js:202	Note: the Trace's summary of a record her turn writes where, already running, it takes up files the user handed her (handed meanwhile, or left from a turn that failed); a short label like the other wake summaries ("the user wrote").
 yyq6of	ok	the user tapped a choice	使用者點選了一個選項	src/ui/screens/trace.js:202	
 1eo2nlm	ok	Kokoro to Koe	Kokoro 給 Koe	src/ui/screens/trace.js:206	
 l7yvjm	ok	Koe to Kokoro	Koe 給 Kokoro	src/ui/screens/trace.js:206	
