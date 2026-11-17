@@ -335,7 +335,11 @@ test("an undated conversation's text says to read another trip and answer here, 
   assert.doesNotMatch(systemText(await takeSnapshot({ ws, registry, trip, personalityName: 'shiori' })), /open_trip/);
 });
 
-test("an undated conversation's text names the trip happening now and the 5 latest other conversations, quoted, says to read one first, and holds while the cache is warm (stage 5)", async () => {
+/** Today for the two tests that make a trip happening now: before the fixture's Big Sur (Nov 25–29), which must not be the second one happening, whatever the real date is. Noon UTC is the same calendar day from Honolulu to Tokyo. */
+const BEFORE_BIG_SUR = Date.parse('2026-11-16T12:00:00Z');
+
+test("an undated conversation's text names the trip happening now and the 5 latest other conversations, quoted, says to read one first, and holds while the cache is warm (stage 5)", async (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: BEFORE_BIG_SUR });
   const { ws, store, trip, registry } = await setup();
   const { dayIn, deviceZone } = await import('../../src/core/time.js');
   const today = /** @type {string} */ (dayIn(Date.now(), deviceZone()));
@@ -367,7 +371,8 @@ test("an undated conversation's text names the trip happening now and the 5 late
   assert.doesNotMatch(systemText(await takeSnapshot({ ws, registry, trip: happening, personalityName: 'shiori' })), /Happening now|read_trip first|latest other/);
 });
 
-test("an undated conversation with one trip happening says \"today\", \"tomorrow\" and \"the plan\" mean that trip, the same on every turn; with two, it says nothing of it (real models, stage 5 finding 5)", async () => {
+test("an undated conversation with one trip happening says \"today\", \"tomorrow\" and \"the plan\" mean that trip, the same on every turn; with two, it says nothing of it (real models, stage 5 finding 5)", async (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: BEFORE_BIG_SUR });
   const { ws, registry } = await setup();
   const { dayIn, deviceZone } = await import('../../src/core/time.js');
   const today = /** @type {string} */ (dayIn(Date.now(), deviceZone()));
