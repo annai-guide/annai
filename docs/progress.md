@@ -153,7 +153,7 @@ The entries are grouped into builds by the code they share; each build's entries
 
 ## Waiting for the user
 
-(Main at 14:22 PST: all five next-version builds merged and the navigation line on its branch; the release gates running on main.)
+(Main at 14:37 PST: all five next-version builds merged and gated: check 5458/5458, size 3365.0 of 3366 KiB; whole e2e in Docker 2000 passed, 24 skipped, 0 failed, 0 flaky; the pre-push hook passes on 148 commits after the seven new TTS test clips were looked at and named. The navigation line is under review; then one push on chief's OK, the release, smoke.)
 
 - **Your checks, in this order** (chief's order of work, 2026-11-16; the list grows as the current scope ships):
   1. **Test on OpenRouter's key** (the one from "Sign in with OpenRouter"; live since c5cdc623): tap its Test. It should pass every step, the photo's upload included.
