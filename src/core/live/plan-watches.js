@@ -1,6 +1,6 @@
 import { meters, travelMinutes, modeFor, kmText, TRAVEL } from './geo.js';
 import { timeIn, validZone, instantAt, dayIn, dueWords, isoInZone } from '../time.js';
-import { bookingRef, fixedWords, timeUnsure } from '../plan.js';
+import { bookingRef, fixedWords, timeUnsure, LEG_MAX_KM } from '../plan.js';
 import { t } from '../l10n.js';
 import { sentences, num, when as clockAt, dayClock } from '../intl.js';
 
@@ -73,6 +73,8 @@ export function planWatches(items, bookings, { fallbackTz }) {
   const out = [];
   /** @type {Place | null} */
   let prev = null;
+  /** When the flights and trains so far have all arrived. @type {number | null} */
+  let landed = null;
   /** @type {Place[]} */
   const places = [];
   for (const x of timed) {
@@ -82,7 +84,8 @@ export function planWatches(items, bookings, { fallbackTz }) {
     const end = instantAt(it.end?.at, validZone(it.end?.tz) ? it.end.tz : tz);
     const place = hasPoint(it.place) ? { name: String(it.place.name ?? title), lat: it.place.lat, lng: it.place.lng } : null;
     const booking = bookings.get(bookingRef(it.booking) ?? '') ?? null;
-    const flight = it.kind === 'flight' || booking?.kind === 'flight';
+    const kind = (/** @type {string} */ k) => it.kind === k || booking?.kind === k;
+    const flight = kind('flight');
     const short = whatOf(title, booking, flight, x.at, tz, place?.name ?? '');
     const base = {
       type: 'plan', item: slug(x.path), title, at: x.at, end: Number.isFinite(end) && end > x.at ? end : null, tz, fixed: it.fixed === true,
@@ -96,17 +99,25 @@ export function planWatches(items, bookings, { fallbackTz }) {
     /* en */
     if (place) {
       const there = { place, radius: flight ? AIRPORT_M : ARRIVE_M };
-      if (base.fixed) {
-        add('leave', `Leave soon: ${base.what}.`, { event: 'leave', what: short }, { ...there, from: prev });
-        add('late', `Running late: ${base.what}.`, { event: 'late', what: short }, there);
-      } else {
+      if (!base.fixed) {
         add('off-plan', `Planned now: ${title}, at ${place.name}.`, { event: 'off-plan', title, place: place.name }, { ...there, unsure: timeUnsure(base.end === null ? [it.start] : [it.start, it.end], booking, { fallbackTz }) });
+      } else if (!kind('lodging')) {
+        // Leave and running late time a trip by car or on foot (spec §11.3). Not for a stay: its check-in is the earliest time to arrive,
+        // its check-out the latest to stay (the user's report, 2026-11-16: "Leave in about 15 min" for a check-in 3300 km away).
+        add('leave', `Leave soon: ${base.what}.`, { event: 'leave', what: short }, { ...there, from: prev, after: landed });
+        add('late', `Running late: ${base.what}.`, { event: 'late', what: short }, { ...there, after: landed });
       }
       add('arrived', `${place.name}: ${title}.${notes ? ` ${notes}` : ''}`, { event: 'arrived', title, place: place.name, ...(notes ? { notes } : {}) }, there);
       prev = place;
       places.push(place);
     } else if (base.fixed) {
       add('coming-up', `In ${COMING_UP_MIN} min: ${base.what}.`, { event: 'coming-up', what: short });
+    }
+    // A flight or a train carries the traveller: what comes after it waits for it to arrive (its end, else its start), and doesn't
+    // count from its place, where it leaves from.
+    if (flight || kind('rail')) {
+      prev = null;
+      landed = Math.max(landed ?? -Infinity, base.end ?? base.at);
     }
   }
   /* en */
@@ -204,17 +215,24 @@ const trip = (km, activity) => {
 };
 
 /**
- * When to leave for an item: from where the user is (or was, on a catch-up's first look), else
- * from the plan's stop before; with neither, half an hour before. Null once the user is there.
+ * Whether leave and running late time a trip of km to the item: not once there, nor from farther than LEG_MAX_KM (the Plan's line
+ * between a day's drive and a flight), whatever the plan has. @param {number} km @param {any} w
+ */
+const drive = (km, w) => km * 1000 > w.radius && km <= LEG_MAX_KM;
+
+/**
+ * When to leave for an item: from where the user is (or was, on a catch-up's first look), else from the plan's stop before; with
+ * neither, half an hour before; not before the flights and trains before it arrive (after). Null when it is no drive.
  * @param {any} w @param {Moment} m
  */
 function leaving(w, m) {
   const from = m.fix ?? w.from ?? null;
-  if (!from) return { due: w.at - 30 * MIN, km: null, minutes: null, words: '', mode: '' };
+  const after = w.after ?? -Infinity;
+  if (!from) return { due: Math.max(w.at - 30 * MIN, after), km: null, minutes: null, words: '', mode: '' };
   const km = meters(from, w.place) / 1000;
-  if (km * 1000 <= w.radius) return null;
+  if (!drive(km, w)) return null;
   const t = trip(km, m.activity);
-  return { due: w.at - (t.minutes + LEAVE_LEAD_MIN) * MIN, km, minutes: t.minutes, words: t.words, mode: t.mode };
+  return { due: Math.max(w.at - (t.minutes + LEAVE_LEAD_MIN) * MIN, after), km, minutes: t.minutes, words: t.words, mode: t.mode };
 }
 
 /** What fired, for Shiori, and its fallback: annai's English. @type {Record<string, (w: any, m: Moment, mem: Record<string, any>) => Firing | null>} */
@@ -262,9 +280,9 @@ const CHECK = {
   },
   late(w, m) {
     const fix = now(m);
-    if (!fix || m.fired(`plan:${w.item}:arrived`) || m.now < w.at - WINDOW_MIN * MIN || m.now > w.at + 60 * MIN) return null;
+    if (!fix || m.fired(`plan:${w.item}:arrived`) || m.now < Math.max(w.at - WINDOW_MIN * MIN, w.after ?? -Infinity) || m.now > w.at + 60 * MIN) return null;
     const km = meters(fix, w.place) / 1000;
-    if (km * 1000 <= w.radius) return null;
+    if (!drive(km, w)) return null;
     const t = trip(km, m.activity);
     const eta = m.now + t.minutes * MIN;
     if (eta <= w.at + LATE_GRACE_MIN * MIN) return null;
@@ -318,8 +336,10 @@ const NEXT = {
   late: (w, m) => {
     const fix = now(m);
     if (!fix) return null;
-    const t = trip(meters(fix, w.place) / 1000, m.activity);
-    return Math.max(w.at - WINDOW_MIN * MIN, w.at + (LATE_GRACE_MIN - t.minutes) * MIN + 1000);
+    const km = meters(fix, w.place) / 1000;
+    if (km > LEG_MAX_KM) return null;
+    const t = trip(km, m.activity);
+    return Math.max(w.at - WINDOW_MIN * MIN, w.after ?? -Infinity, w.at + (LATE_GRACE_MIN - t.minutes) * MIN + 1000);
   },
   'off-plan': (w) => w.at + OFF_PLAN_AFTER_MIN * MIN,
   linger: (w, m) => (m.stop ? m.stop.since + LINGER_MIN * MIN : null),

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { planWatches, planWords, PLAN } from '../../src/core/live/plan-watches.js';
-import { MONTEREY, BIXBY, RIVER_INN, NEPENTHE, HEARST, off, at, iso, LA, liveKit } from './live-kit.js';
+import { MONTEREY, BIXBY, RIVER_INN, NEPENTHE, HEARST, CAMBRIA, off, at, iso, LA, liveKit } from './live-kit.js';
 
 /** @param {Partial<import('../../src/core/live/triggers.js').Moment>} o @returns {import('../../src/core/live/triggers.js').Moment} */
 const moment = (o = {}) => ({ now: at('08:00'), fix: null, newFix: false, past: false, live: true, activity: 'still', change: null, odometer: 0, stop: null, gap: null, fastEnded: null, fired: () => false, ...o });
@@ -358,4 +358,81 @@ test("a reopened annai says \"soon\" for the leave reminder wherever the travell
     assert.deepEqual(said, [[soon, soon]], where);
     k.live.dispose();
   }
+});
+
+// A trip flown to, with made-up names: a flight out of SFO on the Friday, landing at 17:30 on the other coast, after the 16:00
+// check-in of a stay 3300 km from Monterey; a tour near the stay that evening; and a tour as far away on a plan with no flight.
+const NY = 'America/New_York';
+const FAR = { lat: 40.3, lng: -83.6 }; // made up: about 3300 km from Monterey, a 5500-minute drive by the rough estimate
+const AIRPORT = off(FAR, 0, -15_000);
+const ny = (/** @type {string} */ hhmm, day = '2026-11-27') => Date.parse(`${day}T${hhmm}:00-05:00`);
+const FLOWN = [
+  { path: '/plan/out.json', item: { title: 'Flight out', kind: 'flight', fixed: true, start: { at: '2026-11-27T09:00:00-08:00', tz: LA }, end: { at: '2026-11-27T17:30:00-05:00', tz: NY }, place: { name: 'SFO', lat: 37.6213, lng: -122.379 } } },
+  { path: '/plan/inn.json', item: { title: 'Check in: Harbor Inn', fixed: true, start: { at: '2026-11-27T16:00:00-05:00', tz: NY }, place: { name: 'Harbor Inn', ...FAR }, booking: '/trip/bookings/inn.json' } },
+  { path: '/plan/tour.json', item: { title: 'Lighthouse tour', fixed: true, start: { at: '2026-11-27T19:00:00-05:00', tz: NY }, place: { name: 'Old Lighthouse', ...off(FAR, 4000, 0) } } },
+];
+const INN = new Map([['/bookings/inn.json', { id: 'inn', kind: 'lodging', status: 'confirmed', source: '/files/inn.pdf', title: 'Harbor Inn' }]]);
+const flown = planWatches(/** @type {any} */ (FLOWN), INN, { fallbackTz: LA });
+const flownW = (/** @type {string} */ id) => /** @type {any} */ (flown.find((w) => w.id === id)).when;
+const MONDAY = at('20:44', '2026-11-23');
+
+test("a stay's check-in gets no leave or running-late reminder: it is the earliest time to arrive, not a time to be there (it said \"Leave in about 15 min\" four days ahead)", () => {
+  assert.deepEqual(flown.filter((w) => w.id.startsWith('plan:inn:')).map((w) => w.id), ['plan:inn:arrived']);
+  // A stay by the item's own kind, with no booking linked, is one too.
+  const own = planWatches([{ path: '/plan/lodge.json', item: { title: 'Lodge', kind: 'lodging', fixed: true, start: { at: iso('19:00'), tz: LA }, place: { name: 'Lodge', ...CAMBRIA } } }], new Map(), { fallbackTz: LA });
+  assert.deepEqual(own.filter((w) => w.id !== 'plan:linger').map((w) => w.id), ['plan:lodge:arrived']);
+  // A stay with no place still says it is coming up: that is true wherever the traveller is.
+  const bare = planWatches([{ path: '/plan/lodge.json', item: { title: 'Lodge', kind: 'lodging', fixed: true, start: { at: iso('19:00'), tz: LA } } }], new Map(), { fallbackTz: LA });
+  assert.deepEqual(bare.map((w) => w.id), ['plan:lodge:coming-up']);
+});
+
+test('no leave or running-late reminder for a place farther than a day\'s drive: four days ahead from home, it said "Leave in about 15 min ... about 5521 min by car"', () => {
+  // On a plan with no flight: the tour alone, 3300 km from where the traveller is on the Monday evening.
+  const alone = planWatches([FLOWN[2]], new Map(), { fallbackTz: LA });
+  const leave = /** @type {any} */ (alone.find((w) => w.id === 'plan:tour:leave')).when;
+  const late = /** @type {any} */ (alone.find((w) => w.id === 'plan:tour:late')).when;
+  assert.equal(PLAN.next?.(leave, here(MONTEREY, MONDAY), {}), null);
+  for (const t of [MONDAY, at('09:00', '2026-11-24'), ny('18:30')]) assert.equal(PLAN.check(leave, here(MONTEREY, t), {}), null, new Date(t).toISOString());
+  assert.equal(PLAN.check(late, here(MONTEREY, ny('18:30')), {}), null);
+  assert.equal(PLAN.next?.(late, here(MONTEREY, ny('18:30')), {}), null);
+  // A day's drive is the Plan's line between a leg and a flight (LEG_MAX_KM, 1000 km): just inside it the reminder stays.
+  const within = planWatches([{ path: '/plan/x.json', item: { title: 'Tour', fixed: true, start: { at: iso('12:00', '2026-11-28'), tz: LA }, place: { name: 'Far', ...off(MONTEREY, 0, -999_000) } } }], new Map(), { fallbackTz: LA });
+  const beyond = planWatches([{ path: '/plan/x.json', item: { title: 'Tour', fixed: true, start: { at: iso('12:00', '2026-11-28'), tz: LA }, place: { name: 'Far', ...off(MONTEREY, 0, -1_001_000) } } }], new Map(), { fallbackTz: LA });
+  const leaveOf = (/** @type {any[]} */ ws) => ws.find((w) => w.id === 'plan:x:leave').when;
+  assert.ok(typeof PLAN.next?.(leaveOf(within), here(MONTEREY, at('08:00')), {}) === 'number');
+  assert.equal(PLAN.next?.(leaveOf(beyond), here(MONTEREY, at('08:00')), {}), null);
+});
+
+test("what comes after a flight or a train waits for it to arrive: no leave or running late from the plane or the train, then from where the traveller is", () => {
+  // The user's shape: home on the Monday evening, the tour after the flight; nothing for it until the flight has landed at 17:30.
+  const tourLeave = flownW('plan:tour:leave');
+  const tourLate = flownW('plan:tour:late');
+  assert.equal(PLAN.next?.(tourLeave, here(MONTEREY, MONDAY), {}), null);
+  assert.equal(PLAN.check(tourLeave, here(MONTEREY, MONDAY), {}), null);
+  // On the plane, 300 km out at 17:00: neither "leave" nor "running late", though a drive from there would be late.
+  const plane = off(FAR, 0, -300_000);
+  assert.equal(PLAN.check(tourLeave, here(plane, ny('17:00')), {}), null);
+  assert.equal(PLAN.check(tourLate, here(plane, ny('17:00')), {}), null);
+  assert.equal(PLAN.next?.(tourLate, here(plane, ny('17:00')), {}), ny('17:30'));
+  // Landed, at the airport 15.5 km away (about 27 min by car): due at 18:18, as any leave reminder.
+  assert.equal(PLAN.next?.(tourLeave, here(AIRPORT, ny('17:35')), {}), ny('18:18'));
+  assert.equal(PLAN.check(tourLeave, here(AIRPORT, ny('18:18')), {})?.fallback, 'Leave in about 15 min: Lighthouse tour at 19:00, Old Lighthouse. About 27 min by car.');
+
+  // A train within a day's drive: from Monterey at 07:00, arriving 11:00 at a station 400 km south; a pier tour at 11:30, 1 km from it.
+  const STATION = off(MONTEREY, 0, -400_000);
+  const ridden = planWatches(/** @type {any} */ ([
+    { path: '/plan/train.json', item: { title: 'Coast train', fixed: true, start: { at: iso('07:00'), tz: LA }, end: { at: iso('11:00'), tz: LA }, place: { name: 'Monterey station', ...MONTEREY }, booking: '/trip/bookings/train.json' } },
+    { path: '/plan/pier.json', item: { title: 'Pier tour', fixed: true, start: { at: iso('11:30'), tz: LA }, place: { name: 'South pier', ...off(STATION, 1000, 0) } } },
+  ]), new Map([['/bookings/train.json', { id: 'train', kind: 'rail', status: 'confirmed', source: '/files/t.pdf', title: 'Coast train' }]]), { fallbackTz: LA });
+  const pier = /** @type {any} */ (ridden.find((w) => w.id === 'plan:pier:leave')).when;
+  const pierLate = /** @type {any} */ (ridden.find((w) => w.id === 'plan:pier:late')).when;
+  // On the train: a drive of 390 km would be due long ago, and 50 km out at 10:30 a drive would be late; the train isn't.
+  assert.equal(PLAN.check(pier, here(off(MONTEREY, 0, -10_000), at('07:05')), {}), null);
+  assert.equal(PLAN.check(pierLate, here(off(STATION, 0, 50_000), at('10:30')), {}), null);
+  // Arrived at 11:00, 1 km away on foot (18 min): the time to leave is 11:12.
+  assert.equal(PLAN.check(pier, here(STATION, at('11:00')), {})?.fallback, 'Leave in about 12 min: Pier tour at 11:30, South pier. About 18 min on foot.');
+  // With no position (live mode off, or the copy at the push relay): not counted from the station the train left, but half an hour before.
+  assert.equal(PLAN.next?.(pier, moment({ now: at('06:00') }), {}), at('11:00'));
+  assert.equal(PLAN.check(pier, moment({ now: at('07:05') }), {}), null);
+  assert.equal(PLAN.check(pier, moment({ now: at('11:00') }), {})?.fallback, 'Leave soon: Pier tour at 11:30, South pier.');
 });

@@ -310,3 +310,24 @@ test('a notification the service worker found stale is a double, whoever said it
   assert.deepEqual(doubles, [`${k.trip}|w-old`]);
   fresh.dispose();
 });
+
+test("the user's shape on the live engine: home four days before a trip flown to, nothing says to leave for it, on screen or at the push relay (it said \"Leave in about 15 min\" for a check-in 3300 km away)", async () => {
+  // Made-up names: a flight out of SFO landing on the other coast at 17:30 its time, after the 16:00 check-in of a stay 3300 km away; a tour near it at 19:00.
+  const NY = 'America/New_York';
+  const FAR = { lat: 40.3, lng: -83.6 };
+  const plan = {
+    out: { title: 'Flight out', kind: 'flight', fixed: true, start: { at: '2026-11-27T09:00:00-08:00', tz: LA }, end: { at: '2026-11-27T17:30:00-05:00', tz: NY }, place: { name: 'SFO', lat: 37.6213, lng: -122.379 } },
+    inn: { title: 'Check in: Harbor Inn', fixed: true, start: { at: '2026-11-27T16:00:00-05:00', tz: NY }, place: { name: 'Harbor Inn', ...FAR }, booking: '/trip/bookings/inn.json' },
+    tour: { title: 'Lighthouse tour', fixed: true, start: { at: '2026-11-27T19:00:00-05:00', tz: NY }, place: { name: 'Old Lighthouse', lat: 40.3, lng: -83.55 } },
+  };
+  const bookings = { inn: { id: 'inn', kind: 'lodging', status: 'confirmed', source: '/trip/files/inn.pdf', title: 'Harbor Inn' } };
+  const k = await liveKit({ plan, bookings, start: at('08:00', '2026-11-23') });
+  await k.fix(at('08:01', '2026-11-23'), MONTEREY);
+  const relay = async () => ((await k.live.reminders()) ?? []).map((r) => r.watch).filter((w) => w.startsWith('plan:'));
+  assert.deepEqual(await relay(), ['plan:out:leave'], 'only the flight out, which the traveller drives to');
+  // The days until the flight, at home and on screen (the user's report came at 20:44 on the Monday): nothing of the stay or the tour fires.
+  for (const t of [at('20:44', '2026-11-23'), at('20:00', '2026-11-24'), at('20:00', '2026-11-25'), at('20:00', '2026-11-26')]) await k.fix(t, MONTEREY);
+  const fired = (await k.events(['trigger.fired'])).map((e) => String(e.data.watch));
+  assert.deepEqual(fired.filter((w) => w.startsWith('plan:inn:') || w.startsWith('plan:tour:')), []);
+  k.live.dispose();
+});

@@ -954,6 +954,8 @@ Plugins can add types.
 
 The travel-time estimate is deliberately rough (straight-line distance × a detour factor ÷ a typical speed for the mode of travel), so reminders err early. The fallbacks are filled in from the plan data, for example "Flight UA123 departs 14:05, SFO T3".
 
+Leave and running late time a trip by car or on foot, so they say nothing of one the traveller makes another way (2026-11-16: one said "Leave in about 15 min" at home, four days before a flight, for a check-in 3300 km away): a stay's check-in and check-out get neither (the earliest time to arrive and the latest to stay, not a time to be there; arrived stays); what comes after a flight or a train waits for it to arrive (its end) and doesn't count from where it leaves; and a place farther than a day's drive (1000 km, the Plan's line between a leg and a flight) gets neither from there.
+
 ### 11.4 Catch-up
 
 When the app becomes visible:
