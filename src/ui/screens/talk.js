@@ -818,7 +818,7 @@ function datesLine(ctx, scope, list) {
  * work: from the hand-over and from where a turn takes it up, until a turn of hers that carries none starts or the user's words come with none running; her
  * turn's card moves it too. Two halves: Kokoro's turns carry it, Koe's lines tell of them. Nothing else moves it (another turn, another job, the user). In a
  * log from before wakes named their hand-over, her lines move it until the user writes or speaks again; in one from before a turn's take-up was written, the
- * turn's turn.end names it, and the line is looked at where her lines left it. Shown while there is something to take back, looked at at each move and where
+ * turn's turn.end names it, and the line is looked at where it was left (under an earlier card, or above later lines). Shown while there is something to take back, looked at at each move and where
  * her turn on it ends (turn.end, or the error that ends one with none): her last write may come after her last line. A trip she started for the files, with
  * nothing of the user's in it, goes, its files back with Shiori.
  * @param {any} ctx @param {string} scope the conversation's @param {HTMLElement} list its lines

@@ -19,18 +19,18 @@ const hers = async (k, scope = k.trip) => (await k.store.tx(['events'], 'readonl
 const tookUp = (e) => e.type === 'wake' && Boolean(e.data.meanwhile) && 'handover' in e.data;
 /**
  * The records the Undo line goes by, in order: each turn's first wake and where it took a hand-over up (its half, the turn's number in order, and
- * the hand-over named), the user's lines (the hand-over they hand), her writes (theirs) and each turn's end. @param {any} k
+ * the hand-over named), the user's lines (the hand-over they hand), her writes and deletes (their paths, and the hand-over they carry) and each turn's end. @param {any} k
  */
 const story = async (k) => {
   /** @type {string[]} */
   const turns = [];
   const turn = (/** @type {string} */ id) => (turns.includes(id) ? turns.indexOf(id) : turns.push(id) - 1);
   const half = (/** @type {any} */ d) => (d.half ? `${d.half} ` : '');
-  return (await k.events(['wake', 'msg.user', 'file.write', 'turn.end'])).flatMap((/** @type {any} */ e) => {
+  return (await k.events(['wake', 'msg.user', 'file.write', 'file.delete', 'turn.end'])).flatMap((/** @type {any} */ e) => {
     const d = e.data;
     if (e.type === 'wake') return d.meanwhile && !tookUp(e) ? [] : [`${tookUp(e) ? 'took' : 'wake'} ${half(d)}${turn(d.id)} ${d.handover}`];
     if (e.type === 'msg.user') return [`user ${d.handover ?? '-'}`];
-    if (e.type === 'file.write') return e.actor === 'shiori' ? [`write ${d.handover ?? '-'}`] : [];
+    if (e.type === 'file.write' || e.type === 'file.delete') return e.actor === 'shiori' ? [`${e.type.slice('file.'.length)} ${d.path} ${d.handover ?? '-'}`] : [];
     return [`end ${half(d)}${turn(d.wake)} ${d.handover}`];
   });
 };
@@ -285,7 +285,7 @@ test("the user's words join a turn of hers that carries none while a hand-over i
   await k.agent.idle();
   const wakes = (await k.events(['wake'])).filter((/** @type {any} */ e) => !e.data.meanwhile);
   assert.deepEqual(wakes.map((/** @type {any} */ e) => e.data.handover), ['h-1', null], 'the reminder\'s turn started with none');
-  assert.deepEqual(await story(k), ['wake 0 h-1', 'user h-1', 'wake 1 null', 'user -', 'took 1 h-1', 'write h-1', 'end 1 h-1']);
+  assert.deepEqual(await story(k), ['wake 0 h-1', 'user h-1', 'wake 1 null', 'user -', 'took 1 h-1', 'write /notes/flight.md h-1', 'end 1 h-1']);
   const [took] = (await k.events(['wake'])).filter(tookUp);
   assert.deepEqual(took.data, { id: wakes[1].data.id, meanwhile: true, reasons: [], handover: 'h-1' });
   const [line] = (await k.events(['msg.user'])).filter((/** @type {any} */ e) => e.data.meanwhile);
@@ -312,8 +312,57 @@ test('a hand-over that joins her running turn: that turn takes it up, written ri
   releases[1]();
   await k.agent.idle();
   assert.equal(k.requests.length, 3, 'one turn: the hand-over and the user\'s words joined it');
-  assert.deepEqual(await story(k), ['wake 0 null', 'user -', 'user h-1', 'took 0 h-1', 'write h-1', 'user -', 'end 0 h-1']);
+  assert.deepEqual(await story(k), ['wake 0 null', 'user -', 'user h-1', 'took 0 h-1', 'write /notes/flight.md h-1', 'user -', 'end 0 h-1']);
   const [took] = (await k.events(['wake'])).filter(tookUp);
+  const [first] = await k.events(['wake']);
+  assert.deepEqual(took.data, { id: first.data.id, meanwhile: true, reasons: [], handover: 'h-1' });
+  const [, line] = await k.events(['msg.user']);
+  assert.equal(took.seq, line.seq + 1, 'right after the hand-over\'s line');
+});
+
+test('a second hand-over that joins the turn while it carries the first: written as another wake record of the turn that names it, and what she writes after carries the newer', async (t) => {
+  useClock(t);
+  let calls = 0;
+  /** @type {(() => void)[]} */
+  const releases = [];
+  const hotel = { path: '/trip/files/hotel.pdf', type: 'application/pdf', name: 'hotel.pdf', new: true };
+  const k = await agentKit([[
+    { toolCalls: [{ name: 'speak', input: { text: 'Looking it up.' } }] },
+    { toolCalls: [{ name: 'speak', input: { text: 'Let me look at those.' } }] },
+    { toolCalls: [{ name: 'write', input: { path: '/trip/notes/flight.md', content: 'AN 123' } }, { name: 'speak', input: { text: 'Filed.' } }, { name: 'sleep', input: {} }] },
+  ]], { hold: async () => { if (++calls < 3) await new Promise((r) => releases.push(() => r(undefined))); } }); // her first two requests wait for the test
+  await k.ws.write(k.trip, '/files/flight.pdf', utf8('%PDF-1.4 flight'), { author: 'user', type: 'application/pdf' });
+  await k.ws.write(k.trip, '/files/hotel.pdf', utf8('%PDF-1.4 hotel'), { author: 'user', type: 'application/pdf' });
+  k.agent.send('Where is Nepenthe?');
+  await new Promise((r) => setTimeout(r, 30));
+  k.agent.send('', { handed: [flight], handover: 'h-1' });
+  releases[0]();
+  await new Promise((r) => setTimeout(r, 30));
+  k.agent.send('', { handed: [hotel], handover: 'h-2' });
+  releases[1]();
+  await k.agent.idle();
+  assert.equal(k.requests.length, 3, 'one turn: both hand-overs joined it');
+  assert.deepEqual(await story(k), ['wake 0 null', 'user -', 'user h-1', 'took 0 h-1', 'user h-2', 'took 0 h-2', 'write /notes/flight.md h-2', 'end 0 h-2']);
+  const [first] = await k.events(['wake']);
+  assert.deepEqual((await k.events(['wake'])).filter(tookUp).map((e) => e.data), [1, 2].map((n) => ({ id: first.data.id, meanwhile: true, reasons: [], handover: `h-${n}` })));
+});
+
+test('a hand-over that cuts in on her model call: the turn takes it up as a wake record of the turn right after the hand-over\'s line, before what she writes for it', async (t) => {
+  useClock(t);
+  const k = await agentKit([[
+    { delayMs: 500, text: 'thinking' },
+    { toolCalls: [{ name: 'write', input: { path: '/trip/notes/flight.md', content: 'AN 123' } }, { name: 'speak', input: { text: 'Filed.' } }, { name: 'sleep', input: {} }] },
+  ]]);
+  await k.ws.write(k.trip, '/files/flight.pdf', utf8('%PDF-1.4 flight'), { author: 'user', type: 'application/pdf' });
+  k.agent.send('Where is Nepenthe?');
+  await new Promise((r) => setTimeout(r, 50)); // her first call is still thinking
+  k.agent.send('', { handed: [flight], handover: 'h-1' });
+  k.agent.cutIn(); // the cut path (loop.js: cut.signal.aborted), not the step's end
+  await k.agent.idle();
+  assert.equal(k.requests.length, 2, 'the cut call went on to a second request, in the same turn');
+  assert.deepEqual(await story(k), ['wake 0 null', 'user -', 'user h-1', 'took 0 h-1', 'write /notes/flight.md h-1', 'end 0 h-1']);
+  const [took, ...more] = (await k.events(['wake'])).filter(tookUp);
+  assert.equal(more.length, 0, 'one take-up');
   const [first] = await k.events(['wake']);
   assert.deepEqual(took.data, { id: first.data.id, meanwhile: true, reasons: [], handover: 'h-1' });
   const [, line] = await k.events(['msg.user']);

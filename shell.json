@@ -1,5 +1,5 @@
 {
-  "build": "e6af2dc9d2e1",
+  "build": "82ddd39db1b7",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -52,7 +52,7 @@
     "/src/core/agent/spoken-yes.js": "066a5f5d247b",
     "/src/core/agent/net.js": "760427139644",
     "/src/core/agent/tools.js": "616bb58c5d19",
-    "/src/core/agent/trip-tools.js": "f50786304b1a",
+    "/src/core/agent/trip-tools.js": "291e37755242",
     "/src/core/agent/transcript.js": "3095c60a16bd",
     "/src/core/agent/via.js": "557657aae006",
     "/src/core/agent/warmth.js": "7f1be5368415",
@@ -272,7 +272,7 @@
     "/src/ui/screens/simulate.js": "16dddd363254",
     "/src/ui/screens/shiori.js": "6296aaccc836",
     "/src/ui/screens/sees.js": "6a674fc473ae",
-    "/src/ui/screens/talk.js": "0a9ba74226f6",
+    "/src/ui/screens/talk.js": "5bdf5fca18b5",
     "/src/ui/screens/tools.js": "52d6c4d56a08",
     "/src/ui/screens/trace.js": "9e1b879ea0a0",
     "/src/ui/screens/trip.js": "5e463aa96888",

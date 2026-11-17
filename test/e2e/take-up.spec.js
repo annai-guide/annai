@@ -62,11 +62,15 @@ const above = (page, part = 'p') => page.locator('.convo li.undo-line').evaluate
  */
 async function shownUnder(page, trip, [part, words]) {
   const button = page.getByRole('button', { name: UNDO });
+  // The button can show under an earlier line of hers before the card or line it belongs under is drawn: the place is read once that is drawn.
+  const drawn = () => expect(page.locator('.convo').getByText(words, { exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(button).toBeVisible({ timeout: 30_000 });
+  await drawn();
   expect(await filed(page, trip)).toEqual([['/notes/f.md', expect.any(String)]]);
   expect(await above(page, part)).toBe(words);
   await page.reload();
   await expect(button).toBeVisible({ timeout: 30_000 });
+  await drawn();
   expect(await above(page, part)).toBe(words);
   await button.click();
   await expect(page.getByText('Undone.', { exact: true })).toBeVisible();
