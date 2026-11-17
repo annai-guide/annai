@@ -1039,12 +1039,12 @@ io1qx	ok	Open the booking	打开预订	src/ui/cards.js:82
 rcp6ga	ok	A photo was kept as it is	照片已按原图保存	src/ui/composer.js:68	
 36fatd	ok	A calendar file couldn't be read	无法读取日历文件	src/ui/composer.js:69	
 17olkn2#other	ok	# files weren't kept	# 个文件未能保存	src/ui/composer.js:73	plural; # = left; English: "# file wasn't kept" (one), "# files weren't kept" (other); Note: a card when there was no room for some handed files; 保存 as files are kept on the device.
-1mv1z9a	ok	Put back as text	改回文字	src/ui/composer.js:130	Note: a pasted text's chip in the type box: turns the file back into words in the box.
-1e5dete	ok	Remove {0}	移除{0}	src/ui/composer.js:131	context: a file in the message; {0} = name; Note: a chip's button: takes the file out of the message only; {0} is a file name, so no spaces around it as the other Remove row.
-1il2ncj	ok	Give Shiori photos or files	把照片或文件交给 Shiori	src/ui/composer.js:142	Note: the + in the type box: 交给 (hand over to), as to a travel agent.
-1uuz7zc	ok	Keeping {0} of {1}…	正在保存 {0}/{1}…	src/ui/composer.js:181	{0} = num(Math.min(/** @type {number} */ (done) + 1, total)); {1} = num(total); Note: under the chips while handed files are kept on the device.
-1npepge	ok	Read it again	再读一遍	src/ui/composer.js:232	Note: What the user says to Shiori, one tap under a booking or file in the type box; sent as the user's words.
-158qnm7	ok	Ask Shiori about this	问问 Shiori	src/ui/composer.js:233	Note: puts the file in the type box, to ask about it; 问问 Shiori reads naturally, the file is beside the button.
+1mv1z9a	ok	Put back as text	改回文字	src/ui/composer.js:129	Note: a pasted text's chip in the type box: turns the file back into words in the box.
+1e5dete	ok	Remove {0}	移除{0}	src/ui/composer.js:130	context: a file in the message; {0} = name; Note: a chip's button: takes the file out of the message only; {0} is a file name, so no spaces around it as the other Remove row.
+1il2ncj	ok	Give Shiori photos or files	把照片或文件交给 Shiori	src/ui/composer.js:141	Note: the + in the type box: 交给 (hand over to), as to a travel agent.
+1uuz7zc	ok	Keeping {0} of {1}…	正在保存 {0}/{1}…	src/ui/composer.js:180	{0} = num(Math.min(/** @type {number} */ (done) + 1, total)); {1} = num(total); Note: under the chips while handed files are kept on the device.
+1npepge	ok	Read it again	再读一遍	src/ui/composer.js:231	Note: What the user says to Shiori, one tap under a booking or file in the type box; sent as the user's words.
+158qnm7	ok	Ask Shiori about this	问问 Shiori	src/ui/composer.js:232	Note: puts the file in the type box, to ask about it; 问问 Shiori reads naturally, the file is beside the button.
 1waossz	ok	Places nearby and along the itinerary, for Shiori's nearby tool and the offline pack, found through Overpass at overpass-api.de, and at maps.mail.ru, run by VK, while Settings → Tools has it on.	附近和行程沿途的地点，供 Shiori 的 nearby 工具和离线包使用，通过 Overpass 查找（overpass-api.de）；在设置 → 工具中勾选时，也会通过 VK 运营的 maps.mail.ru 查找。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
 g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	按名称查找地点，或根据位置查出地名，供 Shiori 的 geocode 和 reverse 工具使用；作为免费搜索的最后备选，还会查找地点的官网。annai 遵照其使用政策，每秒最多请求一次。	src/ui/credits.js:26	
 nn3bzj	ok	Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's last resort, on whatever you tick, sends it the words searched.	附近地点的相关文章，以及离线包中的文章摘要。Shiori 读到的每篇文章都附带链接。免费搜索的最后备选不受勾选影响，会把搜索词发给它查询。	src/ui/credits.js:33	

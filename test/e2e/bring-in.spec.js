@@ -478,10 +478,8 @@ test("the camera's photo that can't be kept shows its card, and nothing goes to 
   expect(await filesEverywhere(page)).toEqual([]);
 });
 
-test("a share whose add stopped partway after the traveller left lets go of its thumbnails", async ({ page }) => {
-  await openApp(page);
-  await waitForServiceWorker(page);
-  await startTrip(page, 'Thanksgiving');
+/** A share of one PDF and one photo, on the share screen: the photo is the one that fails in the tests below, so what is left to add is a photo. @param {import('@playwright/test').Page} page */
+async function sharedPdfAndPhoto(page) {
   await page.evaluate(async (png) => {
     const form = new FormData();
     form.append('files', new File(['%PDF-1.4 one'], 'one.pdf', { type: 'application/pdf' }));
@@ -490,6 +488,13 @@ test("a share whose add stopped partway after the traveller left lets go of its 
   }, [...PNG]);
   await page.goto('/#/import?inbox=1');
   await expect(page.getByRole('heading', { name: 'Add 2 files' })).toBeVisible();
+}
+
+test("a share whose add stopped partway after the traveller left lets go of its thumbnails", async ({ page }) => {
+  await openApp(page);
+  await waitForServiceWorker(page);
+  await startTrip(page, 'Thanksgiving');
+  await sharedPdfAndPhoto(page);
   // Every thumbnail address the screen has made, from the one drawn already: each must be let go of by the end.
   await page.evaluate(() => {
     const w = /** @type {any} */ (window);
@@ -518,4 +523,41 @@ test("a share whose add stopped partway after the traveller left lets go of its 
   });
   expect(alive.made).toBeGreaterThan(0);
   expect(alive.up).toEqual([]);
+});
+
+test('a share whose add stopped partway with the traveller on the screen keeps the thumbnails of the rest', async ({ page }) => {
+  await openApp(page);
+  await waitForServiceWorker(page);
+  await startTrip(page, 'Thanksgiving');
+  await sharedPdfAndPhoto(page);
+  await oneFailsOnce(page, { only: '/files/gate' });
+  await page.getByRole('button', { name: 'Add to Thanksgiving' }).click();
+  await expect(page.locator('main').getByRole('status').filter({ hasText: 'The test made this write fail.' })).toBeVisible();
+  // The PDF was kept; the screen shows the photo that is left, drawn again with a thumbnail of its own, which must still show.
+  await expect(page.getByRole('heading', { name: 'Add 1 photo' })).toBeVisible();
+  const srcs = await page.locator('main .thumbs img').evaluateAll((imgs) => imgs.map((i) => /** @type {HTMLImageElement} */ (i).src));
+  expect(srcs).toHaveLength(1);
+  const up = await page.evaluate(async (urls) => {
+    // As an image: the page's policy lets a thumbnail load from a blob address, not fetch it. A revoked address loads nothing.
+    const found = [];
+    for (const u of urls) {
+      const img = new Image();
+      img.src = u;
+      if (await img.decode().then(() => true, () => false)) found.push(u);
+    }
+    return found;
+  }, srcs);
+  expect(up).toEqual(srcs);
+});
+
+test("the trip screen's Add photos or files, stopped at its first file, says no more than the error: nothing was added", async ({ page }) => {
+  await openApp(page);
+  await startTrip(page, 'Thanksgiving');
+  await oneFailsOnce(page);
+  await page.getByLabel('Add photos or files').setInputFiles(THREE.slice(1)); // one.pdf is the first, and fails
+  await expect(page.getByRole('alert').filter({ hasText: 'The test made this write fail.' })).toBeVisible();
+  // The toast of what was kept would come before the error, so it is there by now (a toast stays 3.5 s, so count it now, not until it
+  // is gone): none, not "Added 0 files".
+  expect(await page.locator('.toast', { hasText: /^Added/ }).count()).toBe(0);
+  expect(await filesEverywhere(page)).toEqual([]);
 });

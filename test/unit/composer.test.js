@@ -106,3 +106,22 @@ test("a booking's chip is named by its title; its HandedFile is a reference", as
   assert.deepEqual(sent[0].handed, [{ path: '/trip/bookings/flight.json', type: 'application/json', name: 'ANNAI AIR AN 123', new: false }]);
   assert.equal(sent[0].text, 'Read it again');
 });
+
+test("the box's hand-over takes the files' types from what the keep says: a read of the folder that fails once they are kept doesn't lose them", async () => {
+  globalThis.location ??= /** @type {any} */ ({ hash: '#/talk', replace: () => {} });
+  const { ctx, sent, cards, trip, ws } = await phone();
+  // The store's read of the folder rejects once both files are written (the read the hand-over made after its keeps).
+  ctx.ws.list = async (/** @type {string} */ scope, /** @type {string} */ prefix) => {
+    const found = await ws.list(scope, prefix);
+    if (prefix === '/files/' && found.length >= 2) throw new Error('The store failed after the write.');
+    return found;
+  };
+  const ics = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:a@test.invalid\r\nDTSTART:20261120T180000Z\r\nDTEND:20261120T190000Z\r\nSUMMARY:Dinner\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n';
+  const pdf = { file: Object.assign(new Blob(['%PDF-1.4'], { type: 'application/pdf' }), { name: 'ticket.pdf' }) };
+  const invite = { file: Object.assign(new Blob([ics], { type: 'text/calendar' }), { name: 'invite' }) }; // a shared invite: no ".ics"
+  await handOver(ctx, 'Our bookings', [pdf, invite]);
+  assert.deepEqual(cards, []);
+  assert.equal(sent.length, 1);
+  assert.deepEqual(sent[0].handed.map((/** @type {any} */ f) => [f.path, f.type]), [['/trip/files/ticket.pdf', 'application/pdf'], ['/trip/files/invite', 'text/calendar']]);
+  assert.deepEqual((await ws.list(trip, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/invite', '/files/ticket.pdf']); // the folder lists by path
+});

@@ -12,7 +12,7 @@ import { codec } from './photo-codec.js';
  * @param {any} ctx @param {string} scope @param {(Blob & { name?: string })[]} files
  * @param {(done: number, total: number) => void} [progress] done: kept so far
  * @returns {Promise<{ paths: string[], types: Record<string, string>, notes: string[], failed?: unknown }>} paths: one per file kept, in the
- *   files' order; types: what each kept path was stored as, so nothing reads the folder again after the keep; notes: what the user should know,
+ *   files' order; types: what each kept path was stored as, so nothing reads the folder again after the keep (a bring-in's wake, the type box's hand-over); notes: what the user should know,
  *   one per photo that needs it; failed: why the file after the kept ones wasn't kept, when one wasn't
  */
 export async function addFiles(ctx, scope, files, progress = () => {}) {

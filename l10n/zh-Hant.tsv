@@ -1039,12 +1039,12 @@ io1qx	ok	Open the booking	開啟預訂	src/ui/cards.js:82
 rcp6ga	ok	A photo was kept as it is	照片已按原圖儲存	src/ui/composer.js:68	
 36fatd	ok	A calendar file couldn't be read	無法讀取行事曆檔案	src/ui/composer.js:69	
 17olkn2#other	ok	# files weren't kept	# 個檔案未能儲存	src/ui/composer.js:73	plural; # = left; English: "# file wasn't kept" (one), "# files weren't kept" (other); Note: Taiwan wording: 個檔案, 儲存 as Storage (儲存空間).
-1mv1z9a	ok	Put back as text	改回文字	src/ui/composer.js:130	Note: a pasted text's chip in the type box: turns the file back into words in the box.
-1e5dete	ok	Remove {0}	移除{0}	src/ui/composer.js:131	context: a file in the message; {0} = name; Note: a chip's button: takes the file out of the message only; {0} is a file name.
-1il2ncj	ok	Give Shiori photos or files	把照片或檔案交給 Shiori	src/ui/composer.js:142	Note: Taiwan wording: 檔案 for files, 交給 for hand over to.
-1uuz7zc	ok	Keeping {0} of {1}…	正在儲存 {0}/{1}…	src/ui/composer.js:181	{0} = num(Math.min(/** @type {number} */ (done) + 1, total)); {1} = num(total); Note: Taiwan wording: 儲存 as Storage (儲存空間).
-1npepge	ok	Read it again	再讀一遍	src/ui/composer.js:232	Note: Taiwan wording; what the user says to Shiori, one tap under a booking or file in the type box.
-158qnm7	ok	Ask Shiori about this	問問 Shiori	src/ui/composer.js:233	Note: Taiwan wording; the file is beside the button, so 問問 Shiori is enough.
+1mv1z9a	ok	Put back as text	改回文字	src/ui/composer.js:129	Note: a pasted text's chip in the type box: turns the file back into words in the box.
+1e5dete	ok	Remove {0}	移除{0}	src/ui/composer.js:130	context: a file in the message; {0} = name; Note: a chip's button: takes the file out of the message only; {0} is a file name.
+1il2ncj	ok	Give Shiori photos or files	把照片或檔案交給 Shiori	src/ui/composer.js:141	Note: Taiwan wording: 檔案 for files, 交給 for hand over to.
+1uuz7zc	ok	Keeping {0} of {1}…	正在儲存 {0}/{1}…	src/ui/composer.js:180	{0} = num(Math.min(/** @type {number} */ (done) + 1, total)); {1} = num(total); Note: Taiwan wording: 儲存 as Storage (儲存空間).
+1npepge	ok	Read it again	再讀一遍	src/ui/composer.js:231	Note: Taiwan wording; what the user says to Shiori, one tap under a booking or file in the type box.
+158qnm7	ok	Ask Shiori about this	問問 Shiori	src/ui/composer.js:232	Note: Taiwan wording; the file is beside the button, so 問問 Shiori is enough.
 1waossz	ok	Places nearby and along the itinerary, for Shiori's nearby tool and the offline pack, found through Overpass at overpass-api.de, and at maps.mail.ru, run by VK, while Settings → Tools has it on.	附近和行程沿途的地點，供 Shiori 的 nearby 工具和離線資料包使用，透過 Overpass 查詢（overpass-api.de）；在設定 → 工具中勾選時，也會透過 VK 營運的 maps.mail.ru 查詢。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
 g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	依名稱查詢地點，或依位置查出地名，供 Shiori 的 geocode 和 reverse 工具使用；作為免費搜尋的最後備案，還會查詢地點的官網。annai 遵照其使用政策，每秒最多請求一次。	src/ui/credits.js:26	
 nn3bzj	ok	Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's last resort, on whatever you tick, sends it the words searched.	附近地點的相關文章，以及離線資料包中的文章摘要。Shiori 讀到的每篇文章都附帶連結。免費搜尋的最後備案不受勾選影響，會把搜尋字詞傳給它查詢。	src/ui/credits.js:33	

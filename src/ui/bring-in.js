@@ -56,7 +56,8 @@ export function addedWords(items) {
  * woken when no model is set up, so adding photos never brings up a "no model" card. One that can't be kept stops the rest: she is
  * woken for those kept before it, and `failed` says why, so an add again takes only the rest and nothing is read or told twice.
  * @param {any} ctx @param {string} scope @param {(Blob & { name?: string })[]} files @param {(done: number, total: number) => void} [progress]
- * @returns {Promise<{ paths: string[], notes: string[], problems: string[], planned: string[], failed?: unknown }>}
+ * @returns {Promise<{ paths: string[], types: Record<string, string>, notes: string[], problems: string[], planned: string[], failed?: unknown }>}
+ *   types, notes, problems, planned: as keepFiles gives them (the wake names each kept path's type)
  */
 export async function bringIn(ctx, scope, files, progress) {
   const kept = await keepFiles(ctx, scope, files, progress);
