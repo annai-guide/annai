@@ -301,7 +301,7 @@ test("what a restart carries is read from the records of what it takes up: a cut
       await log('wake', { id: 'w-1', reasons: [{ kind: 'user', text: 'typed', handover: 'h-1' }], handover: 'h-1' });
       await log('msg.user', { wake: 'w-1', meanwhile: true, handed, handover: 'h-2' }, [['text', 'And this']]);
     }, true, [true, 'h-2', 'h-2']],
-    // The user's wake sets none to undefined, so an older wake of annai's can't reset it: an annai wake after a user's line keeps what it took up.
+    // A meanwhile wake of annai's (its cue) keeps what the turn carried: none, for a watch's turn.
     ["a watch's turn that annai's cue \"The user hasn't been answered\" joined (a meanwhile wake of kind cue): none, as a live join() takes up nothing for it", async (log) => {
       await log('wake', { id: 'w-1', reasons: [{ kind: 'trigger', text: 'The watch fired.' }], handover: null });
       await log('wake', { id: 'w-1', meanwhile: true, reasons: [{ kind: 'cue', text: "The user hasn't been answered." }] });
