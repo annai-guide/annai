@@ -31,7 +31,9 @@ import { NOT_TRANSCRIBED } from '../../core/voice/resolve.js';
 
 /** How long a heard line waits for more of its words before it is announced, once (Gemini revises them as it hears). */
 const HEARD_MS = 600;
-const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'tool.result', 'wake', 'compaction', 'error', 'paused', 'reminder', 'note', 'halves', 'handover.moved', 'handover.undo', 'trip.read', 'conversation.moved', 'turn.end'];
+const SHOWN = ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.show', 'out.ask', 'grounded', 'tool.result', 'wake', 'compaction', 'error', 'paused', 'reminder', 'note', 'halves', 'handover.moved', 'handover.undo', 'trip.read', 'conversation.moved'];
+/** A turn's end draws nothing, so it is read apart from the 400 records a conversation draws: it never takes one of their places. */
+const TURN_END = 'turn.end';
 /** Wakes that are lines of their own: the user's, typed or heard, and what the halves tell each other. */
 const NOT_WOKE = ['user', 'choice', 'heard', 'note', 'cue', 'halves'];
 /** Where a message puts a line's words, a node of their own: its translation places them where its language does (around). */
@@ -583,10 +585,12 @@ export async function renderTalk(ctx, route) {
     read: async () => {
       const got = (await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ tx) => tx.listEvents(scope, { types: SHOWN, reverse: true, limit: 400 }))).reverse();
       if (got.length >= 400) dates?.from(got[0].seq);
-      return got;
+      // The turn ends the Undo line follows (talk.js undoLine): those from the oldest line read on.
+      const ends = undo ? await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ tx) => tx.listEvents(scope, { types: [TURN_END], after: got.length >= 400 ? got[0].seq - 1 : 0 })) : [];
+      return ends.length ? [...got, ...ends].sort((a, b) => a.seq - b.seq) : got;
     },
     show: async (e) => {
-      if (!SHOWN.includes(e.type)) return;
+      if (!SHOWN.includes(e.type) && e.type !== TURN_END) return;
       // What the user just said is always followed; what comes after, while the user is at the end.
       const follow = built && (following || atEnd() || e.type === 'msg.user' || e.type === 'heard');
       const node = await item(e);
@@ -627,7 +631,7 @@ export async function renderTalk(ctx, route) {
         if (follow) toEnd();
         // A plugin's dock may have no avatar of annai's.
         if (built && e.actor === 'shiori') ctx.dock?.avatar?.glance?.(0, 1.5);
-      } else if (e.type === 'wake' || e.type === 'turn.end') undo?.saw(e); // a turn's start and end, with no line of their own, place the Undo line
+      } else if (e.type === 'wake' || e.type === 'turn.end' || e.type === 'error') undo?.saw(e); // a turn's start and end (a stop or a let-go too, quiet), with no line of their own, place the Undo line
       if (built) showCost();
     },
     state: () => {
@@ -811,7 +815,8 @@ function datesLine(ctx, scope, list) {
  * names the hand-over, loop.js #steps), so her question, the user's answer and what she then does keep it moving, and a Try again or the user's next line after a
  * turn that failed or was let go takes it on. Once that turn has ended, the user's next words stop it (Koe's lines before them still move it); a turn of hers
  * that carries none stops it too (a reminder's). A log from before wakes named one: until the user writes or speaks again. There only while there is something
- * to take back. A trip she started for the files, with nothing of the user's in it, goes, its files back with Shiori.
+ * to take back, which is looked at again where her turn ends (turn.end, or the error that ends a failed, silent or stopped one), as well as at her lines: her last
+ * write may come after her last line. A trip she started for the files, with nothing of the user's in it, goes, its files back with Shiori.
  * @param {any} ctx @param {string} scope the conversation's @param {HTMLElement} list its lines
  */
 function undoLine(ctx, scope, list) {
@@ -881,7 +886,7 @@ function undoLine(ctx, scope, list) {
     done,
     /**
      * A line just shown, or a turn's start or end: a hand-over starts its Undo; a turn of hers that carries another (or none) stops it moving, and so do the
-     * user's own words once her turn has ended (in an older log, at once); her lines after it take it down with them. @param {any} e
+     * user's own words once her turn has ended (in an older log, at once); her lines after it, and the end of her turn, take it down with them. @param {any} e
      */
     saw(e) {
       const d = e.data ?? {};
@@ -905,7 +910,17 @@ function undoLine(ctx, scope, list) {
       }
       if ((!named || ended) && (e.type === 'msg.user' || (e.type === 'heard' && !d.dismissed))) placing = false;
       if (e.type === 'handover.moved' && typeof d.handover === 'string') went.set(d.handover, new Set([...(went.get(d.handover) ?? []), String(d.to)]));
-      if (!placing || !handover || used || !['out.speak', 'out.show', 'out.ask', 'handover.moved', 'conversation.moved'].includes(e.type)) return;
+      if (!handover || used) return;
+      // Her turn on it ended (turn.end names the hand-over it ended with: also one that took it up partway, with no wake of its own naming it): her last write may
+      // have come after her last line, and none of her lines may have put the line in the list. It goes at the end, and is looked at again.
+      if (e.type === 'turn.end' && d.half !== 'koe' && d.handover === handover) {
+        list.append(line);
+        check();
+        return;
+      }
+      // Her lines, and the end of a turn that has no turn.end: a failed or silent one's card, or the quiet record of a Stop or a let-go (nothing drawn, so the line goes under her last line); after her turn ended, an error is another job's.
+      const lines = ['out.speak', 'out.show', 'out.ask', 'handover.moved', 'conversation.moved'].includes(e.type) || (e.type === 'error' && !ended);
+      if (!placing || !lines) return;
       list.append(line);
       check();
     },

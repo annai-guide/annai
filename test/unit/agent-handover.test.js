@@ -226,6 +226,33 @@ test("each turn's wake names the hand-over the turn carries, null for none: the 
   assert.deepEqual((await hers(k)).map((e) => [e.data.path, e.data.handover ?? null]), [['/notes/reminder.md', null], ['/notes/flight.md', 'h-1']]);
 });
 
+test("the user's words join a turn of hers that carries none while a hand-over is owed: that turn takes it up, what it writes carries it, and its turn.end names it (the Conversation's Undo line reads that)", async (t) => {
+  useClock(t);
+  const fails = { error: 'server', status: 500, message: 'Scripted failure.' };
+  let calls = 0;
+  /** @type {() => void} */
+  let release = () => {};
+  const held = new Promise((r) => { release = () => r(undefined); });
+  const k = await agentKit([[fails, fails, fails, fails,
+    { toolCalls: [{ name: 'speak', input: { text: 'Reminder: leave at 9.' } }] },
+    { toolCalls: [{ name: 'write', input: { path: '/trip/notes/flight.md', content: 'AN 123' } }, { name: 'speak', input: { text: 'Filed.' } }, { name: 'sleep', input: {} }] },
+  ]], { hold: async () => { if (++calls === 5) await held; } }); // the reminder's first request waits while the user types
+  k.agent.send('', { handed: [flight], handover: 'h-1' });
+  await k.agent.idle();
+  k.agent.wake({ kind: 'cue', text: 'Reminder: leave for the airport at 9.', scope: k.agent.scope });
+  await new Promise((r) => setTimeout(r, 30));
+  k.agent.send('Please file it');
+  await new Promise((r) => setTimeout(r, 30));
+  release();
+  await k.agent.idle();
+  const wakes = (await k.events(['wake'])).filter((/** @type {any} */ e) => !e.data.meanwhile);
+  assert.deepEqual(wakes.map((/** @type {any} */ e) => e.data.handover), ['h-1', null], 'the reminder\'s turn started with none');
+  assert.deepEqual((await hers(k)).map((e) => [e.data.path, e.data.handover ?? null]), [['/notes/flight.md', 'h-1']]);
+  const [end] = await k.events(['turn.end']);
+  assert.equal(end.data.wake, wakes[1].data.id);
+  assert.equal(end.data.handover, 'h-1');
+});
+
 test('an Undo is told to her as a line of annai\'s, and settles the hand-over it undid', async (t) => {
   useClock(t);
   const k = await agentKit([[
