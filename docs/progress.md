@@ -72,12 +72,6 @@ tabs go only after the user has said, on a phone, that the timeline is right. St
 |---|---|---|---|
 | **Trip cards' own colour**: each trip its own colour or pattern, lighting up the more it was used (its days, its size, how much was said and done in it), past trips faded to a pastel or one uniform filter, so a long, busy trip stands out from a short or quiet one. | not started; a design first (after stage 8; "do not have to be done by friday") | The lighter tint for upcoming trips ships with stage 8. | the user, 2026-11-16 ~20:50 PST: "I am actaully thinking maybe we calculate some random pattern / tint / whatever based on the trip active day / size / amount of activity? sorta like the apple card idea but for trips. so that an trip will "light up" more the more we interacted with it? and for past trips we can faint it to a more pastel color? or just apply a more uniform filter? so a long trip before that have a lot of activity will stand out from a shorter one and also from a inactive one. maybe they also should have their own unique color scheme / pattern? just an improvement idea do not have to be done by friday" |
 
-### Nearby places online (Build D)
-
-| Part | State | Where it stands | The user's words or pick |
-|---|---|---|---|
-| **nearby says when its answer was cut** (cut at 400 in OpenStreetMap's id order, where one circle holds fewer than 40 and the next 400 or more): about six lines and a test, so Shiori is told a nearer place may be missing and can ask a smaller radius. | fix round 2, words and one test (fix round 1 ec44cf88 named the circle to ask and said when Wikipedia didn't answer; its re-review: merge after a wording pass; the line now asks for "the nearest places within it"). A fresh Sonnet xhigh fixer, 2026-11-17; next release | docs/limitations.md, "Online, `nearby` can miss a nearer place where places thicken sharply outward" (now a known limitation). | chief's decision, 2026-11-16: "Accept, and nearby says when its answer was cut (Recommended)" (the user may reverse it) |
-
 ### An answered question card always gets a reply
 
 Design check: route A (2026-11-14). The visible fix (an answer to her card always gets a reply) first, then the loop
@@ -187,6 +181,7 @@ The entries are grouped into builds by the code they share; each build's entries
 
 ## Closed
 
+- 2026-11-17: nearby says when OpenStreetMap's answer was cut at 400, and names the circle to ask again (half the circle cut, which came whole; half the radius asked would repeat an inner cut), and says when Wikipedia didn't answer with no pack to fill in (nearby-cut: a Fable final review, two fix rounds of words and tests, re-read; merged d08af8ea), chief's decision "Accept, and nearby says when its answer was cut (Recommended)" (2026-11-16); the next release. Wikipedia's 30-article cap ruled Not an issue for the line (it speaks of OpenStreetMap's places; geosearch returns the nearest first).
 - 2026-11-17: the design check of how leave and running late stand in for the traveller's position (a fresh Fable high agent, read-only): the part is needed, piece by piece; a stored arrival place adds state and a new miss, so the main session took its option 1 (keep the design, fix A1 and A2, a kind table; the rest accepted or after the trip), building as the "Leave, running late and carriers" row; options 2 (store where a carrier arrives) and 3 (drop the stand-in) not taken: say so to reverse.
 - 2026-11-17: the spec's "Also removable": the `/waiting` branches and `start_trip`'s no-trip branch (stage 7), `swipeTabs` with the tabs (stage 8, released b6db88d4); hand-over's back-to-waiting Undo kept for hand-overs made before the update (the re-plan's proposal; nothing removed it).
 - 2026-11-17: "Where are you?" got its new home with Now gone: the GPS problem card's "Say where you are" opens Driving (stage 8, released b6db88d4).
