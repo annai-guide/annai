@@ -237,9 +237,9 @@ export function tripTools(app) {
       : `You moved the user here from another conversation, ${quote(scopeTitle(/** @type {any} */ (from)))}${handedCopies ? ', with what they handed you there,' : ','} to carry on here${copies ? `: ${copies === 1 ? 'their line' : 'their lines'} from there ${copies === 1 ? 'is' : 'are'} above` : ''}.`;
     /* en */
     const before = recap ? ` Your recap of what was said there, which they see as your line: ${JSON.stringify(recap)}.` : '';
-    // With no files, annai's own line to her (a cue): the screens show none for it, where a file wake would say she looked at files added.
+    // With no files, annai's own line to her, kind move: the screens show none for it (a file wake says she looked at files added), and no restart reads it as Try again's (a cue).
     wakes.push({
-      kind: moved.size ? 'file' : 'cue', text: `${what}${before}`, files: [...moved.values()].map((p) => p.slice('/trip'.length)),
+      kind: moved.size ? 'file' : 'move', text: `${what}${before}`, files: [...moved.values()].map((p) => p.slice('/trip'.length)),
       ...(call.handover ? { handover: call.handover } : {}), ...(recap ? { recap } : {}),
     });
     return wakes;

@@ -42,9 +42,9 @@ import { FILES_ONLY, PHOTO_ONLY, handoverOf } from '../handover.js';
  * role, runs the tool calls in order (sleep last), appends the results and calls again, until she
  * sleeps, calls no tool, or something stops her. She reaches the user only through output tools
  * (§7.1); everything else she writes stays in the trace.
- * @typedef {'user' | 'choice' | 'plugin' | 'file' | 'restart' | 'personality' | 'heard' | 'trigger' | 'catch-up' | 'live' | 'recap' | 'note' | 'cue' | 'halves'} WakeKind
+ * @typedef {'user' | 'choice' | 'plugin' | 'file' | 'restart' | 'personality' | 'heard' | 'trigger' | 'catch-up' | 'live' | 'recap' | 'note' | 'cue' | 'halves' | 'move'} WakeKind
  *   trigger and catch-up: live mode's watches fired (spec §11.3, §11.4); live: the user turned live mode on; recap: the user asked to hear the trip's recap (spec §13);
- *   note, cue, halves: from the other half, or Halves (the Koe and Kokoro design)
+ *   note, cue, halves: from the other half, or Halves (the Koe and Kokoro design); move: annai's line for a move (open_trip) with no files, no one's act (a cue is Try again's)
  * @typedef {{ watch: string, text: string, cue?: boolean, answer?: boolean, plan?: import('../live/plan-watches.js').PlanSay }} Reminder  a watch's fallback (spec §11.3), owed until she tells the user;
  *   cue: a cue's for her (a place, the road), not a reminder: owed only until a model answers; answer: her words annai shows for her, called "Shiori's
  *   answer" in place of "Reminder"; plan: a plan watch's, the data its words for the user are made from (text is the English a model reads)
@@ -1276,7 +1276,7 @@ export class Agent {
     // A wake for another conversation than the one open (files added to another trip) is written
     // into it now, and answered when it opens (spec §6.1, §7.3).
     if (w.scope && w.scope !== (this.#target ?? ME)) return this.#keepFor(w.scope, w);
-    if (['user', 'choice', 'restart', 'file', 'live', 'recap', 'note', 'cue', 'halves'].includes(w.kind)) {
+    if (['user', 'choice', 'restart', 'file', 'live', 'recap', 'note', 'cue', 'halves', 'move'].includes(w.kind)) {
       this.enqueue(w);
       return Promise.resolve();
     }

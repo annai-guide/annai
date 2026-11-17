@@ -166,6 +166,25 @@ for (const [shape, reply] of Object.entries({ 'plain text': [{ text: 'Booked Fri
   }
 }
 
+// A line typed into the listening after her spoken line (no wait or ask beside it) is the same: spec §7.1's "the window after her line". The final review's F3.
+for (const [what, replies, cued, notices] of /** @type {const} */ ([
+  ['then a reply that shows them nothing (a bare sleep): she is asked once more, and answers', [{ toolCalls: [sleep] }, say('Booked Friday.')], true, 0],
+  ['then a reply that shows them nothing twice: the card "Shiori didn\'t answer"', [{ toolCalls: [sleep] }, { toolCalls: [sleep] }], true, 1],
+])) {
+  test(`a line typed into the listening after her spoken line (voice on), ${what}`, async (t) => {
+    useClock(t);
+    const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text: 'Which day?' } }] }, ...replies]], { voice: { playMs: 5, speechIn: ['m-hear'], hears: ['friday'] } });
+    k.agent.send('Book us a table');
+    await until(() => k.agent.state.name === 'listening');
+    k.agent.send('Friday');
+    await k.agent.idle();
+    assert.equal(k.requests.length, 1 + replies.length, 'her line, her reply to the typed one, and the one request more');
+    assert.equal(/The user hasn't been answered/.test(k.requests.at(-1).tail), cued, 'the cue');
+    assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.title), notices ? ["Shiori didn't answer"] : []);
+    if (!notices) assert.equal((await k.events(['out.speak'])).at(-1).data.text, 'Booked Friday.');
+  });
+}
+
 test("her ask and sleep answered, her hand-over's turn goes on: what she does after the answer is the hand-over's, so its Undo takes it back (Try again after her next call fails)", async (t) => {
   useClock(t);
   const flight = { path: '/trip/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true };
@@ -395,7 +414,7 @@ test("a hand-over, annai restarted while her card waited (or between her answer 
   }
 });
 
-test("a sleep that gave way whatever became of its input (one that was not an object, beside an answered question): no end is logged, so it is taken up after a reload", async (t) => {
+test("a sleep that gave way whatever became of its input (one that was not an object, beside an answered question): it stores no `awake` and no turn.end is logged, so it is taken up after a reload", async (t) => {
   useClock(t);
   const k = await agentKit([[{ toolCalls: [ask, { name: 'sleep', input: 'not-an-object' }] }, { delayMs: 300, ...say('Moved to 7.') }, say('Taken up.')]]);
   const other = await createTrip(k.ws, { title: 'Kyoto' });
@@ -405,6 +424,7 @@ test("a sleep that gave way whatever became of its input (one that was not an ob
   await until(() => k.requests.length === 2);
   const stored = (await k.events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === 'sleep');
   assert.equal('awake' in stored.data, false, 'no `awake`: the turn is under way because no turn.end was logged');
+  assert.equal((await k.events(['turn.end'])).length, 0, 'her turn is under way: it has not ended');
   await k.agent.open(other);
   await k.agent.idle();
   await k.agent.open(k.trip);

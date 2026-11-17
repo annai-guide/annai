@@ -106,7 +106,7 @@ export class Transcript {
   #carry = null;
   /** The newest hand-over since her last turn ended (handover.js). @type {string | null} */
   #handover = null;
-  /** What the restart carries: a cut turn's own, as its wakes name it; undefined when nothing says (the newest owed). @type {string | null | undefined} */
+  /** What the restart carries: a cut turn's own, as its wakes and the user's lines it took up name it; undefined when nothing says (the newest owed). @type {string | null | undefined} */
   #carried = undefined;
   /** @type {Map<string, string>} Shiori's tool calls by id, to their tool names */
   #calls = new Map();
@@ -167,10 +167,10 @@ export class Transcript {
       let brought = null;
       for (const w of reasons) if (typeof w?.handover === 'string') this.#handover = brought = w.handover;
       // Her turn's first wake, or a take-up, names what it carries; one written while the conversation was closed (no key) joins it as join()
-      // would, taking up an older owed one only for the user's (never a watch's, a reminder's, a plugin's or a move's).
+      // would, taking up an older owed one only for the user's (never a watch's, a reminder's, a plugin's or a move's), and keeping what it took.
       if ('handover' in d) this.#carried = typeof d.handover === 'string' ? d.handover : null;
       else if (brought || this.#carried || d.meanwhile) this.#carried = brought ?? this.#carried;
-      else this.#carried = reasons.some((/** @type {any} */ w) => TAKES_OWED.includes(w?.kind)) ? undefined : null;
+      else this.#carried = reasons.some((/** @type {any} */ w) => TAKES_OWED.includes(w?.kind)) ? this.#handover : null;
       const others = (d.reasons ?? []).filter((/** @type {any} */ w) => !OWN_LINES.includes(w.kind) && w.text);
       if (others.length) {
         // Two halves read it quoted, so it can't pass for a label; one half as before.
@@ -182,6 +182,7 @@ export class Transcript {
       this.#line([{ type: 'text', text: /** @type {string} */ (blockFor(e, texts)) }, ...r.images, ...this.#handed(d)]);
       this.unanswered = true;
       this.waiting = 'user';
+      this.#joined();
     } else if (e.type === 'msg.user') {
       // A message that answered an ask or a wait is already in that tool's result.
       if (texts.text && !(d.answer && (this.half === 'one' || this.#calls.has(d.answer)))) {
@@ -192,6 +193,7 @@ export class Transcript {
         if (!koe || d.split) {
           this.unanswered = true;
           this.waiting = 'user';
+          this.#joined();
         }
       }
     } else if (e.type === 'model.turn' && this.half === 'one' && d.tag === KOE_TAG) {
@@ -393,6 +395,11 @@ export class Transcript {
     if (koe) this.#window();
     if (!this.from) this.from = e.seq;
     this.to = e.seq;
+  }
+
+  /** A line of the user's joined a turn that carries none: join() (loop.js) takes the owed hand-over up for it, though its record may not be written yet (an older log, a kill between the writes). */
+  #joined() {
+    if (this.#carried === null) this.#carried = this.#handover;
   }
 
   #heardSettled() {

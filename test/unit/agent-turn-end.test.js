@@ -397,6 +397,27 @@ test("a hand-over's turn fails and is left alone, then a watch fires while anoth
   assert.deepEqual((await undoHandover(k.ws, A, 'h-1')).undone, []);
 });
 
+// The final review's F1: a line the user typed before leaving the conversation took the owed hand-over up, and a wake of annai's kept after it keeps it.
+for (const order of ['the line, then the watch', 'the watch, then the line']) {
+  test(`a hand-over's turn fails and is left alone, then, while another conversation is open, wakes are kept for this one (${order}): taken up on return, the user's line carries the hand-over, so its Undo takes back what she files`, async (t) => {
+    useClock(t);
+    const k = await agentKit([[...FAILED, files]]);
+    hand(k);
+    await k.agent.idle();
+    const { A, back } = await away(k);
+    const line = () => k.agent.wake({ kind: 'user', text: 'Please file my flight', scope: A });
+    const watch = () => k.agent.wake({ kind: 'trigger', text: WATCH, scope: A });
+    for (const keep of order.startsWith('the line') ? [line, watch] : [watch, line]) await keep();
+    const t0 = await Transcript.load(k.store, A);
+    assert.deepEqual([t0.unanswered, t0.handover, t0.owedHandover], [true, 'h-1', 'h-1'], 'the line took the owed one up, whichever wake came after');
+    assert.equal(await back(), 1, 'taken up once');
+    const restarts = (await k.events(['wake'])).flatMap((/** @type {any} */ e) => e.data.reasons).filter((/** @type {any} */ r) => r.kind === 'restart');
+    assert.equal(restarts[0].handover, 'h-1');
+    assert.deepEqual(await hers(k), [['/notes/f.md', 'h-1']]);
+    assert.deepEqual((await undoHandover(k.ws, A, 'h-1')).undone, ['/notes/f.md']);
+  });
+}
+
 test("a cut turn that did carry a hand-over still restarts with it: the user's hand-over killed before her first reply, and a watch's turn that took the owed hand-over up when the user's words joined it, killed after its write", async (t) => {
   useClock(t);
   // The user's own: killed in her first model call.
