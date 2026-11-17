@@ -174,7 +174,7 @@ test("nearby says when OpenStreetMap's answer stopped at 400, counting what Over
   const lines = (await run('nearby', at, (url) => (url.includes('overpass') ? body : wiki))).split('\n');
   assert.equal(lines.length, 42);
   assert.ok(lines.slice(1, 41).every((r) => r.split('\t').length === 7));
-  // nearby reads this saved answer of the earlier query as cut in the 500 m circle, which holds 67 of these places by full position (the
+  // nearby reads this saved answer of the earlier query as cut in the 500 m circle, which holds 66 of these places as nearby rounds them (the
   // 250 m one 18): it names 250 m. Today's query stops at 500 m there, whole.
   assert.equal(lines.at(-1), cutLine(250));
   // 399 of the same places: an answer that didn't reach the limit says nothing.
@@ -241,7 +241,7 @@ test("nearby names the circle to ask again with: half the one cut, which held fe
   const one = await cutAt({ radius: 200 }, 20, 190);
   assert.deepEqual(one.first, [200]);
   assert.equal(one.line, cutLine(100));
-  // The driving companion's 15 km look ahead, on a synthetic ring with the dense area inside the 7500 m circle (at the live call of
+  // The driving companion's 15 km look ahead, on synthetic nodes due north with the dense area inside the 7500 m circle (at the live call of
   // 2026-11-16, a point in Lake Michigan, the circles up to 7500 m held fewer than 40 and the 15 km one was cut; nearby names 7500 m on
   // that saved answer): here 7500 m is cut, so 3750 m is asked, where half the radius (7500) would repeat the answer.
   const drive = await cutAt({ radius: 15000 }, 4000, 7400);

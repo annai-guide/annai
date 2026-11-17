@@ -247,7 +247,7 @@ export function activate(annai) {
         // are its places: it is the first circle with ROWS of the rows that came, by the distance each carries (an outline's is to its
         // centre, so a ring-shaped park around the point counts in a circle it doesn't reach: that can name a smaller circle than the one
         // cut, which is still whole. A larger one needs fewer than ROWS nodes in the cut circle and nearly all the rest outlines centred
-        // beyond it, though Overpass sends every node first: the retry is then cut again, says so, and names a smaller circle). Half of it
+        // beyond it (Overpass sends every node first): the retry is then cut again, says so, and names a smaller circle). Half of it
         // is the circle before, which held fewer than ROWS and so came whole, and so does any radius under that; for the smallest circle it
         // is a new one, which can be cut again and says so again. Half the radius asked would repeat the answer when an inner circle was
         // cut. What the radius gives is the nearest places within it, few or none (nearby shows the nearest ROWS of OpenStreetMap's and
