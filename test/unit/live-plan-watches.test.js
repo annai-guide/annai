@@ -514,7 +514,7 @@ test("a connection gets no leave and no running late: a flight whose time to be 
   // The first plane lands at 10:00; the second leaves at 11:30, so its time to be there (09:30) comes first: the traveller is carried there.
   assert.deepEqual(ids([fly('a', '08:00', '10:00', MONTEREY), fly('b', '11:30', '14:00', HUB)]), ['plan:a:leave', 'plan:a:late', 'plan:a:arrived', 'plan:b:arrived']);
   // With a 3-hour layover (be there by 11:30, after the landing) it keeps both: the leave is half an hour before the time to be there
-  // (11:00), never before the landing.
+  // (11:00). That a reminder is never due before the landing is the landing floor's, pinned in the test above (a tour at 17:50).
   const long = planWatches(/** @type {any} */ ([fly('a', '08:00', '10:00', MONTEREY), fly('b', '13:30', '16:00', HUB)]), new Map(), { fallbackTz: LA });
   assert.deepEqual(long.filter((w) => w.id.startsWith('plan:b:')).map((w) => w.id), ['plan:b:leave', 'plan:b:late', 'plan:b:arrived']);
   assert.equal(PLAN.next?.(/** @type {any} */ (long.find((w) => w.id === 'plan:b:leave')).when, moment({ now: at('07:00') }), {}), at('11:00'));
@@ -562,14 +562,41 @@ test("several flight items on one booking: a leg is named by its own item, not b
   const pair = planWatches(/** @type {any} */ ([l1, leg('l3', 'Back to Seattle', '2026-11-26', '09:05', '12:30', 'ANC', ANC)]), four, { fallbackTz: LA });
   assert.equal(pair.find((w) => w.id === 'plan:l1:leave')?.fallback, 'Leave soon: Out to Seattle at 09:05, SFO.');
   assert.equal(pair.find((w) => w.id === 'plan:l3:leave')?.fallback, 'Leave soon: Back to Seattle at 09:05, ANC.');
-  // Only flight legs count as several: a transfer on the flight's booking (a car item) doesn't, so the flight keeps its name and its terminal.
+  // Only flight legs count as several: a transfer on a package booking (kind "other", a flight and a car) doesn't, so the flight keeps its name and its terminal.
   const withCar = new Map([['/bookings/four.json', { ...four.get('/bookings/four.json'), kind: 'other', title: 'AB 123 and a car' }]]);
   const transfer = { path: '/plan/car.json', item: { title: 'Car to the hotel', kind: 'car', fixed: true, start: { at: iso('12:00', '2026-11-20'), tz: LA }, place: { name: 'Arrivals', ...SEA }, booking: '/trip/bookings/four.json' } };
   const hop = planWatches(/** @type {any} */ ([l1, transfer]), withCar, { fallbackTz: LA });
   assert.equal(hop.find((w) => w.id === 'plan:l1:leave')?.fallback, 'Leave soon: Flight AB 123 and a car departs 09:05, SFO T3.');
+  // On a booking of kind "flight" every item on it is of the booking's kind too, so the car is a second flight leg and each is named by its own title
+  // (D1 of the second re-review; the kinds entry in docs/limitations.md says what else follows from it).
+  const onFlight = planWatches(/** @type {any} */ ([l1, transfer]), four, { fallbackTz: LA });
+  assert.equal(onFlight.find((w) => w.id === 'plan:l1:leave')?.fallback, 'Leave soon: Out to Seattle at 09:05, SFO.');
   // The legs still count as flights: the airport's wide circle, and the 2 h margin.
   assert.equal(/** @type {any} */ (ws.find((w) => w.id === 'plan:l1:arrived')).when.radius, 2000);
   assert.equal(/** @type {any} */ (ws.find((w) => w.id === 'plan:l1:leave')).when.by, Date.parse('2026-11-20T09:05:00-08:00') - 120 * 60_000);
+});
+
+test('a flight whose name already begins with "Flight" is not given the word again: "Flight Flight to Seattle departs" (slice 2 F2 of fix round 2)', () => {
+  const SFO = { lat: 37.6213, lng: -122.379 };
+  const flight = (/** @type {string} */ title, /** @type {any} */ o = {}) => ({ path: '/plan/f.json', item: { title, kind: 'flight', fixed: true, start: { at: iso('09:05'), tz: LA }, end: { at: iso('11:30'), tz: LA }, place: { name: 'SFO', ...SFO }, ...o } });
+  const ofBooking = (/** @type {string} */ title) => new Map([['/bookings/b.json', { id: 'b', kind: 'flight', status: 'confirmed', source: '/files/f.pdf', title, fields: { terminal: 'T3' } }]]);
+  /** What Shiori reads and what the user's words make of the same data, for the leave and the late. @param {any[]} items @param {Map<string, any>} bookings */
+  const said = (items, bookings) => {
+    const ws = planWatches(/** @type {any} */ (items), bookings, { fallbackTz: LA });
+    return ['plan:f:leave', 'plan:f:late'].map((id) => { const w = /** @type {any} */ (ws.find((x) => x.id === id)); return [w.fallback, planWords(w.say)]; });
+  };
+  // No booking: the item's title is the name, and it begins with the word, so it is shown as an item's title, as it is.
+  assert.deepEqual(said([flight('Flight to Seattle')], new Map()), [
+    ['Leave soon: Flight to Seattle at 09:05, SFO.', 'Leave soon: Flight to Seattle at 09:05, SFO.'],
+    ['Running late: Flight to Seattle at 09:05, SFO.', 'Running late: Flight to Seattle at 09:05, SFO.'],
+  ]);
+  // A booking's title that begins with it is the same, with the terminal; its item's own title is not the name then.
+  assert.equal(said([flight('Out to Seattle', { booking: '/trip/bookings/b.json' })], ofBooking('Flight AB 123'))[0][0], 'Leave soon: Flight AB 123 at 09:05, SFO T3.');
+  // Any other name keeps "Flight <name> departs", with a booking or without one.
+  assert.equal(said([flight('Out to Seattle')], new Map())[0][0], 'Leave soon: Flight Out to Seattle departs 09:05, SFO.');
+  assert.equal(said([flight('Out to Seattle', { booking: '/trip/bookings/b.json' })], ofBooking('AB 123'))[0][0], 'Leave soon: Flight AB 123 departs 09:05, SFO T3.');
+  // The word is a word: "Flights" and "Flightseeing" don't begin with it.
+  assert.equal(said([flight('Flightseeing')], new Map())[0][0], 'Leave soon: Flight Flightseeing departs 09:05, SFO.');
 });
 
 /** A flight in, a stop on the way, and a flight on: the plan check's shape (made-up places; the airport 2475 km from the stop, so a flight away). */
@@ -589,7 +616,7 @@ test("a stop before farther than a day's drive from the item is none: a check-in
     // ...and no place to count a drive from: half an hour before the time to be there (15:55), with no fix, or at the stop, a flight away.
     assert.equal(PLAN.next?.(leave, moment({ now: at('12:00') }), {}), at('15:25'), between.title);
     assert.equal(PLAN.next?.(leave, here(HOTEL_Y, at('12:00')), {}), at('15:25'), between.title);
-    assert.equal(PLAN.check(leave, moment({ now: at('15:25') }), {})?.fallback, 'Leave soon: Flight Flight on departs 17:55, Airport X.', between.title);
+    assert.equal(PLAN.check(leave, moment({ now: at('15:25') }), {})?.fallback, 'Leave soon: Flight on at 17:55, Airport X.', between.title);
   }
   // A stay has no leave or running late of its own, and is still a place on the plan.
   const ws = hopWith({ title: 'Check in: Harbor Inn', kind: 'lodging' });
@@ -613,7 +640,7 @@ test("a stay is the stop before what comes after it, within a day's drive: the f
     assert.equal(leave.from?.name, 'Harbor Inn', name);
     assert.equal(PLAN.next?.(leave, moment({ now: at('08:00', '2026-11-30') }), {}), at('09:51', '2026-11-30'), name);
     assert.equal(PLAN.check(leave, moment({ now: at('09:50', '2026-11-30') }), {}), null, name);
-    assert.equal(PLAN.check(leave, moment({ now: at('09:51', '2026-11-30') }), {})?.fallback, 'Leave in about 15 min: Flight Flight home departs 14:05, SFO. About 119 min by car.', name);
+    assert.equal(PLAN.check(leave, moment({ now: at('09:51', '2026-11-30') }), {})?.fallback, 'Leave in about 15 min: Flight home at 14:05, SFO. About 119 min by car.', name);
   }
   // A road trip: a tour in town A, the check-in of a stay 7 km from the dinner, the dinner at 19:00: its copy with no position is counted from the stay (18:33).
   const trip = planWatches(/** @type {any} */ ([

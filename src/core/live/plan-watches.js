@@ -89,7 +89,8 @@ export function planWatches(items, bookings, { fallbackTz }) {
   /** When the fixed flights and trains so far have all arrived. @type {number | null} */
   let landed = null;
   // The flight and train legs on each booking: one that several of them link (a trip out and back, with connections, on one confirmation) names
-  // none of them. Another item linked to it (a transfer, a hotel) isn't a leg.
+  // none of them. An item is of its own kind or its booking's (isKind), so on a booking of kind flight or rail every item linked to it is a leg, a
+  // transfer's or a hotel's too; only on a booking of another kind (a package's) is an item of another kind not one.
   /** @type {Map<string, number>} */
   const onBooking = new Map();
   for (const x of timed) {
@@ -170,12 +171,18 @@ export function planWatches(items, bookings, { fallbackTz }) {
 
 /**
  * The item for a reminder, as data (spec §11.3): a flight by its name (its booking's title), the place where it says more than the title.
+ * The words for a named flight are "Flight <name> departs <time>", in Shiori's English and the user's alike, so a name that already begins
+ * with "Flight" ("Flight to Seattle") is an item's title instead: "Flight to Seattle at 09:05", with no word said twice, in every language.
  * @param {string} title @param {any} booking @param {boolean} flight named by its booking @param {number} at @param {string} tz @param {string} placeName
  * @returns {What}
  */
 function whatOf(title, booking, flight, at, tz, placeName) {
   const terminal = typeof booking?.fields?.terminal === 'string' && booking.fields.terminal.trim() ? ` ${booking.fields.terminal.trim()}` : '';
-  if (flight) return { title, at, tz, flight: String(booking?.title ?? title), ...(placeName ? { place: `${placeName}${terminal}` } : {}) };
+  if (flight) {
+    const name = String(booking?.title ?? title);
+    const place = placeName ? { place: `${placeName}${terminal}` } : {};
+    return /^\s*flight\b/i.test(name) ? { title: name, at, tz, ...place } : { title, at, tz, flight: name, ...place };
+  }
   return { title, at, tz, ...(placeName && !title.toLowerCase().includes(placeName.toLowerCase()) ? { place: placeName } : {}) };
 }
 

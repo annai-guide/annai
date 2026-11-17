@@ -40,7 +40,7 @@ test('the route strip: the next stops with places, how far each is in a straight
 });
 
 test("the route strip leaves out a stop farther than a day's drive: it is a flight, not a drive to time (it said \"about 3 d 21 h\" for a stay a flight away)", () => {
-  const FAR = { lat: 61.2, lng: -149.9 }; // made up: a stay a little over 3,300 km from Big Sur, on the plan after lunch
+  const FAR = { lat: 61.2, lng: -149.9 }; // made up: a stay about 3,400 km from Big Sur (3,399), on the plan after lunch
   const rows = planRows([
     { path: '/plan/nepenthe.json', item: { id: 'nepenthe', title: 'Lunch at Nepenthe', fixed: true, start: { at: iso('12:00'), tz: LA }, place: { name: 'Nepenthe', ...NEPENTHE } } },
     { path: '/plan/inn.json', item: { id: 'inn', title: 'Check in: Harbor Inn', fixed: true, start: { at: iso('16:00'), tz: LA }, place: { name: 'Harbor Inn', ...FAR } } },

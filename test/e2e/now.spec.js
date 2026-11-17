@@ -63,7 +63,7 @@ test("Driving with only a stop a flight away (a position far from the trip) says
   await context.setGeolocation({ latitude: 36.27, longitude: -121.807, accuracy: 10 }); // Big Sur
   await openApp(page);
   const trip = await startTrip(page, 'Alaska');
-  // Made up: lunch in Anchorage, about 3,300 km from where the phone is.
+  // Made up: lunch in Anchorage, about 3,400 km from where the phone is (3,399).
   await writeRecords(page, trip, { write: { '/plan/lunch.json': { id: 'lunch', title: 'Lunch in Anchorage', fixed: true, start: { at: soon(150), tz: 'UTC' }, place: { name: 'A cafe', lat: 61.2, lng: -149.9 } } } });
   await page.goto('/#/now');
   await expect(page.getByRole('heading', { name: 'Alaska' })).toBeVisible();

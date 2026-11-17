@@ -324,14 +324,15 @@ test("the user's shape on the live engine: home four days before a trip flown to
   const k = await liveKit({ plan, bookings, start: at('08:00', '2026-11-23') });
   await k.fix(at('08:01', '2026-11-23'), MONTEREY);
   const relay = async () => ((await k.live.reminders()) ?? []).filter((r) => r.watch.startsWith('plan:'));
-  // The flight out, which the traveller drives to, and the tour after the flight: its copy counts from the plan's stop before it, the stay 4.3 km
-  // away (8 min by car, and the 15 of the lead: 18:37), though the phone's last position is at home, a flight away, and so counts as none (the
-  // review's F1: the relay held nothing for it). Never before the flight lands (17:30); that floor is pinned in live-plan-watches.
+  // The relay holds two copies. The flight out, which the traveller drives to, counts from the phone's last position. The tour, after the flight,
+  // counts from the plan's stop before it, the stay 4.24 km away (8 min by car, and the 15 of the lead: 18:37), though the phone's last position
+  // is at home, a flight away, and so counts as none (the review's F1: the relay held nothing for it). It is never due before the flight lands
+  // (17:30); that floor is pinned in live-plan-watches.
   const held = await relay();
   assert.deepEqual(held.map((r) => r.watch), ['plan:out:leave', 'plan:tour:leave']);
   assert.equal(held[1].due, Date.parse('2026-11-27T18:37:00-05:00'));
   // The days until the flight, at home and on screen (the user's report came at 20:44 on the Monday), and fresh fixes at home either side of the
-  // tour's copy's time, 18:30 and 18:40 at the tour's end: nothing of the stay or the tour fires on screen from a position a flight away.
+  // tour's copy's time, 18:30 and 18:40 New York time: nothing of the stay or the tour fires on screen from a position a flight away.
   for (const t of [at('20:44', '2026-11-23'), at('20:00', '2026-11-24'), at('20:00', '2026-11-25'), at('20:00', '2026-11-26'), Date.parse('2026-11-27T18:30:00-05:00'), Date.parse('2026-11-27T18:40:00-05:00')]) await k.fix(t, MONTEREY);
   const fired = (await k.events(['trigger.fired'])).map((e) => String(e.data.watch));
   assert.deepEqual(fired.filter((w) => w.startsWith('plan:inn:') || w.startsWith('plan:tour:')), []);

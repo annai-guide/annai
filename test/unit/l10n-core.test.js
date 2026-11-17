@@ -94,6 +94,9 @@ test("a plan's reminder: Shiori reads annai's English, the user's words are made
   // Worked out as it fires (late, from where the user is): data too.
   const late = { event: 'late', what: { title: 'Lunch', at, tz: 'America/Los_Angeles' }, minutes: 36 };
   assert.equal(planWords(late), '遅れています：Lunch（12:00）。到着まであと約36分です。');
+  // A flight whose name already begins with "Flight" reads as an item's title in her words too, not "フライトFlight to Seattle" (no new string).
+  const flown = planWatches(/** @type {any} */ ([{ path: '/plan/f.json', item: { title: 'Flight to Seattle', kind: 'flight', fixed: true, start: { at: new Date(at).toISOString(), tz: 'America/Los_Angeles' }, place: { name: 'SFO', lat: 37.6213, lng: -122.379 } } }]), new Map(), { fallbackTz: 'UTC' });
+  assert.equal(planWords(/** @type {any} */ (flown.find((x) => x.id === 'plan:f:leave')?.say)), 'そろそろ出発：Flight to Seattle（12:00、SFO）。');
   // The linger reminder's next item, on a later day than the moment's: its day in the screens' own form for a day and a time, as the Conversation's Next line writes it.
   const castle = { title: 'Hearst Castle tour', at: Date.parse('2026-11-28T16:30:00-08:00'), tz: 'America/Los_Angeles' };
   assert.equal(planWords({ event: 'linger', next: castle }), '次の予定：Hearst Castle tour（16:30）。');

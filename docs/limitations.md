@@ -872,6 +872,12 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the plan item's kind is free text (`src/plugins/core-schemas/schemas.js`), and neither plan-item example in Shiori's text gives a kind a reminder reads: the one in her instructions (`src/core/agent/instructions.js`) has none, and the plan-a-trip skill's has `"kind": "meal"`; the kinds `flight`, `rail` and `lodging` are named only for a booking.
 - **Revisit when:** the next version, as its own change: an enum for the plan item's kind with the synonyms a stored format accepts ("train" for `rail`, "hotel" and "stay" for `lodging`), one line in the instructions, and a look at the plans that exist first.
 
+### An item that is not a flight, linked to a flight booking, takes the flight's rules
+- **Kind:** deferred.
+- **What the traveller sees:** an item linked to a booking of kind `flight` or `rail` is of that kind too (`isKind` in `src/core/live/plan-watches.js`, and `src/core/plan.js`), whatever the item is: a bag drop, an airport shuttle, a car pick-up, a hotel. It gets a flight's 2-hour margin, a late line of 1 hour before, and the carrier rules (what comes after it waits for it to land and doesn't count from its place). A "Bag drop closes" item at 13:05 on the booking of a 14:05 flight gets a "Leave soon" an hour before the flight's own would have come, and, on screen, a "Running late" while the traveller is in time for it. The flight itself can then be read as a connection and get no leave or running late of its own; with a car or hotel item on its booking, it is named by its own title, with no terminal, as one of two legs. The leave reminders still come early, never late; the false "Running late" is on screen only, never pushed.
+- **Why:** the plan item's kind is free text, and an item's own kind can't decide first: a flight Shiori wrote with another kind, left to its booking, would lose its 2-hour margin, which errs late (the fix round 2 fixer's Call 3). A bag-drop item written with no kind can't be told from a flight leg.
+- **Revisit when:** the next version, with the design check of this part: the enum for the plan item's kind (the entry above) lets an item's own kind decide first without that risk. Until then, link such an item to no booking, or give the flight its own booking.
+
 ### A check-in reached more than 3 hours late gets no "arrived" cue
 - **Kind:** deferred.
 - **What the traveller sees:** a stay's check-in item has no end, so arriving counts only until 3 hours after its start. Landing at 20:58 for a 16:00 check-in, and reaching the stay at 21:55, fires no "arrived", so its notes aren't shown. Silent, not false.
@@ -895,3 +901,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the traveller sees:** a flight or train stays "not over" until its end (else half an hour from its start), and its place is the place it leaves from. Driving while a flight is in the air (a position within a day's drive of the departure airport, such as the first hour of the flight, or a train on its way) lists it as the next stop: "SFO T3, 475 km, 512 min".
 - **Why:** the strip counts an item over by its end, as Now does, and has no notion of an item the traveller has already left from. Older than leave-far.
 - **Revisit when:** the next version, as its own change: the strip leaves out a flight or train once its start has passed.
+
+### The Driving strip during a flight lists the destination's stops, with car times
+- **Kind:** deferred.
+- **What the traveller sees:** a phone at flight speed counts as moving fast, so Driving takes over, and the strip lists the stops ahead that are within a day's drive of the plane's position, with a drive's minutes. On a plane 804 km from a tour at the destination, 40 minutes before it lands: "Old Lighthouse, 804 km, 858 min". It is the arrival side of the entry above on a flight already left. Reminders are not affected: a fixed item after a flight waits for it to land.
+- **Why:** the strip (`routeStrip`, `src/core/now.js`) has no notion of a carrier that has not landed; the reminders have (`landed` in `planWatches`).
+- **Revisit when:** the next version, as its own change: the strip leaves out a stop after a fixed flight or train that has not landed, by the way the reminders wait for it (its end, else its start), with a test.
