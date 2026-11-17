@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { planWatches, PLAN } from '../../src/core/live/plan-watches.js';
-import { MONTEREY, BIXBY, RIVER_INN, NEPENTHE, off, at, LA, liveKit } from './live-kit.js';
+import { planWatches, planWords, PLAN } from '../../src/core/live/plan-watches.js';
+import { MONTEREY, BIXBY, RIVER_INN, NEPENTHE, HEARST, off, at, LA, liveKit } from './live-kit.js';
 
 /** @param {Partial<import('../../src/core/live/triggers.js').Moment>} o @returns {import('../../src/core/live/triggers.js').Moment} */
 const moment = (o = {}) => ({ now: at('08:00'), fix: null, newFix: false, past: false, live: true, activity: 'still', change: null, odometer: 0, stop: null, gap: null, fastEnded: null, fired: () => false, ...o });
@@ -237,4 +237,50 @@ test("a stay that runs overnight doesn't wake her \"off plan\" at the dinner the
 
 test("a stay that runs overnight doesn't wake her \"off plan\" at a dinner the plan doesn't have, 4 h after the stay's start", async () => {
   assert.deepEqual((await openedAtDinner({ stay: STAY })).filter((x) => x.includes('Off plan')), []);
+});
+
+/** The linger watch of a plan with Bixby's photo stop today and the Hearst Castle tour on the day after (fixed, 16:30). */
+const lingerOf = () => planWatches([
+  { path: '/plan/bixby.json', item: { id: 'bixby', title: 'Bixby Bridge photo stop', fixed: false, start: { at: '2026-11-27T09:45:00-08:00', tz: LA }, end: { at: '2026-11-27T10:05:00-08:00', tz: LA }, place: { name: 'Bixby Creek Bridge', ...BIXBY } } },
+  { path: '/plan/castle.json', item: { id: 'castle', title: 'Hearst Castle tour', fixed: true, start: { at: '2026-11-28T16:30:00-08:00', tz: LA }, place: { name: 'Hearst Castle', ...HEARST } } },
+], new Map(), { fallbackTz: LA }).find((x) => x.id === 'plan:linger');
+
+test("the linger wake names the day of the next item when it isn't the moment's day, in Shiori's words and in the data the user's are made from (it said \"at 16:30\" for tomorrow's)", () => {
+  const linger = /** @type {any} */ (lingerOf()).when;
+  const stopped = (/** @type {string} */ hhmm, /** @type {string} */ since) => PLAN.check(linger, here(RIVER_INN, at(hhmm), { stop: { ...RIVER_INN, since: at(since) } }), { home: MONTEREY });
+  // 13:20 on the 27th: the day's timed items are over, and the next is tomorrow's, at a clock time later than now.
+  const f = stopped('13:20', '13:00');
+  assert.equal(f?.text, "Off plan: the user has been stopped for 20 min at a place that isn't on the plan (36.2700, -121.8070); next on the plan: \"Hearst Castle tour\" at Sat 2026-11-28 16:30 (GMT-8). The replanning skill says what to do");
+  assert.equal(f?.fallback, 'Next on the plan: Hearst Castle tour at Sat 2026-11-28 16:30 (GMT-8).');
+  assert.deepEqual(/** @type {any} */ (f?.say).next, { title: 'Hearst Castle tour', at: at('16:30', '2026-11-28'), tz: LA, later: true });
+  assert.equal(planWords(/** @type {any} */ (f?.say)), 'Next on the itinerary: Hearst Castle tour at Sat, Nov 28, 16:30.'); // the user's own line says it too
+  // The same item on the moment's own day names no day, as before: the time alone is true.
+  const same = PLAN.check(linger, here(RIVER_INN, at('13:20', '2026-11-28'), { stop: { ...RIVER_INN, since: at('13:00', '2026-11-28') } }), { home: MONTEREY });
+  assert.equal(same?.fallback, 'Next on the plan: Hearst Castle tour at 16:30.');
+  assert.deepEqual(/** @type {any} */ (same?.say).next, { title: 'Hearst Castle tour', at: at('16:30', '2026-11-28'), tz: LA });
+  assert.equal(planWords(/** @type {any} */ (same?.say)), 'Next on the itinerary: Hearst Castle tour at 16:30.');
+  // An entry written before the day was carried reads as it did.
+  assert.equal(planWords({ event: 'linger', next: { title: 'Hearst Castle tour', at: at('16:30', '2026-11-28'), tz: LA } }), 'Next on the itinerary: Hearst Castle tour at 16:30.');
+});
+
+test("the leave reminder says \"in about 15 min\" only while that is so: fired later than 2.5 min after its due time, its words are \"Leave soon\" (it said 15 min at 11:50 for noon, 75 min away)", () => {
+  const leave = find('plan:nepenthe:leave').when;
+  const lunch = 'Leave soon: Lunch at Nepenthe at 12:00.';
+  // From the River Inn (12 min by car) it is due at 11:33: on time, and 2 min late, it says 15.
+  for (const hhmm of ['11:33', '11:35']) {
+    const f = PLAN.check(leave, here(RIVER_INN, at(hhmm)), {});
+    assert.equal(f?.fallback, 'Leave in about 15 min: Lunch at Nepenthe at 12:00. About 12 min by car.', hhmm);
+    assert.equal(planWords(/** @type {any} */ (f?.say)), f?.fallback, hhmm);
+  }
+  // 3 min late (the lead is 12 min, no longer about 15), and long after: the words don't say a lead, nor a travel time beside "Running late".
+  for (const hhmm of ['11:36', '11:45']) {
+    const f = PLAN.check(leave, here(RIVER_INN, at(hhmm)), {});
+    assert.equal(f?.fallback, lunch, hhmm);
+    assert.equal(planWords(/** @type {any} */ (f?.say)), lunch, hhmm);
+    assert.match(String(f?.text), /about 12 min by car$/); // Shiori's own text says the real distances, and no lead
+  }
+  // Opened at 11:50, 44 km (about 75 min) from the lunch, with no model to reach: the review's input.
+  const far = PLAN.check(leave, here(off(NEPENTHE, 0, 44_000), at('11:50')), {});
+  assert.equal(far?.fallback, lunch);
+  assert.equal(planWords(/** @type {any} */ (far?.say)), lunch);
 });
