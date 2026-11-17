@@ -1,5 +1,5 @@
 {
-  "build": "054a7d26b06d",
+  "build": "3e8762461078",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -201,7 +201,7 @@
     "/src/plugins/voice-browser/index.js": "bf3e200a094a",
     "/src/plugins/web/free.js": "e92d9b1fc0a2",
     "/src/plugins/web/index.js": "6d77440aa5bb",
-    "/src/ui/base.css": "7887514c3935",
+    "/src/ui/base.css": "1be80c3c2287",
     "/src/ui/cards.js": "cc78cef84d11",
     "/src/ui/composer.js": "abe2f688c5db",
     "/src/ui/credits.js": "761ac7192f37",
@@ -252,7 +252,7 @@
     "/src/ui/screens/backups.js": "a30e61a7fbcb",
     "/src/ui/screens/booking.js": "5a278fa32ad2",
     "/src/ui/screens/drive.js": "a54e821e305d",
-    "/src/ui/screens/experimental.js": "9f8609693e3b",
+    "/src/ui/screens/experimental.js": "48f75a37ecf3",
     "/src/ui/screens/ext.js": "83c0244cf0d6",
     "/src/ui/screens/file.js": "850b43de0461",
     "/src/ui/screens/import.js": "3482aa9936b8",
@@ -269,7 +269,7 @@
     "/src/ui/screens/provider.js": "edf72fac87c8",
     "/src/ui/screens/recap.js": "54d2b14655d4",
     "/src/ui/screens/replay.js": "b6c46d9c0ec7",
-    "/src/ui/screens/settings.js": "0822b721f939",
+    "/src/ui/screens/settings.js": "8e6089a0b480",
     "/src/ui/screens/simulate.js": "cbdebdf221a5",
     "/src/ui/screens/shiori.js": "6296aaccc836",
     "/src/ui/screens/sees.js": "6a674fc473ae",
@@ -282,10 +282,10 @@
     "/src/ui/screens/voice.js": "a15e4d8bb537",
     "/src/ui/screens/welcome.js": "f1b00d351dd3",
     "/src/ui/search-panel.js": "20a5f0a56f48",
-    "/src/ui/shell.js": "0b6712936824",
+    "/src/ui/shell.js": "c928a54d590d",
     "/src/ui/slots.js": "4fee1465e94c",
     "/src/ui/stamps.js": "9c0f976db8fa",
-    "/src/ui/shiori.css": "e97620524658",
+    "/src/ui/shiori.css": "b658b3f05eec",
     "/src/ui/speech-check.js": "396550d02345",
     "/src/ui/storage-full.js": "6b7d5a2fe9fe",
     "/src/ui/talk-panel.js": "cc1fb4a04f43",
@@ -300,8 +300,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "19d21ca4201e",
-    "/l10n/zh-Hans.json": "61d4171b542a",
-    "/l10n/zh-Hant.json": "325c10641bec"
+    "/l10n/ja.json": "0f2b6f3c5da7",
+    "/l10n/zh-Hans.json": "9cacfc02b391",
+    "/l10n/zh-Hant.json": "213ef1d4c71e"
   }
 }

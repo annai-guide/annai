@@ -8,7 +8,7 @@ import { installBanner } from './install.js';
 import { setPendingImport } from './import-state.js';
 import { renderTrips } from './screens/trips.js';
 import { renderTrip } from './screens/trip.js';
-import { renderFile, cameFrom } from './screens/file.js';
+import { renderFile } from './screens/file.js';
 import { renderSettings } from './screens/settings.js';
 import { renderImport } from './screens/import.js';
 import { renderTrace } from './screens/trace.js';
@@ -46,17 +46,8 @@ import { renderAbout } from './screens/about.js';
 import { renderUpdates } from './screens/updates.js';
 import { renderLanguages } from './languages.js';
 import { renderExperimental } from './screens/experimental.js';
-import { readAppSettings } from '../core/settings.js';
 import { uiSignature, syncThemes, cleanUp, slotEntries, component, dockKey, pluginUi, made } from './slots.js';
 
-/** @type {Record<string, (ctx: any, route: any) => Promise<Node>>} */
-/** The top bar's tab each screen belongs to, where it isn't the screen's own name. */
-const SECTION = /** @type {Record<string, string>} */ ({
-  sees: 'talk', talk: 'talk',
-  trip: 'trips', file: 'trips', booking: 'plan', item: 'plan', plan: 'plan', recap: 'trips', replay: 'trips', 'trip-ext': 'trips', import: 'trips', drive: 'now',
-  plugins: 'settings', add: 'settings', 'plugin-install': 'settings', 'plugin-page': 'settings', models: 'settings', shiori: 'settings', tools: 'settings',
-  voice: 'settings', languages: 'settings', backups: 'settings', notifications: 'settings', simulate: 'settings', mcp: 'settings', about: 'settings', experimental: 'settings', updates: 'settings',
-});
 const SCREENS = { sees: renderSees, trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, add: renderAdd, 'plugin-install': renderPluginInstall, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, item: renderItem, voice: renderVoice, now: renderNow, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications, ext: renderExt, 'plugin-page': renderPluginPage, 'trip-ext': renderTripTab, mcp: renderMcp, welcome: renderWelcome, about: renderAbout, experimental: renderExperimental, updates: renderUpdates, languages: renderLanguages };
 
 /**
@@ -70,47 +61,10 @@ const SCREENS = { sees: renderSees, trips: renderTrips, trip: renderTrip, file: 
 export function startShell(root, core) {
   const notices = createNotices();
   const main = h('main', { class: 'view', id: 'view', tabindex: '-1' });
-  const builtIn = [['#/now', t`Now`], ['#/trips', t`Trips`], ['#/plan', t`Itinerary`], ['#/talk', t`Conversation`], ['#/trace', t`Trace`], ['#/settings', t`Settings`]].map(([href, label]) => h('a', { href }, label));
-  /** @type {HTMLAnchorElement[]} the top bar's links: annai's, then plugins' screens with a tab */
-  let links = builtIn;
-  const nav = h('nav', { class: 'topnav', 'aria-label': t`Main` }, ...links);
-  // A tab naming no trip goes straight to the open trip's own address, so tapped on its own screen it adds no entry for Back to show again.
-  nav.addEventListener('click', (e) => {
-    const a = /** @type {Element} */ (e.target).closest('a');
-    const to = a && redirectOf(parseHash(a.getAttribute('href') ?? ''), core.agent?.target ?? null);
-    if (!to || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    e.preventDefault();
-    if (location.hash !== to) location.hash = to;
-  });
-  const header = h('header', { class: 'topbar' },
-    /* en */ h('a', { class: 'brand', href: '#/trips', 'aria-label': 'annai' }, 'ann', h('span', { class: 'brand-ai' }, 'ai')),
-    nav);
-  const drawTabs = () => {
-    const tabs = slotEntries({ registry: core.registry }, 'ui:screen').filter((e) => e.item?.tab)
-      .map((e) => h('a', { href: `#/ext/${encodeURIComponent(e.pluginId)}/${encodeURIComponent(e.item.id)}`, text: String(e.item.title) }));
-    links = [...builtIn, ...tabs];
-    nav.replaceChildren(...links);
-    showMore();
-  };
-  /** The top bar fades at its end while there is more of it to scroll to. */
-  const showMore = () => nav.classList.toggle('more', nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 1);
-  nav.addEventListener('scroll', showMore, { passive: true });
-  addEventListener('resize', showMore);
-  document.fonts?.ready.then(showMore); // the tabs widen once annai's fonts arrive
   tapKeepsKeyboard();
   dockHidesWhileTyping(document, { ended: () => notices.hold() });
-  drawTabs();
-
-  // Swiping sideways between tabs is experimental, off until Settings → Experimental turns it on. Off, the screen
-  // leaves sideways panning to the browser (no touch-action of its own).
-  let swipes = false;
-  const setSwipes = (/** @type {boolean} */ on) => {
-    swipes = on;
-    main.classList.toggle('swipes', on);
-  };
-  if (core.ws) readAppSettings(core.ws).then((a) => setSwipes(a.experimental?.swipeTabs === true)).catch(() => {});
   const ctx = {
-    ...core, notices, setSwipes,
+    ...core, notices,
     go: (/** @type {string} */ hash) => { if (location.hash === hash) render(); else location.hash = hash; },
     render: () => render(),
     replace: (/** @type {string} */ hash) => replaceHash(hash),
@@ -138,17 +92,13 @@ export function startShell(root, core) {
   // The cards sit under the top bar, in the page (base.css: what a landing card moves follows them).
   // The + is the shell's, shown on home whatever the dock (a plugin's has none): a new conversation, with no naming step.
   const plus = core.agent && core.chats ? h('button', { class: 'plus', type: 'button', 'aria-label': t`New conversation`, onclick: () => newConversation(ctx) }, '+') : null;
-  root.replaceChildren(header, notices.el, installBanner(), main, notices.toasts, ...(dock ? [dock.el] : []), ...(plus ? [plus] : []));
+  root.replaceChildren(notices.el, installBanner(), main, notices.toasts, ...(dock ? [dock.el] : []), ...(plus ? [plus] : []));
   // She speaks, listens or works: on home the whole dock shows, so an open microphone can be stopped there (shiori.css). Koe's own state decides (`over`
   // is it, beneath the dock's Thinking while Kokoro works behind a Koe at rest): Kokoro's work alone shows on home as the sign.
   const busy = (/** @type {{ name: string, over?: string }} */ s) => document.body.classList.toggle('dock-busy', (s.over ?? s.name) !== 'sleeping' && (s.over ?? s.name) !== 'offline');
   if (core.agent) {
     busy(core.agent.state);
     core.agent.on('state', busy);
-  }
-  // A screen's own sticky row (the Conversation's title and ⋯) sits right under the bar, however tall it is on this phone.
-  if (typeof ResizeObserver === 'function') {
-    new ResizeObserver(([e]) => document.documentElement.style.setProperty('--topbar-h', `${Math.floor(/** @type {HTMLElement} */ (e.target).getBoundingClientRect().height)}px`)).observe(header);
   }
   // A page read to its end stays there when a phone turns or the dock changes height (at-end.js). After the cards' resize handler, which runs first.
   const { keep } = keepAtEnd();
@@ -186,15 +136,8 @@ export function startShell(root, core) {
     }
   })());
   let entry = '';
-  // Each tab's screen you last had open, and where you were on it: swiping into the tab brings you back there.
-  /** @type {Map<string, { hash: string, y: number }>} by the tab's link */
-  const lastIn = new Map();
-  /** The tab, the address, the name and the entry's key of the screen drawn now. @type {{ tab: string | null, hash: string, name: string, entry: string }} */
-  let shown = { tab: null, hash: '', name: '', entry: '' };
-  /** Screens passed through, never the one a swipe brings back: opening a file or a link to one, installing a plugin. */
-  const PASSING = new Set(['import', 'plugin-install', 'welcome']);
-  /** Where a swipe's new history entry scrolls to, once. @type {number | null} */
-  let swipedTo = null;
+  /** The address, the name and the entry's key of the screen drawn now. @type {{ hash: string, name: string, entry: string }} */
+  let shown = { hash: '', name: '', entry: '' };
   addEventListener('scroll', () => { if (entry) scrolls.set(entry, scrollY); }, { passive: true });
   addEventListener('pagehide', () => {
     if (entry) scrolls.set(entry, scrollY);
@@ -279,9 +222,7 @@ export function startShell(root, core) {
     }
     entry = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
     history.replaceState({ ...st, annaiScroll: entry, annaiIdx: idx, annaiLoad: load }, '');
-    const y = swipedTo ?? 0;
-    swipedTo = null;
-    return y;
+    return 0;
   };
   /** This entry becomes another address, keeping its number, and is drawn. @param {string} to */
   const replaceHash = (to) => {
@@ -326,7 +267,6 @@ export function startShell(root, core) {
       // Where you were on the screen you're leaving, now: a scroll event can come a frame late, after the move.
       if (shown.entry) scrolls.set(shown.entry, scrollY); // the screen's, not an entry passed over without drawing
       if (shown.name === 'trips') homeY = scrollY;
-      if (shown.tab && !PASSING.has(shown.name)) lastIn.set(shown.tab, { hash: shown.hash, y: scrollY });
       pending = arrive();
     }
     // A trip that isn't here has no screen at any of its addresses; a failed read is not "gone": its error is the screen's (below).
@@ -384,26 +324,13 @@ export function startShell(root, core) {
     }
     cleanUp('screen', my); // what plugins drew on the screen before
     const route = asked;
-    // A file opened from the Plan, a booking or Now is in that tab.
-    const from = ['file', 'booking', 'item'].includes(route.name) ? cameFrom(route.params.from, route.parts[1], core.agent?.trip ?? null) : null;
-    const at = from ? parseHash(from.hash) : route;
-    const section = SECTION[at.name] ?? (at.parts[0] === 'trip' ? 'trips' : at.parts[0]);
-    const current = route.name === 'ext' ? location.hash : `#/${section}`;
-    for (const a of links) {
-      if (a.getAttribute('href') === current) a.setAttribute('aria-current', 'page');
-      else a.removeAttribute('aria-current');
-    }
-    // The screen you are on stays in view in the top bar, however far along it is.
-    const on = links.find((a) => a.hasAttribute('aria-current'));
     // Where Driving's ← goes: the screen it was entered from.
     if (route.name === 'drive' && shown.name && shown.name !== 'drive') /** @type {any} */ (ctx).drivingFrom = shown.hash || '#/trips';
-    shown = { tab: on?.getAttribute('href') ?? null, hash: location.hash, name: route.name, entry };
+    shown = { hash: location.hash, name: route.name, entry };
     // The welcome is a page of its own: the install warning waits for its last step, which says the same.
     document.body.classList.toggle('welcoming', route.name === 'welcome');
     // Home, and `me`'s read-only lines: the dock rests as on home, so talking there is the + (a new chat).
     document.body.classList.toggle('home', route.name === 'trips' || (route.name === 'talk' && route.parts[0] !== 'trip' && route.parts[1] === 'me'));
-    if (on && o.moved) nav.scrollLeft = Math.max(0, Math.min(nav.scrollLeft, on.offsetLeft - nav.offsetLeft), on.offsetLeft - nav.offsetLeft + on.offsetWidth - nav.clientWidth + 32); // clear of the fade
-    showMore();
     const screen = SCREENS[route.name] ?? SCREENS.trips;
     try {
       if (failed) throw failed.error;
@@ -451,36 +378,6 @@ export function startShell(root, core) {
     else if ((st?.annaiViewer || st?.annaiAsk) && st.annaiIdx > lastIdx) history.go(st.annaiIdx < top ? 1 : -1);
   });
 
-  // Swiping a screen sideways moves to the next or the previous tab of the top bar. Not from the screen's edges
-  // (the phone's own back gesture), nor on anything that moves sideways itself.
-  /** @type {{ x: number, y: number, t: number } | null} */
-  let swipe = null;
-  const ownsSideways = (/** @type {EventTarget | null} */ t) => {
-    for (let n = t instanceof Element ? t : null; n && n !== main; n = n.parentElement) {
-      if (n.matches('input, textarea, select, [contenteditable], canvas, .viewer-stage, .no-swipe')) return true;
-      if (n.scrollWidth > n.clientWidth + 1 && /auto|scroll/.test(getComputedStyle(n).overflowX)) return true;
-    }
-    return false;
-  };
-  main.addEventListener('pointerdown', (e) => {
-    swipe = swipes && e.pointerType === 'touch' && e.isPrimary && e.clientX > 24 && e.clientX < innerWidth - 24 && !ownsSideways(e.target)
-      ? { x: e.clientX, y: e.clientY, t: e.timeStamp } : null;
-  });
-  main.addEventListener('pointercancel', () => { swipe = null; });
-  main.addEventListener('pointerup', (e) => {
-    const s = swipe;
-    swipe = null;
-    if (!s || e.pointerType !== 'touch') return;
-    const dx = e.clientX - s.x;
-    if (Math.abs(dx) < 80 || Math.abs(dx) < 2 * Math.abs(e.clientY - s.y) || e.timeStamp - s.t > 700) return;
-    const i = links.findIndex((a) => a.hasAttribute('aria-current'));
-    const to = i < 0 ? null : links[i + (dx < 0 ? 1 : -1)];
-    if (!to) return;
-    const tab = /** @type {string} */ (to.getAttribute('href'));
-    const last = lastIn.get(tab);
-    swipedTo = last?.y ?? null;
-    location.hash = last?.hash ?? tab;
-  });
   /** What a redraw now would lose: a field being typed in, a key typed and not saved, an error shown (not one the screen draws again itself: data-kept), or a list being dragged. */
   const typing = () => {
     const a = document.activeElement;
@@ -507,7 +404,6 @@ export function startShell(root, core) {
         if (now === drawn) return;
         drawn = now;
         syncThemes(core.registry, document.head);
-        drawTabs();
         if (!remakeDock()) /** @type {any} */ (ctx).dock?.refreshSlots?.();
         redraw();
       }, 0);
@@ -524,7 +420,7 @@ export function startShell(root, core) {
   });
   // A trip opened by the user's choice on annai's card (carryOn). From home the address follows into the conversation (the timeline design,
   // "Moving into a trip"), once nothing typed would be lost: a new entry, so Back returns home, which opens nothing. Elsewhere the screen is drawn
-  // again: a conversation left goes to the open one at its redraw (render: a replace, as its address is stale), Details and Settings stay, their top bar the trip.
+  // again: a conversation left goes to the open one at its redraw (render: a replace, as its address is stale), Details and Settings stay.
   /** @type {any} */ (core.agent)?.on?.('went', (/** @type {{ trip: string }} */ { trip }) => {
     if (parseHash(location.hash).name !== 'trips') return redraw();
     whenFree(() => { if (parseHash(location.hash).name === 'trips' && core.agent?.target === trip) ctx.go(talkHref(trip)); });

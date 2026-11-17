@@ -1669,16 +1669,13 @@ ah9gez	ok	Turn GPS on	開啟 GPS	src/ui/screens/drive.js:96	Note: 開啟, as "�
 14ltb7u	ok	The itinerary has no places to choose from yet.	行程裡還沒有可選的地點。	src/ui/screens/drive.js:99	
 1sedy1m	ok	Where are you?	你在哪裡？	src/ui/screens/drive.js:99	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
 1w8zbso	ok	annai now knows you're at {0}.	已將你的位置設為 {0}。	src/ui/screens/drive.js:104	{0} = p.name
-amdsnu	ok	Swipe sideways to move between tabs	左右滑動切換分頁	src/ui/screens/experimental.js:14	
-1py6vf8	ok	Unfinished translations	未完成的翻譯	src/ui/screens/experimental.js:19	
-13a0vz9	ok	Features that are still being tried. They may have bugs, and their fixes may come slower than the rest of annai.	仍在試驗中的功能，可能有錯誤，修正速度也可能比 annai 的其他部分慢。	src/ui/screens/experimental.js:25	
-1wwmv7i	ok	Swiping between tabs	滑動切換分頁	src/ui/screens/experimental.js:26	
-16e9lp9	ok	Swipe a screen left or right to go to the next or the previous tab of the top bar, back to the screen you last had open there. Off, a sideways swipe does what the browser does.	左右滑動頁面，即可切換到頂部列的下一個或上一個分頁，並回到你上次在該分頁開啟的頁面。關閉後，左右滑動會執行瀏覽器的預設動作。	src/ui/screens/experimental.js:28	
-15b29xu	ok	Translations that nobody who reads the language has checked yet. On, you can choose them in Settings → Languages. Their wording may be wrong, and what isn't translated yet stays in English.	還沒有懂該語言的人檢查過的翻譯。開啟後，可以在設定 → 語言中選擇。用詞可能有誤，尚未翻譯的部分仍顯示英文。	src/ui/screens/experimental.js:31	Note: the place moved from 設定 → Shiori → 語言 to 設定 → 語言 (2026-10-28).
-cwo6nv	ok	Remote trace (for developers)	遠端記錄（開發人員）	src/ui/screens/experimental.js:34	Note: Trace is 記錄 and Developer 開發人員 (glossary).
-1o37pki	ok	Sends annai's trace to a server you run, to see what annai does on this phone as it happens. Off until you set it up; a chip in the dock shows while it sends.	把 annai 的記錄傳送到你自己架設的伺服器，即時查看 annai 在這支手機上的操作。設定好之前維持關閉；傳送期間底部列會顯示一個按鈕。	src/ui/screens/experimental.js:36	Note: "chip" is ボタン / 按鈕 (glossary).
-m3chyg	ok	Open Remote trace	開啟遠端記錄	src/ui/screens/experimental.js:38	
-v16nvk	ok	Get it from annai's catalog	從 annai 的目錄取得	src/ui/screens/experimental.js:39	
+1py6vf8	ok	Unfinished translations	未完成的翻譯	src/ui/screens/experimental.js:16	
+13a0vz9	ok	Features that are still being tried. They may have bugs, and their fixes may come slower than the rest of annai.	仍在試驗中的功能，可能有錯誤，修正速度也可能比 annai 的其他部分慢。	src/ui/screens/experimental.js:22	
+15b29xu	ok	Translations that nobody who reads the language has checked yet. On, you can choose them in Settings → Languages. Their wording may be wrong, and what isn't translated yet stays in English.	還沒有懂該語言的人檢查過的翻譯。開啟後，可以在設定 → 語言中選擇。用詞可能有誤，尚未翻譯的部分仍顯示英文。	src/ui/screens/experimental.js:25	Note: the place moved from 設定 → Shiori → 語言 to 設定 → 語言 (2026-10-28).
+cwo6nv	ok	Remote trace (for developers)	遠端記錄（開發人員）	src/ui/screens/experimental.js:28	Note: Trace is 記錄 and Developer 開發人員 (glossary).
+1o37pki	ok	Sends annai's trace to a server you run, to see what annai does on this phone as it happens. Off until you set it up; a chip in the dock shows while it sends.	把 annai 的記錄傳送到你自己架設的伺服器，即時查看 annai 在這支手機上的操作。設定好之前維持關閉；傳送期間底部列會顯示一個按鈕。	src/ui/screens/experimental.js:30	Note: "chip" is ボタン / 按鈕 (glossary).
+m3chyg	ok	Open Remote trace	開啟遠端記錄	src/ui/screens/experimental.js:32	
+v16nvk	ok	Get it from annai's catalog	從 annai 的目錄取得	src/ui/screens/experimental.js:33	
 161ctfm	ok	Settings → Plugins	設定 → 外掛程式	src/ui/screens/ext.js:19	
 govuvp	ok	This page isn't here	找不到這個頁面	src/ui/screens/ext.js:21	
 1fks4l6	ok	{0} is on, but it has no page called {1}.	{0} 已開啟，但沒有名為 {1} 的頁面。	src/ui/screens/ext.js:23	{0} = on.manifest?.name ?? pluginId; {1} = id
@@ -2246,7 +2243,7 @@ onrqou	ok	About	關於	src/ui/screens/settings.js:87
 ynqcma	ok	A report of recent errors and system events, without your files or keys, to paste into a bug report.	最近的錯誤和系統事件報告（不含檔案或金鑰），可貼到問題回報中。	src/ui/screens/settings.js:89	
 2yd0qo	ok	Copy diagnostics	複製診斷資訊	src/ui/screens/settings.js:90	
 5gnef9	ok	Try GPS, the replay and the recap with a simulated trip.	用模擬旅行試用 GPS、回放和回顧。	src/ui/screens/settings.js:91	
-xgedcv	ok	Features still being tried, such as swiping between tabs. Each is off until you turn it on.	仍在試驗中的功能，例如左右滑動切換分頁。每項功能預設關閉，需要手動開啟。	src/ui/screens/settings.js:92	
+1ot30rf	draft	Features still being tried, and developer tools such as Remote trace.	仍在試驗中的功能，以及遠端記錄等開發人員工具。	src/ui/screens/settings.js:92	
 3y74hh	ok	Erase	清除	src/ui/screens/settings.js:93	
 5d0bx7	ok	Keep originals: store photos exactly as taken	保留原圖：依拍攝原樣儲存照片	src/ui/screens/settings.js:110	
 uq55l7	ok	WebP, or JPEG where this browser can't write WebP	WebP（不支援時用 JPEG）	src/ui/screens/settings.js:113	Note: Short, so the select box shows it whole on a phone.
@@ -2789,9 +2786,9 @@ f2eaqi	ok	Find a search plugin	尋找搜尋外掛程式	src/ui/search-panel.js:9
 do1m5o	ok	{0}: annai can't show this setting.	{0}：annai 無法顯示此設定。	src/ui/settings-form.js:116	{0} = f.label
 1qrgqx0	ok	saved	已儲存	src/ui/settings-form.js:121	
 phutrz	ok	{0} wasn't saved: {1}	「{0}」未能儲存：{1}	src/ui/settings-form.js:130	{0} = f.label; {1} = messageOf(e)
-1skw031	ok	This screen couldn't open	無法開啟此頁面	src/ui/shell.js:435	
-1z00dfe	ok	An update is ready	更新已就緒	src/ui/shell.js:548	
-gt0nrj	ok	It will be used the next time annai starts.	下次啟動 annai 時生效。	src/ui/shell.js:548	
+1skw031	ok	This screen couldn't open	無法開啟此頁面	src/ui/shell.js:362	
+1z00dfe	ok	An update is ready	更新已就緒	src/ui/shell.js:444	
+gt0nrj	ok	It will be used the next time annai starts.	下次啟動 annai 時生效。	src/ui/shell.js:444	
 sntfon	ok	Hello! This is how I sound when I talk to you.	你好！我跟你說話時就是這個聲音。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
 n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
 1a27ynt	ok	Last tested {0}: it worked.	上次測試（{0}）：可以使用。	src/ui/speech-check.js:26	{0} = relTime(verified.at)

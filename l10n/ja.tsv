@@ -1669,16 +1669,13 @@ ah9gez	ok	Turn GPS on	GPSをオンにする	src/ui/screens/drive.js:96
 14ltb7u	ok	The itinerary has no places to choose from yet.	旅程にはまだ選べる場所がありません。	src/ui/screens/drive.js:99	
 1sedy1m	ok	Where are you?	いまどこにいますか？	src/ui/screens/drive.js:99	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
 1w8zbso	ok	annai now knows you're at {0}.	現在地を{0}に設定しました。	src/ui/screens/drive.js:104	{0} = p.name
-amdsnu	ok	Swipe sideways to move between tabs	横スワイプでタブを切り替える	src/ui/screens/experimental.js:14	
-1py6vf8	ok	Unfinished translations	未完成の翻訳	src/ui/screens/experimental.js:19	
-13a0vz9	ok	Features that are still being tried. They may have bugs, and their fixes may come slower than the rest of annai.	開発中の機能です。不具合が起きることがあり、その修正もほかの機能より遅れる場合があります。	src/ui/screens/experimental.js:25	
-1wwmv7i	ok	Swiping between tabs	タブのスワイプ切り替え	src/ui/screens/experimental.js:26	
-16e9lp9	ok	Swipe a screen left or right to go to the next or the previous tab of the top bar, back to the screen you last had open there. Off, a sideways swipe does what the browser does.	画面を左右にスワイプすると、上部バーの次または前のタブに移動し、そのタブで最後に開いていた画面に戻ります。オフのときは、横スワイプするとブラウザ本来の動作になります。	src/ui/screens/experimental.js:28	
-15b29xu	ok	Translations that nobody who reads the language has checked yet. On, you can choose them in Settings → Languages. Their wording may be wrong, and what isn't translated yet stays in English.	その言語がわかる人がまだ確認していない翻訳です。オンにすると、「設定 → 言語」で選べるようになります。表現に誤りが含まれる場合があり、未翻訳の部分は英語で表示されます。	src/ui/screens/experimental.js:31	Note: the place moved from 設定 → Shiori → 言語 to 設定 → 言語 (2026-10-28).
-cwo6nv	ok	Remote trace (for developers)	リモート記録（開発者向け）	src/ui/screens/experimental.js:34	Note: Trace is 記録 / 记录 (glossary); Developer is 開発者向け / 开发者.
-1o37pki	ok	Sends annai's trace to a server you run, to see what annai does on this phone as it happens. Off until you set it up; a chip in the dock shows while it sends.	annaiの記録を自分のサーバーに送り、この端末でannaiが何をしているかをリアルタイムで確認できます。設定するまではオフです。送信中はドックにボタンが表示されます。	src/ui/screens/experimental.js:36	Note: "chip" is ボタン / 按钮 (glossary).
-m3chyg	ok	Open Remote trace	リモート記録を開く	src/ui/screens/experimental.js:38	
-v16nvk	ok	Get it from annai's catalog	annaiのカタログから入手	src/ui/screens/experimental.js:39	
+1py6vf8	ok	Unfinished translations	未完成の翻訳	src/ui/screens/experimental.js:16	
+13a0vz9	ok	Features that are still being tried. They may have bugs, and their fixes may come slower than the rest of annai.	開発中の機能です。不具合が起きることがあり、その修正もほかの機能より遅れる場合があります。	src/ui/screens/experimental.js:22	
+15b29xu	ok	Translations that nobody who reads the language has checked yet. On, you can choose them in Settings → Languages. Their wording may be wrong, and what isn't translated yet stays in English.	その言語がわかる人がまだ確認していない翻訳です。オンにすると、「設定 → 言語」で選べるようになります。表現に誤りが含まれる場合があり、未翻訳の部分は英語で表示されます。	src/ui/screens/experimental.js:25	Note: the place moved from 設定 → Shiori → 言語 to 設定 → 言語 (2026-10-28).
+cwo6nv	ok	Remote trace (for developers)	リモート記録（開発者向け）	src/ui/screens/experimental.js:28	Note: Trace is 記録 / 记录 (glossary); Developer is 開発者向け / 开发者.
+1o37pki	ok	Sends annai's trace to a server you run, to see what annai does on this phone as it happens. Off until you set it up; a chip in the dock shows while it sends.	annaiの記録を自分のサーバーに送り、この端末でannaiが何をしているかをリアルタイムで確認できます。設定するまではオフです。送信中はドックにボタンが表示されます。	src/ui/screens/experimental.js:30	Note: "chip" is ボタン / 按钮 (glossary).
+m3chyg	ok	Open Remote trace	リモート記録を開く	src/ui/screens/experimental.js:32	
+v16nvk	ok	Get it from annai's catalog	annaiのカタログから入手	src/ui/screens/experimental.js:33	
 161ctfm	ok	Settings → Plugins	設定 → プラグイン	src/ui/screens/ext.js:19	
 govuvp	ok	This page isn't here	ページが見つかりません	src/ui/screens/ext.js:21	
 1fks4l6	ok	{0} is on, but it has no page called {1}.	{0}はオンですが、{1}というページはありません。	src/ui/screens/ext.js:23	{0} = on.manifest?.name ?? pluginId; {1} = id
@@ -2246,7 +2243,7 @@ onrqou	ok	About	情報	src/ui/screens/settings.js:87
 ynqcma	ok	A report of recent errors and system events, without your files or keys, to paste into a bug report.	最近のエラーやシステムイベントのレポート。ファイルやキーは含まれず、不具合の報告に貼り付けられます。	src/ui/screens/settings.js:89	
 2yd0qo	ok	Copy diagnostics	診断情報をコピー	src/ui/screens/settings.js:90	
 5gnef9	ok	Try GPS, the replay and the recap with a simulated trip.	旅のシミュレーションで、GPS、リプレイ、振り返りを試せます。	src/ui/screens/settings.js:91	
-xgedcv	ok	Features still being tried, such as swiping between tabs. Each is off until you turn it on.	タブのスワイプ切り替えなど、開発中の機能です。オンにするまで、どれも使われません。	src/ui/screens/settings.js:92	
+1ot30rf	draft	Features still being tried, and developer tools such as Remote trace.	開発中の機能と、リモート記録などの開発者向けツールです。	src/ui/screens/settings.js:92	
 3y74hh	ok	Erase	消去	src/ui/screens/settings.js:93	
 5d0bx7	ok	Keep originals: store photos exactly as taken	オリジナルを残す：写真を撮ったままの状態で保存	src/ui/screens/settings.js:110	
 uq55l7	ok	WebP, or JPEG where this browser can't write WebP	WebP（このブラウザが対応していない場合はJPEG）	src/ui/screens/settings.js:113	
@@ -2789,9 +2786,9 @@ f2eaqi	ok	Find a search plugin	検索プラグインを探す	src/ui/search-pane
 do1m5o	ok	{0}: annai can't show this setting.	{0}：この設定はannaiでは表示できません。	src/ui/settings-form.js:116	{0} = f.label
 1qrgqx0	ok	saved	保存済み	src/ui/settings-form.js:121	
 phutrz	ok	{0} wasn't saved: {1}	{0}を保存できませんでした：{1}	src/ui/settings-form.js:130	{0} = f.label; {1} = messageOf(e)
-1skw031	ok	This screen couldn't open	この画面を開けませんでした	src/ui/shell.js:435	
-1z00dfe	ok	An update is ready	アップデートの準備ができました	src/ui/shell.js:548	
-gt0nrj	ok	It will be used the next time annai starts.	次回annaiを起動したときに適用されます。	src/ui/shell.js:548	
+1skw031	ok	This screen couldn't open	この画面を開けませんでした	src/ui/shell.js:362	
+1z00dfe	ok	An update is ready	アップデートの準備ができました	src/ui/shell.js:444	
+gt0nrj	ok	It will be used the next time annai starts.	次回annaiを起動したときに適用されます。	src/ui/shell.js:444	
 sntfon	ok	Hello! This is how I sound when I talk to you.	こんにちは。こんな声でお話しします。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
 n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
 1a27ynt	ok	Last tested {0}: it worked.	最終テスト（{0}）：動作しました。	src/ui/speech-check.js:26	{0} = relTime(verified.at); Note: {0} is a relative time, in brackets as on a model's test line.

@@ -89,7 +89,7 @@ export async function renderSettings(ctx) {
       h('p', { class: 'sub', text: t`A report of recent errors and system events, without your files or keys, to paste into a bug report.` }),
       h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => copyDiagnostics(ctx) }, t`Copy diagnostics`))),
     developer: () => section(t`Developer`, ...goTo(t`Try GPS, the replay and the recap with a simulated trip.`, '#/simulate', t`Simulate a trip`)),
-    experimental: () => section(t`Experimental`, ...goTo(t`Features still being tried, such as swiping between tabs. Each is off until you turn it on.`, '#/experimental', t`Experimental`)),
+    experimental: () => section(t`Experimental`, ...goTo(t`Features still being tried, and developer tools such as Remote trace.`, '#/experimental', t`Experimental`)),
     erase: () => section(t`Erase`, eraseControls(ctx)),
   };
   /** @type {any[]} */

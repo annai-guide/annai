@@ -18,22 +18,7 @@ a { color: var(--ai); }
 [hidden] { display: none !important; }
 .mono { font-family: var(--f-mono); }
 
-/* top bar */
-.topbar {
-  position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: calc(env(safe-area-inset-top, 0px) + 10px) max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px));
-  background: color-mix(in srgb, var(--paper) 92%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--line);
-}
-.brand { font-family: var(--f-display); font-weight: 700; font-size: 24px; color: var(--ink); text-decoration: none; line-height: 1; }
-.brand-ai { color: var(--ai); }
-.topnav { display: flex; gap: 4px; }
-.topnav a { padding: 6px 10px; border-radius: 999px; color: var(--ink-2); text-decoration: none; font-weight: 500; font-size: 15px; }
-.topnav a[aria-current='page'] { background: var(--ai-wash); color: var(--ai); }
-
 /* layout */
-/* With swiping between tabs on (Settings → Experimental), the screen takes sideways swipes itself; up and down scroll, and pinching zooms. */
-.view.swipes { touch-action: pan-y pinch-zoom; }
 .view { display: block; padding: 16px max(16px, env(safe-area-inset-right, 0px)) 96px max(16px, env(safe-area-inset-left, 0px)); max-width: 760px; margin: 0 auto; outline: none; }
 .screen, .today-top { display: flex; flex-direction: column; gap: 18px; }
 .today-top[hidden] { display: none; }
@@ -236,11 +221,6 @@ textarea.mono { font-family: var(--f-mono); font-size: 13px; }
 .checks-result { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
 .checks-result .bad { color: var(--risk); }
 .shared-text { margin: 4px 0 0; padding: 8px 12px; border-left: 3px solid var(--line); color: var(--ink-2); white-space: pre-wrap; overflow-wrap: anywhere; }
-/* The top bar scrolls rather than pushing the page wider on a phone, and fades where there is more of it. */
-.topnav { min-width: 0; overflow-x: auto; scrollbar-width: none; }
-.topnav.more { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); }
-.topnav::-webkit-scrollbar { display: none; }
-.topnav a { white-space: nowrap; }
 /* The Plan (spec §16.2): a trip booklet's schedule page. */
 .tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
 .tab { flex: none; min-height: 44px; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--sheet); color: var(--ink-2); font: inherit; font-size: 15px; cursor: pointer; }
