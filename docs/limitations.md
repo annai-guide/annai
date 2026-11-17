@@ -853,3 +853,33 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** the phone locks on the way to a fixed item, and the traveller arrives while annai is off screen. When annai comes back on screen, one catch-up says both lines: "Leave soon: Lunch at Nepenthe at 12:00." and, from the first fix, "Nepenthe: Lunch at Nepenthe." The leave line is no longer of use. Older than offplan-range: before it, the same shape said "Leave in about 15 min" there. offplan-range keeps its words true ("soon", with no count, on a catch-up's first look).
 - **Why:** the leave reminder is checked on the catch-up's first look, from where the traveller was before annai went away, before the first fix says they are already there. Dropping the leave line when the same catch-up fires that item's arrival is a rule in how a catch-up is delivered (live.js `#endCatchUp`), not in the words of a plan reminder, so it is its own change with its own tests. Making the leave reminder wait for the first fix instead would lose it when live mode is off, since no fix ever comes.
 - **Revisit when:** the next version: `#endCatchUp` leaves out an item's leave reminder when the same catch-up fires its arrival, with a unit test on the live engine for the River Inn to Nepenthe shape.
+
+### A delayed flight, or one with no arrival time, lets the next item's reminders fire in the air
+- **Kind:** deferred.
+- **What the traveller sees:** what comes after a flight (or train) waits for its end on the plan, else its start (leave-far, 2026-11-16). A plane that lands late, or a flight item with no end, lets the next fixed item's "Leave soon" and "Running late" come while the traveller is still in the air (with a position within 1000 km of the item, "Running late: … About N min away" with a big N), and the push relay's copy comes at the scheduled landing.
+- **Why:** annai doesn't know where the plane is; the plan's time is all it has. The skill tells Shiori to write a flight's end, so a missing one should be rare.
+- **Revisit when:** the next version, as its own change: count the wait from the first stop annai sees after the flight (`m.stop`, live.js) instead of the scheduled end, and take the linked booking's end for a flight item with none. The relay can't see a stop while annai is closed, so its copy stays at the scheduled time.
+
+### Ferries, buses and coaches aren't carriers
+- **Kind:** deferred.
+- **What the traveller sees:** a fixed item after a ferry, bus or coach ride gets its leave and running late as if the traveller were driving from where the ride began. On a coach, annai on screen can say "Leave soon: Harbor tour at 11:30" with the distance still to go; with live mode off, the relay's copy can come before the coach has left.
+- **Why:** only a flight or a train (kind `flight` or `rail`, on the item or its booking) carries the traveller in `planWatches`; a booking's kinds have no ferry, bus or coach (`src/plugins/core-schemas/schemas.js`).
+- **Revisit when:** the next version, as its own change: treat an item of kind `ferry`, `bus` or `coach` as a carrier the same way (and add them to the plan item's kind in the instructions).
+
+### Stays, flights and trains are recognised only by the kinds `lodging`, `flight` and `rail`
+- **Kind:** deferred.
+- **What the traveller sees:** a stay or a train written as a plan item that is linked to no booking, with a kind such as "hotel" or "train" (a plan item's kind is any string), isn't recognised. An unlinked "hotel" keeps its leave and running late within 1000 km; an unlinked "train" is no carrier, so a fixed item after it counts a drive from where the train left (on screen, on the train: "Leave soon" with the minutes of a long drive); an unlinked flight gets no 2-hour margin and a 300 m arrival circle.
+- **Why:** the plan item's kind is free text (`src/plugins/core-schemas/schemas.js`), and the plan-item example in Shiori's instructions has no kind.
+- **Revisit when:** the next version, as its own change: an enum for the plan item's kind with the synonyms a stored format accepts ("train" for `rail`, "hotel" and "stay" for `lodging`), one line in the instructions, and a look at the plans that exist first.
+
+### A check-in reached more than 3 hours late gets no "arrived" cue
+- **Kind:** deferred.
+- **What the traveller sees:** a stay's check-in item has no end, so arriving counts only until 3 hours after its start. Landing at 20:58 for a 16:00 check-in, and reaching the stay at 21:55, fires no "arrived", so its notes aren't shown. Silent, not false.
+- **Why:** `arrived` counts from 3 hours before the start until the item's end, else 3 hours after the start (`WINDOW_MIN`).
+- **Revisit when:** the next version, as its own change: a stay's arrival counts until its booking's check-out.
+
+### A flight item with no coordinates gets no leave reminder, only "coming up"
+- **Kind:** deferred.
+- **What the traveller sees:** a fixed flight item with no place gets "In 15 min: Flight … departs 14:05" and nothing earlier, so the 2-hour airport pick doesn't reach it.
+- **Why:** without a place there is no drive to count and no airport to be at; the plan's other items work the same way. Older than leave-far.
+- **Revisit when:** the next version: take the airport's place from the linked booking, or time it by the half hour before the 2-hour mark as a flight with no position is.

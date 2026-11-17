@@ -323,8 +323,12 @@ test("the user's shape on the live engine: home four days before a trip flown to
   const bookings = { inn: { id: 'inn', kind: 'lodging', status: 'confirmed', source: '/trip/files/inn.pdf', title: 'Harbor Inn' } };
   const k = await liveKit({ plan, bookings, start: at('08:00', '2026-11-23') });
   await k.fix(at('08:01', '2026-11-23'), MONTEREY);
-  const relay = async () => ((await k.live.reminders()) ?? []).map((r) => r.watch).filter((w) => w.startsWith('plan:'));
-  assert.deepEqual(await relay(), ['plan:out:leave'], 'only the flight out, which the traveller drives to');
+  const relay = async () => ((await k.live.reminders()) ?? []).filter((r) => r.watch.startsWith('plan:'));
+  // The flight out, which the traveller drives to, and the tour after the flight: its copy is counted from the plane's landing (17:30) as with no
+  // position, half an hour before it, though the phone's last position is at home, a flight away (the review's F1: the relay held nothing for it).
+  const held = await relay();
+  assert.deepEqual(held.map((r) => r.watch), ['plan:out:leave', 'plan:tour:leave']);
+  assert.equal(held[1].due, Date.parse('2026-11-27T18:30:00-05:00'));
   // The days until the flight, at home and on screen (the user's report came at 20:44 on the Monday): nothing of the stay or the tour fires.
   for (const t of [at('20:44', '2026-11-23'), at('20:00', '2026-11-24'), at('20:00', '2026-11-25'), at('20:00', '2026-11-26')]) await k.fix(t, MONTEREY);
   const fired = (await k.events(['trigger.fired'])).map((e) => String(e.data.watch));
@@ -335,8 +339,8 @@ test("the user's shape on the live engine: home four days before a trip flown to
 test("a flight's \"leave soon\" at the push relay is when the phone would say it: 2 h before the departure, less the drive and the lead", async () => {
   const SFO = { lat: 37.6213, lng: -122.379 };
   const k = await liveKit({ plan: { fly: { title: 'Flight home', kind: 'flight', fixed: true, start: { at: iso('14:05'), tz: LA }, place: { name: 'SFO', ...SFO } } } });
-  await k.fix(at('08:31'), { lat: SFO.lat + 30_000 / ((6_371_000 * Math.PI) / 180), lng: SFO.lng }); // 30 km north: about 51 min by car
+  await k.fix(at('08:31'), { lat: SFO.lat + 25_000 / ((6_371_000 * Math.PI) / 180), lng: SFO.lng }); // 25 km north: about 40 min by car
   const leave = ((await k.live.reminders()) ?? []).find((r) => r.watch === 'plan:fly:leave');
-  assert.equal(leave?.due, at('10:59')); // 14:05 − 120 − 51 − 15
+  assert.equal(leave?.due, at('11:10')); // 14:05 − 120 − 40 − 15
   k.live.dispose();
 });

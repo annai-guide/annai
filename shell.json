@@ -1,5 +1,5 @@
 {
-  "build": "1c333dabb32c",
+  "build": "c16a67dcb2ea",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -96,9 +96,9 @@
     "/src/core/llm/kept.js": "312be2a7089a",
     "/src/core/live/activity.js": "d1fe254c6571",
     "/src/core/live/clock.js": "e8699d74a329",
-    "/src/core/live/geo.js": "018e805b07f7",
+    "/src/core/live/geo.js": "2ac332367fbe",
     "/src/core/live/live.js": "a784455a3349",
-    "/src/core/live/plan-watches.js": "c561d3ba5768",
+    "/src/core/live/plan-watches.js": "4174024df20f",
     "/src/core/live/sim-run.js": "91b84ce6a313",
     "/src/core/live/simulate.js": "d42f97c8d368",
     "/src/core/live/triggers.js": "1e07368d82e6",
@@ -118,7 +118,7 @@
     "/src/core/languages.js": "e62d61e37fb3",
     "/src/core/links.js": "636b0aeadab9",
     "/src/core/lock.js": "dd40df3552c7",
-    "/src/core/now.js": "aa8a64c35e31",
+    "/src/core/now.js": "1adce939662a",
     "/src/core/names.js": "0d8fc0903f5c",
     "/src/core/official-names.js": "13fd35baa42b",
     "/src/core/package-updates.js": "c3a1f89d3bc5",

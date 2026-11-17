@@ -39,6 +39,22 @@ test('the route strip: the next stops with places, how far each is in a straight
   assert.deepEqual(routeStrip(ROWS, null, at('09:00'), 'unknown').map((x) => [x.km, x.minutes]), [[null, null], [null, null]]);
 });
 
+test("the route strip leaves out a stop farther than a day's drive: it is a flight, not a drive to time (it said \"about 3 d 21 h\" for a stay a flight away)", () => {
+  const FAR = { lat: 61.2, lng: -149.9 }; // made up: a stay about 3300 km from Big Sur, on the plan after lunch
+  const rows = planRows([
+    { path: '/plan/nepenthe.json', item: { id: 'nepenthe', title: 'Lunch at Nepenthe', fixed: true, start: { at: iso('12:00'), tz: LA }, place: { name: 'Nepenthe', ...NEPENTHE } } },
+    { path: '/plan/inn.json', item: { id: 'inn', title: 'Check in: Harbor Inn', fixed: true, start: { at: iso('16:00'), tz: LA }, place: { name: 'Harbor Inn', ...FAR } } },
+    { path: '/plan/dinner.json', item: { id: 'dinner', title: 'Dinner', fixed: true, start: { at: iso('19:00'), tz: LA }, place: { name: 'Cafe', ...BIXBY } } },
+  ], [], { fallbackTz: LA });
+  const s = routeStrip(rows, RIVER_INN, at('09:00'), 'moving-fast');
+  assert.deepEqual(s.map((x) => x.name), ['Nepenthe', 'Cafe']); // the far stop is no stop ahead on this drive, and the next one takes its place
+  assert.ok(s.every((x) => /** @type {number} */ (x.minutes) < 60));
+  // With no position nothing is far, and the sun's place is still the next stop with a place.
+  assert.deepEqual(routeStrip(rows, null, at('15:00'), 'unknown', 1).map((x) => x.name), ['Harbor Inn']);
+  // Near it (the same coast), it is a stop again.
+  assert.deepEqual(routeStrip(rows, FAR, at('15:00'), 'still').map((x) => x.name), ['Harbor Inn']);
+});
+
 test('the sun is worked out where the user is, else at the next stop with a place, else nowhere', () => {
   assert.deepEqual(sunPlace(RIVER_INN, ROWS, at('09:00')), RIVER_INN);
   assert.deepEqual(sunPlace(null, ROWS, at('11:00')), NEPENTHE);

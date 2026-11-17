@@ -41,6 +41,11 @@ test('kept points (spec §4.5): after about 20 m, or the accuracy if worse, or a
 test('the rough travel estimate (spec §11.3) errs early', () => {
   assert.equal(travelMinutes(7.05, 'drive'), 12); // River Inn to Nepenthe: 7.05 km × 1.4 ÷ 50 km/h
   assert.equal(travelMinutes(1, 'walk'), 18); // 1 km × 1.3 ÷ 4.5 km/h
+  // Faster on long drives (the user's pick, 2026-11-16): the first 30 km of road at 50 km/h, the rest at 80 km/h.
+  assert.equal(travelMinutes(21, 'drive'), 36); // 29.4 km of road, all of it at 50 km/h
+  assert.equal(travelMinutes(100, 'drive'), 119); // 140 km of road: 30 km in 36 min, 110 km in 82.5 min (it was 168)
+  assert.equal(travelMinutes(300, 'drive'), 329); // 420 km of road: 36 + 292.5 min (it was 504)
+  assert.equal(travelMinutes(100, 'walk'), 1734); // walking has no highway: 130 km at 4.5 km/h
   assert.equal(modeFor(1.5, 'walking'), 'walk');
   assert.equal(modeFor(1.5, 'moving-fast'), 'drive');
   assert.equal(modeFor(2.5, 'still'), 'drive');

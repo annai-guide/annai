@@ -46,11 +46,20 @@ export function keep(last, fix, moving) {
 
 /** The rough travel estimate (spec §11.3): straight-line distance × a detour factor ÷ a typical speed, so reminders err early. */
 /* en */ export const TRAVEL = Object.freeze({ drive: { detour: 1.4, kmh: 50, words: 'by car' }, walk: { detour: 1.3, kmh: 4.5, words: 'on foot' } });
+/**
+ * A drive's first TOWN_KM of road go at TRAVEL's 50 km/h (town driving, with lights and stops: the speed the estimate always had, and
+ * every drive under it is unchanged); the rest at HIGHWAY_KMH, a typical highway average with stops (the user's pick, 2026-11-16,
+ * "Faster on long drives": at 50 km/h a 330 km drive counted 9 h and its reminder came hours early).
+ */
+export const TOWN_KM = 30;
+export const HIGHWAY_KMH = 80;
 
 /** Minutes to travel km in a straight line, by mode, rounded up. @param {number} km @param {'drive' | 'walk'} mode */
 export function travelMinutes(km, mode) {
   const t = TRAVEL[mode];
-  return Math.ceil(((km * t.detour) / t.kmh) * 60);
+  const road = km * t.detour;
+  const town = mode === 'drive' ? Math.min(road, TOWN_KM) : road;
+  return Math.ceil((town / t.kmh + (road - town) / HIGHWAY_KMH) * 60);
 }
 
 /** On foot for 2 km or less unless moving fast; anything else by car. @param {number} km @param {string} activity @returns {'drive' | 'walk'} */
