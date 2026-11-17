@@ -1,5 +1,7 @@
 # Second drive follow-ups
 
+> **Names since changed (2026-11-17):** Koe's two lists, "Koe · Realtime" and "Koe · Classic", are **Koe · Live** and **Koe · Chat** on the screens, and the mode is the **Live** chip beside the voice chip ("Live" or "Live off"), not a choice on the voice chip. The text below keeps the names it was written with.
+
 What came out of the user's second test drive with GPS and live voice, on 2026-11-04, and what they asked for afterwards.
 Built on 8cc90d39. The drive's trace stays on this machine: this document holds no place, address or personal detail, and
 neither may anything committed for it.

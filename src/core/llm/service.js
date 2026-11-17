@@ -397,7 +397,7 @@ export function createLlm({
         if (imported && had[rec.plugin]?.enabled === false) continue;
         try {
           /* en */
-          if (!(await isProvider(rec.plugin))) throw Object.assign(new Error("the plugin it names doesn't provide models, so it wasn't installed."), { shown: t`the plugin it names doesn't provide models, so it wasn't installed.` });
+          if (!(await isProvider(rec.plugin))) throw Object.assign(new Error("the plugin it names doesn't provide models, so it wasn't installed."), { shown: t`The plugin it names doesn't provide models, so it wasn't installed.` });
           await service.installProvider(rec.plugin);
           for (const a of Object.values(p.abilities)) if (a.on) await ensure(a.type);
         } catch (e) {

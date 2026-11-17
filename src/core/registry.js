@@ -218,7 +218,7 @@ export class Registry {
    */
   guard(pluginId, name, fn) {
     return async (...args) => {
-      if (this.#disabled.has(pluginId)) throw new PluginError(pluginId, /* en */ 'is switched off after repeated errors', { shown: t`is switched off after repeated errors` });
+      if (this.#disabled.has(pluginId)) throw new PluginError(pluginId, /* en */ 'is switched off after repeated errors', { shown: t`It is switched off after repeated errors.` });
       try {
         const result = await fn(...args);
         this.#failures.set(pluginId, 0);

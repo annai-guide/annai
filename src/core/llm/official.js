@@ -153,11 +153,11 @@ export async function download(entry, { fetch: get = defaultFetch, base = '' } =
     try {
       res = await get(url, { cache: 'no-cache' });
     } catch {
-      throw new PluginError(entry.id, /* en */ "couldn't be downloaded. Check the connection and try again.", { shown: t`couldn't be downloaded. Check the connection and try again.` });
+      throw new PluginError(entry.id, /* en */ "couldn't be downloaded. Check the connection and try again.", { shown: t`It couldn't be downloaded. Check the connection and try again.` });
     }
-    if (!res.ok) throw new PluginError(entry.id, /* en */ `couldn't be downloaded (${name}: HTTP ${res.status}). Try again later.`, { shown: t`couldn't be downloaded (${name}: HTTP ${res.status}). Try again later.` });
+    if (!res.ok) throw new PluginError(entry.id, /* en */ `couldn't be downloaded (${name}: HTTP ${res.status}). Try again later.`, { shown: t`It couldn't be downloaded (${name}: HTTP ${res.status}). Try again later.` });
     const bytes = new Uint8Array(await res.arrayBuffer());
-    if ((await sha256Hex(bytes)) !== entry.files[name]) throw new PluginError(entry.id, /* en */ `wasn't installed: ${name} doesn't match annai's catalog`, { shown: t`wasn't installed: ${name} doesn't match annai's catalog` });
+    if ((await sha256Hex(bytes)) !== entry.files[name]) throw new PluginError(entry.id, /* en */ `wasn't installed: ${name} doesn't match annai's catalog`, { shown: t`It wasn't installed: ${name} doesn't match annai's catalog.` });
     got.set(name, bytes);
   };
   const worker = async () => {
@@ -293,9 +293,9 @@ async function ensureNow(host, kind, type, opts) {
   }
   if (!provided(host.registry, kind).has(type)) {
     /* en */
-    if (kind === 'storage-type') throw new PluginError(entry.id, `didn't provide a kind of backup place ${type}`, { shown: t`didn't provide a kind of backup place ${type}` });
+    if (kind === 'storage-type') throw new PluginError(entry.id, `didn't provide a kind of backup place ${type}`, { shown: t`It didn't provide a kind of backup place ${type}.` });
     /* en */
-    throw new PluginError(entry.id, `didn't provide an endpoint type ${type}`, { shown: t`didn't provide an endpoint type ${type}` });
+    throw new PluginError(entry.id, `didn't provide an endpoint type ${type}`, { shown: t`It didn't provide an endpoint type ${type}.` });
   }
 }
 

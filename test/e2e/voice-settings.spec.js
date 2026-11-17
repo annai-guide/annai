@@ -176,7 +176,7 @@ test("OpenAI's gpt-4o-mini-tts page: a style the user set before the Style field
     const abilityJson = region.getByLabel('Tunables (JSON)');
     await abilityJson.fill(JSON.stringify({ ...JSON.parse(await abilityJson.inputValue()), instructions: 'Old words' }));
     await leaveSaved(abilityJson);
-    await region.getByRole('link', { name: /^OpenAI: GPT-4o mini TTS/ }).click();
+    await region.getByRole('link', { name: /^GPT-4o mini TTS/ }).click();
     await expect(page.getByRole('heading', { level: 1, name: /GPT-4o mini TTS/ })).toBeVisible();
     await still(page);
     const voice = page.getByRole('combobox', { name: 'Voice' });

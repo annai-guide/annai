@@ -162,16 +162,20 @@ export function fileLine(became) {
   return parts.join(' · ');
 }
 
-/** Words for the keys Shiori writes most in a booking's `fields`; any other key is shown as written. */
+/**
+ * Words for the keys Shiori writes most in a booking's `fields`, and those annai files there itself; any other key is shown as written. The
+ * same keys as Shiori's words for a booking's parts (bookings.js partWords), so what she asks about has a line by that name.
+ */
 export const FIELD_WORDS = /** @type {Record<string, string>} */ ({
   flight: tc('booking')`Flight`, airline: t`Airline`, from: tc('booking')`From`, to: tc('booking')`To`, seat: t`Seat`, class: tc('booking')`Cabin`,
   travellers: t`Travellers`, bags: t`Bags`, terminal: t`Terminal`, gate: t`Gate`, room: tc('booking')`Room`, guests: t`Guests`, nights: t`Nights`,
   pickup: t`Pick-up`, dropoff: t`Drop-off`, train: tc('booking')`Train`, car: tc('train')`Car`, party: t`Party size`, notes: t`Notes`,
+  phone: t`Phone number`, passengers: t`Passengers`, company: t`Company`, flights: tc('booking')`Flights`,
 });
 
 /** Each kind's facts in the order a person checks them; then any other field, as written. */
 const ORDER = /** @type {Record<string, string[]>} */ ({
-  flight: ['route', 'start', 'end', 'flight', 'airline', 'seat', 'travellers', 'bags', 'confirmation', 'cost'],
+  flight: ['route', 'start', 'end', 'place', 'flight', 'airline', 'seat', 'travellers', 'bags', 'confirmation', 'cost'],
   lodging: ['place', 'start', 'end', 'nights', 'room', 'guests', 'confirmation', 'cost'],
 });
 const OTHER = ['start', 'end', 'place', 'confirmation', 'cost'];

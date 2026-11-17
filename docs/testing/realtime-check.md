@@ -29,7 +29,7 @@ It is **opt-in and never part of `npm run check` or CI**: it needs a Gemini key 
    free-tier switch, a trip, Voice on, a tap on Shiori. By default Kokoro (the thinking half) is a stand-in on a local port (an
    Anthropic Messages server) that answers every question at once with one note, so the voice path is measured alone and a free
    key's chat 429s and 503s do not blur it; `--kokoro gemini` uses Gemini's chat model for Kokoro too ("Use the recommended
-   models", Gemini Live first in Koe, or in Koe · Realtime where Koe has two lists), and then a note can take 30 to 80 s on a free key.
+   models", Gemini Live first in Koe, or in Koe · Live where Koe has two lists), and then a note can take 30 to 80 s on a free key.
 5. **The live socket is watched** by Playwright (frame kinds and sizes, transcripts; never the address, which holds the key), and
    **annai's own trace** is read from its IndexedDB (`live.turn`, `live.session`, `out.speak`, `heard`, errors) and merged with both
    into one timeline.
@@ -165,7 +165,7 @@ put real speech to it:
   first). The user's line is `tomorrow.wav` ("What's on tomorrow in Testville?"); each scenario then answers the card. `expect` in scenarios.mjs says what the rule
   gives; the report says what happened (`granted-voice`, `granted-tap`, `unanswered`, `not-now`, `none`: still waiting), the times from the end of the user's last
   clip, what Gemini wrote for it, what Koe said meanwhile, and what Shiori was given.
-- **Classic voice** (`classic-*`, with `--asr <origin>`): no Koe; Speech in is a Local speech server whose address is the stand-in's `/asr` (annai calls only https
+- **Speech in, no Koe** (`classic-*`, with `--asr <origin>`): no Koe; Speech in is a Local speech server whose address is the stand-in's `/asr` (annai calls only https
   addresses, or http on this device, so a server on the network is reached through the stand-in, which passes on transcription requests and nothing else, one at
   a time, and logs the words that came back); the gate is Gemini 3.5 Flash Lite (adding Gemini puts it in Quick decision).
 - **A real Kokoro** (`real-yes`, `real-yes-but`, `real-no-thanks`, with `--anthropic-key <file>` or `ANNAI_LIVE_ANTHROPIC_KEY`): Claude Opus 5.5 through the Anthropic provider (Haiku 5.5 as utility),

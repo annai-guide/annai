@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, SYS } from '../../src/core/scopes.js';
-import { readConfig, modelOf, providerOf, getKey, saveProvider, saveModel, saveRoles, removeModel, removeProviderRecords, diffLayer, providerBase } from '../../src/core/llm/config.js';
+import { readConfig, modelOf, providerOf, getKey, saveProvider, saveModel, saveRoles, removeModel, removeProviderRecords, diffLayer, providerBase, modelNames as screenNames } from '../../src/core/llm/config.js';
 import { addProvider, syncProviders, useSuggestion, addListedModel, addModelById, withSpeech, speechAdd, speechBehind } from '../../src/core/llm/providers.js';
 import { ttlFor } from '../../src/core/agent/warmth.js';
 import { OPENAI_SRC, ROUTER_SRC, ANTHROPIC_SRC, ANOTHER_SRC, PROTO, PROVIDER, site } from './provider-kit.js';
@@ -44,8 +44,8 @@ test('adding a provider: abilities and their models, one key, no paid chat model
   assert.equal(await getKey(ctx.store, id), 'sk-o');
   assert.deepEqual(names(cfg, 'main'), ['GPT-6.1 Sol'], 'OpenAI has no free model, so as the first provider it fills Main, which must not stay empty');
   assert.deepEqual(names(cfg, 'utility'), ['GPT-6 Luna']);
-  assert.deepEqual(names(cfg, 'speech-out'), ['browser-voice', 'OpenAI: GPT-4o mini TTS (Marin)']); // behind, never ahead (anti-goal)
-  assert.deepEqual(names(cfg, 'speech-in'), ['send-audio', 'dictation', 'OpenAI: GPT Transcribe']);
+  assert.deepEqual(names(cfg, 'speech-out'), ['browser-voice', 'GPT-4o mini TTS (Marin)']); // behind, never ahead (anti-goal)
+  assert.deepEqual(names(cfg, 'speech-in'), ['send-audio', 'dictation', 'GPT Transcribe']);
   const voice = Object.values(cfg.models).find((m) => m.ability === 'voice');
   assert.equal(voice?.template?.id, 'provider-openai/voice/gpt-4o-mini-tts');
   assert.deepEqual(modelOf(/** @type {any} */ (voice)).tunables, { voice: 'marin' });
@@ -132,14 +132,14 @@ test('two providers from one plugin: two keys, models named apart; removing one 
   assert.ok(modelNames(cfg).includes('GPT-6 Luna (2)'), modelNames(cfg).join());
   assert.deepEqual([providerOf(cfg.providers[a]).name, providerOf(cfg.providers[b]).name], ['OpenAI (work)', 'OpenAI (home)']);
   assert.deepEqual(names(cfg, 'main'), ['GPT-6.1 Sol'], "the second fills no role the first has filled");
-  assert.deepEqual(names(cfg, 'speech-out'), ['browser-voice', 'OpenAI: GPT-4o mini TTS (Marin)', 'OpenAI: GPT-4o mini TTS (Marin) (2)']);
+  assert.deepEqual(names(cfg, 'speech-out'), ['browser-voice', 'GPT-4o mini TTS (Marin)', 'GPT-4o mini TTS (Marin) (2)']);
   await removeProviderRecords(ctx.ws, ctx.store, a);
   cfg = await readConfig(ctx.ws);
   assert.equal(await getKey(ctx.store, b), 'sk-b');
   assert.equal(await getKey(ctx.store, a), null);
   assert.ok(Object.values(cfg.models).every((m) => m.provider === b));
   assert.equal(Object.values(cfg.models).length, 4);
-  assert.deepEqual(names(cfg, 'speech-out'), ['browser-voice', 'OpenAI: GPT-4o mini TTS (Marin) (2)']);
+  assert.deepEqual(names(cfg, 'speech-out'), ['browser-voice', 'GPT-4o mini TTS (Marin) (2)']);
 });
 
 test("a newer plugin version refreshes its providers: the user's renames, prices, deleted headers, switched-off abilities and address stay; new models arrive in no role; a new ability arrives off (Review Focus 2)", async () => {
@@ -181,6 +181,62 @@ test("a newer plugin version refreshes its providers: the user's renames, prices
   assert.equal(await syncProviders(ctx, [next]), 0, 'once is enough');
 });
 
+test("a second provider of one plugin, added with no name of its own, is \"<plugin's name> (2)\", as its models are: two keys of one plugin don't look alike (words-next)", async () => {
+  const ctx = await setup();
+  const [a, b, c] = [await addProvider(ctx, ROUTER_SRC, { key: 'sk-a' }), await addProvider(ctx, ROUTER_SRC, { key: 'sk-b' }), await addProvider(ctx, ROUTER_SRC, { key: 'sk-c' })];
+  let cfg = await readConfig(ctx.ws);
+  assert.deepEqual([a, b, c].map((id) => providerOf(cfg.providers[id]).name), ['Router', 'Router (2)', 'Router (3)']);
+  assert.equal(cfg.providers[a].user?.name, undefined, "the first follows the plugin's name, as before");
+  const of = (/** @type {string} */ id) => Object.values(cfg.models).filter((m) => m.provider === id).map((m) => modelOf(m).name).sort();
+  assert.deepEqual([of(b), of(c)], [['Big (2)', 'Free voice (2)', 'Paid voice (2)', 'Small (free) (2)'], ['Big (3)', 'Free voice (3)', 'Paid voice (3)', 'Small (free) (3)']]);
+  // A name given is the user's, whatever is taken; the next one with none takes the first free number.
+  const named = await addProvider(ctx, ROUTER_SRC, { key: 'sk-d', name: 'Router' });
+  await removeProviderRecords(ctx.ws, ctx.store, b);
+  const d = await addProvider(ctx, ROUTER_SRC, { key: 'sk-e' });
+  cfg = await readConfig(ctx.ws);
+  assert.equal(providerOf(cfg.providers[named]).name, 'Router');
+  assert.equal(providerOf(cfg.providers[d]).name, 'Router (2)', 'the number a removed one freed');
+});
+
+test("a plugin update that renames its models (OpenAI's and Groq's speech models lose their provider's name) keeps every role's pick and the user's names, and takes a free name where another model has it (words-next)", async () => {
+  // The phone added OpenAI twice under the version whose speech models carried "OpenAI: " in their names, and has a model of its own named as
+  // one of them is now; the user renamed one voice.
+  const old = bumped(OPENAI_SRC, '1.0.0', (p) => {
+    p.abilities.transcription.models[0].name = 'OpenAI: GPT Transcribe';
+    p.abilities.voice.models[0].name = 'OpenAI: GPT-4o mini TTS (Marin)';
+  });
+  const ctx = await setup();
+  const a = await addProvider(ctx, old, { key: 'sk-a' });
+  const b = await addProvider(ctx, old, { key: 'sk-b' });
+  const r = await addProvider(ctx, ROUTER_SRC, { key: 'sk-r', roles: null });
+  const mineId = await addModelById(ctx, r, 'chat', 'GPT Transcribe');
+  let cfg = await readConfig(ctx.ws);
+  const of = (/** @type {string} */ p, /** @type {string} */ ability) => /** @type {any} */ (Object.values(cfg.models).find((m) => m.provider === p && m.ability === ability));
+  const [aIn, aOut, bIn, bOut] = [of(a, 'transcription'), of(a, 'voice'), of(b, 'transcription'), of(b, 'voice')];
+  assert.deepEqual([aIn, aOut, bIn, bOut].map((m) => modelOf(m).name), ['OpenAI: GPT Transcribe', 'OpenAI: GPT-4o mini TTS (Marin)', 'OpenAI: GPT Transcribe (2)', 'OpenAI: GPT-4o mini TTS (Marin) (2)']);
+  await saveModel(ctx.ws, { ...aOut, user: { ...aOut.user, name: 'Marin' } });
+  const roles = (await readConfig(ctx.ws)).roles;
+  assert.ok(roles['speech-in'].models.includes(aIn.id) && roles['speech-out'].models.includes(aOut.id));
+
+  const next = bumped(OPENAI_SRC, '1.1.0', () => {});
+  assert.equal(await syncProviders(ctx, [next, ROUTER_SRC]), 2);
+  cfg = await readConfig(ctx.ws);
+  const name = (/** @type {string} */ id) => modelOf(cfg.models[id]).name;
+  assert.equal(name(aIn.id), 'GPT Transcribe (2)', 'the new name is taken by the model the user added: the first free one');
+  assert.equal(name(bIn.id), 'GPT Transcribe (3)', "the second provider's \"(2)\" follows its new name");
+  assert.equal(name(aOut.id), 'Marin', "a name the user gave stays");
+  assert.equal(name(bOut.id), 'GPT-4o mini TTS (Marin)', 'the old "(2)" was annai\'s: the new name is free');
+  assert.equal(name(mineId), 'GPT Transcribe', "the user's own model keeps its name");
+  assert.deepEqual(cfg.roles, roles, 'every role keeps its picks: they are ids');
+  const all = Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase());
+  assert.equal(new Set(all).size, all.length, 'no two models are named alike');
+  assert.equal(screenNames(cfg)('GPT Transcribe (2)'), 'OpenAI / GPT Transcribe (2)');
+  assert.equal(screenNames(cfg)('GPT Transcribe'), 'Router / GPT Transcribe');
+  // A line or a Trace entry written before keeps the old name, which no model has now: shown as it is.
+  assert.equal(screenNames(cfg)('OpenAI: GPT Transcribe'), 'OpenAI: GPT Transcribe');
+  assert.equal(await syncProviders(ctx, [next]), 0, 'once is enough');
+});
+
 test('Use the recommended models replaces the chat roles and puts speech models ahead of the stand-ins, on the tap only', async () => {
   const ctx = await setup();
   const id = await addProvider(ctx, ROUTER_SRC, { key: 'sk-r', roles: 'free' });
@@ -198,7 +254,7 @@ test("adding keeps the user's own speech lists: models join at their end, and a 
   await saveRoles(ctx.ws, { 'speech-in': { models: ['dictation'], level: 'off' }, 'speech-out': { models: [], level: 'off' } });
   await addProvider(ctx, OPENAI_SRC, { key: 'sk-o' });
   const cfg = await readConfig(ctx.ws);
-  assert.deepEqual(names(cfg, 'speech-in'), ['dictation', 'OpenAI: GPT Transcribe']);
+  assert.deepEqual(names(cfg, 'speech-in'), ['dictation', 'GPT Transcribe']);
   assert.deepEqual(names(cfg, 'speech-out'), []);
 });
 

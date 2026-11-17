@@ -1,5 +1,7 @@
 # Drive-test follow-ups: design
 
+> **Names since changed (2026-11-17):** the "Tidy up" menu is the ⋯ by the conversation's name (**Conversation menu**: Summarize now, Start fresh). The text below keeps the names it was written with.
+
 The user drove home with live mode (GPS) and a live voice session on, as a test, on 2026-11-02, and checked last round's Files work
 on the phone. This covers what they asked for after it. Live mic listening (an event wake opening the mic, music keeping it open) is
 designed separately, once its questions are answered.

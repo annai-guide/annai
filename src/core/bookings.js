@@ -41,7 +41,8 @@ export function checkOf(b) {
  * Its times by its kind, as people say them (the user's words, 2026-11-14: "how people will actually say"): the screens' own words for a flight
  * and a stay (Departs, Arrives; Check-in, Check-out), and for a car and a train the Plan's (Pick up, Return; Arrive), though the booking
  * screen says Starts and Ends there. Only annai's own words, from its own tables: a key of `fields` is the booking's text, which can hold a
- * line break, brackets or 40,000 characters, so a key annai has no words for is one phrase and never itself (booking-say's fix 3).
+ * line break, brackets or 40,000 characters, so a key annai has no words for is one phrase and never itself (booking-say's fix 3). The keys of
+ * `fields` here are the details screen's (format.js FIELD_WORDS), each named as its label there, so the user finds the line she asks about.
  */
 /* en */ const TIME_PARTS = /** @type {Record<string, [string, string]>} */ ({
   flight: ['the departure time', 'the arrival time'], rail: ['the departure time', 'the arrival time'],
@@ -50,7 +51,8 @@ export function checkOf(b) {
 /* en */ const PARTS = /** @type {Record<string, string>} */ ({
   title: 'the name', confirmation: 'the confirmation number', place: 'the place', cost: 'the cost', // its own fields (TOP)
   flight: 'the flight number', from: 'where it leaves from', to: 'where it arrives', class: 'the cabin', nights: 'the number of nights',
-  pickup: 'the pick-up place', dropoff: 'the drop-off place', party: 'the party size',
+  pickup: 'the pick-up place', dropoff: 'the drop-off place', party: 'the party size', travellers: 'the travellers', bags: 'the bags',
+  terminal: 'the terminal', gate: 'the gate', train: 'the train', car: 'the car',
   // The names annai files into `fields` itself (EXTRAS).
   notes: 'the notes', room: 'the room', phone: 'the phone number', guests: 'the guests', passengers: 'the passengers', airline: 'the airline',
   company: 'the company', seat: 'the seat', flights: 'the flights',

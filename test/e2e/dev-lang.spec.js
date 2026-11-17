@@ -22,7 +22,7 @@ test("a plugin whose manifest is broken: Add's card holds annai's English check 
   await openAdd(page);
   await page.locator('#plugin-file').setInputFiles({ name: 'bad.zip', mimeType: 'application/zip', buffer: await zipOf({ 'annai-plugin.json': enc('{ "id": "bad" }') }) });
   const english = page.locator('.notice p span[lang="en"]');
-  await expect(english).toContainText('its annai-plugin.json is not valid: ');
+  await expect(english).toContainText('Its annai-plugin.json is not valid: ');
   // The card's own title is in Japanese, unmarked.
   expect(await page.locator('.notice strong').getAttribute('lang')).toBeNull();
 });

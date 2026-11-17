@@ -506,7 +506,7 @@ In the car:
 - [ ] **m3 #29**: Interrupt her, and talk to a passenger instead of her, as in m3 #10 and #12, with road noise.
 - [ ] **m3 #24**: If the car has CarPlay or Android Auto: Maps on the car's screen, annai on the phone: the exchange still works, directions keep speaking; note what the car shows while she speaks.
 - [ ] **m3 #26**: Steering-wheel play/pause and next track (or a headset's buttons), with voice on and after she has spoken once: does it tap Shiori (stop her, or start listening)? Note what each button does on each phone.
-- [ ] phase2 C1–C9 (not counted here): the same drive in Realtime, from `device-checklist-phase2.md`: the car recognized, her voice and the car's microphone, music during and after, pops through the car, the car connecting and disconnecting mid-reply, and what CarPlay and Android Auto show.
+- [ ] phase2 C1–C9 (not counted here): the same drive with Live on, from `device-checklist-phase2.md`: the car recognized, her voice and the car's microphone, music during and after, pops through the car, the car connecting and disconnecting mid-reply, and what CarPlay and Android Auto show.
 - [ ] m7 #13 (counted in A): With voice On over Bluetooth, "Hear Shiori tell it" (the D2 trip's recap): she listens after each part.
 
 After (home Wi-Fi):

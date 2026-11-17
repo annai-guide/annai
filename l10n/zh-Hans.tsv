@@ -183,7 +183,7 @@ provider-openrouter:buz2qi	ok	OpenRouter didn't send a key.	OpenRouter 没有发
 provider-openrouter:keqy0k	ok	Nothing was sent to OpenRouter yet: try again.	尚未向 OpenRouter 发送任何内容，请重试。	plugins-official/provider-openrouter/index.js:160	
 provider-openrouter:ty7dbd	ok	Signed in with OpenRouter	已使用 OpenRouter 登录	plugins-official/provider-openrouter/index.js:163	
 provider-openrouter:7pnsck	ok	annai keeps the new key for OpenRouter's chat, transcription and voices.	新密钥已保存，将用于 OpenRouter 的对话、语音转文字和声音。	plugins-official/provider-openrouter/index.js:164	Note: chat → 对话, as annai names the Chat ability.
-provider-openrouter:12ypgkl	ok	Shiori thinks with free models to start, so trying annai costs nothing. annai also added OpenRouter's transcription and voices, behind the browser's own dictation and voice. Its free voice comes first: each sentence it says uses one of the free requests a day the chat models use too. The others cost a little, from credits you buy at OpenRouter. To use them first, move them up under Roles.	Shiori 一开始会用免费模型思考，所以试用 annai 不花钱。annai 还添加了 OpenRouter 的语音转文字和声音，排在浏览器自带的语音输入和声音之后。其中免费声音排在最前，它每说一句，就会占用一次每日免费请求（对话模型也共用这些请求）。其他声音要花一点钱，从你在 OpenRouter 充值的余额中扣除。想优先使用它们，请在“角色”中把它们往上移。	plugins-official/provider-openrouter/index.js:165	Note: Credits → 余额 (a prepaid balance), as the zh review settled; the phone's dictation → 手机语音输入, as annai's own rows.
+provider-openrouter:12ypgkl	ok	Shiori thinks with free models to start, so trying annai costs nothing. annai also added OpenRouter's transcription and voices, behind the browser's own dictation and voice. Its free voice comes first: each sentence it says uses one of the free requests a day the chat models use too. The others cost a little, from credits you buy at OpenRouter. To use them first, move them up under Roles.	Shiori 一开始会用免费模型思考，所以试用 annai 不花钱。annai 还添加了 OpenRouter 的语音转文字和声音，排在手机语音输入和浏览器声音之后。其中免费声音排在最前，它每说一句，就会占用一次每日免费请求（对话模型也共用这些请求）。其他声音要花一点钱，从你在 OpenRouter 充值的余额中扣除。想优先使用它们，请在“角色”中把它们往上移。	plugins-official/provider-openrouter/index.js:165	Note: Credits → 余额 (a prepaid balance), as the zh review settled; 手机语音输入 and 浏览器声音 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
 provider-openrouter:1g87qpl	ok	OpenRouter sent no code back.	OpenRouter 没有返回代码。	plugins-official/provider-openrouter/index.js:173	
 provider-openrouter:4uzwwb	ok	Sign in again	重新登录	plugins-official/provider-openrouter/index.js:187	
 provider-openrouter:7utsi6	ok	Sign in with OpenRouter	使用 OpenRouter 登录	plugins-official/provider-openrouter/index.js:187	
@@ -195,7 +195,7 @@ provider-openrouter:r0x7h	ok	annai has made a new sign-in: tap it again.	已准�
 provider-openrouter:t5esrh	ok	annai has made a new sign-in: tap Sign in with OpenRouter again.	已准备好新的登录，请再轻点一次“使用 OpenRouter 登录”。	plugins-official/provider-openrouter/index.js:230	
 provider-openrouter:1gutt9j	ok	Sign in again for a new key, in place of the one saved.	重新登录可获取新密钥，替换已保存的密钥。	plugins-official/provider-openrouter/index.js:252	
 provider-openrouter:2yktg6	ok	Sign in with OpenRouter for a key, or give one below.	可以“使用 OpenRouter 登录”获取密钥，或在下方直接填入。	plugins-official/provider-openrouter/index.js:252	
-provider-openrouter:ltxijx	ok	Sign in with OpenRouter to get one key for many models. annai starts you on free models (50 requests a day), so trying it costs nothing. It also adds OpenRouter's transcription and voices, a free one among them; the browser's own dictation and voice stay first.	“使用 OpenRouter 登录”后，一个密钥就能用许多模型。annai 会先让你用免费模型（每天 50 次请求），所以试用不花钱。同时还会添加 OpenRouter 的语音转文字和声音（其中有一个免费声音）；浏览器自带的语音输入和声音仍排在前面。	plugins-official/provider-openrouter/index.js:253	Note: The phone's dictation → 语音输入, as annai's own rows (Phone dictation → 手机语音输入).
+provider-openrouter:ltxijx	ok	Sign in with OpenRouter to get one key for many models. annai starts you on free models (50 requests a day), so trying it costs nothing. It also adds OpenRouter's transcription and voices, a free one among them; the browser's own dictation and voice stay first.	“使用 OpenRouter 登录”后，一个密钥就能用许多模型。annai 会先让你用免费模型（每天 50 次请求），所以试用不花钱。同时还会添加 OpenRouter 的语音转文字和声音（其中有一个免费声音）；手机语音输入和浏览器声音仍排在前面。	plugins-official/provider-openrouter/index.js:253	Note: 手机语音输入 and 浏览器声音 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
 provider-scripted:@name	ok	Scripted model (for testing)	脚本模型（测试用）	plugins-official/provider-scripted/annai-plugin.json:3	Note: annai's own rows call it 脚本模型 (Simulate: "A scripted model (Settings → Models) makes it free").
 provider-scripted:@description	ok	A model that replies from a script, for tests and plugin authors. It never uses the network.	按脚本回复的模型，供测试和插件开发者使用，完全不联网。	plugins-official/provider-scripted/annai-plugin.json:6	
 provider-sglang:@name	ok	SGLang	SGLang	plugins-official/provider-sglang/annai-plugin.json:3	
@@ -697,10 +697,10 @@ mlh3jc	ok	Main	主要	src/core/llm/check.js:178
 1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	在“{0}”的推理级别（{1}）下，此模型拒绝了请求：{2}	src/core/llm/check.js:182	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
 1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	请在设置 → 模型中调低“{0}”的推理级别，或在此模型的页面上修改其“推理级别”。	src/core/llm/check.js:184	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
 1f43jmt	ok	{0} / {1}	{0} / {1}	src/core/llm/config.js:107	context: a model, after its provider; {0} = provider; {1} = model; Note: a provider's name, then its model's, both Latin names: a spaced slash, not the middle dot that tells a label's parts apart, as in “Koe · 实时 · Anthropic / Claude Opus 5.5”, so the pair reads as one name.
-1nuav0n	ok	That provider no longer exists.	这个提供商已不存在。	src/core/llm/config.js:409	
-1qjc2dh	ok	That provider has no ability called {0}.	这个提供商没有名为 {0} 的功能。	src/core/llm/config.js:411	{0} = rec.ability
-4iiule	ok	Give the provider's model id.	请填写提供商的模型 ID。	src/core/llm/config.js:414	
-3i9i3z	ok	"{0}" is already used by another model	“{0}”已被另一个模型使用	src/core/llm/config.js:418	{0} = name
+1nuav0n	ok	That provider no longer exists.	这个提供商已不存在。	src/core/llm/config.js:406	
+1qjc2dh	ok	That provider has no ability called {0}.	这个提供商没有名为 {0} 的功能。	src/core/llm/config.js:408	{0} = rec.ability
+4iiule	ok	Give the provider's model id.	请填写提供商的模型 ID。	src/core/llm/config.js:411	
+3i9i3z	ok	"{0}" is already used by another model	“{0}”已被另一个模型使用	src/core/llm/config.js:415	{0} = name
 1lqr9y5	ok	The key was rejected. Check it in Settings → Models.	密钥被拒绝了。请在设置 → 模型中检查。	src/core/llm/contract.js:112	
 1do8abu	ok	This account is out of credit.	这个账户的余额已用完。	src/core/llm/contract.js:113	Note: Credit is a prepaid balance (余额), not a quota (额度).
 99g6ol	ok	The provider says too many requests for now.	提供商表示目前请求过于频繁。	src/core/llm/contract.js:114	
@@ -775,14 +775,14 @@ s8uown	ok	The speech couldn't be sent to it.	无法把语音发给它。	src/cor
 1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	还没有为“主要”角色设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:233	Note: the role by its screen name (メイン / 主要).
 g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	无法加载 annai 的插件列表。请检查网络连接，然后重试。	src/core/llm/official.js:33	
 2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	无法加载 annai 的插件列表（HTTP {0}）。请稍后再试。	src/core/llm/official.js:35	{0} = res.status
-mprjic	ok	couldn't be downloaded. Check the connection and try again.	无法下载。请检查网络连接，然后重试。	src/core/llm/official.js:156	Note: said of a plugin, whose name is the card's title.
-zkivre	ok	couldn't be downloaded ({0}: HTTP {1}). Try again later.	无法下载（{0}：HTTP {1}）。请稍后再试。	src/core/llm/official.js:158	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
-1th61o	ok	wasn't installed: {0} doesn't match annai's catalog	未安装：{0} 与 annai 的目录不符	src/core/llm/official.js:160	{0} = name; Note: said of a plugin, whose name is the card's title.
+39e4kf	ok	It couldn't be downloaded. Check the connection and try again.	无法下载。请检查网络连接，然后重试。	src/core/llm/official.js:156	Note: said of a plugin, whose name is the card's title.
+dryfjv	ok	It couldn't be downloaded ({0}: HTTP {1}). Try again later.	无法下载（{0}：HTTP {1}）。请稍后再试。	src/core/llm/official.js:158	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
+1gwnm4z	ok	It wasn't installed: {0} doesn't match annai's catalog.	{0} 与 annai 的目录不符，所以没有安装。	src/core/llm/official.js:160	{0} = name; Note: said of a plugin, whose name is the card's title.
 1mtcl9u	ok	It isn't a kind of backup place annai knows. Install a plugin that provides it.	annai 不支持这种备份位置类型。请安装提供该类型的插件。	src/core/llm/official.js:273	Note: said of a kind of backup place, whose id comes before it in the log.
 ul2t1z	ok	It isn't an endpoint type annai knows. Install a plugin that provides it.	annai 不支持这种端点类型。请安装提供该类型的插件。	src/core/llm/official.js:275	Note: said of an endpoint type, whose id comes before it in the log.
 brqvs6	ok	{0}, which you turned off, isn't switched on by this.	你之前关闭了 {0}，此操作不会重新开启它。	src/core/llm/official.js:287	{0} = name
-tkgxjx	ok	didn't provide a kind of backup place {0}	没有提供备份位置类型 {0}	src/core/llm/official.js:296	{0} = type; Note: said of a plugin, whose name is the card's title.
-8lvx94	ok	didn't provide an endpoint type {0}	没有提供端点类型 {0}	src/core/llm/official.js:298	{0} = type; Note: said of a plugin, whose name is the card's title.
+1qvy3us	ok	It didn't provide a kind of backup place {0}.	没有提供备份位置类型 {0}。	src/core/llm/official.js:296	{0} = type; Note: said of a plugin, whose name is the card's title.
+bipvbz	ok	It didn't provide an endpoint type {0}.	没有提供端点类型 {0}。	src/core/llm/official.js:298	{0} = type; Note: said of a plugin, whose name is the card's title.
 1jtsyij	ok	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	在手机上，localhost 指的是手机本身。另一台电脑上的服务器需要 https 地址。浏览器会拦截 https 页面发出的普通 http 请求，所以 annai 访问局域网内的服务器时只使用 https。一种方法是使用 Tailscale Serve，并让手机加入你的 tailnet：在服务器所在的电脑上运行 {0}，然后在 annai 中填写 {1}。服务器还必须允许来自 annai.guide 的 CORS 请求。Chrome 142 及更高版本可能会询问是否允许访问本地网络。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
 557vva	ok	{0} isn't a web address: give it with https:// in front.	{0} 不是有效的网址，请在前面加上 https://。	src/core/llm/provider-desc.js:164	{0} = url
 y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	地址必须以 https:// 开头（只有 localhost 或 127.0.0.1 可以用 http://）。浏览器会拦截 https 页面发出的普通 http 请求，而 annai 访问局域网内的服务器时只使用 https，所以另一台电脑上的服务器需要 https 地址。可以用 Tailscale Serve 实现：{0}。服务器还必须允许来自 annai.guide 的 CORS 请求。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
@@ -792,7 +792,7 @@ y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127
 sejc5h	ok	{0} was switched off after errors.	{0} 因多次出错已被关闭。	src/core/llm/service.js:319	{0} = shown
 1uno44s	ok	It didn't provide a model provider.	未包含模型提供商。	src/core/llm/service.js:320	Note: said of a plugin.
 2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	该插件不是 annai 官方的。请从原来的来源重新安装。	src/core/llm/service.js:391	
-1fpv184	ok	the plugin it names doesn't provide models, so it wasn't installed.	它指定的插件不提供模型，所以没有安装。	src/core/llm/service.js:400	
+1k9wkd0	ok	The plugin it names doesn't provide models, so it wasn't installed.	指定的插件不提供模型，所以没有安装。	src/core/llm/service.js:400	Note: said after the provider's name ("OpenRouter: …"); the plugin its record names, with no 它.
 3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:70	{0} = p.title
 1rb0o7n	ok	OpenStreetMap around {0}	{0} 周边的 OpenStreetMap	src/core/pack/download.js:72	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
 hdsgog	ok	OpenStreetMap between {0} and {1}	{0} 与 {1} 之间的 OpenStreetMap	src/core/pack/download.js:72	{0} = a; {1} = b
@@ -804,9 +804,9 @@ cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMap 没有响应（{0}）
 rhruvr	ok	{0} said: {1}.	{0} 回复：{1}。	src/core/pack/download.js:82	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
 1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyage 没有发来 {0} 的正文。	src/core/pack/download.js:83	{0} = s.title
 aaicx8	ok	{0} couldn't be checked: {1}	无法检查 {0}：{1}	src/core/package-updates.js:36	{0} = s.name ?? id; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-mlem3w	ok	wasn't installed from an address, so annai has nowhere to look for an update	不是从地址安装的，所以无法查找更新	src/core/package-updates.js:54	
-1nrhfbi	ok	the address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	这个地址现在提供的是另一个包（{0}），因此没有更新。如果想用那个包，请移除这个，再安装那个。	src/core/package-updates.js:58	{0} = pkg.id
-emc8n2	ok	this update adds parts you haven't agreed to: {0}. Check for updates again and look at what it adds.	这次更新会加入你尚未同意的部分：{0}。请重新检查更新，看看它会加入什么。	src/core/package-updates.js:62	{0} = addedWords(added); Note: the English starts in lower case after the plugin's name, which the screen leaves out; a sentence here.
+trd90h	ok	It wasn't installed from an address, so annai has nowhere to look for an update.	不是从地址安装的，所以无法查找更新。	src/core/package-updates.js:54	
+2olq9a	ok	The address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	这个地址现在提供的是另一个包（{0}），因此没有更新。如果想用那个包，请移除这个，再安装那个。	src/core/package-updates.js:58	{0} = pkg.id
+29yhwe	ok	This update adds parts you haven't agreed to: {0}. Check for updates again and look at what it adds.	这次更新会加入你尚未同意的部分：{0}。请重新检查更新，看看它会加入什么。	src/core/package-updates.js:62	{0} = addedWords(added)
 1wfc5of	ok	This zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	此 zip 包含多个技能。请逐个安装，或添加一个列出它们的 annai-plugin.json。	src/core/packages.js:349	
 12el2y8	ok	The {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0} 位于 {1}，层级太深。annai 只会在 zip 的顶层或其中唯一的文件夹里读取它。请单独压缩那个文件夹。	src/core/packages.js:357	{0} = file; {1} = folder
 yeyuzl	ok	The {0} is in {1}, with other files beside that folder: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0} 位于 {1}，但这个文件夹旁边还有其他文件。annai 只会在 zip 的顶层或其中唯一的文件夹里读取它。请单独压缩那个文件夹。	src/core/packages.js:358	{0} = file; {1} = folder
@@ -842,9 +842,9 @@ wq5ezj	ok	Its name, "{0}", is annai's own name, or the name of one of its parts.
 masbkh	ok	A skill with this id is installed already. Remove it first.	已安装了相同 ID 的技能，请先移除。	src/core/plugins.js:190	
 1idb6oe	ok	{0} is handed the keys you give it, so the one used is annai's own, else the one installed first.	{0} 会拿到你提供的密钥，所以会优先使用 annai 自带的；没有的话，就用最先安装的那个。	src/core/plugins.js:241	{0} = name
 7ot8m8	ok	{0} is annai's own, so no plugin replaces it.	{0} 是 annai 自带的，插件不能替换它。	src/core/plugins.js:243	{0} = name
-n5bfxm	ok	is being removed	正在移除	src/core/plugins.js:438	
+1863007	ok	It is being removed.	正在移除。	src/core/plugins.js:438	
 u30lhr	ok	It was updated. Restart annai to run the new version.	已更新。请重新启动 annai 来运行新版本。	src/core/plugins.js:439	
-1jrheem	ok	keeps MCP servers, not settings: remove a server on its own screen.	它保存的是 MCP 服务器，而不是设置。要移除服务器，请前往 MCP 服务器页面。	src/core/plugins.js:609	
+12roxwh	ok	It keeps MCP servers, not settings: remove a server on its own screen.	保存的是 MCP 服务器，而不是设置。要移除服务器，请前往该服务器的页面。	src/core/plugins.js:609	
 rhqr7k#other	ok	it didn't finish starting within # seconds	没有在 # 秒内完成启动	src/core/plugins.js:806	plural; # = s; English: "it didn't finish starting within # second" (one), "it didn't finish starting within # seconds" (other)
 u8bf72	ok	Notifications are on. Reminders come like this while annai is closed.	通知已开启。annai 关闭时，提醒会像这样推送过来。	src/core/push/mirror.js:75	
 1dxa9va	ok	Notifications are on again: reminders come like this while annai is closed.	通知已重新开启：annai 关闭时，提醒会像这样推送过来。	src/core/push/mirror.js:76	
@@ -881,7 +881,7 @@ ip7w4y#other	ok	It didn't answer aloud within # seconds.	# 秒内没有语音回
 ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	这个名称已被 annai 官方插件使用，其他来源的插件不能再用。请联系作者改名。	src/core/registry.js:16	Note: "Ask its author" is asking a person (请让作者…), not the phones' permission choice Ask (询问).
 1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	这个名称属于 annai 官方插件，但已安装的同名插件来自其他来源，因此不会使用它。请在设置 → 插件中移除它，然后重试。	src/core/registry.js:17	
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	请在设置 → 插件中开启它，然后重试。	src/core/registry.js:18	
-f1c9to	ok	is switched off after repeated errors	因多次出错已关闭	src/core/registry.js:221	
+mzoa87	ok	It is switched off after repeated errors.	因多次出错，已被关闭。	src/core/registry.js:221	
 19bu7pw	ok	Version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	版本 {0} 会导致 {1} 无法运行，因为它需要 {2} {3}。请先更新 {4}，或保留当前版本。	src/core/requires.js:52	{0} = version; {1} = them; {2} = it; {3} = r.version; {4} = them
 1ee40s4	ok	It needs {0}, which you turned off.	需要 {0}，但你已把它关闭。	src/core/requires.js:79	{0} = shown
 8xu6se	ok	It needs {0}, which isn't installed. Install it from {1} first, then try again.	需要 {0}，但尚未安装。请先从 {1} 安装，然后再试一次。	src/core/requires.js:82	{0} = r.id; {1} = r.homepage
@@ -1175,72 +1175,76 @@ qicqbg#other	ok	# trains	# 趟火车	src/ui/format.js:134	plural; # = n; English
 25ugc5	ok	Itinerary items from a calendar	来自日历的行程项目	src/ui/format.js:160	Note: what a calendar file (.ics) became; Plan is 行程.
 1gfvwcc	ok	Nothing yet	暂无	src/ui/format.js:161	Note: what a file became on the trip's Files: nothing so far.
 jgspu5	ok	Waiting for Shiori to read it	等待 Shiori 读取	src/ui/format.js:161	Note: a file on the trip's Files that Shiori hasn't read yet.
-1hlojji	ok	To	目的地	src/ui/format.js:167	context: booking; Note: a booking's detail: where a flight or train goes.
-1uq5tvs	ok	Seat	座位	src/ui/format.js:167	Note: a booking's detail.
-1yz1r2o	ok	Cabin	舱位	src/ui/format.js:167	context: booking; Note: a flight's cabin class (economy, business).
-9ihsg5	ok	Airline	航空公司	src/ui/format.js:167	Note: a booking's detail.
-qoo2zd	ok	Flight	航班号	src/ui/format.js:167	context: booking; Note: a booking's detail: the flight's number (AN 123), not the kind of booking.
-upnba7	ok	From	出发地	src/ui/format.js:167	context: booking; Note: a booking's detail: where a flight or train leaves from.
-1501knl	ok	Terminal	航站楼	src/ui/format.js:168	Note: an airport's terminal.
-15rtgdu	ok	Gate	登机口	src/ui/format.js:168	Note: an airport's gate.
-193ku12	ok	Bags	行李	src/ui/format.js:168	Note: a booking's detail: the bags included.
-1ipbaqc	ok	Room	房间	src/ui/format.js:168	context: booking; Note: a stay's room.
-1jn3vqu	ok	Nights	入住晚数	src/ui/format.js:168	Note: how many nights a stay is.
-ean645	ok	Travellers	乘客	src/ui/format.js:168	Note: the people a flight or train booking is for.
-vpb928	ok	Guests	入住人数	src/ui/format.js:168	Note: the people a stay is booked for.
-1v8ms9v	ok	Train	车次	src/ui/format.js:169	context: booking; Note: a booking's detail: the train's number.
-3uyuz4	ok	Drop-off	还车	src/ui/format.js:169	Note: where and when a rental car goes back.
-4f76ga	ok	Notes	备注	src/ui/format.js:169	Note: notes on a booking or a plan item.
-95yu2i	ok	Pick-up	取车	src/ui/format.js:169	Note: where and when a rental car is picked up.
-b2la2e	ok	Car	车厢	src/ui/format.js:169	context: train; Note: a train's car (coach), not a rental car.
-vzzxl8	ok	Party size	用餐人数	src/ui/format.js:169	Note: how many people a restaurant booking is for.
-1jtckn3	ok	Route	航线	src/ui/format.js:204	context: flight; Note: a flight's from → to, as one line.
-13ne04w	ok	Departs	出发	src/ui/format.js:205	Note: a flight's departure, its time in that airport's zone.
-j6u2ti	ok	Starts	开始	src/ui/format.js:205	context: booking; Note: A booking's start, its day and time shown beside it.
-vjjlq9	ok	Check-in	入住	src/ui/format.js:205	Note: a stay's check-in, its day and time beside it.
-1pcvk9l	ok	Ends	结束	src/ui/format.js:206	context: booking
-8md94n	ok	Arrives	到达	src/ui/format.js:206	Note: a flight's arrival, its time in that airport's zone.
-8nuh1e	ok	Check-out	退房	src/ui/format.js:206	Note: a stay's check-out, its day and time beside it.
-16ygujg	ok	Place	地点	src/ui/format.js:207	
-lypvx6	ok	{0}, {1}	{0}（{1}）	src/ui/format.js:207	context: booking; {0} = String(b.place.name); {1} = String(b.place.address); Note: A booking's place: its name, then its address in brackets.
-p3snlg	ok	Confirmation	确认号	src/ui/format.js:218	Note: A booking's confirmation code.
-t05i6w	ok	Cost	费用	src/ui/format.js:219	
-1vdspge	ok	Getting files: {0} of {1}	正在获取文件：{0}/{1}	src/ui/format.js:256	{0} = num(p.done); {1} = num(p.total)
-zo1gq	ok	Getting the backup…	正在获取备份…	src/ui/format.js:256	
-fuj1qb	ok	Getting the backup ready…	正在准备备份…	src/ui/format.js:260	
-1a0lh7c	ok	Comparing files {0} of {1}…	正在比较文件（{0}/{1}）…	src/ui/format.js:261	{0} = num(p.done); {1} = num(p.total)
-1ofggks	ok	Comparing files…	正在比较文件…	src/ui/format.js:261	
-1jbhw8o	ok	Uploading…	正在上传…	src/ui/format.js:262	
-sg0mn0	ok	Uploading {0} of {1}…	正在上传（{0}/{1}）…	src/ui/format.js:262	{0} = num(p.done); {1} = num(p.total)
-11y7c1u	ok	Paused: there is a newer backup from an iPad	已暂停：有来自 iPad 的较新备份	src/ui/format.js:267	
-1815ss7	ok	Paused: there is a newer backup from an iPhone	已暂停：有来自 iPhone 的较新备份	src/ui/format.js:267	
-1kc2l15	ok	Paused: there is a newer backup from a computer	已暂停：有来自电脑的较新备份	src/ui/format.js:268	
-1ytn3n1	ok	Paused: there is a newer backup from an Android phone	已暂停：有来自 Android 手机的较新备份	src/ui/format.js:268	
-14m1y56	ok	Paused: there is a newer backup from another device	已暂停：有来自另一台设备的较新备份	src/ui/format.js:269	
-12hcbva	ok	An iPhone backed up to {0} {1}.	{1}，一部 iPhone 备份到了 {0}。	src/ui/format.js:273	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
-1exdtuz	ok	An iPad backed up to {0} {1}.	{1}，一台 iPad 备份到了 {0}。	src/ui/format.js:273	{0} = where; {1} = ago
-1hmrpdo	ok	A computer backed up to {0} {1}.	{1}，一台电脑备份到了 {0}。	src/ui/format.js:274	{0} = where; {1} = ago
-dc7u48	ok	An Android phone backed up to {0} {1}.	{1}，一部 Android 手机备份到了 {0}。	src/ui/format.js:274	{0} = where; {1} = ago
-19kyaez	ok	Another device backed up to {0} {1}.	{1}，另一台设备备份到了 {0}。	src/ui/format.js:275	{0} = where; {1} = ago
-mbc651	ok	That was after this phone's last backup.	这比这部手机上次备份的时间更晚。	src/ui/format.js:279	
-vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这部手机的备份覆盖它。	src/ui/format.js:279	Note: "Back up this phone over it": this phone's backup replaces the newer one there.
-1ce0smb	ok	That was after this iPad's last backup.	这比这台 iPad 上次备份的时间更晚。	src/ui/format.js:280	
-nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这台 iPad 的备份覆盖它。	src/ui/format.js:280	
-hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这台电脑的备份覆盖它。	src/ui/format.js:281	
-wn3ejs	ok	That was after this computer's last backup.	这比这台电脑上次备份的时间更晚。	src/ui/format.js:281	
-1n6qjpw	ok	Working…	正在处理…	src/ui/format.js:296	
-1sw982j	ok	Last backup {0}.	上次备份：{0}。	src/ui/format.js:301	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
-d1smo3	ok	Not backed up yet.	尚未备份。	src/ui/format.js:301	
-10ouos4	ok	Waiting for your OK to upload {0}	正在等待你同意上传 {0}	src/ui/format.js:302	{0} = size(h.bytes)
-nbshf0	ok	The last try failed.	上次尝试失败了。	src/ui/format.js:304	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
-osg3je	ok	The last try failed: {0}	上次尝试失败：{0}	src/ui/format.js:305	{0} = holdWords(h, target.name)
-1qmdzit	ok	Not set up yet: fill it in, then Save and test	尚未设置：请填写后点“保存并测试”	src/ui/format.js:306	Note: "Save and test" is the backup place's button.
-1e2pygg	ok	Automatic backups are off	自动备份已关闭	src/ui/format.js:307	
-173tgfr	ok	Last backup {0}	上次备份：{0}	src/ui/format.js:308	{0} = at
-1uajbr3	ok	Not backed up yet	尚未备份	src/ui/format.js:308	
-1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	那里的自动备份已暂停，以免两台设备互相覆盖。	src/ui/format.js:320	
-hmr3pn	ok	The other backup stays in its history.	另一个备份仍会保留在历史中。	src/ui/format.js:320	
-8091b1	ok	no limit	不限	src/ui/format.js:345	
+1hlojji	ok	To	目的地	src/ui/format.js:170	context: booking; Note: a booking's detail: where a flight or train goes.
+1uq5tvs	ok	Seat	座位	src/ui/format.js:170	Note: a booking's detail.
+1yz1r2o	ok	Cabin	舱位	src/ui/format.js:170	context: booking; Note: a flight's cabin class (economy, business).
+9ihsg5	ok	Airline	航空公司	src/ui/format.js:170	Note: a booking's detail.
+qoo2zd	ok	Flight	航班号	src/ui/format.js:170	context: booking; Note: a booking's detail: the flight's number (AN 123), not the kind of booking.
+upnba7	ok	From	出发地	src/ui/format.js:170	context: booking; Note: a booking's detail: where a flight or train leaves from.
+1501knl	ok	Terminal	航站楼	src/ui/format.js:171	Note: an airport's terminal.
+15rtgdu	ok	Gate	登机口	src/ui/format.js:171	Note: an airport's gate.
+193ku12	ok	Bags	行李	src/ui/format.js:171	Note: a booking's detail: the bags included.
+1ipbaqc	ok	Room	房间	src/ui/format.js:171	context: booking; Note: a stay's room.
+1jn3vqu	ok	Nights	入住晚数	src/ui/format.js:171	Note: how many nights a stay is.
+ean645	ok	Travellers	乘客	src/ui/format.js:171	Note: the people a flight or train booking is for.
+vpb928	ok	Guests	入住人数	src/ui/format.js:171	Note: the people a stay is booked for.
+1v8ms9v	ok	Train	车次	src/ui/format.js:172	context: booking; Note: a booking's detail: the train's number.
+3uyuz4	ok	Drop-off	还车	src/ui/format.js:172	Note: where and when a rental car goes back.
+4f76ga	ok	Notes	备注	src/ui/format.js:172	Note: notes on a booking or a plan item.
+95yu2i	ok	Pick-up	取车	src/ui/format.js:172	Note: where and when a rental car is picked up.
+b2la2e	ok	Car	车厢	src/ui/format.js:172	context: train; Note: a train's car (coach), not a rental car.
+vzzxl8	ok	Party size	用餐人数	src/ui/format.js:172	Note: how many people a restaurant booking is for.
+1hra0d8	ok	Company	公司	src/ui/format.js:173	Note: a booking's detail: the company a car or ride is booked with.
+1lwerby	ok	Flights	航班	src/ui/format.js:173	context: booking; Note: a booking's detail: the flights of one booking (a connection), not a count.
+7gnwg	ok	Passengers	乘客	src/ui/format.js:173	Note: a booking's detail: the people a ride is for, as Travellers (乘客).
+gc0vlk	ok	Phone number	电话号码	src/ui/format.js:173	Note: a booking's detail: a phone number annai filed from the booking.
+1jtckn3	ok	Route	航线	src/ui/format.js:208	context: flight; Note: a flight's from → to, as one line.
+13ne04w	ok	Departs	出发	src/ui/format.js:209	Note: a flight's departure, its time in that airport's zone.
+j6u2ti	ok	Starts	开始	src/ui/format.js:209	context: booking; Note: A booking's start, its day and time shown beside it.
+vjjlq9	ok	Check-in	入住	src/ui/format.js:209	Note: a stay's check-in, its day and time beside it.
+1pcvk9l	ok	Ends	结束	src/ui/format.js:210	context: booking
+8md94n	ok	Arrives	到达	src/ui/format.js:210	Note: a flight's arrival, its time in that airport's zone.
+8nuh1e	ok	Check-out	退房	src/ui/format.js:210	Note: a stay's check-out, its day and time beside it.
+16ygujg	ok	Place	地点	src/ui/format.js:211	
+lypvx6	ok	{0}, {1}	{0}（{1}）	src/ui/format.js:211	context: booking; {0} = String(b.place.name); {1} = String(b.place.address); Note: A booking's place: its name, then its address in brackets.
+p3snlg	ok	Confirmation	确认号	src/ui/format.js:222	Note: A booking's confirmation code.
+t05i6w	ok	Cost	费用	src/ui/format.js:223	
+1vdspge	ok	Getting files: {0} of {1}	正在获取文件：{0}/{1}	src/ui/format.js:260	{0} = num(p.done); {1} = num(p.total)
+zo1gq	ok	Getting the backup…	正在获取备份…	src/ui/format.js:260	
+fuj1qb	ok	Getting the backup ready…	正在准备备份…	src/ui/format.js:264	
+1a0lh7c	ok	Comparing files {0} of {1}…	正在比较文件（{0}/{1}）…	src/ui/format.js:265	{0} = num(p.done); {1} = num(p.total)
+1ofggks	ok	Comparing files…	正在比较文件…	src/ui/format.js:265	
+1jbhw8o	ok	Uploading…	正在上传…	src/ui/format.js:266	
+sg0mn0	ok	Uploading {0} of {1}…	正在上传（{0}/{1}）…	src/ui/format.js:266	{0} = num(p.done); {1} = num(p.total)
+11y7c1u	ok	Paused: there is a newer backup from an iPad	已暂停：有来自 iPad 的较新备份	src/ui/format.js:271	
+1815ss7	ok	Paused: there is a newer backup from an iPhone	已暂停：有来自 iPhone 的较新备份	src/ui/format.js:271	
+1kc2l15	ok	Paused: there is a newer backup from a computer	已暂停：有来自电脑的较新备份	src/ui/format.js:272	
+1ytn3n1	ok	Paused: there is a newer backup from an Android phone	已暂停：有来自 Android 手机的较新备份	src/ui/format.js:272	
+14m1y56	ok	Paused: there is a newer backup from another device	已暂停：有来自另一台设备的较新备份	src/ui/format.js:273	
+12hcbva	ok	An iPhone backed up to {0} {1}.	{1}，一部 iPhone 备份到了 {0}。	src/ui/format.js:277	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
+1exdtuz	ok	An iPad backed up to {0} {1}.	{1}，一台 iPad 备份到了 {0}。	src/ui/format.js:277	{0} = where; {1} = ago
+1hmrpdo	ok	A computer backed up to {0} {1}.	{1}，一台电脑备份到了 {0}。	src/ui/format.js:278	{0} = where; {1} = ago
+dc7u48	ok	An Android phone backed up to {0} {1}.	{1}，一部 Android 手机备份到了 {0}。	src/ui/format.js:278	{0} = where; {1} = ago
+19kyaez	ok	Another device backed up to {0} {1}.	{1}，另一台设备备份到了 {0}。	src/ui/format.js:279	{0} = where; {1} = ago
+mbc651	ok	That was after this phone's last backup.	这比这部手机上次备份的时间更晚。	src/ui/format.js:283	
+vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这部手机的备份覆盖它。	src/ui/format.js:283	Note: "Back up this phone over it": this phone's backup replaces the newer one there.
+1ce0smb	ok	That was after this iPad's last backup.	这比这台 iPad 上次备份的时间更晚。	src/ui/format.js:284	
+nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这台 iPad 的备份覆盖它。	src/ui/format.js:284	
+hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这台电脑的备份覆盖它。	src/ui/format.js:285	
+wn3ejs	ok	That was after this computer's last backup.	这比这台电脑上次备份的时间更晚。	src/ui/format.js:285	
+1n6qjpw	ok	Working…	正在处理…	src/ui/format.js:300	
+1sw982j	ok	Last backup {0}.	上次备份：{0}。	src/ui/format.js:305	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
+d1smo3	ok	Not backed up yet.	尚未备份。	src/ui/format.js:305	
+10ouos4	ok	Waiting for your OK to upload {0}	正在等待你同意上传 {0}	src/ui/format.js:306	{0} = size(h.bytes)
+nbshf0	ok	The last try failed.	上次尝试失败了。	src/ui/format.js:308	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
+osg3je	ok	The last try failed: {0}	上次尝试失败：{0}	src/ui/format.js:309	{0} = holdWords(h, target.name)
+1qmdzit	ok	Not set up yet: fill it in, then Save and test	尚未设置：请填写后点“保存并测试”	src/ui/format.js:310	Note: "Save and test" is the backup place's button.
+1e2pygg	ok	Automatic backups are off	自动备份已关闭	src/ui/format.js:311	
+173tgfr	ok	Last backup {0}	上次备份：{0}	src/ui/format.js:312	{0} = at
+1uajbr3	ok	Not backed up yet	尚未备份	src/ui/format.js:312	
+1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	那里的自动备份已暂停，以免两台设备互相覆盖。	src/ui/format.js:324	
+hmr3pn	ok	The other backup stays in its history.	另一个备份仍会保留在历史中。	src/ui/format.js:324	
+8091b1	ok	no limit	不限	src/ui/format.js:349	
 lpx0cl#other	ok	# trips and conversations	# 个旅行和对话	src/ui/import-state.js:47	plural; # = titles.length; English: "# trip or conversation" (one), "# trips and conversations" (other); Note: a git backup's preview, from its manifest alone, can't tell trips from chats: this is the one row they fold under; also the toast "Imported # trips and conversations" when the user left the import screen (import-state.js).
 12lprg	ok	Imported {0} from {1}.	已从 {1} 导入 {0}。	src/ui/import-state.js:48	{0} = what; {1} = place
 1hzaym7	ok	Imported {0}.	已导入 {0}。	src/ui/import-state.js:48	{0} = what
@@ -1569,7 +1573,7 @@ e7ctat	ok	From an iPhone	来自 iPhone	src/ui/screens/backups.js:14
 71oguk	ok	From another device	来自其他设备	src/ui/screens/backups.js:16	
 3k42nl	ok	Getting it ready…	正在准备…	src/ui/screens/backups.js:38	
 c65xlw	ok	Backups	备份	src/ui/screens/backups.js:49	
-ix9v94	ok	annai backs up everything on this device to the places you add here: after changes or once a day, while annai is open. Each place's page says which connections it uses and what waits for your OK. Your API keys stay on this device, unless you include them in an encrypted backup.	annai 打开期间，会在有改动后或每天一次，把此设备上的所有内容备份到你在这里添加的位置。使用哪种网络、哪些备份需要你同意，各位置的页面里都有说明。除非选择将 API 密钥放进加密备份，否则它们只会留在此设备上。	src/ui/screens/backups.js:50	Note: a backup place's "Include API keys (only in encrypted backups)" is the exception.
+y0zviv	ok	annai backs up everything on this device to the places you add here, while annai is open: after changes, once a day or only when you ask, as each place is set. Automatic backups use Wi-Fi, and mobile data only where a place allows it; where the browser can't tell which (Safari on iPhone), each place sets how large a backup may go without asking. Your API keys stay on this device, unless you include them in an encrypted backup.	annai 打开期间，会把此设备上的所有内容备份到你在这里添加的备份位置。何时备份（有改动后、每天一次或仅手动）由各个备份位置分别设置。自动备份使用 Wi-Fi，只有允许使用移动数据的备份位置才会用移动数据。浏览器无法分辨当前连接类型时（iPhone 上的 Safari），可以为每个备份位置设置不经确认就能上传的备份大小。除非选择将 API 密钥放进加密备份，否则它们只会留在此设备上。	src/ui/screens/backups.js:50	Note: 仅手动 is the place's Off ("only when you ask": 立即备份).
 n9d7fo	ok	No backup places yet.	还没有备份位置。	src/ui/screens/backups.js:56	
 gqqie4	ok	Add a place	添加位置	src/ui/screens/backups.js:58	
 t3jn1u	ok	Add a place to back up to	添加备份位置	src/ui/screens/backups.js:58	
@@ -1925,7 +1929,7 @@ rdqlke	ok	Relay address	中继地址	src/ui/screens/notifications.js:151
 mkq4y8	ok	What the relay learns	中继会知道什么	src/ui/screens/notifications.js:153	
 u3pgdz	ok	annai encrypts every reminder on this phone, and makes each the same size: the relay can't read it, or tell a long one from a short one.	annai 会在这部手机上加密每条提醒，并把它们补成相同大小，所以中继既无法读取内容，也分不出长短。	src/ui/screens/notifications.js:154	
 1jsdzhi	ok	It learns this phone's push address (at Apple, Google or Mozilla, whose service delivers it), when each reminder is due, and how many are waiting. Like any server, it sees the internet address the phone connects from.	它会知道这部手机的推送地址（由负责送达的 Apple、Google 或 Mozilla 提供）、每条提醒的发送时间，以及有多少条在等待。和其他服务器一样，它也能看到手机连接时的 IP 地址。	src/ui/screens/notifications.js:155	
-bkq4j5	ok	Reminders about places (arriving, leaving, nearby) never leave the phone. A plan's "leave soon" reminder does go to the relay, with its time: that is worked out from where you were when annai last looked, so it tells roughly how far away you were to someone who also knew your itinerary. The relay doesn't know your itinerary.	地点提醒（到达、离开、附近）不会离开手机。行程中的“该出发了”提醒会连同时间一起发送到中继。这个时间是根据 annai 最后一次查看时你所在的位置算出的，所以如果有人同时知道你的行程，就能大致推算出你当时离得多远。中继并不知道你的行程。	src/ui/screens/notifications.js:156	
+45t143	ok	Reminders about places (arriving, leaving, nearby) never leave the phone. The itinerary's "leave soon" reminder does go to the relay, with its time: that is worked out from where you were when annai last looked, so it tells roughly how far away you were to someone who also knew your itinerary. The relay doesn't know your itinerary.	地点提醒（到达、离开、附近）不会离开手机。行程中的“该出发了”提醒会连同时间一起发送到中继。这个时间是根据 annai 最后一次查看时你所在的位置算出的，所以如果有人同时知道你的行程，就能大致推算出你当时离得多远。中继并不知道你的行程。	src/ui/screens/notifications.js:156	
 1cg5akv	ok	Each reminder is deleted at the relay once it is sent, or when you cancel it, turn notifications off, or remove its trip.	每条提醒发送后，或在你取消提醒、关闭通知、移除所属旅行时，都会从中继删除。	src/ui/screens/notifications.js:157	
 1iz3xsa	ok	With annai open on screen, annai says a reminder itself, and the relay's copy is called off: you never get it twice.	annai 在屏幕上打开时会直接说出提醒，并取消中继发送的那一条，所以不会重复收到。	src/ui/screens/notifications.js:158	
 qkddms	ok	Every request to the relay is in Trace, under System · This device.	发往中继的每个请求都可以在“记录”的“系统 · 这台设备”下查看。	src/ui/screens/notifications.js:159	Note: The Trace's own list name, "System · {0}" with the scope "This device" (这台设备).
@@ -1984,6 +1988,7 @@ w2ndgc	ok	nothing yet	暂无	src/ui/screens/plugin-install.js:136
 17ahsv6	ok	Version {0} is installed now. Installing replaces it.	当前已安装版本 {0}，安装后会被替换。	src/ui/screens/plugin-install.js:186	{0} = v
 11t6hui	ok	an address	某个地址	src/ui/screens/plugin-install.js:189	Note: Where an installed version came from, inside "Version {0} is installed now, from {1}, …".
 1wr9niq	ok	a file: {0}	文件 {0}	src/ui/screens/plugin-install.js:189	{0} = value; Note: Where an installed version came from, inside "Version {0} is installed now, from {1}, …".
+2s7cgt	ok	a file	文件	src/ui/screens/plugin-install.js:189	context: installed from; Note: where an installed version came from, inside "Version {0} is installed now, from {1}, …" (来自文件): no count, unlike "a file" of a hand-over (1 个文件).
 rgr1rj	ok	Version {0} is installed now, from {1}, not where this one comes from.	当前已安装的版本 {0} 来自 {1}，与这次的来源不同。	src/ui/screens/plugin-install.js:190	{0} = v; {1} = place
 1v94r3f	ok	If you keep them, its settings, keys and your choices under Names go to this one; installing fresh removes them.	如果保留，它的设置、密钥以及你在“名称”中的选择都会转到这个版本；全新安装则会删除这些内容。	src/ui/screens/plugin-install.js:191	Note: the two buttons are "Install, keep its settings and keys" and "Install fresh"; Names is the plugin page's section of names it shares with another package.
 19apr1m	ok	the kind of backup place {0}	备份位置类型 {0}	src/ui/screens/plugin-install.js:206	{0} = n
@@ -2153,7 +2158,7 @@ l7fn8k	ok	Already added, on another provider	已添加到其他提供商	src/ui/
 11pl9jr	ok	Use the free models	使用免费模型	src/ui/screens/provider.js:575	
 vam64u	ok	Use the recommended models	使用推荐模型	src/ui/screens/provider.js:575	
 1b2yx8m	ok	Suggested models	推荐模型	src/ui/screens/provider.js:576	
-1jnsjoc	ok	{0} suggests a model for each role. Its speech models then go ahead of the browser's own dictation and voice, which are free, so any that cost money are tried before them.	{0} 为每个角色推荐了一个模型。使用推荐后，它的语音模型会排在免费的浏览器自带语音输入和朗读之前，所以会优先尝试收费的模型。	src/ui/screens/provider.js:577	{0} = src.name
+1jnsjoc	ok	{0} suggests a model for each role. Its speech models then go ahead of the browser's own dictation and voice, which are free, so any that cost money are tried before them.	{0} 为每个角色推荐了一个模型。使用推荐后，它的语音模型会排在免费的手机语音输入和浏览器声音之前，所以会优先尝试收费的模型。	src/ui/screens/provider.js:577	{0} = src.name; Note: 手机语音输入 and 浏览器声音 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
 1x5hwmk	ok	{0} suggests a model for each role.	{0} 为每个角色推荐了一个模型。	src/ui/screens/provider.js:578	{0} = src.name
 1iffu2j	ok	{0} switched on.	已开启 {0}。	src/ui/screens/provider.js:585	{0} = n
 1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:585	
@@ -2765,7 +2770,7 @@ s3y93q	ok	Then	然后	src/ui/screens/welcome.js:124
 186hb75	ok	Look around first	先随便看看	src/ui/screens/welcome.js:145	
 zzldle	ok	Set up a model	设置模型	src/ui/screens/welcome.js:146	
 dndycx	ok	{0} of {1}	{0}/{1}	src/ui/screens/welcome.js:152	{0} = num(n); {1} = num(LAST); Note: a step of the welcome, such as 2 of 7.
-1iyh2ad	ok	Free search sends your searches to Exa, Parallel or Firecrawl: just the words searched, not your files or your location. When no other reader can read a page, Exa reads it, and so gets that page's address. Parallel also gets a random id for each conversation, to count its free searches. They are free tiers that can change or stop, and Exa and Parallel may use what is searched to train their models, so keep names and addresses out of your searches. Behind them, a last resort that stays on whatever you tick asks Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) the same words when nothing else answers; Search via: Off stops it, and so does your model's own search, when the model has one.	免费搜索会把搜索的关键词发送给 Exa、Parallel 或 Firecrawl，不会发送你的文件或位置。遇到其他方式读取不了的网页时，会交给 Exa 读取，这样 Exa 也会收到该网页的地址。Parallel 还会收到每段对话的随机 ID，用来统计免费搜索的次数。这些都是免费额度，随时可能变动或停止；而且 Exa 和 Parallel 可能用搜索内容训练自己的模型，所以搜索时请不要包含姓名和地址。在它们之后，还有一个不受勾选影响的最后备选：其他都没有结果时，会用同样的关键词查询 Wikimedia（Wikivoyage 和 Wikipedia）和 OpenStreetMap（Nominatim）。把“搜索方式”设为“关闭”，或在模型有自带搜索时使用它，就能停用它。	src/ui/search-panel.js:12	Note: "Search via: Off" as the choice is named on this screen.
+1iyh2ad	ok	Free search sends your searches to Exa, Parallel or Firecrawl: just the words searched, not your files or your location. When no other reader can read a page, Exa reads it, and so gets that page's address. Parallel also gets a random id for each conversation, to count its free searches. They are free tiers that can change or stop, and Exa and Parallel may use what is searched to train their models, so keep names and addresses out of your searches. Behind them, a last resort that stays on whatever you tick asks Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) the same words when nothing else answers; Search via: Off stops it, and so does your model's own search, when the model has one.	免费搜索会把搜索的关键词发送给 Exa、Parallel 或 Firecrawl，不会发送你的文件或位置。遇到其他方式读取不了的网页时，会交给 Exa 读取，这样 Exa 也会收到该网页的地址。Parallel 还会收到每段对话的随机 ID，用来统计免费搜索的次数。这些都是免费额度，随时可能变动或停止；而且 Exa 和 Parallel 可能用搜索内容训练自己的模型，所以搜索时请不要包含姓名和地址。在它们之后，还有一个不受勾选影响的最后备选：其他都没有结果时，会用同样的关键词查询 Wikimedia（Wikivoyage 和 Wikipedia）和 OpenStreetMap（Nominatim）。把“搜索方式”设为“关闭”，或者改用模型自带的搜索（如果模型有的话），都会停用这个最后备选。	src/ui/search-panel.js:12	Note: "Search via: Off" as the choice is named on this screen; the last sentence names the last resort, with no 它 that could be the model's search.
 4ri1lf	ok	The ones you leave ticked get the words she searches for, not your files or your location. Exa also gets the addresses of pages it reads for her, and Parallel gets a random id for each conversation. They're free tiers that can change or stop, and Exa and Parallel may use searches to train their models, so keep names and addresses out of them. Behind them, Wikimedia (Wikivoyage and Wikipedia) and OpenStreetMap (Nominatim) are asked as a last resort, whatever you tick, when nothing else answers; Settings → Tools → Search via: Off stops that, and so does your model's own search, when the model has one. You can change all this there.	勾选保留的服务会收到她搜索的关键词，不会收到你的文件和位置。Exa 替她读取网页时，还会收到这些网页的地址；Parallel 还会收到每段对话的随机 ID。这些都是免费额度，随时可能变动或停止；而且 Exa 和 Parallel 可能用搜索内容训练自己的模型，所以搜索时请不要包含姓名和地址。在它们之后，Wikimedia（Wikivoyage 和 Wikipedia）和 OpenStreetMap（Nominatim）会作为最后备选，在其他都没有结果时被查询，不受勾选影响；在设置 → 工具中把“搜索方式”设为“关闭”，或在模型有自带搜索时使用它，就能停止。这些都可以在那里更改。	src/ui/search-panel.js:15	
 1fn0bdg	ok	Use	使用	src/ui/search-panel.js:31	
 1uowdjd	ok	resting after a failure, tries again {0}	失败后暂停中，{0}重试	src/ui/search-panel.js:48	{0} = relTime(now + Math.ceil(left / 60_000) * 60_000, now); Note: {0} is relTime ahead: "1分钟后".

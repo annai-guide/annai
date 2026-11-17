@@ -79,24 +79,24 @@ export const PLUGIN_MANIFEST_SCHEMA = {
 export function checkManifest(manifest) {
   const id = typeof manifest?.id === 'string' ? manifest.id : 'plugin';
   const errors = validate(PLUGIN_MANIFEST_SCHEMA, manifest);
-  if (errors.length) throw new PluginError(id, /* en */ `its ${MANIFEST_FILE} is not valid: ${errors.join('; ')}`);
+  if (errors.length) throw new PluginError(id, /* en */ `Its ${MANIFEST_FILE} is not valid: ${errors.join('; ')}`);
   if (manifest.api > API_VERSION) {
-    throw new PluginError(id, /* en */ `was made for plugin API ${manifest.api}; this version of annai supports API ${API_VERSION} and older`);
+    throw new PluginError(id, /* en */ `It was made for plugin API ${manifest.api}; this version of annai supports API ${API_VERSION} and older`);
   }
   if (manifest.entry !== undefined && !insidePlugin(manifest.entry)) {
-    throw new PluginError(id, /* en */ `its entry "${manifest.entry}" isn't a file inside the plugin`);
+    throw new PluginError(id, /* en */ `Its entry "${manifest.entry}" isn't a file inside the plugin`);
   }
   if (manifest.templates !== undefined) throw new PluginError(id, /* en */ 'Endpoint templates were replaced by `provider` (see docs/plugins.md)');
-  if (manifest.requires?.some((/** @type {any} */ r) => r?.id === id)) throw new PluginError(id, /* en */ 'requires itself: take its own id out of requires');
+  if (manifest.requires?.some((/** @type {any} */ r) => r?.id === id)) throw new PluginError(id, /* en */ 'It requires itself: take its own id out of requires');
   if (manifest.provider !== undefined) {
     const wrong = checkProviderDesc(manifest.provider);
-    if (wrong.length) throw new PluginError(id, /* en */ `its provider isn't valid: ${wrong.join('; ')}`);
+    if (wrong.length) throw new PluginError(id, /* en */ `Its provider isn't valid: ${wrong.join('; ')}`);
   }
-  if (manifest.language !== undefined && !canonical(manifest.language)) /* en */ throw new PluginError(id, `its language "${manifest.language}" isn't a language tag, such as en, ja or zh-Hans`);
+  if (manifest.language !== undefined && !canonical(manifest.language)) /* en */ throw new PluginError(id, `Its language "${manifest.language}" isn't a language tag, such as en, ja or zh-Hans`);
   if (manifest.search !== undefined) {
     const wrong = checkSearchDesc(manifest.search, manifest);
-    if (wrong.length) throw new PluginError(id, /* en */ `its search isn't valid: ${wrong.join('; ')}`);
-    if (manifest.entry === undefined) throw new PluginError(id, /* en */ 'describes a search provider but has no entry: a search provider is code that registers itself');
+    if (wrong.length) throw new PluginError(id, /* en */ `Its search isn't valid: ${wrong.join('; ')}`);
+    if (manifest.entry === undefined) throw new PluginError(id, /* en */ 'It describes a search provider but has no entry: a search provider is code that registers itself');
   }
 }
 
@@ -372,7 +372,7 @@ export async function inspectPackage(raw, { maxBytes = PLUGIN_MAX_BYTES } = {}) 
       } catch {
         ok = false;
       }
-      if (!ok) throw new PluginError(id, /* en */ `the file name "${name}" isn't allowed`);
+      if (!ok) throw new PluginError(id, /* en */ `The file name "${name}" isn't allowed`);
       total += b.byteLength;
     }
     if (total > maxBytes) throw new PluginError(id, /* en */ `is too large: it unpacks to more than ${size(maxBytes)}`, { shown: t`It is too large: it unpacks to more than ${size(maxBytes)}.` });
@@ -407,39 +407,39 @@ async function pluginPackage(files, checkNames) {
   try {
     manifest = JSON.parse(text(/** @type {Uint8Array} */ (files.get(MANIFEST_FILE))));
   } catch {
-    throw new PluginError('plugin', /* en */ `its ${MANIFEST_FILE} is not valid JSON`);
+    throw new PluginError('plugin', /* en */ `Its ${MANIFEST_FILE} is not valid JSON`);
   }
   checkManifest(manifest);
   const id = manifest.id;
-  if (manifest.entry && !files.has(manifest.entry)) throw new PluginError(id, /* en */ `its entry file ${manifest.entry} is missing`);
+  if (manifest.entry && !files.has(manifest.entry)) throw new PluginError(id, /* en */ `Its entry file ${manifest.entry} is missing`);
   checkNames(id);
-  for (const f of manifest.files ?? []) if (!files.has(f)) throw new PluginError(id, /* en */ `its file ${f}, listed in files, is missing`);
+  for (const f of manifest.files ?? []) if (!files.has(f)) throw new PluginError(id, /* en */ `Its file ${f}, listed in files, is missing`);
   const props = manifest.settings?.properties;
-  if (manifest.settings !== undefined && (!props || typeof props !== 'object' || Array.isArray(props))) throw new PluginError(id, /* en */ 'its settings must be a JSON Schema object with properties');
+  if (manifest.settings !== undefined && (!props || typeof props !== 'object' || Array.isArray(props))) throw new PluginError(id, /* en */ 'Its settings must be a JSON Schema object with properties');
   /** @type {SkillInfo[]} */
   const skills = [];
   for (const f of manifest.skills ?? []) {
     const folder = f === '.' ? '' : f.replace(/\/+$/, '');
-    if (folder && !insidePlugin(folder)) throw new PluginError(id, /* en */ `its skill folder ${f} isn't a folder inside the package`);
+    if (folder && !insidePlugin(folder)) throw new PluginError(id, /* en */ `Its skill folder ${f} isn't a folder inside the package`);
     const path = folder ? `${folder}/${SKILL_FILE}` : SKILL_FILE;
     const bytes = files.get(path);
-    if (!bytes) throw new PluginError(id, /* en */ `its skill folder ${f} has no ${SKILL_FILE}`);
+    if (!bytes) throw new PluginError(id, /* en */ `Its skill folder ${f} has no ${SKILL_FILE}`);
     /** @type {Skill} */
     let s;
     try {
       s = parseSkill(text(bytes));
     } catch (e) {
-      throw new PluginError(id, /* en */ `its skill ${f}: ${/** @type {any} */ (e)?.message ?? e}`);
+      throw new PluginError(id, /* en */ `Its skill ${f}: ${/** @type {any} */ (e)?.message ?? e}`);
     }
-    if (skills.some((x) => x.name === s.name)) throw new PluginError(id, /* en */ `it has two skills called ${s.name}`);
+    if (skills.some((x) => x.name === s.name)) throw new PluginError(id, /* en */ `It has two skills called ${s.name}`);
     skills.push({ name: s.name, description: s.description, folder });
   }
   /** @type {{ name: string, path: string }[]} */
   const personalities = [];
   for (const p of manifest.personalities ?? []) {
-    if (!p.endsWith('.md') || !files.has(p)) throw new PluginError(id, /* en */ `its personality ${p} must be a .md file in the package`);
+    if (!p.endsWith('.md') || !files.has(p)) throw new PluginError(id, /* en */ `Its personality ${p} must be a .md file in the package`);
     const name = p.split('/').pop().slice(0, -3);
-    if (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(name)) throw new PluginError(id, /* en */ `its personality's file name ${p} must be lowercase letters, digits and dashes, like ranger.md`);
+    if (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(name)) throw new PluginError(id, /* en */ `Its personality's file name ${p} must be lowercase letters, digits and dashes, like ranger.md`);
     personalities.push({ name, path: p });
   }
   return {

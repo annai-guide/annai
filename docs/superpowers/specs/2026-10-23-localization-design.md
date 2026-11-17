@@ -1,5 +1,7 @@
 # Localization: annai's screens in other languages, design
 
+> **Names since changed (2026-11-17):** Koe's two lists, "Koe · Realtime" and "Koe · Classic", are **Koe · Live** and **Koe · Chat** on the screens, and the mode is the **Live** chip beside the voice chip ("Live" or "Live off"), not a choice on the voice chip; the "Tidy up" menu is the ⋯ by the conversation's name (**Conversation menu**: Summarize now, Start fresh). The text below keeps the names it was written with.
+
 Date: 2026-10-23. Status: accepted. On 2026-10-23 the user took all 11 recommendations in "Decisions for the user" as written. Building starts with L1. The plan to build it is `docs/superpowers/plans/2026-10-23-localization.md`.
 
 Builds on the phase2-language branch (spec §10.9, merging tonight): the languages the user speaks, the language Shiori answers in, `src/core/languages.js` (41 languages) and its words module, `LANGUAGE_WORDS`. Line numbers below are main at d0658c5 unless a branch is named.

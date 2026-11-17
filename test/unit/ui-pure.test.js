@@ -297,6 +297,18 @@ test("bookingFacts: an old unverified booking (no unsure key) has a check on eve
   assert.deepEqual(marked(stay), ['place', 'start', 'end', 'confirmation']);
 });
 
+test("bookingFacts: a flight's place has a line, as a stay's has: an old flight's place, which Shiori asks about, is on screen and counted (words-next)", () => {
+  const at = { at: '2026-11-20T11:20:00-08:00', tz: 'America/Los_Angeles' };
+  const old = { kind: 'flight', status: 'unverified', title: 'ANNAI AIR AN 123', start: at, end: at, place: { name: 'Testville International', address: '1 Runway Road' }, confirmation: 'TESTQ1', fields: { terminal: '2', gate: 'B12' } };
+  const f = bookingFacts(old);
+  assert.deepEqual(f.map((x) => x.key), ['start', 'end', 'place', 'confirmation', 'terminal', 'gate']);
+  assert.deepEqual(f.map((x) => x.label), ['Departs', 'Arrives', 'Place', 'Confirmation', 'Terminal', 'Gate']);
+  assert.equal(f.find((x) => x.key === 'place')?.value, 'Testville International, 1 Runway Road');
+  assert.deepEqual(f.filter((x) => x.unsure).map((x) => x.key), ['start', 'end', 'place', 'confirmation', 'terminal', 'gate'], 'every part of an old one is checked, its place too');
+  assert.equal(checkCount(old), 7, "the Plan's chip counts the place: the name, both times, the place, the confirmation, the terminal, the gate");
+  assert.equal(checkCount(old), checkOf(old).fields.length, 'one check for each part Shiori is told of');
+});
+
 test("checkCount: the checks the details draw, which the Plan's chip says: a flight's from and to are one Route line, one check; an old flight with a route says one fewer than the parts it marks (booking-say's round 4, fix 1)", () => {
   const at = { at: '2026-11-20T11:20:00-08:00', tz: 'America/Los_Angeles' };
   const marksDrawn = (/** @type {any} */ b) => bookingFacts(b).filter((x) => x.unsure).length + (b.title ? 1 : 0);

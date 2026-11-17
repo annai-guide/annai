@@ -1,5 +1,7 @@
 # keep-reasoning: Claude's thinking between tool steps, design
 
+> **Names since changed (2026-11-17):** Koe's two lists, "Koe · Realtime" and "Koe · Classic", are **Koe · Live** and **Koe · Chat** on the screens, and the mode is the **Live** chip beside the voice chip ("Live" or "Live off"), not a choice on the voice chip. The text below keeps the names it was written with.
+
 Date: 2026-10-29. Status: revised after a spec check and the user's answers of 2026-10-29. No question is open. Main at dd7465ce; line numbers are main's.
 
 ## Why

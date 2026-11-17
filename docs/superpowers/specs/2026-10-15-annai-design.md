@@ -1,5 +1,7 @@
 # annai: design spec
 
+> **Names since changed (2026-11-17):** Koe's two lists, "Koe · Realtime" and "Koe · Classic", are **Koe · Live** and **Koe · Chat** on the screens, and the mode is the **Live** chip beside the voice chip ("Live" or "Live off"), not a choice on the voice chip; the "Tidy up" menu is the ⋯ by the conversation's name (**Conversation menu**: Summarize now, Start fresh). The text below keeps the names it was written with.
+
 - **Date:** 2026-10-15
 - **Status:** approved in conversation, section by section; this document is awaiting review
 - **Inputs:** [docs/vision.md](../../vision.md) (the brief and recorded decisions), UI mockups (draft 6, copied to [docs/mockups/ui-mockups-2026-10-15.html](../../mockups/ui-mockups-2026-10-15.html))

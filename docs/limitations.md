@@ -779,29 +779,11 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the cue says only speak, show and ask reach the user; a model can still write plain text.
 - **Revisit when:** the next version: firmer cue words, measured on the ask-owed run's forced set.
 
-### Testing docs and specs still name the Koe lists "Realtime" and "Classic", and a menu "Tidy up"
-- **Kind:** deferred.
-- **What the user sees:** nothing on a screen. A tester following the testing docs looks for names the screens no longer show: "Koe · Realtime" (realtime-check.md:32), "Koe · Classic" (reasoning-check.md:15), and the bare "Realtime" and "Classic" of the device checklists (device-checklist-koe.md, device-checklist-phase2.md, device-check-plan.md), where the screens say "Koe · Live" and "Koe · Chat". Some specs name a "Tidy up" menu: the Conversation screen's ⋯ menu ("Conversation menu") has "Summarize now" and "Start fresh" in it, and no "Tidy up".
-- **Why:** found on 2026-11-14 while correcting the words Shiori is told. The checklists and dated specs record what was true when they were written; renaming every mention is a doc-only change of its own, and a rename that misses a step is worse than a name the tester can guess.
-- **Revisit when:** the next version: rename in the testing docs (the checklists a tester follows) and leave the dated specs as they were, with a note at the top of each spec that names the new words.
-
-### Some plugin errors still start in lower case with no subject
-- **Kind:** deferred.
-- **What the user sees:** a card or an install screen's line such as "is being removed", "is switched off after repeated errors", "couldn't be downloaded. Check the connection and try again." or "didn't provide a kind of backup place X", with nothing before it but the plugin's name. Where a line has a translation (its `shown`), only an English screen reads the fragment; a Japanese or Chinese screen shows its own draft, which reads as a sentence. The lines with no translation (a plugin author's manifest errors, marked lang="en") read as fragments on every screen.
-- **Why:** found on 2026-11-14 with the others. The lines below are what a search found still in lower case that day; that is not a claim that every other line is right. With a translation: src/core/plugins.js:438, :607, :609; registry.js:221; package-updates.js:54, :58, :62; llm/official.js:156, :158, :160, :296, :298; llm/service.js:346. With none: src/core/packages.js:82, :84, :87, :90, :93, :95, :98, :99, :363, :398, :402, :404, :406, :411, :414, :420, :422, :428, :430 (19 lines). Other lines in plugins.js (from :693), requires.js (:52) and pdf-pages.js (:36) also begin in lower case and were not checked screen by screen. The lines the pass did fix begin with "It …" or a name (requires.js's "It needs …", plugins.js:179-190 and :439, packages.js:336-348 and :366, service.js:248-266 and :337, official.js:273 and :275).
-- **Revisit when:** the next English change: the same fix, "It …" or the name, with the log's English unchanged. A changed line gets new drafts in Japanese, zh-Hans and zh-Hant in the same commit, because its key changes with its English.
-
 ### The search order can still go wrong in two rare ways
 - **Kind:** deferred.
 - **What the user sees:** on Settings → Tools, the free last resort (Wikimedia, Nominatim) is always last since 2026-11-14. Two paths still write an order the screen doesn't show: a search plugin installed later is placed by where an older saved order had put the last resort (above Jina, say); and ArrowDown on the last movable row saves the last resort above it, so a plugin installed later lands above that row. The last resort itself still runs last.
 - **Why:** found by the review after the English fix's second round; fixing it on that branch would have been a third round.
 - **Revisit when:** the next version: in src/core/web-search.js the insertion point skips floor rows (`out.findIndex((q) => !isFloor(q) && rank(q) > rank(p))`), and search-panel.js's move() swaps only within the movable rows; a unit case and an ArrowDown e2e check.
-
-### A few words from the 2026-11-14 translation pass still need a second look
-- **Kind:** deferred.
-- **What the user sees:** in Chinese, the install screen's "came from a file" reads 来自 1 个文件, a count where none is meant (the row "a file", 8w8k36, also fills a toast); the same English "the browser's own dictation and voice" has two drafts in each language (読み上げ / 朗读 in one row, 声 / 声音 in two others), next to the Roles list's "Phone dictation"; "a plan's 'leave soon'" is the one place a screen says "plan" where the rest says "the itinerary's"; one zh-Hans search line has two 它 for different things; the backups intro's "after changes or once a day" doesn't hold for a place whose automatic backup is Off, and it no longer says which connections backups use (each place's page does).
-- **Why:** each was found by the review after the English fix's second round; none is a wrong result or a false privacy line.
-- **Revisit when:** the next English and language change: whole sentences for "a file" and the calendar toast (or a context at plugin-install.js:189), one name for dictation everywhere, "the itinerary's 'leave soon'", the backups intro naming Wi-Fi and the per-place rule.
 
 ### Photo encoder plugins
 - **Kind:** deferred.
@@ -835,18 +817,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** OpenRouter keeps uploads until they are deleted and its upload takes no expiry, so only annai can delete them, and only while it runs with a key to that workspace. Anything more would need a server annai doesn't have. annai deletes from OpenRouter's own list (spec §4.8), so any annai signed in to that workspace later deletes what is left.
 - **Revisit when:** OpenRouter adds an expiry to uploads (annai would set 48 hours, as it does at OpenAI).
 - **Approved:** 2026-11-14, the user's pick "Accept it (Recommended)" on the OpenRouter uploads plan's question "annai's photos can outlive 48 hours at OpenRouter". Widened 2026-11-14 by the user's pick "Widen the words (Recommended)": the Erase with more uploads than its 10 seconds can delete. Widened 2026-11-15, the user's pick "Accept it (Recommended)" (the late upload, an address change); 2026-11-15, chief's decision (the older-core window). Widened 2026-11-15, chief's decision C43 (the key kept outside its key field; the older-core clause's "a key into another workspace (Sign in again or typed)" confirmed).
-
-### An old flight's place, and six of a booking's details, aren't named the same way on screen and by Shiori
-- **Kind:** deferred.
-- **What the user sees:** a booking saved before 2026-10-29 and never confirmed is read as one with every part marked (2026-11-16). For a flight that has a `place`, Shiori and Koe ask about "the place", but the flight's details draw no Place line, so the user can't find it on screen (the Plan's "Check N details" counts what the details draw, so it doesn't count it). And a flight's terminal, gate, bags or travellers, a train, or a car, each labelled on the details screen, is "some other detail" in what Shiori is told, so she can't name it.
-- **Why:** the details' list of a flight's lines (`ORDER.flight`, src/ui/format.js) has no `place`, and Shiori's word table for a booking's parts (`PARTS`, src/core/bookings.js) lacks six keys the screen's labels (`FIELD_WORDS`) have; both are older than the old-booking round, which made them routine on old flights. Found by its re-review (2026-11-16), too late to change Shiori's words before the release without a real-model run.
-- **Revisit when:** the next version: add `place` to a flight's lines (the function's own comment promises nothing she wrote goes unseen), give the six keys Shiori's words with a unit test that both tables cover the same keys, and run one real-model cell.
-
-### OpenAI's and Groq's speech models name their provider twice, and two same-named providers look alike
-- **Kind:** deferred.
-- **What the user sees:** since 2026-11-16 every model is named after its provider ("OpenRouter / Anthropic: Claude Opus 5.5"). OpenAI's and Groq's speech models already carried their provider's name in their own names, so they read "OpenAI / OpenAI: GPT Transcribe" and "Groq / Groq: Whisper large v3 turbo" in Speech in and out, their pickers, the Voice tests and the Trace. And a provider added twice from one plugin without a rename (two OpenRouter keys) is "OpenRouter" both times: its models differ only by "(2)", and Settings → Tools lists both records' models in one row.
-- **Why:** the hand-made prefix in those two descriptions answered the same problem before the general rule existed; dropping it renames models, and a description update renames a model without checking that the name is free (`syncProviders`, src/core/llm/providers.js), so that check comes with it. A second provider's default name is the plugin's.
-- **Revisit when:** the next version: drop "OpenAI: " and "Groq: " from those names with the free-name check at `syncProviders` (then `modelNames`' guard for a name two providers claim can go), and give a second provider of one plugin a default name with "(2)", as its models get.
 
 ### A leave reminder shows before annai records the arrival when annai's first fix back on screen is slow or imprecise
 - **Kind:** deferred.

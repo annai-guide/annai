@@ -44,7 +44,7 @@ test('adding OpenAI installs it and what it needs with no question; its page sho
     await expect(panel.getByLabel(`Use ${ability}`)).toBeChecked({ checked: /** @type {boolean} */ (on) });
   }
   await expect(page.getByRole('region', { name: 'Chat (Responses)', exact: true }).getByRole('link', { name: /^GPT-6\.1 Sol/ })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Voice', exact: true }).getByRole('link', { name: /^OpenAI: GPT-4o mini TTS \(Marin\)/ })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Voice', exact: true }).getByRole('link', { name: /^GPT-4o mini TTS \(Marin\)/ })).toBeVisible();
   await page.getByLabel('API key').fill('sk-test-openai-123456');
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
@@ -53,7 +53,7 @@ test('adding OpenAI installs it and what it needs with no question; its page sho
   // Main has its model; its voice is behind the browser's, never ahead of it.
   await page.getByRole('link', { name: 'Models', exact: true }).click();
   await expect(page.getByText('1. OpenAI / GPT-6.1 Sol')).toBeVisible();
-  await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(["1. Browser voice (the browser's own; some voices go online)", '2. OpenAI / OpenAI: GPT-4o mini TTS (Marin)']);
+  await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(["1. Browser voice (the browser's own; some voices go online)", '2. OpenAI / GPT-4o mini TTS (Marin)']);
   // Remove: everything it brought goes.
   await page.locator('a.card', { hasText: 'OpenAI' }).click(); // the provider's card; the models in roles link too
   await expect(page.getByText('Removes its key, its models and their places in roles, and the OpenAI plugin, with OpenAI Responses and OpenAI-compatible speech, which nothing else needs.')).toBeVisible();

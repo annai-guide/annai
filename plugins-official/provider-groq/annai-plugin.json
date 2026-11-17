@@ -1,7 +1,7 @@
 {
   "id": "provider-groq",
   "name": "Groq",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "api": 1,
   "description": "Fast open models, and fast Whisper transcription.",
   "category": "providers",
@@ -32,7 +32,7 @@
         "models": [
           {
             "providerId": "whisper-large-v3-turbo",
-            "name": "Groq: Whisper large v3 turbo",
+            "name": "Whisper large v3 turbo",
             "prices": {
               "perMinute": 0.000667,
               "minSeconds": 10
@@ -40,7 +40,7 @@
           },
           {
             "providerId": "whisper-large-v3",
-            "name": "Groq: Whisper large v3",
+            "name": "Whisper large v3",
             "prices": {
               "perMinute": 0.00185,
               "minSeconds": 10

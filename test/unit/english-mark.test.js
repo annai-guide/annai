@@ -109,8 +109,8 @@ test('the cards for plugins that did not start hold their errors, for the notice
 
 test('the checks of a package and of an itinerary throw errors marked as annai\'s English', async () => {
   const bad = new TextEncoder().encode('{ not json');
-  await assert.rejects(inspectPackage(new Map([['annai-plugin.json', bad]])), (/** @type {any} */ e) => e.en === true && englishOf(e) === 'its annai-plugin.json is not valid JSON');
-  await assert.rejects(inspectPackage(new Map([['annai-plugin.json', new TextEncoder().encode('{"id":"hello"}')]])), (/** @type {any} */ e) => e.en === true && /^its annai-plugin.json is not valid: /.test(englishOf(e)));
+  await assert.rejects(inspectPackage(new Map([['annai-plugin.json', bad]])), (/** @type {any} */ e) => e.en === true && englishOf(e) === 'Its annai-plugin.json is not valid JSON');
+  await assert.rejects(inspectPackage(new Map([['annai-plugin.json', new TextEncoder().encode('{"id":"hello"}')]])), (/** @type {any} */ e) => e.en === true && /^Its annai-plugin.json is not valid: /.test(englishOf(e)));
   assert.throws(() => trackFrom(/** @type {any} */ ({ start: 'tomorrow', route: [] })), (/** @type {any} */ e) => englishOf(e).startsWith('An itinerary needs a start'));
   assert.throws(() => trackFrom(/** @type {any} */ ({ start: '2026-11-27T08:30:00-08:00', route: [{}] })), (/** @type {any} */ e) => englishOf(e) === 'An itinerary needs a route of at least two places.');
 });
@@ -180,4 +180,45 @@ test('cards folded into a stack are announced from their title and words, copied
   const said = stack.children.find((/** @type {any} */ c) => c.className === 'visually-hidden');
   assert.deepEqual(parts(said.children[1]), [['Not installed: ', null], ['its entry file x.js is missing', 'en'], ['.', null]]);
   assert.ok(said.children.every((/** @type {any} */ c) => ['strong', 'p'].includes(c.tag)), 'no buttons');
+});
+
+// words-next (the Deferred entry "Some plugin errors still start in lower case with no subject"): a screen shows a plugin's error without the
+// plugin's id (messageOf), as a card's body under a title that names the plugin, so its words are a sentence of their own: "It is being
+// removed.", never "is being removed". The words a screen shows are the error's shown where it has one, else its message (annai's English,
+// marked lang="en"); either starts with a capital, a quoted name, or annai's own name (annai, annai.register), which keeps its case.
+test("every plugin error annai throws shows a sentence of its own: the words a screen shows start with a capital, never a fragment after the plugin's id", async () => {
+  const ts = (await import('typescript')).default;
+  const { readdir, readFile } = await import('node:fs/promises');
+  const root = new URL('../../', import.meta.url);
+  /** @param {string} dir @returns {Promise<string[]>} */
+  const files = async (dir) => (await readdir(new URL(dir, root), { recursive: true })).filter((f) => f.endsWith('.js') && !f.includes('vendor/')).map((f) => `${dir}${f}`);
+  /** The literal start of words: a string, a template's head, a t`` tag's, each branch of a ?:; null where the words are made elsewhere. @param {any} n @returns {string[] | null} */
+  const heads = (n) => {
+    if (!n) return null;
+    if (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n)) return [n.text];
+    if (ts.isTemplateExpression(n)) return [n.head.text];
+    if (ts.isTaggedTemplateExpression(n)) return heads(n.template);
+    if (ts.isConditionalExpression(n)) return [...(heads(n.whenTrue) ?? []), ...(heads(n.whenFalse) ?? [])];
+    if (ts.isParenthesizedExpression(n)) return heads(n.expression);
+    return null;
+  };
+  /** @type {string[]} */
+  const wrong = [];
+  for (const file of [...(await files('src/')), ...(await files('plugins-official/'))]) {
+    const sf = ts.createSourceFile(file, await readFile(new URL(file, root), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+    /** @param {any} n */
+    const visit = (n) => {
+      if (ts.isNewExpression(n) && n.expression.getText(sf) === 'PluginError' && n.arguments && n.arguments.length >= 2) {
+        const o = n.arguments[2];
+        const shown = o && ts.isObjectLiteralExpression(o) ? o.properties.find((/** @type {any} */ p) => p.name?.getText(sf) === 'shown') : undefined;
+        const words = shown ? (ts.isPropertyAssignment(shown) ? heads(shown.initializer) : null) : heads(n.arguments[1]);
+        for (const w of words ?? []) {
+          if (w && !/^["“]?[A-Z]/.test(w) && w !== '"' && !/^annai\b/.test(w)) wrong.push(`${file}:${sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1}: ${w.slice(0, 50)}`);
+        }
+      }
+      ts.forEachChild(n, visit);
+    };
+    visit(sf);
+  }
+  assert.deepEqual(wrong, []);
 });
