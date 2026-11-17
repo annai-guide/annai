@@ -574,7 +574,7 @@ function suggestionsPanel(ctx, id, src) {
   /** @type {Record<string, string>} */
   const labels = { free: t`Use the free models`, recommended: t`Use the recommended models` };
   return h('section', { class: 'panel', 'aria-label': t`Suggested models` },
-    h('p', { class: 'sub', text: speech ? t`${src.name} suggests a model for each role. Its speech models then go ahead of the browser's own dictation and voice, which are free, so any that cost money are tried before them.`
+    h('p', { class: 'sub', text: speech ? t`${src.name} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.`
       : t`${src.name} suggests a model for each role.` }),
     h('div', { class: 'acts' }, ...Object.keys(roles).map((which) => h('button', {
       class: 'btn', type: 'button',

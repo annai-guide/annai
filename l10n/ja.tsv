@@ -183,7 +183,7 @@ provider-openrouter:buz2qi	ok	OpenRouter didn't send a key.	OpenRouterからキ�
 provider-openrouter:keqy0k	ok	Nothing was sent to OpenRouter yet: try again.	OpenRouterにはまだ何も送信していません。もう一度お試しください。	plugins-official/provider-openrouter/index.js:160	
 provider-openrouter:ty7dbd	ok	Signed in with OpenRouter	OpenRouterでサインインしました	plugins-official/provider-openrouter/index.js:163	
 provider-openrouter:7pnsck	ok	annai keeps the new key for OpenRouter's chat, transcription and voices.	新しいキーを保存しました。OpenRouterのチャット、文字起こし、声に使います。	plugins-official/provider-openrouter/index.js:164	Note: keeps: the key is saved (保存し), not only used.
-provider-openrouter:12ypgkl	ok	Shiori thinks with free models to start, so trying annai costs nothing. annai also added OpenRouter's transcription and voices, behind the browser's own dictation and voice. Its free voice comes first: each sentence it says uses one of the free requests a day the chat models use too. The others cost a little, from credits you buy at OpenRouter. To use them first, move them up under Roles.	最初は無料のモデルでShioriが考えるので、annaiは無料で試せます。OpenRouterの文字起こしと声も、端末の音声入力とブラウザの声の後ろに追加しました。その中では無料の声が先に使われ、1文話すごとに、チャットモデルと共通の1日の無料リクエストを1回分使います。ほかの声は少し費用がかかり、OpenRouterで購入するクレジットから支払います。それらを先に使うには、「役割」で上に移動してください。	plugins-official/provider-openrouter/index.js:165	Note: 端末の音声入力 and ブラウザの声 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
+provider-openrouter:1736iie	ok	Shiori thinks with free models to start, so trying annai costs nothing. annai also added OpenRouter's transcription and voices, behind Phone dictation and Browser voice. Its free voice comes first: each sentence it says uses one of the free requests a day the chat models use too. The others cost a little, from credits you buy at OpenRouter. To use them first, move them up under Roles.	最初は無料のモデルでShioriが考えるので、annaiは無料で試せます。OpenRouterの文字起こしと声も、端末の音声入力とブラウザの声の後ろに追加しました。その中では無料の声が先に使われ、1文話すごとに、チャットモデルと共通の1日の無料リクエストを1回分使います。ほかの声は少し費用がかかり、OpenRouterで購入するクレジットから支払います。それらを先に使うには、「役割」で上に移動してください。	plugins-official/provider-openrouter/index.js:165	Note: 端末の音声入力 and ブラウザの声 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
 provider-openrouter:1g87qpl	ok	OpenRouter sent no code back.	OpenRouterからコードが返ってきませんでした。	plugins-official/provider-openrouter/index.js:173	
 provider-openrouter:4uzwwb	ok	Sign in again	もう一度サインイン	plugins-official/provider-openrouter/index.js:187	
 provider-openrouter:7utsi6	ok	Sign in with OpenRouter	OpenRouterでサインイン	plugins-official/provider-openrouter/index.js:187	
@@ -195,7 +195,7 @@ provider-openrouter:r0x7h	ok	annai has made a new sign-in: tap it again.	新し�
 provider-openrouter:t5esrh	ok	annai has made a new sign-in: tap Sign in with OpenRouter again.	新しいサインインを用意しました。もう一度「OpenRouterでサインイン」をタップしてください。	plugins-official/provider-openrouter/index.js:230	
 provider-openrouter:1gutt9j	ok	Sign in again for a new key, in place of the one saved.	もう一度サインインすると、保存済みのキーが新しいキーに置き換わります。	plugins-official/provider-openrouter/index.js:252	
 provider-openrouter:2yktg6	ok	Sign in with OpenRouter for a key, or give one below.	「OpenRouterでサインイン」してキーを取得するか、下にキーを入力してください。	plugins-official/provider-openrouter/index.js:252	
-provider-openrouter:ltxijx	ok	Sign in with OpenRouter to get one key for many models. annai starts you on free models (50 requests a day), so trying it costs nothing. It also adds OpenRouter's transcription and voices, a free one among them; the browser's own dictation and voice stay first.	「OpenRouterでサインイン」すると、1つのキーで多くのモデルを使えます。最初は無料のモデル（1日50リクエスト）を使うので、無料で試せます。OpenRouterの文字起こしと声（無料の声を含む）も追加されますが、端末の音声入力とブラウザの声が引き続き優先されます。	plugins-official/provider-openrouter/index.js:253	Note: 端末の音声入力 and ブラウザの声 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
+provider-openrouter:ezi4jo	ok	Sign in with OpenRouter to get one key for many models. annai starts you on free models (50 requests a day), so trying it costs nothing. It also adds OpenRouter's transcription and voices, a free one among them; Phone dictation and Browser voice stay first.	「OpenRouterでサインイン」すると、1つのキーで多くのモデルを使えます。最初は無料のモデル（1日50リクエスト）を使うので、無料で試せます。OpenRouterの文字起こしと声（無料の声を含む）も追加されますが、端末の音声入力とブラウザの声が引き続き優先されます。	plugins-official/provider-openrouter/index.js:253	Note: 端末の音声入力 and ブラウザの声 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
 provider-scripted:@name	ok	Scripted model (for testing)	スクリプト応答モデル（テスト用）	plugins-official/provider-scripted/annai-plugin.json:3	
 provider-scripted:@description	ok	A model that replies from a script, for tests and plugin authors. It never uses the network.	あらかじめ用意したスクリプトどおりに返答するモデルです。テストやプラグイン開発向けで、通信は一切行いません。	plugins-official/provider-scripted/annai-plugin.json:6	
 provider-sglang:@name	ok	SGLang	SGLang	plugins-official/provider-sglang/annai-plugin.json:3	
@@ -775,24 +775,24 @@ s8uown	ok	The speech couldn't be sent to it.	音声をこのモデルに送れ�
 1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	メインの役割にモデルが設定されていません。「設定 → モデル」で追加してください。	src/core/llm/fallback.js:233	Note: the role by its screen name (メイン / 主要).
 g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	プラグインの一覧を読み込めませんでした。ネットワーク接続を確認して、もう一度お試しください。	src/core/llm/official.js:33	
 2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	プラグインの一覧を読み込めませんでした（HTTP {0}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:35	{0} = res.status
-39e4kf	ok	It couldn't be downloaded. Check the connection and try again.	ダウンロードできませんでした。ネットワーク接続を確認して、もう一度お試しください。	src/core/llm/official.js:156	Note: said of a plugin, whose name is the card's title.
-dryfjv	ok	It couldn't be downloaded ({0}: HTTP {1}). Try again later.	ダウンロードできませんでした（{0}：HTTP {1}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:158	{0} = name; {1} = res.status; Note: said of a plugin, whose name is the card's title.
-1gwnm4z	ok	It wasn't installed: {0} doesn't match annai's catalog.	{0}がannaiのカタログと一致しないため、インストールしませんでした。	src/core/llm/official.js:160	{0} = name; Note: said of a plugin, whose name is the card's title.
+1on7jro	ok	The plugin couldn't be downloaded. Check the connection and try again.	プラグインをダウンロードできませんでした。ネットワーク接続を確認して、もう一度お試しください。	src/core/llm/official.js:156	Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
+n9xh2y	ok	The plugin couldn't be downloaded ({0}: HTTP {1}). Try again later.	プラグインをダウンロードできませんでした（{0}：HTTP {1}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:158	{0} = name; {1} = res.status; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
+16b6a3q	ok	The plugin wasn't installed: {0} doesn't match annai's catalog.	{0}がannaiのカタログと一致しないため、プラグインをインストールしませんでした。	src/core/llm/official.js:160	{0} = name; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
 1mtcl9u	ok	It isn't a kind of backup place annai knows. Install a plugin that provides it.	annaiが対応していない種類のバックアップ先です。対応するプラグインをインストールしてください。	src/core/llm/official.js:273	Note: said of a kind of backup place, whose id comes before it in the log.
 ul2t1z	ok	It isn't an endpoint type annai knows. Install a plugin that provides it.	annaiが対応していないエンドポイントの種類です。対応するプラグインをインストールしてください。	src/core/llm/official.js:275	Note: said of an endpoint type, whose id comes before it in the log.
 brqvs6	ok	{0}, which you turned off, isn't switched on by this.	オフにした{0}は、この操作ではオンになりません。	src/core/llm/official.js:287	{0} = name
-1qvy3us	ok	It didn't provide a kind of backup place {0}.	バックアップ先の種類「{0}」が含まれていませんでした。	src/core/llm/official.js:296	{0} = type; Note: said of a plugin, whose name is the card's title.
-bipvbz	ok	It didn't provide an endpoint type {0}.	エンドポイントの種類「{0}」が含まれていませんでした。	src/core/llm/official.js:298	{0} = type; Note: said of a plugin, whose name is the card's title.
+1rnb3p5	ok	The plugin didn't provide a kind of backup place {0}.	このプラグインはバックアップ先の種類「{0}」に対応していませんでした。	src/core/llm/official.js:296	{0} = type; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
+cpehgy	ok	The plugin didn't provide an endpoint type {0}.	このプラグインはエンドポイントの種類「{0}」に対応していませんでした。	src/core/llm/official.js:298	{0} = type; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
 1jtsyij	ok	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	スマートフォンでは、localhostはスマートフォン自身を指します。別のコンピューターのサーバーにはhttpsのアドレスが必要です。httpsのページからの暗号化されていないhttp通信はブラウザがブロックするため、annaiはネットワーク内ではhttpsのアドレスにしか接続しません。方法の1つはTailscale Serveです。スマートフォンをtailnetに参加させ、サーバー側で{0}を実行して、annaiに{1}を入力します。サーバーは annai.guide からのCORSも許可している必要があります。Chrome 142以降では、ローカルネットワークへのアクセス許可を求められることがあります。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
 557vva	ok	{0} isn't a web address: give it with https:// in front.	{0}はWebアドレスではありません。先頭に https:// を付けてください。	src/core/llm/provider-desc.js:164	{0} = url
 y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	アドレスは https:// で始めてください（http:// はlocalhostか127.0.0.1の場合のみ）。httpsのページからの暗号化されていないhttp通信はブラウザがブロックし、annaiもネットワーク内ではhttpsのアドレスにしか接続しないため、別のコンピューターのサーバーにはhttpsのアドレスが必要です。Tailscale Serveで用意できます：{0}。サーバーは annai.guide からのCORSも許可している必要があります。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
 1qpfdfv	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1).	アドレスは https:// で始めてください（http:// はlocalhostか127.0.0.1の場合のみ）。	src/core/llm/provider-desc.js:166	
-1xwbser	ok	It is turned off.	オフになっています。	src/core/llm/service.js:302	Note: said of a plugin named before it on the screen.
-1pqsrb3	ok	It isn't running. Look at it in Settings → Plugins.	動作していません。「設定 → プラグイン」で確認してください。	src/core/llm/service.js:304	Note: said of a plugin named before it on the screen.
-sejc5h	ok	{0} was switched off after errors.	{0}はエラーが続いたためオフになりました。	src/core/llm/service.js:319	{0} = shown
-1uno44s	ok	It didn't provide a model provider.	モデルのプロバイダーが含まれていませんでした。	src/core/llm/service.js:320	Note: said of a plugin.
-2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	そのプラグインはannai公式のものではありません。入手元からもう一度インストールしてください。	src/core/llm/service.js:391	
-1k9wkd0	ok	The plugin it names doesn't provide models, so it wasn't installed.	指定されているプラグインはモデルを提供していないため、インストールされませんでした。	src/core/llm/service.js:400	Note: said after the provider's name ("OpenRouter: …"); the plugin its record names.
+1xwbser	ok	It is turned off.	オフになっています。	src/core/llm/service.js:305	Note: said of a plugin named before it on the screen.
+1pqsrb3	ok	It isn't running. Look at it in Settings → Plugins.	動作していません。「設定 → プラグイン」で確認してください。	src/core/llm/service.js:307	Note: said of a plugin named before it on the screen.
+sejc5h	ok	{0} was switched off after errors.	{0}はエラーが続いたためオフになりました。	src/core/llm/service.js:322	{0} = shown
+1uno44s	ok	It didn't provide a model provider.	モデルのプロバイダーが含まれていませんでした。	src/core/llm/service.js:323	Note: said of a plugin.
+2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	そのプラグインはannai公式のものではありません。入手元からもう一度インストールしてください。	src/core/llm/service.js:394	
+1k9wkd0	ok	The plugin it names doesn't provide models, so it wasn't installed.	指定されているプラグインはモデルを提供していないため、インストールされませんでした。	src/core/llm/service.js:403	Note: said after the provider's name ("OpenRouter: …"); the plugin its record names.
 3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:70	{0} = p.title
 1rb0o7n	ok	OpenStreetMap around {0}	{0}周辺のOpenStreetMap	src/core/pack/download.js:72	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
 hdsgog	ok	OpenStreetMap between {0} and {1}	{0}と{1}の間のOpenStreetMap	src/core/pack/download.js:72	{0} = a; {1} = b
@@ -845,7 +845,7 @@ masbkh	ok	A skill with this id is installed already. Remove it first.	同じID�
 1863007	ok	It is being removed.	削除中です。	src/core/plugins.js:438	
 u30lhr	ok	It was updated. Restart annai to run the new version.	アップデートされました。新しいバージョンを使うには、annaiを再起動してください。	src/core/plugins.js:439	
 12roxwh	ok	It keeps MCP servers, not settings: remove a server on its own screen.	設定ではなくMCPサーバーを保存しています。サーバーはそれぞれの画面で削除してください。	src/core/plugins.js:609	
-rhqr7k#other	ok	it didn't finish starting within # seconds	#秒以内に起動が終わりませんでした	src/core/plugins.js:806	plural; # = s; English: "it didn't finish starting within # second" (one), "it didn't finish starting within # seconds" (other)
+rdpkly#other	ok	It didn't finish starting within # seconds.	#秒以内に起動が完了しませんでした。	src/core/plugins.js:806	plural; # = s; English: "It didn't finish starting within # second." (one), "It didn't finish starting within # seconds." (other); Note: a sentence of its own, under the card's "didn't start" title; after "Starting failed:" it is the reason.
 u8bf72	ok	Notifications are on. Reminders come like this while annai is closed.	通知がオンになりました。annaiを閉じているときは、リマインダーがこのように届きます。	src/core/push/mirror.js:75	
 1dxa9va	ok	Notifications are on again: reminders come like this while annai is closed.	通知が再びオンになりました。annaiを閉じているときは、リマインダーがこのように届きます。	src/core/push/mirror.js:76	
 dcq7bh	ok	annai has a reminder for you. Open annai to see it.	リマインダーがあります。annaiを開いて確認してください。	src/core/push/mirror.js:83	Note: a notification for a reminder the phone couldn't read.
@@ -882,6 +882,7 @@ ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't h
 1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	この名前はannai公式のプラグインが使っていますが、インストールされているのはほかから入手したものなので、annaiでは使いません。「設定 → プラグイン」で削除してから、もう一度お試しください。	src/core/registry.js:17	
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	「設定 → プラグイン」でオンにしてから、もう一度お試しください。	src/core/registry.js:18	
 mzoa87	ok	It is switched off after repeated errors.	エラーが続いたため、オフになっています。	src/core/registry.js:221	
+dhg5k6	ok	Starting failed: {0}	起動に失敗しました：{0}	src/core/registry.js:233	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
 19bu7pw	ok	Version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	バージョン{0}にすると{1}が動かなくなります（{1}には{2} {3}が必要です）。先に{4}をアップデートするか、このバージョンのままにしてください。	src/core/requires.js:52	{0} = version; {1} = them; {2} = it; {3} = r.version; {4} = them
 1ee40s4	ok	It needs {0}, which you turned off.	{0}が必要ですが、オフになっています。	src/core/requires.js:79	{0} = shown
 8xu6se	ok	It needs {0}, which isn't installed. Install it from {1} first, then try again.	{0}が必要ですが、インストールされていません。{1} からインストールしてから、もう一度お試しください。	src/core/requires.js:82	{0} = r.id; {1} = r.homepage
@@ -1175,76 +1176,76 @@ qicqbg#other	ok	# trains	列車#本	src/ui/format.js:134	plural; # = n; English:
 25ugc5	ok	Itinerary items from a calendar	カレンダーから旅程に追加した項目	src/ui/format.js:160	Note: what a calendar file (.ics) became on the trip's Files; 予定 as the Plan.
 1gfvwcc	ok	Nothing yet	まだ何もありません	src/ui/format.js:161	Note: what a file became on the trip's Files: nothing so far.
 jgspu5	ok	Waiting for Shiori to read it	Shioriの読み取り待ち	src/ui/format.js:161	Note: a file on the trip's Files that Shiori hasn't read yet.
-1hlojji	ok	To	到着地	src/ui/format.js:170	context: booking; Note: a booking's detail: where a flight or train goes.
-1uq5tvs	ok	Seat	座席	src/ui/format.js:170	Note: a booking's detail.
-1yz1r2o	ok	Cabin	クラス	src/ui/format.js:170	context: booking; Note: a flight's cabin class (economy, business), as airlines say in Japanese.
-9ihsg5	ok	Airline	航空会社	src/ui/format.js:170	Note: a booking's detail.
-qoo2zd	ok	Flight	便名	src/ui/format.js:170	context: booking; Note: a booking's detail: the flight's number (AN 123), not the kind of booking.
-upnba7	ok	From	出発地	src/ui/format.js:170	context: booking; Note: a booking's detail: where a flight or train leaves from.
-1501knl	ok	Terminal	ターミナル	src/ui/format.js:171	Note: an airport's terminal.
-15rtgdu	ok	Gate	搭乗口	src/ui/format.js:171	Note: an airport's gate.
-193ku12	ok	Bags	手荷物	src/ui/format.js:171	Note: a booking's detail: the bags included.
-1ipbaqc	ok	Room	部屋	src/ui/format.js:171	context: booking; Note: a stay's room.
-1jn3vqu	ok	Nights	泊数	src/ui/format.js:171	Note: how many nights a stay is.
-ean645	ok	Travellers	乗客	src/ui/format.js:171	Note: the people a flight or train booking is for.
-vpb928	ok	Guests	宿泊者	src/ui/format.js:171	Note: the people a stay is booked for.
-1v8ms9v	ok	Train	列車名	src/ui/format.js:172	context: booking; Note: a booking's detail: the train's name or number, not the kind of booking.
-3uyuz4	ok	Drop-off	返却	src/ui/format.js:172	Note: where and when a rental car goes back.
-4f76ga	ok	Notes	メモ	src/ui/format.js:172	Note: notes on a booking or a plan item.
-95yu2i	ok	Pick-up	受け取り	src/ui/format.js:172	Note: where and when a rental car is picked up.
-b2la2e	ok	Car	号車	src/ui/format.js:172	context: train; Note: a train's car (coach) number, not a rental car.
-vzzxl8	ok	Party size	人数	src/ui/format.js:172	Note: how many people a restaurant booking is for.
-1hra0d8	ok	Company	会社	src/ui/format.js:173	Note: a booking's detail: the company a car or ride is booked with.
-1lwerby	ok	Flights	フライト	src/ui/format.js:173	context: booking; Note: a booking's detail: the flights of one booking (a connection), not a count.
-7gnwg	ok	Passengers	乗客	src/ui/format.js:173	Note: a booking's detail: the people a ride is for, as Travellers (乗客).
-gc0vlk	ok	Phone number	電話番号	src/ui/format.js:173	Note: a booking's detail: a phone number annai filed from the booking.
-1jtckn3	ok	Route	区間	src/ui/format.js:208	context: flight; Note: a flight's from → to, as one line.
-13ne04w	ok	Departs	出発	src/ui/format.js:209	Note: a flight's departure, its day and time in that airport's zone beside it.
-j6u2ti	ok	Starts	開始	src/ui/format.js:209	context: booking; Note: A booking's start, its day and time shown beside it.
-vjjlq9	ok	Check-in	チェックイン	src/ui/format.js:209	Note: a stay's check-in, its day and time beside it.
-1pcvk9l	ok	Ends	終了	src/ui/format.js:210	context: booking
-8md94n	ok	Arrives	到着	src/ui/format.js:210	Note: a flight's arrival, its day and time in that airport's zone beside it.
-8nuh1e	ok	Check-out	チェックアウト	src/ui/format.js:210	Note: a stay's check-out, its day and time beside it.
-16ygujg	ok	Place	場所	src/ui/format.js:211	
-lypvx6	ok	{0}, {1}	{0}（{1}）	src/ui/format.js:211	context: booking; {0} = String(b.place.name); {1} = String(b.place.address); Note: A booking's place: its name, then its address in brackets.
-p3snlg	ok	Confirmation	予約番号	src/ui/format.js:222	Note: A booking's confirmation code.
-t05i6w	ok	Cost	料金	src/ui/format.js:223	
-1vdspge	ok	Getting files: {0} of {1}	ファイルを取得中（{0}/{1}）	src/ui/format.js:260	{0} = num(p.done); {1} = num(p.total)
-zo1gq	ok	Getting the backup…	バックアップを取得中…	src/ui/format.js:260	
-fuj1qb	ok	Getting the backup ready…	バックアップを準備中…	src/ui/format.js:264	
-1a0lh7c	ok	Comparing files {0} of {1}…	ファイルを比較中（{0}/{1}）…	src/ui/format.js:265	{0} = num(p.done); {1} = num(p.total)
-1ofggks	ok	Comparing files…	ファイルを比較中…	src/ui/format.js:265	
-1jbhw8o	ok	Uploading…	アップロード中…	src/ui/format.js:266	
-sg0mn0	ok	Uploading {0} of {1}…	アップロード中（{0}/{1}）…	src/ui/format.js:266	{0} = num(p.done); {1} = num(p.total)
-11y7c1u	ok	Paused: there is a newer backup from an iPad	一時停止中：別のiPadからの新しいバックアップがあります	src/ui/format.js:271	
-1815ss7	ok	Paused: there is a newer backup from an iPhone	一時停止中：別のiPhoneからの新しいバックアップがあります	src/ui/format.js:271	
-1kc2l15	ok	Paused: there is a newer backup from a computer	一時停止中：別のパソコンからの新しいバックアップがあります	src/ui/format.js:272	
-1ytn3n1	ok	Paused: there is a newer backup from an Android phone	一時停止中：別のAndroidスマートフォンからの新しいバックアップがあります	src/ui/format.js:272	
-14m1y56	ok	Paused: there is a newer backup from another device	一時停止中：別の端末からの新しいバックアップがあります	src/ui/format.js:273	
-12hcbva	ok	An iPhone backed up to {0} {1}.	{1}、別のiPhoneが{0}にバックアップしました。	src/ui/format.js:277	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
-1exdtuz	ok	An iPad backed up to {0} {1}.	{1}、別のiPadが{0}にバックアップしました。	src/ui/format.js:277	{0} = where; {1} = ago
-1hmrpdo	ok	A computer backed up to {0} {1}.	{1}、別のパソコンが{0}にバックアップしました。	src/ui/format.js:278	{0} = where; {1} = ago
-dc7u48	ok	An Android phone backed up to {0} {1}.	{1}、別のAndroidスマートフォンが{0}にバックアップしました。	src/ui/format.js:278	{0} = where; {1} = ago
-19kyaez	ok	Another device backed up to {0} {1}.	{1}、別の端末が{0}にバックアップしました。	src/ui/format.js:279	{0} = where; {1} = ago
-mbc651	ok	That was after this phone's last backup.	この端末の前回のバックアップより後のものです。	src/ui/format.js:283	
-vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	コピーとして読み込んでその旅をここに追加するか、この端末の内容でそのバックアップを上書きしてください。	src/ui/format.js:283	Note: "Back up this phone over it": this phone's data replaces the newer backup there, as the card's button says it.
-1ce0smb	ok	That was after this iPad's last backup.	このiPadの前回のバックアップより後のものです。	src/ui/format.js:284	
-nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	コピーとして読み込んでその旅をここに追加するか、このiPadの内容でそのバックアップを上書きしてください。	src/ui/format.js:284	
-hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	コピーとして読み込んでその旅をここに追加するか、このパソコンの内容でそのバックアップを上書きしてください。	src/ui/format.js:285	
-wn3ejs	ok	That was after this computer's last backup.	このパソコンの前回のバックアップより後のものです。	src/ui/format.js:285	
-1n6qjpw	ok	Working…	処理中…	src/ui/format.js:300	
-1sw982j	ok	Last backup {0}.	前回のバックアップ：{0}。	src/ui/format.js:305	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
-d1smo3	ok	Not backed up yet.	まだバックアップしていません。	src/ui/format.js:305	
-10ouos4	ok	Waiting for your OK to upload {0}	{0}のアップロードの許可を待っています	src/ui/format.js:306	{0} = size(h.bytes)
-nbshf0	ok	The last try failed.	前回の試行は失敗しました。	src/ui/format.js:308	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
-osg3je	ok	The last try failed: {0}	前回の試行は失敗しました：{0}	src/ui/format.js:309	{0} = holdWords(h, target.name)
-1qmdzit	ok	Not set up yet: fill it in, then Save and test	まだ設定されていません。入力してから「保存してテスト」をタップしてください	src/ui/format.js:310	Note: "Save and test" is the backup place's button.
-1e2pygg	ok	Automatic backups are off	自動バックアップはオフです	src/ui/format.js:311	
-173tgfr	ok	Last backup {0}	前回のバックアップ：{0}	src/ui/format.js:312	{0} = at
-1uajbr3	ok	Not backed up yet	まだバックアップしていません	src/ui/format.js:312	
-1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	互いに上書きしないよう、そこへの自動バックアップを一時停止しています。	src/ui/format.js:324	
-hmr3pn	ok	The other backup stays in its history.	もう一方のバックアップは履歴に残ります。	src/ui/format.js:324	
-8091b1	ok	no limit	上限なし	src/ui/format.js:349	
+1hlojji	ok	To	到着地	src/ui/format.js:171	context: booking; Note: a booking's detail: where a flight or train goes.
+1uq5tvs	ok	Seat	座席	src/ui/format.js:171	Note: a booking's detail.
+1yz1r2o	ok	Cabin	クラス	src/ui/format.js:171	context: booking; Note: a flight's cabin class (economy, business), as airlines say in Japanese.
+9ihsg5	ok	Airline	航空会社	src/ui/format.js:171	Note: a booking's detail.
+qoo2zd	ok	Flight	便名	src/ui/format.js:171	context: booking; Note: a booking's detail: the flight's number (AN 123), not the kind of booking.
+upnba7	ok	From	出発地	src/ui/format.js:171	context: booking; Note: a booking's detail: where a flight or train leaves from.
+1501knl	ok	Terminal	ターミナル	src/ui/format.js:172	Note: an airport's terminal.
+15rtgdu	ok	Gate	搭乗口	src/ui/format.js:172	Note: an airport's gate.
+193ku12	ok	Bags	手荷物	src/ui/format.js:172	Note: a booking's detail: the bags included.
+1ipbaqc	ok	Room	部屋	src/ui/format.js:172	context: booking; Note: a stay's room.
+1jn3vqu	ok	Nights	泊数	src/ui/format.js:172	Note: how many nights a stay is.
+ean645	ok	Travellers	乗客	src/ui/format.js:172	Note: the people a flight or train booking is for.
+vpb928	ok	Guests	宿泊者	src/ui/format.js:172	Note: the people a stay is booked for.
+1v8ms9v	ok	Train	列車名	src/ui/format.js:173	context: booking; Note: a booking's detail: the train's name or number, not the kind of booking.
+3uyuz4	ok	Drop-off	返却	src/ui/format.js:173	Note: where and when a rental car goes back.
+4f76ga	ok	Notes	メモ	src/ui/format.js:173	Note: notes on a booking or a plan item.
+95yu2i	ok	Pick-up	受け取り	src/ui/format.js:173	Note: where and when a rental car is picked up.
+b2la2e	ok	Car	号車	src/ui/format.js:173	context: train; Note: a train's car (coach) number, not a rental car.
+vzzxl8	ok	Party size	人数	src/ui/format.js:173	Note: how many people a restaurant booking is for.
+1hra0d8	ok	Company	会社	src/ui/format.js:174	Note: a booking's detail: the company a car or ride is booked with.
+1lwerby	ok	Flights	フライト	src/ui/format.js:174	context: booking; Note: a booking's detail: the flights of one booking (a connection), not a count.
+7gnwg	ok	Passengers	乗客	src/ui/format.js:174	Note: a booking's detail: the people a ride is for, as Travellers (乗客).
+gc0vlk	ok	Phone number	電話番号	src/ui/format.js:174	Note: a booking's detail: a phone number annai filed from the booking.
+1jtckn3	ok	Route	区間	src/ui/format.js:215	context: flight; Note: a flight's from → to, as one line.
+13ne04w	ok	Departs	出発	src/ui/format.js:216	Note: a flight's departure, its day and time in that airport's zone beside it.
+j6u2ti	ok	Starts	開始	src/ui/format.js:216	context: booking; Note: A booking's start, its day and time shown beside it.
+vjjlq9	ok	Check-in	チェックイン	src/ui/format.js:216	Note: a stay's check-in, its day and time beside it.
+1pcvk9l	ok	Ends	終了	src/ui/format.js:217	context: booking
+8md94n	ok	Arrives	到着	src/ui/format.js:217	Note: a flight's arrival, its day and time in that airport's zone beside it.
+8nuh1e	ok	Check-out	チェックアウト	src/ui/format.js:217	Note: a stay's check-out, its day and time beside it.
+16ygujg	ok	Place	場所	src/ui/format.js:218	
+lypvx6	ok	{0}, {1}	{0}（{1}）	src/ui/format.js:218	context: booking; {0} = String(b.place.name); {1} = String(b.place.address); Note: A booking's place: its name, then its address in brackets.
+p3snlg	ok	Confirmation	予約番号	src/ui/format.js:229	Note: A booking's confirmation code.
+t05i6w	ok	Cost	料金	src/ui/format.js:230	
+1vdspge	ok	Getting files: {0} of {1}	ファイルを取得中（{0}/{1}）	src/ui/format.js:267	{0} = num(p.done); {1} = num(p.total)
+zo1gq	ok	Getting the backup…	バックアップを取得中…	src/ui/format.js:267	
+fuj1qb	ok	Getting the backup ready…	バックアップを準備中…	src/ui/format.js:271	
+1a0lh7c	ok	Comparing files {0} of {1}…	ファイルを比較中（{0}/{1}）…	src/ui/format.js:272	{0} = num(p.done); {1} = num(p.total)
+1ofggks	ok	Comparing files…	ファイルを比較中…	src/ui/format.js:272	
+1jbhw8o	ok	Uploading…	アップロード中…	src/ui/format.js:273	
+sg0mn0	ok	Uploading {0} of {1}…	アップロード中（{0}/{1}）…	src/ui/format.js:273	{0} = num(p.done); {1} = num(p.total)
+11y7c1u	ok	Paused: there is a newer backup from an iPad	一時停止中：別のiPadからの新しいバックアップがあります	src/ui/format.js:278	
+1815ss7	ok	Paused: there is a newer backup from an iPhone	一時停止中：別のiPhoneからの新しいバックアップがあります	src/ui/format.js:278	
+1kc2l15	ok	Paused: there is a newer backup from a computer	一時停止中：別のパソコンからの新しいバックアップがあります	src/ui/format.js:279	
+1ytn3n1	ok	Paused: there is a newer backup from an Android phone	一時停止中：別のAndroidスマートフォンからの新しいバックアップがあります	src/ui/format.js:279	
+14m1y56	ok	Paused: there is a newer backup from another device	一時停止中：別の端末からの新しいバックアップがあります	src/ui/format.js:280	
+12hcbva	ok	An iPhone backed up to {0} {1}.	{1}、別のiPhoneが{0}にバックアップしました。	src/ui/format.js:284	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
+1exdtuz	ok	An iPad backed up to {0} {1}.	{1}、別のiPadが{0}にバックアップしました。	src/ui/format.js:284	{0} = where; {1} = ago
+1hmrpdo	ok	A computer backed up to {0} {1}.	{1}、別のパソコンが{0}にバックアップしました。	src/ui/format.js:285	{0} = where; {1} = ago
+dc7u48	ok	An Android phone backed up to {0} {1}.	{1}、別のAndroidスマートフォンが{0}にバックアップしました。	src/ui/format.js:285	{0} = where; {1} = ago
+19kyaez	ok	Another device backed up to {0} {1}.	{1}、別の端末が{0}にバックアップしました。	src/ui/format.js:286	{0} = where; {1} = ago
+mbc651	ok	That was after this phone's last backup.	この端末の前回のバックアップより後のものです。	src/ui/format.js:290	
+vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	コピーとして読み込んでその旅をここに追加するか、この端末の内容でそのバックアップを上書きしてください。	src/ui/format.js:290	Note: "Back up this phone over it": this phone's data replaces the newer backup there, as the card's button says it.
+1ce0smb	ok	That was after this iPad's last backup.	このiPadの前回のバックアップより後のものです。	src/ui/format.js:291	
+nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	コピーとして読み込んでその旅をここに追加するか、このiPadの内容でそのバックアップを上書きしてください。	src/ui/format.js:291	
+hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	コピーとして読み込んでその旅をここに追加するか、このパソコンの内容でそのバックアップを上書きしてください。	src/ui/format.js:292	
+wn3ejs	ok	That was after this computer's last backup.	このパソコンの前回のバックアップより後のものです。	src/ui/format.js:292	
+1n6qjpw	ok	Working…	処理中…	src/ui/format.js:307	
+1sw982j	ok	Last backup {0}.	前回のバックアップ：{0}。	src/ui/format.js:312	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
+d1smo3	ok	Not backed up yet.	まだバックアップしていません。	src/ui/format.js:312	
+10ouos4	ok	Waiting for your OK to upload {0}	{0}のアップロードの許可を待っています	src/ui/format.js:313	{0} = size(h.bytes)
+nbshf0	ok	The last try failed.	前回の試行は失敗しました。	src/ui/format.js:315	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
+osg3je	ok	The last try failed: {0}	前回の試行は失敗しました：{0}	src/ui/format.js:316	{0} = holdWords(h, target.name)
+1qmdzit	ok	Not set up yet: fill it in, then Save and test	まだ設定されていません。入力してから「保存してテスト」をタップしてください	src/ui/format.js:317	Note: "Save and test" is the backup place's button.
+1e2pygg	ok	Automatic backups are off	自動バックアップはオフです	src/ui/format.js:318	
+173tgfr	ok	Last backup {0}	前回のバックアップ：{0}	src/ui/format.js:319	{0} = at
+1uajbr3	ok	Not backed up yet	まだバックアップしていません	src/ui/format.js:319	
+1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	互いに上書きしないよう、そこへの自動バックアップを一時停止しています。	src/ui/format.js:331	
+hmr3pn	ok	The other backup stays in its history.	もう一方のバックアップは履歴に残ります。	src/ui/format.js:331	
+8091b1	ok	no limit	上限なし	src/ui/format.js:356	
 lpx0cl#other	ok	# trips and conversations	旅と会話#件	src/ui/import-state.js:47	plural; # = titles.length; English: "# trip or conversation" (one), "# trips and conversations" (other); Note: a git backup's preview, from its manifest alone, can't tell trips from chats: this is the one row they fold under; also the toast "Imported # trips and conversations" when the user left the import screen (import-state.js).
 12lprg	ok	Imported {0} from {1}.	{1}から{0}を読み込みました。	src/ui/import-state.js:48	{0} = what; {1} = place
 1hzaym7	ok	Imported {0}.	{0}を読み込みました。	src/ui/import-state.js:48	{0} = what
@@ -1402,18 +1403,18 @@ ow6fak	ok	This browser could not draw the photo.	このブラウザでは写真�
 11dn6um	ok	This browser could not write {0}.	このブラウザでは{0}形式で書き出せませんでした。	src/ui/photo-codec.js:81	{0} = type
 1l0xxoj	ok	Close	閉じる	src/ui/photo-viewer.js:32	
 1s1o4yb	ok	Show Shiori this part	この部分をShioriに見せる	src/ui/photo-viewer.js:33	
-u3xlwb	ok	The plugin "{0}" was turned off	プラグイン「{0}」はオフになりました	src/ui/plugin-cards.js:12	{0} = name
-1k1qvj4	ok	Its hooks were handed more than {0} log entries in {1} seconds, which looks like a loop.	フックが{1}秒間に{0}件を超えるログを受け取りました。ループしている可能性があります。	src/ui/plugin-cards.js:13	{0} = num(why.entries); {1} = num(why.seconds)
-14cse4m	ok	You can turn it back on in Settings → Plugins.	「設定 → プラグイン」で、もう一度オンにできます。	src/ui/plugin-cards.js:14	
-1m15smo#other	ok	It failed # times in a row.	#回続けて失敗しました。	src/ui/plugin-cards.js:14	plural; # = why.count; English: "It failed # time in a row." (one), "It failed # times in a row." (other)
-alpox6	ok	The last error: {0}	最後のエラー：{0}	src/ui/plugin-cards.js:14	{0} = message
-4egg99	ok	annai needs a reload	annaiの再読み込みが必要です	src/ui/plugin-cards.js:28	
-6kkhkz#other	ok	It opened without its offline service, so these plugins can't start: {0}.	オフラインサービスなしで開いたため、次のプラグインを起動できません：{0}。	src/ui/plugin-cards.js:29	plural; # = names.length; {0} = list(names); English: "It opened without its offline service, so this plugin can't start: {0}." (one), "It opened without its offline service, so these plugins can't start: {0}." (other)
-53p50e	ok	It opened without its offline service, so plugins can't start or be installed.	オフラインサービスなしで開いたため、プラグインの起動もインストールもできません。	src/ui/plugin-cards.js:30	
-fzpt3w	ok	Reload now	今すぐ再読み込み	src/ui/plugin-cards.js:31	
-1vgaaah	ok	It didn't start the last few times annai opened: {0}	annaiを開いた直近の数回、続けて起動しませんでした：{0}	src/ui/plugin-cards.js:46	{0} = why
-11arkb9	ok	You can turn it off in Settings → Plugins.	「設定 → プラグイン」でオフにできます。	src/ui/plugin-cards.js:47	
-1jz4o49	ok	The plugin "{0}" didn't start	プラグイン「{0}」が起動しませんでした	src/ui/plugin-cards.js:47	{0} = it
+u3xlwb	ok	The plugin "{0}" was turned off	プラグイン「{0}」はオフになりました	src/ui/plugin-cards.js:13	{0} = name
+1k1qvj4	ok	Its hooks were handed more than {0} log entries in {1} seconds, which looks like a loop.	フックが{1}秒間に{0}件を超えるログを受け取りました。ループしている可能性があります。	src/ui/plugin-cards.js:14	{0} = num(why.entries); {1} = num(why.seconds)
+14cse4m	ok	You can turn it back on in Settings → Plugins.	「設定 → プラグイン」で、もう一度オンにできます。	src/ui/plugin-cards.js:15	
+1m15smo#other	ok	It failed # times in a row.	#回続けて失敗しました。	src/ui/plugin-cards.js:15	plural; # = why.count; English: "It failed # time in a row." (one), "It failed # times in a row." (other)
+alpox6	ok	The last error: {0}	最後のエラー：{0}	src/ui/plugin-cards.js:15	{0} = message
+4egg99	ok	annai needs a reload	annaiの再読み込みが必要です	src/ui/plugin-cards.js:29	
+6kkhkz#other	ok	It opened without its offline service, so these plugins can't start: {0}.	オフラインサービスなしで開いたため、次のプラグインを起動できません：{0}。	src/ui/plugin-cards.js:30	plural; # = names.length; {0} = list(names); English: "It opened without its offline service, so this plugin can't start: {0}." (one), "It opened without its offline service, so these plugins can't start: {0}." (other)
+53p50e	ok	It opened without its offline service, so plugins can't start or be installed.	オフラインサービスなしで開いたため、プラグインの起動もインストールもできません。	src/ui/plugin-cards.js:31	
+fzpt3w	ok	Reload now	今すぐ再読み込み	src/ui/plugin-cards.js:32	
+1vgaaah	ok	It didn't start the last few times annai opened: {0}	annaiを開いた直近の数回、続けて起動しませんでした：{0}	src/ui/plugin-cards.js:47	{0} = why
+11arkb9	ok	You can turn it off in Settings → Plugins.	「設定 → プラグイン」でオフにできます。	src/ui/plugin-cards.js:48	
+1jz4o49	ok	The plugin "{0}" didn't start	プラグイン「{0}」が起動しませんでした	src/ui/plugin-cards.js:48	{0} = it
 44nn0b	ok	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（追加内容あり：アップデート前に確認します）	src/ui/plugin-updates.js:77	{0} = u.name; {1} = u.installed; {2} = u.available
 trjp65	ok	{0} (changed) (brings something new: you'll be asked first)	{0}（変更あり、追加内容あり：アップデート前に確認します）	src/ui/plugin-updates.js:77	{0} = u.name
 1kyfel6	ok	{0} (changed)	{0}（変更あり）	src/ui/plugin-updates.js:78	{0} = u.name
@@ -1443,7 +1444,7 @@ tct7be	ok	Your trips, files, settings and keys are stored in this browser, on th
 12t6czb	ok	No tracking.	トラッキングなし。	src/ui/privacy.js:24	
 5d5p39	ok	annai has no analytics and no ads. It loads no scripts from other sites: its content security policy lets only scripts from annai's own address run, except code plugins you install, which annai stores and serves itself.	annaiには分析も広告もありません。ほかのサイトからスクリプトを読み込まず、コンテンツセキュリティポリシーで、annai自身のアドレスにあるスクリプトだけを実行します。例外はインストールしたコード付きプラグインで、annaiが自分で保存して配信します。	src/ui/privacy.js:24	
 1e9jheb	ok	Reminders stay sealed.	リマインダーは暗号化したまま。	src/ui/privacy.js:25	
-6wziff	ok	With notifications on, the push relay holds each time reminder encrypted on this device, and keeps only the phone's push address, when each is due, how many are waiting, and little else: a cancel code for each, and a note that this phone's push service accepted a notification. Reminders about places (arriving, leaving, nearby) never leave the phone. A plan's "leave soon" reminder goes to the relay, with its time.	通知をオンにすると、プッシュ中継は時刻指定のリマインダーを、この端末で暗号化したまま預かります。中継が保持するのは、端末のプッシュアドレス、それぞれの予定時刻、待っている件数と、そのほかわずかな情報（それぞれの取り消しコードと、この端末のプッシュサービスが通知を受け付けたという記録）だけです。場所のリマインダー（到着、出発、近く）は端末から外に出ません。旅程の「そろそろ出発」のリマインダーは、時刻とともに中継へ送られます。	src/ui/privacy.js:25	
+1yjwapp	ok	With notifications on, the push relay holds each time reminder encrypted on this device, and keeps only the phone's push address, when each is due, how many are waiting, and little else: a cancel code for each, and a note that this phone's push service accepted a notification. Reminders about places (arriving, leaving, nearby) never leave the phone. The itinerary's "leave soon" reminder goes to the relay, with its time.	通知をオンにすると、プッシュ中継は時刻指定のリマインダーを、この端末で暗号化したまま預かります。中継が保持するのは、端末のプッシュアドレス、それぞれの予定時刻、待っている件数と、そのほかわずかな情報（それぞれの取り消しコードと、この端末のプッシュサービスが通知を受け付けたという記録）だけです。場所のリマインダー（到着、出発、近く）は端末から外に出ません。旅程の「そろそろ出発」のリマインダーは、時刻とともに中継へ送られます。	src/ui/privacy.js:25	
 13wlc44	ok	Open code.	オープンソース。	src/ui/privacy.js:26	
 1qhqdx	ok	annai's code is open under the AGPL-3.0 for anyone to read, at {0}.	annaiのコードはAGPL-3.0で公開されていて、誰でも{0}で読めます。	src/ui/privacy.js:26	{0} = REPO.replace('https://', '')
 1q2zxy5	ok	Where this stops	注意点	src/ui/privacy.js:27	Note: "Where this stops" as one noun heading.
@@ -2158,7 +2159,7 @@ l7fn8k	ok	Already added, on another provider	追加済み（別のプロバイ�
 11pl9jr	ok	Use the free models	無料のモデルを使う	src/ui/screens/provider.js:575	
 vam64u	ok	Use the recommended models	おすすめのモデルを使う	src/ui/screens/provider.js:575	
 1b2yx8m	ok	Suggested models	おすすめのモデル	src/ui/screens/provider.js:576	
-1jnsjoc	ok	{0} suggests a model for each role. Its speech models then go ahead of the browser's own dictation and voice, which are free, so any that cost money are tried before them.	{0}は役割ごとにおすすめのモデルを用意しています。これを使うと、音声のモデルが端末の音声入力とブラウザの声（どちらも無料）より前に並ぶため、有料のモデルが先に試されます。	src/ui/screens/provider.js:577	{0} = src.name; Note: 端末の音声入力 and ブラウザの声 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
+y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0}は役割ごとにおすすめのモデルを用意しています。これを使うと、音声のモデルが端末の音声入力とブラウザの声（どちらも無料）より前に並ぶため、有料のモデルが先に試されます。	src/ui/screens/provider.js:577	{0} = src.name; Note: 端末の音声入力 and ブラウザの声 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
 1x5hwmk	ok	{0} suggests a model for each role.	{0}は役割ごとにおすすめのモデルを用意しています。	src/ui/screens/provider.js:578	{0} = src.name
 1iffu2j	ok	{0} switched on.	{0}をオンにしました。	src/ui/screens/provider.js:585	{0} = n
 1szeqxt	ok	Roles updated.	役割を更新しました。	src/ui/screens/provider.js:585	

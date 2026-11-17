@@ -260,8 +260,11 @@ export function createLlm({
       if ((await plugins.manifestOf(id))?.provider) await drop(id);
     }
   };
-  /** Brings providers up to date with their plugins' descriptions (decision 4); writes only when a version differs. */
-  const sync = () => syncProviders({ ws }, providers());
+  /**
+   * Brings providers up to date with their plugins' descriptions (decision 4); writes only when a version differs. In the line adding goes in:
+   * each takes the free names from the models there are, so one that ran beside another could give one name to two models.
+   */
+  const sync = () => queued(() => syncProviders({ ws }, providers()));
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let syncing;
   ready.then(() => {
@@ -388,7 +391,7 @@ export function createLlm({
         if (entry) return makesProvider(entry);
         if (had[id]) return Boolean((await plugins.manifestOf(id).catch(() => null))?.provider);
         if (!Array.isArray(catalog)) throw catalog;
-        throw Object.assign(new Error(/* en */ "its plugin isn't annai's own. Install it again from where it came from."), { shown: t`Its plugin isn't annai's own. Install it again from where it came from.` });
+        throw new PluginError(id, /* en */ "its plugin isn't annai's own. Install it again from where it came from.", { shown: t`Its plugin isn't annai's own. Install it again from where it came from.` });
       };
       /** @type {Map<string, string[]>} each reason, and the providers it holds back */
       const failed = new Map();
@@ -397,7 +400,7 @@ export function createLlm({
         if (imported && had[rec.plugin]?.enabled === false) continue;
         try {
           /* en */
-          if (!(await isProvider(rec.plugin))) throw Object.assign(new Error("the plugin it names doesn't provide models, so it wasn't installed."), { shown: t`The plugin it names doesn't provide models, so it wasn't installed.` });
+          if (!(await isProvider(rec.plugin))) throw new PluginError(rec.plugin, "the plugin it names doesn't provide models, so it wasn't installed.", { shown: t`The plugin it names doesn't provide models, so it wasn't installed.` });
           await service.installProvider(rec.plugin);
           for (const a of Object.values(p.abilities)) if (a.on) await ensure(a.type);
         } catch (e) {

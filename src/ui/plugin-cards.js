@@ -3,7 +3,8 @@ import { list, sentences, num } from './format.js';
 
 /**
  * The card when a running plugin is switched off after repeated errors (spec §5.5). A system card,
- * never in Shiori's voice; the message has any key annai keeps blanked before it gets here.
+ * never in Shiori's voice; the message has any key annai keeps blanked before it gets here. A loop's message is its reason, in English, so
+ * the card has no last error to add (it would say the same twice, the second in English).
  * @param {{ name: string, why: import('../core/registry.js').DisabledWhy, message: string }} d why: core's data, made into words here
  */
 export function disabledCard({ name, why, message }) {
@@ -11,7 +12,7 @@ export function disabledCard({ name, why, message }) {
     tone: /** @type {const} */ ('warn'),
     title: t`The plugin "${name}" was turned off`,
     body: sentences(why.kind === 'loop' ? t`Its hooks were handed more than ${num(why.entries)} log entries in ${num(why.seconds)} seconds, which looks like a loop.`
-      : plural(why.count, 'It failed # time in a row.', 'It failed # times in a row.'), t`The last error: ${message}`, t`You can turn it back on in Settings → Plugins.`),
+      : plural(why.count, 'It failed # time in a row.', 'It failed # times in a row.'), why.kind === 'loop' ? '' : t`The last error: ${message}`, t`You can turn it back on in Settings → Plugins.`),
   };
 }
 

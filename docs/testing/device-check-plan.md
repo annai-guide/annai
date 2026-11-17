@@ -120,7 +120,7 @@ Setup: the emulator image has Google Play services, so Chrome installs annai as 
 - [ ] **m3 #5**: A voice with a wrong key first in Speech out: the next voice plays the whole sample; the Trace shows the failed request without the key. How: Trace; console audio events; key search.
 - [ ] **m3 #7**: Microphone denied (Chrome's site setting): the message says what happened and gives the Android steps. How: screen. Then C.
 - [ ] **m3 #15**: A text-only main model and only "Send audio to the model" in Speech in: tapping Shiori shows a card that says what to add. How: screen.
-- [ ] **m3 #22**: Fresh install, microphone not allowed yet: the chip says "Voice auto · off"; On, then Auto: "Voice on · your last choice". How: clear site data; screen. Then C.
+- [ ] **m3 #22**: Fresh install, microphone not allowed yet: the route is unknown, and the chip only follows the Voice setting: "Voice off"; turn voice on: "Voice on". How: clear site data; screen. Then C.
 - [ ] **m3 #30**: While she speaks, her words show in a bubble above the dock (no Captions chip; Settings → Voice → Show what she says). How: screen.
 
 ### A9. Bookings and planning
@@ -283,7 +283,7 @@ Your phone stays on home Wi-Fi. Claude taps and types; you speak, listen, hold t
 - [ ] **m3 #17**: Settings → Voice → Where your voice goes: note what it says for Phone dictation and the browser voice. In airplane mode, does dictation still write your words, and does the browser voice still speak?
 - [ ] **m3 #18**: In airplane mode, the keyboard's microphone key in the message box: does it type your words? Sent, does Shiori get it as a typed message?
 - [ ] **m3 #19**: Music playing in a music app, then a spoken exchange (it pauses while she talks): afterwards, does the music come back by itself or stay paused?
-- [ ] **m3 #20**: Voice chip on Auto; you connect Bluetooth headphones, and the microphone is allowed once: "Voice on · headphones"; disconnect them: "Voice auto · off".
+- [ ] **m3 #20**: Voice on; you connect Bluetooth headphones, and the microphone is allowed once: Trace → `voice.route` says "audio route headphones" (the chip says "Voice on", and does not name them); disconnect them: a new `voice.route` line, and, if the microphone was open on them, voice goes off at once ("Voice off: <their name> disconnected").
 - [ ] **m3 #25**: annai and Maps in split screen: tap Shiori, talk, and she answers.
 
 ### B4. After the trip (Nov 30 or later)
@@ -315,7 +315,7 @@ One sitting, in this order. Keep the Mac open with Safari → Develop → your i
 
 - [ ] **m1 #3**: Share → Add to Home Screen; open it from the Home Screen: the warning is gone.
 - [ ] m1 #4 (counted in A): Settings → Storage: "The browser won't clear annai's data by itself." (tap "Protect my data" if not).
-- [ ] m3 #22 (counted in A): Before the microphone is allowed, the voice chip says "Voice auto · off"; On, then Auto: "Voice on · your last choice".
+- [ ] m3 #22 (counted in A): Before the microphone is allowed, the voice chip says "Voice off" (the route is unknown); turn voice on: "Voice on".
 
 ### C3. Models
 
@@ -364,7 +364,7 @@ One sitting, in this order. Keep the Mac open with Safari → Develop → your i
 - [ ] m3 #14 (counted in B): "Send audio to the model" with the audio model: a spoken exchange works; your words appear after her reply.
 - [ ] m3 #17, #18 (counted in B): Where your voice goes: note what it says. In airplane mode: does dictation still write your words; does the browser voice still speak; does the keyboard's dictation key type, and does Shiori get it as typed?
 - [ ] m3 #19 (counted in B): Music playing, then a spoken exchange: afterwards, does the music come back by itself?
-- [ ] m3 #20 (counted in B): AirPods, chip on Auto, microphone allowed once: "Voice on · headphones"; disconnect: "Voice auto · off".
+- [ ] m3 #20 (counted in B): AirPods, voice on, microphone allowed once: Trace → `voice.route` says "audio route headphones"; disconnect: a new line (and "Voice off: <their name> disconnected" if the microphone was open on them).
 
 ### C9. Live mode
 
@@ -445,7 +445,7 @@ After:
 A round trip of 30 km or more gives Shiori two or three chances to narrate.
 
 Before you leave:
-- [ ] m5 (setup): On both phones, a short trip with three stops on the route: one fixed with a time (the errand), two flexible, with places. A model set up, voice on Auto, notifications on (C10).
+- [ ] m5 (setup): On both phones, a short trip with three stops on the route: one fixed with a time (the errand), two flexible, with places. A model set up, voice off (it turns on by itself while driving), notifications on (C10).
 - [ ] m5 #22 (counted in A): Download the offline pack on Wi-Fi.
 - [ ] m5 #14 (setup): Car charger and holder. Android in the holder on the way out, iPhone on the way back.
 - [ ] m5 #17 (setup): Just before you leave, ask Shiori to remind you of something in 10 minutes. It will fall inside the locked stretch.
@@ -453,7 +453,7 @@ Before you leave:
 - [ ] m5 #8–#13 (setup): Claude has rehearsed this drive on the emulator (end of A10).
 
 GPS on:
-- [ ] **m5 #8**: Drive off: within a minute the chip says "GPS on · moving fast", voice Auto turns on ("Voice on · moving"), and Now hands over to Driving.
+- [ ] **m5 #8**: Drive off: within a minute the chip says "GPS on · moving fast", voice turns on by itself ("Voice on · driving"), and Now hands over to Driving.
 - [ ] **m5 #9**: Driving shows You, the next stops with distances and minutes, Directions in Apple or Google Maps, and the quick-ask buttons; each button gets an answer, aloud (a passenger taps, or wait until parked).
 - [ ] **m5 #10**: A moved watch fires every 10–20 km, and she says something worth hearing, or nothing.
 - [ ] **m5 #11**: At a plan stop, after about two minutes stopped, she knows you arrived.
@@ -496,11 +496,11 @@ After:
 On the D2 drive or any other.
 
 Before you leave:
-- [ ] m3 #21, #23 (setup): Parked: phone in the holder, paired with the car's Bluetooth, voice on Auto, music ready, a passenger for any tap. One phone per drive is fine.
+- [ ] m3 #21, #23 (setup): Parked: phone in the holder, paired with the car's Bluetooth, voice on, music ready, a passenger for any tap. One phone per drive is fine.
 - [ ] m7 #13 (setup): Write a recap of the D2 trip at home first, so there's one to hear.
 
 In the car:
-- [ ] **m3 #21**: Connected to the car: the chip says "Voice on · car audio" (or "headphones": note which). If it's neither, note the name the car shows in Settings → Voice → Test the microphone's device list.
+- [ ] **m3 #21**: Connected to the car: Trace → `voice.route` says "audio route car" (or "headphones": note which); the chip doesn't name the car. If it's neither, note the name the car shows in Settings → Voice → Test the microphone's device list.
 - [ ] **m3 #8**: Moving, windows up, the passenger taps Test the microphone, and nobody speaks for 15 seconds: "Nothing was heard". Then speak: it hears you.
 - [ ] **m3 #23**: The milestone's "Done when": phone in its holder, music playing; tap Shiori once and talk; go on for three or four turns without touching the phone. Note: does the music pause while she speaks and come back after? Is the car's microphone used? Is she loud enough over road noise? Does the end of your sentence get cut off, or does she wait too long (Settings → Voice → the pause)?
 - [ ] **m3 #29**: Interrupt her, and talk to a passenger instead of her, as in m3 #10 and #12, with road noise.

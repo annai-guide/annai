@@ -198,9 +198,13 @@ test("a second provider of one plugin, added with no name of its own, is \"<plug
   assert.equal(providerOf(cfg.providers[d]).name, 'Router (2)', 'the number a removed one freed');
 });
 
-test("a plugin update that renames its models (OpenAI's and Groq's speech models lose their provider's name) keeps every role's pick and the user's names, and takes a free name where another model has it (words-next)", async () => {
+test("a plugin update that renames its models (OpenAI's and Groq's speech models lose their provider's name) keeps every role's pick and the user's names, and takes a free name where another model has it (words-next)", async (t) => {
   // The phone added OpenAI twice under the version whose speech models carried "OpenAI: " in their names, and has a model of its own named as
   // one of them is now; the user renamed one voice.
+  // The update walks the providers in the order of their ids ("pv-" and the time in ms, then random letters), so two made in one millisecond
+  // could swap (the first took "(3)" in about half the runs of two made in the same one): each id a millisecond of its own, as on a phone.
+  let tick = Date.now();
+  t.mock.method(Date, 'now', () => ++tick);
   const old = bumped(OPENAI_SRC, '1.0.0', (p) => {
     p.abilities.transcription.models[0].name = 'OpenAI: GPT Transcribe';
     p.abilities.voice.models[0].name = 'OpenAI: GPT-4o mini TTS (Marin)';
@@ -478,6 +482,43 @@ test('a started data-only provider plugin registers its description, and a newer
   const cfg = await k.llm.config();
   assert.equal(providerOf(cfg.providers[id]).abilities.ears.on, false, 'new in the update: off');
   assert.ok(Object.values(cfg.models).some((m) => modelOf(m).name === 'X ears'));
+});
+
+test("an add and a sync that run together never give one free name to two models: the sync waits its turn behind the add (words-next)", async () => {
+  const k = await serviceKit();
+  await k.llm.addProvider('provider-x', { key: 'sk-x' });
+  // provider-x 1.1.0 renames its chat model to the name provider-y's has.
+  const next = PX('1.1.0', { chat: { kind: 'chat', type: 'type-a', models: [{ providerId: 'x-1', name: 'Y one' }] } });
+  await k.host.install(new Map(Object.entries(next).map(([n, t]) => [n, new TextEncoder().encode(t)])), { source: 'official' });
+  await k.host.start('provider-x');
+  // provider-y's add is held where it has read the names taken and is about to write its models.
+  const write = k.ws.writeMany.bind(k.ws);
+  /** @type {() => void} */
+  let release = () => {};
+  /** @type {() => void} */
+  let reached = () => {};
+  const held = new Promise((resolve) => { reached = () => resolve(undefined); });
+  let first = true;
+  k.ws.writeMany = async (scope, changes, opts) => {
+    if (first && changes.some((/** @type {any} */ c) => c.path.startsWith('/llm/providers/'))) {
+      first = false;
+      reached();
+      await new Promise((go) => { release = () => go(undefined); });
+    }
+    return write(scope, changes, opts);
+  };
+  const adding = k.llm.addProvider('provider-y', { key: 'sk-y' });
+  await held;
+  const syncing = k.llm.syncProviders();
+  // A sync that doesn't wait would read the names and write its rename within this wait: it is all in memory, so a few ms at the most.
+  await new Promise((r) => setTimeout(r, 25));
+  release();
+  await Promise.all([adding, syncing]);
+  const cfg = await readConfig(k.ws);
+  const chat = (/** @type {string} */ plugin) => Object.values(cfg.models).filter((m) => cfg.providers[m.provider].plugin === plugin && m.ability === 'chat').map((m) => modelOf(m).name);
+  assert.deepEqual([chat('provider-y'), chat('provider-x')], [['Y one'], ['Y one (2)']], 'the add came first, the sync after it took the next free name');
+  const all = Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase());
+  assert.equal(new Set(all).size, all.length, 'no two models are named alike');
 });
 
 test("listing an ability's models: by its address, with the provider's key; an address that doesn't allow web apps says so by its host, not the browser's \"Load failed\"", async () => {

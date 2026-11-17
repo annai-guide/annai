@@ -36,7 +36,7 @@ test('a file that is not a zip: the sentence is in Japanese and only the reason,
   expect(await body.evaluate((p) => p.textContent)).toMatch(/^[^\x00-\x7f]/);
 });
 
-test('a plugin that fails to start in its own words: annai marks only its own English, never the plugin\'s', async ({ page }) => {
+test('a plugin that fails to start in its own words: annai\'s frame is in Japanese, and the plugin\'s own words are never marked English', async ({ page }) => {
   await openAdd(page);
   const z = new ZipWriter();
   for (const name of ['annai-plugin.json', 'index.js']) await z.add(`broken/${name}`, new Uint8Array(await readFile(new URL(`../fixtures/plugins/broken/${name}`, import.meta.url))));
@@ -44,12 +44,12 @@ test('a plugin that fails to start in its own words: annai marks only its own En
   await page.locator('.plugin-install .acts .btn.pri').click();
   const body = page.locator('.notice p', { hasText: 'this plugin always fails to start' });
   await expect(body).toBeVisible();
-  // Only annai's frame is its English; the plugin's own words are not marked.
-  await expect(body.locator('span[lang="en"]')).toHaveText('starting failed');
-  await expect(body.locator('span[lang="en"]')).toHaveCount(1);
+  // annai's frame is in the screens' words (a sentence, capitalized in English); the plugin's own words follow it, as it wrote them, unmarked.
+  await expect(body.locator('span[lang="en"]')).toHaveCount(0);
+  expect(await body.textContent()).toMatch(/^起動に失敗しました：this plugin always fails to start/);
 });
 
-test('a plugin that never finishes starting: annai\'s frame is marked English and the rest is in Japanese', async ({ page }) => {
+test('a plugin that never finishes starting: the frame and the reason are both in Japanese, with no English marked', async ({ page }) => {
   await openApp(page);
   await waitForServiceWorker(page);
   const files = await Promise.all(['annai-plugin.json', 'index.js'].map(async (name) => [name, await readFile(new URL(`../fixtures/plugins/hang/${name}`, import.meta.url), 'utf8')]));
@@ -64,10 +64,10 @@ test('a plugin that never finishes starting: annai\'s frame is marked English an
     store.close();
   }, files);
   await page.reload();
-  const body = page.locator('.notice p', { hasText: 'starting failed' });
+  const body = page.locator('.notice p', { hasText: '起動に失敗しました' });
   await expect(body).toBeVisible({ timeout: 20_000 });
-  await expect(body.locator('span[lang="en"]')).toHaveText('starting failed');
-  expect(await body.textContent()).toMatch(/秒/);
+  await expect(body.locator('span[lang="en"]')).toHaveCount(0);
+  expect(await body.textContent()).toMatch(/^起動に失敗しました：.*秒以内に起動が完了しませんでした。/);
   expect(await body.textContent()).not.toContain("didn't finish");
 });
 

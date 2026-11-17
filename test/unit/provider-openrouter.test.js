@@ -252,7 +252,7 @@ test('signing in: the address is taken, one OpenRouter provider with chat, trans
   assert.deepEqual(cfg.roles.main.models.map((id) => modelOf(cfg.models[id]).name), ['Google: Gemma 4 31B (free)']);
   assert.deepEqual(d.cards.map((c) => [c.tone, c.title]), [['ok', 'Signed in with OpenRouter']]);
   assert.match(d.cards[0].body, /free models/);
-  assert.match(d.cards[0].body, /transcription and voices, behind the browser's own dictation and voice/);
+  assert.match(d.cards[0].body, /transcription and voices, behind Phone dictation and Browser voice/);
   assert.match(d.cards[0].body, /Its free voice comes first: each sentence it says uses one of the free requests a day the chat models use too/);
   assert.match(d.cards[0].body, /The others cost a little/);
   assert.match(d.cards[0].body, /move them up under Roles/);

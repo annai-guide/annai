@@ -1,5 +1,5 @@
 import { validZone, dayIn, instantAt } from '../core/time.js';
-import { checkOf } from '../core/bookings.js';
+import { checkOf, there } from '../core/bookings.js';
 import { BOOKING_FILE, PLAN_FILE } from '../core/plan.js';
 import { isGivenFile } from '../core/paths.js';
 import { TIMINGS } from '../core/backup-auto.js';
@@ -163,8 +163,9 @@ export function fileLine(became) {
 }
 
 /**
- * Words for the keys Shiori writes most in a booking's `fields`, and those annai files there itself; any other key is shown as written. The
- * same keys as Shiori's words for a booking's parts (bookings.js partWords), so what she asks about has a line by that name.
+ * Words for the keys Shiori writes most in a booking's `fields`, and for those annai files there itself (bookings.js EXTRAS and `dropoff`),
+ * but not `arrival`, `total` and `price`, a time or a cost she gave in words: they and any other key are shown as written. The same keys as
+ * Shiori's words for a booking's parts (bookings.js partWords), so what she asks about has a line by that name.
  */
 export const FIELD_WORDS = /** @type {Record<string, string>} */ ({
   flight: tc('booking')`Flight`, airline: t`Airline`, from: tc('booking')`From`, to: tc('booking')`To`, seat: t`Seat`, class: tc('booking')`Cabin`,
@@ -172,6 +173,9 @@ export const FIELD_WORDS = /** @type {Record<string, string>} */ ({
   pickup: t`Pick-up`, dropoff: t`Drop-off`, train: tc('booking')`Train`, car: tc('train')`Car`, party: t`Party size`, notes: t`Notes`,
   phone: t`Phone number`, passengers: t`Passengers`, company: t`Company`, flights: tc('booking')`Flights`,
 });
+
+/** A key's words where the booking's kind says another thing than FIELD_WORDS: a rental's `car` is the car (Car), a train's is its coach. */
+const KIND_FIELD_WORDS = /** @type {Record<string, Record<string, string>>} */ ({ car: { car: t`Car` } });
 
 /** Each kind's facts in the order a person checks them; then any other field, as written. */
 const ORDER = /** @type {Record<string, string[]>} */ ({
@@ -194,6 +198,9 @@ export function bookingFacts(b, o = {}) {
   if (!b || typeof b !== 'object' || Array.isArray(b)) return [];
   const fields = b.fields && typeof b.fields === 'object' && !Array.isArray(b.fields) ? b.fields : {};
   const marked = new Set(checkOf(b).fields);
+  // A detail drawn is a value that is there, as checkOf marks them: a null or a blank is no line ("null" is never words).
+  const has = (/** @type {string} */ k) => Object.hasOwn(fields, k) && there(fields[k]);
+  const labelOf = (/** @type {string} */ k) => KIND_FIELD_WORDS[b.kind]?.[k] ?? FIELD_WORDS[k];
   /** @param {any} time */
   const at = (time) => {
     const tz = validZone(time?.tz) ? time.tz : o.fallbackTz;
@@ -210,7 +217,7 @@ export function bookingFacts(b, o = {}) {
     end: () => ({ label: flight ? t`Arrives` : stay ? t`Check-out` : tc('booking')`Ends`, ...(at(b.end) ?? { value: null }) }),
     place: () => ({ label: t`Place`, value: b.place?.name ? (b.place.address ? tc('booking')`${String(b.place.name)}, ${String(b.place.address)}` : String(b.place.name)) : null }),
     nights: () => {
-      if (Object.hasOwn(fields, 'nights')) return null; // hers, among the fields
+      if (has('nights')) return null; // hers, among the fields
       const tz = (/** @type {any} */ x) => (validZone(x?.tz) ? x.tz : null);
       if (!tz(b.start) || !tz(b.end)) return null;
       const from = instantAt(b.start.at, tz(b.start));
@@ -230,15 +237,15 @@ export function bookingFacts(b, o = {}) {
     if (Object.hasOwn(own, key)) {
       const f = own[key]();
       if (f?.value) out.push({ key, label: f.label, value: f.value, unsure: f.unsure ?? marked.has(key), ...(f.zone ? { zone: f.zone } : {}) });
-      if (key !== 'nights' || !Object.hasOwn(fields, 'nights')) continue;
+      if (key !== 'nights' || !has('nights')) continue;
     }
-    if (!Object.hasOwn(fields, key)) continue;
+    if (!has(key)) continue;
     shown.add(key);
-    out.push({ key, label: FIELD_WORDS[key], value: valueText(fields[key]), unsure: marked.has(key) });
+    out.push({ key, label: labelOf(key), value: valueText(fields[key]), unsure: marked.has(key) });
   }
   for (const [key, v] of Object.entries(fields)) {
-    if (shown.has(key)) continue;
-    const words = Object.hasOwn(FIELD_WORDS, key) ? FIELD_WORDS[key] : null;
+    if (shown.has(key) || !there(v)) continue;
+    const words = Object.hasOwn(FIELD_WORDS, key) ? labelOf(key) : null;
     out.push({ key, label: words ?? key, value: valueText(v), ...(words ? {} : { lang: /** @type {const} */ ('en') }), unsure: marked.has(key) });
   }
   return out;

@@ -96,7 +96,7 @@ test("Sign in with OpenRouter makes one provider with one key: free chat models,
     release();
     const card = page.locator('.notice', { hasText: 'Signed in with OpenRouter' });
     await expect(card).toBeVisible({ timeout: 30_000 });
-    await expect(card).toContainText("behind the browser's own dictation and voice. Its free voice comes first");
+    await expect(card).toContainText("behind Phone dictation and Browser voice. Its free voice comes first");
     await expect(card).toContainText('uses one of the free requests a day the chat models use too');
     await expect(card).toContainText('move them up under Roles');
     await card.getByRole('button', { name: 'Dismiss' }).click();

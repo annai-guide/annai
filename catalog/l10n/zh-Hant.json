@@ -181,7 +181,7 @@
     "provider-mistral": "14fc54a1e4a5555abbb87f01b0d4c754177858ab8baf931ed653bf25d309eff3",
     "provider-ollama": "c8e3bfc528670f3b2e4cab32d03e5494ed1e12b8ed38f421eb6eb03a09301394",
     "provider-openai": "843f8b3dbd9de148c3fa01d706ec5ea2b3e4d211fe21301d3c70e57ebf42bd88",
-    "provider-openrouter": "53ce76898748bd251a4ccbbfc55c70816d3449eb5448d4ea46992506a53d4162",
+    "provider-openrouter": "bcefa175e9addc8281fca8a4f5a9d6f3a02779f40198f747c1b3cb2152675362",
     "provider-scripted": "137d50b04dce729666e4e35b3a2c262d77a70f93ec906cb800bdec8a1c970547",
     "provider-sglang": "2f3baf4fb7def7de54c4ab0f86d25d8cb7574c09f98289af01c1af9f6280672d",
     "provider-vllm": "1eca2b545e6ebb27b7e491e7a6407465e727605ef0a25185878a6016fec30f5d",

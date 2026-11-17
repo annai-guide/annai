@@ -217,7 +217,7 @@ test('the note is a warning on a phone only while the address is http localhost 
 });
 
 // "The OpenRouter sign-in card is cut off": its body stopped mid-sentence inside the box of a quarter of the screen (the user, 2026-10-22).
-const OPENROUTER_CARD = "Shiori thinks with free models to start, so trying annai costs nothing. annai also added OpenRouter's transcription and voices, behind the browser's own dictation and voice. Its free voice comes first: each sentence it says uses one of the free requests a day the chat models use too. The others cost a little, from credits you buy at OpenRouter. To use them first, move them up under Roles.";
+const OPENROUTER_CARD = "Shiori thinks with free models to start, so trying annai costs nothing. annai also added OpenRouter's transcription and voices, behind Phone dictation and Browser voice. Its free voice comes first: each sentence it says uses one of the free requests a day the chat models use too. The others cost a little, from credits you buy at OpenRouter. To use them first, move them up under Roles.";
 
 test("a card whose text is longer than the box gets More, which opens it to its full height and Less closes; Dismiss stays in view (390 x 844)", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });

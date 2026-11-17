@@ -14,6 +14,9 @@ import { validZone, instantAt, isoInZone, offsetMinutes } from './time.js';
 /** A booking's own fields, besides those in its `fields` object, that `unsure` may name. */
 const TOP = ['title', 'start', 'end', 'place', 'confirmation', 'cost'];
 
+/** Whether a value is there: not null, no blank text. The one rule for a booking's own fields and the keys of `fields`: what is marked (checkOf) and what the details draw (format.js bookingFacts). @param {unknown} v */
+export const there = (v) => v !== undefined && v !== null && !(typeof v === 'string' && !v.trim());
+
 /**
  * What of a booking the screens mark for the user to check: the names in `unsure` of fields it has (its own, or keys of `fields`, as
  * written), once each. A record from before (no `unsure` key) not confirmed reads as if `unsure` named every part it has: its own fields
@@ -27,8 +30,6 @@ export function checkOf(b) {
   const extra = b.fields && typeof b.fields === 'object' && !Array.isArray(b.fields) ? b.fields : {};
   const named = 'unsure' in b ? b.unsure : b.status !== 'confirmed' ? [...TOP, ...Object.keys(extra)] : [];
   if (!Array.isArray(named)) return { fields: [] };
-  // A part is a value that is there: not null, no blank text. The same rule for a booking's own fields and for the keys of `fields`.
-  const there = (/** @type {unknown} */ v) => v !== undefined && v !== null && !(typeof v === 'string' && !v.trim());
   const has = (/** @type {string} */ k) => (TOP.includes(k) ? there(b[k]) : Object.hasOwn(extra, k) && there(extra[k]));
   /** @type {string[]} */
   const fields = [];
