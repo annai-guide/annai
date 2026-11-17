@@ -308,18 +308,24 @@ test("a reminder written while its conversation is being opened is told to the s
   assert.ok(!JSON.stringify(k.requests[0].messages).includes('Leave for the airport now.'), "nor in Kyoto's first request");
 });
 
-test("a reminder written while the trip that is open is being opened again is in what Shiori knows once, though the reading was made before it was written (a long line in the log is read from its blob, after the write is queued)", async () => {
-  const k = await agentKit([[say('Hi.')]]);
-  /** @type {any[]} */
-  const told = [];
-  k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'reminder') told.push(e); });
-  await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'Please remember this. '.repeat(120)]] }); // over 2,000 characters: kept as a blob
+/**
+ * A reminder written while the trip that is open is being opened again, right after the reading listed its log: the reading lacks it, as a
+ * long line in the log (over 2,000 characters, kept as a blob) is read from its blob after the write is queued. failRead: the open's first
+ * read of a stored text fails, so the open fails. @param {any} k @param {{ failRead?: boolean }} [o] @returns {Promise<{ reminding: () => Promise<void> | null }>}
+ */
+async function remindWhileReopening(k, { failRead = false } = {}) {
+  await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'Please remember this. '.repeat(120)]] });
   /** @type {Promise<void> | null} */
   let reminding = null;
+  let failed = false;
   const tx = k.store.tx.bind(k.store);
   k.store.tx = (/** @type {any} */ names, /** @type {any} */ mode, /** @type {any} */ fn) => tx(names, mode, (/** @type {any} */ t) => fn(new Proxy(t, {
     get(o, key) {
       const v = o[key];
+      if (key === 'getBlob' && failRead && reminding && !failed && mode === 'readonly') {
+        failed = true; // once: the turn after reads again
+        return async () => { throw new Error('the read failed'); };
+      }
       if (key !== 'listEvents') return typeof v === 'function' ? v.bind(o) : v;
       return async (/** @type {string} */ scope, /** @type {any} */ q = {}) => {
         const out = await o.listEvents(scope, q);
@@ -328,9 +334,35 @@ test("a reminder written while the trip that is open is being opened again is in
       };
     },
   })));
+  return { reminding: () => reminding };
+}
+
+test("a reminder written while the trip that is open is being opened again is in what Shiori knows once, though the reading was made before it was written (a long line in the log is read from its blob, after the write is queued)", async () => {
+  const k = await agentKit([[say('Hi.')]]);
+  /** @type {any[]} */
+  const told = [];
+  k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'reminder') told.push(e); });
+  const { reminding } = await remindWhileReopening(k);
   await k.agent.open(k.trip);
-  await reminding;
-  assert.ok(reminding, 'written in the opening window, after the log was listed');
+  await reminding();
+  assert.ok(reminding(), 'written in the opening window, after the log was listed');
+  k.agent.send('Hello');
+  await k.agent.idle();
+  assert.equal(JSON.stringify(k.requests[0].messages).split('Leave for the airport now.').length, 2, 'Shiori is given it once');
+  assert.equal((await k.events(['reminder'])).length, 1, 'stored once');
+  assert.deepEqual(told.map((e) => e.data.text), ['Leave for the airport now.'], 'told to the screens once');
+});
+
+test("a reminder written while the trip that is open is being opened again is in the transcript that stays open when that open fails: #write applies it there, as the splice never comes", async () => {
+  const k = await agentKit([[say('Hi.')]]);
+  /** @type {any[]} */
+  const told = [];
+  k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'reminder') told.push(e); });
+  const { reminding } = await remindWhileReopening(k, { failRead: true });
+  await assert.rejects(k.agent.open(k.trip), /the read failed/);
+  await reminding();
+  assert.ok(reminding(), 'written in the opening window, after the log was listed');
+  assert.equal(JSON.stringify(k.agent.transcript.messages).split('Leave for the airport now.').length, 2, 'in the transcript still open, once');
   k.agent.send('Hello');
   await k.agent.idle();
   assert.equal(JSON.stringify(k.requests[0].messages).split('Leave for the airport now.').length, 2, 'Shiori is given it once');
