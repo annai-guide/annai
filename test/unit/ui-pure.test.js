@@ -78,6 +78,18 @@ test("#/talk and #/plan go to the open conversation's address (the draft's too),
   assert.equal(redirectOf(parseHash('#/trips'), 'trip-a'), null);
 });
 
+test("#/now (Now went in timeline stage 8) goes to today's Itinerary of the trip in play, else home; with no options, home", () => {
+  assert.equal(redirectOf(parseHash('#/now'), 'trip-a', { play: 'trip-b' }), '#/trip/trip-b/plan'); // the trip in play, not the open one
+  assert.equal(redirectOf(parseHash('#/now'), 'trip-a', { play: 'trip a/b' }), '#/trip/trip%20a%2Fb/plan');
+  assert.equal(redirectOf(parseHash('#/now'), 'trip-a', { play: null }), '#/trips');
+  assert.equal(redirectOf(parseHash('#/now'), 'trip-a'), '#/trips');
+  assert.equal(redirectOf(parseHash('#/now?x=1'), null, { play: 'trip-b' }), '#/trip/trip-b/plan');
+  // The trip in play changes nothing else.
+  assert.equal(redirectOf(parseHash('#/talk'), 'trip-a', { play: 'trip-b' }), '#/trip/trip-a/talk');
+  assert.equal(redirectOf(parseHash('#/plan'), 'trip-a', { play: 'trip-b' }), '#/trip/trip-a/plan');
+  assert.equal(redirectOf(parseHash('#/trips'), 'trip-a', { play: 'trip-b' }), null);
+});
+
 test('a full device gets advice that frees space: removing a trip does, deleting inside one does not (spec §4.9)', () => {
   /** @type {any[]} */
   const cards = [];
@@ -1008,11 +1020,12 @@ test('cameFrom: the trip, the Conversation, the Plan, Now, an item, and an old b
   assert.equal(cameFrom('#/talk', 't-1', 't-2'), null); // the Conversation is another trip's now
   assert.deepEqual(cameFrom('#/trip/t-1/booking?path=%2Fbookings%2Fa.json', 't-1', null)?.name, 'booking');
   assert.equal(cameFrom('#/settings', 't-1', 't-1'), null);
-  // The Plan, Now and an item are crumbs too; the Plan and Now by their plain addresses mean the open trip's.
+  // The Plan and an item are crumbs too; the Plan by its plain address means the open trip's.
   assert.deepEqual(cameFrom('#/trip/t-1/plan', 't-1', 't-1'), { hash: '#/trip/t-1/plan', name: 'plan' });
   assert.deepEqual(cameFrom('#/plan', 't-1', 't-1'), { hash: '#/plan', name: 'plan' });
   assert.deepEqual(cameFrom('#/plan', 't-1', 't-2'), { hash: '#/trip/t-1/plan', name: 'plan' }); // another trip is open now: this one's own Plan
-  assert.deepEqual(cameFrom('#/now', 't-1', 't-1'), { hash: '#/now', name: 'now' });
+  // An old "?from=#/now" (Now went in timeline stage 8): no crumb of its own, so the file's goes to its trip's Details.
+  assert.equal(cameFrom('#/now', 't-1', 't-1'), null);
   assert.equal(cameFrom('#/now', 't-1', 't-2'), null);
   assert.deepEqual(cameFrom('#/trip/t-1/item?path=%2Fplan%2Fa.json', 't-1', null), { hash: '#/trip/t-1/item?path=%2Fplan%2Fa.json', name: 'item' });
   assert.deepEqual(cameFrom('#/trip/t-1/recap', 't-1', null), { hash: '#/trip/t-1/recap', name: 'recap' });

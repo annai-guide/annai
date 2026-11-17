@@ -85,8 +85,8 @@ function running(ctx) {
     h('div', { class: 'acts' },
       h('button', { class: 'btn', type: 'button', onclick: () => (s.paused ? sim.resume() : sim.pause()) }, s.paused ? t`Resume` : t`Pause`),
       h('button', { class: 'btn danger', type: 'button', onclick: () => sim.stop() }, t`Stop`)),
-    h('p', { class: 'sub', text: t`Watch it on Now, Driving and the Conversation; Shiori wakes as with GPS on. Opening another trip stops it.` }),
-    h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/now' }, t`Now`), h('a', { class: 'btn', href: '#/drive' }, t`Driving`), h('a', { class: 'btn', href: '#/talk' }, t`Conversation`), h('a', { class: 'btn', href: trip }, t`The trip`)),
+    h('p', { class: 'sub', text: t`Watch it on the Itinerary, Driving and the Conversation; Shiori wakes as with GPS on. Opening another trip stops it.` }),
+    h('div', { class: 'acts' }, h('a', { class: 'btn', href: '#/plan' }, t`Itinerary`), h('a', { class: 'btn', href: '#/drive' }, t`Driving`), h('a', { class: 'btn', href: '#/talk' }, t`Conversation`), h('a', { class: 'btn', href: trip }, t`The trip`)),
   ];
 }
 

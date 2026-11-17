@@ -103,7 +103,9 @@ test('a refused location gets one card, with steps for this phone (spec §17 rul
   assert.match(gpsProblem('ios', true).body, /On iPhone: Settings → Privacy & Security → Location Services → Safari Websites → While Using the App, and Settings → Apps → Safari → Location → Allow\./);
   assert.match(gpsProblem('android').body, /allow Location/);
   assert.match(gpsProblem('desktop').body, /site settings/);
-  assert.match(gpsProblem('ios').body, /Now → Driving → Where are you/);
+  // No path in words to say where you are (Now went in timeline stage 8): the card's button goes to Driving, where "Where are you?" is.
+  assert.match(gpsProblem('ios').body, /Then turn GPS off and on again\. Or tell annai where you are\.$/);
+  assert.doesNotMatch(gpsProblem('ios').body, /Now →/);
   /** @type {Set<() => void>} */
   const fns = new Set();
   const live = { on: true, gps: 'waiting', onChange: (/** @type {() => void} */ fn) => { fns.add(fn); return () => fns.delete(fn); } };
@@ -116,6 +118,16 @@ test('a refused location gets one card, with steps for this phone (spec §17 rul
   tick();
   assert.equal(cards.length, 1);
   assert.equal(cards[0].tone, 'warn');
+  assert.deepEqual(cards[0].actions.map((/** @type {any} */ a) => a.label), ['Say where you are']);
+  const was = Object.getOwnPropertyDescriptor(globalThis, 'location');
+  Object.defineProperty(globalThis, 'location', { value: { hash: '#/trips' }, configurable: true, writable: true });
+  try {
+    cards[0].actions[0].run();
+    assert.equal(/** @type {any} */ (globalThis).location.hash, '#/drive');
+  } finally {
+    if (was) Object.defineProperty(globalThis, 'location', was);
+    else delete (/** @type {any} */ (globalThis)).location;
+  }
   live.gps = 'ok';
   tick();
   live.gps = 'denied';

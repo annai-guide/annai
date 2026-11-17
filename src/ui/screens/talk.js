@@ -177,7 +177,7 @@ export async function settled(agent) {
 export const wokeTitles = (reasons) => reasons.flatMap((r) => (r.kind === 'trigger' && r.titles) || []).map((s) => s.replace(/[.!?。！？]+$/u, ''));
 
 /**
- * A reminder annai showed by itself, for the Conversation and Now, from its data. Her note shown for her (halves.js) is "Shiori's answer", anything else a reminder.
+ * A reminder annai showed by itself, for the Conversation and Driving's latest card, from its data. Her note shown for her (halves.js) is "Shiori's answer", anything else a reminder.
  * A plan watch's words are made from its data, in the screens' language (an older one's are annai's English as stored, so marked). @param {any} d the event's data
  * @param {(text: string) => Record<string, any>} mine @param {(tag: string, attrs: Record<string, any>) => Node | string} [make] h, or a test's own
  */
@@ -657,13 +657,12 @@ export async function renderTalk(ctx, route) {
     }, () => {});
   }) : null;
   const screen = h('div', { class: 'screen' },
-    // ← home (never opening anything), its name (a trip's to Details), and the conversation's ⋯ (Details too, Tidy up), staying under the app's bar on a
-    // long conversation; `me`'s has its name alone. The heading stays for the top bar's tests until it goes (stage 8).
+    // ← home (never opening anything), its name as the screen's heading (a trip's a link to Details), and the conversation's ⋯ (Details too, Tidy up),
+    // staying at the top of the screen on a long conversation; `me`'s has its name alone. The h1 wraps the name, so a rename writes the link's words.
     h('div', { class: 'talk-head' },
       h('a', { class: 'btn ghost talk-back', href: '#/trips', 'aria-label': t`Back to Trips`, text: '←' }),
-      name,
+      h('h1', { class: 'talk-title' }, name),
       ...(tidy ? [tidy.el, tidy.status] : [])),
-    h('h1', { class: 'visually-hidden', text: readOnly ? title : t`Conversation` }),
     trip ? await nextLine(ctx, trip) : null,
     cost,
     list.childElementCount || readOnly ? null : empty,
@@ -982,7 +981,7 @@ function tidyMenu(ctx, trip) {
   };
   /**
    * While it is open the room is measured every frame: that holds whatever moves the ⋯ or the dock with no scroll or resize (a card landing above a short
-   * conversation at the top of its page, the dock growing or shrinking, a phone turned back upright: the shell's observers update --dock-h and --topbar-h a
+   * conversation at the top of its page, the dock growing or shrinking, a phone turned back upright: the shell's observer updates --dock-h a
    * frame after the resize event). A frame costs about 0.001 ms with a clean layout, 0.04 ms at worst (360x640, Chromium and WebKit, a loaded host).
    */
   let frame = 0;

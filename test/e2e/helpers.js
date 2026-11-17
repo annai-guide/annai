@@ -79,7 +79,7 @@ export async function pastWelcome(page) {
 }
 
 /**
- * Home (Trips), by its address, as the top bar's Trips tab went there (timeline stage 8 takes the bar away; home keeps its address).
+ * Home (Trips), by its address, where the top bar's Trips tab went (timeline stage 8 took the bar away; home keeps its address).
  * @param {import('@playwright/test').Page} page
  */
 export async function goHome(page) {
@@ -88,8 +88,7 @@ export async function goHome(page) {
 }
 
 /**
- * The conversation is on screen: waits for its head (←, its name, its ⋯) and returns it. In place of the hidden "Conversation" heading,
- * which stage 8 takes away.
+ * The conversation is on screen: waits for its head (←, its name, which is its level-1 heading, and its ⋯) and returns it.
  * @param {import('@playwright/test').Page} page
  */
 export async function atConversation(page) {
@@ -100,7 +99,7 @@ export async function atConversation(page) {
 
 /**
  * The open conversation, by "#/talk", which the shell replaces with its own address (home with none open): one new entry, as the top
- * bar's Conversation tab made. Returns its head (atConversation).
+ * bar's Conversation tab made before timeline stage 8. Returns its head (atConversation). On the conversation itself it adds an entry and redraws it.
  * @param {import('@playwright/test').Page} page
  */
 export async function openTalk(page) {
@@ -109,32 +108,12 @@ export async function openTalk(page) {
 }
 
 /**
- * The open conversation's Itinerary, by "#/plan", which the shell replaces with its own address, as the top bar's Itinerary tab went there.
+ * The open conversation's Itinerary, by "#/plan", which the shell replaces with its own address, where the top bar's Itinerary tab went.
  * @param {import('@playwright/test').Page} page
  */
 export async function openItinerary(page) {
   await goToHash(page, '#/plan');
   await expect(page.getByRole('heading', { level: 1, name: 'Itinerary', exact: true })).toBeVisible();
-}
-
-/**
- * Where what sticks at the top of the screen sticks (the conversation's head, home's box of cards): the top bar's bottom while there is a
- * bar, else 0 (the safe area is 0 in Playwright). Stage 8 takes the bar away, inlines 0 and removes this.
- * @param {import('@playwright/test').Page} page @returns {Promise<number>}
- */
-export function stuckTop(page) {
-  return page.evaluate(() => document.querySelector('header.topbar')?.getBoundingClientRect().bottom ?? 0);
-}
-
-/**
- * Turns on Settings → Experimental → "Swipe sideways to move between tabs", which is off by default,
- * and waits until the shell takes swipes.
- * @param {import('@playwright/test').Page} page
- */
-export async function turnOnSwipes(page) {
-  await page.evaluate(() => { location.hash = '#/experimental'; });
-  await page.getByRole('checkbox', { name: 'Swipe sideways to move between tabs' }).check();
-  await expect(page.locator('main.view')).toHaveClass(/\bswipes\b/);
 }
 
 /**
@@ -558,7 +537,7 @@ export async function fakeMicrophone(page, clips, { loopback = false } = {}) {
 
 /**
  * Starts a trip and returns its id, from any screen: made as annai makes one (createTrip), through a second connection to the page's store as
- * happeningTrip makes its trip, then opened at its Details, as Start a trip did (timeline stage 8 takes the form away). With dates it is a card on
+ * happeningTrip makes its trip, then opened at its Details, as Start a trip did (timeline stage 8 took the form away). With dates it is a card on
  * the timeline; without, a conversation's row (timeline stage 4). The page's own Workspace hears nothing of the writes; live mode reads the
  * trips again when the trip opens at its Details, so it knows this one from then on.
  * @param {import('@playwright/test').Page} page @param {string} title @param {{ start: string, end: string }} [dates] yyyy-mm-dd

@@ -115,9 +115,7 @@ export async function renderBooking(ctx, route) {
     requestAnimationFrame(() => {
       if (!target.isConnected) return;
       target.scrollIntoView({ block: 'start' });
-      // The top bar sticks over the first of the screen: its block starts under it.
-      const bar = document.querySelector('header.topbar');
-      if (bar) scrollBy(0, -(bar.getBoundingClientRect().height + 8));
+      scrollBy(0, -8); // 8 px of room above its heading
       target.focus({ preventScroll: true });
     });
   }
@@ -149,7 +147,7 @@ export function checkMark() {
 }
 
 /**
- * The crumb of a details screen: back to where it was opened from (the trip, the Plan, Now, the Conversation, a plan item), else the
+ * The crumb of a details screen: back to where it was opened from (the trip, the Plan, the Conversation, a plan item), else the
  * trip when `o.trip` (its title) is given, else the trip's Plan.
  * @param {any} ctx @param {string} id @param {string | undefined} from @param {{ trip?: string }} [o]
  */

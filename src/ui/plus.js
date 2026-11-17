@@ -1,6 +1,7 @@
 import { updateAppSettings } from '../core/settings.js';
 import { talkHref } from './format.js';
 import { openOrTell, tellNotOpen } from './open-trip.js';
+import { requestPersist } from './platform.js';
 import { explainStorageFull } from './storage-full.js';
 
 /**
@@ -41,6 +42,7 @@ export const cantStart = (ctx, e) => { explainStorageFull(ctx, e) || tellNotOpen
  * @param {any} ctx the shell's: chats, agent, voice, ws, dock (a plugin's dock may have no openTyping)
  */
 export function newConversation(ctx) {
+  requestPersist(); // inside the tap, so browsers that ask the user can: a traveller who starts trips with + would never be asked otherwise
   const id = ctx.chats?.ready;
   if (!id) return void openDraft(ctx).then(() => newConversation(ctx), (/** @type {unknown} */ e) => cantStart(ctx, e));
   // Already open (+ again before a word was said): opening it again would close its microphone, and a tap on one listening, or getting ready to, stops it.

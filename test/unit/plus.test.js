@@ -26,6 +26,18 @@ test('+ opens the draft and taps with nothing awaited between: the gesture holds
   assert.equal(location.hash, '#/trip/trip-d/talk');
 });
 
+test("+ asks the browser to keep annai's storage, first and inside the tap, as the Start a trip form's tap did", () => {
+  const { ctx, log } = kit();
+  const nav = /** @type {any} */ (globalThis.navigator);
+  Object.defineProperty(nav, 'storage', { value: { persist: () => { log.push('persist'); return Promise.resolve(true); } }, configurable: true });
+  try {
+    newConversation(ctx);
+    assert.deepEqual(log, ['persist', 'open trip-d', 'tap']); // synchronously, before this line, and before the draft opens
+  } finally {
+    delete nav.storage;
+  }
+});
+
 test('voice off: no tap (it would hold voice on), the box opens; voice on with no microphone here: tap says typing, so the box opens', () => {
   const off = kit({ voice: false });
   newConversation(off.ctx);

@@ -26,7 +26,7 @@ export function liveText(live) {
 }
 
 /**
- * The GPS chip's own words, short so the dock's row stays one line at 320 px: what the switch is, not what the user is doing (Now says that, in liveText).
+ * The GPS chip's own words, short so the dock's row stays one line at 320 px: what the switch is, not what the user is doing (the Itinerary's today says that, in liveText).
  * @param {{ on: boolean, gps: string, fix: any, simulating?: boolean, clock?: { now: () => number } }} live
  */
 export function gpsWords(live) {

@@ -2,10 +2,14 @@
 /* No page scroll anchoring: annai keeps the screen in place itself (notices.js, keep-rows.js). Chromium reads it from body; html's alone left it on. */
 html, body { overflow-anchor: none; }
 html { -webkit-text-size-adjust: 100%; }
+/* Where the screen's own room starts: below the status bar's strip, where iOS gives one (expected to be 0 with the status bar style `default`,
+   index.html, and in Safari's portrait; not measured). What sticks at the top (home's box, a conversation's head) sticks there. */
+:root { --top: env(safe-area-inset-top, 0px); }
+/* The notices box, the install banner and the screen sit below that strip (shiori.css gives the bottom its room above the dock). */
 body {
   margin: 0; min-height: 100dvh; background: var(--paper); color: var(--ink);
   font-family: var(--f-body); font-size: 16px; line-height: 1.55;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-top: var(--top); padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 /* No line begins with ゃ or ー; Korean breaks between words, not between syllables. */
 :lang(ja) { line-break: strict; }
@@ -18,22 +22,7 @@ a { color: var(--ai); }
 [hidden] { display: none !important; }
 .mono { font-family: var(--f-mono); }
 
-/* top bar */
-.topbar {
-  position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: calc(env(safe-area-inset-top, 0px) + 10px) max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px));
-  background: color-mix(in srgb, var(--paper) 92%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--line);
-}
-.brand { font-family: var(--f-display); font-weight: 700; font-size: 24px; color: var(--ink); text-decoration: none; line-height: 1; }
-.brand-ai { color: var(--ai); }
-.topnav { display: flex; gap: 4px; }
-.topnav a { padding: 6px 10px; border-radius: 999px; color: var(--ink-2); text-decoration: none; font-weight: 500; font-size: 15px; }
-.topnav a[aria-current='page'] { background: var(--ai-wash); color: var(--ai); }
-
 /* layout */
-/* With swiping between tabs on (Settings → Experimental), the screen takes sideways swipes itself; up and down scroll, and pinching zooms. */
-.view.swipes { touch-action: pan-y pinch-zoom; }
 .view { display: block; padding: 16px max(16px, env(safe-area-inset-right, 0px)) 96px max(16px, env(safe-area-inset-left, 0px)); max-width: 760px; margin: 0 auto; outline: none; }
 .screen, .today-top { display: flex; flex-direction: column; gap: 18px; }
 .today-top[hidden] { display: none; }
@@ -78,8 +67,6 @@ dialog.ask .acts { justify-content: flex-end; }
 .ask-backdrop { position: fixed; inset: 0; z-index: 60; background: rgb(0 0 0 / 0.45); }
 dialog.ask.plain { position: fixed; top: 50%; left: 50%; margin: 0; transform: translate(-50%, -50%); max-height: calc(100% - 32px); overflow-y: auto; z-index: 61; }
 details.archived summary { cursor: pointer; color: var(--ink-2); padding: 6px 0; }
-/* Start a trip: a name is enough, its dates folded away. */
-details.dates summary { cursor: pointer; color: var(--ink-2); padding: 12px 0; } /* its disclosure marker kept: no flex; 44 px by padding */
 
 /* forms */
 .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
@@ -146,7 +133,7 @@ pre.code { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--pap
 .brings { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; overflow-wrap: anywhere; }
 /* A line whose first word is a lower-case noun, capitalised by CSS so Chinese and Japanese are left alone (a chosen name, Plugins → a plugin). */
 .cap::first-letter { text-transform: uppercase; }
-/* System cards: in the page under the top bar, never over a screen's buttons; a quarter of the screen at most (spec §16.1). */
+/* System cards: in the page at its top, never over a screen's buttons; a quarter of the screen at most (spec §16.1). */
 .notices { display: flex; flex-direction: column; gap: 8px; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); align-items: center; max-height: 25vh; max-height: 25svh; overflow-y: auto; }
 .notices:not(:empty) { padding-top: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
 /* Each card is whole in the box, its four edges in view: fit (notices.js) shortens its words or grows it, so it never needs to scroll by itself. One fit
@@ -156,19 +143,14 @@ pre.code { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--pap
 /* A card whose title and buttons need more than the box grows, and the box with it (notices.js). */
 .notices > .notice.open, .notices > .notice.grow { max-height: none; }
 .notices.landed ~ :is(.risk, .view) { pointer-events: none; }
-/* On home only, the box sticks under the top bar (--topbar-h, shell.js) while it holds a card: home opens scrolled to the now line, and a card that arrives
+/* On home only, the box sticks at the top of the screen (--top) while it holds a card: home opens scrolled to the now line, and a card that arrives
    there is in view instead of above it. Empty, it takes no room and covers nothing. Where a card lifts the box's quarter (below: it needs more, or the
-   user opened it), the box is at most half the room under the bar (the user, "Cap every box at half") and scrolls inside itself: it never goes into
+   user opened it), the box is at most half the screen's room (the user, "Cap every box at half") and scrolls inside itself: it never goes into
    the page above, and the page never moves. The half is of 100svh, the page's height with a browser's bars shown, so it doesn't follow those bars. A swipe
    on a box that scrolls stays in it (.scrolls, notices.js): the rows behind it don't scroll away from the user's place. A card that lands over the rows,
    or slides into the place of one that went, ignores taps a moment (.over, notices.js), as the rows do when it moves them. */
-body.home .notices:not(:empty) { position: sticky; top: var(--topbar-h, 0px); z-index: 4; background: var(--paper); --lifted: calc((100svh - var(--topbar-h, 0px)) / 2); }
+body.home .notices:not(:empty) { position: sticky; top: var(--top); z-index: 4; background: var(--paper); --lifted: calc((100svh - var(--top)) / 2); }
 body.home .notices.scrolls { overscroll-behavior-y: contain; }
-/* While a field on home is typed in (typing-elsewhere, dock-hides.js: a touch screen), the box lets go and stays at the page's top, so the bar and the box
-   never cover the field above a keyboard (the user, "Unstick while typing"); it sticks again when typing ends, and, the page scrolled down, its cards ignore taps
-   a moment as it lands over the rows (notices.js hold). It keeps its place in the page either way: nothing moves. A tap on its button lets go of the field at the press, but the class,
-   and so the box's place, stays until the tap's click (dock-hides.js), so the box never moves under the finger. */
-html.typing-elsewhere body.home .notices { position: static; }
 .notices.over > .notice { pointer-events: none; }
 /* A card came below what is read in the box (notices.js): a mark, not words, at its bottom edge. Its margin gives back the gap and its height: nothing moves. */
 .notices.below::after { content: ''; position: sticky; bottom: 8px; align-self: flex-end; flex-shrink: 0; box-sizing: border-box; width: 10px; height: 10px; margin: -18px 12px 0; border: solid var(--ink); border-width: 0 3px 3px 0; transform: rotate(45deg); pointer-events: none; }
@@ -188,7 +170,7 @@ html.typing-elsewhere body.home .notices { position: static; }
 /* A card longer than the box shows its first lines until More opens it (notices.js); open, the box's cap is lifted. */
 .notice.clamp:not(.open) p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--lines, 3); line-clamp: var(--lines, 3); overflow: hidden; }
 /* A card whose title and buttons need more than the box, an opened card, or an opened stack lifts the box's quarter: each card in it shows whole (on
-   home, up to half the room under the bar: --lifted, above). Such a card is no scroll box of its own, so its buttons stay at the box's edge (the user,
+   home, up to half the screen's room: --lifted, above). Such a card is no scroll box of its own, so its buttons stay at the box's edge (the user,
    "Keep buttons at edge"): a choice that changes the user's data is never out of sight, even in a card taller than the box. */
 .notices:has(> .notice.grow, .notice.open, .stack-list:not([hidden])) { max-height: var(--lifted, none); }
 .notices > .notice:is(.open, .grow) { overflow: visible; }
@@ -236,11 +218,6 @@ textarea.mono { font-family: var(--f-mono); font-size: 13px; }
 .checks-result { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
 .checks-result .bad { color: var(--risk); }
 .shared-text { margin: 4px 0 0; padding: 8px 12px; border-left: 3px solid var(--line); color: var(--ink-2); white-space: pre-wrap; overflow-wrap: anywhere; }
-/* The top bar scrolls rather than pushing the page wider on a phone, and fades where there is more of it. */
-.topnav { min-width: 0; overflow-x: auto; scrollbar-width: none; }
-.topnav.more { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); }
-.topnav::-webkit-scrollbar { display: none; }
-.topnav a { white-space: nowrap; }
 /* The Plan (spec §16.2): a trip booklet's schedule page. */
 .tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
 .tab { flex: none; min-height: 44px; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--sheet); color: var(--ink-2); font: inherit; font-size: 15px; cursor: pointer; }
@@ -264,7 +241,7 @@ button.chip.filter[aria-pressed='true'] { background: var(--ai); color: var(--ai
 /* The Add screen's and the Plugins page's search, chips and what they find (spec §16.2) */
 .finder, .found, .found .kind { display: flex; flex-direction: column; gap: 12px; }
 .leg { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0 6px calc(6.5em + 1.2em + 16px); color: var(--ink-2); font-size: 14px; border-bottom: 1px dashed var(--line); }
-/* Now and Driving (spec §16.2) */
+/* The top of the Itinerary's today, and Driving (spec §16.2) */
 .now-place { font-family: var(--f-display); font-weight: 700; font-size: 20px; overflow-wrap: anywhere; }
 .now-place.one-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* a name, or "No GPS signal": one line, so a fix coming or going never changes the block's height, and a long name ends in … (the sentences that change only when the user acts wrap) */
 .now-card .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } /* one row that swipes sideways, so the chips changing never move the rows below */
@@ -361,7 +338,7 @@ a.tab { display: inline-flex; align-items: center; text-decoration: none; }
 .simulate progress { width: 100%; height: 12px; accent-color: var(--ai); }
 .sim-time { font-family: var(--f-mono); }
 
-/* What plugins add (spec §16.4): a Now section, a page's body. */
+/* What plugins add (spec §16.4): a section of today's itinerary (now-section), a page's body. */
 .now-section { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--sheet); }
 .now-section[hidden] { display: none; }
 .ext-body { display: flex; flex-direction: column; gap: 12px; }

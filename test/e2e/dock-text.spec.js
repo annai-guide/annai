@@ -115,8 +115,7 @@ test('a short screen grows the box to three lines; a phone on its side keeps it 
   expect(turned.scrolls).toBe(true);
   expect(Math.abs(turned.bottom - turned.arrowBottom - 2)).toBeLessThanOrEqual(1);
   const top = /** @type {{ y: number }} */ (await page.getByRole('navigation', { name: 'Shiori' }).boundingBox());
-  const bar = await page.evaluate(() => document.querySelector('header, .topbar, nav[aria-label="Main"]')?.getBoundingClientRect().bottom ?? 0);
-  expect(top.y - bar).toBeGreaterThanOrEqual(296 * 0.32);
+  expect(top.y).toBeGreaterThanOrEqual(296 * 0.32); // the page's room above the dock, from the top of the screen (no top bar since timeline stage 8)
 });
 
 test("a draft of several lines kept by Escape is as tall as its lines when the box opens again", async ({ page }) => {

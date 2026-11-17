@@ -1048,7 +1048,7 @@ rcp6ga	ok	A photo was kept as it is	照片已按原圖儲存	src/ui/composer.js:
 g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	依名稱查詢地點，或依位置查出地名，供 Shiori 的 geocode 和 reverse 工具使用；作為免費搜尋的最後備案，還會查詢地點的官網。annai 遵照其使用政策，每秒最多請求一次。	src/ui/credits.js:26	
 nn3bzj	ok	Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's last resort, on whatever you tick, sends it the words searched.	附近地點的相關文章，以及離線資料包中的文章摘要。Shiori 讀到的每篇文章都附帶連結。免費搜尋的最後備案不受勾選影響，會把搜尋字詞傳給它查詢。	src/ui/credits.js:33	
 1ufrhy7	ok	Travel guides, for Shiori's guide tool and the offline pack, and where free search falls back to.	旅遊指南，供 Shiori 的 guide 工具和離線資料包使用，也是免費搜尋的備選。	src/ui/credits.js:40	
-1g8sy5k	ok	Weather forecasts, for Shiori's weather tool. Sunrise and sunset in the forecast are Open-Meteo's too; the Now screen's golden hour, and the sun's times when Open-Meteo doesn't answer, are worked out on the phone.	天氣預報，供 Shiori 的 weather 工具使用。預報中的日出日落時間也來自 Open-Meteo；「現在」頁面的黃金時刻，以及 Open-Meteo 沒有回應時的日出日落時間，都在手機上計算。	src/ui/credits.js:47	
+czha5t	ok	Weather forecasts, for Shiori's weather tool. Sunrise and sunset in the forecast are Open-Meteo's too; the Itinerary's golden hour, and the sun's times when Open-Meteo doesn't answer, are worked out on the phone.	天氣預報，供 Shiori 的 weather 工具使用。預報中的日出日落時間也來自 Open-Meteo；「行程」頁面的黃金時刻，以及 Open-Meteo 沒有回應時的日出日落時間，都在手機上計算。	src/ui/credits.js:47	
 a8awk7	ok	Free web search for web_search, and a reader of pages other readers can't read for fetch, while ticked in Settings → Tools. Only the words searched, or the page's address, are sent.	僅在設定 → 工具中勾選時，為 web_search 提供免費網頁搜尋，並為 fetch 讀取其他方式讀不到的網頁。只傳送搜尋字詞或網址。	src/ui/credits.js:54	
 1obxox	ok	Free web search for web_search, while ticked in Settings → Tools. Only the words searched, and a random id for each conversation, are sent.	僅在設定 → 工具中勾選時，為 web_search 提供免費網頁搜尋。只傳送搜尋字詞，以及每段對話的隨機 ID。	src/ui/credits.js:61	
 382qu6	ok	Free web search for web_search, while ticked in Settings → Tools. Only the words searched are sent.	僅在設定 → 工具中勾選時，為 web_search 提供免費網頁搜尋。只傳送搜尋字詞。	src/ui/credits.js:68	
@@ -1319,8 +1319,9 @@ m9ud30	ok	On iPhone: tap the page menu button in the address bar, then Website S
 687eo2	ok	On Android: tap the icon left of the address (in the installed app: hold the annai icon, then App info → Permissions) and allow Location.	在 Android 上：點一下網址列左側的圖示（如果用的是已安裝的應用程式：按住 annai 圖示，然後選擇應用程式資訊 → 權限），允許存取位置資訊。	src/ui/live-help.js:21	Note: Android's 位置資訊, as the glossary's Location row says for Android.
 1ell92d	ok	Allow location for this site in your browser's site settings.	請在瀏覽器的網站設定中允許此網站使用位置資訊。	src/ui/live-help.js:22	
 37e0kb	ok	Location isn't allowed, so GPS has only its time reminders.	未取得位置權限，所以 GPS 只能提供定時提醒。	src/ui/live-help.js:23	
-1eaqzev	ok	Then turn GPS off and on again. Or tell annai where you are: Now → Driving → Where are you?	然後關閉 GPS 再重新開啟。也可以直接告訴 annai 你在哪裡：現在 → 駕駛中 → 你在哪裡？	src/ui/live-help.js:24	
+yxkoif	ok	Then turn GPS off and on again. Or tell annai where you are.	然後關閉 GPS 再重新開啟。也可以直接告訴 annai 你在哪裡。	src/ui/live-help.js:24	
 141ivnq	ok	annai can't see where you are	無法取得你的位置	src/ui/live-help.js:25	
+r8p4s2	draft	Say where you are	告知所在位置	src/ui/live-help.js:61	Note: the GPS card's button, to Driving, where "Where are you?" is.
 1m81j1n	ok	images	圖片	src/ui/model-check.js:6	Note: what a model's test checked, in "Last tested …: key ✓, tools ✓, images ✗".
 1ue1hlo	ok	tools	工具	src/ui/model-check.js:6	Note: what a model's test checked, in "Last tested …: key ✓, tools ✓, images ✗".
 27aenj	ok	live	即時	src/ui/model-check.js:6	Note: what a model's test checked: a live voice session.
@@ -1383,10 +1384,10 @@ p6stxk	ok	On Wi-Fi, annai keeps it up to date by itself while this conversation 
 1bk5sw	ok	What came is kept. Try again in a moment.	已下載的部分會保留。請稍後再試。	src/ui/offline-pack.js:87	
 v6p0ku	ok	The offline pack didn't download	離線資料包下載失敗	src/ui/offline-pack.js:87	
 qtuxek	ok	Places © {0}; summaries from Wikipedia and guides from Wikivoyage, {1}.	地點 © {0}；摘要來自 Wikipedia，指南來自 Wikivoyage，{1}。	src/ui/offline-pack.js:119	{0} = osm.textContent; {1} = cc.textContent; Note: {0} and {1} are the licence's own words ("OpenStreetMap contributors", "CC BY-SA"), links, and stay English.
-uwd3a2	ok	No offline pack yet.	還沒有離線資料包。	src/ui/offline-pack.js:127	
-1k132lx	ok	The offline pack is from before the itinerary changed.	離線資料包是行程變動前下載的。	src/ui/offline-pack.js:128	
-ksuwxs	ok	Offline pack: downloaded.	離線資料包：已下載。	src/ui/offline-pack.js:129	
-r91312	ok	Offline pack: downloaded {0}.	離線資料包：{0}下載。	src/ui/offline-pack.js:129	{0} = when; Note: {0} is a relative time ("2 hours ago").
+uwd3a2	ok	No offline pack yet.	還沒有離線資料包。	src/ui/offline-pack.js:130	
+1k132lx	ok	The offline pack is from before the itinerary changed.	離線資料包是行程變動前下載的。	src/ui/offline-pack.js:131	
+ksuwxs	ok	Offline pack: downloaded.	離線資料包：已下載。	src/ui/offline-pack.js:132	
+r91312	ok	Offline pack: downloaded {0}.	離線資料包：{0}下載。	src/ui/offline-pack.js:132	{0} = when; Note: {0} is a relative time ("2 hours ago").
 8f98y9	ok	Open an annai file	開啟 annai 檔案	src/ui/open-file.js:6	
 13548dd	ok	That conversation didn't open	無法開啟那段對話	src/ui/open-trip.js:7	Note: Taiwan wording: 開啟 for open, 對話 as the glossary's Conversation.
 ow6fak	ok	This browser could not draw the photo.	此瀏覽器無法處理這張照片。	src/ui/photo-codec.js:73	
@@ -1634,58 +1635,57 @@ bamrei	ok	Change it	修改	src/ui/screens/booking.js:77
 t8quxl	ok	Download	下載	src/ui/screens/booking.js:103	
 1ygxf36	ok	Tap again to delete	再點一次以刪除	src/ui/screens/booking.js:108	
 oay2cq	ok	Delete	刪除	src/ui/screens/booking.js:108	Note: a waiting file's two-step Delete (its space comes back), as Delete file.
-iy42pb	ok	check	待核對	src/ui/screens/booking.js:147	context: a detail to check; Note: Taiwan wording; a light mark beside one detail Shiori is unsure of.
-1s0er5c	ok	Shiori isn't sure of this	Shiori 不確定這一項	src/ui/screens/booking.js:148	Note: Taiwan wording; read by screen readers for the check mark.
-1a6z1m2	ok	Itinerary	行程	src/ui/screens/booking.js:160	
-1eszfxl	ok	The original, {0}, can't be found.	找不到原件 {0}。	src/ui/screens/booking.js:182	{0} = name
-98drsx	ok	Open the original	開啟原件	src/ui/screens/booking.js:187	
-19jra30	ok	What is around us right now that is worth knowing about?	我們附近現在有什麼值得了解的嗎？	src/ui/screens/drive.js:15	Note: What the user says to Shiori with a tap, as their own words.
-sqqsfd	ok	What's around here?	附近有什麼？	src/ui/screens/drive.js:15	
-1gkqhnt	ok	Food	吃飯	src/ui/screens/drive.js:16	
-1hv457u	ok	Where can we eat along the way?	沿途哪裡可以吃飯？	src/ui/screens/drive.js:16	
-10xv0ul	ok	Fuel or charging	加油/充電	src/ui/screens/drive.js:17	Note: a big button on Driving; it asks for the next fuel station or charger.
-1c79d90	ok	Where is the next fuel station or charger?	下一個加油站或充電站在哪裡？	src/ui/screens/drive.js:17	
-1d8ka8b	ok	Where is the nearest restroom?	最近的洗手間在哪裡？	src/ui/screens/drive.js:18	
-iw9ebk	ok	Restroom	洗手間	src/ui/screens/drive.js:18	
-14k2tsa	ok	How long?	還要多久？	src/ui/screens/drive.js:19	
-18wvy25	ok	How long until our next stop?	到下一站還要多久？	src/ui/screens/drive.js:19	
-1r191hj	ok	How long until we reach {0}?	到 {0} 還要多久？	src/ui/screens/drive.js:19	{0} = next.name
-1xb4fg	ok	about {0}	約 {0}	src/ui/screens/drive.js:23	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)
-12d1x1g	ok	An itinerary place	行程中的地點	src/ui/screens/drive.js:34	
-7quqpk	ok	Go to Trips	前往「旅行」	src/ui/screens/drive.js:51	
-ov2ou9	ok	Open a trip to see the road ahead.	開啟旅行後就能查看前方的路。	src/ui/screens/drive.js:51	
-sxc7mr	ok	The road ahead	前方的路	src/ui/screens/drive.js:57	
-1b4mdx5	ok	You (finding where)	我的位置（定位中）	src/ui/screens/drive.js:71	
-591tvw	ok	You (GPS off)	我的位置（GPS 已關閉）	src/ui/screens/drive.js:71	
-lawr3a	ok	You	我的位置	src/ui/screens/drive.js:71	context: route strip; Note: the first row of Driving's route strip, where you are now (with a GPS fix); the rows beside it are "You (finding where)" and "You (GPS off)". Replay's speaker tag "You" is its own row.
-ugf9pe	ok	at {0}	預定 {0}	src/ui/screens/drive.js:74	{0} = s.row.time; Note: A stop's time on the plan, on the road ahead ("at 14:00").
-102oezx	ok	Nothing more is planned with a place.	之後沒有帶地點的安排了。	src/ui/screens/drive.js:75	
-l329ve	ok	Directions to {0}	前往 {0} 的路線	src/ui/screens/drive.js:81	{0} = next.name
-kb2apf	ok	annai hasn't downloaded its maps links yet; it needs to be online once.	還沒有下載地圖連結，需要先連網一次。	src/ui/screens/drive.js:83	
-1tuqp1	ok	Asked Shiori: {0}	已向 Shiori 提問：{0}	src/ui/screens/drive.js:89	{0} = text
-1imrexv	ok	Shiori wasn't asked	無法向 Shiori 提問	src/ui/screens/drive.js:91	
-bigbss	ok	Try again.	請重試。	src/ui/screens/drive.js:91	
-ah9gez	ok	Turn GPS on	開啟 GPS	src/ui/screens/drive.js:96	Note: 開啟, as "你開啟了 GPS" and the chip's GPS 開啟.
-14ltb7u	ok	The itinerary has no places to choose from yet.	行程裡還沒有可選的地點。	src/ui/screens/drive.js:99	
-1sedy1m	ok	Where are you?	你在哪裡？	src/ui/screens/drive.js:99	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
-1w8zbso	ok	annai now knows you're at {0}.	已將你的位置設為 {0}。	src/ui/screens/drive.js:104	{0} = p.name
-amdsnu	ok	Swipe sideways to move between tabs	左右滑動切換分頁	src/ui/screens/experimental.js:14	
-1py6vf8	ok	Unfinished translations	未完成的翻譯	src/ui/screens/experimental.js:19	
-13a0vz9	ok	Features that are still being tried. They may have bugs, and their fixes may come slower than the rest of annai.	仍在試驗中的功能，可能有錯誤，修正速度也可能比 annai 的其他部分慢。	src/ui/screens/experimental.js:25	
-1wwmv7i	ok	Swiping between tabs	滑動切換分頁	src/ui/screens/experimental.js:26	
-16e9lp9	ok	Swipe a screen left or right to go to the next or the previous tab of the top bar, back to the screen you last had open there. Off, a sideways swipe does what the browser does.	左右滑動頁面，即可切換到頂部列的下一個或上一個分頁，並回到你上次在該分頁開啟的頁面。關閉後，左右滑動會執行瀏覽器的預設動作。	src/ui/screens/experimental.js:28	
-15b29xu	ok	Translations that nobody who reads the language has checked yet. On, you can choose them in Settings → Languages. Their wording may be wrong, and what isn't translated yet stays in English.	還沒有懂該語言的人檢查過的翻譯。開啟後，可以在設定 → 語言中選擇。用詞可能有誤，尚未翻譯的部分仍顯示英文。	src/ui/screens/experimental.js:31	Note: the place moved from 設定 → Shiori → 語言 to 設定 → 語言 (2026-10-28).
-cwo6nv	ok	Remote trace (for developers)	遠端記錄（開發人員）	src/ui/screens/experimental.js:34	Note: Trace is 記錄 and Developer 開發人員 (glossary).
-1o37pki	ok	Sends annai's trace to a server you run, to see what annai does on this phone as it happens. Off until you set it up; a chip in the dock shows while it sends.	把 annai 的記錄傳送到你自己架設的伺服器，即時查看 annai 在這支手機上的操作。設定好之前維持關閉；傳送期間底部列會顯示一個按鈕。	src/ui/screens/experimental.js:36	Note: "chip" is ボタン / 按鈕 (glossary).
-m3chyg	ok	Open Remote trace	開啟遠端記錄	src/ui/screens/experimental.js:38	
-v16nvk	ok	Get it from annai's catalog	從 annai 的目錄取得	src/ui/screens/experimental.js:39	
+iy42pb	ok	check	待核對	src/ui/screens/booking.js:145	context: a detail to check; Note: Taiwan wording; a light mark beside one detail Shiori is unsure of.
+1s0er5c	ok	Shiori isn't sure of this	Shiori 不確定這一項	src/ui/screens/booking.js:146	Note: Taiwan wording; read by screen readers for the check mark.
+1a6z1m2	ok	Itinerary	行程	src/ui/screens/booking.js:158	
+1eszfxl	ok	The original, {0}, can't be found.	找不到原件 {0}。	src/ui/screens/booking.js:180	{0} = name
+98drsx	ok	Open the original	開啟原件	src/ui/screens/booking.js:185	
+19jra30	ok	What is around us right now that is worth knowing about?	我們附近現在有什麼值得了解的嗎？	src/ui/screens/drive.js:18	Note: What the user says to Shiori with a tap, as their own words.
+sqqsfd	ok	What's around here?	附近有什麼？	src/ui/screens/drive.js:18	
+1gkqhnt	ok	Food	吃飯	src/ui/screens/drive.js:19	
+1hv457u	ok	Where can we eat along the way?	沿途哪裡可以吃飯？	src/ui/screens/drive.js:19	
+10xv0ul	ok	Fuel or charging	加油/充電	src/ui/screens/drive.js:20	Note: a big button on Driving; it asks for the next fuel station or charger.
+1c79d90	ok	Where is the next fuel station or charger?	下一個加油站或充電站在哪裡？	src/ui/screens/drive.js:20	
+1d8ka8b	ok	Where is the nearest restroom?	最近的洗手間在哪裡？	src/ui/screens/drive.js:21	
+iw9ebk	ok	Restroom	洗手間	src/ui/screens/drive.js:21	
+14k2tsa	ok	How long?	還要多久？	src/ui/screens/drive.js:22	
+18wvy25	ok	How long until our next stop?	到下一站還要多久？	src/ui/screens/drive.js:22	
+1r191hj	ok	How long until we reach {0}?	到 {0} 還要多久？	src/ui/screens/drive.js:22	{0} = next.name
+1xb4fg	ok	about {0}	約 {0}	src/ui/screens/drive.js:26	{0} = duration(Math.max(1, s.minutes ?? 0) * 60_000)
+12d1x1g	ok	An itinerary place	行程中的地點	src/ui/screens/drive.js:37	
+7quqpk	ok	Go to Trips	前往「旅行」	src/ui/screens/drive.js:54	
+ov2ou9	ok	Open a trip to see the road ahead.	開啟旅行後就能查看前方的路。	src/ui/screens/drive.js:54	
+sxc7mr	ok	The road ahead	前方的路	src/ui/screens/drive.js:60	
+1b4mdx5	ok	You (finding where)	我的位置（定位中）	src/ui/screens/drive.js:74	
+591tvw	ok	You (GPS off)	我的位置（GPS 已關閉）	src/ui/screens/drive.js:74	
+lawr3a	ok	You	我的位置	src/ui/screens/drive.js:74	context: route strip; Note: the first row of Driving's route strip, where you are now (with a GPS fix); the rows beside it are "You (finding where)" and "You (GPS off)". Replay's speaker tag "You" is its own row.
+ugf9pe	ok	at {0}	預定 {0}	src/ui/screens/drive.js:77	{0} = s.row.time; Note: A stop's time on the plan, on the road ahead ("at 14:00").
+102oezx	ok	Nothing more is planned with a place.	之後沒有帶地點的安排了。	src/ui/screens/drive.js:78	
+l329ve	ok	Directions to {0}	前往 {0} 的路線	src/ui/screens/drive.js:84	{0} = next.name
+kb2apf	ok	annai hasn't downloaded its maps links yet; it needs to be online once.	還沒有下載地圖連結，需要先連網一次。	src/ui/screens/drive.js:86	
+1tuqp1	ok	Asked Shiori: {0}	已向 Shiori 提問：{0}	src/ui/screens/drive.js:92	{0} = text
+1imrexv	ok	Shiori wasn't asked	無法向 Shiori 提問	src/ui/screens/drive.js:94	
+bigbss	ok	Try again.	請重試。	src/ui/screens/drive.js:94	
+ah9gez	ok	Turn GPS on	開啟 GPS	src/ui/screens/drive.js:99	Note: 開啟, as "你開啟了 GPS" and the chip's GPS 開啟.
+14ltb7u	ok	The itinerary has no places to choose from yet.	行程裡還沒有可選的地點。	src/ui/screens/drive.js:102	
+1sedy1m	ok	Where are you?	你在哪裡？	src/ui/screens/drive.js:102	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
+1w8zbso	ok	annai now knows you're at {0}.	已將你的位置設為 {0}。	src/ui/screens/drive.js:107	{0} = p.name
+16ocoht	ok	Show what she said	檢視她說的話	src/ui/screens/drive.js:162	
+1yj7glf	ok	Said aloud	已朗讀	src/ui/screens/drive.js:163	
+1py6vf8	ok	Unfinished translations	未完成的翻譯	src/ui/screens/experimental.js:16	
+13a0vz9	ok	Features that are still being tried. They may have bugs, and their fixes may come slower than the rest of annai.	仍在試驗中的功能，可能有錯誤，修正速度也可能比 annai 的其他部分慢。	src/ui/screens/experimental.js:22	
+15b29xu	ok	Translations that nobody who reads the language has checked yet. On, you can choose them in Settings → Languages. Their wording may be wrong, and what isn't translated yet stays in English.	還沒有懂該語言的人檢查過的翻譯。開啟後，可以在設定 → 語言中選擇。用詞可能有誤，尚未翻譯的部分仍顯示英文。	src/ui/screens/experimental.js:25	Note: the place moved from 設定 → Shiori → 語言 to 設定 → 語言 (2026-10-28).
+cwo6nv	ok	Remote trace (for developers)	遠端記錄（開發人員）	src/ui/screens/experimental.js:28	Note: Trace is 記錄 and Developer 開發人員 (glossary).
+1o37pki	ok	Sends annai's trace to a server you run, to see what annai does on this phone as it happens. Off until you set it up; a chip in the dock shows while it sends.	把 annai 的記錄傳送到你自己架設的伺服器，即時查看 annai 在這支手機上的操作。設定好之前維持關閉；傳送期間底部列會顯示一個按鈕。	src/ui/screens/experimental.js:30	Note: "chip" is ボタン / 按鈕 (glossary).
+m3chyg	ok	Open Remote trace	開啟遠端記錄	src/ui/screens/experimental.js:32	
+v16nvk	ok	Get it from annai's catalog	從 annai 的目錄取得	src/ui/screens/experimental.js:33	
 161ctfm	ok	Settings → Plugins	設定 → 外掛程式	src/ui/screens/ext.js:19	
 govuvp	ok	This page isn't here	找不到這個頁面	src/ui/screens/ext.js:21	
 1fks4l6	ok	{0} is on, but it has no page called {1}.	{0} 已開啟，但沒有名為 {1} 的頁面。	src/ui/screens/ext.js:23	{0} = on.manifest?.name ?? pluginId; {1} = id
 t9ug66	ok	This page belongs to a plugin that isn't on. Turn it on in {0}.	這個頁面所屬的外掛程式未開啟。請在{0}中開啟。	src/ui/screens/ext.js:24	{0} = plugins
 ata72m	ok	Trace	記錄	src/ui/screens/ext.js:36	
 1y7aybz	ok	This page couldn't be drawn; the plugin's error is in {0}.	無法顯示這個頁面。外掛程式的錯誤訊息可在 {0} 中查看。	src/ui/screens/ext.js:37	{0} = trace
-12mubvb	ok	Now	現在	src/ui/screens/ext.js:44	
+xb1ny3	ok	Trips	旅行	src/ui/screens/ext.js:44	
 17o4v1i	ok	Conversation	對話	src/ui/screens/file.js:23	
 1r8pi2g	ok	Recap	回顧	src/ui/screens/file.js:23	
 43f6md	ok	Details	詳細資料	src/ui/screens/file.js:23	Note: Taiwan wording: 詳細資料, as apps there name a details page; the crumb back to a plan item's details; also the crumb back to a file's or booking's details screen, from the raw file screen; and the crumb back to a conversation's Details (the screen talk's Details button opens), from its raw file screen.
@@ -1718,7 +1718,6 @@ twulcv	ok	Version restored	版本已還原	src/ui/screens/file.js:257
 w8mx56	ok	Deleted by {0} {1}	{1}由 {0} 刪除	src/ui/screens/file.js:271	{0} = who; {1} = ago
 1cdkli8	ok	Saved by you {0}	{0}由你儲存	src/ui/screens/file.js:272	{0} = ago
 1xtgqpw	ok	Saved by {0} {1}	{1}由 {0} 儲存	src/ui/screens/file.js:272	{0} = who; {1} = ago
-xb1ny3	ok	Trips	旅行	src/ui/screens/import.js:40	
 1azyvjt	ok	Choose a file instead	改為選擇檔案	src/ui/screens/import.js:44	
 18kfutv	ok	Choose an annai file (.annai.zip or .annai) to open it.	請選擇要開啟的 annai 檔案（.annai.zip 或 .annai）。	src/ui/screens/import.js:57	
 s6np2n	ok	Choose a file	選擇檔案	src/ui/screens/import.js:57	
@@ -1764,9 +1763,9 @@ jsttcj#other	ok	Kept your own API keys; the ones in the file weren't used.	已�
 ci7mt7	ok	Add to {0}	新增到「{0}」	src/ui/screens/import.js:341	{0} = trip.title
 odevmc	ok	Adding {0} of {1}…	正在新增（{0}/{1}）…	src/ui/screens/import.js:350	{0} = num(Math.min(done + 1, total)); {1} = num(total)
 6u51xq#other	ok	Added {0}, and # itinerary items from the calendar	已新增 {0}，行事曆中的 # 個項目已加入行程	src/ui/screens/import.js:359	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); Note: {0} is what was added: a count phrase ("1 個檔案", "3 個檔案", "2 張照片"), never a path, so the space after the verb is right.
-f30m7u#other	ok	and # more photos	還有 # 張照片	src/ui/screens/import.js:378	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
-1cj3r6h	ok	Add only what you just shared yourself.	只新增你自己剛剛分享的內容。	src/ui/screens/import.js:381	
-1eim38p	ok	Also here: {0}, an annai backup or export. It isn't added with the rest; open it on its own.	這裡還有 {0}，是 annai 的備份或匯出檔案。它不會和其他內容一起新增，請單獨開啟。	src/ui/screens/import.js:385	{0} = a.file.name
+f30m7u#other	ok	and # more photos	還有 # 張照片	src/ui/screens/import.js:380	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
+1cj3r6h	ok	Add only what you just shared yourself.	只新增你自己剛剛分享的內容。	src/ui/screens/import.js:383	
+1eim38p	ok	Also here: {0}, an annai backup or export. It isn't added with the rest; open it on its own.	這裡還有 {0}，是 annai 的備份或匯出檔案。它不會和其他內容一起新增，請單獨開啟。	src/ui/screens/import.js:387	{0} = a.file.name
 qqpumv	ok	This isn't on the itinerary	這不在行程中	src/ui/screens/item.js:24	Note: Taiwan wording; Plan is 行程.
 15biluu	ok	Go to the itinerary	前往行程	src/ui/screens/item.js:25	Note: Taiwan wording; Plan is 行程.
 1wp3w0c	ok	All day, {0}	全天（{0}）	src/ui/screens/item.js:41	{0} = start; Note: Taiwan wording; {0} is the day.
@@ -1924,35 +1923,28 @@ bkq4j5	ok	Reminders about places (arriving, leaving, nearby) never leave the pho
 1cg5akv	ok	Each reminder is deleted at the relay once it is sent, or when you cancel it, turn notifications off, or remove its trip.	每則提醒傳送後，或在你取消提醒、關閉通知、移除所屬旅行時，都會從中繼刪除。	src/ui/screens/notifications.js:157	
 1iz3xsa	ok	With annai open on screen, annai says a reminder itself, and the relay's copy is called off: you never get it twice.	annai 在螢幕上開著時會直接說出提醒，並取消中繼傳送的那一則，所以不會重複收到。	src/ui/screens/notifications.js:158	
 qkddms	ok	Every request to the relay is in Trace, under System · This device.	送往中繼的每個請求都可以在「記錄」的「系統 · 這台裝置」下查看。	src/ui/screens/notifications.js:159	Note: The Trace's own list name, "System · {0}" with the scope "This device" (這台裝置).
-1tbrgfp	ok	Open a trip to see where you are and what is next.	開啟旅行後，就能看到你在哪裡、接下來要做什麼。	src/ui/screens/now.js:24	
-15h0umr	ok	Next	接下來	src/ui/screens/now.js:35	context: coming up; Note: The heading over what is planned next on Now, not the welcome's Next button.
-1m0ri7	ok	Nothing more is planned.	之後沒有安排了。	src/ui/screens/now.js:37	
-1oi7u22	ok	The whole itinerary	完整行程	src/ui/screens/now.js:38	
-11lm89y	ok	Latest	最新	src/ui/screens/now.js:40	
-16ocoht	ok	Show what she said	檢視她說的話	src/ui/screens/now.js:99	
-1yj7glf	ok	Said aloud	已朗讀	src/ui/screens/now.js:100	
-tctj7k	ok	Open a trip to see its itinerary.	開啟旅行後就能查看行程。	src/ui/screens/plan.js:33	
-ow5t4g	ok	No time yet ({0})	未定時間（{0}）	src/ui/screens/plan.js:47	{0} = num(untimed.length)
-u71m40	ok	Nothing planned this day.	這一天沒有安排。	src/ui/screens/plan.js:69	
-g3ei4k	ok	Saved the itinerary.	已儲存行程。	src/ui/screens/plan.js:85	
-g48b3l#other	ok	# items have no time yet, so they aren't in it.	有 # 項還沒定時間，所以沒有包含在內。	src/ui/screens/plan.js:85	plural; # = left; English: "# item has no time yet, so it isn't in it." (one), "# items have no time yet, so they aren't in it." (other)
-foy2yl	ok	Add to calendar	加入行事曆	src/ui/screens/plan.js:87	
-1ot147o#other	ok	# booking files	# 個預訂檔案	src/ui/screens/plan.js:90	plural; # = bookings.broken; English: "# booking file" (one), "# booking files" (other)
-3rvc64#other	ok	# itinerary files	# 個行程檔案	src/ui/screens/plan.js:90	plural; # = plan.broken; English: "# itinerary file" (one), "# itinerary files" (other)
-1rs1ez2	ok	Not on a day	不限日期	src/ui/screens/plan.js:96	Note: Taiwan wording; a heading above the day tabs, for bookings with no day of their own (a pass for the whole trip).
-pxfr8q	ok	Days	日期	src/ui/screens/plan.js:99	
-wk7g53	ok	No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) in Details.	還沒有行程。可以請 Shiori 跟你一起安排，或在「詳細資料」中新增行事曆檔案（.ics）。	src/ui/screens/plan.js:102	Note: "Ask" here is asking Shiori, not the permission setting's Ask.
-15yqwep	ok	{0} couldn't be read. Open the files in Details to fix them.	{0} 無法讀取。請在「詳細資料」中開啟這些檔案進行修復。	src/ui/screens/plan.js:103	{0} = unread
-1hvcdro	ok	{0} couldn't be read. Open the files in Details to fix it.	{0} 無法讀取。請在「詳細資料」中開啟該檔案進行修復。	src/ui/screens/plan.js:103	{0} = unread
-wioqt8#other	ok	Check # details	請核對 # 項	src/ui/screens/plan.js:162	plural; # = checks; English: "Check # detail" (one), "Check # details" (other); Note: Taiwan wording; how many checks the booking's details show, one beside each detail Shiori is unsure of (a flight's route is one); 請核對 as the glossary's Check this.
-1ropcog	ok	Booking missing	缺少預訂	src/ui/screens/plan.js:163	
-1u7blsq	ok	Shiori added this to the itinerary. Remove it?	這一項是 Shiori 加進行程的。要移除嗎？	src/ui/screens/plan.js:180	
-kmmqyh	ok	Undone: {0} is off the itinerary.	已復原，「{0}」已從行程中移除。	src/ui/screens/plan.js:182	{0} = title
-19uog97	ok	Added by Shiori · Undo	Shiori 新增 · 復原	src/ui/screens/plan.js:185	
-1j6c9nb	ok	Undone: {0} is back as it was before Shiori changed it.	已復原，「{0}」已恢復成 Shiori 修改前的樣子。	src/ui/screens/plan.js:191	{0} = title
-1qeof2p	ok	Changed by Shiori · Undo	Shiori 修改 · 復原	src/ui/screens/plan.js:194	
-pgaz5s	ok	≈ {0} apart	相距 ≈ {0}	src/ui/screens/plan.js:205	{0} = distance(km)
-1gjwkfv	ok	Directions	路線	src/ui/screens/plan.js:206	
+tctj7k	ok	Open a trip to see its itinerary.	開啟旅行後就能查看行程。	src/ui/screens/plan.js:34	
+ow5t4g	ok	No time yet ({0})	未定時間（{0}）	src/ui/screens/plan.js:49	{0} = num(untimed.length)
+u71m40	ok	Nothing planned this day.	這一天沒有安排。	src/ui/screens/plan.js:71	
+g3ei4k	ok	Saved the itinerary.	已儲存行程。	src/ui/screens/plan.js:87	
+g48b3l#other	ok	# items have no time yet, so they aren't in it.	有 # 項還沒定時間，所以沒有包含在內。	src/ui/screens/plan.js:87	plural; # = left; English: "# item has no time yet, so it isn't in it." (one), "# items have no time yet, so they aren't in it." (other)
+foy2yl	ok	Add to calendar	加入行事曆	src/ui/screens/plan.js:89	
+1ot147o#other	ok	# booking files	# 個預訂檔案	src/ui/screens/plan.js:92	plural; # = bookings.broken; English: "# booking file" (one), "# booking files" (other)
+3rvc64#other	ok	# itinerary files	# 個行程檔案	src/ui/screens/plan.js:92	plural; # = plan.broken; English: "# itinerary file" (one), "# itinerary files" (other)
+1rs1ez2	ok	Not on a day	不限日期	src/ui/screens/plan.js:99	Note: Taiwan wording; a heading above the day tabs, for bookings with no day of their own (a pass for the whole trip).
+pxfr8q	ok	Days	日期	src/ui/screens/plan.js:102	
+wk7g53	ok	No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) in Details.	還沒有行程。可以請 Shiori 跟你一起安排，或在「詳細資料」中新增行事曆檔案（.ics）。	src/ui/screens/plan.js:105	Note: "Ask" here is asking Shiori, not the permission setting's Ask.
+15yqwep	ok	{0} couldn't be read. Open the files in Details to fix them.	{0} 無法讀取。請在「詳細資料」中開啟這些檔案進行修復。	src/ui/screens/plan.js:106	{0} = unread
+1hvcdro	ok	{0} couldn't be read. Open the files in Details to fix it.	{0} 無法讀取。請在「詳細資料」中開啟該檔案進行修復。	src/ui/screens/plan.js:106	{0} = unread
+wioqt8#other	ok	Check # details	請核對 # 項	src/ui/screens/plan.js:188	plural; # = checks; English: "Check # detail" (one), "Check # details" (other); Note: Taiwan wording; how many checks the booking's details show, one beside each detail Shiori is unsure of (a flight's route is one); 請核對 as the glossary's Check this.
+1ropcog	ok	Booking missing	缺少預訂	src/ui/screens/plan.js:189	
+1u7blsq	ok	Shiori added this to the itinerary. Remove it?	這一項是 Shiori 加進行程的。要移除嗎？	src/ui/screens/plan.js:206	
+kmmqyh	ok	Undone: {0} is off the itinerary.	已復原，「{0}」已從行程中移除。	src/ui/screens/plan.js:208	{0} = title
+19uog97	ok	Added by Shiori · Undo	Shiori 新增 · 復原	src/ui/screens/plan.js:211	
+1j6c9nb	ok	Undone: {0} is back as it was before Shiori changed it.	已復原，「{0}」已恢復成 Shiori 修改前的樣子。	src/ui/screens/plan.js:217	{0} = title
+1qeof2p	ok	Changed by Shiori · Undo	Shiori 修改 · 復原	src/ui/screens/plan.js:220	
+pgaz5s	ok	≈ {0} apart	相距 ≈ {0}	src/ui/screens/plan.js:231	{0} = distance(km)
+1gjwkfv	ok	Directions	路線	src/ui/screens/plan.js:232	
 1a9dl1b	ok	This plugin gets full access to your trips and API keys.	此外掛程式可以完整存取所有旅行和 API 金鑰。	src/ui/screens/plugin-install.js:17	
 h65i2c	ok	It can read every key saved in annai and send it anywhere: now your keys for {0}.	它能讀取 annai 中儲存的所有金鑰，並傳送到任何地方，包括目前已儲存的 {0} 金鑰。	src/ui/screens/plugin-install.js:44	{0} = list(names)
 7jgsq6	ok	It can read every key saved in annai and send it anywhere.	它能讀取 annai 中儲存的所有金鑰，並傳送到任何地方。	src/ui/screens/plugin-install.js:45	
@@ -1996,7 +1988,7 @@ snr298	ok	the card type {0}	卡片類型 {0}	src/ui/screens/plugin-install.js:20
 18lyuvn	ok	the dock	底部列	src/ui/screens/plugin-install.js:209	
 18ybxd9	ok	how Shiori looks	Shiori 的外觀	src/ui/screens/plugin-install.js:209	
 1na8xe5	ok	how the itinerary's rows look	行程各行的外觀	src/ui/screens/plugin-install.js:209	
-lfbn6i	ok	the Now card	「現在」卡片	src/ui/screens/plugin-install.js:209	
+nm66h2	draft	the top of today's itinerary	今日行程的頂部	src/ui/screens/plugin-install.js:209	Note: in "It replaces {0} from {1}": the now-card component, drawn at the top of the Itinerary's today.
 1xqw6of	ok	the part {0}	元件 {0}	src/ui/screens/plugin-install.js:211	{0} = name
 1twwnld	ok	The browser keeps the old code until annai starts again.	在 annai 重新啟動之前，瀏覽器會一直使用舊程式碼。	src/ui/screens/plugin-install.js:227	
 5nx73t	ok	Restart annai to run the new version of {0}.	重新啟動 annai 即可執行 {0} 的新版本。	src/ui/screens/plugin-install.js:227	{0} = name
@@ -2246,35 +2238,35 @@ onrqou	ok	About	關於	src/ui/screens/settings.js:87
 ynqcma	ok	A report of recent errors and system events, without your files or keys, to paste into a bug report.	最近的錯誤和系統事件報告（不含檔案或金鑰），可貼到問題回報中。	src/ui/screens/settings.js:89	
 2yd0qo	ok	Copy diagnostics	複製診斷資訊	src/ui/screens/settings.js:90	
 5gnef9	ok	Try GPS, the replay and the recap with a simulated trip.	用模擬旅行試用 GPS、回放和回顧。	src/ui/screens/settings.js:91	
-xgedcv	ok	Features still being tried, such as swiping between tabs. Each is off until you turn it on.	仍在試驗中的功能，例如左右滑動切換分頁。每項功能預設關閉，需要手動開啟。	src/ui/screens/settings.js:92	
+1ot30rf	draft	Features still being tried, and developer tools such as Remote trace.	仍在試驗中的功能，以及遠端記錄等開發人員工具。	src/ui/screens/settings.js:92	
 3y74hh	ok	Erase	清除	src/ui/screens/settings.js:93	
-5d0bx7	ok	Keep originals: store photos exactly as taken	保留原圖：依拍攝原樣儲存照片	src/ui/screens/settings.js:110	
-uq55l7	ok	WebP, or JPEG where this browser can't write WebP	WebP（不支援時用 JPEG）	src/ui/screens/settings.js:113	Note: Short, so the select box shows it whole on a phone.
-8dymvi	ok	Quality goes from {0} to {1}.	品質範圍為 {0} 到 {1}。	src/ui/screens/settings.js:128	{0} = num(0.5); {1} = num(1)
-14tyrj6	ok	The longest side is a whole number of pixels, at least {0}. Leave it empty for no limit.	最長邊須為整數畫素，且不小於 {0}。留空則不限。	src/ui/screens/settings.js:129	{0} = num(256)
-1izj97p	ok	The largest photo sent is at least {0} MB. Leave it empty for no limit.	傳送照片的大小上限不能低於 {0} MB。留空則不限。	src/ui/screens/settings.js:136	{0} = num(0.1)
-1963ouj	ok	annai keeps one copy of each photo you add.	新增的每張照片只儲存一份。	src/ui/screens/settings.js:138	Note: one copy: the original (Keep originals) or the one saved as set below.
-1ftv62v	ok	This browser writes WebP.	此瀏覽器支援儲存為 WebP。	src/ui/screens/settings.js:138	
-t33cgw	ok	The originals stay in your phone's photo library.	原圖仍保留在手機的相簿中。	src/ui/screens/settings.js:138	
-xn9rs1	ok	This browser can't write WebP, so photos are saved as JPEG.	此瀏覽器不支援儲存為 WebP，所以照片會儲存為 JPEG。	src/ui/screens/settings.js:138	
-10avjxv	ok	Save photos as	照片儲存格式	src/ui/screens/settings.js:141	
-ayixjd	ok	Quality ({0} to {1})	品質（{0} 到 {1}）	src/ui/screens/settings.js:142	{0} = num(0.5); {1} = num(1)
-jddrbd	ok	Longest side, pixels	最長邊（畫素）	src/ui/screens/settings.js:144	
-ehvdao	ok	Largest file, MB	檔案大小上限（MB）	src/ui/screens/settings.js:145	
-o47vu9	ok	The largest file is at least {0} MB. Leave it empty for no limit.	檔案大小上限不能低於 {0} MB。留空則不限。	src/ui/screens/settings.js:145	{0} = num(0.1)
-1kdcc9b	ok	Photos for Shiori	傳給 Shiori 的照片	src/ui/screens/settings.js:146	
-awxg9v	ok	The copies she is sent, made once and kept with the conversation. A closer look always sends more detail, so small settings stay usable.	傳給她的副本只產生一次，並隨對話一起儲存。她細看某個部分時，總會另外傳送該部分更清楚的畫面，所以設定小一點也夠用。	src/ui/screens/settings.js:147	
-1223a8b	ok	Longest side sent, pixels	傳送時的最長邊（畫素）	src/ui/screens/settings.js:149	
-1iw8fgg	ok	Largest photo sent, MB	傳送照片的大小上限（MB）	src/ui/screens/settings.js:150	
-10wwcx4	ok	Send photos as	照片傳送格式	src/ui/screens/settings.js:152	
-1kotxez	ok	Quality sent ({0} to {1})	傳送品質（{0} 到 {1}）	src/ui/screens/settings.js:153	{0} = num(0.5); {1} = num(1)
-8ruaox	ok	Diagnostics copied.	診斷資訊已複製。	src/ui/screens/settings.js:168	
-jdwnfb	ok	Copying didn't work here. Select and copy this report:	無法自動複製。請手動選取並複製以下報告：	src/ui/screens/settings.js:170	
-ltgiri	ok	Erasing…	正在清除…	src/ui/screens/settings.js:191	
-u9zvd	ok	Erase now	立即清除	src/ui/screens/settings.js:212	
-tgdxsp	ok	Deletes every trip, file, setting and key on this device. Export a backup first.	將刪除此裝置上的所有旅行、檔案、設定和金鑰。請先匯出備份。	src/ui/screens/settings.js:218	
-1x8t4tk	ok	Type {0} to confirm	輸入 {0} 以確認	src/ui/screens/settings.js:220	{0} = ERASE; Note: {0} is the word to type, ERASE, the same in every language.
-199v6bp	ok	From plugins	來自外掛程式	src/ui/screens/settings.js:230	
+5d0bx7	ok	Keep originals: store photos exactly as taken	保留原圖：依拍攝原樣儲存照片	src/ui/screens/settings.js:111	
+uq55l7	ok	WebP, or JPEG where this browser can't write WebP	WebP（不支援時用 JPEG）	src/ui/screens/settings.js:114	Note: Short, so the select box shows it whole on a phone.
+8dymvi	ok	Quality goes from {0} to {1}.	品質範圍為 {0} 到 {1}。	src/ui/screens/settings.js:129	{0} = num(0.5); {1} = num(1)
+14tyrj6	ok	The longest side is a whole number of pixels, at least {0}. Leave it empty for no limit.	最長邊須為整數畫素，且不小於 {0}。留空則不限。	src/ui/screens/settings.js:130	{0} = num(256)
+1izj97p	ok	The largest photo sent is at least {0} MB. Leave it empty for no limit.	傳送照片的大小上限不能低於 {0} MB。留空則不限。	src/ui/screens/settings.js:137	{0} = num(0.1)
+1963ouj	ok	annai keeps one copy of each photo you add.	新增的每張照片只儲存一份。	src/ui/screens/settings.js:139	Note: one copy: the original (Keep originals) or the one saved as set below.
+1ftv62v	ok	This browser writes WebP.	此瀏覽器支援儲存為 WebP。	src/ui/screens/settings.js:139	
+t33cgw	ok	The originals stay in your phone's photo library.	原圖仍保留在手機的相簿中。	src/ui/screens/settings.js:139	
+xn9rs1	ok	This browser can't write WebP, so photos are saved as JPEG.	此瀏覽器不支援儲存為 WebP，所以照片會儲存為 JPEG。	src/ui/screens/settings.js:139	
+10avjxv	ok	Save photos as	照片儲存格式	src/ui/screens/settings.js:142	
+ayixjd	ok	Quality ({0} to {1})	品質（{0} 到 {1}）	src/ui/screens/settings.js:143	{0} = num(0.5); {1} = num(1)
+jddrbd	ok	Longest side, pixels	最長邊（畫素）	src/ui/screens/settings.js:145	
+ehvdao	ok	Largest file, MB	檔案大小上限（MB）	src/ui/screens/settings.js:146	
+o47vu9	ok	The largest file is at least {0} MB. Leave it empty for no limit.	檔案大小上限不能低於 {0} MB。留空則不限。	src/ui/screens/settings.js:146	{0} = num(0.1)
+1kdcc9b	ok	Photos for Shiori	傳給 Shiori 的照片	src/ui/screens/settings.js:147	
+awxg9v	ok	The copies she is sent, made once and kept with the conversation. A closer look always sends more detail, so small settings stay usable.	傳給她的副本只產生一次，並隨對話一起儲存。她細看某個部分時，總會另外傳送該部分更清楚的畫面，所以設定小一點也夠用。	src/ui/screens/settings.js:148	
+1223a8b	ok	Longest side sent, pixels	傳送時的最長邊（畫素）	src/ui/screens/settings.js:150	
+1iw8fgg	ok	Largest photo sent, MB	傳送照片的大小上限（MB）	src/ui/screens/settings.js:151	
+10wwcx4	ok	Send photos as	照片傳送格式	src/ui/screens/settings.js:153	
+1kotxez	ok	Quality sent ({0} to {1})	傳送品質（{0} 到 {1}）	src/ui/screens/settings.js:154	{0} = num(0.5); {1} = num(1)
+8ruaox	ok	Diagnostics copied.	診斷資訊已複製。	src/ui/screens/settings.js:169	
+jdwnfb	ok	Copying didn't work here. Select and copy this report:	無法自動複製。請手動選取並複製以下報告：	src/ui/screens/settings.js:171	
+ltgiri	ok	Erasing…	正在清除…	src/ui/screens/settings.js:192	
+u9zvd	ok	Erase now	立即清除	src/ui/screens/settings.js:213	
+tgdxsp	ok	Deletes every trip, file, setting and key on this device. Export a backup first.	將刪除此裝置上的所有旅行、檔案、設定和金鑰。請先匯出備份。	src/ui/screens/settings.js:219	
+1x8t4tk	ok	Type {0} to confirm	輸入 {0} 以確認	src/ui/screens/settings.js:221	{0} = ERASE; Note: {0} is the word to type, ERASE, the same in every language.
+199v6bp	ok	From plugins	來自外掛程式	src/ui/screens/settings.js:231	
 1bu98qy	ok	Shiori, hearing you	Shiori，正在聽你說	src/ui/screens/shiori.js:19	
 1cfiys6	ok	Shiori, getting ready to listen	Shiori，正在準備聆聽	src/ui/screens/shiori.js:19	
 1m5wnho	ok	Shiori, listening	Shiori，正在聆聽	src/ui/screens/shiori.js:19	
@@ -2350,7 +2342,7 @@ zby7kj	ok	60 times: an hour takes a minute	60 倍速：一小時只需 1 分鐘	
 1hzof4s	ok	As fast as it can go: Shiori still answers each wake, so the sample takes about a minute and a long recorded track several	最快速度：Shiori 仍會回應每次喚醒，所以範例約需 1 分鐘，較長的記錄軌跡需要幾分鐘	src/ui/screens/simulate.js:11	
 194x2x3	ok	How far it has got	進度	src/ui/screens/simulate.js:83	
 j88ayy	ok	Resume	繼續	src/ui/screens/simulate.js:86	
-dy7n3b	ok	Watch it on Now, Driving and the Conversation; Shiori wakes as with GPS on. Opening another trip stops it.	可以在「現在」「駕駛中」和「對話」中觀看；Shiori 會像 GPS 開啟時一樣被喚醒。開啟其他旅行會停止模擬。	src/ui/screens/simulate.js:88	Note: The screens' names, quoted.
+1t4v7jx	ok	Watch it on the Itinerary, Driving and the Conversation; Shiori wakes as with GPS on. Opening another trip stops it.	可以在「行程」「駕駛中」和「對話」中觀看；Shiori 會像 GPS 開啟時一樣被喚醒。開啟其他旅行會停止模擬。	src/ui/screens/simulate.js:88	Note: The screens' names, quoted.
 1ifawmf	ok	The trip	這趟旅行	src/ui/screens/simulate.js:89	
 1djwe5m	ok	The simulation stopped: {0}	模擬已停止：{0}	src/ui/screens/simulate.js:98	{0} = s.error
 1pc6r71	ok	You stopped the simulation.	你停止了模擬。	src/ui/screens/simulate.js:98	
@@ -2437,34 +2429,34 @@ e34nbi	ok	Started fresh	已重新開始	src/ui/screens/talk.js:539	Note: the div
 1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	還沒有內容。點一下下方的 Shiori 或「輸入」開始對話。	src/ui/screens/talk.js:565	Note: "Type" is the dock's button: its words must match it.
 4fzxin	ok	From {0}.	來自 {0}。	src/ui/screens/talk.js:631	{0} = sourceOf(e.data); Note: read by a screen reader before a reply grounded in search.
 1pm5i13	ok	Back to Trips	返回「旅行」	src/ui/screens/talk.js:663	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
-16zeyyr	ok	Next: {0} {1}	接下來：{0} {1}	src/ui/screens/talk.js:708	{0} = r.time; {1} = name
-puj2r7	ok	Next: {0} {1} {2}	接下來：{0} {1} {2}	src/ui/screens/talk.js:708	{0} = day(r.day, true); {1} = r.time; {2} = name
-1frlw7l	ok	Undo the dates Shiori set	復原 Shiori 設定的日期	src/ui/screens/talk.js:766	
-1l3merh	ok	Shiori set the dates	Shiori 設定了日期	src/ui/screens/talk.js:785	
-159f82q	ok	Undone	已復原	src/ui/screens/talk.js:787	
-1v37fcy	ok	Undo what Shiori did with these files	復原 Shiori 對這些檔案的操作	src/ui/screens/talk.js:885	Note: Taiwan wording: 復原 as Undo, 檔案.
-1nl0tpx	ok	Conversation menu	對話選單	src/ui/screens/talk.js:952	
-7flpxf	ok	Summarizing…	正在總結…	src/ui/screens/talk.js:1019	
-12707g	ok	She couldn't summarize it. A card says why.	她沒能完成總結，原因請見卡片。	src/ui/screens/talk.js:1021	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	之前的對話已總結。每句話都還留在這裡，她也隨時能查到。	src/ui/screens/talk.js:1021	
-u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在忙，請稍後再試。	src/ui/screens/talk.js:1021	
-va2k72	ok	There is not enough yet to summarize.	內容還太少，無法總結。	src/ui/screens/talk.js:1021	
-mienoe	ok	Summarize now	立即總結	src/ui/screens/talk.js:1024	
-10sfmur	ok	Starting fresh…	正在重新開始…	src/ui/screens/talk.js:1026	
-va77q0	ok	Start fresh?	要重新開始嗎？	src/ui/screens/talk.js:1039	
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 會從這裡重新開始，不再記著之前的內容。之前的每句話都會留在對話裡，你可以隨時查看和搜尋，她也仍能查到。不會刪除任何內容。即時語音連線也會重新開始。	src/ui/screens/talk.js:1040	Note: "A live voice session" is the glossary's Live voice (即時語音) and a live session (即時連線), not a voice she speaks with.
-czdqlz	ok	Start fresh	重新開始	src/ui/screens/talk.js:1041	
-1h9wwbn	ok	She couldn't start fresh: {0}	她沒能重新開始：{0}	src/ui/screens/talk.js:1051	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	已經重新開始過了，之後還沒有新的對話。	src/ui/screens/talk.js:1054	
-3fntk0	ok	Started fresh.	已重新開始。	src/ui/screens/talk.js:1054	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	對話還在載入，請稍後再試。	src/ui/screens/talk.js:1054	
-p5pj7b	ok	There is nothing to start fresh from yet.	還沒有可以重新開始的內容。	src/ui/screens/talk.js:1054	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即總結：Shiori 現在就把之前的對話總結一下，讓對話保持精簡。每句話都還留在這裡，她也隨時能查到。	src/ui/screens/talk.js:1076	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新開始：Shiori 不再記著之前的內容，從這裡重新開始。之前的每句話都會留在分隔線上方。	src/ui/screens/talk.js:1077	
-15ve7m7	ok	What each half sees	Koe 和 Kokoro 各自看到的內容	src/ui/screens/talk.js:1078	
-1u5l4hx	ok	Details: the trip's name and dates, Export, Archive and Remove.	詳細資料：旅行的名稱和日期、匯出、封存和移除。	src/ui/screens/talk.js:1089	
-o7tevg	ok	Details: the chat's name and dates, Export, Archive and Remove.	詳細資料：對話的名稱和日期、匯出、封存和移除。	src/ui/screens/talk.js:1089	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	已復原。下次喚醒時，她會恢復原來的性格。	src/ui/screens/talk.js:1105	
+16zeyyr	ok	Next: {0} {1}	接下來：{0} {1}	src/ui/screens/talk.js:707	{0} = r.time; {1} = name
+puj2r7	ok	Next: {0} {1} {2}	接下來：{0} {1} {2}	src/ui/screens/talk.js:707	{0} = day(r.day, true); {1} = r.time; {2} = name
+1frlw7l	ok	Undo the dates Shiori set	復原 Shiori 設定的日期	src/ui/screens/talk.js:765	
+1l3merh	ok	Shiori set the dates	Shiori 設定了日期	src/ui/screens/talk.js:784	
+159f82q	ok	Undone	已復原	src/ui/screens/talk.js:786	
+1v37fcy	ok	Undo what Shiori did with these files	復原 Shiori 對這些檔案的操作	src/ui/screens/talk.js:884	Note: Taiwan wording: 復原 as Undo, 檔案.
+1nl0tpx	ok	Conversation menu	對話選單	src/ui/screens/talk.js:951	
+7flpxf	ok	Summarizing…	正在總結…	src/ui/screens/talk.js:1018	
+12707g	ok	She couldn't summarize it. A card says why.	她沒能完成總結，原因請見卡片。	src/ui/screens/talk.js:1020	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	之前的對話已總結。每句話都還留在這裡，她也隨時能查到。	src/ui/screens/talk.js:1020	
+u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在忙，請稍後再試。	src/ui/screens/talk.js:1020	
+va2k72	ok	There is not enough yet to summarize.	內容還太少，無法總結。	src/ui/screens/talk.js:1020	
+mienoe	ok	Summarize now	立即總結	src/ui/screens/talk.js:1023	
+10sfmur	ok	Starting fresh…	正在重新開始…	src/ui/screens/talk.js:1025	
+va77q0	ok	Start fresh?	要重新開始嗎？	src/ui/screens/talk.js:1038	
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 會從這裡重新開始，不再記著之前的內容。之前的每句話都會留在對話裡，你可以隨時查看和搜尋，她也仍能查到。不會刪除任何內容。即時語音連線也會重新開始。	src/ui/screens/talk.js:1039	Note: "A live voice session" is the glossary's Live voice (即時語音) and a live session (即時連線), not a voice she speaks with.
+czdqlz	ok	Start fresh	重新開始	src/ui/screens/talk.js:1040	
+1h9wwbn	ok	She couldn't start fresh: {0}	她沒能重新開始：{0}	src/ui/screens/talk.js:1050	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	已經重新開始過了，之後還沒有新的對話。	src/ui/screens/talk.js:1053	
+3fntk0	ok	Started fresh.	已重新開始。	src/ui/screens/talk.js:1053	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	對話還在載入，請稍後再試。	src/ui/screens/talk.js:1053	
+p5pj7b	ok	There is nothing to start fresh from yet.	還沒有可以重新開始的內容。	src/ui/screens/talk.js:1053	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即總結：Shiori 現在就把之前的對話總結一下，讓對話保持精簡。每句話都還留在這裡，她也隨時能查到。	src/ui/screens/talk.js:1075	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新開始：Shiori 不再記著之前的內容，從這裡重新開始。之前的每句話都會留在分隔線上方。	src/ui/screens/talk.js:1076	
+15ve7m7	ok	What each half sees	Koe 和 Kokoro 各自看到的內容	src/ui/screens/talk.js:1077	
+1u5l4hx	ok	Details: the trip's name and dates, Export, Archive and Remove.	詳細資料：旅行的名稱和日期、匯出、封存和移除。	src/ui/screens/talk.js:1088	
+o7tevg	ok	Details: the chat's name and dates, Export, Archive and Remove.	詳細資料：對話的名稱和日期、匯出、封存和移除。	src/ui/screens/talk.js:1088	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	已復原。下次喚醒時，她會恢復原來的性格。	src/ui/screens/talk.js:1104	
 11gkctr	ok	Places	地點	src/ui/screens/tools.js:12	context: tool group
 13mxqrp	ok	Talk	對話	src/ui/screens/tools.js:12	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	交通	src/ui/screens/tools.js:12	context: tool group; Note: the tools for getting somewhere (routes, maps).
@@ -2504,105 +2496,105 @@ a2pqv8	ok	Every tool Shiori has, including plugins' tools. A switched-off tool i
 pghiva	ok	Location	位置	src/ui/screens/trace.js:40	
 1ocm8xt	ok	System · {0}	系統 · {0}	src/ui/screens/trace.js:57	{0} = scopeTitle(s)
 1jije2k	ok	Nothing here yet.	這裡還沒有內容。	src/ui/screens/trace.js:94	
-zixzwp	ok	Everything annai recorded: file changes, model calls, imports, plugin problems and errors. Newest first.	annai 記錄的一切：檔案變更、模型呼叫、匯入、外掛程式問題和錯誤。最新的在前。	src/ui/screens/trace.js:105	
-vv1pu6	ok	Type contains	事件類型包含	src/ui/screens/trace.js:106	Note: The entry's type (a code like file.write), apart from the Kind filter just before it (種類 / 型別).
-g9esrd	ok	a newer backup from an Android phone is there	有來自 Android 手機的較新備份	src/ui/screens/trace.js:178	
-obwhc7	ok	a newer backup from an iPhone is there	有來自 iPhone 的較新備份	src/ui/screens/trace.js:178	
-oh532o	ok	a newer backup from an iPad is there	有來自 iPad 的較新備份	src/ui/screens/trace.js:178	
-1ds6m85	ok	a newer backup from a computer is there	有來自電腦的較新備份	src/ui/screens/trace.js:179	
-1r6qy12	ok	the user wrote	使用者傳來訊息	src/ui/screens/trace.js:201	
-yyq6of	ok	the user tapped a choice	使用者點選了一個選項	src/ui/screens/trace.js:201	
-1eo2nlm	ok	Kokoro to Koe	Kokoro 給 Koe	src/ui/screens/trace.js:205	
-l7yvjm	ok	Koe to Kokoro	Koe 給 Kokoro	src/ui/screens/trace.js:205	
-omff16	ok	annai to Kokoro	annai 給 Kokoro	src/ui/screens/trace.js:206	
-hnbn63	ok	this was for Shiori	這是對 Shiori 說的	src/ui/screens/trace.js:207	
-1larmkq	ok	phone dictation	手機語音輸入	src/ui/screens/trace.js:210	Note: Phone dictation as its row in Settings → Voice says (手機語音輸入).
-piy3vo	ok	{0} from the microphone	麥克風錄音 {0}	src/ui/screens/trace.js:210	{0} = duration(d.ms ?? 0); Note: {0} is how long the recording was.
-1sfeb1g	ok	an answer	作為回答	src/ui/screens/trace.js:211	
-1x13vat	ok	not for Shiori	不是對 Shiori 說的	src/ui/screens/trace.js:211	
-k9shc3	ok	while she was thinking	在她思考時	src/ui/screens/trace.js:211	
-mj6pnh	ok	she didn't answer	她沒有回答	src/ui/screens/trace.js:211	
-an9lly	ok	clip kept: {0}, {1}	已保留片段：{0}，{1}	src/ui/screens/trace.js:212	{0} = d.clipFormat; {1} = size(d.clipBytes ?? 0)
-voav2t	ok	clip kept	已保留片段	src/ui/screens/trace.js:212	
-1gqj9yn	ok	written down by {0}	由 {0} 轉錄	src/ui/screens/trace.js:214	{0} = names(d.by)
-o1nqez	ok	from {0}	來自 {0}	src/ui/screens/trace.js:217	{0} = sourceOf(d)
-v0l7oi#other	ok	# links	# 個連結	src/ui/screens/trace.js:217	plural; # = (d.links ?? []).length; English: "# link" (one), "# links" (other)
-9bb0pd	ok	error	錯誤	src/ui/screens/trace.js:219	
-scvxkf	ok	ok	成功	src/ui/screens/trace.js:219	
-1qafm6e	ok	kept turn not deleted yet	保留的輪次尚未刪除	src/ui/screens/trace.js:223	Note: A kept turn is one of the conversation turns a provider keeps (輪), as the provider screen says.
-7lsal4	ok	no answer	沒有回應	src/ui/screens/trace.js:223	
-udpknx	ok	kept turn deleted	保留的輪次已刪除	src/ui/screens/trace.js:223	Note: A kept turn is one of the conversation turns a provider keeps (輪).
-hnu5xn	ok	kept turn looked up	已查詢保留的輪次	src/ui/screens/trace.js:224	Note: A kept turn is one of the conversation turns a provider keeps (輪).
-1b5ygaa	ok	photo uploads listed	已取得上傳照片的清單	src/ui/screens/trace.js:226	Note: a Trace line, beside "kept turn looked up".
-lx223x	ok	photo upload deleted	上傳的照片已刪除	src/ui/screens/trace.js:227	Note: a Trace line, as "kept turn deleted".
-rpu62e	ok	photo upload not deleted yet	上傳的照片尚未刪除	src/ui/screens/trace.js:227	Note: a Trace line, as "kept turn not deleted yet".
-1t1zawl	ok	a refused photo sent again as a new copy ({0})	被拒的照片作為新副本重新傳送（{0}）	src/ui/screens/trace.js:228	{0} = d.mediaType
-gjjwcl	ok	a PDF's words kept for models that can't read PDFs	為無法讀取 PDF 的模型保留的 PDF 文字內容	src/ui/screens/trace.js:230	Note: a Trace line: what was kept of a PDF, told in words, for models that can't read PDFs.
-kbptqr	ok	a photo's description kept for models that can't see photos	為無法辨識照片的模型保留的照片描述	src/ui/screens/trace.js:230	Note: a Trace line, as above, for a photo's description.
-y6qkfy	ok	a PDF's pages kept for models that can't read PDFs	為無法讀取 PDF 的模型保留的 PDF 頁面圖片	src/ui/screens/trace.js:230	Note: a Trace line, as above, for a PDF's pages as pictures.
-12y45gf	ok	from a backup, annai {0}	來自 annai {0} 的備份	src/ui/screens/trace.js:234	{0} = app
-hq4bg1	ok	from an export, annai {0}	來自 annai {0} 的匯出檔案	src/ui/screens/trace.js:234	{0} = app
-fgylb4#other	ok	# pieces of content it didn't hold left out	# 項內容不在檔案中，已略過	src/ui/screens/trace.js:235	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
-1vkhbgw	ok	asked for content that isn't here, and got none	請求了這裡沒有的內容，什麼也沒得到	src/ui/screens/trace.js:238	
-17ybebf	ok	a turn cut off by opening another conversation	因開啟另一個對話而中斷的回合	src/ui/screens/trace.js:239	
-z082y3	ok	read {0}	讀取了「{0}」	src/ui/screens/trace.js:241	{0} = d.title
-1g60658	ok	said	口頭	src/ui/screens/trace.js:242	
-1s3wptl	ok	reading {0} allowed	已允許讀取 {0}	src/ui/screens/trace.js:242	{0} = d.trip
-guv93	ok	moved to {0}	已轉到「{0}」	src/ui/screens/trace.js:244	{0} = d.title; Note: a Trace line: Shiori took the user from this conversation to {0}.
-130nh2w	ok	events {0}–{1} summarized ({2})	已總結事件 {0}–{1}（{2}）	src/ui/screens/trace.js:245	{0} = d.from; {1} = d.to; {2} = d.mode
-vgv0s2	ok	started fresh after event {0}	在事件 {0} 之後重新開始	src/ui/screens/trace.js:245	{0} = d.to
-1nulaw8	ok	late by {0} min	晚了 {0} 分鐘	src/ui/screens/trace.js:247	{0} = d.late
-1vzfabu	ok	no connection	無網路連線	src/ui/screens/trace.js:247	
-1l7ac5y	ok	shown	已顯示	src/ui/screens/trace.js:248	
-1yfde5	ok	no name	無名稱	src/ui/screens/trace.js:250	
-1nk1wxu	ok	audio route {0}	音訊路由 {0}	src/ui/screens/trace.js:251	{0} = d.route
-1yo1hz0	ok	the microphone in use: {0}	正在使用的麥克風：{0}	src/ui/screens/trace.js:251	{0} = d.using || unnamed
-swjwya	ok	judged by the devices present	根據現有裝置判斷	src/ui/screens/trace.js:251	Note: the Trace: the audio route was told from the devices present, not from the microphone in use.
-1rzyxvu	ok	disconnected: {0}	已中斷連線：{0}	src/ui/screens/trace.js:252	{0} = d.gone.join(', ')
-3gdj21	ok	no devices	無裝置	src/ui/screens/trace.js:252	
-1ijsnzq	ok	voice on	語音開啟	src/ui/screens/trace.js:273	Note: The glossary's Voice on mode (語音開啟).
-z2w914	ok	voice off	語音關閉	src/ui/screens/trace.js:273	Note: The glossary's Voice off mode (語音關閉).
-1g1k3by	ok	{0} waiting	{0} 則待傳送	src/ui/screens/trace.js:276	{0} = d.waiting ?? 0
-xy6oxk	ok	{0} sent, {1} called off	已傳送 {0} 則，已取消 {1} 則	src/ui/screens/trace.js:276	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
-1efflnv	ok	notification shown	通知已顯示	src/ui/screens/trace.js:277	
-cjmncb	ok	notification opened	已點開通知	src/ui/screens/trace.js:278	
-3m7wpo#other	ok	# attempts	嘗試 # 次	src/ui/screens/trace.js:288	plural; # = n; English: "# attempt" (one), "# attempts" (other)
-r42rpw	ok	{0} ms processing latency	處理延遲 {0} ms	src/ui/screens/trace.js:292	{0} = Math.round(d.baseLatency * 1000)
-1y5g6mq	ok	{0} ms output latency	輸出延遲 {0} ms	src/ui/screens/trace.js:293	{0} = Math.round(d.outputLatency * 1000)
-a1oech	ok	live session {0}	即時連線 {0}	src/ui/screens/trace.js:294	{0} = d.state; Note: a live session is 即時連線, as the model check's 正在開啟即時連線.
-beya44	ok	sound at {0} kHz	取樣率 {0} kHz	src/ui/screens/trace.js:296	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
-1u50qqt	ok	her voice: {0} played	她的聲音：已播放 {0}	src/ui/screens/trace.js:301	{0} = duration(d.ms ?? 0)
-1wcl60z	ok	cut	已中斷	src/ui/screens/trace.js:301	
-njy1uz	ok	her voice: cut before it played	她的聲音：播放前被中斷	src/ui/screens/trace.js:301	
-9atabi	ok	started after {0} ms	{0} ms 後開始	src/ui/screens/trace.js:302	{0} = d.waitMs
-j43x3k	ok	stalled	卡住	src/ui/screens/trace.js:302	
-1qyanji#other	ok	# holes, {0} ms	# 處空白，{0} ms	src/ui/screens/trace.js:303	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中斷).
-gw0cwm#other	ok	# holes	# 處空白	src/ui/screens/trace.js:303	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中斷).
-1bx4bl6	ok	on {0}	在 {0} 上	src/ui/screens/trace.js:304	{0} = d.player
-1jhbzkn	ok	your voice {0} dB, least to start {1} dB, {2} frames kept out (loudest {3} dB)	你的聲音 {0} dB，觸發下限 {1} dB，{2} 個音框被擋下（最大 {3} dB）	src/ui/screens/trace.js:309	{0} = d.voiceDb ?? '?'; {1} = d.minDb ?? '–'; {2} = d.keptFrames; {3} = d.keptPeakDb ?? '?'
-1mxp5c6	ok	a sound dropped as her voice began: {0} of speech · floor {1} dB, loudest {2} dB	她開口時捨棄了一段聲音：語音 {0} · 底噪 {1} dB，最大 {2} dB	src/ui/screens/trace.js:310	{0} = duration(d.speechMs ?? 0); {1} = d.floorDb ?? '?'; {2} = d.peakDb ?? '?'
-1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的這一輪結束：{0} · 已傳送 {1} · 底噪 {2} dB，最大 {3} dB	src/ui/screens/trace.js:311	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
-7ovnj9	ok	no turn	沒有開始一輪	src/ui/screens/trace.js:311	
-khxbvb	ok	audio: {0}	音訊：{0}	src/ui/screens/trace.js:315	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
-1wy37ql	ok	{0} sent	已傳送 {0}	src/ui/screens/trace.js:317	{0} = size(d.bytes)
-l04i5	ok	{0} sent, after a kept turn	已傳送 {0}，接在保留的輪次之後	src/ui/screens/trace.js:317	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (輪).
-1n96vkk	ok	earlier thinking not sent: something before it changed	先前的思考未傳送：前面的內容有變動	src/ui/screens/trace.js:319	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
-yfywm0#other	ok	thinking of # earlier steps sent back	已傳回之前 # 步的思考	src/ui/screens/trace.js:319	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
-15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:323	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
-4k86ja	ok	{0} failed	{0} 個失敗	src/ui/screens/trace.js:323	{0} = d.failed
-1waoe51	ok	at its limit	已達上限	src/ui/screens/trace.js:324	
-66h5i6	ok	by itself on Wi-Fi	Wi-Fi 下自動下載	src/ui/screens/trace.js:324	
-rfe2ef	ok	{0} files sent, {1}	已傳送 {0} 個檔案，{1}	src/ui/screens/trace.js:326	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
-2601w8	ok	a newer backup from another device is there	有來自另一台裝置的較新備份	src/ui/screens/trace.js:327	
-uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	下載 {0}（{1}）後停止，已捨棄	src/ui/screens/trace.js:329	{0} = d.backup; {1} = size(d.bytes ?? 0)
-wgniil	ok	downloaded {0}, {1}	已下載 {0}（{1}）	src/ui/screens/trace.js:329	{0} = d.backup; {1} = size(d.bytes ?? 0)
-1gauo2f	ok	{0} can't be opened: {1}	{0} 無法開啟：{1}	src/ui/screens/trace.js:330	{0} = d.backup; {1} = cut(d.problem)
-1rrq0vn	ok	deleted an older backup, {0}	已刪除一個較早的備份：{0}	src/ui/screens/trace.js:331	{0} = d.backup
-57gz9u#other	ok	# secrets	# 個金鑰	src/ui/screens/trace.js:333	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
-scekw#other	ok	# settings	# 項設定	src/ui/screens/trace.js:333	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
-mp7j1w#other	ok	({0}, # bytes)	（{0}，# 位元組）	src/ui/screens/trace.js:356	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
-tqj8t3	ok	(no longer stored)	（已不再儲存）	src/ui/screens/trace.js:356	
-1kfziuy	ok	Show what was stored	顯示儲存的內容	src/ui/screens/trace.js:373	
+zixzwp	ok	Everything annai recorded: file changes, model calls, imports, plugin problems and errors. Newest first.	annai 記錄的一切：檔案變更、模型呼叫、匯入、外掛程式問題和錯誤。最新的在前。	src/ui/screens/trace.js:106	
+vv1pu6	ok	Type contains	事件類型包含	src/ui/screens/trace.js:107	Note: The entry's type (a code like file.write), apart from the Kind filter just before it (種類 / 型別).
+g9esrd	ok	a newer backup from an Android phone is there	有來自 Android 手機的較新備份	src/ui/screens/trace.js:179	
+obwhc7	ok	a newer backup from an iPhone is there	有來自 iPhone 的較新備份	src/ui/screens/trace.js:179	
+oh532o	ok	a newer backup from an iPad is there	有來自 iPad 的較新備份	src/ui/screens/trace.js:179	
+1ds6m85	ok	a newer backup from a computer is there	有來自電腦的較新備份	src/ui/screens/trace.js:180	
+1r6qy12	ok	the user wrote	使用者傳來訊息	src/ui/screens/trace.js:202	
+yyq6of	ok	the user tapped a choice	使用者點選了一個選項	src/ui/screens/trace.js:202	
+1eo2nlm	ok	Kokoro to Koe	Kokoro 給 Koe	src/ui/screens/trace.js:206	
+l7yvjm	ok	Koe to Kokoro	Koe 給 Kokoro	src/ui/screens/trace.js:206	
+omff16	ok	annai to Kokoro	annai 給 Kokoro	src/ui/screens/trace.js:207	
+hnbn63	ok	this was for Shiori	這是對 Shiori 說的	src/ui/screens/trace.js:208	
+1larmkq	ok	phone dictation	手機語音輸入	src/ui/screens/trace.js:211	Note: Phone dictation as its row in Settings → Voice says (手機語音輸入).
+piy3vo	ok	{0} from the microphone	麥克風錄音 {0}	src/ui/screens/trace.js:211	{0} = duration(d.ms ?? 0); Note: {0} is how long the recording was.
+1sfeb1g	ok	an answer	作為回答	src/ui/screens/trace.js:212	
+1x13vat	ok	not for Shiori	不是對 Shiori 說的	src/ui/screens/trace.js:212	
+k9shc3	ok	while she was thinking	在她思考時	src/ui/screens/trace.js:212	
+mj6pnh	ok	she didn't answer	她沒有回答	src/ui/screens/trace.js:212	
+an9lly	ok	clip kept: {0}, {1}	已保留片段：{0}，{1}	src/ui/screens/trace.js:213	{0} = d.clipFormat; {1} = size(d.clipBytes ?? 0)
+voav2t	ok	clip kept	已保留片段	src/ui/screens/trace.js:213	
+1gqj9yn	ok	written down by {0}	由 {0} 轉錄	src/ui/screens/trace.js:215	{0} = names(d.by)
+o1nqez	ok	from {0}	來自 {0}	src/ui/screens/trace.js:218	{0} = sourceOf(d)
+v0l7oi#other	ok	# links	# 個連結	src/ui/screens/trace.js:218	plural; # = (d.links ?? []).length; English: "# link" (one), "# links" (other)
+9bb0pd	ok	error	錯誤	src/ui/screens/trace.js:220	
+scvxkf	ok	ok	成功	src/ui/screens/trace.js:220	
+1qafm6e	ok	kept turn not deleted yet	保留的輪次尚未刪除	src/ui/screens/trace.js:224	Note: A kept turn is one of the conversation turns a provider keeps (輪), as the provider screen says.
+7lsal4	ok	no answer	沒有回應	src/ui/screens/trace.js:224	
+udpknx	ok	kept turn deleted	保留的輪次已刪除	src/ui/screens/trace.js:224	Note: A kept turn is one of the conversation turns a provider keeps (輪).
+hnu5xn	ok	kept turn looked up	已查詢保留的輪次	src/ui/screens/trace.js:225	Note: A kept turn is one of the conversation turns a provider keeps (輪).
+1b5ygaa	ok	photo uploads listed	已取得上傳照片的清單	src/ui/screens/trace.js:227	Note: a Trace line, beside "kept turn looked up".
+lx223x	ok	photo upload deleted	上傳的照片已刪除	src/ui/screens/trace.js:228	Note: a Trace line, as "kept turn deleted".
+rpu62e	ok	photo upload not deleted yet	上傳的照片尚未刪除	src/ui/screens/trace.js:228	Note: a Trace line, as "kept turn not deleted yet".
+1t1zawl	ok	a refused photo sent again as a new copy ({0})	被拒的照片作為新副本重新傳送（{0}）	src/ui/screens/trace.js:229	{0} = d.mediaType
+gjjwcl	ok	a PDF's words kept for models that can't read PDFs	為無法讀取 PDF 的模型保留的 PDF 文字內容	src/ui/screens/trace.js:231	Note: a Trace line: what was kept of a PDF, told in words, for models that can't read PDFs.
+kbptqr	ok	a photo's description kept for models that can't see photos	為無法辨識照片的模型保留的照片描述	src/ui/screens/trace.js:231	Note: a Trace line, as above, for a photo's description.
+y6qkfy	ok	a PDF's pages kept for models that can't read PDFs	為無法讀取 PDF 的模型保留的 PDF 頁面圖片	src/ui/screens/trace.js:231	Note: a Trace line, as above, for a PDF's pages as pictures.
+12y45gf	ok	from a backup, annai {0}	來自 annai {0} 的備份	src/ui/screens/trace.js:235	{0} = app
+hq4bg1	ok	from an export, annai {0}	來自 annai {0} 的匯出檔案	src/ui/screens/trace.js:235	{0} = app
+fgylb4#other	ok	# pieces of content it didn't hold left out	# 項內容不在檔案中，已略過	src/ui/screens/trace.js:236	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
+1vkhbgw	ok	asked for content that isn't here, and got none	請求了這裡沒有的內容，什麼也沒得到	src/ui/screens/trace.js:239	
+17ybebf	ok	a turn cut off by opening another conversation	因開啟另一個對話而中斷的回合	src/ui/screens/trace.js:240	
+z082y3	ok	read {0}	讀取了「{0}」	src/ui/screens/trace.js:242	{0} = d.title
+1g60658	ok	said	口頭	src/ui/screens/trace.js:243	
+1s3wptl	ok	reading {0} allowed	已允許讀取 {0}	src/ui/screens/trace.js:243	{0} = d.trip
+guv93	ok	moved to {0}	已轉到「{0}」	src/ui/screens/trace.js:245	{0} = d.title; Note: a Trace line: Shiori took the user from this conversation to {0}.
+130nh2w	ok	events {0}–{1} summarized ({2})	已總結事件 {0}–{1}（{2}）	src/ui/screens/trace.js:246	{0} = d.from; {1} = d.to; {2} = d.mode
+vgv0s2	ok	started fresh after event {0}	在事件 {0} 之後重新開始	src/ui/screens/trace.js:246	{0} = d.to
+1nulaw8	ok	late by {0} min	晚了 {0} 分鐘	src/ui/screens/trace.js:248	{0} = d.late
+1vzfabu	ok	no connection	無網路連線	src/ui/screens/trace.js:248	
+1l7ac5y	ok	shown	已顯示	src/ui/screens/trace.js:249	
+1yfde5	ok	no name	無名稱	src/ui/screens/trace.js:251	
+1nk1wxu	ok	audio route {0}	音訊路由 {0}	src/ui/screens/trace.js:252	{0} = d.route
+1yo1hz0	ok	the microphone in use: {0}	正在使用的麥克風：{0}	src/ui/screens/trace.js:252	{0} = d.using || unnamed
+swjwya	ok	judged by the devices present	根據現有裝置判斷	src/ui/screens/trace.js:252	Note: the Trace: the audio route was told from the devices present, not from the microphone in use.
+1rzyxvu	ok	disconnected: {0}	已中斷連線：{0}	src/ui/screens/trace.js:253	{0} = d.gone.join(', ')
+3gdj21	ok	no devices	無裝置	src/ui/screens/trace.js:253	
+1ijsnzq	ok	voice on	語音開啟	src/ui/screens/trace.js:274	Note: The glossary's Voice on mode (語音開啟).
+z2w914	ok	voice off	語音關閉	src/ui/screens/trace.js:274	Note: The glossary's Voice off mode (語音關閉).
+1g1k3by	ok	{0} waiting	{0} 則待傳送	src/ui/screens/trace.js:277	{0} = d.waiting ?? 0
+xy6oxk	ok	{0} sent, {1} called off	已傳送 {0} 則，已取消 {1} 則	src/ui/screens/trace.js:277	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
+1efflnv	ok	notification shown	通知已顯示	src/ui/screens/trace.js:278	
+cjmncb	ok	notification opened	已點開通知	src/ui/screens/trace.js:279	
+3m7wpo#other	ok	# attempts	嘗試 # 次	src/ui/screens/trace.js:289	plural; # = n; English: "# attempt" (one), "# attempts" (other)
+r42rpw	ok	{0} ms processing latency	處理延遲 {0} ms	src/ui/screens/trace.js:293	{0} = Math.round(d.baseLatency * 1000)
+1y5g6mq	ok	{0} ms output latency	輸出延遲 {0} ms	src/ui/screens/trace.js:294	{0} = Math.round(d.outputLatency * 1000)
+a1oech	ok	live session {0}	即時連線 {0}	src/ui/screens/trace.js:295	{0} = d.state; Note: a live session is 即時連線, as the model check's 正在開啟即時連線.
+beya44	ok	sound at {0} kHz	取樣率 {0} kHz	src/ui/screens/trace.js:297	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
+1u50qqt	ok	her voice: {0} played	她的聲音：已播放 {0}	src/ui/screens/trace.js:302	{0} = duration(d.ms ?? 0)
+1wcl60z	ok	cut	已中斷	src/ui/screens/trace.js:302	
+njy1uz	ok	her voice: cut before it played	她的聲音：播放前被中斷	src/ui/screens/trace.js:302	
+9atabi	ok	started after {0} ms	{0} ms 後開始	src/ui/screens/trace.js:303	{0} = d.waitMs
+j43x3k	ok	stalled	卡住	src/ui/screens/trace.js:303	
+1qyanji#other	ok	# holes, {0} ms	# 處空白，{0} ms	src/ui/screens/trace.js:304	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中斷).
+gw0cwm#other	ok	# holes	# 處空白	src/ui/screens/trace.js:304	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中斷).
+1bx4bl6	ok	on {0}	在 {0} 上	src/ui/screens/trace.js:305	{0} = d.player
+1jhbzkn	ok	your voice {0} dB, least to start {1} dB, {2} frames kept out (loudest {3} dB)	你的聲音 {0} dB，觸發下限 {1} dB，{2} 個音框被擋下（最大 {3} dB）	src/ui/screens/trace.js:310	{0} = d.voiceDb ?? '?'; {1} = d.minDb ?? '–'; {2} = d.keptFrames; {3} = d.keptPeakDb ?? '?'
+1mxp5c6	ok	a sound dropped as her voice began: {0} of speech · floor {1} dB, loudest {2} dB	她開口時捨棄了一段聲音：語音 {0} · 底噪 {1} dB，最大 {2} dB	src/ui/screens/trace.js:311	{0} = duration(d.speechMs ?? 0); {1} = d.floorDb ?? '?'; {2} = d.peakDb ?? '?'
+1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的這一輪結束：{0} · 已傳送 {1} · 底噪 {2} dB，最大 {3} dB	src/ui/screens/trace.js:312	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
+7ovnj9	ok	no turn	沒有開始一輪	src/ui/screens/trace.js:312	
+khxbvb	ok	audio: {0}	音訊：{0}	src/ui/screens/trace.js:316	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
+1wy37ql	ok	{0} sent	已傳送 {0}	src/ui/screens/trace.js:318	{0} = size(d.bytes)
+l04i5	ok	{0} sent, after a kept turn	已傳送 {0}，接在保留的輪次之後	src/ui/screens/trace.js:318	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (輪).
+1n96vkk	ok	earlier thinking not sent: something before it changed	先前的思考未傳送：前面的內容有變動	src/ui/screens/trace.js:320	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
+yfywm0#other	ok	thinking of # earlier steps sent back	已傳回之前 # 步的思考	src/ui/screens/trace.js:320	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
+15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:324	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
+4k86ja	ok	{0} failed	{0} 個失敗	src/ui/screens/trace.js:324	{0} = d.failed
+1waoe51	ok	at its limit	已達上限	src/ui/screens/trace.js:325	
+66h5i6	ok	by itself on Wi-Fi	Wi-Fi 下自動下載	src/ui/screens/trace.js:325	
+rfe2ef	ok	{0} files sent, {1}	已傳送 {0} 個檔案，{1}	src/ui/screens/trace.js:327	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
+2601w8	ok	a newer backup from another device is there	有來自另一台裝置的較新備份	src/ui/screens/trace.js:328	
+uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	下載 {0}（{1}）後停止，已捨棄	src/ui/screens/trace.js:330	{0} = d.backup; {1} = size(d.bytes ?? 0)
+wgniil	ok	downloaded {0}, {1}	已下載 {0}（{1}）	src/ui/screens/trace.js:330	{0} = d.backup; {1} = size(d.bytes ?? 0)
+1gauo2f	ok	{0} can't be opened: {1}	{0} 無法開啟：{1}	src/ui/screens/trace.js:331	{0} = d.backup; {1} = cut(d.problem)
+1rrq0vn	ok	deleted an older backup, {0}	已刪除一個較早的備份：{0}	src/ui/screens/trace.js:332	{0} = d.backup
+57gz9u#other	ok	# secrets	# 個金鑰	src/ui/screens/trace.js:334	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
+scekw#other	ok	# settings	# 項設定	src/ui/screens/trace.js:334	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
+mp7j1w#other	ok	({0}, # bytes)	（{0}，# 位元組）	src/ui/screens/trace.js:357	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
+tqj8t3	ok	(no longer stored)	（已不再儲存）	src/ui/screens/trace.js:357	
+1kfziuy	ok	Show what was stored	顯示儲存的內容	src/ui/screens/trace.js:374	
 1cnmmj7	ok	Archived	已封存	src/ui/screens/trip.js:44	
 jz8mjk	ok	Unarchive	取消封存	src/ui/screens/trip.js:56	
 qeuftp	ok	Tap again to archive	再點一次以封存	src/ui/screens/trip.js:58	
@@ -2632,19 +2624,15 @@ knyqwh	ok	Add photos or files	新增照片或檔案	src/ui/screens/trip.js:317
 ecy82r	ok	Add a file	新增檔案	src/ui/screens/trip.js:348	
 1bmm5eq	ok	File path	檔案路徑	src/ui/screens/trip.js:349	
 16gte2l	ok	Create	建立	src/ui/screens/trip.js:351	
-aoc0k0#other	ok	{0}: # chats	{0}：# 個對話	src/ui/screens/trips.js:69	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
-33pqd9	ok	Last backup {0}, to {1}.	上次備份：{0}，備份到 {1}。	src/ui/screens/trips.js:76	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: {1} is the backup place's name.
-cvvz5z	ok	Tap + to talk to Shiori.	點一下 + 和 Shiori 聊聊。	src/ui/screens/trips.js:84	
-wfhszm	ok	Archived ({0})	已封存（{0}）	src/ui/screens/trips.js:87	{0} = archived.length
-in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	還沒有備份。可以在設定中點「匯出全部」，或在那裡設定自動備份。	src/ui/screens/trips.js:90	
+aoc0k0#other	ok	{0}: # chats	{0}：# 個對話	src/ui/screens/trips.js:66	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
+33pqd9	ok	Last backup {0}, to {1}.	上次備份：{0}，備份到 {1}。	src/ui/screens/trips.js:73	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: {1} is the backup place's name.
+12mubvb	ok	Now	現在	src/ui/screens/trips.js:79	
+cvvz5z	ok	Tap + to talk to Shiori.	點一下 + 和 Shiori 聊聊。	src/ui/screens/trips.js:81	
+wfhszm	ok	Archived ({0})	已封存（{0}）	src/ui/screens/trips.js:83	{0} = archived.length
+in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	還沒有備份。可以在設定中點「匯出全部」，或在那裡設定自動備份。	src/ui/screens/trips.js:86	
 1rrn1xn	ok	Day {0} of {1}	第 {0} 天，共 {1} 天	src/ui/screens/trips.js:218	{0} = d.day; {1} = d.of
 1q78pfk#other	ok	# files waiting to be read	# 個檔案待讀取	src/ui/screens/trips.js:233	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: Taiwan wording: 個檔案; on a trip's card.
-1ceddv5	ok	Big Sur · Thanksgiving	花蓮 · 連假	src/ui/screens/trips.js:264	Note: An example trip name (the field's placeholder): a Taiwanese one (Hualien, a long weekend), as zh-Hans gives a mainland one.
-axugy7	ok	Start a trip	開始旅行	src/ui/screens/trips.js:291	
-ero67x	ok	Trip name	旅行名稱	src/ui/screens/trips.js:292	
-1776dho	ok	Add dates (optional)	新增日期（選填）	src/ui/screens/trips.js:294	Note: Taiwan wording: 新增 as the glossary's Add, 選填 as Taiwan's forms say optional.
-1baslgi	ok	Start trip	開始旅行	src/ui/screens/trips.js:296	Note: The same words as the form's heading, "Start a trip".
-152lnj5	ok	Use real dates for the start and end.	請填寫有效的開始和結束日期。	src/ui/screens/trips.js:314	
+152lnj5	ok	Use real dates for the start and end.	請填寫有效的開始和結束日期。	src/ui/screens/trips.js:255	
 ric74d	ok	Checking annai and its plugins…	正在檢查 annai 及其外掛程式…	src/ui/screens/updates.js:18	
 1mk4lgq	ok	annai hasn't checked since it started.	annai 啟動後還沒有檢查過。	src/ui/screens/updates.js:19	
 cmuwtk	ok	Last checked {0}.	上次檢查：{0}。	src/ui/screens/updates.js:19	{0} = relTime(checkedAt, now)
@@ -2789,9 +2777,9 @@ f2eaqi	ok	Find a search plugin	尋找搜尋外掛程式	src/ui/search-panel.js:9
 do1m5o	ok	{0}: annai can't show this setting.	{0}：annai 無法顯示此設定。	src/ui/settings-form.js:116	{0} = f.label
 1qrgqx0	ok	saved	已儲存	src/ui/settings-form.js:121	
 phutrz	ok	{0} wasn't saved: {1}	「{0}」未能儲存：{1}	src/ui/settings-form.js:130	{0} = f.label; {1} = messageOf(e)
-1skw031	ok	This screen couldn't open	無法開啟此頁面	src/ui/shell.js:445	
-1z00dfe	ok	An update is ready	更新已就緒	src/ui/shell.js:558	
-gt0nrj	ok	It will be used the next time annai starts.	下次啟動 annai 時生效。	src/ui/shell.js:558	
+1skw031	ok	This screen couldn't open	無法開啟此頁面	src/ui/shell.js:372	
+1z00dfe	ok	An update is ready	更新已就緒	src/ui/shell.js:454	
+gt0nrj	ok	It will be used the next time annai starts.	下次啟動 annai 時生效。	src/ui/shell.js:454	
 sntfon	ok	Hello! This is how I sound when I talk to you.	你好！我跟你說話時就是這個聲音。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
 n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
 1a27ynt	ok	Last tested {0}: it worked.	上次測試（{0}）：可以使用。	src/ui/speech-check.js:26	{0} = relTime(verified.at)

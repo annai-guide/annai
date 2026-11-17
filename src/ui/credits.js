@@ -44,7 +44,7 @@ export const SOURCES = [
   {
     name: 'Open-Meteo',
     hosts: ['api.open-meteo.com'],
-    use: t`Weather forecasts, for Shiori's weather tool. Sunrise and sunset in the forecast are Open-Meteo's too; the Now screen's golden hour, and the sun's times when Open-Meteo doesn't answer, are worked out on the phone.`,
+    use: t`Weather forecasts, for Shiori's weather tool. Sunrise and sunset in the forecast are Open-Meteo's too; the Itinerary's golden hour, and the sun's times when Open-Meteo doesn't answer, are worked out on the phone.`,
     credit: /* en */ 'Weather data by Open-Meteo.com, under CC BY 4.0.',
     links: /* en */ [{ href: 'https://open-meteo.com/', text: 'Weather data by Open-Meteo.com' }, { href: 'https://creativecommons.org/licenses/by/4.0/', text: 'CC BY 4.0' }],
   },

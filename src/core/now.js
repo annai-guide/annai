@@ -2,7 +2,7 @@ import { meters, travelMinutes, modeFor } from './live/geo.js';
 import { instantAt, validZone } from './time.js';
 
 /**
- * What the Now and Driving screens show (spec §16.2), from the Plan screen's rows: what is next,
+ * What the Itinerary's today, Driving and the conversation's Next line show (spec §16.2), from the Itinerary's rows: what is next,
  * and the stops ahead with how far each is from where the user is.
  * @typedef {import('./plan.js').PlanRow} PlanRow
  * @typedef {{ lat: number, lng: number }} Point

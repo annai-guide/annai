@@ -148,7 +148,12 @@ test('the drive\'s one record is kept in this browser as the page goes off scree
 test('location refused: a card with steps for this phone, and "Where are you?" with the plan\'s places (spec §17)', async ({ page }) => {
   await openApp(page);
   const trip = await startTrip(page, 'Big Sur');
-  await writeRecords(page, trip, { write: { '/plan/bixby.json': { id: 'bixby', title: 'Bixby Bridge photo stop', fixed: false, start: { at: plus(Date.now(), 60), tz: 'UTC' }, place: BIXBY } } });
+  // At this moment in the phone's own zone, so the Itinerary has a today tab at any hour (the item's day in UTC is another day for hours of every day elsewhere).
+  const start = await page.evaluate(async () => {
+    const { isoInZone, deviceZone } = await import(/** @type {string} */ ('/src/core/time.js'));
+    return { at: isoInZone(Date.now(), deviceZone()), tz: deviceZone() };
+  });
+  await writeRecords(page, trip, { write: { '/plan/bixby.json': { id: 'bixby', title: 'Bixby Bridge photo stop', fixed: false, start, place: BIXBY } } });
   await goToHash(page, `#/trip/${encodeURIComponent(trip)}`); // a screen with the dock
   await page.reload(); // written outside the app's own files layer: live mode reads the plan again as it starts
   await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
@@ -156,10 +161,13 @@ test('location refused: a card with steps for this phone, and "Where are you?" w
   const card = page.locator('.notice', { hasText: "annai can't see where you are" });
   await expect(card).toContainText(/On (iPhone|Android):/);
   await expect(page.locator('.live-chip')).toHaveText('No GPS');
-  await page.goto('/#/drive');
+  // The card's button goes to Driving, where "Where are you?" is (timeline stage 8: in place of the path in words, through Now).
+  await card.getByRole('button', { name: 'Say where you are' }).click();
+  await expect.poll(() => new URL(page.url()).hash).toBe('#/drive');
+  await expect(card).toHaveCount(0); // a card's button dismisses it
   await page.getByRole('button', { name: 'Bixby Creek Bridge' }).click();
-  await page.goto('/#/now');
-  await expect(page.locator('.now-place')).toHaveText('At Bixby Creek Bridge');
+  await goToHash(page, `#/trip/${encodeURIComponent(trip)}/plan`); // today's Itinerary says where you are (Now did until stage 8)
+  await expect(page.locator('.today-top .now-place')).toHaveText('At Bixby Creek Bridge');
   // annai starts again with location still refused: the card isn't shown again.
   await page.reload();
   await expect(page.locator('.live-chip')).toHaveText('No GPS');

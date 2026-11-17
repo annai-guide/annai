@@ -1,11 +1,9 @@
-import { h, field, t, plural, messageOf, whenGone } from '../dom.js';
-import { listTrips, createTrip, backupState, scopeTitle, changesTrip, lastTalked, ME } from '../../core/scopes.js';
+import { h, t, plural, messageOf, whenGone, otherLang } from '../dom.js';
+import { listTrips, backupState, scopeTitle, changesTrip, lastTalked, ME } from '../../core/scopes.js';
 import { filesToRead } from '../../core/handover.js';
 import { readAppSettings } from '../../core/settings.js';
 import { ValidationError } from '../../core/workspace.js';
-import { explainStorageFull } from '../storage-full.js';
 import { relTime, relChange, dateRange, backupText, wording, talkHref, day, when, rowName } from '../format.js';
-import { requestPersist } from '../platform.js';
 import { openFileButton } from '../open-file.js';
 import { tripStamps, stampMarks, factsWords } from '../stamps.js';
 import { stampCount } from '../../core/after/stamps.js';
@@ -14,9 +12,10 @@ import { upcoming, over } from '../../core/now.js';
 import { dayIn, deviceZone, nextDay } from '../../core/time.js';
 import { storedTexts } from '../../core/agent/log.js';
 import { tripRows } from '../trip-rows.js';
-import { nowOf, isField } from '../today.js';
+import { nowOf } from '../today.js';
 import { realClock } from '../../core/live/clock.js';
-import { keepRows, covered } from '../keep-rows.js';
+import { keepRows } from '../keep-rows.js';
+import { slotEntries } from '../slots.js';
 
 /** @typedef {import('../../core/timeline.js').Row} Row */
 /** Words saying how long ago (since): the node, its moment on the device's clock, its words at a moment. @typedef {{ node: Node, at: number, words: (now: number) => string }} Since */
@@ -24,14 +23,12 @@ import { keepRows, covered } from '../keep-rows.js';
 
 /**
  * Home: the timeline of trips and chats (the timeline design), old to new, the trips happening at the now line and only dated trips below it.
- * A tap opens a row's conversation. What a card shows beyond its dates is read for cards alone, so chats cost no reads. The foot keeps, until
- * stage 8, Start a trip; then the archived trips, Open a file and the last backup. `me`'s old lines are a row of their own.
+ * A tap opens a row's conversation. What a card shows beyond its dates is read for cards alone, so chats cost no reads. The foot holds the archived
+ * trips, Open a file and the last backup; a trip starts with the shell's + (timeline stage 8 took the Start a trip form away). `me`'s old lines are a
+ * row of their own.
  * @param {any} ctx
  */
 export async function renderTrips(ctx) {
-  if (ctx.moved) { // come to home anew: the form's last error and what was typed in it are not shown again
-    tripError = tripTyped.title = tripTyped.start = tripTyped.end = '';
-  }
   // The trips followed from before the cards read their backups (tripCard), so an entry that lands while home is drawn is kept for followClock: a card
   // that read "backed up" just before it says "changed since" all the same.
   /** @type {{ touched: Set<string>, mark: () => void }} */
@@ -76,13 +73,12 @@ async function drawTrips(ctx, follow, stop) {
   const saved = latest ? { at: latest.last.at, words: (/** @type {number} */ now) => t`Last backup ${relTime(latest.last.at, now)}, to ${latest.name}.` }
     : settings.lastExportAt ? { at: settings.lastExportAt, words: (/** @type {number} */ now) => t`Last export ${relTime(settings.lastExportAt, now)}.` } : null;
   const screen = h('div', { class: 'screen timeline' },
-    h('h1', { class: 'title', text: t`Trips` }),
+    homeHead(ctx),
     // The shell scrolls the now line 40% down; with less past than that above it, it sits higher, with no blank space over it (a notice there stays in view).
     h('ul', { class: 'cards rows past' }, ...past),
     h('p', { class: 'now-line' }, h('span', { text: t`Now` })),
     h('ul', { class: 'cards rows ahead' }, ...ahead),
     active.length ? null : h('p', { class: 'empty', text: t`Tap + to talk to Shiori.` }),
-    newTripForm(ctx),
     archived.length
       ? fold('archived', h('summary', { text: t`Archived (${archived.length})` }), h('ul', { class: 'cards' }, ...archivedCards))
       : null,
@@ -90,6 +86,23 @@ async function drawTrips(ctx, follow, stop) {
     saved ? since(o, h('p', { class: 'sub' }), saved.at, saved.words) : h('p', { class: 'sub', text: t`No backup yet. Export everything from Settings, or set up automatic backups there.` }));
   followClock(ctx, screen, o, places, follow, stop);
   return screen;
+}
+
+/**
+ * Home's head: "Trips", then Trace and the gear (Settings) at its end (the user's pick 2026-11-16, "At the top, beside "Trips""); under it, only
+ * when a plugin has one, a quiet row of links to plugins' screens with a tab (`tab: true`). Not sticky: home's box of cards sticks at the top.
+ * @param {any} ctx
+ */
+function homeHead(ctx) {
+  const tabs = slotEntries(ctx, 'ui:screen').filter((e) => e.item?.tab).map((e) => h('a', {
+    href: `#/ext/${encodeURIComponent(e.pluginId)}/${encodeURIComponent(e.item.id)}`, lang: otherLang(ctx.plugins?.langOf(e.pluginId)), text: String(e.item.title),
+  }));
+  return h('div', { class: 'home-head' },
+    h('div', { class: 'home-top' },
+      h('h1', { class: 'title', text: t`Trips` }),
+      h('a', { class: 'btn ghost', href: '#/trace' }, t`Trace`),
+      h('a', { class: 'btn ghost gear', href: '#/settings', 'aria-label': t`Settings` }, '⚙')),
+    tabs.length ? h('p', { class: 'home-links' }, ...tabs) : null);
 }
 
 /**
@@ -107,24 +120,16 @@ function since(o, node, at, words) {
  * in place, at the earliest moment one of them changes (a Next item ends, or midnight; the 1 s is for a timer a hair early), on live mode's own timer, so a
  * simulation played faster is drawn at its own moments (and again when one starts or ends: live mode's clock is another then); and when annai comes back to
  * the front, which a phone's timers may have slept through and where the phone's zone may be another (a flight); and when a backup has run, which its
- * card and the footer tell. Only while it is the screen shown and its address, and never over the Start a trip form while a field of it has focus: then it
- * waits, and draws once the field is left. What is typed in the form, its folds and the place stay (`tripTyped`, `fold`). How long ago a backup was changes
+ * card and the footer tell. Only while it is the screen shown and its address. Its folds and the place stay (`fold`). How long ago a backup was changes
  * its words in place (since), the rows in view kept where they were, as does a trip changed while home shows (through the dock): "changed since".
  * @param {any} ctx @param {HTMLElement} screen @param {{ now: number, zone: string, due: number[], since: Since[], backups: Backups }} o @param {{ id: string }[]} places backups'
  * @param {{ touched: Set<string>, mark: () => void }} follow the trips with entries since home began drawing (renderTrips) @param {(() => void) | undefined} stop
  */
 function followClock(ctx, screen, o, places, follow, stop) {
   const at = location.hash;
-  // What a redraw would lose: the focus of a field of the form (the keyboard would close). A name or dates typed in it are drawn again (tripTyped).
-  const typing = () => screen.contains(document.activeElement) && isField(document.activeElement);
-  /** @type {ReturnType<typeof setTimeout> | undefined} */
-  let wait;
   const redraw = () => {
-    clearTimeout(wait); // one wait at a time, whoever asked
     if (!screen.isConnected || location.hash !== at) return; // gone, or going: a redraw now would send a tap's move back
-    // Looked at again in half a second, as the shell's own redraw does: soon after the keyboard goes.
-    if (typing()) wait = setTimeout(redraw, 500);
-    else ctx.render();
+    ctx.render();
   };
   const clock = ctx.live?.clock ?? realClock();
   const next = Math.min(nextDay(o.now, o.zone), ...o.due);
@@ -154,18 +159,13 @@ function followClock(ctx, screen, o, places, follow, stop) {
     if (changed) words();
   };
   follow.mark();
-  const front = () => {
-    if (document.visibilityState !== 'visible') return;
-    words(); // at once, while a field's focus holds the redraw back
-    redraw();
-  };
+  const front = () => { if (document.visibilityState === 'visible') redraw(); };
   document.addEventListener('visibilitychange', front);
   const swapped = ctx.sim?.onChange?.(() => { if ((ctx.live?.clock ?? clock) !== clock) redraw(); });
   // A backup that ended: no place is running one (its progress emits too).
   const backedUp = ctx.backups?.on?.(() => { if (!places.some((p) => ctx.backups.progress(p.id))) redraw(); });
   whenGone(screen, () => {
     clock.clear(timer);
-    clearTimeout(wait);
     real.clear(tick);
     document.removeEventListener('visibilitychange', front);
     swapped?.();
@@ -174,11 +174,11 @@ function followClock(ctx, screen, o, places, follow, stop) {
   });
 }
 
-/** Home's folds that are open (a month's, 'archived', the form's 'dates'), kept so while annai runs: Back, or a redraw, finds home as it was. */
+/** Home's folds that are open (a month's, 'archived'), kept so while annai runs: Back, or a redraw, finds home as it was. */
 const unfolded = new Set();
 /** @param {string} key @param {...HTMLElement} parts */
 function fold(key, ...parts) {
-  const el = h('details', { class: key === 'archived' || key === 'dates' ? key : undefined, open: unfolded.has(key) }, ...parts);
+  const el = h('details', { class: key === 'archived' ? key : undefined, open: unfolded.has(key) }, ...parts);
   el.addEventListener('toggle', () => (el.open ? unfolded.add(key) : unfolded.delete(key)));
   return el;
 }
@@ -227,7 +227,7 @@ async function tripCard(ctx, s, r, o) {
     if (last) more.push(h('span', { class: 'sub her-last', ...say(last), text: last }));
   }
   const name = scopeTitle(s); // one stored with the draft's name says "New conversation" in the screens' language
-  return h('li', {}, h('a', { class: ['card', 'trip-card', r?.phase === 'happening' ? 'happening' : ''], href: r ? talkHref(s.id) : `#/trip/${encodeURIComponent(s.id)}` },
+  return h('li', {}, h('a', { class: ['card', 'trip-card', r?.phase === 'happening' ? 'happening' : r?.phase === 'future' ? 'ahead' : ''], href: r ? talkHref(s.id) : `#/trip/${encodeURIComponent(s.id)}` },
     h('span', { class: 'trip-card-text' },
       h('span', { class: 'name', ...say(name), text: name }),
       h('span', { class: 'sub' }, ...factsWords([s.start ? dateRange(s.start, s.end) : null, stamps.length ? { stamps: stampCount(stamps.length) } : null, unread ? plural(unread, '# file waiting to be read', '# files waiting to be read') : null, backedUp])),
@@ -248,66 +248,7 @@ const meTalked = (store) => (meAt ??= lastTalked(store, ME).catch(() => { meAt =
 /** An import replaced `me`: its row is read again at the next draw of home, so it is right without a reload. */
 export const forgetMeTalked = () => { meAt = null; };
 
-/**
- * What Start a trip last said went wrong, kept as `unfolded` is so a redraw of home (the clock's) draws it again: it goes when the user types into the form,
- * submits again, or leaves home (renderTrips).
- */
-let tripError = '';
-/**
- * What is typed in Start a trip, kept the same way: a redraw that doesn't wait for it (the shell's, when Shiori opens a trip, which doesn't wait on the kept
- * error) draws it again, so a name or dates typed are never lost to a redraw. It goes when the user leaves home.
- */
-const tripTyped = { title: '', start: '', end: '' };
-
-/** @param {any} ctx */
-function newTripForm(ctx) {
-  const title = h('input', { id: 'trip-title', name: 'title', maxlength: '200', autocomplete: 'off', placeholder: t`Big Sur · Thanksgiving`, value: tripTyped.title });
-  const start = h('input', { id: 'trip-start', name: 'start', type: 'date', value: tripTyped.start });
-  const end = h('input', { id: 'trip-end', name: 'end', type: 'date', value: tripTyped.end });
-  // data-kept: home draws it again itself (tripError), so the shell's redraws need not wait for it to go. An alert when first said (onsubmit); drawn again with
-  // its words (no role) it is not one, or a screen reader would read it out at each redraw.
-  const error = h('p', { class: 'error', role: tripError ? false : 'alert', 'data-kept': '', hidden: !tripError, text: tripError });
-  return h('form', {
-    class: 'panel',
-    onfocusin: (/** @type {FocusEvent} */ e) => requestAnimationFrame(() => clearOfBox(e.target)),
-    oninput: () => { Object.assign(tripTyped, { title: title.value, start: start.value, end: end.value }); tripError = ''; error.hidden = true; },
-    onsubmit: async (/** @type {Event} */ e) => {
-      e.preventDefault();
-      tripError = '';
-      error.hidden = true;
-      requestPersist(); // inside the tap, so browsers that ask the user can
-      try {
-        const id = await createTrip(ctx.ws, { title: title.value, start: start.value || undefined, end: end.value || undefined });
-        ctx.go(`#/trip/${encodeURIComponent(id)}`);
-      } catch (err) {
-        explainStorageFull(ctx, err);
-        tripError = explainTrip(err);
-        error.setAttribute('role', 'alert'); // before its words: they are said
-        error.textContent = tripError;
-        error.hidden = false;
-      }
-    },
-  },
-  h('h2', { class: 'section', text: t`Start a trip` }),
-  field(t`Trip name`, title),
-  // A name is enough (goal 3): Shiori fills the dates in from the bookings.
-  fold('dates', h('summary', { text: t`Add dates (optional)` }), h('div', { class: 'row' }, field(t`Starts`, start), field(t`Ends`, end))),
-  error,
-  h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'submit' }, t`Start trip`)));
-}
-
-/**
- * A field of the form focused under the top bar or the notices box stuck under it (a keyboard's Tab, a screen reader) is scrolled clear of them, its label
- * too: the browser's own focus scrolling, done by then, doesn't know they cover it. @param {EventTarget | null} field
- */
-function clearOfBox(field) {
-  if (!(field instanceof Element) || document.activeElement !== field) return;
-  const under = covered();
-  const top = (field.closest('label') ?? field).getBoundingClientRect().top;
-  if (top < under) scrollBy(0, top - under);
-}
-
-/** What went wrong with a trip's name or dates, in words, for Start a trip and Details. @param {any} err */
+/** What went wrong with a trip's name or dates, in words, for Details. @param {any} err */
 export function explainTrip(err) {
   if (!(err instanceof ValidationError)) return messageOf(err);
   if (err.errors.some((m) => m.startsWith('$.title'))) return t`Give it a name.`;

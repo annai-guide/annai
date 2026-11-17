@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, allFiles, putFile, writeRecords, startModelServer, anthropicToolReply, modelSetUp, savedBy, openTalk, stuckTop } from './helpers.js';
+import { openApp, allFiles, putFile, writeRecords, startModelServer, anthropicToolReply, modelSetUp, savedBy, openTalk } from './helpers.js';
 import { fileTrip } from './file-details-fixture.js';
 
 test('Files: one row per file, by its first booking day then name, each one link with what it is; no record names, no Ask; a plain photo is not listed', async ({ page }) => {
@@ -63,9 +63,8 @@ test('a link to the second flight opens the file at its block, focused and in vi
   const h = page.getByRole('heading', { name: 'ANNAI AIR AN 124' });
   await expect(h).toBeFocused();
   await expect(h).toBeInViewport();
-  // In view means below the top bar, not behind it.
-  const [bar, top] = await Promise.all([stuckTop(page), h.boundingBox()]);
-  expect(top?.y ?? 0).toBeGreaterThanOrEqual(bar);
+  // In view means its top too, inside the screen.
+  expect((await h.boundingBox())?.y ?? -1).toBeGreaterThanOrEqual(0);
 });
 
 test('one booking reads as the booking details did: the stay, its photo as the preview, Change it and Open in Maps at the foot; Open shows the photo', async ({ page }) => {
@@ -172,13 +171,13 @@ test('Back from the Plan: a tap on the return flight lands on its block, and the
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Itinerary');
 });
 
-test('Back from Now and from the Conversation', async ({ page }) => {
+test("Back from Now's old address (timeline stage 8: to the trip's Details) and from the Conversation", async ({ page }) => {
   await openApp(page);
   const trip = await fileTrip(page);
   await openAt(page, trip, '/bookings/stay.json', '#/now');
-  await expect(crumbOf(page)).toContainText('Now');
+  await expect(crumbOf(page)).toHaveAttribute('href', `#/trip/${encodeURIComponent(trip)}`); // the trip, by its name
   await crumbOf(page).click();
-  await expect(page).toHaveURL(/#\/now$/);
+  await expect.poll(() => new URL(page.url()).hash).toBe(`#/trip/${encodeURIComponent(trip)}`);
   await openAt(page, trip, '/bookings/stay.json', '#/talk');
   await expect(crumbOf(page)).toContainText('Conversation');
   await crumbOf(page).click();

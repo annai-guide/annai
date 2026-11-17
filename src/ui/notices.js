@@ -7,8 +7,8 @@ import { num } from './format.js';
 export const MOVED_MS = 400;
 
 /**
- * System cards and toasts. These are never in Shiori's voice (spec §16.1). Cards of one kind fold into one. Cards (el) sit in the page at its top,
- * under the top bar, and scroll away with it, so they never cover a screen's buttons; on home the box sticks under the bar while it holds a card
+ * System cards and toasts. These are never in Shiori's voice (spec §16.1). Cards of one kind fold into one. Cards (el) sit in the page at its top
+ * and scroll away with it, so they never cover a screen's buttons; on home the box sticks at the top of the screen while it holds a card
  * (base.css). Toasts float above the dock.
  */
 export function createNotices() {
@@ -17,7 +17,7 @@ export function createNotices() {
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let settle;
   /**
-   * A box that holds more than its cap (a quarter of the screen, or on home half the room under the top bar: base.css) scrolls inside itself, and a swipe
+   * A box that holds more than its cap (a quarter of the screen, or on home half the screen's room: base.css) scrolls inside itself, and a swipe
    * on it stays there (.scrolls). One that holds less passes a swipe on to the page: kept in, it would be a patch of home that doesn't scroll. Looked at
    * after each change, and whenever the box's own size changes: its cap is half the room on home but none on other screens, so cards that came or opened
    * there are measured again when home shows.
@@ -38,7 +38,7 @@ export function createNotices() {
   el.addEventListener('scroll', () => { if (arrived) below(); }, { passive: true });
   /**
    * A card comes, goes, opens or closes: scrolled down, what is seen stays put; what moved ignores taps a moment (the cards; at the top, the rows too).
-   * On home the box sticks while it holds a card, at most half the room under the top bar (base.css), so a card that comes, or one opened inside it,
+   * On home the box sticks while it holds a card, at most half the screen's room (base.css), so a card that comes, or one opened inside it,
    * lands in view over the rows. Nothing a card does moves the box into the page above, nor the page. @param {() => void} change
    */
   const keep = (change) => {
@@ -67,7 +67,7 @@ export function createNotices() {
   };
   /**
    * A card whose text is more than three lines shows three and a More, which opens it to its full height, and a Less, which closes
-   * it. Open, the box's cap is lifted (on home, to half the room under the bar, scrolling inside); the buttons stay at the box's edge, Dismiss in reach. Looked at once the card is drawn (one in
+   * it. Open, the box's cap is lifted (on home, to half the screen, scrolling inside); the buttons stay at the box's edge, Dismiss in reach. Looked at once the card is drawn (one in
    * a closed stack, when it opens) and when the screen changes size.
    * @type {WeakMap<HTMLElement, () => void>}
    */
@@ -282,10 +282,5 @@ let lone = 0;
     toasts.append(shown);
     setTimeout(() => shown.remove(), 3500);
   }
-  /**
-   * The box stuck again over the rows (home, as typing ends: base.css): scrolled down it lands over rows in view, so its cards ignore taps a moment,
-   * as when one lands; at the page's top it sticks where it was and there is nothing under it to protect. Only a box that holds a card sticks.
-   */
-  const hold = () => { if (scrollY > 0 && getComputedStyle(el).position === 'sticky') still('over'); };
-  return { el, toasts, card, toast, hold };
+  return { el, toasts, card, toast };
 }

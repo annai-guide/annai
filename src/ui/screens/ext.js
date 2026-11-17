@@ -39,9 +39,9 @@ function page(ctx, kind, pluginId, id, back, backLabel, more = []) {
   return h('div', { class: 'screen ext' }, crumbs(back, backLabel), h('h1', { class: 'title', text: String(e.item.title), lang: otherLang(ctx.plugins?.langOf(pluginId)) }), body, failed);
 }
 
-/** A whole screen a plugin adds. @param {any} ctx @param {{ parts: string[] }} route */
+/** A whole screen a plugin adds, its crumb home: reached from home's row (`tab: true`) or by a take-over (`homeFor`). @param {any} ctx @param {{ parts: string[] }} route */
 export async function renderExt(ctx, route) {
-  return page(ctx, 'ui:screen', route.parts[1], route.parts[2], '#/now', t`Now`);
+  return page(ctx, 'ui:screen', route.parts[1], route.parts[2], '#/trips', t`Trips`);
 }
 
 /** A settings page a plugin adds. @param {any} ctx @param {{ parts: string[] }} route */

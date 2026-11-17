@@ -104,7 +104,6 @@ html.typing-elsewhere .dock:not(.seat) { opacity: 0; pointer-events: none; }
 body.home .plus { display: grid; place-items: center; position: fixed; z-index: 21; inset-inline-end: max(16px, calc(50% - 264px)); bottom: calc(var(--dock-h, 154px) + 14px);
   width: 60px; height: 60px; padding: 0; border-radius: 50%; border: 0; background: var(--ai); color: var(--ai-ink); font-size: 34px; line-height: 1; cursor: pointer; box-shadow: 0 10px 24px -12px var(--shadow); }
 .plus:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-html.typing-elsewhere body.home .plus { opacity: 0; pointer-events: none; }
 .dock-row { display: grid; grid-template-columns: 1fr minmax(0, 176px) 1fr; align-items: center; max-width: 560px; margin: 0 auto; }
 .ib { justify-self: center; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; color: var(--ink-2);
   border: 1px solid var(--line); background: var(--sheet); cursor: pointer; font-size: 20px; }
@@ -229,11 +228,13 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
 .title-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0 8px; }
 .title-row > .title { flex: 1 1 0; min-width: 0; }
 .title-row > .tidy-status, .talk-head > .tidy-status { flex-basis: 100%; order: 3; margin-top: -4px; }
-/* On the Conversation, the title and its ⋯ stay under the app's bar (--topbar-h, shell.js) as the lines scroll under them. */
-.screen > .title-row, .screen > .talk-head { position: sticky; top: var(--topbar-h, 0px); z-index: 4; background: var(--paper); padding-block: 4px; margin-block: -4px; }
-/* A trip's conversation: ← home, its name (to Details), and the ⋯, staying under the app's bar the same way (the rule above). */
+/* On the Conversation, the title and its ⋯ stay at the top of the screen (--top, base.css) as the lines scroll under them. */
+.screen > .title-row, .screen > .talk-head { position: sticky; top: var(--top); z-index: 4; background: var(--paper); padding-block: 4px; margin-block: -4px; }
+/* A trip's conversation: ← home, its name (to Details), and the ⋯, staying at the top the same way (the rule above). */
 .screen > .talk-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0 4px; margin-block-end: 0; }
-.talk-name { flex: 1 1 0; min-width: 0; font-size: 20px; font-weight: 600; color: inherit; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 44px; }
+/* The name is the screen's heading: the h1 takes the row's room, its name (a block, so its ellipsis cuts the line) is the whole tap target to Details. */
+.talk-title { flex: 1 1 0; min-width: 0; font: inherit; }
+.talk-name { display: block; font-size: 20px; font-weight: 600; color: inherit; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 44px; }
 .next-line { margin: 4px 0 8px; }
 /* One line, cut with …: a row with a long name, or a day, never changes the line's height. */
 .next-line a { display: block; line-height: 44px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -248,7 +249,7 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
 .sees-switch a.btn[aria-current='page'] { background: var(--ai-wash); color: var(--ai); border-color: var(--ai); }
 .convo .fresh-divider { align-self: stretch; display: flex; align-items: center; gap: 10px; color: var(--ink-2); font-size: 13px; }
 .convo .fresh-divider::before, .convo .fresh-divider::after { content: ''; flex: 1; border-top: 1px solid var(--line); }
-/* What she said aloud on Now's card is read live in the bubble over the dock; there it is quieter than her written lines. */
+/* What she said aloud on Driving's latest card is read live in the bubble over the dock; there it is quieter than her written lines. */
 .shiori-card .said-words { font-size: 0.875em; color: var(--ink-2); }
 
 /* The conversation: speech bubbles carry a SHIORI label instead of a second avatar. */
@@ -298,12 +299,12 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
 .md p { margin: 0 0 6px; white-space: pre-line; overflow-wrap: anywhere; }
 .md .md-h { font-weight: 700; }
 .md ul, .md ol { margin: 0 0 6px; padding-left: 20px; }
-/* A code block wraps, so it never widens the page (and the page takes sideways swipes itself). */
+/* A code block wraps, so it never widens the page. */
 .md pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0 0 6px; font-size: 13px; }
 
 /* Toasts float above the dock. */
 body:has(.dock:not(.seat)) .toasts { bottom: calc(var(--dock-h, 140px) + 8px); }
-/* A menu opened from the dock comes above the top bar and the cards. */
+/* A menu opened from the dock comes above the cards and what sticks at the top. */
 .dock:not(.seat):has(.voice-menu:not([hidden])) { z-index: 30; }
 /* The working sign steps aside while a menu from the bar is open: the menu opens where the sign floats, and its buttons take the taps. */
 .dock:not(.seat):has(.voice-menu:not([hidden])) .halves-sign { visibility: hidden; }
@@ -318,6 +319,17 @@ body:has(.dock:not(.seat)) .toasts { bottom: calc(var(--dock-h, 140px) + 8px); }
 .trip-card.line .name { font-family: var(--f-body); font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .trip-card.line .sub { flex: none; color: var(--ink-2); font-size: 13px; }
 .trip-card.happening { background: var(--ai-wash); border-color: color-mix(in srgb, var(--ai) 35%, var(--line)); }
+/* A trip ahead: a lighter version of the happening tint, from the same tokens, so it reads in both themes (the user, 2026-11-16: "yeah upcoming trips can
+   get a lighter version"). Chats, past and archived trips keep the plain card. */
+.trip-card.ahead { background: color-mix(in srgb, var(--ai-wash) 45%, var(--sheet)); border-color: color-mix(in srgb, var(--ai) 18%, var(--line)); }
+/* Home's head: "Trips", then Trace and the gear at its end; plugins' screens a quiet row under it. */
+.home-head { display: flex; flex-direction: column; gap: 4px; }
+.home-top { display: flex; align-items: center; gap: 4px; }
+.home-top > .title { flex: 1 1 0; min-width: 0; }
+.home-top > .btn { flex: none; min-width: 44px; padding: 0 10px; }
+.home-top > .gear { font-size: 22px; line-height: 1; }
+.home-links { display: flex; flex-wrap: wrap; gap: 0 16px; font-size: 15px; }
+.home-links a { display: inline-block; padding: 6px 0; text-decoration: none; font-weight: 500; }
 .trip-card .her-last { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rows > .fold summary { color: var(--ink-2); cursor: pointer; padding: 6px 2px; }
 .rows > .fold .cards { margin-block: 8px 0; gap: 8px; }

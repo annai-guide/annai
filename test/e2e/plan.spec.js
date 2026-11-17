@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, FIRST_DRAW, turnOnSwipes, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, filterTrace, happeningTrip, writeRecords, catchAgent, startTrip, atConversation, goHome, goToHash, openItinerary } from './helpers.js';
+import { openApp, FIRST_DRAW, waitForServiceWorker, startModelServer, addProvider, anthropicToolReply, filterTrace, happeningTrip, writeRecords, catchAgent, startTrip, atConversation, goHome, goToHash, openItinerary } from './helpers.js';
 import { ZipWriter } from '../../src/core/zip.js';
 import { utf8 } from '../../src/core/bytes.js';
 
@@ -81,7 +81,7 @@ test('the Plan: day tabs, ● fixed and ○ flexible, legs with directions, Chec
   expect(ics).toContain('DTSTART:20261125T160000Z');
   expect(ics).not.toContain('Ice skating');
   await expect(page.getByText(/1 item has no time yet/)).toBeVisible();
-  // Nothing on a phone screen scrolls sideways, the top bar included.
+  // Nothing on a phone screen scrolls sideways.
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
@@ -354,12 +354,11 @@ async function longTrip(page) {
 
 const TODAY_TAB = 'Wed, Nov 27';
 const LATE_TAB = 'Mon, Dec 2';
-/** Where the Itinerary stands: the tab shown, and where the page, the strip and the top bar are scrolled to. @param {import('@playwright/test').Page} page */
+/** Where the Itinerary stands: the tab shown, and where the page and the strip are scrolled to. @param {import('@playwright/test').Page} page */
 const place = (page) => page.evaluate(() => ({
   tab: document.querySelector('[role=tab][aria-selected=true]')?.textContent,
   y: Math.round(scrollY),
   strip: Math.round(/** @type {HTMLElement} */ (document.querySelector('.tabs')).scrollLeft),
-  bar: Math.round(/** @type {HTMLElement} */ (document.querySelector('.topnav')).scrollLeft),
 }));
 /** Whether the tab shown is inside the strip, whole. @param {import('@playwright/test').Page} page */
 const tabInView = (page) => page.evaluate(() => {
@@ -368,17 +367,16 @@ const tabInView = (page) => page.evaluate(() => {
   return b.left >= s.left - 1 && b.right <= s.right + 1;
 });
 
-test('on a phone, Undo on a late day leaves everything where it was: the tab, the page, the strip and the top bar', async ({ page }) => {
+test('on a phone, Undo on a late day leaves everything where it was: the tab, the page and the strip', async ({ page }) => {
   await page.clock.setFixedTime(NOON);
   await longTrip(page);
   await page.getByRole('tab', { name: LATE_TAB }).click();
   const undo = page.getByRole('button', { name: 'Changed by Shiori · Undo' });
   await undo.scrollIntoViewIfNeeded();
-  await page.evaluate(() => { /** @type {HTMLElement} */ (document.querySelector('.tabs')).scrollLeft -= 40; document.querySelector('.topnav')?.scrollBy(60, 0); });
+  await page.evaluate(() => { /** @type {HTMLElement} */ (document.querySelector('.tabs')).scrollLeft -= 40; });
   const before = await place(page);
   expect(before.strip).toBeGreaterThan(0);
   expect(before.y).toBeGreaterThan(0);
-  expect(before.bar).toBeGreaterThan(0);
   await undo.click();
   await expect(undo).toHaveCount(0); // the redraw landed
   await expect.poll(() => page.evaluate(() => new Promise((done) => { requestAnimationFrame(() => requestAnimationFrame(done)); })).then(() => place(page))).toEqual(before);
@@ -399,14 +397,13 @@ test('on a phone, a row opened from a late day and Back: the same tab, the same 
   await expect.poll(() => tabInView(page)).toBe(true);
 });
 
-test("on a phone, leaving the Itinerary and coming back by the top bar opens today's, in view, whatever was picked", async ({ page }) => {
+test("on a phone, leaving the Itinerary and coming back to it anew (a new entry) opens today's, in view, whatever was picked", async ({ page }) => {
   await page.clock.setFixedTime(NOON);
   await longTrip(page);
   await page.getByRole('tab', { name: LATE_TAB }).click();
-  const bar = page.getByRole('navigation', { name: 'Main' });
-  await bar.getByRole('link', { name: 'Trips' }).click();
+  await goHome(page);
   await expect(page.getByRole('tab')).toHaveCount(0);
-  await bar.getByRole('link', { name: 'Itinerary' }).click();
+  await openItinerary(page);
   await expect(page.getByRole('tab', { selected: true })).toHaveText(TODAY_TAB);
   await expect.poll(() => tabInView(page)).toBe(true);
 });
@@ -540,25 +537,6 @@ test('the sentences shown with no fix wrap so they are read whole; only a name a
   await page.locator('.live-chip').click(); // GPS off
   await expect(place).toContainText('GPS is off');
   expect(await style()).toEqual({ white: 'normal', cut: false });
-});
-
-test('a sideways swipe on the chips does not turn into the tab swipe', async ({ page, context }) => {
-  await page.setViewportSize({ width: 320, height: 700 });
-  await longBridge(page, context);
-  await turnOnSwipes(page);
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
-  const chips = page.locator('.today-top .chips');
-  await expect(chips).toBeVisible();
-  await chips.evaluate((el) => { for (const w of ['One long chip to swipe past', 'Another long chip', 'And a third one']) el.append(Object.assign(document.createElement('span'), { className: 'chip', textContent: w })); });
-  expect(await chips.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
-  await page.evaluate(() => {
-    const el = /** @type {Element} */ (document.querySelector('.today-top .chips .chip'));
-    const o = (/** @type {number} */ x) => ({ bubbles: true, pointerType: 'touch', isPrimary: true, clientX: x, clientY: el.getBoundingClientRect().top + 5, pointerId: 7 });
-    el.dispatchEvent(new PointerEvent('pointerdown', o(280)));
-    el.dispatchEvent(new PointerEvent('pointerup', o(120)));
-  });
-  await page.waitForTimeout(300);
-  await expect(page.locator('.topnav a[aria-current="page"]')).toHaveText('Itinerary');
 });
 
 test('with the top above the screen, a fix that moves nothing scrolls nothing, and a change that does move rows leaves the ones you read where they are', async ({ page, context }) => {

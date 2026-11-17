@@ -18,21 +18,15 @@ test('the pseudo-locale en-XA says its language, and ar-XB its direction', async
   await expect(page.locator('html')).toHaveAttribute('lang', 'ar-XB');
 });
 
-test('the Trips screen speaks through t: its words, its form and its cards are pseudo text under en-XA', async ({ page }) => {
+test('the Trips screen speaks through t: its words, its head and its cards are pseudo text under en-XA', async ({ page }) => {
   await openApp(page, '?l10n=en-XA#/trips');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(accented('Trips'));
   await expect(page.locator('p.empty')).toHaveText(accented('Tap + to talk to Shiori.'));
-  await expect(page.getByRole('heading', { level: 2, name: accented('Start a trip') })).toBeVisible();
-  await page.getByText(accented('Add dates (optional)')).click(); // the dates fold away: a name is enough
-  await expect(page.getByLabel(accented('Starts'))).toBeVisible();
-  await expect(page.getByLabel(accented('Ends'))).toBeVisible();
-  await expect(page.getByPlaceholder(accented('Big Sur · Thanksgiving'))).toBeVisible();
+  // Its head: Trace and the gear (named Settings), in place of the top bar's tabs (timeline stage 8).
+  await expect(page.locator('main .home-top').getByRole('link', { name: accented('Trace'), exact: true })).toBeVisible();
+  await expect(page.locator('main .home-top').getByRole('link', { name: accented('Settings'), exact: true })).toBeVisible();
   await expect(page.locator('p.sub').last()).toHaveText(accented('No backup yet. Export everything from Settings, or set up automatic backups there.'));
-  await page.getByLabel(accented('Trip name')).fill('Kyoto Spring');
-  await page.getByLabel(accented('Starts')).fill('2026-12-01'); // dated: a card, with its facts (timeline stage 4)
-  await page.getByLabel(accented('Ends')).fill('2026-12-05');
-  await page.getByRole('button', { name: accented('Start trip') }).click();
-  await expect(page.getByRole('heading', { name: 'Kyoto Spring' })).toBeVisible();
+  await startTrip(page, 'Kyoto Spring', { start: '2026-12-01', end: '2026-12-05' }); // dated: a card, with its facts (timeline stage 4)
   await page.evaluate(() => { location.hash = '#/trips'; });
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(accented('Trips'));
   const facts = page.locator('.trip-card .sub').first(); // its dates and stamps; "in 3 weeks" under it is the browser's own words (Intl)
@@ -201,7 +195,7 @@ test('what the user wrote is told apart from annai\'s words: dir="auto" on trip 
   await expect(panel.locator('.role-item [lang="ja"]')).toHaveText('日本語');
 });
 
-test('Shiori\'s cards, the card on Now and the recap carry the language of their words', async ({ page }) => {
+test('Shiori\'s cards, the latest card on Driving (Now\'s until timeline stage 8) and the recap carry the language of their words', async ({ page }) => {
   await openApp(page, '#/trips');
   const trip = await startTrip(page, 'Kyoto Spring');
   await writeEvent(page, trip, { type: 'out.show', data: { card: { title: '清水寺', text: '直角三角形的骨架，这是我们说的。', place: { name: '清水寺', address: '京都市东山区' }, choice: ['好的'] } } });
@@ -217,14 +211,14 @@ test('Shiori\'s cards, the card on Now and the recap carry the language of their
   await expect(card.getByRole('link', { name: 'Open in Maps' })).not.toHaveAttribute('lang', /./);
   await expect(page.locator('.convo .who').first()).not.toHaveAttribute('lang', /./);
   await expect(page.locator('.convo li.shiori > p').last()).toHaveAttribute('lang', 'ja');
-  await page.goto('/#/now');
+  await page.goto('/#/drive');
   await expect(page.locator('.shiori-card p')).toHaveAttribute('lang', 'ja');
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/recap`);
   await expect(page.getByRole('heading', { level: 1, name: 'Recap' })).toBeVisible();
   await expect(page.locator('.recap-text .md')).toHaveAttribute('lang', 'ja');
 });
 
-test("a personality tuning's card is titled in the screens' words on Talk, Now and the replay, never the stored English (L5h review 7)", async ({ page }) => {
+test("a personality tuning's card is titled in the screens' words on Talk, Driving (Now until timeline stage 8) and the replay, never the stored English (L5h review 7)", async ({ page }) => {
   await openApp(page, '#/trips');
   const trip = await startTrip(page, 'Kyoto Spring');
   await writeEvent(page, trip, { type: 'out.show', data: { id: 'tune-1', card: { title: 'I adjusted my personality', text: '少し短く話すことにしました。' }, tune: { name: 'default', old: null } } });
@@ -233,7 +227,7 @@ test("a personality tuning's card is titled in the screens' words on Talk, Now a
   await expect(page.locator('.convo .card-title')).toHaveText(title);
   await expect(page.locator('.convo .card-title')).not.toHaveAttribute('lang', /./);
   await expect(page.locator('.convo .md')).toHaveAttribute('lang', 'ja');
-  await page.evaluate(() => { location.hash = '#/now'; });
+  await page.evaluate(() => { location.hash = '#/drive'; });
   await expect(page.locator('.shiori-card .card-title')).toHaveText(title);
   await page.evaluate((id) => { location.hash = `#/trip/${encodeURIComponent(id)}/replay`; }, trip);
   const timeline = page.locator('main ol, main ul').filter({ hasText: title }).first();
@@ -340,7 +334,7 @@ test('a reminder\'s label is annai\'s: only its words carry their language', asy
   await expect(line.locator('.line-label')).toHaveText('annai · said aloud');
   await expect(line).not.toHaveAttribute('lang', /./);
   await expect(line.locator('p span')).toHaveAttribute('lang', 'ja');
-  await page.goto('/#/now');
+  await page.goto('/#/drive'); // its latest card (Now's until timeline stage 8)
   const card = page.locator('p.system-line');
   await expect(card).toHaveText('Reminder, said aloud: 京都駅で会いましょう。');
   await expect(card).not.toHaveAttribute('lang', /./);

@@ -1,4 +1,4 @@
-import { h, t, tc, field, savedField, savedCheck, numberIn } from '../dom.js';
+import { h, t, tc, field, savedField, savedCheck, numberIn, crumb } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { photoSettings } from '../../core/photos.js';
 import { canEncode } from '../photo-codec.js';
@@ -89,13 +89,14 @@ export async function renderSettings(ctx) {
       h('p', { class: 'sub', text: t`A report of recent errors and system events, without your files or keys, to paste into a bug report.` }),
       h('div', { class: 'acts' }, h('button', { class: 'btn', type: 'button', onclick: () => copyDiagnostics(ctx) }, t`Copy diagnostics`))),
     developer: () => section(t`Developer`, ...goTo(t`Try GPS, the replay and the recap with a simulated trip.`, '#/simulate', t`Simulate a trip`)),
-    experimental: () => section(t`Experimental`, ...goTo(t`Features still being tried, such as swiping between tabs. Each is off until you turn it on.`, '#/experimental', t`Experimental`)),
+    experimental: () => section(t`Experimental`, ...goTo(t`Features still being tried, and developer tools such as Remote trace.`, '#/experimental', t`Experimental`)),
     erase: () => section(t`Erase`, eraseControls(ctx)),
   };
   /** @type {any[]} */
   const drawn = [];
   for (const id of sectionOrder({ waiting: waits !== null })) drawn.push(await sections[id]());
-  return h('div', { class: 'screen' }, h('h1', { class: 'title', text: t`Settings` }), ...drawn);
+  // A way home of its own: the gear on home is the usual way in, and the top bar is gone (timeline stage 8).
+  return h('div', { class: 'screen' }, h('p', { class: 'crumbs' }, crumb('#/trips', t`Trips`)), h('h1', { class: 'title', text: t`Settings` }), ...drawn);
 }
 
 /**

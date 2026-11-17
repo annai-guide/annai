@@ -20,12 +20,12 @@ import { fileCard, pdfPages, imgDrawsPdf } from '../preview.js';
 let objectUrl = null;
 
 /** The screens a file's crumb goes back to, when it was opened from one (?from=), by their words; else the trip. */
-const BACK = /** @type {Record<string, string>} */ ({ plan: t`Itinerary`, booking: t`Details`, item: t`Details`, now: t`Now`, trip: t`Details`, talk: t`Conversation`, recap: t`Recap` });
+const BACK = /** @type {Record<string, string>} */ ({ plan: t`Itinerary`, booking: t`Details`, item: t`Details`, trip: t`Details`, talk: t`Conversation`, recap: t`Recap` });
 /** The words of a screen a crumb goes back to (cameFrom's name). @param {string} name */
 export const backLabel = (name) => BACK[name] ?? t`Itinerary`;
 /**
- * Where a file opened from: one of BACK's screens of this trip, else null. The Plan and Now by their plain addresses show the open trip:
- * for a file of another (the open trip changed since), its own trip's Plan, and for Now, its trip.
+ * Where a file opened from: one of BACK's screens of this trip, else null. The Plan by its plain address shows the open trip: for a file of
+ * another (the open trip changed since), its own trip's Plan. An old "?from=#/now" (Now went in timeline stage 8) names none of them: the trip.
  * @param {string | undefined} from @param {string} id the file's trip @param {string | null} [open] the open trip
  * @returns {{ hash: string, name: string } | null}
  */

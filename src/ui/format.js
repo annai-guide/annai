@@ -55,13 +55,13 @@ export function outcomeText(outcome) {
   return OUTCOMES[outcome] ?? outcome;
 }
 
-/** The address of a file in a trip; from, the screen its crumb goes back to (a Plan, a booking, Now), else the trip. @param {string} id @param {string} path @param {string} [from] */
+/** The address of a file in a trip; from, the screen its crumb goes back to (a Plan, a booking), else the trip. @param {string} id @param {string} path @param {string} [from] */
 export const fileHref = (id, path, from) => `#/trip/${encodeURIComponent(id)}/file?path=${encodeURIComponent(path)}${from ? `&from=${encodeURIComponent(from)}` : ''}`;
 /** A trip's conversation. @param {string} id */
 export const talkHref = (id) => `#/trip/${encodeURIComponent(id)}/talk`;
 
 /**
- * A trip file's or booking's details; `from` is the screen its crumb goes back to (the trip, the Plan, Now, the Conversation, a plan
+ * A trip file's or booking's details; `from` is the screen its crumb goes back to (the trip, the Plan, the Conversation, a plan
  * item's details), else the trip. @param {string} id @param {string} path "/files/…" or "/bookings/…" @param {string} [from]
  */
 export const bookingHref = (id, path, from) => `#/trip/${encodeURIComponent(id)}/booking?path=${encodeURIComponent(path)}${from ? `&from=${encodeURIComponent(from)}` : ''}`;

@@ -3,7 +3,7 @@ import { openApp, waitForServiceWorker, startModelServer, addProvider, anthropic
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 
-test('Driving: Now hands over when moving fast; the road ahead, directions, big quick-ask buttons, the big dock, and voice Auto on (spec §16.2, §10.5)', async ({ page, context }) => {
+test('Driving: the Itinerary hands over when moving fast; the road ahead, directions, big quick-ask buttons, the big dock, and voice Auto on (spec §16.2, §10.5)', async ({ page, context }) => {
   // Live mode coming on: she sleeps. A quick-ask is the user's: she answers it (a turn of theirs that says nothing is asked again, spec §7.1).
   const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }])), sse(anthropicToolReply([{ name: 'show', input: { card: { title: 'Fuel', text: 'A station in Big Sur village, 25 miles on.' } } }, { name: 'sleep', input: {} }]))] });
   try {
@@ -19,7 +19,7 @@ test('Driving: Now hands over when moving fast; the road ahead, directions, big 
     const trip = await startTrip(page, 'Big Sur');
     const lunch = new Date(Date.now() + 2 * 3_600_000).toISOString().replace(/\.\d+Z$/, 'Z');
     await writeRecords(page, trip, { write: { '/plan/lunch.json': { id: 'lunch', title: 'Lunch at Nepenthe', fixed: true, start: { at: lunch, tz: 'UTC' }, place: { name: 'Nepenthe', lat: 36.2213, lng: -121.7567 } } } });
-    await page.goto('/#/now');
+    await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`); // the Itinerary (Now until timeline stage 8)
     await page.locator('.live-chip').click();
     await expect.poll(() => llm.bodies('/b/v1/messages').length).toBe(1); // she was told live mode is on
     await expect(page.locator('.talk-label')).toHaveText('Tap to talk');
@@ -39,21 +39,33 @@ test('Driving: Now hands over when moving fast; the road ahead, directions, big 
     await page.getByRole('button', { name: 'Fuel' }).click();
     await expect.poll(() => llm.bodies('/b/v1/messages').length).toBe(2);
     expect(JSON.stringify(llm.bodies('/b/v1/messages')[1])).toContain('Where is the next fuel station or charger?');
-    await page.getByRole('main').getByRole('link', { name: 'Now', exact: true }).click();
+    await page.getByRole('main').getByRole('link', { name: 'Back', exact: true }).click();
     await expect(page.locator('nav.dock')).toHaveClass(/\bvoice\b/); // voice is still on: the dock stays big for it
-    // Back on Now while still moving fast: the next fixes keep Now on screen (B2).
-    await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+    // Back on the Itinerary while still moving fast: the next fixes keep it on screen (B2).
+    await expect(page.getByRole('heading', { level: 1, name: 'Itinerary' })).toBeVisible();
     for (let i = 11; i <= 13; i++) {
       await context.setGeolocation({ latitude: 36.60 - i * 0.0011, longitude: -121.89, accuracy: 10 });
       await page.clock.fastForward(5000);
     }
     await expect(page.locator('.live-chip')).toHaveText('GPS on');
-    await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Itinerary' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Driving' })).toHaveCount(0);
   } finally {
     await llm.stop();
   }
 });
+
+/**
+ * A plan item at this moment on the page's clock, in the phone's own zone, so the trip's Itinerary has a today tab (its top: where you are, the chips,
+ * Driving). @param {any} page @param {string} trip
+ */
+async function itemNow(page, trip) {
+  const start = await page.evaluate(async () => {
+    const { isoInZone, deviceZone } = await import(/** @type {string} */ ('/src/core/time.js'));
+    return { at: isoInZone(Date.now(), deviceZone()), tz: deviceZone() };
+  });
+  await writeRecords(page, trip, { write: { '/plan/now.json': { id: 'now', title: 'On the road', fixed: false, start } } });
+}
 
 /** A trip open and GPS on, standing at the start of the road. @param {any} page @param {any} context */
 async function atTheStart(page, context) {
@@ -83,7 +95,7 @@ for (const [where, at] of [['home', '#/trips'], ['the conversation', '#/talk'], 
     await expect.poll(() => new URL(page.url()).hash).toBe(here);
     await roll(page, context, 1, 10);
     await expect(page.getByRole('heading', { name: 'Driving' })).toBeVisible();
-    await page.getByRole('main').getByRole('link', { name: 'Back', exact: true }).click();
+    await page.getByRole('main').getByRole('link', { name: at === '#/trips' ? 'Trips' : 'Back', exact: true }).click(); // home by its name
     await expect(page.getByRole('heading', { name: 'Driving' })).toHaveCount(0);
     await expect.poll(() => new URL(page.url()).hash).toBe(here);
     await roll(page, context, 11, 13);
@@ -109,13 +121,14 @@ test('a reload after leaving Driving: the drive goes on and Driving stays away',
 });
 
 test("typing in the dock's box as moving fast begins: no take-over, the box keeps its words, and that drive doesn't take over later", async ({ page, context }) => {
-  await atTheStart(page, context);
-  await page.goto('/#/now');
+  const trip = await atTheStart(page, context);
+  await itemNow(page, trip);
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`); // today's Itinerary, whose chips say moving fast (Now's did until timeline stage 8)
   await page.getByRole('button', { name: 'Type' }).click();
   const box = page.getByLabel('Message to Shiori');
   await box.fill('Where should we');
   await roll(page, context, 1, 10);
-  await expect(page.locator('.now .chips')).toContainText('GPS on · moving fast');
+  await expect(page.locator('.today-top .chips')).toContainText('GPS on · moving fast');
   await expect(page.getByRole('heading', { name: 'Driving' })).toHaveCount(0);
   await expect(box).toHaveValue('Where should we');
   await box.blur();
@@ -124,14 +137,17 @@ test("typing in the dock's box as moving fast begins: no take-over, the box keep
 });
 
 test("Driving's ← goes where it was entered from, not where an earlier take-over came from", async ({ page, context }) => {
-  await atTheStart(page, context);
+  const trip = await atTheStart(page, context);
+  await itemNow(page, trip);
   await page.goto('/#/trips');
   await roll(page, context, 1, 10);
   await expect(page.getByRole('heading', { name: 'Driving' })).toBeVisible();
-  await page.goto('/#/now');
+  const today = `#/trip/${encodeURIComponent(trip)}/plan`; // today's Itinerary links to Driving (Now did until timeline stage 8)
+  await page.goto(`/${today}`);
   await page.getByRole('main').getByRole('link', { name: 'Driving' }).click();
-  await page.getByRole('main').getByRole('link', { name: 'Now', exact: true }).click();
-  await expect.poll(() => new URL(page.url()).hash).toBe('#/now');
+  await expect(page.getByRole('heading', { name: 'Driving' })).toBeVisible();
+  await page.getByRole('main').getByRole('link', { name: 'Back', exact: true }).click();
+  await expect.poll(() => new URL(page.url()).hash).toBe(today);
 });
 
 test("a fix on Driving keeps the quick asks and the maps links under a finger: a tap across one isn't lost, and the links start from the new place", async ({ page, context }) => {

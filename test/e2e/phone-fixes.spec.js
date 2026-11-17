@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, startTrip, writeRecords, writeEvent, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, modelSetUp, stuckTop } from './helpers.js';
+import { openApp, startTrip, writeRecords, writeEvent, waitForServiceWorker, addProvider, startModelServer, anthropicToolReply, modelSetUp, openItinerary, goToHash } from './helpers.js';
 
 // The screens' side of the user's iPhone findings (2026-10-28, phone-fixes-1).
 
@@ -64,7 +64,8 @@ for (const [width, height] of [[420, 912], [390, 844], [320, 544]]) {
 }
 
 // "I clicked plan -> check this -> open the original, so dropping me to trip looks weird. Also the top tab shows I am in Trips when I am back to plan."
-test('Plan → Check 2 details → Open the original: back goes to the booking, then to the Plan, and the top bar says Itinerary all the way (item 8)', async ({ page }) => {
+// (The top bar and its tabs went in timeline stage 8; the way back is the subject.)
+test('Plan → Check 2 details → Open the original: back goes to the booking, then to the Plan (item 8)', async ({ page }) => {
   await openApp(page);
   const trip = await startTrip(page, 'Alaska');
   const tz = 'America/Anchorage';
@@ -76,27 +77,20 @@ test('Plan → Check 2 details → Open the original: back goes to the booking, 
     },
     text: { '/files/avis.txt': 'Your Avis reservation TESTCAR1' },
   });
-  const tab = () => page.getByRole('navigation', { name: 'Main' }).locator('[aria-current="page"]');
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Itinerary' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Itinerary' })).toBeVisible();
+  await openItinerary(page);
   await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
   await page.getByRole('tabpanel').getByRole('link', { name: 'Check 2 details' }).click(); // an old booking: its name and its start
   await expect(page.getByRole('heading', { level: 1, name: 'Avis TESTCAR1' })).toBeVisible();
-  await expect(tab()).toHaveText('Itinerary');
   await page.getByRole('link', { name: 'Open', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: /avis\.txt/ })).toBeVisible();
-  await expect(tab()).toHaveText('Itinerary');
   await page.getByRole('main').locator('.crumbs a').click();
   await expect(page.getByRole('heading', { level: 1, name: 'Avis TESTCAR1' })).toBeVisible();
-  await expect(tab()).toHaveText('Itinerary');
   await page.getByRole('main').getByRole('link', { name: 'Itinerary', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Itinerary' })).toBeVisible();
-  await expect(tab()).toHaveText('Itinerary');
   // From the trip's own files, back is the trip, as before.
   await page.goto(`/#/trip/${encodeURIComponent(trip)}`);
   await page.getByRole('region', { name: 'Files', exact: true }).getByRole('link', { name: /Avis TESTCAR1/ }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Avis TESTCAR1' })).toBeVisible();
-  await expect(tab()).toHaveText('Trips');
   await expect(page.getByRole('main').locator('.crumbs a')).toContainText('Alaska'); // the crumb names the trip
   await page.getByRole('main').locator('.crumbs a').click();
   await expect(page.getByRole('heading', { level: 1, name: 'Alaska' })).toBeVisible();
@@ -136,10 +130,11 @@ for (const width of [390, 320]) {
     expect(m.y).toBeGreaterThanOrEqual(at.y + at.height - 1);
     expect(m.x).toBeGreaterThanOrEqual(0);
     expect(m.x + m.width).toBeLessThanOrEqual(width);
-    // No taller than the screen less the bar, the title and the dock (CSS only). The title is below the top here (the page's first lines are above it): the
-    // page scrolls it up under the bar, as a finger does, and then the whole menu is in view, above the dock.
+    // No taller than the room under the ⋯ (talk.js's room: down to 16 px above the dock, measured where the ⋯ is at the top of the page); the menu is
+    // taller than that room here (120 to 220 px uncapped), so the cap is what holds it, and the next test has a screen where the room is a fraction of the menu. Then the
+    // page scrolls to its end, as a finger does, and the whole menu is in view, above the dock.
     const dock = /** @type {any} */ (await page.locator('.dock:not(.seat)').boundingBox());
-    expect(m.height).toBeLessThanOrEqual(700 - 56 - 64 - dock.height + 1);
+    expect(m.height).toBeLessThanOrEqual(700 - dock.height - (at.y + at.height) - 16 + 1);
     await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
     await expect(menu).toBeInViewport({ ratio: 1 });
     await expect.poll(async () => /** @type {any} */ (await menu.boundingBox()).y + /** @type {any} */ (await menu.boundingBox()).height).toBeLessThanOrEqual(dock.y + 1);
@@ -147,9 +142,31 @@ for (const width of [390, 320]) {
   });
 }
 
-// On a long conversation the screen opens at the end; the title and ⋯ stay under the app's bar (pass 1 of the drive-plan review).
+test('on a screen too short for it, the conversation menu is cut at the room under the ⋯ (16 px above the dock) and scrolls inside', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 240 });
+  await openApp(page);
+  const trip = await startTrip(page, 'Alaska');
+  for (let i = 0; i < 6; i++) await writeEvent(page, trip, { type: 'out.speak', data: { text: `Answer ${i}: a line long enough to take a little room on a phone.` } });
+  await goToHash(page, `#/trip/${trip}/talk`);
+  await expect(page.locator('.convo .shiori')).toHaveCount(6);
+  await page.waitForFunction(() => scrollY > 0 || document.documentElement.scrollHeight <= innerHeight);
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.getByRole('button', { name: 'Conversation menu', exact: true }).click();
+  await expect(page.getByRole('group', { name: 'Conversation menu' })).toBeVisible();
+  const at = await page.evaluate(() => {
+    const menu = /** @type {HTMLElement} */ (document.querySelector('.tidy-menu'));
+    const toggle = /** @type {HTMLElement} */ (document.querySelector('.talk-head .tidy-toggle')).getBoundingClientRect();
+    const dock = /** @type {HTMLElement} */ (document.querySelector('.dock:not(.seat)')).getBoundingClientRect();
+    return { room: innerHeight - dock.height - toggle.bottom - 16, height: menu.getBoundingClientRect().height, cut: menu.scrollHeight > menu.clientHeight };
+  });
+  expect(at.cut).toBe(true); // the menu holds more than the room: the cap is what shows
+  expect(at.room).toBeGreaterThan(0);
+  expect(Math.abs(at.height - at.room)).toBeLessThanOrEqual(1);
+});
+
+// On a long conversation the screen opens at the end; the title and ⋯ stay at the top of the screen (pass 1 of the drive-plan review).
 for (const width of [390, 320]) {
-  test(`the Conversation's title and ⋯ stay under the app's bar on a long conversation, at ${width} px, opaque, and the menu still opens`, async ({ page }) => {
+  test(`the Conversation's title and ⋯ stay at the top of the screen on a long conversation, at ${width} px, opaque, and the menu still opens`, async ({ page }) => {
     await page.setViewportSize({ width, height: 700 });
     await openApp(page);
     const trip = await startTrip(page, 'Alaska');
@@ -159,15 +176,14 @@ for (const width of [390, 320]) {
     }
     await page.goto('/#/talk');
     await expect(page.locator('.convo .shiori')).toHaveCount(25);
-    // It opens at the end: the last line is in view, and the title row is still at the top, right under the bar.
+    // It opens at the end: the last line is in view, and the title row is still at the top.
     await expect(page.locator('.convo .shiori').last()).toBeInViewport();
     expect(await page.evaluate(() => scrollY)).toBeGreaterThan(500);
     const toggle = page.getByRole('button', { name: 'Conversation menu', exact: true });
     await expect(toggle).toBeInViewport({ ratio: 1 });
-    const bar = await stuckTop(page);
     const row = /** @type {any} */ (await page.locator('.screen > .talk-head').boundingBox());
     await expect(page.locator('.talk-head .talk-name')).toBeInViewport({ ratio: 1 });
-    expect(Math.abs(row.y - bar)).toBeLessThanOrEqual(5); // the row's 4 px of padding is under the bar's edge
+    expect(Math.abs(row.y)).toBeLessThanOrEqual(5); // the row's 4 px of padding is at the screen's edge
     // Opaque: what is under a point of the row, between its text and the lines, is the row, not a line.
     const covered = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.talk-head') !== null, [width / 2, row.y + 2]);
     expect(covered).toBe(true);
@@ -285,9 +301,8 @@ test("a file of a trip that isn't open goes back to its own trip's Plan, not the
   const file = (/** @type {string} */ from) => `/#/trip/${encodeURIComponent(first)}/file?path=${encodeURIComponent('/files/avis.txt')}&from=${encodeURIComponent(from)}`;
   await page.goto(file('#/plan'));
   await expect(page.getByRole('main').locator('.crumbs a')).toHaveAttribute('href', `#/trip/${encodeURIComponent(first)}/plan`);
-  await page.goto(file('#/now'));
+  await page.goto(file('#/now')); // Now's old address (Now went in timeline stage 8): the trip's Details
   await expect(page.getByRole('main').locator('.crumbs a')).toHaveAttribute('href', `#/trip/${encodeURIComponent(first)}`);
-  await expect(page.getByRole('navigation', { name: 'Main' }).locator('[aria-current="page"]')).toHaveText('Trips');
 });
 
 // The second review of phone-fixes-1: every kind of card, in English, Japanese and Chinese, on small, low and sideways phones.
@@ -478,9 +493,9 @@ test('an opened stack in a small box shows each of its cards whole: no Dismiss o
   await frames(page);
   await page.locator('#tn .notice-stack').getByRole('button', { name: /^Show/ }).click();
   await frames(page);
-  // On home the box opens in place: stuck, at most half the room under the bar, scrolling inside itself. Each card scrolled into view there shows whole:
+  // On home the box opens in place: stuck, at most half the screen, scrolling inside itself. Each card scrolled into view there shows whole:
   // a card's sticky Dismiss stays inside its own card, never over another's title.
-  const half = await page.evaluate((top) => (document.documentElement.clientHeight - top) / 2, await stuckTop(page));
+  const half = await page.evaluate(() => document.documentElement.clientHeight / 2);
   expect(await page.locator('#tn').evaluate((el) => el.getBoundingClientRect().height)).toBeLessThanOrEqual(half + 1);
   for (const member of await page.locator('#tn .stack-list > .notice').all()) {
     await member.evaluate((m) => m.scrollIntoView({ block: 'nearest' }));

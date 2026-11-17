@@ -45,11 +45,11 @@ async function paste(page, text) {
   }, text);
 }
 
-test('Trips, tapped while the handed-over files are still being kept, stays: the message goes when they are kept, and the screen is not taken back to the conversation', async ({ page }) => {
+test('Home, gone to while the handed-over files are still being kept, stays: the message goes when they are kept, and the screen is not taken back to the conversation', async ({ page }) => {
   const llm = await startModelServer({ [MESSAGES]: sse(anthropicToolReply([{ name: 'speak', input: { text: 'Got them.' } }, { name: 'sleep', input: {} }])) });
   try {
     await setUp(page, llm.origin);
-    // Keeping each file takes 1.5 s, so the tap on Trips comes while they are being kept, whatever the machine's speed.
+    // Keeping each file takes 1.5 s, so going home comes while they are being kept, whatever the machine's speed.
     await page.evaluate(async () => {
       const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
       const write = Workspace.prototype.write;

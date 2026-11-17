@@ -198,7 +198,7 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
   const plugins = desc.hasPlugins ? checkbox(t`Replace my plugins`, false) : null;
   const keys = desc.hasSecrets ? checkbox(t`Restore API keys (keys already on this device are kept)`, false) : null;
   const status = h('p', { class: 'sub', role: 'status' });
-  // Leaving this screen any way (Cancel, the crumb, Back, the dock, a swipe) is a Cancel: the download stops and nothing is imported.
+  // Leaving this screen any way (Cancel, the crumb, Back, the dock) is a Cancel: the download stops and nothing is imported.
   const leaving = leaveSignal();
   const quit = { signal: leaving.signal, abort: leaving.abort };
   const go = h('button', {
@@ -373,6 +373,8 @@ function fileInbox(ctx, items, trips, archives) {
   const shown = photos.slice(0, 12);
   const urls = shown.map((i) => URL.createObjectURL(i.file));
   return h('div', { class: 'screen' },
+    // The way out without adding: a share from Android or a dropped file opens here, and nothing else on the screen leads home.
+    h('p', { class: 'crumbs' }, crumb('#/trips', t`Trips`)),
     h('h1', { class: 'title', text: t`Add ${what}` }),
     shown.length ? h('ul', { class: 'thumbs' }, ...shown.map((i, k) => h('li', {}, h('img', { src: urls[k], alt: i.file.name, decoding: 'async' })))) : null,
     photos.length > shown.length ? h('p', { class: 'sub', text: plural(photos.length - shown.length, 'and # more photo', 'and # more photos') }) : null,

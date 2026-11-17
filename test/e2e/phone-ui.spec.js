@@ -385,7 +385,7 @@ test('Roles: dragging the handle with a finger reorders, and the page does not s
 });
 
 // The review of 2026-10-22: on a 320 x 544 screen every card had a More, and the wrapped, sticky row of buttons covered a short card's title.
-/** Notices of the test's own, under the top bar. @param {import('@playwright/test').Page} page @param {{ title: string, body: string }[]} cards */
+/** Notices of the test's own, at the top of the page, where annai's are. @param {import('@playwright/test').Page} page @param {{ title: string, body: string }[]} cards */
 async function raise(page, cards) {
   await page.evaluate(async (cards) => {
     const { createNotices } = await import(/** @type {string} */ ('/src/ui/notices.js'));

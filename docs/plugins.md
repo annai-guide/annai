@@ -142,7 +142,7 @@ Pools are safest from an hour before low tide until low tide. Read [the safety n
 
 ## Names and conflicts
 
-Some things plugins register have a name only one plugin can hold: tools, protocols (endpoint types), kinds of backup place, skills, personalities, card types, search providers, and the components (`avatar`, `dock`, `now-card`, `plan-row`). Hooks and the slots that add things up (chips, Now sections, dock actions, tabs, settings pages, screens, themes) never clash.
+Some things plugins register have a name only one plugin can hold: tools, protocols (endpoint types), kinds of backup place, skills, personalities, card types, search providers, and the components (`avatar`, `dock`, `now-card`, `plan-row`). Hooks and the slots that add things up (chips, sections of today's itinerary, dock actions, tabs, settings pages, screens, themes) never clash.
 
 - **One owner per name,** in a fixed order: annai's built-ins, then its official plugins, then third-party plugins by when each was first installed (an update keeps its place), then by id. Plugins start in that order. annai's own components, and the skills it ships, are annai's even when nothing draws them.
 - **The user's choice comes first.** A plugin whose name is taken isn't used, and its page says "Not used: the tool weather is already provided by Places tools", with **Use this one instead**. The choice is kept, shown on both plugins' pages ("The tool weather: this one is used (your choice)") with **Undo**, and holds while your plugin runs; while it is off, the next in order is used. Removing a plugin forgets the choices that named it.
@@ -166,7 +166,7 @@ Every drawing function gets an element annai made, and a `ui` object:
 | | |
 |---|---|
 | `ui.h(tag, attrs, ...children)` | annai's DOM builder (no `innerHTML`, no `style` attribute) |
-| `ui.go(hash)` | goes to a screen, such as `'#/now'` |
+| `ui.go(hash)` | goes to a screen, such as `'#/plan'` (the open conversation's Itinerary). `'#/now'`, Now's address until timeline stage 8, goes to today's Itinerary of the trip in play, which opens that trip's conversation as its address does; with none in play, home |
 | `ui.trip()` | the open trip's id, or null |
 | `ui.toast(text)`, `ui.card({ title, body, tone, actions })` | a toast or a system card (never in Shiori's voice) |
 | `ui.shiori.state()`, `ui.shiori.on(kind, fn)`, `ui.shiori.tap()`, `ui.shiori.send(text)` | Shiori: her state (`{ name, label }`, as the dock shows her: with Koe and Kokoro, Koe's, or Thinking while Kokoro still works behind a Koe that rests or waits, or Kokoro's own card's words over a sleeping Koe; then `over` names Koe's own state beneath it; `wait` is `'ask'` while a card waits for the user's choice and `'wait'` while she waits for them to type or speak), her events (`'state'`, `'event'`), a tap on her, a message to her |
@@ -174,23 +174,23 @@ Every drawing function gets an element annai made, and a `ui` object:
 
 A drawing may return a cleanup function, which annai calls when it draws that place again. A drawing that throws counts against your plugin as a tool's crash does; its element stays empty, and the rest of the screen draws.
 
-Swiping sideways on a screen moves along annai's top bar. Something of yours that scrolls sideways keeps its swipes; for any other sideways gesture of your own (a slider you draw, a map), give its element the class `no-swipe`.
+annai takes no sideways swipes of its own (since timeline stage 8, which took the top bar away): a sideways gesture of yours (a slider you draw, a map) keeps its swipes as it is. The class `no-swipe`, which kept one from the top bar's swipes, is no longer needed and does nothing where it is still set.
 
 To change what a chip or a section shows, keep the element it was given and change it in place from your own code (a timer, `ui.live.onChange`, a hook), until its cleanup runs. Don't register it again for that: each registration, and each removal, makes annai draw the screen and the dock again.
 
 - **Slots,** `annai.ui.slot(slot, item)`; every item has an `id` (lowercase letters, digits and dashes):
   - `'status-chip'`, `{ id, render(el, ui) }`: a chip in the dock's row of chips, after the voice and live chips.
-  - `'now-section'`, `{ id, title, render(el, ui) }`: a section of the Now card, after its chips; drawn at the top of the Itinerary's today too, with the same arguments.
+  - `'now-section'`, `{ id, title, render(el, ui) }`: a section at the top of the Itinerary's today, after its chips (the Now screen's too until timeline stage 8; the same arguments).
   - `'dock-action'`, `{ id, label, icon, run(ui) }`: a button in the dock after Type; `icon` is 1 or 2 characters, `label` its name.
   - `'trip-tab'`, `{ id, title, render(el, ui, { trip }) }`: a button on a trip's page, after Replay, opening a page of yours for that trip.
   - `'settings-page'`, `{ id, title, render(el, ui) }`: a page listed under Settings → From plugins and on your plugin's page.
 - **Card types,** `annai.ui.cardType({ type, name, description, schema?, render(data, el, ui) })`: a kind of card Shiori can show. Her `show` tool gains `type` and `data`, and its description lists your type with its description; `data` must pass `schema` when you give one, or Shiori is told why. The card's label reads "SHIORI · <NAME>". A card of your type shown while your plugin is off shows its title and text.
 - **Components,** `annai.ui.component(name, impl)`. A component is a name with one owner, annai's own until the user chooses yours: declare it in `replaces`, and your install screen asks ("It replaces how Shiori looks from annai"); without it, your plugin's page says Not used, with a switch. annai's own is used when yours fails:
   - `'avatar'`, `{ create({ size }) }` returning `{ el, setState(state), setLevel(0..1, who), glance(dx, dy), blink() }` (spec §16.3).
-  - `'now-card'`, `{ render(el, ui, { title, place, chips, liveOn }) }`: the top of the Now card; drawn at the top of the Itinerary's today too, with the same arguments.
+  - `'now-card'`, `{ render(el, ui, { title, place, chips, liveOn }) }`: the top of the Itinerary's today: where you are and its chips (the Now screen's too until timeline stage 8; the same arguments).
   - `'dock'`, `{ create(ui) }` returning `{ el }`: the whole dock.
-  - `'plan-row'`, `{ render(li, row, ui) }` with `row = { trip, path, when, title, fixed, place, kind }`: one row of the Itinerary's and Now's timetables. A row is a plan item, or a booking no plan item stands for on that day: then `kind` is `'booking'`, `path` the booking's (`/bookings/…`), and `title` the words annai shows ("Check in · Hotel Aurora Test"); a stay's check-in and check-out are two rows with the same `path`. `fixed` is true for a plan item stored as fixed, and for the check-out, return or arrival of a booking when a fixed plan item linked to that booking ends there; for a booking nobody marked it is false (annai draws no mark on that row; since 2026-11-16). The quiet night lines of a stay are annai's own, never passed to a plan-row.
-- **Screens,** `annai.ui.screen({ id, title, render(el, ui), tab?, homeFor? })`: a page at `#/ext/<your id>/<screen id>`. `tab: true` adds it to the top bar; `homeFor: 'walking'` (or `'still'`, `'moving-fast'`) makes annai hand over to it once when live mode says that activity starts, as it hands over to Driving: from Trips, the Conversation, the Itinerary and Now, and not while someone is typing.
+  - `'plan-row'`, `{ render(li, row, ui) }` with `row = { trip, path, when, title, fixed, place, kind }`: one row of the Itinerary's timetable (Now's too until timeline stage 8). A row is a plan item, or a booking no plan item stands for on that day: then `kind` is `'booking'`, `path` the booking's (`/bookings/…`), and `title` the words annai shows ("Check in · Hotel Aurora Test"); a stay's check-in and check-out are two rows with the same `path`. `fixed` is true for a plan item stored as fixed, and for the check-out, return or arrival of a booking when a fixed plan item linked to that booking ends there; for a booking nobody marked it is false (annai draws no mark on that row; since 2026-11-16). The quiet night lines of a stay are annai's own, never passed to a plan-row.
+- **Screens,** `annai.ui.screen({ id, title, render(el, ui), tab?, homeFor? })`: a page at `#/ext/<your id>/<screen id>`. `tab: true` adds a link to it in a quiet row under the head of Trips, annai's home (a top-bar tab until timeline stage 8); `homeFor: 'walking'` (or `'still'`, `'moving-fast'`) makes annai hand over to it once when live mode says that activity starts, as it hands over to Driving: from Trips, the Conversation and the Itinerary, and not while someone is typing. Its page's crumb goes to Trips.
 - **Themes,** `annai.ui.theme('theme.css')`: a CSS file in your package, loaded while your plugin runs. Set annai's CSS variables (in `src/ui/tokens.css`): colors (`--paper`, `--sheet`, `--ink`, `--ink-2`, `--line`, `--ai`, `--ai-ink`, `--ai-wash`, `--amber`, `--amber-wash`, `--risk`, `--risk-wash`, `--ok`, `--ok-wash`, `--lattice`, `--shadow`), type (`--f-display`, `--f-body`, `--f-mono`) and spacing (`--radius`, `--gap`); set them inside `@media (prefers-color-scheme: dark)` too for the dark theme.
 
 ## Following the log

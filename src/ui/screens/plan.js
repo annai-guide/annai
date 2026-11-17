@@ -1,5 +1,6 @@
 import { h, crumb, t, plural } from '../dom.js';
-import { planRowOf } from './now.js';
+import { component, mount } from '../slots.js';
+import { packLine } from '../offline-pack.js';
 import { planRows, planDays, legKm, shioriUndos, PLAN_FILE, BOOKING_FILE } from '../../core/plan.js';
 import { planToIcs } from '../../core/ics.js';
 import { loadLinks, expandLink } from '../../core/links.js';
@@ -43,13 +44,14 @@ export async function renderPlan(ctx, route) {
   // Plan files Shiori changed last, and what Undo does, from one read of the log.
   const undo = await shioriUndos(ctx.ws, id, plan.list);
   const links = await loadLinks({ ws: ctx.ws }).catch(() => null);
+  const pack = await packLine(ctx, id);
 
   const tabs = [...days.map((d) => ({ key: d.key, label: day(d.key, true), rows: d.rows })), ...(untimed.length ? [{ key: '', label: t`No time yet (${num(untimed.length)})`, rows: untimed }] : [])];
   const today = todayOf(ctx.live);
   const picked = `${ctx.entry} ${id}`;
   const first = startTab(tabs, today, kept.get(picked) ?? null);
   const panel = h('div', { class: 'plan-day', role: 'tabpanel' });
-  // Today's tab opens with what Now opens with. Driving shows one trip, so only that trip links to it.
+  // Today's tab opens with where you are, the chips and plugins' sections (todayTop). Driving shows one trip, so only that trip links to it.
   let top = null;
   if (tabs.some((x) => x.key === today)) {
     await ctx.agent?.opening.catch(() => {});
@@ -93,6 +95,7 @@ export async function renderPlan(ctx, route) {
     h('p', { class: 'crumbs' }, crumb(own ? talkHref(id) : `#/trip/${encodeURIComponent(id)}`, h('span', { dir: 'auto', text: scope.title }))),
     h('h1', { class: 'title', text: t`Itinerary` }),
     h('p', { class: 'sub', text: [scope.title, trip.start ? dateRange(trip.start, trip.end) : null].filter(Boolean).join(' · ') }),
+    pack,
     notOnDay.length ? h('section', { class: 'not-on-day', 'aria-label': t`Not on a day` },
       h('h2', { class: 'section', text: t`Not on a day` }),
       h('ol', { class: 'timetable' }, ...notOnDay.map((r) => row(ctx, id, r, undo, here, fallbackTz)))) : null,
@@ -102,6 +105,29 @@ export async function renderPlan(ctx, route) {
     rows.length ? null : h('p', { class: 'empty', text: t`No itinerary yet. Ask Shiori to plan with you, or add a calendar file (.ics) in Details.` }),
     broken ? h('p', { class: 'sub warn', text: broken === 1 ? t`${unread} couldn't be read. Open the files in Details to fix it.` : t`${unread} couldn't be read. Open the files in Details to fix them.` }) : null,
     h('div', { class: 'acts' }, save));
+}
+
+/**
+ * A timetable row: a plugin's (spec §16.4: plan-row) when one replaces annai's, else annai's own, which
+ * also takes the place of a plugin's that fails, at once or later.
+ * @param {any} ctx @param {string} trip @param {import('../../core/plan.js').PlanRow} r @param {string} when @param {() => HTMLElement} own
+ */
+function planRowOf(ctx, trip, r, when, own) {
+  const c = component(ctx, 'plan-row');
+  if (!c) return own();
+  const it = r.item;
+  const li = h('li', { class: ['plan-row', 'plugin-row', constraintOf(it.fixed).cls] });
+  const row = { trip, path: r.path, when, title: rowName(r), fixed: Boolean(it.fixed), place: it.place?.name ? String(it.place.name) : '', kind: String(it.kind ?? '') };
+  /** @type {HTMLElement | null} */
+  let instead = null;
+  mount(ctx, c, li, (ui) => c.item.render(li, row, ui), {
+    what: 'plan-row',
+    onFail: () => {
+      instead = own();
+      li.parentNode?.replaceChild(instead, li); // a later failure: the row is already in its list
+    },
+  });
+  return instead ?? li;
 }
 
 /**

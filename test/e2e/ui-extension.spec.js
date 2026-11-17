@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { startModelServer, anthropicToolReply, fixtureFiles, zipOf, modelSetUp, pickFile, atConversation } from './helpers.js';
+import { startModelServer, anthropicToolReply, fixtureFiles, zipOf, modelSetUp, pickFile, atConversation, goHome } from './helpers.js';
 
 const sse = (/** @type {string} */ body) => ({ status: 200, type: 'text/event-stream', body });
 
@@ -31,12 +31,13 @@ test("a plugin's slots, plan row, screen and theme appear, and go when it is tur
     await expect(dock.getByText('Trail ok')).toBeVisible();
     await dock.getByRole('button', { name: 'Trail check' }).click();
     await expect(page.getByText('Trail checked')).toBeVisible();
-    const main = page.getByRole('navigation', { name: 'Main' });
-    await main.getByRole('link', { name: 'Hike' }).click();
+    // Its screen with a tab is a link in home's row (a top-bar tab until timeline stage 8).
+    await goHome(page);
+    await page.locator('main .home-links').getByRole('link', { name: 'Hike' }).click();
     await expect(page.getByText('Hike screen')).toBeVisible();
     expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--ai').trim())).toBe('rgb(0, 128, 96)');
-    await page.goto('/#/now');
-    await expect(page.getByRole('region', { name: 'Trail' }).getByText('Trail section')).toBeVisible();
+    // Its plan row on the Itinerary (its section, at the top of today's, has its own test below).
+    await page.goto('/#/plan');
     await expect(page.getByText('Pfeiffer Falls (trail row)')).toBeVisible();
     await page.goto(`/#/trip/${encodeURIComponent(trip)}`);
     await page.getByRole('link', { name: 'Trail log' }).click();
@@ -51,27 +52,34 @@ test("a plugin's slots, plan row, screen and theme appear, and go when it is tur
     await page.goto('/#/plugins');
     await page.locator('.card', { hasText: 'Trail UI' }).getByRole('button', { name: 'Turn off' }).click();
     await expect(dock.getByText('Trail ok')).toHaveCount(0);
-    await expect(main.getByRole('link', { name: 'Hike' })).toHaveCount(0);
+    await goHome(page);
+    await expect(page.locator('main .home-links')).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Hike' })).toHaveCount(0);
     expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--ai').trim())).not.toBe('rgb(0, 128, 96)');
   } finally {
     await llm.stop();
   }
 });
 
-test("a plugin can replace the avatar, the Now card and the dock; turned off, annai's own come back", async ({ page }) => {
+test("a plugin can replace the avatar, the Now card (the top of the Itinerary's today) and the dock; turned off, annai's own come back", async ({ page }) => {
   const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
   try {
+    await page.clock.setFixedTime(NOON);
     await modelSetUp(page, llm.origin);
+    await happeningToday(page);
     await install(page, await zipOf(await fixtureFiles('trail-look')), 'Trail look', 'Install anyway and use it');
     const dock = page.getByRole('navigation', { name: 'Shiori' });
     await expect(dock.getByRole('button', { name: 'Talk to Shiori' })).toBeVisible();
     await expect(dock.getByRole('button', { name: 'Type' })).toHaveCount(0);
-    await page.goto('/#/now');
-    await expect(page.getByText('Trail Now card: Big Sur')).toBeVisible();
+    await page.goto('/#/plan');
+    await expect(page.locator('.today-top').getByText('Trail Now card: Big Sur')).toBeVisible();
     await page.goto('/#/plugins');
     await page.locator('.card', { hasText: 'Trail look' }).getByRole('button', { name: 'Turn off' }).click();
     await expect(dock.getByRole('button', { name: 'Type' })).toBeVisible();
     await expect(dock.getByRole('button', { name: 'Talk to Shiori' })).toHaveCount(0);
+    await page.goto('/#/plan'); // and today's top on the Itinerary is annai's own again
+    await expect(page.locator('.today-top .now-place')).toBeVisible();
+    await expect(page.getByText('Trail Now card')).toHaveCount(0);
   } finally {
     await llm.stop();
   }
@@ -93,7 +101,7 @@ async function happeningToday(page) {
 }
 const NOON = new Date('2030-11-27T12:00:00Z'); // the same calendar day from Honolulu to Tokyo
 
-test("the Itinerary's today draws a plugin's Now card and sections, as Now does", async ({ page }) => {
+test("the Itinerary's today draws a plugin's Now card and sections (Now's too, until timeline stage 8)", async ({ page }) => {
   const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
   try {
     await page.clock.setFixedTime(NOON);
@@ -274,6 +282,7 @@ test('8b-2: with a plugin\'s dock, the Conversation shows what Shiori says, and 
 test("8b-3: a Now card or plan row that fails is drawn by annai instead, whether it throws or its promise fails", async ({ page }) => {
   const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))] });
   try {
+    await page.clock.setFixedTime(NOON); // the trip dated around it below: the Itinerary opens on today's, with its Now card
     await modelSetUp(page, llm.origin);
     const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
     await page.evaluate(async (trip) => {
@@ -281,7 +290,9 @@ test("8b-3: a Now card or plan row that fails is drawn by annai instead, whether
       const { createIdbStore } = await import(at('/src/core/store-idb.js'));
       const { Workspace } = await import(at('/src/core/workspace.js'));
       const store = await createIdbStore();
-      await new Workspace(store).write(trip, '/plan/falls.json', { id: 'falls', title: 'Pfeiffer Falls', kind: 'sight', fixed: false, priority: 1, start: { at: '2030-11-27T10:00:00-08:00', tz: 'America/Los_Angeles' } }, { author: 'user' });
+      const ws = new Workspace(store);
+      await ws.patch(trip, '/trip.json', { start: '2030-11-26', end: '2030-11-28' }, { author: 'user' });
+      await ws.write(trip, '/plan/falls.json', { id: 'falls', title: 'Pfeiffer Falls', kind: 'sight', fixed: false, priority: 1, start: { at: '2030-11-27T10:00:00-08:00', tz: 'America/Los_Angeles' } }, { author: 'user' });
       store.close();
     }, trip);
     const broken = {
@@ -293,11 +304,9 @@ test("8b-3: a Now card or plan row that fails is drawn by annai instead, whether
       }`),
     };
     await install(page, await zipOf(broken), 'Looks break', 'Install anyway and use it');
-    await page.goto('/#/now');
-    await expect(page.getByText("GPS is off, so annai isn't following where you are.")).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Turn GPS on' })).toBeVisible();
-    await expect(page.locator('.timetable .plan-row').filter({ hasText: 'Pfeiffer Falls' })).toBeVisible();
     await page.goto('/#/plan');
+    await expect(page.locator('.today-top').getByText("GPS is off, so annai isn't following where you are.")).toBeVisible();
+    await expect(page.locator('.today-top').getByRole('button', { name: 'Turn GPS on' })).toBeVisible();
     await expect(page.locator('.timetable .plan-row').filter({ hasText: 'Pfeiffer Falls' })).toBeVisible();
     expect(await page.locator('.plan-row:not(:visible)').count()).toBe(0);
   } finally {

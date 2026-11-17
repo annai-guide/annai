@@ -40,7 +40,7 @@ export function handover(activity, was, screens) {
 }
 
 /** The screens a take-over may leave: where the user looks at the trip, not where they are doing something else. */
-const TAKEN_FROM = new Set(['trips', 'talk', 'plan', 'now']);
+const TAKEN_FROM = new Set(['trips', 'talk', 'plan']);
 
 /**
  * Where the shell goes as the activity changes, or null. Once per drive: not from under someone typing, and not when moving fast starts again after a light
@@ -101,11 +101,11 @@ export async function askIn(ctx, text) {
 /** A field being typed in. @param {Element | null} el */
 export const isField = (el) => Boolean(el?.matches('textarea, input:not([type=checkbox]):not([type=radio]):not([type=file])'));
 
-/** Driving's ←, to where it was entered from. @param {string | undefined} from @returns {{ href: string, label: string }} */
-export const driveBack = (from = '#/now') => ({ href: from, label: from === '#/now' ? t`Now` : t`Back` });
+/** Driving's ←, to where it was entered from; home when nothing was (a reload, a link). @param {string | undefined} from @returns {{ href: string, label: string }} */
+export const driveBack = (from = '#/trips') => ({ href: from, label: from === '#/trips' ? t`Trips` : t`Back` });
 
 /**
- * What Now and the Itinerary's today open with: where you are, the chips, then plugins' sections. A plugin may draw the first part itself (spec §16.4: now-card); annai's own
+ * What the Itinerary's today opens with: where you are, the chips, then plugins' sections. A plugin may draw the first part itself (spec §16.4: now-card); annai's own
  * when there is none or it fails. It keeps itself current until its nodes leave the page, so a tab hides it rather than removing it.
  * @param {any} ctx @param {{ title: string, rows: import('../core/plan.js').PlanRow[], tz: string }} o @returns {HTMLElement[]}
  */

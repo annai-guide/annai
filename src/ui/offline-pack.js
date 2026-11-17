@@ -5,7 +5,7 @@ import { explainStorageFull } from './storage-full.js';
 import { MAX_BYTES, partWords, failWords } from '../core/pack/download.js';
 
 /**
- * The trip's Offline pack panel and Now's line (spec §11.5): what the pack holds, about how much
+ * The trip's Offline pack panel and the Itinerary's line (spec §11.5): what the pack holds, about how much
  * downloading takes (shown before anything is downloaded), how it stays up to date, and its sources.
  * @typedef {import('../core/pack/keeper.js').PackStatus} PackStatus
  */
@@ -119,7 +119,10 @@ function credits() {
   return linkIn(t`Places © ${osm.textContent}; summaries from Wikipedia and guides from Wikivoyage, ${cc.textContent}.`, osm, cc);
 }
 
-/** Now's line about the pack, with the way to it; null when the plan has no places. @param {any} ctx @param {string} id @returns {Promise<HTMLElement | null>} */
+/**
+ * The Itinerary's line about the pack, with the way to it, on every day (Now's until timeline stage 8): before the trip too, a pack never downloaded says so.
+ * Null when the plan has no places. @param {any} ctx @param {string} id @returns {Promise<HTMLElement | null>}
+ */
 export async function packLine(ctx, id) {
   const s = ctx.pack ? await ctx.pack.status(id).catch(() => null) : null;
   if (!s?.stops) return null;
