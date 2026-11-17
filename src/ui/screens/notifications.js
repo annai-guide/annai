@@ -142,12 +142,19 @@ export async function renderNotifications(ctx) {
     }, t`Send a test notification`);
     acts.push(trial);
   }
+  // Driving Focus lets only people through, never an app (Apple's "Use the Driving Focus on your iPhone", support.apple.com/108384,
+  // read 2026-11-17), so with a navigation app in front annai's reminders come silenced (the user's pick 2026-11-17). A fact only: whether
+  // Driving Focus turns on by itself is the traveller's choice, and annai doesn't advise on a safety feature (the main session, 2026-11-17).
+  const driving = where === 'ios' && st.supported === 'yes'
+    ? h('p', { class: 'sub', text: t`While Driving Focus is on, iOS silences annai's reminders (it lets no app through): they come with no sound or banner until it ends.` })
+    : null;
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)),
     h('h1', { class: 'title', text: t`Notifications` }),
     h('p', { class: 'sub', text: t`Shiori's reminders for a time, and the itinerary's "coming up" and "leave soon", reach you as notifications while annai is closed. Tapping one opens annai, and Shiori catches up.` }),
     status, alert, help,
     acts.length ? h('div', { class: 'acts' }, ...acts) : null,
+    driving,
     section(t`Relay`, field(t`Relay address`, address), h('div', { class: 'acts' }, save),
       h('p', { class: 'sub', text: t`Reminders go through annai's relay, ${/* en */ 'push.annai.guide'}, unless you run your own: its code is in annai's source, under ${/* en */ 'relay/'}.` })),
     section(t`What the relay learns`, h('ul', { class: 'where' },
