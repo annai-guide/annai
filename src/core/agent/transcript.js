@@ -49,7 +49,7 @@ export const KOE_WINDOW = 12;
 export const KOE_JUMP = 6;
 /** Wake reasons that are lines of their own elsewhere. */
 const OWN_LINES = ['user', 'heard', 'note', 'halves'];
-/** Wake reasons of the user's own, which take up a hand-over still owed, as their turn does (loop.js owesAnswer); Try again is a cue. */
+/** Wake reasons of the user's, which take up a hand-over still owed (loop.js owesAnswer); Try again is a cue. */
 const TAKES_OWED = ['user', 'choice', 'heard', 'cue'];
 
 export class Transcript {
@@ -106,11 +106,7 @@ export class Transcript {
   #carry = null;
   /** The newest hand-over since her last turn ended (handover.js). @type {string | null} */
   #handover = null;
-  /**
-   * The hand-over that what is owed now carries when it is taken up (the restart's): her turn under way's own, as its wake records name it (its
-   * first, and a later one where it takes one up); a wake written while the conversation was closed, what it brought, or for one of annai's own
-   * none; undefined when nothing says, so the newest owed (a line of the user's takes it up, as their next turn would). @type {string | null | undefined}
-   */
+  /** What the restart carries: a cut turn's own, as its wakes name it; undefined when nothing says (the newest owed). @type {string | null | undefined} */
   #carried = undefined;
   /** @type {Map<string, string>} Shiori's tool calls by id, to their tool names */
   #calls = new Map();
@@ -170,9 +166,8 @@ export class Transcript {
       /** @type {string | null} */
       let brought = null;
       for (const w of reasons) if (typeof w?.handover === 'string') this.#handover = brought = w.handover;
-      // Her turn's first wake, or one where it takes a hand-over up, names what it carries (null for none); a wake joining it brings its own or
-      // changes nothing; one written while the conversation was closed (no key) joins what a cut turn carried, as join() would, and takes up
-      // an older one still owed only for the user's (a watch, a reminder, a plugin's or a move's wake never does).
+      // Her turn's first wake, or a take-up, names what it carries; one written while the conversation was closed (no key) joins it as join()
+      // would, taking up an older owed one only for the user's (never a watch's, a reminder's, a plugin's or a move's).
       if ('handover' in d) this.#carried = typeof d.handover === 'string' ? d.handover : null;
       else if (brought || this.#carried || d.meanwhile) this.#carried = brought ?? this.#carried;
       else this.#carried = reasons.some((/** @type {any} */ w) => TAKES_OWED.includes(w?.kind)) ? undefined : null;
@@ -405,10 +400,7 @@ export class Transcript {
     this.#koeCalls = null;
   }
 
-  /**
-   * The hand-over the restart wake carries, or null: what is owed now carries it (#carried), else the newest one still owed. A turn of annai's own
-   * cut, or written while the conversation was closed, never carries an older one a failed turn left owed: that one is the user's next line's.
-   */
+  /** The hand-over the restart wake carries, or null: never an older one a failed turn left owed to the user's next line, for annai's own wake. */
   get handover() {
     if (!this.unanswered) return null;
     return this.#carried === undefined ? this.#handover : this.#carried;
