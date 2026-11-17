@@ -201,8 +201,8 @@ export async function writeRecap({ store, ws, llm, trip, codec = null, namer, lo
     if (/\.(md|txt)$/i.test(f.path)) notes.push({ path: `/trip${f.path}`, text: (await ws.readText(trip, f.path).catch(() => '')) ?? '' });
   }
   const app = await readAppSettings(ws);
-  // The language a summary is written in, compaction's rule (summaryLanguage): the Languages setting, then the user's own words; with neither,
-  // the phone's language, as Shiori's answers take it.
+  // The language a summary is written in, compaction's rule (summaryLanguage): the Languages setting, then the language most of the user's lines over
+  // the whole trip are in; with neither, the phone's language, as Shiori's answers take it.
   const said = j.entries.flatMap((e) => (e.kind === 'said' ? [e.text] : []));
   const language = summaryLanguage(said, languageSettings(app, locale));
   const text = recapText(j, { profile, memory, notes, language });

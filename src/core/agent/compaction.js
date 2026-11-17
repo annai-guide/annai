@@ -84,24 +84,36 @@ export const coldSystem = (language) => /* en */ 'You summarize a conversation b
 /**
  * The language a summary is written in, named ("the user's language" got a Spanish summary of an English conversation): compaction's and the
  * recap's, one answer for both (RULES #10). annai's own lines for no words (NO_WORDS: a photo or files sent alone, a heard line it couldn't
- * write down) are never the user's, and are left out here for every caller. The newest line of 3 words or more (units: a Chinese, Japanese or
- * Korean character is a word, the size a stray short reply has, spec §10.9) that names a language decides: a trip's last lines may be "OK", "thanks",
- * an emoji or a place's name of one or two words, and such a place in kanji is no Chinese. Only when no such line does, all the lines together (a lone "新宿" is then Chinese).
- * With the languages setting: the one Shiori answers in if it is fixed; else the listed language that text is in; else the first they speak. With
- * none: that text's language, where a script several languages share is placed by the phone's (listedFor: Han alone is a Japanese phone's Japanese,
- * Cyrillic a Bulgarian phone's Bulgarian, as for a listed language); else, the same answer as for her first message in a conversation
+ * write down) are never the user's, and are left out here for every caller. Each of the rest of 3 words or more (units: a Chinese, Japanese or
+ * Korean character is a word, the size a stray short reply has, spec §10.9) that names a language counts once, for the language it is placed as, and
+ * the language with the most lines is named; a tie goes to the one written in more recently. No one line decides: a trip's lines are also a closing
+ * "Thank you so much!", a place's name, a pasted booking, a tap on a card or a misheard line, and each is one line among the rest (the edge: five
+ * English lines then two Japanese are English). With the languages setting: the one Shiori answers in if it is fixed; else a line counts for the listed
+ * language its text is in, and a line in none of them doesn't count; with no line counted, the first they speak. With none: a line counts for its
+ * text's language, where a script several languages share is placed by the phone's (listedFor: Han alone is a Japanese phone's Japanese, Cyrillic a
+ * Bulgarian phone's Bulgarian, as for a listed language); with no line counted, the same answer as for her first message in a conversation
  * (languagesText): the phone's (with no settings given, the app's: spec §14.3, it ships in English).
  * @param {string | string[]} said what the user wrote and said, the newest last, as the log keeps them @param {import('../languages.js').LanguageSettings} [languages]
  */
 export function summaryLanguage(said, languages) {
   const lines = (Array.isArray(said) ? said : [said]).map((x) => String(x ?? '').trim()).filter((x) => !NO_WORDS.includes(x));
   if (languages?.answer) /* en */ return `${languages.answer.name}, the language Shiori answers in`;
-  const text = lines.findLast((x) => units(x) >= 3 && languageOf(x)) ?? lines.join('\n');
-  const guess = text ? languageOf(text) : '';
-  const wrote = guess && languages ? listedFor(guess, languages.spoken, text) : null;
-  if (languages?.explicit) /* en */ return wrote ? `${wrote.name}, the language the user wrote in last` : `${languages.spoken[0].name}, the first language the user speaks (${named(languages.spoken)})`;
-  if (guess) /* en */ return `${wrote?.name ?? guess}, the language the user wrote in last`;
-  // Nothing chosen and no line of theirs names a language: the same answer as the Languages section's (languagesText), the phone's. Never a quoted line.
+  /** How many lines each language has, in the order each was last written in (so of a tie, the newer comes later). @type {Map<string, number>} */
+  const count = new Map();
+  for (const x of lines) {
+    const guess = units(x) >= 3 ? languageOf(x) : '';
+    const listed = guess && languages ? listedFor(guess, languages.spoken, x) : null;
+    const name = listed?.name ?? (languages?.explicit ? '' : guess); // chosen: a line in none of the listed languages doesn't count
+    if (!name) continue;
+    const n = (count.get(name) ?? 0) + 1;
+    count.delete(name);
+    count.set(name, n);
+  }
+  let most = '';
+  for (const [name, n] of count) if (n >= (count.get(most) ?? 0)) most = name;
+  if (most) /* en */ return `${most}, the language most of what the user wrote is in`;
+  if (languages?.explicit) /* en */ return `${languages.spoken[0].name}, the first language the user speaks (${named(languages.spoken)})`;
+  // Nothing chosen and no line of theirs counts: the same answer as the Languages section's (languagesText), the phone's. Never a quoted line.
   /* en */
   const why = lines.length ? 'nothing the user wrote names a language' : "the user hasn't written anything yet";
   /* en */
