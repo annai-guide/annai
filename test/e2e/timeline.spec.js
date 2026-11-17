@@ -259,12 +259,12 @@ test('voice on: an open mic can be stopped from home, and ← leaves voice on', 
     await waitForServiceWorker(page);
     await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${server.origin}/b`, key: 'sk-chat-test', model: 'b-model' });
     await addProvider(page, 'Custom provider', { ability: 'Transcription', name: 'Ears', url: `${server.origin}/ears`, key: 'sk-ears-test', model: 'ears' });
-    await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in · b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
-    await expect(page.getByText('1. b-model')).toBeVisible();
-    await page.getByLabel('Add a model to speech-in').selectOption({ label: 'ears' });
+    await expect(page.getByText('1. Stand-in · b-model')).toBeVisible();
+    await page.getByLabel('Add a model to speech-in').selectOption({ label: 'Ears · ears' });
     await page.getByRole('button', { name: 'Add to speech-in' }).click();
-    await expect(page.getByText('2. ears')).toBeVisible();
+    await expect(page.getByText('2. Ears · ears')).toBeVisible();
     await page.goto('/#/voice');
     await page.getByRole('radio', { name: 'On', exact: true }).check();
     await expect(page.getByText('Voice is on.')).toBeVisible();

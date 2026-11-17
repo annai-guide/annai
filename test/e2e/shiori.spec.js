@@ -259,7 +259,7 @@ async function setUp(page, origin) {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
   await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${origin}/b`, key: 'sk-test-b', model: 'b-model' });
-  await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+  await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in · b-model' });
   await page.getByRole('button', { name: 'Add to main' }).click();
   await page.goto('/#/trips');
   await page.getByLabel('Trip name').fill('Big Sur');
@@ -419,7 +419,7 @@ test('done: a conversation with tool use, with fallback across two providers, su
     await waitForServiceWorker(page);
     await addProvider(page, 'Custom provider', { ability: 'Chat Completions', name: 'Endpoint A', url: `${llm.origin}/a/v1`, key: 'sk-test-secret-a', model: 'a-model' });
     await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Endpoint B', url: `${llm.origin}/b`, key: 'sk-test-secret-b', model: 'b-model' });
-    for (const m of ['a-model', 'b-model']) {
+    for (const m of ['Endpoint A · a-model', 'Endpoint B · b-model']) {
       await page.getByLabel('Add a model to main').selectOption({ label: m });
       await page.getByRole('button', { name: 'Add to main' }).click();
     }
@@ -527,7 +527,7 @@ test('milestone 2 done: a photo conversation with tool use and fallback across t
       await expect(savedBy(page.getByLabel('Takes photos'))).toHaveText('Saved');
     }
     await page.goto('/#/models');
-    for (const m of ['a-model', 'b-model']) {
+    for (const m of ['Endpoint A · a-model', 'Endpoint B · b-model']) {
       await page.getByLabel('Add a model to main').selectOption({ label: m });
       await page.getByRole('button', { name: 'Add to main' }).click();
     }
@@ -620,7 +620,7 @@ test('review S3: after a photo, the conversation keeps following: her answer sho
     await modelSetUp(page, llm.origin);
     const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
     await page.goto('/#/models');
-    await page.getByRole('link', { name: /Stand-in/ }).click();
+    await page.getByRole('region', { name: 'Providers' }).getByRole('link', { name: /Stand-in/ }).click();
     await page.getByRole('link', { name: /^b-model/ }).click();
     await page.getByLabel('Takes photos').check();
     await expect(savedBy(page.getByLabel('Takes photos'))).toHaveText('Saved');

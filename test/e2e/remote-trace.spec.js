@@ -50,7 +50,7 @@ test('Remote trace, installed from the catalog, sends a conversation to a sink t
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
     await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: KEY, model: 'b-model' });
-    await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in · b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
     await page.goto('/#/trips');
     await startTrip(page, 'Big Sur');
@@ -142,12 +142,12 @@ test('Detailed trace: it stays off with no server; on, a turn the microphone hea
     await waitForServiceWorker(page);
     await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: KEY, model: 'b-model' });
     await addProvider(page, 'Custom provider', { ability: 'Transcription', name: 'Ears', url: `${llm.origin}/ears`, key: 'sk-e2e-ears-key-0123456789', model: 'ears' });
-    await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in · b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
-    await expect(page.getByText('1. b-model')).toBeVisible();
-    await page.getByLabel('Add a model to speech-in').selectOption({ label: 'ears' });
+    await expect(page.getByText('1. Stand-in · b-model')).toBeVisible();
+    await page.getByLabel('Add a model to speech-in').selectOption({ label: 'Ears · ears' });
     await page.getByRole('button', { name: 'Add to speech-in' }).click();
-    await expect(page.getByText('2. ears')).toBeVisible();
+    await expect(page.getByText('2. Ears · ears')).toBeVisible();
     await page.goto('/#/voice');
     await page.getByRole('radio', { name: 'On', exact: true }).check();
     await expect(page.getByText('Voice is on.')).toBeVisible();

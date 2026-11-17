@@ -9,7 +9,7 @@ import { sse } from '../../src/core/llm/sse.js';
 import { parsePartialJSON } from '../../src/core/llm/partial-json.js';
 import { retry } from '../../src/core/llm/retry.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
-import { callRole, candidates, Bench, AllFailedError, COOLDOWN_MS, continueAfter, failedText, restText } from '../../src/core/llm/fallback.js';
+import { callRole, candidates, Bench, AllFailedError, COOLDOWN_MS, continueAfter, failedText, restText, whyWords } from '../../src/core/llm/fallback.js';
 import { activate as scripted } from '../../plugins-official/scripted-model/index.js';
 
 /** A fresh scripted endpoint type, as the plugin registers it. @returns {any} */
@@ -130,6 +130,22 @@ test('why every model failed, for a card: one line per model, each reason once, 
   // With no connection, that is the reason; models that couldn't have answered anyway still say why.
   assert.deepEqual(failedText([attempts[5], attempts[7], { model: 'm-0', name: 'E0', outcome: 'network', ms: 1, error: 'The connection dropped.' }], { offline: true }).split('\n'),
     ['This device is offline.', "step-5-preview: It doesn't take photos."]);
+});
+
+test("a failure card names each model by its provider's name first; a model reads only its name (the user, 2026-11-16)", () => {
+  const attempts = [
+    { model: 'm-0', name: 'Claude Opus 5.5', outcome: 'credit', ms: 1 },
+    { model: 'm-1', name: 'Anthropic: Claude Opus 5.5', outcome: 'benched', ms: 0 },
+  ];
+  const names = (/** @type {string} */ n) => ({ 'Claude Opus 5.5': 'Anthropic · Claude Opus 5.5', 'Anthropic: Claude Opus 5.5': 'OpenRouter · Anthropic: Claude Opus 5.5' })[n] ?? n;
+  const card = whyWords({ attempts }, false, { names }).split('\n');
+  assert.match(card[0], /^Anthropic · Claude Opus 5\.5: /);
+  assert.equal(card[1], 'OpenRouter · Anthropic: Claude Opus 5.5: It is resting for a few minutes after an error.');
+  assert.deepEqual(whyWords({ halves: { koe: { attempts: [attempts[1]] }, kokoro: { attempts: [attempts[0]] } } }, false, { names }).split('\n').map((l) => l.split(': ').slice(0, 2).join(': ')),
+    ['Koe: OpenRouter · Anthropic', 'Kokoro: Anthropic · Claude Opus 5.5'], 'both halves name theirs');
+  const plain = whyWords({ attempts }, true, { names });
+  assert.doesNotMatch(plain, / · /, 'what a model reads is as before');
+  assert.equal(plain, whyWords({ attempts }, true));
 });
 
 test('a model that declines has still answered', async () => {

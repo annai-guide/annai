@@ -67,7 +67,7 @@ test('a new build is found when annai comes back to the screen, without a reload
     await page.clock.setSystemTime(Date.now() + 16 * 60_000);
     await go(page, '#/models');
     await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: 'sk-test-b', model: 'b-model' });
-    await page.getByLabel('Add a model to main').selectOption({ label: 'b-model' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in · b-model' });
     await page.getByRole('button', { name: 'Add to main' }).click();
     await go(page, '#/trips');
     await page.getByLabel('Trip name').fill('Big Sur');

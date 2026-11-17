@@ -4,6 +4,7 @@ import { shownSettings } from '../../core/shown.js';
 import { shownCard, cardWho, cardKind } from '../cards.js';
 import { costs, budgetWords } from '../../core/agent/budgets.js';
 import { whyWords } from '../../core/llm/fallback.js';
+import { modelNames } from '../../core/llm/config.js';
 import { tidyFailed, PHOTO_ONLY } from '../../core/agent/loop.js';
 import { planWords } from '../../core/live/plan-watches.js';
 import { storedTexts } from '../../core/agent/log.js';
@@ -202,10 +203,11 @@ const brief = (text) => {
 /**
  * An error's line in the Conversation, made from its data in the screens' language; null for one stored before it had any, which
  * is shown as stored, in annai's English. @param {any} d the event's data
+ * @param {{ names?: (name: string) => string }} [o] names: as whyWords'
  */
-export function errorWords(d) {
-  if (d.kind === 'model' && d.why) return whyWords(d.why);
-  if (d.kind === 'compaction' && d.why) return tidyFailed(d.why);
+export function errorWords(d, { names } = {}) {
+  if (d.kind === 'model' && d.why) return whyWords(d.why, false, { names });
+  if (d.kind === 'compaction' && d.why) return tidyFailed(d.why, false, { names });
   if (d.kind === 'budget' && (d.which === 'steps' ? typeof d.steps === 'number' : typeof d.perDay === 'number')) return budgetWords(d).body;
   if (d.kind === 'silent') return t`Her model finished without saying anything to you.`;
   if (d.kind === 'stuck') return t`Three identical tool calls in a row with identical results.`;
@@ -291,6 +293,8 @@ export async function renderTalk(ctx, route) {
   // The lines' languages (`lang`): the font and the screen reader's voice follow them. The user's by their text; Shiori's by the language she is set to answer in, else by her text.
   const mine = wording(app);
   const hers = wording(app, true);
+  // Her lines' models, by their provider's name too.
+  const names = modelNames(await ctx.llm?.config().catch(() => null));
   const scope = route?.parts[0] === 'talk' && route.parts[1] === ME ? ME : agent.scope;
   const readOnly = scope === ME;
   const rec = readOnly ? null : await ctx.store.tx(['scopes'], 'readonly', (/** @type {any} */ tx) => tx.getScope(agent.trip));
@@ -375,7 +379,7 @@ export async function renderTalk(ctx, route) {
   };
   /** A note of the halves', quietly naming the model that wrote it (her own lines say it in their label). @param {any} d @param {HTMLElement} li */
   const by = (d, li) => {
-    const who = modelWords(d.by);
+    const who = modelWords(d.by, names);
     if (who) li.append(h('span', { class: 'sub by', text: who }));
     return li;
   };
@@ -430,7 +434,7 @@ export async function renderTalk(ctx, route) {
     }
     if (e.type === 'out.speak') {
       const said = String(texts.text ?? '');
-      const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }));
+      const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }, { names }));
       if (!d.voice) return h('li', { class: lineClass(line, 'shiori') }, h('span', { class: 'who', text: t`Shiori` }), h('p', { ...hers(said), text: said }), lineLabel(line));
       // Said aloud: its words show like any of hers, marked by the label; with "Show what she says" off, they fold away until asked (spec §2 principle 4, §16.1).
       if (showWords) return h('li', { class: lineClass(line, 'shiori said') }, h('span', { class: 'who', text: t`Shiori` }), h('p', { ...hers(said), text: said }), lineLabel(line));
@@ -470,7 +474,7 @@ export async function renderTalk(ctx, route) {
       if (typeof kind === 'string' && !plain.title && !plain.text) plain.title = cardKind(ctx, d.card) || kind;
       const card = readOnly ? shownCard({ ...d, card: plain }, { ctx, say: hers }) : shownCard(d, { ctx, onChoice: (o) => agent.send(o, { chose: true }), say: hers });
       const undo = d.tune && !readOnly ? tuneUndo(ctx, d.tune) : null;
-      const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }));
+      const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }, { names }));
       return h('li', { class: lineClass(line, 'shiori') }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), card, undo, lineLabel(line));
     }
     if (e.type === 'grounded') return groundedCard(d, texts, mine); // Google's words: by their script alone, not the language she answers in
@@ -480,7 +484,7 @@ export async function renderTalk(ctx, route) {
         if (d.own) for (const b of buttons) b.disabled = true;
         agent.answer(d.tap ?? d.id, o);
       } }, String(o)));
-      const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }));
+      const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }, { names }));
       // annai's own (Agent.confirm): the label says who asks; under its buttons, while they wait, that a tap answers it (the user's pick, 2026-11-13).
       const node = h('li', { class: lineClass(line, 'shiori') }, h('span', { class: 'who', text: d.own ? /* en */ 'annai' : t`Shiori` }), h('p', { ...hers(String(d.question ?? '')), text: String(d.question ?? '') }), h('div', { class: 'acts' }, ...buttons), d.own && !readOnly ? h('span', { class: 'sub tap-hint', text: t`Tap to answer` }) : null, lineLabel(line));
       asks.set(d.id, node);
@@ -493,7 +497,7 @@ export async function renderTalk(ctx, route) {
       return null;
     }
     if (e.type === 'reminder') {
-      const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }));
+      const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }, { names }));
       return h('li', { class: lineClass(line, 'note') }, h('p', {}, reminderWords(d, mine)), lineLabel(line));
     }
     // What the halves tell each other, set apart from her reminders; annai's own blocks to them stay in the Trace.
@@ -540,7 +544,7 @@ export async function renderTalk(ctx, route) {
       // Out of sight of the card at the page's top: the note itself offers Try again, until something newer is in the conversation.
       const again = (d.kind === 'model' || d.kind === 'silent') && !d.quiet && !d.aside && !readOnly ? h('button', { class: 'btn', type: 'button', onclick: (/** @type {Event} */ ev) => { /** @type {HTMLButtonElement} */ (ev.currentTarget).remove(); agent.tryAgain(); } }, t`Try again`) : null;
       // Made from its data; an older entry's message is as stored, in annai's English.
-      const words = errorWords(d);
+      const words = errorWords(d, { names });
       const li = h('li', { class: 'system' }, h('strong', { text: d.kind === 'model' ? t`Shiori can't reach her model` : d.kind === 'compaction' ? t`Shiori couldn't tidy up the conversation` : d.kind === 'budget' ? t`A budget ended her turn` : t`Her turn ended` }),
         h('p', words === null ? { lang: 'en', text: String(d.message ?? '') } : { text: words }), again);
       retry?.again.remove();

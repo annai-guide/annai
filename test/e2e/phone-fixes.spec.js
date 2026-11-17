@@ -186,20 +186,20 @@ for (const width of [390, 320]) {
 
 // "the drag model also does not work as intended. the long press and hold text selection will show up..." (IMG_3014)
 /** A role entry's handle, by its model's name whatever its place says. @param {import('@playwright/test').Locator} list @param {string} m */
-const gripOf = (list, m) => list.getByRole('button', { name: new RegExp(`^Reorder ${m}, \\d of \\d$`) });
+const gripOf = (list, m) => list.getByRole('button', { name: new RegExp(`^Reorder Endpoint ${m} · ${m}, \\d of \\d$`) });
 /** A main list of three models, a1, a2 and a3. @param {import('@playwright/test').Page} page */
 async function threeModels(page) {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
   for (const m of ['a1', 'a2', 'a3']) {
     await addProvider(page, 'Custom provider', { ability: 'Chat Completions', name: `Endpoint ${m}`, url: `https://${m}.example.test/v1`, key: `sk-test-${m}`, model: m, look: false });
-    await page.getByLabel('Add a model to main').selectOption({ label: m });
+    await page.getByLabel('Add a model to main').selectOption({ label: `Endpoint ${m} · ${m}` });
     await page.getByRole('button', { name: 'Add to main' }).click();
-    await expect(page.getByText(new RegExp(`\\d\\. ${m}$`))).toBeVisible();
+    await expect(page.getByText(new RegExp(`\\d\\. Endpoint ${m} · ${m}$`))).toBeVisible();
   }
   const main = page.locator('.role', { has: page.getByRole('heading', { name: 'Main: talks with you' }) });
   const order = () => main.locator('.role-item > span').allTextContents();
-  await expect.poll(order).toEqual(['1. a1', '2. a2', '3. a3']);
+  await expect.poll(order).toEqual(['1. Endpoint a1 · a1', '2. Endpoint a2 · a2', '3. Endpoint a3 · a3']);
   return { main, order };
 }
 
@@ -232,7 +232,7 @@ test('a finger held on the handle, then moved, still drags: nothing is selected 
   await page.waitForTimeout(900); // held, as a long press
   for (let k = 1; k <= 6; k++) await touch('touchMove', from.y + ((to.y + 6 - from.y) * k) / 6);
   await touch('touchEnd', to.y);
-  await expect.poll(order).toEqual(['1. a2', '2. a3', '3. a1']);
+  await expect.poll(order).toEqual(['1. Endpoint a2 · a2', '2. Endpoint a3 · a3', '3. Endpoint a1 · a1']);
   expect(await page.evaluate(() => String(getSelection()))).toBe('');
 });
 

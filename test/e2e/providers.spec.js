@@ -52,8 +52,8 @@ test('adding OpenAI installs it and what it needs with no question; its page sho
   expect((await secretIds(page)).filter((s) => s.startsWith('llm:'))).toHaveLength(1);
   // Main has its model; its voice is behind the browser's, never ahead of it.
   await page.getByRole('link', { name: 'Models', exact: true }).click();
-  await expect(page.getByText('1. GPT-6.1 Sol')).toBeVisible();
-  await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(["1. Browser voice (the browser's own; some voices go online)", '2. OpenAI: GPT-4o mini TTS (Marin)']);
+  await expect(page.getByText('1. OpenAI · GPT-6.1 Sol')).toBeVisible();
+  await expect(roleItems(page, "Speech out: Shiori's voice")).toHaveText(["1. Browser voice (the browser's own; some voices go online)", '2. OpenAI · OpenAI: GPT-4o mini TTS (Marin)']);
   // Remove: everything it brought goes.
   await page.locator('a.card', { hasText: 'OpenAI' }).click(); // the provider's card; the models in roles link too
   await expect(page.getByText('Removes its key, its models and their places in roles, and the OpenAI plugin, with OpenAI Responses and OpenAI-compatible speech, which nothing else needs.')).toBeVisible();
@@ -83,7 +83,7 @@ test('two OpenAI providers keep a key each; removing one keeps the other and the
     await page.getByRole('link', { name: 'Models', exact: true }).click();
   }
   // The second one's models have names of their own.
-  await page.getByRole('link', { name: /^OpenAI \(home\)/ }).click();
+  await page.getByRole('region', { name: 'Providers' }).getByRole('link', { name: /^OpenAI \(home\)/ }).click();
   await expect(page.getByRole('link', { name: /^GPT-6 Luna \(2\)/ })).toBeVisible();
   // It isn't the last of its plugin: the plugin stays.
   await expect(page.getByText('Removes its key, its models and their places in roles.')).toBeVisible();
@@ -91,7 +91,7 @@ test('two OpenAI providers keep a key each; removing one keeps the other and the
   await page.getByRole('button', { name: 'Tap again to remove it' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Models' })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Providers' }).getByRole('listitem')).toHaveCount(1);
-  await expect(page.getByRole('link', { name: /^OpenAI \(work\)/ })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Providers' }).getByRole('link', { name: /^OpenAI \(work\)/ })).toBeVisible();
   expect(await installedIds(page)).toContain('provider-openai');
   expect((await secretIds(page)).filter((s) => s.startsWith('llm:'))).toHaveLength(1);
 });

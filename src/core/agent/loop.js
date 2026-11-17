@@ -4,7 +4,7 @@ import { readAppSettings } from '../settings.js';
 import { languageSettings, strayLanguage } from '../languages.js';
 import { AllFailedError, estimateTokens, candidates, chatCandidates, whyOf, whyWords, levelOf } from '../llm/fallback.js';
 import { ProviderError } from '../llm/contract.js';
-import { modelOf, providerOf, updateModel } from '../llm/config.js';
+import { modelOf, modelNames, providerOf, updateModel } from '../llm/config.js';
 import { NotFoundError } from '../workspace.js';
 import { fromBase64, toBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
@@ -2657,11 +2657,12 @@ export class Agent {
       // Leaving the page, or a tap on Shiori that cut it short: nothing failed, so no card and no error.
       if (this.#leaving || (e instanceof ProviderError && e.kind === 'cancelled')) return null;
       const why = await this.#whyOf(e, mode === 'cold' ? 'utility' : 'main');
+      const names = modelNames(await this.llm.config());
       if (!o.forced) {
-        await this.#notice({ tone: 'info', title: t`Shiori couldn't tidy up the conversation`, body: sentences(whyWords(why), t`She will try again later.`) });
+        await this.#notice({ tone: 'info', title: t`Shiori couldn't tidy up the conversation`, body: sentences(whyWords(why, false, { names }), t`She will try again later.`) });
         return false;
       }
-      await this.#notice({ tone: 'warn', title: t`Shiori couldn't tidy up the conversation`, body: tidyFailed(why) });
+      await this.#notice({ tone: 'warn', title: t`Shiori couldn't tidy up the conversation`, body: tidyFailed(why, false, { names }) });
       // The log keeps why as data, for the Conversation's words, and annai's English for the Trace.
       await this.#log({ type: 'error', actor: 'system', data: { kind: 'compaction', wake: wakeId, why, message: tidyFailed(why, true) } });
       return null;
@@ -2696,7 +2697,7 @@ export class Agent {
       // said elsewhere, or its card already says why
     } else if (last?.outcome === 'image') await this.#cantSend(refusedText(readRefusal(last.error ?? '')), wakeId); // repairs ran out
     // The card for both halves has a key of its own (Halves takes it down at either half's good turn).
-    else await this.#notice({ tone: 'warn', title: t`Shiori can't reach her model`, body: whyWords(why), key: why.halves ? 'model:both' : 'model' });
+    else await this.#notice({ tone: 'warn', title: t`Shiori can't reach her model`, body: whyWords(why, false, { names: modelNames(await this.llm.config()) }), key: why.halves ? 'model:both' : 'model' });
     // The log keeps why as data, for the Conversation's words, and annai's English for the Trace.
     await this.#log({ type: 'error', actor: 'system', data: { kind: 'model', wake: wakeId, why, message: whyWords(why, true), ...(quiet ? { quiet: true } : {}) } });
   }
@@ -4079,11 +4080,14 @@ function refusedText(learned) {
     : t`The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.`;
 }
 
-/** Why tidying up failed, with what the user can do: the card's words, or (plain) annai's English for the log. @param {import('../llm/fallback.js').Why} why @param {boolean} [plain] */
-export function tidyFailed(why, plain = false) {
+/**
+ * Why tidying up failed, with what the user can do: the card's words, or (plain) annai's English for the log. @param {import('../llm/fallback.js').Why} why @param {boolean} [plain]
+ * @param {{ names?: (name: string) => string }} [o] names: as whyWords'
+ */
+export function tidyFailed(why, plain = false, { names } = {}) {
   /* en */
   if (plain) return `${whyWords(why, true)} Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.`;
-  return sentences(whyWords(why), t`Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.`);
+  return sentences(whyWords(why, false, { names }), t`Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.`);
 }
 
 /**

@@ -65,3 +65,16 @@ test('the trace says what was heard, and what it turned out to say', () => {
   assert.equal(traceSummary({ type: 'net.request', data: { kind: 'speech-out', model: 'GPT-4o mini TTS', outcome: 'ok', status: 200, ms: 800, format: 'ogg', bytes: 30_000 } }), 'GPT-4o mini TTS · ok (200) · 800 ms · ogg, 29 kB');
   assert.equal(traceSummary({ type: 'net.request', data: { kind: 'model', model: 'Gemini 3.8 Flash', outcome: 'ok', status: 200, ms: 2100, audio: [{ format: 'wav', bytes: 53_392 }] } }), 'Gemini 3.8 Flash · ok (200) · 2100 ms · audio: wav, 52 kB');
 });
+
+test("the Trace names a model by its provider's name first: the one its request kept, else the one that has the name now (the user, 2026-11-16)", () => {
+  const names = (/** @type {string} */ n) => ({ 'Claude Opus 5.5': 'Anthropic · Claude Opus 5.5', 'GPT Transcribe': 'OpenAI · GPT Transcribe' })[n] ?? n;
+  // A request kept its provider's name as it was then (call.js), so a provider renamed since doesn't rename it.
+  assert.equal(traceSummary({ type: 'net.request', data: { kind: 'model', endpoint: 'OpenRouter', model: 'Anthropic: Claude Opus 5.5', outcome: 'ok', status: 200, ms: 900 } }, { names }),
+    'OpenRouter · Anthropic: Claude Opus 5.5 · ok (200) · 900 ms');
+  assert.equal(traceSummary({ type: 'live.session', data: { state: 'open', endpoint: 'Gemini', model: 'Gemini 3.8 Live' } }, { names }), 'live session open · Gemini · Gemini 3.8 Live');
+  // A turn and a transcript kept only the model's name.
+  assert.equal(traceSummary({ type: 'model.turn', data: { role: 'main', answeredBy: 'Claude Opus 5.5', attempts: [{}] } }, { names }), 'main: Anthropic · Claude Opus 5.5 · 1 attempt');
+  assert.equal(traceSummary({ type: 'model.turn', data: { role: 'main', answeredBy: null, attempts: [] } }, { names }), 'main: no answer · 0 attempts');
+  assert.equal(traceSummary({ type: 'heard.text', data: { of: 's-1', text: 'hi', by: 'GPT Transcribe' } }, { names }), '"hi" · written down by OpenAI · GPT Transcribe');
+  assert.equal(traceSummary({ type: 'heard.text', data: { of: 's-1', text: 'hi', by: 'Phone dictation' } }, { names }), '"hi" · written down by Phone dictation');
+});

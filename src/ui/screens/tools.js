@@ -1,7 +1,7 @@
 import { h, crumb, linkIn, t, field, autosave, savedRadios, savedCheck, savingNote, tc } from '../dom.js';
 import { toolList, toolSwitches, setToolSwitch, ALWAYS_ON } from '../../core/agent/tools.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
-import { modelOf, providerOf } from '../../core/llm/config.js';
+import { modelOf, modelNames, providerOf } from '../../core/llm/config.js';
 import { searchPanel } from '../search-panel.js';
 import { list } from '../format.js';
 import { toolWords } from './provider.js';
@@ -21,6 +21,8 @@ const JINA_KEYS = 'https://jina.ai/';
  */
 export async function ownTools(ctx) {
   const cfg = await ctx.llm.config();
+  // By their provider's name too: two providers of one plugin offer the same tool.
+  const names = modelNames(cfg);
   /** @type {Map<string, any>} a plugin's manifest as the screens show it, by its id */
   const shown = new Map();
   /** @type {Map<string, { id: string, name: string, models: string[] }>} */
@@ -35,7 +37,7 @@ export async function ownTools(ctx) {
     for (const pt of m.providerTools ?? []) {
       if (pt.paidOnly && free) continue; // not on a key on the free tier (G4)
       const p = provider.get(pt.id) ?? { id: pt.id, name: String(said.get(pt.id)?.name ?? pt.name), models: [] };
-      p.models.push(m.name);
+      p.models.push(names(m.name));
       provider.set(pt.id, p);
     }
   }

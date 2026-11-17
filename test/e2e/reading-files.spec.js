@@ -10,7 +10,7 @@ const booking = async () => ({ name: 'booking.pdf', mimeType: 'application/pdf',
 /** The stand-in model sees photos and reads no PDFs, set on its page (not left to a provider's defaults). @param {import('@playwright/test').Page} page */
 async function seesPhotosReadsNoPdfs(page) {
   await page.goto('/#/models');
-  await page.getByRole('link', { name: /Stand-in/ }).click();
+  await page.getByRole('region', { name: 'Providers' }).getByRole('link', { name: /Stand-in/ }).click();
   await page.getByRole('link', { name: /^b-model/ }).click();
   await expect(page.getByLabel('Provider model id')).toHaveValue('b-model');
   await page.getByLabel('Takes photos').check();

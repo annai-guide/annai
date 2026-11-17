@@ -5,8 +5,12 @@ import { Workspace, ValidationError } from '../../src/core/workspace.js';
 import { ensureBaseScopes, SYS_SETTINGS } from '../../src/core/scopes.js';
 import {
   CHAT_ROLES, KOE_ROLES, SPEECH_ROLES, readConfig, providerOf, providerBase, endpointOf, modelOf, modelBase, diffLayer, newProvider, newModel,
-  saveProvider, saveModel, saveRoles, removeProviderRecords, removeModel, setKey, getKey, abilityOf, speechKind, sendKey,
+  saveProvider, saveModel, saveRoles, removeProviderRecords, removeModel, setKey, getKey, abilityOf, speechKind, sendKey, modelNames, withProvider,
 } from '../../src/core/llm/config.js';
+import { addProvider } from '../../src/core/llm/providers.js';
+import { official } from './provider-kit.js';
+import { setWords } from '../../src/core/l10n.js';
+import { readFile } from 'node:fs/promises';
 
 async function setup() {
   const store = createMemoryStore();
@@ -210,4 +214,49 @@ test("deleting a reasoning level that came from a description sticks", () => {
   const m = newModel('pv-1', 'chat', { template: { id: 'p/chat/opus', version: '1.0.0', values: { providerId: 'opus', reasoning: { low: { effort: 'low' }, max: { effort: 'max' } } } } });
   const mBase = modelBase(m);
   assert.deepEqual(modelOf({ ...m, user: diffLayer({ ...mBase, reasoning: { low: { effort: 'low' } } }, mBase) }).reasoning, { low: { effort: 'low' } });
+});
+
+// The user, 2026-11-16: "I have official a\\ api and openrouter, they both have opus 5.5 and stuff, hard to distinguish which one if from
+// openrouter and which one if from official api". Every screen names a model by its provider's name, then its own.
+test("a model is named by its provider's name first, from the one rule every screen takes: Anthropic's Opus and OpenRouter's are told apart", async () => {
+  const ctx = await setup();
+  await addProvider(ctx, await official('provider-anthropic'), { key: 'sk-a' });
+  await addProvider(ctx, await official('provider-openrouter'), { key: 'sk-r' });
+  // OpenRouter a second time, under the user's own name: its models have the same names, made unique by "(2)" (providers.js named).
+  await addProvider(ctx, await official('provider-openrouter'), { key: 'sk-w', name: 'OpenRouter (work)' });
+  const cfg = await readConfig(ctx.ws);
+  const names = modelNames(cfg);
+  assert.equal(names('Claude Opus 5.5'), 'Anthropic · Claude Opus 5.5');
+  assert.equal(names('Anthropic: Claude Opus 5.5'), 'OpenRouter · Anthropic: Claude Opus 5.5');
+  assert.equal(names('Anthropic: Claude Opus 5.5 (2)'), 'OpenRouter (work) · Anthropic: Claude Opus 5.5 (2)');
+  // Every model has one, and no two are named alike.
+  const shown = Object.values(cfg.models).map((m) => names(modelOf(m).name));
+  assert.ok(shown.every((n) => / · /.test(n)), shown.join());
+  assert.equal(new Set(shown).size, shown.length);
+});
+
+test("a model is named by its provider's name as the user renamed it; a name no model has now, or none, is shown as it is", async () => {
+  const ctx = await setup();
+  const p = router();
+  const m = newModel(p.id, 'chat', { user: { providerId: 'anthropic/claude-opus-5.5', name: 'Opus' } });
+  await saveProvider(ctx.ws, p, [m]);
+  assert.equal(modelNames(await readConfig(ctx.ws))('Opus'), 'OpenRouter · Opus');
+  await saveProvider(ctx.ws, { ...p, user: { name: 'My router' } });
+  assert.equal(modelNames(await readConfig(ctx.ws))('Opus'), 'My router · Opus', "the provider's name as Models' list of providers shows it");
+  // A line written by a model removed since, a stand-in's name, and a screen with no configuration read keep the name they have.
+  await removeModel(ctx.ws, m.id);
+  const now = modelNames(await readConfig(ctx.ws));
+  assert.equal(now('Opus'), 'Opus');
+  assert.equal(now('Phone dictation'), 'Phone dictation');
+  assert.equal(modelNames(null)('Opus'), 'Opus');
+  assert.equal(withProvider('', 'Opus'), 'Opus');
+});
+
+test("the provider's name comes first in each language's own words for the pair", async (t) => {
+  t.after(() => setWords('en', null));
+  for (const tag of ['ja', 'zh-Hans', 'zh-Hant']) {
+    const words = JSON.parse(await readFile(new URL(`../../l10n/${tag}.json`, import.meta.url), 'utf8'));
+    setWords(tag, words);
+    assert.match(withProvider('OpenRouter', 'Claude Opus 5.5'), /^OpenRouter\s?\S\s?Claude Opus 5\.5$/u, tag);
+  }
 });

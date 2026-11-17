@@ -1,5 +1,5 @@
 import { validate } from '../schema.js';
-import { t } from '../l10n.js';
+import { t, tc } from '../l10n.js';
 import { mergePatch, diffPatch } from '../patch.js';
 import { ValidationError, NotFoundError } from '../workspace.js';
 import { SYS_SETTINGS, newId } from '../scopes.js';
@@ -97,6 +97,28 @@ const KIND_NAMES = /** @type {Record<string, string>} */ ({ chat: 'Chat', transc
  * (decision 10), as the Add screen names them. @param {Pick<Ability, 'id' | 'name' | 'named' | 'kind'>} a @param {{ shown?: any }} [o]
  */
 export const abilityName = (a, { shown } = {}) => (a.named ? shown?.abilities?.[a.id]?.name ?? a.name : kindWords(a.kind) ?? a.name);
+
+/**
+ * A model as a screen names it away from its provider's own pages: its provider's name, then its own ("<provider> · <model>"), as
+ * one model is often had from two providers (the user, 2026-11-16). provider: as Models' list of providers names it; '' for none.
+ * @param {string} provider @param {string} model
+ */
+export const withProvider = (provider, model) => (provider ? tc('a model, after its provider')`${provider} · ${model}` : model);
+
+/**
+ * How the screens name a model from its name (all a line, a failure or the Trace keeps of it): withProvider, by the provider of the model
+ * that has the name now; names are unique (checkModel). A name no model has now (removed, renamed, a stand-in) stays as it is.
+ * @param {ModelConfig | null | undefined} cfg @returns {(name: string) => string}
+ */
+export function modelNames(cfg) {
+  /** @type {Map<string, string>} */
+  const of = new Map();
+  for (const rec of Object.values(cfg?.models ?? {})) {
+    const p = cfg?.providers[rec.provider];
+    if (p) of.set(modelOf(rec).name, providerOf(p).name);
+  }
+  return (name) => withProvider(of.get(name) ?? '', name);
+}
 const MODEL_DEFAULTS = Object.freeze({
   name: '', providerId: '', input: ['text'], tools: true, contextWindow: null, maxOutput: null, prices: null,
   cacheTtls: [], reasoning: {}, tunables: {}, extraBody: {}, providerTools: [], logprobs: false, images: {},

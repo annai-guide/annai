@@ -8,11 +8,14 @@ import { FILES_ONLY } from '../core/handover.js';
  *   kind: which row of the table in the second-drive design; tint: its colour, which only assists: label always says it in words
  */
 
-/** The model that wrote a line, in words: "" for a line stored with none (`by: null`). @param {By} b */
-export function modelWords(b) {
+/**
+ * The model that wrote a line, in words: "" for a line stored with none (`by: null`). names: the screens' names for models (config.js
+ * modelNames). @param {By} b @param {(name: string) => string} [names]
+ */
+export function modelWords(b, names = (n) => n) {
   if (!b?.name) return '';
-  if (!b.first || b.first === b.name) return b.name;
-  return b.tried ? t`${b.name} · ${b.first} didn't answer` : t`${b.name} · instead of ${b.first}`;
+  if (!b.first || b.first === b.name) return names(b.name);
+  return b.tried ? t`${names(b.name)} · ${names(b.first)} didn't answer` : t`${names(b.name)} · instead of ${names(b.first)}`;
 }
 
 /** A reminder annai showed that is really Kokoro's words: answer, or the title an older entry stored. @param {any} d the event's data */
@@ -22,9 +25,10 @@ export const kokorosWords = (d) => d.answer === true || d.title === /* en */ "Sh
  * What a line of the Conversation is, and what it says of itself (the second-drive design, section 1): the one place that decides, from
  * fields the events already carry, so an old conversation draws correctly too. Null: not one of these lines.
  * @param {{ type: string, data?: any }} e the event, with its stored words in its data
+ * @param {{ names?: (name: string) => string }} [o] names: as modelWords'
  * @returns {Line | null}
  */
-export function lineKind(e) {
+export function lineKind(e, { names } = {}) {
   const d = e.data ?? {};
   /** @type {(kind: string, tint: Line['tint'], icon: Line['icon'], label: string) => Line} */
   const line = (kind, tint, icon, label) => ({ kind, tint, icon, label });
@@ -43,7 +47,7 @@ export function lineKind(e) {
     return line('spoken', 'blue', 'mic', words);
   }
   if (e.type === 'out.speak' || e.type === 'out.show' || e.type === 'out.ask') {
-    const model = modelWords(d.by);
+    const model = modelWords(d.by, names);
     if (d.live) return line('koe-live', 'teal', 'wave', model ? t`Koe · live · ${model}` : t`Koe · live`);
     if (d.half === 'koe' && d.voice) return line('koe-aloud', 'blue', 'wave', model ? t`Koe · said aloud · ${model}` : t`Koe · said aloud`);
     if (d.half === 'koe') return line('koe-text', '', 'text', model ? t`Koe · text · ${model}` : t`Koe · text`);

@@ -44,7 +44,7 @@ test("OpenRouter's page has the photo-uploads switch and another Chat Completion
 
     // OpenRouter's: on, with its words.
     await page.getByRole('link', { name: 'Models', exact: true }).click();
-    await page.getByRole('link', { name: /^OpenRouter/ }).click();
+    await page.getByRole('region', { name: 'Providers' }).getByRole('link', { name: /^OpenRouter/ }).click();
     const chat = page.getByRole('region', { name: 'Chat', exact: true });
     const uploads = chat.getByLabel(SWITCH);
     await expect(uploads).toBeChecked();

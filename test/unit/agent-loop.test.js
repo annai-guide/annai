@@ -431,8 +431,11 @@ test("the card says why each model failed on one line, each reason once, in word
   const k = await agentKit([[{ error: 'overloaded', message: busy }], [{ error: 'unreachable', message: 'Failed to fetch' }]], { models: [{}, { input: ['text'] }] });
   k.agent.send('Hi');
   await k.agent.idle();
-  assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.body), [`model-0: ${busy}\nmodel-1: annai couldn't reach this address. It may be down, or it may not allow web apps.`]);
-  assert.equal((await k.events(['error']))[0].data.message, k.notices[0].body);
+  // Each model by its provider's name first, as Settings → Models names it (the user, 2026-11-16); the log keeps annai's English as a
+  // model reads it, each model by its own name.
+  const words = `model-0: ${busy}\nmodel-1: annai couldn't reach this address. It may be down, or it may not allow web apps.`;
+  assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.body), [words.replace('model-0', 'E0 · model-0').replace('model-1', 'E1 · model-1')]);
+  assert.equal((await k.events(['error']))[0].data.message, words);
   const off = await agentKit([[{ error: 'unreachable', message: 'Failed to fetch' }]], { agent: { online: () => false } });
   off.agent.send('Hi');
   await off.agent.idle();
