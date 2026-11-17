@@ -1,4 +1,4 @@
-import { h, field, t, plural, messageOf, whenGone } from '../dom.js';
+import { h, field, t, plural, messageOf, whenGone, otherLang } from '../dom.js';
 import { listTrips, createTrip, backupState, scopeTitle, changesTrip, lastTalked, ME } from '../../core/scopes.js';
 import { filesToRead } from '../../core/handover.js';
 import { readAppSettings } from '../../core/settings.js';
@@ -17,6 +17,7 @@ import { tripRows } from '../trip-rows.js';
 import { nowOf, isField } from '../today.js';
 import { realClock } from '../../core/live/clock.js';
 import { keepRows, covered } from '../keep-rows.js';
+import { slotEntries } from '../slots.js';
 
 /** @typedef {import('../../core/timeline.js').Row} Row */
 /** Words saying how long ago (since): the node, its moment on the device's clock, its words at a moment. @typedef {{ node: Node, at: number, words: (now: number) => string }} Since */
@@ -76,7 +77,7 @@ async function drawTrips(ctx, follow, stop) {
   const saved = latest ? { at: latest.last.at, words: (/** @type {number} */ now) => t`Last backup ${relTime(latest.last.at, now)}, to ${latest.name}.` }
     : settings.lastExportAt ? { at: settings.lastExportAt, words: (/** @type {number} */ now) => t`Last export ${relTime(settings.lastExportAt, now)}.` } : null;
   const screen = h('div', { class: 'screen timeline' },
-    h('h1', { class: 'title', text: t`Trips` }),
+    homeHead(ctx),
     // The shell scrolls the now line 40% down; with less past than that above it, it sits higher, with no blank space over it (a notice there stays in view).
     h('ul', { class: 'cards rows past' }, ...past),
     h('p', { class: 'now-line' }, h('span', { text: t`Now` })),
@@ -90,6 +91,23 @@ async function drawTrips(ctx, follow, stop) {
     saved ? since(o, h('p', { class: 'sub' }), saved.at, saved.words) : h('p', { class: 'sub', text: t`No backup yet. Export everything from Settings, or set up automatic backups there.` }));
   followClock(ctx, screen, o, places, follow, stop);
   return screen;
+}
+
+/**
+ * Home's head: "Trips", then Trace and the gear (Settings) at its end (the user's pick 2026-11-16, "At the top, beside "Trips""); under it, only
+ * when a plugin has one, a quiet row of links to plugins' screens with a tab (`tab: true`). Not sticky: home's box of cards sticks at the top.
+ * @param {any} ctx
+ */
+function homeHead(ctx) {
+  const tabs = slotEntries(ctx, 'ui:screen').filter((e) => e.item?.tab).map((e) => h('a', {
+    href: `#/ext/${encodeURIComponent(e.pluginId)}/${encodeURIComponent(e.item.id)}`, lang: otherLang(ctx.plugins?.langOf(e.pluginId)), text: String(e.item.title),
+  }));
+  return h('div', { class: 'home-head' },
+    h('div', { class: 'home-top' },
+      h('h1', { class: 'title', text: t`Trips` }),
+      h('a', { class: 'btn ghost', href: '#/trace' }, t`Trace`),
+      h('a', { class: 'btn ghost gear', href: '#/settings', 'aria-label': t`Settings` }, '⚙')),
+    tabs.length ? h('p', { class: 'home-links' }, ...tabs) : null);
 }
 
 /**
@@ -227,7 +245,7 @@ async function tripCard(ctx, s, r, o) {
     if (last) more.push(h('span', { class: 'sub her-last', ...say(last), text: last }));
   }
   const name = scopeTitle(s); // one stored with the draft's name says "New conversation" in the screens' language
-  return h('li', {}, h('a', { class: ['card', 'trip-card', r?.phase === 'happening' ? 'happening' : ''], href: r ? talkHref(s.id) : `#/trip/${encodeURIComponent(s.id)}` },
+  return h('li', {}, h('a', { class: ['card', 'trip-card', r?.phase === 'happening' ? 'happening' : r?.phase === 'future' ? 'ahead' : ''], href: r ? talkHref(s.id) : `#/trip/${encodeURIComponent(s.id)}` },
     h('span', { class: 'trip-card-text' },
       h('span', { class: 'name', ...say(name), text: name }),
       h('span', { class: 'sub' }, ...factsWords([s.start ? dateRange(s.start, s.end) : null, stamps.length ? { stamps: stampCount(stamps.length) } : null, unread ? plural(unread, '# file waiting to be read', '# files waiting to be read') : null, backedUp])),

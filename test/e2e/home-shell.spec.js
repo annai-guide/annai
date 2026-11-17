@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, goToHash, startTrip, atConversation, writeEvent, FIRST_DRAW } from './helpers.js';
+import { openApp, goToHash, goHome, startTrip, atConversation, writeEvent, pickFile, fixtureFiles, zipOf, FIRST_DRAW } from './helpers.js';
 import { fileTrip } from './file-details-fixture.js';
 
 // Timeline stage 8: the top bar goes. Home holds the gear and Trace, every screen the bar reached has its own way back, `#/now` opens today's
@@ -160,4 +160,118 @@ test("a booking opened at one of several blocks lands with that block's heading 
   await expect(h).toBeInViewport({ ratio: 1 });
   const top = await h.evaluate((el) => el.getBoundingClientRect().top);
   expect(top).toBeGreaterThanOrEqual(0);
+});
+
+/** Installs a test plugin from test/fixtures/extensions, used at once. @param {import('@playwright/test').Page} page @param {string} dir @param {string} name */
+async function install(page, dir, name) {
+  await pickFile(page, { name: `${dir}.zip`, mimeType: 'application/zip', buffer: await zipOf(await fixtureFiles(dir)) });
+  await page.getByRole('button', { name: 'Install anyway and use it', exact: true }).click();
+  await expect(page.locator('.card', { hasText: name }).getByText('On', { exact: true })).toBeVisible();
+}
+
+test("home's gear opens Settings and Trace opens Trace, each with a crumb back home", async ({ page }) => {
+  await openApp(page);
+  const head = page.locator('main .home-top');
+  await expect(head.getByRole('heading', { level: 1, name: 'Trips', exact: true })).toBeVisible();
+  const gear = head.getByRole('link', { name: 'Settings', exact: true });
+  await expect(gear).toHaveText('⚙');
+  await expect(gear).toBeInViewport({ ratio: 1 });
+  expect(await gear.evaluate((el) => Math.min(el.getBoundingClientRect().width, el.getBoundingClientRect().height))).toBeGreaterThanOrEqual(44);
+  await gear.click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings', exact: true })).toBeVisible();
+  await page.locator('main .crumbs').getByRole('link', { name: 'Trips' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips', exact: true })).toBeVisible();
+  await head.getByRole('link', { name: 'Trace', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trace', exact: true })).toBeVisible();
+  await page.locator('main .crumbs').getByRole('link', { name: 'Trips' }).click();
+  await expect.poll(() => new URL(page.url()).hash).toBe('#/trips');
+  await expect(page.locator('main .home-links')).toHaveCount(0); // no plugin with a tab: no row
+});
+
+test("a plugin's screen with a tab is a link in home's row; its page's crumb goes home; turned off, the link goes", async ({ page }) => {
+  await openApp(page);
+  await install(page, 'trail-ui', 'Trail UI');
+  await goHome(page);
+  const row = page.locator('main .home-links');
+  await row.getByRole('link', { name: 'Hike', exact: true }).click();
+  await expect(page.getByText('Hike screen')).toBeVisible();
+  await expect.poll(() => new URL(page.url()).hash).toBe('#/ext/trail-ui/hike');
+  await page.locator('main .crumbs').getByRole('link', { name: 'Trips' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips', exact: true })).toBeVisible();
+  await goToHash(page, '#/plugins');
+  await page.locator('.card', { hasText: 'Trail UI' }).getByRole('button', { name: 'Turn off' }).click();
+  await goHome(page);
+  await expect(page.locator('main .home-top').getByRole('link', { name: 'Settings', exact: true })).toBeVisible();
+  await expect(page.locator('main .home-links')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Hike' })).toHaveCount(0);
+});
+
+test("a plugin's screen for walking takes over from home as walking begins, and its crumb goes home", async ({ page, context }) => {
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({ latitude: 36.60, longitude: -121.89, accuracy: 5 });
+  await page.clock.install({ time: new Date() });
+  await openApp(page);
+  await install(page, 'trail-ui', 'Trail UI');
+  await startTrip(page, 'Testville');
+  await page.locator('.live-chip').click();
+  await expect(page.locator('.live-chip')).toHaveText(/^GPS on\b/);
+  await goHome(page);
+  for (let i = 1; i <= 16; i++) { // 7.5 m every 5 s: 1.5 m/s, a walk
+    await context.setGeolocation({ latitude: 36.60 - i * 0.0000675, longitude: -121.89, accuracy: 5 });
+    await page.clock.fastForward(5000);
+  }
+  await expect(page.getByText('Hike screen')).toBeVisible();
+  await expect.poll(() => new URL(page.url()).hash).toBe('#/ext/trail-ui/hike');
+  await page.locator('main .crumbs').getByRole('link', { name: 'Trips' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trips', exact: true })).toBeVisible();
+});
+
+test("with a plugin's dock, which has no gear of its own, the gear and Trace are on home", async ({ page }) => {
+  await openApp(page);
+  await install(page, 'trail-look', 'Trail look');
+  await goHome(page);
+  await expect(page.getByRole('navigation', { name: 'Shiori' }).getByRole('button', { name: 'Talk to Shiori' })).toBeVisible(); // the plugin's dock
+  const head = page.locator('main .home-top');
+  await head.getByRole('link', { name: 'Settings', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings', exact: true })).toBeVisible();
+  await goHome(page);
+  await head.getByRole('link', { name: 'Trace', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Trace', exact: true })).toBeVisible();
+});
+
+test('a trip ahead gets the lighter tint; a chat, a past trip and the happening one do not', async ({ page }) => {
+  await openApp(page);
+  await page.evaluate(async () => {
+    const at = (/** @type {string} */ p) => p;
+    const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+    const { Workspace } = await import(at('/src/core/workspace.js'));
+    const { createTrip } = await import(at('/src/core/scopes.js'));
+    const { record } = await import(at('/src/core/agent/log.js'));
+    const { dayIn, deviceZone } = await import(at('/src/core/time.js'));
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    const day = (/** @type {number} */ n) => dayIn(Date.now() + n * 86_400_000, deviceZone());
+    const chat = await createTrip(ws, { title: 'Ramen' });
+    await record(store, chat, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'Ramen']], now: Date.now() - 30 * 60_000 });
+    await createTrip(ws, { title: 'Pastville', start: day(-20), end: day(-18) });
+    await createTrip(ws, { title: 'Nowville', start: day(0), end: day(2) });
+    await createTrip(ws, { title: 'Laterton', start: day(10), end: day(12) });
+    store.close();
+  });
+  await page.reload();
+  await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
+  const row = (/** @type {string} */ name) => page.locator('.trip-card', { has: page.locator('.name', { hasText: name }) });
+  await expect(row('Laterton')).toHaveClass(/\bahead\b/);
+  await expect(row('Ramen')).not.toHaveClass(/\bahead\b/);
+  await expect(row('Pastville')).not.toHaveClass(/\bahead\b/);
+  await expect(row('Nowville')).toHaveClass(/\bhappening\b/);
+  await expect(row('Nowville')).not.toHaveClass(/\bahead\b/);
+  // Lighter than the happening tint, darker than a plain card, in the theme the page shows.
+  const paint = () => page.evaluate(() => ['Laterton', 'Nowville', 'Pastville'].map((n) => getComputedStyle(/** @type {Element} */ ([...document.querySelectorAll('.trip-card')].find((c) => c.querySelector('.name')?.textContent === n))).backgroundColor));
+  const light = await paint();
+  expect(new Set(light).size).toBe(3);
+  await page.emulateMedia({ colorScheme: 'dark' });
+  const dark = await paint();
+  expect(new Set(dark).size).toBe(3);
+  expect(dark).not.toEqual(light);
 });

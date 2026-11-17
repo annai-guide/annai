@@ -1682,7 +1682,8 @@ govuvp	ok	This page isn't here	找不到这个页面	src/ui/screens/ext.js:21
 t9ug66	ok	This page belongs to a plugin that isn't on. Turn it on in {0}.	这个页面所属的插件未开启。请在{0}中开启。	src/ui/screens/ext.js:24	{0} = plugins
 ata72m	ok	Trace	记录	src/ui/screens/ext.js:36	
 1y7aybz	ok	This page couldn't be drawn; the plugin's error is in {0}.	无法显示这个页面。插件的错误信息可在 {0} 中查看。	src/ui/screens/ext.js:37	{0} = trace
-12mubvb	ok	Now	现在	src/ui/screens/ext.js:44	
+xb1ny3	ok	Trips	旅行	src/ui/screens/ext.js:44	
+12mubvb	ok	Now	现在	src/ui/screens/file.js:23	
 17o4v1i	ok	Conversation	对话	src/ui/screens/file.js:23	
 1r8pi2g	ok	Recap	回顾	src/ui/screens/file.js:23	
 43f6md	ok	Details	详情	src/ui/screens/file.js:23	Note: the crumb back to a plan item's details screen; also the crumb back to a file's or booking's details screen, from the raw file screen; and the crumb back to a conversation's Details (the screen talk's Details button opens), from its raw file screen.
@@ -1715,7 +1716,6 @@ twulcv	ok	Version restored	版本已恢复	src/ui/screens/file.js:257
 w8mx56	ok	Deleted by {0} {1}	{1}由 {0} 删除	src/ui/screens/file.js:271	{0} = who; {1} = ago
 1cdkli8	ok	Saved by you {0}	{0}由你保存	src/ui/screens/file.js:272	{0} = ago
 1xtgqpw	ok	Saved by {0} {1}	{1}由 {0} 保存	src/ui/screens/file.js:272	{0} = who; {1} = ago
-xb1ny3	ok	Trips	旅行	src/ui/screens/import.js:40	
 1azyvjt	ok	Choose a file instead	改为选择文件	src/ui/screens/import.js:44	
 18kfutv	ok	Choose an annai file (.annai.zip or .annai) to open it.	请选择要打开的 annai 文件（.annai.zip 或 .annai）。	src/ui/screens/import.js:57	
 s6np2n	ok	Choose a file	选择文件	src/ui/screens/import.js:57	
@@ -2245,33 +2245,33 @@ ynqcma	ok	A report of recent errors and system events, without your files or key
 5gnef9	ok	Try GPS, the replay and the recap with a simulated trip.	用模拟旅行试用 GPS、回放和回顾。	src/ui/screens/settings.js:91	
 1ot30rf	draft	Features still being tried, and developer tools such as Remote trace.	仍在试验中的功能，以及远程记录等开发者工具。	src/ui/screens/settings.js:92	
 3y74hh	ok	Erase	清除	src/ui/screens/settings.js:93	
-5d0bx7	ok	Keep originals: store photos exactly as taken	保留原图：按拍摄原样保存照片	src/ui/screens/settings.js:110	
-uq55l7	ok	WebP, or JPEG where this browser can't write WebP	WebP（不支持时用 JPEG）	src/ui/screens/settings.js:113	Note: Short, so the select box shows it whole on a phone.
-8dymvi	ok	Quality goes from {0} to {1}.	质量范围为 {0} 到 {1}。	src/ui/screens/settings.js:128	{0} = num(0.5); {1} = num(1)
-14tyrj6	ok	The longest side is a whole number of pixels, at least {0}. Leave it empty for no limit.	最长边须为整数像素，且不小于 {0}。留空则不限。	src/ui/screens/settings.js:129	{0} = num(256)
-1izj97p	ok	The largest photo sent is at least {0} MB. Leave it empty for no limit.	发送照片的大小上限不能低于 {0} MB。留空则不限。	src/ui/screens/settings.js:136	{0} = num(0.1)
-1963ouj	ok	annai keeps one copy of each photo you add.	添加的每张照片只保存一份。	src/ui/screens/settings.js:138	Note: one copy: the original (Keep originals) or the one saved as set below.
-1ftv62v	ok	This browser writes WebP.	此浏览器支持保存为 WebP。	src/ui/screens/settings.js:138	
-t33cgw	ok	The originals stay in your phone's photo library.	原图仍保留在手机的相册中。	src/ui/screens/settings.js:138	
-xn9rs1	ok	This browser can't write WebP, so photos are saved as JPEG.	此浏览器不支持保存为 WebP，所以照片会保存为 JPEG。	src/ui/screens/settings.js:138	
-10avjxv	ok	Save photos as	照片保存格式	src/ui/screens/settings.js:141	
-ayixjd	ok	Quality ({0} to {1})	质量（{0} 到 {1}）	src/ui/screens/settings.js:142	{0} = num(0.5); {1} = num(1)
-jddrbd	ok	Longest side, pixels	最长边（像素）	src/ui/screens/settings.js:144	
-ehvdao	ok	Largest file, MB	文件大小上限（MB）	src/ui/screens/settings.js:145	
-o47vu9	ok	The largest file is at least {0} MB. Leave it empty for no limit.	文件大小上限不能低于 {0} MB。留空则不限。	src/ui/screens/settings.js:145	{0} = num(0.1)
-1kdcc9b	ok	Photos for Shiori	发给 Shiori 的照片	src/ui/screens/settings.js:146	
-awxg9v	ok	The copies she is sent, made once and kept with the conversation. A closer look always sends more detail, so small settings stay usable.	发给她的副本只生成一次，并随对话一起保存。她细看某个部分时，总会另外发送该部分更清晰的画面，所以设得小一些也够用。	src/ui/screens/settings.js:147	
-1223a8b	ok	Longest side sent, pixels	发送时的最长边（像素）	src/ui/screens/settings.js:149	
-1iw8fgg	ok	Largest photo sent, MB	发送照片的大小上限（MB）	src/ui/screens/settings.js:150	
-10wwcx4	ok	Send photos as	照片发送格式	src/ui/screens/settings.js:152	
-1kotxez	ok	Quality sent ({0} to {1})	发送质量（{0} 到 {1}）	src/ui/screens/settings.js:153	{0} = num(0.5); {1} = num(1)
-8ruaox	ok	Diagnostics copied.	诊断信息已复制。	src/ui/screens/settings.js:168	
-jdwnfb	ok	Copying didn't work here. Select and copy this report:	无法自动复制。请手动选中并复制以下报告：	src/ui/screens/settings.js:170	
-ltgiri	ok	Erasing…	正在清除…	src/ui/screens/settings.js:191	
-u9zvd	ok	Erase now	立即清除	src/ui/screens/settings.js:212	
-tgdxsp	ok	Deletes every trip, file, setting and key on this device. Export a backup first.	将删除此设备上的所有旅行、文件、设置和密钥。请先导出备份。	src/ui/screens/settings.js:218	
-1x8t4tk	ok	Type {0} to confirm	输入 {0} 以确认	src/ui/screens/settings.js:220	{0} = ERASE; Note: {0} is the word to type, ERASE, the same in every language.
-199v6bp	ok	From plugins	来自插件	src/ui/screens/settings.js:230	
+5d0bx7	ok	Keep originals: store photos exactly as taken	保留原图：按拍摄原样保存照片	src/ui/screens/settings.js:111	
+uq55l7	ok	WebP, or JPEG where this browser can't write WebP	WebP（不支持时用 JPEG）	src/ui/screens/settings.js:114	Note: Short, so the select box shows it whole on a phone.
+8dymvi	ok	Quality goes from {0} to {1}.	质量范围为 {0} 到 {1}。	src/ui/screens/settings.js:129	{0} = num(0.5); {1} = num(1)
+14tyrj6	ok	The longest side is a whole number of pixels, at least {0}. Leave it empty for no limit.	最长边须为整数像素，且不小于 {0}。留空则不限。	src/ui/screens/settings.js:130	{0} = num(256)
+1izj97p	ok	The largest photo sent is at least {0} MB. Leave it empty for no limit.	发送照片的大小上限不能低于 {0} MB。留空则不限。	src/ui/screens/settings.js:137	{0} = num(0.1)
+1963ouj	ok	annai keeps one copy of each photo you add.	添加的每张照片只保存一份。	src/ui/screens/settings.js:139	Note: one copy: the original (Keep originals) or the one saved as set below.
+1ftv62v	ok	This browser writes WebP.	此浏览器支持保存为 WebP。	src/ui/screens/settings.js:139	
+t33cgw	ok	The originals stay in your phone's photo library.	原图仍保留在手机的相册中。	src/ui/screens/settings.js:139	
+xn9rs1	ok	This browser can't write WebP, so photos are saved as JPEG.	此浏览器不支持保存为 WebP，所以照片会保存为 JPEG。	src/ui/screens/settings.js:139	
+10avjxv	ok	Save photos as	照片保存格式	src/ui/screens/settings.js:142	
+ayixjd	ok	Quality ({0} to {1})	质量（{0} 到 {1}）	src/ui/screens/settings.js:143	{0} = num(0.5); {1} = num(1)
+jddrbd	ok	Longest side, pixels	最长边（像素）	src/ui/screens/settings.js:145	
+ehvdao	ok	Largest file, MB	文件大小上限（MB）	src/ui/screens/settings.js:146	
+o47vu9	ok	The largest file is at least {0} MB. Leave it empty for no limit.	文件大小上限不能低于 {0} MB。留空则不限。	src/ui/screens/settings.js:146	{0} = num(0.1)
+1kdcc9b	ok	Photos for Shiori	发给 Shiori 的照片	src/ui/screens/settings.js:147	
+awxg9v	ok	The copies she is sent, made once and kept with the conversation. A closer look always sends more detail, so small settings stay usable.	发给她的副本只生成一次，并随对话一起保存。她细看某个部分时，总会另外发送该部分更清晰的画面，所以设得小一些也够用。	src/ui/screens/settings.js:148	
+1223a8b	ok	Longest side sent, pixels	发送时的最长边（像素）	src/ui/screens/settings.js:150	
+1iw8fgg	ok	Largest photo sent, MB	发送照片的大小上限（MB）	src/ui/screens/settings.js:151	
+10wwcx4	ok	Send photos as	照片发送格式	src/ui/screens/settings.js:153	
+1kotxez	ok	Quality sent ({0} to {1})	发送质量（{0} 到 {1}）	src/ui/screens/settings.js:154	{0} = num(0.5); {1} = num(1)
+8ruaox	ok	Diagnostics copied.	诊断信息已复制。	src/ui/screens/settings.js:169	
+jdwnfb	ok	Copying didn't work here. Select and copy this report:	无法自动复制。请手动选中并复制以下报告：	src/ui/screens/settings.js:171	
+ltgiri	ok	Erasing…	正在清除…	src/ui/screens/settings.js:192	
+u9zvd	ok	Erase now	立即清除	src/ui/screens/settings.js:213	
+tgdxsp	ok	Deletes every trip, file, setting and key on this device. Export a backup first.	将删除此设备上的所有旅行、文件、设置和密钥。请先导出备份。	src/ui/screens/settings.js:219	
+1x8t4tk	ok	Type {0} to confirm	输入 {0} 以确认	src/ui/screens/settings.js:221	{0} = ERASE; Note: {0} is the word to type, ERASE, the same in every language.
+199v6bp	ok	From plugins	来自插件	src/ui/screens/settings.js:231	
 1bu98qy	ok	Shiori, hearing you	Shiori，正在听你说	src/ui/screens/shiori.js:19	
 1cfiys6	ok	Shiori, getting ready to listen	Shiori，正在准备聆听	src/ui/screens/shiori.js:19	
 1m5wnho	ok	Shiori, listening	Shiori，正在聆听	src/ui/screens/shiori.js:19	
@@ -2501,105 +2501,105 @@ a2pqv8	ok	Every tool Shiori has, including plugins' tools. A switched-off tool i
 pghiva	ok	Location	位置	src/ui/screens/trace.js:40	
 1ocm8xt	ok	System · {0}	系统 · {0}	src/ui/screens/trace.js:57	{0} = scopeTitle(s)
 1jije2k	ok	Nothing here yet.	这里还没有内容。	src/ui/screens/trace.js:94	
-zixzwp	ok	Everything annai recorded: file changes, model calls, imports, plugin problems and errors. Newest first.	annai 记录的一切：文件改动、模型调用、导入、插件问题和错误。最新的在前。	src/ui/screens/trace.js:105	
-vv1pu6	ok	Type contains	事件类型包含	src/ui/screens/trace.js:106	Note: The entry's type (a code like file.write), apart from the Kind filter just before it (種類 / 类型).
-g9esrd	ok	a newer backup from an Android phone is there	有来自 Android 手机的较新备份	src/ui/screens/trace.js:178	
-obwhc7	ok	a newer backup from an iPhone is there	有来自 iPhone 的较新备份	src/ui/screens/trace.js:178	
-oh532o	ok	a newer backup from an iPad is there	有来自 iPad 的较新备份	src/ui/screens/trace.js:178	
-1ds6m85	ok	a newer backup from a computer is there	有来自电脑的较新备份	src/ui/screens/trace.js:179	
-1r6qy12	ok	the user wrote	用户发来消息	src/ui/screens/trace.js:201	
-yyq6of	ok	the user tapped a choice	用户轻点了一个选项	src/ui/screens/trace.js:201	
-1eo2nlm	ok	Kokoro to Koe	Kokoro 给 Koe	src/ui/screens/trace.js:205	
-l7yvjm	ok	Koe to Kokoro	Koe 给 Kokoro	src/ui/screens/trace.js:205	
-omff16	ok	annai to Kokoro	annai 给 Kokoro	src/ui/screens/trace.js:206	
-hnbn63	ok	this was for Shiori	这是对 Shiori 说的	src/ui/screens/trace.js:207	
-1larmkq	ok	phone dictation	手机语音输入	src/ui/screens/trace.js:210	Note: Phone dictation as its row in Settings → Voice says (手机语音输入).
-piy3vo	ok	{0} from the microphone	麦克风录音 {0}	src/ui/screens/trace.js:210	{0} = duration(d.ms ?? 0); Note: {0} is how long the recording was.
-1sfeb1g	ok	an answer	作为回答	src/ui/screens/trace.js:211	
-1x13vat	ok	not for Shiori	不是对 Shiori 说的	src/ui/screens/trace.js:211	
-k9shc3	ok	while she was thinking	在她思考时	src/ui/screens/trace.js:211	
-mj6pnh	ok	she didn't answer	她没有回答	src/ui/screens/trace.js:211	
-an9lly	ok	clip kept: {0}, {1}	已保留片段：{0}，{1}	src/ui/screens/trace.js:212	{0} = d.clipFormat; {1} = size(d.clipBytes ?? 0)
-voav2t	ok	clip kept	已保留片段	src/ui/screens/trace.js:212	
-1gqj9yn	ok	written down by {0}	由 {0} 转写	src/ui/screens/trace.js:214	{0} = names(d.by)
-o1nqez	ok	from {0}	来自 {0}	src/ui/screens/trace.js:217	{0} = sourceOf(d)
-v0l7oi#other	ok	# links	# 个链接	src/ui/screens/trace.js:217	plural; # = (d.links ?? []).length; English: "# link" (one), "# links" (other)
-9bb0pd	ok	error	错误	src/ui/screens/trace.js:219	
-scvxkf	ok	ok	成功	src/ui/screens/trace.js:219	
-1qafm6e	ok	kept turn not deleted yet	保留的轮次尚未删除	src/ui/screens/trace.js:223	Note: A kept turn is one of the conversation turns a provider keeps (轮), as the provider screen says.
-7lsal4	ok	no answer	无应答	src/ui/screens/trace.js:223	
-udpknx	ok	kept turn deleted	保留的轮次已删除	src/ui/screens/trace.js:223	Note: A kept turn is one of the conversation turns a provider keeps (轮).
-hnu5xn	ok	kept turn looked up	已查询保留的轮次	src/ui/screens/trace.js:224	Note: A kept turn is one of the conversation turns a provider keeps (轮).
-1b5ygaa	ok	photo uploads listed	已获取上传照片的列表	src/ui/screens/trace.js:226	Note: a Trace line, beside "kept turn looked up".
-lx223x	ok	photo upload deleted	上传的照片已删除	src/ui/screens/trace.js:227	Note: a Trace line, as "kept turn deleted".
-rpu62e	ok	photo upload not deleted yet	上传的照片尚未删除	src/ui/screens/trace.js:227	Note: a Trace line, as "kept turn not deleted yet".
-1t1zawl	ok	a refused photo sent again as a new copy ({0})	被拒的照片作为新副本重新发送（{0}）	src/ui/screens/trace.js:228	{0} = d.mediaType
-gjjwcl	ok	a PDF's words kept for models that can't read PDFs	为无法读取 PDF 的模型保留的 PDF 文字内容	src/ui/screens/trace.js:230	Note: a Trace line: what was kept of a PDF, told in words, for models that can't read PDFs.
-kbptqr	ok	a photo's description kept for models that can't see photos	为无法识别照片的模型保留的照片描述	src/ui/screens/trace.js:230	Note: a Trace line, as above, for a photo's description.
-y6qkfy	ok	a PDF's pages kept for models that can't read PDFs	为无法读取 PDF 的模型保留的 PDF 页面图片	src/ui/screens/trace.js:230	Note: a Trace line, as above, for a PDF's pages as pictures.
-12y45gf	ok	from a backup, annai {0}	来自 annai {0} 的备份	src/ui/screens/trace.js:234	{0} = app
-hq4bg1	ok	from an export, annai {0}	来自 annai {0} 的导出文件	src/ui/screens/trace.js:234	{0} = app
-fgylb4#other	ok	# pieces of content it didn't hold left out	# 项内容不在文件中，已略过	src/ui/screens/trace.js:235	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
-1vkhbgw	ok	asked for content that isn't here, and got none	请求了这里没有的内容，什么也没得到	src/ui/screens/trace.js:238	
-17ybebf	ok	a turn cut off by opening another conversation	因打开另一个对话而中断的回合	src/ui/screens/trace.js:239	
-z082y3	ok	read {0}	读取了“{0}”	src/ui/screens/trace.js:241	{0} = d.title
-1g60658	ok	said	口头	src/ui/screens/trace.js:242	
-1s3wptl	ok	reading {0} allowed	已允许读取 {0}	src/ui/screens/trace.js:242	{0} = d.trip
-guv93	ok	moved to {0}	已转到“{0}”	src/ui/screens/trace.js:244	{0} = d.title; Note: a Trace line: Shiori took the user from this conversation to {0}.
-130nh2w	ok	events {0}–{1} summarized ({2})	已总结事件 {0}–{1}（{2}）	src/ui/screens/trace.js:245	{0} = d.from; {1} = d.to; {2} = d.mode
-vgv0s2	ok	started fresh after event {0}	在事件 {0} 之后重新开始	src/ui/screens/trace.js:245	{0} = d.to
-1nulaw8	ok	late by {0} min	晚了 {0} 分钟	src/ui/screens/trace.js:247	{0} = d.late
-1vzfabu	ok	no connection	无网络连接	src/ui/screens/trace.js:247	
-1l7ac5y	ok	shown	已显示	src/ui/screens/trace.js:248	
-1yfde5	ok	no name	无名称	src/ui/screens/trace.js:250	
-1nk1wxu	ok	audio route {0}	音频路由 {0}	src/ui/screens/trace.js:251	{0} = d.route
-1yo1hz0	ok	the microphone in use: {0}	正在使用的麦克风：{0}	src/ui/screens/trace.js:251	{0} = d.using || unnamed
-swjwya	ok	judged by the devices present	根据现有设备判断	src/ui/screens/trace.js:251	Note: the Trace: the audio route was told from the devices present, not from the microphone in use.
-1rzyxvu	ok	disconnected: {0}	已断开：{0}	src/ui/screens/trace.js:252	{0} = d.gone.join(', ')
-3gdj21	ok	no devices	无设备	src/ui/screens/trace.js:252	
-1ijsnzq	ok	voice on	语音开启	src/ui/screens/trace.js:273	Note: The glossary's Voice on mode (语音开启).
-z2w914	ok	voice off	语音关闭	src/ui/screens/trace.js:273	Note: The glossary's Voice off mode (语音关闭).
-1g1k3by	ok	{0} waiting	{0} 条待发送	src/ui/screens/trace.js:276	{0} = d.waiting ?? 0
-xy6oxk	ok	{0} sent, {1} called off	已发送 {0} 条，已取消 {1} 条	src/ui/screens/trace.js:276	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
-1efflnv	ok	notification shown	通知已显示	src/ui/screens/trace.js:277	
-cjmncb	ok	notification opened	已点开通知	src/ui/screens/trace.js:278	
-3m7wpo#other	ok	# attempts	尝试 # 次	src/ui/screens/trace.js:288	plural; # = n; English: "# attempt" (one), "# attempts" (other)
-r42rpw	ok	{0} ms processing latency	处理延迟 {0} ms	src/ui/screens/trace.js:292	{0} = Math.round(d.baseLatency * 1000)
-1y5g6mq	ok	{0} ms output latency	输出延迟 {0} ms	src/ui/screens/trace.js:293	{0} = Math.round(d.outputLatency * 1000)
-a1oech	ok	live session {0}	实时会话 {0}	src/ui/screens/trace.js:294	{0} = d.state
-beya44	ok	sound at {0} kHz	采样率 {0} kHz	src/ui/screens/trace.js:296	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
-1u50qqt	ok	her voice: {0} played	她的声音：已播放 {0}	src/ui/screens/trace.js:301	{0} = duration(d.ms ?? 0)
-1wcl60z	ok	cut	已中断	src/ui/screens/trace.js:301	
-njy1uz	ok	her voice: cut before it played	她的声音：播放前被中断	src/ui/screens/trace.js:301	
-9atabi	ok	started after {0} ms	{0} ms 后开始	src/ui/screens/trace.js:302	{0} = d.waitMs
-j43x3k	ok	stalled	卡住	src/ui/screens/trace.js:302	
-1qyanji#other	ok	# holes, {0} ms	# 处空白，{0} ms	src/ui/screens/trace.js:303	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
-gw0cwm#other	ok	# holes	# 处空白	src/ui/screens/trace.js:303	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
-1bx4bl6	ok	on {0}	在 {0} 上	src/ui/screens/trace.js:304	{0} = d.player
-1jhbzkn	ok	your voice {0} dB, least to start {1} dB, {2} frames kept out (loudest {3} dB)	你的声音 {0} dB，触发下限 {1} dB，{2} 帧被拦下（最响 {3} dB）	src/ui/screens/trace.js:309	{0} = d.voiceDb ?? '?'; {1} = d.minDb ?? '–'; {2} = d.keptFrames; {3} = d.keptPeakDb ?? '?'
-1mxp5c6	ok	a sound dropped as her voice began: {0} of speech · floor {1} dB, loudest {2} dB	她开口时丢弃了一段声音：语音 {0} · 底噪 {1} dB，最响 {2} dB	src/ui/screens/trace.js:310	{0} = duration(d.speechMs ?? 0); {1} = d.floorDb ?? '?'; {2} = d.peakDb ?? '?'
-1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的这一轮结束：{0} · 已发送 {1} · 底噪 {2} dB，最响 {3} dB	src/ui/screens/trace.js:311	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
-7ovnj9	ok	no turn	没有开始一轮	src/ui/screens/trace.js:311	
-khxbvb	ok	audio: {0}	音频：{0}	src/ui/screens/trace.js:315	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
-1wy37ql	ok	{0} sent	已发送 {0}	src/ui/screens/trace.js:317	{0} = size(d.bytes)
-l04i5	ok	{0} sent, after a kept turn	已发送 {0}，接在保留的轮次之后	src/ui/screens/trace.js:317	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (轮).
-1n96vkk	ok	earlier thinking not sent: something before it changed	之前的思考未发送：前面的内容有变动	src/ui/screens/trace.js:319	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
-yfywm0#other	ok	thinking of # earlier steps sent back	已发回之前 # 步的思考	src/ui/screens/trace.js:319	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
-15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:323	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
-4k86ja	ok	{0} failed	{0} 个失败	src/ui/screens/trace.js:323	{0} = d.failed
-1waoe51	ok	at its limit	已达上限	src/ui/screens/trace.js:324	
-66h5i6	ok	by itself on Wi-Fi	Wi-Fi 下自动下载	src/ui/screens/trace.js:324	
-rfe2ef	ok	{0} files sent, {1}	已发送 {0} 个文件，{1}	src/ui/screens/trace.js:326	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
-2601w8	ok	a newer backup from another device is there	有来自另一台设备的较新备份	src/ui/screens/trace.js:327	
-uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	下载 {0}（{1}）后停止，已丢弃	src/ui/screens/trace.js:329	{0} = d.backup; {1} = size(d.bytes ?? 0)
-wgniil	ok	downloaded {0}, {1}	已下载 {0}（{1}）	src/ui/screens/trace.js:329	{0} = d.backup; {1} = size(d.bytes ?? 0)
-1gauo2f	ok	{0} can't be opened: {1}	{0} 无法打开：{1}	src/ui/screens/trace.js:330	{0} = d.backup; {1} = cut(d.problem)
-1rrq0vn	ok	deleted an older backup, {0}	已删除一个较早的备份：{0}	src/ui/screens/trace.js:331	{0} = d.backup
-57gz9u#other	ok	# secrets	# 个密钥	src/ui/screens/trace.js:333	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
-scekw#other	ok	# settings	# 项设置	src/ui/screens/trace.js:333	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
-mp7j1w#other	ok	({0}, # bytes)	（{0}，# 字节）	src/ui/screens/trace.js:356	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
-tqj8t3	ok	(no longer stored)	（已不再保存）	src/ui/screens/trace.js:356	
-1kfziuy	ok	Show what was stored	显示保存的内容	src/ui/screens/trace.js:373	
+zixzwp	ok	Everything annai recorded: file changes, model calls, imports, plugin problems and errors. Newest first.	annai 记录的一切：文件改动、模型调用、导入、插件问题和错误。最新的在前。	src/ui/screens/trace.js:106	
+vv1pu6	ok	Type contains	事件类型包含	src/ui/screens/trace.js:107	Note: The entry's type (a code like file.write), apart from the Kind filter just before it (種類 / 类型).
+g9esrd	ok	a newer backup from an Android phone is there	有来自 Android 手机的较新备份	src/ui/screens/trace.js:179	
+obwhc7	ok	a newer backup from an iPhone is there	有来自 iPhone 的较新备份	src/ui/screens/trace.js:179	
+oh532o	ok	a newer backup from an iPad is there	有来自 iPad 的较新备份	src/ui/screens/trace.js:179	
+1ds6m85	ok	a newer backup from a computer is there	有来自电脑的较新备份	src/ui/screens/trace.js:180	
+1r6qy12	ok	the user wrote	用户发来消息	src/ui/screens/trace.js:202	
+yyq6of	ok	the user tapped a choice	用户轻点了一个选项	src/ui/screens/trace.js:202	
+1eo2nlm	ok	Kokoro to Koe	Kokoro 给 Koe	src/ui/screens/trace.js:206	
+l7yvjm	ok	Koe to Kokoro	Koe 给 Kokoro	src/ui/screens/trace.js:206	
+omff16	ok	annai to Kokoro	annai 给 Kokoro	src/ui/screens/trace.js:207	
+hnbn63	ok	this was for Shiori	这是对 Shiori 说的	src/ui/screens/trace.js:208	
+1larmkq	ok	phone dictation	手机语音输入	src/ui/screens/trace.js:211	Note: Phone dictation as its row in Settings → Voice says (手机语音输入).
+piy3vo	ok	{0} from the microphone	麦克风录音 {0}	src/ui/screens/trace.js:211	{0} = duration(d.ms ?? 0); Note: {0} is how long the recording was.
+1sfeb1g	ok	an answer	作为回答	src/ui/screens/trace.js:212	
+1x13vat	ok	not for Shiori	不是对 Shiori 说的	src/ui/screens/trace.js:212	
+k9shc3	ok	while she was thinking	在她思考时	src/ui/screens/trace.js:212	
+mj6pnh	ok	she didn't answer	她没有回答	src/ui/screens/trace.js:212	
+an9lly	ok	clip kept: {0}, {1}	已保留片段：{0}，{1}	src/ui/screens/trace.js:213	{0} = d.clipFormat; {1} = size(d.clipBytes ?? 0)
+voav2t	ok	clip kept	已保留片段	src/ui/screens/trace.js:213	
+1gqj9yn	ok	written down by {0}	由 {0} 转写	src/ui/screens/trace.js:215	{0} = names(d.by)
+o1nqez	ok	from {0}	来自 {0}	src/ui/screens/trace.js:218	{0} = sourceOf(d)
+v0l7oi#other	ok	# links	# 个链接	src/ui/screens/trace.js:218	plural; # = (d.links ?? []).length; English: "# link" (one), "# links" (other)
+9bb0pd	ok	error	错误	src/ui/screens/trace.js:220	
+scvxkf	ok	ok	成功	src/ui/screens/trace.js:220	
+1qafm6e	ok	kept turn not deleted yet	保留的轮次尚未删除	src/ui/screens/trace.js:224	Note: A kept turn is one of the conversation turns a provider keeps (轮), as the provider screen says.
+7lsal4	ok	no answer	无应答	src/ui/screens/trace.js:224	
+udpknx	ok	kept turn deleted	保留的轮次已删除	src/ui/screens/trace.js:224	Note: A kept turn is one of the conversation turns a provider keeps (轮).
+hnu5xn	ok	kept turn looked up	已查询保留的轮次	src/ui/screens/trace.js:225	Note: A kept turn is one of the conversation turns a provider keeps (轮).
+1b5ygaa	ok	photo uploads listed	已获取上传照片的列表	src/ui/screens/trace.js:227	Note: a Trace line, beside "kept turn looked up".
+lx223x	ok	photo upload deleted	上传的照片已删除	src/ui/screens/trace.js:228	Note: a Trace line, as "kept turn deleted".
+rpu62e	ok	photo upload not deleted yet	上传的照片尚未删除	src/ui/screens/trace.js:228	Note: a Trace line, as "kept turn not deleted yet".
+1t1zawl	ok	a refused photo sent again as a new copy ({0})	被拒的照片作为新副本重新发送（{0}）	src/ui/screens/trace.js:229	{0} = d.mediaType
+gjjwcl	ok	a PDF's words kept for models that can't read PDFs	为无法读取 PDF 的模型保留的 PDF 文字内容	src/ui/screens/trace.js:231	Note: a Trace line: what was kept of a PDF, told in words, for models that can't read PDFs.
+kbptqr	ok	a photo's description kept for models that can't see photos	为无法识别照片的模型保留的照片描述	src/ui/screens/trace.js:231	Note: a Trace line, as above, for a photo's description.
+y6qkfy	ok	a PDF's pages kept for models that can't read PDFs	为无法读取 PDF 的模型保留的 PDF 页面图片	src/ui/screens/trace.js:231	Note: a Trace line, as above, for a PDF's pages as pictures.
+12y45gf	ok	from a backup, annai {0}	来自 annai {0} 的备份	src/ui/screens/trace.js:235	{0} = app
+hq4bg1	ok	from an export, annai {0}	来自 annai {0} 的导出文件	src/ui/screens/trace.js:235	{0} = app
+fgylb4#other	ok	# pieces of content it didn't hold left out	# 项内容不在文件中，已略过	src/ui/screens/trace.js:236	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
+1vkhbgw	ok	asked for content that isn't here, and got none	请求了这里没有的内容，什么也没得到	src/ui/screens/trace.js:239	
+17ybebf	ok	a turn cut off by opening another conversation	因打开另一个对话而中断的回合	src/ui/screens/trace.js:240	
+z082y3	ok	read {0}	读取了“{0}”	src/ui/screens/trace.js:242	{0} = d.title
+1g60658	ok	said	口头	src/ui/screens/trace.js:243	
+1s3wptl	ok	reading {0} allowed	已允许读取 {0}	src/ui/screens/trace.js:243	{0} = d.trip
+guv93	ok	moved to {0}	已转到“{0}”	src/ui/screens/trace.js:245	{0} = d.title; Note: a Trace line: Shiori took the user from this conversation to {0}.
+130nh2w	ok	events {0}–{1} summarized ({2})	已总结事件 {0}–{1}（{2}）	src/ui/screens/trace.js:246	{0} = d.from; {1} = d.to; {2} = d.mode
+vgv0s2	ok	started fresh after event {0}	在事件 {0} 之后重新开始	src/ui/screens/trace.js:246	{0} = d.to
+1nulaw8	ok	late by {0} min	晚了 {0} 分钟	src/ui/screens/trace.js:248	{0} = d.late
+1vzfabu	ok	no connection	无网络连接	src/ui/screens/trace.js:248	
+1l7ac5y	ok	shown	已显示	src/ui/screens/trace.js:249	
+1yfde5	ok	no name	无名称	src/ui/screens/trace.js:251	
+1nk1wxu	ok	audio route {0}	音频路由 {0}	src/ui/screens/trace.js:252	{0} = d.route
+1yo1hz0	ok	the microphone in use: {0}	正在使用的麦克风：{0}	src/ui/screens/trace.js:252	{0} = d.using || unnamed
+swjwya	ok	judged by the devices present	根据现有设备判断	src/ui/screens/trace.js:252	Note: the Trace: the audio route was told from the devices present, not from the microphone in use.
+1rzyxvu	ok	disconnected: {0}	已断开：{0}	src/ui/screens/trace.js:253	{0} = d.gone.join(', ')
+3gdj21	ok	no devices	无设备	src/ui/screens/trace.js:253	
+1ijsnzq	ok	voice on	语音开启	src/ui/screens/trace.js:274	Note: The glossary's Voice on mode (语音开启).
+z2w914	ok	voice off	语音关闭	src/ui/screens/trace.js:274	Note: The glossary's Voice off mode (语音关闭).
+1g1k3by	ok	{0} waiting	{0} 条待发送	src/ui/screens/trace.js:277	{0} = d.waiting ?? 0
+xy6oxk	ok	{0} sent, {1} called off	已发送 {0} 条，已取消 {1} 条	src/ui/screens/trace.js:277	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
+1efflnv	ok	notification shown	通知已显示	src/ui/screens/trace.js:278	
+cjmncb	ok	notification opened	已点开通知	src/ui/screens/trace.js:279	
+3m7wpo#other	ok	# attempts	尝试 # 次	src/ui/screens/trace.js:289	plural; # = n; English: "# attempt" (one), "# attempts" (other)
+r42rpw	ok	{0} ms processing latency	处理延迟 {0} ms	src/ui/screens/trace.js:293	{0} = Math.round(d.baseLatency * 1000)
+1y5g6mq	ok	{0} ms output latency	输出延迟 {0} ms	src/ui/screens/trace.js:294	{0} = Math.round(d.outputLatency * 1000)
+a1oech	ok	live session {0}	实时会话 {0}	src/ui/screens/trace.js:295	{0} = d.state
+beya44	ok	sound at {0} kHz	采样率 {0} kHz	src/ui/screens/trace.js:297	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
+1u50qqt	ok	her voice: {0} played	她的声音：已播放 {0}	src/ui/screens/trace.js:302	{0} = duration(d.ms ?? 0)
+1wcl60z	ok	cut	已中断	src/ui/screens/trace.js:302	
+njy1uz	ok	her voice: cut before it played	她的声音：播放前被中断	src/ui/screens/trace.js:302	
+9atabi	ok	started after {0} ms	{0} ms 后开始	src/ui/screens/trace.js:303	{0} = d.waitMs
+j43x3k	ok	stalled	卡住	src/ui/screens/trace.js:303	
+1qyanji#other	ok	# holes, {0} ms	# 处空白，{0} ms	src/ui/screens/trace.js:304	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
+gw0cwm#other	ok	# holes	# 处空白	src/ui/screens/trace.js:304	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
+1bx4bl6	ok	on {0}	在 {0} 上	src/ui/screens/trace.js:305	{0} = d.player
+1jhbzkn	ok	your voice {0} dB, least to start {1} dB, {2} frames kept out (loudest {3} dB)	你的声音 {0} dB，触发下限 {1} dB，{2} 帧被拦下（最响 {3} dB）	src/ui/screens/trace.js:310	{0} = d.voiceDb ?? '?'; {1} = d.minDb ?? '–'; {2} = d.keptFrames; {3} = d.keptPeakDb ?? '?'
+1mxp5c6	ok	a sound dropped as her voice began: {0} of speech · floor {1} dB, loudest {2} dB	她开口时丢弃了一段声音：语音 {0} · 底噪 {1} dB，最响 {2} dB	src/ui/screens/trace.js:311	{0} = duration(d.speechMs ?? 0); {1} = d.floorDb ?? '?'; {2} = d.peakDb ?? '?'
+1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	你的这一轮结束：{0} · 已发送 {1} · 底噪 {2} dB，最响 {3} dB	src/ui/screens/trace.js:312	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
+7ovnj9	ok	no turn	没有开始一轮	src/ui/screens/trace.js:312	
+khxbvb	ok	audio: {0}	音频：{0}	src/ui/screens/trace.js:316	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
+1wy37ql	ok	{0} sent	已发送 {0}	src/ui/screens/trace.js:318	{0} = size(d.bytes)
+l04i5	ok	{0} sent, after a kept turn	已发送 {0}，接在保留的轮次之后	src/ui/screens/trace.js:318	{0} = size(d.bytes); Note: A kept turn is one of the conversation turns a provider keeps (轮).
+1n96vkk	ok	earlier thinking not sent: something before it changed	之前的思考未发送：前面的内容有变动	src/ui/screens/trace.js:320	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
+yfywm0#other	ok	thinking of # earlier steps sent back	已发回之前 # 步的思考	src/ui/screens/trace.js:320	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
+15hqi4k#other	ok	# guides	# 份指南	src/ui/screens/trace.js:324	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
+4k86ja	ok	{0} failed	{0} 个失败	src/ui/screens/trace.js:324	{0} = d.failed
+1waoe51	ok	at its limit	已达上限	src/ui/screens/trace.js:325	
+66h5i6	ok	by itself on Wi-Fi	Wi-Fi 下自动下载	src/ui/screens/trace.js:325	
+rfe2ef	ok	{0} files sent, {1}	已发送 {0} 个文件，{1}	src/ui/screens/trace.js:327	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
+2601w8	ok	a newer backup from another device is there	有来自另一台设备的较新备份	src/ui/screens/trace.js:328	
+uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	下载 {0}（{1}）后停止，已丢弃	src/ui/screens/trace.js:330	{0} = d.backup; {1} = size(d.bytes ?? 0)
+wgniil	ok	downloaded {0}, {1}	已下载 {0}（{1}）	src/ui/screens/trace.js:330	{0} = d.backup; {1} = size(d.bytes ?? 0)
+1gauo2f	ok	{0} can't be opened: {1}	{0} 无法打开：{1}	src/ui/screens/trace.js:331	{0} = d.backup; {1} = cut(d.problem)
+1rrq0vn	ok	deleted an older backup, {0}	已删除一个较早的备份：{0}	src/ui/screens/trace.js:332	{0} = d.backup
+57gz9u#other	ok	# secrets	# 个密钥	src/ui/screens/trace.js:334	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
+scekw#other	ok	# settings	# 项设置	src/ui/screens/trace.js:334	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
+mp7j1w#other	ok	({0}, # bytes)	（{0}，# 字节）	src/ui/screens/trace.js:357	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
+tqj8t3	ok	(no longer stored)	（已不再保存）	src/ui/screens/trace.js:357	
+1kfziuy	ok	Show what was stored	显示保存的内容	src/ui/screens/trace.js:374	
 1cnmmj7	ok	Archived	已归档	src/ui/screens/trip.js:44	
 jz8mjk	ok	Unarchive	取消归档	src/ui/screens/trip.js:56	
 qeuftp	ok	Tap again to archive	再点一次以归档	src/ui/screens/trip.js:58	
@@ -2629,19 +2629,19 @@ knyqwh	ok	Add photos or files	添加照片或文件	src/ui/screens/trip.js:317
 ecy82r	ok	Add a file	添加文件	src/ui/screens/trip.js:348	
 1bmm5eq	ok	File path	文件路径	src/ui/screens/trip.js:349	
 16gte2l	ok	Create	创建	src/ui/screens/trip.js:351	
-aoc0k0#other	ok	{0}: # chats	{0}：# 个对话	src/ui/screens/trips.js:69	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
-33pqd9	ok	Last backup {0}, to {1}.	上次备份：{0}，备份到 {1}。	src/ui/screens/trips.js:76	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: {1} is the backup place's name.
-cvvz5z	ok	Tap + to talk to Shiori.	轻点 + 和 Shiori 聊聊。	src/ui/screens/trips.js:84	
-wfhszm	ok	Archived ({0})	已归档（{0}）	src/ui/screens/trips.js:87	{0} = archived.length
-in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	还没有备份。可以在设置中点“导出全部”，或在那里设置自动备份。	src/ui/screens/trips.js:90	
-1rrn1xn	ok	Day {0} of {1}	第 {0} 天，共 {1} 天	src/ui/screens/trips.js:218	{0} = d.day; {1} = d.of
-1q78pfk#other	ok	# files waiting to be read	# 个文件待读取	src/ui/screens/trips.js:233	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: on a trip's card: files Shiori moved there that she hasn't read there yet.
-1ceddv5	ok	Big Sur · Thanksgiving	云南 · 国庆	src/ui/screens/trips.js:264	Note: An example trip name (the field's placeholder): a Chinese one (Yunnan, the National Day week).
-axugy7	ok	Start a trip	开始旅行	src/ui/screens/trips.js:291	
-ero67x	ok	Trip name	旅行名称	src/ui/screens/trips.js:292	
-1776dho	ok	Add dates (optional)	添加日期（可选）	src/ui/screens/trips.js:294	Note: 添加 as the glossary's Add; 可选 as forms say optional.
-1baslgi	ok	Start trip	开始旅行	src/ui/screens/trips.js:296	Note: The same words as the form's heading, "Start a trip".
-152lnj5	ok	Use real dates for the start and end.	请填写有效的开始和结束日期。	src/ui/screens/trips.js:314	
+aoc0k0#other	ok	{0}: # chats	{0}：# 个对话	src/ui/screens/trips.js:70	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
+33pqd9	ok	Last backup {0}, to {1}.	上次备份：{0}，备份到 {1}。	src/ui/screens/trips.js:77	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: {1} is the backup place's name.
+cvvz5z	ok	Tap + to talk to Shiori.	轻点 + 和 Shiori 聊聊。	src/ui/screens/trips.js:85	
+wfhszm	ok	Archived ({0})	已归档（{0}）	src/ui/screens/trips.js:88	{0} = archived.length
+in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	还没有备份。可以在设置中点“导出全部”，或在那里设置自动备份。	src/ui/screens/trips.js:91	
+1rrn1xn	ok	Day {0} of {1}	第 {0} 天，共 {1} 天	src/ui/screens/trips.js:236	{0} = d.day; {1} = d.of
+1q78pfk#other	ok	# files waiting to be read	# 个文件待读取	src/ui/screens/trips.js:251	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: on a trip's card: files Shiori moved there that she hasn't read there yet.
+1ceddv5	ok	Big Sur · Thanksgiving	云南 · 国庆	src/ui/screens/trips.js:282	Note: An example trip name (the field's placeholder): a Chinese one (Yunnan, the National Day week).
+axugy7	ok	Start a trip	开始旅行	src/ui/screens/trips.js:309	
+ero67x	ok	Trip name	旅行名称	src/ui/screens/trips.js:310	
+1776dho	ok	Add dates (optional)	添加日期（可选）	src/ui/screens/trips.js:312	Note: 添加 as the glossary's Add; 可选 as forms say optional.
+1baslgi	ok	Start trip	开始旅行	src/ui/screens/trips.js:314	Note: The same words as the form's heading, "Start a trip".
+152lnj5	ok	Use real dates for the start and end.	请填写有效的开始和结束日期。	src/ui/screens/trips.js:332	
 ric74d	ok	Checking annai and its plugins…	正在检查 annai 及其插件…	src/ui/screens/updates.js:18	
 1mk4lgq	ok	annai hasn't checked since it started.	annai 启动后还没有检查过。	src/ui/screens/updates.js:19	
 cmuwtk	ok	Last checked {0}.	上次检查：{0}。	src/ui/screens/updates.js:19	{0} = relTime(checkedAt, now)

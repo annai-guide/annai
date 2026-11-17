@@ -1,4 +1,4 @@
-import { h, t, tc, field, savedField, savedCheck, numberIn } from '../dom.js';
+import { h, t, tc, field, savedField, savedCheck, numberIn, crumb } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { photoSettings } from '../../core/photos.js';
 import { canEncode } from '../photo-codec.js';
@@ -95,7 +95,8 @@ export async function renderSettings(ctx) {
   /** @type {any[]} */
   const drawn = [];
   for (const id of sectionOrder({ waiting: waits !== null })) drawn.push(await sections[id]());
-  return h('div', { class: 'screen' }, h('h1', { class: 'title', text: t`Settings` }), ...drawn);
+  // A way home of its own: the gear on home is the usual way in, and the top bar is gone (timeline stage 8).
+  return h('div', { class: 'screen' }, h('p', { class: 'crumbs' }, crumb('#/trips', t`Trips`)), h('h1', { class: 'title', text: t`Settings` }), ...drawn);
 }
 
 /**

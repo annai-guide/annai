@@ -318,6 +318,17 @@ body:has(.dock:not(.seat)) .toasts { bottom: calc(var(--dock-h, 140px) + 8px); }
 .trip-card.line .name { font-family: var(--f-body); font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .trip-card.line .sub { flex: none; color: var(--ink-2); font-size: 13px; }
 .trip-card.happening { background: var(--ai-wash); border-color: color-mix(in srgb, var(--ai) 35%, var(--line)); }
+/* A trip ahead: a lighter version of the happening tint, from the same tokens, so it reads in both themes (the user, 2026-11-16: "yeah upcoming trips can
+   get a lighter version"). Chats, past and archived trips keep the plain card. */
+.trip-card.ahead { background: color-mix(in srgb, var(--ai-wash) 45%, var(--sheet)); border-color: color-mix(in srgb, var(--ai) 18%, var(--line)); }
+/* Home's head: "Trips", then Trace and the gear at its end; plugins' screens a quiet row under it. */
+.home-head { display: flex; flex-direction: column; gap: 4px; }
+.home-top { display: flex; align-items: center; gap: 4px; }
+.home-top > .title { flex: 1 1 0; min-width: 0; }
+.home-top > .btn { flex: none; min-width: 44px; padding: 0 10px; }
+.home-top > .gear { font-size: 22px; line-height: 1; }
+.home-links { display: flex; flex-wrap: wrap; gap: 0 16px; font-size: 15px; }
+.home-links a { display: inline-block; padding: 6px 0; text-decoration: none; font-weight: 500; }
 .trip-card .her-last { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rows > .fold summary { color: var(--ink-2); cursor: pointer; padding: 6px 2px; }
 .rows > .fold .cards { margin-block: 8px 0; gap: 8px; }

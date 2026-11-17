@@ -1682,7 +1682,8 @@ govuvp	ok	This page isn't here	ページが見つかりません	src/ui/screens/
 t9ug66	ok	This page belongs to a plugin that isn't on. Turn it on in {0}.	このページは、オンになっていないプラグインのものです。{0}でオンにしてください。	src/ui/screens/ext.js:24	{0} = plugins
 ata72m	ok	Trace	記録	src/ui/screens/ext.js:36	
 1y7aybz	ok	This page couldn't be drawn; the plugin's error is in {0}.	このページを表示できませんでした。プラグインのエラーは{0}で確認できます。	src/ui/screens/ext.js:37	{0} = trace
-12mubvb	ok	Now	いま	src/ui/screens/ext.js:44	
+xb1ny3	ok	Trips	旅	src/ui/screens/ext.js:44	
+12mubvb	ok	Now	いま	src/ui/screens/file.js:23	
 17o4v1i	ok	Conversation	会話	src/ui/screens/file.js:23	
 1r8pi2g	ok	Recap	振り返り	src/ui/screens/file.js:23	
 43f6md	ok	Details	詳細	src/ui/screens/file.js:23	Note: the crumb back to a plan item's details screen, from the file it came from; also the crumb back to a file's or booking's details screen, from the raw file screen; and the crumb back to a conversation's Details (the screen talk's Details button opens), from its raw file screen.
@@ -1715,7 +1716,6 @@ twulcv	ok	Version restored	バージョンを戻しました	src/ui/screens/file
 w8mx56	ok	Deleted by {0} {1}	{0}が削除（{1}）	src/ui/screens/file.js:271	{0} = who; {1} = ago; Note: {0} is Shiori or annai.
 1cdkli8	ok	Saved by you {0}	自分が保存（{0}）	src/ui/screens/file.js:272	{0} = ago
 1xtgqpw	ok	Saved by {0} {1}	{0}が保存（{1}）	src/ui/screens/file.js:272	{0} = who; {1} = ago; Note: {0} is Shiori or annai.
-xb1ny3	ok	Trips	旅	src/ui/screens/import.js:40	
 1azyvjt	ok	Choose a file instead	代わりにファイルを選ぶ	src/ui/screens/import.js:44	
 18kfutv	ok	Choose an annai file (.annai.zip or .annai) to open it.	開くには、annaiのファイル（.annai.zip または .annai）を選んでください。	src/ui/screens/import.js:57	
 s6np2n	ok	Choose a file	ファイルを選ぶ	src/ui/screens/import.js:57	
@@ -2245,33 +2245,33 @@ ynqcma	ok	A report of recent errors and system events, without your files or key
 5gnef9	ok	Try GPS, the replay and the recap with a simulated trip.	旅のシミュレーションで、GPS、リプレイ、振り返りを試せます。	src/ui/screens/settings.js:91	
 1ot30rf	draft	Features still being tried, and developer tools such as Remote trace.	開発中の機能と、リモート記録などの開発者向けツールです。	src/ui/screens/settings.js:92	
 3y74hh	ok	Erase	消去	src/ui/screens/settings.js:93	
-5d0bx7	ok	Keep originals: store photos exactly as taken	オリジナルを残す：写真を撮ったままの状態で保存	src/ui/screens/settings.js:110	
-uq55l7	ok	WebP, or JPEG where this browser can't write WebP	WebP（このブラウザが対応していない場合はJPEG）	src/ui/screens/settings.js:113	
-8dymvi	ok	Quality goes from {0} to {1}.	画質は{0}から{1}までです。	src/ui/screens/settings.js:128	{0} = num(0.5); {1} = num(1)
-14tyrj6	ok	The longest side is a whole number of pixels, at least {0}. Leave it empty for no limit.	長辺は{0}ピクセル以上の整数で指定してください。空欄にすると上限なしになります。	src/ui/screens/settings.js:129	{0} = num(256)
-1izj97p	ok	The largest photo sent is at least {0} MB. Leave it empty for no limit.	送る写真の最大サイズは{0} MB以上で指定してください。空欄にすると上限なしになります。	src/ui/screens/settings.js:136	{0} = num(0.1)
-1963ouj	ok	annai keeps one copy of each photo you add.	追加した写真は、1枚につき1つだけ保存されます。	src/ui/screens/settings.js:138	Note: one copy: the original (Keep originals) or the one saved as set below.
-1ftv62v	ok	This browser writes WebP.	このブラウザはWebPに対応しています。	src/ui/screens/settings.js:138	
-t33cgw	ok	The originals stay in your phone's photo library.	オリジナルは端末の写真ライブラリに残ります。	src/ui/screens/settings.js:138	
-xn9rs1	ok	This browser can't write WebP, so photos are saved as JPEG.	このブラウザはWebPに対応していないため、写真はJPEGで保存されます。	src/ui/screens/settings.js:138	
-10avjxv	ok	Save photos as	写真の保存形式	src/ui/screens/settings.js:141	
-ayixjd	ok	Quality ({0} to {1})	画質（{0}〜{1}）	src/ui/screens/settings.js:142	{0} = num(0.5); {1} = num(1)
-jddrbd	ok	Longest side, pixels	長辺（ピクセル）	src/ui/screens/settings.js:144	
-ehvdao	ok	Largest file, MB	最大ファイルサイズ（MB）	src/ui/screens/settings.js:145	
-o47vu9	ok	The largest file is at least {0} MB. Leave it empty for no limit.	最大ファイルサイズは{0} MB以上で指定してください。空欄にすると上限なしになります。	src/ui/screens/settings.js:145	{0} = num(0.1)
-1kdcc9b	ok	Photos for Shiori	Shioriに送る写真	src/ui/screens/settings.js:146	
-awxg9v	ok	The copies she is sent, made once and kept with the conversation. A closer look always sends more detail, so small settings stay usable.	Shioriに送る写真のコピーは一度だけ作成され、会話と一緒に保存されます。詳しく見るときは常により高い解像度で送るため、小さめの設定でも問題ありません。	src/ui/screens/settings.js:147	
-1223a8b	ok	Longest side sent, pixels	送る写真の長辺（ピクセル）	src/ui/screens/settings.js:149	
-1iw8fgg	ok	Largest photo sent, MB	送る写真の最大サイズ（MB）	src/ui/screens/settings.js:150	
-10wwcx4	ok	Send photos as	写真の送信形式	src/ui/screens/settings.js:152	
-1kotxez	ok	Quality sent ({0} to {1})	送る画質（{0}〜{1}）	src/ui/screens/settings.js:153	{0} = num(0.5); {1} = num(1)
-8ruaox	ok	Diagnostics copied.	診断情報をコピーしました。	src/ui/screens/settings.js:168	
-jdwnfb	ok	Copying didn't work here. Select and copy this report:	ここではコピーできませんでした。このレポートを選択してコピーしてください：	src/ui/screens/settings.js:170	
-ltgiri	ok	Erasing…	消去中…	src/ui/screens/settings.js:191	
-u9zvd	ok	Erase now	今すぐ消去	src/ui/screens/settings.js:212	
-tgdxsp	ok	Deletes every trip, file, setting and key on this device. Export a backup first.	この端末のすべての旅、ファイル、設定、キーを削除します。先にバックアップをエクスポートしてください。	src/ui/screens/settings.js:218	
-1x8t4tk	ok	Type {0} to confirm	確認のため「{0}」と入力	src/ui/screens/settings.js:220	{0} = ERASE; Note: {0} is the word to type, ERASE, the same in every language.; Note: the word to type stands apart in 「」.
-199v6bp	ok	From plugins	プラグインから	src/ui/screens/settings.js:230	
+5d0bx7	ok	Keep originals: store photos exactly as taken	オリジナルを残す：写真を撮ったままの状態で保存	src/ui/screens/settings.js:111	
+uq55l7	ok	WebP, or JPEG where this browser can't write WebP	WebP（このブラウザが対応していない場合はJPEG）	src/ui/screens/settings.js:114	
+8dymvi	ok	Quality goes from {0} to {1}.	画質は{0}から{1}までです。	src/ui/screens/settings.js:129	{0} = num(0.5); {1} = num(1)
+14tyrj6	ok	The longest side is a whole number of pixels, at least {0}. Leave it empty for no limit.	長辺は{0}ピクセル以上の整数で指定してください。空欄にすると上限なしになります。	src/ui/screens/settings.js:130	{0} = num(256)
+1izj97p	ok	The largest photo sent is at least {0} MB. Leave it empty for no limit.	送る写真の最大サイズは{0} MB以上で指定してください。空欄にすると上限なしになります。	src/ui/screens/settings.js:137	{0} = num(0.1)
+1963ouj	ok	annai keeps one copy of each photo you add.	追加した写真は、1枚につき1つだけ保存されます。	src/ui/screens/settings.js:139	Note: one copy: the original (Keep originals) or the one saved as set below.
+1ftv62v	ok	This browser writes WebP.	このブラウザはWebPに対応しています。	src/ui/screens/settings.js:139	
+t33cgw	ok	The originals stay in your phone's photo library.	オリジナルは端末の写真ライブラリに残ります。	src/ui/screens/settings.js:139	
+xn9rs1	ok	This browser can't write WebP, so photos are saved as JPEG.	このブラウザはWebPに対応していないため、写真はJPEGで保存されます。	src/ui/screens/settings.js:139	
+10avjxv	ok	Save photos as	写真の保存形式	src/ui/screens/settings.js:142	
+ayixjd	ok	Quality ({0} to {1})	画質（{0}〜{1}）	src/ui/screens/settings.js:143	{0} = num(0.5); {1} = num(1)
+jddrbd	ok	Longest side, pixels	長辺（ピクセル）	src/ui/screens/settings.js:145	
+ehvdao	ok	Largest file, MB	最大ファイルサイズ（MB）	src/ui/screens/settings.js:146	
+o47vu9	ok	The largest file is at least {0} MB. Leave it empty for no limit.	最大ファイルサイズは{0} MB以上で指定してください。空欄にすると上限なしになります。	src/ui/screens/settings.js:146	{0} = num(0.1)
+1kdcc9b	ok	Photos for Shiori	Shioriに送る写真	src/ui/screens/settings.js:147	
+awxg9v	ok	The copies she is sent, made once and kept with the conversation. A closer look always sends more detail, so small settings stay usable.	Shioriに送る写真のコピーは一度だけ作成され、会話と一緒に保存されます。詳しく見るときは常により高い解像度で送るため、小さめの設定でも問題ありません。	src/ui/screens/settings.js:148	
+1223a8b	ok	Longest side sent, pixels	送る写真の長辺（ピクセル）	src/ui/screens/settings.js:150	
+1iw8fgg	ok	Largest photo sent, MB	送る写真の最大サイズ（MB）	src/ui/screens/settings.js:151	
+10wwcx4	ok	Send photos as	写真の送信形式	src/ui/screens/settings.js:153	
+1kotxez	ok	Quality sent ({0} to {1})	送る画質（{0}〜{1}）	src/ui/screens/settings.js:154	{0} = num(0.5); {1} = num(1)
+8ruaox	ok	Diagnostics copied.	診断情報をコピーしました。	src/ui/screens/settings.js:169	
+jdwnfb	ok	Copying didn't work here. Select and copy this report:	ここではコピーできませんでした。このレポートを選択してコピーしてください：	src/ui/screens/settings.js:171	
+ltgiri	ok	Erasing…	消去中…	src/ui/screens/settings.js:192	
+u9zvd	ok	Erase now	今すぐ消去	src/ui/screens/settings.js:213	
+tgdxsp	ok	Deletes every trip, file, setting and key on this device. Export a backup first.	この端末のすべての旅、ファイル、設定、キーを削除します。先にバックアップをエクスポートしてください。	src/ui/screens/settings.js:219	
+1x8t4tk	ok	Type {0} to confirm	確認のため「{0}」と入力	src/ui/screens/settings.js:221	{0} = ERASE; Note: {0} is the word to type, ERASE, the same in every language.; Note: the word to type stands apart in 「」.
+199v6bp	ok	From plugins	プラグインから	src/ui/screens/settings.js:231	
 1bu98qy	ok	Shiori, hearing you	Shiori、聞き取り中	src/ui/screens/shiori.js:19	
 1cfiys6	ok	Shiori, getting ready to listen	Shiori、聞き取りの準備中	src/ui/screens/shiori.js:19	
 1m5wnho	ok	Shiori, listening	Shiori、聞いています	src/ui/screens/shiori.js:19	
@@ -2501,105 +2501,105 @@ a2pqv8	ok	Every tool Shiori has, including plugins' tools. A switched-off tool i
 pghiva	ok	Location	位置情報	src/ui/screens/trace.js:40	
 1ocm8xt	ok	System · {0}	システム · {0}	src/ui/screens/trace.js:57	{0} = scopeTitle(s)
 1jije2k	ok	Nothing here yet.	まだ何もありません。	src/ui/screens/trace.js:94	
-zixzwp	ok	Everything annai recorded: file changes, model calls, imports, plugin problems and errors. Newest first.	annaiが記録したすべての内容（ファイルの変更、モデルの呼び出し、読み込み、プラグインの問題、エラー）を、新しい順に表示します。	src/ui/screens/trace.js:105	
-vv1pu6	ok	Type contains	タイプに含まれる文字	src/ui/screens/trace.js:106	Note: The entry's type (a code like file.write), apart from the Kind filter just before it (種類 / 类型).
-g9esrd	ok	a newer backup from an Android phone is there	別のAndroidスマートフォンからの新しいバックアップがあります	src/ui/screens/trace.js:178	
-obwhc7	ok	a newer backup from an iPhone is there	別のiPhoneからの新しいバックアップがあります	src/ui/screens/trace.js:178	
-oh532o	ok	a newer backup from an iPad is there	別のiPadからの新しいバックアップがあります	src/ui/screens/trace.js:178	
-1ds6m85	ok	a newer backup from a computer is there	別のパソコンからの新しいバックアップがあります	src/ui/screens/trace.js:179	
-1r6qy12	ok	the user wrote	ユーザーが入力	src/ui/screens/trace.js:201	
-yyq6of	ok	the user tapped a choice	ユーザーが選択肢をタップ	src/ui/screens/trace.js:201	
-1eo2nlm	ok	Kokoro to Koe	KokoroからKoeへ	src/ui/screens/trace.js:205	
-l7yvjm	ok	Koe to Kokoro	KoeからKokoroへ	src/ui/screens/trace.js:205	
-omff16	ok	annai to Kokoro	annaiからKokoroへ	src/ui/screens/trace.js:206	
-hnbn63	ok	this was for Shiori	Shiori宛て	src/ui/screens/trace.js:207	
-1larmkq	ok	phone dictation	端末の音声入力	src/ui/screens/trace.js:210	
-piy3vo	ok	{0} from the microphone	マイクから{0}	src/ui/screens/trace.js:210	{0} = duration(d.ms ?? 0)
-1sfeb1g	ok	an answer	返答	src/ui/screens/trace.js:211	
-1x13vat	ok	not for Shiori	Shiori宛てではない	src/ui/screens/trace.js:211	
-k9shc3	ok	while she was thinking	考えている間	src/ui/screens/trace.js:211	
-mj6pnh	ok	she didn't answer	Shioriは答えなかった	src/ui/screens/trace.js:211	
-an9lly	ok	clip kept: {0}, {1}	録音を保存：{0}、{1}	src/ui/screens/trace.js:212	{0} = d.clipFormat; {1} = size(d.clipBytes ?? 0)
-voav2t	ok	clip kept	録音を保存	src/ui/screens/trace.js:212	
-1gqj9yn	ok	written down by {0}	{0}で文字起こし	src/ui/screens/trace.js:214	{0} = names(d.by)
-o1nqez	ok	from {0}	{0}から	src/ui/screens/trace.js:217	{0} = sourceOf(d)
-v0l7oi#other	ok	# links	#件のリンク	src/ui/screens/trace.js:217	plural; # = (d.links ?? []).length; English: "# link" (one), "# links" (other)
-9bb0pd	ok	error	エラー	src/ui/screens/trace.js:219	
-scvxkf	ok	ok	成功	src/ui/screens/trace.js:219	
-1qafm6e	ok	kept turn not deleted yet	保持されたターンは未削除	src/ui/screens/trace.js:223	
-7lsal4	ok	no answer	応答なし	src/ui/screens/trace.js:223	
-udpknx	ok	kept turn deleted	保持されたターンを削除	src/ui/screens/trace.js:223	
-hnu5xn	ok	kept turn looked up	保持されたターンを確認	src/ui/screens/trace.js:224	
-1b5ygaa	ok	photo uploads listed	アップロードした写真の一覧を取得	src/ui/screens/trace.js:226	Note: a Trace line, beside "kept turn looked up".
-lx223x	ok	photo upload deleted	アップロードした写真を削除	src/ui/screens/trace.js:227	Note: a Trace line, as "kept turn deleted".
-rpu62e	ok	photo upload not deleted yet	アップロードした写真は未削除	src/ui/screens/trace.js:227	Note: a Trace line, as "kept turn not deleted yet".
-1t1zawl	ok	a refused photo sent again as a new copy ({0})	拒否された写真を新しいコピーとして再送（{0}）	src/ui/screens/trace.js:228	{0} = d.mediaType
-gjjwcl	ok	a PDF's words kept for models that can't read PDFs	PDFを読めないモデル用に残したPDFの内容（文字）	src/ui/screens/trace.js:230	Note: a Trace line: what was kept of a PDF, told in words, for models that can't read PDFs.
-kbptqr	ok	a photo's description kept for models that can't see photos	写真を見られないモデル用に残した写真の説明	src/ui/screens/trace.js:230	Note: a Trace line, as above, for a photo's description.
-y6qkfy	ok	a PDF's pages kept for models that can't read PDFs	PDFを読めないモデル用に残したPDFのページ（画像）	src/ui/screens/trace.js:230	Note: a Trace line, as above, for a PDF's pages as pictures.
-12y45gf	ok	from a backup, annai {0}	バックアップから（annai {0}）	src/ui/screens/trace.js:234	{0} = app
-hq4bg1	ok	from an export, annai {0}	エクスポートから（annai {0}）	src/ui/screens/trace.js:234	{0} = app
-fgylb4#other	ok	# pieces of content it didn't hold left out	ファイルにない内容#件を除外	src/ui/screens/trace.js:235	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
-1vkhbgw	ok	asked for content that isn't here, and got none	ここにない内容を求めたが、何も得られなかった	src/ui/screens/trace.js:238	
-17ybebf	ok	a turn cut off by opening another conversation	別の会話を開いたため途中で止まったターン	src/ui/screens/trace.js:239	
-z082y3	ok	read {0}	「{0}」を読んだ	src/ui/screens/trace.js:241	{0} = d.title
-1g60658	ok	said	発話	src/ui/screens/trace.js:242	
-1s3wptl	ok	reading {0} allowed	{0}の読み取りを許可	src/ui/screens/trace.js:242	{0} = d.trip
-guv93	ok	moved to {0}	「{0}」へ移動	src/ui/screens/trace.js:244	{0} = d.title; Note: a Trace line: Shiori took the user from this conversation to {0}.
-130nh2w	ok	events {0}–{1} summarized ({2})	イベント{0}–{1}を要約（{2}）	src/ui/screens/trace.js:245	{0} = d.from; {1} = d.to; {2} = d.mode
-vgv0s2	ok	started fresh after event {0}	イベント{0}のあとで新しく始めた	src/ui/screens/trace.js:245	{0} = d.to
-1nulaw8	ok	late by {0} min	{0}分遅れ	src/ui/screens/trace.js:247	{0} = d.late
-1vzfabu	ok	no connection	接続なし	src/ui/screens/trace.js:247	
-1l7ac5y	ok	shown	表示	src/ui/screens/trace.js:248	
-1yfde5	ok	no name	名前なし	src/ui/screens/trace.js:250	
-1nk1wxu	ok	audio route {0}	音声の経路：{0}	src/ui/screens/trace.js:251	{0} = d.route
-1yo1hz0	ok	the microphone in use: {0}	使用中のマイク：{0}	src/ui/screens/trace.js:251	{0} = d.using || unnamed
-swjwya	ok	judged by the devices present	接続中のデバイスから判断	src/ui/screens/trace.js:251	Note: the Trace: the audio route was told from the devices present, not from the microphone in use.
-1rzyxvu	ok	disconnected: {0}	切断：{0}	src/ui/screens/trace.js:252	{0} = d.gone.join(', ')
-3gdj21	ok	no devices	デバイスなし	src/ui/screens/trace.js:252	
-1ijsnzq	ok	voice on	音声オン	src/ui/screens/trace.js:273	
-z2w914	ok	voice off	音声オフ	src/ui/screens/trace.js:273	
-1g1k3by	ok	{0} waiting	{0}件待機中	src/ui/screens/trace.js:276	{0} = d.waiting ?? 0
-xy6oxk	ok	{0} sent, {1} called off	{0}件送信、{1}件取り消し	src/ui/screens/trace.js:276	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
-1efflnv	ok	notification shown	通知を表示	src/ui/screens/trace.js:277	
-cjmncb	ok	notification opened	通知を開いた	src/ui/screens/trace.js:278	
-3m7wpo#other	ok	# attempts	#回試行	src/ui/screens/trace.js:288	plural; # = n; English: "# attempt" (one), "# attempts" (other)
-r42rpw	ok	{0} ms processing latency	処理遅延{0} ms	src/ui/screens/trace.js:292	{0} = Math.round(d.baseLatency * 1000)
-1y5g6mq	ok	{0} ms output latency	出力遅延{0} ms	src/ui/screens/trace.js:293	{0} = Math.round(d.outputLatency * 1000)
-a1oech	ok	live session {0}	ライブセッション：{0}	src/ui/screens/trace.js:294	{0} = d.state
-beya44	ok	sound at {0} kHz	音声{0} kHz	src/ui/screens/trace.js:296	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
-1u50qqt	ok	her voice: {0} played	Shioriの声：{0}再生	src/ui/screens/trace.js:301	{0} = duration(d.ms ?? 0); Note: "her" is written as Shiori: 彼女 reads distant in Japanese.
-1wcl60z	ok	cut	中断	src/ui/screens/trace.js:301	
-njy1uz	ok	her voice: cut before it played	Shioriの声：再生前に中断	src/ui/screens/trace.js:301	Note: "her" is written as Shiori.
-9atabi	ok	started after {0} ms	{0} ms後に開始	src/ui/screens/trace.js:302	{0} = d.waitMs
-j43x3k	ok	stalled	停滞	src/ui/screens/trace.js:302	
-1qyanji#other	ok	# holes, {0} ms	途切れ#回、{0} ms	src/ui/screens/trace.js:303	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
-gw0cwm#other	ok	# holes	途切れ#回	src/ui/screens/trace.js:303	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
-1bx4bl6	ok	on {0}	{0}で	src/ui/screens/trace.js:304	{0} = d.player
-1jhbzkn	ok	your voice {0} dB, least to start {1} dB, {2} frames kept out (loudest {3} dB)	ユーザーの声{0} dB、開始に必要な最小{1} dB、{2}フレームを除外（最大{3} dB）	src/ui/screens/trace.js:309	{0} = d.voiceDb ?? '?'; {1} = d.minDb ?? '–'; {2} = d.keptFrames; {3} = d.keptPeakDb ?? '?'
-1mxp5c6	ok	a sound dropped as her voice began: {0} of speech · floor {1} dB, loudest {2} dB	Shioriの声が始まったときに破棄した音：発話{0} · 下限{1} dB、最大{2} dB	src/ui/screens/trace.js:310	{0} = duration(d.speechMs ?? 0); {1} = d.floorDb ?? '?'; {2} = d.peakDb ?? '?'; Note: "her" is written as Shiori.
-1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	ユーザーのターン終了：{0} · {1}送信 · 下限{2} dB、最大{3} dB	src/ui/screens/trace.js:311	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
-7ovnj9	ok	no turn	ターンなし	src/ui/screens/trace.js:311	
-khxbvb	ok	audio: {0}	音声：{0}	src/ui/screens/trace.js:315	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
-1wy37ql	ok	{0} sent	{0}送信	src/ui/screens/trace.js:317	{0} = size(d.bytes)
-l04i5	ok	{0} sent, after a kept turn	{0}送信（保持されたターンのあと）	src/ui/screens/trace.js:317	{0} = size(d.bytes)
-1n96vkk	ok	earlier thinking not sent: something before it changed	前のステップの思考は送り返さず（それより前の内容が変わったため）	src/ui/screens/trace.js:319	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
-yfywm0#other	ok	thinking of # earlier steps sent back	前の#ステップの思考を送り返した	src/ui/screens/trace.js:319	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
-15hqi4k#other	ok	# guides	#件のガイド	src/ui/screens/trace.js:323	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
-4k86ja	ok	{0} failed	{0}件失敗	src/ui/screens/trace.js:323	{0} = d.failed
-1waoe51	ok	at its limit	上限に達した	src/ui/screens/trace.js:324	
-66h5i6	ok	by itself on Wi-Fi	Wi-Fiで自動	src/ui/screens/trace.js:324	
-rfe2ef	ok	{0} files sent, {1}	{0}個のファイルを送信、{1}	src/ui/screens/trace.js:326	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
-2601w8	ok	a newer backup from another device is there	別の端末からの新しいバックアップがあります	src/ui/screens/trace.js:327	
-uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	{0}をダウンロード、{1}、停止したため破棄	src/ui/screens/trace.js:329	{0} = d.backup; {1} = size(d.bytes ?? 0)
-wgniil	ok	downloaded {0}, {1}	{0}をダウンロード、{1}	src/ui/screens/trace.js:329	{0} = d.backup; {1} = size(d.bytes ?? 0)
-1gauo2f	ok	{0} can't be opened: {1}	{0}を開けません：{1}	src/ui/screens/trace.js:330	{0} = d.backup; {1} = cut(d.problem)
-1rrq0vn	ok	deleted an older backup, {0}	古いバックアップを削除：{0}	src/ui/screens/trace.js:331	{0} = d.backup
-57gz9u#other	ok	# secrets	シークレット#件	src/ui/screens/trace.js:333	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
-scekw#other	ok	# settings	設定#件	src/ui/screens/trace.js:333	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
-mp7j1w#other	ok	({0}, # bytes)	（{0}、#バイト）	src/ui/screens/trace.js:356	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
-tqj8t3	ok	(no longer stored)	（もう保存されていません）	src/ui/screens/trace.js:356	
-1kfziuy	ok	Show what was stored	保存された内容を表示	src/ui/screens/trace.js:373	
+zixzwp	ok	Everything annai recorded: file changes, model calls, imports, plugin problems and errors. Newest first.	annaiが記録したすべての内容（ファイルの変更、モデルの呼び出し、読み込み、プラグインの問題、エラー）を、新しい順に表示します。	src/ui/screens/trace.js:106	
+vv1pu6	ok	Type contains	タイプに含まれる文字	src/ui/screens/trace.js:107	Note: The entry's type (a code like file.write), apart from the Kind filter just before it (種類 / 类型).
+g9esrd	ok	a newer backup from an Android phone is there	別のAndroidスマートフォンからの新しいバックアップがあります	src/ui/screens/trace.js:179	
+obwhc7	ok	a newer backup from an iPhone is there	別のiPhoneからの新しいバックアップがあります	src/ui/screens/trace.js:179	
+oh532o	ok	a newer backup from an iPad is there	別のiPadからの新しいバックアップがあります	src/ui/screens/trace.js:179	
+1ds6m85	ok	a newer backup from a computer is there	別のパソコンからの新しいバックアップがあります	src/ui/screens/trace.js:180	
+1r6qy12	ok	the user wrote	ユーザーが入力	src/ui/screens/trace.js:202	
+yyq6of	ok	the user tapped a choice	ユーザーが選択肢をタップ	src/ui/screens/trace.js:202	
+1eo2nlm	ok	Kokoro to Koe	KokoroからKoeへ	src/ui/screens/trace.js:206	
+l7yvjm	ok	Koe to Kokoro	KoeからKokoroへ	src/ui/screens/trace.js:206	
+omff16	ok	annai to Kokoro	annaiからKokoroへ	src/ui/screens/trace.js:207	
+hnbn63	ok	this was for Shiori	Shiori宛て	src/ui/screens/trace.js:208	
+1larmkq	ok	phone dictation	端末の音声入力	src/ui/screens/trace.js:211	
+piy3vo	ok	{0} from the microphone	マイクから{0}	src/ui/screens/trace.js:211	{0} = duration(d.ms ?? 0)
+1sfeb1g	ok	an answer	返答	src/ui/screens/trace.js:212	
+1x13vat	ok	not for Shiori	Shiori宛てではない	src/ui/screens/trace.js:212	
+k9shc3	ok	while she was thinking	考えている間	src/ui/screens/trace.js:212	
+mj6pnh	ok	she didn't answer	Shioriは答えなかった	src/ui/screens/trace.js:212	
+an9lly	ok	clip kept: {0}, {1}	録音を保存：{0}、{1}	src/ui/screens/trace.js:213	{0} = d.clipFormat; {1} = size(d.clipBytes ?? 0)
+voav2t	ok	clip kept	録音を保存	src/ui/screens/trace.js:213	
+1gqj9yn	ok	written down by {0}	{0}で文字起こし	src/ui/screens/trace.js:215	{0} = names(d.by)
+o1nqez	ok	from {0}	{0}から	src/ui/screens/trace.js:218	{0} = sourceOf(d)
+v0l7oi#other	ok	# links	#件のリンク	src/ui/screens/trace.js:218	plural; # = (d.links ?? []).length; English: "# link" (one), "# links" (other)
+9bb0pd	ok	error	エラー	src/ui/screens/trace.js:220	
+scvxkf	ok	ok	成功	src/ui/screens/trace.js:220	
+1qafm6e	ok	kept turn not deleted yet	保持されたターンは未削除	src/ui/screens/trace.js:224	
+7lsal4	ok	no answer	応答なし	src/ui/screens/trace.js:224	
+udpknx	ok	kept turn deleted	保持されたターンを削除	src/ui/screens/trace.js:224	
+hnu5xn	ok	kept turn looked up	保持されたターンを確認	src/ui/screens/trace.js:225	
+1b5ygaa	ok	photo uploads listed	アップロードした写真の一覧を取得	src/ui/screens/trace.js:227	Note: a Trace line, beside "kept turn looked up".
+lx223x	ok	photo upload deleted	アップロードした写真を削除	src/ui/screens/trace.js:228	Note: a Trace line, as "kept turn deleted".
+rpu62e	ok	photo upload not deleted yet	アップロードした写真は未削除	src/ui/screens/trace.js:228	Note: a Trace line, as "kept turn not deleted yet".
+1t1zawl	ok	a refused photo sent again as a new copy ({0})	拒否された写真を新しいコピーとして再送（{0}）	src/ui/screens/trace.js:229	{0} = d.mediaType
+gjjwcl	ok	a PDF's words kept for models that can't read PDFs	PDFを読めないモデル用に残したPDFの内容（文字）	src/ui/screens/trace.js:231	Note: a Trace line: what was kept of a PDF, told in words, for models that can't read PDFs.
+kbptqr	ok	a photo's description kept for models that can't see photos	写真を見られないモデル用に残した写真の説明	src/ui/screens/trace.js:231	Note: a Trace line, as above, for a photo's description.
+y6qkfy	ok	a PDF's pages kept for models that can't read PDFs	PDFを読めないモデル用に残したPDFのページ（画像）	src/ui/screens/trace.js:231	Note: a Trace line, as above, for a PDF's pages as pictures.
+12y45gf	ok	from a backup, annai {0}	バックアップから（annai {0}）	src/ui/screens/trace.js:235	{0} = app
+hq4bg1	ok	from an export, annai {0}	エクスポートから（annai {0}）	src/ui/screens/trace.js:235	{0} = app
+fgylb4#other	ok	# pieces of content it didn't hold left out	ファイルにない内容#件を除外	src/ui/screens/trace.js:236	plural; # = n; English: "# piece of content it didn't hold left out" (one), "# pieces of content it didn't hold left out" (other)
+1vkhbgw	ok	asked for content that isn't here, and got none	ここにない内容を求めたが、何も得られなかった	src/ui/screens/trace.js:239	
+17ybebf	ok	a turn cut off by opening another conversation	別の会話を開いたため途中で止まったターン	src/ui/screens/trace.js:240	
+z082y3	ok	read {0}	「{0}」を読んだ	src/ui/screens/trace.js:242	{0} = d.title
+1g60658	ok	said	発話	src/ui/screens/trace.js:243	
+1s3wptl	ok	reading {0} allowed	{0}の読み取りを許可	src/ui/screens/trace.js:243	{0} = d.trip
+guv93	ok	moved to {0}	「{0}」へ移動	src/ui/screens/trace.js:245	{0} = d.title; Note: a Trace line: Shiori took the user from this conversation to {0}.
+130nh2w	ok	events {0}–{1} summarized ({2})	イベント{0}–{1}を要約（{2}）	src/ui/screens/trace.js:246	{0} = d.from; {1} = d.to; {2} = d.mode
+vgv0s2	ok	started fresh after event {0}	イベント{0}のあとで新しく始めた	src/ui/screens/trace.js:246	{0} = d.to
+1nulaw8	ok	late by {0} min	{0}分遅れ	src/ui/screens/trace.js:248	{0} = d.late
+1vzfabu	ok	no connection	接続なし	src/ui/screens/trace.js:248	
+1l7ac5y	ok	shown	表示	src/ui/screens/trace.js:249	
+1yfde5	ok	no name	名前なし	src/ui/screens/trace.js:251	
+1nk1wxu	ok	audio route {0}	音声の経路：{0}	src/ui/screens/trace.js:252	{0} = d.route
+1yo1hz0	ok	the microphone in use: {0}	使用中のマイク：{0}	src/ui/screens/trace.js:252	{0} = d.using || unnamed
+swjwya	ok	judged by the devices present	接続中のデバイスから判断	src/ui/screens/trace.js:252	Note: the Trace: the audio route was told from the devices present, not from the microphone in use.
+1rzyxvu	ok	disconnected: {0}	切断：{0}	src/ui/screens/trace.js:253	{0} = d.gone.join(', ')
+3gdj21	ok	no devices	デバイスなし	src/ui/screens/trace.js:253	
+1ijsnzq	ok	voice on	音声オン	src/ui/screens/trace.js:274	
+z2w914	ok	voice off	音声オフ	src/ui/screens/trace.js:274	
+1g1k3by	ok	{0} waiting	{0}件待機中	src/ui/screens/trace.js:277	{0} = d.waiting ?? 0
+xy6oxk	ok	{0} sent, {1} called off	{0}件送信、{1}件取り消し	src/ui/screens/trace.js:277	{0} = d.sent ?? 0; {1} = d.calledOff ?? 0
+1efflnv	ok	notification shown	通知を表示	src/ui/screens/trace.js:278	
+cjmncb	ok	notification opened	通知を開いた	src/ui/screens/trace.js:279	
+3m7wpo#other	ok	# attempts	#回試行	src/ui/screens/trace.js:289	plural; # = n; English: "# attempt" (one), "# attempts" (other)
+r42rpw	ok	{0} ms processing latency	処理遅延{0} ms	src/ui/screens/trace.js:293	{0} = Math.round(d.baseLatency * 1000)
+1y5g6mq	ok	{0} ms output latency	出力遅延{0} ms	src/ui/screens/trace.js:294	{0} = Math.round(d.outputLatency * 1000)
+a1oech	ok	live session {0}	ライブセッション：{0}	src/ui/screens/trace.js:295	{0} = d.state
+beya44	ok	sound at {0} kHz	音声{0} kHz	src/ui/screens/trace.js:297	{0} = num(d.sampleRate / 1000, { maximumFractionDigits: 1 })
+1u50qqt	ok	her voice: {0} played	Shioriの声：{0}再生	src/ui/screens/trace.js:302	{0} = duration(d.ms ?? 0); Note: "her" is written as Shiori: 彼女 reads distant in Japanese.
+1wcl60z	ok	cut	中断	src/ui/screens/trace.js:302	
+njy1uz	ok	her voice: cut before it played	Shioriの声：再生前に中断	src/ui/screens/trace.js:302	Note: "her" is written as Shiori.
+9atabi	ok	started after {0} ms	{0} ms後に開始	src/ui/screens/trace.js:303	{0} = d.waitMs
+j43x3k	ok	stalled	停滞	src/ui/screens/trace.js:303	
+1qyanji#other	ok	# holes, {0} ms	途切れ#回、{0} ms	src/ui/screens/trace.js:304	plural; # = d.holes; {0} = d.holeMs ?? 0; English: "# hole, {0} ms" (one), "# holes, {0} ms" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
+gw0cwm#other	ok	# holes	途切れ#回	src/ui/screens/trace.js:304	plural; # = 0; English: "# hole" (one), "# holes" (other); Note: Gaps in her voice, apart from "cut" in the same line (zh 已中断).
+1bx4bl6	ok	on {0}	{0}で	src/ui/screens/trace.js:305	{0} = d.player
+1jhbzkn	ok	your voice {0} dB, least to start {1} dB, {2} frames kept out (loudest {3} dB)	ユーザーの声{0} dB、開始に必要な最小{1} dB、{2}フレームを除外（最大{3} dB）	src/ui/screens/trace.js:310	{0} = d.voiceDb ?? '?'; {1} = d.minDb ?? '–'; {2} = d.keptFrames; {3} = d.keptPeakDb ?? '?'
+1mxp5c6	ok	a sound dropped as her voice began: {0} of speech · floor {1} dB, loudest {2} dB	Shioriの声が始まったときに破棄した音：発話{0} · 下限{1} dB、最大{2} dB	src/ui/screens/trace.js:311	{0} = duration(d.speechMs ?? 0); {1} = d.floorDb ?? '?'; {2} = d.peakDb ?? '?'; Note: "her" is written as Shiori.
+1kg51bl	ok	your turn ended: {0} · {1} sent · floor {2} dB, loudest {3} dB	ユーザーのターン終了：{0} · {1}送信 · 下限{2} dB、最大{3} dB	src/ui/screens/trace.js:312	{0} = d.end; {1} = duration(d.ms ?? 0); {2} = d.floorDb ?? '?'; {3} = d.peakDb ?? '?'
+7ovnj9	ok	no turn	ターンなし	src/ui/screens/trace.js:312	
+khxbvb	ok	audio: {0}	音声：{0}	src/ui/screens/trace.js:316	{0} = d.audio.map((/** @type {any} */ a) => `${a.format}, ${size(a.bytes)}`).join('; ')
+1wy37ql	ok	{0} sent	{0}送信	src/ui/screens/trace.js:318	{0} = size(d.bytes)
+l04i5	ok	{0} sent, after a kept turn	{0}送信（保持されたターンのあと）	src/ui/screens/trace.js:318	{0} = size(d.bytes)
+1n96vkk	ok	earlier thinking not sent: something before it changed	前のステップの思考は送り返さず（それより前の内容が変わったため）	src/ui/screens/trace.js:320	Note: a request line in the Trace; the model's thinking from earlier steps of the turn wasn't sent back, because an earlier part of the conversation changed. 思考 as for the model's thinking elsewhere.
+yfywm0#other	ok	thinking of # earlier steps sent back	前の#ステップの思考を送り返した	src/ui/screens/trace.js:320	plural; # = d.natives.sent ?? 0; English: "thinking of # earlier step sent back" (one), "thinking of # earlier steps sent back" (other); Note: a request line in the Trace; how many earlier steps of the turn had their thinking sent back to the model.
+15hqi4k#other	ok	# guides	#件のガイド	src/ui/screens/trace.js:324	plural; # = d.guides ?? 0; English: "# guide" (one), "# guides" (other)
+4k86ja	ok	{0} failed	{0}件失敗	src/ui/screens/trace.js:324	{0} = d.failed
+1waoe51	ok	at its limit	上限に達した	src/ui/screens/trace.js:325	
+66h5i6	ok	by itself on Wi-Fi	Wi-Fiで自動	src/ui/screens/trace.js:325	
+rfe2ef	ok	{0} files sent, {1}	{0}個のファイルを送信、{1}	src/ui/screens/trace.js:327	{0} = d.files ?? '?'; {1} = size(d.uploaded ?? 0)
+2601w8	ok	a newer backup from another device is there	別の端末からの新しいバックアップがあります	src/ui/screens/trace.js:328	
+uvybu3	ok	downloaded {0}, {1}, then stopped: thrown away	{0}をダウンロード、{1}、停止したため破棄	src/ui/screens/trace.js:330	{0} = d.backup; {1} = size(d.bytes ?? 0)
+wgniil	ok	downloaded {0}, {1}	{0}をダウンロード、{1}	src/ui/screens/trace.js:330	{0} = d.backup; {1} = size(d.bytes ?? 0)
+1gauo2f	ok	{0} can't be opened: {1}	{0}を開けません：{1}	src/ui/screens/trace.js:331	{0} = d.backup; {1} = cut(d.problem)
+1rrq0vn	ok	deleted an older backup, {0}	古いバックアップを削除：{0}	src/ui/screens/trace.js:332	{0} = d.backup
+57gz9u#other	ok	# secrets	シークレット#件	src/ui/screens/trace.js:334	plural; # = (d.secrets?.length ?? 0) + (d.otherSecrets ?? 0); English: "# secret" (one), "# secrets" (other)
+scekw#other	ok	# settings	設定#件	src/ui/screens/trace.js:334	plural; # = (d.settings?.length ?? 0) + (d.otherSettings ?? 0); English: "# setting" (one), "# settings" (other)
+mp7j1w#other	ok	({0}, # bytes)	（{0}、#バイト）	src/ui/screens/trace.js:357	plural; # = b.size; {0} = b.type; English: "({0}, # byte)" (one), "({0}, # bytes)" (other)
+tqj8t3	ok	(no longer stored)	（もう保存されていません）	src/ui/screens/trace.js:357	
+1kfziuy	ok	Show what was stored	保存された内容を表示	src/ui/screens/trace.js:374	
 1cnmmj7	ok	Archived	アーカイブ済み	src/ui/screens/trip.js:44	
 jz8mjk	ok	Unarchive	アーカイブを解除	src/ui/screens/trip.js:56	
 qeuftp	ok	Tap again to archive	もう一度タップでアーカイブ	src/ui/screens/trip.js:58	
@@ -2629,19 +2629,19 @@ knyqwh	ok	Add photos or files	写真やファイルを追加	src/ui/screens/trip
 ecy82r	ok	Add a file	ファイルを追加	src/ui/screens/trip.js:348	
 1bmm5eq	ok	File path	ファイルのパス	src/ui/screens/trip.js:349	
 16gte2l	ok	Create	作成	src/ui/screens/trip.js:351	
-aoc0k0#other	ok	{0}: # chats	{0}：会話#件	src/ui/screens/trips.js:69	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
-33pqd9	ok	Last backup {0}, to {1}.	前回のバックアップ：{0}（{1}）	src/ui/screens/trips.js:76	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: Label and value, no 。, as "Last export" beside it.
-cvvz5z	ok	Tap + to talk to Shiori.	＋をタップしてShioriと話しましょう。	src/ui/screens/trips.js:84	
-wfhszm	ok	Archived ({0})	アーカイブ済み（{0}）	src/ui/screens/trips.js:87	{0} = archived.length
-in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	まだバックアップがありません。「設定」からすべてをエクスポートするか、自動バックアップを設定してください。	src/ui/screens/trips.js:90	
-1rrn1xn	ok	Day {0} of {1}	{0}日目（全{1}日）	src/ui/screens/trips.js:218	{0} = d.day; {1} = d.of
-1q78pfk#other	ok	# files waiting to be read	未読のファイル#件	src/ui/screens/trips.js:233	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: on a trip's card: files Shiori moved there that its conversation hasn't read yet; 件 counts files.
-1ceddv5	ok	Big Sur · Thanksgiving	京都・紅葉	src/ui/screens/trips.js:264	Note: An example trip name (the field's placeholder): a Japanese one, written with ・ as Japanese names are.
-axugy7	ok	Start a trip	旅を始める	src/ui/screens/trips.js:291	
-ero67x	ok	Trip name	旅の名前	src/ui/screens/trips.js:292	
-1776dho	ok	Add dates (optional)	日付を追加（任意）	src/ui/screens/trips.js:294	Note: folds the Starts and Ends fields under Start a trip: a name is enough; 任意 as forms say optional.
-1baslgi	ok	Start trip	旅を始める	src/ui/screens/trips.js:296	Note: The same words as the form's heading, "Start a trip".
-152lnj5	ok	Use real dates for the start and end.	開始日と終了日に正しい日付を入力してください。	src/ui/screens/trips.js:314	
+aoc0k0#other	ok	{0}: # chats	{0}：会話#件	src/ui/screens/trips.js:70	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
+33pqd9	ok	Last backup {0}, to {1}.	前回のバックアップ：{0}（{1}）	src/ui/screens/trips.js:77	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: Label and value, no 。, as "Last export" beside it.
+cvvz5z	ok	Tap + to talk to Shiori.	＋をタップしてShioriと話しましょう。	src/ui/screens/trips.js:85	
+wfhszm	ok	Archived ({0})	アーカイブ済み（{0}）	src/ui/screens/trips.js:88	{0} = archived.length
+in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	まだバックアップがありません。「設定」からすべてをエクスポートするか、自動バックアップを設定してください。	src/ui/screens/trips.js:91	
+1rrn1xn	ok	Day {0} of {1}	{0}日目（全{1}日）	src/ui/screens/trips.js:236	{0} = d.day; {1} = d.of
+1q78pfk#other	ok	# files waiting to be read	未読のファイル#件	src/ui/screens/trips.js:251	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: on a trip's card: files Shiori moved there that its conversation hasn't read yet; 件 counts files.
+1ceddv5	ok	Big Sur · Thanksgiving	京都・紅葉	src/ui/screens/trips.js:282	Note: An example trip name (the field's placeholder): a Japanese one, written with ・ as Japanese names are.
+axugy7	ok	Start a trip	旅を始める	src/ui/screens/trips.js:309	
+ero67x	ok	Trip name	旅の名前	src/ui/screens/trips.js:310	
+1776dho	ok	Add dates (optional)	日付を追加（任意）	src/ui/screens/trips.js:312	Note: folds the Starts and Ends fields under Start a trip: a name is enough; 任意 as forms say optional.
+1baslgi	ok	Start trip	旅を始める	src/ui/screens/trips.js:314	Note: The same words as the form's heading, "Start a trip".
+152lnj5	ok	Use real dates for the start and end.	開始日と終了日に正しい日付を入力してください。	src/ui/screens/trips.js:332	
 ric74d	ok	Checking annai and its plugins…	annaiとプラグインを確認中…	src/ui/screens/updates.js:18	
 1mk4lgq	ok	annai hasn't checked since it started.	起動してからまだ確認していません。	src/ui/screens/updates.js:19	
 cmuwtk	ok	Last checked {0}.	最終確認：{0}。	src/ui/screens/updates.js:19	{0} = relTime(checkedAt, now)

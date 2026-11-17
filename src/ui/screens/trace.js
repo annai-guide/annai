@@ -1,4 +1,4 @@
-import { h, t, plural, field, linkIn } from '../dom.js';
+import { h, t, plural, field, linkIn, crumb } from '../dom.js';
 import { formatCost, size, duration, num, when, list } from '../format.js';
 import { costs } from '../../core/agent/budgets.js';
 import { toolSwitchList } from './tools.js';
@@ -101,6 +101,7 @@ export async function renderTrace(ctx, route) {
   filter.addEventListener('input', () => { entries.setAttribute('aria-busy', 'true'); clearTimeout(timer); timer = setTimeout(load, 150); });
   await load();
   return h('div', { class: 'screen' },
+    h('p', { class: 'crumbs' }, crumb('#/trips', t`Trips`)), // home, where Trace sits beside the gear
     h('h1', { class: 'title', text: t`Trace` }),
     h('p', { class: 'sub', text: t`Everything annai recorded: file changes, model calls, imports, plugin problems and errors. Newest first.` }),
     h('div', { class: 'row' }, field(t`Show`, select), field(t`Kind`, kind), field(t`Type contains`, filter)),
