@@ -44,7 +44,7 @@ export async function renderRecap(ctx, route) {
     addEventListener('hashchange', leave);
     try {
       const pack = await loadPack(ctx.ws, id).catch(() => null);
-      await writeRecap({ store: ctx.store, ws: ctx.ws, llm: ctx.llm, trip: id, codec, namer: (p) => pack?.name(p) ?? null, signal: abort.signal });
+      await writeRecap({ store: ctx.store, ws: ctx.ws, llm: ctx.llm, trip: id, codec, namer: (p) => pack?.name(p) ?? null, locale: navigator.language, signal: abort.signal });
       ctx.notices.toast(t`The recap is written.`);
     } catch (e) {
       if (!abort.signal.aborted) ctx.notices.card({ tone: 'warn', title: t`The recap wasn't written`, body: await shownWithoutSecrets(ctx.store, recapError(e, { names })) });

@@ -743,18 +743,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the restart wake takes the reader's `handover`, the newest hand-over no turn's end has answered, whoever's turn was cut; `#open` passes it on without asking whose turn it was.
 - **Revisit when:** the next version, as its own change, in the reader's `handover` getter and `#open`: each reply's record already stores the hand-over its turn carried, so a turn under way can hand back its own, not the conversation's newest owed one; then a test of this shape.
 
-### Shiori's written recap gets no native-speaker sentence
-- **Kind:** deferred.
-- **What the user sees:** a recap written in Japanese or Chinese may still read translated: its request names the language but carries no sentence on how it should sound, unlike her answers since 2026-11-14.
-- **Why:** no real run has written a recap in Japanese, so whether it reads translated is not known.
-- **Revisit when:** the next version: run one real Japanese recap; if it reads translated, add the Languages section's native-speaker sentence to the recap's request.
-
-### Summaries pick their language two different ways when no words decide it
-- **Kind:** deferred.
-- **What the user sees:** nothing on screen today: with nothing chosen in Settings → Languages, compaction and Shiori's own answers fall back to the phone's language (one rule since timeline stage 7), and the recap to the screens' language; with languages chosen, all three take the first listed. Compaction also counts annai's "(files)" placeholder as words the user wrote.
-- **Why:** each rule was written for its own place; one answer to one question belongs in one place (RULES #10).
-- **Revisit when:** the next version: one shared function for "the language the user wrote in", used by compaction and the recap, with annai's placeholders left out everywhere.
-
 ### A live Koe's line before a tool has no language rule
 - **Kind:** deferred.
 - **What the user sees:** possibly, with live voice in Japanese, a word in English before Koe looks something up. Not seen: no live run has exercised that line in Japanese.

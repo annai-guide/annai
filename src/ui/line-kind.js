@@ -1,6 +1,5 @@
 import { t } from '../core/l10n.js';
-import { PHOTO_ONLY } from '../core/agent/loop.js';
-import { FILES_ONLY } from '../core/handover.js';
+import { FILES_ONLY, PHOTO_ONLY } from '../core/handover.js';
 
 /**
  * @typedef {{ name?: string, first?: string | null, tried?: boolean } | null | undefined} By

@@ -1,4 +1,5 @@
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
+import { NO_WORDS } from '../handover.js';
 import { languageOf, listedFor, named } from '../languages.js';
 import { nativeOverlap } from '../llm/contract.js';
 
@@ -80,15 +81,20 @@ export const coldSystem = (language) => /* en */ 'You summarize a conversation b
   + /* en */ 'Keep what matters for the rest of the trip: decisions, plans, preferences, open questions, places and times, and what each tool found. '
   + /* en */ `For every photo, write one line with its path and what was said about it. Reply with the summary only, as plain text, in ${language}.`;
 
+/** How many of the user's last lines are read together when the last alone names no language (review A6: the last few messages, not one). */
+const LAST_FEW = 3;
+
 /**
- * The language a summary is written in, named ("the user's language" got a Spanish summary of an English conversation). With the
- * languages setting: the one Shiori answers in if it is fixed; else the listed language the user wrote in last, told from their last
- * message, else their last few together; else the first they speak. With none: the language the user wrote in last, guessed so; else, the
- * same answer as for her first message in a conversation (languagesText): the phone's (with no settings given, the app's: spec §14.3, it ships in English).
- * @param {string | string[]} said their last messages, the newest last @param {import('../languages.js').LanguageSettings} [languages]
+ * The language a summary is written in, named ("the user's language" got a Spanish summary of an English conversation): compaction's and the
+ * recap's, one answer for both (RULES #10). annai's own lines for no words (NO_WORDS: a photo or files sent alone, a heard line it couldn't
+ * write down) are never the user's, and are left out here for every caller. With the languages setting: the one Shiori answers in if it is
+ * fixed; else the listed language the user wrote in last, told from their last line, else their last few together; else the first they speak.
+ * With none: the language the user wrote in last, guessed so; else, the same answer as for her first message in a conversation
+ * (languagesText): the phone's (with no settings given, the app's: spec §14.3, it ships in English).
+ * @param {string | string[]} said what the user wrote and said, the newest last, as the log keeps it @param {import('../languages.js').LanguageSettings} [languages]
  */
 export function summaryLanguage(said, languages) {
-  const lines = (Array.isArray(said) ? said : [said]).map((x) => x.trim()).filter(Boolean);
+  const lines = (Array.isArray(said) ? said : [said]).map((x) => String(x ?? '').trim()).filter((x) => !NO_WORDS.includes(x)).slice(-LAST_FEW);
   const last = lines.at(-1);
   if (languages?.answer) /* en */ return `${languages.answer.name}, the language Shiori answers in`;
   if (languages?.explicit) {

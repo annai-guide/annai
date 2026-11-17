@@ -308,6 +308,35 @@ test('chatter the gate set aside (a dismissed heard line, and the words written 
   assert.match(k.requests.at(-1).system, /as plain text, in English, the first language the user speaks \(English and Japanese\)\.$/);
 });
 
+// annai's own lines for no words ("(files)", "(a photo)", a heard line it couldn't write down) read as English, or as nothing: the one function that
+// names the language the user wrote in leaves them out for every caller (compaction's and the recap's: the languages build's entry 3).
+test("annai's lines for no words are never the user's words: summaryLanguage leaves them out, whoever calls it", async () => {
+  const { languageSettings } = await import('../../src/core/languages.js');
+  const { NOT_TRANSCRIBED } = await import('../../src/core/voice/resolve.js');
+  const phone = languageSettings({}, 'ja-JP');
+  for (const none of ['(files)', '(a photo)', NOT_TRANSCRIBED]) {
+    assert.equal(summaryLanguage([none], phone), "Japanese, the language of the user's phone (the user hasn't written anything yet)", none);
+  }
+  const both = languageSettings({ languages: { spoken: ['en', 'ja'] } }, 'en-US');
+  assert.equal(summaryLanguage(['今日の夕食はどこにしますか', '(files)', '(a photo)', '(files)', '(files)'], both), 'Japanese, the language the user wrote in last');
+  // Their last few lines are read, not all of them: a Japanese trip whose last three lines can't be placed is the first listed language.
+  assert.equal(summaryLanguage(['今日の夕食はどこにしますか', 'OK', 'OK!', 'OK.'], both), 'English, the first language the user speaks (English and Japanese)');
+});
+
+test("files sent alone don't push the user's words out of what housekeeping reads for the summary's language", async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const k = await agentKit([[say('ok')]], { utility: [{ text: 'Summary.' }] });
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
+  for (const m of ['今日の夕食はどこにしますか', 'ラーメンがいいな', '駅の近くで', '明日の予定は？', 'ありがとう']) {
+    k.agent.send(m);
+    await k.agent.idle();
+  }
+  // Three hand-overs with no words, as the log keeps them: annai's "(files)", newest.
+  for (let i = 0; i < 3; i++) await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: { text: '(files)' } });
+  assert.equal(await k.agent.compact('cold'), true);
+  assert.match(k.requests.at(-1).system, /as plain text, in Japanese, the language the user wrote in last\.$/);
+});
+
 test("a call that failed after reporting its prompt doesn't add to the next prompt's size: housekeeping isn't due early (the third review of phone-fixes-1, R3)", async () => {
   /** @type {{ fn: () => void, ms: number }[]} */
   const timers = [];
