@@ -1511,6 +1511,36 @@ test("housekeeping that fails inside a turn ends it with a card and an error eve
   assert.equal(k.agent.transcript.unanswered, false);
 });
 
+test("a tidy-up or a Summarize that failed names each model by its provider's name first in its notice, wherever it runs: in a turn (forced or not) and on Summarize now; the timer's is in agent-compaction.test.js (the user, 2026-11-16; the final review's finding A)", async (t) => {
+  useClock(t);
+  const bad = { error: 'auth', status: 401, message: 'bad utility key' };
+  const tidy = (/** @type {any} */ k) => k.notices.filter((/** @type {any} */ n) => /tidy up|summarize/.test(n.title ?? ''));
+  // In a turn that can't go on without it (forced): the warn card.
+  const forced = await agentKit([[say('one'), say('two'), { error: 'context', status: 413, message: 'prompt is too long' }]], { utility: [bad] });
+  for (const m of ['first', 'second', 'third']) { forced.agent.send(m); await forced.agent.idle(); }
+  assert.match(tidy(forced).at(-1).body, /^EU \/ model-u: .*bad utility key/i);
+  assert.match(String((await forced.events(['error'])).at(-1).data.message), /^model-u: .*bad utility key/i, 'the log keeps annai\'s English with the model\'s name alone');
+  // At the start of a turn, when the cache went cold (not forced): the info card.
+  const small = (/** @type {string} */ text) => ({ ...say(text), usage: { input: 50, output: 5 } });
+  const clock = { t: Date.parse('2026-10-23T10:00:00Z') };
+  const cold = await agentKit([[small('b1'), small('b2'), { ...say('a1'), usage: { input: 9500, output: 5 } }, say('a2')]], {
+    models: [{ contextWindow: 10_000 }], utility: [bad], agent: { now: () => clock.t, timers: { set: () => 1, clear: () => {} } },
+  });
+  for (const m of ['one', 'two', 'three']) { cold.agent.send(m); await cold.agent.idle(); }
+  clock.t += 3_600_000;
+  cold.agent.send('four');
+  await cold.agent.idle();
+  assert.match(tidy(cold)[0].body, /^EU \/ model-u: .*bad utility key.* She will try again later\.$/is);
+  // On Summarize now, her cache gone cold: the utility model writes it.
+  let now = Date.now();
+  const now2 = await agentKit([[...Array.from({ length: 5 }, (_, i) => say(`Answer ${i}`))]], { utility: [bad], agent: { now: () => now } });
+  for (let i = 0; i < 5; i++) { now2.agent.send(`Question ${i}`); await now2.agent.idle(); }
+  now += 3 * 3600_000;
+  assert.equal(await now2.agent.summarizeNow(), 'failed');
+  assert.match(tidy(now2)[0].body, /^EU \/ model-u: .*bad utility key/i);
+  assert.equal(tidy(now2)[0].title, "Shiori couldn't summarize the conversation");
+});
+
 test("a tap on Shiori (or leaving) during the tidy-up a turn can't go on without is not a failure: no card, no error event", async (t) => {
   useClock(t);
   // In a turn that can't go on without it (the forced tidy-up).

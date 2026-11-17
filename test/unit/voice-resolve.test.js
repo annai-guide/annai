@@ -93,6 +93,13 @@ test('how to listen: the first usable entry against the model expected to hear; 
   assert.match(/** @type {any} */ (listenKind({ list: [], model: null, asr, dictation: true })).why, /speech-in list is empty/);
 });
 
+test("how to listen: the user's card names the model by the names it is given (its provider's first); what a model reads names it alone", () => {
+  const names = (/** @type {string} */ n) => `Acme / ${n}`;
+  const none = /** @type {any} */ (listenKind({ list: ['send-audio'], model: model('M2', ['text']), asr: () => false, dictation: false, names }));
+  assert.match(none.words, /^Shiori can't hear you yet: Acme \/ M2 doesn't take audio, /);
+  assert.match(none.why, /^Shiori can't hear you yet: M2 doesn't take audio, /);
+});
+
 test('text versions: a transcript made already, dictation, the hearing model for sent audio, then the list in order (spec §10.3)', async () => {
   const memory = new HeardMemory();
   memory.keep(segment('s-1'));

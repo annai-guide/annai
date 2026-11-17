@@ -1609,7 +1609,7 @@ export class Agent {
       await this.compact(mode);
     } catch (e) {
       if (e instanceof ProviderError && e.kind === 'cancelled') return; // the user left or tapped her: nothing failed
-      await this.#notice({ tone: 'info', title: t`Shiori couldn't tidy up the conversation`, body: sentences(this.#explain(e, mode === 'cold' ? 'utility' : 'main'), t`She will try again later.`) });
+      await this.#notice({ tone: 'info', title: t`Shiori couldn't tidy up the conversation`, body: sentences(await this.#words(e, mode === 'cold' ? 'utility' : 'main'), t`She will try again later.`) });
     } finally {
       this.#busy = false;
       this.#setState(this.online() ? 'sleeping' : 'offline');
@@ -1798,7 +1798,7 @@ export class Agent {
     try {
       return (await this.compact(warm ? 'warm' : 'cold', { forced: true, keepTokens: 0 })) ? 'done' : 'nothing';
     } catch (e) {
-      await this.#notice({ tone: 'info', title: t`Shiori couldn't summarize the conversation`, body: this.#explain(e, warm ? 'main' : 'utility') });
+      await this.#notice({ tone: 'info', title: t`Shiori couldn't summarize the conversation`, body: await this.#words(e, warm ? 'main' : 'utility') });
       return 'failed';
     } finally {
       this.#busy = false;
@@ -2657,7 +2657,7 @@ export class Agent {
       // Leaving the page, or a tap on Shiori that cut it short: nothing failed, so no card and no error.
       if (this.#leaving || (e instanceof ProviderError && e.kind === 'cancelled')) return null;
       const why = await this.#whyOf(e, mode === 'cold' ? 'utility' : 'main');
-      const names = modelNames(await this.llm.config().catch(() => null));
+      const names = await this.#names();
       if (!o.forced) {
         await this.#notice({ tone: 'info', title: t`Shiori couldn't tidy up the conversation`, body: sentences(whyWords(why, false, { names }), t`She will try again later.`) });
         return false;
@@ -2669,9 +2669,19 @@ export class Agent {
     }
   }
 
-  /** What went wrong with a model call, in words for a card (or, for a model to read, in annai's English). @param {unknown} e @param {string} [role] @param {boolean} [forModel] */
-  #explain(e, role = 'main', forModel = false) {
-    return whyWords(whyOf(e, { role, online: this.online() }), forModel);
+  /** What went wrong with a model call, in annai's English for a model to read. @param {unknown} e @param {string} [role] */
+  #explain(e, role = 'main') {
+    return whyWords(whyOf(e, { role, online: this.online() }), true);
+  }
+
+  /** The screens' names for models, each after its provider's name (config.js modelNames); a config that can't be read leaves them bare. */
+  async #names() {
+    return modelNames(await this.llm.config().catch(() => null));
+  }
+
+  /** What went wrong with a model call, in words for a card, its models by their provider's name too. @param {unknown} e @param {string} [role] */
+  async #words(e, role = 'main') {
+    return whyWords(whyOf(e, { role, online: this.online() }), false, { names: await this.#names() });
   }
 
   /** Why a model call failed, as data, with every key annai keeps blanked: for a card, the log and the other half. @param {unknown} e @param {string} [role] */
@@ -2697,7 +2707,7 @@ export class Agent {
       // said elsewhere, or its card already says why
     } else if (last?.outcome === 'image') await this.#cantSend(refusedText(readRefusal(last.error ?? '')), wakeId); // repairs ran out
     // The card for both halves has a key of its own (Halves takes it down at either half's good turn).
-    else await this.#notice({ tone: 'warn', title: t`Shiori can't reach her model`, body: whyWords(why, false, { names: modelNames(await this.llm.config().catch(() => null)) }), key: why.halves ? 'model:both' : 'model' });
+    else await this.#notice({ tone: 'warn', title: t`Shiori can't reach her model`, body: whyWords(why, false, { names: await this.#names() }), key: why.halves ? 'model:both' : 'model' });
     // The log keeps why as data, for the Conversation's words, and annai's English for the Trace.
     await this.#log({ type: 'error', actor: 'system', data: { kind: 'model', wake: wakeId, why, message: whyWords(why, true), ...(quiet ? { quiet: true } : {}) } });
   }
@@ -3010,7 +3020,7 @@ export class Agent {
         const pending = (async () => {
           const r = await readFile({ kind, mediaType: m.mediaType, data, ...(m.name ? { name: m.name } : {}), ...(m.path ? { path: m.path } : {}) }, model ?? {}, {
             llm: this.llm, half: this.#half.name, pages: kind === 'pdf' ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope,
-            secondMs: this.secondMs, explain: (e, role) => this.#explain(e, role, true),
+            secondMs: this.secondMs, explain: (e, role) => this.#explain(e, role),
           });
           return (key ? await this.#keep(scope, key, kind, r, wakeId) : null) ?? r;
         })();
@@ -3053,7 +3063,7 @@ export class Agent {
           if (kept) return kept;
           const fresh = await readFile({ kind: pdf ? 'pdf' : 'image', mediaType: part.mediaType, data: bytes ? toBase64(bytes) : '', ...(pdf && part.name ? { name: part.name } : {}), ...(!pdf && part.path ? { path: part.path } : {}) }, model, {
             llm: this.llm, half: this.#half.name, pages: pdf ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope, secondMs: this.secondMs,
-            explain: (e, role) => this.#explain(e, role, true),
+            explain: (e, role) => this.#explain(e, role),
           });
           return (key ? await this.#keep(this.scope, key, pdf ? 'pdf' : 'image', fresh, wakeId) : null) ?? fresh;
         })();
@@ -4086,7 +4096,7 @@ function refusedText(learned) {
  */
 export function tidyFailed(why, plain = false, { names } = {}) {
   /* en */
-  if (plain) return `${whyWords(why, true)} Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.`;
+  if (plain) return `${whyWords(why, true, { names })} Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.`;
   return sentences(whyWords(why, false, { names }), t`Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.`);
 }
 

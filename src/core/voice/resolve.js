@@ -139,10 +139,11 @@ async function pcmOf(audio, encoder) {
  * model expected to hear it, chooses recording or phone dictation. Dictation is exclusive: when it
  * comes first, segments arrive as text only. With nothing usable, the reason says what to add: why, for a model to read, in annai's
  * English; words, for the user's card, in the screens' language.
- * @param {{ list: string[], model: Hearer | null, asr: (id: string) => boolean, dictation: boolean }} c  dictation: this browser has it, and it hasn't failed
+ * @param {{ list: string[], model: Hearer | null, asr: (id: string) => boolean, dictation: boolean, names?: (name: string) => string }} c  dictation: this browser has it, and it hasn't failed;
+ *   names: the screens' names for models (config.js modelNames), for the user's card; what a model reads names it alone
  * @returns {{ kind: 'record' | 'dictation' } | { kind: null, why: string, words: string }}
  */
-export function listenKind({ list, model, asr, dictation }) {
+export function listenKind({ list, model, asr, dictation, names = (n) => n }) {
   for (const id of list) {
     if (id === 'send-audio') {
       if (model?.input.includes('audio')) return { kind: 'record' };
@@ -158,7 +159,7 @@ export function listenKind({ list, model, asr, dictation }) {
   /* en */
   const why = `Shiori can't hear you yet: ${hearing}, and the speech-in list has no transcription model that works${dictation ? '' : ' (and this browser has no phone dictation)'}. Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.`;
   // The user's card: the same words, each part a sentence of its own.
-  const lacks = model ? t`Shiori can't hear you yet: ${model.name} doesn't take audio, and the speech-in list has no transcription model that works.`
+  const lacks = model ? t`Shiori can't hear you yet: ${names(model.name)} doesn't take audio, and the speech-in list has no transcription model that works.`
     : t`Shiori can't hear you yet: no main model is set, and the speech-in list has no transcription model that works.`;
   const words = sentences(lacks, dictation ? '' : t`This browser has no phone dictation either.`, t`Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.`);
   return { kind: null, why, words };

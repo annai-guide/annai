@@ -1,4 +1,4 @@
-import { modelOf, providerOf, SPEECH_DEFAULTS } from '../llm/config.js';
+import { modelOf, modelNames, providerOf, SPEECH_DEFAULTS } from '../llm/config.js';
 import { t } from '../l10n.js';
 import { list } from '../intl.js';
 
@@ -37,8 +37,8 @@ function placeOf(cfg, modelId) {
   return host && host !== provider.name ? t`${provider.name} (${host})` : provider.name;
 }
 
-/** The model's name, for an entry. @param {ModelConfig} cfg @param {string} id */
-const nameOf = (cfg, id) => STAND_IN_NAMES[id] ?? (cfg.models[id] ? modelOf(cfg.models[id]).name : id);
+/** The entry's name for a heading: a stand-in's, else the model's, after its provider's name as every screen has it. @param {ModelConfig} cfg @param {string} id @param {(name: string) => string} names */
+const nameOf = (cfg, id, names) => STAND_IN_NAMES[id] ?? (cfg.models[id] ? names(modelOf(cfg.models[id]).name) : id);
 
 /**
  * Where what you say goes, for each speech-in entry in order. "Send audio to the model" goes to
@@ -47,8 +47,9 @@ const nameOf = (cfg, id) => STAND_IN_NAMES[id] ?? (cfg.models[id] ? modelOf(cfg.
  * @returns {Where[]}
  */
 export function whereHeard(cfg, { dictation }) {
+  const names = modelNames(cfg);
   return (cfg.roles?.['speech-in']?.models ?? SPEECH_DEFAULTS['speech-in']).map((id) => {
-    const name = nameOf(cfg, id);
+    const name = nameOf(cfg, id, names);
     if (id === 'send-audio') {
       const hearers = ['main', 'decide'].flatMap((r) => cfg.roles?.[r]?.models ?? []).filter((m) => callable(cfg, m) && modelOf(cfg.models[m]).input.includes('audio'));
       const places = [...new Set(hearers.map((m) => placeOf(cfg, m)))];
@@ -67,8 +68,9 @@ export function whereHeard(cfg, { dictation }) {
  * @returns {Where[]}
  */
 export function whereSaid(cfg, { browser, voice }) {
+  const names = modelNames(cfg);
   return (cfg.roles?.['speech-out']?.models ?? SPEECH_DEFAULTS['speech-out']).map((id) => {
-    const name = nameOf(cfg, id);
+    const name = nameOf(cfg, id, names);
     if (id === 'browser-voice') {
       if (!browser) return { id, name, where: t`This browser has no voice of its own: it is skipped.` };
       if (!voice) return { id, name, where: t`The browser's choice of voice: annai can't tell whether it speaks on this phone or sends her words to a service.` };

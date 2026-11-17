@@ -126,6 +126,20 @@ test("no usable entry: a tap says what to add; speak says it couldn't listen, wi
   assert.equal(k.platform.opens, 0);
 });
 
+test("the card for a main model that takes no audio names it by its provider's name first; what the model reads names it alone (the user, 2026-11-16; the final review's finding src2-1)", async (t) => {
+  useClock(t);
+  // Only "Send audio to the model" is in the speech-in list, and no phone dictation: nothing hears the user.
+  const k = await agentKit([[speakOnly('Hello?'), { toolCalls: [{ name: 'sleep', input: {} }] }]], { voice: { speechIn: ['send-audio'], dictation: false } });
+  k.agent.tap();
+  await until(() => k.notices.length === 1);
+  assert.equal(k.notices[0].title, "Shiori can't hear you yet");
+  assert.match(k.notices[0].body, /^Shiori can't hear you yet: E0 \/ model-0 doesn't take audio,/);
+  k.agent.send('Hi');
+  await k.agent.idle();
+  const speaks = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'speak');
+  assert.match(speaks[0].data.content, /annai couldn't listen: Shiori can't hear you yet: model-0 doesn't take audio/);
+});
+
 test('a microphone that is refused: a card with this phone’s steps (spec §17 rule 3)', async (t) => {
   useClock(t);
   const k = await agentKit([[say('x')]], { voice: { micFails: 'NotAllowedError' } });

@@ -24,7 +24,8 @@ function config({ audio = true, speechIn = ['send-audio', 'asr', 'dictation'], s
 
 test('where what you say goes, for each speech-in entry in order (spec §11.7)', () => {
   const rows = whereHeard(config(), { dictation: { available: true, local: false } });
-  assert.deepEqual(rows.map((r) => r.name), ['Send audio to the model', 'Whisper on Groq', 'Phone dictation']);
+  // A model's heading names its provider first, as every screen does (the user, 2026-11-16); the stand-ins have none.
+  assert.deepEqual(rows.map((r) => r.name), ['Send audio to the model', 'Groq / Whisper on Groq', 'Phone dictation']);
   assert.equal(rows[0].where, 'As sound, to the model that hears it: OpenRouter (openrouter.ai).');
   assert.equal(rows[1].where, 'As sound, to Groq (api.groq.com), to be written down.');
   assert.equal(rows[2].where, DICTATION_AWAY);
@@ -40,7 +41,7 @@ test('where what she says goes: a voice service, or the browser voice on this ph
   const online = { id: 'v2', name: 'Google US English', lang: 'en-US', local: false };
   const rows = whereSaid(config(), { browser: true, voice: local });
   assert.deepEqual(rows.map((r) => [r.name, r.where]), [
-    ['OpenAI voice', 'Her words go to OpenAI (voice.openai.example), which sends back the sound.'],
+    ['OpenAI / OpenAI voice', 'Her words go to OpenAI (voice.openai.example), which sends back the sound.'],
     ['Browser voice', 'Spoken on this phone (Samantha): her words stay on it.'],
   ]);
   assert.equal(whereSaid(config(), { browser: true, voice: online })[1].where, "Her words go to the service behind Google US English (Google's), to be spoken; they aren't spoken on this phone.");
