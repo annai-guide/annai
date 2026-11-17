@@ -57,6 +57,17 @@ test('housekeeping and recall carry what was said aloud, as words', async () => 
   assert.doesNotMatch(out, /\[annai\] *\n/);
 });
 
+// A live line is logged with its first words and all of them after Koe's turn (koe/live.js): recall gives the later ones, as every reader of
+// the conversation's lines does (conversationLines), and finds the line by them.
+test('recall gives a live line its words written down later, not its first ones', async () => {
+  const k = await agentKit([[{ text: '' }]]);
+  await record(k.store, k.trip, { type: 'wake', actor: 'system', data: { id: 'w-1', reasons: [{ kind: 'heard', text: '' }] } });
+  await record(k.store, k.trip, { type: 'heard', actor: 'user', data: { id: 's-1', wake: 'w-1', ms: 1200, source: 'live', text: 'Is it' } });
+  await record(k.store, k.trip, { type: 'heard.text', actor: 'system', data: { of: 's-1', text: 'Is it far?', by: 'Live' } });
+  const recall = /** @type {any} */ (k.agent.loopTools().find((t) => t.name === 'recall'));
+  assert.match(await recall.run({ query: 'far' }, {}), /#\d+ user said: Is it far\?$/m);
+});
+
 test('the trace says what was heard, and what it turned out to say', () => {
   assert.equal(traceSummary({ type: 'heard', data: { id: 's-1', ms: 1500, source: 'mic', answer: 'c1', clip: 'h' } }), '1.5 sec from the microphone · an answer · clip kept');
   assert.equal(traceSummary({ type: 'heard', data: { id: 's-2', ms: 0, source: 'dictation', text: 'hi', meanwhile: true, dismissed: true } }), 'phone dictation · "hi" · while she was thinking · not for Shiori');

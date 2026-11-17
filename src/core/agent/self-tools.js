@@ -149,6 +149,7 @@ async function recall(agent, i, half = 'kokoro') {
     if ((e.type === 'wake' && !e.data?.meanwhile) || !exchanges.length) exchanges.push([]);
     exchanges[exchanges.length - 1].push(e);
   }
+  // A heard line's words as last written down (a live line's first ones come with it), as conversationLines reads them.
   const words = new Map(all.filter((e) => e.type === 'heard.text').map((e) => [e.data?.of, String(e.data?.text ?? '')]));
   const lines = async (/** @type {any[]} */ ex) => {
     const out = [];
@@ -156,7 +157,7 @@ async function recall(agent, i, half = 'kokoro') {
       const t = { ...e.data, ...(await storedTexts(agent.store, e)) };
       const photos = (Array.isArray(e.data?.images) ? e.data.images : []).map((/** @type {any} */ p) => ` ${photoStub(p)}`).join('');
       if (e.type === 'msg.user') out.push(`#${e.seq} user: ${t.text ?? ''}${photos}`);
-      else if (e.type === 'heard') /* en */ out.push(`#${e.seq} ${t.dismissed ? (t.source === 'live' ? asideLabel(t, half).slice(1, -1) : 'someone said, not to Shiori') : 'user said'}: ${t.text ?? words.get(t.id) ?? '[audio]'}`);
+      else if (e.type === 'heard') /* en */ out.push(`#${e.seq} ${t.dismissed ? (t.source === 'live' ? asideLabel(t, half).slice(1, -1) : 'someone said, not to Shiori') : 'user said'}: ${words.get(t.id) ?? t.text ?? '[audio]'}`);
       else if (e.type === 'out.speak') /* en */ out.push(`#${e.seq} Shiori said: ${t.text ?? ''}`);
       else if (e.type === 'out.show') /* en */ out.push(`#${e.seq} Shiori showed: ${[t.card?.title, t.card?.text].filter(Boolean).join(' — ')}`);
       else if (e.type === 'out.ask') /* en */ out.push(`#${e.seq} Shiori asked: ${t.question} (${(Array.isArray(t.options) ? t.options : []).join(' / ')})`);
