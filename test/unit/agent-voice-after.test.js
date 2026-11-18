@@ -7,6 +7,7 @@ import { NOT_TRANSCRIBED } from '../../src/core/voice/resolve.js';
 import { record } from '../../src/core/agent/log.js';
 import { useClock } from './clock.js';
 import { updateAppSettings } from '../../src/core/settings.js';
+import { clip, quiet, cat } from './voice-kit.js';
 
 const say = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }] });
 const speakOnly = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }] });
@@ -363,6 +364,36 @@ test("classic: the window after a turn isn't a tap's: chatter goes through the g
   assert.equal(k.platform.mic.isOpen(), true, 'chatter closes nothing');
   await until(() => !k.platform.mic.isOpen(), 2000);
   assert.ok(Date.now() - from <= 1050, `${Date.now() - from} ms: chatter extends nothing`);
+});
+
+test("classic: the window after a turn, chatter back to back (talk radio, music): a set-aside verdict that comes while the next line is said extends nothing either: past the deadline it closes the window", async (t) => {
+  useClock(t);
+  let gates = 0;
+  /** @type {Record<number, () => void>} */
+  const verdict = {};
+  const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text: 'Let me check.' } }] }, { text: 'done' }]], {
+    voice: { speechIn: ['m-hear'], hears: ['where should we eat', 'yes', 'la la', 'la la la'], decide: [{ toolCalls: [{ name: 'decide', input: { option: 'A' } }] }, ...[1, 2, 3].map(() => ({ toolCalls: [{ name: 'decide', input: { option: 'B' } }] }))] },
+    hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-d' && ++gates >= 2) await new Promise((r) => { verdict[gates] = () => r(undefined); }); },
+  });
+  await updateAppSettings(k.ws, { voice: { silenceSeconds: 60 } }); // 600 ms here (the setting takes 2 to 60)
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'where-eat');
+  await until(() => k.agent.state.name === 'listening'); // she spoke, and listens
+  const from = Date.now();
+  await hear(k, 'gas-station'); // the answer
+  await until(() => k.requests.filter((/** @type {any} */ r) => !String(r.system ?? '').startsWith('You make one quick decision')).length === 2);
+  while (k.agent.busy) await new Promise((r) => setTimeout(r, 5));
+  await hear(k, 'first-one'); // a line of the radio's: its verdict is slow
+  await until(() => gates === 2);
+  k.platform.mic.feed(cat(quiet(0.3), await clip('gas-station')), 16_000); // the next line begins
+  await until(() => k.agent.speakingNow);
+  await new Promise((r) => setTimeout(r, Math.max(0, from + 1100 - Date.now()))); // past the deadline
+  verdict[2](); // the first line set aside, while the next is said
+  await until(() => !k.platform.mic.isOpen(), 300);
+  assert.ok(Date.now() - from <= 1200, `${Date.now() - from} ms: chatter extends nothing`);
+  for (const n of Object.keys(verdict)) verdict[/** @type {any} */ (n)]();
+  await k.agent.idle();
 });
 
 test('silenceSeconds: the default is 20, a saved value stays; a tap window and a question aloud keep 8 s', async () => {
