@@ -3657,8 +3657,8 @@ for (const [what, script, first, said] of /** @type {[string, any[], string, (r:
 // passed). Each test below fails under its one change; and one more, in the open_trip test above (the heard ids in its result). Four of the ten could fail no
 // test, and were removed with the spoken yes's other remains: the lines the card took in her result (`taken`, which only a chat Koe's no set, and a no stays
 // armed to the card's end) and the tap's 8 s end taking reminders again (annai shows them at once while the card waits, whatever listens) were reached by no
-// input; the mark on a line the gate sets aside was reached only by a line a second tap cuts while it is being said (the gate then judges it: the Deferred
-// entry "A line cut by a second tap can be judged by the gate"), and nothing read the mark of a line with no segment of the card's own. ----
+// input; the mark on a line the gate sets aside was reached only by a line a second tap cuts while it is being said (the gate judged it then, until
+// tap-listen-next: a tap's line is judged by the microphone that heard it, below), and nothing read the mark of a line with no segment of the card's own. ----
 
 test("classic voice: a tap on Allow inside a kept line's 3 s answers the card, and the line, kept by then, is not lost: it is the user's own line, which she reads after the card's result", async (t) => {
   useClock(t);
@@ -3733,7 +3733,7 @@ test("classic voice: someone speaking again while a line said into the microphon
   assert.match((await readResults(k))[0], /^Not read: .* The user said:$/);
 });
 
-test("classic voice: a tap that stops annai's voice while someone speaks into the microphone a tap opened, as a kept line's words are still being written down: that line's verdict holds the tap's 8 s again, so the microphone is still open 8.5 s after that tap while they speak, and both lines end the card", async (t) => {
+test("classic voice: a tap that stops annai's voice while someone speaks into the microphone a tap opened, as a kept line's words are still being written down: the tap's 8 s wait for them to stop, and that line's verdict starts nothing, so the microphone is still open 8.5 s after that tap while they speak, and both lines end the card", async (t) => {
   useClock(t);
   const k = await classicKit(['Hmm, the ramen place', "What's on tomorrow?"]);
   const words = slowWords(k, 1);
@@ -3748,7 +3748,7 @@ test("classic voice: a tap that stops annai's voice while someone speaks into th
   k.agent.wake(DUE); // a reminder comes due, and annai says it over them
   await until(() => k.voice.speaker.speaking);
   const t0 = Date.now();
-  assert.equal(k.agent.tap(), 'cut', "the tap stops annai's voice: the tap's 8 s start again, to 8 s");
+  assert.equal(k.agent.tap(), 'cut', "the tap stops annai's voice, and its own 8 s start while they speak");
   await atS(k, t0, 6);
   words.release(); // the first line is kept: the card ends unanswered 3 s later, at 9 s
   await atS(k, t0, 8.5);
@@ -3771,4 +3771,157 @@ test("a Stop that comes as annai's card is being written ends the call at once, 
   assert.equal(k.agent.kokoro.pendingId, null, 'no card waits');
   assert.deepEqual(await readResults(k), ['Stopped by the user.']);
   assert.deepEqual(await pgrants(k), []);
+});
+
+// ---- A tap's 8 s wait for someone already speaking as they start (#limitTap holds them, for every caller: annai's card, her question, the wait tool;
+// the Deferred entry "A tap that stops annai's voice while the user speaks can close the microphone mid-line 8 s later"), and a tap's line is judged by
+// the microphone that heard it, so a line a second tap cuts skips the gate as any tap's line does (the Deferred entry "A line cut by a second tap can be
+// judged by the gate"). ----
+
+test("classic voice: a tap that stops annai's voice while someone speaks into the microphone a tap opened, with no line of theirs waiting for its verdict: the tap's 8 s wait for them to stop, so the microphone is still open 8.5 s after that tap while they speak, and their line ends the card", async (t) => {
+  useClock(t);
+  const k = await classicKit(["What's on tomorrow?"]);
+  k.agent.send('Where did we eat in Testville?');
+  await saidCard(k);
+  k.agent.tap();
+  await until(() => micLog(k).at(-1) === 'mic open');
+  await startsSpeaking(k);
+  k.agent.wake(DUE); // a reminder comes due, and annai says it over them
+  await until(() => k.voice.speaker.speaking);
+  const t0 = Date.now();
+  assert.equal(k.agent.tap(), 'cut', "the tap stops annai's voice, and its own 8 s start while they speak");
+  await atS(k, t0, 8.5);
+  assert.notEqual(k.agent.kokoro.pendingId, null, 'the card still waits');
+  assert.equal(micLog(k).at(-1), 'mic open', "the tap's 8 s did not end while they speak");
+  k.platform.mic.feed(quiet(2), 16_000); // they stop
+  await k.agent.idle();
+  assert.match((await readResults(k))[0], /^Not read: .* The user said:$/);
+  assert.deepEqual((await k.events(['heard'])).map((/** @type {any} */ e) => [e.data.text, e.data.answer]), [["What's on tomorrow?", k.asks[0].data.id]], "their line, with the card's answer");
+});
+
+/** Someone begins to speak as the next microphone opens: their speech starts before annai has it open (the plugin's open waits for its first frame, up to 1 s). @param {any} k */
+const speaksAsItOpens = async (k) => {
+  const speech = cat(quiet(0.3), await clip('first-one'));
+  const open = k.platform.mic.open;
+  k.platform.mic.open = async (/** @type {any} */ o) => {
+    k.platform.mic.open = open;
+    const mic = await open(o);
+    k.platform.mic.feed(speech, 16_000);
+    return mic;
+  };
+};
+
+for (const [what, script, off, result] of /** @type {[string, any[], boolean, (k: any) => Promise<string>][]} */ ([
+  ["annai's card, its question said (voice on)", CARD, false, async (k) => (await readResults(k))[0]],
+  ['her question, waiting for a tap (voice off)', [call('ask', ASK_LUNCH), sleep], true, async (k) => (await resultsOf(k, 'ask'))[0]],
+  ['her wait tool, waiting for typing (voice off)', [call('wait', { seconds: 60 }), sleep], true, async (k) => (await resultsOf(k, 'wait'))[0]],
+])) {
+  test(`one Shiori, ${what}: speech that begins while a tap's microphone opens holds the tap's 8 s, so the microphone is still open 8.5 s after the tap while they speak, and their words answer it`, async (t) => {
+    useClock(t);
+    const k = await gateKit(script, { voice: { speechIn: ['m-hear'], hears: ['Hmm, the ramen place'] } });
+    if (off) await voiceOff(k);
+    k.agent.send(off ? 'Plan our day' : 'Where did we eat in Testville?');
+    if (off) await until(() => k.agent.state.name === 'waiting');
+    else await saidCard(k);
+    await speaksAsItOpens(k);
+    const t0 = Date.now();
+    assert.equal(k.agent.tap(), 'listening');
+    await until(() => micLog(k).at(-1) === 'mic open');
+    await atS(k, t0, 8.5);
+    assert.notEqual(k.agent.kokoro.pendingId, null, 'it still waits');
+    assert.equal(micLog(k).at(-1), 'mic open', "the tap's 8 s did not end while they speak");
+    k.platform.mic.feed(quiet(2), 16_000); // they stop
+    await k.agent.idle();
+    assert.match(await result(k), off ? /^The user said:$/ : /^Not read: .* The user said:$/);
+    assert.deepEqual((await heardIn(k, k.trip)).map((x) => x.text), ['Hmm, the ramen place'], 'their whole line');
+  });
+}
+
+test("classic voice: a tap's microphone closed by a click once its 8 s were over, while a line's words are still being written down; a second tap, and speech that begins as its microphone opens: that line's verdict, which comes while they speak, starts nothing, so the microphone is still open 8.5 s after the second tap, and both lines end the card", async (t) => {
+  useClock(t);
+  const k = await classicKit(['Hmm, the ramen place', "What's on tomorrow?"]);
+  const words = slowWords(k, 1);
+  k.agent.send('Where did we eat in Testville?');
+  await saidCard(k);
+  const t1 = Date.now();
+  k.agent.tap();
+  await until(() => micLog(k).at(-1) === 'mic open');
+  await hear(k, 'first-one');
+  await until(() => words.writes === 1); // the first line's words are being written down
+  await atS(k, t1, 9); // the first tap's 8 s are over, held since that line began: its verdict hasn't come
+  assert.equal(micLog(k).at(-1), 'mic open');
+  k.platform.mic.feed(cat(burst(0.12, 0.8), quiet(1.5)), 16_000); // a click: its end arms the 8 s that are over, and the microphone closes
+  await until(() => micLog(k).at(-1) === 'mic close');
+  await speaksAsItOpens(k);
+  const t0 = Date.now();
+  assert.equal(k.agent.tap(), 'listening');
+  await until(() => micLog(k).at(-1) === 'mic open');
+  await atS(k, t0, 6);
+  words.release(); // the first line is kept, while they speak: the card ends unanswered 3 s later, at 9 s
+  await atS(k, t0, 8.5);
+  assert.notEqual(k.agent.kokoro.pendingId, null, 'the card still waits');
+  assert.equal(micLog(k).at(-1), 'mic open', "the second tap's 8 s did not end while they speak");
+  k.platform.mic.feed(quiet(2), 16_000); // they stop
+  await k.agent.idle();
+  assert.match((await readResults(k))[0], /^Not read: .* The user said:$/);
+  assert.deepEqual((await k.events(['heard'])).map((/** @type {any} */ e) => [e.data.text, e.data.answer]), [['Hmm, the ramen place', k.asks[0].data.id], ["What's on tomorrow?", k.asks[0].data.id]], "both lines, with the card's answer");
+});
+
+test("classic voice with a quick gate: a line said into the microphone a tap opened for annai's card, cut by a second tap before it ends, never goes to the gate (a tap's line): it ends the card unanswered, as the same line left to end does, whatever the gate would have said of it", async (t) => {
+  useClock(t);
+  const k = await gatedKit(['Hmm, the ramen place'], ['B']); // the gate would set it aside
+  k.agent.send('Where did we eat in Testville?');
+  await saidCard(k);
+  k.agent.tap();
+  await until(() => micLog(k).at(-1) === 'mic open');
+  await startsSpeaking(k);
+  assert.equal(k.agent.tap(), 'stopped', 'the second tap closes the microphone, and the line being said is cut there');
+  const { grants: g, read } = await cardEnded(k);
+  assert.deepEqual(g, []);
+  assert.match(read, /^Not read: .* The user said:$/);
+  assert.equal(gated(k), 0, 'no gate call');
+  assert.deepEqual((await k.events(['heard'])).map((/** @type {any} */ e) => [e.data.text, e.data.answer, Boolean(e.data.dismissed)]), [['Hmm, the ramen place', k.asks[0].data.id, false]], "with the card's answer, not set aside");
+});
+
+test("classic voice with a quick gate, Shiori asleep: a line said into the microphone a tap opened, cut by a second tap before it ends, never goes to the gate (a tap's line): it wakes her, as the same line left to end does", async (t) => {
+  useClock(t);
+  const k = await gateKit([say('Ramen at the corner.')], { voice: { speechIn: ['m-hear'], hears: ['Hmm, the ramen place'], decide: gates(['B']) } }); // the gate would set it aside
+  assert.equal(k.agent.tap(), 'listening');
+  await until(() => micLog(k).at(-1) === 'mic open');
+  await startsSpeaking(k);
+  assert.equal(k.agent.tap(), 'stopped', 'the second tap closes the microphone, and the line being said is cut there');
+  await until(() => k.said.includes('Ramen at the corner.') || gated(k) > 0); // she answers it, or the gate judges it
+  await k.agent.idle();
+  assert.equal(gated(k), 0, 'no gate call');
+  assert.equal((k.sent['model-0'] ?? []).length, 1, 'she woke for it');
+  assert.equal(sentTimes(k, 'Hmm, the ramen place'), 1, 'and her request has it');
+  assert.deepEqual((await k.events(['heard'])).map((/** @type {any} */ e) => Boolean(e.data.dismissed)), [false], 'not set aside');
+});
+
+test("classic voice with a quick gate: a line a second tap cuts, whose words come while the user speaks into the microphone a third tap opened (it stopped a reminder annai said): that line never goes to the gate and ends the card unanswered, and the third tap's microphone stays open while they speak", async (t) => {
+  useClock(t);
+  const k = await gatedKit(['Hmm, the ramen place', "What's on tomorrow?"], ['B', 'B']);
+  const words = slowWords(k, 1);
+  k.agent.send('Where did we eat in Testville?');
+  await saidCard(k);
+  k.agent.tap();
+  await until(() => micLog(k).at(-1) === 'mic open');
+  await startsSpeaking(k);
+  assert.equal(k.agent.tap(), 'stopped', 'a second tap cuts the line');
+  await until(() => words.writes === 1); // its words are being written down
+  k.agent.wake(DUE); // a reminder comes due, and annai says it
+  await until(() => k.voice.speaker.speaking);
+  const t0 = Date.now();
+  assert.equal(k.agent.tap(), 'cut', 'a third tap stops it, and opens the microphone');
+  await until(() => micLog(k).at(-1) === 'mic open');
+  await startsSpeaking(k);
+  await atS(k, t0, 6);
+  words.release(); // the cut line's words come while they speak
+  await atS(k, t0, 8.5);
+  assert.equal(micLog(k).at(-1), 'mic open', "the third tap's 8 s did not end while they speak");
+  k.platform.mic.feed(quiet(2), 16_000); // they stop
+  const { grants: g, read } = await cardEnded(k);
+  assert.deepEqual(g, []);
+  assert.match(read, /^Not read: .* The user said:$/);
+  assert.deepEqual((await k.events(['heard'])).filter((/** @type {any} */ e) => e.data.text === 'Hmm, the ramen place').map((/** @type {any} */ e) => [e.data.answer, Boolean(e.data.dismissed)]), [[k.asks[0].data.id, false]], "the cut line, with the card's answer, not set aside");
 });

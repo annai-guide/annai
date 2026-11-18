@@ -3552,7 +3552,7 @@ export class Agent {
     try {
       const session = await voice.open({
         kind: how.kind, scope: this.scope,
-        onSegment: (h) => this.#heard(h),
+        onSegment: (h) => this.#heard(h, ear),
         onSpeech: () => this.#speechStarted(),
         onQuiet: () => this.#speechStopped(),
         onError: (e) => this.#earFailed(e),
@@ -3597,28 +3597,30 @@ export class Agent {
     this.#half.speech?.(on, line);
   }
 
-  /** What the microphone heard (spec §10.4), handled in order. @param {Heard} h */
-  #heard(h) {
+  /** What the microphone heard (spec §10.4), handled in order. @param {Heard} h @param {{ owner: string }} ear the microphone that heard it */
+  #heard(h, ear) {
     // A recorded segment begins at its own speech start; a dictation result's isn't tied to it (one per run, a noise can own it): it begins on arrival.
     const began = (h.source !== 'dictation' && this.#start) || { at: h.at, over: Boolean(this.voice?.speaker.speaking) };
     // Its segment came: they stopped. Begun while annai's voice played (a chat Koe's microphone stays open while the other half says the card's
     // question), it is over her voice for the card, as a live session, deaf then, never hears it.
     this.#spoke(false, { id: h.id, at: began.at, ...(began.over ? { her: true } : {}) });
     this.poke();
-    this.#hearing = this.#hearing.then(() => this.#route(h, began)).catch((e) => { console.warn(/* en */ 'heard speech was not handled', e); });
+    this.#hearing = this.#hearing.then(() => this.#route(h, began, ear)).catch((e) => { console.warn(/* en */ 'heard speech was not handled', e); });
   }
 
   /**
    * Where a segment goes (spec §10.4): the answer she listens for; a tap's first words, which wake her; or, while she works,
    * her next call, which a new turn takes if this one ends first: nothing heard is lost. @param {Heard} h @param {{ at: number, over: boolean }} began when its speech began, over her voice or not
+   * @param {{ owner: string }} ear the microphone that heard it
    */
-  async #route(h, began) {
+  async #route(h, began, ear) {
     // The other half's card hears it first, as hers does below: one it takes reaches nothing here.
     if (this.#half.card && (await this.#half.card(h))) {
       if (!this.#speaking) this.#speechStopped(false);
       return;
     }
-    const tapped = this.#ear?.owner === 'tap';
+    // A tap's line, judged by the microphone that heard it, even closed since: a second tap's close hands on the line being said as it shuts.
+    const tapped = ear.owner === 'tap';
     const p = this.#pending?.listening ? this.#pending : null;
     if (p) {
       const ask = p.ask;
@@ -3652,7 +3654,7 @@ export class Agent {
           Object.assign(line, { h, ...(verdict ? { gate: verdict } : {}) });
           this.#askKept(p, line, true);
         }
-        if (this.#speaking) return void p.hold?.(); // more began meanwhile: its start held the tap's 8 s (#speechStarted), but a tap that stopped annai's voice while they spoke started them again (#limitTap): hold them till they stop, or the microphone closes mid-line
+        if (this.#speaking) return; // more began meanwhile: the tap's 8 s are held till they stop (#speechStarted, #limitTap)
         if (this.state.name === 'hearing') this.#setState('listening');
         p.arm?.();
         return;
@@ -3874,6 +3876,7 @@ export class Agent {
     }
     if (p.by !== undefined) p.by = Date.now() + LISTEN_S * this.secondMs; // each tap starts its own 8 s; her question aloud's listening (#listenFor) keeps its own deadline
     p.arm();
+    if (this.#speaking) p.hold?.(); // someone speaks already (a tap that stopped annai's voice, or speech begun as the microphone opened): the 8 s wait for their line's end
   }
 
   /** A tap's listening for what her turn waits on is over (its 8 s, or a second tap): the dock says she waits again, and a note held behind it is taken. @param {Pending} p */
