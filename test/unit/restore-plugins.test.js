@@ -56,6 +56,18 @@ test("a restored provider whose plugin isn't annai's own is named, with what to 
   assert.ok(Object.keys(await b.host.installed()).includes('provider-openrouter'));
 });
 
+test("a restore line for a plugin that failed to install ends as a sentence, whatever words it came with: none, no stop, or its own", async () => {
+  for (const [said, line] of [['boom', 'boom.'], ['', '.'], ['Really?', 'Really?']]) {
+    const { b } = await restored();
+    b.host.install = async () => { throw new Error(said); };
+    const llm = createLlm({ store: b.store, ws: b.ws, plugins: b.host, fetch: fromRepo });
+    const got = await llm.restorePlugins();
+    assert.equal(got.failed.length, 1);
+    const names = '(OpenRouter, Google Gemini|Google Gemini, OpenRouter)';
+    assert.match(got.failed[0], new RegExp(`^${names}${said ? ': ' : ''}${line.replace(/[.?]/g, '\\$&')}$`), `${JSON.stringify(said)} gave ${got.failed[0]}`);
+  }
+});
+
 test('a restore offline says the providers whose plugins are missing, and a second try installs them', async () => {
   const { b } = await restored();
   let online = false;

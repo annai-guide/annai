@@ -1,5 +1,5 @@
 import { h, crumb, linkIn, t, tc, settled, savedField, savedRadios, savedCheck, numberIn } from '../dom.js';
-import { seconds, numField, list, sentences, speaksScreens } from '../format.js';
+import { seconds, numField, list, sentences, asSentence, speaksScreens } from '../format.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { shownSettings } from '../../core/shown.js';
 import { voiceSettings } from '../../core/voice/settings.js';
@@ -74,7 +74,7 @@ export async function renderVoice(ctx) {
         sayStatus.textContent = r.failed === 'blocked' ? t`This browser didn't let annai play sound yet. Tap anywhere on the page, then try again.`
           : r.failed ? t`No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.`
             // A provider's own words may hold a key (spec §9.9), as in a model's Test.
-            : await shownWithoutSecrets(ctx.store, sentences(...r.failedVoices.map((/** @type {any} */ f) => t`${names(f.name)} couldn't speak: ${speechProblem(f.error)}`),
+            : await shownWithoutSecrets(ctx.store, sentences(...r.failedVoices.map((/** @type {any} */ f) => asSentence(t`${names(f.name)} couldn't speak: ${speechProblem(f.error)}`)),
               r.voices.length ? t`Spoken by ${r.voices.map(names).reduce((/** @type {string} */ a, /** @type {string} */ b) => tc('one voice, then the next')`${a}, then ${b}`)}.` : ''));
       } catch (e) {
         sayStatus.textContent = speechProblem(e);

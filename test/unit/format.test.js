@@ -340,10 +340,11 @@ test('sentences side by side: a space in English, as the language joins them in 
   assert.equal(sentenceGap(), '');
 });
 
-test('sentences: a part with no full stop of its own (a plugin\'s error, say) keeps a space after it, so the next sentence never runs into it', () => {
-  assert.equal(sentences('annai.foo is not a function', 'Try again.'), 'annai.foo is not a function Try again.');
+test('sentences: a part with no full stop of its own (a plugin\'s error, say) is ended as a sentence, so the next one never runs into it; the last is left as it is', () => {
+  assert.equal(sentences('annai.foo is not a function', 'Try again.'), 'annai.foo is not a function. Try again.');
+  assert.equal(sentences('Try again.', 'annai.foo is not a function'), 'Try again. annai.foo is not a function');
   setWords('ja', { [key('{0} {1}', 'sentences')]: '{0}{1}' });
-  assert.equal(sentences('annai.foo is not a function', '設定 → プラグインでオフにできます。'), 'annai.foo is not a function 設定 → プラグインでオフにできます。');
+  assert.equal(sentences('annai.foo is not a function', '設定 → プラグインでオフにできます。'), 'annai.foo is not a function。設定 → プラグインでオフにできます。');
   assert.equal(sentences('Steps used up.', 'もう一度お試しください。'), 'Steps used up.もう一度お試しください。');
   assert.equal(sentences('止まりました！', '「ok」でした。', '次へ'), '止まりました！「ok」でした。次へ');
 });
@@ -357,12 +358,14 @@ test('sentences: a part ending in an ellipsis (also inside a closing quote) ends
     setWords(ui, { [key('{0} {1}', 'sentences')]: '{0}{1}' });
     assert.equal(sentences('待っています…', '設定でオフにできます。'), '待っています…設定でオフにできます。', ui);
     assert.equal(sentences('「待っています…」', '設定でオフにできます。'), '「待っています…」設定でオフにできます。', ui);
-    assert.equal(sentences('boom', '設定でオフにできます。'), 'boom 設定でオフにできます。', `${ui}: a part with no end keeps its space`);
+    assert.equal(sentences('boom', '設定でオフにできます。'), 'boom。設定でオフにできます。', `${ui}: a part with no end is ended in the screens' stop`);
   }
 });
 
 test("asSentence ends a text as a sentence: a full stop unless it ends in one or in an ellipsis; no words, no sentence", () => {
-  for (const [text, ended] of [['boom', 'boom.'], ['boom.', 'boom.'], ['boom\n', 'boom.'], ['Really?', 'Really?'], ['wait…', 'wait…'], ['wait…\n', 'wait…'], ['He said "wait…"', 'He said "wait…"'], ['止まりました。', '止まりました。'], ['', ''], [' \n', '']]) {
+  for (const [text, ended] of [['boom', 'boom.'], ['boom.', 'boom.'], ['boom\n', 'boom.'], ['Really?', 'Really?'], ['wait…', 'wait…'], ['wait…\n', 'wait…'], ['He said "wait…"', 'He said "wait…"'], ['止まりました。', '止まりました。'], ['', ''], [' \n', ''],
+    // A colon left at the end (a frame made with blank words) goes before the stop; one inside the text stays.
+    ['Starting failed:', 'Starting failed.'], ['Starting failed: ', 'Starting failed.'], ['Allowed values : \n', 'Allowed values.'], ['Note: see docs', 'Note: see docs.'], [':', '']]) {
     assert.equal(asSentence(text), ended, JSON.stringify(text));
   }
 });
@@ -372,7 +375,7 @@ test("asSentence follows the screens' language: Japanese and Chinese end a text 
   for (const ui of ['ja', 'zh-Hans', 'zh-Hant']) {
     as(ui);
     setWords(ui, join);
-    for (const [text, ended] of [['止まりました', '止まりました。'], ['boom', 'boom。'], ['boom\n', 'boom。'], ['止まりました。', '止まりました。'], ['boom.', 'boom.'], ['Really?', 'Really?'], ['好吗？', '好吗？'], ['wait…', 'wait…'], ['Error (code 5)', 'Error (code 5)。'], ['', ''], [' \n', '']]) {
+    for (const [text, ended] of [['止まりました', '止まりました。'], ['boom', 'boom。'], ['boom\n', 'boom。'], ['止まりました。', '止まりました。'], ['boom.', 'boom.'], ['Really?', 'Really?'], ['好吗？', '好吗？'], ['wait…', 'wait…'], ['Error (code 5)', 'Error (code 5)。'], ['', ''], [' \n', ''], ['起動に失敗しました：', '起動に失敗しました。'], ['Tide pools：', 'Tide pools。'], ['Starting failed:', 'Starting failed。']]) {
       assert.equal(asSentence(text), ended, `${ui} ${JSON.stringify(text)}`);
     }
     assert.equal(sentences(asSentence('Tide pools: boom'), asSentence('Rock pools: fail')), 'Tide pools: boom。Rock pools: fail。', ui);

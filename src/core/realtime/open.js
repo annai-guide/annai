@@ -4,7 +4,7 @@ import { addressProblem } from '../llm/provider-desc.js';
 import { isPluginBug } from '../registry.js';
 import { utf8 } from '../bytes.js';
 import { t, plural } from '../l10n.js';
-import { sentences } from '../intl.js';
+import { sentences, asSentence } from '../intl.js';
 
 /**
  * Live sessions (the Koe and Kokoro design, "Realtime sessions"; spec §15). annai opens the WebSocket itself, only at
@@ -296,10 +296,10 @@ export async function testLive(session, { onAudio, ms = 10_000 } = {}) {
     session.text(/* en */ 'Say OK.'); // the model's words
     const how = await end;
     clearTimeout(timer);
-    const words = said.replace(/[.!\s]+$/, '').trim();
+    const words = said.replace(/[.\s]+$/, '').trim();
     const ok = Boolean(heard && words);
-    // The Test's own words, in the screens' language; what the model said, as it said it.
-    const detail = ok ? t`It answered aloud: ${words}.` : how === 'late' ? plural(ms / 1000, "It didn't answer aloud within # second.", "It didn't answer aloud within # seconds.")
+    // The Test's own words, in the screens' language; what the model said, as it said it: a "?" or "!" it ends with stays ("OK?"), a stop is added where it has none.
+    const detail = ok ? asSentence(t`It answered aloud: ${words}`) : how === 'late' ? plural(ms / 1000, "It didn't answer aloud within # second.", "It didn't answer aloud within # seconds.")
       : KINDS.has(how) ? sentences(t`The session closed before it answered.`, explain(new ProviderError(/** @type {any} */ (how), ''))) : t`It answered, but not aloud in words.`;
     return { ok, steps: [...opened(), { step: 'live', ok, detail }] };
   } catch (e) {
