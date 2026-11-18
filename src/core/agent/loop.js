@@ -3919,7 +3919,7 @@ export class Agent {
         if (!deaf && this.#userStop && this.#ear?.owner === 'after') this.#closeEar(); // the user's Stop came as it opened
         if (deaf || this.#ear?.owner !== 'after') {
           // Whoever waits on this window hears it came to nothing; her turn may have ended while it opened (#rest said Listening): with no turn and no microphone, she sleeps.
-          if (!this.#busy && !this.#ear) return void this.#setState(this.online() ? 'sleeping' : 'offline');
+          if (!this.#busy && !this.#ear && this.state.name === 'listening') return void this.#setState(this.online() ? 'sleeping' : 'offline');
           return void this.#emit('state', this.state);
         }
         if (this.#busy) this.#emit('state', this.state); // a turn runs (it writes down what it heard, or a second one started): its end sets Listening (#drain)
