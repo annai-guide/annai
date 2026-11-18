@@ -154,7 +154,7 @@ export function summaryLanguage(said, languages) {
     /* en */
     const by = languages?.explicit ? 'the first language the user speaks written in Han' : "the language of the user's phone";
     /* en */
-    return `${language.name}, ${by} (what the user wrote is Han, which doesn't tell Japanese from Chinese)`;
+    return `${language.name}, ${by} (the lines that decide are Han, which doesn't tell Japanese from Chinese)`;
   }
   if (language) /* en */ return `${language.name}, the language most of what the user wrote is in`;
   if (languages?.explicit) /* en */ return `${languages.spoken[0].name}, the first language the user speaks (${named(languages.spoken)})`;

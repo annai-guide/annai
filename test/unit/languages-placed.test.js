@@ -12,7 +12,7 @@ const listed = (/** @type {string[]} */ ids, locale = 'en-US') => languageSettin
 const phone = (/** @type {string} */ locale) => languageSettings({}, locale);
 const most = (/** @type {string} */ name) => `${name}, the language most of what the user wrote is in`;
 /** What the request says where Han that says neither gave the language by the order alone (the first they speak written in Han; nothing chosen: the phone's), not that the lines are in it. */
-const byOrder = (/** @type {string} */ name, ofPhone = false) => `${name}, ${ofPhone ? "the language of the user's phone" : 'the first language the user speaks written in Han'} (what the user wrote is Han, which doesn't tell Japanese from Chinese)`;
+const byOrder = (/** @type {string} */ name, ofPhone = false) => `${name}, ${ofPhone ? "the language of the user's phone" : 'the first language the user speaks written in Han'} (the lines that decide are Han, which doesn't tell Japanese from Chinese)`;
 /** What placed says of a line: a language's id, 'either' (Han that says neither Japanese nor Chinese), or null. @param {string} text @param {any} s */
 const id = (text, s) => { const l = L.placed(text, s); return l === L.EITHER ? 'either' : l?.id ?? null; };
 
@@ -462,6 +462,13 @@ test("Chinese's own small words are grammar, as hiragana is: a Chinese sentence 
   for (const x of ['Where is 天安门?', 'Where is 东京站?', 'Where is 新宿御苑?']) assert.equal(L.writing(x), 'Latn', x);
   // Chinese's small words outrank Latin words only where its characters outnumber them: an English sentence quoting 你好 stays English.
   assert.equal(L.writing('Say 你好 to the staff at the desk.'), 'Latn');
+  // 你 这 這 哪 吧 are in names too: an English question naming one is English (the second opinion on round 2).
+  for (const x of ['Where is 你好饭店?', 'Is 你好饭店 open tonight?', 'Where is 酒吧街?', 'Where is 哪吒庙?']) assert.equal(L.writing(x), 'Latn', x);
+  // An English sentence naming a place in old forms keeps the English voice under [en, ja]; the name alone is read as Han.
+  assert.equal(speechLocale(listed(['en', 'ja']), 'What time does 國會議事堂 close?'), 'en-US');
+  assert.equal(speechLocale(listed(['en', 'ja']), '靖國神社'), 'ja-JP');
+  // A Chinese sentence naming a place in English with two small words keeps its Chinese tag.
+  assert.equal(tagOf('我想去 The Museum of Modern Art，下午去中央公园。', phone('zh-CN'), false, 'zh-Hans'), 'zh-Hans');
 });
 
 test('Han that is placed as none of theirs is Han that says neither: with Japanese listed and Chinese not, a Chinese-only character is read in the Japanese voice, not the English one (R2)', () => {
