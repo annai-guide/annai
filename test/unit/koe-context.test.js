@@ -241,7 +241,7 @@ test("a conversation with no dates: the view says it has none and that the user'
   assert.equal(await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: null }), '<today>\ntrip: Big Sur\nplan for 2026-11-26 and 2026-11-27:\nnothing planned\nbookings in the next 48 hours:\nnone\nnext reminder: none\n</today>');
 });
 
-test("Kokoro's view of a day with a same-day flight, train or ferry: its departure at its place, then \"Arrive\" at its time with no place, as an overnight one's, whether booked, planned or both; an item on its booking keeps its end (carrier-rows-next; main told a booking's arrival nowhere, and an item's on one row at the place it left)", async () => {
+test("Kokoro's view of a day with a same-day flight, train or ferry: a booking is its departure (in the bookings table) and \"Arrive\" at its time with no place, as an overnight one's; a plan item alone is main's row, both times on one row at its place; an item on its booking keeps its end, and the booking's Arrive follows (carrier-rows-next; main told a booking's arrival nowhere)", async () => {
   const AK = 'America/Anchorage';
   const ak = (/** @type {string} */ hhmm) => ({ at: `2026-11-20T${hhmm}:00-09:00`, tz: AK });
   const dinner = { id: 'dinner', title: 'Dinner', fixed: true, start: ak('19:00'), place: { name: 'Harbor cafe' } };
@@ -259,9 +259,9 @@ test("Kokoro's view of a day with a same-day flight, train or ferry: its departu
       'start\tend\ttitle\tconstraint\tplace\n2026-11-20 10:00\t\tArrive · Ride ticket\t\t\n2026-11-20 19:00\t\tDinner\tcan\'t be moved\tHarbor cafe', kind);
     // The departure itself is in the bookings table, which the plan table leaves out, so the traveller's day has both times.
     assert.match(await viewOf({ '/bookings/ride.json': booking }), new RegExp(`bookings in the next 48 hours:\\nstart\\tkind\\ttitle\\tcheck\\tconfirmation\\n2026-11-20 08:00\\t${kind}\\tRide ticket\\t`), kind);
-    // Planned, with no booking.
+    // Planned, with no booking: main's row, both times on one (the Deferred entry "A flight, train or ride the Plan can't split").
     assert.equal(await day({ '/plan/ride.json': item }),
-      'start\tend\ttitle\tconstraint\tplace\n2026-11-20 08:00\t\tMorning ride\tcan\'t be moved\tPort A\n2026-11-20 10:00\t\tArrive · Morning ride\tcan\'t be moved\t\n2026-11-20 19:00\t\tDinner\tcan\'t be moved\tHarbor cafe', kind);
+      'start\tend\ttitle\tconstraint\tplace\n2026-11-20 08:00\t2026-11-20 10:00\tMorning ride\tcan\'t be moved\tPort A\n2026-11-20 19:00\t\tDinner\tcan\'t be moved\tHarbor cafe', kind);
     // Both: the item as main showed it, with its end, and the booking's Arrive as fixed as the item that ends there.
     assert.equal(await day({ '/bookings/ride.json': booking, '/plan/ride.json': { ...item, booking: '/trip/bookings/ride.json' } }),
       'start\tend\ttitle\tconstraint\tplace\n2026-11-20 08:00\t2026-11-20 10:00\tMorning ride\tcan\'t be moved\tPort A\n2026-11-20 10:00\t\tArrive · Ride ticket\tcan\'t be moved\t\n2026-11-20 19:00\t\tDinner\tcan\'t be moved\tHarbor cafe', kind);

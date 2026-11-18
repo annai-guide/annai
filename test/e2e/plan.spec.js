@@ -52,11 +52,10 @@ test('the Plan: day tabs, ● fixed and ○ flexible, legs with directions, Chec
   await tabs.first().click(); // the open tab is today's when the trip is on, so pick one
   await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
   const day = page.getByRole('tabpanel');
-  await expect(day.locator('.plan-row')).toHaveCount(3);
-  // A flight is its departure at SFO and its Arrive, which names the zone it lands in, with no place (carrier-rows-next).
-  await expect(day.locator('.plan-row').first()).toHaveText(/^08:00●Fixed: UA 123 to NewarkSFO/);
-  await expect(day.locator('.plan-row').nth(1)).toHaveText(/^16:30 ET●Fixed: Arrive · UA 123 to Newark(Check 3 details)?$/);
-  await expect(day.getByRole('link', { name: 'Check 3 details' })).toHaveCount(2); // the old flight, on both its rows: its name, departure and confirmation number
+  await expect(day.locator('.plan-row')).toHaveCount(2);
+  await expect(day.locator('.plan-row').first()).toContainText('08:00–16:30 ET'); // it lands in another zone
+  await expect(day.locator('.plan-row').first()).toContainText('●');
+  await expect(day.getByRole('link', { name: 'Check 3 details' })).toHaveCount(1); // the old flight: its name, departure and confirmation number
   await expect(day.getByRole('link', { name: 'Check this' })).toHaveCount(0);
   await expect(day.locator('.leg')).toHaveCount(0); // SFO to Hoboken is a flight, not a leg
   await tabs.nth(1).click();
@@ -647,7 +646,7 @@ test("Booking details from before: what it says, beside its original, each detai
   await records(page, trip, THANKSGIVING);
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
   await page.getByRole('tab', { name: 'Wed, Nov 25' }).click();
-  await page.getByRole('tabpanel').getByRole('link', { name: 'Check 3 details' }).first().click(); // the flight's departure (its Arrive has the same)
+  await page.getByRole('tabpanel').getByRole('link', { name: 'Check 3 details' }).click();
   await expect(page.getByRole('heading', { name: 'UA 123' })).toBeVisible();
   // No banner for the whole booking: each part it has carries its own check, as on a new booking: the name (by the heading), the
   // departure and the confirmation number (by their lines).
@@ -870,11 +869,11 @@ test('a trip from before: unverified and confirmed bookings without unsure, plan
   await expect(page.getByRole('tab')).toHaveText(['Wed, Nov 25', 'Thu, Nov 26', 'Sat, Nov 28', 'Sun, Nov 29', 'No time yet (1)']); // the 29th: a flight's arrival
   await page.getByRole('tab', { name: 'Wed, Nov 25' }).click();
   const day = page.getByRole('tabpanel');
-  await expect(day.locator('.plan-row', { hasText: 'UA 123 to Newark' }).getByRole('link', { name: 'Check 3 details' })).toHaveCount(2); // its departure and its Arrive
+  await expect(day.locator('.plan-row', { hasText: 'UA 123 to Newark' }).getByRole('link', { name: 'Check 3 details' })).toBeVisible();
   await expect(day.locator('.plan-row', { hasText: 'Hoboken Inn' }).locator('.chip')).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Not on a day' })).toHaveCount(0);
   // The details: the unverified one with each part it has marked (no banner), the confirmed one not at all.
-  await day.getByRole('link', { name: /^Fixed: UA 123 to Newark/ }).click();
+  await day.getByRole('link', { name: /UA 123 to Newark/ }).click();
   await expect(page.getByRole('heading', { name: 'UA 123' })).toBeVisible();
   await expect(page.getByRole('note')).toHaveCount(0);
   await expect(page.locator('.mark-check')).toHaveCount(3);
