@@ -302,9 +302,8 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
       try {
         put(fk ?? '', 'end', timeOf(`${fk}[${n}].arrival`, arrival, undefined, zones, 'end', true));
       } catch (e) {
-        // An arrival with a time written that can't be placed is refused: an object's `at`, else its `time`, or a text that reads as a date with a
-        // time (`written`: an airport as text, "HND", is no time, as { iataCode } is none).
-        if (fk === 'flights' || (o ? there(o.at ?? o.time) : written(arrival))) throw e;
+        // An arrival with a time written (timeOf's own reading: its `at`, else its `time`, else the text) that can't be placed is refused.
+        if (fk === 'flights' || there(o ? o.at ?? o.time : arrival)) throw e;
       }
     }
   }
@@ -335,10 +334,8 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
   }
   for (const [k, where] of ends) {
     // An end elsewhere than the place is kept in fields: a car's is its drop-off, whatever it was called; an arrival's is where it arrives
-    // (`to`, read "To", 到着地: `arrival` is the word for a time, "Arrival" 到着, which the details draw beside it as "Arrives"). Where this write
-    // already says where it goes (fields.to, a flight's route) stands: the arrival's place is not filed beside it, and its time is stored all the same.
-    const into = /^arriv/.test(k) && what !== 'car' ? 'to' : 'dropoff';
-    if (![record(out.place)?.name, record(out.place)?.address].includes(where) && !eq(where, out.place) && !(into === 'to' && fields && there(fields.to))) put(k, `fields.${into}`, where);
+    // (`to`, read "To", 到着地: `arrival` is the word for a time, "Arrival" 到着, which the details draw beside it as "Arrives").
+    if (![record(out.place)?.name, record(out.place)?.address].includes(where) && !eq(where, out.place)) put(k, `fields.${/^arriv/.test(k) && what !== 'car' ? 'to' : 'dropoff'}`, where);
     named[k] = 'end';
   }
   for (const k of keys) {

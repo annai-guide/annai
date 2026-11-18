@@ -327,7 +327,7 @@ export function bookingFacts(b, o = {}) {
     out.push({ key, label: labelOf(key), value: valueText(fields[key]), unsure: marked.has(key) });
   }
   // The name is the screen's heading, no line: a field of that name is skipped when it says the same, and is a line under "Name" when it
-  // doesn't (or the booking has none), as the other parts of its own are.
+  // doesn't (or the booking has none); unlike the other parts of its own, whose same-named field is never drawn beside them.
   const name = typeof b.title === 'string' && b.title.trim() ? b.title.trim() : '';
   if (name && has('title') && valueText(fields.title).trim() === name) shown.add('title');
   for (const [key, v] of Object.entries(fields)) {
