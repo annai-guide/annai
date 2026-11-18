@@ -545,7 +545,7 @@ test("an offer of annai's own that an earlier check found stays through a check 
   assert.deepEqual([back.failed, shown(back)], [[], [['tide-pools', '1.2.0', '1.3.0']]], 'the catalog back, at the version installed: checked, and annai\'s own offer goes');
 });
 
-test("an offer stands only while the install it was found against does: a package installed again from its address, or an official plugin installed again as the catalog's copy, leaves no offer, however it was installed and whenever (update-check-next: an offer of the same version stood after an install that was not an Update and not during a check, \"(changed)\" for what was installed)", async () => {
+test("an offer stands only while the install it was found against does: a package installed again from its address, or an official plugin installed again as the catalog's copy, leaves no offer, however it was installed between checks (update-check-next: an offer of the same version stood after an install that was not an Update and not during a check, \"(changed)\" for what was installed)", async () => {
   const { host } = await setup();
   await ensureType(host, 'scripted', { fetch: await repo() });
   let served = SKILL;
