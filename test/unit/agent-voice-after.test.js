@@ -375,7 +375,7 @@ test("classic: the window after a turn, chatter back to back (talk radio, music)
     voice: { speechIn: ['m-hear'], hears: ['where should we eat', 'yes', 'la la', 'la la la'], decide: [{ toolCalls: [{ name: 'decide', input: { option: 'A' } }] }, ...[1, 2, 3].map(() => ({ toolCalls: [{ name: 'decide', input: { option: 'B' } }] }))] },
     hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-d' && ++gates >= 2) await new Promise((r) => { verdict[gates] = () => r(undefined); }); },
   });
-  await updateAppSettings(k.ws, { voice: { silenceSeconds: 100 } }); // 1 s here
+  await updateAppSettings(k.ws, { voice: { silenceSeconds: 60 } }); // 600 ms here (the setting takes 2 to 60)
   k.agent.tap();
   await until(() => k.agent.state.name === 'listening');
   await hear(k, 'where-eat');
