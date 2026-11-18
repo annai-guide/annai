@@ -719,13 +719,13 @@ test("an official plugin installed again while the check's catalog request is in
   await ensureType(host, 'scripted', { fetch: await repo() });
   const bumped = await repo({ bump: true });
   let installedDuringCheck = false;
-  const during = async (/** @type {any} */ url, /** @type {any} */ init) => {
+  const during = async (/** @type {any} */ url) => {
     if (new URL(String(url), 'http://annai.test').pathname === '/catalog/plugins.json' && !installedDuringCheck) {
       installedDuringCheck = true;
-      const catalog = await (await bumped(url, init)).json();
+      const catalog = await (await bumped(url)).json();
       await installOfficial(host, catalog.plugins.find((/** @type {any} */ p) => p.id === 'scripted-model'), { fetch: bumped }).catch(() => {});
     }
-    return bumped(url, init);
+    return bumped(url);
   };
   const r = await checkPlugins(host, { fetch: during }, { address: false });
   assert.equal(installedDuringCheck, true, 'the install landed while the catalog was being asked');
