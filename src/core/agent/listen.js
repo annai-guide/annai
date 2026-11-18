@@ -8,8 +8,8 @@
  *   or nothing (a silence); gate: what the quick-decision gate made of it; earlier: no listening, as a line of the user's from
  *   while she thought is waiting, spoken or written (it follows the result whole, with its photos and files); note: a note from the other half came (its name), which follows the result; due: a reminder or alert came (Koe's wait); voiced: the option
  *   a heard line answered annai's own question with (Agent.confirm); spoke: the other half's heard line (its id) that ended that question unanswered;
- *   also: the segments kept before heard while that question settled, in order; own: the listed words said to that question before what ended it
- *   (a "Yes" then taken back), written with its answer and never her next line; taken: with spoke, the lines the card took (cardTakes), which her result lists
+ *   also: the segments kept before heard while that question settled, in order; own: the noes said to that question before what ended it
+ *   (a "No, wait." a tap then overrode), written with its answer and never her next line; taken: with spoke, the lines the card took (cardTakes), which her result lists
  */
 
 /** How speak's result begins: what she said, and whether the user stopped her (spec §7.1). @param {import('../voice/speaker.js').Spoken} spoken */

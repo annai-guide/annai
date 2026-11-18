@@ -188,7 +188,7 @@ export function tripTools(app) {
       events = [...page.reverse(), ...events];
       /** @type {Map<string, unknown[]>} annai's own cards, by id, with their options */
       const cards = new Map(events.filter((e) => e.type === 'out.ask' && e.data?.own).map((e) => [e.data.id, Array.isArray(e.data.options) ? e.data.options : []]));
-      // A typed answer is the card's only in its own words or a yes or no annai hears (one half's tap stores no chose: talk.js tells it the same way); a heard one, always.
+      // A typed answer is the card's only in its own words or a bare yes or no by annai's word lists (one half's tap stores no chose: talk.js tells it the same way); a heard one, always.
       const card = (/** @type {any} */ e, /** @type {any} */ d, /** @type {unknown} */ text) => cards.has(d.answer)
         && (e.type !== 'msg.user' || d.chose || cards.get(d.answer)?.includes(text) || spokenYes(String(text)) || spokenNo(String(text)));
       const asked = events.findLast((e) => e.type === 'out.ask' && e.data?.own)?.seq ?? Infinity;
@@ -383,7 +383,7 @@ export function tripTools(app) {
     if (log.slice(log.findLastIndex((e) => e.type === 'import') + 1).some((e) => e.data?.trip === rec.id)) return null;
     if (!rec.imported && (await readAppSettings(ws)).readMyTrips === true) return null;
     const [allow, always, no] = [t`Allow`, t`Always for my trips`, t`Not now`];
-    // Answered by tap only (the user's stop rule, 2026-11-13): no yes list, so no spoken line grants; a spoken no still declines.
+    // Answered by tap only (the user's stop rule, 2026-11-13): confirm takes a no list only, so no spoken line grants; a spoken no still declines.
     const got = await app.confirm(call, {
       question: await asking(rec), options: rec.imported ? [allow, no] : [allow, always, no], no: (heard) => (spokenNo(heard) ? no : null),
     });
