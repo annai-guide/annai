@@ -6,7 +6,7 @@ import { createLlm } from '../../src/core/llm/service.js';
 import { addProvider } from '../../src/core/llm/providers.js';
 import { hostKit } from './package-kit.js';
 import { ROUTER_SRC } from './provider-kit.js';
-import { QUIET_MS } from '../../src/core/llm/official.js';
+import { QUIET_MS } from '../../src/core/answer.js';
 import { dead, watch, turns } from './dead-kit.js';
 
 // The emulator pass (m9 #20): a restore brought the providers back with the settings, but not the plugins they

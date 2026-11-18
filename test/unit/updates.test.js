@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { Updates, SOON, DAILY } from '../../src/ui/updates.js';
 import { fetchPackage } from '../../src/core/packages.js';
 import { SKILL, hostKit } from './package-kit.js';
+import { QUIET_MS } from '../../src/core/answer.js';
+import { dead, watch, turns } from './dead-kit.js';
 
 // When annai looks for updates (the user, 2026-10-18): an iPhone Home Screen app that comes back from the
 // background only resumes, so the browser never checks; annai checks when it comes back to the screen.
@@ -357,4 +359,41 @@ test("a new version that didn't finish downloading is said, and Settings → Upd
   k.updates.downloadFailed();
   assert.deepEqual(k.updates.last?.failed, ["The download of the new version didn't finish. annai tries again the next time it checks."]);
   assert.deepEqual(changed, [false]);
+});
+
+test("a check (Check now) with a plugin whose address's site goes dead ends after QUIET_MS, inside the check's own limit, saying which plugin and why, and the addresses after it are checked (addr-limit-next: it ran to the check's 45 s and asked nothing after it)", async (t) => {
+  const GONE = 'https://gone.example/tide-pools/SKILL.md';
+  const LIVE = 'https://trails.example/rock-pools/SKILL.md';
+  const rock = SKILL.replace('name: tide-pools', 'name: rock-pools');
+  /** @type {Record<string, string>} */
+  const served = { [GONE]: SKILL, [LIVE]: rock };
+  let gone = false;
+  /** @type {string[]} */
+  const asked = [];
+  const get = (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+    asked.push(url);
+    if (gone && url === GONE) return dead(init, 'never');
+    return Promise.resolve(url in served ? new Response(served[url]) : new Response('', { status: 404 }));
+  };
+  const { host } = await hostKit();
+  await host.install(await fetchPackage(GONE, { fetch: get }), { source: 'url', url: GONE });
+  await host.install(await fetchPackage(LIVE, { fetch: get }), { source: 'url', url: LIVE });
+  served[LIVE] = rock.replace('version: "1.2"', 'version: "1.3"');
+  gone = true;
+  asked.length = 0;
+  const updates = new Updates({ host, env: { fetch: async () => new Response(JSON.stringify({ plugins: [] })), addressFetch: get }, online: () => true });
+  updates.app = { check: async () => {}, state: () => 'none' };
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const w = watch(updates.checkNow());
+  await turns(() => asked.includes(GONE));
+  t.mock.timers.tick(QUIET_MS - 1);
+  await turns(() => w.state !== 'pending', 50);
+  assert.equal(w.state, 'pending', 'still waiting just short of the limit');
+  assert.ok(!asked.includes(LIVE), 'the address after it waits its turn');
+  t.mock.timers.tick(1);
+  await turns(() => w.state !== 'pending');
+  assert.equal(w.state, 'done', String(w.error?.message ?? 'still waiting'));
+  assert.deepEqual(w.value?.failed, ["tide-pools couldn't be checked: gone.example stopped answering. Check the connection and try again."]);
+  assert.deepEqual(w.value?.found.map((u) => [u.id, u.installed, u.available]), [['rock-pools', '1.2.0', '1.3.0']], 'the address after it was checked');
+  assert.equal(updates.checking, false);
 });

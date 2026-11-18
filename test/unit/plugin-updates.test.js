@@ -14,6 +14,9 @@ import { offerCard, applyUpdates, checkPlugins } from '../../src/ui/plugin-updat
 import { addressUpdates, updateFromAddress } from '../../src/core/package-updates.js';
 import { fetchPackage } from '../../src/core/packages.js';
 import { SKILL, hostKit } from './package-kit.js';
+import { QUIET_MS } from '../../src/core/answer.js';
+import { messageOf } from '../../src/ui/dom.js';
+import { dead, watch, turns } from './dead-kit.js';
 
 const root = new URL('../../', import.meta.url);
 
@@ -372,4 +375,43 @@ test('8a-1: a plain address still works; a raw one kept before this fix moves in
     assert.equal(await updateFromAddress(host, 'tide-pools', { fetch: get }), 'started', when);
     assert.equal((await host.installed())['tide-pools'].version, '1.3.0', when);
   }
+});
+
+test("an Update whose address's site goes dead ends after QUIET_MS on the failed updates' card, saying the site stopped answering, and the update after it goes on (addr-limit-next: it waited until annai was restarted, and every update after it in the list with it)", async (t) => {
+  const GONE = 'https://gone.example/tide-pools/SKILL.md';
+  const LIVE = 'https://trails.example/rock-pools/SKILL.md';
+  const rock = SKILL.replace('name: tide-pools', 'name: rock-pools');
+  /** @type {Record<string, string>} */
+  const served = { [GONE]: SKILL, [LIVE]: rock };
+  let gone = false;
+  /** @type {string[]} */
+  const asked = [];
+  const get = (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+    asked.push(url);
+    if (gone && url === GONE) return dead(init, 'never');
+    return Promise.resolve(url in served ? new Response(served[url]) : new Response('', { status: 404 }));
+  };
+  const { host } = await hostKit();
+  await host.install(await fetchPackage(GONE, { fetch: get }), { source: 'url', url: GONE });
+  await host.install(await fetchPackage(LIVE, { fetch: get }), { source: 'url', url: LIVE });
+  served[GONE] = SKILL.replace('version: "1.2"', 'version: "1.3"');
+  served[LIVE] = rock.replace('version: "1.2"', 'version: "1.3"');
+  const offers = await addressUpdates(host, { fetch: get });
+  assert.deepEqual(offers.map((u) => u.id), ['tide-pools', 'rock-pools']);
+  gone = true;
+  asked.length = 0;
+  const notices = fakeNotices();
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const w = watch(applyUpdates({ plugins: host, notices }, offers, { addressFetch: get, reload: () => {} }));
+  await turns(() => asked.includes(GONE));
+  t.mock.timers.tick(QUIET_MS - 1);
+  await turns(() => w.state !== 'pending', 50);
+  assert.equal(w.state, 'pending', 'still waiting just short of the limit');
+  assert.ok(!asked.includes(LIVE), 'the update after it waits its turn');
+  t.mock.timers.tick(1);
+  await turns(() => w.state !== 'pending');
+  assert.equal(w.state, 'done', w.error ? messageOf(w.error) : 'still waiting');
+  assert.deepEqual(notices.cards.map((/** @type {any} */ c) => [c.title, c.body]), [["Some plugins weren't updated", 'tide-pools: gone.example stopped answering. Check the connection and try again.']]);
+  const installed = await host.installed();
+  assert.deepEqual([installed['tide-pools'].version, installed['rock-pools'].version], ['1.2.0', '1.3.0'], 'the update after it went on');
 });

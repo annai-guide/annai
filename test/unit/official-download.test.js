@@ -1,13 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import http from 'node:http';
-import { download, installOfficial, ensureProvided, officialPlugins, DOWNLOADS_AT_ONCE, QUIET_MS } from '../../src/core/llm/official.js';
+import { download, installOfficial, ensureProvided, officialPlugins, DOWNLOADS_AT_ONCE } from '../../src/core/llm/official.js';
+import { QUIET_MS } from '../../src/core/answer.js';
 import { messageOf } from '../../src/ui/dom.js';
 import { sha256Hex } from '../../src/core/hash.js';
 import { setWords } from '../../src/core/l10n.js';
 import { hostKit } from './package-kit.js';
 import { site } from './provider-kit.js';
-import { dead, watch, turns } from './dead-kit.js';
+import { dead, watch, turns, siteOn } from './dead-kit.js';
 
 const bytes = (/** @type {string} */ s) => new TextEncoder().encode(s);
 /** A catalog entry of n files f0.js…, with one hash wrong when bad is given. @param {number} n @param {number} [bad] */
@@ -74,44 +74,6 @@ test("a plugin that starts and gives no type of the kind asked for: the screen s
   await assert.rejects(ensureProvided(host, 'storage-type', 'void', { fetch }), (/** @type {any} */ e) => messageOf(e) === "The plugin didn't provide a kind of backup place void.");
   await assert.rejects(ensureProvided(host, 'endpoint-type', 'void', { fetch }), (/** @type {any} */ e) => messageOf(e) === "The plugin didn't provide an endpoint type void.");
 });
-
-/**
- * annai's site on this machine, each request answered by answer(path, res): one that writes nothing leaves the request waiting, as a
- * connection gone dead does. asked: the paths requested. fetch: Node's own, counting in answered the answers it has had and in seen
- * the body bytes it has passed on.
- * @param {(path: string, res: import('node:http').ServerResponse) => void} answer
- */
-async function siteOn(answer) {
-  /** @type {string[]} */
-  const asked = [];
-  const server = http.createServer((req, res) => {
-    asked.push(req.url ?? '');
-    answer(req.url ?? '', res);
-  });
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(undefined)));
-  const s = {
-    base: `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (server.address()).port}`,
-    asked,
-    seen: 0,
-    answered: 0,
-    /** @param {string} url @param {RequestInit} [init] */
-    fetch: async (url, init) => {
-      const res = await fetch(url, init);
-      s.answered++;
-      const body = res.body?.pipeThrough(new TransformStream({ transform: (part, out) => { out.enqueue(part); s.seen += part.length; } }));
-      return new Response(body, res);
-    },
-    // The 100 ms wait: Node's fetch can clear a finished test's timer after the next test's fake clock starts, and Node's mock clock
-    // (v26.13.1) then drops whatever timer holds that place in the new clock's queue; 100 ms let 24 runs side by side end their
-    // connections first (the re-read of dl-limit-next's round 2, 2026-11-17).
-    close: async () => {
-      server.closeAllConnections();
-      server.close();
-      await turns(() => false, 100);
-    },
-  };
-  return s;
-}
 
 test("a dead connection ends after QUIET_MS of nothing, with the words annai shows for a download that failed: a request that never answers, and one that sends its headers and 1 KB and then nothing; the catalog's and a plugin's file (dl-limit-next: they waited until annai was restarted)", async (t) => {
   /** @type {'never' | 'headers'} */

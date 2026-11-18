@@ -1,5 +1,5 @@
 {
-  "build": "706abd5fd05c",
+  "build": "41f0d101638b",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -57,7 +57,7 @@
     "/src/core/agent/via.js": "557657aae006",
     "/src/core/agent/warmth.js": "7f1be5368415",
     "/src/core/address.js": "d677ad7a10ba",
-    "/src/core/answer.js": "3f8b2b51d66d",
+    "/src/core/answer.js": "df3e887b2c5a",
     "/src/core/archive.js": "9f8253a64b2e",
     "/src/core/backup.js": "644832139162",
     "/src/core/backup-auto.js": "64ed2407b9ec",
@@ -80,7 +80,7 @@
     "/src/core/llm/decide.js": "4aff39cf2ab3",
     "/src/core/llm/fallback.js": "18b9abdf29ca",
     "/src/core/llm/move-over.js": "9584243ec1f4",
-    "/src/core/llm/official.js": "d771826a7303",
+    "/src/core/llm/official.js": "84388a1eb7d1",
     "/src/core/llm/provider-desc.js": "f1a1406b822b",
     "/src/core/llm/providers.js": "372b9bb91ac3",
     "/src/core/llm/setup.js": "8691e7d5248f",
@@ -122,7 +122,7 @@
     "/src/core/names.js": "0d8fc0903f5c",
     "/src/core/official-names.js": "13fd35baa42b",
     "/src/core/package-updates.js": "adb65e997849",
-    "/src/core/packages.js": "46e1eb58d560",
+    "/src/core/packages.js": "5a2f10c69bd1",
     "/src/core/requires.js": "9aa09e4a81ad",
     "/src/core/pack/download.js": "4d9b4af8abb2",
     "/src/core/pack/keeper.js": "ee866ecb43d7",
@@ -299,8 +299,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "dcee95160c77",
-    "/l10n/zh-Hans.json": "198796108aec",
-    "/l10n/zh-Hant.json": "9ff1ae06ff51"
+    "/l10n/ja.json": "e8384f5c85f0",
+    "/l10n/zh-Hans.json": "c965fdfd3fdc",
+    "/l10n/zh-Hant.json": "65d123cf6f58"
   }
 }

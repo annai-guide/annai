@@ -1,9 +1,10 @@
-// A connection that goes dead, for the tests of official.js's limit on silence (QUIET_MS), which run on fake timers: requests that
-// end only when their signal aborts, and a watch on work while the fake timers hold it.
+// A connection that goes dead, for the tests of the limit on a server's silence (QUIET_MS, answer.js's quietly), which run on fake
+// timers: requests that end only when their signal aborts, a server on this machine, and a watch on work while the fake timers hold it.
+import http from 'node:http';
 
 /**
  * A request on a connection that went dead, ending only as a browser's fetch ends when its signal aborts (Chromium's and WebKit's,
- * probed 2026-11-17; Node's fetch alike against a real server, official-download.test.js). never: nothing comes; headers: the answer
+ * probed 2026-11-17; Node's fetch alike against a real server, siteOn). never: nothing comes; headers: the answer
  * and 1 KB of its body come, then nothing. @param {RequestInit | undefined} init @param {'never' | 'headers'} how @returns {Promise<Response>}
  */
 export function dead(init, how) {
@@ -35,4 +36,42 @@ export function watch(work) {
 export async function turns(done, ms = 5000) {
   const end = performance.now() + ms;
   while (!done() && performance.now() < end) await new Promise(setImmediate);
+}
+
+/**
+ * A site on this machine, each request answered by answer(path, res): one that writes nothing leaves the request waiting, as a
+ * connection gone dead does. asked: the paths requested. fetch: Node's own, counting in answered the answers it has had and in seen
+ * the body bytes it has passed on.
+ * @param {(path: string, res: import('node:http').ServerResponse) => void} answer
+ */
+export async function siteOn(answer) {
+  /** @type {string[]} */
+  const asked = [];
+  const server = http.createServer((req, res) => {
+    asked.push(req.url ?? '');
+    answer(req.url ?? '', res);
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(undefined)));
+  const s = {
+    base: `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (server.address()).port}`,
+    asked,
+    seen: 0,
+    answered: 0,
+    /** @param {string} url @param {RequestInit} [init] */
+    fetch: async (url, init) => {
+      const res = await fetch(url, init);
+      s.answered++;
+      const body = res.body?.pipeThrough(new TransformStream({ transform: (part, out) => { out.enqueue(part); s.seen += part.length; } }));
+      return new Response(body, res);
+    },
+    // The 100 ms wait: Node's fetch can clear a finished test's timer after the next test's fake clock starts, and Node's mock clock
+    // (v26.13.1) then drops whatever timer holds that place in the new clock's queue; 100 ms let 24 runs side by side end their
+    // connections first (the re-read of dl-limit-next's round 2, 2026-11-17).
+    close: async () => {
+      server.closeAllConnections();
+      server.close();
+      await turns(() => false, 100);
+    },
+  };
+  return s;
 }

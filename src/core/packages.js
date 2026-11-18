@@ -5,7 +5,7 @@ import { normPath } from './paths.js';
 import { sha256Hex } from './hash.js';
 import { PluginError } from './registry.js';
 import { parseSkill, skillVersion, skillLinks, frontMatter, SkillError, SKILL_FILE } from './skills.js';
-import { answerBytes } from './answer.js';
+import { answerBytes, quietly } from './answer.js';
 import { readZip } from './zip.js';
 import { checkProviderDesc, descOrigins, CATEGORIES } from './llm/provider-desc.js';
 import { t, lang, sameLanguage } from './l10n.js';
@@ -471,7 +471,8 @@ const MISSING = new Set([403, 404, 410]);
 
 /**
  * A package's files from an address: a zip, whatever the address ends with; an annai-plugin.json and the files it names; or a SKILL.md and
- * the files it links to inside its folder. Nothing is stored. Every error is a plain Error that says what to do. Each file is asked for
+ * the files it links to inside its folder, one file at a time. Nothing is stored. Every error is a plain Error that says what to do; a
+ * request its site has sent nothing for in QUIET_MS (answer.js) ends, saying the site stopped answering. Each file is asked for
  * with the browser's cache revalidated, so an update check downloads only what changed, never a stale copy. annai sends no such header
  * itself: GitHub's raw files refuse the CORS preflight one would need.
  * @param {string} address
@@ -491,16 +492,16 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
   // github.com's pages can't be read by web apps; its raw files can.
   const hint = url.hostname === 'github.com' ? t`For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.` : '';
   let used = 0;
-  const download = async (/** @type {URL} */ u) => {
-    /** @type {Response} */
-    let res;
-    try {
-      res = await get(u.href, { cache: 'no-cache' });
-    } catch (e) {
-      if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
-      throw Object.assign(new Error(sentences(t`annai couldn't reach ${u.host}. Check the address, and that the site lets web apps read it.`, hint)), { unreachable: true });
-    }
-    const bytes = await answerBytes(res, u.host, max - used);
+  /** One file of the package; nothing from its site for QUIET_MS ends it, saying the site stopped answering (quietly). @param {URL} u */
+  const download = async (u) => {
+    const reach = async (/** @type {string} */ href, /** @type {RequestInit} */ init) => {
+      try {
+        return await get(href, init);
+      } catch {
+        throw Object.assign(new Error(sentences(t`annai couldn't reach ${u.host}. Check the address, and that the site lets web apps read it.`, hint)), { unreachable: true });
+      }
+    };
+    const bytes = await quietly(reach, u.href, (res) => answerBytes(res, u.host, max - used), { cache: 'no-cache' });
     used += bytes.byteLength;
     return bytes;
   };
@@ -533,7 +534,8 @@ export async function fetchPackage(address, { fetch: get, max = PLUGIN_MAX_BYTES
   /**
    * Why a file of the package couldn't be had, naming it; null when it may be left out (optional) and the site answers it hasn't it: a
    * 404, a 410, or a 403 as S3 answers for a missing object. A busy site (503, 429) or no answer is no answer that it isn't there, and
-   * fails. No answer names the file: a 404 without CORS headers looks the same, and annai has just read the package from that site.
+   * fails. No answer names the file: a 404 without CORS headers looks the same, and annai has just read the package from that site. A site
+   * that stopped answering (quietly) says so as it is: which file it was in the middle of is no help to the traveller.
    * @param {unknown} e @param {string} name @param {URL} u @param {string} from the file that names it @param {boolean} optional
    */
   const failed = (e, name, u, from, optional) => {

@@ -10,7 +10,7 @@ import { ttlFor } from '../../src/core/agent/warmth.js';
 import { OPENAI_SRC, ROUTER_SRC, ANTHROPIC_SRC, ANOTHER_SRC, PROTO, PROVIDER, site } from './provider-kit.js';
 import { hostKit } from './package-kit.js';
 import { createLlm } from '../../src/core/llm/service.js';
-import { QUIET_MS } from '../../src/core/llm/official.js';
+import { QUIET_MS } from '../../src/core/answer.js';
 import { messageOf } from '../../src/ui/dom.js';
 import { dead, watch, turns } from './dead-kit.js';
 
