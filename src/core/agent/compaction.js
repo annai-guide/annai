@@ -1,9 +1,7 @@
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 import { NO_WORDS } from '../handover.js';
-import { MANDARIN, hanRow, languageOf, listedFor, named, units } from '../languages.js';
+import { EITHER, LANGUAGES, MANDARIN, firstHan, hanRow, languageSettings, named, placed, units } from '../languages.js';
 import { nativeOverlap } from '../llm/contract.js';
-
-export { languageOf };
 
 /**
  * Housekeeping (spec §6.5). Two limits trigger it, the context window and the maximum request
@@ -81,55 +79,84 @@ export const coldSystem = (language) => /* en */ 'You summarize a conversation b
   + /* en */ 'Keep what matters for the rest of the trip: decisions, plans, preferences, open questions, places and times, and what each tool found. '
   + /* en */ `For every photo, write one line with its path and what was said about it. Reply with the summary only, as plain text, in ${language}.`;
 
-/** What the two Chinese rows are counted under, as one language (no language's name). */
-const MANDARIN_KEY = 'Mandarin';
+/** What the two Chinese rows are counted under, as one language (no language's id). */
+/* en */ const MANDARIN_KEY = 'Mandarin';
+/** The languages Han that says neither Japanese nor Chinese may join in the count: Japanese, the two Chinese rows (as one), Cantonese. */
+const HAN_KEYS = ['ja', MANDARIN_KEY, 'yue'];
+/** With no settings given: the app's language, English (spec §14.3, it ships in English), as a phone set to it with nothing chosen. */
+const APP = languageSettings({}, 'en-US');
 
 /**
  * The language a summary is written in, named ("the user's language" got a Spanish summary of an English conversation): compaction's and the
  * recap's, one answer for both (RULES #10). annai's own lines for no words (NO_WORDS: a photo or files sent alone, a heard line it couldn't
- * write down) are never the user's, and are left out here for every caller. Each of the rest of 3 words or more (units: a Chinese, Japanese or
- * Korean character is a word, the size a stray short reply has, spec §10.9) that names a language counts once, for the language it is placed as (both Chinese
- * rows, Simplified and Traditional, are one language here: a trip in both, or in lines whose characters tell nothing, is Chinese, and the row is the one
- * most of the lines that tell are in, a line once however long: a tie goes to the newer, none telling to the first listed Chinese row), and the language with the most lines is named;
- * a tie goes to the one written in more recently. No one line decides: a trip's lines are also a closing
- * "Thank you so much!", a place's name, a pasted booking, a tap on a card or a misheard line, and each is one line among the rest (the edge: five
- * English lines then two Japanese are English). With the languages setting: the one Shiori answers in if it is fixed; else a line counts for the listed
- * language its text is in, and a line in none of them doesn't count; with no line counted, the first they speak. With none: a line counts for its
- * text's language, where a script several languages share is placed by the phone's (listedFor: Han alone is a Japanese phone's Japanese, Cyrillic a
- * Bulgarian phone's Bulgarian, as for a listed language); with no line counted, the same answer as for her first message in a conversation
- * (languagesText): the phone's (with no settings given, the app's: spec §14.3, it ships in English).
+ * write down) are never the user's, and are left out here for every caller. With the language Shiori answers in fixed, that one. Else each of
+ * the rest of 3 words or more (units: a Chinese, Japanese or Korean character is a word, the size a stray short reply has, spec §10.9) counts
+ * once, for the one of the traveller's languages its writing shows (placed: the listed ones, or with nothing chosen the phone's and any a line
+ * is plainly in), and a line that shows none of theirs counts for nothing; the language with the most lines is named, and a tie goes to the one
+ * written in more recently. No one line decides: a trip's lines are also a closing "Thank you so much!", a place's name, a pasted booking, a
+ * tap on a card or a misheard line, and each is one line among the rest (the edge: five English lines then two Japanese are English).
+ * Lines of Han that say neither Japanese nor Chinese (a kanji place name; 大家好) join whichever of those has the most lines of its own (a tie:
+ * the newer), so a Japanese trip full of kanji names stays Japanese and a Chinese trip Chinese; with none, they are the first of theirs written
+ * in Han (the voice's rule: with nothing chosen the phone's, when it is one) where no other line counts, else no one's, whether the languages
+ * are chosen or not: an English trip with kanji names is English on a Japanese or Chinese phone too, and a trip of only kanji names and
+ * English questions with no kana line is English even on a Japanese phone. A language given that way, by the order and not by any line, is
+ * named for that ("the first language the user speaks written in Han"), never as the one most of the lines are in. Both Chinese rows, Simplified and Traditional, are one language here (a trip in both is Chinese), and
+ * the row is the one most of the lines that are Chinese by their own characters are in, a line once however long: a tie goes to the newer;
+ * none telling, the first listed Chinese row (nothing chosen: the phone's, else Simplified). With no line counted: the first they speak, or
+ * with nothing chosen the same answer as for her first message in a conversation (languagesText), the phone's (with no settings given, the
+ * app's: spec §14.3, it ships in English).
  * @param {string | string[]} said what the user wrote and said, the newest last, as the log keeps them @param {import('../languages.js').LanguageSettings} [languages]
  */
 export function summaryLanguage(said, languages) {
   const lines = (Array.isArray(said) ? said : [said]).map((x) => String(x ?? '').trim()).filter((x) => !NO_WORDS.includes(x));
   if (languages?.answer) /* en */ return `${languages.answer.name}, the language Shiori answers in`;
-  /** How many lines each language has, in the order each was last written in (so of a tie, the newer comes later). @type {Map<string, number>} */
+  const s = languages ?? APP;
+  /** @param {import('../languages.js').Language} l */
+  const key = (l) => (MANDARIN.includes(l.id) ? MANDARIN_KEY : l.id);
+  /** Each language's lines and where its newest one is, with one of its languages to name it by. @type {Map<string, { n: number, last: number, l: import('../languages.js').Language }>} */
   const count = new Map();
-  /** The lines placed as either Chinese row (Simplified or Traditional), which count as one language: the row is the one most of them that tell are in. @type {string[]} */
+  /** @param {string} k @param {import('../languages.js').Language} l @param {number} at @param {number} [n] */
+  const add = (k, l, at, n = 1) => { const c = count.get(k); count.set(k, { n: (c?.n ?? 0) + n, last: Math.max(c?.last ?? -1, at), l: c?.l ?? l }); };
+  /** The lines counted as Chinese, whose forms name the row where they are Chinese by their own characters (hanRow). @type {string[]} */
   const mandarin = [];
-  for (const x of lines) {
-    const guess = units(x) >= 3 ? languageOf(x) : '';
-    const listed = guess && languages ? listedFor(guess, languages.spoken, x) : null;
-    const chinese = !!listed && MANDARIN.includes(listed.id);
-    if (chinese) mandarin.push(x);
-    const name = chinese ? MANDARIN_KEY : listed?.name ?? (languages?.explicit ? '' : guess); // chosen: a line in none of the listed languages doesn't count
-    if (!name) continue;
-    const n = (count.get(name) ?? 0) + 1;
-    count.delete(name);
-    count.set(name, n);
+  /** Where each line of Han that says neither is. @type {number[]} */
+  const either = [];
+  /** Whether Han that says neither alone gave the language, by the list's order (the first they speak written in Han; nothing chosen: the phone's): no line shows it. */
+  let byOrder = false;
+  lines.forEach((x, at) => {
+    const l = units(x) >= 3 ? placed(x, s) : null;
+    if (l === EITHER) either.push(at);
+    else if (l) add(key(l), l, at);
+    if (l && l !== EITHER && key(l) === MANDARIN_KEY) mandarin.push(x);
+  });
+  /** The language a key has the most lines, ties to the newer: k1 beats k2. @param {string} k1 @param {string} k2 */
+  const beats = (k1, k2) => { const [a, b] = [count.get(k1), count.get(k2)]; return !!a && (!b || a.n > b.n || (a.n === b.n && a.last > b.last)); };
+  if (either.length) {
+    const side = HAN_KEYS.reduce((best, k) => (beats(k, best) ? k : best), '');
+    // No line of Japanese or Chinese of its own: the first of theirs written in Han, as the voice reads them (principle 10), only where no other line counts, chosen or not (nothing chosen: the phone's, when it is written in Han).
+    const home = count.size ? null : firstHan(s);
+    if (side) add(side, /** @type {any} */ (count.get(side)).l, /** @type {number} */ (either.at(-1)), either.length);
+    else if (home) { add(key(home), home, /** @type {number} */ (either.at(-1)), either.length); byOrder = true; }
   }
-  let most = '';
-  for (const [name, n] of count) if (n >= (count.get(most) ?? 0)) most = name;
-  if (most === MANDARIN_KEY && languages) {
+  const most = [...count.keys()].reduce((best, k) => (beats(k, best) ? k : best), '');
+  let language = count.get(most)?.l;
+  if (most === MANDARIN_KEY) {
     // One of each script is two halves of one language, so the row is the one most of the lines that tell are in, each line once however long (a pasted
-    // text is one line among those that tell, and decides when the typed lines tell nothing): a tie goes to the newer, and with none that tells (大家好),
-    // the first listed Chinese row.
+    // text is one line among those that tell, and decides when the typed lines tell nothing): a tie goes to the newer; with none that tells, the first
+    // listed Chinese row (nothing chosen: the one the lines tell, whatever the phone's).
     const rows = mandarin.map(hanRow).filter(Boolean);
     const simplified = rows.filter((r) => r === 'zh').length * 2 - rows.length;
     const row = simplified > 0 ? 'zh' : simplified < 0 ? 'zh-Hant' : rows.at(-1);
-    most = (languages.spoken.find((l) => l.id === row) ?? listedFor('Chinese', languages.spoken))?.name ?? most;
+    language = s.spoken.find((l) => l.id === row) ?? (row && !s.explicit ? LANGUAGES.find((l) => l.id === row) : s.spoken.find((l) => MANDARIN.includes(l.id))) ?? language;
   }
-  if (most) /* en */ return `${most}, the language most of what the user wrote is in`;
+  // Han that says neither Japanese nor Chinese, with no other line: the order decided, so the request says that, not that the lines are in it (the first commits' words for the first listed).
+  if (language && byOrder) {
+    /* en */
+    const by = languages?.explicit ? 'the first language the user speaks written in Han' : "the language of the user's phone";
+    /* en */
+    return `${language.name}, ${by} (the lines that decide are Han, which doesn't tell Japanese from Chinese)`;
+  }
+  if (language) /* en */ return `${language.name}, the language most of what the user wrote is in`;
   if (languages?.explicit) /* en */ return `${languages.spoken[0].name}, the first language the user speaks (${named(languages.spoken)})`;
   // Nothing chosen and no line of theirs counts: the same answer as the Languages section's (languagesText), the phone's. Never a quoted line.
   /* en */
