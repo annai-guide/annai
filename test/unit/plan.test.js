@@ -882,7 +882,7 @@ test("Driving's strip lists a flight's, a train's or a ride's place until it lea
   assert.deepEqual(strip(walk, '08:15', near), ['Port A', 'Harbor cafe']);
 });
 
-test("guard, not the change (main drew the same): a ride or a flight item on a same-day booking that is one row (an event's, a car's, a package booked as other) stands for that row and keeps its end, so no time is lost; an item that spans days drops its end where its booking draws one (a stay's check-out), as on main", () => {
+test("guard, not the change (main drew the same): a ride or a flight item on a same-day booking that is one row (an event's, a car's, a package booked as other) stands for that row and keeps its end, so no time is lost", () => {
   for (const [bookingKind, kind] of [['event', 'ferry'], ['event', 'bus'], ['car', 'bus'], ['restaurant', 'ferry'], ['other', 'flight'], ['other', 'rail']]) {
     const rows = planRows([rideItem(kind, { booking: '/trip/bookings/ride.json' })], [rideBooking(bookingKind)], { fallbackTz: 'UTC' });
     assert.deepEqual(shown(dayOf(rows)), ['item@2026-11-20 08:00–10:00 Morning ride'], `${kind} on ${bookingKind}`);

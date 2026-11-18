@@ -222,7 +222,7 @@ export function planRows(items, bookings, { fallbackTz }) {
    * zone, or UTC, is still that flight). Each item stands for one row: the first it is on the day of. A row with no day is stood for by
    * any item. @param {string} path the booking @param {PlanRow} r @param {string} [not] the item drawing the set, which stands for none
    * @param {PlanRow} [also] a row the item must be on the day of too: a same-day carrier's Arrive is stood for only by an item on its
-   * departure's day as well (across zones, one written the evening before is already on the arrival's day, and the arrival showed nowhere)
+   * departure's day as well (across zones, an item can be on the arrival's day and not on the departure's, both ways: one written the evening before the departure is already the arrival's day there, and one after landing is already the next day at the departure's clock; the arrival showed nowhere)
    */
   const standsFor = (path, r, not, also) => {
     const on = linked.get(path);
