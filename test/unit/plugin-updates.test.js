@@ -501,6 +501,46 @@ test("an offer an earlier check found stays through any check that couldn't get 
   assert.deepEqual([same.failed, shown(same)], [[], []], 'checked and up to date: the offer goes');
 });
 
+test("an offer of annai's own that an earlier check found stays through a check whose catalog answers 503 or can't be reached, and says the catalog's line; an address part that throws keeps the addresses' offers; the catalog back is checked again (update-check-next: one rule keeps the offers of both kinds, and nothing pinned the official half)", async () => {
+  const { host } = await setup();
+  await ensureType(host, 'scripted', { fetch: await repo() });
+  let served = SKILL;
+  const get = async () => new Response(served);
+  await host.install(await fetchPackage(ADDR, { fetch: get }), { source: 'url', url: ADDR });
+  served = SKILL.replace('version: "1.2"', 'version: "1.3"');
+  const bumped = await repo({ bump: true });
+  /** The installed records' reads, counted: the one that fails, if any, is the nth. */
+  let reads = 0;
+  let failRead = 0;
+  const flaky = new Proxy(host, {
+    get: (target, key) => {
+      if (key === 'installed') return () => (++reads === failRead ? Promise.reject(new Error('the store failed')) : target.installed());
+      const v = /** @type {any} */ (target)[key];
+      return typeof v === 'function' ? v.bind(target) : v;
+    },
+  });
+  /** @param {Parameters<typeof checkPlugins>[1]} env @param {Parameters<typeof checkPlugins>[2]} [kinds] */
+  const check = (env, kinds) => checkPlugins(/** @type {any} */ (flaky), { addressFetch: get, ...env }, kinds);
+  const shown = (/** @type {{ found: any[] }} */ r) => r.found.map((u) => [u.id, u.installed, u.available]);
+  const both = [['scripted-model', NOW, NEXT], ['tide-pools', '1.2.0', '1.3.0']];
+  const first = await check({ fetch: bumped });
+  assert.deepEqual([first.failed, shown(first)], [[], both], 'found: annai\'s own and an address\'s');
+  const r503 = await check({ fetch: async () => new Response('', { status: 503 }) });
+  assert.deepEqual(r503.failed, ["annai's list of plugins couldn't be loaded (HTTP 503). Try again later."]);
+  assert.deepEqual(shown(r503), both, 'a catalog that answers 503: annai\'s own offer stays, and the address is checked');
+  const gone = await check({ fetch: async () => { throw new TypeError('Failed to fetch'); } });
+  assert.deepEqual(gone.failed, ["annai's list of plugins couldn't be loaded. Check the connection and try again."]);
+  assert.deepEqual(shown(gone), both, 'a catalog that can\'t be reached: it stays');
+  // The address part's own read of the installed records fails: the second of this check's four (the check's, the part's, the check's again, the list's).
+  reads = 0;
+  failRead = 2;
+  const thrown = await check({ fetch: bumped }, { official: false });
+  assert.deepEqual(shown(thrown), both, 'an address part that throws: the addresses\' offers stay');
+  failRead = 0;
+  const back = await check({ fetch: await repo() });
+  assert.deepEqual([back.failed, shown(back)], [[], [['tide-pools', '1.2.0', '1.3.0']]], 'the catalog back, at the version installed: checked, and annai\'s own offer goes');
+});
+
 test("offers are listed in the order their plugins were installed, not by name and not in the order the checks found them (a kept offer does not jump the queue)", async () => {
   const at = (/** @type {string} */ name) => `https://${name}.example/${name}/SKILL.md`;
   const skill = (/** @type {string} */ name, version = '1.2') => SKILL.replace('name: tide-pools', `name: ${name}`).replace('version: "1.2"', `version: "${version}"`);

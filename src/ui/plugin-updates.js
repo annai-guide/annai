@@ -33,6 +33,8 @@ const knownOf = (host) => {
  * offers of annai's own plugins, and an address that can't be checked, for any reason (addressUpdates), keeps its package's: a browser
  * can't tell a site that answered 404 without the headers that let web apps read it from a site it can't reach, and an Update tap on it
  * says the same as the check. One that is now another package was checked, and its offer goes.
+ * A plugin installed while the check ran is not offered again by it: what the check found for one whose version or files (fingerprint)
+ * changed meanwhile is dropped.
  * Checking annai's own also brings their words in the screens' language, and the next start's, to the catalog's (fetchTranslations),
  * which is never an update and never fails. The two kinds are asked side by side, each request ending by its server's silence
  * (answer.js), so one that goes quiet never holds the other.
@@ -45,6 +47,7 @@ export async function checkPlugins(host, env = {}, { official = true, address = 
   /** @type {string[]} */
   const failedAddress = [];
   const known = knownOf(host);
+  const before = await host.installed();
   /** @param {boolean} url @param {Update[]} list @param {Set<string>} [unchecked] the ones that couldn't be checked: what was found for them before stays */
   const keep = (url, list, unchecked = new Set()) => {
     for (const [id, u] of known) if (Boolean(u.url) === url && !unchecked.has(id)) known.delete(id);
@@ -64,6 +67,9 @@ export async function checkPlugins(host, env = {}, { official = true, address = 
       if (now) keep(true, now, unchecked);
     })(),
   ]);
+  // install() writes both, for every source.
+  const after = await host.installed();
+  for (const id of [...known.keys()]) if (before[id]?.version !== after[id]?.version || before[id]?.fingerprint !== after[id]?.fingerprint) known.delete(id);
   return { found: await knownUpdates(host), failed: [...failedOfficial, ...failedAddress] };
 }
 

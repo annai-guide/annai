@@ -1429,26 +1429,26 @@ fzpt3w	ok	Reload now	立即重新加载	src/ui/plugin-cards.js:32
 1abmsob	ok	It didn't start the last few times annai opened.	最近几次打开 annai 时，它都没有启动。	src/ui/plugin-cards.js:47	
 11arkb9	ok	You can turn it off in Settings → Plugins.	可以在设置 → 插件中关闭它。	src/ui/plugin-cards.js:48	
 1jz4o49	ok	The plugin "{0}" didn't start	插件“{0}”没有启动	src/ui/plugin-cards.js:48	{0} = it
-44nn0b	ok	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（有新内容，更新前会先询问你）	src/ui/plugin-updates.js:84	{0} = u.name; {1} = u.installed; {2} = u.available
-trjp65	ok	{0} (changed) (brings something new: you'll be asked first)	{0}（已更改，有新内容，更新前会先询问你）	src/ui/plugin-updates.js:84	{0} = u.name
-1kyfel6	ok	{0} (changed)	{0}（已更改）	src/ui/plugin-updates.js:85	{0} = u.name
-i8x2zk	ok	{0} {1} → {2}	{0} {1} → {2}	src/ui/plugin-updates.js:85	{0} = u.name; {1} = u.installed; {2} = u.available
-6qynmx	ok	Plugin updates are ready	有可用的插件更新	src/ui/plugin-updates.js:91	
-1qhkyk	ok	Nothing changes until you update. An updated plugin that is running now is off until annai restarts.	更新之前不会有任何变化。正在运行的插件更新后会暂时关闭，直到 annai 重启。	src/ui/plugin-updates.js:92	
-1x9jer0	ok	New versions: {0}.	新版本：{0}。	src/ui/plugin-updates.js:92	{0} = list(updates.map(offerWords), 'plain')
-uk4kus	ok	Update	更新	src/ui/plugin-updates.js:93	
-1hwvled	ok	{0} failed with an unknown error.	{0} 因未知错误未能更新。	src/ui/plugin-updates.js:126	{0} = nameOf(u); Note: one line of the "Some plugins weren't updated" card, for a plugin whose update failed with an empty error; {0} is the plugin's name.
-1agymuw	ok	Some plugins weren't updated	部分插件未能更新	src/ui/plugin-updates.js:130	
-1vsv4vh	ok	Restart annai to use the new versions	重启 annai 即可使用新版本	src/ui/plugin-updates.js:134	
-1k0lt4v	ok	Until then, {0} can't be used.	在此之前，{0} 暂时无法使用。	src/ui/plugin-updates.js:135	{0} = list(waiting)
-2jfvhf	ok	The update is installed and runs the next time annai starts.	更新已安装，下次启动 annai 时生效。	src/ui/plugin-updates.js:135	
-nb21do	ok	Restart now	立即重启	src/ui/plugin-updates.js:136	
-1do1igm	ok	Plugins updated.	插件已更新。	src/ui/plugin-updates.js:139	
-eaf3fx	ok	{0} {1} brings something new	{0} {1} 包含新内容	src/ui/plugin-updates.js:155	{0} = u.name; {1} = u.available
-127j3cm	ok	New in this version: {0}.	此版本新增：{0}。	src/ui/plugin-updates.js:156	{0} = semicolons(whatItBrings(added))
-zymqne	ok	Only update if you trust where it came from.	请仅在信任其来源时更新。	src/ui/plugin-updates.js:156	
-1dfe53s	ok	Nothing changes until you tap Update.	轻点“更新”之前，不会有任何变化。	src/ui/plugin-updates.js:157	
-15ziixp	ok	Update anyway	仍然更新	src/ui/plugin-updates.js:159	
+44nn0b	ok	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（有新内容，更新前会先询问你）	src/ui/plugin-updates.js:90	{0} = u.name; {1} = u.installed; {2} = u.available
+trjp65	ok	{0} (changed) (brings something new: you'll be asked first)	{0}（已更改，有新内容，更新前会先询问你）	src/ui/plugin-updates.js:90	{0} = u.name
+1kyfel6	ok	{0} (changed)	{0}（已更改）	src/ui/plugin-updates.js:91	{0} = u.name
+i8x2zk	ok	{0} {1} → {2}	{0} {1} → {2}	src/ui/plugin-updates.js:91	{0} = u.name; {1} = u.installed; {2} = u.available
+6qynmx	ok	Plugin updates are ready	有可用的插件更新	src/ui/plugin-updates.js:97	
+1qhkyk	ok	Nothing changes until you update. An updated plugin that is running now is off until annai restarts.	更新之前不会有任何变化。正在运行的插件更新后会暂时关闭，直到 annai 重启。	src/ui/plugin-updates.js:98	
+1x9jer0	ok	New versions: {0}.	新版本：{0}。	src/ui/plugin-updates.js:98	{0} = list(updates.map(offerWords), 'plain')
+uk4kus	ok	Update	更新	src/ui/plugin-updates.js:99	
+1hwvled	ok	{0} failed with an unknown error.	{0} 因未知错误未能更新。	src/ui/plugin-updates.js:132	{0} = nameOf(u); Note: one line of the "Some plugins weren't updated" card, for a plugin whose update failed with an empty error; {0} is the plugin's name.
+1agymuw	ok	Some plugins weren't updated	部分插件未能更新	src/ui/plugin-updates.js:136	
+1vsv4vh	ok	Restart annai to use the new versions	重启 annai 即可使用新版本	src/ui/plugin-updates.js:140	
+1k0lt4v	ok	Until then, {0} can't be used.	在此之前，{0} 暂时无法使用。	src/ui/plugin-updates.js:141	{0} = list(waiting)
+2jfvhf	ok	The update is installed and runs the next time annai starts.	更新已安装，下次启动 annai 时生效。	src/ui/plugin-updates.js:141	
+nb21do	ok	Restart now	立即重启	src/ui/plugin-updates.js:142	
+1do1igm	ok	Plugins updated.	插件已更新。	src/ui/plugin-updates.js:145	
+eaf3fx	ok	{0} {1} brings something new	{0} {1} 包含新内容	src/ui/plugin-updates.js:161	{0} = u.name; {1} = u.available
+127j3cm	ok	New in this version: {0}.	此版本新增：{0}。	src/ui/plugin-updates.js:162	{0} = semicolons(whatItBrings(added))
+zymqne	ok	Only update if you trust where it came from.	请仅在信任其来源时更新。	src/ui/plugin-updates.js:162	
+1dfe53s	ok	Nothing changes until you tap Update.	轻点“更新”之前，不会有任何变化。	src/ui/plugin-updates.js:163	
+15ziixp	ok	Update anyway	仍然更新	src/ui/plugin-updates.js:165	
 vq7cdg#other	ok	# pages	# 页	src/ui/preview.js:133	plural; # = pages; English: "# page" (one), "# pages" (other); Note: a PDF's page count on its file card.
 1cjjnaq	ok	Kept on this device.	保存在此设备上。	src/ui/privacy.js:21	
 tct7be	ok	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	旅行、文件、设置和密钥都保存在这台设备上的这个浏览器里。annai 没有账户系统，annai 的任何服务器也都不会保存你的旅行或密钥。	src/ui/privacy.js:21	
@@ -2835,12 +2835,12 @@ vy4apn	ok	Try this model	试用这个模型	src/ui/talk-panel.js:75
 1770v5g	ok	Finding where you are…	正在定位…	src/ui/today.js:23	
 iztlgm	ok	No GPS signal right now.	现在没有 GPS 信号。	src/ui/today.js:23	
 ue501f	ok	Near {0}, ≈ {1}	{0} 附近，≈ {1}	src/ui/today.js:26	{0} = near.name; {1} = distance(near.m / 1000)
-14d6ut8	ok	annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.	annai 的离线服务尚未启动，因此没有检查 annai 本身。请稍后重试。	src/ui/updates.js:144	
-16l98jx	ok	annai couldn't check for a new version of itself. Check the connection and try again.	无法检查 annai 是否有新版本。请检查网络连接后重试。	src/ui/updates.js:151	
-rtcus4	ok	The download of the new version didn't finish. annai tries again the next time it checks.	新版本没有下载完成。annai 会在下次检查时重试。	src/ui/updates.js:172	
-32o7q3	ok	annai restarts once Shiori has finished	等 Shiori 忙完后，annai 会重启	src/ui/updates.js:189	
-3ur3tf	ok	She is in the middle of something, and an update never lands during her turn. Tap her to stop her now.	她正在忙，更新要等她忙完才会进行。轻点她即可让她立即停下。	src/ui/updates.js:189	
-4naie6	ok	Don't restart	暂不重启	src/ui/updates.js:190	
+14d6ut8	ok	annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.	annai 的离线服务尚未启动，因此没有检查 annai 本身。请稍后重试。	src/ui/updates.js:145	
+16l98jx	ok	annai couldn't check for a new version of itself. Check the connection and try again.	无法检查 annai 是否有新版本。请检查网络连接后重试。	src/ui/updates.js:152	
+rtcus4	ok	The download of the new version didn't finish. annai tries again the next time it checks.	新版本没有下载完成。annai 会在下次检查时重试。	src/ui/updates.js:173	
+32o7q3	ok	annai restarts once Shiori has finished	等 Shiori 忙完后，annai 会重启	src/ui/updates.js:190	
+3ur3tf	ok	She is in the middle of something, and an update never lands during her turn. Tap her to stop her now.	她正在忙，更新要等她忙完才会进行。轻点她即可让她立即停下。	src/ui/updates.js:190	
+4naie6	ok	Don't restart	暂不重启	src/ui/updates.js:191	
 4u8ij0	ok	Listening live	正在实时收听	src/ui/voice-chip.js:25	
 11rknnz	ok	Live	实时	src/ui/voice-chip.js:30	
 m0me4i	ok	Live off	实时关闭	src/ui/voice-chip.js:30	

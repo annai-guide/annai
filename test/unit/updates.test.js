@@ -415,7 +415,7 @@ test("a check (Check now) whose check of annai itself never settles ends that pa
   assert.equal(k.updates.checking, false);
 });
 
-test("a check that finished asking the addresses is the day's address check: coming back asks them again only a day on, as before", async () => {
+test("a check is the day's address check: coming back asks the addresses again only a day on, as before", async () => {
   const k = await kit();
   await k.updates.start();
   assert.equal(k.counts().address, 1);
@@ -485,6 +485,7 @@ test("coming back while a check is still getting its answers starts no second ch
     let i = 0;
     return new Response(new ReadableStream({
       pull: (c) => new Promise((r) => {
+        pulls++;
         setTimeout(() => {
           c.enqueue(bytes.slice(Math.floor((i * bytes.length) / 14), Math.floor(((i + 1) * bytes.length) / 14)));
           if (++i === 14) c.close();
@@ -493,21 +494,25 @@ test("coming back while a check is still getting its answers starts no second ch
       }),
     }));
   };
+  /** How many times a stream was asked for its next part: each part that comes is followed by the next ask, or by the check's end. */
+  let pulls = 0;
   /** @type {string[]} */
   const asked = [];
   k.answer({ address: async (url) => { asked.push(url); return slowly(url === ADDR ? NEW : '# Safety\n'); } });
   const t0 = k.t;
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const w = watch(k.updates.start());
-  await turns(() => asked.length === 1);
+  await turns(() => asked.length === 1 && pulls === 1);
   /** @type {ReturnType<typeof watch<any>>[]} */
   const returns = [];
   /** @type {number | null} */
   let endedAt = null;
   for (let s = 5; s <= 180; s += 5) {
+    const before = pulls;
     t.mock.timers.tick(5_000);
     k.t += 5_000;
-    await turns(() => false, 20);
+    // The step's effect, however long the host takes: the next ask for a part, or the end of the check (a fixed wait failed on a loaded host).
+    await turns(() => pulls !== before || w.state !== 'pending');
     if (w.state !== 'pending') endedAt ??= s;
     if (s % 10 === 0) returns.push(watch(k.updates.auto()));
   }
@@ -527,4 +532,62 @@ test("coming back while a check is still getting its answers starts no second ch
   k.t = t0 + DAILY + 140_000;
   await k.updates.auto();
   assert.equal(k.counts().address, 2, 'a day on, the address is asked again');
+});
+
+test("a plugin updated while a check is still running is not offered again when that check ends: Settings → Updates and Settings → Plugins list nothing, and the next check looks again (update-check-next: the check wrote what it had read before the install, so an address's package of the same version with new files showed \"(changed)\" again until the next check, for as long as the check took)", async () => {
+  const { updateFor } = await import('../../src/ui/screens/plugins.js');
+  const k = await kit();
+  const CHANGED = SKILL.replace('# Tide pools', '# Tide pools, revised');
+  k.serve(CHANGED);
+  /** @type {() => void} */
+  let release = () => {};
+  const held = new Promise((r) => { release = () => r(undefined); });
+  k.answer({ address: async () => { await held; return new Response(CHANGED); } });
+  const w = watch(k.updates.checkNow());
+  await turns(() => k.counts().address > 0);
+  assert.equal(w.state, 'pending', 'the address has been asked and has not answered: the check is running');
+  // Update, tapped meanwhile, installs what the address holds (a card's or Plugins' Update is updateFromAddress).
+  await k.host.install(await fetchPackage(ADDR, { fetch: async () => new Response(CHANGED) }), { source: 'url', url: ADDR });
+  release();
+  await turns(() => w.state !== 'pending');
+  assert.equal(w.state, 'done', String(w.error?.message ?? 'still waiting'));
+  assert.deepEqual(w.value?.found, [], 'the check lists nothing for what was installed while it ran');
+  assert.deepEqual(await k.updates.plugins(), [], 'Settings → Updates lists nothing');
+  assert.equal(await updateFor({ plugins: k.host }, 'tide-pools'), undefined, 'Settings → Plugins and its page show no update');
+  assert.equal(k.notices.cards.length, 0, 'and no card');
+  // The next check looks again: a newer version is found.
+  k.answer({ address: async () => new Response(SKILL.replace('version: "1.2"', 'version: "1.3"')) });
+  const next = await k.updates.checkNow();
+  assert.deepEqual(next?.found.map((u) => [u.id, u.installed, u.available]), [['tide-pools', '1.2.0', '1.3.0']]);
+});
+
+test("one check at a time: coming back 15 minutes into a check that is still running gives no check and asks nothing, and Check now tapped during a running check asks only after it has ended (update-check-next: a check no longer ends at 45 s, so a second one could start beside it)", async () => {
+  const k = await kit();
+  await k.updates.start();
+  /** @type {() => void} */
+  let go = () => {};
+  k.appCheck = () => new Promise((r) => { go = () => r(undefined); });
+  const first = watch(k.updates.checkNow());
+  await turns(() => k.counts().app === 1);
+  assert.equal(k.updates.checking, true);
+  const asked = k.counts();
+  // 15 minutes on, coming back is due, but a check is running: nothing starts.
+  k.t += SOON + 1000;
+  assert.equal(await k.updates.auto(), null, 'no second check');
+  assert.deepEqual(k.counts(), asked, 'and nothing asked');
+  // Check now waits for it: nothing is asked while it runs (the second would ask in the same turn, which a fixed wait of a few turns catches).
+  const second = watch(k.updates.checkNow());
+  await turns(() => false, 20);
+  assert.deepEqual(k.counts(), asked, 'Check now asks nothing while the check runs');
+  assert.equal(second.state, 'pending');
+  go();
+  await turns(() => first.state !== 'pending');
+  assert.equal(first.state, 'done', String(first.error?.message ?? 'still waiting'));
+  await turns(() => k.counts().app === 2);
+  assert.equal(k.counts().app, 2, 'it asks once the first has ended');
+  assert.equal(second.state, 'pending', 'and is checking');
+  go();
+  await turns(() => second.state !== 'pending');
+  assert.equal(second.state, 'done', String(second.error?.message ?? 'still waiting'));
+  assert.equal(k.updates.checking, false);
 });

@@ -255,7 +255,7 @@ test("an Update whose address's site goes dead ends after the limit on the faile
   }
 });
 
-test("Check now with a plugin whose address's site goes dead ends after that site's limit on its silence, saying which plugin and why, and the address after it is checked (it ran to the check's own limit and asked nothing after it)", async ({ page }) => {
+test("Check now with a plugin whose address's site goes dead ends after that site's limit on its silence, saying which plugin and why, and the address after it is checked (addr-limit-next: it ran to the check's 45 s and asked nothing after it)", async ({ page }) => {
   test.setTimeout(150_000);
   const { site, routes, as } = await twoFromAnAddress(page);
   try {

@@ -1429,26 +1429,26 @@ fzpt3w	ok	Reload now	今すぐ再読み込み	src/ui/plugin-cards.js:32
 1abmsob	ok	It didn't start the last few times annai opened.	annaiを開いた直近の数回、続けて起動しませんでした。	src/ui/plugin-cards.js:47	
 11arkb9	ok	You can turn it off in Settings → Plugins.	「設定 → プラグイン」でオフにできます。	src/ui/plugin-cards.js:48	
 1jz4o49	ok	The plugin "{0}" didn't start	プラグイン「{0}」が起動しませんでした	src/ui/plugin-cards.js:48	{0} = it
-44nn0b	ok	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（追加内容あり：アップデート前に確認します）	src/ui/plugin-updates.js:84	{0} = u.name; {1} = u.installed; {2} = u.available
-trjp65	ok	{0} (changed) (brings something new: you'll be asked first)	{0}（変更あり、追加内容あり：アップデート前に確認します）	src/ui/plugin-updates.js:84	{0} = u.name
-1kyfel6	ok	{0} (changed)	{0}（変更あり）	src/ui/plugin-updates.js:85	{0} = u.name
-i8x2zk	ok	{0} {1} → {2}	{0} {1} → {2}	src/ui/plugin-updates.js:85	{0} = u.name; {1} = u.installed; {2} = u.available
-6qynmx	ok	Plugin updates are ready	プラグインのアップデートがあります	src/ui/plugin-updates.js:91	
-1qhkyk	ok	Nothing changes until you update. An updated plugin that is running now is off until annai restarts.	アップデートするまで何も変わりません。実行中のプラグインは、アップデート後、annaiを再起動するまでオフになります。	src/ui/plugin-updates.js:92	
-1x9jer0	ok	New versions: {0}.	新しいバージョン：{0}。	src/ui/plugin-updates.js:92	{0} = list(updates.map(offerWords), 'plain')
-uk4kus	ok	Update	アップデート	src/ui/plugin-updates.js:93	
-1hwvled	ok	{0} failed with an unknown error.	{0}は原因不明のエラーでアップデートできませんでした。	src/ui/plugin-updates.js:126	{0} = nameOf(u); Note: one line of the "Some plugins weren't updated" card, for a plugin whose update failed with an empty error; {0} is the plugin's name.
-1agymuw	ok	Some plugins weren't updated	アップデートできなかったプラグインがあります	src/ui/plugin-updates.js:130	
-1vsv4vh	ok	Restart annai to use the new versions	新しいバージョンを使うには、annaiを再起動してください	src/ui/plugin-updates.js:134	
-1k0lt4v	ok	Until then, {0} can't be used.	それまでは{0}を使えません。	src/ui/plugin-updates.js:135	{0} = list(waiting)
-2jfvhf	ok	The update is installed and runs the next time annai starts.	アップデートはインストール済みです。次にannaiを起動したときに有効になります。	src/ui/plugin-updates.js:135	
-nb21do	ok	Restart now	今すぐ再起動	src/ui/plugin-updates.js:136	
-1do1igm	ok	Plugins updated.	プラグインをアップデートしました。	src/ui/plugin-updates.js:139	
-eaf3fx	ok	{0} {1} brings something new	{0} {1}には追加内容があります	src/ui/plugin-updates.js:155	{0} = u.name; {1} = u.available
-127j3cm	ok	New in this version: {0}.	このバージョンで追加されるもの：{0}。	src/ui/plugin-updates.js:156	{0} = semicolons(whatItBrings(added))
-zymqne	ok	Only update if you trust where it came from.	入手元を信頼できる場合だけアップデートしてください。	src/ui/plugin-updates.js:156	
-1dfe53s	ok	Nothing changes until you tap Update.	「アップデート」をタップするまで何も変わりません。	src/ui/plugin-updates.js:157	
-15ziixp	ok	Update anyway	それでもアップデート	src/ui/plugin-updates.js:159	
+44nn0b	ok	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（追加内容あり：アップデート前に確認します）	src/ui/plugin-updates.js:90	{0} = u.name; {1} = u.installed; {2} = u.available
+trjp65	ok	{0} (changed) (brings something new: you'll be asked first)	{0}（変更あり、追加内容あり：アップデート前に確認します）	src/ui/plugin-updates.js:90	{0} = u.name
+1kyfel6	ok	{0} (changed)	{0}（変更あり）	src/ui/plugin-updates.js:91	{0} = u.name
+i8x2zk	ok	{0} {1} → {2}	{0} {1} → {2}	src/ui/plugin-updates.js:91	{0} = u.name; {1} = u.installed; {2} = u.available
+6qynmx	ok	Plugin updates are ready	プラグインのアップデートがあります	src/ui/plugin-updates.js:97	
+1qhkyk	ok	Nothing changes until you update. An updated plugin that is running now is off until annai restarts.	アップデートするまで何も変わりません。実行中のプラグインは、アップデート後、annaiを再起動するまでオフになります。	src/ui/plugin-updates.js:98	
+1x9jer0	ok	New versions: {0}.	新しいバージョン：{0}。	src/ui/plugin-updates.js:98	{0} = list(updates.map(offerWords), 'plain')
+uk4kus	ok	Update	アップデート	src/ui/plugin-updates.js:99	
+1hwvled	ok	{0} failed with an unknown error.	{0}は原因不明のエラーでアップデートできませんでした。	src/ui/plugin-updates.js:132	{0} = nameOf(u); Note: one line of the "Some plugins weren't updated" card, for a plugin whose update failed with an empty error; {0} is the plugin's name.
+1agymuw	ok	Some plugins weren't updated	アップデートできなかったプラグインがあります	src/ui/plugin-updates.js:136	
+1vsv4vh	ok	Restart annai to use the new versions	新しいバージョンを使うには、annaiを再起動してください	src/ui/plugin-updates.js:140	
+1k0lt4v	ok	Until then, {0} can't be used.	それまでは{0}を使えません。	src/ui/plugin-updates.js:141	{0} = list(waiting)
+2jfvhf	ok	The update is installed and runs the next time annai starts.	アップデートはインストール済みです。次にannaiを起動したときに有効になります。	src/ui/plugin-updates.js:141	
+nb21do	ok	Restart now	今すぐ再起動	src/ui/plugin-updates.js:142	
+1do1igm	ok	Plugins updated.	プラグインをアップデートしました。	src/ui/plugin-updates.js:145	
+eaf3fx	ok	{0} {1} brings something new	{0} {1}には追加内容があります	src/ui/plugin-updates.js:161	{0} = u.name; {1} = u.available
+127j3cm	ok	New in this version: {0}.	このバージョンで追加されるもの：{0}。	src/ui/plugin-updates.js:162	{0} = semicolons(whatItBrings(added))
+zymqne	ok	Only update if you trust where it came from.	入手元を信頼できる場合だけアップデートしてください。	src/ui/plugin-updates.js:162	
+1dfe53s	ok	Nothing changes until you tap Update.	「アップデート」をタップするまで何も変わりません。	src/ui/plugin-updates.js:163	
+15ziixp	ok	Update anyway	それでもアップデート	src/ui/plugin-updates.js:165	
 vq7cdg#other	ok	# pages	#ページ	src/ui/preview.js:133	plural; # = pages; English: "# page" (one), "# pages" (other); Note: a PDF's page count on its file card.
 1cjjnaq	ok	Kept on this device.	この端末に保存。	src/ui/privacy.js:21	
 tct7be	ok	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	旅、ファイル、設定、キーは、この端末のこのブラウザに保存されます。annaiにはアカウントがなく、旅やキーを保存するannaiのサーバーもありません。	src/ui/privacy.js:21	
@@ -2835,12 +2835,12 @@ vy4apn	ok	Try this model	このモデルを試す	src/ui/talk-panel.js:75
 1770v5g	ok	Finding where you are…	現在地を確認中…	src/ui/today.js:23	
 iztlgm	ok	No GPS signal right now.	現在、GPSの信号を受信できません。	src/ui/today.js:23	
 ue501f	ok	Near {0}, ≈ {1}	{0}の近く（約{1}）	src/ui/today.js:26	{0} = near.name; {1} = distance(near.m / 1000)
-14d6ut8	ok	annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.	オフラインサービスがまだ起動していないため、annai本体は確認できませんでした。少ししてから、もう一度お試しください。	src/ui/updates.js:144	
-16l98jx	ok	annai couldn't check for a new version of itself. Check the connection and try again.	annaiの新しいバージョンを確認できませんでした。ネットワーク接続を確認して、もう一度お試しください。	src/ui/updates.js:151	
-rtcus4	ok	The download of the new version didn't finish. annai tries again the next time it checks.	新しいバージョンのダウンロードが完了しませんでした。次回の確認時に自動的に再試行します。	src/ui/updates.js:172	
-32o7q3	ok	annai restarts once Shiori has finished	Shioriの作業が終わったらannaiを再起動します	src/ui/updates.js:189	
-3ur3tf	ok	She is in the middle of something, and an update never lands during her turn. Tap her to stop her now.	Shioriは作業の途中です。アップデートはShioriの作業中には行われません。今すぐ止めるには、Shioriをタップしてください。	src/ui/updates.js:189	Note: "She" and "her" are written as Shiori: 彼女 reads distant in Japanese.
-4naie6	ok	Don't restart	再起動しない	src/ui/updates.js:190	
+14d6ut8	ok	annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.	オフラインサービスがまだ起動していないため、annai本体は確認できませんでした。少ししてから、もう一度お試しください。	src/ui/updates.js:145	
+16l98jx	ok	annai couldn't check for a new version of itself. Check the connection and try again.	annaiの新しいバージョンを確認できませんでした。ネットワーク接続を確認して、もう一度お試しください。	src/ui/updates.js:152	
+rtcus4	ok	The download of the new version didn't finish. annai tries again the next time it checks.	新しいバージョンのダウンロードが完了しませんでした。次回の確認時に自動的に再試行します。	src/ui/updates.js:173	
+32o7q3	ok	annai restarts once Shiori has finished	Shioriの作業が終わったらannaiを再起動します	src/ui/updates.js:190	
+3ur3tf	ok	She is in the middle of something, and an update never lands during her turn. Tap her to stop her now.	Shioriは作業の途中です。アップデートはShioriの作業中には行われません。今すぐ止めるには、Shioriをタップしてください。	src/ui/updates.js:190	Note: "She" and "her" are written as Shiori: 彼女 reads distant in Japanese.
+4naie6	ok	Don't restart	再起動しない	src/ui/updates.js:191	
 4u8ij0	ok	Listening live	ライブで聞き取り中	src/ui/voice-chip.js:25	
 11rknnz	ok	Live	ライブ	src/ui/voice-chip.js:30	
 m0me4i	ok	Live off	ライブオフ	src/ui/voice-chip.js:30	

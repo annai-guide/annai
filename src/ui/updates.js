@@ -134,10 +134,11 @@ export class Updates {
   }
 
   /**
-   * annai's own check, which has no limit of its own (a service worker's update waits for good on a connection gone dead): at most
-   * QUIET_MS, the number for a site's silence (answer.js). The browser shows none of what the update receives, so it is a time on the
-   * whole, which suits it: it fetches one file of annai's own site, sw.js, which the site sends brotli'd (about 8.8 KB) and which, when
-   * unchanged, is a 304, so the 20 s mostly covers a cold connection's first answer (answer.js, estimated).
+   * annai's own check, the one part with a limit on the whole request: a service worker's update has none of its own (it waits for good
+   * on a connection gone dead) and shows nothing of what it receives, so a silence can't be told from a slow answer, and it gets QUIET_MS
+   * (answer.js) on the whole. That suits it: it fetches one file of annai's own site, sw.js, which the site sends brotli'd (about 8.8 KB)
+   * and which, when unchanged, is a 304, so the 20 s mostly covers a cold connection's first answer (answer.js, estimated). The rest of
+   * the check has no limit on the whole (#run).
    * @returns {Promise<string[]>} what failed, in words
    */
   async #checkApp() {

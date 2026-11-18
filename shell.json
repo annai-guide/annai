@@ -1,5 +1,5 @@
 {
-  "build": "1c547700d11f",
+  "build": "2b79da960f87",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -57,7 +57,7 @@
     "/src/core/agent/via.js": "557657aae006",
     "/src/core/agent/warmth.js": "7f1be5368415",
     "/src/core/address.js": "d677ad7a10ba",
-    "/src/core/answer.js": "e9b9623373d1",
+    "/src/core/answer.js": "f8a90a19b416",
     "/src/core/archive.js": "9f8253a64b2e",
     "/src/core/backup.js": "644832139162",
     "/src/core/backup-auto.js": "64ed2407b9ec",
@@ -241,7 +241,7 @@
     "/src/ui/plugin-cards.js": "e1901c609a4e",
     "/src/ui/plugin-pending.js": "d0de6d23ce7b",
     "/src/ui/provider-setup.js": "c4b0421feac0",
-    "/src/ui/plugin-updates.js": "ec0e207a485a",
+    "/src/ui/plugin-updates.js": "6b8b7cc52e9f",
     "/src/ui/push.js": "5cd1775505bf",
     "/src/ui/resume.js": "3daeff3debff",
     "/src/ui/router.js": "b8981277e2c8",
@@ -295,7 +295,7 @@
     "/src/ui/trip-rows.js": "d3a7e6b5fd82",
     "/src/ui/tokens.css": "6610187f555d",
     "/src/ui/unlock.js": "c1b491262a90",
-    "/src/ui/updates.js": "39651fb752fb",
+    "/src/ui/updates.js": "36bb5806910f",
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
