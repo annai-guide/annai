@@ -93,7 +93,8 @@ New:
   forms included), a booking's keys are renamed from common other names to the format's own, so a small model's first try is stored right,
   in one call. Times to `start`/`end`; `name` to `title`; `location`/`address` and a pick-up's location to one `place`; a total with an
   amount and currency to `cost` (a comma only as a thousands group; anything else to `fields.total` as written); flights[] legs to
-  `start`/`end` (first departure, last arrival) and kept as `fields.flights`; common detail names the user's model wrote (notes, room,
+  `start`/`end` (first departure, last arrival) and kept as `fields.flights` (a lone leg, an object or text not in a list, is a list of
+  one under `flights` as under `flights+`, and a blank one is none: booking-rest-next); common detail names the user's model wrote (notes, room,
   phone, guests, passengers, airline, company, seat, flight) to `fields.<name>`; a car's drop-off place to `fields.dropoff`, an
   arrival's to `fields.to` (where it arrives; booking-next: it was `fields.arrival`, which reads like its time). A key the booking schema in force lists is never renamed (a plugin's registered fields stay theirs).
   An end's place is read by what is booked and compared with nothing (booking-time-next, 2026-11-18, the booking time path's design
@@ -130,6 +131,11 @@ New:
   when the last leg's arrival is a time that is left out with it (an end with no start is on no day of the Plan, so none is read from the
   last leg either), else "no start". A last leg with no arrival adds its own note, and an end the write gives itself (`end`, or an arrival
   alias) is kept; a start the write gives itself lets the last leg's arrival give the end. Appending (`x+`) to a stored value that is no list keeps that value as the first item.
+  On what carries the traveller, `unsure`'s `departure` or `depart` is its start and `arrival` or `arrive` its end, renamed on the record as
+  it will be stored (`shioriBooking`), however the time was written (its legs, the other alias, `start` and `end`, a patch of `unsure`
+  alone), where the booking has that time and no key of `fields` of that name (which is that detail, as `checkOf` reads it): only a name
+  that would mark nothing is renamed (booking-rest-next; the writer renamed it only beside the alias it came with, so the Departs or
+  Arrives line went unmarked). A stay's arrival is its check-in, read from its alias; no other kind's names are renamed there.
 - **One rule for the place.** In a patch the place aliases merge into `place` like a JSON merge patch: a location (or a pick-up's
   location) is `place.name`, an address (or a pick-up's) is `place.address`, lat/lng are `place.lat/lng`; `address: null` is the address
   null and `location: null` is no place. A `place` of its own (object) merges with them, and different values for one part, or

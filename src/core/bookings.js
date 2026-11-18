@@ -344,7 +344,8 @@ export function unalias(own, { zones = [], schema, kind, append = false, notes =
     }
   }
   const fk = keys.find((k) => base(k) === 'flights');
-  const legs = fk ? (Array.isArray(own[fk]) ? own[fk] : fk.endsWith('+') ? [own[fk]] : []) : [];
+  // A lone value (an object or text, not a list) is one leg, under `flights` as under `flights+`; a blank one is none.
+  const legs = fk ? (Array.isArray(own[fk]) ? own[fk] : there(own[fk]) ? [own[fk]] : []) : [];
   // Only what carries the traveller (far) has its times from its legs: any other booking's are its own, so legs given to one are kept as
   // written and move nothing; a leg with a time says so (NO_LEGS_TIMES).
   if (fk && legs.length && !far && legs.some(timedLeg)) notes.push(NO_LEGS_TIMES);
@@ -457,6 +458,18 @@ export function shioriBooking(before, next, { schema, changes } = {}) {
   const patch = record(changes);
   if (patch && Object.hasOwn(patch, 'unsure+') && !Object.hasOwn(patch, 'unsure') && old && !('unsure' in old) && Array.isArray(next.unsure)) {
     next = { ...next, unsure: [...new Set([...checkOf(old).fields, ...next.unsure])] };
+  }
+  // What carries the traveller departs and arrives: unsure's departure or depart is its start, arrival or arrive its end, however the time
+  // was written (legs, the other alias, start and end, a patch of unsure alone; unalias renames one only beside its alias). Only a name that
+  // would mark nothing is renamed (checkOf): of a time the booking has, never a key of `fields` she named, which is that detail.
+  if (CARRIERS.has(next.kind) && Array.isArray(next.unsure)) {
+    const details = record(next.fields) ?? {};
+    /** @param {string} n */
+    const asTime = (n) => {
+      const to = LEAVING.includes(n) ? 'start' : ARRIVING.includes(n) ? 'end' : '';
+      return to && there(next[to]) && !there(details[n]) ? to : n;
+    };
+    if (next.unsure.some((/** @type {string} */ n) => asTime(n) !== n)) next = { ...next, unsure: [...new Set(next.unsure.map(asTime))] };
   }
   const own = record(record(schema)?.properties);
   const place = record(next.place);
