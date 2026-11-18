@@ -275,8 +275,8 @@ export function startShell(root, core) {
   main.addEventListener('click', (e) => { if (e.target instanceof Element && e.target.closest('button, a[href], summary, [role=button]')) tappedAt = ++beat; }, true);
   /** @param {{ unasked?: boolean }} o the beat after which what was typed is kept */
   const since = (o) => (o.unasked ? 0 : tappedAt);
-  /** @param {{ unasked?: boolean }} o the caret is in a field whose text is kept */
-  const held = (o) => { const a = caretIn(); return a !== null && (typedAt.get(a) ?? 0) > since(o); };
+  /** @param {{ unasked?: boolean }} o the caret is in a field whose text is kept (for a draw nobody asked for, any field: it waited for the caret before) */
+  const held = (o) => { const a = caretIn(); return a !== null && (o.unasked || (typedAt.get(a) ?? 0) > tappedAt); };
   /** @param {{ moved?: boolean, unasked?: boolean }} [o] moved: a new screen or an entry of the history, not a redraw of this one; unasked: no tap asked for it. A redraw waits while the caret is in a field whose text is kept, whoever asked: what is typed, the caret and the keyboard stay. */
   async function render(o = {}) {
     if (!o.moved) {

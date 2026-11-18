@@ -1,5 +1,5 @@
 {
-  "build": "c46a6c1ad777",
+  "build": "24135d706024",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -281,7 +281,7 @@
     "/src/ui/screens/voice.js": "07a2c32be9f3",
     "/src/ui/screens/welcome.js": "f1b00d351dd3",
     "/src/ui/search-panel.js": "a611625f9ce8",
-    "/src/ui/shell.js": "aff1ea5d3de6",
+    "/src/ui/shell.js": "4e5f8cfffe15",
     "/src/ui/slots.js": "4fee1465e94c",
     "/src/ui/stamps.js": "9c0f976db8fa",
     "/src/ui/shiori.css": "e4e1bced0fa6",
