@@ -3655,7 +3655,7 @@ export class Agent {
           Object.assign(line, { h, ...(verdict ? { gate: verdict } : {}) });
           this.#askKept(p, line, true);
         }
-        if (this.#speaking) return; // more began meanwhile: the dock stays on Hearing you (the 8 s are held by every arm)
+        if (this.#speaking) return; // more began meanwhile: the dock stays on Hearing you
         if (this.state.name === 'hearing') this.#setState('listening');
         p.arm?.();
         return;
@@ -3880,6 +3880,7 @@ export class Agent {
     }
     if (p.by !== undefined) p.by = Date.now() + LISTEN_S * this.secondMs; // each tap starts its own 8 s; her question aloud's listening (#listenFor) keeps its own deadline
     p.arm();
+    if (this.#speaking) p.hold?.(); // #listenFor's arm has no check
   }
 
   /** A tap's listening for what her turn waits on is over (its 8 s, or a second tap): the dock says she waits again, and a note held behind it is taken. @param {Pending} p */
@@ -3896,7 +3897,7 @@ export class Agent {
     const after = this.#ear?.owner === 'after' && this.voice ? (await this.voice.settings()).silenceSeconds : 0;
     const ms = after ? Math.max(0, this.#saidAt + after * this.secondMs - Date.now()) : LISTEN_S * this.secondMs;
     clearTimeout(this.#quiet);
-    if (this.#speaking) return;
+    if (this.#speaking && !after) return; // chatter keeps its deadline
     this.#quiet = setTimeout(() => {
       if (!this.#window() || this.#busy) return;
       this.#closeEar();

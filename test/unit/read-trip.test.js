@@ -4060,3 +4060,37 @@ test("classic voice: the card's 8 s, over already (held while the first line was
   assert.match(read, /^Not read: .* The user said:$/);
   assert.deepEqual((await k.events(['heard'])).map((/** @type {any} */ e) => [e.data.text, e.data.answer]), [['Hmm, the ramen place', k.asks[0].data.id], ["What's on tomorrow?", k.asks[0].data.id]], "both lines, with the card's answer");
 });
+
+test("classic voice, no card and no question: a click (speech that gives no words) in a plain tap's window starts the tap's 8 s again, so the microphone closes 8 s after the click, not never", async (t) => {
+  useClock(t);
+  const k = await gateKit([say('Ramen at the corner.'), sleep], { voice: { speechIn: ['m-hear'], hears: ['Hmm, the ramen place'] } });
+  assert.equal(k.agent.tap(), 'listening');
+  await until(() => micLog(k).at(-1) === 'mic open');
+  k.platform.mic.feed(quiet(1), 16_000); // the room's sound is learned as quiet first
+  await pause(1 * k.agent.secondMs);
+  const t0 = Date.now();
+  k.platform.mic.feed(cat(burst(0.12, 0.8), quiet(1.5)), 16_000); // a click: its end is the start of the 8 s
+  await until(() => micLog(k).at(-1) === 'mic close');
+  assert.ok(Date.now() - t0 >= 7 * k.agent.secondMs, 'the microphone closed after the 8 s, not at once');
+  assert.deepEqual(await heardIn(k, k.agent.scope), [], 'a click is no line');
+  assert.deepEqual(k.said, []);
+});
+
+test("with voice on, voice turning off during her question aloud's 8 s, then a tap with speech beginning as the microphone opens: her question's own timer is held while they speak, so the microphone is still open 4 s after the tap, and what they say answers it", async (t) => {
+  useClock(t);
+  const k = await gateKit([call('ask', ASK_LUNCH), sleep], { voice: { speechIn: ['m-hear'], hears: ['Dinner please'] } });
+  k.agent.send('Plan our day');
+  await until(() => k.said.includes('Lunch or dinner?') && k.agent.state.name === 'listening');
+  await pause(6 * k.agent.secondMs);
+  await voiceOff(k); // her question's 8 s run on, with no microphone open
+  await speaksAsItOpens(k);
+  const t0 = Date.now();
+  assert.equal(k.agent.tap(), 'listening');
+  await until(() => micLog(k).at(-1) === 'mic open');
+  await atS(k, t0, 4); // its 2 s left are over, while they speak
+  assert.equal(micLog(k).at(-1), 'mic open', "her question's 8 s did not end while they speak");
+  k.platform.mic.feed(quiet(2), 16_000); // they stop
+  await k.agent.idle();
+  assert.equal((await resultsOf(k, 'ask'))[0], 'The user said:', 'their words answered it');
+  assert.deepEqual((await heardIn(k, k.agent.scope)).map((x) => [x.text, x.answer]), [['Dinner please', k.asks[0].data.id]], "one heard line, with the question's answer");
+});
