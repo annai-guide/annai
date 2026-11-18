@@ -110,8 +110,9 @@ test("the Plan: the flight on Nov 20 with its times, the stay's check-in, a line
   await expect(page.getByRole('tab')).toHaveText(['Fri, Nov 20', 'Sat, Nov 21', 'Sun, Nov 22', 'Mon, Nov 23', 'Tue, Nov 24', 'Wed, Nov 25', 'Thu, Nov 26', 'Fri, Nov 27']);
   const day = page.getByRole('tabpanel');
   await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
-  await expect(day.locator('.plan-row').first()).toContainText(/11:20–14:05 AK/);
-  await expect(day.locator('.plan-row').first()).toContainText('ANNAI AIR AN 123');
+  // Its departure, then its Arrive in Anchorage's clock with no place (carrier-rows-next; main drew one row, 11:20–14:05 AKT).
+  await expect(day.locator('.plan-row').first()).toHaveText(/^11:20ANNAI AIR AN 123$/);
+  await expect(day.locator('.plan-row').nth(1)).toHaveText(/^14:05 AKTArrive · ANNAI AIR AN 123$/);
   await expect(day.getByRole('link', { name: /Check in · Hotel Aurora Test/ })).toBeVisible();
   await page.getByRole('tab', { name: 'Sat, Nov 21' }).click();
   // The night comes first in its day, a quiet line that isn't a link, then the day's own rows.
@@ -181,7 +182,12 @@ test('a tap on any row opens its details, never the raw file', async ({ page }) 
   await records(page, trip, ANCHORAGE);
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
   await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
-  await page.getByRole('tabpanel').getByRole('link', { name: /ANNAI AIR AN 123/ }).click();
+  // The flight's Arrive opens the same booking as its departure.
+  await page.getByRole('tabpanel').getByRole('link', { name: /Arrive · ANNAI AIR AN 123/ }).click();
+  await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
+  await page.goBack();
+  await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
+  await page.getByRole('tabpanel').getByRole('link', { name: /^ANNAI AIR AN 123/ }).click();
   await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
   await expect(page.locator('textarea:not(#dock-text)')).toHaveCount(0);
   await page.goBack();
@@ -681,7 +687,7 @@ test("a flight's details: what Shiori read, its PDF's preview or card, Open the 
   await putFile(page, trip, '/files/flight.pdf', await readFile('test/fixtures/bookings/flight.pdf'), 'application/pdf');
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
   await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
-  await page.getByRole('tabpanel').getByRole('link', { name: /ANNAI AIR AN 123/ }).click();
+  await page.getByRole('tabpanel').getByRole('link', { name: /^ANNAI AIR AN 123/ }).click();
   await expect(page.getByRole('heading', { name: 'ANNAI AIR AN 123' })).toBeVisible();
   // What she read, in reading order: the route, then each airport's own time.
   const facts = page.locator('dl.facts');

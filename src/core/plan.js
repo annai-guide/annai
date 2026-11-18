@@ -7,8 +7,9 @@ import { t } from './l10n.js';
  * The Plan screen's timetable (spec §16.2): rows by local day with ● fixed and ○ flexible, the legs between stops, and each booking on
  * its day (the bookings-and-trips design, goal 5). Anything over several days is a set: its start row on its day, a quiet line on each
  * day between, and its end as a row of its own: a stay's check-in, nights and check-out; a car's pick-up, days and return; a red-eye's
- * departure and arrival. A booking with no time is "Not on a day". A plan item that links a booking stands for it on the item's own day,
- * unless it is another thing than the booking (`anotherThing`: a car rental on a flight's): it draws its own set, the booking its own rows.
+ * departure and arrival. A booked flight, train or ride is one whatever the day (a plan item of one that ends the same day stays one row,
+ * with its end). A booking with no time is "Not on a day". A plan item that links a booking
+ * stands for it on the item's own day, unless it is another thing than the booking (`anotherThing`: a car rental on a flight's): it draws its own set, the booking its own rows.
  * @typedef {{ path: string, item: Record<string, any> }} PlanFile
  * @typedef {{ path: string, booking: Record<string, any> }} BookingFile
  * @typedef {{ path: string, item: Record<string, any>, from: 'item' | 'booking' | 'end' | 'line', at: number | null, day: string | null,
@@ -16,8 +17,8 @@ import { t } from './l10n.js';
  *   line: { n: number, of: number } | null, bookingPath: string | null, booking: Record<string, any> | null,
  *   checkFields: string[], missing: boolean, note: string }} PlanRow
  *   from: a plan item, a booking no plan item stands for (at its start), the end of a set (at its end), or a set's quiet line;
- *   path: the plan item's, else the booking's; item: the plan item (without its end when it starts a set), or a view of the booking
- *   ({ title, kind: 'booking', fixed: null, start, end, place }); an end row's item has the end as its start; fixed: true or false as a
+ *   path: the plan item's, else the booking's; item: the plan item (without its end when it starts a set), or
+ *   a view of the booking ({ title, kind: 'booking' (a ride's own kind for a row that stays one, of an old booking of "other" with a ride item), fixed: null, start, end, place }); an end row's item has the end as its start; fixed: true or false as a
  *   plan item stored it, and null where nobody said (a booking's own rows: a stay's check-out is a plan item's only when that item is
  *   linked to the booking and ends where it does); an end row and a quiet line keep their start's, except a booking's (above); time and end: "HH:MM" in the
  *   item's own zones ('' when there is none, for an all-day item, and for a set's start); endDays: how many days after the row's day
@@ -101,13 +102,15 @@ export const kindWord = (k) => (typeof k === 'string' ? KINDS.get(k.trim().toLow
  */
 export const kindOf = (it, booking) => kindWord(it?.kind) ?? kindWord(booking?.kind) ?? '';
 /**
- * The kinds that carry the traveller, so one ends somewhere else than it starts: the Plan and Kokoro's view end it with "Arrive" and no
- * place (Driving's strip lists places, so it leaves that end out), and the reminders count what comes after it from nothing and wait for a
- * fixed one. A booking of one of them is too, with no item linked (bookings.js reads a time of one in the place it leaves or arrives, never
- * in the trip's only zone); one of "other" written before booking-next, when a booking had no kind for a ride, takes it from a ride item
- * linked to it (planRows).
+ * The kinds that carry the traveller, so one ends somewhere else than it starts, whatever the day: the Plan and Kokoro's view draw a booking
+ * of one, and an item of one that spans days, as its departure at its place and an "Arrive" with no place (planRows), Driving's strip
+ * drops its place once it leaves (routeStrip), and the reminders count what comes after it from nothing and wait for a fixed one. A booking of one of them is too, with no item linked
+ * (bookings.js reads a time of one in the place it leaves or arrives, never in the trip's only zone); one of "other" written before
+ * booking-next, when a booking had no kind for a ride, takes it from a ride item linked to it (planRows).
  */
 export const CARRIERS = new Set(['flight', 'rail', 'ferry', 'bus', 'coach']);
+/** Whether a Plan row is of what carries the traveller: one with a place is its departure. A set's kind is planRows'. @param {PlanRow} r */
+export const carries = (r) => CARRIERS.has(r.set?.kind ?? kindOf(r.item, r.booking));
 /**
  * The rides a booking had no kind for before booking-next, so a booking of "other" takes one from a ride item linked to it. Kept for the
  * bookings already stored that way: Shiori writes a ride's own kind now, and nothing rewrites an old record (lessons.md, 2026-11-14:
@@ -173,10 +176,13 @@ function spanOf(x) {
   return { apart, between };
 }
 
-/** A good span that ends on a later day than it starts: a set. @param {Record<string, any>} x */
-const setOf = (x) => {
+/**
+ * A good span that ends on a later day: a set; a carrier booking's also the same day (`sameDay`), never a plan item's, so an item is the
+ * row it was. One that ends on an earlier local day (an eastbound flight over the date line) stays one row. @param {Record<string, any>} x @param {boolean} [sameDay]
+ */
+const setOf = (x, sameDay = false) => {
   const s = spanOf(x);
-  return s && s.apart > 0 ? s : null;
+  return s && (s.apart > 0 || (sameDay && s.apart === 0)) ? s : null;
 };
 
 /** The item without its end: a set's start row. @param {Record<string, any>} x */
@@ -215,13 +221,15 @@ export function planRows(items, bookings, { fallbackTz }) {
    * Whether a plan item standing for the booking is on this row's day, taken in the row's own zone (an item written in the arrival's
    * zone, or UTC, is still that flight). Each item stands for one row: the first it is on the day of. A row with no day is stood for by
    * any item. @param {string} path the booking @param {PlanRow} r @param {string} [not] the item drawing the set, which stands for none
+   * @param {PlanRow} [also] a row the item must be on the day of too: a same-day carrier's Arrive is stood for only by an item on its
+   * departure's day as well (across zones, an item can be on the arrival's day and not on the departure's, both ways: one written the evening before the departure is already the arrival's day there, and one after landing is already the next day at the departure's clock; the arrival showed nowhere)
    */
-  const standsFor = (path, r, not) => {
+  const standsFor = (path, r, not, also) => {
     const on = linked.get(path);
     if (!on) return false;
     if (!r.day) return true;
-    const tz = validZone(r.item.start?.tz) ? r.item.start.tz : fallbackTz;
-    const k = on.findIndex((x) => x.path !== not && x.at !== null && dayIn(x.at, tz) === r.day);
+    const onDay = (/** @type {{ at: number | null }} */ x, /** @type {PlanRow} */ row) => dayIn(/** @type {number} */ (x.at), validZone(row.item.start?.tz) ? row.item.start.tz : fallbackTz) === row.day;
+    const k = on.findIndex((x) => x.path !== not && x.at !== null && onDay(x, r) && (!also || onDay(x, also)));
     if (k >= 0) on.splice(k, 1);
     return k >= 0;
   };
@@ -279,19 +287,21 @@ export function planRows(items, bookings, { fallbackTz }) {
     const kind = kindOf(ride?.item, b);
     // Untitled, it is named by its kind: the ride an item says it is, as a ride booking's own kind (not "Booking").
     const title = typeof b.title === 'string' && b.title.trim() ? b.title : KIND_WORDS[ride ? kind : b.kind] ?? t`Booking`;
-    // A stay is always its check-in and its check-out (as before); anything else that ends on a later day, its start and its end.
-    const split = kind === 'lodging' || setOf(b);
+    // A stay is always its check-in and its check-out (as before); anything else that ends on a later day, its start and its end, and a
+    // booked flight, train or ride whatever the day.
+    const split = kind === 'lodging' || setOf(b, CARRIERS.has(kind));
     const base = { path, bookingPath: path, booking: b, checkFields: marks.fields, missing: false };
     // A booking says nothing of what can move (null: nobody said): a plan item Shiori stored as fixed does (the user's answer, 2026-11-15).
-    const view = { title, kind: 'booking', fixed: null, start: b.start, ...(split ? {} : { end: b.end }), place };
+    // A row that stays one is a booking's ('booking'), but of a ride an item says it is, the ride's own kind: Driving's strip reads it (carries).
+    const view = { title, kind: !split && ride ? kind : 'booking', fixed: null, start: b.start, ...(split ? {} : { end: b.end }), place };
     /** @type {PlanRow} */
     const start = { ...base, item: view, from: 'booking', ...timesOf(view, fallbackTz), set: split ? { kind, part: 'start' } : null, line: null };
     if (!standsFor(path, start)) out.push(start);
     if (!split) continue;
-    // The end is a plan item's when one standing for the booking ends where it does (that item's own end is dropped for this row): as
-    // fixed as that item, true or false. With none, nobody said.
+    // The end is a plan item's when one standing for the booking ends where it does (a same-day one keeps its end on its own row): as fixed
+    // as that item, true or false. With none, nobody said.
     const said = own.find((x) => x.ref === path && !x.other && momentOf(x.item.end, fallbackTz) === momentOf(b.end, fallbackTz));
-    rest(base, { ...view, fixed: said ? said.item.fixed : null }, b.end, kind, spanOf(b), (end) => standsFor(path, end));
+    rest(base, { ...view, fixed: said ? said.item.fixed : null }, b.end, kind, spanOf(b), (end) => standsFor(path, end, undefined, CARRIERS.has(kind) && end.day === start.day ? start : undefined));
   }
   return out;
 }
