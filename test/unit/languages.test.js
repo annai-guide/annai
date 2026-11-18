@@ -80,15 +80,16 @@ test('with nothing saved the setting is the browser\'s language, answering in th
   assert.equal(languageSettings({}, 'not a locale!').spoken[0].id, 'en', 'a tag that is none: English');
 });
 
-test('with nothing saved, the browser\'s own tag is the locale, as before this branch: a language annai has no code for keeps its name and tag (review item 3)', () => {
+test('with nothing saved, the browser\'s own tag is the locale, as before this branch: a language annai has no code for keeps its name and tag (review item 3); a line in Latin letters on a phone not written in them is English\'s (detector-next: the voice follows what the line shows)', () => {
   // et, is, eu, ur, lv, lt... were English; zh-Hant-TW dictated as zh-CN.
-  for (const [tag, name] of [['et-EE', 'Estonian'], ['is', 'Icelandic'], ['eu-ES', 'Basque'], ['ur-PK', 'Urdu'], ['lv', 'Latvian'], ['lt-LT', 'Lithuanian']]) {
+  for (const [tag, name, line] of [['et-EE', 'Estonian', 'Tere'], ['is', 'Icelandic', 'Tere'], ['eu-ES', 'Basque', 'Tere'], ['ur-PK', 'Urdu', 'آج رات کہاں کھائیں؟'], ['lv', 'Latvian', 'Tere'], ['lt-LT', 'Lithuanian', 'Tere']]) {
     const s = languageSettings({}, tag);
     assert.deepEqual([s.spoken[0].name, s.spoken[0].locale, s.explicit], [name, tag, false], tag);
     assert.equal(dictationLocale(s), tag, `${tag}: dictation in the browser's own language`);
-    assert.equal(speechLocale(s, 'Tere'), tag, `${tag}: and the browser voice`);
+    assert.equal(speechLocale(s, line), tag, `${tag}: and the browser voice`);
     assert.deepEqual(modelLanguages(s), { spoken: [], answer: null }, `${tag}: no protocol is given a hint`);
   }
+  assert.equal(speechLocale(languageSettings({}, 'ur-PK'), 'Tere'), 'en-US', 'Latin letters on a phone not written in them (main: ur-PK)');
   const hant = languageSettings({}, 'zh-Hant-TW');
   assert.deepEqual([hant.spoken[0].id, hant.spoken[0].locale, dictationLocale(hant)], ['zh-Hant', 'zh-Hant-TW', 'zh-Hant-TW']);
   assert.equal(languageSettings({}, 'pt_BR').spoken[0].locale, 'pt-BR', 'a tag written with an underscore');
@@ -277,7 +278,7 @@ test('languageOf names the language of a text by its script or its commonest wor
 
 // Localization L3: a line's language as a BCP 47 tag, for `lang` (the font and the screen reader's voice follow it).
 
-test('tagOf: kana is ja, Han alone the listed Chinese (else ja when only ja is listed), Hangul ko, Latin and the unsure nothing', () => {
+test('tagOf: kana is ja, Han alone the listed Chinese (else ja when only ja is listed; with both listed, the screens\' language when it is one of them, else the first listed: detector-next, as Han that says neither is either\'s), Hangul ko, Latin and the unsure nothing', () => {
   const only = (/** @type {string[]} */ ids, /** @type {string} */ locale = 'en-US', /** @type {any} */ app = { languages: { spoken: ids } }) => languageSettings(ids.length ? app : {}, locale);
   const en = only(['en']);
   assert.equal(tagOf('直角三角形の骨組みです。', en), 'ja');
@@ -287,7 +288,8 @@ test('tagOf: kana is ja, Han alone the listed Chinese (else ja when only ja is l
   assert.equal(tagOf('直角三角形的骨架', only(['en', 'zh'])), 'zh-Hans');
   assert.equal(tagOf('直角三角形的骨架', only(['yue'])), 'yue-Hant');
   assert.equal(tagOf('骨格', only(['en', 'ja'])), 'ja', 'Han alone is Japanese when only Japanese is listed');
-  assert.equal(tagOf('骨格', only(['ja', 'zh'])), 'zh-Hans', 'and Chinese when both are');
+  assert.equal(tagOf('骨格', only(['ja', 'zh'])), 'ja', 'and the first listed when both are, under screens that are neither (main: zh-Hans)');
+  assert.equal(tagOf('骨格', only(['zh', 'ja'])), 'zh-Hans');
   assert.equal(tagOf('骨架', languageSettings({}, 'zh-TW')), 'zh-Hant', "a Traditional Chinese phone's Chinese is Traditional");
   assert.equal(tagOf('骨架', languageSettings({}, 'zh-Hant-HK')), 'zh-Hant');
   assert.equal(tagOf('骨架', languageSettings({}, 'ja-JP')), 'ja', 'with nothing chosen, the phone is what is listed');

@@ -170,9 +170,11 @@ const COMMON = Object.entries({
 const MARKS = /** @type {Record<string, RegExp>} */ ({ Spanish: /[¿¡ñ]/u, German: /ß/u, Portuguese: /[ãõ]/u });
 
 /**
- * The language a text is written in, by name, or '' when it can't be told. min: how many words of one language's list (a mark counts as
- * one) a Latin text needs, alone at the top: 1 for a long text (a summary's language); 2 for a word or two, where one hit is a name or a
- * word English has too ("Per se", "Des Moines"). @param {string} text @param {number} [min]
+ * One of the world's languages a text looks written in, by name, or '' when it can't be told: the stray note's question (strayLanguage), the
+ * realtime check's, and for a Latin line, which of the 7 languages with a word list its small words are. Choosing among the traveller's own
+ * languages is placed's, which asks this only for those words. min: how many words of one language's list (a mark counts as one) a Latin text
+ * needs, alone at the top: 2 to name a language, where one hit is a name or a word English has too ("Per se", "Des Moines", "Los Angeles
+ * hotel"); 1 to ask whether a line has any word of another language at all. @param {string} text @param {number} [min]
  */
 export function languageOf(text, min = 1) {
   const letters = (text.match(/\p{L}/gu) ?? []).length;
@@ -207,32 +209,147 @@ export function vietnameseMarks(text, spoken = []) {
 const SHARED = /** @type {Record<string, string[]>} */ ({ Chinese: ['zh', 'zh-Hant', 'yue'], Arabic: ['ar', 'fa'], Russian: ['ru', 'uk', 'bg', 'sr'], Ukrainian: ['uk'] });
 
 /**
- * The listed language a name from languageOf is, or null. Han characters alone are Chinese's, and Japanese's too when Chinese isn't
- * listed (a short Japanese reply may be kanji only). With both Chinese listed, the text's characters choose between them, when they tell.
- * @param {string} guess @param {Language[]} spoken @param {string} [text] what was written
+ * Whether a name from languageOf is one of the listed languages (the stray note's question): a script several share is any of them; Han
+ * characters alone are Chinese's, and Japanese's too when Chinese isn't listed (a short Japanese reply may be kanji only).
+ * @param {string} guess @param {Language[]} spoken
  */
-export function listedFor(guess, spoken, text = '') {
-  const same = spoken.find((l) => guess === l.name || (SHARED[guess] ?? []).includes(l.id));
-  const written = same && MANDARIN.includes(same.id) ? spoken.find((l) => l.id === hanRow(text)) : undefined;
-  return written ?? same ?? (guess === 'Chinese' ? spoken.find((l) => l.id === 'ja') ?? null : null);
+export function listedFor(guess, spoken) {
+  return spoken.find((l) => guess === l.name || (SHARED[guess] ?? []).includes(l.id)) ?? (guess === 'Chinese' ? spoken.find((l) => l.id === 'ja') ?? null : null);
 }
 /** The two Chinese rows, Simplified and Traditional. */
 export const MANDARIN = ['zh', 'zh-Hant'];
 /** The Chinese row a text's characters say, or '' when they don't tell. @param {string} text */
 export const hanRow = (text) => { const [hans, hant] = [count(text, HANS), count(text, HANT)]; return hans > hant ? 'zh' : hant > hans ? 'zh-Hant' : ''; };
 
+/** The script a BCP 47 tag is likeliest written in ('Latn', 'Jpan', 'Hans', 'Hant', 'Cyrl'…), or '' for a tag that is none. @param {string} tag */
+const likelyScript = (tag) => { try { return new Intl.Locale(tag).maximize().script ?? ''; } catch { return ''; } };
 /** Whether a locale is written in Traditional characters: its script when it names one (zh-Hans-HK is Simplified), else its region's. @param {string} locale */
-const traditional = (locale) => { try { return new Intl.Locale(locale).maximize().script === 'Hant'; } catch { return false; } };
+const traditional = (locale) => likelyScript(locale) === 'Hant';
 /** A language's BCP 47 tag, for `lang`: Chinese by script (a Traditional Chinese phone's is Traditional), Norwegian as Bokmål. @param {Language} l */
 export const tagFor = (l) => (l.id === 'zh' ? (traditional(l.locale) ? 'zh-Hant' : 'zh-Hans') : l.id === 'yue' ? (traditional(l.locale) ? 'yue-Hant' : 'yue-Hans') : l.id === 'no' ? 'nb' : l.id);
+/** The script a language is written in: Japanese 'Jpan', the Chinese rows and Cantonese 'Hans' or 'Hant', Turkish 'Latn', Bengali 'Beng'. @param {Language} l */
+const scriptOfLanguage = (l) => likelyScript(tagFor(l));
+/** The scripts Han text is written in, by the languages it may be (Japanese, the Chinese rows, Cantonese). */
+/* en */ const HAN_SCRIPTS = ['Jpan', 'Hans', 'Hant'];
 /** What a script says when no listed language is its own (Han alone, with neither Chinese nor Japanese listed, is Chinese). */
 const SCRIPT_TAGS = /** @type {Record<string, string>} */ ({ Chinese: 'zh-Hans', Japanese: 'ja', Korean: 'ko', Thai: 'th', Arabic: 'ar', Hebrew: 'he', Greek: 'el', Hindi: 'hi', Russian: 'ru', Ukrainian: 'uk' });
 
-/** Characters only Simplified Chinese uses, all but the last 3 of them unused in Japanese too; and their Traditional forms. */
-/* en */ const HANS = '这们个说时门东车马鸟书见长问间对开关现过还点发实经动样乐国会来';
+/**
+ * Characters only Simplified Chinese uses, all but the last 3 of them unused in Japanese too; and the Traditional forms of the same
+ * characters. 点 is not one: Japanese writes it too (交差点, 終点; the design check of 2026-11-17, N1), and 點 is still Traditional.
+ */
+/* en */ const HANS = '这们个说时门东车马鸟书见长问间对开关现过还发实经动样乐国会来';
 /* en */ const HANT = '這們個說時門東車馬鳥書見長問間對開關現過還點發實經動樣樂國會來';
 /** How many of a text's characters are in a set. @param {string} text @param {string} set */
 const count = (text, set) => [...text].filter((c) => set.includes(c)).length;
+
+/** Cantonese's own characters, none of them Mandarin's or Japanese's: its pronouns and plural (佢 哋), particles (嘅 咗 啲 喺), negatives (唔 冇), 嚟 睇 乜 嘢 咁. */
+/* en */ const CANTONESE = '哋佢嘅唔咗冇喺啲嚟睇乜嘢咁';
+/**
+ * Characters only Chinese writes, where Japanese writes none of them: the Simplified forms Japanese doesn't share (HANS but its last 3), the
+ * Traditional forms Japanese writes otherwise (說 説, 對 対, 點 点…), 15 of Chinese's commonest small words (its pronouns, 這 and 哪, its
+ * question and closing particles, 很, 沒), and Cantonese's. Measured on the made-up trip's real lines (the design check of 2026-11-17): 48 of 48
+ * Chinese lines carry one, and none of 1,038 Japanese sentences or 123 made-up kanji-only lines (stations, sights, food, signs, short replies)
+ * does; 的 and 是 would add 6 of 116 Chinese sentences, but 目的地 and 是非 are Japanese, so they are left out.
+ */
+/* en */ const CHINESE = `${HANS.slice(0, -3)}說對關點發實經樣樂國會來你您她們這哪吗嗎呢吧么麼沒很啊${CANTONESE}`;
+/** An address in a line: no language's words. */
+const URLS = /\b(?:https?:\/\/|www\.)\S+/gi;
+/**
+ * The scripts of annai's languages other than Latin and Chinese, Japanese and Korean, each with the first of its languages (Cyrillic: Russian;
+ * Arabic: Arabic): what a line written in it is when nothing is chosen and the phone's language isn't written in it.
+ * @type {Map<string, { language: Language, re: RegExp }>}
+ */
+const SCRIPTS_OF_LANGUAGES = new Map();
+for (const l of LANGUAGES) {
+  const script = scriptOfLanguage(l);
+  /* en */ if (!['Latn', ...HAN_SCRIPTS, 'Kore'].includes(script) && !SCRIPTS_OF_LANGUAGES.has(script)) SCRIPTS_OF_LANGUAGES.set(script, { language: l, re: new RegExp(`\\p{Script=${script}}`, 'gu') });
+}
+
+/**
+ * What a line is written in, by its writing alone: 'Jpan' (kana), 'Kore' (Hangul), 'zh' (Han with a character only Chinese writes), 'Hani' (Han
+ * that says neither), another script of annai's languages ('Cyrl', 'Beng'…) or 'Latn' when it is most of the letters, or '' when nothing tells.
+ * One scale, units': Chinese, Japanese and Korean characters against the words in other scripts, so a Latin name leaves 「Los Angelesまで何時間？」
+ * Japanese (letters against characters read it as Latin). Fewer such characters than Latin letters tell only by a grammar of their own, kana or
+ * a character only Chinese writes: "Where is 新宿御苑?" and "iPhone 15 Pro 多少钱？" look alike, and tell nothing.
+ * @param {string} text
+ */
+export function writing(text) {
+  const said = text.replace(URLS, ' ');
+  const n = (/** @type {RegExp} */ re) => said.match(re)?.length ?? 0;
+  const cjk = n(CJK);
+  const rest = said.replace(CJK, ' ');
+  const words = rest.match(/[\p{L}\p{M}]+/gu)?.length ?? 0;
+  const letters = rest.match(/\p{L}/gu)?.length ?? 0;
+  if (cjk > words) {
+    // Fewer such characters than letters in other scripts: maybe a name in a line in another language.
+    const name = words > 0 && cjk <= letters;
+    /* en */ if (n(/\p{Script=Hangul}/gu) * 2 > cjk) return name ? '' : 'Kore';
+    /* en */ if (n(/\p{Script=Hiragana}/gu)) return 'Jpan';
+    if ([...said].some((c) => CHINESE.includes(c))) return 'zh';
+    /* en */ return name ? '' : n(/[\p{Script=Katakana}ー]/gu) ? 'Jpan' : 'Hani';
+  }
+  if (!words) return '';
+  for (const [script, { re }] of SCRIPTS_OF_LANGUAGES) if (n(re) * 2 > letters) return script;
+  /* en */ return n(/\p{Script=Latin}/gu) * 2 > letters ? 'Latn' : '';
+}
+
+/** What placed says of Han that tells neither Japanese nor Chinese where the traveller may mean either: its reader decides (the count, the tag, the voice). */
+export const EITHER = 'either';
+
+/**
+ * The one of the traveller's own languages a line's writing shows (writing), or null when it shows none of theirs. Each listed language stands
+ * for the script it is written in, so one annai has no words for (Turkish, Bengali) is placed when it is the only one listed in its script; with
+ * nothing chosen the phone's language does (English for Latin letters on a phone not in them), and a line plainly in another language is that
+ * one: they may speak others. Between two of theirs in one script only what the line shows decides, never their order: Ukrainian's letters,
+ * Simplified or Traditional forms, Cantonese's characters, two small words or a mark of a language annai has words for (languageOf), Vietnamese's
+ * marks. Han that says neither Japanese nor Chinese is EITHER where both may be meant (both listed, or nothing chosen), else the one listed.
+ * @param {string} text @param {LanguageSettings} s @returns {Language | typeof EITHER | null}
+ */
+export function placed(text, s) {
+  const kind = writing(text);
+  if (!kind) return null;
+  const mine = s.spoken;
+  const scripts = mine.map(scriptOfLanguage);
+  const of = (/** @type {string[]} */ codes) => mine.filter((_, i) => codes.includes(scripts[i]));
+  /** A language they may speak besides the phone's, with nothing chosen. @param {string} id */
+  const open = (id) => (s.explicit ? null : BY_ID.get(id) ?? null);
+  if (kind === 'Jpan' || kind === 'Kore') {
+    const id = kind === 'Jpan' ? 'ja' : 'ko';
+    return mine.find((l) => l.id === id) ?? open(id);
+  }
+  if (kind === 'zh' || kind === 'Hani') {
+    /* en */ const chinese = of(['Hans', 'Hant']);
+    const ja = mine.find((l) => l.id === 'ja');
+    if (kind === 'Hani' && (!s.explicit || (ja && chinese.length))) return EITHER;
+    if (kind === 'Hani' && !chinese.length) return ja ?? null;
+    const yue = [...text].some((c) => CANTONESE.includes(c)) ? chinese.find((l) => l.id === 'yue') ?? open('yue') : null;
+    if (yue) return yue;
+    if (!chinese.length) return open(hanRow(text) || 'zh');
+    // Simplified or Traditional forms: the first of theirs written in them (Cantonese is written in Traditional), else the first Chinese listed.
+    /* en */ const forms = kind === 'zh' ? { zh: 'Hans', 'zh-Hant': 'Hant', '': '' }[hanRow(text)] : '';
+    return (forms && chinese.find((l) => scriptOfLanguage(l) === forms)) || chinese[0];
+  }
+  if (kind === 'Latn') {
+    /* en */ const latin = of(['Latn']);
+    const part = text.replace(URLS, ' ').replace(CJK, ' ');
+    const word = languageOf(part, 2) || vietnameseMarks(part, mine);
+    if (s.explicit) return word ? mine.find((l) => l.name === word) ?? null : latin.length === 1 ? latin[0] : null;
+    if (word) return mine.find((l) => l.name === word) ?? LANGUAGES.find((l) => l.name === word) ?? null;
+    // The phone's language, or English on a phone not in Latin letters; one small word of another language leaves the line unsure.
+    const home = latin[0] ?? /** @type {Language} */ (BY_ID.get('en'));
+    const one = languageOf(part, 1);
+    return one && one !== home.name ? null : home;
+  }
+  const same = of([kind]);
+  if (kind === 'Cyrl' && /[іїєґ]/iu.test(text)) return same.find((l) => l.id === 'uk') ?? open('uk');
+  // Without its letters a Cyrillic line is not Ukrainian, unless that is the only Cyrillic language listed.
+  const left = kind === 'Cyrl' && (same.length > 1 || !s.explicit) ? same.filter((l) => l.id !== 'uk') : same;
+  return left.length === 1 ? left[0] : left.length ? null : open(SCRIPTS_OF_LANGUAGES.get(kind)?.language.id ?? '');
+}
+
+/** The first of the traveller's languages written in Han, the one Han that says neither is taken for where nothing else decides. @param {LanguageSettings} s */
+const firstHan = (s) => s.spoken.find((l) => HAN_SCRIPTS.includes(scriptOfLanguage(l))) ?? null;
 
 /**
  * The writing system a text is mostly in, by the name languageOf gives it, or '': Chinese, Japanese and Korean when their characters outnumber
@@ -250,13 +367,13 @@ function scriptOf(text) {
 }
 
 /**
- * The tag of Han characters with no kana: Japanese when that is the language and the characters are ones Chinese does not use; else
- * Chinese, Simplified or Traditional by the characters, and when they do not tell, by Traditional screens, else by the language (the
- * phone's, or the list's). @param {string} text @param {Language | null} l the language they are taken to be @param {string} ui the screens'
+ * The tag of Han characters with no kana: Japanese when they are taken to be (placed takes no line with a character only Chinese writes for
+ * Japanese); else Chinese, Simplified or Traditional by the characters, and when they do not tell, by Traditional screens, else by the language
+ * (the phone's, or the list's). @param {string} text @param {Language | null} l the language they are taken to be @param {string} ui the screens'
  */
 function hanTag(text, l, ui) {
   const [hans, hant] = [count(text, HANS), count(text, HANT)];
-  if (l?.id === 'ja' && !count(text, HANS.slice(0, -3))) return 'ja';
+  if (l?.id === 'ja') return 'ja';
   if (hans > hant) return 'zh-Hans';
   if (l?.id === 'yue') return tagFor(l);
   return hant > hans || ui === 'zh-Hant' ? 'zh-Hant' : l && l.id !== 'ja' ? tagFor(l) : 'zh-Hans';
@@ -267,26 +384,25 @@ export const NO_LANGUAGE = 'und';
 /** Whether most of a text's letters are in the script a language tag is likeliest written in (false for Han, which Unicode scripts name apart). @param {string} text @param {string} tag */
 function writtenIn(text, tag) {
   try {
-    const script = new Intl.Locale(tag).maximize().script;
-    return (text.match(new RegExp(`\\p{Script=${script}}`, 'gu'))?.length ?? 0) * 2 > (text.match(/[\p{L}\p{M}]/gu)?.length ?? 0);
-  } catch { return false; }
+    return (text.match(new RegExp(`\\p{Script=${likelyScript(tag)}}`, 'gu'))?.length ?? 0) * 2 > (text.match(/[\p{L}\p{M}]/gu)?.length ?? 0);
+  } catch { return false; } // 'Jpan', 'Hans' and 'Kore' are no Unicode script, nor ''
 }
 /** Whether a language is written in Latin letters, by its likeliest script. @param {string} tag */
-function latinTag(tag) {
-  try { return new Intl.Locale(tag).maximize().script === 'Latn'; } catch { return false; }
-}
+const latinTag = (tag) => likelyScript(tag) === 'Latn';
 
 /**
- * A line's BCP 47 tag, for its `lang`: a browser draws Han characters and a screen reader reads by it. From the writing system (scriptOf)
- * and the listed languages (listedFor). Latin text is never guessed (a wrong tag gives it a wrong voice): it and unsure text get '' and
- * inherit the screens'. byShiori: the language she answers in, where the text agrees with it; Han alone is taken for hers, if that is
- * Japanese. ui: the screens' language. Under screens not in Latin letters, a Latin line is the one listed Latin-script language if exactly
- * one is, else the one languageOf names from two of its words, else NO_LANGUAGE: never the screens'. Han that does not tell Simplified
- * from Traditional is Traditional under Traditional Chinese screens.
+ * A line's BCP 47 tag, for its `lang`: a browser draws Han characters and a screen reader reads by it. From the writing system (scriptOf,
+ * whose scale draws a line that is mostly Chinese, Japanese or Korean characters as what they are, a name in a Latin line too) and the one of
+ * theirs those characters are placed as (placed): Han that says neither Japanese nor Chinese is the screens' language when that is one of
+ * theirs, else the first of theirs written in Han; a script two of theirs share that nothing in the line tells, the first of them. Latin text
+ * is never guessed (a wrong tag gives it a wrong voice): it and unsure text get '' and inherit the screens'. byShiori: the language she
+ * answers in, where the text agrees with it; Han alone is taken for hers, if that is Japanese. ui: the screens' language. Under screens not in
+ * Latin letters, a Latin line is the one listed Latin-script language if exactly one is, else the one languageOf names from two of its words,
+ * else NO_LANGUAGE: never the screens'. Han that does not tell Simplified from Traditional is Traditional under Traditional Chinese screens.
  * @param {string} text @param {LanguageSettings} s @param {boolean} [byShiori] @param {string} [ui]
  */
 export function tagOf(text, s, byShiori = false, ui = 'en') {
-  const said = text.replace(/\b(?:https?:\/\/|www\.)\S+/gi, ' ');
+  const said = text.replace(URLS, ' ');
   const kind = scriptOf(said);
   const answer = byShiori ? s.answer : null;
   if (!kind) {
@@ -301,18 +417,24 @@ export function tagOf(text, s, byShiori = false, ui = 'en') {
     const named = guess ? LANGUAGES.find((l) => l.name === guess) : undefined;
     return named ? tagFor(named) : NO_LANGUAGE;
   }
-  const l = (answer && listedFor(kind, [answer])) || listedFor(kind, s.spoken);
+  // Chinese, Japanese or Korean is placed by those characters alone, so the Latin words around them don't make it a mixed line.
+  /* en */ const own = ['Chinese', 'Japanese', 'Korean'].includes(kind) ? (said.match(CJK) ?? []).join('') : said;
+  const placedAs = (answer && placed(own, { explicit: true, spoken: [answer], answer })) || placed(own, s);
+  const l = placedAs === EITHER
+    ? s.spoken.find((x) => HAN_SCRIPTS.includes(scriptOfLanguage(x)) && tagFor(x) === ui) ?? firstHan(s)
+    : placedAs ?? (kind === 'Chinese' ? null : s.spoken.find((x) => scriptOfLanguage(x) === likelyScript(SCRIPT_TAGS[kind])) ?? null);
   return kind === 'Chinese' ? hanTag(said, l, ui) : l ? tagFor(l) : SCRIPT_TAGS[kind];
 }
 
 /**
- * The locale browser voice uses: the answer language if she answers in one; else the listed language the sentence itself is written
- * in (kana: Japanese, Han: Chinese or Japanese...); else the first listed. Chinese whose characters say Simplified or Traditional takes a
- * voice of that script. @param {LanguageSettings} s @param {string} [text]
+ * The locale browser voice uses: the answer language if she answers in one; else the one of theirs the sentence is placed as (placed: with
+ * nothing chosen, a sentence plainly in another language than the phone's is read in that one), Han that says neither Japanese nor Chinese
+ * the first of theirs written in Han; else the first listed. Chinese whose characters say Simplified or Traditional takes a voice of that
+ * script. @param {LanguageSettings} s @param {string} [text]
  */
 export function speechLocale(s, text = '') {
-  const guess = languageOf(text);
-  const l = s.answer ?? (guess ? listedFor(guess, s.spoken, text) : null) ?? s.spoken[0];
+  const placedAs = s.answer ?? placed(text, s);
+  const l = (placedAs === EITHER ? firstHan(s) : placedAs) ?? s.spoken[0];
   // Chinese in the other script than the row's is read with a voice of its own script.
   const row = MANDARIN.includes(l.id) ? hanRow(text) : '';
   return row && row !== (traditional(l.locale) ? 'zh-Hant' : 'zh') ? /** @type {Language} */ (BY_ID.get(row)).locale : l.locale;

@@ -197,11 +197,12 @@ test("warm housekeeping, whose request still offers the model's own search (so t
   assert.match(instruction('event 12', 'English'), /Don't search the web now\./);
 });
 
-test("a few words in another script don't decide the language: the script must make up most of the letters; and a line of fewer than 3 words doesn't count (review A6)", async () => {
-  const { languageOf } = await import('../../src/core/agent/compaction.js');
-  assert.equal(languageOf('Is 一蘭 near 渋谷駅 still open tonight?'), 'English');
-  assert.equal(languageOf('Can we try the ラーメン place by the station?'), 'English');
-  assert.equal(languageOf('Is the Café Пушкин open on Sundays?'), 'English');
+test("a few words in another script don't decide the language: a name in kanji, kana or Cyrillic leaves an English line English; and a line of fewer than 3 words doesn't count (review A6; the summary reads placed since detector-next, languageOf the stray note)", async () => {
+  const { languageOf } = await import('../../src/core/languages.js');
+  for (const x of ['Is 一蘭 near 渋谷駅 still open tonight?', 'Can we try the ラーメン place by the station?', 'Is the Café Пушкин open on Sundays?']) {
+    assert.equal(languageOf(x), 'English', x);
+    assert.equal(summaryLanguage([x]), 'English, the language most of what the user wrote is in', x);
+  }
   assert.equal(languageOf('今日の夕食はどこにしますか'), 'Japanese');
   assert.equal(languageOf('我们今晚去哪里吃饭'), 'Chinese');
   assert.equal(languageOf('Где можно поужинать сегодня вечером?'), 'Russian');
@@ -289,7 +290,7 @@ test('with both Chinese listed, the summary is in the one the user wrote in, by 
 // row is named once, as the one most of the family's lines that tell are in (a line counting once however long, so one pasted text is one line among those that
 // tell, and decides when the typed lines tell nothing; the re-review's R1 and W2). Counted row by row, a split trip lost to a third language, and lines whose
 // characters tell nothing (the first listed) outvoted the Traditional ones that do.
-test("with both Chinese listed, their lines count as one language, and the row is the one most of their lines that tell are in (the review of summary-count-next, F4 and R1)", async () => {
+test("with both Chinese listed, their lines count as one language, and the row is the one most of their lines that tell are in (the review of summary-count-next, F4 and R1); with Cantonese listed between the rows, Traditional forms are the first listed language written in them, Cantonese (detector-next: forms tell no Cantonese from Mandarin, and order decides only the last fallback)", async () => {
   const { languageSettings } = await import('../../src/core/languages.js');
   const both = languageSettings({ languages: { spoken: ['zh', 'zh-Hant', 'en'] } }, 'en-US');
   const most = (/** @type {string} */ name) => `${name}, the language most of what the user wrote is in`;
@@ -317,10 +318,14 @@ test("with both Chinese listed, their lines count as one language, and the row i
   // The listed order, not the lines, places lines that tell nothing: with Traditional first, they are Traditional.
   const hantFirst = languageSettings({ languages: { spoken: ['zh-Hant', 'zh', 'en'] } }, 'en-US');
   assert.equal(summaryLanguage([e1, ...plain, e2, e1], hantFirst), most('Chinese (Traditional)'));
-  // One Chinese row listed, or Cantonese between them (not of the family): as before.
+  // One Chinese row listed: Traditional lines are that row.
   const simplified = languageSettings({ languages: { spoken: ['zh', 'en'] } }, 'en-US');
   assert.equal(summaryLanguage([e1, t1, t2, t1, e2], simplified), most('Chinese (Simplified)'), 'Traditional lines with only Simplified listed');
-  assert.equal(summaryLanguage([e1, s1, t1, s2, e2], languageSettings({ languages: { spoken: ['zh', 'yue', 'zh-Hant', 'en'] } }, 'en-US')), most('Chinese (Simplified)'), 'with Cantonese between them, the family is still the two Chinese rows');
+  // Cantonese between the rows (not of the family): a Traditional line with no character of Cantonese's own is the first listed language written in
+  // Traditional forms, Cantonese here (main: the Chinese family, since languageOf named it "Chinese" and the first listed row took it).
+  const between = languageSettings({ languages: { spoken: ['zh', 'yue', 'zh-Hant', 'en'] } }, 'en-US');
+  assert.equal(summaryLanguage([t1], between), most('Cantonese'));
+  assert.equal(summaryLanguage([e1, s1, t1, s2], between), most('Chinese (Simplified)'), 'the two Simplified lines are the family\'s, the Traditional one Cantonese\'s');
 });
 
 test('what the user said aloud counts for the summary\'s language, not only what they typed (review item 5, Step S7)', async () => {
@@ -432,15 +437,15 @@ test("most of the user's lines name the summary's language, not the newest: a cl
   assert.equal(summaryLanguage([e1, j1, spanish], both), most('Japanese'));
 });
 
-// Han characters alone say Chinese; a Japanese phone's 「大丈夫」 is Japanese: with nothing chosen the phone's language places them, as a listed
-// Japanese does (the final review of langs-next, F1).
-test("with nothing chosen, Han characters alone are the phone's Japanese, as with Japanese listed", async () => {
+// Han characters alone say Chinese; a Japanese phone's 「大丈夫」 is Japanese: with nothing chosen, Han that says neither joins the side with lines
+// of its own, and with none the phone's language takes it, as a listed Japanese does (the final review of langs-next, F1; detector-next).
+test("with nothing chosen, Han characters alone are the phone's Japanese, as with Japanese listed; a Chinese line on an English phone names its row, Chinese (Simplified) (detector-next: the summary is asked for in a row, never \"Chinese\")", async () => {
   const { languageSettings } = await import('../../src/core/languages.js');
   const ja = languageSettings({}, 'ja-JP');
   assert.equal(summaryLanguage(['大丈夫'], ja), 'Japanese, the language most of what the user wrote is in');
   assert.equal(summaryLanguage(['今日の夕食はどこにしますか', '大丈夫'], ja), 'Japanese, the language most of what the user wrote is in');
   assert.equal(summaryLanguage(['東京駅'], languageSettings({ languages: { spoken: ['en', 'ja'] } }, 'en-US')), 'Japanese, the language most of what the user wrote is in');
-  assert.equal(summaryLanguage(['我们今晚去哪里吃饭'], languageSettings({}, 'en-US')), 'Chinese, the language most of what the user wrote is in', 'no Japanese anywhere: Chinese');
+  assert.equal(summaryLanguage(['我们今晚去哪里吃饭'], languageSettings({}, 'en-US')), 'Chinese (Simplified), the language most of what the user wrote is in', 'no Japanese anywhere: Chinese, its row named');
   // 了解 is two words: it counts for nothing, and the phone's answer is Japanese for that reason.
   assert.equal(summaryLanguage(['了解'], ja), "Japanese, the language of the user's phone (nothing the user wrote names a language)");
 });
@@ -478,17 +483,19 @@ test("a line of fewer than 3 words counts for no language in the summary's", asy
   assert.equal(summaryLanguage([eat, '新宿', 'ok'], languageSettings({ languages: { spoken: ['en', 'ja'], answer: 'ja' } }, 'en-US')), 'Japanese, the language Shiori answers in');
 });
 
-// With nothing chosen the phone places a script several languages share, as a listed language does (R2 of the re-review of fix round 1: a proposed known
-// limitation, asked of the user; main said Russian for a Bulgarian line, Arabic for Persian, Chinese for a Chinese trip on a Japanese phone).
-test("with nothing chosen, a script several languages share is placed by the phone's language", async () => {
+// With nothing chosen the phone's language stands for its script, as a listed language does (the re-review of fix round 1: main said Russian for a
+// Bulgarian line, Arabic for Persian). Its R2 (a proposed known limitation, asked of the user: a Chinese trip on a Japanese phone came out Japanese) is
+// closed by placed (detector-next): a line whose writing shows another language than the phone's is that language.
+test("with nothing chosen, the phone's language stands for its script (Bulgarian, Persian, Serbian on their phones), and a line whose writing shows another language is that one: Simplified on a Taiwanese phone, Chinese on a Japanese phone (detector-next: the R2 question closed by measurement)", async () => {
   const { languageSettings } = await import('../../src/core/languages.js');
   const at = (/** @type {string} */ locale, /** @type {string[]} */ lines) => summaryLanguage(lines, languageSettings({}, locale));
   assert.equal(at('bg-BG', ['Къде можем да вечеряме тази вечер?']), 'Bulgarian, the language most of what the user wrote is in');
   assert.equal(at('bg-BG', ['Къде можем да вечеряме тази вечер?', 'ok']), 'Bulgarian, the language most of what the user wrote is in');
   assert.equal(at('fa-IR', ['امشب کجا شام بخوریم؟']), 'Persian, the language most of what the user wrote is in');
   assert.equal(at('sr-RS', ['Где можемо да вечерамо вечерас?']), 'Serbian, the language most of what the user wrote is in');
-  assert.equal(at('zh-TW', ['我们今晚去哪里吃饭']), 'Chinese (Traditional), the language most of what the user wrote is in');
-  assert.equal(at('ja-JP', ['我们今晚去哪里吃饭']), 'Japanese, the language most of what the user wrote is in', 'Han alone on a Japanese phone');
+  assert.equal(at('zh-TW', ['我们今晚去哪里吃饭']), 'Chinese (Simplified), the language most of what the user wrote is in', 'Simplified forms (main: the phone\'s Traditional)');
+  assert.equal(at('ja-JP', ['我们今晚去哪里吃饭']), 'Chinese (Simplified), the language most of what the user wrote is in', 'characters only Chinese writes (main: the phone\'s Japanese)');
+  assert.equal(at('ja-JP', ['東京駅', '大丈夫']), 'Japanese, the language most of what the user wrote is in', 'Han that says neither, on a Japanese phone: Japanese');
   // Not another phone's: a Russian line on an English phone is Russian, and Han characters alone on one are Chinese.
   assert.equal(at('en-US', ['Где можно поужинать сегодня вечером?']), 'Russian, the language most of what the user wrote is in');
   assert.equal(at('en-US', ['Къде можем да вечеряме тази вечер?']), 'Russian, the language most of what the user wrote is in');
