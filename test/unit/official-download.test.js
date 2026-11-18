@@ -101,9 +101,13 @@ async function siteOn(answer) {
       const body = res.body?.pipeThrough(new TransformStream({ transform: (part, out) => { out.enqueue(part); s.seen += part.length; } }));
       return new Response(body, res);
     },
-    close: () => {
+    // The 100 ms wait: Node's fetch can clear a finished test's timer after the next test's fake clock starts, and Node's mock clock
+    // (v26.13.1) then drops whatever timer holds that place in the new clock's queue; 100 ms let 24 runs side by side end their
+    // connections first (the re-read of dl-limit-next's round 2, 2026-11-17).
+    close: async () => {
       server.closeAllConnections();
       server.close();
+      await turns(() => false, 100);
     },
   };
   return s;
