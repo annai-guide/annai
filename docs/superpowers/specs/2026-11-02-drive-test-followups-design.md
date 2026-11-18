@@ -108,7 +108,7 @@ New:
   the stored alias key (`total: null` clears `cost` and `fields.total`). In a whole write a null is the same as no key, except
   `unsure`, which the format check refuses. An edit that adds an alias is refused naming the format's field. Legs appended with
   `flights+` move `end` to the last leg's arrival (booking-next: one with a time of arrival and no zone of its own is refused, as a whole
-  `flights` write is; a leg with no time of arrival still appends and leaves `end`). Appending (`x+`) to a stored value that is no list keeps that value as the first item.
+  `flights` write is; a leg with no time of arrival, or an airport as an object, still appends and leaves `end`; the last appended leg's arrival written as text that can't be placed, "HND" or "08:00", is refused). Appending (`x+`) to a stored value that is no list keeps that value as the first item.
 - **One rule for the place.** In a patch the place aliases merge into `place` like a JSON merge patch: a location (or a pick-up's
   location) is `place.name`, an address (or a pick-up's) is `place.address`, lat/lng are `place.lat/lng`; `address: null` is the address
   null and `location: null` is no place. A `place` of its own (object) merges with them, and different values for one part, or
