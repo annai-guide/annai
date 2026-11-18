@@ -1,6 +1,8 @@
 /**
- * A heard line that is a yes, or a no, by annai's own strict word lists, with no model involved (the timeline design, "Decided by the user, after
- * the spec check": "Yes, a strict word list"). Every clause of the line (set apart by punctuation: "Yes, go ahead.") must be on the list, as one word
+ * A line that is a yes, or a no, by annai's own strict word lists, with no model involved (the timeline design, "Decided by the user, after
+ * the spec check": "Yes, a strict word list"). A heard no declines annai's card (Agent.confirm); since the card is answered by tap only (2026-11-13)
+ * no heard yes answers it, and the yes list only tells a typed yes to the card from a line of the user's own (trip-tools' lastLine), and reads the
+ * realtime check's records (scripts/realtime). Every clause of the line (set apart by punctuation: "Yes, go ahead.") must be on the list, as one word
  * or two run together, as a transcript writes "yes go ahead" with no comma. No substring, so "yes but no", "okay, wait" and "yesterday" aren't;
  * three run together are a chant, and aren't either.
  * Each word has one meaning (the final review, 2026-11-10): off the yes list are いいです (to an offer it as often means "no thanks"), 嗯 (also
