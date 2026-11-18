@@ -455,18 +455,19 @@ test("an offer an earlier check found stays only when its site gave no answer (b
   const ADDRESS = 'https://gone.example/tide-pools/SKILL.md';
   const LINKED = 'https://gone.example/tide-pools/references/safety.md';
   const NEW = SKILL.replace('version: "1.2"', 'version: "1.3"');
-  /** The site now: what each address answers, by status or as a thrown error; the rest serves served. @type {Record<string, number | 'offline'>} */
+  /** The site now: what each address answers, by status, as a thrown error (offline) or a body that errors at once (cut); the rest serves served. @type {Record<string, number | 'offline' | 'cut'>} */
   let now = {};
   let served = SKILL;
   const get = async (/** @type {string} */ url) => {
     if (now[url] === 'offline') throw new TypeError('Failed to fetch');
+    if (now[url] === 'cut') return new Response(new ReadableStream({ start: (c) => c.error(new TypeError('network error')) }));
     return now[url] ? new Response('', { status: /** @type {number} */ (now[url]) }) : new Response(served);
   };
   const { host } = await hostKit();
   await host.install(await fetchPackage(ADDRESS, { fetch: get }), { source: 'url', url: ADDRESS });
   const check = () => checkPlugins(host, { addressFetch: get }, { official: false });
   const shown = (/** @type {{ found: any[] }} */ r) => r.found.map((u) => [u.id, u.installed, u.available]);
-  const cases = /** @type {[string, Record<string, number | 'offline'>, string | null, RegExp][]} */ ([
+  const cases = /** @type {[string, Record<string, number | 'offline' | 'cut'>, string | null, RegExp][]} */ ([
     ['404', { [ADDRESS]: 404 }, null, /^tide-pools couldn't be checked: gone\.example answered 404\.$/],
     ['410', { [ADDRESS]: 410 }, null, /answered 410\./],
     ['403', { [ADDRESS]: 403 }, null, /answered 403\./],
@@ -474,6 +475,7 @@ test("an offer an earlier check found stays only when its site gave no answer (b
     ['429', { [ADDRESS]: 429 }, 'keeps', /answered 429\./],
     ['503', { [ADDRESS]: 503 }, 'keeps', /answered 503\./],
     ['offline', { [ADDRESS]: 'offline' }, 'keeps', /annai couldn't reach gone\.example/],
+    ['an answer that is cut off', { [ADDRESS]: 'cut' }, 'keeps', /gone\.example's answer was cut off\./],
     ['a linked file answers 503', { [LINKED]: 503 }, 'keeps', /gone\.example answered 503 for references\/safety\.md/],
     ['a linked file is unreachable', { [LINKED]: 'offline' }, 'keeps', /annai couldn't read references\/safety\.md from gone\.example/],
   ]);
@@ -491,24 +493,25 @@ test("an offer an earlier check found stays only when its site gave no answer (b
   }
 });
 
-test("offers are listed in the order their plugins were installed, whichever order the checks found them in (a kept offer does not jump the queue)", async () => {
+test("offers are listed in the order their plugins were installed, not by name and not in the order the checks found them (a kept offer does not jump the queue)", async () => {
   const at = (/** @type {string} */ name) => `https://${name}.example/${name}/SKILL.md`;
   const skill = (/** @type {string} */ name, version = '1.2') => SKILL.replace('name: tide-pools', `name: ${name}`).replace('version: "1.2"', `version: "${version}"`);
   /** @type {Record<string, string>} */
-  const served = { [at('alpha')]: skill('alpha'), [at('beta')]: skill('beta') };
-  let betaDead = false;
+  const served = { [at('zeta')]: skill('zeta'), [at('alpha')]: skill('alpha') };
+  let alphaDead = false;
   const get = async (/** @type {string} */ url) => {
-    if (betaDead && url === at('beta')) throw new TypeError('Failed to fetch');
+    if (alphaDead && url === at('alpha')) throw new TypeError('Failed to fetch');
     return url in served ? new Response(served[url]) : new Response('', { status: 404 });
   };
   const { host } = await hostKit();
-  for (const n of ['alpha', 'beta']) await host.install(await fetchPackage(at(n), { fetch: get }), { source: 'url', url: at(n) });
-  served[at('beta')] = skill('beta', '1.3');
-  const ids = (/** @type {{ found: any[] }} */ r) => r.found.map((u) => u.id);
-  assert.deepEqual(ids(await checkPlugins(host, { addressFetch: get }, { official: false })), ['beta']);
+  // zeta first, so install order is neither alphabetical nor the order the checks find them in below.
+  for (const n of ['zeta', 'alpha']) await host.install(await fetchPackage(at(n), { fetch: get }), { source: 'url', url: at(n) });
   served[at('alpha')] = skill('alpha', '1.3');
-  betaDead = true;
-  assert.deepEqual(ids(await checkPlugins(host, { addressFetch: get }, { official: false })), ['alpha', 'beta'], 'beta stays offered while its site is down, after alpha, which was installed first');
+  const ids = (/** @type {{ found: any[] }} */ r) => r.found.map((u) => u.id);
+  assert.deepEqual(ids(await checkPlugins(host, { addressFetch: get }, { official: false })), ['alpha']);
+  served[at('zeta')] = skill('zeta', '1.3');
+  alphaDead = true;
+  assert.deepEqual(ids(await checkPlugins(host, { addressFetch: get }, { official: false })), ['zeta', 'alpha'], 'alpha stays offered while its site is down, after zeta, which was installed first (not by name, not as the checks found them)');
 });
 
 test("a check asks annai's catalog with its translations beside the addresses: a catalog that answers late and translations that go silent never hold the addresses, and a live address's update is found (addr-limit-next: the addresses were asked after them, so their silences added up past the check's 45 s)", async (t) => {

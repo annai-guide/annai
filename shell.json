@@ -1,5 +1,5 @@
 {
-  "build": "a60de3283b14",
+  "build": "de9c1b061594",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -57,7 +57,7 @@
     "/src/core/agent/via.js": "557657aae006",
     "/src/core/agent/warmth.js": "7f1be5368415",
     "/src/core/address.js": "d677ad7a10ba",
-    "/src/core/answer.js": "b9cc7562ac3e",
+    "/src/core/answer.js": "7b8727cfeda9",
     "/src/core/archive.js": "9f8253a64b2e",
     "/src/core/backup.js": "644832139162",
     "/src/core/backup-auto.js": "64ed2407b9ec",
@@ -295,7 +295,7 @@
     "/src/ui/trip-rows.js": "d3a7e6b5fd82",
     "/src/ui/tokens.css": "6610187f555d",
     "/src/ui/unlock.js": "c1b491262a90",
-    "/src/ui/updates.js": "c712bb0e2cf9",
+    "/src/ui/updates.js": "8a2131001517",
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",

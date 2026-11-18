@@ -469,6 +469,10 @@ test("a check that gave up at its time limit leaves the day's address check undo
   await turns(() => k.counts().address > 1 || again.state === 'done', 1000);
   assert.equal(k.counts().address, 2, 'the addresses are asked again');
   assert.equal(k.counts().catalog, 1, 'the catalog is not');
+  // Both requests to the dead address are still waiting: end them on this clock, or a later test's real one waits their 20 s.
+  t.mock.timers.tick(QUIET_MS);
+  await turns(() => again.state !== 'pending');
+  assert.equal(again.state, 'done', String(again.error?.message ?? 'still waiting'));
 });
 
 test("a check that finished asking the addresses is the day's address check: coming back asks them again only a day on, as before", async () => {
