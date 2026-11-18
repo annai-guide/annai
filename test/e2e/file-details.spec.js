@@ -411,7 +411,9 @@ test('a PDF Shiori read in the conversation: Delete keeps it under Deleted, and 
     await expect.poll(() => llm.bodies('/b/v1/messages').length, { timeout: 60_000 }).toBeGreaterThanOrEqual(2);
     expect(JSON.stringify(llm.bodies('/b/v1/messages')[1])).toContain('"type":"document"');
     await openTalk(page);
-    await expect(page.getByText('A stay at Hotel Aurora Test.')).toBeVisible({ timeout: 30_000 });
+    // In the conversation, not the page: the screen reader's hidden line holds the same words once her line comes after the panel is built (a strict-mode
+    // flake, about 1 run in 20 under load; reading-files.spec.js looks the same way).
+    await expect(page.locator('.convo').getByText('A stay at Hotel Aurora Test.')).toBeVisible({ timeout: 30_000 });
     await writeRecords(page, trip, { write: {
       '/bookings/stay.json': { id: 'stay', kind: 'lodging', status: 'confirmed', source: '/trip/files/booking.pdf', title: 'Hotel Aurora Test', unsure: [] },
       '/plan/check-in.json': { id: 'check-in', title: 'Check in', fixed: true, start: { at: '2026-11-20T15:00:00-09:00', tz: 'America/Anchorage' }, booking: '/bookings/stay.json' },
