@@ -23,7 +23,7 @@ import { t } from './l10n.js';
  *   item's own zones ('' when there is none, for an all-day item, and for a set's start); endDays: how many days after the row's day
  *   the end falls, on the end's own clock; endZone: the end's zone, named ("ET"), when its clock reads differently from the start's ('' when
  *   it doesn't, and when there is no end); set: the row is part of a set, of what kind (kindOf's: the item's own word annai knows, else its booking's); line: which day
- *   or night of how many (quiet lines); checkFields: the fields Shiori is unsure of, or of an old booking not confirmed, every part it has (checkOf's); missing: it names a booking the trip doesn't have; note: what was wrong with its time
+ *   or night of how many (quiet lines); checkFields: the fields Shiori is unsure of, or of an old booking not confirmed, every part it has (checkOf's); bookingPath and booking: the booking a row is or stands for, none for a plan item that is another thing than its booking (anotherThing), whose rows open the item and carry no checks of the booking's; missing: it names a booking the trip doesn't have; note: what was wrong with its time
  */
 
 export const LEG_MAX_KM = 1000; // farther than a day's drive: a flight, not a leg
@@ -100,18 +100,20 @@ export const kindWord = (k) => (typeof k === 'string' ? KINDS.get(k.trim().toLow
  */
 export const kindOf = (it, booking) => kindWord(it?.kind) ?? kindWord(booking?.kind) ?? '';
 /**
- * The kinds that carry the traveller, so one ends somewhere else than it starts: the Plan, Kokoro's view and Driving's strip end it with
- * "Arrive" and no place, and the reminders count what comes after it from nothing and wait for a fixed one.
+ * The kinds that carry the traveller, so one ends somewhere else than it starts: the Plan and Kokoro's view end it with "Arrive" and no
+ * place (Driving's strip lists places, so it leaves that end out), and the reminders count what comes after it from nothing and wait for a
+ * fixed one. A booking has no kind for a ferry, a bus or a coach: one of "other" takes it from a ride item linked to it (planRows).
  */
 export const CARRIERS = new Set(['flight', 'rail', 'ferry', 'bus', 'coach']);
 /** The kinds with a day, a place and an end of their own: a plan item of one on a booking of another is not that booking's (anotherThing). */
 const THINGS = new Set(['flight', 'rail', 'car', 'lodging']);
 /**
  * Whether a plan item is another thing than the booking it links: both are in THINGS and not the same (a car rental on a flight's
- * booking). It draws its own set, keeps its own end and stands for none of the booking's rows. Any other word for the booking (a ferry
- * on an "other" booking, a "meal" on its restaurant's) is the booking's thing. @param {any} it @param {any} booking
+ * booking). It draws its own set, keeps its own end, stands for none of the booking's rows, and carries none of the booking's marks: the
+ * Plan's rows (planRows) and the reminders' wakes (planWatches) both ask here. Any other word for the booking (a ferry on an "other"
+ * booking, a "meal" on its restaurant's) is the booking's thing. @param {any} it @param {any} booking
  */
-const anotherThing = (it, booking) => {
+export const anotherThing = (it, booking) => {
   const [a, b] = [kindOf(it, booking), kindOf(null, booking)];
   return a !== b && THINGS.has(a) && THINGS.has(b);
 };
@@ -243,9 +245,11 @@ export function planRows(items, bookings, { fallbackTz }) {
   for (const { path, item, ref, other } of own) {
     const booking = ref ? byPath.get(ref) ?? null : null;
     const span = setOf(item);
-    const marks = checkOf(booking);
+    // An item that is another thing than its booking is not that booking's: its rows carry no booking, so a tap opens the item and no chip
+    // counts the booking's facts. Its link stays in the file, and `missing` still reads it.
+    const held = other ? null : booking;
     const base = {
-      path, bookingPath: ref, booking, checkFields: marks.fields,
+      path, bookingPath: other ? null : ref, booking: held, checkFields: checkOf(held).fields,
       missing: item.booking !== undefined && item.booking !== '' && !booking,
     };
     const kind = kindOf(item, booking); // as the reminders read it: a car on a flight's booking is a car's set
@@ -260,7 +264,10 @@ export function planRows(items, bookings, { fallbackTz }) {
     const marks = checkOf(b);
     const title = typeof b.title === 'string' && b.title.trim() ? b.title : KIND_WORDS[b.kind] ?? t`Booking`;
     const place = record(b.place) ? b.place : undefined;
-    const kind = kindOf(null, b);
+    // A booking of kind "other" (the format has no kind for a ferry, a bus or a coach) is the ride a plan item linked to it says it is, so
+    // its end is an Arrive with no place (CARRIERS); with no such item it is the booking's own kind.
+    const ride = kindOf(null, b) === 'other' ? own.find((x) => x.ref === path && CARRIERS.has(kindOf(x.item, b))) : undefined;
+    const kind = kindOf(ride?.item, b);
     // A stay is always its check-in and its check-out (as before); anything else that ends on a later day, its start and its end.
     const split = kind === 'lodging' || setOf(b);
     const base = { path, bookingPath: path, booking: b, checkFields: marks.fields, missing: false };

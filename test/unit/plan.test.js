@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bookingRef, planRows, planDays, legKm, PLAN_FILE, BOOKING_FILE, beforeShiori, shioriUndos, NIGHTS_MAX, fixedWords, timeUnsure } from '../../src/core/plan.js';
 import { upcoming } from '../../src/core/now.js';
+import { detailsHref } from '../../src/ui/format.js';
 import { tripRows } from '../../src/ui/trip-rows.js';
 import { setWords } from '../../src/core/l10n.js';
 import { createMemoryStore } from '../fakes/store-memory.js';
@@ -663,5 +664,66 @@ test("an overnight ride of kind ferry, bus or coach ends as a flight's or train'
   for (const kind of ['hike', 'other', 'meal']) {
     const rows = planRows([ride(kind)], [], { fallbackTz: 'UTC' });
     assert.deepEqual([rows[1].item.place?.name, shown(rows)[1]], ['Shinjuku terminal', 'end@2026-11-21 06:30 Ends · Night ride to Osaka'], kind);
+  }
+});
+
+// kind-next's fix round 2.
+test("a ride booked as `other` (the booking format has no kind for a ferry) with times, and a ferry item linked to it, ends as a ride does: Arrive, no place, no leg to the breakfast, and Driving's strip doesn't list the port (the re-review of kind-next, R1)", async () => {
+  const { routeStrip } = await import('../../src/core/now.js');
+  const ticket = { path: '/bookings/ferry.json', booking: { id: 'ferry', kind: 'other', status: 'unverified', source: '/files/ferry.pdf', unsure: [], title: 'Ferry ticket', place: { name: 'Port A', lat: 35.65, lng: 139.8 },
+    start: { at: '2026-11-20T19:00:00-09:00', tz: AK }, end: { at: '2026-11-21T07:00:00-09:00', tz: AK } } };
+  const ferry = (/** @type {Record<string, any>} */ o = {}) => ({ path: '/plan/ferry.json', item: { id: 'ferry', title: 'Night ferry', kind: 'ferry', fixed: true, booking: '/trip/bookings/ferry.json',
+    start: { at: '2026-11-20T19:00:00-09:00', tz: AK }, place: { name: 'Port A', lat: 35.65, lng: 139.8 }, ...o } });
+  const breakfast = { path: '/plan/breakfast.json', item: { id: 'breakfast', title: 'Breakfast in Osaka', fixed: false, place: { name: 'Osaka cafe', lat: 34.69, lng: 135.5 }, start: { at: '2026-11-21T08:00:00-09:00', tz: AK } } };
+  const asleep = { lat: 35.1, lng: 136.9 }; // aboard near Nagoya
+  const end = { at: '2026-11-21T07:00:00-09:00', tz: AK };
+  for (const [what, o] of /** @type {[string, Record<string, any>][]} */ ([['no end of its own', {}], ['its own end', { end }]])) {
+    for (const kind of ['ferry', 'bus', 'coach']) {
+      const rows = planRows([ferry({ kind, ...o }), breakfast], [ticket], { fallbackTz: 'UTC' }).sort((a, b) => /** @type {number} */ (a.at) - /** @type {number} */ (b.at));
+      assert.deepEqual(shown(rows), ['item@2026-11-20 19:00 Night ferry', 'end@2026-11-21 07:00 Arrive · Ferry ticket', 'item@2026-11-21 08:00 Breakfast in Osaka'], `${kind}, ${what}`);
+      assert.deepEqual([rows[1].item.place, legKm(rows[1], rows[2])], [undefined, null], `${kind}, ${what}`); // no port, so no leg from it to the breakfast
+      assert.deepEqual(routeStrip(rows, asleep, Date.parse('2026-11-21T05:00:00-09:00'), 'driving').map((s) => s.name), ['Osaka cafe'], `${kind}, ${what}`);
+    }
+  }
+  // Only a booking of kind other takes a ride's word from an item: a shuttle linked to a stay's or a car's booking leaves its Check out and Return.
+  for (const [kind, last] of [['lodging', 'end@2026-11-21 07:00 Check out · Ferry ticket'], ['car', 'end@2026-11-21 07:00 Return · Ferry ticket']]) {
+    const rows = planRows([ferry({ kind: 'bus' })], [{ path: ticket.path, booking: { ...ticket.booking, kind } }], { fallbackTz: 'UTC' });
+    assert.equal(shown(rows.filter((r) => r.from === 'end')).join(), last, kind);
+  }
+  // A booking of kind other whose items say nothing of a ride (an event item, or none) keeps its "Ends" at the booking's place.
+  for (const items of [[], [ferry({ kind: 'event' })], [ferry({ kind: undefined })]]) {
+    const rows = planRows(items, [ticket], { fallbackTz: 'UTC' });
+    const last = rows.filter((r) => r.from === 'end')[0];
+    assert.deepEqual([last.set?.kind, last.item.place?.name, shown([last])[0]], ['other', 'Port A', 'end@2026-11-21 07:00 Ends · Ferry ticket'], JSON.stringify(items.map((x) => x.item.kind)));
+  }
+});
+
+test("a car rental linked to a flight's booking opens its own item and carries no check chip of the flight's: its rows have no booking, and the link it wrote stays (the second opinion on kind-next's fix round 1, findings 1 and 2)", () => {
+  const rows = planRows([rental()], [ua({ unsure: ['start'] })], { fallbackTz: 'UTC' });
+  const car = rows.filter((r) => r.path === '/plan/car.json');
+  assert.equal(car.length, 4, 'pick up, Return and two quiet lines');
+  for (const r of car) assert.deepEqual([r.bookingPath, r.booking, r.checkFields, r.missing], [null, null, [], false], r.from);
+  assert.deepEqual(car.filter((r) => r.set?.part !== 'line').map((r) => detailsHref('t1', r)), Array(2).fill('#/trip/t1/item?path=%2Fplan%2Fcar.json'));
+  // The flight's own row is the booking's, with its marks and its link, as before.
+  const [flight] = rows.filter((r) => r.path === '/bookings/ua.json');
+  assert.deepEqual([flight.bookingPath, flight.booking?.id, flight.checkFields.length > 0], ['/bookings/ua.json', 'ua', true]);
+  assert.equal(detailsHref('t1', flight), '#/trip/t1/booking?path=%2Fbookings%2Fua.json');
+  // The link the item wrote is still read: a car linked to a booking the trip doesn't have is missing.
+  assert.deepEqual(planRows([rental()], [], { fallbackTz: 'UTC' }).filter((r) => r.from !== 'line').map((r) => r.missing), [true, true]);
+  // A car on its own kind of booking is that booking's: its row carries it and opens it, as an item of the booking's thing does.
+  const hire = { path: '/bookings/ua.json', booking: { id: 'ua', kind: 'car', status: 'unverified', source: '/files/ua.pdf', unsure: ['start'], title: 'Car hire', start: { at: '2026-11-20T10:00:00-09:00', tz: AK } } };
+  const [pick] = planRows([rental()], [hire], { fallbackTz: 'UTC' });
+  assert.deepEqual([pick.bookingPath, pick.checkFields], ['/bookings/ua.json', ['start']]);
+});
+
+test("a car item on a booking of a kind outside the four (other, restaurant, event) is that booking's thing and stands for it, one row: the rule reads the booking's word too (the second opinion on kind-next's fix round 1, finding 4)", () => {
+  const book = (/** @type {string} */ kind) => ({ path: '/bookings/b.json', booking: { id: 'b', kind, status: 'unverified', source: '/files/b.pdf', unsure: ['start'], title: 'Transfer voucher',
+    start: { at: '2026-11-20T10:00:00-09:00', tz: AK }, end: { at: '2026-11-20T12:00:00-09:00', tz: AK } } });
+  const car = { path: '/plan/car.json', item: { id: 'car', title: 'Car rental', kind: 'car', fixed: true, booking: '/trip/bookings/b.json',
+    start: { at: '2026-11-20T10:00:00-09:00', tz: AK }, end: { at: '2026-11-20T12:00:00-09:00', tz: AK } } };
+  for (const kind of ['other', 'restaurant', 'event']) {
+    const rows = planRows([car], [book(kind)], { fallbackTz: 'UTC' });
+    assert.deepEqual(shown(rows), ['item@2026-11-20 10:00–12:00 Car rental'], kind);
+    assert.deepEqual([rows[0].bookingPath, rows[0].checkFields], ['/bookings/b.json', ['start']], kind); // it is the booking's own: it opens it and carries its marks
   }
 });
