@@ -1179,7 +1179,7 @@ qicqbg#other	ok	# trains	# 趟火车	src/ui/format.js:133	plural; # = n; English
 25ugc5	ok	Itinerary items from a calendar	来自日历的行程项目	src/ui/format.js:160	Note: what a calendar file (.ics) became; Plan is 行程.
 1gfvwcc	ok	Nothing yet	暂无	src/ui/format.js:161	Note: what a file became on the trip's Files: nothing so far.
 jgspu5	ok	Waiting for Shiori to read it	等待 Shiori 读取	src/ui/format.js:161	Note: a file on the trip's Files that Shiori hasn't read yet.
-1hlojji	ok	To	目的地	src/ui/format.js:172	context: booking; Note: a booking's detail: where a flight or train goes.
+1hlojji	ok	To	目的地	src/ui/format.js:172	context: booking; Note: a booking's detail: where a flight, train or ride goes, and where annai files an arrival's place (the key to).
 1uq5tvs	ok	Seat	座位	src/ui/format.js:172	Note: a booking's detail.
 1yz1r2o	ok	Cabin	舱位	src/ui/format.js:172	context: booking; Note: a flight's cabin class (economy, business).
 9ihsg5	ok	Airline	航空公司	src/ui/format.js:172	Note: a booking's detail.
@@ -1204,7 +1204,7 @@ vzzxl8	ok	Party size	用餐人数	src/ui/format.js:174	Note: how many people a r
 gc0vlk	ok	Phone number	电话号码	src/ui/format.js:175	Note: a booking's detail: a phone number annai filed from the booking.
 1c0as9p	draft	Total	总价	src/ui/format.js:176	Note: a booking's detail: a total Shiori kept in words ("about 120 USD incl. tax"), beside the booking's Cost.
 1mcv0ln	draft	Rooms	房间数	src/ui/format.js:176	Note: a booking's detail: how many rooms.
-1nfh0x4	draft	Arrival	到达	src/ui/format.js:176	context: booking; Note: a booking's detail: the arrival, where a ride's or flight's arrival ends or the time written for a stay's arrival (the key arrival); the same word as the booking's Arrives, which holds its day and time.
+1nfh0x4	draft	Arrival	到达	src/ui/format.js:176	context: booking; Note: a booking's detail: the arrival, what a model writes under the key arrival (a place or a time, such as a stay's 15:00–16:00); the same word as the booking's Arrives, which holds its day and time; annai files an arrival's place under To.
 1pdyg96	draft	Price	价格	src/ui/format.js:176	Note: a booking's detail: a price Shiori kept in words.
 87kvtu	draft	Carry-on	手提行李	src/ui/format.js:176	Note: a booking's detail, or a part of its bags: the bags taken on board (手提行李, the airlines' usual word).
 hvyiod	draft	Checked bags	托运行李	src/ui/format.js:176	Note: a booking's detail, or a part of its bags: the bags checked in (托运行李, the airlines' usual word).

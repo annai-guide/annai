@@ -1,5 +1,5 @@
 import { validZone, dayIn, instantAt } from '../core/time.js';
-import { checkOf, there, written, same, TOP } from '../core/bookings.js';
+import { checkOf, there, written, TOP } from '../core/bookings.js';
 import { BOOKING_FILE, PLAN_FILE, record, kindWord, CARRIERS } from '../core/plan.js';
 import { isGivenFile } from '../core/paths.js';
 import { TIMINGS } from '../core/backup-auto.js';
@@ -164,8 +164,8 @@ export function fileLine(became) {
 
 /**
  * Words for the keys Shiori writes most in a booking's `fields` (and inside them: a bag allowance's `checked` and `carry_on`, a leg's
- * `meal`), for those annai files there itself (bookings.js EXTRAS, `dropoff`, `arrival` where an arrival ends, which a model also writes a time
- * under: "Arrival", `total` and `price` a cost she gave in words), and for her instructions' example (`rooms`); any other key is shown as written. The same keys as Shiori's words for a
+ * `meal`), for those annai files there itself (bookings.js EXTRAS, `dropoff`, `to` where an arrival ends, `total` and `price` a cost she gave in words), for `arrival` (what a model writes
+ * there, a place or a time: "Arrival"), and for her instructions' example (`rooms`); any other key is shown as written. The same keys as Shiori's words for a
  * booking's parts (bookings.js partWords), so what she asks about has a line by that name.
  */
 export const FIELD_WORDS = /** @type {Record<string, string>} */ ({
@@ -312,13 +312,13 @@ export function bookingFacts(b, o = {}) {
       const f = own[key]();
       if (f?.value) {
         out.push({ key, label: f.label, value: f.value, unsure: f.unsure ?? marked.has(key), ...(f.zone ? { zone: f.zone } : {}) });
-        // A field named like a part of its own that drew is that line again when it says the same (one line, one check: its text is the part's
-        // line, or its value is the part's, an object that would draw as raw keys), and a line under the part's label, after it, when it says
-        // something else (confirmation "ABC123", the field "XYZ789 (e-ticket)"): nothing she wrote is hidden.
+        // A field named like a part of its own that drew, written as words, is that line again when its text is the part's line (one line, one check) and a line under the part's
+        // label, after it, when it says something else (confirmation "ABC123", the field "XYZ789 (e-ticket)"). One written as an object or a list is not drawn beside the part
+        // (raw keys: a partial place, a time in another zone, an extra key): the record keeps it, and Shiori reads it.
         if (TOP.includes(key) && has(key)) {
           shown.add(key);
-          const said = valueText(fields[key]);
-          if (said.trim() !== f.value.trim() && !same(fields[key], b[key])) out.push({ key, label: f.label, value: said, unsure: marked.has(key) });
+          const said = fields[key];
+          if (typeof said === 'string' && said.trim() !== f.value.trim()) out.push({ key, label: f.label, value: said, unsure: marked.has(key) });
         }
       } else if (f && TOP.includes(key) && has(key)) {
         // A part that drew nothing (the booking has none, or one that can't be drawn) and a field named like it (a real model wrote fields.place): the field is its line, as written, under its label.

@@ -65,3 +65,15 @@ test("bookingFacts in ja (booking-next): the keys of a booking's extras read as 
   const b = (/** @type {string} */ k, /** @type {string} */ day) => ({ kind: /** @type {const} */ ('booking'), bookingKind: k, path: `/bookings/${k}${day}.json`, title: '', at: null, day });
   assert.equal(fileLine([b('ferry', '2026-11-20'), b('bus', '2026-11-21'), b('bus', '2026-11-22'), b('coach', '2026-11-22')]), 'フェリー1便 · バス2便 · 長距離バス1便');
 });
+
+test("bookingFacts in ja (booking-next fix 2): a ferry Shiori writes with an arrival's time and place draws the time as 到着 and the place as 到着地, never 到着 twice (the place was filed under `arrival`, which reads 到着 too)", async () => {
+  const { shioriBooking, unalias } = await import('../../src/core/bookings.js');
+  const { BOOKING_SCHEMA } = await import('../../src/plugins/core-schemas/schemas.js');
+  const TOKYO = 'Asia/Tokyo';
+  const written = { id: 'b', kind: 'ferry', status: 'unverified', source: '/files/b.pdf', unsure: [], depart: { at: '2026-11-20T17:00', tz: TOKYO, location: 'Osaka port' }, arrive: { at: '2026-11-21T07:00', tz: TOKYO, location: 'Beppu port' } };
+  const stored = shioriBooking(undefined, unalias(written, { zones: [], schema: BOOKING_SCHEMA }), { schema: BOOKING_SCHEMA });
+  assert.deepEqual(stored.fields, { to: 'Beppu port' });
+  const f = bookingFacts(stored);
+  assert.deepEqual(f.filter((x) => ['end', 'to'].includes(x.key)).map((x) => [x.label, x.value]), [['到着', '11月21日(土) 7:00（JST）'], ['到着地', 'Beppu port']]);
+  assert.equal(new Set(f.map((x) => x.label)).size, f.length, 'no two lines under one label');
+});

@@ -69,8 +69,8 @@ export function checkOf(b) {
   terminal: 'the terminal', gate: 'the gate', train: 'the train', car: 'the car',
   // Inside the bags, and a leg's meal (booking-next: the keys the details drew in English).
   checked: 'the checked bags', carry_on: 'the carry-on bags', meal: 'the meal',
-  // The names annai files into `fields` itself (EXTRAS; `arrival` where an arrival ends, where a model also writes its time: "the arrival" fits
-  // both; `total` and `price` a cost she gave in words), and her instructions' example (`rooms`).
+  // The names annai files into `fields` itself (EXTRAS; `total` and `price` a cost she gave in words; `arrival` is the word a model writes
+  // itself, a place or a time: "the arrival" fits both), and her instructions' example (`rooms`).
   notes: 'the notes', room: 'the room', phone: 'the phone number', guests: 'the guests', passengers: 'the passengers', airline: 'the airline',
   company: 'the company', seat: 'the seat', flights: 'the flights', arrival: 'the arrival', total: 'the total', price: 'the price',
   rooms: 'the number of rooms',
@@ -191,7 +191,7 @@ function timeOf(name, v, beside, zones, to, far) {
   const { at, m } = w;
   if (!validZone(tz)) {
     /* en */ const why = arrives && !tz ? ` (the time of a flight, a train, a ferry, a bus or a coach is in the place it leaves or arrives, and an arrival can be in another time zone than the departure, so the arrival needs a tz of its own)` : far && !tz ? ` (the time of a flight, a train, a ferry, a bus or a coach is in the place it leaves or arrives, so the trip's time zone isn't assumed)` : zones.length > 1 ? ` (this trip has ${zones.join(', ')})` : '';
-    /* en */ throw new Error(`${name} ${JSON.stringify(raw)} has no time zone annai knows${why}: ${how}.${name.startsWith('flights[') ? (arrives ? ' Give the arrival its own "tz": the leg\'s "tz" is the zone it leaves in.' : ' Or give the leg a "tz".') : ''}`);
+    /* en */ throw new Error(`${name} ${JSON.stringify(raw)} has no time zone annai knows${why}: ${how}.${/^flights\+?\[/.test(name) ? (arrives ? ' Give the arrival its own "tz": the leg\'s "tz" is the zone it leaves in.' : ' Or give the leg a "tz".') : ''}`);
   }
   if (!m[5]) return { at: isoInZone(instantAt(at, tz), tz), tz };
   const given = m[6] ? (m[6] === '-' ? -1 : 1) * (+m[7] * 60 + +m[8]) : 0;
@@ -217,10 +217,14 @@ function eq(a, b) {
   return p && q ? Object.keys(p).length === Object.keys(q).length && Object.keys(p).every((k) => Object.hasOwn(q, k) && eq(p[k], q[k])) : Object.is(a, b);
 }
 
-/** The same value, or the same time (its instant and zone) written two ways. @param {unknown} a @param {unknown} b */
-export function same(a, b) {
+/**
+ * The same value, or the same time (its instant and zone) written two ways. A time with no offset is read in the zone it is written in
+ * (instantAt, the reading every screen uses), never the phone's, so whether two times conflict is the same on every phone.
+ * @param {unknown} a @param {unknown} b
+ */
+function same(a, b) {
   const [p, q] = [record(a), record(b)];
-  return eq(a, b) || Boolean(p && q && typeof p.at === 'string' && typeof q.at === 'string' && p.tz === q.tz && Date.parse(p.at) === Date.parse(q.at));
+  return eq(a, b) || Boolean(p && q && typeof p.at === 'string' && typeof q.at === 'string' && p.tz === q.tz && validZone(p.tz) && instantAt(p.at, p.tz) === instantAt(q.at, q.tz));
 }
 
 /**
@@ -288,14 +292,18 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
   const legs = fk ? (Array.isArray(own[fk]) ? own[fk] : fk.endsWith('+') ? [own[fk]] : []).map(record) : [];
   if (legs.length && legs.every(Boolean)) {
     // A flight leaves with its first leg and arrives with its last, unless this write says when; the legs are kept as written. A leg's tz is
-    // where it leaves: the arrival takes only its own. Legs appended by a patch only move the end, and only when the last can be placed.
+    // where it leaves: the arrival takes only its own, or is refused (a whole write's, and an appended leg's that has an arrival written).
+    // An appended leg with no arrival still appends, and the end stays as it was: it says no time to move it to.
     const [first, last, n] = [legs[0], legs[legs.length - 1], legs.length - 1];
     if (out.start == null && fk === 'flights') put(fk, 'start', timeOf('flights[0].departure', first?.departure ?? first?.depart, first?.tz ?? beside, zones, 'start', true));
     if (out.end == null) {
+      const arrival = last?.arrival ?? last?.arrive;
+      const o = record(arrival);
       try {
-        put(fk ?? '', 'end', timeOf(`flights[${n}].arrival`, last?.arrival ?? last?.arrive, undefined, zones, 'end', true));
+        put(fk ?? '', 'end', timeOf(`${fk}[${n}].arrival`, arrival, undefined, zones, 'end', true));
       } catch (e) {
-        if (fk === 'flights') throw e;
+        // An arrival with a time written (timeOf's own reading: its `at`, else its `time`, else the text) that can't be placed is refused.
+        if (fk === 'flights' || there(o ? o.at ?? o.time : arrival)) throw e;
       }
     }
   }
@@ -325,8 +333,9 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
     out.place = place;
   }
   for (const [k, where] of ends) {
-    // An end elsewhere than the place is kept in fields: a car's is its drop-off, whatever it was called; an arrival's, its arrival.
-    if (where !== (record(out.place)?.name ?? record(out.place)?.address) && !eq(where, out.place)) put(k, `fields.${/^arriv/.test(k) && what !== 'car' ? 'arrival' : 'dropoff'}`, where);
+    // An end elsewhere than the place is kept in fields: a car's is its drop-off, whatever it was called; an arrival's is where it arrives
+    // (`to`, read "To", 到着地: `arrival` is the word for a time, "Arrival" 到着, which the details draw beside it as "Arrives").
+    if (![record(out.place)?.name, record(out.place)?.address].includes(where) && !eq(where, out.place)) put(k, `fields.${/^arriv/.test(k) && what !== 'car' ? 'to' : 'dropoff'}`, where);
     named[k] = 'end';
   }
   for (const k of keys) {
@@ -383,6 +392,12 @@ export function shioriBooking(before, next, { schema, changes } = {}) {
   for (const k of ['start', 'end']) {
     const time = record(next[k]);
     if (typeof time?.at === 'string' && typeof time.tz === 'string' && !same(time, old?.[k])) timeOf(k, time, undefined, [], k, false);
+  }
+  // A booking is one stretch of time: a write that changes its start or its end must not leave the end before the start (a round trip's
+  // arrival and departure, written under one booking, came out with Nov 25 for its start and Nov 20 for its end). Instants, each in its own zone.
+  const [from, to] = [next.start, next.end].map((x) => (record(x) && validZone(record(x)?.tz) ? instantAt(record(x)?.at, record(x)?.tz) : NaN));
+  if (to < from && (!same(next.start, old?.start) || !same(next.end, old?.end))) {
+    /* en */ throw new Error(`end ${JSON.stringify(record(next.end)?.at)} is before start ${JSON.stringify(record(next.start)?.at)}: a booking is one stretch of time, so write the earlier time as start and the later as end (a round trip is two bookings, one for each way).`);
   }
   // `unsure+` on a booking with no unsure key adds to the parts marked now (checkOf), so the rest stay marked.
   const patch = record(changes);
