@@ -1759,8 +1759,8 @@ export class Agent {
     this.#setState('away', { detail: TIDYING });
     // What the user wrote and said since the last summary, the newest last, each line once, a heard line with its last words, as the recap reads them
     // (conversationLines): summaryLanguage leaves annai's own lines out and names the language most of those of 3 words or more are in. Read here,
-    // after the write-down above, so the words it just wrote count in the summary of the part they belong to. A line's words written after this summary
-    // are no new line for the next one: it counted here, by the words it had.
+    // after the write-down above, so the words it just wrote count in the summary of the part they belong to. Words written after this summary for a line
+    // of the part summarized are no new line for the next one: it counted here, by the words it had.
     const lines = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: [...USER_LINES], ...(latest ? { after: latest.data.to } : {}) }));
     const said = (await conversationLines(this.store, lines)).flatMap(({ text }) => (typeof text === 'string' ? [text] : []));
     const language = summaryLanguage(said, await this.#languages());
