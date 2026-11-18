@@ -198,12 +198,13 @@ test('an update from an address is offered after a reload and changes nothing un
   }
 });
 
-// Outside words end as sentences at the source (sentences-next): the failed-updates card joins two plugins' own words, each ended
-// once, and on Japanese screens a Latin end keeps its space before the next plugin's name ("…use it. rock-pools：…", not "it.rock-pools").
+// Outside words end as sentences at the source (sentences-next): on Japanese screens the failed-updates card keeps the space a Latin end
+// has before the next plugin's name ("…use it. rock-pools：…", not "it.rock-pools"). The words here are annai's own and end in "." already;
+// the ending of words with no stop of their own is pinned by the unit tests (a browser can't make a plugin throw words of its own here).
 for (const [locale, words] of /** @type {[string, Record<string, string> | null][]} */ ([['en-US', null], ['ja-JP', JA]])) {
   test.describe(`on ${locale} screens`, () => {
     test.use({ locale });
-    test("two updates that fail with words of their own share one card, each a sentence, the next plugin's name never glued to them", async ({ page }) => {
+    test("two updates that fail share one card, and a Latin end keeps its space before the next plugin's name", async ({ page }) => {
       const say = (/** @type {string} */ en) => words?.[key(en)] ?? en;
       const skill = (await fixtureFiles('tide-pools'))['SKILL.md'].toString();
       const as = (/** @type {string} */ name, /** @type {string} */ version, described = true) => file(Buffer.from(skill.replace('name: tide-pools', `name: ${name}`)

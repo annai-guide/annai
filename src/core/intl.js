@@ -18,8 +18,11 @@ function make(Ctor, options = {}) {
 
 /** A full stop or an ellipsis at a text's end (any closing quotes or brackets after it): a sentence that ends there. */
 const ENDED = /[。．！？!?.…][)\]）」』"'”’]*$/;
-/** A Latin word's own end ("20s.", "Found.", "wait…", `done?"`), and a text that starts with a Latin word ("Haiku", "(code 5)"). */
-const LATIN_END = /[\p{Script=Latin}\d][.!?…]+[)\]"'”’]*$/u;
+/**
+ * A Latin word's own end ("20s.", "Found.", "wait…", `done?"`, and a closer before the stop: "'high'.", "(see docs).", "100%."), and a
+ * text that starts with a Latin word ("Haiku", "(code 5)").
+ */
+const LATIN_END = /[\p{Script=Latin}\d][)\]"'”’%`]*[.!?…]+[)\]"'”’]*$/u;
 const LATIN_START = /^[^\p{L}\p{N}]*[\p{Script=Latin}\d]/u;
 /**
  * Sentences side by side, the empty and the blank left out: a message, so Chinese and Japanese drop the space. Every part but the last
@@ -37,11 +40,14 @@ export const sentenceGap = () => sentences('.', '.').replace(/[.\u2068\u2069]/g,
 /**
  * A text as a sentence of its own, ended as sentences() reads an end: a full stop after it (a 。 on Japanese and Chinese screens, so no
  * ASCII stop is left before a Japanese sentence or glued to a Latin name after it) unless it ends as one does (ENDED), so the
- * next sentence is joined as after any other; '' for no words, so no empty sentence is left. A plugin's error is no sentence.
+ * next sentence is joined as after any other; '' for no words, so no empty sentence is left. A plugin's error is no sentence. A colon
+ * left at the end (a frame made with blank words, "Starting failed: ") is dropped before the stop, so the frame reads as a sentence
+ * of its own ("Starting failed.") in every language and no caller keeps a second row for it; a third party's lead-in ("Steps:")
+ * before another part reads "Steps." too.
  * @param {string} text @param {boolean} [english] annai's English for a model and the log, whatever the screens' language: a "." always
  */
 export function asSentence(text, english = false) {
-  const s = text.trimEnd();
+  const s = text.trimEnd().replace(/\s*[:：]$/, '');
   return !s || ENDED.test(s) ? s : `${s}${!english && /^(ja|zh)(-|$)/.test(lang()) ? '。' : '.'}`;
 }
 

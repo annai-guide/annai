@@ -830,7 +830,7 @@ A plugin that reads it says `"api": 2` in its manifest: an annai from before `an
 | `annai.l10n.format.num(n, options?)` | a number as the language writes it (`Intl.NumberFormat` options: `{ style: 'percent' }`) |
 | `annai.l10n.format.size(bytes)` | a size by 1024s: "512 bytes", "2.0 kB", "12 MB" |
 | `annai.l10n.format.list(items, kind?)` | a list: `'and'` (the default), `'or'`, or `'plain'` (commas alone) |
-| `annai.l10n.format.sentences(...parts)` | sentences side by side, as the language writes them (no space in Chinese and Japanese), the empty left out; every part but the last is ended as a sentence where it has no stop of its own (a full stop, 。 in Chinese and Japanese), so an error's own words never run into the next sentence |
+| `annai.l10n.format.sentences(...parts)` | sentences side by side, as the language writes them (no space in Chinese and Japanese, except that a Latin end such as "in 20s." keeps its space before a Latin start such as "Haiku"), the empty left out; every part but the last is ended as a sentence where it has no stop of its own (a full stop, 。 in Chinese and Japanese; a colon left at its end is dropped for it, so a part "Steps:" before another reads "Steps."), so an error's own words never run into the next sentence |
 
 The formats are in the screens' language with the phone's region. More can come on request.
 
@@ -862,7 +862,8 @@ element carries your words' language when it isn't the screens', so a screen rea
 English is marked `lang="en"`.
 
 **Make whole sentences.** Write each message as one sentence or more, with its values as `${…}`; never glue fragments, never change a
-word's case in code, and join sentences with `annai.l10n.format.sentences(a, b)`, as Chinese and Japanese join them without a space.
+word's case in code, and join sentences with `annai.l10n.format.sentences(a, b)`, as Chinese and Japanese join them without a space
+(except between a Latin end and a Latin start, which keeps its space).
 A language change restarts annai, so words made in `activate` are right.
 
 ## Rules

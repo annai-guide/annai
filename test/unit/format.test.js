@@ -363,7 +363,9 @@ test('sentences: a part ending in an ellipsis (also inside a closing quote) ends
 });
 
 test("asSentence ends a text as a sentence: a full stop unless it ends in one or in an ellipsis; no words, no sentence", () => {
-  for (const [text, ended] of [['boom', 'boom.'], ['boom.', 'boom.'], ['boom\n', 'boom.'], ['Really?', 'Really?'], ['wait…', 'wait…'], ['wait…\n', 'wait…'], ['He said "wait…"', 'He said "wait…"'], ['止まりました。', '止まりました。'], ['', ''], [' \n', '']]) {
+  for (const [text, ended] of [['boom', 'boom.'], ['boom.', 'boom.'], ['boom\n', 'boom.'], ['Really?', 'Really?'], ['wait…', 'wait…'], ['wait…\n', 'wait…'], ['He said "wait…"', 'He said "wait…"'], ['止まりました。', '止まりました。'], ['', ''], [' \n', ''],
+    // A colon left at the end (a frame made with blank words) goes before the stop; one inside the text stays.
+    ['Starting failed:', 'Starting failed.'], ['Starting failed: ', 'Starting failed.'], ['Allowed values : \n', 'Allowed values.'], ['Note: see docs', 'Note: see docs.'], [':', '']]) {
     assert.equal(asSentence(text), ended, JSON.stringify(text));
   }
 });
@@ -373,7 +375,7 @@ test("asSentence follows the screens' language: Japanese and Chinese end a text 
   for (const ui of ['ja', 'zh-Hans', 'zh-Hant']) {
     as(ui);
     setWords(ui, join);
-    for (const [text, ended] of [['止まりました', '止まりました。'], ['boom', 'boom。'], ['boom\n', 'boom。'], ['止まりました。', '止まりました。'], ['boom.', 'boom.'], ['Really?', 'Really?'], ['好吗？', '好吗？'], ['wait…', 'wait…'], ['Error (code 5)', 'Error (code 5)。'], ['', ''], [' \n', '']]) {
+    for (const [text, ended] of [['止まりました', '止まりました。'], ['boom', 'boom。'], ['boom\n', 'boom。'], ['止まりました。', '止まりました。'], ['boom.', 'boom.'], ['Really?', 'Really?'], ['好吗？', '好吗？'], ['wait…', 'wait…'], ['Error (code 5)', 'Error (code 5)。'], ['', ''], [' \n', ''], ['起動に失敗しました：', '起動に失敗しました。'], ['Tide pools：', 'Tide pools。'], ['Starting failed:', 'Starting failed。']]) {
       assert.equal(asSentence(text), ended, `${ui} ${JSON.stringify(text)}`);
     }
     assert.equal(sentences(asSentence('Tide pools: boom'), asSentence('Rock pools: fail')), 'Tide pools: boom。Rock pools: fail。', ui);
