@@ -29,7 +29,7 @@ test("a Japanese or Chinese line with a place's name in Latin letters counts for
   for (const s of [listed(['en', 'zh', 'ja']), phone('en-US'), phone('ja-JP')]) {
     for (const x of ZH_LATIN) assert.equal(id(x, s), 'zh', `${x} ${s.spoken.map((l) => l.id)}`);
   }
-  // The entry's trip: two plain Japanese lines and five such lines (main, nothing chosen: French).
+  // The entry's trip: two plain Japanese lines and five such lines (main, nothing chosen: Spanish).
   const trip = [j1, j2, ...JA_LATIN, JA_LATIN[0]];
   for (const s of [phone('en-US'), listed(['en', 'ja']), listed(['en', 'zh', 'ja'])]) assert.equal(summaryLanguage(trip, s), most('Japanese'));
 });
@@ -68,12 +68,15 @@ test('a Japanese trip full of kanji place names is Japanese with a Chinese row l
   for (const s of [listed(['zh', 'ja', 'en']), listed(['zh', 'zh-Hant', 'ja'])]) assert.equal(summaryLanguage([...plain, s1, '大家好'], s), most('Chinese (Simplified)'));
 });
 
-test('with nothing chosen, a Chinese trip on a Japanese phone is Chinese (R2), Simplified on a Taiwanese phone Simplified, Russian on a Ukrainian phone Russian', () => {
+test('with nothing chosen, a Chinese trip on a Japanese phone is Chinese (R2), Simplified on a Taiwanese phone Simplified, and a Ukrainian phone stands for all Cyrillic', () => {
   assert.equal(summaryLanguage([s1, '我们明天去哪里', '好想去看夜景'], phone('ja-JP')), most('Chinese (Simplified)'), 'main: Japanese');
   // Its edge: only kanji lines on a Japanese phone are Japanese.
   assert.equal(summaryLanguage(['東京駅', '新宿駅前', '浅草寺'], phone('ja-JP')), most('Japanese'));
   assert.equal(summaryLanguage([s1, '我们明天去哪里'], phone('zh-TW')), most('Chinese (Simplified)'), 'main: Chinese (Traditional)');
-  assert.equal(summaryLanguage(['Где можно поужинать сегодня вечером?', 'Музей сегодня открыт?'], phone('uk-UA')), most('Russian'), 'main: Ukrainian');
+  // The check made Russian on a Ukrainian phone Russian; the final review's F2 reversed it (the main session's call): the phone stands for its script, as a Bulgarian or Serbian phone
+  // does, so Ukrainian with none of і ї є ґ (6.9% of real sentences of 5 words or more) is no longer Russian. A Russian line on a Ukrainian phone is read as the phone's too.
+  assert.equal(summaryLanguage(['Де ми можемо повечеряти?', 'Де знаходиться музей?', 'Дякую за допомогу'], phone('uk-UA')), most('Ukrainian'), 'the review: Russian');
+  assert.equal(summaryLanguage(['Где можно поужинать сегодня вечером?', 'Музей сегодня открыт?'], phone('uk-UA')), most('Ukrainian'), 'main: Ukrainian; the check: Russian');
   // The row is named with nothing chosen on a phone with no Chinese row (main: "Chinese", no script).
   assert.equal(summaryLanguage([s1], phone('en-US')), most('Chinese (Simplified)'));
 });
@@ -123,15 +126,17 @@ test('a listed language annai has no words for counts when it is the only one li
   assert.equal(summaryLanguage(['Tối nay chúng ta ăn ở đâu?', 'Bảo tàng hôm nay có mở cửa không?', e1], listed(['en', 'vi'])), most('Vietnamese'));
 });
 
-test('the edges option 1 takes (the design check\'s a to e), pinned', () => {
+test('the edges option 1 takes (the design check\'s a to e), pinned, as the final review and fix round 1 left them', () => {
   const three = listed(['en', 'zh', 'ja']);
-  // a. An English line with a kanji name has no grammar of its own to tell by: it is not counted (main: English).
-  assert.equal(id('Where is 新宿御苑?', three), null);
-  assert.equal(summaryLanguage(['Where is 新宿御苑?', 'Where is 新宿御苑?', j1], listed(['en', 'ja'])), most('Japanese'));
-  // b. With Japanese and Chinese both listed, a window of Chinese lines that tell nothing gets the first listed language (main: Chinese).
+  // a, revisited (fix round 1: the second reviewers, and the English trip is the traveller's own kind): an English line with a kanji name is English, since its Latin
+  // words name English (2 small words); a line whose Latin words name no language has no grammar of its own to tell by and is not counted (main: English).
+  assert.equal(id('Where is 新宿御苑?', three), 'en', 'the check: not counted');
+  assert.equal(id('Meet at 新宿 station at noon.', three), null);
+  assert.equal(summaryLanguage(['Where is 新宿御苑?', 'Where is 新宿御苑?', j1], listed(['en', 'ja'])), most('English'), 'the check: Japanese');
+  // b, revisited (Haiku-2's finding 4): with Japanese and Chinese both listed, a window of Han that tells nothing is the first of them written in Han, as the voice reads it (main: Chinese).
   assert.equal(id('大家好', three), 'either');
-  assert.equal(summaryLanguage(['大家好', '明天去京都'], three), 'English, the first language the user speaks (English, Chinese (Simplified) and Japanese)');
-  assert.equal(summaryLanguage(['大家好', '明天去京都'], listed(['ja', 'zh'])), 'Japanese, the first language the user speaks (Japanese and Chinese (Simplified))');
+  assert.equal(summaryLanguage(['大家好', '明天去京都'], three), most('Chinese (Simplified)'), 'the check: English, the first listed');
+  assert.equal(summaryLanguage(['大家好', '明天去京都'], listed(['ja', 'zh'])), most('Japanese'));
   // c. Nothing chosen, one small word of another language leaves a line unsure; two name it.
   assert.equal(id('Je voudrais un café', phone('en-US')), null);
   assert.equal(id('Je voudrais un café avec du lait', phone('en-US')), 'fr');
@@ -152,8 +157,9 @@ test('点 is no Simplified form: 「交差点」 on a Japanese phone, or with on
 });
 
 test("a line's tag: Han that says neither is the screens' language when that is one of theirs, else the first of theirs written in Han", () => {
-  // N2: with Chinese first and English screens, 東京駅 is still drawn as Chinese (東 is a Traditional form).
-  assert.equal(tagOf('東京駅', listed(['en', 'zh', 'ja'])), 'zh-Hant');
+  // N2: with Chinese first and English screens, 東京駅 is still drawn as Chinese, but in the listed row's own forms: 東, 時 and 間 are Japanese's too, so they say no row (fix round 1; main: zh-Hant).
+  assert.equal(tagOf('東京駅', listed(['en', 'zh', 'ja'])), 'zh-Hans');
+  assert.equal(tagOf('東京駅', listed(['en', 'zh-Hant', 'ja'])), 'zh-Hant', 'the listed row is Traditional');
   assert.equal(tagOf('東京駅', listed(['en', 'ja', 'zh'])), 'ja', 'main: zh-Hant');
   assert.equal(tagOf('東京駅', listed(['en', 'zh', 'ja']), false, 'ja'), 'ja', 'Japanese screens; main: zh-Hant');
   assert.equal(tagOf('骨架', listed(['ja', 'zh']), false, 'zh-Hans'), 'zh-Hans', 'Chinese screens');
@@ -168,7 +174,9 @@ test('writing tells a line by its writing alone: one scale (Chinese, Japanese an
   const cases = /** @type {[string, string][]} */ ([
     ['今日の夕食はどこにしますか', 'Jpan'], ['カレー', 'Jpan'], ['Los Angelesまで何時間？', 'Jpan'],
     ['我们今晚去哪里吃饭', 'zh'], ['我們今晚去哪裡吃飯', 'zh'], ['佢哋聽日去邊度', 'zh'], ['東京駅', 'Hani'], ['大家好', 'Hani'],
-    ['Where is 新宿御苑?', ''], ['iPhone 15 Pro 多少钱？', ''], ['Is 一蘭 near 渋谷駅 still open tonight?', 'Latn'],
+    // A line with Chinese, Japanese or Korean characters and Latin words is Latin only when its Latin words name a language (fix round 1; the pins were '' and ''):
+    ['Where is 新宿御苑?', 'Latn'], ['Where is 天安门?', 'Latn'], ['新宿 Shibuya Sky', ''], ['好想去 Golden Gate Bridge', ''], ['iPhone 15 Pro 多少钱？', 'zh'],
+    ['Is 一蘭 near 渋谷駅 still open tonight?', 'Latn'],
     ['안녕하세요 반갑습니다', 'Kore'], ['Где можно поужинать?', 'Cyrl'], ['امشب کجا شام بخوریم؟', 'Arab'], ['আমরা আজ রাতে কোথায় খাব?', 'Beng'],
     ['Is the Café Пушкин open on Sundays?', 'Latn'], ['https://example.com/kiyomizu', ''], ['42 · 7:30', ''], ['', ''],
   ]);
@@ -176,18 +184,246 @@ test('writing tells a line by its writing alone: one scale (Chinese, Japanese an
 });
 
 // The voice's second step (detector-next): her real sentences that show no language of their own are plan lines of names and times and short
-// headers; given the language of her reply so far her sentences got the right voice 98.7 to 99.0% of the time in every list order, against 96.3 to 99.0% without.
+// headers; given the language of her reply so far her sentences got the right voice 99.4 to 99.5% of the time in every list order of [en, ja] and [en, zh, ja], against 96.5 to 99.5% without
+// (the numbers of fix round 1; the first two commits: 98.7 to 99.0% against 96.3 to 99.0%).
 test("the phone's voice: a sentence that shows no language of its own takes the language of her reply so far", () => {
   const reply = '我们明天去故宫吧。';
   const jaFirst = listed(['en', 'ja', 'zh']);
   assert.equal(speechLocale(jaFirst, '明天比較滿：'), 'ja-JP', 'alone, Han that says neither is the first listed in Han');
-  assert.equal(speechLocale(jaFirst, '明天比較滿：', { before: reply }), 'zh-CN');
+  assert.equal(speechLocale(jaFirst, '明天比較滿：', { before: [reply] }), 'zh-CN');
   const three = listed(['en', 'zh', 'ja']);
   assert.equal(speechLocale(three, '下一站是 Golden Gate Bridge。'), 'en-US', 'alone, it shows nothing: the first listed');
-  assert.equal(speechLocale(three, '下一站是 Golden Gate Bridge。', { before: reply }), 'zh-CN');
-  assert.equal(speechLocale(three, '- 10:00–12:00 奇趣钟表博物馆（Pendulum Lane 12号）', { before: reply }), 'zh-CN');
+  assert.equal(speechLocale(three, '下一站是 Golden Gate Bridge。', { before: [reply] }), 'zh-CN');
+  assert.equal(speechLocale(three, '- 10:00–12:00 奇趣钟表博物馆（Pendulum Lane 12号）', { before: [reply] }), 'zh-CN');
   // A sentence that shows its own language keeps it; Han is never read in a voice not written in Han; a fixed answer language still wins.
-  assert.equal(speechLocale(three, 'Where should we eat?', { before: reply }), 'en-US');
-  assert.equal(speechLocale(jaFirst, '東京駅。', { before: 'We arrive at noon.' }), 'ja-JP');
-  assert.equal(speechLocale(languageSettings({ languages: { spoken: ['en', 'zh', 'ja'], answer: 'ja' } }, 'en-US'), '下一站是 Golden Gate Bridge。', { before: reply }), 'ja-JP');
+  assert.equal(speechLocale(three, 'Where should we eat?', { before: [reply] }), 'en-US');
+  assert.equal(speechLocale(jaFirst, '東京駅。', { before: ['We arrive at noon.'] }), 'ja-JP');
+  assert.equal(speechLocale(languageSettings({ languages: { spoken: ['en', 'zh', 'ja'], answer: 'ja' } }, 'en-US'), '下一站是 Golden Gate Bridge。', { before: [reply] }), 'ja-JP');
+});
+
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+// Fix round 1 of detector-next (the final review's F1 to F6 and the four second opinions, 2026-11-17). Each test below failed on the branch's first
+// two commits; the title names the finding.
+
+const three = listed(['en', 'zh', 'ja']);
+
+test('a line with Chinese, Japanese or Korean characters and Latin words is Latin only when its Latin words name a language: English with a kanji name is English, Han with a Latin name is not (Haiku-3 Fix B, Haiku-1 1B, Haiku-2 1 and 2)', () => {
+  // The English line with a name in kanji, in Chinese-only characters or in Hangul: English (main: English; the first commits: not counted, or Chinese).
+  for (const x of ['Where is 新宿御苑?', 'Where is 天安门?', 'Where is 东京站?', 'Where is 서울역?', 'Take the JR line from 東京駅 to 新宿駅 then 中野駅.', 'Is 東京駅 far from the hotel?', 'Is 浅草寺 open today?']) {
+    assert.equal(id(x, three), 'en', x);
+    assert.equal(id(x, listed(['ja', 'en'])), 'en', x);
+    assert.equal(id(x, phone('ja-JP')), 'en', `${x}: nothing chosen on a Japanese phone`);
+  }
+  // Han or kana with a Latin name that names no language is not English: it shows nothing (the first commits: English).
+  for (const x of ['新宿 Shibuya Sky', '東京 Tokyo Tower', '好想去 Golden Gate Bridge', '想去 Tokyo Tower', 'Meet at 新宿 station at noon.']) {
+    assert.equal(L.writing(x), '', x);
+    assert.equal(id(x, three), null, x);
+  }
+  // A trip of such Japanese lines is Japanese, in every setting where the one plain line counts (the first commits: English, from the Latin names).
+  const ja = ['新宿 Shibuya Sky', '東京 Tokyo Tower', '浅草 Sensoji', j2];
+  for (const s of [listed(['en', 'ja']), three, listed(['zh', 'en', 'ja']), phone('en-US'), phone('ja-JP')]) assert.equal(summaryLanguage(ja, s), most('Japanese'), s.spoken.map((l) => l.id).join());
+  // And a Chinese trip is Chinese by 你, 们, 哪 in its lines (the first commits: English).
+  const zh = ['好想去 Golden Gate Bridge', '想去 Tokyo Tower', '你好 Tokyo Tower 在哪里', s1];
+  for (const s of [three, listed(['zh', 'en', 'ja']), phone('en-US'), phone('zh-CN')]) assert.equal(summaryLanguage(zh, s), most('Chinese (Simplified)'), s.spoken.map((l) => l.id).join());
+  // The English trip with kanji names, which the check's edge a counted for nothing and the first commits for Japanese.
+  const en = ['Where is 新宿御苑?', 'Where is 浅草寺?', 'Take the JR line from 東京駅 to 新宿駅 then 中野駅.', j1];
+  for (const s of [three, listed(['en', 'ja']), listed(['ja', 'en']), listed(['ja', 'zh', 'en']), phone('en-US'), phone('ja-JP'), phone('zh-CN')]) assert.equal(summaryLanguage(en, s), most('English'), s.spoken.map((l) => l.id).join());
+  // The voice: her English sentence with kanji names, first in her reply, is in the English voice, not the first listed language's.
+  assert.equal(speechLocale(listed(['ja', 'en']), 'Take the JR line from 東京駅 to 新宿駅 then 中野駅.'), 'en-US', 'the first commits: ja-JP');
+  assert.equal(speechLocale(listed(['zh', 'en']), 'Where is 新宿御苑?'), 'en-US', 'the first commits: zh-TW, from 東');
+  // Kana is Japanese's grammar and a character only Chinese writes is Chinese's, whatever the Latin around them, when nothing in Latin names a language.
+  assert.equal(L.writing('Los Angelesまで何時間？'), 'Jpan');
+  assert.equal(L.writing('下一站是 Golden Gate Bridge。'), '', 'cjk 5 against 3 words, 17 letters: a name');
+  assert.equal(L.writing('我们明天去 Golden Gate Bridge 吗？'), 'zh');
+});
+
+test('Chinese lines with no character of the check\'s list carry one of 21 more: 请 钱 饭 为 让 觉 脑 确 认 设 项 应 类 图 边 办 进 种 层 运 张, which no Japanese line has (Haiku-3 finding 3)', () => {
+  for (const c of [...'请钱饭为让觉脑确认设项应类图边办进种层运张']) assert.equal(L.writing(`明天${c}`), 'zh', c);
+  assert.equal(L.writing('我想吃饭'), 'zh');
+  assert.equal(L.writing('请问这里怎么走'), 'zh');
+  assert.equal(L.writing('多少钱？'), 'zh');
+  // 后 and 无 are in Japanese's own character set (皇后), so they are left out; so are 的 and 是 (目的地, 是非).
+  for (const x of ['皇后', '后藤', '无', '目的地', '是非']) assert.notEqual(L.writing(x), 'zh', x);
+  // The check's other characters stay pinned: the 12 Traditional forms Japanese writes otherwise, and the small words, one by one.
+  for (const c of [...'說對關點發實經樣樂國會來']) assert.equal(L.writing(`明天${c}`), 'zh', c);
+  for (const c of ['你', '您', '她', '們', '這', '哪', '吗', '嗎', '呢', '吧', '么', '麼', '沒', '很', '啊', '佢', '哋']) assert.equal(L.writing(`明天${c}`), 'zh', c);
+  // A Chinese trip of such lines is Chinese in every list and on an English phone (the first commits: the first listed language, or the phone's).
+  const trip = ['我想吃饭', '请问这里怎么走', '多少钱？', '好想去看夜景', e1, 'Thank you so much!'];
+  for (const s of [three, listed(['ja', 'en', 'zh']), listed(['zh', 'en', 'ja']), phone('en-US'), phone('ja-JP')]) assert.equal(summaryLanguage(trip, s), most('Chinese (Simplified)'), s.spoken.map((l) => l.id).join());
+});
+
+test('no line of Japanese the project keeps is Chinese by its writing: the catalog\'s Japanese and the 33 kept Japanese runs (Haiku-3 finding 3: the list\'s reason)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const rows = readFileSync(new URL('../../l10n/ja.tsv', import.meta.url), 'utf8').split('\n').slice(1).map((r) => r.split('\t')[3]).filter(Boolean);
+  assert.ok(rows.length > 2000);
+  assert.deepEqual(rows.filter((x) => L.writing(x) === 'zh'), []);
+});
+
+test('the Simplified or Traditional row is taken from characters only for a line that is Chinese by its writing: Japanese kanji that share Traditional forms say none (Haiku-4 finding 3a, Haiku-1 Part A, Haiku-3 finding 5)', () => {
+  for (const x of ['東京駅', '時間', '電車', '開店', '見学', '東京駅 9:00 · 新宿 11:00']) assert.equal(L.hanRow(x), '', x);
+  assert.equal(L.hanRow('我們今晚去哪裡吃飯'), 'zh-Hant');
+  assert.equal(L.hanRow('我们今晚去哪里吃饭'), 'zh');
+  // The voice: with Chinese listed before Japanese a Han line that says neither takes the first listed Han language's own row, not zh-TW from 東 (the first commits).
+  for (const x of ['東京駅', '時間', '東京駅 9:00 · 新宿 11:00']) {
+    assert.equal(speechLocale(three, x), 'zh-CN', x);
+    assert.equal(speechLocale(listed(['en', 'zh-Hant', 'ja']), x), 'zh-TW', `${x}: its own row is Traditional`);
+    assert.equal(speechLocale(phone('zh-CN'), x), 'zh-CN', `${x}: a Simplified phone`);
+    assert.equal(speechLocale(listed(['zh', 'zh-Hant']), x), 'zh-CN', `${x}: the first listed Chinese row`);
+    assert.equal(speechLocale(listed(['ja', 'en', 'zh']), x), 'ja-JP', x);
+  }
+  // Characters that say a row still choose its voice, even with the other row listed first.
+  assert.equal(speechLocale(listed(['zh', 'zh-Hant']), '我們今晚去哪裡吃飯'), 'zh-TW');
+  assert.equal(speechLocale(listed(['zh-Hant', 'zh']), '我们今晚去哪里吃饭'), 'zh-CN');
+  // The tag: the same rule; 時間 is no Traditional evidence (the first commits: zh-Hant).
+  assert.equal(tagOf('時間', three), 'zh-Hans');
+  assert.equal(tagOf('時間', listed(['en', 'zh-Hant', 'ja'])), 'zh-Hant');
+  assert.equal(tagOf('我們今晚去哪裡吃飯', three), 'zh-Hant', 'characters that say Traditional');
+  assert.equal(tagOf('東京駅', phone('zh-CN')), 'zh-Hans', 'main: zh-Hant');
+  // The summary names the row from Chinese lines only, as it did (東京駅 is no vote).
+  assert.equal(summaryLanguage(['東京駅', '時間', s1], listed(['zh', 'zh-Hant', 'en'])), most('Chinese (Simplified)'));
+});
+
+test('with only Han that says neither, the summary is the first listed language written in Han, as the voice reads it; other lines still count (Haiku-2 finding 4)', () => {
+  const kanji = ['東京駅', '浅草寺', '新宿駅前'];
+  for (const [ids, name] of /** @type {[string[], string][]} */ ([[['en', 'zh', 'ja'], 'Chinese (Simplified)'], [['en', 'ja', 'zh'], 'Japanese'], [['en', 'zh-Hant', 'ja'], 'Chinese (Traditional)'], [['zh', 'ja'], 'Chinese (Simplified)'], [['ja', 'zh'], 'Japanese']])) {
+    assert.equal(summaryLanguage(kanji, listed(ids)), most(name), ids.join());
+    assert.equal(speechLocale(listed(ids), kanji[0]).split('-')[0], /** @type {Record<string, string>} */ ({ 'Chinese (Simplified)': 'zh', 'Chinese (Traditional)': 'zh', Japanese: 'ja' })[name], `the voice: ${ids.join()}`);
+  }
+  // Nothing chosen: the phone's, when it is written in Han, else the answer for no line at all.
+  assert.equal(summaryLanguage(kanji, phone('zh-TW')), most('Chinese (Traditional)'));
+  assert.equal(summaryLanguage(kanji, phone('ja-JP')), most('Japanese'));
+  assert.equal(summaryLanguage(kanji, phone('en-US')), "English, the language of the user's phone (nothing the user wrote names a language)");
+  // One English line beside them still counts, and the Han lines do not outvote it (they join no side).
+  assert.equal(summaryLanguage([e1, ...kanji], three), most('English'));
+});
+
+test('the join of Han that says neither, for a chosen list: it goes to the side with lines of its own, all of it, a tie to the newer, each of Japanese, Mandarin and Cantonese by itself (the final review F5)', () => {
+  const kanji = ['東京駅', '浅草寺', '新宿駅前'];
+  // Three English lines, one Japanese line and three kanji names: Japanese (4 against 3); without the join, English; adding 1 instead of 3, English.
+  assert.equal(summaryLanguage([e1, e2, 'Is it far from here?', j1, ...kanji], three), most('Japanese'));
+  assert.equal(summaryLanguage([e1, e2, 'Is it far from here?', ...kanji, j1], listed(['en', 'ja', 'zh'])), most('Japanese'));
+  // The Chinese side, by one line with 们 and two that tell nothing: Chinese.
+  assert.equal(summaryLanguage([e1, e2, s1, '大家好', '明天去京都'], three), most('Chinese (Simplified)'));
+  assert.equal(summaryLanguage([e1, e2, s1, '大家好', '明天去京都'], listed(['en', 'ja', 'zh'])), most('Chinese (Simplified)'));
+  // A tie of lines of their own goes to the newer: the kanji names follow it.
+  assert.equal(summaryLanguage([j1, s1, ...kanji, e1], listed(['ja', 'zh', 'en'])), most('Chinese (Simplified)'));
+  assert.equal(summaryLanguage([s1, j1, ...kanji, e1], listed(['zh', 'ja', 'en'])), most('Japanese'));
+  // Mandarin and Cantonese are two sides, not one: 2 + 2 against Japanese 3 is Japanese, and the kanji names follow it.
+  const yue = ['我哋今晚去邊度食飯', '佢哋聽日去邊度'];
+  assert.equal(summaryLanguage([...yue, s1, s2, j1, j2, '今日はいい天気です', '大家好', '明天去京都'], listed(['zh', 'yue', 'ja', 'en'])), most('Japanese'));
+  // The same, without Japanese: Cantonese's lines and Mandarin's tie, the newer wins them.
+  assert.equal(summaryLanguage([s1, s2, ...yue, '大家好'], listed(['zh', 'yue', 'ja'])), most('Cantonese'));
+  assert.equal(summaryLanguage([...yue, s1, s2, '大家好'], listed(['zh', 'yue', 'ja'])), most('Chinese (Simplified)'));
+});
+
+test('her reply so far is the first earlier sentence that shows a language, for Han that says neither the first written in Han, not a reading of the sentences joined (the final review F1, Haiku-2 finding 3)', () => {
+  // The English reply that names Japanese places: a name with hiragana early on no longer makes the English sentences Japanese, and the plan lines take the Han language heard.
+  const reply = ['Sure, here is the plan.', '・18:30 すき家 新宿三丁目店', 'Take the JR 山手線 from 上野駅 to 新宿駅.', 'Dinner is at 一蘭 渋谷店.', '新宿御苑 closes at 16:30.'];
+  assert.equal(speechLocale(three, reply[3], { before: reply.slice(0, 3) }), 'en-US', 'the first commits: ja-JP, from the hiragana of すき家 in the joined text');
+  assert.equal(speechLocale(three, reply[4], { before: reply.slice(0, 4) }), 'en-US', 'the first commits: ja-JP');
+  assert.equal(speechLocale(three, '・10:00 浅草寺', { before: reply }), 'ja-JP', 'the Han language already heard in her reply: main and the first commits, zh-CN');
+  assert.equal(speechLocale(three, '・10:00 浅草寺', { before: ['Sure, here is the plan.'] }), 'zh-CN', 'no Han heard: the first listed in Han');
+  // The first that shows one, not the joined text: one Chinese sentence and two Japanese ones read joined are Japanese; the first is Chinese.
+  const mixed = ['我们明天去故宫吧。', '今日は晴れです。', '今日は雨です。'];
+  assert.equal(speechLocale(three, '10:00 東京駅', { before: mixed }), 'zh-CN', 'the first commits: ja-JP');
+  assert.equal(speechLocale(three, '10:00 東京駅', { before: [...mixed].reverse() }), 'ja-JP');
+  // A sentence that shows nothing takes any language of the reply; Han that says neither takes only one written in Han.
+  assert.equal(speechLocale(three, '10:00–12:00', { before: ['Where should we eat?'] }), 'en-US');
+  assert.equal(speechLocale(three, '東京駅', { before: ['Where should we eat?'] }), 'zh-CN', 'English is not written in Han: the first listed in Han');
+});
+
+test('with nothing chosen a sentence in the phone\'s script is read in the phone\'s voice; Ukrainian with none of і ї є ґ on a Ukrainian phone is Ukrainian (the final review F2)', () => {
+  // The voice: a Dutch phone's Dutch sentence has "is" and "open" in it (the first commits: en-US), a Slovenian phone's has "je" (fr-FR).
+  assert.equal(speechLocale(phone('nl-NL'), 'Het museum is open.'), 'nl-NL', 'the first commits: en-US');
+  assert.equal(speechLocale(phone('sl-SI'), 'Datoteka je pokvarjena, zato je ni mogoče predvajati.'), 'sl-SI', 'the first commits: fr-FR');
+  assert.equal(speechLocale(phone('ca-ES'), 'Aquest és el nostre museu.'), 'ca-ES');
+  assert.equal(speechLocale(phone('en-US'), 'Je voudrais un café avec du lait'), 'en-US', 'another language of the same script: the phone\'s voice, as main');
+  // A sentence in another script is still read as what it is (Japanese replies on an English phone), and a plan line takes her reply's language only where it shows none.
+  assert.equal(speechLocale(phone('en-US'), '明日の予定です。'), 'ja-JP');
+  assert.equal(speechLocale(phone('ur-PK'), 'Where should we eat tonight?'), 'en-US');
+  assert.equal(speechLocale(phone('nl-NL'), '10:00–12:00', { before: ['Waar gaan we eten?'] }), 'nl-NL');
+  // The summary, tag and voice on a Ukrainian phone: Cyrillic is Ukrainian (the check: Russian), by the phone standing for its script.
+  const uk = phone('uk-UA');
+  for (const x of ['Де ми можемо повечеряти?', 'Дякую за допомогу', 'Где можно поужинать сегодня вечером?']) {
+    assert.equal(id(x, uk), 'uk', x);
+    assert.equal(speechLocale(uk, x), 'uk-UA', x);
+    assert.equal(summaryLanguage([x], uk), most('Ukrainian'), x);
+  }
+  // A Russian phone keeps Russian, with Ukrainian's own letters Ukrainian; a Bulgarian phone is Bulgarian.
+  assert.equal(id('Где можно поужинать?', phone('ru-RU')), 'ru');
+  assert.equal(id('Де ми будемо вечеряти ввечері?', phone('ru-RU')), 'uk');
+  assert.equal(id('Къде можем да вечеряме тази вечер?', phone('bg-BG')), 'bg');
+  // Summary of French lines on an English phone: French (two small words name it); the voice reads them in the phone's voice, as it did on main.
+  assert.equal(summaryLanguage(['Je voudrais un café avec du lait', 'Nous sommes à Paris avec les enfants', 'Où est le musée, s\'il vous plaît?'], phone('en-US')), most('French'));
+});
+
+test('a script two listed languages share, with nothing telling them apart, is read in the first listed language written in it, not the first listed language of any script (the final review F3)', () => {
+  const ru = 'Где можно поужинать сегодня вечером?';
+  assert.equal(speechLocale(listed(['en', 'ru', 'bg']), ru), 'ru-RU', 'the first commits: en-US, every Russian sentence');
+  assert.equal(speechLocale(listed(['en', 'bg', 'ru']), ru), 'bg-BG');
+  assert.equal(speechLocale(listed(['ja', 'ru', 'en', 'bg']), ru), 'ru-RU');
+  // A Latin sentence under [ja, en, tr], where nothing tells English from Turkish: the first Latin language, not the Japanese voice (the first commits).
+  assert.equal(speechLocale(listed(['ja', 'en', 'tr']), 'Bu akşam nerede yemek yiyebiliriz?'), 'en-US');
+  assert.equal(speechLocale(listed(['ja', 'en', 'tr']), 'Where should we eat tonight?'), 'en-US');
+  assert.equal(speechLocale(listed(['ja', 'tr', 'en']), 'Bu akşam nerede yemek yiyebiliriz?'), 'tr-TR');
+  // A sentence that shows no script still takes the first listed language.
+  assert.equal(speechLocale(listed(['ja', 'en', 'tr']), '10:00–12:00'), 'ja-JP');
+  // Han that says neither is the first of theirs written in Han, as before.
+  assert.equal(speechLocale(listed(['en', 'ja', 'zh']), '東京駅'), 'ja-JP');
+});
+
+test('two listed Latin-script languages that both have small-word lists: one small word of one and none of the other\'s names the line; otherwise two (the final review F4)', () => {
+  const es = listed(['en', 'es']);
+  assert.equal(id('¿Quieres cenar ahora?', es), 'es', 'the mark ¿ is one word of Spanish');
+  assert.equal(speechLocale(es, '¿Quieres cenar ahora?'), 'es-ES', 'the first commits: en-US');
+  assert.equal(speechLocale(es, 'Take the bus.'), 'en-US');
+  assert.equal(speechLocale(listed(['es', 'en']), 'Take the bus.'), 'en-US', 'one small word of English, none of Spanish');
+  assert.equal(speechLocale(listed(['ja', 'en', 'es']), 'Take the bus.'), 'en-US', 'the first commits: ja-JP');
+  for (const [ids, x, locale] of /** @type {[string[], string, string][]} */ ([[['en', 'fr'], 'Merci beaucoup', 'fr-FR'], [['en', 'de'], 'Danke schön, bitte', 'de-DE'], [['en', 'it'], 'Grazie, ciao', 'it-IT']])) assert.equal(speechLocale(listed(ids), x), locale, x);
+  // The summary of a Spanish window whose lines each carry one small word (the first commits: the first listed language, English).
+  const spanish = ['Gracias por la ayuda', 'Muchas gracias amigo', 'Gracias, hasta mañana'];
+  assert.equal(summaryLanguage(spanish, es), most('Spanish'));
+  assert.equal(summaryLanguage(spanish, listed(['es', 'en'])), most('Spanish'));
+  // The cost, as on main: "Los Angeles hotel" is Spanish when Spanish is listed beside English, English with English alone or with Japanese.
+  assert.equal(id('Los Angeles hotel', es), 'es');
+  assert.equal(id('Los Angeles hotel', listed(['en', 'ja'])), 'en');
+  // With a listed Latin-script language that has no list (Turkish, Polish), a line must carry two small words, as built.
+  assert.equal(id('Gracias por la ayuda', listed(['en', 'es', 'tr'])), null);
+  assert.equal(id('Gracias por todo, amigo', listed(['en', 'es', 'tr'])), null);
+  assert.equal(id('Muchas gracias por la ayuda', listed(['en', 'es', 'tr'])), null, 'one word of Spanish and none of English is still one');
+  assert.equal(id('Muchas gracias. Hola, muy bien', listed(['en', 'es', 'tr'])), 'es', 'three words');
+  // Nothing chosen: two, as built.
+  assert.equal(id('Gracias por la ayuda', phone('en-US')), null);
+});
+
+test('a line names Vietnamese only by a mark only Vietnamese writes (ơ, ư, a tone mark), not by â ê ô đ that French, Romanian and Portuguese share (Haiku-1 finding 2)', () => {
+  const en = phone('en-US');
+  for (const x of ['Bienvenue à l\'hôtel, c\'est près de la gare.', 'Mâine mergem la Iași, este lângă gară.', 'Crêpes pour tout le monde']) {
+    assert.notEqual(id(x, en), 'vi', x);
+    assert.notEqual(id(x, phone('ja-JP')), 'vi', `${x}: a Japanese phone`);
+  }
+  assert.doesNotMatch(summaryLanguage(['Bienvenue à l\'hôtel, c\'est près de la gare.', 'Mâine mergem la Iași, este lângă gară.', 'Crêpes pour tout le monde'], en), /^Vietnamese/, 'the first commits: Vietnamese, the language most of what the user wrote is in');
+  assert.equal(speechLocale(en, 'Bienvenue à l\'hôtel, c\'est près de la gare.'), 'en-US', 'the first commits: vi-VN');
+  // Its own marks still name it, with nothing chosen and listed.
+  assert.equal(id('Chưa biết', en), 'vi');
+  assert.equal(id('Tối nay chúng ta ăn ở đâu?', listed(['en', 'vi'])), 'vi');
+  assert.equal(summaryLanguage(['Tối nay chúng ta ăn ở đâu?', 'Bảo tàng hôm nay có mở cửa không?', 'Cảm ơn bạn rất nhiều'], en), most('Vietnamese'));
+});
+
+test('writing: the Latin threshold, the name rule\'s edge and a script two share, pinned one by one (Haiku-3 finding 7, the final review)', () => {
+  // A line that is half Latin and half Cyrillic has no majority.
+  assert.equal(L.writing('ab ЖЖ'), '');
+  assert.equal(L.writing('abc ЖЖ'), 'Latn');
+  // The name rule's edge: as many characters as Latin letters is a name; one more is the line's.
+  assert.equal(L.writing('abcd 新宿御苑'), '', '4 characters, 4 letters: a name');
+  assert.equal(L.writing('abc 新宿御苑'), 'Hani', '4 characters, 3 letters');
+  assert.equal(L.writing('目的地'), 'Hani', '的 is no Chinese-only character');
+  // Two listed Cyrillic languages and a line nothing tells apart: none of theirs.
+  assert.equal(id('Къде можем да вечеряме тази вечер?', listed(['bg', 'ru'])), null);
+  assert.equal(id('Къде можем да вечеряме тази вечер?', listed(['bg'])), 'bg');
+  // The tag places the characters alone: 「東京駅 Tokyo Station」 is Japanese with Japanese listed, though its line names none.
+  assert.equal(tagOf('東京駅 Tokyo Station', listed(['en', 'ja'])), 'ja');
+  assert.equal(tagOf('時間 Tokyo', listed(['en', 'ja'])), 'ja');
+  // 你, 您 and 她 are Chinese's.
+  for (const x of ['你好', '您好', '她好']) assert.equal(L.writing(x), 'zh', x);
 });

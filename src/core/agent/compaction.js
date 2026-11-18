@@ -1,6 +1,6 @@
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 import { NO_WORDS } from '../handover.js';
-import { EITHER, LANGUAGES, MANDARIN, hanRow, languageSettings, named, placed, units, writing } from '../languages.js';
+import { EITHER, LANGUAGES, MANDARIN, firstHan, hanRow, languageSettings, named, placed, units } from '../languages.js';
 import { nativeOverlap } from '../llm/contract.js';
 
 /**
@@ -96,8 +96,8 @@ const APP = languageSettings({}, 'en-US');
  * written in more recently. No one line decides: a trip's lines are also a closing "Thank you so much!", a place's name, a pasted booking, a
  * tap on a card or a misheard line, and each is one line among the rest (the edge: five English lines then two Japanese are English).
  * Lines of Han that say neither Japanese nor Chinese (a kanji place name; 大家好) join whichever of those has the most lines of its own (a tie:
- * the newer), so a Japanese trip full of kanji names stays Japanese and a Chinese trip Chinese; with none, the phone's when nothing is chosen
- * and it is one of them, else no one. Both Chinese rows, Simplified and Traditional, are one language here (a trip in both is Chinese), and
+ * the newer), so a Japanese trip full of kanji names stays Japanese and a Chinese trip Chinese; with none, they are the first of theirs written
+ * in Han (the voice's rule: with nothing chosen the phone's, when it is one) where no other line counts, else no one's. Both Chinese rows, Simplified and Traditional, are one language here (a trip in both is Chinese), and
  * the row is the one most of the lines that are Chinese by their own characters are in, a line once however long: a tie goes to the newer;
  * none telling, the first listed Chinese row (nothing chosen: the phone's, else Simplified). With no line counted: the first they speak, or
  * with nothing chosen the same answer as for her first message in a conversation (languagesText), the phone's (with no settings given, the
@@ -114,7 +114,7 @@ export function summaryLanguage(said, languages) {
   const count = new Map();
   /** @param {string} k @param {import('../languages.js').Language} l @param {number} at @param {number} [n] */
   const add = (k, l, at, n = 1) => { const c = count.get(k); count.set(k, { n: (c?.n ?? 0) + n, last: Math.max(c?.last ?? -1, at), l: c?.l ?? l }); };
-  /** The Chinese lines that are Chinese by their own characters, whose forms name the row. @type {string[]} */
+  /** The lines counted as Chinese, whose forms name the row where they are Chinese by their own characters (hanRow). @type {string[]} */
   const mandarin = [];
   /** Where each line of Han that says neither is. @type {number[]} */
   const either = [];
@@ -122,13 +122,14 @@ export function summaryLanguage(said, languages) {
     const l = units(x) >= 3 ? placed(x, s) : null;
     if (l === EITHER) either.push(at);
     else if (l) add(key(l), l, at);
-    if (l && l !== EITHER && key(l) === MANDARIN_KEY && writing(x) === 'zh') mandarin.push(x);
+    if (l && l !== EITHER && key(l) === MANDARIN_KEY) mandarin.push(x);
   });
   /** The language a key has the most lines, ties to the newer: k1 beats k2. @param {string} k1 @param {string} k2 */
   const beats = (k1, k2) => { const [a, b] = [count.get(k1), count.get(k2)]; return !!a && (!b || a.n > b.n || (a.n === b.n && a.last > b.last)); };
   if (either.length) {
     const side = HAN_KEYS.reduce((best, k) => (beats(k, best) ? k : best), '');
-    const home = s.explicit ? null : s.spoken.find((l) => HAN_KEYS.includes(key(l)));
+    // No line of Japanese or Chinese of its own: the first of theirs written in Han, as the voice reads them (principle 10), where nothing else counts (nothing chosen: the phone's).
+    const home = s.explicit && count.size ? null : firstHan(s);
     if (side) add(side, /** @type {any} */ (count.get(side)).l, /** @type {number} */ (either.at(-1)), either.length);
     else if (home) add(key(home), home, /** @type {number} */ (either.at(-1)), either.length);
   }

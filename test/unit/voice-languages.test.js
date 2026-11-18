@@ -104,6 +104,19 @@ test('the browser voice reads a sentence that shows no language of its own in th
   assert.equal(k.platform.said.at(-1).lang, 'ja-JP', 'a reply of its own: nothing before it, the first listed in Han');
 });
 
+// The speaker hands the browser voice the sentences before this one, and the language of her reply is the first that shows one, not a reading of them
+// joined (the final review F1): a Chinese sentence and two Japanese ones read joined are Japanese, and 「10:00 東京駅」 shows none of its own.
+test('the browser voice reads a sentence that shows none in the language of the first earlier sentence that shows one, not of the earlier ones joined', async () => {
+  const k = await kit({ speechOut: ['browser-voice'] });
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'zh', 'ja'] } });
+  await k.voice.say('Sure, here is the plan. ・18:30 すき家 新宿三丁目店。Dinner is at 一蘭 渋谷店.');
+  await k.voice.say('我们明天去故宫吧。今日は晴れです。今日は雨です。10:00 東京駅');
+  assert.deepEqual(k.platform.said.map((s) => [s.text, s.lang]), [
+    ['Sure, here is the plan.', 'en-US'], ['・18:30 すき家 新宿三丁目店。', 'ja-JP'], ['Dinner is at 一蘭 渋谷店.', 'en-US'],
+    ['我们明天去故宫吧。', 'zh-CN'], ['今日は晴れです。', 'ja-JP'], ['今日は雨です。', 'ja-JP'], ['10:00 東京駅', 'zh-CN'],
+  ]);
+});
+
 test('the model that writes down what it heard is told the languages, and not to translate, once the user has chosen them; before that it gets no hint (review item 13)', async () => {
   const k = await kit({ main: [{ id: 'm1', input: ['text', 'audio'] }], speechIn: ['send-audio', 'dictation'], reply: 'tacos please' });
   const h0 = await hear(k);

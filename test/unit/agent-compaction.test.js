@@ -448,6 +448,10 @@ test("with nothing chosen, Han characters alone are the phone's Japanese, as wit
   assert.equal(summaryLanguage(['我们今晚去哪里吃饭'], languageSettings({}, 'en-US')), 'Chinese (Simplified), the language most of what the user wrote is in', 'no Japanese anywhere: Chinese, its row named');
   // 了解 is two words: it counts for nothing, and the phone's answer is Japanese for that reason.
   assert.equal(summaryLanguage(['了解'], ja), "Japanese, the language of the user's phone (nothing the user wrote names a language)");
+  // The join of Han that says neither (fix round 1, Haiku-4's finding 1: with the join removed these two passed as English). (a) Nothing chosen on an English phone: two lines that
+  // tell nothing join the Chinese line, which beats the one English line; (b) a chosen list with Japanese before Chinese: the two 「大丈夫」 join the Japanese line.
+  assert.equal(summaryLanguage(['我们今晚去哪里吃饭', 'Where should we eat tonight?', '大家好', '大家早上好'], languageSettings({}, 'en-US')), 'Chinese (Simplified), the language most of what the user wrote is in');
+  assert.equal(summaryLanguage(['今日の夕食はどこにしますか', 'Where should we eat tonight?', '大丈夫', '大丈夫'], languageSettings({ languages: { spoken: ['en', 'ja', 'zh'] } }, 'en-US')), 'Japanese, the language most of what the user wrote is in');
 });
 
 // Every row of the re-review of langs-next fix round 1 (R1), by what main and the round's first version answered: a short line (fewer than 3 words, a
