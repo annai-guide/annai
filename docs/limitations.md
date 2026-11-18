@@ -857,12 +857,19 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** a real booking has one. Then: check the part's line whenever such a field is there (no comparison), or draw such fields again, with a design first.
 - **Approved:** 2026-11-18, chief's decision C107, accepted as worded (booking-next's proposed known limitation 2; not the user's words), on the condition that the traveller's own bookings hold no such field.
 
-### A booking saved before 2026-11-17 keeps what the older annai wrote
+### A place's name at its start and its address at its end draws the address as a Drop-off line
 - **Kind:** known limitation.
-- **What the traveller sees:** a ferry, bus or coach saved as `other` with no ride item ends "Ends · …" at its port with a leg from there (its details say Starts and Ends); a stay written with Arrival and Departure keeps its check-in and check-out swapped; a flight's arrival written with no zone of its own keeps the departure's zone. Telling Shiori the right kind or time fixes each.
+- **What the traveller sees:** a stay checked in at "Hotel Aurora" and checked out at "1 Test Street" (or "Hotel Aurora, 1 Test Street") shows that as a Drop-off line under "Place: Hotel Aurora"; its check-out row stays at the hotel. A car picked up at "Airport lot" and returned to "Airport lot, 9 Other Road" shows that Drop-off line and returns there on the Plan, without the lot's pin. Nothing is lost (before booking-time-next the address was dropped when it came with the name).
+- **Why:** the write compares nothing (`unalias`, `src/core/bookings.js`: comparing an end's place with the booking's on the write alone was the state every finding of booking-next needed); the readers hide only a drop-off that says nothing the place doesn't (`dropsAtPlace`), and completing the place from the drop-off would be a second place deciding the same thing.
+- **Revisit when:** a real model writes a booking this way (seen so far: a stay as strings with a top-level name and address; a car with the same place at both ends).
+- **Approved:** 2026-11-18, chief's decision C111, "accept" (booking-time-next's proposed known limitation; not the user's words).
+
+### A booking saved by an older annai keeps what it wrote
+- **Kind:** known limitation.
+- **What the traveller sees:** saved before 2026-11-17: a ferry, bus or coach saved as `other` with no ride item ends "Ends · …" at its port with a leg from there (its details say Starts and Ends); a stay written with Arrival and Departure keeps its check-in and check-out swapped; a flight's arrival written with no zone of its own keeps the departure's zone. Saved before 2026-11-18: a flight given a leg with no time of arrival keeps its end at the leg before it, so its Arrives line and the Plan's arrival show the earlier leg's time until Shiori writes its legs or its end again (the traveller's own trace, 2026-10-18 to 11-17, holds no such write: its two flight writes give each last leg its arrival). Telling Shiori the right kind or time fixes each.
 - **Why:** nothing rewrites a stored booking (booking-next, 2026-11-17, fixed these on writing); a repair that rewrites stored bookings is a migration with its own risks, for shapes no booking seen has.
 - **Revisit when:** a traveller has one; the fix would be a one-time repair when annai opens the trip.
-- **Approved:** 2026-11-18, chief's decision C108, accepted as worded (booking-next's proposed known limitation 3; not the user's words).
+- **Approved:** 2026-11-18, chief's decision C108, accepted as worded (booking-next's proposed known limitation 3; not the user's words). Widened to the flight saved before 2026-11-18 the same day: chief's decision C112, "widen it" (booking-time-next's second question; not the user's words).
 
 ### A restaurant or an event written with only an arrival is on no day of the Plan
 - **Kind:** deferred.
@@ -951,12 +958,12 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** a traveller sees such a name read in the wrong voice.
 - **Approved:** chief's decision, 2026-11-17 (C101; not the user's words), on the proposal "Accept it as a known limitation (Recommended)".
 
-### A plugin download that pauses for more than 20 seconds is cut
+### A plugin download or update check that pauses for more than 20 seconds is cut
 - **Kind:** known limitation.
-- **What the traveller sees:** on a working but stalling connection (a tunnel, a cell handover) where nothing at all comes from annai's site for 20 seconds in the middle of adding a provider or a plugin, the add ends with "The plugin couldn't be downloaded. Check the connection and try again."; tapping again installs it (the files already in come from the browser's cache). Not checked, and possible: the same when the plugin's answer waits behind annai's own update download on a slow link.
+- **What the traveller sees:** on a working but stalling connection (a tunnel, a cell handover) where nothing at all comes from annai's site for 20 seconds in the middle of adding a provider or a plugin, the add ends with "The plugin couldn't be downloaded. Check the connection and try again."; tapping again installs it (the files already in come from the browser's cache). Not checked, and possible: the same when the plugin's answer waits behind annai's own update download on a slow link. Since addr-limit-next (2026-11-18), the same 20 s of a site's silence ends Get it, an Update and the update checks of a package from an address, also on a site that takes more than 20 s to start answering (a host that sleeps until asked: not measured): "‹site› stopped answering. Check the connection and try again."; tapping again goes on. And annai's own check for a new version of itself has 20 s on the whole request: a slow working link whose first answer takes longer shows "annai couldn't check for a new version of itself. Check the connection and try again." while the browser goes on with the update.
 - **Why:** any time limit on a dead connection cuts a pause longer than itself (`QUIET_MS` in `src/core/answer.js`, dl-limit-next, 2026-11-17); 20 seconds is about twice the slowest cold start measured on a real slow link, and a longer number holds a dead connection as long.
 - **Revisit when:** a traveller reports a failed add on a working connection; then measure real stalls on a phone and size the number from them.
-- **Approved:** 2026-11-18, chief's decision C106, accepted as worded (dl-limit-next's proposed known limitation; not the user's words).
+- **Approved:** 2026-11-18, chief's decision C106, accepted as worded (dl-limit-next's proposed known limitation; not the user's words). Widened to addresses and to annai's own version check the same day: chief's decision C113, "widen it to both" (addr-limit-next's builder and its second re-review; not the user's words).
 
 ### A line cut by a second tap can be judged by the gate
 - **Kind:** deferred.
