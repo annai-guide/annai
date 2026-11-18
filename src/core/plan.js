@@ -1,5 +1,5 @@
 import { dayIn, timeIn, validZone, offsetMinutes, instantAt } from './time.js';
-import { checkOf, dropsAtPlace } from './bookings.js';
+import { checkOf, dropsAtPlace, there } from './bookings.js';
 import { zone, sortWords } from './intl.js';
 import { t } from './l10n.js';
 
@@ -243,10 +243,10 @@ export function planRows(items, bookings, { fallbackTz }) {
    */
   const rest = (base, view, endAt, kind, span, stands) => {
     // The end isn't where the start is for a flight, a train or a ride, nor for a car dropped somewhere else (named, when fields says where):
-    // a drop-off that names the booking's own place (dropsAtPlace) is the place, with its position.
+    // a drop-off that names the booking's own place (dropsAtPlace) is the place, with its position, and a blank one (`there`) says nothing.
     const drop = record(base.booking?.fields)?.dropoff;
     const dropped = typeof drop === 'string' && drop.trim() ? { name: drop } : record(drop)?.name ? record(drop) : undefined;
-    const place = CARRIERS.has(kind) ? undefined : kind === 'car' && drop !== undefined && drop !== null && !dropsAtPlace(base.booking) ? dropped : view.place;
+    const place = CARRIERS.has(kind) ? undefined : kind === 'car' && there(drop) && !dropsAtPlace(base.booking) ? dropped : view.place;
     const item = { ...view, start: endAt, place }; // as fixed as its start's view: a plan item's own, or null where nobody said
     /** @type {PlanRow} */
     const end = { ...base, item, from: 'end', ...timesOf(item, fallbackTz), set: { kind, part: 'end' }, line: null };

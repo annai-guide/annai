@@ -162,17 +162,14 @@ const TIMES = /** @type {Record<string, string>} */ ({
   checkin: 'start', check_in: 'start', checkIn: 'start', pickup: 'start', pick_up: 'start', pickUp: 'start', depart: 'start', departure: 'start',
   checkout: 'end', check_out: 'end', checkOut: 'end', dropoff: 'end', drop_off: 'end', dropOff: 'end', return: 'end', arrive: 'end', arrival: 'end',
 });
-/** What is booked for when the traveller gets there, as a stay is: a table, a seat. What travels (a car, a tour filed as "other") arrives at its end. */
-const ARRIVED = new Set(['restaurant', 'event']);
 /**
  * The field a time written under another name stands for, by the booking's kind: leaving starts and arriving ends, except for a stay, as a
- * hotel's confirmation says it: the arrival is the check-in and the departure the check-out (they were swapped); and a restaurant's or an
- * event's arrival starts it unless the write says when it starts otherwise (then it ends it: a tour booked as an event), and only in a whole
- * write, which sees the whole booking: a patch sees half of it, so there the arrival ends it, as it always did. @param {string} key
- * @param {unknown} kind @param {boolean} [starts] whether the arrival is no start: the write gives one otherwise (start, a departure), or is a
- * patch @returns {string | undefined}
+ * hotel's confirmation says it: the arrival is the check-in and the departure the check-out (they were swapped). A car or a tour filed as
+ * "other" moves the traveller, so it keeps leaving as the start. A restaurant's or an event's arrival is its end too: a write can't tell
+ * a table's arrival from a tour's departure, so it never guesses a start (docs/limitations.md). @param {string} key @param {unknown} kind
+ * @returns {string | undefined}
  */
-const fieldOf = (key, kind, starts = false) => (ARRIVING.includes(key) && (kind === 'lodging' || (ARRIVED.has(/** @type {string} */ (kind)) && !starts)) ? 'start' : kind === 'lodging' && LEAVING.includes(key) ? 'end' : TIMES[key]);
+const fieldOf = (key, kind) => (kind === 'lodging' && ARRIVING.includes(key) ? 'start' : kind === 'lodging' && LEAVING.includes(key) ? 'end' : TIMES[key]);
 const COSTS = ['total', 'price'];
 const EXTRAS = ['notes', 'room', 'phone', 'guests', 'passengers', 'airline', 'company', 'seat', 'flight', 'flights'];
 const ALIASES = [...Object.keys(TIMES), 'name', 'location', 'address', ...COSTS, ...EXTRAS];
@@ -184,6 +181,7 @@ const OWN = /** @type {Record<string, [string, string]>} */ ({
   /* en */ ...Object.fromEntries(COSTS.map((k) => [k, ['cost', '{ "amount": 245, "currency": "EUR" }']])),
 });
 /* en */ const NO_END = `The last leg's arrival isn't written as a date with a time (YYYY-MM-DDTHH:MM), so the booking has no arrival time now: when you know when it arrives, write end as ${WHEN}.`;
+/* en */ const NO_START = `The first leg gives no date and time of departure, so the booking has no start or end now: when you know when it leaves and arrives, write start and end as ${WHEN}.`;
 const AT = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(Z|([+-])(\d{2}):(\d{2}))?$/;
 
 /**
@@ -279,11 +277,8 @@ export function unalias(own, { zones = [], schema, kind, append = false, notes =
   const out = { ...own };
   for (const k of [...keys, ...gone]) delete out[k];
   const what = own.kind ?? kind;
-  // A restaurant's or an event's arrival is its start in a whole write only (the review's F1): a patch has only its own keys, so it can't tell
-  // a booking that has a start from one that has none, and an arrival there moved or cleared a start it could not see.
-  const starts = append || own.start != null || keys.some((k) => TIMES[k] === 'start');
   /** @param {string} k a time alias @returns {string} the field it stands for, by this booking's kind */
-  const field = (k) => fieldOf(k, what, starts) ?? '';
+  const field = (k) => fieldOf(k, what) ?? '';
   // A flight's, a train's or a ride's times are in the place it leaves or arrives: the trip's only zone says nothing about them.
   const far = CARRIERS.has(what);
   const besideKey = ['tz', 'timezone'].find((k) => typeof own[k] === 'string');
@@ -338,26 +333,29 @@ export function unalias(own, { zones = [], schema, kind, append = false, notes =
   }
   const fk = keys.find((k) => base(k) === 'flights');
   const legs = fk ? (Array.isArray(own[fk]) ? own[fk] : fk.endsWith('+') ? [own[fk]] : []) : [];
-  if (fk && legs.length) {
+  // Only what carries the traveller (far) has its times from its legs: a stay's or an other booking's start and end are its own, so legs given
+  // to one are kept as written (fields.flights) and move nothing.
+  if (fk && legs.length && far) {
     // A flight leaves with its first leg and arrives with its last, unless this write says when; the legs are kept as written. A leg's tz is
     // where it leaves: the arrival takes only its own, or is refused. A last leg whose arrival is no date with a time (`written`: none, an
     // airport, a clock alone, a date and a time annai can't read) gives a flight no end: none stored, a patch's stored one (a leg before's)
     // removed, and the result says so (notes).
     const [first, last, n] = [record(legs[0]), record(legs[legs.length - 1]), legs.length - 1];
     if (out.start == null && fk === 'flights' && first) put(fk, 'start', timeOf('flights[0].departure', first.departure ?? first.depart, first.tz ?? beside, zones, 'start', true));
-    // The end is read where the start is: a whole write's first leg that is text gives neither (as before), so no end with no start.
-    if (out.end == null && (first || fk !== 'flights')) {
+    // A whole write whose first leg is text gives no departure, so no start (as on main); an end with no start is on no day of the Plan, so
+    // none is read from the last leg either, and the result says so when that leg gave an arrival. A patch keeps the start it has stored.
+    const noStart = !append && !first && out.start == null;
+    if (out.end == null) {
       const arrival = last?.arrival ?? last?.arrive;
       const o = record(arrival);
-      if (written(o ? o.at ?? o.time : arrival)) put(fk, 'end', timeOf(`${fk}[${n}].arrival`, arrival, undefined, zones, 'end', true));
-      else if (what === 'flight') {
-        // Only a flight's end is its last leg's arrival: a stay or an other booking given legs keeps the end it has.
+      if (!written(o ? o.at ?? o.time : arrival)) {
         if (append) out.end = null;
         notes.push(NO_END);
-      }
+      } else if (noStart) notes.push(NO_START);
+      else put(fk, 'end', timeOf(`${fk}[${n}].arrival`, arrival, undefined, zones, 'end', true));
     }
   }
-  for (const k of ['location', 'address']) if (keys.includes(k) && own[k] !== '') note(k, own[k], k === 'address' ? 'address' : 'name');
+  for (const k of ['location', 'address']) if (keys.includes(k) && there(own[k])) note(k, own[k], k === 'address' ? 'address' : 'name');
   // In a patch a null address is the place's address null, and a null location is no place.
   const wipe = append && gone.includes('location');
   if (append && gone.includes('address')) parts.push(['address', 'address', null]);
@@ -397,8 +395,6 @@ export function unalias(own, { zones = [], schema, kind, append = false, notes =
     if (to.startsWith('fields.')) {
       if (fields) fields[to.slice(7)] ??= null;
     } else if (to) out[to] ??= null;
-    // An end's place is what the alias filed under `fields` (a drop-off, where it arrives): removed with it.
-    if (to === 'end' && fields) fields[placeKey(k)] ??= null;
     if (COSTS.includes(k) && fields) fields[k] ??= null;
   }
   // A renamed key of a patch also nulls its own name, so a copy stored under it goes at once ("+" only appends: it never deletes).
@@ -480,8 +476,7 @@ export function shioriBooking(before, next, { schema, changes } = {}) {
   if (added.length) {
     // A name from the other format is told its field (an edit has no renaming, and a model would file it in fields).
     const kind = next.kind ?? old?.kind;
-    const starts = next.start != null || added.some((k) => TIMES[k] === 'start'); // as unalias reads a whole write
-    const is = added.filter((k) => Object.hasOwn(OWN, k)).map((k) => { const to = Object.hasOwn(TIMES, k) ? fieldOf(k, kind, starts) : OWN[k][0]; return ` ${k} is ${to}: write ${to} as ${OWN[k][1]}.`; }).join('');
+    const is = added.filter((k) => Object.hasOwn(OWN, k)).map((k) => { const to = Object.hasOwn(TIMES, k) ? fieldOf(k, kind) : OWN[k][0]; return ` ${k} is ${to}: write ${to} as ${OWN[k][1]}.`; }).join('');
     /* en */ throw new Error(`${added.map((k) => JSON.stringify(k)).join(', ')} ${added.length === 1 ? "isn't a booking field" : "aren't booking fields"}, so nothing was written.${is} A booking's own fields are ${Object.keys(own ?? {}).join(', ')}; put anything else in fields.`);
   }
   return next;

@@ -100,14 +100,14 @@ New:
   check, its Option 1: the comparison with the place, made on the write alone with one of three values, drew a Drop-off line repeating a
   hotel and dropped an address): an end's place, a stay's check-out too, is filed whole, its name and its address joined ("Airport lot,
   9 Other Road"; an object name with no address of its own takes the address into it, so a car's Return row keeps its position), a part that
-  isn't text as written; a blank name or address is not given; removing the alias (`dropoff: null`, `arrive: null`) removes the place it filed. Whether a
-  drop-off names the booking's own place is answered by the readers, which see the whole stored record (`dropsAtPlace`): a car returned
-  where it was picked up has no Drop-off line, its Return row is at its place with its position, and a check on its drop-off is the
-  place's. A restaurant's or an event's arrival, in a whole write, is its start, unless the same write says when it starts (`start`, a departure, a
-  check-in, a pick-up), when it is its end as before (written alone, it was an end with no start, on no day of the Plan); in a patch, which
-  sees only its own keys, it is its end, as it always was.
+  isn't text as written; a blank name or address is not given, top-level ones too. Removing the alias (`dropoff: null`, `arrive: null`) removes
+  the field it stands for and nothing it filed under `fields` (as it always did: a hand-written `fields.to` stays); one patch of the key
+  itself removes that. Whether a drop-off names the booking's own place is answered by the readers, which see the whole stored record
+  (`dropsAtPlace`): a car returned where it was picked up has no Drop-off line, its Return row is at its place with its position, and a
+  check on its drop-off is the place's. A restaurant's or an event's arrival is its end, as it always was, alone too (docs/limitations.md,
+  "written with only an arrival": a write can't tell what such a booking's start stands for, so it never guesses one).
 - **This write wins.** A renamed key replaces the stored own field (a patch `{checkout: …}` moves the stored `end`; `{flights: legsB}`
-  moves `start`/`end` too). The same write giving both an alias and its own field with different values is refused, naming both.
+  moves a flight's `start`/`end` too). The same write giving both an alias and its own field with different values is refused, naming both.
 - **Times:** a string time becomes `{ at, tz }` only with a known zone: a `tz` beside it, else, for anything but a flight or train, the
   trip's only zone. An offset that the zone doesn't have at that instant, an impossible date (Nov 31) or a date with no time is refused
   with words saying what to write. An unknown zone is never compared, only stored as written.
@@ -122,8 +122,11 @@ New:
   alone, a day that doesn't exist, a date and a time written in a form annai can't read; `written`, the one reading) gives no end: a whole
   write stores none, a patch removes the stored one, the legs are kept as written, and the write's result says what is wrong with the
   arrival and asks for `end` when she knows it (booking-time-next: such a leg left `end` at the leg before, a time out of date, and a whole
-  `flights` write or text was refused). Unless the same write gives `end`. A stay or an `other` booking given legs keeps its end; a whole
-  write whose first leg is text gives neither start nor end. Appending (`x+`) to a stored value that is no list keeps that value as the first item.
+  `flights` write or text was refused). Unless the same write gives `end`. Only what carries the traveller (a flight, a train, a ferry, a bus,
+  a coach) takes its start and end from legs: a stay's or an `other` booking's are its own, so legs given to one (`flights+` or `flights`,
+  with times or without) are kept as written and move nothing. A whole `flights` write whose first leg is text (no date and time of
+  departure) gives no start, so none is read from the last leg either, and the result says so (a first leg with no departure; or the last
+  leg's note, when that leg gave no arrival); a start the write gives itself lets the last leg's arrival give the end. Appending (`x+`) to a stored value that is no list keeps that value as the first item.
 - **One rule for the place.** In a patch the place aliases merge into `place` like a JSON merge patch: a location (or a pick-up's
   location) is `place.name`, an address (or a pick-up's) is `place.address`, lat/lng are `place.lat/lng`; `address: null` is the address
   null and `location: null` is no place. A `place` of its own (object) merges with them, and different values for one part, or

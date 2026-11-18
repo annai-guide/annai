@@ -497,7 +497,9 @@ test('review 2: an end row is not at the start: a flight or train Arrive has no 
   assert.deepEqual(at({ fields: { dropoff: 'Downtown desk' } }), { name: 'Downtown desk' });
   assert.deepEqual(at({ fields: { dropoff: { name: 'Downtown desk', lat: 61.2, lng: -149.9 } } })?.name, 'Downtown desk');
   assert.equal(at({ fields: { dropoff: 42 } }), undefined);
-  assert.equal(at({ fields: { dropoff: '' } }), undefined);
+  // A blank drop-off says nothing (`there`): the car returns where it was picked up (it was a Return row with no place, for records written when a blank was stored).
+  assert.equal(at({ fields: { dropoff: '' } })?.name, 'Airport lot');
+  assert.equal(at({ fields: { dropoff: '  ' } })?.name, 'Airport lot');
   assert.equal(at({ fields: { other: 1 } })?.name, 'Airport lot');
   assert.equal(at({})?.name, 'Airport lot');
   // A stay keeps its place; a flight and a train do not, so Plan legs, Drive and Directions don't point at the origin.
