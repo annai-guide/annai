@@ -534,7 +534,7 @@ test("bookingFacts: an object that is no leg is one line, each value with its ke
   assert.deepEqual(drawn({ gate: { name: 'B', bags: 2, open: false } }), [['gate', 'name: B · Bags: 2 · open: false']]);
 });
 
-test("bookingFacts: a field named like one of the booking's own parts is no second line when it says what the part's line says, a line of its own under the part's label, after it, when it says something else, and the part's line, as written, when the part drew none; what is checked is what is drawn (booking-next: small-next hid a field that said something else)", () => {
+test("bookingFacts: a field named like one of the booking's own parts is no second line when the part drew its line, whatever it holds, and is the part's line, as written, when the part drew none; the name beside the heading that says something else is a line under \"Name\"; what is checked is what is drawn (booking-next fix 3: the rule is main's again, a field that says something else is hidden beside a drawn part, as it was before the branch)", () => {
   const at = { at: '2026-11-20T15:00:00-08:00', tz: LA };
   const own = { title: 'Hotel X', start: at, end: at, place: { name: 'Hotel X', address: '1 Test Street' }, confirmation: 'TQ1', cost: { amount: 120, currency: 'USD' } };
   // The same text as each part's line (spaces at the ends aside): one line each, one check each, and the name is the heading's alone.
@@ -543,16 +543,18 @@ test("bookingFacts: a field named like one of the booking's own parts is no seco
   assert.deepEqual(bookingFacts(same).map((x) => [x.key, x.label, x.value]), [['place', 'Place', 'Hotel X, 1 Test Street'], ['start', 'Check-in', 'Fri, Nov 20, 3:00 PM (PT)'],
     ['end', 'Check-out', 'Fri, Nov 20, 3:00 PM (PT)'], ['room', 'Room', '204'], ['confirmation', 'Confirmation', 'TQ1'], ['cost', 'Cost', '$120.00']]);
   assert.equal(checkCount(same), checkOf(same).fields.length, "an old booking: the heading's check and one by each line, one for each part she is told of");
-  // Something else: both lines, the field's after the part's and under its label, each with the part's check (both are what she is told of).
+  // Something else, beside a part that drew: not drawn, as on main (the record keeps it and Shiori reads it). The part's line is the only one, with the part's check
+  // (marked or not), and the chip counts that one.
   const conf = { kind: 'flight', status: 'unverified', unsure: ['confirmation'], confirmation: 'ABC123', fields: { confirmation: 'XYZ789 (e-ticket)' } };
-  assert.deepEqual(bookingFacts(conf).map((x) => [x.key, x.label, x.value, x.unsure]), [['confirmation', 'Confirmation', 'ABC123', true], ['confirmation', 'Confirmation', 'XYZ789 (e-ticket)', true]]);
-  assert.equal(checkCount(conf), 2);
+  assert.deepEqual(bookingFacts(conf).map((x) => [x.key, x.label, x.value, x.unsure]), [['confirmation', 'Confirmation', 'ABC123', true]]);
+  assert.equal(checkCount(conf), 1);
   assert.equal(checkWords(conf), 'not sure the confirmation number was read right');
-  assert.deepEqual(bookingFacts({ ...conf, fields: { confirmation: 'ABC123' } }).map((x) => x.value), ['ABC123'], 'the same text, once');
+  assert.deepEqual(bookingFacts({ ...conf, unsure: [] }).map((x) => [x.key, x.value, x.unsure]), [['confirmation', 'ABC123', false]], 'not marked: the part\'s line alone, no check');
+  assert.equal(checkCount({ ...conf, unsure: [] }), 0);
   const alsoFields = { title: 'Hotel X', start: 'tomorrow', end: 'later', place: 'Hotel X', confirmation: 'TQ1', cost: 'about 120 dollars' };
   const both = { kind: 'lodging', status: 'unverified', ...own, fields: { ...alsoFields, room: '204' } };
-  assert.deepEqual(bookingFacts(both).map((x) => [x.key, x.value]), [['place', 'Hotel X, 1 Test Street'], ['place', 'Hotel X'], ['start', 'Fri, Nov 20, 3:00 PM (PT)'], ['start', 'tomorrow'],
-    ['end', 'Fri, Nov 20, 3:00 PM (PT)'], ['end', 'later'], ['room', '204'], ['confirmation', 'TQ1'], ['cost', '$120.00'], ['cost', 'about 120 dollars']]);
+  assert.deepEqual(bookingFacts(both).map((x) => [x.key, x.value]), [['place', 'Hotel X, 1 Test Street'], ['start', 'Fri, Nov 20, 3:00 PM (PT)'],
+    ['end', 'Fri, Nov 20, 3:00 PM (PT)'], ['room', '204'], ['confirmation', 'TQ1'], ['cost', '$120.00']]);
   // A name beside the heading's that says something else is a line under "Name", with its check; the same name is the heading's alone.
   const named = { kind: 'lodging', status: 'unverified', unsure: ['title'], title: 'Hotel X', fields: { title: 'Hotel X Annex' } };
   assert.deepEqual(bookingFacts(named).map((x) => [x.key, x.label, x.value, x.unsure, x.lang]), [['title', 'Name', 'Hotel X Annex', true, undefined]]);
@@ -1445,19 +1447,26 @@ test("bookingFacts: every value beside a leg time's clock has its label, whateve
     ['NH 7 · SFO → NRT · Nov 20 11:05 (From: Gate A) – Nov 21 15:40 (To: Door 3)']);
 });
 
-test("bookingFacts: a field named like one of the booking's own parts that drew is a second line only when it is words that say something else; one written as an object or a list is not drawn beside the part, as on main: a partial place, a start in another zone, a start with an extra key (booking-next fix 2: round 1 drew them as raw keys, and read an offsetless time in the phone's zone)", () => {
+test("bookingFacts: a field named like one of the booking's own parts that drew is not drawn, whatever it holds, as on main: a string that says something else, an object, a list, a number; one line, the part's, with the part's check or none (booking-next fix 3: rounds 1 and 2 drew a second line for some, and a differing string with no check at all)", () => {
   const place = { name: 'Hotel X', address: '1 Test Street' };
   const start = { at: '2026-11-20T19:00:00+09:00', tz: TOKYO };
   const cost = { amount: 120, currency: 'USD' };
   const shapes = /** @type {[string, any][]} */ ([
-    ['place', { kind: 'lodging', unsure: ['place'], place, fields: { place: { name: 'Hotel X' } } }], // a partial place
-    ['place', { kind: 'lodging', unsure: ['place'], place, fields: { place: { address: '1 Test Street', name: 'Hotel X' } } }], // the whole of it, in any key order
-    ['place', { kind: 'lodging', unsure: ['place'], place, fields: { place: ['Hotel X'] } }], // a list
-    ['start', { kind: 'ferry', unsure: ['start'], start, fields: { start: { at: '2026-11-20T10:00', tz: TOKYO } } }], // the clock of the same time, with no offset
-    ['start', { kind: 'ferry', unsure: ['start'], start, fields: { start: { at: '2026-11-20T01:00', tz: TOKYO } } }], // another time in the same zone
-    ['start', { kind: 'ferry', unsure: ['start'], start, fields: { start: { at: '2026-11-20T19:00:00+09:00', tz: TOKYO, terminal: 'Gate 3' } } }], // an extra key
-    ['cost', { kind: 'lodging', unsure: ['cost'], cost, fields: { cost: { currency: 'USD', amount: 120 } } }],
-    ['cost', { kind: 'lodging', unsure: ['cost'], cost, fields: { cost: 120 } }],
+    ['place', { kind: 'lodging', place, fields: { place: 'Hotel X Inn' } }], // words that differ
+    ['place', { kind: 'lodging', place, fields: { place: { name: 'Hotel X' } } }], // a partial place
+    ['place', { kind: 'lodging', place, fields: { place: { address: '1 Test Street', name: 'Hotel X' } } }], // the whole of it, in any key order
+    ['place', { kind: 'lodging', place, fields: { place: ['Hotel X'] } }], // a list
+    ['place', { kind: 'lodging', place, fields: { place: 12 } }], // a number
+    ['start', { kind: 'ferry', start, fields: { start: '2026-11-20 10:00' } }], // another time, as words
+    ['start', { kind: 'ferry', start, fields: { start: { at: '2026-11-20T10:00', tz: TOKYO } } }], // the clock of the same time, with no offset
+    ['start', { kind: 'ferry', start, fields: { start: { at: '2026-11-20T01:00', tz: TOKYO } } }], // another time in the same zone
+    ['start', { kind: 'ferry', start, fields: { start: { at: '2026-11-20T19:00:00+09:00', tz: TOKYO, terminal: 'Gate 3' } } }], // an extra key
+    ['end', { kind: 'ferry', end: start, fields: { end: 'Nov 21, 7:00 AM' } }],
+    ['cost', { kind: 'lodging', cost, fields: { cost: 'about 100 dollars' } }],
+    ['cost', { kind: 'lodging', cost, fields: { cost: { currency: 'USD', amount: 120 } } }],
+    ['cost', { kind: 'lodging', cost, fields: { cost: 120 } }],
+    ['confirmation', { kind: 'flight', confirmation: 'ABC123', fields: { confirmation: 'XYZ789 (e-ticket)' } }],
+    ['confirmation', { kind: 'flight', confirmation: 'ABC123', fields: { confirmation: ['XYZ789', 'DEF456'] } }],
   ]);
   const was = process.env.TZ;
   try {
@@ -1465,21 +1474,23 @@ test("bookingFacts: a field named like one of the booking's own parts that drew 
     for (const zone of ['UTC', LA, TOKYO]) {
       process.env.TZ = zone;
       for (const [key, b] of shapes) {
-        const f = bookingFacts(b);
-        assert.deepEqual(f.map((x) => [x.key, x.unsure]), [[key, true]], `${zone}: ${key} ${JSON.stringify(b.fields)}`);
-        assert.equal(checkCount(b), 1, `${zone}: ${key}`);
-        assert.doesNotMatch(f[0].value, /name:|at:|amount:|terminal/i, `${zone}: ${key}`);
+        const alone = bookingFacts({ ...b, unsure: [], fields: {} }).map((x) => x.value);
+        // Marked: the part's line and its check. Not marked: the part's line and no check. The chip says the same.
+        for (const [unsure, checks] of /** @type {[string[], number][]} */ ([[[key], 1], [[], 0]])) {
+          const f = bookingFacts({ ...b, unsure });
+          assert.deepEqual(f.map((x) => [x.key, x.unsure]), [[key, checks === 1]], `${zone}: ${key} ${unsure} ${JSON.stringify(b.fields)}`);
+          assert.deepEqual(f.map((x) => x.value), alone, `${zone}: ${key} the part's line, as it is with no field`);
+          assert.equal(checkCount({ ...b, unsure }), checks, `${zone}: ${key} ${unsure}`);
+        }
       }
     }
   } finally {
     if (was === undefined) delete process.env.TZ;
     else process.env.TZ = was;
   }
-  // Words that say something else are a second line under the part's label, with the part's check; the same words are not.
-  const other = bookingFacts({ kind: 'lodging', unsure: ['place'], place, fields: { place: 'Hotel Y' } });
-  assert.deepEqual(other.map((x) => [x.key, x.label, x.value, x.unsure]), [['place', 'Place', 'Hotel X, 1 Test Street', true], ['place', 'Place', 'Hotel Y', true]]);
-  assert.equal(checkCount({ kind: 'lodging', unsure: ['place'], place, fields: { place: 'Hotel Y' } }), 2);
-  assert.deepEqual(bookingFacts({ kind: 'lodging', unsure: ['place'], place, fields: { place: 'Hotel X, 1 Test Street' } }).map((x) => x.value), ['Hotel X, 1 Test Street']);
+  // The same, beside a field of another name: that one is a line of its own.
+  const f = bookingFacts({ kind: 'lodging', unsure: ['place'], place, fields: { place: 'Hotel Y', room: '204' } });
+  assert.deepEqual(f.map((x) => [x.key, x.label, x.value, x.unsure]), [['place', 'Place', 'Hotel X, 1 Test Street', true], ['room', 'Room', '204', false]]);
   // A field written as an object with no part of its name that drew is still that part's line (as written), as before.
   assert.deepEqual(bookingFacts({ kind: 'lodging', unsure: ['cost'], fields: { cost: { amount: 120, currency: 'USD' } } }).map((x) => [x.key, x.label, x.value, x.unsure]), [['cost', 'Cost', 'amount: 120 · currency: USD', true]]);
 });

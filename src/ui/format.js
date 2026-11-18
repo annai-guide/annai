@@ -312,14 +312,9 @@ export function bookingFacts(b, o = {}) {
       const f = own[key]();
       if (f?.value) {
         out.push({ key, label: f.label, value: f.value, unsure: f.unsure ?? marked.has(key), ...(f.zone ? { zone: f.zone } : {}) });
-        // A field named like a part of its own that drew, written as words, is that line again when its text is the part's line (one line, one check) and a line under the part's
-        // label, after it, when it says something else (confirmation "ABC123", the field "XYZ789 (e-ticket)"). One written as an object or a list is not drawn beside the part
-        // (raw keys: a partial place, a time in another zone, an extra key): the record keeps it, and Shiori reads it.
-        if (TOP.includes(key) && has(key)) {
-          shown.add(key);
-          const said = fields[key];
-          if (typeof said === 'string' && said.trim() !== f.value.trim()) out.push({ key, label: f.label, value: said, unsure: marked.has(key) });
-        }
+        // A part of its own that drew: its field, if one is named like it, is the same part, not a second line, whatever it holds (a string that says
+        // something else, an object, a list, a number). The record keeps it, and Shiori reads it; what is drawn is the part's line, with the part's check.
+        if (TOP.includes(key)) shown.add(key);
       } else if (f && TOP.includes(key) && has(key)) {
         // A part that drew nothing (the booking has none, or one that can't be drawn) and a field named like it (a real model wrote fields.place): the field is its line, as written, under its label.
         shown.add(key);

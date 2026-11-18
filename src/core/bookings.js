@@ -302,8 +302,9 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
       try {
         put(fk ?? '', 'end', timeOf(`${fk}[${n}].arrival`, arrival, undefined, zones, 'end', true));
       } catch (e) {
-        // An arrival with a time written (timeOf's own reading: its `at`, else its `time`, else the text) that can't be placed is refused.
-        if (fk === 'flights' || there(o ? o.at ?? o.time : arrival)) throw e;
+        // An arrival with a time written that can't be placed is refused: an object's `at`, else its `time`, or a text that reads as a date with a
+        // time (`written`: an airport as text, "HND", is no time, as { iataCode } is none).
+        if (fk === 'flights' || (o ? there(o.at ?? o.time) : written(arrival))) throw e;
       }
     }
   }
@@ -334,8 +335,10 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
   }
   for (const [k, where] of ends) {
     // An end elsewhere than the place is kept in fields: a car's is its drop-off, whatever it was called; an arrival's is where it arrives
-    // (`to`, read "To", 到着地: `arrival` is the word for a time, "Arrival" 到着, which the details draw beside it as "Arrives").
-    if (![record(out.place)?.name, record(out.place)?.address].includes(where) && !eq(where, out.place)) put(k, `fields.${/^arriv/.test(k) && what !== 'car' ? 'to' : 'dropoff'}`, where);
+    // (`to`, read "To", 到着地: `arrival` is the word for a time, "Arrival" 到着, which the details draw beside it as "Arrives"). Where this write
+    // already says where it goes (fields.to, a flight's route) stands: the arrival's place is not filed beside it, and its time is stored all the same.
+    const into = /^arriv/.test(k) && what !== 'car' ? 'to' : 'dropoff';
+    if (![record(out.place)?.name, record(out.place)?.address].includes(where) && !eq(where, out.place) && !(into === 'to' && fields && there(fields.to))) put(k, `fields.${into}`, where);
     named[k] = 'end';
   }
   for (const k of keys) {
@@ -397,7 +400,7 @@ export function shioriBooking(before, next, { schema, changes } = {}) {
   // arrival and departure, written under one booking, came out with Nov 25 for its start and Nov 20 for its end). Instants, each in its own zone.
   const [from, to] = [next.start, next.end].map((x) => (record(x) && validZone(record(x)?.tz) ? instantAt(record(x)?.at, record(x)?.tz) : NaN));
   if (to < from && (!same(next.start, old?.start) || !same(next.end, old?.end))) {
-    /* en */ throw new Error(`end ${JSON.stringify(record(next.end)?.at)} is before start ${JSON.stringify(record(next.start)?.at)}: a booking is one stretch of time, so write the earlier time as start and the later as end (a round trip is two bookings, one for each way).`);
+    /* en */ throw new Error(`end ${JSON.stringify(record(next.end)?.at)} is before start ${JSON.stringify(record(next.start)?.at)}, so nothing was written: a booking ends after it starts. Check each date against the booking (an overnight trip arrives on the next day's date), and write a round trip's two ways as two bookings.`);
   }
   // `unsure+` on a booking with no unsure key adds to the parts marked now (checkOf), so the rest stay marked.
   const patch = record(changes);

@@ -554,10 +554,13 @@ test("booking-next fix 1: what carries the traveller arrives in a zone of its ow
   const after = await ws.readJSON(trip, '/bookings/nh7.json');
   assert.deepEqual([after.end, after.fields.flights.length], [{ at: '2026-11-25T08:00:00+09:00', tz: TOKYO }, 2]);
   // A leg with no time of arrival still appends, and the end stays: the leg says no time to move it to (a leg with no times, an arrival that
-  // is an airport alone).
-  await run('patch', { path: '/trip/bookings/nh7.json', changes: { 'flights+': [{ flight: 'NH 9' }, { flight: 'NH 10', arrival: { iataCode: 'HND' } }] } });
+  // is an airport alone, as an object or as the text; the text is a time only when it reads as one).
+  // Each is its own patch: the last leg's arrival is the one that moves the end.
+  for (const leg of /** @type {any[]} */ ([{ flight: 'NH 9' }, { flight: 'NH 10', arrival: { iataCode: 'HND' } }, { flight: 'NH 11', arrival: 'HND' }])) {
+    await run('patch', { path: '/trip/bookings/nh7.json', changes: { 'flights+': [leg] } });
+  }
   const last = await ws.readJSON(trip, '/bookings/nh7.json');
-  assert.deepEqual([last.end, last.fields.flights.length], [after.end, 4]);
+  assert.deepEqual([last.end, last.fields.flights.length], [after.end, 5]);
   // The flights+ hint is the leg's, as a whole write's is: through the unalias a refusal names the leg too.
   assert.throws(() => unalias({ 'flights+': [next] }, { zones: [AK], append: true, kind: 'flight' }), /^Error: flights\+\[0\]\.arrival .* Give the arrival its own "tz"/);
 });
@@ -647,7 +650,10 @@ test("booking-next fix 2: a time with no offset is read in the zone it is writte
 test("booking-next fix 2: a write that leaves a booking's end before its start is refused, in words, when it changes the start or the end: a round trip's arrival and departure written as one car or other booking (it was stored starting Nov 25 and ending Nov 20)", async () => {
   const trip = { arrival: '2026-11-20T14:00', departure: '2026-11-25T10:00' };
   for (const kind of ['car', 'other', 'event']) {
-    assert.throws(() => guard({ ...base, kind, ...trip }), /^Error: end "2026-11-20T14:00:00-09:00" is before start "2026-11-25T10:00:00-09:00": a booking is one stretch of time, so write the earlier time as start and the later as end \(a round trip is two bookings, one for each way\)\.$/, kind);
+    assert.throws(() => guard({ ...base, kind, ...trip }), /^Error: end "2026-11-20T14:00:00-09:00" is before start "2026-11-25T10:00:00-09:00", so nothing was written: a booking ends after it starts\. Check each date against the booking \(an overnight trip arrives on the next day's date\), and write a round trip's two ways as two bookings\.$/, kind);
+    // The words never ask for a swap: for an overnight ferry or flight written with the arrival on the departure's date, or a stay moved a week later by
+    // its start first, a swap stores the times backwards.
+    assert.throws(() => guard({ ...base, kind, ...trip }), (e) => !/swap|earlier time|later as end|as start/.test(/** @type {Error} */ (e).message), kind);
   }
   // A stay reads them the other way round, so the same two words are right there; a start and an end written as they are stored, too.
   assert.deepEqual(guard({ ...base, kind: 'lodging', ...trip }).start.at, '2026-11-20T14:00:00-09:00');
@@ -658,7 +664,7 @@ test("booking-next fix 2: a write that leaves a booking's end before its start i
   const fly = (/** @type {string} */ from, /** @type {string} */ to) => guard({ ...base, kind: 'flight', start: { at: from, tz: LA }, end: { at: to, tz: TOKYO } });
   assert.throws(() => fly('2026-11-20T11:05:00-08:00', '2026-11-20T15:40:00+09:00'), /end .* is before start/, 'the clock reads later, the instant is 12 hours earlier');
   assert.equal(fly('2026-11-20T11:05:00-08:00', '2026-11-21T15:40:00+09:00').end.at, '2026-11-21T15:40:00+09:00');
-  assert.equal(guard({ ...base, kind: 'flight', start: { at: '2026-11-21T08:00:00+09:00', tz: TOKYO }, end: { at: '2026-11-20T20:00:00-08:00', tz: LA } }).end.tz, LA, 'the clock reads earlier, the instant is 9 hours later');
+  assert.equal(guard({ ...base, kind: 'flight', start: { at: '2026-11-21T08:00:00+09:00', tz: TOKYO }, end: { at: '2026-11-20T20:00:00-08:00', tz: LA } }).end.tz, LA, 'the clock reads earlier, the instant is 5 hours later');
   // Through the tool: nothing stored; a patch that moves the end before the stored start; a patch of something else on a stored booking that
   // is already so (the user's own edit) is not refused, and one that mends it is.
   const { ws, trip: t, run } = await setup([AK]);
@@ -685,4 +691,24 @@ test("booking-next fix 2: a stay's check-out written with the hotel's own addres
   }
   assert.deepEqual(out({ departure: { at: '2026-11-22T11:00', address: '1 Test Street' } }).fields, undefined, 'a departure too');
   assert.deepEqual(out({ checkout: { at: '2026-11-22T11:00', address: '9 Other Road' } }).fields, { dropoff: '9 Other Road' });
+});
+
+test("booking-next fix 3: a ride's arrival place is not filed when the write already gives where it goes (fields.to): both are kept as given, not refused, and the arrival's time is stored as before (fix round 2 refused a flight that gave fields.to and an arrival's place, so nothing was stored)", () => {
+  // A flight with its route in words and the arrival's airport named in the arrival: the route is hers, the arrival's place is not filed.
+  const flight = (/** @type {any} */ to) => guard({ ...base, kind: 'flight', fields: { from: 'SFO', to }, depart: { at: '2026-11-20T11:05', tz: LA }, arrival: { at: '2026-11-21T18:00', tz: TOKYO, location: 'Haneda Airport' } });
+  for (const to of ['HND', 'Haneda Airport', 'Tokyo (HND)']) {
+    const got = flight(to);
+    assert.deepEqual([got.fields, got.end], [{ from: 'SFO', to }, { at: '2026-11-21T18:00:00+09:00', tz: TOKYO }], to);
+  }
+  // The same for a bus, a ferry and a train, written with arrive.
+  for (const kind of ['bus', 'ferry', 'rail']) {
+    const got = guard({ ...base, kind, depart: { at: '2026-11-20T17:00', tz: TOKYO, location: 'Osaka' }, arrive: { at: '2026-11-21T07:00', tz: TOKYO, location: 'Beppu port' }, fields: { to: 'Beppu' } });
+    assert.deepEqual([got.fields, got.end.at], [{ to: 'Beppu' }, '2026-11-21T07:00:00+09:00'], kind);
+  }
+  // With no fields.to of hers, the arrival's place is filed there, as before; a car's stays its drop-off.
+  assert.deepEqual(guard({ ...base, kind: 'bus', arrive: { at: '2026-11-21T07:00', tz: TOKYO, location: 'Beppu port' }, depart: { at: '2026-11-20T17:00', tz: TOKYO } }).fields, { to: 'Beppu port' });
+  assert.deepEqual(guard({ ...base, kind: 'car', pickup: '2026-11-20T10:00', arrive: { location: 'Downtown desk', at: '2026-11-27T09:00' } }).fields, { dropoff: 'Downtown desk' });
+  // A patch carrying both: the same.
+  const patch = unalias({ arrival: { at: '2026-11-21T18:00', tz: TOKYO, location: 'Haneda Airport' }, fields: { to: 'HND' } }, { zones: [AK], append: true, kind: 'flight' });
+  assert.deepEqual([patch.fields, patch.end], [{ to: 'HND' }, { at: '2026-11-21T18:00:00+09:00', tz: TOKYO }]);
 });

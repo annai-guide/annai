@@ -1,5 +1,5 @@
 {
-  "build": "f7486daa5557",
+  "build": "e6ac28347121",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -62,7 +62,7 @@
     "/src/core/backup.js": "644832139162",
     "/src/core/backup-auto.js": "64ed2407b9ec",
     "/src/core/backup-targets.js": "91309d766eea",
-    "/src/core/bookings.js": "d26dad17d5be",
+    "/src/core/bookings.js": "7c161e4e3c5c",
     "/src/core/bytes.js": "b935dfe86a7a",
     "/src/core/catalog-facts.js": "3b27021930f3",
     "/src/core/crc32.js": "0bfef7a8eb00",
@@ -215,7 +215,7 @@
     "/src/ui/bring-in.js": "4e33be70df96",
     "/src/ui/export-panel.js": "ded8262ee329",
     "/src/ui/file-delete.js": "207b1b0e5902",
-    "/src/ui/format.js": "1ca302ec73b5",
+    "/src/ui/format.js": "0d6d78255c11",
     "/src/ui/grounding.html": "5dab86abb302",
     "/src/ui/grounding.js": "1e27c30fc392",
     "/src/ui/import-state.js": "ac11af4a3775",
