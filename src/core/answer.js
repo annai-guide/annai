@@ -46,8 +46,9 @@ const fault = (en, said) => Object.assign(new Error(en), { said, shown: answerWo
  * silence does. An address's server is held to the same number: it is sized from the link (its round trips, a cold connection's
  * handshakes, a stall), which is the same whatever server a file comes from. The update check's 45 s (limitMs, src/ui/updates.js) has
  * room for it: the check's parts run side by side, and a dead site ends each part 20 s after its last byte. A site that answers each
- * request late can run annai's own part (the catalog, its translations, each plugin's file, one after another) past the 45 s, and the
- * check then says it took too long.
+ * request late can still run a part past the 45 s, as a part asks for some files one after another (annai's own: its catalog, then the
+ * catalog's words, then each plugin's words a language at a time; an address: its package's files), and the check then says it took too
+ * long.
  * Not a limit on the whole request: at 100 kbps a small file's answer came 134 s after it was asked for, and a limit that long would
  * hold a dead connection as long.
  */
