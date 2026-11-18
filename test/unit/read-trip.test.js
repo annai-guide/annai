@@ -3898,7 +3898,7 @@ test("classic voice with a quick gate, Shiori asleep: a line said into the micro
   assert.deepEqual((await k.events(['heard'])).map((/** @type {any} */ e) => Boolean(e.data.dismissed)), [false], 'not set aside');
 });
 
-test("classic voice with a quick gate: a line a second tap cuts, whose words come while the user speaks into the microphone a third tap opened (it stopped a reminder annai said): that line never goes to the gate and ends the card unanswered, and the third tap's microphone stays open while they speak", async (t) => {
+test("classic voice with a quick gate: a line a second tap cuts, whose words come while the user speaks into the microphone a third tap opened (it stopped a reminder annai said): that line never goes to the gate, and the third tap's listening is its own (the second tap's end, after the line it cut, ends nothing of it): its microphone stays open while they speak, and both lines end the card unanswered", async (t) => {
   useClock(t);
   const k = await gatedKit(['Hmm, the ramen place', "What's on tomorrow?"], ['B', 'B']);
   const words = slowWords(k, 1);
@@ -3917,11 +3917,14 @@ test("classic voice with a quick gate: a line a second tap cuts, whose words com
   await startsSpeaking(k);
   await atS(k, t0, 6);
   words.release(); // the cut line's words come while they speak
+  await atS(k, t0, 6.5);
+  assert.deepEqual(dock(k), ['hearing', 'Hearing you'], 'the third tap still listens');
   await atS(k, t0, 8.5);
   assert.equal(micLog(k).at(-1), 'mic open', "the third tap's 8 s did not end while they speak");
   k.platform.mic.feed(quiet(2), 16_000); // they stop
   const { grants: g, read } = await cardEnded(k);
   assert.deepEqual(g, []);
   assert.match(read, /^Not read: .* The user said:$/);
-  assert.deepEqual((await k.events(['heard'])).filter((/** @type {any} */ e) => e.data.text === 'Hmm, the ramen place').map((/** @type {any} */ e) => [e.data.answer, Boolean(e.data.dismissed)]), [[k.asks[0].data.id, false]], "the cut line, with the card's answer, not set aside");
+  assert.equal(gated(k), 0, 'no gate call');
+  assert.deepEqual((await k.events(['heard'])).map((/** @type {any} */ e) => [e.data.text, e.data.answer, Boolean(e.data.dismissed)]), [['Hmm, the ramen place', k.asks[0].data.id, false], ["What's on tomorrow?", k.asks[0].data.id, false]], "both lines, with the card's answer, none set aside");
 });

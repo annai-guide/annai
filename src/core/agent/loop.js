@@ -3792,9 +3792,10 @@ export class Agent {
       const own = this.#busy && p?.listening && byTap(p) ? p : null;
       this.#closeEar();
       // A tap's listening for what her turn waits on: the microphone closes, and the wait, her question or annai's card stays (no Stop). Words
-      // being said with the recorder go first: its segment is flushed and routed to it as the microphone closes. Phone dictation's are lost: its close
-      // aborts what is being said, so a yes said at the instant of a second tap is not heard (the user taps again).
-      if (own && s === 'hearing') this.#hearing.then(() => this.#tapEnded(own));
+      // being said with the recorder go first: its segment is flushed and routed to it as the microphone closes, and the listening ends after it, unless a
+      // later tap's microphone is open by then, whose listening has its own end. Phone dictation's are lost: its close aborts what is being said, so a yes
+      // said at the instant of a second tap is not heard (the user taps again).
+      if (own && s === 'hearing') this.#hearing.then(() => { if (!this.#ear) this.#tapEnded(own); });
       else if (own) this.#tapEnded(own);
       else if (this.#busy) this.interrupt();
       else this.#setState(this.online() ? 'sleeping' : 'offline');
