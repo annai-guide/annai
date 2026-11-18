@@ -1000,3 +1000,15 @@ test("the push relay holds a flight with no coordinates' leave reminder too, hal
   ]);
   k.live.dispose();
 });
+
+test("a car pick-up linked to a flight's booking is not unsure for the flight's marks: an unsure landing minute of the booking doesn't mark the car's time, as on the Plan (kind-next's fix round 2)", () => {
+  const car = (/** @type {any} */ kind) => [{ path: '/plan/car.json', item: { id: 'car', title: 'Car pick-up', kind, fixed: true, booking: '/trip/bookings/ua.json', start: { at: '2026-11-28T16:30:00-08:00', tz: LA } } }];
+  const ua = { id: 'ua', kind: 'flight', status: 'unverified', source: '/files/ua.pdf', title: 'UA 123', unsure: ['end'], start: { at: '2026-11-28T12:00:00-08:00', tz: LA }, end: { at: '2026-11-28T16:30:00-08:00', tz: LA } };
+  const wakes = (/** @type {any} */ kind) => planWatches(/** @type {any} */ (car(kind)), new Map([['/bookings/ua.json', ua]]), { fallbackTz: LA });
+  const said = (/** @type {any} */ kind) => PLAN.check(/** @type {any} */ (wakes(kind).find((w) => w.id === 'plan:car:coming-up')).when, moment({ now: Date.parse('2026-11-28T16:20:00-08:00') }), {})?.text;
+  // A car is another thing than the flight: its time is its own, in every wake of it.
+  assert.deepEqual(wakes('car').map((w) => /** @type {any} */ (w.when).unsure), [false]);
+  assert.equal(said('car'), 'Plan: "Car pick-up" (can\'t be moved) starts at 16:30, in 10 min');
+  // With no kind it takes the flight's, and so its marks, as before.
+  assert.ok(wakes(undefined).length > 0 && wakes(undefined).every((w) => /** @type {any} */ (w.when).unsure === true));
+});

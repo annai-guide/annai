@@ -398,15 +398,15 @@ test('under Traditional Chinese screens, formats follow the phone\'s region: Tai
   assert.equal(num(1234.5), '1,234.5');
 });
 
-test("BOOKING_KINDS names every kind word the reminders read, an everyday word as the kind it stands for (an item's kind not in it shows in English on a Japanese screen: \"ferry\", \"bus\", \"coach\")", async () => {
-  const { KINDS } = await import('../../src/core/live/plan-watches.js');
+test("BOOKING_KINDS names every kind the one table of kind words gives, and kindName reads a word by that table, an everyday word as the kind it stands for (an item's kind with no name shows in English on a Japanese screen: \"ferry\", \"bus\", \"coach\")", async () => {
+  const { KINDS } = await import('../../src/core/plan.js');
   for (const [word, kind] of KINDS) {
-    assert.ok(Object.hasOwn(BOOKING_KINDS, word), word);
-    assert.equal(BOOKING_KINDS[word], BOOKING_KINDS[kind], word);
+    assert.ok(Object.hasOwn(BOOKING_KINDS, kind), kind);
+    assert.equal(kindName(word), BOOKING_KINDS[kind], word);
   }
-  assert.deepEqual(['ferry', 'bus', 'coach', 'meal', 'plane', 'hotel'].map((w) => BOOKING_KINDS[w]), ['Ferry', 'Bus', 'Coach', 'Meal', 'Flight', 'Stay']);
-  // The same words both ways: the item screen looks a kind up here (kindName), as the reminders look it up in KINDS.
-  assert.deepEqual(Object.keys(BOOKING_KINDS).sort(), [...KINDS.keys()].sort());
+  assert.deepEqual(['ferry', 'bus', 'coach', 'meal', 'plane', 'hotel', 'stay', 'train'].map(kindName), ['Ferry', 'Bus', 'Coach', 'Meal', 'Flight', 'Stay', 'Stay', 'Train']);
+  // A name for each kind and none for a word: the words are the table's alone (kindWord), read once for the item screen and the reminders.
+  assert.deepEqual(Object.keys(BOOKING_KINDS).sort(), [...new Set(KINDS.values())].sort());
 });
 
 test("kindName reads an item's kind as the reminders do, trimmed and in any case: \"Ferry\" and \" bus \" show their names on a Japanese screen, not the words as written (the re-review's R4)", () => {
