@@ -47,7 +47,7 @@ export const sentenceGap = () => sentences('.', '.').replace(/[.\u2068\u2069]/g,
  * @param {string} text @param {boolean} [english] annai's English for a model and the log, whatever the screens' language: a "." always
  */
 export function asSentence(text, english = false) {
-  const s = text.trimEnd().replace(/\s*[:：]$/, '');
+  const s = text.trimEnd().replace(/[:：]$/, '').trimEnd();
   return !s || ENDED.test(s) ? s : `${s}${!english && /^(ja|zh)(-|$)/.test(lang()) ? '。' : '.'}`;
 }
 

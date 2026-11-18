@@ -200,7 +200,7 @@ test('an update from an address is offered after a reload and changes nothing un
 
 // Outside words end as sentences at the source (sentences-next): on Japanese screens the failed-updates card keeps the space a Latin end
 // has before the next plugin's name ("…use it. rock-pools：…", not "it.rock-pools"). The words here are annai's own and end in "." already;
-// the ending of words with no stop of their own is pinned by the unit tests (a browser can't make a plugin throw words of its own here).
+// the ending of words with no stop of their own is pinned by the unit tests (this fixture's update failures all end with a stop).
 for (const [locale, words] of /** @type {[string, Record<string, string> | null][]} */ ([['en-US', null], ['ja-JP', JA]])) {
   test.describe(`on ${locale} screens`, () => {
     test.use({ locale });

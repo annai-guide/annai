@@ -64,7 +64,7 @@ test("a restore line for a plugin that failed to install ends as a sentence, wha
     const got = await llm.restorePlugins();
     assert.equal(got.failed.length, 1);
     const names = '(OpenRouter, Google Gemini|Google Gemini, OpenRouter)';
-    assert.match(got.failed[0], new RegExp(`^${names}${said ? ': ' : ''}${line.replace('?', '\\?')}$`), `${JSON.stringify(said)} gave ${got.failed[0]}`);
+    assert.match(got.failed[0], new RegExp(`^${names}${said ? ': ' : ''}${line.replace(/[.?]/g, '\\$&')}$`), `${JSON.stringify(said)} gave ${got.failed[0]}`);
   }
 });
 

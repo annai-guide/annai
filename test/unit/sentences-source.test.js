@@ -7,7 +7,7 @@ import { Registry } from '../../src/core/registry.js';
 import { startCards } from '../../src/ui/plugin-cards.js';
 import { applyUpdates } from '../../src/ui/plugin-updates.js';
 import { micProblem } from '../../src/core/voice/mic.js';
-import { errorWords, announced } from '../../src/ui/screens/talk.js';
+import { errorWords, announced, sourceOf } from '../../src/ui/screens/talk.js';
 import { testLive } from '../../src/core/realtime/open.js';
 import { recapError } from '../../src/core/after/recap.js';
 import { AllFailedError } from '../../src/core/llm/fallback.js';
@@ -207,7 +207,7 @@ test("a frame made with blank words reads as a sentence of its own, in every lan
   };
   for (const [tag, [watch, toast, voice, photo]] of Object.entries(want)) {
     screens(tag);
-    // The frames as their callers make them (talk.js, provider.js, voice.js, loop.js), with a blank error.
+    // The frames in the shapes their callers make them (talk.js runs; provider.js, voice.js and loop.js are rebuilt here), with a blank error.
     assert.equal(errorWords({ kind: 'trigger', type: 'plan', watch: 'plan:tea:leave', title: 'Tea at the inn', why: '', message: 'x' }), watch, tag);
     assert.equal(sentences(t`Roles updated.`, ...['Voice A', 'Voice B'].map((n) => asSentence(t`${n} couldn't be switched on: ${''}`))), toast, tag);
     assert.equal(sentences(t`${'Voice A'} couldn't speak: ${''}`, t`Spoken by ${'Voice B'}.`), voice, tag);
@@ -231,7 +231,8 @@ test("the screen reader hears her words, and a card's, ended before the choices 
   assert.deepEqual(announced('grounded', '', 'From Google Search Nepenthe closes at ten tonight', [], card), ['From Google Search. ', 'Nepenthe closes at ten tonight', ''], 'no links after it, so no stop');
   screens('ja');
   assert.deepEqual(announced('out.ask', '', 'どこで食べたいですか', ['はい', 'いいえ']), ['Shioriの質問：', 'どこで食べたいですか。', '選択肢：はい、いいえ。']);
-  assert.deepEqual(announced('grounded', '', 'From Google Search Nepenthe closes at ten tonight nepenthe.example', [], card), ['Google Searchより。', 'Nepenthe closes at ten tonight。', 'nepenthe.example']);
+  // On a Japanese screen the card's source is sourceOf's word for Google Search and its title the card's own row, as talk.js draws them.
+  assert.deepEqual(announced('grounded', '', `${t`From ${sourceOf({})}`} Nepenthe closes at ten tonight nepenthe.example`, [], { ...card, from: sourceOf({}), title: t`From ${sourceOf({})}` }), ['Google 検索より。', 'Nepenthe closes at ten tonight。', 'nepenthe.example']);
 });
 
 test("the live Test says what the model answered aloud as a sentence: a \"?\" or \"!\" it ends with stays, a stop is added where it has none, in every language", async () => {
