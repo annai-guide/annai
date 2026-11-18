@@ -131,11 +131,11 @@ export class Voice {
       now: () => this.now(),
       onBlocked: () => this.soundStopped(),
       bench: (id, error) => this.llm.bench.bench(id, restFor(error), this.now()),
-      browserOptions: async (text) => {
+      browserOptions: async (text, { before }) => {
         const app = await readAppSettings(this.ws);
         const s = voiceSettings(app);
-        // The sentence's own language among those listed (a fixed answer language wins): a voice chosen by hand still speaks as it does.
-        const lang = speechLocale(languageSettings(app, this.locale), text);
+        // The sentence's own language among those listed, else her reply's so far (a fixed answer language wins): a voice chosen by hand still speaks as it does.
+        const lang = speechLocale(languageSettings(app, this.locale), text, { before });
         const system = this.browserVoice(s.browserVoice, lang);
         return { voice: system?.id, rate: s.rate, lang, system };
       },

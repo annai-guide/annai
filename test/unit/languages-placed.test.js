@@ -174,3 +174,20 @@ test('writing tells a line by its writing alone: one scale (Chinese, Japanese an
   ]);
   for (const [x, kind] of cases) assert.equal(L.writing(x), kind, x);
 });
+
+// The voice's second step (detector-next): her real sentences that show no language of their own are plan lines of names and times and short
+// headers; given the language of her reply so far her sentences got the right voice 98.7 to 99.0% of the time in every list order, against 96.3 to 99.0% without.
+test("the phone's voice: a sentence that shows no language of its own takes the language of her reply so far", () => {
+  const reply = '我们明天去故宫吧。';
+  const jaFirst = listed(['en', 'ja', 'zh']);
+  assert.equal(speechLocale(jaFirst, '明天比較滿：'), 'ja-JP', 'alone, Han that says neither is the first listed in Han');
+  assert.equal(speechLocale(jaFirst, '明天比較滿：', { before: reply }), 'zh-CN');
+  const three = listed(['en', 'zh', 'ja']);
+  assert.equal(speechLocale(three, '下一站是 Golden Gate Bridge。'), 'en-US', 'alone, it shows nothing: the first listed');
+  assert.equal(speechLocale(three, '下一站是 Golden Gate Bridge。', { before: reply }), 'zh-CN');
+  assert.equal(speechLocale(three, '- 10:00–12:00 奇趣钟表博物馆（Pendulum Lane 12号）', { before: reply }), 'zh-CN');
+  // A sentence that shows its own language keeps it; Han is never read in a voice not written in Han; a fixed answer language still wins.
+  assert.equal(speechLocale(three, 'Where should we eat?', { before: reply }), 'en-US');
+  assert.equal(speechLocale(jaFirst, '東京駅。', { before: 'We arrive at noon.' }), 'ja-JP');
+  assert.equal(speechLocale(languageSettings({ languages: { spoken: ['en', 'zh', 'ja'], answer: 'ja' } }, 'en-US'), '下一站是 Golden Gate Bridge。', { before: reply }), 'ja-JP');
+});

@@ -92,6 +92,18 @@ test('the browser voice says each sentence in the language it is written in, amo
   assert.equal(k.platform.said.at(-1).lang, 'ja-JP');
 });
 
+// A sentence that shows no language of its own (Han that says neither, a plan line of names) takes her reply's so far: the speaker hands the
+// browser voice the utterance's sentences before it (detector-next's second step).
+test('the browser voice reads a sentence that shows no language of its own in the language of her reply so far', async () => {
+  const k = await kit({ speechOut: ['browser-voice'] });
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja', 'zh'] } });
+  await k.voice.say('我们明天去故宫吧。明天比較滿。');
+  await k.voice.say('我们明天去故宫吧。下一站是 Golden Gate Bridge。');
+  assert.deepEqual(k.platform.said.map((s) => [s.text, s.lang]), [['我们明天去故宫吧。', 'zh-CN'], ['明天比較滿。', 'zh-CN'], ['我们明天去故宫吧。', 'zh-CN'], ['下一站是 Golden Gate Bridge。', 'zh-CN']]);
+  await k.voice.say('明天比較滿。');
+  assert.equal(k.platform.said.at(-1).lang, 'ja-JP', 'a reply of its own: nothing before it, the first listed in Han');
+});
+
 test('the model that writes down what it heard is told the languages, and not to translate, once the user has chosen them; before that it gets no hint (review item 13)', async () => {
   const k = await kit({ main: [{ id: 'm1', input: ['text', 'audio'] }], speechIn: ['send-audio', 'dictation'], reply: 'tacos please' });
   const h0 = await hear(k);
