@@ -466,12 +466,13 @@ export function tagOf(text, s, byShiori = false, ui = 'en') {
 
 /**
  * The locale browser voice uses: the answer language if she answers in one; else the one of theirs the sentence is placed as (placed), except
- * that with nothing chosen a sentence in Latin letters on a phone written in them is read in the phone's voice (a Dutch phone's Dutch sentence
- * has "is" and "open" in it: on real sentences of other languages the final review of detector-next measured a wrong voice for 0.9 to 3.2% of
- * a Latin-script phone's when placed decided). Another script needs no such rule: placed stands the phone's language for its script (a
- * Ukrainian phone's Cyrillic is Ukrainian: letting і ї є ґ decide gave a wrong voice for 6.9% of its real sentences, those with none of them)
- * and reads a sentence in another script as what it is, so Japanese replies on an English phone still go from 1.9% to 98.7% given the right
- * voice. A sentence that shows none (a plan line of names and times; 「明天比較滿：」, Han that says neither Japanese nor Chinese) takes the language of her reply so far:
+ * that with nothing chosen a sentence in the phone's own script is read in the phone's voice (a Dutch phone's Dutch sentence has "is" and
+ * "open" in it: on real sentences of other languages the final review of detector-next measured a wrong voice for 0.9 to 3.2% of a
+ * Latin-script phone's when placed decided). For other scripts placed gives the same answer (it stands the phone's language for its script:
+ * a Ukrainian phone's Cyrillic is Ukrainian, where letting і ї є ґ decide gave a wrong voice for 6.9% of its real sentences), but for a
+ * Ukrainian sentence with і ї є ґ on a Russian, Bulgarian or Serbian phone, which keeps the phone's voice so one reply is read in one voice;
+ * a sentence in another script is read as what it is, so Japanese replies on an English phone still go from 1.9% to 98.7% given the right
+ * voice. Han placed as none of theirs (a Chinese sentence with only Japanese listed) is read as Han that says neither. A sentence that shows none (a plan line of names and times; 「明天比較滿：」, Han that says neither Japanese nor Chinese) takes the language of her reply so far:
  * the first earlier sentence that shows one (for Han that says neither, one written in Han), not a reading of them joined, which one hiragana in
  * a name made Japanese; measured on her real sentences, 99.4 to 99.5% given the right voice in every list order of [en, ja] and [en, zh, ja],
  * against 96.5 to 99.5% without the reply so far.

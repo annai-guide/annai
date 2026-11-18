@@ -460,6 +460,8 @@ test("Chinese's own small words are grammar, as hiragana is: a Chinese sentence 
   for (const s of [phone('zh-CN'), three, listed(['en', 'ja', 'zh'])]) assert.equal(summaryLanguage(trip, s), most('Chinese (Simplified)'), s.spoken.map((l) => l.id).join());
   // What stays: a name in a Chinese form, or in kanji, in an English line is English (the forms come after the small words, as the name rule's grammar of its own).
   for (const x of ['Where is 天安门?', 'Where is 东京站?', 'Where is 新宿御苑?']) assert.equal(L.writing(x), 'Latn', x);
+  // Chinese's small words outrank Latin words only where its characters outnumber them: an English sentence quoting 你好 stays English.
+  assert.equal(L.writing('Say 你好 to the staff at the desk.'), 'Latn');
 });
 
 test('Han that is placed as none of theirs is Han that says neither: with Japanese listed and Chinese not, a Chinese-only character is read in the Japanese voice, not the English one (R2)', () => {
