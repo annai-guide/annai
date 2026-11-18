@@ -16,11 +16,11 @@ import { t } from './l10n.js';
  *   line: { n: number, of: number } | null, bookingPath: string | null, booking: Record<string, any> | null,
  *   checkFields: string[], missing: boolean, note: string }} PlanRow
  *   from: a plan item, a booking no plan item stands for (at its start), the end of a set (at its end), or a set's quiet line;
- *   path: the plan item's, else the booking's; item: the plan item (without its end when it starts a set), or a view of the booking
- *   ({ title, kind: 'booking', fixed: null, start, end, place }); an end row's item has the end as its start; fixed: true or false as a
+ *   path: the plan item's, else the booking's; item: the plan item (without its end when it starts a set and an end row shows it; a same-day one on a booking keeps it), or
+ *   a view of the booking ({ title, kind: 'booking' (a ride's own kind for a row that stays one, of an old booking of "other" with a ride item), fixed: null, start, end, place }); an end row's item has the end as its start; fixed: true or false as a
  *   plan item stored it, and null where nobody said (a booking's own rows: a stay's check-out is a plan item's only when that item is
  *   linked to the booking and ends where it does); an end row and a quiet line keep their start's, except a booking's (above); time and end: "HH:MM" in the
- *   item's own zones ('' when there is none, for an all-day item, and for a set's start); endDays: how many days after the row's day
+ *   item's own zones ('' when there is none, for an all-day item, and for a set's start with an end row); endDays: how many days after the row's day
  *   the end falls, on the end's own clock; endZone: the end's zone, named ("ET"), when its clock reads differently from the start's ('' when
  *   it doesn't, and when there is no end); set: the row is part of a set, of what kind (kindOf's: the item's own word annai knows, else its booking's); line: which day
  *   or night of how many (quiet lines); checkFields: the fields Shiori is unsure of, or of an old booking not confirmed, every part it has (checkOf's); bookingPath and booking: the booking a row is or stands for, none for a plan item that is another thing than its booking (anotherThing), whose rows open the item and carry no checks of the booking's; missing: it names a booking the trip doesn't have; note: what was wrong with its time
@@ -175,10 +175,13 @@ function spanOf(x) {
   return { apart, between };
 }
 
-/** A good span that ends on a later day, or of what carries the traveller, whatever the day: a set. @param {Record<string, any>} x @param {string} kind */
+/**
+ * A good span that ends on a later day, or of what carries the traveller on the day it starts: a set. One that ends on an earlier local day
+ * (an eastbound flight over the date line) stays one row, with its end, as before. @param {Record<string, any>} x @param {string} kind
+ */
 const setOf = (x, kind) => {
   const s = spanOf(x);
-  return s && (s.apart > 0 || CARRIERS.has(kind)) ? s : null;
+  return s && (s.apart > 0 || (s.apart === 0 && CARRIERS.has(kind))) ? s : null;
 };
 
 /** The item without its end: a set's start row. @param {Record<string, any>} x */
@@ -244,6 +247,7 @@ export function planRows(items, bookings, { fallbackTz }) {
    * @param {Record<string, any>} view the start's view @param {Record<string, any>} endAt the end's time @param {string} kind
    * @param {{ apart: number, between: string[] } | null} span
    * @param {(end: PlanRow) => boolean} [stands] whether a plan item stands for the end row, which then isn't drawn; none for another thing's set
+   * @returns {PlanRow[]} the end row, unless a plan item stands for it, then the lines
    */
   const rest = (base, view, endAt, kind, span, stands) => {
     // The end isn't where the start is for a flight, a train or a ride, nor for a car dropped somewhere else (named, when fields says where).
@@ -256,12 +260,14 @@ export function planRows(items, bookings, { fallbackTz }) {
     // An end in another zone than the start's names it (an Arrive at 07:30 ET after a departure in PT).
     const [from, to] = [view.start?.tz, endAt?.tz].map((z) => (validZone(z) ? z : fallbackTz));
     if (end.at !== null && offsetMinutes(end.at, to) !== offsetMinutes(end.at, from)) end.endZone = zone(end.at, to);
-    if (end.day && !stands?.(end)) out.push(end);
+    /** @type {PlanRow[]} */
+    const rows = end.day && !stands?.(end) ? [end] : [];
     const title = view.title;
-    span?.between.forEach((day, k) => out.push({
+    span?.between.forEach((day, k) => rows.push({
       ...base, item: { title, kind: view.kind, fixed: view.fixed, place: view.place }, from: 'line', at: null, day, time: '', end: '', endDays: 0, endZone: '',
       set: { kind, part: 'line' }, line: { n: k + 2, of: kind === 'lodging' ? span.apart : span.apart + 1 }, checkFields: [], missing: false, note: '',
     }));
+    return rows;
   };
   for (const { path, item, ref, other } of own) {
     const booking = ref ? byPath.get(ref) ?? null : null;
@@ -275,11 +281,13 @@ export function planRows(items, bookings, { fallbackTz }) {
       missing: item.booking !== undefined && item.booking !== '' && !booking,
     };
     const draws = span && (!booking || other || (ref && drawer.get(ref) === path));
-    // Its end is its own row, or its booking's; an item that is neither keeps its end (a second one for a booking with no times, a ride on
-    // a booking of one row).
-    const view = draws || (span && ref && drawn.get(ref)?.ends) ? withoutEnd(item) : item;
-    out.push({ ...base, item: view, from: 'item', ...timesOf(view, fallbackTz), set: draws ? { kind, part: 'start' } : null, line: null });
-    if (draws) rest(base, view, item.end, kind, span, ref && booking && !other ? (end) => standsFor(ref, end, path) : undefined);
+    const after = draws ? rest(base, withoutEnd(item), item.end, kind, span, ref && booking && !other ? (end) => standsFor(ref, end, path) : undefined) : [];
+    // Its end is a row's of its own where main had one: an item that spans days gives it to its set's end row, or to its booking's. One that
+    // ends the same day keeps it (main's row, so no time main showed is gone) and the split only adds an Arrive; it gives it up only when
+    // it draws a set whose Arrive is drawn, since another item's would stand for that Arrive and the end would be nowhere (a connection
+    // on a booking with no times).
+    const view = span && (span.apart > 0 ? draws || (ref && drawn.get(ref)?.ends) : draws && after.some((r) => r.from === 'end')) ? withoutEnd(item) : item;
+    out.push({ ...base, item: view, from: 'item', ...timesOf(view, fallbackTz), set: draws ? { kind, part: 'start' } : null, line: null }, ...after);
   }
   for (const [path, b] of byPath) {
     if (drawer.has(path)) continue;
@@ -290,15 +298,16 @@ export function planRows(items, bookings, { fallbackTz }) {
     const title = typeof b.title === 'string' && b.title.trim() ? b.title : KIND_WORDS[ride ? kind : b.kind] ?? t`Booking`;
     const base = { path, bookingPath: path, booking: b, checkFields: marks.fields, missing: false };
     // A booking says nothing of what can move (null: nobody said): a plan item Shiori stored as fixed does (the user's answer, 2026-11-15).
-    const view = { title, kind: 'booking', fixed: null, start: b.start, ...(split ? {} : { end: b.end }), place };
+    // A row that stays one is a booking's ('booking'), but of a ride an item says it is, the ride's own kind: Driving's strip reads it (carries).
+    const view = { title, kind: !split && ride ? kind : 'booking', fixed: null, start: b.start, ...(split ? {} : { end: b.end }), place };
     /** @type {PlanRow} */
     const start = { ...base, item: view, from: 'booking', ...timesOf(view, fallbackTz), set: split ? { kind, part: 'start' } : null, line: null };
     if (!standsFor(path, start)) out.push(start);
     if (!split) continue;
-    // The end is a plan item's when one standing for the booking ends where it does (that item's own end is dropped for this row): as
-    // fixed as that item, true or false. With none, nobody said.
+    // The end is a plan item's when one standing for the booking ends where it does (an overnight item's own end is dropped for this row;
+    // a same-day one keeps it): as fixed as that item, true or false. With none, nobody said.
     const said = own.find((x) => x.ref === path && !x.other && momentOf(x.item.end, fallbackTz) === momentOf(b.end, fallbackTz));
-    rest(base, { ...view, fixed: said ? said.item.fixed : null }, b.end, kind, spanOf(b), (end) => standsFor(path, end));
+    out.push(...rest(base, { ...view, fixed: said ? said.item.fixed : null }, b.end, kind, spanOf(b), (end) => standsFor(path, end)));
   }
   return out;
 }

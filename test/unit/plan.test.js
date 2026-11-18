@@ -136,9 +136,8 @@ test('planRows: an end in another zone names it; an end a day earlier says so; a
   assert.deepEqual(by.party, ['21:00', '', 0, '']);
   assert.deepEqual(by.dinner, ['17:00', '20:00', 0, '']);
   assert.deepEqual(by.toronto, ['09:00', '10:30', 0, '']);
-  // Across the date line its Arrive is on the day it lands, the day before it left.
-  assert.deepEqual(by.back, ['00:30', '', 0, '']);
-  assert.deepEqual(ends.back, ['2026-11-28', '13:00', 'HST']);
+  // Across the date line (eastbound) it lands on an earlier day: one row on the day it leaves, as on main, not an Arrive on the tab before.
+  assert.deepEqual(by.back, ['00:30', '13:00', -1, 'HST']);
   assert.deepEqual(by.museum, ['', '', 0, '']);
   // The zone is named in the screens' language.
   setWords('de', null);
@@ -607,7 +606,8 @@ test("a car rental of kind car on the booking of a flight with a start and an en
   // Return on the 23rd is not stood for by a flight item (the flight home) on that day.
   const out = { path: '/plan/out.json', item: { id: 'out', title: 'Flight out', kind: 'flight', fixed: true, booking: '/trip/bookings/ua.json', start: { at: '2026-11-20T07:00:00-09:00', tz: AK }, end: { at: '2026-11-20T09:00:00-09:00', tz: AK } } };
   const home = { path: '/plan/home.json', item: { id: 'home', title: 'Flight home', kind: 'flight', fixed: true, booking: '/trip/bookings/ua.json', start: { at: '2026-11-23T12:00:00-09:00', tz: AK } } };
-  assert.deepEqual(shown(planRows([out, home, rental()], [ua()], { fallbackTz: 'UTC' })), ['item@2026-11-20 07:00 Flight out', 'item@2026-11-23 12:00 Flight home', ...CAR_SET, 'end@2026-11-20 09:00 Arrive · ANNAI AIR AN 123']);
+  // The flight item keeps its end (main's row, 07:00–09:00; the first build dropped it), and the booking draws its Arrive beside it.
+  assert.deepEqual(shown(planRows([out, home, rental()], [ua()], { fallbackTz: 'UTC' })), ['item@2026-11-20 07:00–09:00 Flight out', 'item@2026-11-23 12:00 Flight home', ...CAR_SET, 'end@2026-11-20 09:00 Arrive · ANNAI AIR AN 123']);
 });
 
 test("a car pick-up with no end on a timed flight's booking is a row of its own, and the flight's row stays (the review of kind-next, F1)", () => {
@@ -658,7 +658,8 @@ test("an item of a generic word on its booking is still the booking's own thing,
     assert.deepEqual(shown(rows), [`item@2026-11-20 12:00–13:30 ${title}`], `${kind} on ${bookingKind}`);
   }
   const ferry = planRows([on('ferry', 'Ferry to Whittier')], [book('other', 'Ferry to Whittier (booking)')], { fallbackTz: 'UTC' });
-  assert.deepEqual(shown(ferry), ['item@2026-11-20 12:00 Ferry to Whittier', 'end@2026-11-20 13:30 Arrive · Ferry to Whittier (booking)']);
+  // The ferry item keeps its end, as it was on main (12:00–13:30); the booking draws its Arrive beside it.
+  assert.deepEqual(shown(ferry), ['item@2026-11-20 12:00–13:30 Ferry to Whittier', 'end@2026-11-20 13:30 Arrive · Ferry to Whittier (booking)']);
   assert.deepEqual(ferry.map((r) => r.bookingPath), ['/bookings/b.json', '/bookings/b.json'], 'one thing: both rows are the booking\'s');
 });
 
@@ -837,9 +838,10 @@ test("a same-day plan item of kind flight, rail, ferry, bus or coach is its depa
     assert.deepEqual(legsOn(alone), [], kind);
   }
   for (const kind of CARRIED) {
-    // On its booking, with the booking's times: the item stands for the departure, and the booking draws the Arrive.
+    // On its booking, with the booking's times: the item stands for the departure and keeps its end (main's row; the first build dropped
+    // it, and a second item on the booking then lost the arrival altogether), and the booking draws the Arrive: the end said twice, no leg between.
     const on = planRows([rideItem(kind, { booking: '/trip/bookings/ride.json' }), supper], [rideBooking(kind)], { fallbackTz: 'UTC' });
-    assert.deepEqual(shown(dayOf(on)), ['item@2026-11-20 08:00 Morning ride', 'end@2026-11-20 10:00 Arrive · Ride ticket', 'item@2026-11-20 19:00 Dinner'], kind);
+    assert.deepEqual(shown(dayOf(on)), ['item@2026-11-20 08:00–10:00 Morning ride', 'end@2026-11-20 10:00 Arrive · Ride ticket', 'item@2026-11-20 19:00 Dinner'], kind);
     assert.equal(dayOf(on)[1].item.fixed, true, `${kind}: the Arrive is as fixed as the item that ends there`);
     assert.deepEqual(legsOn(on), [], kind);
     // The departure item Shiori writes for a booking (the plan-a-trip skill), with no end: main drew it alone, so the arrival was nowhere on the Plan.
@@ -894,4 +896,78 @@ test("guard, not the change (main drew the same): a ride or a flight item on a s
     const rows = planRows([rideItem(kind, { booking: '/trip/bookings/ride.json' })], [rideBooking(bookingKind)], { fallbackTz: 'UTC' });
     assert.deepEqual(shown(dayOf(rows)), ['item@2026-11-20 08:00–10:00 Morning ride'], `${kind} on ${bookingKind}`);
   }
+});
+
+// The review of carrier-rows-next, finding 1: an item on a booking is main's row, with its end, so no time main showed is gone; the split only
+// adds an Arrive. Each shape below showed its times on main and lost them in the first build (its test says which).
+/** One day's rows of a booking and the items on it, without the quiet lines. @param {any[]} items @param {any} booking */
+const onBooking = (items, booking, key = '2026-11-20') => shown(dayOf(planRows(items, [booking], { fallbackTz: 'UTC' }), key).filter((r) => r.from !== 'line'));
+/** A plan item on the ride booking. @param {string} id @param {Record<string, any>} [o] @param {string} [kind] */
+const linked = (id, o = {}, kind = 'flight') => ({ ...rideItem(kind, { id, title: id, booking: '/trip/bookings/ride.json', ...o }), path: `/plan/${id}.json` });
+
+test("a round trip under one flight booking, one item a leg with its end: both legs keep their end, on the Plan and so in Kokoro's view (the first build: '11:20 outbound', '13:00 return')", () => {
+  const booking = rideBooking('flight', { start: ak('11:20'), end: ak('17:30', '2026-11-27') });
+  const legs = [linked('outbound', { start: ak('11:20'), end: ak('14:05') }), linked('return', { start: ak('13:00', '2026-11-27'), end: ak('17:30', '2026-11-27') })];
+  assert.deepEqual(onBooking(legs, booking), ['item@2026-11-20 11:20–14:05 outbound']);
+  assert.deepEqual(onBooking(legs, booking, '2026-11-27'), ['item@2026-11-27 13:00–17:30 return']);
+});
+
+test("a connection under one booking, two leg items with their ends, keeps both ends, with the booking's times and with none (the first build: '08:00 leg1', '11:00 leg2', and with none '08:00 leg1')", () => {
+  const connection = [linked('leg1', { end: ak('10:00') }), linked('leg2', { start: ak('11:00'), end: ak('13:00') })];
+  const both = ['item@2026-11-20 08:00–10:00 leg1', 'item@2026-11-20 11:00–13:00 leg2'];
+  assert.deepEqual(onBooking(connection, rideBooking('flight', { end: ak('13:00') })), both);
+  assert.deepEqual(onBooking(connection, rideBooking('flight', { start: undefined, end: undefined })), both);
+});
+
+test("a flight item with its end and a no-kind item (a taxi) on the flight's booking: the flight keeps its end (the first build: '14:05 fly')", () => {
+  const items = [linked('fly', { start: ak('14:05'), end: ak('16:30') }), linked('taxi', { kind: undefined, start: ak('17:00'), end: undefined })];
+  assert.deepEqual(onBooking(items, rideBooking('flight', { start: ak('14:05'), end: ak('16:30') })), ['item@2026-11-20 14:05–16:30 fly', 'item@2026-11-20 17:00 taxi']);
+});
+
+test("a day-return train, one booking with an out and a back item, keeps both ends (the first build: '08:00 out', '16:00 back')", () => {
+  const items = [linked('out', { end: ak('10:00') }, 'rail'), linked('back', { start: ak('16:00'), end: ak('18:00') }, 'rail')];
+  assert.deepEqual(onBooking(items, rideBooking('rail', { end: ak('18:00') })), ['item@2026-11-20 08:00–10:00 out', 'item@2026-11-20 16:00–18:00 back']);
+});
+
+test("a check-in at 06:30 beside the departure item, with the booking's times and with none, and two flights on a booking with no times: each flight keeps its end (the first build: '08:00 Fly' and no arrival, '08:00 f1')", () => {
+  const checkIn = linked('check-in', { start: ak('06:30'), end: undefined }, undefined);
+  for (const booking of [rideBooking('flight'), rideBooking('flight', { start: undefined, end: undefined })]) {
+    assert.deepEqual(onBooking([checkIn, linked('fly')], booking), ['item@2026-11-20 06:30 check-in', 'item@2026-11-20 08:00–10:00 fly']);
+  }
+  const two = [linked('f1'), linked('f2', { start: ak('14:00'), end: ak('16:00') })];
+  assert.deepEqual(onBooking(two, rideBooking('flight', { start: undefined, end: undefined })), ['item@2026-11-20 08:00–10:00 f1', 'item@2026-11-20 14:00–16:00 f2']);
+});
+
+test("a ride item on a booking of another thing keeps its end: a shuttle on a stay's, a ferry on a multi-day car's, a flight on a package booked other or event (the first build: '14:00 shuttle', no Arrive)", () => {
+  const days = { start: ak('09:00'), end: ak('09:00', '2026-11-22') };
+  for (const [bookingKind, kind] of [['lodging', 'bus'], ['car', 'ferry'], ['other', 'flight'], ['event', 'flight']]) {
+    const items = [linked('shuttle', { start: ak('14:00'), end: ak('14:40') }, kind)];
+    assert.deepEqual(onBooking(items, rideBooking(bookingKind, days)).filter((r) => r.startsWith('item')), ['item@2026-11-20 14:00–14:40 shuttle'], `${kind} on ${bookingKind}`);
+  }
+});
+
+test("a shuttle at 06:00 to 07:30 before the flight's 09:00 to 12:00 keeps its end, then the flight's Arrive; one item on its booking keeps its end beside the booking's Arrive (the end said twice, no leg between)", () => {
+  assert.deepEqual(onBooking([linked('shuttle', { start: ak('06:00'), end: ak('07:30') }, 'bus')], rideBooking('flight', { start: ak('09:00'), end: ak('12:00') })),
+    ['item@2026-11-20 06:00–07:30 shuttle', 'end@2026-11-20 12:00 Arrive · Ride ticket']);
+  const rows = planRows([linked('ride'), supper], [rideBooking('ferry')], { fallbackTz: 'UTC' });
+  assert.deepEqual(shown(dayOf(rows)), ['item@2026-11-20 08:00–10:00 ride', 'end@2026-11-20 10:00 Arrive · Ride ticket', 'item@2026-11-20 19:00 Dinner']);
+  assert.deepEqual(legsOn(rows), []);
+});
+
+// The second opinion's finding 3 (slice 1, F3): a ride Shiori stored as `other` before booking-next, with a ride item linked.
+test("a legacy ride booked as other, with a ride item linked and no end of its own, keeps its row a ride's: Driving's strip drops its port once it leaves (the row's kind was 'booking')", async () => {
+  const { routeStrip } = await import('../../src/core/now.js');
+  const old = rideBooking('other', { title: 'Ferry ticket', end: undefined });
+  const untimed = rideItem('ferry', { booking: '/trip/bookings/ride.json', start: undefined, end: undefined });
+  const rows = planRows([untimed, supper], [old], { fallbackTz: 'UTC' });
+  const [row] = rows.filter((r) => r.from === 'booking');
+  assert.deepEqual([row.set, row.item.kind, row.item.title], [null, 'ferry', 'Ferry ticket']);
+  const strip = (/** @type {string} */ hhmm, /** @type {any} */ here) => routeStrip(rows, here, Date.parse(ak(hhmm).at), 'driving').map((s) => s.name);
+  assert.deepEqual(strip('07:30', { lat: 61.01, lng: -149.01 }), ['Port A', 'Harbor cafe']);
+  for (const hhmm of ['08:00', '08:10', '09:00']) assert.deepEqual(strip(hhmm, { lat: 61.2, lng: -149.3 }), ['Harbor cafe'], hhmm);
+  // With no ride item nothing says it is a ride: its row is a booking's, and stays on the strip for half an hour (Deferred).
+  const alone = planRows([supper], [old], { fallbackTz: 'UTC' });
+  assert.equal(alone.find((r) => r.from === 'booking')?.item.kind, 'booking');
+  // A booking of kind other that is no ride keeps 'booking'.
+  assert.equal(planRows([], [rideBooking('other', { end: undefined })], { fallbackTz: 'UTC' })[0].item.kind, 'booking');
 });

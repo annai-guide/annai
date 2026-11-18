@@ -180,8 +180,8 @@ test("a booking with parts Shiori is unsure of: its row names them by what they 
   await write('/plan/train.json', { id: 'train', title: 'Coast Test Train', fixed: true, booking: '/trip/bookings/train.json', start: at('2026-11-27T09:00:00'), end: at('2026-11-27T10:30:00') });
   const view = await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: null });
   assert.match(view, /\n2026-11-26 15:00\t\tCheck in at Harbor Test Inn\tcan't be moved\t\n/);
-  // The train is its departure, unsure, and its Arrive, sure, as fixed as the item that ends there (carrier-rows-next).
-  assert.match(view, /\n2026-11-27 09:00\t\tCoast Test Train\tcan't be moved; not sure the time was read right\t\n2026-11-27 10:30\t\tArrive · Coast Test Train\tcan't be moved\t\n/);
+  // The train item is the row main showed, with its end, unsure; the booking's Arrive follows it, sure, as fixed as the item that ends there (carrier-rows-next).
+  assert.match(view, /\n2026-11-27 09:00\t2026-11-27 10:30\tCoast Test Train\tcan't be moved; not sure the time was read right\t\n2026-11-27 10:30\t\tArrive · Coast Test Train\tcan't be moved\t\n/);
   // The check-out no plan item stands for is the booking's own row: unsure, and nothing said of what can move.
   assert.match(view, /\n2026-11-27 11:00\t\tCheck out · Harbor Test Inn\tnot sure the time was read right\t\n/);
   assert.match(view, /\tlodging\tHarbor Test Inn\tnot sure the check-out time was read right\tHT7\n/);
@@ -220,9 +220,10 @@ test("Koe's plan rows show a flight's arrival, so an unsure end marks it: a flig
   await item('endmarked');
   await item('sure');
   const view = await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: null });
-  assert.match(view, /\n2026-11-27 09:00\t\tFlight endmarked\tcan't be moved\t\n/);
+  // The item rows are main's (both times, the end marked on the one whose booking marks it), and the bookings' Arrive rows follow (carrier-rows-next).
+  assert.match(view, /\n2026-11-27 09:00\t2026-11-27 11:30\tFlight endmarked\tcan't be moved; not sure the time was read right\t\n/);
+  assert.match(view, /\n2026-11-27 09:00\t2026-11-27 11:30\tFlight sure\tcan't be moved\t\n/);
   assert.match(view, /\n2026-11-27 11:30\t\tArrive · endmarked Test Air\tcan't be moved; not sure the time was read right\t\n/);
-  assert.match(view, /\n2026-11-27 09:00\t\tFlight sure\tcan't be moved\t\n/);
   assert.match(view, /\n2026-11-27 11:30\t\tArrive · sure Test Air\tcan't be moved\t\n/);
 });
 
@@ -240,27 +241,29 @@ test("a conversation with no dates: the view says it has none and that the user'
   assert.equal(await compactView({ ws: k.ws, trip: k.trip, now, timeZone: LA, next: null }), '<today>\ntrip: Big Sur\nplan for 2026-11-26 and 2026-11-27:\nnothing planned\nbookings in the next 48 hours:\nnone\nnext reminder: none\n</today>');
 });
 
-test("Kokoro's view of a day with a same-day flight, train or ferry: its departure at its place with no end, then \"Arrive\" at its time with no place, as an overnight one's, whether booked, planned or both (carrier-rows-next; main told a booking's arrival nowhere, and an item's on one row at the place it left)", async () => {
+test("Kokoro's view of a day with a same-day flight, train or ferry: its departure at its place, then \"Arrive\" at its time with no place, as an overnight one's, whether booked, planned or both; an item on its booking keeps its end (carrier-rows-next; main told a booking's arrival nowhere, and an item's on one row at the place it left)", async () => {
   const AK = 'America/Anchorage';
   const ak = (/** @type {string} */ hhmm) => ({ at: `2026-11-20T${hhmm}:00-09:00`, tz: AK });
   const dinner = { id: 'dinner', title: 'Dinner', fixed: true, start: ak('19:00'), place: { name: 'Harbor cafe' } };
-  const day = async (/** @type {Record<string, any>} */ files) => {
+  const viewOf = async (/** @type {Record<string, any>} */ files) => {
     const k = await agentKit([[{ text: '' }]], { open: true });
     for (const [path, v] of Object.entries({ '/plan/dinner.json': dinner, ...files })) await k.ws.write(k.trip, path, v, { author: 'user' });
-    const view = await compactView({ ws: k.ws, trip: k.trip, now: Date.parse('2026-11-20T07:00:00-09:00'), timeZone: AK, next: null });
-    return view.match(/start\tend\ttitle[^]*?(?=\n(?:bookings in|next reminder))/)?.[0];
+    return compactView({ ws: k.ws, trip: k.trip, now: Date.parse('2026-11-20T07:00:00-09:00'), timeZone: AK, next: null });
   };
+  const day = async (/** @type {Record<string, any>} */ files) => (await viewOf(files)).match(/start\tend\ttitle[^]*?(?=\n(?:bookings in|next reminder))/)?.[0];
   for (const kind of ['flight', 'rail', 'ferry']) {
     const booking = { id: 'ride', kind, status: 'unverified', source: '/files/ride.pdf', unsure: [], title: 'Ride ticket', place: { name: 'Port A' }, start: ak('08:00'), end: ak('10:00') };
     const item = { id: 'ride', title: 'Morning ride', kind, fixed: true, place: { name: 'Port A' }, start: ak('08:00'), end: ak('10:00') };
     // Booked, with no plan item: the departure is the booking's row (in the next 48 hours), and the plan says when it arrives.
     assert.equal(await day({ '/bookings/ride.json': booking }),
       'start\tend\ttitle\tconstraint\tplace\n2026-11-20 10:00\t\tArrive · Ride ticket\t\t\n2026-11-20 19:00\t\tDinner\tcan\'t be moved\tHarbor cafe', kind);
+    // The departure itself is in the bookings table, which the plan table leaves out, so the traveller's day has both times.
+    assert.match(await viewOf({ '/bookings/ride.json': booking }), new RegExp(`bookings in the next 48 hours:\\nstart\\tkind\\ttitle\\tcheck\\tconfirmation\\n2026-11-20 08:00\\t${kind}\\tRide ticket\\t`), kind);
     // Planned, with no booking.
     assert.equal(await day({ '/plan/ride.json': item }),
       'start\tend\ttitle\tconstraint\tplace\n2026-11-20 08:00\t\tMorning ride\tcan\'t be moved\tPort A\n2026-11-20 10:00\t\tArrive · Morning ride\tcan\'t be moved\t\n2026-11-20 19:00\t\tDinner\tcan\'t be moved\tHarbor cafe', kind);
-    // Both: the item at the departure, the booking's Arrive as fixed as the item that ends there.
+    // Both: the item as main showed it, with its end, and the booking's Arrive as fixed as the item that ends there.
     assert.equal(await day({ '/bookings/ride.json': booking, '/plan/ride.json': { ...item, booking: '/trip/bookings/ride.json' } }),
-      'start\tend\ttitle\tconstraint\tplace\n2026-11-20 08:00\t\tMorning ride\tcan\'t be moved\tPort A\n2026-11-20 10:00\t\tArrive · Ride ticket\tcan\'t be moved\t\n2026-11-20 19:00\t\tDinner\tcan\'t be moved\tHarbor cafe', kind);
+      'start\tend\ttitle\tconstraint\tplace\n2026-11-20 08:00\t2026-11-20 10:00\tMorning ride\tcan\'t be moved\tPort A\n2026-11-20 10:00\t\tArrive · Ride ticket\tcan\'t be moved\t\n2026-11-20 19:00\t\tDinner\tcan\'t be moved\tHarbor cafe', kind);
   }
 });
