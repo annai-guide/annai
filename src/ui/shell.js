@@ -49,6 +49,9 @@ import { uiSignature, syncThemes, cleanUp, slotEntries, component, dockKey, plug
 
 const SCREENS = { sees: renderSees, trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, add: renderAdd, 'plugin-install': renderPluginInstall, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, item: renderItem, voice: renderVoice, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications, ext: renderExt, 'plugin-page': renderPluginPage, 'trip-ext': renderTripTab, mcp: renderMcp, welcome: renderWelcome, about: renderAbout, experimental: renderExperimental, updates: renderUpdates, languages: renderLanguages };
 
+/** How often a redraw waiting for a field to be let go looks again (whenFree's own figure): drawn within half a second of that, a few reads a look. */
+const LET_GO_MS = 500;
+
 /**
  * @param {HTMLElement} root
  * @param {{ store: any, ws: any, registry: any, plugins: any, llm?: any, agent?: any, voice?: any, live?: any, awake?: any, pack?: any, presets?: Record<string, string>, backups?: any, sim?: any, push?: any,
@@ -255,8 +258,34 @@ export function startShell(root, core) {
   };
   /** What a draw that a newer one superseded ends with. @param {number} my */
   const superseded = (my) => (landedAt > my ? undefined : landing.promise);
-  /** @param {{ moved?: boolean }} [o] moved: a new screen or an entry of the history, not a redraw of this one */
+  /** The field of the screen that has the caret, if any. */
+  const caretIn = () => {
+    const a = document.activeElement;
+    return a && main.contains(a) && isField(a) ? a : null;
+  };
+  // Typing and tapping, in order. A draw again keeps what was typed since the last tap on a button or a link (a tap uses up what came before it, as
+  // Save does; a screen reader's press that left the caret in its field is one too): the field with the caret is left alone until they let go, the
+  // others come over to the new screen by id. A draw nobody asked for (redraw) keeps all that was typed.
+  let beat = 0;
+  let tappedAt = 0;
+  /** The beat each field was last typed in, until it saves itself (autosave). @type {WeakMap<Element, number>} */
+  const typedAt = new WeakMap();
+  main.addEventListener('input', (e) => { typedAt.set(/** @type {Element} */ (e.target), ++beat); }, true);
+  main.addEventListener('autosaved', (e) => { typedAt.delete(/** @type {Element} */ (e.target)); }, true);
+  main.addEventListener('click', (e) => { if (e.target instanceof Element && e.target.closest('button, a[href], summary, [role=button]')) tappedAt = ++beat; }, true);
+  /** @param {{ unasked?: boolean }} o the beat after which what was typed is kept */
+  const since = (o) => (o.unasked ? 0 : tappedAt);
+  /** @param {{ unasked?: boolean }} o the caret is in a field whose text is kept */
+  const held = (o) => { const a = caretIn(); return a !== null && (typedAt.get(a) ?? 0) > since(o); };
+  /** @param {{ moved?: boolean, unasked?: boolean }} [o] moved: a new screen or an entry of the history, not a redraw of this one; unasked: no tap asked for it. A redraw waits while the caret is in a field whose text is kept, whoever asked: what is typed, the caret and the keyboard stay. */
   async function render(o = {}) {
+    if (!o.moved) {
+      const was = seq;
+      while (held(o)) {
+        await new Promise((done) => { setTimeout(done, LET_GO_MS); });
+        if (seq !== was) return superseded(was);
+      }
+    }
     // An address that names no trip goes to the open one's, in place of this entry, so Back never lands on it again and bounces ("#/now": today's
     // Itinerary of the trip in play). A redraw of another trip's conversation (Shiori moved on: a hand-over, an Undo) goes to the open one's the
     // same way, opening nothing.
@@ -348,10 +377,19 @@ export function startShell(root, core) {
       // Its screen's ctx says which render it is, so what it draws after a newer one began is cleaned up at once.
       const node = await screen(Object.create(ctx, { seq: { value: my }, moved: { value: o.moved === true }, entry: { value: entry }, tripScope: { value: scope } }), route);
       if (my !== seq) return superseded(my);
+      if (!o.moved && held(o)) return render(o); // typing began while it was built
       // Home drawn again in place (the clock, a hand-over, a Delete): the first row in view that is still shown stays where it was (keepRows).
       const draw = () => main.replaceChildren(node);
+      const kept = o.moved ? [] : [...main.querySelectorAll('input[id], textarea[id]')].filter((el) => isField(el) && (typedAt.get(el) ?? 0) > since(o));
       if (pending === null && route.name === 'trips' && drawnHash === shown.hash) keepRows(main, draw, node);
       else draw();
+      for (const el of kept) {
+        const to = node.querySelector(`#${CSS.escape(el.id)}`);
+        if (to && to.tagName === el.tagName && /** @type {HTMLInputElement} */ (to).type === /** @type {HTMLInputElement} */ (el).type) {
+          /** @type {HTMLInputElement} */ (to).value = /** @type {HTMLInputElement} */ (el).value;
+          to.dispatchEvent(new Event('input', { bubbles: true })); // what listens follows, and it is kept the next time too
+        }
+      }
       drawnHash = shown.hash;
       if (pending !== null) {
         const want = pending;
@@ -397,16 +435,15 @@ export function startShell(root, core) {
 
   /** What a redraw now would lose: a field being typed in, a key typed and not saved, an error shown (not one the screen draws again itself: data-kept), or a list being dragged. */
   const typing = () => {
-    const a = document.activeElement;
-    if (a && main.contains(a) && isField(a)) return true;
+    if (caretIn()) return true;
     if (main.querySelector('.role-item.dragging')) return true; // a list being dragged
     return [...main.querySelectorAll('input[type=password]')].some((i) => /** @type {HTMLInputElement} */ (i).value)
       || Boolean(main.querySelector('[role=alert]:not([hidden]):not(:empty):not([data-kept])'));
   };
   /** Does fn once nothing typed would be lost. @param {() => unknown} fn */
-  const whenFree = (fn) => (typing() ? void setTimeout(() => whenFree(fn), 500) : fn());
+  const whenFree = (fn) => (typing() ? void setTimeout(() => whenFree(fn), LET_GO_MS) : fn());
   /** Draws the screen again once nothing typed would be lost, unless it was drawn meanwhile. */
-  const redraw = (screen = main.firstElementChild) => whenFree(() => { if (main.firstElementChild === screen) render(); });
+  const redraw = (screen = main.firstElementChild) => whenFree(() => { if (main.firstElementChild === screen) render({ unasked: true }); });
   // What plugins add redraws when it changes: once per change, not per item.
   if (core.registry) {
     syncThemes(core.registry, document.head);

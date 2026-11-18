@@ -316,6 +316,7 @@ export function autosave(control, read, save) {
       inputs.forEach((x, i) => { if (ticks(x)) x.checked = stored[i]; else x.value = stored[i]; });
       say(e);
     }
+    control.dispatchEvent(new Event('autosaved')); // what was typed is stored (or put back): a draw again needs no copy of it
   };
   control.addEventListener('change', () => {
     clearTimeout(timer);
