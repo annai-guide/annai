@@ -10,6 +10,9 @@ import { ttlFor } from '../../src/core/agent/warmth.js';
 import { OPENAI_SRC, ROUTER_SRC, ANTHROPIC_SRC, ANOTHER_SRC, PROTO, PROVIDER, site } from './provider-kit.js';
 import { hostKit } from './package-kit.js';
 import { createLlm } from '../../src/core/llm/service.js';
+import { QUIET_MS } from '../../src/core/llm/official.js';
+import { messageOf } from '../../src/ui/dom.js';
+import { dead, watch, turns } from './dead-kit.js';
 
 async function setup() {
   const store = createMemoryStore();
@@ -671,6 +674,58 @@ test("the Models screen's adds run at once while a provider's Add waits on a dow
   const all = modelNames(await readConfig(k.ws));
   assert.ok(all.includes('Z two') && all.includes('z-three'), all.join());
   assert.equal(new Set(all.map((n) => n.toLowerCase())).size, all.length, 'no two models are named alike');
+});
+
+/**
+ * The model service whose site's connection goes dead for provider-x's files (dead-kit.js), on fake timers from here on.
+ * @param {import('node:test').TestContext} t @param {'never' | 'headers'} how
+ */
+async function deadKit(t, how) {
+  const k = await hostKit();
+  const s = await site(PLUGINS());
+  const get = (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+    if (!url.startsWith('/plugins-official/provider-x/')) return s.fetch(url);
+    s.asked.push(url);
+    return dead(init, how);
+  };
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  return { ...k, s, llm: createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch: get }) };
+}
+const FAILED_DOWNLOAD = "The plugin couldn't be downloaded. Check the connection and try again.";
+
+test("the install line on a connection that goes dead (dl-limit-next): the featured start's install, its file never answering, ends after QUIET_MS with a failed download's words, and the Add waiting behind it then runs", async (t) => {
+  const k = await deadKit(t, 'never');
+  const featured = watch(k.llm.prepareStart('provider-x'));
+  const adding = watch(k.llm.addProvider('provider-y', {}));
+  await turns(() => k.s.asked.some((p) => p.startsWith('/plugins-official/provider-x/')));
+  t.mock.timers.tick(QUIET_MS - 1);
+  await turns(() => featured.state !== 'pending', 50);
+  assert.equal(featured.state, 'pending', 'still waiting just short of the limit');
+  assert.ok(!k.s.asked.some((p) => p.startsWith('/plugins-official/provider-y/')), "and the Add waits behind it in the line");
+  t.mock.timers.tick(1);
+  await turns(() => featured.state !== 'pending' && adding.state !== 'pending');
+  assert.equal(featured.state, 'failed');
+  assert.equal(messageOf(featured.error), FAILED_DOWNLOAD);
+  assert.equal(adding.state, 'done', String(adding.error?.message ?? 'still waiting'));
+  assert.deepEqual(k.llm.providers().map((p) => p.plugin), ['provider-y']);
+  assert.ok(!(await k.host.installed())['provider-x'], 'nothing of the failed install stays');
+});
+
+test("an Add whose plugin's file sends its headers and 1 KB and then nothing ends after QUIET_MS with a failed download's words, and the next Add in the line then runs (dl-limit-next)", async (t) => {
+  const k = await deadKit(t, 'headers');
+  const first = watch(k.llm.addProvider('provider-x', { key: 'sk-x' }));
+  const second = watch(k.llm.addProvider('provider-y', {}));
+  await turns(() => k.s.asked.some((p) => p.startsWith('/plugins-official/provider-x/')));
+  t.mock.timers.tick(QUIET_MS - 1);
+  await turns(() => first.state !== 'pending', 50);
+  assert.equal(first.state, 'pending', 'still waiting just short of the limit');
+  t.mock.timers.tick(1);
+  await turns(() => first.state !== 'pending' && second.state !== 'pending');
+  assert.equal(first.state, 'failed');
+  assert.equal(messageOf(first.error), FAILED_DOWNLOAD);
+  assert.equal(second.state, 'done', String(second.error?.message ?? 'still waiting'));
+  assert.deepEqual(k.llm.providers().map((p) => p.plugin), ['provider-y']);
+  assert.equal(Object.keys((await k.llm.config()).providers).length, 1, 'only the second Add made a provider');
 });
 
 test("a refused name-taker leaves the lock free: the add after it saves, so do a page's save and a sync (model-names-next)", async () => {
