@@ -258,15 +258,11 @@ const count = (text, set) => [...text].filter((c) => set.includes(c)).length;
 /* en */ const CANTONESE = '哋佢嘅唔咗冇喺啲嚟睇乜嘢咁';
 /**
  * Chinese's own small words: its pronouns and their plural (你 您 她 们 們), 这 and 這, 哪, its question and closing particles (吗 嗎 呢 吧 么 麼 啊),
- * 很 and 沒, and Cantonese's characters; all are in CHINESE. A Japanese line with one (們 這 麼 很 沒 are in Japanese's character set) has kana,
- * read first. As grammar (GRAMMAR, without 你 这 這 哪 吧, which are in names too: 你好饭店, 酒吧街, 哪吒庙, so an English question naming one is
- * English), like hiragana: where a line has CJK characters
+ * 很 and 沒, and Cantonese's characters. Japanese writes none of them. They are grammar, as hiragana is: where a line has CJK characters
  * and Latin words, they outrank a Latin name's small words (「我们明天去 The Museum of Modern Art 吗？」 is Chinese), while the forms of CHINESE
  * (门 东…) are names, which two English small words outrank ("Where is 天安门?" is English).
  */
 /* en */ const CHINESE_WORDS = `你您她们們这這哪吗嗎呢吧么麼沒很啊${CANTONESE}`;
-/** The small words that outrank a Latin name's in a mixed line: CHINESE_WORDS but those names carry too. */
-/* en */ const GRAMMAR = `您她们們吗嗎呢么麼沒很啊${CANTONESE}`;
 /**
  * Characters only Chinese writes, where Japanese writes none of them: the Simplified forms Japanese doesn't share (HANS but its last 3, the 21
  * among them: none is in Japanese's own character set, JIS X 0208, none is in l10n/ja.tsv's Japanese or the 33 kept Japanese runs' 11,183 Han
@@ -299,7 +295,7 @@ for (const l of LANGUAGES) {
  * language (two small words of one: languageOf): "Where is 新宿御苑?" and "Where is 天安门?" are English, with a name in them; where they name none,
  * "新宿 Shibuya Sky", "好想去 Golden Gate Bridge" and "Meet at 新宿 station" tell nothing, and fewer such characters than Latin letters tell only by
  * a grammar of their own, kana or a character only Chinese writes (「iPhone 15 Pro 多少钱？」 is Chinese by 钱). Kana and Chinese's small words
- * (GRAMMAR) are grammar and outrank the Latin words' small words (「我们明天去 The Museum of Modern Art 吗？」 is Chinese); its other
+ * (CHINESE_WORDS) are grammar and outrank the Latin words' small words (「我们明天去 The Museum of Modern Art 吗？」 is Chinese); its other
  * characters (门 东 钱…) are names, which two small words outrank (「Where is 天安门?」 is English).
  * @param {string} text
  */
@@ -319,7 +315,7 @@ export function writing(text) {
     /* en */ if (n(/\p{Script=Hangul}/gu) * 2 > cjk) return name ? (says ? 'Latn' : '') : 'Kore';
     /* en */ if (n(/\p{Script=Hiragana}/gu)) return 'Jpan';
     // Chinese's own small words are grammar too, so they outrank a Latin name's (「我们明天去 The Museum of Modern Art 吗？」); its forms are names, which "the" and "of" outrank.
-    if ([...said].some((c) => GRAMMAR.includes(c))) return 'zh';
+    if ([...said].some((c) => CHINESE_WORDS.includes(c))) return 'zh';
     if (name && says) return 'Latn';
     if ([...said].some((c) => CHINESE.includes(c))) return 'zh';
     /* en */ return name ? '' : n(/[\p{Script=Katakana}ー]/gu) ? 'Jpan' : 'Hani';
@@ -445,8 +441,7 @@ const latinTag = (tag) => likelyScript(tag) === 'Latn';
 export function tagOf(text, s, byShiori = false, ui = 'en') {
   const said = text.replace(URLS, ' ');
   // A line whose writing is Latin (an English sentence with a name in kanji) has no Chinese or Japanese tag: it is tagged as Latin text is.
-  // A Chinese sentence naming a place in English with two small words (「我想去 The Museum of Modern Art，下午去中央公园。」) has full-width marks: its tag stays Chinese.
-  const kind = writing(said) === 'Latn' && !/[。，、？！]/u.test(said) ? '' : scriptOf(said);
+  const kind = writing(said) === 'Latn' ? '' : scriptOf(said);
   const answer = byShiori ? s.answer : null;
   if (!kind) {
     if (!/\p{L}/u.test(said)) return '';
@@ -492,8 +487,7 @@ export function speechLocale(s, text = '', { before = [] } = {}) {
   const kind = writing(text);
   const placedAs = s.answer ?? shown(text);
   // Han placed as none of theirs (a Chinese sentence with only Japanese listed: 靖國神社) is Han that says neither: the reply's Han language, else the first listed in Han.
-  // An English sentence naming such a place ("Is 國立故宮博物院 far from here?") keeps its own reading.
-  const own = !placedAs && kind === 'zh' && !/\p{Script=Latin}/u.test(text) ? EITHER : placedAs;
+  const own = !placedAs && kind === 'zh' ? EITHER : placedAs;
   /** The first earlier sentence that shows a language (for Han that says neither, one written in Han). @type {Language | null} */
   let sofar = null;
   if (!own || own === EITHER) {
