@@ -51,9 +51,12 @@ export function cardText(card) {
   return out.length > 300 ? `${out.slice(0, 300)}…` : out;
 }
 
+/** Where the user's own lines are in the log, typed or heard, with the words written down for a heard line later: conversationLines makes them lines. */
+export const USER_LINES = Object.freeze(['msg.user', 'heard', 'heard.text']);
+
 /**
  * The conversation's lines among log entries, oldest first, none set aside, each with its words: a heard line's last written down. One reading for the
- * gate, a live session's start and read_trip. @param {import('../types.js').Store} store @param {any[]} events @returns {Promise<{ e: any, d: any, text: any }[]>}
+ * gate, a live session's start, read_trip, the summary's language and the journey. @param {import('../types.js').Store} store @param {any[]} events @returns {Promise<{ e: any, d: any, text: any }[]>}
  */
 export async function conversationLines(store, events) {
   const all = [];

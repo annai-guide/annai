@@ -1,6 +1,6 @@
 import { tsv } from '../tsv.js';
 import { escapeTags } from '../agent/blocks.js';
-import { planRows, fixedWords, timeUnsure } from '../plan.js';
+import { planRows, fixedWords, timeUnsure, CARRIERS } from '../plan.js';
 import { checkWords } from '../bookings.js';
 
 /** Koe's compact view of the trip, in its tail; its words escaped. */
@@ -21,7 +21,7 @@ async function items(ws, trip, dir) {
 }
 
 /** What the end of something over several days is, as the Plan says it. */
-/* en */ const ENDS = /** @type {Record<string, string>} */ ({ lodging: 'Check out', car: 'Return', flight: 'Arrive', rail: 'Arrive' });
+/* en */ const ENDS = /** @type {Record<string, string>} */ ({ lodging: 'Check out', car: 'Return', ...Object.fromEntries([...CARRIERS].map((k) => [k, 'Arrive'])) });
 
 /**
  * @param {{ ws: import('../workspace.js').Workspace, trip: string | null, now: number, timeZone: string, next: { when: string, text: string } | null }} c

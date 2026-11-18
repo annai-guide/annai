@@ -352,6 +352,45 @@ test('chatter the gate set aside (a dismissed heard line, and the words written 
   assert.match(k.requests.at(-1).system, /as plain text, in English, the first language the user speaks \(English and Japanese\)\.$/);
 });
 
+// Only the user's lines are read (USER_LINES): annai's own lines in the window with a text, like a reminder, are no vote for the language
+// (lines-next review F2: with the filter off, two Japanese reminders made the summary Japanese and every test stayed green).
+test("annai's own lines in the window (two reminders in Japanese) do not set the summary's language; only the user's lines do", async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const k = await agentKit([[say('ok')]], { utility: [{ text: 'Summary.' }] });
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
+  for (const m of ['ok', 'ok ok', 'fine', 'hmm', 'go']) { // none of them places a language
+    k.agent.send(m);
+    await k.agent.idle();
+  }
+  await record(k.store, k.trip, { type: 'reminder', actor: 'system', data: { watch: 'plan:dinner:coming-up', text: '今日の夕食はどこにしますか' } });
+  await record(k.store, k.trip, { type: 'reminder', actor: 'system', data: { watch: 'plan:museum:coming-up', text: '明日は美術館に行きますか' } });
+  assert.equal(await k.agent.compact('cold'), true);
+  assert.match(k.requests.at(-1).system, /as plain text, in English, the first language the user speaks \(English and Japanese\)\.$/);
+});
+
+// A live session logs a spoken line as a heard entry with its first words, and the rest after Koe's turn as a heard.text with all of them (koe/live.js).
+// Compaction counted it twice for the summary's language and the recap once, by its first words, so with [en, ja] two English lines and one Japanese
+// line gave a Japanese summary and an English recap that read "今日の夕食" (the Deferred entry "A live spoken line logged in two parts…"). Both read
+// the traveller's lines from conversationLines now: one line, with its last words.
+test('a live spoken line logged in two parts is one line with all its words: the summary and the recap name the same language, and the recap has the late words', async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const { writeRecap } = await import('../../src/core/after/recap.js');
+  const k = await agentKit([[say('ok')]], { utility: [{ text: 'Summary.' }, { text: '# Big Sur' }] });
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
+  for (const m of ['ok', 'Where should we eat tonight?', 'fine', 'Is the museum open today?', 'go on']) { // two English lines; the rest too short to count
+    k.agent.send(m);
+    await k.agent.idle();
+  }
+  await record(k.store, k.trip, { type: 'heard', actor: 'user', data: { id: 'lv1', ms: 1500, source: 'live', text: '今日の夕食' } });
+  await record(k.store, k.trip, { type: 'heard.text', actor: 'system', data: { of: 'lv1', text: '今日の夕食はどこにしますか', by: 'Live' } });
+  assert.equal(await k.agent.compact('cold'), true);
+  assert.match(k.requests.at(-1).system, /as plain text, in English, the language most of what the user wrote is in\.$/, 'two English lines against one Japanese');
+  await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, locale: 'en-US' });
+  const recap = k.requests.at(-1).messages[0].parts[0].text;
+  assert.match(recap, /^Write the recap in English, the language most of what the user wrote is in\.$/m, "the summary's language");
+  assert.match(recap, /\ttraveler \(spoke\)\t今日の夕食はどこにしますか$/m, 'the late words');
+});
+
 // annai's own lines for no words ("(files)", "(a photo)", a heard line it couldn't write down) read as English, or as nothing: the one function that
 // names the language the user wrote in leaves them out for every caller (compaction's and the recap's: the languages build's entry 3).
 test("annai's lines for no words are never the user's words: summaryLanguage leaves them out, whoever calls it", async () => {

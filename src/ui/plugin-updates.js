@@ -114,7 +114,9 @@ export async function applyUpdates(ctx, updates, env) {
       knownOf(ctx.plugins).delete(u.id);
       if (how === 'restart') waiting.push(nameOf(u));
     } catch (e) {
-      failed.push(asSentence(t`${nameOf(u)}: ${messageOf(e)}`)); // a raw error may have no stop
+      // A line each, ended here as it may be the last (sentences() ends the others); with no words, a sentence of its own.
+      const why = messageOf(e);
+      failed.push(why.trim() ? asSentence(t`${nameOf(u)}: ${why}`) : t`${nameOf(u)} failed with an unknown error.`);
       errors.push(e);
     }
   }

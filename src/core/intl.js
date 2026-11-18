@@ -19,23 +19,35 @@ function make(Ctor, options = {}) {
 /** A full stop or an ellipsis at a text's end (any closing quotes or brackets after it): a sentence that ends there. */
 const ENDED = /[。．！？!?.…][)\]）」』"'”’]*$/;
 /**
- * Sentences side by side, the empty left out: a message, so Chinese and Japanese drop the space. A part that doesn't end in a full stop
- * or an ellipsis (a plugin's error, say) keeps a space after it in every language, so the next sentence doesn't run into it. @param {...string} parts
+ * A Latin word's own end ("20s.", "Found.", "wait…", `done?"`, and a closer before the stop: "'high'.", "(see docs).", "100%."), and a
+ * text that starts with a Latin word ("Haiku", "(code 5)").
+ */
+const LATIN_END = /[\p{Script=Latin}\d][)\]"'”’%`]*[.!?…]+[)\]"'”’]*$/u;
+const LATIN_START = /^[^\p{L}\p{N}]*[\p{Script=Latin}\d]/u;
+/**
+ * Sentences side by side, the empty and the blank left out: a message, so Chinese and Japanese drop the space. Every part but the last
+ * is ended as a sentence here (asSentence), so outside words with no stop of their own (a plugin's error, say) never run into the next
+ * one and no caller has to end them; the last is left as it is (a status line has no stop). A Latin end before a Latin start keeps its
+ * space in every language, as Japanese and Chinese keep one between two Latin words ("…in 20s. Haiku：…"). @param {...string} parts
  */
 export function sentences(...parts) {
-  const some = parts.filter(Boolean);
-  return some.length ? some.reduce((a, b) => (ENDED.test(a) ? tc('sentences')`${a} ${b}` : `${a} ${b}`)) : '';
+  const some = parts.filter(Boolean).map(String).filter((p) => p.trim());
+  const ended = some.map((p, i) => (i < some.length - 1 ? asSentence(p) : p));
+  return ended.length ? ended.reduce((a, b) => (LATIN_END.test(a) && LATIN_START.test(b) ? `${a} ${b}` : tc('sentences')`${a} ${b}`)) : '';
 }
 /** What sentences() puts between two: a space, or nothing in Chinese and Japanese; for a sentence drawn apart, as one in bold. */
 export const sentenceGap = () => sentences('.', '.').replace(/[.\u2068\u2069]/g, '');
 /**
  * A text as a sentence of its own, ended as sentences() reads an end: a full stop after it (a 。 on Japanese and Chinese screens, so no
  * ASCII stop is left before a Japanese sentence or glued to a Latin name after it) unless it ends as one does (ENDED), so the
- * next sentence is joined as after any other; '' for no words, so no empty sentence is left. A plugin's error is no sentence.
+ * next sentence is joined as after any other; '' for no words, so no empty sentence is left. A plugin's error is no sentence. A colon
+ * left at the end (a frame made with blank words, "Starting failed: ") is dropped before the stop, so the frame reads as a sentence
+ * of its own ("Starting failed.") in every language and no caller keeps a second row for it; a third party's lead-in ("Steps:")
+ * before another part reads "Steps." too.
  * @param {string} text @param {boolean} [english] annai's English for a model and the log, whatever the screens' language: a "." always
  */
 export function asSentence(text, english = false) {
-  const s = text.trimEnd();
+  const s = text.trimEnd().replace(/[:：]$/, '').trimEnd();
   return !s || ENDED.test(s) ? s : `${s}${!english && /^(ja|zh)(-|$)/.test(lang()) ? '。' : '.'}`;
 }
 

@@ -1,5 +1,5 @@
 import { h, crumb, t, tc, linkIn, otherLang, messageOf as message } from '../dom.js';
-import { list, sentences, asSentence } from '../format.js';
+import { list, sentences } from '../format.js';
 import { pendingPackage, setPendingPackage } from '../plugin-pending.js';
 import { explainStorageFull } from '../storage-full.js';
 import { addressParts } from '../../core/address.js';
@@ -356,7 +356,7 @@ export async function installPending(ctx, buttons, { use = [], fresh = false }) 
       await ctx.plugins.start(pkg.id);
       ctx.notices.toast(t`Installed ${pkg.name}.`);
     } catch (e) {
-      ctx.notices.card({ tone: 'warn', title: t`${pkg.name} was installed, but it didn't start`, body: sentences(asSentence(message(e)), t`You can turn it off or remove it in Settings → Plugins.`), errors: [e] });
+      ctx.notices.card({ tone: 'warn', title: t`${pkg.name} was installed, but it didn't start`, body: sentences(message(e), t`You can turn it off or remove it in Settings → Plugins.`), errors: [e] });
     }
   }
   ctx.go('#/plugins');

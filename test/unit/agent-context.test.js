@@ -427,7 +427,7 @@ test("her instructions' plan item and booking are records of their formats, whic
 });
 
 test("her instructions' line on a plan item's kind is pinned, and each kind it names is a word of the reminders' table (a word the table lacks reads as no kind, so a flight loses its 2-hour margin)", async () => {
-  const { KINDS } = await import('../../src/core/live/plan-watches.js');
+  const { KINDS } = await import('../../src/core/plan.js');
   const line = CORE.split('\n').find((l) => l.startsWith("- A plan item's kind is"));
   assert.equal(line, `- A plan item's kind is "flight" for a flight, "rail" for a train, "ferry", "bus" or "coach" for those rides, and "lodging" for a stay's check-in or check-out: annai times its reminders by it.`);
   const words = [...String(line).matchAll(/"([^"]+)"/g)].map((m) => m[1]);

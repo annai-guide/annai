@@ -12,7 +12,7 @@ import { blobBytes } from '../../core/reach.js';
 import { herDatings, undoDating } from '../../core/chats.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { undoTuning } from '../../core/agent/personalities.js';
-import { formatCost, wording, mark, sentences, sentenceGap, list as listed, recordHref, rowName, talkHref } from '../format.js';
+import { formatCost, wording, mark, sentences, sentenceGap, asSentence, list as listed, recordHref, rowName, talkHref } from '../format.js';
 import { day } from '../../core/intl.js';
 import { upcoming, over } from '../../core/now.js';
 import { tripRows } from '../trip-rows.js';
@@ -50,15 +50,23 @@ const around = (message, node) => {
  * A card with nothing to read says what it is. Nothing for what you typed or the halves' notes; any other line as written.
  * @param {string} type the event's @param {string} kind a plugin's kind of card, by the name its plugin gave it, else ''
  * @param {string} words the line's words without its label @param {string[]} [choices] buttons that answer it
- * @param {{ image?: unknown, own?: boolean }} [card] the card, for one with no words; own: a question that is annai's own (Agent.confirm)
+ * @param {{ image?: unknown, own?: boolean, from?: string, title?: string, text?: string }} [card] the card, for one with no words; own: a
+ *   question that is annai's own (Agent.confirm); a grounded reply's: from (whose search), title and text (its words, then what follows them)
  */
 export function announced(type, kind, words, choices = [], card = {}) {
   if (type === 'msg.user' || type === 'note' || type.startsWith('handover.')) return ['', '', ''];
+  // The words are ended before what follows them, as outside words are before the next part (sentences()), so a screen reader
+  // doesn't run them into it ("…eat Choices: Yes").
+  if (type === 'grounded') {
+    const text = card.text ?? '';
+    const rest = words.replace(card.title ?? '', '').replace(text, '').trim();
+    return [`${t`From ${card.from ?? ''}.`}${sentenceGap()}`, rest ? asSentence(text) : text, rest ? `${sentenceGap()}${rest}` : ''];
+  }
   if (type !== 'out.speak' && type !== 'out.show' && type !== 'out.ask') return ['', words, ''];
   const said = words || (type === 'out.show' ? (card.image ? t`a photo` : t`a card`) : '');
   const pick = choices.length ? `${sentenceGap()}${t`Choices: ${listed(choices, 'plain')}.`}` : '';
   const [before, , after] = around(type === 'out.ask' ? (card.own ? t`annai asks: ${WORDS}` : t`Shiori asks: ${WORDS}`) : kind ? t`Shiori (${kind}): ${WORDS}` : t`Shiori: ${WORDS}`, '');
-  return [before, said, `${after}${pick}`];
+  return [before, pick ? asSentence(said) : said, `${after}${pick}`];
 }
 
 /** The words in a node, each piece of text apart, but those inside what a selector names. @param {HTMLElement} root @param {string} skip */
@@ -216,7 +224,8 @@ export function errorWords(d, { names } = {}) {
   // A watch is named briefly, as the user knows it, never by its id or its trigger's code: a plan watch by its item's title, another
   // by its reminder's first words. An older plan watch's entry kept its English fallback, no name for these words: shown as stored.
   const name = d.kind !== 'trigger' ? '' : typeof d.title === 'string' ? d.title : typeof d.reminder === 'string' && !String(d.watch).startsWith('plan:') ? brief(d.reminder) : '';
-  if (name) return t`The watch for "${name}" can't be checked: ${String(d.why ?? '').replace(/[.!?。！？]$/u, '')}.`;
+  // The trigger's words keep their own end ("Really?", "wait…"); asSentence adds one where they have none.
+  if (name) return asSentence(t`The watch for "${name}" can't be checked: ${String(d.why ?? '')}`);
   return null;
 }
 
@@ -624,12 +633,9 @@ export async function renderTalk(ctx, route) {
             words = textOf(node, pick.length ? /* en */ '.who, .line-label, .card .acts button' : '.who, .line-label');
           }
           // Her words carry their language; annai's labels, errors and notes around and beside them do not.
-          const parts = announced(e.type, kind, words, pick, e.type === 'out.ask' ? { own: Boolean(e.data?.own) } : kind ? {} : e.data?.card ?? {});
-          if (e.type === 'grounded') {
-            const [title, text] = [node.querySelector('strong')?.textContent ?? '', node.querySelector('p')?.textContent ?? ''];
-            const rest = words.replace(title, '').replace(text, '').trim();
-            tell([`${t`From ${sourceOf(e.data)}.`}${sentenceGap()}`, text, rest ? `${sentenceGap()}${rest}` : ''], mine(text).lang);
-          } else tell(parts, ['out.speak', 'out.show', 'out.ask'].includes(e.type) ? hers(words).lang : undefined);
+          const grounded = e.type === 'grounded' ? { from: sourceOf(e.data), title: node.querySelector('strong')?.textContent ?? '', text: node.querySelector('p')?.textContent ?? '' } : null;
+          const parts = announced(e.type, kind, words, pick, grounded ?? (e.type === 'out.ask' ? { own: Boolean(e.data?.own) } : kind ? {} : e.data?.card ?? {}));
+          tell(parts, grounded ? mine(grounded.text).lang : ['out.speak', 'out.show', 'out.ask'].includes(e.type) ? hers(words).lang : undefined);
         }
         if (follow) toEnd();
         // A plugin's dock may have no avatar of annai's.

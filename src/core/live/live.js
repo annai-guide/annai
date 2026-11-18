@@ -17,6 +17,7 @@ import { isPluginBug } from '../plugins.js';
 import { isArrival } from '../after/stamps.js';
 import { SIMULATION } from './simulate.js';
 import { t } from '../l10n.js';
+import { asSentence } from '../intl.js';
 
 /**
  * Live mode (spec §11): where the user is and what they are doing, the watches and the plan's own
@@ -1387,8 +1388,8 @@ export class Live {
    *   title: a plan watch's item (its fallback is annai's English); reminder: another watch's own words; why: the trigger's own words
    */
   #noteOnce(scope, d) {
-    /* en */
-    const message = `The ${d.type} watch ${d.watch} can't be checked: ${d.why.replace(/[.!?]$/, '')}.`;
+    // The trigger's words keep their own end ("Really?", "wait…"); asSentence adds one where they have none.
+    const message = asSentence(/* en */ `The ${d.type} watch ${d.watch} can't be checked: ${d.why}`, true);
     const key = `${scope}\n${message}`;
     if (this.#noted.has(key)) return;
     this.#noted.add(key);

@@ -23,7 +23,7 @@ test('a built-in skill that is missing is left out; the others still load', asyn
 });
 
 test("the plan-a-trip skill's line on a plan item's kind is pinned, and each kind it names is a word of the reminders' table (a stay with no place still gets \"coming up\", so it says no leave or running-late reminder, not none)", async () => {
-  const { KINDS } = await import('../../src/core/live/plan-watches.js');
+  const { KINDS } = await import('../../src/core/plan.js');
   const skill = (await loadBuiltinSkills(read)).find((s) => s.name === 'plan-a-trip');
   const line = skill?.text.split('\n').find((l) => l.startsWith('- kind is "flight"'));
   assert.equal(line, `- kind is "flight" for a flight, "rail" for a train, "ferry", "bus" or "coach" for those rides, and "lodging" for a stay's check-in or check-out: annai times reminders by these (a flight's leave reminder aims at the airport 2 hours early; a stay gets no leave or running-late reminder). Anything else takes a word of your own, such as "meal".`);

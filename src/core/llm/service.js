@@ -11,7 +11,7 @@ import { addFromCatalog, prune, pruneable } from '../requires.js';
 import { officialPlugins, makesProvider, pluginName } from './official.js';
 import { PluginError, NOT_OWN, TURN_ON, isPluginBug, notOwnShown, turnOnShown } from '../registry.js';
 import { t } from '../l10n.js';
-import { sentences, list } from '../intl.js';
+import { sentences, list, asSentence } from '../intl.js';
 import { adjusted, setupOf } from './setup.js';
 import { callRole, Bench, candidates, COOLDOWN_MS } from './fallback.js';
 import { modelTrace } from './trace.js';
@@ -384,7 +384,7 @@ export function createLlm({
      * installed that then brings no provider goes again, with what only it required. imported: the same import brought the
      * plugins, all switched off: those stay as they came, with no line.
      * @param {{ imported?: boolean }} [o] @returns {Promise<{ installed: string[], failed: string[] }>}
-     *   installed: the plugins' names; failed: a line for each reason, naming its providers
+     *   installed: the plugins' names; failed: a line for each reason, naming its providers, each ended as a sentence (the last may be a card's last)
      */
     restorePlugins: ({ imported = false } = {}) => queued(async () => {
       await ready;
@@ -420,7 +420,7 @@ export function createLlm({
         if (!had[rec.plugin] && (await plugins.installed())[rec.plugin] && !providers().some((x) => x.plugin === rec.plugin)) await drop(rec.plugin).catch(() => {});
       }
       const now = await plugins.installed();
-      return { installed: Object.keys(now).filter((id) => !had[id]).map((id) => String(now[id].name ?? id)), failed: [...failed].map(([why, names]) => t`${list(names, 'plain')}: ${why}`) };
+      return { installed: Object.keys(now).filter((id) => !had[id]).map((id) => String(now[id].name ?? id)), failed: [...failed].map(([why, names]) => asSentence(t`${list(names, 'plain')}: ${why}`)) };
     }),
     /**
      * The featured start's plugin, installed in the background while no provider exists (spec §9.8); not a

@@ -8,7 +8,7 @@ import { sourceLine, sourceHost } from './plugin-install.js';
 import { addressShown, localNote } from '../../core/llm/provider-desc.js';
 import { platform } from '../platform.js';
 import { pricesAt } from '../../core/llm/cost.js';
-import { list, money, num, sentences } from '../format.js';
+import { list, money, num, sentences, asSentence } from '../format.js';
 import { drawPanel, isProviderEntry, installMissing, sayFilled } from '../provider-setup.js';
 import { OFFICIAL_NAMES } from '../../core/official-names.js';
 import { setupOf } from '../../core/llm/setup.js';
@@ -591,10 +591,10 @@ function suggestionsPanel(ctx, id, src) {
       class: 'btn', type: 'button',
       onclick: async () => {
         try {
-          // What it switched on, or couldn't, said after the roles.
+          // What it switched on, or couldn't, said after the roles; each line of a failure ends itself, as the last may be the toast's last.
           const r = await ctx.llm.useSuggestion(id, which);
           ctx.notices.toast(sentences(t`Roles updated.`, ...r.on.map((/** @type {string} */ n) => t`${n} switched on.`),
-            ...r.failed.map((/** @type {any} */ f) => t`${f.name} couldn't be switched on: ${messageOf(f.error)}`)));
+            ...r.failed.map((/** @type {any} */ f) => asSentence(t`${f.name} couldn't be switched on: ${messageOf(f.error)}`))));
         } catch (e) {
           ctx.notices.toast(messageOf(e));
         }

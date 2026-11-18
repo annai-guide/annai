@@ -1,5 +1,5 @@
 import { t, plural, messageOf } from './dom.js';
-import { list, sentences, asSentence, num } from './format.js';
+import { list, sentences, num } from './format.js';
 
 /**
  * The card when a running plugin is switched off after repeated errors (spec §5.5). A system card,
@@ -12,7 +12,7 @@ export function disabledCard({ name, why, message }) {
     tone: /** @type {const} */ ('warn'),
     title: t`The plugin "${name}" was turned off`,
     body: sentences(why.kind === 'loop' ? t`Its hooks were handed more than ${num(why.entries)} log entries in ${num(why.seconds)} seconds, which looks like a loop.`
-      : plural(why.count, 'It failed # time in a row.', 'It failed # times in a row.'), why.kind === 'loop' || !message.trim() ? '' : asSentence(t`The last error: ${message}`), t`You can turn it back on in Settings → Plugins.`),
+      : plural(why.count, 'It failed # time in a row.', 'It failed # times in a row.'), why.kind === 'loop' || !message.trim() ? '' : t`The last error: ${message}`, t`You can turn it back on in Settings → Plugins.`),
   };
 }
 
@@ -42,7 +42,7 @@ export function startCards(failures, { name, taken }) {
   const cards = [];
   const unloaded = [];
   for (const f of failures) {
-    const why = asSentence(messageOf(f.error)); // a plugin's own words (an import that failed) have no stop: the next sentence would run into them
+    const why = messageOf(f.error); // a plugin's own words (an import that failed) may have no stop: sentences() ends them
     const it = name(f.id);
     if (f.disabled) cards.push({ title: t`The plugin "${it}" was turned off`, body: sentences(t`It didn't start the last few times annai opened.`, why, t`You can turn it back on in Settings → Plugins.`), errors: [f.error] });
     else if (taken) cards.push({ title: t`The plugin "${it}" didn't start`, body: sentences(why, t`You can turn it off in Settings → Plugins.`), errors: [f.error] });

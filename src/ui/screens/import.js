@@ -3,7 +3,7 @@ import { peekArchive, describeArchive, importArchive, NeedsPassphraseError } fro
 import { PassphraseError } from '../../core/archive-crypto.js';
 import { takePendingImport, setPendingImport, isArchiveName, leaveSignal, toldIfLeft } from '../import-state.js';
 import { openFileButton } from '../open-file.js';
-import { relTime, size, num, list, sentences, placeHref, gettingFiles, talkHref } from '../format.js';
+import { relTime, size, num, list, sentences, asSentence, placeHref, gettingFiles, talkHref } from '../format.js';
 import { updateAppSettings } from '../../core/settings.js';
 import { listTrips } from '../../core/scopes.js';
 import { typeForPath } from '../../core/paths.js';
@@ -295,7 +295,7 @@ function restartPanel(ctx) {
 }
 
 /** imported: the plugins came with it, switched off. @param {any} ctx @param {boolean} imported @returns {Promise<{ installed: string[], failed: string[] }>} */
-const restorePlugins = (ctx, imported) => ctx.llm.restorePlugins({ imported }).catch((/** @type {any} */ e) => ({ installed: [], failed: [messageOf(e)] }));
+const restorePlugins = (ctx, imported) => ctx.llm.restorePlugins({ imported }).catch((/** @type {any} */ e) => ({ installed: [], failed: [asSentence(messageOf(e))] }));
 
 /** What the restore installed for its providers, and Try again for what it couldn't. @param {any} ctx @param {{ installed: string[], failed: string[] }} got @param {boolean} imported */
 function pluginsBrought(ctx, got, imported) {
