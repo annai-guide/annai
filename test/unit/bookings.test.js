@@ -115,7 +115,7 @@ test("checkWords: each key whose own words would mislead has its words, never th
     notes: 'the notes', room: 'the room', phone: 'the phone number', guests: 'the guests', passengers: 'the passengers', airline: 'the airline',
     company: 'the company', seat: 'the seat', flights: 'the flights',
     // booking-next: the keys the details drew in English (a bag allowance's, a leg's meal, the names annai files and her instructions' rooms).
-    checked: 'the checked bags', carry_on: 'the carry-on bags', meal: 'the meal', arrival: 'where it arrives', total: 'the total', price: 'the price',
+    checked: 'the checked bags', carry_on: 'the carry-on bags', meal: 'the meal', arrival: 'the arrival', total: 'the total', price: 'the price',
     rooms: 'the number of rooms',
   };
   for (const [key, words] of Object.entries(said)) {

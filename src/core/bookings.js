@@ -69,10 +69,10 @@ export function checkOf(b) {
   terminal: 'the terminal', gate: 'the gate', train: 'the train', car: 'the car',
   // Inside the bags, and a leg's meal (booking-next: the keys the details drew in English).
   checked: 'the checked bags', carry_on: 'the carry-on bags', meal: 'the meal',
-  // The names annai files into `fields` itself (EXTRAS; `arrival` where an arrival ends, `total` and `price` a cost she gave in words), and her
-  // instructions' example (`rooms`).
+  // The names annai files into `fields` itself (EXTRAS; `arrival` where an arrival ends, where a model also writes its time: "the arrival" fits
+  // both; `total` and `price` a cost she gave in words), and her instructions' example (`rooms`).
   notes: 'the notes', room: 'the room', phone: 'the phone number', guests: 'the guests', passengers: 'the passengers', airline: 'the airline',
-  company: 'the company', seat: 'the seat', flights: 'the flights', arrival: 'where it arrives', total: 'the total', price: 'the price',
+  company: 'the company', seat: 'the seat', flights: 'the flights', arrival: 'the arrival', total: 'the total', price: 'the price',
   rooms: 'the number of rooms',
 });
 /** The parts that are plural, so a model reads "were", not "was" (a plural noun read with "was" is English that a model takes as a slip). */
@@ -130,10 +130,19 @@ export function checkNote(scope, path, text) {
  * end; a location and an address are the place; a total or price with an amount and currency is the cost; the details models also write
  * at the top level are kept in fields, where anything reads them.
  */
+/** The names for a time of arriving and of leaving (a stay reads them the other way round than a carrier: fieldOf). */
+const ARRIVING = ['arrive', 'arrival'];
+const LEAVING = ['depart', 'departure'];
 const TIMES = /** @type {Record<string, string>} */ ({
   checkin: 'start', check_in: 'start', checkIn: 'start', pickup: 'start', pick_up: 'start', pickUp: 'start', depart: 'start', departure: 'start',
   checkout: 'end', check_out: 'end', checkOut: 'end', dropoff: 'end', drop_off: 'end', dropOff: 'end', return: 'end', arrive: 'end', arrival: 'end',
 });
+/**
+ * The field a time written under another name stands for, by the booking's kind: leaving starts and arriving ends, except for a stay, as a
+ * hotel's confirmation says it: the arrival is the check-in and the departure the check-out (they were swapped). A car or a tour filed as
+ * "other" moves the traveller, so it keeps leaving as the start. @param {string} key @param {unknown} kind @returns {string | undefined}
+ */
+const fieldOf = (key, kind) => (kind === 'lodging' && ARRIVING.includes(key) ? 'start' : kind === 'lodging' && LEAVING.includes(key) ? 'end' : TIMES[key]);
 const COSTS = ['total', 'price'];
 const EXTRAS = ['notes', 'room', 'phone', 'guests', 'passengers', 'airline', 'company', 'seat', 'flight', 'flights'];
 const ALIASES = [...Object.keys(TIMES), 'name', 'location', 'address', ...COSTS, ...EXTRAS];
@@ -163,8 +172,10 @@ export function written(v) {
 }
 
 /**
- * A time written under another name, as the format's { at, tz }: a string, or { at } (or { time }) with its own tz; its zone from beside
- * it, else the trip's only one, which what carries the traveller (CARRIERS) never takes. Refused in words when it is no real date and time, its zone isn't
+ * A time written under another name, or a start or end written as { at, tz }, as the format's { at, tz }: a string, or { at } (or { time })
+ * with its own tz; its zone from beside it, else the trip's only one, which what carries the traveller (CARRIERS) never takes. It leaves in
+ * one place and arrives in another, so the zone beside a departure (a top-level tz, a leg's tz) serves the departure only: an arrival takes
+ * its own { tz } (an offset says no zone) or is refused asking for it. Refused in words when it is no real date and time, its zone isn't
  * known, or its offset isn't its zone's at that moment.
  * @param {string} name what it was written as @param {unknown} v @param {unknown} beside the zone written beside it
  * @param {string[]} zones the trip's @param {string} to the field it stands for @param {boolean} far a flight's, train's or ride's (CARRIERS)
@@ -172,14 +183,15 @@ export function written(v) {
 function timeOf(name, v, beside, zones, to, far) {
   const o = record(v);
   const raw = o ? o.at ?? o.time : v;
-  const tz = [o?.tz, beside, !far && zones.length === 1 ? zones[0] : ''].find((z) => typeof z === 'string' && z) ?? '';
-  /* en */ const how = `write ${to} as ${WHEN}${name.includes('[') ? '' : ` in place of ${name}`}`;
+  const arrives = far && to === 'end';
+  const tz = [o?.tz, arrives ? '' : beside, !far && zones.length === 1 ? zones[0] : ''].find((z) => typeof z === 'string' && z) ?? '';
+  /* en */ const how = `write ${to} as ${WHEN}${name.includes('[') || name === to ? '' : ` in place of ${name}`}`;
   const w = written(raw);
   /* en */ if (!w) throw new Error(`${name} ${JSON.stringify(raw ?? null)} isn't a date with a time: ${how}.`);
   const { at, m } = w;
   if (!validZone(tz)) {
-    /* en */ const why = far && !tz ? ` (the time of a flight, a train, a ferry, a bus or a coach is in the place it leaves or arrives, so the trip's time zone isn't assumed)` : zones.length > 1 ? ` (this trip has ${zones.join(', ')})` : '';
-    /* en */ throw new Error(`${name} ${JSON.stringify(raw)} has no time zone annai knows${why}: ${how}.${name.startsWith('flights[') ? ' Or give the leg a "tz".' : ''}`);
+    /* en */ const why = arrives && !tz ? ` (the time of a flight, a train, a ferry, a bus or a coach is in the place it leaves or arrives, and an arrival can be in another time zone than the departure, so the arrival needs a tz of its own)` : far && !tz ? ` (the time of a flight, a train, a ferry, a bus or a coach is in the place it leaves or arrives, so the trip's time zone isn't assumed)` : zones.length > 1 ? ` (this trip has ${zones.join(', ')})` : '';
+    /* en */ throw new Error(`${name} ${JSON.stringify(raw)} has no time zone annai knows${why}: ${how}.${name.startsWith('flights[') ? (arrives ? ' Give the arrival its own "tz": the leg\'s "tz" is the zone it leaves in.' : ' Or give the leg a "tz".') : ''}`);
   }
   if (!m[5]) return { at: isoInZone(instantAt(at, tz), tz), tz };
   const given = m[6] ? (m[6] === '-' ? -1 : 1) * (+m[7] * 60 + +m[8]) : 0;
@@ -206,7 +218,7 @@ function eq(a, b) {
 }
 
 /** The same value, or the same time (its instant and zone) written two ways. @param {unknown} a @param {unknown} b */
-function same(a, b) {
+export function same(a, b) {
   const [p, q] = [record(a), record(b)];
   return eq(a, b) || Boolean(p && q && typeof p.at === 'string' && typeof q.at === 'string' && p.tz === q.tz && Date.parse(p.at) === Date.parse(q.at));
 }
@@ -232,6 +244,8 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
   const out = { ...own };
   for (const k of [...keys, ...gone]) delete out[k];
   const what = own.kind ?? kind;
+  /** @param {string} k a time alias @returns {string} the field it stands for, by this booking's kind */
+  const field = (k) => fieldOf(k, what) ?? '';
   // A flight's, a train's or a ride's times are in the place it leaves or arrives: the trip's only zone says nothing about them.
   const far = CARRIERS.has(what);
   const besideKey = ['tz', 'timezone'].find((k) => typeof own[k] === 'string');
@@ -258,12 +272,12 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
   /** @param {string} alias @param {unknown} v a name or address, or an object with the place's keys @param {string} key what a string is */
   const note = (alias, v, key) => void (record(v) ? Object.entries(/** @type {object} */ (v)).forEach(([x, y]) => parts.push([alias, x, y])) : parts.push([alias, key, v]));
   for (const k of keys.filter((x) => Object.hasOwn(TIMES, x))) {
-    put(k, TIMES[k], timeOf(k, own[k], beside, zones, TIMES[k], far));
+    put(k, field(k), timeOf(k, own[k], beside, zones, field(k), far));
     const o = record(own[k]);
     // An empty name or address says nothing: it never replaces the stored one.
     const said = (/** @type {unknown} */ x) => x != null && x !== '';
     const where = o && [o.location, o.place, o.address].find(said);
-    if (where && TIMES[k] !== 'start') ends.push([k, where]);
+    if (where && field(k) !== 'start') ends.push([k, where]);
     else if (o) {
       const name = [o.location, o.place].find(said);
       if (name !== undefined) note(k, name, 'name');
@@ -273,13 +287,13 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
   const fk = keys.find((k) => base(k) === 'flights');
   const legs = fk ? (Array.isArray(own[fk]) ? own[fk] : fk.endsWith('+') ? [own[fk]] : []).map(record) : [];
   if (legs.length && legs.every(Boolean)) {
-    // A flight leaves with its first leg and arrives with its last, unless this write says when; the legs are kept as written.
-    // Legs appended by a patch only move the end, and only when the last of them can be placed.
+    // A flight leaves with its first leg and arrives with its last, unless this write says when; the legs are kept as written. A leg's tz is
+    // where it leaves: the arrival takes only its own. Legs appended by a patch only move the end, and only when the last can be placed.
     const [first, last, n] = [legs[0], legs[legs.length - 1], legs.length - 1];
     if (out.start == null && fk === 'flights') put(fk, 'start', timeOf('flights[0].departure', first?.departure ?? first?.depart, first?.tz ?? beside, zones, 'start', true));
     if (out.end == null) {
       try {
-        put(fk ?? '', 'end', timeOf(`flights[${n}].arrival`, last?.arrival ?? last?.arrive, last?.tz ?? beside, zones, 'end', true));
+        put(fk ?? '', 'end', timeOf(`flights[${n}].arrival`, last?.arrival ?? last?.arrive, undefined, zones, 'end', true));
       } catch (e) {
         if (fk === 'flights') throw e;
       }
@@ -301,7 +315,7 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
     /** @type {Record<string, string>} */
     const from = Object.fromEntries(Object.keys(place).map((x) => [x, 'place']));
     for (const [k, key0, v] of parts) {
-      named[k] = TIMES[k] ?? 'place';
+      named[k] = Object.hasOwn(TIMES, k) ? field(k) : 'place';
       const key = key0 === 'name' && typeof v === 'string' && place.name !== undefined && place.name !== v && from.name !== 'place' ? 'address' : key0;
       /* en */ if (place[key] !== undefined && !eq(place[key], v)) throw new Error(`${k} and ${from[key]} are both given and differ: keep one and remove the other.`);
       [place[key], from[key]] = [v, from[key] ?? k];
@@ -325,7 +339,7 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
     else if (COSTS.includes(k) || EXTRAS.includes(base(k))) put(k, `fields.${k}`, own[k]);
   }
   for (const k of append ? gone.filter((x) => !x.endsWith('+')) : []) {
-    const to = TIMES[k] ?? (k === 'name' ? 'title' : COSTS.includes(k) ? 'cost' : EXTRAS.includes(k) ? `fields.${k}` : '');
+    const to = (Object.hasOwn(TIMES, k) ? field(k) : '') || (k === 'name' ? 'title' : COSTS.includes(k) ? 'cost' : EXTRAS.includes(k) ? `fields.${k}` : '');
     out[k] = null;
     if (to.startsWith('fields.')) {
       if (fields) fields[to.slice(7)] ??= null;
@@ -364,6 +378,12 @@ export function shioriBooking(before, next, { schema, changes } = {}) {
   if (!('unsure' in next) && (!old || 'unsure' in old)) {
     /* en */ throw new Error('A new booking lists the fields you are unsure of in unsure (an empty list when you are sure of all of them), so the user sees what to check.');
   }
+  // A start or an end written as stored gets the check its aliases get (timeOf), when this write changes it: next is the value as it will be
+  // stored (a patch merged in), so a stored time a write leaves alone or carries back as it was is never refused.
+  for (const k of ['start', 'end']) {
+    const time = record(next[k]);
+    if (typeof time?.at === 'string' && typeof time.tz === 'string' && !same(time, old?.[k])) timeOf(k, time, undefined, [], k, false);
+  }
   // `unsure+` on a booking with no unsure key adds to the parts marked now (checkOf), so the rest stay marked.
   const patch = record(changes);
   if (patch && Object.hasOwn(patch, 'unsure+') && !Object.hasOwn(patch, 'unsure') && old && !('unsure' in old) && Array.isArray(next.unsure)) {
@@ -398,7 +418,8 @@ export function shioriBooking(before, next, { schema, changes } = {}) {
   const added = own ? Object.keys(next).filter((k) => !Object.hasOwn(own, k) && !(old && Object.hasOwn(old, k))) : [];
   if (added.length) {
     // A name from the other format is told its field (an edit has no renaming, and a model would file it in fields).
-    const is = added.filter((k) => Object.hasOwn(OWN, k)).map((k) => ` ${k} is ${OWN[k][0]}: write ${OWN[k][0]} as ${OWN[k][1]}.`).join('');
+    const kind = next.kind ?? old?.kind;
+    const is = added.filter((k) => Object.hasOwn(OWN, k)).map((k) => { const to = Object.hasOwn(TIMES, k) ? fieldOf(k, kind) : OWN[k][0]; return ` ${k} is ${to}: write ${to} as ${OWN[k][1]}.`; }).join('');
     /* en */ throw new Error(`${added.map((k) => JSON.stringify(k)).join(', ')} ${added.length === 1 ? "isn't a booking field" : "aren't booking fields"}, so nothing was written.${is} A booking's own fields are ${Object.keys(own ?? {}).join(', ')}; put anything else in fields.`);
   }
   return next;

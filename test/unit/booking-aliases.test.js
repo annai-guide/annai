@@ -87,8 +87,10 @@ test("booking-next: a ferry's, a bus's or a coach's booking is a kind of the for
   for (const kind of ['ferry', 'bus', 'coach']) {
     assert.throws(() => guard({ ...base, kind, depart: '2026-11-20T19:00' }), /^Error: depart "2026-11-20T19:00" has no time zone annai knows \(the time of a flight, a train, a ferry, a bus or a coach is in the place it leaves or arrives/, kind);
     assert.throws(() => guard({ ...base, kind, arrive: '2026-11-21T07:00:00-09:00' }), /the time of a flight, a train, a ferry, a bus or a coach/, kind);
-    // Its own zone, beside it or in it, is its zone, as a train's is.
-    assert.deepEqual(guard({ ...base, kind, depart: { at: '2026-11-20T19:00', tz: TOKYO }, arrive: '2026-11-21T07:00', tz: TOKYO }), { ...base, kind, start: { at: '2026-11-20T19:00:00+09:00', tz: TOKYO }, end: { at: '2026-11-21T07:00:00+09:00', tz: TOKYO } }, kind);
+    // Its own zone, in it, is its zone, as a train's is; a zone written beside the times is the departure's only (fix 1: an arrival can be in another zone).
+    assert.deepEqual(guard({ ...base, kind, depart: { at: '2026-11-20T19:00', tz: TOKYO }, arrive: { at: '2026-11-21T07:00', tz: TOKYO } }), { ...base, kind, start: { at: '2026-11-20T19:00:00+09:00', tz: TOKYO }, end: { at: '2026-11-21T07:00:00+09:00', tz: TOKYO } }, kind);
+    assert.deepEqual(guard({ ...base, kind, depart: '2026-11-20T19:00', arrive: { at: '2026-11-21T07:00', tz: TOKYO }, tz: TOKYO }), { ...base, kind, start: { at: '2026-11-20T19:00:00+09:00', tz: TOKYO }, end: { at: '2026-11-21T07:00:00+09:00', tz: TOKYO } }, kind);
+    assert.throws(() => guard({ ...base, kind, depart: '2026-11-20T19:00', arrive: '2026-11-21T07:00', tz: TOKYO }), /^Error: arrive "2026-11-21T07:00" has no time zone annai knows \(.*an arrival can be in another time zone than the departure, so the arrival needs a tz of its own\): write end as \{ "at".* in place of arrive\.$/, kind);
   }
   // A patch to a stored ride booking reads the stored kind, as a stored train's.
   assert.throws(() => unalias({ arrive: '2026-11-21T07:00' }, { zones: [AK], schema: BOOKING_SCHEMA, kind: 'ferry' }), /the time of a flight, a train, a ferry, a bus or a coach/);
@@ -233,7 +235,8 @@ test('through patch: notes append into fields; a rebooked flight moves; a checko
   assert.deepEqual([stay.end, 'checkout' in stay, 'tz' in stay], [at('2026-11-23T11:00:00-09:00'), false, false]);
   await assert.rejects(run('patch', { path: '/trip/bookings/stay.json', changes: { checkout: '2026-11-31T11:00' } }), /isn't a date with a time/);
   assert.deepEqual((await ws.readJSON(trip, '/bookings/stay.json')).end, stay.end);
-  const legs = (/** @type {string} */ d, /** @type {string} */ a) => [{ flight: 'AN 1', departure: d, arrival: a, tz: TOKYO }];
+  // A leg's tz is the zone it leaves in: the arrival has its own.
+  const legs = (/** @type {string} */ d, /** @type {string} */ a) => [{ flight: 'AN 1', departure: d, arrival: { at: a, tz: TOKYO }, tz: TOKYO }];
   await run('write', { path: '/trip/bookings/fly.json', content: { ...base, kind: 'flight', flights: legs('2026-11-20T08:00', '2026-11-20T10:00') } });
   await run('patch', { path: '/trip/bookings/fly.json', changes: { flights: legs('2026-11-21T09:00', '2026-11-21T11:30') } });
   const fly = await ws.readJSON(trip, '/bookings/fly.json');
@@ -363,7 +366,7 @@ test('fix pass 2, 4 and 5: unsure+ is renamed like unsure; a flights+ patch move
   await run('patch', { path: '/trip/bookings/s.json', changes: { checkout: '2026-11-23T11:00', 'unsure+': ['checkout'] } });
   await run('patch', { path: '/trip/bookings/s.json', changes: { name: 'U', 'unsure+': 'name' } });
   assert.deepEqual((await ws.readJSON(trip, '/bookings/s.json')).unsure, ['end', 'title']);
-  const leg = (/** @type {string} */ d, /** @type {string} */ a) => ({ flight: 'AN 1', departure: d, arrival: a, tz: TOKYO });
+  const leg = (/** @type {string} */ d, /** @type {string} */ a) => ({ flight: 'AN 1', departure: d, arrival: { at: a, tz: TOKYO }, tz: TOKYO });
   await run('write', { path: '/trip/bookings/f.json', content: { ...base, kind: 'flight', flights: [leg('2026-11-20T08:00', '2026-11-20T10:00')] } });
   await run('patch', { path: '/trip/bookings/f.json', changes: { 'flights+': [leg('2026-11-20T12:00', '2026-11-20T15:00')] } });
   const f = await ws.readJSON(trip, '/bookings/f.json');
@@ -503,4 +506,95 @@ test('fix pass 3, 3: a whole write with unsure null is refused by the format che
   await run('write', { path: '/trip/bookings/s.json', content: { ...base, kind: 'lodging', title: 'Inn', unsure: ['title'] } });
   await assert.rejects(run('write', { path: '/trip/bookings/s.json', content: { ...base, kind: 'lodging', title: 'Inn 2', checkin: '2026-11-20T15:00', unsure: null } }), /unsure/);
   assert.deepEqual((await ws.readJSON(trip, '/bookings/s.json')).unsure, ['title']);
+});
+
+const LA = 'America/Los_Angeles';
+
+test("booking-next fix 1: what carries the traveller arrives in a zone of its own: a leg's tz or a tz beside the times is the departure's, an arrival takes its own { tz } or is refused asking for it (it took the departure's, up to 17 hours out)", async () => {
+  // SFO to NRT, the leg's tz the departure's: the arrival with none of its own is refused, in words that ask for the arrival's zone.
+  const leg = { flight: 'NH 7', departure: { iataCode: 'SFO', at: '2026-11-20T11:05' }, arrival: { iataCode: 'NRT', at: '2026-11-21T15:40' }, tz: LA };
+  assert.throws(() => guard({ ...base, kind: 'flight', flights: [leg] }), /^Error: flights\[0\]\.arrival "2026-11-21T15:40" has no time zone annai knows \(.*an arrival can be in another time zone than the departure, so the arrival needs a tz of its own\): write end as \{ "at".* Give the arrival its own "tz": the leg's "tz" is the zone it leaves in\.$/);
+  const placed = guard({ ...base, kind: 'flight', flights: [{ ...leg, arrival: { ...leg.arrival, tz: TOKYO } }] });
+  assert.deepEqual([placed.start, placed.end], [{ at: '2026-11-20T11:05:00-08:00', tz: LA }, { at: '2026-11-21T15:40:00+09:00', tz: TOKYO }]);
+  assert.equal(Date.parse(placed.end.at), Date.parse('2026-11-21T06:40:00Z'), 'the ticket says 15:40 in Tokyo, which is 06:40 UTC (the leg tz gave 23:40 UTC)');
+  // An offset says no zone: the same refusal.
+  assert.throws(() => guard({ ...base, kind: 'flight', flights: [{ ...leg, arrival: '2026-11-21T15:40:00+09:00' }] }), /flights\[0\]\.arrival .*needs a tz of its own/);
+  // A Stockholm to Helsinki ferry with one top-level tz: the tz is the departure's (Helsinki is an hour ahead).
+  const ferry = { ...base, kind: 'ferry', depart: '2026-11-20T17:00', arrive: '2026-11-21T09:00', tz: 'Europe/Stockholm' };
+  assert.throws(() => guard(ferry), /^Error: arrive "2026-11-21T09:00" has no time zone annai knows \(.*the arrival needs a tz of its own\): write end as \{ "at".* in place of arrive\.$/);
+  const crossed = guard({ ...ferry, arrive: { at: '2026-11-21T09:00', tz: 'Europe/Helsinki' } });
+  assert.deepEqual([crossed.start, crossed.end], [{ at: '2026-11-20T17:00:00+01:00', tz: 'Europe/Stockholm' }, { at: '2026-11-21T09:00:00+02:00', tz: 'Europe/Helsinki' }]);
+  assert.equal(Date.parse(crossed.end.at), Date.parse('2026-11-21T07:00:00Z'));
+  // A train too, and an arrival alone with a tz beside it.
+  assert.throws(() => guard({ ...base, kind: 'rail', checkin: '2026-11-20T08:00', checkout: '2026-11-20T11:00', tz: 'Europe/Paris' }), /checkout "2026-11-20T11:00" has no time zone annai knows/);
+  assert.throws(() => guard({ ...base, kind: 'rail', arrive: '2026-11-20T11:00', tz: 'Europe/Paris' }), /arrive "2026-11-20T11:00" has no time zone annai knows/);
+  // A stay's, a car's and an event's shared zone is unchanged: one place.
+  assert.deepEqual(guard({ ...base, kind: 'lodging', checkin: '2026-11-20T15:00', checkout: '2026-11-22T11:00', tz: TOKYO }, [AK, TOKYO]).end, { at: '2026-11-22T11:00:00+09:00', tz: TOKYO });
+  assert.deepEqual(guard({ ...base, kind: 'car', pickup: '2026-11-20T10:00', dropoff: '2026-11-22T09:00', tz: TOKYO }, [AK, TOKYO]).end, { at: '2026-11-22T09:00:00+09:00', tz: TOKYO });
+  // Through the write tool, the refusal stores nothing.
+  const { ws, trip, run } = await setup([AK]);
+  await assert.rejects(run('write', { path: '/trip/bookings/nh7.json', content: { ...base, kind: 'flight', flights: [leg] } }), /flights\[0\]\.arrival .*needs a tz of its own/);
+  assert.equal(await ws.read(trip, '/bookings/nh7.json'), undefined);
+  // A flights+ patch whose last leg has no zone of its own for the arrival still appends the leg, and the end stays (the arrival can't be placed).
+  await run('write', { path: '/trip/bookings/nh7.json', content: { ...base, kind: 'flight', flights: [{ ...leg, arrival: { ...leg.arrival, tz: TOKYO } }] } });
+  const before = await ws.readJSON(trip, '/bookings/nh7.json');
+  await run('patch', { path: '/trip/bookings/nh7.json', changes: { 'flights+': [{ flight: 'NH 8', departure: { at: '2026-11-25T10:00', tz: TOKYO }, arrival: '2026-11-25T08:00', tz: TOKYO }] } });
+  const after = await ws.readJSON(trip, '/bookings/nh7.json');
+  assert.deepEqual([after.end, after.fields.flights.length], [before.end, 2]);
+});
+
+test("booking-next fix 1: a stay written with arrival and departure is checked in at the arrival and out at the departure, as a hotel's confirmation says it; a flight, a train, a ride, a car, an event and anything else keep the departure as the start and the arrival as the end (they were swapped for a stay)", async () => {
+  const stay = (/** @type {string} */ a, /** @type {string} */ d) => guard({ ...base, kind: 'lodging', [a]: '2026-11-20T15:00', [d]: '2026-11-22T11:00' });
+  for (const [a, d] of [['arrival', 'departure'], ['arrive', 'depart']]) {
+    const got = stay(a, d);
+    assert.deepEqual([got.start, got.end], [{ at: '2026-11-20T15:00:00-09:00', tz: AK }, { at: '2026-11-22T11:00:00-09:00', tz: AK }], a);
+  }
+  // Only the stay: the others read leaving as the start and arriving as the end (a car or a tour moves the traveller).
+  for (const kind of ['car', 'event', 'other', 'restaurant']) {
+    const got = guard({ ...base, kind, departure: '2026-11-20T15:00', arrival: '2026-11-22T11:00' });
+    assert.deepEqual([got.start.at, got.end.at], ['2026-11-20T15:00:00-09:00', '2026-11-22T11:00:00-09:00'], kind);
+  }
+  const fly = guard({ ...base, kind: 'flight', departure: { at: '2026-11-20T15:00', tz: LA }, arrival: { at: '2026-11-21T18:00', tz: TOKYO } });
+  assert.deepEqual([fly.start.tz, fly.end.tz], [LA, TOKYO]);
+  // The names in unsure follow the field, and an arrival's place is the stay's place; a null departure in a patch clears the check-out.
+  const named = guard({ ...base, kind: 'lodging', arrival: { at: '2026-11-20T15:00', location: 'Harbor Inn' }, departure: '2026-11-22T11:00', unsure: ['arrival', 'departure'] });
+  assert.deepEqual([named.unsure, named.place, named.fields], [['start', 'end'], { name: 'Harbor Inn' }, undefined]);
+  // Through the write tool and a patch onto the stored stay (the stored kind decides).
+  const { ws, trip, run } = await setup([AK]);
+  await run('write', { path: '/trip/bookings/inn.json', content: { ...base, kind: 'lodging', title: 'Harbor Inn', arrival: '2026-11-20T15:00', departure: '2026-11-22T11:00' } });
+  const inn = await ws.readJSON(trip, '/bookings/inn.json');
+  assert.deepEqual([inn.start.at, inn.end.at, 'arrival' in inn, 'departure' in inn], ['2026-11-20T15:00:00-09:00', '2026-11-22T11:00:00-09:00', false, false]);
+  await run('patch', { path: '/trip/bookings/inn.json', changes: { departure: '2026-11-23T11:00' } });
+  const later = await ws.readJSON(trip, '/bookings/inn.json');
+  assert.deepEqual([later.start.at, later.end.at], ['2026-11-20T15:00:00-09:00', '2026-11-23T11:00:00-09:00']);
+  // An edit that adds one of the names is told the right field for its kind.
+  await assert.rejects(run('edit', { path: '/trip/bookings/inn.json', old: '"title": "Harbor Inn"', new: '"title": "Harbor Inn", "arrival": "2026-11-20 15:00"' }), /"arrival" isn't a booking field, so nothing was written\. arrival is start: write start as \{ "at"/);
+});
+
+test("booking-next fix 1: a start or an end written as it is stored gets the check its aliases get (a zone annai knows, an offset the zone has then); only a time this write changes is checked", async () => {
+  const wrong = { at: '2026-11-20T15:00:00+09:00', tz: LA }; // 15:00 in Tokyo, in Los Angeles' zone
+  assert.throws(() => guard({ ...base, kind: 'lodging', start: wrong }), /^Error: start "2026-11-20T15:00:00\+09:00" has an offset America\/Los_Angeles doesn't have then \(it is -08:00\): write start as \{ "at"/);
+  assert.throws(() => guard({ ...base, kind: 'flight', end: wrong }), /^Error: end "2026-11-20T15:00:00\+09:00" has an offset America\/Los_Angeles doesn't have then/);
+  assert.throws(() => guard({ ...base, kind: 'lodging', start: { at: '2026-11-20T15:00:00+09:00', tz: 'Alaska' } }), /start "2026-11-20T15:00:00\+09:00" has no time zone annai knows: write start as/);
+  // The same as the alias says.
+  assert.throws(() => guard({ ...base, kind: 'lodging', checkin: '2026-11-20T15:00:00+09:00', tz: LA }), /has an offset America\/Los_Angeles doesn't have then \(it is -08:00\)/);
+  // Right ones, and a UTC time in a zone that is at UTC then, are taken as written.
+  assert.deepEqual(guard({ ...base, kind: 'lodging', start: { at: '2026-11-20T15:00:00+09:00', tz: TOKYO }, end: { at: '2026-11-20T15:00:00Z', tz: 'Europe/London' } }).start, { at: '2026-11-20T15:00:00+09:00', tz: TOKYO });
+  const { ws, trip, run } = await setup([AK]);
+  await assert.rejects(run('write', { path: '/trip/bookings/s.json', content: { ...base, kind: 'lodging', title: 'Inn', start: wrong } }), /start .* has an offset America\/Los_Angeles doesn't have then/);
+  assert.equal(await ws.read(trip, '/bookings/s.json'), undefined);
+  // A stored time the check would refuse (the user's own, or older) never blocks a write that leaves it alone: a patch of something else, a
+  // patch of the other time, and a whole write that carries it back as it was.
+  const odd = { ...base, kind: 'lodging', title: 'Inn', start: { at: '2026-11-20T15:00:00+09:00', tz: 'Tokyo' }, end: wrong };
+  await ws.write(trip, '/bookings/odd.json', odd, { author: 'user' });
+  await run('patch', { path: '/trip/bookings/odd.json', changes: { confirmation: 'X1' } });
+  await run('write', { path: '/trip/bookings/odd.json', content: { ...odd, confirmation: 'X2' } });
+  assert.equal((await ws.readJSON(trip, '/bookings/odd.json')).confirmation, 'X2');
+  await run('patch', { path: '/trip/bookings/odd.json', changes: { start: { at: '2026-11-21T15:00:00+09:00', tz: TOKYO } } });
+  assert.deepEqual((await ws.readJSON(trip, '/bookings/odd.json')).end, wrong);
+  // One it changes is checked, as written, and as merged into the stored one (a patch of the clock alone, under the stored zone).
+  await assert.rejects(run('patch', { path: '/trip/bookings/odd.json', changes: { end: { at: '2026-11-22T11:00:00+09:00', tz: LA } } }), /end "2026-11-22T11:00:00\+09:00" has an offset America\/Los_Angeles doesn't have then/);
+  await ws.write(trip, '/bookings/ok.json', { ...base, kind: 'lodging', title: 'Inn', start: { at: '2026-11-20T15:00:00-08:00', tz: LA } }, { author: 'user' });
+  await assert.rejects(run('patch', { path: '/trip/bookings/ok.json', changes: { start: { at: '2026-11-21T15:00:00+09:00' } } }), /start "2026-11-21T15:00:00\+09:00" has an offset America\/Los_Angeles doesn't have then/);
+  assert.equal((await ws.readJSON(trip, '/bookings/ok.json')).start.at, '2026-11-20T15:00:00-08:00');
 });

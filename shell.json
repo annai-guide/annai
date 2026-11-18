@@ -1,5 +1,5 @@
 {
-  "build": "92201bb22b83",
+  "build": "b803902e92ec",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -62,7 +62,7 @@
     "/src/core/backup.js": "644832139162",
     "/src/core/backup-auto.js": "64ed2407b9ec",
     "/src/core/backup-targets.js": "91309d766eea",
-    "/src/core/bookings.js": "f469cf95894a",
+    "/src/core/bookings.js": "0ebcd7513c54",
     "/src/core/bytes.js": "b935dfe86a7a",
     "/src/core/catalog-facts.js": "3b27021930f3",
     "/src/core/crc32.js": "0bfef7a8eb00",
@@ -136,7 +136,7 @@
     "/src/core/photos.js": "04a6d604ae69",
     "/src/core/nominatim.js": "66704b17c6aa",
     "/src/core/paths.js": "b519fae60471",
-    "/src/core/plan.js": "e3f1075d9393",
+    "/src/core/plan.js": "1aeef2deaae4",
     "/src/core/plugins.js": "a91393b9509b",
     "/src/core/push/mirror.js": "9f1dea36cd3a",
     "/src/core/push/relay-client.js": "a2f4fe58a177",
@@ -215,7 +215,7 @@
     "/src/ui/bring-in.js": "4e33be70df96",
     "/src/ui/export-panel.js": "ded8262ee329",
     "/src/ui/file-delete.js": "207b1b0e5902",
-    "/src/ui/format.js": "0d870979bd83",
+    "/src/ui/format.js": "95401347aff2",
     "/src/ui/grounding.html": "5dab86abb302",
     "/src/ui/grounding.js": "1e27c30fc392",
     "/src/ui/import-state.js": "ac11af4a3775",
@@ -299,8 +299,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "5eaae0aa23bb",
-    "/l10n/zh-Hans.json": "f6829d4cef99",
-    "/l10n/zh-Hant.json": "c7a20647e497"
+    "/l10n/ja.json": "dcee95160c77",
+    "/l10n/zh-Hans.json": "198796108aec",
+    "/l10n/zh-Hant.json": "9ff1ae06ff51"
   }
 }

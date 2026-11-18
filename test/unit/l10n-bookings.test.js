@@ -50,8 +50,11 @@ test("bookingFacts in ja (booking-next): the keys of a booking's extras read as 
   const f = bookingFacts({ kind: 'flight', unsure: [], fields: { bags: { checked: 2, carry_on: 1 }, meal: 'ベジタリアン', rooms: 1, total: '約12,000円', price: '1人6,000円', arrival: '大阪' } });
   assert.deepEqual(f.map((x) => [x.label, x.value, x.lang]), [
     ['手荷物', '預け入れ手荷物：2 · 機内持ち込み手荷物：1', undefined], ['食事', 'ベジタリアン', undefined], ['部屋数', '1', undefined],
-    ['合計金額', '約12,000円', undefined], ['料金', '1人6,000円', undefined], ['到着地', '大阪', undefined],
+    ['合計金額', '約12,000円', undefined], ['価格', '1人6,000円', undefined], ['到着', '大阪', undefined],
   ]);
+  // A booking's own cost and a price kept in words are two words, not two 料金 (booking-next fix 1), and an arrival is 到着 whatever it holds.
+  const both = bookingFacts({ kind: 'flight', unsure: [], cost: { amount: 12000, currency: 'JPY' }, fields: { price: '1人6,000円', arrival: '15:00–16:00' } });
+  assert.deepEqual(both.map((x) => [x.key, x.label]), [['cost', '料金'], ['price', '価格'], ['arrival', '到着']]);
   assert.doesNotMatch(f.map((x) => x.label + x.value).join(), /checked|carry_on|meal|rooms|total|price|arrival/);
   const amadeus = { flight: 'NH 7', departure: { iataCode: 'SFO', terminal: 'I', at: '2026-11-20T11:05' }, arrival: { iataCode: 'NRT', terminal: '1', at: '2026-11-21T15:40' } };
   assert.equal(bookingFacts({ kind: 'flight', unsure: [], fields: { flights: [amadeus] } })[0].value, 'NH 7 · 11月20日 11:05（iataCode：SFO · ターミナル：I） – 11月21日 15:40（iataCode：NRT · ターミナル：1）');

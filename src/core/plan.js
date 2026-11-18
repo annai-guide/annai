@@ -271,13 +271,14 @@ export function planRows(items, bookings, { fallbackTz }) {
   for (const [path, b] of byPath) {
     if (drawer.has(path)) continue;
     const marks = checkOf(b);
-    const title = typeof b.title === 'string' && b.title.trim() ? b.title : KIND_WORDS[b.kind] ?? t`Booking`;
     const place = record(b.place) ? b.place : undefined;
     // A booking of kind "other" (written before booking-next, when the format had no kind for a ferry, a bus or a coach) is the ride a plan
     // item linked to it says it is, so its end is an Arrive with no place (CARRIERS); with no such item, or a flight or train item on it (a
     // package), it is the booking's own kind (a flight, a train and a ride have their own booking kinds).
     const ride = kindOf(null, b) === 'other' ? own.find((x) => x.ref === path && RIDES.has(kindOf(x.item, b))) : undefined;
     const kind = kindOf(ride?.item, b);
+    // Untitled, it is named by its kind: the ride an item says it is, as a ride booking's own kind (not "Booking").
+    const title = typeof b.title === 'string' && b.title.trim() ? b.title : KIND_WORDS[ride ? kind : b.kind] ?? t`Booking`;
     // A stay is always its check-in and its check-out (as before); anything else that ends on a later day, its start and its end.
     const split = kind === 'lodging' || setOf(b);
     const base = { path, bookingPath: path, booking: b, checkFields: marks.fields, missing: false };

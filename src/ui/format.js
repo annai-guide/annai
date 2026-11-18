@@ -1,5 +1,5 @@
 import { validZone, dayIn, instantAt } from '../core/time.js';
-import { checkOf, there, written, TOP } from '../core/bookings.js';
+import { checkOf, there, written, same, TOP } from '../core/bookings.js';
 import { BOOKING_FILE, PLAN_FILE, record, kindWord, CARRIERS } from '../core/plan.js';
 import { isGivenFile } from '../core/paths.js';
 import { TIMINGS } from '../core/backup-auto.js';
@@ -164,8 +164,8 @@ export function fileLine(became) {
 
 /**
  * Words for the keys Shiori writes most in a booking's `fields` (and inside them: a bag allowance's `checked` and `carry_on`, a leg's
- * `meal`), for those annai files there itself (bookings.js EXTRAS, `dropoff`, `arrival` where an arrival ends, `total` and `price` a cost she
- * gave in words), and for her instructions' example (`rooms`); any other key is shown as written. The same keys as Shiori's words for a
+ * `meal`), for those annai files there itself (bookings.js EXTRAS, `dropoff`, `arrival` where an arrival ends, which a model also writes a time
+ * under: "Arrival", `total` and `price` a cost she gave in words), and for her instructions' example (`rooms`); any other key is shown as written. The same keys as Shiori's words for a
  * booking's parts (bookings.js partWords), so what she asks about has a line by that name.
  */
 export const FIELD_WORDS = /** @type {Record<string, string>} */ ({
@@ -173,7 +173,7 @@ export const FIELD_WORDS = /** @type {Record<string, string>} */ ({
   travellers: t`Travellers`, bags: t`Bags`, terminal: t`Terminal`, gate: t`Gate`, room: tc('booking')`Room`, guests: t`Guests`, nights: t`Nights`,
   pickup: t`Pick-up`, dropoff: t`Drop-off`, train: tc('booking')`Train`, car: tc('booking')`Car`, party: t`Party size`, notes: t`Notes`,
   phone: t`Phone number`, passengers: t`Passengers`, company: t`Company`, flights: tc('booking')`Flights`,
-  checked: t`Checked bags`, carry_on: t`Carry-on`, meal: tc('booking')`Meal`, arrival: tc('booking')`To`, total: t`Total`, price: t`Price`, rooms: t`Rooms`,
+  checked: t`Checked bags`, carry_on: t`Carry-on`, meal: tc('booking')`Meal`, arrival: tc('booking')`Arrival`, total: t`Total`, price: t`Price`, rooms: t`Rooms`,
 });
 
 /** A key's words where the booking's kind says another thing than FIELD_WORDS: a rental's `car` is its model, a train's is its coach; on any other kind it is a car. */
@@ -232,8 +232,9 @@ export function bookingFacts(b, o = {}) {
       const by = r && (r.at === undefined || r.at === null) ? 'time' : 'at'; // the key `r.at ?? r.time` reads
       const w = written(r ? r[by] : v);
       if (!w || w.m[5] === 'Z') return null;
-      const more = Object.entries(r ?? {}).filter(([k, x]) => k !== by && k !== 'tz' && there(x));
-      return { day: w.m[1], clock: `${w.m[2]}:${w.m[3]}`, more: more.length ? line(Object.fromEntries(more)) : '' };
+      // Each value has its label, whatever its key: a `from`, `to` or `flight` in it is a detail of the time, not the leg's route or number.
+      const more = Object.entries(r ?? {}).filter(([k, x]) => k !== by && k !== 'tz' && there(x)).map(([k, x]) => `${keyWords(k)}${colon()}${valueText(x)}`);
+      return { day: w.m[1], clock: `${w.m[2]}:${w.m[3]}`, more: more.join(' · ') };
     };
     const [p, q] = [read(leaves), read(arrives)];
     const clock = (/** @type {{ day: string, clock: string }} */ w) => `${day(w.day)} ${w.clock}`;
@@ -281,7 +282,7 @@ export function bookingFacts(b, o = {}) {
   const carrier = CARRIERS.has(b.kind);
   /** @type {Record<string, () => { label: string, value: string | null, unsure?: boolean, zone?: string } | null>} */
   const own = {
-    route: () => ({ label: tc('flight')`Route`, value: [fields.from, fields.to].filter(words).join(' → ') || null, unsure: marked.has('from') || marked.has('to') }),
+    route: () => ({ label: tc('flight')`Route`, value: [fields.from, fields.to].filter(words).join(' → ') || null, unsure: (words(fields.from) && marked.has('from')) || (words(fields.to) && marked.has('to')) }),
     start: () => ({ label: carrier ? t`Departs` : stay ? t`Check-in` : tc('booking')`Starts`, ...(at(b.start) ?? { value: null }) }),
     end: () => ({ label: carrier ? t`Arrives` : stay ? t`Check-out` : tc('booking')`Ends`, ...(at(b.end) ?? { value: null }) }),
     // Its name and address, each that is there; an address that is only a copy of the name (annai names a place from its address) once.
@@ -311,12 +312,13 @@ export function bookingFacts(b, o = {}) {
       const f = own[key]();
       if (f?.value) {
         out.push({ key, label: f.label, value: f.value, unsure: f.unsure ?? marked.has(key), ...(f.zone ? { zone: f.zone } : {}) });
-        // A field named like a part of its own that drew is that line again when it says the same (one line, one check), and a line under the
-        // part's label, after it, when it says something else (confirmation "ABC123", the field "XYZ789 (e-ticket)"): nothing she wrote is hidden.
+        // A field named like a part of its own that drew is that line again when it says the same (one line, one check: its text is the part's
+        // line, or its value is the part's, an object that would draw as raw keys), and a line under the part's label, after it, when it says
+        // something else (confirmation "ABC123", the field "XYZ789 (e-ticket)"): nothing she wrote is hidden.
         if (TOP.includes(key) && has(key)) {
           shown.add(key);
           const said = valueText(fields[key]);
-          if (said.trim() !== f.value.trim()) out.push({ key, label: f.label, value: said, unsure: marked.has(key) });
+          if (said.trim() !== f.value.trim() && !same(fields[key], b[key])) out.push({ key, label: f.label, value: said, unsure: marked.has(key) });
         }
       } else if (f && TOP.includes(key) && has(key)) {
         // A part that drew nothing (the booking has none, or one that can't be drawn) and a field named like it (a real model wrote fields.place): the field is its line, as written, under its label.

@@ -282,6 +282,7 @@ test("bookingFacts: a train's and a ride's booking departs and arrives, as a fli
   for (const kind of ['flight', 'rail', 'ferry', 'bus', 'coach']) {
     const f = bookingFacts(ride(kind));
     assert.deepEqual(f.map((x) => [x.label, x.unsure]), [['Departs', false], ['Arrives', true]], kind);
+    assert.match(f[0].value, /^Fri, Nov 20, 7:00\sPM \(PT\)$/, `${kind}: the departure in its own zone`);
     assert.match(f[1].value, /^Sat, Nov 21, 7:00\sAM \(AKT\)$/, kind);
   }
   for (const [kind, labels] of /** @type {[string, string[]][]} */ ([['lodging', ['Check-in', 'Check-out']], ['car', ['Starts', 'Ends']], ['event', ['Starts', 'Ends']], ['other', ['Starts', 'Ends']]])) {
@@ -294,7 +295,7 @@ test("bookingFacts: the keys a booking's extras are written under most have word
   assert.deepEqual(f.map((x) => [x.key, x.label, x.value, x.unsure, x.lang]), [
     ['bags', 'Bags', 'Checked bags: 2 · Carry-on: 1 · personal_item: 1', false, undefined],
     ['checked', 'Checked bags', '23 kg', true, undefined], ['carry_on', 'Carry-on', '7 kg', false, undefined], ['meal', 'Meal', 'vegetarian', false, undefined],
-    ['rooms', 'Rooms', '1', false, undefined], ['arrival', 'To', 'Osaka', false, undefined], ['total', 'Total', 'about 120 USD', false, undefined],
+    ['rooms', 'Rooms', '1', false, undefined], ['arrival', 'Arrival', 'Osaka', false, undefined], ['total', 'Total', 'about 120 USD', false, undefined],
     ['price', 'Price', 'USD 12 a bag', false, undefined],
   ]);
   assert.equal(checkWords({ kind: 'flight', status: 'unverified', unsure: ['checked'], fields: { checked: '23 kg' } }), 'not sure the checked bags were read right');
@@ -1434,4 +1435,41 @@ test("a booking whose kind is a name Object's prototype has (toString, construct
     assert.doesNotThrow(() => bookingFacts({ kind, unsure: [], confirmation: 'TQ1' }), kind);
     assert.ok(bookingFacts({ kind, unsure: [], confirmation: 'TQ1' }).some((f) => f.value === 'TQ1'), kind);
   }
+});
+
+test("bookingFacts: every value beside a leg time's clock has its label, whatever its key: a from, a to or a flight in it is a detail of the time, never the leg's route or number (booking-next fix 1: they were drawn without their labels)", () => {
+  assert.deepEqual(legLines([{ flight: 'NH 7', departure: { at: '2026-11-20T11:05', from: 'Terminal 1', to: 'Gate B', flight: 'NH 7B', origin: 'SFO', terminal: 'I' } }]),
+    ['NH 7 · Nov 20 11:05 (From: Terminal 1 · To: Gate B · Flight: NH 7B · origin: SFO · Terminal: I)']);
+  // On both sides, and with the leg's own route beside: the route is still the route.
+  assert.deepEqual(legLines([{ flight: 'NH 7', from: 'SFO', to: 'NRT', departure: { at: '2026-11-20T11:05', from: 'Gate A' }, arrival: { at: '2026-11-21T15:40', to: 'Door 3' } }]),
+    ['NH 7 · SFO → NRT · Nov 20 11:05 (From: Gate A) – Nov 21 15:40 (To: Door 3)']);
+});
+
+test("bookingFacts: a field named like one of the booking's own parts, holding the same value as the part, is that line again, not a second raw one: a place, a start and a cost written as the object both ways draw once and are checked once; a different value is still a line of its own (booking-next fix 1: they drew \"name: Hotel X · address: ...\" under the place)", () => {
+  const place = { name: 'Hotel X', address: '1 Test Street' };
+  const start = { at: '2026-11-20T19:00:00+09:00', tz: TOKYO };
+  const cost = { amount: 120, currency: 'USD' };
+  const shapes = /** @type {[string, any][]} */ ([
+    ['place', { kind: 'lodging', unsure: ['place'], place, fields: { place: { address: '1 Test Street', name: 'Hotel X' } } }], // any key order
+    ['start', { kind: 'ferry', unsure: ['start'], start, fields: { start: { at: '2026-11-20T10:00:00Z', tz: TOKYO } } }], // the same time written two ways
+    ['cost', { kind: 'lodging', unsure: ['cost'], cost, fields: { cost: { currency: 'USD', amount: 120 } } }],
+  ]);
+  for (const [key, b] of shapes) {
+    const f = bookingFacts(b);
+    assert.deepEqual(f.map((x) => [x.key, x.unsure]), [[key, true]], key);
+    assert.equal(checkCount(b), 1, key);
+    assert.doesNotMatch(f[0].value, /name:|at:|amount:/, key);
+  }
+  // A different value draws a second line under the part's label, with the part's check.
+  const other = bookingFacts({ kind: 'lodging', unsure: ['place'], place, fields: { place: { name: 'Hotel Y' } } });
+  assert.deepEqual(other.map((x) => [x.key, x.label, x.value, x.unsure]), [['place', 'Place', 'Hotel X, 1 Test Street', true], ['place', 'Place', 'name: Hotel Y', true]]);
+});
+
+test("bookingFacts: the Route line is checked only for a side it draws: from in words with the to an object, marked 'to', checks the To line, not the Route (booking-next fix 1)", () => {
+  const route = (/** @type {any} */ b) => bookingFacts({ kind: 'flight', ...b }).map((x) => [x.key, x.value, x.unsure]);
+  assert.deepEqual(route({ unsure: ['to'], fields: { from: 'Seattle (SEA)', to: { code: 'ANC' } } }), [['route', 'Seattle (SEA)', false], ['to', 'code: ANC', true]]);
+  assert.deepEqual(route({ unsure: ['from'], fields: { from: { code: 'SEA' }, to: 'Anchorage (ANC)' } }), [['route', 'Anchorage (ANC)', false], ['from', 'code: SEA', true]]);
+  // A side the Route draws still checks it.
+  assert.deepEqual(route({ unsure: ['to'], fields: { from: 'Seattle (SEA)', to: 'Anchorage (ANC)' } }), [['route', 'Seattle (SEA) → Anchorage (ANC)', true]]);
+  assert.equal(checkCount({ kind: 'flight', unsure: ['to'], fields: { from: 'Seattle (SEA)', to: { code: 'ANC' } } }), 1);
 });
