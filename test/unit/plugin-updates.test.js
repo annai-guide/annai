@@ -713,3 +713,21 @@ test("Settings → Plugins and a plugin's page show the update the last checks f
     globalThis.fetch = real;
   }
 });
+
+test("an official plugin installed again while the check's catalog request is in flight is not offered when the check ends (update-check-next's touch re-read: the official kind's mid-check case)", async () => {
+  const { host } = await setup();
+  await ensureType(host, 'scripted', { fetch: await repo() });
+  const bumped = await repo({ bump: true });
+  let installedDuringCheck = false;
+  const during = async (/** @type {any} */ url, /** @type {any} */ init) => {
+    if (new URL(String(url), 'http://annai.test').pathname === '/catalog/plugins.json' && !installedDuringCheck) {
+      installedDuringCheck = true;
+      const catalog = await (await bumped(url, init)).json();
+      await installOfficial(host, catalog.plugins.find((/** @type {any} */ p) => p.id === 'scripted-model'), { fetch: bumped }).catch(() => {});
+    }
+    return bumped(url, init);
+  };
+  const r = await checkPlugins(host, { fetch: during }, { address: false });
+  assert.equal(installedDuringCheck, true, 'the install landed while the catalog was being asked');
+  assert.deepEqual(r.found, [], 'what is installed now is not offered');
+});
