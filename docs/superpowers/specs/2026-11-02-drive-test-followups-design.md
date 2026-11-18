@@ -125,11 +125,11 @@ New:
   `flights` write or text was refused). Unless the same write gives `end`. Only what carries the traveller (a flight, a train, a ferry, a bus,
   a coach) takes its start and end from legs: any other booking's (a stay, a car, a restaurant, an event, an `other` booking) are its own,
   so legs given to one (`flights+` or `flights`, with times or without) are kept as written and move nothing, and when a leg has a time
-  the result says so and asks for `start` and `end`. A whole `flights` write whose first leg is text (no date and time annai reads as its
-  departure) gives no start, and the result says so whatever else the write gives, "no start or end" when the end is left out too (an end
-  with no start is on no day of the Plan, so none is read from the last leg either); a last leg with no arrival adds its own note, and an
-  end the write gives itself (`end`, or an arrival alias) is kept; a start the write gives itself lets the last leg's arrival give the
-  end. unsure's departure and arrival (or depart and arrive) are the start's and the end's when the legs gave them. Appending (`x+`) to a stored value that is no list keeps that value as the first item.
+  the result says so and, when the booking has no start or end of its own, asks for them. A whole `flights` write whose first leg is text
+  (no date and time annai reads as its departure) gives no start, and the result says so whatever else the write gives: "no start or end"
+  when the last leg's arrival is a time that is left out with it (an end with no start is on no day of the Plan, so none is read from the
+  last leg either), else "no start". A last leg with no arrival adds its own note, and an end the write gives itself (`end`, or an arrival
+  alias) is kept; a start the write gives itself lets the last leg's arrival give the end. Appending (`x+`) to a stored value that is no list keeps that value as the first item.
 - **One rule for the place.** In a patch the place aliases merge into `place` like a JSON merge patch: a location (or a pick-up's
   location) is `place.name`, an address (or a pick-up's) is `place.address`, lat/lng are `place.lat/lng`; `address: null` is the address
   null and `location: null` is no place. A `place` of its own (object) merges with them, and different values for one part, or

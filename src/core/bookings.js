@@ -183,7 +183,7 @@ const OWN = /** @type {Record<string, [string, string]>} */ ({
 /* en */ const NO_END = `The last leg's arrival isn't written as a date with a time (YYYY-MM-DDTHH:MM), so the booking has no arrival time now: when you know when it arrives, write end as ${WHEN}.`;
 /** @param {boolean} end whether the end is left out with it @returns {string} */
 const noStart = (end) => /* en */ `The first leg's departure isn't written as a date with a time (YYYY-MM-DDTHH:MM), so the booking has no start${end ? ' or end' : ''} now: when you know when it leaves${end ? ' and arrives' : ''}, write start${end ? ' and end' : ''} as ${WHEN}.`;
-/* en */ const NO_LEGS_TIMES = `The legs' times are kept as written and set no start or end for this booking (only a flight, train, ferry, bus or coach takes them from its legs): write start and end as ${WHEN}.`;
+/* en */ const NO_LEGS_TIMES = `The legs' times are kept as written and set no start or end for this booking (only a flight, train, ferry, bus or coach takes them from its legs): when it has no start or end of its own, write them as ${WHEN}.`;
 const AT = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(Z|([+-])(\d{2}):(\d{2}))?$/;
 
 /**
@@ -366,9 +366,6 @@ export function unalias(own, { zones = [], schema, kind, append = false, notes =
         notes.push(NO_END);
       } else if (!noFirst) put(fk, 'end', timeOf(`${fk}[${n}].arrival`, arrival, undefined, zones, 'end', true));
     }
-    // unsure's departure and arrival (depart, arrive) name the start and the end the legs gave, as the aliases do.
-    if (out.start != null) named.departure ??= named.depart ??= 'start';
-    if (out.end != null) named.arrival ??= named.arrive ??= 'end';
   }
   for (const k of ['location', 'address']) if (keys.includes(k) && there(own[k])) note(k, own[k], k === 'address' ? 'address' : 'name');
   // In a patch a null address is the place's address null, and a null location is no place.

@@ -5,7 +5,7 @@
 // arrival is its end, as on main (the build's item 4, its arrival as its start, went: a write can't tell what a booking's start stands for);
 // a removed alias removes the field it stands for and nothing else; legs move the times of what carries the traveller only; a whole write's
 // first leg that gives no departure is said whatever else the write gives, and a leg's time given to anything else is said too (the touch
-// before merge); unsure's departure and arrival are the start's and the end's when the legs gave them. Each shape goes through the files plugin's write and patch tools, then what the details draw
+// before merge). Each shape goes through the files plugin's write and patch tools, then what the details draw
 // (bookingFacts), what the Plan draws (planRows), what the check marks (checkOf, checkCount) and what Shiori is told (checkWords, the tool's result).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -32,7 +32,7 @@ const NO_START = 'The first leg\'s departure isn\'t written as a date with a tim
 /** What it adds when the end is left out with the start (the last leg gave an arrival, and the write gave no end: an end with no start is on no day). */
 const NO_START_END = 'The first leg\'s departure isn\'t written as a date with a time (YYYY-MM-DDTHH:MM), so the booking has no start or end now: when you know when it leaves and arrives, write start and end as { "at": "YYYY-MM-DDTHH:MM:SS±HH:MM", "tz": "<IANA zone>" }.';
 /** What a write adds when legs with a time are given to a booking that isn't a flight, a train, a ferry, a bus or a coach. */
-const NO_LEGS = 'The legs\' times are kept as written and set no start or end for this booking (only a flight, train, ferry, bus or coach takes them from its legs): write start and end as { "at": "YYYY-MM-DDTHH:MM:SS±HH:MM", "tz": "<IANA zone>" }.';
+const NO_LEGS = 'The legs\' times are kept as written and set no start or end for this booking (only a flight, train, ferry, bus or coach takes them from its legs): when it has no start or end of its own, write them as { "at": "YYYY-MM-DDTHH:MM:SS±HH:MM", "tz": "<IANA zone>" }.';
 
 /** The files plugin with the core schemas, a trip in Anchorage, and what each booking file comes out as on the screens. */
 async function setup() {
@@ -380,7 +380,7 @@ test("legs move the times of what carries the traveller only: a stay or an other
   }
   // Legs with no time say nothing; her own times beside timed legs are kept, and the note is still true of the legs.
   assert.match(await write('o.json', { ...base, kind: 'other', title: 'Tour', flights: [{ flight: 'AS 1' }, 'AS 2'] }), /^Wrote \/trip\/bookings\/o\.json \(\d+ bytes\)\.$/);
-  assert.match(await write('o.json', { ...base, kind: 'other', title: 'Tour', start: at('2026-11-25T06:00:00-08:00', LA), flights: [timed] }), /^Wrote \/trip\/bookings\/o\.json \(\d+ bytes\)\. The legs' times are kept as written and set no start or end for this booking \(only a flight, train, ferry, bus or coach takes them from its legs\): write start and end as \{ "at": /);
+  assert.match(await write('o.json', { ...base, kind: 'other', title: 'Tour', start: at('2026-11-25T06:00:00-08:00', LA), flights: [timed] }), /^Wrote \/trip\/bookings\/o\.json \(\d+ bytes\)\. The legs' times are kept as written and set no start or end for this booking \(only a flight, train, ferry, bus or coach takes them from its legs\): when it has no start or end of its own, write them as \{ "at": /);
   assert.deepEqual((await read('o.json')).start, at('2026-11-25T06:00:00-08:00', LA));
   // What carries the traveller keeps what it had: the first leg's departure and the last leg's arrival, and a last leg with no arrival says so.
   for (const kind of ['flight', 'rail', 'ferry', 'bus', 'coach']) {
@@ -554,31 +554,4 @@ test("unsure's name for an end that has a place is its time's: a stay's check-ou
   const c = await read('c.json');
   assert.deepEqual([c.unsure, checkOf(c).fields], [['end', 'start'], ['end', 'start']]);
   agrees(c);
-});
-
-test("unsure's name for a time the legs gave is its field's: a flight's or a ride's departure and arrival written with unsure departure or depart, arrival or arrive are stored as start and end, and the Departs and Arrives lines carry the check (the name marked nothing); the same in a patch's unsure+; a stay's arrival is its check-in, never the end the legs would give a flight", async () => {
-  const { write, patch, read } = await setup();
-  const timed = { flight: 'AS 1', departure: { at: '2026-11-25T06:00', tz: LA }, arrival: { at: '2026-11-25T08:00', tz: AK } };
-  const carried = (/** @type {any} */ b) => lines(b).filter((l) => /^(Departs|Arrives):/.test(l)).map((l) => l.replace(/^(\w+): .*?( \(check\))?$/, '$1$2'));
-  for (const kind of ['flight', 'rail']) {
-    for (const [unsure, stored, drawn] of /** @type {[string[], string[], string[]][]} */ ([
-      [['departure'], ['start'], ['Departs (check)', 'Arrives']], [['depart'], ['start'], ['Departs (check)', 'Arrives']],
-      [['arrival'], ['end'], ['Departs', 'Arrives (check)']], [['arrive'], ['end'], ['Departs', 'Arrives (check)']],
-      [['arrival', 'departure'], ['end', 'start'], ['Departs (check)', 'Arrives (check)']], [['start', 'arrive'], ['start', 'end'], ['Departs (check)', 'Arrives (check)']],
-    ])) {
-      await write('f.json', { ...base, kind, title: 'AS 1', flights: [timed], unsure });
-      const f = await read('f.json');
-      assert.deepEqual([f.unsure, carried(f)], [stored, drawn], `${kind} ${unsure}`);
-      agrees(f);
-    }
-  }
-  // In a patch, unsure+ is renamed the same way when the appended leg gave the end.
-  await write('f.json', { ...base, kind: 'flight', title: 'AS 1', flights: [timed] });
-  assert.equal(await patch('f.json', { 'flights+': [{ flight: 'AS 2', departure: { at: '2026-11-26T06:00', tz: AK }, arrival: { at: '2026-11-26T08:00', tz: AK } }], 'unsure+': ['arrival'] }), 'Patched /trip/bookings/f.json.');
-  const p = await read('f.json');
-  assert.deepEqual([p.unsure, carried(p)], [['end'], ['Departs', 'Arrives (check)']]);
-  agrees(p);
-  // A stay's arrival is its check-in: the legs give a stay no end, so unsure arrival is not the check-out's.
-  await write('s.json', { ...base, kind: 'lodging', title: 'Hotel Aurora Test', place: { name: 'Hotel Aurora Test' }, start: at('2026-11-20T15:00:00-09:00'), end: at('2026-11-22T11:00:00-09:00'), flights: [timed], unsure: ['arrival'] });
-  assert.equal((await read('s.json')).unsure.includes('end'), false);
 });
