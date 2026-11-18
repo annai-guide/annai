@@ -612,7 +612,7 @@ test("what carries the traveller departs and arrives: unsure's departure or depa
   }
 });
 
-test("unsure's departure and arrival are read by what the record has: no such time marks nothing, and marks it once it is there; a key of fields of that name, blank or not, is that detail (a blank one is no detail, so the time is marked); a stay's arrival and check-in are its start and its check-out and departure its end, a car's pick-up and departure its start and its return and arrival its end, an `other` booking's as what carries the traveller's; a drop-off is never an end; a restaurant's and an event's are read as written (their arrival is the open Deferred entry)", async () => {
+test("unsure's departure and arrival are read by what the record has: no such time (of its own, or a detail named `start` or `end`, which the details draw as its line) marks nothing, and marks it once it is there; a key of fields of that name, blank or not, is that detail (a blank one is no detail, so the time is marked); a stay's arrival and check-in are its start and its check-out and departure its end, a car's pick-up and departure its start and its return and arrival its end, an `other` booking's as what carries the traveller's; a drop-off is never an end; a restaurant's and an event's are read as written (their arrival is the open Deferred entry)", async () => {
   const { write, store, patch, read } = await setup();
   // No end: the arrival marks nothing, as it has nothing to mark; the end, once there, takes the mark (a later write, or the user's own).
   await write('n.json', { ...base, kind: 'flight', depart: at('2026-11-25T06:00', LA), unsure: ['arrival'] });
