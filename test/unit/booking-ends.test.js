@@ -1,7 +1,8 @@
 // The booking time path's design check (2026-11-18, its Option 1): an end's place is read by what is booked and filed whole, never compared
 // at write time; a flight's end is its last leg's placed arrival, or none, and the write's result says so; one answer (dropsAtPlace) to
 // whether a drop-off names the booking's own place, read by the Plan's Return row, the details and the check; a restaurant's or an event's
-// arrival alone is its start. Each shape goes through the files plugin's write and patch tools, then what the details draw (bookingFacts),
+// arrival alone, in a whole write, is its start. Fix round 1: a stay's check-out place is kept as any other kind's; item 4 is for a whole write
+// only; a leg with no arrival clears the end of a flight only. Each shape goes through the files plugin's write and patch tools, then what the details draw (bookingFacts),
 // what the Plan draws (planRows), what the check marks (checkOf, checkCount) and what Shiori is told (checkWords, the tool's result).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -21,7 +22,7 @@ const LA = 'America/Los_Angeles';
 const base = { id: 'b', status: 'unverified', source: '/files/b.pdf', unsure: [] };
 const at = (/** @type {string} */ x, tz = AK) => ({ at: x, tz });
 /** What the write and patch tools add when a flight's last leg gives no time of arrival. */
-const NO_END = 'The last leg gives no date and time of arrival, so the booking has no arrival time now: when you know when it arrives, write end as { "at": "YYYY-MM-DDTHH:MM:SS±HH:MM", "tz": "<IANA zone>" }.';
+const NO_END = 'The last leg\'s arrival isn\'t written as a date with a time (YYYY-MM-DDTHH:MM), so the booking has no arrival time now: when you know when it arrives, write end as { "at": "YYYY-MM-DDTHH:MM:SS±HH:MM", "tz": "<IANA zone>" }.';
 
 /** The files plugin with the core schemas, a trip in Anchorage, and what each booking file comes out as on the screens. */
 async function setup() {
@@ -68,36 +69,54 @@ function agrees(b) {
   assert.equal(words === '', named.length === 0, `her words: ${words}`);
 }
 
-test("a stored stay's check-out patched with its own address or name, or a departure with its address: the end moves, and nothing else is kept (no Drop-off line repeating the place; it drew one)", async () => {
+test("a stay's check-out is kept as its drop-off, as any other kind's: patched with its own address or name, or a departure with its address, the end moves and what was written is filed (no Drop-off line repeating the place: dropsAtPlace); a shuttle stop is drawn as a Drop-off line, and the Plan's check-out row stays at the hotel, with its position (it was dropped, silently)", async () => {
   const { store, patch, read } = await setup();
   const stay = { ...base, kind: 'lodging', title: 'Hotel Aurora Test', place: { name: 'Hotel Aurora Test', address: '1 Test Street', lat: 61.2, lng: -149.9 }, start: at('2026-11-20T15:00:00-09:00'), end: at('2026-11-27T11:00:00-09:00') };
-  for (const changes of [{ checkout: { at: '2026-11-26T11:00', location: '1 Test Street' } }, { checkout: { at: '2026-11-26T11:00', location: 'Hotel Aurora Test' } }, { departure: { at: '2026-11-26T11:00', address: '1 Test Street' } }, { checkout: { at: '2026-11-26T11:00', location: 'Shuttle stop B' } }]) {
+  /** @type {[any, string, boolean][]} what is written, the drop-off filed, and whether it names the place (so no Drop-off line) */
+  const cases = [
+    [{ checkout: { at: '2026-11-26T11:00', location: '1 Test Street' } }, '1 Test Street', true],
+    [{ checkout: { at: '2026-11-26T11:00', location: 'Hotel Aurora Test' } }, 'Hotel Aurora Test', true],
+    [{ departure: { at: '2026-11-26T11:00', address: '1 Test Street' } }, '1 Test Street', true],
+    [{ checkout: { at: '2026-11-26T11:00', location: 'Shuttle stop B' } }, 'Shuttle stop B', false],
+  ];
+  for (const [changes, dropoff, atPlace] of cases) {
     await store('s.json', stay);
     assert.equal(await patch('s.json', changes), 'Patched /trip/bookings/s.json.');
     const got = await read('s.json');
-    assert.deepEqual([got.end, got.fields, got.place], [at('2026-11-26T11:00:00-09:00'), undefined, stay.place], JSON.stringify(changes));
-    assert.deepEqual(lines(got).filter((l) => /^(Place|Drop-off|To):/.test(l)), ['Place: Hotel Aurora Test, 1 Test Street'], JSON.stringify(changes));
+    assert.deepEqual([got.end, got.fields, got.place, dropsAtPlace(got)], [at('2026-11-26T11:00:00-09:00'), { dropoff }, stay.place, atPlace], JSON.stringify(changes));
+    assert.deepEqual(lines(got).filter((l) => /^(Place|Drop-off|To):/.test(l)), ['Place: Hotel Aurora Test, 1 Test Street', ...(atPlace ? [] : [`Drop-off: ${dropoff}`])], JSON.stringify(changes));
+    // The Plan's check-out row is at the hotel, with its position, whatever the drop-off says (as on main: only a car returns elsewhere).
     assert.equal(rows(got).find((r) => r.startsWith('end@')), 'end@2026-11-26 11:00 Hotel Aurora Test (pin)', 'the check-out at the hotel, with its position');
-    agrees(got);
+    // Marked unsure, the mark is on the line drawn: the drop-off's, or the place's when the drop-off names it.
+    for (const x of [got, { ...got, unsure: ['dropoff'] }, { ...got, unsure: ['end'] }]) agrees(x);
   }
 });
 
-test("proposed known limitation: a stay's place or address written only with its check-out is not kept (keeping it needs the comparison that drew a Drop-off line repeating the hotel)", async () => {
+test("a stay's place or address written only with its check-out is kept as its drop-off, as on main (it was dropped, silently); one that names the stay's own place draws no Drop-off line; the one shape left: a check-in with the name only and a check-out with the address draws \"Drop-off: <the address>\" under \"Place: <the name>\", as on main", async () => {
   const { write, read } = await setup();
-  // A check-in with the name and a check-out with the address: the Place line is the name; the address is not kept.
+  const drawn = (/** @type {any} */ x) => lines(x).filter((l) => /^(Place|Drop-off):/.test(l));
+  // A check-in with the name and a check-out with the address: the address is kept, and drawn on a line of its own (the shape left).
   await write('a.json', { ...base, kind: 'lodging', checkin: { at: '2026-11-20T15:00', location: 'Hotel Aurora' }, checkout: { at: '2026-11-22T11:00', address: '1 Test Street' } });
   const a = await read('a.json');
-  assert.deepEqual([a.place, a.fields, a.end], [{ name: 'Hotel Aurora' }, undefined, at('2026-11-22T11:00:00-09:00')]);
-  assert.deepEqual(lines(a).filter((l) => /^(Place|Drop-off):/.test(l)), ['Place: Hotel Aurora']);
-  // A check-in with a time only and a check-out with the name: no Place line, and nothing else drawn for it.
+  assert.deepEqual([a.place, a.fields, a.end], [{ name: 'Hotel Aurora' }, { dropoff: '1 Test Street' }, at('2026-11-22T11:00:00-09:00')]);
+  assert.deepEqual(drawn(a), ['Place: Hotel Aurora', 'Drop-off: 1 Test Street']);
+  // A check-in with a time only and a check-out with the name: the name is kept, drawn as the drop-off (no place to name it).
   await write('b.json', { ...base, kind: 'lodging', checkin: '2026-11-20T15:00', checkout: { at: '2026-11-22T11:00', location: 'Hotel Aurora' } });
   const b = await read('b.json');
-  assert.deepEqual([b.place, b.fields, b.end], [undefined, undefined, at('2026-11-22T11:00:00-09:00')]);
-  assert.deepEqual(lines(b).filter((l) => /^(Place|Drop-off):/.test(l)), []);
-  // A dropoff written on a stay is read by its kind too: its time alone.
+  assert.deepEqual([b.place, b.fields, b.end], [undefined, { dropoff: 'Hotel Aurora' }, at('2026-11-22T11:00:00-09:00')]);
+  assert.deepEqual(drawn(b), ['Drop-off: Hotel Aurora']);
+  // A dropoff written on a stay is its check-out's place too.
   await write('c.json', { ...base, kind: 'lodging', title: 'Hotel Aurora', checkin: '2026-11-20T15:00', dropoff: { at: '2026-11-22T11:00', location: 'Airport' } });
-  assert.deepEqual([(await read('c.json')).fields, (await read('c.json')).end], [undefined, at('2026-11-22T11:00:00-09:00')]);
-  for (const x of [a, b]) agrees(x);
+  const c = await read('c.json');
+  assert.deepEqual([c.fields, c.end], [{ dropoff: 'Airport' }, at('2026-11-22T11:00:00-09:00')]);
+  // A check-out that says what the place says (its name, its address, or both, as filed) is the place: no Drop-off line.
+  for (const checkout of [{ location: 'Hotel Aurora' }, { address: '1 Test Street' }, { location: 'Hotel Aurora', address: '1 Test Street' }]) {
+    await write('d.json', { ...base, kind: 'lodging', checkin: { at: '2026-11-20T15:00', location: 'Hotel Aurora', address: '1 Test Street' }, checkout: { at: '2026-11-22T11:00', ...checkout } });
+    const d = await read('d.json');
+    assert.deepEqual([dropsAtPlace(d), drawn(d)], [true, ['Place: Hotel Aurora, 1 Test Street']], JSON.stringify(checkout));
+    agrees(d);
+  }
+  for (const x of [a, b, c]) agrees(x);
 });
 
 test("a car: its return's name and address are both kept; one returned where it was picked up keeps its drop-off and is drawn at its place, with no Drop-off line and the Return row's pin (whole write and patch); a stored drop-off elsewhere patched back to the lot returns at the lot", async () => {
@@ -182,6 +201,8 @@ test("fields.to beside an arrival's place that says something else is refused, n
   // The same place both ways is taken.
   await flight('Haneda Airport, 3-3-2 Hanedakuko', { location: 'Haneda Airport', address: '3-3-2 Hanedakuko' });
   assert.deepEqual((await read('f.json')).fields, { from: 'SFO', to: 'Haneda Airport, 3-3-2 Hanedakuko' });
+  agrees(await read('f.json'));
+  agrees({ ...(await read('f.json')), unsure: ['arrival'] });
 });
 
 /** A flight stored through the write tool with one leg, SFO to NRT, ending 15:40 in Tokyo on the 21st. */
@@ -190,14 +211,19 @@ const ARRIVES = at('2026-11-21T15:40:00+09:00', TOKYO);
 
 test("flights+ whose last leg gives no date and time of arrival (none, an airport, a clock alone, text, a date alone, a number, a day that doesn't exist) is appended as written, the booking's end is removed, and the result says so (the end stayed at the leg before, or it was refused)", async () => {
   const { write, patch, read } = await setup();
-  for (const arrival of [undefined, { iataCode: 'HND' }, 'HND', '08:00', '8:00 AM', '2026-11-25', 800, '2026-11-31T08:00', { iataCode: 'HND', at: '' }, { iataCode: 'HND', at: '08:00', tz: TOKYO }]) {
+  // The last two are a date and a time that annai can't read ("6:00 PM", "2026/11/26 08:00"): the note is true for them too (it said the leg gave none).
+  for (const arrival of [undefined, { iataCode: 'HND' }, 'HND', '08:00', '8:00 AM', '2026-11-25', 800, '2026-11-31T08:00', { iataCode: 'HND', at: '' }, { iataCode: 'HND', at: '08:00', tz: TOKYO }, '2026-11-26 6:00 PM', '2026/11/26 08:00']) {
+    const label = String(JSON.stringify(arrival)); // an assert message is a string: JSON.stringify(undefined) is not
     await write('f.json', { ...base, kind: 'flight', title: 'NH 7 / NH 8', flights: [NH7] });
     assert.deepEqual((await read('f.json')).end, ARRIVES);
     const leg = { flight: 'NH 8', departure: { at: '2026-11-25T06:00', tz: TOKYO }, ...(arrival === undefined ? {} : { arrival }) };
-    assert.equal(await patch('f.json', { 'flights+': [leg] }), `Patched /trip/bookings/f.json. ${NO_END}`, JSON.stringify(arrival));
+    assert.equal(await patch('f.json', { 'flights+': [leg] }), `Patched /trip/bookings/f.json. ${NO_END}`, label);
     const got = await read('f.json');
-    assert.deepEqual(['end' in got, got.start, got.fields.flights], [false, at('2026-11-20T11:05:00-08:00', LA), [NH7, leg]], JSON.stringify(arrival));
+    assert.deepEqual(['end' in got, got.start, got.fields.flights], [false, at('2026-11-20T11:05:00-08:00', LA), [NH7, leg]], label);
+    agrees(got);
   }
+  // The note says what is wrong with the arrival (it isn't a date with a time, in a form), and what the booking has now.
+  assert.match(NO_END, /^The last leg's arrival isn't written as a date with a time \(YYYY-MM-DDTHH:MM\), so the booking has no arrival time now: /);
 });
 
 test("flights+ with two legs whose last has no arrival: no end (it stayed two legs back); with end in the same patch: that end, said nothing; a last leg's date and time with no zone of its own: refused, nothing stored; with its zone: the end moves", async () => {
@@ -207,10 +233,12 @@ test("flights+ with two legs whose last has no arrival: no end (it stayed two le
   await patch('f.json', { 'flights+': [leg('NH 8', at('2026-11-25T08:00', TOKYO)), leg('NH 9')] });
   const two = await read('f.json');
   assert.deepEqual(['end' in two, two.fields.flights.length], [false, 3]);
+  agrees(two);
   // The end she gives herself, beside a leg with no arrival.
   await write('f.json', { ...base, kind: 'flight', flights: [NH7] });
   assert.equal(await patch('f.json', { 'flights+': [leg('NH 8')], end: at('2026-11-25T08:00:00+09:00', TOKYO) }), 'Patched /trip/bookings/f.json.');
   assert.deepEqual((await read('f.json')).end, at('2026-11-25T08:00:00+09:00', TOKYO));
+  agrees(await read('f.json'));
   // Kept as today: a time with no zone of its own is refused in today's words, the file as it was; its own zone moves the end.
   const before = await read('f.json');
   await assert.rejects(patch('f.json', { 'flights+': [leg('NH 9', { at: '2026-11-26T08:00' })] }), /^Error: flights\+\[0\]\.arrival "2026-11-26T08:00" has no time zone annai knows \(.*the arrival needs a tz of its own\): write end as .* Give the arrival its own "tz": the leg's "tz" is the zone it leaves in\.$/);
@@ -221,10 +249,12 @@ test("flights+ with two legs whose last has no arrival: no end (it stayed two le
   assert.match(await write('g.json', { ...base, kind: 'flight', flights: [{ ...NH7, arrival: { iataCode: 'NRT' } }] }), new RegExp(`^Wrote /trip/bookings/g\\.json \\(\\d+ bytes\\)\\. ${NO_END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`));
   const g = await read('g.json');
   assert.deepEqual(['end' in g, g.start], [false, at('2026-11-20T11:05:00-08:00', LA)]);
+  agrees(g);
   // A leg written as text, not an object, is a last leg with no arrival too (its end stayed at the leg before).
   await write('f.json', { ...base, kind: 'flight', flights: [NH7] });
   assert.equal(await patch('f.json', { 'flights+': 'NH 8 to HND' }), `Patched /trip/bookings/f.json. ${NO_END}`);
   assert.deepEqual(['end' in (await read('f.json')), (await read('f.json')).fields.flights], [false, [NH7, 'NH 8 to HND']]);
+  agrees(await read('f.json'));
 });
 
 test("a booking stored with a start and an end and no legs, given a leg with no arrival, has no end, and is told so; the details and the Plan of a flight with no end have no Arrives line and no Arrive row", async () => {
@@ -240,7 +270,7 @@ test("a booking stored with a start and an end and no legs, given a leg with no 
   agrees(got);
 });
 
-test("a restaurant or an event written with its arrival alone starts then, at the place it gives, and is on that day of the Plan (it had an end and no start, on no day); beside a time it starts, its arrival is its end, as before", async () => {
+test("a restaurant or an event written (a whole write) with its arrival alone starts then, at the place it gives, and is on that day of the Plan (it had an end and no start, on no day); beside a time it starts, its arrival is its end, as before; a patch's arrival is its end", async () => {
   const { write, store, patch, read, run } = await setup();
   await write('r.json', { ...base, kind: 'restaurant', title: 'Test Bistro', arrive: { at: '2026-11-20T18:30', location: 'Test Bistro' } });
   const r = await read('r.json');
@@ -250,10 +280,11 @@ test("a restaurant or an event written with its arrival alone starts then, at th
   await write('e.json', { ...base, kind: 'event', title: 'Concert', arrival: '2026-11-20T19:00', unsure: ['arrival'] });
   const e = await read('e.json');
   assert.deepEqual([e.start, e.end, e.unsure], [at('2026-11-20T19:00:00-09:00'), undefined, ['start']]);
-  // A patch of a stored one moves its start.
+  // A patch sees only half of the booking (its own keys), so its arrival is the end, as it always was: a restaurant with a start gets an end
+  // (the review's F1: the patch moved or cleared a start it could not see).
   await store('p.json', { ...base, kind: 'restaurant', title: 'Test Bistro', start: at('2026-11-20T18:30:00-09:00') });
   await patch('p.json', { arrive: '2026-11-20T19:00' });
-  assert.deepEqual([(await read('p.json')).start, (await read('p.json')).end], [at('2026-11-20T19:00:00-09:00'), undefined]);
+  assert.deepEqual([(await read('p.json')).start, (await read('p.json')).end], [at('2026-11-20T18:30:00-09:00'), at('2026-11-20T19:00:00-09:00')]);
   // Beside a time it starts (a departure, a start), the arrival ends it, as before: a tour booked as an event departs and arrives back.
   await write('t.json', { ...base, kind: 'event', title: 'Glacier tour', depart: '2026-11-21T08:00', arrive: '2026-11-21T18:00' });
   assert.deepEqual([(await read('t.json')).start.at, (await read('t.json')).end.at], ['2026-11-21T08:00:00-09:00', '2026-11-21T18:00:00-09:00']);
@@ -270,4 +301,122 @@ test("a restaurant or an event written with its arrival alone starts then, at th
   await store('d.json', { ...base, kind: 'restaurant', title: 'Test Bistro', start: at('2026-11-20T18:30:00-09:00') });
   await assert.rejects(run('edit', { path: '/trip/bookings/d.json', old: '"title": "Test Bistro"', new: '"title": "Test Bistro", "arrival": "2026-11-20 20:30"' }), /arrival is end: write end as \{ "at"/);
   for (const x of [r, e]) agrees(x);
+});
+
+test("a patch's arrival is the end of a restaurant or an event, as on main, and never moves or clears its start (the review's F1: an event 08:00 to 18:00 patched with an arrival got a start of 5:30 PM, lost its start with arrive: null, and refused an arrival after 18:00)", async () => {
+  const { write, store, patch, read } = await setup();
+  const day = (/** @type {string} */ t) => `2026-11-21T${t}`;
+  const tour = { ...base, kind: 'event', title: 'Glacier tour', depart: day('08:00'), arrive: day('18:00') };
+  /** @type {[any, string | undefined][]} the patch, and the end it leaves (the start is 08:00 in each) */
+  const cases = [[{ arrive: day('17:30') }, '17:30'], [{ arrive: null }, undefined], [{ arrive: day('19:00') }, '19:00'], [{ arrival: { at: day('17:30'), location: 'Harbor' } }, '17:30']];
+  for (const [changes, end] of cases) {
+    await write('e.json', tour);
+    assert.equal(await patch('e.json', changes), 'Patched /trip/bookings/e.json.', JSON.stringify(changes));
+    const got = await read('e.json');
+    assert.deepEqual([got.start?.at, got.end?.at, got.place], ['2026-11-21T08:00:00-09:00', end && `${day(end)}:00-09:00`, undefined], JSON.stringify(changes));
+    assert.deepEqual(rows(got).slice(0, 1), ['booking@2026-11-21 08:00 -'], 'on its day of the Plan');
+    agrees(got);
+  }
+  // An arrival's place is where it arrives, as on main: fields.to, and the booking's place is left as it was.
+  assert.deepEqual((await read('e.json')).fields, { to: 'Harbor' });
+  // A restaurant with its place pinned, patched with the arrival's location the same as its address: the place, its name, its address and its
+  // position stay (it became { name: "2 Test Street" } with no pin), and the arrival's place is filed as where it arrives.
+  const place = { name: 'Test Bistro', address: '2 Test Street', lat: 61.2, lng: -149.9 };
+  await store('r.json', { ...base, kind: 'restaurant', title: 'Test Bistro', place, start: at('2026-11-20T18:30:00-09:00') });
+  await patch('r.json', { arrive: { at: '2026-11-20T20:00', location: '2 Test Street' } });
+  const r = await read('r.json');
+  assert.deepEqual([r.place, r.start, r.end, r.fields], [place, at('2026-11-20T18:30:00-09:00'), at('2026-11-20T20:00:00-09:00'), { to: '2 Test Street' }]);
+  assert.deepEqual(rows(r)[0], 'booking@2026-11-20 18:30 Test Bistro (pin)');
+  agrees(r);
+  // One stored before, with an end and no start, patched: its end moves, as on main.
+  await store('o.json', { ...base, kind: 'restaurant', title: 'Test Bistro', end: at('2026-11-20T18:30:00-09:00') });
+  await patch('o.json', { arrive: '2026-11-20T19:00' });
+  assert.deepEqual([(await read('o.json')).start, (await read('o.json')).end], [undefined, at('2026-11-20T19:00:00-09:00')]);
+  // The same rule from the other side: a whole write's arrival alone is still its start.
+  await write('w.json', { ...base, kind: 'event', title: 'Concert', arrive: day('19:00') });
+  assert.deepEqual([(await read('w.json')).start?.at, (await read('w.json')).end], ['2026-11-21T19:00:00-09:00', undefined]);
+});
+
+test("flights+ with no arrival clears the end of a flight only: a stay or an other booking keeps its end, and is told nothing (the review's F2: a stay lost its check-out and its nights, and was told the booking had no arrival time)", async () => {
+  const { store, patch, read } = await setup();
+  const stay = { ...base, kind: 'lodging', title: 'Hotel Aurora Test', place: { name: 'Hotel Aurora Test' }, start: at('2026-11-20T15:00:00-09:00'), end: at('2026-11-27T11:00:00-09:00') };
+  for (const kind of ['lodging', 'other']) {
+    for (const legs of ['AS 1', [{ flight: 'AS 1' }], [{ flight: 'AS 1', arrival: { iataCode: 'ANC' } }]]) {
+      await store('s.json', { ...stay, kind });
+      assert.equal(await patch('s.json', { 'flights+': legs }), 'Patched /trip/bookings/s.json.', `${kind} ${JSON.stringify(legs)}`);
+      const got = await read('s.json');
+      assert.deepEqual([got.start, got.end], [stay.start, stay.end], `${kind} ${JSON.stringify(legs)}`);
+      assert.deepEqual(lines(got).filter((l) => /^(Check-out|Ends|Nights)/.test(l)).length > 0, true, 'the end is drawn');
+      agrees(got);
+    }
+  }
+  assert.equal(rows((await read('s.json'))).some((r) => r.startsWith('end@')), true, 'the Plan keeps its end row');
+});
+
+test("a drop-off with an object name beside an address keeps the address in the object when it has none, so the Return row keeps its place and pin (a list of the two left the row with no place); an object with an address of its own beside another stays a list", async () => {
+  const { write, read } = await setup();
+  const car = (/** @type {any} */ dropoff) => write('c.json', { ...base, kind: 'car', title: 'Rentals', pickup: { location: 'Airport lot', at: '2026-11-20T10:00' }, dropoff: { at: '2026-11-27T09:00', ...dropoff } });
+  await car({ location: { name: 'Downtown desk', lat: 61.2, lng: -149.9 }, address: '5 Main St' });
+  const got = await read('c.json');
+  assert.deepEqual(got.fields, { dropoff: { name: 'Downtown desk', lat: 61.2, lng: -149.9, address: '5 Main St' } });
+  assert.equal(rows(got).find((r) => r.startsWith('end@')), 'end@2026-11-27 09:00 Downtown desk (pin)');
+  assert.match(lines(got).find((l) => l.startsWith('Drop-off:')) ?? '', /5 Main St/, 'the address is drawn');
+  agrees(got);
+  // An object with an address of its own beside another one: both kept, as a list (nothing is lost).
+  await car({ location: { name: 'Downtown desk', address: '4 Main St' }, address: '5 Main St' });
+  assert.deepEqual((await read('c.json')).fields, { dropoff: [{ name: 'Downtown desk', address: '4 Main St' }, '5 Main St'] });
+});
+
+test("blank text is not given: a drop-off's blank location files nothing (the Return row stays at the car's place, with its pin), a blank address joins nothing, a blank pick-up location names no place", async () => {
+  const { write, read } = await setup();
+  const lot = { name: 'Airport lot', address: '9 Other Road', lat: 61.1, lng: -149.9 };
+  await write('a.json', { ...base, kind: 'car', title: 'Rentals', place: lot, pickup: '2026-11-20T10:00', dropoff: { at: '2026-11-27T09:00', location: '  ' } });
+  const a = await read('a.json');
+  assert.deepEqual([a.fields, a.place], [undefined, lot]);
+  assert.equal(rows(a).find((r) => r.startsWith('end@')), 'end@2026-11-27 09:00 Airport lot (pin)');
+  // A blank address beside a real name joins nothing ("Airport lot,    " was the Drop-off line).
+  await write('b.json', { ...base, kind: 'car', title: 'Rentals', place: { name: 'Airport lot', lat: 61.1, lng: -149.9 }, pickup: '2026-11-20T10:00', dropoff: { at: '2026-11-27T09:00', location: 'Downtown desk', address: '   ' } });
+  assert.deepEqual((await read('b.json')).fields, { dropoff: 'Downtown desk' });
+  await write('c.json', { ...base, kind: 'car', title: 'Rentals', pickup: { at: '2026-11-20T10:00', location: '  ' }, dropoff: '2026-11-27T09:00' });
+  assert.equal((await read('c.json')).place, undefined, 'a blank name is no place (it stored { name: "  " })');
+  agrees(a);
+});
+
+test("a removed alias clears what it filed: dropoff: null on a car clears its drop-off too, arrive: null clears where it arrives, checkout: null on a stay clears its drop-off; fields she gave in the same patch are kept", async () => {
+  const { store, patch, read } = await setup();
+  const car = { ...base, kind: 'car', title: 'Rentals', place: { name: 'Airport lot' }, start: at('2026-11-20T10:00:00-09:00'), end: at('2026-11-27T09:00:00-09:00'), fields: { dropoff: 'Downtown Garage, 5 Main St', notes: 'x' } };
+  await store('c.json', car);
+  assert.equal(await patch('c.json', { dropoff: null }), 'Patched /trip/bookings/c.json.');
+  const c = await read('c.json');
+  assert.deepEqual([c.end, c.fields], [undefined, { notes: 'x' }]);
+  assert.deepEqual(lines(c).filter((l) => /^(Drop-off|Return|Ends)/.test(l)), [], 'no Drop-off line');
+  agrees(c);
+  const bus = { ...base, kind: 'bus', title: 'Bus', start: at('2026-11-21T08:00:00-09:00'), end: at('2026-11-21T18:00:00-09:00'), fields: { to: 'Harbor' } };
+  await store('b.json', bus);
+  await patch('b.json', { arrive: null });
+  const b = await read('b.json');
+  assert.deepEqual([b.end, 'fields' in b && b.fields?.to], [undefined, undefined]);
+  assert.deepEqual(lines(b).filter((l) => /^(To|Arrives)/.test(l)), []);
+  const stay = { ...base, kind: 'lodging', title: 'Hotel', place: { name: 'Hotel' }, start: at('2026-11-20T15:00:00-09:00'), end: at('2026-11-22T11:00:00-09:00'), fields: { dropoff: 'Shuttle stop B' } };
+  await store('s.json', stay);
+  await patch('s.json', { checkout: null });
+  assert.deepEqual([(await read('s.json')).end, (await read('s.json')).fields?.dropoff], [undefined, undefined]);
+  // What she gives in the same patch stays.
+  await store('c.json', car);
+  await patch('c.json', { dropoff: null, fields: { dropoff: 'Downtown desk' } });
+  assert.deepEqual([(await read('c.json')).end, (await read('c.json')).fields.dropoff], [undefined, 'Downtown desk']);
+});
+
+test("a whole flights write whose first leg is text gives no start and no end, as on main (an end with no start is on no day of the Plan); an object first leg with a text last leg gives the start and no end, and is told", async () => {
+  const { write, read } = await setup();
+  const leg = { flight: 'NH 8', departure: { at: '2026-11-25T06:00', tz: TOKYO }, arrival: { at: '2026-11-25T08:00', tz: TOKYO } };
+  assert.match(await write('f.json', { ...base, kind: 'flight', flights: ['NH 7', leg] }), /^Wrote \/trip\/bookings\/f\.json \(\d+ bytes\)\.$/);
+  const f = await read('f.json');
+  assert.deepEqual([f.start, f.end], [undefined, undefined]);
+  assert.equal(rows(f).some((r) => r.startsWith('end@')), false, 'no Arrive row for an end that is not there');
+  agrees(f);
+  assert.match(await write('g.json', { ...base, kind: 'flight', flights: [leg, 'NH 9 to HND'] }), new RegExp(`\\. ${NO_END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`));
+  const g = await read('g.json');
+  assert.deepEqual([g.start?.at, g.end], ['2026-11-25T06:00:00+09:00', undefined]);
+  agrees(g);
 });

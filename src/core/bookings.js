@@ -167,8 +167,10 @@ const ARRIVED = new Set(['restaurant', 'event']);
 /**
  * The field a time written under another name stands for, by the booking's kind: leaving starts and arriving ends, except for a stay, as a
  * hotel's confirmation says it: the arrival is the check-in and the departure the check-out (they were swapped); and a restaurant's or an
- * event's arrival starts it unless the same write says when it starts (then it ends it: a tour booked as an event). @param {string} key
- * @param {unknown} kind @param {boolean} [starts] whether the write gives a start otherwise (start, a departure) @returns {string | undefined}
+ * event's arrival starts it unless the write says when it starts otherwise (then it ends it: a tour booked as an event), and only in a whole
+ * write, which sees the whole booking: a patch sees half of it, so there the arrival ends it, as it always did. @param {string} key
+ * @param {unknown} kind @param {boolean} [starts] whether the arrival is no start: the write gives one otherwise (start, a departure), or is a
+ * patch @returns {string | undefined}
  */
 const fieldOf = (key, kind, starts = false) => (ARRIVING.includes(key) && (kind === 'lodging' || (ARRIVED.has(/** @type {string} */ (kind)) && !starts)) ? 'start' : kind === 'lodging' && LEAVING.includes(key) ? 'end' : TIMES[key]);
 const COSTS = ['total', 'price'];
@@ -181,7 +183,7 @@ const OWN = /** @type {Record<string, [string, string]>} */ ({
   /* en */ name: ['title', 'text'], location: ['place', '{ "name": "...", "address": "..." }'], address: ['place', '{ "name": "...", "address": "..." }'],
   /* en */ ...Object.fromEntries(COSTS.map((k) => [k, ['cost', '{ "amount": 245, "currency": "EUR" }']])),
 });
-/* en */ const NO_END = `The last leg gives no date and time of arrival, so the booking has no arrival time now: when you know when it arrives, write end as ${WHEN}.`;
+/* en */ const NO_END = `The last leg's arrival isn't written as a date with a time (YYYY-MM-DDTHH:MM), so the booking has no arrival time now: when you know when it arrives, write end as ${WHEN}.`;
 const AT = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(Z|([+-])(\d{2}):(\d{2}))?$/;
 
 /**
@@ -277,7 +279,9 @@ export function unalias(own, { zones = [], schema, kind, append = false, notes =
   const out = { ...own };
   for (const k of [...keys, ...gone]) delete out[k];
   const what = own.kind ?? kind;
-  const starts = own.start != null || keys.some((k) => TIMES[k] === 'start');
+  // A restaurant's or an event's arrival is its start in a whole write only (the review's F1): a patch has only its own keys, so it can't tell
+  // a booking that has a start from one that has none, and an arrival there moved or cleared a start it could not see.
+  const starts = append || own.start != null || keys.some((k) => TIMES[k] === 'start');
   /** @param {string} k a time alias @returns {string} the field it stands for, by this booking's kind */
   const field = (k) => fieldOf(k, what, starts) ?? '';
   // A flight's, a train's or a ride's times are in the place it leaves or arrives: the trip's only zone says nothing about them.
@@ -303,25 +307,31 @@ export function unalias(own, { zones = [], schema, kind, append = false, notes =
   const parts = [];
   /** @param {string} alias @param {unknown} v a name or address, or an object with the place's keys @param {string} key what a string is */
   const note = (alias, v, key) => void (record(v) ? Object.entries(/** @type {object} */ (v)).forEach(([x, y]) => parts.push([alias, x, y])) : parts.push([alias, key, v]));
+  // The key of `fields` an end's place is filed under: a car's is its drop-off, an arrival's is where it arrives (`to`, read "To", 到着地:
+  // `arrival` is the word for a time, "Arrival" 到着, which the details draw beside it as "Arrives").
+  /** @param {string} alias an end's alias @returns {string} */
+  const placeKey = (alias) => (/^arriv/.test(alias) && what !== 'car' ? 'to' : 'dropoff');
   for (const k of keys.filter((x) => Object.hasOwn(TIMES, x))) {
     const to = field(k);
     put(k, to, timeOf(k, own[k], beside, zones, to, far));
     const o = record(own[k]);
     if (!o) continue;
-    // An empty name or address says nothing: it never replaces the stored one.
-    const said = (/** @type {unknown} */ x) => x != null && x !== '';
-    const name = [o.location, o.place].find(said);
+    // A blank name or address says nothing (`there`, the one rule for it): it never replaces the stored one, and joins nothing.
+    const name = [o.location, o.place].find(there);
     if (to === 'start') {
       if (name !== undefined) note(k, name, 'name');
-      if (said(o.address)) note(k, o.address, 'address');
-    } else if (what !== 'lodging') {
-      // An end's place by what is booked, compared with nothing (dropsAtPlace reads it): a stay ends where it is, so its time alone; anything
-      // else's whole, name and address, a car's as its drop-off, an arrival's as where it arrives (`to`, read "To", 到着地: `arrival` is the
-      // word for a time, "Arrival" 到着, drawn beside it as "Arrives"). A part that isn't text is kept as written.
-      const sides = [name, o.address].filter(said);
-      const where = sides.every((x) => typeof x === 'string') ? joined(/** @type {string[]} */ (sides)) : sides.length > 1 ? sides : sides[0];
+      if (there(o.address)) note(k, o.address, 'address');
+    } else {
+      // An end's place, whatever is booked (a stay's check-out too), filed whole and compared with nothing: dropsAtPlace reads it where the
+      // stored place is known, so a drop-off that names the booking's own place draws no line. A name and an address are one text, or, when the
+      // name is an object (with its position) that has no address, the object with the address in it (a list of the two left the Plan's Return
+      // row with no place); a part that isn't text is otherwise kept as written.
+      const sides = [name, o.address].filter(there);
+      const [one, two] = sides;
+      const into = sides.length === 2 && record(one) && typeof two === 'string' && !there(record(one)?.address);
+      const where = sides.every((x) => typeof x === 'string') ? joined(/** @type {string[]} */ (sides)) : into ? { ...record(one), address: two } : sides.length > 1 ? sides : one;
       if (sides.length) {
-        put(k, `fields.${/^arriv/.test(k) && what !== 'car' ? 'to' : 'dropoff'}`, where);
+        put(k, `fields.${placeKey(k)}`, where);
         named[k] = 'end'; // unsure's name for it is its time's, as before
       }
     }
@@ -331,14 +341,17 @@ export function unalias(own, { zones = [], schema, kind, append = false, notes =
   if (fk && legs.length) {
     // A flight leaves with its first leg and arrives with its last, unless this write says when; the legs are kept as written. A leg's tz is
     // where it leaves: the arrival takes only its own, or is refused. A last leg whose arrival is no date with a time (`written`: none, an
-    // airport, a clock alone) gives no end: none stored, a patch's stored one (a leg before's) removed, and the result says so (notes).
+    // airport, a clock alone, a date and a time annai can't read) gives a flight no end: none stored, a patch's stored one (a leg before's)
+    // removed, and the result says so (notes).
     const [first, last, n] = [record(legs[0]), record(legs[legs.length - 1]), legs.length - 1];
     if (out.start == null && fk === 'flights' && first) put(fk, 'start', timeOf('flights[0].departure', first.departure ?? first.depart, first.tz ?? beside, zones, 'start', true));
-    if (out.end == null) {
+    // The end is read where the start is: a whole write's first leg that is text gives neither (as before), so no end with no start.
+    if (out.end == null && (first || fk !== 'flights')) {
       const arrival = last?.arrival ?? last?.arrive;
       const o = record(arrival);
       if (written(o ? o.at ?? o.time : arrival)) put(fk, 'end', timeOf(`${fk}[${n}].arrival`, arrival, undefined, zones, 'end', true));
-      else {
+      else if (what === 'flight') {
+        // Only a flight's end is its last leg's arrival: a stay or an other booking given legs keeps the end it has.
         if (append) out.end = null;
         notes.push(NO_END);
       }
@@ -384,6 +397,8 @@ export function unalias(own, { zones = [], schema, kind, append = false, notes =
     if (to.startsWith('fields.')) {
       if (fields) fields[to.slice(7)] ??= null;
     } else if (to) out[to] ??= null;
+    // An end's place is what the alias filed under `fields` (a drop-off, where it arrives): removed with it.
+    if (to === 'end' && fields) fields[placeKey(k)] ??= null;
     if (COSTS.includes(k) && fields) fields[k] ??= null;
   }
   // A renamed key of a patch also nulls its own name, so a copy stored under it goes at once ("+" only appends: it never deletes).
