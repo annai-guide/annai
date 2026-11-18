@@ -77,7 +77,8 @@ test("a plugin that starts and gives no type of the kind asked for: the screen s
 
 /**
  * annai's site on this machine, each request answered by answer(path, res): one that writes nothing leaves the request waiting, as a
- * connection gone dead does. asked: the paths requested. fetch: Node's own, counting in seen the body bytes it has passed on.
+ * connection gone dead does. asked: the paths requested. fetch: Node's own, counting in answered the answers it has had and in seen
+ * the body bytes it has passed on.
  * @param {(path: string, res: import('node:http').ServerResponse) => void} answer
  */
 async function siteOn(answer) {
@@ -92,9 +93,11 @@ async function siteOn(answer) {
     base: `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (server.address()).port}`,
     asked,
     seen: 0,
+    answered: 0,
     /** @param {string} url @param {RequestInit} [init] */
     fetch: async (url, init) => {
       const res = await fetch(url, init);
+      s.answered++;
       const body = res.body?.pipeThrough(new TransformStream({ transform: (part, out) => { out.enqueue(part); s.seen += part.length; } }));
       return new Response(body, res);
     },
@@ -192,4 +195,85 @@ test("an install whose words' request goes dead still installs and starts, in En
   assert.equal(w.state, 'done', String(w.error?.message ?? 'still waiting'));
   assert.ok(k.host.active.has(ID), 'it started');
   assert.equal(k.host.shownOf(ID).description, 'Tide tables for the coast.', 'in English: its Japanese can come with the next check');
+});
+
+test("an answer that comes QUIET_MS - 1 after its request, and its body QUIET_MS - 1 after that, is never cut: what comes starts the silence again", async (t) => {
+  const entry = /** @type {any} */ ({ id: 'late', name: 'Late', version: '0.1.0', files: { 'late.js': await sha256Hex(bytes('late')) } });
+  /** @type {import('node:http').ServerResponse | undefined} */
+  let reply;
+  const s = await siteOn((_path, res) => {
+    reply = res;
+  });
+  t.after(s.close);
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const w = watch(download(entry, { fetch: s.fetch, base: s.base }));
+  await turns(() => reply !== undefined);
+  t.mock.timers.tick(QUIET_MS - 1);
+  /** @type {import('node:http').ServerResponse} */ (reply).writeHead(200).flushHeaders();
+  await turns(() => s.answered === 1);
+  assert.equal(s.answered, 1, 'its answer came');
+  t.mock.timers.tick(QUIET_MS - 1);
+  /** @type {import('node:http').ServerResponse} */ (reply).end('late');
+  await turns(() => w.state !== 'pending');
+  assert.equal(w.state, 'done', String(w.error?.message ?? 'still waiting'));
+  assert.equal(new TextDecoder().decode(w.value?.get('late.js')), 'late');
+});
+
+test("an install whose language index goes dead still installs and starts, in English, once the limit ends that request: the words never hold the install line", async (t) => {
+  setWords('ja', {});
+  t.after(() => setWords('en', null));
+  const ID = 'tide-tables';
+  const k = await hostKit();
+  const s = await site(
+    { [ID]: { 'annai-plugin.json': JSON.stringify({ id: ID, name: 'Tide tables', version: '1.0.0', api: 2, entry: 'index.js', description: 'Tide tables for the coast.' }), 'index.js': 'export function activate() {}' } },
+    { ja: { [ID]: { manifest: { description: '海岸の潮汐表。' }, messages: {} } } },
+  );
+  const index = '/catalog/l10n/ja.json';
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const get = (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+    if (url !== index) return s.fetch(url);
+    s.asked.push(url);
+    return dead(init, 'never');
+  };
+  const w = watch(installOfficial(k.host, s.entries[0], { fetch: get }));
+  await turns(() => s.asked.includes(index));
+  assert.ok(s.asked.includes(index), 'the language index was asked for');
+  t.mock.timers.tick(QUIET_MS - 1);
+  await turns(() => w.state !== 'pending', 50);
+  assert.equal(w.state, 'pending', 'still waiting just short of the limit');
+  t.mock.timers.tick(1);
+  await turns(() => w.state !== 'pending');
+  assert.equal(w.state, 'done', String(w.error?.message ?? 'still waiting'));
+  assert.ok(k.host.active.has(ID), 'it started');
+  assert.equal(k.host.shownOf(ID).description, 'Tide tables for the coast.', 'in English: its Japanese can come with the next check');
+});
+
+test("a file whose answer waits behind another file that keeps coming is not a dead connection: on one connection an answer queues behind bytes already sent for other requests, so the silence counted is the site's (PDF pages at 400 kbps: small files waited up to 33 s while the connection was busy the whole time)", async (t) => {
+  const big = ['aaaa', 'bbbb', 'cccc'];
+  const entry = /** @type {any} */ ({ id: 'two', name: 'Two', version: '1.0.0', files: { 'big.bin': await sha256Hex(bytes(big.join(''))), 'small.js': await sha256Hex(bytes('ok')) } });
+  /** @type {ReadableStreamDefaultController<Uint8Array> | undefined} */
+  let bigBody;
+  /** @type {((res: Response) => void) | undefined} */
+  let answerSmall;
+  let smallAborted = false;
+  const get = (/** @type {string} */ url, /** @type {RequestInit | undefined} */ init) => {
+    if (url.endsWith('big.bin')) return Promise.resolve(new Response(new ReadableStream({ start: (c) => { bigBody = c; } })));
+    return new Promise((resolve, fail) => {
+      answerSmall = resolve;
+      init?.signal?.addEventListener('abort', () => { smallAborted = true; fail(init.signal?.reason); }, { once: true });
+    });
+  };
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const w = watch(download(entry, { fetch: get }));
+  await turns(() => Boolean(bigBody && answerSmall));
+  for (const part of big) {
+    t.mock.timers.tick(QUIET_MS - 1);
+    /** @type {ReadableStreamDefaultController<Uint8Array>} */ (bigBody).enqueue(bytes(part));
+    await turns(() => false, 20);
+  }
+  /** @type {ReadableStreamDefaultController<Uint8Array>} */ (bigBody).close();
+  /** @type {(res: Response) => void} */ (answerSmall)(new Response('ok'));
+  await turns(() => w.state !== 'pending');
+  assert.equal(smallAborted, false, 'the queued request was ended though the site kept sending');
+  assert.equal(w.state, 'done', messageOf(w.error));
 });

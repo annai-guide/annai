@@ -17,19 +17,35 @@ import { sentences } from '../intl.js';
 const defaultFetch = (/** @type {string} */ url, /** @type {RequestInit | undefined} */ init) => fetch(url, init);
 
 /**
- * How long a request to annai's site below may go with nothing coming: to its answer, then between parts of its body. A fetch has no
- * limit of its own: on a connection that goes dead (open, sending nothing) an install, and the line behind it, waited until annai was
- * restarted. The number: on the slowest connection measured (50 kbps with 3 s round trips, Chromium's throttling against annai.guide,
- * 2026-11-17), the slowest request of the largest provider install took 5.8 s whole, so no silence in it was longer; 20 s leaves room
- * on top for what the throttling leaves out: a cold connection's handshakes (about three more round trips) and a radio stall of some
- * seconds (a tunnel, a handover). A limit on silence, not on the whole request: PDF pages's largest file (cmaps.pack) kept arriving for
- * 52 s at 400 kbps and 74 s at 280 kbps (measured the same way), and a whole-request limit that long would hold a dead connection as long.
+ * How long annai's site may go with nothing coming for any request below, answers and parts of bodies alike: past it, every request
+ * still waiting ends. A fetch has no limit of its own: on a connection that goes dead (open, sending nothing) an install, and the line
+ * behind it, waited until annai was restarted.
+ * The site's silence, not one request's: on one connection an answer waits behind bytes already sent for other requests. On a real
+ * link (a paced TCP forwarder between Chromium and annai.guide, 2026-11-17), PDF pages (29 files, 2.5 MB on the wire, six at a time)
+ * had small files wait 25 to 33 s for their answer at 400 kbps with 2 s round trips, and 102 to 134 s at 100 kbps, while the connection
+ * was busy the whole time; a limit on one request's own silence ended that install at 400 kbps, the site's let it finish at both (55 s and
+ * 209 s), the longest silence of the site in either 4.4 s. The browser's throttling (Chromium's DevTools) can't show such a wait: it
+ * delays each request inside the browser after its bytes came, so nothing queues on the connection.
+ * The number: the largest provider install (gemini-api, 8 files) on the same real link at 50 kbps with 3 s round trips took 7.2 s whole,
+ * and no request waited more than 3.4 s for anything; 20 s is over four times the longest silence measured, for what a lab link doesn't
+ * have: a radio stall of some seconds (a tunnel, a handover). Not a limit on the whole request: PDF pages's largest file (cmaps.pack)
+ * kept arriving for 52 s at 400 kbps and 74 s at 280 kbps, and a limit that long would hold a dead connection as long.
  */
 export const QUIET_MS = 20_000;
 
 /**
- * Asks annai's site for a file and reads it whole, ending by the request's own signal once nothing has come for QUIET_MS: it then throws
- * as a request that couldn't reach the site does. cache: no-cache, as the catalog and its files change under the same address.
+ * Each request waiting now: what starts its silence over. Something coming for any one starts them all over (the site's silence),
+ * a request that starts has only its own start to count from.
+ * @type {Set<() => void>}
+ */
+const waiting = new Set();
+const heard = () => {
+  for (const startOver of waiting) startOver();
+};
+
+/**
+ * Asks annai's site for a file and reads it whole, ending by the request's own signal once nothing has come for QUIET_MS (see there):
+ * it then throws as a request that couldn't reach the site does. cache: no-cache, as the catalog and its files change under the same address.
  * @param {NonNullable<FetchOptions['fetch']>} get @param {string} url
  * @returns {Promise<{ status: number, bytes: Uint8Array | null }>} bytes: null for an answer that isn't ok, whose body isn't read
  */
@@ -37,19 +53,21 @@ async function fetchWhole(get, url) {
   const stop = new AbortController();
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let timer;
-  const quiet = () => {
+  const startOver = () => {
     clearTimeout(timer);
     timer = setTimeout(() => stop.abort(), QUIET_MS);
   };
-  quiet();
+  waiting.add(startOver);
+  startOver();
   try {
     const res = await get(url, { cache: 'no-cache', signal: stop.signal });
+    heard();
     if (!res.ok) return { status: res.status, bytes: null };
-    quiet();
     // Each part of the body that comes starts the silence again; an abort ends the read as it ends the request (Chromium and WebKit, probed 2026-11-17).
-    const body = res.body?.pipeThrough(new TransformStream({ transform: (part, out) => { quiet(); out.enqueue(part); } }));
+    const body = res.body?.pipeThrough(new TransformStream({ transform: (part, out) => { heard(); out.enqueue(part); } }));
     return { status: res.status, bytes: new Uint8Array(await new Response(body).arrayBuffer()) };
   } finally {
+    waiting.delete(startOver);
     clearTimeout(timer);
   }
 }
