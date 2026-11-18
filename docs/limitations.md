@@ -914,3 +914,17 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** with no position annai can't tell a traveller waiting at the gate from one who left the airport. Giving the second flight no leave reminder without a position would miss the traveller who left.
 - **Revisit when:** a traveller reports the false alarm at a layover as a bother, or annai comes to know where the traveller is after a landing.
 - **Approved:** 2026-11-17, the user's pick "Keep as built (Recommended)" (through chief; the leave re-review's proposed known limitation 4).
+
+### A share sent to "New conversation" whose add stops partway lands in two conversations
+- **Kind:** known limitation.
+- **What the traveller sees:** the files kept before the stop (storage full, say) sit in a first conversation, named after its first file, which the share screen doesn't open; Shiori's note for them is written there and she answers it when that conversation is opened. "New conversation" again puts the rest in a second one. Nothing is doubled or lost (before share-retry-next, the second held the whole share and the first a doubled part).
+- **Why:** keeping the share together needs a record of which conversation the failed add used, and an "Add to it" button, for a rare path (an add that stops partway, sent to a new conversation).
+- **Revisit when:** someone meets it, or the share screen offers conversations without dates.
+- **Approved:** chief's decision, 2026-11-17 (C102; not the user's words), on the proposal "Accept it as a known limitation (Recommended)".
+
+### A page closed in the middle of adding a share adds the files it had already kept again
+- **Kind:** known limitation.
+- **What the traveller sees:** a long share (many photos; on Android a page sent to the background can be closed) is on the share screen again after the page reopens, and adding it keeps the files kept before the close twice ("photo (2).jpg"); nothing is lost, and each file is read and told to Shiori once. Older than share-retry-next.
+- **Why:** taking each file out of the inbox the moment it is written would lose its calendar import and Shiori's note on a close (worse than a copy); doing those per file would wake Shiori once per file.
+- **Revisit when:** the traveller sees such copies after a long share.
+- **Approved:** chief's decision, 2026-11-17 (C103; not the user's words), on the proposal "Accept it as a known limitation (Recommended)".
