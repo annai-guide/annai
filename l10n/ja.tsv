@@ -834,7 +834,7 @@ tqmba2	ok	an address your searches are sent to: {0}	検索内容の送信先（{
 d57q3n	ok	Flight	フライト	src/core/plan.js:68	
 jj8u9s	ok	Stay	宿泊	src/core/plan.js:68	Note: A kind of booking: a hotel or other lodging.
 sksosh	ok	Car	レンタカー	src/core/plan.js:68	Note: A kind of booking: a car, nearly always a rental.
-1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	タイムゾーン「{0}」を認識できないため、{1}で表示しています。	src/core/plan.js:143	{0} = String(own ?? ''); {1} = fallbackTz
+1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	タイムゾーン「{0}」を認識できないため、{1}で表示しています。	src/core/plan.js:145	{0} = String(own ?? ''); {1} = fallbackTz
 o6vv9a	ok	"{0}" is a name annai uses for one of its own parts, so a skill can't have it.	「{0}」はannaiの機能で使う名前なので、スキルには使えません。	src/core/plugins.js:179	{0} = id; Note: {0} is the skill's name.
 1fdobr5	ok	It has the same id as a plugin built into annai.	annaiに組み込まれたプラグインと同じIDです。	src/core/plugins.js:180	
 wq5ezj	ok	Its name, "{0}", is annai's own name, or the name of one of its parts. Ask its author to rename it.	名前「{0}」は、annai自体かその機能の名前と同じです。作者に名前の変更を依頼してください。	src/core/plugins.js:184	{0} = pkg.name; Note: Ask here is the plain verb (to ask the author), not Safari's permission choice.

@@ -105,6 +105,8 @@ export const kindOf = (it, booking) => kindWord(it?.kind) ?? kindWord(booking?.k
  * fixed one. A booking has no kind for a ferry, a bus or a coach: one of "other" takes it from a ride item linked to it (planRows).
  */
 export const CARRIERS = new Set(['flight', 'rail', 'ferry', 'bus', 'coach']);
+/** The rides a booking has no kind for (it has flight and rail), so a booking of "other" takes one from a ride item linked to it. */
+const RIDES = new Set(['ferry', 'bus', 'coach']);
 /** The kinds with a day, a place and an end of their own: a plan item of one on a booking of another is not that booking's (anotherThing). */
 const THINGS = new Set(['flight', 'rail', 'car', 'lodging']);
 /**
@@ -265,8 +267,9 @@ export function planRows(items, bookings, { fallbackTz }) {
     const title = typeof b.title === 'string' && b.title.trim() ? b.title : KIND_WORDS[b.kind] ?? t`Booking`;
     const place = record(b.place) ? b.place : undefined;
     // A booking of kind "other" (the format has no kind for a ferry, a bus or a coach) is the ride a plan item linked to it says it is, so
-    // its end is an Arrive with no place (CARRIERS); with no such item it is the booking's own kind.
-    const ride = kindOf(null, b) === 'other' ? own.find((x) => x.ref === path && CARRIERS.has(kindOf(x.item, b))) : undefined;
+    // its end is an Arrive with no place (CARRIERS); with no such item, or a flight or train item on it (a package), it is the booking's own
+    // kind (a flight or a train has its own booking kind).
+    const ride = kindOf(null, b) === 'other' ? own.find((x) => x.ref === path && RIDES.has(kindOf(x.item, b))) : undefined;
     const kind = kindOf(ride?.item, b);
     // A stay is always its check-in and its check-out (as before); anything else that ends on a later day, its start and its end.
     const split = kind === 'lodging' || setOf(b);

@@ -691,7 +691,8 @@ test("a ride booked as `other` (the booking format has no kind for a ferry) with
     assert.equal(shown(rows.filter((r) => r.from === 'end')).join(), last, kind);
   }
   // A booking of kind other whose items say nothing of a ride (an event item, or none) keeps its "Ends" at the booking's place.
-  for (const items of [[], [ferry({ kind: 'event' })], [ferry({ kind: undefined })]]) {
+  // A package booked as other with a flight or a train item on it is no ride: a flight and a train have their own booking kinds.
+  for (const items of [[], [ferry({ kind: 'event' })], [ferry({ kind: undefined })], [ferry({ kind: 'flight' })], [ferry({ kind: 'rail' })]]) {
     const rows = planRows(items, [ticket], { fallbackTz: 'UTC' });
     const last = rows.filter((r) => r.from === 'end')[0];
     assert.deepEqual([last.set?.kind, last.item.place?.name, shown([last])[0]], ['other', 'Port A', 'end@2026-11-21 07:00 Ends · Ferry ticket'], JSON.stringify(items.map((x) => x.item.kind)));
