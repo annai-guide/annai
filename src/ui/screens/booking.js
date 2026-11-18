@@ -70,7 +70,7 @@ export async function renderBooking(ctx, route) {
       many && !title ? null : h('p', { class: 'sub', text: kindDay(b) }), // an untitled block's heading says it already
       facts.length ? h('dl', { class: 'facts' }, ...facts.flatMap((f) => [
         h('dt', { lang: f.lang, text: f.label }),
-        h('dd', {}, h('span', { dir: 'auto' }, ...zoned(f.value)), f.unsure ? [' ', checkMark()] : null)])) : null,
+        h('dd', {}, h('span', { dir: 'auto' }, ...zoned(f.value, f.zone)), f.unsure ? [' ', checkMark()] : null)])) : null,
       b.items.length ? planList(b.items, many ? 'h3' : 'h2', t`On the itinerary`, many ? t`On the itinerary: ${title || kindDay(b)}` : undefined) : null,
       many ? h('div', { class: 'acts' },
         b.booking.place?.name ? h('a', { class: 'btn', href: mapsUrl(b.booking.place, platform()), target: '_blank', rel: 'noopener noreferrer' }, t`Open in Maps`) : null,
@@ -123,11 +123,15 @@ export async function renderBooking(ctx, route) {
 }
 
 /**
- * A fact's words with each note in brackets ("(Anchorage time)", "（JST）", "(ANC)"), brackets and all, kept whole on one line: a time's
- * zone note, and there can be several in one fact (a flight's legs). @param {string} value @returns {(string | HTMLElement)[]}
+ * A fact's words with its zone note ("(Anchorage time)", brackets and all) kept whole on one line. @param {string} value
+ * @param {string} [zone] the zone's words, within value @returns {(string | HTMLElement)[]}
  */
-function zoned(value) {
-  return value.split(/([(（][^()（）]*[)）])/).map((part, i) => (i % 2 ? h('span', { class: 'zone-note', text: part }) : part));
+function zoned(value, zone) {
+  const i = zone ? value.lastIndexOf(zone) : -1;
+  if (!zone || i < 0) return [value];
+  const from = /[(（]/.test(value[i - 1] ?? '') ? i - 1 : i;
+  const to = /[)）]/.test(value[i + zone.length] ?? '') ? i + zone.length + 1 : i + zone.length;
+  return [value.slice(0, from), h('span', { class: 'zone-note', text: value.slice(from, to) }), value.slice(to)];
 }
 
 /** A file card stands for the file: a tap opens it, as Open does; a picture is left as it is. @param {HTMLElement | null} preview @param {string} href */

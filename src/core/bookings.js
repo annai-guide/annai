@@ -26,7 +26,7 @@ export const there = (v) => v !== undefined && v !== null && !(typeof v === 'str
  * name of spaces with only coordinates is not there), any other by its value. A name that is no such field: false.
  * @param {any} b @param {string} k @returns {boolean}
  */
-export const ownPart = (b, k) => TOP.includes(k) && (k === 'place' ? there(b.place?.name) || there(b.place?.address) : there(b[k]));
+const ownPart = (b, k) => TOP.includes(k) && (k === 'place' ? there(b.place?.name) || there(b.place?.address) : there(b[k]));
 
 /**
  * What of a booking the screens mark for the user to check: the names in `unsure` of fields it has (its own, or keys of `fields`, as
@@ -145,6 +145,22 @@ const AT = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(Z|([+-])
 const FAR = ['flight', 'rail'];
 
 /**
+ * A date with a time as it is written: trimmed, a space read as the T, and a day that exists (Nov 31 is none, as Date.parse would read it
+ * as Dec 1) with an hour under 24 and a minute and second under 60; null for anything else. `at` is that text, and `m` its parts: [1] the
+ * day, [2] the hour, [3] the minute, [4] the second, [5] the Z or the offset when there is one, [6] its sign, [7] and [8] its hours and minutes.
+ * The one reading of it: a write is accepted by it (timeOf), and the details draw a flight leg's times by it (format.js bookingFacts), so
+ * what is accepted and what is drawn as a time never differ. Its zone is not read: that is the caller's, from where it came.
+ * @param {unknown} v @returns {{ at: string, m: RegExpExecArray } | null}
+ */
+export function written(v) {
+  const at = typeof v === 'string' ? v.trim().replace(' ', 'T') : '';
+  const m = AT.exec(at);
+  const day = m ? Date.parse(`${m[1]}T00:00Z`) : NaN;
+  const real = m && Number.isFinite(day) && new Date(day).toISOString().startsWith(m[1]) && +m[2] < 24 && +m[3] < 60 && +(m[4] ?? 0) < 60;
+  return m && real ? { at, m } : null;
+}
+
+/**
  * A time written under another name, as the format's { at, tz }: a string, or { at } (or { time }) with its own tz; its zone from beside
  * it, else the trip's only one, which a flight or train never takes. Refused in words when it is no real date and time, its zone isn't
  * known, or its offset isn't its zone's at that moment.
@@ -154,14 +170,11 @@ const FAR = ['flight', 'rail'];
 function timeOf(name, v, beside, zones, to, far) {
   const o = record(v);
   const raw = o ? o.at ?? o.time : v;
-  const at = typeof raw === 'string' ? raw.trim().replace(' ', 'T') : '';
   const tz = [o?.tz, beside, !far && zones.length === 1 ? zones[0] : ''].find((z) => typeof z === 'string' && z) ?? '';
   /* en */ const how = `write ${to} as ${WHEN}${name.includes('[') ? '' : ` in place of ${name}`}`;
-  const m = AT.exec(at);
-  const day = m ? Date.parse(`${m[1]}T00:00Z`) : NaN;
-  // Date.parse reads Nov 31 as Dec 1: the day must read back as written.
-  const real = m && Number.isFinite(day) && new Date(day).toISOString().startsWith(m[1]) && +m[2] < 24 && +m[3] < 60 && +(m[4] ?? 0) < 60;
-  /* en */ if (!m || !real) throw new Error(`${name} ${JSON.stringify(raw ?? null)} isn't a date with a time: ${how}.`);
+  const w = written(raw);
+  /* en */ if (!w) throw new Error(`${name} ${JSON.stringify(raw ?? null)} isn't a date with a time: ${how}.`);
+  const { at, m } = w;
   if (!validZone(tz)) {
     /* en */ const why = far && !tz ? ` (a flight's or train's time is in the place it leaves or arrives, so the trip's time zone isn't assumed)` : zones.length > 1 ? ` (this trip has ${zones.join(', ')})` : '';
     /* en */ throw new Error(`${name} ${JSON.stringify(raw)} has no time zone annai knows${why}: ${how}.${name.startsWith('flights[') ? ' Or give the leg a "tz".' : ''}`);

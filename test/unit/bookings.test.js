@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isBookingPath, shioriBooking, checkOf, checkWords, checkNote } from '../../src/core/bookings.js';
+import { isBookingPath, shioriBooking, checkOf, checkWords, checkNote, written } from '../../src/core/bookings.js';
 import { FIELD_WORDS, checkCount } from '../../src/ui/format.js';
 
 const b = { id: 'hotel', kind: 'lodging', status: 'unverified', source: '/files/hotel.pdf', unsure: [] };
@@ -212,4 +212,14 @@ test("shioriBooking: a new booking without unsure is refused in words; an old on
   // One written with unsure keeps it: a rewrite without it would turn it into an old record, with every part marked.
   assert.throws(() => shioriBooking({ ...old, unsure: [] }, { ...old, confirmation: 'TESTQ1' }), /unsure/);
   assert.deepEqual(shioriBooking(undefined, { ...old, unsure: ['seat'] }), { ...old, unsure: ['seat'] });
+});
+
+test("written: a date with a time as it is written, the one reading that a write is accepted by and the details draw a leg's time by (small-next, round 3)", () => {
+  // Trimmed, a space for the T, seconds and an offset or a Z optional; its parts are the text's own digits.
+  assert.equal(written(' 2026-11-20 08:00 ')?.at, '2026-11-20T08:00');
+  assert.deepEqual(written('2026-11-20T08:30:15-08:00')?.m.slice(1, 9), ['2026-11-20', '08', '30', '15', '-08:00', '-', '08', '00']);
+  assert.equal(written('2026-11-20T16:00:00Z')?.m[5], 'Z');
+  assert.equal(written('2026-11-20T16:00')?.m[5], undefined, 'no zone written: none read');
+  // Anything else is none: no day Date.parse would roll over, no hour 24, no text of another shape, no non-text.
+  for (const no of ['2026-11-31T08:00', '2026-02-29T08:00', '2026-11-20T24:00', '2026-11-20T08:60', '2026-11-20T08:00:60', 'Nov 20 2026 07:30', '2026-11-20', 'morning', '', '  ', 5, null, undefined, { at: '2026-11-20T08:00' }]) assert.equal(written(no), null, JSON.stringify(no));
 });

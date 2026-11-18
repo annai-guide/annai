@@ -1,5 +1,5 @@
 {
-  "build": "394c890501fb",
+  "build": "5a411f92aa6a",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -62,7 +62,7 @@
     "/src/core/backup.js": "644832139162",
     "/src/core/backup-auto.js": "64ed2407b9ec",
     "/src/core/backup-targets.js": "91309d766eea",
-    "/src/core/bookings.js": "f3c338db65d9",
+    "/src/core/bookings.js": "51c70099e138",
     "/src/core/bytes.js": "b935dfe86a7a",
     "/src/core/catalog-facts.js": "3b27021930f3",
     "/src/core/crc32.js": "0bfef7a8eb00",
@@ -215,7 +215,7 @@
     "/src/ui/bring-in.js": "4e33be70df96",
     "/src/ui/export-panel.js": "ded8262ee329",
     "/src/ui/file-delete.js": "207b1b0e5902",
-    "/src/ui/format.js": "0f054c5ee1e3",
+    "/src/ui/format.js": "add439d4fb2f",
     "/src/ui/grounding.html": "5dab86abb302",
     "/src/ui/grounding.js": "1e27c30fc392",
     "/src/ui/import-state.js": "ac11af4a3775",
@@ -250,7 +250,7 @@
     "/src/ui/screens/about.js": "1caae7f1d075",
     "/src/ui/screens/add.js": "6d369b0c0548",
     "/src/ui/screens/backups.js": "1bb76c29ea50",
-    "/src/ui/screens/booking.js": "cd396d38ae10",
+    "/src/ui/screens/booking.js": "e9afc09cd943",
     "/src/ui/screens/drive.js": "3a99b84193fb",
     "/src/ui/screens/experimental.js": "48f75a37ecf3",
     "/src/ui/screens/ext.js": "2bf551b1f41f",
