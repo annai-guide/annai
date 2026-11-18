@@ -53,11 +53,14 @@ export function dropsAtPlace(b) {
  * What of a booking the screens mark for the user to check: the names in `unsure` of fields it has (its own, or keys of `fields`, as
  * written), once each. A key of `fields` named like one of its own fields is that part when the booking has none of its own (a model wrote
  * `fields.place`), and the same part, marked once, when it has (the details draw one line for it, bookingFacts); so is a drop-off that names
- * the booking's own place (dropsAtPlace), which the details draw as its Place line alone. A record from before (no
- * `unsure` key) not confirmed reads as if `unsure` named every part it has: its own fields that `unsure` may name, then the keys of
- * `fields`, through the same rule as a new booking. Reading only: nothing is stored, so the
- * file keeps no `unsure` until she writes one (booking-say's round 4: a mark of the whole booking was a second answer for one old
- * shape, and every reader carried a branch for it). Anything odd marks nothing, and nothing throws.
+ * the booking's own place (dropsAtPlace), which the details draw as its Place line alone. A name for a time (`departure`, `arrival`, a stay's
+ * `checkin` and `checkout`, a car's `pickup` and `return`: the names unalias reads, never `dropoff`, a place too) marks the part it stands
+ * for (fieldOf) when the booking has that part and no detail of that name (a blank one is none), whoever stored it and however its time was
+ * written; nothing is written back. A restaurant's or an event's are read as written (its arrival is the open Deferred entry). A record
+ * from before (no `unsure` key) not confirmed reads as if `unsure` named every part it has: its own fields that `unsure` may name, then
+ * the keys of `fields`, through the same rule as a new booking. Reading only: nothing is stored, so the file keeps no `unsure` until she
+ * writes one (booking-say's round 4: a mark of the whole booking was a second answer for one old shape, and every reader carried a branch
+ * for it). Anything odd marks nothing, and nothing throws.
  * @param {any} b @returns {{ fields: string[] }}
  */
 export function checkOf(b) {
@@ -67,10 +70,12 @@ export function checkOf(b) {
   if (!Array.isArray(named)) return { fields: [] };
   const has = (/** @type {string} */ k) => ownPart(b, k) || (Object.hasOwn(extra, k) && there(extra[k]));
   const atPlace = dropsAtPlace(b);
+  const readsTimes = b.kind !== 'restaurant' && b.kind !== 'event';
   /** @type {string[]} */
   const fields = [];
   for (const name of named) {
-    const k = name === 'dropoff' && atPlace ? 'place' : name;
+    let k = name === 'dropoff' && atPlace ? 'place' : name;
+    if (readsTimes && typeof k === 'string' && !has(k) && !/^drop/i.test(k)) k = fieldOf(k, b.kind) ?? k;
     if (typeof k === 'string' && !fields.includes(k) && has(k)) fields.push(k);
   }
   return { fields };
@@ -344,8 +349,9 @@ export function unalias(own, { zones = [], schema, kind, append = false, notes =
     }
   }
   const fk = keys.find((k) => base(k) === 'flights');
-  // A lone value (an object or text, not a list) is one leg, under `flights` as under `flights+`; a blank one is none.
-  const legs = fk ? (Array.isArray(own[fk]) ? own[fk] : there(own[fk]) ? [own[fk]] : []) : [];
+  // A lone value (not a list) is one leg under `flights+`, and under `flights` in a whole write: a patch's `flights` is merged into the
+  // stored one (an object key by key), so its lone value may be part of a leg. A blank value is none.
+  const legs = fk ? (Array.isArray(own[fk]) ? own[fk] : (fk.endsWith('+') || !append) && there(own[fk]) ? [own[fk]] : []) : [];
   // Only what carries the traveller (far) has its times from its legs: any other booking's are its own, so legs given to one are kept as
   // written and move nothing; a leg with a time says so (NO_LEGS_TIMES).
   if (fk && legs.length && !far && legs.some(timedLeg)) notes.push(NO_LEGS_TIMES);
@@ -458,18 +464,6 @@ export function shioriBooking(before, next, { schema, changes } = {}) {
   const patch = record(changes);
   if (patch && Object.hasOwn(patch, 'unsure+') && !Object.hasOwn(patch, 'unsure') && old && !('unsure' in old) && Array.isArray(next.unsure)) {
     next = { ...next, unsure: [...new Set([...checkOf(old).fields, ...next.unsure])] };
-  }
-  // What carries the traveller departs and arrives: unsure's departure or depart is its start, arrival or arrive its end, however the time
-  // was written (legs, the other alias, start and end, a patch of unsure alone; unalias renames one only beside its alias). Only a name that
-  // would mark nothing is renamed (checkOf): of a time the booking has, never a key of `fields` she named, which is that detail.
-  if (CARRIERS.has(next.kind) && Array.isArray(next.unsure)) {
-    const details = record(next.fields) ?? {};
-    /** @param {string} n */
-    const asTime = (n) => {
-      const to = LEAVING.includes(n) ? 'start' : ARRIVING.includes(n) ? 'end' : '';
-      return to && there(next[to]) && !there(details[n]) ? to : n;
-    };
-    if (next.unsure.some((/** @type {string} */ n) => asTime(n) !== n)) next = { ...next, unsure: [...new Set(next.unsure.map(asTime))] };
   }
   const own = record(record(schema)?.properties);
   const place = record(next.place);
