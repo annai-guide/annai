@@ -228,6 +228,22 @@ test('housekeeping first writes down what was heard in the part it summarizes: t
   assert.equal(k.voice.memory.size, 0);
 });
 
+// The line housekeeping itself writes down belongs to the part it summarizes, so it counts for that summary's language (lines-next review F1): `said` is
+// read after the write-down. Read before it, the summary named English and the next one, where the words are an orphan, English again.
+test('a spoken line housekeeping writes down at the cut counts for the language of the summary that holds it', async (t) => {
+  useClock(t);
+  const fail = { error: 'bad-request', status: 400 };
+  const k = await agentKit([[fail, fail]], { utility: [{ text: 'They looked for food.' }], voice: { speechIn: ['m-hear'], hears: ['今日の夕食はどこにしますか'] } });
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
+  await tapAndSay(k, 'where-eat'); // the turn fails: the words aren't written down yet
+  k.agent.send('Hello?'); // one word: a reply, no vote for a language
+  await k.agent.idle();
+  assert.equal((await k.events(['heard.text'])).length, 0);
+  assert.equal(await k.agent.compact('cold', { forced: true }), true);
+  assert.equal((await k.events(['heard.text'])).length, 1, 'housekeeping wrote the line down');
+  assert.match(k.requests.at(-1).system, /as plain text, in Japanese, the language most of what the user wrote is in\.$/);
+});
+
 test('housekeeping waits while what was heard can\'t be written down, unless the conversation would overflow: then it is written as not transcribed (spec §10.3)', async (t) => {
   useClock(t);
   const k = await agentKit([[{ text: 'never reached' }]], { utility: [{ text: 'Someone spoke.' }], voice: { speechIn: ['m-hear'], failing: ['m-hear'] } });

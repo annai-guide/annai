@@ -138,25 +138,28 @@ async function mediaParts(store, scope, output) {
  */
 async function recall(agent, i, half = 'kokoro') {
   const shown = ['wake', 'msg.user', 'heard', 'out.speak', 'out.show', 'out.ask', 'tool.call', 'tool.result'];
-  // By type: a day of location points isn't walked.
-  const all = await agent.store.tx(['events'], 'readonly', (t) => t.listEvents(agent.scope, {
-    types: [...shown, 'heard.text'], ...(i.from ? { after: i.from - 1 } : {}), ...(i.to ? { before: i.to + 1 } : {}),
-  }));
-  const events = all.filter((e) => shown.includes(e.type) && !e.data?.task);
+  // By type: a day of location points isn't walked. A range bounds the lines shown, not the words written down for one later.
+  const from = i.from ? { after: i.from - 1 } : {};
+  const [listed, written] = await agent.store.tx(['events'], 'readonly', async (t) => [
+    await t.listEvents(agent.scope, { types: shown, ...from, ...(i.to ? { before: i.to + 1 } : {}) }),
+    await t.listEvents(agent.scope, { types: ['heard.text'], ...from }),
+  ]);
+  const events = listed.filter((e) => !e.data?.task);
   /** @type {any[][]} exchanges: from a wake that isn't "meanwhile" to the next */
   const exchanges = [];
   for (const e of events) {
     if ((e.type === 'wake' && !e.data?.meanwhile) || !exchanges.length) exchanges.push([]);
     exchanges[exchanges.length - 1].push(e);
   }
-  const words = new Map(all.filter((e) => e.type === 'heard.text').map((e) => [e.data?.of, String(e.data?.text ?? '')]));
+  // A heard line's words as last written down (a live line's first ones come with it), as conversationLines reads them, wherever they landed.
+  const words = new Map(written.map((e) => [e.data?.of, String(e.data?.text ?? '')]));
   const lines = async (/** @type {any[]} */ ex) => {
     const out = [];
     for (const e of ex) {
       const t = { ...e.data, ...(await storedTexts(agent.store, e)) };
       const photos = (Array.isArray(e.data?.images) ? e.data.images : []).map((/** @type {any} */ p) => ` ${photoStub(p)}`).join('');
       if (e.type === 'msg.user') out.push(`#${e.seq} user: ${t.text ?? ''}${photos}`);
-      else if (e.type === 'heard') /* en */ out.push(`#${e.seq} ${t.dismissed ? (t.source === 'live' ? asideLabel(t, half).slice(1, -1) : 'someone said, not to Shiori') : 'user said'}: ${t.text ?? words.get(t.id) ?? '[audio]'}`);
+      else if (e.type === 'heard') /* en */ out.push(`#${e.seq} ${t.dismissed ? (t.source === 'live' ? asideLabel(t, half).slice(1, -1) : 'someone said, not to Shiori') : 'user said'}: ${words.get(t.id) ?? t.text ?? '[audio]'}`);
       else if (e.type === 'out.speak') /* en */ out.push(`#${e.seq} Shiori said: ${t.text ?? ''}`);
       else if (e.type === 'out.show') /* en */ out.push(`#${e.seq} Shiori showed: ${[t.card?.title, t.card?.text].filter(Boolean).join(' — ')}`);
       else if (e.type === 'out.ask') /* en */ out.push(`#${e.seq} Shiori asked: ${t.question} (${(Array.isArray(t.options) ? t.options : []).join(' / ')})`);
