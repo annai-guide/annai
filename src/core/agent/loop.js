@@ -1516,16 +1516,19 @@ export class Agent {
       this.#abort = null;
       this.#owing = this.#owedNow = null;
       this.#noteOwed = () => false;
-      // A tap's listening window outlives the turn until something is said, or 8 s from here (spec §10.4).
-      if (this.#ear?.owner === 'tap') this.#ear.by = Date.now() + LISTEN_S * this.secondMs;
-      this.#rest();
+      this.#rest(); // a tap's window outlives the turn until something is said, or 8 s from here (spec §10.4)
       this.#settle();
       this.#schedule();
     }
   }
 
-  /** Nothing runs now. The dock says she listens while a window is open (a tap's, or the one after she spoke), else that she sleeps; and the open microphone's own end is armed again: its time may have passed while she was busy. */
+  /**
+   * Every busy spell's end comes here (a turn's, housekeeping's, Summarize now's, Start fresh's; `#busy` is false by then). A tap's window outlives it until
+   * something is said, or 8 s from here, as a tap that finds her free gets (#tapListen; spec §10.4). The dock says she listens while a window is open, else that
+   * she sleeps; and the open microphone's end is armed again: its time may have passed while she was busy.
+   */
   #rest() {
+    if (this.#ear?.owner === 'tap') this.#ear.by = Date.now() + LISTEN_S * this.secondMs;
     this.#setState(this.#window() ? 'listening' : this.online() ? 'sleeping' : 'offline');
     this.#armEar();
   }
@@ -3203,10 +3206,12 @@ export class Agent {
       /** @type {ReturnType<typeof setTimeout> | undefined} */
       let timer;
       // No microphone of hers listens for it here (byHand: her question's mark); a tap's may (byTap).
-      this.#pending = { id, kind, tool: kind === 'wait', byHand: kind === 'ask', resolve: (v) => { clearTimeout(timer); resolve(v); } };
+      /** @type {Pending} */
+      const pending = { id, kind, tool: kind === 'wait', byHand: kind === 'ask', resolve: (v) => { clearTimeout(timer); resolve(v); } };
+      this.#pending = pending;
       this.#remindWaiting();
       if (ms > 0) timer = setTimeout(() => {
-        if (this.#pending?.id === id) this.#pending = null;
+        if (this.#pending === pending) this.#pending = null; // known by its own object: the listening before it shares its call's id
         resolve({});
       }, ms);
     });
@@ -3472,7 +3477,8 @@ export class Agent {
   /**
    * Listens for the user's answer (spec §10.4): the first thing heard, typing, or a tap; or a silence of seconds. With speech heard earlier waiting, speak and wait don't
    * listen: it reaches her at once. Chatter or a noise neither ends the silence nor restarts it (music would hold the microphone open for ever, at a transcription and a gate each time);
-   * it never ends while someone speaks (a line across it is heard to its end), and its end waits behind the lines heard, which may still answer.
+   * it is not armed while someone speaks (a line across its time is heard to its end), and its end waits behind the lines heard, which may still answer; a line begun
+   * after its time, while an earlier verdict is still to come, is cut by that verdict.
    * @param {{ id: string, signal?: AbortSignal }} call a stopped turn's call listens for no one, and leaves nothing waiting (as #waitFor)
    * @param {'wait' | 'ask'} kind @param {number} seconds @param {boolean} [tool] the wait tool's @returns {Promise<Got>}
    */
@@ -3500,12 +3506,16 @@ export class Agent {
         clearTimeout(timer);
         if (this.#speaking) return; // their line's end arms it again (#heard)
         timer = setTimeout(() => this.#hearing.then(() => {
-          if (this.#pending?.id !== id || this.#speaking) return; // a line begun after its time, while the verdict on an earlier one was slow, is heard to its end (#heard arms it again)
+          // Its time ends it at the first verdict after it, whoever speaks: a line begun after its time, while an earlier verdict is slow, is cut (holding
+          // for it would let a radio hold her listening open). Only this listening: a wait of the same call (#askAloud's, by hand) is another pending.
+          if (this.#pending !== pending) return;
           this.#pending = null;
           resolve({});
         }), Math.max(0, by - Date.now()));
       };
-      this.#pending = { id, kind, listening: true, ear: /** @type {Ear} */ (this.#ear), tool, arm, hold: () => clearTimeout(timer), resolve: (v) => { clearTimeout(timer); resolve(v); } };
+      /** @type {Pending} */
+      const pending = { id, kind, listening: true, ear: /** @type {Ear} */ (this.#ear), tool, arm, hold: () => clearTimeout(timer), resolve: (v) => { clearTimeout(timer); resolve(v); } };
+      this.#pending = pending;
       arm();
     });
   }
@@ -3822,7 +3832,7 @@ export class Agent {
   /** The tap whose window is opening, until it opens or a tap stops it. @type {object | null} */
   #tapping = null;
 
-  /** The user tapped to talk (spec §10.4): the microphone opens ("One moment…" until then, unless she is busy); its 8 s close it again (#armEar). */
+  /** The user tapped to talk (spec §10.4): the microphone opens ("One moment…" until then, unless she is busy); its 8 s close it again (#armEar), from the tap or, if she is busy, from her busy spell's end (#rest). */
   #tapListen() {
     this.tapOpening = true;
     const mine = (this.#tapping = {});
@@ -3846,7 +3856,7 @@ export class Agent {
         p.ear = this.#ear;
         if (this.#half.voice()) this.#voiceNow = true; // the tap holds voice on for this exchange: her reply to the answer is said
       }
-      // Her own listening keeps its time; with nothing waiting, she is speaking or working: the window serves her turn.
+      // Her own listening keeps its time; with nothing waiting, she is speaking or working: the window serves her turn, and #rest gives it 8 s from its end.
       if (p ? !byTap(p) : this.#busy) return;
       this.#ear.by = Date.now() + LISTEN_S * this.secondMs; // each tap its own 8 s
       this.#armEar();
@@ -3855,8 +3865,9 @@ export class Agent {
   }
 
   /**
-   * The open microphone's own end (by): a tap's 8 s, or the window after she spoke. The deadline never moves; it is never armed while someone speaks
-   * (a line's or a click's end arms it again, no verdict does), and closes only its own microphone. While her turn runs, only under a tap's listening.
+   * The open microphone's own end (by): a tap's 8 s (#tapListen when she is free, else #rest), or the window after she spoke (#after). The deadline never
+   * moves; it is never armed while someone speaks (a line's or a click's end arms it again, no verdict does), and closes only its own microphone. While her turn
+   * runs, only under a tap's listening.
    */
   #armEar() {
     const ear = this.#ear;

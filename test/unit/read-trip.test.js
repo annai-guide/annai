@@ -4478,15 +4478,20 @@ test("classic voice, sound sent to the model: the window after she spoke, whose 
   await until(() => micLog(k).at(-1) === 'mic open');
   await hear(k, 'where-eat');
   await until(() => k.said.includes('Lunch or dinner?') && k.agent.state.name === 'listening');
+  const spoke = Date.now(); // her last words
   await until(() => micLog(k).filter((l) => l === 'mic close').length === 2); // her question's 8 s are over
   k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), 'Lunch'); // her turn goes on to write down what it heard, held
   await until(() => micLog(k).at(-1) === 'mic open'); // the window after she spoke is open
   assert.equal(k.agent.busy, true, 'her turn still writes down what it heard: the window opened under it');
+  assert.deepEqual(dock(k), ['thinking', 'Thinking · tap to stop'], 'the dock does not say Listening while her turn runs');
   const t0 = Date.now();
   await atS(k, t0, 2);
   release();
   await k.agent.idle();
-  await atS(k, t0, 25);
+  assert.deepEqual(dock(k), ['listening', 'Listening'], "her turn's end: the window is open");
+  await atS(k, spoke, 18);
+  assert.equal(micLog(k).at(-1), 'mic open', 'still open within its 20 s: its deadline stood under the turn');
+  await atS(k, spoke, 22);
   assert.equal(micLog(k).at(-1), 'mic close', 'closed 20 s after her last words');
   assert.deepEqual(dock(k), ['sleeping', 'Tap to talk']);
 });
@@ -4499,6 +4504,7 @@ test("classic voice: the window after she spoke is still opening when a typed li
   const k = await gateKit([{ toolCalls: [{ name: 'speak', input: { text: 'Here is the plan.' } }, { name: 'ask', input: ASK_LUNCH }] }, { text: 'done' }], { voice: { speechIn: ['m-hear'], hears: [] }, hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-0' && ++mains === 4) await held; } });
   k.agent.send('Plan our day');
   await until(() => k.said.includes('Lunch or dinner?') && k.agent.state.name === 'listening');
+  const spoke = Date.now(); // her last words
   await until(() => micLog(k).at(-1) === 'mic close'); // her question's 8 s are over
   const open = k.platform.mic.open;
   let go = () => {};
@@ -4516,11 +4522,15 @@ test("classic voice: the window after she spoke is still opening when a typed li
   go();
   await until(() => micLog(k).at(-1) === 'mic open');
   assert.equal(k.agent.busy, true, 'the second turn still runs: the window finished opening under it');
+  assert.deepEqual(dock(k), ['thinking', 'Thinking · tap to stop'], 'the dock does not say Listening while her turn runs');
   const t0 = Date.now();
   await atS(k, t0, 2);
   release();
   await k.agent.idle();
-  await atS(k, t0, 25);
+  assert.deepEqual(dock(k), ['listening', 'Listening'], "her turn's end: the window is open");
+  await atS(k, spoke, 18);
+  assert.equal(micLog(k).at(-1), 'mic open', 'still open within its 20 s: its deadline stood under the turn');
+  await atS(k, spoke, 22);
   assert.equal(micLog(k).at(-1), 'mic close', 'closed 20 s after her last words');
   assert.deepEqual(dock(k), ['sleeping', 'Tap to talk']);
 });
@@ -4551,7 +4561,7 @@ const talked = async (k, n = 5) => {
   }
 };
 
-test("classic voice, a plain tap's window, and \"Summarize now\" that outlasts its 8 s: the summary's end sets the dock by the window and arms the microphone's own end, so it closes then, not never (on main too)", async (t) => {
+test("classic voice, a plain tap's window, and \"Summarize now\" that outlasts its 8 s: the tap's window gets 8 s from the summary's end (the dock says Listening then), so it closes 8 s after the end, neither at once nor never (on main too)", async (t) => {
   useClock(t);
   let release = () => {};
   const held = new Promise((r) => { release = () => r(undefined); });
@@ -4568,10 +4578,14 @@ test("classic voice, a plain tap's window, and \"Summarize now\" that outlasts i
   assert.equal(micLog(k).at(-1), 'mic open', 'she is busy: nothing closes it yet');
   release();
   assert.equal(await done, 'done');
-  await atS(k, t0, 14);
-  assert.equal(micLog(k).at(-1), 'mic close', "closed once the summary's end armed it again");
+  const t1 = Date.now(); // the summary's end
+  assert.deepEqual(dock(k), ['listening', 'Listening']);
+  await atS(k, t1, 7);
+  assert.equal(micLog(k).at(-1), 'mic open', 'still open 7 s after the end');
+  await atS(k, t1, 9);
+  assert.equal(micLog(k).at(-1), 'mic close', "closed 8 s after the summary's end");
   assert.deepEqual(dock(k), ['sleeping', 'Tap to talk']);
-  await atS(k, t0, 40);
+  await atS(k, t1, 40);
   assert.deepEqual(micLog(k), ['mic open', 'mic close'], 'and nothing opened it again');
 });
 
@@ -4600,7 +4614,7 @@ test("classic voice, the window after she spoke, and \"Summarize now\" that outl
   assert.deepEqual(dock(k), ['sleeping', 'Tap to talk']);
 });
 
-test("classic voice, a plain tap's window, and housekeeping that comes due and outlasts its 8 s: the housekeeping's end sets the dock by the window and arms the microphone's own end, so it closes then, not never (on main too)", async (t) => {
+test("classic voice, a plain tap's window, and housekeeping that comes due and outlasts its 8 s: the tap's window gets 8 s from the housekeeping's end (the dock says Listening then), so it closes 8 s after the end, neither at once nor never (on main too)", async (t) => {
   useClock(t);
   let release = () => {};
   const held = new Promise((r) => { release = () => r(undefined); });
@@ -4626,12 +4640,16 @@ test("classic voice, a plain tap's window, and housekeeping that comes due and o
   release();
   await k.agent.idle();
   assert.equal((await k.events(['compaction'])).length, 1, 'the housekeeping ran');
-  await atS(k, t0, 14);
-  assert.equal(micLog(k).at(-1), 'mic close', "closed once the housekeeping's end armed it again");
+  const t1 = Date.now(); // the housekeeping's end
+  assert.deepEqual(dock(k), ['listening', 'Listening']);
+  await atS(k, t1, 7);
+  assert.equal(micLog(k).at(-1), 'mic open', 'still open 7 s after the end');
+  await atS(k, t1, 9);
+  assert.equal(micLog(k).at(-1), 'mic close', "closed 8 s after the housekeeping's end");
   assert.deepEqual(dock(k), ['sleeping', 'Tap to talk']);
 });
 
-test("classic voice, sound sent to the model that a failed turn kept, a plain tap's window, and \"Start fresh\" that writes it down past the window's 8 s: its end sets the dock by the window and arms the microphone's own end, so it closes then, not never (on main too)", async (t) => {
+test("classic voice, sound sent to the model that a failed turn kept, a plain tap's window, and \"Start fresh\" that writes it down past the window's 8 s: the tap's window gets 8 s from Start fresh's end (the dock says Listening then), so it closes 8 s after the end, neither at once nor never (on main too)", async (t) => {
   useClock(t);
   let release = () => {};
   const held = new Promise((r) => { release = () => r(undefined); });
@@ -4650,34 +4668,43 @@ test("classic voice, sound sent to the model that a failed turn kept, a plain ta
   assert.equal(micLog(k).at(-1), 'mic open', 'nothing closes it yet');
   release();
   await fresh;
-  await atS(k, t0, 14);
-  assert.equal(micLog(k).at(-1), 'mic close', "closed once Start fresh's end armed it again");
+  const t1 = Date.now(); // Start fresh's end
+  assert.deepEqual(dock(k), ['listening', 'Listening']);
+  await atS(k, t1, 7);
+  assert.equal(micLog(k).at(-1), 'mic open', 'still open 7 s after the end');
+  await atS(k, t1, 9);
+  assert.equal(micLog(k).at(-1), 'mic close', "closed 8 s after Start fresh's end");
   assert.deepEqual(dock(k), ['sleeping', 'Tap to talk']);
 });
 
-test("classic voice with a quick gate: her question said aloud; a passenger's line ends before its 8 s and its gate verdict is slow; the traveller begins to answer after the 8 s, and the verdict (set aside) comes while they speak: her listening's end waits for the line under way, so the microphone stays open to the end of the answer, which answers the question", async (t) => {
+test("classic voice with a quick gate that sets every line aside: her question said aloud, and a radio goes on (a line every 2.3 s with 0.3 s between, a verdict taking 1.5 s): her listening ends at the first verdict after its 8 s, though lines keep coming, and the question then waits for its buttons (a radio can't hold her listening open)", async (t) => {
   useClock(t);
-  let rel = () => {};
-  const gateHeld = new Promise((r) => { rel = () => r(undefined); });
-  let n = 0;
-  const k = await gateKit([{ toolCalls: [{ name: 'ask', input: ASK_LUNCH }] }, say('Dinner it is.'), sleep], { voice: { speechIn: ['m-hear'], hears: ['Turn left here', 'Dinner please'], decide: gates(['B', 'A']) }, hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-d' && ++n === 1) await gateHeld; } });
+  let verdictMs = 0; // 1.5 s: longer than the 0.3 s between the radio's lines, so a line is always under way when a verdict comes
+  const k = await gateKit([{ toolCalls: [{ name: 'ask', input: ASK_LUNCH }] }, say('Dinner it is.'), sleep], { voice: { speechIn: ['m-hear'], hears: ['Turn left here'], decide: gates(['B']) }, hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-d') await pause(verdictMs); } });
+  verdictMs = 1.5 * k.agent.secondMs;
+  const line = cat(quiet(0.3), await clip('gas-station'));
   k.agent.send('Plan our day');
   await until(() => k.said.includes('Lunch or dinner?') && k.agent.state.name === 'listening');
   const t0 = Date.now();
-  await atS(k, t0, 2);
-  await hear(k, 'gas-station'); // the passenger
-  await until(() => n === 1); // its verdict is slow
-  await atS(k, t0, 9); // her 8 s are over: they wait behind the verdict
-  await startsSpeaking(k); // the traveller begins to answer
-  await atS(k, t0, 10);
-  rel(); // the passenger's verdict comes while they answer
-  await atS(k, t0, 12);
-  assert.equal(micLog(k).at(-1), 'mic open', 'past its 8 s, the answer under way is heard to its end');
-  assert.notEqual(k.agent.kokoro.pendingId, null, 'the question still listens');
-  k.platform.mic.feed(quiet(2), 16_000); // they stop
+  /** A line begins at `from` s, goes on for 2 s, and ends. @param {number} from */
+  const radio = async (from) => {
+    await atS(k, t0, from);
+    k.platform.mic.feed(line, 16_000);
+    await atS(k, t0, from + 2);
+    k.platform.mic.feed(quiet(1), 16_000);
+  };
+  for (let n = 0; n < 5; n++) await radio(2 + 2.3 * n); // her 8 s are over at the first verdict after them, 10.1 s: a line is under way then
+  assert.equal(micLog(k).at(-1), 'mic close', 'closed by 13.2 s, though a line comes every 2.3 s');
+  const heard = gated(k);
+  for (let n = 5; n < 12; n++) await radio(2 + 2.3 * n); // the radio goes on
+  await atS(k, t0, 33);
+  assert.deepEqual(micLog(k), ['mic open', 'mic close'], 'and nothing opened it again');
+  assert.equal(gated(k), heard, 'nothing was heard after');
+  assert.notEqual(k.agent.kokoro.pendingId, null, 'the question waits for its buttons');
+  assert.deepEqual(dock(k), ['waiting', 'Waiting for your OK']);
+  k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), 'Lunch');
   await k.agent.idle();
-  assert.equal((await resultsOf(k, 'ask'))[0], 'The user said:', 'their answer answered it');
-  assert.deepEqual((await heardAside(k)).sort(), [['Dinner please', false], ['Turn left here', true]], 'the passenger set aside, the answer not');
+  assert.match(String((await resultsOf(k, 'ask'))[0]), /^The user (tapped|chose:?) Lunch/);
 });
 
 test("classic voice: her question waits for a tap, a tap's microphone listens for the answer, and a second tap cuts the answer being said: the listening ends behind that line, which answers the question (#closeEar, the door every close passes)", async (t) => {
@@ -4715,9 +4742,9 @@ test("classic voice with a quick gate: a line that begins in the microphone a ta
   assert.deepEqual(await heardAside(k), [['Where did we eat?', false], ['Turn left here', true]], "the question was not judged, the passenger's line was set aside");
 });
 
-test("classic voice with a quick gate: a tap claims her speak's microphone as it opens, nobody speaks in her listening, and her turn ends: the window after she spoke is no tap's, so a passenger's line in it is judged by the gate and set aside (tap false in #after)", async (t) => {
+test("classic voice with a quick gate: a tap claims her speak's microphone as it opens, nobody speaks in her listening (a speak, then a 3 s wait), and her turn ends with most of the window after she spoke left: that window is no tap's, so a passenger's line in it is judged by the gate and set aside (tap false in #after)", async (t) => {
   useClock(t);
-  const k = await gateKit([{ toolCalls: [{ name: 'speak', input: { text: 'Here it is.' } }, { name: 'show', input: { card: { title: 'Bixby Bridge', text: 'Ahead.' } } }] }, { text: 'done' }], { voice: { speechIn: ['m-hear'], hears: ['Turn left here'], decide: gates(['B']) } });
+  const k = await gateKit([{ toolCalls: [{ name: 'speak', input: { text: 'Here it is.' } }, { name: 'wait', input: { seconds: 3 } }] }, { text: 'done' }], { voice: { speechIn: ['m-hear'], hears: ['Turn left here'], decide: gates(['B']) } });
   const open = k.platform.mic.open;
   let go = () => {};
   let opening = false;
@@ -4733,8 +4760,160 @@ test("classic voice with a quick gate: a tap claims her speak's microphone as it
   go();
   await k.agent.idle(); // her listening's time passes with nobody speaking, and her turn ends
   assert.deepEqual(dock(k), ['listening', 'Listening'], 'the window after she spoke');
+  assert.equal(micLog(k).at(-1), 'mic open', 'with most of its 20 s left: nothing is about to close it');
   await hear(k, 'gas-station'); // a passenger's line
   await k.agent.idle();
   assert.equal(gated(k), 1, 'the gate judged it');
   assert.deepEqual((await heardAside(k)).map(([, aside]) => aside), [true], 'and set it aside');
+});
+
+// ---- tap-ear-next, fix round 2: a pending is known by its own object, and a tap's microphone gets its 8 s when she is free. ----
+
+test("classic voice with a quick gate: her question said aloud; a passenger's line with its verdict held; the 8 s pass; the traveller says an answer and stops; then the verdict (set aside) comes: the question's listening ends once, and the by-hand wait of the same call is not ended by the answer's own callback, so the card stays, her turn ends by its button, and a tap afterwards closes 8 s on", async (t) => {
+  useClock(t);
+  let rel = () => {};
+  const gateHeld = new Promise((r) => { rel = () => r(undefined); });
+  let n = 0;
+  const k = await gateKit([{ toolCalls: [{ name: 'ask', input: ASK_LUNCH }] }, say('Dinner it is.'), sleep], { voice: { speechIn: ['m-hear'], hears: ['Turn left here', 'Dinner please'], decide: gates(['B', 'A']) }, hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-d' && ++n === 1) await gateHeld; } });
+  k.agent.send('Plan our day');
+  await until(() => k.said.includes('Lunch or dinner?') && k.agent.state.name === 'listening');
+  const t0 = Date.now();
+  await atS(k, t0, 2);
+  await hear(k, 'gas-station'); // the passenger: its verdict is held
+  await until(() => n === 1);
+  await atS(k, t0, 9); // her 8 s are over: the end of her listening waits behind the verdict
+  await hear(k, 'first-one'); // the traveller answers, and stops
+  await atS(k, t0, 10);
+  rel(); // the verdict (set aside) comes after the answer ended
+  await atS(k, t0, 14);
+  assert.notEqual(k.agent.kokoro.pendingId, null, "the question's card stays: its buttons wait");
+  assert.deepEqual(dock(k), ['waiting', 'Waiting for your OK']);
+  assert.equal(k.agent.busy, true, 'her turn waits on it');
+  k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), 'Dinner');
+  await k.agent.idle();
+  assert.match(String((await resultsOf(k, 'ask'))[0]), /^The user (tapped|chose:?) Dinner/, 'answered by its button: the line said after the question left its listening is her next line, not its answer');
+  assert.deepEqual((await heardAside(k)).sort(), [['Dinner please', false], ['Turn left here', true]], 'the passenger set aside, the answer reached her');
+  assert.equal(k.agent.busy, false);
+  assert.deepEqual(dock(k), ['sleeping', 'Tap to talk']);
+  const t1 = Date.now();
+  assert.equal(k.agent.tap(), 'listening');
+  await until(() => micLog(k).at(-1) === 'mic open');
+  await atS(k, t1, 7);
+  assert.equal(micLog(k).at(-1), 'mic open', 'a tap afterwards listens its 8 s');
+  await atS(k, t1, 9);
+  assert.equal(micLog(k).at(-1), 'mic close', 'and closes');
+});
+
+test("classic voice, sound sent to the model that a failed turn kept, and a tap while \"Start fresh\" writes it down (held): the tap's microphone opens, and when Start fresh ends the dock says Listening and the microphone closes 8 s after that end, not never (probe F1)", async (t) => {
+  useClock(t);
+  let release = () => {};
+  const held = new Promise((r) => { release = () => r(undefined); });
+  const k = await gateKit([{ error: 'bad-request', status: 400 }, { text: 'where should we eat' }], { models: [{ input: ['text', 'image', 'audio'] }], voice: { speechIn: ['send-audio'] }, hold: async (/** @type {any} */ c) => { if (c.request.system === WRITE_DOWN) await held; } });
+  k.agent.tap();
+  await until(() => micLog(k).at(-1) === 'mic open');
+  await hear(k, 'where-eat');
+  await k.agent.idle(); // the turn failed: the sound is kept
+  assert.equal(k.voice.memory.size, 1, 'the sound waits to be written down');
+  const fresh = k.agent.startFresh();
+  await until(() => k.agent.busy);
+  await pause(1 * k.agent.secondMs);
+  assert.deepEqual(dock(k), ['sleeping', 'Tap to talk'], 'Start fresh sets no state of its own while it writes down');
+  assert.equal(k.agent.tap(), 'listening', 'a tap while she is busy');
+  await until(() => micLog(k).filter((l) => l === 'mic open').length === 2);
+  const t0 = Date.now();
+  await atS(k, t0, 12); // more than 8 s: nothing closes it while she is busy
+  assert.equal(micLog(k).at(-1), 'mic open');
+  release();
+  await fresh;
+  const t1 = Date.now(); // Start fresh's end
+  assert.deepEqual(dock(k), ['listening', 'Listening']);
+  await atS(k, t1, 7);
+  assert.equal(micLog(k).at(-1), 'mic open', 'still open 7 s after the end');
+  await atS(k, t1, 9);
+  assert.equal(micLog(k).at(-1), 'mic close', "closed 8 s after Start fresh's end");
+  assert.deepEqual(dock(k), ['sleeping', 'Tap to talk']);
+  await atS(k, t1, 40);
+  assert.deepEqual(micLog(k).filter((l) => l === 'mic open').length, 2, 'and nothing opened it again');
+});
+
+test("classic voice, sound sent to the model that a failed turn left unwritten, and a tap while \"Summarize now\" writes it down (held, before the dock shows the tidy-up): the tap's microphone opens, and when the summary ends the dock says Listening and the microphone closes 8 s after that end, not never (probe F1, Summarize now)", async (t) => {
+  useClock(t);
+  let release = () => {};
+  const held = new Promise((r) => { release = () => r(undefined); });
+  let holding = false;
+  const fails = { error: 'bad-request', status: 400 };
+  const k = await gateKit([fails, say('Answer one'), fails, { text: 'where should we eat' }, { text: 'They asked where to eat.' }], { models: [{ input: ['text', 'image', 'audio'] }], voice: { speechIn: ['send-audio'] }, hold: async (/** @type {any} */ c) => { if (holding && c.request.system === WRITE_DOWN) await held; } });
+  k.agent.tap();
+  await until(() => micLog(k).at(-1) === 'mic open');
+  await hear(k, 'where-eat');
+  await k.agent.idle(); // the turn failed: the sound is kept
+  k.agent.send('Question one about herons');
+  await k.agent.idle(); // her turn works, and its write-down fails: the sound is still unwritten
+  assert.equal(k.voice.memory.size, 1, 'the sound waits to be written down');
+  holding = true;
+  const done = k.agent.summarizeNow();
+  await until(() => k.agent.busy);
+  await pause(1 * k.agent.secondMs);
+  assert.deepEqual(dock(k), ['sleeping', 'Tap to talk'], 'the dock does not show the tidy-up yet');
+  assert.equal(k.agent.tap(), 'listening', 'a tap while she is busy');
+  await until(() => micLog(k).filter((l) => l === 'mic open').length === 2);
+  const t0 = Date.now();
+  await atS(k, t0, 12); // more than 8 s: nothing closes it while she is busy
+  assert.equal(micLog(k).at(-1), 'mic open');
+  release();
+  assert.equal(await done, 'done');
+  const t1 = Date.now(); // the summary's end
+  assert.deepEqual(dock(k), ['listening', 'Listening']);
+  await atS(k, t1, 7);
+  assert.equal(micLog(k).at(-1), 'mic open', 'still open 7 s after the end');
+  await atS(k, t1, 9);
+  assert.equal(micLog(k).at(-1), 'mic close', "closed 8 s after the summary's end");
+  assert.deepEqual(dock(k), ['sleeping', 'Tap to talk']);
+});
+
+test("classic voice, sound sent to the model that failed turns left unwritten, and a tap while housekeeping writes it down (held, before the dock shows the tidy-up): the tap's microphone opens, and when the housekeeping ends the dock says Listening and the microphone closes 8 s after that end, not never (probe F1, housekeeping)", async (t) => {
+  useClock(t);
+  let release = () => {};
+  const held = new Promise((r) => { release = () => r(undefined); });
+  let holding = false;
+  /** @type {(() => void)[]} */
+  const timers = [];
+  const fails = { error: 'bad-request', status: 400 };
+  const k = await gateKit([fails, fails, fails, fails, { ...say('Answer 4 about herons'), usage: { input: 7500, output: 5 } }, fails, { text: 'where should we eat' }, { text: 'They asked about herons.' }], {
+    models: [{ contextWindow: 10000, input: ['text', 'image', 'audio'] }], voice: { speechIn: ['send-audio'] },
+    agent: { timers: { set: (/** @type {() => void} */ fn) => timers.push(fn), clear: () => {} } },
+    hold: async (/** @type {any} */ c) => { if (holding && c.request.system === WRITE_DOWN) await held; },
+  });
+  k.agent.tap();
+  await until(() => micLog(k).at(-1) === 'mic open');
+  await hear(k, 'where-eat');
+  await k.agent.idle(); // the turn failed: the sound is kept
+  for (let i = 1; i <= 3; i++) {
+    k.agent.send(`Question ${i} about herons`);
+    await k.agent.idle(); // more turns that fail
+  }
+  k.agent.send('Question 4 about herons');
+  await k.agent.idle(); // a turn that works, makes housekeeping due, and its write-down fails: the sound is still unwritten
+  assert.equal(k.voice.memory.size, 1, 'the sound waits to be written down');
+  assert.equal(timers.length, 1, 'housekeeping waits for the cache to near its end');
+  holding = true;
+  timers[0](); // its time has come
+  await until(() => k.agent.busy);
+  await pause(1 * k.agent.secondMs);
+  assert.deepEqual(dock(k), ['sleeping', 'Tap to talk'], 'the dock does not show the tidy-up yet');
+  assert.equal(k.agent.tap(), 'listening', 'a tap while she is busy');
+  await until(() => micLog(k).filter((l) => l === 'mic open').length === 2);
+  const t0 = Date.now();
+  await atS(k, t0, 12); // more than 8 s: nothing closes it while she is busy
+  assert.equal(micLog(k).at(-1), 'mic open');
+  release();
+  await k.agent.idle();
+  assert.equal((await k.events(['compaction'])).length, 1, 'the housekeeping ran');
+  const t1 = Date.now(); // the housekeeping's end
+  assert.deepEqual(dock(k), ['listening', 'Listening']);
+  await atS(k, t1, 7);
+  assert.equal(micLog(k).at(-1), 'mic open', 'still open 7 s after the end');
+  await atS(k, t1, 9);
+  assert.equal(micLog(k).at(-1), 'mic close', "closed 8 s after the housekeeping's end");
+  assert.deepEqual(dock(k), ['sleeping', 'Tap to talk']);
 });
