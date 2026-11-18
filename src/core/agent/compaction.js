@@ -97,7 +97,10 @@ const APP = languageSettings({}, 'en-US');
  * tap on a card or a misheard line, and each is one line among the rest (the edge: five English lines then two Japanese are English).
  * Lines of Han that say neither Japanese nor Chinese (a kanji place name; 大家好) join whichever of those has the most lines of its own (a tie:
  * the newer), so a Japanese trip full of kanji names stays Japanese and a Chinese trip Chinese; with none, they are the first of theirs written
- * in Han (the voice's rule: with nothing chosen the phone's, when it is one) where no other line counts, else no one's. Both Chinese rows, Simplified and Traditional, are one language here (a trip in both is Chinese), and
+ * in Han (the voice's rule: with nothing chosen the phone's, when it is one) where no other line counts, else no one's, whether the languages
+ * are chosen or not: an English trip with kanji names is English on a Japanese or Chinese phone too, and a trip of only kanji names and
+ * English questions with no kana line is English even on a Japanese phone. A language given that way, by the order and not by any line, is
+ * named for that ("the first language the user speaks written in Han"), never as the one most of the lines are in. Both Chinese rows, Simplified and Traditional, are one language here (a trip in both is Chinese), and
  * the row is the one most of the lines that are Chinese by their own characters are in, a line once however long: a tie goes to the newer;
  * none telling, the first listed Chinese row (nothing chosen: the phone's, else Simplified). With no line counted: the first they speak, or
  * with nothing chosen the same answer as for her first message in a conversation (languagesText), the phone's (with no settings given, the
@@ -118,6 +121,8 @@ export function summaryLanguage(said, languages) {
   const mandarin = [];
   /** Where each line of Han that says neither is. @type {number[]} */
   const either = [];
+  /** Whether Han that says neither alone gave the language, by the list's order (the first they speak written in Han; nothing chosen: the phone's): no line shows it. */
+  let byOrder = false;
   lines.forEach((x, at) => {
     const l = units(x) >= 3 ? placed(x, s) : null;
     if (l === EITHER) either.push(at);
@@ -128,10 +133,10 @@ export function summaryLanguage(said, languages) {
   const beats = (k1, k2) => { const [a, b] = [count.get(k1), count.get(k2)]; return !!a && (!b || a.n > b.n || (a.n === b.n && a.last > b.last)); };
   if (either.length) {
     const side = HAN_KEYS.reduce((best, k) => (beats(k, best) ? k : best), '');
-    // No line of Japanese or Chinese of its own: the first of theirs written in Han, as the voice reads them (principle 10), where nothing else counts (nothing chosen: the phone's).
-    const home = s.explicit && count.size ? null : firstHan(s);
+    // No line of Japanese or Chinese of its own: the first of theirs written in Han, as the voice reads them (principle 10), only where no other line counts, chosen or not (nothing chosen: the phone's, when it is written in Han).
+    const home = count.size ? null : firstHan(s);
     if (side) add(side, /** @type {any} */ (count.get(side)).l, /** @type {number} */ (either.at(-1)), either.length);
-    else if (home) add(key(home), home, /** @type {number} */ (either.at(-1)), either.length);
+    else if (home) { add(key(home), home, /** @type {number} */ (either.at(-1)), either.length); byOrder = true; }
   }
   const most = [...count.keys()].reduce((best, k) => (beats(k, best) ? k : best), '');
   let language = count.get(most)?.l;
@@ -143,6 +148,13 @@ export function summaryLanguage(said, languages) {
     const simplified = rows.filter((r) => r === 'zh').length * 2 - rows.length;
     const row = simplified > 0 ? 'zh' : simplified < 0 ? 'zh-Hant' : rows.at(-1);
     language = s.spoken.find((l) => l.id === row) ?? (row && !s.explicit ? LANGUAGES.find((l) => l.id === row) : s.spoken.find((l) => MANDARIN.includes(l.id))) ?? language;
+  }
+  // Han that says neither Japanese nor Chinese, with no other line: the order decided, so the request says that, not that the lines are in it (the first commits' words for the first listed).
+  if (language && byOrder) {
+    /* en */
+    const by = languages?.explicit ? 'the first language the user speaks written in Han' : "the language of the user's phone";
+    /* en */
+    return `${language.name}, ${by} (what the user wrote is Han, which doesn't tell Japanese from Chinese)`;
   }
   if (language) /* en */ return `${language.name}, the language most of what the user wrote is in`;
   if (languages?.explicit) /* en */ return `${languages.spoken[0].name}, the first language the user speaks (${named(languages.spoken)})`;

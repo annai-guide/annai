@@ -442,7 +442,8 @@ test("most of the user's lines name the summary's language, not the newest: a cl
 test("with nothing chosen, Han characters alone are the phone's Japanese, as with Japanese listed; a Chinese line on an English phone names its row, Chinese (Simplified) (detector-next: the summary is asked for in a row, never \"Chinese\")", async () => {
   const { languageSettings } = await import('../../src/core/languages.js');
   const ja = languageSettings({}, 'ja-JP');
-  assert.equal(summaryLanguage(['大丈夫'], ja), 'Japanese, the language most of what the user wrote is in');
+  // Han that says neither alone gives the language by the order, and the request says so (the second round: not "the language most of what the user wrote is in").
+  assert.equal(summaryLanguage(['大丈夫'], ja), "Japanese, the language of the user's phone (what the user wrote is Han, which doesn't tell Japanese from Chinese)");
   assert.equal(summaryLanguage(['今日の夕食はどこにしますか', '大丈夫'], ja), 'Japanese, the language most of what the user wrote is in');
   assert.equal(summaryLanguage(['東京駅'], languageSettings({ languages: { spoken: ['en', 'ja'] } }, 'en-US')), 'Japanese, the language most of what the user wrote is in');
   assert.equal(summaryLanguage(['我们今晚去哪里吃饭'], languageSettings({}, 'en-US')), 'Chinese (Simplified), the language most of what the user wrote is in', 'no Japanese anywhere: Chinese, its row named');
@@ -499,7 +500,7 @@ test("with nothing chosen, the phone's language stands for its script (Bulgarian
   assert.equal(at('sr-RS', ['Где можемо да вечерамо вечерас?']), 'Serbian, the language most of what the user wrote is in');
   assert.equal(at('zh-TW', ['我们今晚去哪里吃饭']), 'Chinese (Simplified), the language most of what the user wrote is in', 'Simplified forms (main: the phone\'s Traditional)');
   assert.equal(at('ja-JP', ['我们今晚去哪里吃饭']), 'Chinese (Simplified), the language most of what the user wrote is in', 'characters only Chinese writes (main: the phone\'s Japanese)');
-  assert.equal(at('ja-JP', ['東京駅', '大丈夫']), 'Japanese, the language most of what the user wrote is in', 'Han that says neither, on a Japanese phone: Japanese');
+  assert.equal(at('ja-JP', ['東京駅', '大丈夫']), "Japanese, the language of the user's phone (what the user wrote is Han, which doesn't tell Japanese from Chinese)", 'Han that says neither, on a Japanese phone: Japanese, by the phone');
   // Not another phone's: a Russian line on an English phone is Russian, and Han characters alone on one are Chinese.
   assert.equal(at('en-US', ['Где можно поужинать сегодня вечером?']), 'Russian, the language most of what the user wrote is in');
   assert.equal(at('en-US', ['Къде можем да вечеряме тази вечер?']), 'Russian, the language most of what the user wrote is in');

@@ -1,5 +1,5 @@
 {
-  "build": "556563bfff27",
+  "build": "07e9b6277975",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -37,7 +37,7 @@
     "/src/core/archive-crypto.js": "9b6e09565a09",
     "/src/core/agent/blocks.js": "c8383125c435",
     "/src/core/agent/budgets.js": "ec0a25e840fb",
-    "/src/core/agent/compaction.js": "51cab9175973",
+    "/src/core/agent/compaction.js": "735af0edebd5",
     "/src/core/agent/context.js": "236aeb22b18a",
     "/src/core/agent/halves.js": "0d03ac9b9ec1",
     "/src/core/agent/instructions.js": "c6ce760146d1",
@@ -115,7 +115,7 @@
     "/src/core/koe/tools.js": "957f5c629f45",
     "/src/core/l10n-list.js": "98de5dc21171",
     "/src/core/l10n.js": "7396ee846e5b",
-    "/src/core/languages.js": "8194eb39de0f",
+    "/src/core/languages.js": "8e733fa55de3",
     "/src/core/links.js": "636b0aeadab9",
     "/src/core/lock.js": "dd40df3552c7",
     "/src/core/now.js": "50060fd322cd",

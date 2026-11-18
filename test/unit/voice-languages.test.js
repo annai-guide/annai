@@ -108,7 +108,8 @@ test('the browser voice reads a sentence that shows no language of its own in th
 // joined (the final review F1): a Chinese sentence and two Japanese ones read joined are Japanese, and 「10:00 東京駅」 shows none of its own.
 test('the browser voice reads a sentence that shows none in the language of the first earlier sentence that shows one, not of the earlier ones joined', async () => {
   const k = await kit({ speechOut: ['browser-voice'] });
-  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'zh', 'ja'] } });
+  // Japanese before Chinese, so the first listed in Han (ja) is not the reply's answer (zh-CN) for 「10:00 東京駅」: only the hand-over of her sentences gives it.
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja', 'zh'] } });
   await k.voice.say('Sure, here is the plan. ・18:30 すき家 新宿三丁目店。Dinner is at 一蘭 渋谷店.');
   await k.voice.say('我们明天去故宫吧。今日は晴れです。今日は雨です。10:00 東京駅');
   assert.deepEqual(k.platform.said.map((s) => [s.text, s.lang]), [
