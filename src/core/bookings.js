@@ -181,7 +181,9 @@ const OWN = /** @type {Record<string, [string, string]>} */ ({
   /* en */ ...Object.fromEntries(COSTS.map((k) => [k, ['cost', '{ "amount": 245, "currency": "EUR" }']])),
 });
 /* en */ const NO_END = `The last leg's arrival isn't written as a date with a time (YYYY-MM-DDTHH:MM), so the booking has no arrival time now: when you know when it arrives, write end as ${WHEN}.`;
-/* en */ const NO_START = `The first leg gives no date and time of departure, so the booking has no start or end now: when you know when it leaves and arrives, write start and end as ${WHEN}.`;
+/** @param {boolean} end whether the end is left out with it @returns {string} */
+const noStart = (end) => /* en */ `The first leg's departure isn't written as a date with a time (YYYY-MM-DDTHH:MM), so the booking has no start${end ? ' or end' : ''} now: when you know when it leaves${end ? ' and arrives' : ''}, write start${end ? ' and end' : ''} as ${WHEN}.`;
+/* en */ const NO_LEGS_TIMES = `The legs' times are kept as written and set no start or end for this booking (only a flight, train, ferry, bus or coach takes them from its legs): write start and end as ${WHEN}.`;
 const AT = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(Z|([+-])(\d{2}):(\d{2}))?$/;
 
 /**
@@ -199,6 +201,16 @@ export function written(v) {
   const real = m && Number.isFinite(day) && new Date(day).toISOString().startsWith(m[1]) && +m[2] < 24 && +m[3] < 60 && +(m[4] ?? 0) < 60;
   return m && real ? { at, m } : null;
 }
+/** Whether a leg's departure or arrival, as given (text, or an object with its `at` or `time`), is a date with a time (`written`). @param {unknown} v */
+const timed = (v) => {
+  const o = record(v);
+  return Boolean(written(o ? o.at ?? o.time : v));
+};
+/** Whether a leg gives a departure or an arrival that is a date with a time. @param {unknown} leg */
+const timedLeg = (leg) => {
+  const o = record(leg);
+  return o != null && [o.departure, o.depart, o.arrival, o.arrive].some(timed);
+};
 
 /**
  * A time written under another name, or a start or end written as { at, tz }, as the format's { at, tz }: a string, or { at } (or { time })
@@ -333,8 +345,9 @@ export function unalias(own, { zones = [], schema, kind, append = false, notes =
   }
   const fk = keys.find((k) => base(k) === 'flights');
   const legs = fk ? (Array.isArray(own[fk]) ? own[fk] : fk.endsWith('+') ? [own[fk]] : []) : [];
-  // Only what carries the traveller (far) has its times from its legs: a stay's or an other booking's start and end are its own, so legs given
-  // to one are kept as written (fields.flights) and move nothing.
+  // Only what carries the traveller (far) has its times from its legs: any other booking's are its own, so legs given to one are kept as
+  // written and move nothing; a leg with a time says so (NO_LEGS_TIMES).
+  if (fk && legs.length && !far && legs.some(timedLeg)) notes.push(NO_LEGS_TIMES);
   if (fk && legs.length && far) {
     // A flight leaves with its first leg and arrives with its last, unless this write says when; the legs are kept as written. A leg's tz is
     // where it leaves: the arrival takes only its own, or is refused. A last leg whose arrival is no date with a time (`written`: none, an
@@ -342,18 +355,20 @@ export function unalias(own, { zones = [], schema, kind, append = false, notes =
     // removed, and the result says so (notes).
     const [first, last, n] = [record(legs[0]), record(legs[legs.length - 1]), legs.length - 1];
     if (out.start == null && fk === 'flights' && first) put(fk, 'start', timeOf('flights[0].departure', first.departure ?? first.depart, first.tz ?? beside, zones, 'start', true));
-    // A whole write whose first leg is text gives no departure, so no start (as on main); an end with no start is on no day of the Plan, so
-    // none is read from the last leg either, and the result says so when that leg gave an arrival. A patch keeps the start it has stored.
-    const noStart = !append && !first && out.start == null;
+    // A whole write whose first leg is text gives no start (as on main), and the result says so whatever else the write gives. An end with
+    // no start is on no day of the Plan, so none is read from the last leg (the note says so); her own end is kept. A patch keeps its start.
+    const noFirst = !append && !first && out.start == null;
+    const arrival = last?.arrival ?? last?.arrive;
+    if (noFirst) notes.push(noStart(out.end == null && timed(arrival)));
     if (out.end == null) {
-      const arrival = last?.arrival ?? last?.arrive;
-      const o = record(arrival);
-      if (!written(o ? o.at ?? o.time : arrival)) {
+      if (!timed(arrival)) {
         if (append) out.end = null;
         notes.push(NO_END);
-      } else if (noStart) notes.push(NO_START);
-      else put(fk, 'end', timeOf(`${fk}[${n}].arrival`, arrival, undefined, zones, 'end', true));
+      } else if (!noFirst) put(fk, 'end', timeOf(`${fk}[${n}].arrival`, arrival, undefined, zones, 'end', true));
     }
+    // unsure's departure and arrival (depart, arrive) name the start and the end the legs gave, as the aliases do.
+    if (out.start != null) named.departure ??= named.depart ??= 'start';
+    if (out.end != null) named.arrival ??= named.arrive ??= 'end';
   }
   for (const k of ['location', 'address']) if (keys.includes(k) && there(own[k])) note(k, own[k], k === 'address' ? 'address' : 'name');
   // In a patch a null address is the place's address null, and a null location is no place.
