@@ -1,8 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { download, installOfficial, ensureProvided, DOWNLOADS_AT_ONCE } from '../../src/core/llm/official.js';
+import http from 'node:http';
+import { download, installOfficial, ensureProvided, officialPlugins, DOWNLOADS_AT_ONCE, QUIET_MS } from '../../src/core/llm/official.js';
 import { messageOf } from '../../src/ui/dom.js';
 import { sha256Hex } from '../../src/core/hash.js';
+import { setWords } from '../../src/core/l10n.js';
+import { hostKit } from './package-kit.js';
+import { site } from './provider-kit.js';
+import { dead, watch, turns } from './dead-kit.js';
 
 const bytes = (/** @type {string} */ s) => new TextEncoder().encode(s);
 /** A catalog entry of n files f0.js…, with one hash wrong when bad is given. @param {number} n @param {number} [bad] */
@@ -68,4 +73,123 @@ test("a plugin that starts and gives no type of the kind asked for: the screen s
   const fetch = async () => new Response(JSON.stringify(catalog));
   await assert.rejects(ensureProvided(host, 'storage-type', 'void', { fetch }), (/** @type {any} */ e) => messageOf(e) === "The plugin didn't provide a kind of backup place void.");
   await assert.rejects(ensureProvided(host, 'endpoint-type', 'void', { fetch }), (/** @type {any} */ e) => messageOf(e) === "The plugin didn't provide an endpoint type void.");
+});
+
+/**
+ * annai's site on this machine, each request answered by answer(path, res): one that writes nothing leaves the request waiting, as a
+ * connection gone dead does. asked: the paths requested. fetch: Node's own, counting in seen the body bytes it has passed on.
+ * @param {(path: string, res: import('node:http').ServerResponse) => void} answer
+ */
+async function siteOn(answer) {
+  /** @type {string[]} */
+  const asked = [];
+  const server = http.createServer((req, res) => {
+    asked.push(req.url ?? '');
+    answer(req.url ?? '', res);
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve(undefined)));
+  const s = {
+    base: `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (server.address()).port}`,
+    asked,
+    seen: 0,
+    /** @param {string} url @param {RequestInit} [init] */
+    fetch: async (url, init) => {
+      const res = await fetch(url, init);
+      const body = res.body?.pipeThrough(new TransformStream({ transform: (part, out) => { out.enqueue(part); s.seen += part.length; } }));
+      return new Response(body, res);
+    },
+    close: () => {
+      server.closeAllConnections();
+      server.close();
+    },
+  };
+  return s;
+}
+
+test("a dead connection ends after QUIET_MS of nothing, with the words annai shows for a download that failed: a request that never answers, and one that sends its headers and 1 KB and then nothing; the catalog's and a plugin's file (dl-limit-next: they waited until annai was restarted)", async (t) => {
+  /** @type {'never' | 'headers'} */
+  let how = 'never';
+  const s = await siteOn((_path, res) => {
+    if (how === 'never') return;
+    res.writeHead(200);
+    res.write(' '.repeat(1024));
+  });
+  t.after(s.close);
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const entry = await entryOf(1);
+  for (const [shape, what, path, words] of /** @type {const} */ ([
+    ['never', 'catalog', '/catalog/plugins.json', "annai's list of plugins couldn't be loaded. Check the connection and try again."],
+    ['headers', 'catalog', '/catalog/plugins.json', "annai's list of plugins couldn't be loaded. Check the connection and try again."],
+    ['never', 'file', '/plugins-official/many/f0.js', "The plugin couldn't be downloaded. Check the connection and try again."],
+    ['headers', 'file', '/plugins-official/many/f0.js', "The plugin couldn't be downloaded. Check the connection and try again."],
+  ])) {
+    how = shape;
+    s.asked.length = 0;
+    s.seen = 0;
+    const w = watch(/** @type {Promise<unknown>} */ (what === 'catalog' ? officialPlugins({ fetch: s.fetch, base: s.base }) : download(entry, { fetch: s.fetch, base: s.base })));
+    // Asked; with headers, its first 1 KB read too, so the limit runs from the last thing that came.
+    await turns(() => s.asked.includes(path) && (shape === 'never' || s.seen >= 1024));
+    assert.ok(s.asked.includes(path) && (shape === 'never' || s.seen >= 1024), `${what} ${shape}: the request was made`);
+    t.mock.timers.tick(QUIET_MS - 1);
+    await turns(() => w.state !== 'pending', 50);
+    assert.equal(w.state, 'pending', `${what} ${shape}: still waiting just short of the limit`);
+    t.mock.timers.tick(1);
+    await turns(() => w.state !== 'pending');
+    assert.equal(w.state, 'failed', `${what} ${shape}: ended at the limit`);
+    assert.equal(messageOf(w.error), words, `${what} ${shape}`);
+  }
+});
+
+test("a file that keeps coming, however slowly, is never cut: the limit is on silence, not on the whole request (PDF pages's largest file kept arriving for 52 to 74 s on slow connections)", async (t) => {
+  const parts = ['export const parts = [', "'one', 'two',", " 'three'];"];
+  const entry = /** @type {any} */ ({ id: 'slow', name: 'Slow', version: '0.1.0', files: { 'big.js': await sha256Hex(bytes(parts.join(''))) } });
+  /** @type {import('node:http').ServerResponse | undefined} */
+  let reply;
+  const s = await siteOn((_path, res) => {
+    res.writeHead(200);
+    res.flushHeaders();
+    reply = res;
+  });
+  t.after(s.close);
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const w = watch(download(entry, { fetch: s.fetch, base: s.base }));
+  await turns(() => reply !== undefined);
+  let sent = 0;
+  for (const part of parts) {
+    t.mock.timers.tick(QUIET_MS - 1);
+    /** @type {import('node:http').ServerResponse} */ (reply).write(part);
+    sent += Buffer.byteLength(part);
+    await turns(() => s.seen >= sent);
+    assert.equal(w.state, 'pending', `after ${sent} bytes`);
+  }
+  /** @type {import('node:http').ServerResponse} */ (reply).end();
+  await turns(() => w.state !== 'pending');
+  assert.equal(w.state, 'done', 'three times QUIET_MS - 1 in all, never QUIET_MS with nothing');
+  assert.equal(new TextDecoder().decode(w.value?.get('big.js')), parts.join(''));
+});
+
+test("an install whose words' request goes dead still installs and starts, in English, once the limit ends that request: the words never hold the install line", async (t) => {
+  setWords('ja', {});
+  t.after(() => setWords('en', null));
+  const ID = 'tide-tables';
+  const k = await hostKit();
+  const s = await site(
+    { [ID]: { 'annai-plugin.json': JSON.stringify({ id: ID, name: 'Tide tables', version: '1.0.0', api: 2, entry: 'index.js', description: 'Tide tables for the coast.' }), 'index.js': 'export function activate() {}' } },
+    { ja: { [ID]: { manifest: { description: '海岸の潮汐表。' }, messages: {} } } },
+  );
+  const words = `/catalog/l10n/ja/${ID}.json`;
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const get = (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+    if (url !== words) return s.fetch(url);
+    s.asked.push(url);
+    return dead(init, 'never');
+  };
+  const w = watch(installOfficial(k.host, s.entries[0], { fetch: get }));
+  await turns(() => s.asked.includes(words));
+  assert.ok(s.asked.includes(words), 'its words were asked for');
+  t.mock.timers.tick(QUIET_MS);
+  await turns(() => w.state !== 'pending');
+  assert.equal(w.state, 'done', String(w.error?.message ?? 'still waiting'));
+  assert.ok(k.host.active.has(ID), 'it started');
+  assert.equal(k.host.shownOf(ID).description, 'Tide tables for the coast.', 'in English: its Japanese can come with the next check');
 });

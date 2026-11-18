@@ -6,6 +6,8 @@ import { createLlm } from '../../src/core/llm/service.js';
 import { addProvider } from '../../src/core/llm/providers.js';
 import { hostKit } from './package-kit.js';
 import { ROUTER_SRC } from './provider-kit.js';
+import { QUIET_MS } from '../../src/core/llm/official.js';
+import { dead, watch, turns } from './dead-kit.js';
 
 // The emulator pass (m9 #20): a restore brought the providers back with the settings, but not the plugins they
 // need, and the providers' pages led to a dead end (shot 310).
@@ -81,6 +83,27 @@ test('a restore offline says the providers whose plugins are missing, and a seco
   const second = await llm.restorePlugins();
   assert.deepEqual(second.failed, []);
   assert.ok(second.installed.length >= 4);
+});
+
+test("a restore on a connection that goes dead for one provider's plugin: its last step ends after QUIET_MS, that provider named with a failed download's words, and the next provider's plugins installed (dl-limit-next)", async (t) => {
+  const { b } = await restored();
+  /** @type {string[]} */
+  const held = [];
+  const get = (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+    if (!url.startsWith('/plugins-official/provider-openrouter/')) return fromRepo(url);
+    held.push(url);
+    return dead(init, 'never');
+  };
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const restoring = watch(createLlm({ store: b.store, ws: b.ws, plugins: b.host, fetch: get }).restorePlugins());
+  await turns(() => held.length > 0);
+  assert.ok(held.length > 0, "OpenRouter's plugin was asked for");
+  t.mock.timers.tick(QUIET_MS);
+  await turns(() => restoring.state !== 'pending');
+  assert.equal(restoring.state, 'done', String(restoring.error?.message ?? 'still waiting'));
+  assert.deepEqual(restoring.value?.failed, ["OpenRouter: The plugin couldn't be downloaded. Check the connection and try again."]);
+  assert.ok(restoring.value?.installed.includes('Google Gemini'), restoring.value?.installed.join());
+  assert.ok(!Object.keys(await b.host.installed()).includes('provider-openrouter'));
 });
 
 // Review R1: a restored record names the plugin it comes from, and a crafted archive may name any catalog plugin.

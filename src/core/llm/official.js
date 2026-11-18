@@ -16,6 +16,47 @@ import { sentences } from '../intl.js';
 
 const defaultFetch = (/** @type {string} */ url, /** @type {RequestInit | undefined} */ init) => fetch(url, init);
 
+/**
+ * How long a request to annai's site below may go with nothing coming: to its answer, then between parts of its body. A fetch has no
+ * limit of its own: on a connection that goes dead (open, sending nothing) an install, and the line behind it, waited until annai was
+ * restarted. The number: on the slowest connection measured (50 kbps with 3 s round trips, Chromium's throttling against annai.guide,
+ * 2026-11-17), the slowest request of the largest provider install took 5.8 s whole, so no silence in it was longer; 20 s leaves room
+ * on top for what the throttling leaves out: a cold connection's handshakes (about three more round trips) and a radio stall of some
+ * seconds (a tunnel, a handover). A limit on silence, not on the whole request: PDF pages's largest file (cmaps.pack) kept arriving for
+ * 52 s at 400 kbps and 74 s at 280 kbps (measured the same way), and a whole-request limit that long would hold a dead connection as long.
+ */
+export const QUIET_MS = 20_000;
+
+/**
+ * Asks annai's site for a file and reads it whole, ending by the request's own signal once nothing has come for QUIET_MS: it then throws
+ * as a request that couldn't reach the site does. cache: no-cache, as the catalog and its files change under the same address.
+ * @param {NonNullable<FetchOptions['fetch']>} get @param {string} url
+ * @returns {Promise<{ status: number, bytes: Uint8Array | null }>} bytes: null for an answer that isn't ok, whose body isn't read
+ */
+async function fetchWhole(get, url) {
+  const stop = new AbortController();
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let timer;
+  const quiet = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => stop.abort(), QUIET_MS);
+  };
+  quiet();
+  try {
+    const res = await get(url, { cache: 'no-cache', signal: stop.signal });
+    if (!res.ok) return { status: res.status, bytes: null };
+    quiet();
+    // Each part of the body that comes starts the silence again; an abort ends the read as it ends the request (Chromium and WebKit, probed 2026-11-17).
+    const body = res.body?.pipeThrough(new TransformStream({ transform: (part, out) => { quiet(); out.enqueue(part); } }));
+    return { status: res.status, bytes: new Uint8Array(await new Response(body).arrayBuffer()) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** A JSON file's bytes, read as Response.json() reads them. @param {Uint8Array} bytes */
+const jsonOf = (bytes) => JSON.parse(new TextDecoder().decode(bytes));
+
 /** A catalog entry that makes a model provider: it has abilities. A restore and the provider page install only these. @param {any} entry */
 export const makesProvider = (entry) => Array.isArray(entry?.abilities) && entry.abilities.length > 0;
 
@@ -25,16 +66,18 @@ export const makesProvider = (entry) => Array.isArray(entry?.abilities) && entry
  * @param {FetchOptions & { words?: boolean }} [opts] @returns {Promise<CatalogPlugin[]>}
  */
 export async function officialPlugins({ fetch: get = defaultFetch, base = '', words = true } = {}) {
-  /** @type {Response} */
+  // What the catalog's plugins are named on the screens, read beside it while it isn't (no extra wait in English).
+  const naming = names || !words ? null : catalogWords({ fetch: get, base }).then((w) => { names = w; });
+  /** @type {Awaited<ReturnType<typeof fetchWhole>>} */
   let res;
   try {
-    res = await get(`${base}/catalog/plugins.json`, { cache: 'no-cache' });
+    res = await fetchWhole(get, `${base}/catalog/plugins.json`);
   } catch {
     throw new PluginError('catalog', /* en */ "annai's list of plugins couldn't be loaded. Check the connection and try again.", { shown: t`annai's list of plugins couldn't be loaded. Check the connection and try again.` });
   }
-  if (!res.ok) throw new PluginError('catalog', /* en */ `annai's list of plugins couldn't be loaded (HTTP ${res.status}). Try again later.`, { shown: t`annai's list of plugins couldn't be loaded (HTTP ${res.status}). Try again later.` });
-  // What the catalog's plugins are named on the screens, read beside it while it isn't (no extra wait in English).
-  const [json] = await Promise.all([res.json(), names || !words ? null : catalogWords({ fetch: get, base }).then((w) => { names = w; })]);
+  if (!res.bytes) throw new PluginError('catalog', /* en */ `annai's list of plugins couldn't be loaded (HTTP ${res.status}). Try again later.`, { shown: t`annai's list of plugins couldn't be loaded (HTTP ${res.status}). Try again later.` });
+  await naming;
+  const json = jsonOf(res.bytes);
   return Array.isArray(json?.plugins) ? json.plugins : [];
 }
 
@@ -64,8 +107,8 @@ export async function pluginName(plugins, state, id, name) {
  */
 async function catalogIn(tag, { fetch: get = defaultFetch, base = '' } = {}) {
   try {
-    const res = await get(`${base}/catalog/l10n/${tag}.json`, { cache: 'no-cache' });
-    const json = res.ok ? await res.json() : null;
+    const { bytes } = await fetchWhole(get, `${base}/catalog/l10n/${tag}.json`);
+    const json = bytes ? jsonOf(bytes) : null;
     return json && typeof json === 'object' ? json : null;
   } catch {
     return null;
@@ -106,8 +149,7 @@ export async function fetchTranslations(host, { fetch: get = defaultFetch, base 
         for (const [x, json] of lists) {
           const want = json?.translations?.[id];
           if (typeof want !== 'string' || kept[x] === want || (kept[x] && skip.includes(id))) continue;
-          const res = await get(/* en */ `${base}/catalog/l10n/${x}/${encodeURIComponent(id)}.json`, { cache: 'no-cache' });
-          const bytes = res.ok ? new Uint8Array(await res.arrayBuffer()) : null;
+          const { bytes } = await fetchWhole(get, /* en */ `${base}/catalog/l10n/${x}/${encodeURIComponent(id)}.json`);
           if (bytes && (await sha256Hex(bytes)) === want) changes.set(x, bytes);
         }
         if (changes.size) await host.keepTranslations(id, changes);
@@ -148,15 +190,15 @@ export async function download(entry, { fetch: get = defaultFetch, base = '' } =
   /** @param {string} name */
   const one = async (name) => {
     const url = /* en */ `${base}/plugins-official/${encodeURIComponent(entry.id)}/${name.split('/').map(encodeURIComponent).join('/')}`;
-    /** @type {Response} */
+    /** @type {Awaited<ReturnType<typeof fetchWhole>>} */
     let res;
     try {
-      res = await get(url, { cache: 'no-cache' });
+      res = await fetchWhole(get, url);
     } catch {
       throw new PluginError(entry.id, /* en */ "couldn't be downloaded. Check the connection and try again.", { shown: t`The plugin couldn't be downloaded. Check the connection and try again.` });
     }
-    if (!res.ok) throw new PluginError(entry.id, /* en */ `couldn't be downloaded (${name}: HTTP ${res.status}). Try again later.`, { shown: t`The plugin couldn't be downloaded (${name}: HTTP ${res.status}). Try again later.` });
-    const bytes = new Uint8Array(await res.arrayBuffer());
+    const { bytes } = res;
+    if (!bytes) throw new PluginError(entry.id, /* en */ `couldn't be downloaded (${name}: HTTP ${res.status}). Try again later.`, { shown: t`The plugin couldn't be downloaded (${name}: HTTP ${res.status}). Try again later.` });
     if ((await sha256Hex(bytes)) !== entry.files[name]) throw new PluginError(entry.id, /* en */ `wasn't installed: ${name} doesn't match annai's catalog`, { shown: t`The plugin wasn't installed: ${name} doesn't match annai's catalog.` });
     got.set(name, bytes);
   };
