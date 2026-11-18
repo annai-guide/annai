@@ -94,7 +94,7 @@ New:
   in one call. Times to `start`/`end`; `name` to `title`; `location`/`address` and a pick-up's location to one `place`; a total with an
   amount and currency to `cost` (a comma only as a thousands group; anything else to `fields.total` as written); flights[] legs to
   `start`/`end` (first departure, last arrival) and kept as `fields.flights` (a lone value that isn't a list is one leg under `flights+` only:
-  under `flights` it is no leg and gives no times, in a whole write or in a patch, as on main; the open Deferred entry "A single flight given
+  under `flights` it is no leg and gives no times, in a whole write or in a patch, as on main, and a blank `flights+` value is none, so a stored end stays; the open Deferred entry "A single flight given
   as `flights` (not a list) in a whole write gives no times and says nothing" holds what two rounds of booking-rest-next learned of its fix);
   common detail names the user's model wrote (notes, room, phone, guests, passengers, airline, company, seat, flight) to `fields.<name>`; a car's drop-off place to `fields.dropoff`, an
   arrival's to `fields.to` (where it arrives; booking-next: it was `fields.arrival`, which reads like its time). A key the booking schema in force lists is never renamed (a plugin's registered fields stay theirs).
@@ -135,8 +135,9 @@ New:
   `unsure`'s names for a time are read where the marks are read, by the record (`checkOf`, booking-rest-next): every name `unalias` reads for
   a time (`departure` or `depart`, `arrival` or `arrive`, `checkin`, `checkout`, `pickup`, `return` and their spellings), for every kind but a
   restaurant or an event, marks the part it stands for (`fieldOf`: leaving is the start and arriving the end, a stay's arrival its check-in
-  and its departure its check-out; a flight's `checkin` is its start) when the booking has that part of its own (a detail named `start` is
-  not it) and no detail of that name (a blank one is none), however the time was written and whoever stored the booking, so the Departs or
+  and its departure its check-out; a flight's `checkin` is its start) where the booking has that part (its own, or a detail named like it,
+  which the details draw as the part's line when the part draws nothing: a flight with `fields.start` draws "Departs: <the detail>") and no
+  detail of the name's own (a blank one is none), however the time was written and whoever stored the booking, so the Departs or
   Arrives line and the others carry the check. Nothing is stored for it (the stored names are as written, and the write's own alias still
   renames a name beside it, as before); never `dropoff` and its spellings, which are a place too. A restaurant's and an event's names are
   read as written: one for a time marks nothing unless a detail has that name (the open Deferred entry "A restaurant or an event written with

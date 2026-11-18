@@ -8,7 +8,7 @@
 // before merge). booking-rest-next, one of the two Deferred entries after it: unsure's names for a time (departure and arrival, a stay's
 // check-in and check-out, a car's pick-up and return) mark the part they stand for, read by the record where the marks are read (checkOf),
 // however the time was written and whoever stored the booking. The other, a lone `flights` value, stays as on main (it gives no times; its
-// fix needs the stored leg in the writer), pinned as it is. Each shape goes through the
+// fix needs the stored leg in the writer), pinned as it is, but for a blank `flights+` value, which is none (a stored end stays). Each shape goes through the
 // files plugin's write and patch tools, then what the details draw
 // (bookingFacts), what the Plan draws (planRows), what the check marks (checkOf, checkCount) and what Shiori is told (checkWords, the tool's result).
 import { test } from 'node:test';
@@ -642,11 +642,13 @@ test("unsure's departure and arrival are read by what the record has: no such ti
   // A detail given later takes the name: the mark moves to it (the name follows the record).
   await patch('h.json', { fields: { arrival: 'Terminal 2' } });
   assert.deepEqual([checkOf(await read('h.json')).fields, checked(await read('h.json'))], [['arrival', 'start'], ['Departs', 'Arrival']]);
-  // A name for a time marks the booking's own part only: a detail named `start` or `end` is a detail, not the time the name stands for (a
-  // departure with no start of its own marks nothing), and is marked by its own name.
+  // A name for a time marks the part it stands for where the booking has it: its own, or a detail named like it. A flight with no start of
+  // its own and a detail named `start` is drawn "Departs: <the detail>" (format.js draws a same-named detail as the part's line when the part
+  // draws nothing), and her departure is that line's time: the line carries the check, and her words name the departure time.
   await store('m.json', { ...base, kind: 'flight', title: 'AS 1', fields: { start: 'Gate opens 05:00', end: 'Gate shuts 07:30' }, unsure: ['departure', 'arrival'] });
   const m = await read('m.json');
-  assert.deepEqual([checkOf(m).fields, checked(m), checkWords(m), checkCount(m, { fallbackTz: AK })], [[], [], '', 0]);
+  assert.deepEqual(lines(m), ['Departs: Gate opens 05:00 (check)', 'Arrives: Gate shuts 07:30 (check)']);
+  assert.deepEqual([checkOf(m).fields, checked(m), checkWords(m), checkCount(m, { fallbackTz: AK })], [['start', 'end'], ['Departs', 'Arrives'], 'not sure the departure time or the arrival time was read right', 2]);
   agrees(m);
   await store('m.json', { ...m, unsure: ['start', 'end', 'depart'] });
   assert.deepEqual(checkOf(await read('m.json')).fields, ['start', 'end']);
@@ -707,7 +709,7 @@ test("unsure's departure and arrival are read by what the record has: no such ti
   }
 });
 
-test("a lone flights value is no leg, as on main (the Deferred entry): a whole write of an object or of text gives no start and no end and says nothing, a bare object is taken, a top-level tz beside it is refused, and any other kind is told nothing; a patch's lone value is merged into what is stored and moves no time (so a new lone leg keeps the old Departs, Arrives and Plan day), and a lone object patched onto a list of legs replaces them all; a list of legs, and a lone flights+ value in a patch, give the times", async () => {
+test("a lone flights value is no leg, as on main (the Deferred entry): a whole write of an object or of text gives no start and no end and says nothing, a bare object is taken, a top-level tz beside it is refused, and any other kind is told nothing; a patch's lone value is merged into what is stored and moves no time (so a new lone leg keeps the old Departs, Arrives and Plan day), and a lone object patched onto a list of legs replaces them all; a list of legs, and a lone flights+ value in a patch, give the times, and a blank one is none (the stored end stays)", async () => {
   const { write, store, patch, read, ws, trip } = await setup();
   const told = (/** @type {string} */ result) => result.replace(/ \(\d+ bytes\)(?=\.)/, '');
   // A whole write: the object and the text are kept as written and give no times, and the result says only "Wrote" (the details draw the
@@ -752,10 +754,24 @@ test("a lone flights value is no leg, as on main (the Deferred entry): a whole w
   // A top-level tz, or a start past the stored end, beside a lone value: as without it.
   await assert.rejects(patch('s.json', { flights: AS1, tz: LA }), /^Error: "tz" isn't a booking field, so nothing was written\./);
   await assert.rejects(patch('s.json', { flights: AS1, start: at('2026-11-30T09:00:00-08:00', LA) }), /is before start/);
-  // A lone flights+ value in a patch is one leg: it appends and moves the end.
+  // A lone flights+ value in a patch is one leg: it appends and moves the end. A blank one is none (round 1's guard, kept): nothing is read
+  // from it and the stored end stays, said nothing (main read it as a leg with no arrival and removed the end, said).
   await store('s.json', { ...was, fields: {}, end: ARRIVES });
   assert.equal(await patch('s.json', { 'flights+': AS1 }), 'Patched /trip/bookings/s.json.');
   assert.deepEqual([(await read('s.json')).start, (await read('s.json')).end], [AS1_START, AS1_END]);
+  const flight = { ...base, kind: 'flight', title: 'NH 7', start: at('2026-11-20T11:05:00-08:00', LA), end: ARRIVES };
+  for (const leg of ['', {}, '  ']) {
+    await store('q.json', flight);
+    assert.equal(await patch('q.json', { 'flights+': leg }), 'Patched /trip/bookings/q.json.', JSON.stringify(leg));
+    const q = await read('q.json');
+    assert.deepEqual([q.start, q.end], [flight.start, ARRIVES], JSON.stringify(leg));
+    agrees(q);
+    // Beside a top-level tz (a blank leg is none, so the tz is nobody's: refused as on any booking), or a start past the stored end
+    // (refused, end before start): main took both only because the blank leg cleared the end.
+    await assert.rejects(patch('q.json', { 'flights+': leg, tz: AK }), /^Error: "tz" isn't a booking field, so nothing was written\./, JSON.stringify(leg));
+    await assert.rejects(patch('q.json', { 'flights+': leg, start: at('2026-11-30T09:00:00-08:00', LA) }), /is before start/, JSON.stringify(leg));
+    assert.deepEqual(await read('q.json'), q, 'nothing was stored');
+  }
 });
 
 test("a grid of shapes: for every kind, way of writing the times and unsure list, Shiori's words, the chip and the drawn lines agree with what the check marks, and each departure or arrival she named is marked on the part it stands for (a carrier's Departs or Arrives, a stay's check-in or check-out, a car's or an `other` booking's start or end) where the booking has that time and no detail has that name, and a restaurant's or an event's names are read as written", async () => {
