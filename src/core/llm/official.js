@@ -27,9 +27,11 @@ const defaultFetch = (/** @type {string} */ url, /** @type {RequestInit | undefi
  * 209 s), the longest silence of the site in either 4.4 s. The browser's throttling (Chromium's DevTools) can't show such a wait: it
  * delays each request inside the browser after its bytes came, so nothing queues on the connection.
  * The number: the largest provider install (gemini-api, 8 files) on the same real link at 50 kbps with 3 s round trips took 7.2 s whole,
- * and no request waited more than 3.4 s for anything; 20 s is over four times the longest silence measured, for what a lab link doesn't
- * have: a radio stall of some seconds (a tunnel, a handover). Not a limit on the whole request: PDF pages's largest file (cmaps.pack)
- * kept arriving for 52 s at 400 kbps and 74 s at 280 kbps, and a limit that long would hold a dead connection as long.
+ * and no request waited more than 3.4 s for anything. The forwarder took the browser's TCP handshake itself and no name was looked up,
+ * so a real cold connection's first answer comes about two round trips later than the 4.4 s above (some 8 to 12 s at 2 to 3 s round
+ * trips, estimated, not measured); 20 s is 1.7 to 2.5 times that, with room on top for a radio stall of some seconds (a tunnel, a
+ * handover); parts of a download 20 s or more apart end it, as a dead connection's silence does. Not a limit on the whole request: at
+ * 100 kbps a small file's answer came 134 s after it was asked for, and a limit that long would hold a dead connection as long.
  */
 export const QUIET_MS = 20_000;
 

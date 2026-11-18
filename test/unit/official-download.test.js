@@ -143,7 +143,7 @@ test("a dead connection ends after QUIET_MS of nothing, with the words annai sho
   }
 });
 
-test("a file that keeps coming, however slowly, is never cut: the limit is on silence, not on the whole request (PDF pages's largest file kept arriving for 52 to 74 s on slow connections)", async (t) => {
+test("a file whose parts come less than QUIET_MS apart is never cut, however long it takes in all: the limit is on silence, not on the whole request (on a real link PDF pages took 55 s whole at 400 kbps and 209 s at 100 kbps)", async (t) => {
   const parts = ['export const parts = [', "'one', 'two',", " 'three'];"];
   const entry = /** @type {any} */ ({ id: 'slow', name: 'Slow', version: '0.1.0', files: { 'big.js': await sha256Hex(bytes(parts.join(''))) } });
   /** @type {import('node:http').ServerResponse | undefined} */
@@ -197,7 +197,7 @@ test("an install whose words' request goes dead still installs and starts, in En
   assert.equal(k.host.shownOf(ID).description, 'Tide tables for the coast.', 'in English: its Japanese can come with the next check');
 });
 
-test("an answer that comes QUIET_MS - 1 after its request, and its body QUIET_MS - 1 after that, is never cut: what comes starts the silence again", async (t) => {
+test("an answer that comes QUIET_MS - 1 after its request, and each part of its body QUIET_MS - 1 after the one before, is never cut: what comes starts the silence again", async (t) => {
   const entry = /** @type {any} */ ({ id: 'late', name: 'Late', version: '0.1.0', files: { 'late.js': await sha256Hex(bytes('late')) } });
   /** @type {import('node:http').ServerResponse | undefined} */
   let reply;
@@ -212,8 +212,13 @@ test("an answer that comes QUIET_MS - 1 after its request, and its body QUIET_MS
   /** @type {import('node:http').ServerResponse} */ (reply).writeHead(200).flushHeaders();
   await turns(() => s.answered === 1);
   assert.equal(s.answered, 1, 'its answer came');
+  // Two writes, a tick between them and another before the end: the first part of the body must start the silence again as the answer did.
   t.mock.timers.tick(QUIET_MS - 1);
-  /** @type {import('node:http').ServerResponse} */ (reply).end('late');
+  /** @type {import('node:http').ServerResponse} */ (reply).write('la');
+  await turns(() => s.seen >= 2);
+  assert.equal(s.seen, 2, 'the first part of its body came');
+  t.mock.timers.tick(QUIET_MS - 1);
+  /** @type {import('node:http').ServerResponse} */ (reply).end('te');
   await turns(() => w.state !== 'pending');
   assert.equal(w.state, 'done', String(w.error?.message ?? 'still waiting'));
   assert.equal(new TextDecoder().decode(w.value?.get('late.js')), 'late');
@@ -276,4 +281,49 @@ test("a file whose answer waits behind another file that keeps coming is not a d
   await turns(() => w.state !== 'pending');
   assert.equal(smallAborted, false, 'the queued request was ended though the site kept sending');
   assert.equal(w.state, 'done', messageOf(w.error));
+});
+
+test("the silence is the site's across calls too: a catalog answer held while a file of another call streams is not ended, and ends only once the site has been quiet for QUIET_MS (a silence counted per call would have ended it, with the site busy the whole time)", async (t) => {
+  const parts = ['aaaa', 'bbbb', 'cccc'];
+  const entry = /** @type {any} */ ({ id: 'busy', name: 'Busy', version: '0.1.0', files: { 'big.js': await sha256Hex(bytes(parts.join(''))) } });
+  /** @type {import('node:http').ServerResponse | undefined} */
+  let catalog;
+  /** @type {import('node:http').ServerResponse | undefined} */
+  let file;
+  const s = await siteOn((path, res) => {
+    if (path === '/catalog/plugins.json') {
+      catalog = res;
+      return;
+    }
+    res.writeHead(200);
+    res.flushHeaders();
+    file = res;
+  });
+  t.after(s.close);
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  // The catalog's request is asked first and its answer held; then the file's call starts, a call of its own.
+  const listing = watch(officialPlugins({ fetch: s.fetch, base: s.base, words: false }));
+  await turns(() => catalog !== undefined);
+  const files = watch(download(entry, { fetch: s.fetch, base: s.base }));
+  await turns(() => file !== undefined);
+  let sent = 0;
+  for (const part of parts) {
+    t.mock.timers.tick(QUIET_MS - 1);
+    /** @type {import('node:http').ServerResponse} */ (file).write(part);
+    sent += Buffer.byteLength(part);
+    await turns(() => s.seen >= sent);
+    await turns(() => listing.state !== 'pending', 50);
+    assert.equal(listing.state, 'pending', `the held catalog answer, after ${sent} bytes of the file`);
+  }
+  /** @type {import('node:http').ServerResponse} */ (file).end();
+  await turns(() => files.state !== 'pending');
+  assert.equal(files.state, 'done', 'the file: three times QUIET_MS - 1 in all, never QUIET_MS with nothing');
+  // The site's silence started with the last part: the catalog's request, held on, ends QUIET_MS after it and not before.
+  t.mock.timers.tick(QUIET_MS - 1);
+  await turns(() => listing.state !== 'pending', 50);
+  assert.equal(listing.state, 'pending', 'the held catalog answer, just short of the limit');
+  t.mock.timers.tick(1);
+  await turns(() => listing.state !== 'pending');
+  assert.equal(listing.state, 'failed', 'ended at QUIET_MS of the site being quiet');
+  assert.equal(messageOf(listing.error), "annai's list of plugins couldn't be loaded. Check the connection and try again.");
 });
