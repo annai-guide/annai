@@ -114,8 +114,14 @@ test("checkWords: each key whose own words would mislead has its words, never th
   for (const [key, words] of Object.entries(said)) {
     // title and confirmation are a booking's own fields; the others are keys of `fields`, as Shiori writes them.
     const got = checkWords({ status: 'unverified', kind: 'flight', unsure: [key], title: 'Test Air', confirmation: 'TQ1', fields: { [key]: 'x' } });
-    assert.equal(got, `not sure ${words} was read right`, key);
+    // A plural part is read "were" (small-next, round 2: "not sure the flights was read right" was English a model reads wrongly).
+    assert.equal(got, `not sure ${words} ${['travellers', 'bags', 'notes', 'guests', 'passengers', 'flights'].includes(key) ? 'were' : 'was'} read right`, key);
   }
+  // With several parts the verb agrees with the last one named, as "or" does in English.
+  const two = (/** @type {string[]} */ unsure) => checkWords({ status: 'unverified', kind: 'flight', unsure, fields: { seat: '12A', flights: [{ flight: 'AN 1' }], bags: 2 } });
+  assert.equal(two(['seat', 'flights']), 'not sure the seat or the flights were read right');
+  assert.equal(two(['flights', 'seat']), 'not sure the flights or the seat was read right');
+  assert.equal(two(['flights', 'bags']), 'not sure the flights or the bags were read right');
 });
 
 test("Shiori's words for a booking's parts and the details screen's labels cover the same keys of `fields`: what she asks about has a line by that name (words-next, the old flight's six details)", () => {
@@ -159,11 +165,25 @@ test('checkOf: an old unverified booking reads as if unsure named every part it 
   assert.deepEqual(checkOf(coords), { fields: [] }, 'a name of spaces with only coordinates is no place');
   assert.equal(checkWords(coords), '', 'nothing drawn, nothing told');
   assert.equal(checkCount(coords), 0, "and the Plan's chip counts nothing");
+  // A field named like one of the booking's own parts is that part: when the booking has no such part of its own, the field is it (a real
+  // model wrote fields.place: "Testville" with no place), and when it has, there is still one part, one mark (small-next, round 2).
+  const asField = { kind: 'lodging', status: 'unverified', unsure: ['place', 'title'], fields: { place: 'Testville', title: 'Testville Inn' } };
+  assert.deepEqual(checkOf(asField), { fields: ['place', 'title'] }, 'the field is the part');
+  assert.equal(checkWords(asField), 'not sure the place or the name was read right');
+  // The second opinion's shape (F2 b): fields.place with no place of its own, and unsure names it: marked, and Shiori is told.
+  const hotel = { kind: 'lodging', status: 'unverified', unsure: ['place'], fields: { place: 'Hotel X' } };
+  assert.deepEqual(checkOf(hotel), { fields: ['place'] });
+  assert.equal(checkWords(hotel), 'not sure the place was read right');
+  assert.equal(checkCount(hotel), 1, "and the Plan's chip counts it");
+  assert.deepEqual(checkOf({ ...asField, place: { name: 'Testville' }, title: 'Testville Inn' }), { fields: ['place', 'title'] }, 'once, with the part of its own there too');
+  assert.deepEqual(checkOf({ kind: 'lodging', status: 'unverified', place: { name: 'Testville' }, fields: { place: 'Testville' } }), { fields: ['place'] }, 'an old booking: once');
+  assert.deepEqual(checkOf({ kind: 'lodging', status: 'unverified', unsure: ['place'], fields: { place: ' ' } }), { fields: [] }, 'a blank field is no part');
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: 'AN 1', fields: { seat: '14C', airline: 'Test Air' } }), { fields: ['title', 'seat', 'airline'] });
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: '', start: null, confirmation: undefined }), { fields: [] }, 'an empty own field is no part');
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: 'AN 1', fields: 'not an object' }), { fields: ['title'] }, 'fields that is no object adds none');
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: 'AN 1', fields: ['seat'] }), { fields: ['title'] }, 'nor does a list');
-  assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', fields: { title: 'x' } }), { fields: [] }, "a key of fields named like an own field is not that field: as with unsure, which asks the booking's own");
+  // Reversed in small-next, round 2 (it said a key of fields named like an own field is no part, so a check Shiori asked for was never drawn): the field is that part.
+  assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', fields: { title: 'x' } }), { fields: ['title'] }, 'a key of fields named like an own field is that field when the booking has none of its own');
   assert.deepEqual(checkOf(JSON.parse('{"kind":"other","status":"unverified","fields":{"__proto__":1,"constructor":2}}')), { fields: ['__proto__', 'constructor'] }, 'a key is a part as written; its words are the other-detail phrase (checkWords)');
   assert.equal(checkWords(JSON.parse('{"kind":"other","status":"unverified","fields":{"__proto__":1,"constructor":2}}')), 'not sure some other detail was read right');
   // Nothing marked: an old confirmed booking, a bare one (nothing to check), an empty unsure.

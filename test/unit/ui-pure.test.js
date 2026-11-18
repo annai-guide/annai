@@ -281,7 +281,7 @@ test('bookingFacts: a flight whose from and to are not words keeps them as field
   assert.deepEqual(f.map((x) => x.key), ['seat', 'from', 'to']);
   assert.match(f[1].value, /SEA.*Seattle/);
   // One in words goes in the route; the other stays a field.
-  assert.deepEqual(bookingFacts({ kind: 'flight', unsure: [], fields: { from: 'Seattle (SEA)', to: { code: 'ANC' } } }).map((x) => [x.key, x.value]), [['route', 'Seattle (SEA)'], ['to', '{"code":"ANC"}']]);
+  assert.deepEqual(bookingFacts({ kind: 'flight', unsure: [], fields: { from: 'Seattle (SEA)', to: { code: 'ANC' } } }).map((x) => [x.key, x.value]), [['route', 'Seattle (SEA)'], ['to', 'ANC']]);
 });
 
 test("bookingFacts: an old unverified booking (no unsure key) has a check on every detail it draws, as a new one has on its unsure ones; an old confirmed one, unsure: [] and a blank value have none (booking-say's round 4)", () => {
@@ -356,6 +356,94 @@ test("bookingFacts: a list is there when one of its items is, and draws only tho
   }
   // A name that is a copy of the address (annai names a place from its address) is said once.
   assert.deepEqual(drawn(stay({ name: '1 Test Street', address: '1 Test Street' })), [['place', '1 Test Street', true]]);
+});
+
+// How a flight's legs are stored (unalias: booking-aliases.test.js, "a flight's legs"): a list of objects in fields.flights, kept as written.
+const TOKYO = 'Asia/Tokyo';
+const legs = [
+  { flight: 'AN 1', origin: 'HND', destination: 'ITM', departure: '2026-11-20T07:30', arrival: '2026-11-20T09:10', tz: TOKYO },
+  { flight: 'AN 2', origin: 'ITM', destination: 'NRT', departure: '2026-11-20T11:30', arrival: { at: '2026-11-20T13:05', tz: TOKYO } },
+];
+const twoLegs = {
+  kind: 'flight', status: 'unverified', unsure: ['flights'], fields: { flights: legs },
+  start: { at: '2026-11-20T07:30:00+09:00', tz: TOKYO }, end: { at: '2026-11-20T13:05:00+09:00', tz: TOKYO },
+};
+
+test("bookingFacts: each leg of a flight's fields.flights is one line of words, its times as the booking's own are drawn, never JSON; one check for the field (small-next, round 2)", () => {
+  const f = bookingFacts(twoLegs);
+  const [start, end] = [f.find((x) => x.key === 'start')?.value, f.find((x) => x.key === 'end')?.value];
+  const flights = f.find((x) => x.key === 'flights');
+  assert.equal(start, 'Fri, Nov 20, 7:30 AM (Japan Time)');
+  assert.equal(flights?.label, 'Flights');
+  // The first leg leaves when the booking does and the last arrives when it does: the same words from the same formatter.
+  assert.deepEqual(flights?.value.split('\n'), [
+    `AN 1 · HND → ITM · ${start} – Fri, Nov 20, 9:10 AM (Japan Time)`,
+    `AN 2 · ITM → NRT · Fri, Nov 20, 11:30 AM (Japan Time) – ${end}`,
+  ]);
+  assert.equal(flights?.value.includes('{'), false, 'no JSON');
+  assert.deepEqual(f.filter((x) => x.unsure).map((x) => x.key), ['flights']);
+  assert.equal(checkCount(twoLegs), 1);
+  // A leg's own tz is its zone; with none, the booking's (its departure in the start's zone, its arrival in the end's), else the trip's.
+  const odd = { kind: 'flight', unsure: [], start: { at: '2026-11-20T08:00:00-08:00', tz: 'America/Los_Angeles' }, end: { at: '2026-11-21T14:05:00+09:00', tz: TOKYO },
+    fields: { flights: [{ flight: 'AN 9', departure: '2026-11-20T08:00', arrival: '2026-11-21T14:05' }] } };
+  assert.equal(bookingFacts(odd).find((x) => x.key === 'flights')?.value, 'AN 9 · Fri, Nov 20, 8:00 AM (PT) – Sat, Nov 21, 2:05 PM (Japan Time)');
+  assert.equal(bookingFacts({ ...odd, start: undefined, end: undefined }, { fallbackTz: TOKYO }).find((x) => x.key === 'flights')?.value, 'AN 9 · Fri, Nov 20, 8:00 AM (Japan Time) – Sat, Nov 21, 2:05 PM (Japan Time)');
+  // A time with no zone anywhere is drawn as written, never lost.
+  assert.equal(bookingFacts({ kind: 'flight', unsure: [], fields: { flights: [{ flight: 'AN 9', departure: '2026-11-20T08:00' }] } })[0].value, 'AN 9 · 2026-11-20T08:00');
+});
+
+test("bookingFacts: a leg draws only what is there: no null, no blank; a key annai has no word for draws its value plainly; a list of other objects is one line each (small-next, round 2)", () => {
+  const drawn = (/** @type {any} */ fields) => bookingFacts({ kind: 'flight', status: 'unverified', fields }).map((x) => [x.key, x.value, x.unsure]);
+  // A null gate and a blank seat: no "null", no empty part.
+  assert.deepEqual(drawn({ flights: [{ flight: 'AN 1', gate: null, seat: '  ', from: 'Tokyo' }] }), [['flights', 'AN 1 · Tokyo', true]]);
+  // A key that isn't known: its value, plainly; a leg with only blanks is no line; a list of strings stays a list.
+  assert.deepEqual(drawn({ flights: [{ flight: 'AN 1', meal: 'vegetarian', terminal: 2 }, { gate: null }] }), [['flights', 'AN 1 · vegetarian · 2', true]]);
+  assert.deepEqual(drawn({ travellers: [{ name: 'Sam', age: 30 }, { name: 'Alex' }] }), [['travellers', 'Sam · 30\nAlex', true]]);
+  assert.deepEqual(drawn({ travellers: ['Sam', 'Alex'] }), [['travellers', 'Sam and Alex', true]]);
+  assert.equal(JSON.stringify(drawn({ flights: [{ flight: 'AN 1', gate: null, from: 'Tokyo' }] })).includes('null'), false);
+});
+
+test("bookingFacts: an object that is no leg draws its values that are there, joined as a list's items are, never JSON (small-next, round 2)", () => {
+  const drawn = (/** @type {any} */ fields) => bookingFacts({ kind: 'flight', unsure: [], fields }).map((x) => [x.key, x.value]);
+  assert.deepEqual(drawn({ gate: { name: 'B', open: null } }), [['gate', 'B']]);
+  assert.deepEqual(drawn({ wifi: { network: 'Test Air', code: '1234', note: ' ' } }), [['wifi', 'Test Air and 1234']]);
+  assert.deepEqual(drawn({ from: { code: 'SEA', city: 'Seattle' }, to: { code: 'ANC' }, seat: '14D' }).map((x) => x[1]), ['14D', 'SEA and Seattle', 'ANC']);
+  // A number or a flag inside is a value too.
+  assert.deepEqual(drawn({ gate: { name: 'B', bags: 2, open: false } }), [['gate', 'B, 2, and false']]);
+});
+
+test("bookingFacts: a field named like one of the booking's own parts is no second line when the part is there, and is the part's line when it is not; what is checked is what is drawn (small-next, round 2)", () => {
+  const at = { at: '2026-11-20T15:00:00-08:00', tz: 'America/Los_Angeles' };
+  const own = { title: 'Hotel X', start: at, end: at, place: { name: 'Hotel X', address: '1 Test Street' }, confirmation: 'TQ1', cost: { amount: 120, currency: 'USD' } };
+  const alsoFields = { title: 'Hotel X', start: 'tomorrow', end: 'later', place: 'Hotel X', confirmation: 'TQ1', cost: 'about 120 dollars' };
+  const both = { kind: 'lodging', status: 'unverified', ...own, fields: { ...alsoFields, room: '204' } };
+  // Every own part there: one line each, and the field of its name draws nothing more.
+  assert.deepEqual(bookingFacts(both).map((x) => x.key), ['place', 'start', 'end', 'room', 'confirmation', 'cost']);
+  assert.equal(bookingFacts(both).filter((x) => x.key === 'place').length, 1);
+  // The chip: one check for each part, so one for the place (and the name's, the heading's).
+  const marksPlace = { kind: 'lodging', status: 'unverified', unsure: ['place'], place: own.place, fields: { place: 'Hotel X' } };
+  assert.deepEqual(bookingFacts(marksPlace).map((x) => [x.key, x.value, x.unsure]), [['place', 'Hotel X, 1 Test Street', true]]);
+  assert.equal(checkCount(marksPlace), 1);
+  assert.deepEqual(checkOf(marksPlace), { fields: ['place'] });
+  // An old booking (no unsure key) marks every part once, whichever way it is written.
+  const old = { kind: 'lodging', status: 'unverified', place: own.place, fields: { place: 'Hotel X' } };
+  assert.equal(checkCount(old), 1);
+  assert.deepEqual(checkOf(old), { fields: ['place'] });
+  // Not there: a real model wrote fields.place with no top-level place. It is the Place line, with its check.
+  const field = { kind: 'lodging', status: 'unverified', unsure: ['place'], fields: { place: 'Testville' } };
+  assert.deepEqual(bookingFacts(field).map((x) => [x.key, x.label, x.value, x.unsure]), [['place', 'Place', 'Testville', true]]);
+  assert.deepEqual(checkOf(field), { fields: ['place'] });
+  assert.equal(checkCount(field), 1);
+  // An old one with the field only: the same, once.
+  assert.equal(checkCount({ kind: 'lodging', status: 'unverified', fields: { place: 'Testville' } }), 1);
+  // Not named in unsure: drawn as the Place line, no check.
+  assert.deepEqual(bookingFacts({ ...field, unsure: [] }).map((x) => [x.key, x.label, x.value, x.unsure]), [['place', 'Place', 'Testville', false]]);
+  // The other parts the same way: the field is the part's line (its time through the booking's formatter), in the part's place in the order.
+  const bare = { kind: 'lodging', unsure: ['start', 'confirmation', 'cost'], fields: { start: '2026-11-20T15:00', confirmation: 'TQ9', cost: 'about 120 dollars' } };
+  assert.deepEqual(bookingFacts(bare, { fallbackTz: 'America/Los_Angeles' }).map((x) => [x.key, x.label, x.value, x.unsure]), [
+    ['start', 'Check-in', 'Fri, Nov 20, 3:00 PM (PT)', true], ['confirmation', 'Confirmation', 'TQ9', true], ['cost', 'Cost', 'about 120 dollars', true]]);
+  // A time that can't be read is drawn as written, not lost.
+  assert.deepEqual(bookingFacts({ kind: 'lodging', unsure: [], fields: { start: 'tomorrow' } }).map((x) => [x.key, x.value]), [['start', 'tomorrow']]);
 });
 
 test("bookingFacts: a flight's place has a line, as a stay's has: an old flight's place, which Shiori asks about, is on screen and counted (words-next)", () => {
@@ -435,7 +523,7 @@ test("bookingFacts: other kinds, odd shapes, and a zone annai doesn't know", () 
   assert.deepEqual(bookingFacts(car), []);
   // With the trip's zone to fall back on, the time shows in it.
   assert.match(bookingFacts(car, { fallbackTz: 'America/Los_Angeles' })[0].value, /8:00\sAM \(PT\)/);
-  assert.deepEqual(bookingFacts({ kind: 'event', confirmation: 'TESTQ1', fields: { notes: 'Gate opens at 9', extra: { a: 1 } } }).map((x) => [x.key, x.value]), [['confirmation', 'TESTQ1'], ['notes', 'Gate opens at 9'], ['extra', '{"a":1}']]);
+  assert.deepEqual(bookingFacts({ kind: 'event', confirmation: 'TESTQ1', fields: { notes: 'Gate opens at 9', extra: { a: 1 } } }).map((x) => [x.key, x.value]), [['confirmation', 'TESTQ1'], ['notes', 'Gate opens at 9'], ['extra', '1']]);
   for (const odd of [null, 'text', [], { fields: [1, 2] }]) assert.doesNotThrow(() => bookingFacts(odd));
 });
 

@@ -260,7 +260,7 @@ button.chip.filter[aria-pressed='true'] { background: var(--ai); color: var(--ai
 .file-names { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
 .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 12px; margin: 0; }
 .facts dt { color: var(--ink-2); }
-.facts dd { margin: 0; overflow-wrap: anywhere; }
+.facts dd { margin: 0; overflow-wrap: anywhere; white-space: pre-line; } /* a detail of several lines (a flight's legs, bookingFacts) keeps its line breaks */
 .original { display: flex; flex-direction: column; gap: 8px; }
 .chip.mark-check { min-height: 22px; padding: 0 8px; font-size: 12px; vertical-align: middle; }
 .details .facts { margin-block: 12px; }

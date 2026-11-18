@@ -1,6 +1,6 @@
 import { validZone, dayIn, instantAt } from '../core/time.js';
-import { checkOf, there } from '../core/bookings.js';
-import { BOOKING_FILE, PLAN_FILE } from '../core/plan.js';
+import { checkOf, there, ownPart, TOP } from '../core/bookings.js';
+import { BOOKING_FILE, PLAN_FILE, record } from '../core/plan.js';
 import { isGivenFile } from '../core/paths.js';
 import { TIMINGS } from '../core/backup-auto.js';
 import { holdWords, oldHold } from '../core/backup.js';
@@ -185,15 +185,11 @@ const ORDER = /** @type {Record<string, string[]>} */ ({
 });
 const OTHER = ['start', 'end', 'place', 'confirmation', 'cost'];
 
-/** A field's value in words: a list's items that are there, joined; anything else as text. @param {unknown} v */
-const valueText = (v) => (Array.isArray(v) ? list(v.filter(there).map((x) => (typeof x === 'string' ? x : JSON.stringify(x)))) : typeof v === 'string' ? v : JSON.stringify(v) ?? '');
-
 /**
  * What a booking says, as labelled facts for its details (the bookings-and-trips design, goal 6), in the order a person checks them for
  * its kind: times in their own zone, named (else the trip's, when given), and `unsure` on each field Shiori isn't sure of (checkOf).
- * zone: a time's zone words, within value, which a screen keeps on one line.
  * @param {any} b @param {{ fallbackTz?: string }} [o]
- * @returns {{ key: string, label: string, value: string, lang?: 'en', unsure: boolean, zone?: string }[]}
+ * @returns {{ key: string, label: string, value: string, lang?: 'en', unsure: boolean }[]}
  */
 export function bookingFacts(b, o = {}) {
   if (!b || typeof b !== 'object' || Array.isArray(b)) return [];
@@ -204,24 +200,61 @@ export function bookingFacts(b, o = {}) {
   /** A route's part: text that is there (any other shape of from or to is a detail of its own). */
   const words = (/** @type {unknown} */ x) => typeof x === 'string' && there(x);
   const labelOf = (/** @type {string} */ k) => KIND_FIELD_WORDS[b.kind]?.[k] ?? FIELD_WORDS[k];
-  /** @param {any} time */
-  const at = (time) => {
-    const tz = validZone(time?.tz) ? time.tz : o.fallbackTz;
-    const ms = tz ? instantAt(time?.at, tz) : NaN;
+  /**
+   * A time in words, as every time here is drawn: a { at, tz } or the text of a time, in its own zone, else the first of `alt` that is one,
+   * else the trip's; null when it can't be read. @param {unknown} time @param {...unknown} alt
+   */
+  const at = (time, ...alt) => {
+    const r = record(time) ?? { at: time };
+    const tz = [r.tz, ...alt].find(validZone) ?? o.fallbackTz;
+    const ms = tz ? instantAt(r.at ?? r.time, tz) : NaN;
     if (!Number.isFinite(ms) || !tz) return null;
-    return { value: t`${when(ms, tz, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} (${zone(ms, tz)})`, zone: zone(ms, tz) };
+    return { value: t`${when(ms, tz, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} (${zone(ms, tz)})` };
   };
+  /**
+   * One object of a list as one line of the values it has: a flight leg is its number, its route (origin → destination) and its times
+   * (departure – arrival, each in the leg's own zone, else the booking's start's or end's, else the trip's); any other value follows,
+   * plainly, as written; nothing that is null or blank. @param {Record<string, any>} x
+   */
+  const line = (x) => {
+    const used = new Set(['tz']);
+    const pick = (/** @type {string[]} */ names) => {
+      const k = names.find((n) => there(x[n]));
+      if (k !== undefined) used.add(k);
+      return k === undefined ? undefined : x[k];
+    };
+    const [number, from, to, leaves, arrives] = [pick(['flight']), pick(['origin', 'from']), pick(['destination', 'to']), pick(['departure', 'depart']), pick(['arrival', 'arrive'])];
+    const time = (/** @type {unknown} */ v, /** @type {unknown} */ alt) => (v === undefined ? '' : at(v, x.tz, alt)?.value ?? valueText(v));
+    const rest = Object.entries(x).filter(([k, v]) => !used.has(k) && there(v)).map(([, v]) => valueText(v));
+    return [number === undefined ? '' : valueText(number), [from, to].filter(there).map(valueText).join(' → '), [time(leaves, b.start?.tz), time(arrives, b.end?.tz)].filter(Boolean).join(' – '), ...rest].filter(Boolean).join(' · ');
+  };
+  /**
+   * A field's value in words, as written and never as JSON: the items of a list that are there, joined (each object of a list on a line of
+   * its own, `line`), the values of an object that are there, joined the same way; anything else as text. @param {unknown} v @returns {string}
+   */
+  const valueText = (v) => {
+    if (Array.isArray(v)) {
+      const items = v.filter(there);
+      return items.some(record) ? items.map((x) => (record(x) ? line(record(x) ?? {}) : valueText(x))).join('\n') : list(items.map((x) => valueText(x)));
+    }
+    const r = record(v);
+    if (r) return list(Object.values(r).filter(there).map((x) => valueText(x)));
+    return typeof v === 'string' ? v : JSON.stringify(v) ?? '';
+  };
+  /** What each of the booking's own parts is where the booking has no value of its own for it but a field of its name has: that field is the part (checkOf reads it so). */
+  const asField = Object.fromEntries(TOP.map((k) => [k, !ownPart(b, k) && has(k) ? fields[k] : undefined]));
   const stay = b.kind === 'lodging';
   const flight = b.kind === 'flight';
-  /** @type {Record<string, () => { label: string, value: string | null, unsure?: boolean, zone?: string } | null>} */
+  /** @type {Record<string, () => { label: string, value: string | null, unsure?: boolean } | null>} */
   const own = {
     route: () => ({ label: tc('flight')`Route`, value: [fields.from, fields.to].filter(words).join(' → ') || null, unsure: marked.has('from') || marked.has('to') }),
-    start: () => ({ label: flight ? t`Departs` : stay ? t`Check-in` : tc('booking')`Starts`, ...(at(b.start) ?? { value: null }) }),
-    end: () => ({ label: flight ? t`Arrives` : stay ? t`Check-out` : tc('booking')`Ends`, ...(at(b.end) ?? { value: null }) }),
+    // A part the booking has no value for, in a field of its name (`fields.start`), is drawn the same way; a time that can't be read stays a line of its own, as written.
+    start: () => ({ label: flight ? t`Departs` : stay ? t`Check-in` : tc('booking')`Starts`, ...(at(b.start) ?? at(asField.start) ?? { value: null }) }),
+    end: () => ({ label: flight ? t`Arrives` : stay ? t`Check-out` : tc('booking')`Ends`, ...(at(b.end) ?? at(asField.end) ?? { value: null }) }),
     // Its name and address, each that is there; an address that is only a copy of the name (annai names a place from its address) once.
     place: () => {
       const [name, address] = [b.place?.name, b.place?.address].map((x) => (there(x) ? String(x) : ''));
-      return { label: t`Place`, value: name && address && name !== address ? tc('booking')`${name}, ${address}` : name || address || null };
+      return { label: t`Place`, value: (name && address && name !== address ? tc('booking')`${name}, ${address}` : name || address) || valueText(asField.place) };
     },
     nights: () => {
       if (has('nights')) return null; // hers, among the fields
@@ -233,8 +266,8 @@ export function bookingFacts(b, o = {}) {
       const days = Math.round((Date.parse(`${dayIn(to, tz(b.end))}T00:00:00Z`) - Date.parse(`${dayIn(from, tz(b.start))}T00:00:00Z`)) / 86_400_000);
       return days > 0 ? { label: t`Nights`, value: num(days) } : null;
     },
-    confirmation: () => ({ label: t`Confirmation`, value: there(b.confirmation) ? String(b.confirmation) : null }),
-    cost: () => ({ label: t`Cost`, value: b.cost && Number.isFinite(b.cost.amount) ? money(b.cost.amount, b.cost.currency) : null }),
+    confirmation: () => ({ label: t`Confirmation`, value: there(b.confirmation) ? String(b.confirmation) : valueText(asField.confirmation) }),
+    cost: () => ({ label: t`Cost`, value: b.cost && Number.isFinite(b.cost.amount) ? money(b.cost.amount, b.cost.currency) : valueText(asField.cost) }),
   };
   /** @type {ReturnType<typeof bookingFacts>} */
   const out = [];
@@ -243,7 +276,10 @@ export function bookingFacts(b, o = {}) {
   for (const key of ORDER[b.kind] ?? OTHER) {
     if (Object.hasOwn(own, key)) {
       const f = own[key]();
-      if (f?.value) out.push({ key, label: f.label, value: f.value, unsure: f.unsure ?? marked.has(key), ...(f.zone ? { zone: f.zone } : {}) });
+      if (f?.value) {
+        out.push({ key, label: f.label, value: f.value, unsure: f.unsure ?? marked.has(key) });
+        if (TOP.includes(key)) shown.add(key); // the booking's own, or the field that is it: never a second line
+      }
       if (key !== 'nights' || !has('nights')) continue;
     }
     if (!has(key)) continue;
@@ -251,7 +287,7 @@ export function bookingFacts(b, o = {}) {
     out.push({ key, label: labelOf(key), value: valueText(fields[key]), unsure: marked.has(key) });
   }
   for (const [key, v] of Object.entries(fields)) {
-    if (shown.has(key) || !there(v)) continue;
+    if (shown.has(key) || ownPart(b, key) || !there(v)) continue; // a field named like a part the booking has is that part, drawn once
     const words = Object.hasOwn(FIELD_WORDS, key) ? labelOf(key) : null;
     out.push({ key, label: words ?? key, value: valueText(v), ...(words ? {} : { lang: /** @type {const} */ ('en') }), unsure: marked.has(key) });
   }

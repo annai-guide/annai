@@ -12,7 +12,7 @@ import { validZone, instantAt, isoInZone, offsetMinutes } from './time.js';
 /* en */ export const FILE_BOOKING = "If one is a booking (a confirmation, ticket, Wallet pass or reservation), read it, write a booking in /trip/bookings/ with source set to its path and unsure listing just the fields you are not sure of (an empty list when you are sure of them all), add the fixed plan items it implies with booking set to the booking's path, and ask only about the fields in unsure.";
 
 /** A booking's own fields, besides those in its `fields` object, that `unsure` may name. */
-const TOP = ['title', 'start', 'end', 'place', 'confirmation', 'cost'];
+export const TOP = ['title', 'start', 'end', 'place', 'confirmation', 'cost'];
 
 /**
  * Whether a value is there: not null, no blank text, and a list or an object only when one of its items is (`['']` and a place `{ name: ' ' }`
@@ -22,9 +22,18 @@ const TOP = ['title', 'start', 'end', 'place', 'confirmation', 'cost'];
 export const there = (v) => v !== undefined && v !== null && !(typeof v === 'string' && !v.trim()) && !(typeof v === 'object' && !(Array.isArray(v) ? v : Object.values(v)).some(there));
 
 /**
+ * Whether a booking has a value of its own for one of its own fields (TOP): its place by its name or its address, as the details draw it (a
+ * name of spaces with only coordinates is not there), any other by its value. A name that is no such field: false.
+ * @param {any} b @param {string} k @returns {boolean}
+ */
+export const ownPart = (b, k) => TOP.includes(k) && (k === 'place' ? there(b.place?.name) || there(b.place?.address) : there(b[k]));
+
+/**
  * What of a booking the screens mark for the user to check: the names in `unsure` of fields it has (its own, or keys of `fields`, as
- * written), once each. A record from before (no `unsure` key) not confirmed reads as if `unsure` named every part it has: its own fields
- * that `unsure` may name, then the keys of `fields`, through the same rule as a new booking. Reading only: nothing is stored, so the
+ * written), once each. A key of `fields` named like one of its own fields is that part when the booking has none of its own (a model wrote
+ * `fields.place`), and the same part, marked once, when it has (the details draw one line for it, bookingFacts). A record from before (no
+ * `unsure` key) not confirmed reads as if `unsure` named every part it has: its own fields that `unsure` may name, then the keys of
+ * `fields`, through the same rule as a new booking. Reading only: nothing is stored, so the
  * file keeps no `unsure` until she writes one (booking-say's round 4: a mark of the whole booking was a second answer for one old
  * shape, and every reader carried a branch for it). Anything odd marks nothing, and nothing throws.
  * @param {any} b @returns {{ fields: string[] }}
@@ -34,8 +43,7 @@ export function checkOf(b) {
   const extra = b.fields && typeof b.fields === 'object' && !Array.isArray(b.fields) ? b.fields : {};
   const named = 'unsure' in b ? b.unsure : b.status !== 'confirmed' ? [...TOP, ...Object.keys(extra)] : [];
   if (!Array.isArray(named)) return { fields: [] };
-  // A place is there by its name or its address, as the details draw it (format.js bookingFacts): a name of spaces with only coordinates is not.
-  const has = (/** @type {string} */ k) => (k === 'place' ? there(b.place?.name) || there(b.place?.address) : TOP.includes(k) ? there(b[k]) : Object.hasOwn(extra, k) && there(extra[k]));
+  const has = (/** @type {string} */ k) => ownPart(b, k) || (Object.hasOwn(extra, k) && there(extra[k]));
   /** @type {string[]} */
   const fields = [];
   for (const k of named) if (typeof k === 'string' && !fields.includes(k) && has(k)) fields.push(k);
@@ -63,6 +71,8 @@ export function checkOf(b) {
   notes: 'the notes', room: 'the room', phone: 'the phone number', guests: 'the guests', passengers: 'the passengers', airline: 'the airline',
   company: 'the company', seat: 'the seat', flights: 'the flights',
 });
+/** The parts that are plural, so a model reads "were", not "was" (a plural noun read with "was" is English that a model takes as a slip). */
+/* en */ const MANY = new Set(['the travellers', 'the bags', 'the notes', 'the guests', 'the passengers', 'the flights']);
 /** What any other key is: its text is the booking's, and never goes into annai's words. */
 /* en */ const OTHER = 'some other detail';
 
@@ -82,7 +92,8 @@ export function checkWords(b) {
   const c = checkOf(b);
   if (!c.fields.length) return '';
   const parts = [...new Set(c.fields.map((k) => partWords(k, b.kind)))]; // the other-detail phrase once, however many keys
-  /* en */ return `not sure ${parts.length > 1 ? `${parts.slice(0, -1).join(', ')} or ${parts.at(-1)}` : parts[0]} was read right`;
+  // With several parts the verb agrees with the last, as it does after "or".
+  /* en */ return `not sure ${parts.length > 1 ? `${parts.slice(0, -1).join(', ')} or ${parts.at(-1)}` : parts[0]} ${MANY.has(parts.at(-1) ?? '') ? 'were' : 'was'} read right`;
 }
 
 /** A trip's booking record. @param {string} scope @param {string} path */
