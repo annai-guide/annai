@@ -66,7 +66,8 @@ export async function siteOn(answer) {
     },
     // The 100 ms wait: Node's fetch can clear a finished test's timer after the next test's fake clock starts, and Node's mock clock
     // (v26.13.1) then drops whatever timer holds that place in the new clock's queue; 100 ms let 24 runs side by side end their
-    // connections first (the re-read of dl-limit-next's round 2, 2026-11-17).
+    // connections first (the re-read of dl-limit-next's round 2, 2026-11-17). Reported upstream as
+    // https://github.com/nodejs/node/issues/67593: take this wait out once a Node with the fix is the one the tests run on.
     close: async () => {
       server.closeAllConnections();
       server.close();
