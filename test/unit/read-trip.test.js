@@ -3773,10 +3773,10 @@ test("a Stop that comes as annai's card is being written ends the call at once, 
   assert.deepEqual(await pgrants(k), []);
 });
 
-// ---- A tap's 8 s wait for someone already speaking as they start (#limitTap holds them, for every caller: annai's card, her question, the wait tool;
-// the Deferred entry "A tap that stops annai's voice while the user speaks can close the microphone mid-line 8 s later"), and a tap's line is judged by
-// the microphone that heard it, so a line a second tap cuts skips the gate as any tap's line does (the Deferred entry "A line cut by a second tap can be
-// judged by the gate"). ----
+// ---- A tap's 8 s wait for someone already speaking as they start (#limitTap holds them, for every caller: annai's card, her question, the wait tool),
+// and a tap's line is judged by the microphone that heard it, so a line a second tap cuts skips the gate as any tap's line does; a second tap's end,
+// deferred behind the line it cut, leaves a later tap's listening alone. tap-listen-next closed the Deferred entries "A tap that stops annai's voice
+// while the user speaks can close the microphone mid-line 8 s later" and "A line cut by a second tap can be judged by the gate" with these. ----
 
 test("classic voice: a tap that stops annai's voice while someone speaks into the microphone a tap opened, with no line of theirs waiting for its verdict: the tap's 8 s wait for them to stop, so the microphone is still open 8.5 s after that tap while they speak, and their line ends the card", async (t) => {
   useClock(t);
