@@ -1,5 +1,5 @@
 {
-  "build": "cebe5100fa65",
+  "build": "c497d3ad38e7",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -295,7 +295,7 @@
     "/src/ui/trip-rows.js": "d3a7e6b5fd82",
     "/src/ui/tokens.css": "6610187f555d",
     "/src/ui/unlock.js": "c1b491262a90",
-    "/src/ui/updates.js": "8a2131001517",
+    "/src/ui/updates.js": "4c5919f159cd",
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",

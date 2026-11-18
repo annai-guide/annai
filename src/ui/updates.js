@@ -156,7 +156,8 @@ export class Updates {
    * annai's own check, which has no limit of its own (a service worker's update waits for good on a connection gone dead): at most
    * QUIET_MS, the number for a site's silence (answer.js). The browser shows none of what the update receives, so it is a time on the
    * whole, which suits it: it fetches one file of annai's own site, sw.js, which the site sends brotli'd (about 8.8 KB) and which, when
-   * unchanged, is a 304, so the time is the first answer's. over: the check ended, so the clock goes.
+   * unchanged, is a 304, so the 20 s mostly covers a cold connection's first answer (answer.js, estimated). over: the check ended, so the
+   * clock goes.
    * @param {AbortSignal} over @returns {Promise<string[]>} what failed, in words
    */
   async #checkApp(over) {
