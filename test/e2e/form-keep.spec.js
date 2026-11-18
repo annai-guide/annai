@@ -128,6 +128,21 @@ test("the address of a plugin typed on Add and let go (the keyboard put away): a
   await expect(page.getByLabel('Address of a plugin or skill', { exact: true })).toHaveValue('https://example.com/annai-plugin.json');
 });
 
+test("Search your plugins typed and let go: a plugin that adds a page draws the screen again, and the search comes over to it, its list still narrowed (fails on main)", async ({ page }) => {
+  await slowInstalled(page);
+  await page.evaluate(() => { location.hash = '#/plugins'; });
+  const search = page.getByLabel('Search your plugins', { exact: true });
+  await expect(page.locator('li.card', { hasText: 'Trip record checks' })).toBeVisible();
+  await typeIn(page, 'Search your plugins', 'slow');
+  await expect(page.locator('li.card', { hasText: 'Trip record checks' })).toHaveCount(0);
+  await search.blur();
+  await page.evaluate(() => (/** @type {any} */ (globalThis)).__addPage());
+  await expect(search).not.toHaveAttribute('data-mine', '1');
+  await expect(search).toHaveValue('slow');
+  await expect(page.locator('li.card', { hasText: 'Slow start' })).toBeVisible();
+  await expect(page.locator('li.card', { hasText: 'Trip record checks' })).toHaveCount(0);
+});
+
 test("Settings → Tools → MCP servers: Refresh tools ends while the address of a new server is typed; the screen waits for the field (fails on main)", async ({ page }) => {
   const mcp = await startMcpServer({});
   try {
