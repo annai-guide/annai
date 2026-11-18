@@ -28,8 +28,8 @@ const knownOf = (host) => {
 };
 
 /**
- * Checks the kinds asked for (both by default), and keeps what each found; a kind that can't be checked
- * keeps what it found before, and says why in failed. Nothing is kept once current() is false. Checking annai's own also brings
+ * Checks the kinds asked for (both by default), and keeps what each found; a kind that can't be checked, and an address that
+ * can't, keep what they found before, and say why in failed. Nothing is kept once current() is false. Checking annai's own also brings
  * their words in the screens' language, and the next start's, to the catalog's (fetchTranslations), which is never an update and never fails.
  * @param {any} host @param {Env} [env] @param {{ official?: boolean, address?: boolean }} [kinds] @param {() => boolean} [current]
  * @returns {Promise<{ found: Update[], failed: string[] }>} found: every update known now, of both kinds
@@ -38,9 +38,9 @@ export async function checkPlugins(host, env = {}, { official = true, address = 
   /** @type {string[]} */
   const failed = [];
   const known = knownOf(host);
-  /** @param {boolean} url @param {Update[]} list */
-  const keep = (url, list) => {
-    for (const [id, u] of known) if (Boolean(u.url) === url) known.delete(id);
+  /** @param {boolean} url @param {Update[]} list @param {Set<string>} [unchecked] the ones that couldn't be checked: what was found for them before stays */
+  const keep = (url, list, unchecked = new Set()) => {
+    for (const [id, u] of known) if (Boolean(u.url) === url && !unchecked.has(id)) known.delete(id);
     for (const u of list) known.set(u.id, u);
   };
   if (official) {
@@ -50,8 +50,10 @@ export async function checkPlugins(host, env = {}, { official = true, address = 
     if (now && current()) keep(false, now);
   }
   if (address) {
-    const now = await addressUpdates(host, { fetch: env.addressFetch ?? ((url, init) => fetch(url, init)), failed }).catch(() => null);
-    if (now && current()) keep(true, now);
+    /** @type {Set<string>} */
+    const unchecked = new Set();
+    const now = await addressUpdates(host, { fetch: env.addressFetch ?? ((url, init) => fetch(url, init)), failed, unchecked }).catch(() => null);
+    if (now && current()) keep(true, now, unchecked);
   }
   return { found: await knownUpdates(host), failed };
 }

@@ -90,8 +90,9 @@ test("the featured start whose plugin's file sends its headers and 1 KB and then
 /**
  * A site packages are installed from, on this machine, which lets web apps read it (CORS): each path in routes answers its body; 'never'
  * takes the request and sends nothing, 'headers' sends the answer's headers and nothing more; { parts, gapMs } sends the headers and
- * each part gapMs after the one before, the first gapMs after the request. routes can change as the test goes. host: as the words say it.
- * @param {Record<string, Buffer | 'never' | 'headers' | { parts: Buffer[], gapMs: number }>} routes
+ * each part gapMs after the one before, the first gapMs after the request; a number answers that status with no body. routes can change
+ * as the test goes. host: as the words say it.
+ * @param {Record<string, Buffer | number | 'never' | 'headers' | { parts: Buffer[], gapMs: number }>} routes
  */
 async function addressSite(routes) {
   const cors = { 'access-control-allow-origin': '*', 'content-type': 'text/markdown' };
@@ -105,6 +106,10 @@ async function addressSite(routes) {
     }
     if (r === undefined) {
       res.writeHead(404, cors).end('not found');
+      return;
+    }
+    if (typeof r === 'number') {
+      res.writeHead(r, cors).end();
       return;
     }
     if (!Buffer.isBuffer(r)) {
@@ -160,6 +165,29 @@ for (const how of /** @type {const} */ (['never', 'headers'])) {
       await address.fill(`${site.origin}/kits/tide-pools/SKILL.md`);
       await getIt(page).click();
       await expect(page.getByRole('heading', { name: 'Install tide-pools?' })).toBeVisible();
+    } finally {
+      site.stop();
+    }
+  });
+}
+
+// An answer the browser hands on with a body, though a Response can't be built with one for these statuses: annai's words, not the
+// engine's own ("Response with null body status cannot have body", the first build of addr-limit-next).
+for (const status of [204, 205, 304]) {
+  test(`Get it on an address whose site answers ${status} says what annai says of that answer, never the browser's own error, and Get it comes back`, async ({ page }) => {
+    const site = await addressSite({ '/kits/odd/SKILL.md': status });
+    try {
+      await openApp(page, '#/add');
+      await waitForServiceWorker(page);
+      await elsewhere(page).getByLabel('Address of a plugin or skill').fill(`${site.origin}/kits/odd/SKILL.md`);
+      await getIt(page).click();
+      const alert = elsewhere(page).getByRole('alert');
+      // A 304 is an answer that isn't ok; a 204 and a 205 are ok and empty: a file with nothing in it, which the install says it can't read.
+      if (status === 304) await expect(alert).toHaveText(`${site.host} answered 304.`);
+      else await expect(alert).toContainText('SKILL.md starts with front matter');
+      await expect(alert).not.toContainText(/Response|body/);
+      await expect(getIt(page)).toHaveText('Get it');
+      await expect(getIt(page)).toBeEnabled();
     } finally {
       site.stop();
     }

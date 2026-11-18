@@ -1,5 +1,5 @@
 {
-  "build": "41f0d101638b",
+  "build": "f931c064985c",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -57,7 +57,7 @@
     "/src/core/agent/via.js": "557657aae006",
     "/src/core/agent/warmth.js": "7f1be5368415",
     "/src/core/address.js": "d677ad7a10ba",
-    "/src/core/answer.js": "df3e887b2c5a",
+    "/src/core/answer.js": "5d953f7ea76c",
     "/src/core/archive.js": "9f8253a64b2e",
     "/src/core/backup.js": "644832139162",
     "/src/core/backup-auto.js": "64ed2407b9ec",
@@ -121,7 +121,7 @@
     "/src/core/now.js": "bba789ac01b8",
     "/src/core/names.js": "0d8fc0903f5c",
     "/src/core/official-names.js": "13fd35baa42b",
-    "/src/core/package-updates.js": "adb65e997849",
+    "/src/core/package-updates.js": "58f916b133d4",
     "/src/core/packages.js": "5a2f10c69bd1",
     "/src/core/requires.js": "9aa09e4a81ad",
     "/src/core/pack/download.js": "4d9b4af8abb2",
@@ -241,7 +241,7 @@
     "/src/ui/plugin-cards.js": "e1901c609a4e",
     "/src/ui/plugin-pending.js": "d0de6d23ce7b",
     "/src/ui/provider-setup.js": "c4b0421feac0",
-    "/src/ui/plugin-updates.js": "f9fff535cf40",
+    "/src/ui/plugin-updates.js": "9a9958c5cd37",
     "/src/ui/push.js": "5cd1775505bf",
     "/src/ui/resume.js": "3daeff3debff",
     "/src/ui/router.js": "b8981277e2c8",

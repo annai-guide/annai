@@ -361,7 +361,7 @@ test("a new version that didn't finish downloading is said, and Settings → Upd
   assert.deepEqual(changed, [false]);
 });
 
-test("a check (Check now) with a plugin whose address's site goes dead ends after QUIET_MS, inside the check's own limit, saying which plugin and why, and the addresses after it are checked (addr-limit-next: it ran to the check's 45 s and asked nothing after it)", async (t) => {
+test("a check (Check now) with a plugin whose address's site goes dead ends after QUIET_MS, inside the check's own limit, saying which plugin and why, and the addresses after it are checked, asked at the same time (addr-limit-next: it ran to the check's 45 s and asked nothing after it)", async (t) => {
   const GONE = 'https://gone.example/tide-pools/SKILL.md';
   const LIVE = 'https://trails.example/rock-pools/SKILL.md';
   const rock = SKILL.replace('name: tide-pools', 'name: rock-pools');
@@ -389,11 +389,48 @@ test("a check (Check now) with a plugin whose address's site goes dead ends afte
   t.mock.timers.tick(QUIET_MS - 1);
   await turns(() => w.state !== 'pending', 50);
   assert.equal(w.state, 'pending', 'still waiting just short of the limit');
-  assert.ok(!asked.includes(LIVE), 'the address after it waits its turn');
+  assert.ok(asked.includes(LIVE), 'the address after it is asked at once: addresses are asked side by side');
   t.mock.timers.tick(1);
   await turns(() => w.state !== 'pending');
   assert.equal(w.state, 'done', String(w.error?.message ?? 'still waiting'));
   assert.deepEqual(w.value?.failed, ["tide-pools couldn't be checked: gone.example stopped answering. Check the connection and try again."]);
   assert.deepEqual(w.value?.found.map((u) => [u.id, u.installed, u.available]), [['rock-pools', '1.2.0', '1.3.0']], 'the address after it was checked');
+  assert.equal(updates.checking, false);
+});
+
+test("a check (Check now) with three plugins whose addresses' sites are dead, listed before a live one, ends after QUIET_MS, not after three: it lists the three in their order and finds the live one's update (addr-limit-next: the dead ones were asked one after another, the third took the check to its 45 s and the live one's update was not found)", async (t) => {
+  const NAMES = ['tide-pools', 'rock-pools', 'kelp-beds', 'sea-caves'];
+  const at = (/** @type {string} */ name) => `https://${name}.example/${name}/SKILL.md`;
+  const skill = (/** @type {string} */ name, version = '1.2') => SKILL.replace('name: tide-pools', `name: ${name}`).replace('version: "1.2"', `version: "${version}"`);
+  /** @type {Record<string, string>} */
+  const served = Object.fromEntries(NAMES.map((n) => [at(n), skill(n)]));
+  let gone = false;
+  /** @type {string[]} */
+  const asked = [];
+  const get = (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+    asked.push(url);
+    if (gone && NAMES.slice(0, 3).some((n) => url === at(n))) return dead(init, 'never');
+    return Promise.resolve(url in served ? new Response(served[url]) : new Response('', { status: 404 }));
+  };
+  const { host } = await hostKit();
+  for (const n of NAMES) await host.install(await fetchPackage(at(n), { fetch: get }), { source: 'url', url: at(n) });
+  served[at('sea-caves')] = skill('sea-caves', '1.3');
+  gone = true;
+  asked.length = 0;
+  const updates = new Updates({ host, env: { fetch: async () => new Response(JSON.stringify({ plugins: [] })), addressFetch: get }, online: () => true });
+  updates.app = { check: async () => {}, state: () => 'none' };
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const w = watch(updates.checkNow());
+  await turns(() => NAMES.every((n) => asked.includes(at(n))));
+  assert.deepEqual(NAMES.filter((n) => !asked.includes(at(n))), [], 'every address is asked at once');
+  t.mock.timers.tick(QUIET_MS - 1);
+  await turns(() => w.state !== 'pending', 50);
+  assert.equal(w.state, 'pending', 'still waiting just short of the limit');
+  t.mock.timers.tick(1);
+  await turns(() => w.state !== 'pending');
+  assert.equal(w.state, 'done', String(w.error?.message ?? 'still waiting'));
+  const why = 'stopped answering. Check the connection and try again.';
+  assert.deepEqual(w.value?.failed, NAMES.slice(0, 3).map((n) => `${n} couldn't be checked: ${n}.example ${why}`), 'the three, in the order they are listed');
+  assert.deepEqual(w.value?.found.map((u) => [u.id, u.installed, u.available]), [['sea-caves', '1.2.0', '1.3.0']], "the live one's update is found");
   assert.equal(updates.checking, false);
 });

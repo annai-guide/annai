@@ -62,8 +62,13 @@ const waiting = new Map();
  * Asks for url (get(url, init), init with a signal of this request's own) and reads its answer with read, which is handed the answer
  * with a body that counts each part as it comes. Once nothing has come from the server for QUIET_MS (see there) the request ends by its
  * signal, and this throws that the server stopped answering (said.code quiet), whatever the request or the read threw then (an engine's
- * AbortError, a TypeError, a wrapper's own error): the same error is the signal's reason, which the trace writes. The server is the
- * origin the address names, a relative one read as the page's (fetch reads it so); with no page (a test's stand-in), one for all.
+ * AbortError, a TypeError, a wrapper's own error): the same error is the signal's reason, which the trace writes for a request that never
+ * got its answer (it writes a request at its answer: a stall after the headers shows the status the server gave; the words on the screen
+ * are the record). Both awaits are raced against the end, as agent/tools.js and plugins.js race theirs, so it holds whatever get waits on
+ * before it asks (tracedFetch reads the keys it blanks) and a body an engine leaves open. An answer that isn't ok, or has no body, is read
+ * as it is (a Response can't be built with a body for 204, 205 or 304, and both engines hand one); an ok one is read with its status
+ * dropped, which neither reader looks at. The server is the origin the address names, a relative one read as the page's (fetch reads it
+ * so); with no page (a test's stand-in), one for all.
  * @template T
  * @param {(url: string, init: RequestInit) => Promise<Response>} get @param {string} url
  * @param {(res: Response) => Promise<T>} read @param {RequestInit} [init] @returns {Promise<T>}
@@ -84,6 +89,14 @@ export async function quietly(get, url, read, init = {}) {
     for (const startOver of server) startOver();
   };
   const stop = new AbortController();
+  /** @type {() => void} */
+  let unhook = () => {};
+  /** Rejects with the end's reason; the first race below handles it. @type {Promise<never>} */
+  const ended = new Promise((_, end) => {
+    const onAbort = () => end(stop.signal.reason);
+    stop.signal.addEventListener('abort', onAbort, { once: true });
+    unhook = () => stop.signal.removeEventListener('abort', onAbort);
+  });
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let timer;
   const startOver = () => {
@@ -93,14 +106,16 @@ export async function quietly(get, url, read, init = {}) {
   server.add(startOver);
   startOver();
   try {
-    const res = await get(url, { ...init, signal: stop.signal });
+    const res = await Promise.race([get(url, { ...init, signal: stop.signal }), ended]);
     heard();
-    // Each part of the body that comes starts the silence again; an abort ends the read as it ends the request (Chromium and WebKit, probed 2026-11-17).
-    const body = res.body?.pipeThrough(new TransformStream({ transform: (part, out) => { heard(); out.enqueue(part); } }));
-    return await read(body ? new Response(body, res) : res);
+    if (!res.ok || !res.body) return await Promise.race([read(res), ended]);
+    // Each part of the body that comes starts the silence again.
+    const body = res.body.pipeThrough(new TransformStream({ transform: (part, out) => { heard(); out.enqueue(part); } }));
+    return await Promise.race([read(new Response(body, { headers: res.headers })), ended]);
   } catch (e) {
     throw stop.signal.aborted ? stop.signal.reason : e;
   } finally {
+    unhook();
     server.delete(startOver);
     if (!server.size) waiting.delete(key);
     clearTimeout(timer);

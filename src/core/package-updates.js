@@ -14,26 +14,37 @@ import { installRequirements, checkPackageId } from './requires.js';
  */
 
 /**
- * The packages installed from an address that have changed there. One that can't be checked now
- * (offline, broken, now another package) is left out quietly, or said in failed when it's given (Check now).
- * @param {PluginHost} host @param {{ fetch: Fetch, failed?: string[] }} o @returns {Promise<AddressUpdate[]>}
+ * The packages installed from an address that have changed there, in the order they are listed. One that can't be checked now
+ * (offline, broken, a site that stopped answering) is left out quietly, or said in failed when it's given (Check now), with its id in
+ * unchecked: what an earlier check found for it stands. One that is now another package is checked, and has nothing to offer. The
+ * addresses are asked side by side, so any number of dead sites end together (answer.js), inside the check's own limit.
+ * @param {PluginHost} host @param {{ fetch: Fetch, failed?: string[], unchecked?: Set<string> }} o @returns {Promise<AddressUpdate[]>}
  */
-export async function addressUpdates(host, { fetch, failed }) {
-  /** @type {AddressUpdate[]} */
-  const out = [];
-  for (const [id, s] of Object.entries(await host.installed())) {
-    if (s.source !== 'url' || typeof s.url !== 'string') continue;
+export async function addressUpdates(host, { fetch, failed, unchecked }) {
+  const checked = await Promise.all(Object.entries(await host.installed()).map(async ([id, s]) => {
+    if (s.source !== 'url' || typeof s.url !== 'string') return {};
     try {
       // The address with its keys, from the package's secret; s.url shows «key» in their places.
       const address = await host.address(id);
-      if (!address) continue;
+      if (!address) return {};
       const pkg = await host.inspect(await fetchPackage(address, { fetch }));
-      if (pkg.id !== id || pkg.fingerprint === s.fingerprint) continue;
+      if (pkg.id !== id || pkg.fingerprint === s.fingerprint) return {};
       const added = pkg.previous?.added ?? addedParts(await host.installedParts(id), pkg);
-      out.push({ id, name: pkg.name, installed: String(s.version), available: pkg.version, url: (await host.installed())[id]?.url ?? s.url, kind: pkg.kind, changed: pkg.version === s.version && !addsAnything(added), added });
+      /** @type {AddressUpdate} */
+      const update = { id, name: pkg.name, installed: String(s.version), available: pkg.version, url: (await host.installed())[id]?.url ?? s.url, kind: pkg.kind, changed: pkg.version === s.version && !addsAnything(added), added };
+      return { update };
     } catch (e) {
       // not now: the next check asks again
-      failed?.push(t`${s.name ?? id} couldn't be checked: ${String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)}`);
+      return { id, why: t`${s.name ?? id} couldn't be checked: ${String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)}` };
+    }
+  }));
+  /** @type {AddressUpdate[]} */
+  const out = [];
+  for (const c of checked) {
+    if (c.update) out.push(c.update);
+    if (c.id && c.why) {
+      failed?.push(c.why);
+      unchecked?.add(c.id);
     }
   }
   return out;

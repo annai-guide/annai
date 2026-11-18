@@ -415,3 +415,37 @@ test("an Update whose address's site goes dead ends after QUIET_MS on the failed
   const installed = await host.installed();
   assert.deepEqual([installed['tide-pools'].version, installed['rock-pools'].version], ['1.2.0', '1.3.0'], 'the update after it went on');
 });
+
+test("a check whose address's site is dead keeps the update an earlier check found and says it couldn't check it; an address that now holds another package drops it (addr-limit-next: the dead site's end after QUIET_MS dropped it, as a check that ran to its own limit never did)", async (t) => {
+  const ADDRESS = 'https://gone.example/tide-pools/SKILL.md';
+  /** @type {'serves' | 'dead' | 'another'} */
+  let site = 'serves';
+  let served = SKILL;
+  let asked = 0;
+  const get = (/** @type {string} */ _url, /** @type {RequestInit} */ init) => {
+    asked++;
+    if (site === 'dead') return dead(init, 'never');
+    return Promise.resolve(new Response(site === 'another' ? SKILL.replace('name: tide-pools', 'name: rock-pools') : served));
+  };
+  const { host } = await hostKit();
+  await host.install(await fetchPackage(ADDRESS, { fetch: get }), { source: 'url', url: ADDRESS });
+  served = SKILL.replace('version: "1.2"', 'version: "1.3"');
+  const shown = (/** @type {{ found: any[] }} */ r) => r.found.map((u) => [u.id, u.installed, u.available]);
+  const first = await checkPlugins(host, { addressFetch: get }, { official: false });
+  assert.deepEqual(shown(first), [['tide-pools', '1.2.0', '1.3.0']]);
+  site = 'dead';
+  asked = 0;
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const second = watch(checkPlugins(host, { addressFetch: get }, { official: false }));
+  await turns(() => asked > 0);
+  t.mock.timers.tick(QUIET_MS);
+  await turns(() => second.state !== 'pending');
+  assert.equal(second.state, 'done', second.error ? messageOf(second.error) : 'still waiting');
+  assert.deepEqual(second.value?.failed, ["tide-pools couldn't be checked: gone.example stopped answering. Check the connection and try again."]);
+  assert.deepEqual(shown(/** @type {any} */ (second.value)), [['tide-pools', '1.2.0', '1.3.0']], 'the offer an earlier check found stays while its site is down');
+  // A check that can say it is another package now drops the offer: it was checked, and what it offered is not there.
+  site = 'another';
+  const third = await checkPlugins(host, { addressFetch: get }, { official: false });
+  assert.deepEqual(third.failed, []);
+  assert.deepEqual(shown(third), []);
+});
