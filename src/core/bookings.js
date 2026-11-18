@@ -12,15 +12,28 @@ import { validZone, instantAt, isoInZone, offsetMinutes } from './time.js';
 /* en */ export const FILE_BOOKING = "If one is a booking (a confirmation, ticket, Wallet pass or reservation), read it, write a booking in /trip/bookings/ with source set to its path and unsure listing just the fields you are not sure of (an empty list when you are sure of them all), add the fixed plan items it implies with booking set to the booking's path, and ask only about the fields in unsure.";
 
 /** A booking's own fields, besides those in its `fields` object, that `unsure` may name. */
-const TOP = ['title', 'start', 'end', 'place', 'confirmation', 'cost'];
+export const TOP = ['title', 'start', 'end', 'place', 'confirmation', 'cost'];
 
-/** Whether a value is there: not null, no blank text, no empty list. The one rule for a booking's own fields and the keys of `fields`: what is marked (checkOf) and what the details draw (format.js bookingFacts). @param {unknown} v */
-export const there = (v) => v !== undefined && v !== null && !(typeof v === 'string' && !v.trim()) && !(Array.isArray(v) && !v.length);
+/**
+ * Whether a value is there: not null, no blank text, and a list or an object only when one of its items is (`['']` and a place `{ name: ' ' }`
+ * are not). The one rule for a booking's own fields and the keys of `fields`: what is marked (checkOf) and what the details draw (format.js
+ * bookingFacts, which draws a list's items that are there, and a place by its name or its address). @param {unknown} v @returns {boolean}
+ */
+export const there = (v) => v !== undefined && v !== null && !(typeof v === 'string' && !v.trim()) && !(typeof v === 'object' && !(Array.isArray(v) ? v : Object.values(v)).some(there));
+
+/**
+ * Whether a booking has a value of its own for one of its own fields (TOP): its place by its name or its address, as the details draw it (a
+ * name of spaces with only coordinates is not there), any other by its value. A name that is no such field: false.
+ * @param {any} b @param {string} k @returns {boolean}
+ */
+const ownPart = (b, k) => TOP.includes(k) && (k === 'place' ? there(b.place?.name) || there(b.place?.address) : there(b[k]));
 
 /**
  * What of a booking the screens mark for the user to check: the names in `unsure` of fields it has (its own, or keys of `fields`, as
- * written), once each. A record from before (no `unsure` key) not confirmed reads as if `unsure` named every part it has: its own fields
- * that `unsure` may name, then the keys of `fields`, through the same rule as a new booking. Reading only: nothing is stored, so the
+ * written), once each. A key of `fields` named like one of its own fields is that part when the booking has none of its own (a model wrote
+ * `fields.place`), and the same part, marked once, when it has (the details draw one line for it, bookingFacts). A record from before (no
+ * `unsure` key) not confirmed reads as if `unsure` named every part it has: its own fields that `unsure` may name, then the keys of
+ * `fields`, through the same rule as a new booking. Reading only: nothing is stored, so the
  * file keeps no `unsure` until she writes one (booking-say's round 4: a mark of the whole booking was a second answer for one old
  * shape, and every reader carried a branch for it). Anything odd marks nothing, and nothing throws.
  * @param {any} b @returns {{ fields: string[] }}
@@ -30,7 +43,7 @@ export function checkOf(b) {
   const extra = b.fields && typeof b.fields === 'object' && !Array.isArray(b.fields) ? b.fields : {};
   const named = 'unsure' in b ? b.unsure : b.status !== 'confirmed' ? [...TOP, ...Object.keys(extra)] : [];
   if (!Array.isArray(named)) return { fields: [] };
-  const has = (/** @type {string} */ k) => (TOP.includes(k) ? there(b[k]) : Object.hasOwn(extra, k) && there(extra[k]));
+  const has = (/** @type {string} */ k) => ownPart(b, k) || (Object.hasOwn(extra, k) && there(extra[k]));
   /** @type {string[]} */
   const fields = [];
   for (const k of named) if (typeof k === 'string' && !fields.includes(k) && has(k)) fields.push(k);
@@ -58,6 +71,8 @@ export function checkOf(b) {
   notes: 'the notes', room: 'the room', phone: 'the phone number', guests: 'the guests', passengers: 'the passengers', airline: 'the airline',
   company: 'the company', seat: 'the seat', flights: 'the flights',
 });
+/** The parts that are plural, so a model reads "were", not "was" (a plural noun read with "was" is English that a model takes as a slip). */
+/* en */ const MANY = new Set(['the travellers', 'the bags', 'the notes', 'the guests', 'the passengers', 'the flights']);
 /** What any other key is: its text is the booking's, and never goes into annai's words. */
 /* en */ const OTHER = 'some other detail';
 
@@ -77,7 +92,8 @@ export function checkWords(b) {
   const c = checkOf(b);
   if (!c.fields.length) return '';
   const parts = [...new Set(c.fields.map((k) => partWords(k, b.kind)))]; // the other-detail phrase once, however many keys
-  /* en */ return `not sure ${parts.length > 1 ? `${parts.slice(0, -1).join(', ')} or ${parts.at(-1)}` : parts[0]} was read right`;
+  // With several parts the verb agrees with the last, as it does after "or".
+  /* en */ return `not sure ${parts.length > 1 ? `${parts.slice(0, -1).join(', ')} or ${parts.at(-1)}` : parts[0]} ${MANY.has(parts.at(-1) ?? '') ? 'were' : 'was'} read right`;
 }
 
 /** A trip's booking record. @param {string} scope @param {string} path */
@@ -129,6 +145,22 @@ const AT = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(Z|([+-])
 const FAR = ['flight', 'rail'];
 
 /**
+ * A date with a time as it is written: trimmed, a space read as the T, and a day that exists (Nov 31 is none, as Date.parse would read it
+ * as Dec 1) with an hour under 24 and a minute and second under 60; null for anything else. `at` is that text, and `m` its parts: [1] the
+ * day, [2] the hour, [3] the minute, [4] the second, [5] the Z or the offset when there is one, [6] its sign, [7] and [8] its hours and minutes.
+ * The one reading of it: a write is accepted by it (timeOf), and the details draw a flight leg's times by it (format.js bookingFacts), so
+ * what is accepted and what is drawn as a time never differ. Its zone is not read: that is the caller's, from where it came.
+ * @param {unknown} v @returns {{ at: string, m: RegExpExecArray } | null}
+ */
+export function written(v) {
+  const at = typeof v === 'string' ? v.trim().replace(' ', 'T') : '';
+  const m = AT.exec(at);
+  const day = m ? Date.parse(`${m[1]}T00:00Z`) : NaN;
+  const real = m && Number.isFinite(day) && new Date(day).toISOString().startsWith(m[1]) && +m[2] < 24 && +m[3] < 60 && +(m[4] ?? 0) < 60;
+  return m && real ? { at, m } : null;
+}
+
+/**
  * A time written under another name, as the format's { at, tz }: a string, or { at } (or { time }) with its own tz; its zone from beside
  * it, else the trip's only one, which a flight or train never takes. Refused in words when it is no real date and time, its zone isn't
  * known, or its offset isn't its zone's at that moment.
@@ -138,14 +170,11 @@ const FAR = ['flight', 'rail'];
 function timeOf(name, v, beside, zones, to, far) {
   const o = record(v);
   const raw = o ? o.at ?? o.time : v;
-  const at = typeof raw === 'string' ? raw.trim().replace(' ', 'T') : '';
   const tz = [o?.tz, beside, !far && zones.length === 1 ? zones[0] : ''].find((z) => typeof z === 'string' && z) ?? '';
   /* en */ const how = `write ${to} as ${WHEN}${name.includes('[') ? '' : ` in place of ${name}`}`;
-  const m = AT.exec(at);
-  const day = m ? Date.parse(`${m[1]}T00:00Z`) : NaN;
-  // Date.parse reads Nov 31 as Dec 1: the day must read back as written.
-  const real = m && Number.isFinite(day) && new Date(day).toISOString().startsWith(m[1]) && +m[2] < 24 && +m[3] < 60 && +(m[4] ?? 0) < 60;
-  /* en */ if (!m || !real) throw new Error(`${name} ${JSON.stringify(raw ?? null)} isn't a date with a time: ${how}.`);
+  const w = written(raw);
+  /* en */ if (!w) throw new Error(`${name} ${JSON.stringify(raw ?? null)} isn't a date with a time: ${how}.`);
+  const { at, m } = w;
   if (!validZone(tz)) {
     /* en */ const why = far && !tz ? ` (a flight's or train's time is in the place it leaves or arrives, so the trip's time zone isn't assumed)` : zones.length > 1 ? ` (this trip has ${zones.join(', ')})` : '';
     /* en */ throw new Error(`${name} ${JSON.stringify(raw)} has no time zone annai knows${why}: ${how}.${name.startsWith('flights[') ? ' Or give the leg a "tz".' : ''}`);

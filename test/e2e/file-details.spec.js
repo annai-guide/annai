@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, allFiles, putFile, writeRecords, startModelServer, anthropicToolReply, modelSetUp, savedBy, openTalk } from './helpers.js';
+import { openApp, allFiles, putFile, writeRecords, startTrip, startModelServer, anthropicToolReply, modelSetUp, savedBy, openTalk } from './helpers.js';
 import { fileTrip } from './file-details-fixture.js';
 import { accented } from '../../src/core/l10n-pseudo.js';
 
@@ -55,6 +55,31 @@ test('a file with two flights: one screen, two blocks in time order, each with i
   expect((await downloading).suggestedFilename()).toBe('itinerary.pdf');
   await page.getByRole('button', { name: 'Ask Shiori about this' }).click();
   await expect(page.locator('.type-sheet .attach-chip .attach-name')).toHaveText(['ANNAI AIR itinerary', 'ANNAI AIR AN 123', 'ANNAI AIR AN 124']);
+});
+
+test("a flight whose legs are in its fields: each leg is a line of words on the details screen, its times as written (a space or a T, in no zone), never JSON, and one check; a field named like the place is no second Place line (small-next, round 3)", async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Osaka');
+  const tz = 'Asia/Tokyo';
+  const flights = [
+    { flight: 'AN 1', origin: 'HND', destination: 'ITM', departure: '2026-11-20T07:30', arrival: '2026-11-20T09:10', tz },
+    // Written with a space, as a model may: the browser's own zone (not Tokyo's) must not move it. Its extras have their labels.
+    { flight: 'AN 2', origin: 'ITM', destination: 'NRT', departure: '2026-11-20 11:30', arrival: { at: '2026-11-20T13:05', tz }, gate: null, seat: ' ', terminal: '2' },
+  ];
+  await writeRecords(page, trip, { write: { '/bookings/legs.json': { id: 'legs', kind: 'flight', status: 'unverified', source: '/talk', title: 'AN 1 / AN 2', unsure: ['flights', 'place'],
+    start: { at: '2026-11-20T07:30:00+09:00', tz }, end: { at: '2026-11-20T13:05:00+09:00', tz }, place: { name: 'Haneda Airport' }, fields: { flights, place: 'Haneda Airport' } } } });
+  await openAt(page, trip, '/bookings/legs.json');
+  const legs = page.locator('dl.facts dd', { has: page.locator('span', { hasText: 'HND → ITM' }) });
+  // One line each: the breaks are drawn (innerText follows the CSS; textContent holds the "\n" whatever the CSS does), and the times are the text's own
+  // digits with the day in the screen's words (the range's dash is held to the clock after it, U+2060).
+  // A regex, since a string is matched with its white space collapsed and the break would pass unseen.
+  await expect(legs.locator('span[dir=auto]')).toHaveText(/^AN 1 · HND → ITM · Nov 20 07:30–\u206009:10\nAN 2 · ITM → NRT · Nov 20 11:30–\u206013:05 · Terminal: 2$/, { useInnerText: true });
+  await expect(legs).not.toContainText('{');
+  await expect(legs).not.toContainText('null');
+  await expect(legs.locator('.mark-check')).toHaveCount(1);
+  // The place: one line, one check (its own place, and the field of its name draws nothing more).
+  await expect(page.locator('dl.facts dt', { hasText: 'Place' })).toHaveCount(1);
+  await expect(page.locator('dl.facts .mark-check')).toHaveCount(2);
 });
 
 test('a link to the second flight opens the file at its block, focused and in view', async ({ page }) => {

@@ -33,6 +33,36 @@ test('transcripts: markup never reaches the log, words stay escaped, and only a 
   assert.equal(realWord('42'), true);
 });
 
+test("transcripts: a pair whose content is only child elements goes whole; a pair around any other content keeps the words and loses its tags; a lone tag goes alone (real transcripts, 2026-11-17)", () => {
+  // A real transcript, relay-stop-request-ja: an element of elements is data, not words, so "positive" is never hers.
+  assert.equal(cleanSaid('かしこまりました。<ratings>\n<rating>positive</rating>\n</ratings>'), 'かしこまりました。');
+  assert.equal(cleanSaid('<ratings id="r1">\n<rating>positive</rating>\n</ratings> Sure.'), 'Sure.', 'with an attribute on the outer tag');
+  // Two such pairs in one line are matched one by one: the words between them stay.
+  assert.equal(cleanSaid('Sure <ratings><rating>a</rating></ratings> and <ratings><rating>b</rating></ratings> ok.'), 'Sure and ok.');
+  // Real transcripts, kept in .superpowers/evidence/ (one-answer-r3 relay-stop-request.2, card-20s-r1 ce-live-yes): her voice said these
+  // words, so they stay in the bubble, the log and what Kokoro reads; only the tags go (as on main).
+  assert.equal(cleanSaid('It is about twenty minutes ahead on Highway <number>1</number>.'), 'It is about twenty minutes ahead on Highway 1 .');
+  assert.equal(cleanSaid('🧠[wait]<from_kokoro id="5a07c71f02199e66">There are no trips or events scheduled for Testville.</from_kokoro>'),
+    '🧠[wait] There are no trips or events scheduled for Testville.', "annai's own note form, with its id: the turn as it streamed (the run's record kept it as this line)");
+  assert.equal(cleanSaid('<from_kokoro id="x">It\'s open until ten tonight.</from_kokoro>'), "It's open until ten tonight.", 'her whole turn inside the pair is still her line');
+  assert.equal(realWord('<from_kokoro id="x">It\'s open until ten tonight.</from_kokoro>'), true);
+  assert.equal(cleanSaid('Sure <rating>a</rating> and <rating>b</rating> ok.'), 'Sure a and b ok.', 'two plain pairs in one line');
+  // A first child that is a tag or a comment, then words: the words are hers (small-next, round 2: both gave "" under "content begins with a tag").
+  assert.equal(cleanSaid('<from_kokoro id="x"><number>20</number> minutes ahead on Highway 1.</from_kokoro>'), '20 minutes ahead on Highway 1.');
+  assert.equal(cleanSaid('<from_kokoro id="x"><!-- note --> It\'s open until ten tonight.</from_kokoro>'), "It's open until ten tonight.");
+  assert.equal(realWord('<from_kokoro id="x"><number>20</number> minutes ahead on Highway 1.</from_kokoro>'), true);
+  assert.equal(realWord('<from_kokoro id="x"><!-- note --> It\'s open until ten tonight.</from_kokoro>'), true);
+  // Child elements with nothing else but white space between them are data, as the entry's sample is, several of them too.
+  assert.equal(cleanSaid('Sure.<ratings><rating>a</rating> <rating>b</rating></ratings>'), 'Sure.');
+  assert.equal(cleanSaid('Sure.<ratings>\n<rating id="1">a</rating>\n<rating id="2">b</rating>\n</ratings> Next.'), 'Sure. Next.');
+  // The accepted trade-off: words between the children (even a comma) make it a pair around words, as before this rule.
+  assert.equal(cleanSaid('<ratings><rating>positive</rating>, <rating>negative</rating></ratings>'), 'positive , negative');
+  // A lone tag (an opening one with no end yet, an end with no opening one) keeps the words beside it, as before; so do two names, no pair.
+  assert.equal(cleanSaid('かしこまりました。<rating>positive'), 'かしこまりました。 positive');
+  assert.equal(cleanSaid('Sure.</rating> Next.'), 'Sure. Next.');
+  assert.equal(cleanSaid('<a>Sure.</b>'), 'Sure.', 'two names are no pair');
+});
+
 test('what was heard and what Koe said are logged per turn; Kokoro reads "[heard]" and "[Koe said aloud]", and wakes once, for the answer', async () => {
   const k = await liveKit([{ heard: 'Where should we eat?', said: "There's a taco stand ahead.", audio: tone() }]);
   try {

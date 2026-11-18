@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isBookingPath, shioriBooking, checkOf, checkWords, checkNote } from '../../src/core/bookings.js';
-import { FIELD_WORDS } from '../../src/ui/format.js';
+import { isBookingPath, shioriBooking, checkOf, checkWords, checkNote, written } from '../../src/core/bookings.js';
+import { FIELD_WORDS, checkCount } from '../../src/ui/format.js';
 
 const b = { id: 'hotel', kind: 'lodging', status: 'unverified', source: '/files/hotel.pdf', unsure: [] };
 
@@ -114,8 +114,14 @@ test("checkWords: each key whose own words would mislead has its words, never th
   for (const [key, words] of Object.entries(said)) {
     // title and confirmation are a booking's own fields; the others are keys of `fields`, as Shiori writes them.
     const got = checkWords({ status: 'unverified', kind: 'flight', unsure: [key], title: 'Test Air', confirmation: 'TQ1', fields: { [key]: 'x' } });
-    assert.equal(got, `not sure ${words} was read right`, key);
+    // A plural part is read "were" (small-next, round 2: "not sure the flights was read right" was English a model reads wrongly).
+    assert.equal(got, `not sure ${words} ${['travellers', 'bags', 'notes', 'guests', 'passengers', 'flights'].includes(key) ? 'were' : 'was'} read right`, key);
   }
+  // With several parts the verb agrees with the last one named, as "or" does in English.
+  const two = (/** @type {string[]} */ unsure) => checkWords({ status: 'unverified', kind: 'flight', unsure, fields: { seat: '12A', flights: [{ flight: 'AN 1' }], bags: 2 } });
+  assert.equal(two(['seat', 'flights']), 'not sure the seat or the flights were read right');
+  assert.equal(two(['flights', 'seat']), 'not sure the flights or the seat was read right');
+  assert.equal(two(['flights', 'bags']), 'not sure the flights or the bags were read right');
 });
 
 test("Shiori's words for a booking's parts and the details screen's labels cover the same keys of `fields`: what she asks about has a line by that name (words-next, the old flight's six details)", () => {
@@ -149,11 +155,35 @@ test('checkOf: an old unverified booking reads as if unsure named every part it 
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: '  ', confirmation: ' \t', fields: { seat: '  ', gate: null, airline: 'Test Air' } }), { fields: ['airline'] }, 'a blank title, confirmation or extra is no part');
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', unsure: ['title', 'seat', 'airline'], title: ' ', fields: { seat: '', airline: 'Test Air' } }), { fields: ['airline'] }, 'nor a named one: a name with nothing written under it has no line to mark');
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', fields: { travellers: [], bags: [0], airline: 'Test Air' } }), { fields: ['bags', 'airline'] }, 'an empty list is no part; a list with something in it is');
+  // A list is there when one of its items is, and a place when its name or its address is: what Shiori is told of is what the details draw (small-next).
+  assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', fields: { travellers: [''], bags: [null], seat: ['  ', null], gate: ['A', ''] } }), { fields: ['gate'] }, 'a list of blank or null items is no part');
+  assert.equal(checkWords({ kind: 'flight', status: 'unverified', fields: { travellers: [''] }, place: { name: '  ' } }), '', 'nothing drawn, nothing told');
+  // A place is there by its name or its address (not its coordinates), as the details draw it: Shiori is told of it when an address stands in for
+  // the name (the drawing of that shape is ui-pure.test.js, "bookingFacts: a list is there ..."), and not when only coordinates are left.
+  assert.equal(checkWords({ kind: 'lodging', status: 'unverified', place: { name: '  ', address: '1 Test Street' } }), 'not sure the place was read right', 'told of the place, as its address is what the details draw');
+  const coords = { kind: 'lodging', status: 'confirmed', unsure: ['place'], place: { name: ' ', lat: 51.5, lng: -0.1 } };
+  assert.deepEqual(checkOf(coords), { fields: [] }, 'a name of spaces with only coordinates is no place');
+  assert.equal(checkWords(coords), '', 'nothing drawn, nothing told');
+  assert.equal(checkCount(coords), 0, "and the Plan's chip counts nothing");
+  // A field named like one of the booking's own parts is that part: when the booking has no such part of its own, the field is it (a real
+  // model wrote fields.place: "Testville" with no place), and when it has, there is still one part, one mark (small-next, round 2).
+  const asField = { kind: 'lodging', status: 'unverified', unsure: ['place', 'title'], fields: { place: 'Testville', title: 'Testville Inn' } };
+  assert.deepEqual(checkOf(asField), { fields: ['place', 'title'] }, 'the field is the part');
+  assert.equal(checkWords(asField), 'not sure the place or the name was read right');
+  // The second opinion's shape (F2 b): fields.place with no place of its own, and unsure names it: marked, and Shiori is told.
+  const hotel = { kind: 'lodging', status: 'unverified', unsure: ['place'], fields: { place: 'Hotel X' } };
+  assert.deepEqual(checkOf(hotel), { fields: ['place'] });
+  assert.equal(checkWords(hotel), 'not sure the place was read right');
+  assert.equal(checkCount(hotel), 1, "and the Plan's chip counts it");
+  assert.deepEqual(checkOf({ ...asField, place: { name: 'Testville' }, title: 'Testville Inn' }), { fields: ['place', 'title'] }, 'once, with the part of its own there too');
+  assert.deepEqual(checkOf({ kind: 'lodging', status: 'unverified', place: { name: 'Testville' }, fields: { place: 'Testville' } }), { fields: ['place'] }, 'an old booking: once');
+  assert.deepEqual(checkOf({ kind: 'lodging', status: 'unverified', unsure: ['place'], fields: { place: ' ' } }), { fields: [] }, 'a blank field is no part');
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: 'AN 1', fields: { seat: '14C', airline: 'Test Air' } }), { fields: ['title', 'seat', 'airline'] });
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: '', start: null, confirmation: undefined }), { fields: [] }, 'an empty own field is no part');
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: 'AN 1', fields: 'not an object' }), { fields: ['title'] }, 'fields that is no object adds none');
   assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', title: 'AN 1', fields: ['seat'] }), { fields: ['title'] }, 'nor does a list');
-  assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', fields: { title: 'x' } }), { fields: [] }, "a key of fields named like an own field is not that field: as with unsure, which asks the booking's own");
+  // Reversed in small-next, round 2 (it said a key of fields named like an own field is no part, so a check Shiori asked for was never drawn): the field is that part.
+  assert.deepEqual(checkOf({ kind: 'flight', status: 'unverified', fields: { title: 'x' } }), { fields: ['title'] }, 'a key of fields named like an own field is that field when the booking has none of its own');
   assert.deepEqual(checkOf(JSON.parse('{"kind":"other","status":"unverified","fields":{"__proto__":1,"constructor":2}}')), { fields: ['__proto__', 'constructor'] }, 'a key is a part as written; its words are the other-detail phrase (checkWords)');
   assert.equal(checkWords(JSON.parse('{"kind":"other","status":"unverified","fields":{"__proto__":1,"constructor":2}}')), 'not sure some other detail was read right');
   // Nothing marked: an old confirmed booking, a bare one (nothing to check), an empty unsure.
@@ -182,4 +212,14 @@ test("shioriBooking: a new booking without unsure is refused in words; an old on
   // One written with unsure keeps it: a rewrite without it would turn it into an old record, with every part marked.
   assert.throws(() => shioriBooking({ ...old, unsure: [] }, { ...old, confirmation: 'TESTQ1' }), /unsure/);
   assert.deepEqual(shioriBooking(undefined, { ...old, unsure: ['seat'] }), { ...old, unsure: ['seat'] });
+});
+
+test("written: a date with a time as it is written, the one reading that a write is accepted by and the details draw a leg's time by (small-next, round 3)", () => {
+  // Trimmed, a space for the T, seconds and an offset or a Z optional; its parts are the text's own digits.
+  assert.equal(written(' 2026-11-20 08:00 ')?.at, '2026-11-20T08:00');
+  assert.deepEqual(written('2026-11-20T08:30:15-08:00')?.m.slice(1, 9), ['2026-11-20', '08', '30', '15', '-08:00', '-', '08', '00']);
+  assert.equal(written('2026-11-20T16:00:00Z')?.m[5], 'Z');
+  assert.equal(written('2026-11-20T16:00')?.m[5], undefined, 'no zone written: none read');
+  // Anything else is none: no day Date.parse would roll over, no hour 24, no text of another shape, no non-text.
+  for (const no of ['2026-11-31T08:00', '2026-02-29T08:00', '2026-11-20T24:00', '2026-11-20T08:60', '2026-11-20T08:00:60', 'Nov 20 2026 07:30', '2026-11-20', 'morning', '', '  ', 5, null, undefined, { at: '2026-11-20T08:00' }]) assert.equal(written(no), null, JSON.stringify(no));
 });

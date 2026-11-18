@@ -1,6 +1,6 @@
 import { validZone, dayIn, instantAt } from '../core/time.js';
-import { checkOf, there } from '../core/bookings.js';
-import { BOOKING_FILE, PLAN_FILE, kindWord, CARRIERS } from '../core/plan.js';
+import { checkOf, there, written, TOP } from '../core/bookings.js';
+import { BOOKING_FILE, PLAN_FILE, record, kindWord, CARRIERS } from '../core/plan.js';
 import { isGivenFile } from '../core/paths.js';
 import { TIMINGS } from '../core/backup-auto.js';
 import { holdWords, oldHold } from '../core/backup.js';
@@ -184,9 +184,6 @@ const ORDER = /** @type {Record<string, string[]>} */ ({
 });
 const OTHER = ['start', 'end', 'place', 'confirmation', 'cost'];
 
-/** A field's value in words: a list joined, anything else as text. @param {unknown} v */
-const valueText = (v) => (Array.isArray(v) ? list(v.map((x) => (typeof x === 'string' ? x : JSON.stringify(x)))) : typeof v === 'string' ? v : JSON.stringify(v) ?? '');
-
 /**
  * What a booking says, as labelled facts for its details (the bookings-and-trips design, goal 6), in the order a person checks them for
  * its kind: times in their own zone, named (else the trip's, when given), and `unsure` on each field Shiori isn't sure of (checkOf).
@@ -210,6 +207,63 @@ export function bookingFacts(b, o = {}) {
     if (!Number.isFinite(ms) || !tz) return null;
     return { value: t`${when(ms, tz, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} (${zone(ms, tz)})`, zone: zone(ms, tz) };
   };
+  /**
+   * The words of a key of a list's object or of `fields`: annai's where it has them (FIELD_WORDS), else the key as written.
+   * @param {string} k
+   */
+  const keyWords = (k) => (Object.hasOwn(FIELD_WORDS, k) ? labelOf(k) : k);
+  /**
+   * A flight leg's two times, drawn as they are written, with no zone looked up or guessed: an itinerary prints each airport's own clock, a
+   * leg's `tz` is one zone for two airports, and a connection can be in a third. Each is its day and its 24-hour clock from its text
+   * (`written`, the reading a write is accepted by), or the text itself when it is no time or a UTC one (that clock is not the airport's).
+   * One day and a later clock is a range, "Nov 20 08:00–11:30", its dash held to the clock after it (U+2060, so a line can't break
+   * between them); anything else, each in full, joined by " – ". @param {unknown} leaves @param {unknown} arrives
+   */
+  const times = (leaves, arrives) => {
+    // A side that is a time with no Z: its day and clock from its own text; null when it is none, or a UTC one, and it is then drawn as written.
+    const read = (/** @type {unknown} */ v) => {
+      const r = record(v);
+      const w = written(r ? r.at ?? r.time : v);
+      return w && w.m[5] !== 'Z' ? { day: w.m[1], clock: `${w.m[2]}:${w.m[3]}` } : null;
+    };
+    const [p, q] = [read(leaves), read(arrives)];
+    const full = (/** @type {unknown} */ v, /** @type {ReturnType<typeof read>} */ w) => (v === undefined ? '' : w ? `${day(w.day)} ${w.clock}` : valueText(v));
+    if (p && q && p.day === q.day && q.clock > p.clock) return `${full(leaves, p)}–\u2060${q.clock}`;
+    return [full(leaves, p), full(arrives, q)].filter(Boolean).join(' – ');
+  };
+  // A label and its value inside a line: a full-width colon with no space on Japanese and Chinese screens (ja-style, zh-style; the
+  // catalog's own "{0}：{1}" rows), ": " elsewhere.
+  const colon = () => (/^(ja|zh)(-|$)/.test(screensLang()) ? '：' : ': ');
+  /**
+   * One object, alone or in a list, as one line of the values it has: a flight leg is its number, its route (origin → destination) and its
+   * times (departure, arrival: `times`); every other value follows with its label (`keyWords`), as written; nothing that is null or blank.
+   * A leg's `tz` is left out when it has times (it is their zone, which they don't name) and drawn when it has none. @param {Record<string, any>} x
+   */
+  const line = (x) => {
+    const used = new Set();
+    const pick = (/** @type {string[]} */ names) => {
+      const k = names.find((n) => there(x[n]));
+      if (k !== undefined) used.add(k);
+      return k === undefined ? undefined : x[k];
+    };
+    const [number, from, to, leaves, arrives] = [pick(['flight']), pick(['origin', 'from']), pick(['destination', 'to']), pick(['departure', 'depart']), pick(['arrival', 'arrive'])];
+    if (leaves !== undefined || arrives !== undefined) used.add('tz');
+    const rest = Object.entries(x).filter(([k, v]) => !used.has(k) && there(v)).map(([k, v]) => `${keyWords(k)}${colon()}${valueText(v)}`);
+    return [number === undefined ? '' : valueText(number), [from, to].filter(there).map(valueText).join(' → '), times(leaves, arrives), ...rest].filter(Boolean).join(' · ');
+  };
+  /**
+   * A field's value in words, as written and never as JSON: the items of a list that are there, joined (a list with an object in it is one
+   * line each, `line`), an object as one line, anything else as text. @param {unknown} v @returns {string}
+   */
+  const valueText = (v) => {
+    if (Array.isArray(v)) {
+      const items = v.filter(there);
+      return items.some(record) ? items.map((x) => valueText(x)).join('\n') : list(items.map((x) => valueText(x)));
+    }
+    const r = record(v);
+    if (r) return line(r);
+    return typeof v === 'string' ? v : JSON.stringify(v) ?? '';
+  };
   const stay = b.kind === 'lodging';
   const flight = b.kind === 'flight';
   /** @type {Record<string, () => { label: string, value: string | null, unsure?: boolean, zone?: string } | null>} */
@@ -217,7 +271,11 @@ export function bookingFacts(b, o = {}) {
     route: () => ({ label: tc('flight')`Route`, value: [fields.from, fields.to].filter(words).join(' → ') || null, unsure: marked.has('from') || marked.has('to') }),
     start: () => ({ label: flight ? t`Departs` : stay ? t`Check-in` : tc('booking')`Starts`, ...(at(b.start) ?? { value: null }) }),
     end: () => ({ label: flight ? t`Arrives` : stay ? t`Check-out` : tc('booking')`Ends`, ...(at(b.end) ?? { value: null }) }),
-    place: () => ({ label: t`Place`, value: there(b.place?.name) ? (there(b.place.address) ? tc('booking')`${String(b.place.name)}, ${String(b.place.address)}` : String(b.place.name)) : null }),
+    // Its name and address, each that is there; an address that is only a copy of the name (annai names a place from its address) once.
+    place: () => {
+      const [name, address] = [b.place?.name, b.place?.address].map((x) => (there(x) ? String(x) : ''));
+      return { label: t`Place`, value: name && address && name !== address ? tc('booking')`${name}, ${address}` : name || address || null };
+    },
     nights: () => {
       if (has('nights')) return null; // hers, among the fields
       const tz = (/** @type {any} */ x) => (validZone(x?.tz) ? x.tz : null);
@@ -235,10 +293,17 @@ export function bookingFacts(b, o = {}) {
   const out = [];
   // A flight's from and to in words are its route; anything else stays a field of its own, so nothing she wrote goes unseen.
   const shown = new Set(flight ? ['from', 'to'].filter((k) => typeof fields[k] === 'string' && fields[k]) : []);
-  for (const key of ORDER[b.kind] ?? OTHER) {
+  for (const key of (Object.hasOwn(ORDER, b.kind) ? ORDER[b.kind] : OTHER)) {
     if (Object.hasOwn(own, key)) {
       const f = own[key]();
-      if (f?.value) out.push({ key, label: f.label, value: f.value, unsure: f.unsure ?? marked.has(key), ...(f.zone ? { zone: f.zone } : {}) });
+      if (f?.value) {
+        out.push({ key, label: f.label, value: f.value, unsure: f.unsure ?? marked.has(key), ...(f.zone ? { zone: f.zone } : {}) });
+        if (TOP.includes(key)) shown.add(key); // a part of its own that drew: its field, if one is named like it, is the same part, not a second line
+      } else if (f && TOP.includes(key) && has(key)) {
+        // A part that drew nothing (the booking has none, or one that can't be drawn) and a field named like it (a real model wrote fields.place): the field is its line, as written, under its label.
+        shown.add(key);
+        out.push({ key, label: f.label, value: valueText(fields[key]), unsure: marked.has(key) });
+      }
       if (key !== 'nights' || !has('nights')) continue;
     }
     if (!has(key)) continue;
