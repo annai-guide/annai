@@ -292,8 +292,8 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
   const legs = fk ? (Array.isArray(own[fk]) ? own[fk] : fk.endsWith('+') ? [own[fk]] : []).map(record) : [];
   if (legs.length && legs.every(Boolean)) {
     // A flight leaves with its first leg and arrives with its last, unless this write says when; the legs are kept as written. A leg's tz is
-    // where it leaves: the arrival takes only its own, or is refused (a whole write's, and an appended leg's that has an arrival written).
-    // An appended leg with no arrival still appends, and the end stays as it was: it says no time to move it to.
+    // where it leaves: the arrival takes only its own, or is refused (a whole write's, and the last appended leg's whose arrival has a time
+    // written: an object's `at` or `time`, or text). An appended leg with no time of arrival still appends, and the end stays as it was.
     const [first, last, n] = [legs[0], legs[legs.length - 1], legs.length - 1];
     if (out.start == null && fk === 'flights') put(fk, 'start', timeOf('flights[0].departure', first?.departure ?? first?.depart, first?.tz ?? beside, zones, 'start', true));
     if (out.end == null) {
