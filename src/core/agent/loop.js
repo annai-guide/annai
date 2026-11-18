@@ -1517,13 +1517,17 @@ export class Agent {
       this.#owing = this.#owedNow = null;
       this.#noteOwed = () => false;
       // A tap's listening window outlives the turn until something is said, or 8 s from here (spec §10.4).
-      const tapped = this.#window();
-      this.#setState(tapped ? 'listening' : this.online() ? 'sleeping' : 'offline');
       if (this.#ear?.owner === 'tap') this.#ear.by = Date.now() + LISTEN_S * this.secondMs;
-      this.#armEar();
+      this.#rest();
       this.#settle();
       this.#schedule();
     }
+  }
+
+  /** Nothing runs now. The dock says she listens while a window is open (a tap's, or the one after she spoke), else that she sleeps; and the open microphone's own end is armed again: its time may have passed while she was busy. */
+  #rest() {
+    this.#setState(this.#window() ? 'listening' : this.online() ? 'sleeping' : 'offline');
+    this.#armEar();
   }
 
   /** A due housekeeping waits for this pause, then runs warm shortly before the cache expires, or cold now (spec §6.5). */
@@ -1547,7 +1551,7 @@ export class Agent {
       await this.#notice({ tone: 'info', title: t`Shiori couldn't tidy up the conversation`, body: sentences(await this.#words(e, mode === 'cold' ? 'utility' : 'main'), t`She will try again later.`) });
     } finally {
       this.#busy = false;
-      this.#setState(this.online() ? 'sleeping' : 'offline');
+      this.#rest();
       this.#settle();
       if (this.#queue.length) this.#drain();
     }
@@ -1734,7 +1738,7 @@ export class Agent {
       return 'failed';
     } finally {
       this.#busy = false;
-      this.#setState(this.online() ? 'sleeping' : 'offline');
+      this.#rest();
       this.#settle();
       if (this.#queue.length) this.#drain();
     }
@@ -1819,7 +1823,7 @@ export class Agent {
       return result;
     } finally {
       this.#busy = false;
-      this.#setState(this.online() ? 'sleeping' : 'offline');
+      this.#rest();
       this.letGo();
       this.#settle();
     }
@@ -3496,7 +3500,7 @@ export class Agent {
         clearTimeout(timer);
         if (this.#speaking) return; // their line's end arms it again (#heard)
         timer = setTimeout(() => this.#hearing.then(() => {
-          if (this.#pending?.id !== id) return;
+          if (this.#pending?.id !== id || this.#speaking) return; // a line begun after its time, while the verdict on an earlier one was slow, is heard to its end (#heard arms it again)
           this.#pending = null;
           resolve({});
         }), Math.max(0, by - Date.now()));
@@ -3874,9 +3878,9 @@ export class Agent {
     Object.assign(ear, { owner: 'turn', tap: false, by: 0 });
   }
 
-  /** The window after she spoke: its microphone closes that long after her last words. @param {Ear} ear */
+  /** The window after she spoke: its microphone closes that long after her last words, and no tap's line is said into it (a tap that claimed her listening as it opened is over). @param {Ear} ear */
   async #after(ear) {
-    ear.owner = 'after';
+    Object.assign(ear, { owner: 'after', tap: false });
     const s = this.voice ? (await this.voice.settings()).silenceSeconds : 0;
     if (this.#ear !== ear || ear.owner !== 'after') return;
     ear.by = this.#saidAt + s * this.secondMs;
@@ -3901,9 +3905,10 @@ export class Agent {
       this.#openEar('after').then((deaf) => {
         this.#afterOpening = false;
         if (!deaf && this.#userStop && this.#ear?.owner === 'after') this.#closeEar(); // the user's Stop came as it opened
-        if (deaf || this.#busy || this.#ear?.owner !== 'after') return void this.#emit('state', this.state); // whoever waits on this window hears it came to nothing
-        this.#setState('listening');
-        this.#after(this.#ear);
+        if (deaf || this.#ear?.owner !== 'after') return void this.#emit('state', this.state); // whoever waits on this window hears it came to nothing
+        if (this.#busy) this.#emit('state', this.state); // a turn runs (it writes down what it heard, or a second one started): its end sets Listening (#drain)
+        else this.#setState('listening');
+        this.#after(this.#ear); // its deadline stands under a turn too: #drain's end arms it (#armEar)
       });
     } else if (!this.#ear && this.#voiceNow) this.voice?.platform?.session('playback'); // after speaking (spec §10.1)
     await this.#writeChatter(wakeId);
