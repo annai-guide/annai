@@ -276,12 +276,12 @@ export function startShell(root, core) {
   /** @param {{ unasked?: boolean }} o the beat after which what was typed is kept */
   const since = (o) => (o.unasked ? 0 : tappedAt);
   /** @param {{ unasked?: boolean }} o the caret is in a field whose text is kept (for a draw nobody asked for, any field: it waited for the caret before) */
-  const held = (o) => { const a = caretIn(); return a !== null && (o.unasked || (typedAt.get(a) ?? 0) > tappedAt); };
+  const caretHolds = (o) => { const a = caretIn(); return a !== null && (o.unasked || (typedAt.get(a) ?? 0) > tappedAt); };
   /** @param {{ moved?: boolean, unasked?: boolean }} [o] moved: a new screen or an entry of the history, not a redraw of this one; unasked: no tap asked for it. A redraw waits while the caret is in a field whose text is kept, whoever asked: what is typed, the caret and the keyboard stay. */
   async function render(o = {}) {
     if (!o.moved) {
       const was = seq;
-      while (held(o)) {
+      while (caretHolds(o)) {
         await new Promise((done) => { setTimeout(done, LET_GO_MS); });
         if (seq !== was) return superseded(was);
       }
@@ -377,7 +377,7 @@ export function startShell(root, core) {
       // Its screen's ctx says which render it is, so what it draws after a newer one began is cleaned up at once.
       const node = await screen(Object.create(ctx, { seq: { value: my }, moved: { value: o.moved === true }, entry: { value: entry }, tripScope: { value: scope } }), route);
       if (my !== seq) return superseded(my);
-      if (!o.moved && held(o)) return render(o); // typing began while it was built
+      if (!o.moved && caretHolds(o)) return render(o); // typing began while it was built
       // Home drawn again in place (the clock, a hand-over, a Delete): the first row in view that is still shown stays where it was (keepRows).
       const draw = () => main.replaceChildren(node);
       const kept = o.moved ? [] : [...main.querySelectorAll('input[id], textarea[id]')].filter((el) => isField(el) && (typedAt.get(el) ?? 0) > since(o));
