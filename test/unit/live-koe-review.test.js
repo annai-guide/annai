@@ -240,11 +240,25 @@ test('item 6 (probe M): a tool call being worked out when the session drops is a
 test('item 7 (probe C): a session closed while it opens tells Kokoro nothing: no live-closed without its live-open', async () => {
   const k = await liveKit([]);
   try {
+    // The opening is held at its connection, so "while it opens" is a state the test waits for and keeps: polling for it every 2 ms missed it
+    // on a loaded host (the session opened in between, and the wait ran out).
+    const live = k.llm.live;
+    let connecting = false;
+    /** @type {() => void} */
+    let release = () => {};
+    const held = new Promise((r) => { release = () => r(undefined); });
+    k.llm.live = async (/** @type {string} */ id, /** @type {any} */ setup, /** @type {any} */ o) => {
+      connecting = true;
+      await held;
+      return live(id, setup, o);
+    };
     k.agent.tap();
-    await until(() => k.agent.live.state === 'opening', 3000);
+    await until(() => connecting, 3000);
+    assert.equal(k.agent.live.state, 'opening');
     k.agent.hush('away');
-    await k.agent.idle();
-    await wait(100);
+    release();
+    await k.agent.idle(); // the held connection is made, and let go: the opening ends, and what it told Kokoro is written
+    assert.equal(k.sessions.length, 1, 'the connection was made, and closed');
     assert.deepEqual(await blocks(k), []);
   } finally {
     await k.done();
