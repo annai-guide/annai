@@ -112,6 +112,19 @@ test("an overnight ride of kind bus ends in Koe's view as a flight's or train's 
   assert.doesNotMatch(view, /Ends|Shinjuku/);
 });
 
+test("a ferry's, a bus's or a coach's booking with no ride item linked ends in the view of today as a train's does, \"Arrive · Ferry ticket\" with no place, and the next 48 hours name its kind (booking-next: the format refused the kind, so a ferry was written `other` and its end read \"Ends · Ferry ticket\" at the port)", async () => {
+  for (const kind of ['ferry', 'bus', 'coach']) {
+    const k = await agentKit([[{ text: '' }]], { open: true });
+    await k.ws.write(k.trip, '/bookings/ride.json', { id: 'ride', kind, status: 'unverified', source: '/files/ride.pdf', unsure: ['end'], title: 'Ferry ticket',
+      place: { name: 'Port A' }, start: at('2026-11-20T19:00:00'), end: at('2026-11-21T07:00:00') }, { author: 'user' });
+    const view = await compactView({ ws: k.ws, trip: k.trip, now: Date.parse('2026-11-21T05:00:00-08:00'), timeZone: LA, next: null });
+    assert.match(view, /\n2026-11-21 07:00\t\tArrive · Ferry ticket\tnot sure the time was read right\t\n/, kind);
+    assert.doesNotMatch(view, /Ends|Port A/, kind);
+    const back = await compactView({ ws: k.ws, trip: k.trip, now: Date.parse('2026-11-20T10:00:00-08:00'), timeZone: LA, next: null });
+    assert.match(back, new RegExp(`\\n2026-11-20 19:00\\t${kind}\\tFerry ticket\\tnot sure the arrival time was read right\\t\\n`), kind);
+  }
+});
+
 test("\"can't be moved\" in Koe's view only for a plan item stored as fixed: a hotel with nothing marked and a flexible trek's end say nothing (the user's answer, 2026-11-15: only what was said fixed)", async () => {
   const k = await agentKit([[{ text: '' }]], { open: true });
   const hotel = { id: 'hotel', kind: 'lodging', status: 'unverified', source: '/files/h.pdf', title: 'Test Harbor Hotel', unsure: [], start: at('2026-11-26T15:00:00'), end: at('2026-11-27T11:00:00') };

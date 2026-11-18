@@ -44,3 +44,36 @@ test("bookingFacts in ja: a flight's legs are a line each, in the screens' words
   // An object that is no leg: one line, each value with its key (annai's word where it has one).
   assert.equal(bookingFacts({ kind: 'flight', unsure: [], fields: { gate: { name: 'B', open: null, note: '混雑', bags: 2 } } })[0].value, 'name：B · note：混雑 · 手荷物：2');
 });
+
+test("bookingFacts in ja (booking-next): the keys of a booking's extras read as a Japanese airline's own page puts them, never the key as written; a leg time's airport and terminal sit in full-width brackets beside its clock; a train's and a ferry's times are 出発 and 到着", async () => {
+  const { fileLine } = await import('../../src/ui/format.js');
+  const f = bookingFacts({ kind: 'flight', unsure: [], fields: { bags: { checked: 2, carry_on: 1 }, meal: 'ベジタリアン', rooms: 1, total: '約12,000円', price: '1人6,000円', arrival: '大阪' } });
+  assert.deepEqual(f.map((x) => [x.label, x.value, x.lang]), [
+    ['手荷物', '預け入れ手荷物：2 · 機内持ち込み手荷物：1', undefined], ['食事', 'ベジタリアン', undefined], ['部屋数', '1', undefined],
+    ['合計金額', '約12,000円', undefined], ['価格', '1人6,000円', undefined], ['到着', '大阪', undefined],
+  ]);
+  // A booking's own cost and a price kept in words are two words, not two 料金 (booking-next fix 1), and an arrival is 到着 whatever it holds.
+  const both = bookingFacts({ kind: 'flight', unsure: [], cost: { amount: 12000, currency: 'JPY' }, fields: { price: '1人6,000円', arrival: '15:00–16:00' } });
+  assert.deepEqual(both.map((x) => [x.key, x.label]), [['cost', '料金'], ['price', '価格'], ['arrival', '到着']]);
+  assert.doesNotMatch(f.map((x) => x.label + x.value).join(), /checked|carry_on|meal|rooms|total|price|arrival/);
+  const amadeus = { flight: 'NH 7', departure: { iataCode: 'SFO', terminal: 'I', at: '2026-11-20T11:05' }, arrival: { iataCode: 'NRT', terminal: '1', at: '2026-11-21T15:40' } };
+  assert.equal(bookingFacts({ kind: 'flight', unsure: [], fields: { flights: [amadeus] } })[0].value, 'NH 7 · 11月20日 11:05（iataCode：SFO · ターミナル：I） – 11月21日 15:40（iataCode：NRT · ターミナル：1）');
+  // A name beside the heading's, saying something else: 名称, not "title".
+  assert.deepEqual(bookingFacts({ kind: 'lodging', unsure: [], title: 'ホテルX', fields: { title: 'ホテルX 別館' } }).map((x) => [x.label, x.lang]), [['名称', undefined]]);
+  const at = { at: '2026-11-20T19:00:00+09:00', tz: 'Asia/Tokyo' };
+  for (const kind of ['rail', 'ferry', 'bus', 'coach']) assert.deepEqual(bookingFacts({ kind, unsure: [], start: at, end: at }).map((x) => x.label), ['出発', '到着'], kind);
+  const b = (/** @type {string} */ k, /** @type {string} */ day) => ({ kind: /** @type {const} */ ('booking'), bookingKind: k, path: `/bookings/${k}${day}.json`, title: '', at: null, day });
+  assert.equal(fileLine([b('ferry', '2026-11-20'), b('bus', '2026-11-21'), b('bus', '2026-11-22'), b('coach', '2026-11-22')]), 'フェリー1便 · バス2便 · 長距離バス1便');
+});
+
+test("bookingFacts in ja (booking-next fix 2): a ferry Shiori writes with an arrival's time and place draws the time as 到着 and the place as 到着地, never 到着 twice (the place was filed under `arrival`, which reads 到着 too)", async () => {
+  const { shioriBooking, unalias } = await import('../../src/core/bookings.js');
+  const { BOOKING_SCHEMA } = await import('../../src/plugins/core-schemas/schemas.js');
+  const TOKYO = 'Asia/Tokyo';
+  const written = { id: 'b', kind: 'ferry', status: 'unverified', source: '/files/b.pdf', unsure: [], depart: { at: '2026-11-20T17:00', tz: TOKYO, location: 'Osaka port' }, arrive: { at: '2026-11-21T07:00', tz: TOKYO, location: 'Beppu port' } };
+  const stored = shioriBooking(undefined, unalias(written, { zones: [], schema: BOOKING_SCHEMA }), { schema: BOOKING_SCHEMA });
+  assert.deepEqual(stored.fields, { to: 'Beppu port' });
+  const f = bookingFacts(stored);
+  assert.deepEqual(f.filter((x) => ['end', 'to'].includes(x.key)).map((x) => [x.label, x.value]), [['到着', '11月21日(土) 7:00（JST）'], ['到着地', 'Beppu port']]);
+  assert.equal(new Set(f.map((x) => x.label)).size, f.length, 'no two lines under one label');
+});

@@ -95,7 +95,7 @@ New:
   amount and currency to `cost` (a comma only as a thousands group; anything else to `fields.total` as written); flights[] legs to
   `start`/`end` (first departure, last arrival) and kept as `fields.flights`; common detail names the user's model wrote (notes, room,
   phone, guests, passengers, airline, company, seat, flight) to `fields.<name>`; a car's drop-off place to `fields.dropoff`, an
-  arrival's to `fields.arrival`. A key the booking schema in force lists is never renamed (a plugin's registered fields stay theirs).
+  arrival's to `fields.to` (where it arrives; booking-next: it was `fields.arrival`, which reads like its time). A key the booking schema in force lists is never renamed (a plugin's registered fields stay theirs).
 - **This write wins.** A renamed key replaces the stored own field (a patch `{checkout: …}` moves the stored `end`; `{flights: legsB}`
   moves `start`/`end` too). The same write giving both an alias and its own field with different values is refused, naming both.
 - **Times:** a string time becomes `{ at, tz }` only with a known zone: a `tz` beside it, else, for anything but a flight or train, the
@@ -107,7 +107,8 @@ New:
   under it goes at once and the double state never forms (`+` forms append and never delete); a null alias deletes its own field and
   the stored alias key (`total: null` clears `cost` and `fields.total`). In a whole write a null is the same as no key, except
   `unsure`, which the format check refuses. An edit that adds an alias is refused naming the format's field. Legs appended with
-  `flights+` move `end` to the last leg's arrival. Appending (`x+`) to a stored value that is no list keeps that value as the first item.
+  `flights+` move `end` to the last leg's arrival (booking-next: one with a time of arrival and no zone of its own is refused, as a whole
+  `flights` write is; a leg with no time of arrival, or an airport as an object, still appends and leaves `end`; the last appended leg's arrival written as text that can't be placed, "HND" or "08:00", is refused). Appending (`x+`) to a stored value that is no list keeps that value as the first item.
 - **One rule for the place.** In a patch the place aliases merge into `place` like a JSON merge patch: a location (or a pick-up's
   location) is `place.name`, an address (or a pick-up's) is `place.address`, lat/lng are `place.lat/lng`; `address: null` is the address
   null and `location: null` is no place. A `place` of its own (object) merges with them, and different values for one part, or

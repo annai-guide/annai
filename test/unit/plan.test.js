@@ -699,6 +699,55 @@ test("a ride booked as `other` (the booking format has no kind for a ferry) with
   }
 });
 
+test("an untitled ride stored as `other`, with a ride item linked to it, is named by the ride's kind on its Arrive row, as an untitled ride booking is, not \"Booking\" (booking-next fix 1)", () => {
+  const ticket = { path: '/bookings/ferry.json', booking: { id: 'ferry', kind: 'other', status: 'unverified', source: '/files/ferry.pdf', unsure: [], place: { name: 'Port A', lat: 35.65, lng: 139.8 },
+    start: { at: '2026-11-20T19:00:00-09:00', tz: AK }, end: { at: '2026-11-21T07:00:00-09:00', tz: AK } } };
+  const ride = (/** @type {string} */ kind) => ({ path: '/plan/ferry.json', item: { id: 'ferry', title: 'Night ride', kind, fixed: true, booking: '/trip/bookings/ferry.json', start: { at: '2026-11-20T19:00:00-09:00', tz: AK } } });
+  const last = (/** @type {any[]} */ its, /** @type {any} */ b = ticket) => shown(planRows(its, [b], { fallbackTz: 'UTC' }).filter((r) => r.from === 'end'))[0];
+  for (const [kind, word] of [['ferry', 'Ferry'], ['bus', 'Bus'], ['coach', 'Coach']]) {
+    assert.equal(last([ride(kind)]), `end@2026-11-21 07:00 Arrive · ${word}`, kind);
+    // The same ride written as a booking of its own kind.
+    assert.equal(last([], { ...ticket, booking: { ...ticket.booking, kind } }), `end@2026-11-21 07:00 Arrive · ${word}`, `${kind} booking`);
+  }
+  // With no ride item it is a booking of kind other: "Booking", as before; a title of its own wins.
+  assert.equal(last([]), 'end@2026-11-21 07:00 Ends · Booking');
+  assert.equal(last([ride('ferry')], { ...ticket, booking: { ...ticket.booking, title: 'Sunflower ferry' } }), 'end@2026-11-21 07:00 Arrive · Sunflower ferry');
+});
+
+// booking-next: a ferry, a bus and a coach are booking kinds of their own.
+test("a ferry ticket Shiori writes as a booking of kind ferry (bus, coach), with no ride item linked to it, is taken, and ends on the Plan as a train's booking does: Arrive with no place, no leg from the port to the breakfast, and Driving's strip doesn't list the port (main refused the kind, so a ferry was written `other` and ended \"Ends · Ferry ticket\" at the port)", async () => {
+  const { routeStrip } = await import('../../src/core/now.js');
+  const { Registry } = await import('../../src/core/registry.js');
+  const { PluginHost } = await import('../../src/core/plugins.js');
+  const { makeSchemaFor } = await import('../../src/core/schema.js');
+  const { kindOf } = await import('../../src/core/scopes.js');
+  const registry = new Registry();
+  const store = createMemoryStore();
+  const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
+  await ensureBaseScopes(ws);
+  const host = new PluginHost({ registry, workspace: ws, importModule: (/** @type {string} */ u) => import(u) });
+  await host.addBuiltin(new URL('../../src/plugins/core-schemas/index.js', import.meta.url).href);
+  await host.addBuiltin(new URL('../../src/plugins/files/index.js', import.meta.url).href);
+  const trip = await createTrip(ws, { title: 'Seto Inland Sea' });
+  await ws.patch(trip, '/trip.json', { timezones: [AK] }, { author: 'user' });
+  const tools = Object.fromEntries(registry.entries('tool').map((e) => [e.item.name, e.item]));
+  const write = (/** @type {any} */ input) => tools.write.run(input, { scope: trip, trip, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' });
+  await ws.write(trip, '/plan/breakfast.json', { id: 'breakfast', title: 'Breakfast in Osaka', fixed: false, place: { name: 'Osaka cafe', lat: 34.69, lng: 135.5 }, start: { at: '2026-11-21T08:00:00-09:00', tz: AK } }, { author: 'user' });
+  const asleep = { lat: 35.1, lng: 136.9 }; // aboard
+  for (const kind of ['ferry', 'bus', 'coach']) {
+    // As she writes it: aliases for its times, each in the place it leaves or arrives (a ride's time never takes the trip's only zone).
+    await write({ path: '/trip/bookings/ride.json', content: { id: 'ride', kind, status: 'unverified', source: '/trip/files/ride.pdf', unsure: [], title: 'Ferry ticket',
+      place: { name: 'Port A', lat: 35.65, lng: 139.8 }, depart: '2026-11-20T19:00', arrive: { at: '2026-11-21T07:00', tz: AK }, tz: AK } });
+    assert.equal((await ws.readJSON(trip, '/bookings/ride.json')).kind, kind);
+    const { rows } = await tripRows({ store, ws }, trip);
+    const timed = rows.filter((r) => r.at !== null).sort((a, b) => /** @type {number} */ (a.at) - /** @type {number} */ (b.at));
+    assert.deepEqual(shown(timed), ['booking@2026-11-20 19:00 Ferry ticket', 'end@2026-11-21 07:00 Arrive · Ferry ticket', 'item@2026-11-21 08:00 Breakfast in Osaka'], kind);
+    const [, end, breakfast] = timed;
+    assert.deepEqual([end.set?.kind, end.item.place, legKm(end, breakfast)], [kind, undefined, null], kind); // no port, so no leg from it
+    assert.deepEqual(routeStrip(rows, asleep, Date.parse('2026-11-21T05:00:00-09:00'), 'driving').map((s) => s.name), ['Osaka cafe'], kind);
+  }
+});
+
 test("a car rental linked to a flight's booking opens its own item and carries no check chip of the flight's: its rows have no booking, and the link it wrote stays (the second opinion on kind-next's fix round 1, findings 1 and 2)", () => {
   const rows = planRows([rental()], [ua({ unsure: ['start'] })], { fallbackTz: 'UTC' });
   const car = rows.filter((r) => r.path === '/plan/car.json');

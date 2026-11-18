@@ -130,7 +130,8 @@ export function kindName(kind) {
 /** How many of a kind of booking, by its kind. */
 const COUNTS = /** @type {Record<string, (n: number) => string>} */ ({
   flight: (n) => plural(n, '# flight', '# flights'), lodging: (n) => plural(n, '# stay', '# stays'), car: (n) => plural(n, '# car', '# cars'),
-  rail: (n) => plural(n, '# train', '# trains'), event: (n) => plural(n, '# event', '# events'), restaurant: (n) => plural(n, '# restaurant', '# restaurants'),
+  rail: (n) => plural(n, '# train', '# trains'), ferry: (n) => plural(n, '# ferry', '# ferries'), bus: (n) => plural(n, '# bus', '# buses'),
+  coach: (n) => plural(n, '# coach', '# coaches'), event: (n) => plural(n, '# event', '# events'), restaurant: (n) => plural(n, '# restaurant', '# restaurants'),
   other: (n) => plural(n, '# booking', '# bookings'),
 });
 
@@ -162,16 +163,17 @@ export function fileLine(became) {
 }
 
 /**
- * Words for the keys Shiori writes most in a booking's `fields`, and for those annai files there itself (bookings.js EXTRAS and `dropoff`),
- * but not `arrival` (where an arrival ends, a place: bookings.js files it) nor `total` and `price` (a cost she gave in words): they and
- * any other key are shown as written. The same keys as Shiori's words for a booking's parts (bookings.js partWords), so what she asks
- * about has a line by that name.
+ * Words for the keys Shiori writes most in a booking's `fields` (and inside them: a bag allowance's `checked` and `carry_on`, a leg's
+ * `meal`), for those annai files there itself (bookings.js EXTRAS, `dropoff`, `to` where an arrival ends, `total` and `price` a cost she gave in words), for `arrival` (what a model writes
+ * there, a place or a time: "Arrival"), and for her instructions' example (`rooms`); any other key is shown as written. The same keys as Shiori's words for a
+ * booking's parts (bookings.js partWords), so what she asks about has a line by that name.
  */
 export const FIELD_WORDS = /** @type {Record<string, string>} */ ({
   flight: tc('booking')`Flight`, airline: t`Airline`, from: tc('booking')`From`, to: tc('booking')`To`, seat: t`Seat`, class: tc('booking')`Cabin`,
   travellers: t`Travellers`, bags: t`Bags`, terminal: t`Terminal`, gate: t`Gate`, room: tc('booking')`Room`, guests: t`Guests`, nights: t`Nights`,
   pickup: t`Pick-up`, dropoff: t`Drop-off`, train: tc('booking')`Train`, car: tc('booking')`Car`, party: t`Party size`, notes: t`Notes`,
   phone: t`Phone number`, passengers: t`Passengers`, company: t`Company`, flights: tc('booking')`Flights`,
+  checked: t`Checked bags`, carry_on: t`Carry-on`, meal: tc('booking')`Meal`, arrival: tc('booking')`Arrival`, total: t`Total`, price: t`Price`, rooms: t`Rooms`,
 });
 
 /** A key's words where the booking's kind says another thing than FIELD_WORDS: a rental's `car` is its model, a train's is its coach; on any other kind it is a car. */
@@ -216,19 +218,29 @@ export function bookingFacts(b, o = {}) {
    * A flight leg's two times, drawn as they are written, with no zone looked up or guessed: an itinerary prints each airport's own clock, a
    * leg's `tz` is one zone for two airports, and a connection can be in a third. Each is its day and its 24-hour clock from its text
    * (`written`, the reading a write is accepted by), or the text itself when it is no time or a UTC one (that clock is not the airport's).
-   * One day and a later clock is a range, "Nov 20 08:00–11:30", its dash held to the clock after it (U+2060, so a line can't break
+   * A time written as an object with more in it than its time and zone (an airport, a terminal: `{ iataCode, terminal, at }`) has the rest
+   * beside its clock, in brackets, each with its label, so a leg's airports are never dropped (booking-next: they were). One day, a later
+   * clock and nothing beside either is a range, "Nov 20 08:00–11:30", its dash held to the clock after it (U+2060, so a line can't break
    * between them); anything else, each in full, joined by " – ". @param {unknown} leaves @param {unknown} arrives
    */
   const times = (leaves, arrives) => {
-    // A side that is a time with no Z: its day and clock from its own text; null when it is none, or a UTC one, and it is then drawn as written.
-    const read = (/** @type {unknown} */ v) => {
+    // A side that is a time with no Z: its day and clock from its own text, and what else its object holds; null when it is none, or a UTC
+    // one, and it is then drawn as written.
+    /** @param {unknown} v @returns {{ day: string, clock: string, more: string } | null} */
+    const read = (v) => {
       const r = record(v);
-      const w = written(r ? r.at ?? r.time : v);
-      return w && w.m[5] !== 'Z' ? { day: w.m[1], clock: `${w.m[2]}:${w.m[3]}` } : null;
+      const by = r && (r.at === undefined || r.at === null) ? 'time' : 'at'; // the key `r.at ?? r.time` reads
+      const w = written(r ? r[by] : v);
+      if (!w || w.m[5] === 'Z') return null;
+      // Each value has its label, whatever its key: a `from`, `to` or `flight` in it is a detail of the time, not the leg's route or number.
+      const more = Object.entries(r ?? {}).filter(([k, x]) => k !== by && k !== 'tz' && there(x)).map(([k, x]) => `${keyWords(k)}${colon()}${valueText(x)}`);
+      return { day: w.m[1], clock: `${w.m[2]}:${w.m[3]}`, more: more.join(' · ') };
     };
     const [p, q] = [read(leaves), read(arrives)];
-    const full = (/** @type {unknown} */ v, /** @type {ReturnType<typeof read>} */ w) => (v === undefined ? '' : w ? `${day(w.day)} ${w.clock}` : valueText(v));
-    if (p && q && p.day === q.day && q.clock > p.clock) return `${full(leaves, p)}–\u2060${q.clock}`;
+    const clock = (/** @type {{ day: string, clock: string }} */ w) => `${day(w.day)} ${w.clock}`;
+    // What its object holds beside it is in the catalog's own brackets (a name and a detail: "{0}（{1}）" in Japanese and Chinese).
+    const full = (/** @type {unknown} */ v, /** @type {ReturnType<typeof read>} */ w) => (v === undefined ? '' : !w ? valueText(v) : w.more ? t`${clock(w)} (${w.more})` : clock(w));
+    if (p && q && !p.more && !q.more && p.day === q.day && q.clock > p.clock) return `${full(leaves, p)}–\u2060${q.clock}`;
     return [full(leaves, p), full(arrives, q)].filter(Boolean).join(' – ');
   };
   // A label and its value inside a line: a full-width colon with no space on Japanese and Chinese screens (ja-style, zh-style; the
@@ -266,11 +278,13 @@ export function bookingFacts(b, o = {}) {
   };
   const stay = b.kind === 'lodging';
   const flight = b.kind === 'flight';
+  // What carries the traveller (a flight, a train, a ferry, a bus, a coach: plan.js CARRIERS) departs and arrives, as the Plan's Arrive says.
+  const carrier = CARRIERS.has(b.kind);
   /** @type {Record<string, () => { label: string, value: string | null, unsure?: boolean, zone?: string } | null>} */
   const own = {
-    route: () => ({ label: tc('flight')`Route`, value: [fields.from, fields.to].filter(words).join(' → ') || null, unsure: marked.has('from') || marked.has('to') }),
-    start: () => ({ label: flight ? t`Departs` : stay ? t`Check-in` : tc('booking')`Starts`, ...(at(b.start) ?? { value: null }) }),
-    end: () => ({ label: flight ? t`Arrives` : stay ? t`Check-out` : tc('booking')`Ends`, ...(at(b.end) ?? { value: null }) }),
+    route: () => ({ label: tc('flight')`Route`, value: [fields.from, fields.to].filter(words).join(' → ') || null, unsure: (words(fields.from) && marked.has('from')) || (words(fields.to) && marked.has('to')) }),
+    start: () => ({ label: carrier ? t`Departs` : stay ? t`Check-in` : tc('booking')`Starts`, ...(at(b.start) ?? { value: null }) }),
+    end: () => ({ label: carrier ? t`Arrives` : stay ? t`Check-out` : tc('booking')`Ends`, ...(at(b.end) ?? { value: null }) }),
     // Its name and address, each that is there; an address that is only a copy of the name (annai names a place from its address) once.
     place: () => {
       const [name, address] = [b.place?.name, b.place?.address].map((x) => (there(x) ? String(x) : ''));
@@ -298,7 +312,9 @@ export function bookingFacts(b, o = {}) {
       const f = own[key]();
       if (f?.value) {
         out.push({ key, label: f.label, value: f.value, unsure: f.unsure ?? marked.has(key), ...(f.zone ? { zone: f.zone } : {}) });
-        if (TOP.includes(key)) shown.add(key); // a part of its own that drew: its field, if one is named like it, is the same part, not a second line
+        // A part of its own that drew: its field, if one is named like it, is the same part, not a second line, whatever it holds (a string that says
+        // something else, an object, a list, a number). The record keeps it, and Shiori reads it; what is drawn is the part's line, with the part's check.
+        if (TOP.includes(key)) shown.add(key);
       } else if (f && TOP.includes(key) && has(key)) {
         // A part that drew nothing (the booking has none, or one that can't be drawn) and a field named like it (a real model wrote fields.place): the field is its line, as written, under its label.
         shown.add(key);
@@ -310,9 +326,13 @@ export function bookingFacts(b, o = {}) {
     shown.add(key);
     out.push({ key, label: labelOf(key), value: valueText(fields[key]), unsure: marked.has(key) });
   }
+  // The name is the screen's heading, no line: a field of that name is skipped when it says the same, and is a line under "Name" when it
+  // doesn't (or the booking has none); unlike the other parts of its own, whose same-named field is never drawn beside them.
+  const name = typeof b.title === 'string' && b.title.trim() ? b.title.trim() : '';
+  if (name && has('title') && valueText(fields.title).trim() === name) shown.add('title');
   for (const [key, v] of Object.entries(fields)) {
     if (shown.has(key) || !there(v)) continue;
-    const words = Object.hasOwn(FIELD_WORDS, key) ? labelOf(key) : null;
+    const words = Object.hasOwn(FIELD_WORDS, key) ? labelOf(key) : key === 'title' ? tc('booking')`Name` : null;
     out.push({ key, label: words ?? key, value: valueText(v), ...(words ? {} : { lang: /** @type {const} */ ('en') }), unsure: marked.has(key) });
   }
   return out;
