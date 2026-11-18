@@ -902,3 +902,12 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** with no position annai can't tell a traveller waiting at the gate from one who left the airport. Giving the second flight no leave reminder without a position would miss the traveller who left.
 - **Revisit when:** a traveller reports the false alarm at a layover as a bother, or annai comes to know where the traveller is after a landing.
 - **Approved:** 2026-11-17, the user's pick "Keep as built (Recommended)" (through chief; the leave re-review's proposed known limitation 4).
+
+### A booking's details: a leg time written as an object with more in it, a field that differs from a drawn part, and keys in English
+- **Kind:** deferred.
+- **What the traveller sees:** three shapes left after small-next's booking-details rounds (the design check's Option A), each with nothing on screen that is false:
+  - A leg whose departure or arrival is an object holding more than its time (the Amadeus shape `departure: { iataCode: 'SFO', terminal: 'I', at: '2026-11-20T11:05' }`) draws only its clock: "NH 7 · Nov 20 11:05 – Nov 21 15:40", with no airport, terminal or gate. The record keeps them and Shiori reads them. No real model has been seen writing it (the real shape is flat).
+  - A field named like one of the booking's own parts, with a different text, is not drawn when the part drew its line: confirmation "ABC123" beside `fields.confirmation` "XYZ789 (e-ticket)" shows only "Confirmation: ABC123" (main drew both). The design check kept the skip, so one doubt has one line and one check; the field is stored and Shiori reads it.
+  - A key annai has no word for is drawn as written, in English on a Japanese or Chinese screen ("checked：2 · carry_on：1", "meal：vegetarian"), as the details' left-hand labels have always been.
+- **Why:** small-next's booking details took three rounds and a design check; these are the shapes its last re-review and second opinion found, none a wrong value, each a choice the next change can make with a test (the first is one condition in `read`, src/ui/format.js; the second skips by equal text; the third needs words for keys or a rule to leave unknown keys out).
+- **Revisit when:** the next change to a booking's details, or a sighting of any of the three in a real booking.

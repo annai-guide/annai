@@ -231,6 +231,9 @@ export function bookingFacts(b, o = {}) {
     if (p && q && p.day === q.day && q.clock > p.clock) return `${full(leaves, p)}–\u2060${q.clock}`;
     return [full(leaves, p), full(arrives, q)].filter(Boolean).join(' – ');
   };
+  // A label and its value inside a line: a full-width colon with no space on Japanese and Chinese screens (ja-style, zh-style; the
+  // catalog's own "{0}：{1}" rows), ": " elsewhere.
+  const colon = () => (/^(ja|zh)(-|$)/.test(screensLang()) ? '：' : ': ');
   /**
    * One object, alone or in a list, as one line of the values it has: a flight leg is its number, its route (origin → destination) and its
    * times (departure, arrival: `times`); every other value follows with its label (`keyWords`), as written; nothing that is null or blank.
@@ -245,7 +248,7 @@ export function bookingFacts(b, o = {}) {
     };
     const [number, from, to, leaves, arrives] = [pick(['flight']), pick(['origin', 'from']), pick(['destination', 'to']), pick(['departure', 'depart']), pick(['arrival', 'arrive'])];
     if (leaves !== undefined || arrives !== undefined) used.add('tz');
-    const rest = Object.entries(x).filter(([k, v]) => !used.has(k) && there(v)).map(([k, v]) => `${keyWords(k)}: ${valueText(v)}`);
+    const rest = Object.entries(x).filter(([k, v]) => !used.has(k) && there(v)).map(([k, v]) => `${keyWords(k)}${colon()}${valueText(v)}`);
     return [number === undefined ? '' : valueText(number), [from, to].filter(there).map(valueText).join(' → '), times(leaves, arrives), ...rest].filter(Boolean).join(' · ');
   };
   /**
@@ -290,7 +293,7 @@ export function bookingFacts(b, o = {}) {
   const out = [];
   // A flight's from and to in words are its route; anything else stays a field of its own, so nothing she wrote goes unseen.
   const shown = new Set(flight ? ['from', 'to'].filter((k) => typeof fields[k] === 'string' && fields[k]) : []);
-  for (const key of ORDER[b.kind] ?? OTHER) {
+  for (const key of (Object.hasOwn(ORDER, b.kind) ? ORDER[b.kind] : OTHER)) {
     if (Object.hasOwn(own, key)) {
       const f = own[key]();
       if (f?.value) {

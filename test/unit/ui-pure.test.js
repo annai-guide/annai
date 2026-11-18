@@ -1359,3 +1359,10 @@ test("an ability's own address lets go first of what its provider holds for it: 
   assert.equal(releasesAtAddress(responses, true), true);
   assert.equal(releasesAtAddress(anthropicMessages, true), false, 'a type that keeps nothing and deletes nothing');
 });
+
+test("a booking whose kind is a name Object's prototype has (toString, constructor) draws as an other booking, never throws", () => {
+  for (const kind of ['toString', 'constructor', '__proto__']) {
+    assert.doesNotThrow(() => bookingFacts({ kind, unsure: [], confirmation: 'TQ1' }), kind);
+    assert.ok(bookingFacts({ kind, unsure: [], confirmation: 'TQ1' }).some((f) => f.value === 'TQ1'), kind);
+  }
+});

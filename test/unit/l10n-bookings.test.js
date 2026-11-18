@@ -38,9 +38,9 @@ test("bookingFacts in ja: a flight's legs are a line each, in the screens' words
   // The range's dash is held to the clock after it (U+2060); a leg that arrives another day is each time in full, joined by " – ".
   assert.deepEqual(legs?.value.split('\n'), [
     'AN 1 · HND → ITM · 11月20日 07:30–⁠09:10',
-    'AN 2 · ITM → NRT · 11月20日 11:30 – 11月22日 13:05 · ターミナル: 2',
+    'AN 2 · ITM → NRT · 11月20日 11:30 – 11月22日 13:05 · ターミナル：2',
   ]);
   assert.equal(legs?.unsure, true);
   // An object that is no leg: one line, each value with its key (annai's word where it has one).
-  assert.equal(bookingFacts({ kind: 'flight', unsure: [], fields: { gate: { name: 'B', open: null, note: '混雑', bags: 2 } } })[0].value, 'name: B · note: 混雑 · 手荷物: 2');
+  assert.equal(bookingFacts({ kind: 'flight', unsure: [], fields: { gate: { name: 'B', open: null, note: '混雑', bags: 2 } } })[0].value, 'name：B · note：混雑 · 手荷物：2');
 });
