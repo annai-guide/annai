@@ -61,7 +61,8 @@ export const BOOKING_SCHEMA = {
   type: 'object', required: ['id', 'kind', 'status', 'source'],
   properties: {
     id: { type: 'string', minLength: 1 },
-    kind: { enum: ['flight', 'lodging', 'car', 'rail', 'event', 'restaurant', 'other'] },
+    // A ferry, a bus and a coach are kinds of their own (booking-next), so a booked ride ends where it arrives, as a train's does.
+    kind: { enum: ['flight', 'lodging', 'car', 'rail', 'ferry', 'bus', 'coach', 'event', 'restaurant', 'other'] },
     status: { enum: ['unverified', 'confirmed'] },
     source: { type: 'string', pattern: '^/' },
     title: { type: 'string' },

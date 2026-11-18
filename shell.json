@@ -1,5 +1,5 @@
 {
-  "build": "40dc36f47684",
+  "build": "92201bb22b83",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -40,7 +40,7 @@
     "/src/core/agent/compaction.js": "4c7628bbedda",
     "/src/core/agent/context.js": "236aeb22b18a",
     "/src/core/agent/halves.js": "0d03ac9b9ec1",
-    "/src/core/agent/instructions.js": "c6ce760146d1",
+    "/src/core/agent/instructions.js": "1f325de784c7",
     "/src/core/agent/listen.js": "ace64ee6f6c6",
     "/src/core/agent/log.js": "be1f6eedd6f8",
     "/src/core/agent/loop.js": "9fa5a50f59b3",
@@ -62,7 +62,7 @@
     "/src/core/backup.js": "644832139162",
     "/src/core/backup-auto.js": "64ed2407b9ec",
     "/src/core/backup-targets.js": "91309d766eea",
-    "/src/core/bookings.js": "51c70099e138",
+    "/src/core/bookings.js": "f469cf95894a",
     "/src/core/bytes.js": "b935dfe86a7a",
     "/src/core/catalog-facts.js": "3b27021930f3",
     "/src/core/crc32.js": "0bfef7a8eb00",
@@ -136,7 +136,7 @@
     "/src/core/photos.js": "04a6d604ae69",
     "/src/core/nominatim.js": "66704b17c6aa",
     "/src/core/paths.js": "b519fae60471",
-    "/src/core/plan.js": "1d01865e9bd2",
+    "/src/core/plan.js": "e3f1075d9393",
     "/src/core/plugins.js": "a91393b9509b",
     "/src/core/push/mirror.js": "9f1dea36cd3a",
     "/src/core/push/relay-client.js": "a2f4fe58a177",
@@ -188,7 +188,7 @@
     "/src/core/workspace.js": "fead75d0c7f5",
     "/src/core/zip.js": "30b31bdcef45",
     "/src/plugins/core-schemas/index.js": "4427d3773490",
-    "/src/plugins/core-schemas/schemas.js": "33d164ad7381",
+    "/src/plugins/core-schemas/schemas.js": "580493083c28",
     "/src/plugins/files/index.js": "c98b70c25fc0",
     "/src/plugins/go/index.js": "39ee52f39fc1",
     "/src/plugins/mcp/client.js": "8f2bab66c578",
@@ -215,7 +215,7 @@
     "/src/ui/bring-in.js": "4e33be70df96",
     "/src/ui/export-panel.js": "ded8262ee329",
     "/src/ui/file-delete.js": "207b1b0e5902",
-    "/src/ui/format.js": "193ce07b3840",
+    "/src/ui/format.js": "0d870979bd83",
     "/src/ui/grounding.html": "5dab86abb302",
     "/src/ui/grounding.js": "1e27c30fc392",
     "/src/ui/import-state.js": "ac11af4a3775",
@@ -299,8 +299,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "5d92b4b2b07f",
-    "/l10n/zh-Hans.json": "5b3d8bb299a7",
-    "/l10n/zh-Hant.json": "2df22501fa0f"
+    "/l10n/ja.json": "5eaae0aa23bb",
+    "/l10n/zh-Hans.json": "f6829d4cef99",
+    "/l10n/zh-Hant.json": "c7a20647e497"
   }
 }

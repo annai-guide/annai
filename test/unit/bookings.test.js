@@ -68,6 +68,10 @@ test("checkWords names each part Shiori is unsure of by what it is, as the scree
     [words({ kind: 'lodging', unsure: ['start'], start: t }), 'not sure the check-in time was read right'],
     [words({ kind: 'flight', unsure: ['start', 'seat'], start: t, fields: { seat: '12A' } }), 'not sure the departure time or the seat was read right'],
     [words({ kind: 'rail', unsure: ['end'], end: t }), 'not sure the arrival time was read right'],
+    // booking-next: a ride's booking leaves and arrives, as a train's does, and the details label its times Departs and Arrives.
+    [words({ kind: 'ferry', unsure: ['start', 'end'], start: t, end: t }), 'not sure the departure time or the arrival time was read right'],
+    [words({ kind: 'bus', unsure: ['end'], end: t }), 'not sure the arrival time was read right'],
+    [words({ kind: 'coach', unsure: ['start'], start: t }), 'not sure the departure time was read right'],
     [words({ kind: 'car', unsure: ['start', 'end'], start: t, end: t }), 'not sure the pick-up time or the return time was read right'],
     [words({ kind: 'event', unsure: ['end'], end: t }), 'not sure the end time was read right'],
     [words({ kind: 'lodging', unsure: ['title', 'confirmation', 'room'], title: 'Test Inn', confirmation: 'TQ1', fields: { room: '204' } }), 'not sure the name, the confirmation number or the room was read right'],
@@ -110,12 +114,15 @@ test("checkWords: each key whose own words would mislead has its words, never th
     // The names annai files into `fields` itself (EXTRAS): its words, as before the other-detail phrase.
     notes: 'the notes', room: 'the room', phone: 'the phone number', guests: 'the guests', passengers: 'the passengers', airline: 'the airline',
     company: 'the company', seat: 'the seat', flights: 'the flights',
+    // booking-next: the keys the details drew in English (a bag allowance's, a leg's meal, the names annai files and her instructions' rooms).
+    checked: 'the checked bags', carry_on: 'the carry-on bags', meal: 'the meal', arrival: 'where it arrives', total: 'the total', price: 'the price',
+    rooms: 'the number of rooms',
   };
   for (const [key, words] of Object.entries(said)) {
     // title and confirmation are a booking's own fields; the others are keys of `fields`, as Shiori writes them.
     const got = checkWords({ status: 'unverified', kind: 'flight', unsure: [key], title: 'Test Air', confirmation: 'TQ1', fields: { [key]: 'x' } });
     // A plural part is read "were" (small-next, round 2: "not sure the flights was read right" was English a model reads wrongly).
-    assert.equal(got, `not sure ${words} ${['travellers', 'bags', 'notes', 'guests', 'passengers', 'flights'].includes(key) ? 'were' : 'was'} read right`, key);
+    assert.equal(got, `not sure ${words} ${['travellers', 'bags', 'notes', 'guests', 'passengers', 'flights', 'checked', 'carry_on'].includes(key) ? 'were' : 'was'} read right`, key);
   }
   // With several parts the verb agrees with the last one named, as "or" does in English.
   const two = (/** @type {string[]} */ unsure) => checkWords({ status: 'unverified', kind: 'flight', unsure, fields: { seat: '12A', flights: [{ flight: 'AN 1' }], bags: 2 } });
@@ -132,7 +139,7 @@ test("Shiori's words for a booking's parts and the details screen's labels cover
   for (const key of Object.keys(FIELD_WORDS)) assert.doesNotMatch(named(key), /some other detail/, `the screen labels ${key}; Shiori's words name it`);
   // And every key of fields Shiori has words for (the table's every entry, above), the screen labels: never a raw key beside her words.
   const hers = ['flight', 'from', 'to', 'class', 'nights', 'pickup', 'dropoff', 'party', 'travellers', 'bags', 'terminal', 'gate', 'train', 'car',
-    'notes', 'room', 'phone', 'guests', 'passengers', 'airline', 'company', 'seat', 'flights'];
+    'notes', 'room', 'phone', 'guests', 'passengers', 'airline', 'company', 'seat', 'flights', 'checked', 'carry_on', 'meal', 'arrival', 'total', 'price', 'rooms'];
   for (const key of hers) {
     assert.doesNotMatch(named(key), /some other detail/, key);
     assert.ok(Object.hasOwn(FIELD_WORDS, key) && !own.has(key), `Shiori names ${key}; the screen labels it`);

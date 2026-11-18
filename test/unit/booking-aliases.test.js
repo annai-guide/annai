@@ -66,11 +66,11 @@ test("a flight's legs: start is the first leg's departure, end the last's arriva
 
 test("review 1: a flight's or train's time never takes the trip's only zone; an offset its zone doesn't have then is refused", () => {
   // Naive: refused in words, whatever the trip's zones, and for the legs.
-  assert.throws(() => guard({ ...base, kind: 'flight', depart: '2026-11-20T08:00' }), /^Error: depart "2026-11-20T08:00" has no time zone annai knows \(a flight's or train's time is in the place it leaves or arrives, so the trip's time zone isn't assumed\): write start as \{ "at"/);
-  assert.throws(() => guard({ ...base, kind: 'rail', checkin: '2026-11-20T08:00' }), /a flight's or train's time/);
-  assert.throws(() => guard({ ...base, kind: 'flight', flights: [{ departure: '2026-11-20T08:00', arrival: '2026-11-20T10:00' }] }), /flights\[0\]\.departure .*a flight's or train's time.* Or give the leg a "tz"\./);
+  assert.throws(() => guard({ ...base, kind: 'flight', depart: '2026-11-20T08:00' }), /^Error: depart "2026-11-20T08:00" has no time zone annai knows \(the time of a flight, a train, a ferry, a bus or a coach is in the place it leaves or arrives, so the trip's time zone isn't assumed\): write start as \{ "at"/);
+  assert.throws(() => guard({ ...base, kind: 'rail', checkin: '2026-11-20T08:00' }), /the time of a flight, a train, a ferry, a bus or a coach/);
+  assert.throws(() => guard({ ...base, kind: 'flight', flights: [{ departure: '2026-11-20T08:00', arrival: '2026-11-20T10:00' }] }), /flights\[0\]\.departure .*the time of a flight, a train, a ferry, a bus or a coach.* Or give the leg a "tz"\./);
   // An offset string with no zone beside it is the same: the offset doesn't say the zone.
-  assert.throws(() => guard({ ...base, kind: 'flight', depart: '2026-11-20T08:00:00-08:00' }), /a flight's or train's time/);
+  assert.throws(() => guard({ ...base, kind: 'flight', depart: '2026-11-20T08:00:00-08:00' }), /the time of a flight, a train, a ferry, a bus or a coach/);
   // A zone beside it (or in it) is the zone; a kind that isn't one of them still takes the trip's only zone.
   assert.deepEqual(guard({ ...base, kind: 'flight', depart: { at: '2026-11-20T08:00', tz: 'America/Los_Angeles' } }).start, { at: '2026-11-20T08:00:00-08:00', tz: 'America/Los_Angeles' });
   assert.deepEqual(guard({ ...base, kind: 'flight', depart: '2026-11-20T08:00:00-08:00', tz: 'America/Los_Angeles' }).start, { at: '2026-11-20T08:00:00-08:00', tz: 'America/Los_Angeles' });
@@ -82,6 +82,20 @@ test("review 1: a flight's or train's time never takes the trip's only zone; an 
   assert.throws(() => guard({ ...base, kind: 'lodging', checkin: '2026-13-45T25:00' }), /isn't a date with a time/);
 });
 
+test("booking-next: a ferry's, a bus's or a coach's booking is a kind of the format's own, and its times are read as a train's: never in the trip's only zone, which says nothing of the place it leaves or arrives (main took the trip's zone for a ride booked as `other`, and refused the kind)", () => {
+  assert.deepEqual(['ferry', 'bus', 'coach'].filter((kind) => BOOKING_SCHEMA.properties.kind.enum.includes(kind)), ['ferry', 'bus', 'coach']);
+  for (const kind of ['ferry', 'bus', 'coach']) {
+    assert.throws(() => guard({ ...base, kind, depart: '2026-11-20T19:00' }), /^Error: depart "2026-11-20T19:00" has no time zone annai knows \(the time of a flight, a train, a ferry, a bus or a coach is in the place it leaves or arrives/, kind);
+    assert.throws(() => guard({ ...base, kind, arrive: '2026-11-21T07:00:00-09:00' }), /the time of a flight, a train, a ferry, a bus or a coach/, kind);
+    // Its own zone, beside it or in it, is its zone, as a train's is.
+    assert.deepEqual(guard({ ...base, kind, depart: { at: '2026-11-20T19:00', tz: TOKYO }, arrive: '2026-11-21T07:00', tz: TOKYO }), { ...base, kind, start: { at: '2026-11-20T19:00:00+09:00', tz: TOKYO }, end: { at: '2026-11-21T07:00:00+09:00', tz: TOKYO } }, kind);
+  }
+  // A patch to a stored ride booking reads the stored kind, as a stored train's.
+  assert.throws(() => unalias({ arrive: '2026-11-21T07:00' }, { zones: [AK], schema: BOOKING_SCHEMA, kind: 'ferry' }), /the time of a flight, a train, a ferry, a bus or a coach/);
+  // What isn't a carrier still takes the trip's only zone.
+  assert.equal(guard({ ...base, kind: 'other', depart: '2026-11-20T19:00' }).start.tz, AK);
+});
+
 test('review 4: a flight with its start and end and its legs keeps the legs in fields.flights, comparing nothing derived', () => {
   const flights = [{ flight: 'AN 1', departure: '2026-11-20T08:00', arrival: '2026-11-20T10:00' }];
   const start = { at: '2026-11-20T08:00:00-08:00', tz: 'America/Los_Angeles' };
@@ -89,7 +103,7 @@ test('review 4: a flight with its start and end and its legs keeps the legs in f
   const got = guard({ ...base, kind: 'flight', start, end, flights });
   assert.deepEqual([got.start, got.end, got.fields], [start, end, { flights }]);
   // Only the one it lacks is derived, and then it needs its zone.
-  assert.throws(() => guard({ ...base, kind: 'flight', start, flights }), /flights\[0\]\.arrival .*a flight's or train's time/);
+  assert.throws(() => guard({ ...base, kind: 'flight', start, flights }), /flights\[0\]\.arrival .*the time of a flight, a train, a ferry, a bus or a coach/);
 });
 
 test('refusals in words: a time with no zone in a trip of two, a date with no time; nothing else changes', () => {
@@ -148,7 +162,7 @@ test('a patch: its own changes are renamed, + forms too; the schema in force kee
   // A write isn't a patch: a "+" key is left for the unknown-field check.
   assert.deepEqual(unalias({ 'notes+': ['x'] }, { schema: BOOKING_SCHEMA }), { 'notes+': ['x'] });
   // The stored kind decides a flight's zone: a checkout patched onto a stored flight never takes the trip's zone.
-  assert.throws(() => unalias({ checkout: '2026-11-23T11:00' }, { ...o, kind: 'flight' }), /a flight's or train's time/);
+  assert.throws(() => unalias({ checkout: '2026-11-23T11:00' }, { ...o, kind: 'flight' }), /the time of a flight, a train, a ferry, a bus or a coach/);
   // A null removes the format's field and a stored key under that name, as a merge patch does.
   assert.deepEqual(unalias({ checkin: null }, o), { start: null, checkin: null });
   const wider = { ...BOOKING_SCHEMA, properties: { ...BOOKING_SCHEMA.properties, seat: { type: 'string' }, notes: { type: 'array' } } };

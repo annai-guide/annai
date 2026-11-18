@@ -875,6 +875,25 @@ test("ferries, buses and coaches carry the traveller as flights and trains do: w
   }
 });
 
+test("booking-next: an item with no kind linked to a ferry's, a bus's or a coach's booking (a kind of the format's own now) carries the traveller as one on a train's booking does: what comes after waits for it and doesn't count from where it left, with no flight's margin; on a booking of kind other, as before, it is an ordinary item", () => {
+  const TOWN = off(MONTEREY, 0, -300_000);
+  /** @param {string} kind the booking's */
+  const watches = (kind) => planWatches(/** @type {any} */ ([
+    { path: '/plan/ride.json', item: { title: 'Coast crossing', fixed: true, start: { at: iso('07:00'), tz: LA }, end: { at: iso('10:00'), tz: LA }, place: { name: 'Monterey pier', ...MONTEREY }, booking: '/trip/bookings/ride.json' } },
+    { path: '/plan/tour.json', item: { title: 'Harbor tour', fixed: true, start: { at: iso('11:30'), tz: LA }, place: { name: 'Harbor', ...off(TOWN, 1000, 0) } } },
+  ]), new Map([['/bookings/ride.json', { id: 'ride', kind, status: 'unverified', source: '/files/ride.pdf', unsure: [], title: 'Ride ticket' }]]), { fallbackTz: LA });
+  const read = (/** @type {string} */ kind) => {
+    const ws = watches(kind);
+    const tour = /** @type {any} */ (ws.find((w) => w.id === 'plan:tour:leave')).when;
+    return { after: tour.after, from: tour.from, by: /** @type {any} */ (ws.find((w) => w.id === 'plan:ride:leave')).when.by, onBoard: PLAN.check(tour, here(off(MONTEREY, 0, -100_000), at('08:30')), {}) };
+  };
+  const train = read('rail');
+  assert.deepEqual([train.after, train.from, train.by, train.onBoard], [at('10:00'), null, at('07:00'), null], "a train's booking: the tour waits for the arrival, no stop before it, no margin");
+  for (const kind of ['ferry', 'bus', 'coach']) assert.deepEqual(read(kind), train, kind);
+  // On an `other` booking (a ride written before booking-next, with no kind of its own on the item) it is no carrier: the tour counts from the pier.
+  assert.deepEqual([read('other').after, read('other').from?.name], [null, 'Monterey pier']);
+});
+
 test("a flight, train or ride item with no end waits for its departure only, whatever its booking's end: a booking's end is often a return's, a tour's or a stay's, not this ride's arrival (it held back the reminders of the day's other items)", () => {
   const SFO = { lat: 37.6213, lng: -122.379 };
   const st = (/** @type {string} */ hhmm, day = '2026-11-27') => ({ at: iso(hhmm, day), tz: LA });

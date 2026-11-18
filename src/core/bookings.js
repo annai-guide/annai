@@ -1,5 +1,6 @@
 import { kindOf } from './scopes.js';
-import { BOOKING_FILE, record } from './plan.js';
+// plan.js imports this module too: its names are read only inside functions here, never while the modules load.
+import { BOOKING_FILE, record, CARRIERS } from './plan.js';
 import { validZone, instantAt, isoInZone, offsetMinutes } from './time.js';
 
 /**
@@ -52,33 +53,36 @@ export function checkOf(b) {
 
 /**
  * A booking's parts as a model is told them: by what each is, never the field's name, which a model says, translated (「未確認」, 2026-11-14).
- * Its times by its kind, as people say them (the user's words, 2026-11-14: "how people will actually say"): the screens' own words for a flight
- * and a stay (Departs, Arrives; Check-in, Check-out), and for a car and a train the Plan's (Pick up, Return; Arrive), though the booking
- * screen says Starts and Ends there. Only annai's own words, from its own tables: a key of `fields` is the booking's text, which can hold a
+ * Its times by its kind, as people say them (the user's words, 2026-11-14: "how people will actually say"): the screens' own words for what
+ * carries the traveller (a flight, a train or a ride: Departs, Arrives) and a stay (Check-in, Check-out), and for a car the Plan's (Pick up,
+ * Return), though the booking screen says Starts and Ends there. Only annai's own words, from its own tables: a key of `fields` is the booking's text, which can hold a
  * line break, brackets or 40,000 characters, so a key annai has no words for is one phrase and never itself (booking-say's fix 3). The keys of
  * `fields` here are the details screen's (format.js FIELD_WORDS), each named as its label there, so the user finds the line she asks about.
  */
-/* en */ const TIME_PARTS = /** @type {Record<string, [string, string]>} */ ({
-  flight: ['the departure time', 'the arrival time'], rail: ['the departure time', 'the arrival time'],
-  lodging: ['the check-in time', 'the check-out time'], car: ['the pick-up time', 'the return time'],
-});
+/* en */ const TIME_PARTS = /** @type {Record<string, [string, string]>} */ ({ lodging: ['the check-in time', 'the check-out time'], car: ['the pick-up time', 'the return time'] });
+/** What carries the traveller (plan.js CARRIERS: a flight, a train, a ferry, a bus or a coach) leaves and arrives. */
+/* en */ const CARRIED = /** @type {[string, string]} */ (['the departure time', 'the arrival time']);
 /* en */ const PARTS = /** @type {Record<string, string>} */ ({
   title: 'the name', confirmation: 'the confirmation number', place: 'the place', cost: 'the cost', // its own fields (TOP)
   flight: 'the flight number', from: 'where it leaves from', to: 'where it arrives', class: 'the cabin', nights: 'the number of nights',
   pickup: 'the pick-up place', dropoff: 'the drop-off place', party: 'the party size', travellers: 'the travellers', bags: 'the bags',
   terminal: 'the terminal', gate: 'the gate', train: 'the train', car: 'the car',
-  // The names annai files into `fields` itself (EXTRAS).
+  // Inside the bags, and a leg's meal (booking-next: the keys the details drew in English).
+  checked: 'the checked bags', carry_on: 'the carry-on bags', meal: 'the meal',
+  // The names annai files into `fields` itself (EXTRAS; `arrival` where an arrival ends, `total` and `price` a cost she gave in words), and her
+  // instructions' example (`rooms`).
   notes: 'the notes', room: 'the room', phone: 'the phone number', guests: 'the guests', passengers: 'the passengers', airline: 'the airline',
-  company: 'the company', seat: 'the seat', flights: 'the flights',
+  company: 'the company', seat: 'the seat', flights: 'the flights', arrival: 'where it arrives', total: 'the total', price: 'the price',
+  rooms: 'the number of rooms',
 });
 /** The parts that are plural, so a model reads "were", not "was" (a plural noun read with "was" is English that a model takes as a slip). */
-/* en */ const MANY = new Set(['the travellers', 'the bags', 'the notes', 'the guests', 'the passengers', 'the flights']);
+/* en */ const MANY = new Set(['the travellers', 'the bags', 'the notes', 'the guests', 'the passengers', 'the flights', 'the checked bags', 'the carry-on bags']);
 /** What any other key is: its text is the booking's, and never goes into annai's words. */
 /* en */ const OTHER = 'some other detail';
 
 /** One part of a booking in words. @param {string} key @param {unknown} kind */
 function partWords(key, kind) {
-  /* en */ if (key === 'start' || key === 'end') return (TIME_PARTS[String(kind)] ?? ['the start time', 'the end time'])[key === 'start' ? 0 : 1];
+  /* en */ if (key === 'start' || key === 'end') return (CARRIERS.has(String(kind)) ? CARRIED : TIME_PARTS[String(kind)] ?? ['the start time', 'the end time'])[key === 'start' ? 0 : 1];
   return Object.hasOwn(PARTS, key) ? PARTS[key] : OTHER;
 }
 
@@ -141,8 +145,6 @@ const OWN = /** @type {Record<string, [string, string]>} */ ({
   /* en */ ...Object.fromEntries(COSTS.map((k) => [k, ['cost', '{ "amount": 245, "currency": "EUR" }']])),
 });
 const AT = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(Z|([+-])(\d{2}):(\d{2}))?$/;
-/** Kinds whose times are in the place they leave or arrive: the trip's only zone says nothing about them. */
-const FAR = ['flight', 'rail'];
 
 /**
  * A date with a time as it is written: trimmed, a space read as the T, and a day that exists (Nov 31 is none, as Date.parse would read it
@@ -162,10 +164,10 @@ export function written(v) {
 
 /**
  * A time written under another name, as the format's { at, tz }: a string, or { at } (or { time }) with its own tz; its zone from beside
- * it, else the trip's only one, which a flight or train never takes. Refused in words when it is no real date and time, its zone isn't
+ * it, else the trip's only one, which what carries the traveller (CARRIERS) never takes. Refused in words when it is no real date and time, its zone isn't
  * known, or its offset isn't its zone's at that moment.
  * @param {string} name what it was written as @param {unknown} v @param {unknown} beside the zone written beside it
- * @param {string[]} zones the trip's @param {string} to the field it stands for @param {boolean} far a flight's or train's
+ * @param {string[]} zones the trip's @param {string} to the field it stands for @param {boolean} far a flight's, train's or ride's (CARRIERS)
  */
 function timeOf(name, v, beside, zones, to, far) {
   const o = record(v);
@@ -176,7 +178,7 @@ function timeOf(name, v, beside, zones, to, far) {
   /* en */ if (!w) throw new Error(`${name} ${JSON.stringify(raw ?? null)} isn't a date with a time: ${how}.`);
   const { at, m } = w;
   if (!validZone(tz)) {
-    /* en */ const why = far && !tz ? ` (a flight's or train's time is in the place it leaves or arrives, so the trip's time zone isn't assumed)` : zones.length > 1 ? ` (this trip has ${zones.join(', ')})` : '';
+    /* en */ const why = far && !tz ? ` (the time of a flight, a train, a ferry, a bus or a coach is in the place it leaves or arrives, so the trip's time zone isn't assumed)` : zones.length > 1 ? ` (this trip has ${zones.join(', ')})` : '';
     /* en */ throw new Error(`${name} ${JSON.stringify(raw)} has no time zone annai knows${why}: ${how}.${name.startsWith('flights[') ? ' Or give the leg a "tz".' : ''}`);
   }
   if (!m[5]) return { at: isoInZone(instantAt(at, tz), tz), tz };
@@ -230,7 +232,8 @@ export function unalias(own, { zones = [], schema, kind, append = false } = {}) 
   const out = { ...own };
   for (const k of [...keys, ...gone]) delete out[k];
   const what = own.kind ?? kind;
-  const far = FAR.includes(what);
+  // A flight's, a train's or a ride's times are in the place it leaves or arrives: the trip's only zone says nothing about them.
+  const far = CARRIERS.has(what);
   const besideKey = ['tz', 'timezone'].find((k) => typeof own[k] === 'string');
   const beside = besideKey && own[besideKey];
   // A fields that isn't an object is the format check's to refuse: nothing is filed into it, and its aliases stay as written.

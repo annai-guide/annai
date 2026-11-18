@@ -82,6 +82,36 @@ test("a flight whose legs are in its fields: each leg is a line of words on the 
   await expect(page.locator('dl.facts .mark-check')).toHaveCount(2);
 });
 
+test("booking-next: a ferry booked as a ferry, with no ride item: its details say Ferry, Departs and Arrives, and the Plan ends it with Arrive, no place and no leg from the port; a flight leg's airports written inside its times sit beside each clock, and a bag allowance's keys have words", async ({ page }) => {
+  await openApp(page);
+  const trip = await startTrip(page, 'Inland Sea', { start: '2026-11-20', end: '2026-11-21' });
+  const tz = 'Asia/Tokyo';
+  const amadeus = { flight: 'NH 7', departure: { iataCode: 'SFO', terminal: 'I', at: '2026-11-20T11:05' }, arrival: { iataCode: 'NRT', terminal: '1', at: '2026-11-21T15:40', tz }, tz: 'America/Los_Angeles' };
+  await writeRecords(page, trip, { write: {
+    '/bookings/ferry.json': { id: 'ferry', kind: 'ferry', status: 'unverified', source: '/talk', title: 'Ferry ticket', unsure: ['end'], place: { name: 'Port A', lat: 34.69, lng: 135.19 },
+      start: { at: '2026-11-20T19:00:00+09:00', tz }, end: { at: '2026-11-21T07:00:00+09:00', tz } },
+    '/plan/breakfast.json': { id: 'breakfast', title: 'Breakfast in Beppu', fixed: false, place: { name: 'Beppu cafe', lat: 33.28, lng: 131.49 }, start: { at: '2026-11-21T08:00:00+09:00', tz } },
+    '/bookings/nh.json': { id: 'nh', kind: 'flight', status: 'unverified', source: '/talk', title: 'NH 7', unsure: [], fields: { flights: [amadeus], bags: { checked: 2, carry_on: 1 }, meal: 'vegetarian' } },
+  } });
+  await openAt(page, trip, '/bookings/ferry.json');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ferry ticket');
+  await expect(page.locator('.booking-block > .sub')).toContainText('Ferry');
+  await expect(page.locator('dl.facts dt')).toHaveText(['Departs', 'Arrives', 'Place']);
+  await expect(page.locator('dl.facts dd').nth(1)).toContainText('7:00');
+  await expect(page.locator('dl.facts .mark-check')).toHaveCount(1); // the arrival
+  await page.goto(`/#/trip/${encodeURIComponent(trip)}/plan`);
+  await page.getByRole('tab', { name: 'Sat, Nov 21' }).click();
+  const day = page.getByRole('tabpanel');
+  await expect(day.locator('.plan-row').first()).toContainText('Arrive · Ferry ticket');
+  await expect(day.locator('.plan-row').first()).not.toContainText('Port A');
+  await expect(day.locator('.leg')).toHaveCount(0); // no port to draw a leg from
+  await openAt(page, trip, '/bookings/nh.json');
+  const legs = page.locator('dl.facts dd', { has: page.locator('span', { hasText: 'NH 7' }) });
+  await expect(legs.locator('span[dir=auto]')).toHaveText('NH 7 · Nov 20 11:05 (iataCode: SFO · Terminal: I) – Nov 21 15:40 (iataCode: NRT · Terminal: 1)');
+  await expect(page.locator('dl.facts dt')).toHaveText(['Bags', 'Flights', 'Meal']);
+  await expect(page.locator('dl.facts dd').first()).toHaveText('Checked bags: 2 · Carry-on: 1');
+});
+
 test('a link to the second flight opens the file at its block, focused and in view', async ({ page }) => {
   await openApp(page);
   const trip = await fileTrip(page);

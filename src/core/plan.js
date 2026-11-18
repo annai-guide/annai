@@ -65,7 +65,9 @@ export function timeUnsure(shown, booking, { fallbackTz }) {
 }
 
 /** A booking's title on the Plan when Shiori gave none: its kind's word. */
-const KIND_WORDS = /** @type {Record<string, string>} */ ({ flight: t`Flight`, lodging: t`Stay`, car: t`Car`, rail: t`Train`, event: t`Event`, restaurant: t`Restaurant`, other: t`Booking` });
+const KIND_WORDS = /** @type {Record<string, string>} */ ({
+  flight: t`Flight`, lodging: t`Stay`, car: t`Car`, rail: t`Train`, ferry: t`Ferry`, bus: t`Bus`, coach: t`Coach`, event: t`Event`, restaurant: t`Restaurant`, other: t`Booking`,
+});
 
 /** "/trip/bookings/x.json" and "/bookings/x.json" both name the trip's /bookings/x.json. @param {unknown} ref */
 export function bookingRef(ref) {
@@ -80,14 +82,13 @@ export const record = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? 
 /**
  * What a kind word is: one table of the words written for a plan item's kind (free text) and a booking's (a fixed list), in any case,
  * read by the Plan's sets, Kokoro's view of today, the reminders and an item's details alike. The booking format's kinds, as the
- * instructions name them and an item may carry its booking's; their everyday words (an item "hotel" on a stay's booking stays a stay: the
- * plan check's); the rides that carry the traveller as a train does, for which a booking has no kind (a ferry's is "other"); and "meal",
- * the plan-a-trip skill's own example.
+ * instructions name them and an item may carry its booking's, the rides that carry the traveller as a train does among them (a booking of
+ * its own kind since booking-next; before, a ferry's was "other"); their everyday words (an item "hotel" on a stay's booking stays a stay:
+ * the plan check's); and "meal", the plan-a-trip skill's own example.
  */
 export const KINDS = new Map(Object.entries({
-  flight: 'flight', lodging: 'lodging', car: 'car', rail: 'rail', event: 'event', restaurant: 'restaurant', other: 'other',
+  flight: 'flight', lodging: 'lodging', car: 'car', rail: 'rail', ferry: 'ferry', bus: 'bus', coach: 'coach', event: 'event', restaurant: 'restaurant', other: 'other',
   plane: 'flight', hotel: 'lodging', stay: 'lodging', train: 'rail',
-  ferry: 'ferry', bus: 'bus', coach: 'coach',
   meal: 'meal',
 }));
 /** A kind word as the table reads it: "Train" and " hotel " too; undefined for a word it doesn't have. @param {unknown} k */
@@ -102,10 +103,16 @@ export const kindOf = (it, booking) => kindWord(it?.kind) ?? kindWord(booking?.k
 /**
  * The kinds that carry the traveller, so one ends somewhere else than it starts: the Plan and Kokoro's view end it with "Arrive" and no
  * place (Driving's strip lists places, so it leaves that end out), and the reminders count what comes after it from nothing and wait for a
- * fixed one. A booking has no kind for a ferry, a bus or a coach: one of "other" takes it from a ride item linked to it (planRows).
+ * fixed one. A booking of one of them is too, with no item linked (bookings.js reads a time of one in the place it leaves or arrives, never
+ * in the trip's only zone); one of "other" written before booking-next, when a booking had no kind for a ride, takes it from a ride item
+ * linked to it (planRows).
  */
 export const CARRIERS = new Set(['flight', 'rail', 'ferry', 'bus', 'coach']);
-/** The rides a booking has no kind for (it has flight and rail), so a booking of "other" takes one from a ride item linked to it. */
+/**
+ * The rides a booking had no kind for before booking-next, so a booking of "other" takes one from a ride item linked to it. Kept for the
+ * bookings already stored that way: Shiori writes a ride's own kind now, and nothing rewrites an old record (lessons.md, 2026-11-14:
+ * when a mode goes, keep only what old data needs).
+ */
 const RIDES = new Set(['ferry', 'bus', 'coach']);
 /** The kinds with a day, a place and an end of their own: a plan item of one on a booking of another is not that booking's (anotherThing). */
 const THINGS = new Set(['flight', 'rail', 'car', 'lodging']);
@@ -266,9 +273,9 @@ export function planRows(items, bookings, { fallbackTz }) {
     const marks = checkOf(b);
     const title = typeof b.title === 'string' && b.title.trim() ? b.title : KIND_WORDS[b.kind] ?? t`Booking`;
     const place = record(b.place) ? b.place : undefined;
-    // A booking of kind "other" (the format has no kind for a ferry, a bus or a coach) is the ride a plan item linked to it says it is, so
-    // its end is an Arrive with no place (CARRIERS); with no such item, or a flight or train item on it (a package), it is the booking's own
-    // kind (a flight or a train has its own booking kind).
+    // A booking of kind "other" (written before booking-next, when the format had no kind for a ferry, a bus or a coach) is the ride a plan
+    // item linked to it says it is, so its end is an Arrive with no place (CARRIERS); with no such item, or a flight or train item on it (a
+    // package), it is the booking's own kind (a flight, a train and a ride have their own booking kinds).
     const ride = kindOf(null, b) === 'other' ? own.find((x) => x.ref === path && RIDES.has(kindOf(x.item, b))) : undefined;
     const kind = kindOf(ride?.item, b);
     // A stay is always its check-in and its check-out (as before); anything else that ends on a later day, its start and its end.
