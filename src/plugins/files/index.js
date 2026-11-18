@@ -75,16 +75,17 @@ export function activate(annai) {
   };
   /**
    * What renames this write's own keys written under other names, before it is merged (the drive-test follow-ups, section 3), with the
-   * trip's time zones and the stored booking's kind. Not a booking: nothing is renamed.
+   * trip's time zones and the stored booking's kind; what it leaves out that Shiori should hear of goes into notes, which the result
+   * says. Not a booking: nothing is renamed.
    * @param {string} scope @param {string} path
-   * @returns {Promise<(v: any, append?: boolean) => any>}
+   * @returns {Promise<(v: any, o: { append?: boolean, notes: string[] }) => any>}
    */
   const ownOf = async (scope, path) => {
     if (!isBookingPath(scope, path)) return (v) => v;
     const zones = (await ws.readJSON(scope, '/trip.json').catch(() => null))?.timezones;
     const kind = (await ws.readJSON(scope, path).catch(() => undefined))?.kind;
     const o = { zones: Array.isArray(zones) ? zones.filter((z) => typeof z === 'string') : [], schema: ws.schemaFor(scope, path), kind };
-    return (v, append = false) => unalias(v, { ...o, append });
+    return (v, { append = false, notes }) => unalias(v, { ...o, append, notes });
   };
   /** @param {string} scope @param {string} prefix @param {string} shown the root as Shiori sees it */
   const listed = async (scope, prefix, shown) => (await ws.list(scope, prefix)).map((/** @type {any} */ f) => ({ ...f, shown: `${shown}${f.path}` }));
@@ -218,9 +219,11 @@ export function activate(annai) {
         try {
           value = typeof value === 'string' && guard ? JSON.parse(value) : value;
         } catch {}
-        const renamed = (await ownOf(scope, path))(value);
+        /** @type {string[]} */
+        const notes = [];
+        const renamed = (await ownOf(scope, path))(value, { notes });
         const e = await ws.write(scope, path, renamed === value ? i.content : renamed, { author: 'shiori', guard, ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
-        return `Wrote ${i.path} (${e.size} bytes).`;
+        return [`Wrote ${i.path} (${e.size} bytes).`, ...notes].join(' ');
       },
     },
     {
@@ -253,10 +256,11 @@ export function activate(annai) {
         if (typeof i.changes !== 'object' || i.changes === null || Array.isArray(i.changes)) throw new Error(`changes must be an object, the keys to change, so ${i.path} wasn't changed.`);
         recordPlace(scope, path);
         // Her short names for files start with her first one (names.js): no write of an empty file first.
-        const own = await ownOf(scope, path);
-        const changes = own(i.changes, true);
+        /** @type {string[]} */
+        const notes = [];
+        const changes = (await ownOf(scope, path))(i.changes, { append: true, notes });
         await ws.patch(scope, path, changes, { author: 'shiori', append: true, create: path === NAMES_FILE, guard: guardOf(scope, path, changes), ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
-        return `Patched ${i.path}.`;
+        return [`Patched ${i.path}.`, ...notes].join(' ');
       }),
     },
     {

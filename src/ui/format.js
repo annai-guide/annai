@@ -1,5 +1,5 @@
 import { validZone, dayIn, instantAt } from '../core/time.js';
-import { checkOf, there, written, TOP } from '../core/bookings.js';
+import { checkOf, there, written, TOP, dropsAtPlace } from '../core/bookings.js';
 import { BOOKING_FILE, PLAN_FILE, record, kindWord, CARRIERS } from '../core/plan.js';
 import { isGivenFile } from '../core/paths.js';
 import { TIMINGS } from '../core/backup-auto.js';
@@ -305,8 +305,9 @@ export function bookingFacts(b, o = {}) {
   };
   /** @type {ReturnType<typeof bookingFacts>} */
   const out = [];
-  // A flight's from and to in words are its route; anything else stays a field of its own, so nothing she wrote goes unseen.
-  const shown = new Set(flight ? ['from', 'to'].filter((k) => typeof fields[k] === 'string' && fields[k]) : []);
+  // A flight's from and to in words are its route; anything else stays a field of its own, so nothing she wrote goes unseen. A drop-off that
+  // names the booking's own place (dropsAtPlace: a car returned where it was picked up) is that place, drawn once, on its Place line.
+  const shown = new Set([...(flight ? ['from', 'to'].filter((k) => typeof fields[k] === 'string' && fields[k]) : []), ...(dropsAtPlace(b) ? ['dropoff'] : [])]);
   for (const key of (Object.hasOwn(ORDER, b.kind) ? ORDER[b.kind] : OTHER)) {
     if (Object.hasOwn(own, key)) {
       const f = own[key]();

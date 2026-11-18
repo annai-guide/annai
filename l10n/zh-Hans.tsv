@@ -1222,43 +1222,43 @@ vjjlq9	ok	Check-in	入住	src/ui/format.js:286	Note: a stay's check-in, its day 
 lypvx6	ok	{0}, {1}	{0}（{1}）	src/ui/format.js:291	context: booking; {0} = name; {1} = address; Note: A booking's place: its name, then its address in brackets.
 p3snlg	ok	Confirmation	确认号	src/ui/format.js:303	Note: A booking's confirmation code.
 t05i6w	ok	Cost	费用	src/ui/format.js:304	
-sumbc8	draft	Name	名称	src/ui/format.js:335	context: booking; Note: a booking's detail: a name written beside the booking's own (its heading), when it says something else.
-1vdspge	ok	Getting files: {0} of {1}	正在获取文件：{0}/{1}	src/ui/format.js:354	{0} = num(p.done); {1} = num(p.total)
-zo1gq	ok	Getting the backup…	正在获取备份…	src/ui/format.js:354	
-fuj1qb	ok	Getting the backup ready…	正在准备备份…	src/ui/format.js:358	
-1a0lh7c	ok	Comparing files {0} of {1}…	正在比较文件（{0}/{1}）…	src/ui/format.js:359	{0} = num(p.done); {1} = num(p.total)
-1ofggks	ok	Comparing files…	正在比较文件…	src/ui/format.js:359	
-1jbhw8o	ok	Uploading…	正在上传…	src/ui/format.js:360	
-sg0mn0	ok	Uploading {0} of {1}…	正在上传（{0}/{1}）…	src/ui/format.js:360	{0} = num(p.done); {1} = num(p.total)
-11y7c1u	ok	Paused: there is a newer backup from an iPad	已暂停：有来自 iPad 的较新备份	src/ui/format.js:365	
-1815ss7	ok	Paused: there is a newer backup from an iPhone	已暂停：有来自 iPhone 的较新备份	src/ui/format.js:365	
-1kc2l15	ok	Paused: there is a newer backup from a computer	已暂停：有来自电脑的较新备份	src/ui/format.js:366	
-1ytn3n1	ok	Paused: there is a newer backup from an Android phone	已暂停：有来自 Android 手机的较新备份	src/ui/format.js:366	
-14m1y56	ok	Paused: there is a newer backup from another device	已暂停：有来自另一台设备的较新备份	src/ui/format.js:367	
-12hcbva	ok	An iPhone backed up to {0} {1}.	{1}，一部 iPhone 备份到了 {0}。	src/ui/format.js:371	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
-1exdtuz	ok	An iPad backed up to {0} {1}.	{1}，一台 iPad 备份到了 {0}。	src/ui/format.js:371	{0} = where; {1} = ago
-1hmrpdo	ok	A computer backed up to {0} {1}.	{1}，一台电脑备份到了 {0}。	src/ui/format.js:372	{0} = where; {1} = ago
-dc7u48	ok	An Android phone backed up to {0} {1}.	{1}，一部 Android 手机备份到了 {0}。	src/ui/format.js:372	{0} = where; {1} = ago
-19kyaez	ok	Another device backed up to {0} {1}.	{1}，另一台设备备份到了 {0}。	src/ui/format.js:373	{0} = where; {1} = ago
-mbc651	ok	That was after this phone's last backup.	这比这部手机上次备份的时间更晚。	src/ui/format.js:377	
-vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这部手机的备份覆盖它。	src/ui/format.js:377	Note: "Back up this phone over it": this phone's backup replaces the newer one there.
-1ce0smb	ok	That was after this iPad's last backup.	这比这台 iPad 上次备份的时间更晚。	src/ui/format.js:378	
-nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这台 iPad 的备份覆盖它。	src/ui/format.js:378	
-hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这台电脑的备份覆盖它。	src/ui/format.js:379	
-wn3ejs	ok	That was after this computer's last backup.	这比这台电脑上次备份的时间更晚。	src/ui/format.js:379	
-1n6qjpw	ok	Working…	正在处理…	src/ui/format.js:394	
-1sw982j	ok	Last backup {0}.	上次备份：{0}。	src/ui/format.js:399	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
-d1smo3	ok	Not backed up yet.	尚未备份。	src/ui/format.js:399	
-10ouos4	ok	Waiting for your OK to upload {0}	正在等待你同意上传 {0}	src/ui/format.js:400	{0} = size(h.bytes)
-nbshf0	ok	The last try failed.	上次尝试失败了。	src/ui/format.js:402	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
-osg3je	ok	The last try failed: {0}	上次尝试失败：{0}	src/ui/format.js:403	{0} = holdWords(h, target.name)
-1qmdzit	ok	Not set up yet: fill it in, then Save and test	尚未设置：请填写后点“保存并测试”	src/ui/format.js:404	Note: "Save and test" is the backup place's button.
-1e2pygg	ok	Automatic backups are off	自动备份已关闭	src/ui/format.js:405	
-173tgfr	ok	Last backup {0}	上次备份：{0}	src/ui/format.js:406	{0} = at
-1uajbr3	ok	Not backed up yet	尚未备份	src/ui/format.js:406	
-1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	那里的自动备份已暂停，以免两台设备互相覆盖。	src/ui/format.js:418	
-hmr3pn	ok	The other backup stays in its history.	另一个备份仍会保留在历史中。	src/ui/format.js:418	
-8091b1	ok	no limit	不限	src/ui/format.js:443	
+sumbc8	draft	Name	名称	src/ui/format.js:336	context: booking; Note: a booking's detail: a name written beside the booking's own (its heading), when it says something else.
+1vdspge	ok	Getting files: {0} of {1}	正在获取文件：{0}/{1}	src/ui/format.js:355	{0} = num(p.done); {1} = num(p.total)
+zo1gq	ok	Getting the backup…	正在获取备份…	src/ui/format.js:355	
+fuj1qb	ok	Getting the backup ready…	正在准备备份…	src/ui/format.js:359	
+1a0lh7c	ok	Comparing files {0} of {1}…	正在比较文件（{0}/{1}）…	src/ui/format.js:360	{0} = num(p.done); {1} = num(p.total)
+1ofggks	ok	Comparing files…	正在比较文件…	src/ui/format.js:360	
+1jbhw8o	ok	Uploading…	正在上传…	src/ui/format.js:361	
+sg0mn0	ok	Uploading {0} of {1}…	正在上传（{0}/{1}）…	src/ui/format.js:361	{0} = num(p.done); {1} = num(p.total)
+11y7c1u	ok	Paused: there is a newer backup from an iPad	已暂停：有来自 iPad 的较新备份	src/ui/format.js:366	
+1815ss7	ok	Paused: there is a newer backup from an iPhone	已暂停：有来自 iPhone 的较新备份	src/ui/format.js:366	
+1kc2l15	ok	Paused: there is a newer backup from a computer	已暂停：有来自电脑的较新备份	src/ui/format.js:367	
+1ytn3n1	ok	Paused: there is a newer backup from an Android phone	已暂停：有来自 Android 手机的较新备份	src/ui/format.js:367	
+14m1y56	ok	Paused: there is a newer backup from another device	已暂停：有来自另一台设备的较新备份	src/ui/format.js:368	
+12hcbva	ok	An iPhone backed up to {0} {1}.	{1}，一部 iPhone 备份到了 {0}。	src/ui/format.js:372	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
+1exdtuz	ok	An iPad backed up to {0} {1}.	{1}，一台 iPad 备份到了 {0}。	src/ui/format.js:372	{0} = where; {1} = ago
+1hmrpdo	ok	A computer backed up to {0} {1}.	{1}，一台电脑备份到了 {0}。	src/ui/format.js:373	{0} = where; {1} = ago
+dc7u48	ok	An Android phone backed up to {0} {1}.	{1}，一部 Android 手机备份到了 {0}。	src/ui/format.js:373	{0} = where; {1} = ago
+19kyaez	ok	Another device backed up to {0} {1}.	{1}，另一台设备备份到了 {0}。	src/ui/format.js:374	{0} = where; {1} = ago
+mbc651	ok	That was after this phone's last backup.	这比这部手机上次备份的时间更晚。	src/ui/format.js:378	
+vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这部手机的备份覆盖它。	src/ui/format.js:378	Note: "Back up this phone over it": this phone's backup replaces the newer one there.
+1ce0smb	ok	That was after this iPad's last backup.	这比这台 iPad 上次备份的时间更晚。	src/ui/format.js:379	
+nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这台 iPad 的备份覆盖它。	src/ui/format.js:379	
+hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这台电脑的备份覆盖它。	src/ui/format.js:380	
+wn3ejs	ok	That was after this computer's last backup.	这比这台电脑上次备份的时间更晚。	src/ui/format.js:380	
+1n6qjpw	ok	Working…	正在处理…	src/ui/format.js:395	
+1sw982j	ok	Last backup {0}.	上次备份：{0}。	src/ui/format.js:400	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
+d1smo3	ok	Not backed up yet.	尚未备份。	src/ui/format.js:400	
+10ouos4	ok	Waiting for your OK to upload {0}	正在等待你同意上传 {0}	src/ui/format.js:401	{0} = size(h.bytes)
+nbshf0	ok	The last try failed.	上次尝试失败了。	src/ui/format.js:403	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
+osg3je	ok	The last try failed: {0}	上次尝试失败：{0}	src/ui/format.js:404	{0} = holdWords(h, target.name)
+1qmdzit	ok	Not set up yet: fill it in, then Save and test	尚未设置：请填写后点“保存并测试”	src/ui/format.js:405	Note: "Save and test" is the backup place's button.
+1e2pygg	ok	Automatic backups are off	自动备份已关闭	src/ui/format.js:406	
+173tgfr	ok	Last backup {0}	上次备份：{0}	src/ui/format.js:407	{0} = at
+1uajbr3	ok	Not backed up yet	尚未备份	src/ui/format.js:407	
+1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	那里的自动备份已暂停，以免两台设备互相覆盖。	src/ui/format.js:419	
+hmr3pn	ok	The other backup stays in its history.	另一个备份仍会保留在历史中。	src/ui/format.js:419	
+8091b1	ok	no limit	不限	src/ui/format.js:444	
 lpx0cl#other	ok	# trips and conversations	# 个旅行和对话	src/ui/import-state.js:47	plural; # = titles.length; English: "# trip or conversation" (one), "# trips and conversations" (other); Note: a git backup's preview, from its manifest alone, can't tell trips from chats: this is the one row they fold under; also the toast "Imported # trips and conversations" when the user left the import screen (import-state.js).
 12lprg	ok	Imported {0} from {1}.	已从 {1} 导入 {0}。	src/ui/import-state.js:48	{0} = what; {1} = place
 1hzaym7	ok	Imported {0}.	已导入 {0}。	src/ui/import-state.js:48	{0} = what
