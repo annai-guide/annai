@@ -138,19 +138,21 @@ async function mediaParts(store, scope, output) {
  */
 async function recall(agent, i, half = 'kokoro') {
   const shown = ['wake', 'msg.user', 'heard', 'out.speak', 'out.show', 'out.ask', 'tool.call', 'tool.result'];
-  // By type: a day of location points isn't walked.
-  const all = await agent.store.tx(['events'], 'readonly', (t) => t.listEvents(agent.scope, {
-    types: [...shown, 'heard.text'], ...(i.from ? { after: i.from - 1 } : {}), ...(i.to ? { before: i.to + 1 } : {}),
-  }));
-  const events = all.filter((e) => shown.includes(e.type) && !e.data?.task);
+  // By type: a day of location points isn't walked. A range bounds the lines shown, not the words written down for one later.
+  const from = i.from ? { after: i.from - 1 } : {};
+  const [listed, written] = await agent.store.tx(['events'], 'readonly', async (t) => [
+    await t.listEvents(agent.scope, { types: shown, ...from, ...(i.to ? { before: i.to + 1 } : {}) }),
+    await t.listEvents(agent.scope, { types: ['heard.text'], ...from }),
+  ]);
+  const events = listed.filter((e) => !e.data?.task);
   /** @type {any[][]} exchanges: from a wake that isn't "meanwhile" to the next */
   const exchanges = [];
   for (const e of events) {
     if ((e.type === 'wake' && !e.data?.meanwhile) || !exchanges.length) exchanges.push([]);
     exchanges[exchanges.length - 1].push(e);
   }
-  // A heard line's words as last written down (a live line's first ones come with it), as conversationLines reads them.
-  const words = new Map(all.filter((e) => e.type === 'heard.text').map((e) => [e.data?.of, String(e.data?.text ?? '')]));
+  // A heard line's words as last written down (a live line's first ones come with it), as conversationLines reads them, wherever they landed.
+  const words = new Map(written.map((e) => [e.data?.of, String(e.data?.text ?? '')]));
   const lines = async (/** @type {any[]} */ ex) => {
     const out = [];
     for (const e of ex) {

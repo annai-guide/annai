@@ -117,7 +117,7 @@ export async function readJourney({ store, ws, trip, namer = () => null }) {
     const stamp = stamps.find((x) => x.name.toLowerCase() === name.toLowerCase() && dayIn(x.at, tz) === day) ?? null;
     entries.push({ kind: 'stay', at: a.ts, to: a.ts, lat: a.data.place.lat, lng: a.data.place.lng, name, stamp });
   }
-  // Shiori's cards, and the user's lines as compaction reads them (conversationLines): typed or heard and not set aside, a heard line with its last words.
+  // Shiori's cards, and the user's lines as conversationLines reads them (the summary's language reads the same): typed or heard and not set aside, a heard line once, with its last words.
   for (const { e, d, text } of await conversationLines(store, events.filter((x) => x.type === 'out.show' || USER_LINES.includes(x.type)))) {
     const words = String(text ?? '').trim();
     if (e.type === 'out.show') {
