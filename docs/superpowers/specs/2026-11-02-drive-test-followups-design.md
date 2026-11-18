@@ -96,8 +96,18 @@ New:
   `start`/`end` (first departure, last arrival) and kept as `fields.flights`; common detail names the user's model wrote (notes, room,
   phone, guests, passengers, airline, company, seat, flight) to `fields.<name>`; a car's drop-off place to `fields.dropoff`, an
   arrival's to `fields.to` (where it arrives; booking-next: it was `fields.arrival`, which reads like its time). A key the booking schema in force lists is never renamed (a plugin's registered fields stay theirs).
+  An end's place is read by what is booked and compared with nothing (booking-time-next, 2026-11-18, the booking time path's design
+  check, its Option 1: the comparison with the place, made on the write alone with one of three values, drew a Drop-off line repeating a
+  hotel and dropped an address): an end's place, a stay's check-out too, is filed whole, its name and its address joined ("Airport lot,
+  9 Other Road"; an object name with no address of its own takes the address into it, so a car's Return row keeps its position), a part that
+  isn't text as written; a blank name or address is not given, top-level ones too. Removing the alias (`dropoff: null`, `arrive: null`) removes
+  the field it stands for and nothing it filed under `fields` (as it always did: a hand-written `fields.to` stays); one patch of the key
+  itself removes that. Whether a drop-off names the booking's own place is answered by the readers, which see the whole stored record
+  (`dropsAtPlace`): a car returned where it was picked up has no Drop-off line, its Return row is at its place with its position, and a
+  check on its drop-off is the place's. A restaurant's or an event's arrival is its end, as it always was, alone too (docs/limitations.md,
+  "written with only an arrival": a write can't tell what such a booking's start stands for, so it never guesses one).
 - **This write wins.** A renamed key replaces the stored own field (a patch `{checkout: …}` moves the stored `end`; `{flights: legsB}`
-  moves `start`/`end` too). The same write giving both an alias and its own field with different values is refused, naming both.
+  moves a flight's `start`/`end` too). The same write giving both an alias and its own field with different values is refused, naming both.
 - **Times:** a string time becomes `{ at, tz }` only with a known zone: a `tz` beside it, else, for anything but a flight or train, the
   trip's only zone. An offset that the zone doesn't have at that instant, an impossible date (Nov 31) or a date with no time is refused
   with words saying what to write. An unknown zone is never compared, only stored as written.
@@ -108,14 +118,25 @@ New:
   the stored alias key (`total: null` clears `cost` and `fields.total`). In a whole write a null is the same as no key, except
   `unsure`, which the format check refuses. An edit that adds an alias is refused naming the format's field. Legs appended with
   `flights+` move `end` to the last leg's arrival (booking-next: one with a time of arrival and no zone of its own is refused, as a whole
-  `flights` write is; a leg with no time of arrival, or an airport as an object, still appends and leaves `end`; the last appended leg's arrival written as text that can't be placed, "HND" or "08:00", is refused). Appending (`x+`) to a stored value that is no list keeps that value as the first item.
+  `flights` write is). A flight's last leg whose arrival is no date with a time (none, an airport as an object, a clock alone, "HND", a date
+  alone, a day that doesn't exist, a date and a time written in a form annai can't read; `written`, the one reading) gives no end: a whole
+  write stores none, a patch removes the stored one, the legs are kept as written, and the write's result says what is wrong with the
+  arrival and asks for `end` when she knows it (booking-time-next: such a leg left `end` at the leg before, a time out of date, and a whole
+  `flights` write or text was refused). Unless the same write gives `end`. Only what carries the traveller (a flight, a train, a ferry, a bus,
+  a coach) takes its start and end from legs: any other booking's (a stay, a car, a restaurant, an event, an `other` booking) are its own,
+  so legs given to one (`flights+` or `flights`, with times or without) are kept as written and move nothing, and when a leg has a time
+  the result says so and, when the booking has no start or end of its own, asks for them. A whole `flights` write whose first leg is text
+  (no date and time annai reads as its departure) gives no start, and the result says so whatever else the write gives: "no start or end"
+  when the last leg's arrival is a time that is left out with it (an end with no start is on no day of the Plan, so none is read from the
+  last leg either), else "no start". A last leg with no arrival adds its own note, and an end the write gives itself (`end`, or an arrival
+  alias) is kept; a start the write gives itself lets the last leg's arrival give the end. Appending (`x+`) to a stored value that is no list keeps that value as the first item.
 - **One rule for the place.** In a patch the place aliases merge into `place` like a JSON merge patch: a location (or a pick-up's
   location) is `place.name`, an address (or a pick-up's) is `place.address`, lat/lng are `place.lat/lng`; `address: null` is the address
   null and `location: null` is no place. A `place` of its own (object) merges with them, and different values for one part, or
   `place: null` (or `location: null`) beside a non-null alias, are refused naming both. What is stale is decided in `shioriBooking`,
   which sees the stored booking and the merged one: if the merged place's name differs from the stored one and this patch does not give
   the address or lat/lng, they are the old place's and go; likewise a new address without lat/lng drops the old position. A name that was only a copy of the address is no real name: naming the place keeps its address, and a new address takes the copy along. An empty name or address in an alias says nothing. A place left with a name that is blank is named from its address (a drop-off
-  at that same address is then the place, not `fields.dropoff`).
+  at that same address is kept in `fields.dropoff`, and the readers read it as the place: `dropsAtPlace`).
 - **Unknown keys:** only a top-level key this write introduces that the schema in force doesn't list is refused, with words naming the
   format's fields and `fields`. The schema stays open, so the user's own edits, Undo, Restore and imports work as before.
 - **Plugins** add fields inside `fields` (any key) or as top-level properties of a booking schema they register.
