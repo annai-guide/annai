@@ -93,10 +93,10 @@ New:
   forms included), a booking's keys are renamed from common other names to the format's own, so a small model's first try is stored right,
   in one call. Times to `start`/`end`; `name` to `title`; `location`/`address` and a pick-up's location to one `place`; a total with an
   amount and currency to `cost` (a comma only as a thousands group; anything else to `fields.total` as written); flights[] legs to
-  `start`/`end` (first departure, last arrival) and kept as `fields.flights` (a lone leg, any value that isn't blank and isn't a list, is a
-  list of one under `flights+`, and under `flights` in a whole write; a patch's `flights` is merged into the stored one, an object key by key,
-  so its lone value may be part of a leg and is no leg, and moves no time; a blank one is none: booking-rest-next); common detail names the user's model wrote (notes, room,
-  phone, guests, passengers, airline, company, seat, flight) to `fields.<name>`; a car's drop-off place to `fields.dropoff`, an
+  `start`/`end` (first departure, last arrival) and kept as `fields.flights` (a lone value that isn't a list is one leg under `flights+` only:
+  under `flights` it is no leg and gives no times, in a whole write or in a patch, as on main; the open Deferred entry "A single flight given
+  as `flights` (not a list) in a whole write gives no times and says nothing" holds what two rounds of booking-rest-next learned of its fix);
+  common detail names the user's model wrote (notes, room, phone, guests, passengers, airline, company, seat, flight) to `fields.<name>`; a car's drop-off place to `fields.dropoff`, an
   arrival's to `fields.to` (where it arrives; booking-next: it was `fields.arrival`, which reads like its time). A key the booking schema in force lists is never renamed (a plugin's registered fields stay theirs).
   An end's place is read by what is booked and compared with nothing (booking-time-next, 2026-11-18, the booking time path's design
   check, its Option 1: the comparison with the place, made on the write alone with one of three values, drew a Drop-off line repeating a
@@ -132,13 +132,15 @@ New:
   when the last leg's arrival is a time that is left out with it (an end with no start is on no day of the Plan, so none is read from the
   last leg either), else "no start". A last leg with no arrival adds its own note, and an end the write gives itself (`end`, or an arrival
   alias) is kept; a start the write gives itself lets the last leg's arrival give the end. Appending (`x+`) to a stored value that is no list keeps that value as the first item.
-  `unsure`'s names for a time are read where the marks are read, by the record (`checkOf`, booking-rest-next): `departure` or `depart`,
-  `arrival` or `arrive`, a stay's `checkin` and `checkout`, a car's `pickup` and `return` mark the part they stand for (`fieldOf`: leaving
-  is the start and arriving the end, a stay's arrival its check-in and its departure its check-out) when the booking has that part and no
-  detail of that name (a blank one is none), however the time was written and whoever stored the booking, so the Departs or Arrives line
-  and the others carry the check. Nothing is stored for it (the stored names are as written, and the write's own alias still renames a
-  name beside it, as before); never `dropoff`, which is a place too; a restaurant's and an event's names are read as written (their arrival
-  is the open Deferred entry).
+  `unsure`'s names for a time are read where the marks are read, by the record (`checkOf`, booking-rest-next): every name `unalias` reads for
+  a time (`departure` or `depart`, `arrival` or `arrive`, `checkin`, `checkout`, `pickup`, `return` and their spellings), for every kind but a
+  restaurant or an event, marks the part it stands for (`fieldOf`: leaving is the start and arriving the end, a stay's arrival its check-in
+  and its departure its check-out; a flight's `checkin` is its start) when the booking has that part of its own (a detail named `start` is
+  not it) and no detail of that name (a blank one is none), however the time was written and whoever stored the booking, so the Departs or
+  Arrives line and the others carry the check. Nothing is stored for it (the stored names are as written, and the write's own alias still
+  renames a name beside it, as before); never `dropoff` and its spellings, which are a place too. A restaurant's and an event's names are
+  read as written: one for a time marks nothing unless a detail has that name (the open Deferred entry "A restaurant or an event written with
+  only an arrival is on no day of the Plan").
 - **One rule for the place.** In a patch the place aliases merge into `place` like a JSON merge patch: a location (or a pick-up's
   location) is `place.name`, an address (or a pick-up's) is `place.address`, lat/lng are `place.lat/lng`; `address: null` is the address
   null and `location: null` is no place. A `place` of its own (object) merges with them, and different values for one part, or

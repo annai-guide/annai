@@ -53,14 +53,15 @@ export function dropsAtPlace(b) {
  * What of a booking the screens mark for the user to check: the names in `unsure` of fields it has (its own, or keys of `fields`, as
  * written), once each. A key of `fields` named like one of its own fields is that part when the booking has none of its own (a model wrote
  * `fields.place`), and the same part, marked once, when it has (the details draw one line for it, bookingFacts); so is a drop-off that names
- * the booking's own place (dropsAtPlace), which the details draw as its Place line alone. A name for a time (`departure`, `arrival`, a stay's
- * `checkin` and `checkout`, a car's `pickup` and `return`: the names unalias reads, never `dropoff`, a place too) marks the part it stands
- * for (fieldOf) when the booking has that part and no detail of that name (a blank one is none), whoever stored it and however its time was
- * written; nothing is written back. A restaurant's or an event's are read as written (its arrival is the open Deferred entry). A record
- * from before (no `unsure` key) not confirmed reads as if `unsure` named every part it has: its own fields that `unsure` may name, then
- * the keys of `fields`, through the same rule as a new booking. Reading only: nothing is stored, so the file keeps no `unsure` until she
- * writes one (booking-say's round 4: a mark of the whole booking was a second answer for one old shape, and every reader carried a branch
- * for it). Anything odd marks nothing, and nothing throws.
+ * the booking's own place (dropsAtPlace), which the details draw as its Place line alone. A name for a time (every name in TIMES, read for
+ * every kind but a restaurant or an event: a flight's `checkin` is its start, as unalias reads it; never `dropoff` and its spellings, a
+ * place too) marks the part it stands for (fieldOf) when the booking has that part of its own (a detail named `start` is not it) and no
+ * detail of that name (a blank one is none), whoever stored it and however its time was written; nothing is written back. A restaurant's
+ * or an event's names are read as written: one for a time marks nothing unless a detail has that name (the open Deferred entry, "written
+ * with only an arrival", whose revisit is U80). A record from before (no `unsure` key) not confirmed reads as if `unsure` named every part
+ * it has: its own fields that `unsure` may name, then the keys of `fields`, through the same rule as a new booking. Reading only: nothing
+ * is stored, so the file keeps no `unsure` until she writes one (booking-say's round 4: a mark of the whole booking was a second answer
+ * for one old shape, and every reader carried a branch for it). Anything odd marks nothing, and nothing throws.
  * @param {any} b @returns {{ fields: string[] }}
  */
 export function checkOf(b) {
@@ -74,9 +75,11 @@ export function checkOf(b) {
   /** @type {string[]} */
   const fields = [];
   for (const name of named) {
-    let k = name === 'dropoff' && atPlace ? 'place' : name;
-    if (readsTimes && typeof k === 'string' && !has(k) && !/^drop/i.test(k)) k = fieldOf(k, b.kind) ?? k;
-    if (typeof k === 'string' && !fields.includes(k) && has(k)) fields.push(k);
+    const k = name === 'dropoff' && atPlace ? 'place' : name;
+    const to = readsTimes && typeof k === 'string' && !has(k) && !/^drop/i.test(k) ? fieldOf(k, b.kind) : undefined;
+    const time = typeof to === 'string' ? to : undefined; // fieldOf reads TIMES like any object: `constructor` is no time
+    const part = time ?? k;
+    if (typeof part === 'string' && !fields.includes(part) && (time ? ownPart(b, part) : has(part))) fields.push(part);
   }
   return { fields };
 }
@@ -349,9 +352,7 @@ export function unalias(own, { zones = [], schema, kind, append = false, notes =
     }
   }
   const fk = keys.find((k) => base(k) === 'flights');
-  // A lone value (not a list) is one leg under `flights+`, and under `flights` in a whole write: a patch's `flights` is merged into the
-  // stored one (an object key by key), so its lone value may be part of a leg. A blank value is none.
-  const legs = fk ? (Array.isArray(own[fk]) ? own[fk] : (fk.endsWith('+') || !append) && there(own[fk]) ? [own[fk]] : []) : [];
+  const legs = fk ? (Array.isArray(own[fk]) ? own[fk] : fk.endsWith('+') ? [own[fk]] : []) : [];
   // Only what carries the traveller (far) has its times from its legs: any other booking's are its own, so legs given to one are kept as
   // written and move nothing; a leg with a time says so (NO_LEGS_TIMES).
   if (fk && legs.length && !far && legs.some(timedLeg)) notes.push(NO_LEGS_TIMES);
