@@ -1,9 +1,8 @@
 import { h, crumb, t, twoStep, plural, otherLang, messageOf as message } from '../dom.js';
 import { list, sentences } from '../format.js';
 import { explainStorageFull } from '../storage-full.js';
-import { officialUpdates } from '../../core/llm/official.js';
 import { providerOf } from '../../core/llm/config.js';
-import { applyUpdates, knownAddressUpdates } from '../plugin-updates.js';
+import { applyUpdates, knownUpdates } from '../plugin-updates.js';
 import { sourceLine } from './plugin-install.js';
 import { tracedFetch } from '../../core/agent/net.js';
 import { SYS } from '../../core/scopes.js';
@@ -12,7 +11,8 @@ import { warnKept } from './provider.js';
 import { finder, byKind } from './add.js';
 
 /**
- * Settings → Plugins (spec §5.3, §16.2): what is installed, with updates, searched and filtered as
+ * Settings → Plugins (spec §5.3, §16.2): what is installed, with the updates the last checks found (knownUpdates, which Settings →
+ * Updates shows too; nothing is asked here), searched and filtered as
  * the catalog is (provider plugins under Model providers, naming the providers made from them). Add
  * opens the catalog's Add screen, where annai's catalog, a file or an address is installed from.
  * A plugin's own page is #/plugins/<id>.
@@ -22,7 +22,7 @@ export async function renderPlugins(ctx, route) {
   if (route?.parts?.[1]) return renderPlugin(ctx, route.parts[1]);
   const rows = await ctx.plugins.describe();
   const told = await removalWords(ctx, rows);
-  const updates = [...await officialUpdates(ctx.plugins).catch(() => []), ...await knownAddressUpdates(ctx.plugins).catch(() => [])];
+  const updates = await knownUpdates(ctx.plugins).catch(() => []);
   // Built in, or from annai's catalog, is official; from a file or an address, third-party.
   const entries = rows.map((/** @type {any} */ r) => ({ ...r, official: r.builtin || r.source === 'official' }));
   return h('div', { class: 'screen' },
@@ -32,10 +32,9 @@ export async function renderPlugins(ctx, route) {
     finder({ label: t`Search your plugins`, entries, draw: (found, typed) => byKind(found, typed, (x) => row(ctx, x.entry, updates.find((u) => u.id === x.entry.id), told.get(x.entry.id))) }).el);
 }
 
-/** The update offered for a plugin now, if any. @param {any} ctx @param {string} id */
+/** The update the last checks found for a plugin, if any. @param {any} ctx @param {string} id */
 export async function updateFor(ctx, id) {
-  const all = [...await officialUpdates(ctx.plugins).catch(() => []), ...await knownAddressUpdates(ctx.plugins).catch(() => [])];
-  return all.find((u) => u.id === id);
+  return (await knownUpdates(ctx.plugins).catch(() => [])).find((u) => u.id === id);
 }
 
 /** @param {any} r */

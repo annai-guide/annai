@@ -804,10 +804,10 @@ i9ok5g	ok	Wikipedia between {0} and {1}	{0} 與 {1} 之間的 Wikipedia	src/core
 cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMap 沒有回應（{0}）。	src/core/pack/download.js:81	{0} = (s.inner ? failWords(s.inner) : s.message).replace(/[.。]$/u, '')
 rhruvr	ok	{0} said: {1}.	{0} 回覆：{1}。	src/core/pack/download.js:82	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
 1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyage 沒有傳來 {0} 的內文。	src/core/pack/download.js:83	{0} = s.title
-aaicx8	ok	{0} couldn't be checked: {1}	無法檢查 {0}：{1}	src/core/package-updates.js:46	{0} = s.name ?? id; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-trd90h	ok	It wasn't installed from an address, so annai has nowhere to look for an update.	不是從網址安裝的，所以無法檢查更新。	src/core/package-updates.js:73	
-2olq9a	ok	The address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	這個網址現在提供的是另一個套件（{0}），因此沒有更新。如果想用那個套件，請移除這個，再安裝那個。	src/core/package-updates.js:77	{0} = pkg.id; Note: Remove → 移除, as annai's Remove buttons say.
-29yhwe	ok	This update adds parts you haven't agreed to: {0}. Check for updates again and look at what it adds.	這次更新會加入你尚未同意的部分：{0}。請重新檢查更新，看看它會加入什麼。	src/core/package-updates.js:81	{0} = addedWords(added)
+aaicx8	ok	{0} couldn't be checked: {1}	無法檢查 {0}：{1}	src/core/package-updates.js:39	{0} = s.name ?? id; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+trd90h	ok	It wasn't installed from an address, so annai has nowhere to look for an update.	不是從網址安裝的，所以無法檢查更新。	src/core/package-updates.js:66	
+2olq9a	ok	The address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	這個網址現在提供的是另一個套件（{0}），因此沒有更新。如果想用那個套件，請移除這個，再安裝那個。	src/core/package-updates.js:70	{0} = pkg.id; Note: Remove → 移除, as annai's Remove buttons say.
+29yhwe	ok	This update adds parts you haven't agreed to: {0}. Check for updates again and look at what it adds.	這次更新會加入你尚未同意的部分：{0}。請重新檢查更新，看看它會加入什麼。	src/core/package-updates.js:74	{0} = addedWords(added)
 1wfc5of	ok	This zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	此 zip 包含多個技能。請逐一安裝，或新增一個列出它們的 annai-plugin.json。	src/core/packages.js:349	
 12el2y8	ok	The {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0} 位於 {1}，層級太深。annai 只會在 zip 的最上層或其中唯一的資料夾裡讀取它。請單獨壓縮那個資料夾。	src/core/packages.js:357	{0} = file; {1} = folder
 yeyuzl	ok	The {0} is in {1}, with other files beside that folder: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0} 位於 {1}，但這個資料夾旁邊還有其他檔案。annai 只會在 zip 的最上層或其中唯一的資料夾裡讀取它。請單獨壓縮那個資料夾。	src/core/packages.js:358	{0} = file; {1} = folder
@@ -818,15 +818,15 @@ jg8gk7	ok	That isn't a web address. Paste the address of a zip file, an annai-pl
 1xovhb	ok	annai couldn't reach {0}. Check the address, and that the site lets web apps read it.	無法連線到 {0}。請檢查網址，並確認該網站允許網頁應用程式讀取。	src/core/packages.js:501	{0} = u.host
 4lh0yw	ok	{0} sent a zip annai can't open: {1}	{0} 傳來的 zip 無法開啟：{1}	src/core/packages.js:515	{0} = url.host; {1} = why; Note: {1} is a developer's detail, in English.
 hm96ty	ok	That package has more than {0} files; annai installs packages of up to {1} from an address. Use a zip instead.	該套件超過 {0} 個檔案，而從網址安裝最多只支援 {1} 個檔案。請改用 zip。	src/core/packages.js:531	{0} = ADDRESS_MAX_FILES; {1} = ADDRESS_MAX_FILES
-pft16a	ok	{0} answered {1} for {2}, a file its {3} names.	{0} 對 {2}（{3} 中列出的檔案）傳回了 {1}。	src/core/packages.js:545	{0} = u.host; {1} = status; {2} = name; {3} = from
-apv0y3	ok	annai couldn't read {0} from {1}, a file its {2} names. Check that it is there, and that the site lets web apps read it.	無法從 {1} 讀取 {0}（{2} 中列出的檔案）。請檢查該檔案是否存在，以及該網站是否允許網頁應用程式讀取。	src/core/packages.js:547	{0} = name; {1} = u.host; {2} = from
-1iuga68	ok	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	該網址沒有 annai 外掛程式或技能。annai 會尋找 zip 檔案、annai-plugin.json 或 SKILL.md。	src/core/packages.js:617	
-1toghwz	ok	The {0} at {1} isn't valid JSON.	{1} 上的 {0} 不是有效的 JSON。	src/core/packages.js:627	{0} = MANIFEST_FILE; {1} = url.host
-1rp7aut	ok	code that runs in annai	在 annai 中執行的程式碼	src/core/packages.js:667	Note: one of a list of what an update adds.
-1tdxuf	ok	the skill {0}	技能 {0}	src/core/packages.js:668	{0} = s.name
-1j0uwka	ok	the personality {0}	性格 {0}	src/core/packages.js:669	{0} = p.name
-14wn58m	ok	a provider that sends keys to {0}	會把金鑰傳送到 {0} 的供應商	src/core/packages.js:670	{0} = o; Note: one of a list of what an update adds.
-tqmba2	ok	an address your searches are sent to: {0}	會接收搜尋內容的網址 {0}	src/core/packages.js:670	{0} = o; Note: one of a list of what an update adds.
+pft16a	ok	{0} answered {1} for {2}, a file its {3} names.	{0} 對 {2}（{3} 中列出的檔案）傳回了 {1}。	src/core/packages.js:544	{0} = u.host; {1} = status; {2} = name; {3} = from
+apv0y3	ok	annai couldn't read {0} from {1}, a file its {2} names. Check that it is there, and that the site lets web apps read it.	無法從 {1} 讀取 {0}（{2} 中列出的檔案）。請檢查該檔案是否存在，以及該網站是否允許網頁應用程式讀取。	src/core/packages.js:546	{0} = name; {1} = u.host; {2} = from
+1iuga68	ok	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	該網址沒有 annai 外掛程式或技能。annai 會尋找 zip 檔案、annai-plugin.json 或 SKILL.md。	src/core/packages.js:616	
+1toghwz	ok	The {0} at {1} isn't valid JSON.	{1} 上的 {0} 不是有效的 JSON。	src/core/packages.js:626	{0} = MANIFEST_FILE; {1} = url.host
+1rp7aut	ok	code that runs in annai	在 annai 中執行的程式碼	src/core/packages.js:666	Note: one of a list of what an update adds.
+1tdxuf	ok	the skill {0}	技能 {0}	src/core/packages.js:667	{0} = s.name
+1j0uwka	ok	the personality {0}	性格 {0}	src/core/packages.js:668	{0} = p.name
+14wn58m	ok	a provider that sends keys to {0}	會把金鑰傳送到 {0} 的供應商	src/core/packages.js:669	{0} = o; Note: one of a list of what an update adds.
+tqmba2	ok	an address your searches are sent to: {0}	會接收搜尋內容的網址 {0}	src/core/packages.js:669	{0} = o; Note: one of a list of what an update adds.
 18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	這個瀏覽器無法轉換 {0}，因此保留了原始檔案，可能只有 Safari 能顯示。	src/core/photos.js:135	{0} = name
 1009iza	ok	Restaurant	餐廳	src/core/plan.js:70	
 1cyh7n5	draft	Coach	長途客運	src/core/plan.js:70	Note: a plan item's kind, or a booking's, shown under its title: a long-distance coach, not a train carriage.
@@ -1429,26 +1429,26 @@ fzpt3w	ok	Reload now	立即重新載入	src/ui/plugin-cards.js:32
 1abmsob	ok	It didn't start the last few times annai opened.	最近幾次開啟 annai 時，它都沒有啟動。	src/ui/plugin-cards.js:47	
 11arkb9	ok	You can turn it off in Settings → Plugins.	可以在設定 → 外掛程式中關閉它。	src/ui/plugin-cards.js:48	
 1jz4o49	ok	The plugin "{0}" didn't start	外掛程式「{0}」沒有啟動	src/ui/plugin-cards.js:48	{0} = it
-44nn0b	ok	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（有新內容，更新前會先詢問你）	src/ui/plugin-updates.js:87	{0} = u.name; {1} = u.installed; {2} = u.available
-trjp65	ok	{0} (changed) (brings something new: you'll be asked first)	{0}（已變更，有新內容，更新前會先詢問你）	src/ui/plugin-updates.js:87	{0} = u.name
-1kyfel6	ok	{0} (changed)	{0}（已變更）	src/ui/plugin-updates.js:88	{0} = u.name
-i8x2zk	ok	{0} {1} → {2}	{0} {1} → {2}	src/ui/plugin-updates.js:88	{0} = u.name; {1} = u.installed; {2} = u.available
-6qynmx	ok	Plugin updates are ready	有可用的外掛程式更新	src/ui/plugin-updates.js:94	
-1qhkyk	ok	Nothing changes until you update. An updated plugin that is running now is off until annai restarts.	更新之前不會有任何變動。正在執行的外掛程式更新後會暫時關閉，直到 annai 重新啟動。	src/ui/plugin-updates.js:95	
-1x9jer0	ok	New versions: {0}.	新版本：{0}。	src/ui/plugin-updates.js:95	{0} = list(updates.map(offerWords), 'plain')
-uk4kus	ok	Update	更新	src/ui/plugin-updates.js:96	
-1hwvled	ok	{0} failed with an unknown error.	{0} 因未知的錯誤而未能更新。	src/ui/plugin-updates.js:129	{0} = nameOf(u); Note: one line of the "Some plugins weren't updated" card, for a plugin whose update failed with an empty error; {0} is the plugin's name.
-1agymuw	ok	Some plugins weren't updated	部分外掛程式未能更新	src/ui/plugin-updates.js:133	
-1vsv4vh	ok	Restart annai to use the new versions	重新啟動 annai 即可使用新版本	src/ui/plugin-updates.js:137	
-1k0lt4v	ok	Until then, {0} can't be used.	在此之前，{0} 暫時無法使用。	src/ui/plugin-updates.js:138	{0} = list(waiting)
-2jfvhf	ok	The update is installed and runs the next time annai starts.	更新已安裝，下次啟動 annai 時生效。	src/ui/plugin-updates.js:138	
-nb21do	ok	Restart now	立即重新啟動	src/ui/plugin-updates.js:139	
-1do1igm	ok	Plugins updated.	外掛程式已更新。	src/ui/plugin-updates.js:142	
-eaf3fx	ok	{0} {1} brings something new	{0} {1} 包含新內容	src/ui/plugin-updates.js:158	{0} = u.name; {1} = u.available
-127j3cm	ok	New in this version: {0}.	此版本新增：{0}。	src/ui/plugin-updates.js:159	{0} = semicolons(whatItBrings(added))
-zymqne	ok	Only update if you trust where it came from.	請只在信任其來源時更新。	src/ui/plugin-updates.js:159	
-1dfe53s	ok	Nothing changes until you tap Update.	點一下「更新」之前，不會有任何變動。	src/ui/plugin-updates.js:160	
-15ziixp	ok	Update anyway	仍然更新	src/ui/plugin-updates.js:162	
+44nn0b	ok	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（有新內容，更新前會先詢問你）	src/ui/plugin-updates.js:84	{0} = u.name; {1} = u.installed; {2} = u.available
+trjp65	ok	{0} (changed) (brings something new: you'll be asked first)	{0}（已變更，有新內容，更新前會先詢問你）	src/ui/plugin-updates.js:84	{0} = u.name
+1kyfel6	ok	{0} (changed)	{0}（已變更）	src/ui/plugin-updates.js:85	{0} = u.name
+i8x2zk	ok	{0} {1} → {2}	{0} {1} → {2}	src/ui/plugin-updates.js:85	{0} = u.name; {1} = u.installed; {2} = u.available
+6qynmx	ok	Plugin updates are ready	有可用的外掛程式更新	src/ui/plugin-updates.js:91	
+1qhkyk	ok	Nothing changes until you update. An updated plugin that is running now is off until annai restarts.	更新之前不會有任何變動。正在執行的外掛程式更新後會暫時關閉，直到 annai 重新啟動。	src/ui/plugin-updates.js:92	
+1x9jer0	ok	New versions: {0}.	新版本：{0}。	src/ui/plugin-updates.js:92	{0} = list(updates.map(offerWords), 'plain')
+uk4kus	ok	Update	更新	src/ui/plugin-updates.js:93	
+1hwvled	ok	{0} failed with an unknown error.	{0} 因未知的錯誤而未能更新。	src/ui/plugin-updates.js:126	{0} = nameOf(u); Note: one line of the "Some plugins weren't updated" card, for a plugin whose update failed with an empty error; {0} is the plugin's name.
+1agymuw	ok	Some plugins weren't updated	部分外掛程式未能更新	src/ui/plugin-updates.js:130	
+1vsv4vh	ok	Restart annai to use the new versions	重新啟動 annai 即可使用新版本	src/ui/plugin-updates.js:134	
+1k0lt4v	ok	Until then, {0} can't be used.	在此之前，{0} 暫時無法使用。	src/ui/plugin-updates.js:135	{0} = list(waiting)
+2jfvhf	ok	The update is installed and runs the next time annai starts.	更新已安裝，下次啟動 annai 時生效。	src/ui/plugin-updates.js:135	
+nb21do	ok	Restart now	立即重新啟動	src/ui/plugin-updates.js:136	
+1do1igm	ok	Plugins updated.	外掛程式已更新。	src/ui/plugin-updates.js:139	
+eaf3fx	ok	{0} {1} brings something new	{0} {1} 包含新內容	src/ui/plugin-updates.js:155	{0} = u.name; {1} = u.available
+127j3cm	ok	New in this version: {0}.	此版本新增：{0}。	src/ui/plugin-updates.js:156	{0} = semicolons(whatItBrings(added))
+zymqne	ok	Only update if you trust where it came from.	請只在信任其來源時更新。	src/ui/plugin-updates.js:156	
+1dfe53s	ok	Nothing changes until you tap Update.	點一下「更新」之前，不會有任何變動。	src/ui/plugin-updates.js:157	
+15ziixp	ok	Update anyway	仍然更新	src/ui/plugin-updates.js:159	
 vq7cdg#other	ok	# pages	# 頁	src/ui/preview.js:133	plural; # = pages; English: "# page" (one), "# pages" (other); Note: Taiwan wording; a PDF's page count on its file card.
 1cjjnaq	ok	Kept on this device.	儲存在此裝置上。	src/ui/privacy.js:21	
 tct7be	ok	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	旅行、檔案、設定和金鑰都儲存在這台裝置上的這個瀏覽器裡。annai 沒有帳號系統，annai 的任何伺服器也都不會保存你的旅行或金鑰。	src/ui/privacy.js:21	
@@ -2079,21 +2079,21 @@ xkwhlc	ok	Not here	找不到	src/ui/screens/plugin.js:83
 1w1mhg4	ok	Each can be switched off in {0}.	每個工具都可以在{0}中關閉。	src/ui/screens/plugin.js:108	{0} = toolsLink
 v2w06x	ok	Its pages	外掛程式頁面	src/ui/screens/plugin.js:113	
 1flt3rs	ok	Search your plugins	搜尋外掛程式	src/ui/screens/plugins.js:32	
-3l91ca	ok	Built in	內建	src/ui/screens/plugins.js:43	
-18ydira	ok	Restart annai to run the new version	重新啟動 annai 以執行新版本	src/ui/screens/plugins.js:44	
-a6th2y	ok	Can't start: {0}	無法啟動：{0}	src/ui/screens/plugins.js:45	{0} = r.problem
-1rattxx	ok	Turned off after repeated errors	因反覆出錯已關閉	src/ui/screens/plugins.js:46	
-1tukfau	ok	On, but it didn't start	已開啟，但沒有啟動	src/ui/screens/plugins.js:48	
-qvtz3k	ok	On	開啟	src/ui/screens/plugins.js:48	
-1vtomjj	ok	Providers: {0}.	供應商：{0}。	src/ui/screens/plugins.js:65	{0} = list(names, 'plain')
-j3sbh5	ok	No provider is set up from it yet.	還沒有用它設定任何供應商。	src/ui/screens/plugins.js:67	
-e1enek#other	ok	Removing it removes {0}, with their keys and models.	移除它會一併移除 {0} 及其金鑰和模型。	src/ui/screens/plugins.js:68	plural; # = providers.length; {0} = list(names); English: "Removing it removes {0}, with its key and models." (one), "Removing it removes {0}, with their keys and models." (other)
-fj8j97	ok	Needed by {0}.	{0} 需要它。	src/ui/screens/plugins.js:69	{0} = list(needs)
-dbgp9n	ok	Model provider	模型供應商	src/ui/screens/plugins.js:80	
-v0wv6e	ok	Skill	技能	src/ui/screens/plugins.js:80	
-97t8e3	ok	Update to {0}	更新到 {0}	src/ui/screens/plugins.js:98	{0} = update.available
-jgr98x	ok	{0} didn't start	{0} 沒有啟動	src/ui/screens/plugins.js:115	{0} = r.name
-s74tk7	ok	Turn on	開啟	src/ui/screens/plugins.js:119	
+3l91ca	ok	Built in	內建	src/ui/screens/plugins.js:42	
+18ydira	ok	Restart annai to run the new version	重新啟動 annai 以執行新版本	src/ui/screens/plugins.js:43	
+a6th2y	ok	Can't start: {0}	無法啟動：{0}	src/ui/screens/plugins.js:44	{0} = r.problem
+1rattxx	ok	Turned off after repeated errors	因反覆出錯已關閉	src/ui/screens/plugins.js:45	
+1tukfau	ok	On, but it didn't start	已開啟，但沒有啟動	src/ui/screens/plugins.js:47	
+qvtz3k	ok	On	開啟	src/ui/screens/plugins.js:47	
+1vtomjj	ok	Providers: {0}.	供應商：{0}。	src/ui/screens/plugins.js:64	{0} = list(names, 'plain')
+j3sbh5	ok	No provider is set up from it yet.	還沒有用它設定任何供應商。	src/ui/screens/plugins.js:66	
+e1enek#other	ok	Removing it removes {0}, with their keys and models.	移除它會一併移除 {0} 及其金鑰和模型。	src/ui/screens/plugins.js:67	plural; # = providers.length; {0} = list(names); English: "Removing it removes {0}, with its key and models." (one), "Removing it removes {0}, with their keys and models." (other)
+fj8j97	ok	Needed by {0}.	{0} 需要它。	src/ui/screens/plugins.js:68	{0} = list(needs)
+dbgp9n	ok	Model provider	模型供應商	src/ui/screens/plugins.js:79	
+v0wv6e	ok	Skill	技能	src/ui/screens/plugins.js:79	
+97t8e3	ok	Update to {0}	更新到 {0}	src/ui/screens/plugins.js:97	{0} = update.available
+jgr98x	ok	{0} didn't start	{0} 沒有啟動	src/ui/screens/plugins.js:114	{0} = r.name
+s74tk7	ok	Turn on	開啟	src/ui/screens/plugins.js:118	
 ura2r7	ok	{0} a minute of speech	每分鐘語音 {0}	src/ui/screens/provider.js:29	{0} = price(p.perMinute)
 1b0vcka	ok	{0} per million characters	每百萬字元 {0}	src/ui/screens/provider.js:30	{0} = price(p.perMillionChars)
 1xducp7	ok	{0} in, {1} out	輸入 {0}，輸出 {1}	src/ui/screens/provider.js:32	{0} = price(p.input); {1} = price(p.output)
@@ -2835,13 +2835,12 @@ vy4apn	ok	Try this model	試用這個模型	src/ui/talk-panel.js:75
 1770v5g	ok	Finding where you are…	正在定位…	src/ui/today.js:23	
 iztlgm	ok	No GPS signal right now.	現在沒有 GPS 訊號。	src/ui/today.js:23	
 ue501f	ok	Near {0}, ≈ {1}	{0} 附近，≈ {1}	src/ui/today.js:26	{0} = near.name; {1} = distance(near.m / 1000)
-1sva5r0	ok	The check took too long. Check the connection, and try again.	檢查逾時。請檢查網路連線後再試一次。	src/ui/updates.js:124	
-14d6ut8	ok	annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.	annai 的離線服務尚未啟動，因此沒有檢查 annai 本身。請稍後重試。	src/ui/updates.js:164	
-16l98jx	ok	annai couldn't check for a new version of itself. Check the connection and try again.	無法檢查 annai 是否有新版本。請檢查網路連線後再試一次。	src/ui/updates.js:174	
-rtcus4	ok	The download of the new version didn't finish. annai tries again the next time it checks.	新版本沒有下載完成。annai 會在下次檢查時重試。	src/ui/updates.js:195	
-32o7q3	ok	annai restarts once Shiori has finished	等 Shiori 忙完後，annai 會重新啟動	src/ui/updates.js:212	
-3ur3tf	ok	She is in the middle of something, and an update never lands during her turn. Tap her to stop her now.	她正在忙，更新要等她忙完才會進行。點一下她就能讓她立刻停下。	src/ui/updates.js:212	
-4naie6	ok	Don't restart	暫不重新啟動	src/ui/updates.js:213	
+14d6ut8	ok	annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.	annai 的離線服務尚未啟動，因此沒有檢查 annai 本身。請稍後重試。	src/ui/updates.js:144	
+16l98jx	ok	annai couldn't check for a new version of itself. Check the connection and try again.	無法檢查 annai 是否有新版本。請檢查網路連線後再試一次。	src/ui/updates.js:151	
+rtcus4	ok	The download of the new version didn't finish. annai tries again the next time it checks.	新版本沒有下載完成。annai 會在下次檢查時重試。	src/ui/updates.js:172	
+32o7q3	ok	annai restarts once Shiori has finished	等 Shiori 忙完後，annai 會重新啟動	src/ui/updates.js:189	
+3ur3tf	ok	She is in the middle of something, and an update never lands during her turn. Tap her to stop her now.	她正在忙，更新要等她忙完才會進行。點一下她就能讓她立刻停下。	src/ui/updates.js:189	
+4naie6	ok	Don't restart	暫不重新啟動	src/ui/updates.js:190	
 4u8ij0	ok	Listening live	正在即時收聽	src/ui/voice-chip.js:25	
 11rknnz	ok	Live	即時	src/ui/voice-chip.js:30	
 m0me4i	ok	Live off	即時關閉	src/ui/voice-chip.js:30	

@@ -138,6 +138,11 @@ test("Check now finds an official plugin's update in annai's catalog; Settings l
     Object.assign(entry, { version: bumped, files: { ...entry.files, 'annai-plugin.json': createHash('sha256').update(next).digest('hex') } });
     site.changed.set('/plugins-official/remote-trace/annai-plugin.json', next);
     site.changed.set('/catalog/plugins.json', JSON.stringify(catalog));
+    // Settings → Plugins shows what the checks found, as Settings → Updates does: the catalog's new version once a check has found it.
+    const row = page.locator('.card', { hasText: `Remote trace (for developers) ${now}` });
+    await go(page, '#/plugins');
+    await expect(row).toBeVisible();
+    await expect(row.getByRole('button', { name: `Update to ${bumped}` })).toHaveCount(0);
 
     await go(page, '#/updates');
     await page.getByRole('button', { name: 'Check now' }).click();
@@ -147,6 +152,8 @@ test("Check now finds an official plugin's update in annai's catalog; Settings l
     await go(page, '#/settings');
     await expect.poll(() => sections(page).then((s) => s[0])).toBe('Updates');
     await expect(page.getByRole('region', { name: 'Updates' })).toContainText('Plugin updates are ready: Remote trace (for developers).');
+    await go(page, '#/plugins');
+    await expect(row.getByRole('button', { name: `Update to ${bumped}` })).toBeVisible();
 
     await go(page, '#/updates');
     await plugins.getByRole('button', { name: `Update to ${bumped}` }).click();

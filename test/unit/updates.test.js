@@ -28,19 +28,20 @@ const fakeNotices = () => {
  * annai with a skill installed from an address, a clock and a connection of the test's own, and counts of
  * what was asked: annai's service worker, its catalog, and the skill's address.
  */
-async function kit({ limitMs = 45_000 } = {}) {
+async function kit() {
   const { host } = await hostKit();
   let served = SKILL;
   const asked = { app: 0, catalog: 0, address: 0 };
-  /** @type {() => Promise<Response>} */
+  /** @typedef {(url: string, init?: RequestInit) => Promise<Response>} Answer */
+  /** @type {Answer} */
   let catalog = async () => new Response(JSON.stringify({ plugins: [] }));
-  /** @type {() => Promise<Response>} */
+  /** @type {Answer} */
   let address = async () => new Response(served);
-  await host.install(await fetchPackage(ADDR, { fetch: () => address() }), { source: 'url', url: ADDR });
+  await host.install(await fetchPackage(ADDR, { fetch: (url, init) => address(url, init) }), { source: 'url', url: ADDR });
   const c = {
     host, asked, t: 1_000_000, on: true,
     serve: (/** @type {string} */ s) => { served = s; },
-    /** @param {{ catalog?: () => Promise<Response>, address?: () => Promise<Response> }} o */
+    /** @param {{ catalog?: Answer, address?: Answer }} o */
     answer: (o) => { catalog = o.catalog ?? catalog; address = o.address ?? address; },
     /** @type {() => Promise<void>} */
     appCheck: async () => {},
@@ -49,12 +50,11 @@ async function kit({ limitMs = 45_000 } = {}) {
   const updates = new Updates({
     host,
     env: {
-      fetch: async (url) => { if (String(url).endsWith('/catalog/plugins.json')) asked.catalog++; return catalog(); },
-      addressFetch: async (url) => { if (url === ADDR) asked.address++; return address(); },
+      fetch: async (url, init) => { if (String(url).endsWith('/catalog/plugins.json')) asked.catalog++; return catalog(url, init); },
+      addressFetch: async (url, init) => { if (url === ADDR) asked.address++; return address(url, init); },
     },
     now: () => c.t,
     online: () => c.on,
-    limitMs,
   });
   updates.app = { check: () => { asked.app++; return c.appCheck(); }, state: () => 'none' };
   updates.notices = c.notices;
@@ -271,19 +271,6 @@ test("Settings → Updates says plainly what the last check said: checking, offl
     { said: 'Last checked 3 minutes ago. Not everything could be checked:', failed: ['tide-pools couldn\'t be checked: …'] });
 });
 
-test('a check that hangs (a connection that stalls) ends after a time limit, in plain words, and Check now can be tapped again', async () => {
-  const { host } = await hostKit();
-  const updates = new Updates({ host, env: { fetch: async () => new Response(JSON.stringify({ plugins: [] })) }, online: () => true, limitMs: 20 });
-  updates.app = { check: () => new Promise(() => {}), state: () => 'none' };
-  await updates.start();
-  const r = await updates.checkNow();
-  assert.deepEqual(r?.failed, ["The check took too long. Check the connection, and try again."]);
-  assert.equal(updates.checking, false);
-  updates.limitMs = 45_000; // the shipped limit for the check that answers: at 20 ms a starved CPU's check gives up too
-  updates.app = { check: async () => {}, state: () => 'none' };
-  assert.deepEqual((await updates.checkNow())?.failed, []);
-});
-
 test('a Restart now whose new version never takes over leaves later taps working', async () => {
   const { host } = await hostKit();
   let swaps = 0;
@@ -324,32 +311,6 @@ test("Don't restart, on the card a restart waiting for Shiori shows, calls it of
   assert.equal(notices.cards.length, 1, 'she was free: no card');
 });
 
-test('a check the time limit gave up on writes nothing when it answers late: no result, no time, no card, no updates', async () => {
-  const k = await kit({ limitMs: 20 });
-  await k.updates.start();
-  /** @type {() => void} */
-  let go = () => {};
-  k.appCheck = () => new Promise((r) => { go = () => r(undefined); });
-  k.t += DAILY;
-  const given = await k.updates.auto();
-  assert.deepEqual(given?.failed, ['The check took too long. Check the connection, and try again.']);
-  // The stalled check answers before any other check starts, so only the time limit's own generation step can make its answer stale.
-  const at = k.updates.checkedAt;
-  k.serve(SKILL.replace('version: "1.2"', 'version: "1.3"'));
-  k.t += 1000;
-  go(); // the stalled check answers now
-  for (let i = 0; i < 50; i++) await tick();
-  assert.deepEqual(k.updates.last?.failed, ['The check took too long. Check the connection, and try again.']);
-  assert.equal(k.updates.checkedAt, at);
-  assert.equal(k.notices.cards.length, 0);
-  assert.deepEqual(await k.updates.plugins(), []);
-  k.updates.limitMs = 45_000; // the shipped limit for the check that answers: at 20 ms a starved CPU's check gave up too, and wrote that it had
-  k.appCheck = async () => {};
-  k.t += 1000;
-  await k.updates.checkNow();
-  assert.deepEqual(k.updates.last?.failed, []);
-});
-
 test("a new version that didn't finish downloading is said, and Settings → Updates is drawn again", async () => {
   const k = await kit();
   await k.updates.start();
@@ -361,7 +322,7 @@ test("a new version that didn't finish downloading is said, and Settings → Upd
   assert.deepEqual(changed, [false]);
 });
 
-test("a check (Check now) with a plugin whose address's site goes dead ends after QUIET_MS, inside the check's own limit, saying which plugin and why, and the addresses after it are checked, asked at the same time (addr-limit-next: it ran to the check's 45 s and asked nothing after it)", async (t) => {
+test("a check (Check now) with a plugin whose address's site goes dead ends after QUIET_MS, saying which plugin and why, and the addresses after it are checked, asked at the same time (addr-limit-next: it ran to the check's 45 s and asked nothing after it)", async (t) => {
   const GONE = 'https://gone.example/tide-pools/SKILL.md';
   const LIVE = 'https://trails.example/rock-pools/SKILL.md';
   const rock = SKILL.replace('name: tide-pools', 'name: rock-pools');
@@ -454,27 +415,6 @@ test("a check (Check now) whose check of annai itself never settles ends that pa
   assert.equal(k.updates.checking, false);
 });
 
-test("a check that gave up at its time limit leaves the day's address check undone: the next time annai is back it asks the addresses again (addr-limit-next: the day's mark was set when the check started)", async (t) => {
-  const k = await kit({ limitMs: 1000 });
-  k.answer({ address: () => dead(undefined, 'never') });
-  t.mock.timers.enable({ apis: ['setTimeout'] });
-  const w = watch(k.updates.start());
-  await turns(() => k.counts().address > 0, 1000);
-  t.mock.timers.tick(1000); // the check's own limit comes before the address's silence limit
-  await turns(() => w.state !== 'pending');
-  assert.deepEqual(w.value?.failed, ['The check took too long. Check the connection, and try again.']);
-  assert.equal(k.counts().address, 1);
-  k.t += 1000;
-  const again = watch(k.updates.auto()); // the catalog was just asked (SOON), the addresses were not
-  await turns(() => k.counts().address > 1 || again.state === 'done', 1000);
-  assert.equal(k.counts().address, 2, 'the addresses are asked again');
-  assert.equal(k.counts().catalog, 1, 'the catalog is not');
-  // Both requests to the dead address are still waiting: end them on this clock, or a later test's real one waits their 20 s.
-  t.mock.timers.tick(QUIET_MS);
-  await turns(() => again.state !== 'pending');
-  assert.equal(again.state, 'done', String(again.error?.message ?? 'still waiting'));
-});
-
 test("a check that finished asking the addresses is the day's address check: coming back asks them again only a day on, as before", async () => {
   const k = await kit();
   await k.updates.start();
@@ -485,4 +425,106 @@ test("a check that finished asking the addresses is the day's address check: com
   k.t += 1;
   await k.updates.auto();
   assert.equal(k.counts().address, 2);
+});
+
+test("a check leaves no timer behind once it has ended: annai's own check's 20 s and each request's silence clock are cleared with it (a guard: it passes on main too)", async () => {
+  const k = await kit();
+  k.serve(SKILL.replace('version: "1.2"', 'version: "1.3"'));
+  /** Timers set and neither fired nor cleared, with their delays. @type {Map<any, number>} */
+  const pending = new Map();
+  const { setTimeout: set, clearTimeout: clear } = globalThis;
+  globalThis.setTimeout = /** @type {any} */ ((/** @type {(...a: any[]) => void} */ fn, /** @type {number} */ ms, /** @type {any[]} */ ...a) => {
+    const id = set(() => { pending.delete(id); fn(...a); }, ms);
+    pending.set(id, ms);
+    return id;
+  });
+  globalThis.clearTimeout = /** @type {any} */ ((/** @type {any} */ id) => { pending.delete(id); clear(id); });
+  try {
+    await k.updates.start();
+    const r = await k.updates.checkNow();
+    assert.deepEqual(r?.found.map((u) => u.available), ['1.3.0']);
+    assert.deepEqual(k.counts(), { app: 1, catalog: 2, address: 2 });
+  } finally {
+    globalThis.setTimeout = set;
+    globalThis.clearTimeout = clear;
+  }
+  assert.deepEqual([...pending.values()], [], 'no timer is left');
+});
+
+test("a check whose address answers each of its four requests (its SKILL.md and three files it links) 15 s late ends when the address is done, at 60 s, with its update and nothing failed (update-check-next: the check's 45 s ended it with \"The check took too long\" and nothing found)", async (t) => {
+  const k = await kit();
+  const links = 'See [safety](references/safety.md), [tides](references/tides.md) and [maps](references/maps.md).';
+  const NEW = SKILL.replace('See [safety](references/safety.md).', links).replace('version: "1.2"', 'version: "1.3"');
+  /** @type {string[]} */
+  const asked = [];
+  k.answer({ address: (url) => { asked.push(url); return new Promise((r) => { setTimeout(() => r(new Response(url === ADDR ? NEW : `# ${url}\n`)), 15_000); }); } });
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const w = watch(k.updates.checkNow());
+  for (let i = 1; i <= 4; i++) {
+    await turns(() => asked.length === i);
+    assert.equal(asked.length, i, `request ${i} is asked once the one before has answered`);
+    if (i === 4) {
+      await turns(() => w.state !== 'pending', 50);
+      assert.equal(w.state, 'pending', 'at 45 s, the fourth request asked, still checking');
+    }
+    t.mock.timers.tick(15_000);
+  }
+  await turns(() => w.state !== 'pending');
+  assert.equal(w.state, 'done', String(w.error?.message ?? 'still waiting'));
+  assert.deepEqual(w.value?.failed, []);
+  assert.deepEqual(w.value?.found.map((u) => [u.id, u.installed, u.available]), [['tide-pools', '1.2.0', '1.3.0']]);
+  assert.equal(k.updates.checking, false);
+});
+
+test("coming back while a check is still getting its answers starts no second check and asks no site again: an address whose two files each take 70 s, a part every 5 s, is asked once each, its update is found at 140 s and offered on a card, and coming back after asks the address again only a day on (update-check-next: the check gave up at 45 s, and each return after it asked the address again, its downloads left running)", async (t) => {
+  const k = await kit();
+  const NEW = SKILL.replace('version: "1.2"', 'version: "1.3"');
+  /** In 14 parts, one every 5 s: 70 s. @param {string} text */
+  const slowly = (text) => {
+    const bytes = new TextEncoder().encode(text);
+    let i = 0;
+    return new Response(new ReadableStream({
+      pull: (c) => new Promise((r) => {
+        setTimeout(() => {
+          c.enqueue(bytes.slice(Math.floor((i * bytes.length) / 14), Math.floor(((i + 1) * bytes.length) / 14)));
+          if (++i === 14) c.close();
+          r(undefined);
+        }, 5_000);
+      }),
+    }));
+  };
+  /** @type {string[]} */
+  const asked = [];
+  k.answer({ address: async (url) => { asked.push(url); return slowly(url === ADDR ? NEW : '# Safety\n'); } });
+  const t0 = k.t;
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const w = watch(k.updates.start());
+  await turns(() => asked.length === 1);
+  /** @type {ReturnType<typeof watch<any>>[]} */
+  const returns = [];
+  /** @type {number | null} */
+  let endedAt = null;
+  for (let s = 5; s <= 180; s += 5) {
+    t.mock.timers.tick(5_000);
+    k.t += 5_000;
+    await turns(() => false, 20);
+    if (w.state !== 'pending') endedAt ??= s;
+    if (s % 10 === 0) returns.push(watch(k.updates.auto()));
+  }
+  await turns(() => returns.every((r) => r.state !== 'pending'));
+  assert.equal(w.state, 'done', String(w.error?.message ?? 'still waiting'));
+  assert.equal(endedAt, 140, 'the check ends once both files have come');
+  assert.deepEqual(w.value?.failed, []);
+  assert.deepEqual(w.value?.found.map((u) => [u.id, u.installed, u.available]), [['tide-pools', '1.2.0', '1.3.0']]);
+  assert.deepEqual(asked, [ADDR, 'https://trails.example/tide-pools/references/safety.md'], 'each file asked once, one at a time');
+  assert.deepEqual(returns.map((r) => r.value), returns.map(() => null), 'no return started a check');
+  assert.deepEqual(k.counts(), { app: 0, catalog: 1, address: 1 });
+  assert.deepEqual(k.notices.cards.map((/** @type {any} */ c) => c.title), ['Plugin updates are ready']);
+  k.answer({ address: async () => new Response(NEW) });
+  k.t = t0 + DAILY - 1;
+  await k.updates.auto();
+  assert.equal(k.counts().address, 1, 'a day is not up');
+  k.t = t0 + DAILY + 140_000;
+  await k.updates.auto();
+  assert.equal(k.counts().address, 2, 'a day on, the address is asked again');
 });

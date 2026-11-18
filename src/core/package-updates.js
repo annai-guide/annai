@@ -14,18 +14,11 @@ import { installRequirements, checkPackageId } from './requires.js';
  */
 
 /**
- * Whether a failure says that the site gave no answer: it stopped answering (answer.js), couldn't be reached, cut its answer off, or is
- * busy (429, a 5xx). The next check asks again, so what an earlier check found stands. Any other failure is a definite answer (a 404, a
- * file that isn't the package any more), and an offer that rests on it is wrong. @param {any} e
- */
-const gaveNoAnswer = (e) => Boolean(e?.unreachable) || e?.said?.code === 'quiet' || e?.said?.code === 'cut' || e?.status === 429 || e?.status >= 500;
-
-/**
- * The packages installed from an address that have changed there, in the order they are listed. One whose site gave no answer
- * (gaveNoAnswer) is left out quietly, or said in failed when it's given (Check now), with its id in unchecked: what an earlier check
- * found for it stands. One that can't be checked for another reason (a 404, broken) is said the same way, and its offer goes. One that
- * is now another package is checked, and has nothing to offer. The addresses are asked side by side, so any number of dead sites end
- * together (answer.js), inside the check's own limit.
+ * The packages installed from an address that have changed there, in the order they are listed. Each one that can't be checked, for
+ * whatever reason (its site stopped answering or can't be reached, a 404, a file that isn't the package any more), is said in failed, with
+ * its id in unchecked: what an earlier check found for it stands (checkPlugins), and the next check asks again. One that is now another
+ * package is checked, and has nothing to offer. The addresses are asked side by side, so any number of dead sites end together
+ * (answer.js).
  * @param {PluginHost} host @param {{ fetch: Fetch, failed?: string[], unchecked?: Set<string> }} o @returns {Promise<AddressUpdate[]>}
  */
 export async function addressUpdates(host, { fetch, failed, unchecked }) {
@@ -42,8 +35,8 @@ export async function addressUpdates(host, { fetch, failed, unchecked }) {
       const update = { id, name: pkg.name, installed: String(s.version), available: pkg.version, url: (await host.installed())[id]?.url ?? s.url, kind: pkg.kind, changed: pkg.version === s.version && !addsAnything(added), added };
       return { update };
     } catch (e) {
-      // not now: the next check asks again (and what it says is kept or not by gaveNoAnswer)
-      return { id, why: t`${s.name ?? id} couldn't be checked: ${String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)}`, silent: gaveNoAnswer(e) };
+      // not now: the next check asks again
+      return { id, why: t`${s.name ?? id} couldn't be checked: ${String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)}` };
     }
   }));
   /** @type {AddressUpdate[]} */
@@ -52,7 +45,7 @@ export async function addressUpdates(host, { fetch, failed, unchecked }) {
     if (c.update) out.push(c.update);
     if (c.id && c.why) {
       failed?.push(c.why);
-      if (c.silent) unchecked?.add(c.id);
+      unchecked?.add(c.id);
     }
   }
   return out;

@@ -44,11 +44,11 @@ const fault = (en, said) => Object.assign(new Error(en), { said, shown: answerWo
  * trips, estimated, not measured); 20 s is 1.9 to 2.4 times that, with room on top for a radio stall of some seconds (a tunnel, a
  * handover); parts of a download 20 s or more apart, with nothing else from the server between them, end it, as a dead connection's
  * silence does. An address's server is held to the same number: it is sized from the link (its round trips, a cold connection's
- * handshakes, a stall), which is the same whatever server a file comes from. The update check's 45 s (limitMs, src/ui/updates.js) has
- * room for it: the check's parts run side by side, and a dead site ends each part 20 s after its last byte. A site that answers each
- * request late can still run a part past the 45 s, as a part asks for some files one after another (annai's own: its catalog, then the
- * catalog's words, then each plugin's words a language at a time; an address: its package's files), and the check then says it took too
- * long.
+ * handshakes, a stall), which is the same whatever server a file comes from. An update check (src/ui/updates.js) has no limit on the
+ * whole either: its parts run side by side and each of their requests ends by its server's silence, so on a dead link it ends 20 s after
+ * the last thing any of its sites sent, and on a slow working link it goes on while answers come, though a part asks for some files one
+ * after another (annai's own: its catalog, then the catalog's words, then each plugin's words a language at a time; an address: its
+ * package's files).
  * Not a limit on the whole request: at 100 kbps a small file's answer came 134 s after it was asked for, and a limit that long would
  * hold a dead connection as long.
  */
