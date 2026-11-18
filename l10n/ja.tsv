@@ -804,10 +804,10 @@ i9ok5g	ok	Wikipedia between {0} and {1}	{0}と{1}の間のWikipedia	src/core/pac
 cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMapから応答がありませんでした（{0}）。	src/core/pack/download.js:81	{0} = (s.inner ? failWords(s.inner) : s.message).replace(/[.。]$/u, '')
 rhruvr	ok	{0} said: {1}.	{0}の応答：{1}。	src/core/pack/download.js:82	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
 1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyageから{0}の本文が届きませんでした。	src/core/pack/download.js:83	{0} = s.title
-aaicx8	ok	{0} couldn't be checked: {1}	{0}を確認できませんでした：{1}	src/core/package-updates.js:39	{0} = s.name ?? id; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-trd90h	ok	It wasn't installed from an address, so annai has nowhere to look for an update.	アドレスからインストールしたものではないため、更新を確認できません。	src/core/package-updates.js:66	
-2olq9a	ok	The address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	そのアドレスのパッケージが別のもの（{0}）に変わっているため、アップデートしませんでした。そちらを使う場合は、これを削除してからインストールしてください。	src/core/package-updates.js:70	{0} = pkg.id
-29yhwe	ok	This update adds parts you haven't agreed to: {0}. Check for updates again and look at what it adds.	このアップデートでは、まだ同意していないものが追加されます：{0}。もう一度更新を確認して、追加される内容を確かめてください。	src/core/package-updates.js:74	{0} = addedWords(added)
+aaicx8	ok	{0} couldn't be checked: {1}	{0}を確認できませんでした：{1}	src/core/package-updates.js:40	{0} = s.name ?? id; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+trd90h	ok	It wasn't installed from an address, so annai has nowhere to look for an update.	アドレスからインストールしたものではないため、更新を確認できません。	src/core/package-updates.js:67	
+2olq9a	ok	The address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	そのアドレスのパッケージが別のもの（{0}）に変わっているため、アップデートしませんでした。そちらを使う場合は、これを削除してからインストールしてください。	src/core/package-updates.js:71	{0} = pkg.id
+29yhwe	ok	This update adds parts you haven't agreed to: {0}. Check for updates again and look at what it adds.	このアップデートでは、まだ同意していないものが追加されます：{0}。もう一度更新を確認して、追加される内容を確かめてください。	src/core/package-updates.js:75	{0} = addedWords(added)
 1wfc5of	ok	This zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	このzipには複数のスキルが入っています。1つずつインストールするか、それらを記載したannai-plugin.jsonを追加してください。	src/core/packages.js:349	
 12el2y8	ok	The {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0}が{1}にあり、階層が深すぎます。annaiが読み込むのは、zipの最上位か、zipに1つだけ入ったフォルダーの中です。そのフォルダーだけをzipにしてください。	src/core/packages.js:357	{0} = file; {1} = folder
 yeyuzl	ok	The {0} is in {1}, with other files beside that folder: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0}は{1}にありますが、zipの最上位にほかのファイルもあります。annaiが読み込むのは、zipの最上位か、zipに1つだけ入ったフォルダーの中です。そのフォルダーだけをzipにしてください。	src/core/packages.js:358	{0} = file; {1} = folder
@@ -1429,26 +1429,26 @@ fzpt3w	ok	Reload now	今すぐ再読み込み	src/ui/plugin-cards.js:32
 1abmsob	ok	It didn't start the last few times annai opened.	annaiを開いた直近の数回、続けて起動しませんでした。	src/ui/plugin-cards.js:47	
 11arkb9	ok	You can turn it off in Settings → Plugins.	「設定 → プラグイン」でオフにできます。	src/ui/plugin-cards.js:48	
 1jz4o49	ok	The plugin "{0}" didn't start	プラグイン「{0}」が起動しませんでした	src/ui/plugin-cards.js:48	{0} = it
-44nn0b	ok	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（追加内容あり：アップデート前に確認します）	src/ui/plugin-updates.js:90	{0} = u.name; {1} = u.installed; {2} = u.available
-trjp65	ok	{0} (changed) (brings something new: you'll be asked first)	{0}（変更あり、追加内容あり：アップデート前に確認します）	src/ui/plugin-updates.js:90	{0} = u.name
-1kyfel6	ok	{0} (changed)	{0}（変更あり）	src/ui/plugin-updates.js:91	{0} = u.name
-i8x2zk	ok	{0} {1} → {2}	{0} {1} → {2}	src/ui/plugin-updates.js:91	{0} = u.name; {1} = u.installed; {2} = u.available
-6qynmx	ok	Plugin updates are ready	プラグインのアップデートがあります	src/ui/plugin-updates.js:97	
-1qhkyk	ok	Nothing changes until you update. An updated plugin that is running now is off until annai restarts.	アップデートするまで何も変わりません。実行中のプラグインは、アップデート後、annaiを再起動するまでオフになります。	src/ui/plugin-updates.js:98	
-1x9jer0	ok	New versions: {0}.	新しいバージョン：{0}。	src/ui/plugin-updates.js:98	{0} = list(updates.map(offerWords), 'plain')
-uk4kus	ok	Update	アップデート	src/ui/plugin-updates.js:99	
-1hwvled	ok	{0} failed with an unknown error.	{0}は原因不明のエラーでアップデートできませんでした。	src/ui/plugin-updates.js:132	{0} = nameOf(u); Note: one line of the "Some plugins weren't updated" card, for a plugin whose update failed with an empty error; {0} is the plugin's name.
-1agymuw	ok	Some plugins weren't updated	アップデートできなかったプラグインがあります	src/ui/plugin-updates.js:136	
-1vsv4vh	ok	Restart annai to use the new versions	新しいバージョンを使うには、annaiを再起動してください	src/ui/plugin-updates.js:140	
-1k0lt4v	ok	Until then, {0} can't be used.	それまでは{0}を使えません。	src/ui/plugin-updates.js:141	{0} = list(waiting)
-2jfvhf	ok	The update is installed and runs the next time annai starts.	アップデートはインストール済みです。次にannaiを起動したときに有効になります。	src/ui/plugin-updates.js:141	
-nb21do	ok	Restart now	今すぐ再起動	src/ui/plugin-updates.js:142	
-1do1igm	ok	Plugins updated.	プラグインをアップデートしました。	src/ui/plugin-updates.js:145	
-eaf3fx	ok	{0} {1} brings something new	{0} {1}には追加内容があります	src/ui/plugin-updates.js:161	{0} = u.name; {1} = u.available
-127j3cm	ok	New in this version: {0}.	このバージョンで追加されるもの：{0}。	src/ui/plugin-updates.js:162	{0} = semicolons(whatItBrings(added))
-zymqne	ok	Only update if you trust where it came from.	入手元を信頼できる場合だけアップデートしてください。	src/ui/plugin-updates.js:162	
-1dfe53s	ok	Nothing changes until you tap Update.	「アップデート」をタップするまで何も変わりません。	src/ui/plugin-updates.js:163	
-15ziixp	ok	Update anyway	それでもアップデート	src/ui/plugin-updates.js:165	
+44nn0b	ok	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（追加内容あり：アップデート前に確認します）	src/ui/plugin-updates.js:88	{0} = u.name; {1} = u.installed; {2} = u.available
+trjp65	ok	{0} (changed) (brings something new: you'll be asked first)	{0}（変更あり、追加内容あり：アップデート前に確認します）	src/ui/plugin-updates.js:88	{0} = u.name
+1kyfel6	ok	{0} (changed)	{0}（変更あり）	src/ui/plugin-updates.js:89	{0} = u.name
+i8x2zk	ok	{0} {1} → {2}	{0} {1} → {2}	src/ui/plugin-updates.js:89	{0} = u.name; {1} = u.installed; {2} = u.available
+6qynmx	ok	Plugin updates are ready	プラグインのアップデートがあります	src/ui/plugin-updates.js:95	
+1qhkyk	ok	Nothing changes until you update. An updated plugin that is running now is off until annai restarts.	アップデートするまで何も変わりません。実行中のプラグインは、アップデート後、annaiを再起動するまでオフになります。	src/ui/plugin-updates.js:96	
+1x9jer0	ok	New versions: {0}.	新しいバージョン：{0}。	src/ui/plugin-updates.js:96	{0} = list(updates.map(offerWords), 'plain')
+uk4kus	ok	Update	アップデート	src/ui/plugin-updates.js:97	
+1hwvled	ok	{0} failed with an unknown error.	{0}は原因不明のエラーでアップデートできませんでした。	src/ui/plugin-updates.js:130	{0} = nameOf(u); Note: one line of the "Some plugins weren't updated" card, for a plugin whose update failed with an empty error; {0} is the plugin's name.
+1agymuw	ok	Some plugins weren't updated	アップデートできなかったプラグインがあります	src/ui/plugin-updates.js:134	
+1vsv4vh	ok	Restart annai to use the new versions	新しいバージョンを使うには、annaiを再起動してください	src/ui/plugin-updates.js:138	
+1k0lt4v	ok	Until then, {0} can't be used.	それまでは{0}を使えません。	src/ui/plugin-updates.js:139	{0} = list(waiting)
+2jfvhf	ok	The update is installed and runs the next time annai starts.	アップデートはインストール済みです。次にannaiを起動したときに有効になります。	src/ui/plugin-updates.js:139	
+nb21do	ok	Restart now	今すぐ再起動	src/ui/plugin-updates.js:140	
+1do1igm	ok	Plugins updated.	プラグインをアップデートしました。	src/ui/plugin-updates.js:143	
+eaf3fx	ok	{0} {1} brings something new	{0} {1}には追加内容があります	src/ui/plugin-updates.js:159	{0} = u.name; {1} = u.available
+127j3cm	ok	New in this version: {0}.	このバージョンで追加されるもの：{0}。	src/ui/plugin-updates.js:160	{0} = semicolons(whatItBrings(added))
+zymqne	ok	Only update if you trust where it came from.	入手元を信頼できる場合だけアップデートしてください。	src/ui/plugin-updates.js:160	
+1dfe53s	ok	Nothing changes until you tap Update.	「アップデート」をタップするまで何も変わりません。	src/ui/plugin-updates.js:161	
+15ziixp	ok	Update anyway	それでもアップデート	src/ui/plugin-updates.js:163	
 vq7cdg#other	ok	# pages	#ページ	src/ui/preview.js:133	plural; # = pages; English: "# page" (one), "# pages" (other); Note: a PDF's page count on its file card.
 1cjjnaq	ok	Kept on this device.	この端末に保存。	src/ui/privacy.js:21	
 tct7be	ok	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	旅、ファイル、設定、キーは、この端末のこのブラウザに保存されます。annaiにはアカウントがなく、旅やキーを保存するannaiのサーバーもありません。	src/ui/privacy.js:21	

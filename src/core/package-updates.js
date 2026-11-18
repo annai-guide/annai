@@ -10,7 +10,8 @@ import { installRequirements, checkPackageId } from './requires.js';
  * @typedef {import('./plugins.js').PluginHost} PluginHost
  * @typedef {(url: string, init?: RequestInit) => Promise<Response>} Fetch
  * @typedef {{ id: string, name: string, installed: string, available: string, url: string, kind: string, changed: boolean,
- *   added: import('./packages.js').Added }} AddressUpdate  added: what it brings that the installed one doesn't; anything there asks first
+ *   added: import('./packages.js').Added, from?: string }} AddressUpdate  added: what it brings that the installed one doesn't; anything there asks first;
+ *   from: the fingerprint of the install it was found against
  */
 
 /**
@@ -32,7 +33,7 @@ export async function addressUpdates(host, { fetch, failed, unchecked }) {
       if (pkg.id !== id || pkg.fingerprint === s.fingerprint) return {};
       const added = pkg.previous?.added ?? addedParts(await host.installedParts(id), pkg);
       /** @type {AddressUpdate} */
-      const update = { id, name: pkg.name, installed: String(s.version), available: pkg.version, url: (await host.installed())[id]?.url ?? s.url, kind: pkg.kind, changed: pkg.version === s.version && !addsAnything(added), added };
+      const update = { id, name: pkg.name, installed: String(s.version), available: pkg.version, url: (await host.installed())[id]?.url ?? s.url, kind: pkg.kind, changed: pkg.version === s.version && !addsAnything(added), added, from: s.fingerprint };
       return { update };
     } catch (e) {
       // not now: the next check asks again

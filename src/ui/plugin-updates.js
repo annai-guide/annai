@@ -14,8 +14,9 @@ import { list, sentences, asSentence } from './format.js';
  *   next: the language the next start opens in (nextScreens), whose words a check keeps
  * @typedef {Env & { reload: () => unknown }} Applying reload: annai's one restart (Updates.restart), for Restart now
  * @typedef {{ id: string, name: string, installed: string, available: string, entry?: any, url?: string, changed?: boolean,
- *   added?: import('../core/packages.js').Added, agreed?: boolean }} Update
- *   added: what an update from an address brings that the installed package didn't; agreed: the user said yes to it
+ *   added?: import('../core/packages.js').Added, agreed?: boolean, from?: string }} Update
+ *   added: what an update from an address brings that the installed package didn't; agreed: the user said yes to it;
+ *   from: the fingerprint of the install it was found against
  */
 
 /** What the last checks found, by host, then by id: Settings → Updates and → Plugins show it without asking again. @type {WeakMap<any, Map<string, Update>>} */
@@ -33,8 +34,9 @@ const knownOf = (host) => {
  * offers of annai's own plugins, and an address that can't be checked, for any reason (addressUpdates), keeps its package's: a browser
  * can't tell a site that answered 404 without the headers that let web apps read it from a site it can't reach, and an Update tap on it
  * says the same as the check. One that is now another package was checked, and its offer goes.
- * A plugin installed while the check ran is not offered again by it: what the check found for one whose version or files (fingerprint)
- * changed meanwhile is dropped.
+ * An offer stands only while its install does: each carries the fingerprint of the install it was found against (from), and
+ * knownUpdates shows it while the installed record has that fingerprint. So a plugin installed again, from its address or as annai's own
+ * copy, by Update or any other way, or while a check ran, is not offered again by an offer that was found before.
  * Checking annai's own also brings their words in the screens' language, and the next start's, to the catalog's (fetchTranslations),
  * which is never an update and never fails. The two kinds are asked side by side, each request ending by its server's silence
  * (answer.js), so one that goes quiet never holds the other.
@@ -47,7 +49,6 @@ export async function checkPlugins(host, env = {}, { official = true, address = 
   /** @type {string[]} */
   const failedAddress = [];
   const known = knownOf(host);
-  const before = await host.installed();
   /** @param {boolean} url @param {Update[]} list @param {Set<string>} [unchecked] the ones that couldn't be checked: what was found for them before stays */
   const keep = (url, list, unchecked = new Set()) => {
     for (const [id, u] of known) if (Boolean(u.url) === url && !unchecked.has(id)) known.delete(id);
@@ -67,17 +68,14 @@ export async function checkPlugins(host, env = {}, { official = true, address = 
       if (now) keep(true, now, unchecked);
     })(),
   ]);
-  // install() writes both, for every source.
-  const after = await host.installed();
-  for (const id of [...known.keys()]) if (before[id]?.version !== after[id]?.version || before[id]?.fingerprint !== after[id]?.fingerprint) known.delete(id);
   return { found: await knownUpdates(host), failed: [...failedOfficial, ...failedAddress] };
 }
 
-/** The updates the last checks found, for plugins still installed as they were, in the order they were installed. @param {any} host @returns {Promise<Update[]>} */
+/** The updates the last checks found, for plugins still installed as they were (their fingerprint is the one an offer was found against), in the order they were installed. @param {any} host @returns {Promise<Update[]>} */
 export async function knownUpdates(host) {
   const state = await host.installed();
   const known = knownOf(host);
-  return Object.keys(state).flatMap((id) => known.get(id) ?? []).filter((u) => state[u.id]?.source === (u.url ? 'url' : 'official') && String(state[u.id]?.version) === u.installed);
+  return Object.keys(state).flatMap((id) => known.get(id) ?? []).filter((u) => state[u.id]?.source === (u.url ? 'url' : 'official') && state[u.id]?.fingerprint === u.from);
 }
 
 /** An update's plugin by name: annai's own in the screens' words, one from an address as written. @param {{ id: string, name: string, url?: string }} u */

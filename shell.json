@@ -1,5 +1,5 @@
 {
-  "build": "2b79da960f87",
+  "build": "eda4e9b23da7",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -80,7 +80,7 @@
     "/src/core/llm/decide.js": "4aff39cf2ab3",
     "/src/core/llm/fallback.js": "18b9abdf29ca",
     "/src/core/llm/move-over.js": "9584243ec1f4",
-    "/src/core/llm/official.js": "84388a1eb7d1",
+    "/src/core/llm/official.js": "43a4783de11b",
     "/src/core/llm/provider-desc.js": "f1a1406b822b",
     "/src/core/llm/providers.js": "372b9bb91ac3",
     "/src/core/llm/setup.js": "8691e7d5248f",
@@ -121,7 +121,7 @@
     "/src/core/now.js": "bba789ac01b8",
     "/src/core/names.js": "0d8fc0903f5c",
     "/src/core/official-names.js": "13fd35baa42b",
-    "/src/core/package-updates.js": "947d4f5db6db",
+    "/src/core/package-updates.js": "79d2f3f92d47",
     "/src/core/packages.js": "5a2f10c69bd1",
     "/src/core/requires.js": "9aa09e4a81ad",
     "/src/core/pack/download.js": "4d9b4af8abb2",
@@ -241,7 +241,7 @@
     "/src/ui/plugin-cards.js": "e1901c609a4e",
     "/src/ui/plugin-pending.js": "d0de6d23ce7b",
     "/src/ui/provider-setup.js": "c4b0421feac0",
-    "/src/ui/plugin-updates.js": "6b8b7cc52e9f",
+    "/src/ui/plugin-updates.js": "f9f2ef3a7bec",
     "/src/ui/push.js": "5cd1775505bf",
     "/src/ui/resume.js": "3daeff3debff",
     "/src/ui/router.js": "b8981277e2c8",
