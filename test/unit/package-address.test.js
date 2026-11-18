@@ -330,7 +330,7 @@ test("two packages asked of one site at once share its silence: one whose answer
   assert.equal(second.state, 'done', messageOf(second.error));
 });
 
-test("through Get it's traced fetch, a site that never answers ends with the same words, and the trace says why in annai's English, though the trace's fetch and fetchPackage each wrap the error first (a stall after the headers is traced at the status the server gave: the trace writes a request at its answer)", async (t) => {
+test("through Get it's traced fetch, a site that never answers ends with the same words, and the trace says why in annai's English, though the trace's fetch and fetchPackage each wrap the error first", async (t) => {
   const store = createMemoryStore();
   let asked = false;
   const get = tracedFetch(store, SYS, { tool: 'plugins' }, (_url, init) => {

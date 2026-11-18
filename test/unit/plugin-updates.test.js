@@ -16,6 +16,7 @@ import { fetchPackage } from '../../src/core/packages.js';
 import { SKILL, hostKit } from './package-kit.js';
 import { QUIET_MS } from '../../src/core/answer.js';
 import { messageOf } from '../../src/ui/dom.js';
+import { setWords } from '../../src/core/l10n.js';
 import { dead, watch, turns } from './dead-kit.js';
 
 const root = new URL('../../', import.meta.url);
@@ -448,4 +449,123 @@ test("a check whose address's site is dead keeps the update an earlier check fou
   const third = await checkPlugins(host, { addressFetch: get }, { official: false });
   assert.deepEqual(third.failed, []);
   assert.deepEqual(shown(third), []);
+});
+
+test("an offer an earlier check found stays only when its site gave no answer (busy, cut, unreachable, even for a file the package links); a definite answer (404, 410, 403, a file that isn't the package any more) drops it (addr-limit-next: after a 404 the offer stayed, and every Update tap failed with it)", async () => {
+  const ADDRESS = 'https://gone.example/tide-pools/SKILL.md';
+  const LINKED = 'https://gone.example/tide-pools/references/safety.md';
+  const NEW = SKILL.replace('version: "1.2"', 'version: "1.3"');
+  /** The site now: what each address answers, by status or as a thrown error; the rest serves served. @type {Record<string, number | 'offline'>} */
+  let now = {};
+  let served = SKILL;
+  const get = async (/** @type {string} */ url) => {
+    if (now[url] === 'offline') throw new TypeError('Failed to fetch');
+    return now[url] ? new Response('', { status: /** @type {number} */ (now[url]) }) : new Response(served);
+  };
+  const { host } = await hostKit();
+  await host.install(await fetchPackage(ADDRESS, { fetch: get }), { source: 'url', url: ADDRESS });
+  const check = () => checkPlugins(host, { addressFetch: get }, { official: false });
+  const shown = (/** @type {{ found: any[] }} */ r) => r.found.map((u) => [u.id, u.installed, u.available]);
+  const cases = /** @type {[string, Record<string, number | 'offline'>, string | null, RegExp][]} */ ([
+    ['404', { [ADDRESS]: 404 }, null, /^tide-pools couldn't be checked: gone\.example answered 404\.$/],
+    ['410', { [ADDRESS]: 410 }, null, /answered 410\./],
+    ['403', { [ADDRESS]: 403 }, null, /answered 403\./],
+    ['the address now holds something that is not a skill', {}, '<html>moved</html>', /SKILL\.md/],
+    ['429', { [ADDRESS]: 429 }, 'keeps', /answered 429\./],
+    ['503', { [ADDRESS]: 503 }, 'keeps', /answered 503\./],
+    ['offline', { [ADDRESS]: 'offline' }, 'keeps', /annai couldn't reach gone\.example/],
+    ['a linked file answers 503', { [LINKED]: 503 }, 'keeps', /gone\.example answered 503 for references\/safety\.md/],
+    ['a linked file is unreachable', { [LINKED]: 'offline' }, 'keeps', /annai couldn't read references\/safety\.md from gone\.example/],
+  ]);
+  for (const [what, site, how, why] of cases) {
+    // An offer is there: the site serves the new version.
+    now = {};
+    served = NEW;
+    assert.deepEqual(shown(await check()), [['tide-pools', '1.2.0', '1.3.0']], what);
+    now = site;
+    if (how && how !== 'keeps') served = how;
+    const r = await check();
+    assert.equal(r.failed.length, 1, `${what}: ${r.failed.join(' | ')}`);
+    assert.match(r.failed[0], why, what);
+    assert.deepEqual(shown(r), how === 'keeps' ? [['tide-pools', '1.2.0', '1.3.0']] : [], `${what}: ${how === 'keeps' ? 'no answer: the offer stays' : 'a definite answer: the offer goes'}`);
+  }
+});
+
+test("offers are listed in the order their plugins were installed, whichever order the checks found them in (a kept offer does not jump the queue)", async () => {
+  const at = (/** @type {string} */ name) => `https://${name}.example/${name}/SKILL.md`;
+  const skill = (/** @type {string} */ name, version = '1.2') => SKILL.replace('name: tide-pools', `name: ${name}`).replace('version: "1.2"', `version: "${version}"`);
+  /** @type {Record<string, string>} */
+  const served = { [at('alpha')]: skill('alpha'), [at('beta')]: skill('beta') };
+  let betaDead = false;
+  const get = async (/** @type {string} */ url) => {
+    if (betaDead && url === at('beta')) throw new TypeError('Failed to fetch');
+    return url in served ? new Response(served[url]) : new Response('', { status: 404 });
+  };
+  const { host } = await hostKit();
+  for (const n of ['alpha', 'beta']) await host.install(await fetchPackage(at(n), { fetch: get }), { source: 'url', url: at(n) });
+  served[at('beta')] = skill('beta', '1.3');
+  const ids = (/** @type {{ found: any[] }} */ r) => r.found.map((u) => u.id);
+  assert.deepEqual(ids(await checkPlugins(host, { addressFetch: get }, { official: false })), ['beta']);
+  served[at('alpha')] = skill('alpha', '1.3');
+  betaDead = true;
+  assert.deepEqual(ids(await checkPlugins(host, { addressFetch: get }, { official: false })), ['alpha', 'beta'], 'beta stays offered while its site is down, after alpha, which was installed first');
+});
+
+test("a check asks annai's catalog with its translations beside the addresses: a catalog that answers late and translations that go silent never hold the addresses, and a live address's update is found (addr-limit-next: the addresses were asked after them, so their silences added up past the check's 45 s)", async (t) => {
+  const GONE = 'https://gone.example/tide-pools/SKILL.md';
+  const LIVE = 'https://trails.example/rock-pools/SKILL.md';
+  const rock = SKILL.replace('name: tide-pools', 'name: rock-pools');
+  /** @type {Record<string, string>} */
+  const served = { [GONE]: SKILL, [LIVE]: rock };
+  let gone = false;
+  /** @type {string[]} */
+  const asked = [];
+  const get = (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+    asked.push(url);
+    if (gone && url === GONE) return dead(init, 'never');
+    return Promise.resolve(url in served ? new Response(served[url]) : new Response('', { status: 404 }));
+  };
+  setWords('ja', {});
+  try {
+    const { host } = await setup();
+    await ensureType(host, 'scripted', { fetch: await repo() });
+    await host.install(await fetchPackage(GONE, { fetch: get }), { source: 'url', url: GONE });
+    await host.install(await fetchPackage(LIVE, { fetch: get }), { source: 'url', url: LIVE });
+    served[LIVE] = rock.replace('version: "1.2"', 'version: "1.3"');
+    gone = true;
+    asked.length = 0;
+    const own = await repo();
+    /** The catalog answers late; its translations (the screens' language) never answer. */
+    /** @type {() => void} */
+    let answer = () => {};
+    const late = new Promise((r) => { answer = () => r(undefined); });
+    /** @type {string[]} */
+    const ownAsked = [];
+    const fetch = async (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+      ownAsked.push(url);
+      if (url.includes('/catalog/l10n/')) return dead(init, 'never');
+      if (url.endsWith('/catalog/plugins.json')) await late;
+      return own(url);
+    };
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const w = watch(checkPlugins(host, { fetch, addressFetch: get }));
+    await turns(() => asked.includes(GONE) && asked.includes(LIVE) && ownAsked.length > 0, 1000);
+    assert.deepEqual([asked.includes(GONE), asked.includes(LIVE)], [true, true], 'the addresses are asked while the catalog has not answered');
+    t.mock.timers.tick(5_000);
+    answer(); // the catalog answers at 5 s, and its translations then go silent, until 25 s
+    await turns(() => ownAsked.some((u) => u.includes('/catalog/l10n/')));
+    t.mock.timers.tick(QUIET_MS - 5_000 - 1);
+    await turns(() => w.state !== 'pending', 50);
+    assert.equal(w.state, 'pending', 'the translations are still waited for');
+    t.mock.timers.tick(1); // the dead address ends at 20 s
+    await turns(() => w.state !== 'pending', 50);
+    assert.equal(w.state, 'pending', 'the translations are still waited for');
+    t.mock.timers.tick(5_000); // and the translations at 25 s
+    await turns(() => w.state !== 'pending');
+    assert.equal(w.state, 'done', w.error ? messageOf(w.error) : 'still waiting');
+    assert.deepEqual(w.value?.failed, ["tide-pools couldn't be checked: gone.example stopped answering. Check the connection and try again."]);
+    assert.deepEqual(w.value?.found.map((u) => [u.id, u.installed, u.available]), [['rock-pools', '1.2.0', '1.3.0']], "the live address's update is found");
+  } finally {
+    setWords('en', null);
+  }
 });

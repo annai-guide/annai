@@ -45,8 +45,9 @@ const fault = (en, said) => Object.assign(new Error(en), { said, shown: answerWo
  * handover); parts of a download 20 s or more apart, with nothing else from the server between them, end it, as a dead connection's
  * silence does. An address's server is held to the same number: it is sized from the link (its round trips, a cold connection's
  * handshakes, a stall), which is the same whatever server a file comes from, and it leaves the update check's 45 s (limitMs,
- * src/ui/updates.js) room to ask the addresses after a dead one. Not a limit on the whole request: at 100 kbps a small file's answer came
- * 134 s after it was asked for, and a limit that long would hold a dead connection as long.
+ * src/ui/updates.js) room: its parts run side by side, and the longest, annai's catalog and then its translations, is two silences (40 s).
+ * Not a limit on the whole request: at 100 kbps a small file's answer came 134 s after it was asked for, and a limit that long would
+ * hold a dead connection as long.
  */
 export const QUIET_MS = 20_000;
 

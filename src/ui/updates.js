@@ -1,4 +1,5 @@
 import { checkPlugins, knownUpdates, offerCard } from './plugin-updates.js';
+import { QUIET_MS } from '../core/answer.js';
 import { t } from './dom.js';
 
 /**
@@ -111,8 +112,9 @@ export class Updates {
       return Promise.resolve(this.last);
     }
     if (what.app || what.official) this.#at = at;
-    if (what.address) this.#addressAt = at;
     const gen = ++this.#gen;
+    /** Ends when the check does, however it ends: what a part waits on for its own limit (the app's) doesn't outlive it. */
+    const over = new AbortController();
     /** @type {any} */
     let timer;
     /** @type {Promise<Result>} */
@@ -122,8 +124,9 @@ export class Updates {
         r((this.last = { failed: [t`The check took too long. Check the connection, and try again.`], found: this.last?.found ?? [] }));
       }, this.limitMs);
     });
-    const run = Promise.race([this.#run(what, gen), slow]).finally(() => {
+    const run = Promise.race([this.#run(what, gen, at, over.signal), slow]).finally(() => {
       clearTimeout(timer);
+      over.abort();
       this.#running = null;
       this.changed(this.#moved);
     });
@@ -132,21 +135,44 @@ export class Updates {
     return run;
   }
 
-  /** @param {Kinds} what @param {number} gen @returns {Promise<Result>} */
-  async #run(what, gen) {
-    /** @type {string[]} */
-    const failed = [];
-    if (what.app) {
-      if (!this.app) failed.push(t`annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.`);
-      else await this.app.check().catch(() => failed.push(t`annai couldn't check for a new version of itself. Check the connection and try again.`));
-    }
+  /**
+   * annai's own, annai's plugins and the addresses are checked side by side, each under its own limit on its silence, so none holds
+   * another and a check that ends in time has asked all it was to. The day's address check is marked once it has: a check given up on
+   * (limitMs) leaves it undone.
+   * @param {Kinds} what @param {number} gen @param {number} at @param {AbortSignal} over @returns {Promise<Result>}
+   */
+  async #run(what, gen, at, over) {
     const current = () => gen === this.#gen;
-    const plugins = await checkPlugins(this.host, this.env, what, current);
+    const [own, plugins] = await Promise.all([what.app ? this.#checkApp(over) : [], checkPlugins(this.host, this.env, what, current)]);
     if (!current()) return /** @type {Result} */ (this.last);
+    if (what.address) this.#addressAt = at;
     this.checkedAt = this.now();
-    this.last = { failed: [...failed, ...plugins.failed], found: plugins.found };
+    this.last = { failed: [...own, ...plugins.failed], found: plugins.found };
     this.#offer(plugins.found, Boolean(what.manual));
     return this.last;
+  }
+
+  /**
+   * annai's own check, which has no limit of its own (a service worker's update waits for good on a connection gone dead): at most
+   * QUIET_MS, the number for a site's silence (answer.js). The browser shows none of what the update receives, so it is a time on the
+   * whole, which suits it: it fetches one file of annai's own site, sw.js (32 KB), which at 50 kbps takes 5 s. over: the check ended, so
+   * the clock goes. @param {AbortSignal} over @returns {Promise<string[]>} what failed, in words
+   */
+  async #checkApp(over) {
+    if (!this.app) return [t`annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.`];
+    /** @type {any} */
+    let timer;
+    try {
+      await Promise.race([this.app.check(), new Promise((_, quiet) => {
+        timer = setTimeout(quiet, QUIET_MS);
+        over.addEventListener('abort', () => clearTimeout(timer), { once: true });
+      })]);
+      return [];
+    } catch {
+      return [t`annai couldn't check for a new version of itself. Check the connection and try again.`];
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   /** New updates get one card, in place of the last; Check now's show where it was tapped. @param {Update[]} found @param {boolean} manual */
