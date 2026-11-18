@@ -566,12 +566,13 @@ mowdsi	ok	Read {0}, last talked {1}?	Shioriが、{1}に最後に話した「{0}�
 c9wfke	ok	Not now	今はしない	src/core/agent/trip-tools.js:385	
 nfb55e	ok	Allow	許可	src/core/agent/trip-tools.js:385	
 n6hn1l	ok	Open	開く	src/core/agent/trip-tools.js:491	
-myk8x4	ok	annai couldn't reach {0} ({1}). Is the device offline?	{0}に接続できませんでした（{1}）。オフラインになっていませんか？	src/core/answer.js:18	{0} = where; {1} = s.info; Note: {1} is the browser's own words, often English.
-uc7dg2	ok	annai couldn't reach {0}. Is the device offline?	{0}に接続できませんでした。オフラインになっていませんか？	src/core/answer.js:18	{0} = where
-15czcef	ok	{0} answered {1}.	{0}が{1}を返しました。	src/core/answer.js:19	{0} = where; {1} = s.status; Note: {1} is an HTTP status code.
-1nhf5ew	ok	{0} sent an answer annai can't read.	{0}から読み取れない応答が返されました。	src/core/answer.js:20	{0} = where
-17yvnnz	ok	{0} sent more than annai reads ({1}).	{0}からの応答が、読み取れる上限（{1}）を超えています。	src/core/answer.js:21	{0} = where; {1} = size(s.mb * 1_048_576)
-9rf9qv	ok	{0}'s answer was cut off.	{0}からの応答が途中で途切れました。	src/core/answer.js:22	{0} = where
+myk8x4	ok	annai couldn't reach {0} ({1}). Is the device offline?	{0}に接続できませんでした（{1}）。オフラインになっていませんか？	src/core/answer.js:19	{0} = where; {1} = s.info; Note: {1} is the browser's own words, often English.
+uc7dg2	ok	annai couldn't reach {0}. Is the device offline?	{0}に接続できませんでした。オフラインになっていませんか？	src/core/answer.js:19	{0} = where
+15czcef	ok	{0} answered {1}.	{0}が{1}を返しました。	src/core/answer.js:20	{0} = where; {1} = s.status; Note: {1} is an HTTP status code.
+1nhf5ew	ok	{0} sent an answer annai can't read.	{0}から読み取れない応答が返されました。	src/core/answer.js:21	{0} = where
+17yvnnz	ok	{0} sent more than annai reads ({1}).	{0}からの応答が、読み取れる上限（{1}）を超えています。	src/core/answer.js:22	{0} = where; {1} = size(s.mb * 1_048_576)
+1q02dxp	draft	{0} stopped answering. Check the connection and try again.	{0}から応答がありません。ネットワーク接続を確認して、もう一度お試しください。	src/core/answer.js:23	{0} = where; Note: {0} is a site's host name (trails.example), whose server took annai's request and then sent nothing for 20 seconds, so annai stopped waiting; shown under Get it, on a failed update's card and in a check's list.
+9rf9qv	ok	{0}'s answer was cut off.	{0}からの応答が途中で途切れました。	src/core/answer.js:24	{0} = where
 1im1t3t	ok	Enter a passphrase to encrypt the file.	ファイルを暗号化するパスフレーズを入力してください。	src/core/archive-crypto.js:66	
 1bw0b6k	ok	This file is not encrypted.	このファイルは暗号化されていません。	src/core/archive-crypto.js:90	
 1nzwtma	ok	This file is damaged.	このファイルは壊れています。	src/core/archive-crypto.js:91	
@@ -773,16 +774,16 @@ s8uown	ok	The speech couldn't be sent to it.	音声をこのモデルに送れ�
 1av83fe	ok	No model is set for the utility role. Add one in Settings → Models.	補助の役割にモデルが設定されていません。「設定 → モデル」で追加してください。	src/core/llm/fallback.js:231	Note: the role by its screen name (補助 / 辅助).
 35l8v	ok	No model is set for Koe · Chat. Add one in Settings → Models.	Koe · チャットにモデルが設定されていません。「設定 → モデル」で追加してください。	src/core/llm/fallback.js:232	
 1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	メインの役割にモデルが設定されていません。「設定 → モデル」で追加してください。	src/core/llm/fallback.js:233	Note: the role by its screen name (メイン / 主要).
-g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	プラグインの一覧を読み込めませんでした。ネットワーク接続を確認して、もう一度お試しください。	src/core/llm/official.js:96	
-2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	プラグインの一覧を読み込めませんでした（HTTP {0}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:98	{0} = res.status
-1on7jro	ok	The plugin couldn't be downloaded. Check the connection and try again.	プラグインをダウンロードできませんでした。ネットワーク接続を確認して、もう一度お試しください。	src/core/llm/official.js:218	Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
-n9xh2y	ok	The plugin couldn't be downloaded ({0}: HTTP {1}). Try again later.	プラグインをダウンロードできませんでした（{0}：HTTP {1}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:221	{0} = name; {1} = res.status; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
-16b6a3q	ok	The plugin wasn't installed: {0} doesn't match annai's catalog.	{0}がannaiのカタログと一致しないため、プラグインをインストールしませんでした。	src/core/llm/official.js:222	{0} = name; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
-1mtcl9u	ok	It isn't a kind of backup place annai knows. Install a plugin that provides it.	annaiが対応していない種類のバックアップ先です。対応するプラグインをインストールしてください。	src/core/llm/official.js:335	Note: said of a kind of backup place, whose id comes before it in the log.
-ul2t1z	ok	It isn't an endpoint type annai knows. Install a plugin that provides it.	annaiが対応していないエンドポイントの種類です。対応するプラグインをインストールしてください。	src/core/llm/official.js:337	Note: said of an endpoint type, whose id comes before it in the log.
-brqvs6	ok	{0}, which you turned off, isn't switched on by this.	オフにした{0}は、この操作ではオンになりません。	src/core/llm/official.js:349	{0} = name
-1rnb3p5	ok	The plugin didn't provide a kind of backup place {0}.	このプラグインはバックアップ先の種類「{0}」に対応していませんでした。	src/core/llm/official.js:358	{0} = type; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
-cpehgy	ok	The plugin didn't provide an endpoint type {0}.	このプラグインはエンドポイントの種類「{0}」に対応していませんでした。	src/core/llm/official.js:360	{0} = type; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
+g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	プラグインの一覧を読み込めませんでした。ネットワーク接続を確認して、もう一度お試しください。	src/core/llm/official.js:47	
+2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	プラグインの一覧を読み込めませんでした（HTTP {0}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:49	{0} = res.status
+1on7jro	ok	The plugin couldn't be downloaded. Check the connection and try again.	プラグインをダウンロードできませんでした。ネットワーク接続を確認して、もう一度お試しください。	src/core/llm/official.js:169	Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
+n9xh2y	ok	The plugin couldn't be downloaded ({0}: HTTP {1}). Try again later.	プラグインをダウンロードできませんでした（{0}：HTTP {1}）。しばらくしてからもう一度お試しください。	src/core/llm/official.js:172	{0} = name; {1} = res.status; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
+16b6a3q	ok	The plugin wasn't installed: {0} doesn't match annai's catalog.	{0}がannaiのカタログと一致しないため、プラグインをインストールしませんでした。	src/core/llm/official.js:173	{0} = name; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
+1mtcl9u	ok	It isn't a kind of backup place annai knows. Install a plugin that provides it.	annaiが対応していない種類のバックアップ先です。対応するプラグインをインストールしてください。	src/core/llm/official.js:286	Note: said of a kind of backup place, whose id comes before it in the log.
+ul2t1z	ok	It isn't an endpoint type annai knows. Install a plugin that provides it.	annaiが対応していないエンドポイントの種類です。対応するプラグインをインストールしてください。	src/core/llm/official.js:288	Note: said of an endpoint type, whose id comes before it in the log.
+brqvs6	ok	{0}, which you turned off, isn't switched on by this.	オフにした{0}は、この操作ではオンになりません。	src/core/llm/official.js:300	{0} = name
+1rnb3p5	ok	The plugin didn't provide a kind of backup place {0}.	このプラグインはバックアップ先の種類「{0}」に対応していませんでした。	src/core/llm/official.js:309	{0} = type; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
+cpehgy	ok	The plugin didn't provide an endpoint type {0}.	このプラグインはエンドポイントの種類「{0}」に対応していませんでした。	src/core/llm/official.js:311	{0} = type; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
 1jtsyij	ok	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	スマートフォンでは、localhostはスマートフォン自身を指します。別のコンピューターのサーバーにはhttpsのアドレスが必要です。httpsのページからの暗号化されていないhttp通信はブラウザがブロックするため、annaiはネットワーク内ではhttpsのアドレスにしか接続しません。方法の1つはTailscale Serveです。スマートフォンをtailnetに参加させ、サーバー側で{0}を実行して、annaiに{1}を入力します。サーバーは annai.guide からのCORSも許可している必要があります。Chrome 142以降では、ローカルネットワークへのアクセス許可を求められることがあります。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
 557vva	ok	{0} isn't a web address: give it with https:// in front.	{0}はWebアドレスではありません。先頭に https:// を付けてください。	src/core/llm/provider-desc.js:164	{0} = url
 y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	アドレスは https:// で始めてください（http:// はlocalhostか127.0.0.1の場合のみ）。httpsのページからの暗号化されていないhttp通信はブラウザがブロックし、annaiもネットワーク内ではhttpsのアドレスにしか接続しないため、別のコンピューターのサーバーにはhttpsのアドレスが必要です。Tailscale Serveで用意できます：{0}。サーバーは annai.guide からのCORSも許可している必要があります。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
@@ -803,29 +804,29 @@ i9ok5g	ok	Wikipedia between {0} and {1}	{0}と{1}の間のWikipedia	src/core/pac
 cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMapから応答がありませんでした（{0}）。	src/core/pack/download.js:81	{0} = (s.inner ? failWords(s.inner) : s.message).replace(/[.。]$/u, '')
 rhruvr	ok	{0} said: {1}.	{0}の応答：{1}。	src/core/pack/download.js:82	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
 1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyageから{0}の本文が届きませんでした。	src/core/pack/download.js:83	{0} = s.title
-aaicx8	ok	{0} couldn't be checked: {1}	{0}を確認できませんでした：{1}	src/core/package-updates.js:36	{0} = s.name ?? id; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-trd90h	ok	It wasn't installed from an address, so annai has nowhere to look for an update.	アドレスからインストールしたものではないため、更新を確認できません。	src/core/package-updates.js:54	
-2olq9a	ok	The address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	そのアドレスのパッケージが別のもの（{0}）に変わっているため、アップデートしませんでした。そちらを使う場合は、これを削除してからインストールしてください。	src/core/package-updates.js:58	{0} = pkg.id
-29yhwe	ok	This update adds parts you haven't agreed to: {0}. Check for updates again and look at what it adds.	このアップデートでは、まだ同意していないものが追加されます：{0}。もう一度更新を確認して、追加される内容を確かめてください。	src/core/package-updates.js:62	{0} = addedWords(added)
+aaicx8	ok	{0} couldn't be checked: {1}	{0}を確認できませんでした：{1}	src/core/package-updates.js:46	{0} = s.name ?? id; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+trd90h	ok	It wasn't installed from an address, so annai has nowhere to look for an update.	アドレスからインストールしたものではないため、更新を確認できません。	src/core/package-updates.js:73	
+2olq9a	ok	The address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	そのアドレスのパッケージが別のもの（{0}）に変わっているため、アップデートしませんでした。そちらを使う場合は、これを削除してからインストールしてください。	src/core/package-updates.js:77	{0} = pkg.id
+29yhwe	ok	This update adds parts you haven't agreed to: {0}. Check for updates again and look at what it adds.	このアップデートでは、まだ同意していないものが追加されます：{0}。もう一度更新を確認して、追加される内容を確かめてください。	src/core/package-updates.js:81	{0} = addedWords(added)
 1wfc5of	ok	This zip holds several skills. Install each one on its own, or add an annai-plugin.json that lists them.	このzipには複数のスキルが入っています。1つずつインストールするか、それらを記載したannai-plugin.jsonを追加してください。	src/core/packages.js:349	
 12el2y8	ok	The {0} is in {1}, nested too deep: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0}が{1}にあり、階層が深すぎます。annaiが読み込むのは、zipの最上位か、zipに1つだけ入ったフォルダーの中です。そのフォルダーだけをzipにしてください。	src/core/packages.js:357	{0} = file; {1} = folder
 yeyuzl	ok	The {0} is in {1}, with other files beside that folder: annai reads it at the top of the zip or inside its one folder. Zip that folder alone.	{0}は{1}にありますが、zipの最上位にほかのファイルもあります。annaiが読み込むのは、zipの最上位か、zipに1つだけ入ったフォルダーの中です。そのフォルダーだけをzipにしてください。	src/core/packages.js:358	{0} = file; {1} = folder
 woxuej	ok	There is no {0} or {1} in this package.	このパッケージには{0}も{1}もありません。	src/core/packages.js:360	{0} = MANIFEST_FILE; {1} = SKILL_FILE
 1r65tkq	ok	It is too large: it unpacks to more than {0}.	サイズが大きすぎます。展開すると{0}を超えます。	src/core/packages.js:378	{0} = size(maxBytes); Note: said of a plugin, whose name is the card's title.
 jg8gk7	ok	That isn't a web address. Paste the address of a zip file, an annai-plugin.json or a SKILL.md.	Webアドレスではありません。zipファイル、annai-plugin.json、SKILL.mdのいずれかのアドレスを貼り付けてください。	src/core/packages.js:458	
-13j5338	ok	For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.	GitHubのフォルダーの場合は、その中のSKILL.mdかannai-plugin.jsonのアドレスを使ってください。	src/core/packages.js:492	
+13j5338	ok	For a folder on GitHub, use the address of its SKILL.md or annai-plugin.json.	GitHubのフォルダーの場合は、その中のSKILL.mdかannai-plugin.jsonのアドレスを使ってください。	src/core/packages.js:493	
 1xovhb	ok	annai couldn't reach {0}. Check the address, and that the site lets web apps read it.	{0}に接続できませんでした。アドレスが正しいか、そのサイトがWebアプリからの読み込みを許可しているかを確認してください。	src/core/packages.js:501	{0} = u.host
-4lh0yw	ok	{0} sent a zip annai can't open: {1}	{0}から届いたzipを開けません：{1}	src/core/packages.js:514	{0} = url.host; {1} = why; Note: {1} is a developer's detail, in English.
-hm96ty	ok	That package has more than {0} files; annai installs packages of up to {1} from an address. Use a zip instead.	そのパッケージには{0}件を超えるファイルがあります。アドレスからインストールできるパッケージは、ファイル{1}件までです。代わりにzipを使ってください。	src/core/packages.js:530	{0} = ADDRESS_MAX_FILES; {1} = ADDRESS_MAX_FILES
-pft16a	ok	{0} answered {1} for {2}, a file its {3} names.	{3}に記載された{2}を取得しようとしたところ、{0}から{1}が返されました。	src/core/packages.js:542	{0} = u.host; {1} = status; {2} = name; {3} = from
-apv0y3	ok	annai couldn't read {0} from {1}, a file its {2} names. Check that it is there, and that the site lets web apps read it.	{2}に記載された{0}を{1}から読み込めませんでした。ファイルがあるか、そのサイトがWebアプリからの読み込みを許可しているかを確認してください。	src/core/packages.js:544	{0} = name; {1} = u.host; {2} = from
-1iuga68	ok	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	そのアドレスにannaiのプラグインやスキルが見つかりません。annaiが読み込めるのは、zipファイル、annai-plugin.json、SKILL.mdです。	src/core/packages.js:614	
-1toghwz	ok	The {0} at {1} isn't valid JSON.	{1}の{0}は正しいJSONではありません。	src/core/packages.js:624	{0} = MANIFEST_FILE; {1} = url.host
-1rp7aut	ok	code that runs in annai	annai内で動作するコード	src/core/packages.js:664	Note: one of a list of what an update adds.
-1tdxuf	ok	the skill {0}	スキル「{0}」	src/core/packages.js:665	{0} = s.name
-1j0uwka	ok	the personality {0}	性格「{0}」	src/core/packages.js:666	{0} = p.name
-14wn58m	ok	a provider that sends keys to {0}	キーを{0}に送信するプロバイダー	src/core/packages.js:667	{0} = o; Note: one of a list of what an update adds.
-tqmba2	ok	an address your searches are sent to: {0}	検索内容の送信先（{0}）	src/core/packages.js:667	{0} = o; Note: one of a list of what an update adds.
+4lh0yw	ok	{0} sent a zip annai can't open: {1}	{0}から届いたzipを開けません：{1}	src/core/packages.js:515	{0} = url.host; {1} = why; Note: {1} is a developer's detail, in English.
+hm96ty	ok	That package has more than {0} files; annai installs packages of up to {1} from an address. Use a zip instead.	そのパッケージには{0}件を超えるファイルがあります。アドレスからインストールできるパッケージは、ファイル{1}件までです。代わりにzipを使ってください。	src/core/packages.js:531	{0} = ADDRESS_MAX_FILES; {1} = ADDRESS_MAX_FILES
+pft16a	ok	{0} answered {1} for {2}, a file its {3} names.	{3}に記載された{2}を取得しようとしたところ、{0}から{1}が返されました。	src/core/packages.js:545	{0} = u.host; {1} = status; {2} = name; {3} = from
+apv0y3	ok	annai couldn't read {0} from {1}, a file its {2} names. Check that it is there, and that the site lets web apps read it.	{2}に記載された{0}を{1}から読み込めませんでした。ファイルがあるか、そのサイトがWebアプリからの読み込みを許可しているかを確認してください。	src/core/packages.js:547	{0} = name; {1} = u.host; {2} = from
+1iuga68	ok	There's no annai plugin or skill at that address. annai looks for a zip file, an annai-plugin.json or a SKILL.md.	そのアドレスにannaiのプラグインやスキルが見つかりません。annaiが読み込めるのは、zipファイル、annai-plugin.json、SKILL.mdです。	src/core/packages.js:617	
+1toghwz	ok	The {0} at {1} isn't valid JSON.	{1}の{0}は正しいJSONではありません。	src/core/packages.js:627	{0} = MANIFEST_FILE; {1} = url.host
+1rp7aut	ok	code that runs in annai	annai内で動作するコード	src/core/packages.js:667	Note: one of a list of what an update adds.
+1tdxuf	ok	the skill {0}	スキル「{0}」	src/core/packages.js:668	{0} = s.name
+1j0uwka	ok	the personality {0}	性格「{0}」	src/core/packages.js:669	{0} = p.name
+14wn58m	ok	a provider that sends keys to {0}	キーを{0}に送信するプロバイダー	src/core/packages.js:670	{0} = o; Note: one of a list of what an update adds.
+tqmba2	ok	an address your searches are sent to: {0}	検索内容の送信先（{0}）	src/core/packages.js:670	{0} = o; Note: one of a list of what an update adds.
 18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	このブラウザでは{0}を変換できないため、元の形式のまま保存しました。Safariでしか表示されない場合があります。	src/core/photos.js:135	{0} = name
 1009iza	ok	Restaurant	レストラン	src/core/plan.js:70	
 1cyh7n5	draft	Coach	長距離バス	src/core/plan.js:70	Note: a plan item's kind, or a booking's, shown under its title: a long-distance coach, not a train carriage.
@@ -1428,26 +1429,26 @@ fzpt3w	ok	Reload now	今すぐ再読み込み	src/ui/plugin-cards.js:32
 1abmsob	ok	It didn't start the last few times annai opened.	annaiを開いた直近の数回、続けて起動しませんでした。	src/ui/plugin-cards.js:47	
 11arkb9	ok	You can turn it off in Settings → Plugins.	「設定 → プラグイン」でオフにできます。	src/ui/plugin-cards.js:48	
 1jz4o49	ok	The plugin "{0}" didn't start	プラグイン「{0}」が起動しませんでした	src/ui/plugin-cards.js:48	{0} = it
-44nn0b	ok	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（追加内容あり：アップデート前に確認します）	src/ui/plugin-updates.js:77	{0} = u.name; {1} = u.installed; {2} = u.available
-trjp65	ok	{0} (changed) (brings something new: you'll be asked first)	{0}（変更あり、追加内容あり：アップデート前に確認します）	src/ui/plugin-updates.js:77	{0} = u.name
-1kyfel6	ok	{0} (changed)	{0}（変更あり）	src/ui/plugin-updates.js:78	{0} = u.name
-i8x2zk	ok	{0} {1} → {2}	{0} {1} → {2}	src/ui/plugin-updates.js:78	{0} = u.name; {1} = u.installed; {2} = u.available
-6qynmx	ok	Plugin updates are ready	プラグインのアップデートがあります	src/ui/plugin-updates.js:84	
-1qhkyk	ok	Nothing changes until you update. An updated plugin that is running now is off until annai restarts.	アップデートするまで何も変わりません。実行中のプラグインは、アップデート後、annaiを再起動するまでオフになります。	src/ui/plugin-updates.js:85	
-1x9jer0	ok	New versions: {0}.	新しいバージョン：{0}。	src/ui/plugin-updates.js:85	{0} = list(updates.map(offerWords), 'plain')
-uk4kus	ok	Update	アップデート	src/ui/plugin-updates.js:86	
-1hwvled	ok	{0} failed with an unknown error.	{0}は原因不明のエラーでアップデートできませんでした。	src/ui/plugin-updates.js:119	{0} = nameOf(u); Note: one line of the "Some plugins weren't updated" card, for a plugin whose update failed with an empty error; {0} is the plugin's name.
-1agymuw	ok	Some plugins weren't updated	アップデートできなかったプラグインがあります	src/ui/plugin-updates.js:123	
-1vsv4vh	ok	Restart annai to use the new versions	新しいバージョンを使うには、annaiを再起動してください	src/ui/plugin-updates.js:127	
-1k0lt4v	ok	Until then, {0} can't be used.	それまでは{0}を使えません。	src/ui/plugin-updates.js:128	{0} = list(waiting)
-2jfvhf	ok	The update is installed and runs the next time annai starts.	アップデートはインストール済みです。次にannaiを起動したときに有効になります。	src/ui/plugin-updates.js:128	
-nb21do	ok	Restart now	今すぐ再起動	src/ui/plugin-updates.js:129	
-1do1igm	ok	Plugins updated.	プラグインをアップデートしました。	src/ui/plugin-updates.js:132	
-eaf3fx	ok	{0} {1} brings something new	{0} {1}には追加内容があります	src/ui/plugin-updates.js:148	{0} = u.name; {1} = u.available
-127j3cm	ok	New in this version: {0}.	このバージョンで追加されるもの：{0}。	src/ui/plugin-updates.js:149	{0} = semicolons(whatItBrings(added))
-zymqne	ok	Only update if you trust where it came from.	入手元を信頼できる場合だけアップデートしてください。	src/ui/plugin-updates.js:149	
-1dfe53s	ok	Nothing changes until you tap Update.	「アップデート」をタップするまで何も変わりません。	src/ui/plugin-updates.js:150	
-15ziixp	ok	Update anyway	それでもアップデート	src/ui/plugin-updates.js:152	
+44nn0b	ok	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（追加内容あり：アップデート前に確認します）	src/ui/plugin-updates.js:87	{0} = u.name; {1} = u.installed; {2} = u.available
+trjp65	ok	{0} (changed) (brings something new: you'll be asked first)	{0}（変更あり、追加内容あり：アップデート前に確認します）	src/ui/plugin-updates.js:87	{0} = u.name
+1kyfel6	ok	{0} (changed)	{0}（変更あり）	src/ui/plugin-updates.js:88	{0} = u.name
+i8x2zk	ok	{0} {1} → {2}	{0} {1} → {2}	src/ui/plugin-updates.js:88	{0} = u.name; {1} = u.installed; {2} = u.available
+6qynmx	ok	Plugin updates are ready	プラグインのアップデートがあります	src/ui/plugin-updates.js:94	
+1qhkyk	ok	Nothing changes until you update. An updated plugin that is running now is off until annai restarts.	アップデートするまで何も変わりません。実行中のプラグインは、アップデート後、annaiを再起動するまでオフになります。	src/ui/plugin-updates.js:95	
+1x9jer0	ok	New versions: {0}.	新しいバージョン：{0}。	src/ui/plugin-updates.js:95	{0} = list(updates.map(offerWords), 'plain')
+uk4kus	ok	Update	アップデート	src/ui/plugin-updates.js:96	
+1hwvled	ok	{0} failed with an unknown error.	{0}は原因不明のエラーでアップデートできませんでした。	src/ui/plugin-updates.js:129	{0} = nameOf(u); Note: one line of the "Some plugins weren't updated" card, for a plugin whose update failed with an empty error; {0} is the plugin's name.
+1agymuw	ok	Some plugins weren't updated	アップデートできなかったプラグインがあります	src/ui/plugin-updates.js:133	
+1vsv4vh	ok	Restart annai to use the new versions	新しいバージョンを使うには、annaiを再起動してください	src/ui/plugin-updates.js:137	
+1k0lt4v	ok	Until then, {0} can't be used.	それまでは{0}を使えません。	src/ui/plugin-updates.js:138	{0} = list(waiting)
+2jfvhf	ok	The update is installed and runs the next time annai starts.	アップデートはインストール済みです。次にannaiを起動したときに有効になります。	src/ui/plugin-updates.js:138	
+nb21do	ok	Restart now	今すぐ再起動	src/ui/plugin-updates.js:139	
+1do1igm	ok	Plugins updated.	プラグインをアップデートしました。	src/ui/plugin-updates.js:142	
+eaf3fx	ok	{0} {1} brings something new	{0} {1}には追加内容があります	src/ui/plugin-updates.js:158	{0} = u.name; {1} = u.available
+127j3cm	ok	New in this version: {0}.	このバージョンで追加されるもの：{0}。	src/ui/plugin-updates.js:159	{0} = semicolons(whatItBrings(added))
+zymqne	ok	Only update if you trust where it came from.	入手元を信頼できる場合だけアップデートしてください。	src/ui/plugin-updates.js:159	
+1dfe53s	ok	Nothing changes until you tap Update.	「アップデート」をタップするまで何も変わりません。	src/ui/plugin-updates.js:160	
+15ziixp	ok	Update anyway	それでもアップデート	src/ui/plugin-updates.js:162	
 vq7cdg#other	ok	# pages	#ページ	src/ui/preview.js:133	plural; # = pages; English: "# page" (one), "# pages" (other); Note: a PDF's page count on its file card.
 1cjjnaq	ok	Kept on this device.	この端末に保存。	src/ui/privacy.js:21	
 tct7be	ok	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	旅、ファイル、設定、キーは、この端末のこのブラウザに保存されます。annaiにはアカウントがなく、旅やキーを保存するannaiのサーバーもありません。	src/ui/privacy.js:21	
@@ -2834,13 +2835,13 @@ vy4apn	ok	Try this model	このモデルを試す	src/ui/talk-panel.js:75
 1770v5g	ok	Finding where you are…	現在地を確認中…	src/ui/today.js:23	
 iztlgm	ok	No GPS signal right now.	現在、GPSの信号を受信できません。	src/ui/today.js:23	
 ue501f	ok	Near {0}, ≈ {1}	{0}の近く（約{1}）	src/ui/today.js:26	{0} = near.name; {1} = distance(near.m / 1000)
-1sva5r0	ok	The check took too long. Check the connection, and try again.	確認に時間がかかりすぎました。ネットワーク接続を確認して、もう一度お試しください。	src/ui/updates.js:122	
-14d6ut8	ok	annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.	オフラインサービスがまだ起動していないため、annai本体は確認できませんでした。少ししてから、もう一度お試しください。	src/ui/updates.js:140	
-16l98jx	ok	annai couldn't check for a new version of itself. Check the connection and try again.	annaiの新しいバージョンを確認できませんでした。ネットワーク接続を確認して、もう一度お試しください。	src/ui/updates.js:141	
-rtcus4	ok	The download of the new version didn't finish. annai tries again the next time it checks.	新しいバージョンのダウンロードが完了しませんでした。次回の確認時に自動的に再試行します。	src/ui/updates.js:167	
-32o7q3	ok	annai restarts once Shiori has finished	Shioriの作業が終わったらannaiを再起動します	src/ui/updates.js:184	
-3ur3tf	ok	She is in the middle of something, and an update never lands during her turn. Tap her to stop her now.	Shioriは作業の途中です。アップデートはShioriの作業中には行われません。今すぐ止めるには、Shioriをタップしてください。	src/ui/updates.js:184	Note: "She" and "her" are written as Shiori: 彼女 reads distant in Japanese.
-4naie6	ok	Don't restart	再起動しない	src/ui/updates.js:185	
+1sva5r0	ok	The check took too long. Check the connection, and try again.	確認に時間がかかりすぎました。ネットワーク接続を確認して、もう一度お試しください。	src/ui/updates.js:124	
+14d6ut8	ok	annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.	オフラインサービスがまだ起動していないため、annai本体は確認できませんでした。少ししてから、もう一度お試しください。	src/ui/updates.js:162	
+16l98jx	ok	annai couldn't check for a new version of itself. Check the connection and try again.	annaiの新しいバージョンを確認できませんでした。ネットワーク接続を確認して、もう一度お試しください。	src/ui/updates.js:172	
+rtcus4	ok	The download of the new version didn't finish. annai tries again the next time it checks.	新しいバージョンのダウンロードが完了しませんでした。次回の確認時に自動的に再試行します。	src/ui/updates.js:193	
+32o7q3	ok	annai restarts once Shiori has finished	Shioriの作業が終わったらannaiを再起動します	src/ui/updates.js:210	
+3ur3tf	ok	She is in the middle of something, and an update never lands during her turn. Tap her to stop her now.	Shioriは作業の途中です。アップデートはShioriの作業中には行われません。今すぐ止めるには、Shioriをタップしてください。	src/ui/updates.js:210	Note: "She" and "her" are written as Shiori: 彼女 reads distant in Japanese.
+4naie6	ok	Don't restart	再起動しない	src/ui/updates.js:211	
 4u8ij0	ok	Listening live	ライブで聞き取り中	src/ui/voice-chip.js:25	
 11rknnz	ok	Live	ライブ	src/ui/voice-chip.js:30	
 m0me4i	ok	Live off	ライブオフ	src/ui/voice-chip.js:30	

@@ -28,38 +28,48 @@ const knownOf = (host) => {
 };
 
 /**
- * Checks the kinds asked for (both by default), and keeps what each found; a kind that can't be checked
- * keeps what it found before, and says why in failed. Nothing is kept once current() is false. Checking annai's own also brings
- * their words in the screens' language, and the next start's, to the catalog's (fetchTranslations), which is never an update and never fails.
+ * Checks the kinds asked for (both by default), and keeps what each found; a kind that can't be checked keeps what it found before,
+ * and so does an address whose site gave no answer (addressUpdates); both say why in failed. Nothing is kept once current() is false.
+ * Checking annai's own also brings their words in the screens' language, and the next start's, to the catalog's (fetchTranslations),
+ * which is never an update and never fails. The two kinds are asked side by side, each ending by its own silence limit (answer.js), so
+ * one that goes quiet never holds the other: a catalog and its translations that answer late can't push the addresses past the
+ * check's own limit (updates.js).
  * @param {any} host @param {Env} [env] @param {{ official?: boolean, address?: boolean }} [kinds] @param {() => boolean} [current]
  * @returns {Promise<{ found: Update[], failed: string[] }>} found: every update known now, of both kinds
  */
 export async function checkPlugins(host, env = {}, { official = true, address = true } = {}, current = () => true) {
+  /** What each kind couldn't check, annai's own first. @type {string[]} */
+  const failedOfficial = [];
   /** @type {string[]} */
-  const failed = [];
+  const failedAddress = [];
   const known = knownOf(host);
-  /** @param {boolean} url @param {Update[]} list */
-  const keep = (url, list) => {
-    for (const [id, u] of known) if (Boolean(u.url) === url) known.delete(id);
+  /** @param {boolean} url @param {Update[]} list @param {Set<string>} [unchecked] the ones whose site gave no answer: what was found for them before stays */
+  const keep = (url, list, unchecked = new Set()) => {
+    for (const [id, u] of known) if (Boolean(u.url) === url && !unchecked.has(id)) known.delete(id);
     for (const u of list) known.set(u.id, u);
   };
-  if (official) {
-    const now = await officialUpdates(host, env).catch((e) => { failed.push(messageOf(e)); return null; });
-    // One with an update waiting keeps the words it has: they match its version, and the update brings the new one's (updateOfficial).
-    if (now) await fetchTranslations(host, { fetch: env.fetch, base: env.base, skip: now.map((u) => u.id), next: env.next?.() });
-    if (now && current()) keep(false, now);
-  }
-  if (address) {
-    const now = await addressUpdates(host, { fetch: env.addressFetch ?? ((url, init) => fetch(url, init)), failed }).catch(() => null);
-    if (now && current()) keep(true, now);
-  }
-  return { found: await knownUpdates(host), failed };
+  await Promise.all([
+    official && (async () => {
+      const now = await officialUpdates(host, env).catch((e) => { failedOfficial.push(messageOf(e)); return null; });
+      // One with an update waiting keeps the words it has: they match its version, and the update brings the new one's (updateOfficial).
+      if (now) await fetchTranslations(host, { fetch: env.fetch, base: env.base, skip: now.map((u) => u.id), next: env.next?.() });
+      if (now && current()) keep(false, now);
+    })(),
+    address && (async () => {
+      /** @type {Set<string>} */
+      const unchecked = new Set();
+      const now = await addressUpdates(host, { fetch: env.addressFetch ?? ((url, init) => fetch(url, init)), failed: failedAddress, unchecked }).catch(() => null);
+      if (now && current()) keep(true, now, unchecked);
+    })(),
+  ]);
+  return { found: await knownUpdates(host), failed: [...failedOfficial, ...failedAddress] };
 }
 
-/** The updates the last checks found, for plugins still installed as they were. @param {any} host @returns {Promise<Update[]>} */
+/** The updates the last checks found, for plugins still installed as they were, in the order they were installed. @param {any} host @returns {Promise<Update[]>} */
 export async function knownUpdates(host) {
   const state = await host.installed();
-  return [...knownOf(host).values()].filter((u) => state[u.id]?.source === (u.url ? 'url' : 'official') && String(state[u.id]?.version) === u.installed);
+  const known = knownOf(host);
+  return Object.keys(state).flatMap((id) => known.get(id) ?? []).filter((u) => state[u.id]?.source === (u.url ? 'url' : 'official') && String(state[u.id]?.version) === u.installed);
 }
 
 /** The updates the last check found at addresses, for packages still installed. @param {any} host @returns {Promise<Update[]>} */

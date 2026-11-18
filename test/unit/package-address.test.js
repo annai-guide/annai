@@ -2,8 +2,17 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fetchPackage, rawAddress } from '../../src/core/packages.js';
 import { ZipWriter } from '../../src/core/zip.js';
-import { utf8 } from '../../src/core/bytes.js';
+import { utf8, text } from '../../src/core/bytes.js';
+import { QUIET_MS, quietly } from '../../src/core/answer.js';
+import { getEventListeners } from 'node:events';
+import { download } from '../../src/core/llm/official.js';
+import { sha256Hex } from '../../src/core/hash.js';
+import { messageOf } from '../../src/ui/dom.js';
 import { SKILL } from './package-kit.js';
+import { dead, watch, turns, siteOn } from './dead-kit.js';
+import { tracedFetch } from '../../src/core/agent/net.js';
+import { createMemoryStore } from '../fakes/store-memory.js';
+import { SYS } from '../../src/core/scopes.js';
 
 /** A web of addresses: a string or bytes is a 200 answer, an Error is thrown as fetch would, a number is a status. */
 function web(/** @type {Record<string, any>} */ routes) {
@@ -165,4 +174,238 @@ test('minors 21: a file an annai-plugin.json names that the site lacks is named'
   const manifest = JSON.stringify({ id: 'tides', name: 'Tides', version: '1.0.0', api: 1, entry: 'index.js', files: ['lib/util.js'] });
   const { fetch } = web({ [`${T}/tides/annai-plugin.json`]: manifest, [`${T}/tides/index.js`]: '' });
   await assert.rejects(fetchPackage(`${T}/tides/annai-plugin.json`, { fetch }), /^Error: trails\.example answered 404 for lib\/util\.js, a file its annai-plugin\.json names\.$/);
+});
+
+// addr-limit-next: an address whose site goes dead (takes the request, then sends nothing) held Add's Get it at "Getting it…" until the
+// screen was left, and its request, an Update from it and the update checks that ask it, until annai was restarted. These run on fake
+// timers against a site on this machine, through Node's own fetch (dead-kit.js).
+
+/** The words for a site that stopped answering. @param {string} base */
+const stopped = (base) => `${new URL(base).host} stopped answering. Check the connection and try again.`;
+
+test("an address whose site goes dead ends after QUIET_MS of nothing, saying the site stopped answering and what to do: a site that never answers, one that sends its headers and nothing more, and one that stops part way, for the address's first file and for one it names", async (t) => {
+  const MANIFEST = JSON.stringify({ id: 'tides', name: 'Tides', version: '1.0.0', api: 1, entry: 'index.js', files: ['lib.js'] });
+  /** @type {'never' | 'headers' | 'part'} */
+  let how = 'never';
+  let gone = '';
+  const s = await siteOn((path, res) => {
+    if (path !== gone) {
+      res.writeHead(200).end(path.endsWith('/annai-plugin.json') ? MANIFEST : 'export {};');
+      return;
+    }
+    if (how === 'never') return;
+    res.writeHead(200);
+    if (how === 'headers') res.flushHeaders();
+    else res.write(' '.repeat(1024));
+  });
+  t.after(s.close);
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  for (const [shape, which, path] of /** @type {const} */ ([
+    ['never', 'first', '/tides/annai-plugin.json'], ['headers', 'first', '/tides/annai-plugin.json'], ['part', 'first', '/tides/annai-plugin.json'],
+    ['never', 'named', '/tides/lib.js'], ['headers', 'named', '/tides/lib.js'], ['part', 'named', '/tides/lib.js'],
+  ])) {
+    how = shape;
+    gone = path;
+    s.asked.length = 0;
+    s.seen = 0;
+    s.answered = 0;
+    const w = watch(fetchPackage(`${s.base}/tides/annai-plugin.json`, { fetch: s.fetch }));
+    // Asked, and what comes before the silence come: the limit runs from the last thing that came.
+    const answers = (which === 'named' ? 1 : 0) + (shape === 'never' ? 0 : 1);
+    const seen = (which === 'named' ? MANIFEST.length : 0) + (shape === 'part' ? 1024 : 0);
+    await turns(() => s.asked.includes(path) && s.answered === answers && s.seen >= seen);
+    assert.ok(s.asked.includes(path) && s.answered === answers && s.seen >= seen, `${which} ${shape}: the request was made`);
+    t.mock.timers.tick(QUIET_MS - 1);
+    await turns(() => w.state !== 'pending', 50);
+    assert.equal(w.state, 'pending', `${which} ${shape}: still waiting just short of the limit`);
+    t.mock.timers.tick(1);
+    await turns(() => w.state !== 'pending');
+    assert.equal(w.state, 'failed', `${which} ${shape}: ended at the limit`);
+    assert.equal(messageOf(w.error), stopped(s.base), `${which} ${shape}`);
+    assert.equal(w.error?.said?.code, 'quiet', `${which} ${shape}: said as data`);
+  }
+});
+
+test("an address whose answer and each part of its file come less than QUIET_MS apart installs, however long it takes in all: the limit is on silence, not on the whole request", async (t) => {
+  /** @type {import('node:http').ServerResponse | undefined} */
+  let reply;
+  const s = await siteOn((path, res) => {
+    if (path.endsWith('/SKILL.md')) reply = res;
+    else res.writeHead(404).end();
+  });
+  t.after(s.close);
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const w = watch(fetchPackage(`${s.base}/kits/tide-pools/SKILL.md`, { fetch: s.fetch }));
+  await turns(() => reply !== undefined);
+  t.mock.timers.tick(QUIET_MS - 1);
+  /** @type {import('node:http').ServerResponse} */ (reply).writeHead(200).flushHeaders();
+  await turns(() => s.answered === 1);
+  assert.equal(s.answered, 1, 'its answer came');
+  let sent = 0;
+  for (const part of [SKILL.slice(0, 40), SKILL.slice(40, 120), SKILL.slice(120)]) {
+    t.mock.timers.tick(QUIET_MS - 1);
+    /** @type {import('node:http').ServerResponse} */ (reply).write(part);
+    sent += Buffer.byteLength(part);
+    await turns(() => s.seen >= sent);
+    assert.equal(w.state, 'pending', `after ${sent} bytes`);
+  }
+  t.mock.timers.tick(QUIET_MS - 1);
+  /** @type {import('node:http').ServerResponse} */ (reply).end();
+  await turns(() => w.state !== 'pending');
+  assert.equal(w.state, 'done', 'five times QUIET_MS - 1 in all, never QUIET_MS with nothing');
+  assert.equal(text(/** @type {Uint8Array} */ (w.value?.get('SKILL.md'))), SKILL);
+});
+
+test("the silence is the address's own site's: annai's site sending all the while never keeps a dead address's request open", async (t) => {
+  const gone = await siteOn(() => {});
+  /** @type {import('node:http').ServerResponse | undefined} */
+  let file;
+  const annai = await siteOn((_path, res) => {
+    res.writeHead(200);
+    res.flushHeaders();
+    file = res;
+  });
+  t.after(gone.close);
+  t.after(annai.close);
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const parts = ['aaaa', 'bbbb', 'cccc'];
+  const entry = /** @type {any} */ ({ id: 'busy', name: 'Busy', version: '0.1.0', files: { 'big.js': await sha256Hex(utf8(parts.join(''))) } });
+  const files = watch(download(entry, { fetch: annai.fetch, base: annai.base }));
+  await turns(() => file !== undefined && annai.answered === 1);
+  const address = watch(fetchPackage(`${gone.base}/kits/tide-pools/SKILL.md`, { fetch: gone.fetch }));
+  await turns(() => gone.asked.length === 1);
+  const write = async (/** @type {string} */ part, /** @type {number} */ seen) => {
+    /** @type {import('node:http').ServerResponse} */ (file).write(part);
+    await turns(() => annai.seen >= seen);
+  };
+  // annai's site sends a part just short of the address's limit: the address's silence goes on, and it ends at the limit.
+  t.mock.timers.tick(QUIET_MS - 1);
+  await write(parts[0], 4);
+  t.mock.timers.tick(1);
+  await turns(() => address.state !== 'pending');
+  assert.equal(address.state, 'failed', "the dead address ended at QUIET_MS though annai's site kept sending");
+  assert.equal(messageOf(address.error), stopped(gone.base));
+  // annai's file goes on, each part QUIET_MS - 1 after the one before.
+  t.mock.timers.tick(QUIET_MS - 2);
+  await write(parts[1], 8);
+  t.mock.timers.tick(QUIET_MS - 1);
+  await write(parts[2], 12);
+  /** @type {import('node:http').ServerResponse} */ (file).end();
+  await turns(() => files.state !== 'pending');
+  assert.equal(files.state, 'done', messageOf(files.error));
+});
+
+test("two packages asked of one site at once share its silence: one whose answer waits while the other's file keeps coming is not ended, as on one connection an answer waits behind bytes already sent for others (passes with no limit too: it pins the site's silence against a silence per request)", async (t) => {
+  /** @type {import('node:http').ServerResponse | undefined} */
+  let a;
+  /** @type {import('node:http').ServerResponse | undefined} */
+  let b;
+  const s = await siteOn((path, res) => {
+    if (path === '/a/SKILL.md') {
+      res.writeHead(200);
+      res.flushHeaders();
+      a = res;
+    } else if (path === '/b/SKILL.md') b = res;
+    else res.writeHead(404).end();
+  });
+  t.after(s.close);
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const first = watch(fetchPackage(`${s.base}/a/SKILL.md`, { fetch: s.fetch }));
+  const second = watch(fetchPackage(`${s.base}/b/SKILL.md`, { fetch: s.fetch }));
+  await turns(() => a !== undefined && b !== undefined && s.answered === 1);
+  let sent = 0;
+  for (const part of [SKILL.slice(0, 40), SKILL.slice(40, 120), SKILL.slice(120)]) {
+    t.mock.timers.tick(QUIET_MS - 1);
+    /** @type {import('node:http').ServerResponse} */ (a).write(part);
+    sent += Buffer.byteLength(part);
+    await turns(() => s.seen >= sent);
+    await turns(() => second.state !== 'pending', 50);
+    assert.equal(second.state, 'pending', `the held answer, after ${sent} bytes of the other`);
+  }
+  /** @type {import('node:http').ServerResponse} */ (a).end();
+  await turns(() => first.state !== 'pending');
+  assert.equal(first.state, 'done', messageOf(first.error));
+  /** @type {import('node:http').ServerResponse} */ (b).writeHead(200).end(SKILL);
+  await turns(() => second.state !== 'pending');
+  assert.equal(second.state, 'done', messageOf(second.error));
+});
+
+test("through Get it's traced fetch, a site that never answers ends with the same words, and the trace says why in annai's English, though the trace's fetch and fetchPackage each wrap the error first", async (t) => {
+  const store = createMemoryStore();
+  let asked = false;
+  const get = tracedFetch(store, SYS, { tool: 'plugins' }, (_url, init) => {
+    asked = true;
+    return dead(init, 'never');
+  });
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const w = watch(fetchPackage('https://gone.example/kits/tide-pools/SKILL.md', { fetch: get }));
+  await turns(() => asked);
+  t.mock.timers.tick(QUIET_MS);
+  await turns(() => w.state !== 'pending');
+  assert.equal(messageOf(w.error), 'gone.example stopped answering. Check the connection and try again.');
+  const events = await store.tx(['events'], 'readonly', (/** @type {any} */ tx) => tx.listEvents(SYS, { types: ['net.request'] }));
+  assert.deepEqual(events.map((/** @type {any} */ e) => [e.data.url, e.data.status, e.data.error]), [['https://gone.example/kits/tide-pools/SKILL.md', 0, 'gone.example stopped answering: nothing came for 20 seconds.']]);
+});
+
+// The limit is the request's own: it holds whatever the request and its read wait on, not only a fetch and a body that end when their
+// signal aborts (the fix round after the final review of addr-limit-next).
+
+test("a request whose fetch waits on something that never settles before it asks (Get it's traced fetch reading the keys it blanks) ends after QUIET_MS too, with the same words", async (t) => {
+  const store = { ...createMemoryStore(), tx: () => new Promise(() => {}) };
+  const get = tracedFetch(store, SYS, { tool: 'plugins' }, () => { throw new Error('asked'); });
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const w = watch(fetchPackage('https://gone.example/kits/tide-pools/SKILL.md', { fetch: get }));
+  await turns(() => false, 50);
+  t.mock.timers.tick(QUIET_MS - 1);
+  await turns(() => w.state !== 'pending', 50);
+  assert.equal(w.state, 'pending', 'still waiting just short of the limit');
+  t.mock.timers.tick(1);
+  await turns(() => w.state !== 'pending');
+  assert.equal(w.state, 'failed', 'ended at the limit');
+  assert.equal(messageOf(w.error), 'gone.example stopped answering. Check the connection and try again.');
+  assert.equal(w.error?.said?.code, 'quiet');
+});
+
+test("a request whose body doesn't end when the request is stopped (an engine that leaves the stream open) ends after QUIET_MS too, with the same words", async (t) => {
+  const get = async () => new Response(new ReadableStream({ start: (c) => { c.enqueue(new Uint8Array(1024)); } }));
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const w = watch(fetchPackage('https://gone.example/kits/tide-pools/SKILL.md', { fetch: get }));
+  await turns(() => false, 50);
+  t.mock.timers.tick(QUIET_MS - 1);
+  await turns(() => w.state !== 'pending', 50);
+  assert.equal(w.state, 'pending', 'still waiting just short of the limit');
+  t.mock.timers.tick(1);
+  await turns(() => w.state !== 'pending');
+  assert.equal(w.state, 'failed', 'ended at the limit');
+  assert.equal(messageOf(w.error), 'gone.example stopped answering. Check the connection and try again.');
+});
+
+test("a request that ends, by its silence or on its own, leaves nothing behind: no listener on its signal, and no timer that a later part from its site could start (passes with no race too: it guards the race's own clean-up)", async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  /** @type {Record<string, AbortSignal>} */
+  const signals = {};
+  /** @type {ReadableStreamDefaultController<Uint8Array> | undefined} */
+  let later;
+  const get = async (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+    signals[url] = /** @type {AbortSignal} */ (init.signal);
+    if (url.endsWith('/own')) return new Response('done');
+    // Ends with its request, as a browser's body does.
+    return new Response(new ReadableStream({ start: (c) => { later = c; init.signal?.addEventListener('abort', () => c.error(init.signal?.reason), { once: true }); } }));
+  };
+  const own = await quietly(get, 'https://site.example/own', (res) => res.text());
+  assert.equal(own, 'done');
+  const silent = watch(quietly(get, 'https://site.example/silent', (res) => res.text()));
+  await turns(() => later !== undefined);
+  // A part of the silent one's body comes: it starts the clock of every request of the site still waiting, and the finished one is none.
+  /** @type {ReadableStreamDefaultController<Uint8Array>} */ (later).enqueue(new Uint8Array(4));
+  await turns(() => false, 50);
+  t.mock.timers.tick(QUIET_MS - 1);
+  await turns(() => false, 50);
+  assert.equal(silent.state, 'pending');
+  assert.equal(signals['https://site.example/own'].aborted, false, 'a finished request is never stopped later');
+  t.mock.timers.tick(1);
+  await turns(() => silent.state !== 'pending');
+  assert.equal(silent.state, 'failed');
+  assert.equal(signals['https://site.example/own'].aborted, false, 'a finished request is never stopped later');
+  for (const [url, signal] of Object.entries(signals)) assert.equal(getEventListeners(signal, 'abort').length, 0, `${url}: no listener left on its signal`);
 });

@@ -83,7 +83,7 @@ memories afterwards.
 - **Code plugins** run with full access to your trips and keys, and the install screen says so. They can add tools, endpoint types, backup places, status chips, sections of today's itinerary, dock actions, trip tabs, settings pages, card types, screens and themes ([docs/plugins.md](docs/plugins.md)).
 - **Model providers** are plugins too, usually data only: a description of the provider's address, abilities and models, and the protocol plugins it requires, which come with it. Data-only plugins can't run anything, so they get no full-access warning; their install screen says where keys go.
 - Adding a provider or a plugin from annai's catalog stops with "couldn't be downloaded" after 20 seconds with nothing from annai's site, also on a connection that only stalls; tapping again goes on ([docs/limitations.md](docs/limitations.md)).
-- A package installed from an address is checked there for updates, which change nothing until you tap Update; one that would bring new code or skills says so first. Removing a plugin, skill or server removes everything it stored.
+- A package installed from an address is checked there for updates, which change nothing until you tap Update; one that would bring new code or skills says so first. Getting a package from an address, its Update and its check stop with "… stopped answering" once its site has sent nothing for 20 seconds, and the updates and checks after it go on. Removing a plugin, skill or server removes everything it stored.
 
 ## Languages
 
