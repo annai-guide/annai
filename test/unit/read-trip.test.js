@@ -2520,7 +2520,7 @@ test("with Koe set, a reminder due while Kokoro's card waits is Koe's to say, as
 
 // Koe on a chat model passes the user's line on and waits for Kokoro, whose turn annai's card holds: a reminder or a place alert due then ends Koe's
 // wait, as a note would, so Koe says it on time rather than when its wait runs out (30 to 60 s in real runs, up to 600 s). Item 1, back with the rule
-// that her voice beginning anything else ended the card's listening (the user's pick, 2026-11-12, "Anything else ends it"; the card has no listening of its own now: it takes lines only in a tap's 8 s).
+// that her voice beginning anything else ended the card's listening (the user's pick, 2026-11-12, "Anything else ends it"; the card has no listening of its own now: it takes the lines Koe's microphone hears, and those of a tap's microphone in its 8 s).
 const LEAVE_NOW = 'Time to leave for the station.';
 /** Koe as the real runs had it: "One moment.", the line passed on, and a wait (none: its turn ends); what fired is said, and the wait goes on. @param {number} seconds */
 const waitingKoe = (seconds) => {
@@ -3731,6 +3731,33 @@ test("classic voice: someone speaking again while a line said into the microphon
   k.platform.mic.feed(quiet(2), 16_000); // they stop
   await k.agent.idle();
   assert.match((await readResults(k))[0], /^Not read: .* The user said:$/);
+});
+
+test("classic voice: a tap that stops annai's voice while someone speaks into the microphone a tap opened, as a kept line's words are still being written down: that line's verdict holds the tap's 8 s again, so the microphone is still open 8.5 s after that tap while they speak, and both lines end the card", async (t) => {
+  useClock(t);
+  const k = await classicKit(['Hmm, the ramen place', "What's on tomorrow?"]);
+  const words = slowWords(k, 1);
+  k.agent.send('Where did we eat in Testville?');
+  await saidCard(k);
+  k.agent.tap();
+  await until(() => micLog(k).at(-1) === 'mic open');
+  await hear(k, 'first-one');
+  await until(() => words.writes === 1); // the first line's words are being written down
+  await pause(1.5 * k.agent.secondMs);
+  await startsSpeaking(k); // they go on speaking
+  k.agent.wake(DUE); // a reminder comes due, and annai says it over them
+  await until(() => k.voice.speaker.speaking);
+  const t0 = Date.now();
+  assert.equal(k.agent.tap(), 'cut', "the tap stops annai's voice: the tap's 8 s start again, to 8 s");
+  await atS(k, t0, 6);
+  words.release(); // the first line is kept: the card ends unanswered 3 s later, at 9 s
+  await atS(k, t0, 8.5);
+  assert.notEqual(k.agent.kokoro.pendingId, null, 'the card still waits');
+  assert.equal(micLog(k).at(-1), 'mic open', "the tap's 8 s did not end while they speak");
+  k.platform.mic.feed(quiet(2), 16_000); // they stop
+  await k.agent.idle();
+  assert.match((await readResults(k))[0], /^Not read: .* The user said:$/);
+  assert.deepEqual((await k.events(['heard'])).map((/** @type {any} */ e) => [e.data.text, e.data.answer]), [['Hmm, the ramen place', k.asks[0].data.id], ["What's on tomorrow?", k.asks[0].data.id]], "both lines, with the card's answer");
 });
 
 test("a Stop that comes as annai's card is being written ends the call at once, stopped: no card is left waiting (a wait nobody can end would take the user's next line)", async (t) => {

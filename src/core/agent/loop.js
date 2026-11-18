@@ -3652,7 +3652,7 @@ export class Agent {
           Object.assign(line, { h, ...(verdict ? { gate: verdict } : {}) });
           this.#askKept(p, line, true);
         }
-        if (this.#speaking) return; // more began meanwhile: its start held the tap's 8 s (#speechStarted), and a stop or a tap arms it again
+        if (this.#speaking) return void p.hold?.(); // more began meanwhile: its start held the tap's 8 s (#speechStarted), but a tap that stopped annai's voice while they spoke started them again (#limitTap): hold them till they stop, or the microphone closes mid-line
         if (this.state.name === 'hearing') this.#setState('listening');
         p.arm?.();
         return;
