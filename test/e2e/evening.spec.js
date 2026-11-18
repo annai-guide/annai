@@ -66,14 +66,15 @@ test("the user's evening: with no trip open, the type box with the flight PDF an
     await openItinerary(page);
     const day = page.getByRole('tabpanel');
     await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
-    await expect(day.locator('.plan-row', { hasText: 'ANNAI AIR AN 123' })).toContainText(/11:20–14:05 AK/);
-    await expect(day.locator('.plan-row', { hasText: 'ANNAI AIR AN 123' }).getByRole('link', { name: 'Check 1 detail' })).toBeVisible();
+    // Its departure and its Arrive, each at its airport's time (carrier-rows-next), each with the booking's check.
+    await expect(day.locator('.plan-row', { hasText: 'ANNAI AIR AN 123' })).toHaveText([/^11:20ANNAI AIR AN 123Check 1 detail$/, /^14:05 AKTArrive · ANNAI AIR AN 123Check 1 detail$/]);
+    await expect(day.locator('.plan-row', { hasText: 'ANNAI AIR AN 123' }).getByRole('link', { name: 'Check 1 detail' })).toHaveCount(2);
     await expect(day.getByRole('link', { name: 'Check in · Hotel Aurora Test' })).toBeVisible();
     await page.getByRole('tab', { name: 'Sat, Nov 21' }).click();
     await expect(day.locator('.plan-row.night')).toHaveText('Staying at Hotel Aurora Test · night 2 of 7');
     await page.getByRole('tab', { name: 'Fri, Nov 27' }).click();
     await expect(day.getByRole('link', { name: /Check out · Hotel Aurora Test/ })).toBeVisible();
-    await expect(day.locator('.plan-row', { hasText: 'ANNAI AIR AN 124' })).toContainText(/13:00–17:30 PT/);
+    await expect(day.locator('.plan-row', { hasText: 'ANNAI AIR AN 124' })).toHaveText([/^13:00ANNAI AIR AN 124$/, /^17:30 PTArrive · ANNAI AIR AN 124$/]);
 
     // 4. The flight's details: Seattle and Anchorage, each in its own zone, and the PDF.
     await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
@@ -155,7 +156,7 @@ test("the user's evening from home: + with the files, no words; she dates the ne
     await expect(page.locator('.ahead .trip-card .name')).toContainText([TITLE]);
     await page.goto(`/#/trip/${id}/plan`);
     await page.getByRole('tab', { name: 'Fri, Nov 20' }).click();
-    await expect(page.getByRole('tabpanel').locator('.plan-row', { hasText: 'ANNAI AIR AN 123' })).toBeVisible();
+    await expect(page.getByRole('tabpanel').locator('.plan-row', { hasText: 'ANNAI AIR AN 123' })).toHaveText([/^11:20ANNAI AIR AN 123/, /^14:05 AKTArrive · ANNAI AIR AN 123/]);
   } finally {
     await llm.stop();
   }

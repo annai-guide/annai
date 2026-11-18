@@ -837,7 +837,7 @@ tqmba2	ok	an address your searches are sent to: {0}	會接收搜尋內容的網�
 d57q3n	ok	Flight	航班	src/core/plan.js:69	
 jj8u9s	ok	Stay	住宿	src/core/plan.js:69	Note: A kind of booking: a hotel or other lodging.
 sksosh	ok	Car	租車	src/core/plan.js:69	Note: A kind of booking: a car, nearly always a rental.
-1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	無法辨識時區「{0}」，改以 {1} 顯示。	src/core/plan.js:152	{0} = String(own ?? ''); {1} = fallbackTz
+1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	無法辨識時區「{0}」，改以 {1} 顯示。	src/core/plan.js:154	{0} = String(own ?? ''); {1} = fallbackTz
 o6vv9a	ok	"{0}" is a name annai uses for one of its own parts, so a skill can't have it.	「{0}」已被 annai 自身的某個部分使用，不能用作技能名稱。	src/core/plugins.js:179	{0} = id; Note: {0} is the skill's name.
 1fdobr5	ok	It has the same id as a plugin built into annai.	與 annai 內建外掛程式的 ID 相同。	src/core/plugins.js:180	
 wq5ezj	ok	Its name, "{0}", is annai's own name, or the name of one of its parts. Ask its author to rename it.	名稱「{0}」與 annai 或其某個部分的名稱相同。請聯絡作者改名。	src/core/plugins.js:184	{0} = pkg.name; Note: Ask here is the plain verb (to ask the author), not Safari's permission choice.
