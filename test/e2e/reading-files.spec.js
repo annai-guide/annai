@@ -40,7 +40,7 @@ test("installed from the catalog, PDF pages shows a PDF's pages to a model that 
     await page.getByLabel('Add photos or files').setInputFiles(await booking());
     await expect.poll(() => llm.bodies('/b/v1/messages').length, { timeout: 60_000 }).toBeGreaterThanOrEqual(2);
     await openTalk(page);
-    await expect(page.getByText('Your flight leaves at 8:05.')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('list').getByText('Your flight leaves at 8:05.')).toBeVisible({ timeout: 30_000 });
     const second = JSON.stringify(llm.bodies('/b/v1/messages')[1].messages.at(-1));
     expect(second.match(/"type":"image"/g) ?? []).toHaveLength(3); // the pages, wherever Anthropic Messages puts a tool's pictures
     expect(second).not.toContain('"type":"document"');
@@ -60,7 +60,7 @@ test('with nothing here that reads it, Shiori is told which setting fixes it, an
     await page.getByLabel('Add photos or files').setInputFiles(await booking());
     await expect.poll(() => llm.bodies('/b/v1/messages').length, { timeout: 60_000 }).toBeGreaterThanOrEqual(2);
     await openTalk(page);
-    await expect(page.getByText('Your flight leaves at 8:05.')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('list').getByText('Your flight leaves at 8:05.')).toBeVisible({ timeout: 30_000 });
     const second = JSON.stringify(llm.bodies('/b/v1/messages')[1].messages.at(-1));
     expect(second).toContain('Takes PDFs on its page in Settings → Models');
     expect(second).toContain('PDF pages plugin');
