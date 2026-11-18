@@ -82,8 +82,8 @@ import { FILES_ONLY, PHOTO_ONLY, handoverOf } from '../handover.js';
  *   waiting for the user; listening: an answer may be spoken; hold and arm stop and start the silence limit; by: when a tap's listening ends (#limitTap), set once per tap (0 until one, on annai's
  *   card and on a wait or question only a tap's microphone hears, #waitFor); tool: the wait tool's; byHand: set once this half's own listening for its answer is over, or never
  *   opens (#remindWaiting); ask: annai's own card's (confirm): answer: its call's id, its heard lines' mark; armed: the newest listed no
- * @typedef {{ id: string, her?: boolean, kept?: boolean, text?: string, h?: Heard, gate?: string, taken?: boolean }} AskLine  heard while annai's card waits: her: begun over
- *   her voice; kept: the verdict, once it comes; h: this half's own segment; taken: the card took it (cardTakes) and wrote it with its answer
+ * @typedef {{ id: string, her?: boolean, kept?: boolean, text?: string, h?: Heard, gate?: string }} AskLine  heard while annai's card waits: her: begun over
+ *   her voice; kept: the verdict, once it comes; h: this half's own segment
  * @typedef {{ name: StateName, label: string, detail?: string, wait?: 'ask' | 'wait', over?: StateName }} State  label: the dock's words for it (LABELS); detail: what she is away doing (TIDYING, or a task's words);
  *   wait: what she waits for while waiting, her question's answer (ask) or the user's turn (wait); over: Halves' dock state only, standing over Koe's own state of that name (Halves.state)
  * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[], key?: string, toast?: boolean }} Notice
@@ -1056,7 +1056,7 @@ export class Agent {
         // Kept segments its answer doesn't carry go on as heard lines: nothing heard is lost. A no said to the card isn't one of them: it is written
         // with the card's answer, before it (own), so a "No, wait." that a tap or a Stop overrode never reaches her after it as a newer line.
         const told = [v.heard, ...(v.also ?? []).map((x) => x.heard)];
-        const rest = [...ask.heard.values()].filter((l) => l.h && l.kept !== false && !told.includes(l.h));
+        const rest = [...ask.heard.values()].filter((l) => l.h && !told.includes(l.h));
         for (const l of rest) if (l.kept && l.h) this.#queue.push({ kind: 'heard', text: '', heard: l.h, ...(l.gate ? { gate: l.gate } : {}), scope: ask.scope, at: Date.now() });
         const own = rest.flatMap((l) => (l.kept || !l.h ? [] : [l.h]));
         resolve(own.length ? { ...v, own } : v);
@@ -1075,7 +1075,6 @@ export class Agent {
         if (this.#ear) this.#closeEar(); // whoever opened it: a tap's
         if (this.#pending !== p) return;
         this.#setState('waiting', { wait: 'ask' });
-        byHand();
       };
       // Over a live session too, as remind's aloud: a user who isn't looking must hear that a card waits. Half-duplex, as #askAloud (spec §10.4).
       const aloud = Boolean(this.voice?.on);
@@ -1105,7 +1104,7 @@ export class Agent {
     /* en */
     if (got.heard) return { said: 'The user said:', heard: said.map((x) => x.heard.id) };
     /* en */
-    if (got.spoke) return { said: 'What the user said follows.', ...(got.taken?.length ? { heard: got.taken } : {}) }; // the other half's line, in the log already: Kokoro hears all
+    if (got.spoke) return { said: 'What the user said follows.' }; // the other half's line, in the log already: Kokoro hears all
     /* en */
     if (got.earlier) return { said: 'What the user wrote follows.' };
     if (got.text === undefined) return { said: '' };
@@ -1146,7 +1145,6 @@ export class Agent {
     const worded = await this.#askHears(p, line, h);
     if (this.#pending !== p || askSaid(p.ask, line) === null) return false;
     await this.#logHeard(worded, { wake: p.ask.wake, answer: p.ask.answer });
-    line.taken = true;
     if (worded !== h) this.voice?.memory.drop(h.id, worded.text);
     return true;
   }
@@ -1212,14 +1210,12 @@ export class Agent {
       this.#pending = null;
       // The other half's line, in the log already or to come: written by that half, or by the card as it took it (cardTakes).
       if (!last.h) {
-        // The lines the card took come after her result, as one Shiori's also do.
-        const taken = lines.filter((l) => l.taken).map((l) => l.id);
-        return void p.resolve(chosen ? { voiced: chosen } : { spoke: last.id, ...(taken.length ? { taken } : {}) });
+        return void p.resolve(chosen ? { voiced: chosen } : { spoke: last.id });
       }
       if (this.#ear) this.#ear.owner = 'turn';
       this.#setState('thinking');
       // Unanswered, it carries all they said, in order; an answer, its own line.
-      const also = chosen ? [] : lines.flatMap((l) => (l.h && l.kept !== false && l !== last ? [{ heard: l.h, gate: l.gate }] : []));
+      const also = chosen ? [] : lines.flatMap((l) => (l.h && l !== last ? [{ heard: l.h, gate: l.gate }] : []));
       p.resolve({ heard: last.h, ...(last.gate ? { gate: last.gate } : {}), ...(chosen ? { voiced: chosen } : {}), ...(also.length ? { also } : {}) });
     }, SETTLE_S * this.secondMs);
   }
@@ -3645,9 +3641,7 @@ export class Agent {
       const verdict = tapped || said !== null ? null : await this.#gate(h);
       if (this.#pending === p && verdict === 'chatter') {
         // Not for her: written at the turn's end, and she listens on, to the same deadline (the second-drive design): one such verdict must not close the microphone on the user.
-        if (line) this.#askKept(p, line, false);
         this.#chatter.push(h);
-        if (line && this.#speaking) return; // more began meanwhile: the card's hold stands
         if (this.state.name === 'hearing') this.#setState('listening');
         p.arm?.();
         this.#noted(); // what came due while they spoke (#noted held it) is taken now, not when the wait runs out
@@ -3658,7 +3652,7 @@ export class Agent {
           Object.assign(line, { h, ...(verdict ? { gate: verdict } : {}) });
           this.#askKept(p, line, true);
         }
-        if (this.#speaking) return void p.hold?.();
+        if (this.#speaking) return; // more began meanwhile: its start held the tap's 8 s (#speechStarted), and a stop or a tap arms it again
         if (this.state.name === 'hearing') this.#setState('listening');
         p.arm?.();
         return;

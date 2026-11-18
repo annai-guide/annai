@@ -1227,9 +1227,21 @@ const slowWords = (k, n) => {
   };
   return { release, get writes() { return writes; } };
 };
+/**
+ * A second line into the microphone in two parts: its speech begins, 0.5 s on its silence comes and the line ends. Returns the time of its end.
+ * (hear() feeds both at once, so a line's start and end would be one moment, and a settle counted from either would pass.) @param {any} k
+ */
+const secondLine = async (k) => {
+  k.platform.mic.feed(cat(quiet(0.3), await clip('gas-station')), 16_000);
+  await pause(0.5 * k.agent.secondMs);
+  k.platform.mic.feed(quiet(1), 16_000);
+  return Date.now();
+};
 // The end of a line said into a microphone reaches the card (Agent.#spoke, which Halves' hook for Koe's microphone follows), so a kept line's 3 s start again
-// from it: a "No." written down after the first line's end, but inside 3 s of the second's, declines. The live session's hook is in the two tests before this.
-test("classic voice: a second line said into the microphone a tap opened ends 1 s into a kept line's 3 s, with its words written down at 3.5 s: the card waits 3 s from the line's end, so its \"No.\" declines", async (t) => {
+// from it, not from the line's start: a "No." written down after the first line's end and after 3 s from the second's start, but inside 3 s of the second's
+// end, declines. The second line is fed in two parts (its speech, then 0.5 s on, its silence), so its start and end are two moments on the test clock. The
+// live session's hook is pinned in the turn test before this and in the test of the real session's edges below.
+test("classic voice: a second line said into the microphone a tap opened begins 1 s into a kept line's 3 s and ends at 1.5 s, with its words written down at 4.25 s: the card waits 3 s from the line's end (4.5 s), not from its start (4 s), so its \"No.\" declines", async (t) => {
   useClock(t);
   const k = await classicKit(['Hmm, the ramen place', 'No.']);
   const words = slowWords(k, 2);
@@ -1240,9 +1252,9 @@ test("classic voice: a second line said into the microphone a tap opened ends 1 
   await hear(k, 'first-one');
   await until(() => k.transcribed.length === 1);
   await pause(1 * k.agent.secondMs); // the first line is kept: unanswered 3 s after its words
-  await hear(k, 'gas-station');
+  const ended = await secondLine(k);
   await until(() => words.writes === 2);
-  await pause(2.5 * k.agent.secondMs); // 3.5 s after the first line's words: past its end
+  await pause(Math.max(0, ended + 2.75 * k.agent.secondMs - Date.now())); // 4.25 s after the first line's words: past 4 s, a settle counted from the second line's start
   assert.notEqual(k.agent.kokoro.pendingId, null, "the card still waits: the second line's end started its 3 s again");
   words.release();
   await k.agent.idle();
@@ -1250,7 +1262,7 @@ test("classic voice: a second line said into the microphone a tap opened ends 1 
   assert.equal((await grants(k, k.trip)).length, 0);
 });
 
-test("Koe on a chat model: a second line said into Koe's microphone ends 1 s into a kept line's 3 s, with its words written down at 3.5 s: the card waits 3 s from the line's end, so its \"No.\" declines", async (t) => {
+test("Koe on a chat model: a second line said into Koe's microphone begins 1 s into a kept line's 3 s and ends at 1.5 s, with its words written down at 4.25 s: the card waits 3 s from the line's end (4.5 s), not from its start (4 s), so its \"No.\" declines", async (t) => {
   useClock(t);
   const k = await koeMic(KOKORO_ASKED, KOE_CHAT, { hears: ['Hmm, the ramen place', 'No.'], letters: ['A', 'A'] });
   const words = slowWords(k, 2);
@@ -1259,9 +1271,9 @@ test("Koe on a chat model: a second line said into Koe's microphone ends 1 s int
   await hear(k, 'first-one');
   await until(() => k.transcribed.length === 1 && gated(k) === 1);
   await pause(1 * k.agent.secondMs); // Koe kept the first line: unanswered 3 s after its verdict
-  await hear(k, 'gas-station');
+  const ended = await secondLine(k);
   await until(() => words.writes === 2);
-  await pause(2.5 * k.agent.secondMs); // 3.5 s after the first line: past its end
+  await pause(Math.max(0, ended + 2.75 * k.agent.secondMs - Date.now())); // 4.25 s after the first line's verdict: past 4 s, a settle counted from the second line's start
   assert.notEqual(k.agent.kokoro.pendingId, null, "the card still waits: the second line's end started its 3 s again");
   words.release();
   await pause(5 * k.agent.secondMs);
@@ -2508,7 +2520,7 @@ test("with Koe set, a reminder due while Kokoro's card waits is Koe's to say, as
 
 // Koe on a chat model passes the user's line on and waits for Kokoro, whose turn annai's card holds: a reminder or a place alert due then ends Koe's
 // wait, as a note would, so Koe says it on time rather than when its wait runs out (30 to 60 s in real runs, up to 600 s). Item 1, back with the rule
-// that her voice beginning anything else ended the card's listening (the user's pick, 2026-11-12, "Anything else ends it"; the card listens for nothing now).
+// that her voice beginning anything else ended the card's listening (the user's pick, 2026-11-12, "Anything else ends it"; the card has no listening of its own now: it takes lines only in a tap's 8 s).
 const LEAVE_NOW = 'Time to leave for the station.';
 /** Koe as the real runs had it: "One moment.", the line passed on, and a wait (none: its turn ends); what fired is said, and the wait goes on. @param {number} seconds */
 const waitingKoe = (seconds) => {
@@ -3642,10 +3654,11 @@ for (const [what, script, first, said] of /** @type {[string, any[], string, (r:
 }
 
 // ---- Card code that no test pinned (the final review of tap-only-next: ten one-line changes to code main and the branch share, which every card test
-// passed). Each test below fails under its one change; and one more, in the open_trip test above (the heard ids in its result). Four of the ten have no test,
-// because no input reaches them since the spoken yes went: the lines the card took in her result (`taken`, which only a chat Koe's no sets, and a no stays armed
-// to the card's end), the mark on a line the gate sets aside (the card's lines come from a tap's microphone, which the gate never judges), and the tap's 8 s
-// end taking reminders again (annai shows them at once while the card waits, whatever listens). ----
+// passed). Each test below fails under its one change; and one more, in the open_trip test above (the heard ids in its result). Four of the ten could fail no
+// test, and were removed with the spoken yes's other remains: the lines the card took in her result (`taken`, which only a chat Koe's no set, and a no stays
+// armed to the card's end) and the tap's 8 s end taking reminders again (annai shows them at once while the card waits, whatever listens) were reached by no
+// input; the mark on a line the gate sets aside was reached only by a line a second tap cuts while it is being said (the gate then judges it: the Deferred
+// entry "A line cut by a second tap can be judged by the gate"), and nothing read the mark of a line with no segment of the card's own. ----
 
 test("classic voice: a tap on Allow inside a kept line's 3 s answers the card, and the line, kept by then, is not lost: it is the user's own line, which she reads after the card's result", async (t) => {
   useClock(t);
@@ -3664,6 +3677,8 @@ test("classic voice: a tap on Allow inside a kept line's 3 s answers the card, a
   assert.match((await readResults(k))[0], /^From "Testville"/);
   assert.deepEqual((await k.events(['heard'])).map((/** @type {any} */ e) => [e.data.text, e.data.answer]), [['Hmm, the ramen place', undefined]], "the line is theirs, written as their own line, not the card's answer");
   assert.equal(sentTimes(k, 'Hmm, the ramen place'), 1, 'and her next request has it');
+  const sent = JSON.stringify(k.requests.at(-1).messages);
+  assert.ok(sent.indexOf('From \\"Testville') !== -1 && sent.indexOf('From \\"Testville') < sent.indexOf('Hmm, the ramen place'), "after the card's result, not before it");
 });
 
 test("classic voice: a line the microphone a tap opened heard but whose words could not be written down (the transcription model is down) is still a line: it ends the card unanswered, and she is told they said something", async (t) => {
@@ -3695,7 +3710,7 @@ test("classic voice with a quick gate: a line said into the microphone a tap on 
   assert.deepEqual((await k.events(['heard'])).map((/** @type {any} */ e) => [e.data.text, Boolean(e.data.dismissed)]), [['Hmm, the ramen place', false]], 'and it is not set aside');
 });
 
-test("classic voice: someone speaking again as a line said into the microphone a tap opened is judged holds the tap's 8 s: the microphone is still open past them while they speak, and the kept line ends the card", async (t) => {
+test("classic voice: someone speaking again while a line said into the microphone a tap opened is being judged: the line's verdict does not start the tap's 8 s again, so the microphone is still open past 8 s while they speak, and the kept line ends the card", async (t) => {
   useClock(t);
   const k = await classicKit(['Hmm, the ramen place']);
   const words = slowWords(k, 1);
@@ -3722,8 +3737,10 @@ test("a Stop that comes as annai's card is being written ends the call at once, 
   useClock(t);
   const k = await gateKit(CARD);
   k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'out.ask' && e.data.own) k.agent.interrupt(); }); // the Stop, as the card's entry is written
+  const t0 = Date.now();
   k.agent.send('Where did we eat in Testville?');
   await Promise.race([k.agent.idle(), pause(30 * k.agent.secondMs)]);
+  assert.equal(Date.now() - t0, 0, 'at once: on the test clock no time passed, so no limit of the card (its 3 s, its 8 s) ended it');
   assert.equal(k.agent.kokoro.pendingId, null, 'no card waits');
   assert.deepEqual(await readResults(k), ['Stopped by the user.']);
   assert.deepEqual(await pgrants(k), []);
