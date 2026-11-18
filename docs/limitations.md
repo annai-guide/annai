@@ -912,3 +912,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
   - A key annai has no word for is drawn as written, in English on a Japanese or Chinese screen ("checked：2 · carry_on：1", "meal：vegetarian"), as the details' left-hand labels have always been.
 - **Why:** small-next's booking details took three rounds and a design check; these are the shapes its last re-review and second opinion found, none a wrong value, each a choice the next change can make with a test (the first is one condition in `read`, src/ui/format.js; the second skips by equal text; the third needs words for keys or a rule to leave unknown keys out).
 - **Revisit when:** the next change to a booking's details, or a sighting of any of the three in a real booking.
+
+### A Japanese name written in old kanji forms reads as Traditional Chinese
+- **Kind:** known limitation.
+- **What the traveller sees:** a line of kanji alone in an old spelling (國, 會, 來, 點 …), such as 國學院大學, 靖國神社 or 東京會館, is Chinese by its writing (detector-next): its screen tag draws it in Traditional Chinese glyph forms; with English and Japanese listed, the phone's voice reads it in Japanese (Han placed as none of the traveller's languages is read as Han that says neither), with Chinese listed too or on a Chinese phone in the Traditional Chinese voice. A line with any kana, or a modern spelling (国, 会), is Japanese as before; no line of annai's own Japanese has one (0 of 2,622).
+- **Why:** those forms are what tells Traditional Chinese from Japanese in a line of kanji alone; taking them out would make Traditional Chinese lines with no other sign read as Japanese, which is more common for a Chinese reader than an old-spelling name is for a Japanese one. A list of old-spelling names would grow forever.
+- **Revisit when:** a traveller sees such a name read in the wrong voice.
+- **Approved:** chief's decision, 2026-11-17 (C101; not the user's words), on the proposal "Accept it as a known limitation (Recommended)".
