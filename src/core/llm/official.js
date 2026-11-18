@@ -198,17 +198,17 @@ export async function installOfficial(host, entry, opts = {}) {
  * Official plugins that annai's catalog has another version of (spec §5.3). They are offered;
  * nothing changes until the user accepts. Plugins installed from a file aren't checked.
  * @param {PluginHost} host @param {FetchOptions} [opts]
- * @returns {Promise<{ id: string, name: string, installed: string, available: string, entry: CatalogPlugin }[]>}
+ * @returns {Promise<{ id: string, name: string, installed: string, available: string, entry: CatalogPlugin, from?: string }[]>} from: the fingerprint of the install it was found against
  */
 export async function officialUpdates(host, opts = {}) {
   const state = await host.installed();
-  /** @type {{ id: string, name: string, installed: string, available: string, entry: CatalogPlugin }[]} */
+  /** @type {{ id: string, name: string, installed: string, available: string, entry: CatalogPlugin, from?: string }[]} */
   const out = [];
   for (const p of await officialPlugins({ ...opts, words: false })) {
     const s = state[p.id];
     if (s?.source !== 'official') continue;
     // Official means matching the catalog: a changed copy is offered the catalog's files, whatever its version.
-    if (s.version !== p.version || !(await host.verifyOfficial(p.id, p))) out.push({ id: p.id, name: p.name, installed: s.version, available: p.version, entry: p });
+    if (s.version !== p.version || !(await host.verifyOfficial(p.id, p))) out.push({ id: p.id, name: p.name, installed: s.version, available: p.version, entry: p, from: s.fingerprint });
   }
   return out;
 }

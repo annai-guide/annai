@@ -42,8 +42,6 @@ export class Updates {
   #restarting = null;
   /** The restart asked for: Don't restart, or its swap, ends it. @type {object | null} */
   #asked = null;
-  /** Counts checks: one given up on writes nothing if it answers late. */
-  #gen = 0;
   /** What a card offered already, by id and version. */
   #offered = new Set();
   /** What the last check found, and whether this one changed it. */
@@ -52,10 +50,9 @@ export class Updates {
   /** @type {(() => void) | null} */
   #card = null;
 
-  /** limitMs: a check that hangs on a stalled connection ends then. @param {{ host: any, env?: import('./plugin-updates.js').Env, now?: () => number, online?: () => boolean, reload?: () => void, limitMs?: number }} o */
-  constructor({ host, env = {}, now = () => Date.now(), online = () => navigator.onLine !== false, reload = () => location.reload(), limitMs = 45_000 }) {
+  /** @param {{ host: any, env?: import('./plugin-updates.js').Env, now?: () => number, online?: () => boolean, reload?: () => void }} o */
+  constructor({ host, env = {}, now = () => Date.now(), online = () => navigator.onLine !== false, reload = () => location.reload() }) {
     this.host = host;
-    this.limitMs = limitMs;
     this.env = env;
     this.now = now;
     this.online = online;
@@ -112,21 +109,8 @@ export class Updates {
       return Promise.resolve(this.last);
     }
     if (what.app || what.official) this.#at = at;
-    const gen = ++this.#gen;
-    /** Ends when the check does, however it ends: what a part waits on for its own limit (the app's) doesn't outlive it. */
-    const over = new AbortController();
-    /** @type {any} */
-    let timer;
-    /** @type {Promise<Result>} */
-    const slow = new Promise((r) => {
-      timer = setTimeout(() => {
-        this.#gen++;
-        r((this.last = { failed: [t`The check took too long. Check the connection, and try again.`], found: this.last?.found ?? [] }));
-      }, this.limitMs);
-    });
-    const run = Promise.race([this.#run(what, gen, at, over.signal), slow]).finally(() => {
-      clearTimeout(timer);
-      over.abort();
+    if (what.address) this.#addressAt = at;
+    const run = this.#run(what).finally(() => {
       this.#running = null;
       this.changed(this.#moved);
     });
@@ -136,16 +120,13 @@ export class Updates {
   }
 
   /**
-   * annai's own, annai's plugins and the addresses are checked side by side, each under its own limit on its silence, so none holds
-   * another and a check that ends in time has asked all it was to. The day's address check is marked once it has: a check given up on
-   * (limitMs) leaves it undone.
-   * @param {Kinds} what @param {number} gen @param {number} at @param {AbortSignal} over @returns {Promise<Result>}
+   * annai's own, annai's plugins and the addresses are checked side by side, each ending by its own limit (a site's silence, answer.js;
+   * annai's own check's 20 s), so none holds another, and the check ends when the last of them has: on a dead link 20 s after the last
+   * thing any of its sites sent, and on a slow working link once all it asked for has come.
+   * @param {Kinds} what @returns {Promise<Result>}
    */
-  async #run(what, gen, at, over) {
-    const current = () => gen === this.#gen;
-    const [own, plugins] = await Promise.all([what.app ? this.#checkApp(over) : [], checkPlugins(this.host, this.env, what, current)]);
-    if (!current()) return /** @type {Result} */ (this.last);
-    if (what.address) this.#addressAt = at;
+  async #run(what) {
+    const [own, plugins] = await Promise.all([what.app ? this.#checkApp() : [], checkPlugins(this.host, this.env, what)]);
     this.checkedAt = this.now();
     this.last = { failed: [...own, ...plugins.failed], found: plugins.found };
     this.#offer(plugins.found, Boolean(what.manual));
@@ -153,22 +134,19 @@ export class Updates {
   }
 
   /**
-   * annai's own check, which has no limit of its own (a service worker's update waits for good on a connection gone dead): at most
-   * QUIET_MS, the number for a site's silence (answer.js). The browser shows none of what the update receives, so it is a time on the
-   * whole, which suits it: it fetches one file of annai's own site, sw.js, which the site sends brotli'd (about 8.8 KB) and which, when
-   * unchanged, is a 304, so the 20 s mostly covers a cold connection's first answer (answer.js, estimated). over: the check ended, so the
-   * clock goes.
-   * @param {AbortSignal} over @returns {Promise<string[]>} what failed, in words
+   * annai's own check, the one part with a limit on the whole request: a service worker's update has none of its own (it waits for good
+   * on a connection gone dead) and shows nothing of what it receives, so a silence can't be told from a slow answer, and it gets QUIET_MS
+   * (answer.js) on the whole. That suits it: it fetches one file of annai's own site, sw.js, which the site sends brotli'd (about 8.8 KB)
+   * and which, when unchanged, is a 304, so the 20 s mostly covers a cold connection's first answer (answer.js, estimated). The rest of
+   * the check has no limit on the whole (#run).
+   * @returns {Promise<string[]>} what failed, in words
    */
-  async #checkApp(over) {
+  async #checkApp() {
     if (!this.app) return [t`annai's offline service hasn't started yet, so annai itself wasn't checked. Try again in a moment.`];
     /** @type {any} */
     let timer;
     try {
-      await Promise.race([this.app.check(), new Promise((_, quiet) => {
-        timer = setTimeout(quiet, QUIET_MS);
-        over.addEventListener('abort', () => clearTimeout(timer), { once: true });
-      })]);
+      await Promise.race([this.app.check(), new Promise((_, quiet) => { timer = setTimeout(quiet, QUIET_MS); })]);
       return [];
     } catch {
       return [t`annai couldn't check for a new version of itself. Check the connection and try again.`];

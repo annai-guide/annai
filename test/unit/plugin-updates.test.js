@@ -9,8 +9,8 @@ import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
 import { sha256Hex } from '../../src/core/hash.js';
 import { utf8 } from '../../src/core/bytes.js';
-import { ensureType, officialUpdates, updateOfficial } from '../../src/core/llm/official.js';
-import { offerCard, applyUpdates, checkPlugins } from '../../src/ui/plugin-updates.js';
+import { ensureType, officialUpdates, updateOfficial, installOfficial } from '../../src/core/llm/official.js';
+import { offerCard, applyUpdates, checkPlugins, knownUpdates } from '../../src/ui/plugin-updates.js';
 import { addressUpdates, updateFromAddress } from '../../src/core/package-updates.js';
 import { fetchPackage } from '../../src/core/packages.js';
 import { SKILL, hostKit } from './package-kit.js';
@@ -18,30 +18,35 @@ import { QUIET_MS } from '../../src/core/answer.js';
 import { messageOf } from '../../src/ui/dom.js';
 import { setWords } from '../../src/core/l10n.js';
 import { dead, watch, turns } from './dead-kit.js';
+import { Updates } from '../../src/ui/updates.js';
 
 const root = new URL('../../', import.meta.url);
 
 /**
  * A fetch serving this repository's catalog and plugin files; with `bump`, the scripted model's
- * manifest and catalog entry carry the next patch version, as if annai had shipped a new version.
+ * manifest and catalog entry carry the next patch version, as if annai had shipped a new version; with `revise`, its code is another
+ * file at the same version, as if annai had changed it without a new version.
  */
 /** The scripted model's shipped version, and the next patch version. */
 const NOW = JSON.parse(await readFile(new URL('plugins-official/scripted-model/annai-plugin.json', root), 'utf8')).version;
 const NEXT = NOW.replace(/\d+$/, (/** @type {string} */ n) => String(Number(n) + 1));
 
-async function repo({ bump = false } = {}) {
+async function repo({ bump = false, revise = false } = {}) {
   const manifest = JSON.parse(await readFile(new URL('plugins-official/scripted-model/annai-plugin.json', root), 'utf8'));
   const bumped = utf8(JSON.stringify({ ...manifest, version: NEXT }, null, 2) + '\n');
+  const revised = utf8(`${await readFile(new URL('plugins-official/scripted-model/index.js', root), 'utf8')}\n// revised\n`);
   const catalog = JSON.parse(await readFile(new URL('catalog/plugins.json', root), 'utf8'));
+  const entry = catalog.plugins.find((/** @type {any} */ p) => p.id === 'scripted-model');
   if (bump) {
-    const entry = catalog.plugins.find((/** @type {any} */ p) => p.id === 'scripted-model');
     entry.version = NEXT;
     entry.files['annai-plugin.json'] = await sha256Hex(bumped);
   }
+  if (revise) entry.files['index.js'] = await sha256Hex(revised);
   return async (/** @type {any} */ url) => {
     const path = new URL(String(url), 'http://annai.test').pathname;
     if (path === '/catalog/plugins.json') return new Response(JSON.stringify(catalog));
     if (bump && path === '/plugins-official/scripted-model/annai-plugin.json') return new Response(/** @type {any} */ (bumped));
+    if (revise && path === '/plugins-official/scripted-model/index.js') return new Response(/** @type {any} */ (revised));
     try {
       return new Response(/** @type {any} */ (new Uint8Array(await readFile(new URL(`.${path}`, root)))));
     } catch {
@@ -451,7 +456,7 @@ test("a check whose address's site is dead keeps the update an earlier check fou
   assert.deepEqual(shown(third), []);
 });
 
-test("an offer an earlier check found stays only when its site gave no answer (busy, cut, unreachable, even for a file the package links); a definite answer (404, 410, 403, a file that isn't the package any more) drops it (addr-limit-next: after a 404 the offer stayed, and every Update tap failed with it)", async () => {
+test("an offer an earlier check found stays through any check that couldn't get its package, and says why (404, 410, 403, a file that isn't a skill, 429, 503, offline, a cut answer, a linked file's 503, a linked file that can't be reached); a site that is back is checked again (update-check-next: a definite answer dropped it, which a browser can't tell from no answer when the site sends a 404 without the headers that let web apps read it)", async () => {
   const ADDRESS = 'https://gone.example/tide-pools/SKILL.md';
   const LINKED = 'https://gone.example/tide-pools/references/safety.md';
   const NEW = SKILL.replace('version: "1.2"', 'version: "1.3"');
@@ -472,25 +477,97 @@ test("an offer an earlier check found stays only when its site gave no answer (b
     ['410', { [ADDRESS]: 410 }, null, /answered 410\./],
     ['403', { [ADDRESS]: 403 }, null, /answered 403\./],
     ['the address now holds something that is not a skill', {}, '<html>moved</html>', /SKILL\.md/],
-    ['429', { [ADDRESS]: 429 }, 'keeps', /answered 429\./],
-    ['503', { [ADDRESS]: 503 }, 'keeps', /answered 503\./],
-    ['offline', { [ADDRESS]: 'offline' }, 'keeps', /annai couldn't reach gone\.example/],
-    ['an answer that is cut off', { [ADDRESS]: 'cut' }, 'keeps', /gone\.example's answer was cut off\./],
-    ['a linked file answers 503', { [LINKED]: 503 }, 'keeps', /gone\.example answered 503 for references\/safety\.md/],
-    ['a linked file is unreachable', { [LINKED]: 'offline' }, 'keeps', /annai couldn't read references\/safety\.md from gone\.example/],
+    ['429', { [ADDRESS]: 429 }, null, /answered 429\./],
+    ['503', { [ADDRESS]: 503 }, null, /answered 503\./],
+    ['offline', { [ADDRESS]: 'offline' }, null, /annai couldn't reach gone\.example/],
+    ['an answer that is cut off', { [ADDRESS]: 'cut' }, null, /gone\.example's answer was cut off\./],
+    ['a linked file answers 503', { [LINKED]: 503 }, null, /gone\.example answered 503 for references\/safety\.md/],
+    ['a linked file is unreachable', { [LINKED]: 'offline' }, null, /annai couldn't read references\/safety\.md from gone\.example/],
   ]);
-  for (const [what, site, how, why] of cases) {
-    // An offer is there: the site serves the new version.
+  for (const [what, site, body, why] of cases) {
+    // An offer is there, or is found again: the site serves the new version.
     now = {};
     served = NEW;
-    assert.deepEqual(shown(await check()), [['tide-pools', '1.2.0', '1.3.0']], what);
+    const back = await check();
+    assert.deepEqual(back.failed, [], what);
+    assert.deepEqual(shown(back), [['tide-pools', '1.2.0', '1.3.0']], `${what}: found, or found again with the site back`);
     now = site;
-    if (how && how !== 'keeps') served = how;
+    if (body) served = body;
     const r = await check();
     assert.equal(r.failed.length, 1, `${what}: ${r.failed.join(' | ')}`);
     assert.match(r.failed[0], why, what);
-    assert.deepEqual(shown(r), how === 'keeps' ? [['tide-pools', '1.2.0', '1.3.0']] : [], `${what}: ${how === 'keeps' ? 'no answer: the offer stays' : 'a definite answer: the offer goes'}`);
+    assert.deepEqual(shown(r), [['tide-pools', '1.2.0', '1.3.0']], `${what}: the offer stays`);
   }
+  // Back, with the version it has: checked, and nothing to offer.
+  now = {};
+  served = SKILL;
+  const same = await check();
+  assert.deepEqual([same.failed, shown(same)], [[], []], 'checked and up to date: the offer goes');
+});
+
+test("an offer of annai's own that an earlier check found stays through a check whose catalog answers 503 or can't be reached, and says the catalog's line; an address part that throws keeps the addresses' offers; the catalog back is checked again (update-check-next: one rule keeps the offers of both kinds, and nothing pinned the official half)", async () => {
+  const { host } = await setup();
+  await ensureType(host, 'scripted', { fetch: await repo() });
+  let served = SKILL;
+  const get = async () => new Response(served);
+  await host.install(await fetchPackage(ADDR, { fetch: get }), { source: 'url', url: ADDR });
+  served = SKILL.replace('version: "1.2"', 'version: "1.3"');
+  const bumped = await repo({ bump: true });
+  /** The installed records' reads, counted: the one that fails, if any, is the nth. */
+  let reads = 0;
+  let failRead = 0;
+  const flaky = new Proxy(host, {
+    get: (target, key) => {
+      if (key === 'installed') return () => (++reads === failRead ? Promise.reject(new Error('the store failed')) : target.installed());
+      const v = /** @type {any} */ (target)[key];
+      return typeof v === 'function' ? v.bind(target) : v;
+    },
+  });
+  /** @param {Parameters<typeof checkPlugins>[1]} env @param {Parameters<typeof checkPlugins>[2]} [kinds] */
+  const check = (env, kinds) => checkPlugins(/** @type {any} */ (flaky), { addressFetch: get, ...env }, kinds);
+  const shown = (/** @type {{ found: any[] }} */ r) => r.found.map((u) => [u.id, u.installed, u.available]);
+  const both = [['scripted-model', NOW, NEXT], ['tide-pools', '1.2.0', '1.3.0']];
+  const first = await check({ fetch: bumped });
+  assert.deepEqual([first.failed, shown(first)], [[], both], 'found: annai\'s own and an address\'s');
+  const r503 = await check({ fetch: async () => new Response('', { status: 503 }) });
+  assert.deepEqual(r503.failed, ["annai's list of plugins couldn't be loaded (HTTP 503). Try again later."]);
+  assert.deepEqual(shown(r503), both, 'a catalog that answers 503: annai\'s own offer stays, and the address is checked');
+  const gone = await check({ fetch: async () => { throw new TypeError('Failed to fetch'); } });
+  assert.deepEqual(gone.failed, ["annai's list of plugins couldn't be loaded. Check the connection and try again."]);
+  assert.deepEqual(shown(gone), both, 'a catalog that can\'t be reached: it stays');
+  // The address part's own read of the installed records fails: the first of this check's three (the part's, its package's url, the list's).
+  reads = 0;
+  failRead = 1;
+  const thrown = await check({ fetch: bumped }, { official: false });
+  assert.deepEqual(shown(thrown), both, 'an address part that throws: the addresses\' offers stay');
+  failRead = 0;
+  const back = await check({ fetch: await repo() });
+  assert.deepEqual([back.failed, shown(back)], [[], [['tide-pools', '1.2.0', '1.3.0']]], 'the catalog back, at the version installed: checked, and annai\'s own offer goes');
+});
+
+test("an offer stands only while the install it was found against does: a package installed again from its address, or an official plugin installed again as the catalog's copy, leaves no offer, however it was installed between checks (update-check-next: an offer of the same version stood after an install that was not an Update and not during a check, \"(changed)\" for what was installed)", async () => {
+  const { host } = await setup();
+  await ensureType(host, 'scripted', { fetch: await repo() });
+  let served = SKILL;
+  const get = async () => new Response(served);
+  await host.install(await fetchPackage(ADDR, { fetch: get }), { source: 'url', url: ADDR });
+  // Both changed at the version installed: annai's catalog holds other files for its plugin, the address for the package.
+  served = SKILL.replace('# Tide pools', '# Tide pools, revised');
+  const revised = await repo({ revise: true });
+  const shown = async () => (await knownUpdates(host)).map((u) => [u.id, u.installed, u.available]);
+  const found = await checkPlugins(host, { fetch: revised, addressFetch: get });
+  assert.deepEqual(found.found.map((u) => [u.id, u.installed, u.available]), [['scripted-model', NOW, NOW], ['tide-pools', '1.2.0', '1.2.0']], 'both are offered as changed');
+  // Add again from the same address (the install screen's Install, with "Version 1.2.0 is installed now. Installing replaces it.").
+  await host.install(await fetchPackage(ADDR, { fetch: get }), { source: 'url', url: ADDR });
+  assert.deepEqual(await shown(), [['scripted-model', NOW, NOW]], 'the address one is installed as the address holds it: its offer goes, annai\'s stays');
+  // A provider's setup that finds the copy isn't the catalog's installs the catalog's (ensureType, when the plugin isn't running). Its start
+  // is refused here, as this host ran the old code already: the files and the record are written before it.
+  await installOfficial(host, found.found[0].entry, { fetch: revised }).catch(() => {});
+  assert.deepEqual(await shown(), [], 'the catalog\'s copy is installed: its offer goes');
+  // Nothing is offered again by a check that finds them as they are, and a later change is found.
+  assert.deepEqual((await checkPlugins(host, { fetch: revised, addressFetch: get })).found, []);
+  served = SKILL.replace('version: "1.2"', 'version: "1.3"');
+  assert.deepEqual((await checkPlugins(host, { fetch: revised, addressFetch: get })).found.map((u) => [u.id, u.installed, u.available]), [['tide-pools', '1.2.0', '1.3.0']]);
 });
 
 test("offers are listed in the order their plugins were installed, not by name and not in the order the checks found them (a kept offer does not jump the queue)", async () => {
@@ -571,4 +648,86 @@ test("a check asks annai's catalog with its translations beside the addresses: a
   } finally {
     setWords('en', null);
   }
+});
+
+test("a check whose annai's catalog answers 15 s late, its list of words in the screens' language 15 s after that, and the plugin's own words never, ends once they have, with annai's own update found, listed and on a card (update-check-next: the check's 45 s ended it with \"The check took too long\", nothing found and no card)", async (t) => {
+  const { host } = await setup();
+  await ensureType(host, 'scripted', { fetch: await repo() }); // in English: no words in Japanese are kept
+  setWords('ja', {});
+  try {
+    const own = await repo({ bump: true });
+    /** @type {string[]} */
+    const asked = [];
+    const late = (/** @type {string} */ url) => new Promise((r) => { setTimeout(() => r(own(url)), 15_000); });
+    const fetch = async (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+      asked.push(url);
+      if (url.endsWith('/catalog/plugins.json') || url.endsWith('/catalog/l10n/ja.json')) return late(url);
+      if (url.includes('/catalog/l10n/ja/')) return dead(init, 'never');
+      return own(url);
+    };
+    const notices = fakeNotices();
+    const updates = new Updates({ host, env: { fetch }, online: () => true });
+    updates.notices = notices;
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const w = watch(updates.start());
+    await turns(() => asked.some((u) => u.endsWith('/catalog/plugins.json')));
+    t.mock.timers.tick(15_000); // the catalog answers
+    await turns(() => asked.some((u) => u.endsWith('/catalog/l10n/ja.json')));
+    t.mock.timers.tick(15_000); // its words' list, at 30 s
+    await turns(() => asked.some((u) => u.includes('/catalog/l10n/ja/')));
+    t.mock.timers.tick(15_000);
+    await turns(() => w.state !== 'pending', 50);
+    assert.equal(w.state, 'pending', "at 45 s the plugin's words are still waited for");
+    t.mock.timers.tick(QUIET_MS - 15_000 - 1);
+    await turns(() => w.state !== 'pending', 50);
+    assert.equal(w.state, 'pending', 'still waiting just short of their silence limit');
+    t.mock.timers.tick(1); // 50 s: the plugin's words end by their site's silence
+    await turns(() => w.state !== 'pending');
+    assert.equal(w.state, 'done', w.error ? messageOf(w.error) : 'still waiting');
+    const shown = (/** @type {any[]} */ l) => l.map((u) => [u.id, u.installed, u.available]);
+    assert.deepEqual(w.value?.failed, [], 'words that never came are no update, and never fail');
+    assert.deepEqual(shown(w.value?.found ?? []), [['scripted-model', NOW, NEXT]], 'found');
+    assert.deepEqual(shown(await updates.plugins()), [['scripted-model', NOW, NEXT]], 'listed in Settings');
+    assert.deepEqual(notices.cards.map((/** @type {any} */ c) => c.title), ['Plugin updates are ready'], 'on a card');
+  } finally {
+    setWords('en', null);
+  }
+});
+
+test("Settings → Plugins and a plugin's page show the update the last checks found, as Settings → Updates does, and ask annai's catalog nothing; a catalog that lists a new version shows there once a check has found it (update-check-next: they asked annai's catalog at every draw, a second answer beside the checks' that could disagree with it)", async () => {
+  const { updateFor } = await import('../../src/ui/screens/plugins.js');
+  const { host } = await setup();
+  await ensureType(host, 'scripted', { fetch: await repo() });
+  const bumped = await repo({ bump: true });
+  let asked = 0;
+  const real = globalThis.fetch;
+  globalThis.fetch = /** @type {any} */ (async (/** @type {string} */ url) => { asked++; return bumped(url); });
+  try {
+    const ctx = { plugins: host };
+    assert.equal(await updateFor(ctx, 'scripted-model'), undefined, 'no check has found it yet');
+    await checkPlugins(host, { fetch: bumped }, { address: false });
+    const u = await updateFor(ctx, 'scripted-model');
+    assert.deepEqual([u?.id, u?.installed, u?.available], ['scripted-model', NOW, NEXT]);
+    assert.equal(asked, 0, "the screen asked annai's catalog nothing");
+  } finally {
+    globalThis.fetch = real;
+  }
+});
+
+test("an official plugin installed again while the check's catalog request is in flight is not offered when the check ends (update-check-next's touch re-read: the official kind's mid-check case)", async () => {
+  const { host } = await setup();
+  await ensureType(host, 'scripted', { fetch: await repo() });
+  const bumped = await repo({ bump: true });
+  let installedDuringCheck = false;
+  const during = async (/** @type {any} */ url) => {
+    if (new URL(String(url), 'http://annai.test').pathname === '/catalog/plugins.json' && !installedDuringCheck) {
+      installedDuringCheck = true;
+      const catalog = await (await bumped(url)).json();
+      await installOfficial(host, catalog.plugins.find((/** @type {any} */ p) => p.id === 'scripted-model'), { fetch: bumped }).catch(() => {});
+    }
+    return bumped(url);
+  };
+  const r = await checkPlugins(host, { fetch: during }, { address: false });
+  assert.equal(installedDuringCheck, true, 'the install landed while the catalog was being asked');
+  assert.deepEqual(r.found, [], 'what is installed now is not offered');
 });

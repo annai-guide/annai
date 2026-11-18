@@ -14,8 +14,9 @@ import { list, sentences, asSentence } from './format.js';
  *   next: the language the next start opens in (nextScreens), whose words a check keeps
  * @typedef {Env & { reload: () => unknown }} Applying reload: annai's one restart (Updates.restart), for Restart now
  * @typedef {{ id: string, name: string, installed: string, available: string, entry?: any, url?: string, changed?: boolean,
- *   added?: import('../core/packages.js').Added, agreed?: boolean }} Update
- *   added: what an update from an address brings that the installed package didn't; agreed: the user said yes to it
+ *   added?: import('../core/packages.js').Added, agreed?: boolean, from?: string }} Update
+ *   added: what an update from an address brings that the installed package didn't; agreed: the user said yes to it;
+ *   from: the fingerprint of the install it was found against
  */
 
 /** What the last checks found, by host, then by id: Settings → Updates and → Plugins show it without asking again. @type {WeakMap<any, Map<string, Update>>} */
@@ -28,22 +29,27 @@ const knownOf = (host) => {
 };
 
 /**
- * Checks the kinds asked for (both by default), and keeps what each found; a kind that can't be checked keeps what it found before,
- * and so does an address whose site gave no answer (addressUpdates); both say why in failed. Nothing is kept once current() is false.
+ * Checks the kinds asked for (both by default), and keeps what each found. One rule keeps what an earlier check found: a source that
+ * wasn't asked, or gave no result, keeps its offers, and each failure is said in failed. So annai's catalog that can't be loaded keeps the
+ * offers of annai's own plugins, and an address that can't be checked, for any reason (addressUpdates), keeps its package's: a browser
+ * can't tell a site that answered 404 without the headers that let web apps read it from a site it can't reach, and an Update tap on it
+ * says the same as the check. One that is now another package was checked, and its offer goes.
+ * An offer stands only while its install does: each carries the fingerprint of the install it was found against (from), and
+ * knownUpdates shows it while the installed record has that fingerprint. So a plugin installed again, from its address or as annai's own
+ * copy, by Update or any other way, or while a check ran, is not offered again by an offer that was found before.
  * Checking annai's own also brings their words in the screens' language, and the next start's, to the catalog's (fetchTranslations),
- * which is never an update and never fails. The two kinds are asked side by side, each ending by its own silence limit (answer.js), so
- * one that goes quiet never holds the other: a catalog and its translations that answer late can't push the addresses past the
- * check's own limit (updates.js).
- * @param {any} host @param {Env} [env] @param {{ official?: boolean, address?: boolean }} [kinds] @param {() => boolean} [current]
+ * which is never an update and never fails. The two kinds are asked side by side, each request ending by its server's silence
+ * (answer.js), so one that goes quiet never holds the other.
+ * @param {any} host @param {Env} [env] @param {{ official?: boolean, address?: boolean }} [kinds]
  * @returns {Promise<{ found: Update[], failed: string[] }>} found: every update known now, of both kinds
  */
-export async function checkPlugins(host, env = {}, { official = true, address = true } = {}, current = () => true) {
+export async function checkPlugins(host, env = {}, { official = true, address = true } = {}) {
   /** What each kind couldn't check, annai's own first. @type {string[]} */
   const failedOfficial = [];
   /** @type {string[]} */
   const failedAddress = [];
   const known = knownOf(host);
-  /** @param {boolean} url @param {Update[]} list @param {Set<string>} [unchecked] the ones whose site gave no answer: what was found for them before stays */
+  /** @param {boolean} url @param {Update[]} list @param {Set<string>} [unchecked] the ones that couldn't be checked: what was found for them before stays */
   const keep = (url, list, unchecked = new Set()) => {
     for (const [id, u] of known) if (Boolean(u.url) === url && !unchecked.has(id)) known.delete(id);
     for (const u of list) known.set(u.id, u);
@@ -53,28 +59,23 @@ export async function checkPlugins(host, env = {}, { official = true, address = 
       const now = await officialUpdates(host, env).catch((e) => { failedOfficial.push(messageOf(e)); return null; });
       // One with an update waiting keeps the words it has: they match its version, and the update brings the new one's (updateOfficial).
       if (now) await fetchTranslations(host, { fetch: env.fetch, base: env.base, skip: now.map((u) => u.id), next: env.next?.() });
-      if (now && current()) keep(false, now);
+      if (now) keep(false, now);
     })(),
     address && (async () => {
       /** @type {Set<string>} */
       const unchecked = new Set();
       const now = await addressUpdates(host, { fetch: env.addressFetch ?? ((url, init) => fetch(url, init)), failed: failedAddress, unchecked }).catch(() => null);
-      if (now && current()) keep(true, now, unchecked);
+      if (now) keep(true, now, unchecked);
     })(),
   ]);
   return { found: await knownUpdates(host), failed: [...failedOfficial, ...failedAddress] };
 }
 
-/** The updates the last checks found, for plugins still installed as they were, in the order they were installed. @param {any} host @returns {Promise<Update[]>} */
+/** The updates the last checks found, for plugins still installed as they were (their fingerprint is the one an offer was found against), in the order they were installed. @param {any} host @returns {Promise<Update[]>} */
 export async function knownUpdates(host) {
   const state = await host.installed();
   const known = knownOf(host);
-  return Object.keys(state).flatMap((id) => known.get(id) ?? []).filter((u) => state[u.id]?.source === (u.url ? 'url' : 'official') && String(state[u.id]?.version) === u.installed);
-}
-
-/** The updates the last check found at addresses, for packages still installed. @param {any} host @returns {Promise<Update[]>} */
-export async function knownAddressUpdates(host) {
-  return (await knownUpdates(host)).filter((u) => u.url);
+  return Object.keys(state).flatMap((id) => known.get(id) ?? []).filter((u) => state[u.id]?.source === (u.url ? 'url' : 'official') && state[u.id]?.fingerprint === u.from);
 }
 
 /** An update's plugin by name: annai's own in the screens' words, one from an address as written. @param {{ id: string, name: string, url?: string }} u */
