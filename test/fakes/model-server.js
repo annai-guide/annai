@@ -100,6 +100,8 @@ export async function startFakeServer(o) {
   const requests = [];
   let served = 0;
   let calls = 0;
+  /** @type {Promise<unknown> | null} what the model list waits for (holdList) */
+  let held = null;
   /** Whether a page at this origin may read the answers. @param {string | undefined} origin */
   const allowed = (origin) => {
     if (!origin || cors === false) return false;
@@ -152,7 +154,7 @@ export async function startFakeServer(o) {
       }
       if ((isPost && method !== 'POST') || (isGet && method !== 'GET')) return send(405, 'text/plain; charset=utf-8', 'Method Not Allowed');
       if (!keyed) return send(401, 'application/json', error('Not authenticated', 'authentication_error'));
-      if (path === '/v1/models') return send(200, 'application/json', JSON.stringify({ object: 'list', data: models }));
+      if (path === '/v1/models') return void (held ?? Promise.resolve()).then(() => { if (!res.destroyed) send(200, 'application/json', JSON.stringify({ object: 'list', data: models })); });
       // llama.cpp's server properties: the context each conversation gets, what the loaded model takes in, and its name.
       if (path === '/props') return send(200, 'application/json', JSON.stringify(o.props ?? { default_generation_settings: { n_ctx: 32768 }, total_slots: 1, modalities: { vision: true, audio: false }, model_alias: 'qwen3.8-flash' }));
       // Ollama's models loaded now, each with the context it was given, and what one model can do (its docs, api/types.go).
@@ -194,6 +196,13 @@ export async function startFakeServer(o) {
   return {
     origin: `http://127.0.0.1:${port}`,
     requests,
+    /** The model list answers no more until the function this gives is called, as a slow server's: a Fetch that lands late. @returns {() => void} */
+    holdList: () => {
+      /** @type {(v?: unknown) => void} */
+      let open = () => {};
+      held = new Promise((r) => { open = r; });
+      return () => { held = null; open(); };
+    },
     stop: () => new Promise((resolve) => { server.closeAllConnections?.(); server.close(() => resolve(undefined)); }),
   };
 }

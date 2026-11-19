@@ -46,6 +46,9 @@ function freeName(name, taken) {
   return unique;
 }
 
+/** Every model's name, lower-case: what freeName takes from. @param {import('./config.js').ModelConfig} cfg */
+const names = (cfg) => new Set(Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase()));
+
 /** A model under its name, or the first "name (2)"… no other model has. @param {ModelRecord} rec @param {Set<string>} taken lower-case names */
 function named(rec, taken) {
   const name = modelOf(rec).name;
@@ -162,7 +165,7 @@ function picker(cfg, providerId) {
 export async function addProvider({ ws, store }, src, { key = null, roles = 'free', name, baseUrl, abilities = {}, filled, costs, free: onFree } = {}) {
   return takingNames(ws, async () => {
     const cfg = await readConfig(ws);
-    const taken = new Set(Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase()));
+    const taken = names(cfg);
     const values = providerValues(src);
     /** @type {ProviderValues} */
     const user = {};
@@ -219,7 +222,7 @@ function liveInstead(src, ability, models) {
 /**
  * Brings providers up to date when their plugin's version changed: new template layers,
  * models new to the description (in no role), and new abilities switched off. The user's
- * layers stay; models gone from the description, or removed by the user, stay as they are, except that a model leaves Koe · Realtime (a refused session first)
+ * layers stay; models gone from the description, removed by the user, or new to it with a provider model id the ability has, stay as they are, except that a model leaves Koe · Realtime (a refused session first)
  * at the update that dropped it: the previous description named it, this one doesn't, and lists that ability's models. A list it would empty gets the description's model.
  * A model the description renames, or a new one, takes the first free name (renamed, named), in takingNames (config.js).
  * @param {{ ws: Workspace }} c @param {ProviderSource[]} sources @returns {Promise<number>} the providers refreshed
@@ -228,7 +231,7 @@ export async function syncProviders({ ws }, sources) {
   return takingNames(ws, async () => {
     const bySrc = new Map(sources.map((s) => [s.plugin, s]));
     const cfg = await readConfig(ws);
-    const taken = new Set(Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase()));
+    const taken = names(cfg);
     let realtime = cfg.roles[KOE_REALTIME];
     let n = 0;
     for (const rec of Object.values(cfg.providers)) {
@@ -266,7 +269,7 @@ export async function syncProviders({ ws }, sources) {
         } else if (known.has(m.template.id.slice(src.plugin.length + 1)) && listed.some((x) => x.ability === m.ability)) dropped.add(m.id);
       }
       for (const d of listed) {
-        if (known.has(d.key) || mine.some((m) => m.template?.id === `${src.plugin}/${d.key}`)) continue;
+        if (known.has(d.key) || mine.some((m) => m.template?.id === `${src.plugin}/${d.key}` || (m.ability === d.ability && modelOf(m).providerId === d.values.providerId))) continue;
         changed.push(named(newModel(rec.id, d.ability, { template: { id: `${src.plugin}/${d.key}`, version: src.version, values: d.values } }), taken));
       }
       /** @type {Roles | null} */
@@ -309,7 +312,8 @@ function startFor(cfg, providerId, abilityId) {
 /**
  * An add never makes a second model with a provider model id the ability has: it is refused, in words the traveller sees, and the error says `held`
  * (the provider page's list says "Already added" in the row, for this refusal only). A list drawn before an
- * add by id, or an add by id of what a list added under its name, would make one that the name check (saveModel) misses. The sync and the model's page skip this.
+ * add by id, or an add by id of what a list added under its name, would make one. A name another model has refuses nothing: the add
+ * takes a free one (named). The sync skips such a model; the model's page can still save an id another model has.
  * @param {import('./config.js').ModelConfig} cfg @param {string} providerId @param {string} abilityId @param {string} providerModelId
  */
 function refuseHeld(cfg, providerId, abilityId, providerModelId) {
@@ -329,15 +333,14 @@ export async function addListedModel({ ws }, providerId, abilityId, listed) {
     const cfg = await readConfig(ws);
     const start = startFor(cfg, providerId, abilityId);
     refuseHeld(cfg, providerId, abilityId, listed.providerId);
-    const taken = new Set(Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase()));
-    const rec = named(newModel(providerId, abilityId, { template: { id: `list/${listed.providerId}`, version: '', values: { ...start, ...listed } } }), taken);
+    const rec = named(newModel(providerId, abilityId, { template: { id: `list/${listed.providerId}`, version: '', values: { ...start, ...listed } } }), names(cfg));
     await saveModel(ws, rec);
     return rec.id;
   });
 }
 
 /**
- * Adds a model to an ability by its provider id, in takingNames (config.js): refused by refuseHeld, or when its name is taken (saveModel).
+ * Adds a model to an ability by its provider id, named by it or the first free name (named), in takingNames (config.js); refused by refuseHeld.
  * @param {{ ws: Workspace }} c @param {string} providerId @param {string} abilityId @param {string} providerModelId @returns {Promise<string>} its id
  */
 export async function addModelById({ ws }, providerId, abilityId, providerModelId) {
@@ -345,7 +348,7 @@ export async function addModelById({ ws }, providerId, abilityId, providerModelI
     const cfg = await readConfig(ws);
     const start = startFor(cfg, providerId, abilityId);
     refuseHeld(cfg, providerId, abilityId, providerModelId);
-    const rec = newModel(providerId, abilityId, { user: { ...start, providerId: providerModelId } });
+    const rec = named(newModel(providerId, abilityId, { user: { ...start, providerId: providerModelId } }), names(cfg));
     await saveModel(ws, rec);
     return rec.id;
   });

@@ -304,16 +304,71 @@ test("an ability has one model for each provider model id: an add of one it has 
   // A model a list added under its own name is added by id: the names differ, the ids do not.
   await addListedModel(ctx, id, 'chat', { providerId: 'x/two', name: 'Two' });
   await assert.rejects(addModelById(ctx, id, 'chat', 'x/two'), refused('x/two'));
-  // A name another model has, by an id it has not, is still refused for the name (saveModel).
-  await addListedModel(ctx, id, 'chat', { providerId: 'x/four', name: 'Four' });
-  await assert.rejects(addModelById(ctx, id, 'chat', 'Four'), (/** @type {any} */ e) => /"Four" is already used by another model/.test(e.message) && !e.held);
   // The description's own models count too.
   await assert.rejects(addListedModel(ctx, id, 'chat', { providerId: 'big', name: 'Big again' }), refused('big'));
-  assert.equal(await count(), before + 2, 'only the models from the list were added');
+  assert.equal(await count(), before + 1, 'only the model from the list was added');
   // Another ability of the provider may have the same id.
   assert.ok(await addListedModel(ctx, id, 'voice', { providerId: 'x/one', name: 'One voice' }));
   // A refused add leaves the lock free: the next add saves.
   assert.ok(await addModelById(ctx, id, 'chat', 'x/three'));
+});
+
+test("one rule, the provider model id: an add by an id whose name another model has takes a free name, as the list's add does; the name refuses nothing (models-next, shape c)", async () => {
+  const ctx = await setup();
+  const id = await addProvider(ctx, ROUTER_SRC, { key: 'sk-r', roles: null });
+  const other = await addProvider(ctx, OPENAI_SRC, { key: 'sk-o', roles: null });
+  const name = async (/** @type {string} */ m) => modelOf((await readConfig(ctx.ws)).models[m]).name;
+  // A model renamed "x/two" on its page, then x/two by id: "already used by another model" on main.
+  const renamed = await addModelById(ctx, id, 'chat', 'x/one');
+  await updateModel(ctx.ws, renamed, (r) => ({ ...r, user: { ...r.user, name: 'x/two' } }));
+  const two = await addModelById(ctx, id, 'chat', 'x/two');
+  assert.equal(await name(two), 'x/two (2)');
+  assert.equal(await name(renamed), 'x/two', 'the renamed model keeps its name');
+  // A listed model's name, and the name of another provider's model (in any case), as the list's add takes them.
+  await addListedModel(ctx, id, 'chat', { providerId: 'x/four', name: 'Four' });
+  assert.equal(await name(await addModelById(ctx, id, 'chat', 'four')), 'four (2)');
+  assert.equal(await name(await addModelById(ctx, other, 'chat', 'Big')), 'Big (2)', "Router's Big has the name");
+  assert.equal(await name(await addListedModel(ctx, other, 'chat', { providerId: 'x/four', name: 'Four' })), 'Four (3)', '"four (2)" is the one added by id');
+  // The id still refuses: one model for each provider model id on an ability.
+  await assert.rejects(addModelById(ctx, id, 'chat', 'x/two'), (/** @type {any} */ e) => e.held === true);
+  const all = Object.values((await readConfig(ctx.ws)).models).map((m) => modelOf(m).name.toLowerCase());
+  assert.equal(new Set(all).size, all.length, 'names stay unique');
+});
+
+test("a plugin update that describes a model the traveller already added makes no second one: theirs stays as it is, by id or from the list; a removed model stays removed, a renamed one keeps its name, and another ability still gets it (models-next, shape a)", async () => {
+  const ctx = await setup();
+  const id = await addProvider(ctx, ROUTER_SRC, { key: 'sk-r', roles: null });
+  const byId = await addModelById(ctx, id, 'chat', 'x/new');
+  const listed = await addListedModel(ctx, id, 'chat', { providerId: 'y/new', name: 'Y new', contextWindow: 1000 });
+  const voiced = await addModelById(ctx, id, 'voice', 'z/new');
+  let cfg = await readConfig(ctx.ws);
+  const big = /** @type {any} */ (Object.values(cfg.models).find((m) => modelOf(m).providerId === 'big'));
+  await saveModel(ctx.ws, { ...big, user: { name: 'Big one' } });
+  await updateModel(ctx.ws, listed, (r) => ({ ...r, user: { ...r.user, name: 'Mine' } }));
+  const paid = /** @type {any} */ (Object.values(cfg.models).find((m) => modelOf(m).providerId === 'paid-voice'));
+  await removeModel(ctx.ws, paid.id);
+  const next = bumped(ROUTER_SRC, '1.1.0', (p) => {
+    p.abilities.chat.models.push({ providerId: 'x/new', name: 'X new', contextWindow: 2000 }, { providerId: 'y/new', name: 'Y new', contextWindow: 3000 }, { providerId: 'z/new', name: 'Z new' });
+  });
+  assert.equal(await syncProviders(ctx, [next]), 1);
+  cfg = await readConfig(ctx.ws);
+  const of = (/** @type {string} */ ability, /** @type {string} */ providerId) => Object.values(cfg.models).filter((m) => m.provider === id && m.ability === ability && modelOf(m).providerId === providerId);
+  assert.deepEqual(of('chat', 'x/new').map((m) => m.id), [byId], 'one x/new: the one added by id ("x/new" and "X new" on main)');
+  assert.deepEqual(of('chat', 'y/new').map((m) => m.id), [listed], 'one y/new: the one added from the list ("Y new (2)" too on main)');
+  // Theirs keeps its own layer: the description's name and window don't reach it.
+  assert.deepEqual([modelOf(cfg.models[byId]).name, modelOf(cfg.models[byId]).contextWindow], ['x/new', null]);
+  assert.deepEqual([modelOf(cfg.models[listed]).name, modelOf(cfg.models[listed]).contextWindow], ['Mine', 1000], 'a renamed model keeps its name through a sync');
+  assert.equal(modelOf(cfg.models[big.id]).name, 'Big one');
+  // z/new is the traveller's on voice, not on chat: chat gets the description's.
+  assert.deepEqual([of('voice', 'z/new').map((m) => m.id), of('chat', 'z/new').map((m) => modelOf(m).name)], [[voiced], ['Z new']]);
+  assert.equal(of('voice', 'paid-voice').length, 0, "a model the user removed isn't added again");
+  // A later update with no change for them adds nothing either, even once the traveller's x/new is removed.
+  await removeModel(ctx.ws, byId);
+  assert.equal(await syncProviders(ctx, [bumped(next, '1.2.0', () => {})]), 1);
+  cfg = await readConfig(ctx.ws);
+  assert.deepEqual([of('chat', 'x/new').length, of('chat', 'y/new').length], [0, 1], 'skipped as a removed model is');
+  const all = Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase());
+  assert.equal(new Set(all).size, all.length);
 });
 
 test("a default new to an ability's modelDefaults reaches the models added from its list or by id before it, unless the user set that field (phone-fixes-1 item 2: Claude read only text)", async () => {

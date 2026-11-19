@@ -1,4 +1,4 @@
-import { h, crumb, linkIn, field, twoStep, jsonField, messageOf, showError, savedField, savedCheck, savedRadios, autosave, savingNote, whenGone, t, plural, otherLang } from '../dom.js';
+import { h, crumb, linkIn, field, twoStep, jsonField, messageOf, showError, savedField, savedCheck, savedRadios, autosave, savingNote, settled, whenGone, t, plural, otherLang } from '../dom.js';
 import { providerOf, abilityName, providerBase, modelOf, saveProvider, setKey, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
 import { mergePatch } from '../../core/patch.js';
 import { officialPlugins, officialName, pluginName as shownPluginName } from '../../core/llm/official.js';
@@ -414,7 +414,10 @@ async function abilityBody(view, abilityId) {
       const wrong = v ? addressShown(v) : null;
       if (wrong) throw new Error(wrong);
       return v;
-    }, (v) => (releasesAtAddress(type, Boolean(uploads)) ? ctx.llm.reconnect(id, () => saveAbility({ baseUrl: v })) : saveAbility({ baseUrl: v })))), // a new address: what it keeps or holds there goes first
+    }, async (v) => {
+      await (releasesAtAddress(type, Boolean(uploads)) ? ctx.llm.reconnect(id, () => saveAbility({ baseUrl: v })) : saveAbility({ baseUrl: v })); // a new address: what it keeps or holds there goes first
+      tell(`${id}/${abilityId}`, null); // and a list fetched there, where it stands
+    })),
     h('p', { class: 'sub', text: t`Empty: the provider's address. Each setting here is saved as you change it.` }),
     addressWarn,
     uploads?.el ?? null,
@@ -491,21 +494,47 @@ function installPanel(ctx, typeId, name, done) {
   return h('div', {}, status, h('div', { class: 'acts' }, btn));
 }
 
+/** Tells the models part on show for an ability (`data-models`), one drawn since too, what a Fetch found; null: its list goes. @param {string} key @param {{ listed?: any[], error?: unknown } | null} found */
+function tell(key, found) {
+  for (const el of document.querySelectorAll('[data-models]')) if (/** @type {HTMLElement} */ (el).dataset.models === key) el.dispatchEvent(new CustomEvent('listed', { detail: found }));
+}
+
+/** What a Fetch asks under, as stored now: the ability's address, the provider's headers and key. @param {any} ctx @param {string} id @param {string} abilityId */
+async function connection(ctx, id, abilityId) {
+  const rec = (await ctx.llm.config()).providers[id];
+  const p = rec ? providerOf(rec) : null;
+  const a = p?.abilities[abilityId];
+  return p && a ? JSON.stringify([a.baseUrl, p.headers, p.keyHeader, await ctx.llm.keyFor(id)]) : '';
+}
+
 /** An ability's models, Add a model by id and Fetch model list. @param {any} ctx @param {string} id @param {string} abilityId @param {import('../../core/llm/config.js').Model[]} models */
 function modelsPart(ctx, id, abilityId, models) {
   const status = h('p', { class: 'sub', role: 'status' });
   const listSlot = h('div', {});
+  // Made once: an answer draws only the rows, so the filter keeps its text and caret.
+  const filter = h('input', { id: `model-filter-${abilityId}`, autocomplete: 'off', placeholder: t`for example: haiku` });
+  const list = h('ul', { class: 'listed' });
+  let rows = () => {};
+  // A search saves nothing: `stored` at each keystroke, as the finders do.
+  filter.addEventListener('input', () => {
+    rows();
+    filter.dispatchEvent(new Event('stored'));
+  });
   const providerId = h('input', { id: `model-id-${abilityId}`, autocomplete: 'off', autocapitalize: 'off', placeholder: t`the provider's model id` });
   const add = h('button', {
     class: 'btn', type: 'button',
     onclick: async () => {
-      const value = providerId.value.trim();
-      if (!value) return;
-      // Busy from the tap: a second tap would only be refused, its name taken by the first.
+      const modelId = providerId.value.trim();
+      if (!modelId) return;
+      // Busy from the tap: a second tap would only be refused, its id taken by the first.
       add.disabled = true;
       try {
-        await ctx.llm.addModelById(id, abilityId, value);
+        const made = await ctx.llm.addModelById(id, abilityId, modelId);
+        const rec = (await ctx.llm.config()).models[made];
         add.disabled = false; // as the add ends, not with the draw
+        // A free name where another model has the id as its name (addModelById): said.
+        const name = rec ? modelOf(rec).name : modelId;
+        if (name !== modelId) ctx.notices.toast(t`Added as "${name}": "${modelId}" is already used by another model.`);
         ctx.render();
       } catch (e) {
         showError(status, e);
@@ -518,80 +547,84 @@ function modelsPart(ctx, id, abilityId, models) {
     onclick: async () => {
       fetchList.disabled = true;
       status.textContent = t`Asking for its models…`;
+      await settled(); // an address just typed is saved first
+      const asked = await connection(ctx, id, abilityId);
+      /** @type {{ listed?: any[], error?: unknown }} */
+      let found;
       try {
-        const listed = await ctx.llm.listModels(id, abilityId);
-        status.textContent = plural(listed.length, '# model.', '# models.');
-        // As they are now, not as drawn: an add whose draw was dropped is in them.
-        const cfg = await ctx.llm.config();
-        const now = Object.values(cfg.models).filter((m) => m.provider === id && m.ability === abilityId).map(modelOf);
-        listSlot.replaceChildren(listedModels(ctx, id, abilityId, listed, now, cfg));
-      } catch (e) {
-        showError(status, e);
-      } finally {
-        fetchList.disabled = false;
+        found = { listed: await ctx.llm.listModels(id, abilityId) };
+      } catch (error) {
+        found = { error };
       }
+      const same = (await connection(ctx, id, abilityId)) === asked;
+      status.textContent = '';
+      fetchList.disabled = false;
+      if (same) tell(`${id}/${abilityId}`, found); // asked under another address or key: lands nowhere
     },
   }, t`Fetch model list`);
-  const rows = models.map((m) => h('li', {}, h('a', { class: 'card', href: `#/models/model?id=${encodeURIComponent(m.id)}` },
+  /** A Fetch's answer, here: rows by its models as they are now (an add whose draw was dropped is in them). @param {CustomEvent} e */
+  const land = async (e) => {
+    const found = e.detail;
+    if (!found) {
+      rows = () => {};
+      listSlot.replaceChildren();
+      status.textContent = '';
+      return;
+    }
+    if ('error' in found) return showError(status, found.error);
+    status.textContent = plural(found.listed.length, '# model.', '# models.');
+    rows = listedModels(ctx, id, abilityId, found.listed, await ctx.llm.config(), { filter, list });
+    if (!listSlot.firstChild) listSlot.replaceChildren(field(t`Filter the list`, filter), list);
+    rows();
+  };
+  const cards = models.map((m) => h('li', {}, h('a', { class: 'card', href: `#/models/model?id=${encodeURIComponent(m.id)}` },
     h('span', { class: 'name', text: m.name }),
     h('span', { class: 'sub', text: [m.providerId !== m.name ? m.providerId : null, m.contextWindow ? t`${num(Math.round(m.contextWindow / 1000), { useGrouping: false })}K context` : null, priceLine(m.prices)].filter(Boolean).join(' · ') }))));
-  return h('div', {},
+  return h('div', { 'data-models': `${id}/${abilityId}`, onlisted: land },
     h('h3', { text: t`Its models` }),
-    rows.length ? h('ul', { class: 'cards' }, ...rows) : h('p', { class: 'empty', text: t`No models yet.` }),
+    cards.length ? h('ul', { class: 'cards' }, ...cards) : h('p', { class: 'empty', text: t`No models yet.` }),
     h('div', { class: 'row' }, field(t`Add a model by id`, providerId), h('div', { class: 'acts' }, add, fetchList)),
     status,
     listSlot);
 }
 
 /**
- * The models an ability listed, minus those already added, with a filter. One whose name another model has says where
- * that is, as adding it by id refuses it, rather than adding it again as "name (2)". An Add that fails says why in a toast, which is in
- * sight wherever the list is: the models' status line, where Add model says why, can be far above it.
- * @param {any} ctx @param {string} id @param {string} abilityId @param {import('../../core/llm/contract.js').ListedModel[]} listed @param {import('../../core/llm/config.js').Model[]} have
- * @param {import('../../core/llm/config.js').ModelConfig} cfg
+ * The function that draws the models an ability listed, minus those it has by provider model id, by the filter's text. An Add that fails
+ * says why in a toast, in sight wherever the list is: the models' status line, where Add model says why, can be far above it.
+ * @param {any} ctx @param {string} id @param {string} abilityId @param {import('../../core/llm/contract.js').ListedModel[]} listed
+ * @param {import('../../core/llm/config.js').ModelConfig} cfg @param {{ filter: HTMLInputElement, list: HTMLElement }} part
  */
-function listedModels(ctx, id, abilityId, listed, have, cfg) {
-  const owned = new Set(have.map((m) => m.providerId));
-  /** @param {string} provider */
-  const providerName = (provider) => (cfg.providers[provider] ? providerOf(cfg.providers[provider]).name : '');
-  const taken = new Map(Object.values(cfg.models).map(modelOf).map((m) => [m.name.toLowerCase(), providerName(m.provider)]));
-  const filter = h('input', { id: `model-filter-${abilityId}`, autocomplete: 'off', placeholder: t`for example: haiku` });
-  const list = h('ul', { class: 'listed' });
-  /** What a row says of a model already added. @param {string} on the provider it is on */
-  const already = (on) => h('span', { class: 'sub', text: on ? t`Already added, on ${on}` : t`Already added, on another provider` });
+function listedModels(ctx, id, abilityId, listed, cfg, { filter, list }) {
+  const owned = new Set(Object.values(cfg.models).filter((m) => m.provider === id && m.ability === abilityId).map((m) => modelOf(m).providerId));
+  const here = cfg.providers[id] ? providerOf(cfg.providers[id]).name : '';
   const show = () => {
     const q = filter.value.trim().toLowerCase();
     const rows = listed.filter((m) => !owned.has(m.providerId) && (!q || `${m.providerId} ${m.name ?? ''}`.toLowerCase().includes(q))).slice(0, 50);
     list.replaceChildren(...rows.map((m) => {
-      const key = (m.name || m.providerId).toLowerCase();
-      const on = taken.get(key);
       const { loaded, ...model } = m; // said here, never kept on the model
       const named = m.name && m.name !== m.providerId ? `${m.name} (${m.providerId})` : m.providerId;
       const label = h('span', { text: loaded ? t`${named} · loaded` : named });
-      if (on !== undefined) return h('li', { class: 'acts' }, label, already(on));
       const add = h('button', {
         class: 'btn', type: 'button', 'aria-label': t`Add ${m.providerId}`,
         onclick: async () => {
-          // Busy from the tap, and owned by the list from it: a row drawn again (the filter typed) offers no second Add, which would make "name (2)".
+          // Busy from the tap, and owned by the list from it: a row drawn again (the filter typed) offers no second Add.
           add.disabled = true;
           owned.add(m.providerId);
-          taken.set(key, providerName(id));
           try {
             await ctx.llm.addListedModel(id, abilityId, model);
           } catch (e) {
             ctx.notices.toast(messageOf(e));
             if (/** @type {any} */ (e)?.held) { // added since the list was drawn: its row says so, and the page is not drawn (text typed elsewhere stays)
-              if (add.isConnected) add.replaceWith(already(providerName(id)));
+              if (add.isConnected) add.replaceWith(h('span', { class: 'sub', text: t`Already added, on ${here}` }));
               else show();
               return;
             }
             owned.delete(m.providerId);
-            taken.delete(key);
             if (add.isConnected) add.disabled = false;
             else show(); // its row was drawn away: offered again
             return;
           }
-          // Not back as the add ends: a second tap would add "name (2)". Once its draw has ended (drawn, or ended by a tap), a row still on show says Added.
+          // Once its draw has ended (drawn, or ended by a tap), a row still on show says Added.
           await ctx.render();
           add.replaceWith(h('span', { class: 'sub', text: t`Added` }));
         },
@@ -599,13 +632,7 @@ function listedModels(ctx, id, abilityId, listed, have, cfg) {
       return h('li', { class: 'acts' }, label, add);
     }));
   };
-  // A search saves nothing: `stored` at each keystroke, as the finders do.
-  filter.addEventListener('input', () => {
-    show();
-    filter.dispatchEvent(new Event('stored'));
-  });
-  show();
-  return h('div', {}, field(t`Filter the list`, filter), list);
+  return show;
 }
 
 /** Buttons that put a provider's suggested models in the roles ("free", "recommended"). @param {any} ctx @param {string} id @param {import('../../core/llm/providers.js').ProviderSource} src */
