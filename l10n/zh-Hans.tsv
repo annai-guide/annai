@@ -802,7 +802,7 @@ hdsgog	ok	OpenStreetMap between {0} and {1}	{0} 与 {1} 之间的 OpenStreetMap	
 i9ok5g	ok	Wikipedia between {0} and {1}	{0} 与 {1} 之间的 Wikipedia	src/core/pack/download.js:76	{0} = a; {1} = b
 1qn6l15	ok	{0} didn't answer in time.	{0} 响应超时。	src/core/pack/download.js:82	{0} = s.where
 16rip5y	ok	{0} stopped early: {1}.	{0} 中途停止了：{1}。	src/core/pack/download.js:83	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
-zy85n2	ok	every server was left for the rest of the run	本次下载中已不再使用任何服务器	src/core/pack/download.js:85	
+zy85n2	draft	every server was left for the rest of the run	本次下载不再向任何服务器请求	src/core/pack/download.js:85	
 cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMap 没有响应（{0}）。	src/core/pack/download.js:86	{0} = why.replace(/[.。]$/u, '')
 rhruvr	ok	{0} said: {1}.	{0} 回复：{1}。	src/core/pack/download.js:88	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
 1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyage 没有发来 {0} 的正文。	src/core/pack/download.js:89	{0} = s.title
