@@ -1,4 +1,4 @@
-import { h, crumb, linkIn, field, twoStep, jsonField, messageOf, showError, savedField, savedCheck, savedRadios, autosave, savingNote, settled, whenGone, t, plural, otherLang } from '../dom.js';
+import { h, crumb, linkIn, field, twoStep, jsonField, messageOf, showError, savedField, savedCheck, savedRadios, autosave, savingNote, queueSave, whenGone, t, plural, otherLang } from '../dom.js';
 import { providerOf, abilityName, providerBase, modelOf, saveProvider, setKey, diffLayer, SPEECH_ROLES } from '../../core/llm/config.js';
 import { mergePatch } from '../../core/patch.js';
 import { officialPlugins, officialName, pluginName as shownPluginName } from '../../core/llm/official.js';
@@ -414,10 +414,7 @@ async function abilityBody(view, abilityId) {
       const wrong = v ? addressShown(v) : null;
       if (wrong) throw new Error(wrong);
       return v;
-    }, async (v) => {
-      await (releasesAtAddress(type, Boolean(uploads)) ? ctx.llm.reconnect(id, () => saveAbility({ baseUrl: v })) : saveAbility({ baseUrl: v })); // a new address: what it keeps or holds there goes first
-      tell(`${id}/${abilityId}`, null); // and a list fetched there, where it stands
-    })),
+    }, (v) => (releasesAtAddress(type, Boolean(uploads)) ? ctx.llm.reconnect(id, () => saveAbility({ baseUrl: v })) : saveAbility({ baseUrl: v })))), // a new address: what it keeps or holds there goes first
     h('p', { class: 'sub', text: t`Empty: the provider's address. Each setting here is saved as you change it.` }),
     addressWarn,
     uploads?.el ?? null,
@@ -494,18 +491,22 @@ function installPanel(ctx, typeId, name, done) {
   return h('div', {}, status, h('div', { class: 'acts' }, btn));
 }
 
-/** Tells the models part on show for an ability (`data-models`), one drawn since too, what a Fetch found, with the config it was read with; null: its list goes. @param {string} key @param {{ listed?: any[], error?: unknown, cfg?: import('../../core/llm/config.js').ModelConfig } | null} found */
+/** Tells the models part on show for an ability (`data-models`), one drawn since too, what a Fetch found: its list, with the config and what it was asked under, or why not. @param {string} key @param {{ listed: any[], cfg: import('../../core/llm/config.js').ModelConfig, asked: string } | { error: unknown }} found */
 function tell(key, found) {
   for (const el of document.querySelectorAll('[data-models]')) if (/** @type {HTMLElement} */ (el).dataset.models === key) el.dispatchEvent(new CustomEvent('listed', { detail: found }));
 }
 
-/** What a Fetch asks under, as stored now: the ability's address, the provider's headers and key. @param {any} ctx @param {string} id @param {string} abilityId */
-async function connection(ctx, id, abilityId) {
+/**
+ * What a list is asked under, read in the saves' queue (once those under way have landed, and none inside the reads; so never from a queued
+ * save): the ability's address and list path, the provider's headers (by name: their order is no change) and key; '': gone. A list's answer lands, and its Adds add, only while it reads the same.
+ * @param {any} ctx @param {string} id @param {string} abilityId @returns {Promise<string>}
+ */
+const connection = (ctx, id, abilityId) => queueSave(async () => {
   const rec = (await ctx.llm.config()).providers[id];
   const p = rec ? providerOf(rec) : null;
   const a = p?.abilities[abilityId];
-  return p && a ? JSON.stringify([a.baseUrl, p.headers, p.keyHeader, await ctx.llm.keyFor(id)]) : '';
-}
+  return p && a ? JSON.stringify([a.baseUrl, a.tunables?.listPath, Object.entries(p.headers).sort(), p.keyHeader, await ctx.llm.keyFor(id)]) : '';
+});
 
 /** An ability's models, Add a model by id and Fetch model list. @param {any} ctx @param {string} id @param {string} abilityId @param {import('../../core/llm/config.js').Model[]} models */
 function modelsPart(ctx, id, abilityId, models) {
@@ -549,14 +550,13 @@ function modelsPart(ctx, id, abilityId, models) {
     onclick: async () => {
       fetchList.disabled = true;
       status.textContent = t`Asking for its models…`;
-      /** @type {{ listed?: any[], error?: unknown, cfg?: import('../../core/llm/config.js').ModelConfig } | null} */
+      /** @type {Parameters<typeof tell>[1] | null} */
       let found = null;
       try {
-        await settled(); // an address just typed is saved first
-        const asked = await connection(ctx, id, abilityId);
+        const asked = await connection(ctx, id, abilityId); // an address just typed is saved first
         const answer = await ctx.llm.listModels(id, abilityId).then((/** @type {any[]} */ listed) => ({ listed }), (/** @type {unknown} */ error) => ({ error }));
-        const cfg = await ctx.llm.config(); // read before the check: nothing is awaited between it and the draw
-        if ((await connection(ctx, id, abilityId)) === asked) found = { ...answer, cfg }; // asked under another address or key: lands nowhere
+        // Asked under another connection: lands nowhere, silently (a late answer would say so over a newer list).
+        if ((await connection(ctx, id, abilityId)) === asked) found = 'error' in answer ? answer : { ...answer, cfg: await ctx.llm.config(), asked };
       } catch (error) {
         found = { error };
       }
@@ -568,15 +568,9 @@ function modelsPart(ctx, id, abilityId, models) {
   /** A Fetch's answer, here: rows by its models as read with it (an add whose draw was dropped is in them). @param {CustomEvent} e */
   const land = (e) => {
     const found = e.detail;
-    if (!found) { // the list goes, the filter box stays, and the words of a Fetch still asking
-      rows = () => {};
-      list.replaceChildren();
-      if (!fetchList.disabled) status.textContent = '';
-      return;
-    }
     if ('error' in found) return showError(status, found.error);
     status.textContent = plural(found.listed.length, '# model.', '# models.');
-    rows = listedModels(ctx, id, abilityId, found.listed, found.cfg, { filter, list, redraw: () => rows() });
+    rows = listedModels(ctx, id, abilityId, found, { filter, list, redraw: () => rows() });
     if (!listSlot.firstChild) listSlot.replaceChildren(field(t`Filter the list`, filter), list);
     rows();
   };
@@ -594,11 +588,12 @@ function modelsPart(ctx, id, abilityId, models) {
 /**
  * The function that draws the models an ability listed, minus those it has by provider model id, by the filter's text. An Add that fails
  * says why in a toast, in sight wherever the list is: the models' status line, where Add model says why, can be far above it. It draws the
- * part's list as it is by then (`redraw`), not this one: a list dropped or drawn again since stays so.
- * @param {any} ctx @param {string} id @param {string} abilityId @param {import('../../core/llm/contract.js').ListedModel[]} listed
- * @param {import('../../core/llm/config.js').ModelConfig} cfg @param {{ filter: HTMLInputElement, list: HTMLElement, redraw: () => void }} part
+ * part's list as it is by then (`redraw`), not this one: a list drawn again since stays so. Its Adds add only under the connection it was asked under.
+ * @param {any} ctx @param {string} id @param {string} abilityId
+ * @param {{ listed: import('../../core/llm/contract.js').ListedModel[], cfg: import('../../core/llm/config.js').ModelConfig, asked: string }} found
+ * @param {{ filter: HTMLInputElement, list: HTMLElement, redraw: () => void }} part
  */
-function listedModels(ctx, id, abilityId, listed, cfg, { filter, list, redraw }) {
+function listedModels(ctx, id, abilityId, { listed, cfg, asked }, { filter, list, redraw }) {
   const owned = new Set(Object.values(cfg.models).filter((m) => m.provider === id && m.ability === abilityId).map((m) => modelOf(m).providerId));
   const here = cfg.providers[id] ? providerOf(cfg.providers[id]).name : '';
   const show = () => {
@@ -615,6 +610,9 @@ function listedModels(ctx, id, abilityId, listed, cfg, { filter, list, redraw })
           add.disabled = true;
           owned.add(m.providerId);
           try {
+            const now = await connection(ctx, id, abilityId);
+            // From before its connection changed: refused; a gone provider's add says so itself.
+            if (now && now !== asked) throw new Error(t`This list is from before the address or key changed. Fetch the model list again.`);
             await ctx.llm.addListedModel(id, abilityId, model);
           } catch (e) {
             ctx.notices.toast(messageOf(e));
