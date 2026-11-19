@@ -494,7 +494,7 @@ function installPanel(ctx, typeId, name, done) {
   return h('div', {}, status, h('div', { class: 'acts' }, btn));
 }
 
-/** Tells the models part on show for an ability (`data-models`), one drawn since too, what a Fetch found; null: its list goes. @param {string} key @param {{ listed?: any[], error?: unknown } | null} found */
+/** Tells the models part on show for an ability (`data-models`), one drawn since too, what a Fetch found, with the config it was read with; null: its list goes. @param {string} key @param {{ listed?: any[], error?: unknown, cfg?: import('../../core/llm/config.js').ModelConfig } | null} found */
 function tell(key, found) {
   for (const el of document.querySelectorAll('[data-models]')) if (/** @type {HTMLElement} */ (el).dataset.models === key) el.dispatchEvent(new CustomEvent('listed', { detail: found }));
 }
@@ -549,13 +549,14 @@ function modelsPart(ctx, id, abilityId, models) {
     onclick: async () => {
       fetchList.disabled = true;
       status.textContent = t`Asking for its models…`;
-      /** @type {{ listed?: any[], error?: unknown } | null} */
+      /** @type {{ listed?: any[], error?: unknown, cfg?: import('../../core/llm/config.js').ModelConfig } | null} */
       let found = null;
       try {
         await settled(); // an address just typed is saved first
         const asked = await connection(ctx, id, abilityId);
         const answer = await ctx.llm.listModels(id, abilityId).then((/** @type {any[]} */ listed) => ({ listed }), (/** @type {unknown} */ error) => ({ error }));
-        if ((await connection(ctx, id, abilityId)) === asked) found = answer; // asked under another address or key: lands nowhere
+        const cfg = await ctx.llm.config(); // read before the check: nothing is awaited between it and the draw
+        if ((await connection(ctx, id, abilityId)) === asked) found = { ...answer, cfg }; // asked under another address or key: lands nowhere
       } catch (error) {
         found = { error };
       }
@@ -564,18 +565,18 @@ function modelsPart(ctx, id, abilityId, models) {
       if (found) tell(`${id}/${abilityId}`, found);
     },
   }, t`Fetch model list`);
-  /** A Fetch's answer, here: rows by its models as they are now (an add whose draw was dropped is in them). @param {CustomEvent} e */
-  const land = async (e) => {
+  /** A Fetch's answer, here: rows by its models as read with it (an add whose draw was dropped is in them). @param {CustomEvent} e */
+  const land = (e) => {
     const found = e.detail;
-    if (!found) { // the list goes, the filter box stays
+    if (!found) { // the list goes, the filter box stays, and the words of a Fetch still asking
       rows = () => {};
       list.replaceChildren();
-      status.textContent = '';
+      if (!fetchList.disabled) status.textContent = '';
       return;
     }
     if ('error' in found) return showError(status, found.error);
     status.textContent = plural(found.listed.length, '# model.', '# models.');
-    rows = listedModels(ctx, id, abilityId, found.listed, await ctx.llm.config(), { filter, list });
+    rows = listedModels(ctx, id, abilityId, found.listed, found.cfg, { filter, list, redraw: () => rows() });
     if (!listSlot.firstChild) listSlot.replaceChildren(field(t`Filter the list`, filter), list);
     rows();
   };
@@ -592,11 +593,12 @@ function modelsPart(ctx, id, abilityId, models) {
 
 /**
  * The function that draws the models an ability listed, minus those it has by provider model id, by the filter's text. An Add that fails
- * says why in a toast, in sight wherever the list is: the models' status line, where Add model says why, can be far above it.
+ * says why in a toast, in sight wherever the list is: the models' status line, where Add model says why, can be far above it. It draws the
+ * part's list as it is by then (`redraw`), not this one: a list dropped or drawn again since stays so.
  * @param {any} ctx @param {string} id @param {string} abilityId @param {import('../../core/llm/contract.js').ListedModel[]} listed
- * @param {import('../../core/llm/config.js').ModelConfig} cfg @param {{ filter: HTMLInputElement, list: HTMLElement }} part
+ * @param {import('../../core/llm/config.js').ModelConfig} cfg @param {{ filter: HTMLInputElement, list: HTMLElement, redraw: () => void }} part
  */
-function listedModels(ctx, id, abilityId, listed, cfg, { filter, list }) {
+function listedModels(ctx, id, abilityId, listed, cfg, { filter, list, redraw }) {
   const owned = new Set(Object.values(cfg.models).filter((m) => m.provider === id && m.ability === abilityId).map((m) => modelOf(m).providerId));
   const here = cfg.providers[id] ? providerOf(cfg.providers[id]).name : '';
   const show = () => {
@@ -618,12 +620,12 @@ function listedModels(ctx, id, abilityId, listed, cfg, { filter, list }) {
             ctx.notices.toast(messageOf(e));
             if (/** @type {any} */ (e)?.held) { // added since the list was drawn: its row says so, and the page is not drawn (text typed elsewhere stays)
               if (add.isConnected) add.replaceWith(h('span', { class: 'sub', text: t`Already added, on ${here}` }));
-              else show();
+              else redraw();
               return;
             }
             owned.delete(m.providerId);
             if (add.isConnected) add.disabled = false;
-            else show(); // its row was drawn away: offered again
+            else redraw(); // its row was drawn away: offered again
             return;
           }
           // Once its draw has ended (drawn, or ended by a tap), a row still on show says Added.

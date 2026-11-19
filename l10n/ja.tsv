@@ -2165,24 +2165,24 @@ f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	削
 uwbggy	ok	Added as "{0}": "{1}" is already used by another model.	「{1}」はほかのモデルがすでに使っているため、「{0}」として追加しました。	src/ui/screens/provider.js:539	{0} = name; {1} = wanted
 1oz4euh	ok	Add model	モデルを追加	src/ui/screens/provider.js:546	
 tbmsa5	ok	Asking for its models…	モデルを取得中…	src/ui/screens/provider.js:551	
-uxqo7a	ok	Fetch model list	モデルの一覧を取得	src/ui/screens/provider.js:566	
-1yko1my#other	ok	# models.	モデルが#個見つかりました。	src/ui/screens/provider.js:577	plural; # = found.listed.length; English: "# model." (one), "# models." (other)
-19ai2z0	ok	Filter the list	一覧を絞り込む	src/ui/screens/provider.js:579	
-1scr2ml	ok	{0}K context	コンテキスト{0}K	src/ui/screens/provider.js:584	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
-1tqy8k1	ok	Its models	モデル	src/ui/screens/provider.js:586	Note: "Its models" as a heading under the ability: モデル alone reads right there.
-bzs1ys	ok	No models yet.	モデルはまだありません。	src/ui/screens/provider.js:587	
-pnxisg	ok	Add a model by id	IDでモデルを追加	src/ui/screens/provider.js:588	
-uizt0x	ok	{0} · loaded	{0} · 読み込み済み	src/ui/screens/provider.js:608	{0} = named
-1w6mxym	ok	Already added, on {0}	追加済み（{0}）	src/ui/screens/provider.js:620	{0} = here
-11pl9jr	ok	Use the free models	無料のモデルを使う	src/ui/screens/provider.js:645	
-vam64u	ok	Use the recommended models	おすすめのモデルを使う	src/ui/screens/provider.js:645	
-1b2yx8m	ok	Suggested models	おすすめのモデル	src/ui/screens/provider.js:646	
-y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0}は役割ごとにおすすめのモデルを用意しています。これを使うと、音声のモデルが端末の音声入力とブラウザの声（どちらも無料）より前に並ぶため、有料のモデルが先に試されます。	src/ui/screens/provider.js:647	{0} = src.name; Note: 端末の音声入力 and ブラウザの声 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
-1x5hwmk	ok	{0} suggests a model for each role.	{0}は役割ごとにおすすめのモデルを用意しています。	src/ui/screens/provider.js:648	{0} = src.name
-1iffu2j	ok	{0} switched on.	{0}をオンにしました。	src/ui/screens/provider.js:655	{0} = n
-1szeqxt	ok	Roles updated.	役割を更新しました。	src/ui/screens/provider.js:655	
-1egvjs1	ok	{0} couldn't be switched on: {1}	{0}をオンにできませんでした：{1}	src/ui/screens/provider.js:656	{0} = f.name; {1} = messageOf(f.error)
-wlh055	ok	Use the {0} models	{0}のモデルを使う	src/ui/screens/provider.js:662	{0} = which
+uxqo7a	ok	Fetch model list	モデルの一覧を取得	src/ui/screens/provider.js:567	
+1yko1my#other	ok	# models.	モデルが#個見つかりました。	src/ui/screens/provider.js:578	plural; # = found.listed.length; English: "# model." (one), "# models." (other)
+19ai2z0	ok	Filter the list	一覧を絞り込む	src/ui/screens/provider.js:580	
+1scr2ml	ok	{0}K context	コンテキスト{0}K	src/ui/screens/provider.js:585	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
+1tqy8k1	ok	Its models	モデル	src/ui/screens/provider.js:587	Note: "Its models" as a heading under the ability: モデル alone reads right there.
+bzs1ys	ok	No models yet.	モデルはまだありません。	src/ui/screens/provider.js:588	
+pnxisg	ok	Add a model by id	IDでモデルを追加	src/ui/screens/provider.js:589	
+uizt0x	ok	{0} · loaded	{0} · 読み込み済み	src/ui/screens/provider.js:610	{0} = named
+1w6mxym	ok	Already added, on {0}	追加済み（{0}）	src/ui/screens/provider.js:622	{0} = here
+11pl9jr	ok	Use the free models	無料のモデルを使う	src/ui/screens/provider.js:647	
+vam64u	ok	Use the recommended models	おすすめのモデルを使う	src/ui/screens/provider.js:647	
+1b2yx8m	ok	Suggested models	おすすめのモデル	src/ui/screens/provider.js:648	
+y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0}は役割ごとにおすすめのモデルを用意しています。これを使うと、音声のモデルが端末の音声入力とブラウザの声（どちらも無料）より前に並ぶため、有料のモデルが先に試されます。	src/ui/screens/provider.js:649	{0} = src.name; Note: 端末の音声入力 and ブラウザの声 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
+1x5hwmk	ok	{0} suggests a model for each role.	{0}は役割ごとにおすすめのモデルを用意しています。	src/ui/screens/provider.js:650	{0} = src.name
+1iffu2j	ok	{0} switched on.	{0}をオンにしました。	src/ui/screens/provider.js:657	{0} = n
+1szeqxt	ok	Roles updated.	役割を更新しました。	src/ui/screens/provider.js:657	
+1egvjs1	ok	{0} couldn't be switched on: {1}	{0}をオンにできませんでした：{1}	src/ui/screens/provider.js:658	{0} = f.name; {1} = messageOf(f.error)
+wlh055	ok	Use the {0} models	{0}のモデルを使う	src/ui/screens/provider.js:664	{0} = which
 1qocxbg	ok	Writing it: {0} is reading the conversation. This can take a minute.	作成中：{0}が会話を読んでいます。1分ほどかかることがあります。	src/ui/screens/recap.js:33	{0} = names(m.name)
 1lrfe9k	ok	Write the recap	振り返りを書く	src/ui/screens/recap.js:35	
 h6huep	ok	Write it again	書き直す	src/ui/screens/recap.js:35	

@@ -102,8 +102,11 @@ test("a Fetch asked under the ability's old address lands nowhere once Its own a
     const release = a.holdList();
     await fetchHeld(chat, a);
     await ownAddress(chat, b);
-    release();
+    // The Fetch still asks: its words stay, and its button, greyed, says why until the old server answers.
     const fetchList = chat.getByRole('button', { name: 'Fetch model list' });
+    await expect(chat.getByText('Asking for its models…')).toBeVisible();
+    await expect(fetchList).toBeDisabled();
+    release();
     await expect(fetchList).toBeEnabled(); // handled: the page gives the button back and tells the part in one block, which writes the count of a list that landed
     await expect(chat.getByText(/^\d+ models?\.$/)).toHaveCount(0);
     await expect(chat.getByRole('button', { name: 'Add old-one' })).toHaveCount(0);
@@ -215,7 +218,7 @@ test("a Fetch's answer, landing while the filter is typed in: the box keeps its 
   }
 });
 
-test("a Fetch whose reading of the connection fails still gives the button and the status back, and says why (fails on main: stuck on \"Asking for its models…\", the button disabled)", async ({ page }) => {
+test("a Fetch whose reading of the connection fails still gives the button and the status back, and says why (fails on 3bc080fa8: stuck on \"Asking for its models…\", the button disabled; on main the button comes back, the list lands and no error shows)", async ({ page }) => {
   const s = await startFakeServer({ flavour: 'llamacpp', key: KEY, models: [model('qwen3.8-flash')] });
   try {
     const chat = await addLlamaCpp(page, s);
@@ -233,6 +236,65 @@ test("a Fetch whose reading of the connection fails still gives the button and t
     await expect(chat.getByRole('button', { name: 'Fetch model list' })).toBeEnabled();
     await expect(chat.getByText('Asking for its models…')).toHaveCount(0);
     await expect(chat.getByText('the key store is unreadable')).toBeVisible();
+  } finally {
+    await s.stop();
+  }
+});
+
+// A list's own Add that fails after its list was dropped (a drop is the part told, as an own-address save tells it: `listed` with nothing) draws
+// nothing back: the failure redraws the part's list as it is now. The tap and the drop come in one turn, so the Add, which waits for the store,
+// ends after the drop; a refusal is made in the store first, from a second store instance, the page not drawn.
+for (const [how, words] of [['the provider is gone', 'That provider no longer exists.'], ['another add took the model first', '"old-two" is already added here.']]) {
+  test(`a listed Add that fails after its list was dropped puts no row back, ${how} (fails on 966026720: the old rows were drawn again)`, async ({ page }) => {
+    const a = await startFakeServer({ flavour: 'llamacpp', key: KEY, models: [model('old-one'), model('old-two')] });
+    try {
+      const chat = await addLlamaCpp(page, a);
+      await chat.getByRole('button', { name: 'Fetch model list' }).click();
+      await expect(chat.getByText('2 models.')).toBeVisible();
+      await page.evaluate(async (gone) => {
+        const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+        const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+        const { readConfig, removeProviderRecords } = await import(/** @type {string} */ ('/src/core/llm/config.js'));
+        const { addModelById } = await import(/** @type {string} */ ('/src/core/llm/providers.js'));
+        const store = await createIdbStore();
+        const ws = new Workspace(store);
+        const [rec] = Object.values((await readConfig(ws)).providers);
+        if (gone) await removeProviderRecords(ws, store, rec.id);
+        else await addModelById({ ws }, rec.id, 'chat', 'old-two');
+        store.close();
+      }, how === 'the provider is gone');
+      await chat.getByRole('button', { name: 'Add old-two' }).evaluate((b) => {
+        /** @type {HTMLElement} */ (b).click();
+        b.closest('[data-models]')?.dispatchEvent(new CustomEvent('listed', { detail: null }));
+      });
+      await expect(page.locator('.toasts .toast', { hasText: words })).toBeVisible();
+      await expect(chat.locator('ul.listed li')).toHaveCount(0);
+      await expect(chat.getByRole('button', { name: /^Add old-/ })).toHaveCount(0);
+    } finally {
+      await a.stop();
+    }
+  });
+}
+
+test("a Fetch's answer is drawn where the part is told of it, with nothing waited for between: a drop told right after leaves no rows and no count (fails on 966026720: the draw waited for a read of the config, and came after the drop)", async ({ page }) => {
+  const s = await startFakeServer({ flavour: 'llamacpp', key: KEY, models: [model('old-one'), model('old-two')] });
+  try {
+    const chat = await addLlamaCpp(page, s);
+    const part = chat.locator('[data-models]');
+    // A listener of the test's, after the part's own: it sees the part as it is the moment the part has handled the answer, and then drops the
+    // list as an own-address save does.
+    await part.evaluate((el) => {
+      el.addEventListener('listed', (e) => {
+        if (!(/** @type {CustomEvent} */ (e).detail?.listed)) return;
+        /** @type {HTMLElement} */ (el).dataset.drawn = String(el.querySelectorAll('ul.listed li').length);
+        el.dispatchEvent(new CustomEvent('listed', { detail: null }));
+      });
+    });
+    await chat.getByRole('button', { name: 'Fetch model list' }).click();
+    await expect(chat.getByRole('button', { name: 'Fetch model list' })).toBeEnabled(); // handled: the button is given back and the part told in one block
+    expect(await part.getAttribute('data-drawn'), 'both rows were drawn when the part had handled the answer').toBe('2');
+    await expect(chat.locator('ul.listed li')).toHaveCount(0);
+    await expect(chat.getByText(/^\d+ models?\.$/)).toHaveCount(0);
   } finally {
     await s.stop();
   }

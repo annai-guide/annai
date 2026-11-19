@@ -280,7 +280,7 @@ test("Add model by id whose name another model has takes a free name, \"Gemma 5 
   }
 });
 
-test("a provider whose modelDefaults name every model: the first by-id add takes that name with no toast, a second says its default name is used (fails on main: the first add said its id was used)", async ({ page }) => {
+test("a provider whose modelDefaults name every model: the first by-id add takes that name with no toast, a second says its default name is used (fails on 3bc080fa8: the first add said its id was used; on main the first says nothing and the second is refused, its name taken)", async ({ page }) => {
   const key = 'sk-default-name-0123';
   const s = await startFakeServer({ flavour: 'llamacpp', key, models: [] });
   try {
