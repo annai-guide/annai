@@ -287,7 +287,7 @@ test("a model added to a provider that was removed meanwhile is refused with the
   const ctx = await setup();
   const id = await addProvider(ctx, OPENAI_SRC, { key: 'sk-o' });
   await removeProviderRecords(ctx.ws, ctx.store, id);
-  const gone = (/** @type {any} */ e) => e.shown === 'That provider no longer exists.' && e.message === 'That provider no longer exists.';
+  const gone = (/** @type {any} */ e) => e.shown === 'That provider no longer exists.' && e.message === 'That provider no longer exists.' && !e.held;
   await assert.rejects(addModelById(ctx, id, 'chat', 'x'), gone);
   await assert.rejects(addListedModel(ctx, id, 'chat', { providerId: 'x', name: 'X' }), gone);
 });
@@ -296,7 +296,7 @@ test("an ability has one model for each provider model id: an add of one it has 
   const ctx = await setup();
   const id = await addProvider(ctx, ROUTER_SRC, { key: 'sk-r', roles: null });
   const count = async () => Object.keys((await readConfig(ctx.ws)).models).length;
-  const refused = (/** @type {string} */ providerId) => (/** @type {any} */ e) => e.shown === `"${providerId}" is already added here.` && e.message === e.shown;
+  const refused = (/** @type {string} */ providerId) => (/** @type {any} */ e) => e.shown === `"${providerId}" is already added here.` && e.message === e.shown && e.held === true; // `held`: the provider page's list says "Already added" for this refusal only
   await addModelById(ctx, id, 'chat', 'x/one');
   const before = await count();
   // A list drawn before the add by id offers it again.
@@ -306,7 +306,7 @@ test("an ability has one model for each provider model id: an add of one it has 
   await assert.rejects(addModelById(ctx, id, 'chat', 'x/two'), refused('x/two'));
   // A name another model has, by an id it has not, is still refused for the name (saveModel).
   await addListedModel(ctx, id, 'chat', { providerId: 'x/four', name: 'Four' });
-  await assert.rejects(addModelById(ctx, id, 'chat', 'Four'), /"Four" is already used by another model/);
+  await assert.rejects(addModelById(ctx, id, 'chat', 'Four'), (/** @type {any} */ e) => /"Four" is already used by another model/.test(e.message) && !e.held);
   // The description's own models count too.
   await assert.rejects(addListedModel(ctx, id, 'chat', { providerId: 'big', name: 'Big again' }), refused('big'));
   assert.equal(await count(), before + 2, 'only the models from the list were added');

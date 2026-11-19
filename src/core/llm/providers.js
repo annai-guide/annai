@@ -307,13 +307,14 @@ function startFor(cfg, providerId, abilityId) {
 }
 
 /**
- * An add never makes a second model with a provider model id the ability has: it is refused, in words the traveller sees. A list drawn before an
+ * An add never makes a second model with a provider model id the ability has: it is refused, in words the traveller sees, and the error says `held`
+ * (the provider page's list says "Already added" in the row, for this refusal only). A list drawn before an
  * add by id, or an add by id of what a list added under its name, would make one that the name check (saveModel) misses. The sync and the model's page skip this.
  * @param {import('./config.js').ModelConfig} cfg @param {string} providerId @param {string} abilityId @param {string} providerModelId
  */
 function refuseHeld(cfg, providerId, abilityId, providerModelId) {
   if (Object.values(cfg.models).some((m) => m.provider === providerId && m.ability === abilityId && modelOf(m).providerId === providerModelId)) {
-    throw Object.assign(new Error(/* en */ `"${providerModelId}" is already added here.`), { shown: t`"${providerModelId}" is already added here.` });
+    throw Object.assign(new Error(/* en */ `"${providerModelId}" is already added here.`), { shown: t`"${providerModelId}" is already added here.`, held: true });
   }
 }
 
