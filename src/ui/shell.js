@@ -49,6 +49,9 @@ import { uiSignature, syncThemes, cleanUp, slotEntries, component, dockKey, plug
 
 const SCREENS = { sees: renderSees, trips: renderTrips, trip: renderTrip, file: renderFile, settings: renderSettings, import: renderImport, trace: renderTrace, plugins: renderPlugins, add: renderAdd, 'plugin-install': renderPluginInstall, models: renderModels, shiori: renderShiori, talk: renderTalk, tools: renderTools, plan: renderPlan, booking: renderBooking, item: renderItem, voice: renderVoice, drive: renderDrive, backups: renderBackups, recap: renderRecap, replay: renderReplay, simulate: renderSimulate, notifications: renderNotifications, ext: renderExt, 'plugin-page': renderPluginPage, 'trip-ext': renderTripTab, mcp: renderMcp, welcome: renderWelcome, about: renderAbout, experimental: renderExperimental, updates: renderUpdates, languages: renderLanguages };
 
+/** How often a draw waiting for the traveller looks again (whenFree's own figure): drawn within half a second of them letting go, a few reads a look. */
+const LET_GO_MS = 500;
+
 /**
  * @param {HTMLElement} root
  * @param {{ store: any, ws: any, registry: any, plugins: any, llm?: any, agent?: any, voice?: any, live?: any, awake?: any, pack?: any, presets?: Record<string, string>, backups?: any, sim?: any, push?: any,
@@ -255,8 +258,52 @@ export function startShell(root, core) {
   };
   /** What a draw that a newer one superseded ends with. @param {number} my */
   const superseded = (my) => (landedAt > my ? undefined : landing.promise);
-  /** @param {{ moved?: boolean }} [o] moved: a new screen or an entry of the history, not a redraw of this one */
+  /** The field of the screen that has the caret, if any. */
+  const caretIn = () => {
+    const a = document.activeElement;
+    return a && main.contains(a) && isField(a) ? a : null;
+  };
+  // What the traveller does on the screen, in order (beats): typing or choosing in a control, the caret put in a field, a tap on a button or a
+  // link. A draw again of the screen on show waits while it would take from under their hands what they did since their last tap (holds), and a
+  // tap made meanwhile ends it: the tap's own action draws, if it does. What a tap used up (a Save's key, an Add's model id) is not waited for.
+  // A draw nobody asked for (redraw) counts no tap, and waits on through one. Nothing is copied from one screen to the next.
+  let beat = 0;
+  let tappedAt = 0;
+  /** When each control was last typed or chosen in, until a save stores it, and each field took the caret. @type {WeakMap<EventTarget, number>} */
+  const typedAt = new WeakMap();
+  /** @type {WeakMap<EventTarget, number>} */
+  const enteredAt = new WeakMap();
+  main.addEventListener('input', (e) => { if (e.target) typedAt.set(e.target, ++beat); }, true);
+  main.addEventListener('focusin', (e) => { if (e.target) enteredAt.set(e.target, ++beat); }, true);
+  main.addEventListener('stored', (e) => {
+    const el = /** @type {Element} */ (e.target);
+    for (const x of [el, ...el.querySelectorAll('input, select, textarea')]) typedAt.delete(x);
+  }, true);
+  main.addEventListener('click', (e) => { if (e.target instanceof Element && e.target.closest('button, a[href], summary, [role=button], input[type=submit], input[type=button]')) tappedAt = ++beat; }, true);
+  /**
+   * Would a draw again take what the traveller is doing: a control typed or chosen in and not stored (a save says so: `stored`), the caret in a
+   * field they entered; with no tap asking (unasked), all of it, the caret in any field, an error shown (not data-kept) or a list being dragged.
+   * @param {{ unasked?: boolean }} o
+   */
+  const holds = (o) => {
+    if (location.hash !== drawnHash) return false; // the screen is being left: a draw now draws the address, as the move does
+    const since = o.unasked ? 0 : tappedAt;
+    const a = caretIn();
+    return (a !== null && (enteredAt.get(a) ?? 0) > since)
+      || [...main.querySelectorAll('input:not([type=file]), select, textarea')].some((el) => (typedAt.get(el) ?? 0) > since)
+      || (o.unasked === true && main.querySelector('.role-item.dragging, [role=alert]:not([hidden]):not(:empty):not([data-kept])') !== null);
+  };
+  /** @param {{ moved?: boolean, unasked?: boolean }} [o] moved: a new screen or an entry of the history, not a redraw of this one; unasked: no tap asked for it */
   async function render(o = {}) {
+    if (!o.moved) {
+      const was = seq;
+      const tap = tappedAt;
+      while (holds(o)) {
+        await new Promise((done) => { setTimeout(done, LET_GO_MS); });
+        if (seq !== was) return superseded(was);
+        if (!o.unasked && tappedAt !== tap) return; // a tap made meanwhile: its own action draws, if it does
+      }
+    }
     // An address that names no trip goes to the open one's, in place of this entry, so Back never lands on it again and bounces ("#/now": today's
     // Itinerary of the trip in play). A redraw of another trip's conversation (Shiori moved on: a hand-over, an Undo) goes to the open one's the
     // same way, opening nothing.
@@ -348,6 +395,11 @@ export function startShell(root, core) {
       // Its screen's ctx says which render it is, so what it draws after a newer one began is cleaned up at once.
       const node = await screen(Object.create(ctx, { seq: { value: my }, moved: { value: o.moved === true }, entry: { value: entry }, tripScope: { value: scope } }), route);
       if (my !== seq) return superseded(my);
+      if (!o.moved && holds(o)) { // begun while it was built: it waits, and is built again
+        const r = await render(o);
+        if (seq === my && landedAt < my) land(my); // a tap ended it: what it superseded ends too
+        return r;
+      }
       // Home drawn again in place (the clock, a hand-over, a Delete): the first row in view that is still shown stays where it was (keepRows).
       const draw = () => main.replaceChildren(node);
       if (pending === null && route.name === 'trips' && drawnHash === shown.hash) keepRows(main, draw, node);
@@ -395,18 +447,10 @@ export function startShell(root, core) {
     else if ((st?.annaiViewer || st?.annaiAsk) && st.annaiIdx > lastIdx) history.go(st.annaiIdx < top ? 1 : -1);
   });
 
-  /** What a redraw now would lose: a field being typed in, a key typed and not saved, an error shown (not one the screen draws again itself: data-kept), or a list being dragged. */
-  const typing = () => {
-    const a = document.activeElement;
-    if (a && main.contains(a) && isField(a)) return true;
-    if (main.querySelector('.role-item.dragging')) return true; // a list being dragged
-    return [...main.querySelectorAll('input[type=password]')].some((i) => /** @type {HTMLInputElement} */ (i).value)
-      || Boolean(main.querySelector('[role=alert]:not([hidden]):not(:empty):not([data-kept])'));
-  };
-  /** Does fn once nothing typed would be lost. @param {() => unknown} fn */
-  const whenFree = (fn) => (typing() ? void setTimeout(() => whenFree(fn), 500) : fn());
-  /** Draws the screen again once nothing typed would be lost, unless it was drawn meanwhile. */
-  const redraw = (screen = main.firstElementChild) => whenFree(() => { if (main.firstElementChild === screen) render(); });
+  /** Does fn once a draw nobody asked for would take nothing from the traveller. @param {() => unknown} fn */
+  const whenFree = (fn) => (holds({ unasked: true }) ? void setTimeout(() => whenFree(fn), LET_GO_MS) : fn());
+  /** Draws the screen again, nobody having asked: it waits for the traveller (holds). */
+  const redraw = () => { render({ unasked: true }); };
   // What plugins add redraws when it changes: once per change, not per item.
   if (core.registry) {
     syncThemes(core.registry, document.head);
@@ -453,7 +497,7 @@ export function startShell(root, core) {
     render,
     /** Live mode has restored the drive record: the activity changes from what it restored. */
     seedActivity,
-    /** Draws the screen again once nothing typed would be lost (what Settings → Updates shows changed). */
+    /** Draws the screen again, nobody having asked (what Settings → Updates shows changed), once that takes nothing from the traveller. */
     redraw: () => redraw(),
     /** A new version of annai waits (Settings → Updates says so too): one card, the newest. @param {() => void} apply */
     setUpdateReady(apply) {

@@ -79,6 +79,8 @@ export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cor
   let next = null;
   /** @type {{ gate: Promise<void>, pass: number } | null} */
   let held = null;
+  /** @type {Promise<void> | null} every request waits for it (holdAll) */
+  let stalled = null;
   let waiting = 0;
   /** @type {number} bytes the owner may keep, or Infinity */
   let quota = Infinity;
@@ -389,6 +391,7 @@ export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cor
     req.on('end', async () => {
       const url = new URL(req.url ?? '/', 'http://127.0.0.1');
       const method = req.method ?? 'GET';
+      if (stalled) await stalled;
       // A backup's files (not its manifest) wait here while holdFiles is on.
       if (held && method === 'GET' && url.pathname.includes('/media/') && !url.pathname.endsWith('/media/annai-archive.json') && held.pass-- <= 0) {
         waiting++;
@@ -495,6 +498,16 @@ export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cor
       held = { gate: new Promise((resolve) => { release = () => resolve(undefined); }), pass: letThrough };
       return () => {
         held = null;
+        release();
+      };
+    },
+    /** Every request waits, until the returned function is called: a server slow to answer, as a test needs it (WebKit does not route the requests of a page a service worker controls, so page.route holds nothing there, as models.spec.js says of OpenRouter). @returns {() => void} */
+    holdAll() {
+      /** @type {() => void} */
+      let release = () => {};
+      stalled = new Promise((resolve) => { release = () => resolve(undefined); });
+      return () => {
+        stalled = null;
         release();
       };
     },

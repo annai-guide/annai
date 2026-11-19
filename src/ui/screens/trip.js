@@ -93,11 +93,11 @@ function editForm(ctx, id, title, trip) {
     onsubmit: async (/** @type {Event} */ e) => {
       e.preventDefault();
       error.hidden = true;
-      const clean = name.value.trim() || (unnamed ? title : '');
+      const clean = name.value.trim() || (drawn.title === DRAFT_TITLE ? DRAFT_TITLE : ''); // an empty name keeps the stored one only while unnamed
       if (!clean) return say(t`Give it a name.`);
       // Only what was changed here: Shiori may have written the name or the dates since this was drawn.
       const changed = Object.fromEntries(Object.entries({ title: clean, start: start.value, end: end.value }).filter(([k, v]) => v !== drawn[k]).map(([k, v]) => [k, v || null]));
-      // Held while it saves and is drawn again: what is typed then would be drawn over.
+      // Held while it saves: what is typed meanwhile would not be in the save.
       const hold = (/** @type {boolean} */ on) => { for (const f of [name, start, end]) f.readOnly = on; };
       hold(true);
       try {
@@ -107,6 +107,9 @@ function editForm(ctx, id, title, trip) {
           if (next.start && next.end && next.end < next.start) throw backward;
           return next;
         }, { author: 'user' });
+        // The form on show holds what is saved now (its draw may never come): the next Save compares with it.
+        Object.assign(drawn, { title: clean, start: start.value, end: end.value });
+        hold(false); // as the write ends, not with the draw
         ctx.notices.toast(t`Saved.`);
         await ctx.render();
       } catch (err) {

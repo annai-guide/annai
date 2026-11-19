@@ -1,0 +1,25 @@
+{
+  "id": "slow",
+  "name": "Slow start",
+  "version": "1.0.0",
+  "api": 2,
+  "entry": "index.js",
+  "language": "en",
+  "description": "Test plugin: while the page holds it (globalThis.__hold), starting waits for globalThis.__release(); then its settings-page slot can be added at will (globalThis.__addPage).",
+  "settings": {
+    "type": "object",
+    "properties": {
+      "address": {
+        "type": "string",
+        "title": "Server address",
+        "description": "Where it reaches its server."
+      },
+      "token": {
+        "type": "string",
+        "writeOnly": true,
+        "title": "Token",
+        "description": "A key kept with the others."
+      }
+    }
+  }
+}

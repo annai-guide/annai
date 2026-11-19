@@ -18,6 +18,12 @@ async function fastBackups(page) {
 
 /** Settings → Automatic backups → Forgejo / Gitea, filled in; then Save and test. @param {import('@playwright/test').Page} page @param {any} fj */
 async function addForgejo(page, fj) {
+  await fillForgejo(page, fj);
+  await page.getByRole('button', { name: 'Save and test' }).click();
+}
+
+/** Settings → Automatic backups → Forgejo / Gitea, filled in, Save and test not yet tapped. @param {import('@playwright/test').Page} page @param {any} fj */
+async function fillForgejo(page, fj) {
   await goToHash(page, '#/settings');
   await page.getByRole('link', { name: 'Automatic backups' }).click();
   await expect(page.getByRole('heading', { name: 'Backups' })).toBeVisible();
@@ -28,7 +34,6 @@ async function addForgejo(page, fj) {
   await page.getByLabel('Owner').fill('me');
   await page.getByLabel('Repository').fill('annai-backup');
   await page.getByLabel('Access token').fill(fj.token);
-  await page.getByRole('button', { name: 'Save and test' }).click();
 }
 
 test('backups go to a Forgejo server, only what changed is sent, and a wiped phone gets everything back (spec §12.4)', async ({ page, baseURL }) => {
@@ -192,6 +197,109 @@ test('a place whose backups stopped is named on its card, by where it is', async
       store.close();
     });
     await expect(page.getByRole('status').getByText(`Backups to Forgejo / Gitea (${host}/${REPO}) stopped`)).toBeVisible({ timeout: 30_000 });
+  } finally {
+    await fj.stop();
+  }
+});
+
+// Fix round 2 of form-keep-next: a test that takes seconds, and a field edited meanwhile (the same text: what is pinned is the wait), so the draw of its
+// result waits for the field. The next test tests an edit that changes the name.
+test("Save and test, with a field changed while it tests: its draw waits, Save and test is back with the result where Testing… was, and a tap draws the screen again (fails on b9b40d958)", async ({ page, baseURL }) => {
+  const fj = await startForgejo({ repos: { [REPO]: {} }, cors: new URL(String(baseURL)).origin });
+  const host = new URL(fj.origin).host;
+  try {
+    await openApp(page);
+    await fillForgejo(page, fj);
+    const open = fj.holdAll(); // the server answers when the test says (page.route holds nothing in WebKit: the check's requests do not pass it)
+    const save = page.getByRole('button', { name: 'Save and test' });
+    const repo = page.getByLabel('Repository');
+    // The tap, and an edit in the Repository in the same turn: it comes after the tap, so the result's draw waits for it.
+    await save.evaluate((b) => {
+      const input = /** @type {HTMLInputElement} */ (document.getElementById('place-repo'));
+      /** @type {HTMLElement} */ (b).click();
+      input.value = 'annai-backup';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await expect(page.getByText('Testing…')).toBeVisible();
+    await expect(save).toBeDisabled();
+    open();
+    const works = page.getByText(`Works: annai can reach ${REPO} on ${host}, a private repository.`);
+    await expect(works).toBeVisible();
+    await page.waitForTimeout(1600);
+    await expect(page.getByText('Testing…')).toHaveCount(0);
+    await expect(save).toBeEnabled();
+    await expect(repo).toHaveValue('annai-backup');
+    // The next tap tests the field as it is, and its draw is not held: the screen comes again, showing the result.
+    await repo.evaluate((el) => { el.dataset.mine = '1'; });
+    await save.click();
+    await expect(repo).not.toHaveAttribute('data-mine', '1');
+    await expect(works).toBeVisible();
+  } finally {
+    await fj.stop();
+  }
+});
+
+// Fix touch of form-keep-next. A repository name typed wrong, tapped, and corrected in the same turn (the tap read the wrong one): the refusal shows
+// where Testing… was, and a second tap tests the field as it is now, so its result names the fixed one. A Save that read a stale value would test
+// the wrong name again.
+test("Save and test with a wrong repository name, corrected while it tests: the refusal shows where Testing… was, Save and test is back, and a tap tests the fix: its result names the fixed one", async ({ page, baseURL }) => {
+  const fj = await startForgejo({ repos: { [REPO]: {} }, cors: new URL(String(baseURL)).origin });
+  const host = new URL(fj.origin).host;
+  try {
+    await openApp(page);
+    await fillForgejo(page, fj);
+    const save = page.getByRole('button', { name: 'Save and test' });
+    const repo = page.getByLabel('Repository');
+    await repo.fill('annai-bakup');
+    // The tap reads the wrong name; the correction comes in the same turn, after it.
+    await save.evaluate((b) => {
+      const input = /** @type {HTMLInputElement} */ (document.getElementById('place-repo'));
+      /** @type {HTMLElement} */ (b).click();
+      input.value = 'annai-backup';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const status = page.locator('p[role=status]');
+    await expect(status.filter({ hasText: 'annai-bakup' })).toBeVisible();
+    await expect(page.getByText('Testing…')).toHaveCount(0);
+    await expect(save).toBeEnabled();
+    await expect(repo).toHaveValue('annai-backup');
+    // The next tap tests what the field says now.
+    await save.click();
+    await expect(page.getByText(`Works: annai can reach ${REPO} on ${host}, a private repository.`)).toBeVisible();
+    await expect(page.getByText('annai-bakup')).toHaveCount(0);
+  } finally {
+    await fj.stop();
+  }
+});
+
+// Fix touch of form-keep-next: the result of a Save and test that ends after the traveller has left the place is kept for the place's next
+// opening, as on main; the draw that came after the work (of the list they are on) must not drop it. It is dropped only when the place's own
+// status line is still on show: the draw did not come, and the line says it.
+test("Save and test, the place left before the check ends: its result is there when the place is opened again (fails on 799dd44a4)", async ({ page, baseURL }) => {
+  const fj = await startForgejo({ repos: { [REPO]: {} }, cors: new URL(String(baseURL)).origin });
+  const host = new URL(fj.origin).host;
+  try {
+    await openApp(page);
+    await fillForgejo(page, fj);
+    const open = fj.holdAll(); // the server answers when the test says (page.route holds nothing in WebKit: the check's requests do not pass it)
+    await page.getByRole('button', { name: 'Save and test' }).click();
+    await expect(page.getByText('Testing…')).toBeVisible();
+    await page.getByRole('link', { name: 'Backups', exact: true }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Backups' })).toBeVisible();
+    open();
+    // The check has ended when the place's `checked` is stored (the save before it cleared it); its draw is of the list.
+    await expect.poll(() => page.evaluate(async () => {
+      const at = (/** @type {string} */ p) => p;
+      const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+      const { Workspace } = await import(at('/src/core/workspace.js'));
+      const store = await createIdbStore();
+      const v = await new Workspace(store).readJSON('sys:device', '/backups.json');
+      store.close();
+      return Object.values(v.targets).some((t) => /** @type {any} */ (t).checked);
+    }), { timeout: 20_000 }).toBe(true);
+    await page.waitForTimeout(1000); // the draw that follows the work, which a place's note would not survive
+    await page.locator('a.card', { hasText: 'Forgejo / Gitea' }).click();
+    await expect(page.getByText(`Works: annai can reach ${REPO} on ${host}, a private repository.`)).toBeVisible();
   } finally {
     await fj.stop();
   }

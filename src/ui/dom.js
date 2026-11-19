@@ -297,6 +297,7 @@ export function autosave(control, read, save) {
   const shown = () => inputs.map((x) => (ticks(x) ? x.checked : x.value));
   let stored = shown();
   const run = async () => {
+    const now = shown(); // what this run saves
     let value;
     try {
       value = read();
@@ -309,9 +310,10 @@ export function autosave(control, read, save) {
     try {
       await save(value);
       error.hidden = true;
-      stored = shown();
+      stored = now;
       note.textContent = t`Saved`;
       timer = setTimeout(() => { note.textContent = ''; }, 4000);
+      if (shown().every((v, i) => v === now[i])) control.dispatchEvent(new Event('stored')); // none typed since: a draw need not wait (shell.js)
     } catch (e) {
       inputs.forEach((x, i) => { if (ticks(x)) x.checked = stored[i]; else x.value = stored[i]; });
       say(e);

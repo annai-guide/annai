@@ -350,7 +350,7 @@ async function boot() {
   }, DAILY);
   // A sign-in comes back to annai's address, for the plugin that started it.
   finishReturn({ llm, store, registry, plugins, notices: shell.notices, render: shell.render, held: () => (whyNoPlugins() ? NEEDS_RELOAD : undefined), go: (/** @type {string} */ hash) => { location.hash = hash; } })
-    .then((was) => { if (was) shell.render(); });
+    .then((was) => { if (was) shell.redraw(); });
 }
 
 /** annai's own personalities as shipped, for installing and "reset to original" (spec §14.1). @returns {Promise<Record<string, string>>} */
@@ -389,14 +389,14 @@ async function offerPersonalityUpdates({ ws, agent, presets, notices }) {
 
 /**
  * Cards for the plugins that didn't start, by name; returns those that couldn't load on a page no worker controls, for the reload card.
- * @param {PluginHost} plugins @param {{ notices: ReturnType<typeof import("../ui/notices.js").createNotices>, render: () => unknown }} shell
+ * @param {PluginHost} plugins @param {{ notices: ReturnType<typeof import("../ui/notices.js").createNotices>, redraw: () => unknown }} shell
  */
 async function startPlugins(plugins, shell) {
   const failures = await plugins.startInstalled();
   const state = /** @type {Record<string, any>} */ (await plugins.installed().catch(() => ({})));
   const { cards, unloaded } = startCards(failures, { name: (id) => state[id]?.name ?? id, taken: !navigator.serviceWorker || Boolean(navigator.serviceWorker.controller) });
   for (const c of cards) shell.notices.card(c);
-  if (location.hash.startsWith('#/plugins')) shell.render(); // show which plugins are now running
+  if (location.hash.startsWith('#/plugins')) shell.redraw(); // show which plugins are now running, once nothing typed would be lost
   return unloaded;
 }
 

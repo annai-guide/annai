@@ -87,9 +87,11 @@ export async function renderShiori(ctx, route) {
     quietError.hidden = true;
     for (const i of [quietFrom, quietTo]) i.removeAttribute('aria-invalid');
     queueSave(async () => {
+      const [from, to] = [quietFrom.value, quietTo.value]; // what this run saves
       try {
-        await budgets({ quietHours: quietFrom.value ? { from: quietFrom.value, to: quietTo.value } : null });
+        await budgets({ quietHours: from ? { from, to } : null });
         quietNote.textContent = t`Saved`;
+        if (quietFrom.value === from && quietTo.value === to) quiet.dispatchEvent(new Event('stored')); // none typed since (shell.js)
       } catch (e) {
         quietError.textContent = messageOf(e);
         quietError.hidden = false;

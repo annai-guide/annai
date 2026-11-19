@@ -788,6 +788,7 @@ cpehgy	ok	The plugin didn't provide an endpoint type {0}.	このプラグイン�
 557vva	ok	{0} isn't a web address: give it with https:// in front.	{0}はWebアドレスではありません。先頭に https:// を付けてください。	src/core/llm/provider-desc.js:164	{0} = url
 y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	アドレスは https:// で始めてください（http:// はlocalhostか127.0.0.1の場合のみ）。httpsのページからの暗号化されていないhttp通信はブラウザがブロックし、annaiもネットワーク内ではhttpsのアドレスにしか接続しないため、別のコンピューターのサーバーにはhttpsのアドレスが必要です。Tailscale Serveで用意できます：{0}。サーバーは annai.guide からのCORSも許可している必要があります。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
 1qpfdfv	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1).	アドレスは https:// で始めてください（http:// はlocalhostか127.0.0.1の場合のみ）。	src/core/llm/provider-desc.js:166	
+xx043p	ok	"{0}" is already added here.	「{0}」はすでに追加されています。	src/core/llm/providers.js:316	{0} = providerModelId
 1xwbser	ok	It is turned off.	オフになっています。	src/core/llm/service.js:305	Note: said of a plugin named before it on the screen.
 1pqsrb3	ok	It isn't running. Look at it in Settings → Plugins.	動作していません。「設定 → プラグイン」で確認してください。	src/core/llm/service.js:307	Note: said of a plugin named before it on the screen.
 sejc5h	ok	{0} was switched off after errors.	{0}はエラーが続いたためオフになりました。	src/core/llm/service.js:322	{0} = shown
@@ -1075,7 +1076,7 @@ snj02s	ok	In {0} ›	{0}の会話 ›	src/ui/dock.js:314	{0} = scopeTitle(typeof
 1rm0t76	ok	{0} isn't valid JSON.	{0}のJSONが正しくありません。	src/ui/dom.js:155	{0} = label; Note: {0} is a field's label.
 1a791in	ok	{0} has to be an object: { … }.	{0}はオブジェクト（{ … }）で入力してください。	src/ui/dom.js:157	{0} = label; Note: {0} is a field's label.
 1gkm7i5	ok	Saving…	保存中…	src/ui/dom.js:266	
-12ek4is	ok	Saved	保存しました	src/ui/dom.js:313	
+12ek4is	ok	Saved	保存しました	src/ui/dom.js:314	
 fj0t7x	ok	History (every version and the log)	履歴（すべてのバージョンとログ）	src/ui/export-panel.js:21	
 oopaku	ok	Memory	記憶	src/ui/export-panel.js:22	Note: What Shiori remembers about you (her memory), not the device's: 記憶, as the recap's list says it; メモリー reads as the device's memory.
 1l4mw9c	ok	Photos	写真	src/ui/export-panel.js:23	
@@ -1444,11 +1445,11 @@ uk4kus	ok	Update	アップデート	src/ui/plugin-updates.js:97
 2jfvhf	ok	The update is installed and runs the next time annai starts.	アップデートはインストール済みです。次にannaiを起動したときに有効になります。	src/ui/plugin-updates.js:139	
 nb21do	ok	Restart now	今すぐ再起動	src/ui/plugin-updates.js:140	
 1do1igm	ok	Plugins updated.	プラグインをアップデートしました。	src/ui/plugin-updates.js:143	
-eaf3fx	ok	{0} {1} brings something new	{0} {1}には追加内容があります	src/ui/plugin-updates.js:159	{0} = u.name; {1} = u.available
-127j3cm	ok	New in this version: {0}.	このバージョンで追加されるもの：{0}。	src/ui/plugin-updates.js:160	{0} = semicolons(whatItBrings(added))
-zymqne	ok	Only update if you trust where it came from.	入手元を信頼できる場合だけアップデートしてください。	src/ui/plugin-updates.js:160	
-1dfe53s	ok	Nothing changes until you tap Update.	「アップデート」をタップするまで何も変わりません。	src/ui/plugin-updates.js:161	
-15ziixp	ok	Update anyway	それでもアップデート	src/ui/plugin-updates.js:163	
+eaf3fx	ok	{0} {1} brings something new	{0} {1}には追加内容があります	src/ui/plugin-updates.js:160	{0} = u.name; {1} = u.available
+127j3cm	ok	New in this version: {0}.	このバージョンで追加されるもの：{0}。	src/ui/plugin-updates.js:161	{0} = semicolons(whatItBrings(added))
+zymqne	ok	Only update if you trust where it came from.	入手元を信頼できる場合だけアップデートしてください。	src/ui/plugin-updates.js:161	
+1dfe53s	ok	Nothing changes until you tap Update.	「アップデート」をタップするまで何も変わりません。	src/ui/plugin-updates.js:162	
+15ziixp	ok	Update anyway	それでもアップデート	src/ui/plugin-updates.js:164	
 vq7cdg#other	ok	# pages	#ページ	src/ui/preview.js:133	plural; # = pages; English: "# page" (one), "# pages" (other); Note: a PDF's page count on its file card.
 1cjjnaq	ok	Kept on this device.	この端末に保存。	src/ui/privacy.js:21	
 tct7be	ok	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	旅、ファイル、設定、キーは、この端末のこのブラウザに保存されます。annaiにはアカウントがなく、旅やキーを保存するannaiのサーバーもありません。	src/ui/privacy.js:21	
@@ -1545,43 +1546,43 @@ u7w1bx	ok	An MCP server	MCPサーバー	src/ui/screens/add.js:35	Note: the gloss
 1ufe6kk	ok	From an address	アドレスから	src/ui/screens/add.js:46	
 x4eio0	ok	Official	公式	src/ui/screens/add.js:65	
 w28ztz	ok	The {0} installed came from elsewhere but has the id of annai's own, so annai won't use it. Remove it in Settings → Plugins to add annai's.	インストール済みの{0}は公式以外から入手したものですが、annai公式と同じIDのため使われません。公式のものを追加するには、「設定 → プラグイン」で削除してください。	src/ui/screens/add.js:67	{0} = facts.name
-tdrd3b	ok	A name, "voice", "free"…	名前、「voice」、「free」…	src/ui/screens/add.js:94	Note: the search words stay English until the catalog carries translated keywords (L7).
-hqumoz	ok	Kind	種類	src/ui/screens/add.js:112	
-345x4c	ok	Filters	絞り込み	src/ui/screens/add.js:113	
-11ywf17	ok	Third-party	サードパーティ	src/ui/screens/add.js:115	
-7va5tn	ok	Free	無料	src/ui/screens/add.js:115	
-bahzfs	ok	Local	ローカル	src/ui/screens/add.js:115	
-2rcuyl	ok	Nothing here matches. Try other words, or take a chip off.	一致するものがありません。別の言葉で検索するか、絞り込みを1つ外してください。	src/ui/screens/add.js:123	Note: the chips here are the Filters (絞り込み); the glossary's chip → ボタン is for the dock's voice and GPS chips.
-18bnex5	ok	Search the catalog	カタログを検索	src/ui/screens/add.js:147	
-j0fdnt	ok	Nothing here matches.	一致するものがありません。	src/ui/screens/add.js:155	
-rv2u3	ok	Not listed? Add it by its address.	見つかりませんか？アドレスで追加できます。	src/ui/screens/add.js:155	
-npq0yc	ok	Model providers, voices, backup places, tools and skills: annai's own, and what you have installed.	モデルのプロバイダー、声、バックアップ先、ツール、スキル。annai公式のものと、インストール済みのものです。	src/ui/screens/add.js:163	
-1hszhgv	ok	annai's catalog couldn't be loaded. Connect to the internet and open this screen again. What is installed still shows.	カタログを読み込めませんでした。インターネットに接続して、この画面を開き直してください。インストール済みのものは引き続き表示されます。	src/ui/screens/add.js:164	
-1dbd7kr	ok	Also for: {0}	{0}にも対応	src/ui/screens/add.js:175	{0} = why
-b6qm2p	ok	Data only	データのみ	src/ui/screens/add.js:178	
-glpdbk	ok	Has code	コードあり	src/ui/screens/add.js:178	
-1fzjiri	ok	Set up {0}	{0}を設定	src/ui/screens/add.js:201	{0} = name
-isr2rg	ok	Set up	設定する	src/ui/screens/add.js:201	Note: a verb (Set up), so not the Settings screen's 設定 alone.
-xf2xmv	ok	Open {0}	{0}を開く	src/ui/screens/add.js:201	{0} = name
-1e8gegw	ok	Install	インストール	src/ui/screens/add.js:204	
-1sd5lj	ok	Add another	もう1つ追加	src/ui/screens/add.js:204	
-18374qe	ok	Add {0}	{0}を追加	src/ui/screens/add.js:206	{0} = name; Note: {0} is also what a share adds on the import screen ("ファイル", "2枚の写真"); the space before it is right for both.
-1m87n8p	ok	Add another {0}	{0}をもう1つ追加	src/ui/screens/add.js:206	{0} = name
-4bn9ve	ok	Install {0}	{0}をインストール	src/ui/screens/add.js:206	{0} = name
-1srp47z	ok	{0} wasn't installed	{0}をインストールできませんでした	src/ui/screens/add.js:207	{0} = name
-l11acj	ok	{0} wasn't added	{0}を追加できませんでした	src/ui/screens/add.js:207	{0} = name
-orcwpv	ok	Installed {0}.	{0}をインストールしました。	src/ui/screens/add.js:211	{0} = name
-8zey4w	ok	Adding…	追加中…	src/ui/screens/add.js:218	
-1drktj9	ok	Added	追加済み	src/ui/screens/add.js:230	
-1ox21wg	ok	Get it	取得	src/ui/screens/add.js:245	
-ksdme7	ok	Install from an address or a file	アドレスかファイルからインストール	src/ui/screens/add.js:247	
-1b7aabm	ok	A plugin with code gets full access to your trips and API keys. Data-only plugins can't run anything. Only install plugins you trust.	コード付きのプラグインは、旅とAPIキーに制限なくアクセスできます。データのみのプラグインは何も実行できません。信頼できるプラグインだけをインストールしてください。	src/ui/screens/add.js:249	
-1e2k1fe	ok	Address of a plugin or skill	プラグインかスキルのアドレス	src/ui/screens/add.js:250	
-17bnagd	ok	A zip file, an annai-plugin.json, or a SKILL.md, on a site that lets web apps read it (GitHub file pages work).	zipファイル、annai-plugin.json、SKILL.mdのいずれかで、Webアプリから読み込めるサイトにあるもの（GitHubのファイルページも使えます）。	src/ui/screens/add.js:251	
-7ikogv	ok	Install from a file	ファイルからインストール	src/ui/screens/add.js:253	
-hn1sl5	ok	this file isn't a plugin package annai can open: {0}	このファイルはannaiで開けるプラグインのパッケージではありません：{0}	src/ui/screens/add.js:267	{0} = message(e)
-ai5f3u	ok	Paste the address of a zip file, an annai-plugin.json or a SKILL.md first.	先にzipファイル、annai-plugin.json、SKILL.mdのいずれかのアドレスを貼り付けてください。	src/ui/screens/add.js:295	
-1huuh2k	ok	Getting it…	取得中…	src/ui/screens/add.js:300	
+tdrd3b	ok	A name, "voice", "free"…	名前、「voice」、「free」…	src/ui/screens/add.js:100	Note: the search words stay English until the catalog carries translated keywords (L7).
+hqumoz	ok	Kind	種類	src/ui/screens/add.js:123	
+345x4c	ok	Filters	絞り込み	src/ui/screens/add.js:124	
+11ywf17	ok	Third-party	サードパーティ	src/ui/screens/add.js:126	
+7va5tn	ok	Free	無料	src/ui/screens/add.js:126	
+bahzfs	ok	Local	ローカル	src/ui/screens/add.js:126	
+2rcuyl	ok	Nothing here matches. Try other words, or take a chip off.	一致するものがありません。別の言葉で検索するか、絞り込みを1つ外してください。	src/ui/screens/add.js:134	Note: the chips here are the Filters (絞り込み); the glossary's chip → ボタン is for the dock's voice and GPS chips.
+18bnex5	ok	Search the catalog	カタログを検索	src/ui/screens/add.js:158	
+j0fdnt	ok	Nothing here matches.	一致するものがありません。	src/ui/screens/add.js:166	
+rv2u3	ok	Not listed? Add it by its address.	見つかりませんか？アドレスで追加できます。	src/ui/screens/add.js:166	
+npq0yc	ok	Model providers, voices, backup places, tools and skills: annai's own, and what you have installed.	モデルのプロバイダー、声、バックアップ先、ツール、スキル。annai公式のものと、インストール済みのものです。	src/ui/screens/add.js:174	
+1hszhgv	ok	annai's catalog couldn't be loaded. Connect to the internet and open this screen again. What is installed still shows.	カタログを読み込めませんでした。インターネットに接続して、この画面を開き直してください。インストール済みのものは引き続き表示されます。	src/ui/screens/add.js:175	
+1dbd7kr	ok	Also for: {0}	{0}にも対応	src/ui/screens/add.js:186	{0} = why
+b6qm2p	ok	Data only	データのみ	src/ui/screens/add.js:189	
+glpdbk	ok	Has code	コードあり	src/ui/screens/add.js:189	
+1fzjiri	ok	Set up {0}	{0}を設定	src/ui/screens/add.js:212	{0} = name
+isr2rg	ok	Set up	設定する	src/ui/screens/add.js:212	Note: a verb (Set up), so not the Settings screen's 設定 alone.
+xf2xmv	ok	Open {0}	{0}を開く	src/ui/screens/add.js:212	{0} = name
+1e8gegw	ok	Install	インストール	src/ui/screens/add.js:215	
+1sd5lj	ok	Add another	もう1つ追加	src/ui/screens/add.js:215	
+18374qe	ok	Add {0}	{0}を追加	src/ui/screens/add.js:217	{0} = name; Note: {0} is also what a share adds on the import screen ("ファイル", "2枚の写真"); the space before it is right for both.
+1m87n8p	ok	Add another {0}	{0}をもう1つ追加	src/ui/screens/add.js:217	{0} = name
+4bn9ve	ok	Install {0}	{0}をインストール	src/ui/screens/add.js:217	{0} = name
+1srp47z	ok	{0} wasn't installed	{0}をインストールできませんでした	src/ui/screens/add.js:218	{0} = name
+l11acj	ok	{0} wasn't added	{0}を追加できませんでした	src/ui/screens/add.js:218	{0} = name
+orcwpv	ok	Installed {0}.	{0}をインストールしました。	src/ui/screens/add.js:222	{0} = name
+8zey4w	ok	Adding…	追加中…	src/ui/screens/add.js:229	
+1drktj9	ok	Added	追加済み	src/ui/screens/add.js:241	
+1ox21wg	ok	Get it	取得	src/ui/screens/add.js:256	
+ksdme7	ok	Install from an address or a file	アドレスかファイルからインストール	src/ui/screens/add.js:258	
+1b7aabm	ok	A plugin with code gets full access to your trips and API keys. Data-only plugins can't run anything. Only install plugins you trust.	コード付きのプラグインは、旅とAPIキーに制限なくアクセスできます。データのみのプラグインは何も実行できません。信頼できるプラグインだけをインストールしてください。	src/ui/screens/add.js:260	
+1e2k1fe	ok	Address of a plugin or skill	プラグインかスキルのアドレス	src/ui/screens/add.js:261	
+17bnagd	ok	A zip file, an annai-plugin.json, or a SKILL.md, on a site that lets web apps read it (GitHub file pages work).	zipファイル、annai-plugin.json、SKILL.mdのいずれかで、Webアプリから読み込めるサイトにあるもの（GitHubのファイルページも使えます）。	src/ui/screens/add.js:262	
+7ikogv	ok	Install from a file	ファイルからインストール	src/ui/screens/add.js:264	
+hn1sl5	ok	this file isn't a plugin package annai can open: {0}	このファイルはannaiで開けるプラグインのパッケージではありません：{0}	src/ui/screens/add.js:278	{0} = message(e)
+ai5f3u	ok	Paste the address of a zip file, an annai-plugin.json or a SKILL.md first.	先にzipファイル、annai-plugin.json、SKILL.mdのいずれかのアドレスを貼り付けてください。	src/ui/screens/add.js:306	
+1huuh2k	ok	Getting it…	取得中…	src/ui/screens/add.js:311	
 16r9x4z	ok	From an Android phone	Androidスマートフォンから	src/ui/screens/backups.js:14	
 1yzbug	ok	From an iPad	iPadから	src/ui/screens/backups.js:14	
 e0z2ub	ok	From a computer	パソコンから	src/ui/screens/backups.js:14	
@@ -1606,45 +1607,45 @@ raudcs	ok	Encrypt backups with a passphrase	バックアップをパスフレー
 13qje2w	ok	Include API keys (only in encrypted backups)	APIキーを含める（暗号化したバックアップのみ）	src/ui/screens/backups.js:134	
 75wjfp	ok	Testing…	テスト中…	src/ui/screens/backups.js:155	
 ebg9wq	ok	Keep 1 to 30 backups.	残す数は1〜30で入力してください。	src/ui/screens/backups.js:165	
-1gcdel3	ok	Save and test	保存してテスト	src/ui/screens/backups.js:175	
-wcqrhx	ok	A newer backup	より新しいバックアップ	src/ui/screens/backups.js:178	
-1eedj8v	ok	A newer backup is here	ここに、より新しいバックアップがあります	src/ui/screens/backups.js:179	
-xvbztk	ok	A backup is already here	すでにバックアップがあります	src/ui/screens/backups.js:179	
-1n4xwcb	ok	A large backup	大きなバックアップ	src/ui/screens/backups.js:185	
-7hmq4d	ok	This backup uploads {0}.	このバックアップは{0}をアップロードします。	src/ui/screens/backups.js:186	{0} = size(hold.bytes)
-111408e	ok	Back up automatically	自動バックアップ	src/ui/screens/backups.js:189	
-15ywqaa	ok	After changes, within the hour	変更後、1時間以内	src/ui/screens/backups.js:190	
-tp830y	ok	After changes, at most every 6 hours	変更後、6時間に1回まで	src/ui/screens/backups.js:190	
-1u04fpp	ok	Once a day	1日1回	src/ui/screens/backups.js:191	
-3tlu3u	ok	Off	オフ	src/ui/screens/backups.js:192	
-1tdau7e	ok	Also over mobile data	モバイルデータ通信でも	src/ui/screens/backups.js:194	
-uhtk71	ok	No limit	上限なし	src/ui/screens/backups.js:196	
-b69cje	ok	Looking…	読み込み中…	src/ui/screens/backups.js:208	
-fdmwqv	ok	There are no backups here yet.	ここにはまだバックアップがありません。	src/ui/screens/backups.js:211	
-hcu7jn	ok	encrypted	暗号化済み	src/ui/screens/backups.js:214	
-17hpvne	ok	Show the backups here	ここにあるバックアップを表示	src/ui/screens/backups.js:221	
-lqkwe8	ok	How to set it up	設定方法	src/ui/screens/backups.js:224	
-14gwhko	ok	Where	場所	src/ui/screens/backups.js:228	
-15pm71a	ok	More	詳細設定	src/ui/screens/backups.js:231	context: advanced fields; Note: A backup place's advanced fields, folded under this summary; not the long card's 続きを表示.
-6yqmdh	ok	Passphrase	パスフレーズ	src/ui/screens/backups.js:235	
-bdzmld	ok	Keep the passphrase somewhere safe: without it, these backups can't be opened. annai keeps it on this device, so it can back up by itself.	パスフレーズは安全な場所に控えておいてください。パスフレーズがないと、これらのバックアップは開けません。annaiが自動でバックアップできるよう、パスフレーズはこの端末に保存されます。	src/ui/screens/backups.js:236	
-1l5dtm7	ok	Keep this many of this device's backups here	この端末のバックアップをここに残す数	src/ui/screens/backups.js:238	
-552cet	ok	After each backup, older ones this device made here are deleted. Other devices' backups are never deleted.	バックアップのたびに、この端末がここに作った古いバックアップから削除されます。ほかの端末のバックアップが削除されることはありません。	src/ui/screens/backups.js:239	
-l5nax	ok	When	タイミング	src/ui/screens/backups.js:244	
-xxa9v2	ok	Upload without asking up to, MB	確認なしでアップロードする上限（MB）	src/ui/screens/backups.js:246	
-4fiyr5	ok	Restore	復元	src/ui/screens/backups.js:252	
-12kqj5m	ok	Open a backup from here on the import screen, where you choose what comes in.	ここにあるバックアップを読み込み画面で開き、取り込む内容を選べます。	src/ui/screens/backups.js:254	
-yzcijn	ok	Browser access	ブラウザからのアクセス	src/ui/screens/backups.js:276	
-13bzcw5	ok	Copied	コピーしました	src/ui/screens/backups.js:285	
-cdidgs	ok	Copying didn't work here: it is selected, so copy it yourself.	コピーできませんでした。選択してあるので、手動でコピーしてください。	src/ui/screens/backups.js:288	
-s6g5lw	ok	Copy	コピー	src/ui/screens/backups.js:291	
-15ef6mt	ok	This browser doesn't tell annai whether it is on Wi-Fi: automatic backups go without asking, whatever their size. Type a number to set a limit.	このブラウザでは、Wi-Fiに接続中かどうかをannaiが判断できません。自動バックアップはサイズに関係なく、確認なしで行われます。上限を設定するには数値を入力してください。	src/ui/screens/backups.js:301	
-9nqmyo	ok	Where a browser doesn't tell annai whether it is on Wi-Fi (Safari on iPhone): automatic backups go without asking, whatever their size. Type a number to set a limit.	Wi-Fiに接続中かどうかをannaiが判断できないブラウザ（iPhoneのSafari）では、自動バックアップはサイズに関係なく、確認なしで行われます。上限を設定するには数値を入力してください。	src/ui/screens/backups.js:302	
-w51f7d	ok	This browser doesn't tell annai whether it is on Wi-Fi: automatic backups larger than {0} wait for your OK, unless "Also over mobile data" is on. Leave it empty for no limit.	このブラウザでは、Wi-Fiに接続中かどうかをannaiが判断できません。{0}を超える自動バックアップは、「モバイルデータ通信でも」がオンでない限り、許可するまで待機します。上限なしにするには空欄にしてください。	src/ui/screens/backups.js:305	{0} = most
-1rx8b6y	ok	Where a browser doesn't tell annai whether it is on Wi-Fi (Safari on iPhone): automatic backups larger than {0} wait for your OK, unless "Also over mobile data" is on. Leave it empty for no limit.	Wi-Fiに接続中かどうかをannaiが判断できないブラウザ（iPhoneのSafari）では、{0}を超える自動バックアップは、「モバイルデータ通信でも」がオンでない限り、許可するまで待機します。上限なしにするには空欄にしてください。	src/ui/screens/backups.js:306	{0} = most
-9patw8	ok	annai stops backing up here. The backups already there stay.	削除すると、ここへのバックアップは停止します。すでにあるバックアップはそのまま残ります。	src/ui/screens/backups.js:312	
-1hx8faa	ok	Tap again to remove it	もう一度タップで削除	src/ui/screens/backups.js:313	
-78xlh8	ok	Remove this place	このバックアップ先を削除	src/ui/screens/backups.js:313	
+1gcdel3	ok	Save and test	保存してテスト	src/ui/screens/backups.js:179	
+wcqrhx	ok	A newer backup	より新しいバックアップ	src/ui/screens/backups.js:182	
+1eedj8v	ok	A newer backup is here	ここに、より新しいバックアップがあります	src/ui/screens/backups.js:183	
+xvbztk	ok	A backup is already here	すでにバックアップがあります	src/ui/screens/backups.js:183	
+1n4xwcb	ok	A large backup	大きなバックアップ	src/ui/screens/backups.js:189	
+7hmq4d	ok	This backup uploads {0}.	このバックアップは{0}をアップロードします。	src/ui/screens/backups.js:190	{0} = size(hold.bytes)
+111408e	ok	Back up automatically	自動バックアップ	src/ui/screens/backups.js:193	
+15ywqaa	ok	After changes, within the hour	変更後、1時間以内	src/ui/screens/backups.js:194	
+tp830y	ok	After changes, at most every 6 hours	変更後、6時間に1回まで	src/ui/screens/backups.js:194	
+1u04fpp	ok	Once a day	1日1回	src/ui/screens/backups.js:195	
+3tlu3u	ok	Off	オフ	src/ui/screens/backups.js:196	
+1tdau7e	ok	Also over mobile data	モバイルデータ通信でも	src/ui/screens/backups.js:198	
+uhtk71	ok	No limit	上限なし	src/ui/screens/backups.js:200	
+b69cje	ok	Looking…	読み込み中…	src/ui/screens/backups.js:212	
+fdmwqv	ok	There are no backups here yet.	ここにはまだバックアップがありません。	src/ui/screens/backups.js:215	
+hcu7jn	ok	encrypted	暗号化済み	src/ui/screens/backups.js:218	
+17hpvne	ok	Show the backups here	ここにあるバックアップを表示	src/ui/screens/backups.js:225	
+lqkwe8	ok	How to set it up	設定方法	src/ui/screens/backups.js:228	
+14gwhko	ok	Where	場所	src/ui/screens/backups.js:232	
+15pm71a	ok	More	詳細設定	src/ui/screens/backups.js:235	context: advanced fields; Note: A backup place's advanced fields, folded under this summary; not the long card's 続きを表示.
+6yqmdh	ok	Passphrase	パスフレーズ	src/ui/screens/backups.js:239	
+bdzmld	ok	Keep the passphrase somewhere safe: without it, these backups can't be opened. annai keeps it on this device, so it can back up by itself.	パスフレーズは安全な場所に控えておいてください。パスフレーズがないと、これらのバックアップは開けません。annaiが自動でバックアップできるよう、パスフレーズはこの端末に保存されます。	src/ui/screens/backups.js:240	
+1l5dtm7	ok	Keep this many of this device's backups here	この端末のバックアップをここに残す数	src/ui/screens/backups.js:242	
+552cet	ok	After each backup, older ones this device made here are deleted. Other devices' backups are never deleted.	バックアップのたびに、この端末がここに作った古いバックアップから削除されます。ほかの端末のバックアップが削除されることはありません。	src/ui/screens/backups.js:243	
+l5nax	ok	When	タイミング	src/ui/screens/backups.js:248	
+xxa9v2	ok	Upload without asking up to, MB	確認なしでアップロードする上限（MB）	src/ui/screens/backups.js:250	
+4fiyr5	ok	Restore	復元	src/ui/screens/backups.js:256	
+12kqj5m	ok	Open a backup from here on the import screen, where you choose what comes in.	ここにあるバックアップを読み込み画面で開き、取り込む内容を選べます。	src/ui/screens/backups.js:258	
+yzcijn	ok	Browser access	ブラウザからのアクセス	src/ui/screens/backups.js:280	
+13bzcw5	ok	Copied	コピーしました	src/ui/screens/backups.js:289	
+cdidgs	ok	Copying didn't work here: it is selected, so copy it yourself.	コピーできませんでした。選択してあるので、手動でコピーしてください。	src/ui/screens/backups.js:292	
+s6g5lw	ok	Copy	コピー	src/ui/screens/backups.js:295	
+15ef6mt	ok	This browser doesn't tell annai whether it is on Wi-Fi: automatic backups go without asking, whatever their size. Type a number to set a limit.	このブラウザでは、Wi-Fiに接続中かどうかをannaiが判断できません。自動バックアップはサイズに関係なく、確認なしで行われます。上限を設定するには数値を入力してください。	src/ui/screens/backups.js:305	
+9nqmyo	ok	Where a browser doesn't tell annai whether it is on Wi-Fi (Safari on iPhone): automatic backups go without asking, whatever their size. Type a number to set a limit.	Wi-Fiに接続中かどうかをannaiが判断できないブラウザ（iPhoneのSafari）では、自動バックアップはサイズに関係なく、確認なしで行われます。上限を設定するには数値を入力してください。	src/ui/screens/backups.js:306	
+w51f7d	ok	This browser doesn't tell annai whether it is on Wi-Fi: automatic backups larger than {0} wait for your OK, unless "Also over mobile data" is on. Leave it empty for no limit.	このブラウザでは、Wi-Fiに接続中かどうかをannaiが判断できません。{0}を超える自動バックアップは、「モバイルデータ通信でも」がオンでない限り、許可するまで待機します。上限なしにするには空欄にしてください。	src/ui/screens/backups.js:309	{0} = most
+1rx8b6y	ok	Where a browser doesn't tell annai whether it is on Wi-Fi (Safari on iPhone): automatic backups larger than {0} wait for your OK, unless "Also over mobile data" is on. Leave it empty for no limit.	Wi-Fiに接続中かどうかをannaiが判断できないブラウザ（iPhoneのSafari）では、{0}を超える自動バックアップは、「モバイルデータ通信でも」がオンでない限り、許可するまで待機します。上限なしにするには空欄にしてください。	src/ui/screens/backups.js:310	{0} = most
+9patw8	ok	annai stops backing up here. The backups already there stay.	削除すると、ここへのバックアップは停止します。すでにあるバックアップはそのまま残ります。	src/ui/screens/backups.js:316	
+1hx8faa	ok	Tap again to remove it	もう一度タップで削除	src/ui/screens/backups.js:317	
+78xlh8	ok	Remove this place	このバックアップ先を削除	src/ui/screens/backups.js:317	
 7862xj	ok	It may have been deleted or renamed.	削除されたか、名前が変わった可能性があります。	src/ui/screens/booking.js:31	Note: after This isn't on the plan.
 mpbd6l	ok	This file can't be found	ファイルが見つかりません	src/ui/screens/booking.js:31	Note: the heading of the details screen for a file that is not there (a link to a deleted file); the sentence "It may have been deleted or renamed." follows.
 14y1329	ok	It may have been deleted or renamed. The itinerary lists the bookings there are.	削除されたか、名前が変更された可能性があります。予約の一覧は旅程で確認できます。	src/ui/screens/booking.js:32	Note: no 旅, as the English names no trip: a chat has bookings too
@@ -2091,9 +2092,10 @@ e1enek#other	ok	Removing it removes {0}, with their keys and models.	削除す�
 fj8j97	ok	Needed by {0}.	{0}が必要としています。	src/ui/screens/plugins.js:68	{0} = list(needs)
 dbgp9n	ok	Model provider	モデルのプロバイダー	src/ui/screens/plugins.js:79	
 v0wv6e	ok	Skill	スキル	src/ui/screens/plugins.js:79	
-97t8e3	ok	Update to {0}	{0}にアップデート	src/ui/screens/plugins.js:97	{0} = update.available
-jgr98x	ok	{0} didn't start	{0}が起動しませんでした	src/ui/screens/plugins.js:114	{0} = r.name
-s74tk7	ok	Turn on	オンにする	src/ui/screens/plugins.js:118	
+miz9ao	ok	Updated	アップデート済み	src/ui/screens/plugins.js:98	
+97t8e3	ok	Update to {0}	{0}にアップデート	src/ui/screens/plugins.js:102	{0} = update.available
+jgr98x	ok	{0} didn't start	{0}が起動しませんでした	src/ui/screens/plugins.js:119	{0} = r.name
+s74tk7	ok	Turn on	オンにする	src/ui/screens/plugins.js:123	
 ura2r7	ok	{0} a minute of speech	音声1分あたり{0}	src/ui/screens/provider.js:29	{0} = price(p.perMinute)
 1b0vcka	ok	{0} per million characters	100万文字あたり{0}	src/ui/screens/provider.js:30	{0} = price(p.perMillionChars)
 1xducp7	ok	{0} in, {1} out	入力{0}、出力{1}	src/ui/screens/provider.js:32	{0} = price(p.input); {1} = price(p.output)
@@ -2105,82 +2107,82 @@ k02514#other	ok	First, annai asks {0} to delete the # turns of your conversation
 lcyovi#other	ok	Offline, a new key or address, or Remove key, leaves {0} the # turns it keeps until they expire, up to {1}.	オフラインのままキーやアドレスを変更するか「キーを削除」をタップすると、{0}に保持されているやり取り#件は、期限が切れるまで（最長{1}）残ります。	src/ui/screens/provider.js:66	plural; # = n; {0} = name; {1} = upTo; English: "Offline, a new key or address, or Remove key, leaves {0} the # turn it keeps until it expires, up to {1}." (one), "Offline, a new key or address, or Remove key, leaves {0} the # turns it keeps until they expire, up to {1}." (other)
 ifc222#other	ok	{0} keeps # turns until they expire, up to {1}.	{0}はやり取り#件を、期限が切れるまで（最長{1}）保持します。	src/ui/screens/provider.js:69	plural; # = n; {0} = name; {1} = upTo; English: "{0} keeps # turn until it expires, up to {1}." (one), "{0} keeps # turns until they expire, up to {1}." (other)
 1fr4kgu	ok	This provider no longer exists	このプロバイダーはすでに削除されています	src/ui/screens/provider.js:87	
-17c1dhc	ok	Extra headers (JSON)	追加のヘッダー（JSON）	src/ui/screens/provider.js:113	
-1r2b41m	ok	Removes its key, its models and their places in roles, and the {0} plugin, with {1}, which nothing else needs.	キーとモデル（役割に登録した分も含む）を削除します。{0}プラグインと、ほかで使われていない{1}も削除されます。	src/ui/screens/provider.js:151	{0} = plugin; {1} = list(protocols)
-5f7g8f	ok	Removes its key, its models and their places in roles, and the {0} plugin.	キーとモデル（役割に登録した分も含む）を削除します。{0}プラグインも削除されます。	src/ui/screens/provider.js:152	{0} = plugin
-mcx63c	ok	Removes its key, its models and their places in roles, with {0}, which nothing else needs.	キーとモデル（役割に登録した分も含む）を削除します。ほかで使われていない{0}も削除されます。	src/ui/screens/provider.js:153	{0} = list(protocols)
-1ue57qi	ok	Removes its key, its models and their places in roles.	キーとモデル（役割に登録した分も含む）を削除します。	src/ui/screens/provider.js:154	
-1rtug95	ok	To add it back, you'll need its address again: {0}.	もう一度追加するには、アドレス（{0}）が必要です。	src/ui/screens/provider.js:156	{0} = host
-nfdm8v	ok	To add it back, you'll need its file again.	もう一度追加するには、そのファイルが必要です。	src/ui/screens/provider.js:157	
-u40nrw	ok	To add it back, you'll need its file again ({0}).	もう一度追加するには、そのファイル（{0}）が必要です。	src/ui/screens/provider.js:157	{0} = installed.file
-1tqi1rr	ok	Asking {0} to delete what it keeps…	{0}に保持データの削除を依頼しています…	src/ui/screens/provider.js:168	{0} = list(k.who)
-evz7q4	ok	Provider	プロバイダー	src/ui/screens/provider.js:185	
-2r1h4p	ok	Connection	接続	src/ui/screens/provider.js:187	
-1swq770	ok	API key	APIキー	src/ui/screens/provider.js:190	
-1o4hxda	ok	On, its calls show as free in the Trace, and count nothing toward Spend per day.	オンにすると、このプロバイダーの呼び出しは「記録」で無料と表示され、1日の利用額にも含まれません。	src/ui/screens/provider.js:199	
-12td532	ok	Remove key	キーを削除	src/ui/screens/provider.js:202	
-1qapi39	ok	Tap again to remove the key	もう一度タップでキーを削除	src/ui/screens/provider.js:202	
-5bt3jk	ok	Key removed	キーを削除しました	src/ui/screens/provider.js:205	
-1r04n6e	ok	Remove provider	プロバイダーを削除	src/ui/screens/provider.js:214	
-11faf7g	ok	{0} has no way of its own to add it here: add it by hand, and set it up on its page.	{0}にはここで追加する独自の方法がありません。手動で追加して、そのページで設定してください。	src/ui/screens/provider.js:237	{0} = src.name
-ih6plk	ok	This provider's plugin isn't running. Add it from Add, or look at it in Settings → Plugins.	このプロバイダーのプラグインが動作していません。「追加」から追加するか、「設定 → プラグイン」で確認してください。	src/ui/screens/provider.js:237	
-u91wwi	ok	Add by hand	手動で追加	src/ui/screens/provider.js:255	
-1nqeyot	ok	By hand	手動	src/ui/screens/provider.js:260	
-cgpzg8	ok	Or add {0} as it is, and set up its key and what it offers on its own page.	または{0}をそのまま追加して、キーと使える機能をそのページで設定してください。	src/ui/screens/provider.js:261	{0} = src.name
-1lckuuy	ok	Look at it in Settings → Plugins	「設定 → プラグイン」で確認してください	src/ui/screens/provider.js:279	
-10m9pho	ok	Its plugin, {0}, isn't running, so annai can't say what it offers. {1}.	プラグイン「{0}」が動作していないため、使える機能を表示できません。{1}。	src/ui/screens/provider.js:281	{0} = name; {1} = look; Note: {1} is the link's words, a sentence of its own.
-8gf0py	ok	The plugin it was made from isn't on this device, and it isn't one of annai's own providers, so annai can't fetch it. Install it again from where you got it, in Settings → Plugins → Add, or remove this provider.	元のプラグインがこの端末になく、annai公式のプロバイダーでもないため、取得できません。入手元から「設定 → プラグイン → 追加」でもう一度インストールするか、このプロバイダーを削除してください。	src/ui/screens/provider.js:285	
-6k2646	ok	Its plugin isn't on this device, and annai's catalog couldn't be loaded to fetch it. Connect to the internet and open this page again.	プラグインがこの端末になく、取得に必要なannaiのカタログも読み込めませんでした。インターネットに接続してから、このページを開き直してください。	src/ui/screens/provider.js:286	
-1e1obo4	ok	Installing…	インストール中…	src/ui/screens/provider.js:293	
-9djdxp	ok	Install it	インストール	src/ui/screens/provider.js:302	
-17vxyyo	ok	Its plugin, {0}, isn't installed, so annai can't say what it offers.	プラグイン「{0}」がインストールされていないため、使える機能を表示できません。	src/ui/screens/provider.js:303	{0} = officialName(entry.id, entry.name)
-mf1onk	ok	This provider no longer exists.	このプロバイダーはすでに削除されています。	src/ui/screens/provider.js:319	
-r4y7q	ok	Use {0}	{0}を使う	src/ui/screens/provider.js:345	{0} = shownName
-1o304we	ok	New in the last update	前回のアップデートで追加	src/ui/screens/provider.js:352	
-1k5huc5	ok	the provider's: {0}	プロバイダーのアドレス：{0}	src/ui/screens/provider.js:372	{0} = providerOf(rec).baseUrl
-1ppqeqd	ok	the provider's: none yet	プロバイダーのアドレス：未設定	src/ui/screens/provider.js:372	
-11krxuy	ok	Upload photos to this provider (annai deletes each once it is 48 hours old, the next time annai starts or comes online)	写真をこのプロバイダーにアップロード（48時間を過ぎたものは、次にannaiを起動したときかオンラインに戻ったときに削除）	src/ui/screens/provider.js:383	Note: a switch; the brackets say when annai deletes, no more than it does.
-12dfi3i	ok	Upload photos to this provider (each expires after 48 hours)	写真をこのプロバイダーにアップロード（それぞれ48時間で期限切れ）	src/ui/screens/provider.js:384	
-1qia4dd	ok	Let {0} keep the conversation between turns: sends less each time.	やり取りの間、{0}に会話を保持してもらう（毎回の送信量が減ります）	src/ui/screens/provider.js:391	{0} = who
-l91m05	ok	Its own address	個別のアドレス	src/ui/screens/provider.js:410	
-9umgdw	ok	Empty: the provider's address. Each setting here is saved as you change it.	空欄の場合はプロバイダーのアドレスを使います。ここの設定は変更するとすぐに保存されます。	src/ui/screens/provider.js:416	
-1ajunu1	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.	{0}は、Shioriとの会話を、写真、ボイスメッセージ、Shioriが把握している現在地も含めて保持します（保持期間はそのサーバー次第です）。	src/ui/screens/provider.js:420	{0} = who; Note: "her" is written as Shiori; voice messages are ボイスメッセージ, recordings, not the glossary's voice (one she speaks with).
-1jtdu56	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0}は、Shioriとの会話を、写真、ボイスメッセージ、Shioriが把握している現在地も含めて保持します（{1}）。	src/ui/screens/provider.js:421	{0} = who; {1} = holds; Note: {1} is the plugin's own words for how long.; Note: "her" is written as Shiori; voice messages are ボイスメッセージ, not the glossary's voice.
-1fcg7pg#other	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0}は、Shioriとの会話を、写真、ボイスメッセージ、Shioriが把握している現在地も含めて保持します（無料のキーでは1日、有料のキーでは最長#日）。	src/ui/screens/provider.js:422	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other); Note: "her" is written as Shiori; voice messages are ボイスメッセージ, not the glossary's voice.
-1gugeu9	ok	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	旅、このプロバイダー、またはすべて（消去）を削除したとき、キーを変更・削除したとき、この設定をオフにしたときに、annaiがこれらを削除します。	src/ui/screens/provider.js:424	
-1iorloe	ok	Off, each turn sends the whole conversation.	オフにすると、やり取りのたびに会話全体を送ります。	src/ui/screens/provider.js:424	
-1wdiu43	ok	It needs this provider's key: without one, each turn sends the whole conversation.	これにはこのプロバイダーのキーが必要です。キーがないと、やり取りのたびに会話全体を送ります。	src/ui/screens/provider.js:425	
-72k1cn#other	ok	# deletions waiting: annai can't send them without this provider's key.	削除待ち#件：このプロバイダーのキーがないため送信できません。	src/ui/screens/provider.js:426	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
-f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	削除待ち#件：{0}に接続できたら送信します。	src/ui/screens/provider.js:427	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
-147eqzv	ok	Test {0}	{0}をテスト	src/ui/screens/provider.js:438	{0} = first.name
-1eqfcih	ok	{0} doesn't offer search on the free tier.	{0}の無料枠では検索を使えません。	src/ui/screens/provider.js:465	{0} = who
-1cmq8ob	ok	{0} doesn't offer fetch on the free tier.	{0}の無料枠ではページの取得を使えません。	src/ui/screens/provider.js:466	{0} = who
-1k4v7dk	ok	{0} doesn't offer {1} on the free tier.	{0}の無料枠では{1}を使えません。	src/ui/screens/provider.js:466	{0} = who; {1} = tool.name
-11x4tx3	ok	This needs the {0} plugin, which isn't running.	{0}プラグインが必要ですが、動作していません。	src/ui/screens/provider.js:472	{0} = name
-4nyk49	ok	This needs a plugin that isn't running.	必要なプラグインが動作していません。	src/ui/screens/provider.js:472	
-15hdhx3	ok	the provider's model id	プロバイダーのモデルID	src/ui/screens/provider.js:494	
-1oz4euh	ok	Add model	モデルを追加	src/ui/screens/provider.js:510	
-tbmsa5	ok	Asking for its models…	モデルを取得中…	src/ui/screens/provider.js:515	
-1yko1my#other	ok	# models.	モデルが#個見つかりました。	src/ui/screens/provider.js:518	plural; # = listed.length; English: "# model." (one), "# models." (other)
-uxqo7a	ok	Fetch model list	モデルの一覧を取得	src/ui/screens/provider.js:526	
-1scr2ml	ok	{0}K context	コンテキスト{0}K	src/ui/screens/provider.js:529	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
-1tqy8k1	ok	Its models	モデル	src/ui/screens/provider.js:531	Note: "Its models" as a heading under the ability: モデル alone reads right there.
-bzs1ys	ok	No models yet.	モデルはまだありません。	src/ui/screens/provider.js:532	
-pnxisg	ok	Add a model by id	IDでモデルを追加	src/ui/screens/provider.js:533	
-1mod47e	ok	for example: haiku	例：haiku	src/ui/screens/provider.js:548	
-uizt0x	ok	{0} · loaded	{0} · 読み込み済み	src/ui/screens/provider.js:557	{0} = named
-1w6mxym	ok	Already added, on {0}	追加済み（{0}）	src/ui/screens/provider.js:558	{0} = on
-l7fn8k	ok	Already added, on another provider	追加済み（別のプロバイダー）	src/ui/screens/provider.js:558	
-19ai2z0	ok	Filter the list	一覧を絞り込む	src/ui/screens/provider.js:578	
-11pl9jr	ok	Use the free models	無料のモデルを使う	src/ui/screens/provider.js:586	
-vam64u	ok	Use the recommended models	おすすめのモデルを使う	src/ui/screens/provider.js:586	
-1b2yx8m	ok	Suggested models	おすすめのモデル	src/ui/screens/provider.js:587	
-y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0}は役割ごとにおすすめのモデルを用意しています。これを使うと、音声のモデルが端末の音声入力とブラウザの声（どちらも無料）より前に並ぶため、有料のモデルが先に試されます。	src/ui/screens/provider.js:588	{0} = src.name; Note: 端末の音声入力 and ブラウザの声 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
-1x5hwmk	ok	{0} suggests a model for each role.	{0}は役割ごとにおすすめのモデルを用意しています。	src/ui/screens/provider.js:589	{0} = src.name
-1iffu2j	ok	{0} switched on.	{0}をオンにしました。	src/ui/screens/provider.js:596	{0} = n
-1szeqxt	ok	Roles updated.	役割を更新しました。	src/ui/screens/provider.js:596	
-1egvjs1	ok	{0} couldn't be switched on: {1}	{0}をオンにできませんでした：{1}	src/ui/screens/provider.js:597	{0} = f.name; {1} = messageOf(f.error)
-wlh055	ok	Use the {0} models	{0}のモデルを使う	src/ui/screens/provider.js:603	{0} = which
+17c1dhc	ok	Extra headers (JSON)	追加のヘッダー（JSON）	src/ui/screens/provider.js:114	
+1r2b41m	ok	Removes its key, its models and their places in roles, and the {0} plugin, with {1}, which nothing else needs.	キーとモデル（役割に登録した分も含む）を削除します。{0}プラグインと、ほかで使われていない{1}も削除されます。	src/ui/screens/provider.js:152	{0} = plugin; {1} = list(protocols)
+5f7g8f	ok	Removes its key, its models and their places in roles, and the {0} plugin.	キーとモデル（役割に登録した分も含む）を削除します。{0}プラグインも削除されます。	src/ui/screens/provider.js:153	{0} = plugin
+mcx63c	ok	Removes its key, its models and their places in roles, with {0}, which nothing else needs.	キーとモデル（役割に登録した分も含む）を削除します。ほかで使われていない{0}も削除されます。	src/ui/screens/provider.js:154	{0} = list(protocols)
+1ue57qi	ok	Removes its key, its models and their places in roles.	キーとモデル（役割に登録した分も含む）を削除します。	src/ui/screens/provider.js:155	
+1rtug95	ok	To add it back, you'll need its address again: {0}.	もう一度追加するには、アドレス（{0}）が必要です。	src/ui/screens/provider.js:157	{0} = host
+nfdm8v	ok	To add it back, you'll need its file again.	もう一度追加するには、そのファイルが必要です。	src/ui/screens/provider.js:158	
+u40nrw	ok	To add it back, you'll need its file again ({0}).	もう一度追加するには、そのファイル（{0}）が必要です。	src/ui/screens/provider.js:158	{0} = installed.file
+1tqi1rr	ok	Asking {0} to delete what it keeps…	{0}に保持データの削除を依頼しています…	src/ui/screens/provider.js:169	{0} = list(k.who)
+evz7q4	ok	Provider	プロバイダー	src/ui/screens/provider.js:186	
+2r1h4p	ok	Connection	接続	src/ui/screens/provider.js:188	
+1swq770	ok	API key	APIキー	src/ui/screens/provider.js:191	
+1o4hxda	ok	On, its calls show as free in the Trace, and count nothing toward Spend per day.	オンにすると、このプロバイダーの呼び出しは「記録」で無料と表示され、1日の利用額にも含まれません。	src/ui/screens/provider.js:200	
+12td532	ok	Remove key	キーを削除	src/ui/screens/provider.js:203	
+1qapi39	ok	Tap again to remove the key	もう一度タップでキーを削除	src/ui/screens/provider.js:203	
+5bt3jk	ok	Key removed	キーを削除しました	src/ui/screens/provider.js:206	
+1r04n6e	ok	Remove provider	プロバイダーを削除	src/ui/screens/provider.js:216	
+11faf7g	ok	{0} has no way of its own to add it here: add it by hand, and set it up on its page.	{0}にはここで追加する独自の方法がありません。手動で追加して、そのページで設定してください。	src/ui/screens/provider.js:239	{0} = src.name
+ih6plk	ok	This provider's plugin isn't running. Add it from Add, or look at it in Settings → Plugins.	このプロバイダーのプラグインが動作していません。「追加」から追加するか、「設定 → プラグイン」で確認してください。	src/ui/screens/provider.js:239	
+u91wwi	ok	Add by hand	手動で追加	src/ui/screens/provider.js:257	
+1nqeyot	ok	By hand	手動	src/ui/screens/provider.js:262	
+cgpzg8	ok	Or add {0} as it is, and set up its key and what it offers on its own page.	または{0}をそのまま追加して、キーと使える機能をそのページで設定してください。	src/ui/screens/provider.js:263	{0} = src.name
+1lckuuy	ok	Look at it in Settings → Plugins	「設定 → プラグイン」で確認してください	src/ui/screens/provider.js:281	
+10m9pho	ok	Its plugin, {0}, isn't running, so annai can't say what it offers. {1}.	プラグイン「{0}」が動作していないため、使える機能を表示できません。{1}。	src/ui/screens/provider.js:283	{0} = name; {1} = look; Note: {1} is the link's words, a sentence of its own.
+8gf0py	ok	The plugin it was made from isn't on this device, and it isn't one of annai's own providers, so annai can't fetch it. Install it again from where you got it, in Settings → Plugins → Add, or remove this provider.	元のプラグインがこの端末になく、annai公式のプロバイダーでもないため、取得できません。入手元から「設定 → プラグイン → 追加」でもう一度インストールするか、このプロバイダーを削除してください。	src/ui/screens/provider.js:287	
+6k2646	ok	Its plugin isn't on this device, and annai's catalog couldn't be loaded to fetch it. Connect to the internet and open this page again.	プラグインがこの端末になく、取得に必要なannaiのカタログも読み込めませんでした。インターネットに接続してから、このページを開き直してください。	src/ui/screens/provider.js:288	
+1e1obo4	ok	Installing…	インストール中…	src/ui/screens/provider.js:295	
+9djdxp	ok	Install it	インストール	src/ui/screens/provider.js:306	
+17vxyyo	ok	Its plugin, {0}, isn't installed, so annai can't say what it offers.	プラグイン「{0}」がインストールされていないため、使える機能を表示できません。	src/ui/screens/provider.js:307	{0} = officialName(entry.id, entry.name)
+mf1onk	ok	This provider no longer exists.	このプロバイダーはすでに削除されています。	src/ui/screens/provider.js:323	
+r4y7q	ok	Use {0}	{0}を使う	src/ui/screens/provider.js:349	{0} = shownName
+1o304we	ok	New in the last update	前回のアップデートで追加	src/ui/screens/provider.js:356	
+1k5huc5	ok	the provider's: {0}	プロバイダーのアドレス：{0}	src/ui/screens/provider.js:376	{0} = providerOf(rec).baseUrl
+1ppqeqd	ok	the provider's: none yet	プロバイダーのアドレス：未設定	src/ui/screens/provider.js:376	
+11krxuy	ok	Upload photos to this provider (annai deletes each once it is 48 hours old, the next time annai starts or comes online)	写真をこのプロバイダーにアップロード（48時間を過ぎたものは、次にannaiを起動したときかオンラインに戻ったときに削除）	src/ui/screens/provider.js:387	Note: a switch; the brackets say when annai deletes, no more than it does.
+12dfi3i	ok	Upload photos to this provider (each expires after 48 hours)	写真をこのプロバイダーにアップロード（それぞれ48時間で期限切れ）	src/ui/screens/provider.js:388	
+1qia4dd	ok	Let {0} keep the conversation between turns: sends less each time.	やり取りの間、{0}に会話を保持してもらう（毎回の送信量が減ります）	src/ui/screens/provider.js:395	{0} = who
+l91m05	ok	Its own address	個別のアドレス	src/ui/screens/provider.js:414	
+9umgdw	ok	Empty: the provider's address. Each setting here is saved as you change it.	空欄の場合はプロバイダーのアドレスを使います。ここの設定は変更するとすぐに保存されます。	src/ui/screens/provider.js:424	
+1ajunu1	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.	{0}は、Shioriとの会話を、写真、ボイスメッセージ、Shioriが把握している現在地も含めて保持します（保持期間はそのサーバー次第です）。	src/ui/screens/provider.js:428	{0} = who; Note: "her" is written as Shiori; voice messages are ボイスメッセージ, recordings, not the glossary's voice (one she speaks with).
+1jtdu56	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0}は、Shioriとの会話を、写真、ボイスメッセージ、Shioriが把握している現在地も含めて保持します（{1}）。	src/ui/screens/provider.js:429	{0} = who; {1} = holds; Note: {1} is the plugin's own words for how long.; Note: "her" is written as Shiori; voice messages are ボイスメッセージ, not the glossary's voice.
+1fcg7pg#other	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0}は、Shioriとの会話を、写真、ボイスメッセージ、Shioriが把握している現在地も含めて保持します（無料のキーでは1日、有料のキーでは最長#日）。	src/ui/screens/provider.js:430	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other); Note: "her" is written as Shiori; voice messages are ボイスメッセージ, not the glossary's voice.
+1gugeu9	ok	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	旅、このプロバイダー、またはすべて（消去）を削除したとき、キーを変更・削除したとき、この設定をオフにしたときに、annaiがこれらを削除します。	src/ui/screens/provider.js:432	
+1iorloe	ok	Off, each turn sends the whole conversation.	オフにすると、やり取りのたびに会話全体を送ります。	src/ui/screens/provider.js:432	
+1wdiu43	ok	It needs this provider's key: without one, each turn sends the whole conversation.	これにはこのプロバイダーのキーが必要です。キーがないと、やり取りのたびに会話全体を送ります。	src/ui/screens/provider.js:433	
+72k1cn#other	ok	# deletions waiting: annai can't send them without this provider's key.	削除待ち#件：このプロバイダーのキーがないため送信できません。	src/ui/screens/provider.js:434	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
+f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	削除待ち#件：{0}に接続できたら送信します。	src/ui/screens/provider.js:435	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
+147eqzv	ok	Test {0}	{0}をテスト	src/ui/screens/provider.js:446	{0} = first.name
+1eqfcih	ok	{0} doesn't offer search on the free tier.	{0}の無料枠では検索を使えません。	src/ui/screens/provider.js:473	{0} = who
+1cmq8ob	ok	{0} doesn't offer fetch on the free tier.	{0}の無料枠ではページの取得を使えません。	src/ui/screens/provider.js:474	{0} = who
+1k4v7dk	ok	{0} doesn't offer {1} on the free tier.	{0}の無料枠では{1}を使えません。	src/ui/screens/provider.js:474	{0} = who; {1} = tool.name
+11x4tx3	ok	This needs the {0} plugin, which isn't running.	{0}プラグインが必要ですが、動作していません。	src/ui/screens/provider.js:480	{0} = name
+4nyk49	ok	This needs a plugin that isn't running.	必要なプラグインが動作していません。	src/ui/screens/provider.js:480	
+15hdhx3	ok	the provider's model id	プロバイダーのモデルID	src/ui/screens/provider.js:519	
+1oz4euh	ok	Add model	モデルを追加	src/ui/screens/provider.js:536	
+tbmsa5	ok	Asking for its models…	モデルを取得中…	src/ui/screens/provider.js:541	
+1yko1my#other	ok	# models.	モデルが#個見つかりました。	src/ui/screens/provider.js:544	plural; # = listed.length; English: "# model." (one), "# models." (other)
+uxqo7a	ok	Fetch model list	モデルの一覧を取得	src/ui/screens/provider.js:556	
+1scr2ml	ok	{0}K context	コンテキスト{0}K	src/ui/screens/provider.js:559	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
+1tqy8k1	ok	Its models	モデル	src/ui/screens/provider.js:562	Note: "Its models" as a heading under the ability: モデル alone reads right there.
+bzs1ys	ok	No models yet.	モデルはまだありません。	src/ui/screens/provider.js:563	
+pnxisg	ok	Add a model by id	IDでモデルを追加	src/ui/screens/provider.js:564	
+1mod47e	ok	for example: haiku	例：haiku	src/ui/screens/provider.js:582	
+uizt0x	ok	{0} · loaded	{0} · 読み込み済み	src/ui/screens/provider.js:592	{0} = named
+1w6mxym	ok	Already added, on {0}	追加済み（{0}）	src/ui/screens/provider.js:593	{0} = on
+l7fn8k	ok	Already added, on another provider	追加済み（別のプロバイダー）	src/ui/screens/provider.js:593	
+19ai2z0	ok	Filter the list	一覧を絞り込む	src/ui/screens/provider.js:627	
+11pl9jr	ok	Use the free models	無料のモデルを使う	src/ui/screens/provider.js:635	
+vam64u	ok	Use the recommended models	おすすめのモデルを使う	src/ui/screens/provider.js:635	
+1b2yx8m	ok	Suggested models	おすすめのモデル	src/ui/screens/provider.js:636	
+y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0}は役割ごとにおすすめのモデルを用意しています。これを使うと、音声のモデルが端末の音声入力とブラウザの声（どちらも無料）より前に並ぶため、有料のモデルが先に試されます。	src/ui/screens/provider.js:637	{0} = src.name; Note: 端末の音声入力 and ブラウザの声 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
+1x5hwmk	ok	{0} suggests a model for each role.	{0}は役割ごとにおすすめのモデルを用意しています。	src/ui/screens/provider.js:638	{0} = src.name
+1iffu2j	ok	{0} switched on.	{0}をオンにしました。	src/ui/screens/provider.js:645	{0} = n
+1szeqxt	ok	Roles updated.	役割を更新しました。	src/ui/screens/provider.js:645	
+1egvjs1	ok	{0} couldn't be switched on: {1}	{0}をオンにできませんでした：{1}	src/ui/screens/provider.js:646	{0} = f.name; {1} = messageOf(f.error)
+wlh055	ok	Use the {0} models	{0}のモデルを使う	src/ui/screens/provider.js:652	{0} = which
 1qocxbg	ok	Writing it: {0} is reading the conversation. This can take a minute.	作成中：{0}が会話を読んでいます。1分ほどかかることがあります。	src/ui/screens/recap.js:33	{0} = names(m.name)
 1lrfe9k	ok	Write the recap	振り返りを書く	src/ui/screens/recap.js:35	
 h6huep	ok	Write it again	書き直す	src/ui/screens/recap.js:35	
@@ -2320,50 +2322,50 @@ indiij	ok	Let Shiori read my other trips without asking	自分のほかの旅を
 1csnvhb	ok	Quiet until	おやすみ時間の終了	src/ui/screens/shiori.js:76	Note: quiet hours' end; the fields stand alone, so they name the glossary's quiet hours.
 1p3ttz9	ok	Quiet from	おやすみ時間の開始	src/ui/screens/shiori.js:76	Note: quiet hours' start; the fields stand alone, so they name the glossary's quiet hours.
 1ite7lp	ok	Set the other time too.	もう一方の時刻も設定してください。	src/ui/screens/shiori.js:81	
-11mcr74	ok	Quiet hours need both times. Clear both for none.	おやすみ時間には、開始と終了の両方の時刻が必要です。使わない場合は両方とも空欄にしてください。	src/ui/screens/shiori.js:102	
-1qa55ez	ok	How she looks	見た目	src/ui/screens/shiori.js:109	
-15cdrhf	ok	Each state, as the dock shows her, with the words under her.	ドックでの表示と、その下の言葉を状態ごとに並べています。	src/ui/screens/shiori.js:110	
-jq414z	ok	Personality	性格	src/ui/screens/shiori.js:112	
-efcvdh	ok	How Shiori behaves. She can adjust it herself through a reviewed change, and you can always undo it. A change applies at her next wake.	Shioriのふるまいを決めるものです。Shioriも確認を経たうえで自分で調整でき、その変更はいつでも元に戻せます。変更は次の起動から反映されます。	src/ui/screens/shiori.js:113	
-1amzdg4	ok	The new original of "{0}"	「{0}」の新しいオリジナル	src/ui/screens/shiori.js:120	{0} = compare; Note: as Reset to original (オリジナル).
-pmpsfk	ok	Use the new original	新しいオリジナルを使う	src/ui/screens/shiori.js:123	
-eh67ee	ok	Saved. It applies at her next wake.	保存しました。次の起動から反映されます。	src/ui/screens/shiori.js:132	
-3wot4g	ok	A name is lowercase letters, digits and dashes, like my-shiori.	名前には小文字の英字、数字、ハイフンだけを使ってください（例：my-shiori）。	src/ui/screens/shiori.js:140	
-8vtmkf	ok	There is already a personality called "{0}".	「{0}」という性格はもうあります。	src/ui/screens/shiori.js:140	{0} = name
-codbeh	ok	New from this one	これをもとに新規作成	src/ui/screens/shiori.js:145	
-10pf3h4	ok	Name for a new one	新しい性格の名前	src/ui/screens/shiori.js:146	
-185xhpb	ok	Her two halves	KoeとKokoro	src/ui/screens/shiori.js:150	
-1vyft97	ok	Koe talks with you and answers at once; Kokoro thinks things through and does the work. They pass each other short notes. On: the notes show in the conversation as quiet lines. Off: they stay in the Trace.	Koeは話し相手になり、すぐに答えます。Kokoroはじっくり考えて作業をします。2人は短いメモを渡し合っています。オンにすると、メモが会話の中に控えめな行で表示されます。オフにすると、「記録」にだけ残ります。	src/ui/screens/shiori.js:151	
-1f0pz7g	ok	Your other trips	ほかの旅	src/ui/screens/shiori.js:153	
-t5n8hu	ok	Before Shiori reads another of your trips or conversations, annai asks, once a conversation. On: she reads your own without asking. Trips someone sent you always ask.	Shioriがほかの旅や会話を読む前に、会話ごとに一度確認します。オンにすると、自分の旅や会話は確認なしで読みます。ほかの人から届いた旅は、オンでも確認します。	src/ui/screens/shiori.js:154	
-u36mv	ok	The languages you speak, and the one Shiori answers in, are in Settings → Languages.	話す言語とShioriが答える言語は、「設定 → 言語」で選べます。	src/ui/screens/shiori.js:156	Note: a link on Settings → Shiori to the Languages screen; 言語 as the glossary's screen name.
-is7afy	ok	How often she acts on her own	Shioriが自分から動く頻度	src/ui/screens/shiori.js:158	
-1mzkqw7	ok	Plugins, reminders and GPS wake her as well as you. None of these is set unless you set it: more wakes in an hour are skipped, quiet hours hold her until they end (reminders still come), and past the steps of one wake she stops, with a card.	Shioriは、呼びかけたときだけでなく、プラグイン、リマインダー、GPSによっても起動します。以下はどれも、設定しない限り制限はありません。1時間あたりの上限を超えた起動はスキップされ、おやすみ時間中は終わるまで待機し（リマインダーは届きます）、1回の起動のステップ数を超えるとカードを出して止まります。	src/ui/screens/shiori.js:159	
-6a0cdc	ok	Wakes per hour is a whole number from 1; leave it empty for no limit.	1時間あたりの起動回数は1以上の整数で入力してください。上限なしにする場合は空欄にしてください。	src/ui/screens/shiori.js:160	
-pd5jqf	ok	Wakes per hour, not counting yours	1時間あたりの起動回数（呼びかけた分を除く）	src/ui/screens/shiori.js:160	
-av9dc1	ok	Steps per wake	1回の起動のステップ数	src/ui/screens/shiori.js:162	
-ro3vrl	ok	Steps per wake is a whole number from 1; leave it empty for no limit on what you ask; what she does on her own stops after 50.	1回の起動のステップ数は1以上の整数で入力してください。空欄にすると、頼んだ作業には上限がなくなります。Shioriが自分から行う作業は50ステップで止まります。	src/ui/screens/shiori.js:162	
-1oxfybk	ok	Shiori's core	Shioriの基本指示	src/ui/screens/shiori.js:167	
-srktqx	ok	How she talks, how annai works, and her safety rules. Kokoro reads it, and Shiori when she is one half.	話し方、annaiの仕組み、安全のためのルールです。Kokoroと、一人で動いているときのShioriが読みます。	src/ui/screens/shiori.js:167	
-10gef26	ok	What Kokoro adds while Shiori is two halves: how it works behind Koe.	ShioriがKoeとKokoroに分かれて動いているときに、Kokoroに追加される指示です。Koeの裏でどう動くかを決めます。	src/ui/screens/shiori.js:168	
-13snrep	ok	Kokoro's part	Kokoro用の指示	src/ui/screens/shiori.js:168	
-1t3wpe4	ok	Koe, chat	Koe（チャット）	src/ui/screens/shiori.js:169	
-1x7xmuu	ok	What Koe reads when its words go to a voice.	Koeの言葉を声で読み上げるときに、Koeが読む指示です。	src/ui/screens/shiori.js:169	
-777qwf	ok	What Koe reads in a live voice session.	ライブ音声のセッションでKoeが読む指示です。	src/ui/screens/shiori.js:170	
-mmvypk	ok	Koe, live	Koe（ライブ）	src/ui/screens/shiori.js:170	
-1eogfr1	ok	Her instructions	Shioriへの指示	src/ui/screens/shiori.js:175	
-1eoyx0p	ok	These hold how Shiori works, including her safety rules. Reset to original brings them back. A change applies at her next wake.	Shioriの動き方を決める指示で、安全のためのルールも含まれます。「オリジナルに戻す」で元に戻せます。変更は次の起動から反映されます。	src/ui/screens/shiori.js:176	
-3w9he4	ok	Reset to original: {0}	オリジナルに戻す：{0}	src/ui/screens/shiori.js:187	{0} = words.name
-1tc34br	ok	changed, and annai has a new original	変更済み（annaiに新しいオリジナルあり）	src/ui/screens/shiori.js:201	
-jgug0r	ok	changed	変更済み	src/ui/screens/shiori.js:201	
-kntv40	ok	The new original of {0}	{0}の新しいオリジナル	src/ui/screens/shiori.js:205	{0} = words.name
-1nh34lh	ok	Keep mine: {0}	自分のものを残す：{0}	src/ui/screens/shiori.js:207	{0} = words.name
-1s0o9t8	ok	Use the new original: {0}	新しいオリジナルを使う：{0}	src/ui/screens/shiori.js:208	{0} = words.name
-b5wyro	ok	Save: {0}	保存：{0}	src/ui/screens/shiori.js:220	{0} = words.name
-1mrunng	ok	{0} (from a plugin)	{0}（プラグインから）	src/ui/screens/shiori.js:242	{0} = p.name
-1px053l	ok	{0} (from {1})	{0}（{1}から）	src/ui/screens/shiori.js:242	{0} = p.name; {1} = p.plugin
-9xxzlu	ok	You already have a personality called "{0}".	「{0}」という性格はもうあります。	src/ui/screens/shiori.js:247	{0} = p.name
-fnme9h	ok	Added the personality "{0}". Choose it above.	性格「{0}」を追加しました。上で選んでください。	src/ui/screens/shiori.js:251	{0} = p.name
+11mcr74	ok	Quiet hours need both times. Clear both for none.	おやすみ時間には、開始と終了の両方の時刻が必要です。使わない場合は両方とも空欄にしてください。	src/ui/screens/shiori.js:104	
+1qa55ez	ok	How she looks	見た目	src/ui/screens/shiori.js:111	
+15cdrhf	ok	Each state, as the dock shows her, with the words under her.	ドックでの表示と、その下の言葉を状態ごとに並べています。	src/ui/screens/shiori.js:112	
+jq414z	ok	Personality	性格	src/ui/screens/shiori.js:114	
+efcvdh	ok	How Shiori behaves. She can adjust it herself through a reviewed change, and you can always undo it. A change applies at her next wake.	Shioriのふるまいを決めるものです。Shioriも確認を経たうえで自分で調整でき、その変更はいつでも元に戻せます。変更は次の起動から反映されます。	src/ui/screens/shiori.js:115	
+1amzdg4	ok	The new original of "{0}"	「{0}」の新しいオリジナル	src/ui/screens/shiori.js:122	{0} = compare; Note: as Reset to original (オリジナル).
+pmpsfk	ok	Use the new original	新しいオリジナルを使う	src/ui/screens/shiori.js:125	
+eh67ee	ok	Saved. It applies at her next wake.	保存しました。次の起動から反映されます。	src/ui/screens/shiori.js:134	
+3wot4g	ok	A name is lowercase letters, digits and dashes, like my-shiori.	名前には小文字の英字、数字、ハイフンだけを使ってください（例：my-shiori）。	src/ui/screens/shiori.js:142	
+8vtmkf	ok	There is already a personality called "{0}".	「{0}」という性格はもうあります。	src/ui/screens/shiori.js:142	{0} = name
+codbeh	ok	New from this one	これをもとに新規作成	src/ui/screens/shiori.js:147	
+10pf3h4	ok	Name for a new one	新しい性格の名前	src/ui/screens/shiori.js:148	
+185xhpb	ok	Her two halves	KoeとKokoro	src/ui/screens/shiori.js:152	
+1vyft97	ok	Koe talks with you and answers at once; Kokoro thinks things through and does the work. They pass each other short notes. On: the notes show in the conversation as quiet lines. Off: they stay in the Trace.	Koeは話し相手になり、すぐに答えます。Kokoroはじっくり考えて作業をします。2人は短いメモを渡し合っています。オンにすると、メモが会話の中に控えめな行で表示されます。オフにすると、「記録」にだけ残ります。	src/ui/screens/shiori.js:153	
+1f0pz7g	ok	Your other trips	ほかの旅	src/ui/screens/shiori.js:155	
+t5n8hu	ok	Before Shiori reads another of your trips or conversations, annai asks, once a conversation. On: she reads your own without asking. Trips someone sent you always ask.	Shioriがほかの旅や会話を読む前に、会話ごとに一度確認します。オンにすると、自分の旅や会話は確認なしで読みます。ほかの人から届いた旅は、オンでも確認します。	src/ui/screens/shiori.js:156	
+u36mv	ok	The languages you speak, and the one Shiori answers in, are in Settings → Languages.	話す言語とShioriが答える言語は、「設定 → 言語」で選べます。	src/ui/screens/shiori.js:158	Note: a link on Settings → Shiori to the Languages screen; 言語 as the glossary's screen name.
+is7afy	ok	How often she acts on her own	Shioriが自分から動く頻度	src/ui/screens/shiori.js:160	
+1mzkqw7	ok	Plugins, reminders and GPS wake her as well as you. None of these is set unless you set it: more wakes in an hour are skipped, quiet hours hold her until they end (reminders still come), and past the steps of one wake she stops, with a card.	Shioriは、呼びかけたときだけでなく、プラグイン、リマインダー、GPSによっても起動します。以下はどれも、設定しない限り制限はありません。1時間あたりの上限を超えた起動はスキップされ、おやすみ時間中は終わるまで待機し（リマインダーは届きます）、1回の起動のステップ数を超えるとカードを出して止まります。	src/ui/screens/shiori.js:161	
+6a0cdc	ok	Wakes per hour is a whole number from 1; leave it empty for no limit.	1時間あたりの起動回数は1以上の整数で入力してください。上限なしにする場合は空欄にしてください。	src/ui/screens/shiori.js:162	
+pd5jqf	ok	Wakes per hour, not counting yours	1時間あたりの起動回数（呼びかけた分を除く）	src/ui/screens/shiori.js:162	
+av9dc1	ok	Steps per wake	1回の起動のステップ数	src/ui/screens/shiori.js:164	
+ro3vrl	ok	Steps per wake is a whole number from 1; leave it empty for no limit on what you ask; what she does on her own stops after 50.	1回の起動のステップ数は1以上の整数で入力してください。空欄にすると、頼んだ作業には上限がなくなります。Shioriが自分から行う作業は50ステップで止まります。	src/ui/screens/shiori.js:164	
+1oxfybk	ok	Shiori's core	Shioriの基本指示	src/ui/screens/shiori.js:169	
+srktqx	ok	How she talks, how annai works, and her safety rules. Kokoro reads it, and Shiori when she is one half.	話し方、annaiの仕組み、安全のためのルールです。Kokoroと、一人で動いているときのShioriが読みます。	src/ui/screens/shiori.js:169	
+10gef26	ok	What Kokoro adds while Shiori is two halves: how it works behind Koe.	ShioriがKoeとKokoroに分かれて動いているときに、Kokoroに追加される指示です。Koeの裏でどう動くかを決めます。	src/ui/screens/shiori.js:170	
+13snrep	ok	Kokoro's part	Kokoro用の指示	src/ui/screens/shiori.js:170	
+1t3wpe4	ok	Koe, chat	Koe（チャット）	src/ui/screens/shiori.js:171	
+1x7xmuu	ok	What Koe reads when its words go to a voice.	Koeの言葉を声で読み上げるときに、Koeが読む指示です。	src/ui/screens/shiori.js:171	
+777qwf	ok	What Koe reads in a live voice session.	ライブ音声のセッションでKoeが読む指示です。	src/ui/screens/shiori.js:172	
+mmvypk	ok	Koe, live	Koe（ライブ）	src/ui/screens/shiori.js:172	
+1eogfr1	ok	Her instructions	Shioriへの指示	src/ui/screens/shiori.js:177	
+1eoyx0p	ok	These hold how Shiori works, including her safety rules. Reset to original brings them back. A change applies at her next wake.	Shioriの動き方を決める指示で、安全のためのルールも含まれます。「オリジナルに戻す」で元に戻せます。変更は次の起動から反映されます。	src/ui/screens/shiori.js:178	
+3w9he4	ok	Reset to original: {0}	オリジナルに戻す：{0}	src/ui/screens/shiori.js:189	{0} = words.name
+1tc34br	ok	changed, and annai has a new original	変更済み（annaiに新しいオリジナルあり）	src/ui/screens/shiori.js:203	
+jgug0r	ok	changed	変更済み	src/ui/screens/shiori.js:203	
+kntv40	ok	The new original of {0}	{0}の新しいオリジナル	src/ui/screens/shiori.js:207	{0} = words.name
+1nh34lh	ok	Keep mine: {0}	自分のものを残す：{0}	src/ui/screens/shiori.js:209	{0} = words.name
+1s0o9t8	ok	Use the new original: {0}	新しいオリジナルを使う：{0}	src/ui/screens/shiori.js:210	{0} = words.name
+b5wyro	ok	Save: {0}	保存：{0}	src/ui/screens/shiori.js:222	{0} = words.name
+1mrunng	ok	{0} (from a plugin)	{0}（プラグインから）	src/ui/screens/shiori.js:244	{0} = p.name
+1px053l	ok	{0} (from {1})	{0}（{1}から）	src/ui/screens/shiori.js:244	{0} = p.name; {1} = p.plugin
+9xxzlu	ok	You already have a personality called "{0}".	「{0}」という性格はもうあります。	src/ui/screens/shiori.js:249	{0} = p.name
+fnme9h	ok	Added the personality "{0}". Choose it above.	性格「{0}」を追加しました。上で選んでください。	src/ui/screens/shiori.js:253	{0} = p.name
 aqber3	ok	600 times: an hour takes 6 seconds	600倍：1時間が6秒	src/ui/screens/simulate.js:10	
 u8l013	ok	10 times real time: an hour takes 6 minutes	実時間の10倍：1時間が6分	src/ui/screens/simulate.js:10	
 zby7kj	ok	60 times: an hour takes a minute	60倍：1時間が1分	src/ui/screens/simulate.js:10	
@@ -2629,30 +2631,30 @@ jz8mjk	ok	Unarchive	アーカイブを解除	src/ui/screens/trip.js:56
 qeuftp	ok	Tap again to archive	もう一度タップでアーカイブ	src/ui/screens/trip.js:58	
 w0suw5	ok	Archive	アーカイブ	src/ui/screens/trip.js:58	Note: アーカイブ as Archive trip (旅をアーカイブ) and Unarchive (アーカイブを解除).
 1orcmjh	ok	Give it a name.	名前を入力してください。	src/ui/screens/trip.js:97	
-1cageta	ok	Saved.	保存しました。	src/ui/screens/trip.js:110	
-cymegm	ok	The trip can't end before it starts.	終了日を開始日より前にすることはできません。	src/ui/screens/trip.js:114	
-1yii6kb	ok	Ends	終了日	src/ui/screens/trip.js:121	Note: A date field, so 日 / 日期 say what goes in it.
-fc4c10	ok	Starts	開始日	src/ui/screens/trip.js:121	
-8jz3l7	ok	All files	すべてのファイル	src/ui/screens/trip.js:130	Note: a fold below Files on the trip screen: every file by folder, and the box that adds one by path.
-1s4j38w	ok	Files	ファイル	src/ui/screens/trip.js:156	
-deqm9f	ok	No files yet.	まだファイルはありません。	src/ui/screens/trip.js:162	
-oib8wn	ok	Deleted ({0})	削除済み（{0}）	src/ui/screens/trip.js:164	{0} = num(gone.length); Note: the fold at the foot of a trip's Files listing files deleted but kept (the conversation still has them); {0} is how many. The toasts after Delete call it "Deleted" (削除済み / 已删除 / 已刪除).
-se2paf#other	ok	# turns of this conversation are kept by {0}: annai asks for them to be deleted, once you're back online.	この会話のやり取り#回分が{0}に保存されています。オンラインに戻ったら、annaiが削除を依頼します。	src/ui/screens/trip.js:228	plural; # = n; {0} = who; English: "# turn of this conversation is kept by {0}: annai asks for it to be deleted, once you're back online." (one), "# turns of this conversation are kept by {0}: annai asks for them to be deleted, once you're back online." (other); Note: {0} is the providers that keep turns, as a list.
-1is61d1#other	ok	# turns of this conversation are kept by {0}: annai asks for them to be deleted.	この会話のやり取り#回分が{0}に保存されています。annaiが削除を依頼します。	src/ui/screens/trip.js:229	plural; # = n; {0} = who; English: "# turn of this conversation is kept by {0}: annai asks for it to be deleted." (one), "# turns of this conversation are kept by {0}: annai asks for them to be deleted." (other); Note: {0} is the providers that keep turns, as a list.
-1af3bj3	ok	Remove it?	削除しますか？	src/ui/screens/trip.js:234	
-nn02o3	ok	This removes everything in it from this device: its files, photos, notes and history.	この中のすべて（ファイル、写真、メモ、履歴）をこの端末から削除します。	src/ui/screens/trip.js:234	
-ty94lb	ok	It hasn't been backed up since it last changed.	最後の変更以降、バックアップされていません。	src/ui/screens/trip.js:234	
-1cp5muy	ok	Removed {0}. {1} freed.	{0}を削除しました。空き容量が{1}増えました。	src/ui/screens/trip.js:240	{0} = scopeTitle(scope); {1} = size(freed)
-436oi1	ok	That was already removed.	すでに削除されています。	src/ui/screens/trip.js:244	
-1mbp8t6	ok	It wasn't removed	削除されませんでした	src/ui/screens/trip.js:247	
-1pzhsw4	ok	Nothing was removed. Try again.	何も削除されていません。もう一度お試しください。	src/ui/screens/trip.js:247	
-knyqwh	ok	Add photos or files	写真やファイルを追加	src/ui/screens/trip.js:321	
-12n59th	ok	Take a photo	写真を撮る	src/ui/screens/trip.js:322	
-1kuasfa	ok	That file doesn't match its format: {0}	そのファイルは形式に合っていません：{0}	src/ui/screens/trip.js:334	{0} = why; Note: {0} is the format check's own words, in English.
-1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0}はすでにあります。編集するには一覧から開いてください。	src/ui/screens/trip.js:344	{0} = p
-ecy82r	ok	Add a file	ファイルを追加	src/ui/screens/trip.js:352	
-1bmm5eq	ok	File path	ファイルのパス	src/ui/screens/trip.js:353	
-16gte2l	ok	Create	作成	src/ui/screens/trip.js:355	
+1cageta	ok	Saved.	保存しました。	src/ui/screens/trip.js:113	
+cymegm	ok	The trip can't end before it starts.	終了日を開始日より前にすることはできません。	src/ui/screens/trip.js:117	
+1yii6kb	ok	Ends	終了日	src/ui/screens/trip.js:124	Note: A date field, so 日 / 日期 say what goes in it.
+fc4c10	ok	Starts	開始日	src/ui/screens/trip.js:124	
+8jz3l7	ok	All files	すべてのファイル	src/ui/screens/trip.js:133	Note: a fold below Files on the trip screen: every file by folder, and the box that adds one by path.
+1s4j38w	ok	Files	ファイル	src/ui/screens/trip.js:159	
+deqm9f	ok	No files yet.	まだファイルはありません。	src/ui/screens/trip.js:165	
+oib8wn	ok	Deleted ({0})	削除済み（{0}）	src/ui/screens/trip.js:167	{0} = num(gone.length); Note: the fold at the foot of a trip's Files listing files deleted but kept (the conversation still has them); {0} is how many. The toasts after Delete call it "Deleted" (削除済み / 已删除 / 已刪除).
+se2paf#other	ok	# turns of this conversation are kept by {0}: annai asks for them to be deleted, once you're back online.	この会話のやり取り#回分が{0}に保存されています。オンラインに戻ったら、annaiが削除を依頼します。	src/ui/screens/trip.js:231	plural; # = n; {0} = who; English: "# turn of this conversation is kept by {0}: annai asks for it to be deleted, once you're back online." (one), "# turns of this conversation are kept by {0}: annai asks for them to be deleted, once you're back online." (other); Note: {0} is the providers that keep turns, as a list.
+1is61d1#other	ok	# turns of this conversation are kept by {0}: annai asks for them to be deleted.	この会話のやり取り#回分が{0}に保存されています。annaiが削除を依頼します。	src/ui/screens/trip.js:232	plural; # = n; {0} = who; English: "# turn of this conversation is kept by {0}: annai asks for it to be deleted." (one), "# turns of this conversation are kept by {0}: annai asks for them to be deleted." (other); Note: {0} is the providers that keep turns, as a list.
+1af3bj3	ok	Remove it?	削除しますか？	src/ui/screens/trip.js:237	
+nn02o3	ok	This removes everything in it from this device: its files, photos, notes and history.	この中のすべて（ファイル、写真、メモ、履歴）をこの端末から削除します。	src/ui/screens/trip.js:237	
+ty94lb	ok	It hasn't been backed up since it last changed.	最後の変更以降、バックアップされていません。	src/ui/screens/trip.js:237	
+1cp5muy	ok	Removed {0}. {1} freed.	{0}を削除しました。空き容量が{1}増えました。	src/ui/screens/trip.js:243	{0} = scopeTitle(scope); {1} = size(freed)
+436oi1	ok	That was already removed.	すでに削除されています。	src/ui/screens/trip.js:247	
+1mbp8t6	ok	It wasn't removed	削除されませんでした	src/ui/screens/trip.js:250	
+1pzhsw4	ok	Nothing was removed. Try again.	何も削除されていません。もう一度お試しください。	src/ui/screens/trip.js:250	
+knyqwh	ok	Add photos or files	写真やファイルを追加	src/ui/screens/trip.js:324	
+12n59th	ok	Take a photo	写真を撮る	src/ui/screens/trip.js:325	
+1kuasfa	ok	That file doesn't match its format: {0}	そのファイルは形式に合っていません：{0}	src/ui/screens/trip.js:337	{0} = why; Note: {0} is the format check's own words, in English.
+1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0}はすでにあります。編集するには一覧から開いてください。	src/ui/screens/trip.js:347	{0} = p
+ecy82r	ok	Add a file	ファイルを追加	src/ui/screens/trip.js:355	
+1bmm5eq	ok	File path	ファイルのパス	src/ui/screens/trip.js:356	
+16gte2l	ok	Create	作成	src/ui/screens/trip.js:358	
 aoc0k0#other	ok	{0}: # chats	{0}：会話#件	src/ui/screens/trips.js:66	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
 33pqd9	ok	Last backup {0}, to {1}.	前回のバックアップ：{0}（{1}）	src/ui/screens/trips.js:73	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: Label and value, no 。, as "Last export" beside it.
 12mubvb	ok	Now	いま	src/ui/screens/trips.js:79	
@@ -2806,9 +2808,9 @@ f2eaqi	ok	Find a search plugin	検索プラグインを探す	src/ui/search-pane
 do1m5o	ok	{0}: annai can't show this setting.	{0}：この設定はannaiでは表示できません。	src/ui/settings-form.js:116	{0} = f.label
 1qrgqx0	ok	saved	保存済み	src/ui/settings-form.js:121	
 phutrz	ok	{0} wasn't saved: {1}	{0}を保存できませんでした：{1}	src/ui/settings-form.js:130	{0} = f.label; {1} = messageOf(e)
-1skw031	ok	This screen couldn't open	この画面を開けませんでした	src/ui/shell.js:379	
-1z00dfe	ok	An update is ready	アップデートの準備ができました	src/ui/shell.js:461	
-gt0nrj	ok	It will be used the next time annai starts.	次回annaiを起動したときに適用されます。	src/ui/shell.js:461	
+1skw031	ok	This screen couldn't open	この画面を開けませんでした	src/ui/shell.js:431	
+1z00dfe	ok	An update is ready	アップデートの準備ができました	src/ui/shell.js:505	
+gt0nrj	ok	It will be used the next time annai starts.	次回annaiを起動したときに適用されます。	src/ui/shell.js:505	
 sntfon	ok	Hello! This is how I sound when I talk to you.	こんにちは。こんな声でお話しします。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
 n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
 1a27ynt	ok	Last tested {0}: it worked.	最終テスト（{0}）：動作しました。	src/ui/speech-check.js:26	{0} = relTime(verified.at); Note: {0} is a relative time, in brackets as on a model's test line.

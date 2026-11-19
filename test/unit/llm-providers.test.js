@@ -292,6 +292,30 @@ test("a model added to a provider that was removed meanwhile is refused with the
   await assert.rejects(addListedModel(ctx, id, 'chat', { providerId: 'x', name: 'X' }), gone);
 });
 
+test("an ability has one model for each provider model id: an add of one it has is refused with words, from a list or by id, whichever came first; another ability may have it (form-keep-next touch 2)", async () => {
+  const ctx = await setup();
+  const id = await addProvider(ctx, ROUTER_SRC, { key: 'sk-r', roles: null });
+  const count = async () => Object.keys((await readConfig(ctx.ws)).models).length;
+  const refused = (/** @type {string} */ providerId) => (/** @type {any} */ e) => e.shown === `"${providerId}" is already added here.` && e.message === e.shown;
+  await addModelById(ctx, id, 'chat', 'x/one');
+  const before = await count();
+  // A list drawn before the add by id offers it again.
+  await assert.rejects(addListedModel(ctx, id, 'chat', { providerId: 'x/one', name: 'One' }), refused('x/one'));
+  // A model a list added under its own name is added by id: the names differ, the ids do not.
+  await addListedModel(ctx, id, 'chat', { providerId: 'x/two', name: 'Two' });
+  await assert.rejects(addModelById(ctx, id, 'chat', 'x/two'), refused('x/two'));
+  // A name another model has, by an id it has not, is still refused for the name (saveModel).
+  await addListedModel(ctx, id, 'chat', { providerId: 'x/four', name: 'Four' });
+  await assert.rejects(addModelById(ctx, id, 'chat', 'Four'), /"Four" is already used by another model/);
+  // The description's own models count too.
+  await assert.rejects(addListedModel(ctx, id, 'chat', { providerId: 'big', name: 'Big again' }), refused('big'));
+  assert.equal(await count(), before + 2, 'only the models from the list were added');
+  // Another ability of the provider may have the same id.
+  assert.ok(await addListedModel(ctx, id, 'voice', { providerId: 'x/one', name: 'One voice' }));
+  // A refused add leaves the lock free: the next add saves.
+  assert.ok(await addModelById(ctx, id, 'chat', 'x/three'));
+});
+
 test("a default new to an ability's modelDefaults reaches the models added from its list or by id before it, unless the user set that field (phone-fixes-1 item 2: Claude read only text)", async () => {
   const ctx = await setup();
   const claude = await addProvider(ctx, ANTHROPIC_SRC, { key: 'sk-ant' });
@@ -732,8 +756,8 @@ test("a refused name-taker leaves the lock free: the add after it saves, so do a
   const k = await serviceKit();
   const xId = await k.llm.addProvider('provider-x', { key: 'sk-x' });
   await k.llm.addModelById(xId, 'chat', 'taken-id');
-  // An add refused for its name, then another: the first one's failure is not carried to it.
-  await assert.rejects(k.llm.addModelById(xId, 'chat', 'taken-id'), /already used by another model/);
+  // An add refused (its id is the provider's already), then another: the first one's failure is not carried to it.
+  await assert.rejects(k.llm.addModelById(xId, 'chat', 'taken-id'), /"taken-id" is already added here/);
   const second = await k.llm.addModelById(xId, 'chat', 'free-id');
   assert.ok(modelNames(await readConfig(k.ws)).includes('free-id'), 'the add after a refused add saved');
   // A page's save refused for its name, then one that is fine.
@@ -741,7 +765,7 @@ test("a refused name-taker leaves the lock free: the add after it saves, so do a
   await updateModel(k.ws, second, (rec) => ({ ...rec, user: { ...rec.user, name: 'Free one' } }));
   assert.ok(modelNames(await readConfig(k.ws)).includes('Free one'), 'the page save after a refused one saved');
   // A refused add, then a plugin update's refresh brings its new model in.
-  await assert.rejects(k.llm.addModelById(xId, 'chat', 'taken-id'), /already used by another model/);
+  await assert.rejects(k.llm.addModelById(xId, 'chat', 'taken-id'), /"taken-id" is already added here/);
   const next = PX('1.1.0', { chat: { kind: 'chat', type: 'type-a', models: [{ providerId: 'x-1', name: 'X one' }, { providerId: 'x-3', name: 'X three' }] } });
   await k.host.install(new Map(Object.entries(next).map(([n, t]) => [n, new TextEncoder().encode(t)])), { source: 'official' });
   await k.host.start('provider-x');
