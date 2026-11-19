@@ -161,8 +161,6 @@ async function boot() {
   // Shiori (spec §6), talking about the trip that was open last: one half, or two when a Koe model is set
   // (the Koe and Kokoro design). Her own tools are Kokoro's.
   const agent = new Halves({ store, ws, llm, registry, codec, voice });
-  // Steering-wheel and headset buttons tap Shiori while voice is on (spec §18, an experiment).
-  mediaKeys({ session: /** @type {any} */ (navigator).mediaSession, agent, voice });
   agent.addLoopTools(selfTools(agent.kokoro));
   // Starting, opening and listing trips, and moving a file into one, for what the user hands her (the bookings-and-trips design).
   agent.addLoopTools(tripTools(agent));
@@ -250,6 +248,8 @@ async function boot() {
   const appended = (/** @type {(evs: any[]) => void} */ fn) => { followers.add(fn); return () => followers.delete(fn); };
   const shell = startShell(root, { store, ws, registry, plugins, llm, agent, voice, live, awake, pack, presets, backups, sim, push, updates, chats, appended, moveWaiting, version: VERSION });
   updates.notices = shell.notices;
+  // Steering-wheel and headset buttons tap Shiori while voice is on (spec §18, an experiment), as the dock's button: the shell's tap.
+  mediaKeys({ session: /** @type {any} */ (navigator).mediaSession, tap: shell.tap, voice });
   // A reload mid-drive starts the shell before live mode has restored the drive; that isn't a change to take over for.
   liveStarted.then(shell.seedActivity, () => {});
   offerReload = (names) => {

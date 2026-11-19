@@ -3792,8 +3792,8 @@ export class Agent {
 
   /**
    * Tapping Shiori (spec §6.7, §10.4): while she speaks, stops her and opens the microphone; while she listens or works, stops
-   * her turn; otherwise, with voice on, starts listening (with voice off, typing opens; with nothing open no turn runs to end a microphone, so a headset or
-   * car key gets nothing; docs/limitations.md). fresh: another conversation was just opened, whose open
+   * her turn; otherwise, with voice on, starts listening (with voice off, typing opens; with nothing open no turn runs to end a microphone, so none opens:
+   * a tap on Shiori opens the draft first, `tapShiori`). fresh: another conversation was just opened, whose open
    * stopped what the one left was doing; its state may lag, and answers no tap here.
    * @param {{ fresh?: boolean }} [o] @returns {'cut' | 'stopped' | 'listening' | 'typing'}
    */

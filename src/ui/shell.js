@@ -31,7 +31,7 @@ import { renderReplay } from './screens/replay.js';
 import { renderSimulate } from './screens/simulate.js';
 import { renderNotifications } from './screens/notifications.js';
 import { createDock } from './dock.js';
-import { newConversation } from './plus.js';
+import { newConversation, tapShiori } from './plus.js';
 import { tapKeepsKeyboard, takesTyping } from './tap-keeps-keyboard.js';
 import { keepRows } from './keep-rows.js';
 import { isStandalone } from './platform.js';
@@ -499,6 +499,8 @@ export function startShell(root, core) {
     seedActivity,
     /** Draws the screen again, nobody having asked (what Settings → Updates shows changed), once that takes nothing from the traveller. */
     redraw: () => redraw(),
+    /** The keys' tap on Shiori (tapShiori). */
+    tap: () => tapShiori(ctx),
     /** A new version of annai waits (Settings → Updates says so too): one card, the newest. @param {() => void} apply */
     setUpdateReady(apply) {
       readyCard();

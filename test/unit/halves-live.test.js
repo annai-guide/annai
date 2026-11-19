@@ -7,7 +7,10 @@ import { updateAppSettings } from '../../src/core/settings.js';
 import { readConfig, saveRoles } from '../../src/core/llm/config.js';
 import { liveKit, lives, blocks, got, texts, soon, tone, say, sleep } from './koe-live-kit.js';
 import { quiet, cat } from './voice-kit.js';
-import { createTrip } from '../../src/core/scopes.js';
+import { createTrip, ME } from '../../src/core/scopes.js';
+import { tapShiori } from '../../src/ui/plus.js';
+import { pluginUi } from '../../src/ui/slots.js';
+import { mediaKeys } from '../../src/ui/media-keys.js';
 import { Live } from '../../src/core/live/live.js';
 import { ManualClock } from '../../src/core/live/clock.js';
 import { at, iso, off, LA, BIXBY } from './live-kit.js';
@@ -362,6 +365,36 @@ test("voice on with a realtime Koe: a tap opens a session with Koe's live instru
     assert.equal(k.agent.state.name, 'listening');
   } finally {
     await k.done();
+  }
+});
+
+// key-next: run on main first, the dock's Shiori button with nothing open (a draft ready) opened the draft and then a live session there, while a key opened
+// the session in `me` (its setup with no trip), where no turn of Kokoro's runs. Both now go through tapShiori.
+test("a realtime Koe with nothing open: a headset or car key, or a plugin's tap, opens the standing draft and the live session there, as the dock's button does, never in `me`", async () => {
+  for (const how of ['key', 'plugin']) {
+    const k = await liveKit([]);
+    try {
+      await k.agent.open(null);
+      await k.agent.idle();
+      const draft = await createTrip(k.ws, { title: 'New conversation' });
+      const ctx = { chats: { ready: draft, whenReady: () => Promise.resolve(draft) }, agent: k.agent, voice: k.voice, ws: k.ws, notices: { card: () => {} } };
+      if (how === 'plugin') pluginUi(ctx, 'trail').shiori.tap();
+      else {
+        /** @type {Record<string, () => void>} */
+        const keys = {};
+        mediaKeys({ session: { setActionHandler: (/** @type {string} */ key, /** @type {any} */ fn) => { keys[key] = fn; } }, tap: () => tapShiori(ctx), voice: k.voice });
+        keys.play();
+      }
+      assert.equal(k.agent.target, draft, how);
+      await until(() => k.agent.live.listening);
+      const sessions = (/** @type {string} */ scope) => k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(scope, { types: ['live.session'] }));
+      assert.ok((await sessions(draft)).some((e) => e.data.state === 'open'), `${how}: the session is the draft's`);
+      assert.deepEqual(await sessions(ME), [], `${how}: none in me`);
+      assert.match(got(k, 'setup')[0].setup.systemInstruction.parts[0].text, /<today>\ntrip: New conversation/, `${how}: its view is the draft's`);
+      assert.equal(k.platform.log.filter((/** @type {string} */ l) => l === 'mic open').length, 1, how);
+    } finally {
+      await k.done();
+    }
   }
 });
 

@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { newConversation, openReadyDraft } from '../../src/ui/plus.js';
+import { newConversation, openReadyDraft, tapShiori } from '../../src/ui/plus.js';
+import { pluginUi } from '../../src/ui/slots.js';
+import { mediaKeys } from '../../src/ui/media-keys.js';
 
 /** @param {{ ready?: string | null, tap?: string, dock?: any, voice?: boolean, whenReady?: () => Promise<string> }} [o] */
 function kit(o = {}) {
@@ -94,4 +96,68 @@ test('the dock\'s tap with nothing open: a ready draft opens with nothing awaite
   const none = kit({ ready: null });
   assert.equal(openReadyDraft(none.ctx), false);
   assert.deepEqual(none.log, []);
+});
+
+// key-next: with nothing open, a headset or car key and a plugin's ui.shiori.tap() do what the dock's Shiori button does (the Deferred entry that closed:
+// they called agent.tap() directly, which opens no microphone with nothing open). All three call tapShiori; the dock's own button is pinned in the
+// ui-slots browser suite, which draws it.
+
+/** A headset or car key's press (play), as main.js wires the keys: to the shell's tap, which is tapShiori; voice is on. @param {any} ctx */
+function pressKey(ctx) {
+  /** @type {Record<string, (() => void) | null>} */
+  const handlers = {};
+  mediaKeys({ session: { setActionHandler: (/** @type {string} */ k, /** @type {any} */ fn) => { handlers[k] = fn; } }, tap: () => tapShiori(ctx), voice: { on: true, onChange: () => () => {} } });
+  return handlers.play?.();
+}
+/** Each caller of a tap on Shiori but the dock's button, and what it returns (a key's handler returns nothing). @type {Record<string, (ctx: any) => unknown>} */
+const CALLERS = { key: pressKey, plugin: (ctx) => pluginUi(ctx, 'trail').shiori.tap(), tapShiori: (ctx) => tapShiori(ctx) };
+const tick = () => new Promise((r) => setTimeout(r, 0));
+
+test('nothing open, a draft ready: a key, a plugin\'s tap and tapShiori open it and tap with nothing awaited between (the gesture holds), and say what the tap said', () => {
+  for (const [how, call] of Object.entries(CALLERS)) {
+    const { ctx, log } = kit();
+    const did = call(ctx);
+    assert.deepEqual(log, ['open trip-d', 'tap'], how); // synchronously, before this line
+    assert.equal(ctx.agent.target, 'trip-d', how);
+    if (how !== 'key') assert.equal(did, 'listening', how);
+  }
+});
+
+test('nothing open, no draft ready yet (the first moments): the tap waits for one, opens it, then taps; what it returns is a promise of what the tap said', async () => {
+  for (const [how, call] of Object.entries(CALLERS)) {
+    /** @type {(id: string) => void} */
+    let ready = () => {};
+    const { ctx, log } = kit({ ready: null, whenReady: () => new Promise((r) => { ready = (id) => { ctx.chats.ready = id; r(id); }; }) });
+    const did = call(ctx);
+    assert.deepEqual(log, [], how);
+    ready('trip-late');
+    await tick();
+    assert.deepEqual(log, ['open trip-late', 'tap'], how);
+    if (how !== 'key') assert.equal(await did, 'listening', how);
+  }
+});
+
+test('nothing open and no draft can be made: the card says so, nothing opens and no tap is made (so no microphone); what it returns is a promise of nothing', async () => {
+  for (const [how, call] of Object.entries(CALLERS)) {
+    const { ctx, log } = kit({ ready: null, whenReady: () => Promise.reject(new Error('the disk is full')) });
+    const did = call(ctx);
+    await tick();
+    assert.deepEqual(log, ["card That conversation didn't open"], how);
+    assert.equal(ctx.agent.target, null, how);
+    if (how !== 'key') assert.equal(await did, undefined, how);
+  }
+});
+
+test('a conversation open: every caller taps at once and opens nothing, and a plugin gets what the tap said, as before; a plugin with no Shiori gets nothing', () => {
+  for (const said of ['cut', 'stopped', 'listening', 'typing']) {
+    for (const [how, call] of Object.entries(CALLERS)) {
+      const { ctx, log } = kit({ tap: said });
+      ctx.agent.target = 'trip-1';
+      const did = call(ctx);
+      assert.deepEqual(log, ['tap'], how);
+      if (how !== 'key') assert.equal(did, said, how); // the word itself, not a promise of it
+    }
+  }
+  const { ctx } = kit();
+  assert.equal(pluginUi({ ...ctx, agent: undefined }, 'trail').shiori.tap(), undefined);
 });

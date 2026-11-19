@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
-import { openApp, FIRST_DRAW, startTrip, startModelServer, anthropicToolReply, addProvider, waitForServiceWorker, pickFile, fixtureFiles, zipOf, openTalk, goToHash } from './helpers.js';
+import { fileURLToPath } from 'node:url';
+import { openApp, FIRST_DRAW, startTrip, startModelServer, anthropicToolReply, addProvider, waitForServiceWorker, pickFile, fixtureFiles, zipOf, openTalk, goToHash, fakeMicrophone } from './helpers.js';
+import { encodeWav } from '../../src/core/voice/pcm.js';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes } from '../../src/core/scopes.js';
@@ -394,4 +396,84 @@ test("a trip's address whose open fails with nothing open shows `me`'s old lines
   await expect(page.locator('ol.convo')).toContainText('Anything near Testville?', FIRST_DRAW);
   await expect(page.locator('ol.convo')).toContainText('Shall I note it?');
   await expect(page.locator('ol.convo button')).toHaveCount(0);
+});
+
+/**
+ * The handlers annai sets on the media session, kept where the page can call them, as a car or headset's key would (no browser lets a test press one).
+ * The engine's own media session still gets them; one without a media session gets a stand-in.
+ * @param {import('@playwright/test').Page} page
+ */
+const keepMediaKeys = (page) => page.addInitScript(() => {
+  const w = /** @type {any} */ (window);
+  w.__mediaKeys = {};
+  /** @param {string} key @param {any} fn */
+  const keep = (key, fn) => { w.__mediaKeys[key] = fn; };
+  if (typeof MediaSession === 'function') {
+    const set = MediaSession.prototype.setActionHandler;
+    // On the prototype: WebKit drops a method set on a navigator object this early (fakeMicrophone).
+    /** @this {MediaSession} @param {any} key @param {any} fn */
+    MediaSession.prototype.setActionHandler = function (key, fn) { keep(key, fn); return set.call(this, key, fn); };
+  } else Object.defineProperty(Navigator.prototype, 'mediaSession', { configurable: true, get: () => ({ setActionHandler: keep }) });
+});
+
+/** How many entries of these types a scope's log holds. @param {import('@playwright/test').Page} page @param {string} scope @param {string[]} types */
+const countIn = (page, scope, types) => page.evaluate(async ({ scope, types }) => {
+  const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+  const store = await createIdbStore();
+  const got = await store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types }));
+  store.close();
+  return got.length;
+}, { scope, types });
+
+test("with nothing open, a headset or car key does what the dock's Shiori button does: the standing draft opens and listens, and what is said is heard and answered there, not in `me` (key-next)", async ({ page }) => {
+  const json = (/** @type {any} */ o) => ({ status: 200, type: 'application/json', body: JSON.stringify(o) });
+  const server = await startModelServer({
+    '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))],
+    '/ears/audio/transcriptions': [json({ text: 'Where should we eat?' })],
+    '/voice/audio/speech': { status: 200, type: 'audio/wav', body: Buffer.from(encodeWav(Float32Array.from({ length: 4800 }, (_, i) => 0.3 * Math.sin(i / 3)), 16000)) },
+  });
+  try {
+    await keepMediaKeys(page);
+    await fakeMicrophone(page, [fileURLToPath(new URL('../fixtures/voice/where-eat.wav', import.meta.url))]);
+    await openApp(page, '#/models');
+    await waitForServiceWorker(page);
+    await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${server.origin}/b`, key: 'sk-chat-test', model: 'b-model' });
+    await addProvider(page, 'Custom provider', { ability: 'Transcription', name: 'Ears', url: `${server.origin}/ears`, key: 'sk-ears-test', model: 'ears' });
+    await addProvider(page, 'Custom provider', { ability: 'Voice', name: 'Voice', url: `${server.origin}/voice`, key: 'sk-voice-test', model: 'voice' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in / b-model' });
+    await page.getByRole('button', { name: 'Add to main' }).click();
+    await expect(page.getByText('1. Stand-in / b-model')).toBeVisible();
+    await page.getByLabel('Add a model to speech-in').selectOption({ label: 'Ears / ears' });
+    await page.getByRole('button', { name: 'Add to speech-in' }).click();
+    await expect(page.getByText('2. Ears / ears')).toBeVisible();
+    await page.getByLabel('Add a model to speech-out').selectOption({ label: 'Voice / voice' });
+    await page.getByRole('button', { name: 'Add to speech-out' }).click();
+    await expect(page.getByText('1. Voice / voice')).toBeVisible();
+    await page.goto('/#/voice');
+    await page.getByRole('radio', { name: 'On', exact: true }).check();
+    await expect(page.getByText('Voice is on.')).toBeVisible();
+    // Nothing open: the open trip removed, and its draft's open failing (a removal whose draft didn't open); the standing draft is still ready.
+    await startTrip(page, 'Kyoto');
+    await page.evaluate(async () => {
+      const { Chats } = await import(/** @type {string} */ ('/src/core/chats.js'));
+      Chats.prototype.whenReady = () => Promise.reject(new Error('The store failed.'));
+    });
+    await page.getByRole('button', { name: 'Remove', exact: true }).click();
+    await page.getByRole('dialog', { name: 'Kyoto' }).getByRole('button', { name: 'Remove' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
+    await expect(page.locator('.talk-label')).toHaveText('Tap to talk');
+    expect(await page.evaluate(() => typeof /** @type {any} */ (window).__mediaKeys.play)).toBe('function'); // set while voice is on
+    await page.evaluate(() => /** @type {any} */ (window).__mediaKeys.play());
+    await expect.poll(() => server.bodies('/b/v1/messages').length, { timeout: 30_000 }).toBe(1);
+    expect(JSON.stringify(server.bodies('/b/v1/messages')[0].messages)).toContain('Where should we eat?');
+    expect(await page.evaluate(() => /** @type {any} */ (window).__micOpens)).toBe(1);
+    await expect(page.locator('.talk-label')).toHaveText('Tap to talk', { timeout: 30_000 });
+    // In the draft, which the press opened, and nothing in `me`.
+    const draft = decodeURIComponent(String(await page.locator('.in-convo').getAttribute('href')).split('/')[2]);
+    expect(draft).toMatch(/^trip-/);
+    expect(await countIn(page, draft, ['heard', 'msg.user'])).toBeGreaterThan(0);
+    expect(await countIn(page, 'me', ['heard', 'msg.user'])).toBe(0);
+  } finally {
+    await server.stop();
+  }
 });

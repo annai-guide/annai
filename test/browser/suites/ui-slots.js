@@ -210,6 +210,48 @@ export default function (test, assert) {
     assert.deepEqual(all(), [0, 0, 0, 0, 0]);
   });
 
+  test("key-next: the dock's Shiori button taps through tapShiori: a conversation open, at once, and a tap that says typing opens the box inside the click; nothing open, the ready draft opens first; none ready, the tap and the box come once one is", async () => {
+    const { registry } = kit();
+    /** @type {string[]} */
+    const log = [];
+    const agent = Object.assign(fakeAgent(), {
+      target: /** @type {string | null} */ ('trip-1'),
+      tap: () => { log.push('tap'); return 'typing'; },
+      open: (/** @type {string} */ id) => { log.push(`open ${id}`); agent.target = id; return Promise.resolve(); },
+    });
+    /** @type {(id: string) => void} */
+    let ready = () => {};
+    const chats = { ready: /** @type {string | null} */ ('trip-d'), whenReady: () => new Promise((r) => { ready = (id) => { chats.ready = id; r(id); }; }) };
+    const ws = { readJSON: async () => ({}), patch: async () => {} };
+    const ctx = { registry, agent, chats, ws, store: { tx: async () => null }, notices: { card() {}, toast() {} }, go() {} };
+    const dock = createDock(ctx);
+    const talk = /** @type {HTMLButtonElement} */ (dock.el.querySelector('button.talk'));
+    const box = /** @type {HTMLFormElement} */ (dock.el.querySelector('form.type-sheet'));
+    const typeButton = /** @type {HTMLButtonElement} */ (dock.el.querySelector('button[aria-label="Type"]'));
+    document.body.append(dock.el);
+    try {
+      talk.click();
+      assert.deepEqual([log, box.hidden], [['tap'], false], 'tapped, and the box open, inside the click');
+      typeButton.click(); // closes it
+      log.length = 0;
+      agent.target = null;
+      talk.click();
+      assert.deepEqual([log, box.hidden], [['open trip-d', 'tap'], false], 'the ready draft first, inside the click');
+      typeButton.click();
+      log.length = 0;
+      agent.target = null;
+      chats.ready = null;
+      talk.click();
+      assert.deepEqual([log, box.hidden], [[], true], 'none ready: nothing yet');
+      ready('trip-late');
+      await tick();
+      assert.deepEqual([log, box.hidden], [['open trip-late', 'tap'], false], 'once one is');
+    } finally {
+      dock.dispose();
+      dock.el.remove();
+    }
+  });
+
   test('fix pass 5: the caption shows the newest words when a slower read of an earlier line settles after a later one', async () => {
     const { registry } = kit();
     const agent = fakeAgent();

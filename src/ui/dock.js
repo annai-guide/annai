@@ -12,7 +12,7 @@ import { component, mount, cleanUp, slotEntries, runAction, made } from './slots
 import { onTap } from './dock-hides.js';
 import { createComposer, handOver } from './composer.js';
 import { toTalk } from './open-trip.js';
-import { openDraft, openReadyDraft, cantStart } from './plus.js';
+import { openDraft, cantStart, tapShiori } from './plus.js';
 import { explainStorageFull } from './storage-full.js';
 import { sentences } from '../core/intl.js';
 
@@ -205,11 +205,12 @@ export function createDock(ctx) {
   const talk = h('button', {
     class: 'talk', type: 'button', 'aria-label': t`Shiori`,
     onclick: () => {
-      // While she speaks, a tap stops her and listens; asleep, it listens, with voice off too (spec §10.4). Typing opens only with no voice here.
-      // With nothing open, in the draft first: the ready one opens at once, so the tap's microphone unlock stays inside
-      // the gesture, as + keeps it; with none ready, once one is (late for the microphone, as + is in the first moments).
-      if (!ctx.agent.target && !openReadyDraft(ctx)) return void drafted().then((ok) => { if (ok && ctx.agent.tap() === 'typing') openTyping(); });
-      if (ctx.agent.tap() === 'typing') openTyping();
+      // While she speaks, a tap stops her and listens; asleep, it listens, with voice off too (spec §10.4). Typing opens only with no voice here, inside
+      // the tap (a phone's keyboard needs it), or once a tap that waited for a draft is made.
+      const typing = (/** @type {string | undefined} */ did) => { if (did === 'typing') openTyping(); };
+      const did = tapShiori(ctx);
+      if (did instanceof Promise) did.then(typing);
+      else typing(did);
     },
   }, avatar.el, label);
   /** @type {((() => void) | undefined)[]} what it listens to, let go of by dispose() */
