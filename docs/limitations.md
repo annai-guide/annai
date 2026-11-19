@@ -987,3 +987,17 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** taking the list off the screen at each change was the drop models-next built, where three review rounds found problems, and it covered one of the five ways a connection changes; checking the connection where the list acts (a row's Add) covers all of them (model-list-a-next, the step back's design check, option A).
 - **Revisit when:** a traveller reports rows that did nothing.
 - **Approved:** 2026-11-19, chief's decision C124 (not the user's words), "Accept as a known limitation".
+
+### A mostly-Latin line of hers with a few Han characters takes the screens' glyph forms
+- **Kind:** known limitation.
+- **What the traveller sees:** a line of Shiori's that is mostly Latin words with a few Han characters (「我在 Old Town」, 「明日10:00 Museum of Odd Clocks」, an option or a card's title) is tagged as Latin text: its Han characters are drawn in the screens' glyph forms, and a screen reader reads it by the screens' language, while the phone's voice reads it in the language of her reply so far. The same as before voice-reply-next.
+- **Why:** telling such a line's language needs a rule of its own and its own measurement (a quick probe of a reviewer's read "Where is 新宿御苑?" as Chinese), for a small visual difference; the tag never guesses Latin text, so a wrong guess can't give it a wrong voice.
+- **Revisit when:** a traveller reports wrong glyph forms or a screen reader's voice on such a line.
+- **Approved:** 2026-11-19, chief's decision C125 (not the user's words), "Accept as a known limitation (Recommended)".
+
+### A Han-only line with nothing before it can be drawn in one language and spoken in the other
+- **Kind:** known limitation.
+- **What the traveller sees:** with the screens in Japanese or Chinese and the other listed first in Settings → Languages, a line of Shiori's of Han characters that say neither Japanese nor Chinese, with nothing before it in her reply to tell, is drawn in the screens' glyph forms and read by the phone's voice in the first listed: 「大家好」 on Japanese screens with Chinese listed first is drawn in Japanese forms and read in Chinese; 「東京駅」 on Simplified Chinese screens with Japanese listed first is drawn in Chinese forms and read in Japanese. With her reply before the line, both follow her reply.
+- **Why:** each reader keeps its own default, as before voice-reply-next: the tag the screens' language (what the page draws with no tag), the voice the language listed first. One rule for both changes something with its own reason: the tag following the order changes the glyph forms of the traveller's own Han-only lines and trip names on such screens (voice-reply-next's first build did, and it was taken back); the voice following the screens reads such a line in a language they didn't list first. No measurement favours either: none of her recorded sentences reaches this rule.
+- **Revisit when:** a traveller with Han screens and the other Han language listed first reports it.
+- **Approved:** 2026-11-19, chief's decision C126 (not the user's words), "Accept as a known limitation (Recommended)".
