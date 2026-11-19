@@ -1283,3 +1283,41 @@ test('a Share without the conversation says nobody has talked', async () => {
   const [id] = (await importArchive(b.store, await peekArchive(await bytesOf(blob)))).trips;
   assert.equal(/** @type {any} */ (await b.store.tx(['scopes'], 'readonly', (t) => t.getScope(id))).talked, null);
 });
+
+test('a Share says who made it only when asked: ticked, its copy\'s record carries the name it is given; unticked, none, even for a trip an import named; a Backup keeps the record; the trip here is unchanged (the timeline design, \'Nickname and "From Mia"\')', async () => {
+  const a = await device();
+  const trip = await sampleTrip(a.ws);
+  const record = () => a.store.tx(['scopes'], 'readonly', (t) => t.getScope(trip));
+  const before = { record: await record(), file: (await a.ws.read(trip, '/trip.json'))?.entry.hash };
+  const ticked = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0', share: { places: true, madeBy: 'Mia' } });
+  assert.equal(ticked.manifest.scopes[0].record.madeBy, 'Mia');
+  assert.equal(ticked.manifest.files.find((f) => f.path === '/trip.json')?.hash, before.file, "its trip.json is the trip's, byte for byte");
+  assert.deepEqual({ record: await record(), file: (await a.ws.read(trip, '/trip.json'))?.entry.hash }, before, 'nothing here changes');
+  const plain = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0', share: { places: true } });
+  assert.equal('madeBy' in plain.manifest.scopes[0].record, false);
+  // Mia's trip on Bo's phone: his Share says nothing of her unless he ticks it, and then says his own name.
+  const b = await device();
+  const [copy] = (await importArchive(b.store, await peekArchive(await bytesOf(ticked.blob)))).trips;
+  const theirs = await b.store.tx(['scopes'], 'readonly', (t) => t.getScope(copy));
+  assert.equal(theirs?.madeBy, 'Mia');
+  const passed = await exportArchive(b.store, { kind: 'trip', scopes: [copy], include: PRESETS.share, app: '0.1.0', share: { places: false } });
+  assert.equal('madeBy' in passed.manifest.scopes[0].record, false, 'unticked: no name, not even the one it came with');
+  const his = await exportArchive(b.store, { kind: 'trip', scopes: [copy], include: PRESETS.share, app: '0.1.0', share: { places: true, madeBy: 'Bo' } });
+  assert.equal(his.manifest.scopes[0].record.madeBy, 'Bo');
+  const backup = await exportArchive(b.store, { kind: 'trip', scopes: [copy], include: PRESETS.backup, app: '0.1.0' });
+  assert.equal(backup.manifest.scopes[0].record.madeBy, 'Mia', 'a Backup holds the trip as it is here');
+});
+
+test('the importer takes a Share whose record says who made it, as a name or in a shape no annai writes, checked and whole: madeBy is one more key of the record, as it is to an older annai, which has no rule for it', async () => {
+  const a = await device();
+  const trip = await sampleTrip(a.ws);
+  const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0' });
+  // The field as annai now writes it, and in a shape no annai writes: neither stops the file.
+  for (const madeBy of ['Mia', { name: 'Mia' }]) {
+    const named = await rewrite(blob, (/** @type {any} */ m) => { m.scopes[0].record.madeBy = madeBy; });
+    const b = await device();
+    const [copy] = (await importArchive(b.store, await peekArchive(named))).trips;
+    assert.deepEqual(Object.keys(await snapshot(b.ws, copy)).sort(), ['/files/photo.jpg', '/notes/案内.md', '/plan/dinner.json', '/trip.json']);
+    assert.equal((await listTrips(b.store)).active.find((s) => s.id === copy)?.title, '京都 in spring');
+  }
+});

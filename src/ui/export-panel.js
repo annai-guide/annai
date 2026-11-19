@@ -1,6 +1,6 @@
 import { h, t, field, checkbox, radios, messageOf } from './dom.js';
 import { exportArchive, PRESETS, isFullBackup } from '../core/archive.js';
-import { recordBackup } from '../core/scopes.js';
+import { recordBackup, callMeOf, ME } from '../core/scopes.js';
 import { explainStorageFull } from './storage-full.js';
 import { updateAppSettings, readAppSettings } from '../core/settings.js';
 import { photoSettings, MAX_CANVAS_PIXELS } from '../core/photos.js';
@@ -23,7 +23,9 @@ export function exportPanel(ctx, what) {
   const photos = checkbox(t`Photos`, true);
   const keys = isTrip ? null : checkbox(t`Include API keys (needs a passphrase)`, false);
   const places = checkbox(t`Include where photos were taken and where you went`, true);
-  places.el.hidden = true; // a Share option (§12.2)
+  // Share options (§12.2); who made it goes only when ticked (the timeline design, 'Nickname and "From Mia"').
+  const madeBy = checkbox(t`Show who made it`, false);
+  places.el.hidden = madeBy.el.hidden = true;
   let mode = 'backup';
   // A Share without places carries no History (archive.js), so the box is greyed out.
   const whyNoHistory = h('p', { id: 'export-no-history', class: 'sub', hidden: true, text: t`History holds where you were, so it needs places.` });
@@ -43,7 +45,7 @@ export function exportPanel(ctx, what) {
       history.input.checked = p.history;
       memory.input.checked = p.memory;
       photos.input.checked = p.photos;
-      places.el.hidden = v !== 'share';
+      places.el.hidden = madeBy.el.hidden = v !== 'share';
       syncHistory();
     })
     : null;
@@ -68,24 +70,37 @@ export function exportPanel(ctx, what) {
       }
     },
   }, t`Save file`);
+  // A change after Build, or while it builds, ends that file's Save file: it holds what the boxes said when Build was tapped.
+  let edits = 0;
+  const changed = () => {
+    edits++;
+    saveBtn.hidden = true;
+    status.textContent = '';
+  };
   const build = h('button', {
     class: 'btn pri', type: 'button',
     onclick: async () => {
       if (pass1.value !== pass2.value) { status.textContent = t`The passphrases don't match.`; return; }
       if (keys?.input.checked && !pass1.value) { status.textContent = t`API keys can only be exported with a passphrase.`; return; }
+      const at = edits;
       build.disabled = true;
       saveBtn.hidden = true;
       status.textContent = pass1.value ? t`Building and encrypting. This takes a few seconds…` : t`Building…`;
       try {
-        const share = mode === 'share' ? { places: places.input.checked, convert: await photoConverter(ctx) } : undefined;
+        // Settings → Shiori's name as it is now; with none, the file goes without and says so.
+        const name = mode === 'share' && madeBy.input.checked ? callMeOf((await ctx.ws.readText(ME, '/profile.md')) ?? '') : '';
+        const share = mode === 'share' ? { places: places.input.checked, convert: await photoConverter(ctx), madeBy: name } : undefined;
         const include = { history: history.input.checked, memory: memory.input.checked, photos: photos.input.checked };
         const result = await exportArchive(ctx.store, {
           kind: what.kind, scopes: what.scopes, include,
           secrets: keys?.input.checked ?? false, passphrase: pass1.value || undefined, app: ctx.version, share,
         });
+        if (at !== edits) return;
         built = { ...result, full: isFullBackup(include, Boolean(share)) };
         const left = result.skipped.length ? t`Left out, because this browser can't remove where they were taken: ${list(result.skipped, 'plain')}.` : '';
-        status.textContent = sentences(t`Ready: ${result.filename} (${size(result.blob.size)}). Tap Save file.`, left);
+        // The name the file carries, or that it carries none, before it goes.
+        const who = share && madeBy.input.checked ? (name ? t`It says it's from ${name}.` : t`It doesn't say who made it: Settings → Shiori has no name for you.`) : '';
+        status.textContent = sentences(t`Ready: ${result.filename} (${size(result.blob.size)}). Tap Save file.`, left, who);
         saveBtn.hidden = false;
         saveBtn.focus();
       } catch (e) {
@@ -95,10 +110,10 @@ export function exportPanel(ctx, what) {
       }
     },
   }, t`Build file`);
-  return h('section', { class: 'panel', 'aria-label': t`Export` },
+  return h('section', { class: 'panel', 'aria-label': t`Export`, oninput: changed },
     h('h2', { class: 'section', text: isTrip ? t`Export ${what.title}` : t`Export everything` }),
     preset,
-    h('div', { class: 'checks' }, history.el, whyNoHistory, memory.el, photos.el, places.el, keys?.el ?? null),
+    h('div', { class: 'checks' }, history.el, whyNoHistory, memory.el, photos.el, places.el, madeBy.el, keys?.el ?? null),
     h('div', { class: 'row' }, field(t`Passphrase (optional)`, pass1), field(t`Repeat passphrase`, pass2)),
     h('p', { class: 'sub', text: t`With a passphrase, the file is encrypted. Without it, anyone with the file can read it.` }),
     h('div', { class: 'acts' }, build, saveBtn),

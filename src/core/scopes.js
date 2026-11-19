@@ -68,6 +68,45 @@ const OLD_PROFILE = '# Profile\n\n- What to call me:\n- Language: English\n- Uni
 const OLD_LANGUAGE = /^- Language: English *\r?\n?$/;
 
 /**
+ * The profile's line for what to call the user (Settings → Shiori, a Share): a dash or a star, the label (any case, bold as markdown has it), the name
+ * (trimmed where read), the line's end. No spaces matched beside the lazy name: that took minutes on a long run of spaces when the line didn't match.
+ */
+const CALL_ME = /^([ \t]*[-*][ \t]*(?:what to call me[ \t]*:|\*\*what to call me(?:[ \t]*:\*\*|\*\*[ \t]*:)))(.*?)(\r?\n)?$/i;
+
+/** A name on one line: white space becomes one space, but the ideographic one is part of a name (山田　太郎). @param {string} text */
+const oneLine = (text) => text.replace(/[^\S\u3000]+/g, ' ').trim();
+
+/** What its first such line says, '' for nothing. @param {string} profile */
+export const callMeOf = (profile) => profile.split(/(?<=\n)/).map((l) => CALL_ME.exec(l)?.[2].trim()).find((v) => v !== undefined) ?? '';
+
+/** The profile with that line saying name: the first set in place (emptied, its label stays), any other removed, or one added at the end; every other byte stays. @param {string} profile @param {string} name */
+export function withCallMe(profile, name) {
+  const lines = profile.split(/(?<=\n)/);
+  const at = lines.flatMap((l, i) => (CALL_ME.test(l) ? [i] : []));
+  const clean = oneLine(name);
+  const end = profile.includes('\r\n') ? '\r\n' : '\n';
+  /* en */
+  if (!at.length) return clean ? `${profile}${profile && !profile.endsWith('\n') ? end : ''}- What to call me: ${clean}${end}` : profile;
+  const m = /** @type {RegExpExecArray} */ (CALL_ME.exec(lines[at[0]]));
+  lines[at[0]] = `${m[1]}${clean ? ` ${clean}` : ''}${m[3] ?? ''}`;
+  for (const i of at.slice(1)) lines[i] = '';
+  return lines.join('');
+}
+
+/** Sets it as the user's own edit (a warm conversation takes it: agent/context.js), in the profile's lock; a profile that is gone gets the line alone. @param {Workspace} ws @param {string} name */
+export async function saveCallMe(ws, name) {
+  try {
+    await ws.update(ME, '/profile.md', (now) => withCallMe(now, name), { author: 'user' });
+  } catch (e) {
+    if (!(e instanceof NotFoundError)) throw e;
+    if (withCallMe('', name)) await ws.write(ME, '/profile.md', withCallMe('', name), { author: 'user' });
+  }
+}
+
+/** Who made a trip from someone's Share (its madeBy), outside text, to show as text; '' for none. @param {{ madeBy?: unknown }} rec */
+export const madeByOf = (rec) => (typeof rec.madeBy === 'string' ? oneLine(rec.madeBy) : '');
+
+/**
  * A scope's title as the screens show it: "me" and the system scopes by their id, in the screens' language (the stored title is
  * annai's English, written once when the scope was made); a trip by the title its user gave it. @param {{ id: string, title: string }} rec
  */

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, startServer, addProvider, anthropicToolReply, filterTrace, savedBy, modelSetUp, writeEvent, startTrip, allFiles, atConversation, goHome, goToHash } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, startServer, addProvider, anthropicToolReply, filterTrace, savedBy, leaveSaved, modelSetUp, writeEvent, startTrip, allFiles, atConversation, goHome, goToHash } from './helpers.js';
 
 test('the avatar: states change her look, the level reaches the seat, and there is no innerHTML or style attribute', async ({ page }) => {
   await page.goto('/#/trips');
@@ -707,4 +707,47 @@ test('after Undo, the personality card says "Undone" and offers no second Undo; 
   await page.goto('/#/trips');
   await page.goto('/#/talk');
   await expect(page.locator('.convo .shiori', { hasText: 'I adjusted my personality' }).getByText('Undone', { exact: true })).toBeVisible();
+});
+
+test('What should Shiori call you? (Settings → Shiori) is the profile\'s line: typed, changed and cleared there as your own edit, and the name she writes there with her own tool shows in it (the timeline design, \'Nickname and "From Mia"\')', async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [
+    sse(anthropicToolReply([{ name: 'write', input: { path: '/me/profile.md', content: '# Profile\n\n- What to call me: Bo\n- Units: metric\n' } }])),
+    sse(anthropicToolReply([{ name: 'speak', input: { text: 'Bo it is.' } }, { name: 'sleep', input: {} }])),
+  ] });
+  try {
+    await setUp(page, llm.origin);
+    /** The profile as stored, and who wrote it last. */
+    const profile = () => page.evaluate(async () => {
+      const load = (/** @type {string} */ url) => import(url);
+      const { createIdbStore } = await load('/src/core/store-idb.js');
+      const { Workspace } = await load('/src/core/workspace.js');
+      const store = await createIdbStore();
+      const r = await new Workspace(store).read('me', '/profile.md');
+      store.close();
+      return { text: new TextDecoder().decode(r.bytes), author: r.entry.author };
+    });
+    await goToHash(page, '#/shiori');
+    const field = page.getByLabel('What should Shiori call you?');
+    await expect(field).toHaveValue('');
+    await field.fill('Mia');
+    await leaveSaved(field);
+    expect(await profile()).toEqual({ text: '# Profile\n\n- What to call me: Mia\n- Units:\n- Preferences:\n', author: 'user' });
+    await field.fill('Mia Lee');
+    await leaveSaved(field);
+    expect(await profile()).toEqual({ text: '# Profile\n\n- What to call me: Mia Lee\n- Units:\n- Preferences:\n', author: 'user' });
+    await field.fill('');
+    await leaveSaved(field);
+    expect(await profile()).toEqual({ text: '# Profile\n\n- What to call me:\n- Units:\n- Preferences:\n', author: 'user' }); // the label stays, for her to fill when told
+    // Told another name, she writes it herself: the field shows hers.
+    await goToHash(page, '#/talk');
+    await page.getByRole('button', { name: 'Type' }).click();
+    await page.getByLabel('Message to Shiori').fill('Call me Bo, please');
+    await page.getByRole('button', { name: 'Send' }).click();
+    await expect(page.locator('.convo .shiori p').last()).toHaveText('Bo it is.');
+    expect(await profile()).toEqual({ text: '# Profile\n\n- What to call me: Bo\n- Units: metric\n', author: 'shiori' });
+    await goToHash(page, '#/shiori');
+    await expect(field).toHaveValue('Bo');
+  } finally {
+    await llm.stop();
+  }
 });

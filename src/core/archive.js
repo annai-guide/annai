@@ -166,9 +166,9 @@ const EVENT_SCHEMA = {
  * Builds an archive of one trip or of everything (spec §12.1–12.2).
  * @param {Store} store
  * @param {{ kind: 'trip'|'everything', scopes?: string[], include: Include, secrets?: boolean,
- *   passphrase?: string, iterations?: number, app: string, now?: number, share?: { places: boolean, convert?: PhotoConvert } }} opts
+ *   passphrase?: string, iterations?: number, app: string, now?: number, share?: { places: boolean, convert?: PhotoConvert, madeBy?: string } }} opts
  *   share: this is a Share (§12.2): photos go only as encoded copies, without older versions; unless places is true, nothing says where
- *   anything was, whatever include.history says.
+ *   anything was, whatever include.history says; madeBy: who made it, for "Show who made it", on the copy's record alone.
  * @returns {Promise<{ blob: Blob, filename: string, manifest: Manifest, skipped: string[], seqs: Map<string, number> }>}
  *   skipped: photos left out of a Share because their location couldn't be removed;
  *   seqs: scope id → the last history entry the archive holds (empty without history)
@@ -206,6 +206,11 @@ export async function exportArchive(store, opts) {
     }));
     // A backup note belongs to the device that made it; the mirror is read again from what comes (backfillTrips).
     const { backup: _, start: _s, end: _e, talked: _t, ...record } = scope;
+    // A Share names who made it only as asked, never by a name an import brought; a Backup keeps the record.
+    if (opts.share) {
+      delete record.madeBy;
+      if (opts.share.madeBy) record.madeBy = opts.share.madeBy;
+    }
     /** @type {ManifestScope} */
     const ms = { dir, record };
     for (const f of files) {

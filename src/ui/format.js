@@ -8,7 +8,8 @@ import { languageSettings, tagOf, NO_LANGUAGE } from '../core/languages.js';
 import { storedTexts } from '../core/agent/log.js';
 import { Sentences } from '../core/voice/sentences.js';
 import { t, tc, plural, lang as screensLang, sameLanguage } from '../core/l10n.js';
-import { h } from './dom.js';
+import { h, linkIn } from './dom.js';
+import { madeByOf } from '../core/scopes.js';
 import { num, money, size, when, relTime, zone, parseNum, numField, sentences, list, day } from '../core/intl.js';
 
 export * from '../core/intl.js';
@@ -31,6 +32,12 @@ export function takenText(taken) {
 export function backupText({ at, changed }, now = Date.now()) {
   if (at === null) return t`not backed up`;
   return changed ? t`backed up ${relTime(at, now)}, changed since` : t`backed up ${relTime(at, now)}`;
+}
+
+/** "From Mia" on a shared trip's row and Details (madeByOf), null for none: their name in an isolate, one line cut with … (shiori.css). @param {{ madeBy?: unknown }} rec */
+export function madeByLine(rec) {
+  const name = madeByOf(rec);
+  return name ? h('span', { class: 'sub from' }, ...linkIn(tc('a person')`From ${name}`, h('bdi', { text: name }))) : null;
 }
 
 /** Who wrote a trip's file: you, Shiori or annai (plugins write only to annai's own settings). @param {string} author as stored */

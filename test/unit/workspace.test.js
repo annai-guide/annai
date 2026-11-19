@@ -287,3 +287,16 @@ test("a delete keeps what the entry said besides its bytes (a photo's metadata, 
   assert.deepEqual((await ws.restore('trip-1', '/files/aurora.jpg', photo.hash, { author: 'user' })).meta, meta);
   assert.equal((await ws.restore('trip-1', '/plan/walk.json', item.hash, { author: 'user' })).source, '/trip/files/walks.ics');
 });
+
+test('update reads a file by the type its write stores: a JSON file as its value, a text file as its text, and JSON at a path with no extension as text unless the write says JSON (a read-change-write helper reads what its write stores)', async () => {
+  const { ws } = await setup();
+  await ws.write('trip-1', '/a.json', { n: 1 }, { author: 'user' });
+  await ws.write('trip-1', '/b.md', '# Title\n', { author: 'user' });
+  await ws.write('trip-1', '/c', { n: 1 }, { author: 'user' }); // stored as JSON text, typed by its path: no type
+  assert.deepEqual(await ws.update('trip-1', '/a.json', (/** @type {any} */ v) => ({ n: v.n + 1 }), { author: 'user' }), { n: 2 });
+  assert.equal(await ws.update('trip-1', '/b.md', (/** @type {any} */ text) => `${text}more\n`, { author: 'user' }), '# Title\nmore\n');
+  assert.equal(await ws.readText('trip-1', '/b.md'), '# Title\nmore\n');
+  assert.equal(typeof await ws.update('trip-1', '/c', (/** @type {any} */ v) => { assert.equal(typeof v, 'string'); return v; }, { author: 'user' }), 'string', 'a path with no extension is read as text');
+  assert.deepEqual(await ws.update('trip-1', '/c', (/** @type {any} */ v) => ({ n: v.n + 1 }), { author: 'user', type: 'application/json' }), { n: 2 }, 'with its type said, as its value');
+  await assert.rejects(ws.update('trip-1', '/nope.md', (/** @type {any} */ t) => t, { author: 'user' }), NotFoundError);
+});

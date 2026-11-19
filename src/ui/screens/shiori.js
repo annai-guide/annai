@@ -2,7 +2,7 @@ import { LANGUAGE_WORDS as W } from '../../core/languages.js';
 import { h, crumb, t, field, savedField, savedCheck, autosave, numberIn, queueSave, messageOf } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { shownSettings } from '../../core/shown.js';
-import { ME } from '../../core/scopes.js';
+import { ME, callMeOf, saveCallMe } from '../../core/scopes.js';
 import { PRESETS, PERSONALITY_MAX, resetPersonality, keepMine } from '../../core/agent/personalities.js';
 import { LABELS } from '../../core/agent/loop.js';
 import { INSTRUCTIONS, instructionState, saveInstruction, resetInstruction, keepMyInstruction } from '../../core/agent/her-instructions.js';
@@ -32,9 +32,11 @@ function looks() {
   }));
 }
 
-/** Settings → Shiori (spec §14.1, §6.6): how she looks, her personality, and how often she acts on her own. @param {any} ctx @param {{ params: Record<string, string> }} route */
+/** Settings → Shiori (spec §14.1, §14.2, §6.6): what she calls you, how she looks, her personality, and how often she acts on her own. @param {any} ctx @param {{ params: Record<string, string> }} route */
 export async function renderShiori(ctx, route) {
   const app = await readAppSettings(ctx.ws);
+  // The profile's line as drawn: hers, when she changed it last.
+  const callMe = h('input', { id: 'call-me', autocomplete: 'nickname', value: callMeOf((await ctx.ws.readText(ME, '/profile.md')) ?? '') });
   const active = app.shiori?.personality ?? 'shiori';
   const names = (await ctx.ws.list(ME, '/personalities/')).map((/** @type {any} */ f) => f.path.replace(/^\/personalities\/|\.md$/g, ''));
   let editing = route.params.edit ?? active;
@@ -108,6 +110,7 @@ export async function renderShiori(ctx, route) {
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)),
     h('h1', { class: 'title', text: t`Shiori` }),
+    h('div', { class: 'panel' }, savedField(t`What should Shiori call you?`, callMe, () => callMe.value, (v) => saveCallMe(ctx.ws, v))),
     section(t`How she looks`,
       h('p', { class: 'sub', text: t`Each state, as the dock shows her, with the words under her.` }),
       looks()),

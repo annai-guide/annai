@@ -329,6 +329,9 @@ body:has(.dock:not(.seat)) .toasts { bottom: calc(var(--dock-h, 140px) + 8px); }
 .home-links { display: flex; flex-wrap: wrap; gap: 0 16px; font-size: 15px; }
 .home-links a { display: inline-block; padding: 6px 0; text-decoration: none; font-weight: 500; }
 .trip-card .her-last { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* "From Mia" (madeByLine): one line, cut with …; on a chat's line at most half of it, its own name keeping the rest. */
+.from { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trip-card.line .from { flex: 0 1 auto; min-width: 0; max-width: 50%; margin-inline-start: auto; }
 .rows > .fold summary { color: var(--ink-2); cursor: pointer; padding: 6px 2px; }
 .rows > .fold .cards { margin-block: 8px 0; gap: 8px; }
 .now-line { display: flex; align-items: center; gap: 8px; margin: 12px 0; color: var(--ai); font-size: 12px; font-weight: 700; letter-spacing: 0.04em; }

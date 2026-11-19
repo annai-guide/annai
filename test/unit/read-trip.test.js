@@ -365,6 +365,17 @@ test("list_trips: the dated trips and the 30 newest chats, read from their recor
   assert.deepEqual(opened.sort(), [kyoto, lake].sort(), "only a dated trip's trip.json is read, for its places");
 });
 
+test("list_trips and read_trip don't show who made a trip from someone's Share: its record's madeBy is for the traveller's screens, not hers (the timeline design, 'Nickname and \"From Mia\"'; RULES principle 9)", async (t) => {
+  useClock(t);
+  const k = await kit();
+  await k.store.tx(['scopes'], 'readwrite', async (/** @type {any} */ x) => x.putScope({ ...(await x.getScope(TV)), madeBy: 'Zed Zephyr' }));
+  const listed = String(await run(k, 'list_trips', {}));
+  const read = words(await run(k, 'read_trip', { trip: TV }));
+  assert.match(listed, /Testville/);
+  assert.match(read, /^From "Testville"/);
+  assert.doesNotMatch(`${listed}\n${read}`, /Zed|Zephyr/);
+});
+
 test("list_trips gives each row when it was last talked in, the value home places a chat by and the card names it with (talked, else made), so of two chats with one name she can tell the recent one (real models, stage 5 finding 3)", async (t) => {
   useClock(t);
   const k = await agentKit([[sleep]], { halves: true });

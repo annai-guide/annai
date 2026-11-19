@@ -4,7 +4,7 @@ import { ask } from '../ask.js';
 import { normPath } from '../../core/paths.js';
 import { ValidationError, NotFoundError } from '../../core/workspace.js';
 import { explainStorageFull } from '../storage-full.js';
-import { relTime, size, num, list, sentences, dateRange, fileHref, bookingHref, pathParts, authorName, fileLine, talkHref, formatCost } from '../format.js';
+import { relTime, size, num, list, sentences, dateRange, fileHref, bookingHref, pathParts, authorName, fileLine, talkHref, formatCost, madeByLine } from '../format.js';
 import { fileRows, readTripFiles, deletedFiles, deletesOf } from '../../core/trip-files.js';
 import { versionText } from './file.js';
 import { exportPanel } from '../export-panel.js';
@@ -41,6 +41,7 @@ export async function renderTrip(ctx, route) {
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, crumb(talkHref(id), t`Conversation`)),
     h('h1', { class: 'title', dir: 'auto', text: scopeTitle(scope) }),
+    madeByLine(scope),
     h('p', { class: 'sub' }, ...factsWords([start ? dateRange(start, end) : null, archived ? t`Archived` : null, plural(files.length, '# file', '# files'), stamps.length ? { stamps: stampCount(stamps.length) } : null])),
     stampMarks(stamps, { max: 24, big: true }),
     editForm(ctx, id, String(trip?.title ?? scope.title), trip),
