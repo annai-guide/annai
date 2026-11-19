@@ -701,7 +701,7 @@ export class Agent {
    * Opens the conversation of a trip (or of "me" when none is open), stopping any turn at once. Opens run one after another and only the latest
    * counts; until it is done no turn starts, so what the user types goes to the conversation being opened. A crash's open tool calls get results (spec §6.7).
    * @param {string | null} trip
-   * @param {{ quiet?: boolean, moved?: boolean }} [o] quiet: the conversation is being removed, so it is not told that she will pick it up, and what was heard in it is written first;
+   * @param {{ quiet?: boolean, moved?: boolean }} [o] quiet: the conversation is being removed, so it is not told that she will pick it up, and every line still being judged is written first;
    *   moved: the user chose to carry on in this trip on annai's card (open_trip), so the turn it cuts is let go, nothing owed where it was
    */
   open(trip, o = {}) {
@@ -738,7 +738,7 @@ export class Agent {
   async #open(trip, generation, quiet) {
     if (generation !== this.#generation) return;
     await this.#whenFree();
-    if (quiet) await this.#hearing; // nothing comes after the removal (#route)
+    if (quiet) await this.#hearing; // every line still being judged: nothing comes after the removal (#route)
     const scope = trip ?? ME;
     const transcript = await this.#load(scope);
     if (generation !== this.#generation) return;
@@ -3509,11 +3509,11 @@ export class Agent {
         timer = setTimeout(over, Math.max(0, by - Date.now()));
       };
       // Its time, nobody speaking (arm). Lines heard in time may still answer (#closeEar's door; speak and wait: the one routed now). With none, they end before the
-      // close (no "Your turn"); with one, a close sets Thinking. Her question's closes a microphone with no end of its own.
+      // close; with one, a close sets Thinking. Her question's closes a microphone with no end of its own, or a tap's still opening.
       const over = () => {
         const routing = this.#routing;
         if (kind !== 'ask' && !routing) end();
-        const close = kind === 'ask' ? !this.#ear?.by : last && this.#ear?.owner === 'turn';
+        const close = kind === 'ask' ? !this.#ear?.by && !this.#tapping : last && this.#ear?.owner === 'turn';
         if (close) this.#closeEar();
         if (kind === 'ask') {
           Object.assign(pending, { arm: undefined, byHand: true });
@@ -3551,14 +3551,16 @@ export class Agent {
     const voice = this.voice;
     if (!voice) return /* en */ "voice isn't available here.";
     if (this.#ear) {
-      // What is said next is for her, never judged by the gate (choice 3); the window after she spoke, still opening, becomes the tap's.
+      // What is said next is for her, never judged (choice 3); the window after she spoke, still opening, becomes the tap's.
       if (owner === 'tap') Object.assign(this.#ear, { tap: true }, this.#ear.owner === 'after' ? { owner } : {});
       return null;
     }
-    // Nothing of a turn's own listens in another conversation, opening or opened since it asked.
-    if (owner !== 'tap' && (this.#opens || scope !== (this.#target ?? ME))) return /* en */ 'another conversation is opening.';
+    // Nothing of a turn's own listens in another conversation, opening or opened since it asked or since the setup read.
+    const moved = () => owner !== 'tap' && (this.#opens || scope !== (this.#target ?? ME));
+    if (moved()) return /* en */ 'another conversation is opening.';
     const how = await voice.howToListen(this.#half.role);
     if (!voice.on) return /* en */ 'voice mode is off.';
+    if (moved()) return /* en */ 'another conversation is opening.';
     if ('why' in how) {
       // The mic button explains what to add (spec §10.3): on every tap, and once for her own listening.
       if (owner === 'tap' || !this.#toldDeaf) await this.#notice({ tone: 'warn', title: t`Shiori can't hear you yet`, body: how.words });
@@ -3583,6 +3585,11 @@ export class Agent {
       }
       ear.session = session;
       this.#toldDeaf = false;
+      // Its time gone as it opened (a tap's claim has 8 s of its own): no window.
+      if (ear.owner === 'after' && this.#afterBy <= Date.now()) {
+        this.#closeEar();
+        return /* en */ 'Listening stopped.';
+      }
       return null;
     } catch (e) {
       if (this.#ear === ear) this.#ear = null;
@@ -3659,7 +3666,7 @@ export class Agent {
     }
     // A tap's line, by how it began, whatever happened since (the microphone closed, the listening ended, she got busy): for her, never gated.
     const tapped = began.tap;
-    // Heard in a conversation no longer open: kept there, as a line typed before leaving is (below).
+    // Heard in a conversation no longer open: kept there, as a typed line is (below).
     const here = () => ear.scope === (this.#target ?? ME);
     const p = here() && this.#pending?.listening ? this.#pending : null;
     /** @type {'shiori' | 'chatter' | 'unsure' | null} the gate's, once it judged this line: a listening that ends meanwhile doesn't ask again */
@@ -3707,6 +3714,7 @@ export class Agent {
       }
     }
     if (!tapped) verdict ??= await this.#gate(h, ear.scope);
+    if (!here() && this.scope === ear.scope) await this.#whenFree(); // the stopped turn's end settles earlier writes
     if (!here()) {
       await (verdict === 'chatter' ? this.#logHeard(h, { dismissed: true, gate: 'chatter' }, this.#keptIn(ear.scope)) : this.#keepFor(ear.scope, { kind: 'heard', text: '', heard: h, ...(verdict ? { gate: verdict } : {}) }));
       return;
