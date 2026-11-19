@@ -18,7 +18,7 @@ function listened() {
 /** Shiori as the dock follows her: her state, and who listens to what. */
 function fakeAgent() {
   /** @type {Record<string, Set<(x: any) => void>>} */
-  const on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set(), saying: new Set() };
+  const on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set(), saying: new Set(), unsaved: new Set() };
   return {
     state: { name: 'sleeping', label: '' },
     on: (/** @type {string} */ kind, /** @type {(x: any) => void} */ fn) => { on[kind].add(fn); return () => { on[kind].delete(fn); }; },
