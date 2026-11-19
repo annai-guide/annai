@@ -229,7 +229,7 @@ export function nextBlinkMs(random) {
 
 /** What a glance of 1 moves her eyes, in the art's units. */
 const GLANCE = 14;
-/** How far her head's swap (front, asleep) waits into a dip: halfway through the move, as shiori.css's ear swaps. */
+/** How far her head's swap (front, asleep, flat-eared) waits into its move: halfway through it, as shiori.css's ear swaps. */
 const SWAP_MS = 200;
 
 /** @param {{ size?: 'sm' | 'md' | 'dock' | 'big', label?: string }} [o] */
@@ -255,10 +255,9 @@ export function createAvatar({ size = 'md', label } = {}) {
         s('g', { class: 'front' },
           group(/* en */ 'alt out-l', 'ear-out-left'),
           part('caps'), group(/* en */ 'ear ear-r', 'ear-right'), group(/* en */ 'ear ear-l', 'ear-left'), part('head'),
-          // Folded flat, her ears lie over her head, as on her asleep head.
-          group(/* en */ 'alt flat-r', 'ear-flat-right'), group(/* en */ 'alt flat-l', 'ear-flat-left'),
           s('g', { class: 'pin' }, part('pin'), group('tape', 'tape'), hair.el, part('loop'), part('knot'))),
         group('asleep', 'head-asleep'),
+        group('flat', 'head-flat'),
         look.el,
         s('g', { class: 'turned' }, part('head-turned'), aside.el))));
   // Until her art has arrived, the seat shows alone (data-art="wait"), never eyes floating on it.
@@ -266,8 +265,9 @@ export function createAvatar({ size = 'md', label } = {}) {
   const el = h('span', { class: ['seat', size], dataset: { glow: 'her' }, ...(label ? { role: 'img', 'aria-label': label } : {}) }, av);
   const state = () => av.dataset.state ?? '';
   const gaze = () => EYES[state()] ?? 'open';
-  /** The head she should show: turned while thinking, asleep while asleep, else her front one (no data-face). */
-  const want = () => (state() === 'thinking' ? 'turned' : state() === 'sleeping' ? 'asleep' : undefined);
+  /** The head she should show: turned while thinking, asleep while asleep, with her ears folded flat while she lets a
+   * sound pass or is offline, else her front one (no data-face). */
+  const want = () => (state() === 'thinking' ? 'turned' : state() === 'sleeping' ? 'asleep' : ['ignoring', 'offline'].includes(state()) ? 'flat' : undefined);
   /** @param {string | undefined} face */
   const show = (face) => {
     if (face === av.dataset.face) return;
@@ -277,7 +277,8 @@ export function createAvatar({ size = 'md', label } = {}) {
   const turned = () => av.dataset.face === 'turned';
 
   // Her head and eyes settle on what her state asks for. The turned head comes and goes in the middle of a blink,
-  // which hides the cut (there is no half-turned one); her asleep head takes over halfway through her head's dip.
+  // which hides the cut (there is no half-turned one); her asleep and flat-eared heads take over halfway through the
+  // move to their pose.
   let swapping = false;
   /** @type {any} */
   let reopen;
@@ -437,8 +438,8 @@ export function createAvatar({ size = 'md', label } = {}) {
       if (!swapping) {
         if ((want() === 'turned') !== turned()) swap();
         else {
-          // Falling asleep or waking, her eyes pass through the drowsy shape, whose lid curves with the eye, and her
-          // asleep head takes over (or gives way) halfway through her head's dip.
+          // Falling asleep or waking, her eyes pass through the drowsy shape, whose lid curves with the eye. Her asleep
+          // or flat-eared head takes over (or gives way) halfway through the move to its pose.
           if ((was === 'sleeping' || next === 'sleeping') && was !== 'offline') look.to('drowsy', 260, () => settle(360));
           else settle(320);
           if (want() !== av.dataset.face) {

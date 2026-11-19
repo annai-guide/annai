@@ -46,8 +46,9 @@ async function everyState(page) {
 }
 
 /**
- * What one avatar shows: how opaque its parts are (each of its ears' drawings; its head front, asleep or turned), its
- * seat's filter, the shape of her right eye and its highlight, the tail tip's animation, and the streamers.
+ * What one avatar shows: how opaque its parts are (each of its front head's ear drawings; its head front, asleep, turned or
+ * with its ears folded flat), its seat's filter, the shape of her right eye and its highlight, the tail tip's animation,
+ * and the streamers.
  * @param {import('@playwright/test').Page} page @param {string} state
  */
 const look = (page, state) => page.locator(`#av-${state}`).evaluate((seat) => {
@@ -72,8 +73,8 @@ const look = (page, state) => page.locator(`#av-${state}`).evaluate((seat) => {
   const part = (/** @type {string} */ id) => /** @type {SVGGraphicsElement} */ (seat.querySelector(`use[href$="#${id}"]`)).getBBox().width;
   return {
     fox: opacity('.fox'), curl: opacity('.curl'), away: opacity('.away'),
-    ears: ['.ear-r', '.ear-l', '.flat-r', '.flat-l', '.out-l'].map(opacity).join(' '),
-    face: [opacity('.front'), opacity('.asleep'), opacity('.turned')].join(' '),
+    ears: ['.ear-r', '.ear-l', '.out-l'].map(opacity).join(' '),
+    face: [opacity('.front'), opacity('.asleep'), opacity('.turned'), opacity('.flat')].join(' '),
     streamer: opacity('.pin .streamer'), tape: opacity('.pin .tape'),
     filter: getComputedStyle(seat).filter,
     wide: box.width / box.height, endsUp: left.y < box.y + box.height / 2,
@@ -81,7 +82,7 @@ const look = (page, state) => page.locator(`#av-${state}`).evaluate((seat) => {
     light: Number(seat.querySelector('.head > .eyes .light')?.getAttribute('rx')),
     drawn: !/NaN/.test(iris.getAttribute('d') ?? 'NaN'),
     wag: seat.querySelector('.tip')?.getAttribute('transform') ?? '',
-    head: part('head'), marker: part('marker'), grass: part('grass'), turned: part('head-turned'), asleep: part('head-asleep'), tail: part('tail-asleep'),
+    head: part('head'), marker: part('marker'), grass: part('grass'), turned: part('head-turned'), asleep: part('head-asleep'), flat: part('head-flat'), tail: part('tail-asleep'),
   };
 });
 
@@ -90,35 +91,37 @@ test("her states show the right parts and eyes, as the expression sheet draws th
   // Her parts come from the art file, which has loaded.
   await expect.poll(async () => (await look(page, 'listening')).head).toBeGreaterThan(100);
   // Asleep: her asleep head on her tail, wrapped round her; ‿ eyes.
-  await expect.poll(() => look(page, 'sleeping')).toMatchObject({ fox: 1, curl: 1, away: 0, light: 0, endsUp: true, face: '0 1 0', drawn: true });
+  await expect.poll(() => look(page, 'sleeping')).toMatchObject({ fox: 1, curl: 1, away: 0, light: 0, endsUp: true, face: '0 1 0 0', drawn: true });
   const asleep = await look(page, 'sleeping');
   expect(asleep.wide, 'a thick crescent, wider than tall').toBeGreaterThan(2);
   expect(asleep.tail, 'her tail, wider than her shoulders').toBeGreaterThan(700);
   expect(asleep.asleep).toBeGreaterThan(400);
-  await expect.poll(() => look(page, 'listening')).toMatchObject({ fox: 1, curl: 0, away: 0, light: 14.5, ears: '1 1 0 0 0', face: '1 0 0', streamer: 0, tape: 1 });
+  await expect.poll(() => look(page, 'listening')).toMatchObject({ fox: 1, curl: 0, away: 0, light: 14.5, ears: '1 1 0', face: '1 0 0 0', streamer: 0, tape: 1 });
   // She blinks from time to time, a blink lasts as long as the page's frames take to draw, and on a busy machine that is long enough to be
   // caught half shut: an open eye is waited for, not sampled once.
   await expect.poll(async () => (await look(page, 'listening')).wide, { message: 'an open eye' }).toBeLessThan(1.5);
   // Hearing you, her eyes are wide: a bigger highlight.
   await expect.poll(async () => (await look(page, 'hearing')).light).toBe(17.4);
   // Thinking: her head turned (in the middle of a blink).
-  await expect.poll(() => look(page, 'thinking')).toMatchObject({ face: '0 0 1' });
+  await expect.poll(() => look(page, 'thinking')).toMatchObject({ face: '0 0 1 0' });
   expect((await look(page, 'thinking')).turned).toBeGreaterThan(100);
   // Talking: open eyes, not smiling ones; the streamer in place of the tape's short tail.
-  await expect.poll(() => look(page, 'speaking')).toMatchObject({ light: 14.5, ears: '1 1 0 0 0', streamer: 1, tape: 0 });
+  await expect.poll(() => look(page, 'speaking')).toMatchObject({ light: 14.5, ears: '1 1 0', streamer: 1, tape: 0 });
   // Your turn: her right ear up, her left angled out.
-  await expect.poll(() => look(page, 'waiting')).toMatchObject({ ears: '1 0 0 0 1' });
+  await expect.poll(() => look(page, 'waiting')).toMatchObject({ ears: '1 0 1' });
   // Working: her marker in its grass, and her tail's tip wagging; no head.
   await expect.poll(() => look(page, 'away')).toMatchObject({ fox: 0, away: 1 });
   const wag = (await look(page, 'away')).wag;
   await expect.poll(async () => (await look(page, 'away')).wag).not.toBe(wag);
   expect((await look(page, 'away')).marker).toBeGreaterThan(100);
   expect((await look(page, 'away')).grass).toBeGreaterThan(200);
-  // Letting a sound pass: facing you, eyes open (she still listens for you), ears folded flat; in colour (the user, 2026-11-18).
-  await expect.poll(() => look(page, 'ignoring')).toMatchObject({ fox: 1, curl: 0, light: 14.5, filter: 'none', ears: '0 0 1 1 0', face: '1 0 0', drawn: true });
+  // Letting a sound pass: facing you, eyes open (she still listens for you), her head with both ears folded flat and no front head (nor
+  // its upright ears); in colour (the user, 2026-11-18).
+  await expect.poll(() => look(page, 'ignoring')).toMatchObject({ fox: 1, curl: 0, light: 14.5, filter: 'none', face: '0 0 0 1', drawn: true });
+  expect((await look(page, 'ignoring')).flat).toBeGreaterThan(700);
   await expect.poll(async () => (await look(page, 'ignoring')).wide, { message: 'an open eye, not half-lidded' }).toBeLessThan(1.5);
-  // Offline: grey, ears folded flat, no highlight, and half-lidded eyes whose lids slope down toward the outer corner.
-  await expect.poll(() => look(page, 'offline')).toMatchObject({ fox: 1, curl: 0, light: 0, filter: 'grayscale(1)', ears: '0 0 1 1 0', drawn: true });
+  // Offline: grey, the same flat-eared head, no highlight, and half-lidded eyes whose lids slope down toward the outer corner.
+  await expect.poll(() => look(page, 'offline')).toMatchObject({ fox: 1, curl: 0, light: 0, filter: 'grayscale(1)', face: '0 0 0 1', drawn: true });
   expect((await look(page, 'offline')).sad, 'the lid is lower at the outer corner').toBeGreaterThan(5);
   expect((await look(page, 'offline')).wide, 'half-lidded').toBeGreaterThan(1.3);
 });

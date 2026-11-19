@@ -111,6 +111,40 @@ test('waking: one head at a time, the asleep one until halfway through her lifti
   assert.equal(av(a).dataset.face, 'asleep');
 });
 
+test('letting a sound pass, and offline: her flat-eared head, one head at a time, taking over halfway through the move, as her asleep one does', () => {
+  const a = avatar();
+  a.setState('listening');
+  advance(1000);
+  a.setState('ignoring');
+  advance(100);
+  assert.equal(av(a).dataset.face, undefined);
+  advance(200);
+  assert.equal(av(a).dataset.face, 'flat');
+  assert.equal(frontLight(a), '14.5', 'her eyes open: she still listens for you');
+  a.setState('listening');
+  advance(100);
+  assert.equal(av(a).dataset.face, 'flat');
+  advance(200);
+  assert.equal(av(a).dataset.face, undefined);
+  // From her turned head, in the middle of a blink; from her asleep one, with no moment of no head or two heads.
+  a.setState('thinking');
+  advance(1000);
+  a.setState('offline');
+  advance(1000);
+  assert.equal(av(a).dataset.face, 'flat');
+  assert.equal(frontLight(a), '0', 'sad eyes, no highlight');
+  a.setState('sleeping');
+  advance(1000);
+  a.setState('offline');
+  /** @type {(string | undefined)[]} */
+  const faces = [];
+  for (let i = 0; i < 60; i++) {
+    advance(10);
+    faces.push(av(a).dataset.face);
+  }
+  assert.deepEqual([...new Set(faces)], ['asleep', 'flat']);
+});
+
 test('asleep straight to thinking: her head turns', () => {
   const a = avatar();
   advance(100);

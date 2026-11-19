@@ -27,8 +27,8 @@ npm run stamp && npm run check
 
 ## How `build.mjs` works
 
-1. **Registers** each kit picture to the front master's pixels. Parts are placed by scale, turn and a point (`AT` in the script); the turned and asleep masters are registered at the scarf's knot.
-2. **Splits** each picture into the README's palette. Anti-aliased edges go to the nearer colour of their blend. The asleep masters have browns of their own (`ASLEEP`), but every part is drawn in the master's palette.
+1. **Registers** each kit picture to the front master's pixels. Parts are placed by scale, turn and a point (`AT` in the script); the turned, asleep and flat-eared masters are registered at the scarf's knot.
+2. **Splits** each picture into the README's palette. Anti-aliased edges go to the nearer colour of their blend. The asleep and flat-eared masters have colours of their own (`ASLEEP`, `FLAT_COLOURS`), but every part is drawn in the master's palette.
 3. **Cuts** the parts that move on their own. It fills what each part hid with what was around it, so a part can move without opening a gap.
 4. **Cleans** each layer. Islands and holes under 600 pixels are grain in the generated pictures, and a 2-pixel blur keeps pixel wobble from turning into dozens of tiny curves.
 5. **Traces** each colour layer with potrace. Paths are rounded to whole units of the SVG, relative to rounded points so rounding never drifts.

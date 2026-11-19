@@ -1,5 +1,5 @@
 {
-  "build": "798c0f6f54e4",
+  "build": "faefb8bc8f18",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -20,7 +20,7 @@
     "/assets/personalities/quiet.md": "076fab6e0db7",
     "/assets/personalities/shiori.md": "e0d06ee5770e",
     "/assets/personalities/storyteller.md": "3f6cad75f72d",
-    "/assets/shiori.svg": "214ef5886a03",
+    "/assets/shiori.svg": "0f2f0fb32397",
     "/assets/simulations/big-sur.json": "60b158f1e9ab",
     "/skills/driving-companion/SKILL.md": "6e00c40e0c8e",
     "/skills/plan-a-trip/SKILL.md": "76c2181036fb",
@@ -211,7 +211,7 @@
     "/src/ui/add-files.js": "4c64de7217c7",
     "/src/ui/auto-backup.js": "94bd1244a50a",
     "/src/ui/ask.js": "1e2b52f84164",
-    "/src/ui/avatar.js": "79b0446caa63",
+    "/src/ui/avatar.js": "f19d1f607908",
     "/src/ui/bring-in.js": "4e33be70df96",
     "/src/ui/export-panel.js": "ded8262ee329",
     "/src/ui/file-delete.js": "207b1b0e5902",
@@ -284,7 +284,7 @@
     "/src/ui/shell.js": "92c33d96ba8d",
     "/src/ui/slots.js": "4fee1465e94c",
     "/src/ui/stamps.js": "9c0f976db8fa",
-    "/src/ui/shiori.css": "0402101933db",
+    "/src/ui/shiori.css": "44738afacf5d",
     "/src/ui/speech-check.js": "396550d02345",
     "/src/ui/storage-full.js": "6b7d5a2fe9fe",
     "/src/ui/talk-panel.js": "cc1fb4a04f43",
