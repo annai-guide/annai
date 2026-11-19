@@ -9,7 +9,7 @@ import { webVia } from '../../src/core/agent/via.js';
 import { STEP_MS, READY_MS } from '../../src/plugins/web/index.js';
 import { cooldowns, CHAIN } from '../../src/core/web-search.js';
 import { tracedFetch } from '../../src/core/agent/net.js';
-import { NOMINATIM_GAP, nominatimReset } from '../../src/core/nominatim.js';
+import { NOMINATIM_GAP, nominatimReset, nominatimTurn } from '../../src/core/nominatim.js';
 import { forgetClients, knowledgeFloor, FLOOR_MS } from '../../src/plugins/web/free.js';
 import { readingOrder } from '../../src/core/languages.js';
 import { updateAppSettings } from '../../src/core/settings.js';
@@ -285,6 +285,49 @@ test("the floor: a Nominatim that answers after the floor's time loses only its 
   });
 });
 
+test("the floor: a Nominatim turn that comes after the floor's time is not waited for: the floor ends at its time with the guide's and Wikipedia's rows, Nominatim is not asked, and with no rows the failure is Nominatim's lateness", async () => {
+  const wiki = (/** @type {string} */ url) => (url.includes('nominatim') ? new Response('[]') : url.includes('en.wikipedia.org') ? found('Kiyomizu-dera') : nothing());
+  try {
+    // The app's gate is booked for 2 s (another request's turns, queued ahead of the floor's); the floor's time is 100 ms.
+    NOMINATIM_GAP.ms = 2000;
+    nominatimReset();
+    await nominatimTurn();
+    await withFloor(100, async () => {
+      /** @type {string[]} */
+      const asked = [];
+      const t0 = Date.now();
+      const rows = await search(floorOf(['en']), (url) => (asked.push(url), wiki(url)));
+      assert.ok(Date.now() - t0 < 1000, `${Date.now() - t0} ms: at the floor's time, not at Nominatim's turn`);
+      assert.deepEqual(rows.map((r) => r.title), ['Kiyomizu-dera (Wikipedia)']);
+      assert.deepEqual(asked.filter((u) => u.includes('nominatim')), [], 'no request to Nominatim after its time');
+      const t1 = Date.now();
+      const failure = await search(floorOf(['en']), () => nothing()).then(() => null, (/** @type {any} */ e) => e);
+      assert.ok(Date.now() - t1 < 1000);
+      assert.equal(failure?.message, "nominatim.openstreetmap.org didn't answer in time");
+      assert.equal(failure?.late, true);
+      // The user's stop ends the wait too, as itself.
+      const stop = new AbortController();
+      setTimeout(() => stop.abort(new DOMException('stopped', 'AbortError')), 20);
+      const t2 = Date.now();
+      const stopped = await search(floorOf(['en']), () => nothing(), 'kiyomizu temple', stop.signal).then(() => null, (/** @type {any} */ e) => e);
+      assert.ok(Date.now() - t2 < 1000);
+      assert.equal(stopped?.name, 'AbortError');
+      // A floor whose time ran out before its parts began (a slow settings read) takes no turn at all.
+      const t3 = Date.now();
+      const slowRead = knowledgeFloor(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        return readingOrder({ languages: { spoken: ['en'], answer: 'follow' } }, 'en-US');
+      });
+      const late = await search(slowRead, (_url, init) => (init.signal.aborted ? Promise.reject(init.signal.reason) : nothing())).then(() => null, (/** @type {any} */ e) => e);
+      assert.ok(Date.now() - t3 < 1000);
+      assert.match(late?.message, /didn't answer in time/);
+    });
+  } finally {
+    NOMINATIM_GAP.ms = 1;
+    nominatimReset();
+  }
+});
+
 test("the floor on a slow link: every answer takes its time, English alone is asked three times in series and Kiyomizu-dera comes with the third, as before editions", async () => {
   // Each answer 200 ms: the guide's and Wikipedia's three tries are 600 ms, inside the floor's 1.5 s (on a real slow link 2.5 s an answer, 7.5 s, inside its 9).
   // English Wikipedia finds it only with the two words; everything else finds nothing.
@@ -372,7 +415,7 @@ test("the floor's time starts with its search, before it reads the settings: a s
 
 test("FLOOR_MS has its reason: three answers of 2.5 s in series, and a second inside what the chain keeps for the floor", () => {
   assert.ok(FLOOR_MS.ms >= 3 * 2500);
-  assert.ok(FLOOR_MS.ms < CHAIN.reserve);
+  assert.equal(FLOOR_MS.ms, CHAIN.reserve - 1_000);
 });
 
 test("the floor's addresses: a Wikivoyage guide's keeps its title as written with the brackets encoded, as a Wikipedia article's does", async () => {
@@ -568,7 +611,8 @@ test("S9: when every service that ran failed by timeout or network, nobody climb
     await assert.rejects(t.run('web_search', { query: 'q' }, (_url, init) => hang(init)), /didn't answer in time/);
     for (const id of ['exa', 'parallel', 'firecrawl']) assert.equal(cooldowns.left(id) <= 60_000 && cooldowns.left(id) > 0, true, id);
     assert.equal(cooldowns.left('wiki'), 0, 'the floor does not rest');
-    // The three are resting now, the floor is asked and answers.
+    // The three are resting now; the floor is asked and answers, under the step's own time again (30 ms was for the first search).
+    STEP_MS.ms = was;
     t.asked.length = 0;
     const out = await t.run('web_search', { query: 'nepenthe hours' }, services);
     assert.match(out, /Big Sur \(Wikivoyage\)/);

@@ -5,7 +5,7 @@ import { planFor, MAX_GUIDES } from '../../src/core/pack/plan.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { loadPack, packNamer } from '../../src/core/pack/read.js';
 import { readFile } from 'node:fs/promises';
-import { packTrip, services, overpass, STOPS, YUFUIN, YUFUIN_WIKI, yufuinStop, yufuinAnswer } from './pack-kit.js';
+import { packTrip, services, overpass, wikivoyage as kitGuides, STOPS, YUFUIN, YUFUIN_WIKI, yufuinStop, yufuinAnswer } from './pack-kit.js';
 
 const V = '9.9.9';
 /** English alone, as before editions. */
@@ -422,6 +422,18 @@ test("Wikipedia's parts come edition by edition in the reading order, every stop
   const enFirst = await downloadPack({ ws: english.ws, scope: english.trip, fetch: net().fetch, version: V, editions: ['en', 'ja'], gapMs: 0, maxBytes: limitEn });
   assert.equal(enFirst.files.filter((f) => f.edition === 'en').length, wikis.length);
   assert.equal(enFirst.files.filter((f) => f.edition === 'ja').length, 1);
+  // The pack takes nothing more from the first part that doesn't fit: the third English part is smaller than the second, and fits in what is left, but is not saved.
+  const slim = wikis[2].at.join('|');
+  const lean = (/** @type {string} */ url) => yufuinAnswer(url.replace(/ggscoord=[^&]+/, `ggscoord=${YUFUIN.lat}%7C${YUFUIN.lng}`), url.includes('en.wikipedia.org') && new URL(url).searchParams.get('ggscoord') === slim ? YUFUIN_WIKI.en.query.pages.slice(3).map((/** @type {any} */ p) => p.title) : []);
+  const sized = await packTrip(farStops(3));
+  const whole = await downloadPack({ ws: sized.ws, scope: sized.trip, fetch: services({ overpass: noOsm, wikipedia: lean }).fetch, version: V, editions: ['ja', 'en'], gapMs: 0 });
+  const [first, second, third] = whole.files.filter((f) => f.edition === 'en').map((f) => f.bytes);
+  assert.ok(third < second, 'the third English part is the smaller');
+  const room = whole.files.filter((f) => f.kind === 'osm' || f.edition === 'ja').reduce((n, f) => n + f.bytes, 0) + first + third;
+  const stopped = await packTrip(farStops(3));
+  const part = await downloadPack({ ws: stopped.ws, scope: stopped.trip, fetch: services({ overpass: noOsm, wikipedia: lean }).fetch, version: V, editions: ['ja', 'en'], gapMs: 0, maxBytes: room });
+  assert.equal(part.full, true);
+  assert.deepEqual(part.files.filter((f) => f.edition === 'en').map((f) => f.bytes), [first], 'English at the first stop only');
 });
 
 test("an edition whose host never answers is left after three parts in a row, so it costs three answer times, not one a part; the parts left are counted among those that didn't download, the other editions' parts all come, and with every source given up the guides are not looked for", async () => {
@@ -525,6 +537,52 @@ test("Wikivoyage is left after three guides in a row that fail: the others are n
   assert.equal(m.stopped, true);
 });
 
+test("Wikivoyage left after three guides that failed: the guides the pack already has fresh are kept, and only the ones it lacks count as failed", async () => {
+  const { ws, trip } = await packTrip(farStops(4));
+  let down = false;
+  const wikivoyage = (/** @type {string} */ url) => {
+    const u = new URL(url);
+    const titles = (u.searchParams.get('titles') ?? '').split('|');
+    if (u.searchParams.get('prop') === 'pageprops') return { query: { pages: titles.map((title) => ({ title })) } };
+    return down ? new Response('', { status: 503 }) : { query: { pages: [{ title: titles[0], extract: `${titles[0]} is a guide.` }] } };
+  };
+  const first = await downloadPack({ ws, scope: trip, fetch: services({ overpass: noOsm, wikipedia: (url) => yufuinAnswer(url), wikivoyage }).fetch, version: V, editions: EN, gapMs: 0 });
+  assert.equal(first.guides.length, MAX_GUIDES);
+  // The first three guides in found order are gone, and Wikivoyage stops answering: those three fail, Wikivoyage is left, and the other nine are fresh.
+  const lost = first.guides.slice(0, 3);
+  for (const g of lost) await ws.delete(trip, g.path, { author: 'system' });
+  down = true;
+  const net = services({ overpass: noOsm, wikipedia: (url) => yufuinAnswer(url), wikivoyage });
+  const m = await downloadPack({ ws, scope: trip, fetch: net.fetch, version: V, editions: EN, gapMs: 0 });
+  assert.equal(net.asked.filter((a) => a.url.includes('wikivoyage') && new URL(a.url).searchParams.get('prop') === 'extracts').length, 3);
+  assert.deepEqual(m.failed.map((f) => /** @type {any} */ (f.part).title), lost.map((g) => g.title), 'only the three it lacked');
+  assert.deepEqual(m.guides, first.guides.slice(3), 'the nine it had stay, in their order');
+  assert.deepEqual(m.files.filter((f) => f.kind === 'wikivoyage').map((f) => f.path).sort(), m.guides.map((g) => g.path).sort());
+  assert.equal(m.stopped, true);
+});
+
+test("a stop during the guides keeps the guide that came, counts no guide as failed, and the next download goes on with the rest", async () => {
+  const { ws, trip } = await packTrip();
+  const abort = new AbortController();
+  // The stop comes with the first guide's text: that guide is saved, and the second is not asked for.
+  const stopping = services({
+    wikivoyage: (url) => {
+      if (new URL(url).searchParams.get('prop') === 'extracts') abort.abort();
+      return kitGuides(url);
+    },
+  });
+  const m = await downloadPack({ ws, scope: trip, fetch: stopping.fetch, version: V, editions: EN, gapMs: 0, signal: abort.signal });
+  assert.equal(m.stopped, true);
+  assert.deepEqual(m.failed, [], 'a guide not asked for is not a failure');
+  assert.equal(m.guides.length, 1);
+  assert.equal(stopping.asked.filter((a) => a.url.includes('wikivoyage') && new URL(a.url).searchParams.get('prop') === 'extracts').length, 1);
+  const next = services();
+  const n = await downloadPack({ ws, scope: trip, fetch: next.fetch, version: V, editions: EN, gapMs: 0 });
+  assert.equal(next.asked.filter((a) => a.url.includes('wikivoyage') && new URL(a.url).searchParams.get('prop') === 'extracts').length, 1, 'only the guide that was not got');
+  assert.equal(n.guides.length, 2);
+  assert.equal(n.stopped, false);
+});
+
 test("an answer cut off in its body is no answer: the source is left after three parts in a row, as one that never answers is", async () => {
   const { ws, trip } = await packTrip(farStops(4));
   const wikis = (await planFor(ws, trip)).parts.filter((p) => p.kind === 'wikipedia').length;
@@ -617,7 +675,7 @@ test("a pack that filled up takes a language added first at its monthly refresh 
   const first = await downloadPack({ ws, scope: trip, fetch: net().fetch, version: V, editions: EN, gapMs: 0, maxBytes: limit });
   assert.equal(first.full, true);
   assert.equal(first.files.filter((f) => f.edition === 'en').length, parts - 1);
-  // Japanese listed first inside the month: nothing of it comes, the pack is full (a known limitation: it comes with the monthly refresh).
+  // Japanese listed first inside the month: nothing of it comes, the pack is full (docs/limitations.md, "An offline pack at its 20 MB limit": it comes with the monthly refresh).
   const soon = await downloadPack({ ws, scope: trip, fetch: net().fetch, version: V, editions: ['ja', 'en'], gapMs: 0, maxBytes: limit });
   assert.equal(soon.files.filter((f) => f.edition === 'ja').length, 0);
   // A month on: OpenStreetMap, then Japanese at the stops it reaches (before any English); the old English copies stay.

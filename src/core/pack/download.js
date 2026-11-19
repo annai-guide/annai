@@ -269,13 +269,13 @@ export async function downloadPack(o) {
       done++;
       total += found.length;
       for (const g of found) {
-        if (guidesStuck()) {
+        const { id, path } = guideFile(g.title);
+        // A fresh guide stays; one it lacks is left, and counted, when Wikivoyage is given up.
+        if (fresh({ id, kind: 'wikivoyage', path })) keepOld({ id, kind: 'wikivoyage', path }, 1);
+        else if (guidesStuck()) {
           if (gaveUp('wikivoyage')) left({ source: 'wikivoyage', title: g.title }, 'wikivoyage');
           continue;
-        }
-        const { id, path } = guideFile(g.title);
-        if (fresh({ id, kind: 'wikivoyage', path })) keepOld({ id, kind: 'wikivoyage', path }, 1);
-        else {
+        } else {
           progress({ source: 'wikivoyage', title: g.title });
           try {
             if (!(await save({ id, kind: 'wikivoyage', path, items: 1 }, { title: g.title, text: await article(g.title, ask, headers) }))) break;

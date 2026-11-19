@@ -133,7 +133,7 @@ function extras(f) {
 const round = (/** @type {number} */ x) => Math.round(x * 1e4) / 1e4;
 /** The rows nearby gives, nearest first; its Overpass query widens its circle when the small one holds fewer. */
 const ROWS = 40;
-/** Wikipedia's articles at most: English alone was asked for 30, so more editions bring no more; of the ROWS nearest of both sources, up to 30 can be articles. */
+/** Wikipedia's articles at most: each edition is asked for 30; 30 caps the merged articles, nearest first; of the ROWS nearest of both sources, up to 30 can be articles. */
 const WIKI_ROWS = 30;
 /** @param {any[][]} rows */
 const nearest = (rows) => rows.sort((a, b) => a[2] - b[2]).slice(0, WIKI_ROWS);

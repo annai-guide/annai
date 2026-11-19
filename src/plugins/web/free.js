@@ -18,7 +18,7 @@ const LIMIT_MS = 12_000;
 /**
  * The whole floor's time, every part and try. The chain keeps CHAIN.reserve (10 s) for the floor (web/index.js reserveFor); the floor ends a
  * second inside it (its start and the chain's bookkeeping take milliseconds), so the chain's stop never drops its rows. At 2.5 s an answer
- * Wikipedia's three tries in series (7.5 s) finish inside it; the guide's four (its tries, then its text: 10 s) are cut, the other rows come.
+ * Wikipedia's three tries in series (7.5 s) finish inside it; the guide's four (10 s) are cut, the other rows come.
  */
 export const FLOOR_MS = { ms: CHAIN.reserve - 1_000 };
 
@@ -135,10 +135,11 @@ export const knowledgeFloor = (orderOf) => ({
     const found = keywords(query);
     const want = found.length ? found : [query.trim().toLowerCase()];
     const enc = encodeURIComponent;
-    /** @param {string} url */
-    const json = async (url) => {
+    /** @param {string} url @param {() => Promise<void>} [first] a wait first */
+    const json = async (url, first) => {
       const host = new URL(url).hostname;
       try {
+        await first?.();
         const res = await get(url, { signal: stop, referrerPolicy: 'origin' });
         if (!res.ok) throw Object.assign(new Error(`${host} answered ${res.status}`), { status: res.status });
         const data = await answerJSON(res, host);
@@ -171,8 +172,8 @@ export const knowledgeFloor = (orderOf) => ({
       return [{ title: /* en */ `${top.title} (Wikivoyage)`, url: pageUrl('en.wikivoyage.org', top.title), snippet: (picked.length ? picked : lines.slice(0, 2)).join(' ') }];
     };
     const places = async () => {
-      await nominatimTurn(); // one request a second to Nominatim, for the whole app
-      const found = await json(`https://nominatim.openstreetmap.org/search?q=${enc(want.join(' '))}&format=jsonv2&extratags=1&limit=3&accept-language=${enc(nominatimLanguages(order))}`);
+      // one request a second to Nominatim for the whole app, but only while the floor has time
+      const found = await json(`https://nominatim.openstreetmap.org/search?q=${enc(want.join(' '))}&format=jsonv2&extratags=1&limit=3&accept-language=${enc(nominatimLanguages(order))}`, () => nominatimTurn(stop));
       /* en */
       return (Array.isArray(found) ? found : []).filter((f) => f?.extratags?.website)
         .map((f) => ({ title: f.name || f.display_name, url: f.extratags.website, snippet: [f.display_name, f.extratags.opening_hours ? `Hours: ${f.extratags.opening_hours}` : ''].filter(Boolean).join('. ') }));
