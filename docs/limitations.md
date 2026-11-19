@@ -1008,3 +1008,23 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** it follows from keeping Claude's reasoning "within a turn" and from "Defer, do it next" (2026-10-28). Each fix costs more than it saves or takes something away: stopping her reasoning after a big read (saves about $0.9 in those 26 days), keeping it across turns (nets $0.1 to $0.8, and a reload then writes the whole conversation again), or dropping it altogether.
 - **Revisit when:** a week of a trip's use shows these writes at over 20% of Claude's spend, twice their share in the 26 days measured (big reads have become routine, not a few turns), or Trace shows one such write over $1.
 - **Approved:** 2026-11-19, chief's decision C128 (not the user's words), "Accept it (Recommended)".
+
+### An undated conversation's list of your other conversations follows only a cold cache or another refresh
+- **Kind:** known limitation.
+- **What the traveller sees:** in a conversation with no dates whose cache is warm, Shiori's "Happening now" and "Their latest other conversations" are as they were when its snapshot was last taken (up to an hour), so a trip started or renamed since isn't in that list. She can still find any trip with `list_trips`, and any refresh (a personality change, the traveller's own edits, dates) brings the list up to date.
+- **Why:** a rewrite for each trip change elsewhere would cost the whole cached conversation, as her own edits would.
+- **Revisit when:** a traveller reports her missing a trip they just made.
+- **Approved:** 2026-11-19, chief's decision C132 (not the user's words), "Accept (Recommended)".
+
+### When Shiori changes her personality, the next turn writes the whole conversation to the provider's cache again
+- **Kind:** known limitation.
+- **What the traveller sees:** nothing on screen; in Trace the next turn's first step reads nothing from the cache and writes the whole request, for both halves: about $0.20 at 30,000 tokens on Opus, $1.40 at 175,000, $0.05 more for Koe. 3 times in 26 days of real use (on two days).
+- **Why:** a change of hers applies at her next wake (spec §14.1, "An approved change applies at her next wake, never mid-conversation"), and the personality sits before every cache mark, so any change to it rewrites what follows; applying it only once the cache is cold would leave it unapplied for as long as the traveller keeps talking.
+- **Revisit when:** tunes come more than once a week in real use, or Trace shows one over $1.
+- **Approved:** 2026-11-19, chief's decision C134 (not the user's words), "Accept (Recommended)".
+
+### A write waiting on its reopen can still run after the store has stopped
+- **Kind:** deferred.
+- **What the traveller sees:** rarely, after another tab takes annai over (or Erase runs) while a write in this tab waits on a reopen after a dropped connection, that write still lands, and the store's new connection stays open in the tab that stopped. Reproduced in WebKit and Chromium by a script (storage-next's fix round, 2026-11-19); no traveller has reported it.
+- **Why:** `closed` is checked only when a transaction starts (src/core/store-idb.js, `tx`), and the reopen (`connect()`) sets the connection after `close()` has run. It predates storage-next and was left out of that change to keep it to the storage card.
+- **Revisit when:** planned as its own small build right after storage-next merges (docs/progress.md, "The next version"): check `closed` again after the reopen and before running `fn`, and close a connection that opens after the stop.
