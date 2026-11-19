@@ -6,7 +6,7 @@ import { deviceZone } from '../time.js';
 import { quote } from './blocks.js';
 import { tsv } from '../tsv.js';
 import { sha256Hex } from '../hash.js';
-import { utf8 } from '../bytes.js';
+import { utf8, text } from '../bytes.js';
 import { readAppSettings } from '../settings.js';
 import { languageSettings, languagesText, screensText, distancesText } from '../languages.js';
 import { lang, glossary } from '../l10n.js';
@@ -21,8 +21,9 @@ import { fixedWords, timeUnsure, bookingRef } from '../plan.js';
  * 4. the now block, last, after the cache marker.
  * @typedef {{ trip: string | null, personalityName: string, personality: string, profile: string, memory: string,
  *   tripInfo: string, guessed?: boolean, hers?: boolean, tripMemory: string, skills: { name: string, description: string }[], languages?: string, edited?: Partial<Record<import('./her-instructions.js').InstructionId, string>>,
- *   elsewhere?: string }} Snapshot
+ *   elsewhere?: string, byUser?: ('profile' | 'memory' | 'tripMemory')[] }} Snapshot
  *   languages: the languages section's words, from the languages setting; edited: the instructions the user changed (her-instructions.js);
+ *   byUser: which of profile, memory and tripMemory the user wrote last;
  *   elsewhere: for an undated one, what read_trip may mean (the happening trips, the latest others);
  *   guessed: the trip's name is annai's own first guess (a first line's words or a file's name, the system's write of trip.json, or the draft's
  *   placeholder); hers: an undated one's name is one she wrote, her own or one the user asked for; neither: the user's, or its author unknown
@@ -35,7 +36,13 @@ import { fixedWords, timeUnsure, bookingRef } from '../plan.js';
  * @returns {Promise<Snapshot>}
  */
 export async function takeSnapshot({ ws, registry, trip, personalityName, locale }) {
-  const read = async (/** @type {string} */ scope, /** @type {string} */ path) => (await ws.readText(scope, path).catch(() => undefined)) ?? '';
+  /** @type {NonNullable<Snapshot['byUser']>} */
+  const byUser = [];
+  const read = async (/** @type {string} */ scope, /** @type {string} */ path, /** @type {'profile' | 'memory' | 'tripMemory' | undefined} */ part = undefined) => {
+    const r = await ws.read(scope, path).catch(() => undefined);
+    if (part && r?.entry.author === 'user') byUser.push(part);
+    return r ? text(r.bytes) : '';
+  };
   const tripJson = trip ? await ws.readJSON(trip, '/trip.json').catch(() => null) : null;
   // Whose name it is: annai's naming (Chats) writes trip.json as the system; a rename in Details is the user's, as Start a trip's name was (before
   // timeline stage 8). After a write of hers to an undated one, whoever wrote the version that first held the name (F7); unknown (no history, a read
@@ -48,12 +55,13 @@ export async function takeSnapshot({ ws, registry, trip, personalityName, locale
     trip,
     personalityName,
     personality: (await read(ME, `/personalities/${personalityName}.md`)) || DEFAULT_PERSONALITY,
-    profile: await read(ME, '/profile.md'),
-    memory: await read(ME, '/memory.md'),
+    profile: await read(ME, '/profile.md', 'profile'),
+    memory: await read(ME, '/memory.md', 'memory'),
     tripInfo: tripJson ? JSON.stringify(tripJson, null, 2) : '',
     guessed,
     hers: Boolean(tripJson) && !tripJson.start && by === 'shiori',
-    tripMemory: trip ? await read(trip, '/memory.md') : '',
+    tripMemory: trip ? await read(trip, '/memory.md', 'tripMemory') : '',
+    byUser,
     skills: skillIndex(registry),
     // Then the screens' names and a Distances choice.
     languages: [languagesText(languageSettings(app, locale)), screensText(lang(), glossary()), distancesText(app)].filter(Boolean).join(' '),
@@ -90,8 +98,8 @@ async function elsewhere(ws, trip) {
 
 /**
  * The snapshot for this wake. Rewriting the prefix costs a cold cache, so it happens only when the
- * cache is cold or about to expire (spec §6.4), or for another trip. An approved personality
- * change comes at the next wake whatever the cache (§14.1).
+ * cache is cold or about to expire (spec §6.4), or for another trip. What the user chose just now comes at the next wake whatever
+ * the cache (§14.1); her own edits wait: she has them in the transcript.
  * @param {Snapshot | null} prev @param {Snapshot} fresh @param {{ cold: boolean }} c @returns {Snapshot}
  */
 export function nextSnapshot(prev, fresh, { cold }) {
@@ -101,10 +109,15 @@ export function nextSnapshot(prev, fresh, { cold }) {
   const sameSkills = JSON.stringify(prev.skills) === JSON.stringify(fresh.skills);
   // So does a change of the languages setting, or of her instructions: the user chose it just now.
   const sameEdits = JSON.stringify(prev.edited ?? {}) === JSON.stringify(fresh.edited ?? {});
-  // So does a name that became the user's (renamed in Details); a trip.json that couldn't be read says nothing of it.
-  const renamed = Boolean((prev.guessed || prev.hers) && !fresh.guessed && !fresh.hers && fresh.tripInfo);
-  if (samePersonality && sameSkills && sameEdits && !renamed && prev.languages === fresh.languages) return prev;
-  return { ...prev, personality: fresh.personality, personalityName: fresh.personalityName, skills: fresh.skills, languages: fresh.languages, edited: fresh.edited, ...(renamed ? { tripInfo: fresh.tripInfo, guessed: false, hers: false } : {}) };
+  // So does their own edit of the profile or a memory file.
+  const wrote = /** @type {const} */ (['profile', 'memory', 'tripMemory']).filter((k) => fresh.byUser?.includes(k) && fresh[k] !== prev[k]);
+  // And the trip's text when it would be wrong: dates given or taken away, or a name that became the user's (Details). Not her own title-only
+  // patch of an undated chat, nor a trip.json that couldn't be read.
+  const named = (/** @type {Snapshot} */ s) => s.guessed || s.hers;
+  const tripNow = Boolean(fresh.tripInfo) && (datedInfo(prev.tripInfo) !== datedInfo(fresh.tripInfo) || (named(prev) && !named(fresh)));
+  if (samePersonality && sameSkills && sameEdits && !wrote.length && !tripNow && prev.languages === fresh.languages) return prev;
+  const { tripInfo, guessed, hers } = fresh;
+  return { ...prev, personality: fresh.personality, personalityName: fresh.personalityName, skills: fresh.skills, languages: fresh.languages, edited: fresh.edited, ...Object.fromEntries(wrote.map((k) => [k, fresh[k]])), ...(tripNow ? { tripInfo, guessed, hers, elsewhere: fresh.elsewhere } : {}) };
 }
 
 /** The skill index (spec §6.3): each skill's name and description, once per name (its owner's). @param {import('../registry.js').Registry} registry */
