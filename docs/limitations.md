@@ -963,24 +963,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** with nothing open no turn runs (timeline stage 7), so a microphone opened there heard lines that nothing answers, and nothing closed it: on main, a tap in `me` with a line said left the microphone open for good (found in tap-ear-next's second-opinion review, 2026-11-18). `tap()` now opens none there, and neither does an open that lands after the app switched to `me`. The draft is opened by the dock's button (`src/ui/dock.js`), while the media keys (`mediaKeys` in `src/app/main.js`) and `ui.shiori.tap` (`src/ui/slots.js`) call `agent.tap()` directly.
 - **Revisit when:** the next version; the fix then: the dock's draft-first branch (the Shiori button's `onclick` in `src/ui/dock.js`) moves into one function that the dock, `mediaKeys` and `ui.shiori.tap` all call, so a key does what the dock's Shiori button does (open the draft, then listen).
 
-### The window after she spoke can open and close at once
-- **Kind:** deferred.
-- **What the user sees:** she speaks a line, then asks aloud and nobody answers by voice; a button answers her question after the window after she spoke would have closed (her last words plus Listen for an answer, 20 s by default), and her turn then ends without her speaking again: the microphone opens and closes within about 0.1 s, and the dock says "Listening" for that moment. Seen in the test kit (the listen-end design check, 2026-11-18); main does the same. Whether a phone shows its microphone sign for that moment is not checked.
-- **Why:** the window's end is her last words plus the silence (`#after`), and `#afterTurn` opens the window without asking whether that time has passed. It lies outside how her own listening ends, which tap-ear-next changed, and main has it too.
-- **Revisit when:** the next version; the fix then: no window opens whose time has passed.
-
-### A tap made inside her question's 8 seconds listens only for what is left of them
-- **Kind:** deferred.
-- **What the user sees:** her question said aloud; voice goes off at 3 s (by hand, or auto mode as the car slows) and the traveller taps Shiori at 6 s. The tap's microphone serves her question's listening, so it closes with her 8 seconds, at about 7.9 s, and the dock then says "Waiting for your OK": speech begun at 8.6 s is not heard, and they must tap again. Seen in the test kit (the tap-ear-next final re-review, 2026-11-18); main does the same.
-- **Why:** a tap that finds her own listening under way gives its microphone no 8 seconds of its own (`#tapListen`), and her question's time closes whatever microphone is open (`#listenFor`).
-- **Revisit when:** the next version; the fix then: such a tap keeps 8 seconds from its own open (it closes by its own timer, and her question goes on by hand when it does).
-
-### Another conversation opened within a moment of her listening can receive its last line or its window
-- **Kind:** deferred.
-- **What the user sees:** she asks aloud; a passenger's line is being judged when the traveller opens another conversation (within the verdict's second or two): that line is written into the conversation just opened, set aside there, or, judged for her, wakes her there. Opening another conversation while her speak's microphone is still opening can likewise leave the window after she spoke open in the new conversation ("Listening") until its time. Seen in the test kit (the tap-ear-next re-read, 2026-11-18); main does the same.
-- **Why:** a line is routed after its verdict, to the conversation open then (`#route`, `#push`); the window after she spoke is opened at the turn's end and passes the opening check once the other conversation has landed (`#afterTurn`, `#openEarNow`). Both need the switch to land inside one verdict or one microphone open.
-- **Revisit when:** the next version; the fix then: a heard line keeps the conversation it was heard in (its route drops it when that is no longer the one open), and the window after she spoke opens only in the conversation its turn ran in.
-
 ### A model the traveller added can be added again under its id or its name
 - **Kind:** deferred.
 - **What the traveller sees:** three shapes on a provider's models, each the same on main. Found on 2026-11-18 by the re-read and the second opinion of form-keep-next's touch 2, by probes on a scratch copy.
