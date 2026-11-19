@@ -2,13 +2,12 @@ import { updateAppSettings } from '../core/settings.js';
 import { talkHref } from './format.js';
 import { openOrTell, tellNotOpen } from './open-trip.js';
 import { requestPersist } from './platform.js';
-import { explainStorageFull } from './storage-full.js';
 
 /**
  * Opens the standing draft once one is ready, as the open conversation: what + waits for in the first moments, and what the dock does first with nothing
  * open. annai opens the draft whenever nothing else is (the user's pick of 2026-11-14, "Open the new conversation"), so nothing is open only where that failed:
  * a start with no draft to be made, or a removal whose draft didn't open (trip.js only logs that), and the dock tries again at the user's next word.
- * Rejects when no draft can be made or it doesn't open: the caller says so (`cantStart`).
+ * Rejects when no draft can be made or it doesn't open: the caller says so (`tellNotOpen`).
  * @param {any} ctx the shell's: chats, agent, ws @returns {Promise<string>} the draft
  */
 export async function openDraft(ctx) {
@@ -31,16 +30,13 @@ export function openReadyDraft(ctx) {
   return true;
 }
 
-/** The card for a conversation that couldn't be started: storage full says what to free; anything else, that it didn't open. @param {any} ctx @param {unknown} e */
-export const cantStart = (ctx, e) => { explainStorageFull(ctx, e) || tellNotOpen(ctx, e); };
-
 /**
  * With nothing open, `act` runs in the draft, as +: the ready one at once (nothing awaited), else once one is open; with none, the card and no `act`.
  * @param {any} ctx @param {() => any} act @returns {any} what `act` returns, or while it waits a promise of it
  */
 function inDraft(ctx, act) {
   if (ctx.agent.target || openReadyDraft(ctx)) return act();
-  return openDraft(ctx).then(act, (e) => void cantStart(ctx, e));
+  return openDraft(ctx).then(act, (e) => void tellNotOpen(ctx, e));
 }
 
 /** A tap on Shiori: the dock's button, the media keys and `ui.shiori.tap()`. @param {any} ctx @returns {string | Promise<string | undefined>} what `agent.tap()` says, or a promise of it */
@@ -59,7 +55,7 @@ export const sendToShiori = (ctx, text) => { void inDraft(ctx, () => ctx.agent.s
 export function newConversation(ctx) {
   requestPersist(); // inside the tap, so browsers that ask the user can: a traveller who starts trips with + would never be asked otherwise
   const id = ctx.chats?.ready;
-  if (!id) return void openDraft(ctx).then(() => newConversation(ctx), (/** @type {unknown} */ e) => cantStart(ctx, e));
+  if (!id) return void openDraft(ctx).then(() => newConversation(ctx), (/** @type {unknown} */ e) => tellNotOpen(ctx, e));
   // Already open (+ again before a word was said): opening it again would close its microphone, and a tap on one listening, or getting ready to, stops it.
   const here = ctx.agent.target === id;
   openReadyDraft(ctx);

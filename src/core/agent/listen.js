@@ -1,10 +1,10 @@
 /**
  * The words speak, wait and ask return about listening (spec §7.1). What the user said follows them
  * as heard speech, resolved for each model, so these say only what happened.
- * @typedef {{ heard?: import('../voice/resolve.js').Heard, text?: string, claim?: string, chose?: boolean, chosen?: string,
+ * @typedef {{ heard?: import('../voice/resolve.js').Heard, text?: string, claim?: string, chose?: boolean, typed?: boolean, chosen?: string,
  *   stopped?: boolean, deaf?: string, gate?: string, earlier?: 'spoke' | 'wrote' | 'asked', note?: string, due?: 'reminder' | 'cue', voiced?: string, spoke?: string, also?: { heard: import('../voice/resolve.js').Heard, gate?: string }[],
  *   own?: import('../voice/resolve.js').Heard[] }} Got
- *   what a listen got: speech for her (heard) or not (dismissed), typing, a tap on an option, a stop, why annai couldn't listen,
+ *   what a listen got: speech for her (heard) or not (dismissed), typing (typed: in the type box), a tap on an option, a stop, why annai couldn't listen,
  *   or nothing (a silence); gate: what the quick-decision gate made of it; earlier: no listening, as a line of the user's from
  *   while she thought is waiting, spoken or written (it follows the result whole, with its photos and files); note: a note from the other half came (its name), which follows the result; due: a reminder or alert came (Koe's wait); voiced: the option
  *   a heard line answered annai's own question with (Agent.confirm); spoke: the other half's heard line (its id) that ended that question unanswered;

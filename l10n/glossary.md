@@ -4,7 +4,7 @@ annai's names for its screens and things in Japanese (ja), Chinese, Simplified (
 
 This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row per term, with where the English shows on screen and a note on why each word was chosen. Rows are in this order of kind (screen, thing, mode, platform, never), then by English. Its English is matched as written, so `Voice` (the screen) and `voice` (one she speaks with) are two rows. Some terms are also ordinary words (Now, Add, Ask, Allow, Share, Main, key, card): the strings check should take them as names only where a message uses them as one.
 
-122 rows: 31 screen, 40 thing, 6 mode, 29 platform, 16 never.
+124 rows: 31 screen, 40 thing, 6 mode, 31 platform, 16 never.
 
 ## Screens and sections
 
@@ -123,7 +123,9 @@ This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row
 | Safari | Safari | Safari 浏览器 | Safari |
 | Safari Websites | SafariのWebサイト | Safari 浏览器网站 | Safari 網站 |
 | Settings app | 設定 | 设置 | 設定 |
+| Settings → General → iPhone Storage | 設定 → 一般 → iPhoneストレージ | 设置 → 通用 → iPhone 储存空间 | 設定 → 一般 → iPhone 儲存空間 |
 | Settings → Notifications → annai | 設定 → 通知 → annai | 设置 → 通知 → annai | 設定 → 通知 → annai |
+| Settings → Storage | 設定 → ストレージ | 设置 → 存储 | 設定 → 儲存空間 |
 | Share | 共有 | 共享 | 分享 |
 | Site settings | サイトの設定 | 网站设置 | 網站設定 |
 | touch and hold | 長押し | 长按 | 按住 |
@@ -200,4 +202,4 @@ Platform words whose current wording no official page showed; each note says wha
 
 ## How the platform words were checked
 
-On 2026-10-23, from Apple's iPhone User Guide in ja-jp and zh-cn (support.apple.com, the iOS 27 pages: bookmarks and the Home Screen, web apps, location, notifications, Safari settings, hardware access, and the guide's contents for app names), and Google's Android and Chrome help in ja and zh-Hans (app permissions, notifications, web apps, website shortcuts, camera and microphone). Google marks its ja and zh pages as possibly machine-translated. Where only community answers or how-to sites agreed, the note says so.
+On 2026-10-23, from Apple's iPhone User Guide in ja-jp and zh-cn (support.apple.com, the iOS 27 pages: bookmarks and the Home Screen, web apps, location, notifications, Safari settings, hardware access, and the guide's contents for app names), and Google's Android and Chrome help in ja and zh-Hans (app permissions, notifications, web apps, website shortcuts, camera and microphone). Google marks its ja and zh pages as possibly machine-translated. Where only community answers or how-to sites agreed, the note says so. On 2026-11-19, the storage card's paths (Settings → General → iPhone Storage, and Android's Settings → Storage) from Apple's iPhone User Guide in ja-jp, zh-cn and zh-tw and Google's Android help in ja, zh-Hans and zh-Hant.

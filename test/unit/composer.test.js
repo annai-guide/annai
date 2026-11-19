@@ -64,7 +64,9 @@ test('a file that runs out of room part-way: what was kept is handed over, and a
   assert.deepEqual(sent[0].handed.map((/** @type {any} */ f) => f.path), ['/trip/files/a.txt']);
   assert.deepEqual((await ws.list(trip, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/a.txt']);
   assert.equal(cards.length, 1);
-  assert.match(cards[0].title, /2 files weren't kept/);
+  // The storage card, which says what to do, begins with what was not kept.
+  assert.equal(cards[0].title, "There's no room left");
+  assert.match(cards[0].body, /^2 files weren't kept\. Free up space on this device, then try again\./);
 });
 
 test("a file asked about from another conversation isn't handed over in this one: its chip names the other trip's file", async () => {
@@ -72,7 +74,7 @@ test("a file asked about from another conversation isn't handed over in this one
   const { ctx, sent, other, ws } = await phone();
   await ws.write(other, '/files/temple.pdf', 'temple', { author: 'user', type: 'application/pdf' });
   await handOver(ctx, 'And this?', [{ scope: other, path: '/files/temple.pdf' }]);
-  assert.deepEqual(sent, [{ text: 'And this?' }]);
+  assert.deepEqual(sent, [{ text: 'And this?', typed: true }]); // typed in the box: a failed write gives it back
 });
 
 test('a calendar file kept in a trip says how many of its events went on the plan', async () => {
@@ -95,6 +97,18 @@ test('another conversation opened while the files were kept: the message goes to
   assert.equal(woken.length, 1);
   assert.deepEqual([woken[0].kind, woken[0].scope, woken[0].text, woken[0].handed.map((/** @type {any} */ f) => f.path)], ['user', trip, '(files)', ['/trip/files/a.txt', '/trip/files/b.txt']]);
   assert.match(woken[0].handover, /^h-/);
+  assert.equal(woken[0].typed, undefined, 'no words were typed: a failed write has none to give back');
+});
+
+test("another conversation opened while the files were kept: the words typed with them go, marked typed (so a write that fails gives them back), to the conversation the files were kept for", async () => {
+  globalThis.location ??= /** @type {any} */ ({ hash: '#/talk', replace: () => {} });
+  const { ctx, other } = await phone();
+  /** @type {any[]} */ const woken = [];
+  const agent = /** @type {any} */ (ctx.agent);
+  agent.wake = (/** @type {any} */ w) => { woken.push(w); return Promise.resolve(); };
+  const trip = agent.target;
+  await handOver(ctx, 'Is the temple open?', [file('a.txt', 'a')], { progress: (done) => { if (done === 1) agent.target = other; } });
+  assert.deepEqual([woken[0].scope, woken[0].text, woken[0].typed], [trip, 'Is the temple open?', true]);
 });
 
 test("a booking's chip is named by its title; its HandedFile is a reference", async () => {

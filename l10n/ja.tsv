@@ -424,29 +424,30 @@ storage-webdav:kpd7yy	ok	The folder above {0} doesn't exist on the server, so an
 storage-webdav:nr7x2z	ok	Works: annai made the folder {0} and can keep its backups there.	正常に動作しています。フォルダー「{0}」を作成し、そこにバックアップを保存できます。	plugins-official/storage-webdav/index.js:139	{0} = shownOf(w.url)
 storage-webdav:1hxwq6b	ok	Works: annai can keep its backups in {0}.	正常に動作しています。「{0}」にバックアップを保存できます。	plugins-official/storage-webdav/index.js:142	{0} = shownOf(w.url)
 1aajvdy	ok	Opening annai…	annaiを起動しています…	src/app/boot.js:37	
-1v76pcd	ok	annai is open in another tab	annaiは別のタブで開いています	src/app/main.js:90	
-cohfbh	ok	Only one copy of annai runs at a time, so your trips stay consistent.	旅のデータが食い違わないよう、annaiは一度に1つのタブでしか動きません。	src/app/main.js:91	
-u0vojx	ok	Use it here	ここで使う	src/app/main.js:92	
-p4x3of	ok	annai was opened in another tab	annaiが別のタブで開かれました	src/app/main.js:97	
-11qyuy7	ok	This tab has stopped, so your trips stay consistent.	旅のデータが食い違わないよう、このタブでの動作を停止しました。	src/app/main.js:98	
-1ku6bv3	ok	Use it here instead	こちらで使う	src/app/main.js:99	
-fki4un	ok	Notifications	通知	src/app/main.js:260	
-1clzv4	ok	Settings → Models changed	「設定 → モデル」が変わりました	src/app/main.js:263	
-1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	プロバイダー単位で設定するようになりました。1つのアドレスと1つのキーで、そのプロバイダーの機能をすべて使えます。これまでのエンドポイント（{0}）とそのキーは削除されました。「設定 → モデル」で追加し直してください。	src/app/main.js:264	{0} = list(moved.names, 'plain')
-whpd9d	ok	Open Models	モデルを開く	src/app/main.js:265	
-10renyj	ok	Plugins	プラグイン	src/app/main.js:276	
-1sp21de	ok	A new version of the {0} personality	性格「{0}」の新しいバージョン	src/app/main.js:379	{0} = o.name
-1yoe82	ok	Yours has your own edits, so it was kept as it is.	編集済みのため、今のまま残しています。	src/app/main.js:380	
-1n8cxuc	ok	Compare	比較	src/app/main.js:382	
-rzp4o3	ok	Keep mine	今のままにする	src/app/main.js:383	
-1j662as	ok	Let Shiori merge	Shioriに統合してもらう	src/app/main.js:384	
-x0ig66	ok	Something went wrong	問題が起きました	src/app/main.js:436	
-1oy79dy	ok	annai kept running. The details are in Trace.	annaiは動作を続けています。詳細は「記録」にあります。	src/app/main.js:437	
-c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annaiは動作を続けていますが、何が起きたかを書き残せなかったため、「記録」にも残っていません。繰り返し起きる場合は、annaiを閉じて開き直してください。	src/app/main.js:437	
-11n1kcg	ok	Open Trace	記録を開く	src/app/main.js:438	
-gt9ssw	ok	annai couldn't start	annaiを起動できませんでした	src/app/main.js:449	
-6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	繰り返し起きる場合は、ブラウザがデータの保存をブロックしている可能性があります（プライベートウインドウなど）。	src/app/main.js:451	
-982hh6	ok	Try again	再試行	src/app/main.js:452	
+1v76pcd	ok	annai is open in another tab	annaiは別のタブで開いています	src/app/main.js:91	
+cohfbh	ok	Only one copy of annai runs at a time, so your trips stay consistent.	旅のデータが食い違わないよう、annaiは一度に1つのタブでしか動きません。	src/app/main.js:92	
+u0vojx	ok	Use it here	ここで使う	src/app/main.js:93	
+p4x3of	ok	annai was opened in another tab	annaiが別のタブで開かれました	src/app/main.js:98	
+11qyuy7	ok	This tab has stopped, so your trips stay consistent.	旅のデータが食い違わないよう、このタブでの動作を停止しました。	src/app/main.js:99	
+1ku6bv3	ok	Use it here instead	こちらで使う	src/app/main.js:100	
+fki4un	ok	Notifications	通知	src/app/main.js:261	
+1clzv4	ok	Settings → Models changed	「設定 → モデル」が変わりました	src/app/main.js:264	
+1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	プロバイダー単位で設定するようになりました。1つのアドレスと1つのキーで、そのプロバイダーの機能をすべて使えます。これまでのエンドポイント（{0}）とそのキーは削除されました。「設定 → モデル」で追加し直してください。	src/app/main.js:265	{0} = list(moved.names, 'plain')
+whpd9d	ok	Open Models	モデルを開く	src/app/main.js:266	
+10renyj	ok	Plugins	プラグイン	src/app/main.js:277	
+1sp21de	ok	A new version of the {0} personality	性格「{0}」の新しいバージョン	src/app/main.js:382	{0} = o.name
+1yoe82	ok	Yours has your own edits, so it was kept as it is.	編集済みのため、今のまま残しています。	src/app/main.js:383	
+1n8cxuc	ok	Compare	比較	src/app/main.js:385	
+rzp4o3	ok	Keep mine	今のままにする	src/app/main.js:386	
+1j662as	ok	Let Shiori merge	Shioriに統合してもらう	src/app/main.js:387	
+x0ig66	ok	Something went wrong	問題が起きました	src/app/main.js:439	
+1oy79dy	ok	annai kept running. The details are in Trace.	annaiは動作を続けています。詳細は「記録」にあります。	src/app/main.js:440	
+c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annaiは動作を続けていますが、何が起きたかを書き残せなかったため、「記録」にも残っていません。繰り返し起きる場合は、annaiを閉じて開き直してください。	src/app/main.js:440	
+11n1kcg	ok	Open Trace	記録を開く	src/app/main.js:441	
+gt9ssw	ok	annai couldn't start	annaiを起動できませんでした	src/app/main.js:454	
+1vecqk6	draft	There's no room left	空き容量が足りません	src/app/main.js:455	Note: a card's title, and the start screen's words: the phone (or annai's share of it) has no room left, for a save, a removal or a read alike. 空き容量 as the glossary's word for storage space.
+6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	繰り返し起きる場合は、ブラウザがデータの保存をブロックしている可能性があります（プライベートウインドウなど）。	src/app/main.js:456	
+982hh6	ok	Try again	再試行	src/app/main.js:457	
 1u3dm1p	ok	This address holds a name or password before an @. Leave it out.	このアドレスには、@の前にユーザー名かパスワードが含まれています。その部分を削除してください。	src/core/address.js:68	
 1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	滞在した場所と滞在時間（場所は名前で。名前がなければ約100 m単位に丸めた位置で）。GPSの軌跡そのものは送りません。	src/core/after/recap.js:61	Note: a stay is any stop in the record, so 滞在した, not 泊まった (overnight).
 imb4zw	ok	How far you drove or walked between, the stamps, and the itinerary.	滞在した場所の間を車や徒歩で移動した距離、スタンプ、旅程。	src/core/after/recap.js:62	
@@ -496,62 +497,62 @@ bo3wjk	ok	Shiori stopped: today's budget is spent	Shioriが止まりました：
 67wvld	ok	Shiori stopped: step limit	Shioriが止まりました：ステップ数が上限に達しました	src/core/agent/budgets.js:123	
 177194c	ok	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	Shioriは頼まれていない作業を自分から{0}ステップ進めたため、そこで止まりました。続けてほしいときは、Shioriに頼んでください。	src/core/agent/budgets.js:124	{0} = num(over.steps); Note: "She" is Shiori in ja, as elsewhere.; Note: "Ask her" is a request (頼んで), not the glossary's Ask (Safari's permission choice, 確認).
 1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	1回の起動で進められる上限の{0}ステップに達しました（「設定 → Shiori → Shioriが自分から動く頻度」）。続けてほしいときは、Shioriに頼んでください。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: ja names no subject (the card's title says Shiori stopped); the setting's path as the screens name it.; Note: "Ask her" is a request (頼んで), not the glossary's Ask (Safari's permission choice, 確認).
-jkajtp	ok	Thinking	考え中	src/core/agent/halves.js:87	
-1vskjkw	ok	Live is resting; Koe · Chat is answering	ライブは休止中のため、Koe · チャットが答えています	src/core/agent/halves.js:613	
-13gz10	ok	Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.	しばらくはShioriが直接答えます。理由は「記録」の「モデル」で確認できます。Koeは数分後に自動的に再試行します。	src/core/agent/halves.js:692	Note: Models is the Trace's Kind filter, as it is named there.
-yvabm6	ok	Koe's live voice couldn't start	Koeのライブ音声を開始できませんでした	src/core/agent/halves.js:692	
-bzrasi	ok	Shiori answers as one half for now	しばらくはShioriが一人で答えます	src/core/agent/halves.js:863	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
-o0lfar	ok	annai couldn't pass your message to Koe: {0}	メッセージをKoeに渡せませんでした：{0}	src/core/agent/halves.js:863	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-15junxn	ok	One moment…	準備中…	src/core/agent/loop.js:143	Note: the dock's words between the user's tap and Listening (Shiori getting ready to hear them).
-1dhsqvv	ok	Tap to talk	タップして話す	src/core/agent/loop.js:143	
-1ldobgc	ok	Tap to interrupt	タップして中断	src/core/agent/loop.js:143	
-4mbury	ok	Thinking · tap to stop	考え中 · タップして停止	src/core/agent/loop.js:143	
-89yydm	ok	Listening	聞いています	src/core/agent/loop.js:143	Note: one of Shiori's states, as the dock shows her.
-bost42	ok	Ignoring sound · tap to talk	周りの音を聞き流し中 · タップして話す	src/core/agent/loop.js:143	
-g8840o	ok	Waiting for your OK	確認待ち	src/core/agent/loop.js:143	
-yydchc	ok	Hearing you	聞き取り中	src/core/agent/loop.js:143	Note: one of Shiori's states: she hears you speaking.
-akjf4d	ok	Working on …	作業中…	src/core/agent/loop.js:144	
-izy3tv	ok	Offline · reminders still work	オフライン · リマインダーは使えます	src/core/agent/loop.js:144	
-gni5zk	ok	Her sound got stuck, and a tap brings it back. Her words are in the conversation.	Shioriの音声が止まってしまいました。タップすると再開します。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:174	
-guullf	ok	Tap the screen so Shiori can speak	Shioriが話せるように画面をタップしてください	src/core/agent/loop.js:174	
-1080xlr	ok	Working on {0}	作業中：{0}	src/core/agent/loop.js:675	{0} = detail; Note: label: value, {0} is what she works on, in her words.
-1h2c64o	ok	Working on tidying up the conversation	会話を整理中	src/core/agent/loop.js:675	
-vjxaph	ok	Your turn	返事待ち	src/core/agent/loop.js:675	
-19793n8	ok	Shiori skipped a wake	Shioriは起動を見送りました	src/core/agent/loop.js:1270	
-16ny0z2	ok	Shiori stopped	Shioriが止まりました	src/core/agent/loop.js:1522	
-1sxm1ou	ok	Something went wrong: {0}	問題が起きました：{0}	src/core/agent/loop.js:1522	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-n7ewdg	ok	Shiori couldn't tidy up the conversation	Shioriは会話を整理できませんでした	src/core/agent/loop.js:1562	
-oeaxaa	ok	She will try again later.	あとで自動的に再試行します。	src/core/agent/loop.js:1562	
-x10s30	ok	Shiori couldn't summarize the conversation	Shioriは会話を要約できませんでした	src/core/agent/loop.js:1748	
-1ds0zov	ok	Reminder	リマインダー	src/core/agent/loop.js:1946	
-1szzjml	ok	Shiori's answer	Shioriの答え	src/core/agent/loop.js:1946	
-nxpady	ok	The message went without it.	メッセージは写真なしで送られました。	src/core/agent/loop.js:2086	
-sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:2086	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
-ssozn1	ok	A photo wasn't sent to Shiori	写真をShioriに送れませんでした	src/core/agent/loop.js:2086	
-311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shioriは作業の途中でした。戻ったら続きから再開します。	src/core/agent/loop.js:2156	
-1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	同じツールを3回呼び出して同じ結果が続いたため、このやり取りを終了しました。言い方を変えて、もう一度聞いてみてください。	src/core/agent/loop.js:2530	Note: "Ask again" is asking Shiori (聞いて), not the glossary's Ask (Safari's permission choice, 確認).
-pydksy	ok	Shiori stopped repeating herself	Shioriは同じことの繰り返しをやめました	src/core/agent/loop.js:2530	
-1nvuxc8	ok	Her model finished without saying anything to you.	Shioriのモデルが、何も返事をしないまま終了しました。	src/core/agent/loop.js:2574	Note: "Her" is Shiori's in ja.
-2bgbpn	ok	Shiori didn't answer	Shioriから返事がありませんでした	src/core/agent/loop.js:2578	
-1mjdfzn	ok	Shiori can't reach her model	Shioriがモデルに接続できません	src/core/agent/loop.js:2663	
-12qfj9m	ok	This model takes photos only as {0}, which this browser can't make. Try another model in Settings → Models.	このモデルが受け付ける写真の形式は{0}だけですが、このブラウザでは作成できません。「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:2690	{0} = names
-1uhz9dg	ok	Shiori couldn't send the photo	Shioriは写真を送れませんでした	src/core/agent/loop.js:2749	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	このブラウザでは、タップしないと音が出ません。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3390	
-1h2ina6	ok	Shiori couldn't speak aloud	Shioriは声に出して話せませんでした	src/core/agent/loop.js:3391	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	「設定 → モデル → 読み上げ」の声がどれも使えませんでした。理由は「記録」にあります。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3391	
-1r1dhd7	ok	Shiori can't hear you yet	Shioriはまだ声を聞き取れません	src/core/agent/loop.js:3574	
-8wd0xv	ok	Listening stopped	聞き取りが止まりました	src/core/agent/loop.js:3805	
-43klog	ok	at most {0} MB	最大{0} MB	src/core/agent/loop.js:4066	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	一辺#ピクセルまで	src/core/agent/loop.js:4067	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一度に#枚まで	src/core/agent/loop.js:4068	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	{0}のみ	src/core/agent/loop.js:4069	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず（受け付けるのは{0}）、受け付けられる形のコピーも作れませんでした。「設定 → 写真 → Shioriに送る写真」で写真を小さくするか、「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:4070	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず、受け付けられる形のコピーも作れませんでした。「設定 → 写真 → Shioriに送る写真」で写真を小さくするか、「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:4071	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	会話が長すぎて、整理するまではShioriのモデルで扱えません。「設定 → モデル」でモデルを確認するか、しばらくしてからもう一度お試しください。	src/core/agent/loop.js:4081	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	プラグイン「{0}」が、設定した上限（1時間に#回）を超えてShioriを起動しようとしました。	src/core/agent/loop.js:4091	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守り中の出来事が、設定した上限（1時間に#回）を超えてShioriを起動しようとしました（{0}）。	src/core/agent/loop.js:4092	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	追加したファイルが、設定した上限（1時間に#回）を超えてShioriを起動しようとしました（{0}）。	src/core/agent/loop.js:4093	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	何かが、設定した上限（1時間に#回）を超えてShioriを起動しようとしました。	src/core/agent/loop.js:4094	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+jkajtp	ok	Thinking	考え中	src/core/agent/halves.js:88	
+1vskjkw	ok	Live is resting; Koe · Chat is answering	ライブは休止中のため、Koe · チャットが答えています	src/core/agent/halves.js:616	
+13gz10	ok	Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.	しばらくはShioriが直接答えます。理由は「記録」の「モデル」で確認できます。Koeは数分後に自動的に再試行します。	src/core/agent/halves.js:695	Note: Models is the Trace's Kind filter, as it is named there.
+yvabm6	ok	Koe's live voice couldn't start	Koeのライブ音声を開始できませんでした	src/core/agent/halves.js:695	
+bzrasi	ok	Shiori answers as one half for now	しばらくはShioriが一人で答えます	src/core/agent/halves.js:868	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
+o0lfar	ok	annai couldn't pass your message to Koe: {0}	メッセージをKoeに渡せませんでした：{0}	src/core/agent/halves.js:868	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+15junxn	ok	One moment…	準備中…	src/core/agent/loop.js:144	Note: the dock's words between the user's tap and Listening (Shiori getting ready to hear them).
+1dhsqvv	ok	Tap to talk	タップして話す	src/core/agent/loop.js:144	
+1ldobgc	ok	Tap to interrupt	タップして中断	src/core/agent/loop.js:144	
+4mbury	ok	Thinking · tap to stop	考え中 · タップして停止	src/core/agent/loop.js:144	
+89yydm	ok	Listening	聞いています	src/core/agent/loop.js:144	Note: one of Shiori's states, as the dock shows her.
+bost42	ok	Ignoring sound · tap to talk	周りの音を聞き流し中 · タップして話す	src/core/agent/loop.js:144	
+g8840o	ok	Waiting for your OK	確認待ち	src/core/agent/loop.js:144	
+yydchc	ok	Hearing you	聞き取り中	src/core/agent/loop.js:144	Note: one of Shiori's states: she hears you speaking.
+akjf4d	ok	Working on …	作業中…	src/core/agent/loop.js:145	
+izy3tv	ok	Offline · reminders still work	オフライン · リマインダーは使えます	src/core/agent/loop.js:145	
+gni5zk	ok	Her sound got stuck, and a tap brings it back. Her words are in the conversation.	Shioriの音声が止まってしまいました。タップすると再開します。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:175	
+guullf	ok	Tap the screen so Shiori can speak	Shioriが話せるように画面をタップしてください	src/core/agent/loop.js:175	
+1080xlr	ok	Working on {0}	作業中：{0}	src/core/agent/loop.js:676	{0} = detail; Note: label: value, {0} is what she works on, in her words.
+1h2c64o	ok	Working on tidying up the conversation	会話を整理中	src/core/agent/loop.js:676	
+vjxaph	ok	Your turn	返事待ち	src/core/agent/loop.js:676	
+19793n8	ok	Shiori skipped a wake	Shioriは起動を見送りました	src/core/agent/loop.js:1272	
+16ny0z2	ok	Shiori stopped	Shioriが止まりました	src/core/agent/loop.js:1529	
+1sxm1ou	ok	Something went wrong: {0}	問題が起きました：{0}	src/core/agent/loop.js:1529	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+n7ewdg	ok	Shiori couldn't tidy up the conversation	Shioriは会話を整理できませんでした	src/core/agent/loop.js:1569	
+oeaxaa	ok	She will try again later.	あとで自動的に再試行します。	src/core/agent/loop.js:1569	
+x10s30	ok	Shiori couldn't summarize the conversation	Shioriは会話を要約できませんでした	src/core/agent/loop.js:1755	
+1ds0zov	ok	Reminder	リマインダー	src/core/agent/loop.js:1953	
+1szzjml	ok	Shiori's answer	Shioriの答え	src/core/agent/loop.js:1953	
+nxpady	ok	The message went without it.	メッセージは写真なしで送られました。	src/core/agent/loop.js:2110	
+sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:2110	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
+ssozn1	ok	A photo wasn't sent to Shiori	写真をShioriに送れませんでした	src/core/agent/loop.js:2110	
+311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shioriは作業の途中でした。戻ったら続きから再開します。	src/core/agent/loop.js:2181	
+1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	同じツールを3回呼び出して同じ結果が続いたため、このやり取りを終了しました。言い方を変えて、もう一度聞いてみてください。	src/core/agent/loop.js:2555	Note: "Ask again" is asking Shiori (聞いて), not the glossary's Ask (Safari's permission choice, 確認).
+pydksy	ok	Shiori stopped repeating herself	Shioriは同じことの繰り返しをやめました	src/core/agent/loop.js:2555	
+1nvuxc8	ok	Her model finished without saying anything to you.	Shioriのモデルが、何も返事をしないまま終了しました。	src/core/agent/loop.js:2599	Note: "Her" is Shiori's in ja.
+2bgbpn	ok	Shiori didn't answer	Shioriから返事がありませんでした	src/core/agent/loop.js:2603	
+1mjdfzn	ok	Shiori can't reach her model	Shioriがモデルに接続できません	src/core/agent/loop.js:2688	
+12qfj9m	ok	This model takes photos only as {0}, which this browser can't make. Try another model in Settings → Models.	このモデルが受け付ける写真の形式は{0}だけですが、このブラウザでは作成できません。「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:2715	{0} = names
+1uhz9dg	ok	Shiori couldn't send the photo	Shioriは写真を送れませんでした	src/core/agent/loop.js:2774	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	このブラウザでは、タップしないと音が出ません。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3415	
+1h2ina6	ok	Shiori couldn't speak aloud	Shioriは声に出して話せませんでした	src/core/agent/loop.js:3416	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	「設定 → モデル → 読み上げ」の声がどれも使えませんでした。理由は「記録」にあります。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3416	
+1r1dhd7	ok	Shiori can't hear you yet	Shioriはまだ声を聞き取れません	src/core/agent/loop.js:3599	
+8wd0xv	ok	Listening stopped	聞き取りが止まりました	src/core/agent/loop.js:3830	
+43klog	ok	at most {0} MB	最大{0} MB	src/core/agent/loop.js:4091	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	一辺#ピクセルまで	src/core/agent/loop.js:4092	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一度に#枚まで	src/core/agent/loop.js:4093	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	{0}のみ	src/core/agent/loop.js:4094	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず（受け付けるのは{0}）、受け付けられる形のコピーも作れませんでした。「設定 → 写真 → Shioriに送る写真」で写真を小さくするか、「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:4095	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず、受け付けられる形のコピーも作れませんでした。「設定 → 写真 → Shioriに送る写真」で写真を小さくするか、「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:4096	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	会話が長すぎて、整理するまではShioriのモデルで扱えません。「設定 → モデル」でモデルを確認するか、しばらくしてからもう一度お試しください。	src/core/agent/loop.js:4106	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	プラグイン「{0}」が、設定した上限（1時間に#回）を超えてShioriを起動しようとしました。	src/core/agent/loop.js:4116	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守り中の出来事が、設定した上限（1時間に#回）を超えてShioriを起動しようとしました（{0}）。	src/core/agent/loop.js:4117	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	追加したファイルが、設定した上限（1時間に#回）を超えてShioriを起動しようとしました（{0}）。	src/core/agent/loop.js:4118	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	何かが、設定した上限（1時間に#回）を超えてShioriを起動しようとしました。	src/core/agent/loop.js:4119	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	メッセージにキーが含まれていたため、表示しません。	src/core/agent/net.js:94	
 157dl17	ok	Shiori wants to adjust her personality	Shioriが性格の調整を提案しています	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	やめておく	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
@@ -619,9 +620,9 @@ tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	暗号化バ�
 1lbu7g8	ok	Photo · {0}	写真 · {0}	src/core/chats.js:132	{0} = time
 1nqtd5y	ok	Voice · {0}	音声 · {0}	src/core/chats.js:133	{0} = time
 146ozuk	ok	New conversation	新しい会話	src/core/chats.js:134	
-14zz5l	ok	annai's storage on this device is full. Remove a trip you no longer need (back it up first), or free up space on this device.	この端末のannaiのストレージがいっぱいです。先にバックアップしてから不要な旅を削除するか、この端末の空き容量を増やしてください。	src/core/errors.js:39	
-1rgff8l	ok	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	別のタブでannaiが開かれたため、このタブでは停止しました。このタブで使うには、再読み込みしてください。	src/core/errors.js:40	
-gnrtev	ok	Shiori can't reach her model.	Shioriがモデルに接続できません。	src/core/errors.js:41	
+rg5j3b	draft	Free up space on this device, then try again.	この端末の空き容量を増やしてから、もう一度お試しください。	src/core/errors.js:41	Note: for a device that is neither an iPhone nor an Android phone (an iPad, a computer), and what the backup, archive and update messages show after the title.
+1rgff8l	ok	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	別のタブでannaiが開かれたため、このタブでは停止しました。このタブで使うには、再読み込みしてください。	src/core/errors.js:42	
+gnrtev	ok	Shiori can't reach her model.	Shioriがモデルに接続できません。	src/core/errors.js:43	
 98c05r	ok	This calendar has more than {0} events. Export only the dates you need from your calendar, and add that file.	このカレンダーには{0}件を超える予定があります。必要な期間の予定だけをカレンダーからエクスポートして、そのファイルを追加してください。	src/core/ics.js:115	{0} = num(MAX_EVENTS)
 10s60wn	ok	No file at {0}.	{0}にファイルがありません。	src/core/imports.js:14	{0} = path
 13ujlu9	ok	{0} is too large (over {1}). Export only the dates you need from your calendar, and add that file.	{0}は大きすぎます（{1}超）。カレンダーから必要な期間だけをエクスポートして、そのファイルを追加してください。	src/core/imports.js:15	{0} = path; {1} = size(MAX_ICS_BYTES)
@@ -1041,15 +1042,15 @@ wa8d8i#other	ok	# files	ファイル#件	src/ui/bring-in.js:51	plural; # = n; En
 io1qx	ok	Open the booking	予約を開く	src/ui/cards.js:82	
 1ghy26u	ok	A photo Shiori showed	Shioriが見せた写真	src/ui/cards.js:85	
 1hvdy8q	ok	This card's kind ({0}) comes from a plugin that isn't on.	このカードの種類（{0}）は、オンになっていないプラグインのものです。	src/ui/cards.js:97	{0} = card.type
-rcp6ga	ok	A photo was kept as it is	写真をそのまま保存しました	src/ui/composer.js:68	
-36fatd	ok	A calendar file couldn't be read	カレンダーファイルを読み込めませんでした	src/ui/composer.js:69	
-17olkn2#other	ok	# files weren't kept	ファイル#件を保存できませんでした	src/ui/composer.js:73	plural; # = left; English: "# file wasn't kept" (one), "# files weren't kept" (other); Note: a card when the device ran out of room part-way through handing files over; the body says why; 件 counts files.
-1mv1z9a	ok	Put back as text	テキストに戻す	src/ui/composer.js:129	Note: a pasted text's chip in the type box: turns the file back into words in the box.
-1e5dete	ok	Remove {0}	{0}を外す	src/ui/composer.js:130	context: a file in the message; {0} = name; Note: a chip's button in the type box: takes the file out of the message, never deletes it, so 外す, not 削除.
-1il2ncj	ok	Give Shiori photos or files	Shioriに写真やファイルを渡す	src/ui/composer.js:141	Note: the + in the type box: 渡す (hand over), as the user hands a booking to a travel agent.
-1uuz7zc	ok	Keeping {0} of {1}…	{1}件中{0}件目を保存しています…	src/ui/composer.js:180	{0} = num(Math.min(/** @type {number} */ (done) + 1, total)); {1} = num(total); Note: under the chips while the handed files are kept on the device, one at a time.
-1npepge	ok	Read it again	もう一度読み直してください	src/ui/composer.js:231	Note: What the user says to Shiori, one tap under a booking or file in the type box; sent as the user's words.
-158qnm7	ok	Ask Shiori about this	Shioriに聞く	src/ui/composer.js:232	Note: the button that puts the file in the type box as a chip, to write what is wrong or missing; 聞く (ask) is plain.
+rcp6ga	ok	A photo was kept as it is	写真をそのまま保存しました	src/ui/composer.js:70	
+36fatd	ok	A calendar file couldn't be read	カレンダーファイルを読み込めませんでした	src/ui/composer.js:71	
+17olkn2#other	ok	# files weren't kept	ファイル#件を保存できませんでした	src/ui/composer.js:75	plural; # = left; English: "# file wasn't kept" (one), "# files weren't kept" (other); Note: a card when the device ran out of room part-way through handing files over; the body says why; 件 counts files.
+1mv1z9a	ok	Put back as text	テキストに戻す	src/ui/composer.js:132	Note: a pasted text's chip in the type box: turns the file back into words in the box.
+1e5dete	ok	Remove {0}	{0}を外す	src/ui/composer.js:133	context: a file in the message; {0} = name; Note: a chip's button in the type box: takes the file out of the message, never deletes it, so 外す, not 削除.
+1il2ncj	ok	Give Shiori photos or files	Shioriに写真やファイルを渡す	src/ui/composer.js:144	Note: the + in the type box: 渡す (hand over), as the user hands a booking to a travel agent.
+1uuz7zc	ok	Keeping {0} of {1}…	{1}件中{0}件目を保存しています…	src/ui/composer.js:183	{0} = num(Math.min(/** @type {number} */ (done) + 1, total)); {1} = num(total); Note: under the chips while the handed files are kept on the device, one at a time.
+1npepge	ok	Read it again	もう一度読み直してください	src/ui/composer.js:234	Note: What the user says to Shiori, one tap under a booking or file in the type box; sent as the user's words.
+158qnm7	ok	Ask Shiori about this	Shioriに聞く	src/ui/composer.js:235	Note: the button that puts the file in the type box as a chip, to write what is wrong or missing; 聞く (ask) is plain.
 1waossz	ok	Places nearby and along the itinerary, for Shiori's nearby tool and the offline pack, found through Overpass at overpass-api.de, and at maps.mail.ru, run by VK, while Settings → Tools has it on.	周辺や旅程沿いの場所。Shioriのnearbyツールとオフラインパックで使います。Overpass（overpass-api.de）を通じて探し、「設定 → ツール」でチェックを入れている間は、VKが運営するmaps.mail.ruでも探します。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
 g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	名前から場所を探したり、地点から地名を調べたりします。Shioriのgeocodeとreverseツールで使い、無料検索の最後の手段として場所の公式サイトを探すのにも使います。利用ポリシーに従い、問い合わせは1秒に1回までにしています。	src/ui/credits.js:26	
 nn3bzj	ok	Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's last resort, on whatever you tick, sends it the words searched.	周辺の場所に関する記事と、オフラインパックに入れるその要約。Shioriが読む記事にはそれぞれアドレスが付きます。無料検索の最後の手段は、チェックの有無にかかわらず、検索キーワードをWikipediaに送ります。	src/ui/credits.js:33	
@@ -1062,17 +1063,18 @@ a8awk7	ok	Free web search for web_search, and a reader of pages other readers ca
 1a5kitj	ok	Web search for web_search, with your key, once the Serper Search plugin is installed.	web_searchのWeb検索。Serper検索プラグインをインストールすると、自分のキーで使えます。	src/ui/credits.js:82	Note: Serper 検索 as the plugin's own name reads in Japanese since L7 (annai translates its official plugins' descriptive names, decision 10).
 1yvqge7	ok	Read pages that don't let web apps read them, and search the web, for Shiori's fetch and web_search tools, as Settings → Tools chooses.	Webアプリからは読めないページを読み、Webを検索します。Shioriのfetchとweb_searchツールで、「設定 → ツール」の選択に従って使います。	src/ui/credits.js:89	
 l5jx6y	ok	Shiori's art: designed for annai with AI image generation, then traced into vector art.	Shioriのイラスト：annaiのためにAI画像生成でデザインし、ベクター画像としてトレースしました。	src/ui/credits.js:107	
-gb19et	ok	Message to Shiori	Shioriへのメッセージ	src/ui/dock.js:52	
-1vatbdb	ok	Send	送信	src/ui/dock.js:79	
-abxwjc	ok	Your files didn't reach Shiori	ファイルをShioriに渡せませんでした	src/ui/dock.js:125	Note: a card when keeping the handed files failed (storage full, say); its body says why. Built on 渡す, as the + says.
-1m2zofh	ok	Type	入力	src/ui/dock.js:143	Note: The dock's keyboard button: it opens the box to type in (a verb).
-1dcb0v0	ok	The photo wasn't added	写真を追加できませんでした	src/ui/dock.js:186	
-1nyg58x	draft	Take the photo again.	写真を撮り直してください。	src/ui/dock.js:186	
-1xmvmzh	ok	Kokoro is working	Kokoroが作業中	src/ui/dock.js:300	
-1ndyc8s	ok	Stop Kokoro	Kokoroを止める	src/ui/dock.js:301	
-ky4lc5	ok	Stop	停止	src/ui/dock.js:301	
-snj02s	ok	In {0} ›	{0}の会話 ›	src/ui/dock.js:319	{0} = scopeTitle(typeof title === 'string' ? { ...rec, title } : rec)
-1s6dmy6	ok	Camera	カメラ	src/ui/dock.js:334	
+gb19et	ok	Message to Shiori	Shioriへのメッセージ	src/ui/dock.js:53	
+1vatbdb	ok	Send	送信	src/ui/dock.js:80	
+12d978v	draft	Your message is back in the box.	メッセージを入力欄に戻しました。	src/ui/dock.js:136	Note: a sentence of a card, when the line typed in the box could not be saved or sent and is back in it: the storage card's first, or its second after "Your files didn't reach Shiori." when files went with the line, and the first of the body on the card a hand-over of files shows for another failure; 入力欄 for the type box.
+abxwjc	ok	Your files didn't reach Shiori	ファイルをShioriに渡せませんでした	src/ui/dock.js:136	Note: a card when keeping the handed files failed (storage full, say); its body says why. Built on 渡す, as the + says.
+1m2zofh	ok	Type	入力	src/ui/dock.js:159	Note: The dock's keyboard button: it opens the box to type in (a verb).
+1dcb0v0	ok	The photo wasn't added	写真を追加できませんでした	src/ui/dock.js:203	
+1nyg58x	draft	Take the photo again.	写真を撮り直してください。	src/ui/dock.js:203	
+1xmvmzh	ok	Kokoro is working	Kokoroが作業中	src/ui/dock.js:322	
+1ndyc8s	ok	Stop Kokoro	Kokoroを止める	src/ui/dock.js:323	
+ky4lc5	ok	Stop	停止	src/ui/dock.js:323	
+snj02s	ok	In {0} ›	{0}の会話 ›	src/ui/dock.js:341	{0} = scopeTitle(typeof title === 'string' ? { ...rec, title } : rec)
+1s6dmy6	ok	Camera	カメラ	src/ui/dock.js:356	
 1rm0t76	ok	{0} isn't valid JSON.	{0}のJSONが正しくありません。	src/ui/dom.js:155	{0} = label; Note: {0} is a field's label.
 1a791in	ok	{0} has to be an object: { … }.	{0}はオブジェクト（{ … }）で入力してください。	src/ui/dom.js:157	{0} = label; Note: {0} is a field's label.
 1gkm7i5	ok	Saving…	保存中…	src/ui/dom.js:266	
@@ -1417,7 +1419,7 @@ uwd3a2	ok	No offline pack yet.	オフラインパックはまだありません�
 ksuwxs	ok	Offline pack: downloaded.	オフラインパック：ダウンロード済み。	src/ui/offline-pack.js:131	
 r91312	ok	Offline pack: downloaded {0}.	オフラインパック：ダウンロード済み（{0}）。	src/ui/offline-pack.js:131	{0} = when; Note: {0} is a relative time ("2 hours ago").
 8f98y9	ok	Open an annai file	annaiのファイルを開く	src/ui/open-file.js:6	
-13548dd	ok	That conversation didn't open	その会話を開けませんでした	src/ui/open-trip.js:7	Note: a card when a conversation fails to open (+, the type box, the camera, Ask Shiori about this); 会話 as the glossary's Conversation.
+13548dd	ok	That conversation didn't open	その会話を開けませんでした	src/ui/open-trip.js:9	Note: a card when a conversation fails to open (+, the type box, the camera, Ask Shiori about this); 会話 as the glossary's Conversation.
 ow6fak	ok	This browser could not draw the photo.	このブラウザでは写真を描画できませんでした。	src/ui/photo-codec.js:73	
 11dn6um	ok	This browser could not write {0}.	このブラウザでは{0}形式で書き出せませんでした。	src/ui/photo-codec.js:81	{0} = type
 1l0xxoj	ok	Close	閉じる	src/ui/photo-viewer.js:32	
@@ -2652,6 +2654,7 @@ nn02o3	ok	This removes everything in it from this device: its files, photos, not
 ty94lb	ok	It hasn't been backed up since it last changed.	最後の変更以降、バックアップされていません。	src/ui/screens/trip.js:238	
 1cp5muy	ok	Removed {0}. {1} freed.	{0}を削除しました。空き容量が{1}増えました。	src/ui/screens/trip.js:244	{0} = scopeTitle(scope); {1} = size(freed)
 436oi1	ok	That was already removed.	すでに削除されています。	src/ui/screens/trip.js:248	
+35850f	draft	Nothing was removed.	何も削除されていません。	src/ui/screens/trip.js:250	Note: the first words of the storage card when a removal was refused (the full Remove card says 何も削除されていません。もう一度お試しください。).
 1mbp8t6	ok	It wasn't removed	削除されませんでした	src/ui/screens/trip.js:251	
 1pzhsw4	ok	Nothing was removed. Try again.	何も削除されていません。もう一度お試しください。	src/ui/screens/trip.js:251	
 knyqwh	ok	Add photos or files	写真やファイルを追加	src/ui/screens/trip.js:325	
@@ -2830,9 +2833,10 @@ sn0s5v	ok	Nothing was heard in 12 seconds. Check that the microphone is on, then
 a2r8f0	ok	It heard: "{0}"	聞き取った言葉：「{0}」	src/ui/speech-check.js:52	{0} = text
 1alwf78	ok	Say something	話してみる	src/ui/speech-check.js:65	
 1qerct6	ok	Play a sample	サンプルを再生	src/ui/speech-check.js:65	
-edrwuk	ok	annai's storage is full	annaiのストレージがいっぱいです	src/ui/storage-full.js:12	
-dvkkfg	ok	Nothing was half-saved. To make room, remove a trip you no longer need (back it up first), or free up space on this device.	途中まで保存されたデータはありません。空きを作るには、不要になった旅を削除する（先にバックアップしてください）か、この端末の空き容量を増やしてください。	src/ui/storage-full.js:14	
-1yr1lra	ok	Export a backup	バックアップをエクスポート	src/ui/storage-full.js:16	
+6gd8we	draft	Free up space on this iPhone in Settings → General → iPhone Storage, then try again.	「設定 → 一般 → iPhoneストレージ」でこのiPhoneの空き容量を増やしてから、もう一度お試しください。	src/ui/storage-full.js:20	Note: the path as iOS names it, from Apple's iPhone User Guide "iPhoneでストレージを管理する" (iph47c931112, ja-jp, fetched 2026-11-19): 「一般」をタップしてから、「iPhoneストレージ」. No sentence about removing a trip follows: a full iPhone refuses deletes.
+12pwtgq	draft	Free up space on this phone in Settings → Storage, then try again.	「設定 → ストレージ」でこの端末の空き容量を増やしてから、もう一度お試しください。	src/ui/storage-full.js:21	Note: Android's path, from Google's "Android デバイスの空き容量を増やす" (support.google.com/android/answer/7431795, hl=ja, fetched 2026-11-19): 設定アプリ → [ストレージ]. この端末 for this phone, as in every row.
+4paddw	draft	Removing a trip you no longer need also makes room in annai (back it up first).	不要になった旅を削除すれば、annaiの中にも空きができます（先にバックアップしてください）。	src/ui/storage-full.js:23	Note: said where a delete works on a full disk (Android, a computer), not on an iPhone or iPad. Removing a trip frees room inside annai, hence annaiの中にも.
+1yr1lra	ok	Export a backup	バックアップをエクスポート	src/ui/storage-full.js:48	
 8a7h7a#other	ok	# tokens · {0}	#トークン · {0}	src/ui/talk-panel.js:14	plural; # = n; {0} = formatCost(result.cost); English: "# token · {0}" (one), "# tokens · {0}" (other)
 q69pp5	ok	{0} didn't answer: {1}. No other model was asked.	{0}は応答しませんでした：{1}。ほかのモデルには問い合わせていません。	src/ui/talk-panel.js:23	{0} = name; {1} = why
 1cam7ic	ok	Message	メッセージ	src/ui/talk-panel.js:74	

@@ -80,22 +80,26 @@ export async function createIdbStore(name = DB_NAME, hooks = {}) {
     db = d;
     return d;
   };
-  await connect();
+  // The first open passes the door a reopen does: Chromium's backing store writes as it opens, so at its last bytes it fails too.
+  await connect().catch((e) => { throw storeError(e, { write: true, open: true }); });
   let closed = false;
   return {
     async tx(stores, mode, fn) {
       if (closed) throw new StoppedError(); // never reopen: another tab owns the data now
       for (let attempt = 0; ; attempt++) {
-        const d = db ?? (await connect());
+        /** @type {IDBDatabase | undefined} */
+        let d;
         try {
+          d = db ?? (await connect());
           return await runTx(d, stores, mode, fn);
         } catch (e) {
           if (attempt === 0 && connectionLost(e)) {
             if (db === d) db = null;
-            d.close(); // a healthy one would stay open
+            d?.close(); // a healthy one would stay open
             continue;
           }
-          throw storeError(e);
+          // An open that fails is a write's failure: Chromium's backing store writes as it opens.
+          throw storeError(e, { write: mode === 'readwrite' || !d, refused: refused.has(/** @type {any} */ (e)), open: !d });
         }
       }
     },
@@ -111,12 +115,16 @@ export async function createIdbStore(name = DB_NAME, hooks = {}) {
  * A transaction that failed because the connection went away: a closed connection
  * throws InvalidStateError, and WebKit fails the transaction in flight with
  * "UnknownError: Connection to Indexed Database server lost"; or that the browser
- * aborted (AbortError). Nothing was committed, so one retry is safe.
+ * aborted (AbortError); or any error whose message says the connection is lost, closing or closed, the server lost, or the database closing or closed.
+ * Nothing was committed, so one retry is safe.
  * @param {any} e
  */
 function connectionLost(e) {
   return e?.name === 'InvalidStateError' || e?.name === 'UnknownError' || e?.name === 'AbortError' || /connection (is )?(lost|closing|closed)|server lost|database (is )?clos/i.test(String(e?.message));
 }
+
+/** The abort errors of transactions that ended with no request failing: a refused commit, when the browser ended it (annai's own abort is marked too, harmlessly: fn's error rejects then). */
+const refused = new WeakSet();
 
 /**
  * @template T
@@ -132,6 +140,10 @@ function runTx(db, stores, mode, fn) {
     /** @type {any} */
     let result;
     let settled = false;
+    let failed = false;
+    /** What fn rejected with, once it has. @type {{ e: any } | null} */
+    let thrown = null;
+    t.onerror = () => { failed = true; }; // a request failed (one the transaction's own end cut off too): an abort after it is no refused commit
     const fail = (/** @type {any} */ e) => {
       if (!settled) {
         settled = true;
@@ -139,17 +151,25 @@ function runTx(db, stores, mode, fn) {
       }
     };
     t.oncomplete = () => {
+      if (thrown) return fail(thrown.e);
       if (!settled) {
         settled = true;
         resolve(result);
       }
     };
-    /* en */ t.onabort = () => fail(t.error ?? new DOMException('The transaction was aborted.', 'AbortError'));
+    t.onabort = () => {
+      /* en */ const e = t.error ?? new DOMException('The transaction was aborted.', 'AbortError');
+      if (!failed) refused.add(e);
+      // The transaction's own error is why it ended; a request's AbortError is only what that did to the request.
+      fail(t.error || !thrown ? e : thrown.e);
+    };
     Promise.resolve()
       .then(() => fn(makeTx(t)))
       .then((r) => { result = r; }, (e) => {
-        fail(e);
-        try { t.abort(); } catch { /* already finished */ }
+        thrown = { e };
+        try { t.abort(); } catch { /* already ending: its complete or abort event follows */ }
+        // A request's AbortError says only that its transaction ended: the reason, which may be the transaction's own error, comes with its abort.
+        if (e?.name !== 'AbortError') fail(e);
       });
   });
 }

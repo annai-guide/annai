@@ -6,6 +6,7 @@ import { Workspace } from '../../../src/core/workspace.js';
 import { ensureBaseScopes, createTrip } from '../../../src/core/scopes.js';
 import { snapshot } from '../../contract/snapshot.js';
 import { exportArchive, peekArchive, importArchive, PRESETS } from '../../../src/core/archive.js';
+import { StorageFullError } from '../../../src/core/errors.js';
 
 /**
  * Aborts the next requests on the files store in flight, as a browser can: the request is placed, then its transaction goes.
@@ -164,6 +165,301 @@ export default function (test, assert) {
     b.heal();
     assert.equal(b.aborted(), 2);
     s.close();
+  });
+
+  // A full disk, as the builder's probe of 2026-11-19 saw it (Linux builds; its output wasn't kept; not yet on a phone): WebKit and Chromium answer every request, then abort the
+  // commit (WebKit with no error, Chromium with a DataError for the files of a large value, and only for those: its small writes are saved). Faked here
+  // by aborting a transaction once all of annai's requests have succeeded.
+  /**
+   * A store whose next transactions the browser aborts at their commit, with `error` as the transaction's error, each counted.
+   * @param {string} mode @param {DOMException | null} error
+   * @param {{ large?: boolean }} [o] large: only a transaction that put a 1 MiB value is aborted, as Chromium's blob files are; `at.heal()` puts back what it watches puts with
+   */
+  const refusing = async (mode, error, { large = false } = {}) => {
+    const name = `annai-test-full-${Date.now()}-${n++}`;
+    await eraseDatabase(name);
+    const at = { aborts: 0, on: true, big: false, heal: () => {} };
+    if (large) {
+      const put = IDBObjectStore.prototype.put;
+      IDBObjectStore.prototype.put = /** @type {any} */ (/** @this {IDBObjectStore} */ function (/** @type {any[]} */ ...a) {
+        if (a[0]?.data?.byteLength >= 1 << 20) at.big = true;
+        return put.apply(this, /** @type {any} */ (a));
+      });
+      at.heal = () => { IDBObjectStore.prototype.put = put; };
+    }
+    const s = await createIdbStore(name, {
+      onOpen: (db) => {
+        const real = db.transaction.bind(db);
+        db.transaction = /** @type {any} */ ((/** @type {any} */ stores, /** @type {any} */ m) => {
+          const t = real(stores, m);
+          if (at.on && m === mode) {
+            Object.defineProperty(t, 'error', { get: () => error });
+            // A request of its own that succeeds after fn's last: the commit point, where the browser refuses.
+            queueMicrotask(() => {
+              const keep = t.objectStore(stores[0]).count();
+              keep.onsuccess = () => Promise.resolve().then(() => Promise.resolve()).then(() => {
+                const again = t.objectStore(stores[0]).count();
+                again.onsuccess = () => {
+                  if (large && !at.big) return;
+                  at.big = false;
+                  at.aborts++;
+                  t.abort();
+                };
+              });
+            });
+          }
+          return t;
+        });
+      },
+    });
+    return { s, at };
+  };
+
+  test("idb: a write WebKit aborts after every request in it succeeded (its full disk, no error) rejects with StorageFullError and writes nothing, after one more try", async () => {
+    const { s, at } = await refusing('readwrite', null);
+    let runs = 0;
+    const got = await s.tx(['files'], 'readwrite', async (t) => {
+      runs++;
+      await t.putFile(rec);
+    }).then(() => null, (e) => e);
+    at.on = false;
+    assert.ok(got instanceof StorageFullError, String(got));
+    assert.equal(got.cause?.name, 'AbortError');
+    assert.equal(runs, 2, 'with no error it can be a lost connection, so it is tried once more first');
+    assert.equal(at.aborts, 2);
+    assert.equal(await s.tx(['files'], 'readonly', (t) => t.getFile('trip-1', '/a.md')), undefined);
+    s.close();
+  });
+
+  test("idb: Chromium's full disk refuses a large value alone: a small write it saved goes through, a 1 MiB blob's commit, aborted with a DataError, rejects with StorageFullError, tried once", async () => {
+    const { s, at } = await refusing('readwrite', new DOMException('Failed to write blobs (IOError)', 'DataError'), { large: true });
+    try {
+      await s.tx(['files'], 'readwrite', (t) => t.putFile(rec));
+      assert.equal(at.aborts, 0, 'a small write is saved');
+      assert.equal((await s.tx(['files'], 'readonly', (t) => t.getFile('trip-1', '/a.md')))?.hash, 'h1');
+      let runs = 0;
+      const got = await s.tx(['blobs'], 'readwrite', async (t) => {
+        runs++;
+        await t.putBlob({ hash: 'big', type: 'application/octet-stream', size: 1 << 20, data: new ArrayBuffer(1 << 20) });
+      }).then(() => null, (e) => e);
+      assert.ok(got instanceof StorageFullError, String(got));
+      assert.equal(got.cause?.name, 'DataError');
+      assert.equal(runs, 1, "a DataError isn't a lost connection: no second try");
+      assert.equal(at.aborts, 1);
+      at.on = false;
+      assert.equal(await s.tx(['blobs'], 'readonly', (t) => t.getBlob('big')), undefined);
+    } finally {
+      at.heal();
+      s.close();
+    }
+  });
+
+  test('idb: a read-only transaction the browser aborts after its requests succeeded keeps its error', async () => {
+    const { s, at } = await refusing('readonly', null);
+    const got = await s.tx(['files'], 'readonly', (t) => t.getFile('trip-1', '/a.md')).then(() => null, (e) => e);
+    at.on = false;
+    assert.equal(got?.name, 'AbortError');
+    assert.ok(!(got instanceof StorageFullError));
+    s.close();
+  });
+
+  /** The next put requests on the files store fail as the browser's own, with that error, after a real request kept the transaction going. @param {string} name @param {string} message */
+  const failPuts = (name, message) => {
+    const real = IDBObjectStore.prototype.put;
+    let failed = 0;
+    IDBObjectStore.prototype.put = /** @type {any} */ (/** @this {IDBObjectStore} */ function (/** @type {any[]} */ ...a) {
+      if (this.name !== 'files') return real.apply(this, /** @type {any} */ (a));
+      failed++;
+      /** @type {any} */
+      const r = { error: new DOMException(message, name), result: undefined, onsuccess: null, onerror: null };
+      this.count().onsuccess = () => r.onerror?.(new Event('error'));
+      return r;
+    });
+    return { failed: () => failed, heal: () => { IDBObjectStore.prototype.put = real; } };
+  };
+
+  test("idb: WebKit's UnknownError on a write request rejects with StorageFullError, after one more try", async () => {
+    const s = await fresh();
+    const p = failPuts('UnknownError', 'Unable to store record in object store');
+    const got = await s.tx(['files'], 'readwrite', (t) => t.putFile(rec)).then(() => null, (e) => e);
+    p.heal();
+    assert.ok(got instanceof StorageFullError, String(got));
+    assert.equal(got.cause?.name, 'UnknownError');
+    assert.equal(p.failed(), 2);
+    s.close();
+  });
+
+  test('idb: a QuotaExceededError on a write request rejects with StorageFullError at once', async () => {
+    const s = await fresh();
+    const p = failPuts('QuotaExceededError', 'The quota has been exceeded.');
+    const got = await s.tx(['files'], 'readwrite', (t) => t.putFile(rec)).then(() => null, (e) => e);
+    p.heal();
+    assert.ok(got instanceof StorageFullError, String(got));
+    assert.equal(p.failed(), 1);
+    s.close();
+  });
+
+  test("idb: a request annai's own code got wrong (two appends racing for one number) keeps its error, though fn went on to finish", async () => {
+    const s = await fresh();
+    const got = await s.tx(['events'], 'readwrite', async (t) => {
+      const ev = { ts: 1, type: 'file.write', actor: /** @type {const} */ ('user') };
+      await Promise.allSettled([t.appendEvent('trip-1', ev), t.appendEvent('trip-1', ev)]);
+    }).then(() => null, (e) => e);
+    assert.equal(got?.name, 'ConstraintError');
+    assert.ok(!(got instanceof StorageFullError));
+    s.close();
+  });
+
+  for (const mode of /** @type {const} */ (['readwrite', 'readonly'])) {
+    for (const [name, message] of /** @type {const} */ ([['UnknownError', 'Internal error opening backing store for indexedDB.open.'], ['AbortError', 'The connection was closed.']])) {
+      // Chromium's backing store writes as it opens: at its last bytes it can't open, for a read too. The builder's probe of 2026-11-19 (Linux Chromium with no byte
+      // free; its output wasn't kept) saw a new connection fail with the UnknownError, and the reopen of a connection its failed write had closed fail with the AbortError;
+      // the reopen is faked here.
+      test(`idb: a ${mode} transaction whose reopen for its one more try fails with ${name} (Chromium at its last bytes) rejects with StorageFullError`, async () => {
+        const s = await fresh();
+        const b = abortNext(mode === 'readwrite' ? 'put' : 'get', 1);
+        const open = IDBFactory.prototype.open;
+        let opens = 0;
+        // The connection the abort left is closed by the retry; reopening it, Chromium's backing store can't be opened.
+        IDBFactory.prototype.open = /** @type {any} */ (function () {
+          opens++;
+          /** @type {any} */
+          const r = { error: new DOMException(message, name), result: undefined };
+          setTimeout(() => r.onerror?.(new Event('error')));
+          return r;
+        });
+        const got = await s.tx(['files'], mode, async (t) => { await (mode === 'readwrite' ? t.putFile(rec) : t.getFile('trip-1', '/a.md')); }).then(() => null, (e) => e);
+        IDBFactory.prototype.open = open;
+        b.heal();
+        assert.equal(opens, 1);
+        assert.ok(got instanceof StorageFullError, String(got));
+        assert.equal(got.cause?.name, name);
+        s.close();
+      });
+    }
+  }
+
+  // A transaction that starts with no connection (another tab upgraded the database, so annai's connection closed itself) connects first: at the last bytes of
+  // Chromium that connect fails too, and it passes the same door: a full phone, after the one more try every lost connection gets; any other failure keeps its error.
+  for (const [name, full] of /** @type {const} */ ([['UnknownError', true], ['AbortError', true], ['SecurityError', false]])) {
+    test(`idb: a transaction that starts with no connection, whose connect fails with ${name}, ${full ? 'rejects with StorageFullError, after one more try' : 'keeps its error, with no second try'}`, async () => {
+      const dbName = `annai-test-noconn-${Date.now()}-${n++}`;
+      await eraseDatabase(dbName);
+      const s = await createIdbStore(dbName);
+      await eraseDatabase(dbName); // the connection is told to close, and does
+      const open = IDBFactory.prototype.open;
+      let opens = 0;
+      IDBFactory.prototype.open = /** @type {any} */ (function () {
+        opens++;
+        /** @type {any} */
+        const r = { error: new DOMException('Internal error opening backing store for indexedDB.open.', name), result: undefined };
+        setTimeout(() => r.onerror?.(new Event('error')));
+        return r;
+      });
+      const got = await s.tx(['files'], 'readonly', (t) => t.getFile('trip-1', '/a.md')).then(() => null, (e) => e);
+      IDBFactory.prototype.open = open;
+      assert.equal(opens, full ? 2 : 1);
+      assert.equal(got instanceof StorageFullError, full, String(got));
+      assert.equal((got?.cause ?? got)?.name, name);
+      s.close();
+    });
+  }
+
+  // The sequences the builder's probe of 2026-11-19 saw on a full disk (Linux builds; its output wasn't kept): WebKit, a transaction of four puts: the second fails with UnknownError,
+  // the others, in flight, with AbortError, and the transaction ends with an UnknownError of its own. Chromium at no byte free, a trip's removal:
+  // its request fails with AbortError, and its transaction ends with an UnknownError of its own ("Connection is closing because of: IO error").
+  // fn may reject with the AbortError (a request that awaits others, or one the transaction's end cut off); the reason is the transaction's.
+  test("idb: a request that fails with AbortError because its transaction ended with an error of its own rejects with that error: StorageFullError for an UnknownError", async () => {
+    const name = `annai-test-own-${Date.now()}-${n++}`;
+    await eraseDatabase(name);
+    const own = new DOMException('Unable to store record in object store', 'UnknownError');
+    const s = await createIdbStore(name, {
+      onOpen: (db) => {
+        const real = db.transaction.bind(db);
+        db.transaction = /** @type {any} */ ((/** @type {any} */ stores, /** @type {any} */ mode) => {
+          const t = real(stores, mode);
+          if (mode === 'readwrite') Object.defineProperty(t, 'error', { get: () => own });
+          return t;
+        });
+      },
+    });
+    let runs = 0;
+    const b = abortNext('put', 2); // the request is placed, then the transaction goes: the request fails with AbortError
+    const got = await s.tx(['files'], 'readwrite', async (t) => { runs++; await t.putFile(rec); }).then(() => null, (e) => e);
+    b.heal();
+    assert.equal(b.aborted(), 2);
+    assert.equal(runs, 2, 'it is tried once more, as a lost connection is');
+    assert.ok(got instanceof StorageFullError, String(got));
+    assert.equal(got.cause, own, "the transaction's own error, not its request's AbortError");
+    s.close();
+  });
+
+  test("idb: WebKit's transaction of several puts, whose second fails with UnknownError while the others are in flight, rejects with StorageFullError, after one more try", async () => {
+    const s = await fresh();
+    const put = IDBObjectStore.prototype.put;
+    /** @type {WeakMap<IDBTransaction, number>} */
+    const seen = new WeakMap();
+    let failed = 0;
+    IDBObjectStore.prototype.put = /** @type {any} */ (/** @this {IDBObjectStore} */ function (/** @type {any[]} */ ...a) {
+      const k = (seen.get(this.transaction) ?? 0) + 1;
+      seen.set(this.transaction, k);
+      if (this.name !== 'files' || k !== 2) return put.apply(this, /** @type {any} */ (a));
+      failed++;
+      /** @type {any} */
+      const r = { error: new DOMException('Unable to store record in object store', 'UnknownError'), result: undefined, onsuccess: null, onerror: null };
+      this.count().onsuccess = () => r.onerror?.(new Event('error'));
+      return r;
+    });
+    let runs = 0;
+    const got = await s.tx(['files'], 'readwrite', async (t) => {
+      runs++;
+      await Promise.all([1, 2, 3, 4].map((i) => t.putFile({ ...rec, path: `/p${i}.md` })));
+    }).then(() => null, (e) => e);
+    IDBObjectStore.prototype.put = put;
+    assert.ok(got instanceof StorageFullError, String(got));
+    assert.equal(got.cause?.name, 'UnknownError', "the failed request's, not the AbortError of the others in flight");
+    assert.equal(runs, 2);
+    assert.equal(failed, 2);
+    assert.deepEqual(await s.tx(['files'], 'readonly', (t) => t.listFiles('trip-1')), [], 'nothing was written');
+    s.close();
+  });
+
+  test("idb: a write aborted in flight with no error of the transaction's own is no refusal: the request's AbortError is kept", async () => {
+    const s = await fresh();
+    const b = abortNext('put', 2);
+    const got = await s.tx(['files'], 'readwrite', (t) => t.putFile(rec)).then(() => null, (e) => e);
+    b.heal();
+    assert.equal(got?.name, 'AbortError');
+    assert.ok(!(got instanceof StorageFullError));
+    s.close();
+  });
+
+  test('idb: a first open that fails with UnknownError or AbortError (Chromium at its last bytes, by a builder probe of 2026-11-19) rejects with StorageFullError; any other failure of it keeps its error', async () => {
+    const open = IDBFactory.prototype.open;
+    /** @param {string} name */
+    const failWith = (name) => {
+      IDBFactory.prototype.open = /** @type {any} */ (function () {
+        /** @type {any} */
+        const r = { error: new DOMException('Internal error opening backing store for indexedDB.open.', name), result: undefined };
+        setTimeout(() => r.onerror?.(new Event('error')));
+        return r;
+      });
+    };
+    try {
+      failWith('UnknownError');
+      const full = await createIdbStore(`annai-test-open-${Date.now()}`).then(() => null, (e) => e);
+      assert.ok(full instanceof StorageFullError, String(full));
+      assert.equal(full.cause?.name, 'UnknownError');
+      failWith('AbortError');
+      const closed = await createIdbStore(`annai-test-open-${Date.now()}`).then(() => null, (e) => e);
+      assert.ok(closed instanceof StorageFullError, String(closed));
+      failWith('SecurityError');
+      const other = await createIdbStore(`annai-test-open-${Date.now()}`).then(() => null, (e) => e);
+      assert.equal(other?.name, 'SecurityError');
+      assert.ok(!(other instanceof StorageFullError));
+    } finally {
+      IDBFactory.prototype.open = open;
+    }
   });
 
   test('idb: an import whose write the browser aborts once lists each trip once: a retry starts the result over', async () => {

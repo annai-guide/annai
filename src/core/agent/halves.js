@@ -10,6 +10,7 @@ import { chatCandidates, koeWay, AllFailedError, COOLDOWN_MS, whyWords } from '.
 import { LiveKoe, SILENT_S } from '../koe/live.js';
 import { ProviderError, explainPlain } from '../llm/contract.js';
 import { t } from '../l10n.js';
+import { StorageFullError } from '../errors.js';
 import { KOKORO_PART, koeSystem } from '../koe/instructions.js';
 import { koeTools, ALREADY_TOLD } from '../koe/tools.js';
 import { compactView } from '../koe/context.js';
@@ -236,7 +237,7 @@ export class Halves {
   /** The settings read as annai starts: no turn runs before. @type {Promise<unknown>} */
   #ready;
   /** @type {Record<string, Set<(x: any) => void>>} */
-  #on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set(), halves: new Set(), clear: new Set(), saying: new Set(), went: new Set() };
+  #on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set(), halves: new Set(), clear: new Set(), saying: new Set(), went: new Set(), unsaved: new Set() };
 
   /** @param {ConstructorParameters<typeof Agent>[0]} c what each half is made with: one voice, the talking half's (plan decision 17) */
   constructor(c) {
@@ -354,6 +355,7 @@ export class Halves {
     const own = (/** @type {Agent} */ a, /** @type {string} */ key) => (a === this.kokoro && key === 'model' ? KOKORO_CARD : key);
     for (const a of [this.kokoro, this.koe]) {
       a.on('event', (x) => this.#emit('event', x));
+      a.on('unsaved', (x) => this.#emit('unsaved', x));
       a.on('notice', (n) => this.#notice(n.key ? { ...n, key: own(a, n.key) } : n));
       a.on('clear', (key) => {
         this.#emit('clear', own(a, key));
@@ -492,8 +494,9 @@ export class Halves {
   }
 
   /**
-   * saying: a live Koe's words so far, while she speaks them; went: a trip opened on the user's choice on annai's card ({ trip })
-   * @param {'state' | 'event' | 'notice' | 'open' | 'halves' | 'clear' | 'saying' | 'went'} kind @param {(x: any) => void} fn
+   * saying: a live Koe's words so far, while she speaks them; went: a trip opened on the user's choice on annai's card ({ trip });
+   * unsaved: words typed in the box that no write kept, for the box again ({ words, error }: Agent's #unsaved)
+   * @param {'state' | 'event' | 'notice' | 'open' | 'halves' | 'clear' | 'saying' | 'went' | 'unsaved'} kind @param {(x: any) => void} fn
    */
   on(kind, fn) {
     this.#on[kind].add(fn);
@@ -841,8 +844,9 @@ export class Halves {
 
   /**
    * To Koe while it talks (Kokoro reads it and wakes), else to Kokoro; a half waiting for an answer gets it.
-   * @param {string} text @param {{ photos?: import('./loop.js').SentPhoto[], chose?: boolean, claim?: string, handed?: import('../handover.js').HandedFile[], handover?: string }} [o]
-   *   chose: a tap on a live ask's buttons; claim: "This was for Shiori", the heard line's id; handed, handover: a hand-over (handover.js)
+   * @param {string} text @param {{ photos?: import('./loop.js').SentPhoto[], chose?: boolean, claim?: string, typed?: boolean, handed?: import('../handover.js').HandedFile[], handover?: string }} [o]
+   *   chose: a tap on a live ask's buttons; claim: "This was for Shiori", the heard line's id; typed: in the type box, so a failed write gives the words back;
+   *   handed, handover: a hand-over (handover.js)
    */
   send(text, o = {}) {
     this.#bothTold = false;
@@ -860,6 +864,7 @@ export class Halves {
       this.koe.send(text, o);
     }, (e) => {
       this.kokoro.send(text, o); // never dropped
+      if (e instanceof StorageFullError) return; // the same full phone fails her turn on this line too, and the storage card says so
       this.#notice({ tone: 'warn', title: t`Shiori answers as one half for now`, body: t`annai couldn't pass your message to Koe: ${String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)}` });
     });
   }

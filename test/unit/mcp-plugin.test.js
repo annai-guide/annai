@@ -417,7 +417,7 @@ test("an MCP tool's image that can't be kept (storage full) leaves its words, an
     };
     const out = await k.call('mcp_trail_map', {});
     assert.equal(typeof out, 'string');
-    assert.match(out, /^An image \(image\/png\), which annai couldn't keep: annai's storage on this device is full\./);
+    assert.match(out, /^An image \(image\/png\), which annai couldn't keep: There's no room left\./);
     assert.deepEqual(await k.ws.list(k.trip, '/files/'), []);
   } finally {
     await s.stop();
