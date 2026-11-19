@@ -293,6 +293,8 @@ async function missingPlugin(ctx, plugin, installed, catalog) {
       status.textContent = t`Installing…`;
       try {
         await installMissing(ctx, entry);
+        status.textContent = ''; // as the work ends, not with the draw
+        install.disabled = false;
         ctx.render();
       } catch (e) {
         showError(status, e);
@@ -477,6 +479,8 @@ function installPanel(ctx, typeId, name, done) {
       status.textContent = t`Installing…`;
       try {
         await ctx.llm.ensureType(typeId);
+        status.textContent = '';
+        btn.disabled = false; // as the work ends, not with the draw
         done();
       } catch (e) {
         showError(status, e);
@@ -501,6 +505,7 @@ function modelsPart(ctx, id, abilityId, models) {
       add.disabled = true;
       try {
         await ctx.llm.addModelById(id, abilityId, value);
+        add.disabled = false; // as the add ends, not with the draw
         ctx.render();
       } catch (e) {
         showError(status, e);
@@ -563,11 +568,14 @@ function listedModels(ctx, id, abilityId, listed, have, cfg) {
           add.disabled = true;
           try {
             await ctx.llm.addListedModel(id, abilityId, model);
-            ctx.render();
           } catch (e) {
             ctx.notices.toast(messageOf(e));
             add.disabled = false;
+            return;
           }
+          // Not back as the add ends: a second tap would add "name (2)". Once its draw has ended (drawn, or ended by a tap), a row still on show says Added.
+          await ctx.render();
+          add.replaceWith(h('span', { class: 'sub', text: t`Added` }));
         },
       }, t`Add`);
       return h('li', { class: 'acts' }, label, add);

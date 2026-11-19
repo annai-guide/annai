@@ -80,18 +80,23 @@ export function addRows(catalog, installed, configured) {
   return rows;
 }
 
+/** Each finder's query by its label, kept as a fold is: a draw of the screen again brings the search back; a move to it starts empty. @type {Map<string, string>} */
+const queries = new Map();
+
 /**
  * The search box and chips over a list, the Add screen's and the Plugins page's. Typing and tapping
  * draw the list again, never the screen, so the box keeps its focus. A chip shows when it would keep
- * some of the list and not all of it, or when it is on.
+ * some of the list and not all of it, or when it is on. The query is kept for draws of the screen again (`fresh`: a move to it), and each
+ * keystroke says `stored` to the shell, so a draw annai makes on its own is not held for the box.
  * @template {import('../../core/search.js').SearchEntry} T
- * @param {{ label: string, entries: T[], filters?: import('../../core/search.js').Filters, draw: (found: ({ entry: T } & Rank)[], typed: boolean, filters: import('../../core/search.js').Filters) => (Node | null)[] }} o
+ * @param {{ label: string, entries: T[], filters?: import('../../core/search.js').Filters, fresh?: boolean, draw: (found: ({ entry: T } & Rank)[], typed: boolean, filters: import('../../core/search.js').Filters) => (Node | null)[] }} o
  * @returns {{ el: HTMLElement, update: () => void }}
  */
-export function finder({ label, entries, filters = {}, draw }) {
+export function finder({ label, entries, filters = {}, fresh = false, draw }) {
   /** @type {Record<string, any>} */
   const f = { ...filters };
-  const box = h('input', { type: 'search', 'aria-label': label, placeholder: t`A name, "voice", "free"…`, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', enterkeyhint: 'search' });
+  if (fresh) queries.delete(label);
+  const box = h('input', { type: 'search', 'aria-label': label, placeholder: t`A name, "voice", "free"…`, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', enterkeyhint: 'search', value: queries.get(label) ?? '' });
   const list = h('div', { class: 'found' });
   /** @type {[HTMLElement, string, any][]} */
   const chips = [];
@@ -107,7 +112,11 @@ export function finder({ label, entries, filters = {}, draw }) {
     for (const [b, key, value] of chips) b.setAttribute('aria-pressed', String(f[key] === value));
     list.replaceChildren(...draw(searchCatalog(entries, box.value, f), Boolean(squash(box.value).text), f).filter((n) => n !== null));
   };
-  box.addEventListener('input', update);
+  box.addEventListener('input', () => {
+    queries.set(label, box.value);
+    update();
+    box.dispatchEvent(new Event('stored'));
+  });
   const el = h('div', { class: 'finder' }, box,
     h('div', { class: 'chips', role: 'group', 'aria-label': t`Kind` }, ...CATEGORIES.map((k) => chip('kind', k, KIND_NAMES[k]))),
     h('div', { class: 'chips', role: 'group', 'aria-label': t`Filters` },
@@ -144,7 +153,7 @@ export async function renderAdd(ctx, route) {
   const last = (/** @type {{ entry: Facts }} */ x) => (x.entry.catchAll || x.entry === MCP_ROW.facts ? 1 : 0);
   const redraw = () => view.update(); // after an install, the row it changed
   const view = finder({
-    label: t`Search the catalog`, entries: rows.map((r) => r.facts), filters: { kind: CATEGORIES.includes(kind) ? kind : undefined, ability: ABILITY_NAMES[ability] ? ability : undefined },
+    label: t`Search the catalog`, fresh: ctx.moved, entries: rows.map((r) => r.facts), filters: { kind: CATEGORIES.includes(kind) ? kind : undefined, ability: ABILITY_NAMES[ability] ? ability : undefined },
     draw: (found, typed, f) => {
       const item = (/** @type {{ entry: Facts, why?: string }} */ x) => rowItem(ctx, /** @type {Row} */ (byId.get(x.entry.id)), x.why, redraw);
       // Nothing found for model providers, transcription or voices: the user's own server is one such, so Custom provider is offered, by its

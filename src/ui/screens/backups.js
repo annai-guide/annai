@@ -164,8 +164,12 @@ async function renderPlace(ctx, id) {
           secret: Object.fromEntries(secrets.filter((/** @type {any} */ i) => i.el.value.trim()).map((/** @type {any} */ i) => [i.f.key, i.el.value.trim()])),
           ...(file ? { encrypt: encrypt.input.checked, keys: encrypt.input.checked && keys.input.checked, keep: keep.value.trim() ? numberIn(keep, 1, 30, t`Keep 1 to 30 backups.`, { whole: true }) : 3, ...(pass1.value ? { passphrase: pass1.value } : {}) } : {}),
         });
-        notes.set(id, (await ctx.backups.check(id)).note);
-        ctx.render();
+        const result = (await ctx.backups.check(id)).note;
+        say(result); // as the work ends, not with the draw: the result where "Testing…" was, and the button back
+        save.disabled = false;
+        notes.set(id, result);
+        await ctx.render();
+        notes.delete(id); // still there only if no draw came: the screen says it already
       } catch (e) {
         say(failed(e));
         offer(e);

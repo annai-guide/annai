@@ -1545,43 +1545,43 @@ u7w1bx	ok	An MCP server	MCP 服务器	src/ui/screens/add.js:35
 1ufe6kk	ok	From an address	来自某个地址	src/ui/screens/add.js:46	
 x4eio0	ok	Official	官方	src/ui/screens/add.js:65	
 w28ztz	ok	The {0} installed came from elsewhere but has the id of annai's own, so annai won't use it. Remove it in Settings → Plugins to add annai's.	已安装的 {0} 来自其他来源，但 ID 与 annai 官方插件相同，因此不会被使用。请先在设置 → 插件中移除它，再添加官方版本。	src/ui/screens/add.js:67	{0} = facts.name
-tdrd3b	ok	A name, "voice", "free"…	名称、“voice”、“free”…	src/ui/screens/add.js:94	Note: the search words stay English until the catalog carries translated keywords (L7).
-hqumoz	ok	Kind	类型	src/ui/screens/add.js:112	
-345x4c	ok	Filters	筛选	src/ui/screens/add.js:113	
-11ywf17	ok	Third-party	第三方	src/ui/screens/add.js:115	
-7va5tn	ok	Free	免费	src/ui/screens/add.js:115	
-bahzfs	ok	Local	本地	src/ui/screens/add.js:115	
-2rcuyl	ok	Nothing here matches. Try other words, or take a chip off.	没有找到结果。换个关键词，或去掉一个筛选条件试试。	src/ui/screens/add.js:123	Note: the chips here are the Filters (筛选条件); the glossary's chip → 按钮 is for the dock's voice and GPS chips.
-18bnex5	ok	Search the catalog	搜索目录	src/ui/screens/add.js:147	
-j0fdnt	ok	Nothing here matches.	没有找到结果。	src/ui/screens/add.js:155	
-rv2u3	ok	Not listed? Add it by its address.	没找到？可以通过地址添加。	src/ui/screens/add.js:155	
-npq0yc	ok	Model providers, voices, backup places, tools and skills: annai's own, and what you have installed.	模型提供商、声音、备份位置、工具和技能：包括 annai 官方的，以及你已安装的。	src/ui/screens/add.js:163	
-1hszhgv	ok	annai's catalog couldn't be loaded. Connect to the internet and open this screen again. What is installed still shows.	无法加载 annai 的目录。请联网后重新打开此页面。已安装的内容仍会显示。	src/ui/screens/add.js:164	
-1dbd7kr	ok	Also for: {0}	也适用于：{0}	src/ui/screens/add.js:175	{0} = why
-b6qm2p	ok	Data only	纯数据	src/ui/screens/add.js:178	
-glpdbk	ok	Has code	含代码	src/ui/screens/add.js:178	
-1fzjiri	ok	Set up {0}	设置 {0}	src/ui/screens/add.js:201	{0} = name
-isr2rg	ok	Set up	去设置	src/ui/screens/add.js:201	Note: a verb (Set up), so not the Settings screen's 設定 alone.
-xf2xmv	ok	Open {0}	打开 {0}	src/ui/screens/add.js:201	{0} = name
-1e8gegw	ok	Install	安装	src/ui/screens/add.js:204	
-1sd5lj	ok	Add another	再添加一个	src/ui/screens/add.js:204	
-18374qe	ok	Add {0}	添加 {0}	src/ui/screens/add.js:206	{0} = name; Note: {0} is also what a share adds on the import screen ("1 个文件", "3 个文件", "2 张照片"); the space before it is right for both.
-1m87n8p	ok	Add another {0}	再添加一个 {0}	src/ui/screens/add.js:206	{0} = name
-4bn9ve	ok	Install {0}	安装 {0}	src/ui/screens/add.js:206	{0} = name
-1srp47z	ok	{0} wasn't installed	无法安装 {0}	src/ui/screens/add.js:207	{0} = name
-l11acj	ok	{0} wasn't added	无法添加 {0}	src/ui/screens/add.js:207	{0} = name
-orcwpv	ok	Installed {0}.	已安装 {0}。	src/ui/screens/add.js:211	{0} = name
-8zey4w	ok	Adding…	正在添加…	src/ui/screens/add.js:218	
-1drktj9	ok	Added	已添加	src/ui/screens/add.js:230	
-1ox21wg	ok	Get it	获取	src/ui/screens/add.js:245	
-ksdme7	ok	Install from an address or a file	从地址或文件安装	src/ui/screens/add.js:247	
-1b7aabm	ok	A plugin with code gets full access to your trips and API keys. Data-only plugins can't run anything. Only install plugins you trust.	含代码的插件可以完全访问你的旅行和 API 密钥；纯数据插件不能运行任何代码。请只安装你信任的插件。	src/ui/screens/add.js:249	
-1e2k1fe	ok	Address of a plugin or skill	插件或技能的地址	src/ui/screens/add.js:250	
-17bnagd	ok	A zip file, an annai-plugin.json, or a SKILL.md, on a site that lets web apps read it (GitHub file pages work).	zip 文件、annai-plugin.json 或 SKILL.md，需放在允许网页应用读取的网站上（GitHub 的文件页面可以）。	src/ui/screens/add.js:251	
-7ikogv	ok	Install from a file	从文件安装	src/ui/screens/add.js:253	
-hn1sl5	ok	this file isn't a plugin package annai can open: {0}	此文件不是 annai 能打开的插件包：{0}	src/ui/screens/add.js:267	{0} = message(e)
-ai5f3u	ok	Paste the address of a zip file, an annai-plugin.json or a SKILL.md first.	请先粘贴 zip 文件、annai-plugin.json 或 SKILL.md 的地址。	src/ui/screens/add.js:295	
-1huuh2k	ok	Getting it…	正在获取…	src/ui/screens/add.js:300	
+tdrd3b	ok	A name, "voice", "free"…	名称、“voice”、“free”…	src/ui/screens/add.js:99	Note: the search words stay English until the catalog carries translated keywords (L7).
+hqumoz	ok	Kind	类型	src/ui/screens/add.js:121	
+345x4c	ok	Filters	筛选	src/ui/screens/add.js:122	
+11ywf17	ok	Third-party	第三方	src/ui/screens/add.js:124	
+7va5tn	ok	Free	免费	src/ui/screens/add.js:124	
+bahzfs	ok	Local	本地	src/ui/screens/add.js:124	
+2rcuyl	ok	Nothing here matches. Try other words, or take a chip off.	没有找到结果。换个关键词，或去掉一个筛选条件试试。	src/ui/screens/add.js:132	Note: the chips here are the Filters (筛选条件); the glossary's chip → 按钮 is for the dock's voice and GPS chips.
+18bnex5	ok	Search the catalog	搜索目录	src/ui/screens/add.js:156	
+j0fdnt	ok	Nothing here matches.	没有找到结果。	src/ui/screens/add.js:164	
+rv2u3	ok	Not listed? Add it by its address.	没找到？可以通过地址添加。	src/ui/screens/add.js:164	
+npq0yc	ok	Model providers, voices, backup places, tools and skills: annai's own, and what you have installed.	模型提供商、声音、备份位置、工具和技能：包括 annai 官方的，以及你已安装的。	src/ui/screens/add.js:172	
+1hszhgv	ok	annai's catalog couldn't be loaded. Connect to the internet and open this screen again. What is installed still shows.	无法加载 annai 的目录。请联网后重新打开此页面。已安装的内容仍会显示。	src/ui/screens/add.js:173	
+1dbd7kr	ok	Also for: {0}	也适用于：{0}	src/ui/screens/add.js:184	{0} = why
+b6qm2p	ok	Data only	纯数据	src/ui/screens/add.js:187	
+glpdbk	ok	Has code	含代码	src/ui/screens/add.js:187	
+1fzjiri	ok	Set up {0}	设置 {0}	src/ui/screens/add.js:210	{0} = name
+isr2rg	ok	Set up	去设置	src/ui/screens/add.js:210	Note: a verb (Set up), so not the Settings screen's 設定 alone.
+xf2xmv	ok	Open {0}	打开 {0}	src/ui/screens/add.js:210	{0} = name
+1e8gegw	ok	Install	安装	src/ui/screens/add.js:213	
+1sd5lj	ok	Add another	再添加一个	src/ui/screens/add.js:213	
+18374qe	ok	Add {0}	添加 {0}	src/ui/screens/add.js:215	{0} = name; Note: {0} is also what a share adds on the import screen ("1 个文件", "3 个文件", "2 张照片"); the space before it is right for both.
+1m87n8p	ok	Add another {0}	再添加一个 {0}	src/ui/screens/add.js:215	{0} = name
+4bn9ve	ok	Install {0}	安装 {0}	src/ui/screens/add.js:215	{0} = name
+1srp47z	ok	{0} wasn't installed	无法安装 {0}	src/ui/screens/add.js:216	{0} = name
+l11acj	ok	{0} wasn't added	无法添加 {0}	src/ui/screens/add.js:216	{0} = name
+orcwpv	ok	Installed {0}.	已安装 {0}。	src/ui/screens/add.js:220	{0} = name
+8zey4w	ok	Adding…	正在添加…	src/ui/screens/add.js:227	
+1drktj9	ok	Added	已添加	src/ui/screens/add.js:239	
+1ox21wg	ok	Get it	获取	src/ui/screens/add.js:254	
+ksdme7	ok	Install from an address or a file	从地址或文件安装	src/ui/screens/add.js:256	
+1b7aabm	ok	A plugin with code gets full access to your trips and API keys. Data-only plugins can't run anything. Only install plugins you trust.	含代码的插件可以完全访问你的旅行和 API 密钥；纯数据插件不能运行任何代码。请只安装你信任的插件。	src/ui/screens/add.js:258	
+1e2k1fe	ok	Address of a plugin or skill	插件或技能的地址	src/ui/screens/add.js:259	
+17bnagd	ok	A zip file, an annai-plugin.json, or a SKILL.md, on a site that lets web apps read it (GitHub file pages work).	zip 文件、annai-plugin.json 或 SKILL.md，需放在允许网页应用读取的网站上（GitHub 的文件页面可以）。	src/ui/screens/add.js:260	
+7ikogv	ok	Install from a file	从文件安装	src/ui/screens/add.js:262	
+hn1sl5	ok	this file isn't a plugin package annai can open: {0}	此文件不是 annai 能打开的插件包：{0}	src/ui/screens/add.js:276	{0} = message(e)
+ai5f3u	ok	Paste the address of a zip file, an annai-plugin.json or a SKILL.md first.	请先粘贴 zip 文件、annai-plugin.json 或 SKILL.md 的地址。	src/ui/screens/add.js:304	
+1huuh2k	ok	Getting it…	正在获取…	src/ui/screens/add.js:309	
 16r9x4z	ok	From an Android phone	来自 Android 手机	src/ui/screens/backups.js:14	
 1yzbug	ok	From an iPad	来自 iPad	src/ui/screens/backups.js:14	
 e0z2ub	ok	From a computer	来自电脑	src/ui/screens/backups.js:14	
@@ -1606,45 +1606,45 @@ raudcs	ok	Encrypt backups with a passphrase	用密码短语加密备份	src/ui/s
 13qje2w	ok	Include API keys (only in encrypted backups)	包含 API 密钥（仅限加密备份）	src/ui/screens/backups.js:134	
 75wjfp	ok	Testing…	正在测试…	src/ui/screens/backups.js:155	
 ebg9wq	ok	Keep 1 to 30 backups.	备份数量须在 1 到 30 之间。	src/ui/screens/backups.js:165	
-1gcdel3	ok	Save and test	保存并测试	src/ui/screens/backups.js:175	
-wcqrhx	ok	A newer backup	较新的备份	src/ui/screens/backups.js:178	
-1eedj8v	ok	A newer backup is here	这里有较新的备份	src/ui/screens/backups.js:179	
-xvbztk	ok	A backup is already here	这里已有备份	src/ui/screens/backups.js:179	
-1n4xwcb	ok	A large backup	较大的备份	src/ui/screens/backups.js:185	
-7hmq4d	ok	This backup uploads {0}.	这次备份要上传 {0}。	src/ui/screens/backups.js:186	{0} = size(hold.bytes)
-111408e	ok	Back up automatically	自动备份	src/ui/screens/backups.js:189	
-15ywqaa	ok	After changes, within the hour	有改动后，一小时内	src/ui/screens/backups.js:190	
-tp830y	ok	After changes, at most every 6 hours	有改动后，最多每 6 小时一次	src/ui/screens/backups.js:190	
-1u04fpp	ok	Once a day	每天一次	src/ui/screens/backups.js:191	
-3tlu3u	ok	Off	关闭	src/ui/screens/backups.js:192	
-1tdau7e	ok	Also over mobile data	使用移动数据时也备份	src/ui/screens/backups.js:194	
-uhtk71	ok	No limit	不限	src/ui/screens/backups.js:196	
-b69cje	ok	Looking…	正在查找…	src/ui/screens/backups.js:208	
-fdmwqv	ok	There are no backups here yet.	这里还没有备份。	src/ui/screens/backups.js:211	
-hcu7jn	ok	encrypted	已加密	src/ui/screens/backups.js:214	
-17hpvne	ok	Show the backups here	查看这里的备份	src/ui/screens/backups.js:221	
-lqkwe8	ok	How to set it up	如何设置	src/ui/screens/backups.js:224	
-14gwhko	ok	Where	位置	src/ui/screens/backups.js:228	
-15pm71a	ok	More	高级设置	src/ui/screens/backups.js:231	context: advanced fields; Note: A backup place's advanced fields, folded under this summary; not the long card's 展开.
-6yqmdh	ok	Passphrase	密码短语	src/ui/screens/backups.js:235	
-bdzmld	ok	Keep the passphrase somewhere safe: without it, these backups can't be opened. annai keeps it on this device, so it can back up by itself.	请妥善保管密码短语，没有它就无法打开这些备份。annai 会把它保存在此设备上，以便自动备份。	src/ui/screens/backups.js:236	
-1l5dtm7	ok	Keep this many of this device's backups here	此设备在这里保留的备份数	src/ui/screens/backups.js:238	
-552cet	ok	After each backup, older ones this device made here are deleted. Other devices' backups are never deleted.	每次备份后，会删除此设备在这里的较早备份。其他设备的备份绝不会被删除。	src/ui/screens/backups.js:239	
-l5nax	ok	When	时间	src/ui/screens/backups.js:244	
-xxa9v2	ok	Upload without asking up to, MB	无需询问即可上传的上限（MB）	src/ui/screens/backups.js:246	
-4fiyr5	ok	Restore	恢复	src/ui/screens/backups.js:252	
-12kqj5m	ok	Open a backup from here on the import screen, where you choose what comes in.	在导入页面打开这里的备份，由你选择导入哪些内容。	src/ui/screens/backups.js:254	
-yzcijn	ok	Browser access	浏览器访问	src/ui/screens/backups.js:276	
-13bzcw5	ok	Copied	已复制	src/ui/screens/backups.js:285	
-cdidgs	ok	Copying didn't work here: it is selected, so copy it yourself.	无法自动复制。内容已选中，请手动复制。	src/ui/screens/backups.js:288	
-s6g5lw	ok	Copy	复制	src/ui/screens/backups.js:291	
-15ef6mt	ok	This browser doesn't tell annai whether it is on Wi-Fi: automatic backups go without asking, whatever their size. Type a number to set a limit.	此浏览器不会告知 annai 是否连着 Wi-Fi，所以自动备份不论大小都会直接进行，不会询问。输入数字即可设置上限。	src/ui/screens/backups.js:301	
-9nqmyo	ok	Where a browser doesn't tell annai whether it is on Wi-Fi (Safari on iPhone): automatic backups go without asking, whatever their size. Type a number to set a limit.	有些浏览器（如 iPhone 上的 Safari 浏览器）不会告知 annai 是否连着 Wi-Fi，在这些浏览器上，自动备份不论大小都会直接进行，不会询问。输入数字即可设置上限。	src/ui/screens/backups.js:302	
-w51f7d	ok	This browser doesn't tell annai whether it is on Wi-Fi: automatic backups larger than {0} wait for your OK, unless "Also over mobile data" is on. Leave it empty for no limit.	此浏览器不会告知 annai 是否连着 Wi-Fi，所以大于 {0} 的自动备份会等你同意，除非开启了“使用移动数据时也备份”。留空则不限。	src/ui/screens/backups.js:305	{0} = most
-1rx8b6y	ok	Where a browser doesn't tell annai whether it is on Wi-Fi (Safari on iPhone): automatic backups larger than {0} wait for your OK, unless "Also over mobile data" is on. Leave it empty for no limit.	有些浏览器（如 iPhone 上的 Safari 浏览器）不会告知 annai 是否连着 Wi-Fi，在这些浏览器上，大于 {0} 的自动备份会等你同意，除非开启了“使用移动数据时也备份”。留空则不限。	src/ui/screens/backups.js:306	{0} = most
-9patw8	ok	annai stops backing up here. The backups already there stay.	将不再备份到这里。这里已有的备份会保留。	src/ui/screens/backups.js:312	
-1hx8faa	ok	Tap again to remove it	再点一次即可移除	src/ui/screens/backups.js:313	
-78xlh8	ok	Remove this place	移除此位置	src/ui/screens/backups.js:313	
+1gcdel3	ok	Save and test	保存并测试	src/ui/screens/backups.js:179	
+wcqrhx	ok	A newer backup	较新的备份	src/ui/screens/backups.js:182	
+1eedj8v	ok	A newer backup is here	这里有较新的备份	src/ui/screens/backups.js:183	
+xvbztk	ok	A backup is already here	这里已有备份	src/ui/screens/backups.js:183	
+1n4xwcb	ok	A large backup	较大的备份	src/ui/screens/backups.js:189	
+7hmq4d	ok	This backup uploads {0}.	这次备份要上传 {0}。	src/ui/screens/backups.js:190	{0} = size(hold.bytes)
+111408e	ok	Back up automatically	自动备份	src/ui/screens/backups.js:193	
+15ywqaa	ok	After changes, within the hour	有改动后，一小时内	src/ui/screens/backups.js:194	
+tp830y	ok	After changes, at most every 6 hours	有改动后，最多每 6 小时一次	src/ui/screens/backups.js:194	
+1u04fpp	ok	Once a day	每天一次	src/ui/screens/backups.js:195	
+3tlu3u	ok	Off	关闭	src/ui/screens/backups.js:196	
+1tdau7e	ok	Also over mobile data	使用移动数据时也备份	src/ui/screens/backups.js:198	
+uhtk71	ok	No limit	不限	src/ui/screens/backups.js:200	
+b69cje	ok	Looking…	正在查找…	src/ui/screens/backups.js:212	
+fdmwqv	ok	There are no backups here yet.	这里还没有备份。	src/ui/screens/backups.js:215	
+hcu7jn	ok	encrypted	已加密	src/ui/screens/backups.js:218	
+17hpvne	ok	Show the backups here	查看这里的备份	src/ui/screens/backups.js:225	
+lqkwe8	ok	How to set it up	如何设置	src/ui/screens/backups.js:228	
+14gwhko	ok	Where	位置	src/ui/screens/backups.js:232	
+15pm71a	ok	More	高级设置	src/ui/screens/backups.js:235	context: advanced fields; Note: A backup place's advanced fields, folded under this summary; not the long card's 展开.
+6yqmdh	ok	Passphrase	密码短语	src/ui/screens/backups.js:239	
+bdzmld	ok	Keep the passphrase somewhere safe: without it, these backups can't be opened. annai keeps it on this device, so it can back up by itself.	请妥善保管密码短语，没有它就无法打开这些备份。annai 会把它保存在此设备上，以便自动备份。	src/ui/screens/backups.js:240	
+1l5dtm7	ok	Keep this many of this device's backups here	此设备在这里保留的备份数	src/ui/screens/backups.js:242	
+552cet	ok	After each backup, older ones this device made here are deleted. Other devices' backups are never deleted.	每次备份后，会删除此设备在这里的较早备份。其他设备的备份绝不会被删除。	src/ui/screens/backups.js:243	
+l5nax	ok	When	时间	src/ui/screens/backups.js:248	
+xxa9v2	ok	Upload without asking up to, MB	无需询问即可上传的上限（MB）	src/ui/screens/backups.js:250	
+4fiyr5	ok	Restore	恢复	src/ui/screens/backups.js:256	
+12kqj5m	ok	Open a backup from here on the import screen, where you choose what comes in.	在导入页面打开这里的备份，由你选择导入哪些内容。	src/ui/screens/backups.js:258	
+yzcijn	ok	Browser access	浏览器访问	src/ui/screens/backups.js:280	
+13bzcw5	ok	Copied	已复制	src/ui/screens/backups.js:289	
+cdidgs	ok	Copying didn't work here: it is selected, so copy it yourself.	无法自动复制。内容已选中，请手动复制。	src/ui/screens/backups.js:292	
+s6g5lw	ok	Copy	复制	src/ui/screens/backups.js:295	
+15ef6mt	ok	This browser doesn't tell annai whether it is on Wi-Fi: automatic backups go without asking, whatever their size. Type a number to set a limit.	此浏览器不会告知 annai 是否连着 Wi-Fi，所以自动备份不论大小都会直接进行，不会询问。输入数字即可设置上限。	src/ui/screens/backups.js:305	
+9nqmyo	ok	Where a browser doesn't tell annai whether it is on Wi-Fi (Safari on iPhone): automatic backups go without asking, whatever their size. Type a number to set a limit.	有些浏览器（如 iPhone 上的 Safari 浏览器）不会告知 annai 是否连着 Wi-Fi，在这些浏览器上，自动备份不论大小都会直接进行，不会询问。输入数字即可设置上限。	src/ui/screens/backups.js:306	
+w51f7d	ok	This browser doesn't tell annai whether it is on Wi-Fi: automatic backups larger than {0} wait for your OK, unless "Also over mobile data" is on. Leave it empty for no limit.	此浏览器不会告知 annai 是否连着 Wi-Fi，所以大于 {0} 的自动备份会等你同意，除非开启了“使用移动数据时也备份”。留空则不限。	src/ui/screens/backups.js:309	{0} = most
+1rx8b6y	ok	Where a browser doesn't tell annai whether it is on Wi-Fi (Safari on iPhone): automatic backups larger than {0} wait for your OK, unless "Also over mobile data" is on. Leave it empty for no limit.	有些浏览器（如 iPhone 上的 Safari 浏览器）不会告知 annai 是否连着 Wi-Fi，在这些浏览器上，大于 {0} 的自动备份会等你同意，除非开启了“使用移动数据时也备份”。留空则不限。	src/ui/screens/backups.js:310	{0} = most
+9patw8	ok	annai stops backing up here. The backups already there stay.	将不再备份到这里。这里已有的备份会保留。	src/ui/screens/backups.js:316	
+1hx8faa	ok	Tap again to remove it	再点一次即可移除	src/ui/screens/backups.js:317	
+78xlh8	ok	Remove this place	移除此位置	src/ui/screens/backups.js:317	
 7862xj	ok	It may have been deleted or renamed.	可能已被删除或重命名。	src/ui/screens/booking.js:31	Note: after This isn't on the plan.
 mpbd6l	ok	This file can't be found	找不到此文件	src/ui/screens/booking.js:31	Note: the heading of the details screen for a file that is not there (a link to a deleted file); the sentence "It may have been deleted or renamed." follows.
 14y1329	ok	It may have been deleted or renamed. The itinerary lists the bookings there are.	可能已被删除或重命名。现有的预订都列在行程中。	src/ui/screens/booking.js:32	
@@ -2091,9 +2091,9 @@ e1enek#other	ok	Removing it removes {0}, with their keys and models.	移除它�
 fj8j97	ok	Needed by {0}.	{0} 需要它。	src/ui/screens/plugins.js:68	{0} = list(needs)
 dbgp9n	ok	Model provider	模型提供商	src/ui/screens/plugins.js:79	
 v0wv6e	ok	Skill	技能	src/ui/screens/plugins.js:79	
-97t8e3	ok	Update to {0}	更新到 {0}	src/ui/screens/plugins.js:97	{0} = update.available
-jgr98x	ok	{0} didn't start	{0} 没有启动	src/ui/screens/plugins.js:114	{0} = r.name
-s74tk7	ok	Turn on	开启	src/ui/screens/plugins.js:118	
+97t8e3	ok	Update to {0}	更新到 {0}	src/ui/screens/plugins.js:99	{0} = update.available
+jgr98x	ok	{0} didn't start	{0} 没有启动	src/ui/screens/plugins.js:116	{0} = r.name
+s74tk7	ok	Turn on	开启	src/ui/screens/plugins.js:120	
 ura2r7	ok	{0} a minute of speech	每分钟语音 {0}	src/ui/screens/provider.js:29	{0} = price(p.perMinute)
 1b0vcka	ok	{0} per million characters	每百万字符 {0}	src/ui/screens/provider.js:30	{0} = price(p.perMillionChars)
 1xducp7	ok	{0} in, {1} out	输入 {0}，输出 {1}	src/ui/screens/provider.js:32	{0} = price(p.input); {1} = price(p.output)
@@ -2132,55 +2132,55 @@ cgpzg8	ok	Or add {0} as it is, and set up its key and what it offers on its own 
 8gf0py	ok	The plugin it was made from isn't on this device, and it isn't one of annai's own providers, so annai can't fetch it. Install it again from where you got it, in Settings → Plugins → Add, or remove this provider.	创建它的插件不在此设备上，也不是 annai 官方的提供商，所以无法自动获取。请在设置 → 插件 → 添加中，从原来的来源重新安装，或移除此提供商。	src/ui/screens/provider.js:285	
 6k2646	ok	Its plugin isn't on this device, and annai's catalog couldn't be loaded to fetch it. Connect to the internet and open this page again.	它的插件不在此设备上，也无法加载 annai 的目录来获取。请联网后重新打开此页面。	src/ui/screens/provider.js:286	
 1e1obo4	ok	Installing…	正在安装…	src/ui/screens/provider.js:293	
-9djdxp	ok	Install it	安装	src/ui/screens/provider.js:302	
-17vxyyo	ok	Its plugin, {0}, isn't installed, so annai can't say what it offers.	它的插件“{0}”未安装，所以无法显示它提供哪些功能。	src/ui/screens/provider.js:303	{0} = officialName(entry.id, entry.name)
-mf1onk	ok	This provider no longer exists.	该提供商已不存在。	src/ui/screens/provider.js:319	
-r4y7q	ok	Use {0}	启用 {0}	src/ui/screens/provider.js:345	{0} = shownName
-1o304we	ok	New in the last update	上次更新新增	src/ui/screens/provider.js:352	
-1k5huc5	ok	the provider's: {0}	提供商地址：{0}	src/ui/screens/provider.js:372	{0} = providerOf(rec).baseUrl
-1ppqeqd	ok	the provider's: none yet	提供商地址：暂无	src/ui/screens/provider.js:372	
-11krxuy	ok	Upload photos to this provider (annai deletes each once it is 48 hours old, the next time annai starts or comes online)	把照片上传到此提供商（超过 48 小时的照片，会在 annai 下次启动或恢复联网时删除）	src/ui/screens/provider.js:383	Note: a switch; the brackets say when annai deletes, no more than it does.
-12dfi3i	ok	Upload photos to this provider (each expires after 48 hours)	把照片上传到此提供商（每张 48 小时后过期）	src/ui/screens/provider.js:384	
-1qia4dd	ok	Let {0} keep the conversation between turns: sends less each time.	让 {0} 在多轮之间保留对话，每次发送的内容更少。	src/ui/screens/provider.js:391	{0} = who
-l91m05	ok	Its own address	专用地址	src/ui/screens/provider.js:410	
-9umgdw	ok	Empty: the provider's address. Each setting here is saved as you change it.	留空则使用提供商的地址。这里的设置更改后会自动保存。	src/ui/screens/provider.js:416	
-1ajunu1	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.	{0} 会保留你与 Shiori 的对话，包括其中的照片、语音消息，以及她所知道的你的位置，保留多久由那台服务器决定。	src/ui/screens/provider.js:420	{0} = who; Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音).
-1jtdu56	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0} 会保留你与 Shiori 的对话，包括其中的照片、语音消息，以及她所知道的你的位置：{1}。	src/ui/screens/provider.js:421	{0} = who; {1} = holds; Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音); {1} is the plugin's own words for how long.
-1fcg7pg#other	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0} 会保留你与 Shiori 的对话，包括其中的照片、语音消息，以及她所知道的你的位置：免费密钥保留一天，付费密钥最长 # 天。	src/ui/screens/provider.js:422	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other); Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音).
-1gugeu9	ok	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	移除对应的旅行、此提供商或全部内容（清除），更换或移除密钥，或关闭此项时，annai 都会删除这些内容。	src/ui/screens/provider.js:424	
-1iorloe	ok	Off, each turn sends the whole conversation.	关闭后，每一轮都会发送整个对话。	src/ui/screens/provider.js:424	
-1wdiu43	ok	It needs this provider's key: without one, each turn sends the whole conversation.	此功能需要提供商的密钥；没有密钥时，每一轮都会发送整个对话。	src/ui/screens/provider.js:425	
-72k1cn#other	ok	# deletions waiting: annai can't send them without this provider's key.	# 项删除请求待发送：没有此提供商的密钥，无法发送。	src/ui/screens/provider.js:426	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
-f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	# 项删除请求待发送：连上 {0} 后会自动发送。	src/ui/screens/provider.js:427	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
-147eqzv	ok	Test {0}	测试 {0}	src/ui/screens/provider.js:438	{0} = first.name
-1eqfcih	ok	{0} doesn't offer search on the free tier.	{0} 的免费额度不包含搜索。	src/ui/screens/provider.js:465	{0} = who
-1cmq8ob	ok	{0} doesn't offer fetch on the free tier.	{0} 的免费额度不包含网页抓取。	src/ui/screens/provider.js:466	{0} = who
-1k4v7dk	ok	{0} doesn't offer {1} on the free tier.	{0} 的免费额度不包含 {1}。	src/ui/screens/provider.js:466	{0} = who; {1} = tool.name
-11x4tx3	ok	This needs the {0} plugin, which isn't running.	需要 {0} 插件，但它没有运行。	src/ui/screens/provider.js:472	{0} = name
-4nyk49	ok	This needs a plugin that isn't running.	需要的插件没有运行。	src/ui/screens/provider.js:472	
-15hdhx3	ok	the provider's model id	提供商的模型 ID	src/ui/screens/provider.js:494	
-1oz4euh	ok	Add model	添加模型	src/ui/screens/provider.js:510	
-tbmsa5	ok	Asking for its models…	正在获取模型列表…	src/ui/screens/provider.js:515	
-1yko1my#other	ok	# models.	共 # 个模型。	src/ui/screens/provider.js:518	plural; # = listed.length; English: "# model." (one), "# models." (other)
-uxqo7a	ok	Fetch model list	获取模型列表	src/ui/screens/provider.js:526	
-1scr2ml	ok	{0}K context	{0}K 上下文	src/ui/screens/provider.js:529	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
-1tqy8k1	ok	Its models	模型	src/ui/screens/provider.js:531	Note: "Its models" as a heading under the ability: モデル alone reads right there.
-bzs1ys	ok	No models yet.	还没有模型。	src/ui/screens/provider.js:532	
-pnxisg	ok	Add a model by id	按 ID 添加模型	src/ui/screens/provider.js:533	
-1mod47e	ok	for example: haiku	例如：haiku	src/ui/screens/provider.js:548	
-uizt0x	ok	{0} · loaded	{0} · 已加载	src/ui/screens/provider.js:557	{0} = named
-1w6mxym	ok	Already added, on {0}	已添加到 {0}	src/ui/screens/provider.js:558	{0} = on
-l7fn8k	ok	Already added, on another provider	已添加到其他提供商	src/ui/screens/provider.js:558	
-19ai2z0	ok	Filter the list	筛选列表	src/ui/screens/provider.js:578	
-11pl9jr	ok	Use the free models	使用免费模型	src/ui/screens/provider.js:586	
-vam64u	ok	Use the recommended models	使用推荐模型	src/ui/screens/provider.js:586	
-1b2yx8m	ok	Suggested models	推荐模型	src/ui/screens/provider.js:587	
-y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0} 为每个角色推荐了一个模型。使用推荐后，它的语音模型会排在免费的手机语音输入和浏览器声音之前，所以会优先尝试收费的模型。	src/ui/screens/provider.js:588	{0} = src.name; Note: 手机语音输入 and 浏览器声音 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
-1x5hwmk	ok	{0} suggests a model for each role.	{0} 为每个角色推荐了一个模型。	src/ui/screens/provider.js:589	{0} = src.name
-1iffu2j	ok	{0} switched on.	已开启 {0}。	src/ui/screens/provider.js:596	{0} = n
-1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:596	
-1egvjs1	ok	{0} couldn't be switched on: {1}	{0} 无法开启：{1}	src/ui/screens/provider.js:597	{0} = f.name; {1} = messageOf(f.error)
-wlh055	ok	Use the {0} models	使用 {0} 模型	src/ui/screens/provider.js:603	{0} = which
+9djdxp	ok	Install it	安装	src/ui/screens/provider.js:304	
+17vxyyo	ok	Its plugin, {0}, isn't installed, so annai can't say what it offers.	它的插件“{0}”未安装，所以无法显示它提供哪些功能。	src/ui/screens/provider.js:305	{0} = officialName(entry.id, entry.name)
+mf1onk	ok	This provider no longer exists.	该提供商已不存在。	src/ui/screens/provider.js:321	
+r4y7q	ok	Use {0}	启用 {0}	src/ui/screens/provider.js:347	{0} = shownName
+1o304we	ok	New in the last update	上次更新新增	src/ui/screens/provider.js:354	
+1k5huc5	ok	the provider's: {0}	提供商地址：{0}	src/ui/screens/provider.js:374	{0} = providerOf(rec).baseUrl
+1ppqeqd	ok	the provider's: none yet	提供商地址：暂无	src/ui/screens/provider.js:374	
+11krxuy	ok	Upload photos to this provider (annai deletes each once it is 48 hours old, the next time annai starts or comes online)	把照片上传到此提供商（超过 48 小时的照片，会在 annai 下次启动或恢复联网时删除）	src/ui/screens/provider.js:385	Note: a switch; the brackets say when annai deletes, no more than it does.
+12dfi3i	ok	Upload photos to this provider (each expires after 48 hours)	把照片上传到此提供商（每张 48 小时后过期）	src/ui/screens/provider.js:386	
+1qia4dd	ok	Let {0} keep the conversation between turns: sends less each time.	让 {0} 在多轮之间保留对话，每次发送的内容更少。	src/ui/screens/provider.js:393	{0} = who
+l91m05	ok	Its own address	专用地址	src/ui/screens/provider.js:412	
+9umgdw	ok	Empty: the provider's address. Each setting here is saved as you change it.	留空则使用提供商的地址。这里的设置更改后会自动保存。	src/ui/screens/provider.js:418	
+1ajunu1	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.	{0} 会保留你与 Shiori 的对话，包括其中的照片、语音消息，以及她所知道的你的位置，保留多久由那台服务器决定。	src/ui/screens/provider.js:422	{0} = who; Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音).
+1jtdu56	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0} 会保留你与 Shiori 的对话，包括其中的照片、语音消息，以及她所知道的你的位置：{1}。	src/ui/screens/provider.js:423	{0} = who; {1} = holds; Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音); {1} is the plugin's own words for how long.
+1fcg7pg#other	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0} 会保留你与 Shiori 的对话，包括其中的照片、语音消息，以及她所知道的你的位置：免费密钥保留一天，付费密钥最长 # 天。	src/ui/screens/provider.js:424	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other); Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音).
+1gugeu9	ok	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	移除对应的旅行、此提供商或全部内容（清除），更换或移除密钥，或关闭此项时，annai 都会删除这些内容。	src/ui/screens/provider.js:426	
+1iorloe	ok	Off, each turn sends the whole conversation.	关闭后，每一轮都会发送整个对话。	src/ui/screens/provider.js:426	
+1wdiu43	ok	It needs this provider's key: without one, each turn sends the whole conversation.	此功能需要提供商的密钥；没有密钥时，每一轮都会发送整个对话。	src/ui/screens/provider.js:427	
+72k1cn#other	ok	# deletions waiting: annai can't send them without this provider's key.	# 项删除请求待发送：没有此提供商的密钥，无法发送。	src/ui/screens/provider.js:428	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
+f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	# 项删除请求待发送：连上 {0} 后会自动发送。	src/ui/screens/provider.js:429	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
+147eqzv	ok	Test {0}	测试 {0}	src/ui/screens/provider.js:440	{0} = first.name
+1eqfcih	ok	{0} doesn't offer search on the free tier.	{0} 的免费额度不包含搜索。	src/ui/screens/provider.js:467	{0} = who
+1cmq8ob	ok	{0} doesn't offer fetch on the free tier.	{0} 的免费额度不包含网页抓取。	src/ui/screens/provider.js:468	{0} = who
+1k4v7dk	ok	{0} doesn't offer {1} on the free tier.	{0} 的免费额度不包含 {1}。	src/ui/screens/provider.js:468	{0} = who; {1} = tool.name
+11x4tx3	ok	This needs the {0} plugin, which isn't running.	需要 {0} 插件，但它没有运行。	src/ui/screens/provider.js:474	{0} = name
+4nyk49	ok	This needs a plugin that isn't running.	需要的插件没有运行。	src/ui/screens/provider.js:474	
+15hdhx3	ok	the provider's model id	提供商的模型 ID	src/ui/screens/provider.js:498	
+1oz4euh	ok	Add model	添加模型	src/ui/screens/provider.js:515	
+tbmsa5	ok	Asking for its models…	正在获取模型列表…	src/ui/screens/provider.js:520	
+1yko1my#other	ok	# models.	共 # 个模型。	src/ui/screens/provider.js:523	plural; # = listed.length; English: "# model." (one), "# models." (other)
+uxqo7a	ok	Fetch model list	获取模型列表	src/ui/screens/provider.js:531	
+1scr2ml	ok	{0}K context	{0}K 上下文	src/ui/screens/provider.js:534	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
+1tqy8k1	ok	Its models	模型	src/ui/screens/provider.js:536	Note: "Its models" as a heading under the ability: モデル alone reads right there.
+bzs1ys	ok	No models yet.	还没有模型。	src/ui/screens/provider.js:537	
+pnxisg	ok	Add a model by id	按 ID 添加模型	src/ui/screens/provider.js:538	
+1mod47e	ok	for example: haiku	例如：haiku	src/ui/screens/provider.js:553	
+uizt0x	ok	{0} · loaded	{0} · 已加载	src/ui/screens/provider.js:562	{0} = named
+1w6mxym	ok	Already added, on {0}	已添加到 {0}	src/ui/screens/provider.js:563	{0} = on
+l7fn8k	ok	Already added, on another provider	已添加到其他提供商	src/ui/screens/provider.js:563	
+19ai2z0	ok	Filter the list	筛选列表	src/ui/screens/provider.js:586	
+11pl9jr	ok	Use the free models	使用免费模型	src/ui/screens/provider.js:594	
+vam64u	ok	Use the recommended models	使用推荐模型	src/ui/screens/provider.js:594	
+1b2yx8m	ok	Suggested models	推荐模型	src/ui/screens/provider.js:595	
+y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0} 为每个角色推荐了一个模型。使用推荐后，它的语音模型会排在免费的手机语音输入和浏览器声音之前，所以会优先尝试收费的模型。	src/ui/screens/provider.js:596	{0} = src.name; Note: 手机语音输入 and 浏览器声音 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
+1x5hwmk	ok	{0} suggests a model for each role.	{0} 为每个角色推荐了一个模型。	src/ui/screens/provider.js:597	{0} = src.name
+1iffu2j	ok	{0} switched on.	已开启 {0}。	src/ui/screens/provider.js:604	{0} = n
+1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:604	
+1egvjs1	ok	{0} couldn't be switched on: {1}	{0} 无法开启：{1}	src/ui/screens/provider.js:605	{0} = f.name; {1} = messageOf(f.error)
+wlh055	ok	Use the {0} models	使用 {0} 模型	src/ui/screens/provider.js:611	{0} = which
 1qocxbg	ok	Writing it: {0} is reading the conversation. This can take a minute.	撰写中：{0} 正在读取对话，可能需要一分钟。	src/ui/screens/recap.js:33	{0} = names(m.name)
 1lrfe9k	ok	Write the recap	撰写回顾	src/ui/screens/recap.js:35	
 h6huep	ok	Write it again	重新撰写	src/ui/screens/recap.js:35	
@@ -2320,50 +2320,50 @@ indiij	ok	Let Shiori read my other trips without asking	Shiori 读取我的其�
 1csnvhb	ok	Quiet until	休息时段结束	src/ui/screens/shiori.js:76	Note: quiet hours' end, named after the glossary's quiet hours (休息时段).
 1p3ttz9	ok	Quiet from	休息时段开始	src/ui/screens/shiori.js:76	Note: quiet hours' start, named after the glossary's quiet hours (休息时段).
 1ite7lp	ok	Set the other time too.	请把另一个时间也设好。	src/ui/screens/shiori.js:81	
-11mcr74	ok	Quiet hours need both times. Clear both for none.	休息时段需要开始和结束两个时间。两个都清空即为不设置。	src/ui/screens/shiori.js:102	
-1qa55ez	ok	How she looks	她的样子	src/ui/screens/shiori.js:109	
-15cdrhf	ok	Each state, as the dock shows her, with the words under her.	她在底栏中每种状态的样子，以及下方的文字。	src/ui/screens/shiori.js:110	
-jq414z	ok	Personality	性格	src/ui/screens/shiori.js:112	
-efcvdh	ok	How Shiori behaves. She can adjust it herself through a reviewed change, and you can always undo it. A change applies at her next wake.	Shiori 的行为方式。她可以自己调整，但每次修改都要经你审阅，你也随时可以撤销。修改在下次唤醒她时生效。	src/ui/screens/shiori.js:113	
-1amzdg4	ok	The new original of "{0}"	“{0}”的新原版	src/ui/screens/shiori.js:120	{0} = compare
-pmpsfk	ok	Use the new original	使用新原版	src/ui/screens/shiori.js:123	
-eh67ee	ok	Saved. It applies at her next wake.	已保存，下次唤醒她时生效。	src/ui/screens/shiori.js:132	
-3wot4g	ok	A name is lowercase letters, digits and dashes, like my-shiori.	名称只能用小写字母、数字和连字符，例如 my-shiori。	src/ui/screens/shiori.js:140	
-8vtmkf	ok	There is already a personality called "{0}".	已经有名为“{0}”的性格了。	src/ui/screens/shiori.js:140	{0} = name
-codbeh	ok	New from this one	基于此新建	src/ui/screens/shiori.js:145	
-10pf3h4	ok	Name for a new one	新性格的名称	src/ui/screens/shiori.js:146	
-185xhpb	ok	Her two halves	Koe 和 Kokoro	src/ui/screens/shiori.js:150	
-1vyft97	ok	Koe talks with you and answers at once; Kokoro thinks things through and does the work. They pass each other short notes. On: the notes show in the conversation as quiet lines. Off: they stay in the Trace.	Koe 和你说话，马上回答；Kokoro 仔细思考，把事情办好。两者会互传简短的便条。开启时，便条会以浅色文字显示在对话中；关闭时，只保留在“记录”里。	src/ui/screens/shiori.js:151	
-1f0pz7g	ok	Your other trips	其他旅行	src/ui/screens/shiori.js:153	
-t5n8hu	ok	Before Shiori reads another of your trips or conversations, annai asks, once a conversation. On: she reads your own without asking. Trips someone sent you always ask.	Shiori 读取你的其他旅行或对话前，annai 会先问你，每段对话问一次。开启后，你自己的旅行和对话她可以直接读取；别人发给你的旅行始终会先询问。	src/ui/screens/shiori.js:154	
-u36mv	ok	The languages you speak, and the one Shiori answers in, are in Settings → Languages.	你说的语言和 Shiori 的回答语言，可在设置 → 语言中更改。	src/ui/screens/shiori.js:156	Note: a link on Settings → Shiori to the Languages screen; 语言 as the glossary's screen name.
-is7afy	ok	How often she acts on her own	她主动行动的频率	src/ui/screens/shiori.js:158	
-1mzkqw7	ok	Plugins, reminders and GPS wake her as well as you. None of these is set unless you set it: more wakes in an hour are skipped, quiet hours hold her until they end (reminders still come), and past the steps of one wake she stops, with a card.	除了你，插件、提醒和 GPS 也会唤醒她。以下限制都要你设置才会生效：一小时内超出次数的唤醒会被跳过；休息时段内她会等到结束（提醒照常）；一次唤醒超过步数时，她会停下并显示一张卡片。	src/ui/screens/shiori.js:159	
-6a0cdc	ok	Wakes per hour is a whole number from 1; leave it empty for no limit.	每小时唤醒次数须为正整数；留空则不限。	src/ui/screens/shiori.js:160	
-pd5jqf	ok	Wakes per hour, not counting yours	每小时唤醒次数（不含你唤醒的）	src/ui/screens/shiori.js:160	
-av9dc1	ok	Steps per wake	每次唤醒的步数	src/ui/screens/shiori.js:162	
-ro3vrl	ok	Steps per wake is a whole number from 1; leave it empty for no limit on what you ask; what she does on her own stops after 50.	每次唤醒的步数须为正整数。留空时，你交代的事不限步数，她主动做的事最多 50 步。	src/ui/screens/shiori.js:162	
-1oxfybk	ok	Shiori's core	Shiori 的核心	src/ui/screens/shiori.js:167	
-srktqx	ok	How she talks, how annai works, and her safety rules. Kokoro reads it, and Shiori when she is one half.	她的说话方式、annai 的运作方式和她的安全规则。Kokoro 会读取；Shiori 独自工作时也会读取。	src/ui/screens/shiori.js:167	
-10gef26	ok	What Kokoro adds while Shiori is two halves: how it works behind Koe.	Shiori 由 Koe 和 Kokoro 分工时，Kokoro 额外读取的内容：如何在 Koe 背后工作。	src/ui/screens/shiori.js:168	
-13snrep	ok	Kokoro's part	Kokoro 的部分	src/ui/screens/shiori.js:168	
-1t3wpe4	ok	Koe, chat	Koe（聊天）	src/ui/screens/shiori.js:169	
-1x7xmuu	ok	What Koe reads when its words go to a voice.	Koe 的话要转成语音朗读时，Koe 读取的内容。	src/ui/screens/shiori.js:169	
-777qwf	ok	What Koe reads in a live voice session.	Koe 在实时语音会话中读取的内容。	src/ui/screens/shiori.js:170	
-mmvypk	ok	Koe, live	Koe（实时）	src/ui/screens/shiori.js:170	
-1eogfr1	ok	Her instructions	给 Shiori 的指示	src/ui/screens/shiori.js:175	
-1eoyx0p	ok	These hold how Shiori works, including her safety rules. Reset to original brings them back. A change applies at her next wake.	这些内容决定 Shiori 如何工作，包括她的安全规则。用“恢复原版”可以改回原样。修改在下次唤醒她时生效。	src/ui/screens/shiori.js:176	
-3w9he4	ok	Reset to original: {0}	恢复原版：{0}	src/ui/screens/shiori.js:187	{0} = words.name
-1tc34br	ok	changed, and annai has a new original	已修改，原版有更新	src/ui/screens/shiori.js:201	
-jgug0r	ok	changed	已修改	src/ui/screens/shiori.js:201	
-kntv40	ok	The new original of {0}	{0} 的新原版	src/ui/screens/shiori.js:205	{0} = words.name
-1nh34lh	ok	Keep mine: {0}	保留我的：{0}	src/ui/screens/shiori.js:207	{0} = words.name
-1s0o9t8	ok	Use the new original: {0}	使用新原版：{0}	src/ui/screens/shiori.js:208	{0} = words.name
-b5wyro	ok	Save: {0}	保存：{0}	src/ui/screens/shiori.js:220	{0} = words.name
-1mrunng	ok	{0} (from a plugin)	{0}（来自插件）	src/ui/screens/shiori.js:242	{0} = p.name
-1px053l	ok	{0} (from {1})	{0}（来自 {1}）	src/ui/screens/shiori.js:242	{0} = p.name; {1} = p.plugin
-9xxzlu	ok	You already have a personality called "{0}".	你已经有名为“{0}”的性格了。	src/ui/screens/shiori.js:247	{0} = p.name
-fnme9h	ok	Added the personality "{0}". Choose it above.	已添加性格“{0}”，可在上方选择。	src/ui/screens/shiori.js:251	{0} = p.name
+11mcr74	ok	Quiet hours need both times. Clear both for none.	休息时段需要开始和结束两个时间。两个都清空即为不设置。	src/ui/screens/shiori.js:104	
+1qa55ez	ok	How she looks	她的样子	src/ui/screens/shiori.js:111	
+15cdrhf	ok	Each state, as the dock shows her, with the words under her.	她在底栏中每种状态的样子，以及下方的文字。	src/ui/screens/shiori.js:112	
+jq414z	ok	Personality	性格	src/ui/screens/shiori.js:114	
+efcvdh	ok	How Shiori behaves. She can adjust it herself through a reviewed change, and you can always undo it. A change applies at her next wake.	Shiori 的行为方式。她可以自己调整，但每次修改都要经你审阅，你也随时可以撤销。修改在下次唤醒她时生效。	src/ui/screens/shiori.js:115	
+1amzdg4	ok	The new original of "{0}"	“{0}”的新原版	src/ui/screens/shiori.js:122	{0} = compare
+pmpsfk	ok	Use the new original	使用新原版	src/ui/screens/shiori.js:125	
+eh67ee	ok	Saved. It applies at her next wake.	已保存，下次唤醒她时生效。	src/ui/screens/shiori.js:134	
+3wot4g	ok	A name is lowercase letters, digits and dashes, like my-shiori.	名称只能用小写字母、数字和连字符，例如 my-shiori。	src/ui/screens/shiori.js:142	
+8vtmkf	ok	There is already a personality called "{0}".	已经有名为“{0}”的性格了。	src/ui/screens/shiori.js:142	{0} = name
+codbeh	ok	New from this one	基于此新建	src/ui/screens/shiori.js:147	
+10pf3h4	ok	Name for a new one	新性格的名称	src/ui/screens/shiori.js:148	
+185xhpb	ok	Her two halves	Koe 和 Kokoro	src/ui/screens/shiori.js:152	
+1vyft97	ok	Koe talks with you and answers at once; Kokoro thinks things through and does the work. They pass each other short notes. On: the notes show in the conversation as quiet lines. Off: they stay in the Trace.	Koe 和你说话，马上回答；Kokoro 仔细思考，把事情办好。两者会互传简短的便条。开启时，便条会以浅色文字显示在对话中；关闭时，只保留在“记录”里。	src/ui/screens/shiori.js:153	
+1f0pz7g	ok	Your other trips	其他旅行	src/ui/screens/shiori.js:155	
+t5n8hu	ok	Before Shiori reads another of your trips or conversations, annai asks, once a conversation. On: she reads your own without asking. Trips someone sent you always ask.	Shiori 读取你的其他旅行或对话前，annai 会先问你，每段对话问一次。开启后，你自己的旅行和对话她可以直接读取；别人发给你的旅行始终会先询问。	src/ui/screens/shiori.js:156	
+u36mv	ok	The languages you speak, and the one Shiori answers in, are in Settings → Languages.	你说的语言和 Shiori 的回答语言，可在设置 → 语言中更改。	src/ui/screens/shiori.js:158	Note: a link on Settings → Shiori to the Languages screen; 语言 as the glossary's screen name.
+is7afy	ok	How often she acts on her own	她主动行动的频率	src/ui/screens/shiori.js:160	
+1mzkqw7	ok	Plugins, reminders and GPS wake her as well as you. None of these is set unless you set it: more wakes in an hour are skipped, quiet hours hold her until they end (reminders still come), and past the steps of one wake she stops, with a card.	除了你，插件、提醒和 GPS 也会唤醒她。以下限制都要你设置才会生效：一小时内超出次数的唤醒会被跳过；休息时段内她会等到结束（提醒照常）；一次唤醒超过步数时，她会停下并显示一张卡片。	src/ui/screens/shiori.js:161	
+6a0cdc	ok	Wakes per hour is a whole number from 1; leave it empty for no limit.	每小时唤醒次数须为正整数；留空则不限。	src/ui/screens/shiori.js:162	
+pd5jqf	ok	Wakes per hour, not counting yours	每小时唤醒次数（不含你唤醒的）	src/ui/screens/shiori.js:162	
+av9dc1	ok	Steps per wake	每次唤醒的步数	src/ui/screens/shiori.js:164	
+ro3vrl	ok	Steps per wake is a whole number from 1; leave it empty for no limit on what you ask; what she does on her own stops after 50.	每次唤醒的步数须为正整数。留空时，你交代的事不限步数，她主动做的事最多 50 步。	src/ui/screens/shiori.js:164	
+1oxfybk	ok	Shiori's core	Shiori 的核心	src/ui/screens/shiori.js:169	
+srktqx	ok	How she talks, how annai works, and her safety rules. Kokoro reads it, and Shiori when she is one half.	她的说话方式、annai 的运作方式和她的安全规则。Kokoro 会读取；Shiori 独自工作时也会读取。	src/ui/screens/shiori.js:169	
+10gef26	ok	What Kokoro adds while Shiori is two halves: how it works behind Koe.	Shiori 由 Koe 和 Kokoro 分工时，Kokoro 额外读取的内容：如何在 Koe 背后工作。	src/ui/screens/shiori.js:170	
+13snrep	ok	Kokoro's part	Kokoro 的部分	src/ui/screens/shiori.js:170	
+1t3wpe4	ok	Koe, chat	Koe（聊天）	src/ui/screens/shiori.js:171	
+1x7xmuu	ok	What Koe reads when its words go to a voice.	Koe 的话要转成语音朗读时，Koe 读取的内容。	src/ui/screens/shiori.js:171	
+777qwf	ok	What Koe reads in a live voice session.	Koe 在实时语音会话中读取的内容。	src/ui/screens/shiori.js:172	
+mmvypk	ok	Koe, live	Koe（实时）	src/ui/screens/shiori.js:172	
+1eogfr1	ok	Her instructions	给 Shiori 的指示	src/ui/screens/shiori.js:177	
+1eoyx0p	ok	These hold how Shiori works, including her safety rules. Reset to original brings them back. A change applies at her next wake.	这些内容决定 Shiori 如何工作，包括她的安全规则。用“恢复原版”可以改回原样。修改在下次唤醒她时生效。	src/ui/screens/shiori.js:178	
+3w9he4	ok	Reset to original: {0}	恢复原版：{0}	src/ui/screens/shiori.js:189	{0} = words.name
+1tc34br	ok	changed, and annai has a new original	已修改，原版有更新	src/ui/screens/shiori.js:203	
+jgug0r	ok	changed	已修改	src/ui/screens/shiori.js:203	
+kntv40	ok	The new original of {0}	{0} 的新原版	src/ui/screens/shiori.js:207	{0} = words.name
+1nh34lh	ok	Keep mine: {0}	保留我的：{0}	src/ui/screens/shiori.js:209	{0} = words.name
+1s0o9t8	ok	Use the new original: {0}	使用新原版：{0}	src/ui/screens/shiori.js:210	{0} = words.name
+b5wyro	ok	Save: {0}	保存：{0}	src/ui/screens/shiori.js:222	{0} = words.name
+1mrunng	ok	{0} (from a plugin)	{0}（来自插件）	src/ui/screens/shiori.js:244	{0} = p.name
+1px053l	ok	{0} (from {1})	{0}（来自 {1}）	src/ui/screens/shiori.js:244	{0} = p.name; {1} = p.plugin
+9xxzlu	ok	You already have a personality called "{0}".	你已经有名为“{0}”的性格了。	src/ui/screens/shiori.js:249	{0} = p.name
+fnme9h	ok	Added the personality "{0}". Choose it above.	已添加性格“{0}”，可在上方选择。	src/ui/screens/shiori.js:253	{0} = p.name
 aqber3	ok	600 times: an hour takes 6 seconds	600 倍速：一小时只需 6 秒	src/ui/screens/simulate.js:10	
 u8l013	ok	10 times real time: an hour takes 6 minutes	10 倍速：一小时只需 6 分钟	src/ui/screens/simulate.js:10	
 zby7kj	ok	60 times: an hour takes a minute	60 倍速：一小时只需 1 分钟	src/ui/screens/simulate.js:10	
@@ -2629,30 +2629,30 @@ jz8mjk	ok	Unarchive	取消归档	src/ui/screens/trip.js:56
 qeuftp	ok	Tap again to archive	再点一次以归档	src/ui/screens/trip.js:58	
 w0suw5	ok	Archive	归档	src/ui/screens/trip.js:58	Note: 归档 as Archive trip (归档旅行) and Unarchive (取消归档).
 1orcmjh	ok	Give it a name.	请输入名称。	src/ui/screens/trip.js:97	
-1cageta	ok	Saved.	已保存。	src/ui/screens/trip.js:110	
-cymegm	ok	The trip can't end before it starts.	结束日期不能早于开始日期。	src/ui/screens/trip.js:114	
-1yii6kb	ok	Ends	结束日期	src/ui/screens/trip.js:121	
-fc4c10	ok	Starts	开始日期	src/ui/screens/trip.js:121	
-8jz3l7	ok	All files	所有文件	src/ui/screens/trip.js:130	Note: a fold below Files on the trip screen: every file by folder.
-1s4j38w	ok	Files	文件	src/ui/screens/trip.js:156	
-deqm9f	ok	No files yet.	还没有文件。	src/ui/screens/trip.js:162	
-oib8wn	ok	Deleted ({0})	已删除（{0}）	src/ui/screens/trip.js:164	{0} = num(gone.length); Note: the fold at the foot of a trip's Files listing files deleted but kept (the conversation still has them); {0} is how many. The toasts after Delete call it "Deleted" (削除済み / 已删除 / 已刪除).
-se2paf#other	ok	# turns of this conversation are kept by {0}: annai asks for them to be deleted, once you're back online.	{0} 保存了这段对话的 # 轮内容。恢复联网后，annai 会请求删除这些内容。	src/ui/screens/trip.js:228	plural; # = n; {0} = who; English: "# turn of this conversation is kept by {0}: annai asks for it to be deleted, once you're back online." (one), "# turns of this conversation are kept by {0}: annai asks for them to be deleted, once you're back online." (other); Note: {0} is the providers that keep turns, as a list.
-1is61d1#other	ok	# turns of this conversation are kept by {0}: annai asks for them to be deleted.	{0} 保存了这段对话的 # 轮内容。annai 会请求删除这些内容。	src/ui/screens/trip.js:229	plural; # = n; {0} = who; English: "# turn of this conversation is kept by {0}: annai asks for it to be deleted." (one), "# turns of this conversation are kept by {0}: annai asks for them to be deleted." (other); Note: {0} is the providers that keep turns, as a list.
-1af3bj3	ok	Remove it?	要移除吗？	src/ui/screens/trip.js:234	
-nn02o3	ok	This removes everything in it from this device: its files, photos, notes and history.	这会从此设备上移除其中的所有内容，包括文件、照片、笔记和历史。	src/ui/screens/trip.js:234	
-ty94lb	ok	It hasn't been backed up since it last changed.	最近的更改还没有备份。	src/ui/screens/trip.js:234	
-1cp5muy	ok	Removed {0}. {1} freed.	已移除 {0}，释放了 {1}。	src/ui/screens/trip.js:240	{0} = scopeTitle(scope); {1} = size(freed)
-436oi1	ok	That was already removed.	已经移除过了。	src/ui/screens/trip.js:244	
-1mbp8t6	ok	It wasn't removed	未能移除	src/ui/screens/trip.js:247	
-1pzhsw4	ok	Nothing was removed. Try again.	没有移除任何内容。请重试。	src/ui/screens/trip.js:247	
-knyqwh	ok	Add photos or files	添加照片或文件	src/ui/screens/trip.js:321	
-12n59th	ok	Take a photo	拍照	src/ui/screens/trip.js:322	
-1kuasfa	ok	That file doesn't match its format: {0}	文件格式不符：{0}	src/ui/screens/trip.js:334	{0} = why; Note: {0} is the format check's own words, in English.
-1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0} 已存在。如需编辑，请从列表中打开。	src/ui/screens/trip.js:344	{0} = p
-ecy82r	ok	Add a file	添加文件	src/ui/screens/trip.js:352	
-1bmm5eq	ok	File path	文件路径	src/ui/screens/trip.js:353	
-16gte2l	ok	Create	创建	src/ui/screens/trip.js:355	
+1cageta	ok	Saved.	已保存。	src/ui/screens/trip.js:111	
+cymegm	ok	The trip can't end before it starts.	结束日期不能早于开始日期。	src/ui/screens/trip.js:115	
+1yii6kb	ok	Ends	结束日期	src/ui/screens/trip.js:122	
+fc4c10	ok	Starts	开始日期	src/ui/screens/trip.js:122	
+8jz3l7	ok	All files	所有文件	src/ui/screens/trip.js:131	Note: a fold below Files on the trip screen: every file by folder.
+1s4j38w	ok	Files	文件	src/ui/screens/trip.js:157	
+deqm9f	ok	No files yet.	还没有文件。	src/ui/screens/trip.js:163	
+oib8wn	ok	Deleted ({0})	已删除（{0}）	src/ui/screens/trip.js:165	{0} = num(gone.length); Note: the fold at the foot of a trip's Files listing files deleted but kept (the conversation still has them); {0} is how many. The toasts after Delete call it "Deleted" (削除済み / 已删除 / 已刪除).
+se2paf#other	ok	# turns of this conversation are kept by {0}: annai asks for them to be deleted, once you're back online.	{0} 保存了这段对话的 # 轮内容。恢复联网后，annai 会请求删除这些内容。	src/ui/screens/trip.js:229	plural; # = n; {0} = who; English: "# turn of this conversation is kept by {0}: annai asks for it to be deleted, once you're back online." (one), "# turns of this conversation are kept by {0}: annai asks for them to be deleted, once you're back online." (other); Note: {0} is the providers that keep turns, as a list.
+1is61d1#other	ok	# turns of this conversation are kept by {0}: annai asks for them to be deleted.	{0} 保存了这段对话的 # 轮内容。annai 会请求删除这些内容。	src/ui/screens/trip.js:230	plural; # = n; {0} = who; English: "# turn of this conversation is kept by {0}: annai asks for it to be deleted." (one), "# turns of this conversation are kept by {0}: annai asks for them to be deleted." (other); Note: {0} is the providers that keep turns, as a list.
+1af3bj3	ok	Remove it?	要移除吗？	src/ui/screens/trip.js:235	
+nn02o3	ok	This removes everything in it from this device: its files, photos, notes and history.	这会从此设备上移除其中的所有内容，包括文件、照片、笔记和历史。	src/ui/screens/trip.js:235	
+ty94lb	ok	It hasn't been backed up since it last changed.	最近的更改还没有备份。	src/ui/screens/trip.js:235	
+1cp5muy	ok	Removed {0}. {1} freed.	已移除 {0}，释放了 {1}。	src/ui/screens/trip.js:241	{0} = scopeTitle(scope); {1} = size(freed)
+436oi1	ok	That was already removed.	已经移除过了。	src/ui/screens/trip.js:245	
+1mbp8t6	ok	It wasn't removed	未能移除	src/ui/screens/trip.js:248	
+1pzhsw4	ok	Nothing was removed. Try again.	没有移除任何内容。请重试。	src/ui/screens/trip.js:248	
+knyqwh	ok	Add photos or files	添加照片或文件	src/ui/screens/trip.js:322	
+12n59th	ok	Take a photo	拍照	src/ui/screens/trip.js:323	
+1kuasfa	ok	That file doesn't match its format: {0}	文件格式不符：{0}	src/ui/screens/trip.js:335	{0} = why; Note: {0} is the format check's own words, in English.
+1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0} 已存在。如需编辑，请从列表中打开。	src/ui/screens/trip.js:345	{0} = p
+ecy82r	ok	Add a file	添加文件	src/ui/screens/trip.js:353	
+1bmm5eq	ok	File path	文件路径	src/ui/screens/trip.js:354	
+16gte2l	ok	Create	创建	src/ui/screens/trip.js:356	
 aoc0k0#other	ok	{0}: # chats	{0}：# 个对话	src/ui/screens/trips.js:66	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
 33pqd9	ok	Last backup {0}, to {1}.	上次备份：{0}，备份到 {1}。	src/ui/screens/trips.js:73	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: {1} is the backup place's name.
 12mubvb	ok	Now	现在	src/ui/screens/trips.js:79	

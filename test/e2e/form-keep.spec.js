@@ -128,7 +128,7 @@ test("the address of a plugin typed on Add and let go (the keyboard put away): t
   expect(await fieldNow(page, 'Address of a plugin or skill')).toEqual({ value: 'https://example.com/annai-plugin.json', same: true, focus: '' });
 });
 
-test("Search your plugins typed and let go: the draw of a plugin that adds a page waits, and the search and its narrowed list stay (fails on main)", async ({ page }) => {
+test("Search your plugins typed and let go: the draw of a plugin that adds a page lands, and the search and its narrowed list are as typed (fails on main)", async ({ page }) => {
   await slowInstalled(page);
   await page.evaluate(() => { location.hash = '#/plugins'; });
   const search = page.getByLabel('Search your plugins', { exact: true });
@@ -137,10 +137,48 @@ test("Search your plugins typed and let go: the draw of a plugin that adds a pag
   await expect(page.locator('li.card', { hasText: 'Trip record checks' })).toHaveCount(0);
   await search.blur();
   await page.evaluate(() => (/** @type {any} */ (globalThis)).__addPage());
-  await later(page);
-  expect(await fieldNow(page, 'Search your plugins')).toEqual({ value: 'slow', same: true, focus: '' });
+  // The search keeps its query as a fold stays open, and says so to the door: the draw comes, with what was typed in its new box.
+  await expect(search).not.toHaveAttribute('data-mine', '1');
+  expect(await fieldNow(page, 'Search your plugins')).toEqual({ value: 'slow', same: false, focus: '' });
   await expect(page.locator('li.card', { hasText: 'Slow start' })).toBeVisible();
   await expect(page.locator('li.card', { hasText: 'Trip record checks' })).toHaveCount(0);
+});
+
+// A plugin still starting, its row on Plugins saying so, and a search typed (or typed and emptied) and let go: when the plugin has started, the
+// row says On, the search as it was left. On b9b40d958 the draw waited for good: the search was typed in and no save stored it.
+for (const emptied of [false, true]) {
+  test(`Plugins: a plugin still starting, Search your plugins ${emptied ? 'typed and emptied' : 'typed'} and let go: when it has started, its row says On, and the search is as it was left (fails on b9b40d958)`, async ({ page }) => {
+    await slowInstalled(page);
+    await page.addInitScript(() => { /** @type {any} */ (globalThis).__hold = true; });
+    await page.goto('/#/plugins');
+    await page.reload();
+    const row = page.locator('li.card', { hasText: 'Slow start' });
+    await expect(row.getByText('On, but it didn\'t start')).toBeVisible();
+    await typeIn(page, 'Search your plugins', 'slow');
+    const search = page.getByLabel('Search your plugins', { exact: true });
+    if (emptied) await search.fill('');
+    await search.blur();
+    await release(page);
+    await expect(row.getByText('On', { exact: true })).toBeVisible();
+    await expect(search).toHaveValue(emptied ? '' : 'slow');
+  });
+}
+
+// Shiori's quiet hours save as the two times are both set; the save says so to the door, as an autosaved field does.
+test("Shiori's quiet hours saved and let go: a draw of annai's own lands, and the times stay (fails on b9b40d958)", async ({ page }) => {
+  await slowInstalled(page);
+  await page.evaluate(() => { location.hash = '#/shiori'; });
+  const from = page.getByLabel('Quiet from', { exact: true });
+  const until = page.getByLabel('Quiet until', { exact: true });
+  await from.fill('22:00');
+  await until.fill('07:00');
+  await from.evaluate((el) => { el.dataset.mine = '1'; });
+  await until.blur();
+  await expect(page.locator('.saved', { hasText: 'Saved' })).toBeVisible();
+  await page.evaluate(() => (/** @type {any} */ (globalThis)).__addPage());
+  await expect(from).not.toHaveAttribute('data-mine', '1');
+  await expect(from).toHaveValue('22:00');
+  await expect(until).toHaveValue('07:00');
 });
 
 /** MCP servers with trail added, and a tap on its Refresh tools, which takes 3 s: a slow server, its tools in two pages, 1.5 s each. @param {import('@playwright/test').Page} page @param {{ url: string, slowList: (ms: number) => void }} mcp */
@@ -157,12 +195,15 @@ async function refreshing(page, mcp) {
 
 /** The refresh has ended, and asked for its draw: its toast shows. @param {import('@playwright/test').Page} page */
 const refreshed = (page) => expect(page.getByText(/^trail: \d+ tools?\.$/)).toBeVisible({ timeout: 20_000 });
+/** What was typed after the tap on Refresh tools came before the refresh ended (it takes 3 s): its toast is not there yet. @param {import('@playwright/test').Page} page */
+const stillRefreshing = (page) => expect(page.getByText(/^trail: \d+ tools?\.$/)).toHaveCount(0);
 
 test("Settings → Tools → MCP servers: Refresh tools ends while the address of a new server is typed; the screen waits for the field, and for what it holds once let go (fails on main)", async ({ page }) => {
   const mcp = await startMcpServer({});
   try {
     await refreshing(page, mcp);
     await typeIn(page, 'Address', 'https://next.example/mcp');
+    await stillRefreshing(page);
     await refreshed(page);
     await later(page);
     expect(await fieldNow(page, 'Address')).toEqual({ value: 'https://next.example/mcp', same: true, focus: 'mcp-address' });
@@ -183,6 +224,7 @@ test("MCP: with the draw of Refresh tools waiting for the new server's Name, the
   try {
     await refreshing(page, mcp);
     await typeIn(page, 'Name', 'next');
+    await stillRefreshing(page);
     await refreshed(page);
     const address = page.getByLabel('Address', { exact: true });
     await address.click();
@@ -220,6 +262,7 @@ test("MCP: with the draw of Refresh tools waiting, Add server tapped and refused
     await refreshing(page, mcp);
     await typeIn(page, 'Name', 'trail'); // taken: Add says so at once
     await typeIn(page, 'Address', 'https://next.example/mcp');
+    await stillRefreshing(page);
     await refreshed(page);
     await page.getByRole('button', { name: 'Add server' }).click();
     const refused = page.getByText('There is a server called trail already.');
@@ -238,6 +281,7 @@ test("MCP: with the draw of Refresh tools waiting, Remove tapped once stays arme
   try {
     await refreshing(page, mcp);
     await typeIn(page, 'Name', 'next');
+    await stillRefreshing(page);
     await refreshed(page);
     await page.getByRole('button', { name: 'Remove' }).click();
     const armed = page.locator('.two-step > span:not(.off)', { hasText: 'Tap again to remove' });
@@ -259,6 +303,7 @@ test("MCP: with the draw of Refresh tools waiting, a Bearer token picked and typ
     await page.getByRole('combobox', { name: 'Key' }).selectOption('token');
     await typeIn(page, 'Token', 'sk-next-0123456789');
     await page.getByLabel('Token', { exact: true }).blur();
+    await stillRefreshing(page);
     await refreshed(page);
     await later(page);
     await expect(page.getByRole('combobox', { name: 'Key' })).toHaveValue('token');

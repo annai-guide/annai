@@ -313,6 +313,25 @@ test('text typed again while its save is under way keeps the screen: the caret a
   await expect(page.locator('#probe-saved')).toHaveValue('abcd');
 });
 
+test('text typed again while its save is under way and let go before that save ends: the draw waits for the second save too, and lands after it with all that was typed (pins the guard on `stored`)', async ({ page }) => {
+  const field = await typedSaved(page, 'abc');
+  await field.blur();
+  await expect.poll(() => saves(page)).toBe(1);
+  await field.focus();
+  await field.pressSequentially('d', { delay: 5 });
+  await field.blur(); // its save waits behind the first
+  await ask(page);
+  await saveEnds(page, 0, 'ok');
+  await expect.poll(() => saves(page)).toBe(2);
+  await settle(page, 1600);
+  expect(await states(page, 'a'), 'the first save stored "abc", not what is on show').toBe('pending');
+  expect(await draws(page)).toBe(1);
+  expect(await field.evaluate((el) => [/** @type {HTMLInputElement} */ (el).value, el.dataset.mine])).toEqual(['abcd', '1']);
+  await saveEnds(page, 1, 'ok');
+  await expect.poll(() => states(page, 'a')).toBe('resolved');
+  await expect(page.locator('#probe-saved')).toHaveValue('abcd');
+});
+
 test('a draw asked while a move is being drawn is not held by the screen being left: the new screen is drawn once', async ({ page }) => {
   await typed(page);
   await page.evaluate(() => {

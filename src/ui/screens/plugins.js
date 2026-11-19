@@ -29,7 +29,7 @@ export async function renderPlugins(ctx, route) {
     h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)),
     h('h1', { class: 'title', text: t`Plugins` }),
     h('div', { class: 'acts' }, h('a', { class: 'btn pri', href: '#/add' }, t`Add`)),
-    finder({ label: t`Search your plugins`, entries, draw: (found, typed) => byKind(found, typed, (x) => row(ctx, x.entry, updates.find((u) => u.id === x.entry.id), told.get(x.entry.id))) }).el);
+    finder({ label: t`Search your plugins`, fresh: ctx.moved, entries, draw: (found, typed) => byKind(found, typed, (x) => row(ctx, x.entry, updates.find((u) => u.id === x.entry.id), told.get(x.entry.id))) }).el);
 }
 
 /** The update the last checks found for a plugin, if any. @param {any} ctx @param {string} id */
@@ -90,8 +90,10 @@ export function updateButton(ctx, update) {
   return h('button', {
     class: 'btn pri', type: 'button',
     onclick: async (/** @type {Event} */ e) => {
-      /** @type {HTMLButtonElement} */ (e.currentTarget).disabled = true;
+      const button = /** @type {HTMLButtonElement} */ (e.currentTarget);
+      button.disabled = true;
       await applyUpdates(ctx, [update], { addressFetch: tracedFetch(ctx.store, SYS, { tool: /* en */ 'plugin updates' }), reload: () => restartAnnai(ctx) });
+      button.disabled = false; // as the work ends, not with the draw
       ctx.render();
     },
   }, t`Update to ${update.available}`);
