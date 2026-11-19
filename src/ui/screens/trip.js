@@ -200,7 +200,7 @@ async function removeFlow(ctx, id, scope, button) {
  * @param {any} ctx @param {string} id @returns {Promise<{ title: string, bytes: number }>}
  */
 export async function removeTripNow(ctx, id) {
-  // Shiori leaves the trip first, so nothing more is written into it once it is gone (spec §4.9).
+  // Shiori leaves it first; a verdict still out writes trace rows, swept at next start (spec §4.9).
   if (ctx.agent && (ctx.agent.trip === id || ctx.agent.target === id)) {
     await updateAppSettings(ctx.ws, { activeTrip: null });
     await ctx.agent.open(null, { quiet: true });

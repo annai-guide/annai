@@ -957,23 +957,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** Node v26.13.1's mock clock drops a timer of the next test when a timer of the previous test is cleared late (Node's fetch can clear one after the next test's fake clock starts); the wait lets the previous connection end first. Reported upstream from the user's account as https://github.com/nodejs/node/issues/67593 (2026-11-18).
 - **Revisit when:** a Node release with the fix is the one the tests run on: take the wait out, and run the tests that use `siteOn` many times side by side.
 
-### The window after she spoke can open and close at once
-- **Kind:** deferred.
-- **What the user sees:** she speaks a line, then asks aloud and nobody answers by voice; a button answers her question after the window after she spoke would have closed (her last words plus Listen for an answer, 20 s by default), and her turn then ends without her speaking again: the microphone opens and closes within about 0.1 s, and the dock says "Listening" for that moment. Seen in the test kit (the listen-end design check, 2026-11-18); main does the same. Whether a phone shows its microphone sign for that moment is not checked.
-- **Why:** the window's end is her last words plus the silence (`#after`), and `#afterTurn` opens the window without asking whether that time has passed. It lies outside how her own listening ends, which tap-ear-next changed, and main has it too.
-- **Revisit when:** the next version; the fix then: no window opens whose time has passed.
-
-### A tap made inside her question's 8 seconds listens only for what is left of them
-- **Kind:** deferred.
-- **What the user sees:** her question said aloud; voice goes off at 3 s (by hand, or auto mode as the car slows) and the traveller taps Shiori at 6 s. The tap's microphone serves her question's listening, so it closes with her 8 seconds, at about 7.9 s, and the dock then says "Waiting for your OK": speech begun at 8.6 s is not heard, and they must tap again. Seen in the test kit (the tap-ear-next final re-review, 2026-11-18); main does the same.
-- **Why:** a tap that finds her own listening under way gives its microphone no 8 seconds of its own (`#tapListen`), and her question's time closes whatever microphone is open (`#listenFor`).
-- **Revisit when:** the next version; the fix then: such a tap keeps 8 seconds from its own open (it closes by its own timer, and her question goes on by hand when it does).
-
-### Another conversation opened within a moment of her listening can receive its last line or its window
-- **Kind:** deferred.
-- **What the user sees:** she asks aloud; a passenger's line is being judged when the traveller opens another conversation (within the verdict's second or two): that line is written into the conversation just opened, set aside there, or, judged for her, wakes her there. Opening another conversation while her speak's microphone is still opening can likewise leave the window after she spoke open in the new conversation ("Listening") until its time. Seen in the test kit (the tap-ear-next re-read, 2026-11-18); main does the same.
-- **Why:** a line is routed after its verdict, to the conversation open then (`#route`, `#push`); the window after she spoke is opened at the turn's end and passes the opening check once the other conversation has landed (`#afterTurn`, `#openEarNow`). Both need the switch to land inside one verdict or one microphone open.
-- **Revisit when:** the next version; the fix then: a heard line keeps the conversation it was heard in (its route drops it when that is no longer the one open), and the window after she spoke opens only in the conversation its turn ran in.
 
 ### A tap uses up what was typed before it in a field that only a button saves
 - **Kind:** known limitation.
@@ -1002,3 +985,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the marks of what the traveller removed live in the last update's list of described models, so a key missing from one update loses its mark. Keeping removed keys in a list of their own is one more stored list, a design change for a case annai's own plugins never reach.
 - **Revisit when:** a third-party plugin does it, or a traveller reports a removed model coming back.
 - **Approved:** 2026-11-19, chief's decision C120 (not the user's words): accepted as a known limitation, third-party plugins only.
+
+### A line said as another conversation is opened is let go
+- **Kind:** known limitation.
+- **What the traveller sees:** classic voice, her microphone open. Someone is still speaking into it, or (with a quick-decision model) a line just said is still being judged, when the traveller taps another conversation, +, Remove, or Open on annai's "Carry on in …?" card: the line is not written anywhere, and nothing is said about it when they come back; they say it again. A line that reached her before the tap is in her turn, which "A turn stops when another conversation is tapped" covers. When the conversation they tapped fails to open (a storage error), the microphone closes too: a line said into it after the failure is not heard, the card says the other conversation didn't open, and the next tap listens.
+- **Why:** a line belongs to the conversation it was heard in, and their tap stopped that conversation. Keeping it for their return was built and drew findings in every review round (its write had to be ordered against the stopped turn's end, the move's record and a removal, and Remove waited for every line still being judged); letting it go keeps the user's pick "Nothing; I just answer" true as written. A microphone made while an open runs belongs to that open, so a failed open closes it rather than leaving it with no end.
+- **Revisit when:** a traveller loses a line this way and minds.
+- **Approved:** 2026-11-19, chief's decision C122 (not the user's words), the option "Let it go (Recommended)"; the failed open's clause is the main session's addition from listen-rest-next's last round, sent to chief with the push.

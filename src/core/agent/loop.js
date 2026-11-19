@@ -77,9 +77,9 @@ import { FILES_ONLY, PHOTO_ONLY, handoverOf } from '../handover.js';
  *   cacheAt: number }} Frozen
  *   what a turn's requests keep from its first step to its end (the keep-reasoning design §3): the system text (rebuilt only from a new snapshot,
  *   after housekeeping), the tools and provider tools, the reasoning level, the half's rule for its messages, and where the previous turn began
- * @typedef {{ owner: 'tap' | 'turn' | 'after', tap: boolean, by: number, timer?: ReturnType<typeof setTimeout>, session: { stop(): void, kind?: string } | null }} Ear
+ * @typedef {{ owner: 'tap' | 'turn' | 'after', tap: boolean, by: number, timer?: ReturnType<typeof setTimeout>, scope: string, session: { stop(): void, kind?: string } | null }} Ear
  *   a microphone open (spec §10.4). owner: how it ends; tap: a tap opened or claimed it, until her turn takes it: a line begun in it is for her (#route);
- *   by: when it closes by itself (#armEar), 0 for her turn's; timer: that close
+ *   by: when it closes by itself (#armEar), 0 for her turn's; timer: that close; scope: its conversation (#route)
  * @typedef {{ id: string, kind: 'ask' | 'wait', resolve: (v: Got) => void, listening?: boolean, hold?: () => void, arm?: () => void, tool?: boolean, byHand?: boolean, ear?: Ear,
  *   ask?: { no: (heard: string) => string | null, wake: string, answer: string, scope: string, heard: Map<string, AskLine>, armed: { line: AskLine, chosen: string } | null, settle: any } }} Pending
  *   waiting for the user; listening: an answer may be spoken; hold and arm: her own listening's limit (#listenFor's; none: byTap); tool: the wait tool's;
@@ -444,8 +444,8 @@ export class Agent {
   #simScope = null;
   /** This turn speaks because the user asked to hear her, with voice mode off: it doesn't listen (spec §10.5, §6.2). */
   #aloudOnly = false;
-  /** When her last spoken words ended. */
-  #saidAt = 0;
+  /** When the window after she spoke ends (#after). */
+  #afterBy = 0;
   #afterOpening = false;
   /** Write-downs that failed, by segment id (WRITE_TRIES). @type {Map<string, number>} */
   #writeTries = new Map();
@@ -698,7 +698,8 @@ export class Agent {
   }
 
   /**
-   * Opens the conversation of a trip (or of "me" when none is open), stopping any turn at once. Opens run one after another and only the latest
+   * Opens the conversation of a trip (or of "me" when none is open), stopping any turn at once, and closing the microphone: a line still being said or
+   * judged in it is let go (#route). Opens run one after another and only the latest
    * counts; until it is done no turn starts, so what the user types goes to the conversation being opened. A crash's open tool calls get results (spec §6.7).
    * @param {string | null} trip
    * @param {{ quiet?: boolean, moved?: boolean }} [o] quiet: the conversation is being removed, so it is not told that she will pick it up;
@@ -724,6 +725,7 @@ export class Agent {
     this.opening = this.opening.catch(() => {}).then(() => this.#open(trip, generation)).catch(async (e) => {
       if (generation === this.#generation) {
         this.#target = this.trip; // it stays the one open, so opening it is asked for again
+        this.#closeEar(); // a microphone made meanwhile (a tap's) was for the one that failed
         await this.#keepElsewhere(this.scope).catch(() => {}); // else idle() waits on lines typed meanwhile
       }
       throw e;
@@ -3369,9 +3371,10 @@ export class Agent {
     u.end(text);
     const spoken = await u.done; // #saying: set before its write
     if (this.#saying === call.id) this.#saying = null;
+    const { silenceSeconds } = await voice.settings();
     if (spoken.heard) {
       this.#facts.aloud = true;
-      this.#saidAt = Date.now();
+      this.#afterBy = Date.now() + silenceSeconds * this.secondMs;
     }
     // Cut with the turn (an open, the user's Stop): its result is written already, and it listens for nothing.
     if (call.signal.aborted) return spokenText(spoken);
@@ -3395,7 +3398,6 @@ export class Agent {
     if (call.more && (call.more !== 'ask' || !spoken.cut)) return before;
     /* en */
     if (this.#aloudOnly) return `${before} Voice mode is off, so you didn't listen; the user may type.`;
-    const { silenceSeconds } = await voice.settings();
     const got = await this.#listenFor(call, 'wait', silenceSeconds, false, Boolean(call.last));
     const answer = await this.#answer(before, got, call, /* en */ `Heard nothing (${silenceSeconds} seconds).`);
     // Its window passed in silence: she would only call sleep, so the turn ends here, for no model call.
@@ -3477,7 +3479,7 @@ export class Agent {
 
   /**
    * Listens for the user's answer (spec §10.4): the first thing heard, typing, or a tap; or a silence of seconds. With speech heard earlier waiting, speak and wait don't
-   * listen: it reaches her at once. Chatter or a noise neither ends the silence nor restarts it (music would never let it end); it is not armed while someone speaks
+   * listen: it reaches her at once. Chatter or a noise neither ends the silence nor restarts it; it is not armed while someone speaks
    * (a line across its time is heard to its end). What happens at its time is `over`'s.
    * @param {{ id: string, signal?: AbortSignal }} call a stopped turn's call listens for no one, and leaves nothing waiting (as #waitFor)
    * @param {'wait' | 'ask'} kind @param {number} seconds @param {boolean} [tool] the wait tool's @param {boolean} [last] speak as her reply's last call @returns {Promise<Got>}
@@ -3508,11 +3510,11 @@ export class Agent {
         timer = setTimeout(over, Math.max(0, by - Date.now()));
       };
       // Its time, nobody speaking (arm). Lines heard in time may still answer (#closeEar's door; speak and wait: the one routed now). With none, they end before the
-      // close (no "Your turn"); with one, a close sets Thinking.
+      // close; with one, a close sets Thinking. Her question's closes a microphone with no end of its own, or a tap's still opening.
       const over = () => {
         const routing = this.#routing;
         if (kind !== 'ask' && !routing) end();
-        const close = kind === 'ask' || (last && this.#ear?.owner === 'turn');
+        const close = kind === 'ask' ? !this.#ear?.by && !this.#tapping : last && this.#ear?.owner === 'turn';
         if (close) this.#closeEar();
         if (kind === 'ask') {
           Object.assign(pending, { arm: undefined, byHand: true });
@@ -3539,24 +3541,27 @@ export class Agent {
    * @param {'tap' | 'turn' | 'after'} owner @returns {Promise<string | null>} null when listening; otherwise why not
    */
   #openEar(owner) {
-    const run = this.#earLock.then(() => this.#openEarNow(owner));
+    const scope = this.scope;
+    const run = this.#earLock.then(() => this.#openEarNow(owner, scope));
     this.#earLock = run.catch(() => {});
     return run;
   }
 
-  /** @param {'tap' | 'turn' | 'after'} owner @returns {Promise<string | null>} */
-  async #openEarNow(owner) {
+  /** @param {'tap' | 'turn' | 'after'} owner @param {string} scope @returns {Promise<string | null>} */
+  async #openEarNow(owner, scope) {
     const voice = this.voice;
     if (!voice) return /* en */ "voice isn't available here.";
     if (this.#ear) {
-      // What is said next is for her, never judged by the gate (choice 3); the window after she spoke, still opening, becomes the tap's.
+      // What is said next is for her, never judged (choice 3); the window after she spoke, still opening, becomes the tap's.
       if (owner === 'tap') Object.assign(this.#ear, { tap: true }, this.#ear.owner === 'after' ? { owner } : {});
       return null;
     }
-    // A turn cut by opening another conversation: nothing of its own listens in the conversation being left.
-    if (this.#opens && owner !== 'tap') return /* en */ 'another conversation is opening.';
+    // Nothing of a turn's own listens in another conversation, opening or opened since it asked or since the setup read.
+    const moved = () => owner !== 'tap' && (this.#opens || scope !== (this.#target ?? ME));
+    if (moved()) return /* en */ 'another conversation is opening.';
     const how = await voice.howToListen(this.#half.role);
     if (!voice.on) return /* en */ 'voice mode is off.';
+    if (moved()) return /* en */ 'another conversation is opening.';
     if ('why' in how) {
       // The mic button explains what to add (spec §10.3): on every tap, and once for her own listening.
       if (owner === 'tap' || !this.#toldDeaf) await this.#notice({ tone: 'warn', title: t`Shiori can't hear you yet`, body: how.words });
@@ -3565,7 +3570,7 @@ export class Agent {
     }
     if (!this.#turnRuns()) return /* en */ 'nothing is open.'; // the app switched to me while it opened: no microphone
     /** @type {Ear} */
-    const ear = { owner, tap: owner === 'tap', by: 0, session: null };
+    const ear = { owner, tap: owner === 'tap', by: 0, scope: this.#target ?? ME, session: null };
     this.#ear = ear;
     try {
       const session = await voice.open({
@@ -3581,6 +3586,11 @@ export class Agent {
       }
       ear.session = session;
       this.#toldDeaf = false;
+      // Its time gone as it opened (a tap's claim has 8 s of its own): no window.
+      if (ear.owner === 'after' && this.#afterBy <= Date.now()) {
+        this.#closeEar();
+        return /* en */ 'Listening stopped.';
+      }
       return null;
     } catch (e) {
       if (this.#ear === ear) this.#ear = null;
@@ -3632,7 +3642,7 @@ export class Agent {
     // A recorded segment begins at its own speech start; a dictation result's isn't tied to it (one per run, a noise can own it): it begins on arrival.
     const began = (h.source !== 'dictation' && this.#start) || { at: h.at, over: Boolean(this.voice?.speaker.speaking), tap: ear.tap };
     // Its segment came: they stopped. Begun while annai's voice played (a chat Koe's microphone stays open while the other half says the card's
-    // question), it is over her voice for the card, as a live session, deaf then, never hears it.
+    // question), it is over her voice for the card.
     this.#spoke(false, { id: h.id, at: began.at, ...(began.over ? { her: true } : {}) });
     // Nobody speaks now: the limits held run again, as at a click's end. No verdict arms anything.
     this.#pending?.arm?.();
@@ -3646,7 +3656,8 @@ export class Agent {
 
   /**
    * Where a segment goes (spec §10.4): the answer she listens for; a tap's first words, which wake her; or, while she works,
-   * her next call, which a new turn takes if this one ends first: nothing heard is lost. @param {Heard} h @param {{ at: number, over: boolean, tap: boolean }} began when its speech began, over her voice, in a tap's microphone
+   * her next call, which a new turn takes if this one ends first: nothing heard is lost, but a line still being said or judged as another conversation
+   * opens is let go, as the turn is. @param {Heard} h @param {{ at: number, over: boolean, tap: boolean }} began when its speech began, over her voice, in a tap's microphone
    * @param {Ear} ear heard it
    */
   async #route(h, began, ear) {
@@ -3655,6 +3666,11 @@ export class Agent {
       if (!this.#speaking) this.#speechStopped(false);
       return;
     }
+    // Heard in a conversation no longer the one open (an open closed its microphone, and the card above, stopped with it, took nothing): let go, as
+    // the turn waiting on it is; not judged, written nowhere.
+    const here = () => ear.scope === (this.#target ?? ME);
+    const drop = () => void this.voice?.memory.drop(h.id);
+    if (!here()) return drop();
     // A tap's line, by how it began, whatever happened since (the microphone closed, the listening ended, she got busy): for her, never gated.
     const tapped = began.tap;
     const p = this.#pending?.listening ? this.#pending : null;
@@ -3678,9 +3694,9 @@ export class Agent {
         }
       }
       // A no needs no verdict; any other line, kept or set aside, does.
-      verdict = tapped || said !== null ? null : await this.#gate(h);
+      verdict = tapped || said !== null ? null : await this.#gate(h, ear.scope);
       if (this.#pending === p && verdict === 'chatter') {
-        // Not for her: written at the turn's end, and she listens on, to the same deadline (the second-drive design): one such verdict must not close the microphone on the user.
+        // Not for her: written at the turn's end, and she listens on, to the same deadline (the second-drive design).
         this.#chatter.push(h);
         if (this.state.name === 'hearing') this.#setState('listening');
         this.#noted(); // what came due while they spoke (#noted held it) is taken now, not when the wait runs out
@@ -3702,6 +3718,8 @@ export class Agent {
         return;
       }
     }
+    if (!tapped) verdict ??= await this.#gate(h, ear.scope);
+    if (!here()) return drop(); // opened while it was judged
     if (tapped) {
       // It wakes her, or joins her turn, and the microphone is the turn's from then on.
       this.#turnsEar(ear);
@@ -3709,7 +3727,6 @@ export class Agent {
       this.#drain();
       return;
     }
-    verdict ??= await this.#gate(h);
     if (this.state.name === 'hearing') this.#setState(this.#busy ? 'thinking' : 'listening');
     if (verdict === 'chatter') {
       // Chatter: recorded, and she sleeps on (spec §10.4).
@@ -3726,14 +3743,14 @@ export class Agent {
   /**
    * The quick-decision gate for one segment (spec §10.4). It runs only when a quick-decision model is configured
    * (falling back to the main model would double the calls). A gate that fails is unsure.
-   * @param {Heard} h @returns {Promise<'shiori' | 'chatter' | 'unsure' | null>} null: no gate ran
+   * @param {Heard} h @param {string} scope its conversation @returns {Promise<'shiori' | 'chatter' | 'unsure' | null>} null: no gate ran
    */
-  async #gate(h) {
+  async #gate(h, scope) {
     const cfg = await this.llm.config();
     if (!cfg.roles?.decide?.models?.length || !this.llm.gate || !this.voice) return null;
     try {
       const r = await this.llm.gate({
-        prompt: gatePrompt(await this.#lastLines()), options: GATE_OPTIONS, scope: this.scope, speech: this.voice.resolver(this.scope),
+        prompt: gatePrompt(await this.#lastLines(scope)), options: GATE_OPTIONS, scope, speech: this.voice.resolver(scope),
         parts: [{ type: 'speech', id: h.id, ...(typeof h.text === 'string' ? { text: h.text } : {}) }],
       });
       if (r.by === 'unsure') return 'unsure';
@@ -3745,10 +3762,10 @@ export class Agent {
 
   /**
    * The conversation's last lines for the gate, oldest first: what she said or asked and what the user said, not what was set aside, every word quoted.
-   * @returns {Promise<string[]>}
+   * @param {string} scope @returns {Promise<string[]>}
    */
-  async #lastLines() {
-    const events = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.ask'], reverse: true, limit: GATE_LINES * 3 }));
+  async #lastLines(scope) {
+    const events = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['msg.user', 'heard', 'heard.text', 'out.speak', 'out.ask'], reverse: true, limit: GATE_LINES * 3 }));
     /* en */
     return (await conversationLines(this.store, events)).filter((l) => l.text).slice(-GATE_LINES).map(({ e, text }) => `${e.type === 'out.speak' || e.type === 'out.ask' ? 'She' : 'The user'}: ${quote(String(text).slice(0, 300))}`);
   }
@@ -3857,7 +3874,7 @@ export class Agent {
   /** The tap whose window is opening, until it opens or a tap stops it. @type {object | null} */
   #tapping = null;
 
-  /** The user tapped to talk (spec §10.4): the microphone opens ("One moment…" until then, unless she is busy) and closes 8 s on (#armEar), counted from her busy spell's end if she is busy (#rest). */
+  /** The user tapped to talk (spec §10.4): the microphone opens ("One moment…" until then, unless she is busy) and closes 8 s on (#armEar), or 8 s past her busy spell (#rest). */
   #tapListen() {
     this.tapOpening = true;
     const mine = (this.#tapping = {});
@@ -3881,8 +3898,7 @@ export class Agent {
         p.ear = this.#ear;
         if (this.#half.voice()) this.#voiceNow = true; // the tap holds voice on for this exchange: her reply to the answer is said
       }
-      // Her own listening keeps its time; with nothing waiting, she is speaking or working: the window serves her turn, and #rest gives it 8 s from its end.
-      if (p && !byTap(p)) return void this.#setState('listening');
+      // With nothing waiting, she is speaking or working: the window serves her turn, and #rest gives it 8 s from its end.
       if (!p && this.#busy) return;
       this.#ear.by = Date.now() + LISTEN_S * this.secondMs; // each tap its own 8 s
       this.#armEar();
@@ -3891,7 +3907,7 @@ export class Agent {
   }
 
   /**
-   * The open microphone's own end (by): a tap's 8 s (#tapListen when she is free, else #rest at each busy spell's end) or the window after she spoke (#after).
+   * The open microphone's own end (by): a tap's 8 s (#tapListen, #rest) or the window after she spoke (#after).
    * Noise doesn't move it. Never armed while someone speaks (a line's or a click's end arms it again, no verdict does); while her turn runs it closes only
    * under a tap's listening.
    */
@@ -3915,12 +3931,9 @@ export class Agent {
     Object.assign(ear, { owner: 'turn', tap: false, by: 0 });
   }
 
-  /** The window after she spoke: its microphone closes that long after her last words, and no tap's line is said into it (a tap that claimed it is over). @param {Ear} ear */
-  async #after(ear) {
-    Object.assign(ear, { owner: 'after', tap: false });
-    const s = this.voice ? (await this.voice.settings()).silenceSeconds : 0;
-    if (this.#ear !== ear || ear.owner !== 'after') return;
-    ear.by = this.#saidAt + s * this.secondMs;
+  /** The window after she spoke: its microphone closes at #afterBy, and no tap's line is said into it (a tap that claimed it is over). @param {Ear} ear */
+  #after(ear) {
+    Object.assign(ear, { owner: 'after', tap: false, by: this.#afterBy });
     this.#armEar();
   }
 
@@ -3932,8 +3945,9 @@ export class Agent {
   async #afterTurn(ok, wakeId) {
     for (const u of this.#utterances.values()) u.stop();
     this.#utterances.clear();
-    // She spoke and didn't sleep: she listens on (the second-drive design), through the gate; sleep, or the user's Stop, closes the microphone at once.
-    const listens = ok && !this.#userStop && this.#facts.aloud && !this.#facts.closed && !this.#wentToSleep && !this.#aloudOnly && !this.#cut && this.#half.voice() && Boolean(this.voice?.on);
+    // She spoke and didn't sleep: she listens on (the second-drive design), through the gate, while its time is left; sleep, the user's Stop, or none left closes it.
+    const listens = ok && !this.#userStop && this.#facts.aloud && !this.#facts.closed && !this.#wentToSleep && !this.#aloudOnly && !this.#cut && this.#half.voice() && Boolean(this.voice?.on)
+      && this.#afterBy > Date.now();
     if (this.#ear?.owner === 'turn' || (this.#ear?.owner === 'after' && this.#facts.closed)) {
       if (listens && this.#ear) this.#after(this.#ear); // the deadline stands: her last words plus the silence
       else this.#closeEar();
