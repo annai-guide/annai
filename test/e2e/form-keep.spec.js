@@ -201,9 +201,9 @@ test("Shiori's quiet hours saved and let go: a draw of annai's own lands, and th
   await expect(until).toHaveValue('07:00');
 });
 
-// A provider page's "Filter the list" never saves anything: what is typed in it is a search, said `stored` at each keystroke as the finders do, and the
-// search is kept as the finders keep theirs: its text and the list it filters come back with each draw of the screen, and a move starts them empty.
-test("a provider's Filter the list typed and let go: the draw of a plugin that adds a page lands, and the filter and its fetched list are as they were; a move starts them empty (fails on 8326b247e: they went)", async ({ page }) => {
+// A provider page's "Filter the list" never saves anything: what is typed in it is a search, said `stored` at each keystroke as the finders do. The
+// page keeps neither the filter nor the list it filters: a draw of the screen lands, and the list is asked for again (a Fetch is one tap).
+test("a provider's Filter the list typed and let go: the draw of a plugin that adds a page lands, and the filter and the list are gone, as on main (fails on 799dd44a4: the filter held it for good; and on 6463fbc42: both came back)", async ({ page }) => {
   const key = 'sk-filter-stored-stand-in-0123';
   const s = await startFakeServer({ flavour: 'llamacpp', key, models: [{ id: 'qwen3.8-flash', object: 'model', owned_by: 'llamacpp' }, { id: 'gemma5-small', object: 'model', owned_by: 'llamacpp' }] });
   try {
@@ -217,108 +217,18 @@ test("a provider's Filter the list typed and let go: the draw of a plugin that a
     await page.getByRole('button', { name: 'Fetch model list' }).click();
     await expect(page.getByText('2 models.')).toBeVisible();
     await typeIn(page, 'Filter the list', 'qwen');
-    await expect(page.getByRole('button', { name: 'Add gemma5-small' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Add qwen3.8-flash' })).toBeVisible();
     await page.getByLabel('Filter the list', { exact: true }).blur();
     await page.evaluate(() => (/** @type {any} */ (globalThis)).__addPage());
-    // The draw lands (the box on screen is a new one, not the one marked), and brings the filter and the list back as they were.
-    const filter = page.getByLabel('Filter the list', { exact: true });
-    await expect(filter, 'the screen was drawn again').not.toHaveAttribute('data-mine', '1');
-    await expect(filter).toHaveValue('qwen');
-    await expect(page.getByRole('button', { name: 'Add qwen3.8-flash' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Add gemma5-small' }), 'the list is filtered by the text that came back').toHaveCount(0);
-    // The kept list is the whole fetched list: taking the text off shows the rest, without fetching again.
-    await filter.fill('');
-    await expect(page.getByRole('button', { name: 'Add gemma5-small' })).toBeVisible();
-    await filter.fill('qwen');
-    // A move to the page starts it empty: no text, no list.
-    await page.evaluate(() => { location.hash = '#/models'; });
-    await expect(page.getByRole('heading', { level: 1, name: 'Models' })).toBeVisible();
-    await page.goBack();
-    await expect(page.getByRole('button', { name: 'Fetch model list' })).toBeVisible();
-    await expect(page.getByLabel('Filter the list', { exact: true })).toHaveCount(0);
+    // The draw lands: the filter box and the list went with the screen that was drawn away, and the list is not shown until it is asked for again.
+    await expect(page.getByLabel('Filter the list', { exact: true }), 'the screen was drawn again').toHaveCount(0, { timeout: 5000 });
     await expect(page.getByRole('button', { name: 'Add qwen3.8-flash' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Fetch model list' })).toBeVisible();
+    await page.getByRole('button', { name: 'Fetch model list' }).click();
+    await expect(page.getByRole('button', { name: 'Add gemma5-small' })).toBeVisible();
+    await expect(page.getByLabel('Filter the list', { exact: true })).toHaveValue('');
   } finally {
     await s.stop();
-  }
-});
-
-// What a Fetch model list brought is the answer of the address and key it was fetched with (touch 3 of form-keep-next): where either changes, the list is
-// dropped, and the screen shows it gone, not offered for a server it did not come from (an Add would add a model the new server may not have).
-
-/**
- * A llama.cpp provider on the stand-in server a, its page open, with a's list fetched and shown. @param {import('@playwright/test').Page} page
- * @param {{ origin: string }} a @param {string} key @returns {Promise<import('@playwright/test').Locator>} the page's Chat part
- */
-async function fetchedAt(page, a, key) {
-  await openApp(page, '#/models');
-  await waitForServiceWorker(page);
-  await pickProvider(page, 'llama.cpp');
-  await page.getByLabel('Address', { exact: true }).fill(`${a.origin}/v1`);
-  await page.getByLabel('API key').fill(key);
-  await page.getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
-  const chat = page.getByRole('region', { name: 'Chat', exact: true });
-  await chat.getByRole('button', { name: 'Fetch model list' }).click();
-  await expect(chat.getByText('1 model.')).toBeVisible();
-  await expect(chat.getByRole('button', { name: 'Add qwen3.8-flash' })).toBeVisible();
-  return chat;
-}
-
-test("a provider's fetched list is gone once Save puts another address: the page is drawn again without a list from the old server (fails on 54fef98fa)", async ({ page }) => {
-  const key = 'sk-list-new-address-0123';
-  const a = await startFakeServer({ flavour: 'llamacpp', key, models: [{ id: 'qwen3.8-flash', object: 'model', owned_by: 'llamacpp' }] });
-  const b = await startFakeServer({ flavour: 'llamacpp', key, models: [{ id: 'gemma5-small', object: 'model', owned_by: 'llamacpp' }] });
-  try {
-    const chat = await fetchedAt(page, a, key);
-    await page.getByLabel('Address', { exact: true }).fill(`${b.origin}/v1`);
-    await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page.locator('.toasts .toast', { hasText: 'Saved' })).toBeVisible(); // after the draw it asked for
-    await expect(chat.getByRole('button', { name: 'Add qwen3.8-flash' }), 'a is not the server saved').toHaveCount(0);
-    await expect(chat.getByLabel('Filter the list', { exact: true })).toHaveCount(0);
-    // The new server's list is asked for, and is the one shown.
-    await chat.getByRole('button', { name: 'Fetch model list' }).click();
-    await expect(chat.getByRole('button', { name: 'Add gemma5-small' })).toBeVisible();
-    await expect(chat.getByRole('button', { name: 'Add qwen3.8-flash' })).toHaveCount(0);
-  } finally {
-    await a.stop();
-    await b.stop();
-  }
-});
-
-test("a provider's fetched list is gone once Remove key has removed the key it was fetched with (fails on 54fef98fa)", async ({ page }) => {
-  const key = 'sk-list-remove-key-0123';
-  const a = await startFakeServer({ flavour: 'llamacpp', key, models: [{ id: 'qwen3.8-flash', object: 'model', owned_by: 'llamacpp' }] });
-  try {
-    const chat = await fetchedAt(page, a, key);
-    await page.getByRole('button', { name: 'Remove key' }).click();
-    await page.getByRole('button', { name: 'Tap again to remove the key' }).click();
-    await expect(page.locator('.toasts .toast', { hasText: 'Key removed' })).toBeVisible();
-    await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', 'not set');
-    await expect(chat.getByRole('button', { name: 'Add qwen3.8-flash' }), 'fetched with the key that is gone').toHaveCount(0);
-    await expect(chat.getByLabel('Filter the list', { exact: true })).toHaveCount(0);
-  } finally {
-    await a.stop();
-  }
-});
-
-test("a provider's fetched list is gone once the ability's own address is saved as another: its section is drawn again without it (fails on 54fef98fa)", async ({ page }) => {
-  const key = 'sk-list-own-address-0123';
-  const a = await startFakeServer({ flavour: 'llamacpp', key, models: [{ id: 'qwen3.8-flash', object: 'model', owned_by: 'llamacpp' }] });
-  const b = await startFakeServer({ flavour: 'llamacpp', key, models: [{ id: 'gemma5-small', object: 'model', owned_by: 'llamacpp' }] });
-  try {
-    const chat = await fetchedAt(page, a, key);
-    const own = chat.getByLabel('Its own address');
-    await own.fill(`${b.origin}/v1`);
-    await own.blur();
-    await expect(chat.getByRole('button', { name: 'Add qwen3.8-flash' }), 'a is not the address saved').toHaveCount(0);
-    await expect(chat.getByLabel('Filter the list', { exact: true })).toHaveCount(0);
-    await expect(chat.getByLabel('Its own address'), 'drawn from what was saved').toHaveValue(`${b.origin}/v1`);
-    await chat.getByRole('button', { name: 'Fetch model list' }).click();
-    await expect(chat.getByRole('button', { name: 'Add gemma5-small' })).toBeVisible();
-    await expect(chat.getByRole('button', { name: 'Add qwen3.8-flash' })).toHaveCount(0);
-  } finally {
-    await a.stop();
-    await b.stop();
   }
 });
 

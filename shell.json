@@ -1,5 +1,5 @@
 {
-  "build": "b18abaa095cf",
+  "build": "1fc97e188899",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -82,7 +82,7 @@
     "/src/core/llm/move-over.js": "9584243ec1f4",
     "/src/core/llm/official.js": "43a4783de11b",
     "/src/core/llm/provider-desc.js": "f1a1406b822b",
-    "/src/core/llm/providers.js": "4181dc58ff74",
+    "/src/core/llm/providers.js": "ff8cf01d36a0",
     "/src/core/llm/setup.js": "8691e7d5248f",
     "/src/core/llm/cost.js": "96142e038b97",
     "/src/core/llm/partial-json.js": "05dab759f366",
@@ -265,7 +265,7 @@
     "/src/ui/screens/plugin-install.js": "00ac186440d9",
     "/src/ui/screens/plugin.js": "db6dce86872f",
     "/src/ui/screens/plugins.js": "feec46a0f15e",
-    "/src/ui/screens/provider.js": "9d43700f00ac",
+    "/src/ui/screens/provider.js": "33227147972d",
     "/src/ui/screens/recap.js": "c5fea091ded8",
     "/src/ui/screens/replay.js": "b6c46d9c0ec7",
     "/src/ui/screens/settings.js": "26346e25d0fe",

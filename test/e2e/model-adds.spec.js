@@ -181,7 +181,7 @@ test("Add model by id whose draw was dropped, then Fetch model list: a listed mo
 // One model for each provider model id on a provider's ability (touch 2 of form-keep-next): an add is refused when the provider has one, so a list
 // drawn before an add by id, or an add by id of what a list added under its name, never makes a second model of one id ("qwen3.8-flash (2)").
 
-test("a listed Add for a model that Add model by id has added since the list was drawn is refused with words, the page is drawn again with that one model and no live Add (fails on 8326b247e, and on 54fef98fa for the drawn page)", async ({ page }) => {
+test("a listed Add for a model that Add model by id has added since the list was drawn is refused with words: its row says Already added, nothing else on the page changes (text typed elsewhere stays), and there is one model (fails on 8326b247e, and on 6463fbc42 for the page drawn)", async ({ page }) => {
   const key = 'sk-stale-list-stand-in-0123';
   const s = await startFakeServer({ flavour: 'llamacpp', key, models: [{ id: 'qwen3.8-flash', object: 'model', owned_by: 'llamacpp' }, { id: 'gemma5-small', object: 'model', owned_by: 'llamacpp' }] });
   try {
@@ -194,13 +194,16 @@ test("a listed Add for a model that Add model by id has added since the list was
     await page.waitForTimeout(1600);
     const stale = chat.getByRole('button', { name: 'Add qwen3.8-flash' });
     await expect(stale, 'the list still offers it: it was drawn before the add').toBeEnabled();
+    const row = chat.locator('li.acts', { hasText: 'qwen3.8-flash' });
     await stale.click();
     await expect(page.locator('.toasts .toast', { hasText: '"qwen3.8-flash" is already added here.' })).toBeVisible();
-    // The refusal draws the page, so the screen says what the toast says: Its models has the model, and its row has no live Add (fails on 54fef98fa).
-    await expect(chat.getByRole('link', { name: /^qwen3\.8-flash/ })).toHaveCount(1);
+    // The refusal speaks in its row, as a model already added does in the list, and has no Add to tap again.
+    await expect(row.getByText(/^Already added, on /)).toBeVisible();
     await expect(chat.getByRole('button', { name: 'Add qwen3.8-flash' })).toHaveCount(0);
-    await expect(chat.getByText('No models yet.')).toHaveCount(0);
-    // As the page is now.
+    await expect(chat.getByRole('button', { name: 'Add gemma5-small' }), 'the rest of the list is as it was').toBeEnabled();
+    // The page was not drawn: what was typed elsewhere is still in its field (a draw of the page would take it).
+    await expect(chat.getByLabel('Add a model by id')).toHaveValue('typed-after');
+    // One model, as the page is drawn from what is stored.
     await page.reload();
     await expect(chat.getByRole('link', { name: /^qwen3\.8-flash/ })).toHaveCount(1);
   } finally {
@@ -266,10 +269,7 @@ async function expectRefusalToast(page, chat) {
   await expect(chat.getByText(words), 'said in a toast, not in the models\' status line or a row').toHaveCount(0);
 }
 
-/** A refused Add draws the page (touch 3 of form-keep-next), so the screen agrees with the toast: here the provider is gone, and its page says so (fails on 54fef98fa: the row stayed, offered again). @param {import('@playwright/test').Page} page */
-const providerGone = (page) => expect(page.getByRole('heading', { level: 1, name: 'This provider no longer exists' })).toBeVisible();
-
-test("a listed Add that fails, on the last row of a long list, says why in a toast, and draws the page again (a provider that is gone says so)", async ({ page }) => {
+test("a listed Add that fails, on the last row of a long list, says why in a toast, and can be tapped again", async ({ page }) => {
   const key = 'sk-refused-stand-in-0123';
   const s = await startFakeServer({
     flavour: 'llamacpp', key,
@@ -281,7 +281,7 @@ test("a listed Add that fails, on the last row of a long list, says why in a toa
     await last.scrollIntoViewIfNeeded();
     await last.click();
     await expectRefusalToast(page, chat);
-    await providerGone(page);
+    await expect(last).toBeEnabled();
   } finally {
     await s.stop();
   }
@@ -308,7 +308,7 @@ test("a listed Add that fails, on a row just above the dock, says why in a toast
     // Tapped without Playwright's click, which moved the page here (measured: 194 px, Chromium) where a finger's tap moves nothing.
     await near.dispatchEvent('click');
     await expectRefusalToast(page, chat);
-    await providerGone(page);
+    await expect(near).toBeEnabled();
   } finally {
     await s.stop();
   }
