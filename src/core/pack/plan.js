@@ -163,7 +163,7 @@ export async function planFor(ws, scope) {
 
 /**
  * About how many bytes some of a pack's files and guides take (spec §11.5: shown before downloading).
- * @param {{ part: Part, edition: string | null }[]} files download.js wanted's @param {number} guides
+ * @param {{ part: Part, edition: string | null }[]} files as wanted() in download.js gives them @param {number} guides
  */
 export function estimate(files, guides) {
   let n = guides * SIZES.guide;

@@ -266,43 +266,173 @@ test('a plan change while an update annai began by itself runs: once it ends, th
   keeper.dispose();
 });
 
-test("a change of languages is noticed: on Wi-Fi the new edition's files come by themselves, a reorder brings nothing, and live mode's names follow the order", async () => {
+test("a change of languages is noticed: on Wi-Fi the new edition's files come by themselves, a reorder brings nothing, and live mode's names follow the order and the files", async () => {
   const t = await packTrip({ '/plan/yufuin.json': yufuinStop('Yufuin Station', YUFUIN, 1) });
   const agent = fakeAgent(t.trip);
   const net = services({ overpass: () => ({ elements: [] }), wikipedia: (url) => yufuinAnswer(url) });
   const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0 });
-  await keeper.download(t.trip);
-  const station = { lat: 33.2626, lng: 131.3551 };
-  await until(() => keeper.name(station)?.name === 'Yufuin Station');
-  assert.equal((await keeper.status(t.trip)).why, null);
-  const hosts = () => net.asked.filter((a) => a.url.includes('wikipedia.org')).map((a) => new URL(a.url).hostname);
-  assert.deepEqual(hosts(), ['en.wikipedia.org']);
-  // Japanese added, after English: its files are missing, about one other edition's part, and annai brings them by itself.
-  await updateAppSettings(t.ws, { languages: { spoken: ['en', 'ja'], answer: 'follow' } });
-  const s = await keeper.status(t.trip);
-  assert.equal(s.why, 'missing');
-  assert.equal(s.estimate, SIZES.wikiEdition + SIZES.guide); // and a guide, as the pack has none yet
-  await until(async () => hosts().length === 2 && (await keeper.status(t.trip)).why === null);
-  assert.deepEqual(hosts(), ['en.wikipedia.org', 'ja.wikipedia.org']);
-  assert.equal(keeper.name(station)?.name, 'Yufuin Station', 'English first');
-  // Japanese moved first: nothing to download, and the names are Japanese Wikipedia's.
-  const asked = net.asked.length;
-  await updateAppSettings(t.ws, { languages: { spoken: ['ja', 'en'], answer: 'follow' } });
-  await until(() => keeper.name(station)?.name === '由布院駅');
-  await new Promise((r) => setTimeout(r, 60));
-  assert.equal(net.asked.length, asked);
-  keeper.dispose();
+  try {
+    await keeper.download(t.trip); // by hand: no update by itself has run, so no hourly gate yet
+    const station = { lat: 33.2626, lng: 131.3551 };
+    // 湯布院町 is a Japanese article alone: English Wikipedia names another place at its point.
+    const town = { lat: 33.26442, lng: 131.35558 };
+    await until(() => keeper.name(station)?.name === 'Yufuin Station');
+    assert.equal(keeper.name(town)?.name, 'Yufuin Onsen');
+    assert.equal((await keeper.status(t.trip)).why, null);
+    const hosts = () => net.asked.filter((a) => a.url.includes('wikipedia.org')).map((a) => new URL(a.url).hostname);
+    assert.deepEqual(hosts(), ['en.wikipedia.org']);
+    // Japanese added, after English: its files are missing, about one other edition's part, and annai brings them by itself.
+    await updateAppSettings(t.ws, { languages: { spoken: ['en', 'ja'], answer: 'follow' } });
+    const s = await keeper.status(t.trip);
+    assert.equal(s.why, 'missing');
+    assert.equal(s.estimate, SIZES.wikiEdition + SIZES.guide); // and a guide, as the pack has none yet
+    await until(async () => hosts().length === 2 && (await keeper.status(t.trip)).why === null);
+    assert.deepEqual(hosts(), ['en.wikipedia.org', 'ja.wikipedia.org']);
+    // The names read the new files (the pack is read again), English first all the same where English has an article.
+    await until(() => keeper.name(town)?.name === '湯布院町');
+    assert.equal(keeper.name(station)?.name, 'Yufuin Station', 'English first');
+    // Japanese moved first: nothing to download, and the names are Japanese Wikipedia's.
+    const asked = net.asked.length;
+    await updateAppSettings(t.ws, { languages: { spoken: ['ja', 'en'], answer: 'follow' } });
+    await until(() => keeper.name(station)?.name === '由布院駅');
+    await new Promise((r) => setTimeout(r, 60));
+    assert.equal(net.asked.length, asked);
+  } finally {
+    keeper.dispose();
+  }
 });
 
-test("a pack from before editions, with Japanese listed: its English parts count as missing too, to come again with their ids", async () => {
+test("a pack from before editions, with Japanese listed: its English parts count as missing too, and come again with their ids; English alone, nothing", async () => {
   const t = await packTrip();
   const before = /** @type {Record<string, string>} */ (JSON.parse(await readFile(new URL('../fixtures/places/pack-before-editions.json', import.meta.url), 'utf8')));
   for (const [path, text] of Object.entries(before)) await t.ws.write(t.trip, path, text, { author: 'system' });
-  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => 'unknown', fetch: services().fetch, gapMs: 0, now: () => Date.parse('2026-11-19T09:00:00Z') });
-  assert.equal((await keeper.status(t.trip)).why, null, 'English alone: as it was');
-  await updateAppSettings(t.ws, { languages: { spoken: ['ja', 'en'], answer: 'follow' } });
-  const s = await keeper.status(t.trip);
-  assert.equal(s.why, 'missing');
-  assert.equal(s.estimate, 2 * SIZES.wikipedia + 2 * SIZES.wikiEdition); // two parts, each in English again and in Japanese
-  keeper.dispose();
+  const net = services({ overpass: () => ({ elements: [] }) });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => 'unknown', fetch: net.fetch, gapMs: 0, now: () => Date.parse('2026-11-19T09:00:00Z') });
+  try {
+    assert.equal((await keeper.status(t.trip)).why, null, 'English alone: as it was');
+    await updateAppSettings(t.ws, { languages: { spoken: ['ja', 'en'], answer: 'follow' } });
+    const s = await keeper.status(t.trip);
+    assert.equal(s.why, 'missing');
+    assert.equal(s.estimate, 2 * SIZES.wikipedia + 2 * SIZES.wikiEdition); // two parts, each in English again and in Japanese
+    await keeper.download(t.trip);
+    assert.deepEqual(net.asked.filter((a) => a.url.includes('wikipedia.org')).map((a) => new URL(a.url).hostname).sort(), ['en.wikipedia.org', 'en.wikipedia.org', 'ja.wikipedia.org', 'ja.wikipedia.org']);
+    assert.equal((await keeper.status(t.trip)).why, null, 'every part has its edition now');
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test("a download that stopped before its manifest: the files it left, which the manifest doesn't name, count as missing; the next download names them and the keeper is content", async () => {
+  const t = await packTrip({ '/plan/yufuin.json': yufuinStop('Yufuin Station', YUFUIN, 1) });
+  const net = services({ overpass: () => ({ elements: [] }), wikipedia: (url) => yufuinAnswer(url) });
+  const keeper = (/** @type {string} */ locale) => new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale, version: '1', connection: () => 'unknown', fetch: net.fetch, gapMs: 0 });
+  const english = keeper('en-US');
+  const japanese = keeper('ja-JP');
+  try {
+    await english.download(t.trip);
+    assert.equal((await japanese.status(t.trip)).why, 'missing', 'Japanese is listed, its files are not there');
+    // The page is closed after the files are written and before the manifest is.
+    const anyWs = /** @type {any} */ (t.ws);
+    const writeMany = anyWs.writeMany;
+    anyWs.writeMany = async () => { throw new Error('the page closed'); };
+    await assert.rejects(japanese.download(t.trip), /the page closed/);
+    anyWs.writeMany = writeMany;
+    assert.equal((await japanese.status(t.trip)).why, 'missing', 'the Japanese file is on disk, the manifest does not name it');
+    const asked = net.asked.length;
+    await japanese.download(t.trip);
+    assert.equal(net.asked.filter((a) => a.url.includes('wikipedia.org')).length, 2, 'only the first download asked Wikipedia, for its English part and its Japanese one');
+    assert.ok(net.asked.length >= asked);
+    assert.equal((await japanese.status(t.trip)).why, null);
+  } finally {
+    english.dispose();
+    japanese.dispose();
+  }
+});
+
+/** A keeper on Wi-Fi with a short "hour", over a trip with the two Big Sur stops, and the plan change that makes an update due. @param {Parameters<typeof services>[0]} [o] */
+async function hourly(o = {}) {
+  const t = await packTrip();
+  const net = services({ overpass: () => ({ elements: [] }), ...o });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, autoMs: 400, gapMs: 0 });
+  const move = (/** @type {number} */ lat) => t.ws.write(t.trip, '/plan/nepenthe.json', { ...STOPS.nepenthe, place: { ...STOPS.nepenthe.place, lat } }, { author: 'user' });
+  const autoRuns = async () => (await t.store.tx(['events'], 'readonly', (x) => x.listEvents(t.trip, { types: ['pack.download'] }))).filter((e) => e.data.auto);
+  return { ...t, net, keeper, move, autoRuns };
+}
+
+test("a change inside the hour is not dropped: it waits for the hour to end, and annai brings the pack up to date by itself then", async () => {
+  const { keeper, trip, move, autoRuns } = await hourly();
+  try {
+    await keeper.download(trip); // by hand
+    await move(36.2);
+    await until(async () => (await autoRuns()).length === 1);
+    await move(36.19); // inside the hour
+    await new Promise((r) => setTimeout(r, 120));
+    assert.equal((await autoRuns()).length, 1, 'not yet');
+    assert.equal((await keeper.status(trip)).why, 'plan');
+    await until(async () => (await autoRuns()).length === 2 && (await keeper.status(trip)).why === null, 3000);
+    const [one, two] = await autoRuns();
+    assert.ok(two.ts - one.ts >= 380, `the second at the end of the hour (400 ms here), not before: ${two.ts - one.ts}`);
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test("an update annai began by itself that failed in part is tried again by itself, once an hour at most, with nothing else to wake it", async () => {
+  let down = false;
+  const { keeper, trip, net, move, autoRuns } = await hourly({ overpass: () => (down ? new Response('', { status: 503 }) : { elements: [] }) });
+  try {
+    await keeper.download(trip);
+    down = true;
+    await move(36.2);
+    await until(async () => ((await keeper.status(trip)).manifest?.failed.length ?? 0) > 0);
+    down = false;
+    const asked = net.asked.length;
+    await new Promise((r) => setTimeout(r, 100));
+    assert.equal(net.asked.length, asked, 'not before the hour is out');
+    await until(async () => (await keeper.status(trip)).why === null, 3000);
+    assert.equal((await autoRuns()).length, 2);
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test("a settings write looks at the pack only when the languages' editions changed: a switch or a unit changes nothing here", async () => {
+  const t = await packTrip();
+  const net = services({ overpass: () => ({ elements: [] }) });
+  /** @type {string} */
+  let connection = 'cellular';
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => connection, fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0 });
+  try {
+    await keeper.download(t.trip);
+    // The plan changes on mobile data: an update is due, and waits for Wi-Fi (nothing pokes the keeper when the phone joins it, here).
+    await t.ws.write(t.trip, '/plan/nepenthe.json', { ...STOPS.nepenthe, place: { ...STOPS.nepenthe.place, lat: 36.2 } }, { author: 'user' });
+    await new Promise((r) => setTimeout(r, 60));
+    connection = 'wifi';
+    const asked = net.asked.length;
+    await updateAppSettings(t.ws, { places: { vkOverpass: true } });
+    await updateAppSettings(t.ws, { languages: { spoken: ['en'], answer: 'follow' } }); // the same editions: English
+    await new Promise((r) => setTimeout(r, 100));
+    assert.equal(net.asked.length, asked, 'nothing asked for a setting that is not a language');
+    await updateAppSettings(t.ws, { languages: { spoken: ['en', 'ja'], answer: 'follow' } });
+    await until(async () => net.asked.length > asked && (await keeper.status(t.trip)).why === null, 3000);
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test("a language added inside the hour of an update annai began by itself waits for the hour to end, then comes by itself", async () => {
+  const { keeper, trip, ws, net, move, autoRuns } = await hourly();
+  try {
+    await keeper.download(trip);
+    await move(36.2);
+    await until(async () => (await autoRuns()).length === 1);
+    const asked = net.asked.length;
+    await updateAppSettings(ws, { languages: { spoken: ['en', 'ja'], answer: 'follow' } });
+    await new Promise((r) => setTimeout(r, 120));
+    assert.equal(net.asked.length, asked, 'inside the hour');
+    await until(async () => (await autoRuns()).length === 2 && (await keeper.status(trip)).why === null, 3000);
+    assert.ok(net.asked.slice(asked).some((a) => a.url.includes('ja.wikipedia.org')));
+  } finally {
+    keeper.dispose();
+  }
 });

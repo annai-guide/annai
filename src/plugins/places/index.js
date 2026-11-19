@@ -8,7 +8,7 @@ import { loadPack } from '../../core/pack/read.js';
 import { anySignal } from '../../core/signals.js';
 import { NOMINATIM_GAP, nominatimTurn, nominatimLanguages } from '../../core/nominatim.js';
 import { readingOrder } from '../../core/languages.js';
-import { editionsOf, nearUrl, articlesOf, merged, articleUrl, agentHeader } from '../../core/wiki.js';
+import { editionsOf, nearUrl, articlesOf, wikiSaid, merged, articleUrl, agentHeader } from '../../core/wiki.js';
 import { t as words } from '../../core/l10n.js';
 
 export { KINDS };
@@ -238,15 +238,24 @@ export function activate(annai) {
         };
         const overpass = Promise.any(chains.map(inTurn)).finally(() => won.abort(Object.assign(new Error(/* en */ 'Stopped: the other Overpass server answered first.'), { name: 'AbortError' })));
         // Each edition at once within one ASK_MS, so one that never answers holds up no other (the etiquette's "in series" is for bulk
-        // clients; these are one request a host), each article once (merged).
+        // clients; these are one request a host), each article once (merged). An edition that doesn't answer, or answers with an error, has
+        // the offline pack's articles of it, where the pack reaches.
         const late = AbortSignal.timeout(ASK_MS.ms);
-        const wikipedia = Promise.allSettled(editions.map(async (e) => articlesOf(await ask(call, nearUrl(e, [round(i.lat), round(i.lng)], Math.min(radius, 10000), 30), { headers: agentHeader(VERSION) }, late), e)))
-          .then((got) => {
-            if (got.every((g) => g.status === 'rejected')) throw /** @type {PromiseRejectedResult} */ (got[0]).reason;
-            const rows = nearest(merged(got.flatMap((g) => (g.status === 'fulfilled' ? g.value : [])), editions)
-              .map((a) => [a.title, 'wikipedia article', Math.round(meters(i.lat, i.lng, a.lat, a.lng)), round(a.lat), round(a.lng), 'wikipedia', articleUrl(a.edition, a.title)]));
-            return { rows, quiet: editions.filter((_, k) => got[k].status === 'rejected') };
-          });
+        const wikipedia = Promise.allSettled(editions.map(async (e) => {
+          const r = await ask(call, nearUrl(e, [round(i.lat), round(i.lng)], Math.min(radius, 10000), 30), { headers: agentHeader(VERSION) }, late);
+          const said = wikiSaid(r);
+          if (said) throw new Error(`${e}.wikipedia.org said: ${said}.`);
+          return articlesOf(r, e);
+        })).then((got) => {
+          if (got.every((g) => g.status === 'rejected')) throw /** @type {PromiseRejectedResult} */ (got[0]).reason;
+          const quiet = editions.filter((_, k) => got[k].status === 'rejected');
+          const packed = quiet.length && pack?.touches(i) ? pack.articles(i, Math.min(radius, 10000), quiet) : [];
+          const rows = nearest(merged([...got.flatMap((g) => (g.status === 'fulfilled' ? g.value : [])), ...packed], editions)
+            .map((a) => [a.title, 'wikipedia article', Math.round(meters(i.lat, i.lng, a.lat, a.lng)), round(a.lat), round(a.lng), 'wikipedia', articleUrl(a.edition, a.title)]));
+          // Named, so a missing edition's articles aren't taken for none.
+          const hosts = quiet.map((e) => `${e}.wikipedia.org`).join(' and ');
+          return { rows, note: !quiet.length ? '' : `\n${hosts} didn't answer, so ${quiet.length > 1 ? 'their' : 'its'} articles ${packed.length ? `come from the offline pack${pack?.downloaded}` : 'are missing from this list'}.` };
+        });
         // A service that didn't answer is null; a stopped call is no answer at all. OpenStreetMap is busy when every server asked said so
         // (a 429, or a 5xx: the 502 "Timeout" Overpass sends at once, a 504 "too busy"), known as the last one refuses. Another refusal
         // (the 406 overpass-api.de sends an agent it won't serve) is no answer.
@@ -262,8 +271,7 @@ export function activate(annai) {
         if (call.signal.aborted) throw /* en */ new DOMException('Stopped', 'AbortError');
         const osm = got ? got.rows : null;
         const wiki = articles ? articles.rows : null;
-        // Named, so its articles' absence isn't taken for none.
-        const quiet = articles?.quiet.length ? `\n${articles.quiet.map((e) => `${e}.wikipedia.org`).join(' and ')} didn't answer: these Wikipedia articles are the other editions'.` : '';
+        const quiet = articles?.note ?? '';
         // A cut answer says so last, after where its rows came from, and names the circle to ask again with. The circles ran smallest first,
         // each wider one only while fewer than ROWS came, so the one cut is the first of `radii` holding ROWS places or more, and the rows
         // are its places: it is the first circle with ROWS of the rows that came, by the distance each carries (an outline's is to its

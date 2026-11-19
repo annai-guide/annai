@@ -6,7 +6,7 @@ import { t } from '../l10n.js';
 import { meters } from '../live/geo.js';
 import { StorageFullError } from '../errors.js';
 import { anySignal } from '../signals.js';
-import { nearUrl, articlesOf, agentHeader } from '../wiki.js';
+import { nearUrl, articlesOf, wikiSaid, agentHeader } from '../wiki.js';
 
 /**
  * Downloads a trip's offline pack (spec §11.5), one request at a time with a second between them: the parts its plan needs that the pack
@@ -51,7 +51,7 @@ export const GAP_MS = 1000;
 export const MAX_BYTES = 20 * 1024 * 1024;
 /** A part older than this is downloaded again. */
 export const STALE_MS = 30 * 86_400_000;
-/** After this many failures in a row the download stops: the connection or the services are down. */
+/** After this many failures in a row from one source (OpenStreetMap, an edition, Wikivoyage) the run leaves it: it is down, and a host that never answers costs 3 answer times, not one a part. */
 const GIVE_UP = 3;
 /** How long one answer may take: Overpass runs a query for up to a minute, after waiting for a free slot. */
 export const ANSWER_MS = 120_000;
@@ -94,7 +94,7 @@ const fault = (en, said) => Object.assign(new Error(en), { said });
 export const pathOf = (p, edition = 'en') => `${DIR}${p.kind}/${p.id}${p.kind === 'wikipedia' && edition !== 'en' ? `.${edition}` : ''}.json`;
 /** @param {PackPlan} plan @param {string[]} editions @returns {Want[]} */
 export const wanted = (plan, editions) => plan.parts.flatMap((p) => /** @type {Want[]} */ (p.kind === 'wikipedia' ? editions.map((e) => ({ part: p, edition: e, path: pathOf(p, e) })) : [{ part: p, edition: null, path: pathOf(p) }]));
-/** English rows from before editions, without ids to merge by, beside another edition: downloaded again, kept till then. @param {PackFile | undefined} f @param {string[]} editions */
+/** English rows from before editions, without ids to merge by, beside another edition: downloaded again, kept till then. @param {Pick<PackFile, 'kind' | 'edition'> | undefined} f @param {string[]} editions */
 export const lacksIds = (f, editions) => f?.kind === 'wikipedia' && f.edition === undefined && editions.length > 1;
 /** Where a guide is kept. @param {string} title */
 export function guideFile(title) {
@@ -144,9 +144,10 @@ export async function downloadPack(o) {
   const old = await readManifest(ws, scope);
   const have = new Map((await ws.list(scope, DIR)).map((f) => [f.path, f]));
   const prev = new Map((old?.files ?? []).map((f) => [f.path, f]));
-  const fresh = (/** @type {string} */ path) => {
-    const f = have.get(path);
-    return f !== undefined && now() - (prev.get(path)?.at || f.modified) <= STALE_MS && !lacksIds(prev.get(path), o.editions);
+  // A file the manifest doesn't name (a run stopped before it) is as its path says: another edition's has it, English's is not known to have ids.
+  const fresh = (/** @type {Omit<PackFile, 'bytes' | 'at' | 'items'>} */ e) => {
+    const f = have.get(e.path);
+    return f !== undefined && now() - (prev.get(e.path)?.at || f.modified) <= STALE_MS && !lacksIds(prev.get(e.path) ?? e, o.editions);
   };
   /** @type {Map<string, PackFile>} */
   const files = new Map();
@@ -154,7 +155,9 @@ export async function downloadPack(o) {
   const failed = [];
   let bytes = 0;
   let full = false;
-  let fails = 0;
+  /** @type {Map<string, number>} failures in a row, by source: 'osm', 'wikivoyage', or a Wikipedia edition */
+  const fails = new Map();
+  const gaveUp = (/** @type {string} */ source) => (fails.get(source) ?? 0) >= GIVE_UP;
   let asked = 0;
   const headers = agentHeader(o.version);
   /** @type {Ask} */
@@ -173,55 +176,77 @@ export async function downloadPack(o) {
       clearTimeout(timer);
     }
   };
-  /** What the pack already has stays, as it is. @param {Omit<PackFile, 'bytes' | 'at' | 'items' | 'edition'>} f @param {number} [count] */
-  const keepOld = (f, count) => {
+  /** @type {Map<string, number>} old copies a part's new one replaces: in `bytes` until replaced or kept, so the pack never ends over its limit */
+  const held = new Map();
+  /** @param {string} path */
+  const hold = (path) => {
+    const size = have.get(path)?.size ?? 0;
+    if (size && !held.has(path)) {
+      held.set(path, size);
+      bytes += size;
+    }
+  };
+  /** What the pack already has stays, as it is; a guide's old copy (fit) only where it fits under the limit. @param {Omit<PackFile, 'bytes' | 'at' | 'items'>} f @param {number} [count] @param {boolean} [fit] @returns {boolean} whether it stays */
+  const keepOld = (f, count, fit = false) => {
     const size = have.get(f.path)?.size ?? 0;
+    if (fit && !held.has(f.path) && bytes + size > max) return false;
     const was = prev.get(f.path);
     files.set(f.path, { ...f, bytes: size, items: count ?? was?.items ?? 0, at: was?.at || have.get(f.path)?.modified || 0, ...(was?.edition === undefined ? {} : { edition: was.edition }) });
-    bytes += size;
+    if (!held.delete(f.path)) bytes += size;
+    return true;
   };
   /** Writes a file, unless the pack would pass its limit. @param {Omit<PackFile, 'bytes' | 'at'>} f @param {unknown} content */
   const save = async (f, content) => {
     const text = JSON.stringify(content);
     const size = new TextEncoder().encode(text).byteLength;
-    if (bytes + size > max) {
+    const replaced = held.get(f.path) ?? 0;
+    if (bytes - replaced + size > max) {
       full = true;
       return false;
     }
     await ws.write(scope, f.path, text, { author: 'system' });
     files.set(f.path, { ...f, bytes: size, at: now() });
-    bytes += size;
+    held.delete(f.path);
+    bytes += size - replaced;
     return true;
   };
-  const over = () => signal.aborted || fails >= GIVE_UP || full;
-  /** @param {PartRef} part @param {unknown} e */
-  const failure = (part, e) => {
+  /** @param {PartRef} part @param {string} source @param {unknown} e */
+  const failure = (part, source, e) => {
     if (e instanceof StorageFullError) throw e; // the panel's storage-full card says what to do
-    fails++;
+    fails.set(source, (fails.get(source) ?? 0) + 1);
     failed.push({ label: partLabel(part), why: String(/** @type {any} */ (e)?.message ?? e), part, said: /** @type {any} */ (e)?.said ?? null });
   };
 
-  const entry = (/** @type {Want} */ w) => ({ id: w.part.id, kind: w.part.kind, path: w.path });
+  /** A file's manifest entry: another edition's says which (English's lack marks a file from before editions). */
+  const entry = (/** @type {Want} */ w) => ({ id: w.part.id, kind: w.part.kind, path: w.path, ...(w.edition && w.edition !== 'en' ? { edition: w.edition } : {}) });
   const want = wanted(plan, o.editions);
-  for (const w of want) if (fresh(w.path)) keepOld(entry(w));
-  const todo = want.filter((w) => !files.has(w.path));
+  for (const w of want) if (fresh(entry(w))) keepOld(entry(w));
+  // OpenStreetMap first, then Wikipedia edition by edition in the reading order: a pack that fills up holds the first language at every stop.
+  const rank = (/** @type {Want} */ w) => (w.edition ? o.editions.indexOf(w.edition) : -1);
+  const todo = want.filter((w) => !files.has(w.path)).sort((a, b) => rank(a) - rank(b));
+  for (const w of todo) hold(w.path);
   let total = todo.length + 1; // and finding the guides
   let done = 0;
   const progress = (/** @type {PartRef} */ part) => o.onProgress?.({ done, total, label: partWords(part) });
   for (const w of todo) {
-    if (over()) break;
+    if (signal.aborted || full) break;
     const p = w.part;
+    const source = w.edition ?? p.kind;
     /** @type {PartRef} */
     const part = { source: p.kind, place: p.place };
+    if (gaveUp(source)) {
+      done++;
+      continue;
+    }
     progress(part);
     try {
       // The Overpass servers by the switch as it is now, part by part: turned off, VK's server is asked nothing more.
       const got = p.kind === 'osm' ? await osm(p, ask, () => pause(o.busyMs ?? BUSY_MS, signal), overpassServers(await readAppSettings(ws))) : await wikipedia(p, w.edition ?? 'en', ask, headers);
       if (!(await save({ ...entry(w), items: got.count, ...(w.edition ? { edition: w.edition } : {}) }, got.content))) break;
-      fails = 0;
+      fails.set(source, 0);
     } catch (e) {
       if (signal.aborted) break;
-      failure(part, e);
+      failure(part, source, e);
     }
     done++;
   }
@@ -231,47 +256,49 @@ export async function downloadPack(o) {
   /** @type {Guide[]} */
   const guides = [];
   let guidesDone = false;
-  if (!over()) {
+  // Everything asked has given up: the connection is down.
+  const guidesStuck = () => signal.aborted || full || gaveUp('wikivoyage') || (fails.size > 0 && [...fails.keys()].every(gaveUp));
+  if (!guidesStuck()) {
     progress({ source: 'wikivoyage' });
     try {
       const found = await findGuides(await namesFor(ws, scope, plan, files), ask, headers);
       done++;
       total += found.length;
       for (const g of found) {
-        if (over()) break;
+        if (guidesStuck()) break;
         const { id, path } = guideFile(g.title);
-        if (fresh(path)) keepOld({ id, kind: 'wikivoyage', path }, 1);
+        if (fresh({ id, kind: 'wikivoyage', path })) keepOld({ id, kind: 'wikivoyage', path }, 1, true);
         else {
           progress({ source: 'wikivoyage', title: g.title });
           try {
             if (!(await save({ id, kind: 'wikivoyage', path, items: 1 }, { title: g.title, text: await article(g.title, ask, headers) }))) break;
-            fails = 0;
+            fails.set('wikivoyage', 0);
           } catch (e) {
             if (signal.aborted) break;
-            failure({ source: 'wikivoyage', title: g.title }, e);
-            if (have.has(path)) keepOld({ id, kind: 'wikivoyage', path }, 1);
+            failure({ source: 'wikivoyage', title: g.title }, 'wikivoyage', e);
+            if (have.has(path)) keepOld({ id, kind: 'wikivoyage', path }, 1, true);
           }
         }
         if (files.has(path)) guides.push({ ...g, path });
         done++;
       }
-      guidesDone = !over();
+      guidesDone = !guidesStuck();
     } catch (e) {
-      if (!signal.aborted) failure({ source: 'wikivoyage' }, e);
+      if (!signal.aborted) failure({ source: 'wikivoyage' }, 'wikivoyage', e);
     }
   }
   if (!guidesDone) {
     // The guides this download didn't get to stay as they were.
     for (const g of old?.guides ?? []) {
       if (guides.some((x) => x.path === g.path) || !have.has(g.path)) continue;
-      if (!files.has(g.path)) keepOld({ id: g.path.slice(DIR.length + 'wikivoyage/'.length, -'.json'.length), kind: 'wikivoyage', path: g.path }, 1);
+      if (!files.has(g.path) && !keepOld({ id: g.path.slice(DIR.length + 'wikivoyage/'.length, -'.json'.length), kind: 'wikivoyage', path: g.path }, 1, true)) continue;
       guides.push(g);
     }
   }
   /** @type {Manifest} */
   const manifest = {
     format: 1, key: plan.key, at: new Date(now()).toISOString(), files: [...files.values()], guides, failed,
-    full, stopped: signal.aborted || fails >= GIVE_UP, bytes, ...(await counted(ws, scope, files)),
+    full, stopped: signal.aborted || [...fails.keys()].some(gaveUp), bytes, ...(await counted(ws, scope, files)),
   };
   const gone = [...have.keys()].filter((path) => path !== MANIFEST && !files.has(path));
   await ws.writeMany(scope, [...gone.map((path) => ({ path, content: null })), { path: MANIFEST, content: JSON.stringify(manifest) }], { author: 'system' });
@@ -339,7 +366,7 @@ async function osm(p, ask, busy, servers) {
 async function wikipedia(p, edition, ask, headers) {
   /* en */ const where = edition === 'en' ? 'Wikipedia' : `${edition}.wikipedia.org`;
   const r = await ask(nearUrl(edition, p.at, WIKI_RADIUS_M, 20, { extracts: true }), { headers }, where);
-  const info = r?.error ? String(r.error.info ?? r.error.code ?? 'no').replace(/\.$/, '') : '';
+  const info = wikiSaid(r);
   if (info) throw fault(/* en */ `${where} said: ${info}.`, { code: 'said', where, info });
   const pages = articlesOf(r, edition).map((a) => [a.title, r4(a.lat), r4(a.lng), a.summary, a.id]);
   return { count: pages.length, content: { at: p.at, radius: WIKI_RADIUS_M, pages } };

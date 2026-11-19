@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { readingOrder } from '../../src/core/languages.js';
-import { editionsOf, articlesOf, merged, articleUrl } from '../../src/core/wiki.js';
+import { editionsOf, articlesOf, wikiSaid, merged, articleUrl } from '../../src/core/wiki.js';
 import { nominatimLanguages } from '../../src/core/nominatim.js';
 
 /** Wikipedia's answers near Kiyomizu-dera within 1 km, as they came on 2026-11-19 (nearby's query; text under CC BY-SA 4.0). @param {string} e */
@@ -56,8 +56,7 @@ test('editions merged by Wikidata id: each article once, under the first edition
   // The other way round, English's titles.
   const english = merged([...ja, ...en], ['en', 'ja']);
   assert.ok(english.some((a) => a.title === 'Kiyomizu-dera') && !english.some((a) => a.title === '清水寺'));
-  // An edition outside the order comes after the order's.
-  assert.equal(merged([...zh, ...en], ['en']).find((a) => a.id === 'Q1108695')?.title, 'Maruyama Park (Kyoto)');
+  assert.equal(merged([...zh, ...en], ['en', 'zh']).find((a) => a.id === 'Q1108695')?.title, 'Maruyama Park (Kyoto)');
   assert.equal(merged([...zh, ...en], ['zh', 'en']).find((a) => a.id === 'Q1108695')?.title, '圓山公園 (京都府)');
   // Without an id (a part written before editions), an article is its edition's own, once by its title.
   const old = [{ ...en[0], id: null }, { ...en[0], id: null }, { ...ja[12], id: null }];
@@ -65,7 +64,9 @@ test('editions merged by Wikidata id: each article once, under the first edition
 });
 
 test("an article's address keeps its title as written, encoding only what a browser would read as another part of it", () => {
-  assert.equal(articleUrl('ja', '正法寺 (京都市東山区)'), 'https://ja.wikipedia.org/wiki/正法寺_(京都市東山区)');
+  // A bracket is encoded: chat's links end at one (src/ui/markdown.js), so 正法寺_(京都市東山区) would link only 正法寺_.
+  assert.equal(articleUrl('ja', '正法寺 (京都市東山区)'), 'https://ja.wikipedia.org/wiki/正法寺_%28京都市東山区%29');
+  assert.equal(articleUrl('en', 'Nepenthe (restaurant)'), 'https://en.wikipedia.org/wiki/Nepenthe_%28restaurant%29');
   assert.equal(articleUrl('en', "Where Is the Friend's House?"), "https://en.wikipedia.org/wiki/Where_Is_the_Friend's_House%3F");
   assert.equal(articleUrl('en', '100% Wolf'), 'https://en.wikipedia.org/wiki/100%25_Wolf');
   assert.equal(articleUrl('en', 'A#B'), 'https://en.wikipedia.org/wiki/A%23B');
@@ -77,4 +78,14 @@ test("an article's address keeps its title as written, encoding only what a brow
   assert.equal(q.search, '');
   assert.equal(decodeURIComponent(q.pathname), "/wiki/Where_Is_the_Friend's_House?");
   assert.equal(new URL(articleUrl('en', 'A\\B')).pathname, '/wiki/A%5CB');
+  assert.equal(decodeURIComponent(new URL(articleUrl('ja', '正法寺 (京都市東山区)')).pathname), '/wiki/正法寺_(京都市東山区)');
+});
+
+test("an answer that is an error says what it says; an answer with articles or none says nothing", () => {
+  assert.equal(wikiSaid({ error: { code: 'maxlag', info: 'Waiting for a database server.' } }), 'Waiting for a database server');
+  assert.equal(wikiSaid({ error: { code: 'badvalue' } }), 'badvalue');
+  assert.equal(wikiSaid({ error: {} }), 'no');
+  assert.equal(wikiSaid({ batchcomplete: true }), '');
+  assert.equal(wikiSaid({ query: { pages: [] } }), '');
+  assert.equal(wikiSaid(null), '');
 });

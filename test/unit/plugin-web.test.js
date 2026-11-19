@@ -10,7 +10,8 @@ import { STEP_MS, READY_MS } from '../../src/plugins/web/index.js';
 import { cooldowns, CHAIN } from '../../src/core/web-search.js';
 import { tracedFetch } from '../../src/core/agent/net.js';
 import { NOMINATIM_GAP, nominatimReset } from '../../src/core/nominatim.js';
-import { forgetClients } from '../../src/plugins/web/free.js';
+import { forgetClients, knowledgeFloor, EDITION_MS } from '../../src/plugins/web/free.js';
+import { readingOrder } from '../../src/core/languages.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { readFile } from 'node:fs/promises';
 
@@ -159,7 +160,7 @@ test('web_search: when a service is limited (429) or down (5xx), the next is ask
   const floor = await run('web_search', { query: 'nepenthe lunch' }, down);
   assert.match(floor, /Big Sur \(Wikivoyage\)\thttps:\/\/en\.wikivoyage\.org\/wiki\/Big_Sur\t.*Lunch from 11:30AM-4:30PM/);
   assert.match(floor, /Nepenthe\thttp:\/\/www\.nepenthebigsur\.com\//);
-  assert.match(floor, /Nepenthe \(restaurant\) \(Wikipedia\)\thttps:\/\/en\.wikipedia\.org\/wiki\/Nepenthe_\(restaurant\)\ta restaurant in Big Sur/);
+  assert.match(floor, /Nepenthe \(restaurant\) \(Wikipedia\)\thttps:\/\/en\.wikipedia\.org\/wiki\/Nepenthe_%28restaurant%29\ta restaurant in Big Sur/);
 });
 
 test('web_search: a service that finds nothing, or answers what is no result, hands on to the next; the first answer with rows wins; Parallel and Firecrawl are read as they send', async () => {
@@ -205,23 +206,64 @@ async function kiyomizuFloor(url) {
   return saved ? jsonFile(`../places/${saved}`) : j({ batchcomplete: '', query: { searchinfo: { totalhits: 0 }, search: [] } });
 }
 
-test("the floor's Wikipedia search walks the traveller's editions with all the words before any with fewer: a whole-query hit in English beats Japanese's two words", async () => {
+test("the floor's Wikipedia search: each edition of the reading order asks at once with its own tries; the rows are the first edition's that has any", async () => {
   const { run, asked, settings, ws } = await setup();
   await updateAppSettings(ws, { languages: { spoken: ['ja'], answer: 'follow' } });
   await settings({ searchOff: ['exa', 'parallel', 'firecrawl'] });
   const wiki = () => asked.filter((a) => a.url.includes('wikipedia.org')).map((a) => `${new URL(a.url).hostname} ${new URL(a.url).searchParams.get('srsearch')}`);
+  // [ja, en]: Japanese finds nothing for the whole question or three words and 清水寺 for two; English has seven hits for the whole question,
+  // about other places. The traveller's language first: only 清水寺 (the user, 2026-11-14: "Read the traveller's language first, English when that has no article").
   const out = await run('web_search', { query: 'Kiyomizu temple opening hours' }, kiyomizuFloor);
-  assert.deepEqual(wiki(), ['ja.wikipedia.org kiyomizu temple opening hours', 'en.wikipedia.org kiyomizu temple opening hours']);
-  assert.match(out, /\nTobu World Square \(Wikipedia\)\thttps:\/\/en\.wikipedia\.org\/wiki\/Tobu_World_Square\t/);
-  assert.doesNotMatch(out, /清水寺/);
+  assert.deepEqual(wiki().sort(), ['en.wikipedia.org kiyomizu temple opening hours', 'ja.wikipedia.org kiyomizu temple', 'ja.wikipedia.org kiyomizu temple opening', 'ja.wikipedia.org kiyomizu temple opening hours']);
+  // Both editions' first requests are in flight before either answers: asked together, not one after the other.
+  assert.deepEqual(wiki().slice(0, 2), ['ja.wikipedia.org kiyomizu temple opening hours', 'en.wikipedia.org kiyomizu temple opening hours']);
+  // (A search row's address is written as the browser would send it: normalizeRows.)
+  assert.match(out, /\n清水寺 \(Wikipedia\)\thttps:\/\/ja\.wikipedia\.org\/wiki\/%E6%B8%85%E6%B0%B4%E5%AF%BA\t/);
+  assert.doesNotMatch(out, /Tobu World Square/);
   // Nominatim names places in the order's languages too.
   assert.equal(new URL(asked.find((a) => a.url.includes('nominatim'))?.url ?? '').searchParams.get('accept-language'), 'ja,en');
-  // English not answering is left out of the tries after it: Japanese's two words find 清水寺, linked on Japanese Wikipedia.
+  // English first: its seven, and no Japanese article.
+  await updateAppSettings(ws, { languages: { spoken: ['en', 'ja'], answer: 'follow' } });
   asked.length = 0;
-  const ja = await run('web_search', { query: 'Kiyomizu temple opening hours' }, (url) => (url.includes('en.wikipedia.org') ? new Response('', { status: 503 }) : kiyomizuFloor(url)));
-  assert.deepEqual(wiki(), ['ja.wikipedia.org kiyomizu temple opening hours', 'en.wikipedia.org kiyomizu temple opening hours', 'ja.wikipedia.org kiyomizu temple opening', 'ja.wikipedia.org kiyomizu temple']);
-  // (A search row's address is written as the browser would send it: normalizeRows.)
-  assert.match(ja, /\n清水寺 \(Wikipedia\)\thttps:\/\/ja\.wikipedia\.org\/wiki\/%E6%B8%85%E6%B0%B4%E5%AF%BA\t/);
+  const english = await run('web_search', { query: 'Kiyomizu temple opening hours' }, kiyomizuFloor);
+  assert.match(english, /\nTobu World Square \(Wikipedia\)\thttps:\/\/en\.wikipedia\.org\/wiki\/Tobu_World_Square\t/);
+  assert.doesNotMatch(english, /清水寺/);
+  // An edition that fails is left out: English not answering, Japanese's two words find 清水寺; Japanese not answering, English's rows come.
+  await updateAppSettings(ws, { languages: { spoken: ['ja'], answer: 'follow' } });
+  const enDown = await run('web_search', { query: 'Kiyomizu temple opening hours' }, (url) => (url.includes('en.wikipedia.org') ? new Response('', { status: 503 }) : kiyomizuFloor(url)));
+  assert.match(enDown, /\n清水寺 \(Wikipedia\)\t/);
+  const jaDown = await run('web_search', { query: 'Kiyomizu temple opening hours' }, (url) => (url.includes('ja.wikipedia.org') ? new Response('', { status: 503 }) : kiyomizuFloor(url)));
+  assert.match(jaDown, /\nTobu World Square \(Wikipedia\)\t/);
+  assert.doesNotMatch(jaDown, /清水寺/);
+});
+
+test("the floor: an edition that never answers has EDITION_MS, so the others' rows and the guide still come inside the floor's time", async () => {
+  const { run, ws, settings } = await setup();
+  await updateAppSettings(ws, { languages: { spoken: ['ja'], answer: 'follow' } });
+  await settings({ searchOff: ['exa', 'parallel', 'firecrawl'] });
+  const was = EDITION_MS.ms;
+  EDITION_MS.ms = 60;
+  try {
+    const t0 = Date.now();
+    const out = await run('web_search', { query: 'Kiyomizu temple opening hours' }, (url, init) => (url.includes('ja.wikipedia.org') ? hang(init) : url.includes('wikivoyage') ? wikiAnswer(url) : kiyomizuFloor(url)));
+    assert.ok(Date.now() - t0 < 2000, 'not the floor\'s whole time');
+    assert.match(out, /\nTobu World Square \(Wikipedia\)\t/);
+    assert.match(out, /\(Wikivoyage\)\t/);
+    // Both hosts hung and nothing else to give: the floor fails, in words.
+    const both = await run('web_search', { query: 'Kiyomizu temple opening hours' }, (url, init) => (url.includes('wikipedia.org') ? hang(init) : kiyomizuFloor(url)));
+    assert.equal(both, 'Nothing found for "Kiyomizu temple opening hours".');
+  } finally {
+    EDITION_MS.ms = was;
+  }
+});
+
+test('the floor: every edition failing is the failure when nothing else answered; one failing is not', async () => {
+  const floor = knowledgeFloor(async () => readingOrder({ languages: { spoken: ['ja'], answer: 'follow' } }, 'en-US'));
+  const c = (/** @type {(url: string) => any} */ answer) => ({ fetch: async (/** @type {string} */ url) => answer(url), signal: new AbortController().signal, limit: 8 });
+  const down = () => new Response('', { status: 503 });
+  await assert.rejects(floor.search('kiyomizu temple', c(down)), /answered 503/);
+  const rows = await floor.search('kiyomizu temple', c((url) => (url.includes('ja.wikipedia.org') ? down() : url.includes('en.wikipedia.org') ? new Response(JSON.stringify({ query: { search: [{ title: 'Kiyomizu-dera', snippet: 'a temple' }] } })) : new Response('[]'))));
+  assert.deepEqual(rows.map((r) => r.title), ['Kiyomizu-dera (Wikipedia)']);
 });
 
 test('web_search: Jina Search goes first when its key is set; without the key it is passed over and the free services answer', async () => {

@@ -1208,6 +1208,13 @@ test("the scrub removes the encoded bar of annai's Wikipedia nearby search", () 
   // Its address since editions, in any edition (wiki.js nearUrl).
   assert.equal(scrub('https://ja.wikipedia.org/w/api.php?action=query&generator=geosearch&ggscoord=34.9949%7C135.785&ggsradius=1000&ggslimit=30'),
     'https://ja.wikipedia.org/w/api.php?action=query&generator=geosearch&ggscoord=&ggsradius=1000&ggslimit=30');
+  // The address's position is written with the decimals it has: nearUrl rounds to 4 places and a trailing 0 prints away, so about one in
+  // fifty is 2 decimals or fewer. After annai's own gscoord= or ggscoord= they all go, whole numbers too.
+  const near = (/** @type {string} */ pos) => `https://en.wikipedia.org/w/api.php?action=query&generator=geosearch&ggscoord=${pos}&ggsradius=1000`;
+  for (const pos of ['34.99%7C135.78', '35%7C135.7', '35.5%7C-121.25', '-34%7C-58', '34.9949%7C135.7', '0%7C0']) assert.equal(scrub(near(pos)), near(''), pos);
+  assert.equal(scrub('https://en.wikipedia.org/w/api.php?list=geosearch&gscoord=36.3%7C-121.9&gsradius=1000'), 'https://en.wikipedia.org/w/api.php?list=geosearch&gscoord=&gsradius=1000');
+  // Plain text keeps its 3-decimal rule: two numbers joined by an encoded bar that are not annai's address stay.
+  assert.equal(scrub('the pair 34.99%7C135.78 is a code'), 'the pair 34.99%7C135.78 is a code');
 });
 
 test('a Share without places keeps every other byte of a Shift-JIS, a Latin-1 and a BOM file', async () => {

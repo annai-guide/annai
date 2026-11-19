@@ -44,6 +44,8 @@ export class PackKeeper {
   #again = false;
   /** @type {{ pack: import('./read.js').Pack, editions: string[] } | null} the open trip's pack, for names */
   #named = null;
+  /** @type {string | undefined} the editions the languages read as last seen: a settings write that leaves them as they are changes nothing here */
+  #seen;
   /** @type {(() => unknown)[]} */
   #offs;
 
@@ -51,13 +53,17 @@ export class PackKeeper {
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace,
    *   agent: { target: string | null, on: (kind: 'open', fn: () => void) => () => unknown },
    *   version: string, locale: string, connection: () => string, visible?: () => boolean, fetch?: import('./download.js').Fetch,
-   *   quietMs?: number, pokeMs?: number, gapMs?: number, now?: () => number, maxBytes?: number }} o
-   *   locale: the phone's; connection: 'wifi', 'cellular', 'unknown' or 'offline' (ui/platform.js connectionOf); fetch: for tests, instead of the traced one
+   *   quietMs?: number, pokeMs?: number, autoMs?: number, gapMs?: number, now?: () => number, maxBytes?: number }} o
+   *   locale: the phone's; connection: 'wifi', 'cellular', 'unknown' or 'offline' (ui/platform.js connectionOf); fetch: for tests, instead of the traced one;
+   *   autoMs: the hour between updates by itself, for tests
    */
   constructor(o) {
     this.o = o;
     this.#offs = [o.ws.onChange((c) => this.#changed(c)), o.agent.on('open', () => this.#opened())];
     this.#loadNames();
+    this.#editions().then((e) => {
+      this.#seen ??= e.join(' ');
+    }, () => {});
   }
 
   /** @param {() => void} fn @returns {() => void} */
@@ -82,7 +88,8 @@ export class PackKeeper {
     const editions = await this.#editions();
     const want = wanted(plan, editions);
     const kept = new Map((manifest?.files ?? []).map((f) => [f.path, f]));
-    const missing = want.filter((w) => !have.has(w.path) || lacksIds(kept.get(w.path), editions));
+    // A file the manifest doesn't name is missing too: a download that stopped before its manifest left it.
+    const missing = want.filter((w) => !have.has(w.path) || !kept.has(w.path) || lacksIds(kept.get(w.path), editions));
     // Old by its oldest part: an update that brought only what the plan changed leaves the rest as old as it was.
     const oldest = manifest ? Math.min(Date.parse(manifest.at), ...manifest.files.map((f) => f.at || Infinity)) : NaN;
     const old = manifest !== null && !(now - oldest <= STALE_MS);
@@ -180,15 +187,24 @@ export class PackKeeper {
 
   /** @param {{ scope: string, path: string }} c */
   #changed(c) {
-    // The languages, in the app settings, change the names and may need another edition's files.
-    const settings = c.scope === SYS_SETTINGS && c.path === APP;
-    if (settings) this.#loadNames();
-    else if (c.scope !== this.o.agent.target) return;
-    if (c.path === MANIFEST) this.#loadNames();
-    else if (settings || PLAN_FILE.test(c.path) || c.path === '/trip.json') {
-      if (this.#job) this.#again = true; // a change in the middle of a download: looked at when it ends
-      this.#schedule(this.o.quietMs ?? QUIET_MS);
+    // The languages (app settings) change the names and may need another edition's files: looked at when the editions changed.
+    if (c.scope === SYS_SETTINGS && c.path === APP) {
+      this.#loadNames();
+      this.#editions().then((editions) => {
+        const now = editions.join(' ');
+        if (now !== this.#seen) this.#planChanged();
+        this.#seen = now;
+      }, () => {});
+      return;
     }
+    if (c.scope !== this.o.agent.target) return;
+    if (c.path === MANIFEST) this.#loadNames();
+    else if (PLAN_FILE.test(c.path) || c.path === '/trip.json') this.#planChanged();
+  }
+
+  #planChanged() {
+    if (this.#job) this.#again = true; // a change in the middle of a download: looked at when it ends
+    this.#schedule(this.o.quietMs ?? QUIET_MS);
   }
 
   #loadNames() {
@@ -210,10 +226,15 @@ export class PackKeeper {
     const scope = this.o.agent.target;
     const now = (this.o.now ?? Date.now)();
     if (!scope || this.#job || this.o.connection() !== 'wifi' || !(this.o.visible?.() ?? true)) return;
-    if (now - (this.#autoAt.get(scope) ?? -Infinity) < AUTO_EVERY_MS) return;
     const s = await this.status(scope);
     if (!s.manifest || !s.why) return;
+    // A change inside the hour isn't dropped: it is looked at when the hour ends.
+    const every = this.o.autoMs ?? AUTO_EVERY_MS;
+    const wait = every - (now - (this.#autoAt.get(scope) ?? -Infinity));
+    if (wait > 0) return this.#schedule(wait);
     this.#autoAt.set(scope, now);
-    await this.download(scope, { auto: true });
+    const m = await this.download(scope, { auto: true });
+    // A run that failed in part tries again by itself, once an hour at most.
+    if (m.failed.length) this.#schedule(every);
   }
 }

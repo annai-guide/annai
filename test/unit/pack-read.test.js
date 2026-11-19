@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPack, toLine } from '../../src/core/pack/read.js';
 import { downloadPack, MANIFEST } from '../../src/core/pack/download.js';
-import { packTrip, services } from './pack-kit.js';
+import { packTrip, services, YUFUIN, YUFUIN_WIKI, yufuinStop, yufuinAnswer } from './pack-kit.js';
 import { readFile } from 'node:fs/promises';
 
 test('meters from a point to a line, or to a point', () => {
@@ -90,22 +90,50 @@ test("a summary is cut to about as much as 200 characters of English say, after 
     ['湯布院病院', text(ja, '地域医療機能推進機構湯布院病院')], // 110, none
     ['由布院', `由布院温泉 ${text(ja, '由布院温泉').slice(5)}${text(ja, '由布院駅')}`], // a space after its first word only
     ['Jupiter', text(en, 'Jupiter (roller coaster)')], // English, 404
+    ['Mixed', `${'word '.repeat(36)}ジュピター ${'word '.repeat(30)}`], // English with kana at 180: 10 more to count, so one word less than by code units
   ]);
   const { ws, trip } = await packTrip();
   await ws.write(trip, '/offline/osm/o1.json', JSON.stringify({ area: { points: [[at.lat, at.lng]], radius: 5000 }, rows: [] }), { author: 'system' });
   await ws.write(trip, '/offline/wikipedia/w1.json', JSON.stringify({ at: [at.lat, at.lng], radius: 10000, pages: summaries.map(([title, s], k) => [title, at.lat, at.lng + k / 1e4, s]) }), { author: 'system' });
-  await ws.write(trip, MANIFEST, JSON.stringify({ format: 1, key: 'k', at: '2026-11-19T09:00:00.000Z', failed: [], full: false, stopped: false, bytes: 1, places: 0, summaries: 4, guides: [],
-    files: [{ id: 'o1', kind: 'osm', path: '/offline/osm/o1.json', bytes: 1, items: 0, at: 1 }, { id: 'w1', kind: 'wikipedia', path: '/offline/wikipedia/w1.json', bytes: 1, items: 4, at: 1 }] }), { author: 'system' });
+  await ws.write(trip, MANIFEST, JSON.stringify({ format: 1, key: 'k', at: '2026-11-19T09:00:00.000Z', failed: [], full: false, stopped: false, bytes: 1, places: 0, summaries: 5, guides: [],
+    files: [{ id: 'o1', kind: 'osm', path: '/offline/osm/o1.json', bytes: 1, items: 0, at: 1 }, { id: 'w1', kind: 'wikipedia', path: '/offline/wikipedia/w1.json', bytes: 1, items: 5, at: 1 }] }), { author: 'system' });
   const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
   const cut = Object.fromEntries(pack.pages(at, 1000, ['en']).map((r) => [r[0], String(r[6]).replace(/ https:\/\/\S+$/, '')]));
-  const weight = (/** @type {string} */ s) => [...s].reduce((n, c) => n + (/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(c) ? 2 : 1), 0);
+  const weight = (/** @type {string} */ s) => [...s].reduce((n, c) => n + (/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\u30fc]/u.test(c) ? 2 : 1), 0);
   for (const name of ['士林區', '湯布院病院', '由布院']) {
     // As much as 200 English characters, at a mark: 192, 160 and 167, counting a CJK character as 2.
     assert.ok(weight(cut[name]) <= 201 && weight(cut[name]) > 150, `${name}: ${cut[name]}`);
     assert.match(cut[name], /[、。，；！？]…$/u, `${name}: after a mark`);
   }
   assert.ok(cut['由布院'].startsWith('由布院温泉 （ゆふいんおんせん）は、'));
-  // English is cut as before: at its last space within 200 characters.
-  const jupiter = summaries[3][1].replace(/\s+/g, ' ');
-  assert.equal(cut.Jupiter, `${jupiter.slice(0, 200).replace(/\s+\S*$/, '')}…`);
+  // English is cut as before: at its last space within 200 characters, a kana counting 2, the long-vowel mark ー too (the ジュピター in it), not by code units.
+  const expected = (/** @type {string} */ text) => {
+    const t = text.replace(/\s+/g, ' ');
+    let room = 200;
+    let end = 0;
+    for (const c of t) {
+      room -= weight(c);
+      if (room < 0) break;
+      end += c.length;
+    }
+    return `${t.slice(0, end).replace(/\s+\S*$/, '')}…`;
+  };
+  assert.equal(cut.Jupiter, expected(summaries[3][1]));
+  assert.equal(cut.Mixed, expected(summaries[4][1]));
+  assert.notEqual(cut.Mixed, `${summaries[4][1].slice(0, 200).replace(/\s+\S*$/, '')}…`, 'a cut by code units would end at another space');
+});
+
+test("a language taken off the list is no more read, though its files stay until the next download; put back, it is read again", async () => {
+  const { ws, trip } = await packTrip({ '/plan/yufuin.json': yufuinStop('Yufuin Station', YUFUIN, 1) });
+  await downloadPack({ ws, scope: trip, ...services({ overpass: () => ({ elements: [] }), wikipedia: (url) => yufuinAnswer(url) }), version: '1.0.0', editions: ['ja', 'en'], gapMs: 0 });
+  const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
+  const english = YUFUIN_WIKI.en.query.pages.map((/** @type {any} */ p) => p.title).sort();
+  const onlyEnglish = pack.pages(YUFUIN, 10_000, ['en']).map((r) => r[0]).sort();
+  assert.deepEqual(onlyEnglish, english, "English Wikipedia's articles, none of Japanese's");
+  // 湯布院町 is a Japanese article alone, here; English Wikipedia has none: with Japanese listed it names the place, without it it does not.
+  const town = { lat: 33.26442, lng: 131.35558 };
+  assert.equal(pack.name(town, ['ja', 'en'])?.name, '湯布院町');
+  assert.notEqual(pack.name(town, ['en'])?.name, '湯布院町');
+  assert.ok(pack.pages(town, 10_000, ['ja', 'en']).some((r) => r[0] === '湯布院町'));
+  assert.ok(!pack.pages(town, 10_000, ['en']).some((r) => r[0] === '湯布院町'));
 });

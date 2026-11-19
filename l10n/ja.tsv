@@ -582,21 +582,21 @@ gtgen1	ok	The content of {0} is missing from storage, so it can't be exported.	{
 13a6l3r	ok	There is nothing to export.	エクスポートするものがありません。	src/core/archive.js:68	
 am2v0c	ok	API keys can only be included in an encrypted backup of everything.	APIキーを含められるのは、すべてを含む暗号化バックアップだけです。	src/core/archive.js:68	Note: "a backup of everything" is the kind (everything, not one trip); すべてを暗号化した read as "encrypted everything".
 4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	このファイルは暗号化されています。開くにはパスフレーズを入力してください。	src/core/archive.js:88	
-1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	このファイルは新しいバージョンのannaiで作られています。annaiをアップデートしてから、もう一度開いてください。	src/core/archive.js:445	
-q7ee2s	ok	This file is damaged: {0}	このファイルは壊れています：{0}	src/core/archive.js:449	{0} = errors; Note: {0} is a developer's detail, in English.
-4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	このファイルには安全でないファイルパス（{0}）が含まれているため、開けません。	src/core/archive.js:452	{0} = path
-hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	このファイルはannaiのファイルではないか、壊れています（{0}）。	src/core/archive.js:475	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	このzipはannaiのファイルではありません（annai-archive.jsonがありません）。	src/core/archive.js:477	
-j0v5kk	ok	This file is damaged: its manifest is not readable.	このファイルは壊れています：マニフェストを読み取れません。	src/core/archive.js:484	
-lfeohr#other	ok	This file is damaged: {0} are missing.	このファイルは壊れています：{0}がありません。	src/core/archive.js:490	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
-1ujco5p	ok	This file is damaged: its keys are not readable.	このファイルは壊れています：キーを読み取れません。	src/core/archive.js:506	
-1aqa7w5	ok	This file is damaged ({0}).	このファイルは壊れています（{0}）。	src/core/archive.js:518	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1txsojx	ok	This file is damaged: {0} was changed.	このファイルは壊れています：{0}が変更されています。	src/core/archive.js:523	{0} = name
-21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	このファイルは壊れています：{1}の{0}行目を読み取れません。	src/core/archive.js:549	{0} = i + 1; {1} = name
-1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	このファイルは壊れています：{1}の{0}行目：{2}	src/core/archive.js:553	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
-syvqmc	ok	This file is damaged: its plugin list is not readable.	このファイルは壊れています：プラグインの一覧を読み取れません。	src/core/archive.js:649	
-qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	読み込み中にこのファイルの内容の一部がこの端末から削除されたため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:751	
-cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	読み込み中に、置き換え対象のデータがこの端末で変更されたため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:752	
+1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	このファイルは新しいバージョンのannaiで作られています。annaiをアップデートしてから、もう一度開いてください。	src/core/archive.js:447	
+q7ee2s	ok	This file is damaged: {0}	このファイルは壊れています：{0}	src/core/archive.js:451	{0} = errors; Note: {0} is a developer's detail, in English.
+4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	このファイルには安全でないファイルパス（{0}）が含まれているため、開けません。	src/core/archive.js:454	{0} = path
+hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	このファイルはannaiのファイルではないか、壊れています（{0}）。	src/core/archive.js:477	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	このzipはannaiのファイルではありません（annai-archive.jsonがありません）。	src/core/archive.js:479	
+j0v5kk	ok	This file is damaged: its manifest is not readable.	このファイルは壊れています：マニフェストを読み取れません。	src/core/archive.js:486	
+lfeohr#other	ok	This file is damaged: {0} are missing.	このファイルは壊れています：{0}がありません。	src/core/archive.js:492	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
+1ujco5p	ok	This file is damaged: its keys are not readable.	このファイルは壊れています：キーを読み取れません。	src/core/archive.js:508	
+1aqa7w5	ok	This file is damaged ({0}).	このファイルは壊れています（{0}）。	src/core/archive.js:520	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1txsojx	ok	This file is damaged: {0} was changed.	このファイルは壊れています：{0}が変更されています。	src/core/archive.js:525	{0} = name
+21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	このファイルは壊れています：{1}の{0}行目を読み取れません。	src/core/archive.js:551	{0} = i + 1; {1} = name
+1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	このファイルは壊れています：{1}の{0}行目：{2}	src/core/archive.js:555	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
+syvqmc	ok	This file is damaged: its plugin list is not readable.	このファイルは壊れています：プラグインの一覧を読み取れません。	src/core/archive.js:651	
+qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	読み込み中にこのファイルの内容の一部がこの端末から削除されたため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:753	
+cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	読み込み中に、置き換え対象のデータがこの端末で変更されたため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:754	
 e0756x	ok	annai tries again later.	あとで自動的に再試行します。	src/core/backup.js:42	
 pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0}のプラグインが動いていません。「設定 → バックアップ」でこのバックアップ先を開き、オンにしてください。	src/core/backup.js:44	{0} = name
 al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	{0}の暗号化バックアップ用のパスフレーズを入力して、保存してください。	src/core/backup.js:45	{0} = name
@@ -1004,7 +1004,7 @@ elkw42	ok	The voice's audio couldn't be played.	読み上げの音声を再生�
 9gdjo3	ok	The browser voice couldn't speak ({0}).	ブラウザの声で読み上げられませんでした（{0}）。	src/plugins/voice-browser/index.js:585	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
 1mrk9hl	ok	The microphone stopped.	マイクが停止しました。	src/plugins/voice-browser/index.js:650	
 1l4zitw	ok	Phone dictation stopped ({0}).	端末の音声入力が停止しました（{0}）。	src/plugins/voice-browser/index.js:755	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音声入力 / 手机语音输入); {0} is the browser's error code, such as network.
-1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia、Nominatim	src/plugins/web/free.js:121	
+1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia、Nominatim	src/plugins/web/free.js:127	
 scnz2y	ok	Web tools	Webツール	src/plugins/web/index.js:13	Note: Web as its tool group is named in Settings → Tools (Web / 网页).
 eob60g	ok	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetchはWebページを読み込みます。サイトがWebアプリからの読み込みを許可していないときは、Jina ReaderかExaを経由します。web_searchは検索プロバイダーで検索します。順番は「設定 → ツール」で決まり、初期状態では無料のものが先です。	src/plugins/web/index.js:16	
 b4g7z9	ok	needs a key (Settings → Tools)	キーが必要：「設定 → ツール」	src/plugins/web/index.js:189	
@@ -1052,7 +1052,7 @@ rcp6ga	ok	A photo was kept as it is	写真をそのまま保存しました	src/
 158qnm7	ok	Ask Shiori about this	Shioriに聞く	src/ui/composer.js:232	Note: the button that puts the file in the type box as a chip, to write what is wrong or missing; 聞く (ask) is plain.
 1waossz	ok	Places nearby and along the itinerary, for Shiori's nearby tool and the offline pack, found through Overpass at overpass-api.de, and at maps.mail.ru, run by VK, while Settings → Tools has it on.	周辺や旅程沿いの場所。Shioriのnearbyツールとオフラインパックで使います。Overpass（overpass-api.de）を通じて探し、「設定 → ツール」でチェックを入れている間は、VKが運営するmaps.mail.ruでも探します。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
 g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	名前から場所を探したり、地点から地名を調べたりします。Shioriのgeocodeとreverseツールで使い、無料検索の最後の手段として場所の公式サイトを探すのにも使います。利用ポリシーに従い、問い合わせは1秒に1回までにしています。	src/ui/credits.js:26	
-oa9m21	draft	Articles about places nearby, and their summaries in the offline pack, from the editions in the languages you speak and in English. Each article Shiori reads comes with its address. Free search's last resort, on whatever you tick, sends it the words searched.	周辺の場所に関する記事と、オフラインパックに入れるその要約。話す言語と英語の各版から取得します。Shioriが読む記事にはそれぞれアドレスが付きます。無料検索の最後の手段は、チェックの有無にかかわらず、検索キーワードをWikipediaに送ります。	src/ui/credits.js:33	Note: Settings → About, Wikipedia's credit. Since 2026-11-19 it names the editions read: the languages you speak, and English.
+oa9m21	draft	Articles about places nearby, and their summaries in the offline pack, from the editions in the languages you speak and in English. Each article Shiori reads comes with its address. Free search's last resort, on whatever you tick, sends it the words searched.	周辺の場所に関する記事と、オフラインパック内のその要約。話す言語と英語の各版から取得します。Shioriが読む記事にはそれぞれアドレスが付きます。無料検索の最後の手段は、チェックの有無にかかわらず、検索キーワードをWikipediaに送ります。	src/ui/credits.js:33	Note: Settings → About, Wikipedia's credit. Since 2026-11-19 it names the editions read: the languages you speak, and English.
 1ufrhy7	ok	Travel guides, for Shiori's guide tool and the offline pack, and where free search falls back to.	旅行ガイド。Shioriのguideツールとオフラインパックで使うほか、無料検索の予備にもなります。	src/ui/credits.js:40	Note: free search falls back to it; 代わり read as replacing free search.
 czha5t	ok	Weather forecasts, for Shiori's weather tool. Sunrise and sunset in the forecast are Open-Meteo's too; the Itinerary's golden hour, and the sun's times when Open-Meteo doesn't answer, are worked out on the phone.	天気予報。Shioriのweatherツールで使います。予報の日の出・日の入り時刻もOpen-Meteoのものです。「旅程」のゴールデンアワーと、Open-Meteoが応答しないときの日の出・日の入り時刻は、端末で計算します。	src/ui/credits.js:47	
 a8awk7	ok	Free web search for web_search, and a reader of pages other readers can't read for fetch, while ticked in Settings → Tools. Only the words searched, or the page's address, are sent.	web_searchの無料Web検索と、ほかの方法では読めないページをfetchで読むための手段。「設定 → ツール」でチェックを入れている間だけ使います。送信するのは検索キーワードか、ページのアドレスだけです。	src/ui/credits.js:54	

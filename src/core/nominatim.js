@@ -15,7 +15,7 @@ export async function nominatimTurn() {
   if (wait > 0) await new Promise((r) => setTimeout(r, wait));
 }
 
-/** Nominatim's accept-language: the order's languages, each then its ISO 639-1 code (zh-Hant, zh), so a name tagged by either is found. @param {import('./languages.js').Language[]} order */
+/** Nominatim's accept-language: the order's languages, each then its ISO code (zh-Hant, then zh; ISO 639-1 where there is one, as Cantonese's yue is ISO 639-3), so a name tagged by either is found. @param {import('./languages.js').Language[]} order */
 export const nominatimLanguages = (order) => [...new Set(order.flatMap((l) => [l.id, l.iso]))].join(',');
 
 /** Forgets the turns taken: for tests that don't want to wait for an earlier one's. */

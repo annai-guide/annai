@@ -13,7 +13,7 @@ const ORIGIN = 'https://annai.guide';
 const KIYOMIZU = /** @type {[number, number]} */ ([34.9949, 135.785]);
 const gap = () => new Promise((r) => setTimeout(r, 1100));
 
-test("Wikipedia's editions answer nearby's query from annai's origin, with its header, and the same article carries the same Wikidata id", { skip }, async () => {
+test("Wikipedia's editions answer nearby's query from annai's origin, with its header, and the same article in two editions is one by its Wikidata id (清水寺 and Kiyomizu-dera)", { skip }, async () => {
   /** @type {Record<string, any[]>} */
   const got = {};
   for (const e of ['ja', 'zh', 'en']) {
@@ -31,6 +31,9 @@ test("Wikipedia's editions answer nearby's query from annai's origin, with its h
   }
   const both = merged([...got.ja, ...got.en], ['ja', 'en']);
   assert.ok(both.length < got.ja.length + got.en.length, 'some articles are in both');
+  // Japanese's 清水寺 and English's Kiyomizu-dera carry one id, Q221716: merged, it is the Japanese one.
+  assert.ok(got.ja.some((a) => a.id === 'Q221716' && a.title === '清水寺') && got.en.some((a) => a.id === 'Q221716' && a.title === 'Kiyomizu-dera'), 'the same Wikidata item in both');
+  assert.equal(both.filter((a) => a.id === 'Q221716').length, 1);
   assert.ok(both.some((a) => a.id === 'Q221716' && a.edition === 'ja'), '清水寺 is Kiyomizu-dera');
 });
 

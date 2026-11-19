@@ -30,6 +30,9 @@ export function nearUrl(edition, [lat, lng], radius, limit, { extracts = false }
 
 const isNum = (/** @type {unknown} */ x) => typeof x === 'number' && Number.isFinite(x);
 
+/** What an edition's error answer says (MediaWiki sends 200 with {"error": {code, info}}), without its full stop; '' for none. @param {any} r */
+export const wikiSaid = (r) => (r?.error ? String(r.error.info ?? r.error.code ?? 'no').replace(/\.$/, '') : '');
+
 /** An answer's articles: a page without coordinates left out. @param {any} r @param {string} edition @returns {Article[]} */
 export function articlesOf(r, edition) {
   /** @type {Article[]} */
@@ -44,17 +47,17 @@ export function articlesOf(r, edition) {
 }
 
 /**
- * Each article once: by Wikidata id, the order's first edition's (one outside it last); without an id, once in its edition by title.
+ * Each article once: by Wikidata id, the order's first edition's; without an id, once in its edition by title. Rows of an edition outside the
+ * order are for the caller to leave out.
  * @template {Article} A @param {A[]} rows @param {string[]} editions @returns {A[]}
  */
 export function merged(rows, editions) {
-  const rank = (/** @type {A} */ a) => (editions.includes(a.edition) ? editions.indexOf(a.edition) : editions.length);
   const seen = new Set();
-  return [...rows].sort((a, b) => rank(a) - rank(b)).filter((a) => {
+  return [...rows].sort((a, b) => editions.indexOf(a.edition) - editions.indexOf(b.edition)).filter((a) => {
     const key = a.id ?? `${a.edition} ${a.title}`;
     return !seen.has(key) && Boolean(seen.add(key));
   });
 }
 
-/** An article's address, its title as written (as %XX a model reads 9 characters for one): only `%`, `?`, `#` and `\` encoded. @param {string} edition @param {string} title */
-export const articleUrl = (edition, title) => `https://${edition}.wikipedia.org/wiki/${title.replace(/ /g, '_').replace(/[%?#\\]/g, encodeURIComponent)}`;
+/** An article's address, its title as written (as %XX a model reads 9 characters for one): only `%`, `?`, `#`, `\` and the brackets (chat's links end at one) encoded. @param {string} edition @param {string} title */
+export const articleUrl = (edition, title) => `https://${edition}.wikipedia.org/wiki/${title.replace(/ /g, '_').replace(/[%?#\\()]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)}`;

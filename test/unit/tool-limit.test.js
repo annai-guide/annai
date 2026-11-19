@@ -79,14 +79,21 @@ test("places: each request has its own time limit; nearby asks Overpass and Wiki
   try {
     // nearby's Wikipedia answer, in the shape of the saved real ones (fixtures/places/wiki-kiyomizu-*.json).
     const wiki = { batchcomplete: true, query: { pages: [{ pageid: 1000, ns: 0, title: 'McWay Falls', coordinates: [{ lat: 36.1577, lon: -121.6716, primary: true, globe: 'earth' }], pageprops: { wikibase_item: 'Q900' } }] } };
+    /** @type {string[]} */
+    const wikiAsked = [];
     const done = tools.nearby.run({ lat: 36.158, lng: -121.672 }, {
       ...call(), trip: null,
-      fetch: async (/** @type {string} */ url, /** @type {any} */ init) => (url.includes('overpass') ? hang(url, init) : new Response(JSON.stringify(wiki))),
+      fetch: async (/** @type {string} */ url, /** @type {any} */ init) => {
+        if (url.includes('overpass')) return hang(url, init);
+        wikiAsked.push(url);
+        return new Response(JSON.stringify(wiki));
+      },
     });
     for (let k = 0; !asked.length && k < 1000; k++) await new Promise((r) => setImmediate(r));
     mock.timers.tick(OVERPASS_MS);
     const out = await done;
     assert.deepEqual(asked.map((u) => new URL(u).hostname), ['overpass-api.de']);
+    assert.deepEqual(wikiAsked.map((u) => new URL(u).hostname), ['en.wikipedia.org']);
     assert.match(out, /McWay Falls/);
     assert.match(out, /OpenStreetMap didn't answer; these are Wikipedia articles only\.$/);
   } finally {

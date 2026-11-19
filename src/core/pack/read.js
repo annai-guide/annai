@@ -129,14 +129,14 @@ export class Pack {
     return out;
   }
 
-  /** Its articles within radius, each once (parts overlap). @param {Point} p @param {number} radius @param {string[]} editions */
-  #near(p, radius, editions) {
-    return merged(this.#wiki.filter((w) => meters(p, w) <= radius), editions);
+  /** Its articles of these editions within radius, each once (parts overlap): a language taken off the list is no more read, though its files stay till the next download. @param {Point} p @param {number} radius @param {string[]} editions */
+  articles(p, radius, editions) {
+    return merged(this.#wiki.filter((w) => editions.includes(w.edition) && meters(p, w) <= radius), editions);
   }
 
   /** nearby's rows for its Wikipedia articles within radius, each with its summary. @param {Point} p @param {number} radius @param {string[]} editions @returns {any[][]} */
   pages(p, radius, editions) {
-    /* en */ return this.#near(p, radius, editions).map((w) => [w.title, 'wikipedia article', Math.round(meters(p, w)), w.lat, w.lng, 'wikipedia', `${short(w.summary)} ${articleUrl(w.edition, w.title)}`.trim()]);
+    /* en */ return this.articles(p, radius, editions).map((w) => [w.title, 'wikipedia article', Math.round(meters(p, w)), w.lat, w.lng, 'wikipedia', `${short(w.summary)} ${articleUrl(w.edition, w.title)}`.trim()]);
   }
 
   /** Its guide for a name: by title, by title without "(California)", or by a name that led to it. @param {string} name @returns {Promise<{ title: string, text: string } | null>} */
@@ -152,7 +152,7 @@ export class Pack {
   name(p, editions) {
     /** @type {{ name: string, m: number } | null} */
     let best = null;
-    for (const [name, lat, lng] of [...this.#names, ...this.#near(p, NAME_M, editions).map((w) => /** @type {const} */ ([w.title, w.lat, w.lng]))]) {
+    for (const [name, lat, lng] of [...this.#names, ...this.articles(p, NAME_M, editions).map((w) => /** @type {const} */ ([w.title, w.lat, w.lng]))]) {
       const m = meters(p, { lat, lng });
       if (m <= NAME_M && (!best || m < best.m)) best = { name, m };
     }

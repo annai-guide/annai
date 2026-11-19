@@ -582,21 +582,21 @@ gtgen1	ok	The content of {0} is missing from storage, so it can't be exported.	�
 13a6l3r	ok	There is nothing to export.	没有可导出的内容。	src/core/archive.js:68	
 am2v0c	ok	API keys can only be included in an encrypted backup of everything.	只有加密的完整备份才能包含 API 密钥。	src/core/archive.js:68	
 4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	此文件已加密。请输入密码短语来打开。	src/core/archive.js:88	
-1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	此文件是用较新版本的 annai 创建的。请先更新 annai，再重新打开。	src/core/archive.js:445	
-q7ee2s	ok	This file is damaged: {0}	此文件已损坏：{0}	src/core/archive.js:449	{0} = errors; Note: {0} is a developer's detail, in English.
-4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	此文件包含不安全的文件路径（{0}），因此 annai 不会打开它。	src/core/archive.js:452	{0} = path
-hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	此文件不是 annai 文件，或者已损坏（{0}）。	src/core/archive.js:475	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	此 zip 不是 annai 文件，里面没有 annai-archive.json。	src/core/archive.js:477	
-j0v5kk	ok	This file is damaged: its manifest is not readable.	此文件已损坏，无法读取其中的清单。	src/core/archive.js:484	
-lfeohr#other	ok	This file is damaged: {0} are missing.	此文件已损坏，缺少 {0}。	src/core/archive.js:490	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
-1ujco5p	ok	This file is damaged: its keys are not readable.	此文件已损坏，无法读取其中的密钥。	src/core/archive.js:506	
-1aqa7w5	ok	This file is damaged ({0}).	此文件已损坏（{0}）。	src/core/archive.js:518	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1txsojx	ok	This file is damaged: {0} was changed.	此文件已损坏，{0} 被改动过。	src/core/archive.js:523	{0} = name
-21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	此文件已损坏，无法读取 {1} 的第 {0} 行。	src/core/archive.js:549	{0} = i + 1; {1} = name
-1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	此文件已损坏，{1} 第 {0} 行：{2}	src/core/archive.js:553	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
-syvqmc	ok	This file is damaged: its plugin list is not readable.	此文件已损坏，无法读取其中的插件列表。	src/core/archive.js:649	
-qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件的部分内容已从本设备中删除，因此没有导入任何内容。请重新导入。	src/core/archive.js:751	
-cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件要替换的内容在本设备上发生了变化，因此没有导入任何内容。请重新导入。	src/core/archive.js:752	
+1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	此文件是用较新版本的 annai 创建的。请先更新 annai，再重新打开。	src/core/archive.js:447	
+q7ee2s	ok	This file is damaged: {0}	此文件已损坏：{0}	src/core/archive.js:451	{0} = errors; Note: {0} is a developer's detail, in English.
+4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	此文件包含不安全的文件路径（{0}），因此 annai 不会打开它。	src/core/archive.js:454	{0} = path
+hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	此文件不是 annai 文件，或者已损坏（{0}）。	src/core/archive.js:477	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	此 zip 不是 annai 文件，里面没有 annai-archive.json。	src/core/archive.js:479	
+j0v5kk	ok	This file is damaged: its manifest is not readable.	此文件已损坏，无法读取其中的清单。	src/core/archive.js:486	
+lfeohr#other	ok	This file is damaged: {0} are missing.	此文件已损坏，缺少 {0}。	src/core/archive.js:492	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
+1ujco5p	ok	This file is damaged: its keys are not readable.	此文件已损坏，无法读取其中的密钥。	src/core/archive.js:508	
+1aqa7w5	ok	This file is damaged ({0}).	此文件已损坏（{0}）。	src/core/archive.js:520	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1txsojx	ok	This file is damaged: {0} was changed.	此文件已损坏，{0} 被改动过。	src/core/archive.js:525	{0} = name
+21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	此文件已损坏，无法读取 {1} 的第 {0} 行。	src/core/archive.js:551	{0} = i + 1; {1} = name
+1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	此文件已损坏，{1} 第 {0} 行：{2}	src/core/archive.js:555	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
+syvqmc	ok	This file is damaged: its plugin list is not readable.	此文件已损坏，无法读取其中的插件列表。	src/core/archive.js:651	
+qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件的部分内容已从本设备中删除，因此没有导入任何内容。请重新导入。	src/core/archive.js:753	
+cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件要替换的内容在本设备上发生了变化，因此没有导入任何内容。请重新导入。	src/core/archive.js:754	
 e0756x	ok	annai tries again later.	稍后会自动重试。	src/core/backup.js:42	
 pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} 的插件没有运行。请到设置 → 备份中打开这个备份位置，开启插件。	src/core/backup.js:44	{0} = name; Note: "it" is the plugin: the backup place's screen turns its plugin on.
 al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	请输入 {0} 加密备份的密码短语，然后保存。	src/core/backup.js:45	{0} = name
@@ -1004,7 +1004,7 @@ elkw42	ok	The voice's audio couldn't be played.	无法播放这个声音的音�
 9gdjo3	ok	The browser voice couldn't speak ({0}).	浏览器声音无法朗读（{0}）。	src/plugins/voice-browser/index.js:585	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
 1mrk9hl	ok	The microphone stopped.	麦克风已停止。	src/plugins/voice-browser/index.js:650	
 1l4zitw	ok	Phone dictation stopped ({0}).	手机语音输入已停止（{0}）。	src/plugins/voice-browser/index.js:755	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音声入力 / 手机语音输入); {0} is the browser's error code, such as network.
-1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia 和 Nominatim	src/plugins/web/free.js:121	
+1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia 和 Nominatim	src/plugins/web/free.js:127	
 scnz2y	ok	Web tools	网页工具	src/plugins/web/index.js:13	Note: Web as its tool group is named in Settings → Tools (Web / 网页).
 eob60g	ok	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetch 可读取任何网页，遇到不允许网页应用读取的网站时，改用 Jina Reader 或 Exa；web_search 按设置 → 工具中的顺序使用各搜索提供商，先用免费的。	src/plugins/web/index.js:16	
 b4g7z9	ok	needs a key (Settings → Tools)	需要密钥（设置 → 工具）	src/plugins/web/index.js:189	
@@ -1052,7 +1052,7 @@ rcp6ga	ok	A photo was kept as it is	照片已按原图保存	src/ui/composer.js:
 158qnm7	ok	Ask Shiori about this	问问 Shiori	src/ui/composer.js:232	Note: puts the file in the type box, to ask about it; 问问 Shiori reads naturally, the file is beside the button.
 1waossz	ok	Places nearby and along the itinerary, for Shiori's nearby tool and the offline pack, found through Overpass at overpass-api.de, and at maps.mail.ru, run by VK, while Settings → Tools has it on.	附近和行程沿途的地点，供 Shiori 的 nearby 工具和离线包使用，通过 Overpass 查找（overpass-api.de）；在设置 → 工具中勾选时，也会通过 VK 运营的 maps.mail.ru 查找。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
 g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	按名称查找地点，或根据位置查出地名，供 Shiori 的 geocode 和 reverse 工具使用；作为免费搜索的最后备选，还会查找地点的官网。annai 遵照其使用政策，每秒最多请求一次。	src/ui/credits.js:26	
-oa9m21	draft	Articles about places nearby, and their summaries in the offline pack, from the editions in the languages you speak and in English. Each article Shiori reads comes with its address. Free search's last resort, on whatever you tick, sends it the words searched.	附近地点的相关文章，以及离线包中的文章摘要，来自你所说语言和英语的各语言版本。Shiori 读到的每篇文章都附带链接。免费搜索的最后备选不受勾选影响，会把搜索词发给它查询。	src/ui/credits.js:33	Note: Settings → About, Wikipedia's credit. Since 2026-11-19 it names the editions read: the languages you speak, and English.
+oa9m21	draft	Articles about places nearby, and their summaries in the offline pack, from the editions in the languages you speak and in English. Each article Shiori reads comes with its address. Free search's last resort, on whatever you tick, sends it the words searched.	附近地点的相关文章，以及离线包中的文章摘要，来自你说的语言和英语的各语言版本。Shiori 读到的每篇文章都附带链接。免费搜索的最后备选不受勾选影响，会把搜索词发给 Wikipedia。	src/ui/credits.js:33	Note: Settings → About, Wikipedia's credit. Since 2026-11-19 it names the editions read: the languages you speak, and English.
 1ufrhy7	ok	Travel guides, for Shiori's guide tool and the offline pack, and where free search falls back to.	旅行指南，供 Shiori 的 guide 工具和离线包使用，也是免费搜索的备选。	src/ui/credits.js:40	
 czha5t	ok	Weather forecasts, for Shiori's weather tool. Sunrise and sunset in the forecast are Open-Meteo's too; the Itinerary's golden hour, and the sun's times when Open-Meteo doesn't answer, are worked out on the phone.	天气预报，供 Shiori 的 weather 工具使用。预报中的日出日落时间也来自 Open-Meteo；“行程”页面的黄金时刻，以及 Open-Meteo 无响应时的日出日落时间，都在手机上计算。	src/ui/credits.js:47	
 a8awk7	ok	Free web search for web_search, and a reader of pages other readers can't read for fetch, while ticked in Settings → Tools. Only the words searched, or the page's address, are sent.	仅在设置 → 工具中勾选时，为 web_search 提供免费网页搜索，并为 fetch 读取其他方式读不了的网页。只发送搜索词或网页地址。	src/ui/credits.js:54	

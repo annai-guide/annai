@@ -3,6 +3,7 @@ import { answerJSON } from '../../core/answer.js';
 import { nominatimTurn, nominatimLanguages } from '../../core/nominatim.js';
 import { editionsOf, articleUrl } from '../../core/wiki.js';
 import { cut } from '../../core/web-search.js';
+import { anySignal } from '../../core/signals.js';
 import { t } from '../../core/l10n.js';
 
 /**
@@ -14,6 +15,11 @@ import { t } from '../../core/l10n.js';
 
 /** The longest a free service has to answer before the next one is tried. */
 const LIMIT_MS = 12_000;
+/**
+ * The longest one Wikimedia host has for its searches inside the floor (all its tries together): half the floor's 12 s, and about 15 times
+ * the slowest answer measured (0.16 to 0.39 s, 2026-11-19), so a host that never answers leaves the others, and the rows already come, their time.
+ */
+export const EDITION_MS = { ms: 6_000 };
 
 /**
  * A failure in words, keeping the HTTP status and kind the chain judges it by; a stop stays a stop.
@@ -125,40 +131,28 @@ export const knowledgeFloor = (orderOf) => ({
     const found = keywords(query);
     const want = found.length ? found : [query.trim().toLowerCase()];
     const enc = encodeURIComponent;
-    /** @param {string} url */
-    const json = async (url) => {
-      const res = await get(url, { signal, referrerPolicy: 'origin' });
+    /** @param {string} url @param {AbortSignal} [stop] */
+    const json = async (url, stop = signal) => {
+      const res = await get(url, { signal: stop, referrerPolicy: 'origin' });
       if (!res.ok) throw Object.assign(new Error(`${new URL(url).hostname} answered ${res.status}`), { status: res.status });
       return answerJSON(res, new URL(url).hostname);
     };
     const api = (/** @type {string} */ host, /** @type {string} */ qs) => `https://${host}/w/api.php?${qs}&format=json&origin=*`;
-    // Questions rarely match whole; fewer words are tried when all of them find nothing, each host asked with all the words before any with
-    // fewer (an English hit on the whole beats a Japanese one on two). A host that fails is left out after; all failing is the failure.
+    // Questions rarely match whole; fewer words are tried when all of them find nothing, one host at a time with its own tries.
     const tries = [...new Set([want.join(' '), want.slice(0, 3).join(' '), want.slice(0, 2).join(' ')])].filter(Boolean);
-    /** @param {string[]} hosts @returns {Promise<{ host: string, found: any[] }>} */
-    const hits = async (hosts) => {
-      let left = hosts;
-      /** @type {unknown} */
-      let error = null;
+    /** A host's hits for the first of the tries that finds any; it fails when the host does, or has no more than EDITION_MS. @param {string} host @returns {Promise<any[]>} */
+    const hits = async (host) => {
+      const stop = anySignal([signal, AbortSignal.timeout(EDITION_MS.ms)]);
       for (const q of tries) {
-        for (const host of left) {
-          try {
-            /* en */
-            const found = (await json(api(host, `action=query&list=search&srlimit=${limit}&srsearch=${enc(q)}`)))?.query?.search;
-            if (Array.isArray(found) && found.length) return { host, found };
-          } catch (e) {
-            if (signal.aborted) throw e;
-            error ??= e;
-            left = left.filter((h) => h !== host);
-          }
-        }
+        /* en */
+        const found = (await json(api(host, `action=query&list=search&srlimit=${limit}&srsearch=${enc(q)}`), stop))?.query?.search;
+        if (Array.isArray(found) && found.length) return found;
       }
-      if (!left.length) throw error;
-      return { host: hosts[0], found: [] };
+      return [];
     };
     const wikiUrl = (/** @type {string} */ host, /** @type {string} */ title) => `https://${host}/wiki/${enc(title.replace(/ /g, '_'))}`;
     const guide = async () => {
-      const [top] = (await hits(['en.wikivoyage.org'])).found;
+      const [top] = await hits('en.wikivoyage.org');
       if (!top) return [];
       const page = /** @type {any} */ (Object.values((await json(api('en.wikivoyage.org', `action=query&prop=extracts&explaintext=1&redirects=1&titles=${enc(top.title)}`)))?.query?.pages ?? {})[0]);
       const lines = String(page?.extract ?? '').split('\n').map((l) => l.trim()).filter((l) => l.length > 20);
@@ -173,10 +167,14 @@ export const knowledgeFloor = (orderOf) => ({
       return (Array.isArray(found) ? found : []).filter((f) => f?.extratags?.website)
         .map((f) => ({ title: f.name || f.display_name, url: f.extratags.website, snippet: [f.display_name, f.extratags.opening_hours ? `Hours: ${f.extratags.opening_hours}` : ''].filter(Boolean).join('. ') }));
     };
+    // Each edition of the reading order asks at once; the rows are the first edition's that has any among those that answered in time. One that
+    // fails is left out (no row can say so: a row has an address); all failing is the failure.
     const articles = async () => {
-      const hosts = new Map(editionsOf(order).map((e) => [`${e}.wikipedia.org`, e]));
-      const { host, found } = await hits([...hosts.keys()]);
-      return found.map((h) => ({ title: /* en */ `${h.title} (Wikipedia)`, url: articleUrl(/** @type {string} */ (hosts.get(host)), h.title), snippet: h.snippet }));
+      const editions = editionsOf(order);
+      const got = await Promise.allSettled(editions.map((e) => hits(`${e}.wikipedia.org`)));
+      if (got.every((g) => g.status === 'rejected')) throw /** @type {PromiseRejectedResult} */ (got[0]).reason;
+      const k = got.findIndex((g) => g.status === 'fulfilled' && g.value.length > 0);
+      return k < 0 ? [] : /** @type {PromiseFulfilledResult<any[]>} */ (got[k]).value.map((h) => ({ title: /* en */ `${h.title} (Wikipedia)`, url: articleUrl(editions[k], h.title), snippet: h.snippet }));
     };
     const settled = await Promise.allSettled([guide(), places(), articles()]);
     if (settled.every((s) => s.status === 'rejected')) throw /** @type {PromiseRejectedResult} */ (settled[0]).reason;
