@@ -51,7 +51,7 @@ export const GAP_MS = 1000;
 export const MAX_BYTES = 20 * 1024 * 1024;
 /** A part older than this is downloaded again. */
 export const STALE_MS = 30 * 86_400_000;
-/** After this many failures in a row from one source (OpenStreetMap, an edition, Wikivoyage) the run leaves it: it is down, and a host that never answers costs 3 answer times, not one a part. */
+/** After this many failures in a row (see saysDown) from a source (OpenStreetMap, an edition, Wikivoyage) or an Overpass server, the run leaves it: a host that never answers costs 3 answer times, not one a part. */
 const GIVE_UP = 3;
 /** How long one answer may take: Overpass runs a query for up to a minute, after waiting for a free slot. */
 export const ANSWER_MS = 120_000;
@@ -89,6 +89,12 @@ export function failWords(s) {
 
 /** An error by the shown rule: message in annai's English, said its data. @param {string} en @param {PackSaid} said */
 const fault = (en, said) => Object.assign(new Error(en), { said });
+
+/** Whether a failure says its source is down: no answer (late, quiet, unreachable) or a refusal (429, a 5xx). An answer annai can't use (a remark, an error body, unreadable) says it is there. @param {any} e */
+function saysDown(e) {
+  const s = e?.said?.code === 'osm' ? e.said.inner : e?.said;
+  return !s || s.code === 'late' || s.code === 'quiet' || s.code === 'unreachable' || (s.code === 'status' && (s.status === 429 || s.status >= 500));
+}
 
 /** Where a part is kept, a Wikipedia part's per edition (English's as before editions). @param {Part} p @param {string} [edition] */
 export const pathOf = (p, edition = 'en') => `${DIR}${p.kind}/${p.id}${p.kind === 'wikipedia' && edition !== 'en' ? `.${edition}` : ''}.json`;
@@ -144,7 +150,7 @@ export async function downloadPack(o) {
   const old = await readManifest(ws, scope);
   const have = new Map((await ws.list(scope, DIR)).map((f) => [f.path, f]));
   const prev = new Map((old?.files ?? []).map((f) => [f.path, f]));
-  // A file the manifest doesn't name (a run stopped before it) is as its path says: another edition's has it, English's is not known to have ids.
+  // A file the manifest doesn't name (a run stopped before it) is as its path says (see `entry`).
   const fresh = (/** @type {Omit<PackFile, 'bytes' | 'at' | 'items'>} */ e) => {
     const f = have.get(e.path);
     return f !== undefined && now() - (prev.get(e.path)?.at || f.modified) <= STALE_MS && !lacksIds(prev.get(e.path) ?? e, o.editions);
@@ -155,9 +161,11 @@ export async function downloadPack(o) {
   const failed = [];
   let bytes = 0;
   let full = false;
-  /** @type {Map<string, number>} failures in a row, by source: 'osm', 'wikivoyage', or a Wikipedia edition */
+  /** @type {Map<string, number>} failures in a row by Overpass server */
+  const hosts = new Map();
+  /** @type {Map<string, { n: number, last?: Failure }>} failures in a row by source ('osm', 'wikivoyage', an edition), and the last */
   const fails = new Map();
-  const gaveUp = (/** @type {string} */ source) => (fails.get(source) ?? 0) >= GIVE_UP;
+  const gaveUp = (/** @type {string} */ source) => (fails.get(source)?.n ?? 0) >= GIVE_UP;
   let asked = 0;
   const headers = agentHeader(o.version);
   /** @type {Ask} */
@@ -176,55 +184,44 @@ export async function downloadPack(o) {
       clearTimeout(timer);
     }
   };
-  /** @type {Map<string, number>} old copies a part's new one replaces: in `bytes` until replaced or kept, so the pack never ends over its limit */
-  const held = new Map();
-  /** @param {string} path */
-  const hold = (path) => {
-    const size = have.get(path)?.size ?? 0;
-    if (size && !held.has(path)) {
-      held.set(path, size);
-      bytes += size;
-    }
-  };
-  /** What the pack already has stays, as it is; a guide's old copy (fit) only where it fits under the limit. @param {Omit<PackFile, 'bytes' | 'at' | 'items'>} f @param {number} [count] @param {boolean} [fit] @returns {boolean} whether it stays */
-  const keepOld = (f, count, fit = false) => {
+  /** What the pack already has stays, as it is. @param {Omit<PackFile, 'bytes' | 'at' | 'items'>} f @param {number} [count] */
+  const keepOld = (f, count) => {
     const size = have.get(f.path)?.size ?? 0;
-    if (fit && !held.has(f.path) && bytes + size > max) return false;
     const was = prev.get(f.path);
     files.set(f.path, { ...f, bytes: size, items: count ?? was?.items ?? 0, at: was?.at || have.get(f.path)?.modified || 0, ...(was?.edition === undefined ? {} : { edition: was.edition }) });
-    if (!held.delete(f.path)) bytes += size;
-    return true;
+    bytes += size;
   };
   /** Writes a file, unless the pack would pass its limit. @param {Omit<PackFile, 'bytes' | 'at'>} f @param {unknown} content */
   const save = async (f, content) => {
     const text = JSON.stringify(content);
     const size = new TextEncoder().encode(text).byteLength;
-    const replaced = held.get(f.path) ?? 0;
-    if (bytes - replaced + size > max) {
+    if (bytes + size > max) {
       full = true;
       return false;
     }
     await ws.write(scope, f.path, text, { author: 'system' });
     files.set(f.path, { ...f, bytes: size, at: now() });
-    held.delete(f.path);
-    bytes += size - replaced;
+    bytes += size;
     return true;
   };
   /** @param {PartRef} part @param {string} source @param {unknown} e */
   const failure = (part, source, e) => {
     if (e instanceof StorageFullError) throw e; // the panel's storage-full card says what to do
-    fails.set(source, (fails.get(source) ?? 0) + 1);
-    failed.push({ label: partLabel(part), why: String(/** @type {any} */ (e)?.message ?? e), part, said: /** @type {any} */ (e)?.said ?? null });
+    /** @type {Failure} */
+    const f = { label: partLabel(part), why: String(/** @type {any} */ (e)?.message ?? e), part, said: /** @type {any} */ (e)?.said ?? null };
+    failed.push(f);
+    // An answer annai can't use shows the source is there: the count starts over.
+    fails.set(source, saysDown(e) ? { n: (fails.get(source)?.n ?? 0) + 1, last: f } : { n: 0 });
   };
 
-  /** A file's manifest entry: another edition's says which (English's lack marks a file from before editions). */
+  /** A file's manifest entry as its path says: another edition's names it; English's has none (no ids known) unless this run saved it. */
   const entry = (/** @type {Want} */ w) => ({ id: w.part.id, kind: w.part.kind, path: w.path, ...(w.edition && w.edition !== 'en' ? { edition: w.edition } : {}) });
   const want = wanted(plan, o.editions);
   for (const w of want) if (fresh(entry(w))) keepOld(entry(w));
-  // OpenStreetMap first, then Wikipedia edition by edition in the reading order: a pack that fills up holds the first language at every stop.
+  // OpenStreetMap first, then Wikipedia edition by edition in the reading order: a pack that fills up holds the places, then the first
+  // language's articles at every stop it reaches, then the later languages' as they fit.
   const rank = (/** @type {Want} */ w) => (w.edition ? o.editions.indexOf(w.edition) : -1);
   const todo = want.filter((w) => !files.has(w.path)).sort((a, b) => rank(a) - rank(b));
-  for (const w of todo) hold(w.path);
   let total = todo.length + 1; // and finding the guides
   let done = 0;
   const progress = (/** @type {PartRef} */ part) => o.onProgress?.({ done, total, label: partWords(part) });
@@ -235,15 +232,17 @@ export async function downloadPack(o) {
     /** @type {PartRef} */
     const part = { source: p.kind, place: p.place };
     if (gaveUp(source)) {
+      // Left for the rest of the run, with the failure that gave the source up: the panel counts it too.
+      failed.push(/** @type {Failure} */ ({ ...fails.get(source)?.last, label: partLabel(part), part }));
       done++;
       continue;
     }
     progress(part);
     try {
       // The Overpass servers by the switch as it is now, part by part: turned off, VK's server is asked nothing more.
-      const got = p.kind === 'osm' ? await osm(p, ask, () => pause(o.busyMs ?? BUSY_MS, signal), overpassServers(await readAppSettings(ws))) : await wikipedia(p, w.edition ?? 'en', ask, headers);
+      const got = p.kind === 'osm' ? await osm(p, ask, () => pause(o.busyMs ?? BUSY_MS, signal), overpassServers(await readAppSettings(ws)), hosts) : await wikipedia(p, w.edition ?? 'en', ask, headers);
       if (!(await save({ ...entry(w), items: got.count, ...(w.edition ? { edition: w.edition } : {}) }, got.content))) break;
-      fails.set(source, 0);
+      fails.set(source, { n: 0 });
     } catch (e) {
       if (signal.aborted) break;
       failure(part, source, e);
@@ -267,16 +266,16 @@ export async function downloadPack(o) {
       for (const g of found) {
         if (guidesStuck()) break;
         const { id, path } = guideFile(g.title);
-        if (fresh({ id, kind: 'wikivoyage', path })) keepOld({ id, kind: 'wikivoyage', path }, 1, true);
+        if (fresh({ id, kind: 'wikivoyage', path })) keepOld({ id, kind: 'wikivoyage', path }, 1);
         else {
           progress({ source: 'wikivoyage', title: g.title });
           try {
             if (!(await save({ id, kind: 'wikivoyage', path, items: 1 }, { title: g.title, text: await article(g.title, ask, headers) }))) break;
-            fails.set('wikivoyage', 0);
+            fails.set('wikivoyage', { n: 0 });
           } catch (e) {
             if (signal.aborted) break;
             failure({ source: 'wikivoyage', title: g.title }, 'wikivoyage', e);
-            if (have.has(path)) keepOld({ id, kind: 'wikivoyage', path }, 1, true);
+            if (have.has(path)) keepOld({ id, kind: 'wikivoyage', path }, 1);
           }
         }
         if (files.has(path)) guides.push({ ...g, path });
@@ -291,7 +290,7 @@ export async function downloadPack(o) {
     // The guides this download didn't get to stay as they were.
     for (const g of old?.guides ?? []) {
       if (guides.some((x) => x.path === g.path) || !have.has(g.path)) continue;
-      if (!files.has(g.path) && !keepOld({ id: g.path.slice(DIR.length + 'wikivoyage/'.length, -'.json'.length), kind: 'wikivoyage', path: g.path }, 1, true)) continue;
+      if (!files.has(g.path)) keepOld({ id: g.path.slice(DIR.length + 'wikivoyage/'.length, -'.json'.length), kind: 'wikivoyage', path: g.path }, 1);
       guides.push(g);
     }
   }
@@ -320,16 +319,17 @@ async function counted(ws, scope, files) {
 }
 
 /**
- * OpenStreetMap places for a part: every kind nearby knows, from the first Overpass server that answers, asked in turn.
- * @param {import('./plan.js').OsmPart} p @param {Ask} ask @param {() => Promise<unknown>} busy waits after a 429 @param {string[]} servers
+ * OpenStreetMap places for a part: every kind nearby knows, from the first Overpass server that answers, asked in turn (one that gave up is left out).
+ * @param {import('./plan.js').OsmPart} p @param {Ask} ask @param {() => Promise<unknown>} busy waits after a 429 @param {string[]} servers @param {Map<string, number>} hosts
  */
-async function osm(p, ask, busy, servers) {
+async function osm(p, ask, busy, servers, hosts) {
   const around = `around:${p.radius},${p.points.map((q) => q.join(',')).join(',')}`;
   const query = `[out:json][timeout:60];(${overpassFilters(KIND_NAMES).map((f) => `nwr(${around})${f};`).join('')});out center tags ${OSM_LIMIT};`;
   /** @type {unknown} */
   let last = null;
   for (const server of servers) {
     const host = new URL(server).hostname;
+    if ((hosts.get(host) ?? 0) >= GIVE_UP) continue;
     for (let tries = 0; tries < 2; tries++) {
       try {
         const data = await ask(server, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: /* en */ `data=${encodeURIComponent(query)}` }, host);
@@ -348,12 +348,16 @@ async function osm(p, ask, busy, servers) {
         }
         // At Overpass's limit, the part holds only some of what is there: it can't answer for its whole area (C1).
         const cut = data.elements.length >= OSM_LIMIT;
+        hosts.set(host, 0);
         return { count: rows.length, content: { area: { points: p.points, radius: p.radius }, rows, ...(cut ? { cut: true } : {}) } };
       } catch (e) {
         if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
         last = e;
         // Too many requests: Overpass asks for a pause (its usage policy), so annai waits once and asks again.
-        if (/** @type {any} */ (e)?.status !== 429 || tries > 0) break;
+        if (/** @type {any} */ (e)?.status !== 429 || tries > 0) {
+          hosts.set(host, saysDown(e) ? (hosts.get(host) ?? 0) + 1 : 0);
+          break;
+        }
         await busy();
       }
     }
@@ -406,7 +410,7 @@ async function findGuides(names, ask, headers) {
   for (let i = 0; i < candidates.length; i += TITLES_PER_ASK) {
     const batch = candidates.slice(i, i + TITLES_PER_ASK);
     /* en */ const r = await ask(`${WIKIVOYAGE}?action=query&format=json&formatversion=2&origin=*&redirects=1&prop=pageprops&ppprop=disambiguation&titles=${encodeURIComponent(batch.join('|'))}`, { headers }, 'Wikivoyage');
-    const info = r?.error ? String(r.error.info ?? r.error.code ?? 'no').replace(/\.$/, '') : '';
+    const info = wikiSaid(r);
     if (info) throw fault(/* en */ `Wikivoyage said: ${info}.`, { code: 'said', where: /* en */ 'Wikivoyage', info });
     const q = r?.query ?? {};
     const steps = new Map([...(Array.isArray(q.normalized) ? q.normalized : []), ...(Array.isArray(q.redirects) ? q.redirects : [])]

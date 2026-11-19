@@ -702,7 +702,7 @@ async function kiyomizuPack(ws, trip, places = []) {
     files: [{ id: 'o1', kind: 'osm', path: '/offline/osm/o1.json', bytes: 1, items: places.length }, ...parts.map(([edition, id, path]) => ({ id, kind: 'wikipedia', path, bytes: 1, items: 20, edition }))] }), { author: 'system' });
 }
 
-test("more editions never take more of nearby's 40 rows than English alone could: Wikipedia's nearest 30, online and from the pack", async () => {
+test("Wikipedia's rows are the nearest 30 at most, however many editions are listed (English alone was asked for 30), online and from the pack; the places keep the rest of the 40", async () => {
   const { run, ws, trip } = await setup({ trip: true });
   await speaks(ws, ['ja']);
   // The 38 articles of Japanese and English, nearest first (the farthest is Maruyama Park, 994 m): the 30 that stay.
@@ -739,9 +739,18 @@ test("nearby: an edition that doesn't answer is left out and named, one that nev
     const t0 = Date.now();
     // As a browser's fetch, a request made once the limit has run out fails at once.
     const hung = await run('nearby', KIYOMIZU, (url, init) => (init.signal?.aborted ? Promise.reject(init.signal.reason) : url.includes('ja.wikipedia.org') ? hang(url, init) : kiyomizuOnly(url)));
-    assert.ok(Date.now() - t0 < 2000, 'one limit for them all');
+    assert.ok(Date.now() - t0 < 2000, 'it ends at the limit (80 ms here), not at the call limit');
     assert.match(hung, /\nKiyomizu-dera\twikipedia article\t/);
     assert.match(hung, /\nja\.wikipedia\.org didn't answer, so its articles are missing from this list\.$/);
+    // Two editions that never answer share the one limit (asked at once): 500 ms here, where limits one after the other would take twice that.
+    ASK_MS.ms = 500;
+    await speaks(ws, ['ja', 'zh-Hant']);
+    const t1 = Date.now();
+    const two = await run('nearby', KIYOMIZU, (url, init) => (init.signal?.aborted ? Promise.reject(init.signal.reason) : url.includes('ja.wikipedia.org') || url.includes('zh.wikipedia.org') ? hang(url, init) : kiyomizuOnly(url)));
+    assert.ok(Date.now() - t1 < 900, `${Date.now() - t1} ms for two that never answer`);
+    assert.match(two, /\nja\.wikipedia\.org and zh\.wikipedia\.org didn't answer, so their articles are missing from this list\.$/);
+    ASK_MS.ms = 80;
+    await speaks(ws, ['ja']);
     const refused = await run('nearby', KIYOMIZU, (url) => (url.includes('ja.wikipedia.org') ? new Response('', { status: 503 }) : kiyomizuOnly(url)));
     assert.equal(refused.split('\n').length, 1 + 14 + 1);
     assert.match(refused, /\nja\.wikipedia\.org didn't answer, so its articles are missing from this list\.$/);
@@ -770,10 +779,10 @@ test("nearby: an edition that doesn't answer has the offline pack's articles of 
   assert.equal(rows.find((r) => r[0] === '清水寺')?.[6], 'https://ja.wikipedia.org/wiki/清水寺');
   assert.equal(rows.find((r) => r[0] === 'Kiyomizu-dera'), undefined);
   assert.equal(rows.find((r) => r[0] === 'Ryozen Museum of History')?.[6], 'https://en.wikipedia.org/wiki/Ryozen_Museum_of_History');
-  assert.match(out, /\nja\.wikipedia\.org didn't answer, so its articles come from the offline pack \(downloaded 2026-11-19\)\.$/);
+  assert.match(out, /\nja\.wikipedia\.org didn't answer, so its articles come from the offline pack \(downloaded 2026-11-19\), where it holds them\.$/);
   // English not answering: English's articles from the pack are the one Japanese has none of (the pack has English's own).
   const en = await run('nearby', { ...KIYOMIZU, radius: 8000 }, (url) => (url.includes('en.wikipedia.org') ? new Response('', { status: 503 }) : kiyomizuOnly(url)));
-  assert.match(en, /\nen\.wikipedia\.org didn't answer, so its articles come from the offline pack \(downloaded 2026-11-19\)\.$/);
+  assert.match(en, /\nen\.wikipedia\.org didn't answer, so its articles come from the offline pack \(downloaded 2026-11-19\), where it holds them\.$/);
   assert.ok(en.includes('Ryozen Museum of History\t'));
   // Where the pack has none of that edition's articles, the note says they are missing.
   await speaks(ws, ['zh-Hant']);
@@ -921,8 +930,8 @@ test("past the pack's edge nearby asks the services, and the pack fills in for a
 test('guide reads the pack first: by its title, without "(California)", or by a name that led to it; a section too', async () => {
   const { run, ws, trip } = await setup({ trip: true });
   await mcwayPack(ws, /** @type {string} */ (trip));
-  assert.equal(await run('guide', { place: 'Cambria' }, nothing), 'Cambria (California) (Wikivoyage, offline pack of 2026-10-16) https://en.wikivoyage.org/wiki/Cambria_(California)\n\nCambria is a town.\n\nSections: See. Ask for one with section.');
-  assert.equal(await run('guide', { place: 'cambria, california', section: 'see' }, nothing), 'Cambria (California): See (Wikivoyage, offline pack of 2026-10-16) https://en.wikivoyage.org/wiki/Cambria_(California)\n\nMoonstone Beach.');
+  assert.equal(await run('guide', { place: 'Cambria' }, nothing), 'Cambria (California) (Wikivoyage, offline pack of 2026-10-16) https://en.wikivoyage.org/wiki/Cambria_%28California%29\n\nCambria is a town.\n\nSections: See. Ask for one with section.');
+  assert.equal(await run('guide', { place: 'cambria, california', section: 'see' }, nothing), 'Cambria (California): See (Wikivoyage, offline pack of 2026-10-16) https://en.wikivoyage.org/wiki/Cambria_%28California%29\n\nMoonstone Beach.');
   assert.match(await run('guide', { place: 'Hearst Castle' }, nothing), /^San Simeon \(Wikivoyage, offline pack of 2026-10-16\)/);
   const page = { query: { pages: { 1: { title: 'Big Sur', extract: 'Big Sur is a region.' } } } };
   assert.equal(await run('guide', { place: 'Big Sur' }, () => page), 'Big Sur (Wikivoyage) https://en.wikivoyage.org/wiki/Big_Sur\n\nBig Sur is a region.');
@@ -972,7 +981,7 @@ test('a pack whose manifest has no download time says the day of its newest part
   assert.match(await run('nearby', { ...McWay, radius: 1000, kinds: ['sights'] }, nothing), /\nFrom the offline pack \(downloaded 2026-10-18\)\.$/);
   await ws.write(id, '/offline/pack.json', JSON.stringify({ ...m, at: '' }), { author: 'system' });
   assert.match(await run('nearby', { ...McWay, radius: 1000, kinds: ['sights'] }, nothing), /\nFrom the offline pack\.$/);
-  assert.match(await run('guide', { place: 'Cambria' }, nothing), /^Cambria \(California\) \(Wikivoyage, offline pack\) https:\/\/en\.wikivoyage\.org\/wiki\/Cambria_\(California\)\n/);
+  assert.match(await run('guide', { place: 'Cambria' }, nothing), /^Cambria \(California\) \(Wikivoyage, offline pack\) https:\/\/en\.wikivoyage\.org\/wiki\/Cambria_%28California%29\n/);
 });
 
 test("nearby online takes an Overpass answer that says \"runtime error\" as no answer: the next server (the VK switch on), then the pack, as for any failure", async () => {

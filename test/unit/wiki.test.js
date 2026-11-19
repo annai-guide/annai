@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { readingOrder } from '../../src/core/languages.js';
-import { editionsOf, articlesOf, wikiSaid, merged, articleUrl } from '../../src/core/wiki.js';
+import { editionsOf, articlesOf, wikiSaid, merged, articleUrl, pageUrl } from '../../src/core/wiki.js';
 import { nominatimLanguages } from '../../src/core/nominatim.js';
 import { parseInline } from '../../src/ui/markdown.js';
 
@@ -57,6 +57,8 @@ test('editions merged by Wikidata id: each article once, under the first edition
   // The other way round, English's titles.
   const english = merged([...ja, ...en], ['en', 'ja']);
   assert.ok(english.some((a) => a.title === 'Kiyomizu-dera') && !english.some((a) => a.title === '清水寺'));
+  // An edition outside the order comes after the order's.
+  assert.equal(merged([...zh, ...en], ['en']).find((a) => a.id === 'Q1108695')?.title, 'Maruyama Park (Kyoto)');
   assert.equal(merged([...zh, ...en], ['en', 'zh']).find((a) => a.id === 'Q1108695')?.title, 'Maruyama Park (Kyoto)');
   assert.equal(merged([...zh, ...en], ['zh', 'en']).find((a) => a.id === 'Q1108695')?.title, '圓山公園 (京都府)');
   // Without an id (a part written before editions), an article is its edition's own, once by its title.
@@ -64,7 +66,12 @@ test('editions merged by Wikidata id: each article once, under the first edition
   assert.equal(merged(old, ['ja', 'en']).length, 2);
 });
 
-test("an article's address keeps its title as written, encoding only what a browser would read as another part of it", () => {
+test("a Wikimedia page's address keeps its title as written, encoding only what a browser would read as another part of it, and the brackets (chat's links end at one)", () => {
+  // A Wikivoyage guide's the same as a Wikipedia article's.
+  assert.equal(pageUrl('en.wikivoyage.org', 'Cambria (California)'), 'https://en.wikivoyage.org/wiki/Cambria_%28California%29');
+  assert.equal(pageUrl('en.wikivoyage.org', 'Big Sur'), 'https://en.wikivoyage.org/wiki/Big_Sur');
+  assert.equal(pageUrl('en.wikivoyage.org', 'Zürich'), 'https://en.wikivoyage.org/wiki/Zürich');
+  assert.equal(articleUrl('de', 'Zürich (Begriffsklärung)'), pageUrl('de.wikipedia.org', 'Zürich (Begriffsklärung)'));
   // A bracket is encoded: chat's links end at one (src/ui/markdown.js), so 正法寺_(京都市東山区) would link only 正法寺_.
   assert.equal(articleUrl('ja', '正法寺 (京都市東山区)'), 'https://ja.wikipedia.org/wiki/正法寺_%28京都市東山区%29');
   assert.equal(articleUrl('en', 'Nepenthe (restaurant)'), 'https://en.wikipedia.org/wiki/Nepenthe_%28restaurant%29');

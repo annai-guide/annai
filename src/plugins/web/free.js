@@ -1,8 +1,8 @@
 import { McpClient, toolOutput } from '../mcp/client.js';
 import { answerJSON } from '../../core/answer.js';
 import { nominatimTurn, nominatimLanguages } from '../../core/nominatim.js';
-import { editionsOf, articleUrl } from '../../core/wiki.js';
-import { cut } from '../../core/web-search.js';
+import { editionsOf, articleUrl, pageUrl, wikiSaid } from '../../core/wiki.js';
+import { cut, CHAIN } from '../../core/web-search.js';
 import { anySignal } from '../../core/signals.js';
 import { t } from '../../core/l10n.js';
 
@@ -16,10 +16,11 @@ import { t } from '../../core/l10n.js';
 /** The longest a free service has to answer before the next one is tried. */
 const LIMIT_MS = 12_000;
 /**
- * The longest one Wikimedia host has for its searches inside the floor (all its tries together): half the floor's 12 s, and about 15 times
- * the slowest answer measured (0.16 to 0.39 s, 2026-11-19), so a host that never answers leaves the others, and the rows already come, their time.
+ * The whole floor's time, every part and try. The chain keeps CHAIN.reserve (10 s) for the floor (web/index.js reserveFor); the floor ends a
+ * second inside it, with what came, so the chain's own stop never drops its rows (the second: the floor's start and the chain's bookkeeping take
+ * milliseconds). A slow link (2.5 s an answer: three tries in series 7.5 s) still finishes inside it.
  */
-export const EDITION_MS = { ms: 6_000 };
+export const FLOOR_MS = { ms: CHAIN.reserve - 1_000 };
 
 /**
  * A failure in words, keeping the HTTP status and kind the chain judges it by; a stop stays a stop.
@@ -131,26 +132,35 @@ export const knowledgeFloor = (orderOf) => ({
     const found = keywords(query);
     const want = found.length ? found : [query.trim().toLowerCase()];
     const enc = encodeURIComponent;
-    /** @param {string} url @param {AbortSignal} [stop] */
-    const json = async (url, stop = signal) => {
-      const res = await get(url, { signal: stop, referrerPolicy: 'origin' });
-      if (!res.ok) throw Object.assign(new Error(`${new URL(url).hostname} answered ${res.status}`), { status: res.status });
-      return answerJSON(res, new URL(url).hostname);
+    // One time for the whole floor: what has answered by then is its answer, a request still waiting a late one.
+    const late = AbortSignal.timeout(FLOOR_MS.ms);
+    const stop = anySignal([signal, late]);
+    /** @param {string} url */
+    const json = async (url) => {
+      const host = new URL(url).hostname;
+      try {
+        const res = await get(url, { signal: stop, referrerPolicy: 'origin' });
+        if (!res.ok) throw Object.assign(new Error(`${host} answered ${res.status}`), { status: res.status });
+        const data = await answerJSON(res, host);
+        const said = wikiSaid(data);
+        if (said) throw new Error(`${host} said: ${said}.`);
+        return data;
+      } catch (e) {
+        throw late.aborted ? Object.assign(new Error('late'), { late: true }) : e;
+      }
     };
     const api = (/** @type {string} */ host, /** @type {string} */ qs) => `https://${host}/w/api.php?${qs}&format=json&origin=*`;
-    // Questions rarely match whole; fewer words are tried when all of them find nothing, one host at a time with its own tries.
+    // Questions rarely match whole; fewer words are tried when all of them find nothing, a host's tries one after another and the hosts at once.
     const tries = [...new Set([want.join(' '), want.slice(0, 3).join(' '), want.slice(0, 2).join(' ')])].filter(Boolean);
-    /** A host's hits for the first of the tries that finds any; it fails when the host does, or has no more than EDITION_MS. @param {string} host @returns {Promise<any[]>} */
+    /** A host's hits for the first of the tries that finds any; it fails when the host does. @param {string} host @returns {Promise<any[]>} */
     const hits = async (host) => {
-      const stop = anySignal([signal, AbortSignal.timeout(EDITION_MS.ms)]);
       for (const q of tries) {
         /* en */
-        const found = (await json(api(host, `action=query&list=search&srlimit=${limit}&srsearch=${enc(q)}`), stop))?.query?.search;
+        const found = (await json(api(host, `action=query&list=search&srlimit=${limit}&srsearch=${enc(q)}`)))?.query?.search;
         if (Array.isArray(found) && found.length) return found;
       }
       return [];
     };
-    const wikiUrl = (/** @type {string} */ host, /** @type {string} */ title) => `https://${host}/wiki/${enc(title.replace(/ /g, '_'))}`;
     const guide = async () => {
       const [top] = await hits('en.wikivoyage.org');
       if (!top) return [];
@@ -158,7 +168,7 @@ export const knowledgeFloor = (orderOf) => ({
       const lines = String(page?.extract ?? '').split('\n').map((l) => l.trim()).filter((l) => l.length > 20);
       const score = (/** @type {string} */ l) => want.filter((w) => l.toLowerCase().includes(w)).length;
       const picked = lines.filter((l) => score(l) > 0).sort((a, b) => score(b) - score(a)).slice(0, 3);
-      return [{ title: /* en */ `${top.title} (Wikivoyage)`, url: wikiUrl('en.wikivoyage.org', top.title), snippet: (picked.length ? picked : lines.slice(0, 2)).join(' ') }];
+      return [{ title: /* en */ `${top.title} (Wikivoyage)`, url: pageUrl('en.wikivoyage.org', top.title), snippet: (picked.length ? picked : lines.slice(0, 2)).join(' ') }];
     };
     const places = async () => {
       await nominatimTurn(); // one request a second to Nominatim, for the whole app
@@ -167,17 +177,19 @@ export const knowledgeFloor = (orderOf) => ({
       return (Array.isArray(found) ? found : []).filter((f) => f?.extratags?.website)
         .map((f) => ({ title: f.name || f.display_name, url: f.extratags.website, snippet: [f.display_name, f.extratags.opening_hours ? `Hours: ${f.extratags.opening_hours}` : ''].filter(Boolean).join('. ') }));
     };
-    // Each edition of the reading order asks at once; the rows are the first edition's that has any among those that answered in time. One that
-    // fails is left out (no row can say so: a row has an address); all failing is the failure.
-    const articles = async () => {
-      const editions = editionsOf(order);
-      const got = await Promise.allSettled(editions.map((e) => hits(`${e}.wikipedia.org`)));
-      if (got.every((g) => g.status === 'rejected')) throw /** @type {PromiseRejectedResult} */ (got[0]).reason;
-      const k = got.findIndex((g) => g.status === 'fulfilled' && g.value.length > 0);
-      return k < 0 ? [] : /** @type {PromiseFulfilledResult<any[]>} */ (got[k]).value.map((h) => ({ title: /* en */ `${h.title} (Wikipedia)`, url: articleUrl(editions[k], h.title), snippet: h.snippet }));
-    };
-    const settled = await Promise.allSettled([guide(), places(), articles()]);
-    if (settled.every((s) => s.status === 'rejected')) throw /** @type {PromiseRejectedResult} */ (settled[0]).reason;
-    return settled.flatMap((s) => (s.status === 'fulfilled' ? s.value : []));
+    // Every part asks at once, each edition too. The rows are what answered: the guide's, Nominatim's websites, and the articles of the first
+    // edition in the order that found any. With no rows, a failure anywhere is the failure, in words; with none, nothing found.
+    const editions = editionsOf(order);
+    const parts = await Promise.allSettled([guide(), places(), ...editions.map((e) => hits(`${e}.wikipedia.org`))]);
+    const [guideRows, placeRows, ...editionHits] = parts;
+    const k = editionHits.findIndex((g) => g.status === 'fulfilled' && g.value.length > 0);
+    const rows = [
+      ...(guideRows.status === 'fulfilled' ? guideRows.value : []),
+      ...(placeRows.status === 'fulfilled' ? placeRows.value : []),
+      ...(k < 0 ? [] : /** @type {PromiseFulfilledResult<any[]>} */ (editionHits[k]).value.map((h) => ({ title: /* en */ `${h.title} (Wikipedia)`, url: articleUrl(editions[k], h.title), snippet: h.snippet }))),
+    ];
+    const bad = /** @type {PromiseRejectedResult | undefined} */ (parts.find((x) => x.status === 'rejected'));
+    if (!rows.length && bad) throw bad.reason;
+    return rows;
   },
 });

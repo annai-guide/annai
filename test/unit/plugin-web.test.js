@@ -10,7 +10,7 @@ import { STEP_MS, READY_MS } from '../../src/plugins/web/index.js';
 import { cooldowns, CHAIN } from '../../src/core/web-search.js';
 import { tracedFetch } from '../../src/core/agent/net.js';
 import { NOMINATIM_GAP, nominatimReset } from '../../src/core/nominatim.js';
-import { forgetClients, knowledgeFloor, EDITION_MS } from '../../src/plugins/web/free.js';
+import { forgetClients, knowledgeFloor, FLOOR_MS } from '../../src/plugins/web/free.js';
 import { readingOrder } from '../../src/core/languages.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { readFile } from 'node:fs/promises';
@@ -237,33 +237,101 @@ test("the floor's Wikipedia search: each edition of the reading order asks at on
   assert.doesNotMatch(jaDown, /清水寺/);
 });
 
-test("the floor: an edition that never answers has EDITION_MS, so the others' rows and the guide still come inside the floor's time", async () => {
+/** FLOOR_MS set to ms while fn runs. @param {number} ms @param {() => Promise<void>} fn */
+async function withFloor(ms, fn) {
+  const was = FLOOR_MS.ms;
+  FLOOR_MS.ms = ms;
+  try {
+    await fn();
+  } finally {
+    FLOOR_MS.ms = was;
+  }
+}
+/** The floor on its own, reading the languages given. @param {string[]} spoken */
+const floorOf = (spoken) => knowledgeFloor(async () => readingOrder({ languages: { spoken, answer: 'follow' } }, 'en-US'));
+/** One search of a floor, the services answering as `answer` says. @param {ReturnType<typeof knowledgeFloor>} floor @param {(url: string, init: any) => any} answer @param {string} [query] @param {AbortSignal} [signal] */
+const search = (floor, answer, query = 'kiyomizu temple', signal = new AbortController().signal) => floor.search(query, { fetch: async (/** @type {string} */ url, /** @type {any} */ init) => answer(url, init), signal, limit: 8 });
+/** Wikipedia's answer to a search that finds these titles. */
+const found = (/** @type {string[]} */ ...titles) => new Response(JSON.stringify({ query: { search: titles.map((title) => ({ title, snippet: 'a temple' })) } }));
+const nothing = () => new Response(JSON.stringify({ query: { search: [] } }));
+
+test("the floor has one time for the whole of it: an edition that never answers costs the others and the guide no more than that, and what came is the answer", async () => {
   const { run, ws, settings } = await setup();
   await updateAppSettings(ws, { languages: { spoken: ['ja'], answer: 'follow' } });
   await settings({ searchOff: ['exa', 'parallel', 'firecrawl'] });
-  const was = EDITION_MS.ms;
-  EDITION_MS.ms = 60;
-  try {
+  await withFloor(60, async () => {
     const t0 = Date.now();
     const out = await run('web_search', { query: 'Kiyomizu temple opening hours' }, (url, init) => (url.includes('ja.wikipedia.org') ? hang(init) : url.includes('wikivoyage') ? wikiAnswer(url) : kiyomizuFloor(url)));
-    assert.ok(Date.now() - t0 < 2000, 'not the floor\'s whole time');
-    assert.match(out, /\nTobu World Square \(Wikipedia\)\t/);
+    assert.ok(Date.now() - t0 < 2000, "not the chain's limit for it");
+    assert.match(out, /\nTobu World Square \(Wikipedia\)\t/, "Japanese never answered: English's rows");
     assert.match(out, /\(Wikivoyage\)\t/);
-    // Both hosts hung and nothing else to give: the floor fails, in words.
-    const both = await run('web_search', { query: 'Kiyomizu temple opening hours' }, (url, init) => (url.includes('wikipedia.org') ? hang(init) : kiyomizuFloor(url)));
-    assert.equal(both, 'Nothing found for "Kiyomizu temple opening hours".');
-  } finally {
-    EDITION_MS.ms = was;
-  }
+    // Both Wikipedia hosts hung and nothing else has rows: the floor fails, in words.
+    cooldowns.clear('wiki');
+    await assert.rejects(run('web_search', { query: 'Kiyomizu temple opening hours' }, (url, init) => (url.includes('wikipedia.org') ? hang(init) : kiyomizuFloor(url))), /Wikivoyage, Wikipedia and Nominatim didn't answer in time/);
+  });
 });
 
-test('the floor: every edition failing is the failure when nothing else answered; one failing is not', async () => {
-  const floor = knowledgeFloor(async () => readingOrder({ languages: { spoken: ['ja'], answer: 'follow' } }, 'en-US'));
-  const c = (/** @type {(url: string) => any} */ answer) => ({ fetch: async (/** @type {string} */ url) => answer(url), signal: new AbortController().signal, limit: 8 });
+test("the floor: a Nominatim that answers after the floor's time loses only its own rows; the guide's and Wikipedia's come", async () => {
+  const { run, ws, settings } = await setup();
+  await updateAppSettings(ws, { languages: { spoken: ['en'], answer: 'follow' } });
+  await settings({ searchOff: ['exa', 'parallel', 'firecrawl'] });
+  await withFloor(100, async () => {
+    const t0 = Date.now();
+    const out = await run('web_search', { query: 'nepenthe lunch' }, (url, init) => (url.includes('nominatim') ? hang(init) : wikiAnswer(url)));
+    assert.ok(Date.now() - t0 < 2000);
+    assert.match(out, /Big Sur \(Wikivoyage\)\t/);
+    assert.match(out, /Nepenthe \(restaurant\) \(Wikipedia\)\t/);
+    assert.doesNotMatch(out, /nepenthebigsur/);
+  });
+});
+
+test("the floor on a slow link: every answer takes its time, English alone is asked three times in series and Kiyomizu-dera comes with the third, as before editions", async () => {
+  // Each answer 200 ms: the guide's and Wikipedia's three tries are 600 ms, inside the floor's 1.5 s (on a real slow link 2.5 s an answer, 7.5 s, inside its 9).
+  // English Wikipedia finds it only with the two words; everything else finds nothing.
+  const slow = (/** @type {string} */ url, /** @type {any} */ init) => new Promise((resolve, reject) => {
+    const timer = setTimeout(resolve, 200, url.includes('en.wikipedia.org') && new URL(url).searchParams.get('srsearch') === 'kiyomizu temple' ? found('Kiyomizu-dera') : url.includes('nominatim') ? new Response('[]') : nothing());
+    init.signal.addEventListener('abort', () => { clearTimeout(timer); reject(init.signal.reason); }, { once: true });
+  });
+  await withFloor(1500, async () => {
+    const rows = await search(floorOf(['en']), slow, 'Kiyomizu temple opening hours');
+    assert.deepEqual(rows.map((r) => r.title), ['Kiyomizu-dera (Wikipedia)']);
+  });
+});
+
+test("the floor's result: the rows of what answered; no rows and something failed (late, refused, an error answer) is the failure in words; no rows and nothing failed is nothing found", async () => {
   const down = () => new Response('', { status: 503 });
-  await assert.rejects(floor.search('kiyomizu temple', c(down)), /answered 503/);
-  const rows = await floor.search('kiyomizu temple', c((url) => (url.includes('ja.wikipedia.org') ? down() : url.includes('en.wikipedia.org') ? new Response(JSON.stringify({ query: { search: [{ title: 'Kiyomizu-dera', snippet: 'a temple' }] } })) : new Response('[]'))));
+  const maxlag = () => new Response(JSON.stringify({ error: { code: 'maxlag', info: 'Waiting for a database server: 6 seconds lagged.' } }));
+  const empty = (/** @type {string} */ url) => (url.includes('nominatim') ? new Response('[]') : nothing());
+  const floor = floorOf(['ja']);
+  // Everything refused.
+  await assert.rejects(search(floor, down), /answered 503/);
+  // Wikipedia refused in both editions, Wikivoyage and Nominatim answered with nothing: a failure, not "nothing found".
+  await assert.rejects(search(floor, (url) => (url.includes('wikipedia.org') ? down() : empty(url))), /wikipedia\.org answered 503/);
+  // Wikipedia's error answer (HTTP 200): the same.
+  await assert.rejects(search(floor, (url) => (url.includes('wikipedia.org') ? maxlag() : empty(url))), /said: Waiting for a database server: 6 seconds lagged\./);
+  // The same failures with rows from another part: the rows.
+  const rows = await search(floor, (url) => (url.includes('ja.wikipedia.org') ? down() : url.includes('en.wikipedia.org') ? found('Kiyomizu-dera') : empty(url)));
   assert.deepEqual(rows.map((r) => r.title), ['Kiyomizu-dera (Wikipedia)']);
+  const guideRows = await search(floor, (url) => (url.includes('wikipedia.org') ? maxlag() : url.includes('wikivoyage') && url.includes('list=search') ? found('Kyoto')
+    : url.includes('wikivoyage') ? new Response(JSON.stringify({ query: { pages: { 1: { extract: 'Kiyomizu-dera is a temple that opens at six every morning.' } } } })) : empty(url)));
+  assert.deepEqual(guideRows.map((r) => r.title), ['Kyoto (Wikivoyage)']);
+  // Everything answered, nothing found.
+  assert.deepEqual(await search(floor, empty), []);
+  // Japanese answered and found nothing: English's rows, the first edition that found any.
+  assert.deepEqual((await search(floor, (url) => (url.includes('ja.wikipedia.org') ? nothing() : url.includes('en.wikipedia.org') ? found('Kiyomizu-dera') : empty(url)))).map((r) => r.title), ['Kiyomizu-dera (Wikipedia)']);
+  // The first edition in the order that found any: Japanese's, though English answered first and found some.
+  const order = await search(floor, (url) => (url.includes('ja.wikipedia.org') ? new Promise((r) => setTimeout(r, 40, found('清水寺'))) : url.includes('en.wikipedia.org') ? found('Kiyomizu-dera') : empty(url)));
+  assert.deepEqual(order.map((r) => r.title), ['清水寺 (Wikipedia)']);
+  // The user's stop is a stop.
+  const stop = new AbortController();
+  setTimeout(() => stop.abort(new DOMException('stopped', 'AbortError')), 10);
+  await assert.rejects(search(floor, (_url, init) => hang(init), 'kiyomizu temple', stop.signal), { name: 'AbortError' });
+});
+
+test("the floor's addresses: a Wikivoyage guide's keeps its title as written with the brackets encoded, as a Wikipedia article's does", async () => {
+  const rows = await search(floorOf(['en']), (url) => (url.includes('wikivoyage') && url.includes('list=search') ? found('Cambria (California)') : url.includes('wikivoyage')
+    ? new Response(JSON.stringify({ query: { pages: { 1: { extract: 'Cambria is a seaside town on the coast.' } } } })) : url.includes('nominatim') ? new Response('[]') : found('Cambria, California (town)')));
+  assert.deepEqual(rows.map((r) => r.url), ['https://en.wikivoyage.org/wiki/Cambria_%28California%29', 'https://en.wikipedia.org/wiki/Cambria,_California_%28town%29']);
 });
 
 test('web_search: Jina Search goes first when its key is set; without the key it is passed over and the free services answer', async () => {

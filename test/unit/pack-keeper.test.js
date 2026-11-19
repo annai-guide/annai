@@ -340,8 +340,9 @@ test("a download that stopped before its manifest: the files it left, which the 
     assert.equal((await japanese.status(t.trip)).why, 'missing', 'the Japanese file is on disk, the manifest does not name it');
     const asked = net.asked.length;
     await japanese.download(t.trip);
-    assert.equal(net.asked.filter((a) => a.url.includes('wikipedia.org')).length, 2, 'only the first download asked Wikipedia, for its English part and its Japanese one');
-    assert.ok(net.asked.length >= asked);
+    // Wikipedia was asked twice in all, English's part by the English keeper and Japanese's by the Japanese download that stopped; this one asked it nothing.
+    assert.equal(net.asked.filter((a) => a.url.includes('wikipedia.org')).length, 2);
+    assert.deepEqual(net.asked.slice(asked).filter((a) => !a.url.includes('wikivoyage')), []);
     assert.equal((await japanese.status(t.trip)).why, null);
   } finally {
     english.dispose();
@@ -356,11 +357,18 @@ async function hourly(o = {}) {
   const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, autoMs: 400, gapMs: 0 });
   const move = (/** @type {number} */ lat) => t.ws.write(t.trip, '/plan/nepenthe.json', { ...STOPS.nepenthe, place: { ...STOPS.nepenthe.place, lat } }, { author: 'user' });
   const autoRuns = async () => (await t.store.tx(['events'], 'readonly', (x) => x.listEvents(t.trip, { types: ['pack.download'] }))).filter((e) => e.data.auto);
-  return { ...t, net, keeper, move, autoRuns };
+  /** When each download began (the hour is counted from a run's start, not its end). @type {number[]} */
+  const began = [];
+  let on = false;
+  keeper.onChange(() => {
+    if (keeper.running && !on) began.push(Date.now());
+    on = keeper.running !== null;
+  });
+  return { ...t, net, keeper, move, autoRuns, began };
 }
 
 test("a change inside the hour is not dropped: it waits for the hour to end, and annai brings the pack up to date by itself then", async () => {
-  const { keeper, trip, move, autoRuns } = await hourly();
+  const { keeper, trip, move, autoRuns, began } = await hourly();
   try {
     await keeper.download(trip); // by hand
     await move(36.2);
@@ -370,8 +378,8 @@ test("a change inside the hour is not dropped: it waits for the hour to end, and
     assert.equal((await autoRuns()).length, 1, 'not yet');
     assert.equal((await keeper.status(trip)).why, 'plan');
     await until(async () => (await autoRuns()).length === 2 && (await keeper.status(trip)).why === null, 3000);
-    const [one, two] = await autoRuns();
-    assert.ok(two.ts - one.ts >= 380, `the second at the end of the hour (400 ms here), not before: ${two.ts - one.ts}`);
+    assert.equal(began.length, 3, 'by hand, and twice by itself');
+    assert.ok(began[2] - began[1] >= 380, `the second run began at the end of the hour (400 ms here) from the first's start, not before: ${began[2] - began[1]}`);
   } finally {
     keeper.dispose();
   }
@@ -379,7 +387,7 @@ test("a change inside the hour is not dropped: it waits for the hour to end, and
 
 test("an update annai began by itself that failed in part is tried again by itself, once an hour at most, with nothing else to wake it", async () => {
   let down = false;
-  const { keeper, trip, net, move, autoRuns } = await hourly({ overpass: () => (down ? new Response('', { status: 503 }) : { elements: [] }) });
+  const { keeper, trip, net, move, autoRuns, began } = await hourly({ overpass: () => (down ? new Response('', { status: 503 }) : { elements: [] }) });
   try {
     await keeper.download(trip);
     down = true;
@@ -391,12 +399,80 @@ test("an update annai began by itself that failed in part is tried again by itse
     assert.equal(net.asked.length, asked, 'not before the hour is out');
     await until(async () => (await keeper.status(trip)).why === null, 3000);
     assert.equal((await autoRuns()).length, 2);
+    assert.ok(began[2] - began[1] >= 380, `the retry began an hour (400 ms here) after the failed run's start: ${began[2] - began[1]}`);
+    // It worked: nothing more is tried.
+    const done = net.asked.length;
+    await new Promise((r) => setTimeout(r, 500));
+    assert.equal(net.asked.length, done);
   } finally {
     keeper.dispose();
   }
 });
 
-test("a settings write looks at the pack only when the languages' editions changed: a switch or a unit changes nothing here", async () => {
+test("a plan change while an update annai began by itself runs, and that fails in part, is looked at at once: the failure's hour doesn't put it off", async () => {
+  const t = await packTrip();
+  /** @type {(v?: unknown) => void} */
+  let open = () => {};
+  const gate = new Promise((r) => { open = r; });
+  let gateOn = false;
+  let waiting = false;
+  let refuse = 0;
+  const net = services({ overpass: async () => {
+    if (gateOn && !waiting) {
+      waiting = true;
+      await gate;
+      refuse = 3; // every server, for the first part
+    }
+    return refuse-- > 0 ? new Response('', { status: 503 }) : { elements: [] };
+  } });
+  let now = Date.now();
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0, now: () => now });
+  try {
+    await keeper.download(t.trip); // by hand
+    now += 2 * 3_600_000;
+    gateOn = true;
+    await t.ws.write(t.trip, '/plan/nepenthe.json', { ...STOPS.nepenthe, place: { ...STOPS.nepenthe.place, lat: 36.2 } }, { author: 'user' });
+    await until(() => waiting);
+    await t.ws.write(t.trip, '/plan/nepenthe.json', { ...STOPS.nepenthe, place: { ...STOPS.nepenthe.place, lat: 36.21 } }, { author: 'user' });
+    await new Promise((r) => setTimeout(r, 40));
+    open();
+    // The run ends with a part failed, and the change made during it is looked at within the poke (5 ms here), not at the hour's end (the clock doesn't move).
+    await until(async () => (await keeper.status(t.trip)).why === null, 3000);
+    const log = await t.store.tx(['events'], 'readonly', (x) => x.listEvents(t.trip, { types: ['pack.download'] }));
+    assert.deepEqual(log.map((e) => [e.data.auto, e.data.failed > 0]), [[false, false], [true, true], [true, false]]);
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test("the plan is looked at once it has been quiet for the quiet time: changes that keep coming keep the update off until they stop", async () => {
+  const t = await packTrip();
+  const net = services({ overpass: () => ({ elements: [] }) });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 150, pokeMs: 5, gapMs: 0 });
+  /** @type {number[]} */
+  const began = [];
+  let on = false;
+  keeper.onChange(() => {
+    if (keeper.running && !on) began.push(Date.now());
+    on = keeper.running !== null;
+  });
+  try {
+    await keeper.download(t.trip);
+    let last = 0;
+    for (let k = 0; k < 4; k++) {
+      await t.ws.write(t.trip, '/plan/nepenthe.json', { ...STOPS.nepenthe, place: { ...STOPS.nepenthe.place, lat: 36.2 + k / 100 } }, { author: 'user' });
+      last = Date.now();
+      await new Promise((r) => setTimeout(r, 60));
+    }
+    await until(() => began.length === 2, 3000);
+    assert.ok(began[1] - last >= 140, `the update began ${began[1] - last} ms after the last change, not 150 after the first`);
+    await until(async () => (await keeper.status(t.trip)).why === null, 3000);
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test("a settings write looks at the pack only when the languages' editions changed: a switch, or the same languages again, changes nothing here", async () => {
   const t = await packTrip();
   const net = services({ overpass: () => ({ elements: [] }) });
   /** @type {string} */

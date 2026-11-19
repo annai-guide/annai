@@ -1,7 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPack, toLine } from '../../src/core/pack/read.js';
-import { downloadPack, MANIFEST } from '../../src/core/pack/download.js';
+import { downloadPack, MANIFEST, pathOf } from '../../src/core/pack/download.js';
+import { planFor } from '../../src/core/pack/plan.js';
+import { updateAppSettings } from '../../src/core/settings.js';
+import { readingEditions } from '../../src/core/wiki.js';
 import { packTrip, services, YUFUIN, YUFUIN_WIKI, yufuinStop, yufuinAnswer } from './pack-kit.js';
 import { readFile } from 'node:fs/promises';
 
@@ -123,17 +126,36 @@ test("a summary is cut to about as much as 200 characters of English say, after 
   assert.notEqual(cut.Mixed, `${summaries[4][1].slice(0, 200).replace(/\s+\S*$/, '')}…`, 'a cut by code units would end at another space');
 });
 
-test("a language taken off the list is no more read, though its files stay until the next download; put back, it is read again", async () => {
+test("a language taken off the list is no more read, though its files stay until the next download, which removes them; put back, it is read again", async () => {
   const { ws, trip } = await packTrip({ '/plan/yufuin.json': yufuinStop('Yufuin Station', YUFUIN, 1) });
-  await downloadPack({ ws, scope: trip, ...services({ overpass: () => ({ elements: [] }), wikipedia: (url) => yufuinAnswer(url) }), version: '1.0.0', editions: ['ja', 'en'], gapMs: 0 });
-  const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
-  const english = YUFUIN_WIKI.en.query.pages.map((/** @type {any} */ p) => p.title).sort();
-  const onlyEnglish = pack.pages(YUFUIN, 10_000, ['en']).map((r) => r[0]).sort();
-  assert.deepEqual(onlyEnglish, english, "English Wikipedia's articles, none of Japanese's");
-  // 湯布院町 is a Japanese article alone, here; English Wikipedia has none: with Japanese listed it names the place, without it it does not.
+  const net = () => services({ overpass: () => ({ elements: [] }), wikipedia: (url) => yufuinAnswer(url) });
+  await updateAppSettings(ws, { languages: { spoken: ['ja'], answer: 'follow' } });
+  // The editions as the app reads them from the settings, as the keeper hands them to the download.
+  await downloadPack({ ws, scope: trip, ...net(), version: '1.0.0', editions: await readingEditions(ws, 'en-US'), gapMs: 0 });
+  const part = /** @type {any} */ ((await planFor(ws, trip)).parts.find((p) => p.kind === 'wikipedia'));
+  const wikipediaFiles = async () => (await ws.list(trip, '/offline/')).map((f) => f.path).filter((path) => path.includes('/wikipedia/')).sort();
+  assert.deepEqual(await wikipediaFiles(), [pathOf(part, 'ja'), pathOf(part)].sort());
   const town = { lat: 33.26442, lng: 131.35558 };
-  assert.equal(pack.name(town, ['ja', 'en'])?.name, '湯布院町');
-  assert.notEqual(pack.name(town, ['en'])?.name, '湯布院町');
-  assert.ok(pack.pages(town, 10_000, ['ja', 'en']).some((r) => r[0] === '湯布院町'));
-  assert.ok(!pack.pages(town, 10_000, ['en']).some((r) => r[0] === '湯布院町'));
+  const named = async () => {
+    const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
+    return { name: pack.name(town, await readingEditions(ws, 'en-US'))?.name, titles: pack.pages(town, 10_000, await readingEditions(ws, 'en-US')).map((r) => r[0]) };
+  };
+  // 湯布院町 is a Japanese article alone: English Wikipedia names another place at its point.
+  const withJapanese = await named();
+  assert.equal(withJapanese.name, '湯布院町');
+  assert.ok(withJapanese.titles.includes('湯布院町'));
+  // Japanese taken off the list: the files stay, and are no more read.
+  await updateAppSettings(ws, { languages: { spoken: ['en'], answer: 'follow' } });
+  assert.deepEqual(await wikipediaFiles(), [pathOf(part, 'ja'), pathOf(part)].sort(), 'the files stay');
+  const english = await named();
+  assert.equal(english.name, 'Yufuin Onsen');
+  assert.ok(!english.titles.includes('湯布院町'));
+  assert.deepEqual([...english.titles].sort(), YUFUIN_WIKI.en.query.pages.map((/** @type {any} */ p) => p.title).sort(), "English Wikipedia's articles, none of Japanese's");
+  // Put back before any download: read again.
+  await updateAppSettings(ws, { languages: { spoken: ['ja'], answer: 'follow' } });
+  assert.equal((await named()).name, '湯布院町');
+  // The next download with Japanese off the list removes its files.
+  await updateAppSettings(ws, { languages: { spoken: ['en'], answer: 'follow' } });
+  await downloadPack({ ws, scope: trip, ...net(), version: '1.0.0', editions: await readingEditions(ws, 'en-US'), gapMs: 0 });
+  assert.deepEqual(await wikipediaFiles(), [pathOf(part)]);
 });

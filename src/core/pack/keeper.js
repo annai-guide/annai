@@ -36,8 +36,11 @@ export class PackKeeper {
   #abort = null;
   /** @type {Promise<Manifest> | null} */
   #job = null;
-  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  /** @type {ReturnType<typeof setTimeout> | undefined} the one next look at the pack, due at #due (Date.now()'s ms) */
   #timer;
+  #due = 0;
+  /** When the plan last changed: a look waits until it has been quiet. */
+  #changedAt = 0;
   /** @type {Map<string, number>} when annai last updated each trip's pack by itself */
   #autoAt = new Map();
   /** The plan changed while a download ran: look again once it ends, past the hourly gate. */
@@ -203,6 +206,7 @@ export class PackKeeper {
   }
 
   #planChanged() {
+    this.#changedAt = Date.now();
     if (this.#job) this.#again = true; // a change in the middle of a download: looked at when it ends
     this.#schedule(this.o.quietMs ?? QUIET_MS);
   }
@@ -214,10 +218,14 @@ export class PackKeeper {
     }, () => {});
   }
 
-  /** @param {number} ms */
+  /** Proposes a look at the pack in ms; the earliest proposed stands, and #auto sets it later when it is too early. @param {number} ms */
   #schedule(ms) {
+    const at = Date.now() + ms;
+    if (this.#timer && this.#due <= at) return;
     clearTimeout(this.#timer);
+    this.#due = at;
     this.#timer = setTimeout(() => {
+      this.#timer = undefined;
       this.#auto().catch(() => {});
     }, ms);
   }
@@ -228,9 +236,9 @@ export class PackKeeper {
     if (!scope || this.#job || this.o.connection() !== 'wifi' || !(this.o.visible?.() ?? true)) return;
     const s = await this.status(scope);
     if (!s.manifest || !s.why) return;
-    // A change inside the hour isn't dropped: it is looked at when the hour ends.
+    // Too early (the plan is still changing, or the hour isn't out): looked at then.
     const every = this.o.autoMs ?? AUTO_EVERY_MS;
-    const wait = every - (now - (this.#autoAt.get(scope) ?? -Infinity));
+    const wait = Math.max((this.o.quietMs ?? QUIET_MS) - (Date.now() - this.#changedAt), every - (now - (this.#autoAt.get(scope) ?? -Infinity)));
     if (wait > 0) return this.#schedule(wait);
     this.#autoAt.set(scope, now);
     const m = await this.download(scope, { auto: true });

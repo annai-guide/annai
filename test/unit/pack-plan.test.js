@@ -80,11 +80,11 @@ test('a very long plan is capped, and says how much was left out', () => {
   assert.ok(plan.cut > 0);
 });
 
-test('the estimate shown before downloading: 243 KB for Big Sur (a real pack was 143 KB)', () => {
+test('the estimate shown before downloading: 237 kB for Big Sur, as the panel says it, by 1024s (a real pack was 143 KB)', () => {
   const plan = packPlan({ trip: { places: ['Big Sur'] }, items: bigSur });
   assert.equal(likelyGuides(plan), 3);
   const n = estimate(wanted(plan, ['en']), likelyGuides(plan));
-  assert.equal(Math.round(n / 1000), 243, String(n)); // 3 guides, 117 km of OpenStreetMap, 5 stops' places and 9 Wikipedia parts, at SIZES
+  assert.equal(Math.round(n / 1024), 237, String(n)); // 3 guides, 117 km of OpenStreetMap, 5 stops' places and 9 Wikipedia parts, at SIZES
   assert.equal(estimate([], 0), 0);
 });
 

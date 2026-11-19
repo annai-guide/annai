@@ -125,7 +125,7 @@ test("the VK switch on: maps.mail.ru, with the same query, when overpass-api.de 
   assert.equal(m.guides.length, 2);
 });
 
-test('three failures in a row from one source leave it for the rest of the run: no connection, broken answers and refusals are failures that say so, never crashes', async () => {
+test('no connection, broken answers and refusals are failures that say so, never crashes; a source that is down costs the others nothing', async () => {
   const { ws, trip } = await packTrip();
   const offline = services({ overpass: () => { throw new Error("annai couldn't reach overpass-api.de. Is the device offline?"); } });
   const m = await downloadPack({ ws, scope: trip, fetch: offline.fetch, version: V, editions: EN, gapMs: 0 });
@@ -286,7 +286,7 @@ test('the same article in two parts that overlap, in one edition here and anothe
   const rows = pack.pages(YUFUIN, 10_000, ['ja', 'en']).map((r) => r[0]);
   assert.equal(rows.filter((t) => t === '由布院駅' || t === 'Yufuin Station').length, 1);
   assert.ok(rows.includes('由布院駅'));
-  assert.equal(rows.filter((t) => t === '由布院温泉').length, 1, 'in both parts and both editions: once');
+  assert.equal(rows.filter((t) => t === '由布院温泉' || t === 'Yufuin Onsen').length, 1, 'in both parts and both editions: once, under either title');
   assert.equal(m.summaries, 26);
 });
 
@@ -314,14 +314,15 @@ test('a pack written before editions: read as English; nothing asked for English
   const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
   assert.match(String(pack.pages({ lat: 36.3715, lng: -121.9017 }, 2000, ['en'])[0][6]), / https:\/\/en\.wikipedia\.org\/wiki\/Bixby_Creek_Bridge$/);
   const wikiFiles = Object.keys(BEFORE).filter((p) => p.includes('/wikipedia/'));
-  const same = services();
-  await downloadPack({ ws, scope: trip, fetch: same.fetch, version: V, editions: ['en'], gapMs: 0, now });
-  assert.deepEqual(same.asked.filter((a) => !a.url.includes('wikivoyage')), []);
+  const unchanged = services();
+  await downloadPack({ ws, scope: trip, fetch: unchanged.fetch, version: V, editions: ['en'], gapMs: 0, now });
+  assert.deepEqual(unchanged.asked.filter((a) => !a.url.includes('wikivoyage')), []);
   for (const p of Object.keys(BEFORE).filter((x) => x !== MANIFEST)) assert.equal(await ws.readText(trip, p), BEFORE[p], p);
-  // Japanese listed, and Wikipedia down: OpenStreetMap and the guides are not asked again, and the English parts stay as they were.
+  // Japanese listed, and Wikipedia down: OpenStreetMap is not asked again, no guide's text is downloaded again (the names are looked up as ever), and the English parts stay as they were.
   const down = services({ wikipedia: () => new Response('', { status: 503 }) });
   const d = await downloadPack({ ws, scope: trip, fetch: down.fetch, version: V, editions: ['ja', 'en'], gapMs: 0, now });
   assert.deepEqual(down.asked.filter((a) => a.url.includes('overpass')), []);
+  assert.deepEqual(down.asked.filter((a) => a.url.includes('wikivoyage') && new URL(a.url).searchParams.get('prop') === 'extracts'), []);
   assert.equal(d.failed.length, 4); // the plan's two Wikipedia parts, in each of the two editions
   for (const p of wikiFiles) assert.equal(await ws.readText(trip, p), BEFORE[p], p);
   assert.ok(d.files.filter((f) => f.kind === 'wikipedia').every((f) => f.edition === undefined), 'still from before editions, so asked again next time');
@@ -338,8 +339,10 @@ const hangs = (_url, init) => new Promise((_, reject) => init.signal.addEventLis
 /** Stops 33 km apart: each its own Wikipedia part, and a part between. @param {number} n */
 const farStops = (n) => Object.fromEntries(Array.from({ length: n }, (_, k) => [`/plan/s${k}.json`, yufuinStop(`Stop ${k}`, { lat: 33.2627 + k * 0.3, lng: 131.3553 }, k + 1)]));
 const noOsm = () => ({ elements: [] });
+/** The saved answers as if every part asked at the station: parts of one size, so a size limit can be counted in parts. @param {string} url */
+const same = (url) => yufuinAnswer(url.replace(/ggscoord=[^&]+/, `ggscoord=${YUFUIN.lat}%7C${YUFUIN.lng}`));
 
-test("a download that stopped before its manifest: the files it left keep the edition their path says, English's are asked again once (their ids are not known), and no file is read as another edition's", async () => {
+test("a download that stopped before its manifest: the files it left keep the edition their path says and no file is read as another edition's; with no manifest at all English's file is asked again once, its ids not being known", async () => {
   const { ws, trip } = await packTrip({ '/plan/yufuin.json': yufuinStop('Yufuin Station', YUFUIN, 1) });
   const net = () => services({ overpass: noOsm, wikipedia: (url) => yufuinAnswer(url) });
   await downloadPack({ ws, scope: trip, fetch: net().fetch, version: V, editions: EN, gapMs: 0 });
@@ -370,28 +373,39 @@ test("a download that stopped before its manifest: the files it left keep the ed
   assert.deepEqual(wikiHosts(again.asked), [], 'and then not again');
 });
 
-test('a pack made with English alone takes Japanese listed first: only Japanese is asked, and English stays as it is', async () => {
+test('a pack made with English alone takes Japanese listed first: only Japanese is asked, and English stays as it is; listed second, the same', async () => {
   const { ws, trip } = await packTrip({ '/plan/yufuin.json': yufuinStop('Yufuin Station', YUFUIN, 1) });
   const net = () => services({ overpass: noOsm, wikipedia: (url) => yufuinAnswer(url) });
   await downloadPack({ ws, scope: trip, fetch: net().fetch, version: V, editions: EN, gapMs: 0 });
   const part = /** @type {any} */ ((await planFor(ws, trip)).parts.find((p) => p.kind === 'wikipedia'));
   const english = await ws.readText(trip, pathOf(part));
   const next = net();
-  const m = await downloadPack({ ws, scope: trip, fetch: next.fetch, version: V, editions: ['en', 'ja'], gapMs: 0 });
+  const m = await downloadPack({ ws, scope: trip, fetch: next.fetch, version: V, editions: ['ja', 'en'], gapMs: 0 });
   assert.deepEqual(wikiHosts(next.asked), ['ja.wikipedia.org']);
   assert.equal(await ws.readText(trip, pathOf(part)), english);
   assert.deepEqual(m.files.filter((f) => f.kind === 'wikipedia').map((f) => f.edition).sort(), ['en', 'ja']);
   assert.equal(m.summaries, 26);
+  // Listed second: Japanese is asked for all the same (and a pack that has it already asks nothing).
+  const other = await packTrip({ '/plan/yufuin.json': yufuinStop('Yufuin Station', YUFUIN, 1) });
+  await downloadPack({ ws: other.ws, scope: other.trip, fetch: net().fetch, version: V, editions: EN, gapMs: 0 });
+  const second = net();
+  await downloadPack({ ws: other.ws, scope: other.trip, fetch: second.fetch, version: V, editions: ['en', 'ja'], gapMs: 0 });
+  assert.deepEqual(wikiHosts(second.asked), ['ja.wikipedia.org']);
 });
 
 test("Wikipedia's parts come edition by edition in the reading order, every stop's part of one before the next's; a pack that fills up holds the first language at every stop and English at as many as fit", async () => {
   const { ws, trip } = await packTrip(farStops(3));
   const wikis = (await planFor(ws, trip)).parts.filter((p) => p.kind === 'wikipedia');
   assert.ok(wikis.length >= 3);
-  const net = () => services({ overpass: noOsm, wikipedia: (url) => yufuinAnswer(url) });
+  const net = () => services({ overpass: noOsm, wikipedia: same });
   const all = net();
   const m = await downloadPack({ ws, scope: trip, fetch: all.fetch, version: V, editions: ['ja', 'en'], gapMs: 0 });
-  assert.deepEqual(wikiHosts(all.asked), [...wikis.map(() => 'ja.wikipedia.org'), ...wikis.map(() => 'en.wikipedia.org')]);
+  // By host and the point asked about: Japanese at every part in the plan's order, then English at every part in it.
+  const asks = all.asked.filter((a) => a.url.includes('wikipedia.org')).map((a) => `${new URL(a.url).hostname} ${new URL(a.url).searchParams.get('ggscoord')}`);
+  assert.deepEqual(asks, [...['ja', 'en'].flatMap((e) => wikis.map((p) => `${e}.wikipedia.org ${p.at.join('|')}`))]);
+  assert.equal(new Set(asks).size, 2 * wikis.length);
+  const osmAfter = all.asked.findIndex((a) => a.url.includes('wikipedia.org'));
+  assert.ok(all.asked.slice(0, osmAfter).every((a) => a.url.endsWith('/api/interpreter')) && osmAfter === 5, 'OpenStreetMap first');
   assert.deepEqual(m.failed, []);
   // A limit that holds the OpenStreetMap parts, every stop's Japanese and one English: not both languages at the first stops and nothing at the last.
   const size = (/** @type {string} */ edition) => m.files.filter((f) => f.kind === 'wikipedia' && f.edition === edition).map((f) => f.bytes);
@@ -410,7 +424,7 @@ test("Wikipedia's parts come edition by edition in the reading order, every stop
   assert.equal(enFirst.files.filter((f) => f.edition === 'ja').length, 1);
 });
 
-test("an edition whose host never answers is left after three parts in a row, so it costs three answer times, not one a part; the other editions' parts all come", async () => {
+test("an edition whose host never answers is left after three parts in a row, so it costs three answer times, not one a part; the parts left are counted among those that didn't download, the other editions' parts all come, and with every source given up the guides are not looked for", async () => {
   const { ws, trip } = await packTrip(farStops(4));
   const wikis = (await planFor(ws, trip)).parts.filter((p) => p.kind === 'wikipedia');
   assert.ok(wikis.length >= 4);
@@ -418,7 +432,9 @@ test("an edition whose host never answers is left after three parts in a row, so
   const m = await downloadPack({ ws, scope: trip, fetch: net.fetch, version: V, editions: ['zh', 'en'], gapMs: 0, answerMs: 30 });
   assert.equal(wikiHosts(net.asked).filter((h) => h === 'zh.wikipedia.org').length, 3);
   assert.equal(wikiHosts(net.asked).filter((h) => h === 'en.wikipedia.org').length, wikis.length);
-  assert.deepEqual(m.failed.map((f) => f.why), Array(3).fill("zh.wikipedia.org didn't answer in time."));
+  // The three late ones, and each part left after them with the failure that gave the edition up: the panel counts them all.
+  assert.deepEqual(m.failed.map((f) => f.why), Array(wikis.length).fill("zh.wikipedia.org didn't answer in time."));
+  assert.equal(new Set(m.failed.map((f) => f.label)).size, wikis.length, 'each part by its own name');
   assert.equal(m.files.filter((f) => f.edition === 'en').length, wikis.length);
   assert.equal(m.stopped, true, 'it gave up on one');
   // Everything given up on is the connection down: the guides are not looked for.
@@ -429,38 +445,180 @@ test("an edition whose host never answers is left after three parts in a row, so
   assert.equal(down.asked.filter((a) => a.url.includes('wikivoyage')).length, 0);
 });
 
-test("a refresh of a pack at its size limit keeps the pack under it: the old copies of the parts it replaces count until they are replaced", async () => {
-  const { ws, trip } = await packTrip();
-  const first = await downloadPack({ ws, scope: trip, ...services(), version: V, editions: EN, gapMs: 0 });
-  const later = () => Date.now() + STALE_MS + 86_400_000;
-  // A month on, every part is old, and OpenStreetMap has more now: each part's new copy is bigger, so the limit (the pack's own size) can't hold them all.
-  const added = Array.from({ length: 6 }, (_, k) => ({ type: 'node', id: 90 + k, lat: 36.3, lon: -121.9, tags: { name: `A viewpoint added since ${k}`, tourism: 'viewpoint' } }));
-  const more = services({ overpass: (url, init) => ({ elements: [...overpass(url, init).elements, ...added] }) });
-  const m = await downloadPack({ ws, scope: trip, fetch: more.fetch, version: V, editions: EN, gapMs: 0, now: later, maxBytes: first.bytes });
-  const onDisk = (await ws.list(trip, '/offline/')).filter((f) => f.path !== MANIFEST).reduce((n, f) => n + f.size, 0);
-  assert.equal(m.full, true);
-  assert.ok(m.bytes <= first.bytes, `${m.bytes} > ${first.bytes}`);
-  assert.ok(onDisk <= first.bytes, `${onDisk} on disk, over ${first.bytes}`);
-  assert.equal(m.bytes, onDisk);
-  // What could not be replaced stays as it was: every part. A guide's old copy stays only where it fits.
-  assert.equal(m.files.filter((f) => f.kind !== 'wikivoyage').length, first.files.filter((f) => f.kind !== 'wikivoyage').length);
-  assert.deepEqual(m.guides.map((g) => g.path).sort(), m.files.filter((f) => f.kind === 'wikivoyage').map((f) => f.path).sort());
+const osmUrls = (/** @type {{ url: string }[]} */ asked) => asked.filter((a) => a.url.endsWith('/api/interpreter'));
+
+test("a source that refuses is left after three parts in a row, the rest counted as parts that didn't download; a success between them starts the count over", async () => {
+  const { ws, trip } = await packTrip(farStops(4));
+  const plan = await planFor(ws, trip);
+  const osmParts = plan.parts.filter((p) => p.kind === 'osm').length;
+  assert.equal(osmParts, 7);
+  // Every Overpass server refuses every part: the first three parts ask all three servers, the other four are never asked.
+  const refusing = services({ overpass: () => new Response('', { status: 503 }), wikipedia: (url) => yufuinAnswer(url) });
+  const m = await downloadPack({ ws, scope: trip, fetch: refusing.fetch, version: V, editions: EN, gapMs: 0 });
+  assert.equal(osmUrls(refusing.asked).length, 9);
+  assert.equal(m.failed.length, osmParts, 'all seven are parts that didn\'t download');
+  assert.equal(m.failed.filter((f) => f.said && f.part && 'place' in f.part && f.part.source === 'osm').length, osmParts, 'each with its part, for the panel');
+  assert.equal(new Set(m.failed.map((f) => f.label)).size, osmParts);
+  assert.equal(m.stopped, true);
+  assert.equal(m.files.filter((f) => f.kind === 'wikipedia').length, plan.parts.filter((p) => p.kind === 'wikipedia').length, 'Wikipedia is another source');
+  // Refused, refused, answered, refused, refused, answered, refused: never three in a row, so every part is asked.
+  let n = 0;
+  const flaky = services({ overpass: noOsm, wikipedia: (url) => ([3, 6].includes(++n) ? yufuinAnswer(url) : new Response('', { status: 503 })) });
+  const other = await packTrip(farStops(4));
+  const f = await downloadPack({ ws: other.ws, scope: other.trip, fetch: flaky.fetch, version: V, editions: EN, gapMs: 0 });
+  assert.equal(n, 7, 'every Wikipedia part asked');
+  assert.equal(f.failed.length, 5);
+  assert.equal(f.stopped, false);
 });
 
-test("a guide's old copy that would take the pack over its limit goes: the limit holds, the parts stay", async () => {
+test("an answer annai can't use (a query that timed out, an unreadable body, an error answer) fails its part only: the source is asked for every part, never left", async () => {
+  const { ws, trip } = await packTrip(farStops(4));
+  const plan = await planFor(ws, trip);
+  const osmParts = plan.parts.filter((p) => p.kind === 'osm').length;
+  const wikiParts = plan.parts.filter((p) => p.kind === 'wikipedia').length;
+  // Overpass: every server says a query ran too long (HTTP 200 with a remark), for seven parts.
+  const remark = services({ overpass: () => ({ elements: [], remark: 'runtime error: Query timed out in "query" at line 1 after 61 seconds.' }), wikipedia: (url) => yufuinAnswer(url) });
+  const m = await downloadPack({ ws, scope: trip, fetch: remark.fetch, version: V, editions: EN, gapMs: 0 });
+  assert.equal(osmUrls(remark.asked).length, 3 * osmParts, 'every part asked every server');
+  assert.equal(m.failed.length, osmParts);
+  assert.match(m.failed[0].why, /stopped early: runtime error: Query timed out/);
+  assert.equal(m.stopped, false);
+  assert.equal(m.files.filter((f) => f.kind === 'osm').length, 0);
+  assert.equal(m.files.filter((f) => f.kind === 'wikipedia').length, wikiParts);
+  // An answer that isn't JSON, from every server.
+  const html = services({ overpass: () => new Response('<html>Overpass is busy</html>'), wikipedia: (url) => yufuinAnswer(url) });
+  const second = await packTrip(farStops(4));
+  const u = await downloadPack({ ws: second.ws, scope: second.trip, fetch: html.fetch, version: V, editions: EN, gapMs: 0 });
+  assert.equal(osmUrls(html.asked).length, 3 * osmParts);
+  assert.equal(u.stopped, false);
+  // Wikipedia: an error answer for every part.
+  const maxlag = services({ overpass: noOsm, wikipedia: () => ({ error: { code: 'maxlag', info: 'Waiting for a database server' } }) });
+  const third = await packTrip(farStops(4));
+  const w = await downloadPack({ ws: third.ws, scope: third.trip, fetch: maxlag.fetch, version: V, editions: EN, gapMs: 0 });
+  assert.equal(wikiHosts(maxlag.asked).length, wikiParts);
+  assert.equal(w.failed.length, wikiParts);
+  assert.equal(w.stopped, false);
+  // A part that fails this way between failures of another kind starts the count over: late, late, unreadable, late, late, unreadable, late asks every part.
+  let k = 0;
+  const mixed = services({ overpass: noOsm, wikipedia: (url, init) => ([3, 6].includes(++k) ? new Response('no') : hangs(url, init)) });
+  const fourth = await packTrip(farStops(4));
+  await downloadPack({ ws: fourth.ws, scope: fourth.trip, fetch: mixed.fetch, version: V, editions: EN, gapMs: 0, answerMs: 20 });
+  assert.equal(k, wikiParts);
+});
+
+test("Wikivoyage is left after three guides in a row that fail: the others are not asked for", async () => {
+  const { ws, trip } = await packTrip(farStops(4));
+  const wikivoyage = (/** @type {string} */ url) => {
+    const u = new URL(url);
+    if (u.searchParams.get('prop') !== 'pageprops') return new Response('', { status: 503 });
+    return { query: { pages: (u.searchParams.get('titles') ?? '').split('|').map((title) => ({ title })) } };
+  };
+  const net = services({ overpass: noOsm, wikipedia: (url) => yufuinAnswer(url), wikivoyage });
+  const m = await downloadPack({ ws, scope: trip, fetch: net.fetch, version: V, editions: EN, gapMs: 0 });
+  const texts = net.asked.filter((a) => a.url.includes('wikivoyage') && new URL(a.url).searchParams.get('prop') === 'extracts');
+  assert.equal(texts.length, 3);
+  assert.equal(m.failed.length, 3);
+  assert.deepEqual(m.guides, []);
+  assert.equal(m.stopped, true);
+});
+
+test("an error answer to Wikivoyage's names lookup is a failure that says so, and no guide is looked for", async () => {
+  const { ws, trip } = await packTrip();
+  const net = services({ overpass: noOsm, wikipedia: (url) => yufuinAnswer(url), wikivoyage: () => ({ error: { code: 'maxlag', info: 'Waiting for a database server.' } }) });
+  const m = await downloadPack({ ws, scope: trip, fetch: net.fetch, version: V, editions: EN, gapMs: 0 });
+  assert.deepEqual(m.failed.map((f) => f.why), ['Wikivoyage said: Waiting for a database server.']);
+  assert.deepEqual(m.guides, []);
+});
+
+test("Overpass's 429 twice for one part fails that server for the part: the next is asked; a server that refuses or never answers three parts in a row is left, the others carry on", async () => {
+  const { ws, trip } = await packTrip(farStops(3));
+  const parts = (await planFor(ws, trip)).parts.filter((p) => p.kind === 'osm').length;
+  assert.equal(parts, 5);
+  // overpass-api.de says "too many requests" every time: each part waits once, asks again, is told so again, and z. answers.
+  const busy = services({ overpass: (url, init) => (url.includes('//overpass-api.de') ? new Response('', { status: 429 }) : overpass(url, init)), wikipedia: (url) => yufuinAnswer(url) });
+  const m = await downloadPack({ ws, scope: trip, fetch: busy.fetch, version: V, editions: EN, gapMs: 0, busyMs: 1 });
+  assert.deepEqual(osmUrls(busy.asked).slice(0, 3).map((a) => new URL(a.url).hostname), ['overpass-api.de', 'overpass-api.de', 'z.overpass-api.de'], 'the first part');
+  assert.equal(osmUrls(busy.asked).filter((a) => new URL(a.url).hostname === 'overpass-api.de').length, 6, 'three parts, twice each; then it is left');
+  assert.equal(osmUrls(busy.asked).filter((a) => new URL(a.url).hostname === 'z.overpass-api.de').length, parts);
+  assert.deepEqual(m.failed, []);
+  assert.equal(m.files.filter((f) => f.kind === 'osm').length, parts);
+  // Refused, refused, answered, refused, refused: never three in a row for it, so it is asked for every part.
+  const third = await packTrip(farStops(3));
+  let m429 = 0;
+  const flaky = services({ overpass: (url, init) => (url.includes('//overpass-api.de') && ++m429 !== 3 ? new Response('', { status: 503 }) : overpass(url, init)), wikipedia: (url) => yufuinAnswer(url) });
+  await downloadPack({ ws: third.ws, scope: third.trip, fetch: flaky.fetch, version: V, editions: EN, gapMs: 0, busyMs: 1 });
+  assert.equal(osmUrls(flaky.asked).filter((a) => new URL(a.url).hostname === 'overpass-api.de').length, parts);
+  // A server that never answers: asked three times (an answer time each), then left; z. answers every part.
+  const second = await packTrip(farStops(3));
+  const hung = services({ overpass: (url, init) => (url.includes('//overpass-api.de') ? hangs(url, init) : overpass(url, init)), wikipedia: (url) => yufuinAnswer(url) });
+  const h = await downloadPack({ ws: second.ws, scope: second.trip, fetch: hung.fetch, version: V, editions: EN, gapMs: 0, answerMs: 20 });
+  assert.equal(osmUrls(hung.asked).filter((a) => new URL(a.url).hostname === 'overpass-api.de').length, 3);
+  assert.equal(osmUrls(hung.asked).filter((a) => new URL(a.url).hostname === 'z.overpass-api.de').length, parts);
+  assert.deepEqual(h.failed, []);
+  assert.equal(h.stopped, false);
+});
+
+/** A trip's pack for the size-limit tests: farStops(3), English alone, each part's size by its kind. @param {string[]} editions */
+async function sizes(editions) {
+  const t = await packTrip(farStops(3));
+  const net = services({ overpass: (url, init) => overpass(url, init), wikipedia: same });
+  const m = await downloadPack({ ws: t.ws, scope: t.trip, fetch: net.fetch, version: V, editions, gapMs: 0 });
+  const total = (/** @type {(f: import('../../src/core/pack/download.js').PackFile) => boolean} */ pick) => m.files.filter(pick).reduce((n, f) => n + f.bytes, 0);
+  return { m, osm: total((f) => f.kind === 'osm'), en: total((f) => f.edition === 'en'), ja: total((f) => f.edition === 'ja') };
+}
+
+test("a pack that filled up takes a language added first at its monthly refresh (the refresh as main's: every part that fits, in the order), and not before: a pack under a month old stays as it is", async () => {
+  const net = () => services({ overpass: (url, init) => overpass(url, init), wikipedia: same });
+  const english = await sizes(EN);
+  const both = await sizes(['ja', 'en']);
+  const parts = both.m.files.filter((f) => f.edition === 'en').length;
+  assert.equal(parts, 5);
+  const jaSize = both.ja / parts;
+  // English alone just overflows: the last of its parts doesn't fit.
+  const limit = english.osm + english.en - 1;
+  const { ws, trip } = await packTrip(farStops(3));
+  const first = await downloadPack({ ws, scope: trip, fetch: net().fetch, version: V, editions: EN, gapMs: 0, maxBytes: limit });
+  assert.equal(first.full, true);
+  assert.equal(first.files.filter((f) => f.edition === 'en').length, parts - 1);
+  // Japanese listed first inside the month: nothing of it comes, the pack is full (a known limitation: it comes with the monthly refresh).
+  const soon = await downloadPack({ ws, scope: trip, fetch: net().fetch, version: V, editions: ['ja', 'en'], gapMs: 0, maxBytes: limit });
+  assert.equal(soon.files.filter((f) => f.edition === 'ja').length, 0);
+  // A month on: OpenStreetMap, then Japanese at the stops it fits at (before any English), then English where it fits.
+  const later = () => Date.now() + STALE_MS + 86_400_000;
+  const m = await downloadPack({ ws, scope: trip, fetch: net().fetch, version: V, editions: ['ja', 'en'], gapMs: 0, maxBytes: limit, now: later });
+  const ja = m.files.filter((f) => f.edition === 'ja').length;
+  assert.equal(ja, Math.floor((limit - english.osm) / jaSize), 'Japanese at as many stops as fit under the limit');
+  assert.ok(ja > 0 && ja < parts);
+  assert.ok(m.files.filter((f) => f.edition === 'ja').every((f) => f.at > Date.now() + STALE_MS), 'the new copies');
+  assert.equal(m.full, true);
+});
+
+test("a refresh at the size limit refreshes every part that fits, in order, and keeps the old copy of each that doesn't, a guide's too: the pack can end over its limit by those", async () => {
   const { ws, trip } = await packTrip();
   const first = await downloadPack({ ws, scope: trip, ...services(), version: V, editions: EN, gapMs: 0 });
-  const parts = first.files.filter((f) => f.kind !== 'wikivoyage').reduce((n, f) => n + f.bytes, 0);
-  assert.ok(first.guides.length > 0 && parts < first.bytes);
   const later = () => Date.now() + STALE_MS + 86_400_000;
-  // A month on; the limit holds the parts, as they came again, and no guide.
-  const m = await downloadPack({ ws, scope: trip, ...services(), version: V, editions: EN, gapMs: 0, now: later, maxBytes: parts });
+  // A month on, everything is old, and OpenStreetMap has more around Bixby Bridge, the first part: its new copy is bigger, and 20 bytes of room don't hold the lot.
+  const added = Array.from({ length: 6 }, (_, k) => ({ type: 'node', id: 90 + k, lat: 36.3, lon: -121.9, tags: { name: `A viewpoint added since ${k}`, tourism: 'viewpoint' } }));
+  const more = services({ overpass: (url, init) => ({ elements: [...overpass(url, init).elements, ...(body({ init }).includes('around:5000,36.3715') ? added : [])] }) });
+  const m = await downloadPack({ ws, scope: trip, fetch: more.fetch, version: V, editions: EN, gapMs: 0, now: later, maxBytes: first.bytes + 20 });
   assert.equal(m.full, true);
-  assert.equal(m.bytes, parts);
-  assert.equal(m.files.filter((f) => f.kind !== 'wikivoyage').length, first.files.filter((f) => f.kind !== 'wikivoyage').length);
-  assert.ok(m.files.filter((f) => f.kind !== 'wikivoyage').every((f) => f.at > Date.now() + STALE_MS), 'every part came again: the old copy of the one being replaced is not in the way');
-  assert.deepEqual(m.guides, []);
-  assert.deepEqual((await files(ws, trip)).filter((p) => p.includes('/wikivoyage/')), [], 'no guide file is left on the phone');
+  const parts = m.files.filter((f) => f.kind !== 'wikivoyage');
+  const renewed = parts.filter((f) => f.at > Date.now() + STALE_MS);
+  assert.equal(parts.length, 5, 'every part is still there');
+  assert.equal(renewed.length, 4, 'the part that grew was one of the first, and the parts after it came again; the last did not fit');
+  assert.ok(renewed.some((f) => f.kind === 'wikipedia'), 'past the OpenStreetMap parts too');
+  assert.deepEqual(m.files.filter((f) => f.kind === 'wikivoyage').map((f) => f.path).sort(), m.guides.map((g) => g.path).sort());
+  assert.equal(m.guides.length, first.guides.length, 'the guides stay as they were');
+  assert.ok(m.bytes > first.bytes + 20, `${m.bytes}: the old copies of what did not fit are over the limit`);
+});
+
+test("a guide that leads from another title (Hearst Castle to San Simeon) is found by the title it leads to, and asked by the name that led to it", async () => {
+  const { ws, trip } = await packTrip({ '/plan/hearst.json': { id: 'hearst', title: 'Hearst Castle', fixed: false, start: { at: '2026-11-27T17:45:00Z', tz: 'America/Los_Angeles' }, place: { name: 'Hearst Castle', lat: 35.6852, lng: -121.1668 } } });
+  const net = services({ overpass: noOsm, wikipedia: () => ({ batchcomplete: true }) });
+  const m = await downloadPack({ ws, scope: trip, fetch: net.fetch, version: V, editions: EN, gapMs: 0 });
+  assert.deepEqual(m.guides.map((g) => [g.title, g.asked]), [['San Simeon', ['Hearst Castle']]]);
+  assert.deepEqual(m.failed, []);
+  assert.match(String(await ws.readText(trip, m.guides[0].path)), /San Simeon is a town/);
 });
 
 test("a Wikipedia article with no Wikidata item is kept with no id and counted once, by its title, whichever part it is in", async () => {
@@ -473,18 +631,27 @@ test("a Wikipedia article with no Wikidata item is kept with no id and counted o
   assert.deepEqual(row, ['Bixby Creek Bridge', 36.3715, -121.9017, 'A bridge.', null]);
 });
 
-test("a Chinese (Traditional) pack: zh.wikipedia.org's rows in a file of their own, named zh in the manifest, linked on Chinese Wikipedia and read first", async () => {
+test("a Chinese (Traditional) pack: zh.wikipedia.org's rows in a file of their own, named zh in the manifest, linked on Chinese Wikipedia; the article English also has is read under the language listed first", async () => {
   const shilin = { lat: 25.0879, lng: 121.5242 };
   const { ws, trip } = await packTrip({ '/plan/shilin.json': yufuinStop('Shilin Night Market', shilin, 1) });
   const saved = JSON.parse(await readFile(new URL('../fixtures/places/wiki-pack-shilin-zh.json', import.meta.url), 'utf8')); // the real answer of 2026-11-19
-  const net = services({ overpass: noOsm, wikipedia: (url) => (url.includes('zh.wikipedia.org') ? saved : { batchcomplete: true }) });
+  // English Wikipedia's article of the same Wikidata item (Q697118, 士林夜市 in the real answer), its text made for the test.
+  const english = { query: { pages: [{ ns: 0, title: 'Shilin Night Market', coordinates: [{ lat: 25.08522222, lon: 121.52472222, primary: true, globe: 'earth' }], pageprops: { wikibase_item: 'Q697118' }, extract: 'Shilin Night Market is a night market in Taipei.' }] } };
+  const net = services({ overpass: noOsm, wikipedia: (url) => (url.includes('zh.wikipedia.org') ? saved : url.includes('en.wikipedia.org') ? english : { batchcomplete: true }) });
   const m = await downloadPack({ ws, scope: trip, fetch: net.fetch, version: V, editions: ['zh', 'en'], gapMs: 0 });
   assert.deepEqual(m.failed, []);
   const part = /** @type {any} */ ((await planFor(ws, trip)).parts.find((p) => p.kind === 'wikipedia'));
-  assert.deepEqual(m.files.filter((f) => f.kind === 'wikipedia').map((f) => [f.path, f.edition, f.items]), [[`/offline/wikipedia/${part.id}.zh.json`, 'zh', 20], [`/offline/wikipedia/${part.id}.json`, 'en', 0]]);
+  assert.deepEqual(m.files.filter((f) => f.kind === 'wikipedia').map((f) => [f.path, f.edition, f.items]), [[`/offline/wikipedia/${part.id}.zh.json`, 'zh', 20], [`/offline/wikipedia/${part.id}.json`, 'en', 1]]);
+  assert.equal(m.summaries, 20, 'the night market in both editions, once');
   const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
   const rows = pack.pages(shilin, 10_000, ['zh', 'en']);
   assert.equal(rows.length, 20);
   assert.match(String(rows.find((r) => r[0] === '士林夜市')?.[6]), / https:\/\/zh\.wikipedia\.org\/wiki\/士林夜市$/);
+  assert.ok(!rows.some((r) => r[0] === 'Shilin Night Market'), 'Chinese first');
   assert.equal(pack.name({ lat: 25.08522, lng: 121.52472 }, ['zh', 'en'])?.name, '士林夜市');
+  // English first: its title, linked on English Wikipedia.
+  const first = pack.pages(shilin, 10_000, ['en', 'zh']);
+  assert.match(String(first.find((r) => r[0] === 'Shilin Night Market')?.[6]), / https:\/\/en\.wikipedia\.org\/wiki\/Shilin_Night_Market$/);
+  assert.ok(!first.some((r) => r[0] === '士林夜市'));
+  assert.equal(pack.name({ lat: 25.08522, lng: 121.52472 }, ['en', 'zh'])?.name, 'Shilin Night Market');
 });

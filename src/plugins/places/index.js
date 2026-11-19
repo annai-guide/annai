@@ -8,7 +8,7 @@ import { loadPack } from '../../core/pack/read.js';
 import { anySignal } from '../../core/signals.js';
 import { NOMINATIM_GAP, nominatimTurn, nominatimLanguages } from '../../core/nominatim.js';
 import { readingOrder } from '../../core/languages.js';
-import { editionsOf, nearUrl, articlesOf, wikiSaid, merged, articleUrl, agentHeader } from '../../core/wiki.js';
+import { editionsOf, nearUrl, articlesOf, wikiSaid, merged, articleUrl, pageUrl, agentHeader } from '../../core/wiki.js';
 import { t as words } from '../../core/l10n.js';
 
 export { KINDS };
@@ -108,7 +108,7 @@ function sunOnly(i, e) {
 function guideText(title, text, section, source) {
   const heads = [...text.matchAll(/^(={2,4}) (.+?) \1$/gm)];
   /* en */
-  const from = `(${source}) https://en.wikivoyage.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`;
+  const from = `(${source}) ${pageUrl('en.wikivoyage.org', title)}`;
   if (!section) {
     const intro = (heads.length ? text.slice(0, heads[0].index) : text).trim();
     /* en */
@@ -133,7 +133,7 @@ function extras(f) {
 const round = (/** @type {number} */ x) => Math.round(x * 1e4) / 1e4;
 /** The rows nearby gives, nearest first; its Overpass query widens its circle when the small one holds fewer. */
 const ROWS = 40;
-/** Wikipedia's rows at most: the 30 English alone was asked for (gslimit), so more editions never take more of the ROWS from OpenStreetMap. */
+/** Wikipedia's rows at most: the 30 English alone was asked for, so more editions bring no more (of the nearest ROWS of both sources, up to 30 can be articles). */
 const WIKI_ROWS = 30;
 /** @param {any[][]} rows */
 const nearest = (rows) => rows.sort((a, b) => a[2] - b[2]).slice(0, WIKI_ROWS);
@@ -237,9 +237,8 @@ export function activate(annai) {
           throw new AggregateError(errors, 'no Overpass server answered');
         };
         const overpass = Promise.any(chains.map(inTurn)).finally(() => won.abort(Object.assign(new Error(/* en */ 'Stopped: the other Overpass server answered first.'), { name: 'AbortError' })));
-        // Each edition at once within one ASK_MS, so one that never answers holds up no other (the etiquette's "in series" is for bulk
-        // clients; these are one request a host), each article once (merged). An edition that doesn't answer, or answers with an error, has
-        // the offline pack's articles of it, where the pack reaches.
+        // Each edition at once within one ASK_MS (one request a host: the etiquette's "in series" is for bulk clients), each article once. An
+        // edition that doesn't answer, or answers with an error, has the offline pack's articles of it where the pack reaches.
         const late = AbortSignal.timeout(ASK_MS.ms);
         const wikipedia = Promise.allSettled(editions.map(async (e) => {
           const r = await ask(call, nearUrl(e, [round(i.lat), round(i.lng)], Math.min(radius, 10000), 30), { headers: agentHeader(VERSION) }, late);
@@ -254,7 +253,7 @@ export function activate(annai) {
             .map((a) => [a.title, 'wikipedia article', Math.round(meters(i.lat, i.lng, a.lat, a.lng)), round(a.lat), round(a.lng), 'wikipedia', articleUrl(a.edition, a.title)]));
           // Named, so a missing edition's articles aren't taken for none.
           const hosts = quiet.map((e) => `${e}.wikipedia.org`).join(' and ');
-          return { rows, note: !quiet.length ? '' : `\n${hosts} didn't answer, so ${quiet.length > 1 ? 'their' : 'its'} articles ${packed.length ? `come from the offline pack${pack?.downloaded}` : 'are missing from this list'}.` };
+          return { rows, note: !quiet.length ? '' : `\n${hosts} didn't answer, so ${quiet.length > 1 ? 'their' : 'its'} articles ${packed.length ? `come from the offline pack${pack?.downloaded}, where it holds them` : 'are missing from this list'}.` };
         });
         // A service that didn't answer is null; a stopped call is no answer at all. OpenStreetMap is busy when every server asked said so
         // (a 429, or a 5xx: the 502 "Timeout" Overpass sends at once, a 504 "too busy"), known as the last one refuses. Another refusal

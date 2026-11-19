@@ -1004,7 +1004,7 @@ elkw42	ok	The voice's audio couldn't be played.	読み上げの音声を再生�
 9gdjo3	ok	The browser voice couldn't speak ({0}).	ブラウザの声で読み上げられませんでした（{0}）。	src/plugins/voice-browser/index.js:585	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
 1mrk9hl	ok	The microphone stopped.	マイクが停止しました。	src/plugins/voice-browser/index.js:650	
 1l4zitw	ok	Phone dictation stopped ({0}).	端末の音声入力が停止しました（{0}）。	src/plugins/voice-browser/index.js:755	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音声入力 / 手机语音输入); {0} is the browser's error code, such as network.
-1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia、Nominatim	src/plugins/web/free.js:127	
+1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia、Nominatim	src/plugins/web/free.js:128	
 scnz2y	ok	Web tools	Webツール	src/plugins/web/index.js:13	Note: Web as its tool group is named in Settings → Tools (Web / 网页).
 eob60g	ok	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetchはWebページを読み込みます。サイトがWebアプリからの読み込みを許可していないときは、Jina ReaderかExaを経由します。web_searchは検索プロバイダーで検索します。順番は「設定 → ツール」で決まり、初期状態では無料のものが先です。	src/plugins/web/index.js:16	
 b4g7z9	ok	needs a key (Settings → Tools)	キーが必要：「設定 → ツール」	src/plugins/web/index.js:189	
