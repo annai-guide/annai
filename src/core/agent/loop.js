@@ -3508,7 +3508,7 @@ export class Agent {
         timer = setTimeout(over, Math.max(0, by - Date.now()));
       };
       // Its time, nobody speaking (arm). Lines heard in time may still answer (#closeEar's door; speak and wait: the one routed now). With none, they end before the
-      // close (no "Your turn"); with one, the dock says Thinking.
+      // close (no "Your turn"); with one, a close sets Thinking.
       const over = () => {
         const routing = this.#routing;
         if (kind !== 'ask' && !routing) end();
@@ -3640,7 +3640,7 @@ export class Agent {
     this.poke();
     this.#hearing = this.#hearing.then(async () => {
       const r = (this.#routing = this.#route(h, began, ear));
-      try { await r; } finally { if (this.#routing === r) this.#routing = null; }
+      try { await r; } finally { this.#routing = null; }
     }).catch((e) => { console.warn(/* en */ 'heard speech was not handled', e); });
   }
 
