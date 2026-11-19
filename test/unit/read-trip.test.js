@@ -4931,12 +4931,12 @@ test("classic voice, sound sent to the model that failed turns left unwritten, a
 
 // ---- tap-ear-next, touch before merge: no microphone where no turn can run, and the dock says Listening only while something listens. ----
 
-test("classic voice with nothing open (no draft could be made): a tap, as a headset or car key sends it, opens no microphone, because no turn runs there to close one: a line said anyway leaves nothing open 30 s on", async (t) => {
+test("classic voice with nothing open (no draft could be made): the agent's own tap opens no microphone, because no turn runs there to close one: a line said anyway leaves nothing open 30 s on", async (t) => {
   useClock(t);
   const k = await gateKit([say('Unused.')], { voice: { speechIn: ['m-hear'], hears: ['Where did we eat?'] } });
   await k.agent.open(null);
   const t0 = Date.now();
-  k.agent.tap(); // the way a headset or car key sends it (media-keys.js); the dock's Shiori button opens a draft first
+  k.agent.tap(); // the agent's own: every caller opens the draft first (tapShiori), so this is the guard for a tap that still finds nothing open
   await atS(k, t0, 1);
   await hear(k, 'first-one'); // a line said anyway: heard by no one
   await atS(k, t0, 30);

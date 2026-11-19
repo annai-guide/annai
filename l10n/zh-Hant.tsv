@@ -1068,11 +1068,11 @@ abxwjc	ok	Your files didn't reach Shiori	檔案沒能交給 Shiori	src/ui/dock.j
 1m2zofh	ok	Type	輸入	src/ui/dock.js:143	Note: The dock's keyboard button: it opens the box to type in (a verb).
 1dcb0v0	ok	The photo wasn't added	未能新增照片	src/ui/dock.js:186	
 1nyg58x	draft	Take the photo again.	請重新拍攝。	src/ui/dock.js:186	
-1xmvmzh	ok	Kokoro is working	Kokoro 正在工作	src/ui/dock.js:295	
-1ndyc8s	ok	Stop Kokoro	停止 Kokoro	src/ui/dock.js:296	
-ky4lc5	ok	Stop	停止	src/ui/dock.js:296	
-snj02s	ok	In {0} ›	{0} 的對話 ›	src/ui/dock.js:314	{0} = scopeTitle(typeof title === 'string' ? { ...rec, title } : rec)
-1s6dmy6	ok	Camera	相機	src/ui/dock.js:329	
+1xmvmzh	ok	Kokoro is working	Kokoro 正在工作	src/ui/dock.js:296	
+1ndyc8s	ok	Stop Kokoro	停止 Kokoro	src/ui/dock.js:297	
+ky4lc5	ok	Stop	停止	src/ui/dock.js:297	
+snj02s	ok	In {0} ›	{0} 的對話 ›	src/ui/dock.js:315	{0} = scopeTitle(typeof title === 'string' ? { ...rec, title } : rec)
+1s6dmy6	ok	Camera	相機	src/ui/dock.js:330	
 1rm0t76	ok	{0} isn't valid JSON.	「{0}」不是有效的 JSON。	src/ui/dom.js:155	{0} = label; Note: {0} is a field's label.
 1a791in	ok	{0} has to be an object: { … }.	「{0}」必須是物件：{ … }。	src/ui/dom.js:157	{0} = label; Note: {0} is a field's label.
 1gkm7i5	ok	Saving…	正在儲存…	src/ui/dom.js:266	
@@ -2809,8 +2809,8 @@ do1m5o	ok	{0}: annai can't show this setting.	{0}：annai 無法顯示此設定�
 1qrgqx0	ok	saved	已儲存	src/ui/settings-form.js:121	
 phutrz	ok	{0} wasn't saved: {1}	「{0}」未能儲存：{1}	src/ui/settings-form.js:130	{0} = f.label; {1} = messageOf(e)
 1skw031	ok	This screen couldn't open	無法開啟此頁面	src/ui/shell.js:431	
-1z00dfe	ok	An update is ready	更新已就緒	src/ui/shell.js:505	
-gt0nrj	ok	It will be used the next time annai starts.	下次啟動 annai 時生效。	src/ui/shell.js:505	
+1z00dfe	ok	An update is ready	更新已就緒	src/ui/shell.js:507	
+gt0nrj	ok	It will be used the next time annai starts.	下次啟動 annai 時生效。	src/ui/shell.js:507	
 sntfon	ok	Hello! This is how I sound when I talk to you.	你好！我跟你說話時就是這個聲音。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
 n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
 1a27ynt	ok	Last tested {0}: it worked.	上次測試（{0}）：可以使用。	src/ui/speech-check.js:26	{0} = relTime(verified.at)

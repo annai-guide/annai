@@ -900,7 +900,7 @@ test("steering-wheel and headset buttons tap Shiori while voice is on, and do no
   const listeners = [];
   const voice = { on: false, onChange: (/** @type {any} */ fn) => { listeners.push(fn); return () => {}; } };
   let taps = 0;
-  mediaKeys({ session, agent: { tap: () => { taps++; return 'listening'; } }, voice });
+  mediaKeys({ session, tap: () => { taps++; return 'listening'; }, voice }); // the shell's tap (tapShiori: plus.test.js)
   assert.equal(handlers.play, null);
   for (const fn of listeners) fn({ on: true });
   handlers.play();
@@ -909,7 +909,7 @@ test("steering-wheel and headset buttons tap Shiori while voice is on, and do no
   assert.equal(taps, 3);
   for (const fn of listeners) fn({ on: false });
   assert.equal(handlers.pause, null);
-  assert.doesNotThrow(() => mediaKeys({ session: undefined, agent: { tap: () => 'typing' }, voice }));
+  assert.doesNotThrow(() => mediaKeys({ session: undefined, tap: () => 'typing', voice }));
 });
 
 test("the trace's one-line summaries of live mode: points, firings, reminders and switches", () => {

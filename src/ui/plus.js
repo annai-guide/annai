@@ -35,6 +35,21 @@ export function openReadyDraft(ctx) {
 export const cantStart = (ctx, e) => { explainStorageFull(ctx, e) || tellNotOpen(ctx, e); };
 
 /**
+ * With nothing open, `act` runs in the draft, as +: the ready one at once (nothing awaited), else once one is open; with none, the card and no `act`.
+ * @param {any} ctx @param {() => any} act @returns {any} what `act` returns, or while it waits a promise of it
+ */
+function inDraft(ctx, act) {
+  if (ctx.agent.target || openReadyDraft(ctx)) return act();
+  return openDraft(ctx).then(act, (e) => void cantStart(ctx, e));
+}
+
+/** A tap on Shiori: the dock's button, the media keys and `ui.shiori.tap()`. @param {any} ctx @returns {string | Promise<string | undefined>} what `agent.tap()` says, or a promise of it */
+export const tapShiori = (ctx) => inDraft(ctx, () => ctx.agent.tap());
+
+/** A plugin's `ui.shiori.send()`; the dock's box opens the draft itself (`drafted`). @param {any} ctx @param {string} text */
+export const sendToShiori = (ctx, text) => { void inDraft(ctx, () => ctx.agent.send(text)); };
+
+/**
  * The +: a new conversation, with no naming step. With voice on, the draft is opened and tapped before anything is awaited, so the
  * microphone's start stays inside the tap (an iPhone rule). With voice off the box opens: a tap would hold voice on for the exchange, and
  * voice from home is then + and Shiori. In the first moments no draft is ready yet, and it goes once one is open; if none can be made, the card says so

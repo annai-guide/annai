@@ -1070,6 +1070,78 @@ test('+ again while the new conversation still listens (← home with the mic op
   assert.equal(heard.length, 1, 'heard in it');
 });
 
+// key-next: with nothing open, a headset or car key does what the dock's Shiori button does (open the draft, then listen), through the shell's tap (tapShiori).
+test("classic voice with nothing open: a headset or car key opens the standing draft and listens there, and what is heard is logged and answered there, not in `me`; with no draft possible, the card says so and no microphone opens", async (t) => {
+  useClock(t);
+  const { tapShiori } = await import('../../src/ui/plus.js');
+  const { mediaKeys } = await import('../../src/ui/media-keys.js');
+  const { createTrip, ME } = await import('../../src/core/scopes.js');
+  const k = await agentKit([{ rules: [{ match: 'the user spoke', reply: calls(['speak', { text: 'Ramen is close.' }]) }, { match: '.', reply: sleep }] }], { halves: true, voice: { speechIn: ['m-hear'], hears: ['where can we eat'] } });
+  await k.agent.open(null);
+  const draft = await createTrip(k.ws, { title: 'New conversation' });
+  /** @type {string[]} */
+  const cards = [];
+  const ctx = { chats: { ready: /** @type {string | null} */ (draft), whenReady: () => Promise.resolve(draft) }, agent: k.agent, voice: k.voice, ws: k.ws, notices: { card: (/** @type {any} */ c) => cards.push(c.title) } };
+  /** @type {Record<string, () => void>} */
+  const keys = {};
+  mediaKeys({ session: { setActionHandler: (/** @type {string} */ key, /** @type {any} */ fn) => { keys[key] = fn; } }, tap: () => tapShiori(ctx), voice: k.voice });
+  const inScope = (/** @type {string} */ scope, /** @type {string[]} */ types) => k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(scope, { types }));
+  keys.play();
+  assert.equal(k.agent.target, draft, 'the draft opened, inside the press');
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'where-eat');
+  await until(() => !k.agent.busy && plays(k).length === 1, 5000);
+  assert.equal((await inScope(draft, ['heard'])).length, 1, 'heard in the draft');
+  assert.deepEqual((await inScope(draft, ['out.speak'])).map((e) => e.data.text), ['Ramen is close.'], 'she answers there');
+  assert.deepEqual(await inScope(ME, ['heard', 'msg.user', 'out.speak']), [], 'nothing in me');
+  // Nothing open again, and no draft can be made now: the card, and no microphone.
+  await k.agent.open(null);
+  await k.agent.idle();
+  ctx.chats.ready = null;
+  ctx.chats.whenReady = () => Promise.reject(new Error('The store failed.'));
+  const opens = micOpens(k);
+  keys.play();
+  await until(() => cards.length === 1);
+  await k.agent.idle();
+  assert.deepEqual(cards, ["That conversation didn't open"]);
+  assert.equal(micOpens(k), opens, 'no microphone opened');
+  assert.equal(k.agent.target, null);
+  assert.equal(k.agent.state.name, 'sleeping');
+});
+
+// key-next: a plugin's ui.shiori.send with nothing open goes through the same draft-first helper (plus.js), so the line is answered, not left in `me`.
+test("a plugin's ui.shiori.send with nothing open: the standing draft opens and the line is written and answered there, not in `me`; with no draft possible, the card says so and nothing is sent", async (t) => {
+  useClock(t);
+  const { pluginUi } = await import('../../src/ui/slots.js');
+  const { createTrip, ME } = await import('../../src/core/scopes.js');
+  const k = await agentKit([{ rules: [{ match: '.', reply: calls(['speak', { text: 'About two hours.' }]) }] }], { halves: true, voice: { speechIn: ['m-hear'] } });
+  await k.agent.open(null);
+  const draft = await createTrip(k.ws, { title: 'New conversation' });
+  /** @type {string[]} */
+  const cards = [];
+  const ctx = { chats: { ready: /** @type {string | null} */ (draft), whenReady: () => Promise.resolve(draft) }, agent: k.agent, voice: k.voice, ws: k.ws, notices: { card: (/** @type {any} */ c) => cards.push(c.title) } };
+  const inScope = (/** @type {string} */ scope, /** @type {string[]} */ types) => k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(scope, { types }));
+  assert.equal(pluginUi(ctx, 'trail').shiori.send('How long is the trail?'), undefined);
+  assert.equal(k.agent.target, draft, 'the draft opened, before anything was awaited');
+  await until(() => plays(k).length === 1, 5000);
+  await k.agent.idle();
+  assert.deepEqual((await inScope(draft, ['msg.user'])).map((e) => e.data.text), ['How long is the trail?'], 'written in the draft');
+  assert.equal(k.requests.length, 1, 'and answered there');
+  assert.deepEqual(await inScope(ME, ['msg.user', 'out.speak']), [], 'nothing in me');
+  // Nothing open again, and no draft can be made now: the card, and the line goes nowhere.
+  await k.agent.open(null);
+  await k.agent.idle();
+  ctx.chats.ready = null;
+  ctx.chats.whenReady = () => Promise.reject(new Error('The store failed.'));
+  pluginUi(ctx, 'trail').shiori.send('And the way back?');
+  await until(() => cards.length === 1);
+  await k.agent.idle();
+  assert.deepEqual(cards, ["That conversation didn't open"]);
+  assert.equal(k.requests.length, 1, 'no second request');
+  assert.deepEqual(await inScope(ME, ['msg.user']), [], 'not written into me');
+  assert.equal(k.agent.target, null);
+});
+
 // A chat Koe reads the same Voice: voice turning off inside the awaits that open its microphone leaves it shut, as for Shiori as one.
 test("a chat Koe's speak, with voice turning off as its microphone opens: no microphone, no Listening, and its speak says it couldn't listen (spec §10.5)", async (t) => {
   useClock(t);
