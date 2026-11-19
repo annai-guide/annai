@@ -235,7 +235,7 @@ export function createDock(ctx) {
   // A turn of the phone wraps the words again: the box fits them at the new width.
   addEventListener('resize', fit);
   offs.push(() => removeEventListener('resize', fit));
-  // Typed words no write kept come back to the box; the storage card says so on a full phone.
+  // Typed words no write kept come back to the box; the storage card says so for a refusal annai counts as storage.
   offs.push(ctx.agent.on('unsaved', (/** @type {{ words: string, error: unknown }} */ { words, error }) => {
     giveBack(words);
     explainStorageFull(ctx, error, { said: t`Your message is back in the box.` });

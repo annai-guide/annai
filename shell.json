@@ -1,5 +1,5 @@
 {
-  "build": "83ac2f34e0d9",
+  "build": "557506cbd695",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -205,7 +205,7 @@
     "/src/ui/cards.js": "cc78cef84d11",
     "/src/ui/composer.js": "b05c0677dd23",
     "/src/ui/credits.js": "44878ab0b1bd",
-    "/src/ui/dock.js": "168212b847e4",
+    "/src/ui/dock.js": "a56c187d42ab",
     "/src/ui/plus.js": "74dec8528c27",
     "/src/ui/dom.js": "6801c67676e9",
     "/src/ui/add-files.js": "4c64de7217c7",
