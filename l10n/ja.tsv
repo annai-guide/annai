@@ -629,30 +629,30 @@ gnrtev	ok	Shiori can't reach her model.	Shioriがモデルに接続できませ�
 1acz027	ok	just now	たった今	src/core/intl.js:152	
 1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	端末のスピーカーでは、Shioriが話している間は声を聞き取れないため、重ねて話した内容は使われません。タップするとShioriが話すのをやめ、聞き取りを始めます。	src/core/koe/live.js:669	
 1ml2kgi	ok	Tap Shiori to talk over her	割り込んで話すときはShioriをタップ	src/core/koe/live.js:669	Note: names what to tap (the dock's Shiori), as the English does.
-3fqfy0	ok	Languages	言語	src/core/languages.js:541	
-1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	話す言語とShioriが答える言語は、聞き取りや読み上げをするすべてのモデルに伝えます。短い返事を別の言語と取り違えないためです。	src/core/languages.js:542	Note: "Hears or speaks" as the glossary's 聞き取り / 読み上げ (Speech in, Speech out).
-1giusr1	ok	Languages you speak	話す言語	src/core/languages.js:543	
-m11rnd	ok	The first is the language phone dictation listens in; the order tells Shiori which you prefer.	最初の言語は、端末の音声入力が聞き取る言語です。並び順で、どれを優先するかをShioriに伝えます。	src/core/languages.js:544	Note: under "Languages you speak" (話す言語); Phone dictation as Settings → Voice's row (端末の音声入力). Replaces "In order of use…" (the user, 2026-10-28: what does the order mean?).
-5h4ntn	ok	Add a language	言語を追加	src/core/languages.js:545	
-17rv3f8	ok	Add	追加	src/core/languages.js:546	
-9c35st	ok	Remove	削除	src/core/languages.js:547	
-oogs2r	ok	Remove {0}	{0}を削除	src/core/languages.js:548	{0} = name
-h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:550	{0} = name; {1} = own
-18uuegb	ok	Added {0}	{0}を追加しました	src/core/languages.js:551	{0} = name
-zu7130	ok	Added {0}. Saved	{0}を追加して保存しました	src/core/languages.js:551	{0} = name; Note: The pair "…しました" then "…して保存しました": one sentence, as Saved follows it.
-14va31	ok	{0} moved to {1}. Saved	{0}を{1}番目に移動して保存しました	src/core/languages.js:552	{0} = name; {1} = place
-ehoetc	ok	{0} moved to {1}	{0}を{1}番目に移動しました	src/core/languages.js:552	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
-cefzcq	ok	{0} removed. Saved	{0}を削除して保存しました	src/core/languages.js:553	{0} = name
-p2yont	ok	{0} removed	{0}を削除しました	src/core/languages.js:553	{0} = name
-1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	{0}を削除しました。Shioriは元どおり、話しかけた言語で答えます	src/core/languages.js:555	{0} = name
-wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	{0}を削除して保存しました。Shioriは元どおり、話しかけた言語で答えます	src/core/languages.js:556	{0} = name
-53lnxp	ok	Shiori answers in {0}	Shioriは{0}で答えます	src/core/languages.js:558	{0} = name
-fhhm2e	ok	Shiori answers in {0}. Saved	Shioriは{0}で答えます。保存しました	src/core/languages.js:558	{0} = name
-1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shioriは話しかけた言語で答えます。保存しました	src/core/languages.js:559	
-bgn4sv	ok	Shiori answers in the language you speak to her	Shioriは話しかけた言語で答えます	src/core/languages.js:559	
-1qt7a9v	ok	Shiori answers in	Shioriが答える言語	src/core/languages.js:560	Note: A label for a menu of languages, so a noun: "the language Shiori answers in".
-k4u05v	ok	The language you speak to her	話しかけた言語に合わせる	src/core/languages.js:561	
-cc69cl	ok	None picked: annai uses the browser’s language.	未選択の場合は、ブラウザの言語を使います。	src/core/languages.js:562	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
+3fqfy0	ok	Languages	言語	src/core/languages.js:553	
+1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	話す言語とShioriが答える言語は、聞き取りや読み上げをするすべてのモデルに伝えます。短い返事を別の言語と取り違えないためです。	src/core/languages.js:554	Note: "Hears or speaks" as the glossary's 聞き取り / 読み上げ (Speech in, Speech out).
+1giusr1	ok	Languages you speak	話す言語	src/core/languages.js:555	
+17g11p4	draft	The first is the language phone dictation listens in. The order tells Shiori which you prefer, and annai reads Wikipedia, place names and addresses in these languages first, in this order, then in English.	最初の言語は、端末の音声入力が聞き取る言語です。並び順で、どれを優先するかをShioriに伝えます。annaiはWikipediaや地名・住所も、この並び順の言語を優先して読み込み、最後に英語を使います。	src/core/languages.js:556	Note: under "Languages you speak" (話す言語); Phone dictation as Settings → Voice's row (端末の音声入力). Replaces "In order of use…" (the user, 2026-10-28: what does the order mean?). Since 2026-11-19 the order also picks Wikipedia's editions and the languages of place names and addresses; Wikipedia stays Latin (glossary).
+5h4ntn	ok	Add a language	言語を追加	src/core/languages.js:557	
+17rv3f8	ok	Add	追加	src/core/languages.js:558	
+9c35st	ok	Remove	削除	src/core/languages.js:559	
+oogs2r	ok	Remove {0}	{0}を削除	src/core/languages.js:560	{0} = name
+h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:562	{0} = name; {1} = own
+18uuegb	ok	Added {0}	{0}を追加しました	src/core/languages.js:563	{0} = name
+zu7130	ok	Added {0}. Saved	{0}を追加して保存しました	src/core/languages.js:563	{0} = name; Note: The pair "…しました" then "…して保存しました": one sentence, as Saved follows it.
+14va31	ok	{0} moved to {1}. Saved	{0}を{1}番目に移動して保存しました	src/core/languages.js:564	{0} = name; {1} = place
+ehoetc	ok	{0} moved to {1}	{0}を{1}番目に移動しました	src/core/languages.js:564	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
+cefzcq	ok	{0} removed. Saved	{0}を削除して保存しました	src/core/languages.js:565	{0} = name
+p2yont	ok	{0} removed	{0}を削除しました	src/core/languages.js:565	{0} = name
+1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	{0}を削除しました。Shioriは元どおり、話しかけた言語で答えます	src/core/languages.js:567	{0} = name
+wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	{0}を削除して保存しました。Shioriは元どおり、話しかけた言語で答えます	src/core/languages.js:568	{0} = name
+53lnxp	ok	Shiori answers in {0}	Shioriは{0}で答えます	src/core/languages.js:570	{0} = name
+fhhm2e	ok	Shiori answers in {0}. Saved	Shioriは{0}で答えます。保存しました	src/core/languages.js:570	{0} = name
+1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shioriは話しかけた言語で答えます。保存しました	src/core/languages.js:571	
+bgn4sv	ok	Shiori answers in the language you speak to her	Shioriは話しかけた言語で答えます	src/core/languages.js:571	
+1qt7a9v	ok	Shiori answers in	Shioriが答える言語	src/core/languages.js:572	Note: A label for a menu of languages, so a noun: "the language Shiori answers in".
+k4u05v	ok	The language you speak to her	話しかけた言語に合わせる	src/core/languages.js:573	
+cc69cl	ok	None picked: annai uses the browser’s language.	未選択の場合は、ブラウザの言語を使います。	src/core/languages.js:574	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
 1dyfzsg	ok	A simulation is already running.	シミュレーションはすでに実行中です。	src/core/live/live.js:324	
 157qf8n	ok	Flight {0} departs {1}, {2}	フライト{0}（{1}発、{2}）	src/core/live/plan-watches.js:221	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	フライト{0}（{1}発）	src/core/live/plan-watches.js:221	{0} = w.flight; {1} = time
@@ -795,16 +795,16 @@ sejc5h	ok	{0} was switched off after errors.	{0}はエラーが続いたため�
 xzxdhp	ok	The plugin didn't provide a model provider.	このプラグインはモデルのプロバイダーを提供していませんでした。	src/core/llm/service.js:323	Note: said of a plugin.
 2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	そのプラグインはannai公式のものではありません。入手元からもう一度インストールしてください。	src/core/llm/service.js:402	
 1k9wkd0	ok	The plugin it names doesn't provide models, so it wasn't installed.	指定されているプラグインはモデルを提供していないため、インストールされませんでした。	src/core/llm/service.js:411	Note: said after the provider's name ("OpenRouter: …"); the plugin its record names.
-3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:70	{0} = p.title
-1rb0o7n	ok	OpenStreetMap around {0}	{0}周辺のOpenStreetMap	src/core/pack/download.js:72	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
-hdsgog	ok	OpenStreetMap between {0} and {1}	{0}と{1}の間のOpenStreetMap	src/core/pack/download.js:72	{0} = a; {1} = b
-1ff3ec8	ok	Wikipedia near {0}	{0}付近のWikipedia	src/core/pack/download.js:73	{0} = a
-i9ok5g	ok	Wikipedia between {0} and {1}	{0}と{1}の間のWikipedia	src/core/pack/download.js:73	{0} = a; {1} = b
-1qn6l15	ok	{0} didn't answer in time.	{0}から時間内に応答がありませんでした。	src/core/pack/download.js:79	{0} = s.where
-16rip5y	ok	{0} stopped early: {1}.	{0}が途中で止まりました：{1}。	src/core/pack/download.js:80	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
-cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMapから応答がありませんでした（{0}）。	src/core/pack/download.js:81	{0} = (s.inner ? failWords(s.inner) : s.message).replace(/[.。]$/u, '')
-rhruvr	ok	{0} said: {1}.	{0}の応答：{1}。	src/core/pack/download.js:82	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
-1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyageから{0}の本文が届きませんでした。	src/core/pack/download.js:83	{0} = s.title
+3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:72	{0} = p.title
+1rb0o7n	ok	OpenStreetMap around {0}	{0}周辺のOpenStreetMap	src/core/pack/download.js:74	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
+hdsgog	ok	OpenStreetMap between {0} and {1}	{0}と{1}の間のOpenStreetMap	src/core/pack/download.js:74	{0} = a; {1} = b
+1ff3ec8	ok	Wikipedia near {0}	{0}付近のWikipedia	src/core/pack/download.js:75	{0} = a
+i9ok5g	ok	Wikipedia between {0} and {1}	{0}と{1}の間のWikipedia	src/core/pack/download.js:75	{0} = a; {1} = b
+1qn6l15	ok	{0} didn't answer in time.	{0}から時間内に応答がありませんでした。	src/core/pack/download.js:81	{0} = s.where
+16rip5y	ok	{0} stopped early: {1}.	{0}が途中で止まりました：{1}。	src/core/pack/download.js:82	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
+cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMapから応答がありませんでした（{0}）。	src/core/pack/download.js:83	{0} = (s.inner ? failWords(s.inner) : s.message).replace(/[.。]$/u, '')
+rhruvr	ok	{0} said: {1}.	{0}の応答：{1}。	src/core/pack/download.js:84	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
+1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyageから{0}の本文が届きませんでした。	src/core/pack/download.js:85	{0} = s.title
 aaicx8	ok	{0} couldn't be checked: {1}	{0}を確認できませんでした：{1}	src/core/package-updates.js:40	{0} = s.name ?? id; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 trd90h	ok	It wasn't installed from an address, so annai has nowhere to look for an update.	アドレスからインストールしたものではないため、更新を確認できません。	src/core/package-updates.js:67	
 2olq9a	ok	The address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	そのアドレスのパッケージが別のもの（{0}）に変わっているため、アップデートしませんでした。そちらを使う場合は、これを削除してからインストールしてください。	src/core/package-updates.js:71	{0} = pkg.id
@@ -992,8 +992,8 @@ z6ass1	ok	annai sends {0} itself, so it can't be one of these headers. Leave tha
 129gp7y	ok	There is no MCP server called {0}.	「{0}」というMCPサーバーはありません。	src/plugins/mcp/index.js:275	{0} = name
 i69zke	ok	A server's name is 1 to 20 lowercase letters, digits and dashes, like trail.	サーバー名は、英小文字・数字・ハイフンの1〜20文字で入力してください（例：trail）。	src/plugins/mcp/index.js:314	Note: trail is an example name, as the form's placeholder; kept as written.
 ku5jlk	ok	There is a server called {0} already.	「{0}」というサーバーはすでにあります。	src/plugins/mcp/index.js:315	{0} = n
-126nbeu	ok	Places tools	場所ツール	src/plugins/places/index.js:16	Note: Places as its tool group is named in Settings → Tools (場所 / 地点).
-1gghsme	ok	nearby, geocode, reverse, weather and guide, from OpenStreetMap, Wikipedia, Nominatim, Open-Meteo and Wikivoyage.	nearby、geocode、reverse、weather、guide。OpenStreetMap、Wikipedia、Nominatim、Open-Meteo、Wikivoyageのデータを使います。	src/plugins/places/index.js:19	
+126nbeu	ok	Places tools	場所ツール	src/plugins/places/index.js:18	Note: Places as its tool group is named in Settings → Tools (場所 / 地点).
+1gghsme	ok	nearby, geocode, reverse, weather and guide, from OpenStreetMap, Wikipedia, Nominatim, Open-Meteo and Wikivoyage.	nearby、geocode、reverse、weather、guide。OpenStreetMap、Wikipedia、Nominatim、Open-Meteo、Wikivoyageのデータを使います。	src/plugins/places/index.js:21	
 143ff3s	ok	Sensors	センサー	src/plugins/sensors/index.js:6	
 3mo7sf	ok	Where the phone is (GPS, only while GPS is on in annai and annai is on screen), whether annai is on screen, and whether there is a connection.	端末の位置（GPS。annaiでGPSがオンで、annaiが画面に表示されている間だけ）、annaiが画面に表示されているかどうか、通信できるかどうか。	src/plugins/sensors/index.js:9	
 gec6zp	ok	Built-in skills	内蔵スキル	src/plugins/skills/index.js:15	
@@ -1004,10 +1004,10 @@ elkw42	ok	The voice's audio couldn't be played.	読み上げの音声を再生�
 9gdjo3	ok	The browser voice couldn't speak ({0}).	ブラウザの声で読み上げられませんでした（{0}）。	src/plugins/voice-browser/index.js:585	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
 1mrk9hl	ok	The microphone stopped.	マイクが停止しました。	src/plugins/voice-browser/index.js:650	
 1l4zitw	ok	Phone dictation stopped ({0}).	端末の音声入力が停止しました（{0}）。	src/plugins/voice-browser/index.js:755	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音声入力 / 手机语音输入); {0} is the browser's error code, such as network.
-1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia、Nominatim	src/plugins/web/free.js:119	
-scnz2y	ok	Web tools	Webツール	src/plugins/web/index.js:12	Note: Web as its tool group is named in Settings → Tools (Web / 网页).
-eob60g	ok	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetchはWebページを読み込みます。サイトがWebアプリからの読み込みを許可していないときは、Jina ReaderかExaを経由します。web_searchは検索プロバイダーで検索します。順番は「設定 → ツール」で決まり、初期状態では無料のものが先です。	src/plugins/web/index.js:15	
-b4g7z9	ok	needs a key (Settings → Tools)	キーが必要：「設定 → ツール」	src/plugins/web/index.js:188	
+1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia、Nominatim	src/plugins/web/free.js:121	
+scnz2y	ok	Web tools	Webツール	src/plugins/web/index.js:13	Note: Web as its tool group is named in Settings → Tools (Web / 网页).
+eob60g	ok	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetchはWebページを読み込みます。サイトがWebアプリからの読み込みを許可していないときは、Jina ReaderかExaを経由します。web_searchは検索プロバイダーで検索します。順番は「設定 → ツール」で決まり、初期状態では無料のものが先です。	src/plugins/web/index.js:16	
+b4g7z9	ok	needs a key (Settings → Tools)	キーが必要：「設定 → ツール」	src/plugins/web/index.js:189	
 ew9em3	ok	Cancel	キャンセル	src/ui/ask.js:16	
 7fxcga	ok	Back up this phone over it	この端末の内容でバックアップを上書き	src/ui/auto-backup.js:65	Note: the newer backup at the place is replaced with this device's data, so the button says whose data overwrites it.
 qe6isd	ok	annai can't tell whether this phone is on Wi-Fi, so larger backups wait for your OK.	この端末がWi-Fiに接続中かどうかannaiには判断できないため、大きなバックアップは許可するまで待機します。	src/ui/auto-backup.js:65	
@@ -1052,7 +1052,7 @@ rcp6ga	ok	A photo was kept as it is	写真をそのまま保存しました	src/
 158qnm7	ok	Ask Shiori about this	Shioriに聞く	src/ui/composer.js:232	Note: the button that puts the file in the type box as a chip, to write what is wrong or missing; 聞く (ask) is plain.
 1waossz	ok	Places nearby and along the itinerary, for Shiori's nearby tool and the offline pack, found through Overpass at overpass-api.de, and at maps.mail.ru, run by VK, while Settings → Tools has it on.	周辺や旅程沿いの場所。Shioriのnearbyツールとオフラインパックで使います。Overpass（overpass-api.de）を通じて探し、「設定 → ツール」でチェックを入れている間は、VKが運営するmaps.mail.ruでも探します。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
 g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	名前から場所を探したり、地点から地名を調べたりします。Shioriのgeocodeとreverseツールで使い、無料検索の最後の手段として場所の公式サイトを探すのにも使います。利用ポリシーに従い、問い合わせは1秒に1回までにしています。	src/ui/credits.js:26	
-nn3bzj	ok	Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's last resort, on whatever you tick, sends it the words searched.	周辺の場所に関する記事と、オフラインパックに入れるその要約。Shioriが読む記事にはそれぞれアドレスが付きます。無料検索の最後の手段は、チェックの有無にかかわらず、検索キーワードをWikipediaに送ります。	src/ui/credits.js:33	
+oa9m21	draft	Articles about places nearby, and their summaries in the offline pack, from the editions in the languages you speak and in English. Each article Shiori reads comes with its address. Free search's last resort, on whatever you tick, sends it the words searched.	周辺の場所に関する記事と、オフラインパックに入れるその要約。話す言語と英語の各版から取得します。Shioriが読む記事にはそれぞれアドレスが付きます。無料検索の最後の手段は、チェックの有無にかかわらず、検索キーワードをWikipediaに送ります。	src/ui/credits.js:33	Note: Settings → About, Wikipedia's credit. Since 2026-11-19 it names the editions read: the languages you speak, and English.
 1ufrhy7	ok	Travel guides, for Shiori's guide tool and the offline pack, and where free search falls back to.	旅行ガイド。Shioriのguideツールとオフラインパックで使うほか、無料検索の予備にもなります。	src/ui/credits.js:40	Note: free search falls back to it; 代わり read as replacing free search.
 czha5t	ok	Weather forecasts, for Shiori's weather tool. Sunrise and sunset in the forecast are Open-Meteo's too; the Itinerary's golden hour, and the sun's times when Open-Meteo doesn't answer, are worked out on the phone.	天気予報。Shioriのweatherツールで使います。予報の日の出・日の入り時刻もOpen-Meteoのものです。「旅程」のゴールデンアワーと、Open-Meteoが応答しないときの日の出・日の入り時刻は、端末で計算します。	src/ui/credits.js:47	
 a8awk7	ok	Free web search for web_search, and a reader of pages other readers can't read for fetch, while ticked in Settings → Tools. Only the words searched, or the page's address, are sent.	web_searchの無料Web検索と、ほかの方法では読めないページをfetchで読むための手段。「設定 → ツール」でチェックを入れている間だけ使います。送信するのは検索キーワードか、ページのアドレスだけです。	src/ui/credits.js:54	
@@ -2199,23 +2199,23 @@ nsh8oa	ok	Written {0}, then edited by you.	作成：{0}（その後、自分が�
 1xmt4f6	ok	What goes to {0}	{0}に送られるもの	src/ui/screens/recap.js:83	{0} = names(model.name)
 1cw9uku	ok	Add one in Settings → Models.	「設定 → モデル」で追加してください。	src/ui/screens/recap.js:85	
 1izysa3	ok	No model is set up to write it yet.	振り返りを書くモデルがまだ設定されていません。	src/ui/screens/recap.js:85	
-1ryjzrz	ok	Whole trip	旅全体	src/ui/screens/replay.js:43	
-2m5fua	ok	Nothing to replay yet. While GPS is on, annai records where you go; Shiori's cards, your messages and your photos show here too.	まだリプレイできるものはありません。GPSがオンの間、annaiは訪れた場所を記録します。Shioriのカードや、送ったメッセージ、写真もここに表示されます。	src/ui/screens/replay.js:47	
-wl73p3	ok	The route: {0}	ルート：{0}	src/ui/screens/replay.js:73	{0} = r.words
-15c7htt	ok	You said	自分（音声）	src/ui/screens/replay.js:104	
-1efd4xo	ok	You	自分	src/ui/screens/replay.js:104	
-10ftdrc	ok	Photo {0}, {1}	写真「{0}」（{1}）	src/ui/screens/replay.js:106	{0} = e.path.split('/').pop(); {1} = timeIn(e.at, r.tz)
-1el9a17	ok	Open full size	大きく表示	src/ui/screens/replay.js:107	
-bk85tv	ok	Play	再生	src/ui/screens/replay.js:121	
-1kq44x8	ok	{0}, {1}	{0}、{1}	src/ui/screens/replay.js:153	{0} = words; {1} = m.where; Note: A moment of the replay: its time, then where you were.
-1ixl81m#other	ok	# stamps so far	これまでのスタンプ：#個	src/ui/screens/replay.js:159	plural; # = m.stamps; English: "# stamp so far" (one), "# stamps so far" (other)
-1bjla9w	ok	The timeline below lists each place in order.	下のタイムラインに、場所が順に並んでいます。	src/ui/screens/replay.js:171	
-z5puy8	ok	At this moment	この時点	src/ui/screens/replay.js:172	
-hg5a8z	ok	Time in the trip	再生位置	src/ui/screens/replay.js:175	
-2w2xwg	ok	Speed	速度	src/ui/screens/replay.js:176	
-7xq6tu	ok	The trip in order	旅の流れ	src/ui/screens/replay.js:177	
-djv8ja	ok	Timeline	タイムライン	src/ui/screens/replay.js:177	
-j4z771	ok	Pause	一時停止	src/ui/screens/replay.js:178	
+1ryjzrz	ok	Whole trip	旅全体	src/ui/screens/replay.js:42	
+2m5fua	ok	Nothing to replay yet. While GPS is on, annai records where you go; Shiori's cards, your messages and your photos show here too.	まだリプレイできるものはありません。GPSがオンの間、annaiは訪れた場所を記録します。Shioriのカードや、送ったメッセージ、写真もここに表示されます。	src/ui/screens/replay.js:46	
+wl73p3	ok	The route: {0}	ルート：{0}	src/ui/screens/replay.js:72	{0} = r.words
+15c7htt	ok	You said	自分（音声）	src/ui/screens/replay.js:103	
+1efd4xo	ok	You	自分	src/ui/screens/replay.js:103	
+10ftdrc	ok	Photo {0}, {1}	写真「{0}」（{1}）	src/ui/screens/replay.js:105	{0} = e.path.split('/').pop(); {1} = timeIn(e.at, r.tz)
+1el9a17	ok	Open full size	大きく表示	src/ui/screens/replay.js:106	
+bk85tv	ok	Play	再生	src/ui/screens/replay.js:120	
+1kq44x8	ok	{0}, {1}	{0}、{1}	src/ui/screens/replay.js:152	{0} = words; {1} = m.where; Note: A moment of the replay: its time, then where you were.
+1ixl81m#other	ok	# stamps so far	これまでのスタンプ：#個	src/ui/screens/replay.js:158	plural; # = m.stamps; English: "# stamp so far" (one), "# stamps so far" (other)
+1bjla9w	ok	The timeline below lists each place in order.	下のタイムラインに、場所が順に並んでいます。	src/ui/screens/replay.js:170	
+z5puy8	ok	At this moment	この時点	src/ui/screens/replay.js:171	
+hg5a8z	ok	Time in the trip	再生位置	src/ui/screens/replay.js:174	
+2w2xwg	ok	Speed	速度	src/ui/screens/replay.js:175	
+7xq6tu	ok	The trip in order	旅の流れ	src/ui/screens/replay.js:176	
+djv8ja	ok	Timeline	タイムライン	src/ui/screens/replay.js:176	
+j4z771	ok	Pause	一時停止	src/ui/screens/replay.js:177	
 qxxy9e	ok	Its tools	ツール	src/ui/screens/sees.js:12	
 vvrw23	ok	Its setup: instructions	セッション設定：指示	src/ui/screens/sees.js:12	
 yxdp3q	ok	Its instructions	指示	src/ui/screens/sees.js:12	

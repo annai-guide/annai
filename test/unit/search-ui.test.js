@@ -2,7 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SEARCH_NOTE, WELCOME_SEARCH, stateOf } from '../../src/ui/search-panel.js';
 import { cooldowns, READY_MS } from '../../src/core/web-search.js';
-import { FREE_PROVIDERS, KNOWLEDGE } from '../../src/plugins/web/free.js';
+import { FREE_PROVIDERS, knowledgeFloor } from '../../src/plugins/web/free.js';
+import { readingOrder } from '../../src/core/languages.js';
+
+const KNOWLEDGE = knowledgeFloor(async () => readingOrder({}, 'en-US'));
 
 test('S5: the notes name where searches go, the last resort that stays on, what stops it, the training, and what is not sent', () => {
   for (const t of [SEARCH_NOTE, WELCOME_SEARCH]) {

@@ -50,8 +50,9 @@ async function hostsInCode() {
   const out = new Map();
   for (const f of [...shell, 'sw.js', ...(await walk('plugins-official'))]) {
     const text = await readFile(new URL(f, root), 'utf8');
-    for (const m of text.matchAll(/https?:\/\/([a-z0-9-]+(?:\.[a-z0-9-]+)+)/gi)) {
-      const host = m[1].toLowerCase();
+    // A host made from a value (`https://${edition}.wikipedia.org`) is any of its domain's: *.wikipedia.org.
+    for (const m of text.matchAll(/https?:\/\/(\$\{[^}]*\}|[a-z0-9-]+)((?:\.[a-z0-9-]+)+)/gi)) {
+      const host = `${m[1].startsWith('$') ? '*' : m[1]}${m[2]}`.toLowerCase();
       out.set(host, [...new Set([...(out.get(host) ?? []), f])]);
     }
   }
@@ -72,8 +73,15 @@ async function providerHosts() {
 
 const hostOf = (/** @type {string} */ href) => new URL(href).hostname;
 
+test('a host the code makes from a value is read as its whole domain: Wikipedia in the traveller\'s editions is *.wikipedia.org', async () => {
+  const inCode = await hostsInCode();
+  assert.ok(inCode.get('*.wikipedia.org')?.includes('src/core/wiki.js'), [...inCode.keys()].join(' '));
+});
+
 test('every data source annai contacts has a credit on Settings → About', async () => {
-  const credited = new Set(SOURCES.flatMap((s) => s.hosts));
+  const hosts = SOURCES.flatMap((s) => s.hosts);
+  // A literal host is credited by a *. entry of its domain too.
+  const credited = new Set([...hosts, ...[...(await hostsInCode()).keys()].filter((h) => hosts.some((c) => c.startsWith('*.') && h.endsWith(c.slice(1))))]);
   const links = new Set(SOURCES.flatMap((s) => s.links.map((l) => hostOf(l.href))));
   const providers = await providerHosts();
   const missing = [...(await hostsInCode())]

@@ -1205,6 +1205,9 @@ test('the scrub keeps every other byte of a file that is not UTF-8, and a BOM', 
 
 test("the scrub removes the encoded bar of annai's Wikipedia nearby search", () => {
   assert.equal(scrub('https://en.wikipedia.org/w/api.php?list=geosearch&gscoord=36.3715%7C-121.9017&gsradius=1000'), 'https://en.wikipedia.org/w/api.php?list=geosearch&gscoord=&gsradius=1000');
+  // Its address since editions, in any edition (wiki.js nearUrl).
+  assert.equal(scrub('https://ja.wikipedia.org/w/api.php?action=query&generator=geosearch&ggscoord=34.9949%7C135.785&ggsradius=1000&ggslimit=30'),
+    'https://ja.wikipedia.org/w/api.php?action=query&generator=geosearch&ggscoord=&ggsradius=1000&ggslimit=30');
 });
 
 test('a Share without places keeps every other byte of a Shift-JIS, a Latin-1 and a BOM file', async () => {

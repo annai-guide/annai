@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { packPlan, planStops, planFor, estimate, likelyGuides, guideTitles, hashId, STRETCH_KM, MAX_OSM, MAX_WIKI } from '../../src/core/pack/plan.js';
+import { packPlan, planStops, planFor, estimate, likelyGuides, guideTitles, hashId, STRETCH_KM, MAX_OSM, MAX_WIKI, SIZES } from '../../src/core/pack/plan.js';
+import { wanted } from '../../src/core/pack/download.js';
 import { meters } from '../../src/core/live/geo.js';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
@@ -82,9 +83,12 @@ test('a very long plan is capped, and says how much was left out', () => {
 test('the estimate shown before downloading: about 240 KB for Big Sur (a real pack was 143 KB)', () => {
   const plan = packPlan({ trip: { places: ['Big Sur'] }, items: bigSur });
   assert.equal(likelyGuides(plan), 3);
-  const n = estimate(plan.parts, likelyGuides(plan));
+  const n = estimate(wanted(plan, ['en']), likelyGuides(plan));
   assert.ok(n > 150 * 1024 && n < 350 * 1024, String(n));
   assert.equal(estimate([], 0), 0);
+  // Japanese listed too: each Wikipedia part once more, at another edition's size.
+  const wiki = plan.parts.filter((p) => p.kind === 'wikipedia').length;
+  assert.equal(estimate(wanted(plan, ['ja', 'en']), likelyGuides(plan)) - n, wiki * SIZES.wikiEdition);
 });
 
 test('the Wikivoyage titles a name may be under', () => {

@@ -1,6 +1,7 @@
 import { McpClient, toolOutput } from '../mcp/client.js';
 import { answerJSON } from '../../core/answer.js';
-import { nominatimTurn } from '../../core/nominatim.js';
+import { nominatimTurn, nominatimLanguages } from '../../core/nominatim.js';
+import { editionsOf, articleUrl } from '../../core/wiki.js';
 import { cut } from '../../core/web-search.js';
 import { t } from '../../core/l10n.js';
 
@@ -111,13 +112,16 @@ const STOP = new Set(['the', 'and', 'for', 'are', 'was', 'does', 'what', 'when',
 const keywords = (query) => (query.toLowerCase().match(/[\p{L}\p{N}]{2,}/gu) ?? []).filter((w) => !STOP.has(w));
 
 /**
- * The floor: a Wikivoyage guide's lines that answer the query, Nominatim's official websites for the place, and
- * Wikipedia's matching articles. Encyclopedic, not web search; always reachable, and credited.
- * @type {import('../../core/web-search.js').SearchProvider}
+ * The floor: a Wikivoyage guide's lines that answer the query, Nominatim's official websites for the place, and Wikipedia's matching
+ * articles, in the reading order. Encyclopedic, not web search; always reachable, and credited.
+ * @param {() => Promise<import('../../core/languages.js').Language[]>} orderOf
+ * @returns {import('../../core/web-search.js').SearchProvider}
  */
-export const KNOWLEDGE = {
+export const knowledgeFloor = (orderOf) => ({
   id: 'wiki', name: /* en */ 'Wikivoyage, Wikipedia and Nominatim', shown: t`Wikivoyage, Wikipedia and Nominatim`, kind: 'knowledge', always: true, limitMs: LIMIT_MS,
+  /** @param {string} query @param {{ fetch: any, signal: AbortSignal, limit: number }} c */
   async search(query, { fetch: get, signal, limit }) {
+    const order = await orderOf();
     const found = keywords(query);
     const want = found.length ? found : [query.trim().toLowerCase()];
     const enc = encodeURIComponent;
@@ -128,20 +132,33 @@ export const KNOWLEDGE = {
       return answerJSON(res, new URL(url).hostname);
     };
     const api = (/** @type {string} */ host, /** @type {string} */ qs) => `https://${host}/w/api.php?${qs}&format=json&origin=*`;
-    // Questions rarely match whole; fewer words are tried when all of them find nothing.
+    // Questions rarely match whole; fewer words are tried when all of them find nothing, each host asked with all the words before any with
+    // fewer (an English hit on the whole beats a Japanese one on two). A host that fails is left out after; all failing is the failure.
     const tries = [...new Set([want.join(' '), want.slice(0, 3).join(' '), want.slice(0, 2).join(' ')])].filter(Boolean);
-    /** @param {string} host @returns {Promise<any[]>} */
-    const hits = async (host) => {
+    /** @param {string[]} hosts @returns {Promise<{ host: string, found: any[] }>} */
+    const hits = async (hosts) => {
+      let left = hosts;
+      /** @type {unknown} */
+      let error = null;
       for (const q of tries) {
-        /* en */
-        const found = (await json(api(host, `action=query&list=search&srlimit=${limit}&srsearch=${enc(q)}`)))?.query?.search;
-        if (Array.isArray(found) && found.length) return found;
+        for (const host of left) {
+          try {
+            /* en */
+            const found = (await json(api(host, `action=query&list=search&srlimit=${limit}&srsearch=${enc(q)}`)))?.query?.search;
+            if (Array.isArray(found) && found.length) return { host, found };
+          } catch (e) {
+            if (signal.aborted) throw e;
+            error ??= e;
+            left = left.filter((h) => h !== host);
+          }
+        }
       }
-      return [];
+      if (!left.length) throw error;
+      return { host: hosts[0], found: [] };
     };
     const wikiUrl = (/** @type {string} */ host, /** @type {string} */ title) => `https://${host}/wiki/${enc(title.replace(/ /g, '_'))}`;
     const guide = async () => {
-      const [top] = await hits('en.wikivoyage.org');
+      const [top] = (await hits(['en.wikivoyage.org'])).found;
       if (!top) return [];
       const page = /** @type {any} */ (Object.values((await json(api('en.wikivoyage.org', `action=query&prop=extracts&explaintext=1&redirects=1&titles=${enc(top.title)}`)))?.query?.pages ?? {})[0]);
       const lines = String(page?.extract ?? '').split('\n').map((l) => l.trim()).filter((l) => l.length > 20);
@@ -151,14 +168,18 @@ export const KNOWLEDGE = {
     };
     const places = async () => {
       await nominatimTurn(); // one request a second to Nominatim, for the whole app
-      const found = await json(`https://nominatim.openstreetmap.org/search?q=${enc(want.join(' '))}&format=jsonv2&extratags=1&limit=3`);
+      const found = await json(`https://nominatim.openstreetmap.org/search?q=${enc(want.join(' '))}&format=jsonv2&extratags=1&limit=3&accept-language=${enc(nominatimLanguages(order))}`);
       /* en */
       return (Array.isArray(found) ? found : []).filter((f) => f?.extratags?.website)
         .map((f) => ({ title: f.name || f.display_name, url: f.extratags.website, snippet: [f.display_name, f.extratags.opening_hours ? `Hours: ${f.extratags.opening_hours}` : ''].filter(Boolean).join('. ') }));
     };
-    const articles = async () => (await hits('en.wikipedia.org')).map((h) => ({ title: /* en */ `${h.title} (Wikipedia)`, url: wikiUrl('en.wikipedia.org', h.title), snippet: h.snippet }));
+    const articles = async () => {
+      const hosts = new Map(editionsOf(order).map((e) => [`${e}.wikipedia.org`, e]));
+      const { host, found } = await hits([...hosts.keys()]);
+      return found.map((h) => ({ title: /* en */ `${h.title} (Wikipedia)`, url: articleUrl(/** @type {string} */ (hosts.get(host)), h.title), snippet: h.snippet }));
+    };
     const settled = await Promise.allSettled([guide(), places(), articles()]);
     if (settled.every((s) => s.status === 'rejected')) throw /** @type {PromiseRejectedResult} */ (settled[0]).reason;
     return settled.flatMap((s) => (s.status === 'fulfilled' ? s.value : []));
   },
-};
+});

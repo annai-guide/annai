@@ -6,10 +6,12 @@ import { t } from '../l10n.js';
 import { meters } from '../live/geo.js';
 import { StorageFullError } from '../errors.js';
 import { anySignal } from '../signals.js';
+import { nearUrl, articlesOf, agentHeader } from '../wiki.js';
 
 /**
  * Downloads a trip's offline pack (spec §11.5), one request at a time with a second between them: the parts its plan needs that the pack
- * lacks or has from more than a month ago, then the Wikivoyage guides for the names the trip, the plan and the Wikipedia summaries give.
+ * lacks or has from more than a month ago (a Wikipedia part once per edition the traveller reads), then the Wikivoyage guides for the names
+ * the trip, the plan and English Wikipedia's summaries give.
  * Parts the plan no longer needs go. Each part is a file in the trip, so a download that stops keeps what it got and the next goes on.
  * Positions go only to OpenStreetMap and Wikipedia (§11.7), and to VK's Overpass server while its switch is on; Wikivoyage is asked
  * about names, as the guide tool asks it.
@@ -17,9 +19,10 @@ import { anySignal } from '../signals.js';
  * @typedef {(url: string, init?: RequestInit) => Promise<Response>} Fetch
  * @typedef {import('./plan.js').Part} Part
  * @typedef {import('./plan.js').PackPlan} PackPlan
- * @typedef {{ id: string, kind: 'osm' | 'wikipedia' | 'wikivoyage', path: string, bytes: number, items: number, at: number }} PackFile
+ * @typedef {{ id: string, kind: 'osm' | 'wikipedia' | 'wikivoyage', path: string, bytes: number, items: number, at: number, edition?: string }} PackFile
  *   items: places, summaries, or 1 for a guide; at: when it was downloaded (ms). Not the file's own time: a
- *   download that brings the same bytes leaves the file as it was.
+ *   download that brings the same bytes leaves the file as it was. edition: a Wikipedia file's, written since editions (one without: English, no ids)
+ * @typedef {{ part: Part, edition: string | null, path: string }} Want  a file a plan's pack holds
  * @typedef {{ title: string, asked: string[], path: string }} Guide
  *   asked: the names that led to it ("Hearst Castle" leads to San Simeon)
  * @typedef {{ source: 'osm' | 'wikipedia', place: import('./plan.js').Place } | { source: 'wikivoyage', title?: string }} PartRef
@@ -41,7 +44,6 @@ import { anySignal } from '../signals.js';
 
 export const DIR = '/offline/';
 export const MANIFEST = '/offline/pack.json';
-const WIKIPEDIA = 'https://en.wikipedia.org/w/api.php';
 const WIKIVOYAGE = 'https://en.wikivoyage.org/w/api.php';
 /** A second between requests: no service is asked twice at once (their usage policies). */
 export const GAP_MS = 1000;
@@ -88,8 +90,12 @@ export function failWords(s) {
 /** An error by the shown rule: message in annai's English, said its data. @param {string} en @param {PackSaid} said */
 const fault = (en, said) => Object.assign(new Error(en), { said });
 
-/** Where a part is kept. @param {Part} p */
-export const pathOf = (p) => `${DIR}${p.kind}/${p.id}.json`;
+/** Where a part is kept, a Wikipedia part's per edition (English's as before editions). @param {Part} p @param {string} [edition] */
+export const pathOf = (p, edition = 'en') => `${DIR}${p.kind}/${p.id}${p.kind === 'wikipedia' && edition !== 'en' ? `.${edition}` : ''}.json`;
+/** @param {PackPlan} plan @param {string[]} editions @returns {Want[]} */
+export const wanted = (plan, editions) => plan.parts.flatMap((p) => /** @type {Want[]} */ (p.kind === 'wikipedia' ? editions.map((e) => ({ part: p, edition: e, path: pathOf(p, e) })) : [{ part: p, edition: null, path: pathOf(p) }]));
+/** English rows from before editions, without ids to merge by, beside another edition: downloaded again, kept till then. @param {PackFile | undefined} f @param {string[]} editions */
+export const lacksIds = (f, editions) => f?.kind === 'wikipedia' && f.edition === undefined && editions.length > 1;
 /** Where a guide is kept. @param {string} title */
 export function guideFile(title) {
   const id = `g${hashId(title)}`;
@@ -103,7 +109,7 @@ export async function readManifest(ws, scope) {
   return {
     format: 1, key: String(m.key ?? ''), at: String(m.at ?? ''),
     files: m.files.filter((f) => typeof f?.path === 'string' && typeof f.id === 'string' && ['osm', 'wikipedia', 'wikivoyage'].includes(f.kind))
-      .map((f) => ({ id: f.id, kind: f.kind, path: f.path, bytes: Number(f.bytes) || 0, items: Number(f.items) || 0, at: Number(f.at) || 0 })),
+      .map((f) => ({ id: f.id, kind: f.kind, path: f.path, bytes: Number(f.bytes) || 0, items: Number(f.items) || 0, at: Number(f.at) || 0, ...(typeof f.edition === 'string' ? { edition: f.edition } : {}) })),
     guides: m.guides.filter((g) => typeof g?.title === 'string' && typeof g.path === 'string')
       .map((g) => ({ title: g.title, asked: Array.isArray(g.asked) ? g.asked.filter((a) => typeof a === 'string') : [], path: g.path })),
     failed: m.failed.filter((f) => typeof f?.label === 'string').map((f) => ({ label: f.label, why: String(f.why ?? ''), ...('part' in f ? { part: f.part, said: f.said ?? null } : {}) })),
@@ -124,8 +130,9 @@ function pause(ms, signal) {
 }
 
 /**
- * @param {{ ws: Workspace, scope: string, fetch: Fetch, version: string, signal?: AbortSignal,
+ * @param {{ ws: Workspace, scope: string, fetch: Fetch, version: string, editions: string[], signal?: AbortSignal,
  *   onProgress?: (p: Progress) => void, gapMs?: number, now?: () => number, maxBytes?: number, answerMs?: number, busyMs?: number }} o
+ *   editions: the Wikipedia editions the traveller's languages read (wiki.js editionsOf)
  * @returns {Promise<Manifest>}
  */
 export async function downloadPack(o) {
@@ -139,7 +146,7 @@ export async function downloadPack(o) {
   const prev = new Map((old?.files ?? []).map((f) => [f.path, f]));
   const fresh = (/** @type {string} */ path) => {
     const f = have.get(path);
-    return f !== undefined && now() - (prev.get(path)?.at || f.modified) <= STALE_MS;
+    return f !== undefined && now() - (prev.get(path)?.at || f.modified) <= STALE_MS && !lacksIds(prev.get(path), o.editions);
   };
   /** @type {Map<string, PackFile>} */
   const files = new Map();
@@ -149,7 +156,7 @@ export async function downloadPack(o) {
   let full = false;
   let fails = 0;
   let asked = 0;
-  const headers = { 'Api-User-Agent': /* en */ `annai/${o.version} (https://annai.guide)` };
+  const headers = agentHeader(o.version);
   /** @type {Ask} */
   const ask = async (url, init, where) => {
     if (asked++) await pause(o.gapMs ?? GAP_MS, signal);
@@ -166,10 +173,11 @@ export async function downloadPack(o) {
       clearTimeout(timer);
     }
   };
-  /** What the pack already has stays, as it is. @param {Omit<PackFile, 'bytes' | 'at' | 'items'>} f @param {number} [count] */
+  /** What the pack already has stays, as it is. @param {Omit<PackFile, 'bytes' | 'at' | 'items' | 'edition'>} f @param {number} [count] */
   const keepOld = (f, count) => {
     const size = have.get(f.path)?.size ?? 0;
-    files.set(f.path, { ...f, bytes: size, items: count ?? prev.get(f.path)?.items ?? 0, at: prev.get(f.path)?.at || have.get(f.path)?.modified || 0 });
+    const was = prev.get(f.path);
+    files.set(f.path, { ...f, bytes: size, items: count ?? was?.items ?? 0, at: was?.at || have.get(f.path)?.modified || 0, ...(was?.edition === undefined ? {} : { edition: was.edition }) });
     bytes += size;
   };
   /** Writes a file, unless the pack would pass its limit. @param {Omit<PackFile, 'bytes' | 'at'>} f @param {unknown} content */
@@ -193,20 +201,23 @@ export async function downloadPack(o) {
     failed.push({ label: partLabel(part), why: String(/** @type {any} */ (e)?.message ?? e), part, said: /** @type {any} */ (e)?.said ?? null });
   };
 
-  for (const p of plan.parts) if (fresh(pathOf(p))) keepOld({ id: p.id, kind: p.kind, path: pathOf(p) });
-  const todo = plan.parts.filter((p) => !files.has(pathOf(p)));
+  const entry = (/** @type {Want} */ w) => ({ id: w.part.id, kind: w.part.kind, path: w.path });
+  const want = wanted(plan, o.editions);
+  for (const w of want) if (fresh(w.path)) keepOld(entry(w));
+  const todo = want.filter((w) => !files.has(w.path));
   let total = todo.length + 1; // and finding the guides
   let done = 0;
   const progress = (/** @type {PartRef} */ part) => o.onProgress?.({ done, total, label: partWords(part) });
-  for (const p of todo) {
+  for (const w of todo) {
     if (over()) break;
+    const p = w.part;
     /** @type {PartRef} */
     const part = { source: p.kind, place: p.place };
     progress(part);
     try {
       // The Overpass servers by the switch as it is now, part by part: turned off, VK's server is asked nothing more.
-      const got = p.kind === 'osm' ? await osm(p, ask, () => pause(o.busyMs ?? BUSY_MS, signal), overpassServers(await readAppSettings(ws))) : await wikipedia(p, ask, headers);
-      if (!(await save({ id: p.id, kind: p.kind, path: pathOf(p), items: got.count }, got.content))) break;
+      const got = p.kind === 'osm' ? await osm(p, ask, () => pause(o.busyMs ?? BUSY_MS, signal), overpassServers(await readAppSettings(ws))) : await wikipedia(p, w.edition ?? 'en', ask, headers);
+      if (!(await save({ ...entry(w), items: got.count, ...(w.edition ? { edition: w.edition } : {}) }, got.content))) break;
       fails = 0;
     } catch (e) {
       if (signal.aborted) break;
@@ -215,7 +226,7 @@ export async function downloadPack(o) {
     done++;
   }
   // A part this download didn't get stays as it was, however old.
-  for (const p of todo) if (!files.has(pathOf(p)) && have.has(pathOf(p))) keepOld({ id: p.id, kind: p.kind, path: pathOf(p) });
+  for (const w of todo) if (!files.has(w.path) && have.has(w.path)) keepOld(entry(w));
 
   /** @type {Guide[]} */
   const guides = [];
@@ -275,7 +286,8 @@ async function counted(ws, scope, files) {
     if (f.kind === 'wikivoyage') continue;
     const v = await ws.readJSON(scope, f.path).catch(() => null);
     for (const r of Array.isArray(v?.rows) ? v.rows : []) if (Array.isArray(r)) places.add(r[0]);
-    for (const p of Array.isArray(v?.pages) ? v.pages : []) if (Array.isArray(p)) summaries.add(p[0]);
+    // An article in two editions counts once, by its Wikidata id.
+    for (const p of Array.isArray(v?.pages) ? v.pages : []) if (Array.isArray(p)) summaries.add(typeof p[4] === 'string' && p[4] ? p[4] : `${f.edition ?? 'en'} ${p[0]}`);
   }
   return { places: places.size, summaries: summaries.size };
 }
@@ -323,20 +335,13 @@ async function osm(p, ask, busy, servers) {
   throw fault(/* en */ `OpenStreetMap didn't answer (${message}).`, { code: 'osm', inner: /** @type {any} */ (last)?.said ?? null, message });
 }
 
-/** Wikipedia's summaries near a part's point. @param {import('./plan.js').WikiPart} p @param {Ask} ask @param {Record<string, string>} headers */
-async function wikipedia(p, ask, headers) {
-  const [lat, lng] = p.at;
-  /* en */ const r = await ask(`${WIKIPEDIA}?action=query&format=json&formatversion=2&origin=*&generator=geosearch&ggscoord=${lat}%7C${lng}&ggsradius=${WIKI_RADIUS_M}&ggslimit=20`
-    + '&prop=extracts%7Ccoordinates&exintro=1&explaintext=1&exlimit=20&exchars=400&colimit=20', { headers }, 'Wikipedia');
+/** An edition's nearest 20 summaries to a part's point, with ids. @param {import('./plan.js').WikiPart} p @param {string} edition @param {Ask} ask @param {Record<string, string>} headers */
+async function wikipedia(p, edition, ask, headers) {
+  /* en */ const where = edition === 'en' ? 'Wikipedia' : `${edition}.wikipedia.org`;
+  const r = await ask(nearUrl(edition, p.at, WIKI_RADIUS_M, 20, { extracts: true }), { headers }, where);
   const info = r?.error ? String(r.error.info ?? r.error.code ?? 'no').replace(/\.$/, '') : '';
-  if (info) throw fault(/* en */ `Wikipedia said: ${info}.`, { code: 'said', where: /* en */ 'Wikipedia', info });
-  /** @type {[string, number, number, string][]} */
-  const pages = [];
-  for (const g of Array.isArray(r?.query?.pages) ? r.query.pages : []) {
-    const c = Array.isArray(g?.coordinates) ? g.coordinates[0] : null;
-    if (typeof g?.title !== 'string' || !isNum(c?.lat) || !isNum(c?.lon)) continue;
-    pages.push([g.title, r4(c.lat), r4(c.lon), typeof g.extract === 'string' ? g.extract.trim() : '']);
-  }
+  if (info) throw fault(/* en */ `${where} said: ${info}.`, { code: 'said', where, info });
+  const pages = articlesOf(r, edition).map((a) => [a.title, r4(a.lat), r4(a.lng), a.summary, a.id]);
   return { count: pages.length, content: { at: p.at, radius: WIKI_RADIUS_M, pages } };
 }
 
@@ -348,8 +353,9 @@ async function wikipedia(p, ask, headers) {
 async function namesFor(ws, scope, plan, files) {
   /** @type {[string, number][]} */
   const titles = [];
+  // English Wikipedia's titles, as English Wikivoyage is found by English names.
   for (const f of files.values()) {
-    if (f.kind !== 'wikipedia') continue;
+    if (f.kind !== 'wikipedia' || (f.edition ?? 'en') !== 'en') continue;
     const v = await ws.readJSON(scope, f.path).catch(() => null);
     const at = Array.isArray(v?.at) && isNum(v.at[0]) && isNum(v.at[1]) ? { lat: v.at[0], lng: v.at[1] } : null;
     for (const g of Array.isArray(v?.pages) ? v.pages : []) {

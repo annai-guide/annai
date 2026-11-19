@@ -1,7 +1,7 @@
 import { h, crumb, t } from '../dom.js';
 import { renderMarkdown } from '../markdown.js';
 import { writeRecap, recapModels, recapError, RECAP_FILE, TELL_RECAP, RECAP_SENDS } from '../../core/after/recap.js';
-import { loadPack } from '../../core/pack/read.js';
+import { packNamer } from '../../core/pack/read.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { shownWithoutSecrets } from '../../core/agent/net.js';
 import { text } from '../../core/bytes.js';
@@ -43,8 +43,8 @@ export async function renderRecap(ctx, route) {
     const leave = () => { if (!here()) abort.abort(); };
     addEventListener('hashchange', leave);
     try {
-      const pack = await loadPack(ctx.ws, id).catch(() => null);
-      await writeRecap({ store: ctx.store, ws: ctx.ws, llm: ctx.llm, trip: id, codec, namer: (p) => pack?.name(p) ?? null, locale: navigator.language, signal: abort.signal });
+      const namer = await packNamer(ctx.ws, id, navigator.language);
+      await writeRecap({ store: ctx.store, ws: ctx.ws, llm: ctx.llm, trip: id, codec, namer, locale: navigator.language, signal: abort.signal });
       ctx.notices.toast(t`The recap is written.`);
     } catch (e) {
       if (!abort.signal.aborted) ctx.notices.card({ tone: 'warn', title: t`The recap wasn't written`, body: await shownWithoutSecrets(ctx.store, recapError(e, { names })) });

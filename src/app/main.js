@@ -192,7 +192,7 @@ async function boot() {
   // Developer → Simulate a trip (spec §13): one at a time, shared by its screen and the live chip.
   const sim = new SimRun({ store, ws, registry, agent, live, llm });
   // The offline pack (spec §11.5): downloaded when asked, then kept up to date on Wi-Fi; it names places for live mode.
-  const pack = new PackKeeper({ store, ws, agent, version: VERSION, connection: () => connectionOf(navigator), visible: () => document.visibilityState === 'visible' });
+  const pack = new PackKeeper({ store, ws, agent, version: VERSION, locale: navigator.language, connection: () => connectionOf(navigator), visible: () => document.visibilityState === 'visible' });
   live.namers.push((p) => pack.name(p));
   addEventListener('online', () => pack.poke());
   /** @type {any} */ (navigator).connection?.addEventListener?.('change', () => pack.poke());

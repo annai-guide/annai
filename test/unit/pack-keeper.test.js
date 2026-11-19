@@ -2,7 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PackKeeper } from '../../src/core/pack/keeper.js';
 import { STALE_MS } from '../../src/core/pack/download.js';
-import { packTrip, services, fakeAgent, STOPS } from './pack-kit.js';
+import { packTrip, services, fakeAgent, STOPS, YUFUIN, yufuinStop, yufuinAnswer } from './pack-kit.js';
+import { updateAppSettings } from '../../src/core/settings.js';
+import { SIZES } from '../../src/core/pack/plan.js';
+import { readFile } from 'node:fs/promises';
 import { packWords } from '../../src/ui/offline-pack.js';
 
 /** @param {() => boolean | Promise<boolean>} ok */
@@ -21,7 +24,7 @@ async function kit(o = {}) {
   const net = services();
   let connection = o.connection ?? 'unknown';
   let visible = o.visible ?? true;
-  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, version: '1.2.3', connection: () => connection, visible: () => visible, fetch: net.fetch, quietMs: 20, pokeMs: 10, gapMs: 0, now: o.now });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1.2.3', connection: () => connection, visible: () => visible, fetch: net.fetch, quietMs: 20, pokeMs: 10, gapMs: 0, now: o.now });
   return { ...t, agent, net, keeper, set: (/** @type {{ connection?: string, visible?: boolean }} */ s) => { connection = s.connection ?? connection; visible = s.visible ?? visible; } };
 }
 
@@ -124,7 +127,7 @@ test('by itself at most once an hour, even when parts keep failing', async () =>
   const agent = fakeAgent(t.trip);
   let fail = false;
   const net = services({ overpass: (url, init) => (fail ? new Response('', { status: 503 }) : { elements: [] }) });
-  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0 });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0 });
   await keeper.download(t.trip);
   fail = true;
   await t.ws.write(t.trip, '/plan/nepenthe.json', { ...STOPS.nepenthe, place: { ...STOPS.nepenthe.place, lat: 36.2 } }, { author: 'user' });
@@ -163,7 +166,7 @@ test('a plan change while a download runs is kept: once it ends, annai brings th
     }
     return { elements: [] };
   } });
-  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0 });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0 });
   const running = keeper.download(t.trip);
   await until(() => waiting);
   // The plan changes while the second Overpass part waits for its answer.
@@ -182,7 +185,7 @@ test('a pack at its size limit is complete for its plan: no "Download the rest",
   const t = await packTrip();
   const agent = fakeAgent(t.trip);
   const net = services();
-  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0, now: () => now, maxBytes: 600 });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0, now: () => now, maxBytes: 600 });
   const m = await keeper.download(t.trip);
   assert.equal(m.full, true);
   const s = await keeper.status(t.trip);
@@ -206,7 +209,7 @@ test('stop() can be awaited: once it settles, the download has ended and what ca
     await new Promise((r) => { init.signal.addEventListener('abort', r, { once: true }); });
     throw new DOMException('Stopped.', 'AbortError');
   } });
-  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), version: '1', connection: () => 'wifi', fetch: net.fetch, gapMs: 0 });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, gapMs: 0 });
   const running = keeper.download(t.trip);
   await until(() => waiting);
   await keeper.stop();
@@ -247,7 +250,7 @@ test('a plan change while an update annai began by itself runs: once it ends, th
     return { elements: [] };
   } });
   let now = Date.now();
-  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0, now: () => now });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0, now: () => now });
   await keeper.download(t.trip); // the first, by hand
   now += 2 * 3_600_000;
   gateOn = true;
@@ -260,5 +263,46 @@ test('a plan change while an update annai began by itself runs: once it ends, th
   await until(async () => (await keeper.status(t.trip)).why === null, 3000);
   const log = await t.store.tx(['events'], 'readonly', (x) => x.listEvents(t.trip, { types: ['pack.download'] }));
   assert.deepEqual(log.map((e) => e.data.auto), [false, true, true]);
+  keeper.dispose();
+});
+
+test("a change of languages is noticed: on Wi-Fi the new edition's files come by themselves, a reorder brings nothing, and live mode's names follow the order", async () => {
+  const t = await packTrip({ '/plan/yufuin.json': yufuinStop('Yufuin Station', YUFUIN, 1) });
+  const agent = fakeAgent(t.trip);
+  const net = services({ overpass: () => ({ elements: [] }), wikipedia: (url) => yufuinAnswer(url) });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0 });
+  await keeper.download(t.trip);
+  const station = { lat: 33.2626, lng: 131.3551 };
+  await until(() => keeper.name(station)?.name === 'Yufuin Station');
+  assert.equal((await keeper.status(t.trip)).why, null);
+  const hosts = () => net.asked.filter((a) => a.url.includes('wikipedia.org')).map((a) => new URL(a.url).hostname);
+  assert.deepEqual(hosts(), ['en.wikipedia.org']);
+  // Japanese added, after English: its files are missing, about one other edition's part, and annai brings them by itself.
+  await updateAppSettings(t.ws, { languages: { spoken: ['en', 'ja'], answer: 'follow' } });
+  const s = await keeper.status(t.trip);
+  assert.equal(s.why, 'missing');
+  assert.equal(s.estimate, SIZES.wikiEdition + SIZES.guide); // and a guide, as the pack has none yet
+  await until(async () => hosts().length === 2 && (await keeper.status(t.trip)).why === null);
+  assert.deepEqual(hosts(), ['en.wikipedia.org', 'ja.wikipedia.org']);
+  assert.equal(keeper.name(station)?.name, 'Yufuin Station', 'English first');
+  // Japanese moved first: nothing to download, and the names are Japanese Wikipedia's.
+  const asked = net.asked.length;
+  await updateAppSettings(t.ws, { languages: { spoken: ['ja', 'en'], answer: 'follow' } });
+  await until(() => keeper.name(station)?.name === '由布院駅');
+  await new Promise((r) => setTimeout(r, 60));
+  assert.equal(net.asked.length, asked);
+  keeper.dispose();
+});
+
+test("a pack from before editions, with Japanese listed: its English parts count as missing too, to come again with their ids", async () => {
+  const t = await packTrip();
+  const before = /** @type {Record<string, string>} */ (JSON.parse(await readFile(new URL('../fixtures/places/pack-before-editions.json', import.meta.url), 'utf8')));
+  for (const [path, text] of Object.entries(before)) await t.ws.write(t.trip, path, text, { author: 'system' });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => 'unknown', fetch: services().fetch, gapMs: 0, now: () => Date.parse('2026-11-19T09:00:00Z') });
+  assert.equal((await keeper.status(t.trip)).why, null, 'English alone: as it was');
+  await updateAppSettings(t.ws, { languages: { spoken: ['ja', 'en'], answer: 'follow' } });
+  const s = await keeper.status(t.trip);
+  assert.equal(s.why, 'missing');
+  assert.equal(s.estimate, 2 * SIZES.wikipedia + 2 * SIZES.wikiEdition); // two parts, each in English again and in Japanese
   keeper.dispose();
 });

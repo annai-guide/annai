@@ -1,7 +1,7 @@
 import { SYS_SETTINGS } from './scopes.js';
 
 /** @typedef {import('./workspace.js').Workspace} Workspace */
-const APP = '/app.json';
+export const APP = '/app.json';
 
 /** @param {Workspace} ws @returns {Promise<Record<string, any>>} */
 export async function readAppSettings(ws) {

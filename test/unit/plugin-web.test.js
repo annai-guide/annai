@@ -191,6 +191,39 @@ test('web_search: a service the user unticked is never asked; the floor is alway
   assert.match(out, /Wikivoyage/);
 });
 
+/** Wikipedia's real answers to the floor's searches for "Kiyomizu temple opening hours" and its fewer words (2026-11-19; text under CC BY-SA 4.0). */
+const KIYOMIZU_SEARCH = /** @type {Record<string, string>} */ ({
+  'ja.wikipedia.org kiyomizu temple opening hours': 'wiki-search-ja.json', 'ja.wikipedia.org kiyomizu temple opening': 'wiki-search-ja-3.json',
+  'ja.wikipedia.org kiyomizu temple': 'wiki-search-ja-2.json', 'en.wikipedia.org kiyomizu temple opening hours': 'wiki-search-en.json',
+});
+/** The floor's services: those saved answers, nothing from Wikivoyage, no website from Nominatim. @param {string} url */
+async function kiyomizuFloor(url) {
+  const u = new URL(url);
+  const j = (/** @type {any} */ x) => new Response(JSON.stringify(x), { headers: { 'content-type': 'application/json' } });
+  if (u.hostname === 'nominatim.openstreetmap.org') return j([]);
+  const saved = KIYOMIZU_SEARCH[`${u.hostname} ${u.searchParams.get('srsearch')}`];
+  return saved ? jsonFile(`../places/${saved}`) : j({ batchcomplete: '', query: { searchinfo: { totalhits: 0 }, search: [] } });
+}
+
+test("the floor's Wikipedia search walks the traveller's editions with all the words before any with fewer: a whole-query hit in English beats Japanese's two words", async () => {
+  const { run, asked, settings, ws } = await setup();
+  await updateAppSettings(ws, { languages: { spoken: ['ja'], answer: 'follow' } });
+  await settings({ searchOff: ['exa', 'parallel', 'firecrawl'] });
+  const wiki = () => asked.filter((a) => a.url.includes('wikipedia.org')).map((a) => `${new URL(a.url).hostname} ${new URL(a.url).searchParams.get('srsearch')}`);
+  const out = await run('web_search', { query: 'Kiyomizu temple opening hours' }, kiyomizuFloor);
+  assert.deepEqual(wiki(), ['ja.wikipedia.org kiyomizu temple opening hours', 'en.wikipedia.org kiyomizu temple opening hours']);
+  assert.match(out, /\nTobu World Square \(Wikipedia\)\thttps:\/\/en\.wikipedia\.org\/wiki\/Tobu_World_Square\t/);
+  assert.doesNotMatch(out, /清水寺/);
+  // Nominatim names places in the order's languages too.
+  assert.equal(new URL(asked.find((a) => a.url.includes('nominatim'))?.url ?? '').searchParams.get('accept-language'), 'ja,en');
+  // English not answering is left out of the tries after it: Japanese's two words find 清水寺, linked on Japanese Wikipedia.
+  asked.length = 0;
+  const ja = await run('web_search', { query: 'Kiyomizu temple opening hours' }, (url) => (url.includes('en.wikipedia.org') ? new Response('', { status: 503 }) : kiyomizuFloor(url)));
+  assert.deepEqual(wiki(), ['ja.wikipedia.org kiyomizu temple opening hours', 'en.wikipedia.org kiyomizu temple opening hours', 'ja.wikipedia.org kiyomizu temple opening', 'ja.wikipedia.org kiyomizu temple']);
+  // (A search row's address is written as the browser would send it: normalizeRows.)
+  assert.match(ja, /\n清水寺 \(Wikipedia\)\thttps:\/\/ja\.wikipedia\.org\/wiki\/%E6%B8%85%E6%B0%B4%E5%AF%BA\t/);
+});
+
 test('web_search: Jina Search goes first when its key is set; without the key it is passed over and the free services answer', async () => {
   const { run, asked, setKey } = await setup();
   const out = await run('web_search', { query: 'nepenthe hours' }, services);

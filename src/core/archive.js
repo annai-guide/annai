@@ -309,7 +309,7 @@ function withoutPhotoMeta(e, include) {
 }
 
 // A position quoted in a trip's text, as a Share without places removes it: the forms matched are in spec §12.2. An encoded bar, %7C,
-// also splits a pair: the Wikipedia nearby search annai builds writes gscoord=36.3715%7C-121.9017.
+// also splits a pair: the Wikipedia nearby search annai builds writes ggscoord=36.3715%7C-121.9017.
 //
 // Run time: a match can only start where no horizontal space comes before it and takes the spaces in front of it itself, and the
 // optional parts of a pattern never share the same characters, so no input takes more than linear time. Spaces are horizontal only:

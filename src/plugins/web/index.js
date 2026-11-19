@@ -4,7 +4,8 @@ import { toBase64 } from '../../core/bytes.js';
 import { anySignal } from '../../core/signals.js';
 import { readAppSettings } from '../../core/settings.js';
 import { normalizeRows, restsOn, cooldowns, ROWS, CHAIN, READY_MS } from '../../core/web-search.js';
-import { FREE_PROVIDERS, KNOWLEDGE, exaRead } from './free.js';
+import { FREE_PROVIDERS, knowledgeFloor, exaRead } from './free.js';
+import { readingOrder } from '../../core/languages.js';
 import { t } from '../../core/l10n.js';
 
 export const manifest = {
@@ -308,6 +309,7 @@ export function activate(annai) {
     },
   };
 
-  const off = [...[jina, ...FREE_PROVIDERS, KNOWLEDGE].map((p) => annai.register('search', p)), annai.tools.register(fetchTool), annai.tools.register(searchTool)];
+  const floor = knowledgeFloor(async () => readingOrder(await readAppSettings(annai.files), navigator.language));
+  const off = [...[jina, ...FREE_PROVIDERS, floor].map((p) => annai.register('search', p)), annai.tools.register(fetchTool), annai.tools.register(searchTool)];
   return () => off.forEach((fn) => fn());
 }

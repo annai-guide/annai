@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { loadPack, toLine } from '../../src/core/pack/read.js';
 import { downloadPack, MANIFEST } from '../../src/core/pack/download.js';
 import { packTrip, services } from './pack-kit.js';
+import { readFile } from 'node:fs/promises';
 
 test('meters from a point to a line, or to a point', () => {
   const east = /** @type {[number, number][]} */ ([[36, -121], [36, -120]]);
@@ -14,7 +15,7 @@ test('meters from a point to a line, or to a point', () => {
 
 test("a downloaded pack: what it covers, its places and pages, its guides by name, and live mode's names", async () => {
   const { ws, trip } = await packTrip();
-  await downloadPack({ ws, scope: trip, ...services(), version: '1.0.0', gapMs: 0 });
+  await downloadPack({ ws, scope: trip, ...services(), version: '1.0.0', editions: ['en'], gapMs: 0 });
   const pack = await loadPack(ws, trip);
   assert.ok(pack);
   assert.equal(pack.day, new Date().toISOString().slice(0, 10));
@@ -25,16 +26,16 @@ test("a downloaded pack: what it covers, its places and pages, its guides by nam
   assert.equal(pack.touches({ lat: 36.60, lng: -121.89 }), false); // Monterey
   assert.deepEqual(pack.places(bixby, 1000, ['sights']).map((r) => r[0]), ['Bixby Bridge Vista Point']);
   assert.deepEqual(pack.places(bixby, 1000, ['toilets']).map((r) => [r[0], r[1], r[5]]), [['', 'toilets', 'osm']]);
-  const pages = pack.pages(bixby, 2000);
+  const pages = pack.pages(bixby, 2000, ['en']);
   assert.deepEqual(pages.map((r) => r.slice(0, 2)), [['Bixby Creek Bridge', 'wikipedia article']]);
   assert.match(pages[0][6], /^Bixby Creek Bridge is a reinforced concrete .* https:\/\/en\.wikipedia\.org\/wiki\/Bixby_Creek_Bridge$/);
   assert.equal((await pack.guide('big sur'))?.title, 'Big Sur');
   assert.equal((await pack.guide('Cambria'))?.title, 'Cambria (California)');
   assert.equal((await pack.guide('Cambria, California'))?.title, 'Cambria (California)');
   assert.equal(await pack.guide('Monterey'), null);
-  assert.deepEqual(pack.name({ lat: 36.3715, lng: -121.9017 }), { name: 'Bixby Creek Bridge', m: 0 });
-  assert.equal(pack.name({ lat: 36.2203, lng: -121.7612 })?.name, 'Nepenthe (restaurant)'); // a restaurant is no place name; its article is
-  assert.equal(pack.name({ lat: 36.5, lng: -121.95 }), null);
+  assert.deepEqual(pack.name({ lat: 36.3715, lng: -121.9017 }, ['en']), { name: 'Bixby Creek Bridge', m: 0 });
+  assert.equal(pack.name({ lat: 36.2203, lng: -121.7612 }, ['en'])?.name, 'Nepenthe (restaurant)'); // a restaurant is no place name; its article is
+  assert.equal(pack.name({ lat: 36.5, lng: -121.95 }, ['en']), null);
   assert.equal(await loadPack(ws, trip), pack); // read once for each version of the manifest
 });
 
@@ -44,7 +45,7 @@ test('a broken pack is no pack, and a broken part is left out: never an error', 
   assert.equal(await loadPack(ws, null), null);
   await ws.write(trip, MANIFEST, '{"format":', { author: 'system', type: 'text/plain' });
   assert.equal(await loadPack(ws, trip), null);
-  await downloadPack({ ws, scope: trip, ...services(), version: '1.0.0', gapMs: 0 });
+  await downloadPack({ ws, scope: trip, ...services(), version: '1.0.0', editions: ['en'], gapMs: 0 });
   const m = /** @type {any} */ (await ws.readJSON(trip, MANIFEST));
   const osm = m.files.filter((/** @type {any} */ f) => f.kind === 'osm');
   await ws.write(trip, osm[0].path, '{"area":', { author: 'user', type: 'text/plain' });
@@ -62,7 +63,7 @@ test("a part Overpass cut off at its 3000 places doesn't count as covering: near
   const { ws, trip } = await packTrip();
   const many = Array.from({ length: 3000 }, (_, i) => ({ type: 'node', id: 1000 + i, lat: 36.3715 + (i % 50) / 1e4, lon: -121.9017 + Math.floor(i / 50) / 1e4, tags: { name: `Place ${i}`, amenity: 'cafe' } }));
   // Every part that reaches Bixby is cut off there: the stop's and the way's.
-  await downloadPack({ ws, scope: trip, ...services({ overpass: (url, init) => (decodeURIComponent(String(init?.body)).includes('36.3715') ? { elements: many } : { elements: [] }) }), version: '1.0.0', gapMs: 0 });
+  await downloadPack({ ws, scope: trip, ...services({ overpass: (url, init) => (decodeURIComponent(String(init?.body)).includes('36.3715') ? { elements: many } : { elements: [] }) }), version: '1.0.0', editions: ['en'], gapMs: 0 });
   const pack = await loadPack(ws, trip);
   assert.ok(pack);
   const bixby = { lat: 36.3715, lng: -121.9017 };
@@ -77,4 +78,34 @@ test('meters to a line across the date line: the short way, as the plan joins th
   assert.ok(toLine({ lat: -17, lng: -179.95 }, line) < 50);
   assert.ok(Math.abs(toLine({ lat: -16.99, lng: 180 }, line) - 1106) < 20);
   assert.ok(toLine({ lat: -17, lng: 0 }, line) > 10_000_000);
+});
+
+test("a summary is cut to about as much as 200 characters of English say, after a mark where its text has no spaces: Japanese and Chinese are not cut at their first word", async () => {
+  const saved = async (/** @type {string} */ name) => JSON.parse(await readFile(new URL(`../fixtures/places/${name}`, import.meta.url), 'utf8')).query.pages;
+  const [ja, zh, en] = await Promise.all(['wiki-pack-yufuin-ja.json', 'wiki-pack-shilin-zh.json', 'wiki-pack-yufuin-en.json'].map(saved));
+  const text = (/** @type {any[]} */ pages, /** @type {string} */ title) => String(pages.find((p) => p.title === title).extract).trim();
+  const at = { lat: 33.2627, lng: 131.3553 };
+  const summaries = /** @type {[string, string][]} */ ([
+    ['士林區', text(zh, '士林區')], // 272 characters, one space, at 174
+    ['湯布院病院', text(ja, '地域医療機能推進機構湯布院病院')], // 110, none
+    ['由布院', `由布院温泉 ${text(ja, '由布院温泉').slice(5)}${text(ja, '由布院駅')}`], // a space after its first word only
+    ['Jupiter', text(en, 'Jupiter (roller coaster)')], // English, 404
+  ]);
+  const { ws, trip } = await packTrip();
+  await ws.write(trip, '/offline/osm/o1.json', JSON.stringify({ area: { points: [[at.lat, at.lng]], radius: 5000 }, rows: [] }), { author: 'system' });
+  await ws.write(trip, '/offline/wikipedia/w1.json', JSON.stringify({ at: [at.lat, at.lng], radius: 10000, pages: summaries.map(([title, s], k) => [title, at.lat, at.lng + k / 1e4, s]) }), { author: 'system' });
+  await ws.write(trip, MANIFEST, JSON.stringify({ format: 1, key: 'k', at: '2026-11-19T09:00:00.000Z', failed: [], full: false, stopped: false, bytes: 1, places: 0, summaries: 4, guides: [],
+    files: [{ id: 'o1', kind: 'osm', path: '/offline/osm/o1.json', bytes: 1, items: 0, at: 1 }, { id: 'w1', kind: 'wikipedia', path: '/offline/wikipedia/w1.json', bytes: 1, items: 4, at: 1 }] }), { author: 'system' });
+  const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
+  const cut = Object.fromEntries(pack.pages(at, 1000, ['en']).map((r) => [r[0], String(r[6]).replace(/ https:\/\/\S+$/, '')]));
+  const weight = (/** @type {string} */ s) => [...s].reduce((n, c) => n + (/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(c) ? 2 : 1), 0);
+  for (const name of ['士林區', '湯布院病院', '由布院']) {
+    // As much as 200 English characters, at a mark: 192, 160 and 167, counting a CJK character as 2.
+    assert.ok(weight(cut[name]) <= 201 && weight(cut[name]) > 150, `${name}: ${cut[name]}`);
+    assert.match(cut[name], /[、。，；！？]…$/u, `${name}: after a mark`);
+  }
+  assert.ok(cut['由布院'].startsWith('由布院温泉 （ゆふいんおんせん）は、'));
+  // English is cut as before: at its last space within 200 characters.
+  const jupiter = summaries[3][1].replace(/\s+/g, ' ');
+  assert.equal(cut.Jupiter, `${jupiter.slice(0, 200).replace(/\s+\S*$/, '')}…`);
 });
