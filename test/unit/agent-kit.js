@@ -64,7 +64,7 @@ export function fakeCodec(formats) {
  * kept in `requests`.
  * @param {(any[] | Record<string, any>)[]} scripts @param {{ models?: any[], open?: boolean, ready?: Promise<void>, agent?: Record<string, any>, utility?: any[], utilityModel?: Record<string, any>, codecFormats?: string[], uploading?: boolean,
  *   voice?: { mode?: 'on' | 'off' | 'auto', speechIn?: string[], hears?: string[], failing?: string[], decide?: any[], dictation?: boolean, keepClips?: boolean, playMs?: number, micFails?: string,
- *     encoder?: { makes: string[] }, plays?: string[], closeAfterSeconds?: number },
+ *     encoder?: { makes: string[] }, plays?: string[], closeAfterSeconds?: number, speechOut?: string[] },
  *   halves?: boolean, koe?: { type?: any[] | Record<string, any>, talk?: any[] | Record<string, any>, input?: string[], model?: Record<string, any> },
  *   live?: { origin: string, first?: boolean, second?: boolean, key?: string, tunables?: Record<string, any>, type?: 'gemini-live' | 'openai-realtime', made?: false }, fetch?: import('../../src/core/llm/call.js').Fetch,
  *   hold?: (c: any) => Promise<unknown> }} [opts]
@@ -74,7 +74,7 @@ export function fakeCodec(formats) {
  *   utility: a script for one more scripted model, in the utility role; utilityModel: what its model record has besides (its input)
  *   voice: Shiori with a voice (spec §10): a fake device; a voice (m-say) and a transcription model (m-hear) that hears hears, in turn (the last
  *   repeats); decide: a script for a quick-decision model (the gate); micFails: the microphone refuses with this error name; closeAfterSeconds: Settings →
- *   Voice's quiet spell, saved before the agent is made (koe-live-kit's liveKit gives its own)
+ *   Voice's quiet spell, saved before the agent is made (koe-live-kit's liveKit gives its own); speechOut: the speech-out list (m-say; ['browser-voice'] for the phone's voice)
  *   halves: Shiori as Halves (the Koe and Kokoro design), the scripts' models as Kokoro's (main); koe: scripts for two chat models in
  *   Koe · Classic, talk's (m-koet, model-koet) before type's (m-koe, model-koe), and the inputs Koe's models take;
  *   live: a realtime model (m-live, Gemini Live's protocol) at the stand-in realtime server's origin, in Koe · Realtime, the mode chosen;
@@ -148,7 +148,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
   if (v) {
     add('pv-say', 'm-say', 'Say', { kind: 'voice', type: 'say' }, { providerId: 'voice' });
     add('pv-hear', 'm-hear', 'Hear', { kind: 'transcription', type: 'hear' }, { providerId: 'ears' });
-    config.roles['speech-out'] = { models: ['m-say'], level: 'off' };
+    config.roles['speech-out'] = { models: v.speechOut ?? ['m-say'], level: 'off' };
     config.roles['speech-in'] = { models: v.speechIn ?? ['send-audio', 'm-hear', 'dictation'], level: 'off' };
     if (v.decide) {
       add('pv-d', 'm-d', 'ED', { kind: 'chat', type: 'scripted', tunables: { script: v.decide } }, { providerId: 'model-d', prices: { input: 1, output: 1 }, input: ['text'] });

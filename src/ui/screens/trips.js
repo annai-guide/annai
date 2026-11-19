@@ -3,7 +3,7 @@ import { listTrips, backupState, scopeTitle, changesTrip, lastTalked, ME } from 
 import { filesToRead } from '../../core/handover.js';
 import { readAppSettings } from '../../core/settings.js';
 import { ValidationError } from '../../core/workspace.js';
-import { relTime, relChange, dateRange, backupText, wording, talkHref, day, when, rowName } from '../format.js';
+import { relTime, relChange, dateRange, backupText, wording, replyBefore, talkHref, day, when, rowName } from '../format.js';
 import { openFileButton } from '../open-file.js';
 import { tripStamps, stampMarks, factsWords } from '../stamps.js';
 import { stampCount } from '../../core/after/stamps.js';
@@ -52,7 +52,7 @@ async function drawTrips(ctx, follow, stop) {
   const places = ctx.backups ? await ctx.backups.list() : [];
   const latest = places.filter((/** @type {any} */ p) => p.last).sort((/** @type {any} */ a, /** @type {any} */ b) => b.last.at - a.last.at)[0];
   /** due: when a card's Next stops being next, pushed by the happening cards as they are drawn. */
-  const o = { say: wording(settings), now: nowOf(ctx.live), zone: ctx.live?.timeZone?.() ?? deviceZone(), due: /** @type {number[]} */ ([]), since: /** @type {Since[]} */ ([]), backups: /** @type {Backups} */ (new Map()) };
+  const o = { say: wording(settings), hers: wording(settings, true), now: nowOf(ctx.live), zone: ctx.live?.timeZone?.() ?? deviceZone(), due: /** @type {number[]} */ ([]), since: /** @type {Since[]} */ ([]), backups: /** @type {Backups} */ (new Map()) };
   // `me`'s old lines are a row of their own, by the last line the user said there (the user, 2026-11-05, "Read-only row"); with none, there is nothing of theirs to read back.
   const meAt = await meTalked(ctx.store);
   const rows = meAt === null ? active : [...active, { id: ME, title: '', created: meAt, talked: meAt }];
@@ -203,10 +203,11 @@ function chatLine(s, r, { say, now, zone }) {
  * A trip's card (spec §16.2, the timeline design): its name and dates, its stamps (spec §13), files waiting to be read there, and when it was last
  * backed up (§4.9); happening, tinted, "Day 3 of 8" and its Next; ahead, how soon and her last line there. A tap opens its conversation; an archived
  * one's opens Details, where Unarchive is. @param {any} ctx @param {any} s its record @param {Row | null} r its row; null: archived
- * @param {{ say: ReturnType<typeof wording>, now: number, zone: string, due: number[], since: Since[], backups: Backups }} o say: the name is the user's words, in their language, not the screens'
+ * @param {{ say: ReturnType<typeof wording>, hers: ReturnType<typeof wording>, now: number, zone: string, due: number[], since: Since[], backups: Backups }} o
+ * say: the name is the user's words, in their language, not the screens'; hers: her last line
  */
 async function tripCard(ctx, s, r, o) {
-  const { say, now, zone, due } = o;
+  const { say, hers, now, zone, due } = o;
   const [backup, stamps, unread] = await Promise.all([backupState(ctx.store, s.id), tripStamps(ctx, s.id), r ? filesToRead(ctx.store, s.id).then((f) => f.length) : 0]);
   o.backups.set(s.id, backup);
   // Its "backed up … ago" is on its own moment: the footer line's is another place's (or an export's), and a trip's backup can outlive its place.
@@ -224,7 +225,7 @@ async function tripCard(ctx, s, r, o) {
     const utc = (/** @type {string} */ d) => Date.parse(`${d}T00:00:00Z`);
     more.push(h('span', { class: 'sub soon', text: relTime(utc(s.start), utc(/** @type {string} */ (dayIn(now, zone)))) }));
     const last = await herLast(ctx, s.id);
-    if (last) more.push(h('span', { class: 'sub her-last', ...say(last), text: last }));
+    if (last.text) more.push(h('span', { class: 'sub her-last', ...hers(last.text, { before: last.before }), text: last.text }));
   }
   const name = scopeTitle(s); // one stored with the draft's name says "New conversation" in the screens' language
   return h('li', {}, h('a', { class: ['card', 'trip-card', r?.phase === 'happening' ? 'happening' : r?.phase === 'future' ? 'ahead' : ''], href: r ? talkHref(s.id) : `#/trip/${encodeURIComponent(s.id)}` },
@@ -235,10 +236,11 @@ async function tripCard(ctx, s, r, o) {
     stampMarks(stamps)));
 }
 
-/** Her last line in a conversation. @param {any} ctx @param {string} scope @returns {Promise<string>} */
+/** Her last line in a conversation, and her reply so far before it. @param {any} ctx @param {string} scope @returns {Promise<{ text: string, before: string[] }>} */
 async function herLast(ctx, scope) {
   const [e] = await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(scope, { types: ['out.speak'], reverse: true, limit: 1 }));
-  return e ? String({ ...e.data, ...(await storedTexts(ctx.store, e)) }.text ?? '') : '';
+  if (!e) return { text: '', before: [] };
+  return { text: String({ ...e.data, ...(await storedTexts(ctx.store, e)) }.text ?? ''), before: await replyBefore(ctx.store, scope, e).catch(() => []) };
 }
 
 /** When the user last talked in `me`, read once a page load: it takes no more lines, but an import can replace it (forgetMeTalked). @type {Promise<number | null> | null} */

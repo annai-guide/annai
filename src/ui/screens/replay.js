@@ -8,7 +8,7 @@ import { shownCard } from '../cards.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { stampMarks } from '../stamps.js';
 import { readAppSettings } from '../../core/settings.js';
-import { day as dayText, dayClock, sentences, wording } from '../format.js';
+import { day as dayText, dayClock, sentences, wording, replyBefore } from '../format.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 
@@ -95,8 +95,13 @@ export async function renderReplay(ctx, route) {
       return;
     }
     const when = h('span', { class: 'sub', text: timeIn(e.at, r.tz) });
-    if (e.kind === 'card') shown.replaceChildren(h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: t`Shiori` }), shownCard(e, { ctx, say: hers }), when));
-    else if (e.kind === 'said') shown.replaceChildren(h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: e.spoken ? t`You said` : t`You` }), h('p', { ...mine(e.text), text: e.text }), when));
+    if (e.kind === 'card') {
+      // Her card alone reads her reply from the log, and is drawn then if still the one to show.
+      const card = e;
+      replyBefore(ctx.store, id, { seq: card.seq, type: 'out.show', data: { wake: card.wake } }).catch(() => []).then((before) => {
+        if (shownEntry === card) shown.replaceChildren(h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: t`Shiori` }), shownCard(card, { ctx, say: (/** @type {string} */ x) => hers(x, { before }) }), when));
+      });
+    } else if (e.kind === 'said') shown.replaceChildren(h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: e.spoken ? t`You said` : t`You` }), h('p', { ...mine(e.text), text: e.text }), when));
     else {
       const img = h('img', { class: 'replay-photo', alt: t`Photo ${e.path.split('/').pop()}, ${timeIn(e.at, r.tz)}` });
       const open = h('button', { class: 'btn ghost', type: 'button', disabled: true }, t`Open full size`);

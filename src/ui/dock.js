@@ -5,7 +5,7 @@ import { voiceChip } from './voice-chip.js';
 import { liveChip } from './live-chip.js';
 import { readAppSettings } from '../core/settings.js';
 import { shownSettings } from '../core/shown.js';
-import { wording, mark, talkHref } from './format.js';
+import { wording, replies, mark, talkHref } from './format.js';
 import { SYS_SETTINGS, scopeTitle } from '../core/scopes.js';
 import { storedTexts } from '../core/agent/log.js';
 import { component, mount, cleanUp, slotEntries, runAction, made } from './slots.js';
@@ -244,11 +244,11 @@ export function createDock(ctx) {
     clearTimeout(lingering);
     if (ctx.agent.state.name !== 'speaking') lingering = setTimeout(hideCaption, CAPTION_LINGER_MS);
   };
-  /** Her words in the bubble; a long answer shows its latest words, faded at the top. @param {string} words @param {ReturnType<typeof wording>} say */
-  const showCaption = (words, say) => {
+  /** Her words in the bubble; a long answer shows its latest words, faded at the top. @param {string} words @param {ReturnType<typeof wording>} say @param {string[]} before her reply so far */
+  const showCaption = (words, say, before) => {
     captionText.textContent = words;
     // The bubble's own: the caption is slanted unless its words are Chinese, Japanese or Korean (shiori.css).
-    mark(caption, say(words));
+    mark(caption, say(words, { before }));
     caption.hidden = !words;
     captionText.scrollTop = captionText.scrollHeight;
     captionText.classList.toggle('cut', captionText.scrollHeight > captionText.clientHeight + 1);
@@ -272,17 +272,21 @@ export function createDock(ctx) {
   }));
   // Each line reads its stored text before it shows: a slower read of an earlier line never replaces a later one's words.
   let latest = 0;
-  /** @param {() => Promise<string> | string} words */
-  const show = async (words) => {
+  /** @param {() => Promise<string> | string} words @param {Promise<string[]>} [before] */
+  const show = async (words, before = Promise.resolve([])) => {
     const mine = ++latest;
     const { on, say } = await wordsOn;
     const text = on ? await words() : '';
+    const said = await before;
     if (mine !== latest) return;
-    if (on) showCaption(text, say);
+    if (on) showCaption(text, say, said);
     else clearCaption();
   };
+  // Her reply so far, by her lines as they come (replies).
+  const reply = replies(ctx.store);
   offs.push(ctx.agent.on('event', (/** @type {any} */ e) => {
-    if (e.type === 'out.speak' && e.data?.voice) show(async () => String({ ...e.data, ...(await storedTexts(ctx.store, e)) }.text ?? ''));
+    const before = reply(e);
+    if (e.type === 'out.speak' && e.data?.voice) show(async () => String({ ...e.data, ...(await storedTexts(ctx.store, e)) }.text ?? ''), before);
   }));
   // A live Koe's words as the transcript grows, while she speaks: its line is written only once she has finished.
   offs.push(ctx.agent.on('saying', (/** @type {string} */ words) => { show(() => String(words)); }));

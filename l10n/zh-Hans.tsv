@@ -536,22 +536,22 @@ pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重复操作	src/core
 1mjdfzn	ok	Shiori can't reach her model	Shiori 无法连接到模型	src/core/agent/loop.js:2657	
 12qfj9m	ok	This model takes photos only as {0}, which this browser can't make. Try another model in Settings → Models.	这个模型只接受 {0} 格式的照片，但这个浏览器无法生成。可以在设置 → 模型中换一个模型。	src/core/agent/loop.js:2684	{0} = names
 1uhz9dg	ok	Shiori couldn't send the photo	Shiori 无法发送照片	src/core/agent/loop.js:2743	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	这个浏览器要轻点一下才能播放声音。她说的话在对话里。	src/core/agent/loop.js:3383	
-1h2ina6	ok	Shiori couldn't speak aloud	Shiori 无法朗读	src/core/agent/loop.js:3384	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	设置 → 模型 → 朗读中的声音都无法使用，原因见“记录”。她说的话在对话里。	src/core/agent/loop.js:3384	
-1r1dhd7	ok	Shiori can't hear you yet	Shiori 还听不到你	src/core/agent/loop.js:3567	
-8wd0xv	ok	Listening stopped	聆听已停止	src/core/agent/loop.js:3798	
-43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:4059	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	每边最多 # 像素	src/core/agent/loop.js:4060	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一次最多 # 张照片	src/core/agent/loop.js:4061	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	仅限 {0}	src/core/agent/loop.js:4062	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受这张照片（它的要求：{0}），也无法转换成它能接受的照片。可以在设置 → 照片 → 发给 Shiori 的照片中把照片调小，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:4063	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受这张照片，也无法转换成它能接受的照片。可以在设置 → 照片 → 发给 Shiori 的照片中把照片调小，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:4064	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	对话太长，整理之前她的模型处理不了。请在设置 → 模型中检查模型，或稍后再试。	src/core/agent/loop.js:4074	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	插件 {0} 唤醒她的次数超过了你设定的上限（每小时 # 次）。	src/core/agent/loop.js:4084	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她在留意的事情唤醒她的次数超过了你设定的上限（每小时 # 次）：{0}。	src/core/agent/loop.js:4085	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你设定的上限（每小时 # 次）：{0}。	src/core/agent/loop.js:4086	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	她被唤醒的次数超过了你设定的上限（每小时 # 次）。	src/core/agent/loop.js:4087	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	这个浏览器要轻点一下才能播放声音。她说的话在对话里。	src/core/agent/loop.js:3384	
+1h2ina6	ok	Shiori couldn't speak aloud	Shiori 无法朗读	src/core/agent/loop.js:3385	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	设置 → 模型 → 朗读中的声音都无法使用，原因见“记录”。她说的话在对话里。	src/core/agent/loop.js:3385	
+1r1dhd7	ok	Shiori can't hear you yet	Shiori 还听不到你	src/core/agent/loop.js:3568	
+8wd0xv	ok	Listening stopped	聆听已停止	src/core/agent/loop.js:3799	
+43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:4060	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	每边最多 # 像素	src/core/agent/loop.js:4061	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一次最多 # 张照片	src/core/agent/loop.js:4062	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	仅限 {0}	src/core/agent/loop.js:4063	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受这张照片（它的要求：{0}），也无法转换成它能接受的照片。可以在设置 → 照片 → 发给 Shiori 的照片中把照片调小，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:4064	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受这张照片，也无法转换成它能接受的照片。可以在设置 → 照片 → 发给 Shiori 的照片中把照片调小，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:4065	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	对话太长，整理之前她的模型处理不了。请在设置 → 模型中检查模型，或稍后再试。	src/core/agent/loop.js:4075	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	插件 {0} 唤醒她的次数超过了你设定的上限（每小时 # 次）。	src/core/agent/loop.js:4085	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她在留意的事情唤醒她的次数超过了你设定的上限（每小时 # 次）：{0}。	src/core/agent/loop.js:4086	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你设定的上限（每小时 # 次）：{0}。	src/core/agent/loop.js:4087	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	她被唤醒的次数超过了你设定的上限（每小时 # 次）。	src/core/agent/loop.js:4088	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	这条消息含有密钥，所以不显示。	src/core/agent/net.js:94	
 157dl17	ok	Shiori wants to adjust her personality	Shiori 想调整自己的性格	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	不用了	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
@@ -629,30 +629,30 @@ gnrtev	ok	Shiori can't reach her model.	Shiori 无法连接到模型。	src/core
 1acz027	ok	just now	刚刚	src/core/intl.js:152	
 1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	使用手机扬声器时，Shiori 说话期间听不到你的声音，插话会被忽略。轻点一下即可让她停下来听你说。	src/core/koe/live.js:669	
 1ml2kgi	ok	Tap Shiori to talk over her	轻点 Shiori 即可打断她	src/core/koe/live.js:669	Note: The dock's Shiori button: tap it to talk over her.
-3fqfy0	ok	Languages	语言	src/core/languages.js:530	
-1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你说的语言和 Shiori 的回答语言会告知每个负责听和说的模型，以免简短的回复被误认成别的语言。	src/core/languages.js:531	
-1giusr1	ok	Languages you speak	你说的语言	src/core/languages.js:532	
-m11rnd	ok	The first is the language phone dictation listens in; the order tells Shiori which you prefer.	手机语音输入使用排在第一的语言；排列顺序告诉 Shiori 你更喜欢哪种。	src/core/languages.js:533	Note: under "Languages you speak" (你说的语言); Phone dictation as Settings → Voice's row (手机语音输入). Replaces "In order of use…" (the user, 2026-10-28: what does the order mean?).
-5h4ntn	ok	Add a language	添加语言	src/core/languages.js:534	
-17rv3f8	ok	Add	添加	src/core/languages.js:535	
-9c35st	ok	Remove	移除	src/core/languages.js:536	Note: 移除 (take off the list) over 删除 (delete a thing).
-oogs2r	ok	Remove {0}	移除{0}	src/core/languages.js:537	{0} = name; Note: {0} is the language's name in Chinese (英语), so no spaces around it.
-h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:539	{0} = name; {1} = own
-18uuegb	ok	Added {0}	已添加{0}	src/core/languages.js:540	{0} = name
-zu7130	ok	Added {0}. Saved	已添加{0}，已保存	src/core/languages.js:540	{0} = name
-14va31	ok	{0} moved to {1}. Saved	{0}已移到第 {1} 位，已保存	src/core/languages.js:541	{0} = name; {1} = place
-ehoetc	ok	{0} moved to {1}	{0}已移到第 {1} 位	src/core/languages.js:541	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
-cefzcq	ok	{0} removed. Saved	已移除{0}，已保存	src/core/languages.js:542	{0} = name
-p2yont	ok	{0} removed	已移除{0}	src/core/languages.js:542	{0} = name
-1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	已移除{0}，Shiori 改回用你对她说的语言回答	src/core/languages.js:544	{0} = name
-wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	已移除{0}，Shiori 改回用你对她说的语言回答。已保存	src/core/languages.js:545	{0} = name
-53lnxp	ok	Shiori answers in {0}	Shiori 会用{0}回答	src/core/languages.js:547	{0} = name
-fhhm2e	ok	Shiori answers in {0}. Saved	Shiori 会用{0}回答。已保存	src/core/languages.js:547	{0} = name
-1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shiori 会用你对她说的语言回答。已保存	src/core/languages.js:548	
-bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 会用你对她说的语言回答	src/core/languages.js:548	
-1qt7a9v	ok	Shiori answers in	Shiori 的回答语言	src/core/languages.js:549	Note: A label, so a noun: "the language Shiori answers in".
-k4u05v	ok	The language you speak to her	你对她说的语言	src/core/languages.js:550	
-cc69cl	ok	None picked: annai uses the browser’s language.	未选择时，annai 使用浏览器的语言。	src/core/languages.js:551	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
+3fqfy0	ok	Languages	语言	src/core/languages.js:541	
+1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你说的语言和 Shiori 的回答语言会告知每个负责听和说的模型，以免简短的回复被误认成别的语言。	src/core/languages.js:542	
+1giusr1	ok	Languages you speak	你说的语言	src/core/languages.js:543	
+m11rnd	ok	The first is the language phone dictation listens in; the order tells Shiori which you prefer.	手机语音输入使用排在第一的语言；排列顺序告诉 Shiori 你更喜欢哪种。	src/core/languages.js:544	Note: under "Languages you speak" (你说的语言); Phone dictation as Settings → Voice's row (手机语音输入). Replaces "In order of use…" (the user, 2026-10-28: what does the order mean?).
+5h4ntn	ok	Add a language	添加语言	src/core/languages.js:545	
+17rv3f8	ok	Add	添加	src/core/languages.js:546	
+9c35st	ok	Remove	移除	src/core/languages.js:547	Note: 移除 (take off the list) over 删除 (delete a thing).
+oogs2r	ok	Remove {0}	移除{0}	src/core/languages.js:548	{0} = name; Note: {0} is the language's name in Chinese (英语), so no spaces around it.
+h355qb	ok	{0} · {1}	{0} · {1}	src/core/languages.js:550	{0} = name; {1} = own
+18uuegb	ok	Added {0}	已添加{0}	src/core/languages.js:551	{0} = name
+zu7130	ok	Added {0}. Saved	已添加{0}，已保存	src/core/languages.js:551	{0} = name
+14va31	ok	{0} moved to {1}. Saved	{0}已移到第 {1} 位，已保存	src/core/languages.js:552	{0} = name; {1} = place
+ehoetc	ok	{0} moved to {1}	{0}已移到第 {1} 位	src/core/languages.js:552	{0} = name; {1} = place; Note: {1} is a place in the list (2, 3…).
+cefzcq	ok	{0} removed. Saved	已移除{0}，已保存	src/core/languages.js:553	{0} = name
+p2yont	ok	{0} removed	已移除{0}	src/core/languages.js:553	{0} = name
+1i1xhz6	ok	{0} removed; Shiori answers in the language you speak to her again	已移除{0}，Shiori 改回用你对她说的语言回答	src/core/languages.js:555	{0} = name
+wbdbo7	ok	{0} removed; Shiori answers in the language you speak to her again. Saved	已移除{0}，Shiori 改回用你对她说的语言回答。已保存	src/core/languages.js:556	{0} = name
+53lnxp	ok	Shiori answers in {0}	Shiori 会用{0}回答	src/core/languages.js:558	{0} = name
+fhhm2e	ok	Shiori answers in {0}. Saved	Shiori 会用{0}回答。已保存	src/core/languages.js:558	{0} = name
+1c7ft9k	ok	Shiori answers in the language you speak to her. Saved	Shiori 会用你对她说的语言回答。已保存	src/core/languages.js:559	
+bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 会用你对她说的语言回答	src/core/languages.js:559	
+1qt7a9v	ok	Shiori answers in	Shiori 的回答语言	src/core/languages.js:560	Note: A label, so a noun: "the language Shiori answers in".
+k4u05v	ok	The language you speak to her	你对她说的语言	src/core/languages.js:561	
+cc69cl	ok	None picked: annai uses the browser’s language.	未选择时，annai 使用浏览器的语言。	src/core/languages.js:562	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
 1dyfzsg	ok	A simulation is already running.	已有模拟正在运行。	src/core/live/live.js:324	
 157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0} 于 {1} 起飞（{2}）	src/core/live/plan-watches.js:221	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	航班 {0} 于 {1} 起飞	src/core/live/plan-watches.js:221	{0} = w.flight; {1} = time
@@ -1068,11 +1068,11 @@ abxwjc	ok	Your files didn't reach Shiori	文件没能交给 Shiori	src/ui/dock.j
 1m2zofh	ok	Type	输入	src/ui/dock.js:143	Note: The dock's keyboard button: it opens the box to type in (a verb).
 1dcb0v0	ok	The photo wasn't added	未能添加照片	src/ui/dock.js:186	
 1nyg58x	draft	Take the photo again.	请重新拍摄。	src/ui/dock.js:186	
-1xmvmzh	ok	Kokoro is working	Kokoro 正在工作	src/ui/dock.js:296	
-1ndyc8s	ok	Stop Kokoro	停止 Kokoro	src/ui/dock.js:297	
-ky4lc5	ok	Stop	停止	src/ui/dock.js:297	
-snj02s	ok	In {0} ›	{0} 的对话 ›	src/ui/dock.js:315	{0} = scopeTitle(typeof title === 'string' ? { ...rec, title } : rec)
-1s6dmy6	ok	Camera	相机	src/ui/dock.js:330	
+1xmvmzh	ok	Kokoro is working	Kokoro 正在工作	src/ui/dock.js:300	
+1ndyc8s	ok	Stop Kokoro	停止 Kokoro	src/ui/dock.js:301	
+ky4lc5	ok	Stop	停止	src/ui/dock.js:301	
+snj02s	ok	In {0} ›	{0} 的对话 ›	src/ui/dock.js:319	{0} = scopeTitle(typeof title === 'string' ? { ...rec, title } : rec)
+1s6dmy6	ok	Camera	相机	src/ui/dock.js:334	
 1rm0t76	ok	{0} isn't valid JSON.	“{0}”不是有效的 JSON。	src/ui/dom.js:155	{0} = label; Note: {0} is a field's label.
 1a791in	ok	{0} has to be an object: { … }.	“{0}”必须是对象：{ … }。	src/ui/dom.js:157	{0} = label; Note: {0} is a field's label.
 1gkm7i5	ok	Saving…	正在保存…	src/ui/dom.js:266	
@@ -1122,145 +1122,145 @@ agc3d8	ok	{0} is already back.	{0} 已经恢复了。	src/ui/file-delete.js:165	
 8xofiv	ok	A file named {0} is there now, so this one can't come back.	现在已有名为 {0} 的文件，所以无法恢复这个文件。	src/ui/file-delete.js:215	{0} = name
 6e9z7l	ok	Restored {0}	已恢复 {0}	src/ui/file-delete.js:222	{0} = what; Note: toast after Restore on a deleted file's screen; {0} is a list: the file's name, then what came back with it ("booking.pdf, 1 booking, and 1 itinerary item").
 7stptx	ok	Restored {0}. {1} didn't come back, as something new is there now.	已恢复 {0}。{1} 没有恢复，因为原处已有新内容。	src/ui/file-delete.js:222	{0} = what; {1} = list(left); Note: toast after Restore when part of what the Delete took is in the way of something made since; {0} is what came back, {1} what didn't ("1 itinerary item").
-la9701	ok	not backed up	未备份	src/ui/format.js:30	
-1h47npq	ok	backed up {0}	{0}已备份	src/ui/format.js:31	{0} = relTime(at, now); Note: {0} is relTime ("2小时前", "刚刚"), so it comes first.
-1sjuc50	ok	backed up {0}, changed since	{0}已备份，之后有更改	src/ui/format.js:31	{0} = relTime(at, now)
-meb4bg	ok	you	你	src/ui/format.js:35	Note: Who changed a file, shown alone in a file's row ("12 kB · you · 5 min ago").
-7fdkjm	ok	cost unknown	费用未知	src/ui/format.js:39	
-16name3	ok	free	免费	src/ui/format.js:40	
-1bm6q72	ok	key rejected	密钥被拒绝	src/ui/format.js:45	Note: What happened to one model when Shiori tried it, after its role ("Main: key rejected"): a few words, not a sentence.
-1kwsql6	ok	too many requests	请求过多	src/ui/format.js:45	
-4icrku	ok	answered	已回答	src/ui/format.js:45	
-jk3r0m	ok	overloaded	过载	src/ui/format.js:45	
-k1s3xh	ok	out of credit	余额不足	src/ui/format.js:45	Note: Credit is a prepaid balance (余额), as "This account is out of credit".
-1ci3mtm	ok	doesn't allow web apps	不允许网页应用	src/ui/format.js:46	
-1lj1ww1	ok	photo upload expired	照片上传已过期	src/ui/format.js:46	
-1x40ny1	ok	didn't take the photo	未接受照片	src/ui/format.js:46	
-f82spn	ok	too long for it	内容过长	src/ui/format.js:46	
-11n2a71	ok	couldn't connect	无法连接	src/ui/format.js:47	
-a3596h	ok	refused the request	拒绝了请求	src/ui/format.js:47	
-n3huvh	ok	unknown model or address	找不到模型或地址	src/ui/format.js:47	
-rhcw9u	ok	provider error	提供商出错	src/ui/format.js:47	
-13effb	ok	connection dropped	连接中断	src/ui/format.js:48	
-1quwfm7	ok	plugin failed	插件出错	src/ui/format.js:48	
-1s4r037	ok	too slow to start	响应太慢	src/ui/format.js:48	
-hqyrx7	ok	removed	已移除	src/ui/format.js:48	
-urm4i6	ok	stopped	已停止	src/ui/format.js:48	
-184j4co	ok	resting after an error	出错后暂停中	src/ui/format.js:49	
-1mrun4s	ok	redirected elsewhere	被重定向到别处	src/ui/format.js:49	
-1q01jst	ok	doesn't take photos	不支持照片	src/ui/format.js:49	
-365ivi	ok	can't use tools	无法使用工具	src/ui/format.js:49	
-4k8rwn	ok	its ability is switched off	该功能已关闭	src/ui/format.js:49	
-l7u7vc	ok	its plugin is missing	缺少对应的插件	src/ui/format.js:49	
-1y8iwje	ok	has no web tool of that kind	没有该类网页工具	src/ui/format.js:50	
-710q7y	ok	conversation too long for it	对话过长	src/ui/format.js:50	
-7jim5c	ok	isn't a chat model	不是对话模型	src/ui/format.js:50	Note: chat model → 对话模型, as the glossary's Koe · Chat note.
-kis1ax	ok	speech couldn't reach it	语音无法送达	src/ui/format.js:50	Note: a model's outcome: the speech couldn't be passed to it (nothing in the speech-in list worked for it); its detail says "The speech couldn't be sent to it."
-w70v2a	ok	doesn't take audio	不支持音频	src/ui/format.js:50	
-183e6qo	ok	Ends · {0}	结束 · {0}	src/ui/format.js:87	{0} = name; Note: the end of something over several days, as its own row on the Plan.
-1hdfht8	ok	Return · {0}	还车 · {0}	src/ui/format.js:87	{0} = name; Note: a rental car's return, its last row on the Plan.
-1jmwq9f	ok	Arrive · {0}	到达 · {0}	src/ui/format.js:87	{0} = name; Note: a flight's or train's arrival on a later day, its own row on the Plan.
-1lsabjg	ok	Check out · {0}	退房 · {0}	src/ui/format.js:87	{0} = name; Note: a stay's last row on the Plan; {0} is the hotel's name as written.
-1rqiggj	ok	Check in · {0}	入住 · {0}	src/ui/format.js:88	{0} = name; Note: a stay's first row on the Plan; 入住 as hotels say.
-jn2a2i	ok	Pick up · {0}	取车 · {0}	src/ui/format.js:88	{0} = name; Note: a rental car's pick-up, its first row on the Plan.
-1fw5x21	ok	Fixed:	时间固定：	src/ui/format.js:98	Note: Read aloud before a plan item that keeps its time.
-tdmj58	ok	Flexible:	时间可调：	src/ui/format.js:99	Note: Read aloud before a plan item whose time can move.
-cdkfoc	ok	Staying at {0} · night {1} of {2}	住在 {0} · 第 {1} 晚（共 {2} 晚）	src/ui/format.js:108	{0} = name; {1} = n; {2} = of; Note: a quiet line on each night of a stay; nights counted with 晚.
-lraa4q	ok	{0} · day {1} of {2}	{0} · 第 {1} 天（共 {2} 天）	src/ui/format.js:108	{0} = name; {1} = n; {2} = of; Note: a quiet line on each day between, for a car or anything over several days; as the stay's 第{1}晚（共{2}晚）.
-ukzedx	ok	Other	其他	src/ui/format.js:116	
-25bpne	draft	Meal	用餐	src/ui/format.js:117	Note: a plan item's kind, shown under its title: a meal.
-1q4rwjo#other	ok	# stays	# 处住宿	src/ui/format.js:132	plural; # = n; English: "# stay" (one), "# stays" (other); Note: shows in a Files row's second line, as the count of stays a file became.
-1saywzu#other	ok	# flights	# 个航班	src/ui/format.js:132	plural; # = n; English: "# flight" (one), "# flights" (other); Note: shows in a Files row's second line, as the count of flights a file became ("2 flights · Nov 20, Nov 27").
-1usugy8#other	ok	# cars	# 辆租车	src/ui/format.js:132	plural; # = n; English: "# car" (one), "# cars" (other); Note: shows in a Files row's second line, as the count of car rentals a file became.
-1iehdr7#other	draft	# ferries	# 趟渡轮	src/ui/format.js:133	plural; # = n; English: "# ferry" (one), "# ferries" (other); Note: shows in a Files row's second line, as the count of ferry bookings a file became; 趟 as for trains.
-9captf#other	draft	# buses	# 趟巴士	src/ui/format.js:133	plural; # = n; English: "# bus" (one), "# buses" (other); Note: shows in a Files row's second line, as the count of bus bookings a file became; 趟 as for trains.
-qicqbg#other	ok	# trains	# 趟火车	src/ui/format.js:133	plural; # = n; English: "# train" (one), "# trains" (other); Note: shows in a Files row's second line, as the count of train trips a file became.
-132sfp8#other	ok	# events	# 个活动	src/ui/format.js:134	plural; # = n; English: "# event" (one), "# events" (other); Note: shows in a Files row's second line, as the count of events a file became.
-1nc8csf#other	draft	# coaches	# 趟长途大巴	src/ui/format.js:134	plural; # = n; English: "# coach" (one), "# coaches" (other); Note: shows in a Files row's second line, as the count of coach bookings a file became; 长途大巴 as the kind row says.
-7f6248#other	ok	# restaurants	# 家餐厅	src/ui/format.js:134	plural; # = n; English: "# restaurant" (one), "# restaurants" (other); Note: shows in a Files row's second line, as the count of restaurant bookings a file became.
-25ugc5	ok	Itinerary items from a calendar	来自日历的行程项目	src/ui/format.js:160	Note: what a calendar file (.ics) became; Plan is 行程.
-1gfvwcc	ok	Nothing yet	暂无	src/ui/format.js:161	Note: what a file became on the trip's Files: nothing so far.
-jgspu5	ok	Waiting for Shiori to read it	等待 Shiori 读取	src/ui/format.js:161	Note: a file on the trip's Files that Shiori hasn't read yet.
-1hlojji	ok	To	目的地	src/ui/format.js:172	context: booking; Note: a booking's detail: where a flight, train or ride goes, and where annai files an arrival's place (the key to).
-1uq5tvs	ok	Seat	座位	src/ui/format.js:172	Note: a booking's detail.
-1yz1r2o	ok	Cabin	舱位	src/ui/format.js:172	context: booking; Note: a flight's cabin class (economy, business).
-9ihsg5	ok	Airline	航空公司	src/ui/format.js:172	Note: a booking's detail.
-qoo2zd	ok	Flight	航班号	src/ui/format.js:172	context: booking; Note: a booking's detail: the flight's number (AN 123), not the kind of booking.
-upnba7	ok	From	出发地	src/ui/format.js:172	context: booking; Note: a booking's detail: where a flight or train leaves from.
-1501knl	ok	Terminal	航站楼	src/ui/format.js:173	Note: an airport's terminal.
-15rtgdu	ok	Gate	登机口	src/ui/format.js:173	Note: an airport's gate.
-193ku12	ok	Bags	行李	src/ui/format.js:173	Note: a booking's detail: the bags included.
-1ipbaqc	ok	Room	房间	src/ui/format.js:173	context: booking; Note: a stay's room.
-1jn3vqu	ok	Nights	入住晚数	src/ui/format.js:173	Note: how many nights a stay is.
-ean645	ok	Travellers	乘客	src/ui/format.js:173	Note: the people a flight or train booking is for.
-vpb928	ok	Guests	入住人数	src/ui/format.js:173	Note: the people a stay is booked for.
-1ozvdw3	ok	Car	车辆	src/ui/format.js:174	context: booking; Note: a booking's detail: the car, as people label it, on a booking that is not a train or a rental (a flight, a stay, an event); a plain word, not a coach number or the kind of booking.
-1v8ms9v	ok	Train	车次	src/ui/format.js:174	context: booking; Note: a booking's detail: the train's number.
-3uyuz4	ok	Drop-off	还车	src/ui/format.js:174	Note: where and when a rental car goes back.
-4f76ga	ok	Notes	备注	src/ui/format.js:174	Note: notes on a booking or a plan item.
-95yu2i	ok	Pick-up	取车	src/ui/format.js:174	Note: where and when a rental car is picked up.
-vzzxl8	ok	Party size	用餐人数	src/ui/format.js:174	Note: how many people a restaurant booking is for.
-1hra0d8	ok	Company	公司	src/ui/format.js:175	Note: a booking's detail: the company a car or ride is booked with.
-1lwerby	ok	Flights	航班	src/ui/format.js:175	context: booking; Note: a booking's detail: the flights of one booking (a connection), not a count.
-7gnwg	ok	Passengers	乘客	src/ui/format.js:175	Note: a booking's detail: the people a ride is for, as Travellers (乘客).
-gc0vlk	ok	Phone number	电话号码	src/ui/format.js:175	Note: a booking's detail: a phone number annai filed from the booking.
-1c0as9p	draft	Total	总价	src/ui/format.js:176	Note: a booking's detail: a total Shiori kept in words ("about 120 USD incl. tax"), beside the booking's Cost.
-1mcv0ln	draft	Rooms	房间数	src/ui/format.js:176	Note: a booking's detail: how many rooms.
-1nfh0x4	draft	Arrival	到达	src/ui/format.js:176	context: booking; Note: a booking's detail: the arrival, what a model writes under the key arrival (a place or a time, such as a stay's 15:00–16:00); the same word as the booking's Arrives, which holds its day and time; annai files an arrival's place under To.
-1pdyg96	draft	Price	价格	src/ui/format.js:176	Note: a booking's detail: a price Shiori kept in words.
-87kvtu	draft	Carry-on	手提行李	src/ui/format.js:176	Note: a booking's detail, or a part of its bags: the bags taken on board (手提行李, the airlines' usual word).
-hvyiod	draft	Checked bags	托运行李	src/ui/format.js:176	Note: a booking's detail, or a part of its bags: the bags checked in (托运行李, the airlines' usual word).
-u69e20	draft	Meal	餐食	src/ui/format.js:176	context: booking; Note: a booking's detail, or a flight leg's: its meal (特殊餐食 on a flight, breakfast at a stay).
-8xrrng	ok	Car	车型	src/ui/format.js:180	context: rental; Note: a rental's detail: the car's model (the make and model, or the class), not the kind of booking (its own Car row) and not a train's coach.
-b2la2e	ok	Car	车厢	src/ui/format.js:180	context: train; Note: a train's car (coach), not a rental car.
-1jtckn3	ok	Route	航线	src/ui/format.js:285	context: flight; Note: a flight's from → to, as one line.
-13ne04w	ok	Departs	出发	src/ui/format.js:286	Note: a flight's, a train's or a ride's (ferry, bus, coach) departure, its time in that place's zone.
-j6u2ti	ok	Starts	开始	src/ui/format.js:286	context: booking; Note: A booking's start, its day and time shown beside it.
-vjjlq9	ok	Check-in	入住	src/ui/format.js:286	Note: a stay's check-in, its day and time beside it.
-1pcvk9l	ok	Ends	结束	src/ui/format.js:287	context: booking
-8md94n	ok	Arrives	到达	src/ui/format.js:287	Note: a flight's, a train's or a ride's (ferry, bus, coach) arrival, its time in that place's zone.
-8nuh1e	ok	Check-out	退房	src/ui/format.js:287	Note: a stay's check-out, its day and time beside it.
-16ygujg	ok	Place	地点	src/ui/format.js:291	
-lypvx6	ok	{0}, {1}	{0}（{1}）	src/ui/format.js:291	context: booking; {0} = name; {1} = address; Note: A booking's place: its name, then its address in brackets.
-p3snlg	ok	Confirmation	确认号	src/ui/format.js:303	Note: A booking's confirmation code.
-t05i6w	ok	Cost	费用	src/ui/format.js:304	
-sumbc8	draft	Name	名称	src/ui/format.js:336	context: booking; Note: a booking's detail: a name written beside the booking's own (its heading), when it says something else.
-1vdspge	ok	Getting files: {0} of {1}	正在获取文件：{0}/{1}	src/ui/format.js:355	{0} = num(p.done); {1} = num(p.total)
-zo1gq	ok	Getting the backup…	正在获取备份…	src/ui/format.js:355	
-fuj1qb	ok	Getting the backup ready…	正在准备备份…	src/ui/format.js:359	
-1a0lh7c	ok	Comparing files {0} of {1}…	正在比较文件（{0}/{1}）…	src/ui/format.js:360	{0} = num(p.done); {1} = num(p.total)
-1ofggks	ok	Comparing files…	正在比较文件…	src/ui/format.js:360	
-1jbhw8o	ok	Uploading…	正在上传…	src/ui/format.js:361	
-sg0mn0	ok	Uploading {0} of {1}…	正在上传（{0}/{1}）…	src/ui/format.js:361	{0} = num(p.done); {1} = num(p.total)
-11y7c1u	ok	Paused: there is a newer backup from an iPad	已暂停：有来自 iPad 的较新备份	src/ui/format.js:366	
-1815ss7	ok	Paused: there is a newer backup from an iPhone	已暂停：有来自 iPhone 的较新备份	src/ui/format.js:366	
-1kc2l15	ok	Paused: there is a newer backup from a computer	已暂停：有来自电脑的较新备份	src/ui/format.js:367	
-1ytn3n1	ok	Paused: there is a newer backup from an Android phone	已暂停：有来自 Android 手机的较新备份	src/ui/format.js:367	
-14m1y56	ok	Paused: there is a newer backup from another device	已暂停：有来自另一台设备的较新备份	src/ui/format.js:368	
-12hcbva	ok	An iPhone backed up to {0} {1}.	{1}，一部 iPhone 备份到了 {0}。	src/ui/format.js:372	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
-1exdtuz	ok	An iPad backed up to {0} {1}.	{1}，一台 iPad 备份到了 {0}。	src/ui/format.js:372	{0} = where; {1} = ago
-1hmrpdo	ok	A computer backed up to {0} {1}.	{1}，一台电脑备份到了 {0}。	src/ui/format.js:373	{0} = where; {1} = ago
-dc7u48	ok	An Android phone backed up to {0} {1}.	{1}，一部 Android 手机备份到了 {0}。	src/ui/format.js:373	{0} = where; {1} = ago
-19kyaez	ok	Another device backed up to {0} {1}.	{1}，另一台设备备份到了 {0}。	src/ui/format.js:374	{0} = where; {1} = ago
-mbc651	ok	That was after this phone's last backup.	这比这部手机上次备份的时间更晚。	src/ui/format.js:378	
-vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这部手机的备份覆盖它。	src/ui/format.js:378	Note: "Back up this phone over it": this phone's backup replaces the newer one there.
-1ce0smb	ok	That was after this iPad's last backup.	这比这台 iPad 上次备份的时间更晚。	src/ui/format.js:379	
-nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这台 iPad 的备份覆盖它。	src/ui/format.js:379	
-hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这台电脑的备份覆盖它。	src/ui/format.js:380	
-wn3ejs	ok	That was after this computer's last backup.	这比这台电脑上次备份的时间更晚。	src/ui/format.js:380	
-1n6qjpw	ok	Working…	正在处理…	src/ui/format.js:395	
-1sw982j	ok	Last backup {0}.	上次备份：{0}。	src/ui/format.js:400	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
-d1smo3	ok	Not backed up yet.	尚未备份。	src/ui/format.js:400	
-10ouos4	ok	Waiting for your OK to upload {0}	正在等待你同意上传 {0}	src/ui/format.js:401	{0} = size(h.bytes)
-nbshf0	ok	The last try failed.	上次尝试失败了。	src/ui/format.js:403	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
-osg3je	ok	The last try failed: {0}	上次尝试失败：{0}	src/ui/format.js:404	{0} = holdWords(h, target.name)
-1qmdzit	ok	Not set up yet: fill it in, then Save and test	尚未设置：请填写后点“保存并测试”	src/ui/format.js:405	Note: "Save and test" is the backup place's button.
-1e2pygg	ok	Automatic backups are off	自动备份已关闭	src/ui/format.js:406	
-173tgfr	ok	Last backup {0}	上次备份：{0}	src/ui/format.js:407	{0} = at
-1uajbr3	ok	Not backed up yet	尚未备份	src/ui/format.js:407	
-1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	那里的自动备份已暂停，以免两台设备互相覆盖。	src/ui/format.js:419	
-hmr3pn	ok	The other backup stays in its history.	另一个备份仍会保留在历史中。	src/ui/format.js:419	
-8091b1	ok	no limit	不限	src/ui/format.js:444	
+la9701	ok	not backed up	未备份	src/ui/format.js:32	
+1h47npq	ok	backed up {0}	{0}已备份	src/ui/format.js:33	{0} = relTime(at, now); Note: {0} is relTime ("2小时前", "刚刚"), so it comes first.
+1sjuc50	ok	backed up {0}, changed since	{0}已备份，之后有更改	src/ui/format.js:33	{0} = relTime(at, now)
+meb4bg	ok	you	你	src/ui/format.js:37	Note: Who changed a file, shown alone in a file's row ("12 kB · you · 5 min ago").
+7fdkjm	ok	cost unknown	费用未知	src/ui/format.js:41	
+16name3	ok	free	免费	src/ui/format.js:42	
+1bm6q72	ok	key rejected	密钥被拒绝	src/ui/format.js:47	Note: What happened to one model when Shiori tried it, after its role ("Main: key rejected"): a few words, not a sentence.
+1kwsql6	ok	too many requests	请求过多	src/ui/format.js:47	
+4icrku	ok	answered	已回答	src/ui/format.js:47	
+jk3r0m	ok	overloaded	过载	src/ui/format.js:47	
+k1s3xh	ok	out of credit	余额不足	src/ui/format.js:47	Note: Credit is a prepaid balance (余额), as "This account is out of credit".
+1ci3mtm	ok	doesn't allow web apps	不允许网页应用	src/ui/format.js:48	
+1lj1ww1	ok	photo upload expired	照片上传已过期	src/ui/format.js:48	
+1x40ny1	ok	didn't take the photo	未接受照片	src/ui/format.js:48	
+f82spn	ok	too long for it	内容过长	src/ui/format.js:48	
+11n2a71	ok	couldn't connect	无法连接	src/ui/format.js:49	
+a3596h	ok	refused the request	拒绝了请求	src/ui/format.js:49	
+n3huvh	ok	unknown model or address	找不到模型或地址	src/ui/format.js:49	
+rhcw9u	ok	provider error	提供商出错	src/ui/format.js:49	
+13effb	ok	connection dropped	连接中断	src/ui/format.js:50	
+1quwfm7	ok	plugin failed	插件出错	src/ui/format.js:50	
+1s4r037	ok	too slow to start	响应太慢	src/ui/format.js:50	
+hqyrx7	ok	removed	已移除	src/ui/format.js:50	
+urm4i6	ok	stopped	已停止	src/ui/format.js:50	
+184j4co	ok	resting after an error	出错后暂停中	src/ui/format.js:51	
+1mrun4s	ok	redirected elsewhere	被重定向到别处	src/ui/format.js:51	
+1q01jst	ok	doesn't take photos	不支持照片	src/ui/format.js:51	
+365ivi	ok	can't use tools	无法使用工具	src/ui/format.js:51	
+4k8rwn	ok	its ability is switched off	该功能已关闭	src/ui/format.js:51	
+l7u7vc	ok	its plugin is missing	缺少对应的插件	src/ui/format.js:51	
+1y8iwje	ok	has no web tool of that kind	没有该类网页工具	src/ui/format.js:52	
+710q7y	ok	conversation too long for it	对话过长	src/ui/format.js:52	
+7jim5c	ok	isn't a chat model	不是对话模型	src/ui/format.js:52	Note: chat model → 对话模型, as the glossary's Koe · Chat note.
+kis1ax	ok	speech couldn't reach it	语音无法送达	src/ui/format.js:52	Note: a model's outcome: the speech couldn't be passed to it (nothing in the speech-in list worked for it); its detail says "The speech couldn't be sent to it."
+w70v2a	ok	doesn't take audio	不支持音频	src/ui/format.js:52	
+183e6qo	ok	Ends · {0}	结束 · {0}	src/ui/format.js:89	{0} = name; Note: the end of something over several days, as its own row on the Plan.
+1hdfht8	ok	Return · {0}	还车 · {0}	src/ui/format.js:89	{0} = name; Note: a rental car's return, its last row on the Plan.
+1jmwq9f	ok	Arrive · {0}	到达 · {0}	src/ui/format.js:89	{0} = name; Note: a flight's or train's arrival on a later day, its own row on the Plan.
+1lsabjg	ok	Check out · {0}	退房 · {0}	src/ui/format.js:89	{0} = name; Note: a stay's last row on the Plan; {0} is the hotel's name as written.
+1rqiggj	ok	Check in · {0}	入住 · {0}	src/ui/format.js:90	{0} = name; Note: a stay's first row on the Plan; 入住 as hotels say.
+jn2a2i	ok	Pick up · {0}	取车 · {0}	src/ui/format.js:90	{0} = name; Note: a rental car's pick-up, its first row on the Plan.
+1fw5x21	ok	Fixed:	时间固定：	src/ui/format.js:100	Note: Read aloud before a plan item that keeps its time.
+tdmj58	ok	Flexible:	时间可调：	src/ui/format.js:101	Note: Read aloud before a plan item whose time can move.
+cdkfoc	ok	Staying at {0} · night {1} of {2}	住在 {0} · 第 {1} 晚（共 {2} 晚）	src/ui/format.js:110	{0} = name; {1} = n; {2} = of; Note: a quiet line on each night of a stay; nights counted with 晚.
+lraa4q	ok	{0} · day {1} of {2}	{0} · 第 {1} 天（共 {2} 天）	src/ui/format.js:110	{0} = name; {1} = n; {2} = of; Note: a quiet line on each day between, for a car or anything over several days; as the stay's 第{1}晚（共{2}晚）.
+ukzedx	ok	Other	其他	src/ui/format.js:118	
+25bpne	draft	Meal	用餐	src/ui/format.js:119	Note: a plan item's kind, shown under its title: a meal.
+1q4rwjo#other	ok	# stays	# 处住宿	src/ui/format.js:134	plural; # = n; English: "# stay" (one), "# stays" (other); Note: shows in a Files row's second line, as the count of stays a file became.
+1saywzu#other	ok	# flights	# 个航班	src/ui/format.js:134	plural; # = n; English: "# flight" (one), "# flights" (other); Note: shows in a Files row's second line, as the count of flights a file became ("2 flights · Nov 20, Nov 27").
+1usugy8#other	ok	# cars	# 辆租车	src/ui/format.js:134	plural; # = n; English: "# car" (one), "# cars" (other); Note: shows in a Files row's second line, as the count of car rentals a file became.
+1iehdr7#other	draft	# ferries	# 趟渡轮	src/ui/format.js:135	plural; # = n; English: "# ferry" (one), "# ferries" (other); Note: shows in a Files row's second line, as the count of ferry bookings a file became; 趟 as for trains.
+9captf#other	draft	# buses	# 趟巴士	src/ui/format.js:135	plural; # = n; English: "# bus" (one), "# buses" (other); Note: shows in a Files row's second line, as the count of bus bookings a file became; 趟 as for trains.
+qicqbg#other	ok	# trains	# 趟火车	src/ui/format.js:135	plural; # = n; English: "# train" (one), "# trains" (other); Note: shows in a Files row's second line, as the count of train trips a file became.
+132sfp8#other	ok	# events	# 个活动	src/ui/format.js:136	plural; # = n; English: "# event" (one), "# events" (other); Note: shows in a Files row's second line, as the count of events a file became.
+1nc8csf#other	draft	# coaches	# 趟长途大巴	src/ui/format.js:136	plural; # = n; English: "# coach" (one), "# coaches" (other); Note: shows in a Files row's second line, as the count of coach bookings a file became; 长途大巴 as the kind row says.
+7f6248#other	ok	# restaurants	# 家餐厅	src/ui/format.js:136	plural; # = n; English: "# restaurant" (one), "# restaurants" (other); Note: shows in a Files row's second line, as the count of restaurant bookings a file became.
+25ugc5	ok	Itinerary items from a calendar	来自日历的行程项目	src/ui/format.js:162	Note: what a calendar file (.ics) became; Plan is 行程.
+1gfvwcc	ok	Nothing yet	暂无	src/ui/format.js:163	Note: what a file became on the trip's Files: nothing so far.
+jgspu5	ok	Waiting for Shiori to read it	等待 Shiori 读取	src/ui/format.js:163	Note: a file on the trip's Files that Shiori hasn't read yet.
+1hlojji	ok	To	目的地	src/ui/format.js:174	context: booking; Note: a booking's detail: where a flight, train or ride goes, and where annai files an arrival's place (the key to).
+1uq5tvs	ok	Seat	座位	src/ui/format.js:174	Note: a booking's detail.
+1yz1r2o	ok	Cabin	舱位	src/ui/format.js:174	context: booking; Note: a flight's cabin class (economy, business).
+9ihsg5	ok	Airline	航空公司	src/ui/format.js:174	Note: a booking's detail.
+qoo2zd	ok	Flight	航班号	src/ui/format.js:174	context: booking; Note: a booking's detail: the flight's number (AN 123), not the kind of booking.
+upnba7	ok	From	出发地	src/ui/format.js:174	context: booking; Note: a booking's detail: where a flight or train leaves from.
+1501knl	ok	Terminal	航站楼	src/ui/format.js:175	Note: an airport's terminal.
+15rtgdu	ok	Gate	登机口	src/ui/format.js:175	Note: an airport's gate.
+193ku12	ok	Bags	行李	src/ui/format.js:175	Note: a booking's detail: the bags included.
+1ipbaqc	ok	Room	房间	src/ui/format.js:175	context: booking; Note: a stay's room.
+1jn3vqu	ok	Nights	入住晚数	src/ui/format.js:175	Note: how many nights a stay is.
+ean645	ok	Travellers	乘客	src/ui/format.js:175	Note: the people a flight or train booking is for.
+vpb928	ok	Guests	入住人数	src/ui/format.js:175	Note: the people a stay is booked for.
+1ozvdw3	ok	Car	车辆	src/ui/format.js:176	context: booking; Note: a booking's detail: the car, as people label it, on a booking that is not a train or a rental (a flight, a stay, an event); a plain word, not a coach number or the kind of booking.
+1v8ms9v	ok	Train	车次	src/ui/format.js:176	context: booking; Note: a booking's detail: the train's number.
+3uyuz4	ok	Drop-off	还车	src/ui/format.js:176	Note: where and when a rental car goes back.
+4f76ga	ok	Notes	备注	src/ui/format.js:176	Note: notes on a booking or a plan item.
+95yu2i	ok	Pick-up	取车	src/ui/format.js:176	Note: where and when a rental car is picked up.
+vzzxl8	ok	Party size	用餐人数	src/ui/format.js:176	Note: how many people a restaurant booking is for.
+1hra0d8	ok	Company	公司	src/ui/format.js:177	Note: a booking's detail: the company a car or ride is booked with.
+1lwerby	ok	Flights	航班	src/ui/format.js:177	context: booking; Note: a booking's detail: the flights of one booking (a connection), not a count.
+7gnwg	ok	Passengers	乘客	src/ui/format.js:177	Note: a booking's detail: the people a ride is for, as Travellers (乘客).
+gc0vlk	ok	Phone number	电话号码	src/ui/format.js:177	Note: a booking's detail: a phone number annai filed from the booking.
+1c0as9p	draft	Total	总价	src/ui/format.js:178	Note: a booking's detail: a total Shiori kept in words ("about 120 USD incl. tax"), beside the booking's Cost.
+1mcv0ln	draft	Rooms	房间数	src/ui/format.js:178	Note: a booking's detail: how many rooms.
+1nfh0x4	draft	Arrival	到达	src/ui/format.js:178	context: booking; Note: a booking's detail: the arrival, what a model writes under the key arrival (a place or a time, such as a stay's 15:00–16:00); the same word as the booking's Arrives, which holds its day and time; annai files an arrival's place under To.
+1pdyg96	draft	Price	价格	src/ui/format.js:178	Note: a booking's detail: a price Shiori kept in words.
+87kvtu	draft	Carry-on	手提行李	src/ui/format.js:178	Note: a booking's detail, or a part of its bags: the bags taken on board (手提行李, the airlines' usual word).
+hvyiod	draft	Checked bags	托运行李	src/ui/format.js:178	Note: a booking's detail, or a part of its bags: the bags checked in (托运行李, the airlines' usual word).
+u69e20	draft	Meal	餐食	src/ui/format.js:178	context: booking; Note: a booking's detail, or a flight leg's: its meal (特殊餐食 on a flight, breakfast at a stay).
+8xrrng	ok	Car	车型	src/ui/format.js:182	context: rental; Note: a rental's detail: the car's model (the make and model, or the class), not the kind of booking (its own Car row) and not a train's coach.
+b2la2e	ok	Car	车厢	src/ui/format.js:182	context: train; Note: a train's car (coach), not a rental car.
+1jtckn3	ok	Route	航线	src/ui/format.js:287	context: flight; Note: a flight's from → to, as one line.
+13ne04w	ok	Departs	出发	src/ui/format.js:288	Note: a flight's, a train's or a ride's (ferry, bus, coach) departure, its time in that place's zone.
+j6u2ti	ok	Starts	开始	src/ui/format.js:288	context: booking; Note: A booking's start, its day and time shown beside it.
+vjjlq9	ok	Check-in	入住	src/ui/format.js:288	Note: a stay's check-in, its day and time beside it.
+1pcvk9l	ok	Ends	结束	src/ui/format.js:289	context: booking
+8md94n	ok	Arrives	到达	src/ui/format.js:289	Note: a flight's, a train's or a ride's (ferry, bus, coach) arrival, its time in that place's zone.
+8nuh1e	ok	Check-out	退房	src/ui/format.js:289	Note: a stay's check-out, its day and time beside it.
+16ygujg	ok	Place	地点	src/ui/format.js:293	
+lypvx6	ok	{0}, {1}	{0}（{1}）	src/ui/format.js:293	context: booking; {0} = name; {1} = address; Note: A booking's place: its name, then its address in brackets.
+p3snlg	ok	Confirmation	确认号	src/ui/format.js:305	Note: A booking's confirmation code.
+t05i6w	ok	Cost	费用	src/ui/format.js:306	
+sumbc8	draft	Name	名称	src/ui/format.js:338	context: booking; Note: a booking's detail: a name written beside the booking's own (its heading), when it says something else.
+1vdspge	ok	Getting files: {0} of {1}	正在获取文件：{0}/{1}	src/ui/format.js:357	{0} = num(p.done); {1} = num(p.total)
+zo1gq	ok	Getting the backup…	正在获取备份…	src/ui/format.js:357	
+fuj1qb	ok	Getting the backup ready…	正在准备备份…	src/ui/format.js:361	
+1a0lh7c	ok	Comparing files {0} of {1}…	正在比较文件（{0}/{1}）…	src/ui/format.js:362	{0} = num(p.done); {1} = num(p.total)
+1ofggks	ok	Comparing files…	正在比较文件…	src/ui/format.js:362	
+1jbhw8o	ok	Uploading…	正在上传…	src/ui/format.js:363	
+sg0mn0	ok	Uploading {0} of {1}…	正在上传（{0}/{1}）…	src/ui/format.js:363	{0} = num(p.done); {1} = num(p.total)
+11y7c1u	ok	Paused: there is a newer backup from an iPad	已暂停：有来自 iPad 的较新备份	src/ui/format.js:368	
+1815ss7	ok	Paused: there is a newer backup from an iPhone	已暂停：有来自 iPhone 的较新备份	src/ui/format.js:368	
+1kc2l15	ok	Paused: there is a newer backup from a computer	已暂停：有来自电脑的较新备份	src/ui/format.js:369	
+1ytn3n1	ok	Paused: there is a newer backup from an Android phone	已暂停：有来自 Android 手机的较新备份	src/ui/format.js:369	
+14m1y56	ok	Paused: there is a newer backup from another device	已暂停：有来自另一台设备的较新备份	src/ui/format.js:370	
+12hcbva	ok	An iPhone backed up to {0} {1}.	{1}，一部 iPhone 备份到了 {0}。	src/ui/format.js:374	{0} = where; {1} = ago; Note: {1} is a relative time ("1 hour ago", "just now").
+1exdtuz	ok	An iPad backed up to {0} {1}.	{1}，一台 iPad 备份到了 {0}。	src/ui/format.js:374	{0} = where; {1} = ago
+1hmrpdo	ok	A computer backed up to {0} {1}.	{1}，一台电脑备份到了 {0}。	src/ui/format.js:375	{0} = where; {1} = ago
+dc7u48	ok	An Android phone backed up to {0} {1}.	{1}，一部 Android 手机备份到了 {0}。	src/ui/format.js:375	{0} = where; {1} = ago
+19kyaez	ok	Another device backed up to {0} {1}.	{1}，另一台设备备份到了 {0}。	src/ui/format.js:376	{0} = where; {1} = ago
+mbc651	ok	That was after this phone's last backup.	这比这部手机上次备份的时间更晚。	src/ui/format.js:380	
+vqd7xg	ok	Import it as a copy to bring its trips here, or back up this phone over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这部手机的备份覆盖它。	src/ui/format.js:380	Note: "Back up this phone over it": this phone's backup replaces the newer one there.
+1ce0smb	ok	That was after this iPad's last backup.	这比这台 iPad 上次备份的时间更晚。	src/ui/format.js:381	
+nmyapy	ok	Import it as a copy to bring its trips here, or back up this iPad over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这台 iPad 的备份覆盖它。	src/ui/format.js:381	
+hqymxl	ok	Import it as a copy to bring its trips here, or back up this computer over it.	可以作为副本导入，把其中的旅行带到这里；也可以用这台电脑的备份覆盖它。	src/ui/format.js:382	
+wn3ejs	ok	That was after this computer's last backup.	这比这台电脑上次备份的时间更晚。	src/ui/format.js:382	
+1n6qjpw	ok	Working…	正在处理…	src/ui/format.js:397	
+1sw982j	ok	Last backup {0}.	上次备份：{0}。	src/ui/format.js:402	{0} = at; Note: The same line as "Last backup {0}", with a full stop because another sentence follows it.
+d1smo3	ok	Not backed up yet.	尚未备份。	src/ui/format.js:402	
+10ouos4	ok	Waiting for your OK to upload {0}	正在等待你同意上传 {0}	src/ui/format.js:403	{0} = size(h.bytes)
+nbshf0	ok	The last try failed.	上次尝试失败了。	src/ui/format.js:405	Note: the reason follows on a line of its own, in English: a hold kept before annai spoke other languages.
+osg3je	ok	The last try failed: {0}	上次尝试失败：{0}	src/ui/format.js:406	{0} = holdWords(h, target.name)
+1qmdzit	ok	Not set up yet: fill it in, then Save and test	尚未设置：请填写后点“保存并测试”	src/ui/format.js:407	Note: "Save and test" is the backup place's button.
+1e2pygg	ok	Automatic backups are off	自动备份已关闭	src/ui/format.js:408	
+173tgfr	ok	Last backup {0}	上次备份：{0}	src/ui/format.js:409	{0} = at
+1uajbr3	ok	Not backed up yet	尚未备份	src/ui/format.js:409	
+1j5k2vf	ok	Automatic backups there are paused, so neither device overwrites the other.	那里的自动备份已暂停，以免两台设备互相覆盖。	src/ui/format.js:421	
+hmr3pn	ok	The other backup stays in its history.	另一个备份仍会保留在历史中。	src/ui/format.js:421	
+8091b1	ok	no limit	不限	src/ui/format.js:446	
 lpx0cl#other	ok	# trips and conversations	# 个旅行和对话	src/ui/import-state.js:47	plural; # = titles.length; English: "# trip or conversation" (one), "# trips and conversations" (other); Note: a git backup's preview, from its manifest alone, can't tell trips from chats: this is the one row they fold under; also the toast "Imported # trips and conversations" when the user left the import screen (import-state.js).
 12lprg	ok	Imported {0} from {1}.	已从 {1} 导入 {0}。	src/ui/import-state.js:48	{0} = what; {1} = place
 1hzaym7	ok	Imported {0}.	已导入 {0}。	src/ui/import-state.js:48	{0} = what
@@ -1696,8 +1696,8 @@ ah9gez	ok	Turn GPS on	开启 GPS	src/ui/screens/drive.js:106	Note: 开启, as "�
 14ltb7u	ok	The itinerary has no places to choose from yet.	行程里还没有可选的地点。	src/ui/screens/drive.js:109	
 1sedy1m	ok	Where are you?	你在哪里？	src/ui/screens/drive.js:109	Note: the GPS chip's item; the location card names it as written here ("GPS ボタン → いまどこにいますか？").
 1w8zbso	ok	annai now knows you're at {0}.	已将你的位置设为 {0}。	src/ui/screens/drive.js:114	{0} = p.name
-16ocoht	ok	Show what she said	查看她说的话	src/ui/screens/drive.js:179	
-1yj7glf	ok	Said aloud	已朗读	src/ui/screens/drive.js:180	
+16ocoht	ok	Show what she said	查看她说的话	src/ui/screens/drive.js:181	
+1yj7glf	ok	Said aloud	已朗读	src/ui/screens/drive.js:182	
 1py6vf8	ok	Unfinished translations	未完成的翻译	src/ui/screens/experimental.js:16	
 13a0vz9	ok	Features that are still being tried. They may have bugs, and their fixes may come slower than the rest of annai.	仍在试验中的功能，可能有问题，修复速度也可能比 annai 的其他部分慢。	src/ui/screens/experimental.js:22	
 15b29xu	ok	Translations that nobody who reads the language has checked yet. On, you can choose them in Settings → Languages. Their wording may be wrong, and what isn't translated yet stays in English.	还没有懂该语言的人检查过的翻译。开启后，可以在设置 → 语言中选择。措辞可能有误，尚未翻译的部分仍显示英文。	src/ui/screens/experimental.js:25	Note: the place moved from 设置 → Shiori → 语言 to 设置 → 语言 (2026-10-28).
@@ -2202,20 +2202,20 @@ nsh8oa	ok	Written {0}, then edited by you.	{0}写成，后来你编辑过。	src
 1ryjzrz	ok	Whole trip	全程	src/ui/screens/replay.js:43	
 2m5fua	ok	Nothing to replay yet. While GPS is on, annai records where you go; Shiori's cards, your messages and your photos show here too.	还没有可回放的内容。GPS 开启时，annai 会记录你去过的地方；Shiori 的卡片、你的消息和照片也会显示在这里。	src/ui/screens/replay.js:47	
 wl73p3	ok	The route: {0}	路线：{0}	src/ui/screens/replay.js:73	{0} = r.words
-15c7htt	ok	You said	你说	src/ui/screens/replay.js:99	
-1efd4xo	ok	You	你	src/ui/screens/replay.js:99	
-10ftdrc	ok	Photo {0}, {1}	照片 {0}，{1}	src/ui/screens/replay.js:101	{0} = e.path.split('/').pop(); {1} = timeIn(e.at, r.tz)
-1el9a17	ok	Open full size	放大查看	src/ui/screens/replay.js:102	
-bk85tv	ok	Play	播放	src/ui/screens/replay.js:116	
-1kq44x8	ok	{0}, {1}	{0}，{1}	src/ui/screens/replay.js:148	{0} = words; {1} = m.where; Note: A moment of the replay: its time, then where you were.
-1ixl81m#other	ok	# stamps so far	已集 # 枚纪念章	src/ui/screens/replay.js:154	plural; # = m.stamps; English: "# stamp so far" (one), "# stamps so far" (other)
-1bjla9w	ok	The timeline below lists each place in order.	下方时间线按顺序列出了每个地点。	src/ui/screens/replay.js:166	
-z5puy8	ok	At this moment	此时	src/ui/screens/replay.js:167	
-hg5a8z	ok	Time in the trip	旅途时间	src/ui/screens/replay.js:170	
-2w2xwg	ok	Speed	速度	src/ui/screens/replay.js:171	
-7xq6tu	ok	The trip in order	旅行经过	src/ui/screens/replay.js:172	Note: A screen reader's name for the timeline's section.
-djv8ja	ok	Timeline	时间线	src/ui/screens/replay.js:172	
-j4z771	ok	Pause	暂停	src/ui/screens/replay.js:173	
+15c7htt	ok	You said	你说	src/ui/screens/replay.js:104	
+1efd4xo	ok	You	你	src/ui/screens/replay.js:104	
+10ftdrc	ok	Photo {0}, {1}	照片 {0}，{1}	src/ui/screens/replay.js:106	{0} = e.path.split('/').pop(); {1} = timeIn(e.at, r.tz)
+1el9a17	ok	Open full size	放大查看	src/ui/screens/replay.js:107	
+bk85tv	ok	Play	播放	src/ui/screens/replay.js:121	
+1kq44x8	ok	{0}, {1}	{0}，{1}	src/ui/screens/replay.js:153	{0} = words; {1} = m.where; Note: A moment of the replay: its time, then where you were.
+1ixl81m#other	ok	# stamps so far	已集 # 枚纪念章	src/ui/screens/replay.js:159	plural; # = m.stamps; English: "# stamp so far" (one), "# stamps so far" (other)
+1bjla9w	ok	The timeline below lists each place in order.	下方时间线按顺序列出了每个地点。	src/ui/screens/replay.js:171	
+z5puy8	ok	At this moment	此时	src/ui/screens/replay.js:172	
+hg5a8z	ok	Time in the trip	旅途时间	src/ui/screens/replay.js:175	
+2w2xwg	ok	Speed	速度	src/ui/screens/replay.js:176	
+7xq6tu	ok	The trip in order	旅行经过	src/ui/screens/replay.js:177	Note: A screen reader's name for the timeline's section.
+djv8ja	ok	Timeline	时间线	src/ui/screens/replay.js:177	
+j4z771	ok	Pause	暂停	src/ui/screens/replay.js:178	
 qxxy9e	ok	Its tools	工具	src/ui/screens/sees.js:12	
 vvrw23	ok	Its setup: instructions	初始配置：指令	src/ui/screens/sees.js:12	
 yxdp3q	ok	Its instructions	指令	src/ui/screens/sees.js:12	
@@ -2440,54 +2440,54 @@ qjf670	ok	Three identical tool calls in a row with identical results.	连续三�
 10jxiq6	ok	The watch for "{0}" can't be checked: {1}	无法检查“{0}”的提醒条件：{1}	src/ui/screens/talk.js:228	{0} = name; {1} = String(d.why ?? ''); Note: a watch is named by its reminder, {0}, in her words; {1} is the trigger's own words, last, with their own end: annai adds 。 only where they have none, so no stop here.
 1m8lxbu	ok	Google Search	Google 搜索	src/ui/screens/talk.js:236	Note: the grounded card's source, "From {0}" (1gblst7) and read aloud (4fzxin): as Google writes it, the glossary's Google row; the same as Settings → Tools.
 6xevdr	ok	Search suggestions from Google	来自 Google 的搜索建议	src/ui/screens/talk.js:246	
-v84pjn	ok	Shiori, no trip	Shiori（不在旅行中）	src/ui/screens/talk.js:312	Note: the name of `me`'s row among the chats on Trips, and the title of its read-only lines: the old conversation outside any trip (from before every conversation belonged to a trip), a row of old lines to read, not a button back to a conversation; 旅 / 旅行 as the glossary's trip.
-137bppl	ok	Heard, not for Shiori: {0}	听到的话（不是对 Shiori 说的）：{0}	src/ui/screens/talk.js:328	{0} = WORDS; Note: {0} is the words annai heard.
-1re6l79	ok	Heard: {0}	听到的话：{0}	src/ui/screens/talk.js:328	{0} = WORDS; Note: read by a screen reader; {0} is the words annai heard.
-yexh35	ok	Heard, she didn't answer: {0}	听到的话（她没有回答）：{0}	src/ui/screens/talk.js:328	{0} = WORDS
-1v011e1	ok	This trip so far: {0}	这次旅行累计花费：{0}	src/ui/screens/talk.js:336	{0} = formatCost(c.total)
-glbwh5	ok	This conversation so far: {0}	这次对话累计花费：{0}	src/ui/screens/talk.js:336	{0} = formatCost(c.total)
-45z4a3	ok	This was for Shiori	这是对 Shiori 说的	src/ui/screens/talk.js:368	
-td8u17	ok	A photo you sent	你发送的照片	src/ui/screens/talk.js:385	
-9e5yo5	ok	(a photo)	（照片）	src/ui/screens/talk.js:432	
-1sjvjoo	ok	From {0}	来自“{0}”	src/ui/screens/talk.js:443	context: a conversation; {0} = scopeTitle(src); Note: under a line the user said in another conversation, copied here when Shiori took them here; a link to that conversation.
-n8s7gz	ok	Tap to answer	轻点按钮回答	src/ui/screens/talk.js:500	Note: a small line under the buttons of annai's own card (Allow, Always for my trips, Not now; Open, Not now) while it waits: only a tap on a button answers it, not a spoken or typed yes. Built as "Tap to talk" is.
-fv3xhc	ok	Kokoro to Koe:	Kokoro 对 Koe 说：	src/ui/screens/talk.js:515	Note: a note from Kokoro to Koe; its words follow.
-upsxi0	ok	Koe to Kokoro:	Koe 对 Kokoro 说：	src/ui/screens/talk.js:515	Note: a note from Koe to Kokoro; its words follow.
-16ol023	ok	Shiori read {0}	Shiori 查看了“{0}”	src/ui/screens/talk.js:544	{0} = scopeTitle({ id: String(d.trip), title: String(d.title ?? '') })
-e34nbi	ok	Started fresh	已重新开始	src/ui/screens/talk.js:548	Note: the divider where a fresh start began.
-3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	之前的对话已总结。完整内容可在“记录”中查看。	src/ui/screens/talk.js:549	
-1o41up	ok	A budget ended her turn	达到上限，她的这一轮结束了	src/ui/screens/talk.js:559	
-1p4yyw7	ok	Her turn ended	她的这一轮结束了	src/ui/screens/talk.js:559	
-1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	还没有内容。轻点下方的 Shiori 或“输入”开始对话。	src/ui/screens/talk.js:574	Note: "Type" is the dock's button: its words must match it.
-1pm5i13	ok	Back to Trips	返回“旅行”	src/ui/screens/talk.js:669	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
-16zeyyr	ok	Next: {0} {1}	接下来：{0} {1}	src/ui/screens/talk.js:713	{0} = r.time; {1} = name
-puj2r7	ok	Next: {0} {1} {2}	接下来：{0} {1} {2}	src/ui/screens/talk.js:713	{0} = day(r.day, true); {1} = r.time; {2} = name
-1frlw7l	ok	Undo the dates Shiori set	撤销 Shiori 设置的日期	src/ui/screens/talk.js:771	
-1l3merh	ok	Shiori set the dates	Shiori 设置了日期	src/ui/screens/talk.js:790	
-159f82q	ok	Undone	已撤销	src/ui/screens/talk.js:792	
-1v37fcy	ok	Undo what Shiori did with these files	撤销 Shiori 对这些文件的操作	src/ui/screens/talk.js:891	Note: the Undo button's label; 撤销 as Undo.
-1nl0tpx	ok	Conversation menu	对话菜单	src/ui/screens/talk.js:955	
-7flpxf	ok	Summarizing…	正在总结…	src/ui/screens/talk.js:1022	
-12707g	ok	She couldn't summarize it. A card says why.	她没能完成总结，原因见卡片。	src/ui/screens/talk.js:1024	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	之前的对话已总结。每句话都还留在这里，她也随时能查到。	src/ui/screens/talk.js:1024	
-u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在忙，请稍后再试。	src/ui/screens/talk.js:1024	
-va2k72	ok	There is not enough yet to summarize.	内容还太少，无法总结。	src/ui/screens/talk.js:1024	
-mienoe	ok	Summarize now	立即总结	src/ui/screens/talk.js:1027	
-10sfmur	ok	Starting fresh…	正在重新开始…	src/ui/screens/talk.js:1029	
-va77q0	ok	Start fresh?	要重新开始吗？	src/ui/screens/talk.js:1042	
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。之前的每句话都会留在对话里，你可以随时查看和搜索，她也仍能查到。不会删除任何内容。实时语音会话也会重新开始。	src/ui/screens/talk.js:1043	Note: "A live voice session" is the glossary's Live voice (实时语音) and live session (实时会话), not a voice she speaks with.
-czdqlz	ok	Start fresh	重新开始	src/ui/screens/talk.js:1044	
-1h9wwbn	ok	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:1054	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	已经重新开始过了，之后还没有新的对话。	src/ui/screens/talk.js:1057	
-3fntk0	ok	Started fresh.	已重新开始。	src/ui/screens/talk.js:1057	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	对话还在加载，请稍后再试。	src/ui/screens/talk.js:1057	
-p5pj7b	ok	There is nothing to start fresh from yet.	还没有可以重新开始的内容。	src/ui/screens/talk.js:1057	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即总结：Shiori 现在就把之前的对话总结一下，让对话保持简短。每句话都还留在这里，她也随时能查到。	src/ui/screens/talk.js:1079	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新开始：Shiori 不再记着之前的内容，从这里重新开始。之前的每句话都会留在分隔线上方。	src/ui/screens/talk.js:1080	
-15ve7m7	ok	What each half sees	Koe 和 Kokoro 各自看到的内容	src/ui/screens/talk.js:1081	
-1u5l4hx	ok	Details: the trip's name and dates, Export, Archive and Remove.	详情：旅行的名称和日期、导出、归档和移除。	src/ui/screens/talk.js:1092	
-o7tevg	ok	Details: the chat's name and dates, Export, Archive and Remove.	详情：对话的名称和日期、导出、归档和移除。	src/ui/screens/talk.js:1092	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	已撤销。下次唤醒时，她会恢复原来的性格。	src/ui/screens/talk.js:1108	
+v84pjn	ok	Shiori, no trip	Shiori（不在旅行中）	src/ui/screens/talk.js:316	Note: the name of `me`'s row among the chats on Trips, and the title of its read-only lines: the old conversation outside any trip (from before every conversation belonged to a trip), a row of old lines to read, not a button back to a conversation; 旅 / 旅行 as the glossary's trip.
+137bppl	ok	Heard, not for Shiori: {0}	听到的话（不是对 Shiori 说的）：{0}	src/ui/screens/talk.js:332	{0} = WORDS; Note: {0} is the words annai heard.
+1re6l79	ok	Heard: {0}	听到的话：{0}	src/ui/screens/talk.js:332	{0} = WORDS; Note: read by a screen reader; {0} is the words annai heard.
+yexh35	ok	Heard, she didn't answer: {0}	听到的话（她没有回答）：{0}	src/ui/screens/talk.js:332	{0} = WORDS
+1v011e1	ok	This trip so far: {0}	这次旅行累计花费：{0}	src/ui/screens/talk.js:340	{0} = formatCost(c.total)
+glbwh5	ok	This conversation so far: {0}	这次对话累计花费：{0}	src/ui/screens/talk.js:340	{0} = formatCost(c.total)
+45z4a3	ok	This was for Shiori	这是对 Shiori 说的	src/ui/screens/talk.js:372	
+td8u17	ok	A photo you sent	你发送的照片	src/ui/screens/talk.js:389	
+9e5yo5	ok	(a photo)	（照片）	src/ui/screens/talk.js:436	
+1sjvjoo	ok	From {0}	来自“{0}”	src/ui/screens/talk.js:447	context: a conversation; {0} = scopeTitle(src); Note: under a line the user said in another conversation, copied here when Shiori took them here; a link to that conversation.
+n8s7gz	ok	Tap to answer	轻点按钮回答	src/ui/screens/talk.js:506	Note: a small line under the buttons of annai's own card (Allow, Always for my trips, Not now; Open, Not now) while it waits: only a tap on a button answers it, not a spoken or typed yes. Built as "Tap to talk" is.
+fv3xhc	ok	Kokoro to Koe:	Kokoro 对 Koe 说：	src/ui/screens/talk.js:521	Note: a note from Kokoro to Koe; its words follow.
+upsxi0	ok	Koe to Kokoro:	Koe 对 Kokoro 说：	src/ui/screens/talk.js:521	Note: a note from Koe to Kokoro; its words follow.
+16ol023	ok	Shiori read {0}	Shiori 查看了“{0}”	src/ui/screens/talk.js:550	{0} = scopeTitle({ id: String(d.trip), title: String(d.title ?? '') })
+e34nbi	ok	Started fresh	已重新开始	src/ui/screens/talk.js:554	Note: the divider where a fresh start began.
+3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	之前的对话已总结。完整内容可在“记录”中查看。	src/ui/screens/talk.js:555	
+1o41up	ok	A budget ended her turn	达到上限，她的这一轮结束了	src/ui/screens/talk.js:565	
+1p4yyw7	ok	Her turn ended	她的这一轮结束了	src/ui/screens/talk.js:565	
+1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	还没有内容。轻点下方的 Shiori 或“输入”开始对话。	src/ui/screens/talk.js:580	Note: "Type" is the dock's button: its words must match it.
+1pm5i13	ok	Back to Trips	返回“旅行”	src/ui/screens/talk.js:676	Note: The Trips screen, quoted so it reads apart from 返回旅行 (Back to trip).
+16zeyyr	ok	Next: {0} {1}	接下来：{0} {1}	src/ui/screens/talk.js:720	{0} = r.time; {1} = name
+puj2r7	ok	Next: {0} {1} {2}	接下来：{0} {1} {2}	src/ui/screens/talk.js:720	{0} = day(r.day, true); {1} = r.time; {2} = name
+1frlw7l	ok	Undo the dates Shiori set	撤销 Shiori 设置的日期	src/ui/screens/talk.js:778	
+1l3merh	ok	Shiori set the dates	Shiori 设置了日期	src/ui/screens/talk.js:797	
+159f82q	ok	Undone	已撤销	src/ui/screens/talk.js:799	
+1v37fcy	ok	Undo what Shiori did with these files	撤销 Shiori 对这些文件的操作	src/ui/screens/talk.js:898	Note: the Undo button's label; 撤销 as Undo.
+1nl0tpx	ok	Conversation menu	对话菜单	src/ui/screens/talk.js:962	
+7flpxf	ok	Summarizing…	正在总结…	src/ui/screens/talk.js:1029	
+12707g	ok	She couldn't summarize it. A card says why.	她没能完成总结，原因见卡片。	src/ui/screens/talk.js:1031	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	之前的对话已总结。每句话都还留在这里，她也随时能查到。	src/ui/screens/talk.js:1031	
+u82uid	ok	Shiori is working. Try again in a moment.	Shiori 正在忙，请稍后再试。	src/ui/screens/talk.js:1031	
+va2k72	ok	There is not enough yet to summarize.	内容还太少，无法总结。	src/ui/screens/talk.js:1031	
+mienoe	ok	Summarize now	立即总结	src/ui/screens/talk.js:1034	
+10sfmur	ok	Starting fresh…	正在重新开始…	src/ui/screens/talk.js:1036	
+va77q0	ok	Start fresh?	要重新开始吗？	src/ui/screens/talk.js:1049	
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shiori 会从这里重新开始，不再记着之前的内容。之前的每句话都会留在对话里，你可以随时查看和搜索，她也仍能查到。不会删除任何内容。实时语音会话也会重新开始。	src/ui/screens/talk.js:1050	Note: "A live voice session" is the glossary's Live voice (实时语音) and live session (实时会话), not a voice she speaks with.
+czdqlz	ok	Start fresh	重新开始	src/ui/screens/talk.js:1051	
+1h9wwbn	ok	She couldn't start fresh: {0}	她没能重新开始：{0}	src/ui/screens/talk.js:1061	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	已经重新开始过了，之后还没有新的对话。	src/ui/screens/talk.js:1064	
+3fntk0	ok	Started fresh.	已重新开始。	src/ui/screens/talk.js:1064	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	对话还在加载，请稍后再试。	src/ui/screens/talk.js:1064	
+p5pj7b	ok	There is nothing to start fresh from yet.	还没有可以重新开始的内容。	src/ui/screens/talk.js:1064	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	立即总结：Shiori 现在就把之前的对话总结一下，让对话保持简短。每句话都还留在这里，她也随时能查到。	src/ui/screens/talk.js:1086	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	重新开始：Shiori 不再记着之前的内容，从这里重新开始。之前的每句话都会留在分隔线上方。	src/ui/screens/talk.js:1087	
+15ve7m7	ok	What each half sees	Koe 和 Kokoro 各自看到的内容	src/ui/screens/talk.js:1088	
+1u5l4hx	ok	Details: the trip's name and dates, Export, Archive and Remove.	详情：旅行的名称和日期、导出、归档和移除。	src/ui/screens/talk.js:1099	
+o7tevg	ok	Details: the chat's name and dates, Export, Archive and Remove.	详情：对话的名称和日期、导出、归档和移除。	src/ui/screens/talk.js:1099	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	已撤销。下次唤醒时，她会恢复原来的性格。	src/ui/screens/talk.js:1115	
 11gkctr	ok	Places	地点	src/ui/screens/tools.js:12	context: tool group
 13mxqrp	ok	Talk	对话	src/ui/screens/tools.js:12	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	出行	src/ui/screens/tools.js:12	context: tool group; Note: the tools for getting somewhere (routes, maps).
@@ -2662,9 +2662,9 @@ aoc0k0#other	ok	{0}: # chats	{0}：# 个对话	src/ui/screens/trips.js:66	plural
 cvvz5z	ok	Tap + to talk to Shiori.	轻点 + 和 Shiori 聊聊。	src/ui/screens/trips.js:81	
 wfhszm	ok	Archived ({0})	已归档（{0}）	src/ui/screens/trips.js:83	{0} = archived.length
 in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	还没有备份。可以在设置中点“导出全部”，或在那里设置自动备份。	src/ui/screens/trips.js:86	
-1rrn1xn	ok	Day {0} of {1}	第 {0} 天，共 {1} 天	src/ui/screens/trips.js:218	{0} = d.day; {1} = d.of
-1q78pfk#other	ok	# files waiting to be read	# 个文件待读取	src/ui/screens/trips.js:233	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: on a trip's card: files Shiori moved there that she hasn't read there yet.
-152lnj5	ok	Use real dates for the start and end.	请填写有效的开始和结束日期。	src/ui/screens/trips.js:255	
+1rrn1xn	ok	Day {0} of {1}	第 {0} 天，共 {1} 天	src/ui/screens/trips.js:219	{0} = d.day; {1} = d.of
+1q78pfk#other	ok	# files waiting to be read	# 个文件待读取	src/ui/screens/trips.js:234	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: on a trip's card: files Shiori moved there that she hasn't read there yet.
+152lnj5	ok	Use real dates for the start and end.	请填写有效的开始和结束日期。	src/ui/screens/trips.js:257	
 ric74d	ok	Checking annai and its plugins…	正在检查 annai 及其插件…	src/ui/screens/updates.js:18	
 1mk4lgq	ok	annai hasn't checked since it started.	annai 启动后还没有检查过。	src/ui/screens/updates.js:19	
 cmuwtk	ok	Last checked {0}.	上次检查：{0}。	src/ui/screens/updates.js:19	{0} = relTime(checkedAt, now)

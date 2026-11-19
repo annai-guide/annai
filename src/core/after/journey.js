@@ -14,10 +14,10 @@ import { conversationLines, USER_LINES } from '../agent/blocks.js';
  * @typedef {import('./stamps.js').Stamp} Stamp
  * @typedef {{ kind: 'stay', at: number, to: number, lat: number, lng: number, name: string | null, stamp: Stamp | null }
  *   | { kind: 'move', at: number, to: number, km: number, mode: 'drive' | 'walk', gap: boolean }
- *   | { kind: 'card', at: number, card: any, tune?: true }
+ *   | { kind: 'card', at: number, card: any, tune?: true, seq: number, wake?: string }
  *   | { kind: 'said', at: number, text: string, spoken: boolean }
  *   | { kind: 'photo', at: number, path: string, hash: string, type: string, size: number, width: number | null, height: number | null,
- *       place: { lat: number, lng: number } | null }} Entry  a card's tune: a personality tuning's, whose title the screens make
+ *       place: { lat: number, lng: number } | null }} Entry  a card's tune: a personality tuning's, whose title the screens make; seq, wake: its entry's (replyBefore)
  * @typedef {{ title: string, at: number | null, place: { name: string, lat: number, lng: number } | null, fixed: boolean, unsure: boolean, visited: boolean }} PlanLine
  *   unsure: its start is a time Shiori isn't sure of (timeUnsure, from the booking it stands for)
  * @typedef {{ trip: string, title: string, tz: string, info: any, points: Point[], legs: Leg[], stamps: Stamp[], entries: Entry[],
@@ -121,7 +121,7 @@ export async function readJourney({ store, ws, trip, namer = () => null }) {
   for (const { e, d, text } of await conversationLines(store, events.filter((x) => x.type === 'out.show' || USER_LINES.includes(x.type)))) {
     const words = String(text ?? '').trim();
     if (e.type === 'out.show') {
-      if (d.card && typeof d.card === 'object' && !Array.isArray(d.card)) entries.push({ kind: 'card', at: e.ts, card: d.card, ...(d.tune ? { tune: true } : {}) });
+      if (d.card && typeof d.card === 'object' && !Array.isArray(d.card)) entries.push({ kind: 'card', at: e.ts, card: d.card, ...(d.tune ? { tune: true } : {}), seq: e.seq, ...(typeof d.wake === 'string' ? { wake: d.wake } : {}) });
     } else if (words) entries.push({ kind: 'said', at: e.ts, text: words, spoken: e.type === 'heard' || Boolean(d.claim) }); // a claim ("This was for Shiori") is words that were spoken
   }
   for (const f of await ws.list(trip, '/files/')) {

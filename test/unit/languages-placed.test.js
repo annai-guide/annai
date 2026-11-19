@@ -159,11 +159,11 @@ test('点 is no Simplified form: 「交差点」 on a Japanese phone, or with on
 });
 
 test("a line's tag: Han that says neither is the screens' language when that is one of theirs, else the first of theirs written in Han", () => {
-  // N2: with Chinese first and English screens, 東京駅 is still drawn as Chinese, but in the listed row's own forms: 東, 時 and 間 are Japanese's too, so they say no row (fix round 1; main: zh-Hant).
+  // N2: with Chinese first and English screens, 東京駅 is still drawn as Chinese, but in the listed row's own forms: 東, 時 and 間 are Japanese's too, so they say no row (detector-next's fix round 1; before detector-next: zh-Hant).
   assert.equal(tagOf('東京駅', listed(['en', 'zh', 'ja'])), 'zh-Hans');
   assert.equal(tagOf('東京駅', listed(['en', 'zh-Hant', 'ja'])), 'zh-Hant', 'the listed row is Traditional');
-  assert.equal(tagOf('東京駅', listed(['en', 'ja', 'zh'])), 'ja', 'main: zh-Hant');
-  assert.equal(tagOf('東京駅', listed(['en', 'zh', 'ja']), false, 'ja'), 'ja', 'Japanese screens; main: zh-Hant');
+  assert.equal(tagOf('東京駅', listed(['en', 'ja', 'zh'])), 'ja', 'before detector-next: zh-Hant');
+  assert.equal(tagOf('東京駅', listed(['en', 'zh', 'ja']), false, 'ja'), 'ja', 'Japanese screens; before detector-next: zh-Hant');
   assert.equal(tagOf('骨架', listed(['ja', 'zh']), false, 'zh-Hans'), 'zh-Hans', 'Chinese screens');
   // Characters only Chinese writes are Chinese whatever the screens.
   assert.equal(tagOf('这是我们说的', listed(['ja', 'zh']), false, 'ja'), 'zh-Hans');
@@ -537,4 +537,42 @@ test("the 21 characters tell Simplified from Traditional too (Haiku-1 finding 6)
   const rows = readFileSync(new URL('../../l10n/zh-Hant.tsv', import.meta.url), 'utf8').split('\n').slice(1).map((r) => r.split('\t')[3]).filter(Boolean);
   assert.ok(rows.length > 2000);
   assert.deepEqual(rows.filter((r) => L.hanRow(r) === 'zh'), []);
+});
+
+// voice-reply-next: the two Deferred entries ("A line's tag doesn't read her reply so far, as the phone's voice does"; "A reply's separate speak calls each
+// start with nothing before them"). A line or sentence of hers that shows no language of its own takes her reply's so far, for the tag and the voice by one
+// rule (replyLanguage); where nothing in the line or the reply tells, each reader keeps its own default.
+test("a line's tag reads Han that says neither in her reply's language so far, as her voice does: 「好的。」 after 「我们明天去故宫吧。」 with [en, ja, zh] (main: ja, the voice zh-CN)", () => {
+  const s = listed(['en', 'ja', 'zh']);
+  const before = ['我们明天去故宫吧。'];
+  assert.equal(tagOf('好的。', s, true, 'en', { before }), 'zh-Hans');
+  assert.equal(speechLocale(s, '好的。', { before }), 'zh-CN');
+  // With nothing before it in her reply, both take the first listed in Han (English screens).
+  assert.equal(tagOf('好的。', s, true, 'en'), 'ja');
+  assert.equal(speechLocale(s, '好的。'), 'ja-JP');
+  // Her reply's language is the first of its sentences that shows one written in Han: an English one is passed over, and they are not read joined.
+  assert.equal(tagOf('東京駅。', listed(['en', 'zh', 'ja']), true, 'en', { before: ['Here is the plan.', '今日は晴れです。', '我们明天去故宫吧。'] }), 'ja');
+  assert.equal(speechLocale(listed(['en', 'zh', 'ja']), '東京駅。', { before: ['Here is the plan.', '今日は晴れです。', '我们明天去故宫吧。'] }), 'ja-JP');
+  assert.equal(tagOf('東京駅。', listed(['en', 'zh', 'ja']), true, 'en', { before: ['Here is the plan.'] }), 'zh-Hans', 'only English before it: the first listed in Han');
+  // The first earlier sentence that shows a language decides, not a reading of them joined (a Chinese sentence and a Japanese one read joined are Japanese).
+  const first = ['我们明天去故宫吧。', '今日は晴れです。'];
+  assert.equal(tagOf('東京駅。', listed(['en', 'zh', 'ja']), true, 'en', { before: first }), 'zh-Hans', 'first, not joined');
+  assert.equal(speechLocale(listed(['en', 'zh', 'ja']), '東京駅。', { before: first }), 'zh-CN', 'first, not joined');
+  // A line that shows its own language keeps it, whatever her reply was in.
+  assert.equal(tagOf('今日は晴れです。', s, true, 'en', { before }), 'ja');
+  assert.equal(tagOf('这是我们说的', s, true, 'en', { before: ['今日は晴れです。'] }), 'zh-Hans');
+});
+
+test("where neither the line nor her reply tells, each reader keeps its own default for Han that says neither: the tag the screens' language when it is one of theirs written in Han (what the page draws with no tag), the voice the first listed in Han: 「東京駅」 with [ja, zh] on Simplified screens, 「大家好」 with [zh, ja] on Japanese screens", () => {
+  const ja = listed(['ja', 'zh']);
+  assert.equal(tagOf('東京駅', ja, true, 'zh-Hans'), 'zh-Hans', "the screens'; the first listed is ja");
+  assert.equal(speechLocale(ja, '東京駅'), 'ja-JP', 'the first listed');
+  const zh = listed(['zh', 'ja']);
+  assert.equal(tagOf('大家好', zh, true, 'ja'), 'ja', "the screens'; the first listed is zh");
+  assert.equal(speechLocale(zh, '大家好'), 'zh-CN', 'the first listed');
+  // Her reply so far still decides before either default does.
+  assert.equal(tagOf('大家好', zh, true, 'ja', { before: ['今日は晴れです。'] }), 'ja');
+  assert.equal(speechLocale(zh, '大家好', { before: ['今日は晴れです。'] }), 'ja-JP');
+  assert.equal(tagOf('東京駅', ja, true, 'zh-Hans', { before: ['今日は晴れです。'] }), 'ja');
+  assert.equal(tagOf('東京駅', ja, true, 'zh-Hans', { before: ['我们明天去故宫吧。'] }), 'zh-Hans');
 });

@@ -23,7 +23,7 @@ import { STAND_IN_NAMES } from './where.js';
  *   platform: () => VoicePlatform | null, bench: (id: string, error: unknown) => void,
  *   browserOptions?: (text: string, o: { before: string[] }) => Promise<{ voice?: string, rate?: number, lang?: string, system?: import('./platform.js').SystemVoice | null }>, onLevel?: (x: number) => void, locale?: string,
  *   onVoice?: (entry: VoiceEntry, system: import('./platform.js').SystemVoice | null) => void, now?: () => number, onBlocked?: () => void, stallMs?: number }} SpeakerDeps
- *   browserOptions' before: the utterance's sentences before this one (not joined: the language of her reply is read from the first that shows one), so a sentence that shows no language takes her reply's; its system: the browser voice it speaks with; onVoice: a voice starts speaking an utterance (spec §11.7: the trace notes a browser voice not on this phone);
+ *   browserOptions' before: her reply's sentences before this one (Speaker.begin), not joined, so a sentence that shows no language takes her reply's; its system: the browser voice it speaks with; onVoice: a voice starts speaking an utterance (spec §11.7: the trace notes a browser voice not on this phone);
  *   synthesize: a clip, or a stream; now: the clock a stream's arrivals are timed by (ms); onBlocked: the page may not play sound now, so a tap
  *   should unlock it again; stallMs: how long past its end a stream may go unplayed (playStream)
  * @typedef {{ ended: boolean, at: number, failed?: 'no-voice' | 'blocked' }} Said
@@ -174,15 +174,22 @@ export class Speaker {
   #live = new Set();
   /** @type {Promise<unknown>} */
   #last = Promise.resolve();
+  /** Her reply under way: its key, and each of its utterances' sentences. @type {{ key: string, sentences: string[][] }} */
+  #reply = { key: '', sentences: [] };
 
   /** @param {SpeakerDeps} deps */
   constructor(deps) {
     this.deps = deps;
   }
 
-  /** Something to say. It plays after what is already being said. */
-  begin() {
-    const u = new Utterance(this.deps, this.#last);
+  /**
+   * Something to say. It plays after what is already being said. reply: the reply it is part of (the loop's turn, its wake id), whose earlier
+   * sentences come before its own (browserOptions' before); a new key is a new reply. Without one (a reminder) nothing comes before it.
+   * @param {{ reply?: string }} [o]
+   */
+  begin({ reply = '' } = {}) {
+    if (reply && reply !== this.#reply.key) this.#reply = { key: reply, sentences: [] };
+    const u = new Utterance(this.deps, this.#last, reply ? this.#reply.sentences : []);
     this.#live.add(u);
     this.#last = u.done;
     const gone = () => this.#live.delete(u);
@@ -228,12 +235,16 @@ export class Utterance {
   #voices = [];
   /** The voices that failed, and why. @type {{ name: string, why: string, error: unknown }[]} */
   #failedVoices = [];
+  /** The sentences of its reply's earlier utterances. @type {string[][]} */
+  #before;
   /** @type {Promise<Spoken>} */
   done;
 
-  /** @param {SpeakerDeps} deps @param {Promise<unknown>} after what is said first */
-  constructor(deps, after) {
+  /** @param {SpeakerDeps} deps @param {Promise<unknown>} after what is said first @param {string[][]} [reply] its reply's utterances' sentences, which its own join */
+  constructor(deps, after, reply = []) {
     this.#deps = deps;
+    this.#before = [...reply];
+    reply.push(this.#texts);
     this.#sentences = new Sentences(deps.locale);
     this.done = after.then(() => this.#run(), () => this.#run());
   }
@@ -334,7 +345,7 @@ export class Utterance {
       tried.add(entry.id);
       try {
         if (entry.kind === 'browser') {
-          const { system = null, ...o } = (await this.#deps.browserOptions?.(text, { before: this.#texts.slice(0, i) })) ?? {};
+          const { system = null, ...o } = (await this.#deps.browserOptions?.(text, { before: [...this.#before.flat(), ...this.#texts.slice(0, i)] })) ?? {};
           this.#spoke(entry, system);
           const r = await platform.synth.say(text, { ...o, signal: this.#abort.signal, onLevel: this.#deps.onLevel });
           return { ended: r.ended, at: r.ended ? text.length : r.charIndex };
