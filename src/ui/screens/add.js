@@ -91,7 +91,7 @@ export function addRows(catalog, installed, configured) {
 export function finder({ label, entries, filters = {}, draw }) {
   /** @type {Record<string, any>} */
   const f = { ...filters };
-  const box = h('input', { id: 'finder-search', type: 'search', 'aria-label': label, placeholder: t`A name, "voice", "free"…`, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', enterkeyhint: 'search' });
+  const box = h('input', { type: 'search', 'aria-label': label, placeholder: t`A name, "voice", "free"…`, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', enterkeyhint: 'search' });
   const list = h('div', { class: 'found' });
   /** @type {[HTMLElement, string, any][]} */
   const chips = [];

@@ -19,6 +19,11 @@ async function setup(page, hash) {
       return { p, res, rej };
     };
     w.goCount = 0;
+    const at = (/** @type {string} */ p) => p; // an address the browser loads, not a module the checker follows
+    const dom = await import(at('/src/ui/dom.js'));
+    // What the screen with a saved field stores, and its saves, each waiting for the test to say how it ends.
+    w.stored = '';
+    w.saves = [];
     const llm = {
       get ready() { const d = deferred(); w.defs.push(d); return d.p; },
       config: async () => { throw new Error('probe: drawn'); },
@@ -40,6 +45,15 @@ async function setup(page, hash) {
         form.append(input, button);
         body.append(form);
       } } },
+      // A screen with a field that saves itself as it is let go (dom.js autosave): "bad" is refused, and each save waits for w.saves[i].ok() or .fail().
+      { pluginId: 'probe', item: { id: 'saved', title: 'S', render: (/** @type {any} */ body) => {
+        w.draws = (w.draws ?? 0) + 1;
+        const input = document.createElement('input');
+        input.id = 'probe-saved';
+        input.value = w.stored;
+        body.append(input, ...dom.autosave(input, () => { if (input.value === 'bad') throw new Error('probe: refused'); return input.value; },
+          (/** @type {string} */ v) => new Promise((ok, fail) => { w.saves.push({ v, ok: () => { w.stored = v; ok(undefined); }, fail: () => fail(new Error('probe: not saved')) }); })));
+      } } },
       { pluginId: 'probe', item: { id: 'reenter', title: 'R', render: (/** @type {any} */ body, /** @type {any} */ ui) => { body.textContent = 'ext R'; if (w.goCount++ === 0) ui.go(location.hash); } } },
     ];
     const registry = {
@@ -55,7 +69,6 @@ async function setup(page, hash) {
       p.then(() => { s.state = 'resolved'; }, (e) => { s.state = 'rejected'; s.error = `${e?.name}: ${e?.message ?? e}`; });
       return s;
     };
-    const at = (/** @type {string} */ p) => p; // an address the browser loads, not a module the checker follows
     const { startShell } = await import(at('/src/ui/shell.js'));
     const root = document.createElement('div');
     document.body.replaceChildren(root);
@@ -117,9 +130,10 @@ test("a plugin's screen that asks for itself as it is drawn: the draw it began f
   expect(await page.evaluate(() => /** @type {any} */ (window).unhandled)).toEqual([]);
 });
 
-// A draw again keeps what the traveller typed since their last tap: the field with the caret is left alone until they let go, and the other
-// fields come over to the new screen. What they typed before their tap was used up by it (Save, Add), and is not kept. A draw nobody asked
-// for (redraw) keeps all they typed. Whoever asks for it, the screen doesn't change under their hands (the form-keep spec has the real screens).
+// A draw again of the screen on show never takes from under the traveller's hands what they did since their last tap: it waits while a field
+// holds what they typed and nothing stored it, and while the caret is in a field they entered; a tap made meanwhile ends it without drawing.
+// What they typed before their tap was used up by it (Save, Add), and is not waited for. A draw nobody asked for (redraw) waits for all they
+// typed. Whoever asks for it, the screen doesn't change under their hands (the form-keep spec has the real screens).
 
 /** The typed field, its element marked, on the screen with a field. @param {import('@playwright/test').Page} page */
 async function typed(page) {
@@ -127,6 +141,14 @@ async function typed(page) {
   const field = page.locator('#probe-field');
   await expect(field).toBeVisible();
   await typeIn(field);
+  return field;
+}
+/** The screen with a field that saves itself, a text typed in it and the caret left there. @param {import('@playwright/test').Page} page @param {string} [text] */
+async function typedSaved(page, text) {
+  await setup(page, '#/ext/probe/saved');
+  const field = page.locator('#probe-saved');
+  await expect(field).toBeVisible();
+  await typeIn(field, text);
   return field;
 }
 /** @param {import('@playwright/test').Locator} field @param {string} [text] */
@@ -139,26 +161,34 @@ async function typeIn(field, text = 'https://tides.example') {
 const tap = (page) => page.evaluate(() => /** @type {HTMLElement} */ (document.getElementById('probe-button')).click());
 const draws = (/** @type {import('@playwright/test').Page} */ page) => page.evaluate(() => /** @type {any} */ (window).draws);
 const ask = (/** @type {import('@playwright/test').Page} */ page, /** @type {string} */ how = 'render') => page.evaluate((m) => { const w = /** @type {any} */ (window); w.a = w.track(Promise.resolve(w.shell[m]())); }, how);
+/** The saves the saved field began. @param {import('@playwright/test').Page} page */
+const saves = (page) => page.evaluate(() => /** @type {any} */ (window).saves.length);
+/** Save i ends: 'ok' stores it, 'fail' refuses it. @param {import('@playwright/test').Page} page @param {number} i @param {'ok' | 'fail'} how */
+const saveEnds = (page, i, how) => page.evaluate(([n, m]) => /** @type {any} */ (window).saves[n][m](), /** @type {[number, string]} */ ([i, how]));
 
-test('a draw again waits while the caret is in a field typed in, and lands once it is let go, keeping what was typed', async ({ page }) => {
-  const field = await typed(page);
+test('a draw again waits while the caret is in a field typed in, and lands once it is let go and saved, showing what was saved', async ({ page }) => {
+  const field = await typedSaved(page);
   await ask(page);
   await settle(page, 1600);
   expect(await states(page, 'a')).toBe('pending');
   expect(await draws(page)).toBe(1);
   expect(await field.evaluate((el) => [/** @type {HTMLInputElement} */ (el).value, el.dataset.mine, document.activeElement === el])).toEqual(['https://tides.example', '1', true]);
   await field.blur();
+  await expect.poll(() => saves(page)).toBe(1);
+  await saveEnds(page, 0, 'ok');
   await expect.poll(() => states(page, 'a')).toBe('resolved');
   expect(await draws(page)).toBe(2);
-  await expect(page.locator('#probe-field')).not.toHaveAttribute('data-mine', '1');
-  await expect(page.locator('#probe-field')).toHaveValue('https://tides.example');
+  await expect(page.locator('#probe-saved')).not.toHaveAttribute('data-mine', '1');
+  await expect(page.locator('#probe-saved')).toHaveValue('https://tides.example');
 });
 
 test('two draws asked for while it waits make one', async ({ page }) => {
-  const field = await typed(page);
+  const field = await typedSaved(page);
   await page.evaluate(() => { const w = /** @type {any} */ (window); w.a = w.track(w.shell.render()); w.b = w.track(w.shell.render()); });
   await settle(page, 1000);
   await field.blur();
+  await expect.poll(() => saves(page)).toBe(1);
+  await saveEnds(page, 0, 'ok');
   await expect.poll(() => states(page, 'a,b')).toBe('resolved / resolved');
   await settle(page, 1000);
   expect(await draws(page)).toBe(2);
@@ -182,7 +212,7 @@ test("Enter in a field submits its form, which taps the form's button: the draw 
   await expect(page.locator('#probe-field')).toHaveValue('');
 });
 
-test('what is typed after the tap is kept when its field is let go before the draw', async ({ page }) => {
+test('what is typed after the tap and let go, in a field nothing saves, keeps the screen: the draw waits, and a tap ends it without drawing', async ({ page }) => {
   await setup(page, '#/ext/probe/field');
   await expect(page.locator('#probe-field')).toBeVisible();
   await tap(page);
@@ -190,20 +220,24 @@ test('what is typed after the tap is kept when its field is let go before the dr
   await typeIn(field);
   await field.blur();
   await ask(page);
+  await settle(page, 1600);
+  expect(await states(page, 'a')).toBe('pending');
+  expect(await draws(page)).toBe(1);
+  await tap(page);
   await expect.poll(() => states(page, 'a')).toBe('resolved');
-  expect(await draws(page)).toBe(2);
-  await expect(page.locator('#probe-field')).not.toHaveAttribute('data-mine', '1');
-  await expect(page.locator('#probe-field')).toHaveValue('https://tides.example');
+  await settle(page, 1000);
+  expect(await draws(page)).toBe(1);
+  expect(await field.evaluate((el) => [/** @type {HTMLInputElement} */ (el).value, el.dataset.mine])).toEqual(['https://tides.example', '1']);
 });
 
-test("a draw nobody asked for keeps all that was typed, even before a tap", async ({ page }) => {
+test("a draw nobody asked for waits for all that was typed, even before a tap", async ({ page }) => {
   const field = await typed(page);
   await tap(page);
   await field.blur();
   await ask(page, 'redraw');
-  await expect.poll(() => draws(page)).toBe(2);
-  await expect(page.locator('#probe-field')).not.toHaveAttribute('data-mine', '1');
-  await expect(page.locator('#probe-field')).toHaveValue('https://tides.example');
+  await settle(page, 1600);
+  expect(await draws(page)).toBe(1);
+  expect(await field.evaluate((el) => [/** @type {HTMLInputElement} */ (el).value, el.dataset.mine])).toEqual(['https://tides.example', '1']);
 });
 
 test('a move to another screen is not held by a field being typed in, and ends the draw waiting for it', async ({ page }) => {
@@ -214,4 +248,86 @@ test('a move to another screen is not held by a field being typed in, and ends t
   await expect.poll(() => states(page, 'a')).toBe('resolved');
   await settle(page, 1000);
   expect(await draws(page)).toBe(1);
+});
+
+// Each below failed on 20656a0ea, where a draw that came copied the typed fields into the new screen (fix round 1 of form-keep-next).
+
+test('a value refused as it is let go, its words shown by it: a draw asked meanwhile waits, and the value and its words stay', async ({ page }) => {
+  const field = await typedSaved(page, 'bad');
+  await field.blur();
+  await expect(page.getByText('probe: refused')).toBeVisible();
+  await ask(page);
+  await settle(page, 1600);
+  expect(await states(page, 'a')).toBe('pending');
+  expect(await draws(page)).toBe(1);
+  expect(await field.evaluate((el) => [/** @type {HTMLInputElement} */ (el).value, el.dataset.mine])).toEqual(['bad', '1']);
+  await expect(page.getByText('probe: refused')).toBeVisible();
+});
+
+test('a draw asked while a value let go is being saved waits for the save; one that fails says so on the screen, which stays', async ({ page }) => {
+  const field = await typedSaved(page, 'abc');
+  await field.blur();
+  await expect.poll(() => saves(page)).toBe(1);
+  await ask(page);
+  await settle(page, 1600);
+  expect(await draws(page)).toBe(1);
+  await saveEnds(page, 0, 'fail');
+  await expect(page.getByText('probe: not saved')).toBeVisible();
+  await settle(page, 1600);
+  expect(await draws(page)).toBe(1);
+  await expect(field).toHaveAttribute('data-mine', '1');
+  await expect(page.getByText('probe: not saved')).toBeVisible();
+});
+
+test('a draw asked while a value let go is being saved lands once it is stored, and a later draw shows what is stored then', async ({ page }) => {
+  const field = await typedSaved(page, 'abc');
+  await field.blur();
+  await expect.poll(() => saves(page)).toBe(1);
+  await ask(page);
+  await settle(page, 1000);
+  expect(await draws(page)).toBe(1);
+  await saveEnds(page, 0, 'ok');
+  await expect.poll(() => states(page, 'a')).toBe('resolved');
+  await expect(page.locator('#probe-saved')).toHaveValue('abc');
+  // Stored anew elsewhere (another tab, a plugin): the next draw shows it.
+  await page.evaluate(() => { const w = /** @type {any} */ (window); w.stored = 'z'; w.shell.redraw(); });
+  await expect(page.locator('#probe-saved')).toHaveValue('z');
+});
+
+test('text typed again while its save is under way keeps the screen: the caret and all that was typed stay, and the draw lands once that is saved too', async ({ page }) => {
+  const field = await typedSaved(page, 'abc');
+  await field.blur();
+  await expect.poll(() => saves(page)).toBe(1);
+  await field.focus();
+  await field.pressSequentially('d', { delay: 5 });
+  await saveEnds(page, 0, 'ok');
+  await ask(page);
+  await settle(page, 1600);
+  expect(await states(page, 'a')).toBe('pending');
+  expect(await draws(page)).toBe(1);
+  expect(await field.evaluate((el) => [/** @type {HTMLInputElement} */ (el).value, el.dataset.mine, document.activeElement === el])).toEqual(['abcd', '1', true]);
+  await field.blur();
+  await expect.poll(() => saves(page)).toBe(2);
+  await saveEnds(page, 1, 'ok');
+  await expect.poll(() => states(page, 'a')).toBe('resolved');
+  await expect(page.locator('#probe-saved')).toHaveValue('abcd');
+});
+
+test('a draw asked while a move is being drawn is not held by the screen being left: the new screen is drawn once', async ({ page }) => {
+  await typed(page);
+  await page.evaluate(() => {
+    const w = /** @type {any} */ (window);
+    w.landed = 0;
+    new MutationObserver(() => { w.landed++; }).observe(/** @type {HTMLElement} */ (document.getElementById('view')), { childList: true });
+    location.hash = '#/models'; // its screen waits for llm.ready, which the test gives
+  });
+  await expect.poll(() => page.evaluate(() => /** @type {any} */ (window).defs.length)).toBe(1);
+  await ask(page);
+  for (const ms of [1600, 1600]) {
+    await page.evaluate(() => /** @type {any} */ (window).defs.forEach((/** @type {any} */ d) => d.res()));
+    await settle(page, ms);
+  }
+  await expect(page.getByText('probe: drawn')).toBeVisible();
+  expect(await states(page, 'a')).toBe('resolved');
+  expect(await page.evaluate(() => /** @type {any} */ (window).landed)).toBe(1);
 });

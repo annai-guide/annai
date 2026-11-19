@@ -118,17 +118,17 @@ test("a plugin that adds a page while a setting is typed: the page waits for the
   await expect(page.getByLabel('Server address', { exact: true })).toHaveValue('https://tides.example/api');
 });
 
-test("the address of a plugin typed on Add and let go (the keyboard put away): a plugin that adds a page draws the screen again, and the address comes over to it (fails on main)", async ({ page }) => {
+test("the address of a plugin typed on Add and let go (the keyboard put away): the draw of a plugin that adds a page waits, and the address stays (fails on main)", async ({ page }) => {
   await slowInstalled(page);
   await page.evaluate(() => { location.hash = '#/add'; });
   await typeIn(page, 'Address of a plugin or skill', 'https://example.com/annai-plugin.json');
   await page.getByLabel('Address of a plugin or skill', { exact: true }).blur();
   await page.evaluate(() => (/** @type {any} */ (globalThis)).__addPage());
-  await expect(page.getByLabel('Address of a plugin or skill', { exact: true })).not.toHaveAttribute('data-mine', '1');
-  await expect(page.getByLabel('Address of a plugin or skill', { exact: true })).toHaveValue('https://example.com/annai-plugin.json');
+  await later(page);
+  expect(await fieldNow(page, 'Address of a plugin or skill')).toEqual({ value: 'https://example.com/annai-plugin.json', same: true, focus: '' });
 });
 
-test("Search your plugins typed and let go: a plugin that adds a page draws the screen again, and the search comes over to it, its list still narrowed (fails on main)", async ({ page }) => {
+test("Search your plugins typed and let go: the draw of a plugin that adds a page waits, and the search and its narrowed list stay (fails on main)", async ({ page }) => {
   await slowInstalled(page);
   await page.evaluate(() => { location.hash = '#/plugins'; });
   const search = page.getByLabel('Search your plugins', { exact: true });
@@ -137,35 +137,152 @@ test("Search your plugins typed and let go: a plugin that adds a page draws the 
   await expect(page.locator('li.card', { hasText: 'Trip record checks' })).toHaveCount(0);
   await search.blur();
   await page.evaluate(() => (/** @type {any} */ (globalThis)).__addPage());
-  await expect(search).not.toHaveAttribute('data-mine', '1');
-  await expect(search).toHaveValue('slow');
+  await later(page);
+  expect(await fieldNow(page, 'Search your plugins')).toEqual({ value: 'slow', same: true, focus: '' });
   await expect(page.locator('li.card', { hasText: 'Slow start' })).toBeVisible();
   await expect(page.locator('li.card', { hasText: 'Trip record checks' })).toHaveCount(0);
 });
 
-test("Settings → Tools → MCP servers: Refresh tools ends while the address of a new server is typed; the screen waits for the field (fails on main)", async ({ page }) => {
+/** MCP servers with trail added, and a tap on its Refresh tools, which takes 3 s: a slow server, its tools in two pages, 1.5 s each. @param {import('@playwright/test').Page} page @param {{ url: string, slowList: (ms: number) => void }} mcp */
+async function refreshing(page, mcp) {
+  await openApp(page, '#/mcp');
+  await waitForServiceWorker(page);
+  await page.getByLabel('Name', { exact: true }).fill('trail');
+  await page.getByLabel('Address', { exact: true }).fill(mcp.url);
+  await page.getByRole('button', { name: 'Add server' }).click();
+  await expect(page.getByRole('button', { name: 'Refresh tools' })).toBeVisible();
+  mcp.slowList(1500);
+  await page.getByRole('button', { name: 'Refresh tools' }).click();
+}
+
+/** The refresh has ended, and asked for its draw: its toast shows. @param {import('@playwright/test').Page} page */
+const refreshed = (page) => expect(page.getByText(/^trail: \d+ tools?\.$/)).toBeVisible({ timeout: 20_000 });
+
+test("Settings → Tools → MCP servers: Refresh tools ends while the address of a new server is typed; the screen waits for the field, and for what it holds once let go (fails on main)", async ({ page }) => {
   const mcp = await startMcpServer({});
   try {
-    await openApp(page, '#/mcp');
-    await waitForServiceWorker(page);
-    await page.getByLabel('Name', { exact: true }).fill('trail');
-    await page.getByLabel('Address', { exact: true }).fill(mcp.url);
-    await page.getByRole('button', { name: 'Add server' }).click();
-    await expect(page.getByRole('button', { name: 'Refresh tools' })).toBeVisible();
-    // A slow server: its tools come in two pages, 1.5 s each.
-    mcp.slowList(1500);
-    await page.getByRole('button', { name: 'Refresh tools' }).click();
+    await refreshing(page, mcp);
     await typeIn(page, 'Address', 'https://next.example/mcp');
-    await expect.poll(() => mcp.requests.filter((r) => r.rpc?.method === 'tools/list').length, { timeout: 20_000 }).toBeGreaterThanOrEqual(4);
+    await refreshed(page);
     await later(page);
     expect(await fieldNow(page, 'Address')).toEqual({ value: 'https://next.example/mcp', same: true, focus: 'mcp-address' });
-    // Let go, the screen is drawn again, as the refresh ended: what was typed after the tap on Refresh comes over to it.
+    // Let go, what was typed after the tap on Refresh is still the traveller's: the screen still waits.
     await page.getByLabel('Address', { exact: true }).blur();
-    await expect(page.getByLabel('Address', { exact: true })).not.toHaveAttribute('data-mine', '1');
-    await expect(page.getByLabel('Address', { exact: true })).toHaveValue('https://next.example/mcp');
+    await later(page);
+    expect(await fieldNow(page, 'Address')).toEqual({ value: 'https://next.example/mcp', same: true, focus: '' });
   } finally {
     await mcp.stop();
   }
+});
+
+// Fix round 1: each below failed on 20656a0ea, where a draw that waited for the traveller came at their next field or tap, and copied only
+// the text over.
+
+test("MCP: with the draw of Refresh tools waiting for the new server's Name, the caret moved to its Address keeps the screen: the keys typed there go in", async ({ page }) => {
+  const mcp = await startMcpServer({});
+  try {
+    await refreshing(page, mcp);
+    await typeIn(page, 'Name', 'next');
+    await refreshed(page);
+    const address = page.getByLabel('Address', { exact: true });
+    await address.click();
+    await later(page);
+    await page.keyboard.type('https://next.example/mcp', { delay: 5 });
+    expect(await fieldNow(page, 'Name')).toEqual({ value: 'next', same: true, focus: 'mcp-address' });
+    await expect(address).toHaveValue('https://next.example/mcp');
+  } finally {
+    await mcp.stop();
+  }
+});
+
+test("Turn on, which takes a while, ends with the caret put in its setting and nothing typed yet: the field, its caret and the keyboard stay", async ({ page }) => {
+  await slowInstalled(page);
+  await page.goto('/#/plugins/slow');
+  await page.getByRole('button', { name: 'Turn off' }).click();
+  await expect(page.getByRole('button', { name: 'Turn on' })).toBeVisible();
+  await page.evaluate(() => { /** @type {any} */ (globalThis).__hold = true; });
+  await page.getByRole('button', { name: 'Turn on' }).click();
+  const field = page.getByLabel('Server address', { exact: true });
+  await field.click();
+  await field.evaluate((el) => { el.dataset.mine = '1'; });
+  await release(page);
+  await later(page);
+  expect(await fieldNow(page, 'Server address')).toEqual({ value: '', same: true, focus: 'setting-slow-address' });
+  await page.keyboard.type('https://tides.example/api', { delay: 5 });
+  await field.blur();
+  await expect(page.getByRole('button', { name: 'Turn off' })).toBeVisible();
+  await expect(page.getByLabel('Server address', { exact: true })).toHaveValue('https://tides.example/api');
+});
+
+test("MCP: with the draw of Refresh tools waiting, Add server tapped and refused: its words and what was typed stay", async ({ page }) => {
+  const mcp = await startMcpServer({});
+  try {
+    await refreshing(page, mcp);
+    await typeIn(page, 'Name', 'trail'); // taken: Add says so at once
+    await typeIn(page, 'Address', 'https://next.example/mcp');
+    await refreshed(page);
+    await page.getByRole('button', { name: 'Add server' }).click();
+    const refused = page.getByText('There is a server called trail already.');
+    await expect(refused).toBeVisible();
+    await later(page);
+    await expect(refused).toBeVisible();
+    expect(await fieldNow(page, 'Name')).toMatchObject({ value: 'trail', same: true });
+    expect(await fieldNow(page, 'Address')).toMatchObject({ value: 'https://next.example/mcp', same: true });
+  } finally {
+    await mcp.stop();
+  }
+});
+
+test("MCP: with the draw of Refresh tools waiting, Remove tapped once stays armed for the second tap, and what was typed stays", async ({ page }) => {
+  const mcp = await startMcpServer({});
+  try {
+    await refreshing(page, mcp);
+    await typeIn(page, 'Name', 'next');
+    await refreshed(page);
+    await page.getByRole('button', { name: 'Remove' }).click();
+    const armed = page.locator('.two-step > span:not(.off)', { hasText: 'Tap again to remove' });
+    await expect(armed).toBeVisible();
+    await later(page);
+    await expect(armed).toBeVisible();
+    expect(await fieldNow(page, 'Name')).toMatchObject({ value: 'next', same: true });
+  } finally {
+    await mcp.stop();
+  }
+});
+
+test("MCP: with the draw of Refresh tools waiting, a Bearer token picked and typed for the new server: the choice, the token and the rest stay", async ({ page }) => {
+  const mcp = await startMcpServer({});
+  try {
+    await refreshing(page, mcp);
+    await typeIn(page, 'Name', 'next');
+    await typeIn(page, 'Address', 'https://next.example/mcp');
+    await page.getByRole('combobox', { name: 'Key' }).selectOption('token');
+    await typeIn(page, 'Token', 'sk-next-0123456789');
+    await page.getByLabel('Token', { exact: true }).blur();
+    await refreshed(page);
+    await later(page);
+    await expect(page.getByRole('combobox', { name: 'Key' })).toHaveValue('token');
+    expect(await fieldNow(page, 'Token')).toEqual({ value: 'sk-next-0123456789', same: true, focus: '' });
+    await expect(page.getByLabel('Token', { exact: true })).toBeVisible();
+    expect(await fieldNow(page, 'Name')).toMatchObject({ value: 'next', same: true });
+    expect(await fieldNow(page, 'Address')).toMatchObject({ value: 'https://next.example/mcp', same: true });
+  } finally {
+    await mcp.stop();
+  }
+});
+
+test("MCP: a choice made and nothing typed (Key: Headers), then a plugin adds a page: its draw waits, and the choice stays", async ({ page }) => {
+  await slowInstalled(page);
+  await page.evaluate(() => { location.hash = '#/mcp'; });
+  const kind = page.getByRole('combobox', { name: 'Key' });
+  await kind.selectOption('headers');
+  await kind.evaluate((el) => { el.dataset.mine = '1'; });
+  await kind.blur();
+  await page.evaluate(() => (/** @type {any} */ (globalThis)).__addPage());
+  await later(page);
+  await expect(kind).toHaveValue('headers');
+  await expect(kind).toHaveAttribute('data-mine', '1');
+  await expect(page.getByLabel('Headers, one "Name: value" a line', { exact: true })).toBeVisible();
 });
 
 // annai served from a port of the test's own, with a new Remote trace in its catalog once the test says (as updates.spec.js does).

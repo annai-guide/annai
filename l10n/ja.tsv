@@ -1075,7 +1075,7 @@ snj02s	ok	In {0} ›	{0}の会話 ›	src/ui/dock.js:314	{0} = scopeTitle(typeof
 1rm0t76	ok	{0} isn't valid JSON.	{0}のJSONが正しくありません。	src/ui/dom.js:155	{0} = label; Note: {0} is a field's label.
 1a791in	ok	{0} has to be an object: { … }.	{0}はオブジェクト（{ … }）で入力してください。	src/ui/dom.js:157	{0} = label; Note: {0} is a field's label.
 1gkm7i5	ok	Saving…	保存中…	src/ui/dom.js:266	
-12ek4is	ok	Saved	保存しました	src/ui/dom.js:313	
+12ek4is	ok	Saved	保存しました	src/ui/dom.js:314	
 fj0t7x	ok	History (every version and the log)	履歴（すべてのバージョンとログ）	src/ui/export-panel.js:21	
 oopaku	ok	Memory	記憶	src/ui/export-panel.js:22	Note: What Shiori remembers about you (her memory), not the device's: 記憶, as the recap's list says it; メモリー reads as the device's memory.
 1l4mw9c	ok	Photos	写真	src/ui/export-panel.js:23	
@@ -2806,9 +2806,9 @@ f2eaqi	ok	Find a search plugin	検索プラグインを探す	src/ui/search-pane
 do1m5o	ok	{0}: annai can't show this setting.	{0}：この設定はannaiでは表示できません。	src/ui/settings-form.js:116	{0} = f.label
 1qrgqx0	ok	saved	保存済み	src/ui/settings-form.js:121	
 phutrz	ok	{0} wasn't saved: {1}	{0}を保存できませんでした：{1}	src/ui/settings-form.js:130	{0} = f.label; {1} = messageOf(e)
-1skw031	ok	This screen couldn't open	この画面を開けませんでした	src/ui/shell.js:417	
-1z00dfe	ok	An update is ready	アップデートの準備ができました	src/ui/shell.js:498	
-gt0nrj	ok	It will be used the next time annai starts.	次回annaiを起動したときに適用されます。	src/ui/shell.js:498	
+1skw031	ok	This screen couldn't open	この画面を開けませんでした	src/ui/shell.js:431	
+1z00dfe	ok	An update is ready	アップデートの準備ができました	src/ui/shell.js:505	
+gt0nrj	ok	It will be used the next time annai starts.	次回annaiを起動したときに適用されます。	src/ui/shell.js:505	
 sntfon	ok	Hello! This is how I sound when I talk to you.	こんにちは。こんな声でお話しします。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
 n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
 1a27ynt	ok	Last tested {0}: it worked.	最終テスト（{0}）：動作しました。	src/ui/speech-check.js:26	{0} = relTime(verified.at); Note: {0} is a relative time, in brackets as on a model's test line.

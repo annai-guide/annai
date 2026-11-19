@@ -133,6 +133,7 @@ export async function settingsForm(ctx, pluginId, schema, o = {}) {
           }
           error.hidden = true;
           input.value = '';
+          input.dispatchEvent(new Event('stored')); // a draw need not wait for it (shell.js)
           input.placeholder = t`saved`;
           note.textContent = t`Saved`;
         }),
