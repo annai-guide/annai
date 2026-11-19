@@ -7,7 +7,7 @@ import { updateAppSettings } from '../../src/core/settings.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
-import { ensureBaseScopes, ME } from '../../src/core/scopes.js';
+import { ensureBaseScopes, createTrip, ME } from '../../src/core/scopes.js';
 import { logEvent } from '../../src/core/events.js';
 
 const at = (/** @type {string} */ iso) => Date.parse(iso);
@@ -53,6 +53,94 @@ test("spend per day: once today's calls cost the budget, no more calls", async (
   await k.agent.idle();
   assert.equal(k.requests.length, 0);
   assert.equal(k.notices[0].title, "Shiori stopped: today's budget is spent");
+});
+
+/**
+ * The scope of every events read a store is asked for from now on.
+ * @param {import('../../src/core/types.js').Store} store @returns {string[]}
+ */
+function readsOf(store) {
+  /** @type {string[]} */
+  const scopes = [];
+  const tx = store.tx.bind(store);
+  store.tx = (stores, mode, fn) => tx(stores, mode, (t) => fn({ ...t, listEvents: (scope, q) => (scopes.push(scope), t.listEvents(scope, q)) }));
+  return scopes;
+}
+/** A scripted model that costs this much a call: 12 and 6 tokens at $10,000 a million (what "dear" is in the test of both halves). */
+const dear = { prices: { input: 10_000, output: 10_000 } };
+/** Another conversation's model call that cost this much, today; its scope. @param {any} k @param {number} cost */
+async function earlier(k, cost) {
+  const other = await createTrip(k.ws, { title: 'Earlier trip' });
+  await modelTrace(k.store, other).turn({ role: 'main', level: 'off', answeredBy: 'A', attempts: [], usage: {}, cost }, 'earlier', '');
+  return other;
+}
+
+test("no Spend per day set: a turn reads no other conversation's log, though other conversations spent", async () => {
+  const k = await agentKit([[done]]);
+  const other = await earlier(k, 0.5);
+  const reads = readsOf(k.store);
+  k.agent.send('Go');
+  await k.agent.idle();
+  assert.equal(k.requests.length, 1);
+  assert.ok(reads.includes(k.trip), 'the turn read its own log');
+  assert.ok(!reads.includes(other), "the other conversation's log was not read");
+});
+
+test("no Spend per day set: a call cut for a note doesn't read the other conversations' logs either", async () => {
+  const k = await agentKit([[{ delayMs: 500, text: 'thinking' }, done]]);
+  const other = await earlier(k, 0.5);
+  const reads = readsOf(k.store);
+  k.agent.send('Go');
+  await until(() => k.requests.length === 1);
+  k.agent.cutIn();
+  await k.agent.idle();
+  assert.equal(k.requests.length, 2, 'the cut call went on to a second request');
+  assert.ok(!reads.includes(other), "the other conversation's log was not read");
+});
+
+test("Spend per day set: other conversations' spend today counts before the turn's first call, and the turn's own calls add to it", async () => {
+  const k = await agentKit([[loop, loop, loop, loop, done]], { models: [dear] });
+  await earlier(k, 0.3);
+  await updateAppSettings(k.ws, { shiori: { budgets: { spendPerDay: 0.5 } } });
+  k.agent.send('Go');
+  await k.agent.idle();
+  // $0.3 before, then $0.18 a call: 0.48 after the first, 0.66 after the second. Without the $0.3, a third would run (0.54).
+  assert.equal(k.requests.length, 2);
+  assert.equal((await k.events(['error']))[0].data.which, 'spend');
+});
+
+test("Spend per day set: what a call cut for a note cost, by its trace, counts before the next call is made", async () => {
+  const k = await agentKit([[{ delayMs: 500, text: 'thinking' }, loop, done]]);
+  await earlier(k, 0.3);
+  await updateAppSettings(k.ws, { shiori: { budgets: { spendPerDay: 0.5 } } });
+  k.agent.send('Go');
+  await until(() => k.requests.length === 1);
+  // The scripted model bills nothing for a call that is cut; a real one bills what it began to read, and its trace says so.
+  await modelTrace(k.store, k.trip).turn({ role: 'main', level: 'off', answeredBy: 'A', attempts: [], usage: {}, cost: 0.3 }, 'cut', '');
+  k.agent.cutIn();
+  await k.agent.idle();
+  assert.equal(k.requests.length, 1, 'no call after the cut one: $0.3 and $0.3 are over the $0.5');
+  assert.equal((await k.events(['error']))[0].data.which, 'spend');
+});
+
+test("a Spend per day set while a turn runs takes hold at the next turn, with the day's spend before it: the first turn's too", async () => {
+  /** @type {(() => void)[]} */
+  const held = [];
+  const k = await agentKit([[loop, done, loop, done]], { models: [dear], hold: () => new Promise((r) => held.push(() => r(undefined))) });
+  await earlier(k, 0.1);
+  k.agent.send('First');
+  await until(() => held.length === 1);
+  await updateAppSettings(k.ws, { shiori: { budgets: { spendPerDay: 0.4 } } });
+  held[0]();
+  await until(() => held.length === 2);
+  held[1]();
+  await k.agent.idle();
+  const calls = k.requests.length;
+  assert.equal((await k.events(['error'])).length, 0, 'the turn that was running is not stopped by what was set during it');
+  k.agent.send('Second');
+  await k.agent.idle();
+  assert.equal(k.requests.length, calls, "no call: $0.1 and the first turn's $0.36 are the day's");
+  assert.equal((await k.events(['error']))[0].data.which, 'spend');
 });
 
 test("wakes per hour count only wakes that aren't the user's", async () => {
