@@ -1000,3 +1000,17 @@ Each entry here was approved by the user. Reviewers read this file first and don
   - **(f) Another part's count kept** while a second Fetch asks, after a page draw (C117's shape plus two Fetches; it clears by itself).
 - **Why:** the reviews' findings of all three rounds landed in the drop and its race with the Fetch's way to the draw (one status line with four writers, one list element every answer draws into, two guards that race), so no further fix round starts on it (RULES, "Step back when findings repeat"); a design check of the part asks whether the drop is needed and whether the design can lose that state (its row in docs/progress.md).
 - **Revisit when:** the design check answers, in the next version; its option is built then.
+
+### A model added by hand before annai described it never takes annai's description
+- **Kind:** known limitation.
+- **What the traveller sees:** a model added by its id (or from the provider's list) before an update of annai describes the same model in the provider's plugin stays as the traveller added it: annai's prices, context window and tool words never reach it, and removing it doesn't bring annai's version either (only removing the provider and adding it again does). Its calls may then count nothing toward Spend per day until prices are typed on its page (read from src/core/llm/cost.js, not run).
+- **Why:** the sync skips a description model the ability already has by its provider model id, as it skips one the traveller removed (models-next: one model per provider model id). Taking the description's values into the traveller's model would lay the stale copy of the defaults over what they gave it and rename the model under them.
+- **Revisit when:** a traveller reports a hand-added model with no prices, or Spend per day missing its calls.
+- **Approved:** 2026-11-19, chief's decision C119 (not the user's words), accepted as worded in docs/progress.md's question from models-next's Fable final review.
+
+### A removed description model comes back when an update drops it and a later one lists it again
+- **Kind:** known limitation.
+- **What the traveller sees:** the traveller removes a model a provider's plugin describes; a later update of that plugin no longer lists it, and a still later one lists it again: it comes back on the provider's page. Probed on main and on models-next. annai's own plugins don't drop a model and list it again, so only a third-party plugin can do this.
+- **Why:** the marks of what the traveller removed live in the last update's list of described models, so a key missing from one update loses its mark. Keeping removed keys in a list of their own is one more stored list, a design change for a case annai's own plugins never reach.
+- **Revisit when:** a third-party plugin does it, or a traveller reports a removed model coming back.
+- **Approved:** 2026-11-19, chief's decision C120 (not the user's words): accepted as a known limitation, third-party plugins only.
