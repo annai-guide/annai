@@ -1301,8 +1301,8 @@ Eyes-free voice mode also serves users with low vision.
 
 1. **Never lose data.**
    - Writes are transactional (§4.2).
-   - "Storage full" shows a card with real options, led by the phone's own Settings: free up space on the device (iPhone: Settings → General → iPhone Storage; Android: Settings → Storage), export a backup, remove a trip (§4.9), delete trace bodies or cached photo copies. It shows for any write the browser refuses for lack of room: a full phone's refusal is not a quota error (WebKit aborts the write with no error, Chromium fails its blob files; measured 2026-11-19).
-   - A line typed to Shiori whose save fails goes back in the type box, before anything typed there since.
+   - "Storage full" shows a card with real options, led by the phone's own Settings: free up space on the device (iPhone: Settings → General → iPhone Storage; Android: Settings → Storage), export a backup, remove a trip (§4.9; not suggested on an iPhone, whose full disk refuses even a delete), and, planned, delete trace bodies or cached photo copies (the card has no such action yet; whether it should is open). It shows for any write the browser refuses for lack of room, and for a read whose connection a full phone can't reopen; annai's start screen says so when the database can't be opened (a full phone's refusals are no quota errors: WebKit aborts the write with no error, Chromium fails its blob files; measured on Linux builds of WebKit and Chromium, 2026-11-19; not yet on a phone). One card at a time: a new one takes the one before it down.
+   - A line typed in the type box whose save fails is handed back, never held: into the box, before anything typed there since, when its conversation is the open one, else on the card, which shows the words (the user's pick of 2026-11-14, "Put it back in the type box"). A spoken line, a card's tap, and photos or files sent with a typed line aren't given back.
    - The IndexedDB connection reconnects automatically.
    - Migrations are atomic, with a backup first.
 2. **Degrade, don't die.**

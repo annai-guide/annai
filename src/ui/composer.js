@@ -6,6 +6,7 @@ import { FILES_ONLY } from '../core/handover.js';
 import { updateAppSettings, readAppSettings } from '../core/settings.js';
 import { speaksScreens } from './format.js';
 import { openOrTell, toTalk } from './open-trip.js';
+import { explainStorageFull } from './storage-full.js';
 
 /**
  * The type box's attachments (the bookings-and-trips design, goal 1): a + picks photos or files, and a pasted confirmation email
@@ -70,7 +71,8 @@ export async function handOver(ctx, text, items, o = {}) {
       for (const p of paths) kept.push({ path: p, type: types[p], name: file.name || p.split('/').pop() || p, planned: plannedBy[p] ?? 0 });
     } catch (e) {
       const left = files.length - i;
-      ctx.notices.card({ tone: 'warn', title: plural(left, "# file wasn't kept", "# files weren't kept"), body: messageOf(e) });
+      const title = plural(left, "# file wasn't kept", "# files weren't kept");
+      explainStorageFull(ctx, e, { said: title }) || ctx.notices.card({ tone: 'warn', title, body: messageOf(e) });
       break;
     }
   }
@@ -86,7 +88,7 @@ export async function handOver(ctx, text, items, o = {}) {
   // Another conversation was opened while the files were kept: the message goes to the one they were kept for, written into it, and
   // answered when it opens.
   if (ctx.agent.target !== scope) {
-    await ctx.agent.wake({ kind: 'user', text: text.trim() || FILES_ONLY, ...handover, scope });
+    await ctx.agent.wake({ kind: 'user', text: text.trim() || FILES_ONLY, ...(text.trim() ? { typed: true } : {}), ...handover, scope });
     return;
   }
   ctx.agent.send(text, { ...handover, typed: true });

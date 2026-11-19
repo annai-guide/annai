@@ -79,7 +79,8 @@ export async function createIdbStore(name = DB_NAME, hooks = {}) {
     db = d;
     return d;
   };
-  await connect();
+  // The first open passes the door a reopen does: Chromium's backing store writes as it opens, so at its last bytes it fails too.
+  await connect().catch((e) => { throw storeError(e, { write: true, open: true }); });
   let closed = false;
   return {
     async tx(stores, mode, fn) {
@@ -97,7 +98,7 @@ export async function createIdbStore(name = DB_NAME, hooks = {}) {
             continue;
           }
           // An open that fails is a write's failure: Chromium's backing store writes as it opens.
-          throw storeError(e, { write: mode === 'readwrite' || !d, refused: refused.has(/** @type {any} */ (e)) });
+          throw storeError(e, { write: mode === 'readwrite' || !d, refused: refused.has(/** @type {any} */ (e)), open: !d });
         }
       }
     },
@@ -120,7 +121,7 @@ function connectionLost(e) {
   return e?.name === 'InvalidStateError' || e?.name === 'UnknownError' || e?.name === 'AbortError' || /connection (is )?(lost|closing|closed)|server lost|database (is )?clos/i.test(String(e?.message));
 }
 
-/** What runTx rejected with when the browser aborted a transaction after all its requests succeeded: a refused commit. */
+/** The error runTx rejected with when the browser aborted a transaction after all its requests succeeded: a refused commit. */
 const refused = new WeakSet();
 
 /**
@@ -138,7 +139,9 @@ function runTx(db, stores, mode, fn) {
     let result;
     let settled = false;
     let failed = false;
-    t.onerror = () => { failed = true; }; // a request failed: an abort is no refused commit
+    /** What fn rejected with, once it has. @type {{ e: any } | null} */
+    let thrown = null;
+    t.onerror = () => { failed = true; }; // a request failed (one the transaction's own end cut off too): an abort after it is no refused commit
     const fail = (/** @type {any} */ e) => {
       if (!settled) {
         settled = true;
@@ -146,6 +149,7 @@ function runTx(db, stores, mode, fn) {
       }
     };
     t.oncomplete = () => {
+      if (thrown) return fail(thrown.e);
       if (!settled) {
         settled = true;
         resolve(result);
@@ -154,13 +158,16 @@ function runTx(db, stores, mode, fn) {
     t.onabort = () => {
       /* en */ const e = t.error ?? new DOMException('The transaction was aborted.', 'AbortError');
       if (!failed) refused.add(e);
-      fail(e);
+      // The transaction's own error is why it ended; a request's AbortError is only what that did to the request.
+      fail(t.error || !thrown ? e : thrown.e);
     };
     Promise.resolve()
       .then(() => fn(makeTx(t)))
       .then((r) => { result = r; }, (e) => {
-        fail(e);
-        try { t.abort(); } catch { /* already finished */ }
+        thrown = { e };
+        try { t.abort(); } catch { /* already ending: its complete or abort event follows */ }
+        // A request's AbortError says only that its transaction ended: the reason, which may be the transaction's own error, comes with its abort.
+        if (e?.name !== 'AbortError') fail(e);
       });
   });
 }

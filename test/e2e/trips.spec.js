@@ -65,7 +65,7 @@ test('archive a trip, then bring it back', async ({ page }) => {
   await expect(page.getByRole('link', { name: /Old trip/ })).toBeVisible();
 });
 
-test('a full device says what to do, and nothing is half-saved', async ({ page }) => {
+test('a full device says what to do', async ({ page }) => {
   await openApp(page);
   await startTrip(page, 'Big Sur');
   await allFiles(page);
@@ -77,11 +77,29 @@ test('a full device says what to do, and nothing is half-saved', async ({ page }
   });
   await page.getByLabel('Content').fill('# Day 1');
   await page.getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByText("There's no room to save this", { exact: true })).toBeVisible();
+  await expect(page.getByText("There's no room left", { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Export a backup' }).click();
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
   await page.goBack();
   await expect(page.getByLabel('Content')).toHaveValue('# day1\n'); // still the version from before the failed save
+});
+
+// Chromium at its last bytes can't even open its database (the probe of 2026-11-19, a Linux build: UnknownError, "Internal error opening backing
+// store"): the start screen says the phone is full, and what to do, not that a browser may be blocking storage.
+test("a phone too full to open annai's database says so at start, in the phone's own words", async ({ page, browserName }) => {
+  await page.addInitScript(() => {
+    IDBFactory.prototype.open = /** @type {any} */ (function () {
+      /** @type {any} */
+      const r = { error: new DOMException('Internal error opening backing store for indexedDB.open.', 'UnknownError'), result: undefined };
+      setTimeout(() => r.onerror?.(new Event('error')));
+      return r;
+    });
+  });
+  await page.goto('/#/trips');
+  await expect(page.getByRole('heading', { level: 1, name: "annai couldn't start" })).toBeVisible();
+  await expect(page.locator('.blocking')).toContainText("There's no room left.");
+  await expect(page.locator('.blocking')).toContainText(browserName === 'webkit' ? 'Free up space on this iPhone in Settings → General → iPhone Storage, then try again.' : 'Free up space on this phone in Settings → Storage, then try again.');
+  await expect(page.locator('.blocking')).not.toContainText('blocking storage');
 });
 
 test("a trip link can't open your profile or annai's own files", async ({ page }) => {
@@ -126,7 +144,7 @@ test('a Backup saved while storage is full still says it was saved', async ({ pa
   await save.click();
   await downloading;
   await expect(page.getByText('Saved to your downloads.')).toBeVisible();
-  await expect(page.getByText("There's no room to save this", { exact: true })).toBeVisible();
+  await expect(page.getByText("There's no room left", { exact: true })).toBeVisible();
 });
 
 /** How many images annai has stored. @param {import('@playwright/test').Page} page @returns {Promise<number>} */
@@ -145,6 +163,28 @@ function storedImages(page) {
     r.onerror = () => reject(r.error);
   })));
 }
+
+// A full phone can refuse even a delete (WebKit's does: UnknownError "Failed to delete record from object store", measured on a Linux build,
+// 2026-11-19): the card says the trip was not removed, and does not suggest removing one.
+test('a Remove the full phone refuses says nothing was removed, in the phone\'s own words, and the trip stays', async ({ page, browserName }) => {
+  await openApp(page);
+  await startTrip(page, 'Big Sur');
+  await page.getByRole('button', { name: 'Remove', exact: true }).click();
+  const question = page.getByRole('dialog', { name: 'Big Sur' });
+  await expect(question).toContainText('Remove it?');
+  await page.evaluate(() => {
+    const refuse = () => { throw new DOMException('Failed to delete record from object store', 'UnknownError'); };
+    IDBObjectStore.prototype.delete = refuse;
+    IDBCursor.prototype.delete = refuse;
+  });
+  await question.getByRole('button', { name: 'Remove' }).click();
+  const notices = page.locator('.notices');
+  await expect(notices.getByText("There's no room left", { exact: true })).toBeVisible();
+  await expect(notices).toContainText('Nothing was removed. Free up space on this');
+  await expect(notices).toContainText(browserName === 'webkit' ? 'on this iPhone in Settings → General → iPhone Storage, then try again.' : 'on this phone in Settings → Storage, then try again.');
+  if (browserName === 'webkit') await expect(notices).not.toContainText('Removing a trip');
+  await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
+});
 
 test('remove a trip: one question, which says so when something in it is not in a Backup', async ({ page }) => {
   await openApp(page);

@@ -493,7 +493,8 @@ export class Halves {
   }
 
   /**
-   * saying: a live Koe's words so far, while she speaks them; went: a trip opened on the user's choice on annai's card ({ trip })
+   * saying: a live Koe's words so far, while she speaks them; went: a trip opened on the user's choice on annai's card ({ trip });
+   * unsaved: words typed in the box that a failed write didn't keep, for the box or a card ({ words, scope, error }: Agent's #unsaved)
    * @param {'state' | 'event' | 'notice' | 'open' | 'halves' | 'clear' | 'saying' | 'went' | 'unsaved'} kind @param {(x: any) => void} fn
    */
   on(kind, fn) {
@@ -843,7 +844,8 @@ export class Halves {
   /**
    * To Koe while it talks (Kokoro reads it and wakes), else to Kokoro; a half waiting for an answer gets it.
    * @param {string} text @param {{ photos?: import('./loop.js').SentPhoto[], chose?: boolean, claim?: string, typed?: boolean, handed?: import('../handover.js').HandedFile[], handover?: string }} [o]
-   *   chose: a tap on a live ask's buttons; claim: "This was for Shiori", the heard line's id; handed, handover: a hand-over (handover.js)
+   *   chose: a tap on a live ask's buttons; claim: "This was for Shiori", the heard line's id; typed: in the type box, so a failed write gives the words back;
+   *   handed, handover: a hand-over (handover.js)
    */
   send(text, o = {}) {
     this.#bothTold = false;
@@ -861,7 +863,7 @@ export class Halves {
       this.koe.send(text, o);
     }, (e) => {
       this.kokoro.send(text, o); // never dropped
-      this.#notice({ tone: 'warn', title: t`Shiori answers as one half for now`, body: t`annai couldn't pass your message to Koe: ${String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)}` });
+      this.#notice({ tone: 'warn', title: t`Shiori answers as one half for now`, body: t`annai couldn't pass your message to Koe: ${String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)}`, error: e });
     });
   }
 

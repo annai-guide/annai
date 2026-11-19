@@ -4,6 +4,12 @@ import { mount, cleanUp, syncThemes, dockKey } from '../../../src/ui/slots.js';
 import { renderCard } from '../../../src/ui/cards.js';
 import { createDock } from '../../../src/ui/dock.js';
 import { startShell } from '../../../src/ui/shell.js';
+import { StorageFullError } from '../../../src/core/errors.js';
+import { Workspace } from '../../../src/core/workspace.js';
+import { ensureBaseScopes, createTrip, kindOf } from '../../../src/core/scopes.js';
+import { makeSchemaFor } from '../../../src/core/schema.js';
+import { CORE_SCHEMAS } from '../../../src/plugins/core-schemas/schemas.js';
+import { createMemoryStore } from '../../fakes/store-memory.js';
 
 /** A tick, for drawings whose promise settles. */
 const tick = () => new Promise((done) => setTimeout(done, 0));
@@ -387,5 +393,166 @@ export default function (test, assert) {
     location.hash = '#/ext/tides/now'; // before the slow screen's drawing has come
     await new Promise((done) => setTimeout(done, 300));
     assert.deepEqual(cleaned, ['now', 'slow'], `the slow drawing, come after the next render began, is cleaned up at once: ${JSON.stringify(cleaned)}`);
+  });
+
+  /**
+   * The dock as a phone makes it, for the words a failed write gives back (storage-next): its box, the cards it shows, and the conversation open.
+   * @param {{ target?: string | null }} [o] the conversation open: 'trip-a' unless said
+   */
+  const unsavedKit = (o = {}) => {
+    const { registry } = kit();
+    const agent = Object.assign(fakeAgent(), { target: o.target === undefined ? 'trip-a' : o.target });
+    /** @type {{ title: string, body: string }[]} */
+    const cards = [];
+    const store = createMemoryStore();
+    const ws = new Workspace(store, { schemaFor: makeSchemaFor({ list: (/** @type {string} */ k) => (k === 'schema' ? CORE_SCHEMAS : []) }, kindOf) });
+    const ctx = { registry, agent, notices: { card: (/** @type {any} */ c) => { cards.push(c); return () => {}; }, toast() {} }, go() {}, replace() {}, ws, store };
+    const dock = createDock(ctx);
+    document.body.append(dock.el);
+    const box = /** @type {HTMLTextAreaElement} */ (dock.el.querySelector('#dock-text'));
+    const sheet = /** @type {HTMLElement} */ (dock.el.querySelector('.type-sheet'));
+    return { agent, cards, dock, box, sheet, ws, store, done: () => { dock.dispose(); dock.el.remove(); } };
+  };
+  const full = () => new StorageFullError(new DOMException('Unable to store record in object store', 'UnknownError'));
+
+  test('dock: words a write did not keep go back in the box when their conversation is open, before what was typed since, and the card says so', () => {
+    const k = unsavedKit();
+    k.box.value = 'And the garden?';
+    k.agent.emit('unsaved', { words: 'Is the castle open?', scope: 'trip-a', error: full() });
+    assert.equal(k.box.value, 'Is the castle open?\nAnd the garden?');
+    assert.equal(k.sheet.hidden, false, 'the box is open');
+    assert.equal(k.cards.length, 1);
+    assert.equal(k.cards[0].title, "There's no room left");
+    assert.ok(/Your message is back in the box\.$/.test(k.cards[0].body), k.cards[0].body);
+    k.done();
+  });
+
+  test("dock: words for a conversation that isn't the open one go on the card, never into this box, so none lands in the wrong conversation", () => {
+    const k = unsavedKit();
+    k.agent.emit('unsaved', { words: 'Book the ryokan', scope: 'trip-b', error: full() });
+    assert.equal(k.box.value, '');
+    assert.equal(k.sheet.hidden, true);
+    assert.ok(/Your message wasn't saved: Book the ryokan$/.test(k.cards[0].body), k.cards[0].body);
+    // Nothing open: the words are the box's, as the dock's own submit keeps them for a draft that can't be made.
+    const none = unsavedKit({ target: null });
+    none.agent.emit('unsaved', { words: 'Is the bus late?', scope: 'me', error: full() });
+    assert.equal(none.box.value, 'Is the bus late?');
+    k.done();
+    none.done();
+  });
+
+  test('dock: a failure that is no full device still gives the words back: into the box, or on a card of its own when their conversation is not open', () => {
+    const k = unsavedKit();
+    k.agent.emit('unsaved', { words: 'Here', scope: 'trip-a', error: new Error('The disk broke.') });
+    assert.equal(k.box.value, 'Here');
+    assert.equal(k.cards.length, 0, "the turn's own card says what failed");
+    k.agent.emit('unsaved', { words: 'Elsewhere', scope: 'trip-b', error: new Error('The disk broke.') });
+    assert.equal(k.cards.length, 1);
+    assert.equal(k.cards[0].title, 'Something went wrong');
+    assert.ok(/The disk broke\..* Elsewhere$/.test(k.cards[0].body), k.cards[0].body);
+    k.done();
+  });
+
+  test("dock: the box opens for given-back words, but takes the focus only on the conversation's own screen", () => {
+    const hash = location.hash;
+    try {
+      location.hash = '#/trips';
+      const away = unsavedKit();
+      const field = document.createElement('input');
+      document.body.append(field);
+      field.focus();
+      away.agent.emit('unsaved', { words: 'Is the castle open?', scope: 'trip-a', error: full() });
+      assert.equal(away.sheet.hidden, false);
+      assert.equal(away.box.value, 'Is the castle open?');
+      assert.equal(document.activeElement, field, "a field on another screen keeps its focus");
+      field.remove();
+      away.done();
+      location.hash = '#/trip/trip-a/talk';
+      const here = unsavedKit();
+      here.agent.emit('unsaved', { words: 'Is the castle open?', scope: 'trip-a', error: full() });
+      assert.equal(document.activeElement, here.box);
+      here.done();
+    } finally {
+      location.hash = hash;
+    }
+  });
+
+  test("dock: a file already kept, asked about with words, whose read a full phone refuses (a reopen that fails) shows the storage card with what didn't reach Shiori first, not a card of its own", async () => {
+    const k = unsavedKit({ target: null });
+    await ensureBaseScopes(k.ws);
+    const trip = await createTrip(k.ws, { title: 'Testville' });
+    k.agent.target = trip;
+    await k.ws.write(trip, '/files/ticket.txt', 'a ticket', { author: 'user', type: 'text/plain' });
+    const real = k.store.tx.bind(k.store);
+    k.store.tx = /** @type {any} */ ((/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => (mode === 'readonly' ? Promise.reject(full()) : real(stores, mode, fn)));
+    try {
+      k.dock.attach([{ scope: trip, path: '/files/ticket.txt', name: 'ticket.txt' }]);
+      k.box.value = 'Is it valid?';
+      /** @type {HTMLFormElement} */ (k.sheet).requestSubmit();
+      await new Promise((done) => setTimeout(done, 100));
+      assert.equal(k.cards.length, 1);
+      assert.equal(k.cards[0].title, "There's no room left");
+      assert.ok(/^Your files didn't reach Shiori\. Free up space/.test(k.cards[0].body), k.cards[0].body);
+    } finally {
+      k.store.tx = real;
+      k.done();
+    }
+  });
+
+  test("dock: a photo the full phone can't keep shows the storage card with the photo first, not a card of its own", async () => {
+    const k = unsavedKit({ target: null });
+    await ensureBaseScopes(k.ws);
+    k.agent.target = await createTrip(k.ws, { title: 'Testville' });
+    const realWrite = Workspace.prototype.write;
+    Workspace.prototype.write = /** @type {any} */ (() => Promise.reject(full()));
+    try {
+      const camera = /** @type {HTMLInputElement} */ (k.dock.el.querySelector('#dock-camera'));
+      const picked = new DataTransfer();
+      picked.items.add(new File([new Uint8Array([1, 2, 3])], 'snap.jpg', { type: 'image/jpeg' }));
+      camera.files = picked.files;
+      camera.dispatchEvent(new Event('change'));
+      await new Promise((done) => setTimeout(done, 200));
+      assert.equal(k.cards.length, 1);
+      assert.equal(k.cards[0].title, "There's no room left");
+      assert.ok(/^The photo wasn't added\. Free up space/.test(k.cards[0].body), k.cards[0].body);
+    } finally {
+      Workspace.prototype.write = realWrite;
+      k.done();
+    }
+  });
+
+  test('dock: words given back while a file is being kept stay in the box: the box was cleared as the message was taken, and the end of the keep leaves them', async () => {
+    const k = unsavedKit({ target: null });
+    await ensureBaseScopes(k.ws);
+    k.agent.target = await createTrip(k.ws, { title: 'Testville' });
+    const trip = k.agent.target;
+    /** @type {() => void} */
+    let release = () => {};
+    const kept = new Promise((done) => { release = () => done(undefined); });
+    // Her message with a file: the keep takes a while (the file's write is held), and an earlier line's failure comes in meanwhile.
+    const realWrite = Workspace.prototype.write;
+    Workspace.prototype.write = /** @type {any} */ (async function (/** @type {any[]} */ ...a) { await kept; return realWrite.apply(this, /** @type {any} */ (a)); });
+    try {
+      k.dock.attach([{ file: new File(['bytes'], 'ticket.txt', { type: 'text/plain' }) }]);
+      k.box.value = 'The next message';
+      /** @type {any[]} */
+      const sent = [];
+      /** @type {any} */ (k.agent).send = (/** @type {string} */ text, /** @type {any} */ x) => { sent.push({ text, ...x }); };
+      /** @type {HTMLFormElement} */ (k.sheet).requestSubmit();
+      await tick();
+      assert.equal(k.box.value, '', 'cleared as the message was taken');
+      k.agent.emit('unsaved', { words: 'An earlier line', scope: trip, error: full() });
+      assert.equal(k.box.value, 'An earlier line', 'given back alone: not mixed with the message being sent');
+      release();
+      await new Promise((done) => setTimeout(done, 100));
+      assert.equal(sent.length, 1);
+      assert.equal(sent[0].text, 'The next message');
+      assert.equal(k.box.value, 'An earlier line', 'the keep ended and left them');
+      assert.equal(k.sheet.hidden, false, 'in an open box');
+    } finally {
+      Workspace.prototype.write = realWrite;
+      release();
+      k.done();
+    }
   });
 }

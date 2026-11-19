@@ -12,8 +12,9 @@ import { startShell, showBlocking } from '../ui/shell.js';
 import { h, t, messageOf } from '../ui/dom.js';
 import { list, talkHref } from '../ui/format.js';
 import { isStandalone, requestPersist, watchForUpdates, restartInto, platform, deviceName, connectionOf } from '../ui/platform.js';
-import { explainStorageFull } from '../ui/storage-full.js';
+import { explainStorageFull, storageFullSteps } from '../ui/storage-full.js';
 import { StorageFullError } from '../core/errors.js';
+import { sentences } from '../core/intl.js';
 import { createLlm } from '../core/llm/service.js';
 import { moveOver } from '../core/llm/move-over.js';
 import { splitOldKoe } from '../core/llm/config.js';
@@ -294,8 +295,9 @@ async function boot() {
   const named = new Map();
   agent.on('clear', (/** @type {string} */ key) => named.get(key)?.());
   agent.on('notice', (n) => {
-    // A turn stopped by a full device: the storage card, which says what works (spec §17).
-    if (explainStorageFull({ notices: shell.notices, go: (/** @type {string} */ hash) => { location.hash = hash; } }, n.error)) return;
+    // A card for a full device (a turn stopped by it, a photo or a message it kept back): the storage card in its place, which says what works (spec §17),
+    // after what this one said first.
+    if (explainStorageFull({ notices: shell.notices, go: (/** @type {string} */ hash) => { location.hash = hash; } }, n.error, { said: n.title })) return;
     if (n.key) named.get(n.key)?.();
     const dismiss = shell.notices.card(n);
     if (n.key) named.set(n.key, dismiss);
@@ -447,9 +449,11 @@ function watchErrors(/** @type {any} */ store, /** @type {ReturnType<typeof star
 
 boot().catch((e) => {
   console.error(e);
+  // A full phone can't open or write its database (Chromium's backing store writes as it opens): the screen says so, and what to do.
+  const full = e instanceof StorageFullError;
   root.replaceChildren(h('div', { class: 'blocking' },
     h('h1', { class: 'title', text: t`annai couldn't start` }),
-    h('p', { text: messageOf(e) }),
-    h('p', { text: t`If this keeps happening, your browser may be blocking storage (for example, in a private window).` }),
+    h('p', { text: full ? sentences(t`There's no room left`, storageFullSteps()) : messageOf(e) }),
+    full ? null : h('p', { text: t`If this keeps happening, your browser may be blocking storage (for example, in a private window).` }),
     h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: () => { reloadSettled(); } }, t`Try again`))));
 });

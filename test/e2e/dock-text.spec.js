@@ -150,9 +150,10 @@ test('a small send arrow sits inside the box, on its right, for a keyboard whose
 });
 
 /**
- * The phone's disk fills, as WebKit and Chromium refuse a full one (the probe of 2026-11-19): every request of a write succeeds, and the
- * browser aborts its commit with no error. Each write that logs is kept open until `release()` (held), then aborted 100 ms on, well
- * after annai's few requests in it. `room()` ends it. @param {import('@playwright/test').Page} page @param {{ held?: boolean }} [o]
+ * The phone's disk fills, as the Linux builds of WebKit and Chromium refuse a full one (the probe of 2026-11-19, WebKit: no error; Chromium: a
+ * DataError for its blob files): every request of a write succeeds, and the browser aborts its commit. Faked here with no error, as WebKit's.
+ * Each write that logs is kept open until `release()` (held), then aborted 100 ms on, well after annai's few requests in it. `room()` ends it.
+ * @param {import('@playwright/test').Page} page @param {{ held?: boolean }} [o]
  */
 const fillDisk = (page, { held = false } = {}) => page.evaluate((held) => {
   const w = /** @type {any} */ (window);
@@ -188,9 +189,11 @@ test("a line the full phone refuses to save comes back in the box, and the stora
   await expect(box(page)).toBeVisible();
   await expect(page.locator('.convo .you')).toHaveCount(0);
   const notices = page.locator('.notices');
-  await expect(notices.getByText("There's no room to save this", { exact: true })).toBeVisible();
+  await expect(notices.getByText("There's no room left", { exact: true })).toBeVisible();
   await expect(notices).toContainText(browserName === 'webkit' ? 'Free up space on this iPhone in Settings → General → iPhone Storage, then try again.' : 'Free up space on this phone in Settings → Storage, then try again.');
-  await expect(notices).not.toContainText('Shiori stopped');
+  await expect(notices).toContainText('Your message is back in the box.');
+  await expect(notices).not.toContainText('Shiori stopped'); // one card for the one refusal: the turn that stopped on it adds none
+  await expect(notices.locator('.notice')).toHaveCount(1);
   await page.evaluate(() => /** @type {any} */ (window).room());
   await box(page).press('Control+Enter');
   await expect(page.locator('.convo .you p').first()).toHaveText('Is the castle open today?');
@@ -208,7 +211,47 @@ test('a refused line comes back before what was typed in the box since, on a lin
   await box(page).fill('And the garden?');
   await page.evaluate(() => /** @type {any} */ (window).release());
   await expect(box(page)).toHaveValue('Is the castle open today?\nAnd the garden?');
-  await expect(page.locator('.notices').getByText("There's no room to save this", { exact: true })).toBeVisible();
+  await expect(page.locator('.notices').getByText("There's no room left", { exact: true })).toBeVisible();
+  await expect(page.locator('.notices .notice')).toHaveCount(1);
+});
+
+test("a message with a file the full phone can't keep: the card says which file wasn't kept, and the words come back in the box", async ({ page }) => {
+  await inConversation(page);
+  await fillDisk(page);
+  await typeButton(page).click();
+  await page.locator('#dock-attach').setInputFiles({ name: 'ticket.txt', mimeType: 'text/plain', buffer: Buffer.from('A ticket') });
+  await box(page).fill('Is the castle open today?');
+  await box(page).press('Control+Enter');
+  await expect(box(page)).toHaveValue('Is the castle open today?');
+  await expect(box(page)).toBeVisible();
+  const notices = page.locator('.notices');
+  await expect(notices.locator('.notice')).toHaveCount(1); // one card at a time: the file's gave way to the line's
+  await expect(notices).toContainText('Your message is back in the box.');
+  await expect(page.locator('.convo .you')).toHaveCount(0);
+});
+
+// What stops a turn after its line was kept shows the storage card in place of "Shiori stopped" (main.js), saying first that she stopped.
+test('a turn the full phone stops after its line was kept shows the storage card, with Shiori stopped first, and nothing is given back', async ({ page }) => {
+  await inConversation(page);
+  // The first line is kept; from then on every write of the log fails, as WebKit refuses them on a full disk.
+  await page.evaluate(() => {
+    const w = /** @type {any} */ (window);
+    const real = IDBObjectStore.prototype.add;
+    IDBObjectStore.prototype.add = /** @type {any} */ (/** @this {IDBObjectStore} */ function (/** @type {any} */ value, /** @type {any} */ key) {
+      if (this.name === 'events' && w.kept) throw new DOMException('Unable to store record in object store', 'UnknownError');
+      if (this.name === 'events' && value?.type === 'msg.user') w.kept = true;
+      return real.call(this, value, key);
+    });
+  });
+  await typeButton(page).click();
+  await box(page).fill('Is the castle open today?');
+  await box(page).press('Control+Enter');
+  await expect(page.locator('.convo .you p').first()).toHaveText('Is the castle open today?');
+  const notices = page.locator('.notices');
+  await expect(notices.getByText("There's no room left", { exact: true })).toBeVisible();
+  await expect(notices).toContainText('Shiori stopped.');
+  await expect(notices).not.toContainText('Something went wrong');
+  await expect(box(page)).toBeHidden(); // the line was kept: nothing to give back
 });
 
 test('Escape closes the box and keeps the draft', async ({ page }) => {

@@ -17,6 +17,7 @@ import { liveKit, soon, tone, say as liveSay } from './koe-live-kit.js';
 import { dateRange, when } from '../../src/core/intl.js';
 import { deviceZone, isoInZone } from '../../src/core/time.js';
 import { WRITE_DOWN } from '../../src/core/voice/voice.js';
+import { StorageFullError } from '../../src/core/errors.js';
 
 /**
  * Reading another trip (the timeline design, "Reading another trip"; stage 5's plan, Task 1): read_trip, Kokoro's, read-only. What it gives back
@@ -445,12 +446,12 @@ test("model text that looks like a grant grants nothing: a tool's result, anothe
   assert.equal((await readAppSettings(k.ws)).readMyTrips, undefined, 'and no setting either');
 });
 
-test("a typed line that ends annai's card, refused by a full device, comes back for the type box (the user's pick of 2026-11-14, \"Put it back in the type box\")", async (t) => {
+test("a typed line that ends annai's card, refused by a full device, comes back for the type box (the user's pick of 2026-11-14, \"Put it back in the type box\"), and her turn goes on as for any failed tool", async (t) => {
   useClock(t);
   const k = await gateKit([call('read_trip', { trip: TV }), say('Ramen at the corner.')]);
-  /** @type {string[]} */
+  /** @type {any[]} */
   const back = [];
-  k.agent.on('unsaved', (/** @type {string} */ words) => back.push(words));
+  k.agent.on('unsaved', (/** @type {any} */ x) => back.push(x));
   k.agent.send('Where did we eat in Testville?', { typed: true });
   await until(() => k.asks.length === 1);
   // Only the user's lines refused, as WebKit refuses a write on a full disk.
@@ -460,7 +461,36 @@ test("a typed line that ends annai's card, refused by a full device, comes back 
   }));
   k.agent.send('Never mind', { typed: true });
   await k.agent.idle();
-  assert.deepEqual(back, ['Never mind']);
+  assert.deepEqual(back.map((x) => [x.words, x.scope]), [['Never mind', k.trip]]);
+  assert.ok(back[0].error instanceof StorageFullError, 'the dock shows the storage card for it, with the words');
+  // The failure is read_trip's result, as for any tool that fails: her turn goes on and says her line; no "Shiori stopped" card of its own.
+  assert.match((await readResults(k))[0], /^Error: There's no room left\./);
+  assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Ramen at the corner.']);
+  assert.equal(k.notices.some((/** @type {any} */ n) => n.title === 'Shiori stopped'), false);
+});
+
+test("a typed line that ends annai's card within the settle of a spoken no, whose write a full device refuses first, comes back too: the no is written before it, and its failure must not lose the words (classic voice)", async (t) => {
+  useClock(t);
+  // A long second, so the settle (3 s) holds the card open while the typed line comes.
+  const c = await gateKit([call('read_trip', { trip: TV }), say('Ramen at the corner.'), sleep, sleep], { voice: { speechIn: ['m-hear'], hears: ['No thanks.'], decide: gates(['B']) }, agent: { secondMs: 400 } });
+  /** @type {any[]} */
+  const back = [];
+  c.agent.on('unsaved', (/** @type {any} */ x) => back.push(x));
+  c.agent.send('Where did we eat in Testville?', { typed: true });
+  await saidCard(c);
+  c.agent.tap(); // classic voice: the card has no listening of its own, and a tap on Shiori opens her microphone
+  await until(() => micLog(c).at(-1) === 'mic open');
+  await hear(c, 'first-one');
+  await until(() => c.transcribed.length === 1);
+  // The spoken no is armed (it settles in 3 s); what writes it, a heard line, is refused as WebKit refuses a write on a full disk.
+  const real = c.store.tx.bind(c.store);
+  c.store.tx = (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => real(stores, mode, (/** @type {any} */ x) => fn(mode !== 'readwrite' ? x : {
+    ...x, appendEvent: (/** @type {string} */ scope, /** @type {any} */ ev) => (ev.type === 'heard' || ev.type === 'msg.user' ? Promise.reject(new DOMException('Unable to store record in object store', 'UnknownError')) : x.appendEvent(scope, ev)),
+  }));
+  c.agent.send('Never mind', { typed: true });
+  await c.agent.idle();
+  assert.deepEqual(back.map((x) => [x.words, x.scope]), [['Never mind', c.trip]]);
+  assert.ok(back[0].error instanceof StorageFullError);
 });
 
 test("a line that ends annai's card unanswered: read_trip's result says the card is closed, that only a tap answers it, and to call read_trip again; it never points at the card's buttons, which are grey by then (yes-off review, finding 1)", async (t) => {

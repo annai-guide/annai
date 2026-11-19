@@ -6,12 +6,13 @@ import { liveChip } from './live-chip.js';
 import { readAppSettings } from '../core/settings.js';
 import { shownSettings } from '../core/shown.js';
 import { wording, replies, mark, talkHref } from './format.js';
-import { SYS_SETTINGS, scopeTitle } from '../core/scopes.js';
+import { SYS_SETTINGS, ME, scopeTitle } from '../core/scopes.js';
 import { storedTexts } from '../core/agent/log.js';
 import { component, mount, cleanUp, slotEntries, runAction, made } from './slots.js';
 import { onTap } from './dock-hides.js';
 import { createComposer, handOver } from './composer.js';
 import { toTalk } from './open-trip.js';
+import { parseHash } from './router.js';
 import { openDraft, cantStart, tapShiori } from './plus.js';
 import { explainStorageFull } from './storage-full.js';
 import { sentences } from '../core/intl.js';
@@ -114,24 +115,28 @@ export function createDock(ctx) {
       const items = composer.items();
       if (!text && !items.length) return;
       if (!ctx.agent.target) return void drafted().then((ok) => { if (ok) sheet.requestSubmit(); }); // sent from the box as it is then
+      // Cleared as the words are taken, on both paths: words a refused write gives back (unsaved) must not be mixed with them, or wiped after.
+      input.value = '';
       const done = () => {
-        input.value = '';
         composer.clear();
+        if (input.value.trim()) return; // given back, and stay in an open box
         closeTyping();
         typeButton.focus(); // not left in the hidden box
       };
+      const notSent = (/** @type {unknown} */ x) => explainStorageFull(ctx, x, { said: t`Your files didn't reach Shiori` }) || ctx.notices.card({ tone: 'warn', title: t`Your files didn't reach Shiori`, body: messageOf(x) });
       if (!items.some((a) => 'file' in a)) {
         done();
-        if (items.length) return void handOver(ctx, text, items).catch((/** @type {unknown} */ x) => ctx.notices.card({ tone: 'warn', title: t`Your files didn't reach Shiori`, body: messageOf(x) }));
+        if (items.length) return void handOver(ctx, text, items).catch(notSent);
         ctx.agent.send(text, { typed: true });
         toTalk(ctx);
         return;
       }
       keepingNow = true;
       input.readOnly = true;
+      fit();
       composer.keeping(0, items.filter((a) => 'file' in a).length);
       handOver(ctx, text, items, { progress: (n, total) => composer.keeping(n, total) })
-        .catch((/** @type {unknown} */ x) => ctx.notices.card({ tone: 'warn', title: t`Your files didn't reach Shiori`, body: messageOf(x) }))
+        .catch(notSent)
         .finally(() => {
           keepingNow = false;
           input.readOnly = false;
@@ -166,11 +171,12 @@ export function createDock(ctx) {
     closeTyping();
     typeButton.focus();
   });
-  const openTyping = () => {
+  /** @param {boolean} [focus] false: only shown (words given back while another screen is up must not take the focus from it) */
+  const openTyping = (focus = true) => {
     sheet.hidden = false;
     fit(); // a draft kept from before, at this width
     typeButton.setAttribute('aria-expanded', 'true');
-    input.focus();
+    if (focus) input.focus();
     offTap?.();
     offTap = onTap(elsewhere);
     ctx.agent.typing?.(Boolean(input.value.trim() || composer.items().length)); // a draft kept from before is typed text again
@@ -197,7 +203,7 @@ export function createDock(ctx) {
       ctx.agent.send('', { photos: paths.map((/** @type {string} */ p) => ({ path: `/trip${p}` })) });
       toTalk(ctx);
     } catch (e) {
-      ctx.notices.card({ tone: 'warn', title: t`The photo wasn't added`, body: messageOf(e) });
+      explainStorageFull(ctx, e, { said: t`The photo wasn't added` }) || ctx.notices.card({ tone: 'warn', title: t`The photo wasn't added`, body: messageOf(e) });
     } finally {
       ctx.agent.photoComing?.(false);
     }
@@ -218,11 +224,17 @@ export function createDock(ctx) {
   // A turn of the phone wraps the words again: the box fits them at the new width.
   addEventListener('resize', fit);
   offs.push(() => removeEventListener('resize', fit));
-  // Words a write didn't keep come back before any typed since (the user's pick, 2026-11-14, "Put it back in the type box").
-  offs.push(ctx.agent.on('unsaved', (/** @type {string} */ words) => {
-    const since = input.value.trim();
-    input.value = since ? `${words}\n${since}` : words;
-    openTyping();
+  // Typed words a failed write didn't keep come back (the user's pick, 2026-11-14, "Put it back in the type box"): into the box, before any typed since, when
+  // their conversation is open; else on the card, so none lands in another conversation's box.
+  offs.push(ctx.agent.on('unsaved', (/** @type {{ words: string, scope: string, error: unknown }} */ { words, scope, error }) => {
+    const inBox = scope === (ctx.agent.target ?? ME);
+    if (inBox) {
+      const since = input.value.trim();
+      input.value = since ? `${words}\n${since}` : words;
+      openTyping(parseHash(location.hash).name === 'talk');
+    }
+    if (explainStorageFull(ctx, error, { words, inBox })) return;
+    if (!inBox) ctx.notices.card({ tone: 'warn', title: t`Something went wrong`, body: sentences(messageOf(error), t`Your message wasn't saved: ${words}`) });
   }));
   offs.push(ctx.agent.on('state', (/** @type {any} */ s) => {
     avatar.setState(s.name);
