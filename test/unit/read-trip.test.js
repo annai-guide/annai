@@ -5774,3 +5774,71 @@ test("classic voice with a quick gate: + opens another conversation while her tu
   const traced = async (/** @type {string} */ s) => (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(s, { types: ['model.turn'] }))).filter((/** @type {any} */ e) => e.data.tag === 'gate').length;
   assert.deepEqual([await traced(from), await traced(other)], [0, 1], 'its call traced in the conversation opened');
 });
+
+// ---- listen-rest-next fix round 2 (the drop's re-review): D1, a tap made while another conversation opens and that open fails; D2, where the first check sits. ----
+
+test("classic voice: + opens another conversation while her turn still writes down what it heard, the traveller taps Shiori at once, and the open then fails (a store read): they are still in the conversation they were in, so a line said into that tap's microphone is answered there, as on main (re-review D1; probe F)", async (t) => {
+  useClock(t);
+  let release = () => {};
+  const held = new Promise((r) => { release = () => r(undefined); });
+  let holding = true;
+  let writing = false;
+  const k = await gateKit([say('Somewhere near.'), { text: 'where should we eat' }, say('Hello there.'), { text: 'what about dinner' }, sleep, sleep], { models: [{ input: ['text', 'image', 'audio'] }], voice: { speechIn: ['send-audio'] }, hold: async (/** @type {any} */ c) => { if (holding && c.request.system === WRITE_DOWN) { writing = true; await held; } } });
+  const other = await createTrip(k.ws, { title: 'Ramen crawl' });
+  const from = k.agent.scope;
+  k.agent.tap();
+  await until(() => micLog(k).at(-1) === 'mic open');
+  await hear(k, 'where-eat');
+  await until(() => writing);
+  const real = k.store.tx.bind(k.store);
+  let armed = true;
+  k.store.tx = (/** @type {any} */ s, /** @type {any} */ m, /** @type {any} */ f) => real(s, m, (/** @type {any} */ tx) => f(new Proxy(tx, {
+    get: (o, p) => (p !== 'listEvents' ? (typeof o[p] === 'function' ? o[p].bind(o) : o[p]) : async (/** @type {string} */ id, /** @type {any} */ q) => {
+      if (!armed || id !== other) return o.listEvents(id, q);
+      armed = false;
+      throw new Error('IDB read failed');
+    }),
+  })));
+  const opening = k.agent.open(other).then(() => 'opened', (e) => `failed: ${e.message}`);
+  k.agent.tap();
+  await until(() => micLog(k).at(-1) === 'mic open');
+  holding = false;
+  release();
+  assert.equal(await opening, 'failed: IDB read failed');
+  assert.equal(k.agent.scope, from, 'still in the conversation they were in');
+  await hear(k, 'first-one');
+  await until(() => k.said.includes('Hello there.'), 20_000);
+  await k.agent.idle();
+  assert.deepEqual([(await heardIn(k, from)).length, (await heardIn(k, other)).length], [2, 0], 'written where they are');
+  assert.equal(k.voice.memory.size, 0);
+});
+
+test("Koe on a chat model, annai's card waiting: a line said into Koe's microphone is still being written down for the card when the traveller opens another conversation, and a line typed there makes Koe wait (listening) before the write-down ends: Koe's wait there is not answered by the line from the conversation left (the first check sits after the card's write-down; re-review D2; probe C1)", async (t) => {
+  useClock(t);
+  const koe = { rules: [{ match: 'noodles', reply: { toolCalls: [{ name: 'wait', input: { seconds: 60 } }] } }, ...KOE_CHAT.rules] };
+  const k = await koeMic(KOKORO_ASKED, koe, { hears: ['Hmm, the ramen place'] });
+  k.agent.send('Where did we eat in Testville?');
+  await asked(k);
+  const transcribe = k.llm.transcribe;
+  let release = () => {};
+  const held = new Promise((r) => { release = () => r(undefined); });
+  let writing = false;
+  let n = 0;
+  k.llm.transcribe = async (/** @type {any} */ c) => { if (++n === 1) { writing = true; await held; } return transcribe(c); };
+  const from = k.agent.scope;
+  await hear(k, 'first-one');
+  await until(() => writing, 20_000); // the card writes its words down
+  const other = await createTrip(k.ws, { title: 'Ramen crawl' });
+  await k.agent.open(other);
+  k.agent.send('noodles please');
+  await until(() => k.agent.koe.scope === other && k.agent.koe.waiting === true, 20_000); // Koe listens there, before the write-down ends
+  release();
+  await pause(15 * k.agent.secondMs);
+  await Promise.race([k.agent.idle(), pause(200 * k.agent.secondMs)]);
+  const results = await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(other, { types: ['tool.result'] }));
+  const koeWait = results.filter((/** @type {any} */ e) => e.data.half === 'koe' && e.data.name === 'wait').map((/** @type {any} */ e) => String(e.data.content).slice(0, 80));
+  assert.deepEqual(koeWait, ['Nothing yet (60 seconds).'], 'Koe heard nothing there');
+  assert.equal(gated(k), 0, 'no gate call');
+  assert.deepEqual([await heardIn(k, from), await heardIn(k, other)], [[], []], 'written nowhere');
+  assert.equal(k.voice.memory.size, 0, 'and its sound is let go');
+});
