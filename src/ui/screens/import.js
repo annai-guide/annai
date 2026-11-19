@@ -229,8 +229,11 @@ function preview(ctx, body, opened, desc, from, fresh, bring = null) {
             status.textContent = t`Reading ${num(Math.min(done + 1, total))} of ${num(total)}…`;
           },
         });
-        // The "Shiori, no trip" row on home is read from `me`, which a replaced one changes.
-        if (result.me) forgetMeTalked();
+        // The "Shiori, no trip" row on home is read from `me`, which a replaced one changes, and so is the open conversation's snapshot.
+        if (result.me) {
+          forgetMeTalked();
+          ctx.agent?.forgetSnapshot();
+        }
         // Files an older backup had waiting with Shiori go into a conversation of their own, before the results are drawn (timeline stage 7).
         await ctx.moveWaiting().catch((/** @type {unknown} */ e) => console.warn(/* en */ "the files waiting with Shiori couldn't be moved into a conversation", e));
         // This device has taken in that backup: its next backup there builds on it (spec §12.4).

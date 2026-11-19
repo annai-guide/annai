@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { agentKit, until, rescript } from './agent-kit.js';
 import { tripTools } from '../../src/core/agent/trip-tools.js';
 import { channelTool } from '../../src/core/agent/halves.js';
-import { createTrip } from '../../src/core/scopes.js';
+import { createTrip, ME } from '../../src/core/scopes.js';
 import { prefixFingerprint } from '../../src/core/agent/context.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { readConfig, saveRoles } from '../../src/core/llm/config.js';
@@ -47,6 +47,23 @@ test('no Koe model: one call per message, Kokoro speaks, exactly as before', asy
   assert.deepEqual(await shown(k), [['msg.user', '', 'Hi'], ['out.speak', '', 'Hello!']]);
   assert.equal((await k.events(['wake']))[0].data.half, undefined);
   assert.equal(k.agent.koeState, 'off');
+});
+
+test("an import that replaced \"me\" while a conversation is open: both halves' next request carries the profile that came, though its author is hers and the cache is warm (the snapshot review: F3)", async (t) => {
+  useClock(t);
+  const k = await agentKit([KOKORO], { koe: { type: KOE } });
+  const lastSystems = () => [k.sent['model-0'].at(-1).system, k.sent['model-koe'].at(-1).system];
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  // An import keeps each file's author from the backup: this one was last written by her, on the old phone.
+  await k.ws.write(ME, '/profile.md', '# Profile\n\n- Call me Mia\n', { author: 'shiori' });
+  k.agent.send('And the museum?');
+  await k.agent.idle();
+  for (const system of lastSystems()) assert.ok(!system.includes('Call me Mia'), 'warm: her own edit is in the transcript she holds, not the snapshot');
+  k.agent.forgetSnapshot();
+  k.agent.send('And the park?');
+  await k.agent.idle();
+  for (const system of lastSystems()) assert.ok(system.includes('Call me Mia'));
 });
 
 test('a typed question: Koe answers at once and asks Kokoro; Kokoro\'s context has "[the user typed]" and "[Koe said]"; its tell_koe reaches Koe, who says it', async (t) => {
