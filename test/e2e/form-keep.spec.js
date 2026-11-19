@@ -242,6 +242,86 @@ test("a provider's Filter the list typed and let go: the draw of a plugin that a
   }
 });
 
+// What a Fetch model list brought is the answer of the address and key it was fetched with (touch 3 of form-keep-next): where either changes, the list is
+// dropped, and the screen shows it gone, not offered for a server it did not come from (an Add would add a model the new server may not have).
+
+/**
+ * A llama.cpp provider on the stand-in server a, its page open, with a's list fetched and shown. @param {import('@playwright/test').Page} page
+ * @param {{ origin: string }} a @param {string} key @returns {Promise<import('@playwright/test').Locator>} the page's Chat part
+ */
+async function fetchedAt(page, a, key) {
+  await openApp(page, '#/models');
+  await waitForServiceWorker(page);
+  await pickProvider(page, 'llama.cpp');
+  await page.getByLabel('Address', { exact: true }).fill(`${a.origin}/v1`);
+  await page.getByLabel('API key').fill(key);
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+  const chat = page.getByRole('region', { name: 'Chat', exact: true });
+  await chat.getByRole('button', { name: 'Fetch model list' }).click();
+  await expect(chat.getByText('1 model.')).toBeVisible();
+  await expect(chat.getByRole('button', { name: 'Add qwen3.8-flash' })).toBeVisible();
+  return chat;
+}
+
+test("a provider's fetched list is gone once Save puts another address: the page is drawn again without a list from the old server (fails on 54fef98fa)", async ({ page }) => {
+  const key = 'sk-list-new-address-0123';
+  const a = await startFakeServer({ flavour: 'llamacpp', key, models: [{ id: 'qwen3.8-flash', object: 'model', owned_by: 'llamacpp' }] });
+  const b = await startFakeServer({ flavour: 'llamacpp', key, models: [{ id: 'gemma5-small', object: 'model', owned_by: 'llamacpp' }] });
+  try {
+    const chat = await fetchedAt(page, a, key);
+    await page.getByLabel('Address', { exact: true }).fill(`${b.origin}/v1`);
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.locator('.toasts .toast', { hasText: 'Saved' })).toBeVisible(); // after the draw it asked for
+    await expect(chat.getByRole('button', { name: 'Add qwen3.8-flash' }), 'a is not the server saved').toHaveCount(0);
+    await expect(chat.getByLabel('Filter the list', { exact: true })).toHaveCount(0);
+    // The new server's list is asked for, and is the one shown.
+    await chat.getByRole('button', { name: 'Fetch model list' }).click();
+    await expect(chat.getByRole('button', { name: 'Add gemma5-small' })).toBeVisible();
+    await expect(chat.getByRole('button', { name: 'Add qwen3.8-flash' })).toHaveCount(0);
+  } finally {
+    await a.stop();
+    await b.stop();
+  }
+});
+
+test("a provider's fetched list is gone once Remove key has removed the key it was fetched with (fails on 54fef98fa)", async ({ page }) => {
+  const key = 'sk-list-remove-key-0123';
+  const a = await startFakeServer({ flavour: 'llamacpp', key, models: [{ id: 'qwen3.8-flash', object: 'model', owned_by: 'llamacpp' }] });
+  try {
+    const chat = await fetchedAt(page, a, key);
+    await page.getByRole('button', { name: 'Remove key' }).click();
+    await page.getByRole('button', { name: 'Tap again to remove the key' }).click();
+    await expect(page.locator('.toasts .toast', { hasText: 'Key removed' })).toBeVisible();
+    await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', 'not set');
+    await expect(chat.getByRole('button', { name: 'Add qwen3.8-flash' }), 'fetched with the key that is gone').toHaveCount(0);
+    await expect(chat.getByLabel('Filter the list', { exact: true })).toHaveCount(0);
+  } finally {
+    await a.stop();
+  }
+});
+
+test("a provider's fetched list is gone once the ability's own address is saved as another: its section is drawn again without it (fails on 54fef98fa)", async ({ page }) => {
+  const key = 'sk-list-own-address-0123';
+  const a = await startFakeServer({ flavour: 'llamacpp', key, models: [{ id: 'qwen3.8-flash', object: 'model', owned_by: 'llamacpp' }] });
+  const b = await startFakeServer({ flavour: 'llamacpp', key, models: [{ id: 'gemma5-small', object: 'model', owned_by: 'llamacpp' }] });
+  try {
+    const chat = await fetchedAt(page, a, key);
+    const own = chat.getByLabel('Its own address');
+    await own.fill(`${b.origin}/v1`);
+    await own.blur();
+    await expect(chat.getByRole('button', { name: 'Add qwen3.8-flash' }), 'a is not the address saved').toHaveCount(0);
+    await expect(chat.getByLabel('Filter the list', { exact: true })).toHaveCount(0);
+    await expect(chat.getByLabel('Its own address'), 'drawn from what was saved').toHaveValue(`${b.origin}/v1`);
+    await chat.getByRole('button', { name: 'Fetch model list' }).click();
+    await expect(chat.getByRole('button', { name: 'Add gemma5-small' })).toBeVisible();
+    await expect(chat.getByRole('button', { name: 'Add qwen3.8-flash' })).toHaveCount(0);
+  } finally {
+    await a.stop();
+    await b.stop();
+  }
+});
+
 /** MCP servers with trail added, and a tap on its Refresh tools, which takes 3 s: a slow server, its tools in two pages, 1.5 s each. @param {import('@playwright/test').Page} page @param {{ url: string, slowList: (ms: number) => void }} mcp */
 async function refreshing(page, mcp) {
   await openApp(page, '#/mcp');

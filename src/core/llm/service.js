@@ -348,7 +348,7 @@ export function createLlm({
     }),
     /**
      * Adds a model from an ability's list, or by the provider's own id (the Models screen's adds). Not in the line: nothing is installed, and
-     * takingNames (config.js) orders their names with a sync's: the list's add takes the first free name, the by-id add is refused when its name is taken, both when the ability has the id (refuseHeld).
+     * takingNames (config.js) orders their names with a sync's: the list's add takes the first free name, the by-id add is refused when its name is taken, and both are refused when the ability has that id (refuseHeld).
      * @param {string} providerId @param {string} abilityId @param {import('./contract.js').ListedModel} listed @returns {Promise<string>} the model's id
      */
     addListedModel: (providerId, abilityId, listed) => addListedModel({ ws }, providerId, abilityId, listed),

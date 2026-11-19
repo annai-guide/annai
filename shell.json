@@ -1,5 +1,5 @@
 {
-  "build": "763537bc8d4a",
+  "build": "58ba3cff32bb",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -82,13 +82,13 @@
     "/src/core/llm/move-over.js": "9584243ec1f4",
     "/src/core/llm/official.js": "43a4783de11b",
     "/src/core/llm/provider-desc.js": "f1a1406b822b",
-    "/src/core/llm/providers.js": "a72ea629e8ef",
+    "/src/core/llm/providers.js": "4181dc58ff74",
     "/src/core/llm/setup.js": "8691e7d5248f",
     "/src/core/llm/cost.js": "96142e038b97",
     "/src/core/llm/partial-json.js": "05dab759f366",
     "/src/core/llm/reasoning.js": "944a3f6e351d",
     "/src/core/llm/retry.js": "fdb90e75be0d",
-    "/src/core/llm/service.js": "ee8157efae70",
+    "/src/core/llm/service.js": "fe29d40263b7",
     "/src/core/llm/speech.js": "74dd179cc811",
     "/src/core/llm/sse.js": "656d2989d833",
     "/src/core/llm/trace.js": "ce4c33d5516e",
@@ -265,7 +265,7 @@
     "/src/ui/screens/plugin-install.js": "00ac186440d9",
     "/src/ui/screens/plugin.js": "db6dce86872f",
     "/src/ui/screens/plugins.js": "feec46a0f15e",
-    "/src/ui/screens/provider.js": "06ef088f5e4f",
+    "/src/ui/screens/provider.js": "9d43700f00ac",
     "/src/ui/screens/recap.js": "c5fea091ded8",
     "/src/ui/screens/replay.js": "b6c46d9c0ec7",
     "/src/ui/screens/settings.js": "26346e25d0fe",
@@ -299,8 +299,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "eb428a51107e",
-    "/l10n/zh-Hans.json": "5e2d1c1750a6",
-    "/l10n/zh-Hant.json": "8f0ee8c6726c"
+    "/l10n/ja.json": "7dec4b93f3f3",
+    "/l10n/zh-Hans.json": "6317009b9839",
+    "/l10n/zh-Hant.json": "87452823c95c"
   }
 }

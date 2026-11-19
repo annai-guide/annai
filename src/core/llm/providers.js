@@ -307,9 +307,8 @@ function startFor(cfg, providerId, abilityId) {
 }
 
 /**
- * An ability has one model for each provider model id, as its list says (a model added is not offered again): an add of one it has is refused, in
- * words the traveller sees. A list drawn before an add by id, or an add by id of what a list added under its name, would make a second one: the
- * name check (saveModel) does not see it.
+ * An add never makes a second model with a provider model id the ability has: it is refused, in words the traveller sees. A list drawn before an
+ * add by id, or an add by id of what a list added under its name, would make one that the name check (saveModel) misses. The sync and the model's page skip this.
  * @param {import('./config.js').ModelConfig} cfg @param {string} providerId @param {string} abilityId @param {string} providerModelId
  */
 function refuseHeld(cfg, providerId, abilityId, providerModelId) {

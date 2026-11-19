@@ -138,7 +138,7 @@ export async function renderProvider(ctx, id) {
         }
       }, async (saved) => {
         if (!saved) return;
-        if (location.hash === here) await ctx.render(); // not on a screen opened meanwhile
+        if (location.hash === here) { kept.clear(); await ctx.render(); } // not on a screen opened meanwhile; the old address's list goes
         ctx.notices.toast(t`Saved`);
       });
     },
@@ -204,6 +204,7 @@ export async function renderProvider(ctx, id) {
           await asking(status, () => ctx.llm.reconnect(id, () => setKey(ctx.store, id, null)));
           await ctx.llm.unbench(id);
           ctx.notices.toast(t`Key removed`);
+          kept.clear(); // its list came with the key
           ctx.render();
         }, { onArm: warnKey }) : null),
       keyWarn,
@@ -415,7 +416,11 @@ async function abilityBody(view, abilityId) {
       const wrong = v ? addressShown(v) : null;
       if (wrong) throw new Error(wrong);
       return v;
-    }, (v) => (releasesAtAddress(type, Boolean(uploads)) ? ctx.llm.reconnect(id, () => saveAbility({ baseUrl: v })) : saveAbility({ baseUrl: v })))), // a new address: what it keeps or holds there goes first
+    }, async (v) => {
+      await (releasesAtAddress(type, Boolean(uploads)) ? ctx.llm.reconnect(id, () => saveAbility({ baseUrl: v })) : saveAbility({ baseUrl: v })); // a new address: what it keeps or holds there goes first
+      // Its list came from the old one: dropped, the section drawn again where one was on show.
+      if (kept.delete(`${id}/${abilityId}`)) address.closest('section.panel')?.dispatchEvent(new Event('redraw'));
+    })),
     h('p', { class: 'sub', text: t`Empty: the provider's address. Each setting here is saved as you change it.` }),
     addressWarn,
     uploads?.el ?? null,
@@ -601,6 +606,7 @@ function listedModels(ctx, id, abilityId, mine, have, cfg) {
             taken.delete(key);
             if (add.isConnected) add.disabled = false;
             else show(); // its row was drawn away: offered again
+            ctx.render(); // the screen as stored, agreeing with the toast
             return;
           }
           // Not back as the add ends: a second tap would add "name (2)". Once its draw has ended (drawn, or ended by a tap), a row still on show says Added.
