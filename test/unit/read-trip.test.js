@@ -4945,6 +4945,21 @@ test("classic voice with nothing open (no draft could be made): a tap, as a head
   assert.equal(k.requests.length, 0, 'no turn ran');
 });
 
+test("classic voice, a tap's microphone is still opening when the app switches to nothing open (me): it opens nothing, because no turn runs there to close it: a line said anyway leaves nothing open 30 s on, and the dock says she sleeps", async (t) => {
+  useClock(t);
+  const k = await gateKit([say('Unused.')], { voice: { speechIn: ['m-hear'], hears: ['Where did we eat?'] } });
+  const t0 = Date.now();
+  k.agent.kokoro.tap(); // a conversation is open: the tap's microphone starts to open (the loop's own tap, as Halves' sends it)
+  const switched = k.agent.open(null); // and the app switches to me before that open lands
+  await atS(k, t0, 1);
+  await hear(k, 'first-one'); // a line said anyway: heard by no one
+  await atS(k, t0, 30);
+  await switched.catch(() => {});
+  assert.notEqual(micLog(k).at(-1), 'mic open', 'no microphone is left open in me');
+  assert.deepEqual(dock(k), ['sleeping', 'Tap to talk']);
+  assert.equal(k.requests.length, 0, 'no turn ran');
+});
+
 test("classic voice, sound sent to the model: her turn ends (after writing down what it heard) while the window after she spoke is still opening, and then the microphone is refused: the dock stops saying Listening and says she sleeps, as a refused tap's does, because nothing listens and no turn runs", async (t) => {
   useClock(t);
   let release = () => {};
@@ -4976,6 +4991,44 @@ test("classic voice, sound sent to the model: her turn ends (after writing down 
   await pause(1 * k.agent.secondMs);
   assert.equal(micLog(k).length, before, 'no new microphone opened');
   assert.deepEqual(dock(k), ['sleeping', 'Tap to talk'], 'nothing listens: the dock says so');
+});
+
+test("classic voice, sound sent to the model: her turn ends while the window after she spoke is still opening, then + opens another conversation and the user taps it, and the window's open is refused: the dock does not say she sleeps while the tap's microphone is what it waits for (it says so only while it still says Listening)", async (t) => {
+  useClock(t);
+  let release = () => {};
+  const held = new Promise((r) => { release = () => r(undefined); });
+  const k = await gateKit([{ toolCalls: [{ name: 'speak', input: { text: 'Here is the plan.' } }, { name: 'ask', input: ASK_LUNCH }] }, { text: 'done' }, { text: 'where should we eat' }, sleep], { models: [{ input: ['text', 'image', 'audio'] }], voice: { speechIn: ['send-audio'] }, hold: async (/** @type {any} */ c) => { if (c.request.system === WRITE_DOWN) await held; } });
+  const other = await createTrip(k.ws, { title: 'Ramen crawl' });
+  k.agent.tap();
+  await until(() => micLog(k).at(-1) === 'mic open');
+  await hear(k, 'where-eat');
+  await until(() => k.said.includes('Lunch or dinner?') && k.agent.state.name === 'listening');
+  await until(() => micLog(k).filter((l) => l === 'mic close').length === 2); // her question's 8 s are over
+  const open = k.platform.mic.open;
+  let refuse = () => {};
+  let opening = false;
+  k.platform.mic.open = async () => { // the window after she spoke opens slowly, and is refused
+    opening = true;
+    await new Promise((r) => { refuse = () => r(undefined); });
+    k.platform.mic.open = open;
+    throw Object.assign(new Error('Permission denied'), { name: 'NotAllowedError' });
+  };
+  k.agent.answer(/** @type {string} */ (k.agent.kokoro.pendingId), 'Lunch'); // her turn goes on to write down what it heard, held
+  await until(() => opening);
+  release();
+  await until(() => !k.agent.busy);
+  assert.deepEqual(dock(k), ['listening', 'Listening'], 'her turn is over and the window is still opening');
+  await k.agent.open(other); // + opens another conversation: the window's microphone is let go, though its open is still pending
+  k.agent.tap(); // and taps it: "One moment...", its microphone waits for the window's open to end
+  assert.deepEqual(dock(k), ['opening', 'One moment…']);
+  /** @type {string[]} */
+  const shown = [];
+  k.agent.on('state', (/** @type {any} */ s) => { shown.push(s.label); });
+  refuse(); // the window's open is refused, while the tap's microphone is not open yet
+  await until(() => micLog(k).at(-1) === 'mic open');
+  assert.equal(k.agent.target, other);
+  assert.deepEqual(dock(k), ['listening', 'Listening'], "the tap's microphone is open");
+  assert.ok(shown.length > 0 && !shown.includes('Tap to talk'), `the dock never said she sleeps in between (it said: ${shown.join(' | ')})`); // fails when #afterTurn's refused-window branch drops its `state === 'listening'` condition
 });
 
 test("classic voice with a quick gate: her question said aloud, two passengers' lines, then the traveller's answer, which begins before her 8 s and ends after them (its verdict, 10.1 s, comes later still): it answers the question, kept whole (probe E; on main her listening closed at 7.9 s, mid-answer, and the question waited for its buttons)", async (t) => {

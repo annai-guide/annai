@@ -3550,6 +3550,7 @@ export class Agent {
       this.#toldDeaf = true;
       return how.why;
     }
+    if (!this.#turnRuns()) return /* en */ 'nothing is open.'; // the app switched to me while it opened: no microphone, in the segment that would make it
     /** @type {Ear} */
     const ear = { owner, tap: owner === 'tap', by: 0, session: null };
     this.#ear = ear;
@@ -3780,7 +3781,7 @@ export class Agent {
    */
   tap({ fresh = false } = {}) {
     this.voice?.unlock(); // inside the tap: sound may play from now on (spec §10.1)
-    const canListen = Boolean(this.voice?.on) && (this.#target ?? ME) !== ME; // with nothing open (`me`) no turn runs (#drain), so no microphone opens that one would end
+    const canListen = Boolean(this.voice?.on) && this.#turnRuns();
     if (fresh) {
       if (!canListen) return 'typing';
       this.#tapListen();
@@ -3820,6 +3821,11 @@ export class Agent {
     if (!canListen) return 'typing';
     this.#tapListen();
     return 'listening';
+  }
+
+  /** Whether a turn can run: with nothing open (`me`) none does (#drain), so no microphone is made there, for none would end it (#openEarNow; tap answers 'typing' at once). */
+  #turnRuns() {
+    return (this.#target ?? ME) !== ME;
   }
 
   /** A window outlives the turn until something is said, or its time: a tap's, or the one after she spoke. */
