@@ -1028,3 +1028,17 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the traveller sees:** rarely, after another tab takes annai over (or Erase runs) while a write in this tab waits on a reopen after a dropped connection, that write still lands, and the store's new connection stays open in the tab that stopped. Reproduced in WebKit and Chromium by a script (storage-next's fix round, 2026-11-19); no traveller has reported it.
 - **Why:** `closed` is checked only when a transaction starts (src/core/store-idb.js, `tx`), and the reopen (`connect()`) sets the connection after `close()` has run. It predates storage-next and was left out of that change to keep it to the storage card.
 - **Revisit when:** planned as its own small build right after storage-next merges (docs/progress.md, "The next version"): check `closed` again after the reopen and before running `fn`, and close a connection that opens after the stop.
+
+### An edit you make while Shiori is answering waits for a cold cache when she writes the same file in that answer
+- **Kind:** known limitation.
+- **What the traveller sees:** if they change a trip's dates, party, name or memory in Details or Files while Shiori is in the middle of an answer, and she writes that same file in that answer, she goes on from the version she had until the conversation's cache goes cold (up to an hour). A name they gave reaches her at once.
+- **Why:** a warm conversation follows a file only when the traveller's write is its latest one; telling an older write of theirs from hers would need the file's history read at every wake.
+- **Revisit when:** a traveller reports it.
+- **Approved:** 2026-11-19, the user: "Accept it (Rec.)".
+
+### annai makes no backup of its own before an update that changes the stored format
+- **Kind:** known limitation.
+- **What the traveller sees:** nothing at an update. The only backups are the automatic ones to the place they set, and the ones they export.
+- **Why:** such an update only adds stores and indexes and never rewrites or deletes a record (the spec's rule, held by a test); a backup taken before it would hold the same records as the phone after it. Mid-trip, with no Wi-Fi or no place set, one couldn't be written anyway.
+- **Revisit when:** a change can't be made without rewriting or deleting records in a version upgrade (that change is then a design of its own and a question for the user).
+- **Approved:** 2026-11-19, the user: "Rule + one test (Rec.)".
