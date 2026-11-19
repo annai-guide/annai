@@ -1,5 +1,5 @@
 {
-  "build": "7c5f4854643b",
+  "build": "bce73ac59c2b",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -154,7 +154,7 @@
     "/src/core/shown.js": "450af0a8c563",
     "/src/core/signals.js": "1ba83a24e15c",
     "/src/core/skills.js": "f53f24999247",
-    "/src/core/store-idb.js": "63ed3a66d6f6",
+    "/src/core/store-idb.js": "9b941684af20",
     "/src/core/storage-types.js": "e20d91a457a9",
     "/src/core/sun.js": "c979f1473031",
     "/src/core/time.js": "fa5bc95db577",

@@ -134,7 +134,7 @@ Types: `msg.user`, `out.speak`, `out.show`, `out.ask`, `model.turn`, `tool.call`
 
 - **One running instance.** A Web Lock (`navigator.locks`) allows one instance per device. A second tab shows "annai is open elsewhere. Use it here?"
 - **Reconnection.** On iOS, Safari's IndexedDB connection can drop after backgrounding. The storage layer reopens and retries transparently.
-- **Format upgrades.** The data format is versioned, with ordered migrations in the IndexedDB `versionchange` transaction, which is all-or-nothing. A failed migration leaves the old version intact. Before a large migration, annai writes an automatic backup.
+- **Format upgrades.** The data format is versioned, with ordered migrations in the IndexedDB `versionchange` transaction, which is all-or-nothing. A failed migration leaves the old version intact. A migration changes only how records are found (stores and indexes): it never rewrites or deletes a record, and a Backup holds the records, not the indexes, so an upgrade changes nothing a Backup holds. What a record means changes where it is read, with the old shape read as it is, since a restore or an import can bring an old shape back at any time (§12.3). A one-time rewrite at start goes through the write path, which keeps the earlier version (§4.2), and runs again after a restore. A change that can't keep to this is a design of its own, with its own way back, and a question for the user. After a release that raises the database version, annai can't be rolled back past it (IndexedDB refuses to open at a lower version), so a fix goes forward.
 - **Persistent storage.** annai calls `navigator.storage.persist()` and shows usage in settings.
 
 ### 4.7 Formats for the model
@@ -1303,7 +1303,7 @@ Eyes-free voice mode also serves users with low vision.
    - Writes are transactional (§4.2).
    - "Storage full" shows a card with real options: export a backup, remove a trip (§4.9), delete trace bodies or cached photo copies, or free up space on the device.
    - The IndexedDB connection reconnects automatically.
-   - Migrations are atomic, with a backup first.
+   - Migrations are atomic, and never rewrite or delete a record (§4.6).
 2. **Degrade, don't die.**
 
    | What's missing | What still works |
