@@ -1254,6 +1254,7 @@ Reference: mockups draft 6.
 |---|---|---|
 | Asleep | eyes closed, ears folded flat, her head dipped and resting on her tail, which is wrapped round her; slow breathing lifts her, and her tail with it (a loop) | Tap to talk |
 | Listening | facing you, ears up | Listening |
+| Letting a sound pass (Live) | facing you, eyes open, ears folded flat: the sound around her (talk radio, other people) isn't for her, and she still listens for you (the user, 2026-11-18: "if ignoring sound, maybe have her ears folded?") | Ignoring sound · tap to talk |
 | Hearing you | ears leaning in, eyes wide; the seat glow (grey) follows your voice level | Hearing you |
 | Thinking | head turned to the side (mid-blink), looking up and away | Thinking · tap to stop; Thinking while the sign says Kokoro is working (thinking, away on a task, or about to begin) behind a Koe that rests or waits for the user's turn (the user, 2026-11-16: "when kokoro is thinking and koe is ready, it currently says your turn. maybe that is confusing? maybe put thinking"), where a tap talks to Koe and the sign's Stop stops Kokoro. Home shows its whole dock for Koe's own states only: Kokoro's work behind a Koe at rest shows there as the sign alone |
 | Talking | facing you, open eyes; her head, the seat glow (vermilion) and the streamer, which waves and swings out, follow her voice level | Tap to interrupt |

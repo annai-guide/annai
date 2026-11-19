@@ -33,7 +33,7 @@ async function everyState(page) {
   await page.evaluate(async () => {
     const at = (/** @type {string} */ p) => p;
     const { createAvatar } = await import(at('/src/ui/avatar.js'));
-    for (const state of ['sleeping', 'listening', 'hearing', 'thinking', 'speaking', 'waiting', 'away', 'offline']) {
+    for (const state of ['sleeping', 'listening', 'ignoring', 'hearing', 'thinking', 'speaking', 'waiting', 'away', 'offline']) {
       const a = createAvatar({ size: 'big' });
       a.el.id = `av-${state}`;
       // On screen, where she moves (off it, she keeps still).
@@ -114,6 +114,9 @@ test("her states show the right parts and eyes, as the expression sheet draws th
   await expect.poll(async () => (await look(page, 'away')).wag).not.toBe(wag);
   expect((await look(page, 'away')).marker).toBeGreaterThan(100);
   expect((await look(page, 'away')).grass).toBeGreaterThan(200);
+  // Letting a sound pass: facing you, eyes open (she still listens for you), ears folded flat; in colour (the user, 2026-11-18).
+  await expect.poll(() => look(page, 'ignoring')).toMatchObject({ fox: 1, curl: 0, light: 14.5, filter: 'none', ears: '0 0 1 1 0', face: '1 0 0', drawn: true });
+  await expect.poll(async () => (await look(page, 'ignoring')).wide, { message: 'an open eye, not half-lidded' }).toBeLessThan(1.5);
   // Offline: grey, ears folded flat, no highlight, and half-lidded eyes whose lids slope down toward the outer corner.
   await expect.poll(() => look(page, 'offline')).toMatchObject({ fox: 1, curl: 0, light: 0, filter: 'grayscale(1)', ears: '0 0 1 1 0', drawn: true });
   expect((await look(page, 'offline')).sad, 'the lid is lower at the outer corner').toBeGreaterThan(5);

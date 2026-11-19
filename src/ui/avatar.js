@@ -119,7 +119,7 @@ const FRONT = {
 /** The turned gazes. @type {Record<string, Gaze>} */
 const TURNED = { open: { eyes: [FAR, NEAR], look: [0, 0] }, closed: { eyes: [squashed(FAR), squashed(NEAR)], look: [0, 0] } };
 /** The front eyes each state shows. @type {Record<string, string>} */
-const EYES = { sleeping: 'asleep', hearing: 'wide', ignoring: 'drowsy', offline: 'sad' };
+const EYES = { sleeping: 'asleep', hearing: 'wide', offline: 'sad' };
 
 /** @template T @param {T} a @param {T} b @param {number} k 0..1 @returns {T} */
 const mix = (a, b, k) => /** @type {any} */ (typeof a === 'number' ? a + (/** @type {number} */ (b) - a) * k
@@ -253,8 +253,10 @@ export function createAvatar({ size = 'md', label } = {}) {
       group('curl', 'tail-asleep'),
       s('g', { class: 'head' },
         s('g', { class: 'front' },
-          group(/* en */ 'alt flat-r', 'ear-flat-right'), group(/* en */ 'alt flat-l', 'ear-flat-left'), group(/* en */ 'alt out-l', 'ear-out-left'),
+          group(/* en */ 'alt out-l', 'ear-out-left'),
           part('caps'), group(/* en */ 'ear ear-r', 'ear-right'), group(/* en */ 'ear ear-l', 'ear-left'), part('head'),
+          // Folded flat, her ears lie over her head, as on her asleep head.
+          group(/* en */ 'alt flat-r', 'ear-flat-right'), group(/* en */ 'alt flat-l', 'ear-flat-left'),
           s('g', { class: 'pin' }, part('pin'), group('tape', 'tape'), hair.el, part('loop'), part('knot'))),
         group('asleep', 'head-asleep'),
         look.el,
