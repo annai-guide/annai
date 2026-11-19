@@ -37,7 +37,7 @@ test('with nothing open (no draft could be made), no turn runs: an owed turn in 
   await k.agent.open(null);
   await k.agent.idle();
   assert.equal(k.requests.length, 0, 'no restart wake');
-  // A watch firing in `me` with it "open" (live mode's path for the open conversation), and a line sent straight to the agent (a plugin's ui.shiori.send opens the draft first, plus.js, and never gets here).
+  // A watch firing in `me` with it "open" (live mode's path for the open conversation), and a line sent straight to the agent (a plugin's ui.shiori.send opens the draft first, plus.js, and gets here only when the draft's open fails).
   await k.agent.wake(watchWake);
   k.agent.send('Hello, with nothing open');
   await k.agent.idle();
