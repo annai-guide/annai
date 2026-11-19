@@ -980,6 +980,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the user sees:** she asks aloud; a passenger's line is being judged when the traveller opens another conversation (within the verdict's second or two): that line is written into the conversation just opened, set aside there, or, judged for her, wakes her there. Opening another conversation while her speak's microphone is still opening can likewise leave the window after she spoke open in the new conversation ("Listening") until its time. Seen in the test kit (the tap-ear-next re-read, 2026-11-18); main does the same.
 - **Why:** a line is routed after its verdict, to the conversation open then (`#route`, `#push`); the window after she spoke is opened at the turn's end and passes the opening check once the other conversation has landed (`#afterTurn`, `#openEarNow`). Both need the switch to land inside one verdict or one microphone open.
 - **Revisit when:** the next version; the fix then: a heard line keeps the conversation it was heard in (its route drops it when that is no longer the one open), and the window after she spoke opens only in the conversation its turn ran in.
+
 ### A model the traveller added can be added again under its id or its name
 - **Kind:** deferred.
 - **What the traveller sees:** three shapes on a provider's models, each the same on main. Found on 2026-11-18 by the re-read and the second opinion of form-keep-next's touch 2, by probes on a scratch copy.
