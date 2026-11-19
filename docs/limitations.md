@@ -1036,9 +1036,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** a traveller reports it.
 - **Approved:** 2026-11-19, the user: "Accept it (Rec.)".
 
-### annai makes no backup of its own before an update that changes the stored format
+### annai makes no backup of its own before an update that changes the database's layout
 - **Kind:** known limitation.
-- **What the traveller sees:** nothing at an update but, on a long history, a first start that may take a moment longer while a new index is built. Backups are the automatic ones to the place they set, a backup place's Back up now, and the ones they export.
-- **Why:** such an update only adds stores and indexes and never rewrites or deletes a record (the spec's rule, checked by one test with a record in each store from every earlier version); a backup taken before it would hold the same records as the phone after it. Mid-trip, with no Wi-Fi or no place set, one couldn't be written anyway.
-- **Revisit when:** a change can't be made without rewriting or deleting records in a version upgrade (that change is then a design of its own and a question for the user).
+- **What the traveller sees:** nothing, except that on a long history the first start after such an update can take longer while a new index is built. Backups are the automatic ones to the places they set, a place's Back up now, and the Backup files they export.
+- **Why:** the layout steps only add stores and indexes and never rewrite or delete a record (the spec's rule, checked by one browser test with a record in each store from every earlier version), so a backup taken before them holds the same records as the phone after them. Mid-trip, offline or with no place set, one couldn't be written anyway. The one-time changes at a first start (spec §4.6) are outside this rule.
+- **Revisit when:** a database step can't be made without rewriting or deleting records (that change is then a design of its own and a question for the user).
 - **Approved:** 2026-11-19, the user: "Rule + one test (Rec.)".
