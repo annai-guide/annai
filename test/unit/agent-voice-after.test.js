@@ -366,7 +366,7 @@ test("classic: the window after a turn isn't a tap's: chatter goes through the g
   assert.ok(Date.now() - from <= 1050, `${Date.now() - from} ms: chatter extends nothing`);
 });
 
-test("classic: the window after a turn, chatter back to back (talk radio, music): a set-aside verdict that comes while the next line is said extends nothing either: past the deadline it closes the window", async (t) => {
+test("classic: the window after a turn, chatter back to back (talk radio, music): the line being said at its deadline is heard to its end, and the window closes there, with that line's verdict and the one before it still to come (changed by tap-ear-next: before, it closed at the first verdict past the deadline, in the middle of the line)", async (t) => {
   useClock(t);
   let gates = 0;
   /** @type {Record<number, () => void>} */
@@ -389,9 +389,11 @@ test("classic: the window after a turn, chatter back to back (talk radio, music)
   k.platform.mic.feed(cat(quiet(0.3), await clip('gas-station')), 16_000); // the next line begins
   await until(() => k.agent.speakingNow);
   await new Promise((r) => setTimeout(r, Math.max(0, from + 1100 - Date.now()))); // past the deadline
-  verdict[2](); // the first line set aside, while the next is said
+  assert.ok(k.platform.mic.isOpen(), 'the line being said is heard to its end');
+  const ended = Date.now();
+  k.platform.mic.feed(quiet(1), 16_000); // it ends, its verdict and the one before it still to come: the window closes there, for no verdict
   await until(() => !k.platform.mic.isOpen(), 300);
-  assert.ok(Date.now() - from <= 1200, `${Date.now() - from} ms: chatter extends nothing`);
+  assert.ok(Date.now() - ended <= 50, `${Date.now() - ended} ms: one line past the deadline, no more`);
   for (const n of Object.keys(verdict)) verdict[/** @type {any} */ (n)]();
   await k.agent.idle();
 });
