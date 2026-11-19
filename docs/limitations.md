@@ -1038,7 +1038,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### annai makes no backup of its own before an update that changes the database's layout
 - **Kind:** known limitation.
-- **What the traveller sees:** nothing, except that on a long history the first start after such an update can take longer while a new index is built. Backups are the automatic ones to the places they set, a place's Back up now, and the Backup files they export.
-- **Why:** the layout steps only add stores and indexes and never rewrite or delete a record (the spec's rule, checked by one browser test with a record in each store from every earlier version), so a backup taken before them holds the same records as the phone after them. Mid-trip, offline or with no place set, one couldn't be written anyway. The one-time changes at a first start (spec §4.6) are outside this rule.
+- **What the traveller sees:** nothing from the layout steps, except that on a long history the first start after such an update can take longer while a new index is built. Backups are the automatic ones to the places they set, a place's Back up now, and the Backup files they export.
+- **Why:** the layout steps only add stores and indexes and never rewrite or delete a record (the spec's rule, checked by one browser test with a record in each store from every earlier version), so a backup taken before them holds the same records as the phone after them. Mid-trip, offline or with no place set, a backup to a place couldn't be written anyway; a Backup file can still be built and saved when the traveller asks for one. The one-time changes at start (spec §4.6) are outside this rule.
 - **Revisit when:** a database step can't be made without rewriting or deleting records (that change is then a design of its own and a question for the user).
 - **Approved:** 2026-11-19, the user: "Rule + one test (Rec.)".
