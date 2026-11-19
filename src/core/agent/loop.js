@@ -643,7 +643,7 @@ export class Agent {
     this.#kept = { scope: '', through: 0, map: new Map() };
   }
 
-  /** An import replaced "me": the next wake takes a fresh snapshot (the files keep the backup's authors, which a warm one follows only when they are the user's). */
+  /** An import replaced "me": the turn's next step, or the next wake, takes a fresh snapshot (the files keep the backup's authors, which a warm one follows only when they are the user's). */
   forgetSnapshot() {
     this.#snapshot = null;
   }
@@ -2318,14 +2318,14 @@ export class Agent {
       }
       // The voice changed hands mid-turn (Koe down, or back): this step follows it.
       if (this.#half.voice() !== this.#mayVoice) await this.#workOutVoice(wakes);
-      // After housekeeping the prefix starts over, with a fresh snapshot (spec §6.5).
+      // After housekeeping, or an import that replaced "me", the prefix starts over with a fresh snapshot (spec §6.5).
       if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale });
       settle();
       const owing = owes();
       const { role } = this.#half;
       const snapshot = /** @type {import('./context.js').Snapshot} */ (this.#snapshot);
-      // The turn's instructions, tools and level, as its first step had them; after housekeeping, the system text from the new snapshot, and
-      // no mark where the previous turn began (that conversation is gone).
+      // The turn's instructions, tools and level, as its first step had them; after housekeeping or an import, the system text from the new snapshot,
+      // and no mark where the previous turn began (its cached prefix is gone).
       /** @type {Frozen | null} */
       const was = frozen;
       const turn = was ? (was.snapshot === snapshot ? was : { ...was, snapshot, system: this.#systemFor(snapshot, was.shows), cacheAt: -1 }) : await this.#freeze(snapshot);

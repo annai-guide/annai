@@ -92,7 +92,7 @@ test("a profile, global memory, trip memory or trip.json edit the user made show
   assert.equal(await warm(first), first, "hers and annai's");
   await ws.write(ME, '/profile.md', '# Profile\n\n- Units: metric\n', { author: 'plugin:mcp' });
   assert.equal(await warm(first), first, "a plugin's");
-  // The user's own edit of the profile (an Undo of hers, or a backup brought in, writes it so): the next wake, taking the whole snapshot, hers included.
+  // The user's own edit of the profile (an Undo of hers writes it so): the next wake, taking the whole snapshot, hers included.
   await ws.write(ME, '/profile.md', '# Profile\n\n- Call me Mia\n', { author: 'user' });
   const edited = await warm(first);
   assert.notEqual(edited, first);
