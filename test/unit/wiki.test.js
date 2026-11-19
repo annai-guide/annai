@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { readingOrder } from '../../src/core/languages.js';
 import { editionsOf, articlesOf, wikiSaid, merged, articleUrl } from '../../src/core/wiki.js';
 import { nominatimLanguages } from '../../src/core/nominatim.js';
+import { parseInline } from '../../src/ui/markdown.js';
 
 /** Wikipedia's answers near Kiyomizu-dera within 1 km, as they came on 2026-11-19 (nearby's query; text under CC BY-SA 4.0). @param {string} e */
 const kiyomizu = async (e) => JSON.parse(await readFile(new URL(`../fixtures/places/wiki-kiyomizu-${e}.json`, import.meta.url), 'utf8'));
@@ -79,6 +80,11 @@ test("an article's address keeps its title as written, encoding only what a brow
   assert.equal(decodeURIComponent(q.pathname), "/wiki/Where_Is_the_Friend's_House?");
   assert.equal(new URL(articleUrl('en', 'A\\B')).pathname, '/wiki/A%5CB');
   assert.equal(decodeURIComponent(new URL(articleUrl('ja', '正法寺 (京都市東山区)')).pathname), '/wiki/正法寺_(京都市東山区)');
+  // Why: chat's renderer ends a link at a bracket, bare or in [text](address), so a bracketed title's address links whole only with the brackets encoded.
+  for (const text of [`see ${articleUrl('ja', '正法寺 (京都市東山区)')} now`, `[正法寺](${articleUrl('ja', '正法寺 (京都市東山区)')})`]) {
+    const link = /** @type {any} */ (parseInline(text).find((x) => x.t === 'a'));
+    assert.equal(decodeURIComponent(link.href), 'https://ja.wikipedia.org/wiki/正法寺_(京都市東山区)', text);
+  }
 });
 
 test("an answer that is an error says what it says; an answer with articles or none says nothing", () => {
