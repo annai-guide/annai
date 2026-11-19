@@ -33,7 +33,7 @@ export function explainStorageFull(ctx, e, { said = '', words = '', inBox = fals
   up.set(ctx.notices, ctx.notices.card({
     tone: 'warn', title: t`There's no room left`,
     body: sentences(said, storageFullSteps(), words ? (inBox ? t`Your message is back in the box.` : t`Your message wasn't saved: ${words}`) : ''),
-    // Export not first: a backup file needs room too.
+    // Export a backup isn't the primary button: its file needs room too.
     actions: [
       { label: t`Export a backup`, run: () => ctx.go('#/settings') },
       { label: t`Go to Trips`, run: () => ctx.go('#/trips') },

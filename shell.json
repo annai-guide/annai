@@ -1,5 +1,5 @@
 {
-  "build": "708a0563e257",
+  "build": "86c982512c48",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -286,7 +286,7 @@
     "/src/ui/stamps.js": "9c0f976db8fa",
     "/src/ui/shiori.css": "44738afacf5d",
     "/src/ui/speech-check.js": "396550d02345",
-    "/src/ui/storage-full.js": "ffcdfb709c38",
+    "/src/ui/storage-full.js": "505031fcdfb3",
     "/src/ui/talk-panel.js": "cc1fb4a04f43",
     "/src/ui/tap-keeps-keyboard.js": "6693e1e90f5c",
     "/src/ui/dock-hides.js": "eb90312168a1",
