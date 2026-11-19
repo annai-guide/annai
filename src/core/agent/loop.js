@@ -725,7 +725,7 @@ export class Agent {
     this.opening = this.opening.catch(() => {}).then(() => this.#open(trip, generation)).catch(async (e) => {
       if (generation === this.#generation) {
         this.#target = this.trip; // it stays the one open, so opening it is asked for again
-        if (this.#ear) this.#ear.scope = this.#target ?? ME; // a tap's microphone, made meanwhile, is the open one's
+        this.#closeEar(); // a microphone made meanwhile (a tap's) was for the one that failed
         await this.#keepElsewhere(this.scope).catch(() => {}); // else idle() waits on lines typed meanwhile
       }
       throw e;
