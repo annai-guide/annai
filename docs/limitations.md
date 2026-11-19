@@ -989,18 +989,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** a traveller reports a stale state, or "On, but it didn't start" after a plugin started; or a plugin gets a way to say its field is saved.
 - **Approved:** 2026-11-18, chief's decision C117 (not the user's words), accepted as worded in form-keep-next's touch report.
 
-### A provider page's fetched model list after its connection changes
-- **Kind:** deferred.
-- **What the traveller sees:** on a provider's page, Fetch model list. models-next (2026-11-19) made a Fetch's answer land only in the part on show and only under the connection it was asked on, and made a save of the ability's own address drop the list on show. Its reviews then found these shapes, each rare, none worse than main but the first:
-  - **(a) An Add model by id refusal's words go** when the ability's own address is saved afterwards (the drop clears the one status line, which the refusals and the Fetch's words, count and error all write; on main they stay).
-  - **(b) An address save that lands while the Fetch is still checking its connection** (a few milliseconds of reads: the config, then the key) lets the old server's list be drawn under the new address, with live Adds: main's own shape, every time there.
-  - **(c) A plugin's sign-in, a list-path edit, or a provider Save or Remove key whose refresh was held (C117)** leaves an older list on show with live Adds (on main too).
-  - **(d) An Add from the old list while an address change waits** for kept turns to be deleted (up to 10 s) adds a model from the old server's list (on main too).
-  - **(e) A slower first answer landing after a second Fetch's** draws the older list back, of the same connection (on main the second Fetch's part would be another part).
-  - **(f) Another part's count kept** while a second Fetch asks, after a page draw (C117's shape plus two Fetches; it clears by itself).
-- **Why:** the reviews' findings of all three rounds landed in the drop and its race with the Fetch's way to the draw (one status line with four writers, one list element every answer draws into, two guards that race), so no further fix round starts on it (RULES, "Step back when findings repeat"); a design check of the part asks whether the drop is needed and whether the design can lose that state (its row in docs/progress.md).
-- **Revisit when:** the design check answers, in the next version; its option is built then.
-
 ### A model added by hand before annai described it never takes annai's description
 - **Kind:** known limitation.
 - **What the traveller sees:** a model added by its id (or from the provider's list) before an update of annai describes the same model in the provider's plugin stays as the traveller added it: annai's prices, context window and tool words never reach it, and removing it doesn't bring annai's version either (only removing the provider and adding it again does). Its calls may then count nothing toward Spend per day until prices are typed on its page (read from src/core/llm/cost.js, not run).
