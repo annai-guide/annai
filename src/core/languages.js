@@ -396,7 +396,7 @@ const readAs = (x, s) => {
 /**
  * The voice's and the tag's one rule for a sentence or line of hers: its own language (own, placed's answer); else the first of her reply's earlier
  * sentences (before) that shows one, not them read joined (for Han that says neither: one written in Han). null: nothing tells, and each reader
- * keeps its own default (the voice the first listed in Han; the tag the screens' language when one of theirs written in Han, else that).
+ * keeps its own default (the voice the first listed in Han; the tag the screens' language if one of theirs in Han, else the first listed in Han).
  * @param {LanguageSettings} s @param {Language | typeof EITHER | null} own @param {string[]} before @returns {Language | null}
  */
 function replyLanguage(s, own, before) {

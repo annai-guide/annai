@@ -1,5 +1,5 @@
 {
-  "build": "ebbcaa904aec",
+  "build": "85f5c3889ce2",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -115,7 +115,7 @@
     "/src/core/koe/tools.js": "957f5c629f45",
     "/src/core/l10n-list.js": "98de5dc21171",
     "/src/core/l10n.js": "7396ee846e5b",
-    "/src/core/languages.js": "9c40484ff13c",
+    "/src/core/languages.js": "921cc8e68cb3",
     "/src/core/links.js": "636b0aeadab9",
     "/src/core/lock.js": "dd40df3552c7",
     "/src/core/now.js": "bba789ac01b8",
@@ -272,7 +272,7 @@
     "/src/ui/screens/simulate.js": "16dddd363254",
     "/src/ui/screens/shiori.js": "f03ea8a95209",
     "/src/ui/screens/sees.js": "6a674fc473ae",
-    "/src/ui/screens/talk.js": "3e60e0373010",
+    "/src/ui/screens/talk.js": "a671e4244432",
     "/src/ui/screens/tools.js": "52d6c4d56a08",
     "/src/ui/screens/trace.js": "9e1b879ea0a0",
     "/src/ui/screens/trip.js": "7fcb7471eee8",

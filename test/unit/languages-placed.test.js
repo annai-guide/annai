@@ -159,11 +159,11 @@ test('点 is no Simplified form: 「交差点」 on a Japanese phone, or with on
 });
 
 test("a line's tag: Han that says neither is the screens' language when that is one of theirs, else the first of theirs written in Han", () => {
-  // N2: with Chinese first and English screens, 東京駅 is still drawn as Chinese, but in the listed row's own forms: 東, 時 and 間 are Japanese's too, so they say no row (fix round 1; main: zh-Hant).
+  // N2: with Chinese first and English screens, 東京駅 is still drawn as Chinese, but in the listed row's own forms: 東, 時 and 間 are Japanese's too, so they say no row (detector-next's fix round 1; before detector-next: zh-Hant).
   assert.equal(tagOf('東京駅', listed(['en', 'zh', 'ja'])), 'zh-Hans');
   assert.equal(tagOf('東京駅', listed(['en', 'zh-Hant', 'ja'])), 'zh-Hant', 'the listed row is Traditional');
-  assert.equal(tagOf('東京駅', listed(['en', 'ja', 'zh'])), 'ja', 'main: zh-Hant');
-  assert.equal(tagOf('東京駅', listed(['en', 'zh', 'ja']), false, 'ja'), 'ja', 'Japanese screens; main: zh-Hant');
+  assert.equal(tagOf('東京駅', listed(['en', 'ja', 'zh'])), 'ja', 'before detector-next: zh-Hant');
+  assert.equal(tagOf('東京駅', listed(['en', 'zh', 'ja']), false, 'ja'), 'ja', 'Japanese screens; before detector-next: zh-Hant');
   assert.equal(tagOf('骨架', listed(['ja', 'zh']), false, 'zh-Hans'), 'zh-Hans', 'Chinese screens');
   // Characters only Chinese writes are Chinese whatever the screens.
   assert.equal(tagOf('这是我们说的', listed(['ja', 'zh']), false, 'ja'), 'zh-Hans');

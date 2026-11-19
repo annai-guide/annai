@@ -65,9 +65,11 @@ test("a reply's first utterance, and a new turn's, start with nothing before the
   assert.deepEqual(read(k), [['東京駅。', 'zh-CN'], ['今日は新宿に行きましょう。', 'ja-JP'], ['東京駅。', 'zh-CN']]);
 });
 
-test("a sentence of her reply is read by the ones before it, never by the ones after it in its own call: 「東京駅。今日は新宿に行きましょう。」 is zh-CN, then ja-JP", async (t) => {
-  const k = await kit(t, [{ toolCalls: [speak('東京駅。今日は新宿に行きましょう。'), sleep] }]);
+test("a sentence of her reply is read by the ones before it in its own call, never by the ones after it: 「東京駅。今日は新宿に行きましょう。」 is zh-CN, then ja-JP; 「今日は新宿に行きましょう。東京駅。」 is ja-JP twice", async (t) => {
+  const k = await kit(t, [{ toolCalls: [speak('東京駅。今日は新宿に行きましょう。'), sleep] }, { toolCalls: [speak('今日は新宿に行きましょう。東京駅。'), sleep] }]);
   k.agent.send('今日はどこに行く？');
   await k.agent.idle();
-  assert.deepEqual(read(k), [['東京駅。', 'zh-CN'], ['今日は新宿に行きましょう。', 'ja-JP']]);
+  k.agent.send('駅は？');
+  await k.agent.idle();
+  assert.deepEqual(read(k), [['東京駅。', 'zh-CN'], ['今日は新宿に行きましょう。', 'ja-JP'], ['今日は新宿に行きましょう。', 'ja-JP'], ['東京駅。', 'ja-JP']]);
 });

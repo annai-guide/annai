@@ -244,6 +244,27 @@ test("follow: an event that comes while an earlier one is still being drawn (a l
   assert.deepEqual(drawn, [1, 2, 3]);
 });
 
+test('follow: a line that fails to draw (its stored text unread) is left out, and the lines after it are still drawn, read or live', async (t) => {
+  /** @type {Set<(e: any) => void>} */
+  const fns = new Set();
+  const agent = { on: (/** @type {string} */ _kind, /** @type {(e: any) => void} */ fn) => { fns.add(fn); return () => fns.delete(fn); } };
+  const ev = (/** @type {number} */ seq) => ({ seq, scope: 'trip-1', type: 'out.speak' });
+  t.mock.method(console, 'warn', () => {});
+  /** @type {number[]} */
+  const drawn = [];
+  await follow(agent, 'trip-1', {
+    read: async () => [ev(1), ev(2), ev(3)],
+    show: async (e) => {
+      if (e.seq === 2 || e.seq === 5) throw new Error('the stored text could not be read');
+      drawn.push(e.seq);
+    },
+    state: () => 'shown',
+  });
+  for (const fn of fns) { fn(ev(4)); fn(ev(5)); fn(ev(6)); }
+  await new Promise((r) => setTimeout(r, 50));
+  assert.deepEqual(drawn, [1, 3, 4, 6]);
+});
+
 test('the viewer knows which part of the photo is on screen', () => {
   // A 4000×3000 photo in a 400×300 stage: it fills the stage at scale 1.
   assert.deepEqual(visibleRegion({ stageW: 400, stageH: 300, natW: 4000, natH: 3000, scale: 1, x: 0, y: 0 }), [0, 0, 1, 1]);

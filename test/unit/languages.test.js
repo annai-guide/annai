@@ -288,7 +288,7 @@ test('tagOf: kana is ja, Han alone the listed Chinese (else ja when only ja is l
   assert.equal(tagOf('直角三角形的骨架', only(['en', 'zh'])), 'zh-Hans');
   assert.equal(tagOf('直角三角形的骨架', only(['yue'])), 'yue-Hant');
   assert.equal(tagOf('骨格', only(['en', 'ja'])), 'ja', 'Han alone is Japanese when only Japanese is listed');
-  assert.equal(tagOf('骨格', only(['ja', 'zh'])), 'ja', 'and the first listed when both are, under screens that are neither (main: zh-Hans)');
+  assert.equal(tagOf('骨格', only(['ja', 'zh'])), 'ja', 'and the first listed when both are, under screens that are neither (before detector-next: zh-Hans)');
   assert.equal(tagOf('骨格', only(['zh', 'ja'])), 'zh-Hans');
   assert.equal(tagOf('骨格', only(['ja', 'zh']), false, 'zh-Hans'), 'zh-Hans', 'with both listed, the screens\' language when it is one of them (fix round 1: only languages-placed pinned it; without it, ja)');
   assert.equal(tagOf('骨格', only(['zh', 'ja']), false, 'ja'), 'ja', 'and Japanese screens, with Chinese listed first');
