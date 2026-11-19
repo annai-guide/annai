@@ -67,6 +67,38 @@ const OLD_PROFILE = '# Profile\n\n- What to call me:\n- Language: English\n- Uni
 /** That default's Language line, one line with its end: trailing spaces and a CRLF are allowed, nothing looser. */
 const OLD_LANGUAGE = /^- Language: English *\r?\n?$/;
 
+/** The profile's line for what to call the user (Settings → Shiori, a Share): its label as written, the name, its end. */
+const CALL_ME = /^([ \t]*[-*][ \t]*what to call me[ \t]*:)[ \t]*(.*?)[ \t]*(\r?\n)?$/i;
+
+/** What its first such line says, '' for nothing. @param {string} profile */
+export const callMeOf = (profile) => profile.split(/(?<=\n)/).map((l) => CALL_ME.exec(l)?.[2]).find((v) => v !== undefined) ?? '';
+
+/** The profile with that line saying name: in place, added at the end, removed when name is empty; every other byte stays. @param {string} profile @param {string} name */
+export function withCallMe(profile, name) {
+  const lines = profile.split(/(?<=\n)/);
+  const at = lines.findIndex((l) => CALL_ME.test(l));
+  const clean = name.replace(/\s+/g, ' ').trim();
+  const end = profile.includes('\r\n') ? '\r\n' : '\n';
+  /* en */
+  if (at < 0) return clean ? `${profile}${profile && !profile.endsWith('\n') ? end : ''}- What to call me: ${clean}${end}` : profile;
+  const m = /** @type {RegExpExecArray} */ (CALL_ME.exec(lines[at]));
+  lines[at] = clean ? `${m[1]} ${clean}${m[3] ?? ''}` : '';
+  return lines.join('');
+}
+
+/** Sets it as the user's own edit (a warm conversation takes it: agent/context.js), in the path's lock; a profile gone gets the line alone. @param {Workspace} ws @param {string} name */
+export async function saveCallMe(ws, name) {
+  try {
+    await ws.update(ME, '/profile.md', (now) => withCallMe(now, name), { author: 'user' });
+  } catch (e) {
+    if (!(e instanceof NotFoundError)) throw e;
+    if (withCallMe('', name)) await ws.write(ME, '/profile.md', withCallMe('', name), { author: 'user' });
+  }
+}
+
+/** Who made a trip from someone's Share (its record's madeBy: exportArchive), outside text to show as text; '' for none. @param {{ madeBy?: unknown }} rec */
+export const madeByOf = (rec) => (typeof rec.madeBy === 'string' ? rec.madeBy.replace(/\s+/g, ' ').trim() : '');
+
 /**
  * A scope's title as the screens show it: "me" and the system scopes by their id, in the screens' language (the stored title is
  * annai's English, written once when the scope was made); a trip by the title its user gave it. @param {{ id: string, title: string }} rec

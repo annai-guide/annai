@@ -3,7 +3,7 @@ import { listTrips, backupState, scopeTitle, changesTrip, lastTalked, ME } from 
 import { filesToRead } from '../../core/handover.js';
 import { readAppSettings } from '../../core/settings.js';
 import { ValidationError } from '../../core/workspace.js';
-import { relTime, relChange, dateRange, backupText, wording, replyBefore, talkHref, day, when, rowName } from '../format.js';
+import { relTime, relChange, dateRange, backupText, wording, replyBefore, talkHref, day, when, rowName, madeByLine } from '../format.js';
 import { openFileButton } from '../open-file.js';
 import { tripStamps, stampMarks, factsWords } from '../stamps.js';
 import { stampCount } from '../../core/after/stamps.js';
@@ -196,6 +196,7 @@ function chatLine(s, r, { say, now, zone }) {
   const monthly = /** @type {string} */ (dayIn(r.at, zone)) < recentFrom(now, zone); // as its heading: by the calendar day, not by 30 times 24 hours
   return h('li', {}, h('a', { class: 'card trip-card line', href: me ? '#/talk/me' : talkHref(s.id) },
     h('span', { class: 'name', ...(me ? {} : say(name)), text: name }),
+    madeByLine(s),
     h('span', { class: 'sub', text: when(r.at, zone, { ...(monthly ? { month: 'short', day: 'numeric' } : {}), hour: '2-digit', minute: '2-digit' }) })));
 }
 
@@ -232,6 +233,7 @@ async function tripCard(ctx, s, r, o) {
     h('span', { class: 'trip-card-text' },
       h('span', { class: 'name', ...say(name), text: name }),
       h('span', { class: 'sub' }, ...factsWords([s.start ? dateRange(s.start, s.end) : null, stamps.length ? { stamps: stampCount(stamps.length) } : null, unread ? plural(unread, '# file waiting to be read', '# files waiting to be read') : null, backedUp])),
+      madeByLine(s),
       ...more),
     stampMarks(stamps)));
 }

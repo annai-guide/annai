@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
-import { ensureBaseScopes, createTrip, ME, DRAFT_TITLE } from '../../src/core/scopes.js';
+import { ensureBaseScopes, createTrip, ME, DRAFT_TITLE, saveCallMe } from '../../src/core/scopes.js';
 import { Registry } from '../../src/core/registry.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { CORE } from '../../src/core/agent/instructions.js';
@@ -684,4 +684,14 @@ test("Koe's instructions, chat and live, say a booking's status is annai's own a
     const lines = k.split('\n');
     assert.ok(lines[lines.indexOf(want) - 1].startsWith("- list and read see only this conversation's files"), "after the line about the files she reads with read");
   }
+});
+
+test("the name typed in Settings → Shiori reaches her next wake with the cache warm: the field's save is the user's own edit of the profile (the timeline design, \"Nickname and sharing\")", async () => {
+  const { ws, trip, registry } = await setup();
+  const take = () => takeSnapshot({ ws, registry, trip, personalityName: 'shiori' });
+  const first = await take();
+  await saveCallMe(ws, 'Mia');
+  const next = nextSnapshot(first, await take(), { cold: false });
+  assert.notEqual(next, first);
+  assert.match(systemText(next), /# About the user \(\/me\/profile\.md\)\n# Profile\n\n- What to call me: Mia\n/);
 });

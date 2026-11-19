@@ -4,6 +4,7 @@ import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace, ValidationError, StorageFullError, NotFoundError } from '../../src/core/workspace.js';
 import { makeSchemaFor, validate } from '../../src/core/schema.js';
 import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, SYS_WAITING, kindOf, newId, ensureBaseScopes, createTrip, listTrips, setTripStatus, syncTripTitles, removeTrip, removeLeftovers, recordBackup, backupState } from '../../src/core/scopes.js';
+import { callMeOf, withCallMe, saveCallMe, madeByOf } from '../../src/core/scopes.js';
 import { logEvent, blobsOf } from '../../src/core/events.js';
 import { utf8, ownBuffer } from '../../src/core/bytes.js';
 import { sha256Hex } from '../../src/core/hash.js';
@@ -530,4 +531,52 @@ test("createTrip: a name is enough; Shiori's trip is hers, with the hand-over on
   const ev = await store.tx(['events'], 'readonly', (t) => t.listEvents(hers));
   assert.deepEqual(ev.filter((e) => e.type === 'scope.create').map((e) => [e.actor, e.data.handover]), [['shiori', 'h-1']]);
   assert.deepEqual(ev.filter((e) => e.type === 'file.write').map((e) => [e.data.path, e.actor, e.data.handover]), [['/trip.json', 'shiori', 'h-1'], ['/memory.md', 'shiori', 'h-1']]);
+});
+
+test("What should Shiori call you? is the profile's line: read from its first such line, and a change sets it in place, adds it at the end or removes it, every other byte as it was (the timeline design, \"Nickname and sharing\")", () => {
+  const fresh = '# Profile\n\n- What to call me:\n- Units:\n- Preferences:\n';
+  assert.equal(callMeOf(fresh), '', "a new install's says nothing");
+  assert.equal(callMeOf('# Profile\n\n- What to call me:  Mia  \n- Units: metric\n'), 'Mia');
+  assert.equal(callMeOf('* what to call me: Bo\r\n- What to call me: Al\n'), 'Bo', 'a star, any case, a CRLF; the first line');
+  assert.equal(callMeOf('# Profile\n\nCall me Mia\n'), '', 'only that line says it');
+  // Set in place: its label as written and its line's end stay.
+  assert.equal(withCallMe(fresh, 'Mia'), '# Profile\n\n- What to call me: Mia\n- Units:\n- Preferences:\n');
+  assert.equal(withCallMe('* what to call me: Bo\r\n- Units\r\n', 'Mia'), '* what to call me: Mia\r\n- Units\r\n');
+  assert.equal(withCallMe('# P\n- What to call me: Bo', 'Mia'), '# P\n- What to call me: Mia', 'a last line with no end keeps none');
+  assert.equal(withCallMe(fresh, ' Mia\nSmith\t'), '# Profile\n\n- What to call me: Mia Smith\n- Units:\n- Preferences:\n', 'one line');
+  // Removed when emptied; nothing else goes.
+  assert.equal(withCallMe('# Profile\n\n- What to call me: Mia\n- Units: metric\n', '  '), '# Profile\n\n- Units: metric\n');
+  assert.equal(withCallMe('a\n- What to call me: Mia', ''), 'a\n');
+  // Added at the end when there is none, with the profile's own line ends.
+  assert.equal(withCallMe('# Profile\n\n- Units: metric\n', 'Mia'), '# Profile\n\n- Units: metric\n- What to call me: Mia\n');
+  assert.equal(withCallMe('# Profile', 'Mia'), '# Profile\n- What to call me: Mia\n');
+  assert.equal(withCallMe('# P\r\n- Units: x\r\n', 'Mia'), '# P\r\n- Units: x\r\n- What to call me: Mia\r\n');
+  assert.equal(withCallMe('', 'Mia'), '- What to call me: Mia\n');
+  assert.equal(withCallMe('# Profile\n\n- Units: metric\n', ''), '# Profile\n\n- Units: metric\n', 'no line, no name: as it was');
+  // Every other byte stays: odd spacing, other lines, text after it.
+  const odd = '# Me\n\n  Some words, then\t tabs  \n- What to call me: Bo\n\n## Later\n- Likes  quiet\n';
+  assert.equal(withCallMe(odd, 'Mia'), odd.replace('Bo', 'Mia'));
+});
+
+test("the field's save is the user's own edit of the profile, in its lock, so a write of hers meanwhile stays; a profile that is gone gets the line alone", async () => {
+  const { ws } = setup();
+  await ensureBaseScopes(ws);
+  await saveCallMe(ws, 'Mia');
+  const saved = await ws.read(ME, '/profile.md');
+  assert.equal(saved?.entry.author, 'user', 'the user wrote it: a warm conversation takes it at her next wake (agent/context.js)');
+  assert.equal(await ws.readText(ME, '/profile.md'), '# Profile\n\n- What to call me: Mia\n- Units:\n- Preferences:\n');
+  // Her write lands first, while the save waits for the path: the save changes her text, not the one it would have read before.
+  await Promise.all([ws.write(ME, '/profile.md', '# Profile\n\n- What to call me: Mia\n- Units: metric\n', { author: 'shiori' }), saveCallMe(ws, 'Bo')]);
+  assert.equal(await ws.readText(ME, '/profile.md'), '# Profile\n\n- What to call me: Bo\n- Units: metric\n');
+  await ws.delete(ME, '/profile.md', { author: 'shiori' });
+  await saveCallMe(ws, '');
+  assert.equal(await ws.read(ME, '/profile.md'), undefined, 'no name, no profile: nothing written');
+  await saveCallMe(ws, 'Mia');
+  assert.equal(await ws.readText(ME, '/profile.md'), '- What to call me: Mia\n');
+});
+
+test("who made a shared trip, as its record carries it, is text to show: one line, trimmed; anything but text says none", () => {
+  assert.equal(madeByOf({ madeBy: '  Mia \n Lee\t' }), 'Mia Lee');
+  assert.equal(madeByOf({ madeBy: '<b>Mia</b>' }), '<b>Mia</b>', 'as written: what draws it draws text');
+  for (const madeBy of [undefined, null, 5, { name: 'Mia' }, ['Mia'], '   ']) assert.equal(madeByOf({ madeBy }), '', JSON.stringify(madeBy));
 });
