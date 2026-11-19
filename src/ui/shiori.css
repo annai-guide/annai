@@ -25,14 +25,13 @@
 .avsvg .ear-l { transform-origin: 787px 438px; transform: rotate(29.4deg) skewX(calc(var(--lean-l) * -1)) scaleY(var(--len-l)) rotate(-29.4deg); }
 .avsvg .pin { transform-origin: 787px 438px; transform: translateY(var(--pin-y)) rotate(29.4deg) skewX(calc(var(--pin-lean) * -1)) scaleY(var(--pin-len)) rotate(-29.4deg); }
 /* Past about 30° an ear is another drawing (README "Ear poses"): it swaps in halfway through the move, the new drawing
-   finishing it. One head shows at a time, as avatar.js times it (data-face): her front one, asleep, or turned. */
+   finishing it. One head shows at a time, as avatar.js times it (data-face): her front one, asleep, turned, or with
+   both ears folded flat. */
 .avsvg :is(.ear, .alt) { transition: transform .5s cubic-bezier(.3, .7, .2, 1), opacity 0s linear .2s; }
-.avsvg :is(.front, .asleep, .turned) { transition: transform .5s cubic-bezier(.3, .7, .2, 1), opacity 0s; }
-.avsvg :is(.alt, .asleep, .turned) { opacity: 0; }
+.avsvg :is(.front, .asleep, .turned, .flat) { transition: transform .5s cubic-bezier(.3, .7, .2, 1), opacity 0s; }
+.avsvg :is(.alt, .asleep, .turned, .flat) { opacity: 0; }
 .av[data-face] .front, .av[data-face="turned"] .head > .eyes { opacity: 0; }
-.av[data-face="asleep"] .asleep, .av[data-face="turned"] .turned { opacity: 1; }
-.avsvg .flat-r { transform-origin: 313px 360px; transform: rotate(35deg); }
-.avsvg .flat-l { transform-origin: 647px 350px; transform: rotate(-35deg); }
+.av[data-face="asleep"] .asleep, .av[data-face="turned"] .turned, .av[data-face="flat"] .flat { opacity: 1; }
 .avsvg .out-l { transform-origin: 625px 311px; transform: rotate(-25deg); }
 /* Talking, the streamer takes the place of the tape's short tail, and swings under the bow with her voice. */
 .avsvg .pin .streamer { transform-origin: 689px 361px; opacity: 0; transition: transform .12s linear, opacity .15s; }
@@ -65,13 +64,12 @@
    wagging (loops, stepped by avatar.js) */
 .av[data-state="away"] .fox { opacity: 0; transform: translateY(260px); }
 .av[data-state="away"] .away { opacity: 1; transform: none; }
-/* ignoring: awake, listening for the user over sound she lets pass: ears eased back, head a little down, half-lidded; the dock's words carry the meaning. */
-.av[data-state="ignoring"] { --head-y: 6px; --lean-r: 12deg; --len-r: .94; --lean-l: 12deg; --len-l: .94; }
+/* ignoring: eyes open (she still listens for you), her head with both ears folded flat against the sound she lets pass
+   (the user, 2026-11-18; data-face). Her upright ears lean out toward it until it takes over; the hairpin stays put. */
+.av[data-state="ignoring"] { --lean-r: 24deg; --len-r: .84; --lean-l: 24deg; --len-l: .84; --pin-lean: 0deg; --pin-len: 1; }
 
-/* offline: present, grey and dim, sad half-lidded eyes, ears folded flat (a droop between flat and upright reads alert) */
-.av[data-state="offline"] { --head-y: 14px; --lean-r: 24deg; --len-r: .84; --lean-l: 24deg; --len-l: .84; --pin-lean: 0deg; --pin-len: 1; --pin-y: 30px; }
-.av[data-state="offline"] :is(.ear-r, .ear-l) { opacity: 0; }
-.av[data-state="offline"] :is(.flat-r, .flat-l) { opacity: 1; transform: none; }
+/* offline: present, grey and dim, sad half-lidded eyes, her head with both ears folded flat, as Ignoring sound */
+.av[data-state="offline"] { --head-y: 14px; --lean-r: 24deg; --len-r: .84; --lean-l: 24deg; --len-l: .84; --pin-lean: 0deg; --pin-len: 1; }
 .seat:has(.av[data-state="offline"]) { filter: grayscale(1); }
 .av[data-state="offline"] .avsvg { opacity: .62; }
 

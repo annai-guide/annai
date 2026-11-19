@@ -3,9 +3,10 @@
 //   node scripts/shiori-art/build.mjs <kit folder> [--debug <folder>]
 // The kit's master decides every visible shape, position and colour. The tool cuts the master into the parts that
 // move on their own (body, ears, head, hairpin, tape tail), fills what each part hid with what was around it, adds
-// the parts the master doesn't show (the ears' other poses, the turned head, the curled tail, the tail's tip, the
-// trail marker), splits each part into flat colour layers, traces each layer with potrace (in Docker), and writes
-// the layers as one SVG of named groups. scripts/shiori-art/measure.mjs measures the eyes and the streamer, which are drawn live.
+// the parts the master doesn't show (her left ear angled out, the turned head, the head with its ears folded flat, the
+// asleep head and its curled tail, the tail's tip, the trail marker), splits each part into flat colour layers, traces
+// each layer with potrace (in Docker), and writes the layers as one SVG of named groups. scripts/shiori-art/measure.mjs
+// measures the eyes and the streamer, which are drawn live.
 import { readFile, writeFile, mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -44,8 +45,6 @@ const AT = {
   tailTip: { file: 'parts/tail_tip.png', scale: 1.05, angle: -35, from: [702, 450], to: [2924, 1813] },
   marker: { file: 'parts/trail_marker.png', scale: 1.37, angle: 14, from: [392, 1620], to: [860, 2600] },
   grass: { file: 'parts/grass_blades.png', scale: 1.09, from: [560, 760], to: [830, 2590] },
-  earFlatRight: { file: 'parts/ears/ear_flat_right.png', scale: 1.92, angle: -10, from: [540, 260], to: [940, 1080] },
-  earFlatLeft: { file: 'parts/ears/ear_flat_left.png', scale: 1.92, angle: 10, from: [116, 260], to: [1940, 1050] },
   earOutLeft: { file: 'parts/ears/ear_out_left.png', scale: 1.066, angle: -22.4, from: [25, 201], to: [1875, 933] },
 };
 /** A part's pixel, in front-master pixels. @param {At} at @param {number[]} p */
@@ -62,12 +61,14 @@ const [INK, FUR, PINK, SCARF, TAPE, BOW, TWIG, GRASS] = [1, 2, 3, 4, 5, 6, 7, 8]
 /** @type {Record<number, string | null>} */
 const FILL = { [INK]: '#3E1A10', [FUR]: '#FFFFFE', [PINK]: '#FFCBAE', [SCARF]: '#EC3F29', [TAPE]: '#FE3972', [BOW]: '#790B32', [TWIG]: '#583623', [GRASS]: '#5C842F' };
 /**
- * What each class looks like in a picture: the master's twig is #5F3926 and the marker's lighter; the asleep masters,
- * generated later, have browns of their own (ASLEEP). Every picture is drawn in the master's palette (FILL).
+ * What each class looks like in a picture: the master's twig is #5F3926 and the marker's lighter; the asleep masters
+ * and the flat-eared one, generated later, have colours of their own (ASLEEP, FLAT_COLOURS, sampled from them). Every
+ * picture is drawn in the master's palette (FILL).
  * @param {string} twig @param {Record<string, string>} [own] other colours by class: ink, bow, tape
  */
 const refs = (twig, own = {}) => [own.ink ?? '3E1A10', 'FFFFFE', 'FFCBAE', 'EC3F29', own.tape ?? 'FE3972', own.bow ?? '790B32', twig, '5C842F'].map(rgb);
 const ASLEEP = /** @type {const} */ (['773B16', { ink: '4C2311', bow: '9F0B27', tape: 'FA4D6A' }]);
+const FLAT_COLOURS = /** @type {const} */ (['653D28', { ink: '481F12', bow: '8A0F34', tape: 'FB3E75' }]);
 
 const png = async (/** @type {string} */ f) => decodePng(await readFile(join(kit, f)));
 /** A kit part on the canvas, as classes. @param {At} at */
@@ -212,7 +213,7 @@ for (const side of /** @type {const} */ (['right', 'left'])) {
 const headPart = cut(face, headOnly);
 
 // Her skull under each ear: a curve from where the ear meets the top of her head, carrying on its line, round to the
-// ruff's notch. The upright ears hide it; with an ear folded flat or angled out, it is the top of her head.
+// ruff's notch. The upright ears hide it; with an ear leaning or angled out, it is the top of her head.
 const caps = blank(W, H);
 const capLine = blank(W, H);
 for (const [[ox, oy], [ix, iy]] of Object.values(EAR_LINE)) {
@@ -268,11 +269,19 @@ const turnedEyes = grow(union(fillHoles(seed(turnedInk, fromTurned([960, 1380]))
 const turnedFace = inpaint(turned, turnedEyes, (l) => l === FUR);
 const headTurned = cut(turnedFace, headOf(turnedFace, fromTurned([1250, 1150]), [fromTurned([1240, 600])]).head);
 
-// The other ear poses (README "Ear poses"): folded flat for Offline, her left ear angled out for Your turn.
-console.log('placing the ears, tails and marker');
-const earFlatRight = await placed(AT.earFlatRight);
-const earFlatLeft = await placed(AT.earFlatLeft);
+// Her left ear angled out, for Your turn (README "Ear poses").
+console.log('placing the ear, tails and marker');
 const earOutLeft = await placed(AT.earOutLeft);
+
+// Her front head with both ears folded flat (Ignoring sound, Offline), from the master the user generated for it: its
+// ears join her head with no line at their base, which the kit's separate folded ears over the front head never did.
+// It is the front master's scale, drawn higher, so it is registered at the scarf's knot like the other masters; its
+// nose and blush then land within 3 pixels of the front's, so her front eyes fit it as they are. Its eyes are blank fur
+// already; its hairpin stays as it drew it.
+console.log('reading the flat-eared master');
+const FLAT = { knot: [1430, 2315], front: [1430, 2389] };
+const flat = classify(place(await png('master/shiori_master_flat_ears.png'), { from: FLAT.knot, to: [FLAT.front[0] + OX, FLAT.front[1] + OY] }, W, H), refs(...FLAT_COLOURS));
+const headFlat = cut(flat, headOf(flat, [1440, 1300]).head);
 
 // Asleep (README "Asleep pose"): her head from the asleep master, and her tail, wrapped round her, from the tailed one.
 console.log('reading the asleep masters');
@@ -328,8 +337,6 @@ const PARTS = [
   { id: 'marker-knot', labels: markerPieces.knot, layers: markerLayers },
   { id: 'tail-tip', labels: tailTip, layers: fur },
   { id: 'body', labels: bodyPart, layers: [[FILL[FUR], [FUR, SCARF], [INK]], [FILL[SCARF], [SCARF], [INK]], [FILL[INK], [INK]]] },
-  { id: 'ear-flat-right', labels: earFlatRight, layers: fur },
-  { id: 'ear-flat-left', labels: earFlatLeft, layers: fur },
   { id: 'ear-out-left', labels: earOutLeft, layers: fur },
   { id: 'tail-asleep', labels: tailAsleep, layers: fur },
   { id: 'caps', labels: capPart, layers: fur },
@@ -341,6 +348,7 @@ const PARTS = [
   { id: 'loop', labels: cut(master, loop), layers: bow },
   { id: 'knot', labels: pinPieces.knot, layers: bow },
   { id: 'head-turned', labels: headTurned, layers: [[FILL[FUR], [FUR, PINK], [INK]], [FILL[PINK], [PINK], [INK]], [FILL[TWIG], [TWIG], [INK]], ...bow, [FILL[INK], [INK]]] },
+  { id: 'head-flat', labels: headFlat, layers: [[FILL[FUR], [FUR, PINK], [INK]], [FILL[PINK], [PINK], [INK]], [FILL[TWIG], [TWIG], [INK]], ...bow, [FILL[INK], [INK]]] },
   { id: 'head-asleep', labels: headAsleep, layers: [[FILL[FUR], [FUR, PINK], [INK]], [FILL[PINK], [PINK], [INK]], [FILL[SCARF], [SCARF], [INK]], [FILL[TWIG], [TWIG], [INK]], ...bow, [FILL[INK], [INK]]] },
 ];
 /**
