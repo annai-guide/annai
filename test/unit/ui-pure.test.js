@@ -224,6 +224,26 @@ test('follow: it listens before it reads, so what happens meanwhile is shown onc
   assert.deepEqual(shown, [1, 2, 3, 4, 5]);
 });
 
+test("follow: an event that comes while an earlier one is still being drawn (a long line's text read apart) is drawn after it, not above it", async () => {
+  /** @type {Set<(e: any) => void>} */
+  const fns = new Set();
+  const agent = { on: (/** @type {string} */ _kind, /** @type {(e: any) => void} */ fn) => { fns.add(fn); return () => fns.delete(fn); } };
+  const ev = (/** @type {number} */ seq) => ({ seq, scope: 'trip-1', type: 'out.speak' });
+  /** @type {number[]} */
+  const drawn = [];
+  await follow(agent, 'trip-1', {
+    read: async () => [],
+    show: async (e) => {
+      if (e.seq === 1) await new Promise((r) => setTimeout(r, 30)); // the first waits for a stored text, the others for nothing
+      drawn.push(e.seq);
+    },
+    state: () => 'shown',
+  });
+  for (const fn of fns) { fn(ev(1)); fn(ev(2)); fn(ev(3)); }
+  await new Promise((r) => setTimeout(r, 100));
+  assert.deepEqual(drawn, [1, 2, 3]);
+});
+
 test('the viewer knows which part of the photo is on screen', () => {
   // A 4000×3000 photo in a 400×300 stage: it fills the stage at scale 1.
   assert.deepEqual(visibleRegion({ stageW: 400, stageH: 300, natW: 4000, natH: 3000, scale: 1, x: 0, y: 0 }), [0, 0, 1, 1]);

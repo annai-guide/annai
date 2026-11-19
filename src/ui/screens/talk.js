@@ -256,7 +256,7 @@ function groundedCard(d, texts, say) {
 
 /**
  * Shows a conversation's events in order, missing none: it listens before it reads, so an event that comes
- * while the log is read is shown once, after them. Once the screen has left the page, it stops listening.
+ * while the log is read is shown once, after them, each when the one before it is. Once the screen has left the page, it stops listening.
  * @param {{ on: (kind: 'event', fn: (e: any) => void) => () => void }} agent @param {string} scope
  * @param {{ read: () => Promise<any[]>, show: (e: any) => Promise<void>, state: () => 'building' | 'shown' | 'gone' }} o
  * @returns {Promise<() => void>} stops listening
@@ -265,10 +265,14 @@ export async function follow(agent, scope, { read, show, state }) {
   let last = 0;
   /** @type {any[] | null} what came while the log was read */
   let early = [];
+  /** Each line is shown after the one before it, which may wait on a stored text. */
+  let shown = Promise.resolve();
   const one = (/** @type {any} */ e) => {
     if (e.scope !== scope || !(e.seq > last)) return null;
     last = e.seq;
-    return show(e);
+    const done = shown.then(() => show(e));
+    shown = done.catch(() => {});
+    return done;
   };
   const off = agent.on('event', (e) => {
     if (state() === 'gone') {
@@ -609,7 +613,7 @@ export async function renderTalk(ctx, route) {
       if (!SHOWN.includes(e.type) && e.type !== TURN_END) return;
       // What the user just said is always followed; what comes after, while the user is at the end.
       const follow = built && (following || atEnd() || e.type === 'msg.user' || e.type === 'heard');
-      const before = reply(e); // as it comes, before any wait: lines that come together keep their order
+      const before = reply(e); // in the log's order: follow shows one line after another
       const node = await item(e, before);
       if (node) {
         if (retry && node !== retry.li) {

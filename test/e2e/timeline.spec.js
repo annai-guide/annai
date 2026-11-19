@@ -136,6 +136,28 @@ test("her last line on a trip's card takes her reply's language", async ({ page 
   await expect(last).toHaveAttribute('lang', 'zh-Hans');
 });
 
+// voice-reply-next fix 1: her line is drawn by her rule, as in the conversation, so the language she answers in applies: with Japanese set as her answer
+// language, 「東京駅。」 (Han that says neither) is hers in Japanese, though the first listed in Han is Chinese (the user's rule drew it Chinese).
+test("her last line on a trip's card follows the language she answers in", async ({ page }) => {
+  await openApp(page, '#/trips');
+  const { Laterton } = await seed(page, { trips: { Laterton: { from: 14, to: 16 } } });
+  await page.evaluate(async (id) => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { updateAppSettings } = await load('/src/core/settings.js');
+    const { record } = await load('/src/core/agent/log.js');
+    const store = await createIdbStore();
+    await updateAppSettings(new Workspace(store), { languages: { spoken: ['en', 'zh', 'ja'], answer: 'ja' } });
+    await record(store, id, { type: 'out.speak', actor: 'shiori', data: { wake: 'w1' }, texts: [['text', '東京駅。']] });
+    store.close();
+  }, Laterton);
+  await page.reload();
+  const last = row(page, 'Laterton').locator('.her-last');
+  await expect(last).toHaveText('東京駅。');
+  await expect(last).toHaveAttribute('lang', 'ja');
+});
+
 test('her long last line is cut inside its card: home never scrolls sideways', async ({ page }) => {
   await openApp(page, '#/trips');
   await seed(page, { trips: { Laterton: { from: 14, to: 16, said: 'See you at the station, by the east gate. '.repeat(8) } } });

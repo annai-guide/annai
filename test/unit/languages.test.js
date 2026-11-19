@@ -278,7 +278,7 @@ test('languageOf names the language of a text by its script or its commonest wor
 
 // Localization L3: a line's language as a BCP 47 tag, for `lang` (the font and the screen reader's voice follow it).
 
-test('tagOf: kana is ja, Han alone the listed Chinese (else ja when only ja is listed; with both listed, the first listed in Han, as Han that says neither is either\'s and her voice reads it so: voice-reply-next), Hangul ko, Latin and the unsure nothing', () => {
+test('tagOf: kana is ja, Han alone the listed Chinese (else ja when only ja is listed; with both listed, the screens\' language when it is one of them, else the first listed: detector-next, as Han that says neither is either\'s), Hangul ko, Latin and the unsure nothing', () => {
   const only = (/** @type {string[]} */ ids, /** @type {string} */ locale = 'en-US', /** @type {any} */ app = { languages: { spoken: ids } }) => languageSettings(ids.length ? app : {}, locale);
   const en = only(['en']);
   assert.equal(tagOf('直角三角形の骨組みです。', en), 'ja');
@@ -290,8 +290,8 @@ test('tagOf: kana is ja, Han alone the listed Chinese (else ja when only ja is l
   assert.equal(tagOf('骨格', only(['en', 'ja'])), 'ja', 'Han alone is Japanese when only Japanese is listed');
   assert.equal(tagOf('骨格', only(['ja', 'zh'])), 'ja', 'and the first listed when both are, under screens that are neither (main: zh-Hans)');
   assert.equal(tagOf('骨格', only(['zh', 'ja'])), 'zh-Hans');
-  assert.equal(tagOf('骨格', only(['ja', 'zh']), false, 'zh-Hans'), 'ja', 'with both listed, the first listed in Han whatever the screens (detector-next: the screens\' language, zh-Hans)');
-  assert.equal(tagOf('骨格', only(['zh', 'ja']), false, 'ja'), 'zh-Hans', 'and Japanese screens, with Chinese listed first (detector-next: ja)');
+  assert.equal(tagOf('骨格', only(['ja', 'zh']), false, 'zh-Hans'), 'zh-Hans', 'with both listed, the screens\' language when it is one of them (fix round 1: only languages-placed pinned it; without it, ja)');
+  assert.equal(tagOf('骨格', only(['zh', 'ja']), false, 'ja'), 'ja', 'and Japanese screens, with Chinese listed first');
   assert.equal(tagOf('骨架', languageSettings({}, 'zh-TW')), 'zh-Hant', "a Traditional Chinese phone's Chinese is Traditional");
   assert.equal(tagOf('骨架', languageSettings({}, 'zh-Hant-HK')), 'zh-Hant');
   assert.equal(tagOf('骨架', languageSettings({}, 'ja-JP')), 'ja', 'with nothing chosen, the phone is what is listed');

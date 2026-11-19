@@ -131,12 +131,14 @@ test("the speaker carries her reply's sentences across the utterances begun with
   await say('今日は新宿に行きましょう。', { reply: 'w1' });
   await k.voice.say('東京駅。');
   await say('東京駅。', { reply: 'w1' });
+  await say('東京駅。', { reply: 'w1' });
   await say('東京駅。', { reply: 'w2' });
   await say('東京駅。');
   assert.deepEqual(k.platform.said.map((s) => [s.text, s.lang]), [
     ['今日は新宿に行きましょう。', 'ja-JP'],
     ['東京駅。', 'zh-CN'], // said with no reply: nothing before it, the first listed in Han
     ['東京駅。', 'ja-JP'], // the reply goes on past it: main zh-CN
+    ['東京駅。', 'ja-JP'], // its third utterance: the first sentence of the reply that shows a language, past the one before it that shows none
     ['東京駅。', 'zh-CN'], // a new reply
     ['東京駅。', 'zh-CN'],
   ]);

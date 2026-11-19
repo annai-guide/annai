@@ -464,15 +464,21 @@ export function wording(app, byShiori = false) {
   };
 }
 
-/** Her reply is what she says: speak's words and her questions, as her voice reads them (her cards are read after them, not part of them). */
+/** Her reply is what she says: speak's words and her questions, as her voice reads them (a card is read after them). */
 const SAYS = ['out.speak', 'out.ask'];
 /** A line of hers in sentences, as the speaker cuts it. @param {string} text */
 export const spokenSentences = (text) => new Sentences(navigator.language).take(text, true);
 
+/** The turn (its `wake`) whose reply a line of hers is part of, or '': none for a live session's (one wake for it all) or annai's own. Shared by replies and replyBefore. @param {any} e */
+const turnOf = (e) => (typeof e?.data?.wake === 'string' && !e.data.live && !e.data.own && [...SAYS, 'out.show'].includes(e.type) ? e.data.wake : '');
+/** annai's own card is said with no reply of its own: for her voice it neither joins her reply nor ends it. @param {any} e */
+const ownCard = (e) => Boolean(e?.data?.own);
+
 /**
- * Her reply so far for each line of hers, given every entry in the log's order: the sentences she said before it in her turn (the `wake` her
- * lines carry), as the speaker hands them to her voice, so a line of Han that says neither drawn on its own (a second speak, a card's choice)
- * takes her reply's language, as her voice does. A live session's lines and annai's own card are no reply's. Each line's words are read once.
+ * Her reply so far for each line of hers, given every entry in the log's order: the sentences she said before it in her turn, as the speaker
+ * hands them to her voice, so a line of Han that says neither drawn on its own (a second speak, a card's choice) takes her reply's language, as
+ * her voice does. A speak or a question that is not this turn's (another's, a live session's, one with no wake) ends the reply under way; annai's
+ * own card does not. Each line's words are read once.
  * @param {import('../core/types.js').Store} store @returns {(e: any) => Promise<string[]>}
  */
 export function replies(store) {
@@ -480,36 +486,37 @@ export function replies(store) {
   /** @type {(() => Promise<string[]>)[]} */
   let said = [];
   return (e) => {
-    const d = e?.data ?? {};
-    const w = typeof d.wake === 'string' && !d.live && !d.own && [...SAYS, 'out.show'].includes(e.type) ? d.wake : '';
-    if (!w) return Promise.resolve([]);
-    const says = SAYS.includes(e.type);
+    if (ownCard(e)) return Promise.resolve([]);
+    const w = turnOf(e);
+    const says = SAYS.includes(e?.type);
     if (says && w !== wake) [wake, said] = [w, []];
+    if (!w) return Promise.resolve([]);
     const before = w === wake ? Promise.all(said.map((f) => f())).then((x) => x.flat()) : Promise.resolve([]);
     if (says) {
       /** @type {Promise<string[]> | undefined} */
       let read;
-      const words = () => (e.type === 'out.ask' ? Promise.resolve(d.question) : storedTexts(store, e).then((x) => ({ ...d, ...x }.text)));
+      const words = () => (e.type === 'out.ask' ? Promise.resolve(e.data.question) : storedTexts(store, e).then((x) => ({ ...e.data, ...x }.text)));
       said.push(() => (read ??= words().then((x) => spokenSentences(String(x ?? '')), () => [])));
     }
     return before;
   };
 }
 
-/** Her lines replyBefore reads at a time: a kept turn says at most 3 (330 turns, 43 kept runs), so 4 reach the turn before in one read. */
-const PAGE = 4;
+/** Her lines replyBefore reads at a time: a kept turn says at most 3 (205 turns in 43 kept runs), so 4 reach the line before it in one read. */
+export const PAGE = 4;
 
 /**
- * replies' answer for one line of hers drawn alone (Driving's card, Replay's), from her lines before it in the log back to another turn's.
+ * replies' answer for one line of hers drawn alone (Driving's card, Replay's), read back from the log to the first line that is not its turn's;
+ * a line that is no reply's answers with no read.
  * @param {import('../core/types.js').Store} store @param {string} scope @param {{ seq: number, type?: string, data?: any }} e @returns {Promise<string[]>}
  */
 export async function replyBefore(store, scope, e) {
-  const wake = e.data?.wake;
+  const wake = turnOf(e);
   /** @type {any[]} */
   const lines = [];
-  for (let before = e.seq; typeof wake === 'string';) {
+  for (let before = e.seq; wake;) {
     const page = await store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types: SAYS, before, reverse: true, limit: PAGE }));
-    const other = page.findIndex((/** @type {any} */ x) => x.data?.wake !== wake);
+    const other = page.findIndex((/** @type {any} */ x) => !ownCard(x) && turnOf(x) !== wake);
     lines.push(...(other < 0 ? page : page.slice(0, other)));
     if (other >= 0 || page.length < PAGE) break;
     before = page[page.length - 1].seq;

@@ -94,7 +94,8 @@ async function sheSpeaks(/** @type {import('@playwright/test').Page} */ page, /*
       /** Each line the bubble showed, with its language. @type {[string, string | null][]} */
       w.bubbles = [];
       const look = () => {
-        if (!caption.hidden && caption.textContent && caption.textContent !== w.bubbles.at(-1)?.[0]) w.bubbles.push([caption.textContent, caption.getAttribute('lang')]);
+        const last = w.bubbles.at(-1);
+        if (!caption.hidden && caption.textContent && (caption.textContent !== last?.[0] || caption.getAttribute('lang') !== last?.[1])) w.bubbles.push([caption.textContent, caption.getAttribute('lang')]); // a new tag on the same words too
         if (!caption.hidden && label.textContent === 'Tap to interrupt' && caption.textContent) { w.sawBubble = caption.textContent; w.sawBubbleLook = { lang: caption.getAttribute('lang'), dir: caption.getAttribute('dir'), style: getComputedStyle(caption).fontStyle }; }
       };
       for (const el of [caption, label]) new MutationObserver(look).observe(el, { attributes: true, childList: true, characterData: true, subtree: true });

@@ -394,10 +394,9 @@ const readAs = (x, s) => {
 };
 
 /**
- * The voice's and the tag's one rule for a sentence or line of hers, from what it shows (own, placed's answer): its own; else her reply's so far,
- * the first of her earlier sentences in the reply (before) that shows one, not them read joined; for Han that says neither (EITHER), the first
- * written in Han, else the first of theirs written in Han (the tag took the screens' first: on her real sentences, 43 kept runs, the two tie,
- * and the reply so far took her lines' wrong tags from 560 to 304 of 15,008). null: nothing tells.
+ * The voice's and the tag's one rule for a sentence or line of hers: its own language (own, placed's answer); else the first of her reply's earlier
+ * sentences (before) that shows one, not them read joined (for Han that says neither: one written in Han). null: nothing tells, and each reader
+ * keeps its own default (the voice the first listed in Han; the tag the screens' language when one of theirs written in Han, else that).
  * @param {LanguageSettings} s @param {Language | typeof EITHER | null} own @param {string[]} before @returns {Language | null}
  */
 function replyLanguage(s, own, before) {
@@ -406,7 +405,7 @@ function replyLanguage(s, own, before) {
     const l = readAs(x, s);
     if (l && l !== EITHER && (!own || HAN_SCRIPTS.includes(scriptOfLanguage(l)))) return l;
   }
-  return own ? firstHan(s) : null;
+  return null;
 }
 
 /**
@@ -453,9 +452,10 @@ const latinTag = (tag) => likelyScript(tag) === 'Latn';
  * A line's BCP 47 tag, for its `lang`: a browser draws Han characters and a screen reader reads by it. From the writing system (scriptOf,
  * whose scale draws a line that is mostly Chinese, Japanese or Korean characters as what they are, a name in a Latin line too) and the one of
  * theirs those characters are placed as (placed): Han that says neither Japanese nor Chinese takes her reply's language, as her voice does
- * (replyLanguage); a script two of theirs share that nothing in the line tells, the first of them. Latin text is never guessed (a wrong tag gives it a wrong voice): it and unsure text
- * get '' and inherit the screens'. byShiori: the language she answers in, where the text agrees with it; Han alone is taken for hers, if that
- * is Japanese. ui: the screens' language. Under screens not in Latin letters, a Latin line is the one listed Latin-script language if exactly one
+ * (replyLanguage), else the screens' language if it is one of theirs written in Han, else the first of those; a script two of theirs share that
+ * nothing in the line tells, the first of them. Latin text is never guessed (a wrong tag gives it a wrong voice): it and unsure text get ''
+ * and inherit the screens'. byShiori: the language she answers in, where the text agrees with it; Han alone is taken for hers, if that is
+ * Japanese. ui: the screens' language. Under screens not in Latin letters, a Latin line is the one listed Latin-script language if exactly one
  * is, else the one languageOf names from two of its words, else NO_LANGUAGE: never the screens'. Han that does not tell Simplified from
  * Traditional is Traditional under Traditional Chinese screens.
  * @param {string} text @param {LanguageSettings} s @param {boolean} [byShiori] @param {string} [ui]
@@ -482,7 +482,7 @@ export function tagOf(text, s, byShiori = false, ui = 'en', { before = [] } = {}
   /* en */ const own = ['Chinese', 'Japanese', 'Korean'].includes(kind) ? (said.match(CJK) ?? []).join('') : said;
   const placedAs = (answer && placed(own, { explicit: true, spoken: [answer], answer })) || placed(own, s);
   const l = placedAs === EITHER
-    ? replyLanguage(s, EITHER, before)
+    ? replyLanguage(s, EITHER, before) ?? s.spoken.find((x) => HAN_SCRIPTS.includes(scriptOfLanguage(x)) && tagFor(x) === ui) ?? firstHan(s)
     : placedAs ?? (kind === 'Chinese' ? null : s.spoken.find((x) => scriptOfLanguage(x) === likelyScript(SCRIPT_TAGS[kind])) ?? null);
   return kind === 'Chinese' ? hanTag(own, l, ui) : l ? tagFor(l) : SCRIPT_TAGS[kind];
 }
@@ -498,8 +498,8 @@ export function tagOf(text, s, byShiori = false, ui = 'en', { before = [] } = {}
  * voice. Han placed as none of theirs (a Chinese sentence with only Japanese listed) is read as Han that says neither. A sentence that shows none
  * (a plan line of names and times; 「明天比較滿：」, Han that says neither) takes her reply's, as her line's tag does (replyLanguage): on her real
  * sentences 99.4 to 99.5% given the right voice in every list order of [en, ja] and [en, zh, ja], 96.5 to 99.5% without (detector-next).
- * Else a script two listed languages share is the first of them written in it, and anything else the first listed. Chinese whose characters say
- * Simplified or Traditional (hanRow) takes a voice of that script.
+ * Else Han that says neither is the first listed written in Han, a script two listed languages share the first of them written in it, and
+ * anything else the first listed. Chinese whose characters say Simplified or Traditional (hanRow) takes a voice of that script.
  * @param {LanguageSettings} s @param {string} [text] @param {{ before?: string[] }} [o] before: her reply's sentences before this one
  */
 export function speechLocale(s, text = '', { before = [] } = {}) {
@@ -507,7 +507,7 @@ export function speechLocale(s, text = '', { before = [] } = {}) {
   const placedAs = s.answer ?? readAs(text, s);
   // Han placed as none of theirs (a Chinese sentence with only Japanese listed: 靖國神社) is Han that says neither: the reply's Han language, else the first listed in Han.
   const own = !placedAs && kind === 'zh' ? EITHER : placedAs;
-  const l = replyLanguage(s, own, before) ?? (kind ? s.spoken.find((x) => scriptOfLanguage(x) === kind) : null) ?? s.spoken[0];
+  const l = replyLanguage(s, own, before) ?? (own === EITHER ? firstHan(s) : null) ?? (kind ? s.spoken.find((x) => scriptOfLanguage(x) === kind) : null) ?? s.spoken[0];
   // Chinese in the other script than the row's is read with a voice of its own script, by the sentence's Han characters alone, as the tag reads them.
   const row = MANDARIN.includes(l.id) ? hanRow((text.match(CJK) ?? []).join('')) : '';
   return row && row !== (traditional(l.locale) ? 'zh-Hant' : 'zh') ? /** @type {Language} */ (BY_ID.get(row)).locale : l.locale;
