@@ -141,7 +141,7 @@ test("leaving Custom provider's Add flow without adding takes its plugin away ag
   await expect(page.locator('a.card', { hasText: 'OpenAI' })).toHaveCount(2);
 });
 
-test('a fetched list marks a model another provider already has, as adding it by id refuses it, rather than adding it again as "utils (2)" (the emulator pass)', async ({ page }) => {
+test('two providers at one router: the second\'s list offers a model the first has, and Add model by id of it takes a free name, "utils (2)", saying so; a list fetched then leaves it out (the emulator pass, then models-next: one rule, the provider model id)', async ({ page }) => {
   const s = await startFakeServer({ flavour: 'whole', key: KEY, models: [{ id: 'utils', object: 'model', owned_by: 'router' }, { id: 'qwen-free', object: 'model', owned_by: 'router' }] });
   try {
     await openApp(page, '#/models');
@@ -165,15 +165,17 @@ test('a fetched list marks a model another provider already has, as adding it by
         await expect(page.getByRole('link', { name: /^utils/ })).toBeVisible();
       } else {
         const listed = chat.locator('ul.listed');
-        await expect(listed.getByRole('button', { name: 'Add utils' })).toHaveCount(0);
-        await expect(listed.locator('li', { hasText: 'utils' })).toContainText('Already added, on Router 1');
-        await expect(listed.getByRole('button', { name: 'Add qwen-free' })).toBeVisible();
+        await expect(listed.getByRole('button', { name: 'Add utils' }), "Router 1's utils is another provider's model").toBeVisible();
         await chat.getByLabel('Add a model by id').fill('utils');
         await chat.getByRole('button', { name: 'Add model' }).click();
-        await expect(chat.getByText('"utils" is already used by another model')).toBeVisible();
-        await expect(page.getByRole('link', { name: /utils \(2\)/ })).toHaveCount(0);
-        // The refusal frees the button again (model-names-next: it is busy from the tap): a corrected id can be added.
+        await expect(page.locator('.toasts .toast', { hasText: 'Added as "utils (2)": "utils" is already used by another model.' })).toBeVisible();
+        await expect(page.getByRole('link', { name: /^utils \(2\)/ })).toBeVisible();
         await expect(chat.getByRole('button', { name: 'Add model' })).toBeEnabled();
+        // The page was drawn; a list fetched now has this provider's utils left out.
+        await chat.getByRole('button', { name: 'Fetch model list' }).click();
+        await expect(chat.getByText('2 models.')).toBeVisible();
+        await expect(listed.getByRole('button', { name: 'Add qwen-free' })).toBeVisible(); // the rows are drawn
+        await expect(listed.getByRole('button', { name: 'Add utils' })).toHaveCount(0);
       }
       await page.getByRole('link', { name: 'Models', exact: true }).click();
       await expect(page.getByRole('heading', { level: 1, name: 'Models' })).toBeVisible();

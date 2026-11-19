@@ -233,6 +233,84 @@ test("Add model by id of a model a list added under another name is refused with
   }
 });
 
+// One rule, the provider model id (models-next; the Deferred entry "A model the traveller added can be added again under its id or its name"):
+// a name another model has refuses nothing, from the list or by id: the add takes a free one, "name (2)", as names stay unique.
+
+test("a listed model whose name another model has is offered, and added under a free name, \"Gemma 5 (2)\" (fails on main: \"Already added, on llama.cpp\" and no Add, though its id was not added)", async ({ page }) => {
+  const key = 'sk-listed-name-held-0123';
+  const s = await startFakeServer({ flavour: 'llamacpp', key, models: [{ id: 'qwen3.8-flash', object: 'model', owned_by: 'llamacpp' }, { id: 'gemma5-small', name: 'Gemma 5', object: 'model', owned_by: 'llamacpp' }] });
+  try {
+    const chat = await addLlamaCpp(page, s, key);
+    // A model whose id is "Gemma 5", named by it: the listed gemma5-small has its name, not its id.
+    await chat.getByLabel('Add a model by id').fill('Gemma 5');
+    await chat.getByRole('button', { name: 'Add model' }).click();
+    await expect(chat.getByRole('link', { name: /^Gemma 5/ })).toBeVisible();
+    await chat.getByRole('button', { name: 'Fetch model list' }).click();
+    await expect(chat.getByText('2 models.')).toBeVisible();
+    await expect(chat.getByText(/^Already added/)).toHaveCount(0);
+    await chat.getByRole('button', { name: 'Add gemma5-small' }).click();
+    await expect(chat.getByRole('link', { name: /^Gemma 5 \(2\)/ })).toBeVisible();
+    await expect(chat.getByRole('link', { name: /^Gemma 5/ })).toHaveCount(2);
+  } finally {
+    await s.stop();
+  }
+});
+
+test("Add model by id whose name another model has takes a free name, \"Gemma 5 (2)\", and says so in a toast (fails on main: refused, \"already used by another model\")", async ({ page }) => {
+  const key = 'sk-by-id-name-held-0123';
+  const s = await startFakeServer({ flavour: 'llamacpp', key, models: [{ id: 'gemma5-small', name: 'Gemma 5', object: 'model', owned_by: 'llamacpp' }] });
+  try {
+    const chat = await addLlamaCpp(page, s, key);
+    await chat.getByRole('button', { name: 'Fetch model list' }).click();
+    await chat.getByRole('button', { name: 'Add gemma5-small' }).click();
+    await expect(chat.getByRole('link', { name: /^Gemma 5/ })).toBeVisible();
+    await chat.getByLabel('Add a model by id').fill('Gemma 5');
+    await chat.getByRole('button', { name: 'Add model' }).click();
+    await expect(page.locator('.toasts .toast', { hasText: 'Added as "Gemma 5 (2)": "Gemma 5" is already used by another model.' })).toBeVisible();
+    await expect(chat.getByRole('link', { name: /^Gemma 5 \(2\)/ })).toBeVisible();
+    await expect(chat.getByText(/already used by another model/), 'nothing refused in the models\' status line').toHaveCount(0);
+    // An id it has is still refused: one model for each provider model id.
+    await chat.getByLabel('Add a model by id').fill('Gemma 5');
+    await chat.getByRole('button', { name: 'Add model' }).click();
+    await expect(chat.getByText('"Gemma 5" is already added here.')).toBeVisible();
+    await page.reload();
+    await expect(chat.getByRole('link', { name: /^Gemma 5/ })).toHaveCount(2);
+  } finally {
+    await s.stop();
+  }
+});
+
+test("a provider whose modelDefaults name every model: the first by-id add takes that name with no toast, a second says its default name is used (fails on 3bc080fa8: the first add said its id was used; on main the first says nothing and the second is refused, its name taken)", async ({ page }) => {
+  const key = 'sk-default-name-0123';
+  const s = await startFakeServer({ flavour: 'llamacpp', key, models: [] });
+  try {
+    const chat = await addLlamaCpp(page, s, key);
+    // A description whose modelDefaults carry a name, as the user's layer of the ability (the page reads it as it does a plugin's).
+    await page.evaluate(async () => {
+      const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+      const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+      const { readConfig, saveProvider } = await import(/** @type {string} */ ('/src/core/llm/config.js'));
+      const store = await createIdbStore();
+      const ws = new Workspace(store);
+      const [rec] = Object.values((await readConfig(ws)).providers);
+      const user = /** @type {any} */ (rec.user ?? {});
+      await saveProvider(ws, { ...rec, user: { ...user, abilities: { ...user.abilities, chat: { ...user.abilities?.chat, modelDefaults: { name: 'House model' } } } } });
+      store.close();
+    });
+    await page.reload();
+    await chat.getByLabel('Add a model by id').fill('one-id');
+    await chat.getByRole('button', { name: 'Add model' }).click();
+    await expect(chat.getByRole('link', { name: /^House model/ })).toBeVisible();
+    expect(await page.locator('.toasts .toast').count(), 'nothing clashed: no toast (read as it is: a waiting count would pass once a toast expired)').toBe(0);
+    await chat.getByLabel('Add a model by id').fill('two-id');
+    await chat.getByRole('button', { name: 'Add model' }).click();
+    await expect(page.locator('.toasts .toast', { hasText: 'Added as "House model (2)": "House model" is already used by another model.' })).toBeVisible();
+    await expect(chat.getByRole('link', { name: /^House model \(2\)/ })).toBeVisible();
+  } finally {
+    await s.stop();
+  }
+});
+
 /**
  * A llama.cpp provider with a 40-model list shown, then its records removed under the open list, so every Add is refused ("That provider
  * no longer exists."). The list shows up to 50 rows in a box of its own, 50vh tall, so a row can sit anywhere on the screen, behind the dock too.

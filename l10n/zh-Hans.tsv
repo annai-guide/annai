@@ -788,7 +788,7 @@ cpehgy	ok	The plugin didn't provide an endpoint type {0}.	该插件没有提供�
 557vva	ok	{0} isn't a web address: give it with https:// in front.	{0} 不是有效的网址，请在前面加上 https://。	src/core/llm/provider-desc.js:164	{0} = url
 y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	地址必须以 https:// 开头（只有 localhost 或 127.0.0.1 可以用 http://）。浏览器会拦截 https 页面发出的普通 http 请求，而 annai 访问局域网内的服务器时只使用 https，所以另一台电脑上的服务器需要 https 地址。可以用 Tailscale Serve 实现：{0}。服务器还必须允许来自 annai.guide 的 CORS 请求。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
 1qpfdfv	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1).	地址必须以 https:// 开头（只有 localhost 或 127.0.0.1 可以用 http://）。	src/core/llm/provider-desc.js:166	
-xx043p	ok	"{0}" is already added here.	“{0}”已经添加过了。	src/core/llm/providers.js:317	{0} = providerModelId
+xx043p	ok	"{0}" is already added here.	“{0}”已经添加过了。	src/core/llm/providers.js:324	{0} = providerModelId
 1xwbser	ok	It is turned off.	已关闭。	src/core/llm/service.js:305	Note: said of a plugin named before it on the screen.
 1pqsrb3	ok	It isn't running. Look at it in Settings → Plugins.	没有运行。请在设置 → 插件中查看。	src/core/llm/service.js:307	Note: said of a plugin named before it on the screen.
 sejc5h	ok	{0} was switched off after errors.	{0} 因多次出错已被关闭。	src/core/llm/service.js:322	{0} = shown
@@ -2145,44 +2145,44 @@ r4y7q	ok	Use {0}	启用 {0}	src/ui/screens/provider.js:347	{0} = shownName
 12dfi3i	ok	Upload photos to this provider (each expires after 48 hours)	把照片上传到此提供商（每张 48 小时后过期）	src/ui/screens/provider.js:386	
 1qia4dd	ok	Let {0} keep the conversation between turns: sends less each time.	让 {0} 在多轮之间保留对话，每次发送的内容更少。	src/ui/screens/provider.js:393	{0} = who
 l91m05	ok	Its own address	专用地址	src/ui/screens/provider.js:412	
-9umgdw	ok	Empty: the provider's address. Each setting here is saved as you change it.	留空则使用提供商的地址。这里的设置更改后会自动保存。	src/ui/screens/provider.js:418	
-1ajunu1	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.	{0} 会保留你与 Shiori 的对话，包括其中的照片、语音消息，以及她所知道的你的位置，保留多久由那台服务器决定。	src/ui/screens/provider.js:422	{0} = who; Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音).
-1jtdu56	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0} 会保留你与 Shiori 的对话，包括其中的照片、语音消息，以及她所知道的你的位置：{1}。	src/ui/screens/provider.js:423	{0} = who; {1} = holds; Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音); {1} is the plugin's own words for how long.
-1fcg7pg#other	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0} 会保留你与 Shiori 的对话，包括其中的照片、语音消息，以及她所知道的你的位置：免费密钥保留一天，付费密钥最长 # 天。	src/ui/screens/provider.js:424	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other); Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音).
-1gugeu9	ok	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	移除对应的旅行、此提供商或全部内容（清除），更换或移除密钥，或关闭此项时，annai 都会删除这些内容。	src/ui/screens/provider.js:426	
-1iorloe	ok	Off, each turn sends the whole conversation.	关闭后，每一轮都会发送整个对话。	src/ui/screens/provider.js:426	
-1wdiu43	ok	It needs this provider's key: without one, each turn sends the whole conversation.	此功能需要提供商的密钥；没有密钥时，每一轮都会发送整个对话。	src/ui/screens/provider.js:427	
-72k1cn#other	ok	# deletions waiting: annai can't send them without this provider's key.	# 项删除请求待发送：没有此提供商的密钥，无法发送。	src/ui/screens/provider.js:428	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
-f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	# 项删除请求待发送：连上 {0} 后会自动发送。	src/ui/screens/provider.js:429	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
-147eqzv	ok	Test {0}	测试 {0}	src/ui/screens/provider.js:440	{0} = first.name
-1eqfcih	ok	{0} doesn't offer search on the free tier.	{0} 的免费额度不包含搜索。	src/ui/screens/provider.js:467	{0} = who
-1cmq8ob	ok	{0} doesn't offer fetch on the free tier.	{0} 的免费额度不包含网页抓取。	src/ui/screens/provider.js:468	{0} = who
-1k4v7dk	ok	{0} doesn't offer {1} on the free tier.	{0} 的免费额度不包含 {1}。	src/ui/screens/provider.js:468	{0} = who; {1} = tool.name
-11x4tx3	ok	This needs the {0} plugin, which isn't running.	需要 {0} 插件，但它没有运行。	src/ui/screens/provider.js:474	{0} = name
-4nyk49	ok	This needs a plugin that isn't running.	需要的插件没有运行。	src/ui/screens/provider.js:474	
-15hdhx3	ok	the provider's model id	提供商的模型 ID	src/ui/screens/provider.js:498	
-1oz4euh	ok	Add model	添加模型	src/ui/screens/provider.js:515	
-tbmsa5	ok	Asking for its models…	正在获取模型列表…	src/ui/screens/provider.js:520	
-1yko1my#other	ok	# models.	共 # 个模型。	src/ui/screens/provider.js:523	plural; # = listed.length; English: "# model." (one), "# models." (other)
-uxqo7a	ok	Fetch model list	获取模型列表	src/ui/screens/provider.js:534	
-1scr2ml	ok	{0}K context	{0}K 上下文	src/ui/screens/provider.js:537	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
-1tqy8k1	ok	Its models	模型	src/ui/screens/provider.js:539	Note: "Its models" as a heading under the ability: モデル alone reads right there.
-bzs1ys	ok	No models yet.	还没有模型。	src/ui/screens/provider.js:540	
-pnxisg	ok	Add a model by id	按 ID 添加模型	src/ui/screens/provider.js:541	
-1mod47e	ok	for example: haiku	例如：haiku	src/ui/screens/provider.js:558	
-1w6mxym	ok	Already added, on {0}	已添加到 {0}	src/ui/screens/provider.js:561	{0} = on
-l7fn8k	ok	Already added, on another provider	已添加到其他提供商	src/ui/screens/provider.js:561	
-uizt0x	ok	{0} · loaded	{0} · 已加载	src/ui/screens/provider.js:570	{0} = named
-19ai2z0	ok	Filter the list	筛选列表	src/ui/screens/provider.js:608	
-11pl9jr	ok	Use the free models	使用免费模型	src/ui/screens/provider.js:616	
-vam64u	ok	Use the recommended models	使用推荐模型	src/ui/screens/provider.js:616	
-1b2yx8m	ok	Suggested models	推荐模型	src/ui/screens/provider.js:617	
-y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0} 为每个角色推荐了一个模型。使用推荐后，它的语音模型会排在免费的手机语音输入和浏览器声音之前，所以会优先尝试收费的模型。	src/ui/screens/provider.js:618	{0} = src.name; Note: 手机语音输入 and 浏览器声音 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
-1x5hwmk	ok	{0} suggests a model for each role.	{0} 为每个角色推荐了一个模型。	src/ui/screens/provider.js:619	{0} = src.name
-1iffu2j	ok	{0} switched on.	已开启 {0}。	src/ui/screens/provider.js:626	{0} = n
-1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:626	
-1egvjs1	ok	{0} couldn't be switched on: {1}	{0} 无法开启：{1}	src/ui/screens/provider.js:627	{0} = f.name; {1} = messageOf(f.error)
-wlh055	ok	Use the {0} models	使用 {0} 模型	src/ui/screens/provider.js:633	{0} = which
+9umgdw	ok	Empty: the provider's address. Each setting here is saved as you change it.	留空则使用提供商的地址。这里的设置更改后会自动保存。	src/ui/screens/provider.js:421	
+1ajunu1	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.	{0} 会保留你与 Shiori 的对话，包括其中的照片、语音消息，以及她所知道的你的位置，保留多久由那台服务器决定。	src/ui/screens/provider.js:425	{0} = who; Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音).
+1jtdu56	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0} 会保留你与 Shiori 的对话，包括其中的照片、语音消息，以及她所知道的你的位置：{1}。	src/ui/screens/provider.js:426	{0} = who; {1} = holds; Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音); {1} is the plugin's own words for how long.
+1fcg7pg#other	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0} 会保留你与 Shiori 的对话，包括其中的照片、语音消息，以及她所知道的你的位置：免费密钥保留一天，付费密钥最长 # 天。	src/ui/screens/provider.js:427	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other); Note: "voice messages" are messages you spoke (语音消息), not a voice she speaks with (声音).
+1gugeu9	ok	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	移除对应的旅行、此提供商或全部内容（清除），更换或移除密钥，或关闭此项时，annai 都会删除这些内容。	src/ui/screens/provider.js:429	
+1iorloe	ok	Off, each turn sends the whole conversation.	关闭后，每一轮都会发送整个对话。	src/ui/screens/provider.js:429	
+1wdiu43	ok	It needs this provider's key: without one, each turn sends the whole conversation.	此功能需要提供商的密钥；没有密钥时，每一轮都会发送整个对话。	src/ui/screens/provider.js:430	
+72k1cn#other	ok	# deletions waiting: annai can't send them without this provider's key.	# 项删除请求待发送：没有此提供商的密钥，无法发送。	src/ui/screens/provider.js:431	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
+f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	# 项删除请求待发送：连上 {0} 后会自动发送。	src/ui/screens/provider.js:432	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
+147eqzv	ok	Test {0}	测试 {0}	src/ui/screens/provider.js:443	{0} = first.name
+1eqfcih	ok	{0} doesn't offer search on the free tier.	{0} 的免费额度不包含搜索。	src/ui/screens/provider.js:470	{0} = who
+1cmq8ob	ok	{0} doesn't offer fetch on the free tier.	{0} 的免费额度不包含网页抓取。	src/ui/screens/provider.js:471	{0} = who
+1k4v7dk	ok	{0} doesn't offer {1} on the free tier.	{0} 的免费额度不包含 {1}。	src/ui/screens/provider.js:471	{0} = who; {1} = tool.name
+11x4tx3	ok	This needs the {0} plugin, which isn't running.	需要 {0} 插件，但它没有运行。	src/ui/screens/provider.js:477	{0} = name
+4nyk49	ok	This needs a plugin that isn't running.	需要的插件没有运行。	src/ui/screens/provider.js:477	
+1mod47e	ok	for example: haiku	例如：haiku	src/ui/screens/provider.js:515	
+15hdhx3	ok	the provider's model id	提供商的模型 ID	src/ui/screens/provider.js:523	
+uwbggy	ok	Added as "{0}": "{1}" is already used by another model.	已添加为“{0}”，因为“{1}”已被另一个模型使用。	src/ui/screens/provider.js:539	{0} = name; {1} = wanted
+1oz4euh	ok	Add model	添加模型	src/ui/screens/provider.js:546	
+tbmsa5	ok	Asking for its models…	正在获取模型列表…	src/ui/screens/provider.js:551	
+uxqo7a	ok	Fetch model list	获取模型列表	src/ui/screens/provider.js:567	
+1yko1my#other	ok	# models.	共 # 个模型。	src/ui/screens/provider.js:578	plural; # = found.listed.length; English: "# model." (one), "# models." (other)
+19ai2z0	ok	Filter the list	筛选列表	src/ui/screens/provider.js:580	
+1scr2ml	ok	{0}K context	{0}K 上下文	src/ui/screens/provider.js:585	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
+1tqy8k1	ok	Its models	模型	src/ui/screens/provider.js:587	Note: "Its models" as a heading under the ability: モデル alone reads right there.
+bzs1ys	ok	No models yet.	还没有模型。	src/ui/screens/provider.js:588	
+pnxisg	ok	Add a model by id	按 ID 添加模型	src/ui/screens/provider.js:589	
+uizt0x	ok	{0} · loaded	{0} · 已加载	src/ui/screens/provider.js:610	{0} = named
+1w6mxym	ok	Already added, on {0}	已添加到 {0}	src/ui/screens/provider.js:622	{0} = here
+11pl9jr	ok	Use the free models	使用免费模型	src/ui/screens/provider.js:647	
+vam64u	ok	Use the recommended models	使用推荐模型	src/ui/screens/provider.js:647	
+1b2yx8m	ok	Suggested models	推荐模型	src/ui/screens/provider.js:648	
+y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0} 为每个角色推荐了一个模型。使用推荐后，它的语音模型会排在免费的手机语音输入和浏览器声音之前，所以会优先尝试收费的模型。	src/ui/screens/provider.js:649	{0} = src.name; Note: 手机语音输入 and 浏览器声音 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
+1x5hwmk	ok	{0} suggests a model for each role.	{0} 为每个角色推荐了一个模型。	src/ui/screens/provider.js:650	{0} = src.name
+1iffu2j	ok	{0} switched on.	已开启 {0}。	src/ui/screens/provider.js:657	{0} = n
+1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:657	
+1egvjs1	ok	{0} couldn't be switched on: {1}	{0} 无法开启：{1}	src/ui/screens/provider.js:658	{0} = f.name; {1} = messageOf(f.error)
+wlh055	ok	Use the {0} models	使用 {0} 模型	src/ui/screens/provider.js:664	{0} = which
 1qocxbg	ok	Writing it: {0} is reading the conversation. This can take a minute.	撰写中：{0} 正在读取对话，可能需要一分钟。	src/ui/screens/recap.js:33	{0} = names(m.name)
 1lrfe9k	ok	Write the recap	撰写回顾	src/ui/screens/recap.js:35	
 h6huep	ok	Write it again	重新撰写	src/ui/screens/recap.js:35	
