@@ -436,6 +436,8 @@ export class Agent {
   #streaming = '';
   /** The model that answered last in this turn: it heard any audio sent (spec §10.3). @type {string | null} */
   #heardBy = null;
+  /** The heard line being routed now, or the last one: speak's and wait's end waits for it (#listenFor). @type {Promise<unknown>} */
+  #routing = Promise.resolve();
   /** The device's clock and zone, which a simulation's (useClock) never replaces: budgets and other conversations are measured by them. @type {{ now: () => number, timeZone: () => string }} */
   #real;
   /** While a simulation's clock is in use, its own conversation: only that one is stamped in its time. @type {string | null} */
@@ -3395,7 +3397,7 @@ export class Agent {
     /* en */
     if (this.#aloudOnly) return `${before} Voice mode is off, so you didn't listen; the user may type.`;
     const { silenceSeconds } = await voice.settings();
-    const got = await this.#listenFor(call, 'wait', silenceSeconds);
+    const got = await this.#listenFor(call, 'wait', silenceSeconds, false, Boolean(call.last));
     const answer = await this.#answer(before, got, call, /* en */ `Heard nothing (${silenceSeconds} seconds).`);
     // Its window passed in silence: she would only call sleep, so the turn ends here, for no model call.
     return call.last && Object.keys(got).length === 0 && typeof answer === 'string' ? { content: answer, endTurn: true } : answer;
@@ -3419,7 +3421,7 @@ export class Agent {
     /** @type {Got} */
     let got = spoken.failed ? {} : await this.#listenFor(call, 'ask', LISTEN_S);
     if (!(got.heard || got.text !== undefined || got.chosen !== undefined || got.stopped || got.earlier)) {
-      if (this.#ear) this.#closeEar(); // whatever opened it: a tap that cut her off opened this one, and the question's 8 s were its limit too
+      if (this.#ear) this.#closeEar(); // her voice failed, or no microphone: a tap's closes, and it waits by hand
       got = await this.#waitFor(call, 'ask', 0);
     }
     return this.#answerAsk(got, call);
@@ -3476,13 +3478,13 @@ export class Agent {
 
   /**
    * Listens for the user's answer (spec §10.4): the first thing heard, typing, or a tap; or a silence of seconds. With speech heard earlier waiting, speak and wait don't
-   * listen: it reaches her at once. Chatter or a noise neither ends the silence nor restarts it (music would hold the microphone open for ever, at a transcription and a gate each time);
-   * it is not armed while someone speaks (a line across its time is heard to its end), and its end waits behind the lines heard, which may still answer; a line begun
-   * after its time, while an earlier verdict is still to come, is cut by that verdict.
+   * listen: it reaches her at once. Chatter or a noise neither ends the silence nor restarts it (music would never let it end); it is not armed while someone speaks
+   * (a line across its time is heard to its end). Then her question's microphone closes (speak's too, as her reply's last call) and the question waits on by hand; speak
+   * and wait end once the line being routed is judged (over).
    * @param {{ id: string, signal?: AbortSignal }} call a stopped turn's call listens for no one, and leaves nothing waiting (as #waitFor)
-   * @param {'wait' | 'ask'} kind @param {number} seconds @param {boolean} [tool] the wait tool's @returns {Promise<Got>}
+   * @param {'wait' | 'ask'} kind @param {number} seconds @param {boolean} [tool] the wait tool's @param {boolean} [last] speak as her reply's last call @returns {Promise<Got>}
    */
-  async #listenFor({ id, signal }, kind, seconds, tool = false) {
+  async #listenFor({ id, signal }, kind, seconds, tool = false, last = false) {
     if (signal?.aborted) return { stopped: true };
     // Looked at again once the microphone is open: what came while it opened found no wait.
     const queued = () => this.#earlier(kind) ?? (kind === 'wait' ? this.#cameDue(tool) : null);
@@ -3505,13 +3507,19 @@ export class Agent {
       const arm = () => {
         clearTimeout(timer);
         if (this.#speaking) return; // their line's end arms it again (#heard)
-        timer = setTimeout(() => this.#hearing.then(() => {
-          // Its time ends it once every line heard up to then has been judged, whoever speaks after: a line begun after its time, while an earlier verdict is slow,
-          // is cut (holding for it would let a radio hold her listening open). Only this listening: a wait of the same call (#askAloud's, by hand) is another pending.
-          if (this.#pending !== pending) return;
-          this.#pending = null;
-          resolve({});
-        }), Math.max(0, by - Date.now()));
+        timer = setTimeout(over, Math.max(0, by - Date.now()));
+      };
+      // Its time, nobody speaking (arm). Lines heard in time may still answer (#closeEar's door; for speak and wait, the one routed now).
+      const over = () => {
+        if (kind === 'ask' || (last && this.#ear?.owner === 'turn')) this.#closeEar();
+        if (kind !== 'ask') return void this.#routing.then(end, end);
+        Object.assign(pending, { arm: undefined, byHand: true });
+        this.#remindWaiting();
+      };
+      const end = () => {
+        if (this.#pending !== pending) return; // answered meanwhile: a later listening may wait now
+        this.#pending = null;
+        pending.resolve({}); // its timer too: a line's end may arm it again
       };
       /** @type {Pending} */
       const pending = { id, kind, listening: true, ear: /** @type {Ear} */ (this.#ear), tool, arm, hold: () => clearTimeout(timer), resolve: (v) => { clearTimeout(timer); resolve(v); } };
@@ -3625,7 +3633,7 @@ export class Agent {
     this.#pending?.arm?.();
     this.#armEar();
     this.poke();
-    this.#hearing = this.#hearing.then(() => this.#route(h, began, ear)).catch((e) => { console.warn(/* en */ 'heard speech was not handled', e); });
+    this.#hearing = this.#hearing.then(() => (this.#routing = this.#route(h, began, ear))).catch((e) => { console.warn(/* en */ 'heard speech was not handled', e); });
   }
 
   /**
@@ -3740,7 +3748,7 @@ export class Agent {
     for (const h of this.#chatter.splice(0)) await this.#logHeard(h, { wake: wakeId, meanwhile: true, dismissed: true, gate: 'chatter' });
   }
 
-  /** Someone started speaking: Hearing you, and no timer runs while they speak: a tap's window and the window after she spoke end only after their line (#armEar); her own listening's end, once its time has come, waits on verdicts, not on speech (#listenFor). */
+  /** Someone started speaking: Hearing you, and no timer runs while they speak, so a line across one's time is heard to its end (#armEar, #listenFor). */
   #speechStarted() {
     this.#spoke(true);
     clearTimeout(this.#ear?.timer);
