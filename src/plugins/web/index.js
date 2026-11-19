@@ -27,6 +27,8 @@ export const STEP_MS = { ms: 25_000 };
 
 export { READY_MS };
 
+const STEP_LATE = 'late'; // what step's error says; a provider's own late error has its own words
+
 /**
  * fn with a signal the user's stop and STEP_MS (or less, ms) both end; past the limit, an error marked late. It
  * stops waiting at the signal even when fn ignores it (a plugin's provider may), so one stuck call can't hold the chain.
@@ -48,7 +50,7 @@ async function step(call, fn, ms = Infinity) {
   try {
     return await Promise.race([work, ended]);
   } catch (e) {
-    throw late.aborted && !call.signal.aborted ? Object.assign(new Error('late'), { late: true }) : e;
+    throw late.aborted && !call.signal.aborted ? Object.assign(new Error(STEP_LATE), { late: true }) : e;
   } finally {
     off();
   }
@@ -214,7 +216,7 @@ export function activate(annai) {
     input: { type: 'object', properties: { query: { type: 'string', minLength: 1 } }, required: ['query'] },
     /**
      * The search providers in the user's order, each asked in turn (spec §7.2). The whole search has a deadline (CHAIN), with a
-     * reserve kept for the floor; when every provider is resting, the one whose rest ends first is tried.
+     * reserve kept for the floor, which is always asked and never rests.
      * @param {{ query: string }} i @param {any} call
      */
     async run(i, call) {
@@ -226,8 +228,6 @@ export function activate(annai) {
       const passed = [];
       /** @type {{ p: any, e: any }[]} */
       const failed = [];
-      /** @type {any[]} */
-      const resting = [];
       let empty = false;
       /** Asks one provider; its TSV when it has rows. @param {any} p @param {number} [reserve] */
       const ask = async (p, reserve = 0) => {
@@ -244,15 +244,16 @@ export function activate(annai) {
         } catch (e) {
           if (call.signal.aborted) throw e;
           failed.push({ p, e });
-          why.push(/** @type {any} */ (e)?.late ? `${p.name} didn't answer in time` : String(/** @type {any} */ (e)?.message ?? e));
+          const err = /** @type {any} */ (e);
+          why.push(err?.late && err.message === STEP_LATE ? `${p.name} didn't answer in time` : String(err?.message ?? e));
         }
         return null;
       };
-      /** Rests what failed: a failure by timeout or network alone, with nothing answering, may be the connection's, so nobody climbs. @param {boolean} answered */
+      /** Rests what failed, never the floor: a failure by timeout or network alone, with nothing answering, may be the connection's, so nobody climbs. @param {boolean} answered */
       const settle = (answered) => {
         const link = (/** @type {any} */ e) => e?.late || e?.kind === 'network' || e?.kind === 'cors' || e instanceof TypeError;
         const climb = answered || empty || !failed.every((f) => link(f.e));
-        for (const f of failed) if (restsOn(f.e)) cooldowns.rest(f.p.id, climb);
+        for (const f of failed) if (!f.p.always && restsOn(f.e)) cooldowns.rest(f.p.id, climb);
       };
       /** Whether a provider can run, asked for no longer than READY_MS or what the search has left. @param {any} p @param {number} room */
       const ready = async (p, room) => {
@@ -271,7 +272,6 @@ export function activate(annai) {
       for (const [k, p] of providers.entries()) {
         const rest = cooldowns.left(p.id);
         if (rest > 0) {
-          resting.push(p);
           passed.push(`${p.name} is resting after a failure, for ${Math.ceil(rest / 60_000)} more minute${rest > 60_000 ? 's' : ''}`);
           continue;
         }
@@ -292,19 +292,8 @@ export function activate(annai) {
           return out;
         }
       }
-      // Everything is resting and nothing else ran: the one whose rest ends first gets another try.
-      if (!failed.length && !empty && resting.length) {
-        const next = resting.sort((a, b) => cooldowns.left(a.id) - cooldowns.left(b.id))[0];
-        if ((await ready(next, deadline - Date.now())).ok) {
-          const out = await ask(next);
-          if (out) {
-            settle(true);
-            return out;
-          }
-        }
-      }
       settle(false);
-      if (empty) return `Nothing found for "${i.query}".${why.length ? ` (${why.join('; ')}.)` : ''}`;
+      if (empty && !failed.length) return `Nothing found for "${i.query}".`;
       throw new Error(`Web search didn't work: ${[...why, ...passed].join('; ') || 'every search provider is switched off'}. Or turn on your model's own search in Settings → Tools.`);
     },
   };

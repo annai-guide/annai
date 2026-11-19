@@ -28,9 +28,10 @@ import { nearUrl, articlesOf, wikiSaid, agentHeader } from '../wiki.js';
  * @typedef {{ source: 'osm' | 'wikipedia', place: import('./plan.js').Place } | { source: 'wikivoyage', title?: string }} PartRef
  *   which part, as data: a part of the plan by where it is, finding the guides, or one guide
  * @typedef {import('../answer.js').AnswerSaid | { code: 'late', where: string } | { code: 'early', where: string, remark: string }
- *   | { code: 'osm', inner: PackSaid | null, message: string } | { code: 'said', where: string, info: string } | { code: 'no-text', title: string }} PackSaid
+ *   | { code: 'osm', inner: PackSaid | null, message: string | null } | { code: 'said', where: string, info: string } | { code: 'no-text', title: string }} PackSaid
  *   one of annai's own failures, as data: a server's answer, its time running out, Overpass stopping early, no Overpass server answering
- *   (inner: the last one's, or message, the browser's words), a service's own error (info, its words), a guide with no text
+ *   (inner: the last one's, or message, the browser's words; both null: every server was left), a service's own error (info, its words),
+ *   a guide with no text
  * @typedef {{ label: string, why: string, part?: PartRef, said?: PackSaid | null }} Failure
  *   label and why: in annai's English, as the log keeps them; part and said: what the panel makes its words from (said null where why is
  *   the browser's or a service's own words). A failure kept by an older annai has neither.
@@ -80,7 +81,10 @@ export function failWords(s) {
   switch (s.code) {
     case 'late': return t`${s.where} didn't answer in time.`;
     case 'early': return t`${s.where} stopped early: ${s.remark}.`;
-    case 'osm': return t`OpenStreetMap didn't answer (${(s.inner ? failWords(s.inner) : s.message).replace(/[.。]$/u, '')}).`;
+    case 'osm': {
+      const why = s.inner ? failWords(s.inner) : s.message ?? t`every server was left for the rest of the run`;
+      return t`OpenStreetMap didn't answer (${why.replace(/[.。]$/u, '')}).`;
+    }
     case 'said': return t`${s.where} said: ${s.info}.`;
     case 'no-text': return t`Wikivoyage sent no text for ${s.title}.`;
     default: return answerWords(s);
@@ -90,10 +94,10 @@ export function failWords(s) {
 /** An error by the shown rule: message in annai's English, said its data. @param {string} en @param {PackSaid} said */
 const fault = (en, said) => Object.assign(new Error(en), { said });
 
-/** Whether a failure says its source is down: no answer (late, quiet, unreachable) or a refusal (429, a 5xx). An answer annai can't use (a remark, an error body, unreadable) says it is there. @param {any} e */
+/** Whether a failure says its source is down: no answer (late, quiet, unreachable, cut off, no `said`) or a refusal (429, a 5xx), not an answer annai can't use. @param {any} e */
 function saysDown(e) {
   const s = e?.said?.code === 'osm' ? e.said.inner : e?.said;
-  return !s || s.code === 'late' || s.code === 'quiet' || s.code === 'unreachable' || (s.code === 'status' && (s.status === 429 || s.status >= 500));
+  return !s || s.code === 'late' || s.code === 'quiet' || s.code === 'cut' || s.code === 'unreachable' || (s.code === 'status' && (s.status === 429 || s.status >= 500));
 }
 
 /** Where a part is kept, a Wikipedia part's per edition (English's as before editions). @param {Part} p @param {string} [edition] */
@@ -214,12 +218,14 @@ export async function downloadPack(o) {
     fails.set(source, saysDown(e) ? { n: (fails.get(source)?.n ?? 0) + 1, last: f } : { n: 0 });
   };
 
-  /** A file's manifest entry as its path says: another edition's names it; English's has none (no ids known) unless this run saved it. */
+  /** A part left for the rest of the run, with the failure that gave its source up: the panel counts it too. @param {PartRef} part @param {string} source */
+  const left = (part, source) => failed.push(/** @type {Failure} */ ({ ...fails.get(source)?.last, label: partLabel(part), part }));
+  /** A file's manifest entry as its path says: another edition's names it, English's doesn't; a save writes 'en', keepOld what the old entry said. */
   const entry = (/** @type {Want} */ w) => ({ id: w.part.id, kind: w.part.kind, path: w.path, ...(w.edition && w.edition !== 'en' ? { edition: w.edition } : {}) });
   const want = wanted(plan, o.editions);
   for (const w of want) if (fresh(entry(w))) keepOld(entry(w));
-  // OpenStreetMap first, then Wikipedia edition by edition in the reading order: a pack that fills up holds the places, then the first
-  // language's articles at every stop it reaches, then the later languages' as they fit.
+  // OpenStreetMap first, then Wikipedia edition by edition in the reading order, saved in turn until one no longer fits: a full pack holds
+  // the places, then the first language at the stops it reaches, then the later ones as far as it gets.
   const rank = (/** @type {Want} */ w) => (w.edition ? o.editions.indexOf(w.edition) : -1);
   const todo = want.filter((w) => !files.has(w.path)).sort((a, b) => rank(a) - rank(b));
   let total = todo.length + 1; // and finding the guides
@@ -232,8 +238,7 @@ export async function downloadPack(o) {
     /** @type {PartRef} */
     const part = { source: p.kind, place: p.place };
     if (gaveUp(source)) {
-      // Left for the rest of the run, with the failure that gave the source up: the panel counts it too.
-      failed.push(/** @type {Failure} */ ({ ...fails.get(source)?.last, label: partLabel(part), part }));
+      left(part, source);
       done++;
       continue;
     }
@@ -264,7 +269,10 @@ export async function downloadPack(o) {
       done++;
       total += found.length;
       for (const g of found) {
-        if (guidesStuck()) break;
+        if (guidesStuck()) {
+          if (gaveUp('wikivoyage')) left({ source: 'wikivoyage', title: g.title }, 'wikivoyage');
+          continue;
+        }
         const { id, path } = guideFile(g.title);
         if (fresh({ id, kind: 'wikivoyage', path })) keepOld({ id, kind: 'wikivoyage', path }, 1);
         else {
@@ -362,8 +370,9 @@ async function osm(p, ask, busy, servers, hosts) {
       }
     }
   }
-  const message = String(/** @type {any} */ (last)?.message ?? last).replace(/\.$/, '');
-  throw fault(/* en */ `OpenStreetMap didn't answer (${message}).`, { code: 'osm', inner: /** @type {any} */ (last)?.said ?? null, message });
+  // No server was asked when every one was left: nothing to quote.
+  const message = last === null ? null : String(/** @type {any} */ (last)?.message ?? last).replace(/\.$/, '');
+  throw fault(/* en */ `OpenStreetMap didn't answer (${message ?? 'every server was left for the rest of the run'}).`, { code: 'osm', inner: /** @type {any} */ (last)?.said ?? null, message });
 }
 
 /** An edition's nearest 20 summaries to a part's point, with ids. @param {import('./plan.js').WikiPart} p @param {string} edition @param {Ask} ask @param {Record<string, string>} headers */

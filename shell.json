@@ -1,5 +1,5 @@
 {
-  "build": "142dd98e47ae",
+  "build": "54dfed98f56b",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -124,7 +124,7 @@
     "/src/core/package-updates.js": "79d2f3f92d47",
     "/src/core/packages.js": "5a2f10c69bd1",
     "/src/core/requires.js": "9aa09e4a81ad",
-    "/src/core/pack/download.js": "6d55c2344062",
+    "/src/core/pack/download.js": "41fd19ea6379",
     "/src/core/pack/keeper.js": "7cc47fb45fdb",
     "/src/core/pack/osm.js": "758b9dbf29f2",
     "/src/core/pack/plan.js": "3492b956c6d2",
@@ -194,14 +194,14 @@
     "/src/plugins/go/index.js": "39ee52f39fc1",
     "/src/plugins/mcp/client.js": "8f2bab66c578",
     "/src/plugins/mcp/index.js": "9b557e1626c7",
-    "/src/plugins/places/index.js": "17eb4746ea71",
+    "/src/plugins/places/index.js": "60670fd0d251",
     "/src/plugins/sensors/index.js": "816a2602dd98",
     "/src/plugins/skills/index.js": "f3abb206048e",
     "/src/plugins/voice-browser/capture-worklet.js": "1667d451add2",
     "/src/plugins/voice-browser/player-worklet.js": "f57ca4ed8415",
     "/src/plugins/voice-browser/index.js": "bf3e200a094a",
-    "/src/plugins/web/free.js": "191f3922eecb",
-    "/src/plugins/web/index.js": "45bec7b946c5",
+    "/src/plugins/web/free.js": "ed25031b21a0",
+    "/src/plugins/web/index.js": "719edf8a0edb",
     "/src/ui/base.css": "ac3c36541e56",
     "/src/ui/cards.js": "cc78cef84d11",
     "/src/ui/composer.js": "144e829fde79",
@@ -300,8 +300,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "0c2fe9569e95",
-    "/l10n/zh-Hans.json": "c1ccfb2ce191",
-    "/l10n/zh-Hant.json": "33c6351e91e4"
+    "/l10n/ja.json": "725bfc51c917",
+    "/l10n/zh-Hans.json": "806f7c990e0c",
+    "/l10n/zh-Hant.json": "246a9eb2b7bf"
   }
 }

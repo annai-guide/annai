@@ -17,8 +17,8 @@ import { t } from '../../core/l10n.js';
 const LIMIT_MS = 12_000;
 /**
  * The whole floor's time, every part and try. The chain keeps CHAIN.reserve (10 s) for the floor (web/index.js reserveFor); the floor ends a
- * second inside it, with what came, so the chain's own stop never drops its rows (the second: the floor's start and the chain's bookkeeping take
- * milliseconds). A slow link (2.5 s an answer: three tries in series 7.5 s) still finishes inside it.
+ * second inside it (its start and the chain's bookkeeping take milliseconds), so the chain's stop never drops its rows. At 2.5 s an answer
+ * Wikipedia's three tries in series (7.5 s) finish inside it; the guide's four (its tries, then its text: 10 s) are cut, the other rows come.
  */
 export const FLOOR_MS = { ms: CHAIN.reserve - 1_000 };
 
@@ -128,13 +128,13 @@ export const knowledgeFloor = (orderOf) => ({
   id: 'wiki', name: /* en */ 'Wikivoyage, Wikipedia and Nominatim', shown: t`Wikivoyage, Wikipedia and Nominatim`, kind: 'knowledge', always: true, limitMs: LIMIT_MS,
   /** @param {string} query @param {{ fetch: any, signal: AbortSignal, limit: number }} c */
   async search(query, { fetch: get, signal, limit }) {
+    // One time for the whole floor, from the start of its search (the settings read counts): what has answered by then is its answer.
+    const late = AbortSignal.timeout(FLOOR_MS.ms);
+    const stop = anySignal([signal, late]);
     const order = await orderOf();
     const found = keywords(query);
     const want = found.length ? found : [query.trim().toLowerCase()];
     const enc = encodeURIComponent;
-    // One time for the whole floor: what has answered by then is its answer, a request still waiting a late one.
-    const late = AbortSignal.timeout(FLOOR_MS.ms);
-    const stop = anySignal([signal, late]);
     /** @param {string} url */
     const json = async (url) => {
       const host = new URL(url).hostname;
@@ -143,10 +143,10 @@ export const knowledgeFloor = (orderOf) => ({
         if (!res.ok) throw Object.assign(new Error(`${host} answered ${res.status}`), { status: res.status });
         const data = await answerJSON(res, host);
         const said = wikiSaid(data);
-        if (said) throw new Error(`${host} said: ${said}.`);
+        if (said) throw new Error(`${host} said: ${said}`);
         return data;
       } catch (e) {
-        throw late.aborted ? Object.assign(new Error('late'), { late: true }) : e;
+        throw late.aborted ? Object.assign(new Error(`${host} didn't answer in time`), { late: true }) : e;
       }
     };
     const api = (/** @type {string} */ host, /** @type {string} */ qs) => `https://${host}/w/api.php?${qs}&format=json&origin=*`;
@@ -177,8 +177,8 @@ export const knowledgeFloor = (orderOf) => ({
       return (Array.isArray(found) ? found : []).filter((f) => f?.extratags?.website)
         .map((f) => ({ title: f.name || f.display_name, url: f.extratags.website, snippet: [f.display_name, f.extratags.opening_hours ? `Hours: ${f.extratags.opening_hours}` : ''].filter(Boolean).join('. ') }));
     };
-    // Every part asks at once, each edition too. The rows are what answered: the guide's, Nominatim's websites, and the articles of the first
-    // edition in the order that found any. With no rows, a failure anywhere is the failure, in words; with none, nothing found.
+    // Every part asks at once, each edition too. The rows are what answered: the guide's, Nominatim's websites, the first edition's articles
+    // that found any. With no rows, the first failure is the failure, in words; with none, nothing found.
     const editions = editionsOf(order);
     const parts = await Promise.allSettled([guide(), places(), ...editions.map((e) => hits(`${e}.wikipedia.org`))]);
     const [guideRows, placeRows, ...editionHits] = parts;

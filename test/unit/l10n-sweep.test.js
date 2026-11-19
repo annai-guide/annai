@@ -92,6 +92,7 @@ test("a typed address, prices and a server's answer: the screens' words, and Eng
 test("an offline pack's failure: which part and why, in Japanese from the data it keeps", () => {
   assert.equal(partWords({ source: 'osm', place: { how: 'between', names: ['Bixby', 'Nepenthe'] } }), 'BixbyとNepentheの間のOpenStreetMap');
   assert.equal(failWords({ code: 'osm', inner: { code: 'status', where: 'overpass.example', status: 504 }, message: 'x' }), 'OpenStreetMapから応答がありませんでした（overpass.exampleが504を返しました）。');
+  assert.equal(failWords({ code: 'osm', inner: null, message: null }), 'OpenStreetMapから応答がありませんでした（このダウンロードでは、すべてのサーバーを使わないことにしました）。');
 });
 
 // Review 1: one said vocabulary for servers (answer.js), kept by holds and a pack's failures, and an export's failure (archive.js).
