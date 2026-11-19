@@ -59,6 +59,8 @@ transcripts date them). A line changes only on the user's word.
 - **Worktrees live inside the project and are cleaned after merge:** "maybe let's try to clean after them or keep them
   inside the annai project folder?" (2026-11-11).
 
+Chief's order of work on usage (chief's, not the user's words; 2026-11-19 01:20 PST): message chief when account a's week reads 70%; at 85%, start no new build, land what is running, and message chief one line (a's last 15 points are kept for Friday's fixes from the user's phone checks; b's reserve of 17 points is a hand move by chief). Read: `jq -c '.rate_limits["claude-a"].seven_day.used_percentage' ~/.cache/hwstat/claude-sessions/<this session's id>.json`.
+
 ## Open
 
 States: not started, planning, building, under review, merged, paused (on what).
