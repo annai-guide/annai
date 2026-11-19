@@ -63,21 +63,24 @@ test("what's cached of one request is a prefix of the next: the now block comes 
   assert.equal(JSON.stringify(second).includes('16:12'), false);
 });
 
-test('the snapshot: memory waits for a cold cache, a personality change comes at the next wake, a new trip is a new snapshot', async () => {
+test("the snapshot: her own memory write waits for a cold cache, a personality change comes at the next wake and takes the whole snapshot with it, a new trip is a new snapshot", async () => {
   const { ws, trip, registry } = await setup();
   const take = () => takeSnapshot({ ws, registry, trip, personalityName: 'shiori' });
   const first = await take();
   await ws.write(ME, '/memory.md', '# Memory\n- Vegetarian\n- Loves tide pools\n', { author: 'shiori' });
+  assert.equal(nextSnapshot(first, await take(), { cold: false }), first, 'her memory write alone: the snapshot it had');
   await ws.write(ME, '/personalities/shiori.md', '# Shiori\nWarm, brief, and quiet while driving.\n', { author: 'shiori' });
+  // The system text is one block with one cache marker, so a rewrite takes her held memory too, as a cold wake would.
   const warm = nextSnapshot(first, await take(), { cold: false });
-  assert.doesNotMatch(warm.memory, /tide pools/);
   assert.match(warm.personality, /quiet while driving/);
+  assert.match(warm.memory, /tide pools/);
+  assert.deepEqual(warm, await take());
   assert.match(nextSnapshot(first, await take(), { cold: true }).memory, /tide pools/);
   const other = await createTrip(ws, { title: 'Kyoto' });
   assert.equal(nextSnapshot(first, await takeSnapshot({ ws, registry, trip: other, personalityName: 'shiori' }), { cold: false }).trip, other);
 });
 
-test("a profile, global memory or trip memory edit the user made shows at her next wake, warm cache or not; her own writes, annai's start-up and an unknown author's wait for a cold cache (the snapshot review: S1)", async () => {
+test("a profile, global memory, trip memory or trip.json edit the user made shows at her next wake, warm cache or not, and so does a memory file they deleted; her own writes, annai's start-up and a plugin's wait for a cold cache (the snapshot review: S1)", async () => {
   const { ws, trip, registry } = await setup();
   const take = () => takeSnapshot({ ws, registry, trip, personalityName: 'shiori' });
   const warm = async (/** @type {import('../../src/core/agent/context.js').Snapshot} */ prev) => nextSnapshot(prev, await take(), { cold: false });
@@ -88,15 +91,15 @@ test("a profile, global memory or trip memory edit the user made shows at her ne
   await ws.write(ME, '/profile.md', '# Profile\n\n- Units: miles\n', { author: 'system' });
   assert.equal(await warm(first), first, "hers and annai's");
   await ws.write(ME, '/profile.md', '# Profile\n\n- Units: metric\n', { author: 'plugin:mcp' });
-  assert.equal(await warm(first), first, 'an author that is not the user');
-  // The user's own edit of the profile (the Files screen): the next wake, and only that part; hers still wait.
+  assert.equal(await warm(first), first, "a plugin's");
+  // The user's own edit of the profile (an Undo of hers, or a backup brought in, writes it so): the next wake, taking the whole snapshot, hers included.
   await ws.write(ME, '/profile.md', '# Profile\n\n- Call me Mia\n', { author: 'user' });
   const edited = await warm(first);
   assert.notEqual(edited, first);
   assert.match(edited.profile, /Call me Mia/);
   assert.match(systemText(edited), /# About the user \(\/me\/profile\.md\)\n# Profile\n\n- Call me Mia/);
-  assert.doesNotMatch(edited.memory, /tide pools/);
-  assert.doesNotMatch(edited.tripMemory, /Hike/);
+  assert.match(edited.memory, /tide pools/);
+  assert.match(edited.tripMemory, /Hike/);
   assert.equal(await warm(edited), edited, 'once: the snapshot it had');
   // Her write over theirs waits; so does a start-up rewrite.
   await ws.write(ME, '/profile.md', '# Profile\n\n- Call me Mia\n- Likes quiet\n', { author: 'shiori' });
@@ -105,7 +108,7 @@ test("a profile, global memory or trip memory edit the user made shows at her ne
   await ws.write(ME, '/memory.md', '# Memory\n- Vegetarian\n- Allergic to nuts\n', { author: 'user' });
   const memory = await warm(edited);
   assert.match(memory.memory, /Allergic to nuts/);
-  assert.equal(memory.profile, edited.profile);
+  assert.match(memory.profile, /Likes quiet/, 'hers, held until now, comes with it');
   assert.equal(await warm(memory), memory);
   await ws.write(trip, '/memory.md', '# Trip memory\n- Hike on day 3\n', { author: 'user' });
   const tripMemory = await warm(memory);
@@ -116,6 +119,28 @@ test("a profile, global memory or trip memory edit the user made shows at her ne
   await ws.write(trip, '/memory.md', '# Trip memory\n- Hike on day 3\n- Lunch at the pier\n', { author: 'shiori' });
   assert.equal(await warm(tripMemory), tripMemory);
   assert.match(nextSnapshot(tripMemory, await take(), { cold: true }).tripMemory, /Lunch at the pier/);
+});
+
+test("a memory file the user deletes goes from her text at the next wake, once; one she or annai deletes waits for a cold cache (the snapshot review: F1)", async () => {
+  const { ws, trip, registry } = await setup();
+  const take = () => takeSnapshot({ ws, registry, trip, personalityName: 'shiori' });
+  const warm = async (/** @type {import('../../src/core/agent/context.js').Snapshot} */ prev) => nextSnapshot(prev, await take(), { cold: false });
+  await ws.write(trip, '/memory.md', '# Trip memory\n- Lunch at the pier\n', { author: 'shiori' });
+  const kept = await take();
+  assert.match(systemText(kept), /Lunch at the pier/);
+  await ws.delete(trip, '/memory.md', { author: 'user' }); // the Files screen's Delete
+  const gone = await warm(kept);
+  assert.notEqual(gone, kept);
+  assert.equal(gone.tripMemory, '');
+  assert.match(systemText(gone), /# Trip memory\n\(empty\)/);
+  assert.equal(await warm(gone), gone, 'once, though the file is still gone');
+  await ws.write(trip, '/memory.md', '# Trip memory\n- Back on day 4\n', { author: 'shiori' });
+  const back = await take();
+  await ws.delete(trip, '/memory.md', { author: 'shiori' });
+  assert.equal(await warm(back), back, 'hers: she knows it from the transcript');
+  // Annai's own deletion waits too: only the user's counts.
+  await ws.delete(ME, '/memory.md', { author: 'system' });
+  assert.equal(await warm(back), back, "annai's");
 });
 
 test('the now block: local time to the second and zone, voice, connection, why she woke, and the next plan items as TSV', async () => {
@@ -394,15 +419,111 @@ test("a conversation that gets dates is rewritten at her next wake whoever named
   assert.equal(nextSnapshot(dated, { ...(await take(chat)), tripInfo: '' }, { cold: false }), dated);
 });
 
-test("a conversation whose name's author can't be told doesn't rewrite the snapshot at every wake (the snapshot review: S3)", async () => {
+test("a dated trip whose dates the user moves in Details shows the new ones at her next wake, warm cache or not, once; her own patch of it waits (the snapshot review: F1)", async () => {
+  const { ws, registry } = await setup();
+  const take = (/** @type {string} */ chat) => takeSnapshot({ ws, registry, trip: chat, personalityName: 'shiori' });
+  const warm = async (/** @type {string} */ chat, /** @type {import('../../src/core/agent/context.js').Snapshot} */ prev) => nextSnapshot(prev, await take(chat), { cold: false });
+  // Still dated, so the dated state doesn't say it.
+  const trip = await createTrip(ws, { title: 'Kyoto', start: '2027-01-01', end: '2027-01-03' });
+  const first = await take(trip);
+  await ws.patch(trip, '/trip.json', { party: ['Mia'] }, { author: 'shiori' });
+  assert.equal(await warm(trip, first), first, 'her party patch waits');
+  await ws.patch(trip, '/trip.json', { start: '2027-01-08', end: '2027-01-10' }, { author: 'user' });
+  const moved = await warm(trip, first);
+  assert.notEqual(moved, first);
+  assert.match(systemText(moved), /"start": "2027-01-08"/);
+  assert.doesNotMatch(systemText(moved), /2027-01-01/);
+  assert.match(systemText(moved), /"Mia"/, 'the file as it is now');
+  assert.equal(await warm(trip, moved), moved, 'once');
+  await ws.patch(trip, '/trip.json', { party: ['Mia', 'Ken'] }, { author: 'shiori' });
+  assert.equal(await warm(trip, moved), moved, 'and her patch after theirs waits');
+  assert.match(nextSnapshot(moved, await take(trip), { cold: true }).tripInfo, /"Ken"/);
+});
+
+test("a party member the user adds in Details to a chat they named shows at her next wake, once, and the chat stays undated and theirs (the snapshot review: F1)", async () => {
+  const { ws, registry } = await setup();
+  const take = (/** @type {string} */ chat) => takeSnapshot({ ws, registry, trip: chat, personalityName: 'shiori' });
+  const chat = await createTrip(ws, { title: 'Where should we eat?' });
+  const first = await take(chat);
+  await ws.patch(chat, '/trip.json', { party: ['Ken'] }, { author: 'user' });
+  const next = nextSnapshot(first, await take(chat), { cold: false });
+  assert.notEqual(next, first);
+  assert.match(systemText(next), /"Ken"/);
+  assert.match(systemText(next), /# This conversation has no dates\nKeep its name unless they ask to change it/);
+  assert.equal(nextSnapshot(next, await take(chat), { cold: false }), next, 'once');
+  // A trip.json that can't be read says nothing of it.
+  assert.equal(nextSnapshot(next, { ...(await take(chat)), tripInfo: '' }, { cold: false }), next);
+});
+
+test("a rename in Details of a name that was already theirs shows at her next wake, once (the snapshot review: F1)", async () => {
+  const { ws, registry } = await setup();
+  const take = (/** @type {string} */ chat) => takeSnapshot({ ws, registry, trip: chat, personalityName: 'shiori' });
+  const chat = await createTrip(ws, { title: 'Where should we eat?' }); // Start a trip's name: the user's
+  const first = await take(chat);
+  await ws.update(chat, '/trip.json', (/** @type {any} */ t) => ({ ...t, title: 'Where to eat in Osaka?' }), { author: 'user' });
+  const next = nextSnapshot(first, await take(chat), { cold: false });
+  assert.notEqual(next, first);
+  assert.match(systemText(next), /"title": "Where to eat in Osaka\?"/);
+  assert.equal(nextSnapshot(next, await take(chat), { cold: false }), next, 'once');
+});
+
+test("a name she wrote, which the user renamed in Details while her turn ran, and she then wrote trip.json in that same turn: the next wake tells her it is theirs, and then holds (the snapshot review: the naming clause)", async () => {
+  const { ws, registry } = await setup();
+  const take = (/** @type {string} */ chat) => takeSnapshot({ ws, registry, trip: chat, personalityName: 'shiori' });
+  const chat = await createTrip(ws, { title: DRAFT_TITLE }, { draft: true });
+  await ws.update(chat, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: 'Hi' }), { author: 'system' });
+  await ws.update(chat, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: 'Packing for cold weather' }), { author: 'shiori' });
+  const hers = await take(chat);
+  assert.match(systemText(hers), /You wrote its name: keep it if they chose it, improve it if you did/);
+  await ws.update(chat, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: 'Sapporo with Ken' }), { author: 'user' });
+  await ws.update(chat, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, party: ['Ken'] }), { author: 'shiori' }); // the latest write is hers
+  const next = nextSnapshot(hers, await take(chat), { cold: false });
+  assert.notEqual(next, hers);
+  assert.match(systemText(next), /"title": "Sapporo with Ken"/);
+  assert.match(systemText(next), /Keep its name unless they ask to change it/);
+  assert.doesNotMatch(systemText(next), /You wrote its name/);
+  assert.equal(nextSnapshot(next, await take(chat), { cold: false }), next, 'once');
+});
+
+test("annai's first name for a draft replaces the placeholder in her text at the next wake, once (a voice-first conversation, named when its words come); a rename of annai's, or her own patch of an undated chat's name, still holds (the snapshot review: F3)", async () => {
+  const { ws, registry } = await setup();
+  const take = (/** @type {string} */ chat) => takeSnapshot({ ws, registry, trip: chat, personalityName: 'shiori' });
+  const warm = async (/** @type {string} */ chat, /** @type {import('../../src/core/agent/context.js').Snapshot} */ prev) => nextSnapshot(prev, await take(chat), { cold: false });
+  const chat = await createTrip(ws, { title: DRAFT_TITLE }, { draft: true });
+  const first = await take(chat);
+  assert.ok(systemText(first).includes(`"title": "${DRAFT_TITLE}"`));
+  await ws.update(chat, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: 'Kyoto flights' }), { author: 'system' });
+  const named = await warm(chat, first);
+  assert.notEqual(named, first);
+  assert.match(systemText(named), /"title": "Kyoto flights"/);
+  assert.match(systemText(named), /Its name is a first guess/, "still annai's guess");
+  assert.equal(await warm(chat, named), named, 'once');
+  // Not the placeholder any more: annai's own later rename holds (a file's name, then the words typed with it), and so does her title-only patch (F7).
+  await ws.update(chat, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: 'Kyoto flights and hotels' }), { author: 'system' });
+  assert.equal(await warm(chat, named), named, "annai's later rename");
+  await ws.update(chat, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: 'Kyoto in spring' }), { author: 'shiori' });
+  assert.equal(await warm(chat, named), named, 'her patch');
+});
+
+test("a conversation whose name's author can't be told doesn't rewrite the snapshot at every wake, from one that knew the name as hers: at most one change (the snapshot review: S3)", async () => {
   const { ws, registry } = await setup();
   const bare = (/** @type {() => Promise<any>} */ history) => new Proxy(ws, { get: (o, key) => (key === 'history' ? history : typeof (/** @type {any} */ (o))[key] === 'function' ? (/** @type {any} */ (o))[key].bind(o) : (/** @type {any} */ (o))[key]) });
   const chat = await createTrip(ws, { title: DRAFT_TITLE }, { draft: true });
+  await ws.update(chat, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: 'Hi' }), { author: 'system' });
   await ws.update(chat, '/trip.json', (/** @type {any} */ trip) => ({ ...trip, title: "Ken's birthday" }), { author: 'shiori' });
+  const named = await takeSnapshot({ ws, registry, trip: chat, personalityName: 'shiori' });
+  assert.match(systemText(named), /You wrote its name/, 'a snapshot that knows it');
   for (const history of [async () => [], async () => { throw new Error('the store failed'); }]) {
     const take = () => takeSnapshot({ ws: bare(history), registry, trip: chat, personalityName: 'shiori' });
-    const first = await take();
-    for (let wake = 0; wake < 3; wake++) assert.equal(nextSnapshot(first, await take(), { cold: false }), first, `wake ${wake}`);
+    let prev = named;
+    let changes = 0;
+    for (let wake = 0; wake < 3; wake++) {
+      const next = nextSnapshot(prev, await take(), { cold: false });
+      if (next !== prev) changes++;
+      prev = next;
+    }
+    assert.ok(changes <= 1, `${changes} changes in 3 wakes`);
+    assert.match(systemText(prev), /Keep its name unless they ask/, 'unknown is kept as the user\'s');
   }
 });
 

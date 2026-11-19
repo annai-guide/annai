@@ -21,12 +21,13 @@ import { fixedWords, timeUnsure, bookingRef } from '../plan.js';
  * 4. the now block, last, after the cache marker.
  * @typedef {{ trip: string | null, personalityName: string, personality: string, profile: string, memory: string,
  *   tripInfo: string, guessed?: boolean, hers?: boolean, tripMemory: string, skills: { name: string, description: string }[], languages?: string, edited?: Partial<Record<import('./her-instructions.js').InstructionId, string>>,
- *   elsewhere?: string, byUser?: ('profile' | 'memory' | 'tripMemory')[] }} Snapshot
+ *   elsewhere?: string, byUser?: Part[] }} Snapshot
  *   languages: the languages section's words, from the languages setting; edited: the instructions the user changed (her-instructions.js);
- *   byUser: which of profile, memory and tripMemory the user wrote last;
+ *   byUser: which of profile, memory, tripMemory and tripInfo the user changed last (deleting a file is a change);
  *   elsewhere: for an undated one, what read_trip may mean (the happening trips, the latest others);
  *   guessed: the trip's name is annai's own first guess (a first line's words or a file's name, the system's write of trip.json, or the draft's
  *   placeholder); hers: an undated one's name is one she wrote, her own or one the user asked for; neither: the user's, or its author unknown
+ * @typedef {'profile' | 'memory' | 'tripMemory' | 'tripInfo'} Part
  * @typedef {import('../llm/contract.js').Request} Request
  */
 
@@ -36,18 +37,19 @@ import { fixedWords, timeUnsure, bookingRef } from '../plan.js';
  * @returns {Promise<Snapshot>}
  */
 export async function takeSnapshot({ ws, registry, trip, personalityName, locale }) {
-  /** @type {NonNullable<Snapshot['byUser']>} */
+  /** @type {Part[]} */
   const byUser = [];
-  const read = async (/** @type {string} */ scope, /** @type {string} */ path, /** @type {'profile' | 'memory' | 'tripMemory' | undefined} */ part = undefined) => {
+  // A file gone says who deleted it by its history (the scope's whole log), read only then.
+  const read = async (/** @type {string} */ scope, /** @type {string} */ path, /** @type {Part | undefined} */ part = undefined) => {
     const r = await ws.read(scope, path).catch(() => undefined);
-    if (part && r?.entry.author === 'user') byUser.push(part);
+    if (part && (r ? r.entry.author : (await ws.history(scope, path).catch(() => [])).at(-1)?.actor) === 'user') byUser.push(part);
     return r ? text(r.bytes) : '';
   };
   const tripJson = trip ? await ws.readJSON(trip, '/trip.json').catch(() => null) : null;
-  // Whose name it is: annai's naming (Chats) writes trip.json as the system; a rename in Details is the user's, as Start a trip's name was (before
-  // timeline stage 8). After a write of hers to an undated one, whoever wrote the version that first held the name (F7); unknown (no history, a read
-  // that failed) is kept.
+  // Whose name it is: annai's naming (Chats) writes trip.json as the system; a rename in Details is the user's. After a write of hers to an
+  // undated one, whoever wrote the version that first held the name (F7); unknown (no history, a read that failed) is kept.
   const author = trip && tripJson ? (await ws.read(trip, '/trip.json').catch(() => undefined))?.entry.author : undefined;
+  if (author === 'user') byUser.push('tripInfo');
   const by = author === 'shiori' && !tripJson.start ? await namedBy(ws, /** @type {string} */ (trip), tripJson.title).catch(() => '') : author;
   const guessed = Boolean(tripJson) && (tripJson.title === DRAFT_TITLE || by === 'system');
   const app = await readAppSettings(ws);
@@ -97,27 +99,23 @@ async function elsewhere(ws, trip) {
 }
 
 /**
- * The snapshot for this wake. Rewriting the prefix costs a cold cache, so it happens only when the
- * cache is cold or about to expire (spec §6.4), or for another trip. What the user chose just now comes at the next wake whatever
- * the cache (§14.1); her own edits wait: she has them in the transcript.
+ * The snapshot for this wake: the one it has while the cache is warm (spec §6.4); a new one, whole (the system text is one block), when the
+ * cache is cold or about to expire, for another trip, and for what the user chose or wrote just now (§6.3, item 2). Her own edits wait.
  * @param {Snapshot | null} prev @param {Snapshot} fresh @param {{ cold: boolean }} c @returns {Snapshot}
  */
 export function nextSnapshot(prev, fresh, { cold }) {
   if (!prev || cold || prev.trip !== fresh.trip) return fresh;
-  const samePersonality = prev.personality === fresh.personality && prev.personalityName === fresh.personalityName;
-  // A skill installed or removed shows at once, as a new tool does.
-  const sameSkills = JSON.stringify(prev.skills) === JSON.stringify(fresh.skills);
-  // So does a change of the languages setting, or of her instructions: the user chose it just now.
-  const sameEdits = JSON.stringify(prev.edited ?? {}) === JSON.stringify(fresh.edited ?? {});
-  // So does their own edit of the profile or a memory file.
-  const wrote = /** @type {const} */ (['profile', 'memory', 'tripMemory']).filter((k) => fresh.byUser?.includes(k) && fresh[k] !== prev[k]);
-  // And the trip's text when it would be wrong: dates given or taken away, or a name that became the user's (Details). Not her own title-only
-  // patch of an undated chat, nor a trip.json that couldn't be read.
+  // A personality, a skill, the languages setting and her instructions: the user chose it just now, as a new tool shows at once.
+  const same = prev.personality === fresh.personality && prev.personalityName === fresh.personalityName && prev.languages === fresh.languages
+    && JSON.stringify(prev.skills) === JSON.stringify(fresh.skills) && JSON.stringify(prev.edited ?? {}) === JSON.stringify(fresh.edited ?? {});
+  // A text whose latest change is theirs (a delete too), when it differs from what she holds.
+  const wrote = (/** @type {Part} */ k) => Boolean(fresh.byUser?.includes(k) && fresh[k] !== prev[k]);
   const named = (/** @type {Snapshot} */ s) => s.guessed || s.hers;
-  const tripNow = Boolean(fresh.tripInfo) && (datedInfo(prev.tripInfo) !== datedInfo(fresh.tripInfo) || (named(prev) && !named(fresh)));
-  if (samePersonality && sameSkills && sameEdits && !wrote.length && !tripNow && prev.languages === fresh.languages) return prev;
-  const { tripInfo, guessed, hers } = fresh;
-  return { ...prev, personality: fresh.personality, personalityName: fresh.personalityName, skills: fresh.skills, languages: fresh.languages, edited: fresh.edited, ...Object.fromEntries(wrote.map((k) => [k, fresh[k]])), ...(tripNow ? { tripInfo, guessed, hers, elsewhere: fresh.elsewhere } : {}) };
+  // The trip's text: dates given or taken away; a name that became the user's, though she wrote trip.json since; the draft's placeholder
+  // replaced; their own edit. Not her own patch, nor a trip.json that couldn't be read.
+  const tripNow = Boolean(fresh.tripInfo) && (datedInfo(prev.tripInfo) !== datedInfo(fresh.tripInfo) || (named(prev) && !named(fresh))
+    || (titleOf(prev.tripInfo) === DRAFT_TITLE && titleOf(fresh.tripInfo) !== DRAFT_TITLE) || wrote('tripInfo'));
+  return same && !tripNow && !(/** @type {const} */ (['profile', 'memory', 'tripMemory']).some(wrote)) ? prev : fresh;
 }
 
 /** The skill index (spec §6.3): each skill's name and description, once per name (its owner's). @param {import('../registry.js').Registry} registry */
@@ -144,14 +142,20 @@ export function systemText(s, part = '') {
   return parts.join('\n\n');
 }
 
-/** Whether a snapshot's trip.json has a start. @param {string} info */
-function datedInfo(info) {
+/** A snapshot's trip.json, as an object: empty when it has none or can't be read. @param {string} info @returns {any} */
+function tripOf(info) {
   try {
-    return Boolean(JSON.parse(info)?.start);
+    return JSON.parse(info) ?? {};
   } catch {
-    return false;
+    return {};
   }
 }
+
+/** Whether a snapshot's trip.json has a start. @param {string} info */
+const datedInfo = (info) => Boolean(tripOf(info).start);
+
+/** A snapshot's trip.json's title. @param {string} info */
+const titleOf = (info) => tripOf(info).title;
 
 /** A trip's plan items that have a start, soonest first. @param {import('../workspace.js').Workspace} ws @param {string} trip @returns {Promise<{ at: number, it: any }[]>} */
 export async function planItems(ws, trip) {

@@ -643,6 +643,11 @@ export class Agent {
     this.#kept = { scope: '', through: 0, map: new Map() };
   }
 
+  /** An import replaced "me": the next wake takes a fresh snapshot (the files keep the backup's authors, which a warm one follows only when they are the user's). */
+  forgetSnapshot() {
+    this.#snapshot = null;
+  }
+
   /** The user's Try again after a turn that said nothing to them: her turn again, answering their last message. */
   tryAgain() {
     this.wake({ kind: 'cue', text: AGAIN, again: true, scope: this.scope });

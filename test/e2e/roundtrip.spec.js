@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, buildAndSave, pastWelcome, allFiles, startTrip, goHome, goToHash } from './helpers.js';
+import { openApp, buildAndSave, pastWelcome, allFiles, startTrip, goHome, goToHash, startModelServer, addProvider, anthropicToolReply, waitForServiceWorker } from './helpers.js';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
-import { ensureBaseScopes, createTrip } from '../../src/core/scopes.js';
+import { ensureBaseScopes, createTrip, ME } from '../../src/core/scopes.js';
 import { exportArchive, PRESETS } from '../../src/core/archive.js';
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
@@ -51,6 +51,47 @@ test('everything survives export, erase and import', async ({ page }) => {
   await page.getByRole('link', { name: 'Details', exact: true }).click();
   await page.getByRole('link', { name: /\/files\/gate\.(webp|jpg)/ }).click();
   await expect(page.getByRole('img', { name: /\/files\/gate\.(webp|jpg)/ })).toBeVisible();
+});
+
+test("an import of my profile while a conversation is open reaches her next request, though its last writer was she on the old phone and the cache is warm (the snapshot review: F3)", async ({ page }) => {
+  const store = createMemoryStore();
+  const ws = new Workspace(store);
+  await ensureBaseScopes(ws);
+  await ws.write(ME, '/profile.md', '# Profile\n\n- Call me Mia\n', { author: 'shiori' });
+  // The personality the app has seeded: a replaced "me" changes nothing else she reads, so the profile alone is what could refresh her snapshot.
+  await ws.write(ME, '/personalities/shiori.md', await readFile(new URL('../../assets/personalities/shiori.md', import.meta.url), 'utf8'), { author: 'user' });
+  const { blob } = await exportArchive(store, { kind: 'everything', include: PRESETS.backup, app: '0.1.0' });
+  const body = Buffer.from(await blob.arrayBuffer());
+  const reply = { status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'speak', input: { text: 'Hello.' } }, { name: 'sleep', input: {} }]) };
+  const llm = await startModelServer({ '/b/v1/messages': [reply, reply] });
+  try {
+    await openApp(page, '#/models');
+    await waitForServiceWorker(page);
+    await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Stand-in', url: `${llm.origin}/b`, key: 'sk-test-b', model: 'b-model' });
+    await page.getByLabel('Add a model to main').selectOption({ label: 'Stand-in / b-model' });
+    await page.getByRole('button', { name: 'Add to main' }).click();
+    // A conversation the user named, so annai's naming of a draft can't be what refreshes her snapshot.
+    const id = await startTrip(page, 'Big Sur');
+    const say = async (/** @type {string} */ words, /** @type {number} */ n) => {
+      if (!(await page.getByLabel('Message to Shiori').isVisible())) await page.getByRole('button', { name: 'Type', exact: true }).click();
+      await page.getByLabel('Message to Shiori').fill(words);
+      await page.getByRole('button', { name: 'Send', exact: true }).click();
+      await expect(page.locator('.convo .shiori p')).toHaveCount(n, { timeout: 20_000 });
+    };
+    await say('Hi', 1);
+    await goHome(page);
+    await page.getByLabel('Open an annai file').setInputFiles({ name: 'me.annai.zip', mimeType: 'application/zip', buffer: body });
+    await page.getByLabel('Replace my profile and memory with the ones in this file').check();
+    await page.getByRole('button', { name: 'Import' }).click();
+    await expect(page.getByText('Imported.')).toBeVisible();
+    await goToHash(page, `#/trip/${encodeURIComponent(id)}`);
+    await say('Hi again', 2);
+    const [first, second] = llm.bodies('/b/v1/messages');
+    expect(JSON.stringify(first.system)).not.toContain('Call me Mia');
+    expect(JSON.stringify(second.system)).toContain('Call me Mia');
+  } finally {
+    await llm.stop();
+  }
 });
 
 test('an encrypted trip opens only with its passphrase, and can replace the copy you have', async ({ page }) => {

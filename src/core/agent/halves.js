@@ -1060,6 +1060,11 @@ export class Halves {
     this.typing(false); // the page went: nobody types into it
   }
 
+  /** An import replaced "me": each half's next wake takes a fresh snapshot. */
+  forgetSnapshot() {
+    for (const a of [this.kokoro, this.koe]) a.forgetSnapshot();
+  }
+
   /** The page is back in view: what waited for it is said; the microphone opens only at a tap. */
   shown() {
     if (this.koeState === 'live') this.#route(() => this.live.shown());
