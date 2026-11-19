@@ -42,7 +42,7 @@ async function ownAddress(chat, s) {
   await expect(chat.locator('.saved', { hasText: 'Saved' })).toBeVisible();
 }
 
-test("a list fetched under the ability's old address goes, where it stands, when Its own address is saved as another; the page is not drawn, and a Fetch then lists the new server's (fails on main: the old list stayed, its Add live)", async ({ page }) => {
+test("a list fetched under the ability's old address goes, where it stands, when Its own address is saved as another; the filter box stays, with its text, and the page is not drawn, and a Fetch then lists the new server's by that text (fails on main: the old list stayed, its Add live)", async ({ page }) => {
   const a = await startFakeServer({ flavour: 'llamacpp', key: KEY, models: [model('old-one'), model('old-two')] });
   const b = await startFakeServer({ flavour: 'llamacpp', key: KEY, models: [model('new-one')] });
   try {
@@ -50,12 +50,22 @@ test("a list fetched under the ability's old address goes, where it stands, when
     await chat.getByRole('button', { name: 'Fetch model list' }).click();
     await expect(chat.getByText('2 models.')).toBeVisible();
     await chat.getByLabel('Add a model by id').evaluate((el) => { el.dataset.mine = '1'; });
+    const filter = chat.getByLabel('Filter the list');
+    await filter.fill('old-t');
+    await expect(chat.getByRole('button', { name: 'Add old-two' })).toBeVisible();
+    await filter.evaluate((el) => { el.dataset.mine = '1'; });
     await ownAddress(chat, b);
-    await expect(chat.getByRole('button', { name: 'Add old-one' })).toHaveCount(0);
+    await expect(chat.getByRole('button', { name: 'Add old-two' })).toHaveCount(0);
     await expect(chat.getByText('2 models.')).toHaveCount(0);
     await expect(chat.getByLabel('Add a model by id'), 'the page was not drawn').toHaveAttribute('data-mine', '1');
+    // The box is not taken from under the traveller's hands: the same element, its text still there, and the list empty.
+    await expect(filter).toHaveAttribute('data-mine', '1');
+    await expect(filter).toHaveValue('old-t');
+    await expect(chat.locator('ul.listed li')).toHaveCount(0);
     await chat.getByRole('button', { name: 'Fetch model list' }).click();
     await expect(chat.getByText('1 model.')).toBeVisible();
+    await expect(chat.getByRole('button', { name: 'Add new-one' }), 'filtered by what the box says').toHaveCount(0);
+    await filter.fill('');
     await expect(chat.getByRole('button', { name: 'Add new-one' })).toBeVisible();
   } finally {
     await a.stop();
@@ -94,8 +104,7 @@ test("a Fetch asked under the ability's old address lands nowhere once Its own a
     await ownAddress(chat, b);
     release();
     const fetchList = chat.getByRole('button', { name: 'Fetch model list' });
-    await expect(fetchList).toBeEnabled();
-    await page.waitForTimeout(500); // the rows of an answer that landed would be drawn after one read of the settings
+    await expect(fetchList).toBeEnabled(); // handled: the page gives the button back and tells the part in one block, which writes the count of a list that landed
     await expect(chat.getByText(/^\d+ models?\.$/)).toHaveCount(0);
     await expect(chat.getByRole('button', { name: 'Add old-one' })).toHaveCount(0);
     await expect(chat.getByText('Asking for its models…')).toHaveCount(0);
@@ -131,12 +140,15 @@ test("a Fetch asked before a Save of a new address lands nowhere in the page the
     const chat = await addLlamaCpp(page, a);
     const release = a.holdList();
     await fetchHeld(chat, a);
+    const asked = await chat.getByRole('button', { name: 'Fetch model list' }).elementHandle();
     await page.getByLabel('Address', { exact: true }).fill(`${b.origin}/v1`);
     await page.getByRole('button', { name: 'Save' }).click();
     await expect(page.getByLabel('Address', { exact: true })).toHaveValue(`${b.origin}/v1`);
     await expect(chat.getByText('Asking for its models…'), 'the page was drawn').toHaveCount(0);
     release();
-    await page.waitForTimeout(1000);
+    // The answer was handled once the button it was asked from, in the part drawn away, is back: the page sets that and tells the part on
+    // show in one block, which also writes the count of a list that landed, so the count checked next is already there if one did.
+    await expect.poll(() => asked?.evaluate((b) => /** @type {HTMLButtonElement} */ (b).disabled)).toBe(false);
     await expect(chat.getByText(/^\d+ models?\.$/)).toHaveCount(0);
     await expect(chat.getByRole('button', { name: 'Add old-one' })).toHaveCount(0);
   } finally {
@@ -144,6 +156,38 @@ test("a Fetch asked before a Save of a new address lands nowhere in the page the
     await b.stop();
   }
 });
+
+// What a Fetch asks under is the ability's address and the provider's headers, key header and key, as stored. A Save and Remove key draw the page; a
+// plugin's sign-in changes the key and draws nothing, so the part on show is told only if what is stored when the answer comes is what it was asked under.
+for (const what of ['key', 'headers', 'key header']) {
+  test(`a Fetch asked before the provider's ${what} changes in the store, the page not drawn, lands nowhere (fails when what it was asked under leaves out the ${what})`, async ({ page }) => {
+    const s = await startFakeServer({ flavour: 'llamacpp', key: KEY, models: [model('qwen3.8-flash')] });
+    try {
+      const chat = await addLlamaCpp(page, s);
+      await chat.getByLabel('Add a model by id').evaluate((el) => { el.dataset.mine = '1'; });
+      const release = s.holdList();
+      await fetchHeld(chat, s);
+      await page.evaluate(async (changed) => {
+        const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+        const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+        const { readConfig, saveProvider, setKey } = await import(/** @type {string} */ ('/src/core/llm/config.js'));
+        const store = await createIdbStore();
+        const ws = new Workspace(store);
+        const [rec] = Object.values((await readConfig(ws)).providers);
+        if (changed === 'key') await setKey(store, rec.id, 'sk-signed-in-again-0123');
+        else await saveProvider(ws, { ...rec, user: { ...rec.user, ...(changed === 'headers' ? { headers: { 'X-Signed-In': 'again' } } : { keyHeader: 'X-Api-Key' }) } });
+        store.close();
+      }, what);
+      release();
+      await expect(chat.getByRole('button', { name: 'Fetch model list' })).toBeEnabled(); // handled: the count of a list that landed is written with it
+      await expect(chat.getByText(/^\d+ models?\.$/)).toHaveCount(0);
+      await expect(chat.getByText('Asking for its models…')).toHaveCount(0);
+      await expect(chat.getByLabel('Add a model by id'), 'the page was not drawn').toHaveAttribute('data-mine', '1');
+    } finally {
+      await s.stop();
+    }
+  });
+}
 
 test("a Fetch's answer, landing while the filter is typed in: the box keeps its element, its text and its caret, its rows follow the text, and text typed elsewhere on the page stays (fails on main: the box was made again, empty)", async ({ page }) => {
   const s = await startFakeServer({ flavour: 'llamacpp', key: KEY, models: [model('qwen3.8-flash'), model('gemma5-small')] });
@@ -157,15 +201,38 @@ test("a Fetch's answer, landing while the filter is typed in: the box keeps its 
     const filter = chat.getByLabel('Filter the list');
     await filter.focus();
     await filter.pressSequentially('qwen', { delay: 5 });
-    await filter.evaluate((el) => { el.dataset.mine = '1'; });
+    await filter.evaluate((el) => { el.dataset.mine = '1'; /** @type {HTMLInputElement} */ (el).setSelectionRange(2, 2); }); // the caret in the middle: "qw|en"
     release();
     await expect(chat.getByText('2 models.')).toBeVisible();
     await expect(chat.getByRole('button', { name: 'Add qwen3.8-flash' })).toBeVisible();
     await expect(chat.getByRole('button', { name: 'Add gemma5-small' }), 'the rows follow the filter').toHaveCount(0);
-    expect(await filter.evaluate((el) => [/** @type {HTMLInputElement} */ (el).dataset.mine, /** @type {HTMLInputElement} */ (el).value, document.activeElement === el])).toEqual(['1', 'qwen', true]);
+    expect(await filter.evaluate((el) => [/** @type {HTMLInputElement} */ (el).dataset.mine, /** @type {HTMLInputElement} */ (el).value, document.activeElement === el, /** @type {HTMLInputElement} */ (el).selectionStart])).toEqual(['1', 'qwen', true, 2]);
     await expect(chat.getByLabel('Add a model by id')).toHaveValue('typed-elsewhere');
     await filter.fill('');
     await expect(chat.getByRole('button', { name: 'Add gemma5-small' })).toBeVisible();
+  } finally {
+    await s.stop();
+  }
+});
+
+test("a Fetch whose reading of the connection fails still gives the button and the status back, and says why (fails on main: stuck on \"Asking for its models…\", the button disabled)", async ({ page }) => {
+  const s = await startFakeServer({ flavour: 'llamacpp', key: KEY, models: [model('qwen3.8-flash')] });
+  try {
+    const chat = await addLlamaCpp(page, s);
+    const release = s.holdList();
+    await fetchHeld(chat, s);
+    // The key can't be read when the answer comes: the second reading of the connection fails.
+    await page.evaluate(() => {
+      const transaction = IDBDatabase.prototype.transaction;
+      IDBDatabase.prototype.transaction = function (stores, ...rest) {
+        if ([].concat(stores).includes('secrets')) throw new Error('the key store is unreadable');
+        return transaction.call(this, stores, ...rest);
+      };
+    });
+    release();
+    await expect(chat.getByRole('button', { name: 'Fetch model list' })).toBeEnabled();
+    await expect(chat.getByText('Asking for its models…')).toHaveCount(0);
+    await expect(chat.getByText('the key store is unreadable')).toBeVisible();
   } finally {
     await s.stop();
   }

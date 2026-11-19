@@ -174,8 +174,8 @@ test('two providers at one router: the second\'s list offers a model the first h
         // The page was drawn; a list fetched now has this provider's utils left out.
         await chat.getByRole('button', { name: 'Fetch model list' }).click();
         await expect(chat.getByText('2 models.')).toBeVisible();
+        await expect(listed.getByRole('button', { name: 'Add qwen-free' })).toBeVisible(); // the rows are drawn
         await expect(listed.getByRole('button', { name: 'Add utils' })).toHaveCount(0);
-        await expect(listed.getByRole('button', { name: 'Add qwen-free' })).toBeVisible();
       }
       await page.getByRole('link', { name: 'Models', exact: true }).click();
       await expect(page.getByRole('heading', { level: 1, name: 'Models' })).toBeVisible();

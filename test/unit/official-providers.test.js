@@ -517,9 +517,9 @@ function aroundTheDrop(now) {
 /**
  * Gemini with Extended Thinking, Koe's Realtime list as given, chat models for Koe · Classic and Kokoro, then the update that takes it, and a chat model Kokoro uses, out of the description.
  * @param {(ids: { dropped: string, live: string, byId: string, listed: string }) => string[]} list @param {string[]} [classic] Koe · Classic's models, by provider model id
- * @param {(next: any) => void} [change] the update's description, changed further @param {(ws: any) => Promise<void>} [ahead] called just before the update
+ * @param {(next: any) => void} [change] the update's description, changed further @param {(ws: any, providerId: string) => Promise<void>} [ahead] called just before the update
  */
-async function updatedOverLive(list, classic = ['gemini-3.5-flash-lite'], change = () => {}, ahead = async (/** @type {any} */ _ws) => {}) {
+async function updatedOverLive(list, classic = ['gemini-3.5-flash-lite'], change = () => {}, ahead = async (/** @type {any} */ _ws, /** @type {string} */ _id) => {}) {
   const { addProvider, syncProviders, addListedModel, addModelById } = await import('../../src/core/llm/providers.js');
   const { setKey } = await import('../../src/core/llm/config.js');
   const k = await hostKit();
@@ -542,7 +542,7 @@ async function updatedOverLive(list, classic = ['gemini-3.5-flash-lite'], change
   const types = new Map([['gemini-live', { realtime: true }], ['gemini', {}]]);
   const wayOf = (/** @type {any} */ cfg) => koeWay(cfg, { voiceOn: true, types, until: () => 0, now: 0 });
   const first = wayOf(await readConfig(k.ws));
-  await ahead(k.ws);
+  await ahead(k.ws, id);
   const refreshed = await syncProviders({ ws: k.ws }, [next]).catch((/** @type {any} */ e) => e);
   const after = await readConfig(k.ws);
   await setKey(k.store, id, null);
@@ -566,17 +566,28 @@ test('an update that drops a live model: alone in Koe · Realtime, the descripti
   assert.equal(modelOf(after.models[ids.dropped]).providerId, 'gemini-3.8-live-extended-thinking', 'its record stays');
 });
 
+/** The update that swaps Gemini's Live model for gemini-3.9-live, which it recommends for Koe · Realtime. @param {any} next */
+const swapLive = (next) => {
+  next.provider.abilities.live.models = [{ ...next.provider.abilities.live.models[0], providerId: 'gemini-3.9-live', name: 'Gemini 3.9 Live' }];
+  next.provider.roles.recommended['koe-realtime'] = ['gemini-3.9-live'];
+  for (const r of Object.values(next.provider.roles)) if (/** @type {any} */ (r).main) /** @type {any} */ (r).main = /** @type {any} */ (r).main.filter((/** @type {string} */ p) => p !== 'gemini-3.6-flash');
+};
+
 test('a plugin update swaps a Live model\'s id: the new model takes the place of the only one in Koe · Realtime, in the same save, and Live keeps working', async () => {
-  const swap = (/** @type {any} */ next) => {
-    next.provider.abilities.live.models = [{ ...next.provider.abilities.live.models[0], providerId: 'gemini-3.9-live', name: 'Gemini 3.9 Live' }];
-    next.provider.roles.recommended['koe-realtime'] = ['gemini-3.9-live'];
-    for (const r of Object.values(next.provider.roles)) if (/** @type {any} */ (r).main) /** @type {any} */ (r).main = /** @type {any} */ (r).main.filter((/** @type {string} */ p) => p !== 'gemini-3.6-flash');
-  };
-  const { after, way, ids } = await updatedOverLive((m) => [m.live], undefined, swap);
+  const { after, way, ids } = await updatedOverLive((m) => [m.live], undefined, swapLive);
   const [now] = after.roles['koe-realtime'].models;
   assert.notEqual(now, ids.live);
   assert.equal(modelOf(after.models[now]).providerId, 'gemini-3.9-live');
   assert.deepEqual(way.path, { kind: 'live', modelId: now });
+});
+
+test('that swap, with the new Live model already added by the traveller under its id: Koe · Realtime holds the traveller\'s model, no second one is made, and Live keeps working', async () => {
+  const { addModelById } = await import('../../src/core/llm/providers.js');
+  let mine = '';
+  const { after, way } = await updatedOverLive((m) => [m.live], undefined, swapLive, async (ws, id) => { mine = await addModelById({ ws }, id, 'live', 'gemini-3.9-live'); });
+  assert.deepEqual(after.roles['koe-realtime'].models, [mine]);
+  assert.equal(Object.values(after.models).filter((m) => modelOf(m).providerId === 'gemini-3.9-live').length, 1);
+  assert.deepEqual(way.path, { kind: 'live', modelId: mine });
 });
 
 test('a drop that would empty Koe · Realtime, in a description that recommends nothing for it: the first model listed for that ability', async () => {

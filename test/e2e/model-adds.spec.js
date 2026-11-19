@@ -280,6 +280,37 @@ test("Add model by id whose name another model has takes a free name, \"Gemma 5 
   }
 });
 
+test("a provider whose modelDefaults name every model: the first by-id add takes that name with no toast, a second says its default name is used (fails on main: the first add said its id was used)", async ({ page }) => {
+  const key = 'sk-default-name-0123';
+  const s = await startFakeServer({ flavour: 'llamacpp', key, models: [] });
+  try {
+    const chat = await addLlamaCpp(page, s, key);
+    // A description whose modelDefaults carry a name, as the user's layer of the ability (the page reads it as it does a plugin's).
+    await page.evaluate(async () => {
+      const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+      const { Workspace } = await import(/** @type {string} */ ('/src/core/workspace.js'));
+      const { readConfig, saveProvider } = await import(/** @type {string} */ ('/src/core/llm/config.js'));
+      const store = await createIdbStore();
+      const ws = new Workspace(store);
+      const [rec] = Object.values((await readConfig(ws)).providers);
+      const user = /** @type {any} */ (rec.user ?? {});
+      await saveProvider(ws, { ...rec, user: { ...user, abilities: { ...user.abilities, chat: { ...user.abilities?.chat, modelDefaults: { name: 'House model' } } } } });
+      store.close();
+    });
+    await page.reload();
+    await chat.getByLabel('Add a model by id').fill('one-id');
+    await chat.getByRole('button', { name: 'Add model' }).click();
+    await expect(chat.getByRole('link', { name: /^House model/ })).toBeVisible();
+    expect(await page.locator('.toasts .toast').count(), 'nothing clashed: no toast (read as it is: a waiting count would pass once a toast expired)').toBe(0);
+    await chat.getByLabel('Add a model by id').fill('two-id');
+    await chat.getByRole('button', { name: 'Add model' }).click();
+    await expect(page.locator('.toasts .toast', { hasText: 'Added as "House model (2)": "House model" is already used by another model.' })).toBeVisible();
+    await expect(chat.getByRole('link', { name: /^House model \(2\)/ })).toBeVisible();
+  } finally {
+    await s.stop();
+  }
+});
+
 /**
  * A llama.cpp provider with a 40-model list shown, then its records removed under the open list, so every Add is refused ("That provider
  * no longer exists."). The list shows up to 50 rows in a box of its own, 50vh tall, so a row can sit anywhere on the screen, behind the dock too.

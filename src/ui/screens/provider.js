@@ -530,11 +530,13 @@ function modelsPart(ctx, id, abilityId, models) {
       add.disabled = true;
       try {
         const made = await ctx.llm.addModelById(id, abilityId, modelId);
-        const rec = (await ctx.llm.config()).models[made];
+        const cfg = await ctx.llm.config();
+        const rec = cfg.models[made];
         add.disabled = false; // as the add ends, not with the draw
-        // A free name where another model has the id as its name (addModelById): said.
-        const name = rec ? modelOf(rec).name : modelId;
-        if (name !== modelId) ctx.notices.toast(t`Added as "${name}": "${modelId}" is already used by another model.`);
+        // A free name where another has the name it would have had (addModelById): said.
+        const wanted = (cfg.providers[id] && providerOf(cfg.providers[id]).abilities[abilityId]?.modelDefaults?.name) || modelId;
+        const name = rec ? modelOf(rec).name : wanted;
+        if (name !== wanted) ctx.notices.toast(t`Added as "${name}": "${wanted}" is already used by another model.`);
         ctx.render();
       } catch (e) {
         showError(status, e);
@@ -547,27 +549,27 @@ function modelsPart(ctx, id, abilityId, models) {
     onclick: async () => {
       fetchList.disabled = true;
       status.textContent = t`Asking for its models…`;
-      await settled(); // an address just typed is saved first
-      const asked = await connection(ctx, id, abilityId);
-      /** @type {{ listed?: any[], error?: unknown }} */
-      let found;
+      /** @type {{ listed?: any[], error?: unknown } | null} */
+      let found = null;
       try {
-        found = { listed: await ctx.llm.listModels(id, abilityId) };
+        await settled(); // an address just typed is saved first
+        const asked = await connection(ctx, id, abilityId);
+        const answer = await ctx.llm.listModels(id, abilityId).then((/** @type {any[]} */ listed) => ({ listed }), (/** @type {unknown} */ error) => ({ error }));
+        if ((await connection(ctx, id, abilityId)) === asked) found = answer; // asked under another address or key: lands nowhere
       } catch (error) {
         found = { error };
       }
-      const same = (await connection(ctx, id, abilityId)) === asked;
       status.textContent = '';
       fetchList.disabled = false;
-      if (same) tell(`${id}/${abilityId}`, found); // asked under another address or key: lands nowhere
+      if (found) tell(`${id}/${abilityId}`, found);
     },
   }, t`Fetch model list`);
   /** A Fetch's answer, here: rows by its models as they are now (an add whose draw was dropped is in them). @param {CustomEvent} e */
   const land = async (e) => {
     const found = e.detail;
-    if (!found) {
+    if (!found) { // the list goes, the filter box stays
       rows = () => {};
-      listSlot.replaceChildren();
+      list.replaceChildren();
       status.textContent = '';
       return;
     }

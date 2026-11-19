@@ -212,11 +212,14 @@ export async function addProvider({ ws, store }, src, { key = null, roles = 'fre
   });
 }
 
+/** The description's model d, or one the ability has by its provider model id (the sync leaves that as it is). @param {ProviderSource} src @param {ModelRecord} m @param {ReturnType<typeof descModels>[number]} d */
+const isDescribed = (src, m, d) => m.template?.id === `${src.plugin}/${d.key}` || (m.ability === d.ability && modelOf(m).providerId === d.values.providerId);
+
 /** Koe · Realtime when a drop would empty it: the description's recommended model for that ability, else its first with a record. @param {ProviderSource} src @param {string} ability @param {ModelRecord[]} models */
 function liveInstead(src, ability, models) {
   const wanted = src.provider.roles?.recommended?.[KOE_REALTIME] ?? [];
   const of = descModels(src).filter((d) => d.ability === ability);
-  return [...of.filter((d) => wanted.includes(d.values.providerId)), ...of].flatMap((d) => models.filter((m) => m.template?.id === `${src.plugin}/${d.key}`).map((m) => m.id)).slice(0, 1);
+  return [...of.filter((d) => wanted.includes(d.values.providerId)), ...of].flatMap((d) => models.filter((m) => isDescribed(src, m, d)).map((m) => m.id)).slice(0, 1);
 }
 
 /**
@@ -269,7 +272,7 @@ export async function syncProviders({ ws }, sources) {
         } else if (known.has(m.template.id.slice(src.plugin.length + 1)) && listed.some((x) => x.ability === m.ability)) dropped.add(m.id);
       }
       for (const d of listed) {
-        if (known.has(d.key) || mine.some((m) => m.template?.id === `${src.plugin}/${d.key}` || (m.ability === d.ability && modelOf(m).providerId === d.values.providerId))) continue;
+        if (known.has(d.key) || mine.some((m) => isDescribed(src, m, d))) continue;
         changed.push(named(newModel(rec.id, d.ability, { template: { id: `${src.plugin}/${d.key}`, version: src.version, values: d.values } }), taken));
       }
       /** @type {Roles | null} */
