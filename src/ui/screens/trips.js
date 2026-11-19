@@ -3,7 +3,7 @@ import { listTrips, backupState, scopeTitle, changesTrip, lastTalked, ME } from 
 import { filesToRead } from '../../core/handover.js';
 import { readAppSettings } from '../../core/settings.js';
 import { ValidationError } from '../../core/workspace.js';
-import { relTime, relChange, dateRange, backupText, wording, talkHref, day, when, rowName } from '../format.js';
+import { relTime, relChange, dateRange, backupText, wording, replyBefore, talkHref, day, when, rowName } from '../format.js';
 import { openFileButton } from '../open-file.js';
 import { tripStamps, stampMarks, factsWords } from '../stamps.js';
 import { stampCount } from '../../core/after/stamps.js';
@@ -224,7 +224,7 @@ async function tripCard(ctx, s, r, o) {
     const utc = (/** @type {string} */ d) => Date.parse(`${d}T00:00:00Z`);
     more.push(h('span', { class: 'sub soon', text: relTime(utc(s.start), utc(/** @type {string} */ (dayIn(now, zone)))) }));
     const last = await herLast(ctx, s.id);
-    if (last) more.push(h('span', { class: 'sub her-last', ...say(last), text: last }));
+    if (last.text) more.push(h('span', { class: 'sub her-last', ...say(last.text, { before: last.before }), text: last.text }));
   }
   const name = scopeTitle(s); // one stored with the draft's name says "New conversation" in the screens' language
   return h('li', {}, h('a', { class: ['card', 'trip-card', r?.phase === 'happening' ? 'happening' : r?.phase === 'future' ? 'ahead' : ''], href: r ? talkHref(s.id) : `#/trip/${encodeURIComponent(s.id)}` },
@@ -235,10 +235,11 @@ async function tripCard(ctx, s, r, o) {
     stampMarks(stamps)));
 }
 
-/** Her last line in a conversation. @param {any} ctx @param {string} scope @returns {Promise<string>} */
+/** Her last line in a conversation, and her reply so far before it. @param {any} ctx @param {string} scope @returns {Promise<{ text: string, before: string[] }>} */
 async function herLast(ctx, scope) {
   const [e] = await ctx.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(scope, { types: ['out.speak'], reverse: true, limit: 1 }));
-  return e ? String({ ...e.data, ...(await storedTexts(ctx.store, e)) }.text ?? '') : '';
+  if (!e) return { text: '', before: [] };
+  return { text: String({ ...e.data, ...(await storedTexts(ctx.store, e)) }.text ?? ''), before: await replyBefore(ctx.store, scope, e).catch(() => []) };
 }
 
 /** When the user last talked in `me`, read once a page load: it takes no more lines, but an import can replace it (forgetMeTalked). @type {Promise<number | null> | null} */

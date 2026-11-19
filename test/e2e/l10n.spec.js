@@ -218,6 +218,46 @@ test('Shiori\'s cards, the latest card on Driving (Now\'s until timeline stage 8
   await expect(page.locator('.recap-text .md')).toHaveAttribute('lang', 'ja');
 });
 
+// voice-reply-next: a line of hers drawn on its own after earlier lines of her reply (her turn) takes the reply's language, as her voice does. With
+// [en, ja, zh] listed, 「好的。」 and 「十点」 alone are Han that says neither, so the first listed in Han, Japanese (main drew them so here too).
+test("a line of hers drawn on its own takes her reply's language: a second speak's line and her question's options in the Conversation, and Driving's card", async ({ page }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [
+    { status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'speak', input: { text: '我们明天去故宫吧。' } }, { name: 'speak', input: { text: '好的。' } }, { name: 'ask', input: { question: '几点出发？', options: ['十点', '好的'] } }]) },
+    { status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'sleep', input: {} }]) },
+  ] });
+  try {
+    await modelSetUp(page, llm.origin, 'Beijing');
+    await page.evaluate(async () => {
+      const at = (/** @type {string} */ p) => p;
+      const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+      const { Workspace } = await import(at('/src/core/workspace.js'));
+      const { updateAppSettings } = await import(at('/src/core/settings.js'));
+      const store = await createIdbStore();
+      await updateAppSettings(new Workspace(store), { languages: { spoken: ['en', 'ja', 'zh'] } });
+      store.close();
+    });
+    await page.reload();
+    await atConversation(page);
+    await page.getByRole('button', { name: 'Type' }).click();
+    await page.getByLabel('Message to Shiori').fill('明天去哪儿？');
+    await page.getByRole('button', { name: 'Send' }).click();
+    const options = page.locator('.convo li.shiori .acts button');
+    await expect(options).toHaveText(['十点', '好的']);
+    const lines = page.locator('.convo li.shiori > p');
+    await expect(lines).toHaveText(['我们明天去故宫吧。', '好的。', '几点出发？']);
+    expect(await lines.evaluateAll((els) => els.map((el) => el.getAttribute('lang')))).toEqual(['zh-Hans', 'zh-Hans', 'zh-Hans']);
+    expect(await options.evaluateAll((els) => els.map((el) => el.getAttribute('lang')))).toEqual(['zh-Hans', 'zh-Hans']);
+    await options.first().click();
+    await expect.poll(() => llm.bodies('/b/v1/messages').length).toBe(2);
+    // Driving draws her latest line alone: it reads her reply from the log.
+    await page.goto('/#/drive');
+    await expect(page.locator('.shiori-card p')).toHaveText('好的。');
+    await expect(page.locator('.shiori-card p')).toHaveAttribute('lang', 'zh-Hans');
+  } finally {
+    await llm.stop();
+  }
+});
+
 test("a personality tuning's card is titled in the screens' words on Talk, Driving (Now until timeline stage 8) and the replay, never the stored English (L5h review 7)", async ({ page }) => {
   await openApp(page, '#/trips');
   const trip = await startTrip(page, 'Kyoto Spring');

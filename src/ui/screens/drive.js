@@ -8,7 +8,7 @@ import { routeStrip } from '../../core/now.js';
 import { loadLinks, mapsLinks } from '../../core/links.js';
 import { tripRows } from '../trip-rows.js';
 import { readAppSettings } from '../../core/settings.js';
-import { distance, duration, sentenceGap, sentences, speaksScreens, wording } from '../format.js';
+import { distance, duration, sentenceGap, sentences, speaksScreens, wording, replyBefore } from '../format.js';
 import { knownFix } from '../live-chip.js';
 import { PLAN_FILE } from '../../core/plan.js';
 import { nowOf, driveBack, drivingTrip, askIn } from '../today.js';
@@ -163,14 +163,16 @@ export async function renderDrive(ctx) {
     h('p', {}, crumb(back.href, back.label)));
 }
 
-/** One of those, drawn: model output as text or through the card renderer, never innerHTML. @param {any} ctx @param {any} e */
+/** One of those, drawn: model output as text or through the card renderer, never innerHTML; her line alone, with her reply read from the log. @param {any} ctx @param {any} e */
 async function eventCard(ctx, e) {
   const d = e.data ?? {};
   const app = await readAppSettings(ctx.ws);
-  const hers = wording(app, true);
+  if (e.type === 'reminder') return h('p', { class: 'system-line' }, ...reminderParts(d, wording(app)));
+  const before = await replyBefore(ctx.store, e.scope, e).catch(() => []);
+  const say = wording(app, true);
+  const hers = (/** @type {string} */ x) => say(x, { before });
   const who = () => h('span', { class: 'who', text: t`Shiori` });
   if (e.type === 'out.show') return h('div', { class: 'shiori-card' }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), shownCard(d, { ctx, onChoice: (o) => ctx.agent.send(o, { chose: true }), say: hers }));
-  if (e.type === 'reminder') return h('p', { class: 'system-line' }, ...reminderParts(d, wording(app)));
   const text = String({ ...d, ...(await storedTexts(ctx.store, e)) }.text ?? '');
   if (!d.voice) return h('div', { class: 'shiori-card' }, who(), h('p', { ...hers(text), text }));
   // Said aloud: its words show, marked; with "Show what she says" off they fold away until asked (spec §2 principle 4, §16.1).

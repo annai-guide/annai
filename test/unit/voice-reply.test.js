@@ -1,0 +1,57 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { agentKit, until } from './agent-kit.js';
+import { useClock } from './clock.js';
+import { updateAppSettings } from '../../src/core/settings.js';
+
+// voice-reply-next (the Deferred entry "A reply's separate speak calls each start with nothing before them"): her turn is one reply, so with the
+// phone's voice a sentence that shows no language of its own in a later speak call, or in her question, is read in the language of the turn's
+// earlier sentences; a new turn starts with nothing before it. Through the loop, with the browser voice and [en, zh, ja] listed.
+
+const speak = (/** @type {string} */ text) => ({ name: 'speak', input: { text } });
+const sleep = { name: 'sleep', input: {} };
+/** Each sentence the phone's voice said, with the language it was read in. @param {any} k */
+const read = (k) => k.platform.said.map((/** @type {any} */ s) => [s.text, s.lang]);
+
+/** One Shiori with the phone's voice, [en, zh, ja] listed. @param {any} t @param {any[]} steps */
+async function kit(t, steps) {
+  useClock(t);
+  const k = await agentKit([steps], { voice: { speechOut: ['browser-voice'] } });
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'zh', 'ja'] } });
+  return k;
+}
+
+test("her reply's second speak call reads 「東京駅。」 in the language of the first's 「今日は新宿に行きましょう。」 (main: the first listed in Han, Chinese)", async (t) => {
+  const k = await kit(t, [{ toolCalls: [speak('今日は新宿に行きましょう。'), speak('東京駅。'), sleep] }]);
+  k.agent.send('今日はどこに行く？');
+  await k.agent.idle();
+  assert.deepEqual(read(k), [['今日は新宿に行きましょう。', 'ja-JP'], ['東京駅。', 'ja-JP']]);
+});
+
+test('a first speak that played as it streamed carries its sentences into the next call too', async (t) => {
+  const k = await kit(t, [{ stream: true, toolCalls: [speak('今日は新宿に行きましょう。'), speak('東京駅。'), sleep] }]);
+  k.agent.send('今日はどこに行く？');
+  await k.agent.idle();
+  assert.deepEqual(read(k), [['今日は新宿に行きましょう。', 'ja-JP'], ['東京駅。', 'ja-JP']]);
+});
+
+test('her question said aloud after a speak call reads in the language of her reply so far', async (t) => {
+  const k = await kit(t, [
+    { toolCalls: [speak('今日は新宿に行きましょう。'), { name: 'ask', input: { question: '東京駅？', options: ['はい', 'いいえ'] } }] },
+    { toolCalls: [sleep] },
+  ]);
+  k.agent.send('今日はどこに行く？');
+  await until(() => k.agent.pendingId !== null && k.platform.said.length === 2);
+  assert.deepEqual(read(k), [['今日は新宿に行きましょう。', 'ja-JP'], ['東京駅？', 'ja-JP']]);
+  k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'はい');
+  await k.agent.idle();
+});
+
+test("a reply's first utterance, and a new turn's, start with nothing before them: 「東京駅。」 alone is the first listed in Han, whatever was said before", async (t) => {
+  const k = await kit(t, [{ toolCalls: [speak('東京駅。'), speak('今日は新宿に行きましょう。'), sleep] }, { toolCalls: [speak('東京駅。'), sleep] }]);
+  k.agent.send('今日はどこに行く？');
+  await k.agent.idle();
+  k.agent.send('駅は？');
+  await k.agent.idle();
+  assert.deepEqual(read(k), [['東京駅。', 'zh-CN'], ['今日は新宿に行きましょう。', 'ja-JP'], ['東京駅。', 'zh-CN']]);
+});

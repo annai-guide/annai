@@ -118,6 +118,30 @@ test('the browser voice reads a sentence that shows none in the language of the 
   ]);
 });
 
+// voice-reply-next: a reply is the loop's turn, named by its wake: the speaker carries its sentences across the utterances begun with it (begin's reply).
+test("the speaker carries her reply's sentences across the utterances begun with it; a new reply, and what is said with none (a reminder, a voice's Test), start with nothing before them", async () => {
+  const k = await kit({ speechOut: ['browser-voice'] });
+  await updateAppSettings(k.ws, { languages: { spoken: ['en', 'zh', 'ja'] } });
+  /** An utterance begun with these options, said whole. @param {string} text @param {{ reply?: string }} [o] */
+  const say = (text, o) => {
+    const u = k.voice.speaker.begin(o);
+    u.end(text);
+    return u.done;
+  };
+  await say('今日は新宿に行きましょう。', { reply: 'w1' });
+  await k.voice.say('東京駅。');
+  await say('東京駅。', { reply: 'w1' });
+  await say('東京駅。', { reply: 'w2' });
+  await say('東京駅。');
+  assert.deepEqual(k.platform.said.map((s) => [s.text, s.lang]), [
+    ['今日は新宿に行きましょう。', 'ja-JP'],
+    ['東京駅。', 'zh-CN'], // said with no reply: nothing before it, the first listed in Han
+    ['東京駅。', 'ja-JP'], // the reply goes on past it: main zh-CN
+    ['東京駅。', 'zh-CN'], // a new reply
+    ['東京駅。', 'zh-CN'],
+  ]);
+});
+
 test('the model that writes down what it heard is told the languages, and not to translate, once the user has chosen them; before that it gets no hint (review item 13)', async () => {
   const k = await kit({ main: [{ id: 'm1', input: ['text', 'audio'] }], speechIn: ['send-audio', 'dictation'], reply: 'tacos please' });
   const h0 = await hear(k);

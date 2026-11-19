@@ -387,6 +387,28 @@ export function placed(text, s) {
 /** The first of the traveller's languages written in Han, the one Han that says neither is taken for where nothing else decides (the voice's, the tag's and the summary's). @param {LanguageSettings} s */
 export const firstHan = (s) => s.spoken.find((l) => HAN_SCRIPTS.includes(scriptOfLanguage(l))) ?? null;
 
+/** A sentence of hers as placed reads it, but that with nothing chosen one in the phone's script is the phone's (speechLocale says why). @param {string} x @param {LanguageSettings} s */
+const readAs = (x, s) => {
+  const w = writing(x);
+  return !s.explicit && w && w === scriptOfLanguage(s.spoken[0]) ? s.spoken[0] : placed(x, s);
+};
+
+/**
+ * The voice's and the tag's one rule for a sentence or line of hers, from what it shows (own, placed's answer): its own; else her reply's so far,
+ * the first of her earlier sentences in the reply (before) that shows one, not them read joined; for Han that says neither (EITHER), the first
+ * written in Han, else the first of theirs written in Han (the tag took the screens' first: on her real sentences, 43 kept runs, the two tie,
+ * and the reply so far took her lines' wrong tags from 560 to 304 of 15,008). null: nothing tells.
+ * @param {LanguageSettings} s @param {Language | typeof EITHER | null} own @param {string[]} before @returns {Language | null}
+ */
+function replyLanguage(s, own, before) {
+  if (own && own !== EITHER) return own;
+  for (const x of before) {
+    const l = readAs(x, s);
+    if (l && l !== EITHER && (!own || HAN_SCRIPTS.includes(scriptOfLanguage(l)))) return l;
+  }
+  return own ? firstHan(s) : null;
+}
+
 /**
  * The writing system a text is mostly in, by the name languageOf gives it, or '': Chinese, Japanese and Korean when their characters outnumber
  * the Latin words (a place name or a loan word in an English line is no Chinese); another script when it makes up most of the letters.
@@ -430,15 +452,16 @@ const latinTag = (tag) => likelyScript(tag) === 'Latn';
 /**
  * A line's BCP 47 tag, for its `lang`: a browser draws Han characters and a screen reader reads by it. From the writing system (scriptOf,
  * whose scale draws a line that is mostly Chinese, Japanese or Korean characters as what they are, a name in a Latin line too) and the one of
- * theirs those characters are placed as (placed): Han that says neither Japanese nor Chinese is the screens' language when that is one of
- * theirs, else the first of theirs written in Han; a script two of theirs share that nothing in the line tells, the first of them. Latin text
- * is never guessed (a wrong tag gives it a wrong voice): it and unsure text get '' and inherit the screens'. byShiori: the language she
- * answers in, where the text agrees with it; Han alone is taken for hers, if that is Japanese. ui: the screens' language. Under screens not in
- * Latin letters, a Latin line is the one listed Latin-script language if exactly one is, else the one languageOf names from two of its words,
- * else NO_LANGUAGE: never the screens'. Han that does not tell Simplified from Traditional is Traditional under Traditional Chinese screens.
+ * theirs those characters are placed as (placed): Han that says neither Japanese nor Chinese takes her reply's language, as her voice does
+ * (replyLanguage); a script two of theirs share that nothing in the line tells, the first of them. Latin text is never guessed (a wrong tag gives it a wrong voice): it and unsure text
+ * get '' and inherit the screens'. byShiori: the language she answers in, where the text agrees with it; Han alone is taken for hers, if that
+ * is Japanese. ui: the screens' language. Under screens not in Latin letters, a Latin line is the one listed Latin-script language if exactly one
+ * is, else the one languageOf names from two of its words, else NO_LANGUAGE: never the screens'. Han that does not tell Simplified from
+ * Traditional is Traditional under Traditional Chinese screens.
  * @param {string} text @param {LanguageSettings} s @param {boolean} [byShiori] @param {string} [ui]
+ * @param {{ before?: string[] }} [o] before: her reply's sentences before the line (replies)
  */
-export function tagOf(text, s, byShiori = false, ui = 'en') {
+export function tagOf(text, s, byShiori = false, ui = 'en', { before = [] } = {}) {
   const said = text.replace(URLS, ' ');
   // A line whose writing is Latin (an English sentence with a name in kanji) has no Chinese or Japanese tag: it is tagged as Latin text is.
   const kind = writing(said) === 'Latn' ? '' : scriptOf(said);
@@ -459,7 +482,7 @@ export function tagOf(text, s, byShiori = false, ui = 'en') {
   /* en */ const own = ['Chinese', 'Japanese', 'Korean'].includes(kind) ? (said.match(CJK) ?? []).join('') : said;
   const placedAs = (answer && placed(own, { explicit: true, spoken: [answer], answer })) || placed(own, s);
   const l = placedAs === EITHER
-    ? s.spoken.find((x) => HAN_SCRIPTS.includes(scriptOfLanguage(x)) && tagFor(x) === ui) ?? firstHan(s)
+    ? replyLanguage(s, EITHER, before)
     : placedAs ?? (kind === 'Chinese' ? null : s.spoken.find((x) => scriptOfLanguage(x) === likelyScript(SCRIPT_TAGS[kind])) ?? null);
   return kind === 'Chinese' ? hanTag(own, l, ui) : l ? tagFor(l) : SCRIPT_TAGS[kind];
 }
@@ -472,31 +495,19 @@ export function tagOf(text, s, byShiori = false, ui = 'en') {
  * a Ukrainian phone's Cyrillic is Ukrainian, where letting і ї є ґ decide gave a wrong voice for 6.9% of its real sentences), but for a
  * Ukrainian sentence with і ї є ґ on a Russian, Bulgarian or Serbian phone, which keeps the phone's voice so one reply is read in one voice;
  * a sentence in another script is read as what it is, so Japanese replies on an English phone still go from 1.9% to 98.7% given the right
- * voice. Han placed as none of theirs (a Chinese sentence with only Japanese listed) is read as Han that says neither. A sentence that shows none (a plan line of names and times; 「明天比較滿：」, Han that says neither Japanese nor Chinese) takes the language of her reply so far:
- * the first earlier sentence that shows one (for Han that says neither, one written in Han), not a reading of them joined, which one hiragana in
- * a name made Japanese; measured on her real sentences, 99.4 to 99.5% given the right voice in every list order of [en, ja] and [en, zh, ja],
- * against 96.5 to 99.5% without the reply so far.
- * Else Han that says neither is the first of theirs written in Han, a script two listed languages share the first of them written in it, and
- * anything else the first listed. Chinese whose characters say Simplified or Traditional (hanRow) takes a voice of that script.
- * @param {LanguageSettings} s @param {string} [text] @param {{ before?: string[] }} [o] before: her sentences before this one in the same utterance
+ * voice. Han placed as none of theirs (a Chinese sentence with only Japanese listed) is read as Han that says neither. A sentence that shows none
+ * (a plan line of names and times; 「明天比較滿：」, Han that says neither) takes her reply's, as her line's tag does (replyLanguage): on her real
+ * sentences 99.4 to 99.5% given the right voice in every list order of [en, ja] and [en, zh, ja], 96.5 to 99.5% without (detector-next).
+ * Else a script two listed languages share is the first of them written in it, and anything else the first listed. Chinese whose characters say
+ * Simplified or Traditional (hanRow) takes a voice of that script.
+ * @param {LanguageSettings} s @param {string} [text] @param {{ before?: string[] }} [o] before: her reply's sentences before this one
  */
 export function speechLocale(s, text = '', { before = [] } = {}) {
-  const phone = s.explicit ? null : s.spoken[0];
-  /** The one of theirs a sentence is read as, with nothing chosen the phone's for a sentence in its script. @param {string} x */
-  const shown = (x) => (phone && writing(x) && writing(x) === scriptOfLanguage(phone) ? phone : placed(x, s));
   const kind = writing(text);
-  const placedAs = s.answer ?? shown(text);
+  const placedAs = s.answer ?? readAs(text, s);
   // Han placed as none of theirs (a Chinese sentence with only Japanese listed: 靖國神社) is Han that says neither: the reply's Han language, else the first listed in Han.
   const own = !placedAs && kind === 'zh' ? EITHER : placedAs;
-  /** The first earlier sentence that shows a language (for Han that says neither, one written in Han). @type {Language | null} */
-  let sofar = null;
-  if (!own || own === EITHER) {
-    for (const x of before) {
-      const l = shown(x);
-      if (l && l !== EITHER && (!own || HAN_SCRIPTS.includes(scriptOfLanguage(l)))) { sofar = l; break; }
-    }
-  }
-  const l = sofar ?? (own === EITHER ? firstHan(s) : own) ?? (kind ? s.spoken.find((x) => scriptOfLanguage(x) === kind) : null) ?? s.spoken[0];
+  const l = replyLanguage(s, own, before) ?? (kind ? s.spoken.find((x) => scriptOfLanguage(x) === kind) : null) ?? s.spoken[0];
   // Chinese in the other script than the row's is read with a voice of its own script, by the sentence's Han characters alone, as the tag reads them.
   const row = MANDARIN.includes(l.id) ? hanRow((text.match(CJK) ?? []).join('')) : '';
   return row && row !== (traditional(l.locale) ? 'zh-Hant' : 'zh') ? /** @type {Language} */ (BY_ID.get(row)).locale : l.locale;

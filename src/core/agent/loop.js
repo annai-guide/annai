@@ -3290,7 +3290,8 @@ export class Agent {
 
   /**
    * Speech streams in while the model writes it, and plays sentence by sentence (spec §10.1). A
-   * call that starts over (another model) drops what it had begun to say.
+   * call that starts over (another model) drops what it had begun to say. Her turn is one reply: each utterance it begins (here, #say, #askAloud)
+   * names its wake (Speaker.begin).
    * @param {any} ev a stream event @param {string} wakeId
    */
   #streamed(ev, wakeId) {
@@ -3304,7 +3305,7 @@ export class Agent {
       // Only the reply's first speak plays as it streams: a later one plays when its turn comes, after the first has listened.
       if (this.#streaming && this.#streaming !== ev.id) return;
       this.#streaming = ev.id;
-      u = this.voice.speaker.begin();
+      u = this.voice.speaker.begin({ reply: wakeId });
       this.#utterances.set(ev.id, u);
       if (this.#cut) u.stop(); // she was stopped: nothing more until she has listened
       else {
@@ -3361,7 +3362,7 @@ export class Agent {
     let u = this.#utterances.get(call.id);
     this.#utterances.delete(call.id);
     if (!u) {
-      u = voice.speaker.begin();
+      u = voice.speaker.begin({ reply: call.wake });
       if (this.#cut) u.stop();
     }
     if (!u.stopped) {
@@ -3411,7 +3412,7 @@ export class Agent {
    */
   async #askAloud(question, call) {
     const voice = /** @type {import('../voice/voice.js').Voice} */ (this.voice);
-    const u = voice.speaker.begin();
+    const u = voice.speaker.begin({ reply: call.wake });
     this.#closeEar('speaking');
     this.#setState('speaking');
     u.end(question);

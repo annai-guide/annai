@@ -12,7 +12,7 @@ import { blobBytes } from '../../core/reach.js';
 import { herDatings, undoDating } from '../../core/chats.js';
 import { openPhotoViewer } from '../photo-viewer.js';
 import { undoTuning } from '../../core/agent/personalities.js';
-import { formatCost, wording, mark, sentences, sentenceGap, asSentence, list as listed, recordHref, rowName, talkHref } from '../format.js';
+import { formatCost, wording, replies, spokenSentences, mark, sentences, sentenceGap, asSentence, list as listed, recordHref, rowName, talkHref } from '../format.js';
 import { day } from '../../core/intl.js';
 import { upcoming, over } from '../../core/now.js';
 import { tripRows } from '../trip-rows.js';
@@ -304,6 +304,8 @@ export async function renderTalk(ctx, route) {
   // The lines' languages (`lang`): the font and the screen reader's voice follow them. The user's by their text; Shiori's by the language she is set to answer in, else by her text.
   const mine = wording(app);
   const hers = wording(app, true);
+  // Her reply so far, by her lines in the log's order (replies).
+  const reply = replies(ctx.store);
   // Her lines' models, by their provider's name too.
   const names = modelNames(await ctx.llm?.config().catch(() => null));
   const scope = route?.parts[0] === 'talk' && route.parts[1] === ME ? ME : agent.scope;
@@ -418,14 +420,14 @@ export async function renderTalk(ctx, route) {
   };
   const undo = readOnly ? null : undoLine(ctx, scope, list);
   const dates = readOnly ? null : datesLine(ctx, agent.trip, list);
-  /** @param {any} e */
-  const item = async (e) => {
+  /** @param {any} e @param {Promise<string[]>} before her reply so far */
+  const item = async (e, before) => {
     const d = e.data ?? {};
-    const line = await itemOf(e, d);
+    const line = await itemOf(e, d, await before);
     return line && e.type === 'note' ? by(d, line) : line;
   };
-  /** @param {any} e @param {any} d */
-  const itemOf = async (e, d) => {
+  /** @param {any} e @param {any} d @param {string[]} before */
+  const itemOf = async (e, d, before) => {
     const texts = { ...d, ...(await storedTexts(ctx.store, e)) };
     if (e.type === 'msg.user') {
       // Photos sent alone: the log's placeholder is the model's, the bubble's in the screens' words. Files handed over alone: no words.
@@ -446,10 +448,10 @@ export async function renderTalk(ctx, route) {
     if (e.type === 'out.speak') {
       const said = String(texts.text ?? '');
       const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }, { names }));
-      if (!d.voice) return h('li', { class: lineClass(line, 'shiori') }, h('span', { class: 'who', text: t`Shiori` }), h('p', { ...hers(said), text: said }), lineLabel(line));
+      if (!d.voice) return h('li', { class: lineClass(line, 'shiori') }, h('span', { class: 'who', text: t`Shiori` }), h('p', { ...hers(said, { before }), text: said }), lineLabel(line));
       // Said aloud: its words show like any of hers, marked by the label; with "Show what she says" off, they fold away until asked (spec §2 principle 4, §16.1).
-      if (showWords) return h('li', { class: lineClass(line, 'shiori said') }, h('span', { class: 'who', text: t`Shiori` }), h('p', { ...hers(said), text: said }), lineLabel(line));
-      const words = h('p', { ...hers(said), text: said, hidden: true });
+      if (showWords) return h('li', { class: lineClass(line, 'shiori said') }, h('span', { class: 'who', text: t`Shiori` }), h('p', { ...hers(said, { before }), text: said }), lineLabel(line));
+      const words = h('p', { ...hers(said, { before }), text: said, hidden: true });
       const show = h('button', {
         class: 'btn ghost', type: 'button', 'aria-expanded': 'false',
         onclick: () => {
@@ -483,21 +485,23 @@ export async function renderTalk(ctx, route) {
       // One with neither title nor text would be an empty box: its kind is its title.
       const { type: kind, data: _data, choice: _choice, ...plain } = d.card ?? {};
       if (typeof kind === 'string' && !plain.title && !plain.text) plain.title = cardKind(ctx, d.card) || kind;
-      const card = readOnly ? shownCard({ ...d, card: plain }, { ctx, say: hers }) : shownCard(d, { ctx, onChoice: (o) => agent.send(o, { chose: true }), say: hers });
+      const say = (/** @type {string} */ x) => hers(x, { before });
+      const card = readOnly ? shownCard({ ...d, card: plain }, { ctx, say }) : shownCard(d, { ctx, onChoice: (o) => agent.send(o, { chose: true }), say });
       const undo = d.tune && !readOnly ? tuneUndo(ctx, d.tune) : null;
       const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }, { names }));
       return h('li', { class: lineClass(line, 'shiori') }, h('span', { class: 'who', text: cardWho(ctx, d.card ?? {}) }), card, undo, lineLabel(line));
     }
     if (e.type === 'grounded') return groundedCard(d, texts, mine); // Google's words: by their script alone, not the language she answers in
     if (e.type === 'out.ask') {
-      // annai's own card ends at the first tap: a second, before its result arrives, would be sent as a line of theirs.
-      const buttons = (Array.isArray(d.options) && !readOnly ? d.options : []).slice(0, 6).map((/** @type {string} */ o) => h('button', { ...hers(String(o)), class: 'btn', type: 'button', onclick: () => {
+      // annai's own card ends at the first tap: a second, before its result arrives, would be sent as a line of theirs. Her options follow her question.
+      const asked = d.own ? [] : [...before, ...spokenSentences(String(d.question ?? ''))];
+      const buttons = (Array.isArray(d.options) && !readOnly ? d.options : []).slice(0, 6).map((/** @type {string} */ o) => h('button', { ...hers(String(o), { before: asked }), class: 'btn', type: 'button', onclick: () => {
         if (d.own) for (const b of buttons) b.disabled = true;
         agent.answer(d.tap ?? d.id, o);
       } }, String(o)));
       const line = /** @type {import('../line-kind.js').Line} */ (lineKind({ type: e.type, data: d }, { names }));
       // annai's own (Agent.confirm): the label says who asks; under its buttons, while they wait, that a tap answers it (the user's pick, 2026-11-13).
-      const node = h('li', { class: lineClass(line, 'shiori') }, h('span', { class: 'who', text: d.own ? /* en */ 'annai' : t`Shiori` }), h('p', { ...hers(String(d.question ?? '')), text: String(d.question ?? '') }), h('div', { class: 'acts' }, ...buttons), d.own && !readOnly ? h('span', { class: 'sub tap-hint', text: t`Tap to answer` }) : null, lineLabel(line));
+      const node = h('li', { class: lineClass(line, 'shiori') }, h('span', { class: 'who', text: d.own ? /* en */ 'annai' : t`Shiori` }), h('p', { ...hers(String(d.question ?? ''), { before }), text: String(d.question ?? '') }), h('div', { class: 'acts' }, ...buttons), d.own && !readOnly ? h('span', { class: 'sub tap-hint', text: t`Tap to answer` }) : null, lineLabel(line));
       asks.set(d.id, node);
       offered.set(d.id, (Array.isArray(d.options) ? d.options : []).map(String));
       return node;
@@ -605,7 +609,8 @@ export async function renderTalk(ctx, route) {
       if (!SHOWN.includes(e.type) && e.type !== TURN_END) return;
       // What the user just said is always followed; what comes after, while the user is at the end.
       const follow = built && (following || atEnd() || e.type === 'msg.user' || e.type === 'heard');
-      const node = await item(e);
+      const before = reply(e); // as it comes, before any wait: lines that come together keep their order
+      const node = await item(e, before);
       if (node) {
         if (retry && node !== retry.li) {
           retry.again.remove();
@@ -635,7 +640,7 @@ export async function renderTalk(ctx, route) {
           // Her words carry their language; annai's labels, errors and notes around and beside them do not.
           const grounded = e.type === 'grounded' ? { from: sourceOf(e.data), title: node.querySelector('strong')?.textContent ?? '', text: node.querySelector('p')?.textContent ?? '' } : null;
           const parts = announced(e.type, kind, words, pick, grounded ?? (e.type === 'out.ask' ? { own: Boolean(e.data?.own) } : kind ? {} : e.data?.card ?? {}));
-          tell(parts, grounded ? mine(grounded.text).lang : ['out.speak', 'out.show', 'out.ask'].includes(e.type) ? hers(words).lang : undefined);
+          tell(parts, grounded ? mine(grounded.text).lang : ['out.speak', 'out.show', 'out.ask'].includes(e.type) ? hers(words, { before: await before }).lang : undefined);
         }
         if (follow) toEnd();
         // A plugin's dock may have no avatar of annai's.
