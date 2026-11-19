@@ -452,7 +452,7 @@ boot().catch((e) => {
   const full = e instanceof StorageFullError;
   root.replaceChildren(h('div', { class: 'blocking' },
     h('h1', { class: 'title', text: t`annai couldn't start` }),
-    h('p', { text: full ? sentences(t`There's no room left`, storageFullSteps()) : messageOf(e) }),
+    h('p', { text: full ? sentences(t`There's no room left`, storageFullSteps(false)) : messageOf(e) }), // no removal: annai hasn't started
     full ? null : h('p', { text: t`If this keeps happening, your browser may be blocking storage (for example, in a private window).` }),
     h('div', { class: 'acts' }, h('button', { class: 'btn pri', type: 'button', onclick: () => { reloadSettled(); } }, t`Try again`))));
 });

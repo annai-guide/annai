@@ -1065,7 +1065,7 @@ a8awk7	ok	Free web search for web_search, and a reader of pages other readers ca
 l5jx6y	ok	Shiori's art: designed for annai with AI image generation, then traced into vector art.	Shioriのイラスト：annaiのためにAI画像生成でデザインし、ベクター画像としてトレースしました。	src/ui/credits.js:107	
 gb19et	ok	Message to Shiori	Shioriへのメッセージ	src/ui/dock.js:53	
 1vatbdb	ok	Send	送信	src/ui/dock.js:80	
-12d978v	draft	Your message is back in the box.	メッセージを入力欄に戻しました。	src/ui/dock.js:136	Note: the storage card's first sentence, when the line typed in the box could not be saved and is back in it; 入力欄 for the type box.
+12d978v	draft	Your message is back in the box.	メッセージを入力欄に戻しました。	src/ui/dock.js:136	Note: a sentence of a card, when the line typed in the box could not be saved or sent and is back in it: the storage card's first, or its second after "Your files didn't reach Shiori." when files went with the line, and the first of the body on the card of any other failure; 入力欄 for the type box.
 abxwjc	ok	Your files didn't reach Shiori	ファイルをShioriに渡せませんでした	src/ui/dock.js:136	Note: a card when keeping the handed files failed (storage full, say); its body says why. Built on 渡す, as the + says.
 1m2zofh	ok	Type	入力	src/ui/dock.js:159	Note: The dock's keyboard button: it opens the box to type in (a verb).
 1dcb0v0	ok	The photo wasn't added	写真を追加できませんでした	src/ui/dock.js:203	

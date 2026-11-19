@@ -1065,7 +1065,7 @@ a8awk7	ok	Free web search for web_search, and a reader of pages other readers ca
 l5jx6y	ok	Shiori's art: designed for annai with AI image generation, then traced into vector art.	Shiori 的形象：用 AI 图像生成为 annai 设计，再描摹成矢量图。	src/ui/credits.js:107	
 gb19et	ok	Message to Shiori	发消息给 Shiori	src/ui/dock.js:53	
 1vatbdb	ok	Send	发送	src/ui/dock.js:80	
-12d978v	draft	Your message is back in the box.	消息已放回输入框。	src/ui/dock.js:136	Note: the storage card's first sentence, when the line typed in the box could not be saved and is back in it; 输入框 for the type box.
+12d978v	draft	Your message is back in the box.	消息已放回输入框。	src/ui/dock.js:136	Note: a sentence of a card, when the line typed in the box could not be saved or sent and is back in it: the storage card's first, or its second after "Your files didn't reach Shiori." when files went with the line, and the first of the body on the card of any other failure; 输入框 for the type box.
 abxwjc	ok	Your files didn't reach Shiori	文件没能交给 Shiori	src/ui/dock.js:136	Note: built on 交给, as the + says.
 1m2zofh	ok	Type	输入	src/ui/dock.js:159	Note: The dock's keyboard button: it opens the box to type in (a verb).
 1dcb0v0	ok	The photo wasn't added	未能添加照片	src/ui/dock.js:203	

@@ -508,6 +508,35 @@ export default function (test, assert) {
     }
   });
 
+  test("dock: a file's read that fails for another reason gives the words back too, and the card says so first, before the error; with no words it is the error alone", async () => {
+    const k = unsavedKit({ target: null });
+    await ensureBaseScopes(k.ws);
+    const trip = await createTrip(k.ws, { title: 'Testville' });
+    k.agent.target = trip;
+    await k.ws.write(trip, '/files/ticket.txt', 'a ticket', { author: 'user', type: 'text/plain' });
+    const real = k.store.tx.bind(k.store);
+    k.store.tx = /** @type {any} */ ((/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => (mode === 'readonly' ? Promise.reject(new Error('The file is gone')) : real(stores, mode, fn)));
+    try {
+      k.dock.attach([{ scope: trip, path: '/files/ticket.txt', name: 'ticket.txt' }]);
+      k.box.value = 'Is it valid?';
+      /** @type {HTMLFormElement} */ (k.sheet).requestSubmit();
+      await new Promise((done) => setTimeout(done, 100));
+      assert.equal(k.box.value, 'Is it valid?');
+      assert.equal(k.cards.length, 1);
+      assert.equal(k.cards[0].title, "Your files didn't reach Shiori");
+      assert.equal(k.cards[0].body, 'Your message is back in the box. The file is gone');
+      k.box.value = '';
+      k.dock.attach([{ scope: trip, path: '/files/ticket.txt', name: 'ticket.txt' }]);
+      /** @type {HTMLFormElement} */ (k.sheet).requestSubmit();
+      await new Promise((done) => setTimeout(done, 100));
+      assert.equal(k.cards.length, 2);
+      assert.equal(k.cards[1].body, 'The file is gone');
+    } finally {
+      k.store.tx = real;
+      k.done();
+    }
+  });
+
   test("dock: a photo the full phone can't keep shows the storage card with the photo first, not a card of its own", async () => {
     const k = unsavedKit({ target: null });
     await ensureBaseScopes(k.ws);

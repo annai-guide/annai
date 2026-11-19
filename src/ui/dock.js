@@ -133,7 +133,7 @@ export function createDock(ctx) {
       // handOver rejects only before it passed the words on (composer.js): back in the box.
       const notSent = (/** @type {unknown} */ x) => {
         giveBack(text);
-        explainStorageFull(ctx, x, { said: sentences(t`Your files didn't reach Shiori`, text ? t`Your message is back in the box.` : '') }) || ctx.notices.card({ tone: 'warn', title: t`Your files didn't reach Shiori`, body: messageOf(x) });
+        explainStorageFull(ctx, x, { said: sentences(t`Your files didn't reach Shiori`, text ? t`Your message is back in the box.` : '') }) || ctx.notices.card({ tone: 'warn', title: t`Your files didn't reach Shiori`, body: sentences(text ? t`Your message is back in the box.` : '', messageOf(x)) });
       };
       if (!items.some((a) => 'file' in a)) {
         done();

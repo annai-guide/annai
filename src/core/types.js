@@ -59,7 +59,7 @@
  *   A write the browser refuses rejects with StorageFullError and writes nothing: QuotaExceededError in any transaction; in a read-write one also
  *   UnknownError (a request's, the transaction's, or fn's) and an abort after all its requests succeeded (a full phone's refusals). A connection that fails
  *   to open with UnknownError or AbortError counts as a write in either mode: the first open, and any connect inside tx. Any other error is rejected as it
- *   is. fn runs a second time first when it failed as a lost connection does (InvalidStateError, UnknownError, AbortError).
+ *   is. fn runs a second time first when it failed as a lost connection does (InvalidStateError, UnknownError, AbortError, or any error whose message says the connection is lost, closing or closed).
  *   Inside fn, await only Tx calls: awaiting anything else lets IndexedDB commit early.
  * @property {() => void} close  stops the store for good: every later tx rejects with StoppedError (errors.js)
  */

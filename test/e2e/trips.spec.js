@@ -98,6 +98,7 @@ test("a phone too full to open annai's database says so at start, in the phone's
   await expect(page.locator('.blocking')).toContainText("There's no room left.");
   await expect(page.locator('.blocking')).toContainText(browserName === 'webkit' ? 'Free up space on this iPhone in Settings → General → iPhone Storage, then try again.' : 'Free up space on this phone in Settings → Storage, then try again.');
   await expect(page.locator('.blocking')).not.toContainText('blocking storage');
+  await expect(page.locator('.blocking')).not.toContainText('Removing a trip'); // annai hasn't started: no trip to remove
 });
 
 test("a trip link can't open your profile or annai's own files", async ({ page }) => {

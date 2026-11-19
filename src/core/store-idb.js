@@ -114,7 +114,8 @@ export async function createIdbStore(name = DB_NAME, hooks = {}) {
  * A transaction that failed because the connection went away: a closed connection
  * throws InvalidStateError, and WebKit fails the transaction in flight with
  * "UnknownError: Connection to Indexed Database server lost"; or that the browser
- * aborted (AbortError). Nothing was committed, so one retry is safe.
+ * aborted (AbortError); or any error whose message says the connection (or database) is lost, closing or closed.
+ * Nothing was committed, so one retry is safe.
  * @param {any} e
  */
 function connectionLost(e) {

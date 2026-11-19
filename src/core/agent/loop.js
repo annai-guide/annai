@@ -810,7 +810,7 @@ export class Agent {
       for (const w of those) w.fallbacks = [];
       await this.#logWakes(those, newId('w'), false, { log: this.#keptIn(s), trip: s === ME ? null : s });
       this.#leftClosed(s);
-      this.#queue = this.#queue.filter((w) => !those.includes(w)); // a failed write keeps them (typed lines go back: #unsaved)
+      this.#queue = this.#queue.filter((w) => !those.includes(w)); // a failed write keeps them (typed lines go back: #unsaved; one waiting with a refused reminder stays: docs/limitations.md)
     }
   }
 
@@ -2074,7 +2074,7 @@ export class Agent {
 
   /**
    * No write kept these lines: their typed words go back, never held (unsaved: the words joined by newlines, the error), off the queue, and marked, so
-   * a line comes back once. The caller lets the failure go on. @param {{ typed?: boolean, text?: string, logged?: boolean }[]} lines @param {unknown} e
+   * a line comes back once. What becomes of the failure is the caller's: most throw it on, #drain says it. @param {{ typed?: boolean, text?: string, logged?: boolean }[]} lines @param {unknown} e
    */
   #unsaved(lines, e) {
     const owed = lines.filter((w) => w.typed && w.text && !w.logged);

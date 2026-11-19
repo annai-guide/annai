@@ -48,8 +48,8 @@ export function shownFor(name) {
  * What a Store rethrows for a failed transaction: a write the browser refused becomes StorageFullError, by name and side, never words
  * (a full phone's isn't a quota error: the builder's probe of 2026-11-19 on Linux builds of WebKit and Chromium; not yet on a phone). @param {unknown} e
  * @param {{ write?: boolean, refused?: boolean, open?: boolean }} [o] write: read-write, or a connection that could not be opened (Chromium's
- *   backing store writes as it opens); refused: aborted after all its requests succeeded; open: the connection could not be opened, which Chromium at
- *   its last bytes says with an UnknownError, or, for the reopen of a connection its failed write had closed, with an AbortError ("The connection was closed")
+ *   backing store writes as it opens); refused: aborted after all its requests succeeded; open: a connection that could not be opened, the first open or
+ *   any reopen: an UnknownError counts (Chromium at its last bytes), and an AbortError too (the reopen of a connection its failed write had closed: "The connection was closed")
  */
 export function storeError(e, { write = false, refused = false, open = false } = {}) {
   const name = /** @type {any} */ (e)?.name;
