@@ -788,6 +788,7 @@ cpehgy	ok	The plugin didn't provide an endpoint type {0}.	該外掛程式沒有�
 557vva	ok	{0} isn't a web address: give it with https:// in front.	{0} 不是有效的網址，請在前面加上 https://。	src/core/llm/provider-desc.js:164	{0} = url
 y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	網址必須以 https:// 開頭（只有 localhost 或 127.0.0.1 可以用 http://）。瀏覽器會封鎖 https 頁面發出的一般 http 請求，而 annai 存取區域網路內的伺服器時只使用 https，所以另一台電腦上的伺服器需要 https 網址。可以用 Tailscale Serve 做到：{0}。伺服器還必須允許來自 annai.guide 的 CORS 請求。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
 1qpfdfv	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1).	網址必須以 https:// 開頭（只有 localhost 或 127.0.0.1 可以用 http://）。	src/core/llm/provider-desc.js:166	
+xx043p	ok	"{0}" is already added here.	「{0}」已新增	src/core/llm/providers.js:317	{0} = providerModelId
 1xwbser	ok	It is turned off.	已關閉。	src/core/llm/service.js:305	Note: said of a plugin named before it on the screen.
 1pqsrb3	ok	It isn't running. Look at it in Settings → Plugins.	沒有在執行。請到設定 → 外掛程式查看。	src/core/llm/service.js:307	Note: said of a plugin named before it on the screen.
 sejc5h	ok	{0} was switched off after errors.	{0} 因多次出錯已被關閉。	src/core/llm/service.js:322	{0} = shown
@@ -2106,82 +2107,82 @@ k02514#other	ok	First, annai asks {0} to delete the # turns of your conversation
 lcyovi#other	ok	Offline, a new key or address, or Remove key, leaves {0} the # turns it keeps until they expire, up to {1}.	離線時更換金鑰或網址，或點「移除金鑰」，{0} 保留的 # 輪對話會一直留到過期，最長 {1}。	src/ui/screens/provider.js:66	plural; # = n; {0} = name; {1} = upTo; English: "Offline, a new key or address, or Remove key, leaves {0} the # turn it keeps until it expires, up to {1}." (one), "Offline, a new key or address, or Remove key, leaves {0} the # turns it keeps until they expire, up to {1}." (other)
 ifc222#other	ok	{0} keeps # turns until they expire, up to {1}.	{0} 會保留 # 輪對話，直到過期，最長 {1}。	src/ui/screens/provider.js:69	plural; # = n; {0} = name; {1} = upTo; English: "{0} keeps # turn until it expires, up to {1}." (one), "{0} keeps # turns until they expire, up to {1}." (other)
 1fr4kgu	ok	This provider no longer exists	該供應商已不存在	src/ui/screens/provider.js:87	
-17c1dhc	ok	Extra headers (JSON)	額外請求標頭（JSON）	src/ui/screens/provider.js:113	
-1r2b41m	ok	Removes its key, its models and their places in roles, and the {0} plugin, with {1}, which nothing else needs.	將移除它的金鑰、模型（及其在各角色中的位置）和 {0} 外掛程式，以及不再被其他地方使用的 {1}。	src/ui/screens/provider.js:151	{0} = plugin; {1} = list(protocols)
-5f7g8f	ok	Removes its key, its models and their places in roles, and the {0} plugin.	將移除它的金鑰、模型（及其在各角色中的位置）和 {0} 外掛程式。	src/ui/screens/provider.js:152	{0} = plugin
-mcx63c	ok	Removes its key, its models and their places in roles, with {0}, which nothing else needs.	將移除它的金鑰、模型（及其在各角色中的位置），以及不再被其他地方使用的 {0}。	src/ui/screens/provider.js:153	{0} = list(protocols)
-1ue57qi	ok	Removes its key, its models and their places in roles.	將移除它的金鑰和模型（及其在各角色中的位置）。	src/ui/screens/provider.js:154	
-1rtug95	ok	To add it back, you'll need its address again: {0}.	日後要再加回來，需要再次提供它的網址：{0}。	src/ui/screens/provider.js:156	{0} = host
-nfdm8v	ok	To add it back, you'll need its file again.	日後要再加回來，需要再次提供它的檔案。	src/ui/screens/provider.js:157	
-u40nrw	ok	To add it back, you'll need its file again ({0}).	日後要再加回來，需要再次提供它的檔案（{0}）。	src/ui/screens/provider.js:157	{0} = installed.file
-1tqi1rr	ok	Asking {0} to delete what it keeps…	正在請 {0} 刪除它保留的內容…	src/ui/screens/provider.js:168	{0} = list(k.who)
-evz7q4	ok	Provider	供應商	src/ui/screens/provider.js:185	
-2r1h4p	ok	Connection	連線	src/ui/screens/provider.js:187	
-1swq770	ok	API key	API 金鑰	src/ui/screens/provider.js:190	
-1o4hxda	ok	On, its calls show as free in the Trace, and count nothing toward Spend per day.	開啟後，它的呼叫在「記錄」中顯示為免費，也不計入每日花費。	src/ui/screens/provider.js:199	
-12td532	ok	Remove key	移除金鑰	src/ui/screens/provider.js:202	
-1qapi39	ok	Tap again to remove the key	再點一次以移除金鑰	src/ui/screens/provider.js:202	
-5bt3jk	ok	Key removed	已移除金鑰	src/ui/screens/provider.js:205	
-1r04n6e	ok	Remove provider	移除供應商	src/ui/screens/provider.js:214	
-11faf7g	ok	{0} has no way of its own to add it here: add it by hand, and set it up on its page.	{0} 沒有專屬的新增流程，請手動新增，然後在它的頁面上設定。	src/ui/screens/provider.js:237	{0} = src.name
-ih6plk	ok	This provider's plugin isn't running. Add it from Add, or look at it in Settings → Plugins.	該供應商的外掛程式沒有在執行。請在「新增」頁面新增，或在設定 → 外掛程式中檢視。	src/ui/screens/provider.js:237	Note: "from Add" is the Add screen, quoted.
-u91wwi	ok	Add by hand	手動新增	src/ui/screens/provider.js:255	
-1nqeyot	ok	By hand	手動	src/ui/screens/provider.js:260	
-cgpzg8	ok	Or add {0} as it is, and set up its key and what it offers on its own page.	或者直接新增 {0}，再到它的頁面設定金鑰和功能。	src/ui/screens/provider.js:261	{0} = src.name
-1lckuuy	ok	Look at it in Settings → Plugins	在設定 → 外掛程式中檢視	src/ui/screens/provider.js:279	
-10m9pho	ok	Its plugin, {0}, isn't running, so annai can't say what it offers. {1}.	它的外掛程式「{0}」沒有在執行，所以無法顯示它提供哪些功能。{1}。	src/ui/screens/provider.js:281	{0} = name; {1} = look; Note: {1} is the link's words, a sentence of its own.
-8gf0py	ok	The plugin it was made from isn't on this device, and it isn't one of annai's own providers, so annai can't fetch it. Install it again from where you got it, in Settings → Plugins → Add, or remove this provider.	建立它的外掛程式不在此裝置上，也不是 annai 官方的供應商，所以無法自動取得。請在設定 → 外掛程式 → 新增中，從原本的來源重新安裝，或移除此供應商。	src/ui/screens/provider.js:285	
-6k2646	ok	Its plugin isn't on this device, and annai's catalog couldn't be loaded to fetch it. Connect to the internet and open this page again.	它的外掛程式不在此裝置上，也無法載入 annai 的目錄來取得。請連上網路後重新開啟此頁面。	src/ui/screens/provider.js:286	
-1e1obo4	ok	Installing…	正在安裝…	src/ui/screens/provider.js:293	
-9djdxp	ok	Install it	安裝	src/ui/screens/provider.js:304	
-17vxyyo	ok	Its plugin, {0}, isn't installed, so annai can't say what it offers.	它的外掛程式「{0}」未安裝，所以無法顯示它提供哪些功能。	src/ui/screens/provider.js:305	{0} = officialName(entry.id, entry.name)
-mf1onk	ok	This provider no longer exists.	該供應商已不存在。	src/ui/screens/provider.js:321	
-r4y7q	ok	Use {0}	啟用 {0}	src/ui/screens/provider.js:347	{0} = shownName
-1o304we	ok	New in the last update	上次更新新增	src/ui/screens/provider.js:354	
-1k5huc5	ok	the provider's: {0}	供應商網址：{0}	src/ui/screens/provider.js:374	{0} = providerOf(rec).baseUrl
-1ppqeqd	ok	the provider's: none yet	供應商網址：尚無	src/ui/screens/provider.js:374	
-11krxuy	ok	Upload photos to this provider (annai deletes each once it is 48 hours old, the next time annai starts or comes online)	把照片上傳到此供應商（超過 48 小時的照片，會在 annai 下次啟動或恢復連線時刪除）	src/ui/screens/provider.js:385	Note: a switch; the brackets say when annai deletes, no more than it does.
-12dfi3i	ok	Upload photos to this provider (each expires after 48 hours)	把照片上傳到此供應商（每張 48 小時後過期）	src/ui/screens/provider.js:386	
-1qia4dd	ok	Let {0} keep the conversation between turns: sends less each time.	讓 {0} 在多輪之間保留對話，每次傳送的內容更少。	src/ui/screens/provider.js:393	{0} = who
-l91m05	ok	Its own address	專用網址	src/ui/screens/provider.js:412	
-9umgdw	ok	Empty: the provider's address. Each setting here is saved as you change it.	留空則使用供應商的網址。這裡的設定變更後會自動儲存。	src/ui/screens/provider.js:418	
-1ajunu1	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.	{0} 會保留你與 Shiori 的對話，包括其中的照片、語音訊息，以及她所知道的你的位置，保留多久由那台伺服器決定。	src/ui/screens/provider.js:422	{0} = who; Note: "voice messages" are messages you spoke (語音訊息), not a voice she speaks with (聲音).
-1jtdu56	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0} 會保留你與 Shiori 的對話，包括其中的照片、語音訊息，以及她所知道的你的位置：{1}。	src/ui/screens/provider.js:423	{0} = who; {1} = holds; Note: "voice messages" are messages you spoke (語音訊息), not a voice she speaks with (聲音); {1} is the plugin's own words for how long.
-1fcg7pg#other	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0} 會保留你與 Shiori 的對話，包括其中的照片、語音訊息，以及她所知道的你的位置：免費金鑰保留一天，付費金鑰最長 # 天。	src/ui/screens/provider.js:424	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other); Note: "voice messages" are messages you spoke (語音訊息), not a voice she speaks with (聲音).
-1gugeu9	ok	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	移除對應的旅行、此供應商或全部內容（清除），更換或移除金鑰，或關閉此項時，annai 都會刪除這些內容。	src/ui/screens/provider.js:426	
-1iorloe	ok	Off, each turn sends the whole conversation.	關閉後，每一輪都會傳送整個對話。	src/ui/screens/provider.js:426	
-1wdiu43	ok	It needs this provider's key: without one, each turn sends the whole conversation.	此功能需要供應商的金鑰；沒有金鑰時，每一輪都會傳送整個對話。	src/ui/screens/provider.js:427	
-72k1cn#other	ok	# deletions waiting: annai can't send them without this provider's key.	# 項刪除請求待傳送：沒有此供應商的金鑰，無法傳送。	src/ui/screens/provider.js:428	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
-f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	# 項刪除請求待傳送：連上 {0} 後會自動傳送。	src/ui/screens/provider.js:429	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
-147eqzv	ok	Test {0}	測試 {0}	src/ui/screens/provider.js:440	{0} = first.name
-1eqfcih	ok	{0} doesn't offer search on the free tier.	{0} 的免費額度不包含搜尋。	src/ui/screens/provider.js:467	{0} = who
-1cmq8ob	ok	{0} doesn't offer fetch on the free tier.	{0} 的免費額度不包含網頁抓取。	src/ui/screens/provider.js:468	{0} = who
-1k4v7dk	ok	{0} doesn't offer {1} on the free tier.	{0} 的免費額度不包含 {1}。	src/ui/screens/provider.js:468	{0} = who; {1} = tool.name
-11x4tx3	ok	This needs the {0} plugin, which isn't running.	需要 {0} 外掛程式，但它沒有在執行。	src/ui/screens/provider.js:474	{0} = name
-4nyk49	ok	This needs a plugin that isn't running.	需要的外掛程式沒有在執行。	src/ui/screens/provider.js:474	
-15hdhx3	ok	the provider's model id	供應商的模型 ID	src/ui/screens/provider.js:498	
-1oz4euh	ok	Add model	新增模型	src/ui/screens/provider.js:515	
-tbmsa5	ok	Asking for its models…	正在取得模型清單…	src/ui/screens/provider.js:520	
-1yko1my#other	ok	# models.	共 # 個模型。	src/ui/screens/provider.js:523	plural; # = listed.length; English: "# model." (one), "# models." (other)
-uxqo7a	ok	Fetch model list	取得模型清單	src/ui/screens/provider.js:534	
-1scr2ml	ok	{0}K context	{0}K 上下文	src/ui/screens/provider.js:537	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
-1tqy8k1	ok	Its models	模型	src/ui/screens/provider.js:539	Note: "Its models" as a heading under the ability: モデル alone reads right there.
-bzs1ys	ok	No models yet.	還沒有模型。	src/ui/screens/provider.js:540	
-pnxisg	ok	Add a model by id	依 ID 新增模型	src/ui/screens/provider.js:541	
-1mod47e	ok	for example: haiku	例如：haiku	src/ui/screens/provider.js:558	
-uizt0x	ok	{0} · loaded	{0} · 已載入	src/ui/screens/provider.js:568	{0} = named
-1w6mxym	ok	Already added, on {0}	已新增到 {0}	src/ui/screens/provider.js:569	{0} = on
-l7fn8k	ok	Already added, on another provider	已新增到其他供應商	src/ui/screens/provider.js:569	
-19ai2z0	ok	Filter the list	篩選清單	src/ui/screens/provider.js:601	
-11pl9jr	ok	Use the free models	使用免費模型	src/ui/screens/provider.js:609	
-vam64u	ok	Use the recommended models	使用推薦模型	src/ui/screens/provider.js:609	
-1b2yx8m	ok	Suggested models	推薦模型	src/ui/screens/provider.js:610	
-y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0} 為每個角色推薦了一個模型。使用推薦後，它的語音模型會排在免費的手機語音輸入和瀏覽器聲音之前，所以會優先嘗試收費的模型。	src/ui/screens/provider.js:611	{0} = src.name; Note: 手機語音輸入 and 瀏覽器聲音 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
-1x5hwmk	ok	{0} suggests a model for each role.	{0} 為每個角色推薦了一個模型。	src/ui/screens/provider.js:612	{0} = src.name
-1iffu2j	ok	{0} switched on.	已開啟 {0}。	src/ui/screens/provider.js:619	{0} = n
-1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:619	
-1egvjs1	ok	{0} couldn't be switched on: {1}	{0} 無法開啟：{1}	src/ui/screens/provider.js:620	{0} = f.name; {1} = messageOf(f.error)
-wlh055	ok	Use the {0} models	使用 {0} 模型	src/ui/screens/provider.js:626	{0} = which
+17c1dhc	ok	Extra headers (JSON)	額外請求標頭（JSON）	src/ui/screens/provider.js:114	
+1r2b41m	ok	Removes its key, its models and their places in roles, and the {0} plugin, with {1}, which nothing else needs.	將移除它的金鑰、模型（及其在各角色中的位置）和 {0} 外掛程式，以及不再被其他地方使用的 {1}。	src/ui/screens/provider.js:152	{0} = plugin; {1} = list(protocols)
+5f7g8f	ok	Removes its key, its models and their places in roles, and the {0} plugin.	將移除它的金鑰、模型（及其在各角色中的位置）和 {0} 外掛程式。	src/ui/screens/provider.js:153	{0} = plugin
+mcx63c	ok	Removes its key, its models and their places in roles, with {0}, which nothing else needs.	將移除它的金鑰、模型（及其在各角色中的位置），以及不再被其他地方使用的 {0}。	src/ui/screens/provider.js:154	{0} = list(protocols)
+1ue57qi	ok	Removes its key, its models and their places in roles.	將移除它的金鑰和模型（及其在各角色中的位置）。	src/ui/screens/provider.js:155	
+1rtug95	ok	To add it back, you'll need its address again: {0}.	日後要再加回來，需要再次提供它的網址：{0}。	src/ui/screens/provider.js:157	{0} = host
+nfdm8v	ok	To add it back, you'll need its file again.	日後要再加回來，需要再次提供它的檔案。	src/ui/screens/provider.js:158	
+u40nrw	ok	To add it back, you'll need its file again ({0}).	日後要再加回來，需要再次提供它的檔案（{0}）。	src/ui/screens/provider.js:158	{0} = installed.file
+1tqi1rr	ok	Asking {0} to delete what it keeps…	正在請 {0} 刪除它保留的內容…	src/ui/screens/provider.js:169	{0} = list(k.who)
+evz7q4	ok	Provider	供應商	src/ui/screens/provider.js:186	
+2r1h4p	ok	Connection	連線	src/ui/screens/provider.js:188	
+1swq770	ok	API key	API 金鑰	src/ui/screens/provider.js:191	
+1o4hxda	ok	On, its calls show as free in the Trace, and count nothing toward Spend per day.	開啟後，它的呼叫在「記錄」中顯示為免費，也不計入每日花費。	src/ui/screens/provider.js:200	
+12td532	ok	Remove key	移除金鑰	src/ui/screens/provider.js:203	
+1qapi39	ok	Tap again to remove the key	再點一次以移除金鑰	src/ui/screens/provider.js:203	
+5bt3jk	ok	Key removed	已移除金鑰	src/ui/screens/provider.js:206	
+1r04n6e	ok	Remove provider	移除供應商	src/ui/screens/provider.js:215	
+11faf7g	ok	{0} has no way of its own to add it here: add it by hand, and set it up on its page.	{0} 沒有專屬的新增流程，請手動新增，然後在它的頁面上設定。	src/ui/screens/provider.js:238	{0} = src.name
+ih6plk	ok	This provider's plugin isn't running. Add it from Add, or look at it in Settings → Plugins.	該供應商的外掛程式沒有在執行。請在「新增」頁面新增，或在設定 → 外掛程式中檢視。	src/ui/screens/provider.js:238	Note: "from Add" is the Add screen, quoted.
+u91wwi	ok	Add by hand	手動新增	src/ui/screens/provider.js:256	
+1nqeyot	ok	By hand	手動	src/ui/screens/provider.js:261	
+cgpzg8	ok	Or add {0} as it is, and set up its key and what it offers on its own page.	或者直接新增 {0}，再到它的頁面設定金鑰和功能。	src/ui/screens/provider.js:262	{0} = src.name
+1lckuuy	ok	Look at it in Settings → Plugins	在設定 → 外掛程式中檢視	src/ui/screens/provider.js:280	
+10m9pho	ok	Its plugin, {0}, isn't running, so annai can't say what it offers. {1}.	它的外掛程式「{0}」沒有在執行，所以無法顯示它提供哪些功能。{1}。	src/ui/screens/provider.js:282	{0} = name; {1} = look; Note: {1} is the link's words, a sentence of its own.
+8gf0py	ok	The plugin it was made from isn't on this device, and it isn't one of annai's own providers, so annai can't fetch it. Install it again from where you got it, in Settings → Plugins → Add, or remove this provider.	建立它的外掛程式不在此裝置上，也不是 annai 官方的供應商，所以無法自動取得。請在設定 → 外掛程式 → 新增中，從原本的來源重新安裝，或移除此供應商。	src/ui/screens/provider.js:286	
+6k2646	ok	Its plugin isn't on this device, and annai's catalog couldn't be loaded to fetch it. Connect to the internet and open this page again.	它的外掛程式不在此裝置上，也無法載入 annai 的目錄來取得。請連上網路後重新開啟此頁面。	src/ui/screens/provider.js:287	
+1e1obo4	ok	Installing…	正在安裝…	src/ui/screens/provider.js:294	
+9djdxp	ok	Install it	安裝	src/ui/screens/provider.js:305	
+17vxyyo	ok	Its plugin, {0}, isn't installed, so annai can't say what it offers.	它的外掛程式「{0}」未安裝，所以無法顯示它提供哪些功能。	src/ui/screens/provider.js:306	{0} = officialName(entry.id, entry.name)
+mf1onk	ok	This provider no longer exists.	該供應商已不存在。	src/ui/screens/provider.js:322	
+r4y7q	ok	Use {0}	啟用 {0}	src/ui/screens/provider.js:348	{0} = shownName
+1o304we	ok	New in the last update	上次更新新增	src/ui/screens/provider.js:355	
+1k5huc5	ok	the provider's: {0}	供應商網址：{0}	src/ui/screens/provider.js:375	{0} = providerOf(rec).baseUrl
+1ppqeqd	ok	the provider's: none yet	供應商網址：尚無	src/ui/screens/provider.js:375	
+11krxuy	ok	Upload photos to this provider (annai deletes each once it is 48 hours old, the next time annai starts or comes online)	把照片上傳到此供應商（超過 48 小時的照片，會在 annai 下次啟動或恢復連線時刪除）	src/ui/screens/provider.js:386	Note: a switch; the brackets say when annai deletes, no more than it does.
+12dfi3i	ok	Upload photos to this provider (each expires after 48 hours)	把照片上傳到此供應商（每張 48 小時後過期）	src/ui/screens/provider.js:387	
+1qia4dd	ok	Let {0} keep the conversation between turns: sends less each time.	讓 {0} 在多輪之間保留對話，每次傳送的內容更少。	src/ui/screens/provider.js:394	{0} = who
+l91m05	ok	Its own address	專用網址	src/ui/screens/provider.js:413	
+9umgdw	ok	Empty: the provider's address. Each setting here is saved as you change it.	留空則使用供應商的網址。這裡的設定變更後會自動儲存。	src/ui/screens/provider.js:419	
+1ajunu1	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.	{0} 會保留你與 Shiori 的對話，包括其中的照片、語音訊息，以及她所知道的你的位置，保留多久由那台伺服器決定。	src/ui/screens/provider.js:423	{0} = who; Note: "voice messages" are messages you spoke (語音訊息), not a voice she speaks with (聲音).
+1jtdu56	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0} 會保留你與 Shiori 的對話，包括其中的照片、語音訊息，以及她所知道的你的位置：{1}。	src/ui/screens/provider.js:424	{0} = who; {1} = holds; Note: "voice messages" are messages you spoke (語音訊息), not a voice she speaks with (聲音); {1} is the plugin's own words for how long.
+1fcg7pg#other	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0} 會保留你與 Shiori 的對話，包括其中的照片、語音訊息，以及她所知道的你的位置：免費金鑰保留一天，付費金鑰最長 # 天。	src/ui/screens/provider.js:425	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other); Note: "voice messages" are messages you spoke (語音訊息), not a voice she speaks with (聲音).
+1gugeu9	ok	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	移除對應的旅行、此供應商或全部內容（清除），更換或移除金鑰，或關閉此項時，annai 都會刪除這些內容。	src/ui/screens/provider.js:427	
+1iorloe	ok	Off, each turn sends the whole conversation.	關閉後，每一輪都會傳送整個對話。	src/ui/screens/provider.js:427	
+1wdiu43	ok	It needs this provider's key: without one, each turn sends the whole conversation.	此功能需要供應商的金鑰；沒有金鑰時，每一輪都會傳送整個對話。	src/ui/screens/provider.js:428	
+72k1cn#other	ok	# deletions waiting: annai can't send them without this provider's key.	# 項刪除請求待傳送：沒有此供應商的金鑰，無法傳送。	src/ui/screens/provider.js:429	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
+f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	# 項刪除請求待傳送：連上 {0} 後會自動傳送。	src/ui/screens/provider.js:430	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
+147eqzv	ok	Test {0}	測試 {0}	src/ui/screens/provider.js:441	{0} = first.name
+1eqfcih	ok	{0} doesn't offer search on the free tier.	{0} 的免費額度不包含搜尋。	src/ui/screens/provider.js:468	{0} = who
+1cmq8ob	ok	{0} doesn't offer fetch on the free tier.	{0} 的免費額度不包含網頁抓取。	src/ui/screens/provider.js:469	{0} = who
+1k4v7dk	ok	{0} doesn't offer {1} on the free tier.	{0} 的免費額度不包含 {1}。	src/ui/screens/provider.js:469	{0} = who; {1} = tool.name
+11x4tx3	ok	This needs the {0} plugin, which isn't running.	需要 {0} 外掛程式，但它沒有在執行。	src/ui/screens/provider.js:475	{0} = name
+4nyk49	ok	This needs a plugin that isn't running.	需要的外掛程式沒有在執行。	src/ui/screens/provider.js:475	
+15hdhx3	ok	the provider's model id	供應商的模型 ID	src/ui/screens/provider.js:514	
+1oz4euh	ok	Add model	新增模型	src/ui/screens/provider.js:531	
+tbmsa5	ok	Asking for its models…	正在取得模型清單…	src/ui/screens/provider.js:536	
+1yko1my#other	ok	# models.	共 # 個模型。	src/ui/screens/provider.js:539	plural; # = listed.length; English: "# model." (one), "# models." (other)
+uxqo7a	ok	Fetch model list	取得模型清單	src/ui/screens/provider.js:551	
+1scr2ml	ok	{0}K context	{0}K 上下文	src/ui/screens/provider.js:554	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
+1tqy8k1	ok	Its models	模型	src/ui/screens/provider.js:557	Note: "Its models" as a heading under the ability: モデル alone reads right there.
+bzs1ys	ok	No models yet.	還沒有模型。	src/ui/screens/provider.js:558	
+pnxisg	ok	Add a model by id	依 ID 新增模型	src/ui/screens/provider.js:559	
+1mod47e	ok	for example: haiku	例如：haiku	src/ui/screens/provider.js:577	
+uizt0x	ok	{0} · loaded	{0} · 已載入	src/ui/screens/provider.js:587	{0} = named
+1w6mxym	ok	Already added, on {0}	已新增到 {0}	src/ui/screens/provider.js:588	{0} = on
+l7fn8k	ok	Already added, on another provider	已新增到其他供應商	src/ui/screens/provider.js:588	
+19ai2z0	ok	Filter the list	篩選清單	src/ui/screens/provider.js:621	
+11pl9jr	ok	Use the free models	使用免費模型	src/ui/screens/provider.js:629	
+vam64u	ok	Use the recommended models	使用推薦模型	src/ui/screens/provider.js:629	
+1b2yx8m	ok	Suggested models	推薦模型	src/ui/screens/provider.js:630	
+y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0} 為每個角色推薦了一個模型。使用推薦後，它的語音模型會排在免費的手機語音輸入和瀏覽器聲音之前，所以會優先嘗試收費的模型。	src/ui/screens/provider.js:631	{0} = src.name; Note: 手機語音輸入 and 瀏覽器聲音 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
+1x5hwmk	ok	{0} suggests a model for each role.	{0} 為每個角色推薦了一個模型。	src/ui/screens/provider.js:632	{0} = src.name
+1iffu2j	ok	{0} switched on.	已開啟 {0}。	src/ui/screens/provider.js:639	{0} = n
+1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:639	
+1egvjs1	ok	{0} couldn't be switched on: {1}	{0} 無法開啟：{1}	src/ui/screens/provider.js:640	{0} = f.name; {1} = messageOf(f.error)
+wlh055	ok	Use the {0} models	使用 {0} 模型	src/ui/screens/provider.js:646	{0} = which
 1qocxbg	ok	Writing it: {0} is reading the conversation. This can take a minute.	撰寫中：{0} 正在讀取對話，可能需要一分鐘。	src/ui/screens/recap.js:33	{0} = names(m.name)
 1lrfe9k	ok	Write the recap	撰寫回顧	src/ui/screens/recap.js:35	
 h6huep	ok	Write it again	重新撰寫	src/ui/screens/recap.js:35	

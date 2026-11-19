@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { checkProviderDesc } from '../../src/core/llm/provider-desc.js';
 import { catalogFacts } from '../../src/core/catalog-facts.js';
 import { satisfies } from '../../src/core/requires.js';
-import { readConfig, modelOf, providerOf, saveRoles } from '../../src/core/llm/config.js';
+import { readConfig, modelOf, providerOf, saveRoles, removeModel } from '../../src/core/llm/config.js';
 import { createLlm } from '../../src/core/llm/service.js';
 import { koeWay } from '../../src/core/llm/fallback.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
@@ -239,7 +239,9 @@ test("OpenRouter's speech abilities: OpenAI-style requests to its audio API with
   const listed = await addListedModel(k, id, 'chat', { providerId: 'some/new-model' });
   assert.deepEqual(modelOf((await readConfig(k.ws)).models[listed]).providerTools.map((t) => t.id), ['openrouter-web-search']);
   // A voice added from the speech list keeps the voices OpenRouter lists for it, for its Voice field, and its first (a warm one else), and that Grok ignores a style (phone1-voices).
+  // Its description has the Grok voice already: removed first, so the list's is the one added (a model the provider has is refused, not added twice).
   const [grok] = await llm.listModels(id, 'voice');
+  await removeModel(k.ws, by(grok.providerId));
   const grokId = await addListedModel(k, id, 'voice', grok);
   assert.deepEqual(modelOf((await readConfig(k.ws)).models[grokId]).tunables, { voice: 'eve', voices: ['eve', 'ara'], styled: false });
   // A Fish Audio model added by id starts with Women KatKat and the style, the ability's: sent none, Fish Audio would pick a speaker for each sentence.

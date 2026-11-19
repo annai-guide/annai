@@ -178,6 +178,54 @@ test("Add model by id whose draw was dropped, then Fetch model list: a listed mo
   }
 });
 
+// One model for each provider model id on a provider's ability (touch 2 of form-keep-next): an add is refused when the provider has one, so a list
+// drawn before an add by id, or an add by id of what a list added under its name, never makes a second model of one id ("qwen3.8-flash (2)").
+
+test("a listed Add for a model that Add model by id has added since the list was drawn is refused with words, and there is one model (fails on 8326b247e)", async ({ page }) => {
+  const key = 'sk-stale-list-stand-in-0123';
+  const s = await startFakeServer({ flavour: 'llamacpp', key, models: [{ id: 'qwen3.8-flash', object: 'model', owned_by: 'llamacpp' }, { id: 'gemma5-small', object: 'model', owned_by: 'llamacpp' }] });
+  try {
+    const chat = await addLlamaCpp(page, s, key);
+    await chat.getByRole('button', { name: 'Fetch model list' }).click();
+    await expect(chat.getByText('2 models.')).toBeVisible();
+    // Added by id, with something typed after the tap, so the draw waits and the list on show is the one drawn before the add.
+    await chat.getByLabel('Add a model by id').fill('qwen3.8-flash');
+    await tapThenType(chat.getByRole('button', { name: 'Add model' }), 'typed-after');
+    await page.waitForTimeout(1600);
+    const stale = chat.getByRole('button', { name: 'Add qwen3.8-flash' });
+    await expect(stale, 'the list still offers it: it was drawn before the add').toBeEnabled();
+    await stale.click();
+    await expect(page.locator('.toasts .toast', { hasText: '"qwen3.8-flash" is already added here.' })).toBeVisible();
+    // As the page is now.
+    await page.reload();
+    await expect(chat.getByRole('link', { name: /^qwen3\.8-flash/ })).toHaveCount(1);
+  } finally {
+    await s.stop();
+  }
+});
+
+test("Add model by id of a model a list added under another name is refused with words, and there is one model (fails on 8326b247e)", async ({ page }) => {
+  const key = 'sk-by-id-after-list-0123';
+  const s = await startFakeServer({ flavour: 'llamacpp', key, models: [{ id: 'qwen3.8-flash', object: 'model', owned_by: 'llamacpp' }, { id: 'gemma5-small', name: 'Gemma 5', object: 'model', owned_by: 'llamacpp' }] });
+  try {
+    const chat = await addLlamaCpp(page, s, key);
+    await chat.getByRole('button', { name: 'Fetch model list' }).click();
+    await expect(chat.getByText('2 models.')).toBeVisible();
+    await chat.getByRole('button', { name: 'Add gemma5-small' }).click();
+    // Named by the list ("Gemma 5"); its id is the sub line of its card.
+    await expect(chat.getByRole('link', { name: /^Gemma 5/ })).toBeVisible();
+    await chat.getByLabel('Add a model by id').fill('gemma5-small');
+    await chat.getByRole('button', { name: 'Add model' }).click();
+    await expect(chat.getByText('"gemma5-small" is already added here.')).toBeVisible();
+    await expect(chat.getByRole('button', { name: 'Add model' })).toBeEnabled();
+    await page.reload();
+    await expect(chat.getByRole('link', { name: /^Gemma 5/ })).toBeVisible();
+    await expect(chat.getByRole('link', { name: /gemma5-small/ })).toHaveCount(1);
+  } finally {
+    await s.stop();
+  }
+});
+
 /**
  * A llama.cpp provider with a 40-model list shown, then its records removed under the open list, so every Add is refused ("That provider
  * no longer exists."). The list shows up to 50 rows in a box of its own, 50vh tall, so a row can sit anywhere on the screen, behind the dock too.

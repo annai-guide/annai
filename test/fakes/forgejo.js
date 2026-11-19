@@ -501,7 +501,7 @@ export async function startForgejo({ token = TOKEN, user = 'me', repos = {}, cor
         release();
       };
     },
-    /** Every request waits, until the returned function is called: a server slow to answer, as a test needs it (a browser engine's page.route does not hold a request made from a worker). @returns {() => void} */
+    /** Every request waits, until the returned function is called: a server slow to answer, as a test needs it (WebKit does not route the requests of a page a service worker controls, so page.route holds nothing there, as models.spec.js says of OpenRouter). @returns {() => void} */
     holdAll() {
       /** @type {() => void} */
       let release = () => {};

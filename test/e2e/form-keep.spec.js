@@ -201,8 +201,9 @@ test("Shiori's quiet hours saved and let go: a draw of annai's own lands, and th
   await expect(until).toHaveValue('07:00');
 });
 
-// A provider page's "Filter the list" never saves anything: what is typed in it is a search, said `stored` at each keystroke as the finders do.
-test("a provider's Filter the list typed and let go: the draw of a plugin that adds a page lands (fails on 799dd44a4: the filter held it for good)", async ({ page }) => {
+// A provider page's "Filter the list" never saves anything: what is typed in it is a search, said `stored` at each keystroke as the finders do, and the
+// search is kept as the finders keep theirs: its text and the list it filters come back with each draw of the screen, and a move starts them empty.
+test("a provider's Filter the list typed and let go: the draw of a plugin that adds a page lands, and the filter and its fetched list are as they were; a move starts them empty (fails on 8326b247e: they went)", async ({ page }) => {
   const key = 'sk-filter-stored-stand-in-0123';
   const s = await startFakeServer({ flavour: 'llamacpp', key, models: [{ id: 'qwen3.8-flash', object: 'model', owned_by: 'llamacpp' }, { id: 'gemma5-small', object: 'model', owned_by: 'llamacpp' }] });
   try {
@@ -216,10 +217,26 @@ test("a provider's Filter the list typed and let go: the draw of a plugin that a
     await page.getByRole('button', { name: 'Fetch model list' }).click();
     await expect(page.getByText('2 models.')).toBeVisible();
     await typeIn(page, 'Filter the list', 'qwen');
+    await expect(page.getByRole('button', { name: 'Add gemma5-small' })).toHaveCount(0);
     await page.getByLabel('Filter the list', { exact: true }).blur();
     await page.evaluate(() => (/** @type {any} */ (globalThis)).__addPage());
-    // The draw lands: the filter is a new, empty box, and the list is not shown until it is asked for again.
-    await expect(page.getByLabel('Filter the list', { exact: true })).toHaveCount(0, { timeout: 5000 });
+    // The draw lands (the box on screen is a new one, not the one marked), and brings the filter and the list back as they were.
+    const filter = page.getByLabel('Filter the list', { exact: true });
+    await expect(filter, 'the screen was drawn again').not.toHaveAttribute('data-mine', '1');
+    await expect(filter).toHaveValue('qwen');
+    await expect(page.getByRole('button', { name: 'Add qwen3.8-flash' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Add gemma5-small' }), 'the list is filtered by the text that came back').toHaveCount(0);
+    // The kept list is the whole fetched list: taking the text off shows the rest, without fetching again.
+    await filter.fill('');
+    await expect(page.getByRole('button', { name: 'Add gemma5-small' })).toBeVisible();
+    await filter.fill('qwen');
+    // A move to the page starts it empty: no text, no list.
+    await page.evaluate(() => { location.hash = '#/models'; });
+    await expect(page.getByRole('heading', { level: 1, name: 'Models' })).toBeVisible();
+    await page.goBack();
+    await expect(page.getByRole('button', { name: 'Fetch model list' })).toBeVisible();
+    await expect(page.getByLabel('Filter the list', { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Add qwen3.8-flash' })).toHaveCount(0);
   } finally {
     await s.stop();
   }
@@ -461,6 +478,8 @@ test("Update tapped, with a setting typed after the tap: when the update has gon
     await page.evaluate(() => { location.hash = '#/updates'; });
     await page.getByRole('button', { name: 'Check now' }).click();
     await page.evaluate(() => { location.hash = '#/plugins/remote-trace'; });
+    // The plugin's page first: the check is not held, and may end before the move, with Updates drawn again and its own Update to the locator.
+    await expect(page.getByRole('heading', { level: 1, name: 'Remote trace (for developers)' })).toBeVisible();
     const update = page.getByRole('button', { name: `Update to ${bumped}` });
     await expect(update).toBeVisible();
     // The tap, and a setting typed in the same turn, after it: the draw the update asks for waits for the field.

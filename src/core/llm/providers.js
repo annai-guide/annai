@@ -307,27 +307,45 @@ function startFor(cfg, providerId, abilityId) {
 }
 
 /**
+ * An ability has one model for each provider model id, as its list says (a model added is not offered again): an add of one it has is refused, in
+ * words the traveller sees. A list drawn before an add by id, or an add by id of what a list added under its name, would make a second one: the
+ * name check (saveModel) does not see it.
+ * @param {import('./config.js').ModelConfig} cfg @param {string} providerId @param {string} abilityId @param {string} providerModelId
+ */
+function refuseHeld(cfg, providerId, abilityId, providerModelId) {
+  if (Object.values(cfg.models).some((m) => m.provider === providerId && m.ability === abilityId && modelOf(m).providerId === providerModelId)) {
+    throw Object.assign(new Error(/* en */ `"${providerModelId}" is already added here.`), { shown: t`"${providerModelId}" is already added here.` });
+  }
+}
+
+/**
  * Adds a model from an ability's list: what the list said, over modelDefaults, is its template layer. It takes the first free name (named),
- * in takingNames (config.js). @param {{ ws: Workspace }} c @param {string} providerId @param {string} abilityId
+ * in takingNames (config.js); refused by refuseHeld.
+ * @param {{ ws: Workspace }} c @param {string} providerId @param {string} abilityId
  * @param {import('./contract.js').ListedModel} listed @returns {Promise<string>} the model's id
  */
 export async function addListedModel({ ws }, providerId, abilityId, listed) {
   return takingNames(ws, async () => {
     const cfg = await readConfig(ws);
+    const start = startFor(cfg, providerId, abilityId);
+    refuseHeld(cfg, providerId, abilityId, listed.providerId);
     const taken = new Set(Object.values(cfg.models).map((m) => modelOf(m).name.toLowerCase()));
-    const rec = named(newModel(providerId, abilityId, { template: { id: `list/${listed.providerId}`, version: '', values: { ...startFor(cfg, providerId, abilityId), ...listed } } }), taken);
+    const rec = named(newModel(providerId, abilityId, { template: { id: `list/${listed.providerId}`, version: '', values: { ...start, ...listed } } }), taken);
     await saveModel(ws, rec);
     return rec.id;
   });
 }
 
 /**
- * Adds a model to an ability by its provider id, in takingNames (config.js): refused when its name is taken (saveModel).
+ * Adds a model to an ability by its provider id, in takingNames (config.js): refused by refuseHeld, or when its name is taken (saveModel).
  * @param {{ ws: Workspace }} c @param {string} providerId @param {string} abilityId @param {string} providerModelId @returns {Promise<string>} its id
  */
 export async function addModelById({ ws }, providerId, abilityId, providerModelId) {
   return takingNames(ws, async () => {
-    const rec = newModel(providerId, abilityId, { user: { ...startFor(await readConfig(ws), providerId, abilityId), providerId: providerModelId } });
+    const cfg = await readConfig(ws);
+    const start = startFor(cfg, providerId, abilityId);
+    refuseHeld(cfg, providerId, abilityId, providerModelId);
+    const rec = newModel(providerId, abilityId, { user: { ...start, providerId: providerModelId } });
     await saveModel(ws, rec);
     return rec.id;
   });
