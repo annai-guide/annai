@@ -293,7 +293,7 @@ test("the replay's card and the user's words carry their language, as in the Con
   await expect(page.locator('.replay-shown p')).toHaveAttribute('dir', 'auto');
 });
 
-test("the replay's card reads her reply from the log, as the Conversation draws it: 「故宫」 after her Chinese line is Chinese with [en, ja, zh] (voice-reply-next; main: ja, the first listed in Han)", async ({ page }) => {
+test("the replay's card reads her reply from the log, as the Conversation draws it: 「故宫」 after her Chinese line is Chinese with [en, ja, zh], and an option after her Chinese question (voice-reply-next; main: ja, the first listed in Han)", async ({ page }) => {
   await openApp(page, '#/trips');
   const trip = await startTrip(page, 'Kyoto Spring');
   await seedMorning(page, trip);
@@ -308,12 +308,15 @@ test("the replay's card reads her reply from the log, as the Conversation draws 
   });
   await writeEvent(page, trip, { type: 'out.speak', data: { id: 's1', wake: 'w1', text: '我们明天去故宫吧。' } });
   await writeEvent(page, trip, { type: 'out.show', data: { id: 'c1', wake: 'w1', card: { title: '故宫' } } });
+  // A new turn's question, Chinese by its own characters, before its options of Han that says neither.
+  await writeEvent(page, trip, { type: 'out.ask', data: { id: 'a1', wake: 'w2', question: '几点出发？', options: ['十点'] } });
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/replay`);
   await expect(page.getByRole('heading', { level: 1, name: 'Replay' })).toBeVisible();
   await page.getByRole('list', { name: 'Timeline' }).getByRole('button', { name: /Shiori: 故宫/ }).click();
   await expect(page.locator('.replay-shown .card-title')).toHaveAttribute('lang', 'zh-Hans');
   await page.goto('/#/talk');
   await expect(page.locator('.convo .card-title', { hasText: '故宫' })).toHaveAttribute('lang', 'zh-Hans');
+  await expect(page.locator('.convo').getByRole('button', { name: '十点' })).toHaveAttribute('lang', 'zh-Hans');
 });
 
 test('the language Shiori answers in does not override what her words are: a Japanese line is ja though she answers in English, an English one is en; Google\'s snippets are told by their script alone', async ({ page }) => {
