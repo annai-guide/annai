@@ -114,6 +114,28 @@ test('happening: tinted, "Day 3 of 8", Next; future: "in 2 weeks", her last line
   expect(await page.locator('.ahead .trip-card .name').allTextContents()).toEqual(['Testville', 'Laterton']);
 });
 
+// voice-reply-next: her last line, drawn alone on the trip's card, reads her reply so far from the log, as the conversation draws it: with [en, ja, zh]
+// listed, 「好的。」 after her Chinese line is Chinese (main: the first listed in Han, Japanese).
+test("her last line on a trip's card takes her reply's language", async ({ page }) => {
+  await openApp(page, '#/trips');
+  const { Laterton } = await seed(page, { trips: { Laterton: { from: 14, to: 16 } } });
+  await page.evaluate(async (id) => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { Workspace } = await load('/src/core/workspace.js');
+    const { updateAppSettings } = await load('/src/core/settings.js');
+    const { record } = await load('/src/core/agent/log.js');
+    const store = await createIdbStore();
+    await updateAppSettings(new Workspace(store), { languages: { spoken: ['en', 'ja', 'zh'] } });
+    for (const text of ['我们明天去故宫吧。', '好的。']) await record(store, id, { type: 'out.speak', actor: 'shiori', data: { wake: 'w1' }, texts: [['text', text]] });
+    store.close();
+  }, Laterton);
+  await page.reload();
+  const last = row(page, 'Laterton').locator('.her-last');
+  await expect(last).toHaveText('好的。');
+  await expect(last).toHaveAttribute('lang', 'zh-Hans');
+});
+
 test('her long last line is cut inside its card: home never scrolls sideways', async ({ page }) => {
   await openApp(page, '#/trips');
   await seed(page, { trips: { Laterton: { from: 14, to: 16, said: 'See you at the station, by the east gate. '.repeat(8) } } });

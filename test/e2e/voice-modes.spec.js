@@ -63,10 +63,11 @@ test('an audio device disappearing with no microphone open leaves voice on and s
   await expect(page.locator('.toasts')).not.toContainText('disconnected');
 });
 
-/** Her one spoken line, from a stand-in model and a stand-in voice; fn runs with the page on Trips and voice on. */
-async function sheSpeaks(/** @type {import('@playwright/test').Page} */ page, /** @type {(server: Awaited<ReturnType<typeof startModelServer>>) => Promise<void>} */ fn, /** @type {() => Promise<void>} */ before = async () => {}, /** @type {string} */ words = 'Nepenthe is 25 minutes south.') {
+/** Her one spoken line (or a reply of several speak calls, a sentence each), from a stand-in model and a stand-in voice; fn runs with the page on Trips and voice on. */
+async function sheSpeaks(/** @type {import('@playwright/test').Page} */ page, /** @type {(server: Awaited<ReturnType<typeof startModelServer>>) => Promise<void>} */ fn, /** @type {() => Promise<void>} */ before = async () => {}, /** @type {string | string[]} */ words = 'Nepenthe is 25 minutes south.') {
+  const lines = [words].flat();
   const server = await startModelServer({
-    '/b/v1/messages': sse(anthropicToolReply([{ name: 'speak', input: { text: words } }, { name: 'sleep', input: {} }])),
+    '/b/v1/messages': sse(anthropicToolReply([...lines.map((text) => ({ name: 'speak', input: { text } })), { name: 'sleep', input: {} }])),
     '/voice/audio/speech': wav,
   });
   try {
@@ -90,7 +91,12 @@ async function sheSpeaks(/** @type {import('@playwright/test').Page} */ page, /*
       const caption = /** @type {HTMLElement} */ (document.querySelector('.dock .caption'));
       const label = /** @type {HTMLElement} */ (document.querySelector('.dock .talk-label'));
       w.sawBubble = '';
-      const look = () => { if (!caption.hidden && label.textContent === 'Tap to interrupt' && caption.textContent) { w.sawBubble = caption.textContent; w.sawBubbleLook = { lang: caption.getAttribute('lang'), dir: caption.getAttribute('dir'), style: getComputedStyle(caption).fontStyle }; } };
+      /** Each line the bubble showed, with its language. @type {[string, string | null][]} */
+      w.bubbles = [];
+      const look = () => {
+        if (!caption.hidden && caption.textContent && caption.textContent !== w.bubbles.at(-1)?.[0]) w.bubbles.push([caption.textContent, caption.getAttribute('lang')]);
+        if (!caption.hidden && label.textContent === 'Tap to interrupt' && caption.textContent) { w.sawBubble = caption.textContent; w.sawBubbleLook = { lang: caption.getAttribute('lang'), dir: caption.getAttribute('dir'), style: getComputedStyle(caption).fontStyle }; }
+      };
       for (const el of [caption, label]) new MutationObserver(look).observe(el, { attributes: true, childList: true, characterData: true, subtree: true });
       // What the conversation's announcer said, each time.
       const announcer = /** @type {HTMLElement} */ (document.querySelector('main [aria-live="polite"]'));
@@ -100,7 +106,7 @@ async function sheSpeaks(/** @type {import('@playwright/test').Page} */ page, /*
     await page.getByRole('button', { name: 'Type' }).click();
     await page.getByLabel('Message to Shiori').fill('Where should we eat?');
     await page.getByRole('button', { name: 'Send', exact: true }).click();
-    await expect.poll(() => server.bodies('/voice/audio/speech').length).toBe(1);
+    await expect.poll(() => server.bodies('/voice/audio/speech').length).toBe(lines.length);
     await expect(page.locator('.talk-label')).toHaveText('Tap to talk', { timeout: 20_000 });
     await fn(server);
   } finally {
@@ -144,6 +150,25 @@ test('her words in the bubble carry their language: a Japanese line is "ja" and 
     expect(await page.evaluate(() => /** @type {any} */ (window).sawBubbleLook)).toEqual({ lang: 'ja', dir: 'auto', style: 'normal' });
     await expect(page.locator('.convo .said p')).toHaveAttribute('lang', 'ja');
   }, async () => {}, '直角三角形の骨組みです。');
+});
+
+// voice-reply-next: the bubble shows each of her speak calls alone, so its line reads her reply so far, as her voice does. With [en, ja, zh] listed,
+// 「好的。」 alone is Han that says neither: the first listed in Han, Japanese (main drew it so after her Chinese line too).
+test("the bubble reads her line in her reply's language: 「好的。」 after her Chinese line is Chinese, with [en, ja, zh] listed", async ({ page }) => {
+  await sheSpeaks(page, async () => {
+    expect(await page.evaluate(() => /** @type {any} */ (window).bubbles)).toEqual([['我们明天去故宫吧。', 'zh-Hans'], ['好的。', 'zh-Hans']]);
+  }, async () => {
+    await page.evaluate(async () => {
+      const at = (/** @type {string} */ p) => p;
+      const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+      const { Workspace } = await import(at('/src/core/workspace.js'));
+      const { updateAppSettings } = await import(at('/src/core/settings.js'));
+      const store = await createIdbStore();
+      await updateAppSettings(new Workspace(store), { languages: { spoken: ['en', 'ja', 'zh'] } });
+      store.close();
+    });
+    await page.reload(); // the dock reads the languages as it starts
+  }, ['我们明天去故宫吧。', '好的。']);
 });
 
 test('"Show what she says" in Settings → Voice is on, and off it hides both: the bubble, and the words in the conversation until asked', async ({ page }) => {
