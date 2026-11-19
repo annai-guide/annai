@@ -49,7 +49,8 @@ const nameOf = (a) => ('file' in a ? String(a.file.name ?? '') : a.name || (a.pa
 /**
  * Hands Shiori what is in the box: the new files are kept first, in the open conversation's Files (the dock opens one first: never none here), one
  * at a time, saying how far it is, then the message goes with them all, and the Conversation shows it. A file that can't be kept (no
- * room) stops the rest: what was kept goes, and a card says what wasn't. A file kept already goes only to its own conversation's Shiori.
+ * room) stops the rest: what was kept goes, and a card says what wasn't. A file kept already goes only to its own conversation's Shiori. It rejects only
+ * before it passed the words on (a read of a file kept already failed): the caller gives them back.
  * @param {any} ctx @param {string} text @param {Attachment[]} items
  * @param {{ progress?: (done: number, total: number) => void }} [o] progress: kept so far, of how many
  */

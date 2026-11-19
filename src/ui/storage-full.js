@@ -1,42 +1,52 @@
 import { StorageFullError } from '../core/errors.js';
 import { sentences } from '../core/intl.js';
 import { t } from './dom.js';
-import { deviceName, platform } from './platform.js';
+import { deviceName } from './platform.js';
 
-/** The card up on each screen's notices, taken down before another: a full phone refuses every save. @type {WeakMap<object, () => void>} */
+/** The storage cards up on each notices object, by body: a card replaces one with the same words, not one that says something else. @type {WeakMap<object, Map<string, () => void>>} */
 const up = new WeakMap();
-/** The refusals whose card was shown: one error comes by more than one way (a line given back, then the turn that stopped on it). @type {WeakSet<object>} */
+/** The refusals whose card was shown: one error comes two ways (a line given back, then the turn that stopped on it). @type {WeakSet<object>} */
 const shown = new WeakSet();
 
-/** What to do about a full device: its Settings first. Removing a trip makes room only where a delete works on a full disk: Chromium's does, WebKit's
- * (every iPhone and iPad browser) refuses (measured on Linux builds, 2026-11-19; not yet on a phone). */
-export function storageFullSteps() {
+/**
+ * Whether to suggest removing a trip: where a delete works on a full disk (Chromium's, until its last bytes; WebKit's, every iPhone and iPad browser,
+ * refuses: the builder's probe, 2026-11-19, Linux; not yet on a phone). removal false: the caller's work was a removal, which the phone refused. @param {boolean} [removal]
+ */
+const suggestsRemoval = (removal = true) => removal && !['iPhone', 'iPad'].includes(deviceName().label);
+
+/** What to do about a full device: its own Settings first. @param {boolean} [removal] false: no suggestion to remove a trip (a refused removal) */
+export function storageFullSteps(removal = true) {
   const where = deviceName().label;
   const free = where === 'iPhone' ? t`Free up space on this iPhone in Settings → General → iPhone Storage, then try again.`
     : where === 'Android phone' ? t`Free up space on this phone in Settings → Storage, then try again.`
       : t`Free up space on this device, then try again.`;
-  return sentences(free, platform() === 'ios' ? '' : t`Removing a trip you no longer need also makes room in annai (back it up first).`);
+  return sentences(free, suggestsRemoval(removal) ? t`Removing a trip you no longer need also makes room in annai (back it up first).` : '');
 }
+
+/** A card the agent made whose `error` is a full phone's: the storage card in its place, its title or its own `said` first. @param {any} ctx @param {{ title: string, said?: string, error?: unknown }} n */
+export const explainNotice = (ctx, n) => explainStorageFull(ctx, n.error, { said: n.said ?? n.title });
 
 /**
  * Spec §17: "Storage full" shows a card with what works, the phone's own Settings first. Call it from any catch; it shows the card
- * when e is a full disk and says whether it did. One card at a time: the one before it goes, and an error's card shows once.
+ * when e is a full disk and says whether it did. An error's card shows once.
  * @param {any} ctx @param {unknown} e
- * @param {{ said?: string, words?: string, inBox?: boolean }} [o] said: what the caller's work did not do, said first ("Nothing was removed.");
- *   words: the line typed to Shiori that this refusal gave back, which the card says is back in the box (inBox) or shows
+ * @param {{ said?: string, removal?: false }} [o] said: what the caller's work did not do, or what became of the user's words, said first ("Nothing was removed.");
+ *   removal false: the caller's work was a removal, so none is suggested
  */
-export function explainStorageFull(ctx, e, { said = '', words = '', inBox = false } = {}) {
+export function explainStorageFull(ctx, e, { said = '', removal } = {}) {
   if (!(e instanceof StorageFullError)) return false;
   if (shown.has(e)) return true;
   shown.add(e);
-  up.get(ctx.notices)?.();
-  up.set(ctx.notices, ctx.notices.card({
-    tone: 'warn', title: t`There's no room left`,
-    body: sentences(said, storageFullSteps(), words ? (inBox ? t`Your message is back in the box.` : t`Your message wasn't saved: ${words}`) : ''),
+  const body = sentences(said, storageFullSteps(removal));
+  const cards = up.get(ctx.notices) ?? new Map();
+  up.set(ctx.notices, cards);
+  cards.get(body)?.();
+  cards.set(body, ctx.notices.card({
+    tone: 'warn', title: t`There's no room left`, body,
     // Export a backup isn't the primary button: its file needs room too.
     actions: [
       { label: t`Export a backup`, run: () => ctx.go('#/settings') },
-      { label: t`Go to Trips`, run: () => ctx.go('#/trips') },
+      ...(suggestsRemoval(removal) ? [{ label: t`Go to Trips`, run: () => ctx.go('#/trips') }] : []),
     ],
   }));
   return true;

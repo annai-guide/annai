@@ -100,7 +100,7 @@ test('another conversation opened while the files were kept: the message goes to
   assert.equal(woken[0].typed, undefined, 'no words were typed: a failed write has none to give back');
 });
 
-test("another conversation opened while the files were kept: the words typed with them go typed, so a write a full device refuses gives them back with their conversation", async () => {
+test("another conversation opened while the files were kept: the words typed with them go, marked typed (so a write that fails gives them back), to the conversation the files were kept for", async () => {
   globalThis.location ??= /** @type {any} */ ({ hash: '#/talk', replace: () => {} });
   const { ctx, other } = await phone();
   /** @type {any[]} */ const woken = [];

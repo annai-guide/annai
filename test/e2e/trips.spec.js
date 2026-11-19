@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, buildAndSave, writeEvent, writeRecords, startTrip as startNamed, allFiles, putFile, catchAgent, goToHash, modelSetUp, startModelServer, anthropicToolReply, goHome, openItinerary, atConversation } from './helpers.js';
+import { openApp, fillDisk, buildAndSave, writeEvent, writeRecords, startTrip as startNamed, allFiles, putFile, catchAgent, goToHash, modelSetUp, startModelServer, anthropicToolReply, goHome, openItinerary, atConversation } from './helpers.js';
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 
@@ -65,16 +65,14 @@ test('archive a trip, then bring it back', async ({ page }) => {
   await expect(page.getByRole('link', { name: /Old trip/ })).toBeVisible();
 });
 
-test('a full device says what to do', async ({ page }) => {
+test('a full device says what to do', async ({ page, browserName }) => {
   await openApp(page);
   await startTrip(page, 'Big Sur');
   await allFiles(page);
   await page.getByLabel('File path').fill('/notes/day1.md');
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page.getByRole('heading', { name: '/notes/day1.md' })).toBeVisible();
-  await page.evaluate(() => {
-    IDBObjectStore.prototype.put = function () { throw new DOMException('The quota has been exceeded.', 'QuotaExceededError'); };
-  });
+  await fillDisk(page, browserName); // the engines' own refusals (helpers.js): the browser aborts the write's commit
   await page.getByLabel('Content').fill('# Day 1');
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByText("There's no room left", { exact: true })).toBeVisible();
@@ -84,7 +82,7 @@ test('a full device says what to do', async ({ page }) => {
   await expect(page.getByLabel('Content')).toHaveValue('# day1\n'); // still the version from before the failed save
 });
 
-// Chromium at its last bytes can't even open its database (the probe of 2026-11-19, a Linux build: UnknownError, "Internal error opening backing
+// Chromium at its last bytes can't even open its database (the builder's probe of 2026-11-19, a Linux build: UnknownError, "Internal error opening backing
 // store"): the start screen says the phone is full, and what to do, not that a browser may be blocking storage.
 test("a phone too full to open annai's database says so at start, in the phone's own words", async ({ page, browserName }) => {
   await page.addInitScript(() => {
@@ -130,16 +128,14 @@ test('a trip card says when the trip was last backed up, and when it changed sin
   await expect(card).toContainText('changed since');
 });
 
-test('a Backup saved while storage is full still says it was saved', async ({ page }) => {
+test('a Backup saved while storage is full still says it was saved', async ({ page, browserName }) => {
   await openApp(page);
   await startTrip(page, 'Big Sur');
   await page.getByRole('button', { name: 'Export', exact: true }).click();
   await page.getByRole('button', { name: 'Build file' }).click();
   const save = page.getByRole('button', { name: 'Save file' });
   await expect(save).toBeVisible();
-  await page.evaluate(() => {
-    IDBObjectStore.prototype.put = function () { throw new DOMException('The quota has been exceeded.', 'QuotaExceededError'); };
-  });
+  await fillDisk(page, browserName, { stores: ['scopes'] }); // the note on each trip that it was backed up is what the full phone refuses
   const downloading = page.waitForEvent('download');
   await save.click();
   await downloading;
@@ -164,25 +160,40 @@ function storedImages(page) {
   })));
 }
 
-// A full phone can refuse even a delete (WebKit's does: UnknownError "Failed to delete record from object store", measured on a Linux build,
-// 2026-11-19): the card says the trip was not removed, and does not suggest removing one.
+/**
+ * Every delete fails as the engines' own do on a full disk (the builder's probe of 2026-11-19, Linux builds): WebKit's request fails with UnknownError "Failed to
+ * delete record from object store"; Chromium's, with no byte free, fails with AbortError, and its transaction ends with an UnknownError of its own.
+ * @param {import('@playwright/test').Page} page @param {string} browserName
+ */
+const refuseDeletes = (page, browserName) => page.evaluate((chromium) => {
+  IDBObjectStore.prototype.delete = /** @type {any} */ (/** @this {IDBObjectStore} */ function () {
+    /** @type {any} */
+    const r = { error: new DOMException(chromium ? 'The request was aborted.' : 'Failed to delete record from object store', chromium ? 'AbortError' : 'UnknownError'), result: undefined, onsuccess: null, onerror: null };
+    if (chromium) {
+      const own = new DOMException('Connection is closing because of: IO error', 'UnknownError');
+      Object.defineProperty(this.transaction, 'error', { get: () => own });
+    }
+    // The request fails after another one of its transaction's has succeeded: the transaction was running when the disk refused.
+    this.count().onsuccess = () => r.onerror?.(new Event('error'));
+    return r;
+  });
+}, browserName === 'chromium');
+
+// A full phone can refuse even a delete: the card says the trip was not removed, and does not suggest removing one (it just failed), or lead to Trips.
 test('a Remove the full phone refuses says nothing was removed, in the phone\'s own words, and the trip stays', async ({ page, browserName }) => {
   await openApp(page);
   await startTrip(page, 'Big Sur');
   await page.getByRole('button', { name: 'Remove', exact: true }).click();
   const question = page.getByRole('dialog', { name: 'Big Sur' });
   await expect(question).toContainText('Remove it?');
-  await page.evaluate(() => {
-    const refuse = () => { throw new DOMException('Failed to delete record from object store', 'UnknownError'); };
-    IDBObjectStore.prototype.delete = refuse;
-    IDBCursor.prototype.delete = refuse;
-  });
+  await refuseDeletes(page, browserName);
   await question.getByRole('button', { name: 'Remove' }).click();
   const notices = page.locator('.notices');
   await expect(notices.getByText("There's no room left", { exact: true })).toBeVisible();
   await expect(notices).toContainText('Nothing was removed. Free up space on this');
   await expect(notices).toContainText(browserName === 'webkit' ? 'on this iPhone in Settings → General → iPhone Storage, then try again.' : 'on this phone in Settings → Storage, then try again.');
-  if (browserName === 'webkit') await expect(notices).not.toContainText('Removing a trip');
+  await expect(notices).not.toContainText('Removing a trip');
+  await expect(notices.getByRole('button', { name: 'Go to Trips' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Big Sur' })).toBeVisible();
 });
 

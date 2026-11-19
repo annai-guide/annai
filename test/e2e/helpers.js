@@ -754,3 +754,37 @@ export async function putFile(page, scope, path, bytes, type) {
     store.close();
   }, { scope, path, data: [...bytes], type });
 }
+
+/**
+ * The phone's disk fills, as the Linux builds of the engines refuse a full one (the builder's probe of 2026-11-19): every request of a write succeeds, and the
+ * browser aborts its commit. WebKit's abort has no error; Chromium's, with no byte free, ends the transaction with an UnknownError of its own ("Connection
+ * is closing because of: IO error"). Each write that touches one of `stores` is kept open until `release()` (held), then aborted 100 ms on, well after
+ * annai's few requests in it. `room()` ends it.
+ * @param {import('@playwright/test').Page} page @param {string} browserName
+ * @param {{ held?: boolean, stores?: string[] }} [o] stores: the writes it refuses are those that touch one of them: the log's, unless said
+ */
+export const fillDisk = (page, browserName, { held = false, stores = ['events'] } = {}) => page.evaluate(({ held, stores, chromium }) => {
+  const w = /** @type {any} */ (window);
+  w.full = { held, since: Date.now() };
+  w.release = () => { w.full = { held: false, since: Date.now() }; };
+  w.room = () => { w.full = null; };
+  const real = IDBDatabase.prototype.transaction;
+  IDBDatabase.prototype.transaction = /** @type {any} */ (/** @this {IDBDatabase} */ function (/** @type {any} */ names, /** @type {any} */ mode, /** @type {any[]} */ ...rest) {
+    const t = real.call(this, names, mode, ...rest);
+    const touched = [names].flat();
+    if (!w.full || mode !== 'readwrite' || !touched.some((n) => stores.includes(n))) return t;
+    if (chromium) {
+      const own = new DOMException('Connection is closing because of: IO error', 'UnknownError');
+      Object.defineProperty(t, 'error', { get: () => own });
+    }
+    const made = Date.now();
+    const keep = () => {
+      try {
+        if (!w.full?.held && Date.now() - Math.max(made, w.full?.since ?? 0) > 100) return void t.abort();
+        t.objectStore(touched[0]).count().onsuccess = keep;
+      } catch { /* it ended */ }
+    };
+    keep();
+    return t;
+  });
+}, { held, stores, chromium: browserName === 'chromium' });

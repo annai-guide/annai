@@ -10,6 +10,7 @@ import { chatCandidates, koeWay, AllFailedError, COOLDOWN_MS, whyWords } from '.
 import { LiveKoe, SILENT_S } from '../koe/live.js';
 import { ProviderError, explainPlain } from '../llm/contract.js';
 import { t } from '../l10n.js';
+import { StorageFullError } from '../errors.js';
 import { KOKORO_PART, koeSystem } from '../koe/instructions.js';
 import { koeTools, ALREADY_TOLD } from '../koe/tools.js';
 import { compactView } from '../koe/context.js';
@@ -494,7 +495,7 @@ export class Halves {
 
   /**
    * saying: a live Koe's words so far, while she speaks them; went: a trip opened on the user's choice on annai's card ({ trip });
-   * unsaved: words typed in the box that a failed write didn't keep, for the box or a card ({ words, scope, error }: Agent's #unsaved)
+   * unsaved: words typed in the box that no write kept, for the box again ({ words, error }: Agent's #unsaved)
    * @param {'state' | 'event' | 'notice' | 'open' | 'halves' | 'clear' | 'saying' | 'went' | 'unsaved'} kind @param {(x: any) => void} fn
    */
   on(kind, fn) {
@@ -863,7 +864,8 @@ export class Halves {
       this.koe.send(text, o);
     }, (e) => {
       this.kokoro.send(text, o); // never dropped
-      this.#notice({ tone: 'warn', title: t`Shiori answers as one half for now`, body: t`annai couldn't pass your message to Koe: ${String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)}`, error: e });
+      if (e instanceof StorageFullError) return; // the same full phone fails her turn on this line too, and the storage card says so
+      this.#notice({ tone: 'warn', title: t`Shiori answers as one half for now`, body: t`annai couldn't pass your message to Koe: ${String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)}` });
     });
   }
 

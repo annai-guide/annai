@@ -121,7 +121,7 @@ function connectionLost(e) {
   return e?.name === 'InvalidStateError' || e?.name === 'UnknownError' || e?.name === 'AbortError' || /connection (is )?(lost|closing|closed)|server lost|database (is )?clos/i.test(String(e?.message));
 }
 
-/** The error runTx rejected with when the browser aborted a transaction after all its requests succeeded: a refused commit. */
+/** The abort errors of transactions that ended with no request failing: a refused commit, when the browser ended it (annai's own abort is marked too, harmlessly: fn's error rejects then). */
 const refused = new WeakSet();
 
 /**

@@ -6,14 +6,14 @@ import { liveChip } from './live-chip.js';
 import { readAppSettings } from '../core/settings.js';
 import { shownSettings } from '../core/shown.js';
 import { wording, replies, mark, talkHref } from './format.js';
-import { SYS_SETTINGS, ME, scopeTitle } from '../core/scopes.js';
+import { SYS_SETTINGS, scopeTitle } from '../core/scopes.js';
 import { storedTexts } from '../core/agent/log.js';
 import { component, mount, cleanUp, slotEntries, runAction, made } from './slots.js';
 import { onTap } from './dock-hides.js';
 import { createComposer, handOver } from './composer.js';
-import { toTalk } from './open-trip.js';
+import { toTalk, tellNotOpen } from './open-trip.js';
 import { parseHash } from './router.js';
-import { openDraft, cantStart, tapShiori } from './plus.js';
+import { openDraft, tapShiori } from './plus.js';
 import { explainStorageFull } from './storage-full.js';
 import { sentences } from '../core/intl.js';
 
@@ -105,7 +105,14 @@ export function createDock(ctx) {
    * Nothing open (in the gap after a removal before its draft opens, or when none could be made or opened): the draft first, as + opens it. Whether it opened; if not, the + card says so, and
    * whatever was typed or picked stays in the box (the user's pick of 2026-11-14, "Put it back in the type box"). @returns {Promise<boolean>}
    */
-  const drafted = () => openDraft(ctx).then(() => true, (/** @type {unknown} */ e) => { cantStart(ctx, e); return false; });
+  const drafted = () => openDraft(ctx).then(() => true, (/** @type {unknown} */ e) => { tellNotOpen(ctx, e); return false; });
+  /** Typed words no write kept go back in the box (the user's pick of 2026-11-14, "Put it back in the type box"), before any typed since; focus only on the conversation's screen. @param {string} words */
+  const giveBack = (words) => {
+    if (!words) return;
+    const since = input.value.trim();
+    input.value = since ? `${words}\n${since}` : words;
+    openTyping(parseHash(location.hash).name === 'talk');
+  };
   const sheet = h('form', {
     class: 'type-sheet', hidden: true,
     onsubmit: (/** @type {Event} */ e) => {
@@ -123,7 +130,11 @@ export function createDock(ctx) {
         closeTyping();
         typeButton.focus(); // not left in the hidden box
       };
-      const notSent = (/** @type {unknown} */ x) => explainStorageFull(ctx, x, { said: t`Your files didn't reach Shiori` }) || ctx.notices.card({ tone: 'warn', title: t`Your files didn't reach Shiori`, body: messageOf(x) });
+      // handOver rejects only before it passed the words on (composer.js): back in the box.
+      const notSent = (/** @type {unknown} */ x) => {
+        giveBack(text);
+        explainStorageFull(ctx, x, { said: sentences(t`Your files didn't reach Shiori`, text ? t`Your message is back in the box.` : '') }) || ctx.notices.card({ tone: 'warn', title: t`Your files didn't reach Shiori`, body: messageOf(x) });
+      };
       if (!items.some((a) => 'file' in a)) {
         done();
         if (items.length) return void handOver(ctx, text, items).catch(notSent);
@@ -224,17 +235,10 @@ export function createDock(ctx) {
   // A turn of the phone wraps the words again: the box fits them at the new width.
   addEventListener('resize', fit);
   offs.push(() => removeEventListener('resize', fit));
-  // Typed words a failed write didn't keep come back (the user's pick, 2026-11-14, "Put it back in the type box"): into the box, before any typed since, when
-  // their conversation is open; else on the card, so none lands in another conversation's box.
-  offs.push(ctx.agent.on('unsaved', (/** @type {{ words: string, scope: string, error: unknown }} */ { words, scope, error }) => {
-    const inBox = scope === (ctx.agent.target ?? ME);
-    if (inBox) {
-      const since = input.value.trim();
-      input.value = since ? `${words}\n${since}` : words;
-      openTyping(parseHash(location.hash).name === 'talk');
-    }
-    if (explainStorageFull(ctx, error, { words, inBox })) return;
-    if (!inBox) ctx.notices.card({ tone: 'warn', title: t`Something went wrong`, body: sentences(messageOf(error), t`Your message wasn't saved: ${words}`) });
+  // Typed words no write kept come back to the box; the storage card says so, and any other failure shows its own card.
+  offs.push(ctx.agent.on('unsaved', (/** @type {{ words: string, error: unknown }} */ { words, error }) => {
+    giveBack(words);
+    explainStorageFull(ctx, error, { said: t`Your message is back in the box.` });
   }));
   offs.push(ctx.agent.on('state', (/** @type {any} */ s) => {
     avatar.setState(s.name);

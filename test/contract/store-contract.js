@@ -293,7 +293,7 @@ export function storeContract(test, assert, makeStore) {
     assert.deepEqual(await s.tx(['files'], 'readonly', (t) => t.listFiles('trip-1')), []);
   });
 
-  // A full phone's refusal isn't the origin quota's (measured on Linux builds of WebKit and Chromium, 2026-11-19; not yet on a phone): WebKit refuses
+  // A full phone's refusal isn't the origin quota's (the builder's probe on Linux builds of WebKit and Chromium, 2026-11-19, whose output wasn't kept; not yet on a phone): WebKit refuses
   // a write with UnknownError (a request's, then the transaction's), and Chromium's open at its last bytes fails with one.
   test('tx: a write the browser refuses with UnknownError rejects with StorageFullError and writes nothing', async () => {
     const s = await makeStore();

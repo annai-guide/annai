@@ -246,7 +246,7 @@ async function askAndRemove(ctx, id, scope) {
     if (e instanceof NotFoundError) {
       ctx.notices.toast(t`That was already removed.`);
       ctx.removed(id);
-    } else if (!explainStorageFull(ctx, e, { said: t`Nothing was removed.` })) { // a full disk can refuse even a delete (WebKit's does)
+    } else if (!explainStorageFull(ctx, e, { said: t`Nothing was removed.`, removal: false })) { // a full disk can refuse even a delete (WebKit's does, Chromium's at its last bytes)
       ctx.notices.card({ tone: 'warn', title: t`It wasn't removed`, body: sentences(messageOf(e), t`Nothing was removed. Try again.`) });
     }
   }

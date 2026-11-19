@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, atConversation } from './helpers.js';
+import { openApp, atConversation, fillDisk, startModelServer, anthropicToolReply, modelSetUp } from './helpers.js';
 
 // A smart text box (the user, 2026-10-23): "the send and close are on the left side … put it at the right side … do we need the close
 // button? maybe click on the keyboard button again closes the input box? … maybe we can also close the box when the message is sent?
@@ -149,39 +149,11 @@ test('a small send arrow sits inside the box, on its right, for a keyboard whose
   await expect(box(page)).toBeHidden();
 });
 
-/**
- * The phone's disk fills, as the Linux builds of WebKit and Chromium refuse a full one (the probe of 2026-11-19, WebKit: no error; Chromium: a
- * DataError for its blob files): every request of a write succeeds, and the browser aborts its commit. Faked here with no error, as WebKit's.
- * Each write that logs is kept open until `release()` (held), then aborted 100 ms on, well after annai's few requests in it. `room()` ends it.
- * @param {import('@playwright/test').Page} page @param {{ held?: boolean }} [o]
- */
-const fillDisk = (page, { held = false } = {}) => page.evaluate((held) => {
-  const w = /** @type {any} */ (window);
-  w.full = { held, since: Date.now() };
-  w.release = () => { w.full = { held: false, since: Date.now() }; };
-  w.room = () => { w.full = null; };
-  const real = IDBDatabase.prototype.transaction;
-  IDBDatabase.prototype.transaction = /** @type {any} */ (/** @this {IDBDatabase} */ function (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any[]} */ ...rest) {
-    const t = real.call(this, stores, mode, ...rest);
-    const names = [stores].flat();
-    if (!w.full || mode !== 'readwrite' || !names.includes('events')) return t;
-    const made = Date.now();
-    const keep = () => {
-      try {
-        if (!w.full?.held && Date.now() - Math.max(made, w.full?.since ?? 0) > 100) return void t.abort();
-        t.objectStore(names[0]).count().onsuccess = keep;
-      } catch { /* it ended */ }
-    };
-    keep();
-    return t;
-  });
-}, held);
-
 // A line typed when nothing could take it stays in the box (the user's pick of 2026-11-14, "Put it back in the type box"): one the full
 // phone refuses to save comes back to it.
 test("a line the full phone refuses to save comes back in the box, and the storage card says to free up space in the phone's own Settings; with room again it sends", async ({ page, browserName }) => {
   await inConversation(page);
-  await fillDisk(page);
+  await fillDisk(page, browserName);
   await typeButton(page).click();
   await box(page).fill('Is the castle open today?');
   await box(page).press('Control+Enter');
@@ -194,15 +166,21 @@ test("a line the full phone refuses to save comes back in the box, and the stora
   await expect(notices).toContainText('Your message is back in the box.');
   await expect(notices).not.toContainText('Shiori stopped'); // one card for the one refusal: the turn that stopped on it adds none
   await expect(notices.locator('.notice')).toHaveCount(1);
+  // Sent again on a still-full phone it comes back again, with one card for the same words (not a second).
+  await box(page).press('Control+Enter'); // the box empties as it sends, and the refusal fills it again
+  await expect(box(page)).toHaveValue('Is the castle open today?');
+  await expect(box(page)).toBeVisible();
+  await expect(page.locator('.convo .you')).toHaveCount(0);
+  await expect(notices.locator('.notice')).toHaveCount(1);
   await page.evaluate(() => /** @type {any} */ (window).room());
   await box(page).press('Control+Enter');
   await expect(page.locator('.convo .you p').first()).toHaveText('Is the castle open today?');
   await expect(box(page)).toBeHidden();
 });
 
-test('a refused line comes back before what was typed in the box since, on a line of its own', async ({ page }) => {
+test('a refused line comes back before what was typed in the box since, on a line of its own', async ({ page, browserName }) => {
   await inConversation(page);
-  await fillDisk(page, { held: true });
+  await fillDisk(page, browserName, { held: true });
   await typeButton(page).click();
   await box(page).fill('Is the castle open today?');
   await box(page).press('Control+Enter');
@@ -215,9 +193,9 @@ test('a refused line comes back before what was typed in the box since, on a lin
   await expect(page.locator('.notices .notice')).toHaveCount(1);
 });
 
-test("a message with a file the full phone can't keep: the card says which file wasn't kept, and the words come back in the box", async ({ page }) => {
+test("a message with a file the full phone can't keep: a card says which file wasn't kept, beside the one that says the words are back in the box", async ({ page, browserName }) => {
   await inConversation(page);
-  await fillDisk(page);
+  await fillDisk(page, browserName);
   await typeButton(page).click();
   await page.locator('#dock-attach').setInputFiles({ name: 'ticket.txt', mimeType: 'text/plain', buffer: Buffer.from('A ticket') });
   await box(page).fill('Is the castle open today?');
@@ -225,9 +203,39 @@ test("a message with a file the full phone can't keep: the card says which file 
   await expect(box(page)).toHaveValue('Is the castle open today?');
   await expect(box(page)).toBeVisible();
   const notices = page.locator('.notices');
-  await expect(notices.locator('.notice')).toHaveCount(1); // one card at a time: the file's gave way to the line's
-  await expect(notices).toContainText('Your message is back in the box.');
+  await expect(notices.locator('.notice')).toHaveCount(2); // each says something the other doesn't
+  await expect(notices.locator('.notice').first()).toContainText("1 file wasn't kept");
+  await expect(notices.locator('.notice').last()).toContainText('Your message is back in the box.');
   await expect(page.locator('.convo .you')).toHaveCount(0);
+});
+
+// Her turn is held (her model call takes 4 s) while the phone fills and a second line is typed: the full phone stops her turn at its next write, and the
+// second line, which was waiting, comes back too.
+test('a line typed while she works, when the full phone stops her turn, comes back in the box, once; the line her turn took stays, and a retype is written once', async ({ page, browserName }) => {
+  const llm = await startModelServer({ '/b/v1/messages': [{ status: 200, type: 'text/event-stream', body: anthropicToolReply([{ name: 'speak', input: { text: 'Yes, until five.' } }, { name: 'sleep', input: {} }]), delayMs: 4000 }] });
+  try {
+    await modelSetUp(page, llm.origin);
+    await page.goto('/#/talk');
+    await atConversation(page);
+    await typeButton(page).click();
+    await box(page).fill('First thing');
+    await box(page).press('Control+Enter');
+    await expect(page.locator('.convo .you p').first()).toHaveText('First thing');
+    await fillDisk(page, browserName);
+    await typeButton(page).click();
+    await box(page).fill('Second thing');
+    await box(page).press('Control+Enter');
+    const notices = page.locator('.notices');
+    await expect(notices.getByText("There's no room left", { exact: true })).toBeVisible({ timeout: 20_000 });
+    await expect(box(page)).toHaveValue('Second thing');
+    await expect(page.locator('.convo .you p')).toHaveText(['First thing']);
+    await page.evaluate(() => /** @type {any} */ (window).room());
+    await box(page).press('Control+Enter');
+    await expect(page.locator('.convo .you p')).toHaveText(['First thing', 'Second thing']);
+    await expect(box(page)).toBeHidden();
+  } finally {
+    await llm.stop();
+  }
 });
 
 // What stops a turn after its line was kept shows the storage card in place of "Shiori stopped" (main.js), saying first that she stopped.

@@ -26,6 +26,7 @@ test("storeError: a full device is told by the error's name and the side that en
   assert.equal(full(e('AbortError'), { write: true, refused: true }), true);
   assert.equal(full(e('AbortError'), { refused: true }), false);
   assert.equal(full(e('DataError', 'Failed to write blobs (IOError)'), { write: true }), false, 'a DataError counts when the store marks it refused, not by name');
+  assert.equal(full(e('DataError', 'Failed to write blobs (IOError)'), { write: true, refused: true }), true, 'marked refused: Chromium aborts a write of large values so, after all its requests succeeded');
   // A connection that could not be opened: Chromium at its last bytes says UnknownError, or AbortError while its backing store is still closing.
   assert.equal(full(e('AbortError'), { write: true, open: true }), true);
   assert.equal(full(e('UnknownError'), { write: true, open: true }), true);

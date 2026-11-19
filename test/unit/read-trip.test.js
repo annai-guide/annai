@@ -461,7 +461,7 @@ test("a typed line that ends annai's card, refused by a full device, comes back 
   }));
   k.agent.send('Never mind', { typed: true });
   await k.agent.idle();
-  assert.deepEqual(back.map((x) => [x.words, x.scope]), [['Never mind', k.trip]]);
+  assert.deepEqual(back.map((x) => x.words), ['Never mind']);
   assert.ok(back[0].error instanceof StorageFullError, 'the dock shows the storage card for it, with the words');
   // The failure is read_trip's result, as for any tool that fails: her turn goes on and says her line; no "Shiori stopped" card of its own.
   assert.match((await readResults(k))[0], /^Error: There's no room left\./);
@@ -489,7 +489,7 @@ test("a typed line that ends annai's card within the settle of a spoken no, whos
   }));
   c.agent.send('Never mind', { typed: true });
   await c.agent.idle();
-  assert.deepEqual(back.map((x) => [x.words, x.scope]), [['Never mind', c.trip]]);
+  assert.deepEqual(back.map((x) => x.words), ['Never mind']);
   assert.ok(back[0].error instanceof StorageFullError);
 });
 

@@ -415,41 +415,36 @@ export default function (test, assert) {
   };
   const full = () => new StorageFullError(new DOMException('Unable to store record in object store', 'UnknownError'));
 
-  test('dock: words a write did not keep go back in the box when their conversation is open, before what was typed since, and the card says so', () => {
+  test('dock: words no write kept go back in the box, before what was typed since, and the card says so', () => {
     const k = unsavedKit();
     k.box.value = 'And the garden?';
-    k.agent.emit('unsaved', { words: 'Is the castle open?', scope: 'trip-a', error: full() });
+    k.agent.emit('unsaved', { words: 'Is the castle open?', error: full() });
     assert.equal(k.box.value, 'Is the castle open?\nAnd the garden?');
     assert.equal(k.sheet.hidden, false, 'the box is open');
     assert.equal(k.cards.length, 1);
     assert.equal(k.cards[0].title, "There's no room left");
-    assert.ok(/Your message is back in the box\.$/.test(k.cards[0].body), k.cards[0].body);
+    assert.ok(/^Your message is back in the box\. Free up space/.test(k.cards[0].body), k.cards[0].body);
     k.done();
   });
 
-  test("dock: words for a conversation that isn't the open one go on the card, never into this box, so none lands in the wrong conversation", () => {
-    const k = unsavedKit();
-    k.agent.emit('unsaved', { words: 'Book the ryokan', scope: 'trip-b', error: full() });
-    assert.equal(k.box.value, '');
-    assert.equal(k.sheet.hidden, true);
-    assert.ok(/Your message wasn't saved: Book the ryokan$/.test(k.cards[0].body), k.cards[0].body);
-    // Nothing open: the words are the box's, as the dock's own submit keeps them for a draft that can't be made.
-    const none = unsavedKit({ target: null });
-    none.agent.emit('unsaved', { words: 'Is the bus late?', scope: 'me', error: full() });
-    assert.equal(none.box.value, 'Is the bus late?');
-    k.done();
-    none.done();
+  test('dock: the words go back to the one box whichever conversation is open, or none: the box is the app\'s, and the traveller sees where they went', () => {
+    for (const target of ['trip-a', 'trip-b', null]) {
+      const k = unsavedKit({ target });
+      k.agent.emit('unsaved', { words: 'Book the ryokan', error: full() });
+      assert.equal(k.box.value, 'Book the ryokan', String(target));
+      assert.equal(k.sheet.hidden, false);
+      assert.equal(k.cards.length, 1, 'one card, which says so');
+      assert.ok(!/Book the ryokan/.test(k.cards[0].body), 'the words are in the box, not on the card');
+      k.done();
+    }
   });
 
-  test('dock: a failure that is no full device still gives the words back: into the box, or on a card of its own when their conversation is not open', () => {
+  test('dock: a failure that is no full device still gives the words back into the box, and shows no card of its own: the turn\'s card says what failed', () => {
     const k = unsavedKit();
-    k.agent.emit('unsaved', { words: 'Here', scope: 'trip-a', error: new Error('The disk broke.') });
+    k.agent.emit('unsaved', { words: 'Here', error: new Error('The disk broke.') });
     assert.equal(k.box.value, 'Here');
-    assert.equal(k.cards.length, 0, "the turn's own card says what failed");
-    k.agent.emit('unsaved', { words: 'Elsewhere', scope: 'trip-b', error: new Error('The disk broke.') });
-    assert.equal(k.cards.length, 1);
-    assert.equal(k.cards[0].title, 'Something went wrong');
-    assert.ok(/The disk broke\..* Elsewhere$/.test(k.cards[0].body), k.cards[0].body);
+    assert.equal(k.sheet.hidden, false);
+    assert.equal(k.cards.length, 0);
     k.done();
   });
 
@@ -461,7 +456,7 @@ export default function (test, assert) {
       const field = document.createElement('input');
       document.body.append(field);
       field.focus();
-      away.agent.emit('unsaved', { words: 'Is the castle open?', scope: 'trip-a', error: full() });
+      away.agent.emit('unsaved', { words: 'Is the castle open?', error: full() });
       assert.equal(away.sheet.hidden, false);
       assert.equal(away.box.value, 'Is the castle open?');
       assert.equal(document.activeElement, field, "a field on another screen keeps its focus");
@@ -469,7 +464,7 @@ export default function (test, assert) {
       away.done();
       location.hash = '#/trip/trip-a/talk';
       const here = unsavedKit();
-      here.agent.emit('unsaved', { words: 'Is the castle open?', scope: 'trip-a', error: full() });
+      here.agent.emit('unsaved', { words: 'Is the castle open?', error: full() });
       assert.equal(document.activeElement, here.box);
       here.done();
     } finally {
@@ -477,7 +472,7 @@ export default function (test, assert) {
     }
   });
 
-  test("dock: a file already kept, asked about with words, whose read a full phone refuses (a reopen that fails) shows the storage card with what didn't reach Shiori first, not a card of its own", async () => {
+  test("dock: a file already kept, asked about with words, whose read a full phone refuses (a reopen that fails) gives the words back in the box and shows the storage card with what didn't reach Shiori first, not a card of its own; with no words, there are none to give back", async () => {
     const k = unsavedKit({ target: null });
     await ensureBaseScopes(k.ws);
     const trip = await createTrip(k.ws, { title: 'Testville' });
@@ -485,14 +480,28 @@ export default function (test, assert) {
     await k.ws.write(trip, '/files/ticket.txt', 'a ticket', { author: 'user', type: 'text/plain' });
     const real = k.store.tx.bind(k.store);
     k.store.tx = /** @type {any} */ ((/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => (mode === 'readonly' ? Promise.reject(full()) : real(stores, mode, fn)));
+    /** @type {any[]} */
+    const sent = [];
+    /** @type {any} */ (k.agent).send = (/** @type {string} */ text) => { sent.push(text); };
     try {
       k.dock.attach([{ scope: trip, path: '/files/ticket.txt', name: 'ticket.txt' }]);
       k.box.value = 'Is it valid?';
       /** @type {HTMLFormElement} */ (k.sheet).requestSubmit();
       await new Promise((done) => setTimeout(done, 100));
+      assert.equal(k.box.value, 'Is it valid?', 'the hand-over failed before it passed the words on: they are back in the box');
+      assert.equal(k.sheet.hidden, false);
+      assert.deepEqual(sent, []);
       assert.equal(k.cards.length, 1);
       assert.equal(k.cards[0].title, "There's no room left");
-      assert.ok(/^Your files didn't reach Shiori\. Free up space/.test(k.cards[0].body), k.cards[0].body);
+      assert.ok(/^Your files didn't reach Shiori\. Your message is back in the box\. Free up space/.test(k.cards[0].body), k.cards[0].body);
+      // Only the file, no words: nothing to give back, and the card doesn't say so.
+      k.box.value = '';
+      k.dock.attach([{ scope: trip, path: '/files/ticket.txt', name: 'ticket.txt' }]);
+      /** @type {HTMLFormElement} */ (k.sheet).requestSubmit();
+      await new Promise((done) => setTimeout(done, 100));
+      assert.equal(k.box.value, '');
+      assert.equal(k.cards.length, 2);
+      assert.ok(/^Your files didn't reach Shiori\. Free up space/.test(k.cards[1].body), k.cards[1].body);
     } finally {
       k.store.tx = real;
       k.done();
@@ -541,7 +550,7 @@ export default function (test, assert) {
       /** @type {HTMLFormElement} */ (k.sheet).requestSubmit();
       await tick();
       assert.equal(k.box.value, '', 'cleared as the message was taken');
-      k.agent.emit('unsaved', { words: 'An earlier line', scope: trip, error: full() });
+      k.agent.emit('unsaved', { words: 'An earlier line', error: full() });
       assert.equal(k.box.value, 'An earlier line', 'given back alone: not mixed with the message being sent');
       release();
       await new Promise((done) => setTimeout(done, 100));

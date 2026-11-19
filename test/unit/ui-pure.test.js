@@ -5,7 +5,8 @@ import { parseHash, redirectOf } from '../../src/ui/router.js';
 import { planRows } from '../../src/core/plan.js';
 import { checkOf, checkWords } from '../../src/core/bookings.js';
 import { relTime, size, dateRange, backupText, formatCost, outcomeText, bookingFacts, checkCount, placeStatus, holdNote, newerText, placeHref, limitFromField, limitField, limitText, localDay, fileLine, recordHref, talkHref } from '../../src/ui/format.js';
-import { explainStorageFull } from '../../src/ui/storage-full.js';
+import { explainStorageFull, explainNotice } from '../../src/ui/storage-full.js';
+import { tellNotOpen } from '../../src/ui/open-trip.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
 import { parseMarkdown, parseInline, MD_MAX } from '../../src/ui/markdown.js';
@@ -90,56 +91,90 @@ test("#/now (Now went in timeline stage 8) goes to today's Itinerary of the trip
   assert.equal(redirectOf(parseHash('#/trips'), 'trip-a', { play: 'trip-b' }), null);
 });
 
-test("the storage card leads with the device's own Settings, by the device: an iPhone's, an Android phone's, any other's; removing a trip makes room in annai only where a delete works on a full disk (not on an iPhone or iPad), deleting inside one isn't offered (spec §4.9, §17)", () => {
+test("the storage card leads with the device's own Settings, by the device: an iPhone's, an Android phone's, any other's; removing a trip makes room in annai only where a delete works on a full disk (not on an iPhone or iPad, in desktop mode too), and \"Go to Trips\" is offered where that is said; deleting inside one isn't offered (spec §4.9, §17)", () => {
   const MAKES_ROOM = ' Removing a trip you no longer need also makes room in annai (back it up first).';
-  /** @type {[string, string, string][]} the device's user agent, what the card says to free up space, and what it adds */
+  /** @type {[string, number, string, string][]} the device's user agent, its touch points, what the card says to free up space, and what it adds */
   const devices = [
-    ['Mozilla/5.0 (iPhone; CPU iPhone OS 26_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.1 Mobile/15E148 Safari/604.1', 'on this iPhone in Settings → General → iPhone Storage', ''],
-    ['Mozilla/5.0 (Linux; Android 16; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Mobile Safari/537.36', 'on this phone in Settings → Storage', MAKES_ROOM],
-    ['Mozilla/5.0 (iPad; CPU OS 26_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.1 Mobile/15E148 Safari/604.1', 'on this device', ''],
-    ['Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36', 'on this device', MAKES_ROOM],
+    ['Mozilla/5.0 (iPhone; CPU iPhone OS 26_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.1 Mobile/15E148 Safari/604.1', 5, 'on this iPhone in Settings → General → iPhone Storage', ''],
+    ['Mozilla/5.0 (Linux; Android 16; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Mobile Safari/537.36', 5, 'on this phone in Settings → Storage', MAKES_ROOM],
+    ['Mozilla/5.0 (iPad; CPU OS 26_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.1 Mobile/15E148 Safari/604.1', 5, 'on this device', ''],
+    // An iPad in desktop mode says it is a Mac, with a touch screen: a Mac has none.
+    ['Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.1 Safari/605.1.15', 5, 'on this device', ''],
+    ['Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.1 Safari/605.1.15', 0, 'on this device', MAKES_ROOM],
+    ['Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36', 0, 'on this device', MAKES_ROOM],
   ];
   try {
-    for (const [agent, where, more] of devices) {
+    for (const [agent, touch, where, more] of devices) {
       Object.defineProperty(navigator, 'userAgent', { value: agent, configurable: true });
+      Object.defineProperty(navigator, 'maxTouchPoints', { value: touch, configurable: true });
       /** @type {any[]} */
       const cards = [];
       assert.equal(explainStorageFull({ notices: { card: (/** @type {any} */ c) => cards.push(c) && (() => {}) }, go: () => {} }, new StorageFullError()), true);
       assert.equal(cards.length, 1);
       assert.equal(cards[0].title, "There's no room left");
-      assert.equal(cards[0].body, `Free up space ${where}, then try again.${more}`);
+      assert.equal(cards[0].body, `Free up space ${where}, then try again.${more}`, agent);
       assert.doesNotMatch(cards[0].body, /delet/i);
-      // Export stays, but isn't the first thing to do: on a full phone a backup file needs as much room again.
-      assert.deepEqual(cards[0].actions.map((/** @type {any} */ a) => [a.label, Boolean(a.primary)]), [['Export a backup', false], ['Go to Trips', false]]);
+      // Export stays, but isn't the first thing to do: on a full phone a backup file needs as much room again. Trips, where a removal is said.
+      assert.deepEqual(cards[0].actions.map((/** @type {any} */ a) => [a.label, Boolean(a.primary)]), [['Export a backup', false], ...(more ? [['Go to Trips', false]] : [])], agent);
     }
   } finally {
     delete (/** @type {any} */ (navigator)).userAgent; // Node's own, from its prototype, again
+    delete (/** @type {any} */ (navigator)).maxTouchPoints;
   }
-  // What Shiori stopped and Copy diagnostics show says the same, for any device, with no claim that holds for some only; a model reads it in English.
+  // What a model reads (a tool's result, in English) and what the backup, archive and update messages show say the same, for any device, with no claim that holds for some only.
   assert.equal(new StorageFullError().shown, "There's no room left. Free up space on this device, then try again.");
   assert.equal(new StorageFullError().message, new StorageFullError().shown);
   assert.equal(explainStorageFull({ notices: { card: () => assert.fail('no card') }, go: () => {} }, new DOMException('The transaction was aborted.', 'AbortError')), false);
 });
 
-test('the storage card says what the caller did not do first, and what became of a typed line: back in the box, or shown; one card at a time, and an error gets one card', () => {
+test('the storage card says first what the caller did not do or what became of a typed line, suggests no removal after one was refused; a card replaces only one that says the same, and an error gets one card', () => {
   /** @type {{ card: any, off: boolean }[]} */
   const up = [];
   const ctx = { notices: { card: (/** @type {any} */ card) => { const c = { card, off: false }; up.push(c); return () => { c.off = true; }; } }, go: () => {} };
   const body = (/** @type {number} */ i) => up[i].card.body;
-  explainStorageFull(ctx, new StorageFullError(), { said: 'Nothing was removed.' });
-  assert.match(body(0), /^Nothing was removed\. Free up space on this device, then try again\./);
+  const off = () => up.map((c) => c.off);
+  explainStorageFull(ctx, new StorageFullError(), { said: 'Nothing was removed.', removal: false });
+  assert.equal(body(0), 'Nothing was removed. Free up space on this device, then try again.', 'after a refused removal: none is suggested');
+  assert.deepEqual(up[0].card.actions.map((/** @type {any} */ a) => a.label), ['Export a backup']);
+  explainStorageFull(ctx, new StorageFullError(), { said: "Your message is back in the box." });
+  assert.match(body(1), /^Your message is back in the box\. Free up space on this device, then try again\. Removing a trip .* \(back it up first\)\.$/);
+  assert.deepEqual(off(), [false, false], 'a card that says something else stays beside it');
+  // The same words again (another refusal of a line sent again on a full phone): one card, the new one.
   const typed = new StorageFullError();
-  explainStorageFull(ctx, typed, { words: 'Is the castle open?', inBox: true });
-  assert.match(body(1), /then try again\. Removing a trip .* \(back it up first\)\. Your message is back in the box\.$/);
-  assert.deepEqual(up.map((c) => c.off), [true, false], 'the one before it went');
+  explainStorageFull(ctx, typed, { said: 'Your message is back in the box.' });
+  assert.deepEqual(off(), [false, true, false]);
   // The same refusal comes by another way (the turn that stopped on it): its card is up; no second one, and the first stays.
   assert.equal(explainStorageFull(ctx, typed, { said: 'Shiori stopped' }), true);
-  assert.equal(up.length, 2);
-  assert.equal(up[1].off, false);
-  // Words for a conversation that isn't open: shown, so none is lost.
-  explainStorageFull(ctx, new StorageFullError(), { words: 'Book the ryokan' });
-  assert.match(body(2), /Your message wasn't saved: Book the ryokan$/);
-  assert.deepEqual(up.map((c) => c.off), [true, true, false]);
+  assert.equal(up.length, 3);
+  assert.deepEqual(off(), [false, true, false]);
+  // No said, as a caller with nothing to add: the steps alone, and again alone replaces it.
+  explainStorageFull(ctx, new StorageFullError());
+  explainStorageFull(ctx, new StorageFullError());
+  assert.deepEqual(off(), [false, true, false, true, false]);
+});
+
+test("a card the agent made whose error is a full phone's shows the storage card in its place, with its title first, or its own words; any other error shows none (main.js)", () => {
+  /** @type {any[]} */
+  const cards = [];
+  const ctx = { notices: { card: (/** @type {any} */ c) => { cards.push(c); return () => {}; } }, go: () => {} };
+  assert.equal(explainNotice(ctx, { title: 'Shiori stopped', error: new StorageFullError() }), true);
+  assert.match(cards[0].body, /^Shiori stopped\. Free up space/);
+  assert.equal(explainNotice(ctx, { title: "A photo wasn't sent to Shiori", said: "A photo wasn't sent to Shiori. The message went without it.", error: new StorageFullError() }), true);
+  assert.match(cards[1].body, /^A photo wasn't sent to Shiori\. The message went without it\. Free up space/);
+  assert.equal(explainNotice(ctx, { title: 'Shiori stopped', error: new Error('The disk broke.') }), false);
+  assert.equal(explainNotice(ctx, { title: 'Shiori stopped' }), false);
+  assert.equal(cards.length, 2);
+});
+
+test("a conversation that didn't open shows the storage card for a full phone, with that said first; any other failure says why (spec §17)", () => {
+  /** @type {any[]} */
+  const cards = [];
+  const ctx = { notices: { card: (/** @type {any} */ c) => { cards.push(c); return () => {}; } }, go: () => {} };
+  tellNotOpen(ctx, new StorageFullError());
+  assert.equal(cards[0].title, "There's no room left");
+  assert.match(cards[0].body, /^That conversation didn't open\. Free up space/);
+  tellNotOpen(ctx, new Error('The disk broke.'));
+  assert.deepEqual([cards[1].title, cards[1].body], ["That conversation didn't open", 'The disk broke.']);
 });
 
 test('backupText: never, up to date, and changed since (spec §4.9)', () => {

@@ -89,9 +89,9 @@ import { FILES_ONLY, PHOTO_ONLY, handoverOf } from '../handover.js';
  *   her voice; kept: the verdict, once it comes; h: this half's own segment
  * @typedef {{ name: StateName, label: string, detail?: string, wait?: 'ask' | 'wait', over?: StateName }} State  label: the dock's words for it (LABELS); detail: what she is away doing (TIDYING, or a task's words);
  *   wait: what she waits for while waiting, her question's answer (ask) or the user's turn (wait); over: Halves' dock state only, standing over Koe's own state of that name (Halves.state)
- * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[], key?: string, toast?: boolean, error?: unknown }} Notice
+ * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[], key?: string, toast?: boolean, error?: unknown, said?: string }} Notice
  *   key: names a card a later turn takes down (the clear event, when that turn works): model, or silent:<its conversation>; error: what stopped it, when a screen has words of its
- *   own for that (the storage card for a full device: main.js shows it in place of this card)
+ *   own for that (the storage card for a full device: main.js shows it in place of this card); said: what that card says first, if not the title
  * @typedef {{ stepsPerWake?: number, spendPerDay?: number, wakesPerHour?: number, quietHours?: { from: string, to: string } }} Budgets
  * @typedef {{ personality: string, cacheTtl: '5m' | '1h', askBeforeTuning: boolean, budgets: Budgets, compaction: { threshold: number, maxRequestMiB: number } }} AgentSettings
  * @typedef {import('./tools.js').Tool & { pluginId: string }} LoopTool
@@ -633,7 +633,7 @@ export class Agent {
     return this.#photos.copy(source, await this.#limits(), crop, scope);
   }
 
-  /** open: another conversation was opened ({ trip, scope }), for live mode to follow (spec §11); clear: a card's key, to take down; unsaved: typed words a write didn't keep ({ words, scope, error }: #unsaved). @param {'state' | 'event' | 'notice' | 'open' | 'clear' | 'unsaved'} kind @param {(x: any) => void} fn */
+  /** open: another conversation was opened ({ trip, scope }), for live mode to follow (spec §11); clear: a card's key, to take down; unsaved: typed words no write kept ({ words, error }: #unsaved). @param {'state' | 'event' | 'notice' | 'open' | 'clear' | 'unsaved'} kind @param {(x: any) => void} fn */
   on(kind, fn) {
     this.#on[kind].add(fn);
     return () => this.#on[kind].delete(fn);
@@ -810,7 +810,7 @@ export class Agent {
       for (const w of those) w.fallbacks = [];
       await this.#logWakes(those, newId('w'), false, { log: this.#keptIn(s), trip: s === ME ? null : s });
       this.#leftClosed(s);
-      this.#queue = this.#queue.filter((w) => !those.includes(w)); // a failed write keeps them, but for typed lines, which go back (#unsaved)
+      this.#queue = this.#queue.filter((w) => !those.includes(w)); // a failed write keeps them (typed lines go back: #unsaved)
     }
   }
 
@@ -1086,7 +1086,7 @@ export class Agent {
       saying.then(() => { if (this.#pending === p) byHand(); });
     });
     // A spoken no is written before the typed line that came within SETTLE_S of it: refused, that line goes back too.
-    for (const h of got.own ?? []) await this.#logHeard(h, { wake: call.wake, answer: call.id }).catch((e) => this.#unsaved([got], this.scope, e));
+    for (const h of got.own ?? []) await this.#logHeard(h, { wake: call.wake, answer: call.id }).catch((e) => { this.#unsaved([got], e); throw e; });
     if (got.stopped) return { stopped: true };
     if (got.chosen !== undefined) {
       await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...this.#chose() }, texts: [['text', got.chosen]] });
@@ -1103,7 +1103,7 @@ export class Agent {
     if (got.earlier) return { said: 'What the user wrote follows.' };
     if (got.text === undefined) return { said: '' };
     const wrote = typedAs(got);
-    await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text]] }).catch((e) => this.#unsaved([got], this.scope, e));
+    await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text]] }).catch((e) => { this.#unsaved([got], e); throw e; });
     return { said: wrote.said };
   }
 
@@ -1507,20 +1507,25 @@ export class Agent {
     if (this.#busy || this.#opens || this.#still) return;
     this.#busy = true;
     this.#clearTimer();
+    /** The wakes the turn that runs now took off the queue. @type {Wake[]} */
+    let wakes = [];
     try {
       while (!this.#opens && !this.#still && this.#queue.some((w) => w.scope === this.scope)) {
         // Nothing open (no draft could be made): no turn runs in `me`, which takes no more (timeline stage 7). What came is written into its log and its
-        // reminders said, as for a conversation that isn't open; a failed write keeps them queued.
+        // reminders said, as for a conversation that isn't open; a failed write keeps them queued (typed lines go back: #unsaved).
         if (this.scope === ME) {
           await this.#keepWakes((w) => w.scope === ME);
           continue;
         }
         await this.#gather();
         if (this.#opens) break;
-        const wakes = this.#take();
+        wakes = this.#take();
         if (wakes.length) await this.#turn(wakes);
+        wakes = [];
       }
     } catch (e) {
+      // The typed lines the stopped turn took, and those waiting behind it, that no write kept go back: nothing drains them again.
+      this.#unsaved([...wakes, ...this.#queue.filter((w) => w.scope === this.scope)], e);
       await this.#notice({ tone: 'warn', title: t`Shiori stopped`, body: t`Something went wrong: ${String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)}`, error: e });
     } finally {
       this.#busy = false;
@@ -2062,22 +2067,21 @@ export class Agent {
       }
       if (below.length) await log({ type: 'wake', actor: 'system', data: { id: wakeId, meanwhile: true, reasons: below.map(reasonOf) } });
     } catch (e) {
-      this.#unsaved(wakes, wakes.find((w) => w.scope)?.scope ?? this.scope, e);
+      this.#unsaved(wakes, e);
+      throw e;
     }
   }
 
   /**
-   * A write of the user's lines failed, on any path: the typed words it didn't keep are handed back, never held (unsaved: the words, joined by
-   * newlines, their conversation, the error), and taken off the queue if still on it. The failure goes on.
-   * @param {{ typed?: boolean, text?: string, logged?: boolean }[]} lines @param {string} scope @param {unknown} e @returns {never}
+   * No write kept these lines: their typed words go back, never held (unsaved: the words joined by newlines, the error), off the queue, and marked, so
+   * a line comes back once. The caller lets the failure go on. @param {{ typed?: boolean, text?: string, logged?: boolean }[]} lines @param {unknown} e
    */
-  #unsaved(lines, scope, e) {
+  #unsaved(lines, e) {
     const owed = lines.filter((w) => w.typed && w.text && !w.logged);
-    if (owed.length) {
-      this.#queue = this.#queue.filter((w) => !owed.includes(w));
-      this.#emit('unsaved', { words: owed.map((w) => w.text).join('\n'), scope, error: e });
-    }
-    throw e;
+    if (!owed.length) return;
+    this.#queue = this.#queue.filter((w) => !owed.includes(w));
+    for (const w of owed) w.typed = false;
+    this.#emit('unsaved', { words: owed.map((w) => w.text).join('\n'), error: e });
   }
 
   /**
@@ -2103,7 +2107,8 @@ export class Agent {
         blobs.push(sent.data ? { bytes: fromBase64(sent.data), type: sent.mediaType } : { hash: sent.hash, type: sent.mediaType });
       } catch (e) {
         // Not dropped quietly: the user hears which photo didn't go, and why (spec §17).
-        await this.#notice({ tone: 'warn', title: t`A photo wasn't sent to Shiori`, body: sentences(t`${p.path}: ${String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)}`, t`The message went without it.`), error: e });
+        await this.#notice({ tone: 'warn', title: t`A photo wasn't sent to Shiori`, body: sentences(t`${p.path}: ${String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)}`, t`The message went without it.`),
+          error: e, said: sentences(t`A photo wasn't sent to Shiori`, t`The message went without it.`) });
       }
     }
     return { images, blobs };
@@ -3489,7 +3494,7 @@ export class Agent {
     }
     if (got.text !== undefined) {
       const wrote = typedAs(got);
-      await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text]] }).catch((e) => this.#unsaved([got], this.scope, e));
+      await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text]] }).catch((e) => { this.#unsaved([got], e); throw e; });
       this.#facts.answeredAt = this.#reached; // typed into her wait or after her line, as at her card: theirs, owed a reply (spec §7.1)
       if (this.#half.listenLast) this.#facts.wrote = true; // Koe's: a message of theirs it owes an answer
       return `${lead}${wrote.said}`;
