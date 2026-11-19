@@ -56,9 +56,8 @@
  * @typedef {object} Store
  * @property {<T>(stores: StoreName[], mode: 'readonly'|'readwrite', fn: (tx: Tx) => Promise<T>) => Promise<T>} tx
  *   Runs fn in one transaction. A read-write transaction commits only if fn resolves.
- *   When the device is out of space it rejects with StorageFullError (errors.js) and writes nothing.
-|'readwrite', fn: (tx: Tx) => Promise<T>) => Promise<T>} tx
- *   Runs fn in one transaction. A read-write transaction commits only if fn resolves.
+ *   A write the browser refuses rejects with StorageFullError and writes nothing: QuotaExceededError; in read-write (or reopening),
+ *   UnknownError or an abort after all its requests succeeded (a full phone). fn's own errors, and read-only ones, are rejected as they are.
  *   Inside fn, await only Tx calls: awaiting anything else lets IndexedDB commit early.
  * @property {() => void} close  stops the store for good: every later tx rejects with StoppedError (errors.js)
  */

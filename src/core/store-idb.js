@@ -85,16 +85,19 @@ export async function createIdbStore(name = DB_NAME, hooks = {}) {
     async tx(stores, mode, fn) {
       if (closed) throw new StoppedError(); // never reopen: another tab owns the data now
       for (let attempt = 0; ; attempt++) {
-        const d = db ?? (await connect());
+        /** @type {IDBDatabase | undefined} */
+        let d;
         try {
+          d = db ?? (await connect());
           return await runTx(d, stores, mode, fn);
         } catch (e) {
           if (attempt === 0 && connectionLost(e)) {
             if (db === d) db = null;
-            d.close(); // a healthy one would stay open
+            d?.close(); // a healthy one would stay open
             continue;
           }
-          throw storeError(e);
+          // An open that fails is a write's failure: Chromium's backing store writes as it opens.
+          throw storeError(e, { write: mode === 'readwrite' || !d, refused: refused.has(/** @type {any} */ (e)) });
         }
       }
     },
@@ -117,6 +120,9 @@ function connectionLost(e) {
   return e?.name === 'InvalidStateError' || e?.name === 'UnknownError' || e?.name === 'AbortError' || /connection (is )?(lost|closing|closed)|server lost|database (is )?clos/i.test(String(e?.message));
 }
 
+/** What runTx rejected with when the browser aborted a transaction after all its requests succeeded: a refused commit. */
+const refused = new WeakSet();
+
 /**
  * @template T
  * @param {IDBDatabase} db
@@ -131,6 +137,8 @@ function runTx(db, stores, mode, fn) {
     /** @type {any} */
     let result;
     let settled = false;
+    let failed = false;
+    t.onerror = () => { failed = true; }; // a request failed: an abort is no refused commit
     const fail = (/** @type {any} */ e) => {
       if (!settled) {
         settled = true;
@@ -143,7 +151,11 @@ function runTx(db, stores, mode, fn) {
         resolve(result);
       }
     };
-    /* en */ t.onabort = () => fail(t.error ?? new DOMException('The transaction was aborted.', 'AbortError'));
+    t.onabort = () => {
+      /* en */ const e = t.error ?? new DOMException('The transaction was aborted.', 'AbortError');
+      if (!failed) refused.add(e);
+      fail(e);
+    };
     Promise.resolve()
       .then(() => fn(makeTx(t)))
       .then((r) => { result = r; }, (e) => {

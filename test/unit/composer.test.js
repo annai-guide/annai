@@ -72,7 +72,7 @@ test("a file asked about from another conversation isn't handed over in this one
   const { ctx, sent, other, ws } = await phone();
   await ws.write(other, '/files/temple.pdf', 'temple', { author: 'user', type: 'application/pdf' });
   await handOver(ctx, 'And this?', [{ scope: other, path: '/files/temple.pdf' }]);
-  assert.deepEqual(sent, [{ text: 'And this?' }]);
+  assert.deepEqual(sent, [{ text: 'And this?', typed: true }]); // typed in the box: a failed write gives it back
 });
 
 test('a calendar file kept in a trip says how many of its events went on the plan', async () => {

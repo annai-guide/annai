@@ -149,6 +149,68 @@ test('a small send arrow sits inside the box, on its right, for a keyboard whose
   await expect(box(page)).toBeHidden();
 });
 
+/**
+ * The phone's disk fills, as WebKit and Chromium refuse a full one (the probe of 2026-11-19): every request of a write succeeds, and the
+ * browser aborts its commit with no error. Each write that logs is kept open until `release()` (held), then aborted 100 ms on, well
+ * after annai's few requests in it. `room()` ends it. @param {import('@playwright/test').Page} page @param {{ held?: boolean }} [o]
+ */
+const fillDisk = (page, { held = false } = {}) => page.evaluate((held) => {
+  const w = /** @type {any} */ (window);
+  w.full = { held, since: Date.now() };
+  w.release = () => { w.full = { held: false, since: Date.now() }; };
+  w.room = () => { w.full = null; };
+  const real = IDBDatabase.prototype.transaction;
+  IDBDatabase.prototype.transaction = /** @type {any} */ (/** @this {IDBDatabase} */ function (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any[]} */ ...rest) {
+    const t = real.call(this, stores, mode, ...rest);
+    const names = [stores].flat();
+    if (!w.full || mode !== 'readwrite' || !names.includes('events')) return t;
+    const made = Date.now();
+    const keep = () => {
+      try {
+        if (!w.full?.held && Date.now() - Math.max(made, w.full?.since ?? 0) > 100) return void t.abort();
+        t.objectStore(names[0]).count().onsuccess = keep;
+      } catch { /* it ended */ }
+    };
+    keep();
+    return t;
+  });
+}, held);
+
+// A line typed when nothing could take it stays in the box (the user's pick of 2026-11-14, "Put it back in the type box"): one the full
+// phone refuses to save comes back to it.
+test("a line the full phone refuses to save comes back in the box, and the storage card says to free up space in the phone's own Settings; with room again it sends", async ({ page, browserName }) => {
+  await inConversation(page);
+  await fillDisk(page);
+  await typeButton(page).click();
+  await box(page).fill('Is the castle open today?');
+  await box(page).press('Control+Enter');
+  await expect(box(page)).toHaveValue('Is the castle open today?');
+  await expect(box(page)).toBeVisible();
+  await expect(page.locator('.convo .you')).toHaveCount(0);
+  const notices = page.locator('.notices');
+  await expect(notices.getByText("There's no room to save this", { exact: true })).toBeVisible();
+  await expect(notices).toContainText(browserName === 'webkit' ? 'Free up space on this iPhone in Settings → General → iPhone Storage, then try again.' : 'Free up space on this phone in Settings → Storage, then try again.');
+  await expect(notices).not.toContainText('Shiori stopped');
+  await page.evaluate(() => /** @type {any} */ (window).room());
+  await box(page).press('Control+Enter');
+  await expect(page.locator('.convo .you p').first()).toHaveText('Is the castle open today?');
+  await expect(box(page)).toBeHidden();
+});
+
+test('a refused line comes back before what was typed in the box since, on a line of its own', async ({ page }) => {
+  await inConversation(page);
+  await fillDisk(page, { held: true });
+  await typeButton(page).click();
+  await box(page).fill('Is the castle open today?');
+  await box(page).press('Control+Enter');
+  await expect(box(page)).toBeHidden();
+  await typeButton(page).click();
+  await box(page).fill('And the garden?');
+  await page.evaluate(() => /** @type {any} */ (window).release());
+  await expect(box(page)).toHaveValue('Is the castle open today?\nAnd the garden?');
+  await expect(page.locator('.notices').getByText("There's no room to save this", { exact: true })).toBeVisible();
+});
+
 test('Escape closes the box and keeps the draft', async ({ page }) => {
   await inConversation(page);
   await typeButton(page).click();

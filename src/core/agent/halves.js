@@ -236,7 +236,7 @@ export class Halves {
   /** The settings read as annai starts: no turn runs before. @type {Promise<unknown>} */
   #ready;
   /** @type {Record<string, Set<(x: any) => void>>} */
-  #on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set(), halves: new Set(), clear: new Set(), saying: new Set(), went: new Set() };
+  #on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set(), halves: new Set(), clear: new Set(), saying: new Set(), went: new Set(), unsaved: new Set() };
 
   /** @param {ConstructorParameters<typeof Agent>[0]} c what each half is made with: one voice, the talking half's (plan decision 17) */
   constructor(c) {
@@ -354,6 +354,7 @@ export class Halves {
     const own = (/** @type {Agent} */ a, /** @type {string} */ key) => (a === this.kokoro && key === 'model' ? KOKORO_CARD : key);
     for (const a of [this.kokoro, this.koe]) {
       a.on('event', (x) => this.#emit('event', x));
+      a.on('unsaved', (x) => this.#emit('unsaved', x));
       a.on('notice', (n) => this.#notice(n.key ? { ...n, key: own(a, n.key) } : n));
       a.on('clear', (key) => {
         this.#emit('clear', own(a, key));
@@ -493,7 +494,7 @@ export class Halves {
 
   /**
    * saying: a live Koe's words so far, while she speaks them; went: a trip opened on the user's choice on annai's card ({ trip })
-   * @param {'state' | 'event' | 'notice' | 'open' | 'halves' | 'clear' | 'saying' | 'went'} kind @param {(x: any) => void} fn
+   * @param {'state' | 'event' | 'notice' | 'open' | 'halves' | 'clear' | 'saying' | 'went' | 'unsaved'} kind @param {(x: any) => void} fn
    */
   on(kind, fn) {
     this.#on[kind].add(fn);
@@ -841,7 +842,7 @@ export class Halves {
 
   /**
    * To Koe while it talks (Kokoro reads it and wakes), else to Kokoro; a half waiting for an answer gets it.
-   * @param {string} text @param {{ photos?: import('./loop.js').SentPhoto[], chose?: boolean, claim?: string, handed?: import('../handover.js').HandedFile[], handover?: string }} [o]
+   * @param {string} text @param {{ photos?: import('./loop.js').SentPhoto[], chose?: boolean, claim?: string, typed?: boolean, handed?: import('../handover.js').HandedFile[], handover?: string }} [o]
    *   chose: a tap on a live ask's buttons; claim: "This was for Shiori", the heard line's id; handed, handover: a hand-over (handover.js)
    */
   send(text, o = {}) {

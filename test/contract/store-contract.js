@@ -293,6 +293,40 @@ export function storeContract(test, assert, makeStore) {
     assert.deepEqual(await s.tx(['files'], 'readonly', (t) => t.listFiles('trip-1')), []);
   });
 
+  // A full phone's refusal isn't the origin quota's (measured 2026-11-19): WebKit refuses a write with UnknownError (a request's, or the
+  // whole transaction's), and Chromium's reopen at its last bytes fails with one.
+  test('tx: a write the browser refuses with UnknownError rejects with StorageFullError and writes nothing', async () => {
+    const s = await makeStore();
+    await assert.rejects(s.tx(['files'], 'readwrite', async (t) => {
+      await t.putFile(file('trip-1', '/a.md'));
+      throw new DOMException('Unable to store record in object store', 'UnknownError');
+    }), StorageFullError);
+    assert.deepEqual(await s.tx(['files'], 'readonly', (t) => t.listFiles('trip-1')), []);
+  });
+
+  test("tx: a read-only transaction keeps its error, an UnknownError too: it isn't a full device", async () => {
+    const s = await makeStore();
+    const failed = await s.tx(['files'], 'readonly', async () => {
+      throw new DOMException('Unable to read the record', 'UnknownError');
+    }).then(() => null, (e) => e);
+    assert.equal(failed?.name, 'UnknownError');
+    assert.ok(!(failed instanceof StorageFullError));
+  });
+
+  test("tx: an error of annai's own thrown in a write is rejected as it is, never as a full device", async () => {
+    const s = await makeStore();
+    class Kept { constructor() { this.where = 'here'; } } // as forget's, which isn't an Error
+    const own = [new Error('The trip has no such file.'), new TypeError('x is undefined'), Object.assign(new Error('not valid JSON'), { name: 'ValidationError' }), Object.assign(new Error('no such trip'), { name: 'NotFoundError' }), new Kept()];
+    for (const e of own) {
+      const got = await s.tx(['files'], 'readwrite', async (t) => {
+        await t.putFile(file('trip-1', '/a.md'));
+        throw e;
+      }).then(() => null, (x) => x);
+      assert.equal(got, e);
+    }
+    assert.deepEqual(await s.tx(['files'], 'readonly', (t) => t.listFiles('trip-1')), []);
+  });
+
   test('tx: a closed store refuses every transaction from then on', async () => {
     const s = await makeStore();
     await s.tx(['files'], 'readwrite', (t) => t.putFile(file('trip-1', '/a.md')));

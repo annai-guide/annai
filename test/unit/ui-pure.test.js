@@ -90,17 +90,34 @@ test("#/now (Now went in timeline stage 8) goes to today's Itinerary of the trip
   assert.equal(redirectOf(parseHash('#/trips'), 'trip-a', { play: 'trip-b' }), null);
 });
 
-test('a full device gets advice that frees space: removing a trip does, deleting inside one does not (spec §4.9)', () => {
-  /** @type {any[]} */
-  const cards = [];
-  assert.equal(explainStorageFull({ notices: { card: (/** @type {any} */ c) => cards.push(c) }, go: () => {} }, new StorageFullError()), true);
-  assert.equal(cards.length, 1);
-  for (const advice of [cards[0].body, new StorageFullError().message]) {
-    assert.match(advice, /remove a trip you no longer need/i);
-    assert.match(advice, /free up space on this device/);
-    assert.doesNotMatch(advice, /delet/i);
+test("the storage card leads with the device's own Settings, by the device: an iPhone's, an Android phone's, any other's; removing a trip makes room in annai, deleting inside one isn't offered (spec §4.9, §17)", () => {
+  /** @type {[string, string][]} */
+  const devices = [
+    ['Mozilla/5.0 (iPhone; CPU iPhone OS 26_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.1 Mobile/15E148 Safari/604.1', 'on this iPhone in Settings → General → iPhone Storage'],
+    ['Mozilla/5.0 (Linux; Android 16; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Mobile Safari/537.36', 'on this phone in Settings → Storage'],
+    ['Mozilla/5.0 (iPad; CPU OS 26_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.1 Mobile/15E148 Safari/604.1', 'on this device'],
+    ['Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36', 'on this device'],
+  ];
+  try {
+    for (const [agent, where] of devices) {
+      Object.defineProperty(navigator, 'userAgent', { value: agent, configurable: true });
+      /** @type {any[]} */
+      const cards = [];
+      assert.equal(explainStorageFull({ notices: { card: (/** @type {any} */ c) => cards.push(c) }, go: () => {} }, new StorageFullError()), true);
+      assert.equal(cards.length, 1);
+      assert.equal(cards[0].title, "There's no room to save this");
+      assert.equal(cards[0].body, `Nothing was half-saved. Free up space ${where}, then try again. Removing a trip you no longer need also makes room in annai (back it up first).`);
+      assert.doesNotMatch(cards[0].body, /delet/i);
+      // Export stays, but isn't the first thing to do: on a full phone a backup file needs as much room again.
+      assert.deepEqual(cards[0].actions.map((/** @type {any} */ a) => [a.label, Boolean(a.primary)]), [['Export a backup', false], ['Go to Trips', false]]);
+    }
+  } finally {
+    delete (/** @type {any} */ (navigator)).userAgent; // Node's own, from its prototype, again
   }
-  assert.deepEqual(cards[0].actions.map((/** @type {any} */ a) => a.label), ['Export a backup', 'Go to Trips']);
+  // What Shiori stopped and Copy diagnostics show says the same, for any device; a model reads it in English.
+  assert.equal(new StorageFullError().shown, "There's no room to save this. Nothing was half-saved. Free up space on this device, then try again. Removing a trip you no longer need also makes room in annai (back it up first).");
+  assert.equal(new StorageFullError().message, new StorageFullError().shown);
+  assert.equal(explainStorageFull({ notices: { card: () => assert.fail('no card') }, go: () => {} }, new DOMException('The transaction was aborted.', 'AbortError')), false);
 });
 
 test('backupText: never, up to date, and changed since (spec §4.9)', () => {
@@ -1165,7 +1182,7 @@ test("Reset M4: a Reset that fails on a full disk shows the storage-full card, a
   await resetSettings(ctx(new StorageFullError()), { id: 'park', name: 'Park', settings: null });
   await resetSettings(ctx(new Error('The disk broke.')), { id: 'park', name: 'Park', settings: null });
   assert.deepEqual(cards.map((c) => [c.title, c.body]).slice(1), [["Park's settings weren't reset", 'The disk broke. Try again.']]);
-  assert.equal(cards[0].title, "annai's storage is full");
+  assert.equal(cards[0].title, "There's no room to save this");
   assert.equal(renders, 2);
 });
 

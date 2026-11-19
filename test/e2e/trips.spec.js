@@ -77,7 +77,7 @@ test('a full device says what to do, and nothing is half-saved', async ({ page }
   });
   await page.getByLabel('Content').fill('# Day 1');
   await page.getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByText("annai's storage is full", { exact: true })).toBeVisible();
+  await expect(page.getByText("There's no room to save this", { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Export a backup' }).click();
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
   await page.goBack();
@@ -126,7 +126,7 @@ test('a Backup saved while storage is full still says it was saved', async ({ pa
   await save.click();
   await downloading;
   await expect(page.getByText('Saved to your downloads.')).toBeVisible();
-  await expect(page.getByText("annai's storage is full", { exact: true })).toBeVisible();
+  await expect(page.getByText("There's no room to save this", { exact: true })).toBeVisible();
 });
 
 /** How many images annai has stored. @param {import('@playwright/test').Page} page @returns {Promise<number>} */

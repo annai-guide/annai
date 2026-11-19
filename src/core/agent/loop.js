@@ -52,8 +52,8 @@ import { FILES_ONLY, PHOTO_ONLY, handoverOf } from '../handover.js';
  * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean, window?: boolean,
  *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate', again?: boolean, at?: number, input?: boolean, why?: string,
  *   call?: { name: string, input: any }, seq?: number, watched?: boolean, forUser?: string, retold?: boolean, files?: string[], titles?: string[],
- *   by?: { name: string, first: string | null, tried: boolean } | null, handed?: import('../handover.js').HandedFile[], handover?: string, recap?: string, claim?: string, chose?: boolean, fromScope?: string, turn?: string, urgent?: boolean, shown?: boolean }} Wake
- *   shown: annai showed the user its reminders itself while her turn waited on their answer (#remindWaiting): her line for the wake says so;
+ *   by?: { name: string, first: string | null, tried: boolean } | null, handed?: import('../handover.js').HandedFile[], handover?: string, recap?: string, claim?: string, chose?: boolean, typed?: boolean, fromScope?: string, turn?: string, urgent?: boolean, shown?: boolean }} Wake
+ *   shown: annai showed the user its reminders itself while her turn waited on their answer (#remindWaiting): her line for the wake says so; typed: in the type box;
  *   by: a note's, the model that wrote it; turn: a note's, the sender's turn it came from (its wake id)
  *   handed, handover: a hand-over's files and its id (the user's message with files, handover.js): the turn that takes it carries the id;
  *   recap: what Shiori said of a trip before, written into the trip she started or opened for a hand-over; fromScope: a hand-over's copy
@@ -89,7 +89,7 @@ import { FILES_ONLY, PHOTO_ONLY, handoverOf } from '../handover.js';
  *   her voice; kept: the verdict, once it comes; h: this half's own segment
  * @typedef {{ name: StateName, label: string, detail?: string, wait?: 'ask' | 'wait', over?: StateName }} State  label: the dock's words for it (LABELS); detail: what she is away doing (TIDYING, or a task's words);
  *   wait: what she waits for while waiting, her question's answer (ask) or the user's turn (wait); over: Halves' dock state only, standing over Koe's own state of that name (Halves.state)
- * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[], key?: string, toast?: boolean }} Notice
+ * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[], key?: string, toast?: boolean, error?: unknown }} Notice
  *   key: names a card a later turn takes down (the clear event, when that turn works): model, or silent:<its conversation>
  * @typedef {{ stepsPerWake?: number, spendPerDay?: number, wakesPerHour?: number, quietHours?: { from: string, to: string } }} Budgets
  * @typedef {{ personality: string, cacheTtl: '5m' | '1h', askBeforeTuning: boolean, budgets: Budgets, compaction: { threshold: number, maxRequestMiB: number } }} AgentSettings
@@ -406,7 +406,7 @@ export class Agent {
   /** The wake whose photo couldn't be sent: its card already says why. */
   #photoCard = '';
   /** @type {Record<string, Set<(x: any) => void>>} */
-  #on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set(), clear: new Set() };
+  #on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set(), clear: new Set(), unsaved: new Set() };
   /** Speaking and hearing (spec §10); null: no voice here. @type {import('../voice/voice.js').Voice | null} */
   voice = null;
   /** Where the user is and what they are doing, for the now block (spec §6.3): live mode's. @type {(() => { place?: string, activity?: string }) | null} */
@@ -632,7 +632,7 @@ export class Agent {
     return this.#photos.copy(source, await this.#limits(), crop, scope);
   }
 
-  /** open: another conversation was opened ({ trip, scope }), for live mode to follow (spec §11); clear: a card's key, to take down. @param {'state' | 'event' | 'notice' | 'open' | 'clear'} kind @param {(x: any) => void} fn */
+  /** open: another conversation was opened ({ trip, scope }), for live mode to follow (spec §11); clear: a card's key, to take down; unsaved: #unsaved. @param {'state' | 'event' | 'notice' | 'open' | 'clear' | 'unsaved'} kind @param {(x: any) => void} fn */
   on(kind, fn) {
     this.#on[kind].add(fn);
     return () => this.#on[kind].delete(fn);
@@ -654,7 +654,7 @@ export class Agent {
     this.#emit('notice', shown);
   }
 
-  /** @param {'state' | 'event' | 'notice' | 'open' | 'clear'} kind @param {any} x */
+  /** @param {'state' | 'event' | 'notice' | 'open' | 'clear' | 'unsaved'} kind @param {any} x */
   #emit(kind, x) {
     for (const fn of this.#on[kind]) {
       try {
@@ -802,7 +802,7 @@ export class Agent {
       const owed = those.flatMap((w) => w.fallbacks ?? []);
       if (owed.length) await this.remind(owed, s);
       for (const w of those) w.fallbacks = [];
-      await this.#logWakes(those, newId('w'), false, { log: this.#keptIn(s), trip: s === ME ? null : s });
+      await this.#logWakes(those, newId('w'), false, { log: this.#keptIn(s), trip: s === ME ? null : s, queued: true });
       this.#leftClosed(s);
       this.#queue = this.#queue.filter((w) => !those.includes(w)); // a failed write keeps them
     }
@@ -996,15 +996,15 @@ export class Agent {
   /**
    * The user wrote, or sent photos (spec §4.8, §16.2), or handed her files (handover.js). Words answer a pending ask or wait (alone, photos
    * and files end it as #earlier does, and follow whole); otherwise it wakes Shiori, or reaches her next call. Photos and files sent with an answer follow it.
-   * @param {string} text @param {{ photos?: SentPhoto[], chose?: boolean, claim?: string, handed?: import('../handover.js').HandedFile[], handover?: string }} [o]
-   *   claim: "This was for Shiori": the id of the heard line these are the words of; chose: a tap (a card's button, a quick ask) that comes as words
+   * @param {string} text @param {{ photos?: SentPhoto[], chose?: boolean, claim?: string, typed?: boolean, handed?: import('../handover.js').HandedFile[], handover?: string }} [o]
+   *   claim: "This was for Shiori": the id of the heard line these are the words of; chose: a tap (a card's button, a quick ask) that comes as words; typed: in the type box
    */
   send(text, o = {}) {
     const photos = (o.photos ?? []).filter((x) => x && typeof x.path === 'string');
     const handed = (o.handed ?? []).filter((x) => x && typeof x.path === 'string');
     const given = { ...(handed.length ? { handed } : {}), ...(handed.length && o.handover ? { handover: o.handover } : {}) };
-    const how = { ...(o.claim ? { claim: o.claim } : {}), ...(o.chose && !o.claim ? { chose: true } : {}) };
     const typed = String(text ?? '').trim();
+    const how = { ...(o.claim ? { claim: o.claim } : {}), ...(o.chose && !o.claim ? { chose: true } : {}), ...(o.typed && typed ? { typed: true } : {}) };
     const said = typed || (photos.length ? PHOTO_ONLY : handed.length ? FILES_ONLY : '');
     if (!said) return;
     const p = this.#pending;
@@ -1096,7 +1096,7 @@ export class Agent {
     if (got.earlier) return { said: 'What the user wrote follows.' };
     if (got.text === undefined) return { said: '' };
     const wrote = typedAs(got);
-    await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text]] });
+    await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text]] }).catch((e) => this.#unsaved([got], e));
     return { said: wrote.said };
   }
 
@@ -1514,7 +1514,7 @@ export class Agent {
         if (wakes.length) await this.#turn(wakes);
       }
     } catch (e) {
-      await this.#notice({ tone: 'warn', title: t`Shiori stopped`, body: t`Something went wrong: ${String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)}` });
+      await this.#notice({ tone: 'warn', title: t`Shiori stopped`, body: t`Something went wrong: ${String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)}`, error: e });
     } finally {
       this.#busy = false;
       this.#abort = null;
@@ -2020,39 +2020,50 @@ export class Agent {
   /**
    * Logs wakes: a user's text as msg.user, anything else as a wake reason. Into the open conversation,
    * or with log, into another one. @param {Wake[]} wakes @param {string} wakeId @param {boolean} meanwhile
-   * @param {{ log?: (ev: Parameters<typeof record>[2]) => Promise<unknown>, trip?: string | null, handover?: string | null }} [o] trip: the trip paths
+   * @param {{ log?: (ev: Parameters<typeof record>[2]) => Promise<unknown>, trip?: string | null, handover?: string | null, queued?: boolean }} [o] trip: the trip paths
    *   in photos refer to; handover: at a turn's start (#steps), the hand-over the turn works on, null for none, named on its wake's record (the
-   *   Conversation's Undo line follows her lines while her turn works on its hand-over); a wake no turn takes now (kept, stopped) names none
+   *   Conversation's Undo line follows her lines while her turn works on its hand-over); a wake no turn takes now (kept, stopped) names none; queued: kept there on failure
    */
-  async #logWakes(wakes, wakeId, meanwhile, { log = (ev) => this.#log(ev), trip = this.trip, handover } = {}) {
-    const reasonOf = (/** @type {Wake} */ w) => ({
-      kind: w.kind, text: told(w), ...(w.plugin ? { plugin: w.plugin } : {}), ...(w.files?.length ? { files: w.files } : {}), ...(w.titles?.length ? { titles: w.titles } : {}),
-      ...(w.handover ? { handover: w.handover } : {}), ...(w.recap ? { recap: w.recap } : {}),
-    });
-    const theirs = (/** @type {Wake} */ w) => w.kind === 'user' || w.kind === 'choice' || w.kind === 'heard';
-    // Her recap is her line, shown where it is written: below the user's line it came with (a move's arrival).
-    const below = wakes.some((w) => theirs(w) && !w.logged) ? wakes.filter((w) => w.recap) : [];
-    const first = wakes.filter((w) => !below.includes(w));
-    if (!meanwhile) await log({ type: 'wake', actor: 'system', data: { id: wakeId, reasons: first.map(reasonOf), ...(handover !== undefined ? { handover } : {}) } });
-    else {
-      // A cue already in the log (a review, "Koe answered the user") is still a line here: "woke for" gives it only once.
-      const others = first.filter((w) => !theirs(w) && (!w.logged || w.kind === 'cue'));
-      if (others.length) await log({ type: 'wake', actor: 'system', data: { id: wakeId, meanwhile: true, reasons: others.map(reasonOf) } });
-    }
-    for (const w of wakes) {
-      if (w.logged) continue;
-      if (w.kind === 'heard' && w.heard) {
-        await this.#logHeard(w.heard, { wake: wakeId, meanwhile, gate: w.gate }, log);
-        w.logged = true;
-        continue;
+  async #logWakes(wakes, wakeId, meanwhile, { log = (ev) => this.#log(ev), trip = this.trip, handover, queued = false } = {}) {
+    try {
+      const reasonOf = (/** @type {Wake} */ w) => ({
+        kind: w.kind, text: told(w), ...(w.plugin ? { plugin: w.plugin } : {}), ...(w.files?.length ? { files: w.files } : {}), ...(w.titles?.length ? { titles: w.titles } : {}),
+        ...(w.handover ? { handover: w.handover } : {}), ...(w.recap ? { recap: w.recap } : {}),
+      });
+      const theirs = (/** @type {Wake} */ w) => w.kind === 'user' || w.kind === 'choice' || w.kind === 'heard';
+      // Her recap is her line, shown where it is written: below the user's line it came with (a move's arrival).
+      const below = wakes.some((w) => theirs(w) && !w.logged) ? wakes.filter((w) => w.recap) : [];
+      const first = wakes.filter((w) => !below.includes(w));
+      if (!meanwhile) await log({ type: 'wake', actor: 'system', data: { id: wakeId, reasons: first.map(reasonOf), ...(handover !== undefined ? { handover } : {}) } });
+      else {
+        // A cue already in the log (a review, "Koe answered the user") is still a line here: "woke for" gives it only once.
+        const others = first.filter((w) => !theirs(w) && (!w.logged || w.kind === 'cue'));
+        if (others.length) await log({ type: 'wake', actor: 'system', data: { id: wakeId, meanwhile: true, reasons: others.map(reasonOf) } });
       }
-      if (w.kind !== 'user' && w.kind !== 'choice') continue;
-      const { images, blobs } = w.photos?.length ? await this.#userPhotos(w.photos, trip) : { images: [], blobs: [] };
-      const handed = { ...(w.handed?.length ? { handed: w.handed } : {}), ...(w.handover ? { handover: w.handover } : {}), ...(w.fromScope ? { from: w.fromScope } : {}) };
-      await log({ type: 'msg.user', actor: 'user', data: { wake: wakeId, ...(meanwhile ? { meanwhile: true } : {}), ...(images.length ? { images } : {}), ...(w.claim ? { claim: w.claim } : {}), ...(w.chose ? { chose: true } : {}), ...handed }, texts: [['text', w.text]], blobs });
-      w.logged = true; // a batch that fails later writes this line once
+      for (const w of wakes) {
+        if (w.logged) continue;
+        if (w.kind === 'heard' && w.heard) {
+          await this.#logHeard(w.heard, { wake: wakeId, meanwhile, gate: w.gate }, log);
+          w.logged = true;
+          continue;
+        }
+        if (w.kind !== 'user' && w.kind !== 'choice') continue;
+        const { images, blobs } = w.photos?.length ? await this.#userPhotos(w.photos, trip) : { images: [], blobs: [] };
+        const handed = { ...(w.handed?.length ? { handed: w.handed } : {}), ...(w.handover ? { handover: w.handover } : {}), ...(w.fromScope ? { from: w.fromScope } : {}) };
+        await log({ type: 'msg.user', actor: 'user', data: { wake: wakeId, ...(meanwhile ? { meanwhile: true } : {}), ...(images.length ? { images } : {}), ...(w.claim ? { claim: w.claim } : {}), ...(w.chose ? { chose: true } : {}), ...handed }, texts: [['text', w.text]], blobs });
+        w.logged = true; // a batch that fails later writes this line once
+      }
+      if (below.length) await log({ type: 'wake', actor: 'system', data: { id: wakeId, meanwhile: true, reasons: below.map(reasonOf) } });
+    } catch (e) {
+      this.#unsaved(queued ? [] : wakes.filter((w) => !w.logged), e);
     }
-    if (below.length) await log({ type: 'wake', actor: 'system', data: { id: wakeId, meanwhile: true, reasons: below.map(reasonOf) } });
+  }
+
+  /** A write of the user's lines failed: typed words it didn't keep go back to the box (unsaved), and it goes on. @param {{ typed?: boolean, text?: string }[]} lines @param {unknown} e @returns {never} */
+  #unsaved(lines, e) {
+    const words = lines.filter((w) => w.typed && w.text).map((w) => w.text);
+    if (words.length) this.#emit('unsaved', words.join('\n'));
+    throw e;
   }
 
   /**
@@ -3463,7 +3474,7 @@ export class Agent {
     }
     if (got.text !== undefined) {
       const wrote = typedAs(got);
-      await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text]] });
+      await this.#log({ type: 'msg.user', actor: 'user', data: { wake: call.wake, answer: call.id, ...wrote.data }, texts: [['text', got.text]] }).catch((e) => this.#unsaved([got], e));
       this.#facts.answeredAt = this.#reached; // typed into her wait or after her line, as at her card: theirs, owed a reply (spec §7.1)
       if (this.#half.listenLast) this.#facts.wrote = true; // Koe's: a message of theirs it owes an answer
       return `${lead}${wrote.said}`;

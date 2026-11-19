@@ -294,6 +294,8 @@ async function boot() {
   const named = new Map();
   agent.on('clear', (/** @type {string} */ key) => named.get(key)?.());
   agent.on('notice', (n) => {
+    // A turn stopped by a full device: the storage card, which says what works (spec §17).
+    if (explainStorageFull({ notices: shell.notices, go: (/** @type {string} */ hash) => { location.hash = hash; } }, n.error)) return;
     if (n.key) named.get(n.key)?.();
     const dismiss = shell.notices.card(n);
     if (n.key) named.set(n.key, dismiss);

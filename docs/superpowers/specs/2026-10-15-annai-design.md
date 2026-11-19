@@ -1301,7 +1301,8 @@ Eyes-free voice mode also serves users with low vision.
 
 1. **Never lose data.**
    - Writes are transactional (§4.2).
-   - "Storage full" shows a card with real options: export a backup, remove a trip (§4.9), delete trace bodies or cached photo copies, or free up space on the device.
+   - "Storage full" shows a card with real options, led by the phone's own Settings: free up space on the device (iPhone: Settings → General → iPhone Storage; Android: Settings → Storage), export a backup, remove a trip (§4.9), delete trace bodies or cached photo copies. It shows for any write the browser refuses for lack of room: a full phone's refusal is not a quota error (WebKit aborts the write with no error, Chromium fails its blob files; measured 2026-11-19).
+   - A line typed to Shiori whose save fails goes back in the type box, before anything typed there since.
    - The IndexedDB connection reconnects automatically.
    - Migrations are atomic, with a backup first.
 2. **Degrade, don't die.**

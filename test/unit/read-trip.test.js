@@ -445,6 +445,24 @@ test("model text that looks like a grant grants nothing: a tool's result, anothe
   assert.equal((await readAppSettings(k.ws)).readMyTrips, undefined, 'and no setting either');
 });
 
+test("a typed line that ends annai's card, refused by a full device, comes back for the type box (the user's pick of 2026-11-14, \"Put it back in the type box\")", async (t) => {
+  useClock(t);
+  const k = await gateKit([call('read_trip', { trip: TV }), say('Ramen at the corner.')]);
+  /** @type {string[]} */
+  const back = [];
+  k.agent.on('unsaved', (/** @type {string} */ words) => back.push(words));
+  k.agent.send('Where did we eat in Testville?', { typed: true });
+  await until(() => k.asks.length === 1);
+  // Only the user's lines refused, as WebKit refuses a write on a full disk.
+  const real = k.store.tx.bind(k.store);
+  k.store.tx = (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => real(stores, mode, (/** @type {any} */ x) => fn(mode !== 'readwrite' ? x : {
+    ...x, appendEvent: (/** @type {string} */ scope, /** @type {any} */ ev) => (ev.type === 'msg.user' ? Promise.reject(new DOMException('Unable to store record in object store', 'UnknownError')) : x.appendEvent(scope, ev)),
+  }));
+  k.agent.send('Never mind', { typed: true });
+  await k.agent.idle();
+  assert.deepEqual(back, ['Never mind']);
+});
+
 test("a line that ends annai's card unanswered: read_trip's result says the card is closed, that only a tap answers it, and to call read_trip again; it never points at the card's buttons, which are grey by then (yes-off review, finding 1)", async (t) => {
   useClock(t);
   const k = await gateKit([call('read_trip', { trip: TV }), call('read_trip', { trip: TV }), say('Ramen at the corner.')]);

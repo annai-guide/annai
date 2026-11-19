@@ -123,7 +123,7 @@ export function createDock(ctx) {
       if (!items.some((a) => 'file' in a)) {
         done();
         if (items.length) return void handOver(ctx, text, items).catch((/** @type {unknown} */ x) => ctx.notices.card({ tone: 'warn', title: t`Your files didn't reach Shiori`, body: messageOf(x) }));
-        ctx.agent.send(text);
+        ctx.agent.send(text, { typed: true });
         toTalk(ctx);
         return;
       }
@@ -218,6 +218,12 @@ export function createDock(ctx) {
   // A turn of the phone wraps the words again: the box fits them at the new width.
   addEventListener('resize', fit);
   offs.push(() => removeEventListener('resize', fit));
+  // Words a write didn't keep come back before any typed since (the user's pick, 2026-11-14, "Put it back in the type box").
+  offs.push(ctx.agent.on('unsaved', (/** @type {string} */ words) => {
+    const since = input.value.trim();
+    input.value = since ? `${words}\n${since}` : words;
+    openTyping();
+  }));
   offs.push(ctx.agent.on('state', (/** @type {any} */ s) => {
     avatar.setState(s.name);
     label.textContent = s.label;

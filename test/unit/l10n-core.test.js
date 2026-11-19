@@ -168,7 +168,7 @@ test("an error a model may read keeps annai's English in message; the screens sh
   // Kept as data in a turn's error: the Conversation's words in Japanese, a model's in English.
   const why = whyOf(new StorageFullError());
   assert.deepEqual(why, { message: new StorageFullError().message, name: 'StorageFullError' });
-  assert.match(whyWords(why), /^この端末のannaiのストレージがいっぱいです/);
+  assert.match(whyWords(why), /^空き容量が足りないため保存できません。途中まで保存されたデータはありません。/);
   assert.equal(whyWords(why, true), new StorageFullError().message);
 });
 

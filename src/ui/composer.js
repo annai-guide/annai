@@ -89,7 +89,7 @@ export async function handOver(ctx, text, items, o = {}) {
     await ctx.agent.wake({ kind: 'user', text: text.trim() || FILES_ONLY, ...handover, scope });
     return;
   }
-  ctx.agent.send(text, handover);
+  ctx.agent.send(text, { ...handover, typed: true });
   if (location.hash === here) toTalk(ctx);
 }
 

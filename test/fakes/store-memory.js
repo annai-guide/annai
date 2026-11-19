@@ -24,7 +24,7 @@ export function createMemoryStore() {
       };
       const p = queue.then(run, run);
       queue = p.catch(() => {});
-      return p.catch((e) => { throw storeError(e); });
+      return p.catch((e) => { throw storeError(e, { write: mode === 'readwrite' }); });
     },
     close() { closed = true; },
   };
