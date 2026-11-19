@@ -137,8 +137,9 @@ export class Workspace {
   }
 
   /**
-   * Changes a file in the path's lock: fn gets what is stored (a JSON file's value, another's text) and gives the new content, so nothing written
-   * between the read and the write is lost (a Test's result recorded while a field is saved, say). A file that is not there is not found.
+   * Changes a file in the path's lock: fn gets what is stored and gives the new content, so nothing written between the read and the write is
+   * lost (a Test's result recorded while a field is saved, say). It reads by the type the write will store: a JSON file's value, another's text
+   * (JSON at a path with no extension needs opts.type). A file that is not there is not found.
    * @param {string} scope @param {string} path @param {(current: any) => any | Promise<any>} fn @param {WriteOptions} opts
    * @returns {Promise<any>} the new content
    */

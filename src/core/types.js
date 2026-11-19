@@ -18,7 +18,7 @@
  *   draft: the standing draft + opens, not a conversation until its first use (chats.js); exports and the lists leave it out.
  *   imported: a trip that came from a trip's file (archive.js), someone else's as far as annai knows: Always (readMyTrips) doesn't cover it, so read_trip
  *   asks, with no Always, unless the user allowed it in that conversation. One imported before the mark is known by its log's import entry (read_trip).
- *   madeBy: who made a trip shared with that box ticked ("From Mia"), only in the Share's copy (exportArchive); what a file holds, so read by madeByOf.
+ *   madeBy: who made a trip shared with that box ticked ("From Mia"): a Share carries it (exportArchive), the importer keeps it here; outside text, read by madeByOf.
  * @typedef {{ after?: number, before?: number, limit?: number, reverse?: boolean, types?: string[], notTypes?: string[] }} EventQuery
  *
  * @typedef {object} Tx

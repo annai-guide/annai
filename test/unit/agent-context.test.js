@@ -686,7 +686,7 @@ test("Koe's instructions, chat and live, say a booking's status is annai's own a
   }
 });
 
-test("the name typed in Settings → Shiori reaches her next wake with the cache warm: the field's save is the user's own edit of the profile (the timeline design, \"Nickname and sharing\")", async () => {
+test("the name typed in Settings → Shiori reaches her next wake with the cache warm: the field's save is the user's own edit of the profile (the timeline design, 'Nickname and \"From Mia\"')", async () => {
   const { ws, trip, registry } = await setup();
   const take = () => takeSnapshot({ ws, registry, trip, personalityName: 'shiori' });
   const first = await take();
@@ -694,4 +694,18 @@ test("the name typed in Settings → Shiori reaches her next wake with the cache
   const next = nextSnapshot(first, await take(), { cold: false });
   assert.notEqual(next, first);
   assert.match(systemText(next), /# About the user \(\/me\/profile\.md\)\n# Profile\n\n- What to call me: Mia\n/);
+});
+
+test("Shiori isn't shown who made a trip from someone's Share: its record's madeBy is in no text of hers, the open conversation's or the list of their others, and what she calls them stays the profile's (the timeline design, 'Nickname and \"From Mia\"'; RULES principle 9)", async () => {
+  const { ws, store, trip, registry } = await setup();
+  const kyoto = await createTrip(ws, { title: 'Kyoto', start: '2027-04-03', end: '2027-04-10' });
+  const chat = await createTrip(ws, { title: 'Where should we eat?' });
+  await saveCallMe(ws, 'Mia');
+  // Each came in from Zed's file.
+  for (const id of [trip, kyoto, chat]) await store.tx(['scopes'], 'readwrite', async (/** @type {any} */ x) => x.putScope({ ...(await x.getScope(id)), imported: true, madeBy: 'Zed Zephyr' }));
+  const dated = systemText(await takeSnapshot({ ws, registry, trip, personalityName: 'shiori' }));
+  const undated = systemText(await takeSnapshot({ ws, registry, trip: chat, personalityName: 'shiori' }));
+  assert.match(dated, /- What to call me: Mia\n/);
+  assert.match(undated, /Their latest other conversations: .*Kyoto/, 'her list of their others names them, so the check reads where it could have been told');
+  assert.doesNotMatch(`${dated}\n${undated}`, /Zed|Zephyr/);
 });

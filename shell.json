@@ -1,5 +1,5 @@
 {
-  "build": "27d59dc1b346",
+  "build": "bea6f5bbb723",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -148,7 +148,7 @@
     "/src/core/request-photos.js": "0a710cf1cc55",
     "/src/core/schema.js": "f21af27d5902",
     "/src/core/search.js": "62a0a393233e",
-    "/src/core/scopes.js": "5fa3343013f1",
+    "/src/core/scopes.js": "d884bfd03860",
     "/src/core/chats.js": "b7602d30ae65",
     "/src/core/settings.js": "7291aae0a8cd",
     "/src/core/shown.js": "450af0a8c563",
@@ -182,10 +182,10 @@
     "/src/core/voice/stream-start.js": "1f1e01fe807d",
     "/src/core/voice/voice.js": "2b0133918f50",
     "/src/core/voice/where.js": "91b1deb9d78f",
-    "/src/core/types.js": "e08fc5574df1",
+    "/src/core/types.js": "5c74b9bd2034",
     "/src/core/ui-slots.js": "355a32f019cb",
     "/src/core/web-search.js": "9b03656c0764",
-    "/src/core/workspace.js": "83acdb17591e",
+    "/src/core/workspace.js": "fc5e4cd505f2",
     "/src/core/zip.js": "30b31bdcef45",
     "/src/plugins/core-schemas/index.js": "4427d3773490",
     "/src/plugins/core-schemas/schemas.js": "580493083c28",
@@ -213,7 +213,7 @@
     "/src/ui/ask.js": "1e2b52f84164",
     "/src/ui/avatar.js": "f19d1f607908",
     "/src/ui/bring-in.js": "4e33be70df96",
-    "/src/ui/export-panel.js": "dd700df1e3eb",
+    "/src/ui/export-panel.js": "d47f7564bd96",
     "/src/ui/file-delete.js": "207b1b0e5902",
     "/src/ui/format.js": "cac0e2e6424e",
     "/src/ui/grounding.html": "5dab86abb302",
@@ -299,8 +299,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "d91b29884a1e",
-    "/l10n/zh-Hans.json": "403916428342",
-    "/l10n/zh-Hant.json": "2ac5910cccbd"
+    "/l10n/ja.json": "a65749c72e19",
+    "/l10n/zh-Hans.json": "78111f05c47b",
+    "/l10n/zh-Hant.json": "3c7d92ed628c"
   }
 }

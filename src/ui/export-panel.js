@@ -23,7 +23,7 @@ export function exportPanel(ctx, what) {
   const photos = checkbox(t`Photos`, true);
   const keys = isTrip ? null : checkbox(t`Include API keys (needs a passphrase)`, false);
   const places = checkbox(t`Include where photos were taken and where you went`, true);
-  // Share options (§12.2); who made it goes only when ticked (the timeline design, "Nickname and sharing").
+  // Share options (§12.2); who made it goes only when ticked (the timeline design, 'Nickname and "From Mia"').
   const madeBy = checkbox(t`Show who made it`, false);
   places.el.hidden = madeBy.el.hidden = true;
   let mode = 'backup';
@@ -70,11 +70,19 @@ export function exportPanel(ctx, what) {
       }
     },
   }, t`Save file`);
+  // A change after Build, or while it builds, ends that file's Save file: it holds what the boxes said when Build was tapped.
+  let edits = 0;
+  const changed = () => {
+    edits++;
+    saveBtn.hidden = true;
+    status.textContent = '';
+  };
   const build = h('button', {
     class: 'btn pri', type: 'button',
     onclick: async () => {
       if (pass1.value !== pass2.value) { status.textContent = t`The passphrases don't match.`; return; }
       if (keys?.input.checked && !pass1.value) { status.textContent = t`API keys can only be exported with a passphrase.`; return; }
+      const at = edits;
       build.disabled = true;
       saveBtn.hidden = true;
       status.textContent = pass1.value ? t`Building and encrypting. This takes a few seconds…` : t`Building…`;
@@ -87,10 +95,12 @@ export function exportPanel(ctx, what) {
           kind: what.kind, scopes: what.scopes, include,
           secrets: keys?.input.checked ?? false, passphrase: pass1.value || undefined, app: ctx.version, share,
         });
+        if (at !== edits) return;
         built = { ...result, full: isFullBackup(include, Boolean(share)) };
         const left = result.skipped.length ? t`Left out, because this browser can't remove where they were taken: ${list(result.skipped, 'plain')}.` : '';
-        const nameless = share && madeBy.input.checked && !name ? t`It doesn't say who made it: Settings → Shiori has no name for you.` : '';
-        status.textContent = sentences(t`Ready: ${result.filename} (${size(result.blob.size)}). Tap Save file.`, left, nameless);
+        // The name the file carries, or that it carries none, before it goes.
+        const who = share && madeBy.input.checked ? (name ? t`It says it's from ${name}.` : t`It doesn't say who made it: Settings → Shiori has no name for you.`) : '';
+        status.textContent = sentences(t`Ready: ${result.filename} (${size(result.blob.size)}). Tap Save file.`, left, who);
         saveBtn.hidden = false;
         saveBtn.focus();
       } catch (e) {
@@ -100,7 +110,7 @@ export function exportPanel(ctx, what) {
       }
     },
   }, t`Build file`);
-  return h('section', { class: 'panel', 'aria-label': t`Export` },
+  return h('section', { class: 'panel', 'aria-label': t`Export`, oninput: changed },
     h('h2', { class: 'section', text: isTrip ? t`Export ${what.title}` : t`Export everything` }),
     preset,
     h('div', { class: 'checks' }, history.el, whyNoHistory, memory.el, photos.el, places.el, madeBy.el, keys?.el ?? null),

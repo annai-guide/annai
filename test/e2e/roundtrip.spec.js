@@ -211,21 +211,22 @@ test.describe('opening a hosted archive', () => {
 /** A file's manifest record of its first trip, read as annai reads it. @param {string} file */
 const recordIn = async (file) => (await peekArchive(new Uint8Array(await readFile(file)))).manifest.scopes[0].record;
 
-/**
- * Builds the file and saves it, with what the panel said once it was built (Save file's tap replaces that): Build file hides Save file in its tap, so
- * its showing again is this build's. @param {import('@playwright/test').Page} page
- */
-async function build(page) {
+/** Taps Build file and waits for its file, with what the panel said once it was built (Save file's tap replaces that): Build file hides Save file in its tap, so its showing again is this build's. @param {import('@playwright/test').Page} page */
+async function built(page) {
   await page.getByRole('button', { name: 'Build file' }).click();
-  const save = page.getByRole('button', { name: 'Save file' });
-  await expect(save).toBeVisible({ timeout: 60_000 });
-  const said = await page.locator('section[aria-label="Export"] [role=status]').textContent();
+  await expect(page.getByRole('button', { name: 'Save file' })).toBeVisible({ timeout: 60_000 });
+  return /** @type {string} */ (await page.locator('section[aria-label="Export"] [role=status]').textContent());
+}
+
+/** Builds the file and saves it. @param {import('@playwright/test').Page} page */
+async function build(page) {
+  const said = await built(page);
   const downloading = page.waitForEvent('download');
-  await save.click();
+  await page.getByRole('button', { name: 'Save file' }).click();
   return { said, file: /** @type {string} */ (await (await downloading).path()) };
 }
 
-test('a Share says who made it only when ticked, with the name Shiori calls you; its copy\'s row and Details say "From Mia", and the trip shared stays as it was (the timeline design, "Nickname and sharing")', async ({ page }) => {
+test('a Share says who made it only when ticked, with the name Shiori calls you; its copy\'s row and Details say "From Mia", and the trip shared stays as it was (the timeline design, \'Nickname and "From Mia"\')', async ({ page }) => {
   await openApp(page, '#/shiori');
   const name = page.getByLabel('What should Shiori call you?');
   await name.fill('Mia');
@@ -236,10 +237,13 @@ test('a Share says who made it only when ticked, with the name Shiori calls you;
   await expect(made).toBeHidden(); // a Backup's own record goes as it is
   await page.getByLabel('Share: itinerary, bookings, files and notes').check();
   await expect(made).not.toBeChecked();
-  expect(await recordIn((await build(page)).file)).not.toHaveProperty('madeBy');
+  const unticked = await build(page);
+  expect(await recordIn(unticked.file)).not.toHaveProperty('madeBy');
+  expect(unticked.said).toMatch(/^Ready: [^.]+\.annai\.zip \([^)]+\)\. Tap Save file\.$/); // nothing of who made it: it is not asked
   await made.check();
   const { said, file: named } = await build(page);
   expect((await recordIn(named)).madeBy).toBe('Mia');
+  expect(said).toContain("It says it's from Mia.");
   expect(said).not.toContain("doesn't say who made it");
   // With no name, ticked, the file is built without one, and says so.
   await goToHash(page, '#/shiori');
@@ -268,6 +272,62 @@ test('a Share says who made it only when ticked, with the name Shiori calls you;
   await expect(page.locator('main .from')).toHaveCount(0);
 });
 
+test("a change in the Export panel after Build, or while it builds, ends that file's Save file and Ready line: what is saved is the file the boxes as they stand would build (a privacy fix of the nickname review)", async ({ page }) => {
+  await openApp(page, '#/shiori');
+  const name = page.getByLabel('What should Shiori call you?');
+  await name.fill('Mia');
+  await leaveSaved(name);
+  await startTrip(page, 'Kyoto', { start: '2027-04-03', end: '2027-04-10' });
+  await page.getByRole('button', { name: 'Export', exact: true }).click();
+  const share = page.getByLabel('Share: itinerary, bookings, files and notes');
+  const made = page.getByLabel('Show who made it');
+  const save = page.getByRole('button', { name: 'Save file' });
+  const status = page.locator('section[aria-label="Export"] [role=status]');
+  /** After a change: Save file and the Ready line are gone. */
+  const ended = async () => {
+    await expect(save).toBeHidden();
+    await expect(status).toHaveText('');
+  };
+  // Ticked, built, unticked: the next file, built and saved, has no name.
+  await share.check();
+  await made.check();
+  expect(await built(page)).toContain("It says it's from Mia.");
+  await made.uncheck();
+  await ended();
+  expect(await recordIn(await buildAndSave(page))).not.toHaveProperty('madeBy');
+  // Each other box, the Backup and Share choice, and a passphrase typed.
+  await built(page);
+  await page.getByLabel('Include where photos were taken and where you went').uncheck();
+  await ended();
+  await built(page);
+  await page.getByLabel('Photos', { exact: true }).uncheck();
+  await ended();
+  await built(page);
+  await page.getByLabel('Backup: everything').check();
+  await ended();
+  await built(page);
+  await page.getByLabel('Passphrase (optional)').fill('x');
+  await ended();
+  // A change while it builds: the build that lands after it is not this file's Save either.
+  await page.getByLabel('Passphrase (optional)').fill('');
+  await share.check();
+  await made.check();
+  const build = page.getByRole('button', { name: 'Build file' });
+  await build.evaluate((el, box) => { /** @type {HTMLElement} */ (el).click(); /** @type {HTMLElement} */ (box).click(); }, await made.elementHandle()); // one task: the change comes with the build under way
+  await expect(build).toBeEnabled({ timeout: 60_000 });
+  await ended();
+  expect(await built(page)).not.toContain("It says it's from"); // the next Build is the boxes as they stand: unticked
+  // Everything, with API keys and a passphrase: unticked after Build, the keys are not in what Save file offers.
+  await goToHash(page, '#/settings');
+  await page.getByRole('button', { name: 'Export everything' }).click();
+  await page.getByLabel('Include API keys (needs a passphrase)').check();
+  await page.getByLabel('Passphrase (optional)').fill('pass');
+  await page.getByLabel('Repeat passphrase').fill('pass');
+  await built(page);
+  await page.getByLabel('Include API keys (needs a passphrase)').uncheck();
+  await ended();
+});
+
 test('who made a shared trip is drawn as text, never as markup, and a long name is cut to its line, on a card, on a chat\'s line and in Details (RULES principle 9)', async ({ page }) => {
   const store = createMemoryStore();
   const ws = new Workspace(store);
@@ -281,19 +341,22 @@ test('who made a shared trip is drawn as text, never as markup, and a long name 
   await page.getByRole('button', { name: 'Import' }).click();
   const details = /** @type {string} */ (await page.getByRole('link', { name: 'Open Kyoto' }).getAttribute('href'));
   const shown = `From ${madeBy.replace(/\s+/g, ' ').trim()}`;
-  /** Each "From" on the screen: its text, whether it holds anything but text, whether it is cut to its box, and whether it stays on the screen. */
+  /** Each "From" on the screen: its text, whether it holds anything but text, whether it is cut to its box (and with …), and whether it stays on the screen. */
   const froms = () => page.locator('main .from').evaluateAll((els) => els.map((el) => ({
-    text: el.textContent, tags: [...el.querySelectorAll('*')].map((x) => x.tagName), cut: el.scrollWidth > el.clientWidth, inside: el.getBoundingClientRect().right <= innerWidth,
+    text: el.textContent, tags: [...el.querySelectorAll('*')].map((x) => x.tagName), cut: el.scrollWidth > el.clientWidth, ellipsis: getComputedStyle(el).textOverflow === 'ellipsis', inside: el.getBoundingClientRect().right <= innerWidth,
   })));
+  const cut = { text: shown, tags: ['BDI'], cut: true, ellipsis: true, inside: true };
   await goHome(page);
   await expect(page.locator('main .from')).toHaveCount(2);
-  expect(await froms()).toEqual([1, 2].map(() => ({ text: shown, tags: ['BDI'], cut: true, inside: true })));
-  // The chat's own name and its time keep their place beside it.
+  expect(await froms()).toEqual([cut, cut]);
+  // On the chat's line: its From takes at most half of the row's content box, and its own name and its time keep theirs beside it.
   const line = page.locator('main .trip-card.line');
-  expect(await line.locator('.name').evaluate((el) => el.getBoundingClientRect().width)).toBeGreaterThan(30);
+  const row = await line.evaluate((el) => { const c = getComputedStyle(el); return el.clientWidth - parseFloat(c.paddingLeft) - parseFloat(c.paddingRight); });
+  expect(await line.locator('.from').evaluate((el) => el.getBoundingClientRect().width)).toBeLessThanOrEqual(row / 2 + 0.5);
+  expect(await line.locator('.name').evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
   await expect(line.locator('.sub:not(.from)')).toBeInViewport();
   await goToHash(page, details);
   await expect(page.getByRole('heading', { level: 1, name: 'Kyoto' })).toBeVisible();
-  expect(await froms()).toEqual([{ text: shown, tags: ['BDI'], cut: true, inside: true }]);
+  expect(await froms()).toEqual([cut]);
   expect(await page.evaluate(() => [/** @type {any} */ (window).madeByRan, document.documentElement.scrollWidth <= innerWidth])).toEqual([undefined, true]);
 });

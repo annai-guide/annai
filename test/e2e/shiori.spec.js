@@ -709,7 +709,7 @@ test('after Undo, the personality card says "Undone" and offers no second Undo; 
   await expect(page.locator('.convo .shiori', { hasText: 'I adjusted my personality' }).getByText('Undone', { exact: true })).toBeVisible();
 });
 
-test('What should Shiori call you? (Settings → Shiori) is the profile\'s line: typed, changed and cleared there as your own edit, and the name she writes there with her own tool shows in it (the timeline design, "Nickname and sharing")', async ({ page }) => {
+test('What should Shiori call you? (Settings → Shiori) is the profile\'s line: typed, changed and cleared there as your own edit, and the name she writes there with her own tool shows in it (the timeline design, \'Nickname and "From Mia"\')', async ({ page }) => {
   const llm = await startModelServer({ '/b/v1/messages': [
     sse(anthropicToolReply([{ name: 'write', input: { path: '/me/profile.md', content: '# Profile\n\n- What to call me: Bo\n- Units: metric\n' } }])),
     sse(anthropicToolReply([{ name: 'speak', input: { text: 'Bo it is.' } }, { name: 'sleep', input: {} }])),
@@ -734,10 +734,10 @@ test('What should Shiori call you? (Settings → Shiori) is the profile\'s line:
     expect(await profile()).toEqual({ text: '# Profile\n\n- What to call me: Mia\n- Units:\n- Preferences:\n', author: 'user' });
     await field.fill('Mia Lee');
     await leaveSaved(field);
-    expect((await profile()).text).toBe('# Profile\n\n- What to call me: Mia Lee\n- Units:\n- Preferences:\n');
+    expect(await profile()).toEqual({ text: '# Profile\n\n- What to call me: Mia Lee\n- Units:\n- Preferences:\n', author: 'user' });
     await field.fill('');
     await leaveSaved(field);
-    expect((await profile()).text).toBe('# Profile\n\n- Units:\n- Preferences:\n');
+    expect(await profile()).toEqual({ text: '# Profile\n\n- What to call me:\n- Units:\n- Preferences:\n', author: 'user' }); // the label stays, for her to fill when told
     // Told another name, she writes it herself: the field shows hers.
     await goToHash(page, '#/talk');
     await page.getByRole('button', { name: 'Type' }).click();

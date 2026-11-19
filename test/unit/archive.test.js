@@ -1284,7 +1284,7 @@ test('a Share without the conversation says nobody has talked', async () => {
   assert.equal(/** @type {any} */ (await b.store.tx(['scopes'], 'readonly', (t) => t.getScope(id))).talked, null);
 });
 
-test('a Share says who made it only when asked: ticked, its copy\'s record carries the name it is given; unticked, none, even for a trip an import named; a Backup keeps the record; the trip here is unchanged (the timeline design, "Nickname and sharing")', async () => {
+test('a Share says who made it only when asked: ticked, its copy\'s record carries the name it is given; unticked, none, even for a trip an import named; a Backup keeps the record; the trip here is unchanged (the timeline design, \'Nickname and "From Mia"\')', async () => {
   const a = await device();
   const trip = await sampleTrip(a.ws);
   const record = () => a.store.tx(['scopes'], 'readonly', (t) => t.getScope(trip));
@@ -1308,11 +1308,11 @@ test('a Share says who made it only when asked: ticked, its copy\'s record carri
   assert.equal(backup.manifest.scopes[0].record.madeBy, 'Mia', 'a Backup holds the trip as it is here');
 });
 
-test('an older annai reads a Share that says who made it as it reads any field it does not know: checked, and imported whole', async () => {
+test('the importer takes a Share whose record says who made it, as a name or in a shape no annai writes, checked and whole: madeBy is one more key of the record, as it is to an older annai, which has no rule for it', async () => {
   const a = await device();
   const trip = await sampleTrip(a.ws);
   const { blob } = await exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.share, app: '0.1.0' });
-  // The field as a newer annai writes it, and in a shape no annai writes yet: neither stops the file.
+  // The field as annai now writes it, and in a shape no annai writes: neither stops the file.
   for (const madeBy of ['Mia', { name: 'Mia' }]) {
     const named = await rewrite(blob, (/** @type {any} */ m) => { m.scopes[0].record.madeBy = madeBy; });
     const b = await device();

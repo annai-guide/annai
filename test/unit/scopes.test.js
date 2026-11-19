@@ -533,32 +533,56 @@ test("createTrip: a name is enough; Shiori's trip is hers, with the hand-over on
   assert.deepEqual(ev.filter((e) => e.type === 'file.write').map((e) => [e.data.path, e.actor, e.data.handover]), [['/trip.json', 'shiori', 'h-1'], ['/memory.md', 'shiori', 'h-1']]);
 });
 
-test("What should Shiori call you? is the profile's line: read from its first such line, and a change sets it in place, adds it at the end or removes it, every other byte as it was (the timeline design, \"Nickname and sharing\")", () => {
+test(`What should Shiori call you? is the profile's line: read from its first such line, and a change sets it in place, adds it at the end or empties it, every other byte as it was (the timeline design, 'Nickname and "From Mia"')`, () => {
   const fresh = '# Profile\n\n- What to call me:\n- Units:\n- Preferences:\n';
   assert.equal(callMeOf(fresh), '', "a new install's says nothing");
   assert.equal(callMeOf('# Profile\n\n- What to call me:  Mia  \n- Units: metric\n'), 'Mia');
   assert.equal(callMeOf('* what to call me: Bo\r\n- What to call me: Al\n'), 'Bo', 'a star, any case, a CRLF; the first line');
+  assert.equal(callMeOf('  - What to call me: Mia\n'), 'Mia', 'spaces before the bullet');
   assert.equal(callMeOf('# Profile\n\nCall me Mia\n'), '', 'only that line says it');
+  // The label as Shiori may write it: bold around it, or around it with the colon, as markdown does.
+  assert.equal(callMeOf('- **What to call me:** Mia\n'), 'Mia');
+  assert.equal(callMeOf('* **what to call me**: Bo\r\n'), 'Bo');
+  assert.equal(callMeOf('- What to call me: **Mia**\n'), '**Mia**', "a name in stars is a name, not a label's");
+  // Other shapes are other lines: no bullet, another bullet, a heading, no colon.
+  for (const line of ['**What to call me:** Bo', '+ What to call me: Bo', '## What to call me: Bo', '- What to call me Bo', '- Please: What to call me: Bo']) assert.equal(callMeOf(`${line}\n`), '', line);
+  // A line it can't match, after a long run of spaces, fails at once: a pattern with spaces on both sides of the name took minutes at 10,000 (a lone CR, a line separator).
+  const began = performance.now();
+  for (const bad of ['\r', '\u2028']) assert.equal(callMeOf(`- What to call me:${' '.repeat(20_000)}${bad}x\n`), '');
+  assert.ok(performance.now() - began < 1000, `${performance.now() - began} ms`);
   // Set in place: its label as written and its line's end stay.
   assert.equal(withCallMe(fresh, 'Mia'), '# Profile\n\n- What to call me: Mia\n- Units:\n- Preferences:\n');
   assert.equal(withCallMe('* what to call me: Bo\r\n- Units\r\n', 'Mia'), '* what to call me: Mia\r\n- Units\r\n');
+  assert.equal(withCallMe('- **What to call me:** Bo\n', 'Mia'), '- **What to call me:** Mia\n', 'a bold label stays bold');
+  assert.equal(withCallMe('  - What to call me: Bo\n', 'Mia'), '  - What to call me: Mia\n');
   assert.equal(withCallMe('# P\n- What to call me: Bo', 'Mia'), '# P\n- What to call me: Mia', 'a last line with no end keeps none');
   assert.equal(withCallMe(fresh, ' Mia\nSmith\t'), '# Profile\n\n- What to call me: Mia Smith\n- Units:\n- Preferences:\n', 'one line');
-  // Removed when emptied; nothing else goes.
-  assert.equal(withCallMe('# Profile\n\n- What to call me: Mia\n- Units: metric\n', '  '), '# Profile\n\n- Units: metric\n');
-  assert.equal(withCallMe('a\n- What to call me: Mia', ''), 'a\n');
-  // Added at the end when there is none, with the profile's own line ends.
+  assert.equal(withCallMe(fresh, 'Mia\u2028Lee'), '# Profile\n\n- What to call me: Mia Lee\n- Units:\n- Preferences:\n', 'a line separator is a line break too: the line stays one and is read back');
+  assert.equal(callMeOf(withCallMe(fresh, 'Mia\u2028Lee')), 'Mia Lee');
+  assert.equal(withCallMe(fresh, '山田　太郎'), '# Profile\n\n- What to call me: 山田　太郎\n- Units:\n- Preferences:\n', 'a full-width space is part of a name');
+  // Emptied, the label stays for her to fill when told; nothing else goes.
+  assert.equal(withCallMe('# Profile\n\n- What to call me: Mia\n- Units: metric\n', '  '), '# Profile\n\n- What to call me:\n- Units: metric\n');
+  assert.equal(withCallMe('a\n- What to call me: Mia', ''), 'a\n- What to call me:');
+  assert.equal(withCallMe('- **What to call me:** Mia\r\n', ''), '- **What to call me:**\r\n');
+  assert.equal(withCallMe(fresh, ''), fresh, 'already empty: as it was');
+  // Added at the end when there is none, with the profile's own line ends; another bullet's line is not it.
   assert.equal(withCallMe('# Profile\n\n- Units: metric\n', 'Mia'), '# Profile\n\n- Units: metric\n- What to call me: Mia\n');
   assert.equal(withCallMe('# Profile', 'Mia'), '# Profile\n- What to call me: Mia\n');
   assert.equal(withCallMe('# P\r\n- Units: x\r\n', 'Mia'), '# P\r\n- Units: x\r\n- What to call me: Mia\r\n');
   assert.equal(withCallMe('', 'Mia'), '- What to call me: Mia\n');
+  assert.equal(withCallMe('+ What to call me: Bo\n', 'Mia'), '+ What to call me: Bo\n- What to call me: Mia\n', 'a plus bullet is not read, so not changed');
   assert.equal(withCallMe('# Profile\n\n- Units: metric\n', ''), '# Profile\n\n- Units: metric\n', 'no line, no name: as it was');
+  // With more than one such line she would read both: a change sets the first and removes the others, and so does emptying it.
+  const two = '# Profile\n- What to call me: Bo\n- Units: metric\n* **What to call me:** Al\n- Likes: tea\n- what to call me: Cy';
+  assert.equal(withCallMe(two, 'Mia'), '# Profile\n- What to call me: Mia\n- Units: metric\n- Likes: tea\n');
+  assert.equal(withCallMe(two, ''), '# Profile\n- What to call me:\n- Units: metric\n- Likes: tea\n');
+  assert.equal(callMeOf(withCallMe(two, '')), '');
   // Every other byte stays: odd spacing, other lines, text after it.
   const odd = '# Me\n\n  Some words, then\t tabs  \n- What to call me: Bo\n\n## Later\n- Likes  quiet\n';
   assert.equal(withCallMe(odd, 'Mia'), odd.replace('Bo', 'Mia'));
 });
 
-test("the field's save is the user's own edit of the profile, in its lock, so a write of hers meanwhile stays; a profile that is gone gets the line alone", async () => {
+test("the field's save is the user's own edit of the profile, in its lock, so a write of hers meanwhile stays; a profile that is gone gets the line alone, also as the user's", async () => {
   const { ws } = setup();
   await ensureBaseScopes(ws);
   await saveCallMe(ws, 'Mia');
@@ -568,15 +592,23 @@ test("the field's save is the user's own edit of the profile, in its lock, so a 
   // Her write lands first, while the save waits for the path: the save changes her text, not the one it would have read before.
   await Promise.all([ws.write(ME, '/profile.md', '# Profile\n\n- What to call me: Mia\n- Units: metric\n', { author: 'shiori' }), saveCallMe(ws, 'Bo')]);
   assert.equal(await ws.readText(ME, '/profile.md'), '# Profile\n\n- What to call me: Bo\n- Units: metric\n');
+  assert.equal((await ws.read(ME, '/profile.md'))?.entry.author, 'user');
+  // Emptied, the label stays, and the next name goes into it.
+  await saveCallMe(ws, '');
+  assert.equal(await ws.readText(ME, '/profile.md'), '# Profile\n\n- What to call me:\n- Units: metric\n');
+  await saveCallMe(ws, 'Mia');
+  assert.equal(await ws.readText(ME, '/profile.md'), '# Profile\n\n- What to call me: Mia\n- Units: metric\n');
   await ws.delete(ME, '/profile.md', { author: 'shiori' });
   await saveCallMe(ws, '');
   assert.equal(await ws.read(ME, '/profile.md'), undefined, 'no name, no profile: nothing written');
   await saveCallMe(ws, 'Mia');
   assert.equal(await ws.readText(ME, '/profile.md'), '- What to call me: Mia\n');
+  assert.equal((await ws.read(ME, '/profile.md'))?.entry.author, 'user', 'the profile that was gone is the user\'s own write too');
 });
 
 test("who made a shared trip, as its record carries it, is text to show: one line, trimmed; anything but text says none", () => {
   assert.equal(madeByOf({ madeBy: '  Mia \n Lee\t' }), 'Mia Lee');
+  assert.equal(madeByOf({ madeBy: '山田　太郎' }), '山田　太郎', 'a full-width space is part of a name');
   assert.equal(madeByOf({ madeBy: '<b>Mia</b>' }), '<b>Mia</b>', 'as written: what draws it draws text');
   for (const madeBy of [undefined, null, 5, { name: 'Mia' }, ['Mia'], '   ']) assert.equal(madeByOf({ madeBy }), '', JSON.stringify(madeBy));
 });
