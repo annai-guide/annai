@@ -101,7 +101,7 @@ export function offerCard(ctx, updates, env) {
 /**
  * Installs the updates the user accepted, and says what happened: done, done after a restart, or
  * which ones failed and why.
- * @param {{ plugins: any, notices: any }} ctx @param {Update[]} updates @param {Applying} env
+ * @param {{ plugins: any, notices: any }} ctx @param {Update[]} updates @param {Applying} env @returns {Promise<number>} how many were installed
  */
 export async function applyUpdates(ctx, updates, env) {
   /** @type {string[]} the ones that are off until annai restarts */
@@ -143,6 +143,7 @@ export async function applyUpdates(ctx, updates, env) {
     ctx.notices.toast(t`Plugins updated.`);
   }
   env.applied?.();
+  return applied;
 }
 
 /**

@@ -4,8 +4,9 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { extname } from 'node:path';
 import { parseHeaders, headersFor } from '../../scripts/headers.mjs';
-import { openApp, waitForServiceWorker, pickFile } from './helpers.js';
+import { openApp, waitForServiceWorker, pickFile, pickProvider } from './helpers.js';
 import { startMcpServer } from '../fakes/mcp.js';
+import { startFakeServer } from '../fakes/model-server.js';
 import { ZipWriter } from '../../src/core/zip.js';
 
 // The screen never changes under the traveller's hands (the user, 2026-11-12: "simple and robust solutions", and the timeline spec's no-jumps
@@ -128,20 +129,39 @@ test("the address of a plugin typed on Add and let go (the keyboard put away): t
   expect(await fieldNow(page, 'Address of a plugin or skill')).toEqual({ value: 'https://example.com/annai-plugin.json', same: true, focus: '' });
 });
 
-test("Search your plugins typed and let go: the draw of a plugin that adds a page lands, and the search and its narrowed list are as typed (fails on main)", async ({ page }) => {
+test("Search your plugins typed and a chip tapped, then let go: the draw of a plugin that adds a page lands, and the search, the chip and the narrowed list are as left (the box fails on main; the chip fails on 799dd44a4)", async ({ page }) => {
   await slowInstalled(page);
   await page.evaluate(() => { location.hash = '#/plugins'; });
   const search = page.getByLabel('Search your plugins', { exact: true });
+  const thirdParty = page.getByRole('button', { name: 'Third-party', exact: true });
   await expect(page.locator('li.card', { hasText: 'Trip record checks' })).toBeVisible();
   await typeIn(page, 'Search your plugins', 'slow');
   await expect(page.locator('li.card', { hasText: 'Trip record checks' })).toHaveCount(0);
+  await thirdParty.click();
+  await expect(thirdParty).toHaveAttribute('aria-pressed', 'true');
   await search.blur();
   await page.evaluate(() => (/** @type {any} */ (globalThis)).__addPage());
-  // The search keeps its query as a fold stays open, and says so to the door: the draw comes, with what was typed in its new box.
+  // The search and the chip keep their state as a fold stays open (one entry, by the finder's label), and the search says so to the door: the
+  // draw comes, with what was typed in its new box and the chip still on.
   await expect(search).not.toHaveAttribute('data-mine', '1');
   expect(await fieldNow(page, 'Search your plugins')).toEqual({ value: 'slow', same: false, focus: '' });
+  await expect(thirdParty).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('li.card', { hasText: 'Slow start' })).toBeVisible();
   await expect(page.locator('li.card', { hasText: 'Trip record checks' })).toHaveCount(0);
+});
+
+// The same entry holds the chips and the query, and a move to the screen puts both away: Plugins, a chip on, Settings, Plugins again.
+test("Plugins: a chip tapped is off again after a move away and back", async ({ page }) => {
+  await slowInstalled(page);
+  await page.evaluate(() => { location.hash = '#/plugins'; });
+  const thirdParty = page.getByRole('button', { name: 'Third-party', exact: true });
+  await thirdParty.click();
+  await expect(thirdParty).toHaveAttribute('aria-pressed', 'true');
+  await page.evaluate(() => { location.hash = '#/settings'; });
+  await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+  await page.evaluate(() => { location.hash = '#/plugins'; });
+  await expect(page.getByRole('heading', { level: 1, name: 'Plugins' })).toBeVisible();
+  await expect(thirdParty).toHaveAttribute('aria-pressed', 'false');
 });
 
 // A plugin still starting, its row on Plugins saying so, and a search typed (or typed and emptied) and let go: when the plugin has started, the
@@ -179,6 +199,30 @@ test("Shiori's quiet hours saved and let go: a draw of annai's own lands, and th
   await expect(from).not.toHaveAttribute('data-mine', '1');
   await expect(from).toHaveValue('22:00');
   await expect(until).toHaveValue('07:00');
+});
+
+// A provider page's "Filter the list" never saves anything: what is typed in it is a search, said `stored` at each keystroke as the finders do.
+test("a provider's Filter the list typed and let go: the draw of a plugin that adds a page lands (fails on 799dd44a4: the filter held it for good)", async ({ page }) => {
+  const key = 'sk-filter-stored-stand-in-0123';
+  const s = await startFakeServer({ flavour: 'llamacpp', key, models: [{ id: 'qwen3.8-flash', object: 'model', owned_by: 'llamacpp' }, { id: 'gemma5-small', object: 'model', owned_by: 'llamacpp' }] });
+  try {
+    await slowInstalled(page);
+    await page.evaluate(() => { location.hash = '#/models'; });
+    await pickProvider(page, 'llama.cpp');
+    await page.getByLabel('Address', { exact: true }).fill(`${s.origin}/v1`);
+    await page.getByLabel('API key').fill(key);
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', /^saved/);
+    await page.getByRole('button', { name: 'Fetch model list' }).click();
+    await expect(page.getByText('2 models.')).toBeVisible();
+    await typeIn(page, 'Filter the list', 'qwen');
+    await page.getByLabel('Filter the list', { exact: true }).blur();
+    await page.evaluate(() => (/** @type {any} */ (globalThis)).__addPage());
+    // The draw lands: the filter is a new, empty box, and the list is not shown until it is asked for again.
+    await expect(page.getByLabel('Filter the list', { exact: true })).toHaveCount(0, { timeout: 5000 });
+  } finally {
+    await s.stop();
+  }
 });
 
 /** MCP servers with trail added, and a tap on its Refresh tools, which takes 3 s: a slow server, its tools in two pages, 1.5 s each. @param {import('@playwright/test').Page} page @param {{ url: string, slowList: (ms: number) => void }} mcp */
@@ -362,6 +406,19 @@ async function startSite(held) {
   };
 }
 
+/** annai ships the next patch of Remote trace: the site's catalog lists it. @param {{ changed: Map<string, string> }} site @returns {Promise<string>} its version */
+async function shipNextPatch(site) {
+  const manifest = JSON.parse(await readFile(new URL('plugins-official/remote-trace/annai-plugin.json', root), 'utf8'));
+  const bumped = manifest.version.replace(/\d+$/, (/** @type {string} */ n) => String(Number(n) + 1));
+  const next = `${JSON.stringify({ ...manifest, version: bumped }, null, 2)}\n`;
+  const catalog = JSON.parse(await readFile(new URL('catalog/plugins.json', root), 'utf8'));
+  const entry = catalog.plugins.find((/** @type {any} */ p) => p.id === 'remote-trace');
+  Object.assign(entry, { version: bumped, files: { ...entry.files, 'annai-plugin.json': createHash('sha256').update(next).digest('hex') } });
+  site.changed.set('/plugins-official/remote-trace/annai-plugin.json', next);
+  site.changed.set('/catalog/plugins.json', JSON.stringify(catalog));
+  return bumped;
+}
+
 test("an update check that ends while a setting is typed: the page waits for the field, then offers the update (held on main already)", async ({ page }) => {
   /** @type {() => void} */
   let open = () => {};
@@ -373,15 +430,7 @@ test("an update check that ends while a setting is typed: the page waits for the
     await waitForServiceWorker(page);
     await page.getByRole('button', { name: 'Install Remote trace (for developers)' }).click();
     await expect(page.getByText('Installed Remote trace (for developers).')).toBeVisible();
-    // annai ships the next patch of Remote trace.
-    const manifest = JSON.parse(await readFile(new URL('plugins-official/remote-trace/annai-plugin.json', root), 'utf8'));
-    const bumped = manifest.version.replace(/\d+$/, (/** @type {string} */ n) => String(Number(n) + 1));
-    const next = `${JSON.stringify({ ...manifest, version: bumped }, null, 2)}\n`;
-    const catalog = JSON.parse(await readFile(new URL('catalog/plugins.json', root), 'utf8'));
-    const entry = catalog.plugins.find((/** @type {any} */ p) => p.id === 'remote-trace');
-    Object.assign(entry, { version: bumped, files: { ...entry.files, 'annai-plugin.json': createHash('sha256').update(next).digest('hex') } });
-    site.changed.set('/plugins-official/remote-trace/annai-plugin.json', next);
-    site.changed.set('/catalog/plugins.json', JSON.stringify(catalog));
+    const bumped = await shipNextPatch(site);
     // The check starts on Updates and waits for the catalog; the traveller goes to the plugin's page and types its server's address.
     hold = true;
     await page.evaluate(() => { location.hash = '#/updates'; });
@@ -393,6 +442,38 @@ test("an update check that ends while a setting is typed: the page waits for the
     expect(await fieldNow(page, 'Server address')).toEqual({ value: 'https://sink.example/trace', same: true, focus: 'setting-remote-trace-server' });
     await page.getByLabel('Server address', { exact: true }).blur();
     await expect(page.getByRole('button', { name: `Update to ${bumped}` })).toBeVisible();
+    await expect(page.getByLabel('Server address', { exact: true })).toHaveValue('https://sink.example/trace');
+  } finally {
+    await site.stop();
+  }
+});
+
+// Update's button says what it did: after an update that went through it says Updated, as a listed Add says Added, and does not come back while the
+// plugin's row stays (its draw waits for what is typed after the tap); a second tap would download and install the same version again.
+test("Update tapped, with a setting typed after the tap: when the update has gone through, the button says Updated and a second tap is not offered (fails on 799dd44a4)", async ({ page }) => {
+  const site = await startSite(() => Promise.resolve());
+  try {
+    await page.goto(`${site.origin}/#/add`);
+    await waitForServiceWorker(page);
+    await page.getByRole('button', { name: 'Install Remote trace (for developers)' }).click();
+    await expect(page.getByText('Installed Remote trace (for developers).')).toBeVisible();
+    const bumped = await shipNextPatch(site);
+    await page.evaluate(() => { location.hash = '#/updates'; });
+    await page.getByRole('button', { name: 'Check now' }).click();
+    await page.evaluate(() => { location.hash = '#/plugins/remote-trace'; });
+    const update = page.getByRole('button', { name: `Update to ${bumped}` });
+    await expect(update).toBeVisible();
+    // The tap, and a setting typed in the same turn, after it: the draw the update asks for waits for the field.
+    await update.evaluate((b) => {
+      const input = /** @type {HTMLInputElement} */ (document.getElementById('setting-remote-trace-server'));
+      /** @type {HTMLElement} */ (b).click();
+      input.value = 'https://sink.example/trace';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await expect(page.getByRole('button', { name: 'Updated', exact: true })).toBeDisabled({ timeout: 20_000 });
+    await later(page);
+    await expect(page.getByRole('button', { name: 'Updated', exact: true })).toBeDisabled(); // the draw waits for the field: nothing has put the row right
+    await expect(page.getByRole('button', { name: `Update to ${bumped}` })).toHaveCount(0);
     await expect(page.getByLabel('Server address', { exact: true })).toHaveValue('https://sink.example/trace');
   } finally {
     await site.stop();

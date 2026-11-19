@@ -169,7 +169,7 @@ async function renderPlace(ctx, id) {
         save.disabled = false;
         notes.set(id, result);
         await ctx.render();
-        notes.delete(id); // still there only if no draw came: the screen says it already
+        if (status.isConnected) notes.delete(id); // a draw has read it; the place left, it waits for its next opening
       } catch (e) {
         say(failed(e));
         offer(e);

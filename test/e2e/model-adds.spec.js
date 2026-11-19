@@ -128,6 +128,56 @@ test("a listed model's Add, with its draw waiting for what is typed after the ta
   }
 });
 
+// Fix touch of form-keep-next. What the list says of a model stays true after it is added: the list's own record of what is owned is kept up
+// to date by the add, and by what the list is asked for, so a row drawn again (the filter typed) never offers a live Add for a model that is added.
+
+test("a listed model's Add, with the filter typed before the add lands and again after: no Add for that model comes back, and when the screen is drawn there is one model, not \"name (2)\" too (fails on 799dd44a4)", async ({ page }) => {
+  const key = 'sk-listed-filter-stand-in-0123';
+  const s = await startFakeServer({ flavour: 'llamacpp', key, models: [{ id: 'qwen3.8-flash', object: 'model', owned_by: 'llamacpp' }, { id: 'gemma5-small', object: 'model', owned_by: 'llamacpp' }] });
+  try {
+    const chat = await addLlamaCpp(page, s, key);
+    await chat.getByRole('button', { name: 'Fetch model list' }).click();
+    await expect(chat.getByText('2 models.')).toBeVisible();
+    const filter = chat.getByLabel('Filter the list');
+    // The tap, and the filter typed in the same turn, before the add can have landed: the rows are drawn again by the filter. The caret in the
+    // filter, entered after the tap, holds the draw the add asks for.
+    await chat.getByRole('button', { name: 'Add qwen3.8-flash' }).evaluate((b) => {
+      const filterBox = /** @type {HTMLInputElement} */ (b.closest('section')?.querySelector('[id^="model-filter-"]'));
+      /** @type {HTMLElement} */ (b).click();
+      filterBox.focus();
+      filterBox.value = 'qwen';
+      filterBox.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await page.waitForTimeout(1600); // the add has ended; the draw it asked for waits for the caret
+    await filter.fill('qwen3');
+    await expect(chat.getByRole('button', { name: 'Add qwen3.8-flash' }), 'the model is added: the list does not offer it again').toHaveCount(0);
+    await filter.blur();
+    await expect(chat.getByRole('link', { name: /^qwen3\.8-flash/ })).toHaveCount(1);
+    await expect(chat.getByRole('button', { name: 'Add qwen3.8-flash' })).toHaveCount(0);
+  } finally {
+    await s.stop();
+  }
+});
+
+test("Add model by id whose draw was dropped, then Fetch model list: a listed model it added by another name has no Add (fails on 799dd44a4)", async ({ page }) => {
+  const key = 'sk-by-id-listed-stand-in-0123';
+  const s = await startFakeServer({ flavour: 'llamacpp', key, models: [{ id: 'qwen3.8-flash', object: 'model', owned_by: 'llamacpp' }, { id: 'gemma5-small', name: 'Gemma 5', object: 'model', owned_by: 'llamacpp' }] });
+  try {
+    const chat = await addLlamaCpp(page, s, key);
+    // The id of a listed model, added by id (so its name is its id, not the list's "Gemma 5"); what is typed after the tap holds the draw.
+    await chat.getByLabel('Add a model by id').fill('gemma5-small');
+    await tapThenType(chat.getByRole('button', { name: 'Add model' }), 'typed-after');
+    await page.waitForTimeout(1600);
+    // A tap that draws nothing ends the draw that waited, and asks for the list: it is read as the provider is now.
+    await chat.getByRole('button', { name: 'Fetch model list' }).click();
+    await expect(chat.getByText('2 models.')).toBeVisible();
+    await expect(chat.getByRole('button', { name: 'Add qwen3.8-flash' })).toBeVisible();
+    await expect(chat.getByRole('button', { name: 'Add gemma5-small' }), 'added already, by its id').toHaveCount(0);
+  } finally {
+    await s.stop();
+  }
+});
+
 /**
  * A llama.cpp provider with a 40-model list shown, then its records removed under the open list, so every Add is refused ("That provider
  * no longer exists."). The list shows up to 50 rows in a box of its own, 50vh tall, so a row can sit anywhere on the screen, behind the dock too.

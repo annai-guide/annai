@@ -121,7 +121,8 @@ test('the card offers updates, applies them on Update, and offers a restart; off
   assert.ok(cards[0].body.includes(`Scripted model ${NOW} → ${NEXT}`), cards[0].body);
   // Updating stops the running version, so the cards say so (spec §5.3).
   assert.match(cards[0].body, /off until annai restarts/);
-  await applyUpdates(ctx, offered, env);
+  // It says how many went through: Update's button reads it ("Updated", or back when none did).
+  assert.equal(await applyUpdates(ctx, offered, env), 1);
   assert.equal(cards[1].title, 'Restart annai to use the new versions');
   assert.equal(cards[1].tone, 'warn');
   assert.match(cards[1].body, /Until then, Scripted model can't be used\./);
@@ -139,7 +140,7 @@ test("two updates that fail with words of their own (no stop) each end as a sent
   const ctx = { plugins: host, notices: { card: (/** @type {any} */ c) => { cards.push(c); return () => {}; }, toast: () => {} } };
   const fail = async () => { throw new Error('boom'); };
   const updates = /** @type {any} */ ([{ id: 'a', name: 'Tide pools', url: 'https://x.example/a', added: null }, { id: 'b', name: 'Rock pools', url: 'https://x.example/b', added: null }]);
-  await applyUpdates(/** @type {any} */ (ctx), updates, /** @type {any} */ ({ addressFetch: fail, fetch: fail }));
+  assert.equal(await applyUpdates(/** @type {any} */ (ctx), updates, /** @type {any} */ ({ addressFetch: fail, fetch: fail })), 0);
   assert.equal(cards[0].title, "Some plugins weren't updated");
   assert.equal(cards[0].body, 'Tide pools: boom. Rock pools: boom.');
 });

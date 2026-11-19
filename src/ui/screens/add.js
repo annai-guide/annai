@@ -80,23 +80,24 @@ export function addRows(catalog, installed, configured) {
   return rows;
 }
 
-/** Each finder's query by its label, kept as a fold is: a draw of the screen again brings the search back; a move to it starts empty. @type {Map<string, string>} */
-const queries = new Map();
+/** Each finder's query and chips by its label, kept as a fold is: a draw of the screen again brings the search back as it was left; a move to it starts empty. @type {Map<string, { query: string, filters: Record<string, any> }>} */
+const kept = new Map();
 
 /**
  * The search box and chips over a list, the Add screen's and the Plugins page's. Typing and tapping
  * draw the list again, never the screen, so the box keeps its focus. A chip shows when it would keep
- * some of the list and not all of it, or when it is on. The query is kept for draws of the screen again (`fresh`: a move to it), and each
- * keystroke says `stored` to the shell, so a draw annai makes on its own is not held for the box.
+ * some of the list and not all of it, or when it is on. The query and the chips are kept together for draws of the screen again (`fresh`: a move to
+ * it), and each keystroke says `stored` to the shell, so a draw annai makes on its own is not held for the box.
  * @template {import('../../core/search.js').SearchEntry} T
  * @param {{ label: string, entries: T[], filters?: import('../../core/search.js').Filters, fresh?: boolean, draw: (found: ({ entry: T } & Rank)[], typed: boolean, filters: import('../../core/search.js').Filters) => (Node | null)[] }} o
  * @returns {{ el: HTMLElement, update: () => void }}
  */
 export function finder({ label, entries, filters = {}, fresh = false, draw }) {
-  /** @type {Record<string, any>} */
-  const f = { ...filters };
-  if (fresh) queries.delete(label);
-  const box = h('input', { type: 'search', 'aria-label': label, placeholder: t`A name, "voice", "free"…`, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', enterkeyhint: 'search', value: queries.get(label) ?? '' });
+  if (fresh) kept.delete(label);
+  // What the traveller left, else the screen's own start (the route's chips).
+  const mine = kept.get(label) ?? { query: '', filters: { ...filters } };
+  const f = mine.filters;
+  const box = h('input', { type: 'search', 'aria-label': label, placeholder: t`A name, "voice", "free"…`, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', enterkeyhint: 'search', value: mine.query });
   const list = h('div', { class: 'found' });
   /** @type {[HTMLElement, string, any][]} */
   const chips = [];
@@ -104,7 +105,7 @@ export function finder({ label, entries, filters = {}, fresh = false, draw }) {
   const chip = (key, value, text) => {
     const keeps = searchCatalog(entries, '', { [key]: value }).length;
     if (f[key] !== value && (!keeps || keeps === entries.length)) return null;
-    const b = h('button', { class: 'chip filter', type: 'button', onclick: () => { f[key] = f[key] === value ? undefined : value; update(); } }, text);
+    const b = h('button', { class: 'chip filter', type: 'button', onclick: () => { f[key] = f[key] === value ? undefined : value; kept.set(label, mine); update(); } }, text);
     chips.push([b, key, value]);
     return b;
   };
@@ -113,7 +114,8 @@ export function finder({ label, entries, filters = {}, fresh = false, draw }) {
     list.replaceChildren(...draw(searchCatalog(entries, box.value, f), Boolean(squash(box.value).text), f).filter((n) => n !== null));
   };
   box.addEventListener('input', () => {
-    queries.set(label, box.value);
+    mine.query = box.value;
+    kept.set(label, mine);
     update();
     box.dispatchEvent(new Event('stored'));
   });

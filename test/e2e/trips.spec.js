@@ -1616,6 +1616,28 @@ test('Details holds its fields while it saves, so nothing typed then is drawn ov
   await expect(ends).toHaveValue('2027-04-06');
 });
 
+// Fix touch of form-keep-next. The draw a save asks for can wait (the caret in a field after the tap) and be ended by a tap that draws nothing; the
+// form on show then holds what was saved, and Save compares with that, not with what the screen was drawn with.
+test('Details saves a date; with the draw it asked for waiting for a field, the date set back and saved again is written (fails on 799dd44a4)', async ({ page }) => {
+  await openApp(page);
+  const id = await startNamed(page, 'Kyoto');
+  const form = page.locator('form.trip-edit');
+  const starts = form.getByLabel('Starts');
+  await starts.fill('2027-04-01');
+  // The tap and the caret put in Name in the same turn, before the write lands: the draw the save asks for waits for the caret.
+  await page.evaluate(() => {
+    /** @type {HTMLButtonElement} */ (document.querySelector('form.trip-edit button[type=submit]')).click();
+    document.getElementById('trip-edit-title')?.focus();
+  });
+  await expect.poll(async () => (await tripJson(page, id)).start).toBe('2027-04-01');
+  await expect(starts).toBeEditable();
+  // Back to the date the screen was drawn with (none), and Save: the tap ends the draw that waited, and the date goes from the file.
+  await starts.fill('');
+  await form.getByRole('button', { name: 'Save' }).click();
+  await expect.poll(async () => 'start' in (await tripJson(page, id))).toBe(false);
+  await expect(starts).toHaveValue('');
+});
+
 test("annai opened again in the same tab, then Back into the older load and Forward over a trip removed meanwhile: the older load's numbers don't leave a screen under the trip's address", async ({ page }) => {
   await openApp(page, '#/settings'); // the first load: Settings, About, Trips
   await page.evaluate(() => { location.hash = '#/about'; });

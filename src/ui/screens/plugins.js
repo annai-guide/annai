@@ -92,8 +92,11 @@ export function updateButton(ctx, update) {
     onclick: async (/** @type {Event} */ e) => {
       const button = /** @type {HTMLButtonElement} */ (e.currentTarget);
       button.disabled = true;
-      await applyUpdates(ctx, [update], { addressFetch: tracedFetch(ctx.store, SYS, { tool: /* en */ 'plugin updates' }), reload: () => restartAnnai(ctx) });
-      button.disabled = false; // as the work ends, not with the draw
+      const done = await applyUpdates(ctx, [update], { addressFetch: tracedFetch(ctx.store, SYS, { tool: /* en */ 'plugin updates' }), reload: () => restartAnnai(ctx) });
+      // As the work ends, not with the draw (it may never come): one that went through says so and is not offered again (a second tap would install it
+      // again); one that failed, or asked first, comes back.
+      if (done) button.textContent = t`Updated`;
+      else button.disabled = false;
       ctx.render();
     },
   }, t`Update to ${update.available}`);

@@ -521,7 +521,10 @@ function modelsPart(ctx, id, abilityId, models) {
       try {
         const listed = await ctx.llm.listModels(id, abilityId);
         status.textContent = plural(listed.length, '# model.', '# models.');
-        listSlot.replaceChildren(listedModels(ctx, id, abilityId, listed, models, await ctx.llm.config()));
+        // As they are now, not as drawn: an add whose draw was dropped is in them.
+        const cfg = await ctx.llm.config();
+        const now = Object.values(cfg.models).filter((m) => m.provider === id && m.ability === abilityId).map(modelOf);
+        listSlot.replaceChildren(listedModels(ctx, id, abilityId, listed, now, cfg));
       } catch (e) {
         showError(status, e);
       } finally {
@@ -549,14 +552,17 @@ function modelsPart(ctx, id, abilityId, models) {
  */
 function listedModels(ctx, id, abilityId, listed, have, cfg) {
   const owned = new Set(have.map((m) => m.providerId));
-  const taken = new Map(Object.values(cfg.models).map(modelOf).map((m) => [m.name.toLowerCase(), cfg.providers[m.provider] ? providerOf(cfg.providers[m.provider]).name : '']));
+  /** @param {string} provider */
+  const providerName = (provider) => (cfg.providers[provider] ? providerOf(cfg.providers[provider]).name : '');
+  const taken = new Map(Object.values(cfg.models).map(modelOf).map((m) => [m.name.toLowerCase(), providerName(m.provider)]));
   const filter = h('input', { id: `model-filter-${abilityId}`, autocomplete: 'off', placeholder: t`for example: haiku` });
   const list = h('ul', { class: 'listed' });
   const show = () => {
     const q = filter.value.trim().toLowerCase();
     const rows = listed.filter((m) => !owned.has(m.providerId) && (!q || `${m.providerId} ${m.name ?? ''}`.toLowerCase().includes(q))).slice(0, 50);
     list.replaceChildren(...rows.map((m) => {
-      const on = taken.get((m.name || m.providerId).toLowerCase());
+      const key = (m.name || m.providerId).toLowerCase();
+      const on = taken.get(key);
       const { loaded, ...model } = m; // said here, never kept on the model
       const named = m.name && m.name !== m.providerId ? `${m.name} (${m.providerId})` : m.providerId;
       const label = h('span', { text: loaded ? t`${named} · loaded` : named });
@@ -564,13 +570,18 @@ function listedModels(ctx, id, abilityId, listed, have, cfg) {
       const add = h('button', {
         class: 'btn', type: 'button', 'aria-label': t`Add ${m.providerId}`,
         onclick: async () => {
-          // Busy from the tap: a second tap would add it again, as "name (2)".
+          // Busy from the tap, and owned by the list from it: a row drawn again (the filter typed) offers no second Add, which would make "name (2)".
           add.disabled = true;
+          owned.add(m.providerId);
+          taken.set(key, providerName(id));
           try {
             await ctx.llm.addListedModel(id, abilityId, model);
           } catch (e) {
             ctx.notices.toast(messageOf(e));
-            add.disabled = false;
+            owned.delete(m.providerId);
+            taken.delete(key);
+            if (add.isConnected) add.disabled = false;
+            else show(); // its row was drawn away: offered again
             return;
           }
           // Not back as the add ends: a second tap would add "name (2)". Once its draw has ended (drawn, or ended by a tap), a row still on show says Added.
@@ -581,7 +592,11 @@ function listedModels(ctx, id, abilityId, listed, have, cfg) {
       return h('li', { class: 'acts' }, label, add);
     }));
   };
-  filter.addEventListener('input', show);
+  // A search saves nothing: `stored` at each keystroke, as the finders do.
+  filter.addEventListener('input', () => {
+    show();
+    filter.dispatchEvent(new Event('stored'));
+  });
   show();
   return h('div', {}, field(t`Filter the list`, filter), list);
 }

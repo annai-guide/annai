@@ -1444,11 +1444,11 @@ uk4kus	ok	Update	アップデート	src/ui/plugin-updates.js:97
 2jfvhf	ok	The update is installed and runs the next time annai starts.	アップデートはインストール済みです。次にannaiを起動したときに有効になります。	src/ui/plugin-updates.js:139	
 nb21do	ok	Restart now	今すぐ再起動	src/ui/plugin-updates.js:140	
 1do1igm	ok	Plugins updated.	プラグインをアップデートしました。	src/ui/plugin-updates.js:143	
-eaf3fx	ok	{0} {1} brings something new	{0} {1}には追加内容があります	src/ui/plugin-updates.js:159	{0} = u.name; {1} = u.available
-127j3cm	ok	New in this version: {0}.	このバージョンで追加されるもの：{0}。	src/ui/plugin-updates.js:160	{0} = semicolons(whatItBrings(added))
-zymqne	ok	Only update if you trust where it came from.	入手元を信頼できる場合だけアップデートしてください。	src/ui/plugin-updates.js:160	
-1dfe53s	ok	Nothing changes until you tap Update.	「アップデート」をタップするまで何も変わりません。	src/ui/plugin-updates.js:161	
-15ziixp	ok	Update anyway	それでもアップデート	src/ui/plugin-updates.js:163	
+eaf3fx	ok	{0} {1} brings something new	{0} {1}には追加内容があります	src/ui/plugin-updates.js:160	{0} = u.name; {1} = u.available
+127j3cm	ok	New in this version: {0}.	このバージョンで追加されるもの：{0}。	src/ui/plugin-updates.js:161	{0} = semicolons(whatItBrings(added))
+zymqne	ok	Only update if you trust where it came from.	入手元を信頼できる場合だけアップデートしてください。	src/ui/plugin-updates.js:161	
+1dfe53s	ok	Nothing changes until you tap Update.	「アップデート」をタップするまで何も変わりません。	src/ui/plugin-updates.js:162	
+15ziixp	ok	Update anyway	それでもアップデート	src/ui/plugin-updates.js:164	
 vq7cdg#other	ok	# pages	#ページ	src/ui/preview.js:133	plural; # = pages; English: "# page" (one), "# pages" (other); Note: a PDF's page count on its file card.
 1cjjnaq	ok	Kept on this device.	この端末に保存。	src/ui/privacy.js:21	
 tct7be	ok	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	旅、ファイル、設定、キーは、この端末のこのブラウザに保存されます。annaiにはアカウントがなく、旅やキーを保存するannaiのサーバーもありません。	src/ui/privacy.js:21	
@@ -1545,43 +1545,43 @@ u7w1bx	ok	An MCP server	MCPサーバー	src/ui/screens/add.js:35	Note: the gloss
 1ufe6kk	ok	From an address	アドレスから	src/ui/screens/add.js:46	
 x4eio0	ok	Official	公式	src/ui/screens/add.js:65	
 w28ztz	ok	The {0} installed came from elsewhere but has the id of annai's own, so annai won't use it. Remove it in Settings → Plugins to add annai's.	インストール済みの{0}は公式以外から入手したものですが、annai公式と同じIDのため使われません。公式のものを追加するには、「設定 → プラグイン」で削除してください。	src/ui/screens/add.js:67	{0} = facts.name
-tdrd3b	ok	A name, "voice", "free"…	名前、「voice」、「free」…	src/ui/screens/add.js:99	Note: the search words stay English until the catalog carries translated keywords (L7).
-hqumoz	ok	Kind	種類	src/ui/screens/add.js:121	
-345x4c	ok	Filters	絞り込み	src/ui/screens/add.js:122	
-11ywf17	ok	Third-party	サードパーティ	src/ui/screens/add.js:124	
-7va5tn	ok	Free	無料	src/ui/screens/add.js:124	
-bahzfs	ok	Local	ローカル	src/ui/screens/add.js:124	
-2rcuyl	ok	Nothing here matches. Try other words, or take a chip off.	一致するものがありません。別の言葉で検索するか、絞り込みを1つ外してください。	src/ui/screens/add.js:132	Note: the chips here are the Filters (絞り込み); the glossary's chip → ボタン is for the dock's voice and GPS chips.
-18bnex5	ok	Search the catalog	カタログを検索	src/ui/screens/add.js:156	
-j0fdnt	ok	Nothing here matches.	一致するものがありません。	src/ui/screens/add.js:164	
-rv2u3	ok	Not listed? Add it by its address.	見つかりませんか？アドレスで追加できます。	src/ui/screens/add.js:164	
-npq0yc	ok	Model providers, voices, backup places, tools and skills: annai's own, and what you have installed.	モデルのプロバイダー、声、バックアップ先、ツール、スキル。annai公式のものと、インストール済みのものです。	src/ui/screens/add.js:172	
-1hszhgv	ok	annai's catalog couldn't be loaded. Connect to the internet and open this screen again. What is installed still shows.	カタログを読み込めませんでした。インターネットに接続して、この画面を開き直してください。インストール済みのものは引き続き表示されます。	src/ui/screens/add.js:173	
-1dbd7kr	ok	Also for: {0}	{0}にも対応	src/ui/screens/add.js:184	{0} = why
-b6qm2p	ok	Data only	データのみ	src/ui/screens/add.js:187	
-glpdbk	ok	Has code	コードあり	src/ui/screens/add.js:187	
-1fzjiri	ok	Set up {0}	{0}を設定	src/ui/screens/add.js:210	{0} = name
-isr2rg	ok	Set up	設定する	src/ui/screens/add.js:210	Note: a verb (Set up), so not the Settings screen's 設定 alone.
-xf2xmv	ok	Open {0}	{0}を開く	src/ui/screens/add.js:210	{0} = name
-1e8gegw	ok	Install	インストール	src/ui/screens/add.js:213	
-1sd5lj	ok	Add another	もう1つ追加	src/ui/screens/add.js:213	
-18374qe	ok	Add {0}	{0}を追加	src/ui/screens/add.js:215	{0} = name; Note: {0} is also what a share adds on the import screen ("ファイル", "2枚の写真"); the space before it is right for both.
-1m87n8p	ok	Add another {0}	{0}をもう1つ追加	src/ui/screens/add.js:215	{0} = name
-4bn9ve	ok	Install {0}	{0}をインストール	src/ui/screens/add.js:215	{0} = name
-1srp47z	ok	{0} wasn't installed	{0}をインストールできませんでした	src/ui/screens/add.js:216	{0} = name
-l11acj	ok	{0} wasn't added	{0}を追加できませんでした	src/ui/screens/add.js:216	{0} = name
-orcwpv	ok	Installed {0}.	{0}をインストールしました。	src/ui/screens/add.js:220	{0} = name
-8zey4w	ok	Adding…	追加中…	src/ui/screens/add.js:227	
-1drktj9	ok	Added	追加済み	src/ui/screens/add.js:239	
-1ox21wg	ok	Get it	取得	src/ui/screens/add.js:254	
-ksdme7	ok	Install from an address or a file	アドレスかファイルからインストール	src/ui/screens/add.js:256	
-1b7aabm	ok	A plugin with code gets full access to your trips and API keys. Data-only plugins can't run anything. Only install plugins you trust.	コード付きのプラグインは、旅とAPIキーに制限なくアクセスできます。データのみのプラグインは何も実行できません。信頼できるプラグインだけをインストールしてください。	src/ui/screens/add.js:258	
-1e2k1fe	ok	Address of a plugin or skill	プラグインかスキルのアドレス	src/ui/screens/add.js:259	
-17bnagd	ok	A zip file, an annai-plugin.json, or a SKILL.md, on a site that lets web apps read it (GitHub file pages work).	zipファイル、annai-plugin.json、SKILL.mdのいずれかで、Webアプリから読み込めるサイトにあるもの（GitHubのファイルページも使えます）。	src/ui/screens/add.js:260	
-7ikogv	ok	Install from a file	ファイルからインストール	src/ui/screens/add.js:262	
-hn1sl5	ok	this file isn't a plugin package annai can open: {0}	このファイルはannaiで開けるプラグインのパッケージではありません：{0}	src/ui/screens/add.js:276	{0} = message(e)
-ai5f3u	ok	Paste the address of a zip file, an annai-plugin.json or a SKILL.md first.	先にzipファイル、annai-plugin.json、SKILL.mdのいずれかのアドレスを貼り付けてください。	src/ui/screens/add.js:304	
-1huuh2k	ok	Getting it…	取得中…	src/ui/screens/add.js:309	
+tdrd3b	ok	A name, "voice", "free"…	名前、「voice」、「free」…	src/ui/screens/add.js:100	Note: the search words stay English until the catalog carries translated keywords (L7).
+hqumoz	ok	Kind	種類	src/ui/screens/add.js:123	
+345x4c	ok	Filters	絞り込み	src/ui/screens/add.js:124	
+11ywf17	ok	Third-party	サードパーティ	src/ui/screens/add.js:126	
+7va5tn	ok	Free	無料	src/ui/screens/add.js:126	
+bahzfs	ok	Local	ローカル	src/ui/screens/add.js:126	
+2rcuyl	ok	Nothing here matches. Try other words, or take a chip off.	一致するものがありません。別の言葉で検索するか、絞り込みを1つ外してください。	src/ui/screens/add.js:134	Note: the chips here are the Filters (絞り込み); the glossary's chip → ボタン is for the dock's voice and GPS chips.
+18bnex5	ok	Search the catalog	カタログを検索	src/ui/screens/add.js:158	
+j0fdnt	ok	Nothing here matches.	一致するものがありません。	src/ui/screens/add.js:166	
+rv2u3	ok	Not listed? Add it by its address.	見つかりませんか？アドレスで追加できます。	src/ui/screens/add.js:166	
+npq0yc	ok	Model providers, voices, backup places, tools and skills: annai's own, and what you have installed.	モデルのプロバイダー、声、バックアップ先、ツール、スキル。annai公式のものと、インストール済みのものです。	src/ui/screens/add.js:174	
+1hszhgv	ok	annai's catalog couldn't be loaded. Connect to the internet and open this screen again. What is installed still shows.	カタログを読み込めませんでした。インターネットに接続して、この画面を開き直してください。インストール済みのものは引き続き表示されます。	src/ui/screens/add.js:175	
+1dbd7kr	ok	Also for: {0}	{0}にも対応	src/ui/screens/add.js:186	{0} = why
+b6qm2p	ok	Data only	データのみ	src/ui/screens/add.js:189	
+glpdbk	ok	Has code	コードあり	src/ui/screens/add.js:189	
+1fzjiri	ok	Set up {0}	{0}を設定	src/ui/screens/add.js:212	{0} = name
+isr2rg	ok	Set up	設定する	src/ui/screens/add.js:212	Note: a verb (Set up), so not the Settings screen's 設定 alone.
+xf2xmv	ok	Open {0}	{0}を開く	src/ui/screens/add.js:212	{0} = name
+1e8gegw	ok	Install	インストール	src/ui/screens/add.js:215	
+1sd5lj	ok	Add another	もう1つ追加	src/ui/screens/add.js:215	
+18374qe	ok	Add {0}	{0}を追加	src/ui/screens/add.js:217	{0} = name; Note: {0} is also what a share adds on the import screen ("ファイル", "2枚の写真"); the space before it is right for both.
+1m87n8p	ok	Add another {0}	{0}をもう1つ追加	src/ui/screens/add.js:217	{0} = name
+4bn9ve	ok	Install {0}	{0}をインストール	src/ui/screens/add.js:217	{0} = name
+1srp47z	ok	{0} wasn't installed	{0}をインストールできませんでした	src/ui/screens/add.js:218	{0} = name
+l11acj	ok	{0} wasn't added	{0}を追加できませんでした	src/ui/screens/add.js:218	{0} = name
+orcwpv	ok	Installed {0}.	{0}をインストールしました。	src/ui/screens/add.js:222	{0} = name
+8zey4w	ok	Adding…	追加中…	src/ui/screens/add.js:229	
+1drktj9	ok	Added	追加済み	src/ui/screens/add.js:241	
+1ox21wg	ok	Get it	取得	src/ui/screens/add.js:256	
+ksdme7	ok	Install from an address or a file	アドレスかファイルからインストール	src/ui/screens/add.js:258	
+1b7aabm	ok	A plugin with code gets full access to your trips and API keys. Data-only plugins can't run anything. Only install plugins you trust.	コード付きのプラグインは、旅とAPIキーに制限なくアクセスできます。データのみのプラグインは何も実行できません。信頼できるプラグインだけをインストールしてください。	src/ui/screens/add.js:260	
+1e2k1fe	ok	Address of a plugin or skill	プラグインかスキルのアドレス	src/ui/screens/add.js:261	
+17bnagd	ok	A zip file, an annai-plugin.json, or a SKILL.md, on a site that lets web apps read it (GitHub file pages work).	zipファイル、annai-plugin.json、SKILL.mdのいずれかで、Webアプリから読み込めるサイトにあるもの（GitHubのファイルページも使えます）。	src/ui/screens/add.js:262	
+7ikogv	ok	Install from a file	ファイルからインストール	src/ui/screens/add.js:264	
+hn1sl5	ok	this file isn't a plugin package annai can open: {0}	このファイルはannaiで開けるプラグインのパッケージではありません：{0}	src/ui/screens/add.js:278	{0} = message(e)
+ai5f3u	ok	Paste the address of a zip file, an annai-plugin.json or a SKILL.md first.	先にzipファイル、annai-plugin.json、SKILL.mdのいずれかのアドレスを貼り付けてください。	src/ui/screens/add.js:306	
+1huuh2k	ok	Getting it…	取得中…	src/ui/screens/add.js:311	
 16r9x4z	ok	From an Android phone	Androidスマートフォンから	src/ui/screens/backups.js:14	
 1yzbug	ok	From an iPad	iPadから	src/ui/screens/backups.js:14	
 e0z2ub	ok	From a computer	パソコンから	src/ui/screens/backups.js:14	
@@ -2091,9 +2091,10 @@ e1enek#other	ok	Removing it removes {0}, with their keys and models.	削除す�
 fj8j97	ok	Needed by {0}.	{0}が必要としています。	src/ui/screens/plugins.js:68	{0} = list(needs)
 dbgp9n	ok	Model provider	モデルのプロバイダー	src/ui/screens/plugins.js:79	
 v0wv6e	ok	Skill	スキル	src/ui/screens/plugins.js:79	
-97t8e3	ok	Update to {0}	{0}にアップデート	src/ui/screens/plugins.js:99	{0} = update.available
-jgr98x	ok	{0} didn't start	{0}が起動しませんでした	src/ui/screens/plugins.js:116	{0} = r.name
-s74tk7	ok	Turn on	オンにする	src/ui/screens/plugins.js:120	
+miz9ao	ok	Updated	アップデート済み	src/ui/screens/plugins.js:98	
+97t8e3	ok	Update to {0}	{0}にアップデート	src/ui/screens/plugins.js:102	{0} = update.available
+jgr98x	ok	{0} didn't start	{0}が起動しませんでした	src/ui/screens/plugins.js:119	{0} = r.name
+s74tk7	ok	Turn on	オンにする	src/ui/screens/plugins.js:123	
 ura2r7	ok	{0} a minute of speech	音声1分あたり{0}	src/ui/screens/provider.js:29	{0} = price(p.perMinute)
 1b0vcka	ok	{0} per million characters	100万文字あたり{0}	src/ui/screens/provider.js:30	{0} = price(p.perMillionChars)
 1xducp7	ok	{0} in, {1} out	入力{0}、出力{1}	src/ui/screens/provider.js:32	{0} = price(p.input); {1} = price(p.output)
@@ -2162,25 +2163,25 @@ f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	削
 1oz4euh	ok	Add model	モデルを追加	src/ui/screens/provider.js:515	
 tbmsa5	ok	Asking for its models…	モデルを取得中…	src/ui/screens/provider.js:520	
 1yko1my#other	ok	# models.	モデルが#個見つかりました。	src/ui/screens/provider.js:523	plural; # = listed.length; English: "# model." (one), "# models." (other)
-uxqo7a	ok	Fetch model list	モデルの一覧を取得	src/ui/screens/provider.js:531	
-1scr2ml	ok	{0}K context	コンテキスト{0}K	src/ui/screens/provider.js:534	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
-1tqy8k1	ok	Its models	モデル	src/ui/screens/provider.js:536	Note: "Its models" as a heading under the ability: モデル alone reads right there.
-bzs1ys	ok	No models yet.	モデルはまだありません。	src/ui/screens/provider.js:537	
-pnxisg	ok	Add a model by id	IDでモデルを追加	src/ui/screens/provider.js:538	
-1mod47e	ok	for example: haiku	例：haiku	src/ui/screens/provider.js:553	
-uizt0x	ok	{0} · loaded	{0} · 読み込み済み	src/ui/screens/provider.js:562	{0} = named
-1w6mxym	ok	Already added, on {0}	追加済み（{0}）	src/ui/screens/provider.js:563	{0} = on
-l7fn8k	ok	Already added, on another provider	追加済み（別のプロバイダー）	src/ui/screens/provider.js:563	
-19ai2z0	ok	Filter the list	一覧を絞り込む	src/ui/screens/provider.js:586	
-11pl9jr	ok	Use the free models	無料のモデルを使う	src/ui/screens/provider.js:594	
-vam64u	ok	Use the recommended models	おすすめのモデルを使う	src/ui/screens/provider.js:594	
-1b2yx8m	ok	Suggested models	おすすめのモデル	src/ui/screens/provider.js:595	
-y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0}は役割ごとにおすすめのモデルを用意しています。これを使うと、音声のモデルが端末の音声入力とブラウザの声（どちらも無料）より前に並ぶため、有料のモデルが先に試されます。	src/ui/screens/provider.js:596	{0} = src.name; Note: 端末の音声入力 and ブラウザの声 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
-1x5hwmk	ok	{0} suggests a model for each role.	{0}は役割ごとにおすすめのモデルを用意しています。	src/ui/screens/provider.js:597	{0} = src.name
-1iffu2j	ok	{0} switched on.	{0}をオンにしました。	src/ui/screens/provider.js:604	{0} = n
-1szeqxt	ok	Roles updated.	役割を更新しました。	src/ui/screens/provider.js:604	
-1egvjs1	ok	{0} couldn't be switched on: {1}	{0}をオンにできませんでした：{1}	src/ui/screens/provider.js:605	{0} = f.name; {1} = messageOf(f.error)
-wlh055	ok	Use the {0} models	{0}のモデルを使う	src/ui/screens/provider.js:611	{0} = which
+uxqo7a	ok	Fetch model list	モデルの一覧を取得	src/ui/screens/provider.js:534	
+1scr2ml	ok	{0}K context	コンテキスト{0}K	src/ui/screens/provider.js:537	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
+1tqy8k1	ok	Its models	モデル	src/ui/screens/provider.js:539	Note: "Its models" as a heading under the ability: モデル alone reads right there.
+bzs1ys	ok	No models yet.	モデルはまだありません。	src/ui/screens/provider.js:540	
+pnxisg	ok	Add a model by id	IDでモデルを追加	src/ui/screens/provider.js:541	
+1mod47e	ok	for example: haiku	例：haiku	src/ui/screens/provider.js:558	
+uizt0x	ok	{0} · loaded	{0} · 読み込み済み	src/ui/screens/provider.js:568	{0} = named
+1w6mxym	ok	Already added, on {0}	追加済み（{0}）	src/ui/screens/provider.js:569	{0} = on
+l7fn8k	ok	Already added, on another provider	追加済み（別のプロバイダー）	src/ui/screens/provider.js:569	
+19ai2z0	ok	Filter the list	一覧を絞り込む	src/ui/screens/provider.js:601	
+11pl9jr	ok	Use the free models	無料のモデルを使う	src/ui/screens/provider.js:609	
+vam64u	ok	Use the recommended models	おすすめのモデルを使う	src/ui/screens/provider.js:609	
+1b2yx8m	ok	Suggested models	おすすめのモデル	src/ui/screens/provider.js:610	
+y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0}は役割ごとにおすすめのモデルを用意しています。これを使うと、音声のモデルが端末の音声入力とブラウザの声（どちらも無料）より前に並ぶため、有料のモデルが先に試されます。	src/ui/screens/provider.js:611	{0} = src.name; Note: 端末の音声入力 and ブラウザの声 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
+1x5hwmk	ok	{0} suggests a model for each role.	{0}は役割ごとにおすすめのモデルを用意しています。	src/ui/screens/provider.js:612	{0} = src.name
+1iffu2j	ok	{0} switched on.	{0}をオンにしました。	src/ui/screens/provider.js:619	{0} = n
+1szeqxt	ok	Roles updated.	役割を更新しました。	src/ui/screens/provider.js:619	
+1egvjs1	ok	{0} couldn't be switched on: {1}	{0}をオンにできませんでした：{1}	src/ui/screens/provider.js:620	{0} = f.name; {1} = messageOf(f.error)
+wlh055	ok	Use the {0} models	{0}のモデルを使う	src/ui/screens/provider.js:626	{0} = which
 1qocxbg	ok	Writing it: {0} is reading the conversation. This can take a minute.	作成中：{0}が会話を読んでいます。1分ほどかかることがあります。	src/ui/screens/recap.js:33	{0} = names(m.name)
 1lrfe9k	ok	Write the recap	振り返りを書く	src/ui/screens/recap.js:35	
 h6huep	ok	Write it again	書き直す	src/ui/screens/recap.js:35	
@@ -2629,30 +2630,30 @@ jz8mjk	ok	Unarchive	アーカイブを解除	src/ui/screens/trip.js:56
 qeuftp	ok	Tap again to archive	もう一度タップでアーカイブ	src/ui/screens/trip.js:58	
 w0suw5	ok	Archive	アーカイブ	src/ui/screens/trip.js:58	Note: アーカイブ as Archive trip (旅をアーカイブ) and Unarchive (アーカイブを解除).
 1orcmjh	ok	Give it a name.	名前を入力してください。	src/ui/screens/trip.js:97	
-1cageta	ok	Saved.	保存しました。	src/ui/screens/trip.js:111	
-cymegm	ok	The trip can't end before it starts.	終了日を開始日より前にすることはできません。	src/ui/screens/trip.js:115	
-1yii6kb	ok	Ends	終了日	src/ui/screens/trip.js:122	Note: A date field, so 日 / 日期 say what goes in it.
-fc4c10	ok	Starts	開始日	src/ui/screens/trip.js:122	
-8jz3l7	ok	All files	すべてのファイル	src/ui/screens/trip.js:131	Note: a fold below Files on the trip screen: every file by folder, and the box that adds one by path.
-1s4j38w	ok	Files	ファイル	src/ui/screens/trip.js:157	
-deqm9f	ok	No files yet.	まだファイルはありません。	src/ui/screens/trip.js:163	
-oib8wn	ok	Deleted ({0})	削除済み（{0}）	src/ui/screens/trip.js:165	{0} = num(gone.length); Note: the fold at the foot of a trip's Files listing files deleted but kept (the conversation still has them); {0} is how many. The toasts after Delete call it "Deleted" (削除済み / 已删除 / 已刪除).
-se2paf#other	ok	# turns of this conversation are kept by {0}: annai asks for them to be deleted, once you're back online.	この会話のやり取り#回分が{0}に保存されています。オンラインに戻ったら、annaiが削除を依頼します。	src/ui/screens/trip.js:229	plural; # = n; {0} = who; English: "# turn of this conversation is kept by {0}: annai asks for it to be deleted, once you're back online." (one), "# turns of this conversation are kept by {0}: annai asks for them to be deleted, once you're back online." (other); Note: {0} is the providers that keep turns, as a list.
-1is61d1#other	ok	# turns of this conversation are kept by {0}: annai asks for them to be deleted.	この会話のやり取り#回分が{0}に保存されています。annaiが削除を依頼します。	src/ui/screens/trip.js:230	plural; # = n; {0} = who; English: "# turn of this conversation is kept by {0}: annai asks for it to be deleted." (one), "# turns of this conversation are kept by {0}: annai asks for them to be deleted." (other); Note: {0} is the providers that keep turns, as a list.
-1af3bj3	ok	Remove it?	削除しますか？	src/ui/screens/trip.js:235	
-nn02o3	ok	This removes everything in it from this device: its files, photos, notes and history.	この中のすべて（ファイル、写真、メモ、履歴）をこの端末から削除します。	src/ui/screens/trip.js:235	
-ty94lb	ok	It hasn't been backed up since it last changed.	最後の変更以降、バックアップされていません。	src/ui/screens/trip.js:235	
-1cp5muy	ok	Removed {0}. {1} freed.	{0}を削除しました。空き容量が{1}増えました。	src/ui/screens/trip.js:241	{0} = scopeTitle(scope); {1} = size(freed)
-436oi1	ok	That was already removed.	すでに削除されています。	src/ui/screens/trip.js:245	
-1mbp8t6	ok	It wasn't removed	削除されませんでした	src/ui/screens/trip.js:248	
-1pzhsw4	ok	Nothing was removed. Try again.	何も削除されていません。もう一度お試しください。	src/ui/screens/trip.js:248	
-knyqwh	ok	Add photos or files	写真やファイルを追加	src/ui/screens/trip.js:322	
-12n59th	ok	Take a photo	写真を撮る	src/ui/screens/trip.js:323	
-1kuasfa	ok	That file doesn't match its format: {0}	そのファイルは形式に合っていません：{0}	src/ui/screens/trip.js:335	{0} = why; Note: {0} is the format check's own words, in English.
-1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0}はすでにあります。編集するには一覧から開いてください。	src/ui/screens/trip.js:345	{0} = p
-ecy82r	ok	Add a file	ファイルを追加	src/ui/screens/trip.js:353	
-1bmm5eq	ok	File path	ファイルのパス	src/ui/screens/trip.js:354	
-16gte2l	ok	Create	作成	src/ui/screens/trip.js:356	
+1cageta	ok	Saved.	保存しました。	src/ui/screens/trip.js:113	
+cymegm	ok	The trip can't end before it starts.	終了日を開始日より前にすることはできません。	src/ui/screens/trip.js:117	
+1yii6kb	ok	Ends	終了日	src/ui/screens/trip.js:124	Note: A date field, so 日 / 日期 say what goes in it.
+fc4c10	ok	Starts	開始日	src/ui/screens/trip.js:124	
+8jz3l7	ok	All files	すべてのファイル	src/ui/screens/trip.js:133	Note: a fold below Files on the trip screen: every file by folder, and the box that adds one by path.
+1s4j38w	ok	Files	ファイル	src/ui/screens/trip.js:159	
+deqm9f	ok	No files yet.	まだファイルはありません。	src/ui/screens/trip.js:165	
+oib8wn	ok	Deleted ({0})	削除済み（{0}）	src/ui/screens/trip.js:167	{0} = num(gone.length); Note: the fold at the foot of a trip's Files listing files deleted but kept (the conversation still has them); {0} is how many. The toasts after Delete call it "Deleted" (削除済み / 已删除 / 已刪除).
+se2paf#other	ok	# turns of this conversation are kept by {0}: annai asks for them to be deleted, once you're back online.	この会話のやり取り#回分が{0}に保存されています。オンラインに戻ったら、annaiが削除を依頼します。	src/ui/screens/trip.js:231	plural; # = n; {0} = who; English: "# turn of this conversation is kept by {0}: annai asks for it to be deleted, once you're back online." (one), "# turns of this conversation are kept by {0}: annai asks for them to be deleted, once you're back online." (other); Note: {0} is the providers that keep turns, as a list.
+1is61d1#other	ok	# turns of this conversation are kept by {0}: annai asks for them to be deleted.	この会話のやり取り#回分が{0}に保存されています。annaiが削除を依頼します。	src/ui/screens/trip.js:232	plural; # = n; {0} = who; English: "# turn of this conversation is kept by {0}: annai asks for it to be deleted." (one), "# turns of this conversation are kept by {0}: annai asks for them to be deleted." (other); Note: {0} is the providers that keep turns, as a list.
+1af3bj3	ok	Remove it?	削除しますか？	src/ui/screens/trip.js:237	
+nn02o3	ok	This removes everything in it from this device: its files, photos, notes and history.	この中のすべて（ファイル、写真、メモ、履歴）をこの端末から削除します。	src/ui/screens/trip.js:237	
+ty94lb	ok	It hasn't been backed up since it last changed.	最後の変更以降、バックアップされていません。	src/ui/screens/trip.js:237	
+1cp5muy	ok	Removed {0}. {1} freed.	{0}を削除しました。空き容量が{1}増えました。	src/ui/screens/trip.js:243	{0} = scopeTitle(scope); {1} = size(freed)
+436oi1	ok	That was already removed.	すでに削除されています。	src/ui/screens/trip.js:247	
+1mbp8t6	ok	It wasn't removed	削除されませんでした	src/ui/screens/trip.js:250	
+1pzhsw4	ok	Nothing was removed. Try again.	何も削除されていません。もう一度お試しください。	src/ui/screens/trip.js:250	
+knyqwh	ok	Add photos or files	写真やファイルを追加	src/ui/screens/trip.js:324	
+12n59th	ok	Take a photo	写真を撮る	src/ui/screens/trip.js:325	
+1kuasfa	ok	That file doesn't match its format: {0}	そのファイルは形式に合っていません：{0}	src/ui/screens/trip.js:337	{0} = why; Note: {0} is the format check's own words, in English.
+1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0}はすでにあります。編集するには一覧から開いてください。	src/ui/screens/trip.js:347	{0} = p
+ecy82r	ok	Add a file	ファイルを追加	src/ui/screens/trip.js:355	
+1bmm5eq	ok	File path	ファイルのパス	src/ui/screens/trip.js:356	
+16gte2l	ok	Create	作成	src/ui/screens/trip.js:358	
 aoc0k0#other	ok	{0}: # chats	{0}：会話#件	src/ui/screens/trips.js:66	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
 33pqd9	ok	Last backup {0}, to {1}.	前回のバックアップ：{0}（{1}）	src/ui/screens/trips.js:73	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: Label and value, no 。, as "Last export" beside it.
 12mubvb	ok	Now	いま	src/ui/screens/trips.js:79	

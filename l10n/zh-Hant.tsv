@@ -1444,11 +1444,11 @@ uk4kus	ok	Update	更新	src/ui/plugin-updates.js:97
 2jfvhf	ok	The update is installed and runs the next time annai starts.	更新已安裝，下次啟動 annai 時生效。	src/ui/plugin-updates.js:139	
 nb21do	ok	Restart now	立即重新啟動	src/ui/plugin-updates.js:140	
 1do1igm	ok	Plugins updated.	外掛程式已更新。	src/ui/plugin-updates.js:143	
-eaf3fx	ok	{0} {1} brings something new	{0} {1} 包含新內容	src/ui/plugin-updates.js:159	{0} = u.name; {1} = u.available
-127j3cm	ok	New in this version: {0}.	此版本新增：{0}。	src/ui/plugin-updates.js:160	{0} = semicolons(whatItBrings(added))
-zymqne	ok	Only update if you trust where it came from.	請只在信任其來源時更新。	src/ui/plugin-updates.js:160	
-1dfe53s	ok	Nothing changes until you tap Update.	點一下「更新」之前，不會有任何變動。	src/ui/plugin-updates.js:161	
-15ziixp	ok	Update anyway	仍然更新	src/ui/plugin-updates.js:163	
+eaf3fx	ok	{0} {1} brings something new	{0} {1} 包含新內容	src/ui/plugin-updates.js:160	{0} = u.name; {1} = u.available
+127j3cm	ok	New in this version: {0}.	此版本新增：{0}。	src/ui/plugin-updates.js:161	{0} = semicolons(whatItBrings(added))
+zymqne	ok	Only update if you trust where it came from.	請只在信任其來源時更新。	src/ui/plugin-updates.js:161	
+1dfe53s	ok	Nothing changes until you tap Update.	點一下「更新」之前，不會有任何變動。	src/ui/plugin-updates.js:162	
+15ziixp	ok	Update anyway	仍然更新	src/ui/plugin-updates.js:164	
 vq7cdg#other	ok	# pages	# 頁	src/ui/preview.js:133	plural; # = pages; English: "# page" (one), "# pages" (other); Note: Taiwan wording; a PDF's page count on its file card.
 1cjjnaq	ok	Kept on this device.	儲存在此裝置上。	src/ui/privacy.js:21	
 tct7be	ok	Your trips, files, settings and keys are stored in this browser, on this device. annai has no accounts, and no server of annai's keeps your trips or your keys.	旅行、檔案、設定和金鑰都儲存在這台裝置上的這個瀏覽器裡。annai 沒有帳號系統，annai 的任何伺服器也都不會保存你的旅行或金鑰。	src/ui/privacy.js:21	
@@ -1545,43 +1545,43 @@ u7w1bx	ok	An MCP server	MCP 伺服器	src/ui/screens/add.js:35
 1ufe6kk	ok	From an address	來自某個網址	src/ui/screens/add.js:46	
 x4eio0	ok	Official	官方	src/ui/screens/add.js:65	
 w28ztz	ok	The {0} installed came from elsewhere but has the id of annai's own, so annai won't use it. Remove it in Settings → Plugins to add annai's.	已安裝的 {0} 來自其他來源，但 ID 與 annai 官方外掛程式相同，因此不會被使用。請先在設定 → 外掛程式中移除它，再新增官方版本。	src/ui/screens/add.js:67	{0} = facts.name
-tdrd3b	ok	A name, "voice", "free"…	名稱、「voice」、「free」…	src/ui/screens/add.js:99	Note: the search words stay English until the catalog carries translated keywords (L7).
-hqumoz	ok	Kind	類型	src/ui/screens/add.js:121	
-345x4c	ok	Filters	篩選	src/ui/screens/add.js:122	
-11ywf17	ok	Third-party	第三方	src/ui/screens/add.js:124	
-7va5tn	ok	Free	免費	src/ui/screens/add.js:124	
-bahzfs	ok	Local	本機	src/ui/screens/add.js:124	
-2rcuyl	ok	Nothing here matches. Try other words, or take a chip off.	找不到符合的項目。請換個關鍵字，或取消一個篩選條件。	src/ui/screens/add.js:132	Note: the chips here are the Filters (篩選條件); the glossary's chip → 按鈕 is for the dock's voice and GPS chips.
-18bnex5	ok	Search the catalog	搜尋目錄	src/ui/screens/add.js:156	
-j0fdnt	ok	Nothing here matches.	找不到符合的項目。	src/ui/screens/add.js:164	
-rv2u3	ok	Not listed? Add it by its address.	找不到嗎？可以用網址新增。	src/ui/screens/add.js:164	
-npq0yc	ok	Model providers, voices, backup places, tools and skills: annai's own, and what you have installed.	模型供應商、聲音、備份位置、工具和技能：包括 annai 官方的，以及你已安裝的。	src/ui/screens/add.js:172	
-1hszhgv	ok	annai's catalog couldn't be loaded. Connect to the internet and open this screen again. What is installed still shows.	無法載入 annai 的目錄。請連上網路後重新開啟此頁面。已安裝的項目仍會顯示。	src/ui/screens/add.js:173	
-1dbd7kr	ok	Also for: {0}	也適用於：{0}	src/ui/screens/add.js:184	{0} = why
-b6qm2p	ok	Data only	純資料	src/ui/screens/add.js:187	
-glpdbk	ok	Has code	含程式碼	src/ui/screens/add.js:187	
-1fzjiri	ok	Set up {0}	設定 {0}	src/ui/screens/add.js:210	{0} = name
-isr2rg	ok	Set up	開始設定	src/ui/screens/add.js:210	Note: a verb (Set up), so not the Settings screen's 設定 alone.
-xf2xmv	ok	Open {0}	開啟 {0}	src/ui/screens/add.js:210	{0} = name
-1e8gegw	ok	Install	安裝	src/ui/screens/add.js:213	
-1sd5lj	ok	Add another	再新增一個	src/ui/screens/add.js:213	
-18374qe	ok	Add {0}	新增 {0}	src/ui/screens/add.js:215	{0} = name; Note: {0} is also what a share adds on the import screen ("1 個檔案", "3 個檔案", "2 張照片"); the space before it is right for both.
-1m87n8p	ok	Add another {0}	再新增一個 {0}	src/ui/screens/add.js:215	{0} = name
-4bn9ve	ok	Install {0}	安裝 {0}	src/ui/screens/add.js:215	{0} = name
-1srp47z	ok	{0} wasn't installed	無法安裝 {0}	src/ui/screens/add.js:216	{0} = name
-l11acj	ok	{0} wasn't added	無法新增 {0}	src/ui/screens/add.js:216	{0} = name
-orcwpv	ok	Installed {0}.	已安裝 {0}。	src/ui/screens/add.js:220	{0} = name
-8zey4w	ok	Adding…	正在新增…	src/ui/screens/add.js:227	
-1drktj9	ok	Added	已新增	src/ui/screens/add.js:239	
-1ox21wg	ok	Get it	取得	src/ui/screens/add.js:254	
-ksdme7	ok	Install from an address or a file	從網址或檔案安裝	src/ui/screens/add.js:256	
-1b7aabm	ok	A plugin with code gets full access to your trips and API keys. Data-only plugins can't run anything. Only install plugins you trust.	含程式碼的外掛程式可以完整存取你的旅行和 API 金鑰；純資料外掛程式無法執行任何程式。請只安裝你信任的外掛程式。	src/ui/screens/add.js:258	
-1e2k1fe	ok	Address of a plugin or skill	外掛程式或技能的網址	src/ui/screens/add.js:259	
-17bnagd	ok	A zip file, an annai-plugin.json, or a SKILL.md, on a site that lets web apps read it (GitHub file pages work).	zip 檔、annai-plugin.json 或 SKILL.md，須放在允許網頁應用程式讀取的網站上（GitHub 的檔案頁面可以）。	src/ui/screens/add.js:260	
-7ikogv	ok	Install from a file	從檔案安裝	src/ui/screens/add.js:262	
-hn1sl5	ok	this file isn't a plugin package annai can open: {0}	此檔案不是 annai 能開啟的外掛程式套件：{0}	src/ui/screens/add.js:276	{0} = message(e)
-ai5f3u	ok	Paste the address of a zip file, an annai-plugin.json or a SKILL.md first.	請先貼上 zip 檔案、annai-plugin.json 或 SKILL.md 的網址。	src/ui/screens/add.js:304	
-1huuh2k	ok	Getting it…	正在取得…	src/ui/screens/add.js:309	
+tdrd3b	ok	A name, "voice", "free"…	名稱、「voice」、「free」…	src/ui/screens/add.js:100	Note: the search words stay English until the catalog carries translated keywords (L7).
+hqumoz	ok	Kind	類型	src/ui/screens/add.js:123	
+345x4c	ok	Filters	篩選	src/ui/screens/add.js:124	
+11ywf17	ok	Third-party	第三方	src/ui/screens/add.js:126	
+7va5tn	ok	Free	免費	src/ui/screens/add.js:126	
+bahzfs	ok	Local	本機	src/ui/screens/add.js:126	
+2rcuyl	ok	Nothing here matches. Try other words, or take a chip off.	找不到符合的項目。請換個關鍵字，或取消一個篩選條件。	src/ui/screens/add.js:134	Note: the chips here are the Filters (篩選條件); the glossary's chip → 按鈕 is for the dock's voice and GPS chips.
+18bnex5	ok	Search the catalog	搜尋目錄	src/ui/screens/add.js:158	
+j0fdnt	ok	Nothing here matches.	找不到符合的項目。	src/ui/screens/add.js:166	
+rv2u3	ok	Not listed? Add it by its address.	找不到嗎？可以用網址新增。	src/ui/screens/add.js:166	
+npq0yc	ok	Model providers, voices, backup places, tools and skills: annai's own, and what you have installed.	模型供應商、聲音、備份位置、工具和技能：包括 annai 官方的，以及你已安裝的。	src/ui/screens/add.js:174	
+1hszhgv	ok	annai's catalog couldn't be loaded. Connect to the internet and open this screen again. What is installed still shows.	無法載入 annai 的目錄。請連上網路後重新開啟此頁面。已安裝的項目仍會顯示。	src/ui/screens/add.js:175	
+1dbd7kr	ok	Also for: {0}	也適用於：{0}	src/ui/screens/add.js:186	{0} = why
+b6qm2p	ok	Data only	純資料	src/ui/screens/add.js:189	
+glpdbk	ok	Has code	含程式碼	src/ui/screens/add.js:189	
+1fzjiri	ok	Set up {0}	設定 {0}	src/ui/screens/add.js:212	{0} = name
+isr2rg	ok	Set up	開始設定	src/ui/screens/add.js:212	Note: a verb (Set up), so not the Settings screen's 設定 alone.
+xf2xmv	ok	Open {0}	開啟 {0}	src/ui/screens/add.js:212	{0} = name
+1e8gegw	ok	Install	安裝	src/ui/screens/add.js:215	
+1sd5lj	ok	Add another	再新增一個	src/ui/screens/add.js:215	
+18374qe	ok	Add {0}	新增 {0}	src/ui/screens/add.js:217	{0} = name; Note: {0} is also what a share adds on the import screen ("1 個檔案", "3 個檔案", "2 張照片"); the space before it is right for both.
+1m87n8p	ok	Add another {0}	再新增一個 {0}	src/ui/screens/add.js:217	{0} = name
+4bn9ve	ok	Install {0}	安裝 {0}	src/ui/screens/add.js:217	{0} = name
+1srp47z	ok	{0} wasn't installed	無法安裝 {0}	src/ui/screens/add.js:218	{0} = name
+l11acj	ok	{0} wasn't added	無法新增 {0}	src/ui/screens/add.js:218	{0} = name
+orcwpv	ok	Installed {0}.	已安裝 {0}。	src/ui/screens/add.js:222	{0} = name
+8zey4w	ok	Adding…	正在新增…	src/ui/screens/add.js:229	
+1drktj9	ok	Added	已新增	src/ui/screens/add.js:241	
+1ox21wg	ok	Get it	取得	src/ui/screens/add.js:256	
+ksdme7	ok	Install from an address or a file	從網址或檔案安裝	src/ui/screens/add.js:258	
+1b7aabm	ok	A plugin with code gets full access to your trips and API keys. Data-only plugins can't run anything. Only install plugins you trust.	含程式碼的外掛程式可以完整存取你的旅行和 API 金鑰；純資料外掛程式無法執行任何程式。請只安裝你信任的外掛程式。	src/ui/screens/add.js:260	
+1e2k1fe	ok	Address of a plugin or skill	外掛程式或技能的網址	src/ui/screens/add.js:261	
+17bnagd	ok	A zip file, an annai-plugin.json, or a SKILL.md, on a site that lets web apps read it (GitHub file pages work).	zip 檔、annai-plugin.json 或 SKILL.md，須放在允許網頁應用程式讀取的網站上（GitHub 的檔案頁面可以）。	src/ui/screens/add.js:262	
+7ikogv	ok	Install from a file	從檔案安裝	src/ui/screens/add.js:264	
+hn1sl5	ok	this file isn't a plugin package annai can open: {0}	此檔案不是 annai 能開啟的外掛程式套件：{0}	src/ui/screens/add.js:278	{0} = message(e)
+ai5f3u	ok	Paste the address of a zip file, an annai-plugin.json or a SKILL.md first.	請先貼上 zip 檔案、annai-plugin.json 或 SKILL.md 的網址。	src/ui/screens/add.js:306	
+1huuh2k	ok	Getting it…	正在取得…	src/ui/screens/add.js:311	
 16r9x4z	ok	From an Android phone	來自 Android 手機	src/ui/screens/backups.js:14	
 1yzbug	ok	From an iPad	來自 iPad	src/ui/screens/backups.js:14	
 e0z2ub	ok	From a computer	來自電腦	src/ui/screens/backups.js:14	
@@ -2091,9 +2091,10 @@ e1enek#other	ok	Removing it removes {0}, with their keys and models.	移除它�
 fj8j97	ok	Needed by {0}.	{0} 需要它。	src/ui/screens/plugins.js:68	{0} = list(needs)
 dbgp9n	ok	Model provider	模型供應商	src/ui/screens/plugins.js:79	
 v0wv6e	ok	Skill	技能	src/ui/screens/plugins.js:79	
-97t8e3	ok	Update to {0}	更新到 {0}	src/ui/screens/plugins.js:99	{0} = update.available
-jgr98x	ok	{0} didn't start	{0} 沒有啟動	src/ui/screens/plugins.js:116	{0} = r.name
-s74tk7	ok	Turn on	開啟	src/ui/screens/plugins.js:120	
+miz9ao	ok	Updated	已更新	src/ui/screens/plugins.js:98	
+97t8e3	ok	Update to {0}	更新到 {0}	src/ui/screens/plugins.js:102	{0} = update.available
+jgr98x	ok	{0} didn't start	{0} 沒有啟動	src/ui/screens/plugins.js:119	{0} = r.name
+s74tk7	ok	Turn on	開啟	src/ui/screens/plugins.js:123	
 ura2r7	ok	{0} a minute of speech	每分鐘語音 {0}	src/ui/screens/provider.js:29	{0} = price(p.perMinute)
 1b0vcka	ok	{0} per million characters	每百萬字元 {0}	src/ui/screens/provider.js:30	{0} = price(p.perMillionChars)
 1xducp7	ok	{0} in, {1} out	輸入 {0}，輸出 {1}	src/ui/screens/provider.js:32	{0} = price(p.input); {1} = price(p.output)
@@ -2162,25 +2163,25 @@ f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	# �
 1oz4euh	ok	Add model	新增模型	src/ui/screens/provider.js:515	
 tbmsa5	ok	Asking for its models…	正在取得模型清單…	src/ui/screens/provider.js:520	
 1yko1my#other	ok	# models.	共 # 個模型。	src/ui/screens/provider.js:523	plural; # = listed.length; English: "# model." (one), "# models." (other)
-uxqo7a	ok	Fetch model list	取得模型清單	src/ui/screens/provider.js:531	
-1scr2ml	ok	{0}K context	{0}K 上下文	src/ui/screens/provider.js:534	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
-1tqy8k1	ok	Its models	模型	src/ui/screens/provider.js:536	Note: "Its models" as a heading under the ability: モデル alone reads right there.
-bzs1ys	ok	No models yet.	還沒有模型。	src/ui/screens/provider.js:537	
-pnxisg	ok	Add a model by id	依 ID 新增模型	src/ui/screens/provider.js:538	
-1mod47e	ok	for example: haiku	例如：haiku	src/ui/screens/provider.js:553	
-uizt0x	ok	{0} · loaded	{0} · 已載入	src/ui/screens/provider.js:562	{0} = named
-1w6mxym	ok	Already added, on {0}	已新增到 {0}	src/ui/screens/provider.js:563	{0} = on
-l7fn8k	ok	Already added, on another provider	已新增到其他供應商	src/ui/screens/provider.js:563	
-19ai2z0	ok	Filter the list	篩選清單	src/ui/screens/provider.js:586	
-11pl9jr	ok	Use the free models	使用免費模型	src/ui/screens/provider.js:594	
-vam64u	ok	Use the recommended models	使用推薦模型	src/ui/screens/provider.js:594	
-1b2yx8m	ok	Suggested models	推薦模型	src/ui/screens/provider.js:595	
-y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0} 為每個角色推薦了一個模型。使用推薦後，它的語音模型會排在免費的手機語音輸入和瀏覽器聲音之前，所以會優先嘗試收費的模型。	src/ui/screens/provider.js:596	{0} = src.name; Note: 手機語音輸入 and 瀏覽器聲音 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
-1x5hwmk	ok	{0} suggests a model for each role.	{0} 為每個角色推薦了一個模型。	src/ui/screens/provider.js:597	{0} = src.name
-1iffu2j	ok	{0} switched on.	已開啟 {0}。	src/ui/screens/provider.js:604	{0} = n
-1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:604	
-1egvjs1	ok	{0} couldn't be switched on: {1}	{0} 無法開啟：{1}	src/ui/screens/provider.js:605	{0} = f.name; {1} = messageOf(f.error)
-wlh055	ok	Use the {0} models	使用 {0} 模型	src/ui/screens/provider.js:611	{0} = which
+uxqo7a	ok	Fetch model list	取得模型清單	src/ui/screens/provider.js:534	
+1scr2ml	ok	{0}K context	{0}K 上下文	src/ui/screens/provider.js:537	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
+1tqy8k1	ok	Its models	模型	src/ui/screens/provider.js:539	Note: "Its models" as a heading under the ability: モデル alone reads right there.
+bzs1ys	ok	No models yet.	還沒有模型。	src/ui/screens/provider.js:540	
+pnxisg	ok	Add a model by id	依 ID 新增模型	src/ui/screens/provider.js:541	
+1mod47e	ok	for example: haiku	例如：haiku	src/ui/screens/provider.js:558	
+uizt0x	ok	{0} · loaded	{0} · 已載入	src/ui/screens/provider.js:568	{0} = named
+1w6mxym	ok	Already added, on {0}	已新增到 {0}	src/ui/screens/provider.js:569	{0} = on
+l7fn8k	ok	Already added, on another provider	已新增到其他供應商	src/ui/screens/provider.js:569	
+19ai2z0	ok	Filter the list	篩選清單	src/ui/screens/provider.js:601	
+11pl9jr	ok	Use the free models	使用免費模型	src/ui/screens/provider.js:609	
+vam64u	ok	Use the recommended models	使用推薦模型	src/ui/screens/provider.js:609	
+1b2yx8m	ok	Suggested models	推薦模型	src/ui/screens/provider.js:610	
+y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0} 為每個角色推薦了一個模型。使用推薦後，它的語音模型會排在免費的手機語音輸入和瀏覽器聲音之前，所以會優先嘗試收費的模型。	src/ui/screens/provider.js:611	{0} = src.name; Note: 手機語音輸入 and 瀏覽器聲音 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
+1x5hwmk	ok	{0} suggests a model for each role.	{0} 為每個角色推薦了一個模型。	src/ui/screens/provider.js:612	{0} = src.name
+1iffu2j	ok	{0} switched on.	已開啟 {0}。	src/ui/screens/provider.js:619	{0} = n
+1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:619	
+1egvjs1	ok	{0} couldn't be switched on: {1}	{0} 無法開啟：{1}	src/ui/screens/provider.js:620	{0} = f.name; {1} = messageOf(f.error)
+wlh055	ok	Use the {0} models	使用 {0} 模型	src/ui/screens/provider.js:626	{0} = which
 1qocxbg	ok	Writing it: {0} is reading the conversation. This can take a minute.	撰寫中：{0} 正在讀取對話，可能需要一分鐘。	src/ui/screens/recap.js:33	{0} = names(m.name)
 1lrfe9k	ok	Write the recap	撰寫回顧	src/ui/screens/recap.js:35	
 h6huep	ok	Write it again	重新撰寫	src/ui/screens/recap.js:35	
@@ -2629,30 +2630,30 @@ jz8mjk	ok	Unarchive	取消封存	src/ui/screens/trip.js:56
 qeuftp	ok	Tap again to archive	再點一次以封存	src/ui/screens/trip.js:58	
 w0suw5	ok	Archive	封存	src/ui/screens/trip.js:58	Note: 封存 as Archive trip (封存旅行) and Unarchive (取消封存).
 1orcmjh	ok	Give it a name.	請輸入名稱。	src/ui/screens/trip.js:97	
-1cageta	ok	Saved.	已儲存。	src/ui/screens/trip.js:111	
-cymegm	ok	The trip can't end before it starts.	結束日期不能早於開始日期。	src/ui/screens/trip.js:115	
-1yii6kb	ok	Ends	結束日期	src/ui/screens/trip.js:122	
-fc4c10	ok	Starts	開始日期	src/ui/screens/trip.js:122	
-8jz3l7	ok	All files	所有檔案	src/ui/screens/trip.js:131	Note: Taiwan wording: 檔案; a fold below Files on the trip screen.
-1s4j38w	ok	Files	檔案	src/ui/screens/trip.js:157	
-deqm9f	ok	No files yet.	還沒有檔案。	src/ui/screens/trip.js:163	
-oib8wn	ok	Deleted ({0})	已刪除（{0}）	src/ui/screens/trip.js:165	{0} = num(gone.length); Note: the fold at the foot of a trip's Files listing files deleted but kept (the conversation still has them); {0} is how many. The toasts after Delete call it "Deleted" (削除済み / 已删除 / 已刪除).
-se2paf#other	ok	# turns of this conversation are kept by {0}: annai asks for them to be deleted, once you're back online.	{0} 保存了這段對話的 # 輪內容。恢復連線後，annai 會要求刪除這些內容。	src/ui/screens/trip.js:229	plural; # = n; {0} = who; English: "# turn of this conversation is kept by {0}: annai asks for it to be deleted, once you're back online." (one), "# turns of this conversation are kept by {0}: annai asks for them to be deleted, once you're back online." (other); Note: {0} is the providers that keep turns, as a list.
-1is61d1#other	ok	# turns of this conversation are kept by {0}: annai asks for them to be deleted.	{0} 保存了這段對話的 # 輪內容。annai 會要求刪除這些內容。	src/ui/screens/trip.js:230	plural; # = n; {0} = who; English: "# turn of this conversation is kept by {0}: annai asks for it to be deleted." (one), "# turns of this conversation are kept by {0}: annai asks for them to be deleted." (other); Note: {0} is the providers that keep turns, as a list.
-1af3bj3	ok	Remove it?	要移除嗎？	src/ui/screens/trip.js:235	
-nn02o3	ok	This removes everything in it from this device: its files, photos, notes and history.	這會從此裝置上移除其中的所有內容，包括檔案、照片、筆記和歷史。	src/ui/screens/trip.js:235	
-ty94lb	ok	It hasn't been backed up since it last changed.	最近的變更還沒有備份。	src/ui/screens/trip.js:235	
-1cp5muy	ok	Removed {0}. {1} freed.	已移除 {0}，釋放了 {1}。	src/ui/screens/trip.js:241	{0} = scopeTitle(scope); {1} = size(freed)
-436oi1	ok	That was already removed.	已經移除過了。	src/ui/screens/trip.js:245	
-1mbp8t6	ok	It wasn't removed	未能移除	src/ui/screens/trip.js:248	
-1pzhsw4	ok	Nothing was removed. Try again.	沒有移除任何內容。請重試。	src/ui/screens/trip.js:248	
-knyqwh	ok	Add photos or files	新增照片或檔案	src/ui/screens/trip.js:322	
-12n59th	ok	Take a photo	拍照	src/ui/screens/trip.js:323	
-1kuasfa	ok	That file doesn't match its format: {0}	檔案格式不符：{0}	src/ui/screens/trip.js:335	{0} = why; Note: {0} is the format check's own words, in English.
-1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0} 已存在。如需編輯，請從清單中開啟。	src/ui/screens/trip.js:345	{0} = p
-ecy82r	ok	Add a file	新增檔案	src/ui/screens/trip.js:353	
-1bmm5eq	ok	File path	檔案路徑	src/ui/screens/trip.js:354	
-16gte2l	ok	Create	建立	src/ui/screens/trip.js:356	
+1cageta	ok	Saved.	已儲存。	src/ui/screens/trip.js:113	
+cymegm	ok	The trip can't end before it starts.	結束日期不能早於開始日期。	src/ui/screens/trip.js:117	
+1yii6kb	ok	Ends	結束日期	src/ui/screens/trip.js:124	
+fc4c10	ok	Starts	開始日期	src/ui/screens/trip.js:124	
+8jz3l7	ok	All files	所有檔案	src/ui/screens/trip.js:133	Note: Taiwan wording: 檔案; a fold below Files on the trip screen.
+1s4j38w	ok	Files	檔案	src/ui/screens/trip.js:159	
+deqm9f	ok	No files yet.	還沒有檔案。	src/ui/screens/trip.js:165	
+oib8wn	ok	Deleted ({0})	已刪除（{0}）	src/ui/screens/trip.js:167	{0} = num(gone.length); Note: the fold at the foot of a trip's Files listing files deleted but kept (the conversation still has them); {0} is how many. The toasts after Delete call it "Deleted" (削除済み / 已删除 / 已刪除).
+se2paf#other	ok	# turns of this conversation are kept by {0}: annai asks for them to be deleted, once you're back online.	{0} 保存了這段對話的 # 輪內容。恢復連線後，annai 會要求刪除這些內容。	src/ui/screens/trip.js:231	plural; # = n; {0} = who; English: "# turn of this conversation is kept by {0}: annai asks for it to be deleted, once you're back online." (one), "# turns of this conversation are kept by {0}: annai asks for them to be deleted, once you're back online." (other); Note: {0} is the providers that keep turns, as a list.
+1is61d1#other	ok	# turns of this conversation are kept by {0}: annai asks for them to be deleted.	{0} 保存了這段對話的 # 輪內容。annai 會要求刪除這些內容。	src/ui/screens/trip.js:232	plural; # = n; {0} = who; English: "# turn of this conversation is kept by {0}: annai asks for it to be deleted." (one), "# turns of this conversation are kept by {0}: annai asks for them to be deleted." (other); Note: {0} is the providers that keep turns, as a list.
+1af3bj3	ok	Remove it?	要移除嗎？	src/ui/screens/trip.js:237	
+nn02o3	ok	This removes everything in it from this device: its files, photos, notes and history.	這會從此裝置上移除其中的所有內容，包括檔案、照片、筆記和歷史。	src/ui/screens/trip.js:237	
+ty94lb	ok	It hasn't been backed up since it last changed.	最近的變更還沒有備份。	src/ui/screens/trip.js:237	
+1cp5muy	ok	Removed {0}. {1} freed.	已移除 {0}，釋放了 {1}。	src/ui/screens/trip.js:243	{0} = scopeTitle(scope); {1} = size(freed)
+436oi1	ok	That was already removed.	已經移除過了。	src/ui/screens/trip.js:247	
+1mbp8t6	ok	It wasn't removed	未能移除	src/ui/screens/trip.js:250	
+1pzhsw4	ok	Nothing was removed. Try again.	沒有移除任何內容。請重試。	src/ui/screens/trip.js:250	
+knyqwh	ok	Add photos or files	新增照片或檔案	src/ui/screens/trip.js:324	
+12n59th	ok	Take a photo	拍照	src/ui/screens/trip.js:325	
+1kuasfa	ok	That file doesn't match its format: {0}	檔案格式不符：{0}	src/ui/screens/trip.js:337	{0} = why; Note: {0} is the format check's own words, in English.
+1y79g95	ok	{0} already exists. Open it from the list to edit it.	{0} 已存在。如需編輯，請從清單中開啟。	src/ui/screens/trip.js:347	{0} = p
+ecy82r	ok	Add a file	新增檔案	src/ui/screens/trip.js:355	
+1bmm5eq	ok	File path	檔案路徑	src/ui/screens/trip.js:356	
+16gte2l	ok	Create	建立	src/ui/screens/trip.js:358	
 aoc0k0#other	ok	{0}: # chats	{0}：# 個對話	src/ui/screens/trips.js:66	plural; # = e.fold.rows.length; {0} = monthName(e.fold.month); English: "{0}: # chat" (one), "{0}: # chats" (other)
 33pqd9	ok	Last backup {0}, to {1}.	上次備份：{0}，備份到 {1}。	src/ui/screens/trips.js:73	{0} = relTime(latest.last.at, now); {1} = latest.name; Note: {1} is the backup place's name.
 12mubvb	ok	Now	現在	src/ui/screens/trips.js:79	
