@@ -134,7 +134,7 @@ Types: `msg.user`, `out.speak`, `out.show`, `out.ask`, `model.turn`, `tool.call`
 
 - **One running instance.** A Web Lock (`navigator.locks`) allows one instance per device. A second tab shows "annai is open elsewhere. Use it here?"
 - **Reconnection.** On iOS, Safari's IndexedDB connection can drop after backgrounding. The storage layer reopens and retries transparently.
-- **Format upgrades.** The data format is versioned, with ordered migrations in the IndexedDB `versionchange` transaction, which is all-or-nothing. A failed migration leaves the old version intact. Before a large migration, annai writes an automatic backup.
+- **Format upgrades.** The data format is versioned, with ordered migrations in the IndexedDB `versionchange` transaction, which is all-or-nothing. A failed migration leaves the old version intact. A migration changes only how records are found (stores and indexes): it never rewrites or deletes a record, and a Backup holds the records, not the indexes, so a migration changes nothing a Backup holds. What a record means changes where it is read, with the old shape read as it is, since a restore or an import can bring an old shape back at any time (§12.3). A one-time rewrite at start runs again after a restore. A file it rewrites goes through the write path, which keeps the earlier version (§4.2), except that two lose theirs, because the earlier version would keep what has to go: the uploads list (the endpoints' uploads, `move-over.js`) and installed.json (a plugin's address with its keys, which moves into a secret, `plugins.js`). A trip record (`scopes.js`) and a secret have no earlier version. The endpoints from before providers are removed at start, with their files, history, models, keys and uploads (`move-over.js`; §9.8). A change that can't keep to this is a design of its own, with its own way back, and a question for the user. After a release that raises the database version, annai can't be rolled back past it (IndexedDB refuses to open at a lower version), so a fix goes forward.
 - **Persistent storage.** annai calls `navigator.storage.persist()` and shows usage in settings.
 
 ### 4.7 Formats for the model
@@ -1057,7 +1057,7 @@ The archive is written as a stream, so photo-heavy trips don't need to fit in me
 - **Preview card:** name, dates, size, contents, exporter, format version.
   - A backup opened from a git backup place previews from its manifest alone (§12.4); Import then gets the files.
 - **Choice:** "Add as a new trip", or "Replace mine", which moves the existing copy to archived trips. Nothing is overwritten silently.
-- **Checks:** fingerprints are verified and older formats are migrated. Files belonging to plugins that aren't installed are kept, inactive.
+- **Checks:** fingerprints are verified and older formats are read as they are (§4.6). Files belonging to plugins that aren't installed are kept, inactive.
 - **Who made it:** a trip whose record came with `madeBy` (§12.2) says "From Mia" on its row and in Details. It is someone else's text: drawn as text in an isolate of its own, never markup, on one line cut with … (on a chat's line, at most half of it), and never taken for what the traveller is called; Shiori isn't shown it.
 - **An archive names only content it carries** (§4.1).
   - **What comes in:** the files of what is taken, and what their logs name that the archive carries: an older version, or a file of a part not taken, such as a kept "me" (an export holds each content once). Nothing else is stored, so a skipped trip's older versions stay in the file (§4.9).
@@ -1306,7 +1306,7 @@ Eyes-free voice mode also serves users with low vision.
    - Writes are transactional (§4.2).
    - "Storage full" shows a card with real options: export a backup, remove a trip (§4.9), delete trace bodies or cached photo copies, or free up space on the device.
    - The IndexedDB connection reconnects automatically.
-   - Migrations are atomic, with a backup first.
+   - Migrations are atomic, and never rewrite or delete a record (§4.6).
 2. **Degrade, don't die.**
 
    | What's missing | What still works |

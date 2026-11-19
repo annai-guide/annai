@@ -21,6 +21,7 @@ export function openDatabase(name = DB_NAME, version = DB_VERSION) {
 
 /**
  * Ordered migrations, each in the all-or-nothing versionchange transaction (spec §4.6).
+ * A step only adds stores and indexes and never rewrites or deletes a record (spec §4.6; a test holds it).
  * @param {IDBDatabase} db @param {IDBTransaction} tx @param {number} from @param {number} to the version being opened: only steps up to it run
  */
 function upgrade(db, tx, from, to) {

@@ -297,6 +297,42 @@ export default function (test, assert) {
     await eraseDatabase(name);
   });
 
+  test('idb: an upgrade from any earlier version never rewrites or deletes a record (spec §4.6)', async () => {
+    // A record in each store, with what the indexes added since read (refs, data.old and data.new, size, type).
+    const put = {
+      blobs: [{ hash: 'h1', type: 'image/webp', size: 3, data: new Uint8Array([1, 2, 3]).buffer }],
+      files: [rec],
+      events: [{ scope: 'trip-1', seq: 1, ts: 1, type: 'tool.result', actor: 'system', refs: ['h1'], data: { old: 'h0', new: 'h1', n: 7 } }],
+      secrets: [{ id: 'key-1', value: 'abc' }],
+      scopes: [{ id: 'trip-1', kind: 'trip', name: 'Tokyo' }],
+    };
+    for (let from = 1; from < DB_VERSION; from++) {
+      const name = `annai-test-keep-v${from}-${Date.now()}`;
+      await eraseDatabase(name);
+      const old = await openDatabase(name, from);
+      assert.equal(old.version, from);
+      await new Promise((resolve, reject) => {
+        const tx = old.transaction(Object.keys(put), 'readwrite');
+        for (const [store, records] of Object.entries(put)) for (const r of records) tx.objectStore(store).put(r);
+        tx.oncomplete = () => resolve(undefined);
+        tx.onerror = () => reject(tx.error);
+      });
+      old.close();
+      (await createIdbStore(name)).close();
+      const db = await openDatabase(name);
+      assert.equal(db.version, DB_VERSION, `version ${from} was upgraded`);
+      const tx = db.transaction(Object.keys(put), 'readonly');
+      const got = await Promise.all(Object.keys(put).map((store) => new Promise((resolve, reject) => {
+        const r = tx.objectStore(store).getAll();
+        r.onsuccess = () => resolve(r.result);
+        r.onerror = () => reject(r.error);
+      })));
+      Object.values(put).forEach((records, i) => assert.deepEqual(got[i], records, `version ${from}, ${Object.keys(put)[i]}`));
+      db.close();
+      await eraseDatabase(name);
+    }
+  });
+
   test('idb: a closed store never opens the database again (a tab that stopped must not write)', async () => {
     const name = `annai-test-closed-${Date.now()}`;
     /** @type {IDBDatabase[]} */
