@@ -265,12 +265,12 @@ export async function follow(agent, scope, { read, show, state }) {
   let last = 0;
   /** @type {any[] | null} what came while the log was read */
   let early = [];
-  /** Each line is shown after the one before it; one that fails is left out. */
+  /** Each line is shown after the one before it; one that fails is reported, as any error is, and left out. */
   let shown = Promise.resolve();
   const one = (/** @type {any} */ e) => {
     if (e.scope !== scope || !(e.seq > last)) return null;
     last = e.seq;
-    return (shown = shown.then(() => show(e)).catch((x) => console.warn(/* en */ 'a line could not be shown', x)));
+    return (shown = shown.then(() => show(e)).catch((x) => reportError(x)));
   };
   const off = agent.on('event', (e) => {
     if (state() === 'gone') {

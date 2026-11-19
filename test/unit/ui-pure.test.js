@@ -244,18 +244,21 @@ test("follow: an event that comes while an earlier one is still being drawn (a l
   assert.deepEqual(drawn, [1, 2, 3]);
 });
 
-test('follow: a line that fails to draw (its stored text unread) is left out, and the lines after it are still drawn, read or live', async (t) => {
+test('follow: a line that fails to draw (its stored text unread) is reported, as any error is, and left out; the lines after it are drawn, read or live', async (t) => {
   /** @type {Set<(e: any) => void>} */
   const fns = new Set();
   const agent = { on: (/** @type {string} */ _kind, /** @type {(e: any) => void} */ fn) => { fns.add(fn); return () => fns.delete(fn); } };
   const ev = (/** @type {number} */ seq) => ({ seq, scope: 'trip-1', type: 'out.speak' });
-  t.mock.method(console, 'warn', () => {});
+  /** @type {number[]} */
+  const reported = [];
+  /** @type {any} */ (globalThis).reportError = (/** @type {any} */ x) => reported.push(x.seq); // the browser's; Node has none
+  t.after(() => { delete (/** @type {any} */ (globalThis)).reportError; });
   /** @type {number[]} */
   const drawn = [];
   await follow(agent, 'trip-1', {
     read: async () => [ev(1), ev(2), ev(3)],
     show: async (e) => {
-      if (e.seq === 2 || e.seq === 5) throw new Error('the stored text could not be read');
+      if (e.seq === 2 || e.seq === 5) throw Object.assign(new Error('the stored text could not be read'), { seq: e.seq });
       drawn.push(e.seq);
     },
     state: () => 'shown',
@@ -263,6 +266,7 @@ test('follow: a line that fails to draw (its stored text unread) is left out, an
   for (const fn of fns) { fn(ev(4)); fn(ev(5)); fn(ev(6)); }
   await new Promise((r) => setTimeout(r, 50));
   assert.deepEqual(drawn, [1, 3, 4, 6]);
+  assert.deepEqual(reported, [2, 5]);
 });
 
 test('the viewer knows which part of the photo is on screen', () => {
