@@ -698,10 +698,11 @@ export class Agent {
   }
 
   /**
-   * Opens the conversation of a trip (or of "me" when none is open), stopping any turn at once. Opens run one after another and only the latest
+   * Opens the conversation of a trip (or of "me" when none is open), stopping any turn at once, and closing the microphone: a line still being said or
+   * judged in it is let go (#route). Opens run one after another and only the latest
    * counts; until it is done no turn starts, so what the user types goes to the conversation being opened. A crash's open tool calls get results (spec §6.7).
    * @param {string | null} trip
-   * @param {{ quiet?: boolean, moved?: boolean }} [o] quiet: the conversation is being removed, so it is not told that she will pick it up, and every line still being judged is written first;
+   * @param {{ quiet?: boolean, moved?: boolean }} [o] quiet: the conversation is being removed, so it is not told that she will pick it up;
    *   moved: the user chose to carry on in this trip on annai's card (open_trip), so the turn it cuts is let go, nothing owed where it was
    */
   open(trip, o = {}) {
@@ -721,7 +722,7 @@ export class Agent {
     }
     if (this.#busy) this.#halt();
     this.#clearTimer();
-    this.opening = this.opening.catch(() => {}).then(() => this.#open(trip, generation, o.quiet)).catch(async (e) => {
+    this.opening = this.opening.catch(() => {}).then(() => this.#open(trip, generation)).catch(async (e) => {
       if (generation === this.#generation) {
         this.#target = this.trip; // it stays the one open, so opening it is asked for again
         await this.#keepElsewhere(this.scope).catch(() => {}); // else idle() waits on lines typed meanwhile
@@ -734,11 +735,10 @@ export class Agent {
     return this.opening;
   }
 
-  /** @param {string | null} trip @param {number} generation @param {boolean} [quiet] */
-  async #open(trip, generation, quiet) {
+  /** @param {string | null} trip @param {number} generation */
+  async #open(trip, generation) {
     if (generation !== this.#generation) return;
     await this.#whenFree();
-    if (quiet) await this.#hearing; // every line still being judged: nothing comes after the removal (#route)
     const scope = trip ?? ME;
     const transcript = await this.#load(scope);
     if (generation !== this.#generation) return;
@@ -3655,7 +3655,8 @@ export class Agent {
 
   /**
    * Where a segment goes (spec §10.4): the answer she listens for; a tap's first words, which wake her; or, while she works,
-   * her next call, which a new turn takes if this one ends first: nothing heard is lost. @param {Heard} h @param {{ at: number, over: boolean, tap: boolean }} began when its speech began, over her voice, in a tap's microphone
+   * her next call, which a new turn takes if this one ends first: nothing heard is lost, but a line still being said or judged as another conversation
+   * opens is let go, as the turn is. @param {Heard} h @param {{ at: number, over: boolean, tap: boolean }} began when its speech began, over her voice, in a tap's microphone
    * @param {Ear} ear heard it
    */
   async #route(h, began, ear) {
@@ -3664,11 +3665,14 @@ export class Agent {
       if (!this.#speaking) this.#speechStopped(false);
       return;
     }
+    // Heard in a conversation no longer the one open (an open closed its microphone, and the card above, stopped with it, took nothing): let go, as
+    // the turn waiting on it is; not judged, written nowhere.
+    const here = () => ear.scope === (this.#target ?? ME);
+    const drop = () => void this.voice?.memory.drop(h.id);
+    if (!here()) return drop();
     // A tap's line, by how it began, whatever happened since (the microphone closed, the listening ended, she got busy): for her, never gated.
     const tapped = began.tap;
-    // Heard in a conversation no longer open: kept there, as a typed line is (below).
-    const here = () => ear.scope === (this.#target ?? ME);
-    const p = here() && this.#pending?.listening ? this.#pending : null;
+    const p = this.#pending?.listening ? this.#pending : null;
     /** @type {'shiori' | 'chatter' | 'unsure' | null} the gate's, once it judged this line: a listening that ends meanwhile doesn't ask again */
     let verdict = null;
     if (p) {
@@ -3714,11 +3718,7 @@ export class Agent {
       }
     }
     if (!tapped) verdict ??= await this.#gate(h, ear.scope);
-    if (!here() && this.scope === ear.scope) await this.#whenFree(); // the stopped turn's end settles earlier writes
-    if (!here()) {
-      await (verdict === 'chatter' ? this.#logHeard(h, { dismissed: true, gate: 'chatter' }, this.#keptIn(ear.scope)) : this.#keepFor(ear.scope, { kind: 'heard', text: '', heard: h, ...(verdict ? { gate: verdict } : {}) }));
-      return;
-    }
+    if (!here()) return drop(); // opened while it was judged
     if (tapped) {
       // It wakes her, or joins her turn, and the microphone is the turn's from then on.
       this.#turnsEar(ear);

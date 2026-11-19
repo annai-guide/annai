@@ -7,7 +7,7 @@ import { tripTools } from '../../src/core/agent/trip-tools.js';
 import { runTool, RESULT_MAX } from '../../src/core/agent/tools.js';
 import { wellFormed } from '../../src/core/web-search.js';
 import { KOE_TOOLS } from '../../src/core/koe/tools.js';
-import { createTrip, removeTrip, listTrips, tripMirror, ME, SYS_SETTINGS } from '../../src/core/scopes.js';
+import { createTrip, removeTrip, removeLeftovers, listTrips, tripMirror, ME, SYS_SETTINGS } from '../../src/core/scopes.js';
 import { timelineRows } from '../../src/core/timeline.js';
 import { record } from '../../src/core/agent/log.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
@@ -4153,7 +4153,7 @@ test("classic voice with a quick gate, annai's card waiting: the microphone fail
   assert.equal(sentTimes(k, 'Hmm, the ramen place'), 1, 'and it reached her');
 });
 
-test("classic voice with a quick gate, annai's card waiting: another conversation opening under a line said into the microphone a tap opened: the line is never judged by the gate (shape a; probe O)", async (t) => {
+test("classic voice with a quick gate, annai's card waiting: another conversation opening under a line said into the microphone a tap opened: the line is never judged by the gate, and is let go with the conversation left (shape a; probe O)", async (t) => {
   useClock(t);
   const k = await gatedKit(['Hmm, the ramen place'], ['B']);
   k.agent.send('Where did we eat in Testville?');
@@ -4166,7 +4166,7 @@ test("classic voice with a quick gate, annai's card waiting: another conversatio
   await pause(15 * k.agent.secondMs);
   await k.agent.idle();
   assert.equal(gated(k), 0, 'no gate call');
-  assert.deepEqual((await heardAside(k, from)).map(([, aside]) => aside), [false], 'one line, not set aside, in the conversation it was heard in');
+  assert.deepEqual(await heardAside(k, from), [], 'nothing written where it was heard');
   assert.deepEqual(await heardAside(k, TV), [], 'none in the conversation opened');
 });
 
@@ -5334,8 +5334,8 @@ test("classic voice with a quick gate: her question said aloud, a passenger's li
 });
 
 // ---- listen-rest-next: the three Deferred entries tap-ear-next left on her listening. No window opens whose time has passed; a tap made inside her
-// question's 8 s keeps 8 s from its own open; a heard line keeps the conversation it was heard in, and the window after she spoke opens only in the
-// conversation its turn ran in. ----
+// question's 8 s keeps 8 s from its own open; a heard line reaches only the conversation it was heard in (one left before the line reached her lets it go,
+// the keep-line design check's option B), and the window after she spoke opens only in the conversation its turn ran in. ----
 
 /** The dock's words from now on, each change once. @param {any} k */
 const docked = (k) => {
@@ -5412,7 +5412,7 @@ test("classic voice: her question said aloud, voice goes off at 3 s, and the tra
   assert.ok(k.said.includes('Dinner it is.'));
 });
 
-test("classic voice with a quick gate: her question said aloud, a line said at 2 s whose verdict (for her) is held, and the traveller opens another conversation at 3 s: the verdict, at 4 s, wakes nothing there; the line stays in the conversation it was heard in, and she answers it when they come back (closes the Deferred \"Another conversation opened within a moment of her listening can receive its last line or its window\")", async (t) => {
+test("classic voice with a quick gate: her question said aloud, a line said at 2 s whose verdict (for her) is held, and the traveller opens another conversation at 3 s: the verdict, at 4 s, wakes nothing there, and the line is let go with the conversation left: written nowhere, and nothing is said when they come back (closes the Deferred \"Another conversation opened within a moment of her listening can receive its last line or its window\")", async (t) => {
   useClock(t);
   let rel = () => {};
   const gateHeld = new Promise((r) => { rel = () => r(undefined); });
@@ -5433,16 +5433,16 @@ test("classic voice with a quick gate: her question said aloud, a line said at 2
   await k.agent.idle();
   assert.deepEqual(await heardIn(k, other), [], 'nothing heard was written in the conversation opened');
   assert.ok(!k.said.includes('Dinner it is.'), 'and nothing woke her there');
-  assert.deepEqual((await heardAside(k, from)).map(([, aside]) => aside), [false], 'the line is in the conversation it was heard in, kept for her');
+  assert.deepEqual(await heardAside(k, from), [], 'nor where it was heard');
   assert.match(String((await resultsOf(k, 'ask'))[0]), /^Not answered: the user opened another conversation/);
+  assert.equal(k.voice.memory.size, 0, 'its sound is let go too');
   await k.agent.open(from);
-  await until(() => k.said.includes('Dinner it is.'), 20_000);
+  await pause(10 * k.agent.secondMs);
   await k.agent.idle();
-  assert.equal(sentTimes(k, 'Dinner please'), 1, 'she answered it there');
-  assert.deepEqual(await heardAside(k, from), [['Dinner please', false]], 'and its turn wrote its words down');
+  assert.ok(!k.said.includes('Dinner it is.'), 'nothing is said on return: their next line answers her');
 });
 
-test("classic voice with a quick gate: her question said aloud, a passenger's line said at 2 s whose verdict (not for her) is held, and the traveller opens another conversation at 3 s: the line is set aside in the conversation it was heard in, not in the one opened", async (t) => {
+test("classic voice with a quick gate: her question said aloud, a passenger's line said at 2 s whose verdict (not for her) is held, and the traveller opens another conversation at 3 s: the line is written in neither conversation", async (t) => {
   useClock(t);
   let rel = () => {};
   const gateHeld = new Promise((r) => { rel = () => r(undefined); });
@@ -5462,7 +5462,7 @@ test("classic voice with a quick gate: her question said aloud, a passenger's li
   rel();
   await k.agent.idle();
   assert.deepEqual(await heardIn(k, other), [], 'nothing heard was written in the conversation opened');
-  assert.deepEqual((await heardAside(k, from)).map(([, aside]) => aside), [true], 'set aside where it was heard');
+  assert.deepEqual(await heardAside(k, from), [], 'nor where it was heard');
   assert.ok(!k.said.includes('Dinner it is.'));
 });
 
@@ -5493,7 +5493,7 @@ test("classic voice: her speak's microphone is still opening when the traveller 
   assert.deepEqual(dock(k), ['sleeping', 'Tap to talk']);
 });
 
-test("classic voice with a quick gate: two lines said into her question's listening, the first's verdict held while the traveller opens another conversation and her speak listens there: the second line, judged after, is judged against the conversation it was heard in and stays there; it never answers her speak in the one opened", async (t) => {
+test("classic voice with a quick gate: two lines said into her question's listening, the first's verdict held while the traveller opens another conversation and her speak listens there: the second line, behind it, is never judged, and neither answers her speak in the one opened or is written anywhere", async (t) => {
   useClock(t);
   let rel = () => {};
   const gateHeld = new Promise((r) => { rel = () => r(undefined); });
@@ -5515,16 +5515,14 @@ test("classic voice with a quick gate: two lines said into her question's listen
   await until(() => k.said.includes('Hello there.') && k.agent.state.name === 'listening');
   rel();
   await k.agent.idle();
-  assert.equal(gated(k), 2, 'each line judged once');
-  assert.doesNotMatch(JSON.stringify(k.sent['model-d'][1]), /Hello there/, "not against the opened conversation's lines");
-  assert.match(JSON.stringify(k.sent['model-d'][1]), /Lunch or dinner\?/, "against its own conversation's");
+  assert.equal(gated(k), 1, 'only the line whose verdict was out when they left');
   const there = await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(other, { types: ['tool.result'] }));
   assert.match(String(there.find((/** @type {any} */ e) => e.data.name === 'speak')?.data.content), /Heard nothing \(20 seconds\)\.$/, 'her speak in the conversation opened heard nothing');
   assert.deepEqual(await heardIn(k, other), []);
-  assert.deepEqual((await heardAside(k, from)).map(([, aside]) => aside), [true, false], 'both where they were heard: the passenger set aside, the second kept for her');
+  assert.deepEqual(await heardAside(k, from), [], 'and nothing where they were heard');
 });
 
-test("classic voice with a quick gate: a line said into her question's listening is being judged when the traveller removes the trip: Remove's leaving waits for it, so it is written before the trip goes and nothing of it is left in the store after", async (t) => {
+test("classic voice with a quick gate: a line said into her question's listening is being judged when the traveller removes the trip: Remove doesn't wait for the verdict, the line is written nowhere (not in `me` either), and the sweep annai runs as it starts clears the gate call's own trace", async (t) => {
   useClock(t);
   let rel = () => {};
   const gateHeld = new Promise((r) => { rel = () => r(undefined); });
@@ -5541,14 +5539,18 @@ test("classic voice with a quick gate: a line said into her question's listening
   let left = false;
   const leaving = k.agent.open(null, { quiet: true }).then(() => { left = true; }); // as Remove does before it removes the trip
   await atS(k, t0, 4);
-  assert.equal(left, false, 'it waits for the line being judged');
-  rel();
+  assert.equal(left, true, 'the removal waits for no verdict');
   await leaving;
   await removeTrip(k.store, from);
+  rel();
   await k.agent.idle();
   await pause(1 * k.agent.secondMs);
-  assert.deepEqual(await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(from)), [], 'nothing written into the removed trip');
+  const rows = async (/** @type {string} */ s) => (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(s))).map((/** @type {any} */ e) => e.type);
+  assert.deepEqual((await rows(from)).filter((x) => !['net.request', 'model.turn'].includes(x)), [], "only the verdict's own trace came after the removal");
+  assert.ok(!(await rows(ME)).includes('heard'), 'the line is not written into `me`');
   assert.ok(!k.said.includes('Dinner it is.'), 'and nothing woke her');
+  await removeLeftovers(k.store);
+  assert.deepEqual(await rows(from), [], 'and annai clears that as it starts');
 });
 
 test("classic voice, sound sent to the model: + opens another conversation while her turn there still writes down what it heard, and the traveller taps Shiori at once: the tap's microphone opens before that conversation has landed, and what they say into it is for the conversation opened, and wakes her there (on main too)", async (t) => {
@@ -5583,7 +5585,7 @@ test("classic voice, sound sent to the model: + opens another conversation while
 
 // ---- listen-rest-next, fix round 1: the shapes the final review and the second opinions found around the three fixes. ----
 
-test("classic voice: her question waits by hand (her reply is the question, then sleep), the traveller taps Shiori and is still speaking into the tap's microphone when another conversation is opened: their line is written after the end of the turn the open stopped, so it still stands unanswered in the conversation it was heard in, and she answers it when they come back (final review F1; probe Q13)", async (t) => {
+test("classic voice: her question waits by hand (her reply is the question, then sleep), the traveller taps Shiori and is still speaking into the tap's microphone when another conversation is opened: the line the open cut is let go, written nowhere, and nothing is said when they come back (final review F1's shape; probe Q13)", async (t) => {
   useClock(t);
   const k = await gateKit([{ toolCalls: [{ name: 'ask', input: ASK_LUNCH }, { name: 'sleep', input: {} }] }, say('Dinner it is.'), sleep, sleep], { voice: { speechIn: ['m-hear'], hears: ['Dinner please'], decide: gates(['B']) } });
   const other = await createTrip(k.ws, { title: 'Ramen crawl' });
@@ -5601,10 +5603,10 @@ test("classic voice: her question waits by hand (her reply is the question, then
   assert.deepEqual(await heardIn(k, other), [], 'nothing heard was written in the conversation opened');
   assert.ok(!k.said.includes('Dinner it is.'));
   await k.agent.open(from);
-  await until(() => k.said.includes('Dinner it is.'), 20_000);
+  await pause(10 * k.agent.secondMs);
   await k.agent.idle();
-  assert.equal(sentTimes(k, 'Dinner please'), 1, 'she answered it there, once');
-  assert.deepEqual(await heardAside(k, from), [['Dinner please', false]]);
+  assert.ok(!k.said.includes('Dinner it is.'), 'nothing is said on return');
+  assert.deepEqual(await heardAside(k, from), [], 'and the line was written nowhere');
 });
 
 test("classic voice: her question said aloud, voice goes off at 3 s, and the traveller taps Shiori at 7.5 s, but the tap's microphone takes 1 s to open and her 8 s end meanwhile: the tap's 8 s start when it opens, so the microphone stays open, and speech begun at 9.5 s answers her question (final review F3; probe Q3)", async (t) => {
@@ -5689,4 +5691,86 @@ test("classic voice: her speak's reply is answered by a button at 12 s, and as t
   assert.deepEqual(micLog(k), ['mic open', 'mic close'], "her question's microphone only: none opened after it");
   assert.ok(!seen.includes('Listening'), `the dock never said Listening (it said: ${seen.join(' | ')})`);
   assert.deepEqual(dock(k), ['sleeping', 'Tap to talk']);
+});
+
+test("classic voice: annai's \"Carry on in Testville?\" card waits, the traveller taps Shiori and is still speaking when they tap Open: the open closes the microphone, and the line it cut is let go, written in neither conversation (as a line the card had kept is settled where it was said); she answers their carried line in Testville (re-review R1; probe RR3)", async (t) => {
+  useClock(t);
+  const k = await gateKit([OPEN_TV, sleep, say('In Testville now.'), sleep, sleep, sleep], { voice: { speechIn: ['m-hear'], hears: ['Find us lunch there'] } });
+  const from = k.agent.scope;
+  k.agent.send("Let's carry on in Testville");
+  await saidCard(k);
+  k.agent.tap();
+  await until(() => micLog(k).at(-1) === 'mic open');
+  await startsSpeaking(k);
+  await pause(1 * k.agent.secondMs);
+  k.agent.answer(k.asks[0].data.tap, 'Open');
+  await until(() => k.said.includes('In Testville now.'), 20_000);
+  await k.agent.idle();
+  assert.equal(k.agent.trip, TV);
+  assert.deepEqual([await heardAside(k, from), await heardAside(k, TV)], [[], []], 'the cut line is written nowhere');
+  assert.equal(k.voice.memory.size, 0, 'and its sound is let go');
+  await k.agent.open(from);
+  await pause(5 * k.agent.secondMs);
+  await k.agent.idle();
+  assert.deepEqual(k.said.filter((/** @type {string} */ x) => x !== k.asks[0].data.question), ['In Testville now.'], 'nothing is owed in the chat they left');
+});
+
+// ---- listen-rest-next, the drop (the keep-line design check's option B): where the line's conversation is checked, and which conversation's lines the gate reads. ----
+
+test("Koe on a chat model, annai's card waiting: a line said into Koe's microphone is still being written down for the card when the traveller opens another conversation: the card, stopped with its turn, takes nothing, and the line is let go: never judged by the gate, written in neither conversation, its sound let go too", async (t) => {
+  useClock(t);
+  const k = await koeMic(KOKORO_ASKED, KOE_CHAT, { hears: ['Hmm, the ramen place'] });
+  k.agent.send('Where did we eat in Testville?');
+  await asked(k);
+  const transcribe = k.llm.transcribe;
+  let release = () => {};
+  const held = new Promise((r) => { release = () => r(undefined); });
+  let writing = false;
+  k.llm.transcribe = async (/** @type {any} */ c) => { writing = true; await held; return transcribe(c); };
+  const from = k.agent.scope;
+  await hear(k, 'first-one');
+  await until(() => writing, 20_000); // the card writes its words down
+  const other = await createTrip(k.ws, { title: 'Ramen crawl' });
+  await k.agent.open(other);
+  release();
+  await pause(15 * k.agent.secondMs);
+  await k.agent.idle();
+  assert.equal(gated(k), 0, 'no gate call');
+  assert.deepEqual([await heardIn(k, from), await heardIn(k, other)], [[], []], 'written nowhere');
+  assert.equal(k.voice.memory.size, 0, 'and its sound is let go');
+});
+
+test("classic voice with a quick gate: + opens another conversation while her turn there still writes down what it heard, and the traveller taps Shiori at once and says a line (it wakes her there), then another into the same microphone before that conversation has landed: the second is judged against the lines of the conversation opened, not of the one left, and its gate call is traced there", async (t) => {
+  useClock(t);
+  const k = await gateKit([sleep, say('Somewhere near.'), sleep, sleep, sleep], { voice: { speechIn: ['m-hear'], hears: ['where should we eat', 'ramen please', 'and a beer'], decide: gates(['A', 'A', 'A']) } });
+  const transcribe = k.llm.transcribe;
+  let release = () => {};
+  const held = new Promise((r) => { release = () => r(undefined); });
+  let writing = false;
+  let n = 0;
+  k.llm.transcribe = async (/** @type {any} */ c) => { if (++n === 1) { writing = true; await held; } return transcribe(c); };
+  const other = await createTrip(k.ws, { title: 'Ramen crawl' });
+  const from = k.agent.scope;
+  k.agent.send('Show me the xyzzy hotel.');
+  await k.agent.idle();
+  k.agent.tap();
+  await until(() => micLog(k).at(-1) === 'mic open');
+  await hear(k, 'where-eat');
+  await until(() => writing); // her turn waits for its words
+  const opening = k.agent.open(other);
+  k.agent.tap();
+  await until(() => micLog(k).at(-1) === 'mic open');
+  await hear(k, 'first-one');
+  await pause(3 * k.agent.secondMs);
+  await hear(k, 'first-one');
+  await pause(4 * k.agent.secondMs);
+  assert.equal(k.agent.scope, from, 'the conversation opened has not landed yet');
+  release();
+  await opening;
+  await until(() => k.said.includes('Somewhere near.'), 20_000);
+  await k.agent.idle();
+  assert.equal(gated(k), 1, 'the second line was judged');
+  assert.doesNotMatch(JSON.stringify(k.sent['model-d'][0]), /xyzzy/, "not against the lines of the conversation left");
+  const traced = async (/** @type {string} */ s) => (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(s, { types: ['model.turn'] }))).filter((/** @type {any} */ e) => e.data.tag === 'gate').length;
+  assert.deepEqual([await traced(from), await traced(other)], [0, 1], 'its call traced in the conversation opened');
 });
