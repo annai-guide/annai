@@ -65,7 +65,7 @@ test("a list fetched under the ability's old address stays where it stands when 
     const add = chat.getByRole('button', { name: 'Add old-two' });
     await add.click();
     await expect(page.locator('.toasts .toast', { hasText: STALE })).toBeVisible();
-    await expect(add, 'offered again: the next tap says the same').toBeEnabled();
+    await expect(add, 'offered again').toBeEnabled();
     await expect(chat.getByRole('link', { name: /^old-two/ })).toHaveCount(0);
     await expect(chat.getByLabel('Add a model by id'), 'the page was not drawn').toHaveAttribute('data-mine', '1');
     await expect(chat.getByLabel('Add a model by id')).toHaveValue('typed-elsewhere');
@@ -221,9 +221,79 @@ const changeInStore = (page, changed) => page.evaluate(async (changed) => {
   const user = /** @type {any} */ (rec.user ?? {});
   if (changed === 'key') await setKey(store, rec.id, 'sk-signed-in-again-0123');
   else if (changed === 'list path') await saveProvider(ws, { ...rec, user: { ...user, abilities: { ...user.abilities, chat: { ...user.abilities?.chat, tunables: { ...user.abilities?.chat?.tunables, listPath: '/other/models' } } } } });
+  else if (changed === 'headers reordered') await saveProvider(ws, { ...rec, user: { ...user, headers: Object.fromEntries(Object.entries(user.headers).reverse()) } });
+  else if (changed === 'headers changed') await saveProvider(ws, { ...rec, user: { ...user, headers: { ...user.headers, 'X-Two': '3' } } });
   else await saveProvider(ws, { ...rec, user: { ...user, ...(changed === 'headers' ? { headers: { 'X-Signed-In': 'again' } } : { keyHeader: 'X-Api-Key' }) } });
   store.close();
 }, changed);
+
+/** The Extra headers typed on the provider's page and saved; the Save draws the page, so no list is on show after it. @param {import('@playwright/test').Page} page @param {string} json */
+async function saveHeaders(page, json) {
+  const headers = page.getByLabel('Extra headers (JSON)');
+  await headers.fill(json);
+  await headers.evaluate((el) => { el.dataset.drawn = 'before'; });
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(headers, 'the page was drawn').not.toHaveAttribute('data-drawn', 'before');
+}
+
+test("a Fetch asked before the Extra headers are saved with the same lines in another order lands, in the page the Save drew (fails on 15cd2ad98: the order made it another connection, and the list landed nowhere)", async ({ page }) => {
+  const s = await startFakeServer({ flavour: 'llamacpp', key: KEY, models: [model('qwen3.8-flash')] });
+  try {
+    const chat = await addLlamaCpp(page, s);
+    await saveHeaders(page, '{"X-One":"1","X-Two":"2"}');
+    const release = s.holdList();
+    await fetchHeld(chat, s);
+    await saveHeaders(page, '{"X-Two":"2","X-One":"1"}');
+    await expect(chat.getByText('Asking for its models…'), 'the page was drawn').toHaveCount(0);
+    release();
+    await expect(chat.getByText('1 model.')).toBeVisible();
+    await chat.getByRole('button', { name: 'Add qwen3.8-flash' }).click();
+    await expect(chat.getByRole('link', { name: /^qwen3\.8-flash/ })).toBeVisible();
+  } finally {
+    await s.stop();
+  }
+});
+
+test("a list on show when the Extra headers are changed in the store to the same lines in another order, the page not drawn, adds its model, and with a value changed refuses (fails on 15cd2ad98: the order alone refused the Add)", async ({ page }) => {
+  const s = await startFakeServer({ flavour: 'llamacpp', key: KEY, models: [model('qwen3.8-flash'), model('gemma5-small')] });
+  try {
+    const chat = await addLlamaCpp(page, s);
+    await saveHeaders(page, '{"X-One":"1","X-Two":"2"}');
+    await chat.getByRole('button', { name: 'Fetch model list' }).click();
+    await expect(chat.getByText('2 models.')).toBeVisible();
+    await changeInStore(page, 'headers reordered');
+    await chat.getByRole('button', { name: 'Add qwen3.8-flash' }).click();
+    await expect(chat.getByRole('link', { name: /^qwen3\.8-flash/ })).toBeVisible();
+    await chat.getByRole('button', { name: 'Fetch model list' }).click(); // an Add draws the part, and its list goes
+    await expect(chat.getByRole('button', { name: 'Add gemma5-small' })).toBeVisible();
+    await changeInStore(page, 'headers changed');
+    await chat.getByRole('button', { name: 'Add gemma5-small' }).click();
+    await expect(page.locator('.toasts .toast', { hasText: STALE })).toBeVisible();
+    await page.reload();
+    await expect(chat.getByRole('link', { name: /^gemma5-small/ })).toHaveCount(0);
+  } finally {
+    await s.stop();
+  }
+});
+
+// The control of the four below: the same hold and release with nothing changed lists, so each of them proves its own claim.
+test("a Fetch asked and answered with nothing changed lists its models (the control of the Fetches that land nowhere when the key, headers, key header or list path change)", async ({ page }) => {
+  const s = await startFakeServer({ flavour: 'llamacpp', key: KEY, models: [model('qwen3.8-flash')] });
+  try {
+    const chat = await addLlamaCpp(page, s);
+    await chat.getByLabel('Add a model by id').evaluate((el) => { el.dataset.mine = '1'; });
+    const release = s.holdList();
+    await fetchHeld(chat, s);
+    release();
+    await expect(chat.getByRole('button', { name: 'Fetch model list' })).toBeEnabled();
+    await expect(chat.getByText('1 model.')).toBeVisible();
+    await expect(chat.getByRole('button', { name: 'Add qwen3.8-flash' })).toBeVisible();
+    await expect(chat.getByText('Asking for its models…')).toHaveCount(0);
+    await expect(chat.getByLabel('Add a model by id'), 'the page was not drawn').toHaveAttribute('data-mine', '1');
+  } finally {
+    await s.stop();
+  }
+});
 
 // What a list is asked under is the ability's address and list path and the provider's headers, key header and key, as stored. A Save and Remove
 // key draw the page; a plugin's sign-in changes the key and draws nothing. A Fetch's answer lands nowhere, and a list on show refuses its Adds
@@ -253,9 +323,11 @@ for (const what of ['key', 'headers', 'key header', 'list path']) {
       const chat = await addLlamaCpp(page, s);
       await chat.getByRole('button', { name: 'Fetch model list' }).click();
       await expect(chat.getByText('1 model.')).toBeVisible();
+      await chat.getByLabel('Add a model by id').evaluate((el) => { el.dataset.mine = '1'; });
       await changeInStore(page, what);
       await chat.getByRole('button', { name: 'Add qwen3.8-flash' }).click();
       await expect(page.locator('.toasts .toast', { hasText: STALE })).toBeVisible();
+      await expect(chat.getByLabel('Add a model by id'), 'the page was not drawn').toHaveAttribute('data-mine', '1');
       await page.reload();
       await expect(chat.getByRole('link', { name: /^qwen3\.8-flash/ })).toHaveCount(0);
     } finally {

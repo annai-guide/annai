@@ -498,14 +498,14 @@ function tell(key, found) {
 
 /**
  * What a list is asked under, read in the saves' queue (once those under way have landed, and none inside the reads; so never from a queued
- * save): the ability's address and list path, the provider's headers and key; '': gone. A list's answer lands, and its Adds add, only while it reads the same.
+ * save): the ability's address and list path, the provider's headers (by name: their order is no change) and key; '': gone. A list's answer lands, and its Adds add, only while it reads the same.
  * @param {any} ctx @param {string} id @param {string} abilityId @returns {Promise<string>}
  */
 const connection = (ctx, id, abilityId) => queueSave(async () => {
   const rec = (await ctx.llm.config()).providers[id];
   const p = rec ? providerOf(rec) : null;
   const a = p?.abilities[abilityId];
-  return p && a ? JSON.stringify([a.baseUrl, a.tunables?.listPath, p.headers, p.keyHeader, await ctx.llm.keyFor(id)]) : '';
+  return p && a ? JSON.stringify([a.baseUrl, a.tunables?.listPath, Object.entries(p.headers).sort(), p.keyHeader, await ctx.llm.keyFor(id)]) : '';
 });
 
 /** An ability's models, Add a model by id and Fetch model list. @param {any} ctx @param {string} id @param {string} abilityId @param {import('../../core/llm/config.js').Model[]} models */
