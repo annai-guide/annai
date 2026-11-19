@@ -810,7 +810,7 @@ export class Agent {
       for (const w of those) w.fallbacks = [];
       await this.#logWakes(those, newId('w'), false, { log: this.#keptIn(s), trip: s === ME ? null : s });
       this.#leftClosed(s);
-      this.#queue = this.#queue.filter((w) => !those.includes(w)); // a failed write keeps them (typed lines go back: #unsaved; one waiting with a refused reminder stays: docs/limitations.md)
+      this.#queue = this.#queue.filter((w) => !those.includes(w)); // a failed write keeps them (typed lines go back: #unsaved, but for one case: docs/limitations.md)
     }
   }
 
