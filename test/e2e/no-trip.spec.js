@@ -428,7 +428,7 @@ const countIn = (page, scope, types) => page.evaluate(async ({ scope, types }) =
 test("with nothing open, a headset or car key does what the dock's Shiori button does: the standing draft opens and listens, and what is said is heard and answered there, not in `me` (key-next)", async ({ page }) => {
   const json = (/** @type {any} */ o) => ({ status: 200, type: 'application/json', body: JSON.stringify(o) });
   const server = await startModelServer({
-    '/b/v1/messages': [sse(anthropicToolReply([{ name: 'sleep', input: {} }]))],
+    '/b/v1/messages': [sse(anthropicToolReply([{ name: 'speak', input: { text: 'Ramen is close.' } }, { name: 'sleep', input: {} }]))],
     '/ears/audio/transcriptions': [json({ text: 'Where should we eat?' })],
     '/voice/audio/speech': { status: 200, type: 'audio/wav', body: Buffer.from(encodeWav(Float32Array.from({ length: 4800 }, (_, i) => 0.3 * Math.sin(i / 3)), 16000)) },
   });
@@ -464,10 +464,11 @@ test("with nothing open, a headset or car key does what the dock's Shiori button
     await expect(page.locator('.talk-label')).toHaveText('Tap to talk');
     expect(await page.evaluate(() => typeof /** @type {any} */ (window).__mediaKeys.play)).toBe('function'); // set while voice is on
     await page.evaluate(() => /** @type {any} */ (window).__mediaKeys.play());
-    await expect.poll(() => server.bodies('/b/v1/messages').length, { timeout: 30_000 }).toBe(1);
+    await expect.poll(() => server.bodies('/voice/audio/speech').map((/** @type {any} */ b) => b.input), { timeout: 30_000 }).toEqual(['Ramen is close.']); // her answer, said
+    await expect(page.locator('.talk-label')).toHaveText('Tap to talk', { timeout: 30_000 });
+    expect(server.bodies('/b/v1/messages')).toHaveLength(1);
     expect(JSON.stringify(server.bodies('/b/v1/messages')[0].messages)).toContain('Where should we eat?');
     expect(await page.evaluate(() => /** @type {any} */ (window).__micOpens)).toBe(1);
-    await expect(page.locator('.talk-label')).toHaveText('Tap to talk', { timeout: 30_000 });
     // In the draft, which the press opened, and nothing in `me`.
     const draft = decodeURIComponent(String(await page.locator('.in-convo').getAttribute('href')).split('/')[2]);
     expect(draft).toMatch(/^trip-/);
