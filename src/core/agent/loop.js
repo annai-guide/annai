@@ -2293,8 +2293,9 @@ export class Agent {
     const stuck = new Stuck();
     let steps = 0;
     let triedCompacting = false;
-    // Today's spend is the real day's: model calls are traced in real time.
-    let spent = await spentToday(this.store, this.#real.now(), this.#real.timeZone());
+    // The real day's spend, read only when a Spend per day is set.
+    const today = () => settings.budgets.spendPerDay ? spentToday(this.store, this.#real.now(), this.#real.timeZone()) : 0;
+    let spent = await today();
     let answered = false;
     let failed = false;
     /** Calls of this turn sent with a tool call required while she hadn't reached the user. */
@@ -2424,7 +2425,7 @@ export class Agent {
         if (cut.signal.aborted && !abort.signal.aborted) {
           // The call that was cut was made, and may be billed: a step of this wake, and what its trace says it cost (a cut and a call again would run past the budgets).
           steps++;
-          spent = await spentToday(this.store, this.#real.now(), this.#real.timeZone());
+          spent = await today();
           const said = await this.#cutSpeech(wakeId, /** @type {any} */ (e)?.by ?? null);
           if (said && this.#noteCut) this.#push({ kind: 'cue', text: /* en */ `a note stopped you after: ${said}` });
           this.#noteCut = false;
