@@ -37,16 +37,16 @@ test('with nothing open (no draft could be made), no turn runs: an owed turn in 
   await k.agent.open(null);
   await k.agent.idle();
   assert.equal(k.requests.length, 0, 'no restart wake');
-  // A watch firing in `me` with it "open" (live mode's path for the open conversation), and a line from a plugin's ui.shiori.send.
+  // A watch firing in `me` with it "open" (live mode's path for the open conversation), and a line sent straight to the agent (a plugin's ui.shiori.send opens the draft first, plus.js, and never gets here).
   await k.agent.wake(watchWake);
-  k.agent.send('Hello from a plugin');
+  k.agent.send('Hello, with nothing open');
   await k.agent.idle();
   assert.equal(k.requests.length, 0);
   assert.deepEqual((await eventsIn(k, ME, ['reminder'])).map((e) => e.data.text), ['Call the Hotel Aurora Test.']);
   assert.equal(k.notices.filter((n) => n.title === 'Reminder').length, 1);
   const kinds = (await eventsIn(k, ME, ['wake'])).flatMap((e) => e.data.reasons.map((/** @type {any} */ r) => r.kind));
   assert.deepEqual(kinds.sort(), ['trigger', 'user']);
-  assert.deepEqual((await eventsIn(k, ME, ['msg.user'])).map((e) => e.data.text), ['Anything near Testville?', 'Hello from a plugin']);
+  assert.deepEqual((await eventsIn(k, ME, ['msg.user'])).map((e) => e.data.text), ['Anything near Testville?', 'Hello, with nothing open']);
   assert.equal(k.agent.state.name, 'sleeping');
   // Opening a trip afterwards takes nothing of `me`'s up.
   await k.agent.open(k.trip);

@@ -12,7 +12,7 @@ function kit(o = {}) {
   g.location = { hash: '#/trips' };
   const ctx = {
     chats: { ready: 'ready' in o ? o.ready : 'trip-d', whenReady: o.whenReady ?? (() => Promise.resolve('trip-d')) },
-    agent: { target: /** @type {string | null} */ (null), open(/** @type {string} */ id) { log.push(`open ${id}`); this.target = id; return Promise.resolve(); }, tap: () => { log.push('tap'); return o.tap ?? 'listening'; } },
+    agent: { target: /** @type {string | null} */ (null), open(/** @type {string} */ id) { log.push(`open ${id}`); this.target = id; return Promise.resolve(); }, tap: () => { log.push('tap'); return o.tap ?? 'listening'; }, send: (/** @type {string} */ text) => { log.push(`send ${text}`); } },
     voice: { on: o.voice ?? true },
     ws: { update: () => Promise.resolve(), readJSON: () => Promise.resolve({}), write: () => Promise.resolve() },
     notices: { card: (/** @type {any} */ c) => log.push(`card ${c.title}`) },
@@ -160,4 +160,41 @@ test('a conversation open: every caller taps at once and opens nothing, and a pl
   }
   const { ctx } = kit();
   assert.equal(pluginUi({ ...ctx, agent: undefined }, 'trail').shiori.tap(), undefined);
+});
+
+// A plugin's ui.shiori.send(text) stands for the dock's box as ui.shiori.tap() does for its button: with nothing open, the draft first, then the line in it
+// (the same helper as tapShiori); it returns nothing, as before. That a real agent answers the line is pinned in halves-voice.test.js.
+test("a plugin's send with nothing open: a ready draft opens at once and the line goes into it, nothing awaited between; it returns nothing", () => {
+  const { ctx, log } = kit();
+  assert.equal(pluginUi(ctx, 'trail').shiori.send('How long is the trail?'), undefined);
+  assert.deepEqual(log, ['open trip-d', 'send How long is the trail?']); // synchronously, before this line
+  assert.equal(ctx.agent.target, 'trip-d');
+});
+
+test("a plugin's send with nothing open and no draft ready yet: the line waits for one and goes into it once open", async () => {
+  /** @type {(id: string) => void} */
+  let ready = () => {};
+  const { ctx, log } = kit({ ready: null, whenReady: () => new Promise((r) => { ready = (id) => { ctx.chats.ready = id; r(id); }; }) });
+  assert.equal(pluginUi(ctx, 'trail').shiori.send('How long is the trail?'), undefined);
+  assert.deepEqual(log, []);
+  ready('trip-late');
+  await tick();
+  assert.deepEqual(log, ['open trip-late', 'send How long is the trail?']);
+});
+
+test("a plugin's send with nothing open and no draft possible: the card says so, and the line is sent nowhere (not into `me`)", async () => {
+  const { ctx, log } = kit({ ready: null, whenReady: () => Promise.reject(new Error('the disk is full')) });
+  assert.equal(pluginUi(ctx, 'trail').shiori.send('How long is the trail?'), undefined);
+  await tick();
+  assert.deepEqual(log, ["card That conversation didn't open"]);
+  assert.equal(ctx.agent.target, null);
+});
+
+test("a plugin's send with a conversation open: the agent's send at once, as before; a plugin with no Shiori sends nothing", () => {
+  const { ctx, log } = kit();
+  ctx.agent.target = 'trip-1';
+  assert.equal(pluginUi(ctx, 'trail').shiori.send('Hello'), undefined);
+  assert.deepEqual(log, ['send Hello']);
+  assert.equal(pluginUi({ ...ctx, agent: undefined }, 'trail').shiori.send('Hello'), undefined);
+  assert.deepEqual(log, ['send Hello']);
 });

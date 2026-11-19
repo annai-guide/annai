@@ -1,5 +1,5 @@
 import { h, otherLang } from './dom.js';
-import { tapShiori } from './plus.js';
+import { tapShiori, sendToShiori } from './plus.js';
 
 /**
  * What plugins add to annai's screens (spec §16.4), drawn. Each item draws itself into an element
@@ -48,7 +48,7 @@ export function pluginUi(ctx, pluginId) {
       state: () => ({ ...(ctx.agent?.state ?? { name: 'sleeping', label: '' }) }),
       on,
       tap: () => (ctx.agent ? tapShiori(ctx) : undefined),
-      send: (/** @type {string} */ text) => ctx.agent?.send(String(text)),
+      send: (/** @type {string} */ text) => { if (ctx.agent) sendToShiori(ctx, String(text)); },
     }),
     live: Object.freeze({
       on: () => Boolean(ctx.live?.on),

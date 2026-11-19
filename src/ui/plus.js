@@ -35,13 +35,19 @@ export function openReadyDraft(ctx) {
 export const cantStart = (ctx, e) => { explainStorageFull(ctx, e) || tellNotOpen(ctx, e); };
 
 /**
- * A tap on Shiori: the dock's button, the media keys and `ui.shiori.tap()`. With nothing open, in the draft first, as +: the ready one at once, else once one is (or
- * the card, and no tap). @param {any} ctx @returns {string | Promise<string | undefined>} what `agent.tap()` says, or while it waits a promise of it
+ * With nothing open, `act` runs in the draft, as +: the ready one at once (nothing awaited), else once one is open; with none, the card and no `act`.
+ * @param {any} ctx @param {() => any} act @returns {any} what `act` returns, or while it waits a promise of it
  */
-export function tapShiori(ctx) {
-  if (ctx.agent.target || openReadyDraft(ctx)) return ctx.agent.tap();
-  return openDraft(ctx).then(() => ctx.agent.tap(), (e) => void cantStart(ctx, e));
+function inDraft(ctx, act) {
+  if (ctx.agent.target || openReadyDraft(ctx)) return act();
+  return openDraft(ctx).then(act, (e) => void cantStart(ctx, e));
 }
+
+/** A tap on Shiori: the dock's button, the media keys and `ui.shiori.tap()`. @param {any} ctx @returns {string | Promise<string | undefined>} what `agent.tap()` says, or a promise of it */
+export const tapShiori = (ctx) => inDraft(ctx, () => ctx.agent.tap());
+
+/** A plugin's `ui.shiori.send()`; the dock's box opens the draft itself (`drafted`). @param {any} ctx @param {string} text */
+export const sendToShiori = (ctx, text) => { void inDraft(ctx, () => ctx.agent.send(text)); };
 
 /**
  * The +: a new conversation, with no naming step. With voice on, the draft is opened and tapped before anything is awaited, so the

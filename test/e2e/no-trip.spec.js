@@ -412,7 +412,7 @@ const keepMediaKeys = (page) => page.addInitScript(() => {
     const set = MediaSession.prototype.setActionHandler;
     // On the prototype: WebKit drops a method set on a navigator object this early (fakeMicrophone).
     /** @this {MediaSession} @param {any} key @param {any} fn */
-    MediaSession.prototype.setActionHandler = function (key, fn) { keep(key, fn); return set.call(this, key, fn); };
+    MediaSession.prototype.setActionHandler = function (key, fn) { const did = set.call(this, key, fn); keep(key, fn); return did; }; // kept once the engine took it: one that throws for a key never gives the page its handler
   } else Object.defineProperty(Navigator.prototype, 'mediaSession', { configurable: true, get: () => ({ setActionHandler: keep }) });
 });
 
@@ -462,6 +462,7 @@ test("with nothing open, a headset or car key does what the dock's Shiori button
     await page.getByRole('dialog', { name: 'Kyoto' }).getByRole('button', { name: 'Remove' }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
     await expect(page.locator('.talk-label')).toHaveText('Tap to talk');
+    await expect(page.locator('.in-convo')).toHaveAttribute('hidden', ''); // the dock names no open conversation: nothing is open, so the draft below is the press's
     expect(await page.evaluate(() => typeof /** @type {any} */ (window).__mediaKeys.play)).toBe('function'); // set while voice is on
     await page.evaluate(() => /** @type {any} */ (window).__mediaKeys.play());
     await expect.poll(() => server.bodies('/voice/audio/speech').map((/** @type {any} */ b) => b.input), { timeout: 30_000 }).toEqual(['Ramen is close.']); // her answer, said
