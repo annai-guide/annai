@@ -255,7 +255,7 @@ function groundedCard(d, texts, say) {
 }
 
 /**
- * Shows a conversation's events in order, missing none: it listens before it reads, so an event that comes
+ * Shows a conversation's events in order, missing none (one that fails to draw is reported): it listens before it reads, so an event that comes
  * while the log is read is shown once, after them, each when the one before it is. Once the screen has left the page, it stops listening.
  * @param {{ on: (kind: 'event', fn: (e: any) => void) => () => void }} agent @param {string} scope
  * @param {{ read: () => Promise<any[]>, show: (e: any) => Promise<void>, state: () => 'building' | 'shown' | 'gone' }} o
