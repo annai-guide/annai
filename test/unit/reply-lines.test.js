@@ -24,6 +24,7 @@ async function reply(store) {
     await at({ type: 'out.show', data: { id: 'c2', wake: 'w1', card: { title: '故宫', choice: ['十点'] } } }),
     await at({ type: 'out.speak', data: { id: 's3', wake: 'w3' }, texts: [['text', '東京駅。']] }),
     await at({ type: 'out.speak', data: { id: 's4', wake: 'w3', live: true }, texts: [['text', '好的。']] }), // a live session's line
+    await at({ type: 'out.speak', data: { id: 's5', wake: 'w3' }, texts: [['text', '好的。']] }),
   ];
 }
 
@@ -42,6 +43,7 @@ test("replies: each of her lines gets the sentences her turn said before it (spe
     ['我们明天去故宫吧。', '好的。', '几点出发？'],
     [], // a new turn
     [], // a live session's line
+    ['東京駅。'], // the new turn's own
   ]);
   // The tag reads them: 「好的。」 alone is Han that says neither, the first listed in Han; after her Chinese, Chinese.
   const hers = wording(app, true);
@@ -55,7 +57,12 @@ test("replyBefore reads a line's reply back from the log, as replies gives it in
   const events = await reply(store);
   assert.deepEqual(await replyBefore(store, SCOPE, events[6]), ['我们明天去故宫吧。', '好的。', '几点出发？']);
   assert.deepEqual(await replyBefore(store, SCOPE, events[3]), ['我们明天去故宫吧。']);
-  assert.deepEqual(await replyBefore(store, SCOPE, events[7]), [], 'a new turn');
+  // It reads back only to the turn before: one read here, where her earlier turn's lines fill a whole page.
+  let reads = 0;
+  const counted = { ...store, tx: (/** @type {any[]} */ ...a) => { reads++; return /** @type {any} */ (store.tx)(...a); } };
+  assert.deepEqual(await replyBefore(/** @type {any} */ (counted), SCOPE, events[7]), [], 'a new turn');
+  assert.equal(reads, 1);
+  assert.deepEqual(await replyBefore(store, SCOPE, events[9]), ['東京駅。']);
   assert.deepEqual(await replyBefore(store, SCOPE, events[8]), [], 'a live line');
   assert.deepEqual(await replyBefore(store, SCOPE, { seq: events[6].seq, type: 'out.show', data: {} }), [], 'an entry with no turn (an older one)');
   // A turn of more lines than one read takes (PAGE): read back to its first.
