@@ -1038,7 +1038,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### annai makes no backup of its own before an update that changes the stored format
 - **Kind:** known limitation.
-- **What the traveller sees:** nothing at an update. The only backups are the automatic ones to the place they set, and the ones they export.
-- **Why:** such an update only adds stores and indexes and never rewrites or deletes a record (the spec's rule, held by a test); a backup taken before it would hold the same records as the phone after it. Mid-trip, with no Wi-Fi or no place set, one couldn't be written anyway.
+- **What the traveller sees:** nothing at an update but, on a long history, a first start that may take a moment longer while a new index is built. Backups are the automatic ones to the place they set, a backup place's Back up now, and the ones they export.
+- **Why:** such an update only adds stores and indexes and never rewrites or deletes a record (the spec's rule, checked by one test with a record in each store from every earlier version); a backup taken before it would hold the same records as the phone after it. Mid-trip, with no Wi-Fi or no place set, one couldn't be written anyway.
 - **Revisit when:** a change can't be made without rewriting or deleting records in a version upgrade (that change is then a design of its own and a question for the user).
 - **Approved:** 2026-11-19, the user: "Rule + one test (Rec.)".
