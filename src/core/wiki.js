@@ -1,5 +1,6 @@
 import { LANGUAGES, readingOrder } from './languages.js';
 import { readAppSettings } from './settings.js';
+import { ADDRESS_ENDS } from './address-ends.js';
 
 /**
  * Wikipedia in the traveller's languages (spec §8): each language's edition, an edition's nearest articles, and several editions' merged.
@@ -60,11 +61,13 @@ export function merged(rows, editions) {
 }
 
 const hex = (/** @type {string} */ c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`;
+const ENDS = new RegExp(`[${ADDRESS_ENDS}]`, 'g');
 /**
- * A Wikipedia or Wikivoyage page's address, its title as written (as %XX a model reads 9 characters for one): only `%`, `?`, `#`, `\`, the brackets
- * and a last `.,;:!'"` encoded, as chat's bare links end at a bracket and leave such a last character out (src/ui/markdown.js).
+ * A Wikipedia or Wikivoyage page's address, its title as written (as %XX a model reads 9 characters for one). Encoded: what a browser would read as another
+ * part of it (`%`, `?`, `#`, `\`), and what chat's bare links (src/ui/markdown.js) would take for the end of the address or leave out of it: the brackets (an
+ * unpaired one ends a link; kept encoded, as before), a last `.,;:!'"` and any of ADDRESS_ENDS, the last as UTF-8 bytes (`%E3%80%82`; `hex` is for ASCII).
  * @param {string} host @param {string} title
  */
-export const pageUrl = (host, title) => `https://${host}/wiki/${title.replace(/ /g, '_').replace(/[%?#\\()]/g, hex).replace(/[.,;:!'"]$/, hex)}`;
+export const pageUrl = (host, title) => `https://${host}/wiki/${title.replace(/ /g, '_').replace(/[%?#\\()]/g, hex).replace(ENDS, encodeURIComponent).replace(/[.,;:!'"]$/, hex)}`;
 /** An article's address on an edition's Wikipedia. @param {string} edition @param {string} title */
 export const articleUrl = (edition, title) => pageUrl(`${edition}.wikipedia.org`, title);

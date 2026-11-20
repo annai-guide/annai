@@ -5,6 +5,7 @@ import { readingOrder } from '../../src/core/languages.js';
 import { editionsOf, articlesOf, wikiSaid, merged, articleUrl, pageUrl } from '../../src/core/wiki.js';
 import { nominatimLanguages } from '../../src/core/nominatim.js';
 import { parseInline } from '../../src/ui/markdown.js';
+import { ADDRESS_ENDS } from '../../src/core/address-ends.js';
 
 /** Wikipedia's answers near Kiyomizu-dera within 1 km, as they came on 2026-11-19 (nearby's query; text under CC BY-SA 4.0). @param {string} e */
 const kiyomizu = async (e) => JSON.parse(await readFile(new URL(`../fixtures/places/wiki-kiyomizu-${e}.json`, import.meta.url), 'utf8'));
@@ -66,13 +67,13 @@ test('editions merged by Wikidata id: each article once, under the first edition
   assert.equal(merged(old, ['ja', 'en']).length, 2);
 });
 
-test("a Wikimedia page's address keeps its title as written, encoding only what a browser would read as another part of it, and the brackets (chat's links end at one)", () => {
+test("a Wikimedia page's address keeps its title as written, encoding only what a browser would read as another part of it, and the brackets (an unpaired one ends a link in chat)", () => {
   // A Wikivoyage guide's the same as a Wikipedia article's.
   assert.equal(pageUrl('en.wikivoyage.org', 'Cambria (California)'), 'https://en.wikivoyage.org/wiki/Cambria_%28California%29');
   assert.equal(pageUrl('en.wikivoyage.org', 'Big Sur'), 'https://en.wikivoyage.org/wiki/Big_Sur');
   assert.equal(pageUrl('en.wikivoyage.org', 'Zürich'), 'https://en.wikivoyage.org/wiki/Zürich');
   assert.equal(articleUrl('de', 'Zürich (Begriffsklärung)'), pageUrl('de.wikipedia.org', 'Zürich (Begriffsklärung)'));
-  // A bracket is encoded: chat's links end at one (src/ui/markdown.js), so 正法寺_(京都市東山区) would link only 正法寺_.
+  // A bracket is encoded, as it always was: an unpaired one ends a link in chat (src/ui/markdown.js, which keeps a pair inside an address it didn't write).
   assert.equal(articleUrl('ja', '正法寺 (京都市東山区)'), 'https://ja.wikipedia.org/wiki/正法寺_%28京都市東山区%29');
   assert.equal(articleUrl('en', 'Nepenthe (restaurant)'), 'https://en.wikipedia.org/wiki/Nepenthe_%28restaurant%29');
   assert.equal(articleUrl('en', "Where Is the Friend's House?"), "https://en.wikipedia.org/wiki/Where_Is_the_Friend's_House%3F");
@@ -87,7 +88,7 @@ test("a Wikimedia page's address keeps its title as written, encoding only what 
   assert.equal(decodeURIComponent(q.pathname), "/wiki/Where_Is_the_Friend's_House?");
   assert.equal(new URL(articleUrl('en', 'A\\B')).pathname, '/wiki/A%5CB');
   assert.equal(decodeURIComponent(new URL(articleUrl('ja', '正法寺 (京都市東山区)')).pathname), '/wiki/正法寺_(京都市東山区)');
-  // Why: chat's renderer ends a link at a bracket, bare or in [text](address), so a bracketed title's address links whole only with the brackets encoded.
+  // A bracketed title's address links whole in chat, bare or in [text](address).
   for (const text of [`see ${articleUrl('ja', '正法寺 (京都市東山区)')} now`, `[正法寺](${articleUrl('ja', '正法寺 (京都市東山区)')})`]) {
     const link = /** @type {any} */ (parseInline(text).find((x) => x.t === 'a'));
     assert.equal(decodeURIComponent(link.href), 'https://ja.wikipedia.org/wiki/正法寺_(京都市東山区)', text);
@@ -124,6 +125,94 @@ test("a title's last character that chat leaves out of a bare link (a sentence's
   // A bracket is still encoded, at the end too, and one before a last stop.
   assert.equal(articleUrl('en', 'Cambria (California)'), 'https://en.wikipedia.org/wiki/Cambria_%28California%29');
   assert.equal(articleUrl('en', 'Hope (Arkansas).'), 'https://en.wikipedia.org/wiki/Hope_%28Arkansas%29%2E');
+});
+
+// The Japanese and Chinese marks a bare address ends at wherever they stand (src/core/address-ends.js), listed here on purpose: a change to that set changes this test.
+const ENDS = ['。', '、', '，', '；', '！', '？', '（', '）', '」', '』'];
+
+test("a Japanese or Chinese mark in a title is encoded as UTF-8 bytes wherever it stands, and the address opens that title and links whole in chat", () => {
+  assert.equal(ADDRESS_ENDS, ENDS.join(''));
+  // Plain GETs, 2026-11-20: ja …/モーニング娘%E3%80%82 and …/藤岡弘%E3%80%81 and zh …/星球大战%EF%BC%9A原力觉醒 open their pages (decoded to the title).
+  assert.equal(articleUrl('ja', 'モーニング娘。'), 'https://ja.wikipedia.org/wiki/モーニング娘%E3%80%82');
+  assert.equal(articleUrl('ja', '藤岡弘、'), 'https://ja.wikipedia.org/wiki/藤岡弘%E3%80%81');
+  assert.equal(articleUrl('zh', '中国（消歧义）'), 'https://zh.wikipedia.org/wiki/中国%EF%BC%88消歧义%EF%BC%89');
+  for (const ch of ENDS) {
+    const bytes = [...new TextEncoder().encode(ch)].map((b) => `%${b.toString(16).toUpperCase()}`).join('');
+    for (const [where, title] of [['start', `${ch}京都`], ['middle', `京${ch}都`], ['end', `京都${ch}`], ['twice', `京${ch}${ch}都`]]) {
+      const url = articleUrl('ja', title);
+      assert.equal(url, `https://ja.wikipedia.org/wiki/${title.replaceAll(ch, bytes)}`, `${ch} at the ${where}`);
+      assert.equal(decodeURIComponent(new URL(url).pathname), `/wiki/${title}`, `${ch} at the ${where}, as the page's title`);
+      for (const text of [url, `${url} です`, `${url}。世界遺産`, `（${url}）と`, `「${url}」`, `${url}、${url}`]) {
+        const links = parseInline(text).filter((x) => x.t === 'a');
+        assert.deepEqual(links.map((x) => /** @type {any} */ (x).href), text.includes('、') ? [url, url] : [url], `${ch} at the ${where} of ${text}`);
+      }
+    }
+  }
+});
+
+test("a bare address ends at a mark of the set wherever it stands: a stop, a comma, a closing bracket, then more text, a list, a wrapped address", () => {
+  const url = 'https://ja.wikipedia.org/wiki/清水寺';
+  const other = 'https://ja.wikipedia.org/wiki/金閣寺';
+  /** @param {string} text @returns {unknown[]} the text's pieces, a link as its address */
+  const pieces = (text) => parseInline(text).map((x) => (x.t === 'a' ? { a: x.href } : x.t === 'text' ? x.v : x));
+  for (const ch of ENDS) {
+    assert.deepEqual(pieces(`${url}${ch}`), [{ a: url }, ch], `${ch} at the text's end`);
+    assert.deepEqual(pieces(`${url}${ch} 次は`), [{ a: url }, `${ch} 次は`], `${ch} before a space`);
+    assert.deepEqual(pieces(`${url}${ch}次は八坂神社`), [{ a: url }, `${ch}次は八坂神社`], `${ch} before more text`);
+  }
+  assert.deepEqual(pieces(`清水寺 ${url}、金閣寺 ${other}。`), ['清水寺 ', { a: url }, '、金閣寺 ', { a: other }, '。'], 'a list');
+  assert.deepEqual(pieces(`清水寺（${url}）と金閣寺（${other}）`), ['清水寺（', { a: url }, '）と金閣寺（', { a: other }, '）'], 'wrapped in （）');
+  assert.deepEqual(pieces(`「${url}」を見る`), ['「', { a: url }, '」を見る'], 'wrapped in 「」');
+  assert.deepEqual(pieces(`${url}（世界遺産）`), [{ a: url }, '（世界遺産）'], 'a note straight after it');
+  assert.deepEqual(pieces(`${url}？`), [{ a: url }, '？']);
+  // A mark that titles of foreign names, long vowels, dashes and quotes hold is not one: it stays in the address.
+  for (const ch of ['・', '·', 'ー', '—', '–', '’', '：', '【', '】', '「', '『', '〜', '…']) {
+    const long = `https://ja.wikipedia.org/wiki/京${ch}都`;
+    assert.deepEqual(pieces(`${long} です`), [{ a: long }, ' です'], ch);
+    assert.equal(articleUrl('ja', `京${ch}都`), long, `${ch} stays in a title as written, byte for byte`);
+  }
+});
+
+test("a title that holds nothing a bare address ends at has the address it had, byte for byte", () => {
+  for (const [edition, title] of [['ja', 'ジョージ・ワシントン'], ['ja', 'コーヒー'], ['ja', '【推しの子】'], ['zh', '星球大战：原力觉醒'], ['en', 'Mary’s Place'], ['en', 'Café · Bar'],
+    ['ja', 'ブッシュ・ジュニア'], ['ja', '京都—大阪'], ['en', 'Yahoo! JAPAN'], ['ja', '清水寺'], ['en', 'Big Sur']]) {
+    assert.equal(articleUrl(edition, title), `https://${edition}.wikipedia.org/wiki/${title.replaceAll(' ', '_')}`, title);
+  }
+});
+
+test("a bracket pair inside a bare address or a [text](address) destination stays in it (GFM's rule), an unpaired bracket ends it", () => {
+  const ja = 'https://ja.wikipedia.org/wiki/正法寺_(京都市東山区)';
+  /** @param {string} text @returns {any[]} */
+  const links = (text) => parseInline(text).filter((x) => x.t === 'a');
+  assert.deepEqual(links(`${ja} です`).map((x) => x.href), [ja]);
+  assert.deepEqual(links(`${ja}。`).map((x) => x.href), [ja]);
+  assert.deepEqual(links(`(${ja})`).map((x) => x.href), [ja]);
+  assert.deepEqual(links(`${ja}.`).map((x) => x.href), [ja]);
+  assert.deepEqual(links(`https://en.wikipedia.org/wiki/Mercury_(planet)_(x)_and`).map((x) => x.href), ['https://en.wikipedia.org/wiki/Mercury_(planet)_(x)_and']);
+  assert.deepEqual(parseInline('(see https://en.wikipedia.org/wiki/Mercury_(planet))'), [{ t: 'text', v: '(see ' }, { t: 'a', href: 'https://en.wikipedia.org/wiki/Mercury_(planet)', c: [{ t: 'text', v: 'https://en.wikipedia.org/wiki/Mercury_(planet)' }] }, { t: 'text', v: ')' }]);
+  assert.deepEqual(parseInline('https://a.test/x(y'), [{ t: 'a', href: 'https://a.test/x', c: [{ t: 'text', v: 'https://a.test/x' }] }, { t: 'text', v: '(y' }]);
+  assert.deepEqual(parseInline('(https://a.test/x)'), [{ t: 'text', v: '(' }, { t: 'a', href: 'https://a.test/x', c: [{ t: 'text', v: 'https://a.test/x' }] }, { t: 'text', v: ')' }]);
+  const [md] = links(`[正法寺](${ja})`);
+  assert.equal(decodeURIComponent(md.href), ja);
+  assert.deepEqual(md.c, [{ t: 'text', v: '正法寺' }]);
+  assert.equal(parseInline(`[正法寺](${ja})`).length, 1, 'the whole destination, nothing left over');
+  assert.equal(links('[x](https://a.test/p_(q)_(r))').length, 1);
+  // An address annai wrote has its brackets encoded: unchanged.
+  assert.equal(articleUrl('ja', '正法寺 (京都市東山区)'), 'https://ja.wikipedia.org/wiki/正法寺_%28京都市東山区%29');
+});
+
+test("[address](address) keeps the address as the link's text, and a lone _ in a word is no italics", () => {
+  assert.deepEqual(parseInline('[https://a.test/x](https://a.test/x)'), [{ t: 'a', href: 'https://a.test/x', c: [{ t: 'text', v: 'https://a.test/x' }] }]);
+  assert.deepEqual(parseInline('[see https://a.test/x here](https://b.test/y)'), [{ t: 'a', href: 'https://b.test/y', c: [{ t: 'text', v: 'see https://a.test/x here' }] }]);
+  assert.deepEqual(parseInline('[**https://a.test/x**](https://b.test/y)'), [{ t: 'a', href: 'https://b.test/y', c: [{ t: 'b', c: [{ t: 'text', v: 'https://a.test/x' }] }] }]);
+  // CommonMark: _ opens or closes emphasis only at a word's edge. …/Big_Sur's underscore is inside a word, as is notes_today's.
+  assert.deepEqual(parseInline('notes_today and https://en.wikipedia.org/wiki/Big_Sur here'),
+    [{ t: 'text', v: 'notes_today and ' }, { t: 'a', href: 'https://en.wikipedia.org/wiki/Big_Sur', c: [{ t: 'text', v: 'https://en.wikipedia.org/wiki/Big_Sur' }] }, { t: 'text', v: ' here' }]);
+  assert.deepEqual(parseInline('snake_case_name'), [{ t: 'text', v: 'snake_case_name' }]);
+  assert.deepEqual(parseInline('_x and snake_case'), [{ t: 'text', v: '_x and snake_case' }]);
+  assert.deepEqual(parseInline('日本語_です_ね'), [{ t: 'text', v: '日本語_です_ね' }]);
+  assert.deepEqual(parseInline('say _this_ now, (_that_), _you_.'),
+    [{ t: 'text', v: 'say ' }, { t: 'i', c: [{ t: 'text', v: 'this' }] }, { t: 'text', v: ' now, (' }, { t: 'i', c: [{ t: 'text', v: 'that' }] }, { t: 'text', v: '), ' }, { t: 'i', c: [{ t: 'text', v: 'you' }] }, { t: 'text', v: '.' }]);
 });
 
 test("an answer that is an error says what it says; an answer with articles or none says nothing", () => {
