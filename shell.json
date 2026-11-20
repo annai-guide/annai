@@ -1,5 +1,5 @@
 {
-  "build": "b667f362c8ff",
+  "build": "59b22b60cf0f",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -56,7 +56,7 @@
     "/src/core/agent/transcript.js": "034e7a08df77",
     "/src/core/agent/via.js": "557657aae006",
     "/src/core/agent/warmth.js": "7f1be5368415",
-    "/src/core/address-ends.js": "81663527e874",
+    "/src/core/address-ends.js": "1321adabb7c9",
     "/src/core/address.js": "d677ad7a10ba",
     "/src/core/answer.js": "f8a90a19b416",
     "/src/core/archive.js": "31a078611051",
@@ -227,7 +227,7 @@
     "/src/ui/line-kind.js": "d7698dd518b9",
     "/src/ui/live-chip.js": "07529e604f2d",
     "/src/ui/live-help.js": "0ce080ef7d9a",
-    "/src/ui/markdown.js": "239d6c64905c",
+    "/src/ui/markdown.js": "f6eaf0b1e151",
     "/src/ui/media-keys.js": "21e06a476345",
     "/src/ui/mic-help.js": "845ccacb506a",
     "/src/ui/model-check.js": "843189985928",

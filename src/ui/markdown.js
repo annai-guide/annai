@@ -10,18 +10,19 @@ import { ADDRESS_ENDS } from '../core/address-ends.js';
  */
 
 export const MD_MAX = 20_000;
-// A bare address runs to whitespace, `<`, `>`, an unpaired bracket or a mark of ADDRESS_ENDS; a pair of brackets that closes (one level, as Wikipedia's titles
-// need) stays in it (GFM's rule); a last `.,;:!?'"` stays out of it, as a sentence's own stop. A `_` opens or closes italics only at a word's edge (CommonMark's).
-const WORD = String.raw`[\p{L}\p{N}]`;
-const IN_ADDRESS = String.raw`[^\s<>()${ADDRESS_ENDS}]`;
+// A bare address runs to whitespace, `<`, `>`, an unpaired parenthesis, a `[ ] { } |` (MediaWiki refuses them in a title; so an IP-literal address, http://[::1]/,
+// doesn't link) or a mark of ADDRESS_ENDS; a pair of parentheses that closes (one level of it, GFM's rule) stays in it; a last `.,;:!?'"` stays out, as a sentence's
+// own stop. A `_` opens or closes italics only at the edge of a word of Latin letters or digits (CommonMark's; `_重要_` in Japanese or Chinese is italics).
+const WORD = String.raw`[\p{Script=Latin}\p{N}]`;
+const IN_ADDRESS = String.raw`[^\s<>()\[\]{}|${ADDRESS_ENDS}]`;
 const PAIR = String.raw`\(${IN_ADDRESS}*\)`;
 const INLINE = new RegExp([
   '`([^`\\n]+)`',
   String.raw`\*\*([^*\n]+)\*\*`,
   String.raw`\*([^*\s][^*\n]*)\*`,
   String.raw`(?<!${WORD})_([^_\s][^_\n]*)_(?!${WORD})`,
-  String.raw`\[([^\]\n]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)`,
-  String.raw`(https?:\/\/(?:${IN_ADDRESS}|${PAIR})*(?:[^\s<>().,;:!?'"${ADDRESS_ENDS}]|${PAIR}))`,
+  String.raw`\[([^\[\]\n]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)`,
+  String.raw`(https?:\/\/(?:${IN_ADDRESS}|${PAIR})*(?:[^\s<>()\[\]{}|.,;:!?'"${ADDRESS_ENDS}]|${PAIR}))`,
 ].join('|'), 'gu');
 
 /** An http(s) address, or null. @param {string} href */
