@@ -1,5 +1,5 @@
 {
-  "note": "Shapes of real answers from OpenRouter POST /api/v1/audio/speech on 2026-11-19 (the voice probe, .superpowers/briefs/voice-probe.md): each answer's Content-Type as it came, its error body, and for raw audio (response_format pcm) the size of each network piece in bytes with its time in ms after the first. No audio and no key was kept.",
+  "note": "Shapes of real answers from OpenRouter POST /api/v1/audio/speech in the voice probe of 2026-11-19: each answer's Content-Type as it came, its error body and, for raw audio (response_format pcm), its size in bytes. Only fishPcm keeps each network piece's size and time (ms after the first piece; its firstByteMs and lastByteMs count from the request); heygenPcm gives the number of its pieces, geminiPcm none. No audio and no key was kept.",
   "fishPcm": {
     "model": "fish-audio/s2.1-pro-free:free",
     "text": "about 4.8 s of English",

@@ -1,21 +1,23 @@
+import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
-import { openApp, waitForServiceWorker, startModelServer, pickProvider, savedBy, filterTrace } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, pickProvider, savedBy, filterTrace, leaveSaved } from './helpers.js';
 import { encodeWav } from '../../src/core/voice/pcm.js';
 
 // OpenRouter's voices in uncompressed audio (stream-voice-next), against a stand-in for its audio API shaped as the voice probe of
-// 2026-11-19 found it: raw 16-bit PCM named `audio/pcm;rate=44100;channels=1`, and HeyGen's voice refusing anything else with a 400.
-// No request reaches OpenRouter.
+// 2026-11-19 found it (test/fixtures/voices/openrouter-pcm-probe.json: its Content-Type for raw 16-bit PCM, and HeyGen's voice refusing
+// anything else with a 400). No request reaches OpenRouter.
+const probe = JSON.parse(readFileSync(new URL('../fixtures/voices/openrouter-pcm-probe.json', import.meta.url), 'utf8'));
 
 const STREAM = 'Stream her voice, so she starts sooner, uncompressed: several times the data (off: each sentence arrives whole first, compressed)';
 /** 0.3 s of a tone at 44.1 kHz, as raw 16-bit little-endian PCM. */
 const pcm = Buffer.from(Int16Array.from({ length: 13230 }, (_, i) => Math.round(9000 * Math.sin(i / 7))).buffer);
 /** A whole clip, for any other format asked. */
 const wav = { status: 200, type: 'audio/wav', body: Buffer.from(encodeWav(Float32Array.from({ length: 4800 }, (_, i) => 0.3 * Math.sin(i / 3)), 16000)) };
-const heygenRefuses = { status: 400, type: 'application/json', body: JSON.stringify({ error: { message: 'HeyGen Voice only supports response_format "pcm".', code: 400 } }) };
+const heygenRefuses = { status: probe.heygenMp3Refused.status, type: probe.heygenMp3Refused.contentType, body: probe.heygenMp3Refused.body };
 
-test("OpenRouter's voice page: its Stream switch starts off, so Fish Audio is asked for MP3; switched on, Fish Audio streams its uncompressed audio through the stream player while Grok stays whole; HeyGen's voice, which sends only uncompressed audio, plays; no other provider's voice page has the switch", async ({ page }) => {
+test("OpenRouter's voice page: its Stream switch starts off, so Fish Audio is asked for MP3; switched on, Fish Audio streams its uncompressed audio through the stream player while Grok stays whole; HeyGen's voice, which sends only uncompressed audio, plays; OpenAI's voice page, which no description gives the switch, has none; and a switch found on where it was ticked (an older annai showed it there) shows, and turns off", async ({ page }) => {
   const server = await startModelServer({
-    '/api/v1/audio/speech': (/** @type {any} */ body) => (body?.response_format === 'pcm' ? { status: 200, type: 'audio/pcm;rate=44100;channels=1', body: pcm }
+    '/api/v1/audio/speech': (/** @type {any} */ body) => (body?.response_format === 'pcm' ? { status: 200, type: probe.fishPcm.contentType, body: pcm }
       : /^heygen\//.test(body?.model) ? heygenRefuses : wav),
   });
   try {
@@ -83,6 +85,19 @@ test("OpenRouter's voice page: its Stream switch starts off, so Fish Audio is as
     const openai = page.getByRole('region', { name: 'Voice', exact: true });
     await expect(openai.getByLabel('Tunables (JSON)')).toBeVisible();
     await expect(openai.getByLabel(STREAM)).toHaveCount(0);
+    // Ticked all the same (an older annai showed the switch on every OpenAI-compatible voice page; here it is typed in the JSON), the voice
+    // would fail, and a page that hid the switch would leave no way to turn it off: the switch shows, ticked, and turns it off for good.
+    const json = openai.getByLabel('Tunables (JSON)');
+    await json.fill(JSON.stringify({ ...JSON.parse(await json.inputValue()), stream: true }));
+    await leaveSaved(json);
+    await page.reload();
+    const stored = page.getByRole('region', { name: 'Voice', exact: true }).getByLabel(STREAM);
+    await expect(stored).toBeChecked();
+    await stored.uncheck();
+    await expect(savedBy(stored)).toHaveText('Saved');
+    await page.reload();
+    await expect(page.getByRole('region', { name: 'Voice', exact: true }).getByLabel('Tunables (JSON)')).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Voice', exact: true }).getByLabel(STREAM)).toHaveCount(0);
   } finally {
     await server.stop();
   }

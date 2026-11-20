@@ -2,7 +2,7 @@
  * When a streamed voice may start playing. The stream player schedules each piece as it arrives, so a voice arriving slower than it plays
  * would leave gaps mid-word. Playing starts once the rest, at the rate it is arriving, will be in before playback reaches it: arriving at a
  * rate r of real time, a clip of T seconds needs (1 − r) × T in hand, T taken a fifth longer to be safe. On a good connection that is about
- * half a second from the request; on a weak one it waits, up to the whole clip, and then plays without a gap.
+ * under a second from the request; on a weak one it waits, up to the whole clip, and then plays without a gap.
  */
 
 /** Characters spoken about 7 a second: kana, Chinese characters and Hangul (a syllable or a word each). */

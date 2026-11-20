@@ -397,10 +397,11 @@ async function abilityBody(view, abilityId) {
   const waiting = keep ? (await ctx.llm.keptCount({ endpoint: `${id}/${abilityId}` })).waiting : 0;
   // Tunables the protocol offers in words (G3): one of its options, or a switch, showing what the JSON field saves too. One its type
   // has off shows only where the provider's description names it for this ability: a protocol many servers speak offers what only
-  // some do (an OpenAI-compatible voice streams only where its raw audio names its rate).
+  // some do (an OpenAI-compatible voice streams only where its raw audio names its rate). And where it is on all the same (ticked on a
+  // page of an older annai, which showed it everywhere, or typed in the JSON): there it can be turned off.
   const named = providerBase(rec).abilities[abilityId]?.tunables ?? {};
   const tune = (/** @type {string} */ k) => async (/** @type {any} */ v) => tunables.show((await saveAbility({ tunables: (/** @type {any} */ was) => ({ ...was.tunables, [k]: v }) })).tunables);
-  const choices = Object.entries(type.choices ?? {}).filter(([k]) => type.tunables?.[k] !== false || Object.hasOwn(named, k)).map(([k, c]) => ({ k, el: c.options ? savedRadios(c.label, Object.entries(c.options), String(a.tunables?.[k]), tune(k))
+  const choices = Object.entries(type.choices ?? {}).filter(([k]) => type.tunables?.[k] !== false || Object.hasOwn(named, k) || a.tunables?.[k] !== type.tunables[k]).map(([k, c]) => ({ k, el: c.options ? savedRadios(c.label, Object.entries(c.options), String(a.tunables?.[k]), tune(k))
     : savedCheck(c.label, a.tunables?.[k] !== false, tune(k)).el }));
   const showChoices = (/** @type {Record<string, any>} */ t) => {
     for (const { k, el } of choices) for (const input of el.querySelectorAll('input')) input.checked = input.type === 'radio' ? input.value === String(t[k]) : t[k] !== false;

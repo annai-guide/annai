@@ -1,5 +1,5 @@
 {
-  "build": "9f25d1bdc3d6",
+  "build": "44ca618ccce5",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -89,7 +89,7 @@
     "/src/core/llm/reasoning.js": "944a3f6e351d",
     "/src/core/llm/retry.js": "fdb90e75be0d",
     "/src/core/llm/service.js": "cdbfb462f733",
-    "/src/core/llm/speech.js": "74dd179cc811",
+    "/src/core/llm/speech.js": "33a23d01511c",
     "/src/core/llm/sse.js": "656d2989d833",
     "/src/core/llm/trace.js": "ce4c33d5516e",
     "/src/core/llm/uploads.js": "770ee4ee6a1b",
@@ -180,7 +180,7 @@
     "/src/core/voice/sentences.js": "636099e2174e",
     "/src/core/voice/settings.js": "1b17d242614f",
     "/src/core/voice/speaker.js": "e9f619791d40",
-    "/src/core/voice/stream-start.js": "1f1e01fe807d",
+    "/src/core/voice/stream-start.js": "e7508164b0c0",
     "/src/core/voice/voice.js": "2b0133918f50",
     "/src/core/voice/where.js": "91b1deb9d78f",
     "/src/core/types.js": "e971cf466c02",
@@ -266,7 +266,7 @@
     "/src/ui/screens/plugin-install.js": "00ac186440d9",
     "/src/ui/screens/plugin.js": "db6dce86872f",
     "/src/ui/screens/plugins.js": "feec46a0f15e",
-    "/src/ui/screens/provider.js": "1db0a092b2f8",
+    "/src/ui/screens/provider.js": "6a5183c5c86a",
     "/src/ui/screens/recap.js": "abc8f1c81507",
     "/src/ui/screens/replay.js": "e4648e86a038",
     "/src/ui/screens/settings.js": "26346e25d0fe",

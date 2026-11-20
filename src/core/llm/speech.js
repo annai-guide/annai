@@ -11,9 +11,11 @@ const playable = (p) => p?.pcm instanceof Int16Array && Number.isFinite(p.rate);
  * Speech calls (spec §9.1, §10): one transcription, or one voice clip, from a speech endpoint type. The type builds the HTTP request and
  * reads the reply; annai sends it with a time limit, reads errors into the same kinds as chat calls (§9.9), and traces it as a net.request
  * with its cost, with each clip's format and size. Keys never reach the trace (§9.9). A voice whose format is 'auto' is asked for the
- * smallest it offers (audioOut) that the device plays. A voice that streams (readSpeechStream, its stream tunable not off), asked for a
- * stream, gives its PCM as it comes: the call resolves at the first piece, which must come within the time limit, as a whole clip must;
- * then no gap may be longer. It is traced once all of it is in, or when it fails.
+ * smallest it offers (audioOut) that the device plays. The time limit is the voice's silence, not the time of all of it: the first byte
+ * of a clip, or the first piece of a stream, must come within it, then no gap may be longer (a PCM clip is about 5.5 times an MP3's size:
+ * on a slow link it takes longer to arrive than any limit, while never going quiet for one; the repo's rule for downloads, answer.js). A
+ * voice that streams (readSpeechStream, its stream tunable not off), asked for a stream, gives its PCM as it comes: the call resolves at
+ * the first piece. It is traced once all of it is in, or when it fails.
  * @typedef {import('./contract.js').EndpointType} EndpointType
  * @typedef {{ data: Uint8Array, mediaType: string }} Clip
  * @typedef {import('./contract.js').SpeechStream} SpeechStream
@@ -48,6 +50,8 @@ export async function speechCall(c) {
   const streams = !hearing && c.stream === true && typeof type.readSpeechStream === 'function' && spec.tunables.stream !== false;
   /** @type {number | null} */
   let firstMs = null;
+  /** Whether a whole clip's body has begun to arrive: what makes a later stall the voice stopping, not nothing starting. */
+  let arrived = false;
   const timer = new AbortController();
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let t;
@@ -70,7 +74,7 @@ export async function speechCall(c) {
   /** @param {unknown} e */
   const failed = async (e) => {
     // A voice that started, then stalled: what it was, as it is made (the said its words come from), never a message patched after.
-    const stalled = firstMs !== null && (/** @type {any} */ (e)?.name === 'TimeoutError' || signal.reason?.name === 'TimeoutError') && !(e instanceof ProviderError);
+    const stalled = (firstMs !== null || arrived) && (/** @type {any} */ (e)?.name === 'TimeoutError' || signal.reason?.name === 'TimeoutError') && !(e instanceof ProviderError);
     const err = stalled ? new ProviderError('timeout', /* en */ 'The voice stopped arriving for longer than annai waits.', { cause: e, said: { code: 'stalled' } }) : asProviderError(e, signal, type, c.registry);
     await trace(err.kind, err.message);
     return err;
@@ -89,6 +93,11 @@ export async function speechCall(c) {
     noRedirect(res, endpoint);
     if (!res.ok) {
       throw typeError(type, res.status, await res.text().catch(() => ''), res.headers);
+    }
+    if (!streams && !hearing && res.body) {
+      // A whole clip's body: each piece of it that comes starts the limit over, as a stream's does (and answer.js's downloads').
+      const body = res.body.pipeThrough(new TransformStream({ transform: (part, out) => { arrived = true; limit(/* en */ 'The voice stopped arriving.'); out.enqueue(part); } }));
+      res = new Response(body, { status: res.status, headers: res.headers });
     }
     if (streams) {
       const pieces = /** @type {NonNullable<EndpointType['readSpeechStream']>} */ (type.readSpeechStream)(res, spec)[Symbol.asyncIterator]();

@@ -25,23 +25,28 @@
  */
 const MEDIA = /** @type {Record<string, string>} */ ({ mp3: 'audio/mpeg', opus: 'audio/ogg', aac: 'audio/aac', flac: 'audio/flac', wav: 'audio/wav' });
 /**
- * The rates a 16-bit PCM voice is made at: 24 kHz (OpenAI's, Gemini's, Grok's, Voxtral's, Kokoro's) and 44.1 kHz (Fish Audio's,
- * HeyGen's) as the probe of 2026-11-19 saw them, cross-checked against their MP3's length within 2%; 8, 16, 22.05, 32 and 48 kHz,
- * the other PCM outputs ElevenLabs and Azure list (their text-to-speech references, read 2026-11-19: ElevenLabs alone has 32 kHz). A
- * rate outside them is a header annai can't trust, not one to play at.
+ * The rates a 16-bit PCM voice is made at: 24 kHz (Gemini's, Grok's, Voxtral's, Kokoro's) and 44.1 kHz (Fish Audio's, HeyGen's) as the
+ * probe of 2026-11-19 saw them, cross-checked against their MP3's length within 2%; 24 kHz is also OpenAI's own, as its speech guide
+ * documents it (the probe named no OpenAI voice, and nothing here measured it); 8, 16, 22.05, 32 and 48 kHz, the other PCM outputs
+ * ElevenLabs and Azure list (their text-to-speech references, read 2026-11-19: ElevenLabs alone has 32 kHz). A rate outside them is a
+ * header annai can't trust, not one to play at.
  */
 const RATES = new Set([8000, 16000, 22050, 24000, 32000, 44100, 48000]);
+/** The names a raw PCM answer goes by: only audio/pcm, which is 16-bit little-endian, is played (IANA's audio/L16 is big-endian). */
+const RAW = /^audio\/(?:pcm|x-pcm|l\d+)$/i;
 /**
- * A PCM answer's rate by our own rule (RULES principle 9): the Content-Type is audio/pcm, with one rate among RATES and, if it says,
- * one channel. Else null. @param {string} header
+ * A PCM answer's rate by our own rule (RULES principle 9): the Content-Type is audio/pcm, with nothing but one rate among RATES and, if
+ * it says, one channel. Anything else (a parameter such as encoding=f32le, which may change what the bytes are, or another name for
+ * raw audio) is not a form annai plays: null. @param {string} header
  */
 function pcmRate(header) {
   const [type, ...params] = header.toLowerCase().split(';').map((s) => s.trim());
   const values = (/** @type {string} */ name) => params.filter((p) => p.startsWith(`${name}=`)).map((p) => p.slice(name.length + 1));
-  const [rate, ...more] = values('rate');
+  const rates = values('rate');
   const channels = values('channels');
-  const ok = type === 'audio/pcm' && !more.length && /^\d+$/.test(rate ?? '') && RATES.has(Number(rate)) && (!channels.length || (channels.length === 1 && channels[0] === '1'));
-  return ok ? Number(rate) : null;
+  const ok = type === 'audio/pcm' && params.length === rates.length + channels.length && rates.length === 1 && /^\d+$/.test(rates[0]) && RATES.has(Number(rates[0]))
+    && (!channels.length || (channels.length === 1 && channels[0] === '1'));
+  return ok ? Number(rates[0]) : null;
 }
 /**
  * Bytes of 16-bit little-endian PCM as samples, after the odd byte a piece before ended with; the odd byte this one ends with is
@@ -60,7 +65,7 @@ function samples(odd, bytes) {
   return { pcm, odd: all.length % 2 ? all.slice(-1) : null };
 }
 /** Whether a voice is asked for raw audio. @param {{ providerId: string }} model @param {Record<string, any>} t */
-const asksPcm = (model, t) => t.format === 'pcm' || t.stream !== false
+const asksPcm = (model, t) => t.format === 'pcm' || t.stream === true
   || [].concat(t.pcmOnly ?? []).some((/** @type {unknown} */ p) => typeof p === 'string' && p !== '' && String(model.providerId).startsWith(p));
 const EXT = /** @type {Record<string, string>} */ ({ 'audio/wav': 'wav', 'audio/mpeg': 'mp3', 'audio/webm': 'webm', 'audio/mp4': 'm4a', 'audio/ogg': 'ogg', 'audio/aac': 'aac', 'audio/flac': 'flac' });
 const CODES = /** @type {Record<string, string>} */ ({ invalid_api_key: 'auth', insufficient_quota: 'credit', model_not_found: 'not-found' });
@@ -132,14 +137,17 @@ export function activate(annai) {
   /** A PCM answer annai can't play: the Content-Type it came with, quoted (cut short), is the evidence. @param {string} header */
   const unplayable = (header) => {
     const said = header.replace(/[^\x20-\x7e]/g, '?').slice(0, 80);
-    return new ProviderError('server', /^\s*audio\/pcm\s*(;|$)/i.test(header) ? `The voice sent raw audio (PCM) with no rate annai can play it at ("${said}").`
+    return new ProviderError('server', RAW.test(header.split(';')[0].trim()) ? `The voice sent raw audio (PCM) in a form annai can't play ("${said}"): it plays 16-bit mono at a rate it knows.`
       : `The voice sent ${said ? `"${said}"` : 'no content type'}, not the raw audio (PCM) annai asked for.`);
   };
   /** The answer's PCM as it arrives, at the rate it names (its Content-Type, read by pcmRate). @param {Response} res @returns {AsyncGenerator<{ pcm: Int16Array, rate: number }>} */
   async function* pieces(res) {
     const header = res.headers.get('content-type') ?? '';
     const rate = pcmRate(header);
-    if (!rate) throw unplayable(header);
+    if (!rate) {
+      res.body?.cancel().catch(() => {}); // not read: the connection goes, with its sentence said whole by the next voice
+      throw unplayable(header);
+    }
     if (!res.body) return;
     const reader = res.body.getReader();
     /** @type {Uint8Array | null} */
@@ -195,12 +203,17 @@ export function activate(annai) {
       // the prefixes of the ids of voices that answer only raw audio.
       tunables: { path: '/audio/speech', listPath: '/models', voice: 'marin', format: 'auto', audioOut: ['opus', 'aac', 'mp3', 'flac', 'wav'], style: '', speed: null, stream: false },
       // Its switch shows only where a provider's description names `stream` (provider.js): OpenRouter's voices name their PCM's rate,
-      // which other servers' may not. Raw audio is about 3 times an MP3's data at 24 kHz, 5.5 times at 44.1 kHz (the probe, 2026-11-19).
+      // which other servers' may not. Raw audio is about 3 times an MP3's data at 24 kHz, 5.5 times at 44.1 kHz: 16-bit mono at 384 and
+      // 705.6 kbit/s against a 128 kbit/s MP3 (nominal; the probe's Fish Audio clip, 442,368 bytes against 78,157, was 5.66 times).
+      // Streamed, Fish Audio's voice started 2.0, 4.1 and 5.4 s sooner for texts of 4.8, 10.3 and 11.3 s of speech (the probe: the MP3's
+      // last byte less the stream's first piece): the "2 to 5 seconds" of the provider's note.
       choices: { stream: { label: t`Stream her voice, so she starts sooner, uncompressed: several times the data (off: each sentence arrives whole first, compressed)` } },
       /** What OpenRouter adds to a Fish Audio model's text, "[style] ", is billed with it. @param {any} c */
       extraChars: ({ model, tunables: t }) => styleOf(t).length + (styleOf(t) && /^fish-audio\//.test(model.providerId) ? 3 : 0),
       /** @param {any} c */
       speechRequest: ({ endpoint, model, key, tunables: t, text }) => {
+        // An update reaches an annai still running its older shell, without WAV, until a restart: raw audio is played as a WAV clip.
+        if (asksPcm(model, t) && !wav) throw new Error('OpenAI-compatible voice needs a newer annai for raw audio: restart annai to update it.');
         /** @type {Record<string, any>} */
         let body = { model: model.providerId, input: text, response_format: asksPcm(model, t) ? 'pcm' : t.format === 'auto' ? 'mp3' : t.format }; // auto: annai chose none
         if (t.voice) body.voice = t.voice; // none: the provider picks (Fish Audio's free voice on OpenRouter picks a different speaker each time)
@@ -216,7 +229,7 @@ export function activate(annai) {
         if (!data.length) throw new ProviderError('server', 'The voice sent back no audio.');
         const header = res.headers.get('content-type') ?? '';
         const type = header.split(';')[0].trim();
-        if (/^audio\/pcm$/i.test(type) || (!type.startsWith('audio/') && asksPcm(model, t))) {
+        if (RAW.test(type) || (!type.startsWith('audio/') && asksPcm(model, t))) {
           const rate = pcmRate(header);
           if (!rate) throw unplayable(header);
           return { data: wav.encode(samples(null, data).pcm, rate), mediaType: 'audio/wav' };
