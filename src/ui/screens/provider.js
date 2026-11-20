@@ -534,14 +534,16 @@ function modelsPart(ctx, id, abilityId, models) {
       // Busy from the tap: a second tap would only be refused, its id taken by the first.
       add.disabled = true;
       try {
-        const made = await ctx.llm.addModelById(id, abilityId, modelId);
+        // A voice's list is read for the add: its voice is used only if the connection is still the one it was read under.
+        const asked = await connection(ctx, id, abilityId);
+        const made = await ctx.llm.addModelById(id, abilityId, modelId, async () => (await connection(ctx, id, abilityId)) === asked);
         const cfg = await ctx.llm.config();
         const rec = cfg.models[made];
         add.disabled = false; // as the add ends, not with the draw
         // A free name where another has the name it would have had (addModelById): said.
         const wanted = (cfg.providers[id] && providerOf(cfg.providers[id]).abilities[abilityId]?.modelDefaults?.name) || modelId;
         const name = rec ? modelOf(rec).name : wanted;
-        if (name !== wanted) ctx.notices.toast(t`Added as "${name}": "${wanted}" is already used by another model.`);
+        if (name.toLowerCase() !== wanted.toLowerCase()) ctx.notices.toast(t`Added as "${name}": "${wanted}" is already used by another model.`);
         ctx.render();
       } catch (e) {
         showError(status, e);

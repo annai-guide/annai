@@ -16,7 +16,7 @@ import { adjusted, setupOf } from './setup.js';
 import { callRole, Bench, candidates, COOLDOWN_MS } from './fallback.js';
 import { modelTrace } from './trace.js';
 import { forgetPhotoHashes } from './call.js';
-import { Uploads, sweepUploads } from './uploads.js';
+import { Uploads, sweepUploads, REQUEST_MS } from './uploads.js';
 import { Kept, keyPrint, keeperOf } from './kept.js';
 import { speechCall } from './speech.js';
 import { withoutSecretsIn } from '../agent/net.js';
@@ -352,8 +352,25 @@ export function createLlm({
      * @param {string} providerId @param {string} abilityId @param {import('./contract.js').ListedModel} listed @returns {Promise<string>} the model's id
      */
     addListedModel: (providerId, abilityId, listed) => addListedModel({ ws }, providerId, abilityId, listed),
-    /** @param {string} providerId @param {string} abilityId @param {string} providerModelId @returns {Promise<string>} the model's id */
-    addModelById: (providerId, abilityId, providerModelId) => addModelById({ ws }, providerId, abilityId, providerModelId),
+    /**
+     * A voice needs one its server knows, which only its list says (the probe of 2026-11-20: HeyGen, Google, xAI, Mistral and Kokoro answered
+     * 400 to a request with no voice; Fish Audio and ByteDance take none): the list's entry for this id (case ignored), read for up to
+     * REQUEST_MS (a router's is 57 KB, 47 ms), is added as the list's Add adds it, named by its id. With no list to read, or an id it lacks,
+     * the ability's voice, as before. A chat list (hundreds) is not read. sameConnection, asked after the read: whether the add lands under
+     * the connection the list was read under; if not, the list's voice is not used. @param {string} providerId @param {string} abilityId @param {string} providerModelId @param {() => Promise<boolean>} [sameConnection]
+     * @returns {Promise<string>} the model's id
+     */
+    addModelById: async (providerId, abilityId, providerModelId, sameConnection = async () => true) => {
+      const rec = (await readConfig(ws)).providers[providerId];
+      /** @type {import('./contract.js').ListedModel[]} */
+      let listed = [];
+      if (rec && providerOf(rec).abilities[abilityId]?.kind === 'voice') await within(service.listModels(providerId, abilityId).then((all) => { listed = all; }), REQUEST_MS);
+      const wanted = providerModelId.toLowerCase();
+      const found = listed.find((m) => m.providerId.toLowerCase() === wanted);
+      if (!found || !(await sameConnection())) return addModelById({ ws }, providerId, abilityId, providerModelId);
+      const { name: _, loaded: __, ...start } = found; // named by its id; loaded is said on a list, never kept
+      return addListedModel({ ws }, providerId, abilityId, start);
+    },
     /**
      * Add's tap on a provider with code: its plugin, with what it requires; then null when the plugin has its own
      * Add flow (a panel, decision 15), which adds it, or the provider added. @param {string} plugin

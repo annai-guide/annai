@@ -96,20 +96,30 @@ const readList = (json) => entries(json).map(listed);
 const TAKES_STYLE = /^(?:openai\/gpt-4o-mini-tts|google\/|fish-audio\/)/;
 /** A calm, warm voice among a list's, which is the model's voice before the list's first. */
 const WARM = /^(?:sulafat|marin|af_heart)$|neutral/i;
+/** @param {any} m @returns {string[]} an OpenRouter entry's own voices */
+const voicesOf = (m) => (Array.isArray(m.supported_voices) ? m.supported_voices.filter((/** @type {any} */ v) => typeof v === 'string' && v) : []);
 /**
  * A speech list. Only OpenRouter's entries carry supported_voices (null for Fish Audio's, which takes any voice of its library): from
  * those, each model's own voices, its voice (a warm one, else the first) and, for a vendor its docs say ignores instructions,
- * `styled: false`. Any other server's list is read as it is.
+ * `styled: false`. An entry that lists none takes those of its base, as OpenRouter writes a variant: the id after the last ":" of its slug
+ * is a variant of the id before it ("heygen/heygen-voice-1-turbo:free" plays with the voices of "heygen/heygen-voice-1-turbo", which the
+ * answers of 2026-11-20 showed), when the same list has that id with voices. Any other server's list is read as it is.
  * @param {any} json
  */
-const readSpeechList = (json) => entries(json).map((m) => {
-  const voices = Array.isArray(m.supported_voices) ? m.supported_voices.filter((/** @type {any} */ v) => typeof v === 'string' && v) : [];
-  const tunables = {
-    ...(voices.length ? { voice: voices.find((/** @type {string} */ v) => WARM.test(v)) ?? voices[0], voices } : {}),
-    ...('supported_voices' in m && !TAKES_STYLE.test(m.id) ? { styled: false } : {}),
-  };
-  return Object.keys(tunables).length ? { ...listed(m), tunables } : listed(m);
-});
+const readSpeechList = (json) => {
+  const all = entries(json);
+  const byId = new Map(all.map((m) => [m.id, m]));
+  return all.map((m) => {
+    const own = voicesOf(m);
+    const colon = m.id.lastIndexOf(':');
+    const voices = own.length || colon < 1 ? own : voicesOf(byId.get(m.id.slice(0, colon)) ?? {});
+    const tunables = {
+      ...(voices.length ? { voice: voices.find((/** @type {string} */ v) => WARM.test(v)) ?? voices[0], voices } : {}),
+      ...('supported_voices' in m && !TAKES_STYLE.test(m.id) ? { styled: false } : {}),
+    };
+    return Object.keys(tunables).length ? { ...listed(m), tunables } : listed(m);
+  });
+};
 
 /** A style as plain words: whitespace collapsed, at most 200 characters, no trailing punctuation. @param {unknown} s */
 const plain = (s) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, 200).replace(/[\s.,;:!?]+$/, '');

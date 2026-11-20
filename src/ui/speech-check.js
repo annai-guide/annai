@@ -1,19 +1,31 @@
 import { h, settled, t, asUser, messageOf } from './dom.js';
 import { relTime, speaksScreens } from './format.js';
 import { readAppSettings } from '../core/settings.js';
-import { ProviderError, explain } from '../core/llm/contract.js';
+import { ProviderError, explain, providerReason } from '../core/llm/contract.js';
 import { markVerified } from '../core/llm/config.js';
 import { micProblem } from './mic-help.js';
-import { shownWithoutSecrets } from '../core/agent/net.js';
+import { shownWithoutSecrets, withoutSecrets } from '../core/agent/net.js';
 
 /** What a voice says when it is tested, as the user's own words (asUser): a voice speaks a sentence in its own language. @param {boolean} speaks */
 export const sample = (speaks) => asUser(speaks)`Hello! This is how I sound when I talk to you.`;
 
-/** A speech call that failed, in plain words with what to do next. @param {unknown} e */
-export function speechProblem(e) {
-  if (e instanceof ProviderError) return explain(e);
-  const p = micProblem(e);
-  return /** @type {any} */ (e)?.name && /** @type {any} */ (e).name !== 'Error' ? t`${p.title}. ${p.body}` : messageOf(e);
+/**
+ * A speech call that failed, in plain words with what to do next, with every key annai keeps blanked (spec §9.9). A 400 says the
+ * provider's reason where its answer gave one ("Voice not found") and the keys can be read; a voice's 404 says what to check (a router
+ * passes on Grok's and Voxtral's bare "Provider returned 404"); else the kind's words. Kind and status decide, never the text; annai's own
+ * not-found (no status) keeps its words. @param {import('../core/types.js').Store} store @param {unknown} e @param {boolean} [speaking] a voice, not a transcription model
+ */
+export async function speechProblem(store, e, speaking = false) {
+  if (!(e instanceof ProviderError)) {
+    const p = micProblem(e);
+    return shownWithoutSecrets(store, /** @type {any} */ (e)?.name && /** @type {any} */ (e).name !== 'Error' ? t`${p.title}. ${p.body}` : messageOf(e));
+  }
+  // Blanked before it is cut (a key across the cut would show its first characters); no reason if the keys can't be read.
+  const reason = e.kind === 'bad-request' ? await withoutSecrets(store, e.message, '', { strict: true }).then((m) => providerReason(e, m), () => '') : '';
+  const words = reason ? t`The provider didn't accept the request: "${reason}".`
+    : speaking && e.kind === 'not-found' && e.status !== undefined ? t`The provider doesn't know this model, address or voice. Check the model id, the base URL and the Voice.`
+      : explain(e);
+  return shownWithoutSecrets(store, words);
 }
 
 /**
@@ -56,7 +68,7 @@ export function speechTestPanel(ctx, model, kind, verified, title = t`Test`) {
           meter.value = 0;
         }
       } catch (e) {
-        status.textContent = await shownWithoutSecrets(ctx.store, speechProblem(e)); // a provider's own words may hold a key (spec §9.9)
+        status.textContent = await speechProblem(ctx.store, e, kind === 'out');
         if (e instanceof ProviderError) await mark(false);
       } finally {
         run.disabled = false;

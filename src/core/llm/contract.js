@@ -273,6 +273,25 @@ export function errorFromResponse(status, body, headers) {
 }
 
 /**
+ * How much of a provider's reason the screens quote. The one-sentence refusals the voice probes saw run from 84 characters (HeyGen's, 2026-11-20)
+ * to about 125 (ByteDance's, with the voice's id), what to change first, so a cut loses a tail; dumps are cut (HeyGen's ZodError for WAV, 152
+ * collapsed, 2026-11-19; Kokoro's list of its voices).
+ */
+const REASON_CHARS = 120;
+
+/**
+ * The reason a provider gave for refusing a request, for a screen to quote: the words errorFromResponse read, not "HTTP <status>" or
+ * "Provider returned <status>" (a router's when the maker gave none), controls and spaces one space, the full stop dropped, cut at
+ * REASON_CHARS; '' for an error no answer gave (annai's own: no status). Outside text (RULES 9): shown as text, never read.
+ * @param {ProviderError} e @param {string} [message] the words with every key blanked already: a cut would leave a key's first characters
+ */
+export function providerReason(e, message = e.message) {
+  if (e.status === undefined || message === `HTTP ${e.status}` || message === `Provider returned ${e.status}`) return '';
+  const s = message.replace(/[\p{Cc}\p{Cf}\s]+/gu, ' ').trim().replace(/[.。．]+$/, '');
+  return s.length > REASON_CHARS ? `${s.slice(0, REASON_CHARS - 1).trimEnd()}…` : s;
+}
+
+/**
  * An error response as a ProviderError: core's reading, then its endpoint type's sharper kind, and the wait
  * its words ask for when no header or RetryInfo says (Gemini's "Please retry in 7h40m31s").
  * @param {EndpointType} type @param {number} status @param {string} body @param {Headers} [headers]

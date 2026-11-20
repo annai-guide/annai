@@ -82,7 +82,7 @@ test("today's 22 templates are all somewhere: models, prices, notes and roles ke
   assert.deepEqual((await official('provider-groq')).provider.abilities.transcription.models?.[0].prices, { perMinute: 0.000667, minSeconds: 10 });
   // The notes, merged where three templates became one.
   assert.match(or.provider.note ?? '', /Free models allow 50 requests a day/);
-  assert.match(or.provider.abilities.voice.note ?? '', /suggested in the model's Voice/);
+  assert.match(or.provider.abilities.voice.note ?? '', /Women KatKat/);
   assert.match((await official('provider-openai')).provider.abilities.chat.note ?? '', /call tools only through Responses/);
   assert.match((await official('provider-gemini')).provider.note ?? '', /Gemini's own API/);
   assert.equal((await official('provider-local-speech')).provider.local, true, 'its page shows the shared note for local servers');
