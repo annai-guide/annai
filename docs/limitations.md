@@ -1081,7 +1081,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Kind:** known limitation.
 - **What the traveller sees:** a pack that reaches its 20 MB limit holds the places first, then the articles in their first language at the stops it reaches, then the later languages as they fit; a language added while the pack is full comes at the monthly refresh. A refresh downloads the parts again in order until one no longer fits, and keeps the old copy of that one and of each part after it, so the pack can end a little over its limit.
 - **Why:** it is the rule the pack had before this change, with the traveller's languages in order ("Read the traveller's language first, English when that has no article", 2026-11-14); holding the limit exactly, tried in the first fix round, brought two regressions against that rule. About 100 dense parts reach the limit.
-- **Revisit when:** the build that measures the pack's size and either drops the limit or makes it a setting the traveller can change (its row in docs/progress.md; the user, 2026-11-19: "I doubt if we need a limit.. if we have one, maybe make it also user changable?").
+- **Revisit when:** the build that measures the pack's size and either drops the limit or makes it a setting the traveller can change (its row in docs/progress.md; the user, 2026-11-19: "I doubt if we need a limit.. if we have one, maybe make it also user changeable?").
 - **Approved:** 2026-11-19, the user: "accept. why do we have a 20mb limit?" (the pack at its limit) and "accept. why 20mb limit?" (a full pack and a new language); chief's decision C133 (2026-11-19) accepted an earlier wording of the language order.
 
 ### A Wikipedia or Wikivoyage title ending in punctuation links to a shorter address in chat
