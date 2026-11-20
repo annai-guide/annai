@@ -169,7 +169,7 @@ provider-openrouter:@provider.abilities.chat.models.2.providerTools.0.name	ok	Op
 provider-openrouter:@provider.abilities.chat.models.3.providerTools.0.name	ok	OpenRouter web search	OpenRouter 网页搜索	plugins-official/provider-openrouter/annai-plugin.json:53	Note: OpenRouter's docs are English only: 网页搜索 as annai's other lines.
 provider-openrouter:@provider.abilities.chat.models.4.providerTools.0.name	ok	OpenRouter web search	OpenRouter 网页搜索	plugins-official/provider-openrouter/annai-plugin.json:53	Note: OpenRouter's docs are English only: 网页搜索 as annai's other lines.
 provider-openrouter:@provider.abilities.transcription.note	ok	Turns what you say into text, for models that don't take audio. The prices are OpenRouter's lowest; it may send a request to a provider that charges more.	把你说的话转成文字，供不支持音频输入的模型使用。这里显示的是 OpenRouter 上的最低价；OpenRouter 可能会把请求转给收费更高的提供商。	plugins-official/provider-openrouter/annai-plugin.json:357	
-provider-openrouter:@provider.abilities.voice.note	draft	Shiori's voice. Most models have voices of their own, suggested in the model's Voice (Fetch model list brings them). The voice and style set here are Women KatKat, a voice from Fish Audio's library (friendly, clear, young and bright), and a young, cheerful and lively, yet calm and gentle style: every Fish Audio model starts with them, those below or added by id (set "voice": null in its Extra request fields, and Fish Audio picks another speaker per sentence). A listed model starts with its first warm or neutral voice, else its first voice. Only Fish Audio, Gemini and OpenAI's gpt-4o-mini-tts take a Style; for the others a listed model keeps it unsent. OpenRouter sends MP3 or uncompressed audio only. Streamed (the switch above), Fish Audio's voice starts 2 to 5 seconds sooner, for 5.5 times a whole clip's data, and needs about 0.7 Mbps; Grok, Voxtral and Kokoro gain little, so they arrive whole. HeyGen's and Gemini's voices send only uncompressed audio: 3 to 5.5 times an MP3's data.	Shiori 的声音。大多数模型都有自己的一组声音，可在模型的“声音”中看到推荐（“获取模型列表”会带入这些声音）。这里设定的声音是 Fish Audio 声音库中的 Women KatKat（亲切、清晰、年轻明亮），风格是年轻、欢快活泼，同时沉稳温柔。所有 Fish Audio 模型，无论是下面列出的，还是按 ID 添加的，都默认使用它们（在额外请求字段中写入 "voice": null，Fish Audio 每句话都会换一个说话人）。从列表添加的模型，默认使用 OpenRouter 列出的第一个温暖或中性的声音（没有时用第一个声音）。只有 Fish Audio、Gemini 和 OpenAI 的 gpt-4o-mini-tts 支持“风格”；从列表添加的其他模型会保留风格设置，但不会发送。OpenRouter 只发送 MP3 或未压缩的音频。用上方的开关改为流式播放后，Fish Audio 的声音会提前 2 到 5 秒开口，但数据量是完整收到时的 5.5 倍，并需要约 0.7 Mbps 的网速；Grok、Voxtral 和 Kokoro 提前得很少，所以仍是完整收到后才播放。HeyGen 和 Gemini 的声音只发送未压缩的音频，数据量是 MP3 的 3 到 5.5 倍。	plugins-official/provider-openrouter/annai-plugin.json:405	
+provider-openrouter:@provider.abilities.voice.note	draft	Shiori's voice. Most models have voices of their own, suggested in the model's Voice. The voice and style set here are Women KatKat, a voice from Fish Audio's library (friendly, clear, young and bright), and a young, cheerful and lively, yet calm and gentle style: every Fish Audio model starts with them. Another maker's model, from Fetch model list or added by id, starts with its first warm or neutral voice, else its first, and sends no Style unless it takes one (Gemini's and OpenAI's gpt-4o-mini-tts do); added by id while annai can't read the list (offline), or not in it, it starts with Women KatKat, which its server may refuse: set its Voice. OpenRouter sends MP3 or uncompressed audio only. Streamed (the switch above), Fish Audio's voice starts 2 to 5 seconds sooner, for 5.5 times a whole clip's data, and needs about 0.7 Mbps; Grok, Voxtral and Kokoro gain little, so they arrive whole. HeyGen's and Gemini's voices send only uncompressed audio: 3 to 5.5 times an MP3's data.	Shiori 的声音。大多数模型都有自己的一组声音，可在模型的“声音”中看到推荐。这里设定的声音是 Fish Audio 声音库中的 Women KatKat（亲切、清晰、年轻明亮），风格是年轻、欢快活泼，同时沉稳温柔。所有 Fish Audio 模型都默认使用它们。其他厂商的模型，无论是通过“获取模型列表”添加，还是按 ID 添加，都默认使用列表中第一个温暖或中性的声音（没有时用第一个声音），并且只有支持风格的模型（Gemini 和 OpenAI 的 gpt-4o-mini-tts）才会收到风格。如果按 ID 添加时 annai 无法读取列表（例如离线），或列表中没有这个 ID，模型会默认使用 Women KatKat，其服务器可能不接受，此时请设置该模型的“声音”。OpenRouter 只发送 MP3 或未压缩的音频。用上方的开关改为流式播放后，Fish Audio 的声音会提前 2 到 5 秒开口，但数据量是完整收到时的 5.5 倍，并需要约 0.7 Mbps 的网速；Grok、Voxtral 和 Kokoro 提前得很少，所以仍是完整收到后才播放。HeyGen 和 Gemini 的声音只发送未压缩的音频，数据量是 MP3 的 3 到 5.5 倍。	plugins-official/provider-openrouter/annai-plugin.json:405	
 provider-openrouter:alllou	ok	Tap Sign in with OpenRouter to start again.	请轻点“使用 OpenRouter 登录”重新开始。	plugins-official/provider-openrouter/index.js:20	
 provider-openrouter:1gjda3m	ok	Paste the code OpenRouter showed you, then tap Connect.	请粘贴 OpenRouter 显示的代码，然后轻点“连接”。	plugins-official/provider-openrouter/index.js:89	
 provider-openrouter:1mdql10	ok	annai has no sign-in waiting for this code: it was used already, or began in another browser.	找不到等待这个代码的登录。代码可能已经用过，或者登录是在另一个浏览器中发起的。	plugins-official/provider-openrouter/index.js:91	
@@ -795,8 +795,8 @@ xx043p	ok	"{0}" is already added here.	“{0}”已经添加过了。	src/core/l
 1pqsrb3	ok	It isn't running. Look at it in Settings → Plugins.	没有运行。请在设置 → 插件中查看。	src/core/llm/service.js:307	Note: said of a plugin named before it on the screen.
 sejc5h	ok	{0} was switched off after errors.	{0} 因多次出错已被关闭。	src/core/llm/service.js:322	{0} = shown
 xzxdhp	ok	The plugin didn't provide a model provider.	该插件不含模型提供商。	src/core/llm/service.js:323	Note: said of a plugin.
-2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	该插件不是 annai 官方的。请从原来的来源重新安装。	src/core/llm/service.js:402	
-1k9wkd0	ok	The plugin it names doesn't provide models, so it wasn't installed.	指定的插件不提供模型，所以没有安装。	src/core/llm/service.js:411	Note: said after the provider's name ("OpenRouter: …"); the plugin its record names, with no 它.
+2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	该插件不是 annai 官方的。请从原来的来源重新安装。	src/core/llm/service.js:417	
+1k9wkd0	ok	The plugin it names doesn't provide models, so it wasn't installed.	指定的插件不提供模型，所以没有安装。	src/core/llm/service.js:426	Note: said after the provider's name ("OpenRouter: …"); the plugin its record names, with no 它.
 3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:73	{0} = p.title
 1rb0o7n	ok	OpenStreetMap around {0}	{0} 周边的 OpenStreetMap	src/core/pack/download.js:75	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
 hdsgog	ok	OpenStreetMap between {0} and {1}	{0} 与 {1} 之间的 OpenStreetMap	src/core/pack/download.js:75	{0} = a; {1} = b
@@ -2829,18 +2829,19 @@ phutrz	ok	{0} wasn't saved: {1}	“{0}”未能保存：{1}	src/ui/settings-form
 1z00dfe	ok	An update is ready	更新已就绪	src/ui/shell.js:507	
 gt0nrj	ok	It will be used the next time annai starts.	下次启动 annai 时生效。	src/ui/shell.js:507	
 sntfon	ok	Hello! This is how I sound when I talk to you.	你好！我跟你说话时就是这个声音。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
-n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:16	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
-1a27ynt	ok	Last tested {0}: it worked.	上次测试（{0}）：可用。	src/ui/speech-check.js:26	{0} = relTime(verified.at)
-lrzlka	ok	Last tested {0}: it didn't work.	上次测试（{0}）：不可用。	src/ui/speech-check.js:26	{0} = relTime(verified.at)
-11k50g8	ok	Playing a sample…	正在试听…	src/ui/speech-check.js:36	
-10nc9qe	ok	The sample stopped early.	试听提前结束了。	src/ui/speech-check.js:38	
-f41br8	ok	It works: that was this voice.	可以使用，刚才听到的就是这个声音。	src/ui/speech-check.js:38	
-en3jzv	ok	Say something, such as "Where should we stop for lunch?"	请说句话，比如“我们在哪儿停下来吃午饭？”	src/ui/speech-check.js:42	
-sn0s5v	ok	Nothing was heard in 12 seconds. Check that the microphone is on, then try again.	12 秒内没听到声音。请确认麦克风已开启，然后再试一次。	src/ui/speech-check.js:47	
-16ssm8b	ok	It heard speech but wrote nothing down. Try again, a little closer to the phone.	听到了说话声，但没有识别出任何文字。请靠近手机一点再试一次。	src/ui/speech-check.js:52	
-a2r8f0	ok	It heard: "{0}"	识别结果：“{0}”	src/ui/speech-check.js:52	{0} = text
-1alwf78	ok	Say something	说句话试试	src/ui/speech-check.js:65	
-1qerct6	ok	Play a sample	试听	src/ui/speech-check.js:65	
+fphcj3	draft	The provider didn't accept the request: "{0}".	提供商不接受这个请求，原因是“{0}”。	src/ui/speech-check.js:19	{0} = reason
+n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:22	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
+1a27ynt	ok	Last tested {0}: it worked.	上次测试（{0}）：可用。	src/ui/speech-check.js:32	{0} = relTime(verified.at)
+lrzlka	ok	Last tested {0}: it didn't work.	上次测试（{0}）：不可用。	src/ui/speech-check.js:32	{0} = relTime(verified.at)
+11k50g8	ok	Playing a sample…	正在试听…	src/ui/speech-check.js:42	
+10nc9qe	ok	The sample stopped early.	试听提前结束了。	src/ui/speech-check.js:44	
+f41br8	ok	It works: that was this voice.	可以使用，刚才听到的就是这个声音。	src/ui/speech-check.js:44	
+en3jzv	ok	Say something, such as "Where should we stop for lunch?"	请说句话，比如“我们在哪儿停下来吃午饭？”	src/ui/speech-check.js:48	
+sn0s5v	ok	Nothing was heard in 12 seconds. Check that the microphone is on, then try again.	12 秒内没听到声音。请确认麦克风已开启，然后再试一次。	src/ui/speech-check.js:53	
+16ssm8b	ok	It heard speech but wrote nothing down. Try again, a little closer to the phone.	听到了说话声，但没有识别出任何文字。请靠近手机一点再试一次。	src/ui/speech-check.js:58	
+a2r8f0	ok	It heard: "{0}"	识别结果：“{0}”	src/ui/speech-check.js:58	{0} = text
+1alwf78	ok	Say something	说句话试试	src/ui/speech-check.js:71	
+1qerct6	ok	Play a sample	试听	src/ui/speech-check.js:71	
 6gd8we	draft	Free up space on this iPhone in Settings → General → iPhone Storage, then try again.	请在设置 → 通用 → iPhone 储存空间中释放这部 iPhone 的空间，然后重试。	src/ui/storage-full.js:20	Note: iOS's own row, from Apple's iPhone User Guide "管理 iPhone 储存空间" (iph47c931112, zh-cn, fetched 2026-11-19): 轻点“通用”，然后轻点“iPhone 储存空间”: Apple's spelling 储存空间, not the glossary's 存储空间. No sentence about removing a trip follows: a full iPhone refuses deletes.
 12pwtgq	draft	Free up space on this phone in Settings → Storage, then try again.	请在设置 → 存储中释放这部手机的空间，然后重试。	src/ui/storage-full.js:21	Note: Android's own row, from Google's "释放 Android 设备上的存储空间" (support.google.com/android/answer/7431795, hl=zh-Hans, fetched 2026-11-19): 打开设备的“设置”应用 → 点按存储: 存储 alone, as Android names it.
 4paddw	draft	Removing a trip you no longer need also makes room in annai (back it up first).	移除不再需要的旅行，也能在 annai 中腾出空间（请先备份）。	src/ui/storage-full.js:23	Note: said where a delete works on a full disk (Android, a computer), not on an iPhone or iPad. Removing a trip frees room inside annai, hence 在 annai 中.

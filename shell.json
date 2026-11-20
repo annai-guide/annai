@@ -1,5 +1,5 @@
 {
-  "build": "f839c2cd4104",
+  "build": "3cb1fbedd4c1",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -76,7 +76,7 @@
     "/src/core/llm/call.js": "76f903d7e4b3",
     "/src/core/llm/check.js": "e0549be66ba3",
     "/src/core/llm/config.js": "008b753fa725",
-    "/src/core/llm/contract.js": "b4116202a425",
+    "/src/core/llm/contract.js": "4df40aed9a2c",
     "/src/core/llm/decide.js": "4aff39cf2ab3",
     "/src/core/llm/fallback.js": "60df9a6827ef",
     "/src/core/llm/move-over.js": "9584243ec1f4",
@@ -88,11 +88,11 @@
     "/src/core/llm/partial-json.js": "05dab759f366",
     "/src/core/llm/reasoning.js": "944a3f6e351d",
     "/src/core/llm/retry.js": "fdb90e75be0d",
-    "/src/core/llm/service.js": "cdbfb462f733",
+    "/src/core/llm/service.js": "9b72a6faff7c",
     "/src/core/llm/speech.js": "74dd179cc811",
     "/src/core/llm/sse.js": "656d2989d833",
     "/src/core/llm/trace.js": "ce4c33d5516e",
-    "/src/core/llm/uploads.js": "770ee4ee6a1b",
+    "/src/core/llm/uploads.js": "8289728a7849",
     "/src/core/llm/kept.js": "312be2a7089a",
     "/src/core/live/activity.js": "d1fe254c6571",
     "/src/core/live/clock.js": "e8699d74a329",
@@ -279,14 +279,14 @@
     "/src/ui/screens/trip.js": "16b903f6b61b",
     "/src/ui/screens/trips.js": "3d934411975e",
     "/src/ui/screens/updates.js": "663857e51861",
-    "/src/ui/screens/voice.js": "07a2c32be9f3",
+    "/src/ui/screens/voice.js": "afb283a06a3f",
     "/src/ui/screens/welcome.js": "f1b00d351dd3",
     "/src/ui/search-panel.js": "a611625f9ce8",
     "/src/ui/shell.js": "79d363b3e955",
     "/src/ui/slots.js": "f2f6183cc470",
     "/src/ui/stamps.js": "9c0f976db8fa",
     "/src/ui/shiori.css": "d60391764a06",
-    "/src/ui/speech-check.js": "396550d02345",
+    "/src/ui/speech-check.js": "6cd0368509d9",
     "/src/ui/storage-full.js": "104720278679",
     "/src/ui/talk-panel.js": "cc1fb4a04f43",
     "/src/ui/tap-keeps-keyboard.js": "6693e1e90f5c",
@@ -300,8 +300,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "370f8db8cce9",
-    "/l10n/zh-Hans.json": "6fa17a14c983",
-    "/l10n/zh-Hant.json": "70c5f3e17db0"
+    "/l10n/ja.json": "36a48260ed38",
+    "/l10n/zh-Hans.json": "7fa6062eb212",
+    "/l10n/zh-Hant.json": "a390772408d6"
   }
 }

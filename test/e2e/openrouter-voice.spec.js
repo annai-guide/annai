@@ -5,8 +5,17 @@ import { encodeWav } from '../../src/core/voice/pcm.js';
 
 // OpenRouter's voices in uncompressed audio (stream-voice-next), against a stand-in for its audio API shaped as the voice probe of
 // 2026-11-19 found it (test/fixtures/voices/openrouter-pcm-probe.json: its Content-Type for raw 16-bit PCM, and HeyGen's voice refusing
-// anything else with a 400). No request reaches OpenRouter.
+// anything else with a 400), and as the main session's probe of 2026-11-20 found its makers but Fish Audio: a 400 for a request with no
+// voice, and "Voice not found" for one its list doesn't give that model (voice-id-next). No request reaches OpenRouter.
 const probe = JSON.parse(readFileSync(new URL('../fixtures/voices/openrouter-pcm-probe.json', import.meta.url), 'utf8'));
+/** Its speech list (/models?output_modalities=speech): Fish Audio's take any library voice; HeyGen's voice names are stand-ins. */
+const SPEECH = [
+  { id: 'fish-audio/s2.1-pro-free:free', name: 'Fish Audio: S2.1 Pro Free (free)', supported_voices: null },
+  { id: 'x-ai/grok-voice-tts-1.0', name: 'SpaceXAI: Grok Voice TTS 1.0', supported_voices: ['eve', 'ara', 'rex', 'sal', 'leo'] },
+  { id: 'heygen/heygen-voice-1', name: 'HeyGen: Voice 1', supported_voices: ['Allison', 'Ivy'] },
+];
+/** OpenRouter's 400, as the probes recorded its bodies. @param {string} message */
+const refusing = (message) => ({ status: 400, type: 'application/json', body: JSON.stringify({ error: { message, code: 400 } }) });
 
 const STREAM = 'Stream her voice, so she starts sooner, uncompressed: several times the data (off: each sentence arrives whole first, compressed unless the voice sends only uncompressed audio)';
 /** 0.3 s of a tone at 44.1 kHz, as raw 16-bit little-endian PCM. */
@@ -15,10 +24,16 @@ const pcm = Buffer.from(Int16Array.from({ length: 13230 }, (_, i) => Math.round(
 const wav = { status: 200, type: 'audio/wav', body: Buffer.from(encodeWav(Float32Array.from({ length: 4800 }, (_, i) => 0.3 * Math.sin(i / 3)), 16000)) };
 const heygenRefuses = { status: probe.heygenMp3Refused.status, type: probe.heygenMp3Refused.contentType, body: probe.heygenMp3Refused.body };
 
-test("OpenRouter's voice page: its Stream switch starts off, so Fish Audio is asked for MP3; switched on, Fish Audio streams its uncompressed audio through the stream player while Grok stays whole; HeyGen's voice, which sends only uncompressed audio, plays; OpenAI's voice page, which no description gives the switch, has none; and a switch found on where it was typed in the JSON shows, and turns off", async ({ page }) => {
+test("OpenRouter's voice page: its Stream switch starts off, so Fish Audio is asked for MP3; switched on, Fish Audio streams its uncompressed audio through the stream player while Grok stays whole; HeyGen's voice, which sends only uncompressed audio, added by id starts with the voice OpenRouter's list gives it, and plays; one the list doesn't have is refused, and its sample says the server's reason; OpenAI's voice page, which no description gives the switch, has none; and a switch found on where it was typed in the JSON shows, and turns off", async ({ page }) => {
   const server = await startModelServer({
-    '/api/v1/audio/speech': (/** @type {any} */ body) => (body?.response_format === 'pcm' ? { status: 200, type: probe.fishPcm.contentType, body: pcm }
-      : /^heygen\//.test(body?.model) ? heygenRefuses : wav),
+    '/api/v1/models': { status: 200, type: 'application/json', body: JSON.stringify({ data: SPEECH }) },
+    '/api/v1/audio/speech': (/** @type {any} */ body) => {
+      if (!/^fish-audio\//.test(body?.model)) {
+        if (!body?.voice) return refusing(/^heygen\//.test(body?.model) ? 'An explicit voice is required unless input_references carries a reference recording.' : 'An explicit voice is required for this TTS provider.');
+        if (!(SPEECH.find((m) => m.id === body.model)?.supported_voices ?? []).includes(body.voice)) return refusing('Voice not found');
+      }
+      return body?.response_format === 'pcm' ? { status: 200, type: probe.fishPcm.contentType, body: pcm } : /^heygen\//.test(body?.model) ? heygenRefuses : wav;
+    },
   });
   try {
     // Every piece the stream player plays goes to its worklet as 16-bit PCM over its port; a whole clip plays in the audio element.
@@ -68,13 +83,25 @@ test("OpenRouter's voice page: its Stream switch starts off, so Fish Audio is as
     const before = await streamed();
     expect(await sample(/^SpaceXAI: Grok Voice TTS 1\.0 \(Ara\)/, 'SpaceXAI: Grok Voice TTS 1.0 (Ara)')).toEqual([expect.objectContaining({ model: 'x-ai/grok-voice-tts-1.0', response_format: 'mp3' })]);
     expect(await streamed()).toBe(before);
-    // Off again, HeyGen's voice, added by id: asked for uncompressed audio at once (no 400 spent), played whole as a WAV clip.
+    // Off again, HeyGen's voice, added by id: with the voice OpenRouter's list gives it, as from Fetch model list (the list read for the
+    // add), asked for uncompressed audio at once (no 400 spent), played whole as a WAV clip.
     await streaming.uncheck();
     await expect(savedBy(streaming)).toHaveText('Saved');
     await voice.getByLabel('Add a model by id').fill('heygen/heygen-voice-1');
     await voice.getByRole('button', { name: 'Add model' }).click();
-    expect(await sample(/^heygen\/heygen-voice-1/, 'heygen/heygen-voice-1')).toEqual([expect.objectContaining({ model: 'heygen/heygen-voice-1', response_format: 'pcm' })]);
+    expect(await sample(/^heygen\/heygen-voice-1/, 'heygen/heygen-voice-1')).toEqual([expect.objectContaining({ model: 'heygen/heygen-voice-1', response_format: 'pcm', voice: 'Allison' })]);
     expect(await streamed()).toBe(before);
+    // An id the list doesn't have starts with the provider's voice, Fish Audio's Women KatKat, as before: HeyGen's server doesn't know it,
+    // and the sample says so in the server's own words.
+    await voice.getByLabel('Add a model by id').fill('heygen/heygen-voice-9');
+    await voice.getByRole('button', { name: 'Add model' }).click();
+    await voice.getByRole('link', { name: /^heygen\/heygen-voice-9/ }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'heygen/heygen-voice-9' })).toBeVisible();
+    await page.getByRole('button', { name: 'Play a sample' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'The provider didn\'t accept the request: "Voice not found".' })).toBeVisible({ timeout: 20_000 });
+    expect(said().at(-1)).toEqual(expect.objectContaining({ model: 'heygen/heygen-voice-9', voice: 'bddf65d5a84c4a9aa36b7136bdac57a9' }));
+    await page.goBack();
+    await expect(page.getByRole('heading', { level: 1, name: 'OpenRouter' })).toBeVisible();
     // The Trace: the streamed sample says what came.
     await page.goto('/#/trace');
     await filterTrace(page, { kind: 'Web' });

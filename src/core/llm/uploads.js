@@ -103,7 +103,8 @@ const AT_ONCE = 6;
  * Each list or delete request's time limit, a kept turn's deletion's (kept.js), and Test's photo upload's (a 16×16 image). 15 s is
  * about 35 times the 427 ms a deletion took when measured at the one files API annai deletes from (docs/limitations.md, the entry on
  * photos that outlive 48 hours), room for a slow link to set up a connection. It began as a kept turn's deletion's limit (0ba2134e),
- * which the sweeps and Test took for their small requests; the list and the test photo's upload were not measured.
+ * which the sweeps and Test took for their small requests, and a voice added by id for the read of its list (service.js addModelById);
+ * those lists and the test photo's upload were not measured.
  */
 export const REQUEST_MS = 15_000;
 /**

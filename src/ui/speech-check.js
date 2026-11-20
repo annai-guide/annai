@@ -1,7 +1,7 @@
 import { h, settled, t, asUser, messageOf } from './dom.js';
 import { relTime, speaksScreens } from './format.js';
 import { readAppSettings } from '../core/settings.js';
-import { ProviderError, explain } from '../core/llm/contract.js';
+import { ProviderError, explain, providerReason } from '../core/llm/contract.js';
 import { markVerified } from '../core/llm/config.js';
 import { micProblem } from './mic-help.js';
 import { shownWithoutSecrets } from '../core/agent/net.js';
@@ -9,9 +9,15 @@ import { shownWithoutSecrets } from '../core/agent/net.js';
 /** What a voice says when it is tested, as the user's own words (asUser): a voice speaks a sentence in its own language. @param {boolean} speaks */
 export const sample = (speaks) => asUser(speaks)`Hello! This is how I sound when I talk to you.`;
 
-/** A speech call that failed, in plain words with what to do next. @param {unknown} e */
+/**
+ * A speech call that failed, in plain words with what to do next: a refused request the provider's reason where its answer gave one,
+ * which says what to change ("Voice not found"); else its kind's words. A screen shows it through shownWithoutSecrets. @param {unknown} e
+ */
 export function speechProblem(e) {
-  if (e instanceof ProviderError) return explain(e);
+  if (e instanceof ProviderError) {
+    const reason = e.kind === 'bad-request' ? providerReason(e) : '';
+    return reason ? t`The provider didn't accept the request: "${reason}".` : explain(e);
+  }
   const p = micProblem(e);
   return /** @type {any} */ (e)?.name && /** @type {any} */ (e).name !== 'Error' ? t`${p.title}. ${p.body}` : messageOf(e);
 }

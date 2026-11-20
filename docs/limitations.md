@@ -1188,12 +1188,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** a voice is seen answering a streamed ask this way in normal use.
 - **Approved:** 2026-11-19, the user's answer in the main session's tab: "Accept all three (Rec.)".
 
-### An OpenRouter voice added by id starts with Fish Audio's voice
-- **Kind:** deferred.
-- **What the traveller sees:** a voice model added by id in Models → OpenRouter → Voice from another maker than Fish Audio (HeyGen's, say) starts with Women KatKat, a Fish Audio voice, which its server refuses: Play a sample says "The provider didn't accept the request. Check the tunables on its provider's page.", and the provider's own reason ("Voice not found") shows only in the Trace. The same model added from Fetch model list starts with its own voice and plays. Setting its Voice by hand fixes it.
-- **Why:** a model added by id takes the voice ability's voice, which OpenRouter's description sets for Fish Audio's models. Found by the streamed-voice build's one real run (2026-11-19), where HeyGen added by id got that 400 and HeyGen from the list played.
-- **Revisit when:** the next build on OpenRouter's voices: a model added by id from another maker starts with no voice (its server's default), and a refused sample shows the provider's own reason.
-
 ### A rule picks when her conversation is summarized; she only marks where
 - **Kind:** known limitation.
 - **What the traveller sees:** Shiori doesn't choose when the older part of a conversation is summarized: a rule does. It is due at 100,000 tokens, or at the share of her model's window set in Settings → Models → Housekeeping when that is smaller, or at the same share of the largest request; then, when they come back after her cache has run out (an hour less a minute for a model that lists an hour, unless Settings → Models → Cache says five minutes and the model lists five; five minutes less a minute for one that doesn't list an hour), the utility model writes the summary before her first answer. On the rare page left open, the timer runs her own model's summary just before the cache runs out, while it is warm; a timer that fires after it ran out (the page was asleep) does nothing, and the return does it. She only marks, with `mark_done`, where a summary may cut. Afterwards she remembers the earlier part as a summary and brings back its exact words with `recall`.

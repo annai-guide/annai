@@ -273,6 +273,24 @@ export function errorFromResponse(status, body, headers) {
 }
 
 /**
+ * How much of a provider's reason the screens quote: the longest one-sentence refusal the voice probes saw, HeyGen's of 2026-11-20, is
+ * 84 characters, kept whole; a dump is cut (HeyGen's ZodError for WAV, 152 once its spaces are collapsed, the probe of 2026-11-19).
+ */
+const REASON_CHARS = 120;
+
+/**
+ * The reason a provider gave in the answer that refused a request, for the screens to quote: the words errorFromResponse read from its
+ * body (not "HTTP <status>", for none), controls and runs of space one space, its full stop the sentence's, cut at REASON_CHARS; '' for
+ * an error no answer gave (no status: annai's own). Outside text (RULES principle 9): shown as text only, it decides nothing.
+ * @param {ProviderError} e
+ */
+export function providerReason(e) {
+  if (e.status === undefined || e.message === `HTTP ${e.status}`) return '';
+  const s = e.message.replace(/[\p{Cc}\p{Cf}\s]+/gu, ' ').trim().replace(/[.。．]+$/, '');
+  return s.length > REASON_CHARS ? `${s.slice(0, REASON_CHARS - 1).trimEnd()}…` : s;
+}
+
+/**
  * An error response as a ProviderError: core's reading, then its endpoint type's sharper kind, and the wait
  * its words ask for when no header or RetryInfo says (Gemini's "Please retry in 7h40m31s").
  * @param {EndpointType} type @param {number} status @param {string} body @param {Headers} [headers]

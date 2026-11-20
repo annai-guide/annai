@@ -1,7 +1,7 @@
 {
   "id": "provider-openrouter",
   "name": "OpenRouter",
-  "version": "2.6.0",
+  "version": "2.6.1",
   "api": 2,
   "entry": "index.js",
   "description": "One key for many models, free ones among them, with transcription and voices too. Sign in with OpenRouter, or give a key.",
@@ -402,7 +402,7 @@
             "google/"
           ]
         },
-        "note": "Shiori's voice. Most models have voices of their own, suggested in the model's Voice (Fetch model list brings them). The voice and style set here are Women KatKat, a voice from Fish Audio's library (friendly, clear, young and bright), and a young, cheerful and lively, yet calm and gentle style: every Fish Audio model starts with them, those below or added by id (set \"voice\": null in its Extra request fields, and Fish Audio picks another speaker per sentence). A listed model starts with its first warm or neutral voice, else its first voice. Only Fish Audio, Gemini and OpenAI's gpt-4o-mini-tts take a Style; for the others a listed model keeps it unsent. OpenRouter sends MP3 or uncompressed audio only. Streamed (the switch above), Fish Audio's voice starts 2 to 5 seconds sooner, for 5.5 times a whole clip's data, and needs about 0.7 Mbps; Grok, Voxtral and Kokoro gain little, so they arrive whole. HeyGen's and Gemini's voices send only uncompressed audio: 3 to 5.5 times an MP3's data.",
+        "note": "Shiori's voice. Most models have voices of their own, suggested in the model's Voice. The voice and style set here are Women KatKat, a voice from Fish Audio's library (friendly, clear, young and bright), and a young, cheerful and lively, yet calm and gentle style: every Fish Audio model starts with them. Another maker's model, from Fetch model list or added by id, starts with its first warm or neutral voice, else its first, and sends no Style unless it takes one (Gemini's and OpenAI's gpt-4o-mini-tts do); added by id while annai can't read the list (offline), or not in it, it starts with Women KatKat, which its server may refuse: set its Voice. OpenRouter sends MP3 or uncompressed audio only. Streamed (the switch above), Fish Audio's voice starts 2 to 5 seconds sooner, for 5.5 times a whole clip's data, and needs about 0.7 Mbps; Grok, Voxtral and Kokoro gain little, so they arrive whole. HeyGen's and Gemini's voices send only uncompressed audio: 3 to 5.5 times an MP3's data.",
         "models": [
           {
             "providerId": "fish-audio/s2.1-pro-free:free",
