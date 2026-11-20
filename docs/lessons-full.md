@@ -994,7 +994,7 @@ entries go last, in the same commit as the change:
 
 ## 2026-11-19 edit reads text copied from the now block's layout
 - Changed: Shiori's `edit` tool (the files plugin) takes `old` as given first; when that matches nothing and it holds `<lt>`, it reads `<lt>` as "<", in `new` too, and edits when so read it matches exactly once. Her to-do list (`/trip/todo.md`) is shown in the now block with its "<" written `<lt>`, so a line she copies from there to change matches.
-- Why we had to change: the to-do list is shown whole in every request's now block, and a "<" in it must not end the block (`</now>`), so it is written as the TSV views write it, `<lt>`, a form her instructions already explain. She changes the list with `edit`, from what she sees there.
+- Why we had to change: the to-do list is shown whole in every request's now block, and a "<" in it must not end the block (`</now>`), so it is written as the TSV views write it, `<lt>`, a form her instructions already explain, and the list's label says so. She changes the list with `edit`, from what she sees there.
 - Original design was wrong because: `edit` matched only the file's bytes, while two of her views write "<" as `<lt>` (search's TSV rows, and now the list), so text with a "<" copied from a view matched nothing and the edit failed.
 - Lesson: a tool that edits text its caller copied from a view also accepts it in the view's layout: the text as given first; the view's rule undone only when that matches nothing and the undone form matches exactly once, and the new text read in the same layout.
 
