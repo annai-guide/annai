@@ -36,8 +36,8 @@ export const SOURCES = [
   },
   {
     name: 'Wikivoyage',
-    hosts: ['en.wikivoyage.org'],
-    use: t`Travel guides, for Shiori's guide tool and the offline pack, and where free search falls back to.`,
+    hosts: ['*.wikivoyage.org'],
+    use: t`Travel guides, from English Wikivoyage and from its editions in the languages you speak, for Shiori's guide tool and the offline pack, and where free search falls back to.`,
     credit: /* en */ "Text by Wikivoyage's contributors, under CC BY-SA 4.0.",
     links: /* en */ [{ href: 'https://en.wikivoyage.org/', text: 'Wikivoyage' }, CC_BY_SA],
   },

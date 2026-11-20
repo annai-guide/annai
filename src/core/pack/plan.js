@@ -15,9 +15,10 @@ import { PLAN_FILE, LEG_MAX_KM } from '../plan.js';
  * @typedef {{ id: string, kind: 'wikipedia', label: string, place: Place, at: LatLng }} WikiPart
  * @typedef {OsmPart | WikiPart} Part
  * @typedef {{ name: string, lat: number, lng: number }} Stop
- * @typedef {{ key: string, stops: Stop[], parts: Part[], names: string[], cut: number }} PackPlan
+ * @typedef {{ key: string, stops: Stop[], parts: Part[], names: string[] }} PackPlan
  *   key: changes when the parts or the names do; names: what to look for in Wikivoyage, the trip's
- *   places first; cut: stops and legs left out, all or in part, because the pack would be too large
+ *   places first. Every stop and leg is in it, however long the trip: a long one takes longer to download (Overpass answers a part in
+ *   about 35 to 54 s), and a download that stops goes on from there the next time.
  */
 
 export const STOP_M = 5000;
@@ -26,17 +27,22 @@ export const STRETCH_KM = 40;
 export const WIKI_EVERY_KM = 15;
 export const WIKI_APART_KM = 7;
 export const WIKI_RADIUS_M = 10000; // the largest Wikipedia searches
-export const MAX_OSM = 100;
-export const MAX_WIKI = 100;
-export const MAX_GUIDES = 12;
 
 /**
- * Rough sizes for the estimate shown before downloading, from a real Big Sur pack in October
- * 2026 (143 KB for 19 parts and 4 guides), rounded up: towns are denser than the coast. wikiEdition: a Wikipedia
- * part in another edition than English, from real parts of 2026-11-19 (Japanese at Yufuin 6.1 KB, Chinese at Shilin
- * Night Market 10.8 KB, 20 summaries each: 3 bytes a character), rounded up.
+ * Rough sizes for the estimate shown before downloading, as stored (the editions design's measurements, 2026-11-20, real answers at made-up
+ * stops at real places):
+ * - osmStop: the mean of the 82 stop parts of three made-up trips (Taipei and Jiufen; Tokyo to Hiroshima; a US road trip), partly inferred:
+ *   sized from one measured town's part (Takayama, the pack's own query: 514 places, 36.6 KB) and a city's at Overpass's 3000 places (about
+ *   240 KB at Takayama's 71 bytes a place, not downloaded: every kind within 1 km is already 1,150 places at Tokyo Station).
+ * - osmPerKm: a stretch's bytes a kilometre, not measured (both built-up stretches asked timed out): kept from the first estimate, made
+ *   from a real Big Sur pack (October 2026, 143 KB for 19 parts and 4 guides), open coast, not town.
+ * - wikipedia: an English part's 20 summaries, the mean of 6 measured parts (7.0 to 8.8 KB), rounded.
+ * - wikiEdition: another edition's part, Japanese and Chinese parts measured at 10.0 to 12.3 KB (3 bytes a character), rounded.
+ * - guide: an English guide, the mean of 7 measured (11 to 130 KB), rounded.
+ * - guideEdition: another edition's guide, wanted for each English one: the 13 Japanese and Chinese guides measured were 1.5 to 35 KB
+ *   (mean 13 KB), and 7 of 12 English guides have a Japanese one, 7 of 12 a Chinese one, so 13 × 7/12, rounded up.
  */
-export const SIZES = Object.freeze({ osmPerKm: 512, osmStop: 10 * 1024, wikipedia: 6 * 1024, wikiEdition: 11 * 1024, guide: 25 * 1024 });
+export const SIZES = Object.freeze({ osmPerKm: 512, osmStop: 110 * 1024, wikipedia: 8 * 1024, wikiEdition: 11 * 1024, guide: 65 * 1024, guideEdition: 8 * 1024 });
 
 const r4 = (/** @type {number} */ x) => Math.round(x * 1e4) / 1e4;
 const pt = (/** @type {LatLng} */ p) => ({ lat: p[0], lng: p[1] });
@@ -109,16 +115,13 @@ export function packPlan({ trip, items }) {
   const osm = [];
   /** @type {WikiPart[]} */
   const wiki = [];
-  let cut = 0;
   const wikiNear = (/** @type {LatLng} */ p) => wiki.some((w) => meters(pt(w.at), pt(p)) < WIKI_APART_KM * 1000);
-  // The stops first, so a long plan keeps them all before the way between them.
+  // The stops first, then the way between them, in OpenStreetMap's parts and then Wikipedia's. A download takes every Wikipedia part first, then
+  // the guides, then OpenStreetMap's parts (download.js), each in this order: one stopped partway has the stops' before the way's.
   for (const s of stops) {
     const here = /** @type {LatLng} */ ([r4(s.lat), r4(s.lng)]);
-    const osmDone = osm.some((o) => o.km === 0 && meters(pt(o.points[0]), s) < 1000);
-    const wikiDone = wikiNear(here);
-    if ((!osmDone && osm.length >= MAX_OSM) || (!wikiDone && wiki.length >= MAX_WIKI)) cut++;
-    if (!osmDone && osm.length < MAX_OSM) osm.push(osmPart([here], STOP_M, 0, { how: 'around', names: [s.name] }));
-    if (!wikiDone && wiki.length < MAX_WIKI) wiki.push(wikiPart(here, { how: 'near', names: [s.name] }));
+    if (!osm.some((o) => o.km === 0 && meters(pt(o.points[0]), s) < 1000)) osm.push(osmPart([here], STOP_M, 0, { how: 'around', names: [s.name] }));
+    if (!wikiNear(here)) wiki.push(wikiPart(here, { how: 'near', names: [s.name] }));
   }
   for (let i = 0; i + 1 < stops.length; i++) {
     const [a, b] = [stops[i], stops[i + 1]];
@@ -127,25 +130,19 @@ export function packPlan({ trip, items }) {
     /** @type {Place} */
     const place = { how: 'between', names: [a.name, b.name] };
     const n = Math.ceil(km / STRETCH_KM);
-    let whole = true;
     for (let k = 0; k < n; k++) {
       const part = osmPart([between(a, b, k / n), between(a, b, (k + 1) / n)], CORRIDOR_M, Math.round((km / n) * 10) / 10, place);
-      if (osm.some((o) => o.id === part.id)) continue;
-      if (osm.length >= MAX_OSM) whole = false;
-      else osm.push(part);
+      if (!osm.some((o) => o.id === part.id)) osm.push(part);
     }
     for (let d = WIKI_EVERY_KM; d < km - WIKI_APART_KM / 2; d += WIKI_EVERY_KM) {
       const p = between(a, b, d / km);
-      if (wikiNear(p)) continue;
-      if (wiki.length >= MAX_WIKI) whole = false;
-      else wiki.push(wikiPart(p, place));
+      if (!wikiNear(p)) wiki.push(wikiPart(p, place));
     }
-    if (!whole) cut++;
   }
   const places = (Array.isArray(trip?.places) ? trip.places : []).filter((/** @type {unknown} */ x) => typeof x === 'string' && x.trim());
   const names = [...new Set([...places.map((/** @type {string} */ x) => x.trim().replace(/\s+/g, ' ')), ...stops.map((s) => s.name)])];
   const parts = [...osm, ...wiki];
-  return { key: hashId(JSON.stringify([parts.map((p) => p.id), names])), stops, parts, names, cut };
+  return { key: hashId(JSON.stringify([parts.map((p) => p.id), names])), stops, parts, names };
 }
 
 /** A trip's pack plan, from its files. @param {Workspace} ws @param {string} scope @returns {Promise<PackPlan>} */
@@ -163,17 +160,18 @@ export async function planFor(ws, scope) {
 
 /**
  * About how many bytes some of a pack's files and guides take (spec §11.5: shown before downloading).
- * @param {{ part: Part, edition: string | null }[]} files as wanted() in download.js gives them @param {number} guides
+ * @param {{ part: Part, edition: string | null }[]} files as wanted() in download.js gives them @param {number} guides how many guides
+ * @param {string[]} editions the guides' Wikivoyage editions to count (English's at SIZES.guide, another's at SIZES.guideEdition)
  */
-export function estimate(files, guides) {
-  let n = guides * SIZES.guide;
+export function estimate(files, guides, editions) {
+  let n = guides * editions.reduce((sum, e) => sum + (e === 'en' ? SIZES.guide : SIZES.guideEdition), 0);
   for (const { part: p, edition } of files) n += p.kind === 'wikipedia' ? (edition === 'en' ? SIZES.wikipedia : SIZES.wikiEdition) : p.km > 0 ? p.km * SIZES.osmPerKm : SIZES.osmStop;
   return Math.round(n);
 }
 
-/** About how many guides a plan's pack gets: one for every two names it looks for, at most 12. @param {PackPlan} plan */
+/** About how many guides a plan's pack gets: one for every two names it looks for. @param {PackPlan} plan */
 export function likelyGuides(plan) {
-  return Math.min(MAX_GUIDES, Math.ceil(plan.names.length / 2));
+  return Math.ceil(plan.names.length / 2);
 }
 
 /** The Wikivoyage titles a name may be under: as it is, and "Cambria (California)" for "Cambria, California". @param {string} name */

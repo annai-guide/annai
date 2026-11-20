@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPack, toLine } from '../../src/core/pack/read.js';
-import { downloadPack, MANIFEST, pathOf } from '../../src/core/pack/download.js';
+import { downloadPack, MANIFEST, pathOf, guideFile } from '../../src/core/pack/download.js';
 import { planFor } from '../../src/core/pack/plan.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { readingEditions } from '../../src/core/wiki.js';
@@ -32,10 +32,11 @@ test("a downloaded pack: what it covers, its places and pages, its guides by nam
   const pages = pack.pages(bixby, 2000, ['en']);
   assert.deepEqual(pages.map((r) => r.slice(0, 2)), [['Bixby Creek Bridge', 'wikipedia article']]);
   assert.match(pages[0][6], /^Bixby Creek Bridge is a reinforced concrete .* https:\/\/en\.wikipedia\.org\/wiki\/Bixby_Creek_Bridge$/);
-  assert.equal((await pack.guide('big sur'))?.title, 'Big Sur');
-  assert.equal((await pack.guide('Cambria'))?.title, 'Cambria (California)');
-  assert.equal((await pack.guide('Cambria, California'))?.title, 'Cambria (California)');
-  assert.equal(await pack.guide('Monterey'), null);
+  assert.deepEqual((await pack.guide('big sur', ['en'])).map((p) => [p.edition, p.title]), [['en', 'Big Sur']]);
+  assert.deepEqual(await pack.guide('Cambria', ['en']), [], 'no match without the bracket: online never makes it ("Georgia" is not "Georgia (country)"); a name held only under its bracketed title reads online');
+  assert.equal((await pack.guide('Cambria (California)', ['en']))[0]?.title, 'Cambria (California)');
+  assert.equal((await pack.guide('Cambria, California', ['en']))[0]?.title, 'Cambria (California)');
+  assert.deepEqual(await pack.guide('Monterey', ['en']), []);
   assert.deepEqual(pack.name({ lat: 36.3715, lng: -121.9017 }, ['en']), { name: 'Bixby Creek Bridge', m: 0 });
   assert.equal(pack.name({ lat: 36.2203, lng: -121.7612 }, ['en'])?.name, 'Nepenthe (restaurant)'); // a restaurant is no place name; its article is
   assert.match(pack.pages({ lat: 36.2203, lng: -121.7612 }, 500, ['en'])[0][6], / https:\/\/en\.wikipedia\.org\/wiki\/Nepenthe_%28restaurant%29$/); // as pageUrl writes it
@@ -60,7 +61,7 @@ test('a broken pack is no pack, and a broken part is left out: never an error', 
   assert.ok(pack);
   assert.deepEqual(pack.places({ lat: 36.3, lng: -121.85 }, 1000, ['sights']).map((r) => r[0]), ['Fine']);
   await ws.write(trip, m.guides.find((/** @type {any} */ g) => g.title === 'Big Sur').path, 'not json', { author: 'user', type: 'text/plain' });
-  assert.equal(await pack.guide('Big Sur'), null);
+  assert.deepEqual(await pack.guide('Big Sur', ['en']), [{ edition: 'en', title: 'Big Sur', text: '' }], 'the guide, with no text: the tool reads it online');
 });
 
 test("a part Overpass cut off at its 3000 places doesn't count as covering: nearby asks online there, and uses it only when offline (C1)", async () => {
@@ -159,4 +160,51 @@ test("a language taken off the list is no more read, though its files stay until
   await updateAppSettings(ws, { languages: { spoken: ['en'], answer: 'follow' } });
   await downloadPack({ ws, scope: trip, ...net(), version: '1.0.0', editions: await readingEditions(ws, 'en-US'), gapMs: 0 });
   assert.deepEqual(await wikipediaFiles(), [pathOf(part)]);
+});
+
+test("a guide in several editions: found by its English title, a name that led to it, or its title in an edition; read in the editions given, in their order, the text empty where the file is missing or broken", async () => {
+  const { ws, trip } = await packTrip();
+  // Each edition's file sits by the guide's English title, as guideFile says.
+  const en = guideFile('Cambria (California)').path;
+  const ja = guideFile('Cambria (California)', 'ja').path;
+  const zh = guideFile('Cambria (California)', 'zh').path;
+  await ws.write(trip, en, JSON.stringify({ title: 'Cambria (California)', text: 'Cambria is a town.' }), { author: 'system' });
+  await ws.write(trip, ja, JSON.stringify({ title: 'カンブリア', text: 'カンブリアは海辺の町。' }), { author: 'system' });
+  await ws.write(trip, zh, 'not json', { author: 'system', type: 'text/plain' });
+  await ws.write(trip, MANIFEST, JSON.stringify({ format: 1, key: 'k', at: '2026-11-20T09:00:00.000Z', failed: [], stopped: false, bytes: 1, voyage: ['en', 'ja', 'zh'],
+    files: [en, ja, zh].map((path) => ({ id: 'g1', kind: 'wikivoyage', path, bytes: 1, items: 1 })),
+    guides: [{ title: 'Cambria (California)', asked: ['Cambria Pines Lodge'], path: en, also: [{ edition: 'ja', title: 'カンブリア' }, { edition: 'zh', title: '坎布里亞' }] }] }), { author: 'system' });
+  const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
+  const parts = async (/** @type {string} */ name, /** @type {string[]} */ editions) => (await pack.guide(name, editions)).map((p) => `${p.edition} ${p.title} ${p.text}`);
+  for (const name of ['Cambria (California)', 'cambria (california)', 'Cambria Pines Lodge', 'カンブリア', '坎布里亞']) {
+    assert.deepEqual(await parts(name, ['ja', 'zh', 'en']), ['ja カンブリア カンブリアは海辺の町。', 'zh 坎布里亞 ', 'en Cambria (California) Cambria is a town.'], name);
+  }
+  assert.deepEqual(await parts('Cambria (California)', ['en', 'ja']), ['en Cambria (California) Cambria is a town.', 'ja カンブリア カンブリアは海辺の町。'], 'in the order given');
+  assert.deepEqual(await parts('Cambria (California)', ['en']), ['en Cambria (California) Cambria is a town.'], 'an edition not given is not read');
+  assert.deepEqual(await parts('Cambria', ['en']), [], 'not without its bracket: online never matches so, and the tool reads the name online');
+  assert.deepEqual(await parts('カンブリア', ['de']), [], 'none held in the editions given');
+  assert.deepEqual(await parts('Monterey', ['ja', 'en']), []);
+});
+
+test("a name is one guide's alone: the first kind of match that finds any, and never a name without its bracket, which online English answers with its list (Georgia)", async () => {
+  const { ws, trip } = await packTrip();
+  const guide = (/** @type {string} */ title, /** @type {string[]} */ asked, /** @type {{ edition: string, title: string }[]} */ also = []) => ({ title, asked, path: guideFile(title).path, also });
+  const guides = [guide('Georgia (country)', ['ジョージア'], [{ edition: 'ja', title: 'ジョージア' }]), guide('Georgia (U.S. state)', ['Peach State']), guide('Cambria (California)', ['Georgia, Cambria'])];
+  for (const g of guides) await ws.write(trip, g.path, JSON.stringify({ title: g.title, text: `${g.title} text` }), { author: 'system' });
+  await ws.write(trip, guideFile('Georgia (country)', 'ja').path, JSON.stringify({ title: 'ジョージア', text: 'ジョージアの本文' }), { author: 'system' });
+  const manifest = { format: 1, key: 'k', at: '2026-11-20T09:00:00.000Z', failed: [], stopped: false, bytes: 1, voyage: ['en', 'ja'], files: [], guides };
+  await ws.write(trip, MANIFEST, JSON.stringify(manifest), { author: 'system' });
+  const read = async (/** @type {string} */ name) => ((await (/** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip))).guide(name, ['ja', 'en'])).map((p) => `${p.edition} ${p.title}`));
+  assert.deepEqual(await read('Georgia'), [], 'the country or the state: neither (online, English lists them)');
+  assert.deepEqual(await read('Georgia (country)'), ['ja ジョージア', 'en Georgia (country)'], 'by its title');
+  assert.deepEqual(await read('Peach State'), ['en Georgia (U.S. state)'], 'by a name that led to it');
+  assert.deepEqual(await read('ジョージア'), ['ja ジョージア', 'en Georgia (country)'], 'by its title in an edition: one guide, not a part of each');
+  // Only the country held: "Georgia" is still not its name, as online English answers it with the list of places: the pack agrees, and the tool reads it online.
+  await ws.write(trip, MANIFEST, JSON.stringify({ ...manifest, guides: [guides[0]] }), { author: 'system' });
+  assert.deepEqual(await read('Georgia'), []);
+  // A name that is the title of one guide and a name that led to another: the title wins, never both.
+  await ws.write(trip, MANIFEST, JSON.stringify({ ...manifest, guides: [guide('Peach State', ['Georgia, Cambria']), guide('Georgia, Cambria', [])] }), { author: 'system' });
+  await ws.write(trip, guideFile('Peach State').path, JSON.stringify({ title: 'Peach State', text: 'Peach State text' }), { author: 'system' });
+  await ws.write(trip, guideFile('Georgia, Cambria').path, JSON.stringify({ title: 'Georgia, Cambria', text: 'Georgia, Cambria text' }), { author: 'system' });
+  assert.deepEqual(await read('Georgia, Cambria'), ['en Georgia, Cambria']);
 });

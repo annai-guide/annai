@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { packPlan, planStops, planFor, estimate, likelyGuides, guideTitles, hashId, STRETCH_KM, MAX_OSM, MAX_WIKI, SIZES } from '../../src/core/pack/plan.js';
+import { packPlan, planStops, planFor, estimate, likelyGuides, guideTitles, hashId, STRETCH_KM, SIZES } from '../../src/core/pack/plan.js';
 import { wanted } from '../../src/core/pack/download.js';
 import { meters } from '../../src/core/live/geo.js';
 import { createMemoryStore } from '../fakes/store-memory.js';
@@ -27,7 +27,7 @@ test('Big Sur: OpenStreetMap around each stop and along each leg, Wikipedia at e
   assert.equal(wiki.length, 9);
   for (const a of wiki) for (const b of wiki) if (a !== b) assert.ok(meters(pt(a.at), pt(b.at)) >= 7000, `${a.label} / ${b.label}`);
   assert.deepEqual(plan.names, ['Big Sur', 'Bixby Creek Bridge', 'Nepenthe', 'McWay Falls', 'Hearst Castle', 'Cambria Pines Lodge']);
-  assert.equal(plan.cut, 0);
+  assert.ok(!('cut' in plan), 'nothing is left out');
   assert.equal(new Set(plan.parts.map((p) => p.id)).size, plan.parts.length);
 });
 
@@ -72,29 +72,45 @@ test('stops either side of the date line are joined the short way', () => {
   assert.ok(along[0].kind === 'osm' && along[0].km < 30, 'about 23 km, not around the world');
 });
 
-test('a very long plan is capped, and says how much was left out', () => {
-  const items = Array.from({ length: 300 }, (_, k) => ({ path: `/plan/s${k}.json`, item: { title: `Stop ${k}`, start: { at: new Date(Date.UTC(2026, 10, 1) + k * 3_600_000).toISOString() }, place: { name: `Stop ${k}`, lat: 30 + k * 0.3, lng: -100 } } }));
-  const plan = packPlan({ trip: null, items });
-  assert.ok(plan.parts.filter((p) => p.kind === 'osm').length <= MAX_OSM);
-  assert.ok(plan.parts.filter((p) => p.kind === 'wikipedia').length <= MAX_WIKI);
-  assert.ok(plan.cut > 0);
+test('a trip longer than a pack once held (100 OpenStreetMap parts, 100 Wikipedia parts) is planned whole: every stop, and the whole way between', () => {
+  // A 21-day road trip's length: 46 stops, here 33 km apart, each leg one stretch with a Wikipedia part on the way.
+  const items = Array.from({ length: 46 }, (_, k) => ({ path: `/plan/s${k}.json`, item: { title: `Stop ${k}`, start: { at: new Date(Date.UTC(2026, 10, 1) + k * 3_600_000).toISOString() }, place: { name: `Stop ${k}`, lat: 30 + k * 0.3, lng: -100 } } }));
+  const short = packPlan({ trip: null, items });
+  assert.equal(short.parts.filter((p) => p.kind === 'osm').length, 46 + 45);
+  assert.equal(short.parts.filter((p) => p.kind === 'wikipedia').length, 46 + 45);
+  // 300 stops about 29 km apart, eastward along the 30th parallel.
+  const long = packPlan({ trip: null, items: Array.from({ length: 300 }, (_, k) => ({ path: `/plan/s${k}.json`, item: { title: `Stop ${k}`, start: { at: new Date(Date.UTC(2026, 10, 1) + k * 3_600_000).toISOString() }, place: { name: `Stop ${k}`, lat: 30, lng: -100 + k * 0.3 } } })) });
+  assert.equal(long.parts.filter((p) => p.kind === 'osm').length, 300 + 299);
+  assert.equal(long.parts.filter((p) => p.kind === 'wikipedia').length, 300 + 299);
+  assert.equal(long.stops.length, 300);
+  assert.equal(long.names.length, 300);
+  assert.ok(!('cut' in long));
 });
 
-test('the estimate shown before downloading: 237 kB for Big Sur, as the panel says it, by 1024s (a real pack was 143 KB)', () => {
+test('the estimate shown before downloading, from the measured sizes: 875 kB for Big Sur, as the panel says it, by 1024s', () => {
   const plan = packPlan({ trip: { places: ['Big Sur'] }, items: bigSur });
   assert.equal(likelyGuides(plan), 3);
-  const n = estimate(wanted(plan, ['en']), likelyGuides(plan));
-  assert.equal(Math.round(n / 1024), 237, String(n)); // 3 guides, 117 km of OpenStreetMap, 5 stops' places and 9 Wikipedia parts, at SIZES
-  assert.equal(estimate([], 0), 0);
+  const n = estimate(wanted(plan, ['en']), likelyGuides(plan), ['en']);
+  const km = plan.parts.reduce((sum, p) => sum + (p.kind === 'osm' ? p.km : 0), 0);
+  assert.equal(n, Math.round(3 * SIZES.guide + km * SIZES.osmPerKm + 5 * SIZES.osmStop + 9 * SIZES.wikipedia));
+  assert.equal(Math.round(n / 1024), 875, String(n)); // 3 guides, 117 km of OpenStreetMap, 5 stops' places and 9 Wikipedia parts, at SIZES
+  assert.equal(estimate([], 0, ['en']), 0);
+  // Each size with its reason (plan.js): what the editions design measured on 2026-11-20.
+  assert.deepEqual({ ...SIZES }, { osmPerKm: 512, osmStop: 110 * 1024, wikipedia: 8 * 1024, wikiEdition: 11 * 1024, guide: 65 * 1024, guideEdition: 8 * 1024 });
 });
 
-test("each language listed adds one Wikipedia part to the estimate for every part, at another edition's size", () => {
+test("each language listed adds one Wikipedia part to the estimate for every part, at another edition's size, and each guide edition another edition's guide for every guide", () => {
   const plan = packPlan({ trip: { places: ['Big Sur'] }, items: bigSur });
-  const n = estimate(wanted(plan, ['en']), likelyGuides(plan));
+  const guides = likelyGuides(plan);
+  const n = estimate(wanted(plan, ['en']), guides, ['en']);
   const wiki = plan.parts.filter((p) => p.kind === 'wikipedia').length;
   assert.equal(wiki, 9);
-  assert.equal(estimate(wanted(plan, ['ja', 'en']), likelyGuides(plan)) - n, wiki * SIZES.wikiEdition);
-  assert.equal(estimate(wanted(plan, ['zh', 'ja', 'en']), likelyGuides(plan)) - n, 2 * wiki * SIZES.wikiEdition);
+  assert.equal(estimate(wanted(plan, ['ja', 'en']), guides, ['en']) - n, wiki * SIZES.wikiEdition);
+  assert.equal(estimate(wanted(plan, ['zh', 'ja', 'en']), guides, ['en']) - n, 2 * wiki * SIZES.wikiEdition);
+  // Guides in Japanese and Chinese as well as English: two more of another edition's size for each.
+  assert.equal(estimate(wanted(plan, ['en']), guides, ['ja', 'zh', 'en']) - n, 2 * guides * SIZES.guideEdition);
+  // Only another edition's guides, for guides the pack has in English already: what "Download the rest" brings.
+  assert.equal(estimate([], 4, ['ja']), 4 * SIZES.guideEdition);
 });
 
 test('the Wikivoyage titles a name may be under', () => {

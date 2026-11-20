@@ -1,8 +1,8 @@
 import { McpClient, toolOutput } from '../mcp/client.js';
 import { answerJSON } from '../../core/answer.js';
 import { nominatimTurn, nominatimLanguages } from '../../core/nominatim.js';
-import { editionsOf, articleUrl, pageUrl, wikiSaid } from '../../core/wiki.js';
-import { cut, CHAIN } from '../../core/web-search.js';
+import { editionsOf, articleUrl, pageUrl, wikiSaid, guideEditions, wikimediaTurn, VOYAGE_COUNT } from '../../core/wiki.js';
+import { cut, CHAIN, ROWS } from '../../core/web-search.js';
 import { anySignal } from '../../core/signals.js';
 import { t } from '../../core/l10n.js';
 
@@ -15,10 +15,25 @@ import { t } from '../../core/l10n.js';
 
 /** The longest a free service has to answer before the next one is tried. */
 const LIMIT_MS = 12_000;
+/** The articles asked of an edition's search: the chain's own ROWS, as the floor asked before editions. */
+const ARTICLES = ROWS;
+/** The official websites asked of Nominatim for the place. */
+const PLACES = 3;
+/**
+ * The floor's rows, which the chain cuts its answer to in place of ROWS (web/index.js, for the provider of kind 'knowledge', which only the web
+ * plugin's own can be): each part at its most (a guide in every edition annai asks, the PLACES websites, the ARTICLES of the first edition that
+ * has any), so none takes another's rows: with 8, five editions left no article (2026-11-20).
+ */
+export const FLOOR_ROWS = VOYAGE_COUNT + PLACES + ARTICLES;
+
 /**
  * The whole floor's time, every part and try. The chain keeps CHAIN.reserve (10 s) for the floor (web/index.js reserveFor); the floor ends a
- * second inside it (its start and the chain's bookkeeping take milliseconds), so the chain's stop never drops its rows. At 2.5 s an answer
- * Wikipedia's three tries in series (7.5 s) finish inside it; the guide's four (10 s) are cut, the other rows come.
+ * second inside it, so the chain's stop never drops its rows. Its requests to Wikimedia take turns, 3 at once in the order asked (wiki.js
+ * wikimediaTurn): each edition's Wikipedia search first, then the guide's (one request to English for its best match with text and links, then
+ * its other editions' pages at once). At 2.5 s an answer that is three answers in series, 7.5 s, when each edition's first search finds
+ * something: with up to four editions listed every guide and the article come, with five the last guide's page is cut, with six only English's
+ * and one more (fake timers, 2026-11-20; the plugin-web test runs three). At 3 s an answer the other editions' pages are cut from three
+ * editions on. Where an edition's first search finds nothing, its next tries queue first and the guide's pages drop. What came is the answer.
  */
 export const FLOOR_MS = { ms: CHAIN.reserve - 1_000 };
 
@@ -126,8 +141,8 @@ const keywords = (query) => (query.toLowerCase().match(/[\p{L}\p{N}]{2,}/gu) ?? 
  */
 export const knowledgeFloor = (orderOf) => ({
   id: 'wiki', name: /* en */ 'Wikivoyage, Wikipedia and Nominatim', shown: t`Wikivoyage, Wikipedia and Nominatim`, kind: 'knowledge', always: true, limitMs: LIMIT_MS,
-  /** @param {string} query @param {{ fetch: any, signal: AbortSignal, limit: number }} c */
-  async search(query, { fetch: get, signal, limit }) {
+  /** @param {string} query @param {{ fetch: any, signal: AbortSignal }} c */
+  async search(query, { fetch: get, signal }) {
     // One time for the whole floor, from the start of its search (the settings read counts): what has answered by then is its answer.
     const late = AbortSignal.timeout(FLOOR_MS.ms);
     const stop = anySignal([signal, late]);
@@ -135,14 +150,16 @@ export const knowledgeFloor = (orderOf) => ({
     const found = keywords(query);
     const want = found.length ? found : [query.trim().toLowerCase()];
     const enc = encodeURIComponent;
-    /** @param {string} url @param {() => Promise<void>} [first] a wait first */
+    /** A request, Wikimedia's at its turn (wiki.js wikimediaTurn). @param {string} url @param {() => Promise<void>} [first] a wait first */
     const json = async (url, first) => {
       const host = new URL(url).hostname;
       try {
         await first?.();
-        const res = await get(url, { signal: stop, referrerPolicy: 'origin' });
-        if (!res.ok) throw Object.assign(new Error(`${host} answered ${res.status}`), { status: res.status });
-        const data = await answerJSON(res, host);
+        const data = await wikimediaTurn(url, async () => {
+          const res = await get(url, { signal: stop, referrerPolicy: 'origin' });
+          if (!res.ok) throw Object.assign(new Error(`${host} answered ${res.status}`), { status: res.status });
+          return answerJSON(res, host);
+        }, stop);
         const said = wikiSaid(data);
         if (said) throw new Error(`${host} said: ${said}`);
         return data;
@@ -157,31 +174,53 @@ export const knowledgeFloor = (orderOf) => ({
     const hits = async (host) => {
       for (const q of tries) {
         /* en */
-        const found = (await json(api(host, `action=query&list=search&srlimit=${limit}&srsearch=${enc(q)}`)))?.query?.search;
+        const found = (await json(api(host, `action=query&list=search&srlimit=${ARTICLES}&srsearch=${enc(q)}`)))?.query?.search;
         if (Array.isArray(found) && found.length) return found;
       }
       return [];
     };
-    const guide = async () => {
-      const [top] = await hits('en.wikivoyage.org');
-      if (!top) return [];
-      const page = /** @type {any} */ (Object.values((await json(api('en.wikivoyage.org', `action=query&prop=extracts&explaintext=1&redirects=1&titles=${enc(top.title)}`)))?.query?.pages ?? {})[0]);
-      const lines = String(page?.extract ?? '').split('\n').map((l) => l.trim()).filter((l) => l.length > 20);
-      const score = (/** @type {string} */ l) => want.filter((w) => l.toLowerCase().includes(w)).length;
+    // The guide: English's best match with its text and its links to the other editions, in one request a try (generator=search: the same top
+    // hit as list=search, checked on four queries, 2026-11-20), and its other editions' pages by the titles it links to (a search of a smaller
+    // edition found wrong guides). An edition whose page doesn't come, or is missing, is left out.
+    const voyage = guideEditions(editionsOf(order));
+    const page = async (/** @type {string} */ e, /** @type {string} */ title) => /** @type {any} */ (Object.values((await json(api(`${e}.wikivoyage.org`, `action=query&formatversion=2&prop=extracts&explaintext=1&redirects=1&titles=${enc(title)}`)))?.query?.pages ?? {})[0]);
+    const score = (/** @type {string} */ l) => want.filter((w) => l.toLowerCase().includes(w)).length;
+    /** A guide's row: its lines that share the query's words, else its first two. @param {string} e @param {any} p @param {string} title */
+    const guideRow = (e, p, title) => {
+      const lines = String(p?.extract ?? '').split('\n').map((l) => l.trim()).filter((l) => l.length > 20);
       const picked = lines.filter((l) => score(l) > 0).sort((a, b) => score(b) - score(a)).slice(0, 3);
-      return [{ title: /* en */ `${top.title} (Wikivoyage)`, url: pageUrl('en.wikivoyage.org', top.title), snippet: (picked.length ? picked : lines.slice(0, 2)).join(' ') }];
+      return { title: /* en */ `${title} (Wikivoyage)`, url: pageUrl(`${e}.wikivoyage.org`, title), snippet: (picked.length ? picked : lines.slice(0, 2)).join(' ') };
+    };
+    const guide = async () => {
+      /** @type {any} */
+      let english;
+      for (const q of tries) {
+        /* en */
+        english = (await json(api('en.wikivoyage.org', `action=query&formatversion=2&generator=search&gsrsearch=${enc(q)}&gsrlimit=1&prop=extracts%7Clanglinks&explaintext=1&lllimit=500`)))?.query?.pages?.[0];
+        if (english) break;
+      }
+      if (typeof english?.title !== 'string') return [];
+      const links = new Map((Array.isArray(english.langlinks) ? english.langlinks : []).filter((/** @type {any} */ l) => typeof l?.title === 'string' && l.title).map((/** @type {any} */ l) => [l.lang, l.title]));
+      const rows = await Promise.all(voyage.map((e) => {
+        if (e === 'en') return [guideRow(e, english, english.title)];
+        const title = links.get(e);
+        return title ? page(e, title).then((p) => (p && p.missing === undefined && typeof p.extract === 'string' ? [guideRow(e, p, title)] : []), () => []) : [];
+      }));
+      return rows.flat();
     };
     const places = async () => {
       // one request a second to Nominatim for the whole app, but only while the floor has time
-      const found = await json(`https://nominatim.openstreetmap.org/search?q=${enc(want.join(' '))}&format=jsonv2&extratags=1&limit=3&accept-language=${enc(nominatimLanguages(order))}`, () => nominatimTurn(stop));
+      const found = await json(`https://nominatim.openstreetmap.org/search?q=${enc(want.join(' '))}&format=jsonv2&extratags=1&limit=${PLACES}&accept-language=${enc(nominatimLanguages(order))}`, () => nominatimTurn(stop));
       /* en */
       return (Array.isArray(found) ? found : []).filter((f) => f?.extratags?.website)
         .map((f) => ({ title: f.name || f.display_name, url: f.extratags.website, snippet: [f.display_name, f.extratags.opening_hours ? `Hours: ${f.extratags.opening_hours}` : ''].filter(Boolean).join('. ') }));
     };
-    // Every part asks at once, each edition too. The rows are what answered: the guide's, Nominatim's websites, the first edition's articles
-    // that found any. With no rows, the first failure is the failure, in words; with none, nothing found.
+    // Every part asks at once, each edition too, Wikipedia's editions first, in the reading order, then the guide (FLOOR_MS). The rows are what
+    // answered: the guide's, Nominatim's websites, the first edition's articles that found any. With no rows, the first failure is the failure,
+    // in words; with none, nothing found.
     const editions = editionsOf(order);
-    const parts = await Promise.allSettled([guide(), places(), ...editions.map((e) => hits(`${e}.wikipedia.org`))]);
+    const asked = editions.map((e) => hits(`${e}.wikipedia.org`));
+    const parts = await Promise.allSettled([guide(), places(), ...asked]);
     const [guideRows, placeRows, ...editionHits] = parts;
     const k = editionHits.findIndex((g) => g.status === 'fulfilled' && g.value.length > 0);
     const rows = [

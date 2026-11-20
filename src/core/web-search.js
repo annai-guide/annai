@@ -22,7 +22,7 @@ export const READY_MS = { ms: 3_000 };
 /** A search's whole time, and what is kept of it for the floor (ms): the rungs before the floor share the rest. */
 export const CHAIN = { ms: 45_000, reserve: 10_000 };
 
-/** Rows in an answer, and a snippet's and a title's length. */
+/** Rows in an answer (the floor's are its parts' own: web/free.js FLOOR_ROWS), and a snippet's and a title's length. */
 export const ROWS = 8;
 const SNIPPET = 400;
 const TITLE = 160;

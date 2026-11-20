@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
@@ -10,7 +10,7 @@ import { STEP_MS, READY_MS } from '../../src/plugins/web/index.js';
 import { cooldowns, CHAIN } from '../../src/core/web-search.js';
 import { tracedFetch } from '../../src/core/agent/net.js';
 import { NOMINATIM_GAP, nominatimReset, nominatimTurn } from '../../src/core/nominatim.js';
-import { forgetClients, knowledgeFloor, FLOOR_MS } from '../../src/plugins/web/free.js';
+import { forgetClients, knowledgeFloor, FLOOR_MS, FLOOR_ROWS } from '../../src/plugins/web/free.js';
 import { readingOrder } from '../../src/core/languages.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { readFile } from 'node:fs/promises';
@@ -112,10 +112,9 @@ function wikiAnswer(url) {
   const u = new URL(url);
   const j = (/** @type {any} */ x) => new Response(JSON.stringify(x), { headers: { 'content-type': 'application/json' } });
   if (u.hostname === 'nominatim.openstreetmap.org') return j([{ name: 'Nepenthe', display_name: 'Nepenthe, Highway 1, Big Sur, California', extratags: { website: 'http://www.nepenthebigsur.com' } }, { name: 'No site', extratags: {} }]);
-  if (u.searchParams.get('list') === 'search') {
-    return j(u.hostname === 'en.wikivoyage.org' ? { query: { search: [{ title: 'Big Sur' }] } } : { query: { search: [{ title: 'Nepenthe (restaurant)', snippet: 'a <span class="searchmatch">restaurant</span> in Big Sur' }] } });
-  }
-  return j({ query: { pages: { 1: { title: 'Big Sur', extract: 'Intro.\n1 Nepenthe, 48510 Highway 1. Lunch from 11:30AM-4:30PM; Dinner from 5-10PM. Picturesque restaurant.\n2 Bixby Bridge (11 mi north of Big Sur Village). Iconic bridge built in 1933.' } } } });
+  if (u.searchParams.get('list') === 'search') return j({ query: { search: [{ title: 'Nepenthe (restaurant)', snippet: 'a <span class="searchmatch">restaurant</span> in Big Sur' }] } });
+  // English Wikivoyage's best match with its text, in one answer (generator=search).
+  return j({ query: { pages: [{ title: 'Big Sur', index: 1, extract: 'Intro.\n1 Nepenthe, 48510 Highway 1. Lunch from 11:30AM-4:30PM; Dinner from 5-10PM. Picturesque restaurant.\n2 Bixby Bridge (11 mi north of Big Sur Village). Iconic bridge built in 1933.' }] } });
 }
 /** All the services as the research recorded them. */
 async function services(/** @type {string} */ url, /** @type {any} */ init) {
@@ -355,8 +354,7 @@ test("the floor's result: the rows of what answered; no rows and something faile
   // The same failures with rows from another part: the rows.
   const rows = await search(floor, (url) => (url.includes('ja.wikipedia.org') ? down() : url.includes('en.wikipedia.org') ? found('Kiyomizu-dera') : empty(url)));
   assert.deepEqual(rows.map((r) => r.title), ['Kiyomizu-dera (Wikipedia)']);
-  const guideRows = await search(floor, (url) => (url.includes('wikipedia.org') ? maxlag() : url.includes('wikivoyage') && url.includes('list=search') ? found('Kyoto')
-    : url.includes('wikivoyage') ? new Response(JSON.stringify({ query: { pages: { 1: { extract: 'Kiyomizu-dera is a temple that opens at six every morning.' } } } })) : empty(url)));
+  const guideRows = await search(floor, (url) => (url.includes('wikipedia.org') ? maxlag() : url.includes('wikivoyage') ? new Response(JSON.stringify({ query: { pages: [{ title: 'Kyoto', index: 1, extract: 'Kiyomizu-dera is a temple that opens at six every morning.' }] } })) : empty(url)));
   assert.deepEqual(guideRows.map((r) => r.title), ['Kyoto (Wikivoyage)']);
   // Everything answered, nothing found.
   assert.deepEqual(await search(floor, empty), []);
@@ -409,7 +407,8 @@ test("the floor's time starts with its search, before it reads the settings: a s
       return init.signal.aborted ? Promise.reject(init.signal.reason) : hang(init);
     }).then(() => null, (/** @type {any} */ e) => e);
   });
-  assert.ok(stopped.length > 0 && stopped.every(Boolean), 'the time had run out when the settings came');
+  // The time had run out when the settings came: no request goes out (Wikimedia's turn and Nominatim's turn see the time is up first).
+  assert.ok(stopped.every(Boolean), 'none with time left');
   assert.match(failure?.message, /didn't answer in time/);
 });
 
@@ -419,9 +418,132 @@ test("FLOOR_MS has its reason: three answers of 2.5 s in series, and a second in
 });
 
 test("the floor's addresses: a Wikivoyage guide's keeps its title as written with the brackets encoded, as a Wikipedia article's does", async () => {
-  const rows = await search(floorOf(['en']), (url) => (url.includes('wikivoyage') && url.includes('list=search') ? found('Cambria (California)') : url.includes('wikivoyage')
-    ? new Response(JSON.stringify({ query: { pages: { 1: { extract: 'Cambria is a seaside town on the coast.' } } } })) : url.includes('nominatim') ? new Response('[]') : found('Cambria, California (town)')));
+  const rows = await search(floorOf(['en']), (url) => (url.includes('wikivoyage')
+    ? new Response(JSON.stringify({ query: { pages: [{ title: 'Cambria (California)', index: 1, extract: 'Cambria is a seaside town on the coast.' }] } })) : url.includes('nominatim') ? new Response('[]') : found('Cambria, California (town)')));
   assert.deepEqual(rows.map((r) => r.url), ['https://en.wikivoyage.org/wiki/Cambria_%28California%29', 'https://en.wikipedia.org/wiki/Cambria,_California_%28town%29']);
+});
+
+test("the floor's guide: English's best match with its links in one request, and, by the titles it links to, its page in each of the traveller's other editions that has one, a row each in the reading order; an edition's search is never used", async () => {
+  // English Wikivoyage's answer shape to generator=search (2026-11-20): the best page, with its text and links, formatversion 2.
+  const kyoto = { batchcomplete: true, query: { pages: [{ pageid: 18579, ns: 0, title: 'Kyoto', index: 1, extract: 'Kyoto was the capital of Japan for over a millennium.\nKiyomizu-dera, the wooden temple on the hill, opens at six.', langlinks: [{ lang: 'de', title: 'Kyōto' }, { lang: 'ja', title: '京都市' }, { lang: 'zh', title: '京都' }] }] } };
+  const ja = { batchcomplete: true, query: { pages: [{ ns: 0, title: '京都市', extract: '京都市は京都府の府庁所在地で、千年にわたって都だった。\n清水寺は東山にある寺で、朝六時に開門する。' }] } };
+  /** @type {string[]} */
+  const asked = [];
+  const answer = (/** @type {string} */ url) => {
+    const u = new URL(url);
+    asked.push(`${u.hostname} ${u.searchParams.get('generator') ?? u.searchParams.get('prop')} ${u.searchParams.get('gsrsearch') ?? u.searchParams.get('titles')}`);
+    if (u.hostname === 'en.wikivoyage.org') return new Response(JSON.stringify(kyoto));
+    if (u.hostname === 'ja.wikivoyage.org') return new Response(JSON.stringify(ja));
+    return url.includes('nominatim') ? new Response('[]') : nothing();
+  };
+  const rows = await search(floorOf(['ja']), answer, 'kiyomizu temple');
+  assert.deepEqual(rows.map((r) => [r.title, r.url]), [['京都市 (Wikivoyage)', 'https://ja.wikivoyage.org/wiki/京都市'], ['Kyoto (Wikivoyage)', 'https://en.wikivoyage.org/wiki/Kyoto']]);
+  assert.equal(rows[1].snippet, 'Kiyomizu-dera, the wooden temple on the hill, opens at six.', "English's line that shares the query's words");
+  assert.equal(rows[0].snippet, '京都市は京都府の府庁所在地で、千年にわたって都だった。 清水寺は東山にある寺で、朝六時に開門する。', 'none shares them: its first lines');
+  const voyage = asked.filter((a) => a.includes('wikivoyage'));
+  assert.deepEqual(voyage, ['en.wikivoyage.org search kiyomizu temple', 'ja.wikivoyage.org extracts 京都市'], 'one request for English, no search of Japanese Wikivoyage, and nothing of Chinese, which is not listed');
+  // Japanese's page not coming: English's row all the same.
+  const down = await search(floorOf(['ja']), (url) => (url.includes('ja.wikivoyage') ? new Response('', { status: 503 }) : answer(url)), 'kiyomizu temple');
+  assert.deepEqual(down.map((r) => r.title), ['Kyoto (Wikivoyage)']);
+});
+
+/** Wikivoyage's and Wikipedia's answers for the floor with five editions: a guide in each, three websites and the articles of Japanese Wikipedia. */
+function fiveEditions(/** @type {string} */ url) {
+  const u = new URL(url);
+  const j = (/** @type {any} */ x) => new Response(JSON.stringify(x));
+  if (u.hostname === 'nominatim.openstreetmap.org') return j([1, 2, 3].map((k) => ({ name: `Site ${k}`, display_name: `Site ${k}, Kyoto`, extratags: { website: `https://site${k}.test/` } })));
+  if (u.hostname === 'en.wikivoyage.org') return j({ query: { pages: [{ title: 'Kyoto', index: 1, extract: 'Kyoto is the old capital with a thousand temples.', langlinks: ['ja', 'zh', 'fr', 'de'].map((lang) => ({ lang, title: `Kyoto ${lang}` })) }] } });
+  if (u.hostname.endsWith('.wikivoyage.org')) return j({ query: { pages: [{ title: String(u.searchParams.get('titles')), extract: 'A guide to the old capital with a thousand temples.' }] } });
+  return j({ query: { search: Array.from({ length: 8 }, (_, k) => ({ title: `Article ${k}`, snippet: 'a temple' })) } });
+}
+
+test("the floor's rows are what its parts give, not the chain's 8: five editions' guides, three websites and the articles all come", async () => {
+  assert.equal(FLOOR_ROWS, 24 + 3 + 8, 'a guide for each of the 24 Wikivoyage hosts, the websites, the articles asked of an edition');
+  assert.equal('rows' in knowledgeFloor(async () => []), false, 'the chain gives the floor its rows by what it is, not by a field it carries');
+  const { run, ws, settings, asked } = await setup();
+  await updateAppSettings(ws, { languages: { spoken: ['ja', 'zh-Hant', 'fr', 'de'], answer: 'follow' } });
+  await settings({ searchOff: ['exa', 'parallel', 'firecrawl'] });
+  const out = await run('web_search', { query: 'kyoto temples' }, fiveEditions);
+  // Each edition is still asked for 8 articles, not for as many as the floor's rows.
+  assert.deepEqual([...new Set(asked.filter((a) => a.url.includes('wikipedia.org')).map((a) => new URL(a.url).searchParams.get('srlimit')))], ['8']);
+  const rows = out.split('\n').slice(1);
+  assert.equal(rows.filter((r) => r.includes('(Wikivoyage)')).length, 5, 'a guide in each edition');
+  assert.equal(rows.filter((r) => r.includes('Site ')).length, 3);
+  assert.equal(rows.filter((r) => r.includes('(Wikipedia)')).length, 8, "the first edition's articles");
+  assert.equal(rows.length, 16);
+});
+
+test("the floor at 2.5 s an answer, the speed FLOOR_MS is sized for, with three editions listed: the three guides come, and the article", async () => {
+  /** Lets what has started run for a few turns (real time: the timers are faked). */
+  const turns = async () => {
+    for (let k = 0; k < 20; k++) await new Promise((r) => setImmediate(r));
+  };
+  const reply = (/** @type {string} */ url) => {
+    const u = new URL(url);
+    const j = (/** @type {any} */ x) => new Response(JSON.stringify(x));
+    if (u.hostname === 'nominatim.openstreetmap.org') return j([]);
+    if (u.hostname === 'en.wikivoyage.org') return j({ query: { pages: [{ title: 'Kyoto', index: 1, extract: 'Kyoto is the old capital with a thousand temples.', langlinks: [{ lang: 'ja', title: '京都市' }, { lang: 'zh', title: '京都' }] }] } });
+    if (u.hostname.endsWith('.wikivoyage.org')) return j({ query: { pages: [{ title: String(u.searchParams.get('titles')), extract: 'A guide to the old capital with a thousand temples.' }] } });
+    return j({ query: { search: [{ title: 'Kiyomizu-dera', snippet: 'a temple' }] } });
+  };
+  mock.timers.enable({ apis: /** @type {any[]} */ (['setTimeout', 'AbortSignal.timeout']) });
+  try {
+    // Every answer comes 2.5 s after it is asked, as FLOOR_MS (9 s) counts on: Wikipedia's three editions first, then English's guide (one request),
+    // then the two other editions' pages at once: three answers' time.
+    const answer = (/** @type {string} */ url, /** @type {any} */ init) => new Promise((resolve, reject) => {
+      const timer = setTimeout(resolve, 2500, reply(url));
+      init.signal.addEventListener('abort', () => { clearTimeout(timer); reject(init.signal.reason); }, { once: true });
+    });
+    /** @type {any} */
+    let rows = null;
+    const done = search(floorOf(['ja', 'zh-Hant']), answer, 'kiyomizu temple').then((r) => { rows = r; });
+    for (let k = 0; k < 6 && rows === null; k++) {
+      await turns();
+      mock.timers.tick(2500);
+    }
+    await done;
+    assert.deepEqual(rows.map((/** @type {any} */ r) => r.title), ['京都市 (Wikivoyage)', '京都 (Wikivoyage)', 'Kyoto (Wikivoyage)', 'Kiyomizu-dera (Wikipedia)']);
+  } finally {
+    mock.timers.reset();
+  }
+});
+
+test("the floor's guide: a page another edition's link names that is missing there gives no row", async () => {
+  const kyoto = { query: { pages: [{ title: 'Kyoto', index: 1, extract: 'Kyoto is the old capital with a thousand temples.', langlinks: [{ lang: 'ja', title: '京都市' }] }] } };
+  const rows = await search(floorOf(['ja']), (url) => (url.includes('ja.wikivoyage') ? new Response(JSON.stringify({ query: { pages: [{ ns: 0, title: '京都市', missing: true }] } }))
+    : url.includes('en.wikivoyage') ? new Response(JSON.stringify(kyoto)) : url.includes('nominatim') ? new Response('[]') : nothing()), 'kiyomizu temple');
+  assert.deepEqual(rows.map((r) => r.title), ['Kyoto (Wikivoyage)']);
+});
+
+test("the floor takes Wikimedia's turns, 3 requests at once: Wikipedia's editions first, in the reading order, then the guide, which waits for a turn", async () => {
+  // Chinese, Japanese and English: three editions' searches and the guide's, four requests to Wikimedia; the fourth waits.
+  /** @type {string[]} */
+  const started = [];
+  /** @type {(() => void)[]} */
+  const finish = [];
+  const answer = (/** @type {string} */ url, /** @type {any} */ init) => {
+    if (url.includes('nominatim')) return new Response('[]');
+    started.push(new URL(url).hostname);
+    return new Promise((resolve, reject) => {
+      finish.push(() => resolve(nothing()));
+      init.signal.addEventListener('abort', () => reject(init.signal.reason), { once: true });
+    });
+  };
+  const done = search(floorOf(['zh', 'ja']), answer, 'kiyomizu temple opening hours');
+  await new Promise((r) => setTimeout(r, 30));
+  assert.deepEqual(started, ['zh.wikipedia.org', 'ja.wikipedia.org', 'en.wikipedia.org'], 'three at once, the editions first');
+  finish.shift()?.();
+  await new Promise((r) => setTimeout(r, 30));
+  assert.deepEqual(started.slice(3), ['en.wikivoyage.org'], 'one ends: the guide has its turn, before the next try of the one that ended');
+  // The rest answer one at a time, each as it is asked: three tries an edition and the guide's three searches, 12 in all, never more than 3
+  // waiting at once; then the floor ends with nothing found.
+  for (let k = 1; k < 12; k++) {
+    for (let wait = 0; !finish.length && wait < 200; wait++) await new Promise((r) => setTimeout(r, 2));
+    assert.ok(finish.length > 0 && finish.length <= 3, `request ${k + 1}: ${finish.length} waiting`);
+    finish.shift()?.();
+  }
+  assert.deepEqual(await done, []);
+  assert.equal(started.length, 12);
 });
 
 test('web_search: Jina Search goes first when its key is set; without the key it is passed over and the free services answer', async () => {
@@ -572,6 +694,17 @@ test('S2: a third-party provider that says it is always on or the knowledge floo
   await t.settings({ searchOff: ['sticky'] });
   await t.run('web_search', { query: 'q' }, services);
   assert.equal(asked, 0);
+});
+
+test("a provider of another plugin gets the chain's 8 rows whatever it says of itself (the knowledge floor, rows of its own): only the floor, the web plugin's, has more", async () => {
+  const t = await setup();
+  t.registry.add('third', 'search', { id: 'greedy', name: 'Greedy', kind: 'knowledge', always: true, rows: 100, search: async (/** @type {string} */ q, /** @type {any} */ c) => {
+    assert.equal(c.limit, 8);
+    return Array.from({ length: 30 }, (_, k) => ({ title: `T${k}`, url: `https://g.test/${k}`, snippet: 's' }));
+  } });
+  await t.settings({ searchOff: ['exa', 'parallel', 'firecrawl'], searchOrder: ['greedy'] });
+  const out = await t.run('web_search', { query: 'q' }, services);
+  assert.equal(out.split('\n').length, 1 + 8, 'a header and eight rows');
 });
 
 test("S3: a request the browser could not make, through the traced fetch, rests Jina like any other and not the floor, which the next search asks again (the traced fetch marks it a network failure)", async () => {

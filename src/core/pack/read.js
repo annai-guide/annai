@@ -1,5 +1,5 @@
 import { meters } from '../live/geo.js';
-import { MANIFEST, readManifest } from './download.js';
+import { MANIFEST, readManifest, heldIn } from './download.js';
 import { merged, articleUrl, readingEditions } from '../wiki.js';
 import { isCJK } from '../languages.js';
 
@@ -139,13 +139,29 @@ export class Pack {
     /* en */ return this.articles(p, radius, editions).map((w) => [w.title, 'wikipedia article', Math.round(meters(p, w)), w.lat, w.lng, 'wikipedia', `${short(w.summary)} ${articleUrl(w.edition, w.title)}`.trim()]);
   }
 
-  /** Its guide for a name: by title, by title without "(California)", or by a name that led to it. @param {string} name @returns {Promise<{ title: string, text: string } | null>} */
-  async guide(name) {
+  /**
+   * Its one guide for a name, by the first kind of match that finds any: its English title, a name that led to it, its title in an edition: only
+   * what the tool matches online, which never drops a bracket ("Georgia" is not "Georgia (country)": online, English's list answers it), so the pack and
+   * the tool agree on a name (apart from a trip name written with a comma, which the download also looks up as its bracketed form), and a name
+   * held only under its bracketed title reads online; in each of these editions it is in, in their order, the
+   * text empty where the file is missing or broken. None, [].
+   * @param {string} name @param {string[]} editions the traveller's guide editions, in the reading order (wiki.js guideEditions)
+   * @returns {Promise<{ edition: string, title: string, text: string }[]>}
+   */
+  async guide(name, editions) {
     const n = norm(String(name));
-    const g = this.manifest.guides.find((x) => [x.title, x.title.replace(/\s*\([^)]*\)$/, ''), ...x.asked].some((t) => norm(t) === n));
-    if (!g) return null;
-    const v = await this.#read(g.path).catch(() => null);
-    return typeof v?.text === 'string' && v.text.trim() ? { title: g.title, text: v.text } : null;
+    const { guides } = this.manifest;
+    const g = guides.find((x) => norm(x.title) === n) ?? guides.find((x) => x.asked.some((a) => norm(a) === n)) ?? guides.find((x) => x.also.some((a) => norm(a.title) === n));
+    const held = g ? heldIn(g) : [];
+    /** @type {{ edition: string, title: string, text: string }[]} */
+    const out = [];
+    for (const e of editions) {
+      const h = held.find((x) => x.edition === e);
+      if (!h) continue;
+      const v = await this.#read(h.path).catch(() => null);
+      out.push({ edition: e, title: h.title, text: typeof v?.text === 'string' && v.text.trim() ? v.text : '' });
+    }
+    return out;
   }
 
   /** The nearest sight, park, place to stay or Wikipedia article within 500 m, for live mode. @param {Point} p @param {string[]} editions @returns {{ name: string, m: number } | null} */

@@ -152,19 +152,29 @@ test('a download that is stopped, or fails as the phone fills up, forgets too: w
   at += STALE_MS + 1;
   const first = new Map((await ws.list(trip, DIR)).map((f) => [f.path, f.hash]));
   const abort = new AbortController();
-  const m = await downloadPack({ ws, scope: trip, ...services({ overpass: later }), version: V, editions: EN, gapMs: 0, now, signal: abort.signal, onProgress: (p) => { if (p.done === 1) abort.abort(); } });
+  // Stopped at its second OpenStreetMap part (the Wikipedia parts and the guides come first and keep their bytes): one part is new.
+  let asked = 0;
+  const stopping = (/** @type {string} */ url, /** @type {any} */ init) => {
+    if (++asked === 2) {
+      abort.abort();
+      throw new DOMException('The download was stopped.', 'AbortError');
+    }
+    return later(url, init);
+  };
+  const m = await downloadPack({ ws, scope: trip, ...services({ overpass: stopping }), version: V, editions: EN, gapMs: 0, now, signal: abort.signal });
   assert.equal(m.stopped, true);
   assert.deepEqual(await packHistory(store, trip), []);
   const written = [...(await ws.list(trip, DIR))].filter((f) => first.get(f.path) !== f.hash).map((f) => f.path).sort();
   assert.equal(written.length, 2, 'its first part, and the manifest saying it stopped');
   for (const p of written) assert.equal(await stored(store, /** @type {string} */ (first.get(p))), false, `${p}'s older version is freed`);
-  // The phone full at its second part: the first is the new version, the second the old one, and nothing else names the first's old one.
+  // The phone full at its second OpenStreetMap part (the Wikipedia parts and the guides come first and keep their bytes): the first is the new
+  // version, the second the old one, and nothing else names the first's old one.
   at += STALE_MS + 1;
   const before = new Map((await ws.list(trip, DIR)).map((f) => [f.path, f.hash]));
   const anyWs = /** @type {any} */ (ws);
   const write = anyWs.write.bind(ws);
   let parts = 0;
-  anyWs.write = (/** @type {string} */ s, /** @type {string} */ p, /** @type {any[]} */ ...rest) => (p.startsWith(DIR) && ++parts === 2 ? Promise.reject(new StorageFullError()) : write(s, p, ...rest));
+  anyWs.write = (/** @type {string} */ s, /** @type {string} */ p, /** @type {any[]} */ ...rest) => (p.startsWith(`${DIR}osm/`) && ++parts === 2 ? Promise.reject(new StorageFullError()) : write(s, p, ...rest));
   const newer = (/** @type {string} */ url, /** @type {any} */ init) => ({ elements: [...later(url, init).elements, { type: 'node', id: 10, lat: 36.31, lon: -121.86, tags: { name: 'Newer Vista', tourism: 'viewpoint' } }] });
   await assert.rejects(downloadPack({ ws, scope: trip, ...services({ overpass: newer }), version: V, editions: EN, gapMs: 0, now }), StorageFullError);
   anyWs.write = write;
@@ -315,7 +325,7 @@ test("a Backup listed while a first download is mid-way is the pack as it was li
     await download;
   });
   const { manifest } = await exportArchive(racing, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: V });
-  assert.equal(listed.size, 1, 'one part, no manifest');
+  assert.ok(listed.size > 0 && !listed.has(MANIFEST), 'the parts saved so far, no manifest yet');
   assert.deepEqual(packedHashes(manifest), listed);
   assert.ok((await ws.list(trip, DIR)).length > 2, 'the download went on to make a whole pack');
 });
