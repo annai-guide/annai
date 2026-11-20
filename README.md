@@ -68,7 +68,7 @@ memories afterwards.
 - Restore any backup onto a new or wiped phone from Settings → Automatic backups.
 - A newer backup from your other phone is never overwritten: annai pauses, and offers to import it as a copy.
 - annai makes no backup of its own before an update that changes the database's layout: those steps only add ways to find your records and never change or delete one. Back up now on a backup place's page makes a backup when you ask, if the place can be reached ([docs/limitations.md](docs/limitations.md)).
-- On a phone too full to write, annai shows its storage card (it can also show for another refused save), and what you typed comes back to the type box; a spoken line, a tap on one of Shiori's cards, or photos that weren't kept are gone, so say, tap or attach them again once there is room ([docs/limitations.md](docs/limitations.md)).
+- On a phone too full to write, annai shows its storage card (it can also show for another refused save), and what you typed comes back to the type box; a spoken line, a tap on one of Shiori's cards, or photos that weren't kept are gone, so say, tap or attach them again once there is room. A line that comes back goes to whichever conversation is open, so look before you send it; with no byte free at all, removing a trip can be refused too ([docs/limitations.md](docs/limitations.md)).
 - The sign-ins for those places (the GitHub or Forgejo token, the bucket's keys, the WebDAV password) stay on the device and are never in a backup. API keys go into a backup only when you choose, and only into an encrypted one.
 
 ## Notifications

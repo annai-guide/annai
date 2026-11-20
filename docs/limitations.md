@@ -1089,3 +1089,24 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the traveller sees:** when Shiori writes an article's address bare in chat, a title ending in `.`, `,`, `;`, `:`, `!`, `?`, `'` or `"` (`…/wiki/Yahoo!`, `…/wiki/Washington,_D.C.`) is linked without that last character, so the link opens a different or missing page; an address with a bracket is cut at the bracket. A `[text](address)` link is unaffected unless its address holds a `)`.
 - **Why:** the renderer's rule for a bare address (src/ui/markdown.js:12) ends it at a bracket or whitespace and drops a trailing stop, so that a sentence's own full stop isn't taken into the link; the places tools now send their addresses with brackets encoded (`pageUrl`, src/core/wiki.js), so it bites only on titles ending in punctuation.
 - **Revisit when:** its row in docs/progress.md ("A bare address in chat that ends in punctuation"), a small build after places-lang-next.
+
+### A line given back while another conversation is open can be sent there
+- **Kind:** known limitation.
+- **What the traveller sees:** on a phone too full to write, a line typed for one conversation whose write is refused comes back into the one type box; if another conversation is open by then, the line sits in its box, and sent without a look it goes to that conversation.
+- **Why:** annai has one type box for the whole app, the hand-back's design check's choice (2026-11-19): choosing where words go back by the conversation open at that moment needed the state four findings came from. Naming the conversation on the storage card would need it carried on the event, for a case that needs a full phone and an open of another conversation while the line was being written.
+- **Revisit when:** a traveller reports a line sent to the wrong conversation, or the design for what the storage fix leaves (its row in docs/progress.md) carries the conversation with the words.
+- **Approved:** 2026-11-19, chief's decision C136 (not the user's words), accepted as recommended.
+
+### On Android or a computer, the storage card at no byte free still suggests removing a trip
+- **Kind:** known limitation.
+- **What the traveller sees:** with no byte free at all, the storage card suggests removing a trip they no longer need and offers Go to Trips; Chromium then refuses the removal, and the card says "Nothing was removed." With a little room left, at the brim, the removal works and frees room.
+- **Why:** the card can't tell the brim from no byte at all before a removal is tried, and in the common case, at the brim, the suggestion is right; the phone's own Settings come first on the card either way (the builder's probe in Chromium on Linux, 2026-11-19; not yet on a phone).
+- **Revisit when:** a traveller reports a refused removal after the card suggested it.
+- **Approved:** 2026-11-19, chief's decision C137 (not the user's words), accepted as recommended.
+
+### annai can't be rolled back past a release that raises the database version
+- **Kind:** known limitation.
+- **What the traveller sees:** if a release that raises annai's database version is followed by a rollback to an earlier release, a phone that opened the newer one shows "annai couldn't start" until a newer release is out; a fix goes forward, never back.
+- **Why:** IndexedDB refuses to open a database at a lower version than it holds (src/core/store-idb.js opens at an explicit version). Keeping a way for an older release to open a newer database would be a design of its own; the database's version has not changed since 2026-10-16.
+- **Revisit when:** the first release that would raise the database version.
+- **Approved:** 2026-11-19, chief's decision C145 (not the user's words), accepted as recommended.
