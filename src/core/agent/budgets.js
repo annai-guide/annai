@@ -50,7 +50,7 @@ function midnight(now, timeZone, back) {
  * design's measurements it read today's spend 4 to 8 times faster than 1000, with the same sum (WebKit, 100 and 300 conversations).
  */
 const FIRST = 20;
-/** The pages after it, newest first, while every entry is in the range. */
+/** The pages after it, newest first, while the last of the page before is in the range. */
 const PAGE = 1000;
 
 /** Whether a priced call answered: a model answered the turn, or the speech or live request came back ok. @param {any} e */
@@ -59,7 +59,7 @@ const answered = (e) => (e.type === 'model.turn' ? Boolean(e.data?.answeredBy) :
 /**
  * USD of the priced calls in every scope since local midnight days[i] - 1 days back (1: today, Spend per day's day; 7: the 6 days
  * before too; Infinity: all time), and how many in the longest range answered with no cost (no prices). Newest first, a FIRST page,
- * then pages while all are in the range, so a day of web requests can't hide what was spent; all time reads each scope whole.
+ * then pages while the last of the page before is in the range, so a day of web requests can't hide what was spent; all time reads each scope whole.
  * @param {Store} store @param {number} now @param {string} timeZone @param {number[]} days
  * @returns {Promise<{ sums: number[], unpriced: number }>}
  */
@@ -80,8 +80,8 @@ export async function spentIn(store, now, timeZone, days) {
           if (typeof cost === 'number') since.forEach((c, i) => { if (e.ts >= c) sums[i] += cost; });
           else if (answered(e)) unpriced++;
         }
-        // Stops at the first entry before the range: a newer entry in the log is taken to be newer in time, so a phone clock set back past midnight can leave entries uncounted.
-        if (page.length < limit || inside.length < page.length) break;
+        // Stops when the page's last (the oldest in the log) is before the range: an older entry in the log is taken to be older in time, so one entry written late (a midnight race, a clock set back once) hides nothing, but 20 or more entries stamped before the range and written after today's (a clock set back for that many calls) still end the read early.
+        if (page.length < limit || page[page.length - 1].ts < from) break;
         before = page[page.length - 1].seq;
       }
     }

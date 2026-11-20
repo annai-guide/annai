@@ -567,8 +567,8 @@ for (const how of ['touch', 'mouse']) {
 test("Settings → Models → Spending: Today, 7 days, 30 days and All time from a trip's, Me's and the System log's entries, a line for calls to models with no prices only when there are some, then Spend per day, which still saves", async ({ page }) => {
   await openApp(page, '#/models');
   const spending = page.getByRole('region', { name: 'Spending', exact: true });
-  const line = "What Shiori's model calls, voices and live talk have cost on this phone, in all your trips and in annai's own calls, such as Try this model. A day starts at midnight here.";
-  const budget = "What Shiori's model calls may cost in a day, in all your trips and in annai's own calls, such as Try this model. Once it is spent, her turn ends with a card, and she goes on the next day. Empty: no limit.";
+  const line = "What Shiori's model calls, voices and live talk have cost on this phone, in all your trips; annai's own calls, such as Try this model, count too. A day starts at midnight here.";
+  const budget = "What Shiori's model calls may cost in a day, in all your trips; annai's own calls, such as Try this model, count too. Once it is spent, her turn ends with a card, and she goes on the next day. Empty: no limit.";
   await expect(spending.locator('dl.facts dt')).toHaveText(['Today', '7 days', '30 days', 'All time']);
   await expect(spending.locator('dl.facts dd')).toHaveText(['$0.00', '$0.00', '$0.00', '$0.00']); // nothing spent yet: $0.00, not "free"
   await expect(spending.locator('p.sub')).toHaveText([line, budget]);

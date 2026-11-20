@@ -190,7 +190,7 @@ test("today's spending is all counted, however many web requests the day made (s
 });
 
 // The Spending section's figures (the cost-display design, option A): one read for Today, 7 days, 30 days and All time, and
-// Spend per day's Today is the same number (spentToday is spentIn's Today).
+// Spend per day's Today is the same number while the log is in time order (spentToday is spentIn's Today, whose read ends at a page that reaches before the day; All time's reads on).
 /** A store with annai's own scopes, and a trip of its own. */
 async function spendStore() {
   const store = createMemoryStore();
@@ -199,7 +199,7 @@ async function spendStore() {
   return { store, ws, trip: await createTrip(ws, { title: 'Kyoto' }) };
 }
 
-test('spentIn: each range starts at local midnight in the phone\'s zone, today and the 6 or 29 days before; Spend per day\'s today is the same number', async () => {
+test('spentIn: each range starts at local midnight in the phone\'s zone, today and the 6 or 29 days before; while the log is in time order, Spend per day\'s today is the same number', async () => {
   const { store, trip } = await spendStore();
   // 12:00 in Tokyo. Whatever zone the machine running the test is in, Tokyo's and UTC's edges both hold only when the zone given counts.
   const now = at('2026-11-27T03:00:00Z');
@@ -234,7 +234,7 @@ test('spentIn: what counts is what Spend per day counts, annai\'s own log too; a
   /** @param {string} scope @param {string} type @param {any} data */
   const log = (scope, type, data) => logEvent(store, scope, { type, data }, now - 60_000);
   const failed = [{ model: 'm', name: 'M', outcome: 'timeout', ms: 30_000 }];
-  // First, so that its time follows its place in the log, as every entry's does: a call that answered 100 days ago with no price, in All time only.
+  // First, so that its time follows its place in the log (spentIn takes the log's order to be the order in time): a call that answered 100 days ago with no price, in All time only.
   await logEvent(store, trip, { type: 'model.turn', data: { role: 'main', answeredBy: 'C', attempts: [{ model: 'c', name: 'C', outcome: 'ok', ms: 900 }] } }, now - 100 * 86_400_000);
   await log(trip, 'model.turn', { role: 'main', answeredBy: 'A', attempts: [{ model: 'a', name: 'A', outcome: 'ok', ms: 900, cost: 0.5 }], cost: 0.5 });
   await log(trip, 'net.request', { kind: 'model', model: 'A', outcome: 'ok', cost: 0.5 }); // its attempt: the turn holds its cost
@@ -251,6 +251,7 @@ test('spentIn: what counts is what Spend per day counts, annai\'s own log too; a
   await log(SYS, 'model.turn', { role: 'try', answeredBy: 'A', attempts: [{ model: 'a', name: 'A', outcome: 'ok', ms: 900, cost: 0.0625 }], cost: 0.0625 }); // Try this model, in annai's own log
   const { sums, unpriced } = await spentIn(store, now, 'UTC', [1, 7, 30, Infinity]);
   assert.deepEqual(sums, [0.9375, 0.9375, 0.9375, 0.9375], "the System log's call is in every range");
+  assert.equal(await spentToday(store, now, 'UTC'), 0.9375, "Spend per day (spentToday) counts the System log's call too");
   assert.equal(unpriced, 4, "B, the voice, the live turn and the call 100 days ago, once across the four ranges (All time's)");
   assert.equal((await spentIn(store, now, 'UTC', [1, 7, 30])).unpriced, 3, "the call 100 days ago is outside the longest range asked for, whose count it is");
   assert.equal((await spentIn(store, now + 86_400_000, 'UTC', [1])).unpriced, 0, 'only in the longest range asked for: none tomorrow');
@@ -285,6 +286,17 @@ test("spentIn: a first page of 20 a conversation reads little of one with nothin
   read.clear();
   assert.equal((await spentIn(store, now, 'UTC', [1, Infinity])).sums[0], today, 'the whole read');
   for (const id of idle) assert.equal(read.get(id), 200);
+});
+
+test("spentIn: one entry written late, stamped before today, doesn't hide today's earlier entries (a midnight race, or a clock set back once)", async () => {
+  const { store, trip } = await spendStore();
+  const now = at('2026-11-27T20:00:00Z');
+  // More of today's than a first page of 20 holds, all in one conversation: the newest entry in the log is yesterday's.
+  for (let i = 0; i < 25; i++) await logEvent(store, trip, { type: 'model.turn', data: { answeredBy: 'A', cost: 0.5 } }, at('2026-11-27T08:00:00Z') + i * 60_000);
+  await logEvent(store, trip, { type: 'model.turn', data: { answeredBy: 'A', cost: 1 } }, at('2026-11-26T23:59:00Z'));
+  assert.equal(await spentToday(store, now, 'UTC'), 12.5, 'Spend per day');
+  assert.equal((await spentIn(store, now, 'UTC', [1, 7])).sums[0], 12.5, "Spending's Today");
+  assert.equal((await spentIn(store, now, 'UTC', [1, 7])).sums[1], 13.5, 'and its 7 days hold the late one');
 });
 
 test("Spend per day counts both halves' turns, and stops either at the budget, with one card (K1)", async () => {
