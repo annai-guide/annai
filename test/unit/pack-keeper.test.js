@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PackKeeper } from '../../src/core/pack/keeper.js';
 import { STALE_MS, guideFile } from '../../src/core/pack/download.js';
-import { packTrip, services, fakeAgent, STOPS, YUFUIN, yufuinStop, yufuinAnswer } from './pack-kit.js';
+import { packTrip, services, fakeAgent, wikivoyage as kitGuides, STOPS, YUFUIN, yufuinStop, yufuinAnswer } from './pack-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { SIZES, planFor } from '../../src/core/pack/plan.js';
 import { readFile } from 'node:fs/promises';
@@ -24,7 +24,8 @@ async function kit(o = {}) {
   const net = services();
   let connection = o.connection ?? 'unknown';
   let visible = o.visible ?? true;
-  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1.2.3', connection: () => connection, visible: () => visible, fetch: net.fetch, quietMs: 20, pokeMs: 10, gapMs: 0, now: o.now });
+  // A short "hour": the traveller's own run counts for it too (it starts at the run's start, whoever began it).
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1.2.3', connection: () => connection, visible: () => visible, fetch: net.fetch, quietMs: 20, pokeMs: 10, autoMs: 30, gapMs: 0, now: o.now });
   return { ...t, agent, net, keeper, set: (/** @type {{ connection?: string, visible?: boolean }} */ s) => { connection = s.connection ?? connection; visible = s.visible ?? visible; } };
 }
 
@@ -131,8 +132,10 @@ test('by itself at most once an hour, even when parts keep failing', async () =>
   const agent = fakeAgent(t.trip);
   let fail = false;
   const net = services({ overpass: (url, init) => (fail ? new Response('', { status: 503 }) : { elements: [] }) });
-  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0 });
+  let now = Date.now();
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0, now: () => now });
   await keeper.download(t.trip);
+  now += 2 * 3_600_000; // the hour from the run by hand is out
   fail = true;
   await t.ws.write(t.trip, '/plan/nepenthe.json', { ...STOPS.nepenthe, place: { ...STOPS.nepenthe.place, lat: 36.2 } }, { author: 'user' });
   await until(async () => ((await keeper.status(t.trip)).manifest?.failed.length ?? 0) > 0); // the update by itself ran, and failed in part
@@ -188,7 +191,7 @@ test('a pack an older annai stopped at its size limit (full: true) is missing wh
   const t = await packTrip();
   const agent = fakeAgent(t.trip);
   const net = services();
-  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0 });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, autoMs: 30, gapMs: 0 });
   try {
     const m = await keeper.download(t.trip);
     // As an older annai left it: a part it had no room for, and full.
@@ -238,7 +241,7 @@ test("a language added: the pack's guides are missing in its edition (\"Download
   const t = await packTrip();
   const agent = fakeAgent(t.trip);
   const net = services();
-  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0 });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, autoMs: 30, gapMs: 0 });
   try {
     await keeper.download(t.trip);
     assert.equal((await keeper.status(t.trip)).why, null);
@@ -336,9 +339,9 @@ test("a change of languages is noticed: on Wi-Fi the new edition's files come by
   const t = await packTrip({ '/plan/yufuin.json': yufuinStop('Yufuin Station', YUFUIN, 1) });
   const agent = fakeAgent(t.trip);
   const net = services({ overpass: () => ({ elements: [] }), wikipedia: (url) => yufuinAnswer(url) });
-  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0 });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, autoMs: 30, gapMs: 0 });
   try {
-    await keeper.download(t.trip); // by hand: no update by itself has run, so no hourly gate yet
+    await keeper.download(t.trip); // by hand: the hour is 30 ms here
     const station = { lat: 33.2626, lng: 131.3551 };
     // 湯布院町 is a Japanese article alone: English Wikipedia names another place at its point.
     const town = { lat: 33.26442, lng: 131.35558 };
@@ -514,7 +517,7 @@ test("a plan change while an update annai began by itself runs, and that fails i
 test("the plan is looked at once it has been quiet for the quiet time: changes that keep coming keep the update off until they stop", async () => {
   const t = await packTrip();
   const net = services({ overpass: () => ({ elements: [] }) });
-  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 150, pokeMs: 5, gapMs: 0 });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 150, pokeMs: 5, autoMs: 30, gapMs: 0 });
   /** @type {number[]} */
   const began = [];
   let on = false;
@@ -543,7 +546,7 @@ test("a settings write looks at the pack only when the languages' editions chang
   const net = services({ overpass: () => ({ elements: [] }) });
   /** @type {string} */
   let connection = 'cellular';
-  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => connection, fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0 });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => connection, fetch: net.fetch, quietMs: 10, pokeMs: 5, autoMs: 30, gapMs: 0 });
   try {
     await keeper.download(t.trip);
     // The plan changes on mobile data: an update is due, and waits for Wi-Fi (nothing pokes the keeper when the phone joins it, here).
@@ -731,10 +734,11 @@ test("a pack that is a month old is brought up to date by itself even where an a
 });
 
 test("a language added to a pack with a failure annai can't use among them is still brought by itself: its files are missing, no failure accounts for them", async () => {
-  const { keeper, trip, ws, net, overpass, autoRuns } = await aging();
+  const { keeper, trip, ws, net, overpass, clock, autoRuns } = await aging();
   try {
     overpass.mode = 'early';
     await keeper.download(trip);
+    clock.now += 1000; // the hour (400 ms here) from the run by hand is out
     assert.equal((await keeper.status(trip)).byItself, false);
     await updateAppSettings(ws, { languages: { spoken: ['en', 'ja'], answer: 'follow' } });
     assert.equal((await keeper.status(trip)).byItself, true);
@@ -834,6 +838,88 @@ test("what annai brings by itself, by the manifest alone: a run that was stopped
     assert.deepEqual(await keeper.status(trip).then((s) => [s.why, s.byItself]), [null, false]);
     await ws.write(trip, '/offline/pack.json', { ...whole, voyage: ['en'] }, { author: 'system' });
     assert.deepEqual(await keeper.status(trip).then((s) => [s.why, s.byItself]), ['missing', true]);
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test("a language with no Wikivoyage added to a pack whose guides failed (no text) is brought by itself: the missing parts are counted against the parts' failures, not the guides'", async () => {
+  const t = await packTrip();
+  // Both guides come with no text: two failures an answer annai can't use, which wait for Try again; they are not parts of the plan.
+  const net = services({ wikivoyage: (url) => (new URL(url).searchParams.get('prop') === 'extracts' ? { query: { pages: [{ title: 'x', extract: '' }] } } : kitGuides(url)) });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => 'unknown', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0 });
+  try {
+    await keeper.download(t.trip);
+    const before = await keeper.status(t.trip);
+    assert.deepEqual(before.manifest?.failed.map((f) => f.part?.source), ['wikivoyage', 'wikivoyage']);
+    assert.equal(before.why, 'missing');
+    assert.equal(before.byItself, false, 'no text waits for Try again');
+    // Korean added: it has no Wikivoyage, and its two Wikipedia parts are missing, which no failure accounts for.
+    await updateAppSettings(t.ws, { languages: { spoken: ['en', 'ko'], answer: 'follow' } });
+    const s = await keeper.status(t.trip);
+    assert.equal(s.why, 'missing');
+    assert.equal(s.byItself, true);
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test("the traveller's Stop of their own run holds automatic runs for an hour from the Stop: a look right after it (back to the tab, a connection change) doesn't start the run again, however long the run had gone on", async () => {
+  const t = await packTrip();
+  const net = services({ overpass: () => ({ elements: [] }) });
+  const clock = { now: Date.now() };
+  // A phone tethered to a friend's hotspot says Wi-Fi: the traveller stops the download to save the friend's data.
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, autoMs: 300, gapMs: 0, now: () => clock.now });
+  const autoRuns = async () => (await t.store.tx(['events'], 'readonly', (x) => x.listEvents(t.trip, { types: ['pack.download'] }))).filter((e) => e.data.auto);
+  try {
+    let stopped = false;
+    const off = keeper.onChange(() => {
+      if ((keeper.running?.done ?? 0) >= 2 && !stopped) {
+        stopped = true;
+        clock.now += 1000; // the run has gone on past the hour (300 ms here) when the traveller stops it
+        keeper.stop();
+      }
+    });
+    const m = await keeper.download(t.trip);
+    off();
+    assert.equal(m.stopped, true);
+    assert.equal((await keeper.status(t.trip)).byItself, true, 'a stopped run is brought on by itself');
+    const asked = net.asked.length;
+    keeper.poke();
+    await new Promise((r) => setTimeout(r, 100));
+    assert.equal(net.asked.length, asked, "the traveller's Stop holds: the look did not start it again");
+    assert.equal((await autoRuns()).length, 0);
+    // The hour from the Stop is out: the run goes on by itself.
+    clock.now += 400;
+    keeper.poke();
+    await until(async () => (await keeper.status(t.trip)).why === null, 3000);
+    assert.equal((await autoRuns()).length, 1);
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test("a look that falls on a download the traveller runs is not lost: once it ends, annai looks again, and an automatic run comes an hour (150 ms here) after the traveller's run began, not at once and not never", async () => {
+  const t = await packTrip();
+  let down = true;
+  const net = services({ overpass: () => (down ? new Response('', { status: 503 }) : { elements: [] }) });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, autoMs: 150, gapMs: 0 });
+  /** @type {number[]} */
+  const began = [];
+  let on = false;
+  keeper.onChange(() => {
+    if (keeper.running && !on) began.push(Date.now());
+    on = keeper.running !== null;
+  });
+  const autoRuns = async () => (await t.store.tx(['events'], 'readonly', (x) => x.listEvents(t.trip, { types: ['pack.download'] }))).filter((e) => e.data.auto);
+  try {
+    await keeper.download(t.trip); // by hand: Overpass is down, so the pack comes with failed parts, which annai brings on by itself
+    assert.equal((await keeper.status(t.trip)).byItself, true);
+    down = false;
+    // Nothing pokes the keeper again: the end of the traveller's own run is the look.
+    await until(async () => (await autoRuns()).length === 1 && (await keeper.status(t.trip)).why === null, 3000);
+    assert.equal(began.length, 2);
+    assert.ok(began[1] - began[0] >= 140, `the automatic run began ${began[1] - began[0]} ms after the traveller's began: the hour counts from any run's start`);
   } finally {
     keeper.dispose();
   }

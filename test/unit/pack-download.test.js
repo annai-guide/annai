@@ -1,11 +1,11 @@
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { downloadPack, readManifest, failWords, guideFile, ownKey, MANIFEST, pathOf, STALE_MS } from '../../src/core/pack/download.js';
+import { downloadPack, readManifest, failWords, guideFile, MANIFEST, pathOf, STALE_MS } from '../../src/core/pack/download.js';
 import { planFor, packPlan } from '../../src/core/pack/plan.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { loadPack, packNamer } from '../../src/core/pack/read.js';
 import { readFile } from 'node:fs/promises';
-import { packTrip, services, overpass, wikivoyage as kitGuides, STOPS, YUFUIN, YUFUIN_WIKI, yufuinStop, yufuinAnswer, LINKS, EDITION_GUIDES } from './pack-kit.js';
+import { packTrip, services, overpass, wikivoyage as kitGuides, voyageWorld, STOPS, YUFUIN, YUFUIN_WIKI, yufuinStop, yufuinAnswer, LINKS, EDITION_GUIDES } from './pack-kit.js';
 
 const V = '9.9.9';
 /** English alone, as before editions. */
@@ -892,108 +892,140 @@ test("the trip's own places and stops are always looked up, however many (the fi
   assert.equal(m.guides.length, 250 + 5, 'every name has one: the 250 places, the two stops, and the three more titles Wikipedia gave');
 });
 
-/**
- * Japanese Wikivoyage as the edition-only guides need it: 湯布院 is a guide English Wikivoyage has no page for (and 由布院 leads to it), カンブリア
- * is the Japanese twin of English's Cambria (California), and 京都 is a disambiguation page. A name it doesn't have is missing.
- * @param {string} url
- */
-function jaVoyage(url) {
-  const u = new URL(url);
-  if (u.hostname !== 'ja.wikivoyage.org') return kitGuides(url);
-  const titles = (u.searchParams.get('titles') ?? '').split('|');
-  if (u.searchParams.get('prop') === 'pageprops') {
-    const redirects = titles.filter((t) => t === '由布院').map((t) => ({ from: t, to: '湯布院' }));
-    const pages = [...new Set(titles.map((t) => (t === '由布院' ? '湯布院' : t)))].map((t) => (['湯布院', 'カンブリア'].includes(t) ? { title: t } : t === '京都' ? { title: t, pageprops: { disambiguation: '' } } : { title: t, missing: true }));
-    return { query: { ...(redirects.length ? { redirects } : {}), pages } };
-  }
-  if (titles[0] === '湯布院') return { query: { pages: [{ title: '湯布院', extract: '湯布院は大分県の温泉地。\n\n== 見る ==\n金鱗湖。' }] } };
-  return kitGuides(url);
+/** The names an edition's Wikivoyage was asked by (its names lookups, 50 a request), in the order asked. @param {{ url: string }[]} asked @param {string} host */
+const namesAsked = (asked, host) => asked.filter((a) => new URL(a.url).hostname === host && new URL(a.url).searchParams.get('prop')?.startsWith('pageprops'))
+  .flatMap((a) => (new URL(a.url).searchParams.get('titles') ?? '').split('|'));
+/** A trip with no stops and these places: its places are the only names. @param {string[]} places */
+async function placesTrip(places) {
+  const t = await packTrip({});
+  await t.ws.patch(t.trip, '/trip.json', { places }, { author: 'user' });
+  return t;
 }
-const namesAsked = (/** @type {{ url: string }[]} */ asked, /** @type {string} */ host) => asked.filter((a) => new URL(a.url).hostname === host && new URL(a.url).searchParams.get('prop') === 'pageprops');
+/** A guide's entry in the manifest as the tests compare it: its title, the names that led to it, and its pages in other editions. @param {import('../../src/core/pack/download.js').Manifest} m */
+const guidesOf = (m) => m.guides.map((g) => [g.title, g.asked, g.also.map((a) => `${a.edition} ${a.title}`)]);
 
-test("a guide only the traveller's edition has comes into the pack: each edition is asked the trip's own names, 50 a request, redirects followed and variants converted, a disambiguation page and English's twin left out", async () => {
-  const { ws, trip } = await packTrip();
-  await ws.patch(trip, '/trip.json', { places: ['湯布院', '由布院', 'カンブリア', '京都', ...Array.from({ length: 60 }, (_, k) => `Town ${k}`)] }, { author: 'user' });
-  const net = services({ wikivoyage: jaVoyage });
-  const m = await downloadPack({ ws, scope: trip, fetch: net.fetch, version: V, editions: ['ja', 'en'], gapMs: 0 });
+test("English turns a name into a place once: a name it has a page for is not asked of another edition (Kashmir is English's region for an Italian reader, not Italian's Jammu e Kashmir)", async () => {
+  const { ws, trip } = await placesTrip(['Kashmir']);
+  const net = services({ wikivoyage: voyageWorld({
+    en: { Kashmir: { text: 'Kashmir is a region of South Asia.' } },
+    it: { Kashmir: { to: 'Jammu e Kashmir' }, 'Jammu e Kashmir': { en: 'Jammu and Kashmir', text: 'Il Jammu e Kashmir è un territorio.' } },
+  }) });
+  const m = await downloadPack({ ws, scope: trip, fetch: net.fetch, version: V, editions: ['it', 'en'], gapMs: 0 });
   assert.deepEqual(m.failed, []);
-  assert.deepEqual(m.voyage, ['en', 'ja']);
-  // English's guides first, each with its Japanese twin; then the guide only Japanese has, by Japanese's title, kept by the names that led to it.
-  assert.deepEqual(m.guides.map((g) => [g.title, g.edition ?? 'en', g.also.map((a) => a.edition)]), [['Cambria (California)', 'en', ['ja']], ['Big Sur', 'en', []], ['湯布院', 'ja', []]]);
-  assert.deepEqual(m.guides[2].asked, ['湯布院', '由布院']);
-  assert.equal(m.guides[2].path, guideFile(ownKey('ja', '湯布院'), 'ja').path);
-  assert.deepEqual(JSON.parse(String(await ws.readText(trip, m.guides[2].path))), { title: '湯布院', text: '湯布院は大分県の温泉地。\n\n== 見る ==\n金鱗湖。' });
-  assert.equal(m.files.filter((f) => f.kind === 'wikivoyage').length, 4, 'English twice, Japanese twice');
-  // The names, 50 to a request: 66 names (the places and the two stops), less Nepenthe, which English lists as several places, in two; each with
-  // redirects and converted variants; Wikivoyage's own host.
-  const asked = namesAsked(net.asked, 'ja.wikivoyage.org');
-  assert.deepEqual(asked.map((a) => new URL(a.url).searchParams.get('titles')?.split('|').length), [50, 15]);
-  for (const a of asked) assert.deepEqual(['redirects', 'converttitles', 'ppprop'].map((k) => new URL(a.url).searchParams.get(k)), ['1', '1', 'disambiguation']);
-  assert.ok(asked.flatMap((a) => (new URL(a.url).searchParams.get('titles') ?? '').split('|')).includes('Bixby Creek Bridge'), "a stop's name too");
-  for (const a of net.asked.filter((x) => x.url.includes('wikivoyage'))) assert.doesNotMatch(a.url, /coord|36\.\d|121\.\d/, 'names, never a position');
-  // Read: by either name, in the reading order.
+  assert.deepEqual(guidesOf(m), [['Kashmir', ['Kashmir'], []]], 'one English guide, with no page in Italian');
+  assert.deepEqual(m.voyage, ['en', 'it']);
+  assert.deepEqual(namesAsked(net.asked, 'it.wikivoyage.org'), [], 'Italian is asked nothing by name');
+  assert.deepEqual(await files(ws, trip), [guideFile('Kashmir').path, MANIFEST].sort(), 'no Jammu e Kashmir');
   const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
-  assert.deepEqual((await pack.guide('由布院', ['en', 'ja'])).map((p) => [p.edition, p.title]), [['ja', '湯布院']]);
-  assert.deepEqual((await pack.guide('湯布院', ['ja'])).map((p) => p.text.slice(0, 5)), ['湯布院は大']);
-  assert.deepEqual((await pack.guide('Cambria', ['ja', 'en'])).map((p) => p.edition), ['ja', 'en']);
-  // The next download asks the names again (a request each 50) and nothing's text: the files are fresh.
-  const again = services({ wikivoyage: jaVoyage });
-  const n = await downloadPack({ ws, scope: trip, fetch: again.fetch, version: V, editions: ['ja', 'en'], gapMs: 0 });
+  assert.deepEqual((await pack.guide('Kashmir', ['it', 'en'])).map((p) => [p.edition, p.title]), [['en', 'Kashmir']]);
+});
+
+test("Granada for a Spanish reader is English's city with Spanish's page that English links to, not Spanish's Grenada: that edition is not asked the name", async () => {
+  const { ws, trip } = await placesTrip(['Granada']);
+  const net = services({ wikivoyage: voyageWorld({
+    en: { Granada: { links: { es: 'Granada (España)' }, text: 'Granada is a city in Andalusia.' } },
+    es: { Granada: { en: 'Grenada', text: 'Granada es un país del Caribe.' }, 'Granada (España)': { en: 'Granada', text: 'Granada es una ciudad de Andalucía.' } },
+  }) });
+  const m = await downloadPack({ ws, scope: trip, fetch: net.fetch, version: V, editions: ['es', 'en'], gapMs: 0 });
+  assert.deepEqual(m.failed, []);
+  assert.deepEqual(guidesOf(m), [['Granada', ['Granada'], ['es Granada (España)']]]);
+  assert.deepEqual(namesAsked(net.asked, 'es.wikivoyage.org'), []);
+  assert.deepEqual(textsAsked(net.asked, 'es'), ['Granada (España)']);
+  assert.deepEqual(await files(ws, trip), [guideFile('Granada').path, guideFile('Granada', 'es').path, MANIFEST].sort(), 'no file for Grenada');
+  const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
+  assert.deepEqual((await pack.guide('Granada', ['es', 'en'])).map((p) => `${p.edition} ${p.title}`), ['es Granada (España)', 'en Granada']);
+});
+
+test("a name English lists as several places gets no guide and is asked of no other edition (Georgia is the US state in German and the country in Spanish; Congo; Mérida)", async () => {
+  const { ws, trip } = await placesTrip(['Georgia', 'Congo', 'Mérida']);
+  const net = services({ wikivoyage: voyageWorld({
+    en: { Georgia: { to: 'Georgia (disambiguation)' }, 'Georgia (disambiguation)': { list: true }, Congo: { list: true }, Mérida: { list: true } },
+    de: { Georgia: { en: 'Georgia (U.S. state)', text: 'Georgia ist ein Bundesstaat der USA.' }, Congo: { list: true } },
+    es: { Georgia: { en: 'Georgia (country)', text: 'Georgia es un país del Cáucaso.' }, Mérida: { list: true } },
+    ja: { ジョージア: { en: 'Georgia (country)', text: 'ジョージアはコーカサスの国。' } },
+  }) });
+  const m = await downloadPack({ ws, scope: trip, fetch: net.fetch, version: V, editions: ['de', 'es', 'ja', 'en'], gapMs: 0 });
+  assert.deepEqual(m.failed, []);
+  assert.deepEqual(m.guides, []);
+  assert.deepEqual(m.voyage, ['en', 'de', 'es', 'ja'], 'every edition was asked, with nothing left to ask it');
+  assert.deepEqual([...new Set(net.asked.map((a) => new URL(a.url).hostname))], ['en.wikivoyage.org'], 'English alone was asked');
+});
+
+test("a name in the traveller's script comes through the first edition that has a page by it, which links to English's place (台湾, ジョージア, 京都): English's guide, the name in asked, each edition English links to in also", async () => {
+  const { ws, trip } = await placesTrip(['台湾', 'ジョージア', '京都']);
+  const world = {
+    en: {
+      Taiwan: { links: { zh: '臺灣' }, text: 'Taiwan is an island country.' },
+      'Georgia (country)': { links: { ja: 'ジョージア' }, text: 'Georgia is a country in the Caucasus.' },
+      Kyoto: { links: { ja: '京都市', zh: '京都' }, text: 'Kyoto was the capital of Japan.' },
+    },
+    ja: { ジョージア: { en: 'Georgia (country)', text: 'ジョージアはコーカサスの国。' }, 京都: { list: true }, 京都市: { en: 'Kyoto', text: '京都市は京都府の府庁所在地。' } },
+    zh: { 台湾: { to: '臺灣' }, 臺灣: { en: 'Taiwan', text: '臺灣是東亞的島嶼。' }, 京都: { en: 'Kyoto', text: '京都是日本的古都。' } },
+  };
+  const net = services({ wikivoyage: voyageWorld(world) });
+  const m = await downloadPack({ ws, scope: trip, fetch: net.fetch, version: V, editions: ['ja', 'zh', 'en'], gapMs: 0 });
+  assert.deepEqual(m.failed, []);
+  assert.deepEqual(m.voyage, ['en', 'ja', 'zh']);
+  assert.deepEqual(guidesOf(m), [
+    ['Georgia (country)', ['ジョージア'], ['ja ジョージア']],
+    ['Taiwan', ['台湾'], ['zh 臺灣']],
+    ['Kyoto', ['京都'], ['ja 京都市', 'zh 京都']],
+  ]);
+  // Japanese is asked the three names, Chinese what Japanese had no page for (京都 is Japanese's list); English the three titles once more.
+  assert.deepEqual(namesAsked(net.asked, 'ja.wikivoyage.org'), ['台湾', 'ジョージア', '京都']);
+  assert.deepEqual(namesAsked(net.asked, 'zh.wikivoyage.org'), ['台湾', '京都']);
+  assert.deepEqual(namesAsked(net.asked, 'en.wikivoyage.org'), ['台湾', 'ジョージア', '京都', 'Georgia (country)', 'Taiwan', 'Kyoto']);
+  const names = net.asked.filter((a) => a.url.includes('ja.wikivoyage.org') && new URL(a.url).searchParams.get('prop')?.startsWith('pageprops'));
+  assert.deepEqual(['prop', 'lllang', 'lllimit', 'redirects', 'converttitles'].map((k) => new URL(names[0].url).searchParams.get(k)), ['pageprops|langlinks', 'en', '50', '1', '1']);
+  for (const a of net.asked) assert.doesNotMatch(a.url, /coord|36\.\d|121\.\d/, 'names, never a position');
+  // Read offline as it would be online: the Chinese part and English's, by the name.
+  const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
+  assert.deepEqual((await pack.guide('台湾', ['zh', 'en'])).map((p) => `${p.edition} ${p.title}`), ['zh 臺灣', 'en Taiwan']);
+  assert.deepEqual((await pack.guide('京都市', ['ja', 'zh', 'en'])).map((p) => p.edition), ['ja', 'zh', 'en'], 'by its title in an edition');
+  // The next download asks the names again and no text: the files are fresh.
+  const again = services({ wikivoyage: voyageWorld(world) });
+  const n = await downloadPack({ ws, scope: trip, fetch: again.fetch, version: V, editions: ['ja', 'zh', 'en'], gapMs: 0 });
   assert.deepEqual(n.guides, m.guides);
   assert.deepEqual(again.asked.filter((a) => new URL(a.url).searchParams.get('prop') === 'extracts'), []);
-  assert.equal(namesAsked(again.asked, 'ja.wikivoyage.org').length, 2);
-  // English alone asks Japanese nothing.
-  const english = await packTrip();
-  await english.ws.patch(english.trip, '/trip.json', { places: ['湯布院'] }, { author: 'user' });
-  const only = services({ wikivoyage: jaVoyage });
-  await downloadPack({ ws: english.ws, scope: english.trip, fetch: only.fetch, version: V, editions: EN, gapMs: 0 });
-  assert.deepEqual(only.asked.filter((a) => a.url.includes('ja.wikivoyage.org')), []);
 });
 
-test("a name English lists as several places is not asked of another edition by name: it would bring that edition's one meaning of it (Georgia is the US state in German, the country in Spanish)", async () => {
-  const { ws, trip } = await packTrip();
-  // English Wikivoyage has "Nepenthe" as a disambiguation page (the kit's stand-in), Japanese Wikivoyage has a page of that name.
-  const net = services({ wikivoyage: (url) => {
-    const u = new URL(url);
-    if (u.hostname !== 'ja.wikivoyage.org') return kitGuides(url);
-    const titles = (u.searchParams.get('titles') ?? '').split('|');
-    if (u.searchParams.get('prop') === 'pageprops') return { query: { pages: titles.map((t) => (t === 'Nepenthe' || t === '湯布院' ? { title: t } : { title: t, missing: true })) } };
-    return { query: { pages: [{ title: titles[0], extract: `${titles[0]} in Japanese.` }] } };
-  } });
-  await ws.patch(trip, '/trip.json', { places: ['湯布院'] }, { author: 'user' });
+test("a name that is a list in the only edition read has no guide: 京都 for a Japanese reader (the pack has none, the guide tool gives the list online)", async () => {
+  const { ws, trip } = await placesTrip(['京都']);
+  const net = services({ wikivoyage: voyageWorld({ en: { Kyoto: { links: { ja: '京都市' } } }, ja: { 京都: { list: true }, 京都市: { en: 'Kyoto', text: '京都市は京都府の府庁所在地。' } } }) });
   const m = await downloadPack({ ws, scope: trip, fetch: net.fetch, version: V, editions: ['ja', 'en'], gapMs: 0 });
   assert.deepEqual(m.failed, []);
-  assert.ok(!namesAsked(net.asked, 'ja.wikivoyage.org').flatMap((a) => (new URL(a.url).searchParams.get('titles') ?? '').split('|')).includes('Nepenthe'), 'asked of English only');
-  assert.ok(namesAsked(net.asked, 'en.wikivoyage.org').flatMap((a) => (new URL(a.url).searchParams.get('titles') ?? '').split('|')).includes('Nepenthe'));
-  assert.deepEqual(m.guides.map((g) => [g.title, g.edition ?? 'en']), [['Cambria (California)', 'en'], ['Big Sur', 'en'], ['湯布院', 'ja']], "no Japanese guide for the name English lists as several places; one English has no page for still comes");
-  assert.ok(!(await files(ws, trip)).some((p) => p.includes(guideFile(ownKey('ja', 'Nepenthe'), 'ja').id)));
+  assert.deepEqual(m.guides, []);
+  assert.deepEqual(m.voyage, ['en', 'ja']);
 });
 
-test("a guide only an edition has is a file of its own: it never takes the file of an English guide's twin in that edition", async () => {
-  const { ws, trip } = await packTrip();
-  await ws.patch(trip, '/trip.json', { places: ['Cambria, California'] }, { author: 'user' });
-  // English Cambria (California) has the Japanese twin カンブリア; Japanese Wikivoyage also has a page of its own called "Cambria (California)",
-  // which the trip's name finds there (an edition-only guide, since the twin is another page).
-  const net = services({ wikivoyage: (url) => {
-    const u = new URL(url);
-    if (u.hostname !== 'ja.wikivoyage.org') return kitGuides(url);
-    const titles = (u.searchParams.get('titles') ?? '').split('|');
-    if (u.searchParams.get('prop') === 'pageprops') return { query: { pages: titles.map((t) => (t === 'Cambria (California)' ? { title: t } : { title: t, missing: true })) } };
-    return { query: { pages: [{ title: titles[0], extract: titles[0] === 'カンブリア' ? 'カンブリアは海辺の町。' : 'A page of its own.' }] } };
-  } });
-  const m = await downloadPack({ ws, scope: trip, fetch: net.fetch, version: V, editions: ['ja', 'en'], gapMs: 0 });
+test("a page with no link to English is no guide, and its name is settled there: the next edition is not asked it (湯布院: Japanese has the page, English has none)", async () => {
+  const { ws, trip } = await placesTrip(['湯布院']);
+  const net = services({ wikivoyage: voyageWorld({
+    en: { Yufu: { links: { zh: '由布院' }, text: 'Yufu is a city.' } },
+    ja: { 湯布院: { text: '湯布院は大分県の温泉地。' } },
+    zh: { 湯布院: { to: '由布院' }, 由布院: { en: 'Yufu', text: '由布院是大分縣的溫泉地。' } },
+  }) });
+  const m = await downloadPack({ ws, scope: trip, fetch: net.fetch, version: V, editions: ['ja', 'zh', 'en'], gapMs: 0 });
   assert.deepEqual(m.failed, []);
-  const own = m.guides.find((g) => g.edition === 'ja');
-  const twin = m.guides.find((g) => g.title === 'Cambria (California)' && !g.edition);
-  assert.ok(own && twin);
-  const twinPath = guideFile('Cambria (California)', 'ja').path;
-  assert.notEqual(own.path, twinPath);
-  assert.deepEqual(JSON.parse(String(await ws.readText(trip, twinPath))), { title: 'カンブリア', text: 'カンブリアは海辺の町。' });
-  assert.deepEqual(JSON.parse(String(await ws.readText(trip, own.path))), { title: 'Cambria (California)', text: 'A page of its own.' });
-  assert.equal(new Set(m.files.map((f) => f.path)).size, m.files.length, 'every file once');
-  // Both are read, English's twin first.
+  assert.deepEqual(m.guides, [], 'no guide: a guide is English\'s page and its links');
+  assert.deepEqual(namesAsked(net.asked, 'zh.wikivoyage.org'), [], 'Chinese is not asked a name Japanese settled');
+  assert.deepEqual(await files(ws, trip), [MANIFEST]);
+  assert.deepEqual(m.voyage, ['en', 'ja', 'zh']);
+});
+
+test("a name two of the traveller's editions have a page for is one place: the first edition decides, as online (the pack never gives one part of each)", async () => {
+  const { ws, trip } = await placesTrip(['Aldea']);
+  const net = services({ wikivoyage: voyageWorld({
+    en: { 'Aldea (Spain)': { links: { ja: 'アルデア' }, text: 'Aldea is a village in Spain.' }, 'Aldea (Chile)': { links: { zh: '阿爾德亞' }, text: 'Aldea is a village in Chile.' } },
+    ja: { Aldea: { en: 'Aldea (Spain)', text: 'Aldea はスペインの村。' }, アルデア: { en: 'Aldea (Spain)', text: 'アルデアはスペインの村。' } },
+    zh: { Aldea: { en: 'Aldea (Chile)', text: 'Aldea 是智利的村莊。' }, 阿爾德亞: { en: 'Aldea (Chile)', text: '阿爾德亞是智利的村莊。' } },
+  }) });
+  const m = await downloadPack({ ws, scope: trip, fetch: net.fetch, version: V, editions: ['ja', 'zh', 'en'], gapMs: 0 });
+  assert.deepEqual(m.failed, []);
+  assert.deepEqual(guidesOf(m), [['Aldea (Spain)', ['Aldea'], ['ja アルデア']]]);
+  assert.deepEqual(namesAsked(net.asked, 'zh.wikivoyage.org'), []);
   const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
-  assert.deepEqual((await pack.guide('Cambria, California', ['ja'])).map((p) => p.title), ['カンブリア']);
+  assert.deepEqual((await pack.guide('Aldea', ['ja', 'zh', 'en'])).map((p) => `${p.edition} ${p.title}`), ['ja アルデア', 'en Aldea (Spain)']);
 });
 
 test("the way's Wikipedia titles reach the guides on the first run: every Wikipedia part comes before them, a pack nobody changes never gives them a second chance", async () => {
@@ -1010,29 +1042,56 @@ test("the way's Wikipedia titles reach the guides on the first run: every Wikipe
   assert.ok(m.guides.some((g) => g.title === 'San Simeon'), m.guides.map((g) => g.title).join());
 });
 
-test("an edition whose names lookup fails keeps the guides only it has, with a failure naming its host, and is asked again next time; a plan that no longer names one drops it", async () => {
-  const { ws, trip } = await packTrip();
-  await ws.patch(trip, '/trip.json', { places: ['湯布院'] }, { author: 'user' });
-  const first = await downloadPack({ ws, scope: trip, ...services({ wikivoyage: jaVoyage }), version: V, editions: ['ja', 'en'], gapMs: 0 });
-  assert.equal(first.guides.length, 3);
-  const refused = services({ wikivoyage: (url) => (url.includes('ja.wikivoyage.org') && new URL(url).searchParams.get('prop') === 'pageprops' ? new Response('', { status: 503 }) : jaVoyage(url)) });
-  const m = await downloadPack({ ws, scope: trip, fetch: refused.fetch, version: V, editions: ['ja', 'en'], gapMs: 0 });
+test("an edition whose names lookup fails ends the turn: its host named, the editions after it not asked the names, the guides the pack had by the names left stay, and both stay out of voyage until the next run brings them", async () => {
+  const { ws, trip } = await placesTrip(['京都市', '金门']);
+  const world = {
+    en: { Kyoto: { links: { ja: '京都市', zh: '京都' }, text: 'Kyoto was the capital of Japan.' }, Kinmen: { links: { zh: '金門' }, text: 'Kinmen is an island group.' } },
+    ja: { 京都市: { en: 'Kyoto', text: '京都市は京都府の府庁所在地。' } },
+    zh: { 金门: { to: '金門' }, 金門: { en: 'Kinmen', text: '金門是島嶼群。' }, 京都: { en: 'Kyoto', text: '京都是日本的古都。' } },
+  };
+  const first = await downloadPack({ ws, scope: trip, ...services({ wikivoyage: voyageWorld(world) }), version: V, editions: ['ja', 'zh', 'en'], gapMs: 0 });
+  assert.deepEqual(first.failed, []);
+  assert.deepEqual(guidesOf(first), [['Kyoto', ['京都市'], ['ja 京都市', 'zh 京都']], ['Kinmen', ['金门'], ['zh 金門']]], 'Japanese settled the first name, Chinese the second');
+  assert.deepEqual(first.voyage, ['en', 'ja', 'zh']);
+  // Japanese's names lookup answers 503: Chinese is not asked the names, Kinmen's guide (found by 金门, which Japanese would have passed on) stays.
+  const refused = services({ wikivoyage: (url) => (url.includes('ja.wikivoyage.org') && new URL(url).searchParams.get('prop')?.startsWith('pageprops') ? new Response('', { status: 503 }) : voyageWorld(world)(url)) });
+  const m = await downloadPack({ ws, scope: trip, fetch: refused.fetch, version: V, editions: ['ja', 'zh', 'en'], gapMs: 0 });
   assert.deepEqual(m.failed.map((f) => f.why), ['ja.wikivoyage.org answered 503.']);
-  assert.deepEqual(m.guides.map((g) => g.title), ['Cambria (California)', 'Big Sur', '湯布院'], 'the guide only Japanese has stays, as it was');
-  assert.ok((await files(ws, trip)).includes(guideFile(ownKey('ja', '湯布院'), 'ja').path));
-  assert.deepEqual(m.voyage, ['en'], 'Japanese was not asked to its end');
-  assert.deepEqual(m.guides[0].also, [{ edition: 'ja', title: 'カンブリア' }], "English's guide keeps its Japanese twin: the links came, and its text is fresh");
-  // Asked again, it comes; then the plan drops the name and the guide goes with its file.
-  const next = await downloadPack({ ws, scope: trip, ...services({ wikivoyage: jaVoyage }), version: V, editions: ['ja', 'en'], gapMs: 0 });
+  assert.deepEqual(namesAsked(refused.asked, 'zh.wikivoyage.org'), [], 'Chinese is not asked what Japanese left unsettled');
+  assert.deepEqual(m.voyage, ['en'], 'Japanese was not asked to its end, and Chinese after it was not asked at all');
+  assert.deepEqual(guidesOf(m), guidesOf(first), 'both guides stay, with the names that led to them');
+  assert.ok((await files(ws, trip)).includes(guideFile('Kinmen', 'zh').path));
+  // Asked again, both editions come into voyage.
+  const next = await downloadPack({ ws, scope: trip, ...services({ wikivoyage: voyageWorld(world) }), version: V, editions: ['ja', 'zh', 'en'], gapMs: 0 });
   assert.deepEqual(next.failed, []);
-  assert.deepEqual(next.voyage, ['en', 'ja']);
+  assert.deepEqual(next.voyage, ['en', 'ja', 'zh']);
+  assert.deepEqual(guidesOf(next), guidesOf(first));
+  // The plan no longer names them: the guides go with their files.
   await ws.patch(trip, '/trip.json', { places: [] }, { author: 'user' });
-  const dropped = await downloadPack({ ws, scope: trip, ...services({ wikivoyage: jaVoyage }), version: V, editions: ['ja', 'en'], gapMs: 0 });
-  assert.deepEqual(dropped.guides.map((g) => g.title), ['Cambria (California)', 'Big Sur']);
-  assert.ok(!(await files(ws, trip)).includes(guideFile(ownKey('ja', '湯布院'), 'ja').path));
+  const dropped = await downloadPack({ ws, scope: trip, ...services({ wikivoyage: voyageWorld(world) }), version: V, editions: ['ja', 'zh', 'en'], gapMs: 0 });
+  assert.deepEqual(dropped.guides, []);
+  assert.deepEqual(await files(ws, trip), [MANIFEST]);
 });
 
-test("a stop while a guide's second edition is fetched keeps the guide with the editions it has: the English file is saved, and the next download brings the Japanese one", async () => {
+test("a guide's text that fails keeps its link: the guide names the edition in also, the file is missing, and the next download brings the text", async () => {
+  const { ws, trip } = await packTrip();
+  const text = (/** @type {string} */ url) => url.includes('ja.wikivoyage.org') && new URL(url).searchParams.get('prop') === 'extracts';
+  const refused = services({ wikivoyage: (url) => (text(url) ? new Response('', { status: 503 }) : kitGuides(url)) });
+  const m = await downloadPack({ ws, scope: trip, fetch: refused.fetch, version: V, editions: ['ja', 'en'], gapMs: 0 });
+  assert.deepEqual(m.failed.map((f) => f.why), ['ja.wikivoyage.org answered 503.']);
+  assert.deepEqual(guidesOf(m), [['Cambria (California)', ['Cambria, California'], ['ja カンブリア']], ['Big Sur', ['Big Sur'], []]]);
+  assert.ok(!(await files(ws, trip)).includes(guideFile('Cambria (California)', 'ja').path), 'no Japanese file');
+  const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
+  assert.deepEqual((await pack.guide('Cambria', ['ja', 'en'])).map((p) => [p.edition, p.title, p.text.length > 0]), [['ja', 'カンブリア', false], ['en', 'Cambria (California)', true]]);
+  const next = services();
+  const n = await downloadPack({ ws, scope: trip, fetch: next.fetch, version: V, editions: ['ja', 'en'], gapMs: 0 });
+  assert.deepEqual(n.failed, []);
+  assert.deepEqual(textsAsked(next.asked, 'ja'), ['カンブリア']);
+  assert.deepEqual(textsAsked(next.asked, 'en'), [], "English's text is fresh");
+  assert.ok((await files(ws, trip)).includes(guideFile('Cambria (California)', 'ja').path));
+});
+
+test("a stop while a guide's second edition is fetched keeps the guide, with its link in that edition: the English file is saved, and the next download brings the Japanese one", async () => {
   const { ws, trip } = await packTrip();
   const abort = new AbortController();
   // The stop comes with the first guide's Japanese text, as a real fetch fails when its signal aborts.
@@ -1048,10 +1107,10 @@ test("a stop while a guide's second edition is fetched keeps the guide with the 
   const m = await downloadPack({ ws, scope: trip, fetch: stopping.fetch, version: V, editions: ['ja', 'en'], gapMs: 0, signal: abort.signal });
   assert.equal(m.stopped, true);
   assert.deepEqual(m.failed, []);
-  assert.deepEqual(m.guides.map((g) => [g.title, g.also]), [['Cambria (California)', []]], 'the guide with the editions it has');
+  assert.deepEqual(m.guides.map((g) => [g.title, g.also]), [['Cambria (California)', [{ edition: 'ja', title: 'カンブリア' }]]], "the guide, with its link in Japanese: the text didn't come");
   assert.ok(m.files.some((f) => f.path === guideFile('Cambria (California)').path));
   const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
-  assert.deepEqual((await pack.guide('Cambria', ['ja', 'en'])).map((p) => p.edition), ['en']);
+  assert.deepEqual((await pack.guide('Cambria', ['ja', 'en'])).map((p) => [p.edition, p.text.length > 0]), [['ja', false], ['en', true]]);
   assert.deepEqual(m.voyage, ['en'], 'the pass did not reach its end: Japanese is still to be asked');
   const next = services();
   const n = await downloadPack({ ws, scope: trip, fetch: next.fetch, version: V, editions: ['ja', 'en'], gapMs: 0 });
@@ -1091,6 +1150,19 @@ test("progress reaches its total when an edition is given up: its guides left af
   assert.ok(m.failed.length > 3, 'the left guides count among those that did not download');
   const last = progress.at(-1);
   assert.equal(last.done + 1, last.total, `${last.done + 1} of ${last.total}`);
+});
+
+test("a guide with no text says which Wikivoyage sent none: the edition's host, not Wikivoyage for every edition; one kept by an older annai, which names none, still reads", async () => {
+  const { ws, trip } = await packTrip();
+  const empty = (/** @type {string} */ url) => (url.includes('ja.wikivoyage.org') && new URL(url).searchParams.get('prop') === 'extracts' ? { query: { pages: [{ title: 'カンブリア', extract: '' }] } } : kitGuides(url));
+  const m = await downloadPack({ ws, scope: trip, fetch: services({ wikivoyage: empty }).fetch, version: V, editions: ['ja', 'en'], gapMs: 0 });
+  assert.deepEqual(m.failed.map((f) => [f.label, f.why]), [['Wikivoyage: カンブリア', 'ja.wikivoyage.org sent no text for カンブリア.']]);
+  assert.equal(failWords(/** @type {any} */ (m.failed[0].said)), 'ja.wikivoyage.org sent no text for カンブリア.');
+  // English's is just Wikivoyage.
+  const en = await packTrip();
+  const e = await downloadPack({ ws: en.ws, scope: en.trip, fetch: services({ wikivoyage: (url) => (new URL(url).searchParams.get('prop') === 'extracts' ? { query: { pages: [{ title: 'x', extract: '' }] } } : kitGuides(url)) }).fetch, version: V, editions: EN, gapMs: 0 });
+  assert.equal(failWords(/** @type {any} */ (e.failed[0].said)), 'Wikivoyage sent no text for Cambria (California).');
+  assert.equal(failWords({ code: 'no-text', title: 'Cambria' }), 'Wikivoyage sent no text for Cambria.', "one an older annai kept");
 });
 
 test("an error answer to a guide's text is said as the service's own, as a part's and the names' are, not as no text", async () => {

@@ -1,5 +1,5 @@
 {
-  "build": "5a19795d9af6",
+  "build": "3c43f3084d67",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -124,11 +124,11 @@
     "/src/core/package-updates.js": "79d2f3f92d47",
     "/src/core/packages.js": "5a2f10c69bd1",
     "/src/core/requires.js": "9aa09e4a81ad",
-    "/src/core/pack/download.js": "7f8451d10e0e",
-    "/src/core/pack/keeper.js": "640a8fab9e86",
+    "/src/core/pack/download.js": "3854a5033fed",
+    "/src/core/pack/keeper.js": "5d65f2e2a13e",
     "/src/core/pack/osm.js": "758b9dbf29f2",
     "/src/core/pack/plan.js": "068921682981",
-    "/src/core/pack/read.js": "88536226e5e1",
+    "/src/core/pack/read.js": "2bf1c63750c8",
     "/src/core/patch.js": "bf353eb88c60",
     "/src/core/pdf-pages.js": "dbede6cb6600",
     "/src/core/photo-meta.js": "7021827cca8d",
@@ -194,7 +194,7 @@
     "/src/plugins/go/index.js": "39ee52f39fc1",
     "/src/plugins/mcp/client.js": "8f2bab66c578",
     "/src/plugins/mcp/index.js": "9b557e1626c7",
-    "/src/plugins/places/index.js": "057c35094412",
+    "/src/plugins/places/index.js": "08b513fe83e2",
     "/src/plugins/sensors/index.js": "816a2602dd98",
     "/src/plugins/skills/index.js": "f3abb206048e",
     "/src/plugins/voice-browser/capture-worklet.js": "1667d451add2",
@@ -231,7 +231,7 @@
     "/src/ui/mic-help.js": "845ccacb506a",
     "/src/ui/model-check.js": "843189985928",
     "/src/ui/notices.js": "39c9b01701bf",
-    "/src/ui/offline-pack.js": "5c6cf7c1decf",
+    "/src/ui/offline-pack.js": "97bc677640b3",
     "/src/ui/open-file.js": "0d6655f94391",
     "/src/ui/open-trip.js": "3ea153777b02",
     "/src/ui/photo-codec.js": "df8a044b3288",
@@ -300,8 +300,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "051f362e0902",
-    "/l10n/zh-Hans.json": "ddf8d98c59c7",
-    "/l10n/zh-Hant.json": "8dc877ea429e"
+    "/l10n/ja.json": "d3ed35202a07",
+    "/l10n/zh-Hans.json": "4795d4fdbf30",
+    "/l10n/zh-Hant.json": "3ee79a79c10d"
   }
 }

@@ -140,21 +140,25 @@ export class Pack {
   }
 
   /**
-   * Its guide for a name, in each of these editions it holds it in, in their order: found by its English title, that title without
-   * "(California)", a name that led to it, or its title in any edition it holds. A guide only one edition has is that edition's alone; a
-   * name two such guides share gives both. A file that is missing or broken is left out; none, [].
+   * Its one guide for a name, by the first kind of match that finds any: its English title, a name that led to it, its title in an edition, its title
+   * without "(California)" (only when one guide has it: "Georgia" is neither the country's nor the state's); in each of these editions it is in, in their
+   * order, the text empty where the file is missing or broken. None, [].
    * @param {string} name @param {string[]} editions the traveller's guide editions, in the reading order (wiki.js guideEditions)
    * @returns {Promise<{ edition: string, title: string, text: string }[]>}
    */
   async guide(name, editions) {
     const n = norm(String(name));
-    const held = this.manifest.guides.filter((x) => [x.title, x.title.replace(/\s*\([^)]*\)$/, ''), ...x.asked, ...x.also.map((a) => a.title)].some((t) => norm(t) === n)).flatMap(heldIn);
+    const { guides } = this.manifest;
+    const bare = guides.filter((x) => norm(x.title.replace(/\s*\([^)]*\)$/, '')) === n);
+    const g = guides.find((x) => norm(x.title) === n) ?? guides.find((x) => x.asked.some((a) => norm(a) === n)) ?? guides.find((x) => x.also.some((a) => norm(a.title) === n)) ?? (bare.length === 1 ? bare[0] : undefined);
+    const held = g ? heldIn(g) : [];
     /** @type {{ edition: string, title: string, text: string }[]} */
     const out = [];
     for (const e of editions) {
-      const f = held.find((x) => x.edition === e);
-      const v = f ? await this.#read(f.path).catch(() => null) : null;
-      if (f && typeof v?.text === 'string' && v.text.trim()) out.push({ edition: e, title: f.title, text: v.text });
+      const h = held.find((x) => x.edition === e);
+      if (!h) continue;
+      const v = await this.#read(h.path).catch(() => null);
+      out.push({ edition: e, title: h.title, text: typeof v?.text === 'string' && v.text.trim() ? v.text : '' });
     }
     return out;
   }

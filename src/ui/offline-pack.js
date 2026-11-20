@@ -65,7 +65,10 @@ export function packWords(s, connection) {
     lines.push(t`It is more than a month old.`);
     button = t`Update (about ${about})`;
   }
-  lines.push(connection === 'unknown' ? t`This browser doesn't tell annai when it is on Wi-Fi, so update it here.` : t`On Wi-Fi, annai keeps it up to date by itself while this conversation is open.`);
+  // Not true where the pack waits for the traveller's Try again.
+  const waits = s.why !== null && !s.byItself;
+  if (connection === 'unknown') lines.push(t`This browser doesn't tell annai when it is on Wi-Fi, so update it here.`);
+  else if (!waits) lines.push(t`On Wi-Fi, annai keeps it up to date by itself while this conversation is open.`);
   return { lines, button };
 }
 

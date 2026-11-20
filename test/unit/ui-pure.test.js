@@ -1072,6 +1072,16 @@ test('the Offline pack panel: the estimate before anything is downloaded, then w
   assert.equal(packWords(/** @type {any} */ ({ ...base, manifest, why: 'old' }), 'wifi').button, 'Update (about 120 kB)');
 });
 
+test("the Offline pack panel says annai keeps it up to date by itself only where it does: not where the pack waits for the traveller's Try again", () => {
+  const manifest = { at: new Date().toISOString(), bytes: 1_300_000, places: 1200, summaries: 40, files: [], guides: [], voyage: ['en'], failed: [{ label: 'OpenStreetMap around Nepenthe', why: 'overpass-api.de stopped early.', part: { source: 'osm', place: { how: 'around', names: ['Nepenthe'] } }, said: { code: 'early', where: 'overpass-api.de', remark: 'x' } }], stopped: false };
+  const by = 'On Wi-Fi, annai keeps it up to date by itself while this conversation is open.';
+  const status = (/** @type {Record<string, unknown>} */ o) => /** @type {any} */ ({ stops: 2, manifest, why: 'missing', byItself: false, estimate: 120 * 1024, running: null, ...o });
+  assert.ok(!packWords(status({}), 'wifi').lines.includes(by), 'an answer annai can\'t use waits for Try again');
+  assert.ok(packWords(status({ byItself: true }), 'wifi').lines.includes(by), 'a source that was down comes by itself');
+  assert.ok(packWords(status({ why: null }), 'wifi').lines.includes(by), 'up to date, and kept so');
+  assert.equal(packWords(status({}), 'unknown').lines.at(-1), "This browser doesn't tell annai when it is on Wi-Fi, so update it here.");
+});
+
 test("a pack whose manifest doesn't say when it was downloaded says only that it was, never \"just now\"", () => {
   const base = { stops: 2, why: null, estimate: 120 * 1024, running: null };
   const manifest = { at: '', bytes: 1_300_000, places: 1200, summaries: 40, files: [], guides: [], voyage: ['en'], failed: [], stopped: false };

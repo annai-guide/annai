@@ -797,17 +797,17 @@ sejc5h	ok	{0} was switched off after errors.	{0} 因多次出錯已被關閉。	
 xzxdhp	ok	The plugin didn't provide a model provider.	該外掛程式沒有提供模型供應商。	src/core/llm/service.js:323	Note: said of a plugin.
 2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	該外掛程式不是 annai 官方的。請從原來的來源重新安裝。	src/core/llm/service.js:402	
 1k9wkd0	ok	The plugin it names doesn't provide models, so it wasn't installed.	指定的外掛程式不提供模型，所以沒有安裝。	src/core/llm/service.js:411	Note: said after the provider's name ("OpenRouter: …"); the plugin its record names, with no 它.
-3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:82	{0} = p.title
-1rb0o7n	ok	OpenStreetMap around {0}	{0} 周邊的 OpenStreetMap	src/core/pack/download.js:84	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
-hdsgog	ok	OpenStreetMap between {0} and {1}	{0} 與 {1} 之間的 OpenStreetMap	src/core/pack/download.js:84	{0} = a; {1} = b
-1ff3ec8	ok	Wikipedia near {0}	{0} 附近的 Wikipedia	src/core/pack/download.js:85	{0} = a
-i9ok5g	ok	Wikipedia between {0} and {1}	{0} 與 {1} 之間的 Wikipedia	src/core/pack/download.js:85	{0} = a; {1} = b
-1qn6l15	ok	{0} didn't answer in time.	{0} 回應逾時。	src/core/pack/download.js:91	{0} = s.where
-16rip5y	ok	{0} stopped early: {1}.	{0} 中途停止了：{1}。	src/core/pack/download.js:92	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
-zy85n2	draft	every server was left for the rest of the run	本次下載不再向任何伺服器請求	src/core/pack/download.js:94	
-cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMap 沒有回應（{0}）。	src/core/pack/download.js:95	{0} = why.replace(/[.。]$/u, '')
-rhruvr	ok	{0} said: {1}.	{0} 回覆：{1}。	src/core/pack/download.js:97	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
-1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyage 沒有傳來 {0} 的內文。	src/core/pack/download.js:98	{0} = s.title
+3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:81	{0} = p.title
+1rb0o7n	ok	OpenStreetMap around {0}	{0} 周邊的 OpenStreetMap	src/core/pack/download.js:83	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
+hdsgog	ok	OpenStreetMap between {0} and {1}	{0} 與 {1} 之間的 OpenStreetMap	src/core/pack/download.js:83	{0} = a; {1} = b
+1ff3ec8	ok	Wikipedia near {0}	{0} 附近的 Wikipedia	src/core/pack/download.js:84	{0} = a
+i9ok5g	ok	Wikipedia between {0} and {1}	{0} 與 {1} 之間的 Wikipedia	src/core/pack/download.js:84	{0} = a; {1} = b
+1qn6l15	ok	{0} didn't answer in time.	{0} 回應逾時。	src/core/pack/download.js:90	{0} = s.where
+16rip5y	ok	{0} stopped early: {1}.	{0} 中途停止了：{1}。	src/core/pack/download.js:91	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
+zy85n2	draft	every server was left for the rest of the run	本次下載不再向任何伺服器請求	src/core/pack/download.js:93	
+cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMap 沒有回應（{0}）。	src/core/pack/download.js:94	{0} = why.replace(/[.。]$/u, '')
+rhruvr	ok	{0} said: {1}.	{0} 回覆：{1}。	src/core/pack/download.js:96	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
+nejb7z	draft	{0} sent no text for {1}.	{0} 沒有傳來 {1} 的內文。	src/core/pack/download.js:99	{0} = where; {1} = s.title
 aaicx8	ok	{0} couldn't be checked: {1}	無法檢查 {0}：{1}	src/core/package-updates.js:40	{0} = s.name ?? id; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 trd90h	ok	It wasn't installed from an address, so annai has nowhere to look for an update.	不是從網址安裝的，所以無法檢查更新。	src/core/package-updates.js:67	
 2olq9a	ok	The address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	這個網址現在提供的是另一個套件（{0}），因此沒有更新。如果想用那個套件，請移除這個，再安裝那個。	src/core/package-updates.js:71	{0} = pkg.id; Note: Remove → 移除, as annai's Remove buttons say.
@@ -1408,16 +1408,16 @@ w5716a	ok	Update (about {0})	更新（約 {0}）	src/ui/offline-pack.js:62	{0} =
 13cigs6	ok	Download the rest (about {0})	下載其餘部分（約 {0}）	src/ui/offline-pack.js:63	{0} = about
 o81vpw	ok	Try again (about {0})	重試（約 {0}）	src/ui/offline-pack.js:63	{0} = about
 16r6naq	ok	It is more than a month old.	已下載超過一個月。	src/ui/offline-pack.js:65	
-1vwbp7l	ok	This browser doesn't tell annai when it is on Wi-Fi, so update it here.	此瀏覽器無法告訴 annai 何時連上 Wi-Fi，請在這裡手動更新。	src/ui/offline-pack.js:68	
-p6stxk	ok	On Wi-Fi, annai keeps it up to date by itself while this conversation is open.	連上 Wi-Fi 時，只要這個對話開著，annai 就會自動更新離線資料包。	src/ui/offline-pack.js:68	
-5pklax	ok	Offline pack	離線資料包	src/ui/offline-pack.js:78	
-1bk5sw	ok	What came is kept. Try again in a moment.	已下載的部分會保留。請稍後再試。	src/ui/offline-pack.js:84	
-v6p0ku	ok	The offline pack didn't download	離線資料包下載失敗	src/ui/offline-pack.js:84	
-qtuxek	ok	Places © {0}; summaries from Wikipedia and guides from Wikivoyage, {1}.	地點 © {0}；摘要來自 Wikipedia，指南來自 Wikivoyage，{1}。	src/ui/offline-pack.js:116	{0} = osm.textContent; {1} = cc.textContent; Note: {0} and {1} are the licence's own words ("OpenStreetMap contributors", "CC BY-SA"), links, and stay English.
-uwd3a2	ok	No offline pack yet.	還沒有離線資料包。	src/ui/offline-pack.js:127	
-1k132lx	ok	The offline pack is from before the itinerary changed.	離線資料包是行程變動前下載的。	src/ui/offline-pack.js:128	
-ksuwxs	ok	Offline pack: downloaded.	離線資料包：已下載。	src/ui/offline-pack.js:129	
-r91312	ok	Offline pack: downloaded {0}.	離線資料包：{0}下載。	src/ui/offline-pack.js:129	{0} = when; Note: {0} is a relative time ("2 hours ago").
+1vwbp7l	ok	This browser doesn't tell annai when it is on Wi-Fi, so update it here.	此瀏覽器無法告訴 annai 何時連上 Wi-Fi，請在這裡手動更新。	src/ui/offline-pack.js:70	
+p6stxk	ok	On Wi-Fi, annai keeps it up to date by itself while this conversation is open.	連上 Wi-Fi 時，只要這個對話開著，annai 就會自動更新離線資料包。	src/ui/offline-pack.js:71	
+5pklax	ok	Offline pack	離線資料包	src/ui/offline-pack.js:81	
+1bk5sw	ok	What came is kept. Try again in a moment.	已下載的部分會保留。請稍後再試。	src/ui/offline-pack.js:87	
+v6p0ku	ok	The offline pack didn't download	離線資料包下載失敗	src/ui/offline-pack.js:87	
+qtuxek	ok	Places © {0}; summaries from Wikipedia and guides from Wikivoyage, {1}.	地點 © {0}；摘要來自 Wikipedia，指南來自 Wikivoyage，{1}。	src/ui/offline-pack.js:119	{0} = osm.textContent; {1} = cc.textContent; Note: {0} and {1} are the licence's own words ("OpenStreetMap contributors", "CC BY-SA"), links, and stay English.
+uwd3a2	ok	No offline pack yet.	還沒有離線資料包。	src/ui/offline-pack.js:130	
+1k132lx	ok	The offline pack is from before the itinerary changed.	離線資料包是行程變動前下載的。	src/ui/offline-pack.js:131	
+ksuwxs	ok	Offline pack: downloaded.	離線資料包：已下載。	src/ui/offline-pack.js:132	
+r91312	ok	Offline pack: downloaded {0}.	離線資料包：{0}下載。	src/ui/offline-pack.js:132	{0} = when; Note: {0} is a relative time ("2 hours ago").
 8f98y9	ok	Open an annai file	開啟 annai 檔案	src/ui/open-file.js:6	
 13548dd	ok	That conversation didn't open	無法開啟那段對話	src/ui/open-trip.js:9	Note: Taiwan wording: 開啟 for open, 對話 as the glossary's Conversation.
 ow6fak	ok	This browser could not draw the photo.	此瀏覽器無法處理這張照片。	src/ui/photo-codec.js:73	

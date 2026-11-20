@@ -11,9 +11,10 @@ import { readingEditions, guideEditions } from '../wiki.js';
 /**
  * Keeps each trip's offline pack (spec §11.5): what it holds and would take, downloading it when
  * asked, and, once a trip has one, bringing it up to date by itself on Wi-Fi while annai and that
- * trip are open ("whenever the phone is on Wi-Fi"): when the plan changed, parts are missing (but not after
- * an answer annai can't use: that waits for Try again), or it is a month old; by itself at most once an
- * hour. It names places from the open trip's pack for live mode, in the editions the traveller's languages read.
+ * trip are open ("whenever the phone is on Wi-Fi"): when the plan changed, the run was stopped, a source was down, a guide edition or a part is
+ * missing, or it is a month old (but not after an answer annai can't use: that waits for Try again); by itself at most once an hour from the
+ * start of any run, and the traveller's own Stop holds an hour. It names places from the open trip's pack for live mode, in the editions the
+ * traveller's languages read.
  * @typedef {import('./download.js').Manifest} Manifest
  * @typedef {import('./download.js').Progress} Progress
  * @typedef {'plan' | 'missing' | 'old' | null} Why
@@ -109,9 +110,10 @@ export class PackKeeper {
           : old ? 'old' : null;
     // Whether annai brings it by itself, for the hourly retry and every look alike: the plan changed, the pack is old ('missing' comes first
     // above), the run was stopped, a source was down, an edition is lacking, or a part is missing that no failure accounts for (a language
-    // added). Failures that are answers annai can't use (Overpass stopping early, no text) would only fail again: they wait for Try again.
+    // added; the count is of the parts' failures). Failures that are answers annai can't use (Overpass stopping early, no text) would only fail
+    // again: they wait for Try again.
     const byItself = manifest !== null && why !== null
-      && (why === 'plan' || old || manifest.stopped || lacking.length > 0 || manifest.failed.some(saysDown) || missing.length > manifest.failed.length);
+      && (why === 'plan' || old || manifest.stopped || lacking.length > 0 || manifest.failed.some(saysDown) || missing.length > manifest.failed.filter((f) => f.part && 'place' in f.part).length);
     // What downloading brings now: the files it lacks, and its guides in the editions it lacks (with no guides yet, those it would likely get).
     const needed = manifest?.guides.length ? estimate(missing, manifest.guides.length, lacking) : estimate(missing, likelyGuides(plan), voyage);
     return {
@@ -136,6 +138,8 @@ export class PackKeeper {
     const abort = new AbortController();
     this.#abort = abort;
     this.#byItself = auto;
+    // The hour counts from the start of any run, the traveller's too.
+    this.#autoAt.set(scope, (this.o.now ?? Date.now)());
     this.running = { scope, done: 0, total: 0, label: '' };
     this.#emit();
     this.#job = this.#editions().then((editions) => downloadPack({
@@ -155,17 +159,17 @@ export class PackKeeper {
       this.running = null;
       this.#emit();
       // What changed during it waits for no hourly gate: this download's own start doesn't count against it.
-      if (this.#again) {
-        this.#autoAt.delete(scope);
-        this.poke();
-      }
+      if (this.#again) this.#autoAt.delete(scope);
       this.#again = false;
+      // A look that fell on it was lost, and what annai may still bring by itself is tried again an hour on, by the same rule as any look.
+      this.poke();
     });
     return this.#job;
   }
 
-  /** Stops the download that is running; what came stays. Settles once it has ended, its manifest written. */
+  /** Stops the download that is running; what came stays. Settles once it has ended, its manifest written. The traveller's Stop holds automatic runs an hour: a phone on a friend's hotspot says Wi-Fi. */
   async stop() {
+    if (this.running && !this.#byItself) this.#autoAt.set(this.running.scope, (this.o.now ?? Date.now)());
     this.#abort?.abort();
     await this.#job?.catch(() => {});
   }
@@ -260,9 +264,6 @@ export class PackKeeper {
     const every = this.o.autoMs ?? AUTO_EVERY_MS;
     const wait = Math.max((this.o.quietMs ?? QUIET_MS) - (Date.now() - this.#changedAt), every - (now - (this.#autoAt.get(scope) ?? -Infinity)));
     if (wait > 0) return this.#schedule(wait);
-    this.#autoAt.set(scope, now);
     await this.download(scope, { auto: true });
-    // What annai may still bring by itself is tried again an hour on, by the same rule as any look.
-    if ((await this.status(scope)).byItself) this.#schedule(every);
   }
 }

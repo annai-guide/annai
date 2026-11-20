@@ -66,6 +66,8 @@ export function wikivoyage(url) {
   const u = new URL(url);
   const edition = u.hostname.split('.')[0];
   const titles = (u.searchParams.get('titles') ?? '').split('|');
+  // Another edition: the names lookup (a page for each title, missing here: it has none of the trip's names) or a guide's text.
+  if (edition !== 'en' && u.searchParams.get('prop')?.startsWith('pageprops')) return { batchcomplete: true, query: { pages: titles.map((t) => ({ title: t, missing: true })) } };
   if (edition !== 'en') return { query: { pages: [EDITION_GUIDES[edition]?.[titles[0]] ? { title: titles[0], extract: EDITION_GUIDES[edition][titles[0]] } : { title: titles[0], missing: true }] } };
   if (u.searchParams.get('prop') === 'pageprops') {
     const redirects = titles.filter((t) => REDIRECTS[t]).map((t) => ({ from: t, to: REDIRECTS[t] }));
@@ -77,6 +79,53 @@ export function wikivoyage(url) {
     return { batchcomplete: true, query: { pages: titles.map((t) => (LINKS[t]?.[lang] ? { title: t, langlinks: [{ lang, title: LINKS[t][lang] }] } : { title: t })) } };
   }
   return { query: { pages: [{ title: titles[0], extract: GUIDES[titles[0]] ?? '' }] } };
+}
+
+/**
+ * Wikivoyage's editions, a table of pages each, answering the guides' three questions as MediaWiki does (in the shape of its real answers, 2026-11-20;
+ * what the pages say is made up): the names lookup (pageprops, with each page's link to English in another edition), English's links to an edition,
+ * and a page's text. A title leads to its page (`to`: a redirect, or a variant converted); a page has `text`, its title in English (`en`, a page of
+ * another edition), its pages in other editions (`links`, an English page), or is a disambiguation page (`list`). A title the table lacks is missing,
+ * and a page with no link has no `langlinks` key.
+ * @param {Record<string, Record<string, { to?: string, text?: string, en?: string, links?: Record<string, string>, list?: boolean }>>} world by edition
+ * @returns {(url: string) => any}
+ */
+export function voyageWorld(world) {
+  return (url) => {
+    const u = new URL(url);
+    const table = world[u.hostname.split('.')[0]] ?? {};
+    const prop = String(u.searchParams.get('prop'));
+    const titles = (u.searchParams.get('titles') ?? '').split('|');
+    /** The page a title leads to: [its title, its entry], none for a missing one. @param {string} t @returns {[string, typeof table[string]] | null} */
+    const lead = (t) => {
+      const to = table[t]?.to ?? t;
+      return table[to] && !table[to].to ? [to, table[to]] : null;
+    };
+    if (prop.startsWith('pageprops')) {
+      const redirects = titles.filter((t) => table[t]?.to).map((t) => ({ from: t, to: /** @type {string} */ (table[t].to) }));
+      /** @type {any[]} */
+      const pages = [];
+      for (const t of titles) {
+        const page = lead(t);
+        if (!page) pages.push({ ns: 0, title: table[t]?.to ?? t, missing: true });
+        else if (!pages.some((x) => x.title === page[0])) {
+          pages.push({ pageid: 1 + Object.keys(table).indexOf(page[0]), ns: 0, title: page[0], ...(page[1].list ? { pageprops: { disambiguation: '' } } : {}),
+            ...(prop.includes('langlinks') && page[1].en ? { langlinks: [{ lang: 'en', title: page[1].en }] } : {}) });
+        }
+      }
+      return { batchcomplete: true, query: { ...(redirects.length ? { redirects } : {}), pages } };
+    }
+    if (prop === 'langlinks') {
+      const lang = String(u.searchParams.get('lllang'));
+      return { batchcomplete: true, query: { pages: titles.map((t) => (!table[t] ? { title: t, missing: true } : table[t].links?.[lang] ? { title: t, langlinks: [{ lang, title: table[t].links?.[lang] }] } : { title: t })) } };
+    }
+    // A page's text and links: the pack's text request (extracts alone) and the guide tool's page query (extract, langlinks, pageprops, or without the extract).
+    const page = lead(titles[0]);
+    if (!page) return { batchcomplete: true, query: { pages: [{ ns: 0, title: titles[0], missing: true }] } };
+    const [title, p] = page;
+    const langlinks = [...Object.entries(p.links ?? {}), ...(p.en ? [['en', p.en]] : [])].map(([lang, to]) => ({ lang, title: to }));
+    return { batchcomplete: true, query: { pages: [{ pageid: 1, ns: 0, title, ...(prop.includes('extracts') ? { extract: p.text ?? '' } : {}), ...(prop.includes('langlinks') && langlinks.length ? { langlinks } : {}), ...(p.list ? { pageprops: { disambiguation: '' } } : {}) }] } };
+  };
 }
 
 /**
