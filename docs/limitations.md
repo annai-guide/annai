@@ -1121,7 +1121,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 ### After a long, heavy history, the spending figures take a moment
 - **Kind:** known limitation.
 - **What the traveller sees:** Settings → Models opens a moment later than before, and takes the same moment each time it is drawn again (after a change to a role's list), since it shows Spending's figures only once it has read them from every log (its other sections wait with it: nothing fills in later). In the cost-display design's measurements, made-up stores read in Docker on a desktop computer, not measured on a phone, which may be slower: about 0.3 s more in WebKit after a heavy year (19,300 log entries in 100 trips and conversations), about 2.3 s after a year at the heaviest day of real use every day (122,000 in 300); about 0.02 s after a month like the one measured.
-- **Why:** nothing is stored for the figures: a running total would be state to keep right through every write, removal, import and restore, for the extreme case only. The whole read is only on Models; a turn's start, and a live talk's start and each of its usage reports, read each log's newest 20 model calls and requests, going on only while the oldest of them is from today, and only with a Spend per day set.
+- **Why:** nothing is stored for the figures: a running total would be state to keep right through every write, removal, import and restore, for the extreme case only. The whole read is only on Models; a turn's start (and again after a note cuts one of its steps short), and a live talk's start and each of its usage reports, read each log's newest 20 model calls and requests, then pages of 1000 for as long as the oldest one read is from today, and only with a Spend per day set.
 - **Revisit when:** a traveller reports Settings → Models slow to open.
 - **Approved:** 2026-11-19, the user's answer "All recommended" to the cost-display design's questions.
 
@@ -1131,3 +1131,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** a call is priced when it is made (cost.js, a price may start on a date), and a price change must never rewrite past costs.
 - **Revisit when:** the line misleads a traveller.
 - **Approved:** 2026-11-19, the user's answer "All recommended" to the cost-display design's questions.
+
+### A restored copy of a trip counts its cost again
+- **Kind:** known limitation.
+- **What the traveller sees:** after opening their own Backup of a trip that is still on the phone and choosing "Replace mine" or "Add as a new one", Settings → Models → Spending's All time, every other figure the trip's calls were in, and today's spend that Spend per day counts rise by that trip's cost again, until the old or extra copy is removed. A Share carries no history and adds nothing.
+- **Why:** both choices import the Backup's history into a new trip, and "Replace mine" only archives the old one, whose cost still counts. Telling the two copies' entries apart would need an identity for log entries across copies, or a ledger outside the trips.
+- **Revisit when:** a traveller restores trips they still have and the figures mislead.
+- **Approved:** 2026-11-19, the user's answer in the main session's tab: "Accept (Rec.)".

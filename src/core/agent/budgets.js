@@ -80,7 +80,7 @@ export async function spentIn(store, now, timeZone, days) {
           if (typeof cost === 'number') since.forEach((c, i) => { if (e.ts >= c) sums[i] += cost; });
           else if (answered(e)) unpriced++;
         }
-        // Stops when the page's last (the oldest in the log) is before the range: an older entry in the log is taken to be older in time, so one entry written late (a midnight race, a clock set back once) hides nothing, but 20 or more entries stamped before the range and written after today's (a clock set back for that many calls) still end the read early.
+        // Stops when the page's last (the oldest in the log) is before the range: an older entry in the log is taken to be older in time. So entries written late (stamped before the range and written after today's: a midnight race, a clock set back) end the read early only while one of them is a page's last: a lone one until the next entry is written, a run of them for as many writes as it is long (20 or more in a row, a clock set back for that many calls, until 20 newer ones are written).
         if (page.length < limit || page[page.length - 1].ts < from) break;
         before = page[page.length - 1].seq;
       }
@@ -139,8 +139,8 @@ export function budgetStop({ budgets, steps, spent, watched = true }) {
 export function budgetWords(over, plain = false) {
   if (over.which === 'spend') {
     /* en */
-    if (plain) return { title: "Shiori stopped: today's budget is spent", body: `Today's model calls cost $${over.spent.toFixed(2)} of the $${over.perDay.toFixed(2)} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.` };
-    return { title: t`Shiori stopped: today's budget is spent`, body: t`Today's model calls cost ${money(over.spent)} of the ${money(over.perDay)} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.` };
+    if (plain) return { title: "Shiori stopped: today's budget is spent", body: `Today's model calls, voices and live talk cost $${over.spent.toFixed(2)} of the $${over.perDay.toFixed(2)} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.` };
+    return { title: t`Shiori stopped: today's budget is spent`, body: t`Today's model calls, voices and live talk cost ${money(over.spent)} of the ${money(over.perDay)} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.` };
   }
   /* en */
   if (plain) return { title: 'Shiori stopped: step limit', body: over.own ? `She took ${over.steps} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.` : `She took the ${over.steps} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.` };
