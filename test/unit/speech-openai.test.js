@@ -16,10 +16,11 @@ import { official } from './provider-kit.js';
 import { readConfig, modelOf } from '../../src/core/llm/config.js';
 import { speechCall } from '../../src/core/llm/speech.js';
 import { speechCost } from '../../src/core/llm/cost.js';
+import { pluginWords } from './l10n-kit.js';
 
 /** @type {Record<string, any>} */
 const types = {};
-activate({ providers: { register: (/** @type {any} */ t) => { types[t.type] = t; return () => {}; } }, helpers: { ProviderError, errorFromResponse, mergePatch } });
+activate({ l10n: pluginWords(), providers: { register: (/** @type {any} */ t) => { types[t.type] = t; return () => {}; } }, helpers: { ProviderError, errorFromResponse, mergePatch } });
 const hear = types['openai-transcription'];
 const say = types['openai-speech'];
 /** @param {any} type @param {any} [over] */

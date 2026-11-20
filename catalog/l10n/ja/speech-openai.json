@@ -3,5 +3,7 @@
     "description": "OpenAIの音声APIを使った文字起こしと声。OpenAI、OpenRouter、Groqのほか、Speaches、whisper.cpp、Kokoroなどのローカルサーバーに対応します。",
     "name": "OpenAI互換の音声"
   },
-  "messages": {}
+  "messages": {
+    "16scbe": "声を非圧縮でストリーミングして、早く話し始める（データ量は数倍。オフ：各文が圧縮されて丸ごと届いてから話す。非圧縮の音声しか送らない声は除く）"
+  }
 }

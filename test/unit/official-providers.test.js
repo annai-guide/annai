@@ -292,7 +292,7 @@ test('every official transcription and Chat Completions ability declares the aud
   const defaults = {};
   const register = (/** @type {any} */ t) => { defaults[t.type] = t.tunables ?? {}; return () => {}; };
   const helpers = { ProviderError: Error, errorFromResponse: () => new Error(), mergePatch: (/** @type {any} */ a, /** @type {any} */ b) => ({ ...a, ...b }), sse: () => {} };
-  (await import('../../plugins-official/speech-openai/index.js')).activate({ providers: { register }, helpers });
+  (await import('../../plugins-official/speech-openai/index.js')).activate({ providers: { register }, helpers, l10n: pluginWords() });
   (await import('../../plugins-official/chat-completions/index.js')).activate({ providers: { register }, helpers });
   (await import('../../plugins-official/gemini-api/index.js')).activate({ providers: { register }, helpers, l10n: pluginWords() });
   assert.deepEqual(defaults['chat-completions'].audioIn, ['wav', 'mp3'], "Chat Completions' input_audio: OpenAI's takes WAV and MP3 only");

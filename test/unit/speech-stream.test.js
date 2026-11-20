@@ -114,6 +114,18 @@ test('the first piece must come within the time limit, and then no gap may be lo
   assert.deepEqual((await traced(store)).map((d) => d.outcome), ['timeout', 'timeout', 'ok']);
 });
 
+test("a whole clip has one wait for all of it, not the voice's silence: a clip that takes longer than the wait fails, so a heavy voice on a slow link is handed over after one wait, and \"Wait for the voice\" is how a traveller waits longer", async (t) => {
+  useClock(t);
+  const store = createMemoryStore();
+  const trace = modelTrace(store, SYS);
+  const pieces = [{ at: 0 }, { at: 30 }, { at: 60 }, { at: 90 }, { at: 120 }]; // what the stream above took whole: 120 ms of short gaps
+  await assert.rejects(speechCall({ type: /** @type {any} */ (streams), endpoint: endpoint(), model, key: null, text: 'Hi.', timeoutMs: 60, trace, fetch: slowFetch(pieces) }),
+    (e) => e instanceof ProviderError && e.kind === 'timeout');
+  const ok = await speechCall({ type: /** @type {any} */ (streams), endpoint: endpoint(), model, key: null, text: 'Hi.', timeoutMs: 200, trace, fetch: slowFetch(pieces) });
+  assert.equal(ok.clip?.data.length, 5 * PIECE * 2, 'a longer wait lets all of it come');
+  assert.deepEqual((await traced(store)).map((d) => d.outcome), ['timeout', 'ok']);
+});
+
 test("a stream's first piece must be 16-bit PCM at a rate the phone plays (3 kHz and up), else the voice failed: traced as the server's (fix pass)", async (t) => {
   useClock(t);
   const store = createMemoryStore();

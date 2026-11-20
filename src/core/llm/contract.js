@@ -469,7 +469,8 @@ export function safeId(id) {
  * @property {(res: Response, c: SpeechSpec) => AsyncIterable<{ pcm: Int16Array, rate: number }>} [readSpeechStream]  a voice that streams (G3): its
  *   16-bit PCM as it comes, at its rate; annai plays it once it won't stutter, unless the ability's tunable stream is false (then readSpeech)
  * @property {Record<string, { label: string, options?: Record<string, string> }>} [choices]  tunables the provider page offers in words (G3):
- *   with options, one of them (value → its words); without, a switch for a tunable that is on unless false
+ *   with options, one of them (value → its words); without, a switch for a tunable that is on unless false. One whose tunable the type's own
+ *   tunables have false shows only where the provider's description names it for the ability, or where it is already on (the OpenAI-compatible voice's stream)
  * @property {true} [realtime]  a realtime voice type (K4), with audio, open and attach: annai opens the socket, the type drives it;
  *   its tunable heardLive says its transcript of the user streams in while they speak, not after their turn (a live session's heardLive)
  * @property {true} [made]  a realtime type that emits `made` for each of her turns once the provider has made all of it (a live session's made)

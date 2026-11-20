@@ -40,7 +40,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### A page on an older annai refuses plugins that need plugin API 2 until it restarts
 - **Kind:** known limitation.
-- **What the user sees:** a page still running release 7f0dc027 or older, before it restarts into the new annai, can't add or update the official plugins that say `api: 2`: OpenRouter, Custom provider, Gemini, the four backup kinds, the three search providers and Remote trace. Tapping Update says "was made for plugin API 2; this version of annai supports API 1", keeps the version it has, and offers it again at the next check. Other updates apply, nothing retries on its own, and a restart into the new annai fixes it.
+- **What the user sees:** a page still running release 7f0dc027 or older, before it restarts into the new annai, can't add or update the official plugins that say `api: 2`: OpenRouter, Custom provider, Gemini, OpenAI-compatible speech, the four backup kinds, the three search providers and Remote trace. Tapping Update says "was made for plugin API 2; this version of annai supports API 1", keeps the version it has, and offers it again at the next check. Other updates apply, nothing retries on its own, and a restart into the new annai fixes it.
 - **Why:** these plugins use `annai.l10n`, which pre-L7 annai doesn't give, so an older annai has to refuse them rather than start them broken. A 7f0dc027 page has `annai.l10n` but predates API 2, and its words can't be changed now.
 - **Revisit when:** a user reports being stuck, which shouldn't happen once the page restarts.
 - **Approved:** 2026-10-27, the user: "Accept as known limitation".
@@ -1159,3 +1159,37 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** each way imports the file's history into a new trip, and "Replace mine" only archives the old one, whose cost still counts. Telling the two copies' entries apart would need an identity for log entries across copies, or a ledger outside the trips.
 - **Revisit when:** a traveller restores trips they still have and the figures mislead.
 - **Approved:** 2026-11-19, the user's answer in the main session's tab: "Accept (Rec.)".
+
+### Only OpenRouter's voices stream, and Fish Audio's is the one that gains
+- **Kind:** known limitation.
+- **What the traveller sees:** apart from Gemini's own voice, only OpenRouter's voices can play while they are still being made, with the Stream switch on OpenRouter's Voice section (it starts off); Fish Audio's is the one that gains from it. HeyGen's and Gemini's through OpenRouter, which send only uncompressed audio anyway, stream too with it on. OpenAI's own voices, the local speech servers' and a custom address's have no Stream switch (unless it is already on there, typed in the JSON): each sentence arrives whole, in the smallest format the phone plays. Grok's, Voxtral's and Kokoro's voices through OpenRouter stay whole too, with the switch on. This narrows the user's ask of 2026-10-19, "Streamed voice for providers other than Gemini (play a clip while it is still being made)".
+- **Why:** only OpenRouter's OpenAI-compatible voices were measured (the voice probe of 2026-11-19), and of them Fish Audio's gains most: it starts about 2 to 5 seconds sooner, where Grok's, Voxtral's and Kokoro's would start only 0.06 to 1.3 seconds sooner. OpenAI's own, the local servers' and a custom address's raw audio was never measured (whether their answer names the rate it is made at, as OpenRouter's does), and a stream that wasn't measured could fail every sentence of a voice.
+- **Revisit when:** another voice is measured and gains from streaming.
+- **Approved:** 2026-11-19, the user's answer in the main session's tab: "Accept (Rec.)".
+
+### A stream that ends cleanly but early is heard short
+- **Kind:** known limitation.
+- **What the traveller sees:** with the Stream switch on, a voice whose connection closes early, without an error, has its sentence heard short: she plays what came and goes on to the next sentence. (A connection that drops with an error is a failed clip: the next voice says the whole sentence.)
+- **Why:** raw audio carries no length, so a clean close early can't be told from the real end, and the clip's length from its words is only an estimate.
+- **Revisit when:** a voice is seen ending a stream early with the switch on.
+- **Approved:** 2026-11-19, the user's answer in the main session's tab: "Accept all three (Rec.)".
+
+### On a slow link a streamed voice starts later
+- **Kind:** known limitation.
+- **What the traveller sees:** with the Stream switch on, when a voice arrives slower than it plays (on a link below about 0.7 Mbps, where Fish Audio's raw audio is 705.6 kbit/s, or from a voice that makes its audio slower than real time), she waits before she starts a sentence (the longer, the slower the delivery), then plays it without a gap, instead of stuttering. On a good connection she starts sooner, as the switch says.
+- **Why:** a gap in the middle of a word is worse than a wait, so playback starts only when the rest will be in before it is reached (src/core/voice/stream-start.js); raw audio is about 5.5 times the data of the MP3 for the same clip.
+- **Revisit when:** a traveller reports it; the switch can be turned off.
+- **Approved:** 2026-11-19, the user's answer in the main session's tab: "Accept all three (Rec.)".
+
+### A voice that answers a streamed ask with compressed audio fails that sentence
+- **Kind:** known limitation.
+- **What the traveller sees:** with the Stream switch on, a voice that doesn't send the raw audio annai asked for (an MP3 or a WAV, say, from a server that ignores the ask) fails that sentence: the next voice says it, and that voice rests for a few minutes.
+- **Why:** the stream path takes only raw 16-bit audio at a rate its answer names; playing such an answer whole instead would need the stream contract to hand back a whole clip (a plugin API change), for a server that ignores the ask. The switch shows only where a provider's description names it, or where it is already on, and it starts off.
+- **Revisit when:** a voice is seen answering a streamed ask this way in normal use.
+- **Approved:** 2026-11-19, the user's answer in the main session's tab: "Accept all three (Rec.)".
+
+### An OpenRouter voice added by id starts with Fish Audio's voice
+- **Kind:** deferred.
+- **What the traveller sees:** a voice model added by id in Models → OpenRouter → Voice from another maker than Fish Audio (HeyGen's, say) starts with Women KatKat, a Fish Audio voice, which its server refuses: Play a sample says "The provider didn't accept the request. Check the tunables on its provider's page.", and the provider's own reason ("Voice not found") shows only in the Trace. The same model added from Fetch model list starts with its own voice and plays. Setting its Voice by hand fixes it.
+- **Why:** a model added by id takes the voice ability's voice, which OpenRouter's description sets for Fish Audio's models. Found by the streamed-voice build's one real run (2026-11-19), where HeyGen added by id got that 400 and HeyGen from the list played.
+- **Revisit when:** the next build on OpenRouter's voices: a model added by id from another maker starts with no voice (its server's default), and a refused sample shows the provider's own reason.

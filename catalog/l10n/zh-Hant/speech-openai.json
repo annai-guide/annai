@@ -3,5 +3,7 @@
     "description": "透過 OpenAI 音訊 API 提供語音轉文字和聲音：OpenAI、OpenRouter、Groq，以及 Speaches、whisper.cpp、Kokoro 等本機伺服器。",
     "name": "OpenAI 相容語音"
   },
-  "messages": {}
+  "messages": {
+    "16scbe": "以未壓縮的音訊串流播放她的聲音，開口更快，但資料量是壓縮時的數倍（關閉：每句壓縮後完整收到才播放；只傳送未壓縮音訊的聲音除外）"
+  }
 }

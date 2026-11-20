@@ -1,0 +1,44 @@
+{
+  "note": "Shapes of real answers from OpenRouter POST /api/v1/audio/speech in the voice probe of 2026-11-19: each answer's Content-Type as it came, its error body and, for raw audio (response_format pcm), its size in bytes. Only fishPcm keeps each network piece's size and time (ms after the first piece; its firstByteMs and lastByteMs count from the request); heygenPcm gives the number of its pieces, geminiPcm none. No audio and no key was kept.",
+  "fishPcm": {
+    "model": "fish-audio/s2.1-pro-free:free",
+    "text": "about 4.8 s of English",
+    "contentType": "audio/pcm;rate=44100;channels=1",
+    "firstByteMs": 460.2,
+    "lastByteMs": 2858.5,
+    "bytes": 442368,
+    "pieces": [[0.0, 3828], [25.3, 4220], [25.4, 3972], [25.4, 248], [25.4, 4229], [25.6, 3715], [44.8, 26], [45.1, 4220], [45.2, 3972], [45.2, 248], [45.2, 1251], [336.2, 4220], [336.3, 3972], [336.3, 248], [336.3, 4229], [336.3, 2482], [336.6, 4220], [336.6, 3972], [336.8, 1169], [337.0, 2921], [337.0, 4220], [337.0, 3972], [337.1, 248], [337.3, 887], [438.6, 4220], [438.7, 3972], [438.8, 7039], [481.7, 4090], [537.9, 4122], [537.9, 7678], [538.2, 5824], [549.8, 27], [549.9, 4063], [594.9, 26], [595.8, 8192], [595.8, 8166], [597.4, 27], [597.8, 1219], [643.7, 4090], [650.9, 1628], [1052.3, 27], [1052.5, 4063], [1072.1, 4122], [1072.3, 3365], [1089.2, 4090], [1233.9, 26], [1234.3, 8192], [1234.3, 3147], [1234.3, 5019], [1271.5, 26], [1271.8, 8192], [1271.8, 268], [1290.0, 5792], [1307.1, 4090], [1347.3, 4122], [1348.1, 8192], [1348.2, 4070], [1355.1, 2694], [1375.4, 4090], [1435.8, 8192], [1435.8, 26], [1435.9, 8166], [1469.1, 4122], [1469.3, 7260], [1479.7, 2896], [1484.1, 27], [1484.2, 4063], [1536.5, 8192], [1536.6, 8174], [1536.6, 18], [1559.9, 6349], [1866.0, 4090], [1875.8, 3143], [1883.1, 27], [1883.2, 4063], [1890.7, 3150], [1905.7, 4090], [1920.0, 26], [1920.5, 6020], [1928.4, 4344], [1943.0, 4090], [1966.0, 4122], [1966.0, 4064], [1966.1, 25], [1966.1, 2179], [1979.5, 4090], [2039.7, 8192], [2039.8, 26], [2039.8, 6516], [2046.2, 1448], [2054.1, 4090], [2067.7, 4598], [2075.8, 4090], [2117.1, 8192], [2117.1, 2148], [2117.1, 6044], [2136.9, 8192], [2136.9, 294], [2150.3, 27], [2150.4, 4063], [2216.2, 26], [2216.3, 8192], [2216.5, 4096], [2216.6, 4035], [2216.8, 35], [2225.9, 4122], [2225.9, 20], [2231.1, 1448], [2237.8, 4090], [2252.5, 4122], [2252.6, 468], [2259.1, 4090], [2302.9, 8192], [2302.9, 26], [2303.1, 8166], [2351.1, 8192], [2351.1, 1742], [2360.6, 4090], [2398.3, 8192], [2398.3, 1437]]
+  },
+  "fishMp3": {
+    "model": "fish-audio/s2.1-pro-free:free",
+    "contentType": "audio/mpeg",
+    "bytes": 78157,
+    "lastByteMs": 2485.8
+  },
+  "heygenPcm": {
+    "model": "heygen/heygen-voice-1",
+    "contentType": "audio/pcm;rate=44100;channels=1",
+    "bytes": 462588,
+    "pieces": 137
+  },
+  "heygenMp3Refused": {
+    "status": 400,
+    "contentType": "application/json",
+    "body": "{\"error\":{\"message\":\"HeyGen Voice only supports response_format \\\"pcm\\\".\",\"code\":400}}"
+  },
+  "heygenWavRefused": {
+    "status": 400,
+    "contentType": "application/json",
+    "body": "{\"success\":false,\"error\":{\"name\":\"ZodError\",\"message\":\"[\\n  {\\n    \\\"code\\\": \\\"invalid_value\\\",\\n    \\\"values\\\": [\\n      \\\"mp3\\\",\\n      \\\"pcm\\\"\\n    ],\\n    \\\"path\\\": [\\n      \\\"response_format\\\"\\n    ],\\n    \\\"message\\\": \\\"Invalid option: expected one of \\\\\\\"mp3\\\\\\\"|\\\\\\\"pcm\\\\\\\"\\\"\\n  }\\n]\"}}"
+  },
+  "geminiPcm": {
+    "model": "google/gemini-3.8-flash-lite-tts",
+    "contentType": "audio/pcm;rate=24000;channels=1",
+    "bytes": 282240
+  },
+  "geminiMp3Refused": {
+    "status": 400,
+    "contentType": "application/json",
+    "body": "{\"error\":{\"message\":\"Gemini TTS only supports response_format=\\\"pcm\\\". Got \\\"mp3\\\".\",\"code\":400}}"
+  }
+}

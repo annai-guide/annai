@@ -12,6 +12,7 @@ import { g711 } from '../../src/core/voice/g711.js';
 import { activate as activateGeminiLive } from '../../plugins-official/gemini-live/index.js';
 import { activate as activateOpenaiRealtime } from '../../plugins-official/openai-realtime/index.js';
 import { activate as activateSpeech } from '../../plugins-official/speech-openai/index.js';
+import { pluginWords } from './l10n-kit.js';
 import { loadTypes, KEY as GEMINI_KEY } from './gemini-kit.js';
 import { languageSettings, modelLanguages } from '../../src/core/languages.js';
 import { startRealtimeServer } from '../fakes/realtime-server.js';
@@ -273,7 +274,7 @@ test('OpenAI Realtime: a refusal of the language fields that closes the socket o
 const SPEECH = (() => {
   /** @type {Record<string, any>} */
   const types = {};
-  activateSpeech({ providers: { register: (/** @type {any} */ t) => { types[t.type] = t; return () => {}; } }, helpers: { ProviderError, errorFromResponse, mergePatch } });
+  activateSpeech({ l10n: pluginWords(), providers: { register: (/** @type {any} */ t) => { types[t.type] = t; return () => {}; } }, helpers: { ProviderError, errorFromResponse, mergePatch } });
   return types;
 })();
 const hear = SPEECH['openai-transcription'];

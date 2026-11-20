@@ -1,5 +1,5 @@
 {
-  "build": "abe21e14e502",
+  "build": "6b320e6ce0f1",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -76,7 +76,7 @@
     "/src/core/llm/call.js": "76f903d7e4b3",
     "/src/core/llm/check.js": "e0549be66ba3",
     "/src/core/llm/config.js": "008b753fa725",
-    "/src/core/llm/contract.js": "4492331dd6b3",
+    "/src/core/llm/contract.js": "b4116202a425",
     "/src/core/llm/decide.js": "4aff39cf2ab3",
     "/src/core/llm/fallback.js": "18b9abdf29ca",
     "/src/core/llm/move-over.js": "9584243ec1f4",
@@ -180,7 +180,7 @@
     "/src/core/voice/sentences.js": "636099e2174e",
     "/src/core/voice/settings.js": "1b17d242614f",
     "/src/core/voice/speaker.js": "e9f619791d40",
-    "/src/core/voice/stream-start.js": "1f1e01fe807d",
+    "/src/core/voice/stream-start.js": "824d34b902ff",
     "/src/core/voice/voice.js": "2b0133918f50",
     "/src/core/voice/where.js": "91b1deb9d78f",
     "/src/core/types.js": "e971cf466c02",
@@ -266,7 +266,7 @@
     "/src/ui/screens/plugin-install.js": "00ac186440d9",
     "/src/ui/screens/plugin.js": "db6dce86872f",
     "/src/ui/screens/plugins.js": "feec46a0f15e",
-    "/src/ui/screens/provider.js": "d97508c3999d",
+    "/src/ui/screens/provider.js": "27cb0cfdbf2c",
     "/src/ui/screens/recap.js": "abc8f1c81507",
     "/src/ui/screens/replay.js": "e4648e86a038",
     "/src/ui/screens/settings.js": "91c05e51cc1f",
