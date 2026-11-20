@@ -15,8 +15,53 @@
  * (several; "Don't send both"). The user speaks several as often as one, so: one language listed, it is sent; several, none (the
  * model detects: giving only the first would force a Chinese sentence into English, and a prompt naming them is one Whisper may
  * echo back on silence); a `language` set by hand on the model's page wins. No voice API takes a language: they follow the text.
+ * Raw audio (PCM, 16-bit little-endian mono, no header): a voice is asked for it where its format is 'pcm', where its `stream`
+ * tunable is on (the voice page's Stream switch, off unless a provider's description names it: OpenRouter's), and where its id
+ * starts with one of the ability's `pcmOnly` prefixes (OpenRouter's HeyGen and Gemini voices answer nothing else: 400 for mp3 and
+ * wav, the voice probe of 2026-11-19). Whole, it is played as a WAV clip; streamed (readSpeechStream), through the stream player
+ * as it comes. Either way at the rate its answer names, `audio/pcm;rate=44100;channels=1` (OpenRouter's, observed on every PCM
+ * answer of the probe, not documented), read by our own rule; an answer with no rate, or one outside it, fails that voice (the
+ * next one speaks), never a guess.
  */
-const MEDIA = /** @type {Record<string, string>} */ ({ mp3: 'audio/mpeg', opus: 'audio/ogg', aac: 'audio/aac', flac: 'audio/flac', wav: 'audio/wav', pcm: 'audio/L16' });
+const MEDIA = /** @type {Record<string, string>} */ ({ mp3: 'audio/mpeg', opus: 'audio/ogg', aac: 'audio/aac', flac: 'audio/flac', wav: 'audio/wav' });
+/**
+ * The rates a 16-bit PCM voice is made at: 24 kHz (OpenAI's, Gemini's, Grok's, Voxtral's, Kokoro's) and 44.1 kHz (Fish Audio's,
+ * HeyGen's) as the probe of 2026-11-19 saw them, cross-checked against their MP3's length within 2%; 8, 16, 22.05, 32 and 48 kHz,
+ * the other PCM outputs ElevenLabs and Azure list (their text-to-speech references, read 2026-11-19: ElevenLabs alone has 32 kHz). A
+ * rate outside them is a header annai can't trust, not one to play at.
+ */
+const RATES = new Set([8000, 16000, 22050, 24000, 32000, 44100, 48000]);
+/**
+ * A PCM answer's rate by our own rule (RULES principle 9): the Content-Type is audio/pcm, with one rate among RATES and, if it says,
+ * one channel. Else null. @param {string} header
+ */
+function pcmRate(header) {
+  const [type, ...params] = header.toLowerCase().split(';').map((s) => s.trim());
+  const values = (/** @type {string} */ name) => params.filter((p) => p.startsWith(`${name}=`)).map((p) => p.slice(name.length + 1));
+  const [rate, ...more] = values('rate');
+  const channels = values('channels');
+  const ok = type === 'audio/pcm' && !more.length && /^\d+$/.test(rate ?? '') && RATES.has(Number(rate)) && (!channels.length || (channels.length === 1 && channels[0] === '1'));
+  return ok ? Number(rate) : null;
+}
+/**
+ * Bytes of 16-bit little-endian PCM as samples, after the odd byte a piece before ended with; the odd byte this one ends with is
+ * kept for the next (a network piece ends anywhere: Fish Audio's came in pieces of 4229, 3715 and 26 bytes).
+ * @param {Uint8Array | null} odd @param {Uint8Array} bytes @returns {{ pcm: Int16Array, odd: Uint8Array | null }}
+ */
+function samples(odd, bytes) {
+  const all = odd ? new Uint8Array(odd.length + bytes.length) : bytes;
+  if (odd) {
+    all.set(odd);
+    all.set(bytes, odd.length);
+  }
+  const pcm = new Int16Array(all.length >> 1);
+  const dv = new DataView(all.buffer, all.byteOffset, pcm.length * 2);
+  for (let i = 0; i < pcm.length; i++) pcm[i] = dv.getInt16(i * 2, true);
+  return { pcm, odd: all.length % 2 ? all.slice(-1) : null };
+}
+/** Whether a voice is asked for raw audio. @param {{ providerId: string }} model @param {Record<string, any>} t */
+const asksPcm = (model, t) => t.format === 'pcm' || t.stream !== false
+  || [].concat(t.pcmOnly ?? []).some((/** @type {unknown} */ p) => typeof p === 'string' && p !== '' && String(model.providerId).startsWith(p));
 const EXT = /** @type {Record<string, string>} */ ({ 'audio/wav': 'wav', 'audio/mpeg': 'mp3', 'audio/webm': 'webm', 'audio/mp4': 'm4a', 'audio/ogg': 'ogg', 'audio/aac': 'aac', 'audio/flac': 'flac' });
 const CODES = /** @type {Record<string, string>} */ ({ invalid_api_key: 'auth', insufficient_quota: 'credit', model_not_found: 'not-found' });
 
@@ -72,7 +117,48 @@ const styleOf = (t) => (t.styled === false ? '' : plain(plain(t.instructions) ||
 
 /** @param {any} annai */
 export function activate(annai) {
-  const { ProviderError, mergePatch } = annai.helpers;
+  const { ProviderError, mergePatch, wav } = annai.helpers;
+  const { t } = annai.l10n;
+
+  /** A reply's body read, a dropped connection a network error (the next voice says the sentence), never the plugin's. @template T @param {() => Promise<T>} read */
+  const received = async (read) => {
+    try {
+      return await read();
+    } catch (e) {
+      if (/** @type {any} */ (e)?.name === 'AbortError' || /** @type {any} */ (e)?.name === 'TimeoutError') throw e;
+      throw new ProviderError('network', 'The voice stopped before it finished.', { cause: e });
+    }
+  };
+  /** A PCM answer annai can't play: the Content-Type it came with, quoted (cut short), is the evidence. @param {string} header */
+  const unplayable = (header) => {
+    const said = header.replace(/[^\x20-\x7e]/g, '?').slice(0, 80);
+    return new ProviderError('server', /^\s*audio\/pcm\s*(;|$)/i.test(header) ? `The voice sent raw audio (PCM) with no rate annai can play it at ("${said}").`
+      : `The voice sent ${said ? `"${said}"` : 'no content type'}, not the raw audio (PCM) annai asked for.`);
+  };
+  /** The answer's PCM as it arrives, at the rate it names (its Content-Type, read by pcmRate). @param {Response} res @returns {AsyncGenerator<{ pcm: Int16Array, rate: number }>} */
+  async function* pieces(res) {
+    const header = res.headers.get('content-type') ?? '';
+    const rate = pcmRate(header);
+    if (!rate) throw unplayable(header);
+    if (!res.body) return;
+    const reader = res.body.getReader();
+    /** @type {Uint8Array | null} */
+    let odd = null;
+    let ended = false;
+    try {
+      for (;;) {
+        const r = await received(() => reader.read());
+        if (r.done) break;
+        const got = samples(odd, r.value);
+        odd = got.odd;
+        if (got.pcm.length) yield { pcm: got.pcm, rate };
+      }
+      ended = true;
+    } finally {
+      if (!ended) reader.cancel().catch(() => {}); // stopped early, or cut: the connection goes
+    }
+  }
+
   const offs = [
     annai.providers.register({
       type: 'openai-transcription',
@@ -105,13 +191,18 @@ export function activate(annai) {
       type: 'openai-speech',
       name: 'OpenAI-compatible voice',
       speech: 'out',
-      tunables: { path: '/audio/speech', listPath: '/models', voice: 'marin', format: 'auto', audioOut: ['opus', 'aac', 'mp3', 'flac', 'wav'], style: '', speed: null },
+      // stream: ask for raw audio and play it as it comes (off: each sentence whole, in its format). pcmOnly, which a description gives:
+      // the prefixes of the ids of voices that answer only raw audio.
+      tunables: { path: '/audio/speech', listPath: '/models', voice: 'marin', format: 'auto', audioOut: ['opus', 'aac', 'mp3', 'flac', 'wav'], style: '', speed: null, stream: false },
+      // Its switch shows only where a provider's description names `stream` (provider.js): OpenRouter's voices name their PCM's rate,
+      // which other servers' may not. Raw audio is about 3 times an MP3's data at 24 kHz, 5.5 times at 44.1 kHz (the probe, 2026-11-19).
+      choices: { stream: { label: t`Stream her voice, so she starts sooner, uncompressed: several times the data (off: each sentence arrives whole first, compressed)` } },
       /** What OpenRouter adds to a Fish Audio model's text, "[style] ", is billed with it. @param {any} c */
       extraChars: ({ model, tunables: t }) => styleOf(t).length + (styleOf(t) && /^fish-audio\//.test(model.providerId) ? 3 : 0),
       /** @param {any} c */
       speechRequest: ({ endpoint, model, key, tunables: t, text }) => {
         /** @type {Record<string, any>} */
-        let body = { model: model.providerId, input: text, response_format: t.format === 'auto' ? 'mp3' : t.format }; // auto: annai chose none
+        let body = { model: model.providerId, input: text, response_format: asksPcm(model, t) ? 'pcm' : t.format === 'auto' ? 'mp3' : t.format }; // auto: annai chose none
         if (t.voice) body.voice = t.voice; // none: the provider picks (Fish Audio's free voice on OpenRouter picks a different speaker each time)
         const style = styleOf(t);
         if (style) body.instructions = style;
@@ -119,13 +210,21 @@ export function activate(annai) {
         body = mergePatch(mergePatch(body, endpoint.extraBody ?? {}), model.extraBody ?? {});
         return { url: join(endpoint.baseUrl, t.path), headers: { 'content-type': 'application/json', ...auth(endpoint, key) }, body: JSON.stringify(body) };
       },
-      /** @param {Response} res @param {any} c */
-      readSpeech: async (res, { tunables: t }) => {
-        const data = new Uint8Array(await res.arrayBuffer());
+      /** Raw audio as a WAV clip at the rate its answer names; any other audio as it came. @param {Response} res @param {any} c */
+      readSpeech: async (res, { model, tunables: t }) => {
+        const data = new Uint8Array(await received(() => res.arrayBuffer()));
         if (!data.length) throw new ProviderError('server', 'The voice sent back no audio.');
-        const type = (res.headers.get('content-type') ?? '').split(';')[0].trim();
+        const header = res.headers.get('content-type') ?? '';
+        const type = header.split(';')[0].trim();
+        if (/^audio\/pcm$/i.test(type) || (!type.startsWith('audio/') && asksPcm(model, t))) {
+          const rate = pcmRate(header);
+          if (!rate) throw unplayable(header);
+          return { data: wav.encode(samples(null, data).pcm, rate), mediaType: 'audio/wav' };
+        }
         return { data, mediaType: type.startsWith('audio/') ? type : MEDIA[t.format] ?? 'audio/mpeg' };
       },
+      /** @param {Response} res */
+      readSpeechStream: (res) => pieces(res),
       classify,
       listRequest,
       readList: readSpeechList,

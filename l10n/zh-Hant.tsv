@@ -169,7 +169,7 @@ provider-openrouter:@provider.abilities.chat.models.2.providerTools.0.name	ok	Op
 provider-openrouter:@provider.abilities.chat.models.3.providerTools.0.name	ok	OpenRouter web search	OpenRouter 網頁搜尋	plugins-official/provider-openrouter/annai-plugin.json:53	Note: OpenRouter's docs are English only: 網頁搜尋 as annai's other lines.
 provider-openrouter:@provider.abilities.chat.models.4.providerTools.0.name	ok	OpenRouter web search	OpenRouter 網頁搜尋	plugins-official/provider-openrouter/annai-plugin.json:53	Note: OpenRouter's docs are English only: 網頁搜尋 as annai's other lines.
 provider-openrouter:@provider.abilities.transcription.note	ok	Turns what you say into text, for models that don't take audio. The prices are OpenRouter's lowest; it may send a request to a provider that charges more.	把你說的話轉成文字，供不支援音訊輸入的模型使用。這裡顯示的是 OpenRouter 上的最低價；OpenRouter 可能會把請求轉給收費更高的供應商。	plugins-official/provider-openrouter/annai-plugin.json:357	
-provider-openrouter:@provider.abilities.voice.note	ok	Shiori's voice. Each model has voices of its own, suggested in the model's Voice (Fetch model list brings the ones OpenRouter lists). The voice and style set here are Women KatKat, a voice from Fish Audio's library (friendly, clear, young and bright), and a young, cheerful and lively, yet calm and gentle style: every Fish Audio model starts with them, those described below and any added by id (sent no voice, Fish Audio picks another speaker for each sentence). A model added from the list starts with the first warm voice OpenRouter lists for it. Only Fish Audio, Gemini and OpenAI's gpt-4o-mini-tts take a Style; for the others it is kept, not sent. OpenRouter sends MP3 or PCM only.	Shiori 的聲音。每個模型都有自己的一組聲音，可在模型的「聲音」中看到建議（「取得模型清單」會帶入 OpenRouter 列出的聲音）。這裡設定的聲音是 Fish Audio 聲音庫中的 Women KatKat（親切、清晰、年輕明亮），風格是年輕、開朗活潑，同時沉穩溫柔。所有 Fish Audio 模型，無論是下面列出的，還是依 ID 新增的，都預設使用它們（如果不傳送聲音，Fish Audio 每句話都會換一個說話者）。從清單新增的模型，預設使用 OpenRouter 為它列出的第一個溫暖的聲音。只有 Fish Audio、Gemini 和 OpenAI 的 gpt-4o-mini-tts 支援「風格」；其他模型會保留風格設定，但不會傳送。OpenRouter 只傳回 MP3 或 PCM 格式。	plugins-official/provider-openrouter/annai-plugin.json:400	Note: "the model's Voice" is the model page's Voice field, 聲音 (b1qn4p), not the Settings → Voice screen.
+provider-openrouter:@provider.abilities.voice.note	draft	Shiori's voice. Each model has voices of its own, suggested in the model's Voice (Fetch model list brings the ones OpenRouter lists). The voice and style set here are Women KatKat, a voice from Fish Audio's library (friendly, clear, young and bright), and a young, cheerful and lively, yet calm and gentle style: every Fish Audio model starts with them, those described below and any added by id (sent no voice, Fish Audio picks another speaker for each sentence). A model added from the list starts with the first warm voice OpenRouter lists for it. Only Fish Audio, Gemini and OpenAI's gpt-4o-mini-tts take a Style; for the others it is kept, not sent. OpenRouter sends MP3 or uncompressed audio only. Streamed (the switch above), Fish Audio's voice starts 2 to 5 seconds sooner, for 5.5 times the data of a whole clip, and needs about 0.7 Mbps; Grok, Voxtral and Kokoro gain little, so they arrive whole. HeyGen's and Gemini's voices send only uncompressed audio: 3 to 5.5 times the data of MP3.	Shiori 的聲音。每個模型都有自己的一組聲音，可在模型的「聲音」中看到建議（「取得模型清單」會帶入 OpenRouter 列出的聲音）。這裡設定的聲音是 Fish Audio 聲音庫中的 Women KatKat（親切、清晰、年輕明亮），風格是年輕、開朗活潑，同時沉穩溫柔。所有 Fish Audio 模型，無論是下面列出的，還是依 ID 新增的，都預設使用它們（如果不傳送聲音，Fish Audio 每句話都會換一個說話者）。從清單新增的模型，預設使用 OpenRouter 為它列出的第一個溫暖的聲音。只有 Fish Audio、Gemini 和 OpenAI 的 gpt-4o-mini-tts 支援「風格」；其他模型會保留風格設定，但不會傳送。OpenRouter 只傳回 MP3 或未壓縮的音訊。用上方的開關改為串流播放後，Fish Audio 的聲音會提早 2 到 5 秒開口，但資料量是完整收到時的 5.5 倍，並需要約 0.7 Mbps 的網速；Grok、Voxtral 和 Kokoro 提早得很少，所以仍是完整收到後才播放。HeyGen 和 Gemini 的聲音只傳送未壓縮的音訊，資料量是 MP3 的 3 到 5.5 倍。	plugins-official/provider-openrouter/annai-plugin.json:405	Note: "the model's Voice" is the model page's Voice field, 聲音 (b1qn4p), not the Settings → Voice screen.
 provider-openrouter:alllou	ok	Tap Sign in with OpenRouter to start again.	請點一下「使用 OpenRouter 登入」重新開始。	plugins-official/provider-openrouter/index.js:20	
 provider-openrouter:1gjda3m	ok	Paste the code OpenRouter showed you, then tap Connect.	請貼上 OpenRouter 顯示的代碼，然後點一下「連線」。	plugins-official/provider-openrouter/index.js:89	Note: the sign-in code is 代碼; 程式碼 (the converter's) is program code.
 provider-openrouter:1mdql10	ok	annai has no sign-in waiting for this code: it was used already, or began in another browser.	找不到等待這個代碼的登入。代碼可能已經用過，或者登入是在另一個瀏覽器中開始的。	plugins-official/provider-openrouter/index.js:91	Note: the sign-in code is 代碼; 程式碼 (the converter's) is program code.
@@ -280,6 +280,7 @@ search-tavily:@settings.properties.depth.title	ok	Depth	深度	plugins-official/
 search-tavily:1lf6xjz	ok	needs a key (Settings → Plugins → Tavily Search)	需要金鑰（設定 → 外掛程式 → Tavily 搜尋）	plugins-official/search-tavily/index.js:16	
 speech-openai:@name	ok	OpenAI-compatible speech	OpenAI 相容語音	plugins-official/speech-openai/annai-plugin.json:3	
 speech-openai:@description	ok	Transcription and voices through the OpenAI audio API: OpenAI, OpenRouter, Groq and local servers such as Speaches, whisper.cpp and Kokoro.	透過 OpenAI 音訊 API 提供語音轉文字和聲音：OpenAI、OpenRouter、Groq，以及 Speaches、whisper.cpp、Kokoro 等本機伺服器。	plugins-official/speech-openai/annai-plugin.json:7	
+speech-openai:8zpds2	draft	Stream her voice, so she starts sooner, uncompressed: several times the data (off: each sentence arrives whole first, compressed)	以未壓縮的音訊串流播放她的聲音，開口更快，但資料量是數倍（關閉：每句壓縮後完整收到才播放）	plugins-official/speech-openai/index.js:198	
 storage-forgejo:@name	ok	Forgejo / Gitea	Forgejo / Gitea	plugins-official/storage-forgejo/annai-plugin.json:3	
 storage-forgejo:@description	ok	Backs up everything to a private repository on a Forgejo or Gitea server, such as your own or Codeberg: each backup is a commit, and only changed files are uploaded.	把所有內容備份到 Forgejo 或 Gitea 伺服器上的私人儲存庫（可以是自架的，也可以是 Codeberg）。每次備份就是一次提交，只會上傳有變更的檔案。	plugins-official/storage-forgejo/annai-plugin.json:7	
 storage-forgejo:1yf590i	ok	git can't hold "{0}": it has an empty, "." or ".." part. Rename it in annai, then back up again.	「{0}」無法存入 git，因為路徑中有空的部分，或有名為「.」或「..」的部分。請在 annai 中重新命名後再備份。	plugins-official/storage-forgejo/git.js:28	{0} = e.path
@@ -2151,46 +2152,46 @@ r4y7q	ok	Use {0}	啟用 {0}	src/ui/screens/provider.js:347	{0} = shownName
 11krxuy	ok	Upload photos to this provider (annai deletes each once it is 48 hours old, the next time annai starts or comes online)	把照片上傳到此供應商（超過 48 小時的照片，會在 annai 下次啟動或恢復連線時刪除）	src/ui/screens/provider.js:385	Note: a switch; the brackets say when annai deletes, no more than it does.
 12dfi3i	ok	Upload photos to this provider (each expires after 48 hours)	把照片上傳到此供應商（每張 48 小時後過期）	src/ui/screens/provider.js:386	
 1qia4dd	ok	Let {0} keep the conversation between turns: sends less each time.	讓 {0} 在多輪之間保留對話，每次傳送的內容更少。	src/ui/screens/provider.js:393	{0} = who
-l91m05	ok	Its own address	專用網址	src/ui/screens/provider.js:412	
-9umgdw	ok	Empty: the provider's address. Each setting here is saved as you change it.	留空則使用供應商的網址。這裡的設定變更後會自動儲存。	src/ui/screens/provider.js:418	
-1ajunu1	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.	{0} 會保留你與 Shiori 的對話，包括其中的照片、語音訊息，以及她所知道的你的位置，保留多久由那台伺服器決定。	src/ui/screens/provider.js:422	{0} = who; Note: "voice messages" are messages you spoke (語音訊息), not a voice she speaks with (聲音).
-1jtdu56	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0} 會保留你與 Shiori 的對話，包括其中的照片、語音訊息，以及她所知道的你的位置：{1}。	src/ui/screens/provider.js:423	{0} = who; {1} = holds; Note: "voice messages" are messages you spoke (語音訊息), not a voice she speaks with (聲音); {1} is the plugin's own words for how long.
-1fcg7pg#other	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0} 會保留你與 Shiori 的對話，包括其中的照片、語音訊息，以及她所知道的你的位置：免費金鑰保留一天，付費金鑰最長 # 天。	src/ui/screens/provider.js:424	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other); Note: "voice messages" are messages you spoke (語音訊息), not a voice she speaks with (聲音).
-1gugeu9	ok	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	移除對應的旅行、此供應商或全部內容（清除），更換或移除金鑰，或關閉此項時，annai 都會刪除這些內容。	src/ui/screens/provider.js:426	
-1iorloe	ok	Off, each turn sends the whole conversation.	關閉後，每一輪都會傳送整個對話。	src/ui/screens/provider.js:426	
-1wdiu43	ok	It needs this provider's key: without one, each turn sends the whole conversation.	此功能需要供應商的金鑰；沒有金鑰時，每一輪都會傳送整個對話。	src/ui/screens/provider.js:427	
-72k1cn#other	ok	# deletions waiting: annai can't send them without this provider's key.	# 項刪除請求待傳送：沒有此供應商的金鑰，無法傳送。	src/ui/screens/provider.js:428	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
-f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	# 項刪除請求待傳送：連上 {0} 後會自動傳送。	src/ui/screens/provider.js:429	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
-147eqzv	ok	Test {0}	測試 {0}	src/ui/screens/provider.js:440	{0} = first.name
-1eqfcih	ok	{0} doesn't offer search on the free tier.	{0} 的免費額度不包含搜尋。	src/ui/screens/provider.js:467	{0} = who
-1cmq8ob	ok	{0} doesn't offer fetch on the free tier.	{0} 的免費額度不包含網頁抓取。	src/ui/screens/provider.js:468	{0} = who
-1k4v7dk	ok	{0} doesn't offer {1} on the free tier.	{0} 的免費額度不包含 {1}。	src/ui/screens/provider.js:468	{0} = who; {1} = tool.name
-11x4tx3	ok	This needs the {0} plugin, which isn't running.	需要 {0} 外掛程式，但它沒有在執行。	src/ui/screens/provider.js:474	{0} = name
-4nyk49	ok	This needs a plugin that isn't running.	需要的外掛程式沒有在執行。	src/ui/screens/provider.js:474	
-1mod47e	ok	for example: haiku	例如：haiku	src/ui/screens/provider.js:516	
-15hdhx3	ok	the provider's model id	供應商的模型 ID	src/ui/screens/provider.js:524	
-uwbggy	ok	Added as "{0}": "{1}" is already used by another model.	已新增為「{0}」，因為「{1}」已被另一個模型使用。	src/ui/screens/provider.js:540	{0} = name; {1} = wanted
-1oz4euh	ok	Add model	新增模型	src/ui/screens/provider.js:547	
-tbmsa5	ok	Asking for its models…	正在取得模型清單…	src/ui/screens/provider.js:552	
-uxqo7a	ok	Fetch model list	取得模型清單	src/ui/screens/provider.js:567	
-1yko1my#other	ok	# models.	共 # 個模型。	src/ui/screens/provider.js:572	plural; # = found.listed.length; English: "# model." (one), "# models." (other)
-19ai2z0	ok	Filter the list	篩選清單	src/ui/screens/provider.js:574	
-1scr2ml	ok	{0}K context	{0}K 上下文	src/ui/screens/provider.js:579	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
-1tqy8k1	ok	Its models	模型	src/ui/screens/provider.js:581	Note: "Its models" as a heading under the ability: モデル alone reads right there.
-bzs1ys	ok	No models yet.	還沒有模型。	src/ui/screens/provider.js:582	
-pnxisg	ok	Add a model by id	依 ID 新增模型	src/ui/screens/provider.js:583	
-uizt0x	ok	{0} · loaded	{0} · 已載入	src/ui/screens/provider.js:605	{0} = named
-4ei9ix	ok	This list is from before the address or key changed. Fetch the model list again.	這份清單是在網址或金鑰變更前取得的。請重新取得模型清單。	src/ui/screens/provider.js:615	
-1w6mxym	ok	Already added, on {0}	已新增到 {0}	src/ui/screens/provider.js:620	{0} = here
-11pl9jr	ok	Use the free models	使用免費模型	src/ui/screens/provider.js:645	
-vam64u	ok	Use the recommended models	使用推薦模型	src/ui/screens/provider.js:645	
-1b2yx8m	ok	Suggested models	推薦模型	src/ui/screens/provider.js:646	
-y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0} 為每個角色推薦了一個模型。使用推薦後，它的語音模型會排在免費的手機語音輸入和瀏覽器聲音之前，所以會優先嘗試收費的模型。	src/ui/screens/provider.js:647	{0} = src.name; Note: 手機語音輸入 and 瀏覽器聲音 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
-1x5hwmk	ok	{0} suggests a model for each role.	{0} 為每個角色推薦了一個模型。	src/ui/screens/provider.js:648	{0} = src.name
-1iffu2j	ok	{0} switched on.	已開啟 {0}。	src/ui/screens/provider.js:655	{0} = n
-1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:655	
-1egvjs1	ok	{0} couldn't be switched on: {1}	{0} 無法開啟：{1}	src/ui/screens/provider.js:656	{0} = f.name; {1} = messageOf(f.error)
-wlh055	ok	Use the {0} models	使用 {0} 模型	src/ui/screens/provider.js:662	{0} = which
+l91m05	ok	Its own address	專用網址	src/ui/screens/provider.js:415	
+9umgdw	ok	Empty: the provider's address. Each setting here is saved as you change it.	留空則使用供應商的網址。這裡的設定變更後會自動儲存。	src/ui/screens/provider.js:421	
+1ajunu1	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: as long as that server keeps them.	{0} 會保留你與 Shiori 的對話，包括其中的照片、語音訊息，以及她所知道的你的位置，保留多久由那台伺服器決定。	src/ui/screens/provider.js:425	{0} = who; Note: "voice messages" are messages you spoke (語音訊息), not a voice she speaks with (聲音).
+1jtdu56	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: {1}.	{0} 會保留你與 Shiori 的對話，包括其中的照片、語音訊息，以及她所知道的你的位置：{1}。	src/ui/screens/provider.js:426	{0} = who; {1} = holds; Note: "voice messages" are messages you spoke (語音訊息), not a voice she speaks with (聲音); {1} is the plugin's own words for how long.
+1fcg7pg#other	ok	{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one.	{0} 會保留你與 Shiori 的對話，包括其中的照片、語音訊息，以及她所知道的你的位置：免費金鑰保留一天，付費金鑰最長 # 天。	src/ui/screens/provider.js:427	plural; # = type.keeps.days; {0} = who; English: "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # day on a paid one." (one), "{0} keeps your conversations with Shiori, with their photos, voice messages and where you are as she knows it: a day on a free key, up to # days on a paid one." (other); Note: "voice messages" are messages you spoke (語音訊息), not a voice she speaks with (聲音).
+1gugeu9	ok	annai deletes them when you remove their trip, this provider or everything (Erase), change or remove its key, or turn this off.	移除對應的旅行、此供應商或全部內容（清除），更換或移除金鑰，或關閉此項時，annai 都會刪除這些內容。	src/ui/screens/provider.js:429	
+1iorloe	ok	Off, each turn sends the whole conversation.	關閉後，每一輪都會傳送整個對話。	src/ui/screens/provider.js:429	
+1wdiu43	ok	It needs this provider's key: without one, each turn sends the whole conversation.	此功能需要供應商的金鑰；沒有金鑰時，每一輪都會傳送整個對話。	src/ui/screens/provider.js:430	
+72k1cn#other	ok	# deletions waiting: annai can't send them without this provider's key.	# 項刪除請求待傳送：沒有此供應商的金鑰，無法傳送。	src/ui/screens/provider.js:431	plural; # = waiting; English: "# deletion waiting: annai can't send it without this provider's key." (one), "# deletions waiting: annai can't send them without this provider's key." (other)
+f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	# 項刪除請求待傳送：連上 {0} 後會自動傳送。	src/ui/screens/provider.js:432	plural; # = waiting; {0} = who; English: "# deletion waiting: annai sends it when it can reach {0}." (one), "# deletions waiting: annai sends them when it can reach {0}." (other)
+147eqzv	ok	Test {0}	測試 {0}	src/ui/screens/provider.js:443	{0} = first.name
+1eqfcih	ok	{0} doesn't offer search on the free tier.	{0} 的免費額度不包含搜尋。	src/ui/screens/provider.js:470	{0} = who
+1cmq8ob	ok	{0} doesn't offer fetch on the free tier.	{0} 的免費額度不包含網頁抓取。	src/ui/screens/provider.js:471	{0} = who
+1k4v7dk	ok	{0} doesn't offer {1} on the free tier.	{0} 的免費額度不包含 {1}。	src/ui/screens/provider.js:471	{0} = who; {1} = tool.name
+11x4tx3	ok	This needs the {0} plugin, which isn't running.	需要 {0} 外掛程式，但它沒有在執行。	src/ui/screens/provider.js:477	{0} = name
+4nyk49	ok	This needs a plugin that isn't running.	需要的外掛程式沒有在執行。	src/ui/screens/provider.js:477	
+1mod47e	ok	for example: haiku	例如：haiku	src/ui/screens/provider.js:519	
+15hdhx3	ok	the provider's model id	供應商的模型 ID	src/ui/screens/provider.js:527	
+uwbggy	ok	Added as "{0}": "{1}" is already used by another model.	已新增為「{0}」，因為「{1}」已被另一個模型使用。	src/ui/screens/provider.js:543	{0} = name; {1} = wanted
+1oz4euh	ok	Add model	新增模型	src/ui/screens/provider.js:550	
+tbmsa5	ok	Asking for its models…	正在取得模型清單…	src/ui/screens/provider.js:555	
+uxqo7a	ok	Fetch model list	取得模型清單	src/ui/screens/provider.js:570	
+1yko1my#other	ok	# models.	共 # 個模型。	src/ui/screens/provider.js:575	plural; # = found.listed.length; English: "# model." (one), "# models." (other)
+19ai2z0	ok	Filter the list	篩選清單	src/ui/screens/provider.js:577	
+1scr2ml	ok	{0}K context	{0}K 上下文	src/ui/screens/provider.js:582	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
+1tqy8k1	ok	Its models	模型	src/ui/screens/provider.js:584	Note: "Its models" as a heading under the ability: モデル alone reads right there.
+bzs1ys	ok	No models yet.	還沒有模型。	src/ui/screens/provider.js:585	
+pnxisg	ok	Add a model by id	依 ID 新增模型	src/ui/screens/provider.js:586	
+uizt0x	ok	{0} · loaded	{0} · 已載入	src/ui/screens/provider.js:608	{0} = named
+4ei9ix	ok	This list is from before the address or key changed. Fetch the model list again.	這份清單是在網址或金鑰變更前取得的。請重新取得模型清單。	src/ui/screens/provider.js:618	
+1w6mxym	ok	Already added, on {0}	已新增到 {0}	src/ui/screens/provider.js:623	{0} = here
+11pl9jr	ok	Use the free models	使用免費模型	src/ui/screens/provider.js:648	
+vam64u	ok	Use the recommended models	使用推薦模型	src/ui/screens/provider.js:648	
+1b2yx8m	ok	Suggested models	推薦模型	src/ui/screens/provider.js:649	
+y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0} 為每個角色推薦了一個模型。使用推薦後，它的語音模型會排在免費的手機語音輸入和瀏覽器聲音之前，所以會優先嘗試收費的模型。	src/ui/screens/provider.js:650	{0} = src.name; Note: 手機語音輸入 and 瀏覽器聲音 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
+1x5hwmk	ok	{0} suggests a model for each role.	{0} 為每個角色推薦了一個模型。	src/ui/screens/provider.js:651	{0} = src.name
+1iffu2j	ok	{0} switched on.	已開啟 {0}。	src/ui/screens/provider.js:658	{0} = n
+1szeqxt	ok	Roles updated.	已更新角色。	src/ui/screens/provider.js:658	
+1egvjs1	ok	{0} couldn't be switched on: {1}	{0} 無法開啟：{1}	src/ui/screens/provider.js:659	{0} = f.name; {1} = messageOf(f.error)
+wlh055	ok	Use the {0} models	使用 {0} 模型	src/ui/screens/provider.js:665	{0} = which
 1qocxbg	ok	Writing it: {0} is reading the conversation. This can take a minute.	撰寫中：{0} 正在讀取對話，可能需要一分鐘。	src/ui/screens/recap.js:33	{0} = names(m.name)
 1lrfe9k	ok	Write the recap	撰寫回顧	src/ui/screens/recap.js:35	
 h6huep	ok	Write it again	重新撰寫	src/ui/screens/recap.js:35	

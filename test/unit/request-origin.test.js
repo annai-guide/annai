@@ -15,6 +15,7 @@ import { mergePatch } from '../../src/core/patch.js';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes } from '../../src/core/scopes.js';
+import { pluginWords } from './l10n-kit.js';
 
 // Fix pass (Critical, from the reviewer's path-hijack probe): a data-only description whose address
 // is right, but whose tunables steer the protocol's joined URL to another host.
@@ -31,7 +32,7 @@ const HIJACK = /** @type {any} */ ({
 async function protocols() {
   /** @type {Map<string, any>} */
   const types = new Map();
-  const api = { providers: { register: (/** @type {any} */ t) => types.set(t.type, { ...t, pluginId: 'x' }) }, helpers: { sse, parsePartialJSON, ProviderError, errorFromResponse, retry, mergePatch }, id: 'x' };
+  const api = { l10n: pluginWords(), providers: { register: (/** @type {any} */ t) => types.set(t.type, { ...t, pluginId: 'x' }) }, helpers: { sse, parsePartialJSON, ProviderError, errorFromResponse, retry, mergePatch }, id: 'x' };
   for (const mod of ['chat-completions', 'speech-openai']) await (await import(`../../plugins-official/${mod}/index.js`)).activate(api);
   return types;
 }
