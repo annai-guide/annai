@@ -103,8 +103,9 @@ test('Settings → Voice: a voice that fails gives its sentence to the next one;
     // What the phone makes and plays, read at run time: Opus in both browsers' builds, WAV always (Koe and Kokoro design, "Audio formats").
     await expect(page.getByText(/^Speech leaves this phone in the smallest format each service takes\. Made here: ogg, webm, (.+, )?wav( \(recorded: [a-z0-9, ]+\))?\. Played here: .*\bogg\b.*\.$/)).toBeVisible();
     await page.getByRole('button', { name: 'Test the voice' }).click();
-    // Says the first voice failed, then who spoke (the second emulator re-check: it said only "Spoken by Browser voice.").
-    await expect(page.getByText(/^Voice A \/ voice-a couldn't speak: .+ Spoken by Voice B \/ voice-b\.$/)).toBeVisible({ timeout: 20_000 });
+    // Says the first voice failed, and its kind's words (a 500 has none of the provider's), then who spoke (the second emulator re-check: it said
+    // only "Spoken by Browser voice."). The words are pinned whole: a sentence left unawaited would read "[object Promise]".
+    await expect(page.getByText("Voice A / voice-a couldn't speak: The provider had a problem on its side. Spoken by Voice B / voice-b.", { exact: true })).toBeVisible({ timeout: 20_000 });
     expect(await page.locator('main').innerText(), "a provider's words that echo the key never reach the page").not.toContain('sk-a-test');
     expect(server.bodies('/bad/audio/speech')).toHaveLength(1);
     expect(server.bodies('/good/audio/speech')).toHaveLength(2);
@@ -122,6 +123,30 @@ test('Settings → Voice: a voice that fails gives its sentence to the next one;
     await page.goto('/#/trace');
     await filterTrace(page, { kind: 'Web' });
     await expect(page.locator('.trace li').filter({ hasText: 'voice-a' }).first()).toBeVisible();
+  } finally {
+    await server.stop();
+  }
+});
+
+test("Settings → Voice: when no voice can speak, the Test still says why each voice that was tried failed, the provider's reason with any key blanked", async ({ page }) => {
+  // A phone with no browser voice, so a voice that fails leaves none (a 400 with a reason that echoes its key).
+  await page.addInitScript(() => Object.defineProperty(window, 'speechSynthesis', { value: undefined, configurable: true }));
+  const server = await startModelServer({
+    '/bad/audio/speech': { status: 400, type: 'application/json', body: JSON.stringify({ error: { message: 'Voice not found for key sk-a-test' } }) },
+  });
+  try {
+    await openApp(page, '#/models');
+    await waitForServiceWorker(page);
+    await addProvider(page, 'Custom provider', { ability: 'Voice', name: 'Voice A', url: `${server.origin}/bad`, key: 'sk-a-test', model: 'voice-a' });
+    await page.getByLabel('Add a model to speech-out').selectOption({ label: 'Voice A / voice-a' });
+    await page.getByRole('button', { name: 'Add to speech-out' }).click();
+    await expect(page.getByLabel('Add a model to speech-out').locator('option', { hasText: 'Voice A / voice-a' })).toHaveCount(0);
+    await page.goto('/#/settings');
+    await page.getByRole('link', { name: 'Voice', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Voice', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Test the voice' }).click();
+    await expect(page.getByText('Voice A / voice-a couldn\'t speak: The provider didn\'t accept the request: "Voice not found for key «key»". No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.', { exact: true })).toBeVisible({ timeout: 20_000 });
+    expect(await page.locator('main').innerText(), "a provider's words that echo the key never reach the page").not.toContain('sk-a-test');
   } finally {
     await server.stop();
   }

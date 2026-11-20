@@ -1,5 +1,5 @@
 {
-  "note": "What OpenRouter answered POST /api/v1/audio/speech (\"Hello there.\") in the main session's probes of 2026-11-20, with the test key, as it gave them in its briefs: voice is the Fish Audio library voice Women KatKat, which annai sent as the voice ability's default. accepted: a model's voice that was answered with audio (the Content-Type where it was recorded; none for the models whose audio was not looked at). refusedKatKat: the answer for Women KatKat's id, each error body as OpenRouter relayed it. A cut tail is the voice list of Kokoro's, whose rest was not kept (what a screen shows ends before it); ByteDance's message has the voice's id written out, which the brief gave as \"bddf…\". refusedNoVoice: the answer for a request with no voice at all (HeyGen's, then any other maker's). Not recorded: the answer to an id OpenRouter doesn't have.",
+  "note": "What OpenRouter answered POST /api/v1/audio/speech (\"Hello there.\") in the main session's probes of 2026-11-20, with the test key, as it gave them in its briefs: voice is the Fish Audio library voice Women KatKat, which annai sent as the voice ability's default. accepted: a model's voice that was answered with audio (the Content-Type where it was recorded; none for the models whose audio was not looked at). refusedKatKat: the answer for Women KatKat's id, each error body as OpenRouter relayed it. A cut tail is the voice list of Kokoro's, whose rest was not kept (what a screen shows ends before it); ByteDance's message has the voice's id written out, which the brief gave as \"bddf…\". Inferred, not recorded (test/fakes/openrouter-speech.js fills them in, and no test may pin them): the JSON wrapper of Kokoro's and ByteDance's refusals and every refusal's Content-Type (the brief gave the messages); which Voxtral (the brief said \"Voxtral\"; 2603 is the one the earlier no-voice probe used); Voxtral's and Kokoro's audio Content-Type; that Kokoro accepts af_heart and Gemini its listed voices (never sent); the answer to an id OpenRouter doesn't have; and the full words of a refusal of a request with no voice (the probe saw HeyGen, Google, xAI, Mistral and Kokoro answer 400 \"An explicit voice is required…\"; ByteDance's accepted it, above): no test sends one.",
   "voice": "bddf65d5a84c4a9aa36b7136bdac57a9",
   "accepted": {
     "heygen/heygen-voice-1": {
@@ -52,18 +52,6 @@
       "status": 400,
       "contentType": "application/json",
       "body": "{\"error\":{\"message\":\"Provider rejected the request: speaker bddf65d5a84c4a9aa36b7136bdac57a9 not found in speaker_map, speaker_audio, or mega_info\",\"code\":400}}"
-    }
-  },
-  "refusedNoVoice": {
-    "heygen": {
-      "status": 400,
-      "contentType": "application/json",
-      "body": "{\"error\":{\"message\":\"An explicit voice is required unless input_references carries a reference recording.\",\"code\":400}}"
-    },
-    "other": {
-      "status": 400,
-      "contentType": "application/json",
-      "body": "{\"error\":{\"message\":\"An explicit voice is required for this TTS provider.\",\"code\":400}}"
     }
   }
 }

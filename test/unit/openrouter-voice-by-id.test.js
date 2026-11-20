@@ -8,19 +8,20 @@ import { REQUEST_MS } from '../../src/core/llm/uploads.js';
 import { speechProblem } from '../../src/ui/speech-check.js';
 import { hostKit } from './package-kit.js';
 import { useClock } from './clock.js';
-import { SPEECH_LIST, KATKAT, PCM_TYPE, refusal } from '../fakes/openrouter-speech.js';
+import { SPEECH_LIST, KATKAT, PCM_TYPE, refusal, recordedType } from '../fakes/openrouter-speech.js';
 
 // A voice added by id on OpenRouter's Voice section (voice-id-next): it starts with the voice OpenRouter's list gives that id, as one
 // added from Fetch model list does, and a sample its server refuses says what to change. The stand-in is test/fakes/openrouter-speech.js,
 // built from the real answers: the public speech list of 2026-11-20 (test/fixtures/voices/openrouter-speech-list.json) and the main
 // session's probes of the same day with the test key (test/fixtures/voices/openrouter-voices-probe.json: each maker's answer to Women
 // KatKat's id, HeyGen's free variant taking its sibling's voice, ByteDance's model taking none), and the streamed-voice build's real run
-// (2026-11-19: HeyGen's "Voice not found"). The answer to an id OpenRouter doesn't have was never recorded: no assertion pins its words.
+// (2026-11-19: HeyGen's "Voice not found"). What the stand-in fills in (its header lists it: the answer to an id OpenRouter doesn't have,
+// Voxtral's and Kokoro's audio type, Kokoro's af_heart) was never recorded: no assertion rests on it.
 
 const root = new URL('../../', import.meta.url);
 const KEY = 'sk-or-v1-stand-in-key-0123456789abcdef';
 const STYLE = 'young, cheerful and lively, yet calm and gentle';
-/** The Voice a refused voice's sample says to look at, where the maker gave no words (Grok's and Voxtral's bare 404). */
+/** What a refused voice's sample says to check, where the maker gave no words (Grok's and Voxtral's bare 404). */
 const NOT_FOUND = "The provider doesn't know this model, address or voice. Check the model id, the base URL and the Voice.";
 
 /**
@@ -116,7 +117,9 @@ test("Online, a voice added by id starts with the voice OpenRouter's list gives 
     assert.equal(m.providerId, providerId, typed);
     assert.equal(m.name, providerId, 'named by its id, as any model added by id');
     assert.deepEqual(m.tunables, { voice, voices, styled: false }, `${typed}: its voices for the Voice field, its voice, and no style: its vendor takes none`);
-    assert.equal((await sample(o, made)).clip?.mediaType, format === 'pcm' ? 'audio/wav' : 'audio/mpeg', typed);
+    const clip = (await sample(o, made)).clip;
+    // The clip's type is what the maker sent: asserted where the probes recorded it (HeyGen's raw PCM, which annai makes a WAV; Grok's MP3).
+    if (recordedType(providerId)) assert.equal(clip?.mediaType, format === 'pcm' ? 'audio/wav' : 'audio/mpeg', typed);
     assert.deepEqual(or.said.at(-1), { model: providerId, input: 'Hello there.', response_format: format, voice }, typed);
   }
   assert.equal(voicesOf('hexgrad/kokoro-82m').indexOf('af_heart'), 3, "Kokoro's warm voice is not its first");
@@ -139,7 +142,7 @@ test("Online, a voice added by id starts with the voice OpenRouter's list gives 
 
 test("With no list to read (offline, refused, or no answer in REQUEST_MS), a voice is added by id as before: Women KatKat, which each maker refuses, and the refused sample says what to change, its words as each maker's answer gives them", async (t) => {
   // [id, kind, status, the words a card shows]. HeyGen's, its free variant's and Kokoro's 400 say why; Grok's and Voxtral's 404 is the bare
-  // "Provider returned 404", so the card says the Voice may be what the provider doesn't know.
+  // "Provider returned 404", so the card says what to check: the model id, the base URL and the Voice.
   /** @type {[string, string, number, string][]} */
   const answers = [
     ['heygen/heygen-voice-1', 'bad-request', 400, 'The provider didn\'t accept the request: "HTTP 400: Voice not found".'],
@@ -216,7 +219,7 @@ test("A voice added by id before this build (no voice of its own: the ability's 
   assert.equal(or.said.at(-1).voice, 'nadine');
 });
 
-test("A refused sample's words: the provider's reason as plain text (outside text, quoted, never read), its keys blanked before it is cut at 120 characters, its spaces and controls one space, its full stop the sentence's; a voice's 404 with no words says the Voice may be unknown; any other failure, the kind's words as before", async () => {
+test("A refused sample's words: the provider's reason as plain text (outside text, quoted, never read), its keys blanked before it is cut at 120 characters, its spaces and controls one space, its full stop the sentence's, and none when the keys can't be read; a voice's 404 says what to check (model id, base URL, Voice); any other failure, the kind's words as before", async () => {
   const k = await hostKit();
   await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('llm:ep-1', KEY));
   const fromBody = (/** @type {number} */ status, /** @type {string} */ body, speaking = true) => speechProblem(k.store, errorFromResponse(status, body), speaking);
@@ -241,8 +244,11 @@ test("A refused sample's words: the provider's reason as plain text (outside tex
   assert.ok(!blanked.includes('sk-or'), blanked);
   // A key the blanking can't read (broken by a space) leaves no reason: the kind's words, not a prefix of the key.
   assert.equal(await fromBody(400, msg(`Bad header ${KEY.slice(0, 12)} ${KEY.slice(12)}`)), "The provider didn't accept the request. Check the tunables on its provider's page.");
-  // A voice's 404: the answer gave no words, so the card says the Voice may be what the provider doesn't know; the same for one with words
-  // ("Not Found" of a wrong address says the address too); a transcription model's 404 is its model's or address's.
+  // Keys that can't be read (the store fails): no reason at all, whatever the answer says, so a key it echoes can't show; the kind's words.
+  const unreadable = /** @type {any} */ ({ tx: () => Promise.reject(new Error('the store cannot be read')) });
+  assert.equal(await speechProblem(unreadable, errorFromResponse(400, msg(`Voice ${KEY} not found`)), true), "The provider didn't accept the request. Check the tunables on its provider's page.");
+  // A voice's 404: the answer gave no words, so the card says what to check, the Voice too; the same for one with words ("Not Found" of a
+  // wrong address says the address too); a transcription model's 404 is its model's or address's.
   const bare = msg('Provider returned 404', 404);
   assert.equal(await fromBody(404, bare), NOT_FOUND);
   assert.equal(await fromBody(404, msg('Not Found', 404)), NOT_FOUND);
@@ -253,4 +259,13 @@ test("A refused sample's words: the provider's reason as plain text (outside tex
   // annai's own not-found (no status) keeps its words.
   assert.equal(await speechProblem(k.store, new ProviderError('not-found', 'That model no longer exists.', { said: { code: 'model-gone' } }), true), 'That model no longer exists.');
   assert.equal(await speechProblem(k.store, new Error('plain'), true), 'plain');
+});
+
+test("The stand-in refuses what the real server refused: HeyGen's MP3, with its recorded 400 (a test that sends it MP3 fails as the real one would), and nothing for its PCM", () => {
+  for (const model of ['heygen/heygen-voice-1', 'heygen/heygen-voice-1-turbo:free']) {
+    const no = refusal({ model, voice: 'nadine', response_format: 'mp3' });
+    assert.deepEqual([no?.status, no ? JSON.parse(no.body).error.message : null], [400, 'HeyGen Voice only supports response_format "pcm".'], model);
+    assert.equal(refusal({ model, voice: 'nadine', response_format: 'pcm' }), null, model);
+  }
+  assert.equal(refusal({ model: 'x-ai/grok-voice-tts-1.0', voice: 'eve', response_format: 'mp3' }), null, 'another maker takes MP3');
 });

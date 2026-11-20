@@ -71,11 +71,11 @@ export async function renderVoice(ctx) {
       await settled(); // the speed or pause just typed is saved first
       try {
         const r = await voice.say(sample(speaksScreens(await readAppSettings(ctx.ws))));
+        // A provider's own words may hold a key (spec §9.9): speechProblem blanks them, as in a model's Test. Each voice that failed says why.
         sayStatus.textContent = r.failed === 'blocked' ? t`This browser didn't let annai play sound yet. Tap anywhere on the page, then try again.`
-          : r.failed ? t`No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.`
-            // A provider's own words may hold a key (spec §9.9), as in a model's Test: each is blanked by speechProblem, the names here.
-            : await shownWithoutSecrets(ctx.store, sentences(...await Promise.all(r.failedVoices.map(async (/** @type {any} */ f) => asSentence(t`${names(f.name)} couldn't speak: ${await speechProblem(ctx.store, f.error, true)}`))),
-              r.voices.length ? t`Spoken by ${r.voices.map(names).reduce((/** @type {string} */ a, /** @type {string} */ b) => tc('one voice, then the next')`${a}, then ${b}`)}.` : ''));
+          : await shownWithoutSecrets(ctx.store, sentences(...await Promise.all(r.failedVoices.map(async (/** @type {any} */ f) => asSentence(t`${names(f.name)} couldn't speak: ${await speechProblem(ctx.store, f.error, true)}`))),
+            r.failed ? t`No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.`
+              : r.voices.length ? t`Spoken by ${r.voices.map(names).reduce((/** @type {string} */ a, /** @type {string} */ b) => tc('one voice, then the next')`${a}, then ${b}`)}.` : ''));
       } catch (e) {
         sayStatus.textContent = await speechProblem(ctx.store, e, true);
       } finally {

@@ -11,7 +11,7 @@
     "provider.abilities.chat.models.4.providerTools.0.name": "OpenRouter 網頁搜尋",
     "provider.abilities.chat.note": "照片會存放在 OpenRouter 工作區的檔案中，直到 annai 刪除為止；OpenRouter 的 Zero Data Retention 不適用於儲存的檔案。如要在每次請求中直接附上照片，請關閉上傳。",
     "provider.abilities.transcription.note": "把你說的話轉成文字，供不支援音訊輸入的模型使用。這裡顯示的是 OpenRouter 上的最低價；OpenRouter 可能會把請求轉給收費更高的供應商。",
-    "provider.abilities.voice.note": "Shiori 的聲音。大多數模型都有自己的一組聲音，可在模型的「聲音」中看到建議。這裡設定的聲音是 Fish Audio 聲音庫中的 Women KatKat（親切、清晰、年輕明亮），風格是年輕、開朗活潑，同時沉穩溫柔。所有 Fish Audio 模型都預設使用它們。其他廠商的模型，無論是透過「取得模型清單」新增，還是依 ID 新增，都預設使用其清單中第一個溫暖或中性的聲音（沒有時用第一個聲音），而且只有支援風格的模型（Gemini 和 gpt-4o-mini-tts）才會收到風格。如果清單給不出聲音（離線、太慢或被拒絕，清單中沒有這個 ID，或像 ByteDance 那樣沒有列出聲音），模型會預設使用 Women KatKat 及其風格，其廠商可能會拒絕，這時請設定該模型的「聲音」。OpenRouter 只傳送 MP3 或未壓縮的音訊。用上方的開關改為串流播放後，Fish Audio 的聲音會提早 2 到 5 秒開口，但資料量是完整收到時的 5.5 倍，並需要約 0.7 Mbps 的網速；Grok、Voxtral 和 Kokoro 提早得很少，所以仍是完整收到後才播放。HeyGen 和 Gemini 的聲音只傳送未壓縮的音訊，資料量是 MP3 的 3 到 5.5 倍。",
+    "provider.abilities.voice.note": "Shiori 的聲音。這裡設定的聲音是 Fish Audio 聲音庫中的 Women KatKat（親切、清晰、年輕明亮），風格是年輕、開朗活潑，同時沉穩溫柔。所有 Fish Audio 模型都預設使用它們。其他廠商的模型，無論是透過「取得模型清單」新增，還是依 ID 新增，都預設使用其清單中第一個溫暖或中性的聲音（沒有時用第一個聲音），而且只有支援風格的模型（Gemini 和 gpt-4o-mini-tts）才會收到風格。如果清單給不出聲音（離線、太慢或被拒絕，清單中沒有這個 ID），模型會預設使用 Women KatKat 及其風格，其廠商可能會拒絕，這時請設定該模型的「聲音」。ByteDance 的模型不需要指定聲音，請在「額外請求欄位」中填寫 \"voice\": null。OpenRouter 只傳送 MP3 或未壓縮的音訊。用上方的開關改為串流播放後，Fish Audio 的聲音會提早 2 到 5 秒開口，但資料量是完整收到時的 5.5 倍，並需要約 0.7 Mbps 的網速；Grok、Voxtral 和 Kokoro 提早得很少，所以仍是完整收到後才播放。HeyGen 和 Gemini 的聲音只傳送未壓縮的音訊，資料量是 MP3 的 3 到 5.5 倍。",
     "provider.note": "一個金鑰即可使用許多供應商。免費模型每天可請求 50 次（儲值 $10 後為每天 1,000 次）。語音轉文字和聲音也用同一個金鑰。語音轉文字模型都不免費；Fish Audio 的免費聲音每說一句，就會用掉一次每日免費請求。其餘的都需要用你在 OpenRouter 儲值的餘額支付。"
   },
   "messages": {

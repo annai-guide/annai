@@ -353,11 +353,11 @@ export function createLlm({
      */
     addListedModel: (providerId, abilityId, listed) => addListedModel({ ws }, providerId, abilityId, listed),
     /**
-     * A voice needs one its server knows, which only its list says (the makers the probe of 2026-11-20 tried, Fish Audio apart, answered 400 to none): the
-     * list's entry for this id (case ignored), read for up to REQUEST_MS (a router's is 57 KB, 47 ms), is added as the list's Add adds it,
-     * named by its id. With no list to read, or an id it lacks, the ability's voice, as before. A chat list (a router's holds hundreds) is not
-     * read. sameConnection, asked after the read: whether the add lands under the connection the list was read under; if not, the list's voice
-     * is not used. @param {string} providerId @param {string} abilityId @param {string} providerModelId @param {() => Promise<boolean>} [sameConnection]
+     * A voice needs one its server knows, which only its list says (the probe of 2026-11-20: HeyGen, Google, xAI, Mistral and Kokoro answered
+     * 400 to a request with no voice; Fish Audio and ByteDance take none): the list's entry for this id (case ignored), read for up to
+     * REQUEST_MS (a router's is 57 KB, 47 ms), is added as the list's Add adds it, named by its id. With no list to read, or an id it lacks,
+     * the ability's voice, as before. A chat list (hundreds) is not read. sameConnection, asked after the read: whether the add lands under
+     * the connection the list was read under; if not, the list's voice is not used. @param {string} providerId @param {string} abilityId @param {string} providerModelId @param {() => Promise<boolean>} [sameConnection]
      * @returns {Promise<string>} the model's id
      */
     addModelById: async (providerId, abilityId, providerModelId, sameConnection = async () => true) => {

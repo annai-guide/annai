@@ -82,10 +82,10 @@ const HIDDEN = 'The message held a key, so it is not shown.';
 /**
  * Text kept or read (an error in the log, a hold, what a model reads) with every secret annai keeps blanked, and anything shaped like a
  * credential; when one might still show, a plain note instead, in annai's English (spec §9.9). @param {Store} store @param {string} text
- * @param {string} [hidden] that note
+ * @param {string} [hidden] that note @param {{ strict?: boolean }} [o] strict: reject when the secrets can't be read
  */
-export async function withoutSecrets(store, text, hidden = HIDDEN) {
-  const secrets = await knownSecrets(store);
+export async function withoutSecrets(store, text, hidden = HIDDEN, { strict = false } = {}) {
+  const secrets = await knownSecrets(store, { strict });
   const out = blankAll(text, secrets);
   return leaks(out, secrets) ? hidden : out;
 }
