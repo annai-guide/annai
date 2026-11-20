@@ -7,6 +7,7 @@ import { meters } from '../live/geo.js';
 import { StorageFullError } from '../errors.js';
 import { anySignal } from '../signals.js';
 import { nearUrl, articlesOf, wikiSaid, agentHeader } from '../wiki.js';
+import { forget } from '../forget.js';
 
 /**
  * Downloads a trip's offline pack (spec §11.5), one request at a time with a second between them: the parts its plan needs that the pack
@@ -146,6 +147,17 @@ function pause(ms, signal) {
  * @returns {Promise<Manifest>}
  */
 export async function downloadPack(o) {
+  try {
+    return await fetchPack(o);
+  } finally {
+    // The pack keeps no history (spec §4.9): what a download replaced or removed goes with its content, a stopped or failed one's too
+    // (as a plugin's package's does). A forget refused on a full phone waits for the next download.
+    await forget(o.ws.store, o.scope, { history: (p) => p.startsWith(DIR) }).catch(() => {});
+  }
+}
+
+/** The download itself. @param {Parameters<typeof downloadPack>[0]} o @returns {Promise<Manifest>} */
+async function fetchPack(o) {
   const { ws, scope } = o;
   const now = o.now ?? Date.now;
   const signal = o.signal ?? new AbortController().signal;

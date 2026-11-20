@@ -3,8 +3,9 @@ import { relative, join } from 'node:path';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
-import { createMemoryStore } from '../fakes/store-memory.js';
+import { createMemoryStore, afterListing } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
+import { forget } from '../../src/core/forget.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip, removeTrip, backupState, SYS } from '../../src/core/scopes.js';
 import { Registry } from '../../src/core/registry.js';
@@ -116,6 +117,37 @@ test('a failure waits longer each time; one only the user can fix says so; a suc
   assert.equal(await hold(), null);
   const errors = await d.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['backup.error'] }));
   assert.deepEqual(errors.map((e) => e.data.kind), ['other', 'other', 'rate', 'auth']);
+});
+
+test("a change on this phone while a backup is built is tried again after the first wait: it doesn't lengthen the wait the place's own failures grew", async () => {
+  const place = memoryPlace();
+  let racing = false;
+  /** @type {Awaited<ReturnType<typeof device>>} */
+  let d;
+  // Every listing of the build is followed by a note written again with its history forgotten: what the build listed is freed, twice in a row.
+  d = await device(place, 'iPhone', undefined, () => true, (store) => afterListing(store, async (n) => {
+    if (!racing) return;
+    await d.ws.write(d.trip, '/notes/x.md', `x ${n}`, { author: 'user' });
+    await forget(d.store, d.trip, { history: (p) => p === '/notes/x.md' });
+  }, Infinity));
+  const id = await placeOn(d);
+  await d.ws.write(d.trip, '/notes/x.md', 'x 0', { author: 'user' });
+  const hold = async () => /** @type {any} */ ((await d.backups.get(id))?.hold);
+  for (const wait of [15, 30]) {
+    place.failNext(new TargetError('other', 'The place had a problem.'));
+    await assert.rejects(d.backups.backUp(id));
+    assert.deepEqual([(await hold()).count, (await hold()).retryAt - d.now()], [wait / 15, wait * 60_000]);
+  }
+  racing = true;
+  for (let i = 0; i < 2; i++) {
+    await assert.rejects(d.backups.backUp(id), (e) => e instanceof TargetError && /** @type {any} */ (e).said?.code === 'changed');
+    assert.deepEqual(await hold(), { kind: 'error', message: (await hold()).message, said: { code: 'changed' }, at: d.now(), count: 2, retryAt: d.now() + retryDelay(1), needsYou: false });
+  }
+  assert.equal(place.kept.length, 0, 'nothing was sent');
+  racing = false;
+  await d.backups.backUp(id);
+  assert.equal(await hold(), null);
+  assert.equal(place.kept.length, 1);
 });
 
 test('a bug in a storage plugin counts against the plugin (spec §5.5)', async () => {

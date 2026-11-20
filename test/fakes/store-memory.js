@@ -132,3 +132,22 @@ function makeTx(d, mode, allowed) {
   };
   return t;
 }
+
+/**
+ * The store, with `after` run right after each of the first `times` read-only transactions that list files and events together (an export's
+ * listing of a trip, archive.js), as when a change on the phone ends just then. `after` is told which listing it is, from 1.
+ * @param {Store} store @param {(n: number) => Promise<unknown>} after @param {number} [times]
+ * @returns {Store}
+ */
+export function afterListing(store, after, times = 1) {
+  let n = 0;
+  return /** @type {any} */ ({
+    close: () => store.close(),
+    tx(/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) {
+      const out = store.tx(stores, mode, fn);
+      if (n >= times || mode !== 'readonly' || !stores.includes('files') || !stores.includes('events')) return out;
+      const nth = ++n;
+      return out.then(async (r) => { await after(nth); return r; });
+    },
+  });
+}

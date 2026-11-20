@@ -581,24 +581,25 @@ uc7dg2	ok	annai couldn't reach {0}. Is the device offline?	無法連線到 {0}�
 qh6gdt	ok	Wrong passphrase, or the file is damaged.	密碼片語錯誤，或檔案已損壞。	src/core/archive-crypto.js:104	
 4ngq1	ok	annai couldn't build a file it could open again: {0}	無法產生可以重新開啟的檔案：{0}	src/core/archive.js:66	{0} = s.why; Note: {0} is a developer's detail, in English.
 gtgen1	ok	The content of {0} is missing from storage, so it can't be exported.	儲存空間中找不到 {0} 的內容，因此無法匯出。	src/core/archive.js:67	{0} = s.path
-13a6l3r	ok	There is nothing to export.	沒有可匯出的內容。	src/core/archive.js:68	
-am2v0c	ok	API keys can only be included in an encrypted backup of everything.	只有加密的完整備份才能包含 API 金鑰。	src/core/archive.js:68	
-4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	此檔案已加密。請輸入密碼片語來開啟。	src/core/archive.js:88	
-1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	此檔案是用較新版本的 annai 建立的。請先更新 annai，再重新開啟。	src/core/archive.js:453	
-q7ee2s	ok	This file is damaged: {0}	此檔案已損壞：{0}	src/core/archive.js:457	{0} = errors; Note: {0} is a developer's detail, in English.
-4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	此檔案包含不安全的檔案路徑（{0}），因此 annai 不會開啟它。	src/core/archive.js:460	{0} = path
-hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	此檔案不是 annai 檔案，或者已損壞（{0}）。	src/core/archive.js:483	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	此 zip 不是 annai 檔案，裡面沒有 annai-archive.json。	src/core/archive.js:485	
-j0v5kk	ok	This file is damaged: its manifest is not readable.	此檔案已損壞，無法讀取其中的清單。	src/core/archive.js:492	
-lfeohr#other	ok	This file is damaged: {0} are missing.	此檔案已損壞，缺少 {0}。	src/core/archive.js:498	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
-1ujco5p	ok	This file is damaged: its keys are not readable.	此檔案已損壞，無法讀取其中的金鑰。	src/core/archive.js:514	
-1aqa7w5	ok	This file is damaged ({0}).	此檔案已損壞（{0}）。	src/core/archive.js:526	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1txsojx	ok	This file is damaged: {0} was changed.	此檔案已損壞，{0} 被改動過。	src/core/archive.js:531	{0} = name
-21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	此檔案已損壞，無法讀取 {1} 的第 {0} 行。	src/core/archive.js:557	{0} = i + 1; {1} = name
-1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	此檔案已損壞，{1} 第 {0} 行：{2}	src/core/archive.js:561	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
-syvqmc	ok	This file is damaged: its plugin list is not readable.	此檔案已損壞，無法讀取其中的外掛程式清單。	src/core/archive.js:657	
-qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	匯入期間，此檔案的部分內容已從本裝置中刪除，因此沒有匯入任何內容。請重新匯入。	src/core/archive.js:759	
-cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	匯入期間，此檔案要替換的內容在本裝置上發生了變化，因此沒有匯入任何內容。請重新匯入。	src/core/archive.js:760	
+iy9qtd	ok	Something on this device changed while exporting, so nothing was exported. Try again.	匯出期間，本裝置上的內容發生了變化，因此沒有匯出任何內容。請重試。	src/core/archive.js:68	
+13a6l3r	ok	There is nothing to export.	沒有可匯出的內容。	src/core/archive.js:69	
+am2v0c	ok	API keys can only be included in an encrypted backup of everything.	只有加密的完整備份才能包含 API 金鑰。	src/core/archive.js:69	
+4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	此檔案已加密。請輸入密碼片語來開啟。	src/core/archive.js:89	
+1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	此檔案是用較新版本的 annai 建立的。請先更新 annai，再重新開啟。	src/core/archive.js:471	
+q7ee2s	ok	This file is damaged: {0}	此檔案已損壞：{0}	src/core/archive.js:475	{0} = errors; Note: {0} is a developer's detail, in English.
+4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	此檔案包含不安全的檔案路徑（{0}），因此 annai 不會開啟它。	src/core/archive.js:478	{0} = path
+hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	此檔案不是 annai 檔案，或者已損壞（{0}）。	src/core/archive.js:501	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	此 zip 不是 annai 檔案，裡面沒有 annai-archive.json。	src/core/archive.js:503	
+j0v5kk	ok	This file is damaged: its manifest is not readable.	此檔案已損壞，無法讀取其中的清單。	src/core/archive.js:510	
+lfeohr#other	ok	This file is damaged: {0} are missing.	此檔案已損壞，缺少 {0}。	src/core/archive.js:516	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
+1ujco5p	ok	This file is damaged: its keys are not readable.	此檔案已損壞，無法讀取其中的金鑰。	src/core/archive.js:532	
+1aqa7w5	ok	This file is damaged ({0}).	此檔案已損壞（{0}）。	src/core/archive.js:544	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1txsojx	ok	This file is damaged: {0} was changed.	此檔案已損壞，{0} 被改動過。	src/core/archive.js:549	{0} = name
+21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	此檔案已損壞，無法讀取 {1} 的第 {0} 行。	src/core/archive.js:575	{0} = i + 1; {1} = name
+1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	此檔案已損壞，{1} 第 {0} 行：{2}	src/core/archive.js:579	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
+syvqmc	ok	This file is damaged: its plugin list is not readable.	此檔案已損壞，無法讀取其中的外掛程式清單。	src/core/archive.js:675	
+qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	匯入期間，此檔案的部分內容已從本裝置中刪除，因此沒有匯入任何內容。請重新匯入。	src/core/archive.js:777	
+cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	匯入期間，此檔案要替換的內容在本裝置上發生了變化，因此沒有匯入任何內容。請重新匯入。	src/core/archive.js:778	
 e0756x	ok	annai tries again later.	稍後會自動重試。	src/core/backup.js:42	
 pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} 的外掛程式沒有在執行。請到設定 → 備份中進入這個備份位置，開啟外掛程式。	src/core/backup.js:44	{0} = name; Note: "it" is the plugin: the backup place's screen turns its plugin on.
 al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	請輸入 {0} 加密備份的密碼片語，然後儲存。	src/core/backup.js:45	{0} = name
@@ -610,14 +611,14 @@ al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	請�
 bbv043	ok	This device is offline, so annai couldn't reach this place.	這台裝置已離線，無法連線到這個備份位置。	src/core/backup.js:52	
 1oqcoyx	ok	annai tries again once it's back online.	恢復連網後會自動重試。	src/core/backup.js:82	
 16b3dai	ok	That backup place was removed.	該備份位置已被移除。	src/core/backup.js:183	
-mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	無法啟動這類備份位置的外掛程式。請重試。	src/core/backup.js:386	
-lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	請輸入以 MB 為單位的數字，留空則不限。	src/core/backup.js:403	
-1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	請把使用者名稱和密碼填在各自的欄位中，不要寫進網址裡。	src/core/backup.js:414	
-tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	請輸入加密備份的密碼片語，然後儲存。	src/core/backup.js:422	
-230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API 金鑰只能放在加密備份中。請先勾選「用密碼片語加密備份」。	src/core/backup.js:423	Note: the checkbox's own words; keep them as its row says them.
-107ikf9	ok	Works.	測試通過。	src/core/backup.js:467	Note: the result of Save and test when the place says nothing itself.
-1w4k6nl	ok	This backup was made by a newer annai: update annai first.	這個備份是用較新版本的 annai 建立的，請先更新 annai。	src/core/backup.js:517	
-173rmiu	ok	This backup is damaged.	此備份已損壞。	src/core/backup.js:518	
+mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	無法啟動這類備份位置的外掛程式。請重試。	src/core/backup.js:387	
+lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	請輸入以 MB 為單位的數字，留空則不限。	src/core/backup.js:404	
+1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	請把使用者名稱和密碼填在各自的欄位中，不要寫進網址裡。	src/core/backup.js:415	
+tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	請輸入加密備份的密碼片語，然後儲存。	src/core/backup.js:423	
+230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API 金鑰只能放在加密備份中。請先勾選「用密碼片語加密備份」。	src/core/backup.js:424	Note: the checkbox's own words; keep them as its row says them.
+107ikf9	ok	Works.	測試通過。	src/core/backup.js:468	Note: the result of Save and test when the place says nothing itself.
+1w4k6nl	ok	This backup was made by a newer annai: update annai first.	這個備份是用較新版本的 annai 建立的，請先更新 annai。	src/core/backup.js:518	
+173rmiu	ok	This backup is damaged.	此備份已損壞。	src/core/backup.js:519	
 1lbu7g8	ok	Photo · {0}	照片 · {0}	src/core/chats.js:132	{0} = time
 1nqtd5y	ok	Voice · {0}	語音 · {0}	src/core/chats.js:133	{0} = time
 146ozuk	ok	New conversation	新對話	src/core/chats.js:134	
@@ -797,17 +798,17 @@ sejc5h	ok	{0} was switched off after errors.	{0} 因多次出錯已被關閉。	
 xzxdhp	ok	The plugin didn't provide a model provider.	該外掛程式沒有提供模型供應商。	src/core/llm/service.js:323	Note: said of a plugin.
 2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	該外掛程式不是 annai 官方的。請從原來的來源重新安裝。	src/core/llm/service.js:402	
 1k9wkd0	ok	The plugin it names doesn't provide models, so it wasn't installed.	指定的外掛程式不提供模型，所以沒有安裝。	src/core/llm/service.js:411	Note: said after the provider's name ("OpenRouter: …"); the plugin its record names, with no 它.
-3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:73	{0} = p.title
-1rb0o7n	ok	OpenStreetMap around {0}	{0} 周邊的 OpenStreetMap	src/core/pack/download.js:75	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
-hdsgog	ok	OpenStreetMap between {0} and {1}	{0} 與 {1} 之間的 OpenStreetMap	src/core/pack/download.js:75	{0} = a; {1} = b
-1ff3ec8	ok	Wikipedia near {0}	{0} 附近的 Wikipedia	src/core/pack/download.js:76	{0} = a
-i9ok5g	ok	Wikipedia between {0} and {1}	{0} 與 {1} 之間的 Wikipedia	src/core/pack/download.js:76	{0} = a; {1} = b
-1qn6l15	ok	{0} didn't answer in time.	{0} 回應逾時。	src/core/pack/download.js:82	{0} = s.where
-16rip5y	ok	{0} stopped early: {1}.	{0} 中途停止了：{1}。	src/core/pack/download.js:83	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
-zy85n2	draft	every server was left for the rest of the run	本次下載不再向任何伺服器請求	src/core/pack/download.js:85	
-cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMap 沒有回應（{0}）。	src/core/pack/download.js:86	{0} = why.replace(/[.。]$/u, '')
-rhruvr	ok	{0} said: {1}.	{0} 回覆：{1}。	src/core/pack/download.js:88	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
-1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyage 沒有傳來 {0} 的內文。	src/core/pack/download.js:89	{0} = s.title
+3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:74	{0} = p.title
+1rb0o7n	ok	OpenStreetMap around {0}	{0} 周邊的 OpenStreetMap	src/core/pack/download.js:76	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
+hdsgog	ok	OpenStreetMap between {0} and {1}	{0} 與 {1} 之間的 OpenStreetMap	src/core/pack/download.js:76	{0} = a; {1} = b
+1ff3ec8	ok	Wikipedia near {0}	{0} 附近的 Wikipedia	src/core/pack/download.js:77	{0} = a
+i9ok5g	ok	Wikipedia between {0} and {1}	{0} 與 {1} 之間的 Wikipedia	src/core/pack/download.js:77	{0} = a; {1} = b
+1qn6l15	ok	{0} didn't answer in time.	{0} 回應逾時。	src/core/pack/download.js:83	{0} = s.where
+16rip5y	ok	{0} stopped early: {1}.	{0} 中途停止了：{1}。	src/core/pack/download.js:84	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
+zy85n2	draft	every server was left for the rest of the run	本次下載不再向任何伺服器請求	src/core/pack/download.js:86	
+cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMap 沒有回應（{0}）。	src/core/pack/download.js:87	{0} = why.replace(/[.。]$/u, '')
+rhruvr	ok	{0} said: {1}.	{0} 回覆：{1}。	src/core/pack/download.js:89	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
+1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyage 沒有傳來 {0} 的內文。	src/core/pack/download.js:90	{0} = s.title
 aaicx8	ok	{0} couldn't be checked: {1}	無法檢查 {0}：{1}	src/core/package-updates.js:40	{0} = s.name ?? id; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 trd90h	ok	It wasn't installed from an address, so annai has nowhere to look for an update.	不是從網址安裝的，所以無法檢查更新。	src/core/package-updates.js:67	
 2olq9a	ok	The address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	這個網址現在提供的是另一個套件（{0}），因此沒有更新。如果想用那個套件，請移除這個，再安裝那個。	src/core/package-updates.js:71	{0} = pkg.id; Note: Remove → 移除, as annai's Remove buttons say.
@@ -964,8 +965,8 @@ mf44l1	ok	Her words go to {0}, which sends back the sound.	她的話會傳給 {0
 jy2arc	draft	Waiting with Shiori	交給 Shiori 的檔案	src/core/waiting.js:46	context: a conversation's name; Note: the name annai gives the conversation the files handed to Shiori while no trip was open move into (timeline stage 7); Taiwan wording: 檔案 for files (glossary Files), 交給 for handed to.
 1izzjz4	ok	Trip record checks	旅行資料檢查	src/plugins/core-schemas/index.js:7	
 19upcdj	ok	Checks trip.json, itinerary items, bookings and watches when they are saved.	儲存時檢查 trip.json、行程項目、預訂和提醒條件。	src/plugins/core-schemas/index.js:10	Note: A watch is what live mode watches for (a time, a place, a change); no screen names one yet, so ja ウォッチ and zh 監測項 are a first pick.
-6t16a0	ok	File tools	檔案工具	src/plugins/files/index.js:15	
-1dyo7ln	ok	Shiori's tools for the trip's files and your own: list, read, write, edit, patch, search and delete.	Shiori 用來處理旅行檔案和個人檔案的工具：list、read、write、edit、patch、search 和 delete。	src/plugins/files/index.js:18	Note: The tools' names stay as written: Settings → Tools lists them by those names.
+6t16a0	ok	File tools	檔案工具	src/plugins/files/index.js:16	
+1dyo7ln	ok	Shiori's tools for the trip's files and your own: list, read, write, edit, patch, search and delete.	Shiori 用來處理旅行檔案和個人檔案的工具：list、read、write、edit、patch、search 和 delete。	src/plugins/files/index.js:19	Note: The tools' names stay as written: Settings → Tools lists them by those names.
 jh5a9s	ok	Go tools	交通類工具	src/plugins/go/index.js:7	Note: Go as its tool group is named in Settings → Tools (移動 / 出行).
 1xge7qy	ok	maps_link and search_link: directions, and prefilled flight, hotel and car searches for you to book.	maps_link 和 search_link：路線導航，以及預先填好的航班、飯店和租車搜尋，方便你預訂。	src/plugins/go/index.js:10	
 13a1ine	ok	The MCP server {0} speaks an unknown version of MCP; annai speaks 2025-03-26 to 2025-11-25.	MCP 伺服器「{0}」使用的 MCP 版本未知；annai 支援 2025-03-26 至 2025-11-25 的版本。	src/plugins/mcp/client.js:86	{0} = this.server; Note: A server's name is quoted (「」, “”) so it stands apart from the words around it.

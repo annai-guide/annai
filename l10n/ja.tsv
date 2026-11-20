@@ -581,24 +581,25 @@ uc7dg2	ok	annai couldn't reach {0}. Is the device offline?	{0}に接続できま
 qh6gdt	ok	Wrong passphrase, or the file is damaged.	パスフレーズが違うか、ファイルが壊れています。	src/core/archive-crypto.js:104	
 4ngq1	ok	annai couldn't build a file it could open again: {0}	もう一度開けるファイルを作れませんでした：{0}	src/core/archive.js:66	{0} = s.why; Note: {0} is a developer's detail, in English.
 gtgen1	ok	The content of {0} is missing from storage, so it can't be exported.	{0}の内容がストレージにないため、エクスポートできません。	src/core/archive.js:67	{0} = s.path
-13a6l3r	ok	There is nothing to export.	エクスポートするものがありません。	src/core/archive.js:68	
-am2v0c	ok	API keys can only be included in an encrypted backup of everything.	APIキーを含められるのは、すべてを含む暗号化バックアップだけです。	src/core/archive.js:68	Note: "a backup of everything" is the kind (everything, not one trip); すべてを暗号化した read as "encrypted everything".
-4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	このファイルは暗号化されています。開くにはパスフレーズを入力してください。	src/core/archive.js:88	
-1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	このファイルは新しいバージョンのannaiで作られています。annaiをアップデートしてから、もう一度開いてください。	src/core/archive.js:453	
-q7ee2s	ok	This file is damaged: {0}	このファイルは壊れています：{0}	src/core/archive.js:457	{0} = errors; Note: {0} is a developer's detail, in English.
-4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	このファイルには安全でないファイルパス（{0}）が含まれているため、開けません。	src/core/archive.js:460	{0} = path
-hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	このファイルはannaiのファイルではないか、壊れています（{0}）。	src/core/archive.js:483	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	このzipはannaiのファイルではありません（annai-archive.jsonがありません）。	src/core/archive.js:485	
-j0v5kk	ok	This file is damaged: its manifest is not readable.	このファイルは壊れています：マニフェストを読み取れません。	src/core/archive.js:492	
-lfeohr#other	ok	This file is damaged: {0} are missing.	このファイルは壊れています：{0}がありません。	src/core/archive.js:498	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
-1ujco5p	ok	This file is damaged: its keys are not readable.	このファイルは壊れています：キーを読み取れません。	src/core/archive.js:514	
-1aqa7w5	ok	This file is damaged ({0}).	このファイルは壊れています（{0}）。	src/core/archive.js:526	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1txsojx	ok	This file is damaged: {0} was changed.	このファイルは壊れています：{0}が変更されています。	src/core/archive.js:531	{0} = name
-21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	このファイルは壊れています：{1}の{0}行目を読み取れません。	src/core/archive.js:557	{0} = i + 1; {1} = name
-1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	このファイルは壊れています：{1}の{0}行目：{2}	src/core/archive.js:561	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
-syvqmc	ok	This file is damaged: its plugin list is not readable.	このファイルは壊れています：プラグインの一覧を読み取れません。	src/core/archive.js:657	
-qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	読み込み中にこのファイルの内容の一部がこの端末から削除されたため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:759	
-cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	読み込み中に、置き換え対象のデータがこの端末で変更されたため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:760	
+iy9qtd	ok	Something on this device changed while exporting, so nothing was exported. Try again.	エクスポート中にこの端末のデータが変更されたため、エクスポートできませんでした。もう一度お試しください。	src/core/archive.js:68	
+13a6l3r	ok	There is nothing to export.	エクスポートするものがありません。	src/core/archive.js:69	
+am2v0c	ok	API keys can only be included in an encrypted backup of everything.	APIキーを含められるのは、すべてを含む暗号化バックアップだけです。	src/core/archive.js:69	Note: "a backup of everything" is the kind (everything, not one trip); すべてを暗号化した read as "encrypted everything".
+4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	このファイルは暗号化されています。開くにはパスフレーズを入力してください。	src/core/archive.js:89	
+1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	このファイルは新しいバージョンのannaiで作られています。annaiをアップデートしてから、もう一度開いてください。	src/core/archive.js:471	
+q7ee2s	ok	This file is damaged: {0}	このファイルは壊れています：{0}	src/core/archive.js:475	{0} = errors; Note: {0} is a developer's detail, in English.
+4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	このファイルには安全でないファイルパス（{0}）が含まれているため、開けません。	src/core/archive.js:478	{0} = path
+hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	このファイルはannaiのファイルではないか、壊れています（{0}）。	src/core/archive.js:501	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	このzipはannaiのファイルではありません（annai-archive.jsonがありません）。	src/core/archive.js:503	
+j0v5kk	ok	This file is damaged: its manifest is not readable.	このファイルは壊れています：マニフェストを読み取れません。	src/core/archive.js:510	
+lfeohr#other	ok	This file is damaged: {0} are missing.	このファイルは壊れています：{0}がありません。	src/core/archive.js:516	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
+1ujco5p	ok	This file is damaged: its keys are not readable.	このファイルは壊れています：キーを読み取れません。	src/core/archive.js:532	
+1aqa7w5	ok	This file is damaged ({0}).	このファイルは壊れています（{0}）。	src/core/archive.js:544	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1txsojx	ok	This file is damaged: {0} was changed.	このファイルは壊れています：{0}が変更されています。	src/core/archive.js:549	{0} = name
+21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	このファイルは壊れています：{1}の{0}行目を読み取れません。	src/core/archive.js:575	{0} = i + 1; {1} = name
+1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	このファイルは壊れています：{1}の{0}行目：{2}	src/core/archive.js:579	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
+syvqmc	ok	This file is damaged: its plugin list is not readable.	このファイルは壊れています：プラグインの一覧を読み取れません。	src/core/archive.js:675	
+qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	読み込み中にこのファイルの内容の一部がこの端末から削除されたため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:777	
+cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	読み込み中に、置き換え対象のデータがこの端末で変更されたため、何も読み込まれませんでした。もう一度読み込んでください。	src/core/archive.js:778	
 e0756x	ok	annai tries again later.	あとで自動的に再試行します。	src/core/backup.js:42	
 pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0}のプラグインが動いていません。「設定 → バックアップ」でこのバックアップ先を開き、オンにしてください。	src/core/backup.js:44	{0} = name
 al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	{0}の暗号化バックアップ用のパスフレーズを入力して、保存してください。	src/core/backup.js:45	{0} = name
@@ -610,14 +611,14 @@ al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	{0}�
 bbv043	ok	This device is offline, so annai couldn't reach this place.	この端末はオフラインのため、このバックアップ先に接続できませんでした。	src/core/backup.js:52	
 1oqcoyx	ok	annai tries again once it's back online.	オンラインに戻ったら、自動的に再試行します。	src/core/backup.js:82	
 16b3dai	ok	That backup place was removed.	そのバックアップ先は削除されました。	src/core/backup.js:183	
-mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	この種類のバックアップ先のプラグインを起動できませんでした。もう一度お試しください。	src/core/backup.js:386	
-lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	メガバイト単位の数値を入力してください。空欄にすると上限なしになります。	src/core/backup.js:403	
-1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	ユーザー名とパスワードは、アドレスではなくそれぞれの欄に入力してください。	src/core/backup.js:414	
-tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	暗号化バックアップ用のパスフレーズを入力して、保存してください。	src/core/backup.js:422	
-230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	APIキーは暗号化したバックアップにしか含められません。先に「バックアップをパスフレーズで暗号化」にチェックを入れてください。	src/core/backup.js:423	Note: the checkbox's own words; keep them as its row says them.
-107ikf9	ok	Works.	正常に動作しています。	src/core/backup.js:467	Note: the result of Save and test when the place says nothing itself.
-1w4k6nl	ok	This backup was made by a newer annai: update annai first.	このバックアップは新しいバージョンのannaiで作成されています。先にannaiをアップデートしてください。	src/core/backup.js:517	
-173rmiu	ok	This backup is damaged.	このバックアップは壊れています。	src/core/backup.js:518	
+mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	この種類のバックアップ先のプラグインを起動できませんでした。もう一度お試しください。	src/core/backup.js:387	
+lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	メガバイト単位の数値を入力してください。空欄にすると上限なしになります。	src/core/backup.js:404	
+1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	ユーザー名とパスワードは、アドレスではなくそれぞれの欄に入力してください。	src/core/backup.js:415	
+tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	暗号化バックアップ用のパスフレーズを入力して、保存してください。	src/core/backup.js:423	
+230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	APIキーは暗号化したバックアップにしか含められません。先に「バックアップをパスフレーズで暗号化」にチェックを入れてください。	src/core/backup.js:424	Note: the checkbox's own words; keep them as its row says them.
+107ikf9	ok	Works.	正常に動作しています。	src/core/backup.js:468	Note: the result of Save and test when the place says nothing itself.
+1w4k6nl	ok	This backup was made by a newer annai: update annai first.	このバックアップは新しいバージョンのannaiで作成されています。先にannaiをアップデートしてください。	src/core/backup.js:518	
+173rmiu	ok	This backup is damaged.	このバックアップは壊れています。	src/core/backup.js:519	
 1lbu7g8	ok	Photo · {0}	写真 · {0}	src/core/chats.js:132	{0} = time
 1nqtd5y	ok	Voice · {0}	音声 · {0}	src/core/chats.js:133	{0} = time
 146ozuk	ok	New conversation	新しい会話	src/core/chats.js:134	
@@ -797,17 +798,17 @@ sejc5h	ok	{0} was switched off after errors.	{0}はエラーが続いたため�
 xzxdhp	ok	The plugin didn't provide a model provider.	このプラグインはモデルのプロバイダーを提供していませんでした。	src/core/llm/service.js:323	Note: said of a plugin.
 2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	そのプラグインはannai公式のものではありません。入手元からもう一度インストールしてください。	src/core/llm/service.js:402	
 1k9wkd0	ok	The plugin it names doesn't provide models, so it wasn't installed.	指定されているプラグインはモデルを提供していないため、インストールされませんでした。	src/core/llm/service.js:411	Note: said after the provider's name ("OpenRouter: …"); the plugin its record names.
-3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:73	{0} = p.title
-1rb0o7n	ok	OpenStreetMap around {0}	{0}周辺のOpenStreetMap	src/core/pack/download.js:75	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
-hdsgog	ok	OpenStreetMap between {0} and {1}	{0}と{1}の間のOpenStreetMap	src/core/pack/download.js:75	{0} = a; {1} = b
-1ff3ec8	ok	Wikipedia near {0}	{0}付近のWikipedia	src/core/pack/download.js:76	{0} = a
-i9ok5g	ok	Wikipedia between {0} and {1}	{0}と{1}の間のWikipedia	src/core/pack/download.js:76	{0} = a; {1} = b
-1qn6l15	ok	{0} didn't answer in time.	{0}から時間内に応答がありませんでした。	src/core/pack/download.js:82	{0} = s.where
-16rip5y	ok	{0} stopped early: {1}.	{0}が途中で止まりました：{1}。	src/core/pack/download.js:83	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
-zy85n2	draft	every server was left for the rest of the run	このダウンロードでは、どのサーバーにももう問い合わせません	src/core/pack/download.js:85	
-cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMapから応答がありませんでした（{0}）。	src/core/pack/download.js:86	{0} = why.replace(/[.。]$/u, '')
-rhruvr	ok	{0} said: {1}.	{0}の応答：{1}。	src/core/pack/download.js:88	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
-1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyageから{0}の本文が届きませんでした。	src/core/pack/download.js:89	{0} = s.title
+3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:74	{0} = p.title
+1rb0o7n	ok	OpenStreetMap around {0}	{0}周辺のOpenStreetMap	src/core/pack/download.js:76	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
+hdsgog	ok	OpenStreetMap between {0} and {1}	{0}と{1}の間のOpenStreetMap	src/core/pack/download.js:76	{0} = a; {1} = b
+1ff3ec8	ok	Wikipedia near {0}	{0}付近のWikipedia	src/core/pack/download.js:77	{0} = a
+i9ok5g	ok	Wikipedia between {0} and {1}	{0}と{1}の間のWikipedia	src/core/pack/download.js:77	{0} = a; {1} = b
+1qn6l15	ok	{0} didn't answer in time.	{0}から時間内に応答がありませんでした。	src/core/pack/download.js:83	{0} = s.where
+16rip5y	ok	{0} stopped early: {1}.	{0}が途中で止まりました：{1}。	src/core/pack/download.js:84	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
+zy85n2	draft	every server was left for the rest of the run	このダウンロードでは、どのサーバーにももう問い合わせません	src/core/pack/download.js:86	
+cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMapから応答がありませんでした（{0}）。	src/core/pack/download.js:87	{0} = why.replace(/[.。]$/u, '')
+rhruvr	ok	{0} said: {1}.	{0}の応答：{1}。	src/core/pack/download.js:89	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
+1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyageから{0}の本文が届きませんでした。	src/core/pack/download.js:90	{0} = s.title
 aaicx8	ok	{0} couldn't be checked: {1}	{0}を確認できませんでした：{1}	src/core/package-updates.js:40	{0} = s.name ?? id; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 trd90h	ok	It wasn't installed from an address, so annai has nowhere to look for an update.	アドレスからインストールしたものではないため、更新を確認できません。	src/core/package-updates.js:67	
 2olq9a	ok	The address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	そのアドレスのパッケージが別のもの（{0}）に変わっているため、アップデートしませんでした。そちらを使う場合は、これを削除してからインストールしてください。	src/core/package-updates.js:71	{0} = pkg.id
@@ -964,8 +965,8 @@ mf44l1	ok	Her words go to {0}, which sends back the sound.	言葉は{0}に送ら
 jy2arc	draft	Waiting with Shiori	Shioriに預けたファイル	src/core/waiting.js:46	context: a conversation's name; Note: the name annai gives the conversation the files handed to Shiori while no trip was open move into (timeline stage 7); a chat's name, so no です・ます; 預けた (handed to her to keep), as 預かる names the old list.
 1izzjz4	ok	Trip record checks	旅データのチェック	src/plugins/core-schemas/index.js:7	
 19upcdj	ok	Checks trip.json, itinerary items, bookings and watches when they are saved.	trip.json、旅程の項目、予約、見守りを保存するときにチェックします。	src/plugins/core-schemas/index.js:10	Note: A watch is what live mode watches for (a time, a place, a change); no screen names one yet, so ja ウォッチ and zh 监测项 are a first pick.
-6t16a0	ok	File tools	ファイルツール	src/plugins/files/index.js:15	
-1dyo7ln	ok	Shiori's tools for the trip's files and your own: list, read, write, edit, patch, search and delete.	旅や自分のファイルを扱うShioriのツール：list、read、write、edit、patch、search、delete。	src/plugins/files/index.js:18	Note: The tools' names stay as written: Settings → Tools lists them by those names.
+6t16a0	ok	File tools	ファイルツール	src/plugins/files/index.js:16	
+1dyo7ln	ok	Shiori's tools for the trip's files and your own: list, read, write, edit, patch, search and delete.	旅や自分のファイルを扱うShioriのツール：list、read、write、edit、patch、search、delete。	src/plugins/files/index.js:19	Note: The tools' names stay as written: Settings → Tools lists them by those names.
 jh5a9s	ok	Go tools	移動ツール	src/plugins/go/index.js:7	Note: Go as its tool group is named in Settings → Tools (移動 / 出行).
 1xge7qy	ok	maps_link and search_link: directions, and prefilled flight, hotel and car searches for you to book.	maps_linkとsearch_link：道順と、条件を入力済みのフライト・ホテル・レンタカー検索（予約は自分で行います）。	src/plugins/go/index.js:10	
 13a1ine	ok	The MCP server {0} speaks an unknown version of MCP; annai speaks 2025-03-26 to 2025-11-25.	MCPサーバー「{0}」のMCPバージョンが不明です。annaiが対応しているのは2025-03-26〜2025-11-25です。	src/plugins/mcp/client.js:86	{0} = this.server; Note: A server's name is quoted (「」, “”) so it stands apart from the words around it.
