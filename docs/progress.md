@@ -91,7 +91,7 @@ against the code before its row was written. The ones with a question are listed
 The "after the redesign" rows start in this order (chief's decision C127, 2026-11-19 08:31 PST, not the user's words; the main session's
 recommendation, data safety and trip use first), each from its design or plan: (1) an automatic backup before a stored-format migration;
 (2) places tools and the offline pack in the traveller's language; (3) the storage-full card's other ways to free space; (4) the
-nickname; (5) streamed voice for other providers; then the rest as listed.
+nickname; (5) streamed voice for other providers; then the rest as listed. (1) to (5) and the three designs after them (trip colours, the cost display, self-compaction) are released (9dab57ca0, 2026-11-19 23:58 PST). Next, the main session's reading of "the rest as listed" with data safety and the trip first (chief may reorder): the small Deferred builds side by side (the stopped-store write, the pack's kept history, a bare address ending in punctuation, an OpenRouter voice added by id), then both editions with nearby's and the pack's numbers measured.
 
 | Part | State | Where it stands | The user's words or pick |
 |---|---|---|---|
