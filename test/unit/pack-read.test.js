@@ -38,6 +38,7 @@ test("a downloaded pack: what it covers, its places and pages, its guides by nam
   assert.equal(await pack.guide('Monterey'), null);
   assert.deepEqual(pack.name({ lat: 36.3715, lng: -121.9017 }, ['en']), { name: 'Bixby Creek Bridge', m: 0 });
   assert.equal(pack.name({ lat: 36.2203, lng: -121.7612 }, ['en'])?.name, 'Nepenthe (restaurant)'); // a restaurant is no place name; its article is
+  assert.match(pack.pages({ lat: 36.2203, lng: -121.7612 }, 500, ['en'])[0][6], / https:\/\/en\.wikipedia\.org\/wiki\/Nepenthe_%28restaurant%29$/); // as pageUrl writes it
   assert.equal(pack.name({ lat: 36.5, lng: -121.95 }, ['en']), null);
   assert.equal(await loadPack(ws, trip), pack); // read once for each version of the manifest
 });

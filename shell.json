@@ -1,5 +1,5 @@
 {
-  "build": "f839c2cd4104",
+  "build": "60ef5b657275",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -135,7 +135,7 @@
     "/src/core/pkpass.js": "b3e3dc6d825a",
     "/src/core/photos.js": "04a6d604ae69",
     "/src/core/nominatim.js": "d51fa61a8129",
-    "/src/core/wiki.js": "a625507982b0",
+    "/src/core/wiki.js": "562e03efe21e",
     "/src/core/paths.js": "b519fae60471",
     "/src/core/plan.js": "65fe56177ee7",
     "/src/core/plugins.js": "a91393b9509b",

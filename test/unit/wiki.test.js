@@ -94,6 +94,38 @@ test("a Wikimedia page's address keeps its title as written, encoding only what 
   }
 });
 
+test("a title's last character that chat leaves out of a bare link (a sentence's stop) is encoded, so the address links whole and opens that title; a sentence's own stop stays out", () => {
+  // Both sites open a title so encoded (plain GETs, 2026-11-20): …/Washington,_D.C%2E is Washington,_D.C., …/Yahoo%21 Yahoo! (a redirect to Yahoo).
+  assert.equal(articleUrl('en', 'Washington, D.C.'), 'https://en.wikipedia.org/wiki/Washington,_D.C%2E');
+  assert.equal(pageUrl('en.wikivoyage.org', 'Washington, D.C.'), 'https://en.wikivoyage.org/wiki/Washington,_D.C%2E');
+  assert.equal(articleUrl('ja', 'Yahoo!'), 'https://ja.wikipedia.org/wiki/Yahoo%21');
+  assert.equal(articleUrl('en', '"Heroes"'), 'https://en.wikipedia.org/wiki/"Heroes%22');
+  // Every character a title may end in (MediaWiki refuses # < > [ ] | { } in one; # is encoded wherever it is), each before a sentence's own
+  // stop or a word: the link is the whole address, the stop stays text, and the address is the title.
+  for (let c = 0x21; c < 0x7f; c++) {
+    const ch = String.fromCharCode(c);
+    if ('<>[]|{}'.includes(ch)) continue;
+    const title = `Hope, Arkansas${ch}`;
+    const url = articleUrl('en', title);
+    for (const after of [' now', '.', ',', ';', ':', '!', '?', "'", '"']) {
+      const text = `see ${url}${after}`;
+      assert.deepEqual(parseInline(text), [{ t: 'text', v: 'see ' }, { t: 'a', href: url, c: [{ t: 'text', v: url }] }, { t: 'text', v: after }], text);
+    }
+    // In [text](address) it was whole already: a browser's own form of it (`^` encoded, say).
+    assert.equal(/** @type {any} */ (parseInline(`[${title}](${url})`)[0]).href, new URL(url).href);
+    assert.equal(decodeURIComponent(new URL(url).pathname), `/wiki/${title.replace(/ /g, '_')}`, title);
+  }
+  // A title that ends in anything else has the address it had, byte for byte.
+  assert.equal(articleUrl('en', 'Washington, D.C. metropolitan area'), 'https://en.wikipedia.org/wiki/Washington,_D.C._metropolitan_area');
+  assert.equal(articleUrl('ja', 'Yahoo! JAPAN'), 'https://ja.wikipedia.org/wiki/Yahoo!_JAPAN');
+  assert.equal(articleUrl('en', "St. Mary's"), "https://en.wikipedia.org/wiki/St._Mary's");
+  assert.equal(articleUrl('en', 'Big Sur'), 'https://en.wikipedia.org/wiki/Big_Sur');
+  assert.equal(articleUrl('ja', '清水寺'), 'https://ja.wikipedia.org/wiki/清水寺');
+  // A bracket is still encoded, at the end too, and one before a last stop.
+  assert.equal(articleUrl('en', 'Cambria (California)'), 'https://en.wikipedia.org/wiki/Cambria_%28California%29');
+  assert.equal(articleUrl('en', 'Hope (Arkansas).'), 'https://en.wikipedia.org/wiki/Hope_%28Arkansas%29%2E');
+});
+
 test("an answer that is an error says what it says; an answer with articles or none says nothing", () => {
   assert.equal(wikiSaid({ error: { code: 'maxlag', info: 'Waiting for a database server.' } }), 'Waiting for a database server');
   assert.equal(wikiSaid({ error: { code: 'badvalue' } }), 'badvalue');

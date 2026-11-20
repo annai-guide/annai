@@ -59,7 +59,12 @@ export function merged(rows, editions) {
   });
 }
 
-/** A Wikipedia or Wikivoyage page's address, its title as written (as %XX a model reads 9 characters for one): only `%`, `?`, `#`, `\` and the brackets (chat's links end at one) encoded. @param {string} host @param {string} title */
-export const pageUrl = (host, title) => `https://${host}/wiki/${title.replace(/ /g, '_').replace(/[%?#\\()]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)}`;
+const hex = (/** @type {string} */ c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`;
+/**
+ * A Wikipedia or Wikivoyage page's address, its title as written (as %XX a model reads 9 characters for one): only `%`, `?`, `#`, `\`, the brackets
+ * and a last `.,;:!'"` encoded, as chat's bare links end at a bracket and leave such a last character out (src/ui/markdown.js).
+ * @param {string} host @param {string} title
+ */
+export const pageUrl = (host, title) => `https://${host}/wiki/${title.replace(/ /g, '_').replace(/[%?#\\()]/g, hex).replace(/[.,;:!'"]$/, hex)}`;
 /** An article's address on an edition's Wikipedia. @param {string} edition @param {string} title */
 export const articleUrl = (edition, title) => pageUrl(`${edition}.wikipedia.org`, title);
