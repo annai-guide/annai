@@ -2672,8 +2672,8 @@ cvvz5z	ok	Tap + to talk to Shiori.	＋をタップしてShioriと話しましょ
 wfhszm	ok	Archived ({0})	アーカイブ済み（{0}）	src/ui/screens/trips.js:83	{0} = archived.length
 in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	まだバックアップがありません。「設定」からすべてをエクスポートするか、自動バックアップを設定してください。	src/ui/screens/trips.js:86	
 1rrn1xn	ok	Day {0} of {1}	{0}日目（全{1}日）	src/ui/screens/trips.js:220	{0} = d.day; {1} = d.of
-1q78pfk#other	ok	# files waiting to be read	未読のファイル#件	src/ui/screens/trips.js:235	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: on a trip's card: files Shiori moved there that its conversation hasn't read yet; 件 counts files.
-152lnj5	ok	Use real dates for the start and end.	開始日と終了日に正しい日付を入力してください。	src/ui/screens/trips.js:259	
+1q78pfk#other	ok	# files waiting to be read	未読のファイル#件	src/ui/screens/trips.js:237	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: on a trip's card: files Shiori moved there that its conversation hasn't read yet; 件 counts files.
+152lnj5	ok	Use real dates for the start and end.	開始日と終了日に正しい日付を入力してください。	src/ui/screens/trips.js:299	
 ric74d	ok	Checking annai and its plugins…	annaiとプラグインを確認中…	src/ui/screens/updates.js:18	
 1mk4lgq	ok	annai hasn't checked since it started.	起動してからまだ確認していません。	src/ui/screens/updates.js:19	
 cmuwtk	ok	Last checked {0}.	最終確認：{0}。	src/ui/screens/updates.js:19	{0} = relTime(checkedAt, now)

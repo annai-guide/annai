@@ -316,10 +316,12 @@ body:has(.dock:not(.seat)) .toasts { bottom: calc(var(--dock-h, 140px) + 8px); }
 .trip-card.line { flex-direction: row; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 14px; }
 .trip-card.line .name { font-family: var(--f-body); font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .trip-card.line .sub { flex: none; color: var(--ink-2); font-size: 13px; }
-.trip-card.happening { background: var(--ai-wash); border-color: color-mix(in srgb, var(--ai) 35%, var(--line)); }
-/* A trip ahead: a lighter version of the happening tint, from the same tokens, so it reads in both themes (the user, 2026-11-16: "yeah upcoming trips can
-   get a lighter version"). Chats, past and archived trips keep the plain card. */
-.trip-card.ahead { background: color-mix(in srgb, var(--ai-wash) 45%, var(--sheet)); border-color: color-mix(in srgb, var(--ai) 18%, var(--line)); }
+/* A trip's own colour (the trip-colour design, A, the flat wash): its hue's full colour and edge (tokens.css) mixed into the plain card in OKLab by
+   how lit it is (trips.js litOf); its size never changes. An unused past trip, an archived one and a chat are the plain card. */
+.trip-card.lit {
+  background: color-mix(in oklab, oklch(var(--trip-full) var(--hue)) var(--lit), var(--sheet));
+  border-color: color-mix(in oklab, oklch(var(--trip-edge) var(--hue)) var(--lit), var(--line));
+}
 /* Home's head: "Trips", then Trace and the gear at its end; plugins' screens a quiet row under it. */
 .home-head { display: flex; flex-direction: column; gap: 4px; }
 .home-top { display: flex; align-items: center; gap: 4px; }

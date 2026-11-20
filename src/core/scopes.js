@@ -32,7 +32,7 @@ export function kindOf(scope) {
   return 'other';
 }
 
-/** A line the user said: typed, or heard and not dismissed; a hand-over's copy in another trip (data.from) counts too. What "last talked in" counts. @param {{ type: string, data?: any }} e */
+/** A line the user said: typed (a tap on her choices and files sent too: every msg.user), or heard and not dismissed; a hand-over's copy in another trip (data.from) counts too. What "last talked in" counts. @param {{ type: string, data?: any }} e */
 export const talks = (e) => e.type === 'msg.user' || (e.type === 'heard' && !e.data?.dismissed);
 
 /**
@@ -348,11 +348,33 @@ function mirrored(rec, trip) {
   return next.title !== rec.title || next.start !== rec.start || next.end !== rec.end ? next : null;
 }
 
+/** The types of the user's lines, typed or heard (talks), as the log's type index is asked for them. */
+const SAID = Object.freeze(['msg.user', 'heard']);
+
 /** When the user last talked in a trip, or in `me`, from its log; null when nobody has. @param {Store} store @param {string} scope @returns {Promise<number | null>} */
 export async function lastTalked(store, scope) {
-  const lines = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['msg.user', 'heard'], reverse: true }));
+  const lines = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: [...SAID], reverse: true }));
   return lines.find(talks)?.ts ?? null;
 }
+
+/**
+ * How many lines the user said in a trip (talks: a heard line set aside is nobody's), counted up to `upTo`: what lights its card on home (the
+ * trip-colour design). It reads the log's lines of those types forward, `upTo` entries a read, until it has counted `upTo` or none is left: a trip with
+ * thousands of lines costs its first `upTo` said and the ones set aside among them, rounded up to a whole read (79 said, then 1000 set aside: 14 reads of
+ * 80). A read is always `upTo` entries, never what is still wanted: that shrinks to one entry near the top, and then each of the ones set aside after it
+ * is a read of its own (999 for that trip). @param {Store} store @param {string} scope @param {number} upTo no more is needed: the top step of home's card
+ * @returns {Promise<number>}
+ */
+export const linesSaid = (store, scope, upTo) => store.tx(['events'], 'readonly', async (t) => {
+  let said = 0;
+  let after = 0;
+  for (;;) {
+    const batch = await t.listEvents(scope, { types: [...SAID], after, limit: upTo });
+    said += batch.filter(talks).length;
+    if (said >= upTo || batch.length < upTo) return Math.min(said, upTo); // enough, or none left
+    after = batch[batch.length - 1].seq;
+  }
+});
 
 /**
  * Fills the mirror on records without it (released copies, some archives), archived too. The talked key says it was done; only this writes it on a record

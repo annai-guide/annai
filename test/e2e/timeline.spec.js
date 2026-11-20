@@ -100,7 +100,7 @@ test('a chat is one line, a dated trip a card; a tap opens its conversation', as
   await expect(page).toHaveURL(new RegExp(`#/trip/${ids.Testville}/talk$`));
 });
 
-test('happening: tinted, "Day 3 of 8", Next; future: "in 2 weeks", her last line', async ({ page }) => {
+test('happening: "Day 3 of 8", Next; future: "in 2 weeks", her last line', async ({ page }) => {
   await openApp(page, '#/trips');
   await seed(page, { trips: { Testville: { from: -2, to: 5, plan: 'Lunch at the pier' }, Laterton: { from: 14, to: 16, said: 'See you at the station.' } } });
   const now = row(page, 'Testville');
@@ -440,8 +440,9 @@ test("500 chats: home's reads don't follow the chats, and + stays instant", asyn
   await page.evaluate(() => { location.hash = '#/trips'; });
   await expect(page.locator('.rows .trip-card')).toHaveCount(502);
   const reads = await page.evaluate(() => /** @type {any} */ (window).__tx);
-  // Measured 13 (2026-11-08): the list, then 5 for each card. A read per chat would be over 500; 50 leaves room for a backup's or live
-  // mode's read landing while home draws, and still fails at one read for every ten chats.
+  // Measured 13 (2026-11-08): the list, then 5 for each card; 15 since a dated card also counts the traveller's lines for its colour (2026-11-19,
+  // in both engines). A read per chat would be over 500; 50 leaves room for a backup's or live mode's read landing while home draws, and still
+  // fails at one read for every ten chats.
   expect(reads, `home drew 500 chats and 2 trips in ${reads} transactions`).toBeLessThanOrEqual(50);
   const started = await page.evaluate(() => performance.now());
   await plus(page).click();

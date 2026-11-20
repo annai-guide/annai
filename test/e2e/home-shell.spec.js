@@ -245,57 +245,227 @@ test("with a plugin's dock, which has no gear of its own, the gear and Trace are
   await expect(page.getByRole('heading', { level: 1, name: 'Trace', exact: true })).toBeVisible();
 });
 
-test('a trip ahead gets the lighter tint; a chat, a past trip and the happening one do not', async ({ page }) => {
+/**
+ * The page's colours as the browser computed them, in OKLab and as linear sRGB, so a test reads what the screen paints: rgb(), color(srgb …), and
+ * oklab() or oklch(), which a color-mix() in OKLab computes to. Added to the page by evaluate as an expression (the page's own rules allow no eval).
+ */
+const COLOURS = `(window.colourOf = (css) => {
+    const nums = (s) => s.trim().split(/[\\s,/]+/).filter(Boolean).map((v) => (v.endsWith('%') ? Number(v.slice(0, -1)) / 100 : Number(v)));
+    const toLin = (c) => (Math.abs(c) <= 0.04045 ? c / 12.92 : Math.sign(c) * ((Math.abs(c) + 0.055) / 1.055) ** 2.4);
+    const linOfLab = ([L, a, b]) => {
+      const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3, m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3, s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+      return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s];
+    };
+    const labOfLin = ([r, g, b]) => {
+      const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b), m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b), s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+      return [0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s, 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s, 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s];
+    };
+    let m;
+    let lab;
+    if ((m = /^rgba?\\((.*)\\)$/.exec(css))) lab = labOfLin(nums(m[1]).slice(0, 3).map((v) => toLin(v / 255)));
+    else if ((m = /^color\\(srgb (.*)\\)$/.exec(css))) lab = labOfLin(nums(m[1]).slice(0, 3).map(toLin));
+    else if ((m = /^oklab\\((.*)\\)$/.exec(css))) lab = nums(m[1]).slice(0, 3);
+    else if ((m = /^oklch\\((.*)\\)$/.exec(css))) {
+      const [L, C, h] = nums(m[1]);
+      lab = [L, C * Math.cos((h * Math.PI) / 180), C * Math.sin((h * Math.PI) / 180)];
+    } else throw new Error('a colour this test cannot read: ' + css);
+    const lin = linOfLab(lab);
+    const Y = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    // A screen shows a colour outside sRGB either as it is (an iPhone's P3 screen) or clipped (an sRGB one): both luminances are kept.
+    return { lab, Y: Y(lin), clippedY: Y(lin.map((v) => Math.min(1, Math.max(0, v)))) };
+  }, true)`;
+
+test("each trip card is its own colour, lit by the lines the traveller said: happening, ahead and used past trips lit; an unused past trip, one only chatter was heard in, an archived one and a chat plain", async ({ page }) => {
   await openApp(page);
+  await page.evaluate(async () => {
+    const at = (/** @type {string} */ p) => p;
+    const { createIdbStore } = await import(at('/src/core/store-idb.js'));
+    const { Workspace } = await import(at('/src/core/workspace.js'));
+    const { createTrip, setTripStatus } = await import(at('/src/core/scopes.js'));
+    const { record } = await import(at('/src/core/agent/log.js'));
+    const { dayIn, deviceZone } = await import(at('/src/core/time.js'));
+    const store = await createIdbStore();
+    const ws = new Workspace(store);
+    const day = (/** @type {number} */ n) => dayIn(Date.now() + n * 86_400_000, deviceZone());
+    /** Lines in a trip: typed, heard, and some of the heard set aside as chatter (the first ones), which are nobody's line. @param {string} id @param {number} typed @param {number} heard @param {number} [aside] */
+    const said = (id, typed, heard, aside = 0) => store.tx(['events'], 'readwrite', async (/** @type {any} */ t) => {
+      for (let i = 0; i < typed; i++) await t.appendEvent(id, { ts: Date.now(), type: 'msg.user', actor: 'user', data: {} });
+      for (let i = 0; i < heard; i++) await t.appendEvent(id, { ts: Date.now(), type: 'heard', actor: 'user', data: i < aside ? { dismissed: true } : {} });
+      for (let i = 0; i < 30; i++) await t.appendEvent(id, { ts: Date.now(), type: 'out.speak', actor: 'shiori', data: {} }); // hers never light a card
+    });
+    const chat = await createTrip(ws, { title: 'Ramen' });
+    await record(store, chat, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'Ramen']], now: Date.now() - 30 * 60_000 });
+    await said(chat, 90, 0);
+    await said(await createTrip(ws, { title: 'Pastville', start: day(-40), end: day(-38) }), 0, 0); // unused: plain
+    await said(await createTrip(ws, { title: 'Quietville', start: day(-30), end: day(-28) }), 2, 1); // 3 lines: step 1, 1/8
+    await said(await createTrip(ws, { title: 'Hushville', start: day(-35), end: day(-33) }), 0, 3, 3); // 3 heard, all chatter: nobody talked, plain
+    await said(await createTrip(ws, { title: 'Busyville', start: day(-20), end: day(-18) }), 50, 35, 5); // 85 entries, 5 chatter at the start of the heard: 80 lines, the top step, 1/2
+    await said(await createTrip(ws, { title: 'Nowville', start: day(0), end: day(2) }), 0, 0); // happening: 3/4 at the least
+    await said(await createTrip(ws, { title: 'Laterton', start: day(10), end: day(12) }), 0, 0); // ahead: 1/4 at the least
+    await said(await createTrip(ws, { title: 'Aheadville', start: day(20), end: day(22) }), 15, 5); // ahead, 20 lines: step 3, half of 3/4: 3/8
+    await said(await createTrip(ws, { title: 'Rushville', start: day(0), end: day(1) }), 80, 0); // happening, 80 lines: the top step, 1
+    const old = await createTrip(ws, { title: 'Oldtown', start: day(-60), end: day(-58) });
+    await said(old, 100, 0);
+    await setTripStatus(store, old, 'archived');
+    store.close();
+  });
+  await page.reload();
+  await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
+  await page.getByText('Archived (1)').click();
+  const row = (/** @type {string} */ name) => page.locator('.trip-card', { has: page.locator('.name', { hasText: name }) });
+  for (const name of ['Nowville', 'Rushville', 'Laterton', 'Aheadville', 'Busyville', 'Quietville']) await expect(row(name)).toHaveClass(/\blit\b/);
+  for (const name of ['Pastville', 'Hushville', 'Oldtown', 'Ramen']) await expect(row(name)).not.toHaveClass(/\blit\b/);
+  await page.evaluate(COLOURS);
+  const paint = () => page.evaluate(async () => {
+    const { HUES, hueOf } = await import(/** @type {string} */ ('/src/ui/screens/trips.js'));
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const store = await createIdbStore();
+    const records = await store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.listScopes());
+    store.close();
+    const colourOf = /** @type {any} */ (window).colourOf;
+    /** @param {string} name */
+    const card = (name) => /** @type {HTMLElement} */ ([...document.querySelectorAll('.trip-card')].find((c) => c.querySelector('.name')?.textContent === name));
+    const plain = getComputedStyle(card('Pastville'));
+    const sheet = colourOf(plain.backgroundColor).lab, line = colourOf(plain.borderTopColor).lab;
+    /** The card's colour as its own tokens give it: `--trip-full` or `--trip-edge` (OKLCH lightness and chroma) in its `--hue`, mixed `--lit` of the way from the plain colour, in OKLab. */
+    const mix = (/** @type {HTMLElement} */ el, /** @type {string} */ token, /** @type {number[]} */ from) => {
+      const [L, C] = getComputedStyle(el).getPropertyValue(token).trim().split(/\s+/).map(Number);
+      const hue = (Number(el.style.getPropertyValue('--hue')) * Math.PI) / 180;
+      const lit = parseFloat(el.style.getPropertyValue('--lit')) / 100;
+      return [L, C * Math.cos(hue), C * Math.sin(hue)].map((v, i) => lit * v + (1 - lit) * from[i]);
+    };
+    /** How far a computed colour is from a colour, in OKLab. */
+    const gap = (/** @type {string} */ css, /** @type {number[]} */ want) => Math.hypot(...colourOf(css).lab.map((/** @type {number} */ v, /** @type {number} */ i) => v - want[i]));
+    /** @param {string} name */
+    const of = (name) => {
+      const el = card(name);
+      const css = getComputedStyle(el);
+      // Its own hue is the one its record's `created` gives, never its id's (an import or a restore mints a new id) or anything a change moves.
+      const own = hueOf(records.find((/** @type {any} */ r) => r.title === name).created);
+      const lit = el.style.getPropertyValue('--lit');
+      const gaps = lit ? { bgGap: gap(css.backgroundColor, mix(el, '--trip-full', sheet)), edgeGap: gap(css.borderTopColor, mix(el, '--trip-edge', line)) } : {};
+      return { lit, hue: el.style.getPropertyValue('--hue'), own, bg: css.backgroundColor, edge: css.borderTopColor, lab: colourOf(css.backgroundColor).lab, ...gaps };
+    };
+    return { hues: HUES, cards: Object.fromEntries(['Nowville', 'Rushville', 'Laterton', 'Aheadville', 'Busyville', 'Quietville', 'Pastville', 'Hushville', 'Oldtown', 'Ramen'].map((n) => [n, of(n)])) };
+  });
+  for (const scheme of /** @type {const} */ (['light', 'dark'])) {
+    await page.emulateMedia({ colorScheme: scheme });
+    const { hues, cards } = await paint();
+    const { Nowville: now, Rushville: rush, Laterton: ahead, Aheadville: soon, Busyville: busy, Quietville: quiet, Pastville: unused, Hushville: hushed, Oldtown: archived, Ramen: chat } = cards;
+    // How lit: happening at its floor with no lines, and at the top step with 80; ahead at its floor with none, and at half its step with 20 (step 3);
+    // past at half its step (80 lines, 5 more set aside: the top step; 3 lines: the first).
+    expect([now.lit, rush.lit, ahead.lit, soon.lit, busy.lit, quiet.lit]).toEqual(['75%', '100%', '25%', '37.5%', '50%', '12.5%']);
+    // Plain: exactly the chat's plain card, its sheet and its line.
+    for (const c of [unused, hushed, archived]) expect([c.lit, c.bg, c.edge]).toEqual(['', chat.bg, chat.edge]);
+    // Lit: each its own hue, one of the ten, and exactly the mix its own tokens give, of its colour and of its edge, in OKLab (to 1e-3, which is
+    // below what an eye tells apart): in light and in dark, so a rule that drops the hue or the strength in either theme is seen.
+    const sheet = /** @type {[number, number, number]} */ (unused.lab);
+    const depth = (/** @type {{ lab: number[] }} */ c) => Math.hypot(...c.lab.map((v, i) => v - sheet[i]));
+    for (const c of [now, rush, ahead, soon, busy, quiet]) {
+      expect(hues).toContain(Number(c.hue));
+      expect(Number(c.hue)).toBe(c.own);
+      expect(c.bg).not.toBe(chat.bg);
+      expect(c.edge).not.toBe(chat.edge);
+      expect(c.bgGap, `${scheme}: ${c.bg} against its tokens' mix`).toBeLessThan(1e-3);
+      expect(c.edgeGap, `${scheme}: ${c.edge} against its tokens' mix`).toBeLessThan(1e-3);
+    }
+    // The busier the deeper (the further from the plain sheet, in OKLab), the busiest trip of now the deepest.
+    expect(depth(quiet)).toBeGreaterThan(0.005);
+    expect(depth(busy)).toBeGreaterThan(depth(quiet) * 2);
+    expect(depth(now)).toBeGreaterThan(depth(busy));
+    expect(depth(rush)).toBeGreaterThan(depth(now));
+  }
+});
+
+test("a trip card's box is the same size lit or not: only its colours change", async ({ page }) => {
+  await openApp(page);
+  await happeningTrip(page, 'Nowville');
+  const card = page.locator('.trip-card.lit', { has: page.locator('.name', { hasText: 'Nowville' }) });
+  await expect(card).toBeVisible(FIRST_DRAW);
+  const boxes = await card.evaluate((el) => {
+    const box = () => {
+      const r = el.getBoundingClientRect();
+      const css = getComputedStyle(el);
+      return { x: r.x, y: r.y, width: r.width, height: r.height, border: css.borderTopWidth, padding: css.padding, bg: css.backgroundColor };
+    };
+    const lit = box();
+    el.classList.remove('lit');
+    const plain = box();
+    el.classList.add('lit');
+    return { lit, plain };
+  });
+  expect(boxes.lit.bg).not.toBe(boxes.plain.bg);
+  expect({ ...boxes.lit, bg: '' }).toEqual({ ...boxes.plain, bg: '' });
+});
+
+test('every secondary line on every lit trip card keeps WCAG AA contrast on all ten hues at every strength the rules give, in light and dark', async ({ page }) => {
+  await openApp(page);
+  // The lines a card can have: a happening trip with its day and a Next item, one ahead with how soon and her last line there; both have their facts.
   await page.evaluate(async () => {
     const at = (/** @type {string} */ p) => p;
     const { createIdbStore } = await import(at('/src/core/store-idb.js'));
     const { Workspace } = await import(at('/src/core/workspace.js'));
     const { createTrip } = await import(at('/src/core/scopes.js'));
     const { record } = await import(at('/src/core/agent/log.js'));
-    const { dayIn, deviceZone } = await import(at('/src/core/time.js'));
+    const { dayIn, deviceZone, isoInZone } = await import(at('/src/core/time.js'));
     const store = await createIdbStore();
     const ws = new Workspace(store);
-    const day = (/** @type {number} */ n) => dayIn(Date.now() + n * 86_400_000, deviceZone());
-    const chat = await createTrip(ws, { title: 'Ramen' });
-    await record(store, chat, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'Ramen']], now: Date.now() - 30 * 60_000 });
-    await createTrip(ws, { title: 'Pastville', start: day(-20), end: day(-18) });
-    await createTrip(ws, { title: 'Nowville', start: day(0), end: day(2) });
-    await createTrip(ws, { title: 'Laterton', start: day(10), end: day(12) });
+    const zone = deviceZone();
+    const day = (/** @type {number} */ n) => dayIn(Date.now() + n * 86_400_000, zone);
+    const now = await createTrip(ws, { title: 'Nowville', start: day(0), end: day(2) });
+    await ws.write(now, '/plan/next.json', { id: 'next', title: 'Lunch at the pier', fixed: true, start: { at: isoInZone(Date.now() + 86_400_000, zone), tz: zone } }, { author: 'user' });
+    const later = await createTrip(ws, { title: 'Laterton', start: day(10), end: day(12) });
+    await record(store, later, { type: 'out.speak', actor: 'shiori', data: { text: 'See you at the station.' } });
     store.close();
   });
   await page.reload();
-  await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
-  const row = (/** @type {string} */ name) => page.locator('.trip-card', { has: page.locator('.name', { hasText: name }) });
-  await expect(row('Laterton')).toHaveClass(/\bahead\b/);
-  await expect(row('Ramen')).not.toHaveClass(/\bahead\b/);
-  await expect(row('Pastville')).not.toHaveClass(/\bahead\b/);
-  await expect(row('Nowville')).toHaveClass(/\bhappening\b/);
-  await expect(row('Nowville')).not.toHaveClass(/\bahead\b/);
-  // A lighter version of the happening tint: in the theme the page shows, its luminance lies between a plain card's and the happening one's
-  // (the happening tint is the darker of the two on light paper, the lighter on dark). The computed colour is rgb() or, for a mix, color(srgb …).
-  const paint = () => page.evaluate(() => {
-    const lin = (/** @type {number} */ c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-    const luminance = (/** @type {string} */ css) => {
-      const m = css.match(/^rgb\((\d+), (\d+), (\d+)\)$/) ?? css.match(/^color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)\)$/);
-      if (!m) throw new Error(`a colour this test can't read: ${css}`);
-      const [r, g, b] = m.slice(1).map((v) => (css.startsWith('rgb') ? Number(v) / 255 : Number(v)));
-      return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-    };
-    /** @param {string} name */
-    const of = (name) => luminance(getComputedStyle(/** @type {Element} */ ([...document.querySelectorAll('.trip-card')].find((c) => c.querySelector('.name')?.textContent === name))).backgroundColor);
-    return { plain: of('Pastville'), ahead: of('Laterton'), happening: of('Nowville') };
+  await expect(page.locator('.trip-card.lit .sub').first()).toBeVisible(FIRST_DRAW);
+  await expect(page.locator('.trip-card.lit .sub.next')).toBeVisible();
+  await expect(page.locator('.trip-card.lit .sub.her-last')).toBeVisible();
+  await page.evaluate(COLOURS);
+  const worst = () => page.evaluate(async () => {
+    const { HUES, litOf } = await import(/** @type {string} */ ('/src/ui/screens/trips.js'));
+    const colourOf = /** @type {any} */ (window).colourOf;
+    const strengths = [...new Set(['happening', 'future', 'past'].flatMap((p) => [0, 1, 2, 3, 4].map((s) => litOf(p, s))))].filter((s) => s > 0).sort((a, b) => a - b);
+    const cards = /** @type {HTMLElement[]} */ ([...document.querySelectorAll('.trip-card.lit')]);
+    const ratio = (/** @type {number} */ a, /** @type {number} */ b) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    let out = { ratio: Infinity, hue: 0, lit: 0, bg: '', ink: '', inks: /** @type {string[]} */ ([]), kinds: /** @type {string[]} */ ([]), cards: cards.length, strengths };
+    for (const card of cards) {
+      const subs = /** @type {HTMLElement[]} */ ([...card.querySelectorAll('.sub')]);
+      for (const sub of subs) if (!out.kinds.includes(sub.className)) out.kinds.push(sub.className);
+      for (const hue of HUES) {
+        for (const lit of strengths) {
+          card.style.setProperty('--hue', String(hue));
+          card.style.setProperty('--lit', `${lit * 100}%`);
+          const bg = getComputedStyle(card).backgroundColor;
+          const b = colourOf(bg);
+          // Every line the card sets in --ink-2 (its facts, the day, the next item, how soon, her last line; a sent trip's From line too, the
+          // same --ink-2, not seeded): the worst of them is the card's.
+          for (const sub of subs) {
+            const ink = getComputedStyle(sub).color;
+            const i = colourOf(ink);
+            const r = Math.min(ratio(b.Y, i.Y), ratio(b.clippedY, i.clippedY));
+            if (r < out.ratio) out = { ...out, ratio: r, hue, lit, bg, ink };
+            if (!out.inks.includes(ink)) out.inks.push(ink);
+          }
+        }
+      }
+    }
+    return out;
   });
-  const light = await paint();
+  const light = await worst();
   await page.emulateMedia({ colorScheme: 'dark' });
-  const dark = await paint();
-  for (const l of [light, dark]) {
-    expect(l.happening).not.toBeCloseTo(l.plain, 3);
-    expect(l.ahead).toBeGreaterThan(Math.min(l.plain, l.happening));
-    expect(l.ahead).toBeLessThan(Math.max(l.plain, l.happening));
-  }
-  expect(light.happening).toBeLessThan(light.plain); // light paper: the happening tint is the darker
-  expect(dark.happening).toBeGreaterThan(dark.plain); // dark paper: the lighter
+  const dark = await worst();
+  test.info().annotations.push({ type: 'contrast', description: `light ${light.ratio.toFixed(2)}:1 (hue ${light.hue}, ${light.lit}); dark ${dark.ratio.toFixed(2)}:1 (hue ${dark.hue}, ${dark.lit})` });
+  console.log(`worst --ink-2 contrast: light ${light.ratio.toFixed(3)}:1 at hue ${light.hue}, ${light.lit} (${light.bg} under ${light.ink}); dark ${dark.ratio.toFixed(3)}:1 at hue ${dark.hue}, ${dark.lit} (${dark.bg} under ${dark.ink})`);
+  expect(light.strengths).toEqual([1 / 8, 1 / 4, 3 / 8, 1 / 2, 3 / 4, 1]);
+  expect(light.cards).toBe(2); // the happening trip and the one ahead
+  // The lines it measures: the facts of each card, the happening one's day and Next, the one ahead's how soon and her last line.
+  expect([...light.kinds].sort()).toEqual(['sub', 'sub day-of', 'sub her-last', 'sub next', 'sub soon']);
+  expect(light.inks).toEqual(['rgb(91, 96, 117)']); // --ink-2, light, on every one
+  expect(dark.inks).toEqual(['rgb(162, 167, 184)']); // --ink-2, dark
+  expect(light.ratio).toBeGreaterThanOrEqual(4.5);
+  expect(dark.ratio).toBeGreaterThanOrEqual(4.5);
 });
 
 /** Home is drawn and the trip in play is known to live mode: its happening card shows. @param {import('@playwright/test').Page} page @param {string} name */
