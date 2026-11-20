@@ -31,6 +31,13 @@ async function makeConversations(page, trips) {
 }
 
 /**
+ * Waits for an opened conversation's own scroll to its end, which the app makes a frame after it draws the screen (talk.js): Playwright finds the ⋯ visible by
+ * its layout, which can be before that frame (a person never sees the ⋯ before it, as the frame runs the scroll before it paints), so a scroll of a test's own
+ * made earlier is undone by it. @param {import('@playwright/test').Page} page
+ */
+const atRest = (page) => expect.poll(() => page.evaluate(() => scrollY + innerHeight >= document.documentElement.scrollHeight - 1)).toBe(true);
+
+/**
  * What is wrong with the open menu's controls (Details, Summarize now, Start fresh, What each half sees): each scrolled to inside the menu, as a finger does,
  * it must be inside the menu, above the dock, on screen, and what a tap lands on. @param {import('@playwright/test').Page} page @returns {Promise<string[]>}
  */
@@ -316,10 +323,9 @@ test.describe('the open menu is measured again when what is under or above it mo
     const [id] = await makeConversations(page, [{ title: 'Pelican chat', lines: 1 }]);
     await goToHash(page, `#/trip/${id}/talk`);
     await expect(page.locator('.talk-head .tidy-toggle')).toBeVisible();
-    // The conversation goes to its end itself, a frame after it is drawn (talk.js), which can be after the ⋯ shows: that is waited for. Else it came after the scroll
-    // to the top below, the menu opened on a page at its end, which moves with the dock's height (at-end.js), and (b) read the page before it had followed the dock's
-    // last change (WebKit, 12 of 160 runs at 16 workers).
-    await expect.poll(() => page.evaluate(() => scrollY + innerHeight >= document.documentElement.scrollHeight - 1)).toBe(true);
+    // Else the app's scroll to the end came after the scroll to the top below, the menu opened on a page at its end, which moves with the dock's height (at-end.js),
+    // and (b) read the page before it had followed the dock's last change (WebKit, 12 of 160 runs at 16 workers).
+    await atRest(page);
     await page.evaluate(() => scrollTo(0, 0)); // a short conversation at the top of its page: the ⋯ sits as low as what is above it leaves it
     await page.locator('.talk-head .tidy-toggle').click();
     await expect(page.locator('.tidy-menu')).toBeVisible();
@@ -446,7 +452,7 @@ for (const [width, height] of /** @type {const} */ ([[320, 568], [667, 375], [84
       const [id] = await makeConversations(page, [{ title: lang.names[0], lines: 1 }]);
       await goToHash(page, `#/trip/${id}/talk`);
       await expect(page.locator('.talk-head .tidy-toggle')).toBeVisible();
-      await page.waitForTimeout(500); // the screen is at rest (it scrolls itself to the end of a conversation as it opens)
+      await atRest(page);
       await lowerToggle(page);
       await page.locator('.talk-head .tidy-toggle').click();
       await expect(page.locator('.tidy-menu')).toBeVisible();
@@ -465,7 +471,7 @@ test('a menu that has the room it needs opens without moving the page', async ({
   const [id] = await makeConversations(page, [{ title: 'Pelican chat', lines: 1 }]);
   await goToHash(page, `#/trip/${id}/talk`);
   await expect(page.locator('.talk-head .tidy-toggle')).toBeVisible();
-  await page.waitForTimeout(500);
+  await atRest(page);
   await page.evaluate(() => scrollTo(0, 0));
   await page.locator('.talk-head .tidy-toggle').click();
   await expect(page.locator('.tidy-menu')).toBeVisible();
@@ -484,7 +490,7 @@ for (const [width, height] of /** @type {const} */ ([[320, 568], [667, 375], [84
     const [id] = await makeConversations(page, [{ title: 'Pelican chat', lines: 1 }]);
     await goToHash(page, `#/trip/${id}/talk`);
     await expect(page.locator('.talk-head .tidy-toggle')).toBeVisible();
-    await page.waitForTimeout(500); // the screen is at rest
+    await atRest(page);
     await lowerToggle(page);
     /** Opens the menu and clicks its first entry at once: what the page did, and whether the menu is still open. */
     const early = await page.evaluate(() => {
@@ -515,7 +521,7 @@ for (const [width, height, lang] of /** @type {const} */ ([[568, 320, ''], [667,
     const [id] = await makeConversations(page, [{ title: 'Pelican chat' }]);
     await goToHash(page, `#/trip/${id}/talk`);
     await expect(page.locator('.talk-head .tidy-toggle')).toBeVisible();
-    await page.waitForTimeout(500); // the screen is at rest
+    await atRest(page);
     await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
     const early = await page.evaluate(() => {
       /** @type {HTMLElement} */ (document.getElementById('tidy-details')).textContent = 'Details: its name and dates, its files, Share, Export, Archive and Remove. '.repeat(4);
@@ -547,7 +553,7 @@ test('a menu that opened with no lift takes a click on its first entry at once',
   const [id] = await makeConversations(page, [{ title: 'Pelican chat', lines: 1 }]);
   await goToHash(page, `#/trip/${id}/talk`);
   await expect(page.locator('.talk-head .tidy-toggle')).toBeVisible();
-  await page.waitForTimeout(500);
+  await atRest(page);
   await page.evaluate(() => scrollTo(0, 0));
   const lifted = await page.evaluate(() => {
     const y = scrollY;
