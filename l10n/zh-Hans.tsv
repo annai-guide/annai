@@ -492,11 +492,11 @@ ngwtmh	ok	Shiori: {0}	Shiori：{0}	src/core/after/replay.js:131	{0} = words ? cu
 zxi5vs	ok	You: {0}	你：{0}	src/core/after/replay.js:133	{0} = cut(e.text, 120)
 d4j0a5	ok	Photo {0}	照片 {0}	src/core/after/replay.js:134	{0} = e.path.split('/').pop()
 1e9ja08#other	ok	# stamps	# 枚纪念章	src/core/after/stamps.js:65	plural; # = n; English: "# stamp" (one), "# stamps" (other); Note: 枚 is the measure word for badges and stamps.
-1gzex44	ok	Today's model calls cost {0} of the {1} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.	今天的模型调用已花费 {0}，达到了你设定的每日上限 {1}。她明天可以继续，你也可以在设置 → 模型 → 每日花费中调高上限。	src/core/agent/budgets.js:118	{0} = money(over.spent); {1} = money(over.perDay)
-bo3wjk	ok	Shiori stopped: today's budget is spent	Shiori 已停止：今天的花费已达上限	src/core/agent/budgets.js:118	
-67wvld	ok	Shiori stopped: step limit	Shiori 已停止：步数已达上限	src/core/agent/budgets.js:123	
-177194c	ok	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	她自己在做一件没人让她做的事，已经做了 {0} 步，所以先停在这里。想让她继续，告诉她就行。	src/core/agent/budgets.js:124	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告诉她), not the glossary's Ask, Safari's 询问 choice.
-1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	这次唤醒最多可以做 {0} 步（设置 → Shiori → 她主动行动的频率），她已经做完了。想让她继续，告诉她就行。	src/core/agent/budgets.js:125	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告诉她), not the glossary's Ask, Safari's 询问 choice; the setting's path as the screens name it.
+1gzex44	ok	Today's model calls cost {0} of the {1} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.	今天的模型调用已花费 {0}，达到了你设定的每日上限 {1}。她明天可以继续，你也可以在设置 → 模型 → 每日花费中调高上限。	src/core/agent/budgets.js:142	{0} = money(over.spent); {1} = money(over.perDay)
+bo3wjk	ok	Shiori stopped: today's budget is spent	Shiori 已停止：今天的花费已达上限	src/core/agent/budgets.js:142	
+67wvld	ok	Shiori stopped: step limit	Shiori 已停止：步数已达上限	src/core/agent/budgets.js:147	
+177194c	ok	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	她自己在做一件没人让她做的事，已经做了 {0} 步，所以先停在这里。想让她继续，告诉她就行。	src/core/agent/budgets.js:148	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告诉她), not the glossary's Ask, Safari's 询问 choice.
+1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	这次唤醒最多可以做 {0} 步（设置 → Shiori → 她主动行动的频率），她已经做完了。想让她继续，告诉她就行。	src/core/agent/budgets.js:149	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告诉她), not the glossary's Ask, Safari's 询问 choice; the setting's path as the screens name it.
 jkajtp	ok	Thinking	思考中	src/core/agent/halves.js:88	
 1vskjkw	ok	Live is resting; Koe · Chat is answering	实时语音暂停中，改由 Koe · 聊天 回答	src/core/agent/halves.js:616	
 13gz10	ok	Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.	暂时由 Shiori 直接回答。原因见“记录”中的“模型”；Koe 几分钟后会自动重试。	src/core/agent/halves.js:695	Note: Models is the Trace's Kind filter, as it is named there.
@@ -1867,69 +1867,75 @@ nf3vcm	ok	Style	风格	src/ui/screens/model.js:196
 18b8wh7	ok	Prices, USD per million tokens (JSON: input, cacheRead, audioIn, cacheReadAudio, image, cacheReadImage, output, audioOut)	价格（美元 / 百万 token，JSON：input、cacheRead、audioIn、cacheReadAudio、image、cacheReadImage、output、audioOut）	src/ui/screens/model.js:198	Note: The prices are in US dollars for each million tokens; the JSON keys stay as typed.
 1wo5fes	ok	Prices, USD (JSON: perMillionChars)	价格（美元，JSON：perMillionChars）	src/ui/screens/model.js:198	Note: The JSON keys stay as typed.
 heq2kw	ok	Prices, USD (JSON: perMinute, minSeconds)	价格（美元，JSON：perMinute、minSeconds）	src/ui/screens/model.js:198	
-1iltlrh	ok	Koe · Chat: a chat model, with Speech in and Speech out	Koe · 聊天：对话模型，搭配语音识别和朗读	src/ui/screens/models.js:16	Note: chat model → 对话模型, as the glossary's Koe · Chat note.
-b7irvo	ok	Koe · Live: hears you and speaks in one stream	Koe · 实时：边听边说	src/ui/screens/models.js:16	
-k0393o	ok	Main: talks with you	主要：和你对话	src/ui/screens/models.js:16	
-187fzjq	ok	Quick decision: yes-or-no checks	快速判断：只答是或否	src/ui/screens/models.js:17	
-5815dj	ok	Utility: summaries and small jobs	辅助：摘要和小任务	src/ui/screens/models.js:17	
-1hclnju	ok	Speech in: how Shiori hears you	语音识别：Shiori 怎样听你说话	src/ui/screens/models.js:18	
-dadv07	ok	Speech out: Shiori's voice	朗读：Shiori 的声音	src/ui/screens/models.js:18	
-18wgr3h	ok	Koe · Live	Koe · 实时	src/ui/screens/models.js:22	
-1h7ll5r	ok	utility	辅助	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons ("Add to utility"); translated as the role's name.
-1naapyq	ok	speech-out	朗读	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons; translated as the role's name.
-1t30hzc	ok	main	主要	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons ("Add to main"); translated as the role's name.
-1u27rxd	ok	decide	快速判断	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons; translated as the role's name.
-a363wx	ok	speech-in	语音识别	src/ui/screens/models.js:22	Note: the role's id, shown so in English buttons; translated as the role's name.
-qx3inn	ok	Koe uses it while voice is on and the Live chip is on. When none here can answer, Koe · Chat does.	语音开启且“实时”按钮打开时，Koe 会用这里的模型。这里的模型都无法回答时，改由 Koe · 聊天回答。	src/ui/screens/models.js:28	Note: "voice is on" is the glossary's Voice on mode (语音开启) and the voice chip is 语音按钮, both from the Voice screen's 语音, not a voice she speaks with (声音).
-1wr3zin	ok	Koe uses it when Live is off, while voice is off, and when Koe · Live can't answer: Speech in hears you, and Speech out speaks.	实时关闭、语音关闭，或 Koe · 实时无法回答时，Koe 会用这里的模型：语音识别负责听，朗读负责说。	src/ui/screens/models.js:29	Note: "voice is off" is the glossary's Voice off mode (语音关闭), not a voice she speaks with (声音).
-1aj4x3y	ok	the browser's own; your voice usually goes to Google or Apple	浏览器自带；语音通常会发送到 Google 或 Apple	src/ui/screens/models.js:32	Note: your voice here is what you say, so 语音 (the Voice screen's word), not 声音, which is hers.
-1w4m41d	ok	the browser's own; some voices go online	浏览器自带；有些声音需要联网	src/ui/screens/models.js:32	
-ce8br5	ok	when the model takes audio	当模型接受音频时	src/ui/screens/models.js:32	
-jrbfa0	ok	Where Shiori thinks: the providers annai calls, their models, which models each role tries, in order, and what her requests may cost.	Shiori 的模型：annai 调用的提供商及其模型、每个角色依次尝试的模型，以及她的请求可能产生的费用。	src/ui/screens/models.js:49	Note: "may cost" is an estimate (可能), not what she is allowed to spend.
-exnl8y	ok	Spend per day	每日花费	src/ui/screens/models.js:72	
-1o8rfr8	ok	What Shiori's model calls may cost in a day, in all your trips. Once it is spent, her turn ends with a card, and she goes on the next day. Empty: no limit.	Shiori 每天调用模型的花费上限，所有旅行合计。用完后，她当前这一轮会以一张卡片结束，第二天再继续。留空则不限。	src/ui/screens/models.js:73	
-3bernd	ok	Spend per day (USD)	每日花费（美元）	src/ui/screens/models.js:74	
-yp0c9i	ok	A day costs at least $0.01; leave it empty for no limit.	每日至少 0.01 美元；留空则不限。	src/ui/screens/models.js:74	
-1kmogw5	ok	Cache	缓存	src/ui/screens/models.js:75	
-el1opd	ok	Providers keep the start of the conversation for a while, so her next request costs less. An hour costs more to write than five minutes, and pays off when you talk less often than every few minutes. A model that keeps it only five minutes is asked for five.	提供商会把对话开头缓存一段时间，让她的下一个请求更便宜。缓存一小时的写入费用比五分钟高，但如果你说话的间隔超过几分钟，选一小时更划算。只支持缓存五分钟的模型会按五分钟请求。	src/ui/screens/models.js:76	
-1bz9ywx	ok	5 minutes	5 分钟	src/ui/screens/models.js:77	
-3eima2	ok	1 hour	1 小时	src/ui/screens/models.js:77	
-kl14fu	ok	Keep it for	保留时长	src/ui/screens/models.js:77	
-uw7pcm	ok	Housekeeping	对话整理	src/ui/screens/models.js:78	
-qfzxri	ok	When a conversation gets long, Shiori summarizes its older part. She does it when it reaches this share of her model's context, or when a request would get this big. Empty: the usual.	对话变长后，Shiori 会总结较早的部分。当对话占到模型上下文的这一比例，或请求将达到这个大小时，就会进行总结。留空则使用默认值。	src/ui/screens/models.js:79	
-1sywcgn	ok	Summarize at a share from 50 to 90%.	总结比例请设在 50% 到 90% 之间。	src/ui/screens/models.js:81	
-5gbpvm	ok	Summarize at (% of the context)	总结阈值（占上下文的 %）	src/ui/screens/models.js:81	
-gbbwof	ok	The largest request is from 1 to 64 MiB.	最大请求须在 1 到 64 MiB 之间。	src/ui/screens/models.js:82	
-jg9kdh	ok	Largest request (MiB)	最大请求（MiB）	src/ui/screens/models.js:82	
-9ubpo0	ok	Nothing switched on	未开启任何功能	src/ui/screens/models.js:99	
-y7dwt8#other	ok	# models	# 个模型	src/ui/screens/models.js:99	plural; # = n; English: "# model" (one), "# models" (other)
-awnddp	ok	Providers	提供商	src/ui/screens/models.js:101	
-rwmbqk	ok	No providers yet. Add one below.	还没有提供商。请在下方添加。	src/ui/screens/models.js:103	
-1cjfpwc	ok	Add a provider	添加提供商	src/ui/screens/models.js:104	
-hbz43i	ok	Roles	角色	src/ui/screens/models.js:134	
-1r5c1sj	ok	Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list, except Koe's.	每个角色从上往下依次尝试模型，一个失败就由下一个回答。空的角色使用主要列表（Koe 的除外）。	src/ui/screens/models.js:136	
-7uxkel	ok	The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.	语音列表也从上往下尝试：语音识别使用第一个适合当前模型的项目，朗读使用第一个有响应的声音。	src/ui/screens/models.js:139	
-1erapbm	ok	Remove {0} from {1}	从“{1}”中移除 {0}	src/ui/screens/models.js:163	{0} = nameOf(id); {1} = called
-1w3dq5v	ok	No models yet. Add one.	还没有模型。请添加一个。	src/ui/screens/models.js:169	
-14zzm1c	ok	Empty: Koe has no live voice, so Koe · Chat answers. Add one, such as Gemini Live, from a provider with live voice.	列表为空。Koe 没有实时语音，所以由 Koe · 聊天回答。请从支持实时语音的提供商添加一个，例如 Gemini Live。	src/ui/screens/models.js:170	Note: "realtime voice" and "live voice" are the glossary's Live voice (实时语音), not a voice she speaks with (声音).
-12bm0vn	ok	Empty: with Live off, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.	列表为空。实时关闭时，Shiori 独自用主要模型运行。在这里添加一个快速模型，让她能用它先快速开口。	src/ui/screens/models.js:171	Note: "one half" is 独自, per the glossary's halves note.
-wer5y9	ok	Nothing here, so annai can't hear you. Add an entry.	这里还没有任何项目，annai 听不到你说话。请添加一项。	src/ui/screens/models.js:172	
-1n694n2	ok	Nothing here, so Shiori can't speak aloud. Add a voice.	这里还没有任何项目，Shiori 无法出声说话。请添加一个声音。	src/ui/screens/models.js:173	
-el9rbx	ok	Uses the main list.	使用主要列表。	src/ui/screens/models.js:174	
-1rqw64m	ok	Wait for the voice (seconds)	等待声音（秒）	src/ui/screens/models.js:175	
-48wtk9	ok	Wait for the words (seconds)	等待文字（秒）	src/ui/screens/models.js:175	
-796n77	ok	Wait for the first words (seconds)	等待第一句（秒）	src/ui/screens/models.js:175	
-1xx9c0t	ok	When Shiori's model can't see a photo or read a PDF, a model of Koe's that can reads it, else one here, else Main's. With the PDF pages plugin, a model that sees photos reads a PDF's pages.	Shiori 的模型看不了照片或读不了 PDF 时，先由 Koe 中能处理的模型来读；没有的话，用这里的模型；再没有，就用主要模型。安装“PDF 页面”插件后，能看照片的模型也能读 PDF 的页面。	src/ui/screens/models.js:180	Note: "one here" is a model of this role (辅助), so 这里的模型; PDF 页面 is the plugin's name in Chinese (its pdf-pages:@name).
-14w2ppx	ok	Add a provider for {0}	为“{0}”添加提供商	src/ui/screens/models.js:182	{0} = called
-17olz31	ok	Add a model to {0}	向“{0}”添加模型	src/ui/screens/models.js:184	{0} = called
-58mvoq	ok	Reasoning for {0}	推理级别（{0}）	src/ui/screens/models.js:192	{0} = called; Note: A label under a role: "主要的推理" read oddly; the role in brackets.
-1cwghfv	ok	Wait from 1 to 600 seconds; leave it empty for the usual.	等待时间须为 1 到 600 秒；留空则使用默认值。	src/ui/screens/models.js:193	
-8nhvom	ok	Reorder {0}, {1} of {2}	重新排序 {0}，第 {1} 项，共 {2} 项	src/ui/screens/models.js:208	{0} = name; {1} = num(i + 1); {2} = num(n)
-17wwgww	ok	 ({0})	（{0}）	src/ui/screens/models.js:221	{0} = note; Note: no space before the full-width bracket.
-1r8iepd	ok	Drag, or use the arrow keys	拖动，或使用方向键	src/ui/screens/models.js:226	Note: "arrow keys" are keyboard keys (方向键), not an API key (密钥).
-1ln5v12	ok	Move {0}	移动 {0}	src/ui/screens/models.js:228	{0} = name
-1rvkqip	ok	Move up	上移	src/ui/screens/models.js:229	
-c2tjmw	ok	Move down	下移	src/ui/screens/models.js:230	
+1iltlrh	ok	Koe · Chat: a chat model, with Speech in and Speech out	Koe · 聊天：对话模型，搭配语音识别和朗读	src/ui/screens/models.js:18	Note: chat model → 对话模型, as the glossary's Koe · Chat note.
+b7irvo	ok	Koe · Live: hears you and speaks in one stream	Koe · 实时：边听边说	src/ui/screens/models.js:18	
+k0393o	ok	Main: talks with you	主要：和你对话	src/ui/screens/models.js:18	
+187fzjq	ok	Quick decision: yes-or-no checks	快速判断：只答是或否	src/ui/screens/models.js:19	
+5815dj	ok	Utility: summaries and small jobs	辅助：摘要和小任务	src/ui/screens/models.js:19	
+1hclnju	ok	Speech in: how Shiori hears you	语音识别：Shiori 怎样听你说话	src/ui/screens/models.js:20	
+dadv07	ok	Speech out: Shiori's voice	朗读：Shiori 的声音	src/ui/screens/models.js:20	
+18wgr3h	ok	Koe · Live	Koe · 实时	src/ui/screens/models.js:24	
+1h7ll5r	ok	utility	辅助	src/ui/screens/models.js:24	Note: the role's id, shown so in English buttons ("Add to utility"); translated as the role's name.
+1naapyq	ok	speech-out	朗读	src/ui/screens/models.js:24	Note: the role's id, shown so in English buttons; translated as the role's name.
+1t30hzc	ok	main	主要	src/ui/screens/models.js:24	Note: the role's id, shown so in English buttons ("Add to main"); translated as the role's name.
+1u27rxd	ok	decide	快速判断	src/ui/screens/models.js:24	Note: the role's id, shown so in English buttons; translated as the role's name.
+a363wx	ok	speech-in	语音识别	src/ui/screens/models.js:24	Note: the role's id, shown so in English buttons; translated as the role's name.
+qx3inn	ok	Koe uses it while voice is on and the Live chip is on. When none here can answer, Koe · Chat does.	语音开启且“实时”按钮打开时，Koe 会用这里的模型。这里的模型都无法回答时，改由 Koe · 聊天回答。	src/ui/screens/models.js:30	Note: "voice is on" is the glossary's Voice on mode (语音开启) and the voice chip is 语音按钮, both from the Voice screen's 语音, not a voice she speaks with (声音).
+1wr3zin	ok	Koe uses it when Live is off, while voice is off, and when Koe · Live can't answer: Speech in hears you, and Speech out speaks.	实时关闭、语音关闭，或 Koe · 实时无法回答时，Koe 会用这里的模型：语音识别负责听，朗读负责说。	src/ui/screens/models.js:31	Note: "voice is off" is the glossary's Voice off mode (语音关闭), not a voice she speaks with (声音).
+14kttt9	draft	All time	累计	src/ui/screens/models.js:34	Note: the All time range in Settings → Models → Spending: everything spent on this phone.
+1foujjt	draft	7 days	近 7 天	src/ui/screens/models.js:34	Note: a range in Settings → Models → Spending, beside its amount: today and the days before it, counted from local midnight. 近 7 天 as bills in WeChat and Alipay list it.
+1sawk0u	draft	Today	今天	src/ui/screens/models.js:34	
+xy0wl5	draft	30 days	近 30 天	src/ui/screens/models.js:34	Note: a range in Settings → Models → Spending, beside its amount: today and the days before it, counted from local midnight.
+1aj4x3y	ok	the browser's own; your voice usually goes to Google or Apple	浏览器自带；语音通常会发送到 Google 或 Apple	src/ui/screens/models.js:36	Note: your voice here is what you say, so 语音 (the Voice screen's word), not 声音, which is hers.
+1w4m41d	ok	the browser's own; some voices go online	浏览器自带；有些声音需要联网	src/ui/screens/models.js:36	
+ce8br5	ok	when the model takes audio	当模型接受音频时	src/ui/screens/models.js:36	
+jrbfa0	ok	Where Shiori thinks: the providers annai calls, their models, which models each role tries, in order, and what her requests may cost.	Shiori 的模型：annai 调用的提供商及其模型、每个角色依次尝试的模型，以及她的请求可能产生的费用。	src/ui/screens/models.js:53	Note: "may cost" is an estimate (可能), not what she is allowed to spend.
+o0a9z9	draft	Spending	花费	src/ui/screens/models.js:77	Note: the section of Settings → Models with what was spent and Spend per day; 花费 as in the glossary's 每日花费.
+1u9umvp	draft	What Shiori's model calls, voices and live talk have cost on this phone, in all your trips. A day starts at midnight here.	Shiori 在这部手机上调用模型、声音和实时语音的花费，所有旅行合计。每天按手机上的时间从午夜算起。	src/ui/screens/models.js:78	Note: "voices and live talk": her voices (声音, the glossary's word, with listening) and live voice sessions (实时语音); "here": the phone's own clock and time zone.
+5eo22y#other	draft	Not counted: # calls to models with no prices. A model's page takes its prices, 0 for a server of your own.	有 # 次调用的模型没有设置价格，未计入。价格可在模型页面填写，自己的服务器填 0。	src/ui/screens/models.js:80	plural; # = spent.unpriced; English: "Not counted: # call to a model with no prices. A model's page takes its prices, 0 for a server of your own." (one), "Not counted: # calls to models with no prices. A model's page takes its prices, 0 for a server of your own." (other); Note: 0 is the price to type for a server the traveller runs.
+1o8rfr8	ok	What Shiori's model calls may cost in a day, in all your trips. Once it is spent, her turn ends with a card, and she goes on the next day. Empty: no limit.	Shiori 每天调用模型的花费上限，所有旅行合计。用完后，她当前这一轮会以一张卡片结束，第二天再继续。留空则不限。	src/ui/screens/models.js:82	
+3bernd	ok	Spend per day (USD)	每日花费（美元）	src/ui/screens/models.js:83	
+yp0c9i	ok	A day costs at least $0.01; leave it empty for no limit.	每日至少 0.01 美元；留空则不限。	src/ui/screens/models.js:83	
+1kmogw5	ok	Cache	缓存	src/ui/screens/models.js:84	
+el1opd	ok	Providers keep the start of the conversation for a while, so her next request costs less. An hour costs more to write than five minutes, and pays off when you talk less often than every few minutes. A model that keeps it only five minutes is asked for five.	提供商会把对话开头缓存一段时间，让她的下一个请求更便宜。缓存一小时的写入费用比五分钟高，但如果你说话的间隔超过几分钟，选一小时更划算。只支持缓存五分钟的模型会按五分钟请求。	src/ui/screens/models.js:85	
+1bz9ywx	ok	5 minutes	5 分钟	src/ui/screens/models.js:86	
+3eima2	ok	1 hour	1 小时	src/ui/screens/models.js:86	
+kl14fu	ok	Keep it for	保留时长	src/ui/screens/models.js:86	
+uw7pcm	ok	Housekeeping	对话整理	src/ui/screens/models.js:87	
+qfzxri	ok	When a conversation gets long, Shiori summarizes its older part. She does it when it reaches this share of her model's context, or when a request would get this big. Empty: the usual.	对话变长后，Shiori 会总结较早的部分。当对话占到模型上下文的这一比例，或请求将达到这个大小时，就会进行总结。留空则使用默认值。	src/ui/screens/models.js:88	
+1sywcgn	ok	Summarize at a share from 50 to 90%.	总结比例请设在 50% 到 90% 之间。	src/ui/screens/models.js:90	
+5gbpvm	ok	Summarize at (% of the context)	总结阈值（占上下文的 %）	src/ui/screens/models.js:90	
+gbbwof	ok	The largest request is from 1 to 64 MiB.	最大请求须在 1 到 64 MiB 之间。	src/ui/screens/models.js:91	
+jg9kdh	ok	Largest request (MiB)	最大请求（MiB）	src/ui/screens/models.js:91	
+9ubpo0	ok	Nothing switched on	未开启任何功能	src/ui/screens/models.js:108	
+y7dwt8#other	ok	# models	# 个模型	src/ui/screens/models.js:108	plural; # = n; English: "# model" (one), "# models" (other)
+awnddp	ok	Providers	提供商	src/ui/screens/models.js:110	
+rwmbqk	ok	No providers yet. Add one below.	还没有提供商。请在下方添加。	src/ui/screens/models.js:112	
+1cjfpwc	ok	Add a provider	添加提供商	src/ui/screens/models.js:113	
+hbz43i	ok	Roles	角色	src/ui/screens/models.js:143	
+1r5c1sj	ok	Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list, except Koe's.	每个角色从上往下依次尝试模型，一个失败就由下一个回答。空的角色使用主要列表（Koe 的除外）。	src/ui/screens/models.js:145	
+7uxkel	ok	The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.	语音列表也从上往下尝试：语音识别使用第一个适合当前模型的项目，朗读使用第一个有响应的声音。	src/ui/screens/models.js:148	
+1erapbm	ok	Remove {0} from {1}	从“{1}”中移除 {0}	src/ui/screens/models.js:172	{0} = nameOf(id); {1} = called
+1w3dq5v	ok	No models yet. Add one.	还没有模型。请添加一个。	src/ui/screens/models.js:178	
+14zzm1c	ok	Empty: Koe has no live voice, so Koe · Chat answers. Add one, such as Gemini Live, from a provider with live voice.	列表为空。Koe 没有实时语音，所以由 Koe · 聊天回答。请从支持实时语音的提供商添加一个，例如 Gemini Live。	src/ui/screens/models.js:179	Note: "realtime voice" and "live voice" are the glossary's Live voice (实时语音), not a voice she speaks with (声音).
+12bm0vn	ok	Empty: with Live off, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.	列表为空。实时关闭时，Shiori 独自用主要模型运行。在这里添加一个快速模型，让她能用它先快速开口。	src/ui/screens/models.js:180	Note: "one half" is 独自, per the glossary's halves note.
+wer5y9	ok	Nothing here, so annai can't hear you. Add an entry.	这里还没有任何项目，annai 听不到你说话。请添加一项。	src/ui/screens/models.js:181	
+1n694n2	ok	Nothing here, so Shiori can't speak aloud. Add a voice.	这里还没有任何项目，Shiori 无法出声说话。请添加一个声音。	src/ui/screens/models.js:182	
+el9rbx	ok	Uses the main list.	使用主要列表。	src/ui/screens/models.js:183	
+1rqw64m	ok	Wait for the voice (seconds)	等待声音（秒）	src/ui/screens/models.js:184	
+48wtk9	ok	Wait for the words (seconds)	等待文字（秒）	src/ui/screens/models.js:184	
+796n77	ok	Wait for the first words (seconds)	等待第一句（秒）	src/ui/screens/models.js:184	
+1xx9c0t	ok	When Shiori's model can't see a photo or read a PDF, a model of Koe's that can reads it, else one here, else Main's. With the PDF pages plugin, a model that sees photos reads a PDF's pages.	Shiori 的模型看不了照片或读不了 PDF 时，先由 Koe 中能处理的模型来读；没有的话，用这里的模型；再没有，就用主要模型。安装“PDF 页面”插件后，能看照片的模型也能读 PDF 的页面。	src/ui/screens/models.js:189	Note: "one here" is a model of this role (辅助), so 这里的模型; PDF 页面 is the plugin's name in Chinese (its pdf-pages:@name).
+14w2ppx	ok	Add a provider for {0}	为“{0}”添加提供商	src/ui/screens/models.js:191	{0} = called
+17olz31	ok	Add a model to {0}	向“{0}”添加模型	src/ui/screens/models.js:193	{0} = called
+58mvoq	ok	Reasoning for {0}	推理级别（{0}）	src/ui/screens/models.js:201	{0} = called; Note: A label under a role: "主要的推理" read oddly; the role in brackets.
+1cwghfv	ok	Wait from 1 to 600 seconds; leave it empty for the usual.	等待时间须为 1 到 600 秒；留空则使用默认值。	src/ui/screens/models.js:202	
+8nhvom	ok	Reorder {0}, {1} of {2}	重新排序 {0}，第 {1} 项，共 {2} 项	src/ui/screens/models.js:217	{0} = name; {1} = num(i + 1); {2} = num(n)
+17wwgww	ok	 ({0})	（{0}）	src/ui/screens/models.js:230	{0} = note; Note: no space before the full-width bracket.
+1r8iepd	ok	Drag, or use the arrow keys	拖动，或使用方向键	src/ui/screens/models.js:235	Note: "arrow keys" are keyboard keys (方向键), not an API key (密钥).
+1ln5v12	ok	Move {0}	移动 {0}	src/ui/screens/models.js:237	{0} = name
+1rvkqip	ok	Move up	上移	src/ui/screens/models.js:238	
+c2tjmw	ok	Move down	下移	src/ui/screens/models.js:239	
 1yveacd	ok	Notifications are turned off for annai on this iPhone. Turn them on in Settings → Notifications → annai, then come back here.	这台 iPhone 上 annai 的通知已关闭。请在设置 → 通知 → annai 中开启，然后回到这里。	src/ui/screens/notifications.js:9	
 x5n8yx	ok	Notifications are blocked for annai. Touch and hold annai's icon, then App info → Notifications, and allow them; then come back here.	annai 的通知已被屏蔽。请长按 annai 的图标，进入应用信息 → 通知，允许通知后再回到这里。	src/ui/screens/notifications.js:10	
 3e712g	ok	Notifications are blocked for this site. Allow them in the browser's site settings (the icon beside the address), then come back here.	此网站的通知已被屏蔽。请在浏览器的网站设置（地址栏旁的图标）中允许通知，然后回到这里。	src/ui/screens/notifications.js:11	Note: "site settings" as the glossary's Site settings (サイトの設定 / 网站设置).
@@ -2249,7 +2255,7 @@ wllyue	ok	Copying didn't work here. Select the text on this screen instead.	无�
 zi2agh	ok	Backing up automatically to {0}.	自动备份到 {0}。	src/ui/screens/settings.js:40	{0} = list(kinds, 'plain')
 k12u1x	ok	Updates	更新	src/ui/screens/settings.js:55	
 1gxx7pi	ok	annai looks for new versions of itself and its plugins when it starts and when you come back to it. Check now, or see which build is running.	annai 每次启动或你切回来时，都会检查它自己和插件有没有新版本。可以立即检查，或查看当前运行的构建版本。	src/ui/screens/settings.js:56	
-1m8wo5h	ok	The providers and models Shiori uses, the order each role tries them in, what she may spend a day, the cache, and when she summarizes.	Shiori 使用的提供商和模型、各角色的尝试顺序、每日花费上限、缓存，以及何时总结。	src/ui/screens/settings.js:58	
+1qdizmy	draft	The providers and models Shiori uses, the order each role tries them in, what she has spent and may spend a day, the cache, and when she summarizes.	Shiori 使用的提供商和模型、各角色的尝试顺序、已有花费和每日花费上限、缓存，以及何时总结。	src/ui/screens/settings.js:58	
 1kkulsa	ok	Voice	语音	src/ui/screens/settings.js:59	context: screen
 qhwigq	ok	How Shiori speaks and hears you, with a test for each.	Shiori 说话和听你说话的方式，各自都能测试。	src/ui/screens/settings.js:59	
 1mys0wo	ok	Reminders while annai is closed, through the push relay, and what it learns.	annai 关闭时通过推送中继发送的提醒，以及中继会得知哪些信息。	src/ui/screens/settings.js:60	

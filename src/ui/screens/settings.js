@@ -55,7 +55,7 @@ export async function renderSettings(ctx) {
     updates: () => section(t`Updates`,
       h('p', { class: 'sub', text: waits ?? t`annai looks for new versions of itself and its plugins when it starts and when you come back to it. Check now, or see which build is running.` }),
       h('div', { class: 'acts' }, h('a', { class: waits ? /* en */ 'btn pri' : 'btn', href: '#/updates' }, t`Updates`))),
-    models: () => section(t`Models`, ...goTo(t`The providers and models Shiori uses, the order each role tries them in, what she may spend a day, the cache, and when she summarizes.`, '#/models', t`Models`)),
+    models: () => section(t`Models`, ...goTo(t`The providers and models Shiori uses, the order each role tries them in, what she has spent and may spend a day, the cache, and when she summarizes.`, '#/models', t`Models`)),
     voice: () => section(tc('screen')`Voice`, ...goTo(t`How Shiori speaks and hears you, with a test for each.`, '#/voice', tc('screen')`Voice`)),
     notifications: () => section(t`Notifications`, ...goTo(t`Reminders while annai is closed, through the push relay, and what it learns.`, '#/notifications', t`Notifications`)),
     backup: () => section(t`Backup`,

@@ -9,7 +9,9 @@ import { renderProvider, renderNewProvider } from './provider.js';
 import { STAND_IN_NAMES } from '../../core/voice/where.js';
 import { renderModel, LEVEL_WORDS } from './model.js';
 import { featuredStart } from '../provider-setup.js';
-import { numField, num, list as listOf } from '../format.js';
+import { numField, num, money, list as listOf } from '../format.js';
+import { spentIn } from '../../core/agent/budgets.js';
+import { deviceZone } from '../../core/time.js';
 
 /** @type {Record<string, string>} */
 const ROLE_NAMES = {
@@ -28,6 +30,8 @@ const KOE_NOTES = {
   'koe-realtime': t`Koe uses it while voice is on and the Live chip is on. When none here can answer, Koe · Chat does.`,
   'koe-classic': t`Koe uses it when Live is off, while voice is off, and when Koe · Live can't answer: Speech in hears you, and Speech out speaks.`,
 };
+/** The Spending section's ranges, as days back from today counting today (spentIn), and their names. @type {[number, string][]} */
+const RANGES = [[1, t`Today`], [7, t`7 days`], [30, t`30 days`], [Infinity, t`All time`]];
 /** Short notes on the stand-ins; Settings → Voice says where each sends your voice (spec §11.7). */
 const STAND_IN_NOTES = { 'send-audio': t`when the model takes audio`, dictation: t`the browser's own; your voice usually goes to Google or Apple`, 'browser-voice': t`the browser's own; some voices go online` };
 
@@ -42,7 +46,7 @@ export async function renderModels(ctx, route) {
   if (route.parts[1] === 'provider') return route.params.new ? renderNewProvider(ctx, route.params.new) : renderProvider(ctx, route.params.id ?? '');
   if (route.parts[1] === 'model') return renderModel(ctx, route.params.id ?? '');
   await ctx.llm.ready;
-  const [cfg, app] = await Promise.all([ctx.llm.config(), readAppSettings(ctx.ws)]);
+  const [cfg, app, spent] = await Promise.all([ctx.llm.config(), readAppSettings(ctx.ws), spentIn(ctx.store, Date.now(), deviceZone(), RANGES.map(([n]) => n))]);
   return h('div', { class: 'screen' },
     h('p', { class: 'crumbs' }, crumb('#/settings', t`Settings`)),
     h('h1', { class: 'title', text: t`Models` }),
@@ -51,25 +55,30 @@ export async function renderModels(ctx, route) {
     Object.keys(cfg.providers).length ? null : featuredStart(ctx),
     providersSection(ctx, cfg),
     rolesSection(ctx, cfg),
-    ...requestSections(ctx, app.shiori ?? {}));
+    ...requestSections(ctx, app.shiori ?? {}, spent));
 }
 
 /** @param {string} title @param {...any} children */
 const section = (title, ...children) => h('section', { class: 'panel', 'aria-label': title }, h('h2', { class: 'section', text: title }), ...children);
 
 /**
- * What requests may cost and how large they grow, with the models: a day's
+ * What requests have cost and may cost, and how large they grow, with the models: what was spent and a day's
  * spending (spec §6.6), the cache (§6.4), housekeeping (§6.5). Kept under shiori, where her loop reads them.
  * @param {any} ctx @param {Record<string, any>} s the app settings' shiori entry
+ * @param {{ sums: number[], unpriced: number }} spent what was spent in each of RANGES, and the calls with no price (spentIn)
  */
-function requestSections(ctx, s) {
+function requestSections(ctx, s, spent) {
   const save = (/** @type {Record<string, any>} */ c) => updateAppSettings(ctx.ws, { shiori: c });
   const spend = h('input', { id: 'budget-spend', inputmode: 'decimal', placeholder: t`No limit`, value: numField(s.budgets?.spendPerDay) });
   const c = { threshold: 0.7, maxRequestMiB: 8, ...(s.compaction ?? {}) };
   const share = h('input', { id: 'compaction-threshold', inputmode: 'numeric', placeholder: '70', value: numField(Math.round(c.threshold * 100)) });
   const mib = h('input', { id: 'compaction-max', inputmode: 'decimal', placeholder: '8', value: numField(c.maxRequestMiB) });
   return [
-    section(t`Spend per day`,
+    section(t`Spending`,
+      h('p', { class: 'sub', text: t`What Shiori's model calls, voices and live talk have cost on this phone, in all your trips. A day starts at midnight here.` }),
+      h('dl', { class: 'facts' }, ...RANGES.flatMap(([, name], i) => [h('dt', { text: name }), h('dd', { text: money(spent.sums[i]) })])),
+      spent.unpriced ? h('p', { class: 'sub', text: plural(spent.unpriced, "Not counted: # call to a model with no prices. A model's page takes its prices, 0 for a server of your own.",
+        "Not counted: # calls to models with no prices. A model's page takes its prices, 0 for a server of your own.") }) : null,
       h('p', { class: 'sub', text: t`What Shiori's model calls may cost in a day, in all your trips. Once it is spent, her turn ends with a card, and she goes on the next day. Empty: no limit.` }),
       savedField(t`Spend per day (USD)`, spend, () => numberIn(spend, 0.01, Infinity, t`A day costs at least $0.01; leave it empty for no limit.`), (v) => save({ budgets: { spendPerDay: v } }))),
     section(t`Cache`,

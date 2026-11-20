@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp, waitForServiceWorker, startModelServer, addProvider, filterTrace, responsesReply, anthropicToolReply, savedBy, leaveSaved, pickProvider, startSettled, startTrip, goToHash } from './helpers.js';
+import { openApp, waitForServiceWorker, startModelServer, addProvider, filterTrace, responsesReply, anthropicToolReply, savedBy, leaveSaved, pickProvider, startSettled, startTrip, goToHash, writeEvent } from './helpers.js';
 
 /** The plugins installed, by id. @param {import('@playwright/test').Page} page @returns {Promise<string[]>} */
 const installedIds = (page) => page.evaluate(async () => {
@@ -561,6 +561,56 @@ for (const how of ['touch', 'mouse']) {
     }
   });
 }
+
+// The cost display (the user, 2026-11-16: "also seems like a good idea to have a cost display available to be checked somewhere? like 1d 7d
+// 1m total or similar ranges"; their answer to its design, 2026-11-19: "All recommended"): Settings → Models → Spending, beside the budget.
+test("Settings → Models → Spending: Today, 7 days, 30 days and All time over every trip and annai's own logs, a line for calls to models with no prices only when there are some, then Spend per day, which still saves", async ({ page }) => {
+  await openApp(page, '#/models');
+  const spending = page.getByRole('region', { name: 'Spending', exact: true });
+  const line = "What Shiori's model calls, voices and live talk have cost on this phone, in all your trips. A day starts at midnight here.";
+  const budget = "What Shiori's model calls may cost in a day, in all your trips. Once it is spent, her turn ends with a card, and she goes on the next day. Empty: no limit.";
+  await expect(spending.locator('dl.facts dt')).toHaveText(['Today', '7 days', '30 days', 'All time']);
+  await expect(spending.locator('dl.facts dd')).toHaveText(['$0.00', '$0.00', '$0.00', '$0.00']); // nothing spent yet: $0.00, not "free"
+  await expect(spending.locator('p.sub')).toHaveText([line, budget]);
+  const kyoto = await startTrip(page, 'Kyoto');
+  await page.evaluate(async (kyoto) => {
+    const load = (/** @type {string} */ url) => import(url);
+    const { createIdbStore } = await load('/src/core/store-idb.js');
+    const { logEvent } = await load('/src/core/events.js');
+    const store = await createIdbStore();
+    const day = 86_400_000;
+    /** @type {[string, number, any][]} scope, how long ago, entry */
+    const entries = [
+      ['sys', 100 * day, { type: 'model.turn', data: { answeredBy: 'A', cost: 2.22 } }], // annai's own log, months ago: all time only
+      [kyoto, 20 * day, { type: 'model.turn', data: { answeredBy: 'A', cost: 0.76 } }],
+      ['me', 3 * day, { type: 'net.request', data: { kind: 'speech-out', outcome: 'ok', cost: 1.98 } }], // her voice
+      [kyoto, 0, { type: 'model.turn', data: { answeredBy: 'A', cost: 0.18 } }],
+      [kyoto, 0, { type: 'net.request', data: { kind: 'model', outcome: 'ok', cost: 0.18 } }], // its attempt, whose cost the turn holds
+      [kyoto, 0, { type: 'model.turn', data: { answeredBy: null } }], // a call that failed before using anything
+    ];
+    for (const [scope, ago, e] of entries) await logEvent(store, scope, e, Date.now() - ago);
+    store.close();
+  }, kyoto);
+  await goToHash(page, '#/models'); // startTrip opened the trip
+  await expect(spending.locator('dl.facts dd')).toHaveText(['$0.18', '$2.16', '$2.92', '$5.14']);
+  await expect(spending.locator('p.sub')).toHaveText([line, budget]);
+  // A call to a model with no prices that answered: one line under the figures, which stay as they were.
+  await writeEvent(page, kyoto, { type: 'model.turn', data: { answeredBy: 'Own server' } });
+  await page.reload();
+  const notCounted = (/** @type {string} */ n) => `Not counted: ${n}. A model's page takes its prices, 0 for a server of your own.`;
+  await expect(spending.locator('p.sub')).toHaveText([line, notCounted('1 call to a model with no prices'), budget]);
+  await expect(spending.locator('dl.facts dd')).toHaveText(['$0.18', '$2.16', '$2.92', '$5.14']);
+  await writeEvent(page, 'me', { type: 'net.request', data: { kind: 'speech-out', outcome: 'ok' } }); // a voice with no prices
+  await page.reload();
+  await expect(spending.locator('p.sub').nth(1)).toHaveText(notCounted('2 calls to models with no prices'));
+  // The budget's field, still in the section, saves as before.
+  const spend = spending.getByLabel('Spend per day (USD)');
+  await spend.fill('2.5');
+  await spend.press('Tab');
+  await expect(savedBy(spend)).toHaveText('Saved');
+  await page.reload();
+  await expect(spending.getByLabel('Spend per day (USD)')).toHaveValue('2.5');
+});
 
 // Formats follow the screens' language with the phone's region (localization L2): a German phone gets English screens with German
 // number marks, and a number typed the German way is read the German way.
