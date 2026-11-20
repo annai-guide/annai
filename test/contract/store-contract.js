@@ -189,28 +189,6 @@ export function storeContract(test, assert, makeStore) {
     assert.deepEqual((await q({ types: [] })).map((e) => e.seq), []);
   });
 
-  test('events: countEvents counts the entries of some types in one scope, whatever they hold', async () => {
-    const s = await makeStore();
-    await s.tx(['events'], 'readwrite', async (t) => {
-      const kinds = ['a', 'b', 'c'];
-      // 1 b, 2 c, 3 a, 4 b (set aside: the count reads no entry), 5 c, 6 a, 7 b, 8 c, 9 a
-      for (let i = 1; i <= 9; i++) await t.appendEvent('x', { ts: i, type: kinds[i % 3], actor: 'user', data: i === 4 ? { dismissed: true } : {} });
-      await t.appendEvent('y', { ts: 1, type: 'a', actor: 'user' });
-      await t.appendEvent('x0', { ts: 1, type: 'a', actor: 'user' }); // a scope whose id starts with another's
-    });
-    const count = (/** @type {string} */ scope, /** @type {string[]} */ types) => s.tx(['events'], 'readonly', (t) => t.countEvents(scope, types));
-    assert.equal(await count('x', ['a']), 3);
-    assert.equal(await count('x', ['b']), 3);
-    assert.equal(await count('x', ['a', 'b']), 6);
-    assert.equal(await count('x', ['a', 'a']), 3);
-    assert.equal(await count('x', ['none']), 0);
-    assert.equal(await count('x', []), 0);
-    assert.equal(await count('y', ['a', 'b']), 1);
-    assert.equal(await count('none', ['a']), 0);
-    await s.tx(['events'], 'readwrite', (t) => t.deleteEvent('x', 3));
-    assert.equal(await count('x', ['a']), 2);
-  });
-
   test('events: a type read without a limit gives every entry, in order, among many others', async () => {
     const s = await makeStore();
     await s.tx(['events'], 'readwrite', async (t) => {

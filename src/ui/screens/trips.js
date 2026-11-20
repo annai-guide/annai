@@ -209,7 +209,7 @@ function chatLine(s, r, { say, now, zone }) {
  */
 async function tripCard(ctx, s, r, o) {
   const { say, hers, now, zone, due } = o;
-  const [backup, stamps, unread, said] = await Promise.all([backupState(ctx.store, s.id), tripStamps(ctx, s.id), r ? filesToRead(ctx.store, s.id).then((f) => f.length) : 0, r ? linesSaid(ctx.store, s.id) : 0]);
+  const [backup, stamps, unread, said] = await Promise.all([backupState(ctx.store, s.id), tripStamps(ctx, s.id), r ? filesToRead(ctx.store, s.id).then((f) => f.length) : 0, r ? linesSaid(ctx.store, s.id, STEPS[STEPS.length - 1]) : 0]);
   o.backups.set(s.id, backup);
   // Its "backed up … ago" is on its own moment: the footer line's is another place's (or an export's), and a trip's backup can outlive its place.
   const backedUp = backup.at === null ? backupText(backup) : since(o, h('span', {}), backup.at, (now) => backupText(backup, now));
@@ -231,7 +231,7 @@ async function tripCard(ctx, s, r, o) {
   const name = scopeTitle(s); // one stored with the draft's name says "New conversation" in the screens' language
   const lit = litOf(r?.phase, stepOf(said));
   const colour = lit ? { style: { '--hue': hueOf(s.created), '--lit': `${lit * 100}%` } } : {};
-  return h('li', {}, h('a', { class: ['card', 'trip-card', r?.phase === 'happening' ? 'happening' : r?.phase === 'future' ? 'ahead' : '', lit ? 'lit' : ''], ...colour, href: r ? talkHref(s.id) : `#/trip/${encodeURIComponent(s.id)}` },
+  return h('li', {}, h('a', { class: ['card', 'trip-card', r?.phase === 'happening' ? 'happening' : '', lit ? 'lit' : ''], ...colour, href: r ? talkHref(s.id) : `#/trip/${encodeURIComponent(s.id)}` },
     h('span', { class: 'trip-card-text' },
       h('span', { class: 'name', ...say(name), text: name }),
       h('span', { class: 'sub' }, ...factsWords([s.start ? dateRange(s.start, s.end) : null, stamps.length ? { stamps: stampCount(stamps.length) } : null, unread ? plural(unread, '# file waiting to be read', '# files waiting to be read') : null, backedUp])),
@@ -255,21 +255,26 @@ export function hueOf(created) {
 }
 
 /**
- * The traveller's lines in a trip in steps, each four times the last: none, 1-4, 5-19, 20-79, 80 and more. From the user's eight conversations in their
- * trace (0, 0, 1, 3, 31, 40, 63, 88 lines: steps 0, 0, 1, 1, 3, 3, 3, 4); a trip talked in daily tops it in two days, as their busiest (88 in 2).
- * @param {number} lines @returns {number} 0 to 4
+ * Where each step of the traveller's lines in a trip begins, each four times the last: none, 1-4, 5-19, 20-79, 80 and more. Chosen so that real
+ * conversations spread over all five, and a trip talked in daily reaches the top within days. The last is the most a card needs counted: more lines
+ * change nothing (linesSaid stops there).
  */
-export const stepOf = (lines) => [1, 5, 20, 80].filter((n) => lines >= n).length;
+export const STEPS = Object.freeze([1, 5, 20, 80]);
+
+/** @param {number} lines @returns {number} 0 to 4 */
+export const stepOf = (lines) => STEPS.filter((n) => lines >= n).length;
 
 /**
  * How lit a trip's card is, 0 (plain) to 1 (its full colour), by phase and step. Happening: its step, never under 3/4, so the trip of now outshines any
- * past one (at most 1/2). Ahead: half its step, never under a past trip's first, 1/8 (the user, 2026-11-16: "upcoming trips can get a lighter
- * version"). Past: half its step, the pastel ("a more pastel color"); unused, plain. Archived (no row) and chats: plain.
+ * past one (at most 1/2). Ahead: half its step, never under 1/4 (the user, 2026-11-16: "upcoming trips can get a lighter version"): at 1/4 a new trip
+ * ahead is 0.025 OKLab from a plain card in light (0.027 to 0.032 in dark), near the 0.030 (0.034) of the lighter tint it had before, and as the mockup
+ * the user picked showed it; at 1/8 it was 0.012 (0.014 to 0.016), under half. Past: half its step, the pastel ("a more pastel color"); unused, plain.
+ * Archived (no row) and chats: plain.
  * @param {Row['phase'] | undefined} phase @param {number} step 0 to 4
  */
 export function litOf(phase, step) {
   if (phase === 'happening') return Math.max(step / 4, 3 / 4);
-  if (phase === 'future') return Math.max(step / 8, 1 / 8);
+  if (phase === 'future') return Math.max(step / 8, 1 / 4);
   return phase === 'past' ? step / 8 : 0;
 }
 

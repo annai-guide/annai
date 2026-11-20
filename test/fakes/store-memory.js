@@ -117,7 +117,6 @@ function makeTx(d, mode, allowed) {
       if (q.reverse) list.reverse();
       return list.slice(0, q.limit ?? Infinity).map(out);
     },
-    async countEvents(scope, types) { return eventsOf(scope).filter((e) => types.includes(e.type)).length; },
     async getScope(id) { return out(use('scopes').get(id)); },
     async putScope(rec) { use('scopes', true).set(rec.id, structuredClone(rec)); },
     async listScopes() { return [...use('scopes').values()].map(out); },

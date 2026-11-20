@@ -45,8 +45,6 @@
  * @property {(scope: string, seq: number) => Promise<void>} deleteEvent  removes one log entry; nothing there is no error (spec §4.9:
  *   removing a plugin frees what only its entries named)
  * @property {(scope: string, q?: EventQuery) => Promise<EventRecord[]>} listEvents
- * @property {(scope: string, types: string[]) => Promise<number>} countEvents  how many of the scope's log entries have one of these types, from the
- *   type index: no entry is read, so a field inside one (a heard line's `dismissed`) can't be counted on
  * @property {(id: string) => Promise<ScopeRecord|undefined>} getScope
  * @property {(rec: ScopeRecord) => Promise<void>} putScope
  * @property {() => Promise<ScopeRecord[]>} listScopes

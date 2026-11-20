@@ -358,11 +358,23 @@ export async function lastTalked(store, scope) {
 }
 
 /**
- * How many lines the user said in a trip, typed or heard, from the type index alone: what lights its card on home (the trip-colour design). No entry
- * is read, so a heard line set aside counts too, unlike talks (15 of 183 heard lines in the user's trace). @param {Store} store @param {string} scope
+ * How many lines the user said in a trip (talks: a heard line set aside as chatter is nobody's), counted up to `upTo`: what lights its card on home (the
+ * trip-colour design). It reads the lines in batches of what is still wanted and no more, so a trip with thousands of lines costs `upTo` of them, plus
+ * the ones set aside among them. @param {Store} store @param {string} scope @param {number} upTo no more is needed: the top step of home's card
  * @returns {Promise<number>}
  */
-export const linesSaid = (store, scope) => store.tx(['events'], 'readonly', (t) => t.countEvents(scope, [...SAID]));
+export const linesSaid = (store, scope, upTo) => store.tx(['events'], 'readonly', async (t) => {
+  let said = 0;
+  let after = 0;
+  while (said < upTo) {
+    const want = upTo - said;
+    const batch = await t.listEvents(scope, { types: [...SAID], after, limit: want });
+    said += batch.filter(talks).length;
+    if (batch.length < want) break; // none left
+    after = batch[batch.length - 1].seq;
+  }
+  return said;
+});
 
 /**
  * Fills the mirror on records without it (released copies, some archives), archived too. The talked key says it was done; only this writes it on a record

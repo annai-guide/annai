@@ -100,7 +100,7 @@ test('a chat is one line, a dated trip a card; a tap opens its conversation', as
   await expect(page).toHaveURL(new RegExp(`#/trip/${ids.Testville}/talk$`));
 });
 
-test('happening: tinted, "Day 3 of 8", Next; future: "in 2 weeks", her last line', async ({ page }) => {
+test('happening: "Day 3 of 8", Next; future: "in 2 weeks", her last line', async ({ page }) => {
   await openApp(page, '#/trips');
   await seed(page, { trips: { Testville: { from: -2, to: 5, plan: 'Lunch at the pier' }, Laterton: { from: 14, to: 16, said: 'See you at the station.' } } });
   const now = row(page, 'Testville');

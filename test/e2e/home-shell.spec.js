@@ -275,7 +275,7 @@ const COLOURS = `(window.colourOf = (css) => {
     return { lab, Y: Y(lin), clippedY: Y(lin.map((v) => Math.min(1, Math.max(0, v)))) };
   }, true)`;
 
-test("each trip card is its own colour, lit by the traveller's lines: happening, ahead and used past trips lit; an unused past trip, an archived one and a chat plain", async ({ page }) => {
+test("each trip card is its own colour, lit by the lines the traveller said: happening, ahead and used past trips lit; an unused past trip, one only chatter was heard in, an archived one and a chat plain", async ({ page }) => {
   await openApp(page);
   await page.evaluate(async () => {
     const at = (/** @type {string} */ p) => p;
@@ -287,7 +287,7 @@ test("each trip card is its own colour, lit by the traveller's lines: happening,
     const store = await createIdbStore();
     const ws = new Workspace(store);
     const day = (/** @type {number} */ n) => dayIn(Date.now() + n * 86_400_000, deviceZone());
-    /** Lines said in a trip: typed, heard, and heard but set aside, which the count by the type index takes too. @param {string} id @param {number} typed @param {number} heard @param {number} [aside] */
+    /** Lines in a trip: typed, heard, and some of the heard set aside as chatter (the first ones), which are nobody's line. @param {string} id @param {number} typed @param {number} heard @param {number} [aside] */
     const said = (id, typed, heard, aside = 0) => store.tx(['events'], 'readwrite', async (/** @type {any} */ t) => {
       for (let i = 0; i < typed; i++) await t.appendEvent(id, { ts: Date.now(), type: 'msg.user', actor: 'user', data: {} });
       for (let i = 0; i < heard; i++) await t.appendEvent(id, { ts: Date.now(), type: 'heard', actor: 'user', data: i < aside ? { dismissed: true } : {} });
@@ -298,9 +298,10 @@ test("each trip card is its own colour, lit by the traveller's lines: happening,
     await said(chat, 90, 0);
     await said(await createTrip(ws, { title: 'Pastville', start: day(-40), end: day(-38) }), 0, 0); // unused: plain
     await said(await createTrip(ws, { title: 'Quietville', start: day(-30), end: day(-28) }), 2, 1); // 3 lines: step 1, 1/8
-    await said(await createTrip(ws, { title: 'Busyville', start: day(-20), end: day(-18) }), 50, 30, 5); // 80 lines, 5 set aside: the top step, 1/2
+    await said(await createTrip(ws, { title: 'Hushville', start: day(-35), end: day(-33) }), 0, 3, 3); // 3 heard, all chatter: nobody talked, plain
+    await said(await createTrip(ws, { title: 'Busyville', start: day(-20), end: day(-18) }), 50, 35, 5); // 85 entries, 5 chatter at the start of the heard: 80 lines, the top step, 1/2
     await said(await createTrip(ws, { title: 'Nowville', start: day(0), end: day(2) }), 0, 0); // happening: 3/4 at the least
-    await said(await createTrip(ws, { title: 'Laterton', start: day(10), end: day(12) }), 0, 0); // ahead: 1/8 at the least
+    await said(await createTrip(ws, { title: 'Laterton', start: day(10), end: day(12) }), 0, 0); // ahead: 1/4 at the least
     const old = await createTrip(ws, { title: 'Oldtown', start: day(-60), end: day(-58) });
     await said(old, 100, 0);
     await setTripStatus(store, old, 'archived');
@@ -311,7 +312,7 @@ test("each trip card is its own colour, lit by the traveller's lines: happening,
   await page.getByText('Archived (1)').click();
   const row = (/** @type {string} */ name) => page.locator('.trip-card', { has: page.locator('.name', { hasText: name }) });
   for (const name of ['Nowville', 'Laterton', 'Busyville', 'Quietville']) await expect(row(name)).toHaveClass(/\blit\b/);
-  for (const name of ['Pastville', 'Oldtown', 'Ramen']) await expect(row(name)).not.toHaveClass(/\blit\b/);
+  for (const name of ['Pastville', 'Hushville', 'Oldtown', 'Ramen']) await expect(row(name)).not.toHaveClass(/\blit\b/);
   await page.evaluate(COLOURS);
   const paint = () => page.evaluate(async () => {
     const { HUES, hueOf } = await import(/** @type {string} */ ('/src/ui/screens/trips.js'));
@@ -322,25 +323,39 @@ test("each trip card is its own colour, lit by the traveller's lines: happening,
     const colourOf = /** @type {any} */ (window).colourOf;
     /** @param {string} name */
     const card = (name) => /** @type {HTMLElement} */ ([...document.querySelectorAll('.trip-card')].find((c) => c.querySelector('.name')?.textContent === name));
+    const plain = getComputedStyle(card('Pastville'));
+    const sheet = colourOf(plain.backgroundColor).lab, line = colourOf(plain.borderTopColor).lab;
+    /** The card's colour as its own tokens give it: `--trip-full` or `--trip-edge` (OKLCH lightness and chroma) in its `--hue`, mixed `--lit` of the way from the plain colour, in OKLab. */
+    const mix = (/** @type {HTMLElement} */ el, /** @type {string} */ token, /** @type {number[]} */ from) => {
+      const [L, C] = getComputedStyle(el).getPropertyValue(token).trim().split(/\s+/).map(Number);
+      const hue = (Number(el.style.getPropertyValue('--hue')) * Math.PI) / 180;
+      const lit = parseFloat(el.style.getPropertyValue('--lit')) / 100;
+      return [L, C * Math.cos(hue), C * Math.sin(hue)].map((v, i) => lit * v + (1 - lit) * from[i]);
+    };
+    /** How far a computed colour is from a colour, in OKLab. */
+    const gap = (/** @type {string} */ css, /** @type {number[]} */ want) => Math.hypot(...colourOf(css).lab.map((/** @type {number} */ v, /** @type {number} */ i) => v - want[i]));
     /** @param {string} name */
     const of = (name) => {
       const el = card(name);
       const css = getComputedStyle(el);
       // Its own hue is the one its record's `created` gives, never its id's (an import or a restore mints a new id) or anything a change moves.
       const own = hueOf(records.find((/** @type {any} */ r) => r.title === name).created);
-      return { lit: el.style.getPropertyValue('--lit'), hue: el.style.getPropertyValue('--hue'), own, bg: css.backgroundColor, edge: css.borderTopColor, lab: colourOf(css.backgroundColor).lab };
+      const lit = el.style.getPropertyValue('--lit');
+      const gaps = lit ? { bgGap: gap(css.backgroundColor, mix(el, '--trip-full', sheet)), edgeGap: gap(css.borderTopColor, mix(el, '--trip-edge', line)) } : {};
+      return { lit, hue: el.style.getPropertyValue('--hue'), own, bg: css.backgroundColor, edge: css.borderTopColor, lab: colourOf(css.backgroundColor).lab, ...gaps };
     };
-    return { hues: HUES, cards: Object.fromEntries(['Nowville', 'Laterton', 'Busyville', 'Quietville', 'Pastville', 'Oldtown', 'Ramen'].map((n) => [n, of(n)])) };
+    return { hues: HUES, cards: Object.fromEntries(['Nowville', 'Laterton', 'Busyville', 'Quietville', 'Pastville', 'Hushville', 'Oldtown', 'Ramen'].map((n) => [n, of(n)])) };
   });
   for (const scheme of /** @type {const} */ (['light', 'dark'])) {
     await page.emulateMedia({ colorScheme: scheme });
     const { hues, cards } = await paint();
-    const { Nowville: now, Laterton: ahead, Busyville: busy, Quietville: quiet, Pastville: unused, Oldtown: archived, Ramen: chat } = cards;
-    // How lit: happening at its floor, ahead at its, past at half its step (80 lines, 5 of them set aside: the top step; 3 lines: the first).
-    expect([now.lit, ahead.lit, busy.lit, quiet.lit]).toEqual(['75%', '12.5%', '50%', '12.5%']);
+    const { Nowville: now, Laterton: ahead, Busyville: busy, Quietville: quiet, Pastville: unused, Hushville: hushed, Oldtown: archived, Ramen: chat } = cards;
+    // How lit: happening at its floor, ahead at its, past at half its step (80 lines, 5 more set aside: the top step; 3 lines: the first).
+    expect([now.lit, ahead.lit, busy.lit, quiet.lit]).toEqual(['75%', '25%', '50%', '12.5%']);
     // Plain: exactly the chat's plain card, its sheet and its line.
-    for (const c of [unused, archived]) expect([c.lit, c.bg, c.edge]).toEqual(['', chat.bg, chat.edge]);
-    // Lit: each its own hue, one of the ten, the busier the deeper (the further from the plain sheet, in OKLab), the trip of now the deepest.
+    for (const c of [unused, hushed, archived]) expect([c.lit, c.bg, c.edge]).toEqual(['', chat.bg, chat.edge]);
+    // Lit: each its own hue, one of the ten, and exactly the mix its own tokens give, of its colour and of its edge, in OKLab (to 1e-3, which is
+    // below what an eye tells apart): in light and in dark, so a rule that drops the hue or the strength in either theme is seen.
     const sheet = /** @type {[number, number, number]} */ (unused.lab);
     const depth = (/** @type {{ lab: number[] }} */ c) => Math.hypot(...c.lab.map((v, i) => v - sheet[i]));
     for (const c of [now, ahead, busy, quiet]) {
@@ -348,10 +363,10 @@ test("each trip card is its own colour, lit by the traveller's lines: happening,
       expect(Number(c.hue)).toBe(c.own);
       expect(c.bg).not.toBe(chat.bg);
       expect(c.edge).not.toBe(chat.edge);
-      // Its colour's hue is the card's: on white, exactly (the dark sheet's own blue tint pulls a faint wash toward it there).
-      const [, a, b] = c.lab;
-      if (scheme === 'light') expect(Math.abs(((((Math.atan2(b, a) * 180) / Math.PI) - Number(c.hue) + 540) % 360) - 180)).toBeLessThan(1);
+      expect(c.bgGap, `${scheme}: ${c.bg} against its tokens' mix`).toBeLessThan(1e-3);
+      expect(c.edgeGap, `${scheme}: ${c.edge} against its tokens' mix`).toBeLessThan(1e-3);
     }
+    // The busier the deeper (the further from the plain sheet, in OKLab), the trip of now the deepest.
     expect(depth(quiet)).toBeGreaterThan(0.005);
     expect(depth(busy)).toBeGreaterThan(depth(quiet) * 2);
     expect(depth(now)).toBeGreaterThan(depth(busy));
@@ -379,7 +394,7 @@ test("a trip card's box is the same size lit or not: only its colours change", a
   expect({ ...boxes.lit, bg: '' }).toEqual({ ...boxes.plain, bg: '' });
 });
 
-test('the secondary words on a trip card keep WCAG AA contrast on all ten hues at every strength the rules give, in light and dark', async ({ page }) => {
+test('every secondary line on a trip card keeps WCAG AA contrast on all ten hues at every strength the rules give, in light and dark', async ({ page }) => {
   await openApp(page);
   await happeningTrip(page, 'Nowville');
   await expect(page.locator('.trip-card.lit .sub').first()).toBeVisible(FIRST_DRAW);
@@ -389,17 +404,23 @@ test('the secondary words on a trip card keep WCAG AA contrast on all ten hues a
     const colourOf = /** @type {any} */ (window).colourOf;
     const strengths = [...new Set(['happening', 'future', 'past'].flatMap((p) => [0, 1, 2, 3, 4].map((s) => litOf(p, s))))].filter((s) => s > 0);
     const card = /** @type {HTMLElement} */ (document.querySelector('.trip-card.lit'));
-    const sub = /** @type {HTMLElement} */ (card.querySelector('.sub'));
+    const subs = /** @type {HTMLElement[]} */ ([...card.querySelectorAll('.sub')]);
     const ratio = (/** @type {number} */ a, /** @type {number} */ b) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
-    let out = { ratio: Infinity, hue: 0, lit: 0, bg: '', ink: '', strengths };
+    let out = { ratio: Infinity, hue: 0, lit: 0, bg: '', ink: '', inks: /** @type {string[]} */ ([]), subs: subs.length, strengths };
     for (const hue of HUES) {
       for (const lit of strengths) {
         card.style.setProperty('--hue', String(hue));
         card.style.setProperty('--lit', `${lit * 100}%`);
-        const bg = getComputedStyle(card).backgroundColor, ink = getComputedStyle(sub).color;
-        const b = colourOf(bg), i = colourOf(ink);
-        const r = Math.min(ratio(b.Y, i.Y), ratio(b.clippedY, i.clippedY));
-        if (r < out.ratio) out = { ratio: r, hue, lit, bg, ink, strengths };
+        const bg = getComputedStyle(card).backgroundColor;
+        const b = colourOf(bg);
+        // Every line the card sets in --ink-2 (its facts, the day, the next item, how soon, her last line): the worst of them is the card's.
+        for (const sub of subs) {
+          const ink = getComputedStyle(sub).color;
+          const i = colourOf(ink);
+          const r = Math.min(ratio(b.Y, i.Y), ratio(b.clippedY, i.clippedY));
+          if (r < out.ratio) out = { ...out, ratio: r, hue, lit, bg, ink };
+          if (!out.inks.includes(ink)) out.inks.push(ink);
+        }
       }
     }
     return out;
@@ -409,9 +430,10 @@ test('the secondary words on a trip card keep WCAG AA contrast on all ten hues a
   const dark = await worst();
   test.info().annotations.push({ type: 'contrast', description: `light ${light.ratio.toFixed(2)}:1 (hue ${light.hue}, ${light.lit}); dark ${dark.ratio.toFixed(2)}:1 (hue ${dark.hue}, ${dark.lit})` });
   console.log(`worst --ink-2 contrast: light ${light.ratio.toFixed(3)}:1 at hue ${light.hue}, ${light.lit} (${light.bg} under ${light.ink}); dark ${dark.ratio.toFixed(3)}:1 at hue ${dark.hue}, ${dark.lit} (${dark.bg} under ${dark.ink})`);
-  expect(light.strengths).toEqual([3 / 4, 1, 1 / 8, 1 / 4, 3 / 8, 1 / 2]);
-  expect(light.ink).toBe('rgb(91, 96, 117)'); // --ink-2, light
-  expect(dark.ink).toBe('rgb(162, 167, 184)'); // --ink-2, dark
+  expect(light.strengths).toEqual([3 / 4, 1, 1 / 4, 3 / 8, 1 / 2, 1 / 8]);
+  expect(light.subs).toBeGreaterThan(1); // the facts and the day: more than the first
+  expect(light.inks).toEqual(['rgb(91, 96, 117)']); // --ink-2, light, on every one
+  expect(dark.inks).toEqual(['rgb(162, 167, 184)']); // --ink-2, dark
   expect(light.ratio).toBeGreaterThanOrEqual(4.5);
   expect(dark.ratio).toBeGreaterThanOrEqual(4.5);
 });

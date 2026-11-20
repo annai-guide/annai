@@ -2673,7 +2673,7 @@ wfhszm	ok	Archived ({0})	已归档（{0}）	src/ui/screens/trips.js:83	{0} = arc
 in89ko	ok	No backup yet. Export everything from Settings, or set up automatic backups there.	还没有备份。可以在设置中点“导出全部”，或在那里设置自动备份。	src/ui/screens/trips.js:86	
 1rrn1xn	ok	Day {0} of {1}	第 {0} 天，共 {1} 天	src/ui/screens/trips.js:220	{0} = d.day; {1} = d.of
 1q78pfk#other	ok	# files waiting to be read	# 个文件待读取	src/ui/screens/trips.js:237	plural; # = unread; English: "# file waiting to be read" (one), "# files waiting to be read" (other); Note: on a trip's card: files Shiori moved there that she hasn't read there yet.
-152lnj5	ok	Use real dates for the start and end.	请填写有效的开始和结束日期。	src/ui/screens/trips.js:294	
+152lnj5	ok	Use real dates for the start and end.	请填写有效的开始和结束日期。	src/ui/screens/trips.js:299	
 ric74d	ok	Checking annai and its plugins…	正在检查 annai 及其插件…	src/ui/screens/updates.js:18	
 1mk4lgq	ok	annai hasn't checked since it started.	annai 启动后还没有检查过。	src/ui/screens/updates.js:19	
 cmuwtk	ok	Last checked {0}.	上次检查：{0}。	src/ui/screens/updates.js:19	{0} = relTime(checkedAt, now)

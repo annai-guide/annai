@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { HUES, hueOf, stepOf, litOf } from '../../src/ui/screens/trips.js';
+import { HUES, STEPS, hueOf, stepOf, litOf } from '../../src/ui/screens/trips.js';
 import { linesSaid } from '../../src/core/scopes.js';
 import { createMemoryStore } from '../fakes/store-memory.js';
 
@@ -16,6 +16,17 @@ test("a trip's hue is one of the ten, the same for one `created` at every call",
   assert.equal(new Set(HUES).size, 10);
 });
 
+test("a trip's hue for a given `created` never changes: a changed hash would recolour every trip on every phone", () => {
+  // Values from the hash as released with this design: a trip made at these moments keeps these hues, as does its copy, however it comes (an
+  // import, a restore on a new phone) with its `created`; one entry for each of the ten hues.
+  const expected = /** @type {[number, number][]} */ ([
+    [0, 25], [1, 140], [1_763_549_000_091, 25], [1_763_535_000_065, 60], [1_763_626_000_234, 95], [1_763_570_000_130, 140], [1_763_591_000_169, 175],
+    [1_763_619_000_221, 210], [1_763_507_000_013, 245], [1_763_500_000_000, 280], [1_763_563_000_117, 315], [1_763_521_000_039, 350],
+  ]);
+  for (const [created, hue] of expected) assert.equal(hueOf(created), hue, `created ${created}`);
+  assert.deepEqual([...new Set(expected.map(([, hue]) => hue))].sort((a, b) => a - b), [...HUES]);
+});
+
 test('trips made close together, or a whole second, minute or day apart, spread over all ten hues, and neighbours share one about one time in ten', () => {
   const start = Date.parse('2026-11-19T08:00:00Z');
   for (const apart of [1, 1000, 60_000, 86_400_000]) {
@@ -28,7 +39,7 @@ test('trips made close together, or a whole second, minute or day apart, spread 
       if (hue === hueOf(start + (i + 1) * apart)) same++;
     }
     assert.equal(seen.size, 10, `${apart} ms apart: ${[...seen]}`);
-    // About a tenth each (100 ± 30: three standard deviations), and two trips in a row share a hue about one time in ten (a chance of 1/10 gives
+    // About a tenth each (100 ± 30: about 3.2 standard deviations), and two trips in a row share a hue about one time in ten (a chance of 1/10 gives
     // 100 of 1000 ± 28 at three): Knuth's hash alone gave 608 of 1000 a minute apart.
     for (const [hue, n] of seen) assert.ok(n >= 70 && n <= 130, `${apart} ms apart, hue ${hue}: ${n} of 1000`);
     assert.ok(same <= 130, `${apart} ms apart: ${same} of 1000 neighbours share a hue`);
@@ -40,10 +51,10 @@ test("the lines' steps: none, 1-4, 5-19, 20-79, 80 and more", () => {
   for (const [lines, step] of steps) assert.equal(stepOf(lines), step, `${lines} lines`);
 });
 
-test('how lit a card is by its phase: happening never under 3/4, ahead never nothing, past at half, archived and chats plain', () => {
+test('how lit a card is by its phase: happening never under 3/4, ahead never under 1/4, past at half, archived and chats plain', () => {
   const by = (/** @type {any} */ phase) => [0, 1, 2, 3, 4].map((step) => litOf(phase, step));
   assert.deepEqual(by('happening'), [3 / 4, 3 / 4, 3 / 4, 3 / 4, 1]);
-  assert.deepEqual(by('future'), [1 / 8, 1 / 8, 2 / 8, 3 / 8, 4 / 8]);
+  assert.deepEqual(by('future'), [1 / 4, 1 / 4, 1 / 4, 3 / 8, 1 / 2]);
   assert.deepEqual(by('past'), [0, 1 / 8, 2 / 8, 3 / 8, 4 / 8]);
   assert.deepEqual(by(undefined), [0, 0, 0, 0, 0]); // archived: no row
   assert.deepEqual(by('undated'), [0, 0, 0, 0, 0]); // a chat (drawn as a line, never lit)
@@ -51,20 +62,50 @@ test('how lit a card is by its phase: happening never under 3/4, ahead never not
   assert.ok(Math.min(...by('happening')) > Math.max(...by('past')));
 });
 
-test("linesSaid counts the traveller's lines, typed or heard, by the type index: a set-aside heard line counts too", async () => {
-  const store = createMemoryStore();
-  await store.tx(['events'], 'readwrite', async (t) => {
-    const add = (/** @type {string} */ scope, /** @type {string} */ type, data = {}) => t.appendEvent(scope, { ts: 1, type, actor: type === 'heard' || type === 'msg.user' ? 'user' : 'shiori', data });
-    await add('trip-a', 'msg.user');
-    await add('trip-a', 'msg.user', { from: 'trip-b' }); // a hand-over's copy, as talks counts it
-    await add('trip-a', 'heard');
-    await add('trip-a', 'heard', { dismissed: true }); // set aside: the index can't see it (the design's call)
-    await add('trip-a', 'heard.text');
-    await add('trip-a', 'out.speak');
-    await add('trip-a', 'location');
-    await add('trip-b', 'msg.user');
+/** The memory store, with the entries its log reads give back counted. @param {import('../fakes/store-memory.js').Store} store @returns {{ store: any, read: () => number }} */
+function counting(store) {
+  let n = 0;
+  const tx = (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {(t: any) => any} */ fn) => store.tx(stores, mode, (/** @type {any} */ t) => fn({ ...t, listEvents: async (/** @type {string} */ scope, /** @type {any} */ q) => {
+    const got = await t.listEvents(scope, q);
+    n += got.length;
+    return got;
+  } }));
+  return { store: { ...store, tx }, read: () => n };
+}
+
+/** @param {import('../fakes/store-memory.js').Store} store @param {string} scope @param {[string, number, ...any[]][]} lines [type, how many, data?] in order */
+async function say(store, scope, lines) {
+  await store.tx(['events'], 'readwrite', async (/** @type {any} */ t) => {
+    for (const [type, count, data = {}] of lines) for (let i = 0; i < count; i++) await t.appendEvent(scope, { ts: 1, type, actor: type === 'heard' || type === 'msg.user' ? 'user' : 'shiori', data });
   });
-  assert.equal(await linesSaid(store, 'trip-a'), 4);
-  assert.equal(await linesSaid(store, 'trip-b'), 1);
-  assert.equal(await linesSaid(store, 'trip-c'), 0);
+}
+
+test("linesSaid counts the lines the traveller said, typed or heard, as talks does: a heard line the gate set aside is not one", async () => {
+  const store = createMemoryStore();
+  await say(store, 'trip-a', [['msg.user', 1], ['msg.user', 1, { from: 'trip-b' }], ['heard', 1], ['heard', 1, { dismissed: true, gate: 'chatter' }], ['heard.text', 1], ['out.speak', 1], ['location', 1]]);
+  await say(store, 'trip-b', [['msg.user', 1]]);
+  await say(store, 'trip-d', [['heard', 3, { dismissed: true, gate: 'chatter' }]]); // only chatter: nobody talked here
+  assert.equal(await linesSaid(store, 'trip-a', 80), 3); // a hand-over's copy counts, as talks has it
+  assert.equal(await linesSaid(store, 'trip-b', 80), 1);
+  assert.equal(await linesSaid(store, 'trip-c', 80), 0);
+  assert.equal(await linesSaid(store, 'trip-d', 80), 0);
+});
+
+test('linesSaid counts up to what the top step needs and reads about as many lines, however many a trip has or however many were set aside', async () => {
+  assert.equal(STEPS[STEPS.length - 1], 80); // the trip-colour tests below ask for it
+  const store = createMemoryStore();
+  await say(store, 'long', [['msg.user', 150], ['heard', 150]]);
+  await say(store, 'aside-first', [['heard', 10, { dismissed: true }], ['msg.user', 100]]);
+  await say(store, 'aside-between', [['msg.user', 50], ['heard', 35, { dismissed: true }], ['heard', 40]]);
+  await say(store, 'nearly', [['msg.user', 50], ['heard', 29]]);
+  await say(store, 'nearly-aside', [['msg.user', 50], ['heard', 40, { dismissed: true }], ['heard', 29]]);
+  /** @type {[string, number, number][]} scope, its count, the most entries read */
+  const cases = [['long', 80, 80], ['aside-first', 80, 90], ['aside-between', 80, 115], ['nearly', 79, 79], ['nearly-aside', 79, 119], ['none', 0, 0]];
+  for (const [scope, said, most] of cases) {
+    const spy = counting(store);
+    assert.equal(await linesSaid(spy.store, scope, 80), said, scope);
+    assert.ok(spy.read() <= most, `${scope}: ${spy.read()} entries read, at most ${most}`);
+  }
+  assert.equal(await linesSaid(store, 'long', 5), 5);
+  assert.equal(await linesSaid(store, 'aside-first', 5), 5);
 });

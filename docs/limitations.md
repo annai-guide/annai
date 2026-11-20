@@ -1113,14 +1113,14 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### Two trips on home can share a colour
 - **Kind:** known limitation.
-- **What the traveller sees:** two trip cards on home can have the same colour, one time in ten for any two trips; their names and dates still tell them apart.
-- **Why:** a trip's colour is one of ten hues, picked from when its record was made (src/ui/screens/trips.js `hueOf`), so it is the same at every draw, on every phone and after an export and import or a restore, with nothing stored. Ten are as many as stay told apart as soft washes in both themes; giving each trip a colour no other has would need a colour stored per trip, chosen against the others, and a trip would change colour when a restore or an import brought one that had it.
+- **What the traveller sees:** two trip cards on home can have the same colour, one time in ten for any two trips; their names and dates still tell them apart. A copy of one trip imported again as a new trip always has its colour, as it has its name and dates.
+- **Why:** a trip's colour is one of ten hues, picked from when its record was made (src/ui/screens/trips.js `hueOf`), so it is the same at every draw, on every phone and after an export and import or a restore, with nothing stored. An import mints a new id but keeps the record's `created` (src/core/archive.js `importArchive`), so a copy imported as new is the same as the first in the one thing the colour reads. Ten are as many as stay told apart as soft washes in both themes; giving each trip a colour no other has would need a colour stored per trip, chosen against the others, and a trip would change colour when a restore or an import brought one that had it.
 - **Revisit when:** a traveller finds two neighbouring trips hard to tell apart, or asks to choose a trip's colour.
 - **Approved:** 2026-11-19, the user's answer "All recommended" to the trip-colour design's questions (its fourth: "Accept all three (Recommended)").
 
 ### A trip card can deepen while home is on screen
 - **Kind:** known limitation.
-- **What the traveller sees:** after a line said through the dock while home is on screen, a trip's card can step to its next strength at one of home's own redraws (a Next item's end, midnight, coming back to annai, a backup's end): its colour deepens; nothing moves, as the card's size never changes with its colour.
+- **What the traveller sees:** after a line reaches a trip while home is on screen (said or typed through the dock, or heard by live mode), the trip's card can step to its next strength at one of home's own redraws (a Next item's end, midnight, coming back to annai, a backup's end, a simulation starting or ending): its colour deepens; nothing moves, as the card's size never changes with its colour.
 - **Why:** how lit a card is is read at each draw of home, as everything else a card shows (its backup, its stamps); keeping each card's strength from home's first draw until the traveller leaves home would be state kept in the page, for a change of shade. A count crosses a step at most four times in a trip's life.
 - **Revisit when:** a traveller notices a card change colour under their eyes and minds it.
 - **Approved:** 2026-11-19, the user's answer "All recommended" to the trip-colour design's questions (its fourth: "Accept all three (Recommended)").
@@ -1128,6 +1128,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 ### A trip imported from someone else arrives lit by its use there
 - **Kind:** known limitation.
 - **What the traveller sees:** a trip imported from someone else's file that holds its history (a Backup of the trip, or a Share with History ticked) arrives on home lit by the lines its maker said in it, as if they were the traveller's own. A Share leaves the history out by default, so a shared trip arrives as one never talked in. Either way it keeps the colour of when it was first made.
-- **Why:** how lit a card is counts the lines in the trip's log by their type alone (src/core/scopes.js `linesSaid`), and an imported history brings its lines as they were; telling this traveller's lines from the maker's would mean reading every line of every card at each draw, or a count stored per trip.
+- **Why:** how lit a card is counts the lines in the trip's log that count as said by the user (src/core/scopes.js `linesSaid`), and an imported history brings its lines as they were, as the user's own. An imported trip carries an `imported` mark (src/core/archive.js `importArchive`) and could count only the lines after it, but a traveller's own restored Backup of a trip carries the same mark, so counting only later lines would unlight their own restored trip; no line says whose it was.
 - **Revisit when:** a traveller who imports shared trips finds an unused one looks used.
 - **Approved:** 2026-11-19, the user's answer "All recommended" to the trip-colour design's questions (its fourth: "Accept all three (Recommended)").
