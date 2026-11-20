@@ -810,7 +810,7 @@ export class Agent {
       for (const w of those) w.fallbacks = [];
       await this.#logWakes(those, newId('w'), false, { log: this.#keptIn(s), trip: s === ME ? null : s });
       this.#leftClosed(s);
-      this.#queue = this.#queue.filter((w) => !those.includes(w)); // a failed write keeps them (typed lines go back: #unsaved, but for one case: docs/limitations.md)
+      this.#queue = this.#queue.filter((w) => !those.includes(w)); // a failed write keeps them (typed lines go back: #unsaved), their reminders shown once
     }
   }
 
@@ -828,12 +828,12 @@ export class Agent {
     };
   }
 
-  /** Writes a wake into a conversation that isn't open. idle() waits for it, and so can the caller. @param {string} scope @param {Wake} w */
+  /** Writes a wake into a conversation that isn't open, and says so if it can't (#notSaved). idle() waits for it, and so can the caller. @param {string} scope @param {Wake} w */
   #keepFor(scope, w) {
     this.#checking++;
     return this.#logWakes([{ ...w, scope }], newId('w'), false, { log: this.#keptIn(scope), trip: scope === ME ? null : scope })
       .then(() => this.#leftClosed(scope))
-      .catch(() => {})
+      .catch((e) => this.#notSaved(e))
       .finally(() => {
         this.#checking--;
         this.#settle();
@@ -1424,14 +1424,14 @@ export class Agent {
     if (owed.length) this.remind(owed, this.scope, { silent: true }).catch(() => {}); // the Stop stops her, not the reminder they set
   }
 
-  /** Wakes that never start a turn, written into the conversation all the same, with a quiet "stopped". @param {Wake[]} wakes */
+  /** Wakes that never start a turn, written into the conversation all the same, with a quiet "stopped"; a write that fails is told (#notSaved). @param {Wake[]} wakes */
   #stopWakes(wakes) {
     if (!wakes.length) return;
     const wakeId = newId('w');
     this.#checking++;
     this.#logWakes(wakes, wakeId, false)
       .then(() => this.#log({ type: 'error', actor: 'system', data: { kind: 'stopped', wake: wakeId, message: STOPPED, quiet: true } }))
-      .catch((e) => console.warn(/* en */ 'a stopped message was not written', e))
+      .catch((e) => this.#notSaved(e))
       .finally(() => {
         this.#checking--;
         this.#settle();
@@ -1952,8 +1952,9 @@ export class Agent {
   }
 
   /**
-   * Reminders annai says or shows by itself (spec §11.3, §17): a card, the words aloud with voice on, and an entry
-   * in the conversation they belong to. They are never in Shiori's voice (§16.1).
+   * Reminders annai says or shows by itself (spec §11.3, §17): a card, the words aloud with voice on, then an entry
+   * in the conversation they belong to. They are never in Shiori's voice (§16.1). Each is shown and said before its entry is written, so a phone
+   * that refuses the entry still shows it; a refused entry is told (#notSaved) and stops nothing: it settles once all are shown.
    * @param {Reminder[]} list @param {string} [scope] their conversation; the open one if not given
    * @param {{ unsaid?: boolean, silent?: boolean, aloud?: boolean, waiting?: boolean }} [o] unsaid: she answered, but her turn ended without telling the user; waiting: it came due
    *   while a question to the user waited for their answer; silent: shown, never said;
@@ -1966,11 +1967,11 @@ export class Agent {
       const text = String(r?.text ?? '').trim();
       if (!text) continue;
       const ev = { type: 'reminder', actor: 'system', data: { watch: String(r.watch ?? ''), text, ...(r.answer ? { answer: true } : {}), ...(r.plan ? { plan: r.plan } : {}), ...(aloud ? { aloud: true } : {}), ...(o.unsaid ? { unsaid: true } : {}), ...(o.waiting ? { waiting: true } : {}) } };
-      await this.#logIn(scope, ev);
       // A plan's reminder in the screens' words, made from its data; anyone else's as they wrote it.
       const shown = r.plan ? planWords(r.plan) : text;
       await this.#notice({ tone: 'info', title: r.answer ? t`Shiori's answer` : t`Reminder`, body: shown });
       if (aloud) this.voice?.say(shown).catch(() => {});
+      await this.#logIn(scope, ev).catch((e) => this.#notSaved(e));
     }
   }
 
@@ -2104,6 +2105,15 @@ export class Agent {
   }
 
   /**
+   * A write nobody waits on failed (a wake kept for a conversation that isn't open, what a Stop stopped, a reminder's entry): a card says so, with the
+   * error, so main.js shows the storage card in its place for a full phone, once for an error the dock showed already (typed words given back). Never rejects.
+   * @param {unknown} e
+   */
+  #notSaved(e) {
+    return this.#notice({ tone: 'warn', title: t`Something for Shiori wasn't saved`, body: String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e), error: e }).catch(() => {});
+  }
+
+  /**
    * The request copies of the photos a user sent (a crop when they chose a part), and the bytes to
    * keep with their message (spec §4.8, §4.9). A path that isn't a stored photo is left out.
    * @param {SentPhoto[]} photos @param {string | null} trip
@@ -2209,8 +2219,12 @@ export class Agent {
     // one a failed turn left owed: never a reminder's or a note's turn, whose writes Undo would then take back.
     this.#handover = wakes.some(owesAnswer) ? this.transcript.owedHandover : null;
     this.#handovers = this.#handover ? [this.#handover] : [];
-    // Its wake's record names the hand-over the turn works on, as join takes it below: the Conversation's Undo line follows it.
-    await this.#logWakes(wakes, wakeId, false, { handover: handoverOf(wakes) ?? this.#handover });
+    // Its wake's record names the hand-over the turn works on, as join takes it below: the Conversation's Undo line follows it. A turn that can't
+    // start (a full phone refuses its first write) shows its wakes' reminders before the failure goes on: no turn takes them up again (spec §11.3).
+    await this.#logWakes(wakes, wakeId, false, { handover: handoverOf(wakes) ?? this.#handover }).catch(async (e) => {
+      await this.remind(wakes.flatMap((w) => w.fallbacks ?? []), this.scope);
+      throw e;
+    });
     const settings = await this.settings();
     const cold = await this.#cold(settings);
     const fresh = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale });

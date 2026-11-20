@@ -3,37 +3,15 @@
 // once. The dock puts them in the one type box, whichever conversation is open (test/e2e/dock-text.spec.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until } from './agent-kit.js';
+import { agentKit, refusing, until } from './agent-kit.js';
 import { useClock } from './clock.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { createTrip, ME } from '../../src/core/scopes.js';
 import { liveKit } from './koe-live-kit.js';
 
 const say = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }] });
-
-/**
- * The kit's store refuses writes as WebKit refuses them on a full disk (UnknownError): every write, the user's lines, or the log
- * entries a test picks; or every transaction, reads too, as Chromium's does at no byte free (the builder's probe of 2026-11-19: a read fails after a failed
- * write); and what the agent hands back.
- * @param {any} k @returns {{ full: (which: 'all' | 'everything' | 'lines' | ((ev: any) => boolean) | null) => void, back: { words: string, error: unknown }[] }}
- */
-function refusing(k) {
-  /** @type {'all' | 'everything' | 'lines' | ((ev: any) => boolean) | null} */
-  let which = null;
-  const refuse = () => Promise.reject(new DOMException('Unable to store record in object store', 'UnknownError'));
-  const real = k.store.tx.bind(k.store);
-  k.store.tx = (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => real(stores, mode, (/** @type {any} */ t) => {
-    if (which === 'everything') return refuse();
-    if (mode !== 'readwrite' || !which) return fn(t);
-    if (which === 'all') return refuse();
-    const refused = which === 'lines' ? (/** @type {any} */ ev) => ev.type === 'msg.user' : which;
-    return fn({ ...t, appendEvent: (/** @type {string} */ scope, /** @type {any} */ ev) => (refused(ev) ? refuse() : t.appendEvent(scope, ev)) });
-  });
-  /** @type {{ words: string, error: unknown }[]} */
-  const back = [];
-  k.agent.on('unsaved', (/** @type {any} */ x) => back.push(x));
-  return { full: (w) => { which = w; }, back };
-}
+/** The card for a write nobody waits on that failed (#notSaved). */
+const NOT_SAVED = "Something for Shiori wasn't saved";
 
 /** The user's lines the log has. @param {any} k */
 const lines = async (k) => (await k.events(['msg.user'])).map((/** @type {any} */ e) => e.data.text);
@@ -199,8 +177,26 @@ test('a typed line sent on to another conversation than the open one (a hand-ove
   store.full('all');
   await k.agent.wake({ kind: 'user', text: 'Is the temple open?', scope: other, typed: true });
   assert.deepEqual(store.back.map((x) => x.words), ['Is the temple open?']);
+  const told = k.notices.filter((n) => n.title === NOT_SAVED);
+  assert.equal(told.length, 1);
+  assert.equal(told[0].error, store.back[0].error, 'the same error: the dock shows the storage card for it, and the notice adds none');
   await k.agent.wake({ kind: 'user', text: 'A plugin said this', scope: other });
   assert.equal(store.back.length, 1, "words that weren't typed in the box aren't given back");
+  assert.equal(k.notices.filter((n) => n.title === NOT_SAVED).length, 2, 'what has no box to go back to is told on a card');
+});
+
+test("a typed line handed to another conversation that fails for a reason other than a full phone (a bug of ours) comes back, and a card says why", async (t) => {
+  useClock(t);
+  const k = await agentKit([[say('Noted.')]]);
+  const store = refusing(k, { error: () => new TypeError('t.appendEvent is not a function') });
+  const other = await createTrip(k.ws, { title: 'Kyoto' });
+  store.full('all');
+  await k.agent.wake({ kind: 'user', text: 'Is the temple open?', scope: other, typed: true });
+  assert.deepEqual(store.back.map((x) => x.words), ['Is the temple open?']);
+  assert.ok(store.back[0].error instanceof TypeError, 'no storage card for it in the dock');
+  const told = k.notices.filter((n) => n.title === NOT_SAVED);
+  assert.deepEqual(told.map((n) => [n.body, n.error]), [['t.appendEvent is not a function', store.back[0].error]], 'the card says what went wrong');
+  assert.equal(k.agent.busy, false);
 });
 
 test('a typed line she is still gathering when the user stops her, refused, comes back', async (t) => {
@@ -214,6 +210,9 @@ test('a typed line she is still gathering when the user stops her, refused, come
   await k.agent.idle();
   assert.deepEqual(store.back.map((x) => x.words), ['Hold on a moment']);
   assert.ok(store.back[0].error instanceof StorageFullError);
+  const told = k.notices.filter((n) => n.title === NOT_SAVED);
+  assert.equal(told.length, 1);
+  assert.equal(told[0].error, store.back[0].error, 'the same error: one storage card');
 });
 
 test("a typed line with nothing open (a race the dock's draft normally prevents), refused, comes back and is not kept to be written there later", async (t) => {

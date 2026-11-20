@@ -1,5 +1,5 @@
 {
-  "build": "9261a2bb5267",
+  "build": "2ce803752cc0",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -39,11 +39,11 @@
     "/src/core/agent/budgets.js": "a7804d7ea6b2",
     "/src/core/agent/compaction.js": "8d4da168a7d3",
     "/src/core/agent/context.js": "2d75cd3369f6",
-    "/src/core/agent/halves.js": "c73db10c33aa",
+    "/src/core/agent/halves.js": "0c4f4bc10056",
     "/src/core/agent/instructions.js": "dc44316f3b47",
     "/src/core/agent/listen.js": "41cbb9219102",
     "/src/core/agent/log.js": "be1f6eedd6f8",
-    "/src/core/agent/loop.js": "84ae727e4331",
+    "/src/core/agent/loop.js": "ddab13ab025d",
     "/src/core/agent/reading.js": "dfcf146e5005",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/her-instructions.js": "b90fb982b678",
@@ -301,8 +301,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "3c6499367082",
-    "/l10n/zh-Hans.json": "b69c72f4fd2f",
-    "/l10n/zh-Hant.json": "b9b9f99190f3"
+    "/l10n/ja.json": "6ecbbd711c37",
+    "/l10n/zh-Hans.json": "c8f076dca5bb",
+    "/l10n/zh-Hant.json": "c3ad425d925b"
   }
 }

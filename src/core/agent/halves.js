@@ -1156,11 +1156,12 @@ export class Halves {
     await this.#quiet();
   }
 
-  /** Both halves are done, and what annai sends between them. */
+  /** Both halves are done, and what annai sends between them, and shows of what a cut left unsaid (its entries are written after its cards). */
   async #quiet() {
     do {
       await this.#routing;
       await Promise.all(this.#sending);
+      await Promise.all(this.#left);
       await this.kokoro.idle();
       await this.koe.idle();
       await this.live.idle();
@@ -1171,14 +1172,15 @@ export class Halves {
    * Takes the user into a trip they chose on annai's card (open_trip's Open), at once, as their tap on its row would: the turn that asked is
    * let go, nothing owed where it was (open's `moved`), and 'went' tells the screens. Then the trip's lines (their
    * line, her recap) go in, for one turn there. If they went elsewhere since (signal: the call's, which a Stop or another open ends), nothing
-   * opens: the lines are written into the trip, in order, and wait there. @param {string} trip @param {import('./loop.js').Wake[]} wakes @param {AbortSignal} signal
+   * opens: the lines are written into the trip, in order, and wait there. An open that fails says so, as one asked for from Trips does (tellNotOpen:
+   * the storage card for a full phone). @param {string} trip @param {import('./loop.js').Wake[]} wakes @param {AbortSignal} signal
    */
   async carryOn(trip, wakes, signal) {
     const opening = !signal.aborted;
     let left = Promise.resolve();
     if (opening) {
       updateAppSettings(this.ws, { activeTrip: trip }).catch(() => {});
-      left = this.open(trip, { moved: true }).catch((e) => console.warn(/* en */ "the trip the user chose didn't open", e));
+      left = this.open(trip, { moved: true }).catch((e) => this.notify({ tone: 'warn', title: t`That conversation didn't open`, body: String(e?.shown ?? e?.message ?? e), error: e }));
       this.#emit('went', { trip });
     }
     // Into its queue at once when it opens (one turn), else written into it, one after the other.

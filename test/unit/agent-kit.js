@@ -260,6 +260,31 @@ export async function rescript(k, script, provider = 'pv-0') {
   await saveProvider(k.ws, p);
 }
 
+/**
+ * The kit's store refuses writes as WebKit refuses them on a full disk (UnknownError): every write, the user's lines, or the log
+ * entries a test picks; or every transaction, reads too, as Chromium's does at no byte free (the builder's probe of 2026-11-19: a read fails after a failed
+ * write); or reads alone, as any other failed open; and what the agent hands back.
+ * @param {any} k @param {{ error?: () => unknown }} [o] error: what each refusal throws, made fresh as a store's is (a TypeError: a bug of ours, not a full phone)
+ * @returns {{ full: (which: 'all' | 'everything' | 'reads' | 'lines' | ((ev: any) => boolean) | null) => void, back: { words: string, error: unknown }[] }}
+ */
+export function refusing(k, { error = () => new DOMException('Unable to store record in object store', 'UnknownError') } = {}) {
+  /** @type {'all' | 'everything' | 'reads' | 'lines' | ((ev: any) => boolean) | null} */
+  let which = null;
+  const refuse = () => Promise.reject(error());
+  const real = k.store.tx.bind(k.store);
+  k.store.tx = (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => real(stores, mode, (/** @type {any} */ t) => {
+    if (which === 'everything' || (which === 'reads' && mode !== 'readwrite')) return refuse();
+    if (mode !== 'readwrite' || !which || which === 'reads') return fn(t);
+    if (which === 'all') return refuse();
+    const refused = which === 'lines' ? (/** @type {any} */ ev) => ev.type === 'msg.user' : which;
+    return fn({ ...t, appendEvent: (/** @type {string} */ scope, /** @type {any} */ ev) => (refused(ev) ? refuse() : t.appendEvent(scope, ev)) });
+  });
+  /** @type {{ words: string, error: unknown }[]} */
+  const back = [];
+  k.agent.on('unsaved', (/** @type {any} */ x) => back.push(x));
+  return { full: (w) => { which = w; }, back };
+}
+
 /** Waits until fn() is true (every 2 ms, at most ms). @param {() => boolean} fn @param {number} [ms] */
 export async function until(fn, ms = 2000) {
   const end = Date.now() + ms;
