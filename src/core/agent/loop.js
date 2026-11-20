@@ -2652,7 +2652,7 @@ export class Agent {
    * Housekeeping within a turn. When it fails a card says why; when the turn can't go on without it
    * (the next request would overflow), an error event ends the turn.
    * @param {'warm' | 'cold'} mode @param {{ forced?: boolean, frozen?: Frozen | null }} o @param {string} wakeId
-   * @returns {Promise<boolean | null>} whether anything was compacted; null: it failed and the turn ends
+   * @returns {Promise<boolean | null>} whether anything was compacted; null: failed (forced) or cut short; the turn ends
    */
   async #tidyUp(mode, o, wakeId) {
     try {
