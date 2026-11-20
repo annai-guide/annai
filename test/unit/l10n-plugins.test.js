@@ -94,13 +94,13 @@ test("what the tools answer, and why they failed, stays English under Japanese s
   assert.match(said[5], /^Open-Meteo didn't answer .*sunrise/);
   assert.equal(said[6], 'Nothing matches "tide".');
   // web_search names the providers it passed over as Shiori is told them, though Settings → Tools shows them in Japanese.
-  cooldowns.rest('wiki');
+  cooldowns.rest('exa');
   try {
     const why = await failure(k.run('web_search', { query: 'tide pools' }, down));
-    assert.match(why, /^Web search didn't work: .*Jina Search needs a key \(Settings → Tools\).*Wikivoyage, Wikipedia and Nominatim is resting after a failure/);
+    assert.match(why, /^Web search didn't work: .*Jina Search needs a key \(Settings → Tools\).*Exa is resting after a failure/);
     for (const x of said.concat(why)) assert.doesNotMatch(x, JA, x);
   } finally {
-    for (const id of ['exa', 'parallel', 'firecrawl', 'wiki']) cooldowns.clear(id);
+    for (const id of ['exa', 'parallel', 'firecrawl']) cooldowns.clear(id);
   }
   const search = Object.fromEntries(k.registry.list('search').map((/** @type {any} */ p) => [p.id, p]));
   assert.equal(search.wiki.name, 'Wikivoyage, Wikipedia and Nominatim');
@@ -117,14 +117,14 @@ test("a search provider's name and why are Shiori's, in English; shown is the sc
   const search = Object.fromEntries(k.registry.list('search').map((/** @type {any} */ p) => [p.id, p]));
   assert.equal(await stateOf(search.tides), 'needs a key');
   assert.match(await stateOf(search.jina), JA);
-  cooldowns.rest('wiki');
+  cooldowns.rest('exa');
   try {
     const why = await failure(k.run('web_search', { query: 'tide pools' }, down));
     assert.match(why, /Tide Search needs a key;/);
     assert.match(why, /Jina Search needs a key \(Settings → Tools\);/);
     assert.doesNotMatch(why, JA);
   } finally {
-    for (const id of ['exa', 'parallel', 'firecrawl', 'wiki']) cooldowns.clear(id);
+    for (const id of ['exa', 'parallel', 'firecrawl']) cooldowns.clear(id);
   }
 });
 

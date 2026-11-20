@@ -1,6 +1,8 @@
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes, createTrip } from '../../src/core/scopes.js';
+import { readFile } from 'node:fs/promises';
+import { meters } from '../../src/core/live/geo.js';
 
 /** Two Big Sur stops, 21 km apart. */
 export const STOPS = Object.freeze({
@@ -8,14 +10,13 @@ export const STOPS = Object.freeze({
   nepenthe: { id: 'nepenthe', title: 'Lunch at Nepenthe', fixed: true, start: { at: '2026-11-27T20:00:00Z', tz: 'America/Los_Angeles' }, place: { name: 'Nepenthe', lat: 36.2213, lng: -121.7567 } },
 });
 
-/** A trip with the two stops. */
-export async function packTrip() {
+/** A trip with the two stops, or with other plan items. @param {Record<string, any>} [plan] plan files by path */
+export async function packTrip(plan = { '/plan/bixby.json': STOPS.bixby, '/plan/nepenthe.json': STOPS.nepenthe }) {
   const store = createMemoryStore();
   const ws = new Workspace(store);
   await ensureBaseScopes(ws);
   const trip = await createTrip(ws, { title: 'Big Sur' });
-  await ws.write(trip, '/plan/bixby.json', STOPS.bixby, { author: 'user' });
-  await ws.write(trip, '/plan/nepenthe.json', STOPS.nepenthe, { author: 'user' });
+  for (const [path, item] of Object.entries(plan)) await ws.write(trip, path, item, { author: 'user' });
   return { store, ws, trip };
 }
 
@@ -31,9 +32,9 @@ export function overpass(url, init) {
   return { elements: [{ type: 'way', id: 4, center: { lat: 36.2203, lon: -121.7612 }, tags: { name: 'Nepenthe', amenity: 'restaurant', website: 'https://www.nepenthe.com/' } }, { type: 'node', id: 5, lat: 36.2381, lon: -121.8162, tags: { name: 'Pfeiffer Beach', natural: 'beach' } }] };
 }
 
-/** What Wikipedia has near Bixby and near Nepenthe. @param {string} url */
+/** What English Wikipedia has near Bixby and near Nepenthe, in the shape of its real answers (fixtures/places/wiki-pack-*.json). @param {string} url */
 export function wikipedia(url) {
-  const page = (/** @type {string} */ title, /** @type {number} */ lat, /** @type {number} */ lon, /** @type {string} */ extract) => ({ title, coordinates: [{ lat, lon }], extract });
+  const page = (/** @type {string} */ title, /** @type {number} */ lat, /** @type {number} */ lon, /** @type {string} */ extract) => ({ ns: 0, title, coordinates: [{ lat, lon, primary: true, globe: 'earth' }], pageprops: { wikibase_item: `Q${title.length}${Math.round(lat * 100)}` }, extract });
   if (url.includes('ggscoord=36.3715')) {
     return { query: { pages: [page('Bixby Creek Bridge', 36.3715, -121.9017, 'Bixby Creek Bridge is a reinforced concrete open-spandrel arch bridge in Big Sur.'), page('Big Sur', 36.2704, -121.8081, 'Big Sur is a rugged and mountainous section of the Central Coast of California.')] } };
   }
@@ -43,14 +44,22 @@ export function wikipedia(url) {
 const GUIDES = /** @type {Record<string, string>} */ ({
   'Big Sur': 'Big Sur is a region.\n\n== Understand ==\nRugged coast.\n\n== Eat ==\nNepenthe.',
   'Cambria (California)': 'Cambria is a town.\n\n== See ==\nMoonstone Beach.',
+  'San Simeon': 'San Simeon is a town.\n\n== See ==\nHearst Castle.',
 });
+/** Titles that are redirects to a guide. */
+const REDIRECTS = /** @type {Record<string, string>} */ ({ 'Hearst Castle': 'San Simeon' });
 
-/** Wikivoyage: which titles it has (Hearst Castle leads to San Simeon), and their text. @param {string} url */
+/**
+ * Wikivoyage: which titles it has (Hearst Castle leads to San Simeon), and their text. With redirects=1 its pages are the targets of the titles
+ * asked, as MediaWiki lists them, not the titles themselves. @param {string} url
+ */
 export function wikivoyage(url) {
   const u = new URL(url);
   const titles = (u.searchParams.get('titles') ?? '').split('|');
   if (u.searchParams.get('prop') === 'pageprops') {
-    return { query: { redirects: [{ from: 'Hearst Castle', to: 'San Simeon' }], pages: titles.map((t) => (GUIDES[t] ? { title: t } : t === 'Nepenthe' ? { title: t, pageprops: { disambiguation: '' } } : { title: t, missing: true })) } };
+    const redirects = titles.filter((t) => REDIRECTS[t]).map((t) => ({ from: t, to: REDIRECTS[t] }));
+    const pages = [...new Set(titles.map((t) => REDIRECTS[t] ?? t))].map((t) => (GUIDES[t] ? { title: t } : t === 'Nepenthe' ? { title: t, pageprops: { disambiguation: '' } } : { title: t, missing: true }));
+    return { query: { ...(redirects.length ? { redirects } : {}), pages } };
   }
   return { query: { pages: [{ title: titles[0], extract: GUIDES[titles[0]] ?? '' }] } };
 }
@@ -67,13 +76,33 @@ export function services(o = {}) {
     asked.push({ url, init, at: Date.now() });
     const host = new URL(url).hostname;
     // Every Overpass server answers at /api/interpreter: overpass-api.de's, and VK's at maps.mail.ru/osm/tools/overpass.
-    const answer = url.endsWith('/api/interpreter') ? o.overpass ?? overpass : host === 'en.wikipedia.org' ? o.wikipedia ?? wikipedia : host === 'en.wikivoyage.org' ? o.wikivoyage ?? wikivoyage : () => new Response('', { status: 404 });
+    // Wikipedia at any edition's host: the stand-in for Big Sur answers in English only, as an edition with nothing there answers.
+    const answer = url.endsWith('/api/interpreter') ? o.overpass ?? overpass : host.endsWith('.wikipedia.org') ? o.wikipedia ?? (host === 'en.wikipedia.org' ? wikipedia : () => ({ batchcomplete: true }))
+      : host === 'en.wikivoyage.org' ? o.wikivoyage ?? wikivoyage : () => new Response('', { status: 404 });
     const a = await answer(url, init);
     return a instanceof Response ? a : new Response(JSON.stringify(a));
   };
   return { fetch, asked };
 }
 
+/** Wikipedia's real answers to the pack's query at Yufuin Station, 10 km, 20 at most, by edition (2026-11-19; text under CC BY-SA 4.0). */
+export const YUFUIN_WIKI = Object.fromEntries(await Promise.all(['ja', 'en'].map(async (e) => [e, JSON.parse(await readFile(new URL(`../fixtures/places/wiki-pack-yufuin-${e}.json`, import.meta.url), 'utf8'))])));
+export const YUFUIN = { lat: 33.2627, lng: 131.3553 };
+export const yufuinStop = (/** @type {string} */ id, /** @type {{ lat: number, lng: number }} */ at, /** @type {number} */ hour) => ({ id, title: id, fixed: false, start: { at: `2026-12-01T0${hour}:00:00Z`, tz: 'Asia/Tokyo' }, place: { name: id, ...at } });
+/**
+ * An edition's saved answer by the host asked, as geosearch gives it for the point asked about: the saved articles (taken at Yufuin Station) within
+ * the radius of the request's point, nearest first, at most its limit; less the pages named. @param {string} url @param {string[]} [without]
+ */
+export const yufuinAnswer = (url, without = []) => {
+  const u = new URL(url).searchParams;
+  const [lat, lng] = String(u.get('ggscoord')).split('|').map(Number);
+  const r = YUFUIN_WIKI[new URL(url).hostname.split('.')[0]];
+  if (!r) return { batchcomplete: true };
+  const dist = (/** @type {any} */ p) => meters({ lat, lng }, { lat: p.coordinates[0].lat, lng: p.coordinates[0].lon });
+  const pages = r.query.pages.filter((/** @type {any} */ p) => !without.includes(p.title) && dist(p) <= Number(u.get('ggsradius')))
+    .sort((a, b) => dist(a) - dist(b)).slice(0, Number(u.get('ggslimit')));
+  return { ...r, query: { pages } };
+};
 /** Shiori as the pack keeper sees her: the open trip, and an "open" event. @param {string | null} target */
 export function fakeAgent(target) {
   /** @type {Set<() => void>} */

@@ -1,16 +1,19 @@
 import { planFor, estimate, likelyGuides } from './plan.js';
-import { downloadPack, readManifest, pathOf, DIR, MANIFEST, STALE_MS } from './download.js';
+import { downloadPack, readManifest, wanted, lacksIds, DIR, MANIFEST, STALE_MS } from './download.js';
 import { loadPack } from './read.js';
 import { tracedFetch } from '../agent/net.js';
 import { logEvent } from '../events.js';
 import { PLAN_FILE } from '../plan.js';
+import { APP } from '../settings.js';
+import { SYS_SETTINGS } from '../scopes.js';
+import { readingEditions } from '../wiki.js';
 
 /**
  * Keeps each trip's offline pack (spec §11.5): what it holds and would take, downloading it when
  * asked, and, once a trip has one, bringing it up to date by itself on Wi-Fi while annai and that
  * trip are open ("whenever the phone is on Wi-Fi"): when the plan changed, parts are missing, or it
  * is a month old; by itself at most once an hour. It names places from the open trip's pack for
- * live mode.
+ * live mode, in the editions the traveller's languages read.
  * @typedef {import('./download.js').Manifest} Manifest
  * @typedef {import('./download.js').Progress} Progress
  * @typedef {'plan' | 'missing' | 'old' | null} Why
@@ -33,28 +36,37 @@ export class PackKeeper {
   #abort = null;
   /** @type {Promise<Manifest> | null} */
   #job = null;
-  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  /** @type {ReturnType<typeof setTimeout> | undefined} the one next look at the pack, due at #due (Date.now()'s ms) */
   #timer;
+  #due = 0;
+  /** When the plan last changed: a look waits until it has been quiet. */
+  #changedAt = 0;
   /** @type {Map<string, number>} when annai last updated each trip's pack by itself */
   #autoAt = new Map();
   /** The plan changed while a download ran: look again once it ends, past the hourly gate. */
   #again = false;
-  /** @type {import('./read.js').Pack | null} the open trip's pack, for names */
+  /** @type {{ pack: import('./read.js').Pack, editions: string[] } | null} the open trip's pack, for names */
   #named = null;
+  /** @type {string | undefined} the editions the languages read as last seen: a settings write that leaves them as they are changes nothing here */
+  #seen;
   /** @type {(() => unknown)[]} */
   #offs;
 
   /**
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace,
    *   agent: { target: string | null, on: (kind: 'open', fn: () => void) => () => unknown },
-   *   version: string, connection: () => string, visible?: () => boolean, fetch?: import('./download.js').Fetch,
-   *   quietMs?: number, pokeMs?: number, gapMs?: number, now?: () => number, maxBytes?: number }} o
-   *   connection: 'wifi', 'cellular', 'unknown' or 'offline' (ui/platform.js connectionOf); fetch: for tests, instead of the traced one
+   *   version: string, locale: string, connection: () => string, visible?: () => boolean, fetch?: import('./download.js').Fetch,
+   *   quietMs?: number, pokeMs?: number, autoMs?: number, gapMs?: number, now?: () => number, maxBytes?: number }} o
+   *   locale: the phone's; connection: 'wifi', 'cellular', 'unknown' or 'offline' (ui/platform.js connectionOf); fetch: for tests, instead of the traced one;
+   *   autoMs: the hour between updates by itself, for tests
    */
   constructor(o) {
     this.o = o;
     this.#offs = [o.ws.onChange((c) => this.#changed(c)), o.agent.on('open', () => this.#opened())];
     this.#loadNames();
+    this.#editions().then((e) => {
+      this.#seen ??= e.join(' ');
+    }, () => {});
   }
 
   /** @param {() => void} fn @returns {() => void} */
@@ -65,6 +77,10 @@ export class PackKeeper {
     };
   }
 
+  #editions() {
+    return readingEditions(this.o.ws, this.o.locale);
+  }
+
   /** What a trip's pack has, and what downloading would take now. @param {string} scope @returns {Promise<PackStatus>} */
   async status(scope) {
     const { ws } = this.o;
@@ -72,7 +88,11 @@ export class PackKeeper {
     const plan = await planFor(ws, scope);
     const manifest = await readManifest(ws, scope);
     const have = new Set((await ws.list(scope, DIR)).map((f) => f.path));
-    const missing = plan.parts.filter((p) => !have.has(pathOf(p)));
+    const editions = await this.#editions();
+    const want = wanted(plan, editions);
+    const kept = new Map((manifest?.files ?? []).map((f) => [f.path, f]));
+    // A file the manifest doesn't name is missing too: a download that stopped before its manifest left it.
+    const missing = want.filter((w) => !have.has(w.path) || !kept.has(w.path) || lacksIds(kept.get(w.path), editions));
     // Old by its oldest part: an update that brought only what the plan changed leaves the rest as old as it was.
     const oldest = manifest ? Math.min(Date.parse(manifest.at), ...manifest.files.map((f) => f.at || Infinity)) : NaN;
     const old = manifest !== null && !(now - oldest <= STALE_MS);
@@ -85,7 +105,7 @@ export class PackKeeper {
     const guides = manifest?.guides.length ? 0 : likelyGuides(plan);
     return {
       stops: plan.stops.length, cut: plan.cut, manifest, why,
-      estimate: why === 'old' ? estimate(plan.parts, likelyGuides(plan)) : estimate(missing, guides),
+      estimate: why === 'old' ? estimate(want, likelyGuides(plan)) : estimate(missing, guides),
       running: this.running?.scope === scope ? this.running : null,
     };
   }
@@ -103,14 +123,14 @@ export class PackKeeper {
     this.#abort = abort;
     this.running = { scope, done: 0, total: 0, label: '' };
     this.#emit();
-    this.#job = downloadPack({
-      ws, scope, version, signal: abort.signal, gapMs: this.o.gapMs, now: this.o.now, maxBytes: this.o.maxBytes,
+    this.#job = this.#editions().then((editions) => downloadPack({
+      ws, scope, version, editions, signal: abort.signal, gapMs: this.o.gapMs, now: this.o.now, maxBytes: this.o.maxBytes,
       fetch: this.o.fetch ?? tracedFetch(store, scope, { tool: 'offline-pack' }),
       onProgress: (p) => {
         this.running = { scope, ...p };
         this.#emit();
       },
-    }).then(async (m) => {
+    })).then(async (m) => {
       const data = { files: m.files.length, bytes: m.bytes, guides: m.guides.length, failed: m.failed.length, stopped: m.stopped, full: m.full, auto };
       await logEvent(store, scope, { type: 'pack.download', actor: 'system', data }).catch(() => {});
       return m;
@@ -142,7 +162,7 @@ export class PackKeeper {
 
   /** The nearest place the open trip's pack names within 500 m, for live mode. @param {{ lat: number, lng: number }} p */
   name(p) {
-    return this.#named?.name(p) ?? null;
+    return this.#named?.pack.name(p, this.#named.editions) ?? null;
   }
 
   dispose() {
@@ -170,25 +190,42 @@ export class PackKeeper {
 
   /** @param {{ scope: string, path: string }} c */
   #changed(c) {
+    // The languages (app settings) change the names and may need another edition's files: looked at when the editions changed.
+    if (c.scope === SYS_SETTINGS && c.path === APP) {
+      this.#loadNames();
+      this.#editions().then((editions) => {
+        const now = editions.join(' ');
+        if (now !== this.#seen) this.#planChanged();
+        this.#seen = now;
+      }, () => {});
+      return;
+    }
     if (c.scope !== this.o.agent.target) return;
     if (c.path === MANIFEST) this.#loadNames();
-    else if (PLAN_FILE.test(c.path) || c.path === '/trip.json') {
-      if (this.#job) this.#again = true; // a plan change in the middle of a download: looked at when it ends
-      this.#schedule(this.o.quietMs ?? QUIET_MS);
-    }
+    else if (PLAN_FILE.test(c.path) || c.path === '/trip.json') this.#planChanged();
+  }
+
+  #planChanged() {
+    this.#changedAt = Date.now();
+    if (this.#job) this.#again = true; // a change in the middle of a download: looked at when it ends
+    this.#schedule(this.o.quietMs ?? QUIET_MS);
   }
 
   #loadNames() {
     const trip = this.o.agent.target;
-    loadPack(this.o.ws, trip).then((pack) => {
-      if (this.o.agent.target === trip) this.#named = pack;
+    Promise.all([loadPack(this.o.ws, trip), this.#editions()]).then(([pack, editions]) => {
+      if (this.o.agent.target === trip) this.#named = pack && { pack, editions };
     }, () => {});
   }
 
-  /** @param {number} ms */
+  /** Proposes a look at the pack in ms; the earliest proposed stands, and #auto sets it later when it is too early. @param {number} ms */
   #schedule(ms) {
+    const at = Date.now() + ms;
+    if (this.#timer && this.#due <= at) return;
     clearTimeout(this.#timer);
+    this.#due = at;
     this.#timer = setTimeout(() => {
+      this.#timer = undefined;
       this.#auto().catch(() => {});
     }, ms);
   }
@@ -197,10 +234,15 @@ export class PackKeeper {
     const scope = this.o.agent.target;
     const now = (this.o.now ?? Date.now)();
     if (!scope || this.#job || this.o.connection() !== 'wifi' || !(this.o.visible?.() ?? true)) return;
-    if (now - (this.#autoAt.get(scope) ?? -Infinity) < AUTO_EVERY_MS) return;
     const s = await this.status(scope);
     if (!s.manifest || !s.why) return;
+    // Too early (the plan is still changing, or the hour isn't out): looked at then.
+    const every = this.o.autoMs ?? AUTO_EVERY_MS;
+    const wait = Math.max((this.o.quietMs ?? QUIET_MS) - (Date.now() - this.#changedAt), every - (now - (this.#autoAt.get(scope) ?? -Infinity)));
+    if (wait > 0) return this.#schedule(wait);
     this.#autoAt.set(scope, now);
-    await this.download(scope, { auto: true });
+    const m = await this.download(scope, { auto: true });
+    // A run that failed in part tries again by itself, once an hour at most.
+    if (m.failed.length) this.#schedule(every);
   }
 }

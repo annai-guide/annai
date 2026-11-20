@@ -92,6 +92,7 @@ test("a typed address, prices and a server's answer: the screens' words, and Eng
 test("an offline pack's failure: which part and why, in Japanese from the data it keeps", () => {
   assert.equal(partWords({ source: 'osm', place: { how: 'between', names: ['Bixby', 'Nepenthe'] } }), 'BixbyとNepentheの間のOpenStreetMap');
   assert.equal(failWords({ code: 'osm', inner: { code: 'status', where: 'overpass.example', status: 504 }, message: 'x' }), 'OpenStreetMapから応答がありませんでした（overpass.exampleが504を返しました）。');
+  assert.equal(failWords({ code: 'osm', inner: null, message: null }), 'OpenStreetMapから応答がありませんでした（このダウンロードでは、どのサーバーにももう問い合わせません）。');
 });
 
 // Review 1: one said vocabulary for servers (answer.js), kept by holds and a pack's failures, and an export's failure (archive.js).
@@ -114,7 +115,7 @@ test("a storage plugin's server that can't be reached while the phone is online:
 
 test("an offline pack whose servers can't be reached: its failure keeps what it was, and the panel says it in Japanese", async () => {
   const { ws, trip } = await packTrip();
-  const m = await downloadPack({ ws, scope: trip, fetch: tracedFetch(ws.store, trip, { tool: 'offline-pack' }, down), version: '9.9.9', gapMs: 0, busyMs: 1 });
+  const m = await downloadPack({ ws, scope: trip, fetch: tracedFetch(ws.store, trip, { tool: 'offline-pack' }, down), version: '9.9.9', editions: ['en'], gapMs: 0, busyMs: 1 });
   const [f] = m.failed;
   assert.equal(f.said?.code, 'osm');
   assert.deepEqual(/** @type {any} */ (f.said).inner, { code: 'unreachable', where: 'lz4.overpass-api.de', info: 'Failed to fetch' });

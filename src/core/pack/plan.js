@@ -32,9 +32,11 @@ export const MAX_GUIDES = 12;
 
 /**
  * Rough sizes for the estimate shown before downloading, from a real Big Sur pack in October
- * 2026 (143 KB for 19 parts and 4 guides), rounded up: towns are denser than the coast.
+ * 2026 (143 KB for 19 parts and 4 guides), rounded up: towns are denser than the coast. wikiEdition: a Wikipedia
+ * part in another edition than English, from real parts of 2026-11-19 (Japanese at Yufuin 6.1 KB, Chinese at Shilin
+ * Night Market 10.8 KB, 20 summaries each: 3 bytes a character), rounded up.
  */
-export const SIZES = Object.freeze({ osmPerKm: 512, osmStop: 10 * 1024, wikipedia: 6 * 1024, guide: 25 * 1024 });
+export const SIZES = Object.freeze({ osmPerKm: 512, osmStop: 10 * 1024, wikipedia: 6 * 1024, wikiEdition: 11 * 1024, guide: 25 * 1024 });
 
 const r4 = (/** @type {number} */ x) => Math.round(x * 1e4) / 1e4;
 const pt = (/** @type {LatLng} */ p) => ({ lat: p[0], lng: p[1] });
@@ -159,10 +161,13 @@ export async function planFor(ws, scope) {
   return packPlan({ trip, items });
 }
 
-/** About how many bytes some parts and guides take (spec §11.5: shown before downloading). @param {Part[]} parts @param {number} guides */
-export function estimate(parts, guides) {
+/**
+ * About how many bytes some of a pack's files and guides take (spec §11.5: shown before downloading).
+ * @param {{ part: Part, edition: string | null }[]} files as wanted() in download.js gives them @param {number} guides
+ */
+export function estimate(files, guides) {
   let n = guides * SIZES.guide;
-  for (const p of parts) n += p.kind === 'wikipedia' ? SIZES.wikipedia : p.km > 0 ? p.km * SIZES.osmPerKm : SIZES.osmStop;
+  for (const { part: p, edition } of files) n += p.kind === 'wikipedia' ? (edition === 'en' ? SIZES.wikipedia : SIZES.wikiEdition) : p.km > 0 ? p.km * SIZES.osmPerKm : SIZES.osmStop;
   return Math.round(n);
 }
 

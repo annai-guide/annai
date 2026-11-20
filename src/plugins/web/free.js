@@ -1,7 +1,9 @@
 import { McpClient, toolOutput } from '../mcp/client.js';
 import { answerJSON } from '../../core/answer.js';
-import { nominatimTurn } from '../../core/nominatim.js';
-import { cut } from '../../core/web-search.js';
+import { nominatimTurn, nominatimLanguages } from '../../core/nominatim.js';
+import { editionsOf, articleUrl, pageUrl, wikiSaid } from '../../core/wiki.js';
+import { cut, CHAIN } from '../../core/web-search.js';
+import { anySignal } from '../../core/signals.js';
 import { t } from '../../core/l10n.js';
 
 /**
@@ -13,6 +15,12 @@ import { t } from '../../core/l10n.js';
 
 /** The longest a free service has to answer before the next one is tried. */
 const LIMIT_MS = 12_000;
+/**
+ * The whole floor's time, every part and try. The chain keeps CHAIN.reserve (10 s) for the floor (web/index.js reserveFor); the floor ends a
+ * second inside it (its start and the chain's bookkeeping take milliseconds), so the chain's stop never drops its rows. At 2.5 s an answer
+ * Wikipedia's three tries in series (7.5 s) finish inside it; the guide's four (10 s) are cut, the other rows come.
+ */
+export const FLOOR_MS = { ms: CHAIN.reserve - 1_000 };
 
 /**
  * A failure in words, keeping the HTTP status and kind the chain judges it by; a stop stays a stop.
@@ -111,26 +119,41 @@ const STOP = new Set(['the', 'and', 'for', 'are', 'was', 'does', 'what', 'when',
 const keywords = (query) => (query.toLowerCase().match(/[\p{L}\p{N}]{2,}/gu) ?? []).filter((w) => !STOP.has(w));
 
 /**
- * The floor: a Wikivoyage guide's lines that answer the query, Nominatim's official websites for the place, and
- * Wikipedia's matching articles. Encyclopedic, not web search; always reachable, and credited.
- * @type {import('../../core/web-search.js').SearchProvider}
+ * The floor: a Wikivoyage guide's lines that answer the query, Nominatim's official websites for the place, and Wikipedia's matching
+ * articles, in the reading order. Encyclopedic, not web search; always reachable, and credited.
+ * @param {() => Promise<import('../../core/languages.js').Language[]>} orderOf
+ * @returns {import('../../core/web-search.js').SearchProvider}
  */
-export const KNOWLEDGE = {
+export const knowledgeFloor = (orderOf) => ({
   id: 'wiki', name: /* en */ 'Wikivoyage, Wikipedia and Nominatim', shown: t`Wikivoyage, Wikipedia and Nominatim`, kind: 'knowledge', always: true, limitMs: LIMIT_MS,
+  /** @param {string} query @param {{ fetch: any, signal: AbortSignal, limit: number }} c */
   async search(query, { fetch: get, signal, limit }) {
+    // One time for the whole floor, from the start of its search (the settings read counts): what has answered by then is its answer.
+    const late = AbortSignal.timeout(FLOOR_MS.ms);
+    const stop = anySignal([signal, late]);
+    const order = await orderOf();
     const found = keywords(query);
     const want = found.length ? found : [query.trim().toLowerCase()];
     const enc = encodeURIComponent;
-    /** @param {string} url */
-    const json = async (url) => {
-      const res = await get(url, { signal, referrerPolicy: 'origin' });
-      if (!res.ok) throw Object.assign(new Error(`${new URL(url).hostname} answered ${res.status}`), { status: res.status });
-      return answerJSON(res, new URL(url).hostname);
+    /** @param {string} url @param {() => Promise<void>} [first] a wait first */
+    const json = async (url, first) => {
+      const host = new URL(url).hostname;
+      try {
+        await first?.();
+        const res = await get(url, { signal: stop, referrerPolicy: 'origin' });
+        if (!res.ok) throw Object.assign(new Error(`${host} answered ${res.status}`), { status: res.status });
+        const data = await answerJSON(res, host);
+        const said = wikiSaid(data);
+        if (said) throw new Error(`${host} said: ${said}`);
+        return data;
+      } catch (e) {
+        throw late.aborted ? Object.assign(new Error(`${host} didn't answer in time`), { late: true }) : e;
+      }
     };
     const api = (/** @type {string} */ host, /** @type {string} */ qs) => `https://${host}/w/api.php?${qs}&format=json&origin=*`;
-    // Questions rarely match whole; fewer words are tried when all of them find nothing.
+    // Questions rarely match whole; fewer words are tried when all of them find nothing, a host's tries one after another and the hosts at once.
     const tries = [...new Set([want.join(' '), want.slice(0, 3).join(' '), want.slice(0, 2).join(' ')])].filter(Boolean);
-    /** @param {string} host @returns {Promise<any[]>} */
+    /** A host's hits for the first of the tries that finds any; it fails when the host does. @param {string} host @returns {Promise<any[]>} */
     const hits = async (host) => {
       for (const q of tries) {
         /* en */
@@ -139,7 +162,6 @@ export const KNOWLEDGE = {
       }
       return [];
     };
-    const wikiUrl = (/** @type {string} */ host, /** @type {string} */ title) => `https://${host}/wiki/${enc(title.replace(/ /g, '_'))}`;
     const guide = async () => {
       const [top] = await hits('en.wikivoyage.org');
       if (!top) return [];
@@ -147,18 +169,28 @@ export const KNOWLEDGE = {
       const lines = String(page?.extract ?? '').split('\n').map((l) => l.trim()).filter((l) => l.length > 20);
       const score = (/** @type {string} */ l) => want.filter((w) => l.toLowerCase().includes(w)).length;
       const picked = lines.filter((l) => score(l) > 0).sort((a, b) => score(b) - score(a)).slice(0, 3);
-      return [{ title: /* en */ `${top.title} (Wikivoyage)`, url: wikiUrl('en.wikivoyage.org', top.title), snippet: (picked.length ? picked : lines.slice(0, 2)).join(' ') }];
+      return [{ title: /* en */ `${top.title} (Wikivoyage)`, url: pageUrl('en.wikivoyage.org', top.title), snippet: (picked.length ? picked : lines.slice(0, 2)).join(' ') }];
     };
     const places = async () => {
-      await nominatimTurn(); // one request a second to Nominatim, for the whole app
-      const found = await json(`https://nominatim.openstreetmap.org/search?q=${enc(want.join(' '))}&format=jsonv2&extratags=1&limit=3`);
+      // one request a second to Nominatim for the whole app, but only while the floor has time
+      const found = await json(`https://nominatim.openstreetmap.org/search?q=${enc(want.join(' '))}&format=jsonv2&extratags=1&limit=3&accept-language=${enc(nominatimLanguages(order))}`, () => nominatimTurn(stop));
       /* en */
       return (Array.isArray(found) ? found : []).filter((f) => f?.extratags?.website)
         .map((f) => ({ title: f.name || f.display_name, url: f.extratags.website, snippet: [f.display_name, f.extratags.opening_hours ? `Hours: ${f.extratags.opening_hours}` : ''].filter(Boolean).join('. ') }));
     };
-    const articles = async () => (await hits('en.wikipedia.org')).map((h) => ({ title: /* en */ `${h.title} (Wikipedia)`, url: wikiUrl('en.wikipedia.org', h.title), snippet: h.snippet }));
-    const settled = await Promise.allSettled([guide(), places(), articles()]);
-    if (settled.every((s) => s.status === 'rejected')) throw /** @type {PromiseRejectedResult} */ (settled[0]).reason;
-    return settled.flatMap((s) => (s.status === 'fulfilled' ? s.value : []));
+    // Every part asks at once, each edition too. The rows are what answered: the guide's, Nominatim's websites, the first edition's articles
+    // that found any. With no rows, the first failure is the failure, in words; with none, nothing found.
+    const editions = editionsOf(order);
+    const parts = await Promise.allSettled([guide(), places(), ...editions.map((e) => hits(`${e}.wikipedia.org`))]);
+    const [guideRows, placeRows, ...editionHits] = parts;
+    const k = editionHits.findIndex((g) => g.status === 'fulfilled' && g.value.length > 0);
+    const rows = [
+      ...(guideRows.status === 'fulfilled' ? guideRows.value : []),
+      ...(placeRows.status === 'fulfilled' ? placeRows.value : []),
+      ...(k < 0 ? [] : /** @type {PromiseFulfilledResult<any[]>} */ (editionHits[k]).value.map((h) => ({ title: /* en */ `${h.title} (Wikipedia)`, url: articleUrl(editions[k], h.title), snippet: h.snippet }))),
+    ];
+    const bad = /** @type {PromiseRejectedResult | undefined} */ (parts.find((x) => x.status === 'rejected'));
+    if (!rows.length && bad) throw bad.reason;
+    return rows;
   },
-};
+});

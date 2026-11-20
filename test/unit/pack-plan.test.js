@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { packPlan, planStops, planFor, estimate, likelyGuides, guideTitles, hashId, STRETCH_KM, MAX_OSM, MAX_WIKI } from '../../src/core/pack/plan.js';
+import { packPlan, planStops, planFor, estimate, likelyGuides, guideTitles, hashId, STRETCH_KM, MAX_OSM, MAX_WIKI, SIZES } from '../../src/core/pack/plan.js';
+import { wanted } from '../../src/core/pack/download.js';
 import { meters } from '../../src/core/live/geo.js';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
@@ -79,12 +80,21 @@ test('a very long plan is capped, and says how much was left out', () => {
   assert.ok(plan.cut > 0);
 });
 
-test('the estimate shown before downloading: about 240 KB for Big Sur (a real pack was 143 KB)', () => {
+test('the estimate shown before downloading: 237 kB for Big Sur, as the panel says it, by 1024s (a real pack was 143 KB)', () => {
   const plan = packPlan({ trip: { places: ['Big Sur'] }, items: bigSur });
   assert.equal(likelyGuides(plan), 3);
-  const n = estimate(plan.parts, likelyGuides(plan));
-  assert.ok(n > 150 * 1024 && n < 350 * 1024, String(n));
+  const n = estimate(wanted(plan, ['en']), likelyGuides(plan));
+  assert.equal(Math.round(n / 1024), 237, String(n)); // 3 guides, 117 km of OpenStreetMap, 5 stops' places and 9 Wikipedia parts, at SIZES
   assert.equal(estimate([], 0), 0);
+});
+
+test("each language listed adds one Wikipedia part to the estimate for every part, at another edition's size", () => {
+  const plan = packPlan({ trip: { places: ['Big Sur'] }, items: bigSur });
+  const n = estimate(wanted(plan, ['en']), likelyGuides(plan));
+  const wiki = plan.parts.filter((p) => p.kind === 'wikipedia').length;
+  assert.equal(wiki, 9);
+  assert.equal(estimate(wanted(plan, ['ja', 'en']), likelyGuides(plan)) - n, wiki * SIZES.wikiEdition);
+  assert.equal(estimate(wanted(plan, ['zh', 'ja', 'en']), likelyGuides(plan)) - n, 2 * wiki * SIZES.wikiEdition);
 });
 
 test('the Wikivoyage titles a name may be under', () => {

@@ -70,7 +70,7 @@ export function label(reasons) {
 export async function places(url) {
   const body = String(url).includes('overpass')
     ? { elements: [{ type: 'node', lat: 36.3066, lon: -121.9017, tags: { name: 'Point Sur Light Station', tourism: 'attraction' } }] }
-    : { query: { geosearch: [] } };
+    : { batchcomplete: true }; // Wikipedia with nothing near, as it answers
   return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
 }
 

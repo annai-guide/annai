@@ -1,5 +1,7 @@
 import { meters } from '../live/geo.js';
 import { MANIFEST, readManifest } from './download.js';
+import { merged, articleUrl, readingEditions } from '../wiki.js';
+import { isCJK } from '../languages.js';
 
 /**
  * The offline pack as the places tools and live mode read it (spec §8: "the tools read the offline
@@ -8,7 +10,8 @@ import { MANIFEST, readManifest } from './download.js';
  * @typedef {import('./osm.js').OsmRow} OsmRow
  * @typedef {import('./download.js').Manifest} Manifest
  * @typedef {{ points: [number, number][], radius: number }} Area
- * @typedef {[title: string, lat: number, lng: number, summary: string]} WikiPage
+ * @typedef {[title: string, lat: number, lng: number, summary: string, wikidata?: string | null]} WikiPage  as stored; no id before editions
+ * @typedef {import('../wiki.js').Article} Article
  * @typedef {{ lat: number, lng: number }} Point
  */
 
@@ -48,30 +51,42 @@ export function toLine(p, pts) {
   return best;
 }
 
-/** A summary cut to about 200 characters, at a word. @param {string} s */
+/** A CJK character's share of a summary's 200: annai's catalog's English takes 1.7 characters per Japanese one (median, 963 messages), 2.5 per Chinese (921, 922). */
+const CJK_WEIGHT = 2;
+const MARKS = [...'、。，；！？'];
+/** A summary cut to about 200 characters of English (CJK_WEIGHT), at a word: before the last space, or after the last mark. @param {string} s */
 function short(s) {
   const t = s.replace(/\s+/g, ' ').trim();
-  return t.length <= 200 ? t : `${t.slice(0, 200).replace(/\s+\S*$/, '')}…`;
+  let room = 200;
+  let end = 0;
+  for (const c of t) {
+    room -= isCJK(c) ? CJK_WEIGHT : 1;
+    if (room < 0) break;
+    end += c.length;
+  }
+  if (end >= t.length) return t;
+  const head = t.slice(0, end);
+  const at = Math.max(head.lastIndexOf(' '), ...MARKS.map((m) => head.lastIndexOf(m) + 1));
+  return `${at > 0 ? head.slice(0, at).trimEnd() : head}…`;
 }
 
 export class Pack {
   /** @type {{ area: Area, rows: OsmRow[], cut?: boolean }[]} cut: Overpass stopped at its limit there, so the part has only some of the places */
   #osm;
-  /** @type {WikiPage[]} */
+  /** @type {Article[]} */
   #wiki;
-  /** @type {[string, number, number][]} */
+  /** @type {[string, number, number][]} OpenStreetMap's named places */
   #names = [];
   /** @type {(path: string) => Promise<any>} */
   #read;
 
-  /** @param {Manifest} manifest @param {{ area: Area, rows: OsmRow[], cut?: boolean }[]} osm @param {WikiPage[]} wiki @param {(path: string) => Promise<any>} read */
+  /** @param {Manifest} manifest @param {{ area: Area, rows: OsmRow[], cut?: boolean }[]} osm @param {Article[]} wiki @param {(path: string) => Promise<any>} read */
   constructor(manifest, osm, wiki, read) {
     this.manifest = manifest;
     this.#osm = osm;
     this.#wiki = wiki;
     this.#read = read;
     for (const { rows } of osm) for (const r of rows) if (r[1] && r[6].split(',').some((k) => NAMED.has(k))) this.#names.push([r[1], r[3], r[4]]);
-    for (const w of wiki) this.#names.push([w[0], w[1], w[2]]);
   }
 
   /** The day it was downloaded, "2026-10-16": its manifest's, else its newest part's; '' when nothing says. */
@@ -114,18 +129,14 @@ export class Pack {
     return out;
   }
 
-  /** nearby's rows for its Wikipedia articles within radius, each with its summary. @param {Point} p @param {number} radius @returns {any[][]} */
-  pages(p, radius) {
-    const seen = new Set();
-    /** @type {any[][]} */
-    const out = [];
-    for (const [title, lat, lng, summary] of this.#wiki) {
-      const d = meters(p, { lat, lng });
-      if (d > radius || seen.has(title)) continue;
-      seen.add(title);
-      /* en */ out.push([title, 'wikipedia article', Math.round(d), lat, lng, 'wikipedia', `${short(summary)} https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`.trim()]);
-    }
-    return out;
+  /** Its articles of these editions within radius, each once (parts overlap): a language taken off the list is no more read, though its files stay till the next download. @param {Point} p @param {number} radius @param {string[]} editions */
+  articles(p, radius, editions) {
+    return merged(this.#wiki.filter((w) => editions.includes(w.edition) && meters(p, w) <= radius), editions);
+  }
+
+  /** nearby's rows for its Wikipedia articles within radius, each with its summary. @param {Point} p @param {number} radius @param {string[]} editions @returns {any[][]} */
+  pages(p, radius, editions) {
+    /* en */ return this.articles(p, radius, editions).map((w) => [w.title, 'wikipedia article', Math.round(meters(p, w)), w.lat, w.lng, 'wikipedia', `${short(w.summary)} ${articleUrl(w.edition, w.title)}`.trim()]);
   }
 
   /** Its guide for a name: by title, by title without "(California)", or by a name that led to it. @param {string} name @returns {Promise<{ title: string, text: string } | null>} */
@@ -137,11 +148,11 @@ export class Pack {
     return typeof v?.text === 'string' && v.text.trim() ? { title: g.title, text: v.text } : null;
   }
 
-  /** The nearest sight, park, place to stay or Wikipedia article within 500 m, for live mode. @param {Point} p @returns {{ name: string, m: number } | null} */
-  name(p) {
+  /** The nearest sight, park, place to stay or Wikipedia article within 500 m, for live mode. @param {Point} p @param {string[]} editions @returns {{ name: string, m: number } | null} */
+  name(p, editions) {
     /** @type {{ name: string, m: number } | null} */
     let best = null;
-    for (const [name, lat, lng] of this.#names) {
+    for (const [name, lat, lng] of [...this.#names, ...this.articles(p, NAME_M, editions).map((w) => /** @type {const} */ ([w.title, w.lat, w.lng]))]) {
       const m = meters(p, { lat, lng });
       if (m <= NAME_M && (!best || m < best.m)) best = { name, m };
     }
@@ -155,6 +166,12 @@ const goodArea = (a) => Boolean(a) && isNum(a.radius) && Array.isArray(a.points)
 const goodRow = (r) => Array.isArray(r) && typeof r[0] === 'string' && typeof r[1] === 'string' && typeof r[2] === 'string' && isNum(r[3]) && isNum(r[4]) && typeof r[5] === 'string' && typeof r[6] === 'string';
 /** @param {any} w @returns {w is WikiPage} */
 const goodPage = (w) => Array.isArray(w) && typeof w[0] === 'string' && isNum(w[1]) && isNum(w[2]) && typeof w[3] === 'string';
+
+/** A trip's pack as the journey's namer (the recap's, Replay's). @param {import('../workspace.js').Workspace} ws @param {string} scope @param {string} locale @returns {Promise<(p: Point) => { name: string, m: number } | null>} */
+export async function packNamer(ws, scope, locale) {
+  const [pack, editions] = await Promise.all([loadPack(ws, scope).catch(() => null), readingEditions(ws, locale)]);
+  return (p) => pack?.name(p, editions) ?? null;
+}
 
 /** @type {Map<string, { hash: string, pack: Pack }>} */
 const loaded = new Map();
@@ -176,13 +193,16 @@ export async function loadPack(ws, scope) {
   if (!manifest) return null;
   /** @type {{ area: Area, rows: OsmRow[], cut?: boolean }[]} */
   const osm = [];
-  /** @type {WikiPage[]} */
+  /** @type {Article[]} */
   const wiki = [];
   for (const f of manifest.files) {
     if (f.kind === 'wikivoyage') continue;
     const v = await ws.readJSON(scope, f.path).catch(() => null);
     if (f.kind === 'osm' && goodArea(v?.area) && Array.isArray(v.rows)) osm.push({ area: v.area, rows: v.rows.filter(goodRow), cut: v.cut === true });
-    else if (f.kind === 'wikipedia' && Array.isArray(v?.pages)) wiki.push(...v.pages.filter(goodPage));
+    // A part from before editions is English.
+    else if (f.kind === 'wikipedia' && Array.isArray(v?.pages)) {
+      for (const [title, lat, lng, summary, id] of v.pages.filter(goodPage)) wiki.push({ title, lat, lng, summary, id: typeof id === 'string' && id ? id : null, edition: f.edition ?? 'en' });
+    }
   }
   const pack = new Pack(manifest, osm, wiki, (path) => ws.readJSON(scope, path));
   loaded.set(scope, { hash: got.entry.hash, pack });

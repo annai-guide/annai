@@ -314,7 +314,8 @@ function withoutPhotoMeta(e, include) {
 }
 
 // A position quoted in a trip's text, as a Share without places removes it: the forms matched are in spec §12.2. An encoded bar, %7C,
-// also splits a pair: the Wikipedia nearby search annai builds writes gscoord=36.3715%7C-121.9017.
+// also splits a pair: the Wikipedia nearby search annai builds writes ggscoord=36.3715%7C-121.9017 (a position that rounds to 2 decimals or
+// none, 35%7C135.7, is still the same address, so after annai's own gscoord= or ggscoord= any decimals count).
 //
 // Run time: a match can only start where no horizontal space comes before it and takes the spaces in front of it itself, and the
 // optional parts of a pattern never share the same characters, so no input takes more than linear time. Spaces are horizontal only:
@@ -338,7 +339,8 @@ function pointPattern(h, bytes = false) {
   const hemispheres = (d) => `${before}${num(d)}${H}(?:°${H})?[NS]${H}(?:,${H})?${num(d)}${H}(?:°${H})?[EW]\\b`;
   const any = String.raw`-?\d{1,3}(?:\.\d+)?${deg}`;
   const labelled = String.raw`\bm?lat(?:itude)?\b${H}(?:[:=]${H})?${any}${H}(?:[,;&]${H})?(?:and${h}+)?\bm?(?:lng|lon|long|longitude)\b${H}(?:[:=]${H})?${any}`;
-  const plain = `(?:${labelled}|${pair(3, '[,;/]|%2C|%7C')}|${hemispheres(3)})`;
+  const own = String.raw`(?<=\bgg?scoord=)-?\d{1,3}(?:\.\d+)?%7C-?\d{1,3}(?:\.\d+)?(?!\d)`;
+  const plain = `(?:${labelled}|${pair(3, '[,;/]|%2C|%7C')}|${hemispheres(3)}|${own})`;
   const nearby = `(?:${pair(2, ',')}|${hemispheres(2)})`;
   return new RegExp(`(?<!${h})(?:(?:${H},)?${H}\\bnear${h}+(?:\\(${H}${nearby}${H}\\)|${nearby})|${H}\\(${H}${plain}${H}\\)|${H}${plain})`, 'gi');
 }

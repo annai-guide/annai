@@ -9,8 +9,9 @@ import { webVia } from '../../src/core/agent/via.js';
 import { STEP_MS, READY_MS } from '../../src/plugins/web/index.js';
 import { cooldowns, CHAIN } from '../../src/core/web-search.js';
 import { tracedFetch } from '../../src/core/agent/net.js';
-import { NOMINATIM_GAP, nominatimReset } from '../../src/core/nominatim.js';
-import { forgetClients } from '../../src/plugins/web/free.js';
+import { NOMINATIM_GAP, nominatimReset, nominatimTurn } from '../../src/core/nominatim.js';
+import { forgetClients, knowledgeFloor, FLOOR_MS } from '../../src/plugins/web/free.js';
+import { readingOrder } from '../../src/core/languages.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { readFile } from 'node:fs/promises';
 
@@ -159,7 +160,7 @@ test('web_search: when a service is limited (429) or down (5xx), the next is ask
   const floor = await run('web_search', { query: 'nepenthe lunch' }, down);
   assert.match(floor, /Big Sur \(Wikivoyage\)\thttps:\/\/en\.wikivoyage\.org\/wiki\/Big_Sur\t.*Lunch from 11:30AM-4:30PM/);
   assert.match(floor, /Nepenthe\thttp:\/\/www\.nepenthebigsur\.com\//);
-  assert.match(floor, /Nepenthe \(restaurant\) \(Wikipedia\)\thttps:\/\/en\.wikipedia\.org\/wiki\/Nepenthe_\(restaurant\)\ta restaurant in Big Sur/);
+  assert.match(floor, /Nepenthe \(restaurant\) \(Wikipedia\)\thttps:\/\/en\.wikipedia\.org\/wiki\/Nepenthe_%28restaurant%29\ta restaurant in Big Sur/);
 });
 
 test('web_search: a service that finds nothing, or answers what is no result, hands on to the next; the first answer with rows wins; Parallel and Firecrawl are read as they send', async () => {
@@ -189,6 +190,238 @@ test('web_search: a service the user unticked is never asked; the floor is alway
   const out = await run('web_search', { query: 'nepenthe' }, services);
   assert.ok(asked.every((a) => !/mcp\.|search\.parallel/.test(a.url)) && asked.length >= 2);
   assert.match(out, /Wikivoyage/);
+});
+
+/** Wikipedia's real answers to the floor's searches for "Kiyomizu temple opening hours" and its fewer words (2026-11-19; text under CC BY-SA 4.0). */
+const KIYOMIZU_SEARCH = /** @type {Record<string, string>} */ ({
+  'ja.wikipedia.org kiyomizu temple opening hours': 'wiki-search-ja.json', 'ja.wikipedia.org kiyomizu temple opening': 'wiki-search-ja-3.json',
+  'ja.wikipedia.org kiyomizu temple': 'wiki-search-ja-2.json', 'en.wikipedia.org kiyomizu temple opening hours': 'wiki-search-en.json',
+});
+/** The floor's services: those saved answers, nothing from Wikivoyage, no website from Nominatim. @param {string} url */
+async function kiyomizuFloor(url) {
+  const u = new URL(url);
+  const j = (/** @type {any} */ x) => new Response(JSON.stringify(x), { headers: { 'content-type': 'application/json' } });
+  if (u.hostname === 'nominatim.openstreetmap.org') return j([]);
+  const saved = KIYOMIZU_SEARCH[`${u.hostname} ${u.searchParams.get('srsearch')}`];
+  return saved ? jsonFile(`../places/${saved}`) : j({ batchcomplete: '', query: { searchinfo: { totalhits: 0 }, search: [] } });
+}
+
+test("the floor's Wikipedia search: each edition of the reading order asks at once with its own tries; the rows are the first edition's that has any", async () => {
+  const { run, asked, settings, ws } = await setup();
+  await updateAppSettings(ws, { languages: { spoken: ['ja'], answer: 'follow' } });
+  await settings({ searchOff: ['exa', 'parallel', 'firecrawl'] });
+  const wiki = () => asked.filter((a) => a.url.includes('wikipedia.org')).map((a) => `${new URL(a.url).hostname} ${new URL(a.url).searchParams.get('srsearch')}`);
+  // [ja, en]: Japanese finds nothing for the whole question or three words and 清水寺 for two; English has seven hits for the whole question,
+  // about other places. The traveller's language first: only 清水寺 (the user, 2026-11-14: "Read the traveller's language first, English when that has no article").
+  const out = await run('web_search', { query: 'Kiyomizu temple opening hours' }, kiyomizuFloor);
+  assert.deepEqual(wiki().sort(), ['en.wikipedia.org kiyomizu temple opening hours', 'ja.wikipedia.org kiyomizu temple', 'ja.wikipedia.org kiyomizu temple opening', 'ja.wikipedia.org kiyomizu temple opening hours']);
+  // Both editions' first requests are in flight before either answers: asked together, not one after the other.
+  assert.deepEqual(wiki().slice(0, 2), ['ja.wikipedia.org kiyomizu temple opening hours', 'en.wikipedia.org kiyomizu temple opening hours']);
+  // (A search row's address is written as the browser would send it: normalizeRows.)
+  assert.match(out, /\n清水寺 \(Wikipedia\)\thttps:\/\/ja\.wikipedia\.org\/wiki\/%E6%B8%85%E6%B0%B4%E5%AF%BA\t/);
+  assert.doesNotMatch(out, /Tobu World Square/);
+  // Nominatim names places in the order's languages too.
+  assert.equal(new URL(asked.find((a) => a.url.includes('nominatim'))?.url ?? '').searchParams.get('accept-language'), 'ja,en');
+  // English first: its seven, and no Japanese article.
+  await updateAppSettings(ws, { languages: { spoken: ['en', 'ja'], answer: 'follow' } });
+  asked.length = 0;
+  const english = await run('web_search', { query: 'Kiyomizu temple opening hours' }, kiyomizuFloor);
+  assert.match(english, /\nTobu World Square \(Wikipedia\)\thttps:\/\/en\.wikipedia\.org\/wiki\/Tobu_World_Square\t/);
+  assert.doesNotMatch(english, /清水寺/);
+  // An edition that fails is left out: English not answering, Japanese's two words find 清水寺; Japanese not answering, English's rows come.
+  await updateAppSettings(ws, { languages: { spoken: ['ja'], answer: 'follow' } });
+  const enDown = await run('web_search', { query: 'Kiyomizu temple opening hours' }, (url) => (url.includes('en.wikipedia.org') ? new Response('', { status: 503 }) : kiyomizuFloor(url)));
+  assert.match(enDown, /\n清水寺 \(Wikipedia\)\t/);
+  const jaDown = await run('web_search', { query: 'Kiyomizu temple opening hours' }, (url) => (url.includes('ja.wikipedia.org') ? new Response('', { status: 503 }) : kiyomizuFloor(url)));
+  assert.match(jaDown, /\nTobu World Square \(Wikipedia\)\t/);
+  assert.doesNotMatch(jaDown, /清水寺/);
+});
+
+/** FLOOR_MS set to ms while fn runs. @param {number} ms @param {() => Promise<void>} fn */
+async function withFloor(ms, fn) {
+  const was = FLOOR_MS.ms;
+  FLOOR_MS.ms = ms;
+  try {
+    await fn();
+  } finally {
+    FLOOR_MS.ms = was;
+  }
+}
+/** The floor on its own, reading the languages given. @param {string[]} spoken */
+const floorOf = (spoken) => knowledgeFloor(async () => readingOrder({ languages: { spoken, answer: 'follow' } }, 'en-US'));
+/** One search of a floor, the services answering as `answer` says. @param {ReturnType<typeof knowledgeFloor>} floor @param {(url: string, init: any) => any} answer @param {string} [query] @param {AbortSignal} [signal] */
+const search = (floor, answer, query = 'kiyomizu temple', signal = new AbortController().signal) => floor.search(query, { fetch: async (/** @type {string} */ url, /** @type {any} */ init) => answer(url, init), signal, limit: 8 });
+/** Wikipedia's answer to a search that finds these titles. */
+const found = (/** @type {string[]} */ ...titles) => new Response(JSON.stringify({ query: { search: titles.map((title) => ({ title, snippet: 'a temple' })) } }));
+const nothing = () => new Response(JSON.stringify({ query: { search: [] } }));
+
+test("the floor has one time for the whole of it: an edition that never answers costs the others and the guide no more than that, and what came is the answer", async () => {
+  const { run, ws, settings } = await setup();
+  await updateAppSettings(ws, { languages: { spoken: ['ja'], answer: 'follow' } });
+  await settings({ searchOff: ['exa', 'parallel', 'firecrawl'] });
+  await withFloor(60, async () => {
+    const t0 = Date.now();
+    const out = await run('web_search', { query: 'Kiyomizu temple opening hours' }, (url, init) => (url.includes('ja.wikipedia.org') ? hang(init) : url.includes('wikivoyage') ? wikiAnswer(url) : kiyomizuFloor(url)));
+    assert.ok(Date.now() - t0 < 2000, "not the chain's limit for it");
+    assert.match(out, /\nTobu World Square \(Wikipedia\)\t/, "Japanese never answered: English's rows");
+    assert.match(out, /\(Wikivoyage\)\t/);
+    // Both Wikipedia hosts hung and nothing else has rows: the floor fails, in words, naming the part that was late and not the floor's three.
+    await assert.rejects(run('web_search', { query: 'Kiyomizu temple opening hours' }, (url, init) => (url.includes('wikipedia.org') ? hang(init) : kiyomizuFloor(url))), (/** @type {any} */ e) => /Web search didn't work: ja\.wikipedia\.org didn't answer in time/.test(e.message) && !/Nominatim/.test(e.message));
+    assert.equal(cooldowns.left('wiki'), 0, 'and the floor does not rest');
+  });
+});
+
+test("the floor: a Nominatim that answers after the floor's time loses only its own rows; the guide's and Wikipedia's come", async () => {
+  const { run, ws, settings } = await setup();
+  await updateAppSettings(ws, { languages: { spoken: ['en'], answer: 'follow' } });
+  await settings({ searchOff: ['exa', 'parallel', 'firecrawl'] });
+  await withFloor(100, async () => {
+    const t0 = Date.now();
+    const out = await run('web_search', { query: 'nepenthe lunch' }, (url, init) => (url.includes('nominatim') ? hang(init) : wikiAnswer(url)));
+    assert.ok(Date.now() - t0 < 2000);
+    assert.match(out, /Big Sur \(Wikivoyage\)\t/);
+    assert.match(out, /Nepenthe \(restaurant\) \(Wikipedia\)\t/);
+    assert.doesNotMatch(out, /nepenthebigsur/);
+  });
+});
+
+test("the floor: a Nominatim turn that comes after the floor's time is not waited for: the floor ends at its time with Wikipedia's rows, Nominatim is not asked, and with no rows the failure is Nominatim's lateness", async () => {
+  const wiki = (/** @type {string} */ url) => (url.includes('nominatim') ? new Response('[]') : url.includes('en.wikipedia.org') ? found('Kiyomizu-dera') : nothing());
+  try {
+    // The app's gate is booked for 2 s (another request's turns, queued ahead of the floor's); the floor's time is 100 ms.
+    NOMINATIM_GAP.ms = 2000;
+    nominatimReset();
+    await nominatimTurn();
+    await withFloor(100, async () => {
+      /** @type {string[]} */
+      const asked = [];
+      const t0 = Date.now();
+      const rows = await search(floorOf(['en']), (url) => (asked.push(url), wiki(url)));
+      assert.ok(Date.now() - t0 < 1000, `${Date.now() - t0} ms: at the floor's time, not at Nominatim's turn`);
+      assert.deepEqual(rows.map((r) => r.title), ['Kiyomizu-dera (Wikipedia)']);
+      assert.deepEqual(asked.filter((u) => u.includes('nominatim')), [], 'no request to Nominatim after its time');
+      const t1 = Date.now();
+      const failure = await search(floorOf(['en']), () => nothing()).then(() => null, (/** @type {any} */ e) => e);
+      assert.ok(Date.now() - t1 < 1000);
+      assert.equal(failure?.message, "nominatim.openstreetmap.org didn't answer in time");
+      assert.equal(failure?.late, true);
+      // The user's stop ends the wait too, as itself.
+      const stop = new AbortController();
+      setTimeout(() => stop.abort(new DOMException('stopped', 'AbortError')), 20);
+      const t2 = Date.now();
+      const stopped = await search(floorOf(['en']), () => nothing(), 'kiyomizu temple', stop.signal).then(() => null, (/** @type {any} */ e) => e);
+      assert.ok(Date.now() - t2 < 1000);
+      assert.equal(stopped?.name, 'AbortError');
+      // A floor whose time ran out before its parts began (a slow settings read) ends at once, without waiting for a turn.
+      const t3 = Date.now();
+      const slowRead = knowledgeFloor(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        return readingOrder({ languages: { spoken: ['en'], answer: 'follow' } }, 'en-US');
+      });
+      const late = await search(slowRead, (_url, init) => (init.signal.aborted ? Promise.reject(init.signal.reason) : nothing())).then(() => null, (/** @type {any} */ e) => e);
+      assert.ok(Date.now() - t3 < 1000);
+      assert.match(late?.message, /didn't answer in time/);
+    });
+  } finally {
+    NOMINATIM_GAP.ms = 1;
+    nominatimReset();
+  }
+});
+
+test("the floor on a slow link: every answer takes its time, English alone is asked three times in series and Kiyomizu-dera comes with the third, as before editions", async () => {
+  // Each answer 200 ms: the guide's and Wikipedia's three tries are 600 ms, inside the floor's 1.5 s (on a real slow link 2.5 s an answer, 7.5 s, inside its 9).
+  // English Wikipedia finds it only with the two words; everything else finds nothing.
+  const slow = (/** @type {string} */ url, /** @type {any} */ init) => new Promise((resolve, reject) => {
+    const timer = setTimeout(resolve, 200, url.includes('en.wikipedia.org') && new URL(url).searchParams.get('srsearch') === 'kiyomizu temple' ? found('Kiyomizu-dera') : url.includes('nominatim') ? new Response('[]') : nothing());
+    init.signal.addEventListener('abort', () => { clearTimeout(timer); reject(init.signal.reason); }, { once: true });
+  });
+  await withFloor(1500, async () => {
+    const rows = await search(floorOf(['en']), slow, 'Kiyomizu temple opening hours');
+    assert.deepEqual(rows.map((r) => r.title), ['Kiyomizu-dera (Wikipedia)']);
+  });
+});
+
+test("the floor's result: the rows of what answered; no rows and something failed (late, refused, an error answer) is the failure in words; no rows and nothing failed is nothing found", async () => {
+  const down = () => new Response('', { status: 503 });
+  const maxlag = () => new Response(JSON.stringify({ error: { code: 'maxlag', info: 'Waiting for a database server: 6 seconds lagged.' } }));
+  const empty = (/** @type {string} */ url) => (url.includes('nominatim') ? new Response('[]') : nothing());
+  const floor = floorOf(['ja']);
+  // Everything refused.
+  await assert.rejects(search(floor, down), /answered 503/);
+  // Wikipedia refused in both editions, Wikivoyage and Nominatim answered with nothing: a failure, not "nothing found".
+  await assert.rejects(search(floor, (url) => (url.includes('wikipedia.org') ? down() : empty(url))), /wikipedia\.org answered 503/);
+  // Wikipedia's error answer (HTTP 200): the same.
+  await assert.rejects(search(floor, (url) => (url.includes('wikipedia.org') ? maxlag() : empty(url))), /said: Waiting for a database server: 6 seconds lagged$/);
+  // The same failures with rows from another part: the rows.
+  const rows = await search(floor, (url) => (url.includes('ja.wikipedia.org') ? down() : url.includes('en.wikipedia.org') ? found('Kiyomizu-dera') : empty(url)));
+  assert.deepEqual(rows.map((r) => r.title), ['Kiyomizu-dera (Wikipedia)']);
+  const guideRows = await search(floor, (url) => (url.includes('wikipedia.org') ? maxlag() : url.includes('wikivoyage') && url.includes('list=search') ? found('Kyoto')
+    : url.includes('wikivoyage') ? new Response(JSON.stringify({ query: { pages: { 1: { extract: 'Kiyomizu-dera is a temple that opens at six every morning.' } } } })) : empty(url)));
+  assert.deepEqual(guideRows.map((r) => r.title), ['Kyoto (Wikivoyage)']);
+  // Everything answered, nothing found.
+  assert.deepEqual(await search(floor, empty), []);
+  // Japanese answered and found nothing: English's rows, the first edition that found any.
+  assert.deepEqual((await search(floor, (url) => (url.includes('ja.wikipedia.org') ? nothing() : url.includes('en.wikipedia.org') ? found('Kiyomizu-dera') : empty(url)))).map((r) => r.title), ['Kiyomizu-dera (Wikipedia)']);
+  // The first edition in the order that found any: Japanese's, though English answered first and found some.
+  const order = await search(floor, (url) => (url.includes('ja.wikipedia.org') ? new Promise((r) => setTimeout(r, 40, found('清水寺'))) : url.includes('en.wikipedia.org') ? found('Kiyomizu-dera') : empty(url)));
+  assert.deepEqual(order.map((r) => r.title), ['清水寺 (Wikipedia)']);
+  // The user's stop is a stop.
+  const stop = new AbortController();
+  setTimeout(() => stop.abort(new DOMException('stopped', 'AbortError')), 10);
+  await assert.rejects(search(floor, (_url, init) => hang(init), 'kiyomizu temple', stop.signal), { name: 'AbortError' });
+});
+
+test("the floor never rests: one of its services down with nothing found is a failure that names that service, and the next search asks the floor again", async () => {
+  const { run, settings } = await setup();
+  await settings({ searchOff: ['exa', 'parallel', 'firecrawl'] });
+  const answer = (/** @type {boolean} */ up) => (/** @type {string} */ url) => (url.includes('nominatim') ? (up ? new Response('[]') : new Response('', { status: 503 })) : url.includes('en.wikipedia.org') && up ? found('Kiyomizu-dera') : nothing());
+  await assert.rejects(run('web_search', { query: 'kiyomizu temple' }, answer(false)), (/** @type {any} */ e) => /nominatim\.openstreetmap\.org answered 503/.test(e.message) && !/Wikivoyage, Wikipedia and Nominatim/.test(e.message));
+  assert.equal(cooldowns.left('wiki'), 0);
+  assert.match(await run('web_search', { query: 'kiyomizu temple' }, answer(true)), /Kiyomizu-dera \(Wikipedia\)/);
+});
+
+test("the floor's error names only the part that was late: a Nominatim that never answers is nominatim's, not the floor's three", async () => {
+  const { run, settings } = await setup();
+  await settings({ searchOff: ['exa', 'parallel', 'firecrawl'] });
+  await withFloor(60, async () => {
+    await assert.rejects(run('web_search', { query: 'kiyomizu temple' }, (url, init) => (url.includes('nominatim') ? hang(init) : nothing())), (/** @type {any} */ e) => /Web search didn't work: nominatim\.openstreetmap\.org didn't answer in time/.test(e.message) && !/Wikivoyage/.test(e.message));
+  });
+});
+
+test("web_search: 'Nothing found' is said only when nothing failed; a service that failed while the rest found nothing is the failure, in words", async () => {
+  const { run } = await setup();
+  const none = (/** @type {string} */ url) => (url.includes('wikivoyage') || url.includes('wikipedia') ? nothing() : url.includes('nominatim') ? new Response('[]') : mcpText('{"results":[],"data":{"web":[]}}'));
+  await assert.rejects(run('web_search', { query: 'zzzz qqqq' }, (url) => (url === EXA ? new Response('slow down', { status: 429 }) : none(url))), /Web search didn't work: Exa answered 429 \(its free limit\)/);
+});
+
+test("the floor's time starts with its search, before it reads the settings: a slow read leaves its requests no more than what is left", async () => {
+  /** @type {boolean[]} */
+  const stopped = [];
+  const floor = knowledgeFloor(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    return readingOrder({ languages: { spoken: ['en'], answer: 'follow' } }, 'en-US');
+  });
+  /** @type {any} */
+  let failure = null;
+  await withFloor(60, async () => {
+    failure = await search(floor, (_url, init) => {
+      stopped.push(init.signal.aborted);
+      return init.signal.aborted ? Promise.reject(init.signal.reason) : hang(init);
+    }).then(() => null, (/** @type {any} */ e) => e);
+  });
+  assert.ok(stopped.length > 0 && stopped.every(Boolean), 'the time had run out when the settings came');
+  assert.match(failure?.message, /didn't answer in time/);
+});
+
+test("FLOOR_MS has its reason: three answers of 2.5 s in series, and a second inside what the chain keeps for the floor", () => {
+  assert.ok(FLOOR_MS.ms >= 3 * 2500);
+  assert.equal(FLOOR_MS.ms, CHAIN.reserve - 1_000);
+});
+
+test("the floor's addresses: a Wikivoyage guide's keeps its title as written with the brackets encoded, as a Wikipedia article's does", async () => {
+  const rows = await search(floorOf(['en']), (url) => (url.includes('wikivoyage') && url.includes('list=search') ? found('Cambria (California)') : url.includes('wikivoyage')
+    ? new Response(JSON.stringify({ query: { pages: { 1: { extract: 'Cambria is a seaside town on the coast.' } } } })) : url.includes('nominatim') ? new Response('[]') : found('Cambria, California (town)')));
+  assert.deepEqual(rows.map((r) => r.url), ['https://en.wikivoyage.org/wiki/Cambria_%28California%29', 'https://en.wikipedia.org/wiki/Cambria,_California_%28town%29']);
 });
 
 test('web_search: Jina Search goes first when its key is set; without the key it is passed over and the free services answer', async () => {
@@ -341,12 +574,18 @@ test('S2: a third-party provider that says it is always on or the knowledge floo
   assert.equal(asked, 0);
 });
 
-test('S3: a request the browser could not make, through the traced fetch, rests Jina and the floor like any other (the traced fetch marks it a network failure)', async () => {
+test("S3: a request the browser could not make, through the traced fetch, rests Jina like any other and not the floor, which the next search asks again (the traced fetch marks it a network failure)", async () => {
   const t = await setup({ traced: true });
   await t.setKey('jina_test_key');
   await t.settings({ searchOff: ['exa', 'parallel', 'firecrawl'] });
   await assert.rejects(t.run('web_search', { query: 'nepenthe hours' }, blocked), /Web search didn't work/);
-  assert.ok(cooldowns.left('jina') > 0 && cooldowns.left('wiki') > 0, 'both rest');
+  assert.ok(cooldowns.left('jina') > 0, 'Jina rests');
+  assert.equal(cooldowns.left('wiki'), 0, 'the floor never does');
+  // The floor is asked again, and answers.
+  t.asked.length = 0;
+  const again = await t.run('web_search', { query: 'nepenthe hours' }, services);
+  assert.match(again, /Big Sur \(Wikivoyage\)/);
+  assert.ok(t.asked.some((a) => a.url.includes('wikivoyage')), 'asked');
   // And the failure is told as itself.
   const e = await tracedFetch(t.store, 'me', { tool: 'web_search' }, blocked)('https://x.test/').catch((/** @type {any} */ x) => x);
   assert.equal(e.kind, 'network');
@@ -363,23 +602,21 @@ test('S7: a keyless service that now answers 401 or 403 is told as asking for a 
   await assert.rejects(t.run('web_search', { query: 'q' }, (url) => new Response('', { status: url === EXA ? 403 : 500 })), /Exa now asks for a key/);
 });
 
-test('S9: when every service that ran failed by timeout or network, nobody climbs; with one real failure among them, the rests climb; all resting, the one whose rest ends soonest is tried', async () => {
+test("S9: when every service that ran failed by timeout or network, nobody climbs; the floor, which failed with them, does not rest, and the next search asks it again", async () => {
   const was = STEP_MS.ms;
   STEP_MS.ms = 30;
   try {
     const t = await setup();
     await t.settings({ searchOff: ['jina'] });
     await assert.rejects(t.run('web_search', { query: 'q' }, (_url, init) => hang(init)), /didn't answer in time/);
-    for (const id of ['exa', 'parallel', 'firecrawl', 'wiki']) assert.equal(cooldowns.left(id) <= 60_000 && cooldowns.left(id) > 0, true, id);
-    // Everything is resting now: the one whose rest ends soonest is tried again, and answers.
-    cooldowns.rest('parallel');
-    const exaLeft = cooldowns.left('exa');
-    assert.ok(exaLeft > 0);
-    const asked = [];
-    const out = await t.run('web_search', { query: 'nepenthe hours' }, (url, init) => { asked.push(url); return services(url, init); });
-    assert.match(out, /^title/);
-    assert.equal(asked.length > 0, true);
-    assert.equal(cooldowns.left('exa'), 0, 'its success cleared its rest');
+    for (const id of ['exa', 'parallel', 'firecrawl']) assert.equal(cooldowns.left(id) <= 60_000 && cooldowns.left(id) > 0, true, id);
+    assert.equal(cooldowns.left('wiki'), 0, 'the floor does not rest');
+    // The three are resting now; the floor is asked and answers, under the step's own time again (30 ms was for the first search).
+    STEP_MS.ms = was;
+    t.asked.length = 0;
+    const out = await t.run('web_search', { query: 'nepenthe hours' }, services);
+    assert.match(out, /Big Sur \(Wikivoyage\)/);
+    assert.ok(t.asked.length > 0 && t.asked.every((a) => !/mcp\.|search\.parallel/.test(a.url)), 'only the floor was asked');
   } finally {
     STEP_MS.ms = was;
   }

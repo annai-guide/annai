@@ -285,7 +285,7 @@ test("Languages you speak are dragged into order like the model list, and a line
     await add.selectOption(id);
     await addButton.click();
   }
-  await expect(panel).toContainText('The first is the language phone dictation listens in; the order tells Shiori which you prefer.');
+  await expect(panel).toContainText('The first is the language phone dictation listens in. The order tells Shiori which you prefer, and annai reads Wikipedia, place names and addresses in these languages first, in this order, then in English.');
   const centre = async (/** @type {import('@playwright/test').Locator} */ l) => { const b = /** @type {any} */ (await l.boundingBox()); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; };
   const from = await centre(panel.getByRole('button', { name: 'Reorder Japanese, 3 of 3' }));
   const to = await centre(panel.getByRole('button', { name: 'Reorder English, 1 of 3' }));

@@ -2,7 +2,7 @@ import { h, crumb, t, plural, field, whenGone } from '../dom.js';
 import { readJourney } from '../../core/after/journey.js';
 import { replayOf, momentAt, entryLine, PLAY_SPEEDS } from '../../core/after/replay.js';
 import { PlayClock } from '../../core/live/clock.js';
-import { loadPack } from '../../core/pack/read.js';
+import { packNamer } from '../../core/pack/read.js';
 import { timeIn } from '../../core/time.js';
 import { shownCard } from '../cards.js';
 import { openPhotoViewer } from '../photo-viewer.js';
@@ -30,8 +30,7 @@ function svg(tag, attrs = {}, ...children) {
 export async function renderReplay(ctx, route) {
   const id = route.parts[1];
   const scope = ctx.tripScope;
-  const pack = await loadPack(ctx.ws, id).catch(() => null);
-  const j = await readJourney({ store: ctx.store, ws: ctx.ws, trip: id, namer: (p) => pack?.name(p) ?? null });
+  const j = await readJourney({ store: ctx.store, ws: ctx.ws, trip: id, namer: await packNamer(ctx.ws, id, navigator.language) });
   const day = j.days.includes(route.params.day ?? '') ? route.params.day : null;
   const r = replayOf(j, day);
   const base = `#/trip/${encodeURIComponent(id)}/replay`;

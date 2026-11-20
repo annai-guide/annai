@@ -80,6 +80,16 @@ export function languageSettings(app, locale) {
   return { explicit: false, spoken: [browserLanguage(locale)], answer };
 }
 
+/**
+ * The order sources are read in (Wikipedia, Nominatim): Shiori's fixed language, the list (or the phone's), English, each once; a language
+ * annai has no row for stays in. @param {Record<string, any>} app the app settings @param {string} [locale] the phone's @returns {Language[]}
+ */
+export function readingOrder(app, locale) {
+  const s = languageSettings(app, locale);
+  const all = [...(s.answer ? [s.answer] : []), ...s.spoken, /** @type {Language} */ (BY_ID.get('en'))];
+  return all.filter((l, k) => all.findIndex((x) => x.id === l.id) === k);
+}
+
 /** "English", "English and Japanese", "English, Chinese (Simplified) and Japanese" (or with "or"). @param {Language[]} list @param {string} [and] */
 export const named = (list, and = 'and') => list.map((l) => l.name).reduce((s, n, i, a) => (i ? `${s}${i === a.length - 1 ? ` ${and} ` : ', '}${n}` : n), '');
 
@@ -143,6 +153,8 @@ export const modelLanguages = (s) => ({ spoken: s.explicit ? s.spoken.map((l) =>
 const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u30fc]/gu;
 /** How many words a text has, counting each Chinese, Japanese or Korean character as one (they have no spaces between words). @param {string} text */
 export const units = (text) => (text.match(CJK)?.length ?? 0) + (text.replace(CJK, ' ').match(/[\p{L}\p{N}]+/gu)?.length ?? 0);
+const ONE_CJK = new RegExp(CJK.source, 'u');
+export const isCJK = (c) => ONE_CJK.test(c);
 
 /* en */
 /**
@@ -541,7 +553,7 @@ export const LANGUAGE_WORDS = {
   heading: t`Languages`,
   intro: t`The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.`,
   spokenLabel: t`Languages you speak`,
-  order: t`The first is the language phone dictation listens in; the order tells Shiori which you prefer.`,
+  order: t`The first is the language phone dictation listens in. The order tells Shiori which you prefer, and annai reads Wikipedia, place names and addresses in these languages first, in this order, then in English.`,
   add: t`Add a language`,
   addButton: t`Add`,
   remove: t`Remove`,

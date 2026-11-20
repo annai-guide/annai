@@ -6,7 +6,9 @@ import { overpassChains, KINDS, KIND_NAMES, overpassFilters, osmRow } from '../.
 import { readAppSettings } from '../../core/settings.js';
 import { loadPack } from '../../core/pack/read.js';
 import { anySignal } from '../../core/signals.js';
-import { NOMINATIM_GAP, nominatimTurn } from '../../core/nominatim.js';
+import { NOMINATIM_GAP, nominatimTurn, nominatimLanguages } from '../../core/nominatim.js';
+import { readingOrder } from '../../core/languages.js';
+import { editionsOf, nearUrl, articlesOf, wikiSaid, merged, articleUrl, pageUrl, agentHeader } from '../../core/wiki.js';
 import { t as words } from '../../core/l10n.js';
 
 export { KINDS };
@@ -106,7 +108,7 @@ function sunOnly(i, e) {
 function guideText(title, text, section, source) {
   const heads = [...text.matchAll(/^(={2,4}) (.+?) \1$/gm)];
   /* en */
-  const from = `(${source}) https://en.wikivoyage.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`;
+  const from = `(${source}) ${pageUrl('en.wikivoyage.org', title)}`;
   if (!section) {
     const intro = (heads.length ? text.slice(0, heads[0].index) : text).trim();
     /* en */
@@ -131,6 +133,10 @@ function extras(f) {
 const round = (/** @type {number} */ x) => Math.round(x * 1e4) / 1e4;
 /** The rows nearby gives, nearest first; its Overpass query widens its circle when the small one holds fewer. */
 const ROWS = 40;
+/** Wikipedia's articles at most: each edition is asked for 30; 30 caps the merged articles, nearest first; of the ROWS nearest of both sources, up to 30 can be articles. */
+const WIKI_ROWS = 30;
+/** @param {any[][]} rows */
+const nearest = (rows) => rows.sort((a, b) => a[2] - b[2]).slice(0, WIKI_ROWS);
 /** The most elements nearby's Overpass query asks for, ten times the ROWS kept, to bound the download: Overpass cuts there in id order, not by distance. */
 const OSM_LIMIT = 400;
 /** The plain answer for a server's answer that isn't what it should be (never a TypeError: spec §5.5). @param {string} where */
@@ -149,6 +155,10 @@ export function activate(annai) {
   };
   /** @param {string} url @param {any} call */
   const json = (url, call, init = {}) => ask(call, url, init);
+  /** @param {Record<string, any>} app */
+  const orderOf = (app) => readingOrder(app, navigator.language);
+  /** @param {string} url */
+  const named = async (url) => `${url}&accept-language=${encodeURIComponent(nominatimLanguages(orderOf(await readAppSettings(annai.files))))}`;
 
   /* en */
   const tools = [
@@ -161,13 +171,15 @@ export function activate(annai) {
         const radius = Math.round(Math.min(20000, Math.max(50, i.radius ?? 1000)));
         const kinds = i.kinds?.length ? i.kinds : ['sights', 'food'];
         const answer = (/** @type {any[][]} */ rows) => tsv(['name', 'kind', 'distance_m', 'lat', 'lng', 'source', 'note'], rows.sort((a, b) => a[2] - b[2]).slice(0, ROWS));
+        const app = await readAppSettings(annai.files);
+        const editions = editionsOf(orderOf(app));
         // The offline pack first (spec §8): where it holds the whole circle, nothing is asked.
         const pack = await loadPack(annai.files, call.trip).catch(() => null);
-        if (pack?.covers(i, radius)) return `${answer([...pack.places(i, radius, kinds), ...pack.pages(i, radius)])}\nFrom the offline pack${pack.downloaded}.`;
+        if (pack?.covers(i, radius)) return `${answer([...pack.places(i, radius, kinds), ...nearest(pack.pages(i, radius, editions))])}\nFrom the offline pack${pack.downloaded}.`;
         // Koe's quick reads (the Koe and Kokoro design): the pack only, never the network.
         if (call.offline) {
           if (!pack?.touches(i)) return 'Not in the offline pack: ask Kokoro.';
-          return `${answer([...pack.places(i, radius, kinds), ...pack.pages(i, radius)])}\nFrom the offline pack${pack.downloaded}, which holds only part of this circle. Kokoro can look further.`;
+          return `${answer([...pack.places(i, radius, kinds), ...nearest(pack.pages(i, radius, editions))])}\nFrom the offline pack${pack.downloaded}, which holds only part of this circle. Kokoro can look further.`;
         }
         const circle = (/** @type {number} */ r) => `(${overpassFilters(kinds).map((f) => `nwr(around:${r},${round(i.lat)},${round(i.lng)})${f};`).join('')});`;
         // Overpass can't sort by distance, and the OSM_LIMIT cap (400) cuts its output in id order. So circles each half the
@@ -191,7 +203,7 @@ export function activate(annai) {
         // only after the one before refuses or fails (an answer costs one request); VK's, while its switch is on, at once beside them
         // (VK's switch is read at each call). The first usable answer stops the others' requests, with a reason the Trace shows (an Error:
         // tracedFetch reads a DOMException AbortError as a stop with none).
-        const chains = overpassChains(await readAppSettings(annai.files));
+        const chains = overpassChains(app);
         const limit = AbortSignal.timeout(OVERPASS_MS);
         const won = new AbortController();
         const race = { ...call, signal: anySignal([call.signal, won.signal]) };
@@ -225,14 +237,29 @@ export function activate(annai) {
           throw new AggregateError(errors, 'no Overpass server answered');
         };
         const overpass = Promise.any(chains.map(inTurn)).finally(() => won.abort(Object.assign(new Error(/* en */ 'Stopped: the other Overpass server answered first.'), { name: 'AbortError' })));
-        const wikipedia = json(`https://en.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord=${round(i.lat)}%7C${round(i.lng)}&gsradius=${Math.min(radius, 10000)}&gslimit=30&format=json&origin=*`, call)
-          .then((w) => (Array.isArray(w?.query?.geosearch) ? w.query.geosearch : []).filter((/** @type {any} */ g) => typeof g?.title === 'string')
-            .map((/** @type {any} */ g) => [g.title, 'wikipedia article', Math.round(g.dist), round(g.lat), round(g.lon), 'wikipedia', `https://en.wikipedia.org/wiki/${encodeURIComponent(g.title.replace(/ /g, '_'))}`]));
+        // Each edition at once within one ASK_MS (one request a host: the etiquette's "in series" is for bulk clients), each article once. An
+        // edition that doesn't answer, or answers with an error, has the offline pack's articles of it where the pack reaches.
+        const late = AbortSignal.timeout(ASK_MS.ms);
+        const wikipedia = Promise.allSettled(editions.map(async (e) => {
+          const r = await ask(call, nearUrl(e, [round(i.lat), round(i.lng)], Math.min(radius, 10000), 30), { headers: agentHeader(VERSION) }, late);
+          const said = wikiSaid(r);
+          if (said) throw new Error(`${e}.wikipedia.org said: ${said}.`);
+          return articlesOf(r, e);
+        })).then((got) => {
+          if (got.every((g) => g.status === 'rejected')) throw /** @type {PromiseRejectedResult} */ (got[0]).reason;
+          const quiet = editions.filter((_, k) => got[k].status === 'rejected');
+          const packed = quiet.length && pack?.touches(i) ? pack.articles(i, Math.min(radius, 10000), quiet) : [];
+          const rows = nearest(merged([...got.flatMap((g) => (g.status === 'fulfilled' ? g.value : [])), ...packed], editions)
+            .map((a) => [a.title, 'wikipedia article', Math.round(meters(i.lat, i.lng, a.lat, a.lng)), round(a.lat), round(a.lng), 'wikipedia', articleUrl(a.edition, a.title)]));
+          // Named, so a missing edition's articles aren't taken for none.
+          const hosts = quiet.map((e) => `${e}.wikipedia.org`).join(' and ');
+          return { rows, note: !quiet.length ? '' : `\n${hosts} didn't answer, so ${quiet.length > 1 ? 'their' : 'its'} articles ${packed.length ? `come from the offline pack${pack?.downloaded}, where it holds them` : 'are missing from this list'}.` };
+        });
         // A service that didn't answer is null; a stopped call is no answer at all. OpenStreetMap is busy when every server asked said so
         // (a 429, or a 5xx: the 502 "Timeout" Overpass sends at once, a 504 "too busy"), known as the last one refuses. Another refusal
         // (the 406 overpass-api.de sends an agent it won't serve) is no answer.
         let busy = false;
-        const [got, wiki] = await Promise.all([
+        const [got, articles] = await Promise.all([
           overpass.catch((e) => {
             const refusals = e instanceof AggregateError ? e.errors.flatMap((x) => (x instanceof AggregateError ? x.errors : [x])) : [];
             busy = refusals.length > 0 && refusals.every((x) => x?.said?.code === 'status' && (x.said.status === 429 || x.said.status >= 500));
@@ -242,6 +269,8 @@ export function activate(annai) {
         ]);
         if (call.signal.aborted) throw /* en */ new DOMException('Stopped', 'AbortError');
         const osm = got ? got.rows : null;
+        const wiki = articles ? articles.rows : null;
+        const quiet = articles?.note ?? '';
         // A cut answer says so last, after where its rows came from, and names the circle to ask again with. The circles ran smallest first,
         // each wider one only while fewer than ROWS came, so the one cut is the first of `radii` holding ROWS places or more, and the rows
         // are its places: it is the first circle with ROWS of the rows that came, by the distance each carries (an outline's is to its
@@ -259,12 +288,12 @@ export function activate(annai) {
         const why = busy ? `OpenStreetMap is busy${wiki === null ? " and Wikipedia didn't answer" : ''}` : `${missing.join(' and ')} didn't answer`;
         if (missing.length && pack?.touches(i)) {
           const what = missing.length === 2 ? 'these come' : osm === null ? 'its places come' : 'its articles come';
-          return `${answer([...(osm ?? pack.places(i, radius, kinds)), ...(wiki ?? pack.pages(i, radius))])}\n${why}, so ${what} from the offline pack${pack.downloaded}.${cut}`;
+          return `${answer([...(osm ?? pack.places(i, radius, kinds)), ...(wiki ?? nearest(pack.pages(i, radius, editions)))])}\n${why}, so ${what} from the offline pack${pack.downloaded}.${quiet}${cut}`;
         }
         if (osm === null && wiki === null) throw new Error(busy ? `${why}. Try again in a moment.` : 'Neither OpenStreetMap nor Wikipedia answered. Try again in a moment.');
         const out = answer([...(osm ?? []), ...(wiki ?? [])]);
-        if (!osm) return `${out}\n${why}; these are Wikipedia articles only.`;
-        return `${out}${wiki === null ? `\n${why}; these are OpenStreetMap places only.` : ''}${cut}`;
+        if (!osm) return `${out}\n${why}; these are Wikipedia articles only.${quiet}`;
+        return `${out}${wiki === null ? `\n${why}; these are OpenStreetMap places only.` : quiet}${cut}`;
       },
     },
     {
@@ -273,7 +302,7 @@ export function activate(annai) {
       input: { type: 'object', properties: { query: { type: 'string', minLength: 1 } }, required: ['query'] },
       /** @param {{ query: string }} i @param {any} call */
       async run(i, call) {
-        const found = await nominatim(`${NOMINATIM}/search?q=${encodeURIComponent(i.query)}&format=jsonv2&limit=5&extratags=1`, call);
+        const found = await nominatim(await named(`${NOMINATIM}/search?q=${encodeURIComponent(i.query)}&format=jsonv2&limit=5&extratags=1`), call);
         if (!Array.isArray(found)) throw new Error(UNREADABLE('Nominatim'));
         const places = found.filter((f) => f && typeof f === 'object');
         if (!places.length) return `Nothing found for "${i.query}".`;
@@ -286,7 +315,7 @@ export function activate(annai) {
       input: { type: 'object', properties: POINT, required: ['lat', 'lng'] },
       /** @param {{ lat: number, lng: number }} i @param {any} call */
       async run(i, call) {
-        const f = await nominatim(`${NOMINATIM}/reverse?lat=${i.lat}&lon=${i.lng}&format=jsonv2&zoom=18&extratags=1`, call);
+        const f = await nominatim(await named(`${NOMINATIM}/reverse?lat=${i.lat}&lon=${i.lng}&format=jsonv2&zoom=18&extratags=1`), call);
         if (!f || typeof f !== 'object' || Array.isArray(f)) throw new Error(UNREADABLE('Nominatim'));
         if (f.error) return `Nothing is known at ${i.lat}, ${i.lng}.`;
         const [website, opening_hours] = extras(f);

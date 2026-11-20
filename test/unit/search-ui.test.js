@@ -2,7 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SEARCH_NOTE, WELCOME_SEARCH, stateOf } from '../../src/ui/search-panel.js';
 import { cooldowns, READY_MS } from '../../src/core/web-search.js';
-import { FREE_PROVIDERS, KNOWLEDGE } from '../../src/plugins/web/free.js';
+import { FREE_PROVIDERS, knowledgeFloor } from '../../src/plugins/web/free.js';
+import { readingOrder } from '../../src/core/languages.js';
+
+const KNOWLEDGE = knowledgeFloor(async () => readingOrder({}, 'en-US'));
 
 test('S5: the notes name where searches go, the last resort that stays on, what stops it, the training, and what is not sent', () => {
   for (const t of [SEARCH_NOTE, WELCOME_SEARCH]) {
@@ -23,8 +26,8 @@ test('S5: the notes name where searches go, the last resort that stays on, what 
   assert.equal(KNOWLEDGE.name, 'Wikivoyage, Wikipedia and Nominatim');
 });
 
-test('a provider\'s state: a ready() that never answers is "couldn\'t check", a resting floor says it rests, an always-on floor says so', async () => {
-  cooldowns.clear('wiki');
+test('a provider\'s state: a ready() that never answers is "couldn\'t check", a resting web provider says it rests, the always-on floor says so', async () => {
+  cooldowns.clear('exa');
   cooldowns.clear('stuck');
   const was = READY_MS.ms;
   READY_MS.ms = 30;
@@ -34,24 +37,24 @@ test('a provider\'s state: a ready() that never answers is "couldn\'t check", a 
     assert.equal(await stateOf({ id: 'k2', ready: async () => ({ ok: true }) }), 'ready');
     assert.equal(await stateOf(FREE_PROVIDERS[0]), 'free, no key');
     assert.match(await stateOf(KNOWLEDGE), /Wikimedia and OpenStreetMap; always on, the last resort/);
-    cooldowns.rest('wiki');
-    assert.match(await stateOf(KNOWLEDGE), /^resting after a failure, tries again in 1 minute$/);
+    cooldowns.rest('exa');
+    assert.match(await stateOf(FREE_PROVIDERS[0]), /^resting after a failure, tries again in 1 minute$/);
   } finally {
     READY_MS.ms = was;
-    cooldowns.clear('wiki');
+    cooldowns.clear('exa');
   }
 });
 
-test('the wait a resting provider shows is worked out from one reading of the clock, so the last minute never reads "now"', async () => {
-  cooldowns.clear('wiki');
-  cooldowns.rest('wiki');
+test('the wait a resting provider shows reads "1 minute" in its last minute, never "now"', async () => {
+  cooldowns.clear('exa');
+  cooldowns.rest('exa');
   const real = Date.now;
   let readings = 0;
   Date.now = () => real() + 7 * readings++; // every reading a little later than the one before
   try {
-    assert.match(await stateOf(KNOWLEDGE), /^resting after a failure, tries again in 1 minute$/);
+    assert.match(await stateOf(FREE_PROVIDERS[0]), /^resting after a failure, tries again in 1 minute$/);
   } finally {
     Date.now = real;
-    cooldowns.clear('wiki');
+    cooldowns.clear('exa');
   }
 });

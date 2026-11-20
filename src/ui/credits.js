@@ -5,7 +5,7 @@
  * it isn't a source, so a new source can't ship without its credit.
  * @typedef {{ href: string, text: string }} Link  text: shown as the link where the credit says it, else after it
  * @typedef {{ name: string, hosts: string[], use: string, credit: string, links: Link[] }} Source
- * use is in the screens' words; a credit and its links stay English, as asked.
+ * use is in the screens' words; a credit and its links stay English, as asked. A host `*.domain` is any of that domain's (a Wikipedia edition's).
  */
 import { t } from '../core/l10n.js';
 
@@ -29,10 +29,10 @@ export const SOURCES = [
   },
   {
     name: 'Wikipedia',
-    hosts: ['en.wikipedia.org'],
-    use: t`Articles about places nearby, and their summaries in the offline pack. Each article Shiori reads comes with its address. Free search's last resort, on whatever you tick, sends it the words searched.`,
+    hosts: ['*.wikipedia.org'],
+    use: t`Articles about places nearby, and their summaries in the offline pack, from the editions in the languages you speak and in English. Each article Shiori reads comes with its address. Free search's last resort, on whatever you tick, sends it the words searched.`,
     credit: /* en */ "Text by Wikipedia's contributors, under CC BY-SA 4.0.",
-    links: /* en */ [{ href: 'https://en.wikipedia.org/', text: 'Wikipedia' }, CC_BY_SA],
+    links: /* en */ [{ href: 'https://www.wikipedia.org/', text: 'Wikipedia' }, CC_BY_SA],
   },
   {
     name: 'Wikivoyage',
