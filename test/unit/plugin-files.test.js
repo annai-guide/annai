@@ -61,6 +61,9 @@ test("a failed write, edit or patch says plainly that the file wasn't changed (e
   await assert.rejects(run('edit', { path: '/trip/plan/drive.json', old: '"title": "Drive north"', new: '"title": "Drive later"' }), /^Error: That text isn't in \/trip\/plan\/drive\.json, so it wasn't changed\./);
   await assert.rejects(run('edit', { path: '/trip/plan/drive.json', old: '"', new: "'" }), /appears \d+ times in \/trip\/plan\/drive\.json, so it wasn't changed\./);
   await assert.rejects(run('edit', { path: '/trip/plan/none.json', old: 'a', new: 'b' }), /No file at \/trip\/plan\/none\.json, so nothing was changed\./);
+  // A call with no new (or one that isn't text) would put the word "undefined" over old.
+  await assert.rejects(run('edit', { path: '/trip/plan/drive.json', old: 'Drive south' }), /^Error: new is the text to put in old's place, so \/trip\/plan\/drive\.json wasn't changed\./);
+  await assert.rejects(run('edit', { path: '/trip/plan/drive.json', old: 'Drive south', new: null }), /new is the text to put in old's place/);
   await assert.rejects(run('patch', { path: '/trip/plan/none.json', changes: { title: 'x' } }), /No file at \/trip\/plan\/none\.json, so nothing was changed\./);
   await assert.rejects(run('write', { path: '/trip/plan/drive.json', content: { title: 3 } }), /doesn't match its format, so it wasn't written:/);
   assert.equal(await ws.readText(trip, '/plan/drive.json'), before);

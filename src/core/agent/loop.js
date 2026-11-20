@@ -2,7 +2,7 @@ import { claimLine, quote, conversationLines, USER_LINES } from './blocks.js';
 import { ME, TODO_FILE, newId } from '../scopes.js';
 import { readAppSettings } from '../settings.js';
 import { languageSettings, strayLanguage } from '../languages.js';
-import { AllFailedError, estimateTokens, candidates, chatCandidates, whyOf, whyWords, levelOf } from '../llm/fallback.js';
+import { AllFailedError, estimateTokens, CHARS_PER_TOKEN, candidates, chatCandidates, whyOf, whyWords, levelOf } from '../llm/fallback.js';
 import { ProviderError } from '../llm/contract.js';
 import { modelOf, modelNames, providerOf, updateModel } from '../llm/config.js';
 import { NotFoundError } from '../workspace.js';
@@ -10,7 +10,7 @@ import { fromBase64, toBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
 import { record, storedTexts, TALK_TAG } from './log.js';
 import { blobBytes, canRead } from '../reach.js';
-import { compactionNeed, cutAt, replyPrompt, keepTokens, tokensAfter, requestBytes, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
+import { compactionNeed, cutAt, replyPrompt, dueTokens, tokensAfter, requestBytes, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
 import { Transcript, resolveEvent, repair, NOT_SAID, SAID, STOPPED, CUT, NOT_RUN, NOT_ANSWERED, NOT_HEARD, LET_GO, MOVED } from './transcript.js';
 import { toolList, definitions, runTool, Stuck, toolSwitches, resolvePath, ALWAYS_ON } from './tools.js';
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint, systemText } from './context.js';
@@ -400,7 +400,7 @@ export class Agent {
   #free = [];
   /** The page is being left. */
   #leaving = false;
-  /** The warm summary's call, which leaving the page or a tap on Shiori cuts short. @type {AbortController | null} */
+  /** The summary's call, which leaving the page, a tap on Shiori or another conversation opening cuts short. @type {AbortController | null} */
   #tidy = null;
   /** @type {PhotoCopies | null} */
   #photos = null;
@@ -1407,7 +1407,6 @@ export class Agent {
   interrupt() {
     this.#userStop = true;
     if (this.#ear?.owner === 'after') this.#closeEar(); // the listening after her line, opened as her turn ends: a Stop leaves nothing listening on
-    this.#tidy?.abort(); // a warm summary under way: its call deletes the turn it borrowed
     if (this.#gathering) this.#stopGathered();
     this.#halt();
   }
@@ -1439,7 +1438,7 @@ export class Agent {
       });
   }
 
-  /** Stops the turn: the user's stop, or another conversation opening. */
+  /** Stops the turn: the user's stop, or another conversation opening; a summary under way is cut too (made again later). */
   #halt() {
     // Her line still being said didn't reach the user: what it would settle stays owed (a reminder it carried shows at the cut).
     if (this.#saying !== null) {
@@ -1448,6 +1447,7 @@ export class Agent {
       this.#cutSaying = true;
     }
     this.#abort?.abort();
+    this.#tidy?.abort();
     if (this.#half.voice()) this.voice?.speaker.stop();
     const p = this.#pending;
     this.#pending = null;
@@ -1548,14 +1548,14 @@ export class Agent {
     this.#armEar();
   }
 
-  /** A due housekeeping waits for this pause, then runs warm shortly before the cache expires, or cold now (spec §6.5). */
+  /** A due housekeeping waits for this pause, then runs warm shortly before the cache expires, or cold now (spec §6.5); a timer firing after the cache ran out (the page slept) leaves it to the next turn, cold. */
   #schedule() {
     this.#clearTimer();
     if (!this.#due || this.#opens || this.#still) return;
     const last = this.#warmth.last;
     const wait = last ? last.at + last.ttlMs - WARM_LEAD_MS - this.now() : 0;
     if (wait <= 0) this.#housekeep('cold');
-    else this.#timer = this.timers.set(() => { this.#timer = null; this.#housekeep('warm'); }, wait);
+    else this.#timer = this.timers.set(() => { this.#timer = null; if (this.cacheState()?.warm) this.#housekeep('warm'); }, wait);
   }
 
   /** @param {'warm' | 'cold'} mode */
@@ -1633,7 +1633,7 @@ export class Agent {
   async #tailFor(now) {
     const koe = this.#half.koe?.() ?? null;
     if (this.#half.tail) return this.#half.tail(now);
-    // Read at every request, so an edit of hers or the user's shows at the next step: undefined, no file yet; null, it couldn't be read.
+    // Read at every request, so an edit shows at the next step: '' no file yet; null it couldn't be read; undefined no trip open.
     const todo = this.trip ? await this.ws.readText(this.trip, TODO_FILE).then((x) => x ?? '', () => null) : undefined;
     return nowBlock({ ...now, plan: await nextPlanItems(this.ws, this.trip, this.now(), { fallbackTz: now.timeZone }), ...(todo === undefined ? {} : { todo }), ...(koe ? { koe } : {}) });
   }
@@ -1714,12 +1714,13 @@ export class Agent {
     for (const e of events) {
       const texts = await storedTexts(this.store, e);
       const size = JSON.stringify(e.data ?? {}).length + Object.values(texts).reduce((n, s) => n + s.length, 0);
-      items.push({ seq: e.seq, tokens: Math.ceil(size / 3.5) + (e.data?.images?.length ?? 0) * 1600, exchange: e.type === 'wake' && !e.data?.meanwhile });
+      items.push({ seq: e.seq, tokens: Math.ceil(size / CHARS_PER_TOKEN) + (e.data?.images?.length ?? 0) * 1600, exchange: e.type === 'wake' && !e.data?.meanwhile });
     }
     // Her mark (mark_done) since the last compaction: what the exchanges after it hold is kept, when that is less; never fewer exchanges than
-    // the floor, so a mark in the last ones keeps them, and an old one changes nothing. Its result as it ran (not a refused or cut call's).
+    // the floor (three, one when forced), so a mark in the last ones keeps them, and an old one changes nothing. Its result as it ran (not a refused or cut call's).
     const mark = events.findLast((e) => e.type === 'tool.result' && e.data?.name === 'mark_done' && e.data?.ok !== false && e.data?.wake !== 'housekeeping' && e.seq > (latest?.seq ?? 0));
-    const keep = Math.min(o.keepTokens ?? keepTokens({ window, threshold: settings.compaction.threshold, maxBytes: settings.compaction.maxRequestMiB * 2 ** 20 }), mark ? tokensAfter(items, mark.seq) : Infinity);
+    // A third of where it is due stays word for word (by tokens: the request size's is never nearer, 149,796 tokens at Settings' least).
+    const keep = Math.min(o.keepTokens ?? dueTokens(window, settings.compaction.threshold) / 3, mark ? tokensAfter(items, mark.seq) : Infinity);
     const cut = cutAt(items, { keepTokens: keep, minExchanges: o.forced ? 1 : KEEP_EXCHANGES });
     if (cut === null) return false;
     // What was heard in the part summarized is written down first, the last time its sound is at hand (spec §10.3): the
@@ -1752,6 +1753,7 @@ export class Agent {
     });
     this.#snapshot = null;
     this.#due = false;
+    this.#lastPrompt = 0; // that count was of the conversation before this summary
     return true;
   }
 
@@ -1856,6 +1858,7 @@ export class Agent {
       });
       this.#snapshot = null;
       this.#due = false;
+      this.#lastPrompt = 0;
       return result;
     } finally {
       this.#busy = false;
@@ -1917,9 +1920,15 @@ export class Agent {
     for (const e of await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['heard.text'], after: cut - 1 }))) old.apply(e, { texts: {}, images: [] });
     // Half the utility model's window, in characters, leaves room for the instructions and the summary.
     const window = (await this.#roleModel('utility'))?.contextWindow;
-    const text = renderForSummary(old.messages, window ? Math.floor(window * 3.5 * 0.5) : SUMMARY_MAX_CHARS);
-    const r = await this.llm.call({ role: 'utility', request: { system: coldSystem(language), messages: [{ role: 'user', parts: [{ type: 'text', text }] }] }, scope: this.scope, record: { tag: 'compaction' } });
-    return r.reply.text.trim() || null;
+    const text = renderForSummary(old.messages, window ? Math.floor(window * CHARS_PER_TOKEN * 0.5) : SUMMARY_MAX_CHARS);
+    const tidy = new AbortController();
+    this.#tidy = tidy;
+    try {
+      const r = await this.llm.call({ role: 'utility', request: { system: coldSystem(language), messages: [{ role: 'user', parts: [{ type: 'text', text }] }] }, scope: this.scope, signal: tidy.signal, record: { tag: 'compaction' } });
+      return r.reply.text.trim() || null;
+    } finally {
+      this.#tidy = null;
+    }
   }
 
   /** Writes a conversation event in the open conversation (Self tools), or in scope's (#logIn). @param {Parameters<typeof record>[2]} ev @param {{ scope?: string }} [o] */
@@ -2411,7 +2420,6 @@ export class Agent {
           break;
         }
         if (done) {
-          this.#lastPrompt = 0;
           this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale }), { cold: true });
           continue;
         }
@@ -2419,10 +2427,7 @@ export class Agent {
         // Due, and the cache is cold already: the utility model summarizes the older part first, so the turn writes the shorter
         // conversation to the cache, not the whole one (spec §6.5). Not done (a failure says so on a card), the turn goes on as it is.
         const done = await this.#tidyUp('cold', {}, wakeId);
-        if (done) {
-          this.#lastPrompt = 0;
-          this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale }), { cold: true });
-        }
+        if (done) this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale }), { cold: true });
         if (done !== false) continue; // done: the shorter conversation; null: cut short (a tap, leaving the page), read at the loop's top
       }
       const prefer = !reordered && this.#warmth.last && this.#warmth.state(this.#warmth.last.modelId, fingerprint, this.now()).warm ? this.#warmth.last.modelId : undefined;
@@ -2497,10 +2502,7 @@ export class Agent {
             failed = true;
             break;
           }
-          if (done) {
-            this.#lastPrompt = 0;
-            continue;
-          }
+          if (done) continue;
         }
         await this.#failed(e, wakeId);
         failed = true;

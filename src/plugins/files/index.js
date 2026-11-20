@@ -232,6 +232,8 @@ export function activate(annai) {
       input: { type: 'object', properties: { path: PATH, old: { type: 'string' }, new: { type: 'string' } }, required: ['path', 'old', 'new'] },
       /** @param {{ path: string, old: string, new: string }} i @param {any} call */
       run: caseTolerant('edited', async (i, call) => {
+        // Without new, the replace would write "undefined".
+        if (typeof i.new !== 'string') throw new Error(`new is the text to put in old's place, so ${i.path} wasn't changed.`);
         const { scope, path } = where(i.path, call);
         writable(scope, path);
         recordPlace(scope, path);
@@ -239,7 +241,7 @@ export function activate(annai) {
         if (now === undefined) throw new Error(`No file at ${i.path}, so nothing was changed.`);
         const count = (/** @type {string} */ s) => (s ? now.split(s).length - 1 : 0);
         let [old, next] = [i.old, i.new];
-        // Text copied from a view that shows "<" as <lt> (her to-do list in the now block, a TSV list) is read in that layout, the new text
+        // Text copied from a view that shows "<" as <lt> (her to-do list in the now block, search's TSV rows) is read in that layout, the new text
         // too, when as given it matches nothing and so read it matches once.
         const lt = (/** @type {string} */ s) => s.replaceAll('<lt>', '<');
         if (!count(old) && old?.includes('<lt>') && count(lt(old)) === 1) [old, next] = [lt(old), lt(next)];

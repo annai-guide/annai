@@ -8,10 +8,12 @@ import { anthropicStandIn } from '../fakes/anthropic-binding.js';
 import { Agent } from '../../src/core/agent/loop.js';
 import { selfTools } from '../../src/core/agent/self-tools.js';
 import { record } from '../../src/core/agent/log.js';
-import { replyPrompt, tokensAfter, keepTokens, DUE_TOKENS } from '../../src/core/agent/compaction.js';
+import { replyPrompt, tokensAfter, dueTokens, DUE_TOKENS } from '../../src/core/agent/compaction.js';
+import { CHARS_PER_TOKEN } from '../../src/core/llm/fallback.js';
 import { nowBlock } from '../../src/core/agent/context.js';
 import { createTrip } from '../../src/core/scopes.js';
 import { exportArchive, PRESETS } from '../../src/core/archive.js';
+import { setToolSwitch } from '../../src/core/agent/tools.js';
 
 const MINUTE = 60_000;
 /** A long conversation's call: 111,030 tokens of prompt, most of it read from the cache. */
@@ -75,6 +77,7 @@ test('a cold return over 100,000 tokens, after a reload: the utility model summa
   assert.equal(more.length, 0);
   const [summary, first] = k.requests.slice(before);
   assert.ok(isUtility(summary), 'the utility model is asked first');
+  assert.equal(words(summary).includes('vegetarian'), false, "the list is not in the summary's input either");
   assert.match(first.messages[0].parts[0].text, /^\[Earlier conversation, summarized \(events \d+–\d+\); recall brings back the exact words\]\nThey asked five questions\.$/);
   assert.equal(words(first).includes('Question 0'), false);
   assert.match(words(first), /Question 4/);
@@ -111,7 +114,7 @@ test('not under 100,000 tokens: a cold return to a shorter conversation is sent 
   assert.deepEqual((await k.events(['compaction'])).map((e) => e.data.mode), ['cold']);
 });
 
-test("another conversation opened within the hour: each is cold or warm by its own log, not by the other one's last call", async (t) => {
+test("another conversation opened and talked in meanwhile: this one is warm within the hour of its own last call, and cold an hour after it", async (t) => {
   const jump = clockOf(t);
   const k = await agentKit([[...Array.from({ length: 4 }, (_, i) => say(`Answer ${i}`, LONG)), say('Other.'), say('Back here.', LONG), say('And again.')]], { models: [OPUS], utility: [{ text: 'Four questions.' }], agent: { timers: NO_TIMERS } });
   const other = await createTrip(k.ws, { title: 'Other' });
@@ -128,7 +131,7 @@ test("another conversation opened within the hour: each is cold or warm by its o
   await k.agent.open(other);
   jump(6 * MINUTE);
   await k.agent.open(k.trip);
-  // 61 minutes after its own last call, the other one's 61 too; then the other is opened and left within the minute: this one is cold.
+  // 61 minutes after its own last call (the other one's last call is 66 back): cold. The next test is the one a reading by the other's call fails.
   await talk(k.agent, ['Back an hour later']);
   assert.deepEqual((await k.events(['compaction'])).map((e) => e.data.mode), ['cold']);
 });
@@ -160,7 +163,11 @@ test('the cold return keeps a third of 100,000 tokens word for word on a window 
   const sent = words(k.requests.at(-1));
   const kept = BIG.map((_, i) => i).filter((i) => sent.includes(`Q${i} `));
   assert.deepEqual(kept, [3, 4, 5, 6, 7, 8, 9], 'about 33,000 tokens: seven questions of about 5,000');
-  assert.equal(keepTokens({ window: 1_000_000, threshold: 0.7, maxBytes: 8 * 2 ** 20 }), DUE_TOKENS / 3);
+  assert.equal(dueTokens(1_000_000, 0.7), DUE_TOKENS);
+  assert.equal(dueTokens(null, 0.7), DUE_TOKENS, 'no window: the one figure');
+  assert.equal(dueTokens(40_000, 0.7), 28_000, "a small window's share comes first");
+  // The kept part is a third of this, never of the request size's due point: the Settings' nearest (50% of 1 MiB, in tokens) is past it.
+  assert.ok((0.5 * 2 ** 20) / CHARS_PER_TOKEN > DUE_TOKENS);
 });
 
 test('on a small window the cold return, after a reload, keeps a third of its own threshold, so more than the oldest exchange is summarized', async (t) => {
@@ -189,6 +196,93 @@ test("the utility model failing: a card says she couldn't tidy up, and the turn 
   assert.equal((await k.events(['out.speak'])).at(-1).data.text, 'Here anyway.');
 });
 
+test('the warm timer firing late, after her cache ran out (the page was asleep): her main model summarizes nothing; the next turn, cold, has the utility model do it', async (t) => {
+  const jump = clockOf(t);
+  /** @type {(() => void)[]} */
+  const timers = [];
+  const k = await agentKit([[...Array.from({ length: 5 }, (_, i) => say(`Answer ${i}`, LONG)), say('Back.')]], {
+    models: [OPUS], utility: [{ text: 'They asked five questions.' }], agent: { timers: { set: (/** @type {() => void} */ fn) => timers.push(fn), clear: () => {} } },
+  });
+  await talk(k.agent, ['Question 0', 'Question 1', 'Question 2', 'Question 3', 'Question 4']);
+  assert.ok(timers.length > 0, 'over 100,000: warm housekeeping is timed');
+  const before = k.requests.length;
+  jump(61 * MINUTE); // the timer fires only now
+  timers.at(-1)?.();
+  await k.agent.idle();
+  assert.equal(k.requests.length, before, 'no model was asked: a warm summary would write the whole conversation to the cache again');
+  assert.deepEqual(await k.events(['compaction']), []);
+  await talk(k.agent, ['I am back']);
+  assert.deepEqual((await k.events(['compaction'])).map((e) => e.data.mode), ['cold']);
+  assert.equal(k.requests.filter(isUtility).length, 1);
+});
+
+test('the warm timer in time (the cache still holds): her main model writes the summary, warm', async () => {
+  /** @type {(() => void)[]} */
+  const timers = [];
+  const k = await agentKit([[...Array.from({ length: 5 }, (_, i) => say(`Answer ${i}`, LONG)), { text: 'Warm summary.' }]], {
+    models: [OPUS], agent: { timers: { set: (/** @type {() => void} */ fn) => timers.push(fn), clear: () => {} } },
+  });
+  await talk(k.agent, ['Question 0', 'Question 1', 'Question 2', 'Question 3', 'Question 4']);
+  timers.at(-1)?.();
+  await k.agent.idle();
+  assert.deepEqual((await k.events(['compaction'])).map((e) => e.data.mode), ['warm']);
+});
+
+test("a summary made in the session (the warm timer's) leaves no count of the old prompt: a cold return after it summarizes nothing again", async (t) => {
+  const jump = clockOf(t);
+  /** @type {(() => void)[]} */
+  const timers = [];
+  const k = await agentKit([[...Array.from({ length: 6 }, (_, i) => say(`Answer ${i}`, LONG)), { text: 'Warm summary.' }, say('Back.', SHORT)]], {
+    models: [OPUS], utility: [{ text: 'Second summary, which must not be asked for.' }], agent: { timers: { set: (/** @type {() => void} */ fn) => timers.push(fn), clear: () => {} } },
+  });
+  await talk(k.agent, ['Q0', 'Q1', 'Q2', 'Q3', 'Q4', 'Q5']);
+  timers.at(-1)?.();
+  await k.agent.idle();
+  assert.deepEqual((await k.events(['compaction'])).map((e) => e.data.mode), ['warm']); // five exchanges stay
+  jump(61 * MINUTE);
+  await talk(k.agent, ['Back']); // no reload: the same Agent, whose count of the last prompt was 111,030 before the summary
+  assert.deepEqual((await k.events(['compaction'])).map((e) => e.data.mode), ['warm']);
+  assert.equal(k.requests.filter(isUtility).length, 0);
+  assert.equal((await k.events(['out.speak'])).at(-1).data.text, 'Back.');
+});
+
+test('a tap on Shiori during the cold summary that starts a turn cuts it at once, and the next cold return summarizes again', async (t) => {
+  const jump = clockOf(t);
+  const k = await agentKit([[...Array.from({ length: 5 }, (_, i) => say(`Answer ${i}`, LONG)), say('Back.'), say('Again.')]], {
+    models: [OPUS], utility: [{ text: 'Too slow.', delayMs: 20_000 }, { text: 'They asked five questions.' }], agent: { timers: NO_TIMERS },
+  });
+  await talk(k.agent, ['Question 0', 'Question 1', 'Question 2', 'Question 3', 'Question 4']);
+  jump(61 * MINUTE);
+  const real = performance.now();
+  k.agent.send('I am back');
+  await until(() => k.requests.some(isUtility));
+  k.agent.interrupt();
+  await k.agent.idle();
+  assert.ok(performance.now() - real < 5_000, 'the summary was cut, not waited for');
+  assert.deepEqual(await k.events(['compaction']), []);
+  assert.equal(k.notices.some((n) => /tidy up/.test(n.title ?? '')), false, 'a tap is no failure: no card');
+  jump(61 * MINUTE);
+  await talk(k.agent, ['Again']);
+  assert.deepEqual((await k.events(['compaction'])).map((e) => e.data.mode), ['cold'], 'a cut summary is tried again at the next cold return');
+});
+
+test("opening another conversation during the cold summary that starts a turn cuts it: the switch doesn't wait for the utility model", async (t) => {
+  const jump = clockOf(t);
+  const k = await agentKit([[...Array.from({ length: 5 }, (_, i) => say(`Answer ${i}`, LONG)), say('Back.')]], {
+    models: [OPUS], utility: [{ text: 'Too slow.', delayMs: 20_000 }], agent: { timers: NO_TIMERS },
+  });
+  const other = await createTrip(k.ws, { title: 'Other' });
+  await talk(k.agent, ['Question 0', 'Question 1', 'Question 2', 'Question 3', 'Question 4']);
+  jump(61 * MINUTE);
+  const real = performance.now();
+  k.agent.send('I am back');
+  await until(() => k.requests.some(isUtility));
+  await k.agent.open(other);
+  assert.ok(performance.now() - real < 5_000, 'the open came at once');
+  assert.deepEqual(await k.events(['compaction']), []);
+  assert.equal(k.notices.some((n) => /tidy up/.test(n.title ?? '')), false);
+});
+
 test('the header names the whole range: after two summaries, from the first event; after a Start fresh then a summary, from the fresh start', async () => {
   const k = await agentKit([[...Array.from({ length: 16 }, (_, i) => say(`Answer ${i}`))]], { utility: [{ text: 'First summary.' }, { text: 'Second summary.' }, { text: 'After the fresh start.' }] });
   await talk(k.agent, ['M0', 'M1', 'M2', 'M3', 'M4']);
@@ -196,6 +290,7 @@ test('the header names the whole range: after two summaries, from the first even
   await talk(k.agent, ['M5', 'M6']);
   assert.equal(await k.agent.compact('cold'), true);
   const [one, two] = await k.events(['compaction']);
+  assert.equal(one.data.from, (await k.events(['wake']))[0].seq, 'the first covers from the conversation\'s first event');
   assert.equal(two.data.from, one.data.from, 'the second covers what the first did, and on');
   assert.ok(two.data.from < one.seq);
   assert.match(k.agent.transcript.messages[0].parts[0].text, new RegExp(`^\\[Earlier conversation, summarized \\(events ${one.data.from}–${two.data.to}\\);`));
@@ -228,7 +323,7 @@ test("a reply that ran the provider's own search gives no prompt count: live, it
   assert.deepEqual(await k.events(['compaction']), [], 'from the log: no count, the request is small');
 });
 
-test('the same count without a search: live, the warm timer is set at 100,000 on a window of a million', async () => {
+test('the same count without a search: live, it is due on a window of a million (70% of it is 700,000), so the warm timer is set', async () => {
   /** @type {number[]} */
   const timers = [];
   const k = await agentKit([[say('Answer', LONG)]], { models: [OPUS], agent: { timers: { set: (/** @type {any} */ _fn, /** @type {number} */ ms) => timers.push(ms), clear: () => {} } } });
@@ -237,7 +332,7 @@ test('the same count without a search: live, the warm timer is set at 100,000 on
   assert.ok(timers[0] > 58 * MINUTE && timers[0] <= 60 * MINUTE - 45_000, String(timers[0]));
 });
 
-test('the mark: the next summary keeps what follows the task she marked done, within the third and the last three exchanges', async () => {
+test('the mark: the next summary cuts right after the task she marked done, so what follows stays word for word', async () => {
   const k = await agentKit([[...Array.from({ length: 8 }, (_, i) => (i === 2
     ? { toolCalls: [{ name: 'speak', input: { text: 'Booked.' } }, { name: 'mark_done', input: { done: 'the ferry booked' } }, { name: 'sleep', input: {} }] }
     : say(`Answer ${i}`)))]], { utility: [{ text: 'S.' }], models: [OPUS] });
@@ -295,7 +390,7 @@ test('the mark: none, an old one, one in the last three exchanges, one before th
   assert.deepEqual(['O0', 'O1', 'O2', 'O3', 'O4', 'O5'].filter((m) => octx.includes(`"${m}`)), ['O3', 'O4', 'O5'], 'a third of 21,000 is about two big questions: the mark further back is passed by');
 });
 
-test('mark_done is a Self tool: switchable, never the helper\'s, and its result says what it did', async () => {
+test('mark_done is a Self tool, and its result says what it did', async () => {
   const k = await agentKit([[{ toolCalls: [{ name: 'mark_done', input: { done: 'x' } }] }, say('ok')]]);
   const tool = k.agent.loopTools().find((/** @type {any} */ x) => x.name === 'mark_done');
   assert.equal(tool.group, 'Self');
@@ -305,18 +400,66 @@ test('mark_done is a Self tool: switchable, never the helper\'s, and its result 
   assert.match(r.data.content, /^Marked: /);
 });
 
+test("cold is read by the device's clock when a simulation's clock is in use: the log's times are the device's", async (t) => {
+  const jump = clockOf(t);
+  const k = await agentKit([[...Array.from({ length: 5 }, (_, i) => say(`Answer ${i}`, LONG)), say('Back.')]], { models: [OPUS], utility: [{ text: 'They asked five questions.' }], agent: { timers: NO_TIMERS } });
+  await talk(k.agent, ['Question 0', 'Question 1', 'Question 2', 'Question 3', 'Question 4']);
+  // A simulation of another conversation, its clock standing where the last call was: by it, this one is warm; by the device's, an hour on, cold.
+  const stopped = Date.now();
+  k.agent.useClock({ now: () => stopped, online: () => true, timeZone: () => 'UTC', scope: 'a-simulated-conversation' });
+  jump(61 * MINUTE);
+  await talk(k.agent, ['I am back']);
+  assert.deepEqual((await k.events(['compaction'])).map((e) => e.data.mode), ['cold']);
+});
+
+test('a forced compaction keeps at least the last exchange, so her mark moves its cut too: fewer than three exchanges stay; not forced, the last three do', async () => {
+  /** @param {boolean} forced */
+  const kept = async (forced) => {
+    const k = await agentKit([[...Array.from({ length: 8 }, (_, i) => (i === 5
+      ? { toolCalls: [{ name: 'speak', input: { text: 'Done.' } }, { name: 'mark_done', input: { done: 'the ferry booked' } }, { name: 'sleep', input: {} }] }
+      : say(`Answer ${i}`)))]], { utility: [{ text: 'S.' }], models: [OPUS] });
+    await talk(k.agent, ['M0', 'M1', 'M2', 'M3', 'M4', 'M5 book the ferry', 'M6', 'M7']);
+    assert.equal(await k.agent.compact('cold', forced ? { forced: true } : {}), true);
+    const ctx = words({ messages: k.agent.transcript.messages });
+    return ['M0', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7'].filter((m) => ctx.includes(`"${m}`));
+  };
+  assert.deepEqual(await kept(true), ['M6', 'M7'], 'the exchanges after the marked one');
+  assert.deepEqual(await kept(false), ['M5', 'M6', 'M7'], 'never fewer than three');
+});
+
+test("mark_done is never the helper's: a task's helper that calls it finds no such tool, and nothing is marked", async () => {
+  const k = await agentKit([[{ toolCalls: [{ name: 'task', input: { prompt: 'Find a ferry time' } }] }, say('The helper is done.')]], {
+    utility: [{ toolCalls: [{ name: 'mark_done', input: { done: 'the helper thinks it is done' } }] }, { text: 'No ferry time found.' }],
+  });
+  await talk(k.agent, ['Ask a helper']);
+  const asked = (await k.events(['tool.result'])).filter((e) => e.data.name === 'mark_done');
+  assert.equal(asked.length, 1);
+  assert.equal(asked[0].data.ok, false);
+  assert.match(asked[0].data.content, /the helper has no tool called mark_done/);
+});
+
+test('mark_done switched off in Settings → Tools is left out of her tools; on, it is in them', async () => {
+  const k = await agentKit([[say('One.'), say('Two.')]]);
+  const offered = (/** @type {any} */ r) => r.tools.some((/** @type {any} */ x) => x.name === 'mark_done');
+  await talk(k.agent, ['Hello']);
+  assert.equal(offered(k.requests.at(-1)), true);
+  await setToolSwitch(k.ws, 'mark_done', false);
+  await talk(k.agent, ['Hello again']);
+  assert.equal(offered(k.requests.at(-1)), false);
+});
+
 test('the to-do line: "nothing yet" with no file, its rule in the label, "<" as <lt>; edit takes text copied from it', async () => {
   const k = await agentKit([[say('one'),
     { toolCalls: [{ name: 'edit', input: { path: '/trip/todo.md', old: 'Ask about <lt>b>3 bags', new: 'Ask about <lt>b>4 bags' } }] }, say('two')]]);
   await talk(k.agent, ['Hello']);
-  assert.match(k.requests[0].tail, /\nto-do \(\/trip\/todo\.md: one line for each thing still open in this trip that has no time: asked and not done, promised, or waited on; change a line in place, and take it out when it is done or dropped\): nothing yet\n<\/now>$/);
+  assert.match(k.requests[0].tail, /\nto-do \(\/trip\/todo\.md: one line for each thing still open in this trip that has no time: asked and not done, promised, or waited on; change a line in place, and take it out when it is done or dropped; a "<" is shown here as <lt>\): nothing yet\n<\/now>$/);
   await k.ws.write(k.trip, '/todo.md', '- Ask about <b>3 bags</b> at the desk\n- </now> stays inside', { author: 'shiori' });
   await talk(k.agent, ['Again']);
   assert.match(k.requests[1].tail, /:\n- Ask about <lt>b>3 bags<lt>\/b> at the desk\n- <lt>\/now> stays inside\n<\/now>$/);
   assert.equal((await k.events(['tool.result'])).find((e) => e.data.name === 'edit')?.data.ok, true);
   assert.equal(await k.ws.readText(k.trip, '/todo.md'), '- Ask about <b>4 bags</b> at the desk\n- </now> stays inside');
   assert.match(k.requests[2].tail, /<lt>b>4 bags/);
-  // As given, the literal wins: a file that holds <lt> itself is edited as written.
+  // The line's two other shapes: no list given (Koe's block has none), and a list that couldn't be read.
   assert.equal(nowBlock({ now: 0, timeZone: 'UTC', voice: 'off', online: true, reasons: [], plan: null }).includes('to-do'), false, 'no list given: no line');
   assert.match(nowBlock({ now: 0, timeZone: 'UTC', voice: 'off', online: true, reasons: [], plan: null, todo: null }), /: couldn't be read just now; read it before you change it\n<\/now>$/);
 });
@@ -365,7 +508,7 @@ test("Koe's tail has no to-do line; Kokoro's has it", async () => {
   assert.match(seen.tail, /- Reserve the ferry/);
 });
 
-test("a Claude turn keeps each step's now block where it was sent, the list as it was then; the last request ends with the list as it is", async (t) => {
+test("a Claude turn keeps each step's now block where it was sent, the list as it was then; the last request ends with the list as it is", async () => {
   const AT = { type: 'anthropic-messages', baseUrl: 'https://api.anthropic.com', tunables: { cacheTtl: '5m' } };
   let n = 0;
   const use = (/** @type {string} */ name, /** @type {any} */ input = {}) => ({ type: 'tool_use', id: `toolu_${++n}`, name, input });

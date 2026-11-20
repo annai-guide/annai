@@ -16,10 +16,9 @@ export const KEEP_EXCHANGES = 3;
 export const WARM_LEAD_MS = 45_000;
 /**
  * Housekeeping is due here too, whatever the model's window: a return after an hour's pause writes the whole conversation to the cache
- * again, and above this a summary costs less than that write. Replayed over a month of real use (the self-compaction design 2): no cold
- * return came between 59,000 and 175,000 tokens, so 100,000 summarizes the long conversation's returns (saving about 40% of what cold
- * returns cost) and leaves the 17 of 19 under 43,000 alone; the user picked "~100K" (2026-11-19). The Settings threshold still decides
- * for a model whose window is smaller.
+ * again, and above this a summary costs less. On the trace's 236 Opus calls the 19 cold first steps cost $5.60, none came between 59,000
+ * and 175,000 tokens, and a summary at 100,000 (33,000 kept) brings them to $2.12. The user picked "~100K" (2026-11-19). The Settings
+ * threshold still decides for a smaller window.
  */
 export const DUE_TOKENS = 100_000;
 
@@ -47,12 +46,6 @@ export function requestBytes(request, { uploaded = false } = {}) {
 
 /** Where housekeeping is due by tokens: the threshold's share of the window, or DUE_TOKENS, whichever comes first. @param {number | null} window @param {number} threshold */
 export const dueTokens = (window, threshold) => Math.min(window ? threshold * window : Infinity, DUE_TOKENS);
-
-/**
- * What a summary keeps word for word by default: a third of where it is due (by tokens, or by the request size's tokens when that comes
- * first), so the next one comes long after. @param {{ window: number | null, threshold: number, maxBytes: number }} c
- */
-export const keepTokens = ({ window, threshold, maxBytes }) => Math.min(dueTokens(window, threshold), (threshold * maxBytes) / 3.5) / 3;
 
 /**
  * @param {{ tokens: number, window: number | null, bytes: number, maxBytes: number, threshold: number }} c

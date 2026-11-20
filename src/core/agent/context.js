@@ -197,10 +197,11 @@ function localTime(now, timeZone) {
 }
 
 /**
- * The to-do line's label (TODO_FILE: never in the transcript or the snapshot, so no summary, fresh start or cache rule takes or holds it). It
- * says the rule as her instructions do: edited instructions replace annai's whole (her-instructions.js), and the label still says what it is for.
+ * The to-do line's label (TODO_FILE: read at every request, never written to the log or the snapshot; on Claude a turn's kept now blocks hold
+ * its copies until the turn ends). It says the rule as her instructions do, since edited ones replace annai's whole (her-instructions.js); its
+ * last clause is for her `write` of the whole file.
  */
-/* en */ const TODO = 'to-do (/trip/todo.md: one line for each thing still open in this trip that has no time: asked and not done, promised, or waited on; change a line in place, and take it out when it is done or dropped)';
+/* en */ const TODO = 'to-do (/trip/todo.md: one line for each thing still open in this trip that has no time: asked and not done, promised, or waited on; change a line in place, and take it out when it is done or dropped; a "<" is shown here as <lt>)';
 
 /* en */ const VOICE = /** @type {Record<string, string>} */ ({ off: 'off (speak shows a bubble; wait waits for typing)', on: 'on (speak plays aloud, then listens; wait listens; ask is spoken too)' });
 /** Koe's state, as Kokoro's now block says it (the Koe and Kokoro design). */
