@@ -245,57 +245,168 @@ test("with a plugin's dock, which has no gear of its own, the gear and Trace are
   await expect(page.getByRole('heading', { level: 1, name: 'Trace', exact: true })).toBeVisible();
 });
 
-test('a trip ahead gets the lighter tint; a chat, a past trip and the happening one do not', async ({ page }) => {
+/**
+ * The page's colours as the browser computed them, in OKLab and as linear sRGB, so a test reads what the screen paints: rgb(), color(srgb …), and
+ * oklab() or oklch(), which a color-mix() in OKLab computes to. Added to the page by evaluate as an expression (the page's own rules allow no eval).
+ */
+const COLOURS = `(window.colourOf = (css) => {
+    const nums = (s) => s.trim().split(/[\\s,/]+/).filter(Boolean).map((v) => (v.endsWith('%') ? Number(v.slice(0, -1)) / 100 : Number(v)));
+    const toLin = (c) => (Math.abs(c) <= 0.04045 ? c / 12.92 : Math.sign(c) * ((Math.abs(c) + 0.055) / 1.055) ** 2.4);
+    const linOfLab = ([L, a, b]) => {
+      const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3, m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3, s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+      return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s];
+    };
+    const labOfLin = ([r, g, b]) => {
+      const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b), m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b), s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+      return [0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s, 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s, 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s];
+    };
+    let m;
+    let lab;
+    if ((m = /^rgba?\\((.*)\\)$/.exec(css))) lab = labOfLin(nums(m[1]).slice(0, 3).map((v) => toLin(v / 255)));
+    else if ((m = /^color\\(srgb (.*)\\)$/.exec(css))) lab = labOfLin(nums(m[1]).slice(0, 3).map(toLin));
+    else if ((m = /^oklab\\((.*)\\)$/.exec(css))) lab = nums(m[1]).slice(0, 3);
+    else if ((m = /^oklch\\((.*)\\)$/.exec(css))) {
+      const [L, C, h] = nums(m[1]);
+      lab = [L, C * Math.cos((h * Math.PI) / 180), C * Math.sin((h * Math.PI) / 180)];
+    } else throw new Error('a colour this test cannot read: ' + css);
+    const lin = linOfLab(lab);
+    const Y = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    // A screen shows a colour outside sRGB either as it is (an iPhone's P3 screen) or clipped (an sRGB one): both luminances are kept.
+    return { lab, Y: Y(lin), clippedY: Y(lin.map((v) => Math.min(1, Math.max(0, v)))) };
+  }, true)`;
+
+test("each trip card is its own colour, lit by the traveller's lines: happening, ahead and used past trips lit; an unused past trip, an archived one and a chat plain", async ({ page }) => {
   await openApp(page);
   await page.evaluate(async () => {
     const at = (/** @type {string} */ p) => p;
     const { createIdbStore } = await import(at('/src/core/store-idb.js'));
     const { Workspace } = await import(at('/src/core/workspace.js'));
-    const { createTrip } = await import(at('/src/core/scopes.js'));
+    const { createTrip, setTripStatus } = await import(at('/src/core/scopes.js'));
     const { record } = await import(at('/src/core/agent/log.js'));
     const { dayIn, deviceZone } = await import(at('/src/core/time.js'));
     const store = await createIdbStore();
     const ws = new Workspace(store);
     const day = (/** @type {number} */ n) => dayIn(Date.now() + n * 86_400_000, deviceZone());
+    /** Lines said in a trip: typed, heard, and heard but set aside, which the count by the type index takes too. @param {string} id @param {number} typed @param {number} heard @param {number} [aside] */
+    const said = (id, typed, heard, aside = 0) => store.tx(['events'], 'readwrite', async (/** @type {any} */ t) => {
+      for (let i = 0; i < typed; i++) await t.appendEvent(id, { ts: Date.now(), type: 'msg.user', actor: 'user', data: {} });
+      for (let i = 0; i < heard; i++) await t.appendEvent(id, { ts: Date.now(), type: 'heard', actor: 'user', data: i < aside ? { dismissed: true } : {} });
+      for (let i = 0; i < 30; i++) await t.appendEvent(id, { ts: Date.now(), type: 'out.speak', actor: 'shiori', data: {} }); // hers never light a card
+    });
     const chat = await createTrip(ws, { title: 'Ramen' });
     await record(store, chat, { type: 'msg.user', actor: 'user', data: {}, texts: [['text', 'Ramen']], now: Date.now() - 30 * 60_000 });
-    await createTrip(ws, { title: 'Pastville', start: day(-20), end: day(-18) });
-    await createTrip(ws, { title: 'Nowville', start: day(0), end: day(2) });
-    await createTrip(ws, { title: 'Laterton', start: day(10), end: day(12) });
+    await said(chat, 90, 0);
+    await said(await createTrip(ws, { title: 'Pastville', start: day(-40), end: day(-38) }), 0, 0); // unused: plain
+    await said(await createTrip(ws, { title: 'Quietville', start: day(-30), end: day(-28) }), 2, 1); // 3 lines: step 1, 1/8
+    await said(await createTrip(ws, { title: 'Busyville', start: day(-20), end: day(-18) }), 50, 30, 5); // 80 lines, 5 set aside: the top step, 1/2
+    await said(await createTrip(ws, { title: 'Nowville', start: day(0), end: day(2) }), 0, 0); // happening: 3/4 at the least
+    await said(await createTrip(ws, { title: 'Laterton', start: day(10), end: day(12) }), 0, 0); // ahead: 1/8 at the least
+    const old = await createTrip(ws, { title: 'Oldtown', start: day(-60), end: day(-58) });
+    await said(old, 100, 0);
+    await setTripStatus(store, old, 'archived');
     store.close();
   });
   await page.reload();
   await expect(page.locator('main.view > *')).toBeVisible(FIRST_DRAW);
+  await page.getByText('Archived (1)').click();
   const row = (/** @type {string} */ name) => page.locator('.trip-card', { has: page.locator('.name', { hasText: name }) });
-  await expect(row('Laterton')).toHaveClass(/\bahead\b/);
-  await expect(row('Ramen')).not.toHaveClass(/\bahead\b/);
-  await expect(row('Pastville')).not.toHaveClass(/\bahead\b/);
-  await expect(row('Nowville')).toHaveClass(/\bhappening\b/);
-  await expect(row('Nowville')).not.toHaveClass(/\bahead\b/);
-  // A lighter version of the happening tint: in the theme the page shows, its luminance lies between a plain card's and the happening one's
-  // (the happening tint is the darker of the two on light paper, the lighter on dark). The computed colour is rgb() or, for a mix, color(srgb …).
-  const paint = () => page.evaluate(() => {
-    const lin = (/** @type {number} */ c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-    const luminance = (/** @type {string} */ css) => {
-      const m = css.match(/^rgb\((\d+), (\d+), (\d+)\)$/) ?? css.match(/^color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)\)$/);
-      if (!m) throw new Error(`a colour this test can't read: ${css}`);
-      const [r, g, b] = m.slice(1).map((v) => (css.startsWith('rgb') ? Number(v) / 255 : Number(v)));
-      return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
-    };
+  for (const name of ['Nowville', 'Laterton', 'Busyville', 'Quietville']) await expect(row(name)).toHaveClass(/\blit\b/);
+  for (const name of ['Pastville', 'Oldtown', 'Ramen']) await expect(row(name)).not.toHaveClass(/\blit\b/);
+  await page.evaluate(COLOURS);
+  const paint = () => page.evaluate(async () => {
+    const { HUES } = await import(/** @type {string} */ ('/src/ui/screens/trips.js'));
+    const colourOf = /** @type {any} */ (window).colourOf;
     /** @param {string} name */
-    const of = (name) => luminance(getComputedStyle(/** @type {Element} */ ([...document.querySelectorAll('.trip-card')].find((c) => c.querySelector('.name')?.textContent === name))).backgroundColor);
-    return { plain: of('Pastville'), ahead: of('Laterton'), happening: of('Nowville') };
+    const card = (name) => /** @type {HTMLElement} */ ([...document.querySelectorAll('.trip-card')].find((c) => c.querySelector('.name')?.textContent === name));
+    /** @param {string} name */
+    const of = (name) => {
+      const el = card(name);
+      const css = getComputedStyle(el);
+      return { lit: el.style.getPropertyValue('--lit'), hue: el.style.getPropertyValue('--hue'), bg: css.backgroundColor, edge: css.borderTopColor, lab: colourOf(css.backgroundColor).lab };
+    };
+    return { hues: HUES, cards: Object.fromEntries(['Nowville', 'Laterton', 'Busyville', 'Quietville', 'Pastville', 'Oldtown', 'Ramen'].map((n) => [n, of(n)])) };
   });
-  const light = await paint();
-  await page.emulateMedia({ colorScheme: 'dark' });
-  const dark = await paint();
-  for (const l of [light, dark]) {
-    expect(l.happening).not.toBeCloseTo(l.plain, 3);
-    expect(l.ahead).toBeGreaterThan(Math.min(l.plain, l.happening));
-    expect(l.ahead).toBeLessThan(Math.max(l.plain, l.happening));
+  for (const scheme of /** @type {const} */ (['light', 'dark'])) {
+    await page.emulateMedia({ colorScheme: scheme });
+    const { hues, cards } = await paint();
+    const { Nowville: now, Laterton: ahead, Busyville: busy, Quietville: quiet, Pastville: unused, Oldtown: archived, Ramen: chat } = cards;
+    // How lit: happening at its floor, ahead at its, past at half its step (80 lines, 5 of them set aside: the top step; 3 lines: the first).
+    expect([now.lit, ahead.lit, busy.lit, quiet.lit]).toEqual(['75%', '12.5%', '50%', '12.5%']);
+    // Plain: exactly the chat's plain card, its sheet and its line.
+    for (const c of [unused, archived]) expect([c.lit, c.bg, c.edge]).toEqual(['', chat.bg, chat.edge]);
+    // Lit: each its own hue, one of the ten, the busier the deeper (the further from the plain sheet, in OKLab), the trip of now the deepest.
+    const sheet = /** @type {[number, number, number]} */ (unused.lab);
+    const depth = (/** @type {{ lab: number[] }} */ c) => Math.hypot(...c.lab.map((v, i) => v - sheet[i]));
+    for (const c of [now, ahead, busy, quiet]) {
+      expect(hues).toContain(Number(c.hue));
+      expect(c.bg).not.toBe(chat.bg);
+      expect(c.edge).not.toBe(chat.edge);
+      // Its colour's hue is the card's: on white, exactly (the dark sheet's own blue tint pulls a faint wash toward it there).
+      const [, a, b] = c.lab;
+      if (scheme === 'light') expect(Math.abs(((((Math.atan2(b, a) * 180) / Math.PI) - Number(c.hue) + 540) % 360) - 180)).toBeLessThan(1);
+    }
+    expect(depth(quiet)).toBeGreaterThan(0.005);
+    expect(depth(busy)).toBeGreaterThan(depth(quiet) * 2);
+    expect(depth(now)).toBeGreaterThan(depth(busy));
   }
-  expect(light.happening).toBeLessThan(light.plain); // light paper: the happening tint is the darker
-  expect(dark.happening).toBeGreaterThan(dark.plain); // dark paper: the lighter
+});
+
+test("a trip card's box is the same size lit or not: only its colours change", async ({ page }) => {
+  await openApp(page);
+  await happeningTrip(page, 'Nowville');
+  const card = page.locator('.trip-card.lit', { has: page.locator('.name', { hasText: 'Nowville' }) });
+  await expect(card).toBeVisible(FIRST_DRAW);
+  const boxes = await card.evaluate((el) => {
+    const box = () => {
+      const r = el.getBoundingClientRect();
+      const css = getComputedStyle(el);
+      return { x: r.x, y: r.y, width: r.width, height: r.height, border: css.borderTopWidth, padding: css.padding, bg: css.backgroundColor };
+    };
+    const lit = box();
+    el.classList.remove('lit');
+    const plain = box();
+    el.classList.add('lit');
+    return { lit, plain };
+  });
+  expect(boxes.lit.bg).not.toBe(boxes.plain.bg);
+  expect({ ...boxes.lit, bg: '' }).toEqual({ ...boxes.plain, bg: '' });
+});
+
+test('the secondary words on a trip card keep WCAG AA contrast on all ten hues at every strength the rules give, in light and dark', async ({ page }) => {
+  await openApp(page);
+  await happeningTrip(page, 'Nowville');
+  await expect(page.locator('.trip-card.lit .sub').first()).toBeVisible(FIRST_DRAW);
+  await page.evaluate(COLOURS);
+  const worst = () => page.evaluate(async () => {
+    const { HUES, litOf } = await import(/** @type {string} */ ('/src/ui/screens/trips.js'));
+    const colourOf = /** @type {any} */ (window).colourOf;
+    const strengths = [...new Set(['happening', 'future', 'past'].flatMap((p) => [0, 1, 2, 3, 4].map((s) => litOf(p, s))))].filter((s) => s > 0);
+    const card = /** @type {HTMLElement} */ (document.querySelector('.trip-card.lit'));
+    const sub = /** @type {HTMLElement} */ (card.querySelector('.sub'));
+    const ratio = (/** @type {number} */ a, /** @type {number} */ b) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    let out = { ratio: Infinity, hue: 0, lit: 0, bg: '', ink: '', strengths };
+    for (const hue of HUES) {
+      for (const lit of strengths) {
+        card.style.setProperty('--hue', String(hue));
+        card.style.setProperty('--lit', `${lit * 100}%`);
+        const bg = getComputedStyle(card).backgroundColor, ink = getComputedStyle(sub).color;
+        const b = colourOf(bg), i = colourOf(ink);
+        const r = Math.min(ratio(b.Y, i.Y), ratio(b.clippedY, i.clippedY));
+        if (r < out.ratio) out = { ratio: r, hue, lit, bg, ink, strengths };
+      }
+    }
+    return out;
+  });
+  const light = await worst();
+  await page.emulateMedia({ colorScheme: 'dark' });
+  const dark = await worst();
+  test.info().annotations.push({ type: 'contrast', description: `light ${light.ratio.toFixed(2)}:1 (hue ${light.hue}, ${light.lit}); dark ${dark.ratio.toFixed(2)}:1 (hue ${dark.hue}, ${dark.lit})` });
+  console.log(`worst --ink-2 contrast: light ${light.ratio.toFixed(3)}:1 at hue ${light.hue}, ${light.lit} (${light.bg} under ${light.ink}); dark ${dark.ratio.toFixed(3)}:1 at hue ${dark.hue}, ${dark.lit} (${dark.bg} under ${dark.ink})`);
+  expect(light.strengths).toEqual([3 / 4, 1, 1 / 8, 1 / 4, 3 / 8, 1 / 2]);
+  expect(light.ink).toBe('rgb(91, 96, 117)'); // --ink-2, light
+  expect(dark.ink).toBe('rgb(162, 167, 184)'); // --ink-2, dark
+  expect(light.ratio).toBeGreaterThanOrEqual(4.5);
+  expect(dark.ratio).toBeGreaterThanOrEqual(4.5);
 });
 
 /** Home is drawn and the trip in play is known to live mode: its happening card shows. @param {import('@playwright/test').Page} page @param {string} name */

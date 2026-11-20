@@ -342,6 +342,11 @@ function makeTx(t) {
       };
       r.onerror = () => rej(r.error);
     }),
+    // Each type's count from the type index (DB version 4): no entry is read.
+    countEvents: async (scope, types) => {
+      const counts = await Promise.all([...new Set(types)].map((k) => req(os('events').index('type').count(IDBKeyRange.bound([scope, k, -Infinity], [scope, k, Infinity])))));
+      return counts.reduce((a, b) => a + b, 0);
+    },
     getScope: (id) => req(os('scopes').get(id)),
     putScope: async (rec) => { await req(os('scopes').put(rec)); },
     listScopes: () => req(os('scopes').getAll()),

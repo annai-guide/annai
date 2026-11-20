@@ -1,5 +1,5 @@
 import { h, t, plural, messageOf, whenGone, otherLang } from '../dom.js';
-import { listTrips, backupState, scopeTitle, changesTrip, lastTalked, ME } from '../../core/scopes.js';
+import { listTrips, backupState, scopeTitle, changesTrip, lastTalked, linesSaid, ME } from '../../core/scopes.js';
 import { filesToRead } from '../../core/handover.js';
 import { readAppSettings } from '../../core/settings.js';
 import { ValidationError } from '../../core/workspace.js';
@@ -202,14 +202,14 @@ function chatLine(s, r, { say, now, zone }) {
 
 /**
  * A trip's card (spec §16.2, the timeline design): its name and dates, its stamps (spec §13), files waiting to be read there, and when it was last
- * backed up (§4.9); happening, tinted, "Day 3 of 8" and its Next; ahead, how soon and her last line there. A tap opens its conversation; an archived
- * one's opens Details, where Unarchive is. @param {any} ctx @param {any} s its record @param {Row | null} r its row; null: archived
+ * backed up (§4.9); happening, "Day 3 of 8" and its Next; ahead, how soon and her last line there; its own colour, lit by its lines (litOf). A tap
+ * opens its conversation; an archived one's opens Details, where Unarchive is. @param {any} ctx @param {any} s its record @param {Row | null} r its row; null: archived
  * @param {{ say: ReturnType<typeof wording>, hers: ReturnType<typeof wording>, now: number, zone: string, due: number[], since: Since[], backups: Backups }} o
  * say: the name is the user's words, in their language, not the screens'; hers: her last line
  */
 async function tripCard(ctx, s, r, o) {
   const { say, hers, now, zone, due } = o;
-  const [backup, stamps, unread] = await Promise.all([backupState(ctx.store, s.id), tripStamps(ctx, s.id), r ? filesToRead(ctx.store, s.id).then((f) => f.length) : 0]);
+  const [backup, stamps, unread, said] = await Promise.all([backupState(ctx.store, s.id), tripStamps(ctx, s.id), r ? filesToRead(ctx.store, s.id).then((f) => f.length) : 0, r ? linesSaid(ctx.store, s.id) : 0]);
   o.backups.set(s.id, backup);
   // Its "backed up … ago" is on its own moment: the footer line's is another place's (or an export's), and a trip's backup can outlive its place.
   const backedUp = backup.at === null ? backupText(backup) : since(o, h('span', {}), backup.at, (now) => backupText(backup, now));
@@ -229,13 +229,48 @@ async function tripCard(ctx, s, r, o) {
     if (last.text) more.push(h('span', { class: 'sub her-last', ...hers(last.text, { before: last.before }), text: last.text }));
   }
   const name = scopeTitle(s); // one stored with the draft's name says "New conversation" in the screens' language
-  return h('li', {}, h('a', { class: ['card', 'trip-card', r?.phase === 'happening' ? 'happening' : r?.phase === 'future' ? 'ahead' : ''], href: r ? talkHref(s.id) : `#/trip/${encodeURIComponent(s.id)}` },
+  const lit = litOf(r?.phase, stepOf(said));
+  const colour = lit ? { style: { '--hue': hueOf(s.created), '--lit': `${lit * 100}%` } } : {};
+  return h('li', {}, h('a', { class: ['card', 'trip-card', r?.phase === 'happening' ? 'happening' : r?.phase === 'future' ? 'ahead' : '', lit ? 'lit' : ''], ...colour, href: r ? talkHref(s.id) : `#/trip/${encodeURIComponent(s.id)}` },
     h('span', { class: 'trip-card-text' },
       h('span', { class: 'name', ...say(name), text: name }),
       h('span', { class: 'sub' }, ...factsWords([s.start ? dateRange(s.start, s.end) : null, stamps.length ? { stamps: stampCount(stamps.length) } : null, unread ? plural(unread, '# file waiting to be read', '# files waiting to be read') : null, backedUp])),
       madeByLine(s),
       ...more),
     stampMarks(stamps)));
+}
+
+/** A trip card's hues on the OKLCH circle (the trip-colour design): ten, 35° apart but for the lime-to-olive band, muddy in dark mode. */
+export const HUES = Object.freeze([25, 60, 95, 140, 175, 210, 245, 280, 315, 350]);
+
+/**
+ * A trip's own hue, from when it was made: the same at every draw and on every phone, as an import or a restore keeps `created` (and mints a new id,
+ * archive.js). MurmurHash3's 32-bit finish: Knuth's one multiplication gave 6 in 10 trips made a minute apart their neighbour's hue. @param {number} created
+ */
+export function hueOf(created) {
+  let x = created >>> 0;
+  x = Math.imul(x ^ (x >>> 16), 0x85ebca6b);
+  x = Math.imul(x ^ (x >>> 13), 0xc2b2ae35);
+  return HUES[Math.floor((((x ^ (x >>> 16)) >>> 0) / 2 ** 32) * HUES.length)];
+}
+
+/**
+ * The traveller's lines in a trip in steps, each four times the last: none, 1-4, 5-19, 20-79, 80 and more. From the user's eight conversations in their
+ * trace (0, 0, 1, 3, 31, 40, 63, 88 lines: steps 0, 0, 1, 1, 3, 3, 3, 4); a trip talked in daily tops it in two days, as their busiest (88 in 2).
+ * @param {number} lines @returns {number} 0 to 4
+ */
+export const stepOf = (lines) => [1, 5, 20, 80].filter((n) => lines >= n).length;
+
+/**
+ * How lit a trip's card is, 0 (plain) to 1 (its full colour), by phase and step. Happening: its step, never under 3/4, so the trip of now outshines any
+ * past one (at most 1/2). Ahead: half its step, never under a past trip's first, 1/8 (the user, 2026-11-16: "upcoming trips can get a lighter
+ * version"). Past: half its step, the pastel ("a more pastel color"); unused, plain. Archived (no row) and chats: plain.
+ * @param {Row['phase'] | undefined} phase @param {number} step 0 to 4
+ */
+export function litOf(phase, step) {
+  if (phase === 'happening') return Math.max(step / 4, 3 / 4);
+  if (phase === 'future') return Math.max(step / 8, 1 / 8);
+  return phase === 'past' ? step / 8 : 0;
 }
 
 /** Her last line in a conversation, and her reply so far before it. @param {any} ctx @param {string} scope @returns {Promise<{ text: string, before: string[] }>} */

@@ -348,11 +348,21 @@ function mirrored(rec, trip) {
   return next.title !== rec.title || next.start !== rec.start || next.end !== rec.end ? next : null;
 }
 
+/** The types of the user's lines, typed or heard (talks), as the log's type index is asked for them. */
+const SAID = Object.freeze(['msg.user', 'heard']);
+
 /** When the user last talked in a trip, or in `me`, from its log; null when nobody has. @param {Store} store @param {string} scope @returns {Promise<number | null>} */
 export async function lastTalked(store, scope) {
-  const lines = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['msg.user', 'heard'], reverse: true }));
+  const lines = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: [...SAID], reverse: true }));
   return lines.find(talks)?.ts ?? null;
 }
+
+/**
+ * How many lines the user said in a trip, typed or heard, from the type index alone: what lights its card on home (the trip-colour design). No entry
+ * is read, so a heard line set aside counts too, unlike talks (15 of 183 heard lines in the user's trace). @param {Store} store @param {string} scope
+ * @returns {Promise<number>}
+ */
+export const linesSaid = (store, scope) => store.tx(['events'], 'readonly', (t) => t.countEvents(scope, [...SAID]));
 
 /**
  * Fills the mirror on records without it (released copies, some archives), archived too. The talked key says it was done; only this writes it on a record
