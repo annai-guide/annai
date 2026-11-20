@@ -77,7 +77,7 @@ export async function renderVoice(ctx) {
             : await shownWithoutSecrets(ctx.store, sentences(...r.failedVoices.map((/** @type {any} */ f) => asSentence(t`${names(f.name)} couldn't speak: ${speechProblem(f.error)}`)),
               r.voices.length ? t`Spoken by ${r.voices.map(names).reduce((/** @type {string} */ a, /** @type {string} */ b) => tc('one voice, then the next')`${a}, then ${b}`)}.` : ''));
       } catch (e) {
-        sayStatus.textContent = await shownWithoutSecrets(ctx.store, speechProblem(e));
+        sayStatus.textContent = speechProblem(e);
       } finally {
         sayButton.disabled = false;
       }

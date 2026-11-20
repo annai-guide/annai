@@ -72,11 +72,13 @@ test("a transcription model's Test: you say something and it writes it down, sen
   }
 });
 
-test('Settings → Voice: a voice that fails gives its sentence to the next one; the microphone test writes down what it heard', async ({ page }) => {
+test('Settings → Voice: a voice that fails gives its sentence to the next one; the microphone test writes down what it heard, and a refusal that echoes the key never shows it', async ({ page }) => {
+  let refuse = false;
   const server = await startModelServer({
     '/bad/audio/speech': { status: 500, type: 'application/json', body: JSON.stringify({ error: { message: 'Voice server down for sk-a-test' } }) },
     '/good/audio/speech': wav,
-    '/ears/audio/transcriptions': { status: 200, type: 'application/json', body: JSON.stringify({ text: 'Is there a gas station nearby?' }) },
+    '/ears/audio/transcriptions': () => (refuse ? { status: 400, type: 'application/json', body: JSON.stringify({ error: { message: 'Audio refused for key sk-e-test' } }) }
+      : { status: 200, type: 'application/json', body: JSON.stringify({ text: 'Is there a gas station nearby?' }) }),
   });
   try {
     await fakeMicrophone(page, [clipPath('gas-station')]);
@@ -106,6 +108,12 @@ test('Settings → Voice: a voice that fails gives its sentence to the next one;
     expect(await page.locator('main').innerText(), "a provider's words that echo the key never reach the page").not.toContain('sk-a-test');
     expect(server.bodies('/bad/audio/speech')).toHaveLength(1);
     expect(server.bodies('/good/audio/speech')).toHaveLength(2);
+    // A refused transcription says the server's own reason (voice-id-next), here one that echoes the key: blanked, as in a Test.
+    refuse = true;
+    await page.getByRole('button', { name: 'Test the microphone' }).click();
+    await expect(page.getByText('The provider didn\'t accept the request: "Audio refused for key «key»".')).toBeVisible({ timeout: 20_000 });
+    expect(await page.locator('main').innerText()).not.toContain('sk-e-test');
+    refuse = false;
     await page.getByLabel('Pause that ends a sentence (ms)').fill('900');
     await leaveSaved(page.getByLabel('Pause that ends a sentence (ms)'));
     await page.getByRole('button', { name: 'Test the microphone' }).click();
