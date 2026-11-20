@@ -732,7 +732,7 @@ export class Agent {
       if (generation === this.#generation) {
         this.#target = this.trip; // it stays the one open, so opening it is asked for again
         this.#closeEar(); // a microphone made meanwhile (a tap's) was for the one that failed
-        await this.#keepElsewhere(this.scope).catch(() => {}); // else idle() waits on lines typed meanwhile
+        await this.#keepElsewhere(this.scope).catch((e) => this.#notSaved(e)); // else idle() waits on lines typed meanwhile; a write refused is told
       }
       throw e;
     }).finally(() => {
@@ -870,7 +870,19 @@ export class Agent {
     const queued = this.#queue.filter((w) => w.scope === this.scope && w.fallbacks?.some(owed));
     const list = [...(this.#owedNow?.() ?? []), ...queued.flatMap((w) => (w.fallbacks ?? []).filter(owed))];
     for (const w of queued) Object.assign(w, { fallbacks: w.fallbacks?.filter((r) => !owed(r)), shown: true });
-    if (list.length) this.remind(list, this.scope, { waiting: true }).catch(() => {});
+    if (list.length) this.#remindCounted(list, this.scope, { waiting: true });
+  }
+
+  /**
+   * Reminders shown now by something that doesn't wait for them (a wake that comes while her question waits, a Stop): idle() waits for their entries,
+   * as it does for a wake whose budgets are being checked. @param {Reminder[]} list @param {string} scope @param {Parameters<Agent['remind']>[2]} o
+   */
+  #remindCounted(list, scope, o) {
+    this.#checking++;
+    this.remind(list, scope, o).catch(() => {}).finally(() => {
+      this.#checking--;
+      this.#settle();
+    });
   }
 
   /** @param {Wake} w */
@@ -1229,11 +1241,22 @@ export class Agent {
       return Promise.resolve();
     }
     this.#checking++;
-    this.admit(w).then((ok) => { if (ok) this.enqueue(w); }).finally(() => {
+    this.admit(w).then((ok) => { if (ok) this.enqueue(w); }, (e) => this.wakeFailed(w, e)).finally(() => {
       this.#checking--;
       this.#settle();
     });
     return Promise.resolve();
+  }
+
+  /**
+   * A wake that failed before it reached a turn (its budgets, or the halves' route, couldn't be worked out: a phone that refuses a read): no turn will take
+   * its reminders up, so they are shown now (spec §11.3: shown or spoken directly), and the failure is told (#notSaved). The failure comes before any hand-on that
+   * could have shown them (admit shows them only in the branches that return, the route's hand-ons come last and can't throw), so they are shown once.
+   * Never rejects. @param {Wake} w @param {unknown} e
+   */
+  async wakeFailed(w, e) {
+    await this.remind(w.fallbacks ?? [], w.scope);
+    await this.#notSaved(e);
   }
 
   /** @param {(w: Wake) => boolean} which queued wakes to take out @returns {Wake[]} those taken out */
@@ -1259,10 +1282,10 @@ export class Agent {
     const now = this.now(); // quiet hours follow the day as lived, a simulation's too
     if (budgets.quietHours && inQuiet(now, budgets.quietHours, this.timeZone())) {
       // Quiet hours hold Shiori, not the reminders (spec §11.3).
-      if (w.fallbacks?.length) this.remind(w.fallbacks).catch(() => {});
       const later = { ...w, fallbacks: [] };
       const held = setTimeout(() => again(later), Math.max(1000, quietEnds(now, budgets.quietHours, this.timeZone()) - now));
       /** @type {any} */ (held).unref?.(); // in Node (tests), a held wake must not keep the process alive
+      if (w.fallbacks?.length) await this.remind(w.fallbacks).catch(() => {}); // waited for: whoever waits on the budgets' check (wake, the halves' route) waits for the entry
       return false;
     }
     // Wakes an hour count real hours, even during a simulation.
@@ -1270,7 +1293,7 @@ export class Agent {
     this.#recentWakes = this.#recentWakes.filter((t) => t > real - 3_600_000 && t <= real);
     if (budgets.wakesPerHour && this.#recentWakes.length >= budgets.wakesPerHour) {
       this.#notice({ tone: 'info', title: t`Shiori skipped a wake`, body: skippedWords(w, budgets.wakesPerHour) });
-      if (w.fallbacks?.length) this.remind(w.fallbacks).catch(() => {});
+      if (w.fallbacks?.length) await this.remind(w.fallbacks).catch(() => {});
       return false;
     }
     this.#recentWakes.push(real);
@@ -1421,7 +1444,7 @@ export class Agent {
     this.poke();
     this.#stopWakes(wakes);
     const owed = wakes.flatMap((w) => w.fallbacks ?? []);
-    if (owed.length) this.remind(owed, this.scope, { silent: true }).catch(() => {}); // the Stop stops her, not the reminder they set
+    if (owed.length) this.#remindCounted(owed, this.scope, { silent: true }); // the Stop stops her, not the reminder they set
   }
 
   /** Wakes that never start a turn, written into the conversation all the same, with a quiet "stopped"; a write that fails is told (#notSaved). @param {Wake[]} wakes */
@@ -2161,7 +2184,10 @@ export class Agent {
     let ok = false;
     this.#turning = true;
     try {
-      ok = await this.#steps(wakes, wakeId, abort);
+      ok = await this.#steps(wakes, wakeId, abort).catch(async (e) => {
+        await this.#showOwed(wakes, abort);
+        throw e;
+      });
       await this.#paused(abort);
     } finally {
       // The turn's thinking and kept now blocks end with it (the keep-reasoning design §1).
@@ -2182,6 +2208,18 @@ export class Agent {
         console.warn(/* en */ 'the end of a turn failed', e);
       }
     }
+  }
+
+  /**
+   * A turn whose steps threw (a write the phone refused, a read it failed) shows what it still owes before the failure goes on to #drain's card: no turn takes
+   * it up again, and the reminders are annai's to show (spec §11.3). The one place for every way a turn stops short: the list is taken once, the one the turn
+   * keeps (#owedNow: the end's own remind takes it first, so a failure after that shows nothing twice, and one she reached the user after is settled), or,
+   * when it stopped before it had one (its first write, a read before the list), its wakes' own. Not on a page being left: the next start answers (spec §6.7).
+   * @param {Wake[]} wakes @param {AbortController} abort
+   */
+  async #showOwed(wakes, abort) {
+    const list = this.#owedNow ? this.#owedNow() : wakes.flatMap((w) => w.fallbacks ?? []);
+    if (list.length && !this.#leaving) await this.remind(list, this.scope, abort.signal.aborted && this.#userStop ? { silent: true } : {});
   }
 
   /**
@@ -2219,12 +2257,8 @@ export class Agent {
     // one a failed turn left owed: never a reminder's or a note's turn, whose writes Undo would then take back.
     this.#handover = wakes.some(owesAnswer) ? this.transcript.owedHandover : null;
     this.#handovers = this.#handover ? [this.#handover] : [];
-    // Its wake's record names the hand-over the turn works on, as join takes it below: the Conversation's Undo line follows it. A turn that can't
-    // start (a full phone refuses its first write) shows its wakes' reminders before the failure goes on: no turn takes them up again (spec §11.3).
-    await this.#logWakes(wakes, wakeId, false, { handover: handoverOf(wakes) ?? this.#handover }).catch(async (e) => {
-      await this.remind(wakes.flatMap((w) => w.fallbacks ?? []), this.scope);
-      throw e;
-    });
+    // Its wake's record names the hand-over the turn works on, as join takes it below: the Conversation's Undo line follows it.
+    await this.#logWakes(wakes, wakeId, false, { handover: handoverOf(wakes) ?? this.#handover });
     const settings = await this.settings();
     const cold = await this.#cold(settings);
     const fresh = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale });
@@ -2494,9 +2528,9 @@ export class Agent {
           const more = this.#take();
           settle();
           if (more.length) {
+            owed.push(...more.flatMap((w) => w.fallbacks ?? [])); // before the write: a refused write shows them (#showOwed)
             await this.#logWakes(more, wakeId, true);
             reasons.push(...more.map((w) => this.#reason(w)));
-            owed.push(...more.flatMap((w) => w.fallbacks ?? []));
             this.#annais &&= more.every(byAnnai);
             await join(more);
           }
@@ -2615,9 +2649,9 @@ export class Agent {
       const more = this.#take();
       settle();
       if (more.length) {
+        owed.push(...more.flatMap((w) => w.fallbacks ?? [])); // before the write: a refused write shows them (#showOwed)
         await this.#logWakes(more, wakeId, true);
         reasons.push(...more.map((w) => this.#reason(w)));
-        owed.push(...more.flatMap((w) => w.fallbacks ?? []));
         this.#facts.kinds.push(...more.map((w) => w.kind));
         this.#annais &&= more.every(byAnnai);
         await join(more);
@@ -2648,7 +2682,11 @@ export class Agent {
     // A reminder the turn still owes is annai's to show: when no model said it, and at a cut (an open; the user's Stop, silently, as the Stop
     // stops her talking, not the reminder they set), so it reaches them now, once; a restart reads it as shown.
     const cut = abort.signal.aborted && !this.#leaving && (this.#userStop || this.#cutByOpen);
-    if (owed.length && (cut || (!abort.signal.aborted && !this.#leaving))) await this.remind(owed, this.scope, { unsaid: cut || (answered && !failed), ...(abort.signal.aborted && this.#userStop ? { silent: true } : {}) });
+    if (owed.length && (cut || (!abort.signal.aborted && !this.#leaving))) {
+      const list = owed;
+      owed = []; // taken: a write of the end that fails after this must not show them again (#showOwed)
+      await this.remind(list, this.scope, { unsaid: cut || (answered && !failed), ...(abort.signal.aborted && this.#userStop ? { silent: true } : {}) });
+    }
     // The user stopped her: the turn is over, and opening the conversation again doesn't take it up (spec §6.7). Nothing to show.
     if (abort.signal.aborted && this.#userStop) await this.#log({ type: 'error', actor: 'system', data: { kind: 'stopped', wake: wakeId, message: STOPPED, quiet: true } });
     // Let go at an open (#lettingGo): written as settled, so no paused line shows and nothing is taken up.

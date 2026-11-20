@@ -1,7 +1,7 @@
 // K5: Koe live (the Koe and Kokoro design, "Realtime sessions"; plan K5), against the stand-in realtime server.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { until, rescript } from './agent-kit.js';
+import { until, rescript, holdReminders, settlesOnlyAfter } from './agent-kit.js';
 import { tripTools } from '../../src/core/agent/trip-tools.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { readConfig, saveRoles } from '../../src/core/llm/config.js';
@@ -553,6 +553,42 @@ test('a trigger or a note while the page is out of view opens nothing; back in v
     assert.equal(k.server.connections().length, 1, 'nothing waits: nothing opens');
   } finally {
     hidden(false);
+    await k.done();
+  }
+});
+
+// What annai shows itself of a trigger's reminders is waited for by idle(), written entry and all: while the page is out of view (the session waits for it),
+// and when no session can take the trigger (the storage-rest fix: both were fire-and-forget).
+test("a trigger's reminder while the page is out of view is shown by annai at once, and idle() settles once its entry is written", async () => {
+  const k = await liveKit([{ said: 'Your train leaves in twenty minutes, from platform 4.', audio: tone(0.3) }]);
+  try {
+    await k.voice.unlock(); // an earlier tap
+    hidden(true);
+    const door = holdReminders(k); // the card waits at the door, as on a phone slow to read: the route is done long before
+    await k.agent.wake({ kind: 'trigger', text: 'Train in 20 minutes', fallbacks: [{ watch: 'train', text: 'Train at 10:40' }] });
+    await settlesOnlyAfter(k, door, 'idle() waits for the reminder annai shows');
+    assert.equal(k.notices.filter((/** @type {any} */ n) => n.title === 'Reminder').length, 1);
+    assert.deepEqual((await k.events(['reminder'])).map((/** @type {any} */ e) => e.data.text), ['Train at 10:40']);
+  } finally {
+    hidden(false);
+    await k.done();
+  }
+});
+
+test("a trigger's reminder when no session can open (today's spend reached) and Koe stays live: annai shows it, and idle() settles once its entry is written", async () => {
+  const usage = { promptTokenCount: 1_000_000, responseTokenCount: 0, promptTokensDetails: [{ modality: 'TEXT', tokenCount: 1_000_000 }] };
+  const k = await liveKit([{ said: 'Sure.', audio: tone(0.1), usage }]);
+  try {
+    await updateAppSettings(k.ws, { shiori: { budgets: { spendPerDay: 0.5 } } });
+    k.agent.send('Hi');
+    await soon(async () => (await k.events(['live.session'])).some((/** @type {any} */ e) => e.data.state === 'closed'));
+    await k.agent.idle();
+    const door = holdReminders(k);
+    await k.agent.wake({ kind: 'trigger', text: 'Train in 20 minutes', fallbacks: [{ watch: 'train', text: 'Train at 10:40' }] });
+    await settlesOnlyAfter(k, door, 'idle() waits for the reminder annai shows');
+    assert.equal(k.notices.filter((/** @type {any} */ n) => n.title === 'Reminder').length, 1);
+    assert.deepEqual((await k.events(['reminder'])).map((/** @type {any} */ e) => e.data.text), ['Train at 10:40']);
+  } finally {
     await k.done();
   }
 });

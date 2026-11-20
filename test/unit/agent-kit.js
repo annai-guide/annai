@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
@@ -292,6 +293,52 @@ export async function until(fn, ms = 2000) {
     if (Date.now() > end) throw new Error(`still waiting after ${ms} ms`);
     await new Promise((r) => setTimeout(r, 2));
   }
+}
+
+/**
+ * Holds the store transactions `which` names at the door until it is opened, outside the store's queue (a phone slow to read or write), so a wait that
+ * doesn't count what is held finishes first. @param {any} k @param {(stores: string[], mode: string) => boolean} which @returns {{ open: () => void }}
+ */
+export function holdAtDoor(k, which) {
+  const real = k.store.tx.bind(k.store);
+  /** @type {() => void} */
+  let open = () => {};
+  const door = new Promise((r) => { open = () => r(undefined); });
+  k.store.tx = (/** @type {string[]} */ stores, /** @type {string} */ mode, /** @type {any} */ fn) => (which(stores, mode) ? door.then(() => real(stores, mode, fn)) : real(stores, mode, fn));
+  return { open };
+}
+
+/**
+ * The first read of each reminder annai shows (its card's) waits at the door, so the card and the entry come after whatever else is done, as on a
+ * phone slow to read; nothing else is held. @param {any} k @returns {{ open: () => void }}
+ */
+export function holdReminders(k) {
+  const half = k.agent.kokoro ?? k.agent;
+  let holding = false;
+  const door = holdAtDoor(k, (stores) => holding && stores.length === 1 && stores[0] === 'secrets');
+  const remind = half.remind.bind(half);
+  half.remind = (/** @type {any[]} */ ...a) => {
+    holding = true; // its card's read is its first call to the store, made before remind() returns
+    try {
+      return remind(...a);
+    } finally {
+      holding = false;
+    }
+  };
+  return door;
+}
+
+/**
+ * idle() does not settle while the door is shut (60 ms of real time: everything else is done long before), and does once it is open.
+ * @param {any} k @param {{ open: () => void }} door @param {string} why
+ */
+export async function settlesOnlyAfter(k, door, why) {
+  let settled = false;
+  const idle = k.agent.idle().then(() => { settled = true; });
+  await new Promise((r) => setTimeout(r, 60));
+  assert.equal(settled, false, why);
+  door.open();
+  await idle;
 }
 
 /** The microphone hears one of the speech clips, then a pause: one segment. @param {any} k @param {string} name */

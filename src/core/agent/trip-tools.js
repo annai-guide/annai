@@ -508,7 +508,11 @@ export function tripTools(app) {
         // Where the files went (Undo finds the trip by it); then the chat's line saying where they went, its last: after what the halves still held of it
         // (the yes Koe heard, a cue) is written, so that line settles it, and no line after it is owed.
         if (m.size || call.handover) await moved(rec.id, false, m.size, call);
-        await app.carryOn(rec.id, wakes, call.signal);
+        // An open that failed (a card told the user) moved no one: no line of a move, and she is told they are still here.
+        if (!(await app.carryOn(rec.id, wakes, call.signal))) {
+          /* en */
+          return `Not opened: ${quote(rec.title)} didn't open, and annai told the user, so they are still here.${m.size ? ' The files you named are in that conversation already.' : ''} Their last line and your recap wait there until it opens. Carry on here, and don't call open_trip for it again unless they ask.`;
+        }
         await logIn(call, { type: 'conversation.moved', actor: 'shiori', data: { to: rec.id, title: rec.title, wake: call.wake } });
         // In her turn the open has ended this call, and #runCall wrote MOVED: the same words.
         return MOVED;

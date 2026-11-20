@@ -13,6 +13,7 @@ import { storedTexts, record } from '../../src/core/agent/log.js';
 import { importCalendar } from '../../src/core/imports.js';
 import { undoHandover, handOverText } from '../../src/core/handover.js';
 import { dateRange } from '../../src/core/intl.js';
+import { StorageFullError } from '../../src/core/errors.js';
 
 const say = (/** @type {string} */ text, /** @type {Record<string, any>} */ more = {}) => ({ ...more, toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }] });
 const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
@@ -413,6 +414,7 @@ test("start_trip with a hand-over that has words says their message is above; op
 // What the user sees: the card, then at Open the trip at once with their line and her recap; anything else ends the card, nothing moved.
 
 const RECAP = 'We found the ramen place by the station.';
+const NOT_SAVED = "Something for Shiori wasn't saved";
 const ANSWER = 'Here in Kyoto: shall I put the ramen place on the plan?';
 /** She answers a question here, then calls open_trip when they ask to carry on there; in Kyoto, told they came, she answers. @param {any} k */
 const moving = (k) => rescript(k, { rules: [
@@ -535,14 +537,45 @@ for (const [how, which] of /** @type {const} */ ([['reads and writes refused (Ch
       assert.equal(card.body, 'Unable to store record in object store');
       await until(() => k.agent.target === k.trip);
       assert.equal(k.agent.trip, k.trip, 'the chat stays open');
+      // The lines carried for Kyoto are kept there, as the open's failure leaves them: refused too when reads and writes both are, and then a second card
+      // says so (the storage card in its place for the full phone); nothing is silent, and nothing waits unannounced.
+      const saved = k.notices.filter((/** @type {any} */ n) => n.title === NOT_SAVED);
+      if (which === 'everything') assert.ok(saved.length === 1 && saved[0].error instanceof StorageFullError, 'the keep that was refused is told');
+      else assert.deepEqual(saved, [], 'the keep worked: nothing to tell');
     }
     // Room again: whatever waits is written, and nothing is left running.
     store.full(null);
     await k.agent.open(k.kyoto);
     await k.agent.idle();
     assert.equal(k.agent.trip, k.kyoto);
+    // The open that failed moved no one: the chat has no line of a move (the call ended there, and its tool wrote none).
+    if (which !== 'all') assert.deepEqual(await eventsIn(k, k.trip, ['conversation.moved']), []);
   });
 }
+
+test("Open tapped and the open fails: the tool tells her they are still here, in words, and writes no line of a move; the lines carried wait in that conversation", async (t) => {
+  useClock(t);
+  const k = await chatKit();
+  const store = refusing(k);
+  const carry = k.agent.carryOn.bind(k.agent);
+  k.agent.carryOn = (/** @type {any[]} */ ...a) => {
+    store.full('reads'); // the open fails, and writes work: the keep of the lines succeeds
+    return carry(...a);
+  };
+  const files = await handIn(k, 'hotel.pdf');
+  const out = await openBy(k, { trip: k.kyoto, recap: RECAP, files: [files.path] });
+  assert.equal(out, "Not opened: \"Kyoto\" didn't open, and annai told the user, so they are still here. The files you named are in that conversation already. Their last line and your recap wait there until it opens. Carry on here, and don't call open_trip for it again unless they ask.");
+  assert.ok(k.notices.some((/** @type {any} */ n) => n.title === "That conversation didn't open"), 'a card says so');
+  store.full(null);
+  assert.deepEqual(await eventsIn(k, k.trip, ['conversation.moved']), [], 'no line of a move in the chat');
+  assert.equal(k.agent.trip, k.trip, 'still here');
+  assert.deepEqual((await eventsIn(k, k.kyoto, ['wake'])).flatMap((/** @type {any} */ e) => e.data.reasons.map((/** @type {any} */ r) => r.recap ?? r.kind)).includes(RECAP), true, 'her recap is written there');
+  // An open that works is as ever: the move, and the line saying so.
+  const ok = await chatKit();
+  assert.equal(await openBy(ok, { trip: ok.kyoto, recap: RECAP }), 'They chose Open: that conversation is open now, and you answer them there; this one stays.');
+  await ok.agent.idle();
+  assert.equal((await eventsIn(ok, ok.trip, ['conversation.moved'])).length, 1);
+});
 
 for (const how of /** @type {const} */ (['Not now', 'a typed line', 'a Stop', 'Start fresh', 'another conversation'])) {
   test(`the card ended by ${how}: nothing moved, nothing was written into Kyoto, and the chat has no line of a move`, async (t) => {

@@ -690,7 +690,8 @@ export class Halves {
       this.#koeSaid(); // no session can answer a typed line now (today's spend reached): Kokoro waits no longer
       // No session could take Kokoro's note for the user, and Koe stays live (today's spend reached): annai shows it.
       if (isForUser(w) && !this.#shown.has(w)) await this.#backstop([w]);
-      return void (w.fallbacks?.length && this.kokoro.remind(w.fallbacks));
+      if (w.fallbacks?.length) this.#alongside(this.kokoro.remind(w.fallbacks)); // idle() waits for its entry
+      return;
     }
     this.#notice({ tone: 'warn', title: t`Koe's live voice couldn't start`, body: t`Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.` });
     this.#talkDirectly(w.fallbacks);
@@ -895,10 +896,10 @@ export class Halves {
       // Asked to hear her (the recap told aloud): the half with the voice tells it. Koe says the reminders: Kokoro, who starts at once, is told so
       // by annai, so she doesn't say them too (a recorded drive); if Koe never does, they are annai's to say or show (owed).
       if (!w.aloud) this.#wakeKokoro({ ...w, ...(w.fallbacks?.length && !away ? { text: `${w.text} ${KOE_SAYING(w.fallbacks)}` } : {}), fallbacks: [] });
-      if (away) this.kokoro.remind(reminders);
+      if (away) this.#alongside(this.kokoro.remind(reminders)); // idle() waits for its entry
       if (this.koeState === 'live') this.#alongside(this.#live(() => this.live.wake(away ? { ...w, fallbacks: w.fallbacks?.filter((r) => r.cue) } : w), w));
       else this.koe.enqueue(w);
-    });
+    }, (e) => this.kokoro.wakeFailed(w, e)); // a route that fails before its hand-ons (the refresh, the budgets' check): its reminders are shown, once
     return Promise.resolve();
   }
 
@@ -1173,14 +1174,19 @@ export class Halves {
    * let go, nothing owed where it was (open's `moved`), and 'went' tells the screens. Then the trip's lines (their
    * line, her recap) go in, for one turn there. If they went elsewhere since (signal: the call's, which a Stop or another open ends), nothing
    * opens: the lines are written into the trip, in order, and wait there. An open that fails says so, as one asked for from Trips does (tellNotOpen:
-   * the storage card for a full phone). @param {string} trip @param {import('./loop.js').Wake[]} wakes @param {AbortSignal} signal
+   * the storage card for a full phone), and the caller is told, so it says no move happened.
+   * @param {string} trip @param {import('./loop.js').Wake[]} wakes @param {AbortSignal} signal @returns {Promise<boolean>} false: the open failed
    */
   async carryOn(trip, wakes, signal) {
     const opening = !signal.aborted;
     let left = Promise.resolve();
+    let opened = true;
     if (opening) {
       updateAppSettings(this.ws, { activeTrip: trip }).catch(() => {});
-      left = this.open(trip, { moved: true }).catch((e) => this.notify({ tone: 'warn', title: t`That conversation didn't open`, body: String(e?.shown ?? e?.message ?? e), error: e }));
+      left = this.open(trip, { moved: true }).catch((e) => {
+        opened = false;
+        return this.notify({ tone: 'warn', title: t`That conversation didn't open`, body: String(e?.shown ?? e?.message ?? e), error: e });
+      });
       this.#emit('went', { trip });
     }
     // Into its queue at once when it opens (one turn), else written into it, one after the other.
@@ -1191,6 +1197,7 @@ export class Halves {
     // What the halves write of the conversation they leave (a line or cue they held, a session's last words) is written by now: the caller's line about the move settles it.
     await left;
     await this.live.written();
+    return opened;
   }
 
   /** @param {boolean} [yes] */
