@@ -1338,3 +1338,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the fallback has 9 s in all (the chain's reserve), Wikimedia's rule allows 3 requests at once, and each edition's guide is one more request.
 - **Revisit when:** a slow-link report, or measured request times from a phone.
 - **Approved:** chief's decision C160 (2026-11-20, not the user's words), accepted as written.
+
+### A tool call whose result the phone refused leaves its conversation unable to hear the traveller
+- **Kind:** deferred.
+- **What the traveller sees:** on a phone too full to write, when Shiori's tool call (her question card, Open on annai's card) can't have its result written, the conversation is left with a call that has no result; after room returns, the traveller's next lines there go to her model behind that open call (the transcript holds lines while a call waits, src/core/agent/transcript.js `#line`), so a provider is likely to refuse the request or answer without reading them, until another conversation is opened and this one again, or annai restarts (an open repairs it).
+- **Why:** found by storage-rest-next's re-review (2026-11-20; on main too, not that build's); its fix is at the source, a turn that stops with calls open giving them results as an open's repair does (or the next turn's start repairing them), which needs its own small design.
+- **Revisit when:** its row in docs/progress.md ("A tool call whose result the phone refused"), in the next version.
