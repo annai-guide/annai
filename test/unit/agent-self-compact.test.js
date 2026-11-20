@@ -396,3 +396,57 @@ test('a Share without Memory leaves the to-do list out, as it does memory.md; wi
   assert.deepEqual(await names({ ...PRESETS.share, memory: true }), ['/memory.md', '/todo.md']);
   assert.deepEqual(await names(PRESETS.backup), ['/memory.md', '/todo.md']);
 });
+
+test("after a summary, a reload doesn't read the kept part's counts: the next turn, cold, isn't summarized again; a call after it over 100,000 is", async (t) => {
+  const jump = clockOf(t);
+  const k = await agentKit([[...Array.from({ length: 6 }, (_, i) => say(`Answer ${i}`, LONG)), say('Back.', LONG), say('Again.')]], { models: [OPUS], utility: [{ text: 'Summary.' }, { text: 'Second.' }], agent: { timers: NO_TIMERS } });
+  await talk(k.agent, ['Q0', 'Q1', 'Q2', 'Q3', 'Q4', 'Q5']);
+  assert.equal(await k.agent.compact('cold'), true); // keeps all but the oldest: five replies of 111,030 tokens each
+  jump(61 * MINUTE);
+  await talk(await reload(k), ['Back']);
+  assert.equal((await k.events(['compaction'])).length, 1);
+  assert.equal(k.requests.filter(isUtility).length, 1);
+  jump(61 * MINUTE);
+  await talk(await reload(k), ['Again']);
+  assert.equal((await k.events(['compaction'])).length, 2, 'its own call since counts');
+});
+
+test('a compaction a transcript reads clears its last call; a reply in the part it kept is not one', async () => {
+  const { Transcript } = await import('../../src/core/agent/transcript.js');
+  const tr = new Transcript();
+  const turn = (/** @type {number} */ seq) => ({ seq, ts: 1000 + seq, type: 'model.turn', data: { tag: 'conversation', attempts: [{ model: 'm-0', outcome: 'ok' }], usage: LONG } });
+  tr.apply(turn(5), { texts: { parts: '[]' }, images: [] });
+  assert.deepEqual(tr.lastCall, { prompt: 111_030, at: 1005, model: 'm-0' });
+  tr.apply({ seq: 9, type: 'compaction', data: { from: 1, to: 3, mode: 'cold' } }, { texts: { summary: 'S.' }, images: [] });
+  assert.equal(tr.lastCall, null);
+  tr.apply(turn(6), { texts: { parts: '[]' }, images: [] });
+  assert.equal(tr.lastCall, null, 'written before the compaction: in the part it kept');
+  tr.apply(turn(10), { texts: { parts: '[]' }, images: [] });
+  assert.equal(tr.lastCall?.at, 1010);
+  // A record the loop made up itself, its write failed: no time, no attempts.
+  tr.apply({ seq: 11, type: 'model.turn', data: { tag: 'conversation', endLogged: true } }, { texts: { parts: '[]' }, images: [] });
+  assert.equal(tr.lastCall?.at, 1010);
+});
+
+test("Summarize now runs cold when this conversation's cache is, though another conversation's call is warm", async (t) => {
+  const jump = clockOf(t);
+  const k = await agentKit([[...Array.from({ length: 4 }, (_, i) => say(`Answer ${i}`)), say('Other.')]], { models: [OPUS], utility: [{ text: 'Cold summary.' }], agent: { timers: NO_TIMERS } });
+  const other = await createTrip(k.ws, { title: 'Other' });
+  await talk(k.agent, ['Q0', 'Q1', 'Q2', 'Q3']);
+  jump(55 * MINUTE);
+  await k.agent.open(other);
+  await talk(k.agent, ['Elsewhere']);
+  jump(10 * MINUTE);
+  await k.agent.open(k.trip);
+  assert.equal(await k.agent.summarizeNow(), 'done');
+  assert.deepEqual((await k.events(['compaction'])).map((e) => e.data.mode), ['cold']);
+  assert.match(JSON.stringify(k.agent.transcript.messages[0]), /Cold summary\./);
+});
+
+test("a reply that searched gives no count, and the request's own estimate still makes housekeeping due", async () => {
+  /** @type {number[]} */
+  const timers = [];
+  const k = await agentKit([[say('Answer', SEARCHED)]], { models: [OPUS], agent: { timers: { set: (/** @type {any} */ _fn, /** @type {number} */ ms) => timers.push(ms), clear: () => {} } } });
+  await talk(k.agent, [`Long paste ${'w'.repeat(360_000)}`]); // over 100,000 tokens by the estimate
+  assert.equal(timers.length, 1);
+});
