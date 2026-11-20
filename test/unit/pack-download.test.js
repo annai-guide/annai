@@ -1082,7 +1082,7 @@ test("a guide's text that fails keeps its link: the guide names the edition in a
   assert.deepEqual(guidesOf(m), [['Cambria (California)', ['Cambria, California'], ['ja カンブリア']], ['Big Sur', ['Big Sur'], []]]);
   assert.ok(!(await files(ws, trip)).includes(guideFile('Cambria (California)', 'ja').path), 'no Japanese file');
   const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
-  assert.deepEqual((await pack.guide('Cambria', ['ja', 'en'])).map((p) => [p.edition, p.title, p.text.length > 0]), [['ja', 'カンブリア', false], ['en', 'Cambria (California)', true]]);
+  assert.deepEqual((await pack.guide('Cambria, California', ['ja', 'en'])).map((p) => [p.edition, p.title, p.text.length > 0]), [['ja', 'カンブリア', false], ['en', 'Cambria (California)', true]]);
   const next = services();
   const n = await downloadPack({ ws, scope: trip, fetch: next.fetch, version: V, editions: ['ja', 'en'], gapMs: 0 });
   assert.deepEqual(n.failed, []);
@@ -1110,7 +1110,7 @@ test("a stop while a guide's second edition is fetched keeps the guide, with its
   assert.deepEqual(m.guides.map((g) => [g.title, g.also]), [['Cambria (California)', [{ edition: 'ja', title: 'カンブリア' }]]], "the guide, with its link in Japanese: the text didn't come");
   assert.ok(m.files.some((f) => f.path === guideFile('Cambria (California)').path));
   const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
-  assert.deepEqual((await pack.guide('Cambria', ['ja', 'en'])).map((p) => [p.edition, p.text.length > 0]), [['ja', false], ['en', true]]);
+  assert.deepEqual((await pack.guide('Cambria, California', ['ja', 'en'])).map((p) => [p.edition, p.text.length > 0]), [['ja', false], ['en', true]]);
   assert.deepEqual(m.voyage, ['en'], 'the pass did not reach its end: Japanese is still to be asked');
   const next = services();
   const n = await downloadPack({ ws, scope: trip, fetch: next.fetch, version: V, editions: ['ja', 'en'], gapMs: 0 });

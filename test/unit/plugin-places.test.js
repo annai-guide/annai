@@ -1063,14 +1063,18 @@ test("past the pack's edge nearby asks the services, and the pack fills in for a
   await assert.rejects(run('nearby', { lat: 36.6, lng: -121.9 }, () => { throw new Error('offline'); }), /Neither OpenStreetMap nor Wikipedia answered/);
 });
 
-test('guide reads the pack first: by its title, without "(California)", or by a name that led to it; a section too', async () => {
-  const { run, ws, trip } = await setup({ trip: true });
+test('guide reads the pack first: by its title or by a name that led to it, never by its title without "(California)", which online never matches; a section too', async () => {
+  const { run, ws, trip, asked } = await setup({ trip: true });
   await mcwayPack(ws, /** @type {string} */ (trip));
-  assert.equal(await run('guide', { place: 'Cambria' }, nothing), 'Cambria (California) (English Wikivoyage, offline pack of 2026-10-16) https://en.wikivoyage.org/wiki/Cambria_%28California%29\n\nCambria is a town.\n\nSections: See. Ask for one with section.');
+  assert.equal(await run('guide', { place: 'Cambria (California)' }, nothing), 'Cambria (California) (English Wikivoyage, offline pack of 2026-10-16) https://en.wikivoyage.org/wiki/Cambria_%28California%29\n\nCambria is a town.\n\nSections: See. Ask for one with section.');
   assert.equal(await run('guide', { place: 'cambria, california', section: 'see' }, nothing), 'Cambria (California): See (English Wikivoyage, offline pack of 2026-10-16) https://en.wikivoyage.org/wiki/Cambria_%28California%29\n\nMoonstone Beach.');
   assert.match(await run('guide', { place: 'Hearst Castle' }, nothing), /^San Simeon \(English Wikivoyage, offline pack of 2026-10-16\)/);
   const page = { query: { pages: { 1: { title: 'Big Sur', extract: 'Big Sur is a region.' } } } };
   assert.equal(await run('guide', { place: 'Big Sur' }, () => page), 'Big Sur (English Wikivoyage) https://en.wikivoyage.org/wiki/Big_Sur\n\nBig Sur is a region.');
+  // "Cambria" alone is neither its title nor a name that led to it: the tool asks online, as without a pack, where English decides what it means.
+  const before = asked.length;
+  await run('guide', { place: 'Cambria' }, () => ({ query: { pages: [{ title: 'Cambria', missing: true }] } })).catch(() => {});
+  assert.ok(asked.length > before, 'asked online');
 });
 
 test("guide reads the pack first in each of the traveller's editions it holds, by any edition's title, in the reading order; an edition it doesn't hold isn't asked online", async () => {
@@ -1089,7 +1093,7 @@ test("guide reads the pack first in each of the traveller's editions it holds, b
   ].join('\n\n'));
   // Chinese listed too, which the pack doesn't hold: what it holds, with no request (it comes with the pack's next download).
   await speaks(ws, ['zh', 'ja']);
-  assert.match(await run('guide', { place: 'Cambria', section: '観る' }, nothing), /^カンブリア: 観る \(Japanese Wikivoyage, offline pack of 2026-10-16\)/);
+  assert.match(await run('guide', { place: 'Cambria (California)', section: '観る' }, nothing), /^カンブリア: 観る \(Japanese Wikivoyage, offline pack of 2026-10-16\)/);
 });
 
 test('a broken pack is no pack: the tools go online', async () => {
@@ -1136,7 +1140,7 @@ test('a pack whose manifest has no download time says the day of its newest part
   assert.match(await run('nearby', { ...McWay, radius: 1000, kinds: ['sights'] }, nothing), /\nFrom the offline pack \(downloaded 2026-10-18\)\.$/);
   await ws.write(id, '/offline/pack.json', JSON.stringify({ ...m, at: '' }), { author: 'system' });
   assert.match(await run('nearby', { ...McWay, radius: 1000, kinds: ['sights'] }, nothing), /\nFrom the offline pack\.$/);
-  assert.match(await run('guide', { place: 'Cambria' }, nothing), /^Cambria \(California\) \(English Wikivoyage, offline pack\) https:\/\/en\.wikivoyage\.org\/wiki\/Cambria_%28California%29\n/);
+  assert.match(await run('guide', { place: 'Cambria (California)' }, nothing), /^Cambria \(California\) \(English Wikivoyage, offline pack\) https:\/\/en\.wikivoyage\.org\/wiki\/Cambria_%28California%29\n/);
 });
 
 test("nearby online takes an Overpass answer that says \"runtime error\" as no answer: the next server (the VK switch on), then the pack, as for any failure", async () => {
@@ -1168,7 +1172,7 @@ test("Koe's places tools (call.offline) read the offline pack only: never a requ
   assert.match(edge, /McWay Falls Overlook/);
   assert.match(edge, /\nFrom the offline pack \(downloaded 2026-10-16\), which holds only part of this circle\. Kokoro can look further\.$/);
   assert.equal(await run('nearby', { lat: 36.6, lng: -121.9 }, nothing, offline), 'Not in the offline pack: ask Kokoro.');
-  assert.match(await run('guide', { place: 'Cambria' }, nothing, offline), /offline pack of 2026-10-16/);
+  assert.match(await run('guide', { place: 'Cambria (California)' }, nothing, offline), /offline pack of 2026-10-16/);
   assert.equal(await run('guide', { place: 'Big Sur' }, nothing, offline), 'Not in the offline pack: ask Kokoro.');
   assert.equal(asked.length, 0);
 });
@@ -1275,13 +1279,13 @@ test("guide with a pack that never asked the traveller's edition (a language add
   assert.match(await run('guide', { place: 'Hearst Castle' }, () => ({ query: { pages: [{ title: 'San Simeon', extract: 'x' }] } })), /^San Simeon \(English Wikivoyage, offline pack of 2026-10-16\)[^\n]*\n\nSan Simeon is home to Hearst Castle\.$/);
   // Offline (Koe's quick reads): never a request, and the line names what the pack lacks.
   asked.length = 0;
-  assert.match(await run('guide', { place: 'Cambria' }, nothing, { offline: true }), /offline pack of 2026-10-16\)[\s\S]*\nJapanese Wikivoyage isn't in the offline pack yet; it comes with the pack's next download\.$/);
+  assert.match(await run('guide', { place: 'Cambria (California)' }, nothing, { offline: true }), /offline pack of 2026-10-16\)[\s\S]*\nJapanese Wikivoyage isn't in the offline pack yet; it comes with the pack's next download\.$/);
   assert.equal(asked.length, 0);
   await speaks(ws, ['ja', 'zh']);
-  assert.match(await run('guide', { place: 'Cambria' }, nothing, { offline: true }), /\nJapanese and Chinese Wikivoyage aren't in the offline pack yet; they come with the pack's next download\.$/);
+  assert.match(await run('guide', { place: 'Cambria (California)' }, nothing, { offline: true }), /\nJapanese and Chinese Wikivoyage aren't in the offline pack yet; they come with the pack's next download\.$/);
   // A pack that asked Japanese and holds no guide there is today's: its English, with no request and no line.
   await packAsked(ws, id, ['en', 'ja', 'zh']);
-  const held = await run('guide', { place: 'Cambria' }, nothing);
+  const held = await run('guide', { place: 'Cambria (California)' }, nothing);
   assert.doesNotMatch(held, /isn't in the offline pack|aren't in the offline pack/);
   assert.match(held, /^Cambria \(California\) \(English Wikivoyage, offline pack of 2026-10-16\)/);
 });
@@ -1309,13 +1313,13 @@ test("guide: each edition's part from the pack where it holds one, whatever happ
   await ws.write(id, '/offline/pack.json', JSON.stringify(m), { author: 'system' });
   await speaks(ws, ['ja', 'zh']); // Chinese added
   const zh = (/** @type {string} */ url) => (url.includes('zh.wikivoyage') ? { query: { pages: [{ title: '坎布里亞', extract: '坎布里亞是海邊小鎮。' }] } } : { query: { pages: [{ title: 'Cambria (California)', extract: 'x', langlinks: [{ lang: 'ja', title: 'カンブリア' }, { lang: 'zh', title: '坎布里亞' }] }] } });
-  const out = await run('guide', { place: 'Cambria' }, zh);
+  const out = await run('guide', { place: 'Cambria (California)' }, zh);
   assert.deepEqual(out.split('\n\n').filter((l) => /wikivoyage\.org\/wiki/.test(l)).map((l) => l.split(' https')[0]), ['カンブリア (Japanese Wikivoyage, offline pack of 2026-10-16)', '坎布里亞 (Chinese Wikivoyage)', 'Cambria (California) (English Wikivoyage, offline pack of 2026-10-16)']);
   assert.deepEqual(voyageReads(asked), ['en.wikivoyage.org Cambria (California) links', 'zh.wikivoyage.org 坎布里亞 text'], 'Japanese and English are not asked: the pack holds them');
   // Japanese Wikivoyage down changes nothing: its part is the pack's. English down, which gives the titles: Chinese is named, the pack's parts stay.
   asked.length = 0;
-  assert.match(await run('guide', { place: 'Cambria' }, (url) => (url.includes('ja.wikivoyage') ? new Response('', { status: 503 }) : zh(url))), /^カンブリア \(Japanese Wikivoyage, offline pack of 2026-10-16\)[\s\S]*坎布里亞 \(Chinese Wikivoyage\)[\s\S]*Cambria \(California\) \(English Wikivoyage, offline pack of 2026-10-16\)[^\n]*\n\n[^\n]*\n\nSections: See\. Ask for one with section\.$/);
-  const enDown = await run('guide', { place: 'Cambria' }, (url) => (url.includes('en.wikivoyage') ? new Response('', { status: 503 }) : zh(url)));
+  assert.match(await run('guide', { place: 'Cambria (California)' }, (url) => (url.includes('ja.wikivoyage') ? new Response('', { status: 503 }) : zh(url))), /^カンブリア \(Japanese Wikivoyage, offline pack of 2026-10-16\)[\s\S]*坎布里亞 \(Chinese Wikivoyage\)[\s\S]*Cambria \(California\) \(English Wikivoyage, offline pack of 2026-10-16\)[^\n]*\n\n[^\n]*\n\nSections: See\. Ask for one with section\.$/);
+  const enDown = await run('guide', { place: 'Cambria (California)' }, (url) => (url.includes('en.wikivoyage') ? new Response('', { status: 503 }) : zh(url)));
   assert.match(enDown, /^カンブリア \(Japanese Wikivoyage, offline pack of 2026-10-16\)[\s\S]*Cambria \(California\) \(English Wikivoyage, offline pack of 2026-10-16\)[\s\S]*\nChinese Wikivoyage isn't in the offline pack yet; it comes with the pack's next download\.$/);
   assert.doesNotMatch(enDown, /didn't answer/, 'zh was never asked, and English is the pack\'s part');
 });

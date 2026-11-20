@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PackKeeper } from '../../src/core/pack/keeper.js';
-import { STALE_MS, guideFile } from '../../src/core/pack/download.js';
+import { STALE_MS, guideFile, downloadPack, MANIFEST } from '../../src/core/pack/download.js';
 import { packTrip, services, fakeAgent, wikivoyage as kitGuides, STOPS, YUFUIN, yufuinStop, yufuinAnswer } from './pack-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { SIZES, planFor } from '../../src/core/pack/plan.js';
@@ -24,7 +24,7 @@ async function kit(o = {}) {
   const net = services();
   let connection = o.connection ?? 'unknown';
   let visible = o.visible ?? true;
-  // A short "hour": the traveller's own run counts for it too (it starts at the run's start, whoever began it).
+  // A short "hour": it counts from the end of the last run, whoever began it.
   const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1.2.3', connection: () => connection, visible: () => visible, fetch: net.fetch, quietMs: 20, pokeMs: 10, autoMs: 30, gapMs: 0, now: o.now });
   return { ...t, agent, net, keeper, set: (/** @type {{ connection?: string, visible?: boolean }} */ s) => { connection = s.connection ?? connection; visible = s.visible ?? visible; } };
 }
@@ -419,36 +419,43 @@ test("a download that stopped before its manifest: the files it left, which the 
   }
 });
 
-/** A keeper on Wi-Fi with a short "hour", over a trip with the two Big Sur stops, and the plan change that makes an update due. @param {Parameters<typeof services>[0]} [o] */
-async function hourly(o = {}) {
+/** A keeper on Wi-Fi with a short "hour", over a trip with the two Big Sur stops, and the plan change that makes an update due. @param {Parameters<typeof services>[0]} [o] @param {number} [autoMs] the hour, in ms */
+async function hourly(o = {}, autoMs = 400) {
   const t = await packTrip();
   const net = services({ overpass: () => ({ elements: [] }), ...o });
-  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, autoMs: 400, gapMs: 0 });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, autoMs, gapMs: 0 });
   const move = (/** @type {number} */ lat) => t.ws.write(t.trip, '/plan/nepenthe.json', { ...STOPS.nepenthe, place: { ...STOPS.nepenthe.place, lat } }, { author: 'user' });
   const autoRuns = async () => (await t.store.tx(['events'], 'readonly', (x) => x.listEvents(t.trip, { types: ['pack.download'] }))).filter((e) => e.data.auto);
-  /** When each download began (the hour is counted from a run's start, not its end). @type {number[]} */
+  const { began, ended } = watching(keeper);
+  return { ...t, net, keeper, move, autoRuns, began, ended };
+}
+
+/** When each of a keeper's downloads began and ended (the hour is counted from a run's end). @param {PackKeeper} keeper */
+function watching(keeper) {
+  /** @type {number[]} */
   const began = [];
+  /** @type {number[]} */
+  const ended = [];
   let on = false;
   keeper.onChange(() => {
     if (keeper.running && !on) began.push(Date.now());
+    if (!keeper.running && on) ended.push(Date.now());
     on = keeper.running !== null;
   });
-  return { ...t, net, keeper, move, autoRuns, began };
+  return { began, ended };
 }
 
-test("a change inside the hour is not dropped: it waits for the hour to end, and annai brings the pack up to date by itself then", async () => {
-  const { keeper, trip, move, autoRuns, began } = await hourly();
+test("a change right after an update annai began by itself is not held for the hour: annai brings the pack up to date by itself once the plan is quiet", async () => {
+  const { keeper, trip, move, autoRuns, began } = await hourly({}, 1000);
   try {
     await keeper.download(trip); // by hand
     await move(36.2);
     await until(async () => (await autoRuns()).length === 1);
+    const at = Date.now();
     await move(36.19); // inside the hour
-    await new Promise((r) => setTimeout(r, 120));
-    assert.equal((await autoRuns()).length, 1, 'not yet');
-    assert.equal((await keeper.status(trip)).why, 'plan');
     await until(async () => (await autoRuns()).length === 2 && (await keeper.status(trip)).why === null, 3000);
     assert.equal(began.length, 3, 'by hand, and twice by itself');
-    assert.ok(began[2] - began[1] >= 380, `the second run began at the end of the hour (400 ms here) from the first's start, not before: ${began[2] - began[1]}`);
+    assert.ok(began[2] - at < 500, `the second run began ${began[2] - at} ms after the change: the quiet (10 ms here), not the hour (1000)`);
   } finally {
     keeper.dispose();
   }
@@ -456,7 +463,7 @@ test("a change inside the hour is not dropped: it waits for the hour to end, and
 
 test("an update annai began by itself that failed in part is tried again by itself, once an hour at most, with nothing else to wake it", async () => {
   let down = false;
-  const { keeper, trip, net, move, autoRuns, began } = await hourly({ overpass: () => (down ? new Response('', { status: 503 }) : { elements: [] }) });
+  const { keeper, trip, net, move, autoRuns, began, ended } = await hourly({ overpass: () => (down ? new Response('', { status: 503 }) : { elements: [] }) });
   try {
     await keeper.download(trip);
     down = true;
@@ -468,7 +475,7 @@ test("an update annai began by itself that failed in part is tried again by itse
     assert.equal(net.asked.length, asked, 'not before the hour is out');
     await until(async () => (await keeper.status(trip)).why === null, 3000);
     assert.equal((await autoRuns()).length, 2);
-    assert.ok(began[2] - began[1] >= 380, `the retry began an hour (400 ms here) after the failed run's start: ${began[2] - began[1]}`);
+    assert.ok(began[2] - ended[1] >= 380, `the retry began an hour (400 ms here) after the failed run's end: ${began[2] - ended[1]}`);
     // It worked: nothing more is tried.
     const done = net.asked.length;
     await new Promise((r) => setTimeout(r, 500));
@@ -565,18 +572,24 @@ test("a settings write looks at the pack only when the languages' editions chang
   }
 });
 
-test("a language added inside the hour of an update annai began by itself waits for the hour to end, then comes by itself", async () => {
-  const { keeper, trip, ws, net, move, autoRuns } = await hourly();
+test("a plan change after annai's own update, then a language added: each comes by itself once the plan is quiet, not an hour on; then nothing more is asked (shape 4)", async () => {
+  const { keeper, trip, ws, net, move, autoRuns, began } = await hourly({}, 1000);
   try {
     await keeper.download(trip);
+    let at = Date.now();
     await move(36.2);
-    await until(async () => (await autoRuns()).length === 1);
+    await until(async () => (await autoRuns()).length === 1 && (await keeper.status(trip)).why === null);
+    assert.ok(began[1] - at < 500, `the plan change's run began ${began[1] - at} ms after it`);
     const asked = net.asked.length;
+    at = Date.now();
     await updateAppSettings(ws, { languages: { spoken: ['en', 'ja'], answer: 'follow' } });
-    await new Promise((r) => setTimeout(r, 120));
-    assert.equal(net.asked.length, asked, 'inside the hour');
     await until(async () => (await autoRuns()).length === 2 && (await keeper.status(trip)).why === null, 3000);
+    assert.ok(began[2] - at < 500, `the language's run began ${began[2] - at} ms after it: the quiet (10 ms here), not the hour (1000)`);
     assert.ok(net.asked.slice(asked).some((a) => a.url.includes('ja.wikipedia.org')));
+    const done = net.asked.length;
+    await new Promise((r) => setTimeout(r, 300));
+    assert.equal(net.asked.length, done, 'nothing more is asked');
+    assert.equal(began.length, 3);
   } finally {
     keeper.dispose();
   }
@@ -605,10 +618,11 @@ async function leaving(autoMs = 30) {
     if (cutShort) throw new DOMException('Stopped.', 'AbortError');
     return { elements: [] };
   } });
-  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => connection, fetch: net.fetch, quietMs: 10, pokeMs: 5, autoMs, gapMs: 0 });
+  const agent = fakeAgent(t.trip);
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1', connection: () => connection, fetch: net.fetch, quietMs: 10, pokeMs: 5, autoMs, gapMs: 0 });
   const move = (/** @type {number} */ lat) => t.ws.write(t.trip, '/plan/nepenthe.json', { ...STOPS.nepenthe, place: { ...STOPS.nepenthe.place, lat } }, { author: 'user' });
   const log = async () => (await t.store.tx(['events'], 'readonly', (x) => x.listEvents(t.trip, { types: ['pack.download'] }))).map((e) => e.data);
-  return { ...t, net, keeper, move, log, release: () => release(), arm: () => { armed = true; waiting = false; }, waiting: () => waiting, cutShort: () => cutShort, set: (/** @type {string} */ c) => { connection = c; } };
+  return { ...t, agent, net, keeper, move, log, release: () => release(), arm: () => { armed = true; waiting = false; }, waiting: () => waiting, cutShort: () => cutShort, set: (/** @type {string} */ c) => { connection = c; } };
 }
 
 test('an update annai began by itself on Wi-Fi stops when the phone leaves Wi-Fi: what came stays, and the next look on Wi-Fi goes on', async () => {
@@ -771,23 +785,17 @@ test('a tap on Download while annai\'s own run goes makes it the traveller\'s: i
   }
 });
 
-test("back on Wi-Fi while a stopped run is winding down: the look then is not lost, the run goes on as soon as the hour from its start allows, not an hour after it ended", async () => {
-  const k = await leaving(1500); // the hour here
+test("back on Wi-Fi while a stopped run is winding down: the look then is not lost, and the run goes on an hour after the stop, not never (shape 10)", async () => {
+  const k = await leaving(600); // the hour here
   const { keeper, trip, ws } = k;
   const write = ws.writeMany.bind(ws);
   let slow = false;
   // The run's end (its manifest) takes a while, as on a big trip.
   ws.writeMany = async (...a) => {
-    if (slow) await new Promise((r) => setTimeout(r, 800));
+    if (slow) await new Promise((r) => setTimeout(r, 300));
     return write(...a);
   };
-  /** When each download began. @type {number[]} */
-  const began = [];
-  let on = false;
-  keeper.onChange(() => {
-    if (keeper.running && !on) began.push(Date.now());
-    on = keeper.running !== null;
-  });
+  const { began, ended } = watching(keeper);
   try {
     await keeper.download(trip); // by hand
     k.arm();
@@ -802,8 +810,7 @@ test("back on Wi-Fi while a stopped run is winding down: the look then is not lo
     keeper.poke(); // back on Wi-Fi, while the run is still ending: #auto finds the job and returns
     await until(async () => (await keeper.status(trip)).why === null, 6000);
     assert.deepEqual((await k.log()).map((d) => d.auto), [false, true, true]);
-    assert.ok(began[2] - began[1] >= 1400, `not before the hour is out: ${began[2] - began[1]}`);
-    assert.ok(began[2] - began[1] < 1900, `at the hour from the stopped run's start, not an hour after its end: ${began[2] - began[1]}`);
+    assert.ok(began[2] - ended[1] >= 570, `an hour (600 ms here) after the stopped run's end: ${began[2] - ended[1]}`);
   } finally {
     keeper.dispose();
   }
@@ -864,7 +871,7 @@ test("a language with no Wikivoyage added to a pack whose guides failed (no text
   }
 });
 
-test("the traveller's Stop of their own run holds automatic runs for an hour from the Stop: a look right after it (back to the tab, a connection change) doesn't start the run again, however long the run had gone on", async () => {
+test("a stopped run rests an hour from its end, the traveller's Stop included: a look right after it (back to the tab, a connection change) doesn't start the run again, however long the run had gone on", async () => {
   const t = await packTrip();
   const net = services({ overpass: () => ({ elements: [] }) });
   const clock = { now: Date.now() };
@@ -887,7 +894,7 @@ test("the traveller's Stop of their own run holds automatic runs for an hour fro
     const asked = net.asked.length;
     keeper.poke();
     await new Promise((r) => setTimeout(r, 100));
-    assert.equal(net.asked.length, asked, "the traveller's Stop holds: the look did not start it again");
+    assert.equal(net.asked.length, asked, "the stopped run rests: the look did not start it again");
     assert.equal((await autoRuns()).length, 0);
     // The hour from the Stop is out: the run goes on by itself.
     clock.now += 400;
@@ -899,18 +906,12 @@ test("the traveller's Stop of their own run holds automatic runs for an hour fro
   }
 });
 
-test("a look that falls on a download the traveller runs is not lost: once it ends, annai looks again, and an automatic run comes an hour (150 ms here) after the traveller's run began, not at once and not never", async () => {
+test("a look that falls on a download the traveller runs is not lost: once it ends, annai looks again, and an automatic run comes an hour (150 ms here) after the traveller's run ended, not at once and not never", async () => {
   const t = await packTrip();
   let down = true;
   const net = services({ overpass: () => (down ? new Response('', { status: 503 }) : { elements: [] }) });
   const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, autoMs: 150, gapMs: 0 });
-  /** @type {number[]} */
-  const began = [];
-  let on = false;
-  keeper.onChange(() => {
-    if (keeper.running && !on) began.push(Date.now());
-    on = keeper.running !== null;
-  });
+  const { began, ended } = watching(keeper);
   const autoRuns = async () => (await t.store.tx(['events'], 'readonly', (x) => x.listEvents(t.trip, { types: ['pack.download'] }))).filter((e) => e.data.auto);
   try {
     await keeper.download(t.trip); // by hand: Overpass is down, so the pack comes with failed parts, which annai brings on by itself
@@ -919,7 +920,227 @@ test("a look that falls on a download the traveller runs is not lost: once it en
     // Nothing pokes the keeper again: the end of the traveller's own run is the look.
     await until(async () => (await autoRuns()).length === 1 && (await keeper.status(t.trip)).why === null, 3000);
     assert.equal(began.length, 2);
-    assert.ok(began[1] - began[0] >= 140, `the automatic run began ${began[1] - began[0]} ms after the traveller's began: the hour counts from any run's start`);
+    assert.ok(began[1] - ended[0] >= 140, `the automatic run began ${began[1] - ended[0]} ms after the traveller's run ended: the hour counts from any run's end`);
+  } finally {
+    keeper.dispose();
+  }
+});
+
+const sleep = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
+
+// The design check's table of when annai runs by itself (editions-a-keeper-designcheck.md, section 4). The hour is counted from the end of the last
+// run, whoever began it and however it ended; a change that no run has begun since waits only for the quiet; a stopped run rests the hour whatever changed.
+
+for (const when of /** @type {const} */ (['during', 'after'])) {
+  test(`the traveller's Stop holds an hour from the Stop though the plan changed ${when} their run (shapes 1 and 2): no run for most of the hour, then one`, async () => {
+    const k = await leaving(600); // the hour here
+    const { keeper, trip } = k;
+    const { began, ended } = watching(keeper);
+    try {
+      k.arm();
+      const running = keeper.download(trip); // by hand
+      await until(() => k.waiting());
+      if (when === 'during') await k.move(36.2);
+      await sleep(40); // the plan is quiet: a hold has to outlast that
+      await keeper.stop();
+      assert.equal((await running).stopped, true);
+      if (when === 'after') await k.move(36.2);
+      await sleep(360);
+      assert.equal(began.length, 1, 'no run for most of the hour');
+      assert.equal((await k.log()).length, 1);
+      await until(() => began.length === 2, 3000);
+      assert.ok(began[1] - ended[0] >= 570, `one run an hour (600 ms here) after the Stop: ${began[1] - ended[0]}`);
+      await until(async () => (await keeper.status(trip)).why === null, 3000);
+      assert.deepEqual((await k.log()).map((d) => d.auto), [false, true]);
+    } finally {
+      keeper.dispose();
+    }
+  });
+}
+
+test("a plan change after the traveller's whole download begins a run once the plan is quiet, well inside the hour (shape 3, call 1)", async () => {
+  const { keeper, trip, move, autoRuns, began } = await hourly({}, 1000);
+  try {
+    await keeper.download(trip); // by hand
+    const at = Date.now();
+    await move(36.2);
+    await until(async () => (await autoRuns()).length === 1 && (await keeper.status(trip)).why === null, 3000);
+    assert.ok(began[1] - at < 500, `the run began ${began[1] - at} ms after the change: the quiet (10 ms here), not the hour (1000)`);
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test("annai's own run that goes on for most of the hour, then the traveller's Stop: no run until an hour from the Stop (shape 5)", async () => {
+  const k = await leaving(500); // the hour here
+  const { keeper, trip } = k;
+  const { began, ended } = watching(keeper);
+  try {
+    await keeper.download(trip); // by hand
+    k.arm();
+    await k.move(36.2);
+    await until(() => k.waiting()); // annai's own update runs, waiting on Overpass
+    await sleep(400); // most of the hour
+    await keeper.stop();
+    assert.equal(began.length, 2);
+    await sleep(300);
+    assert.equal(began.length, 2, 'no run for most of the hour from the Stop');
+    await until(() => began.length === 3, 3000);
+    assert.ok(began[2] - ended[1] >= 470, `an hour (500 ms here) after the Stop: ${began[2] - ended[1]}`);
+    await until(async () => (await keeper.status(trip)).why === null, 3000);
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test("a traveller's run that goes on longer than the hour and ends on 503s is retried an hour after its end, not at once (shape 6)", async () => {
+  let slow = true;
+  let down = true;
+  const { keeper, trip, began, ended } = await hourly({ overpass: async () => {
+    if (slow) {
+      slow = false;
+      await sleep(480); // longer than the hour (400 ms here)
+    }
+    return down ? new Response('', { status: 503 }) : { elements: [] };
+  } });
+  try {
+    const m = await keeper.download(trip); // by hand
+    assert.ok(m.failed.length > 0);
+    down = false;
+    await sleep(300);
+    assert.equal(began.length, 1, 'not at once');
+    await until(() => began.length === 2, 3000);
+    assert.ok(began[1] - ended[0] >= 370, `the retry began an hour (400 ms here) after the run's end: ${began[1] - ended[0]}`);
+    await until(async () => (await keeper.status(trip)).why === null, 3000);
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test("a relaunch keeps the Stop's hold: Stop, dispose, a new keeper over the same store, a look: held until an hour from the Stop (shape 7)", async () => {
+  const k = await leaving(600); // the hour here
+  const { keeper, trip, store, ws, net } = k;
+  try {
+    k.arm();
+    const running = keeper.download(trip); // by hand
+    await until(() => k.waiting());
+    await keeper.stop();
+    assert.equal((await running).stopped, true);
+    const stoppedAt = Date.now();
+    keeper.dispose();
+    const again = new PackKeeper({ store, ws, agent: fakeAgent(trip), locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, autoMs: 600, gapMs: 0 });
+    try {
+      const { began } = watching(again);
+      again.poke();
+      await sleep(360);
+      assert.equal(began.length, 0, 'held');
+      await until(() => began.length === 1, 3000);
+      assert.ok(Date.now() - stoppedAt >= 500, `the run began an hour (600 ms here) after the Stop: ${Date.now() - stoppedAt}`);
+      await until(async () => (await again.status(trip)).why === null, 3000);
+    } finally {
+      again.dispose();
+    }
+  } finally {
+    keeper.dispose();
+  }
+});
+
+for (const why of /** @type {const} */ (['plan change', 'old pack'])) {
+  test(`no loop: a run that writes no manifest after a ${why} gives one automatic run at once, then one an hour on (shape 8)`, async () => {
+    const t = await packTrip();
+    const net = services({ overpass: () => ({ elements: [] }) });
+    await downloadPack({ ws: t.ws, scope: t.trip, fetch: net.fetch, version: '1', editions: ['en'], gapMs: 0 }); // an earlier session's pack
+    const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, autoMs: 600, gapMs: 0 });
+    const { began, ended } = watching(keeper);
+    try {
+      // The page closes after the files are written and before the manifest is: no manifest comes, and what made the update due stays.
+      const anyWs = /** @type {any} */ (t.ws);
+      if (why === 'old pack') await t.ws.patch(t.trip, MANIFEST, { at: new Date(Date.now() - 40 * 86_400_000).toISOString() }, { author: 'system' });
+      anyWs.writeMany = async () => { throw new Error('the page closed'); };
+      if (why === 'plan change') await t.ws.write(t.trip, '/plan/nepenthe.json', { ...STOPS.nepenthe, place: { ...STOPS.nepenthe.place, lat: 36.2 } }, { author: 'user' });
+      else keeper.poke();
+      await until(() => began.length === 1 && ended.length === 1, 3000);
+      await sleep(360);
+      assert.equal(began.length, 1, 'not again within the hour');
+      await until(() => began.length === 2, 3000);
+      assert.ok(began[1] - ended[0] >= 570, `the next an hour (600 ms here) after the first's end: ${began[1] - ended[0]}`);
+    } finally {
+      keeper.dispose();
+    }
+  });
+}
+
+test("a manifest dated far ahead (another clock) with a source down: the run goes once and ends, and the looks do not spin (shape 9)", async () => {
+  const t = await packTrip();
+  const net = services({ overpass: () => ({ elements: [] }) });
+  await downloadPack({ ws: t.ws, scope: t.trip, fetch: net.fetch, version: '1', editions: ['en'], gapMs: 0 });
+  const m = /** @type {any} */ (await t.ws.readJSON(t.trip, MANIFEST));
+  const part = { source: 'osm', place: { how: 'around', names: ['Nepenthe'] } };
+  await t.ws.write(t.trip, MANIFEST, { ...m, at: new Date(Date.now() + 400 * 86_400_000).toISOString(), stopped: true, failed: [{ label: 'OpenStreetMap around Nepenthe', why: 'x', part, said: { code: 'late', where: 'overpass-api.de' } }] }, { author: 'system' });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, autoMs: 400, gapMs: 0 });
+  let looks = 0;
+  const status = keeper.status.bind(keeper);
+  keeper.status = (scope) => {
+    looks++;
+    return status(scope);
+  };
+  const { began } = watching(keeper);
+  try {
+    keeper.poke();
+    await until(() => began.length === 1, 3000);
+    await until(async () => (await keeper.status(t.trip)).why === null, 3000);
+    await sleep(300);
+    assert.equal(began.length, 1, 'once');
+    assert.ok(looks < 10, `${looks} looks`);
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test("another conversation opened during the traveller's download stops it; back, it rests an hour, and then goes on (shape 11, K4 as ruled)", async () => {
+  const k = await leaving(600); // the hour here
+  const { keeper, trip, agent } = k;
+  const { began, ended } = watching(keeper);
+  try {
+    k.arm();
+    const running = keeper.download(trip); // by hand
+    await until(() => k.waiting());
+    agent.open(null);
+    assert.equal((await running).stopped, true);
+    agent.open(trip);
+    await sleep(360);
+    assert.equal(began.length, 1, 'resting');
+    await until(() => began.length === 2, 3000);
+    assert.ok(began[1] - ended[0] >= 570, `an hour (600 ms here) after the stop: ${began[1] - ended[0]}`);
+    await until(async () => (await keeper.status(trip)).why === null, 3000);
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test("a language whose names lookup answers something annai can't use (badvalue) waits for Try again: the pack says so, and five hours of looks ask Japanese nothing (shape 12)", async () => {
+  const t = await packTrip();
+  const net = services({ overpass: () => ({ elements: [] }), wikivoyage: (url) => (url.includes('ja.wikivoyage.org') && new URL(url).searchParams.get('prop')?.startsWith('pageprops') ? { error: { code: 'badvalue', info: 'Unrecognized value for parameter "prop".' } } : kitGuides(url)) });
+  const clock = { now: Date.now() };
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, autoMs: 400, gapMs: 0, now: () => clock.now });
+  try {
+    await updateAppSettings(t.ws, { languages: { spoken: ['en', 'ja'], answer: 'follow' } });
+    await keeper.download(t.trip);
+    const s = await keeper.status(t.trip);
+    assert.equal(s.why, 'missing');
+    assert.equal(s.byItself, false);
+    assert.deepEqual(s.manifest?.voyage, ['en']);
+    const words = packWords(s, 'wifi');
+    assert.match(String(words.button), /^Try again/);
+    assert.ok(words.lines.every((l) => !/by itself/.test(l)), words.lines.join(' | '));
+    const ja = () => net.asked.filter((a) => a.url.includes('ja.wikivoyage.org')).length;
+    const asked = ja();
+    for (let h = 0; h < 5; h++) {
+      clock.now += 3_600_000;
+      keeper.poke();
+      await sleep(40);
+    }
+    assert.equal(ja(), asked, 'Japanese is asked nothing by itself');
   } finally {
     keeper.dispose();
   }

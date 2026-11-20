@@ -12,9 +12,11 @@ import { readingEditions, guideEditions } from '../wiki.js';
  * Keeps each trip's offline pack (spec §11.5): what it holds and would take, downloading it when
  * asked, and, once a trip has one, bringing it up to date by itself on Wi-Fi while annai and that
  * trip are open ("whenever the phone is on Wi-Fi"): when the plan changed, the run was stopped, a source was down, a guide edition or a part is
- * missing, or it is a month old (but not after an answer annai can't use: that waits for Try again); by itself at most once an hour from the
- * start of any run, and the traveller's own Stop holds an hour. It names places from the open trip's pack for live mode, in the editions the
- * traveller's languages read.
+ * missing, or it is a month old (but not after an answer annai can't use: that waits for Try again). One rule says when: a change to the plan or
+ * the languages that no run has begun since waits only for the plan to be quiet; everything else waits an hour from the end of the last run,
+ * whoever began it, and so does a change after a run that was stopped (the traveller's Stop is one: a phone on a friend's hotspot says Wi-Fi). The
+ * manifest says that a run was stopped and when it ended, so the hold needs no state of its own and a relaunch keeps it. It names places from the
+ * open trip's pack for live mode, in the editions the traveller's languages read.
  * @typedef {import('./download.js').Manifest} Manifest
  * @typedef {import('./download.js').Progress} Progress
  * @typedef {'plan' | 'missing' | 'old' | null} Why
@@ -26,6 +28,7 @@ import { readingEditions, guideEditions } from '../wiki.js';
 /** By itself, annai waits for the plan to be quiet this long before it updates the pack. */
 export const QUIET_MS = 60_000;
 const POKE_MS = 2000;
+/** The rest between runs by itself: the pack plan's choice 1, "at most once an hour" (docs/superpowers/plans/2026-10-16-m5c-offline-pack.md): a chosen figure, not a measured one. */
 const AUTO_EVERY_MS = 3_600_000;
 
 export class PackKeeper {
@@ -44,10 +47,10 @@ export class PackKeeper {
   #due = 0;
   /** When the plan last changed: a look waits until it has been quiet. */
   #changedAt = 0;
-  /** @type {Map<string, number>} when annai last updated each trip's pack by itself */
-  #autoAt = new Map();
-  /** The plan changed while a download ran: look again once it ends, past the hourly gate. */
-  #again = false;
+  /** @type {Map<string, number>} when each trip's last run ended this session, whoever began it and however it ended (one that wrote no manifest too) */
+  #ranAt = new Map();
+  /** The plan or the languages changed and no run has begun since: that change waits for the quiet, not for the hour. */
+  #fresh = false;
   /** @type {{ pack: import('./read.js').Pack, editions: string[] } | null} the open trip's pack, for names */
   #named = null;
   /** @type {string | undefined} the editions the languages read as last seen: a settings write that leaves them as they are changes nothing here */
@@ -108,12 +111,12 @@ export class PackKeeper {
       : manifest.key !== plan.key ? 'plan'
         : missing.length || lacking.length || manifest.failed.length || manifest.stopped ? 'missing'
           : old ? 'old' : null;
-    // Whether annai brings it by itself, for the hourly retry and every look alike: the plan changed, the pack is old ('missing' comes first
-    // above), the run was stopped, a source was down, an edition is lacking, or a part is missing that no failure accounts for (a language
-    // added; the count is of the parts' failures). Failures that are answers annai can't use (Overpass stopping early, no text) would only fail
-    // again: they wait for Try again.
+    // Whether annai brings it by itself, whatever look asks (#auto says when): the plan changed, the pack is old ('missing' comes first
+    // above), the run was stopped, a source was down, an edition is lacking with no failure standing (an edition's names lookup that answered
+    // something annai can't use is a failure too), or a part is missing that no failure accounts for (a language added; the count is of the
+    // parts' failures). Failures that are answers annai can't use (Overpass stopping early, no text) would only fail again: they wait for Try again.
     const byItself = manifest !== null && why !== null
-      && (why === 'plan' || old || manifest.stopped || lacking.length > 0 || manifest.failed.some(saysDown) || missing.length > manifest.failed.filter((f) => f.part && 'place' in f.part).length);
+      && (why === 'plan' || old || manifest.stopped || (lacking.length > 0 && !manifest.failed.length) || manifest.failed.some(saysDown) || missing.length > manifest.failed.filter((f) => f.part && 'place' in f.part).length);
     // What downloading brings now: the files it lacks, and its guides in the editions it lacks (with no guides yet, those it would likely get).
     const needed = manifest?.guides.length ? estimate(missing, manifest.guides.length, lacking) : estimate(missing, likelyGuides(plan), voyage);
     return {
@@ -138,8 +141,7 @@ export class PackKeeper {
     const abort = new AbortController();
     this.#abort = abort;
     this.#byItself = auto;
-    // The hour counts from the start of any run, the traveller's too.
-    this.#autoAt.set(scope, (this.o.now ?? Date.now)());
+    this.#fresh = false;
     this.running = { scope, done: 0, total: 0, label: '' };
     this.#emit();
     this.#job = this.#editions().then((editions) => downloadPack({
@@ -158,18 +160,15 @@ export class PackKeeper {
       this.#abort = null;
       this.running = null;
       this.#emit();
-      // What changed during it waits for no hourly gate: this download's own start doesn't count against it.
-      if (this.#again) this.#autoAt.delete(scope);
-      this.#again = false;
-      // A look that fell on it was lost, and what annai may still bring by itself is tried again an hour on, by the same rule as any look.
+      this.#ranAt.set(scope, (this.o.now ?? Date.now)());
+      // A look that fell on it was lost, and what annai may still bring by itself is looked at again, by the same rule as any look.
       this.poke();
     });
     return this.#job;
   }
 
-  /** Stops the download that is running; what came stays. Settles once it has ended, its manifest written. The traveller's Stop holds automatic runs an hour: a phone on a friend's hotspot says Wi-Fi. */
+  /** Stops the download that is running; what came stays. Settles once it has ended, its manifest written. Whoever stops it, the stopped run rests an hour from its end before annai goes on by itself (#auto). */
   async stop() {
-    if (this.running && !this.#byItself) this.#autoAt.set(this.running.scope, (this.o.now ?? Date.now)());
     this.#abort?.abort();
     await this.#job?.catch(() => {});
   }
@@ -179,8 +178,8 @@ export class PackKeeper {
    * when the phone is off Wi-Fi (what came stays, the next look on Wi-Fi goes on): nothing else bounds one that runs over mobile data.
    */
   poke() {
-    // A look while the stopped run winds down is lost (#auto returns while #job is set): look again once it has ended.
-    if (this.#job && this.#byItself && this.o.connection() !== 'wifi') this.stop().then(() => this.poke(), () => {});
+    // A look while the stopped run winds down is lost (#auto returns while #job is set): the run's end looks again.
+    if (this.#job && this.#byItself && this.o.connection() !== 'wifi') this.stop().catch(() => {});
     this.#schedule(this.o.pokeMs ?? POKE_MS);
   }
 
@@ -231,7 +230,7 @@ export class PackKeeper {
 
   #planChanged() {
     this.#changedAt = Date.now();
-    if (this.#job) this.#again = true; // a change in the middle of a download: looked at when it ends
+    this.#fresh = true;
     this.#schedule(this.o.quietMs ?? QUIET_MS);
   }
 
@@ -260,9 +259,14 @@ export class PackKeeper {
     if (!scope || this.#job || this.o.connection() !== 'wifi' || !(this.o.visible?.() ?? true)) return;
     const s = await this.status(scope);
     if (!s.manifest || !s.why || !s.byItself) return;
-    // Too early (the plan is still changing, or the hour isn't out): looked at then.
     const every = this.o.autoMs ?? AUTO_EVERY_MS;
-    const wait = Math.max((this.o.quietMs ?? QUIET_MS) - (Date.now() - this.#changedAt), every - (now - (this.#autoAt.get(scope) ?? -Infinity)));
+    // When the last run ended: this session's (one that wrote no manifest too), or what the manifest says (a relaunch); a time that is no time, or after now (another clock), says nothing.
+    const at = Date.parse(s.manifest.at);
+    const last = Math.max(this.#ranAt.get(scope) ?? 0, at <= now ? at : 0);
+    // A change no run has begun since waits only for the quiet. A run that was stopped rests an hour whatever changed (the traveller's Stop is one), and so does every retry.
+    const rest = this.#fresh && !s.manifest.stopped ? 0 : every - (now - last);
+    // Too early (the plan is still changing, or the hour isn't out): looked at then.
+    const wait = Math.max((this.o.quietMs ?? QUIET_MS) - (Date.now() - this.#changedAt), rest);
     if (wait > 0) return this.#schedule(wait);
     await this.download(scope, { auto: true });
   }

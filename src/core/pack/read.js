@@ -140,17 +140,17 @@ export class Pack {
   }
 
   /**
-   * Its one guide for a name, by the first kind of match that finds any: its English title, a name that led to it, its title in an edition, its title
-   * without "(California)" (only when one guide has it: "Georgia" is neither the country's nor the state's); in each of these editions it is in, in their
-   * order, the text empty where the file is missing or broken. None, [].
+   * Its one guide for a name, by the first kind of match that finds any: its English title, a name that led to it, its title in an edition: only
+   * what the tool matches online, which never drops a bracket ("Georgia" is not "Georgia (country)": online, English's list answers it), so the pack and
+   * the tool agree on every name, and a name held only under its bracketed title reads online; in each of these editions it is in, in their order, the
+   * text empty where the file is missing or broken. None, [].
    * @param {string} name @param {string[]} editions the traveller's guide editions, in the reading order (wiki.js guideEditions)
    * @returns {Promise<{ edition: string, title: string, text: string }[]>}
    */
   async guide(name, editions) {
     const n = norm(String(name));
     const { guides } = this.manifest;
-    const bare = guides.filter((x) => norm(x.title.replace(/\s*\([^)]*\)$/, '')) === n);
-    const g = guides.find((x) => norm(x.title) === n) ?? guides.find((x) => x.asked.some((a) => norm(a) === n)) ?? guides.find((x) => x.also.some((a) => norm(a.title) === n)) ?? (bare.length === 1 ? bare[0] : undefined);
+    const g = guides.find((x) => norm(x.title) === n) ?? guides.find((x) => x.asked.some((a) => norm(a) === n)) ?? guides.find((x) => x.also.some((a) => norm(a.title) === n));
     const held = g ? heldIn(g) : [];
     /** @type {{ edition: string, title: string, text: string }[]} */
     const out = [];

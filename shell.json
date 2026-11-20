@@ -1,5 +1,5 @@
 {
-  "build": "3c43f3084d67",
+  "build": "677e16db35d6",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -125,10 +125,10 @@
     "/src/core/packages.js": "5a2f10c69bd1",
     "/src/core/requires.js": "9aa09e4a81ad",
     "/src/core/pack/download.js": "3854a5033fed",
-    "/src/core/pack/keeper.js": "5d65f2e2a13e",
+    "/src/core/pack/keeper.js": "be8f2ba20892",
     "/src/core/pack/osm.js": "758b9dbf29f2",
     "/src/core/pack/plan.js": "068921682981",
-    "/src/core/pack/read.js": "2bf1c63750c8",
+    "/src/core/pack/read.js": "03192c23c718",
     "/src/core/patch.js": "bf353eb88c60",
     "/src/core/pdf-pages.js": "dbede6cb6600",
     "/src/core/photo-meta.js": "7021827cca8d",
