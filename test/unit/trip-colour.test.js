@@ -17,11 +17,13 @@ test("a trip's hue is one of the ten, the same for one `created` at every call",
 });
 
 test("a trip's hue for a given `created` never changes: a changed hash would recolour every trip on every phone", () => {
-  // Values from the hash as released with this design: a trip made at these moments keeps these hues, as does its copy, however it comes (an
-  // import, a restore on a new phone) with its `created`; one entry for each of the ten hues.
+  // Values from the hash as built on this branch: a trip made at these moments keeps these hues, as does its copy, however it comes (an
+  // import, a restore on a new phone) with its `created`; one entry for each of the ten hues. The last three differ between this hash and one without
+  // its final `x >>> 16` fold, or with another shift there, which changes about one hue in 20,000 and which nothing else here would see.
   const expected = /** @type {[number, number][]} */ ([
     [0, 25], [1, 140], [1_763_549_000_091, 25], [1_763_535_000_065, 60], [1_763_626_000_234, 95], [1_763_570_000_130, 140], [1_763_591_000_169, 175],
     [1_763_619_000_221, 210], [1_763_507_000_013, 245], [1_763_500_000_000, 280], [1_763_563_000_117, 315], [1_763_521_000_039, 350],
+    [1_763_500_036_413, 245], [1_763_500_041_969, 95], [1_763_500_050_045, 140],
   ]);
   for (const [created, hue] of expected) assert.equal(hueOf(created), hue, `created ${created}`);
   assert.deepEqual([...new Set(expected.map(([, hue]) => hue))].sort((a, b) => a - b), [...HUES]);
@@ -62,15 +64,14 @@ test('how lit a card is by its phase: happening never under 3/4, ahead never und
   assert.ok(Math.min(...by('happening')) > Math.max(...by('past')));
 });
 
-/** The memory store, with the entries its log reads give back counted. @param {import('../fakes/store-memory.js').Store} store @returns {{ store: any, read: () => number }} */
+/** The memory store, with the reads of its log counted. @param {import('../fakes/store-memory.js').Store} store @returns {{ store: any, reads: () => number }} */
 function counting(store) {
   let n = 0;
-  const tx = (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {(t: any) => any} */ fn) => store.tx(stores, mode, (/** @type {any} */ t) => fn({ ...t, listEvents: async (/** @type {string} */ scope, /** @type {any} */ q) => {
-    const got = await t.listEvents(scope, q);
-    n += got.length;
-    return got;
+  const tx = (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {(t: any) => any} */ fn) => store.tx(stores, mode, (/** @type {any} */ t) => fn({ ...t, listEvents: (/** @type {string} */ scope, /** @type {any} */ q) => {
+    n++;
+    return t.listEvents(scope, q);
   } }));
-  return { store: { ...store, tx }, read: () => n };
+  return { store: { ...store, tx }, reads: () => n };
 }
 
 /** @param {import('../fakes/store-memory.js').Store} store @param {string} scope @param {[string, number, ...any[]][]} lines [type, how many, data?] in order */
@@ -91,7 +92,7 @@ test("linesSaid counts the lines the traveller said, typed or heard, as talks do
   assert.equal(await linesSaid(store, 'trip-d', 80), 0);
 });
 
-test('linesSaid counts up to what the top step needs and reads about as many lines, however many a trip has or however many were set aside', async () => {
+test('linesSaid counts up to what the top step needs in whole batches of it: a few reads, however many lines a trip has or however many were set aside', async () => {
   assert.equal(STEPS[STEPS.length - 1], 80); // the trip-colour tests below ask for it
   const store = createMemoryStore();
   await say(store, 'long', [['msg.user', 150], ['heard', 150]]);
@@ -99,12 +100,19 @@ test('linesSaid counts up to what the top step needs and reads about as many lin
   await say(store, 'aside-between', [['msg.user', 50], ['heard', 35, { dismissed: true }], ['heard', 40]]);
   await say(store, 'nearly', [['msg.user', 50], ['heard', 29]]);
   await say(store, 'nearly-aside', [['msg.user', 50], ['heard', 40, { dismissed: true }], ['heard', 29]]);
-  /** @type {[string, number, number][]} scope, its count, the most entries read */
-  const cases = [['long', 80, 80], ['aside-first', 80, 90], ['aside-between', 80, 115], ['nearly', 79, 79], ['nearly-aside', 79, 119], ['none', 0, 0]];
+  // 79 said, then many set aside: a batch cut to what is still wanted would be one entry, and a read for each of them.
+  await say(store, 'last-one-aside', [['msg.user', 79], ['heard', 1000, { dismissed: true }]]);
+  await say(store, 'last-one-late', [['msg.user', 75], ['heard', 1000, { dismissed: true }], ['heard', 10]]);
+  /** @type {[string, number, number][]} scope, its count, the most reads: its entries up to the 80th said, in batches of 80, rounded up */
+  const cases = [
+    ['long', 80, 1], ['aside-first', 80, 2], ['aside-between', 80, 2], ['nearly', 79, 1], ['nearly-aside', 79, 2], ['none', 0, 1],
+    ['last-one-aside', 79, 14], // 1079 entries: 13 whole batches and a rest
+    ['last-one-late', 80, 14], // 1085 entries to the 80th said (the 5th of the last ten)
+  ];
   for (const [scope, said, most] of cases) {
     const spy = counting(store);
     assert.equal(await linesSaid(spy.store, scope, 80), said, scope);
-    assert.ok(spy.read() <= most, `${scope}: ${spy.read()} entries read, at most ${most}`);
+    assert.ok(spy.reads() <= most, `${scope}: ${spy.reads()} reads, at most ${most}`);
   }
   assert.equal(await linesSaid(store, 'long', 5), 5);
   assert.equal(await linesSaid(store, 'aside-first', 5), 5);

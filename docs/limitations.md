@@ -1113,14 +1113,14 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### Two trips on home can share a colour
 - **Kind:** known limitation.
-- **What the traveller sees:** two trip cards on home can have the same colour, one time in ten for any two trips; their names and dates still tell them apart. A copy of one trip imported again as a new trip always has its colour, as it has its name and dates.
+- **What the traveller sees:** two trip cards on home can have the same colour, one time in ten for any two trips, except a copy of one (below); their names and dates still tell them apart. A copy of one trip imported again as a new trip always has its colour, as it has its name and dates.
 - **Why:** a trip's colour is one of ten hues, picked from when its record was made (src/ui/screens/trips.js `hueOf`), so it is the same at every draw, on every phone and after an export and import or a restore, with nothing stored. An import mints a new id but keeps the record's `created` (src/core/archive.js `importArchive`), so a copy imported as new is the same as the first in the one thing the colour reads. Ten are as many as stay told apart as soft washes in both themes; giving each trip a colour no other has would need a colour stored per trip, chosen against the others, and a trip would change colour when a restore or an import brought one that had it.
 - **Revisit when:** a traveller finds two neighbouring trips hard to tell apart, or asks to choose a trip's colour.
 - **Approved:** 2026-11-19, the user's answer "All recommended" to the trip-colour design's questions (its fourth: "Accept all three (Recommended)").
 
 ### A trip card can deepen while home is on screen
 - **Kind:** known limitation.
-- **What the traveller sees:** after a line reaches a trip while home is on screen (said or typed through the dock, or heard by live mode), the trip's card can step to its next strength at one of home's own redraws (a Next item's end, midnight, coming back to annai, a backup's end, a simulation starting or ending): its colour deepens; nothing moves, as the card's size never changes with its colour.
+- **What the traveller sees:** after a line reaches a trip while home is on screen (said or typed through the dock, or heard by live mode), the trip's card can step to its next strength at one of home's own redraws (a Next item's end, midnight, coming back to annai, a backup's end, a simulation starting or ending, a plugin's change to the UI it adds): its colour deepens; nothing moves, as the card's size never changes with its colour.
 - **Why:** how lit a card is is read at each draw of home, as everything else a card shows (its backup, its stamps); keeping each card's strength from home's first draw until the traveller leaves home would be state kept in the page, for a change of shade. A count crosses a step at most four times in a trip's life.
 - **Revisit when:** a traveller notices a card change colour under their eyes and minds it.
 - **Approved:** 2026-11-19, the user's answer "All recommended" to the trip-colour design's questions (its fourth: "Accept all three (Recommended)").

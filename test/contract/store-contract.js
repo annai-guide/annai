@@ -185,6 +185,7 @@ export function storeContract(test, assert, makeStore) {
     assert.deepEqual((await q({ types: ['a', 'b'], after: 3, before: 9 })).map((e) => e.seq), [4, 6, 7]);
     assert.deepEqual((await q({ types: ['a', 'b'], notTypes: ['b'] })).map((e) => e.seq), [3, 6, 9]);
     assert.deepEqual((await q({ types: ['a', 'a'], limit: 2 })).map((e) => e.seq), [3, 6]);
+    assert.deepEqual((await q({ types: ['a', 'b'], after: 3, limit: 2 })).map((e) => e.seq), [4, 6]); // forward in batches: after the last of one, `limit` more (a trip card's count of lines)
     assert.deepEqual((await q({ types: ['none'] })).map((e) => e.seq), []);
     assert.deepEqual((await q({ types: [] })).map((e) => e.seq), []);
   });

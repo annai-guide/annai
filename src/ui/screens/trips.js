@@ -255,7 +255,7 @@ export function hueOf(created) {
 }
 
 /**
- * Where each step of the traveller's lines in a trip begins, each four times the last: none, 1-4, 5-19, 20-79, 80 and more. Chosen so that real
+ * Where each step of the traveller's lines in a trip begins, from 5 on each four times the last: none, 1-4, 5-19, 20-79, 80 and more. Chosen so that real
  * conversations spread over all five, and a trip talked in daily reaches the top within days. The last is the most a card needs counted: more lines
  * change nothing (linesSaid stops there).
  */

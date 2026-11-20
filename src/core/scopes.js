@@ -358,22 +358,22 @@ export async function lastTalked(store, scope) {
 }
 
 /**
- * How many lines the user said in a trip (talks: a heard line set aside as chatter is nobody's), counted up to `upTo`: what lights its card on home (the
- * trip-colour design). It reads the lines in batches of what is still wanted and no more, so a trip with thousands of lines costs `upTo` of them, plus
- * the ones set aside among them. @param {Store} store @param {string} scope @param {number} upTo no more is needed: the top step of home's card
+ * How many lines the user said in a trip (talks: a heard line set aside is nobody's), counted up to `upTo`: what lights its card on home (the
+ * trip-colour design). It reads the log's lines of those types forward, `upTo` entries a read, until it has counted `upTo` or none is left: a trip with
+ * thousands of lines costs its first `upTo` said and the ones set aside among them, rounded up to a whole read (79 said, then 1000 set aside: 14 reads of
+ * 80). A read is always `upTo` entries, never what is still wanted: that shrinks to one entry near the top, and then each of the ones set aside after it
+ * is a read of its own (999 for that trip). @param {Store} store @param {string} scope @param {number} upTo no more is needed: the top step of home's card
  * @returns {Promise<number>}
  */
 export const linesSaid = (store, scope, upTo) => store.tx(['events'], 'readonly', async (t) => {
   let said = 0;
   let after = 0;
-  while (said < upTo) {
-    const want = upTo - said;
-    const batch = await t.listEvents(scope, { types: [...SAID], after, limit: want });
+  for (;;) {
+    const batch = await t.listEvents(scope, { types: [...SAID], after, limit: upTo });
     said += batch.filter(talks).length;
-    if (batch.length < want) break; // none left
+    if (said >= upTo || batch.length < upTo) return Math.min(said, upTo); // enough, or none left
     after = batch[batch.length - 1].seq;
   }
-  return said;
 });
 
 /**
