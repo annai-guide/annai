@@ -445,10 +445,10 @@ x0ig66	ok	Something went wrong	出了點問題	src/app/main.js:449
 1oy79dy	ok	annai kept running. The details are in Trace.	annai 仍在執行，詳情見「記錄」。	src/app/main.js:450	
 c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在執行，但沒能記下發生了什麼，所以「記錄」裡也沒有。如果反覆出現，請關閉 annai 再重新開啟。	src/app/main.js:450	
 11n1kcg	ok	Open Trace	開啟記錄	src/app/main.js:451	
-gt9ssw	ok	annai couldn't start	annai 無法啟動	src/app/main.js:464	
-1vecqk6	draft	There's no room left	儲存空間不足	src/app/main.js:465	Note: a card's title, and the start screen's words: the phone (or annai's share of it) has no room left, for a save, a removal or a read alike; 儲存空間 as the glossary's Storage.
-6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反覆出現，可能是瀏覽器阻止了儲存（例如在無痕視窗中）。	src/app/main.js:466	
-982hh6	ok	Try again	重試	src/app/main.js:467	
+gt9ssw	ok	annai couldn't start	annai 無法啟動	src/app/main.js:465	
+1vecqk6	draft	There's no room left	儲存空間不足	src/app/main.js:466	Note: a card's title, and the start screen's words: the phone (or annai's share of it) has no room left, for a save, a removal or a read alike; 儲存空間 as the glossary's Storage.
+6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反覆出現，可能是瀏覽器阻止了儲存（例如在無痕視窗中）。	src/app/main.js:467	
+982hh6	ok	Try again	重試	src/app/main.js:468	
 1u3dm1p	ok	This address holds a name or password before an @. Leave it out.	這個網址的 @ 前面含有使用者名稱或密碼，請將它刪除。	src/core/address.js:68	
 1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	停留過的地點和停留時間，以地名表示；沒有地名的地點以座標表示，只精確到約 100 公尺。絕不傳送 GPS 軌跡本身。	src/core/after/recap.js:61	
 imb4zw	ok	How far you drove or walked between, the stamps, and the itinerary.	地點之間開車或步行的距離、紀念章和行程。	src/core/after/recap.js:62	

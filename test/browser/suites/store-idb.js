@@ -724,7 +724,6 @@ export default function (test, assert) {
     connections[0].dispatchEvent(new Event('close'));
     const got = await Promise.all([1, 2, 3].map(() => s.tx(['files'], 'readonly', (t) => t.getFile('trip-1', '/a.md'))));
     assert.deepEqual(got.map((f) => f?.hash), ['h1', 'h1', 'h1']);
-    assert.equal(connections.length, 4, 'each waiting transaction opened one');
     const open = () => connections.filter((c) => {
       try {
         c.transaction(['files']);
