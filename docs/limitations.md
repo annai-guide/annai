@@ -1111,10 +1111,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the first release that would raise the database version.
 - **Approved:** 2026-11-19, chief's decision C145 (not the user's words), accepted as recommended.
 
-### Only Fish Audio's voice streams
+### Only OpenRouter's voices stream, and Fish Audio's is the one that gains
 - **Kind:** known limitation.
-- **What the traveller sees:** apart from Gemini's own voice, only Fish Audio's, through OpenRouter, can play while it is still being made, with the Stream switch on its voice page (it starts off). OpenAI's own voices, the local speech servers' and a custom address's have no Stream switch (unless it is already on there, typed in the JSON): each sentence arrives whole, in the smallest format the phone plays. Grok's, Voxtral's and Kokoro's voices through OpenRouter stay whole too, with the switch on. This narrows the user's ask of 2026-10-19, "Streamed voice for providers other than Gemini (play a clip while it is still being made)".
-- **Why:** only OpenRouter's voices were measured (the voice probe of 2026-11-19), and of them Fish Audio's alone gains: it starts 2 to 5 seconds sooner, where Grok, Voxtral and Kokoro answer whole in 0.06 to 1.3 seconds. OpenAI's own, the local servers' and a custom address's raw audio was never measured (whether their answer names the rate it is made at, as OpenRouter's does), and a stream that wasn't measured could fail every sentence of a voice.
+- **What the traveller sees:** apart from Gemini's own voice, only OpenRouter's voices can play while they are still being made, with the Stream switch on OpenRouter's Voice section (it starts off); Fish Audio's is the one that gains from it. HeyGen's and Gemini's through OpenRouter, which send only uncompressed audio anyway, stream too with it on. OpenAI's own voices, the local speech servers' and a custom address's have no Stream switch (unless it is already on there, typed in the JSON): each sentence arrives whole, in the smallest format the phone plays. Grok's, Voxtral's and Kokoro's voices through OpenRouter stay whole too, with the switch on. This narrows the user's ask of 2026-10-19, "Streamed voice for providers other than Gemini (play a clip while it is still being made)".
+- **Why:** only OpenRouter's OpenAI-compatible voices were measured (the voice probe of 2026-11-19), and of them Fish Audio's gains most: it starts about 2 to 5 seconds sooner, where Grok's, Voxtral's and Kokoro's would start only 0.06 to 1.3 seconds sooner. OpenAI's own, the local servers' and a custom address's raw audio was never measured (whether their answer names the rate it is made at, as OpenRouter's does), and a stream that wasn't measured could fail every sentence of a voice.
 - **Revisit when:** another voice is measured and gains from streaming.
 - **Approved:** 2026-11-19, the user's answer in the main session's tab: "Accept (Rec.)".
 
@@ -1127,14 +1127,20 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### On a slow link a streamed voice starts later
 - **Kind:** known limitation.
-- **What the traveller sees:** with the Stream switch on, on a link slower than about 0.7 Mbps (Fish Audio's raw audio is 705.6 kbit/s) she waits before she starts a sentence (the longer, the slower the link), then plays it without a gap, instead of stuttering. On a good connection she starts sooner, as the switch says.
-- **Why:** a gap in the middle of a word is worse than a wait, so playback starts only when the rest will be in before it is reached (src/core/voice/stream-start.js); raw audio is 5.5 times the data of the MP3 on the same link.
+- **What the traveller sees:** with the Stream switch on, when a voice arrives slower than it plays (on a link below about 0.7 Mbps, where Fish Audio's raw audio is 705.6 kbit/s, or from a voice that makes its audio slower than real time), she waits before she starts a sentence (the longer, the slower the delivery), then plays it without a gap, instead of stuttering. On a good connection she starts sooner, as the switch says.
+- **Why:** a gap in the middle of a word is worse than a wait, so playback starts only when the rest will be in before it is reached (src/core/voice/stream-start.js); raw audio is about 5.5 times the data of the MP3 for the same clip.
 - **Revisit when:** a traveller reports it; the switch can be turned off.
 - **Approved:** 2026-11-19, the user's answer in the main session's tab: "Accept all three (Rec.)".
 
 ### A voice that answers a streamed ask with compressed audio fails that sentence
 - **Kind:** known limitation.
 - **What the traveller sees:** with the Stream switch on, a voice that doesn't send the raw audio annai asked for (an MP3 or a WAV, say, from a server that ignores the ask) fails that sentence: the next voice says it, and that voice rests for a few minutes.
-- **Why:** the stream path takes only raw 16-bit audio at a rate its answer names; playing compressed audio as it arrives would need a decoder in that path, for a server that ignores the ask. The switch is on only where a provider's description names it, or where the user turned it on.
+- **Why:** the stream path takes only raw 16-bit audio at a rate its answer names; playing such an answer whole instead would need the stream contract to hand back a whole clip (a plugin API change), for a server that ignores the ask. The switch shows only where a provider's description names it, or where it is already on, and it starts off.
 - **Revisit when:** a voice is seen answering a streamed ask this way in normal use.
 - **Approved:** 2026-11-19, the user's answer in the main session's tab: "Accept all three (Rec.)".
+
+### An OpenRouter voice added by id starts with Fish Audio's voice
+- **Kind:** deferred.
+- **What the traveller sees:** a voice model added by id in Models → OpenRouter → Voice from another maker than Fish Audio (HeyGen's, say) starts with Women KatKat, a Fish Audio voice, which its server refuses: Play a sample says "The provider didn't accept the request. Check the tunables on its provider's page.", and the provider's own reason ("Voice not found") shows only in the Trace. The same model added from Fetch model list starts with its own voice and plays. Setting its Voice by hand fixes it.
+- **Why:** a model added by id takes the voice ability's voice, which OpenRouter's description sets for Fish Audio's models. Found by the streamed-voice build's one real run (2026-11-19), where HeyGen added by id got that 400 and HeyGen from the list played.
+- **Revisit when:** the next build on OpenRouter's voices: a model added by id from another maker starts with no voice (its server's default), and a refused sample shows the provider's own reason.

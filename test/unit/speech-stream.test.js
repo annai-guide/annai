@@ -114,7 +114,7 @@ test('the first piece must come within the time limit, and then no gap may be lo
   assert.deepEqual((await traced(store)).map((d) => d.outcome), ['timeout', 'timeout', 'ok']);
 });
 
-test("a whole clip has one wait for all of it, not the voice's silence: a clip that takes longer than the wait fails, so a heavy voice on a slow link is handed over (and benched) at once, and \"Wait for the voice\" is how a traveller waits longer", async (t) => {
+test("a whole clip has one wait for all of it, not the voice's silence: a clip that takes longer than the wait fails, so a heavy voice on a slow link is handed over after one wait, and \"Wait for the voice\" is how a traveller waits longer", async (t) => {
   useClock(t);
   const store = createMemoryStore();
   const trace = modelTrace(store, SYS);

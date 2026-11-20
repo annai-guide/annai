@@ -16,7 +16,7 @@
  * model detects: giving only the first would force a Chinese sentence into English, and a prompt naming them is one Whisper may
  * echo back on silence); a `language` set by hand on the model's page wins. No voice API takes a language: they follow the text.
  * Raw audio (PCM, 16-bit little-endian mono, no header): a voice is asked for it where its format is 'pcm', where its `stream`
- * tunable is on (the voice page's Stream switch, off unless a provider's description names it: OpenRouter's), and where its id
+ * tunable is on (the voice page's Stream switch, shown where a provider's description names it, OpenRouter's, and off to begin with), and where its id
  * starts with one of the ability's `pcmOnly` prefixes (OpenRouter's HeyGen and Gemini voices answer nothing else: 400 for mp3 and
  * wav, the voice probe of 2026-11-19). Whole, it is played as a WAV clip; streamed (readSpeechStream), through the stream player
  * as it comes. Either way at the rate its answer names, `audio/pcm;rate=44100;channels=1` (OpenRouter's, observed on every PCM
