@@ -159,19 +159,6 @@ function lacking(lacks) {
   return lacks.length ? `\n${lacks.map(editionName).join(' and ')} Wikivoyage ${lacks.length > 1 ? "aren't" : "isn't"} in the offline pack yet; ${lacks.length > 1 ? 'they come' : 'it comes'} with the pack's next download.` : '';
 }
 
-/**
- * The line that names what the offline pack's Wikipedia doesn't hold yet of the editions the traveller reads, so an answer from the pack isn't
- * taken for all there is, one edition's telling for every edition's; '' for none. Worded as `lacking`'s. @param {{ editions: string[], more: boolean }} lacks
- */
-function lackingArticles({ editions, more }) {
-  /* en */
-  const said = [
-    editions.length ? `${editions.map(editionName).join(' and ')} Wikipedia ${editions.length > 1 ? "aren't" : "isn't"} in the offline pack for every part yet; ${editions.length > 1 ? 'they come' : 'it comes'} with the pack's next download.` : '',
-    more ? "Some of its parts don't hold the other editions' summaries yet, so a row may leave out an edition that has its article; they come with the pack's next download." : '',
-  ].filter(Boolean);
-  return said.length ? `\n${said.join(' ')}` : '';
-}
-
 /** A Nominatim place's website and opening hours, from its extratags, as OpenStreetMap has them: empty where it doesn't. @param {any} f @returns {[string, string]} */
 function extras(f) {
   const t = f?.extratags && typeof f.extratags === 'object' ? f.extratags : {};
@@ -208,9 +195,16 @@ function reach(places, articles, radius) {
 }
 /**
  * Said where the offline pack's articles are listed, which are fewer than online (the editions design's measurements, 2026-11-20: at Takayama online
- * gives 59 within 1 km, the pack about 37 within 10 km): a part holds each edition's nearest SUMMARIES_PER_ASK, at each stop and every WIKI_EVERY_KM of the way.
+ * gives 59 within 1 km, the pack about 37 within 10 km): a part holds at most each edition's nearest SUMMARIES_PER_ASK, at each stop and every
+ * WIKI_EVERY_KM of the way. "At most", so it is true whatever the pack came with: a download that lost a list holds fewer, and says nothing more here.
  */
-const HOLDS = /* en */ `\nThe offline pack holds each edition's nearest ${SUMMARIES_PER_ASK} Wikipedia articles at each stop and every ${WIKI_EVERY_KM} km of the way, so Wikipedia has more.`;
+const HOLDS = /* en */ `\nThe offline pack holds at most each edition's nearest ${SUMMARIES_PER_ASK} Wikipedia articles at each stop and every ${WIKI_EVERY_KM} km of the way, so Wikipedia has more than these.`;
+/**
+ * Said after HOLDS where the pack lacks a part's second stage for the languages read now (Pack.lacks), so an answer from the pack isn't taken for every
+ * edition's telling: a row names the editions whose own list has the article, and may leave out one that has it too. It names no edition and promises
+ * no download: the files can't say which edition, or whether a download will bring it (a source that is down is retried, an answer annai can't use waits for Try again).
+ */
+const ONE_SIDED = /* en */ "\nThe offline pack doesn't hold every edition's summary of its articles for the languages read now, so a row may leave out an edition that has its article.";
 /** The most elements nearby's Overpass query asks for, ten times the ROWS kept, to bound the download: Overpass cuts there in id order, not by distance. */
 const OSM_LIMIT = 400;
 /** The plain answer for a server's answer that isn't what it should be (never a TypeError: spec §5.5). @param {string} where */
@@ -252,8 +246,8 @@ export function activate(annai) {
         const pack = await loadPack(annai.files, call.trip).catch(() => null);
         /** The pack's places and articles here, each list cut to its own count. @param {import('../../core/pack/read.js').Pack} p */
         const fromPack = (p) => [nearestOf(p.places(i, radius, kinds), ROWS), nearestOf(p.pages(i, radius, editions), ARTICLES)];
-        /** Said wherever an article of the answer came from the pack: what a part holds, and what the pack lacks yet of the editions read. @param {import('../../core/pack/read.js').Pack} p */
-        const holds = (p) => `${HOLDS}${lackingArticles(p.lacks(editions))}`;
+        /** Said wherever an article of the answer came from the pack: what a part holds, and whether a row may leave out an edition of the languages read. @param {import('../../core/pack/read.js').Pack} p */
+        const holds = (p) => `${HOLDS}${p.lacks(editions) ? ONE_SIDED : ''}`;
         /**
          * The answer: the table, then its endings. Over a tool result's limit (tools.js RESULT_MAX, which cuts the end, endings and all) the articles
          * farthest away are left out, one at a time, until it fits, and the reach line says how far the rest reach: a pack's rows hold each edition's

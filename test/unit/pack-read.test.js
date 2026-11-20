@@ -238,3 +238,40 @@ test("a name is one guide's alone: the first kind of match that finds any, and n
   await ws.write(trip, guideFile('Georgia, Cambria').path, JSON.stringify({ title: 'Georgia, Cambria', text: 'Georgia, Cambria text' }), { author: 'system' });
   assert.deepEqual(await read('Georgia, Cambria'), ['en Georgia, Cambria']);
 });
+
+test("what the pack lacks, from its manifest alone: whether a Wikipedia part holds no second stage for exactly the editions read; never under English alone, and no edition's name is built (Cantonese has none)", async () => {
+  const { ws, trip } = await packTrip();
+  const list = (/** @type {string} */ edition, /** @type {string} */ id) => ({ id, kind: 'wikipedia', path: `/offline/wikipedia/${id}.${edition}.json`, bytes: 1, items: 1, edition });
+  const stage = (/** @type {string} */ id, /** @type {string[]} */ editions) => ({ id, kind: 'wikipedia-editions', path: morePath(/** @type {any} */ ({ id }), editions), bytes: 1, items: 0 });
+  /** The pack a manifest of these files makes, asked what it lacks of the editions read. @param {any[]} files @param {string[]} editions */
+  const lacks = async (files, editions) => {
+    await ws.write(trip, MANIFEST, JSON.stringify({ format: 1, key: 'k', at: '2026-11-20T09:00:00.000Z', failed: [], stopped: false, bytes: 1, guides: [], files }), { author: 'system' });
+    return /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip)).lacks(editions);
+  };
+  const two = ['ja', 'en'];
+  const w = [list('ja', 'w1'), list('en', 'w1'), list('ja', 'w2'), list('en', 'w2')];
+  // Whole: every part's stage for exactly the editions read.
+  assert.equal(await lacks([...w, stage('w1', two), stage('w2', two)], two), false);
+  // English alone: no stage is wanted, however old the pack, and an edition-less list (a pack from before editions) is English's.
+  assert.equal(await lacks([{ ...list('en', 'w1'), edition: undefined }], ['en']), false);
+  assert.equal(await lacks(w, ['en']), false);
+  // A pack from before the stage; one part without its stage; an edition-less list read with Japanese listed.
+  assert.equal(await lacks(w, two), true);
+  assert.equal(await lacks([...w, stage('w1', two)], two), true);
+  assert.equal(await lacks([{ ...list('en', 'w1'), edition: undefined }], two), true);
+  // A stage for other editions is no stage for these: a language added, or taken off, with no download after.
+  const three = ['ja', 'zh', 'en'];
+  assert.equal(await lacks([...w, stage('w1', two), stage('w2', two)], three), true);
+  assert.equal(await lacks([...w, stage('w1', three), stage('w2', three)], two), true);
+  assert.equal(await lacks([...w, list('zh', 'w1'), list('zh', 'w2'), stage('w1', three), stage('w2', three)], three), false);
+  // Chinese's list in one part only (the download stopped part-way): no stage for the three there or anywhere.
+  assert.equal(await lacks([...w, list('zh', 'w1'), stage('w1', two), stage('w2', two)], three), true);
+  // A part with no list in any edition (they all failed) holds nothing to leave out: it does not count, and a part with one edition's list does.
+  assert.equal(await lacks([list('ja', 'w1'), list('en', 'w1'), stage('w1', two)], two), false);
+  assert.equal(await lacks([list('ja', 'w1'), list('en', 'w1'), stage('w1', two), list('en', 'w2')], two), true);
+  // No Wikipedia file at all (Wikimedia down for the whole download): nothing is listed from it, so nothing is lacking.
+  assert.equal(await lacks([{ id: 'o1', kind: 'osm', path: '/offline/osm/o1.json', bytes: 1, items: 0 }], two), false);
+  assert.equal(await lacks([], two), false);
+  // Cantonese's edition is zh-yue: no list of it, and no name is built to throw.
+  assert.equal(await lacks([...w, stage('w1', two), stage('w2', two)], ['ja', 'zh-yue', 'en']), true);
+});

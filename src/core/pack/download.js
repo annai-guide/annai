@@ -16,8 +16,8 @@ import { forget } from '../forget.js';
  * and the way's), then the Wikivoyage guides for the names the trip, the plan and those lists' English summaries give (English's, found by
  * the names, or by an edition's link to English for a trip name English lacks; each of the traveller's editions' part is the page English's links
  * to), then the second stages, then OpenStreetMap's parts (Overpass answers one in 35 to 54 s). Parts the plan no longer needs go. Each part is a file in the trip, so a download that stops keeps what it got and the next goes on.
- * Positions go only to OpenStreetMap and Wikipedia (§11.7), and to VK's Overpass server while its switch is on; Wikidata is asked about
- * articles' ids, and Wikivoyage about names, as the guide tool asks it.
+ * Positions go only to OpenStreetMap and Wikipedia (§11.7), and to VK's Overpass server while its switch is on; Wikidata is sent Wikidata item
+ * ids, and Wikivoyage place names, as the guide tool sends it.
  * @typedef {import('../workspace.js').Workspace} Workspace
  * @typedef {(url: string, init?: RequestInit) => Promise<Response>} Fetch
  * @typedef {import('./plan.js').Part} Part

@@ -139,21 +139,17 @@ export class Pack {
   }
 
   /**
-   * What its Wikipedia doesn't hold yet of these editions, from its manifest: the editions it has a list of in fewer parts than it has parts (a
-   * language added since the download, or one the download stopped before it reached every part), and whether a part lacks its second stage for
-   * exactly these editions (a pack from before it, a stage that failed, a language change under way: until then an article's row holds only the
-   * editions whose own list names it). The keeper brings both with the next download.
-   * @param {string[]} editions the reading order's @returns {{ editions: string[], more: boolean }}
+   * Whether a row of its articles may leave out an edition that has the article: whether one of its Wikipedia parts holds no second stage for exactly
+   * these editions (a pack from before the stage, a stage that failed, a language added or taken off since the download, or a list that never came:
+   * the stage is written only when every edition's list of its part is there, so a missing list is a missing stage and this one condition says both).
+   * Never under English alone, which wants no stage. A part none of whose lists came is no part of it: it holds no row to leave an edition out of.
+   * The keeper brings what is missing with the download after. @param {string[]} editions the reading order's
    */
   lacks(editions) {
+    if (editions.length < 2) return false;
     const { files } = this.manifest;
-    const lists = files.filter((f) => f.kind === 'wikipedia');
-    const parts = new Set(lists.map((f) => f.id));
     const stages = new Set(files.filter((f) => f.kind === 'wikipedia-editions').map((f) => f.path));
-    return {
-      editions: editions.filter((e) => new Set(lists.filter((f) => (f.edition ?? 'en') === e).map((f) => f.id)).size < parts.size),
-      more: editions.length > 1 && lists.some((f) => !stages.has(morePath(f, editions))),
-    };
+    return files.some((f) => f.kind === 'wikipedia' && !stages.has(morePath(f, editions)));
   }
 
   /**

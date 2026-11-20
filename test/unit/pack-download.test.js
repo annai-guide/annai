@@ -692,6 +692,73 @@ test("a second stage whose edition the run gave up is left, never asked: the lis
   assert.equal(u.files.filter((f) => f.kind === 'wikipedia-editions').length, wikis.length);
 });
 
+/**
+ * What the pack a run left lacks of the editions read (`Pack.lacks`, which nearby's line reads). And, whatever the run left, that no part holds its
+ * second stage for the editions read without every one of their lists: the stage is written only when they are all there, so a missing list is a
+ * missing stage and one condition (no stage for exactly these editions) says both.
+ * @param {any} ws @param {string} trip @param {string[]} editions
+ */
+async function lacksOf(ws, trip, editions) {
+  const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
+  const { files } = pack.manifest;
+  for (const id of new Set(files.filter((f) => f.kind === 'wikipedia').map((f) => f.id))) {
+    if (!files.some((f) => f.path === morePath(/** @type {any} */ ({ id }), editions))) continue;
+    for (const e of editions) assert.ok(files.some((f) => f.kind === 'wikipedia' && f.id === id && (f.edition ?? 'en') === e), `part ${id} holds its stage for ${editions} without ${e}'s list`);
+  }
+  return pack.lacks(editions);
+}
+
+test("what the pack lacks after real downloads: nothing where no list came or every part is whole, something after a language is added and the run stops, a stage fails, or one edition's list fails in a part; never for English alone", async () => {
+  const net = (/** @type {Record<string, any>} */ o = {}) => services({ overpass: noOsm, wikipedia: farWikipedia, wikidata: wikidataOf(), ...o });
+  const two = ['ja', 'en'];
+  const three = ['ja', 'zh', 'en'];
+  const run = async (/** @type {any} */ ws, /** @type {string} */ trip, /** @type {Record<string, any>} */ o, /** @type {string[]} */ editions, /** @type {AbortSignal | undefined} */ signal = undefined) => downloadPack({ ws, scope: trip, ...net(o), version: V, editions, gapMs: 0, signal });
+  const titled = (/** @type {string} */ url) => new URL(url).searchParams.has('titles');
+  // Wikimedia answering nothing for the whole run while OpenStreetMap answers: no list, no stage, so no row to leave an edition out of, and nothing lacking.
+  const dead = await packTrip(farStops(4));
+  const d = await run(dead.ws, dead.trip, { wikipedia: () => new Response('', { status: 503 }) }, two);
+  assert.deepEqual(d.files.filter((f) => f.kind.startsWith('wikipedia')), []);
+  assert.ok(d.failed.length > 0);
+  assert.equal(await lacksOf(dead.ws, dead.trip, two), false);
+  // The next run, with Wikimedia back, makes it whole.
+  await run(dead.ws, dead.trip, {}, two);
+  assert.equal(await lacksOf(dead.ws, dead.trip, two), false);
+  assert.equal(await lacksOf(dead.ws, dead.trip, ['en']), false, 'English alone');
+  // Chinese added, and the run stopped after some of its lists: Chinese in some parts, no stage for the three, the two's stages kept: lacking for the three only.
+  const abort = new AbortController();
+  let zh = 0;
+  const s = await run(dead.ws, dead.trip, { wikipedia: (/** @type {string} */ url) => { if (url.includes('zh.wikipedia.org') && !titled(url) && ++zh === 3) abort.abort(); return farWikipedia(url); } }, three, abort.signal);
+  const some = s.files.filter((f) => f.kind === 'wikipedia' && f.edition === 'zh').length;
+  assert.ok(some > 0 && some < 7, `${some} of 7 parts have Chinese's list`);
+  assert.equal(await lacksOf(dead.ws, dead.trip, three), true);
+  assert.equal(await lacksOf(dead.ws, dead.trip, two), false, "the two's stages stay till the three's come");
+  // The next run brings the rest.
+  await run(dead.ws, dead.trip, {}, three);
+  assert.equal(await lacksOf(dead.ws, dead.trip, three), false);
+  // Wikidata refusing the first run: every list, no stage.
+  const noStage = await packTrip(farStops(4));
+  await run(noStage.ws, noStage.trip, { wikidata: () => new Response('', { status: 503 }) }, two);
+  assert.equal(await lacksOf(noStage.ws, noStage.trip, two), true);
+  await run(noStage.ws, noStage.trip, {}, two);
+  assert.equal(await lacksOf(noStage.ws, noStage.trip, two), false);
+  // One edition's list failing in one part (the third) and answering in the others, so no edition is given up: that part has English's list only, and
+  // its stage waits for Japanese's. The part's Japanese request is the third.
+  const wikis = (await planFor(noStage.ws, noStage.trip)).parts.filter((p) => p.kind === 'wikipedia');
+  const one = await packTrip(farStops(4));
+  const at = String(/** @type {any} */ (wikis[2]).at[0]);
+  /** @param {string[]} hosts the editions that fail for the third part */
+  const failing = (hosts) => (/** @type {string} */ url) => (!titled(url) && hosts.includes(new URL(url).hostname.split('.')[0]) && String(new URL(url).searchParams.get('ggscoord')).startsWith(at) ? new Response('', { status: 503 }) : farWikipedia(url));
+  const f = await run(one.ws, one.trip, { wikipedia: failing(['ja']) }, two);
+  assert.deepEqual(f.files.filter((x) => x.kind === 'wikipedia' && x.id === wikis[2].id).map((x) => x.edition ?? 'en'), ['en']);
+  assert.equal(await lacksOf(one.ws, one.trip, two), true);
+  assert.equal(await lacksOf(one.ws, one.trip, ['en']), false, 'English alone');
+  // Both editions failing in that part: no list there at all, no row from it, so nothing is lacking.
+  const both = await packTrip(farStops(4));
+  const b = await run(both.ws, both.trip, { wikipedia: failing(['ja', 'en']) }, two);
+  assert.deepEqual(b.files.filter((x) => x.kind.startsWith('wikipedia') && x.id === wikis[2].id), []);
+  assert.equal(await lacksOf(both.ws, both.trip, two), false);
+});
+
 test("a download that stopped before its manifest: the files it left keep the edition their path says and no file is read as another edition's; with no manifest at all English's file is asked again once, its ids not being known", async () => {
   const { ws, trip } = await packTrip({ '/plan/yufuin.json': yufuinStop('Yufuin Station', YUFUIN, 1) });
   const net = () => services({ overpass: noOsm, wikipedia: (url) => yufuinAnswer(url) });
