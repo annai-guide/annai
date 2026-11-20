@@ -85,6 +85,23 @@ test("merged keeps each article's later editions' rows in `also`, in the order, 
   assert.ok(!('also' in ja[0]));
 });
 
+test("merged joins a row with no id to its page's id from another row: an older list, fetched before its article had an item, is not a second article beside the second stage's row", () => {
+  // The page "X" on ja: an older list holds it with no id, a later second stage with Q1; English's list holds it as Q1 too.
+  /** @param {string} edition @param {string} title @param {string | null} id */
+  const row = (edition, title, id) => ({ title, lat: 35, lng: 139, summary: '', id, edition });
+  const one = merged([row('ja', 'X', null), row('en', 'X en', 'Q1'), row('ja', 'X', 'Q1')], ['en', 'ja']);
+  assert.equal(one.length, 1);
+  assert.deepEqual([one[0].title, one[0].id, one[0].also.map((a) => [a.edition, a.title])], ['X en', 'Q1', [['ja', 'X']]]);
+  // The other order of rows, and Japanese first in the reading order: the same one article, named in Japanese, with the id.
+  const first = merged([row('ja', 'X', 'Q1'), row('en', 'X en', 'Q1'), row('ja', 'X', null)], ['ja', 'en']);
+  assert.deepEqual(first.map((a) => [a.title, a.id, a.also.map((x) => x.edition)]), [['X', 'Q1', ['en']]]);
+  // The id-less row alone in its edition and the id-less page that no other row names stay as before: once by its title, with none.
+  const alone = merged([row('ja', 'Y', null), row('ja', 'Y', null), row('en', 'Z', 'Q2')], ['ja', 'en']);
+  assert.deepEqual(alone.map((a) => [a.title, a.id]), [['Y', null], ['Z', 'Q2']]);
+  // A title in another edition is another page: the id Q1 that ja's "X" has is not given to English's "X".
+  assert.equal(merged([row('ja', 'X', 'Q1'), row('en', 'X', null)], ['ja', 'en']).length, 2);
+});
+
 test("Wikidata: an edition's site, the request for which editions have each item, and its answer as titles (the real answer's shape)", () => {
   assert.deepEqual(['en', 'ja', 'zh', 'zh-yue', 'tl', 'no'].map(siteOf), ['enwiki', 'jawiki', 'zhwiki', 'zh_yuewiki', 'tlwiki', 'nowiki']);
   assert.equal(ARTICLES, 50);

@@ -1,5 +1,5 @@
 import { meters } from '../live/geo.js';
-import { MANIFEST, readManifest, heldIn } from './download.js';
+import { MANIFEST, readManifest, heldIn, morePath } from './download.js';
 import { merged, articleUrl, readingEditions } from '../wiki.js';
 import { isCJK } from '../languages.js';
 
@@ -136,6 +136,20 @@ export class Pack {
    */
   articles(p, radius, editions) {
     return merged(this.#wiki.filter((w) => editions.includes(w.edition) && meters(p, w) <= radius), editions);
+  }
+
+  /**
+   * What its Wikipedia doesn't hold yet of these editions, from its manifest: the editions it has no list of (a language added since the download),
+   * and whether a part lacks its second stage for exactly these editions (a pack from before it, a stage that failed, a language change under way:
+   * until then an article's row holds only the editions whose own list names it). The keeper brings both with the next download.
+   * @param {string[]} editions the reading order's @returns {{ editions: string[], more: boolean }}
+   */
+  lacks(editions) {
+    const { files } = this.manifest;
+    const lists = files.filter((f) => f.kind === 'wikipedia');
+    const held = new Set(lists.map((f) => f.edition ?? 'en'));
+    const stages = new Set(files.filter((f) => f.kind === 'wikipedia-editions').map((f) => f.path));
+    return { editions: editions.filter((e) => !held.has(e)), more: editions.length > 1 && lists.some((f) => !stages.has(morePath(f, editions))) };
   }
 
   /**

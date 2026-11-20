@@ -10,6 +10,7 @@ import { NOMINATIM_GAP, nominatimTurn, nominatimLanguages } from '../../core/nom
 import { readingOrder } from '../../core/languages.js';
 import { editionsOf, nearUrl, articlesOf, wikiSaid, merged, articleUrl, pageUrl, agentHeader, guideEditions, voyageApi, editionName, wikimediaTurn, ARTICLES, sitelinksUrl, titlesOf, SUMMARIES_PER_ASK } from '../../core/wiki.js';
 import { WIKI_EVERY_KM } from '../../core/pack/plan.js';
+import { RESULT_MAX } from '../../core/agent/tools.js';
 import { t as words } from '../../core/l10n.js';
 
 export { KINDS };
@@ -158,6 +159,19 @@ function lacking(lacks) {
   return lacks.length ? `\n${lacks.map(editionName).join(' and ')} Wikivoyage ${lacks.length > 1 ? "aren't" : "isn't"} in the offline pack yet; ${lacks.length > 1 ? 'they come' : 'it comes'} with the pack's next download.` : '';
 }
 
+/**
+ * The line that names what the offline pack's Wikipedia doesn't hold yet of the editions the traveller reads, so an answer from the pack isn't
+ * taken for all there is, one edition's telling for every edition's; '' for none. Worded as `lacking`'s. @param {{ editions: string[], more: boolean }} lacks
+ */
+function lackingArticles({ editions, more }) {
+  /* en */
+  const said = [
+    editions.length ? `${editions.map(editionName).join(' and ')} Wikipedia ${editions.length > 1 ? "aren't" : "isn't"} in the offline pack yet; ${editions.length > 1 ? 'they come' : 'it comes'} with the pack's next download.` : '',
+    more ? "Some of its parts don't hold the other editions' summaries yet, so a row may leave out an edition that has its article; they come with the pack's next download." : '',
+  ].filter(Boolean);
+  return said.length ? `\n${said.join(' ')}` : '';
+}
+
 /** A Nominatim place's website and opening hours, from its extratags, as OpenStreetMap has them: empty where it doesn't. @param {any} f @returns {[string, string]} */
 function extras(f) {
   const t = f?.extratags && typeof f.extratags === 'object' ? f.extratags : {};
@@ -193,8 +207,8 @@ function reach(places, articles, radius) {
   return cut.length ? `\nThese are ${cut.join(' and ')}; farther ones within ${radius} m aren't listed.` : '';
 }
 /**
- * Said where the offline pack's articles are listed, which are fewer than online (the editions design's finding 10.1: at Takayama online gives 59
- * within 1 km, the pack about 37 within 10 km): a part holds each edition's nearest SUMMARIES_PER_ASK, at each stop and every WIKI_EVERY_KM of the way.
+ * Said where the offline pack's articles are listed, which are fewer than online (the editions design's measurements, 2026-11-20: at Takayama online
+ * gives 59 within 1 km, the pack about 37 within 10 km): a part holds each edition's nearest SUMMARIES_PER_ASK, at each stop and every WIKI_EVERY_KM of the way.
  */
 const HOLDS = /* en */ `\nThe offline pack holds each edition's nearest ${SUMMARIES_PER_ASK} Wikipedia articles at each stop and every ${WIKI_EVERY_KM} km of the way, so Wikipedia has more.`;
 /** The most elements nearby's Overpass query asks for, ten times the ROWS kept, to bound the download: Overpass cuts there in id order, not by distance. */
@@ -224,7 +238,7 @@ export function activate(annai) {
   const tools = [
     {
       name: 'nearby', group: 'Places',
-      description: `Places near a point, nearest first, as TSV: name, kind, distance_m, lat, lng, source, note (website, opening hours). kinds: ${KIND_NAMES.join(', ')} (default sights and food). Up to ${ROWS} places and ${ARTICLES} Wikipedia articles. A Wikipedia article is one row, named in the first of the user's languages whose edition has it, its note holding its address in each of those editions that has it: each edition is written on its own, and can tell the story of a contested place differently. Reads the trip's offline pack first, so it works without a connection along the planned route.`,
+      description: `Places near a point, nearest first, as TSV: name, kind, distance_m, lat, lng, source, note (website, opening hours). kinds: ${KIND_NAMES.join(', ')} (default sights and food). Up to ${ROWS} places and ${ARTICLES} Wikipedia articles. A Wikipedia article is one row, named in the first of the user's languages whose edition has it, its note holding its address in each of those editions that has it (from the offline pack, each edition's short summary too, before its address): each edition is written on its own, and can tell the story of a contested place differently. Reads the trip's offline pack first, so it works without a connection along the planned route.`,
       input: { type: 'object', properties: { ...POINT, radius: { type: 'number', minimum: 50, maximum: 20000, description: 'Meters, default 1000.' }, kinds: { type: 'array', items: { enum: KIND_NAMES } } }, required: ['lat', 'lng'] },
       /** @param {{ lat: number, lng: number, radius?: number, kinds?: string[] }} i @param {any} call */
       async run(i, call) {
@@ -238,15 +252,32 @@ export function activate(annai) {
         const pack = await loadPack(annai.files, call.trip).catch(() => null);
         /** The pack's places and articles here, each list cut to its own count. @param {import('../../core/pack/read.js').Pack} p */
         const fromPack = (p) => [nearestOf(p.places(i, radius, kinds), ROWS), nearestOf(p.pages(i, radius, editions), ARTICLES)];
+        /** Said wherever an article of the answer came from the pack: what a part holds, and what the pack lacks yet of the editions read. @param {import('../../core/pack/read.js').Pack} p */
+        const holds = (p) => `${HOLDS}${lackingArticles(p.lacks(editions))}`;
+        /**
+         * The answer: the table, then its endings. Over a tool result's limit (tools.js RESULT_MAX, which cuts the end, endings and all) the articles
+         * farthest away are left out, one at a time, until it fits, and the reach line says how far the rest reach: a pack's rows hold each edition's
+         * summary, so a few editions' 50 articles come near the limit (a synthetic pack of 50 articles and 40 places with real summaries, 2026-11-20:
+         * about 24,500 characters at ja, zh and en, and at en, de and fr 33,000 with 60% of the articles in each later edition, 43,000 with every one).
+         * @param {Listed} places @param {Listed} articles @param {(articles: Listed) => string} endings
+         */
+        const whole = (places, articles, endings) => {
+          let kept = articles;
+          for (;;) {
+            const out = `${table(places, kept)}${endings(kept)}`;
+            if (out.length <= RESULT_MAX || !kept.rows.length) return out;
+            kept = { rows: kept.rows.slice(0, -1), cut: true };
+          }
+        };
         if (pack?.covers(i, radius)) {
           const [places, articles] = fromPack(pack);
-          return `${table(places, articles)}\nFrom the offline pack${pack.downloaded}.${HOLDS}${reach(places, articles, radius)}`;
+          return whole(places, articles, (a) => `\nFrom the offline pack${pack.downloaded}.${holds(pack)}${reach(places, a, radius)}`);
         }
         // Koe's quick reads (the Koe and Kokoro design): the pack only, never the network.
         if (call.offline) {
           if (!pack?.touches(i)) return 'Not in the offline pack: ask Kokoro.';
           const [places, articles] = fromPack(pack);
-          return `${table(places, articles)}\nFrom the offline pack${pack.downloaded}, which holds only part of this circle. Kokoro can look further.${HOLDS}${reach(places, articles, radius)}`;
+          return whole(places, articles, (a) => `\nFrom the offline pack${pack.downloaded}, which holds only part of this circle. Kokoro can look further.${holds(pack)}${reach(places, a, radius)}`);
         }
         const circle = (/** @type {number} */ r) => `(${overpassFilters(kinds).map((f) => `nwr(around:${r},${round(i.lat)},${round(i.lng)})${f};`).join('')});`;
         // Overpass can't sort by distance, and the OSM_LIMIT cap (400) cuts its output in id order. So circles each half the
@@ -328,14 +359,18 @@ export function activate(annai) {
           let unsaid = '';
           const ids = kept.flatMap(({ a }) => (a.id ? [a.id] : []));
           if (editions.length > 1 && ids.length) {
-            try {
-              const r = await ask(call, sitelinksUrl(ids, editions), { headers }, late);
-              const said = wikiSaid(r);
-              if (said) throw new Error(said);
-              titles = titlesOf(r, editions);
-            } catch (e) {
-              if (call.signal.aborted) throw e;
-              unsaid = "\nWikidata didn't answer, so a row may leave out an edition that has its article.";
+            // The limit may have run out in the lists: Wikidata is then not asked, which is not the same as not answering.
+            if (late.aborted) unsaid = "\nWikidata wasn't asked, as the time had run out, so a row may leave out an edition that has its article.";
+            else {
+              try {
+                const r = await ask(call, sitelinksUrl(ids, editions), { headers }, late);
+                const said = wikiSaid(r);
+                if (said) throw new Error(said);
+                titles = titlesOf(r, editions);
+              } catch (e) {
+                if (call.signal.aborted) throw e;
+                unsaid = "\nWikidata didn't answer, so a row may leave out an edition that has its article.";
+              }
             }
           }
           // A row's name: the first edition's title that has it, its list's, else Wikidata's; its note, its address in each edition that has it, in the order.
@@ -347,7 +382,9 @@ export function activate(annai) {
           // Named, so a missing edition's articles aren't taken for none.
           const hosts = quiet.map((e) => `${e}.wikipedia.org`).join(' and ');
           const note = !quiet.length ? '' : `\n${hosts} didn't answer, so ${quiet.length > 1 ? 'their' : 'its'} articles ${packed.length ? `come from the offline pack${pack?.downloaded}, where it holds them` : 'are missing from this list'}.`;
-          return { rows, cut: all.length > ARTICLES || answered.some((g) => g.full), note: `${note}${unsaid}` };
+          // Wikipedia's geosearch takes 10 km at most (wiki.js nearUrl): a wider circle is asked 10 km of articles, and says so.
+          const wide = radius > 10000 ? "\nWikipedia's articles are asked within 10 km only (its geosearch's limit); farther ones aren't listed." : '';
+          return { rows, cut: all.length > ARTICLES || answered.some((g) => g.full), note: `${note}${unsaid}${wide}`, packed: packed.length > 0 };
         });
         // A service that didn't answer is null; a stopped call is no answer at all. OpenStreetMap is busy when every server asked said so
         // (a 429, or a 5xx: the 502 "Timeout" Overpass sends at once, a 504 "too busy"), known as the last one refuses. Another refusal
@@ -364,6 +401,8 @@ export function activate(annai) {
         if (call.signal.aborted) throw /* en */ new DOMException('Stopped', 'AbortError');
         /** @type {Listed | null} */
         const osm = got ? nearestOf(got.rows, ROWS) : null;
+        // An answer cut at 400 isn't the nearest 40: its own line below says so and how to ask again, so the reach line leaves the places out.
+        if (osm && got?.cut) osm.cut = false;
         /** @type {Listed | null} */
         const wiki = articles ? { rows: articles.rows, cut: articles.cut } : null;
         const quiet = articles?.note ?? '';
@@ -387,12 +426,13 @@ export function activate(annai) {
           const [placesHere, articlesHere] = fromPack(pack);
           const places = osm ?? placesHere;
           const pages = wiki ?? articlesHere;
-          return `${table(places, pages)}\n${why}, so ${what} from the offline pack${pack.downloaded}.${wiki ? '' : HOLDS}${quiet}${reach(places, pages, radius)}${cut}`;
+          // Whenever an article of the answer came from the pack: all of them (Wikipedia didn't answer), or an edition's that didn't.
+          const held = wiki === null || articles?.packed ? holds(pack) : '';
+          return whole(places, pages, (a) => `\n${why}, so ${what} from the offline pack${pack.downloaded}.${quiet}${held}${reach(places, a, radius)}${cut}`);
         }
         if (osm === null && wiki === null) throw new Error(busy ? `${why}. Try again in a moment.` : 'Neither OpenStreetMap nor Wikipedia answered. Try again in a moment.');
-        const out = table(osm ?? NONE_LISTED, wiki ?? NONE_LISTED);
-        if (!osm) return `${out}\n${why}; these are Wikipedia articles only.${quiet}${reach(NONE_LISTED, /** @type {Listed} */ (wiki), radius)}`;
-        return `${out}${wiki === null ? `\n${why}; these are OpenStreetMap places only.` : quiet}${reach(osm, wiki ?? NONE_LISTED, radius)}${cut}`;
+        if (!osm) return whole(NONE_LISTED, /** @type {Listed} */ (wiki), (a) => `\n${why}; these are Wikipedia articles only.${quiet}${reach(NONE_LISTED, a, radius)}`);
+        return whole(osm, wiki ?? NONE_LISTED, (a) => `${wiki === null ? `\n${why}; these are OpenStreetMap places only.` : `${quiet}${pack && articles?.packed ? holds(pack) : ''}`}${reach(osm, a, radius)}${cut}`);
       },
     },
     {

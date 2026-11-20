@@ -42,7 +42,7 @@ export const agentHeader = (version) => ({ 'Api-User-Agent': /* en */ `annai/${v
  */
 export const WIKIMEDIA_AT_ONCE = 3;
 const WIKIMEDIA = /^(?:[a-z0-9-]+\.(?:wikipedia|wikivoyage)\.org|www\.wikidata\.org)$/;
-/** Whether a url is to a Wikipedia or Wikivoyage host or to Wikidata: the ones that take turns, and that the pack gives the foreground's time. @param {string} url */
+/** Whether a url is to a Wikipedia or Wikivoyage host or to Wikidata: the ones that take turns, and whose requests the pack gives 25 s (download.js WIKIMEDIA_MS), not Overpass's two minutes. @param {string} url */
 export const isWikimedia = (url) => WIKIMEDIA.test(hostOf(url));
 /** A url's host, '' for one that isn't a whole address (URL.canParse came in Safari 17: annai's floor is iOS 16.4). @param {string} url */
 const hostOf = (url) => {
@@ -131,18 +131,25 @@ export function articlesOf(r, edition) {
 
 /**
  * Each article once: by Wikidata id, the order's first edition's row (one outside it last), with `also`, the same item's rows in the later
- * editions, one an edition, in the order; without an id, once in its edition by title, with none.
+ * editions, one per edition, in the order. A row with no id takes the id its page (its title in its edition) has in another row: an older list, fetched
+ * before its article had an item, holds the page with none, and a later second stage or part holds it with one. Without an id anywhere, once in
+ * its edition by title, with none.
  * @template {Article} A @param {A[]} rows @param {string[]} editions @returns {(A & { also: A[] })[]}
  */
 export function merged(rows, editions) {
   const rank = (/** @type {A} */ a) => (editions.includes(a.edition) ? editions.indexOf(a.edition) : editions.length);
+  const page = (/** @type {A} */ a) => `${a.edition} ${a.title}`;
+  /** @type {Map<string, string>} each page's id, from any row that has one */
+  const ids = new Map();
+  for (const a of rows) if (a.id) ids.set(page(a), a.id);
   /** @type {Map<string, A & { also: A[] }>} */
   const by = new Map();
   for (const a of [...rows].sort((x, y) => rank(x) - rank(y))) {
-    const key = a.id ?? `${a.edition} ${a.title}`;
+    const id = a.id ?? ids.get(page(a)) ?? null;
+    const key = id ?? page(a);
     const first = by.get(key);
-    if (!first) by.set(key, { ...a, also: [] });
-    else if (first.edition !== a.edition && !first.also.some((x) => x.edition === a.edition)) first.also.push(a);
+    if (!first) by.set(key, { ...a, id, also: [] });
+    else if (first.edition !== a.edition && !first.also.some((x) => x.edition === a.edition)) first.also.push({ ...a, id });
   }
   return [...by.values()];
 }

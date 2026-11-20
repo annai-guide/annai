@@ -10,6 +10,7 @@ import { ensureBaseScopes, createTrip, ME } from '../../src/core/scopes.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { tracedFetch } from '../../src/core/agent/net.js';
 import { NOMINATIM_GAP, ASK_MS, OVERPASS_MS } from '../../src/plugins/places/index.js';
+import { RESULT_MAX } from '../../src/core/agent/tools.js';
 import { articlesOf, merged } from '../../src/core/wiki.js';
 import { guideFile, downloadPack } from '../../src/core/pack/download.js';
 import { voyageWorld, wikidataOf } from './pack-kit.js';
@@ -51,7 +52,7 @@ async function setup({ trip = false } = {}) {
       return a instanceof Response ? a : new Response(JSON.stringify(a));
     },
   });
-  return { run, asked, ws, trip: tripId };
+  return { run, asked, ws, trip: tripId, tools };
 }
 
 const McWay = { lat: 36.1580, lng: -121.6720 };
@@ -147,11 +148,12 @@ test("nearby's rows from the probes' real answers: the nearest 40 by distance, f
     assert.equal(body.elements.length, p.n, place);
     const { run } = await setup();
     const lines = (await run('nearby', p.at, (url) => (url.includes('overpass') ? body : noWiki))).split('\n');
-    // The header and 40 rows, then the line saying they are the nearest 40 of more; Sydney's answer, at Overpass's 400, then ends with the line
-    // saying Overpass cut it (the next test).
-    assert.equal(lines.length, p.n === 400 ? 43 : 42, place);
+    // The header and 40 rows, then the line saying they are the nearest 40 of more; Sydney's answer, at Overpass's 400, has instead the line saying
+    // Overpass cut it, in id order, so these 40 aren't the nearest (the next test): the reach line would say the opposite.
+    assert.equal(lines.length, 42, place);
     const rows = lines.slice(1, 41).map((r) => r.split('\t'));
-    assert.equal(lines[41], reachLine([40, Number(rows[39][2])], null), place);
+    if (p.n === 400) assert.match(lines[41], /^OpenStreetMap's answer stopped at 400 places, not chosen by distance/, place);
+    else assert.equal(lines[41], reachLine([40, Number(rows[39][2])], null), place);
     assert.ok(rows.every((r) => r[5] === 'osm'), place);
     const meters = rows.map((r) => Number(r[2]));
     assert.deepEqual(meters, [...meters].sort((a, b) => a - b), `${place}: nearest first`);
@@ -196,13 +198,18 @@ test("nearby says when OpenStreetMap's answer stopped at 400, counting what Over
   const { run, ws, trip } = await setup({ trip: true });
   const wiki = geo(['Sydney Opera House', -33.8568, 151.2153]);
   const lines = (await run('nearby', at, (url) => (url.includes('overpass') ? body : wiki))).split('\n');
-  // The 40 places and the article (each list its own count), the line saying the 40 are the nearest of more, then Overpass's cut.
-  assert.equal(lines.length, 44);
+  // The 40 places and the article (each list its own count), then Overpass's cut alone: it says these 40 aren't the nearest, so no line says they are.
+  assert.equal(lines.length, 43);
   assert.ok(lines.slice(1, 42).every((r) => r.split('\t').length === 7));
-  assert.match(lines[42], /^These are the nearest 40 places \(out to \d+ m\); farther ones within 1000 m aren't listed\.$/);
+  assert.doesNotMatch(lines.join('\n'), /These are the nearest/);
   // nearby reads this saved answer of the earlier query as cut in the 500 m circle, which holds 66 of these places as nearby rounds them (the
   // 250 m one 18): it names 250 m. Today's query stops at 500 m there, whole.
   assert.equal(lines.at(-1), cutLine(250));
+  // The articles cut as well: the reach line names them alone, then Overpass's line.
+  const fifty = geo(...Array.from({ length: 50 }, (_, k) => /** @type {[string, number, number, string]} */ ([`Article ${k}`, at.lat - (100 + 5 * k) / 111_195, at.lng, `Q${2000 + k}`])));
+  const both = (await run('nearby', at, (url) => (url.includes('overpass') ? body : fifty))).split('\n');
+  const farthest = Number(both.filter((r) => r.includes('\twikipedia\t')).map((r) => r.split('\t')[2]).at(-1));
+  assert.deepEqual(both.slice(-2), [reachLine(null, [50, farthest]), cutLine(250)]);
   // 399 of the same places: an answer that didn't reach the limit says nothing of it, only that the 40 are the nearest of more.
   const whole = (await run('nearby', at, (url) => (url.includes('overpass') ? { ...body, elements: body.elements.slice(0, 399) } : wiki))).split('\n');
   assert.equal(whole.length, 43);
@@ -213,8 +220,8 @@ test("nearby says when OpenStreetMap's answer stopped at 400, counting what Over
   assert.equal((await run('nearby', at, (url) => (url.includes('overpass') ? { ...body, elements: bare } : wiki))).split('\n').at(-1), cutLine(250));
   // Wikipedia not answering, and no pack: OpenStreetMap's rows, then the Wikipedia line, then the cut line.
   const down = (await run('nearby', at, (url) => (url.includes('overpass') ? body : new Response('', { status: 503 })))).split('\n');
-  assert.equal(down.length, 44);
-  assert.deepEqual([down.at(-3), down.at(-1)], ["Wikipedia didn't answer; these are OpenStreetMap places only.", cutLine(250)]);
+  assert.equal(down.length, 43);
+  assert.deepEqual([down.at(-2), down.at(-1)], ["Wikipedia didn't answer; these are OpenStreetMap places only.", cutLine(250)]);
   // A pack whose area holds the point but not the circle fills in for Wikipedia, saying so; the cut line comes after, last.
   const day = '2026-10-16T09:00:00.000Z';
   await ws.write(/** @type {string} */ (trip), '/offline/osm/o1.json', JSON.stringify({ area: { points: [[at.lat, at.lng]], radius: 500 }, rows: [] }), { author: 'system' });
@@ -222,9 +229,9 @@ test("nearby says when OpenStreetMap's answer stopped at 400, counting what Over
   await ws.write(/** @type {string} */ (trip), '/offline/pack.json', JSON.stringify({ format: 1, key: 'k', at: day, failed: [], full: false, stopped: false, bytes: 700,
     files: [{ id: 'o1', kind: 'osm', path: '/offline/osm/o1.json', bytes: 400, items: 0 }, { id: 'w1', kind: 'wikipedia', path: '/offline/wikipedia/w1.json', bytes: 300, items: 1 }], guides: [] }), { author: 'system' });
   const filled = (await run('nearby', at, (url) => (url.includes('overpass') ? body : new Response('', { status: 503 })))).split('\n');
-  assert.equal(filled.length, 46);
+  assert.equal(filled.length, 45);
   assert.match(filled[1], /^Sydney Opera House\twikipedia article\t0\t/);
-  assert.deepEqual([filled.at(-4), filled.at(-3), filled.at(-1)], ["Wikipedia didn't answer, so its articles come from the offline pack (downloaded 2026-10-16).", HOLDS, cutLine(250)]);
+  assert.deepEqual(filled.slice(-3), ["Wikipedia didn't answer, so its articles come from the offline pack (downloaded 2026-10-16).", HOLDS, cutLine(250)]);
   // With the pack, an answer short of the limit ends without it.
   assert.match((await run('nearby', at, (url) => (url.includes('overpass') ? { ...body, elements: body.elements.slice(0, 399) } : new Response('', { status: 503 })))),
     /\nWikipedia didn't answer, so its articles come from the offline pack \(downloaded 2026-10-16\)\.\n.+\nThese are the nearest 40 places \(out to \d+ m\); farther ones within 1000 m aren't listed\.$/);
@@ -241,7 +248,8 @@ test("nearby names the circle to ask again with: half the one cut, which held fe
   const cutAt = async (input, from, to) => {
     const { run, asked } = await setup();
     const lines = (await run('nearby', { ...at, ...input }, (url) => (url.includes('overpass') ? ring(at, 400, from, to) : noWiki))).split('\n');
-    assert.equal(lines.length, 43);
+    // The header, 40 rows and the cut line: no line says the 40 are the nearest. A radius over 10 km adds the line that Wikipedia was asked within 10 km.
+    assert.equal(lines.length, 42 + (input.radius > 10_000 ? 1 : 0));
     const named = /a radius of (\d+) m or less/.exec(lines.at(-1) ?? '');
     assert.ok(named, String(lines.at(-1)));
     const first = circlesOf(asked);
@@ -847,16 +855,19 @@ test("nearby says its articles are cut at 50 and not at 49, and when an edition'
 
 /**
  * A trip's offline pack at Kiyomizu-dera: Wikipedia's real answers as the pack holds them (a part's 20 nearest: two overlapping Japanese parts and one
- * English), and OpenStreetMap's 5 km around, with some places in it. @param {any} ws @param {string} trip @param {{ id: number, lat: number, lon: number, tags: any }[]} [places]
+ * English), and OpenStreetMap's 5 km around, with some places in it, and, unless `stages` is false (a pack from before them), each part's second stage for
+ * Japanese and English (empty: what these tests read is the lists). @param {any} ws @param {string} trip @param {{ id: number, lat: number, lon: number, tags: any }[]} [places] @param {{ stages?: boolean }} [o]
  */
-async function kiyomizuPack(ws, trip, places = []) {
+async function kiyomizuPack(ws, trip, places = [], { stages = true } = {}) {
   const at = [KIYOMIZU.lat, KIYOMIZU.lng];
   const pagesOf = (/** @type {string} */ host, /** @type {number} */ from, /** @type {number} */ to) => KIYOMIZU_WIKI[host].query.pages.slice(from, to).map((/** @type {any} */ g) => [g.title, g.coordinates[0].lat, g.coordinates[0].lon, '', g.pageprops.wikibase_item]);
   const parts = /** @type {[string, string, string, any[]][]} */ ([['ja', 'w1', '/offline/wikipedia/w1.ja.json', pagesOf('ja.wikipedia.org', 0, 20)], ['ja', 'w2', '/offline/wikipedia/w2.ja.json', pagesOf('ja.wikipedia.org', 10, 30)], ['en', 'w1', '/offline/wikipedia/w1.json', pagesOf('en.wikipedia.org', 0, 20)]]);
   for (const [, , path, pages] of parts) await ws.write(trip, path, JSON.stringify({ at, radius: 10000, pages }), { author: 'system' });
+  const more = stages ? ['w1', 'w2'].map((id) => ({ id, kind: 'wikipedia-editions', path: `/offline/wikipedia/${id}.x.en.ja.json`, bytes: 1, items: 0 })) : [];
+  for (const m of more) await ws.write(trip, m.path, JSON.stringify({ at, pages: [] }), { author: 'system' });
   await ws.write(trip, '/offline/osm/o1.json', JSON.stringify({ area: { points: [at], radius: 5000 }, rows: places.map((e) => [`n${e.id}`, e.tags.name, 'restaurant', e.lat, e.lon, '', 'food']) }), { author: 'system' });
   await ws.write(trip, '/offline/pack.json', JSON.stringify({ format: 1, key: 'k', at: '2026-11-19T09:00:00.000Z', failed: [], full: false, stopped: false, bytes: 1, guides: [],
-    files: [{ id: 'o1', kind: 'osm', path: '/offline/osm/o1.json', bytes: 1, items: places.length }, ...parts.map(([edition, id, path]) => ({ id, kind: 'wikipedia', path, bytes: 1, items: 20, edition }))] }), { author: 'system' });
+    files: [{ id: 'o1', kind: 'osm', path: '/offline/osm/o1.json', bytes: 1, items: places.length }, ...parts.map(([edition, id, path]) => ({ id, kind: 'wikipedia', path, bytes: 1, items: 20, edition })), ...more] }), { author: 'system' });
 }
 
 test("from the pack, the same counts: the nearest 40 places and 50 articles, said when cut, and what the pack holds", async () => {
@@ -876,6 +887,101 @@ test("from the pack, the same counts: the nearest 40 places and 50 articles, sai
   assert.equal(rowsOf(quick).length, 78);
 });
 
+const OLD_STAGES = "Some of its parts don't hold the other editions' summaries yet, so a row may leave out an edition that has its article; they come with the pack's next download.";
+
+test("from the pack, nearby says what the pack lacks yet of the editions read: a part with no second stage, an edition with no list; nothing where it lacks nothing, or English is alone", async () => {
+  const { run, ws, trip } = await setup({ trip: true });
+  const offline = () => { throw new Error('asked'); };
+  await kiyomizuPack(ws, /** @type {string} */ (trip), [], { stages: false });
+  // A pack from before the second stage (or one whose stage failed), Japanese and English read: its parts lack the stage, said after what a part holds.
+  await speaks(ws, ['ja']);
+  assert.deepEqual((await run('nearby', KIYOMIZU, offline)).split('\n').slice(-2), [HOLDS, OLD_STAGES]);
+  // Koe's quick read says it too.
+  assert.deepEqual((await run('nearby', KIYOMIZU, offline, { offline: true })).split('\n').slice(-2), [HOLDS, OLD_STAGES]);
+  // English alone: no second stage is wanted, and nothing is lacking.
+  await speaks(ws, []);
+  const english = await run('nearby', KIYOMIZU, offline);
+  assert.equal(english.split('\n').at(-1), HOLDS);
+  // Chinese added since the download: no list of it, and no stage for the three. One line, the edition first, named as guide's lacking names one.
+  await speaks(ws, ['ja', 'zh-Hant']);
+  assert.deepEqual((await run('nearby', KIYOMIZU, offline)).split('\n').slice(-2), [HOLDS, `Chinese Wikipedia isn't in the offline pack yet; it comes with the pack's next download. ${OLD_STAGES}`]);
+  // Two editions with no list: both named, in the reading order.
+  await speaks(ws, ['ja', 'zh-Hant', 'de']);
+  assert.match((await run('nearby', KIYOMIZU, offline)).split('\n').at(-1) ?? '', /^Chinese and German Wikipedia aren't in the offline pack yet; they come with the pack's next download\. Some of its parts/);
+  // A pack with its stages lacks nothing for Japanese and English: the line is not there.
+  const whole = await setup({ trip: true });
+  await kiyomizuPack(whole.ws, /** @type {string} */ (whole.trip));
+  await speaks(whole.ws, ['ja']);
+  assert.equal((await whole.run('nearby', KIYOMIZU, offline)).split('\n').at(-1), HOLDS);
+});
+
+test("nearby with the pack filling in for an edition that doesn't answer says what the pack holds and lacks, and nothing where the pack gave no article", async () => {
+  const { run, ws, trip } = await setup({ trip: true });
+  await speaks(ws, ['ja']);
+  await kiyomizuPack(ws, /** @type {string} */ (trip), [], { stages: false });
+  const down = (/** @type {string} */ host) => (/** @type {string} */ url) => (url.includes(host) ? new Response('', { status: 503 }) : kiyomizuOnly(url));
+  // Japanese down, the pack past its circle: its articles from the pack, so what a part holds, and what it lacks, after the line that says so.
+  const out = await run('nearby', { ...KIYOMIZU, radius: 8000 }, down('ja.wikipedia.org'));
+  assert.deepEqual(out.split('\n').slice(-3), ["ja.wikipedia.org didn't answer, so its articles come from the offline pack (downloaded 2026-11-19), where it holds them.", HOLDS, OLD_STAGES]);
+  // Both editions answering: no article is the pack's, so it is not mentioned.
+  const online = await run('nearby', { ...KIYOMIZU, radius: 8000 }, kiyomizuOnly);
+  assert.doesNotMatch(online, /offline pack/);
+  // OpenStreetMap down, Wikipedia answering in both: its places from the pack, no article from it.
+  const osmDown = await run('nearby', { ...KIYOMIZU, radius: 8000 }, (url) => (url.includes('overpass') ? new Response('', { status: 503 }) : kiyomizuOnly(url)));
+  assert.match(osmDown, /\nOpenStreetMap is busy, so its places come from the offline pack \(downloaded 2026-11-19\)\.$/);
+  // Wikipedia not answering at all: every article is the pack's.
+  const none = await run('nearby', { ...KIYOMIZU, radius: 8000 }, (url) => (url.includes('wikipedia.org') ? new Response('', { status: 503 }) : kiyomizuOnly(url)));
+  assert.deepEqual(none.split('\n').slice(-3), ["Wikipedia didn't answer, so its articles come from the offline pack (downloaded 2026-11-19).", HOLDS, OLD_STAGES]);
+});
+
+test("a pack-fed answer stays whole, with its endings, at any number of editions: the farthest articles are left out until it fits a tool result, and the reach line says how far the rest reach", async () => {
+  const { run, ws, trip } = await setup({ trip: true });
+  const at = [KIYOMIZU.lat, KIYOMIZU.lng];
+  const editions = ['de', 'fr', 'es', 'en'];
+  // 50 articles in each of four Latin-script editions, every one in all four, each with a summary the pack cuts to about 200 characters: rows of
+  // about 1,100 characters, 56,000 in all, past RESULT_MAX (40,000), which cuts the end, the endings included.
+  const pages = (/** @type {string} */ e) => Array.from({ length: 50 }, (_, k) => [`${e} article ${k}`, KIYOMIZU.lat - (100 + 5 * k) / 111_195, KIYOMIZU.lng, `${e} ${k} ${'a summary word '.repeat(30)}`, `Q${5000 + k}`]);
+  const lists = editions.map((e) => ({ e, path: `/offline/wikipedia/w1${e === 'en' ? '' : `.${e}`}.json` }));
+  for (const { e, path } of lists) await ws.write(/** @type {string} */ (trip), path, JSON.stringify({ at, radius: 10000, pages: pages(e) }), { author: 'system' });
+  const stage = '/offline/wikipedia/w1.x.de.en.es.fr.json';
+  await ws.write(/** @type {string} */ (trip), stage, JSON.stringify({ at, pages: [] }), { author: 'system' });
+  await ws.write(/** @type {string} */ (trip), '/offline/osm/o1.json', JSON.stringify({ area: { points: [at], radius: 5000 }, rows: [] }), { author: 'system' });
+  await ws.write(/** @type {string} */ (trip), '/offline/pack.json', JSON.stringify({ format: 1, key: 'k', at: '2026-11-19T09:00:00.000Z', failed: [], stopped: false, bytes: 1, guides: [],
+    files: [{ id: 'o1', kind: 'osm', path: '/offline/osm/o1.json', bytes: 1, items: 0 }, { id: 'w1', kind: 'wikipedia-editions', path: stage, bytes: 1, items: 0 },
+      ...lists.map(({ e, path }) => ({ id: 'w1', kind: 'wikipedia', path, bytes: 1, items: 50, edition: e }))] }), { author: 'system' });
+  await speaks(ws, ['de', 'fr', 'es']);
+  const offline = () => { throw new Error('asked'); };
+  for (const input of [{}, { offline: true }]) {
+    const out = await run('nearby', KIYOMIZU, offline, input);
+    const rows = rowsOf(out);
+    // Whole: inside a tool result, the endings there, the articles that fit kept (not one fewer than could), the nearest of them, each in four editions.
+    assert.ok(out.length <= RESULT_MAX, `${out.length} characters`);
+    assert.ok(out.length > RESULT_MAX - 1500, `${out.length} characters: as many as fit`);
+    assert.ok(rows.length > 20 && rows.length < 50, `${rows.length} articles`);
+    assert.deepEqual(rows.map((r) => r[0]), Array.from({ length: rows.length }, (_, k) => `de article ${k}`), 'the nearest, in order');
+    assert.equal(rows[0][6].split(' · ').length, 4);
+    const lines = out.split('\n');
+    assert.match(lines.at(-3) ?? '', /^From the offline pack \(downloaded 2026-11-19\)/);
+    assert.equal(lines.at(-2), HOLDS);
+    assert.equal(lines.at(-1), reachLine(null, [rows.length, Number(rows.at(-1)?.[2])]));
+  }
+  // Fewer editions fit whole: English alone, 50 articles, nothing left out and nothing said.
+  await speaks(ws, []);
+  const english = await run('nearby', KIYOMIZU, offline);
+  assert.equal(rowsOf(english).length, 50);
+  assert.equal(english.split('\n').at(-1), HOLDS);
+});
+
+test("nearby asks Wikipedia's articles within 10 km at most, and says so when the radius is wider; nearby's description says offline rows carry each edition's short summary", async () => {
+  const { run, asked, tools } = await setup();
+  const wide = await run('nearby', { ...KIYOMIZU, radius: 15000 }, kiyomizuOnly);
+  assert.equal(wide.split('\n').at(-1), "Wikipedia's articles are asked within 10 km only (its geosearch's limit); farther ones aren't listed.");
+  assert.equal(new URL(asked.find((a) => a.url.includes('wikipedia.org'))?.url ?? '').searchParams.get('ggsradius'), '10000');
+  // 10 km and under: asked as wide as the radius, and nothing said.
+  assert.doesNotMatch(await run('nearby', { ...KIYOMIZU, radius: 10000 }, kiyomizuOnly), /geosearch/);
+  assert.match(tools.nearby.description, /\(from the offline pack, each edition's short summary too, before its address\)/);
+});
+
 test("nearby: an edition that doesn't answer is left out and named, one that never answers holds up none of the others, an error answer is no answer, and none answering is today's line", async () => {
   const { run, ws } = await setup();
   await speaks(ws, ['ja']);
@@ -891,15 +997,16 @@ test("nearby: an edition that doesn't answer is left out and named, one that nev
     const hung = await run('nearby', KIYOMIZU, (url, init) => (init.signal?.aborted ? Promise.reject(init.signal.reason) : url.includes('ja.wikipedia.org') ? hang(url, init) : kiyomizuOnly(url)));
     assert.ok(Date.now() - t0 < 2000, 'it ends at the limit (80 ms here), not at the call limit');
     assert.match(hung, /\nKiyomizu-dera\twikipedia article\t/);
-    // The limit is spent, so Wikidata is not asked (no request is made after a limit has run out) and is named too.
-    assert.match(hung, /\nja\.wikipedia\.org didn't answer, so its articles are missing from this list\.\nWikidata didn't answer, so a row may leave out an edition that has its article\.$/);
+    // The limit is spent, so Wikidata is not asked (no request is made after a limit has run out): it is said not to have been asked, as it never
+    // had its time to answer.
+    assert.match(hung, /\nja\.wikipedia\.org didn't answer, so its articles are missing from this list\.\nWikidata wasn't asked, as the time had run out, so a row may leave out an edition that has its article\.$/);
     // Two editions that never answer share the one limit (asked at once): 500 ms here, where limits one after the other would take twice that.
     ASK_MS.ms = 500;
     await speaks(ws, ['ja', 'zh-Hant']);
     const t1 = Date.now();
     const two = await run('nearby', KIYOMIZU, (url, init) => (init.signal?.aborted ? Promise.reject(init.signal.reason) : url.includes('ja.wikipedia.org') || url.includes('zh.wikipedia.org') ? hang(url, init) : kiyomizuOnly(url)));
     assert.ok(Date.now() - t1 < 900, `${Date.now() - t1} ms for two that never answer`);
-    assert.match(two, /\nja\.wikipedia\.org and zh\.wikipedia\.org didn't answer, so their articles are missing from this list\.\nWikidata didn't answer/);
+    assert.match(two, /\nja\.wikipedia\.org and zh\.wikipedia\.org didn't answer, so their articles are missing from this list\.\nWikidata wasn't asked, as the time had run out/);
     ASK_MS.ms = 80;
     await speaks(ws, ['ja']);
     const refused = await run('nearby', KIYOMIZU, (url) => (url.includes('ja.wikipedia.org') ? new Response('', { status: 503 }) : kiyomizuOnly(url)));
@@ -924,21 +1031,23 @@ test("nearby: an edition that doesn't answer has the offline pack's articles of 
   await kiyomizuPack(ws, /** @type {string} */ (trip));
   // A circle wider than the pack's 5 km: the services are asked; Japanese Wikipedia is down.
   const out = await run('nearby', { ...KIYOMIZU, radius: 8000 }, (url) => (url.includes('ja.wikipedia.org') ? new Response('', { status: 503 }) : kiyomizuOnly(url)));
-  const rows = out.split('\n').slice(1, -1).map((r) => r.split('\t'));
+  const rows = rowsOf(out);
   assert.equal(rows.length, 38);
   // 清水寺 from the pack, in place of English's Kiyomizu-dera (the same Wikidata item), linked on Japanese Wikipedia, then on English's.
   assert.equal(rows.find((r) => r[0] === '清水寺')?.[6], 'https://ja.wikipedia.org/wiki/清水寺 · https://en.wikipedia.org/wiki/Kiyomizu-dera');
   assert.equal(rows.find((r) => r[0] === 'Kiyomizu-dera'), undefined);
   assert.equal(rows.find((r) => r[0] === 'Ryozen Museum of History')?.[6], 'https://en.wikipedia.org/wiki/Ryozen_Museum_of_History');
-  assert.match(out, /\nja\.wikipedia\.org didn't answer, so its articles come from the offline pack \(downloaded 2026-11-19\), where it holds them\.$/);
+  // Said whichever edition's articles came from the pack: what a part holds, one rule (the pack lacks nothing here, its stages are there).
+  assert.match(out, new RegExp(`\\nja\\.wikipedia\\.org didn't answer, so its articles come from the offline pack \\(downloaded 2026-11-19\\), where it holds them\\.\\n${HOLDS.replace(/[.]/g, '\\.')}$`));
   // English not answering: English's articles from the pack are the one Japanese has none of (the pack has English's own).
   const en = await run('nearby', { ...KIYOMIZU, radius: 8000 }, (url) => (url.includes('en.wikipedia.org') ? new Response('', { status: 503 }) : kiyomizuOnly(url)));
-  assert.match(en, /\nen\.wikipedia\.org didn't answer, so its articles come from the offline pack \(downloaded 2026-11-19\), where it holds them\.$/);
+  assert.match(en, new RegExp(`\\nen\\.wikipedia\\.org didn't answer, so its articles come from the offline pack \\(downloaded 2026-11-19\\), where it holds them\\.\\n${HOLDS.replace(/[.]/g, '\\.')}$`));
   assert.ok(en.includes('Ryozen Museum of History\t'));
   // Where the pack has none of that edition's articles, the note says they are missing.
   await speaks(ws, ['zh-Hant']);
   const zh = await run('nearby', { ...KIYOMIZU, radius: 8000 }, (url) => (url.includes('zh.wikipedia.org') ? new Response('', { status: 503 }) : kiyomizuOnly(url)));
   assert.match(zh, /\nzh\.wikipedia\.org didn't answer, so its articles are missing from this list\.$/);
+  assert.doesNotMatch(zh, /offline pack/, 'no article came from the pack, so nothing is said of what it holds');
 });
 
 test('geocode, reverse and nearby give a place\'s website and opening hours where OpenStreetMap has them, so "is it open" needs no search', async () => {

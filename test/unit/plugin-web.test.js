@@ -476,7 +476,7 @@ test("the floor's rows are what its parts give, not the chain's 8: five editions
   const rows = out.split('\n').slice(1);
   assert.equal(rows.filter((r) => r.includes('(Wikivoyage)')).length, 5, 'a guide in each edition');
   assert.equal(rows.filter((r) => r.includes('Site ')).length, 3);
-  assert.equal(rows.filter((r) => r.includes('(Wikipedia)')).length, 8, "the first edition's articles");
+  assert.equal(rows.filter((r) => r.includes('(Wikipedia)')).length, 8, "8 in all, taken in turn from the five editions: one each, then the first three's second");
   assert.equal(rows.length, 16);
 });
 

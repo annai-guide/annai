@@ -998,8 +998,8 @@ z6ass1	ok	annai sends {0} itself, so it can't be one of these headers. Leave tha
 129gp7y	ok	There is no MCP server called {0}.	沒有名為「{0}」的 MCP 伺服器。	src/plugins/mcp/index.js:275	{0} = name
 i69zke	ok	A server's name is 1 to 20 lowercase letters, digits and dashes, like trail.	伺服器名稱由 1 到 20 個小寫字母、數字和連字元組成，例如 trail。	src/plugins/mcp/index.js:314	Note: trail is an example name, as the form's placeholder; kept as written.
 ku5jlk	ok	There is a server called {0} already.	已經有名為「{0}」的伺服器了。	src/plugins/mcp/index.js:315	{0} = n
-126nbeu	ok	Places tools	地點工具	src/plugins/places/index.js:19	Note: Places as its tool group is named in Settings → Tools (場所 / 地點).
-1gghsme	ok	nearby, geocode, reverse, weather and guide, from OpenStreetMap, Wikipedia, Nominatim, Open-Meteo and Wikivoyage.	nearby、geocode、reverse、weather 和 guide，資料來自 OpenStreetMap、Wikipedia、Nominatim、Open-Meteo 和 Wikivoyage。	src/plugins/places/index.js:22	
+126nbeu	ok	Places tools	地點工具	src/plugins/places/index.js:20	Note: Places as its tool group is named in Settings → Tools (場所 / 地點).
+1gghsme	ok	nearby, geocode, reverse, weather and guide, from OpenStreetMap, Wikipedia, Nominatim, Open-Meteo and Wikivoyage.	nearby、geocode、reverse、weather 和 guide，資料來自 OpenStreetMap、Wikipedia、Nominatim、Open-Meteo 和 Wikivoyage。	src/plugins/places/index.js:23	
 143ff3s	ok	Sensors	感測器	src/plugins/sensors/index.js:6	
 3mo7sf	ok	Where the phone is (GPS, only while GPS is on in annai and annai is on screen), whether annai is on screen, and whether there is a connection.	手機的位置（GPS，僅在 annai 中開啟 GPS 且 annai 顯示在螢幕上時）、annai 是否顯示在螢幕上，以及是否有網路連線。	src/plugins/sensors/index.js:9	
 gec6zp	ok	Built-in skills	內建技能	src/plugins/skills/index.js:15	
@@ -1010,7 +1010,7 @@ elkw42	ok	The voice's audio couldn't be played.	無法播放這個聲音的音�
 9gdjo3	ok	The browser voice couldn't speak ({0}).	瀏覽器聲音無法朗讀（{0}）。	src/plugins/voice-browser/index.js:585	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
 1mrk9hl	ok	The microphone stopped.	麥克風已停止。	src/plugins/voice-browser/index.js:650	
 1l4zitw	ok	Phone dictation stopped ({0}).	手機語音輸入已停止（{0}）。	src/plugins/voice-browser/index.js:755	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音聲入力 / 手機語音輸入); {0} is the browser's error code, such as network.
-1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia 和 Nominatim	src/plugins/web/free.js:144	
+1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia 和 Nominatim	src/plugins/web/free.js:145	
 scnz2y	ok	Web tools	網頁工具	src/plugins/web/index.js:13	Note: Web as its tool group is named in Settings → Tools (Web / 網頁).
 eob60g	ok	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetch 可讀取任何網頁，遇到不允許網頁應用程式讀取的網站時，改用 Jina Reader 或 Exa；web_search 依設定 → 工具中的順序使用各搜尋供應商，先用免費的。	src/plugins/web/index.js:16	
 b4g7z9	ok	needs a key (Settings → Tools)	需要金鑰（設定 → 工具）	src/plugins/web/index.js:191	
@@ -1400,7 +1400,7 @@ an1pf7	ok	Dismiss	關閉	src/ui/notices.js:271
 1y7mim7	ok	Downloading {0} of {1}: {2}…	正在下載（{0}/{1}）：{2}…	src/ui/offline-pack.js:33	{0} = done; {1} = total; {2} = r.label
 1uxbvr1	ok	The pack follows the itinerary: once the itinerary has places, it can be downloaded here.	離線資料包會依行程而定。行程中有地點後，就可以在這裡下載。	src/ui/offline-pack.js:36	
 1mpvke9#other	ok	For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the itinerary's # stops and along the way between them. Shiori's nearby and guide read it first.	供沒有網路時使用：行程中 # 個停留點周邊及沿途的 OpenStreetMap 地點、Wikipedia 摘要和 Wikivoyage 指南。Shiori 的 nearby 和 guide 工具會優先讀取離線資料包。	src/ui/offline-pack.js:42	plural; # = s.stops; English: "For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the itinerary's stop and along the way between them. Shiori's nearby and guide read it first." (one), "For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the itinerary's # stops and along the way between them. Shiori's nearby and guide read it first." (other); Note: nearby and guide are Shiori's tools, named as in Settings → Tools.
-ty53av	draft	Downloading sends the itinerary's places to OpenStreetMap and Wikipedia, the ids of Wikipedia's articles to Wikidata, and place names to Wikivoyage.	下載時會把行程中的地點傳送給 OpenStreetMap 和 Wikipedia，把 Wikipedia 文章的 ID 傳送給 Wikidata，把地名傳送給 Wikivoyage。	src/ui/offline-pack.js:44	
+ag19k2	draft	Downloading sends the itinerary's places to OpenStreetMap and Wikipedia and place names to Wikivoyage; with more than one language, it also sends Wikidata item ids to Wikidata.	下載時會把行程中的地點傳送給 OpenStreetMap 和 Wikipedia，把地名傳送給 Wikivoyage；使用多種語言時，還會把 Wikidata 項目 ID 傳送給 Wikidata。	src/ui/offline-pack.js:44	
 1452e43	ok	Download (about {0})	下載（約 {0}）	src/ui/offline-pack.js:46	{0} = about
 13ryfn7	ok	Downloaded · {0} · {1}.	已下載 · {0} · {1}。	src/ui/offline-pack.js:50	{0} = size(m.bytes); {1} = holds(m)
 1yax0wt	ok	Downloaded {0} · {1} · {2}.	{0}下載 · {1} · {2}。	src/ui/offline-pack.js:50	{0} = when; {1} = size(m.bytes); {2} = holds(m); Note: {0} is a relative time ("2 hours ago").

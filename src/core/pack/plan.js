@@ -42,10 +42,11 @@ export const WIKI_RADIUS_M = 10000; // the largest Wikipedia searches
  * - guide: an English guide, the mean of 7 measured (11 to 130 KB), rounded.
  * - guideEdition: another edition's guide, wanted for each English one: the 13 Japanese and Chinese guides measured were 1.5 to 35 KB
  *   (mean 13 KB), and 7 of 12 English guides have a Japanese one, 7 of 12 a Chinese one, so 13 × 7/12, rounded up.
- * - wikiMore: a Wikipedia part's second stage, for each edition read past the first: stored at Tokyo Station (editions-b-next's real check,
- *   2026-11-20) as 11.6 KB with Japanese and English (22 summaries) and 24.0 KB with Japanese, Chinese and English (49): 12 KB an edition
- *   past the first, as each edition added brings its 20 articles' summaries in the others (the spec check's answers at Tokyo: 2.7, 6.2 and
- *   4.6 KB by title in zh, ja and en, before rows and ids).
+ * - wikiMore: a Wikipedia part's second stage, for each edition read past the first: stored at Tokyo Station (a real check of the pack's second
+ *   stage, 2026-11-20) as 11.6 KiB with Japanese and English (22 summaries) and 24.0 KiB with Japanese, Chinese and English (49), in KiB as the
+ *   figures here are (the same two files as 11.9 and 24.5 kB): 12 KiB an edition past the first, as each edition added brings its 20 articles'
+ *   summaries in the others (the editions design's by-title answers at Tokyo, 2.7, 6.2 and 4.6 KB in zh, ja and en, before rows and ids). Four
+ *   and five editions are not measured: taken as linear, 12 KiB for each past the first.
  */
 export const SIZES = Object.freeze({ osmPerKm: 512, osmStop: 110 * 1024, wikipedia: 8 * 1024, wikiEdition: 11 * 1024, wikiMore: 12 * 1024, guide: 65 * 1024, guideEdition: 8 * 1024 });
 
@@ -121,8 +122,8 @@ export function packPlan({ trip, items }) {
   /** @type {WikiPart[]} */
   const wiki = [];
   const wikiNear = (/** @type {LatLng} */ p) => wiki.some((w) => meters(pt(w.at), pt(p)) < WIKI_APART_KM * 1000);
-  // The stops first, then the way between them, in OpenStreetMap's parts and then Wikipedia's. A download takes every Wikipedia part first, then
-  // the guides, then OpenStreetMap's parts (download.js), each in this order: one stopped partway has the stops' before the way's.
+  // The stops first, then the way between them, in OpenStreetMap's parts and then Wikipedia's. A download takes every Wikipedia part's lists first,
+  // then the guides, the second stages, and OpenStreetMap's parts (download.js), each in this order: one stopped partway has the stops' before the way's.
   for (const s of stops) {
     const here = /** @type {LatLng} */ ([r4(s.lat), r4(s.lng)]);
     if (!osm.some((o) => o.km === 0 && meters(pt(o.points[0]), s) < 1000)) osm.push(osmPart([here], STOP_M, 0, { how: 'around', names: [s.name] }));

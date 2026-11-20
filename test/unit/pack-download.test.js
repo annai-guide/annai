@@ -486,6 +486,48 @@ test("Wikidata that never answers is left after three parts in a row, as an edit
   assert.deepEqual(m.files.filter((f) => f.kind === 'wikipedia-editions'), []);
 });
 
+test("a language added or taken off keeps the part's former second stage until the new one comes, whether the run stopped or failed: offline, rows keep every edition's summary they had", async () => {
+  const { ws, trip } = await packTrip({ '/plan/yufuin.json': yufuinStop('Yufuin Station', YUFUIN, 1) });
+  const part = /** @type {any} */ ((await planFor(ws, trip)).parts.find((p) => p.kind === 'wikipedia'));
+  const stages = async () => (await files(ws, trip)).filter((p) => p.includes('.x.'));
+  const net = (/** @type {Record<string, any>} */ o = {}) => services({ overpass: quiet, wikipedia: yufuinWikipedia, wikidata: wikidataOf(), ...o });
+  await downloadPack({ ws, scope: trip, ...net(), version: V, editions: ['ja', 'en'], gapMs: 0 });
+  const two = morePath(part, ['ja', 'en']);
+  assert.deepEqual(await stages(), [two]);
+  /** How many of the rows the pack gives for the stop carry two editions' summaries of the editions read. @param {string[]} read */
+  const both = async (read) => {
+    const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
+    return pack.pages(YUFUIN, 10_000, read).filter((r) => String(r[6]).split(' · ').length > 1).length;
+  };
+  const before = await both(['ja', 'en']);
+  assert.ok(before >= 9, `${before} rows with two editions`);
+  // Chinese added, and the run stops once its list is in (the phone leaves Wi-Fi), before the new stage: the old one stays, in the manifest too.
+  const abort = new AbortController();
+  const stopped = net();
+  const s = await downloadPack({ ws, scope: trip, fetch: stopped.fetch, version: V, editions: ['ja', 'zh', 'en'], gapMs: 0, signal: abort.signal, onProgress: (p) => { if (p.label.includes('other editions')) abort.abort(); } });
+  assert.deepEqual(await stages(), [two], 'the old stage stays');
+  assert.ok(s.files.some((f) => f.path === two && f.kind === 'wikipedia-editions'));
+  assert.equal(await both(['ja', 'zh', 'en']), before);
+  // The same when Wikidata refuses.
+  const failed = net({ wikidata: () => new Response('', { status: 503 }) });
+  await downloadPack({ ws, scope: trip, fetch: failed.fetch, version: V, editions: ['ja', 'zh', 'en'], gapMs: 0 });
+  assert.deepEqual(await stages(), [two]);
+  assert.equal(await both(['ja', 'zh', 'en']), before);
+  // The new one comes: the old one goes.
+  await downloadPack({ ws, scope: trip, ...net(), version: V, editions: ['ja', 'zh', 'en'], gapMs: 0 });
+  const three = `/offline/wikipedia/${part.id}.x.en.ja.zh.json`;
+  assert.deepEqual(await stages(), [three]);
+  // Chinese taken off with Wikidata down: the three's stays, read by the two editions left; then the two's comes and the three's goes.
+  await downloadPack({ ws, scope: trip, ...net({ wikidata: () => new Response('', { status: 503 }) }), version: V, editions: ['ja', 'en'], gapMs: 0 });
+  assert.deepEqual(await stages(), [three]);
+  assert.equal(await both(['ja', 'en']), before);
+  await downloadPack({ ws, scope: trip, ...net(), version: V, editions: ['ja', 'en'], gapMs: 0 });
+  assert.deepEqual(await stages(), [two]);
+  // English alone: no stage wanted, the old one goes (nothing waits for it).
+  await downloadPack({ ws, scope: trip, ...net(), version: V, editions: ['en'], gapMs: 0 });
+  assert.deepEqual(await stages(), []);
+});
+
 test("the second stage follows the editions read: a language added is a new file, the old one going at that download; one taken off, the same; English alone has none", async () => {
   const { ws, trip } = await packTrip({ '/plan/yufuin.json': yufuinStop('Yufuin Station', YUFUIN, 1) });
   const part = /** @type {any} */ ((await planFor(ws, trip)).parts.find((p) => p.kind === 'wikipedia'));
@@ -559,6 +601,60 @@ const noOsm = () => ({ elements: [] });
 /** The saved answers as if every part asked at the station: parts of one size. @param {string} url */
 const same = (url) => yufuinAnswer(url.replace(/ggscoord=[^&]+/, `ggscoord=${YUFUIN.lat}%7C${YUFUIN.lng}`));
 
+/** Stops 33 km apart, each its own Wikipedia part (and a part between): every part's lists as at Yufuin, its stages by title from Wikidata's real titles. */
+const farWikipedia = (/** @type {string} */ url) => (new URL(url).searchParams.has('titles') ? summariesFrom()(url) : same(url));
+
+test("a second stage's requests count under their own host, as a list's do: Wikidata's under 'wikidata', each edition's by-title under its own; hosts that fail in turn give none up, and the one that fails three in a row is left", async () => {
+  const { ws, trip } = await packTrip(farStops(4));
+  const wikis = (await planFor(ws, trip)).parts.filter((p) => p.kind === 'wikipedia');
+  assert.equal(wikis.length, 7);
+  // Stage by stage: Wikidata refuses, Japanese's titles refuse, Wikidata, Japanese, Wikidata, Japanese; the seventh asks for neither. Each stage's
+  // Wikidata request answers except in the odd stages, so Wikidata never fails twice in a row; Japanese fails in every even stage, three in a row of its own.
+  let wd = 0;
+  let ja = 0;
+  const net = services({
+    overpass: noOsm, wikipedia: (url, init) => (new URL(url).searchParams.has('titles') && url.includes('ja.wikipedia.org') ? (ja++, new Response('', { status: 503 })) : farWikipedia(url)),
+    wikidata: (url, init) => (++wd % 2 === 1 ? new Response('', { status: 503 }) : wikidataOf()(url)),
+  });
+  const m = await downloadPack({ ws, scope: trip, fetch: net.fetch, version: V, editions: ['ja', 'en'], gapMs: 0 });
+  // Stage 1: Wikidata fails (1 in a row). Stage 2: Wikidata answers, Japanese fails (ja 1). Stage 3: Wikidata fails. Stage 4: Wikidata answers, ja 2.
+  // Stage 5: Wikidata fails. Stage 6: Wikidata answers, ja 3, left. Stage 7: left, asked nothing.
+  assert.equal(net.asked.filter((a) => a.url.includes('wikidata.org')).length, 6);
+  assert.equal(ja, 3);
+  assert.deepEqual(m.failed.map((f) => f.why), ['Wikidata answered 503.', 'ja.wikipedia.org answered 503.', 'Wikidata answered 503.', 'ja.wikipedia.org answered 503.', 'Wikidata answered 503.',
+    'ja.wikipedia.org answered 503.', 'ja.wikipedia.org answered 503.']);
+  assert.equal(m.stopped, true, 'Japanese gave up');
+  assert.deepEqual(m.files.filter((f) => f.kind === 'wikipedia-editions'), []);
+  assert.equal(m.failed.length, wikis.length, 'every stage counted once: three failed at Wikidata, three at Japanese, the seventh left');
+});
+
+test("a second stage whose edition the run gave up is left, never asked: the lists a run had kept, the edition's others refused three times in a row", async () => {
+  const { ws, trip } = await packTrip(farStops(4));
+  const wikis = (await planFor(ws, trip)).parts.filter((p) => p.kind === 'wikipedia');
+  const t0 = Date.parse('2026-11-20T09:00:00Z');
+  const net = () => services({ overpass: noOsm, wikipedia: farWikipedia, wikidata: wikidataOf() });
+  await downloadPack({ ws, scope: trip, ...net(), version: V, editions: ['ja', 'en'], gapMs: 0, now: () => t0 });
+  // The first three parts' Japanese lists a month old, so they are asked again; the others' lists are fresh and their stages are gone.
+  const m = /** @type {any} */ (await readManifest(ws, trip));
+  const stale = new Set(wikis.slice(0, 3).map((p) => pathOf(p, 'ja')));
+  const stages = wikis.slice(3).map((p) => morePath(p, ['ja', 'en']));
+  await ws.writeMany(trip, [...stages.map((path) => ({ path, content: null })), { path: MANIFEST, content: JSON.stringify({ ...m, files: m.files.filter((/** @type {any} */ f) => !stages.includes(f.path)).map((/** @type {any} */ f) => (stale.has(f.path) ? { ...f, at: t0 - STALE_MS } : f)) }) }], { author: 'system' });
+  const refused = services({ overpass: noOsm, wikipedia: (url) => (url.includes('ja.wikipedia.org') && !new URL(url).searchParams.has('titles') ? new Response('', { status: 503 }) : farWikipedia(url)), wikidata: wikidataOf() });
+  const r = await downloadPack({ ws, scope: trip, fetch: refused.fetch, version: V, editions: ['ja', 'en'], gapMs: 0, now: () => t0 + 2 * 86_400_000 });
+  // Three Japanese lists refused: Japanese is given up. Its stages, kept lists or not, are left and asked for nothing: not Wikidata, not by title.
+  assert.deepEqual(wikiHosts(refused.asked), ['ja.wikipedia.org', 'ja.wikipedia.org', 'ja.wikipedia.org']);
+  assert.deepEqual(refused.asked.filter((a) => a.url.includes('wikidata.org')), []);
+  assert.equal(r.stopped, true);
+  // The three whose lists failed (their old lists kept) and the four left: seven stages, each counted with the failure that left it.
+  assert.equal(r.failed.filter((f) => f.part && 'source' in f.part && f.part.source === 'wikidata').length, wikis.length);
+  assert.ok(r.failed.filter((f) => f.part && 'source' in f.part && f.part.source === 'wikidata').every((f) => f.why === 'ja.wikipedia.org answered 503.'));
+  // The next run brings them all, the lists that failed and the stages.
+  const up = net();
+  const u = await downloadPack({ ws, scope: trip, fetch: up.fetch, version: V, editions: ['ja', 'en'], gapMs: 0, now: () => t0 + 3 * 86_400_000 });
+  assert.deepEqual(u.failed, []);
+  assert.equal(u.files.filter((f) => f.kind === 'wikipedia-editions').length, wikis.length);
+});
+
 test("a download that stopped before its manifest: the files it left keep the edition their path says and no file is read as another edition's; with no manifest at all English's file is asked again once, its ids not being known", async () => {
   const { ws, trip } = await packTrip({ '/plan/yufuin.json': yufuinStop('Yufuin Station', YUFUIN, 1) });
   const net = () => services({ overpass: noOsm, wikipedia: (url) => yufuinAnswer(url) });
@@ -619,11 +715,16 @@ test("Wikipedia's parts come in the plan's order, each part in every edition in 
   // By host and the point asked about: every part in the plan's order, Japanese then English at each.
   const asks = all.asked.filter((a) => a.url.includes('wikipedia.org')).map((a) => `${new URL(a.url).hostname} ${new URL(a.url).searchParams.get('ggscoord')}`);
   assert.deepEqual(asks, wikis.flatMap((p) => ['ja', 'en'].map((e) => `${e}.wikipedia.org ${p.at.join('|')}`)));
-  // Every Wikipedia part first (the quick ones: see the order test below), then OpenStreetMap's.
-  // Each part's second stage right after its lists (the stand-in Wikidata knows no other edition: one request, nothing more to ask).
+  // Every Wikipedia part's lists first, then the guides, then the second stages, then OpenStreetMap's (the order test below): a stage waits for
+  // every list of its part, and the guides read English's lists alone, so the stages don't hold the first guide back (a long trip in three
+  // editions has about 8 requests a part, 3 of them the lists). The stand-in Wikidata knows no other edition: one request a stage, nothing more to ask.
   const kinds = kindsAsked(all.asked, (await planFor(ws, trip)).parts);
-  assert.deepEqual(kinds.slice(0, 9), Array(3).fill(['wiki stop', 'wiki stop', 'wikidata']).flat());
-  assert.deepEqual(kinds.filter((k) => k !== 'guides').slice(9), [...Array(wikis.length - 3).fill(['wiki way', 'wiki way', 'wikidata']).flat(), ...Array(5).fill('osm')]);
+  const lists = kinds.filter((k) => k === 'wiki stop' || k === 'wiki way');
+  assert.deepEqual(lists, wikis.flatMap((p) => Array(2).fill(p.place.how === 'near' ? 'wiki stop' : 'wiki way')));
+  assert.deepEqual(kinds.slice(0, lists.length), lists, 'the lists, every part, before anything else');
+  const lastGuide = kinds.lastIndexOf('guides');
+  assert.equal(kinds[lists.length], 'guides', 'then the guides');
+  assert.deepEqual(kinds.slice(lastGuide + 1), [...Array(wikis.length).fill('wikidata'), ...Array(5).fill('osm')], 'then each stage, then OpenStreetMap');
   assert.deepEqual(m.failed, []);
   assert.equal(m.files.filter((f) => f.kind === 'wikipedia').length, 2 * wikis.length);
   assert.equal(m.files.filter((f) => f.kind === 'wikipedia-editions').length, wikis.length);
