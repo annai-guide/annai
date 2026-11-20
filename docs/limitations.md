@@ -1131,3 +1131,31 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** how lit a card is counts the lines in the trip's log that count as said by the user (src/core/scopes.js `linesSaid`), and an imported history brings its lines as they were, as the user's own. An imported trip carries an `imported` mark (src/core/archive.js `importArchive`) and could count only the lines after it, but a traveller's own restored Backup of a trip carries the same mark, so counting only later lines would unlight their own restored trip; no line says whose it was.
 - **Revisit when:** a traveller who imports shared trips finds an unused one looks used.
 - **Approved:** 2026-11-19, the user's answer "All recommended" to the trip-colour design's questions (its fourth: "Accept all three (Recommended)").
+
+### A removed trip's cost leaves the spending figures
+- **Kind:** known limitation.
+- **What the traveller sees:** after a trip or conversation is removed, Settings → Models → Spending's figures (All time, and the other ranges when its calls were in them) drop by what it cost, and so does today's spend that Spend per day counts, as before.
+- **Why:** removing means removing (spec §4.9): the figures are summed from the trips' own logs, and keeping a removed trip's cost would need a ledger outside the trips, new stored state to keep right through every write, removal, import and restore.
+- **Revisit when:** a traveller wants spend to outlive removals.
+- **Approved:** 2026-11-19, the user's answer "All recommended" to the cost-display design's questions.
+
+### After a long, heavy history, the spending figures take a moment
+- **Kind:** known limitation.
+- **What the traveller sees:** Settings → Models opens a moment later than before, and takes the same moment each time it is drawn again (after a change to a role's list), since it shows Spending's figures only once it has read them from every log (its other sections wait with it: nothing fills in later). In the cost-display design's measurements, made-up stores read in Docker on a desktop computer, not measured on a phone, which may be slower: about 0.3 s more in WebKit after a heavy year (19,300 log entries in 100 trips and conversations), about 2.3 s after a year at the heaviest day of real use every day (122,000 in 300); about 0.02 s after a month like the one measured.
+- **Why:** nothing is stored for the figures: a running total would be state to keep right through every write, removal, import and restore, for the extreme case only. The whole read is only on Models; a turn's start (and again after a note cuts one of its steps short), and a live talk's start and each of its usage reports, read each log's newest 20 model calls and requests, then pages of 1000 for as long as the oldest one read is from today, and only with a Spend per day set.
+- **Revisit when:** a traveller reports Settings → Models slow to open.
+- **Approved:** 2026-11-19, the user's answer "All recommended" to the cost-display design's questions.
+
+### Calls made before a model had prices stay "not counted"
+- **Kind:** known limitation.
+- **What the traveller sees:** Settings → Models → Spending's line "Not counted: # calls to models with no prices" keeps counting the calls a model answered before its prices were typed on its page, after they are typed; those calls stay out of the figures.
+- **Why:** a call is priced when it is made (cost.js, a price may start on a date), and a price change must never rewrite past costs.
+- **Revisit when:** the line misleads a traveller.
+- **Approved:** 2026-11-19, the user's answer "All recommended" to the cost-display design's questions.
+
+### A restored copy of a trip, with its history, counts its cost again
+- **Kind:** known limitation.
+- **What the traveller sees:** after opening their own Backup, made with its History, of a trip or conversation still on the phone (an active one asks "Replace mine" or "Add as a new one", or, in a backup of more than 3 conversations, one question for all of them: "Add as new ones" or "Replace mine"; an archived one comes back as a new copy without asking), Settings → Models → Spending's All time, every other figure the trip's calls were in, and today's spend that Spend per day counts rise by that trip's cost again, until the old or extra copy is removed. A Share carries no history unless its History box is ticked (that needs its places on), and a file without history adds no cost.
+- **Why:** each way imports the file's history into a new trip, and "Replace mine" only archives the old one, whose cost still counts. Telling the two copies' entries apart would need an identity for log entries across copies, or a ledger outside the trips.
+- **Revisit when:** a traveller restores trips they still have and the figures mislead.
+- **Approved:** 2026-11-19, the user's answer in the main session's tab: "Accept (Rec.)".

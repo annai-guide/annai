@@ -1,13 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, until } from './agent-kit.js';
-import { inQuiet, quietEnds, spentToday, costs, UNWATCHED_STEPS } from '../../src/core/agent/budgets.js';
+import { inQuiet, quietEnds, spentToday, spentIn, costs, UNWATCHED_STEPS } from '../../src/core/agent/budgets.js';
 import { isWatched } from '../../src/core/agent/loop.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
-import { ensureBaseScopes, createTrip, ME } from '../../src/core/scopes.js';
+import { ensureBaseScopes, createTrip, ME, SYS } from '../../src/core/scopes.js';
 import { logEvent } from '../../src/core/events.js';
 
 const at = (/** @type {string} */ iso) => Date.parse(iso);
@@ -187,6 +187,116 @@ test("today's spending is all counted, however many web requests the day made (s
   await logEvent(store, ME, { type: 'net.request', data: { kind: 'speech-out', cost: 0.25 } }, at('2026-11-27T08:01:00Z'));
   for (let i = 0; i < 4500; i++) await logEvent(store, ME, { type: 'net.request', data: { kind: 'web', tool: 'fetch' } }, at('2026-11-27T09:00:00Z') + i * 1000);
   assert.equal(await spentToday(store, now, 'UTC'), 0.75);
+});
+
+// The Spending section's figures (the cost-display design, option A): one read for Today, 7 days, 30 days and All time, and
+// Spend per day's Today is the same number while the log is in time order (spentToday is spentIn's Today, whose read ends at a page that reaches before the day; All time's reads on).
+/** A store with annai's own scopes, and a trip of its own. */
+async function spendStore() {
+  const store = createMemoryStore();
+  const ws = new Workspace(store, { schemaFor: () => null });
+  await ensureBaseScopes(ws);
+  return { store, ws, trip: await createTrip(ws, { title: 'Kyoto' }) };
+}
+
+test('spentIn: each range starts at local midnight in the phone\'s zone, today and the 6 or 29 days before; while the log is in time order, Spend per day\'s today is the same number', async () => {
+  const { store, trip } = await spendStore();
+  // 12:00 in Tokyo. Whatever zone the machine running the test is in, Tokyo's and UTC's edges both hold only when the zone given counts.
+  const now = at('2026-11-27T03:00:00Z');
+  // Each a power of two, so each sum says which entries it holds: the minute before each edge, then the edge itself.
+  for (const [iso, cost] of /** @type {[string, number][]} */ ([
+    ['2026-10-28T14:59:00Z', 64], // 23:59, 28 Oct in Tokyo: all time only
+    ['2026-10-28T15:00:00Z', 32], // 00:00, 29 Oct: 30 days (today, 27 Nov, and the 29 days before)
+    ['2026-11-20T14:59:00Z', 16], // 23:59, 20 Nov
+    ['2026-11-20T15:00:00Z', 8], // 00:00, 21 Nov: 7 days
+    ['2026-11-26T14:59:00Z', 4], // 23:59, 26 Nov
+    ['2026-11-26T15:00:00Z', 2], // 00:00, 27 Nov: today
+  ])) await logEvent(store, iso < '2026-11-20' ? ME : trip, { type: 'model.turn', data: { answeredBy: 'A', cost } }, at(iso));
+  await logEvent(store, ME, { type: 'net.request', data: { kind: 'speech-out', outcome: 'ok', cost: 1 } }, at('2026-11-27T02:00:00Z')); // her voice, today
+  assert.deepEqual(await spentIn(store, now, 'Asia/Tokyo', [1, 7, 30, Infinity]), { sums: [3, 15, 63, 127], unpriced: 0 });
+  assert.equal(await spentToday(store, now, 'Asia/Tokyo'), 3);
+  assert.deepEqual((await spentIn(store, now, 'UTC', [1, 7, 30, Infinity])).sums, [1, 7, 31, 127], "by UTC's midnights, each of Tokyo's falls the day before");
+});
+
+test("spentIn: on a day the clocks change, today starts at that day's midnight", async () => {
+  const { store } = await spendStore();
+  await logEvent(store, ME, { type: 'model.turn', data: { answeredBy: 'A', cost: 1 } }, at('2026-03-28T22:30:00Z')); // 23:30 in Berlin, 28 Mar
+  await logEvent(store, ME, { type: 'model.turn', data: { answeredBy: 'A', cost: 2 } }, at('2026-03-28T23:00:00Z')); // 00:00, 29 Mar (summer time from 02:00)
+  assert.equal(await spentToday(store, at('2026-03-29T10:00:00Z'), 'Europe/Berlin'), 2);
+  await logEvent(store, ME, { type: 'model.turn', data: { answeredBy: 'A', cost: 4 } }, at('2026-10-24T22:30:00Z')); // 00:30, 25 Oct (winter time from 03:00)
+  assert.equal(await spentToday(store, at('2026-10-25T11:00:00Z'), 'Europe/Berlin'), 4);
+  assert.deepEqual((await spentIn(store, at('2026-10-25T11:00:00Z'), 'Europe/Berlin', [1, 7, 30, Infinity])).sums, [4, 4, 4, 7]);
+});
+
+test('spentIn: what counts is what Spend per day counts, annai\'s own log too; a call that answered with no price is counted once as not counted, a call that failed or a model attempt never as not counted', async () => {
+  const { store, trip } = await spendStore();
+  const now = at('2026-11-27T12:00:00Z');
+  /** @param {string} scope @param {string} type @param {any} data */
+  const log = (scope, type, data) => logEvent(store, scope, { type, data }, now - 60_000);
+  const failed = [{ model: 'm', name: 'M', outcome: 'timeout', ms: 30_000 }];
+  // First, so that its time follows its place in the log (spentIn takes the log's order to be the order in time): a call that answered 100 days ago with no price, in All time only.
+  await logEvent(store, trip, { type: 'model.turn', data: { role: 'main', answeredBy: 'C', attempts: [{ model: 'c', name: 'C', outcome: 'ok', ms: 900 }] } }, now - 100 * 86_400_000);
+  await log(trip, 'model.turn', { role: 'main', answeredBy: 'A', attempts: [{ model: 'a', name: 'A', outcome: 'ok', ms: 900, cost: 0.5 }], cost: 0.5 });
+  await log(trip, 'net.request', { kind: 'model', model: 'A', outcome: 'ok', cost: 0.5 }); // its attempt: the turn holds its cost
+  await log(trip, 'model.turn', { role: 'main', answeredBy: 'B', attempts: [{ model: 'b', name: 'B', outcome: 'ok', ms: 900 }] }); // no prices
+  await log(trip, 'net.request', { kind: 'model', model: 'B', outcome: 'ok' });
+  await log(trip, 'model.turn', { role: 'utility', answeredBy: null, attempts: failed }); // failed before using anything
+  await log(trip, 'model.turn', { role: 'main', answeredBy: null, attempts: failed, cost: 0.125 }); // failed, after using some
+  await log(ME, 'net.request', { kind: 'speech-in', outcome: 'ok', cost: 0.25 });
+  await log(ME, 'net.request', { kind: 'speech-out', outcome: 'ok' }); // a voice with no prices
+  await log(ME, 'net.request', { kind: 'speech-out', outcome: 'timeout' });
+  await log(trip, 'net.request', { kind: 'realtime', outcome: 'ok', cost: undefined }); // a live turn with no prices
+  await log(trip, 'net.request', { kind: 'realtime', outcome: 'ok', cost: 0 }); // a free tier's
+  await log(trip, 'net.request', { kind: 'web', tool: 'fetch', outcome: 'ok' });
+  await log(SYS, 'model.turn', { role: 'try', answeredBy: 'A', attempts: [{ model: 'a', name: 'A', outcome: 'ok', ms: 900, cost: 0.0625 }], cost: 0.0625 }); // Try this model, in annai's own log
+  const { sums, unpriced } = await spentIn(store, now, 'UTC', [1, 7, 30, Infinity]);
+  assert.deepEqual(sums, [0.9375, 0.9375, 0.9375, 0.9375], "the System log's call is in every range");
+  assert.equal(await spentToday(store, now, 'UTC'), 0.9375, "Spend per day (spentToday) counts the System log's call too");
+  assert.equal(unpriced, 4, "B, the voice, the live turn and the call 100 days ago, once across the four ranges (All time's)");
+  assert.equal((await spentIn(store, now, 'UTC', [1, 7, 30])).unpriced, 3, "the call 100 days ago is outside the longest range asked for, whose count it is");
+  assert.equal((await spentIn(store, now + 86_400_000, 'UTC', [1])).unpriced, 0, 'only in the longest range asked for: none tomorrow');
+});
+
+test("spentIn: a first page of 20 a conversation reads little of one with nothing today, and gives the whole read's sum", async () => {
+  const { store, ws, trip } = await spendStore();
+  const now = at('2026-11-27T20:00:00Z');
+  const idle = [];
+  for (let i = 0; i < 5; i++) {
+    const id = await createTrip(ws, { title: `Old ${i}` });
+    idle.push(id);
+    for (let j = 0; j < 200; j++) await logEvent(store, id, { type: 'model.turn', data: { answeredBy: 'A', cost: 0.01 } }, at('2026-11-20T08:00:00Z') + j * 1000);
+  }
+  await logEvent(store, trip, { type: 'model.turn', data: { answeredBy: 'A', cost: 1 } }, at('2026-11-26T23:00:00Z')); // yesterday's
+  // More of today's than a first page holds, among more web requests than a page of 1000.
+  for (let i = 0; i < 45; i++) {
+    await logEvent(store, trip, { type: 'model.turn', data: { answeredBy: 'A', cost: 0.5 } }, at('2026-11-27T08:00:00Z') + i * 60_000);
+    for (let j = 0; j < 30; j++) await logEvent(store, trip, { type: 'net.request', data: { kind: 'web', tool: 'fetch' } }, at('2026-11-27T08:00:00Z') + i * 60_000 + j);
+  }
+  /** @type {Map<string, number>} */
+  const read = new Map();
+  const tx = store.tx.bind(store);
+  store.tx = (stores, mode, fn) => tx(stores, mode, (t) => fn({ ...t, listEvents: async (scope, q) => {
+    const page = await t.listEvents(scope, q);
+    read.set(scope, (read.get(scope) ?? 0) + page.length);
+    return page;
+  } }));
+  const today = await spentToday(store, now, 'UTC');
+  assert.equal(today, 22.5);
+  for (const id of idle) assert.equal(read.get(id), 20, "a conversation with nothing today: its first page");
+  read.clear();
+  assert.equal((await spentIn(store, now, 'UTC', [1, Infinity])).sums[0], today, 'the whole read');
+  for (const id of idle) assert.equal(read.get(id), 200);
+});
+
+test("spentIn: one entry written late, stamped before today, doesn't hide today's earlier entries (a midnight race, or a clock set back once)", async () => {
+  const { store, trip } = await spendStore();
+  const now = at('2026-11-27T20:00:00Z');
+  // More of today's than a first page of 20 holds, all in one conversation: the newest entry in the log is yesterday's.
+  for (let i = 0; i < 25; i++) await logEvent(store, trip, { type: 'model.turn', data: { answeredBy: 'A', cost: 0.5 } }, at('2026-11-27T08:00:00Z') + i * 60_000);
+  await logEvent(store, trip, { type: 'model.turn', data: { answeredBy: 'A', cost: 1 } }, at('2026-11-26T23:59:00Z'));
+  assert.equal(await spentToday(store, now, 'UTC'), 12.5, 'Spend per day');
+  assert.equal((await spentIn(store, now, 'UTC', [1, 7])).sums[0], 12.5, "Spending's Today");
+  assert.equal((await spentIn(store, now, 'UTC', [1, 7])).sums[1], 13.5, 'and its 7 days hold the late one');
 });
 
 test("Spend per day counts both halves' turns, and stops either at the budget, with one card (K1)", async () => {

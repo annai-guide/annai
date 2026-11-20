@@ -1,5 +1,5 @@
 {
-  "build": "6c1a2eeda00a",
+  "build": "abe21e14e502",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -36,7 +36,7 @@
     "/src/core/after/stamps.js": "1bdd22a5c694",
     "/src/core/archive-crypto.js": "9b6e09565a09",
     "/src/core/agent/blocks.js": "883a462288bb",
-    "/src/core/agent/budgets.js": "ec0a25e840fb",
+    "/src/core/agent/budgets.js": "a7804d7ea6b2",
     "/src/core/agent/compaction.js": "4c7628bbedda",
     "/src/core/agent/context.js": "3778beba3f2c",
     "/src/core/agent/halves.js": "c73db10c33aa",
@@ -260,7 +260,7 @@
     "/src/ui/screens/item.js": "aaf8d3ec01d0",
     "/src/ui/screens/mcp.js": "8594db2419e8",
     "/src/ui/screens/model.js": "6976470d905a",
-    "/src/ui/screens/models.js": "63ad69a849f8",
+    "/src/ui/screens/models.js": "512a084dbbb3",
     "/src/ui/screens/notifications.js": "d1de25d1c4ae",
     "/src/ui/screens/plan.js": "14ce476afd90",
     "/src/ui/screens/plugin-install.js": "00ac186440d9",
@@ -269,7 +269,7 @@
     "/src/ui/screens/provider.js": "d97508c3999d",
     "/src/ui/screens/recap.js": "abc8f1c81507",
     "/src/ui/screens/replay.js": "e4648e86a038",
-    "/src/ui/screens/settings.js": "26346e25d0fe",
+    "/src/ui/screens/settings.js": "91c05e51cc1f",
     "/src/ui/screens/simulate.js": "16dddd363254",
     "/src/ui/screens/shiori.js": "570d16acdc88",
     "/src/ui/screens/sees.js": "6a674fc473ae",
@@ -300,8 +300,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "869ce62e53ac",
-    "/l10n/zh-Hans.json": "0677310ae9c0",
-    "/l10n/zh-Hant.json": "dd0e1017bf40"
+    "/l10n/ja.json": "419795d71182",
+    "/l10n/zh-Hans.json": "ee1bfd80b373",
+    "/l10n/zh-Hant.json": "e6a543babbde"
   }
 }

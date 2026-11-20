@@ -1,11 +1,12 @@
 /**
  * Budgets and safeguards (spec §6.6). All are opt-in, with no defaults. Cost is always visible:
- * per wake and per trip, from the model.turn records, speech requests and live sessions' turns.
+ * per wake, per trip and over all trips, from the model.turn records, speech requests and live sessions' turns.
  * @typedef {import('../types.js').Store} Store
  * @typedef {import('./loop.js').Budgets} Budgets
  */
 import { t } from '../l10n.js';
 import { money, num } from '../intl.js';
+import { wallClock, instantOf } from '../time.js';
 
 /** Whether an entry carries a call's cost: a role call's model.turn, or a speech request or a live session's turn (their costs aren't in any model.turn). @param {any} e */
 const priced = (e) => e.type === 'model.turn' || (e.type === 'net.request' && /^(speech-|realtime$)/.test(String(e.data?.kind ?? '')));
@@ -37,36 +38,60 @@ export function quietEnds(now, quiet, timeZone) {
   return Math.floor(now / 60_000) * 60_000 + left * 60_000;
 }
 
-/** Local midnight before now, in ms. @param {number} now @param {string} timeZone */
-function midnight(now, timeZone) {
-  return Math.floor(now / 60_000) * 60_000 - minutes(now, timeZone) * 60_000;
+/** Local midnight back days before today's: that day's first instant on the phone's clock, also when the clocks change. @param {number} now @param {string} timeZone @param {number} back */
+function midnight(now, timeZone, back) {
+  const w = wallClock(now, timeZone);
+  const d = new Date(Date.UTC(w.year, w.month - 1, w.day - back));
+  return instantOf({ year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() }, timeZone);
 }
 
-/** How many log entries spentToday reads at a time, newest first. */
+/**
+ * A scope's first page when the range has an edge: one with nothing in it (most, on most days) ends there. 20: in the cost-display
+ * design's measurements it read today's spend 4 to 8 times faster than 1000, with the same sum (WebKit, 100 and 300 conversations).
+ */
+const FIRST = 20;
+/** The pages after it, newest first, while the last of the page before is in the range. */
 const PAGE = 1000;
 
+/** Whether a priced call answered: a model answered the turn, or the speech or live request came back ok. @param {any} e */
+const answered = (e) => (e.type === 'model.turn' ? Boolean(e.data?.answeredBy) : e.data?.outcome === 'ok');
+
 /**
- * USD of every model call since local midnight, in every scope. Read a page at a time back to
- * midnight, so a day of web requests (net.request too) can't hide what was spent.
- * @param {Store} store @param {number} now @param {string} timeZone
+ * USD of the priced calls in every scope since local midnight days[i] - 1 days back (1: today, Spend per day's day; 7: the 6 days
+ * before too; Infinity: all time), and how many in the longest range answered with no cost (no prices). Newest first, a FIRST page,
+ * then pages while the last of the page before is in the range, so a day of web requests can't hide what was spent; all time reads each scope whole.
+ * @param {Store} store @param {number} now @param {string} timeZone @param {number[]} days
+ * @returns {Promise<{ sums: number[], unpriced: number }>}
  */
-export async function spentToday(store, now, timeZone) {
-  const since = midnight(now, timeZone);
+export async function spentIn(store, now, timeZone, days) {
+  const since = days.map((n) => (n === Infinity ? -Infinity : midnight(now, timeZone, n - 1)));
+  const from = Math.min(...since);
   return store.tx(['scopes', 'events'], 'readonly', async (t) => {
-    let sum = 0;
+    const sums = since.map(() => 0);
+    let unpriced = 0;
     for (const s of await t.listScopes()) {
       /** @type {number | undefined} */
       let before;
-      for (;;) {
-        const page = await t.listEvents(s.id, { types: ['model.turn', 'net.request'], reverse: true, limit: PAGE, ...(before ? { before } : {}) });
-        const today = page.filter((e) => e.ts >= since);
-        for (const e of today) if (priced(e)) sum += typeof e.data?.cost === 'number' ? e.data.cost : 0;
-        if (page.length < PAGE || today.length < page.length) break;
+      for (let limit = from === -Infinity ? Infinity : FIRST; ; limit = PAGE) {
+        const page = await t.listEvents(s.id, { types: ['model.turn', 'net.request'], reverse: true, limit, ...(before ? { before } : {}) });
+        const inside = page.filter((e) => e.ts >= from);
+        for (const e of inside.filter(priced)) {
+          const cost = e.data?.cost;
+          if (typeof cost === 'number') since.forEach((c, i) => { if (e.ts >= c) sums[i] += cost; });
+          else if (answered(e)) unpriced++;
+        }
+        // Stops when the page's last (the oldest in the log) is before the range: an older entry in the log is taken to be older in time. So entries written late (stamped before the range and written after today's: a midnight race, a clock set back) end the read early while one of them is a page's last.
+        if (page.length < limit || page[page.length - 1].ts < from) break;
         before = page[page.length - 1].seq;
       }
     }
-    return sum;
+    return { sums, unpriced };
   });
+}
+
+/** USD since local midnight, in every scope: Spend per day's. @param {Store} store @param {number} now @param {string} timeZone */
+export async function spentToday(store, now, timeZone) {
+  return (await spentIn(store, now, timeZone, [1])).sums[0];
 }
 
 /** The cost of a conversation, per wake and in all. @param {Store} store @param {string} scope */
@@ -114,8 +139,8 @@ export function budgetStop({ budgets, steps, spent, watched = true }) {
 export function budgetWords(over, plain = false) {
   if (over.which === 'spend') {
     /* en */
-    if (plain) return { title: "Shiori stopped: today's budget is spent", body: `Today's model calls cost $${over.spent.toFixed(2)} of the $${over.perDay.toFixed(2)} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.` };
-    return { title: t`Shiori stopped: today's budget is spent`, body: t`Today's model calls cost ${money(over.spent)} of the ${money(over.perDay)} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.` };
+    if (plain) return { title: "Shiori stopped: today's budget is spent", body: `Today's model calls, voices and live talk cost $${over.spent.toFixed(2)} of the $${over.perDay.toFixed(2)} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.` };
+    return { title: t`Shiori stopped: today's budget is spent`, body: t`Today's model calls, voices and live talk cost ${money(over.spent)} of the ${money(over.perDay)} a day you set. She can go on tomorrow, or you can raise it in Settings → Models → Spend per day.` };
   }
   /* en */
   if (plain) return { title: 'Shiori stopped: step limit', body: over.own ? `She took ${over.steps} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.` : `She took the ${over.steps} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.` };

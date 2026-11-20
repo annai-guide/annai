@@ -9,6 +9,8 @@ const sections = (page) => page.locator('main .screen > section.panel > h2').all
 test('Settings lists what a user reaches for most often first, and Erase last', async ({ page }) => {
   await openApp(page, '#/settings');
   await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
+  // Models' line says what was spent is there too (the cost display: Settings → Models → Spending).
+  await expect(page.locator('section.panel', { has: page.getByRole('heading', { name: 'Models' }) })).toContainText('what she has spent and may spend a day');
   expect(await sections(page)).toEqual(['Models', 'Voice', 'Notifications', 'Backup', 'Shiori', 'Languages', 'Photos', 'Tools', 'Plugins', 'Storage',
     'Updates', 'About', 'Diagnostics', 'Developer', 'Experimental', 'Erase']);
   // Open an annai file sits with Backup.
@@ -66,9 +68,9 @@ test('Settings → Experimental points developers to Remote trace: install it fr
 
 // Settings → Models takes the request settings, and settings save as they change (the user, 2026-10-18).
 
-test('Spend per day, the cache and housekeeping are on Settings → Models, and gone from Settings → Shiori', async ({ page }) => {
+test('Spending with Spend per day, the cache and housekeeping are on Settings → Models, and gone from Settings → Shiori', async ({ page }) => {
   await openApp(page, '#/models');
-  for (const name of ['Spend per day', 'Cache', 'Housekeeping']) await expect(page.getByRole('region', { name, exact: true })).toBeVisible();
+  for (const name of ['Spending', 'Cache', 'Housekeeping']) await expect(page.getByRole('region', { name, exact: true })).toBeVisible();
   await expect(page.getByLabel('Spend per day (USD)')).toHaveValue('');
   await expect(page.getByRole('radio', { name: '1 hour' })).toBeChecked(); // an hour unless you choose five minutes
   await expect(page.getByLabel('Summarize at (% of the context)')).toHaveValue('70');
