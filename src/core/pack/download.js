@@ -7,6 +7,7 @@ import { meters } from '../live/geo.js';
 import { StorageFullError } from '../errors.js';
 import { anySignal } from '../signals.js';
 import { nearUrl, articlesOf, wikiSaid, agentHeader } from '../wiki.js';
+import { forget } from '../forget.js';
 
 /**
  * Downloads a trip's offline pack (spec §11.5), one request at a time with a second between them: the parts its plan needs that the pack
@@ -146,6 +147,18 @@ function pause(ms, signal) {
  * @returns {Promise<Manifest>}
  */
 export async function downloadPack(o) {
+  try {
+    return await fetchPack(o);
+  } finally {
+    // The pack keeps no history, which nothing reads (spec §11.5): what a download wrote is the pack now, one that stopped or failed too
+    // (a full phone gets the space back). The versions it replaced and the parts it removed go with the content only they named, as a
+    // plugin's package's do (plugins.js). If this fails, they take space until the next download.
+    await forget(o.ws.store, o.scope, { history: (p) => p.startsWith(DIR) }).catch(() => {});
+  }
+}
+
+/** The download itself. @param {Parameters<typeof downloadPack>[0]} o @returns {Promise<Manifest>} */
+async function fetchPack(o) {
   const { ws, scope } = o;
   const now = o.now ?? Date.now;
   const signal = o.signal ?? new AbortController().signal;
