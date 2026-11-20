@@ -1224,3 +1224,33 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** those kept blocks are what lets the warm summary read the cache instead of writing it again; leaving them out would cost a full write of the conversation each time.
 - **Revisit when:** a trace shows her acting on a closed item after a summary.
 - **Approved:** chief's decision C150 (2026-11-19, not the user's words), accepted as recommended.
+
+### A file moved between trips during a Backup of everything can be missing from it
+- **Kind:** deferred.
+- **What the traveller sees:** rarely: a file moved from one trip to another (or to the files waiting with Shiori) in the moment a Backup of everything is being made can be in neither trip's part of that Backup; the file itself is fine on the phone, and the next Backup has it.
+- **Why:** each trip is listed in its own transaction (src/core/archive.js), so a move between two listings can fall between them; one moment across every trip would need the whole phone's files read at once, or a restart rule that a busy conversation might never let finish. Found by pack-history-next's second re-review (2026-11-20), on main before it.
+- **Revisit when:** the next version's Backup work: a move counted as a change of the Backup's listing (a restart, as a freed content already is), or a design that lists every scope together.
+
+### A city stop's OpenStreetMap part may not finish within the pack's 60 s
+- **Kind:** deferred.
+- **What the traveller sees:** in a big city, the offline pack may hold no places for the stop itself: its part (every kind of place within 5 km) can take Overpass longer than the query's own 60 s, so it fails, and `nearby` there asks Overpass online, which takes about 35 s.
+- **Why:** not measured: the editions design's counts at Tokyo Station took 82.5 s for 1 km, and its 5 km batches timed out at 65 and 72 s (2026-11-20); a town (Takayama, 5 km) answered in 53.5 s. The query is as it was before the pack's caps went.
+- **Revisit when:** the next build on the pack: run the pack's own query at a city centre and a built-up corridor, then a smaller radius or a split by kind, from the measurement.
+
+### Microsoft's MAI voices start with a Czech voice
+- **Kind:** deferred.
+- **What the traveller sees:** a Microsoft MAI voice added from OpenRouter's list (or by id) starts with the list's first voice, a Czech one (`cs-CZ-Grant`), for sentences in the traveller's own languages; setting its Voice fixes it.
+- **Why:** the list's rule takes the first warm or neutral voice, else the first, and MAI's voices are named by locale, none of them warm or neutral by name. Found by voice-id-next's final review (2026-11-20).
+- **Revisit when:** the next build on OpenRouter's voices: a voice named by a locale picked by the traveller's first language.
+
+### A refused voice sample is asked again in other formats, the same request for a voice that only sends uncompressed audio
+- **Kind:** deferred.
+- **What the traveller sees:** nothing on screen; a refused sample or sentence of a HeyGen or Gemini voice through OpenRouter makes three identical requests (the format retry asks MP3 then WAV, and both are asked as uncompressed audio for these voices) before the next voice speaks.
+- **Why:** the retry (src/core/voice/voice.js `#clip`) retries any 400 in other formats; it was written before voices that take one format. Found by voice-id-next's unit review (2026-11-20); it spends requests, not correctness.
+- **Revisit when:** the next build on voices: retry only a refusal about the format, or not at all for a voice that asks one format.
+
+### The pack treats Wikimedia's "too many requests" as the site being down
+- **Kind:** deferred.
+- **What the traveller sees:** rarely: if Wikipedia or Wikivoyage answers the pack's download with 429, the parts it was fetching are counted as failed and wait for the next download, instead of the download waiting and going on.
+- **Why:** the pack asks once a second, far under Wikimedia's published 200 a minute, so a 429 needs something else on the same address; the design found it (2026-11-20) and left it out of the editions builds.
+- **Revisit when:** a trace shows a 429 from Wikimedia during a download: wait its `Retry-After` (or five seconds, Wikimedia's rule) once, as the OpenStreetMap side already does.
