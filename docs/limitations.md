@@ -1141,10 +1141,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### After a cold return over 100,000 tokens, her first answer waits for the summary
 - **Kind:** known limitation.
-- **What the traveller sees:** the dock says Tidying, then the conversation shows "Earlier conversation summarized", and her first answer comes after the utility model has written the summary: WAIT_MEASURED. Koe, while Shiori is two halves, answers at once as before.
+- **What the traveller sees:** the dock says Tidying, then the conversation shows "Earlier conversation summarized", and her first answer comes after the utility model has written the summary. On the real-model check (2026-11-19: Step, a local model and Gemini 3.5 Flash Lite as both main and utility model) the summary took 1 to 20 s (Step: 15 s for 61,600 tokens), and her first answer came 5 to 53 s after the line was typed (median 17 s, 16 runs). Koe, while Shiori is two halves, answers at once as before.
 - **Why:** without it, that first answer would write the whole conversation to the cache at full price; answering first and summarizing after would pay that write and the summary both.
 - **Revisit when:** travellers find the wait too long, or the utility model in use is much slower.
-- **Approved:** chief's decision C142 (2026-11-19, not the user's words), accepted as recommended. Its words changed: chief's "about 20 s" is replaced by the wait measured.
+- **Approved:** chief's decision C142 (2026-11-19, not the user's words), accepted as recommended. Its words changed: chief's "about 20 s" is replaced by the wait measured; no Claude model was run (the user, 2026-11-19: "if it works on less capable models it should work on more capable ones").
 
 ### A reply that took several attempts can bring one summary early; one that searched, one late
 - **Kind:** known limitation.
