@@ -1254,3 +1254,45 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the traveller sees:** rarely: if Wikipedia or Wikivoyage answers the pack's download with 429, the parts it was fetching are counted as failed and wait for the next download, instead of the download waiting and going on.
 - **Why:** the pack asks once a second, far under Wikimedia's published 200 a minute, so a 429 needs something else on the same address; the design found it (2026-11-20) and left it out of the editions builds.
 - **Revisit when:** a trace shows a 429 from Wikimedia during a download: wait its `Retry-After` (or five seconds, Wikimedia's rule) once, as the OpenStreetMap side already does.
+
+### An address annai's own tools didn't write can link to another page or none
+- **Kind:** known limitation.
+- **What the traveller sees:** an article address Shiori writes herself, a web search's row, fetch's Source line, an OpenStreetMap or Nominatim website, or a card or recap written before 2026-11-20 can link short or wrong in chat: cut at a last `.,;:!?'"`, at one of the Japanese and Chinese marks that end an address (`。、，；！？（）」』”`, as in a raw `…/中国（上海）自由贸易试验区`), or at a second level of brackets (`Foo_(a_(b))`). Addresses from annai's places tools link whole.
+- **Why:** the renderer can't tell a title's last stop from a sentence's; only the writer can encode it, and annai's tools do (`pageUrl`, src/core/wiki.js).
+- **Revisit when:** a traveller meets a wrong link, or a trace shows her writing article addresses no tool gave; the route that removes it is asking her for `[title](address)`, which needs a real-model check.
+- **Approved:** chief's decision C151 (2026-11-20, not the user's words), accepted as recommended.
+
+### Text right after an address with no space can be taken into its link
+- **Kind:** known limitation.
+- **What the traveller sees:** a Japanese or Chinese letter (`…/清水寺をご覧ください`), a mark outside the set that ends an address (`・ ー ： 【 「 〜 … 》 〉 〕 » ’`), or an ASCII `(…)` note (`…/清水寺(英語版)`) written right after an address is linked with it.
+- **Why:** no rule can split a raw title from the text after it; titles are written raw on purpose (a model reads one %XX as several tokens).
+- **Revisit when:** as the entry above.
+- **Approved:** chief's decision C152 (2026-11-20, not the user's words), accepted as recommended.
+
+### An OpenRouter voice its list gives no voice for starts with Women KatKat
+- **Kind:** known limitation.
+- **What the traveller sees:** a voice model added by id while annai can't read OpenRouter's list (offline, slow or refused), with an id the list lacks, one the list names no voice for (ByteDance's), or one added by id before 2026-11-20, starts with Women KatKat, a Fish Audio voice, which the other makers tried refuse: HeyGen, Kokoro and ByteDance's say why; Grok's and Voxtral's answer a bare 404, and Play a sample then says the provider doesn't know the model, address or voice. Removing it and adding it again online, or setting its Voice, fixes it; ByteDance's takes none (`"voice": null` in Extra request fields).
+- **Why:** a voice needs one its server knows, which only the list says; a table of voices per maker would go stale.
+- **Revisit when:** travellers add voices offline, or OpenRouter's list says which voice a model starts with.
+- **Approved:** chief's decision C153 (2026-11-20, not the user's words), accepted as recommended.
+
+### A past trip whose pack is never downloaded again keeps its older pack copies
+- **Kind:** known limitation.
+- **What the traveller sees:** nothing on screen. Since 2026-11-20 each download of a trip's offline pack forgets the pack's older versions; a past trip whose pack is never downloaded again keeps the copies it already held (since the pack shipped, 2026-10-16) until the trip is removed, on the phone and in Backups of everything.
+- **Why:** they go at that trip's next download (a refresh after a month, a plan change, or Download); a sweep at every start, or each time a trip opens, would read each trip's file history for a one-off amount.
+- **Revisit when:** a phone runs short with past trips kept, or Settings shows annai far larger than its trips.
+- **Approved:** chief's decision C155 (2026-11-20, not the user's words), accepted as recommended.
+
+### A tab another tab took over keeps what it had already started
+- **Kind:** known limitation.
+- **What the traveller sees:** after "annai was opened in another tab", the stopped tab keeps its timers and listeners (and GPS only in a narrow window during start-up) until it is closed; nothing writes, since its store is closed. On main before 2026-11-20 too, after any takeover.
+- **Why:** stopping all of it means reordering start-up (the agent's open, Live and push depend on each other's order), for a tab that usually sits in the background, where the phone pauses it.
+- **Revisit when:** battery or GPS use is reported from a stopped tab, or start-up's order changes.
+- **Approved:** chief's decision C156 (2026-11-20, not the user's words), accepted as recommended.
+
+### A Backup or Share during which two changes land fails with Try again
+- **Kind:** known limitation.
+- **What the traveller sees:** a Backup or Share during which two changes land (two pack downloads ending, or one ending and a file deleted for good or a trip removed, within one export) fails with "Something on this device changed while exporting, so nothing was exported. Try again."; automatic backups try again by themselves after 15 minutes, without lengthening their wait.
+- **Why:** an export reads a trip one moment at a time and starts again once when a change frees what it listed; one fresh start covers one change, and an unbounded retry could hang an export behind a fault.
+- **Revisit when:** a traveller meets it.
+- **Approved:** chief's decision C157 (2026-11-20, not the user's words), accepted as recommended.
