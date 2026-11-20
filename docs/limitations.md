@@ -1291,11 +1291,11 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Approved:** chief's decision C157 (2026-11-20, not the user's words), accepted as recommended.
 
 ### A guide only the traveller's edition has is not in the offline pack
-- **Kind:** known limitation.
+- **Kind:** deferred (was a known limitation, chief's decision C154; the user's answer to U111 made it planned work, 2026-11-20).
 - **What the traveller sees:** offline, `guide` has nothing for a place English Wikivoyage has no guide for, though the traveller's own edition has one; online it is read under that edition's own title. In a small sample (the first page of Japanese Wikivoyage's list, 2026-11-20, biased toward its early titles) 11 of 21 pages had no English twin, most of them towns, so this is not a rare case for a Japanese reader. Where English has a guide by the name asked, another edition's guide comes only where English's page links to it.
 - **Why:** English decides which place a name means, so the same question brings the same place in every language and with or without the pack (the design check of the editions build: storing an edition's own guides let one edition's meaning of a name sit beside or replace English's, as "Kashmir", "Granada" and 「台湾」 did); a guide with no English twin has no second edition to set beside it.
-- **Revisit when:** the user's answer to U111 (keep them out, or keep them in the pack as the design check's section 2 describes), or a traveller misses such a guide offline.
-- **Approved:** chief's decision C154 (2026-11-20, not the user's words), accepted as recommended; its first reason ("the rare case") corrected to the sample by chief (2026-11-20); the user's own word is asked as U111.
+- **Revisit when:** planned for the next version, after the editions build's part B is released and the fixes from the user's own phone checks (chief's order of work, 2026-11-20): store in the pack the guides only the traveller's edition has, keeping English's rule for which place a name means (the starting point: the by-name design check's section 2, its route that keeps them, with the gap it names for readers of two editions other than English). Its row is in docs/progress.md.
+- **Decided:** the user, 2026-11-20 (U111, in chief's tab): "for annai, the offline pack, maybe put as deferred to store non english pages as well? because might be helpful? as you also mentioned this is maybe not a rare case?"; before it, chief's decision C154 (2026-11-20) had accepted it as a known limitation, its reason corrected to the sample.
 
 ### A stopped offline-pack download goes on by itself an hour later
 - **Kind:** known limitation.
