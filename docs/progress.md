@@ -72,10 +72,7 @@ States: not started, planning, building, under review, merged, paused (on what).
 
 Spec: `docs/superpowers/specs/2026-11-04-timeline-home-design.md`. The user's pick on shipping (2026-11-05): "Release in
 stages; tabs go last (Recommended)": each stage is reviewed and released when green, with the tabs still there; the
-tabs go only after the user has said, on a phone, that the timeline is right. Stages 1 to 6 are released (Closed).
-
-| Part | State | Where it stands | The user's words or pick |
-|---|---|---|---|
+tabs go only after the user has said, on a phone, that the timeline is right. Every stage is released, and its last part, each trip card's own colour, with 87a589dd7 (Closed); no open row.
 
 ### An answered question card always gets a reply
 
