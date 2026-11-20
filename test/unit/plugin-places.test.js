@@ -13,7 +13,7 @@ import { NOMINATIM_GAP, ASK_MS, OVERPASS_MS } from '../../src/plugins/places/ind
 import { RESULT_MAX } from '../../src/core/agent/tools.js';
 import { articlesOf, merged } from '../../src/core/wiki.js';
 import { guideFile, downloadPack } from '../../src/core/pack/download.js';
-import { voyageWorld, wikidataOf } from './pack-kit.js';
+import { voyageWorld, wikidataOf, services, YUFUIN, yufuinStop, yufuinWikipedia } from './pack-kit.js';
 import { meters } from '../../src/core/live/geo.js';
 
 /**
@@ -56,8 +56,8 @@ async function setup({ trip = false } = {}) {
 }
 
 const McWay = { lat: 36.1580, lng: -121.6720 };
-/** What nearby says where the offline pack's articles are listed: a part holds at most each edition's nearest 20 (the extracts' 20), at each stop and every 15 km of the way, true whatever the pack came with. */
-const HOLDS = "The offline pack holds at most each edition's nearest 20 Wikipedia articles at each stop and every 15 km of the way, so Wikipedia has more than these.";
+/** What nearby says where the offline pack's articles are listed: only the articles near each stop and every 15 km of the way, so Wikipedia may have more. No number and no edition: what a part holds depends on what came (lists capped or not, a second stage's summaries beyond them). */
+const HOLDS = "The offline pack holds only the Wikipedia articles near each stop and every 15 km of the way, not all of Wikipedia, so Wikipedia may have more than these.";
 /** The line nearby says when it cut its places, its articles or both, each with the distance of its last row. @param {[number, number] | null} places @param {[number, number] | null} articles @param {number} [radius] */
 const reachLine = (places, articles, radius = 1000) => `These are ${[places && `the nearest ${places[0]} places (out to ${places[1]} m)`, articles && `the nearest ${articles[0]} Wikipedia articles (out to ${articles[1]} m)`].filter(Boolean).join(' and ')}; farther ones within ${radius} m aren't listed.`;
 const KIYOMIZU = { lat: 34.9949, lng: 135.785 };
@@ -940,6 +940,13 @@ test("from the pack, nearby says when a row may leave out an edition that has it
   assert.deepEqual(await said(['ja'], { lists: ['ja:w1', 'en:w1', 'en:w2'], stages: ['w1'] }), one);
   // Every edition's list failing in a part: no row comes from that part, so no row can leave an edition out.
   assert.deepEqual(await said(['ja'], { lists: ['ja:w1', 'en:w1'], stages: ['w1'] }), whole);
+  // A language taken off and put back between downloads: the stages made for Japanese and English were kept, Japanese's lists went. Every stage is there
+  // and rows have lost Japanese; a list lost in one part with its stage kept the same.
+  assert.deepEqual(await said(['ja'], { lists: ['en:w1', 'en:w2'] }), one);
+  assert.deepEqual(await said(['ja'], { lists: ['ja:w1', 'en:w1', 'en:w2'] }), one);
+  assert.deepEqual(await said(['ja'], { lists: ['ja:w1', 'ja:w2', 'en:w1'] }), one);
+  // English alone wants no other edition's list.
+  assert.deepEqual(await said([], { lists: ['en:w1', 'en:w2'] }), whole);
 });
 
 test("from the pack, with no Wikipedia list at all (Wikimedia down for the whole download): no article, the holds line as for any pack, and no line about a row", async () => {
@@ -953,6 +960,26 @@ test("from the pack, with no Wikipedia list at all (Wikimedia down for the whole
       assert.equal(rowsOf(out).length, 0, 'no article, and no place');
       assert.deepEqual(endings(out), [FROM_PACK, HOLDS]);
     }
+  }
+});
+
+test("from a pack with a second stage, nearby's holds line claims no number of articles: at Yufuin Station the pack holds 26 Japanese articles, more than the 20 a list holds, and the line says what the pack holds without counting", async () => {
+  const { run, ws, trip } = await setup({ trip: true });
+  await ws.write(/** @type {string} */ (trip), '/plan/yufuin.json', yufuinStop('Yufuin Station', YUFUIN, 1), { author: 'user' });
+  await speaks(ws, ['ja']);
+  const m = await downloadPack({ ws, scope: /** @type {string} */ (trip), ...services({ overpass: () => ({ elements: [] }), wikipedia: yufuinWikipedia, wikidata: wikidataOf() }), version: '1', editions: ['ja', 'en'], gapMs: 0 });
+  assert.equal(m.files.filter((f) => f.kind === 'wikipedia-editions').length, 1, 'the part holds its stage');
+  assert.equal(m.files.filter((f) => f.kind === 'wikipedia' && f.edition === 'ja').reduce((n, f) => n + f.items, 0), 20, "Japanese's list holds its 20");
+  const offline = () => { throw new Error('asked'); };
+  // Koe's quick read, to reach the whole 10 km the pack's part covers, and nearby inside the pack's circle: the same line.
+  for (const [radius, input] of /** @type {[number, any][]} */ ([[10_000, { offline: true }], [3_100, {}]])) {
+    const out = await run('nearby', { ...YUFUIN, radius }, offline, input);
+    const japanese = rowsOf(out).filter((r) => r[5] === 'wikipedia' && String(r[6]).includes('https://ja.wikipedia.org/wiki/')).length;
+    assert.ok(japanese > 20, `${japanese} articles with a Japanese address, within ${radius} m`);
+    const lines = endings(out);
+    assert.equal(lines.at(-1), HOLDS);
+    assert.doesNotMatch(String(lines.at(-1)), /nearest|\b(20|26)\b|Japanese|English|next download/, 'no count, no edition, no promise');
+    assert.ok(!lines.includes(ONE_SIDED), 'the pack is whole');
   }
 });
 
@@ -1359,7 +1386,7 @@ test("past the pack's edge nearby asks the services, and the pack fills in for a
   assert.ok(asked.some((a) => a.url.includes('overpass')));
   assert.doesNotMatch(online, /offline pack/);
   const down = await run('nearby', { ...McWay, radius: 8000 }, () => { throw new Error("annai couldn't reach overpass-api.de. Is the device offline?"); });
-  assert.match(down, /\nOpenStreetMap and Wikipedia didn't answer, so these come from the offline pack \(downloaded 2026-10-16\)\.\nThe offline pack holds at most each edition's nearest 20 /);
+  assert.match(down, /\nOpenStreetMap and Wikipedia didn't answer, so these come from the offline pack \(downloaded 2026-10-16\)\.\nThe offline pack holds only the Wikipedia articles near each stop /);
   assert.match(down, /McWay Falls Overlook/);
   const half = await run('nearby', { ...McWay, radius: 8000 }, (url) => (url.includes('overpass') ? new Response('', { status: 504 }) : wiki));
   assert.match(half, /Partington Cove/);

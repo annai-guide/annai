@@ -693,22 +693,14 @@ test("a second stage whose edition the run gave up is left, never asked: the lis
 });
 
 /**
- * What the pack a run left lacks of the editions read (`Pack.lacks`, which nearby's line reads). And, whatever the run left, that no part holds its
- * second stage for the editions read without every one of their lists: the stage is written only when they are all there, so a missing list is a
- * missing stage and one condition (no stage for exactly these editions) says both.
+ * What the pack a run left lacks of the editions read (`Pack.lacks`, which nearby's line reads). It reads each Wikipedia part's lists and its stage
+ * itself: a stage can outlive the lists of an edition taken off (the former stage kept for the editions still read), so a stage for the editions read
+ * is no proof that their lists are there.
  * @param {any} ws @param {string} trip @param {string[]} editions
  */
-async function lacksOf(ws, trip, editions) {
-  const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
-  const { files } = pack.manifest;
-  for (const id of new Set(files.filter((f) => f.kind === 'wikipedia').map((f) => f.id))) {
-    if (!files.some((f) => f.path === morePath(/** @type {any} */ ({ id }), editions))) continue;
-    for (const e of editions) assert.ok(files.some((f) => f.kind === 'wikipedia' && f.id === id && (f.edition ?? 'en') === e), `part ${id} holds its stage for ${editions} without ${e}'s list`);
-  }
-  return pack.lacks(editions);
-}
+const lacksOf = async (ws, trip, editions) => /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip)).lacks(editions);
 
-test("what the pack lacks after real downloads: nothing where no list came or every part is whole, something after a language is added and the run stops, a stage fails, or one edition's list fails in a part; never for English alone", async () => {
+test("what the pack lacks after real downloads: nothing where no list came or every part is whole, something after a language is added and the run stops, a stage fails, or one edition's list fails in a part, or a language is taken off and put back between downloads (its stages kept over lists that went); never for English alone", async () => {
   const net = (/** @type {Record<string, any>} */ o = {}) => services({ overpass: noOsm, wikipedia: farWikipedia, wikidata: wikidataOf(), ...o });
   const two = ['ja', 'en'];
   const three = ['ja', 'zh', 'en'];
@@ -757,6 +749,21 @@ test("what the pack lacks after real downloads: nothing where no list came or ev
   const b = await run(both.ws, both.trip, { wikipedia: failing(['ja', 'en']) }, two);
   assert.deepEqual(b.files.filter((x) => x.kind.startsWith('wikipedia') && x.id === wikis[2].id), []);
   assert.equal(await lacksOf(both.ws, both.trip, two), false);
+  // A language taken off and put back between downloads: whole in Japanese and English; then Chinese and English with Wikidata refusing, so Chinese's
+  // lists come and no stage for them, Japanese's lists go as no longer wanted and the stages made for Japanese and English stay (their rows serve the
+  // editions still read); then Japanese is put back before the next download. Every part holds its stage for the two and none holds Japanese's list,
+  // so its rows have lost Japanese and the pack lacks it, though no stage is missing.
+  const swap = await packTrip(farStops(4));
+  await run(swap.ws, swap.trip, {}, two);
+  assert.equal(await lacksOf(swap.ws, swap.trip, two), false);
+  const z = await run(swap.ws, swap.trip, { wikidata: () => new Response('', { status: 503 }) }, ['zh', 'en']);
+  assert.deepEqual(z.files.filter((x) => x.kind === 'wikipedia' && x.edition === 'ja'), [], "Japanese's lists went");
+  assert.deepEqual(z.files.filter((x) => x.kind === 'wikipedia-editions').map((x) => x.path).sort(), wikis.map((p) => morePath(p, two)).sort(), "the stages for the two stay, none for Chinese's");
+  assert.equal(await lacksOf(swap.ws, swap.trip, ['zh', 'en']), true, "Chinese's stages didn't come");
+  assert.equal(await lacksOf(swap.ws, swap.trip, two), true, "Japanese's lists are gone though every stage for the two is held");
+  assert.equal(await lacksOf(swap.ws, swap.trip, ['en']), false, 'English alone');
+  await run(swap.ws, swap.trip, {}, two);
+  assert.equal(await lacksOf(swap.ws, swap.trip, two), false, 'the next download brings the lists back');
 });
 
 test("a download that stopped before its manifest: the files it left keep the edition their path says and no file is read as another edition's; with no manifest at all English's file is asked again once, its ids not being known", async () => {

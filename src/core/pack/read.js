@@ -140,8 +140,9 @@ export class Pack {
 
   /**
    * Whether a row of its articles may leave out an edition that has the article: whether one of its Wikipedia parts holds no second stage for exactly
-   * these editions (a pack from before the stage, a stage that failed, a language added or taken off since the download, or a list that never came:
-   * the stage is written only when every edition's list of its part is there, so a missing list is a missing stage and this one condition says both).
+   * these editions, or no list of one of them, by part and edition. Both are read: a stage kept as the former one outlives the lists of an edition
+   * taken off, so with a language put back it says nothing of its lists. The causes: a pack from before the stage, a language added or put back since
+   * the download, a list that never came, or a stage that failed where no older copy of the set is kept.
    * Never under English alone, which wants no stage. A part none of whose lists came is no part of it: it holds no row to leave an edition out of.
    * The keeper brings what is missing with the download after. @param {string[]} editions the reading order's
    */
@@ -149,7 +150,8 @@ export class Pack {
     if (editions.length < 2) return false;
     const { files } = this.manifest;
     const stages = new Set(files.filter((f) => f.kind === 'wikipedia-editions').map((f) => f.path));
-    return files.some((f) => f.kind === 'wikipedia' && !stages.has(morePath(f, editions)));
+    const lists = new Set(files.filter((f) => f.kind === 'wikipedia').map((f) => `${f.id} ${f.edition ?? 'en'}`));
+    return files.some((f) => f.kind === 'wikipedia' && (!stages.has(morePath(f, editions)) || editions.some((e) => !lists.has(`${f.id} ${e}`))));
   }
 
   /**

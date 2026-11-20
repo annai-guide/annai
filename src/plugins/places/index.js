@@ -8,7 +8,7 @@ import { loadPack } from '../../core/pack/read.js';
 import { anySignal } from '../../core/signals.js';
 import { NOMINATIM_GAP, nominatimTurn, nominatimLanguages } from '../../core/nominatim.js';
 import { readingOrder } from '../../core/languages.js';
-import { editionsOf, nearUrl, GEOSEARCH_MAX_M, articlesOf, wikiSaid, merged, articleUrl, pageUrl, agentHeader, guideEditions, voyageApi, editionName, wikimediaTurn, ARTICLES, sitelinksUrl, titlesOf, SUMMARIES_PER_ASK } from '../../core/wiki.js';
+import { editionsOf, nearUrl, GEOSEARCH_MAX_M, articlesOf, wikiSaid, merged, articleUrl, pageUrl, agentHeader, guideEditions, voyageApi, editionName, wikimediaTurn, ARTICLES, sitelinksUrl, titlesOf } from '../../core/wiki.js';
 import { WIKI_EVERY_KM } from '../../core/pack/plan.js';
 import { RESULT_MAX } from '../../core/agent/tools.js';
 import { t as words } from '../../core/l10n.js';
@@ -195,14 +195,17 @@ function reach(places, articles, radius) {
 }
 /**
  * Said where the offline pack's articles are listed, which are fewer than online (the editions design's measurements, 2026-11-20: at Takayama online
- * gives 59 within 1 km, the pack about 37 within 10 km): a part holds at most each edition's nearest SUMMARIES_PER_ASK, at each stop and every
- * WIKI_EVERY_KM of the way. "At most", so it is true whatever the pack came with: a download that lost a list holds fewer, and says nothing more here.
+ * gives 59 within 1 km, the pack about 37 within 10 km). It claims no number and no edition, for the pack's files don't back one: a list holds at most
+ * SUMMARIES_PER_ASK of an edition, but the second stage adds that edition's summaries of the others' articles beyond it (26 Japanese at Yufuin Station),
+ * and a list that came in under its cap holds all its geosearch gave, so the pack doesn't know Wikipedia has more. So "only the articles near",
+ * "may have more": true whatever the pack came with.
  */
-const HOLDS = /* en */ `\nThe offline pack holds at most each edition's nearest ${SUMMARIES_PER_ASK} Wikipedia articles at each stop and every ${WIKI_EVERY_KM} km of the way, so Wikipedia has more than these.`;
+const HOLDS = /* en */ `\nThe offline pack holds only the Wikipedia articles near each stop and every ${WIKI_EVERY_KM} km of the way, not all of Wikipedia, so Wikipedia may have more than these.`;
 /**
- * Said after HOLDS where the pack lacks a part's second stage for the languages read now (Pack.lacks), so an answer from the pack isn't taken for every
- * edition's telling: a row names the editions whose own list has the article, and may leave out one that has it too. It names no edition and promises
- * no download: the files can't say which edition, or whether a download will bring it (a source that is down is retried, an answer annai can't use waits for Try again).
+ * Said after HOLDS where the pack lacks a part's second stage or a list for the languages read now (Pack.lacks), so an answer from the pack isn't taken
+ * for every edition's telling: a row names the editions whose list or stage has the article, and may leave out one that has it too. It names no edition and
+ * promises no download: the files can't say which edition, or whether a download will bring it (a source that is down is retried, an answer annai can't use
+ * waits for Try again).
  */
 const ONE_SIDED = /* en */ "\nThe offline pack doesn't hold every edition's summary of its articles for the languages read now, so a row may leave out an edition that has its article.";
 /** The most elements nearby's Overpass query asks for, ten times the ROWS kept, to bound the download: Overpass cuts there in id order, not by distance. */

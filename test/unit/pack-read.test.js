@@ -239,7 +239,7 @@ test("a name is one guide's alone: the first kind of match that finds any, and n
   assert.deepEqual(await read('Georgia, Cambria'), ['en Georgia, Cambria']);
 });
 
-test("what the pack lacks, from its manifest alone: whether a Wikipedia part holds no second stage for exactly the editions read; never under English alone, and no edition's name is built (Cantonese has none)", async () => {
+test("what the pack lacks, from its manifest alone: whether a Wikipedia part holds no second stage for exactly the editions read, or no list of one of them, by part and edition; never under English alone, and no edition's name is built (Cantonese has none)", async () => {
   const { ws, trip } = await packTrip();
   const list = (/** @type {string} */ edition, /** @type {string} */ id) => ({ id, kind: 'wikipedia', path: `/offline/wikipedia/${id}.${edition}.json`, bytes: 1, items: 1, edition });
   const stage = (/** @type {string} */ id, /** @type {string[]} */ editions) => ({ id, kind: 'wikipedia-editions', path: morePath(/** @type {any} */ ({ id }), editions), bytes: 1, items: 0 });
@@ -274,4 +274,16 @@ test("what the pack lacks, from its manifest alone: whether a Wikipedia part hol
   assert.equal(await lacks([], two), false);
   // Cantonese's edition is zh-yue: no list of it, and no name is built to throw.
   assert.equal(await lacks([...w, stage('w1', two), stage('w2', two)], ['ja', 'zh-yue', 'en']), true);
+  // A stage for exactly the editions read over a part with no list of one of them: a language taken off and put back between downloads (its lists went
+  // as no longer wanted, the stages made for it were kept for the editions still read), or one list lost since. The stage doesn't say its lists are
+  // there, so the lists are read for themselves, by part and edition: English's, here, named `<id>.en.json`, which no path rule would find.
+  assert.equal(await lacks([list('en', 'w1'), list('en', 'w2'), stage('w1', two), stage('w2', two)], two), true, "Japanese's lists gone");
+  assert.equal(await lacks([list('ja', 'w1'), list('en', 'w1'), list('en', 'w2'), stage('w1', two), stage('w2', two)], two), true, "Japanese's list gone in one part");
+  assert.equal(await lacks([list('ja', 'w1'), list('en', 'w2'), stage('w1', two), stage('w2', two)], two), true, 'each part lacks a list the other holds: no list of another part stands for it');
+  assert.equal(await lacks([list('ja', 'w1'), list('en', 'w1'), list('ja', 'w2'), stage('w1', two), stage('w2', two)], two), true, "English's list gone in one part");
+  // An edition-less list is English's, and counts as such.
+  assert.equal(await lacks([{ ...list('en', 'w1'), edition: undefined }, list('ja', 'w1'), stage('w1', two)], two), false);
+  // Under English alone, and with no Wikipedia list left, there is nothing to leave an edition out of.
+  assert.equal(await lacks([list('ja', 'w1'), stage('w1', two)], ['en']), false);
+  assert.equal(await lacks([stage('w1', two), stage('w2', two)], two), false);
 });

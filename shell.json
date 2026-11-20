@@ -1,5 +1,5 @@
 {
-  "build": "21568d37367c",
+  "build": "fa015514bc9a",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -129,7 +129,7 @@
     "/src/core/pack/keeper.js": "599378f22349",
     "/src/core/pack/osm.js": "758b9dbf29f2",
     "/src/core/pack/plan.js": "de4a868070e7",
-    "/src/core/pack/read.js": "0eb1c4cfb5b1",
+    "/src/core/pack/read.js": "96d55e47a6b9",
     "/src/core/patch.js": "bf353eb88c60",
     "/src/core/pdf-pages.js": "dbede6cb6600",
     "/src/core/photo-meta.js": "7021827cca8d",
@@ -195,7 +195,7 @@
     "/src/plugins/go/index.js": "39ee52f39fc1",
     "/src/plugins/mcp/client.js": "8f2bab66c578",
     "/src/plugins/mcp/index.js": "9b557e1626c7",
-    "/src/plugins/places/index.js": "1455031a13a2",
+    "/src/plugins/places/index.js": "d9707a31062f",
     "/src/plugins/sensors/index.js": "816a2602dd98",
     "/src/plugins/skills/index.js": "f3abb206048e",
     "/src/plugins/voice-browser/capture-worklet.js": "1667d451add2",
