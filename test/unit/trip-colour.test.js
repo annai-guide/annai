@@ -18,8 +18,9 @@ test("a trip's hue is one of the ten, the same for one `created` at every call",
 
 test("a trip's hue for a given `created` never changes: a changed hash would recolour every trip on every phone", () => {
   // Values from the hash as built on this branch: a trip made at these moments keeps these hues, as does its copy, however it comes (an
-  // import, a restore on a new phone) with its `created`; one entry for each of the ten hues. The last three differ between this hash and one without
-  // its final `x >>> 16` fold, or with another shift there, which changes about one hue in 20,000 and which nothing else here would see.
+  // import, a restore on a new phone) with its `created`; one entry for each of the ten hues. The last three tell this hash from one without
+  // its final `x >>> 16` fold (all three move; about one hue in 20,000 changes) or with another shift there (at 15 one moves, at 17 two), which
+  // nothing else here would see.
   const expected = /** @type {[number, number][]} */ ([
     [0, 25], [1, 140], [1_763_549_000_091, 25], [1_763_535_000_065, 60], [1_763_626_000_234, 95], [1_763_570_000_130, 140], [1_763_591_000_169, 175],
     [1_763_619_000_221, 210], [1_763_507_000_013, 245], [1_763_500_000_000, 280], [1_763_563_000_117, 315], [1_763_521_000_039, 350],
@@ -64,14 +65,17 @@ test('how lit a card is by its phase: happening never under 3/4, ahead never und
   assert.ok(Math.min(...by('happening')) > Math.max(...by('past')));
 });
 
-/** The memory store, with the reads of its log counted. @param {import('../fakes/store-memory.js').Store} store @returns {{ store: any, reads: () => number }} */
+/** The memory store, with the reads of its log counted. @param {import('../fakes/store-memory.js').Store} store @returns {{ store: any, reads: () => number, limits: () => any[] }} */
 function counting(store) {
   let n = 0;
+  /** @type {any[]} */
+  const limits = [];
   const tx = (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {(t: any) => any} */ fn) => store.tx(stores, mode, (/** @type {any} */ t) => fn({ ...t, listEvents: (/** @type {string} */ scope, /** @type {any} */ q) => {
     n++;
+    limits.push(q?.limit);
     return t.listEvents(scope, q);
   } }));
-  return { store: { ...store, tx }, reads: () => n };
+  return { store: { ...store, tx }, reads: () => n, limits: () => limits };
 }
 
 /** @param {import('../fakes/store-memory.js').Store} store @param {string} scope @param {[string, number, ...any[]][]} lines [type, how many, data?] in order */
@@ -81,7 +85,7 @@ async function say(store, scope, lines) {
   });
 }
 
-test("linesSaid counts the lines the traveller said, typed or heard, as talks does: a heard line the gate set aside is not one", async () => {
+test("linesSaid counts the lines the traveller said, typed (a tap or files sent too) or heard, as talks does: a heard line the gate set aside is not one", async () => {
   const store = createMemoryStore();
   await say(store, 'trip-a', [['msg.user', 1], ['msg.user', 1, { from: 'trip-b' }], ['heard', 1], ['heard', 1, { dismissed: true, gate: 'chatter' }], ['heard.text', 1], ['out.speak', 1], ['location', 1]]);
   await say(store, 'trip-b', [['msg.user', 1]]);
@@ -107,12 +111,13 @@ test('linesSaid counts up to what the top step needs in whole batches of it: a f
   const cases = [
     ['long', 80, 1], ['aside-first', 80, 2], ['aside-between', 80, 2], ['nearly', 79, 1], ['nearly-aside', 79, 2], ['none', 0, 1],
     ['last-one-aside', 79, 14], // 1079 entries: 13 whole batches and a rest
-    ['last-one-late', 80, 14], // 1085 entries to the 80th said (the 5th of the last ten)
+    ['last-one-late', 80, 14], // 1080 entries to the 80th said (the 5th of the last ten), 1085 in all
   ];
   for (const [scope, said, most] of cases) {
     const spy = counting(store);
     assert.equal(await linesSaid(spy.store, scope, 80), said, scope);
     assert.ok(spy.reads() <= most, `${scope}: ${spy.reads()} reads, at most ${most}`);
+    assert.ok(spy.limits().every((l) => l === 80), `${scope}: reads asked for ${spy.limits()}`);
   }
   assert.equal(await linesSaid(store, 'long', 5), 5);
   assert.equal(await linesSaid(store, 'aside-first', 5), 5);

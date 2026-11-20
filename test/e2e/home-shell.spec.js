@@ -369,7 +369,7 @@ test("each trip card is its own colour, lit by the lines the traveller said: hap
       expect(c.bgGap, `${scheme}: ${c.bg} against its tokens' mix`).toBeLessThan(1e-3);
       expect(c.edgeGap, `${scheme}: ${c.edge} against its tokens' mix`).toBeLessThan(1e-3);
     }
-    // The busier the deeper (the further from the plain sheet, in OKLab), the trip of now the deepest.
+    // The busier the deeper (the further from the plain sheet, in OKLab), the busiest trip of now the deepest.
     expect(depth(quiet)).toBeGreaterThan(0.005);
     expect(depth(busy)).toBeGreaterThan(depth(quiet) * 2);
     expect(depth(now)).toBeGreaterThan(depth(busy));
@@ -439,7 +439,8 @@ test('every secondary line on every lit trip card keeps WCAG AA contrast on all 
           card.style.setProperty('--lit', `${lit * 100}%`);
           const bg = getComputedStyle(card).backgroundColor;
           const b = colourOf(bg);
-          // Every line the card sets in --ink-2 (its facts, the day, the next item, how soon, her last line): the worst of them is the card's.
+          // Every line the card sets in --ink-2 (its facts, the day, the next item, how soon, her last line; a sent trip's From line too, the
+          // same --ink-2, not seeded): the worst of them is the card's.
           for (const sub of subs) {
             const ink = getComputedStyle(sub).color;
             const i = colourOf(ink);

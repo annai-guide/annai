@@ -1,5 +1,5 @@
 {
-  "build": "3231ea6ebea7",
+  "build": "6c1a2eeda00a",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -149,7 +149,7 @@
     "/src/core/request-photos.js": "0a710cf1cc55",
     "/src/core/schema.js": "f21af27d5902",
     "/src/core/search.js": "62a0a393233e",
-    "/src/core/scopes.js": "b9f8139560f9",
+    "/src/core/scopes.js": "470eab9fdafe",
     "/src/core/chats.js": "b7602d30ae65",
     "/src/core/settings.js": "d52603279438",
     "/src/core/shown.js": "450af0a8c563",

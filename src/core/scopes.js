@@ -32,7 +32,7 @@ export function kindOf(scope) {
   return 'other';
 }
 
-/** A line the user said: typed, or heard and not dismissed; a hand-over's copy in another trip (data.from) counts too. What "last talked in" counts. @param {{ type: string, data?: any }} e */
+/** A line the user said: typed (a tap on her choices and files sent too: every msg.user), or heard and not dismissed; a hand-over's copy in another trip (data.from) counts too. What "last talked in" counts. @param {{ type: string, data?: any }} e */
 export const talks = (e) => e.type === 'msg.user' || (e.type === 'heard' && !e.data?.dismissed);
 
 /**
