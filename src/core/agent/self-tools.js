@@ -106,9 +106,9 @@ export function selfTools(agent) {
       // Its result in the log is the mark: the next compaction may cut after it (loop.js compact, spec §6.5). It changes nothing else, so any
       // number of calls only moves one later cut between the usual size and the last three exchanges.
       name: 'mark_done', pluginId: 'core', group: 'Self',
-      description: 'Mark that a task is done (a question answered, a booking filed, a plan settled): when the conversation is next summarized, it may cut right after this, so what follows stays word for word. It changes nothing else; recall still brings back what came before.',
+      description: 'Mark that a piece of work the user gave you is finished, such as a booking filed or a day planned: when the conversation is next summarized, it may cut right after this, so what follows stays word for word. Call it once, when the work ends, not after every reply. It changes nothing else; recall still brings back what came before.',
       input: { type: 'object', properties: { done: { type: 'string', minLength: 1, description: 'What was done, in a few words.' } }, required: ['done'] },
-      run: async () => 'Marked: the next summary may cut after this task.',
+      run: async () => 'Marked: the next summary may cut after this piece of work.',
     },
   ];
 }
