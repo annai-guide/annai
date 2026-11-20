@@ -487,6 +487,20 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** a place known to be near is missing from a list in use, or the log shows cut answers on drives.
 - **Approved:** 2026-11-16, chief's decision (the user may reverse it): "Accept, and nearby says when its answer was cut (Recommended)", the question's option 1; the follow-up ships in the next release and never holds stage 8. It narrows the user's "a lighter, nearest-first query" (2026-11-14) where places thicken sharply outward.
 
+### In a city centre `nearby`'s Wikipedia articles reach a few hundred metres
+- **Kind:** known limitation.
+- **What the user sees:** `nearby` gives the nearest 50 Wikipedia articles (and the nearest 40 places, each list cut to its own count); around a dense city centre the 50 reach 156 to 520 m (Tokyo Station 325 m in the real check of 2026-11-20), and the answer says how far each list reaches and that farther ones within the radius aren't listed.
+- **Why:** a kilometre around a city centre holds 200 to 560 articles (Tokyo Station 407, Times Square 559, the editions design's measurements of 2026-11-20), more than one tool result carries (40,000 characters); 50 is what one Wikidata request names, and it lists the whole kilometre at 20 of 34 measured stops (30 did at 17). The number follows the user's "Measure, then set (Rec.)" (2026-11-19) on the 30 articles.
+- **Revisit when:** a traveller misses a known place nearby, or Wikipedia's relevance sort is tried.
+- **Approved:** chief's decision C161 (2026-11-20, not the user's words), accepted as written.
+
+### Inside the offline pack's circles `nearby` reads the pack even online, so a language added since the download is missing there
+- **Kind:** known limitation.
+- **What the user sees:** where the pack holds the whole circle asked, `nearby` answers from the pack, online too; an edition the pack doesn't hold yet (a language added since its download) is missing from those answers until the next download on Wi-Fi. The answer says a row may leave out an edition that has its article, and that Wikipedia may have more.
+- **Why:** reading the pack first inside its circles is the design's (no request, no data on mobile data, the answer at once); the keeper brings the new edition about a minute after the change once on Wi-Fi. Asking only the lacking editions online would add about 20 lines and 10 KB a call; skipping the pack while something lacks, about 35 s and full data a call.
+- **Revisit when:** a traveller who adds a language on the road misses its articles.
+- **Approved:** chief's decision C163 (2026-11-20, not the user's words), accepted as written.
+
 ### An answer Shiori already gave can be said once more
 - **Kind:** known limitation.
 - **What the user sees:** Shiori says again something she has already told them, in two rare ways. With her two halves, Koe (who talks) asks Kokoro (who thinks) again something she has already answered, and the user opens another conversation in the moment before Kokoro is idle (usually a few milliseconds as her turn ends): on coming back, Kokoro takes Koe's question up and may give the old answer again, which Koe says. And when annai is reloaded or killed while she is speaking, or in the few milliseconds between her last tool result or reply in words and the record the loop then writes that her turn ended (measured 0 to 37 ms in Chromium and 1 to 25 ms in WebKit), the turn is taken up the next time that conversation opens, as before this release, and she may say that line again. With her two halves, when Kokoro took that restart up (or Koe was live then), Koe's own turn stays unfinished until Koe next has a turn: a later open, with Kokoro owing nothing and Koe on a chat model, can have Koe take it up and say its answer once more, possibly much later.
@@ -1223,6 +1237,20 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the traveller sees:** rarely: a file moved from one trip to another (or to the files waiting with Shiori) in the moment a Backup of everything is being made can be in neither trip's part of that Backup; the file itself is fine on the phone, and the next Backup has it.
 - **Why:** each trip is listed in its own transaction (src/core/archive.js), so a move between two listings can fall between them; one moment across every trip would need the whole phone's files read at once, or a restart rule that a busy conversation might never let finish. Found by pack-history-next's second re-review (2026-11-20), on main before it.
 - **Revisit when:** the next version's Backup work: a move counted as a change of the Backup's listing (a restart, as a freed content already is), or a design that lists every scope together.
+
+### Offline, the pack holds each edition's nearest 20 Wikipedia articles at each stop and every 15 km of the way
+- **Kind:** known limitation.
+- **What the user sees:** offline, and online inside the pack's circles, `nearby`'s articles are the pack's: each edition's nearest 20 at each stop and every 15 km of the way, with every listed edition's summary of each of them, fewer than online (Takayama: 59 within 1 km online, about 37 within 10 km in the pack). The answer says the pack holds only the articles near its stops and Wikipedia may have more.
+- **Why:** a part is one request of 20 summaries (the extracts API's own limit), and a whole trip is many parts; the second stage then brings every listed edition's summary of each held article (24 of 38 at Tokyo Station in Japanese and English, against 2 without it).
+- **Revisit when:** a traveller misses an article offline.
+- **Approved:** chief's decision C162 (2026-11-20, not the user's words), accepted as written.
+
+### From the offline pack, `nearby` doesn't say that Wikipedia's part of a download failed
+- **Kind:** known limitation.
+- **What the user sees:** where a place's Wikipedia lists came in no edition (Wikimedia down or blocked for the whole download while OpenStreetMap answered, or one part's lists failing in every edition), `nearby` from the pack, online inside its circles too, lists the articles the pack holds there, maybe none, and says the pack holds only the articles near its stops and Wikipedia may have more: it never says Wikipedia has nothing there. It doesn't say a download failed, or name the language the pack lacks. The pack panel says how many parts didn't download and offers Try again or Download the rest.
+- **Why:** the files the pack holds can't tell a part that never came from a place with no articles; knowing needs the plan, which changes on the road with no download, or a new record in the manifest. Three review rounds each found a fault in a rule that guessed it (the design check of 2026-11-20).
+- **Revisit when:** a traveller is told there is nothing on Wikipedia at a stop whose lists failed, or the manifest gains a record of the parts a download asked for.
+- **Approved:** chief's decision C164 (2026-11-20, not the user's words), accepted as written, with the condition that the answer never claims Wikipedia has nothing there.
 
 ### A city stop's OpenStreetMap part may not finish within the pack's 60 s
 - **Kind:** deferred.
