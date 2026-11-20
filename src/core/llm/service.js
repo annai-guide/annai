@@ -353,19 +353,21 @@ export function createLlm({
      */
     addListedModel: (providerId, abilityId, listed) => addListedModel({ ws }, providerId, abilityId, listed),
     /**
-     * A voice needs a voice its server knows, which only its list may say (a router's voices but Fish Audio's answered 400 to none, the
-     * probe of 2026-11-20): one its ability's list has, read for this add for up to REQUEST_MS, is added as the list's Add adds it, named
-     * by its id. With no list to read (offline, refused, slow), or an id it lacks, it starts with its ability's voice, as before. A chat
-     * model works without its list's words, so its list (a router's holds hundreds) is not read. @param {string} providerId
-     * @param {string} abilityId @param {string} providerModelId @returns {Promise<string>} the model's id
+     * A voice needs one its server knows, which only its list says (the makers the probe of 2026-11-20 tried, Fish Audio apart, answered 400 to none): the
+     * list's entry for this id (case ignored), read for up to REQUEST_MS (a router's is 57 KB, 47 ms), is added as the list's Add adds it,
+     * named by its id. With no list to read, or an id it lacks, the ability's voice, as before. A chat list (a router's holds hundreds) is not
+     * read. sameConnection, asked after the read: whether the add lands under the connection the list was read under; if not, the list's voice
+     * is not used. @param {string} providerId @param {string} abilityId @param {string} providerModelId @param {() => Promise<boolean>} [sameConnection]
+     * @returns {Promise<string>} the model's id
      */
-    addModelById: async (providerId, abilityId, providerModelId) => {
+    addModelById: async (providerId, abilityId, providerModelId, sameConnection = async () => true) => {
       const rec = (await readConfig(ws)).providers[providerId];
       /** @type {import('./contract.js').ListedModel[]} */
       let listed = [];
       if (rec && providerOf(rec).abilities[abilityId]?.kind === 'voice') await within(service.listModels(providerId, abilityId).then((all) => { listed = all; }), REQUEST_MS);
-      const found = listed.find((m) => m.providerId === providerModelId);
-      if (!found) return addModelById({ ws }, providerId, abilityId, providerModelId);
+      const wanted = providerModelId.toLowerCase();
+      const found = listed.find((m) => m.providerId.toLowerCase() === wanted);
+      if (!found || !(await sameConnection())) return addModelById({ ws }, providerId, abilityId, providerModelId);
       const { name: _, loaded: __, ...start } = found; // named by its id; loaded is said on a list, never kept
       return addListedModel({ ws }, providerId, abilityId, start);
     },

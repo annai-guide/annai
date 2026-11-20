@@ -169,7 +169,7 @@ provider-openrouter:@provider.abilities.chat.models.2.providerTools.0.name	ok	Op
 provider-openrouter:@provider.abilities.chat.models.3.providerTools.0.name	ok	OpenRouter web search	OpenRouterのWeb検索	plugins-official/provider-openrouter/annai-plugin.json:53	Note: OpenRouter's docs are English only: Web検索 as annai's other lines.
 provider-openrouter:@provider.abilities.chat.models.4.providerTools.0.name	ok	OpenRouter web search	OpenRouterのWeb検索	plugins-official/provider-openrouter/annai-plugin.json:53	Note: OpenRouter's docs are English only: Web検索 as annai's other lines.
 provider-openrouter:@provider.abilities.transcription.note	ok	Turns what you say into text, for models that don't take audio. The prices are OpenRouter's lowest; it may send a request to a provider that charges more.	音声を受け付けないモデルのために、話した言葉を文字にします。表示の料金はOpenRouterでの最安値です。実際にはOpenRouterが、より料金の高いプロバイダーにリクエストを送ることもあります。	plugins-official/provider-openrouter/annai-plugin.json:357	
-provider-openrouter:@provider.abilities.voice.note	draft	Shiori's voice. Most models have voices of their own, suggested in the model's Voice. The voice and style set here are Women KatKat, a voice from Fish Audio's library (friendly, clear, young and bright), and a young, cheerful and lively, yet calm and gentle style: every Fish Audio model starts with them. Another maker's model, from Fetch model list or added by id, starts with its first warm or neutral voice, else its first, and sends no Style unless it takes one (Gemini's and OpenAI's gpt-4o-mini-tts do); added by id while annai can't read the list (offline), or not in it, it starts with Women KatKat, which its server may refuse: set its Voice. OpenRouter sends MP3 or uncompressed audio only. Streamed (the switch above), Fish Audio's voice starts 2 to 5 seconds sooner, for 5.5 times a whole clip's data, and needs about 0.7 Mbps; Grok, Voxtral and Kokoro gain little, so they arrive whole. HeyGen's and Gemini's voices send only uncompressed audio: 3 to 5.5 times an MP3's data.	Shioriの声です。ほとんどのモデルは独自の声を持ち、モデルの「声」に候補が表示されます。ここで設定している声は、Fish AudioのライブラリにあるWomen KatKat（親しみやすく、はっきりした、若く明るい声）で、スタイルは「若く朗らかで生き生きとしつつ、落ち着いて優しい」です。Fish Audioのモデルはすべて、この声とスタイルで始まります。ほかのメーカーのモデルは、「モデルの一覧を取得」から追加しても、IDで追加しても、一覧にある声のうち最初の温かみのある声かニュートラルな声（なければ最初の声）で始まり、スタイルはそれを使えるモデル（GeminiとOpenAIのgpt-4o-mini-tts）にだけ送られます。オフラインなどでannaiが一覧を読み込めないときにIDで追加したモデルや、一覧にないIDのモデルはWomen KatKatで始まり、そのサーバーが受け付けないことがあります。その場合はモデルの「声」を設定してください。OpenRouterが送る音声はMP3か非圧縮の音声のみです。上でストリーミングをオンにすると、Fish Audioの声は2〜5秒早く話し始めますが、データ量は丸ごと届く場合の5.5倍になり、約0.7 Mbpsの通信速度が必要です。Grok、Voxtral、Kokoroは早くなる分がわずかなので、丸ごと届きます。HeyGenとGeminiの声は非圧縮の音声しか送らないため、データ量はMP3の3〜5.5倍です。	plugins-official/provider-openrouter/annai-plugin.json:405	
+provider-openrouter:@provider.abilities.voice.note	draft	Shiori's voice. Most models have voices of their own, suggested in the model's Voice. The voice and style set here are Women KatKat, a voice from Fish Audio's library (friendly, clear, young and bright), and a young, cheerful and lively, yet calm and gentle style: every Fish Audio model starts with them. Another maker's model, listed or added by id, starts with its list's first warm or neutral voice, else its first, and gets a Style only if it takes one (Gemini and gpt-4o-mini-tts do). With no list voice (offline, slow or refused; no such id; ByteDance's names none) it starts with Women KatKat and its style, which its maker may refuse: set its Voice. OpenRouter sends MP3 or uncompressed audio only. Streamed (the switch above), Fish Audio's voice starts 2 to 5 seconds sooner, for 5.5 times a whole clip's data, and needs about 0.7 Mbps; Grok, Voxtral and Kokoro gain little, so they arrive whole. HeyGen's and Gemini's voices send only uncompressed audio: 3 to 5.5 times an MP3's data.	Shioriの声です。ほとんどのモデルは独自の声を持ち、モデルの「声」に候補が表示されます。ここで設定している声は、Fish AudioのライブラリにあるWomen KatKat（親しみやすく、はっきりした、若く明るい声）で、スタイルは「若く朗らかで生き生きとしつつ、落ち着いて優しい」です。Fish Audioのモデルはすべて、この声とスタイルで始まります。ほかのメーカーのモデルは、「モデルの一覧を取得」から追加しても、IDで追加しても、そのモデルの一覧にある声のうち最初の温かみのある声かニュートラルな声（なければ最初の声）で始まり、スタイルはそれに対応するモデル（Geminiとgpt-4o-mini-tts）にだけ送られます。一覧から声が得られないとき（オフライン、遅い、拒否された、そのIDが一覧にない、ByteDanceのように声が示されていない）は、Women KatKatとそのスタイルで始まり、メーカーが受け付けないことがあります。その場合はモデルの「声」を設定してください。OpenRouterが送る音声はMP3か非圧縮の音声のみです。上でストリーミングをオンにすると、Fish Audioの声は2〜5秒早く話し始めますが、データ量は丸ごと届く場合の5.5倍になり、約0.7 Mbpsの通信速度が必要です。Grok、Voxtral、Kokoroは早くなる分がわずかなので、丸ごと届きます。HeyGenとGeminiの声は非圧縮の音声しか送らないため、データ量はMP3の3〜5.5倍です。	plugins-official/provider-openrouter/annai-plugin.json:405	Note: "Voice" is the model's Voice field, which reads 声 here (the voice thing), not Settings' 音声.
 provider-openrouter:alllou	ok	Tap Sign in with OpenRouter to start again.	「OpenRouterでサインイン」をタップして、最初からやり直してください。	plugins-official/provider-openrouter/index.js:20	
 provider-openrouter:1gjda3m	ok	Paste the code OpenRouter showed you, then tap Connect.	OpenRouterに表示されたコードを貼り付けて、「接続」をタップしてください。	plugins-official/provider-openrouter/index.js:89	
 provider-openrouter:1mdql10	ok	annai has no sign-in waiting for this code: it was used already, or began in another browser.	このコードを待っているサインインがありません。すでに使われたコードか、別のブラウザで始めたサインインのコードです。	plugins-official/provider-openrouter/index.js:91	
@@ -280,7 +280,7 @@ search-tavily:@settings.properties.depth.title	ok	Depth	深さ	plugins-official/
 search-tavily:1lf6xjz	ok	needs a key (Settings → Plugins → Tavily Search)	キーが必要：「設定 → プラグイン → Tavily検索」	plugins-official/search-tavily/index.js:16	Note: Shown in brackets after the name on Tools ("Tavily（…）"), so no brackets of its own: they nested.
 speech-openai:@name	ok	OpenAI-compatible speech	OpenAI互換の音声	plugins-official/speech-openai/annai-plugin.json:3	
 speech-openai:@description	ok	Transcription and voices through the OpenAI audio API: OpenAI, OpenRouter, Groq and local servers such as Speaches, whisper.cpp and Kokoro.	OpenAIの音声APIを使った文字起こしと声。OpenAI、OpenRouter、Groqのほか、Speaches、whisper.cpp、Kokoroなどのローカルサーバーに対応します。	plugins-official/speech-openai/annai-plugin.json:7	
-speech-openai:16scbe	draft	Stream her voice, so she starts sooner, uncompressed: several times the data (off: each sentence arrives whole first, compressed unless the voice sends only uncompressed audio)	声を非圧縮でストリーミングして、早く話し始める（データ量は数倍。オフ：各文が圧縮されて丸ごと届いてから話す。非圧縮の音声しか送らない声は除く）	plugins-official/speech-openai/index.js:211	
+speech-openai:16scbe	draft	Stream her voice, so she starts sooner, uncompressed: several times the data (off: each sentence arrives whole first, compressed unless the voice sends only uncompressed audio)	声を非圧縮でストリーミングして、早く話し始める（データ量は数倍。オフ：各文が圧縮されて丸ごと届いてから話す。非圧縮の音声しか送らない声は除く）	plugins-official/speech-openai/index.js:221	
 storage-forgejo:@name	ok	Forgejo / Gitea	Forgejo / Gitea	plugins-official/storage-forgejo/annai-plugin.json:3	
 storage-forgejo:@description	ok	Backs up everything to a private repository on a Forgejo or Gitea server, such as your own or Codeberg: each backup is a commit, and only changed files are uploaded.	自分のサーバーやCodebergなど、ForgejoまたはGiteaのサーバー上の非公開リポジトリに、すべてをバックアップします。バックアップ1回が1コミットになり、変更されたファイルだけがアップロードされます。	plugins-official/storage-forgejo/annai-plugin.json:7	
 storage-forgejo:1yf590i	ok	git can't hold "{0}": it has an empty, "." or ".." part. Rename it in annai, then back up again.	「{0}」はgitに保存できません。パスに空の部分、「.」、「..」のいずれかが含まれています。annaiで名前を変更してから、もう一度バックアップしてください。	plugins-official/storage-forgejo/git.js:28	{0} = e.path
@@ -795,8 +795,8 @@ xx043p	ok	"{0}" is already added here.	「{0}」はすでに追加されてい�
 1pqsrb3	ok	It isn't running. Look at it in Settings → Plugins.	動作していません。「設定 → プラグイン」で確認してください。	src/core/llm/service.js:307	Note: said of a plugin named before it on the screen.
 sejc5h	ok	{0} was switched off after errors.	{0}はエラーが続いたためオフになりました。	src/core/llm/service.js:322	{0} = shown
 xzxdhp	ok	The plugin didn't provide a model provider.	このプラグインはモデルのプロバイダーを提供していませんでした。	src/core/llm/service.js:323	Note: said of a plugin.
-2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	そのプラグインはannai公式のものではありません。入手元からもう一度インストールしてください。	src/core/llm/service.js:417	
-1k9wkd0	ok	The plugin it names doesn't provide models, so it wasn't installed.	指定されているプラグインはモデルを提供していないため、インストールされませんでした。	src/core/llm/service.js:426	Note: said after the provider's name ("OpenRouter: …"); the plugin its record names.
+2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	そのプラグインはannai公式のものではありません。入手元からもう一度インストールしてください。	src/core/llm/service.js:419	
+1k9wkd0	ok	The plugin it names doesn't provide models, so it wasn't installed.	指定されているプラグインはモデルを提供していないため、インストールされませんでした。	src/core/llm/service.js:428	Note: said after the provider's name ("OpenRouter: …"); the plugin its record names.
 3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:73	{0} = p.title
 1rb0o7n	ok	OpenStreetMap around {0}	{0}周辺のOpenStreetMap	src/core/pack/download.js:75	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
 hdsgog	ok	OpenStreetMap between {0} and {1}	{0}と{1}の間のOpenStreetMap	src/core/pack/download.js:75	{0} = a; {1} = b
@@ -2176,28 +2176,28 @@ f85coz#other	ok	# deletions waiting: annai sends them when it can reach {0}.	削
 4nyk49	ok	This needs a plugin that isn't running.	必要なプラグインが動作していません。	src/ui/screens/provider.js:478	
 1mod47e	ok	for example: haiku	例：haiku	src/ui/screens/provider.js:520	
 15hdhx3	ok	the provider's model id	プロバイダーのモデルID	src/ui/screens/provider.js:528	
-uwbggy	ok	Added as "{0}": "{1}" is already used by another model.	「{1}」はほかのモデルがすでに使っているため、「{0}」として追加しました。	src/ui/screens/provider.js:544	{0} = name; {1} = wanted
-1oz4euh	ok	Add model	モデルを追加	src/ui/screens/provider.js:551	
-tbmsa5	ok	Asking for its models…	モデルを取得中…	src/ui/screens/provider.js:556	
-uxqo7a	ok	Fetch model list	モデルの一覧を取得	src/ui/screens/provider.js:571	
-1yko1my#other	ok	# models.	モデルが#個見つかりました。	src/ui/screens/provider.js:576	plural; # = found.listed.length; English: "# model." (one), "# models." (other)
-19ai2z0	ok	Filter the list	一覧を絞り込む	src/ui/screens/provider.js:578	
-1scr2ml	ok	{0}K context	コンテキスト{0}K	src/ui/screens/provider.js:583	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
-1tqy8k1	ok	Its models	モデル	src/ui/screens/provider.js:585	Note: "Its models" as a heading under the ability: モデル alone reads right there.
-bzs1ys	ok	No models yet.	モデルはまだありません。	src/ui/screens/provider.js:586	
-pnxisg	ok	Add a model by id	IDでモデルを追加	src/ui/screens/provider.js:587	
-uizt0x	ok	{0} · loaded	{0} · 読み込み済み	src/ui/screens/provider.js:609	{0} = named
-4ei9ix	ok	This list is from before the address or key changed. Fetch the model list again.	アドレスかキーが変わる前の一覧です。モデルの一覧をもう一度取得してください。	src/ui/screens/provider.js:619	
-1w6mxym	ok	Already added, on {0}	追加済み（{0}）	src/ui/screens/provider.js:624	{0} = here
-11pl9jr	ok	Use the free models	無料のモデルを使う	src/ui/screens/provider.js:649	
-vam64u	ok	Use the recommended models	おすすめのモデルを使う	src/ui/screens/provider.js:649	
-1b2yx8m	ok	Suggested models	おすすめのモデル	src/ui/screens/provider.js:650	
-y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0}は役割ごとにおすすめのモデルを用意しています。これを使うと、音声のモデルが端末の音声入力とブラウザの声（どちらも無料）より前に並ぶため、有料のモデルが先に試されます。	src/ui/screens/provider.js:651	{0} = src.name; Note: 端末の音声入力 and ブラウザの声 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
-1x5hwmk	ok	{0} suggests a model for each role.	{0}は役割ごとにおすすめのモデルを用意しています。	src/ui/screens/provider.js:652	{0} = src.name
-1iffu2j	ok	{0} switched on.	{0}をオンにしました。	src/ui/screens/provider.js:659	{0} = n
-1szeqxt	ok	Roles updated.	役割を更新しました。	src/ui/screens/provider.js:659	
-1egvjs1	ok	{0} couldn't be switched on: {1}	{0}をオンにできませんでした：{1}	src/ui/screens/provider.js:660	{0} = f.name; {1} = messageOf(f.error)
-wlh055	ok	Use the {0} models	{0}のモデルを使う	src/ui/screens/provider.js:666	{0} = which
+uwbggy	ok	Added as "{0}": "{1}" is already used by another model.	「{1}」はほかのモデルがすでに使っているため、「{0}」として追加しました。	src/ui/screens/provider.js:546	{0} = name; {1} = wanted
+1oz4euh	ok	Add model	モデルを追加	src/ui/screens/provider.js:553	
+tbmsa5	ok	Asking for its models…	モデルを取得中…	src/ui/screens/provider.js:558	
+uxqo7a	ok	Fetch model list	モデルの一覧を取得	src/ui/screens/provider.js:573	
+1yko1my#other	ok	# models.	モデルが#個見つかりました。	src/ui/screens/provider.js:578	plural; # = found.listed.length; English: "# model." (one), "# models." (other)
+19ai2z0	ok	Filter the list	一覧を絞り込む	src/ui/screens/provider.js:580	
+1scr2ml	ok	{0}K context	コンテキスト{0}K	src/ui/screens/provider.js:585	{0} = num(Math.round(m.contextWindow / 1000), { useGrouping: false })
+1tqy8k1	ok	Its models	モデル	src/ui/screens/provider.js:587	Note: "Its models" as a heading under the ability: モデル alone reads right there.
+bzs1ys	ok	No models yet.	モデルはまだありません。	src/ui/screens/provider.js:588	
+pnxisg	ok	Add a model by id	IDでモデルを追加	src/ui/screens/provider.js:589	
+uizt0x	ok	{0} · loaded	{0} · 読み込み済み	src/ui/screens/provider.js:611	{0} = named
+4ei9ix	ok	This list is from before the address or key changed. Fetch the model list again.	アドレスかキーが変わる前の一覧です。モデルの一覧をもう一度取得してください。	src/ui/screens/provider.js:621	
+1w6mxym	ok	Already added, on {0}	追加済み（{0}）	src/ui/screens/provider.js:626	{0} = here
+11pl9jr	ok	Use the free models	無料のモデルを使う	src/ui/screens/provider.js:651	
+vam64u	ok	Use the recommended models	おすすめのモデルを使う	src/ui/screens/provider.js:651	
+1b2yx8m	ok	Suggested models	おすすめのモデル	src/ui/screens/provider.js:652	
+y5yzjn	ok	{0} suggests a model for each role. Its speech models then go ahead of Phone dictation and Browser voice, which are free, so any that cost money are tried before them.	{0}は役割ごとにおすすめのモデルを用意しています。これを使うと、音声のモデルが端末の音声入力とブラウザの声（どちらも無料）より前に並ぶため、有料のモデルが先に試されます。	src/ui/screens/provider.js:653	{0} = src.name; Note: 端末の音声入力 and ブラウザの声 as the Roles list names them (Phone dictation, Browser voice): one name for each everywhere.
+1x5hwmk	ok	{0} suggests a model for each role.	{0}は役割ごとにおすすめのモデルを用意しています。	src/ui/screens/provider.js:654	{0} = src.name
+1iffu2j	ok	{0} switched on.	{0}をオンにしました。	src/ui/screens/provider.js:661	{0} = n
+1szeqxt	ok	Roles updated.	役割を更新しました。	src/ui/screens/provider.js:661	
+1egvjs1	ok	{0} couldn't be switched on: {1}	{0}をオンにできませんでした：{1}	src/ui/screens/provider.js:662	{0} = f.name; {1} = messageOf(f.error)
+wlh055	ok	Use the {0} models	{0}のモデルを使う	src/ui/screens/provider.js:668	{0} = which
 1qocxbg	ok	Writing it: {0} is reading the conversation. This can take a minute.	作成中：{0}が会話を読んでいます。1分ほどかかることがあります。	src/ui/screens/recap.js:33	{0} = names(m.name)
 1lrfe9k	ok	Write the recap	振り返りを書く	src/ui/screens/recap.js:35	
 h6huep	ok	Write it again	書き直す	src/ui/screens/recap.js:35	
@@ -2706,7 +2706,7 @@ o7g54g	ok	Cut her off by speaking	話しかけて割り込む	src/ui/screens/voi
 1maeag1	ok	Speaking…	話しています…	src/ui/screens/voice.js:70	
 1rasxdf	ok	This browser didn't let annai play sound yet. Tap anywhere on the page, then try again.	このブラウザでは、まだ音を再生できません。ページのどこかをタップしてから、もう一度お試しください。	src/ui/screens/voice.js:74	
 39tqta	ok	No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.	どの声も再生できませんでした。各声の応答は「記録」で確認できます。「設定 → モデル」で声を確認してください。	src/ui/screens/voice.js:75	
-m6lqjc	ok	{0} couldn't speak: {1}	{0}は話せませんでした：{1}	src/ui/screens/voice.js:77	{0} = names(f.name); {1} = speechProblem(f.error)
+m6lqjc	ok	{0} couldn't speak: {1}	{0}は話せませんでした：{1}	src/ui/screens/voice.js:77	{0} = names(f.name); {1} = await speechProblem(ctx.store, f.error, true)
 1v88hol	ok	{0}, then {1}	{0}、次に{1}	src/ui/screens/voice.js:78	context: one voice, then the next; {0} = a; {1} = b; Note: voices in the order they spoke: "A, then B, then C".
 1w6xnpw	ok	Spoken by {0}.	話した声：{0}。	src/ui/screens/voice.js:78	{0} = r.voices.map(names).reduce((/** @type {string} */ a, /** @type {string} */ b) => tc('one voice, then the next')`${a}, then ${b}`)
 1l6oe5c	ok	Test the voice	声をテスト	src/ui/screens/voice.js:85	
@@ -2829,19 +2829,20 @@ phutrz	ok	{0} wasn't saved: {1}	{0}を保存できませんでした：{1}	src/u
 1z00dfe	ok	An update is ready	アップデートの準備ができました	src/ui/shell.js:507	
 gt0nrj	ok	It will be used the next time annai starts.	次回annaiを起動したときに適用されます。	src/ui/shell.js:507	
 sntfon	ok	Hello! This is how I sound when I talk to you.	こんにちは。こんな声でお話しします。	src/ui/speech-check.js:10	Note: spoken by the voice being tested, so it is heard in the screens' language.
-fphcj3	draft	The provider didn't accept the request: "{0}".	プロバイダーがリクエストを受け付けませんでした。理由は「{0}」です。	src/ui/speech-check.js:19	{0} = reason
-n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:22	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
-1a27ynt	ok	Last tested {0}: it worked.	最終テスト（{0}）：動作しました。	src/ui/speech-check.js:32	{0} = relTime(verified.at); Note: {0} is a relative time, in brackets as on a model's test line.
-lrzlka	ok	Last tested {0}: it didn't work.	最終テスト（{0}）：動作しませんでした。	src/ui/speech-check.js:32	{0} = relTime(verified.at)
-11k50g8	ok	Playing a sample…	サンプルを再生しています…	src/ui/speech-check.js:42	
-10nc9qe	ok	The sample stopped early.	サンプルが途中で止まりました。	src/ui/speech-check.js:44	
-f41br8	ok	It works: that was this voice.	動作します。今のがこの声です。	src/ui/speech-check.js:44	
-en3jzv	ok	Say something, such as "Where should we stop for lunch?"	「お昼はどこで食べようか？」のように、何か話してください。	src/ui/speech-check.js:48	
-sn0s5v	ok	Nothing was heard in 12 seconds. Check that the microphone is on, then try again.	12秒間、何も聞こえませんでした。マイクがオンになっているか確認して、もう一度お試しください。	src/ui/speech-check.js:53	
-16ssm8b	ok	It heard speech but wrote nothing down. Try again, a little closer to the phone.	音声は聞こえましたが、文字に起こせませんでした。端末にもう少し近づいて、もう一度お試しください。	src/ui/speech-check.js:58	Note: "wrote nothing down" is the transcription: 文字に起こす, not 書き出す (export).
-a2r8f0	ok	It heard: "{0}"	聞き取った言葉：「{0}」	src/ui/speech-check.js:58	{0} = text
-1alwf78	ok	Say something	話してみる	src/ui/speech-check.js:71	
-1qerct6	ok	Play a sample	サンプルを再生	src/ui/speech-check.js:71	
+n8hyke	ok	{0}. {1}	{0}。{1}	src/ui/speech-check.js:21	{0} = p.title; {1} = p.body; Note: a problem's title, then what to do.
+fphcj3	draft	The provider didn't accept the request: "{0}".	プロバイダーがリクエストを受け付けませんでした。理由は「{0}」です。	src/ui/speech-check.js:25	{0} = reason
+jyb58y	draft	The provider doesn't know this model, address or voice. Check the model id, the base URL and the Voice.	このモデル、アドレス、または声がプロバイダーに見つかりません。モデルID、ベースURL、「声」を確認してください。	src/ui/speech-check.js:26	Note: "Voice" is the model's Voice field, which reads 声 here (the voice thing), not Settings' 音声.
+1a27ynt	ok	Last tested {0}: it worked.	最終テスト（{0}）：動作しました。	src/ui/speech-check.js:38	{0} = relTime(verified.at); Note: {0} is a relative time, in brackets as on a model's test line.
+lrzlka	ok	Last tested {0}: it didn't work.	最終テスト（{0}）：動作しませんでした。	src/ui/speech-check.js:38	{0} = relTime(verified.at)
+11k50g8	ok	Playing a sample…	サンプルを再生しています…	src/ui/speech-check.js:48	
+10nc9qe	ok	The sample stopped early.	サンプルが途中で止まりました。	src/ui/speech-check.js:50	
+f41br8	ok	It works: that was this voice.	動作します。今のがこの声です。	src/ui/speech-check.js:50	
+en3jzv	ok	Say something, such as "Where should we stop for lunch?"	「お昼はどこで食べようか？」のように、何か話してください。	src/ui/speech-check.js:54	
+sn0s5v	ok	Nothing was heard in 12 seconds. Check that the microphone is on, then try again.	12秒間、何も聞こえませんでした。マイクがオンになっているか確認して、もう一度お試しください。	src/ui/speech-check.js:59	
+16ssm8b	ok	It heard speech but wrote nothing down. Try again, a little closer to the phone.	音声は聞こえましたが、文字に起こせませんでした。端末にもう少し近づいて、もう一度お試しください。	src/ui/speech-check.js:64	Note: "wrote nothing down" is the transcription: 文字に起こす, not 書き出す (export).
+a2r8f0	ok	It heard: "{0}"	聞き取った言葉：「{0}」	src/ui/speech-check.js:64	{0} = text
+1alwf78	ok	Say something	話してみる	src/ui/speech-check.js:77	
+1qerct6	ok	Play a sample	サンプルを再生	src/ui/speech-check.js:77	
 6gd8we	draft	Free up space on this iPhone in Settings → General → iPhone Storage, then try again.	「設定 → 一般 → iPhoneストレージ」でこのiPhoneの空き容量を増やしてから、もう一度お試しください。	src/ui/storage-full.js:20	Note: the path as iOS names it, from Apple's iPhone User Guide "iPhoneでストレージを管理する" (iph47c931112, ja-jp, fetched 2026-11-19): 「一般」をタップしてから、「iPhoneストレージ」. No sentence about removing a trip follows: a full iPhone refuses deletes.
 12pwtgq	draft	Free up space on this phone in Settings → Storage, then try again.	「設定 → ストレージ」でこの端末の空き容量を増やしてから、もう一度お試しください。	src/ui/storage-full.js:21	Note: Android's path, from Google's "Android デバイスの空き容量を増やす" (support.google.com/android/answer/7431795, hl=ja, fetched 2026-11-19): 設定アプリ → [ストレージ]. この端末 for this phone, as in every row.
 4paddw	draft	Removing a trip you no longer need also makes room in annai (back it up first).	不要になった旅を削除すれば、annaiの中にも空きができます（先にバックアップしてください）。	src/ui/storage-full.js:23	Note: said where a delete works on a full disk (Android, a computer), not on an iPhone or iPad. Removing a trip frees room inside annai, hence annaiの中にも.

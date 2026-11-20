@@ -180,6 +180,34 @@ test("OpenRouter's speech list (its entries carry supported_voices): each model'
   assert.deepEqual(hear.readList({ data: [{ id: 'x/y', supported_voices: ['a'] }] }), [{ providerId: 'x/y' }], 'transcription lists have no voices');
 });
 
+test("An OpenRouter speech entry that lists no voice takes its base's, the id before the last ':' of its slug, when the same list has it with voices (the real list: heygen-voice-1-turbo:free plays with heygen-voice-1-turbo's); no base, or a base with none, leaves it as it was", () => {
+  const nadine = ['nadine', 'tabitha', 'bram'];
+  const got = say.readList({ data: [
+    { id: 'heygen/heygen-voice-1-turbo', name: 'Turbo', supported_voices: nadine },
+    { id: 'heygen/heygen-voice-1-turbo:free', name: 'Turbo (free)', supported_voices: null },
+    // Its own voices win over its base's.
+    { id: 'heygen/heygen-voice-1-turbo:own', supported_voices: ['x'] },
+    // No such base in the list: as before (Fish Audio's, with the vendor's styled rule).
+    { id: 'fish-audio/s2.1-pro-free:free', name: 'Fish', supported_voices: null },
+    // A base that lists none gives none; ByteDance's lists none and has no base.
+    { id: 'fish-audio/s2.1-pro', supported_voices: null },
+    { id: 'fish-audio/s2.1-pro:free', supported_voices: null },
+    { id: 'bytedance-seed/seed-audio-1-0', supported_voices: null },
+    // The base is what is before the last ':' (a base may be a variant itself).
+    { id: 'x/m:a', supported_voices: ['v', 'w'] }, { id: 'x/m:a:b', supported_voices: null }, { id: 'x/m', supported_voices: ['other'] },
+    // A server that is not OpenRouter's has no supported_voices anywhere: ids with a ':' stay as they are.
+    { id: 'speaches/model' }, { id: 'speaches/model:latest' }, { id: ':free' },
+  ] });
+  const by = Object.fromEntries(got.map((/** @type {any} */ m) => [m.providerId, m]));
+  assert.deepEqual(by['heygen/heygen-voice-1-turbo:free'], { providerId: 'heygen/heygen-voice-1-turbo:free', name: 'Turbo (free)', tunables: { voice: 'nadine', voices: nadine, styled: false } });
+  assert.deepEqual(by['heygen/heygen-voice-1-turbo:own'].tunables, { voice: 'x', voices: ['x'], styled: false });
+  assert.deepEqual(by['fish-audio/s2.1-pro-free:free'], { providerId: 'fish-audio/s2.1-pro-free:free', name: 'Fish' });
+  assert.deepEqual(by['fish-audio/s2.1-pro:free'], { providerId: 'fish-audio/s2.1-pro:free' });
+  assert.deepEqual(by['bytedance-seed/seed-audio-1-0'].tunables, { styled: false });
+  assert.deepEqual(by['x/m:a:b'].tunables, { voice: 'v', voices: ['v', 'w'], styled: false });
+  assert.deepEqual([by['speaches/model:latest'], by[':free']], [{ providerId: 'speaches/model:latest' }, { providerId: ':free' }]);
+});
+
 test("a voice asked to go without its style (unstyled: the server refused instructions) is sent none; Fish Audio's style is billed with the text, and so is any other's", async () => {
   const fishModel = { id: 'm', name: 'Fish', providerId: 'fish-audio/s2.1-pro', prices: { perMillionChars: 15 }, tunables: { voice: 'abc', style: 'calm, warm and friendly' }, extraBody: {} };
   const s = spec(say);

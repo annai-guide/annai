@@ -519,7 +519,7 @@
       "free": true,
       "local": false,
       "code": true,
-      "size": 32520,
+      "size": 32526,
       "requires": [
         {
           "id": "chat-completions",
@@ -533,7 +533,7 @@
       "featured": "Sign in with OpenRouter is the quickest way, and it starts you on free models.",
       "provides": {},
       "files": {
-        "annai-plugin.json": "fc29ece8628621d66af93f72df037a8108fead88eec40abd424fafc12035e680",
+        "annai-plugin.json": "85fe67ef5231451d4ac6ab6f49dd602dec7f8b1fd6ae714a42ff37328d2ad4ab",
         "index.js": "46007b34a1c7e5274f2f71eca123daac6b38733ecd4e84f3ec5dfdca95e8469b"
       }
     },
@@ -735,7 +735,7 @@
     {
       "id": "speech-openai",
       "name": "OpenAI-compatible speech",
-      "version": "0.7.0",
+      "version": "0.7.1",
       "description": "Transcription and voices through the OpenAI audio API: OpenAI, OpenRouter, Groq and local servers such as Speaches, whisper.cpp and Kokoro.",
       "category": "developer",
       "keywords": [],
@@ -743,7 +743,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 16895,
+      "size": 17580,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -752,8 +752,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "b9983065ff95cbfe1109a6c68084e89398858db52323374b466ee5123b15452f",
-        "index.js": "d3e3dc77dca6e6f4410b9846eb82a9d11c8a5556baf74e08b714a94789f4f4af"
+        "annai-plugin.json": "5178e9703a05c4b2be11f002b0c0c5fabc05b55c47c2ccd00c96d7363899af6a",
+        "index.js": "a15723767963ad5a8c80013abf31315b0653ce5f86d427dca2759c20b34c53a6"
       }
     },
     {

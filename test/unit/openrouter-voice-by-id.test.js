@@ -8,38 +8,26 @@ import { REQUEST_MS } from '../../src/core/llm/uploads.js';
 import { speechProblem } from '../../src/ui/speech-check.js';
 import { hostKit } from './package-kit.js';
 import { useClock } from './clock.js';
+import { SPEECH_LIST, KATKAT, PCM_TYPE, refusal } from '../fakes/openrouter-speech.js';
 
 // A voice added by id on OpenRouter's Voice section (voice-id-next): it starts with the voice OpenRouter's list gives that id, as one
-// added from Fetch model list does, and a sample its server refuses says the server's own reason. The stand-in answers as OpenRouter
-// did: the main session's probe of 2026-11-20 (its test key, "Hello there." with no voice) got a 400 from every maker but Fish Audio,
-// with the words below; the streamed-voice build's real run (2026-11-19) got "Voice not found" for HeyGen's voice sent Fish Audio's.
-// The bodies are shaped as the voice probe recorded OpenRouter's 400s (test/fixtures/voices/openrouter-pcm-probe.json).
+// added from Fetch model list does, and a sample its server refuses says what to change. The stand-in is test/fakes/openrouter-speech.js,
+// built from the real answers: the public speech list of 2026-11-20 (test/fixtures/voices/openrouter-speech-list.json) and the main
+// session's probes of the same day with the test key (test/fixtures/voices/openrouter-voices-probe.json: each maker's answer to Women
+// KatKat's id, HeyGen's free variant taking its sibling's voice, ByteDance's model taking none), and the streamed-voice build's real run
+// (2026-11-19: HeyGen's "Voice not found"). The answer to an id OpenRouter doesn't have was never recorded: no assertion pins its words.
 
 const root = new URL('../../', import.meta.url);
 const KEY = 'sk-or-v1-stand-in-key-0123456789abcdef';
-/** Women KatKat, the Fish Audio library voice OpenRouter's voice ability gives (provider-openrouter's description). */
-const KATKAT = 'bddf65d5a84c4a9aa36b7136bdac57a9';
 const STYLE = 'young, cheerful and lively, yet calm and gentle';
-const HEYGEN_NONE = 'An explicit voice is required unless input_references carries a reference recording.';
-const OTHER_NONE = 'An explicit voice is required for this TTS provider.';
-const UNKNOWN = 'Voice not found';
-/** @param {string} message */
-const refused = (message) => new Response(JSON.stringify({ error: { message, code: 400 } }), { status: 400, headers: { 'content-type': 'application/json' } });
-/**
- * OpenRouter's speech list, as /models?output_modalities=speech answers: Fish Audio's take any voice of its library (supported_voices null),
- * the others list theirs. Grok's are the description's; HeyGen's names are stand-ins (the real list's were not recorded).
- */
-const SPEECH = [
-  { id: 'fish-audio/s2.1-pro', name: 'Fish Audio: S2.1 Pro', supported_voices: null },
-  { id: 'heygen/heygen-voice-1', name: 'HeyGen: Voice 1', supported_voices: ['Allison', 'Ivy'] },
-  { id: 'x-ai/grok-voice-tts-1.0', name: 'SpaceXAI: Grok Voice TTS 1.0', supported_voices: ['eve', 'ara', 'rex', 'sal', 'leo'] },
-];
+/** The Voice a refused voice's sample says to look at, where the maker gave no words (Grok's and Voxtral's bare 404). */
+const NOT_FOUND = "The provider doesn't know this model, address or voice. Check the model id, the base URL and the Voice.";
 
 /**
- * OpenRouter as the probe found it. Its list: up, offline (no connection) or hanging (never answers). Its voices: Fish Audio's speak with
- * any voice or none; any other answers a 400 with no voice, or with one its list doesn't give that id, else audio: raw PCM where it was
- * asked for it (HeyGen's sends nothing else), else MP3. Anything else is annai's own files, for its catalog and plugins.
- * @param {{ list?: 'up' | 'offline' | 'hangs' }} [o]
+ * OpenRouter as the probes found it. Its list: up, offline (no connection), refused (503) or hanging (never answers). Its voices: per
+ * test/fakes/openrouter-speech.js; the audio of one it accepts is raw PCM where it was asked for it (HeyGen's sends nothing else), else MP3.
+ * Anything else is annai's own files, for its catalog and plugins.
+ * @param {{ list?: 'up' | 'offline' | 'refused' | 'hangs' }} [o]
  */
 function openRouter({ list = 'up' } = {}) {
   /** @type {any[]} */
@@ -59,17 +47,16 @@ function openRouter({ list = 'up' } = {}) {
     if (u.pathname === '/api/v1/models') lists.push(u.searchParams.get('output_modalities') ?? 'text');
     if (u.pathname === '/api/v1/models' && u.searchParams.get('output_modalities') === 'speech') {
       if (list === 'offline') throw new TypeError('Failed to fetch');
+      if (list === 'refused') return Response.json({ error: { code: 503, message: 'Service unavailable' } }, { status: 503 });
       if (list === 'hangs') return new Promise(() => {});
-      return Response.json({ data: SPEECH });
+      return Response.json({ data: SPEECH_LIST });
     }
     if (u.pathname !== '/api/v1/audio/speech') return new Response('not found', { status: 404 });
     const body = JSON.parse(String(init.body));
     said.push(body);
-    if (!/^fish-audio\//.test(body.model)) {
-      if (!body.voice) return refused(/^heygen\//.test(body.model) ? HEYGEN_NONE : OTHER_NONE);
-      if (!(SPEECH.find((m) => m.id === body.model)?.supported_voices ?? []).includes(body.voice)) return refused(UNKNOWN);
-    }
-    return body.response_format === 'pcm' ? new Response(new Uint8Array(882), { headers: { 'content-type': 'audio/pcm;rate=44100;channels=1' } })
+    const no = refusal(body);
+    if (no) return new Response(no.body, { status: no.status, headers: { 'content-type': no.type } });
+    return body.response_format === 'pcm' ? new Response(new Uint8Array(882), { headers: { 'content-type': PCM_TYPE } })
       : new Response(new Uint8Array([0xff, 0xf3, 1, 2]), { headers: { 'content-type': 'audio/mpeg' } });
   };
   return { fetch, said, lists };
@@ -82,104 +69,188 @@ async function added(or) {
   const id = await llm.addProvider('provider-openrouter', { key: KEY });
   const model = async (/** @type {string} */ modelId) => modelOf((await readConfig(k.ws)).models[modelId]);
   /** The model whose provider model id this is, of the ones OpenRouter's description gave. @param {string} pid */
-  const described = async (pid) => /** @type {string} */ (Object.values((await readConfig(k.ws)).models).find((m) => modelOf(m).providerId === pid)?.id);
-  return { k, llm, id, model, described };
+  const described = async (pid) => Object.values((await readConfig(k.ws)).models).find((m) => modelOf(m).providerId === pid)?.id;
+  /**
+   * Added by id as the screen adds it; a model the description has (by the id the list gives it) is removed first, since an add is refused
+   * for an id the provider has. @param {string} pid what is typed @param {string} [listed] the id the list gives it
+   */
+  const byId = async (pid, listed = pid) => {
+    const had = await described(listed);
+    if (had) await removeModel(k.ws, had);
+    return llm.addModelById(id, 'voice', pid);
+  };
+  return { k, llm, id, model, byId };
 }
 
-/** A sample that failed, and the words its card shows. @param {Promise<unknown>} p */
-async function refusal(p) {
+/** A sample that failed, and the words its card shows. @param {Awaited<ReturnType<typeof added>>} o @param {Promise<unknown>} p */
+async function refusedWith({ k }, p) {
   const e = await p.then(() => null, (x) => x);
   assert.ok(e instanceof ProviderError, `refused, not ${e}`);
-  return { e, words: speechProblem(e) };
+  return { e, words: await speechProblem(k.store, e, true) };
 }
+const sample = (/** @type {Awaited<ReturnType<typeof added>>} */ o, /** @type {string} */ modelId) => o.llm.synthesize({ modelId, text: 'Hello there.' });
+const voicesOf = (/** @type {string} */ id) => /** @type {string[]} */ (SPEECH_LIST.find((m) => m.id === id)?.supported_voices);
 
-test("HeyGen's and Grok's voices added by id start with the voice OpenRouter's list gives them (its first warm or neutral, else its first), as from Fetch model list, and speak; Fish Audio's starts with Women KatKat and the style, as before", async () => {
+test("Online, a voice added by id starts with the voice OpenRouter's list gives that id (its first warm or neutral, else its first), its case ignored, a variant that lists none taking its base's, and speaks; Fish Audio's starts with Women KatKat and the style, as before", async () => {
   const or = openRouter();
-  const { llm, id, model, described, k } = await added(or);
-  const heygen = await llm.addModelById(id, 'voice', 'heygen/heygen-voice-1');
-  assert.equal((await model(heygen)).name, 'heygen/heygen-voice-1', 'named by its id, as any model added by id');
-  assert.deepEqual((await model(heygen)).tunables, { voice: 'Allison', voices: ['Allison', 'Ivy'], styled: false }, "its voices for the Voice field, the first, and no style: HeyGen's takes none");
-  const spoken = await llm.synthesize({ modelId: heygen, text: 'Hello there.' });
-  assert.equal(spoken.clip?.mediaType, 'audio/wav');
-  assert.deepEqual(or.said.at(-1), { model: 'heygen/heygen-voice-1', input: 'Hello there.', response_format: 'pcm', voice: 'Allison' });
-  // Its description has Grok's voice already: removed first, as a model the provider has is refused, not added twice.
-  await removeModel(k.ws, await described('x-ai/grok-voice-tts-1.0'));
-  const grok = await llm.addModelById(id, 'voice', 'x-ai/grok-voice-tts-1.0');
-  assert.deepEqual((await model(grok)).tunables, { voice: 'eve', voices: ['eve', 'ara', 'rex', 'sal', 'leo'], styled: false }, 'none of its voices is warm or neutral: its first');
-  await llm.synthesize({ modelId: grok, text: 'Hello there.' });
-  assert.deepEqual(or.said.at(-1), { model: 'x-ai/grok-voice-tts-1.0', input: 'Hello there.', response_format: 'mp3', voice: 'eve' });
-  // The voice page's Voice field shows the list's voice as the model's own default (grey), so emptying it never falls back to Women KatKat.
-  const rec = (await readConfig(k.ws)).models[heygen];
-  assert.deepEqual([rec.template?.id, rec.template?.values?.tunables?.voice, rec.user], ['list/heygen/heygen-voice-1', 'Allison', {}]);
+  const o = await added(or);
+  const { llm, id, model, k } = o;
+  // [typed, stored provider id, voice, format asked, voices the Voice field suggests]
+  /** @type {[string, string, string, string, string[]][]} */
+  const cases = [
+    ['heygen/heygen-voice-1', 'heygen/heygen-voice-1', 'nadine', 'pcm', voicesOf('heygen/heygen-voice-1')],
+    // Its list entry lists none: its base's (the probe: nadine, 200 PCM).
+    ['heygen/heygen-voice-1-turbo:free', 'heygen/heygen-voice-1-turbo:free', 'nadine', 'pcm', voicesOf('heygen/heygen-voice-1-turbo')],
+    ['x-ai/grok-voice-tts-1.0', 'x-ai/grok-voice-tts-1.0', 'eve', 'mp3', voicesOf('x-ai/grok-voice-tts-1.0')],
+    // The warm voice is not the first: Voxtral's neutral one is its second.
+    ['mistralai/voxtral-mini-tts-2603', 'mistralai/voxtral-mini-tts-2603', 'en_paul_neutral', 'mp3', voicesOf('mistralai/voxtral-mini-tts-2603')],
+    // Kokoro's af_heart is its fourth; typed in other case, it is the list's id that is stored.
+    ['hexgrad/Kokoro-82M', 'hexgrad/kokoro-82m', 'af_heart', 'mp3', voicesOf('hexgrad/kokoro-82m')],
+  ];
+  /** @type {import('../../src/core/llm/config.js').ModelRecord | undefined} */
+  let heygen;
+  for (const [typed, providerId, voice, format, voices] of cases) {
+    const made = await o.byId(typed, providerId);
+    heygen ??= (await readConfig(k.ws)).models[made];
+    const m = await model(made);
+    assert.equal(m.providerId, providerId, typed);
+    assert.equal(m.name, providerId, 'named by its id, as any model added by id');
+    assert.deepEqual(m.tunables, { voice, voices, styled: false }, `${typed}: its voices for the Voice field, its voice, and no style: its vendor takes none`);
+    assert.equal((await sample(o, made)).clip?.mediaType, format === 'pcm' ? 'audio/wav' : 'audio/mpeg', typed);
+    assert.deepEqual(or.said.at(-1), { model: providerId, input: 'Hello there.', response_format: format, voice }, typed);
+  }
+  assert.equal(voicesOf('hexgrad/kokoro-82m').indexOf('af_heart'), 3, "Kokoro's warm voice is not its first");
+  assert.equal(voicesOf('mistralai/voxtral-mini-tts-2603').indexOf('en_paul_neutral'), 1, "Voxtral's is not its first");
+  assert.equal(SPEECH_LIST.find((m) => m.id === 'heygen/heygen-voice-1-turbo:free')?.supported_voices, null, 'the free variant lists none of its own');
+  // The Voice field shows the list's voice as the model's own default (grey), so emptying it never falls back to Women KatKat.
+  assert.deepEqual([heygen?.template?.id, heygen?.template?.values?.tunables?.voice, heygen?.user], ['list/heygen/heygen-voice-1', 'nadine', {}]);
   // Fish Audio's list entry gives no voice (any of its library), so it starts with the ability's, as one added by id always did.
   const fish = await llm.addModelById(id, 'voice', 'fish-audio/s2.1-pro');
   assert.deepEqual((await model(fish)).tunables, {});
-  await llm.synthesize({ modelId: fish, text: 'Hello there.' });
+  await sample(o, fish);
   assert.deepEqual(or.said.at(-1), { model: 'fish-audio/s2.1-pro', input: 'Hello there.', response_format: 'mp3', voice: KATKAT, instructions: STYLE });
   // Each voice's add read the speech list once; a chat model added by id reads none: OpenRouter's is large, and a chat model works without it.
-  assert.deepEqual(or.lists, ['speech', 'speech', 'speech']);
+  assert.deepEqual(or.lists, Array(cases.length + 1).fill('speech'));
   await llm.addModelById(id, 'chat', 'some/chat-model');
-  assert.deepEqual(or.lists, ['speech', 'speech', 'speech']);
+  assert.equal(or.lists.length, cases.length + 1);
+  // The id is the list's, whatever case was typed: Kokoro again, typed in another case, is the model just added, refused as already added.
+  await assert.rejects(llm.addModelById(id, 'voice', 'HexGrad/Kokoro-82M'), { held: true });
 });
 
-test("With no list to read (offline, or no answer in REQUEST_MS), or an id OpenRouter's list doesn't have, a voice is added by id as before: Women KatKat, which HeyGen's refuses, and the refused sample says HeyGen's own reason", async (t) => {
-  {
-    const or = openRouter({ list: 'offline' });
-    const { llm, id, model } = await added(or);
-    const heygen = await llm.addModelById(id, 'voice', 'heygen/heygen-voice-1');
-    assert.deepEqual((await model(heygen)).tunables, {}, "the ability's voice, as before");
-    const { e, words } = await refusal(llm.synthesize({ modelId: heygen, text: 'Hello there.' }));
-    assert.equal(or.said.at(-1).voice, KATKAT);
-    assert.equal(e.kind, 'bad-request');
-    assert.equal(words, 'The provider didn\'t accept the request: "Voice not found".');
-  }
-  {
-    const or = openRouter();
-    const { llm, id, model } = await added(or);
-    const unlisted = await llm.addModelById(id, 'voice', 'heygen/heygen-voice-9');
-    assert.deepEqual((await model(unlisted)).tunables, {}, 'an id the list lacks: by id, as before');
-    assert.match((await refusal(llm.synthesize({ modelId: unlisted, text: 'Hello there.' }))).words, /"Voice not found"\.$/);
+test("With no list to read (offline, refused, or no answer in REQUEST_MS), a voice is added by id as before: Women KatKat, which each maker refuses, and the refused sample says what to change, its words as each maker's answer gives them", async (t) => {
+  // [id, kind, status, the words a card shows]. HeyGen's, its free variant's and Kokoro's 400 say why; Grok's and Voxtral's 404 is the bare
+  // "Provider returned 404", so the card says the Voice may be what the provider doesn't know.
+  /** @type {[string, string, number, string][]} */
+  const answers = [
+    ['heygen/heygen-voice-1', 'bad-request', 400, 'The provider didn\'t accept the request: "HTTP 400: Voice not found".'],
+    ['heygen/heygen-voice-1-turbo:free', 'bad-request', 400, 'The provider didn\'t accept the request: "HTTP 400: Voice not found".'],
+    ['x-ai/grok-voice-tts-1.0', 'not-found', 404, NOT_FOUND],
+    ['mistralai/voxtral-mini-tts-2603', 'not-found', 404, NOT_FOUND],
+    // Kokoro's reason is long: cut at 120 characters, "Available voices: a…".
+    ['hexgrad/kokoro-82m', 'bad-request', 400, `The provider didn't accept the request: "HTTP 400: Voice '${KATKAT}' is not available for model 'hexgrad/Kokoro-82M'. Available voices: a…".`],
+  ];
+  for (const list of /** @type {const} */ (['offline', 'refused'])) {
+    const or = openRouter({ list });
+    const o = await added(or);
+    for (const [pid, kind, status, words] of answers) {
+      const made = await o.byId(pid);
+      assert.deepEqual((await o.model(made)).tunables, {}, `${pid}: the ability's voice, as before`);
+      const r = await refusedWith(o, sample(o, made));
+      assert.equal(or.said.at(-1).voice, KATKAT, pid);
+      assert.deepEqual([r.e.kind, r.e.status, r.words], [kind, status, words], `${pid}, the list ${list}`);
+    }
   }
   const or = openRouter({ list: 'hangs' });
-  const { llm, id, model } = await added(or);
+  const o = await added(or);
   useClock(t);
   const from = Date.now();
-  const heygen = await llm.addModelById(id, 'voice', 'heygen/heygen-voice-1');
+  const heygen = await o.llm.addModelById(o.id, 'voice', 'heygen/heygen-voice-1');
   assert.equal(Date.now() - from, REQUEST_MS, 'the add waits for the list as long as annai waits for its other small lists, no longer');
-  assert.deepEqual((await model(heygen)).tunables, {});
+  assert.deepEqual((await o.model(heygen)).tunables, {});
+});
+
+test("An id the list doesn't have, and a model its list names no voice for (ByteDance's, which takes none), start with Women KatKat, which they refuse", async () => {
+  const or = openRouter();
+  const o = await added(or);
+  const unlisted = await o.llm.addModelById(o.id, 'voice', 'heygen/heygen-voice-9');
+  assert.deepEqual((await o.model(unlisted)).tunables, {}, 'an id the list lacks: by id, as before');
+  await refusedWith(o, sample(o, unlisted)); // a ProviderError; the real answer to an id OpenRouter lacks was not recorded
+  assert.equal(or.said.at(-1).voice, KATKAT);
+  // Its entry lists no voice and its id has no base: nothing in the list gives one, so it starts with the ability's.
+  const seed = await o.llm.addModelById(o.id, 'voice', 'bytedance-seed/seed-audio-1-0');
+  assert.deepEqual((await o.model(seed)).tunables, { styled: false });
+  const r = await refusedWith(o, sample(o, seed));
+  assert.equal(or.said.at(-1).voice, KATKAT);
+  assert.deepEqual([r.e.kind, r.e.status], ['bad-request', 400]);
+  assert.equal(r.words, `The provider didn't accept the request: "Provider rejected the request: speaker ${KATKAT} not found in speaker_map, speaker_audio, or meg…".`, 'cut at 120, the voice named whole');
+});
+
+test("The list's voice is used only if the connection it was read under is the one the add lands under (the screen's check, asked after the read)", async () => {
+  const or = openRouter();
+  const o = await added(or);
+  /** @type {number[]} */
+  const asked = [];
+  const changed = await o.llm.addModelById(o.id, 'voice', 'heygen/heygen-voice-1', async () => { asked.push(or.lists.length); return false; });
+  assert.deepEqual(asked, [1], 'asked once, after the list was read');
+  assert.deepEqual((await o.model(changed)).tunables, {}, 'from another connection: the list is not used, the ability\'s voice is');
+  await removeModel(o.k.ws, changed);
+  const same = await o.llm.addModelById(o.id, 'voice', 'heygen/heygen-voice-1', async () => true);
+  assert.equal((await o.model(same)).tunables?.voice, 'nadine');
+  // Not asked for a model whose list was not read: a chat model's, and an id the list lacks start as they always did.
+  await o.llm.addModelById(o.id, 'chat', 'some/chat-model', async () => { throw new Error('asked'); });
 });
 
 test("A voice added by id before this build (no voice of its own: the ability's Women KatKat) stays as it was: HeyGen's is refused, its sample says why, and added again it speaks", async () => {
   const or = openRouter();
-  const { llm, id, model, k } = await added(or);
+  const o = await added(or);
   // As the old Add by id stored it: the id in the user's layer, nothing else.
-  const old = newModel(id, 'voice', { user: { providerId: 'heygen/heygen-voice-1' } });
-  await saveModel(k.ws, old);
-  assert.deepEqual((await model(old.id)).tunables, {});
-  const { words } = await refusal(llm.synthesize({ modelId: old.id, text: 'Hello there.' }));
+  const old = newModel(o.id, 'voice', { user: { providerId: 'heygen/heygen-voice-1' } });
+  await saveModel(o.k.ws, old);
+  assert.deepEqual((await o.model(old.id)).tunables, {});
+  const { words } = await refusedWith(o, sample(o, old.id));
   assert.equal(or.said.at(-1).voice, KATKAT);
-  assert.equal(words, 'The provider didn\'t accept the request: "Voice not found".');
-  await removeModel(k.ws, old.id);
-  const again = await llm.addModelById(id, 'voice', 'heygen/heygen-voice-1');
-  await llm.synthesize({ modelId: again, text: 'Hello there.' });
-  assert.equal(or.said.at(-1).voice, 'Allison');
+  assert.equal(words, 'The provider didn\'t accept the request: "HTTP 400: Voice not found".');
+  await removeModel(o.k.ws, old.id);
+  const again = await o.llm.addModelById(o.id, 'voice', 'heygen/heygen-voice-1');
+  await sample(o, again);
+  assert.equal(or.said.at(-1).voice, 'nadine');
 });
 
-test("A refused sample's words: the provider's reason as plain text (outside text, quoted, never read), its spaces and controls one space, its full stop the sentence's, cut at 120 characters; without one, or for any other failure, the kind's words as before", async () => {
-  const fromBody = (/** @type {number} */ status, /** @type {string} */ body) => speechProblem(errorFromResponse(status, body));
-  assert.equal(fromBody(400, JSON.stringify({ error: { message: OTHER_NONE, code: 400 } })), 'The provider didn\'t accept the request: "An explicit voice is required for this TTS provider".');
-  assert.equal(fromBody(400, JSON.stringify({ error: { message: HEYGEN_NONE, code: 400 } })), `The provider didn't accept the request: "${HEYGEN_NONE.slice(0, -1)}".`, 'the longest the probe saw, whole');
+test("A refused sample's words: the provider's reason as plain text (outside text, quoted, never read), its keys blanked before it is cut at 120 characters, its spaces and controls one space, its full stop the sentence's; a voice's 404 with no words says the Voice may be unknown; any other failure, the kind's words as before", async () => {
+  const k = await hostKit();
+  await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('llm:ep-1', KEY));
+  const fromBody = (/** @type {number} */ status, /** @type {string} */ body, speaking = true) => speechProblem(k.store, errorFromResponse(status, body), speaking);
+  const msg = (/** @type {string} */ message, code = 400) => JSON.stringify({ error: { message, code } });
+  // A refusal with its words (84 characters, the longest of the one-sentence ones): kept whole.
+  const HEYGEN_NONE = 'An explicit voice is required unless input_references carries a reference recording.';
+  assert.equal(await fromBody(400, msg(HEYGEN_NONE)), `The provider didn't accept the request: "${HEYGEN_NONE.slice(0, -1)}".`);
   // HeyGen's refusal of WAV (the voice probe of 2026-11-19): a dump, its lines one, cut.
   const probe = JSON.parse(await readFile(new URL('test/fixtures/voices/openrouter-pcm-probe.json', root), 'utf8'));
-  const dump = fromBody(400, probe.heygenWavRefused.body);
+  const dump = await fromBody(400, probe.heygenWavRefused.body);
   const quoted = /: "(.*)"\.$/.exec(dump)?.[1] ?? '';
   assert.equal(quoted.length, 120);
   assert.ok(quoted.endsWith('…') && quoted.startsWith('[ { "code": "invalid_value", "values": [ "mp3", "pcm" ]'), quoted);
-  assert.equal(fromBody(400, JSON.stringify({ error: { message: 'Bad‮\u0000 voice\n\tname.' } })), 'The provider didn\'t accept the request: "Bad voice name".', 'no control or direction mark reaches the screen');
-  // No words in the answer: its kind's, as before.
-  assert.equal(fromBody(400, ''), "The provider didn't accept the request. Check the tunables on its provider's page.");
-  // Another kind's words stay its kind's: a rejected key, whatever the provider said.
-  assert.equal(fromBody(401, JSON.stringify({ error: { message: 'No cookie auth credentials found' } })), 'The key was rejected. Check it in Settings → Models.');
-  // annai's own refusal says its own words.
-  assert.equal(speechProblem(new ProviderError('bad-request', "Voice A isn't a voice.", { said: { code: 'not-out', name: 'Voice A' } })), "Voice A isn't a voice.");
+  assert.equal(await fromBody(400, msg('Bad‮\u0000 voice\n\tname.')), 'The provider didn\'t accept the request: "Bad voice name".', 'no control or direction mark reaches the screen');
+  // No words in the answer ("HTTP 400", or OpenRouter's "Provider returned 400"): its kind's, as before.
+  for (const body of ['', msg('Provider returned 400'), msg('HTTP 400')]) assert.equal(await fromBody(400, body), "The provider didn't accept the request. Check the tunables on its provider's page.", body);
+  // A key across the cut shows none of its characters: blanked first (a cut first would leave its first 18 as the cut fell inside it).
+  const across = `${'x'.repeat(100)} ${KEY} echoed`;
+  assert.ok(across.indexOf(KEY) < 119 && across.indexOf(KEY) + KEY.length > 119, 'the key crosses character 119');
+  const blanked = await fromBody(400, msg(across));
+  assert.equal(blanked, `The provider didn't accept the request: "${'x'.repeat(100)} «key» echoed".`);
+  assert.ok(!blanked.includes('sk-or'), blanked);
+  // A key the blanking can't read (broken by a space) leaves no reason: the kind's words, not a prefix of the key.
+  assert.equal(await fromBody(400, msg(`Bad header ${KEY.slice(0, 12)} ${KEY.slice(12)}`)), "The provider didn't accept the request. Check the tunables on its provider's page.");
+  // A voice's 404: the answer gave no words, so the card says the Voice may be what the provider doesn't know; the same for one with words
+  // ("Not Found" of a wrong address says the address too); a transcription model's 404 is its model's or address's.
+  const bare = msg('Provider returned 404', 404);
+  assert.equal(await fromBody(404, bare), NOT_FOUND);
+  assert.equal(await fromBody(404, msg('Not Found', 404)), NOT_FOUND);
+  assert.equal(await fromBody(404, bare, false), "The provider doesn't know this model or address. Check the model id and the base URL.");
+  // Another kind's words stay its kind's: a rejected key, whatever the provider said, and a failure that has no provider's answer.
+  assert.equal(await fromBody(401, msg('No cookie auth credentials found', 401)), 'The key was rejected. Check it in Settings → Models.');
+  assert.equal(await speechProblem(k.store, new ProviderError('bad-request', "Voice A isn't a voice.", { said: { code: 'not-out', name: 'Voice A' } }), true), "Voice A isn't a voice.");
+  // annai's own not-found (no status) keeps its words.
+  assert.equal(await speechProblem(k.store, new ProviderError('not-found', 'That model no longer exists.', { said: { code: 'model-gone' } }), true), 'That model no longer exists.');
+  assert.equal(await speechProblem(k.store, new Error('plain'), true), 'plain');
 });
