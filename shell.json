@@ -1,5 +1,5 @@
 {
-  "build": "e57aff49e7e4",
+  "build": "fd9b100131ca",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -27,7 +27,7 @@
     "/skills/replanning/SKILL.md": "b38405097c65",
     "/src/app/boot.js": "58bba933ce37",
     "/src/app/claim.js": "fc9e510c391d",
-    "/src/app/main.js": "5e779fcb6b3e",
+    "/src/app/main.js": "b6d95f7ef988",
     "/src/app/version.js": "07a31129e186",
     "/src/core/after/journey.js": "b6fdf43aa98e",
     "/src/core/after/recap.js": "f26d1f326258",
@@ -155,7 +155,7 @@
     "/src/core/shown.js": "450af0a8c563",
     "/src/core/signals.js": "1ba83a24e15c",
     "/src/core/skills.js": "f53f24999247",
-    "/src/core/store-idb.js": "e960cecbf13c",
+    "/src/core/store-idb.js": "92ffe67bbf56",
     "/src/core/storage-types.js": "e20d91a457a9",
     "/src/core/sun.js": "c979f1473031",
     "/src/core/time.js": "fa5bc95db577",

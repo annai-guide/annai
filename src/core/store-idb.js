@@ -69,10 +69,10 @@ export async function createIdbStore(name = DB_NAME, hooks = {}) {
   let db = null;
   let closed = false;
   // The stop is kept where every connection opens (close() leaves db null, so every later tx comes here): once stopped (another tab
-  // owns the data now, or Erase runs) nothing opens, and one opening as it stopped closes before anything runs on it.
+  // owns the data now, or Erase runs) nothing opens, one opening as it stopped closes, and one that fails then is the stop too.
   const connect = async () => {
     if (closed) throw new StoppedError();
-    const d = await openDatabase(name);
+    const d = await openDatabase(name).catch((e) => { throw closed ? new StoppedError() : e; });
     d.onversionchange = () => {
       d.close();
       if (db === d) db = null;
@@ -84,6 +84,11 @@ export async function createIdbStore(name = DB_NAME, hooks = {}) {
     if (closed) {
       d.close();
       throw new StoppedError();
+    }
+    // Transactions waiting on one reopen each open one: the first keeps the store's, the rest close theirs (close() reaches only db).
+    if (db) {
+      d.close();
+      return db;
     }
     db = d;
     return d;

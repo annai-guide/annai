@@ -81,6 +81,8 @@ for (const type of ['pointerdown', 'keydown']) addEventListener(type, () => { ac
 const used = () => /** @type {any} */ (navigator).userActivation?.hasBeenActive ?? acted;
 /** @type {{ store: import('../core/types.js').Store } | null} */
 let running = null;
+/** Another tab has taken annai over: it can come before there is a store to close. */
+let stolen = false;
 
 async function boot() {
   // A reminder tapped while annai is open shows its conversation; one whose trip is gone goes home from there. First thing, so a tap
@@ -93,6 +95,7 @@ async function boot() {
       action: t`Use it here`,
     }),
     onStolen: () => {
+      stolen = true;
       running?.store.close();
       showBlocking(root, {
         title: t`annai was opened in another tab`,
@@ -108,7 +111,13 @@ async function boot() {
   let deliver = (/** @type {any[]} */ _evs) => {};
   /** Who else follows the committed appends: home's "changed since". @type {Set<(evs: any[]) => void>} */
   const followers = new Set();
-  const store = watchAppends(await createIdbStore(), (evs) => {
+  const created = await createIdbStore();
+  // Another tab took annai over while the store opened (onStolen had none to close): this tab has stopped.
+  if (stolen) {
+    created.close();
+    return;
+  }
+  const store = watchAppends(created, (evs) => {
     deliver(evs);
     for (const fn of followers) fn(evs);
   });

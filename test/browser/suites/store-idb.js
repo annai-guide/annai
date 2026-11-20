@@ -686,4 +686,56 @@ export default function (test, assert) {
       await eraseDatabase(name);
     });
   }
+
+  // A reopen that fails after the stop is the stop's own error (types.js, close): the open's (a full phone's, a version's) is nothing for a tab that has stopped to show.
+  for (const name of /** @type {const} */ (['UnknownError', 'AbortError', 'VersionError', 'SecurityError'])) {
+    test(`idb: a write whose reopen fails with ${name} after the store has stopped rejects with StoppedError, tried once`, async () => {
+      const dbName = `annai-test-stop-fail-${Date.now()}-${n++}`;
+      await eraseDatabase(dbName);
+      const s = await createIdbStore(dbName);
+      await eraseDatabase(dbName); // the connection is told to close, and does
+      const open = IDBFactory.prototype.open;
+      let opens = 0;
+      IDBFactory.prototype.open = /** @type {any} */ (function () {
+        opens++;
+        s.close();
+        /** @type {any} */
+        const r = { error: new DOMException('The open failed.', name), result: undefined };
+        setTimeout(() => r.onerror?.(new Event('error')));
+        return r;
+      });
+      const got = await s.tx(['files'], 'readwrite', (t) => t.putFile(rec)).then(() => null, (e) => e).finally(() => { IDBFactory.prototype.open = open; });
+      assert.ok(got instanceof StoppedError, String(got));
+      assert.equal(opens, 1);
+      await eraseDatabase(dbName);
+    });
+  }
+
+  // Transactions that start while the connection is gone each open one; the first to open keeps the store's connection, and the others close theirs.
+  // Before, the last kept it and the rest stayed open, which close() never reached (a phone that sleeps drops the connection with transactions in flight).
+  test('idb: transactions waiting on one reopen keep one connection open between them, and closing the store closes it', async () => {
+    const name = `annai-test-share-${Date.now()}-${n++}`;
+    await eraseDatabase(name);
+    /** @type {IDBDatabase[]} */
+    const connections = [];
+    const s = await createIdbStore(name, { onOpen: (db) => connections.push(db) });
+    await s.tx(['files'], 'readwrite', (t) => t.putFile(rec));
+    connections[0].close(); // what the browser does to a connection it drops
+    connections[0].dispatchEvent(new Event('close'));
+    const got = await Promise.all([1, 2, 3].map(() => s.tx(['files'], 'readonly', (t) => t.getFile('trip-1', '/a.md'))));
+    assert.deepEqual(got.map((f) => f?.hash), ['h1', 'h1', 'h1']);
+    assert.equal(connections.length, 4, 'each waiting transaction opened one');
+    const open = () => connections.filter((c) => {
+      try {
+        c.transaction(['files']);
+        return true;
+      } catch {
+        return false;
+      }
+    }).length;
+    assert.equal(open(), 1, 'one stays open');
+    s.close();
+    assert.equal(open(), 0, 'closing the store closed it');
+    await eraseDatabase(name);
+  });
 }

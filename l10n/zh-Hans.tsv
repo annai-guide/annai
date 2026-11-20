@@ -425,30 +425,30 @@ storage-webdav:kpd7yy	ok	The folder above {0} doesn't exist on the server, so an
 storage-webdav:nr7x2z	ok	Works: annai made the folder {0} and can keep its backups there.	测试通过：已创建文件夹 {0}，可以在其中保存备份。	plugins-official/storage-webdav/index.js:139	{0} = shownOf(w.url)
 storage-webdav:1hxwq6b	ok	Works: annai can keep its backups in {0}.	测试通过：可以把备份保存在 {0} 中。	plugins-official/storage-webdav/index.js:142	{0} = shownOf(w.url)
 1aajvdy	ok	Opening annai…	正在打开 annai…	src/app/boot.js:37	
-1v76pcd	ok	annai is open in another tab	annai 已在另一个标签页中打开	src/app/main.js:91	
-cohfbh	ok	Only one copy of annai runs at a time, so your trips stay consistent.	同一时间只能运行一个 annai，以确保旅行数据一致。	src/app/main.js:92	
-u0vojx	ok	Use it here	在这里使用	src/app/main.js:93	
-p4x3of	ok	annai was opened in another tab	annai 已在另一个标签页中打开	src/app/main.js:98	
-11qyuy7	ok	This tab has stopped, so your trips stay consistent.	为确保旅行数据一致，此标签页已停止运行。	src/app/main.js:99	
-1ku6bv3	ok	Use it here instead	改在这里使用	src/app/main.js:100	
-fki4un	ok	Notifications	通知	src/app/main.js:261	
-1clzv4	ok	Settings → Models changed	设置 → 模型有变化	src/app/main.js:264	
-1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai 现在按提供商来设置：一个提供商只需一个地址和一个密钥，即可使用它提供的全部功能。你原来的端点（{0}）及其密钥已被移除，请在设置 → 模型中重新添加。	src/app/main.js:265	{0} = list(moved.names, 'plain')
-whpd9d	ok	Open Models	前往模型设置	src/app/main.js:266	
-10renyj	ok	Plugins	插件	src/app/main.js:277	
-1sp21de	ok	A new version of the {0} personality	性格“{0}”有新版本	src/app/main.js:382	{0} = o.name
-1yoe82	ok	Yours has your own edits, so it was kept as it is.	你的版本里有你自己的修改，所以已保留原样。	src/app/main.js:383	
-1n8cxuc	ok	Compare	比较	src/app/main.js:385	
-rzp4o3	ok	Keep mine	保留我的	src/app/main.js:386	
-1j662as	ok	Let Shiori merge	让 Shiori 合并	src/app/main.js:387	
-x0ig66	ok	Something went wrong	出了点问题	src/app/main.js:439	
-1oy79dy	ok	annai kept running. The details are in Trace.	annai 仍在运行，详情见“记录”。	src/app/main.js:440	
-c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在运行，但没能记下发生了什么，所以“记录”里也没有。如果反复出现，请关闭 annai 再重新打开。	src/app/main.js:440	
-11n1kcg	ok	Open Trace	打开记录	src/app/main.js:441	
-gt9ssw	ok	annai couldn't start	annai 无法启动	src/app/main.js:454	
-1vecqk6	draft	There's no room left	存储空间不足	src/app/main.js:455	Note: a card's title, and the start screen's words: the phone (or annai's share of it) has no room left, for a save, a removal or a read alike; 存储空间 as the glossary's Storage.
-6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反复出现，可能是浏览器阻止了存储（例如在无痕窗口中）。	src/app/main.js:456	
-982hh6	ok	Try again	重试	src/app/main.js:457	
+1v76pcd	ok	annai is open in another tab	annai 已在另一个标签页中打开	src/app/main.js:93	
+cohfbh	ok	Only one copy of annai runs at a time, so your trips stay consistent.	同一时间只能运行一个 annai，以确保旅行数据一致。	src/app/main.js:94	
+u0vojx	ok	Use it here	在这里使用	src/app/main.js:95	
+p4x3of	ok	annai was opened in another tab	annai 已在另一个标签页中打开	src/app/main.js:101	
+11qyuy7	ok	This tab has stopped, so your trips stay consistent.	为确保旅行数据一致，此标签页已停止运行。	src/app/main.js:102	
+1ku6bv3	ok	Use it here instead	改在这里使用	src/app/main.js:103	
+fki4un	ok	Notifications	通知	src/app/main.js:270	
+1clzv4	ok	Settings → Models changed	设置 → 模型有变化	src/app/main.js:273	
+1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai 现在按提供商来设置：一个提供商只需一个地址和一个密钥，即可使用它提供的全部功能。你原来的端点（{0}）及其密钥已被移除，请在设置 → 模型中重新添加。	src/app/main.js:274	{0} = list(moved.names, 'plain')
+whpd9d	ok	Open Models	前往模型设置	src/app/main.js:275	
+10renyj	ok	Plugins	插件	src/app/main.js:286	
+1sp21de	ok	A new version of the {0} personality	性格“{0}”有新版本	src/app/main.js:391	{0} = o.name
+1yoe82	ok	Yours has your own edits, so it was kept as it is.	你的版本里有你自己的修改，所以已保留原样。	src/app/main.js:392	
+1n8cxuc	ok	Compare	比较	src/app/main.js:394	
+rzp4o3	ok	Keep mine	保留我的	src/app/main.js:395	
+1j662as	ok	Let Shiori merge	让 Shiori 合并	src/app/main.js:396	
+x0ig66	ok	Something went wrong	出了点问题	src/app/main.js:448	
+1oy79dy	ok	annai kept running. The details are in Trace.	annai 仍在运行，详情见“记录”。	src/app/main.js:449	
+c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在运行，但没能记下发生了什么，所以“记录”里也没有。如果反复出现，请关闭 annai 再重新打开。	src/app/main.js:449	
+11n1kcg	ok	Open Trace	打开记录	src/app/main.js:450	
+gt9ssw	ok	annai couldn't start	annai 无法启动	src/app/main.js:463	
+1vecqk6	draft	There's no room left	存储空间不足	src/app/main.js:464	Note: a card's title, and the start screen's words: the phone (or annai's share of it) has no room left, for a save, a removal or a read alike; 存储空间 as the glossary's Storage.
+6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反复出现，可能是浏览器阻止了存储（例如在无痕窗口中）。	src/app/main.js:465	
+982hh6	ok	Try again	重试	src/app/main.js:466	
 1u3dm1p	ok	This address holds a name or password before an @. Leave it out.	该地址的 @ 前含有用户名或密码，请将其删除。	src/core/address.js:68	
 1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	停留过的地点和停留时长，用地名表示；没有地名的地点用坐标表示，只精确到约 100 米。绝不发送 GPS 轨迹本身。	src/core/after/recap.js:61	
 imb4zw	ok	How far you drove or walked between, the stamps, and the itinerary.	地点之间开车或步行的距离、纪念章和行程。	src/core/after/recap.js:62	

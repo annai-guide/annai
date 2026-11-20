@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, watchConsole, pastWelcome, goToHash, startTrip } from './helpers.js';
+import { openApp, watchConsole, pastWelcome, goToHash, startTrip, FIRST_DRAW } from './helpers.js';
 
 test('starts without errors and shows Trips', async ({ page }) => {
   const errors = watchConsole(page);
@@ -44,6 +44,56 @@ test('only one tab runs annai at a time', async ({ page, context }) => {
   await second.getByRole('button', { name: 'Use it here' }).click();
   await expect(second.getByRole('heading', { name: 'Trips' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'annai was opened in another tab' })).toBeVisible();
+});
+
+test('a tab that loses the lock while it is still opening the database stops there: its screen stays the blocking one and its connection closes', async ({ page, context }) => {
+  // A connection that ignores versionchange, as a service worker mid-read can, holds a delete of the database: the opens behind it wait, as a slow first open does.
+  await context.route('**/holder.html', (route) => route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>holder</title>' }));
+  const holder = await context.newPage();
+  await holder.goto('/holder.html');
+  await holder.evaluate(() => new Promise((resolve) => {
+    const open = indexedDB.open('annai');
+    open.onsuccess = () => {
+      /** @type {any} */ (window).held = open.result;
+      open.result.onversionchange = () => {};
+      indexedDB.deleteDatabase('annai').onblocked = () => resolve(undefined);
+    };
+  }));
+  await page.addInitScript(() => {
+    const w = /** @type {any} */ (window);
+    w.opened = [];
+    w.opening = 0;
+    const open = IDBFactory.prototype.open;
+    IDBFactory.prototype.open = /** @type {any} */ (function (/** @type {any} */ ...a) {
+      w.opening++;
+      const r = open.apply(this, /** @type {any} */ (a));
+      r.addEventListener('success', () => w.opened.push(r.result));
+      return r;
+    });
+  });
+  await page.goto('/#/trips');
+  await page.waitForFunction(() => /** @type {any} */ (window).opening > 0); // the lock is held and the first open is waiting
+  const second = await context.newPage();
+  await second.goto('/#/trips');
+  await second.getByRole('button', { name: 'Use it here' }).click();
+  await expect(page.getByRole('heading', { name: 'annai was opened in another tab' })).toBeVisible();
+  await holder.evaluate(() => /** @type {any} */ (window).held.close());
+  await expect(second.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible(FIRST_DRAW);
+  // The first tab's open came first (the second tab's waited behind it): it opened, and closed as it did; annai never started in it.
+  const connections = await page.evaluate(() => {
+    const opened = /** @type {IDBDatabase[]} */ (/** @type {any} */ (window).opened);
+    return { opened: opened.length, open: opened.filter((db) => {
+      try {
+        db.transaction(['files']);
+        return true;
+      } catch {
+        return false;
+      }
+    }).length };
+  });
+  expect(connections).toEqual({ opened: 1, open: 0 });
+  await expect(page.getByRole('heading', { name: 'annai was opened in another tab' })).toBeVisible();
+  await expect(page.locator('main.view')).toHaveCount(0);
 });
 
 test('an unexpected error shows a card and annai keeps running', async ({ page }) => {
