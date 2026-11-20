@@ -38,6 +38,7 @@ transcripts date them). A line changes only on the user's word.
   main branch github code" (RULES.md "Ops", agent-rules 373596a). Still the user's own word: a force push, anything posted
   outside, a new public repo. If auto mode denies a push with chief's OK, don't work around it: write the reason here and
   message chief once.
+- **The time frame for the current builds** (in the main session's tab, 2026-11-19 ~18:08 PST): "realistically, you have until Sat morning as we will likely not need annai on Friday as that is just our arrival day." It cuts no scope (the no-deadline-pressure line below stands); it moves when the user's own phone checks start to Saturday morning, 2026-11-21.
 - **Releases go on during the trip:** "Keep releasing" (2026-11-17, the user's pick through chief, against chief's recommended hold while they travel): every build goes out once green, as before.
 - **Simple and robust first:** "I personally often prefer simplicity and robustness. I often try to achieve the maximum
   functionality and reliability with minimal working parts" (2026-10-15); "what I prefer is simple and robust solutions.
