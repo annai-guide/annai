@@ -62,6 +62,6 @@
  *   to open with UnknownError or AbortError counts as a write in either mode: the first open, and any connect inside tx. Any other error is rejected as it
  *   is. fn runs a second time first when it failed as a lost connection does (InvalidStateError, UnknownError, AbortError, or a message connectionLost matches: store-idb.js).
  *   Inside fn, await only Tx calls: awaiting anything else lets IndexedDB commit early.
- * @property {() => void} close  stops the store for good: every later tx rejects with StoppedError (errors.js)
+ * @property {() => void} close  stops the store for good: every later tx rejects with StoppedError (errors.js), and so does one still waiting for its connection to open
  */
 export {};

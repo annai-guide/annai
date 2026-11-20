@@ -81,6 +81,8 @@ for (const type of ['pointerdown', 'keydown']) addEventListener(type, () => { ac
 const used = () => /** @type {any} */ (navigator).userActivation?.hasBeenActive ?? acted;
 /** @type {{ store: import('../core/types.js').Store } | null} */
 let running = null;
+/** Another tab took annai over: this tab has stopped and keeps its blocking screen. Boot reads it after the store opens, before the shell and in its catch. */
+let stolen = false;
 
 async function boot() {
   // A reminder tapped while annai is open shows its conversation; one whose trip is gone goes home from there. First thing, so a tap
@@ -93,6 +95,7 @@ async function boot() {
       action: t`Use it here`,
     }),
     onStolen: () => {
+      stolen = true;
       running?.store.close();
       showBlocking(root, {
         title: t`annai was opened in another tab`,
@@ -108,7 +111,13 @@ async function boot() {
   let deliver = (/** @type {any[]} */ _evs) => {};
   /** Who else follows the committed appends: home's "changed since". @type {Set<(evs: any[]) => void>} */
   const followers = new Set();
-  const store = watchAppends(await createIdbStore(), (evs) => {
+  const created = await createIdbStore();
+  // Taken over while the store opened (onStolen had none to close).
+  if (stolen) {
+    created.close();
+    return;
+  }
+  const store = watchAppends(created, (evs) => {
     deliver(evs);
     for (const fn of followers) fn(evs);
   });
@@ -242,6 +251,7 @@ async function boot() {
     const back = await screenToResume({ ws, store }, location).catch(() => null);
     if (back) history.replaceState(history.state, '', back);
   }
+  if (stolen) return; // taken over since the last read that fails boot: no shell over the blocking screen
   // Updates (spec §5.3, §17 rule 5): annai's own and its plugins'. Packages installed from an address are checked there.
   const updates = new Updates({ host: plugins, env: { addressFetch: tracedFetch(store, SYS, { tool: /* en */ 'plugin updates' }), next: nextScreens } });
   updates.agent = agent;
@@ -448,6 +458,7 @@ function watchErrors(/** @type {any} */ store, /** @type {ReturnType<typeof star
 
 boot().catch((e) => {
   console.error(e);
+  if (stolen) return; // taken over: the closed store failed a read
   // A full phone can't open or write its database (Chromium's backing store writes as it opens; the builder's probe, 2026-11-19, Linux; not yet on a phone): the screen says so, and what to do.
   const full = e instanceof StorageFullError;
   root.replaceChildren(h('div', { class: 'blocking' },

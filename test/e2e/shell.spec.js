@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp, watchConsole, pastWelcome, goToHash, startTrip } from './helpers.js';
+import { openApp, watchConsole, pastWelcome, goToHash, startTrip, FIRST_DRAW } from './helpers.js';
 
 test('starts without errors and shows Trips', async ({ page }) => {
   const errors = watchConsole(page);
@@ -43,6 +43,131 @@ test('only one tab runs annai at a time', async ({ page, context }) => {
   await expect(second.getByRole('heading', { name: 'annai is open in another tab' })).toBeVisible();
   await second.getByRole('button', { name: 'Use it here' }).click();
   await expect(second.getByRole('heading', { name: 'Trips' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'annai was opened in another tab' })).toBeVisible();
+});
+
+test('a tab that loses the lock while it is still opening the database stops there: its screen stays the blocking one and its connection closes', async ({ page, context }) => {
+  // A connection that ignores versionchange, as a service worker mid-read can, holds a delete of the database: the opens behind it wait, as a slow first open does.
+  await context.route('**/holder.html', (route) => route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>holder</title>' }));
+  const holder = await context.newPage();
+  await holder.goto('/holder.html');
+  await holder.evaluate(() => new Promise((resolve) => {
+    const open = indexedDB.open('annai');
+    open.onsuccess = () => {
+      /** @type {any} */ (window).held = open.result;
+      open.result.onversionchange = () => {};
+      indexedDB.deleteDatabase('annai').onblocked = () => resolve(undefined);
+    };
+  }));
+  await page.addInitScript(() => {
+    const w = /** @type {any} */ (window);
+    w.opened = [];
+    w.opening = 0;
+    const open = IDBFactory.prototype.open;
+    IDBFactory.prototype.open = /** @type {any} */ (function (/** @type {any} */ ...a) {
+      w.opening++;
+      const r = open.apply(this, /** @type {any} */ (a));
+      r.addEventListener('success', () => w.opened.push(r.result));
+      return r;
+    });
+  });
+  await page.goto('/#/trips');
+  await page.waitForFunction(() => /** @type {any} */ (window).opening > 0); // the lock is held and the first open is waiting
+  const second = await context.newPage();
+  await second.goto('/#/trips');
+  await second.getByRole('button', { name: 'Use it here' }).click();
+  await expect(page.getByRole('heading', { name: 'annai was opened in another tab' })).toBeVisible();
+  await holder.evaluate(() => /** @type {any} */ (window).held.close());
+  await expect(second.getByRole('heading', { name: 'Trips', exact: true })).toBeVisible(FIRST_DRAW);
+  // The first tab's open came first (the second tab's waited behind it): it opened, and closed as it did; annai never started in it.
+  const connections = await page.evaluate(() => {
+    const opened = /** @type {IDBDatabase[]} */ (/** @type {any} */ (window).opened);
+    return { opened: opened.length, open: opened.filter((db) => {
+      try {
+        db.transaction(['files']);
+        return true;
+      } catch {
+        return false;
+      }
+    }).length };
+  });
+  expect(connections).toEqual({ opened: 1, open: 0 });
+  await expect(page.getByRole('heading', { name: 'annai was opened in another tab' })).toBeVisible();
+  await expect(page.locator('main.view')).toHaveCount(0);
+});
+
+test('a tab taken over before it has read its settings stays on the blocking screen: it does not say annai couldn\'t start', async ({ page, context }) => {
+  // Its personalities requests are held, so the tab is still starting (the store is open, the settings not yet read) when the other takes annai over.
+  /** @type {() => void} */
+  let release = () => {};
+  const held = new Promise((resolve) => { release = () => resolve(undefined); });
+  let reached = false;
+  await page.route('**/assets/personalities/**', async (route) => {
+    reached = true;
+    await held;
+    await route.continue().catch(() => {});
+  });
+  await page.goto('/#/trips');
+  await expect.poll(() => reached).toBe(true);
+  const second = await context.newPage();
+  await second.goto('/#/trips');
+  await second.getByRole('button', { name: 'Use it here' }).click();
+  await expect(page.getByRole('heading', { name: 'annai was opened in another tab' })).toBeVisible();
+  // Its start-up goes on when released and fails at its next read of the closed store: boot's last word is a console error.
+  const ended = page.waitForEvent('console', (m) => m.type() === 'error' && m.text().includes('StoppedError'));
+  release();
+  await ended;
+  await expect(page.getByRole('heading', { name: 'annai was opened in another tab' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "annai couldn't start" })).toHaveCount(0);
+  await expect(page.locator('main.view')).toHaveCount(0);
+});
+
+test('a tab taken over after its last start-up read draws no shell over the blocking screen', async ({ page, context }) => {
+  // The steps after the settings read go on past their own errors, so only boot's last check (before the shell) stops the shell. To take the tab over then, a
+  // second connection of the page holds a read-write transaction over every store when the first transaction of backfillTrips (the first after that read) starts:
+  // it waits behind it, and the tab is taken over meanwhile.
+  await page.addInitScript(() => {
+    const w = /** @type {any} */ (window);
+    const open = IDBFactory.prototype.open;
+    const transaction = IDBDatabase.prototype.transaction;
+    /** @type {IDBDatabase | undefined} */
+    let side;
+    let asked = false;
+    IDBFactory.prototype.open = /** @type {any} */ (function (/** @type {any} */ ...a) {
+      const r = open.apply(this, /** @type {any} */ (a));
+      if (!asked) {
+        asked = true;
+        r.addEventListener('success', () => {
+          const s = open.call(indexedDB, 'annai');
+          s.onsuccess = () => { side = s.result; };
+        });
+      }
+      return r;
+    });
+    IDBDatabase.prototype.transaction = /** @type {any} */ (function (/** @type {any} */ ...a) {
+      const hold = side && !w.held && /backfillTrips/.test(new Error().stack ?? '');
+      if (hold) {
+        w.held = true;
+        const t = transaction.call(/** @type {IDBDatabase} */ (side), [.../** @type {IDBDatabase} */ (side).objectStoreNames], 'readwrite');
+        const next = () => { if (!w.release) t.objectStore('scopes').get('none').onsuccess = next; };
+        next();
+      }
+      const t = transaction.apply(this, /** @type {any} */ (a));
+      if (hold) t.addEventListener('complete', () => { w.heldDone = true; });
+      return t;
+    });
+  });
+  await page.goto('/#/trips');
+  await page.waitForFunction(() => /** @type {any} */ (window).held);
+  const second = await context.newPage();
+  await second.goto('/#/trips');
+  await second.getByRole('button', { name: 'Use it here' }).click();
+  await expect(page.getByRole('heading', { name: 'annai was opened in another tab' })).toBeVisible();
+  await page.evaluate(() => { /** @type {any} */ (window).release = true; });
+  // The held transaction ends, and the rest of boot's steps, which fail at the closed store, follow in the same turn: one turn later boot has reached its last check.
+  await page.waitForFunction(() => /** @type {any} */ (window).heldDone);
+  await page.evaluate(() => new Promise((resolve) => setTimeout(resolve)));
+  await expect(page.locator('main.view')).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'annai was opened in another tab' })).toBeVisible();
 });
 
