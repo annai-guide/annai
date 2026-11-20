@@ -251,6 +251,7 @@ async function boot() {
     const back = await screenToResume({ ws, store }, location).catch(() => null);
     if (back) history.replaceState(history.state, '', back);
   }
+  if (stolen) return; // taken over meanwhile: no shell over the blocking screen
   // Updates (spec §5.3, §17 rule 5): annai's own and its plugins'. Packages installed from an address are checked there.
   const updates = new Updates({ host: plugins, env: { addressFetch: tracedFetch(store, SYS, { tool: /* en */ 'plugin updates' }), next: nextScreens } });
   updates.agent = agent;

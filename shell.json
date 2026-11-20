@@ -1,5 +1,5 @@
 {
-  "build": "fd9b100131ca",
+  "build": "211394109cd1",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -27,7 +27,7 @@
     "/skills/replanning/SKILL.md": "b38405097c65",
     "/src/app/boot.js": "58bba933ce37",
     "/src/app/claim.js": "fc9e510c391d",
-    "/src/app/main.js": "b6d95f7ef988",
+    "/src/app/main.js": "3795e67b2dff",
     "/src/app/version.js": "07a31129e186",
     "/src/core/after/journey.js": "b6fdf43aa98e",
     "/src/core/after/recap.js": "f26d1f326258",

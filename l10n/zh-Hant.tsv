@@ -431,24 +431,24 @@ u0vojx	ok	Use it here	在這裡使用	src/app/main.js:95
 p4x3of	ok	annai was opened in another tab	annai 已在另一個分頁中開啟	src/app/main.js:101	
 11qyuy7	ok	This tab has stopped, so your trips stay consistent.	為確保旅行資料一致，此分頁已停止執行。	src/app/main.js:102	
 1ku6bv3	ok	Use it here instead	改在這裡使用	src/app/main.js:103	
-fki4un	ok	Notifications	通知	src/app/main.js:270	
-1clzv4	ok	Settings → Models changed	設定 → 模型有變動	src/app/main.js:273	
-1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai 現在改以供應商來設定：一個供應商只需一個網址和一個金鑰，即可使用它提供的所有功能。你原本的端點（{0}）及其金鑰已移除，請在設定 → 模型中再新增一次。	src/app/main.js:274	{0} = list(moved.names, 'plain')
-whpd9d	ok	Open Models	前往模型設定	src/app/main.js:275	
-10renyj	ok	Plugins	外掛程式	src/app/main.js:286	
-1sp21de	ok	A new version of the {0} personality	性格「{0}」有新版本	src/app/main.js:391	{0} = o.name
-1yoe82	ok	Yours has your own edits, so it was kept as it is.	你的版本裡有你自己的修改，所以已保留原樣。	src/app/main.js:392	
-1n8cxuc	ok	Compare	比較	src/app/main.js:394	
-rzp4o3	ok	Keep mine	保留我的	src/app/main.js:395	
-1j662as	ok	Let Shiori merge	讓 Shiori 合併	src/app/main.js:396	
-x0ig66	ok	Something went wrong	出了點問題	src/app/main.js:448	
-1oy79dy	ok	annai kept running. The details are in Trace.	annai 仍在執行，詳情見「記錄」。	src/app/main.js:449	
-c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在執行，但沒能記下發生了什麼，所以「記錄」裡也沒有。如果反覆出現，請關閉 annai 再重新開啟。	src/app/main.js:449	
-11n1kcg	ok	Open Trace	開啟記錄	src/app/main.js:450	
-gt9ssw	ok	annai couldn't start	annai 無法啟動	src/app/main.js:463	
-1vecqk6	draft	There's no room left	儲存空間不足	src/app/main.js:464	Note: a card's title, and the start screen's words: the phone (or annai's share of it) has no room left, for a save, a removal or a read alike; 儲存空間 as the glossary's Storage.
-6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反覆出現，可能是瀏覽器阻止了儲存（例如在無痕視窗中）。	src/app/main.js:465	
-982hh6	ok	Try again	重試	src/app/main.js:466	
+fki4un	ok	Notifications	通知	src/app/main.js:271	
+1clzv4	ok	Settings → Models changed	設定 → 模型有變動	src/app/main.js:274	
+1ak3i8g	ok	annai now sets up providers: one address and one key for all a provider offers. Your endpoints ({0}) and their keys were removed. Add them again in Settings → Models.	annai 現在改以供應商來設定：一個供應商只需一個網址和一個金鑰，即可使用它提供的所有功能。你原本的端點（{0}）及其金鑰已移除，請在設定 → 模型中再新增一次。	src/app/main.js:275	{0} = list(moved.names, 'plain')
+whpd9d	ok	Open Models	前往模型設定	src/app/main.js:276	
+10renyj	ok	Plugins	外掛程式	src/app/main.js:287	
+1sp21de	ok	A new version of the {0} personality	性格「{0}」有新版本	src/app/main.js:392	{0} = o.name
+1yoe82	ok	Yours has your own edits, so it was kept as it is.	你的版本裡有你自己的修改，所以已保留原樣。	src/app/main.js:393	
+1n8cxuc	ok	Compare	比較	src/app/main.js:395	
+rzp4o3	ok	Keep mine	保留我的	src/app/main.js:396	
+1j662as	ok	Let Shiori merge	讓 Shiori 合併	src/app/main.js:397	
+x0ig66	ok	Something went wrong	出了點問題	src/app/main.js:449	
+1oy79dy	ok	annai kept running. The details are in Trace.	annai 仍在執行，詳情見「記錄」。	src/app/main.js:450	
+c5yzsu	ok	annai kept running, but couldn't write down what happened, so it isn't in Trace either. If it keeps happening, close annai and open it again.	annai 仍在執行，但沒能記下發生了什麼，所以「記錄」裡也沒有。如果反覆出現，請關閉 annai 再重新開啟。	src/app/main.js:450	
+11n1kcg	ok	Open Trace	開啟記錄	src/app/main.js:451	
+gt9ssw	ok	annai couldn't start	annai 無法啟動	src/app/main.js:464	
+1vecqk6	draft	There's no room left	儲存空間不足	src/app/main.js:465	Note: a card's title, and the start screen's words: the phone (or annai's share of it) has no room left, for a save, a removal or a read alike; 儲存空間 as the glossary's Storage.
+6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反覆出現，可能是瀏覽器阻止了儲存（例如在無痕視窗中）。	src/app/main.js:466	
+982hh6	ok	Try again	重試	src/app/main.js:467	
 1u3dm1p	ok	This address holds a name or password before an @. Leave it out.	這個網址的 @ 前面含有使用者名稱或密碼，請將它刪除。	src/core/address.js:68	
 1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	停留過的地點和停留時間，以地名表示；沒有地名的地點以座標表示，只精確到約 100 公尺。絕不傳送 GPS 軌跡本身。	src/core/after/recap.js:61	
 imb4zw	ok	How far you drove or walked between, the stamps, and the itinerary.	地點之間開車或步行的距離、紀念章和行程。	src/core/after/recap.js:62	
