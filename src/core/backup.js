@@ -264,11 +264,12 @@ export function createBackups({ store, ws, registry, plugins = null, app, label,
     }
     else if (e.kind === 'large') h = { kind: 'large', bytes: e.bytes ?? 0, at };
     else {
-      // Offline is no failure of the place's: its count, which the wait after a failure grows with, stays.
+      // Offline is no failure of the place's, nor is a change while the backup was built ('changed'): the count stays.
       const was = rec.hold?.kind === 'error' ? rec.hold.count : 0;
-      const count = online() ? was + 1 : was;
       const { said, shown } = /** @type {any} */ (e);
-      h = { kind: 'error', message: e.message, said: said ?? null, ...(online() ? {} : { offline: true }), at, count, retryAt: e.retryAt ?? at + retryDelay(count), needsYou: NEEDS_YOU.has(e.kind),
+      const changed = said?.code === 'changed';
+      const count = online() && !changed ? was + 1 : was;
+      h = { kind: 'error', message: e.message, said: said ?? null, ...(online() ? {} : { offline: true }), at, count, retryAt: e.retryAt ?? at + retryDelay(changed ? 1 : count), needsYou: NEEDS_YOU.has(e.kind),
         // A place's plugin's own words (annai's own say what they were), kept with their language: a screen in another shows its English.
         ...(!said && typeof shown === 'string' && shown !== e.message ? { shown, lang: lang() } : {}) };
     }

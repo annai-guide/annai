@@ -716,7 +716,7 @@ test('an import whose content is removed before it finishes imports nothing and 
 /** A note of the sample trip's, written again with the history of the one before it kept: the version a listing named stays stored. @param {Workspace} ws @param {string} trip @param {string} text */
 const rewriteB = (ws, trip, text) => ws.write(trip, '/notes/b.md', text, { author: 'user' });
 
-test('an export that overlaps a change freeing content it listed lists again: its archive is the trip as it is by then, none of it as it was listed', async () => {
+test('an export that overlaps a change freeing content it listed lists again: its archive is the trip as it is by then, not as it was listed', async () => {
   const a = await device();
   const trip = await sampleTrip(a.ws);
   await rewriteB(a.ws, trip, 'b one');
@@ -724,15 +724,16 @@ test('an export that overlaps a change freeing content it listed lists again: it
   // After the export listed the trip's files: a note written again with its history forgotten (the content listed is freed), a plan item
   // deleted for good (its file and content go), and another note written again with its history kept (the content listed stays stored).
   let listings = 0;
-  const racing = afterListing(a.store, async () => {
-    listings++;
+  const racing = afterListing(a.store, async (n) => {
+    listings = n;
+    if (n > 1) return; // the second listing: no change in it
     await a.ws.write(trip, '/notes/案内.md', 'third', { author: 'user' });
     await forget(a.store, trip, { history: (p) => p === '/notes/案内.md' });
     await forget(a.store, trip, { files: (p) => p === '/plan/dinner.json', history: (p) => p === '/plan/dinner.json' });
     await rewriteB(a.ws, trip, 'b two');
-  });
+  }, 2);
   const { blob, manifest } = await exportArchive(racing, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
-  assert.equal(listings, 1, 'one change, and the export listed again');
+  assert.equal(listings, 2, 'one change, and the export listed again');
   assert.deepEqual(manifest.files.map((f) => f.path).sort(), ['/files/photo.jpg', '/memory.md', '/notes/b.md', '/notes/案内.md', '/trip.json'].sort());
   // Every file as it is now, the one whose listed content was still stored too: the archive never mixes the two moments.
   const b = await device();
@@ -782,7 +783,7 @@ test('an export that finds the trip changing again as it lists again says so, an
   assert.equal(manifest.files.find((f) => f.path === '/notes/案内.md')?.hash, await sha256Hex(utf8('third 2')));
 });
 
-test('a trip removed while it is exported gives the trip whole or no trip, never an empty one', async () => {
+test("a trip removed while it is exported gives the trip's files whole or no trip, never an empty one", async () => {
   const a = await device();
   const trip = await sampleTrip(a.ws);
   // Removed right after the export listed it: what it listed is gone, so the export lists again and finds no trip.
@@ -800,6 +801,18 @@ test('a trip removed while it is exported gives the trip whole or no trip, never
   const trips = (await importArchive(b.store, await peekArchive(await bytesOf(blob)))).trips;
   assert.equal(trips.length, 1);
   assert.deepEqual(await snapshot(b.ws, trips[0]), await snapshot(a.ws, kept));
+});
+
+test("a trip archived while a Backup of everything is under way is written as its files and log are: its record is the one its own listing read", async () => {
+  const a = await device();
+  const trip = await sampleTrip(a.ws);
+  // After the first scope's listing (this device's), before the trip's own: the trip is archived, which its log records.
+  const racing = afterListing(a.store, () => setTripStatus(a.store, trip, 'archived'));
+  const { manifest, blob } = await exportArchive(racing, { kind: 'everything', include: PRESETS.backup, app: '0.1.0' });
+  assert.equal(manifest.scopes.find((s) => s.dir === `trips/${trip}`)?.record.status, 'archived');
+  const b = await device();
+  const [copy] = (await importArchive(b.store, await peekArchive(await bytesOf(blob)))).trips;
+  assert.ok((await b.store.tx(['events'], 'readonly', (t) => t.listEvents(copy))).some((e) => e.type === 'scope.archive'), 'and its log holds the archiving');
 });
 
 test("an export whose file's content is missing for good, and its entry is still there, says so", async () => {

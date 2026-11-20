@@ -611,14 +611,14 @@ al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	請�
 bbv043	ok	This device is offline, so annai couldn't reach this place.	這台裝置已離線，無法連線到這個備份位置。	src/core/backup.js:52	
 1oqcoyx	ok	annai tries again once it's back online.	恢復連網後會自動重試。	src/core/backup.js:82	
 16b3dai	ok	That backup place was removed.	該備份位置已被移除。	src/core/backup.js:183	
-mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	無法啟動這類備份位置的外掛程式。請重試。	src/core/backup.js:386	
-lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	請輸入以 MB 為單位的數字，留空則不限。	src/core/backup.js:403	
-1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	請把使用者名稱和密碼填在各自的欄位中，不要寫進網址裡。	src/core/backup.js:414	
-tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	請輸入加密備份的密碼片語，然後儲存。	src/core/backup.js:422	
-230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API 金鑰只能放在加密備份中。請先勾選「用密碼片語加密備份」。	src/core/backup.js:423	Note: the checkbox's own words; keep them as its row says them.
-107ikf9	ok	Works.	測試通過。	src/core/backup.js:467	Note: the result of Save and test when the place says nothing itself.
-1w4k6nl	ok	This backup was made by a newer annai: update annai first.	這個備份是用較新版本的 annai 建立的，請先更新 annai。	src/core/backup.js:517	
-173rmiu	ok	This backup is damaged.	此備份已損壞。	src/core/backup.js:518	
+mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	無法啟動這類備份位置的外掛程式。請重試。	src/core/backup.js:387	
+lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	請輸入以 MB 為單位的數字，留空則不限。	src/core/backup.js:404	
+1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	請把使用者名稱和密碼填在各自的欄位中，不要寫進網址裡。	src/core/backup.js:415	
+tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	請輸入加密備份的密碼片語，然後儲存。	src/core/backup.js:423	
+230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API 金鑰只能放在加密備份中。請先勾選「用密碼片語加密備份」。	src/core/backup.js:424	Note: the checkbox's own words; keep them as its row says them.
+107ikf9	ok	Works.	測試通過。	src/core/backup.js:468	Note: the result of Save and test when the place says nothing itself.
+1w4k6nl	ok	This backup was made by a newer annai: update annai first.	這個備份是用較新版本的 annai 建立的，請先更新 annai。	src/core/backup.js:518	
+173rmiu	ok	This backup is damaged.	此備份已損壞。	src/core/backup.js:519	
 1lbu7g8	ok	Photo · {0}	照片 · {0}	src/core/chats.js:132	{0} = time
 1nqtd5y	ok	Voice · {0}	語音 · {0}	src/core/chats.js:133	{0} = time
 146ozuk	ok	New conversation	新對話	src/core/chats.js:134	

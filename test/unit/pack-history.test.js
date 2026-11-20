@@ -221,6 +221,15 @@ function pausedAtSecondPart(answer = overpass) {
   return { release, reached, overpass: async (/** @type {string} */ url, /** @type {any} */ init) => { if (++asked === 2) { reach(); await gate; } return answer(url, init); } };
 }
 
+/**
+ * Waits until the download is at its second part. A download that ends without getting there fails the test at once, in words, and one that
+ * fails shows its own error. @param {{ reached: Promise<unknown> }} pause @param {Promise<unknown>} download
+ */
+async function reaches(pause, download) {
+  const first = await Promise.race([pause.reached.then(() => 'second part'), download.then(() => 'ended')]);
+  assert.equal(first, 'second part', 'the download made a second Overpass request, so it can be paused at it');
+}
+
 /** The pack's files as an archive carries them: path to hash. @param {{ files: { path: string, hash: string }[] }} manifest */
 const packedHashes = (manifest) => new Map(manifest.files.filter((f) => f.path.startsWith(DIR)).map((f) => [f.path, f.hash]));
 
@@ -239,7 +248,8 @@ async function restoredPack(blob, from, trip) {
 }
 
 test("a Backup or Share that overlaps the end of a download is one moment: the pack as the download left it, whole, never part of one and part of the other", async () => {
-  for (const include of [PRESETS.backup, { ...PRESETS.backup, history: false }]) {
+  const share = { include: PRESETS.share, share: { places: false, convert: async () => null } };
+  for (const how of [{ include: PRESETS.backup }, { include: { ...PRESETS.backup, history: false } }, share]) {
     // The download starts after the Backup listed the trip, which names the whole older pack; its forget frees every version it replaced.
     const { store, ws, trip } = await packTrip();
     let at = Date.parse('2026-11-01T08:00:00Z');
@@ -254,7 +264,7 @@ test("a Backup or Share that overlaps the end of a download is one moment: the p
       listed = new Map((await ws.list(trip, DIR)).map((f) => [f.path, f.hash]));
       await downloadPack({ ws, scope: trip, ...services({ overpass: later }), version: V, editions: EN, gapMs: 0, now });
     });
-    const { manifest, blob } = await exportArchive(racing, { kind: 'trip', scopes: [trip], include, app: V });
+    const { manifest, blob } = await exportArchive(racing, { kind: 'trip', scopes: [trip], ...how, app: V });
     const final = new Map((await ws.list(trip, DIR)).map((f) => [f.path, f.hash]));
     assert.ok([...listed].some(([p, h]) => final.get(p) !== h), 'the download replaced parts the listing named');
     assert.ok([...listed.keys()].some((p) => !final.has(p)), 'and removed others');
@@ -275,7 +285,7 @@ test("a Backup listed while a download is mid-way, that ends before the files ar
     // The refresh has saved its first part (a newer one beside the others, with the older manifest) when the Backup lists the trip.
     const pause = pausedAtSecondPart(later);
     const download = downloadPack({ ws, scope: trip, ...services({ overpass: pause.overpass }), version: V, editions: EN, gapMs: 0, now });
-    await pause.reached;
+    await reaches(pause, download);
     /** @type {Awaited<ReturnType<typeof readManifest>>} */
     let seen = null;
     const racing = afterListing(store, async () => {
@@ -285,17 +295,18 @@ test("a Backup listed while a download is mid-way, that ends before the files ar
     });
     const { manifest, blob } = await exportArchive(racing, { kind: 'trip', scopes: [trip], include, app: V });
     const final = await readManifest(ws, trip);
-    assert.notEqual(seen?.at, final?.at, 'the listing named the older manifest');
+    assert.ok(seen, 'the download ended after the export listed the trip');
+    assert.notEqual(seen.at, final?.at, 'the listing named the older manifest');
     assert.deepEqual(packedHashes(manifest), new Map((await ws.list(trip, DIR)).map((f) => [f.path, f.hash])));
     await restoredPack(blob, ws, trip);
   }
 });
 
-test("a Backup listed while a first download is mid-way is the pack as it was listed, a part saved and no manifest yet, however the download ends", async () => {
+test("a Backup listed while a first download is mid-way is the pack as it was listed, a part saved and no manifest yet, though the download ends before the files are read", async () => {
   const { store, ws, trip } = await packTrip();
   const pause = pausedAtSecondPart();
   const download = downloadPack({ ws, scope: trip, ...services({ overpass: pause.overpass }), version: V, editions: EN, gapMs: 0 });
-  await pause.reached;
+  await reaches(pause, download);
   /** @type {Map<string, string>} */
   let listed = new Map();
   const racing = afterListing(store, async () => {

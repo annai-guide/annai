@@ -611,14 +611,14 @@ al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	{0}�
 bbv043	ok	This device is offline, so annai couldn't reach this place.	この端末はオフラインのため、このバックアップ先に接続できませんでした。	src/core/backup.js:52	
 1oqcoyx	ok	annai tries again once it's back online.	オンラインに戻ったら、自動的に再試行します。	src/core/backup.js:82	
 16b3dai	ok	That backup place was removed.	そのバックアップ先は削除されました。	src/core/backup.js:183	
-mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	この種類のバックアップ先のプラグインを起動できませんでした。もう一度お試しください。	src/core/backup.js:386	
-lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	メガバイト単位の数値を入力してください。空欄にすると上限なしになります。	src/core/backup.js:403	
-1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	ユーザー名とパスワードは、アドレスではなくそれぞれの欄に入力してください。	src/core/backup.js:414	
-tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	暗号化バックアップ用のパスフレーズを入力して、保存してください。	src/core/backup.js:422	
-230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	APIキーは暗号化したバックアップにしか含められません。先に「バックアップをパスフレーズで暗号化」にチェックを入れてください。	src/core/backup.js:423	Note: the checkbox's own words; keep them as its row says them.
-107ikf9	ok	Works.	正常に動作しています。	src/core/backup.js:467	Note: the result of Save and test when the place says nothing itself.
-1w4k6nl	ok	This backup was made by a newer annai: update annai first.	このバックアップは新しいバージョンのannaiで作成されています。先にannaiをアップデートしてください。	src/core/backup.js:517	
-173rmiu	ok	This backup is damaged.	このバックアップは壊れています。	src/core/backup.js:518	
+mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	この種類のバックアップ先のプラグインを起動できませんでした。もう一度お試しください。	src/core/backup.js:387	
+lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	メガバイト単位の数値を入力してください。空欄にすると上限なしになります。	src/core/backup.js:404	
+1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	ユーザー名とパスワードは、アドレスではなくそれぞれの欄に入力してください。	src/core/backup.js:415	
+tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	暗号化バックアップ用のパスフレーズを入力して、保存してください。	src/core/backup.js:423	
+230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	APIキーは暗号化したバックアップにしか含められません。先に「バックアップをパスフレーズで暗号化」にチェックを入れてください。	src/core/backup.js:424	Note: the checkbox's own words; keep them as its row says them.
+107ikf9	ok	Works.	正常に動作しています。	src/core/backup.js:468	Note: the result of Save and test when the place says nothing itself.
+1w4k6nl	ok	This backup was made by a newer annai: update annai first.	このバックアップは新しいバージョンのannaiで作成されています。先にannaiをアップデートしてください。	src/core/backup.js:518	
+173rmiu	ok	This backup is damaged.	このバックアップは壊れています。	src/core/backup.js:519	
 1lbu7g8	ok	Photo · {0}	写真 · {0}	src/core/chats.js:132	{0} = time
 1nqtd5y	ok	Voice · {0}	音声 · {0}	src/core/chats.js:133	{0} = time
 146ozuk	ok	New conversation	新しい会話	src/core/chats.js:134	

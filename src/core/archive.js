@@ -175,8 +175,8 @@ const EVENT_SCHEMA = {
  *   seqs: scope id → the last history entry the archive holds (empty without history)
  */
 export async function exportArchive(store, opts) {
-  // Built whole in memory, written nowhere: starting again leaves nothing behind. A download's end, Delete for good or a removal can free what
-  // the listing named; then it is stale, and the export lists again, once (that change has ended by then). A second change fails it.
+  // Nothing is saved or sent until the archive is whole, so starting again leaves nothing behind. A download's end, Delete for good or a
+  // removal can free what the listing named: the export lists again, once (that change has ended by then). A second change fails it.
   const built = (await buildArchive(store, opts)) ?? (await buildArchive(store, opts));
   if (!built) throw new ArchiveError(/* en */ `Something on this device changed while exporting, so nothing was exported. Try again.`, { said: { code: 'changed' } });
   return built;
@@ -210,13 +210,13 @@ async function buildArchive(store, opts) {
 
   for (const scope of scopes) {
     const dir = dirFor(scope.id);
-    const { files, events } = await store.tx(['scopes', 'files', 'events'], 'readonly', async (t) => ({
-      files: (await t.getScope(scope.id)) ? await t.listFiles(scope.id, '/') : null, // null: the trip is gone
-      events: include.history ? (await t.listEvents(scope.id)).map((e) => withoutPhotoMeta(e, include)) : [],
-    }));
-    if (!files) return null;
+    const { rec, files, events } = await store.tx(['scopes', 'files', 'events'], 'readonly', async (t) => {
+      const rec = await t.getScope(scope.id); // none: the trip is gone
+      return { rec, files: rec ? await t.listFiles(scope.id, '/') : [], events: include.history ? (await t.listEvents(scope.id)).map((e) => withoutPhotoMeta(e, include)) : [] };
+    });
+    if (!rec) return null;
     // A backup note belongs to the device that made it; the mirror is read again from what comes (backfillTrips).
-    const { backup: _, start: _s, end: _e, talked: _t, ...record } = scope;
+    const { backup: _, start: _s, end: _e, talked: _t, ...record } = rec;
     // A Share names who made it only as asked, never by a name an import brought; a Backup keeps the record.
     if (opts.share) {
       delete record.madeBy;
@@ -446,7 +446,7 @@ async function sharePhoto(f, bytes, share) {
 }
 
 /**
- * A listed file's content as listed. Null: gone, and the file changed or went since. An entry that still names content that isn't stored is
+ * A listed file's content as listed; null: gone, and the file changed or went since. An entry still naming content that isn't stored is
  * content-missing. @param {Store} store @param {string} scope @param {import('./types.js').FileEntry} f @returns {Promise<Uint8Array | null>}
  */
 async function readBlob(store, scope, f) {

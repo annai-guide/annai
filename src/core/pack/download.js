@@ -150,8 +150,8 @@ export async function downloadPack(o) {
   try {
     return await fetchPack(o);
   } finally {
-    // The pack keeps no history (spec §4.9): what a download replaced or removed goes with the content only it named, a stopped or failed
-    // one too (as a plugin's package's does, plugins.js). A forget refused on a full phone waits for the next download.
+    // The pack keeps no history (spec §4.9): what a download replaced or removed goes with its content, a stopped or failed one's too
+    // (as a plugin's package's does). A forget refused on a full phone waits for the next download.
     await forget(o.ws.store, o.scope, { history: (p) => p.startsWith(DIR) }).catch(() => {});
   }
 }
