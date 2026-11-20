@@ -6,6 +6,7 @@ import { strayNote } from '../languages.js';
 import { handOverText } from '../handover.js';
 import { nativeExtra } from '../llm/contract.js';
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
+import { replyPrompt } from './compaction.js';
 
 /**
  * The conversation as messages (spec §6.3, item 3): the latest compaction summary, then every
@@ -64,6 +65,12 @@ export class Transcript {
   to = 0;
   /** The compaction event this transcript starts from, 0 for none. */
   compaction = 0;
+  /**
+   * This half's last answered call since that compaction, from its log record: the prompt as housekeeping counts it (replyPrompt), when it
+   * was written (the device's clock), and the model that answered; null: none since. A reload or another conversation opened keeps it, as
+   * the log does (spec §6.5). @type {{ prompt: number, at: number, model: string } | null}
+   */
+  lastCall = null;
   /** The last entry load() read: anything written later wasn't in the log it read. */
   through = 0;
   /** Whether the last thing in it is the user's (or the app's) with no reply from Shiori yet, or a turn of hers with no end logged: after a reload mid-turn. */
@@ -156,6 +163,7 @@ export class Transcript {
       this.turnStart = -1;
       this.#lastWake = null;
       this.compaction = e.seq;
+      this.lastCall = null;
       this.from = e.seq;
       // Koe starts again with its window; Kokoro has the summary.
       if (!koe && d.mode === 'fresh') /* en */ this.#add('user', [{ type: 'text', text: `[Started fresh: at the user's request, the conversation before this point (events ${d.from}–${d.to}) is not in your context. It is all still in the log, and recall brings back the exact words]` }]);
@@ -212,6 +220,10 @@ export class Transcript {
       /** @type {Part[]} */
       const parts = JSON.parse(texts.parts);
       for (const p of parts) if (p.type === 'tool_call') this.#calls.set(p.id, p.name);
+      // Its call, once written after the compaction this starts from (a reply in the part kept was counted before it): a record the
+      // loop made up itself (its write failed: no time, no attempts) leaves the last one known.
+      const by = Array.isArray(d.attempts) ? d.attempts.findLast((/** @type {any} */ a) => a?.outcome === 'ok')?.model : undefined;
+      if (e.seq > this.compaction && typeof e.ts === 'number' && typeof by === 'string') this.lastCall = { prompt: replyPrompt(d.usage), at: e.ts, model: by };
       // What was written while this reply was being made (the other half's lines, or her own tools') follows it, live and from the log
       // alike: the request had them nowhere, and a turn's requests only grow at the end (the keep-reasoning design §3).
       const to = typeof d.context?.to === 'number' ? d.context.to : Infinity;

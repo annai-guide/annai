@@ -14,10 +14,27 @@ import { nativeOverlap } from '../llm/contract.js';
 export const KEEP_EXCHANGES = 3;
 /** Warm housekeeping runs this long before the cache would expire. */
 export const WARM_LEAD_MS = 45_000;
+/**
+ * Housekeeping is due here too, whatever the model's window: a return after an hour's pause writes the whole conversation to the cache
+ * again, and above this a summary costs less than that write. Replayed over a month of real use (the self-compaction design 2): no cold
+ * return came between 59,000 and 175,000 tokens, so 100,000 summarizes the long conversation's returns (saving about 40% of what cold
+ * returns cost) and leaves the 17 of 19 under 43,000 alone; the user picked "~100K" (2026-11-19). The Settings threshold still decides
+ * for a model whose window is smaller.
+ */
+export const DUE_TOKENS = 100_000;
 
 /** The prompt a call sent, in tokens, from what the provider reported. @param {any} u */
 export function promptTokens(u) {
   return (u?.input ?? 0) + (u?.cacheRead ?? 0) + (u?.cacheWrite ?? 0) + (u?.cacheWrite1h ?? 0);
+}
+
+/**
+ * The prompt a reply's call sent, in tokens, as housekeeping counts it: none from a reply in which the provider ran its own tools (a web
+ * search), whose count sums the steps inside it (8 of the 9 doubled counts in the trace: up to 2.1 times the prompt around them); the
+ * request's own estimate stands there. By the count, not the key: a report can name a tool it ran no time. @param {any} u
+ */
+export function replyPrompt(u) {
+  return Object.values(u?.serverTools ?? {}).some((n) => Number(n) > 0) ? 0 : promptTokens(u);
 }
 
 /** A request's size as sent; photos count at their base64 size, a native only for what it adds beyond the parts it covers (nativeOverlap). @param {any} request */
@@ -28,14 +45,32 @@ export function requestBytes(request, { uploaded = false } = {}) {
   return JSON.stringify(request, (_k, v) => (v && typeof v === 'object' && v.type === 'image' && typeof v.data === 'string' ? { ...v, data: 'file_0123456789abcdefghijklmn' } : v)).length - twice;
 }
 
+/** Where housekeeping is due by tokens: the threshold's share of the window, or DUE_TOKENS, whichever comes first. @param {number | null} window @param {number} threshold */
+export const dueTokens = (window, threshold) => Math.min(window ? threshold * window : Infinity, DUE_TOKENS);
+
+/**
+ * What a summary keeps word for word by default: a third of where it is due (by tokens, or by the request size's tokens when that comes
+ * first), so the next one comes long after. @param {{ window: number | null, threshold: number, maxBytes: number }} c
+ */
+export const keepTokens = ({ window, threshold, maxBytes }) => Math.min(dueTokens(window, threshold), (threshold * maxBytes) / 3.5) / 3;
+
 /**
  * @param {{ tokens: number, window: number | null, bytes: number, maxBytes: number, threshold: number }} c
  * @returns {'forced' | 'due' | null}
  */
 export function compactionNeed({ tokens, window, bytes, maxBytes, threshold }) {
   if ((window && tokens > 0.9 * window) || bytes > maxBytes) return 'forced';
-  if ((window && tokens >= threshold * window) || bytes >= threshold * maxBytes) return 'due';
+  if (tokens >= dueTokens(window, threshold) || bytes >= threshold * maxBytes) return 'due';
   return null;
+}
+
+/**
+ * What the exchanges after her mark hold, in tokens (mark_done, spec §6.5): those that start after it, so a cut there lands right after the
+ * task she marked done; 0 when none has started since. @param {{ seq: number, tokens: number, exchange: boolean }[]} items oldest first @param {number} mark its seq
+ */
+export function tokensAfter(items, mark) {
+  const start = items.findIndex((i) => i.exchange && i.seq > mark);
+  return start < 0 ? 0 : items.slice(start).reduce((n, i) => n + i.tokens, 0);
 }
 
 /**

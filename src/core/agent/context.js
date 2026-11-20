@@ -1,6 +1,6 @@
 import { CORE, DEFAULT_PERSONALITY } from './instructions.js';
 import { editedInstructions } from './her-instructions.js';
-import { ME, DRAFT_TITLE, listTrips } from '../scopes.js';
+import { ME, DRAFT_TITLE, TODO_FILE, listTrips } from '../scopes.js';
 import { phaseOf, talkedAt } from '../timeline.js';
 import { deviceZone } from '../time.js';
 import { quote } from './blocks.js';
@@ -196,17 +196,26 @@ function localTime(now, timeZone) {
   return `${parts.weekday} ${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}, ${timeZone} (${parts.timeZoneName})`;
 }
 
+/**
+ * The to-do line's label (TODO_FILE: never in the transcript or the snapshot, so no summary, fresh start or cache rule takes or holds it). It
+ * says the rule as her instructions do: edited instructions replace annai's whole (her-instructions.js), and the label still says what it is for.
+ */
+/* en */ const TODO = 'to-do (/trip/todo.md: one line for each thing still open in this trip that has no time: asked and not done, promised, or waited on; change a line in place, and take it out when it is done or dropped)';
+
 /* en */ const VOICE = /** @type {Record<string, string>} */ ({ off: 'off (speak shows a bubble; wait waits for typing)', on: 'on (speak plays aloud, then listens; wait listens; ask is spoken too)' });
 /** Koe's state, as Kokoro's now block says it (the Koe and Kokoro design). */
 /* en */ const KOE = /** @type {Record<string, string>} */ ({ text: 'talking with the user (use tell_koe)', live: 'talking with the user live (use tell_koe)', down: "can't speak now: talk to the user directly" });
 
 /**
  * The now block (spec §6.3, item 4): sent last, never cached.
- * @param {{ now: number, timeZone: string, voice: string, online: boolean, reasons: string[], plan: string[][] | null, place?: string, activity?: string, voiceWhy?: string, koe?: string }} c
+ * @param {{ now: number, timeZone: string, voice: string, online: boolean, reasons: string[], plan: string[][] | null, place?: string, activity?: string, voiceWhy?: string, koe?: string, todo?: string | null }} c
  *   voiceWhy: why voice is on with its setting off (spec §10.5); plan null: no plan line (Koe's view has the plan); koe: Koe's state, for Kokoro;
- *   reasons: what woke her, or joined her turn, since her last request: none, no line (each is said once)
+ *   reasons: what woke her, or joined her turn, since her last request: none, no line (each is said once);
+ *   todo: the trip's to-do list as written ('' for no file yet; null: it couldn't be read now), its "<" as <lt> so it can't end the block; not
+ *   given, no line (Koe's block)
  */
-export function nowBlock({ now, timeZone, voice, online, reasons, plan, place = 'unknown', activity = 'unknown', voiceWhy = '', koe }) {
+export function nowBlock({ now, timeZone, voice, online, reasons, plan, place = 'unknown', activity = 'unknown', voiceWhy = '', koe, todo }) {
+  const list = typeof todo === 'string' ? todo.trim().replaceAll('<', '<lt>') : todo;
   /* en */ const lines = [
     `time: ${localTime(now, timeZone)}`,
     `place: ${place}`,
@@ -216,6 +225,7 @@ export function nowBlock({ now, timeZone, voice, online, reasons, plan, place = 
     `connection: ${online ? 'online' : 'offline'}`,
     ...(reasons.length ? [`woke for: ${reasons.join('; ')}`] : []),
     ...(plan === null ? [] : [plan.length ? `next in the plan:\n${tsv(['start', 'title', 'constraint', 'place'], plan)}` : 'next in the plan: nothing']),
+    ...(list === undefined ? [] : [list === null ? `${TODO}: couldn't be read just now; read it before you change it` : list ? `${TODO}:\n${list}` : `${TODO}: nothing yet`]),
   ];
   /* en */ return `<now>\n${lines.join('\n')}\n</now>`;
 }

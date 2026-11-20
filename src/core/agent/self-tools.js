@@ -12,7 +12,7 @@ import { modelOf } from '../llm/config.js';
 
 /** The most model calls a helper may make. */
 export const TASK_STEPS = 25;
-const SELF = ['task', 'skill', 'tune_personality', 'recall'];
+const SELF = ['task', 'skill', 'tune_personality', 'recall', 'mark_done'];
 /** Tools whose calls and results recall leaves out: what they did is in the lines around them. */
 const QUIET = ['speak', 'show', 'ask', 'sleep', 'wait', 'recall'];
 /* en */ const TASK_SYSTEM = 'You are a helper working for Shiori, a travel guide in the annai app. Do the task with your tools, then reply with what you found, briefly, as plain text. '
@@ -101,6 +101,14 @@ export function selfTools(agent) {
       description: 'Bring back earlier conversation word for word, from before it was summarized: search it for words, or give the event range a summary names (from, to).',
       input: { type: 'object', properties: { query: { type: 'string' }, from: { type: 'integer', minimum: 1 }, to: { type: 'integer', minimum: 1 }, start: { type: 'integer', minimum: 0, description: 'Character to start from, for a long answer.' } } },
       run: async (/** @type {{ query?: string, from?: number, to?: number, start?: number }} */ i, /** @type {any} */ call) => recall(agent, i, call?.half),
+    },
+    {
+      // Its result in the log is the mark: the next compaction may cut after it (loop.js compact, spec §6.5). It changes nothing else, so any
+      // number of calls only moves one later cut between the usual size and the last three exchanges.
+      name: 'mark_done', pluginId: 'core', group: 'Self',
+      description: 'Mark that a task is done (a question answered, a booking filed, a plan settled): when the conversation is next summarized, it may cut right after this, so what follows stays word for word. It changes nothing else; recall still brings back what came before.',
+      input: { type: 'object', properties: { done: { type: 'string', minLength: 1, description: 'What was done, in a few words.' } }, required: ['done'] },
+      run: async () => 'Marked: the next summary may cut after this task.',
     },
   ];
 }

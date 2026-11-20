@@ -76,7 +76,7 @@ function requestSections(ctx, s) {
       h('p', { class: 'sub', text: t`Providers keep the start of the conversation for a while, so her next request costs less. An hour costs more to write than five minutes, and pays off when you talk less often than every few minutes. A model that keeps it only five minutes is asked for five.` }),
       savedRadios(t`Keep it for`, [['1h', t`1 hour`], ['5m', t`5 minutes`]], wantedTtl(s.cacheTtl), (v) => save({ cacheTtl: v }))),
     section(t`Housekeeping`,
-      h('p', { class: 'sub', text: t`When a conversation gets long, Shiori summarizes its older part. She does it when it reaches this share of her model's context, or when a request would get this big. Empty: the usual.` }),
+      h('p', { class: 'sub', text: t`When a conversation gets long, Shiori summarizes its older part. She does it when it reaches this share of her model's context, or when a request would get this big. One over 100,000 tokens is summarized too, when you come back to it after her cache has run out. Empty: the usual.` }),
       h('div', { class: 'row' },
         savedField(t`Summarize at (% of the context)`, share, () => numberIn(share, 50, 90, t`Summarize at a share from 50 to 90%.`, { whole: true }), (v) => save({ compaction: { threshold: v === null ? null : v / 100 } })),
         savedField(t`Largest request (MiB)`, mib, () => numberIn(mib, 1, 64, t`The largest request is from 1 to 64 MiB.`), (v) => save({ compaction: { maxRequestMiB: v } })))),

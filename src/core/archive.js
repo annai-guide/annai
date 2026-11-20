@@ -5,7 +5,7 @@ import { utf8, text, ownBuffer } from './bytes.js';
 import { isCompressedType, normPath, freeName, isGivenFile } from './paths.js';
 import { validate } from './schema.js';
 import { Workspace } from './workspace.js';
-import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, SYS_DEVICE, SYS_WAITING, FORMAT, newId, isDeviceSecret, backfillTrips } from './scopes.js';
+import { ME, SYS, SYS_SETTINGS, SYS_PLUGINS, SYS_DEVICE, SYS_WAITING, FORMAT, TODO_FILE, newId, isDeviceSecret, backfillTrips } from './scopes.js';
 import { isPhotoType } from './photos.js';
 import { readPhotoMeta, stripMetadata, sniffImageType, sniffMediaType } from './photo-meta.js';
 import { blobsOf, isName } from './events.js';
@@ -214,7 +214,8 @@ export async function exportArchive(store, opts) {
     /** @type {ManifestScope} */
     const ms = { dir, record };
     for (const f of files) {
-      if (!include.memory && f.path === '/memory.md' && scope.kind !== 'sys') continue;
+      // Memory is what she keeps: the memory file, and a trip's to-do list (spec §12.2).
+      if (!include.memory && (f.path === '/memory.md' || f.path === TODO_FILE) && scope.kind !== 'sys') continue;
       if (noPlaces && f.path.startsWith(WATCH_DIR)) continue;
       const name = dir + f.path;
       /** @type {Uint8Array} */

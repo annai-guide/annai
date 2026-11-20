@@ -16,7 +16,14 @@ test('when housekeeping is due, and when it is forced', () => {
   assert.equal(compactionNeed({ ...base, tokens: 91_000, bytes: 1000 }), 'forced');
   assert.equal(compactionNeed({ ...base, tokens: 10, bytes: 6 * 2 ** 20 }), 'due');
   assert.equal(compactionNeed({ ...base, tokens: 10, bytes: 9 * 2 ** 20 }), 'forced');
-  assert.equal(compactionNeed({ ...base, window: null, tokens: 1e9, bytes: 10 }), null);
+  // Whatever the window, due at 100,000 tokens: the window's share decides only below that.
+  assert.equal(compactionNeed({ ...base, window: null, tokens: 99_999, bytes: 10 }), null);
+  assert.equal(compactionNeed({ ...base, window: null, tokens: 100_000, bytes: 10 }), 'due');
+  assert.equal(compactionNeed({ ...base, window: 1_000_000, tokens: 99_999, bytes: 10 }), null);
+  assert.equal(compactionNeed({ ...base, window: 1_000_000, tokens: 100_000, bytes: 10 }), 'due');
+  assert.equal(compactionNeed({ ...base, window: 1_000_000, tokens: 899_000, bytes: 10 }), 'due');
+  assert.equal(compactionNeed({ ...base, window: 1_000_000, tokens: 900_001, bytes: 10 }), 'forced');
+  assert.equal(compactionNeed({ ...base, window: null, tokens: 1e9, bytes: 10 }), 'due', 'no window: never forced by tokens, only by the size');
 });
 
 test('the cut keeps about a third of the threshold, never fewer than three exchanges, and always compacts the oldest', () => {

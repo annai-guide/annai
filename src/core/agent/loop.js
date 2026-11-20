@@ -1,5 +1,5 @@
 import { claimLine, quote, conversationLines, USER_LINES } from './blocks.js';
-import { ME, newId } from '../scopes.js';
+import { ME, TODO_FILE, newId } from '../scopes.js';
 import { readAppSettings } from '../settings.js';
 import { languageSettings, strayLanguage } from '../languages.js';
 import { AllFailedError, estimateTokens, candidates, chatCandidates, whyOf, whyWords, levelOf } from '../llm/fallback.js';
@@ -10,7 +10,7 @@ import { fromBase64, toBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
 import { record, storedTexts, TALK_TAG } from './log.js';
 import { blobBytes, canRead } from '../reach.js';
-import { compactionNeed, cutAt, promptTokens, requestBytes, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
+import { compactionNeed, cutAt, replyPrompt, keepTokens, tokensAfter, requestBytes, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
 import { Transcript, resolveEvent, repair, NOT_SAID, SAID, STOPPED, CUT, NOT_RUN, NOT_ANSWERED, NOT_HEARD, LET_GO, MOVED } from './transcript.js';
 import { toolList, definitions, runTool, Stuck, toolSwitches, resolvePath, ALWAYS_ON } from './tools.js';
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint, systemText } from './context.js';
@@ -384,7 +384,7 @@ export class Agent {
   #by = null;
   /** @type {any} the timer that runs warm housekeeping shortly before the cache expires */
   #timer = null;
-  /** The prompt the last call sent, in tokens, as the provider counted it. */
+  /** The prompt the last call sent, in tokens, as housekeeping counts it (replyPrompt): the answering call's own, or on opening the log's. */
   #lastPrompt = 0;
   /** @type {LoopTool[]} */
   #loopTools;
@@ -766,9 +766,9 @@ export class Agent {
     this.#lastTurn = 0; // seqs are each conversation's own
     for (const l of this.#late.splice(0)) this.#joinLate(l.e, l.r);
     this.#snapshot = null;
-    // The last conversation's housekeeping stays with it: it is checked again at its next turn.
+    // The last conversation's housekeeping stays with it: it is checked again at its next turn, from this one's own log.
     this.#due = false;
-    this.#lastPrompt = 0;
+    this.#lastPrompt = transcript.lastCall?.prompt ?? 0;
     this.#clearTimer();
     this.owed = owed;
     const left = this.#leftOwing.get(scope);
@@ -1629,10 +1629,24 @@ export class Agent {
     return { now: this.now(), timeZone: this.timeZone(), voice: voice ? 'on' : 'off', voiceWhy: voiceWhy(this.voice?.mode), online: this.online(), reasons, place: here.place, activity: here.activity };
   }
 
-  /** The block a request ends with: the half's own, or the now block. @param {Parameters<NonNullable<Half['tail']>>[0]} now */
+  /** The block a request ends with: the half's own, or the now block, with the trip's to-do list. @param {Parameters<NonNullable<Half['tail']>>[0]} now */
   async #tailFor(now) {
     const koe = this.#half.koe?.() ?? null;
-    return this.#half.tail ? this.#half.tail(now) : nowBlock({ ...now, plan: await nextPlanItems(this.ws, this.trip, this.now(), { fallbackTz: now.timeZone }), ...(koe ? { koe } : {}) });
+    if (this.#half.tail) return this.#half.tail(now);
+    // Read at every request, so an edit of hers or the user's shows at the next step: undefined, no file yet; null, it couldn't be read.
+    const todo = this.trip ? await this.ws.readText(this.trip, TODO_FILE).then((x) => x ?? '', () => null) : undefined;
+    return nowBlock({ ...now, plan: await nextPlanItems(this.ws, this.trip, this.now(), { fallbackTz: now.timeZone }), ...(todo === undefined ? {} : { todo }), ...(koe ? { koe } : {}) });
+  }
+
+  /**
+   * Whether this conversation's cache is cold or about to expire (spec §6.4), for the snapshot and housekeeping alike: from its own log, this
+   * half's last answered call since its latest compaction and the answering model's lifetime, by the device's clock (the log's), so a reload or
+   * another conversation opened in between reads it as it is. No such call, or a model no longer there: cold. @param {AgentSettings} settings
+   */
+  async #cold(settings) {
+    const last = this.transcript.lastCall;
+    const model = last ? await this.#model(last.model) : null;
+    return !last || !model || this.#real.now() >= last.at + TTL_MS[ttlFor(model, settings.cacheTtl)] - SOON_MS;
   }
 
   /**
@@ -1643,8 +1657,7 @@ export class Agent {
   async sees() {
     await this.opening.catch(() => {});
     const settings = await this.settings();
-    const last = this.#warmth.last;
-    const cold = !last || this.now() >= last.at + last.ttlMs - SOON_MS;
+    const cold = await this.#cold(settings);
     const snapshot = nextSnapshot(this.#snapshot, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale }), { cold });
     const { tools, shows } = await this.#toolsNow();
     return { system: this.#systemFor(snapshot, shows), tools: tools.map((x) => x.name), messages: await this.#sendable(), tail: await this.#tailFor(this.#nowFor([])) };
@@ -1686,15 +1699,12 @@ export class Agent {
    * Housekeeping (spec §6.5): the older part of the conversation becomes a compaction event; the
    * most recent part stays word for word. Returns whether anything was compacted.
    * @param {'warm' | 'cold'} mode @param {{ forced?: boolean, keepTokens?: number, frozen?: Frozen | null }} [o] forced: down to the last exchange, if the
-   * kept part is still about a third of the threshold; keepTokens: kept, at least (Summarize now's 0 keeps the last exchange only);
+   * kept part is still about a third of where housekeeping is due; keepTokens: kept, at least (Summarize now's 0 keeps the last exchange only);
    * frozen: the turn it runs inside, whose tools, provider tools and level it keeps
    */
   async compact(mode, o = {}) {
     const settings = await this.settings();
     const window = (await this.#mainModel())?.contextWindow ?? null;
-    const keepTokens = o.keepTokens ?? (window
-      ? (settings.compaction.threshold * window) / 3
-      : (settings.compaction.threshold * settings.compaction.maxRequestMiB * 2 ** 20) / 3.5 / 3);
     const [latest] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['compaction'], reverse: true, limit: 1 }));
     // The conversation only, by type: what the summary is made of, and what the cut is measured on (not Koe's).
     const split = this.#rules() === 'kokoro';
@@ -1706,7 +1716,11 @@ export class Agent {
       const size = JSON.stringify(e.data ?? {}).length + Object.values(texts).reduce((n, s) => n + s.length, 0);
       items.push({ seq: e.seq, tokens: Math.ceil(size / 3.5) + (e.data?.images?.length ?? 0) * 1600, exchange: e.type === 'wake' && !e.data?.meanwhile });
     }
-    const cut = cutAt(items, { keepTokens, minExchanges: o.forced ? 1 : KEEP_EXCHANGES });
+    // Her mark (mark_done) since the last compaction: what the exchanges after it hold is kept, when that is less; never fewer exchanges than
+    // the floor, so a mark in the last ones keeps them, and an old one changes nothing. Its result as it ran (not a refused or cut call's).
+    const mark = events.findLast((e) => e.type === 'tool.result' && e.data?.name === 'mark_done' && e.data?.ok !== false && e.data?.wake !== 'housekeeping' && e.seq > (latest?.seq ?? 0));
+    const keep = Math.min(o.keepTokens ?? keepTokens({ window, threshold: settings.compaction.threshold, maxBytes: settings.compaction.maxRequestMiB * 2 ** 20 }), mark ? tokensAfter(items, mark.seq) : Infinity);
+    const cut = cutAt(items, { keepTokens: keep, minExchanges: o.forced ? 1 : KEEP_EXCHANGES });
     if (cut === null) return false;
     // What was heard in the part summarized is written down first, the last time its sound is at hand (spec §10.3): the
     // summary and the log both have the words. While it can't be, housekeeping waits, unless the next request would overflow.
@@ -1729,7 +1743,9 @@ export class Agent {
     // Start fresh wrote a compaction meanwhile: this one, cut before it, would bring back the lines it left.
     const [now] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['compaction'], reverse: true, limit: 1 }));
     if (now?.seq !== latest?.seq) return false;
-    const done = await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'compaction', actor: 'system', data: { from: this.transcript.from || 1, to: cut - 1, mode }, texts: [['summary', summary]] });
+    // The range it covers: the summary it is written from covered its own from on (a fresh start, nothing before it); with neither, the first event.
+    const from = latest ? (latest.data?.mode === 'fresh' ? latest.data.to + 1 : latest.data?.from) : this.transcript.from || 1;
+    const done = await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'compaction', actor: 'system', data: { from, to: cut - 1, mode }, texts: [['summary', summary]] });
     await this.#serially(async () => {
       await this.reread();
       await this.#half.logged?.(done, { texts: {}, images: [] }); // Koe reads its window again from here
@@ -1748,8 +1764,10 @@ export class Agent {
     if (this.#busy || this.#opens || this.#still) return 'busy';
     this.#clearTimer();
     this.#busy = true;
-    const warm = Boolean(this.cacheState()?.warm);
+    /** Warm or cold as this conversation's own log says (#cold): after another one was opened, the last call's cache is that one's. */
+    let warm = false;
     try {
+      warm = !(await this.#cold(await this.settings()));
       return (await this.compact(warm ? 'warm' : 'cold', { forced: true, keepTokens: 0 })) ? 'done' : 'nothing';
     } catch (e) {
       await this.#notice({ tone: 'info', title: t`Shiori couldn't summarize the conversation`, body: await this.#words(e, warm ? 'main' : 'utility') });
@@ -2193,12 +2211,9 @@ export class Agent {
     // Its wake's record names the hand-over the turn works on, as join takes it below: the Conversation's Undo line follows it.
     await this.#logWakes(wakes, wakeId, false, { handover: handoverOf(wakes) ?? this.#handover });
     const settings = await this.settings();
-    const last = this.#warmth.last;
-    const cold = !last || this.now() >= last.at + last.ttlMs - SOON_MS;
+    const cold = await this.#cold(settings);
     const fresh = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale });
     this.#snapshot = nextSnapshot(this.#snapshot, fresh, { cold });
-    // Housekeeping that came due waits for a pause; by now the cache is cold, so the utility model does it (spec §6.5).
-    if (cold && this.#due && (await this.#tidyUp('cold', {}, wakeId))) this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale }), { cold: true });
     /** What woke her, then what joins her turn, until a request of hers has said it (the now block says each once). */
     const reasons = wakes.map((w) => this.#reason(w));
     // The user reordered the list (or changed it) since: their order applies from this turn, warm cache or not.
@@ -2325,6 +2340,8 @@ export class Agent {
     let frozen = null;
     /** Claude's thinking still goes back this turn: one flag stops it, for a change, a refusal or the size (§5, §6). */
     let thinking = true;
+    /** The turn started cold: its first request is where housekeeping that is due runs, as nothing is cached to lose (spec §6.5). */
+    let coldStart = cold;
     /** What the turn's requests have carried of it so far, in characters. */
     let keptSent = 0;
     const stopThinking = () => {
@@ -2381,7 +2398,10 @@ export class Agent {
       const uploaded = await this.#uploading();
       // What the main models are sent: their photo limit of the pictures, each once.
       const sent = { ...request, messages: limitImages(request.messages, (await this.#mainImages()).maxCount) };
-      const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimateTokens(sent, (await this.#mainModel())?.providerId), this.#lastPrompt), window, bytes: requestBytes(sent, { uploaded }), maxBytes, threshold: settings.compaction.threshold }) : null;
+      const estimate = estimateTokens(sent, (await this.#mainModel())?.providerId);
+      const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window, bytes: requestBytes(sent, { uploaded }), maxBytes, threshold: settings.compaction.threshold }) : null;
+      const tidy = coldStart;
+      coldStart = false; // once a turn: its first request
       if (need === 'forced') {
         // The next request would overflow: housekeeping first, warm if the cache still is (spec §6.4, §6.5).
         const warm = this.#warmth.last ? this.#warmth.state(this.#warmth.last.modelId, fingerprint, this.now()).warm : false;
@@ -2395,6 +2415,15 @@ export class Agent {
           this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale }), { cold: true });
           continue;
         }
+      } else if (need === 'due' && tidy) {
+        // Due, and the cache is cold already: the utility model summarizes the older part first, so the turn writes the shorter
+        // conversation to the cache, not the whole one (spec §6.5). Not done (a failure says so on a card), the turn goes on as it is.
+        const done = await this.#tidyUp('cold', {}, wakeId);
+        if (done) {
+          this.#lastPrompt = 0;
+          this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale }), { cold: true });
+        }
+        if (done !== false) continue; // done: the shorter conversation; null: cut short (a tap, leaving the page), read at the loop's top
       }
       const prefer = !reordered && this.#warmth.last && this.#warmth.state(this.#warmth.last.modelId, fingerprint, this.now()).warm ? this.#warmth.last.modelId : undefined;
       this.#cut = false;
@@ -2483,12 +2512,12 @@ export class Agent {
       this.#heardBy = result.modelId;
       answered = true;
       owed = owed.filter((r) => !r.cue);
-      // The answering call's own prompt, not the turn's sum with calls that failed.
-      this.#lastPrompt = promptTokens(result.reply.usage);
+      // The answering call's own prompt, not the turn's sum with calls that failed; none from one that ran the provider's own tools (replyPrompt).
+      this.#lastPrompt = replyPrompt(result.reply.usage);
       spent += result.cost ?? 0;
       const model = await this.#model(result.modelId);
       if (model) this.#warmth.note(result.modelId, fingerprint, TTL_MS[ttlFor(model, settings.cacheTtl)], this.now());
-      if (this.#half.housekeeping && compactionNeed({ tokens: this.#lastPrompt, window: model?.contextWindow ?? null, bytes: requestBytes(sent, { uploaded }), maxBytes, threshold: settings.compaction.threshold })) this.#due = true;
+      if (this.#half.housekeeping && compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window: model?.contextWindow ?? null, bytes: requestBytes(sent, { uploaded }), maxBytes, threshold: settings.compaction.threshold })) this.#due = true;
       // A request whose thinking couldn't go (something before it changed) or was refused stops it for the rest of the turn; else this
       // reply keeps the now block its request ended with and the reply as it came, until the turn ends or the requests have carried KEPT_SENT_MAX.
       if (result.reply.natives) stopThinking();
