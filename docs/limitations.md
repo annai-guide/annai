@@ -1132,9 +1132,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the line misleads a traveller.
 - **Approved:** 2026-11-19, the user's answer "All recommended" to the cost-display design's questions.
 
-### A restored copy of a trip counts its cost again
+### A restored copy of a trip, with its history, counts its cost again
 - **Kind:** known limitation.
-- **What the traveller sees:** after opening their own Backup of a trip that is still on the phone and choosing "Replace mine" or "Add as a new one", Settings → Models → Spending's All time, every other figure the trip's calls were in, and today's spend that Spend per day counts rise by that trip's cost again, until the old or extra copy is removed. A Share carries no history and adds nothing.
-- **Why:** both choices import the Backup's history into a new trip, and "Replace mine" only archives the old one, whose cost still counts. Telling the two copies' entries apart would need an identity for log entries across copies, or a ledger outside the trips.
+- **What the traveller sees:** after opening their own Backup, made with its History, of a trip or conversation still on the phone (an active one asks "Replace mine" or "Add as a new one"; an archived one comes back as a new copy without asking), Settings → Models → Spending's All time, every other figure the trip's calls were in, and today's spend that Spend per day counts rise by that trip's cost again, until the old or extra copy is removed. A Share carries no history unless its History box is ticked (that needs its places on), and a file without history adds no cost.
+- **Why:** each way imports the file's history into a new trip, and "Replace mine" only archives the old one, whose cost still counts. Telling the two copies' entries apart would need an identity for log entries across copies, or a ledger outside the trips.
 - **Revisit when:** a traveller restores trips they still have and the figures mislead.
 - **Approved:** 2026-11-19, the user's answer in the main session's tab: "Accept (Rec.)".

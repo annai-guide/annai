@@ -80,7 +80,7 @@ export async function spentIn(store, now, timeZone, days) {
           if (typeof cost === 'number') since.forEach((c, i) => { if (e.ts >= c) sums[i] += cost; });
           else if (answered(e)) unpriced++;
         }
-        // Stops when the page's last (the oldest in the log) is before the range: an older entry in the log is taken to be older in time. So entries written late (stamped before the range and written after today's: a midnight race, a clock set back) end the read early only while one of them is a page's last: a lone one until the next entry is written, a run of them for as many writes as it is long (20 or more in a row, a clock set back for that many calls, until 20 newer ones are written).
+        // Stops when the page's last (the oldest in the log) is before the range: an older entry in the log is taken to be older in time. So entries written late (stamped before the range and written after today's: a midnight race, a clock set back) end the read early only while one of them is a page's last: a lone one until the next entry is written, a run of them for as many writes as it is long (20 or more in a row on the first page, 1000 on a later one: a clock set back for that many calls, until as many newer ones are written).
         if (page.length < limit || page[page.length - 1].ts < from) break;
         before = page[page.length - 1].seq;
       }
