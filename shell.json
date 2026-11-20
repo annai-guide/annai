@@ -1,5 +1,5 @@
 {
-  "build": "fa015514bc9a",
+  "build": "9261a2bb5267",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -90,7 +90,7 @@
     "/src/core/llm/reasoning.js": "944a3f6e351d",
     "/src/core/llm/retry.js": "fdb90e75be0d",
     "/src/core/llm/service.js": "54d34763de1d",
-    "/src/core/llm/speech.js": "74dd179cc811",
+    "/src/core/llm/speech.js": "ac78e5273ec6",
     "/src/core/llm/sse.js": "656d2989d833",
     "/src/core/llm/trace.js": "ce4c33d5516e",
     "/src/core/llm/uploads.js": "b30dc063d528",

@@ -177,7 +177,7 @@
     "provider-groq": "810ac311ae194becec2d2aac0a1eb9b687b2c4abee723fc1809cb7bc26845eb1",
     "provider-llamacpp": "b73de4f8ad8d75ee5c477820e2055173832c38ab02b313a1e01788fabfb1dbfd",
     "provider-lmstudio": "44e1e7c759609a0cf8851b6449bfb45cca201307cd59ffce4ebd6b310593a6be",
-    "provider-local-speech": "043783eff9adf651bfb36604011337bb5e165b8f44816db912dc8d8bc1e8c8f6",
+    "provider-local-speech": "da9884af8d827e209b40be22dd7ae3eef65d07711b8996d5cfa8b8bffa8c2142",
     "provider-mistral": "bfa52beb84680079834903d41e2f52366e01aa32c9fa8bca41410b2749e44c68",
     "provider-ollama": "4d498b30d826a79d6337b57be6ac155b9f81daa7c392c0fb69c28544ae0ee70a",
     "provider-openai": "28058f245792581ec902f98aa7bbffefacd123a666e10147fb1b17b5f1214469",

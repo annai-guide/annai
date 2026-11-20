@@ -3,7 +3,7 @@
     "description": "Speaches、whisper.cpp、Kokoroなど、自分で動かしているサーバーの文字起こしと声を使えます。",
     "name": "ローカルの音声サーバー",
     "provider.abilities.transcription.note": "Speachesかwhisper.cppを、プロバイダーのアドレスで使います。モデルはIDか「モデルの一覧を取得」で追加します。whisper.cppのサーバーは、--convert を付けて起動しないとWAV、MP3、FLACしか受け付けません。--convert なしで使う場合は、audioIn を [\"mp3\", \"flac\", \"wav\"] にしてください。",
-    "provider.abilities.voice.note": "KokoroかSpeachesを、専用のアドレスで使います。声のモデルをIDで追加し、モデルの「声」にそのモデルの声を1つ入力してください（Kokoroなら af_heart など）。どちらもスタイルには対応していないため、スタイルは保存されますが送信されません。対応しているサーバーの場合は、モデルの調整項目から \"styled\": false を削除してください。",
+    "provider.abilities.voice.note": "KokoroかSpeachesを、専用のアドレスで使います。声のモデルをIDで追加し、モデルの「声」にそのモデルの声を1つ入力してください。Kokoroの声はそれぞれ1つの言語しか話せず、どんな文でもその言語の発音で読み上げます（af_heart は英語、jf_alpha は日本語、zf_xiaoxiao は標準中国語）。どちらもスタイルには対応していないため、スタイルは保存されますが送信されません。対応しているサーバーの場合は、モデルの調整項目から \"styled\": false を削除してください。",
     "keywords": [
       "Speaches",
       "whisper.cpp",

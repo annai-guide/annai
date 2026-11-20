@@ -14,7 +14,7 @@
  * ISO-639-1 code (OpenRouter: "Auto-detected if omitted"; its `prompt` "is accepted but ignored"), or, for gpt-transcribe, `languages`
  * (several; "Don't send both"). The user speaks several as often as one, so: one language listed, it is sent; several, none (the
  * model detects: giving only the first would force a Chinese sentence into English, and a prompt naming them is one Whisper may
- * echo back on silence); a `language` set by hand on the model's page wins. No voice API takes a language: they follow the text.
+ * echo back on silence); a `language` set by hand on the model's page wins. The voice APIs here take no language: a multilingual voice follows the text, and one made for one language (Kokoro's af_heart; Voxtral's English voices, by clip length) reads every sentence in it.
  * Raw audio (PCM, 16-bit little-endian mono, no header): a voice is asked for it where its format is 'pcm', where its `stream`
  * tunable is on (the voice page's Stream switch, shown where a provider's description names it, OpenRouter's, and off to begin with), and where its id
  * starts with one of the ability's `pcmOnly` prefixes (OpenRouter's HeyGen and Gemini voices answer nothing else: 400 for mp3 and

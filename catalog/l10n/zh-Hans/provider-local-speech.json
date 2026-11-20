@@ -3,7 +3,7 @@
     "description": "用自己部署的服务器（如 Speaches、whisper.cpp 或 Kokoro）提供语音转文字和声音。",
     "name": "本地语音服务器",
     "provider.abilities.transcription.note": "使用提供商地址上的 Speaches 或 whisper.cpp。可按 ID 添加模型，或用“获取模型列表”。whisper.cpp 的服务器没有用 --convert 启动时只接受 WAV、MP3 和 FLAC，这时请把它的 audioIn 设为 [\"mp3\", \"flac\", \"wav\"]。",
-    "provider.abilities.voice.note": "使用单独地址上的 Kokoro 或 Speaches。按 ID 添加声音模型，并在模型的“声音”中填入它的一个声音（Kokoro 的声音如 af_heart）。它们不支持“风格”，风格会保存，但不会发送；如果服务器支持，请从模型的可调参数中删除 \"styled\": false。",
+    "provider.abilities.voice.note": "使用单独地址上的 Kokoro 或 Speaches。按 ID 添加声音模型，并在模型的“声音”中填入它的一个声音。Kokoro 的每个声音只会说一种语言，无论什么文字都按这种语言的发音朗读（af_heart 是英语，jf_alpha 是日语，zf_xiaoxiao 是普通话）。它们不支持“风格”，风格会保存，但不会发送；如果服务器支持，请从模型的可调参数中删除 \"styled\": false。",
     "keywords": [
       "Speaches",
       "whisper.cpp",

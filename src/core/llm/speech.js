@@ -22,7 +22,7 @@ const playable = (p) => p?.pcm instanceof Int16Array && Number.isFinite(p.rate);
  *   signal?: AbortSignal, timeoutMs?: number, trace?: ReturnType<typeof import('./trace.js').modelTrace>, registry?: import('../registry.js').Registry,
  *   now?: () => number, wake?: string, plays?: string[], stream?: boolean, unstyled?: boolean, languages?: import('./contract.js').Languages }} c  audio: transcribe it, with an 'in' type; text: say it, with an 'out' type;
  *   plays: what the device plays; stream: the caller plays a stream; unstyled: send no style (a server refused it); languages: what the user speaks, for a
- *   transcription's language hint: a voice is given none, no voice API takes one
+ *   transcription's language hint: a voice is given none, the voice APIs called here take none (a multilingual voice follows the text; one made for one language reads everything in it)
  * @returns {Promise<{ text?: string, clip?: Clip, stream?: SpeechStream, cost: number | undefined, ms: number }>} text from an 'in' type, a clip or a stream from an 'out' type
  */
 export async function speechCall(c) {
