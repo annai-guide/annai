@@ -1,5 +1,5 @@
 {
-  "build": "74235ba25f4e",
+  "build": "0aca25f8979c",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -43,7 +43,7 @@
     "/src/core/agent/instructions.js": "dc44316f3b47",
     "/src/core/agent/listen.js": "41cbb9219102",
     "/src/core/agent/log.js": "be1f6eedd6f8",
-    "/src/core/agent/loop.js": "a681d3591c2a",
+    "/src/core/agent/loop.js": "977347e4bc67",
     "/src/core/agent/reading.js": "dfcf146e5005",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/her-instructions.js": "b90fb982b678",
@@ -78,7 +78,7 @@
     "/src/core/llm/config.js": "008b753fa725",
     "/src/core/llm/contract.js": "4492331dd6b3",
     "/src/core/llm/decide.js": "4aff39cf2ab3",
-    "/src/core/llm/fallback.js": "afc82b5dc27b",
+    "/src/core/llm/fallback.js": "60df9a6827ef",
     "/src/core/llm/move-over.js": "9584243ec1f4",
     "/src/core/llm/official.js": "43a4783de11b",
     "/src/core/llm/provider-desc.js": "f1a1406b822b",
@@ -190,7 +190,7 @@
     "/src/core/zip.js": "30b31bdcef45",
     "/src/plugins/core-schemas/index.js": "4427d3773490",
     "/src/plugins/core-schemas/schemas.js": "580493083c28",
-    "/src/plugins/files/index.js": "563eec26c8e9",
+    "/src/plugins/files/index.js": "3bda557017ad",
     "/src/plugins/go/index.js": "39ee52f39fc1",
     "/src/plugins/mcp/client.js": "8f2bab66c578",
     "/src/plugins/mcp/index.js": "9b557e1626c7",
@@ -273,7 +273,7 @@
     "/src/ui/screens/simulate.js": "16dddd363254",
     "/src/ui/screens/shiori.js": "570d16acdc88",
     "/src/ui/screens/sees.js": "6a674fc473ae",
-    "/src/ui/screens/talk.js": "e84f5216393c",
+    "/src/ui/screens/talk.js": "59cdd9942d28",
     "/src/ui/screens/tools.js": "52d6c4d56a08",
     "/src/ui/screens/trace.js": "9e1b879ea0a0",
     "/src/ui/screens/trip.js": "16b903f6b61b",
@@ -300,8 +300,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "dc56ff3621ab",
-    "/l10n/zh-Hans.json": "18bd4ffad22a",
-    "/l10n/zh-Hant.json": "64acdddab1f5"
+    "/l10n/ja.json": "1de1ddf9c548",
+    "/l10n/zh-Hans.json": "d2bc1154bc79",
+    "/l10n/zh-Hant.json": "77ee661e1ace"
   }
 }

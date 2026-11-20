@@ -282,7 +282,7 @@ export function koeWay(cfg, { voiceOn, types, until, now }) {
   return { mode, why, live: hasLive, split: classic.length > 0 || (wanted && realtime.length > 0), path: text ? { kind: 'text' } : null };
 }
 
-/** Characters to a token in annai's rough counts (estimateTokens, the sizes a cut is measured on): on the 2026-11-19 real-model check the estimate read 0.45 to 1.14 of providers' counts, enough for both. */
+/** Characters to a token in annai's rough counts (estimateTokens, a cut's sizes): on the 2026-11-19 real-model check they read 0.45 to 1.14 of providers' counts. */
 export const CHARS_PER_TOKEN = 3.5;
 
 /**
