@@ -150,9 +150,9 @@ export async function downloadPack(o) {
   try {
     return await fetchPack(o);
   } finally {
-    // The pack keeps no history, which nothing reads (spec §11.5): what a download wrote is the pack now, one that stopped or failed too
-    // (a full phone gets the space back). The versions it replaced and the parts it removed go with the content only they named, as a
-    // plugin's package's do (plugins.js). If this fails, they take space until the next download.
+    // The pack keeps no history (spec §4.9): what a download wrote is the pack now, one that stopped or failed too. The versions it
+    // replaced and the parts it removed go with the content only they named, as a plugin's package's do (plugins.js), so its files have no
+    // write entry (handover.js holdsOthers leaves DIR out). On a phone with no room the forget can be refused: the next download tries again.
     await forget(o.ws.store, o.scope, { history: (p) => p.startsWith(DIR) }).catch(() => {});
   }
 }

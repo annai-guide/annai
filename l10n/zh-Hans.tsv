@@ -584,21 +584,21 @@ gtgen1	ok	The content of {0} is missing from storage, so it can't be exported.	�
 13a6l3r	ok	There is nothing to export.	没有可导出的内容。	src/core/archive.js:68	
 am2v0c	ok	API keys can only be included in an encrypted backup of everything.	只有加密的完整备份才能包含 API 密钥。	src/core/archive.js:68	
 4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	此文件已加密。请输入密码短语来打开。	src/core/archive.js:88	
-1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	此文件是用较新版本的 annai 创建的。请先更新 annai，再重新打开。	src/core/archive.js:453	
-q7ee2s	ok	This file is damaged: {0}	此文件已损坏：{0}	src/core/archive.js:457	{0} = errors; Note: {0} is a developer's detail, in English.
-4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	此文件包含不安全的文件路径（{0}），因此 annai 不会打开它。	src/core/archive.js:460	{0} = path
-hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	此文件不是 annai 文件，或者已损坏（{0}）。	src/core/archive.js:483	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	此 zip 不是 annai 文件，里面没有 annai-archive.json。	src/core/archive.js:485	
-j0v5kk	ok	This file is damaged: its manifest is not readable.	此文件已损坏，无法读取其中的清单。	src/core/archive.js:492	
-lfeohr#other	ok	This file is damaged: {0} are missing.	此文件已损坏，缺少 {0}。	src/core/archive.js:498	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
-1ujco5p	ok	This file is damaged: its keys are not readable.	此文件已损坏，无法读取其中的密钥。	src/core/archive.js:514	
-1aqa7w5	ok	This file is damaged ({0}).	此文件已损坏（{0}）。	src/core/archive.js:526	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1txsojx	ok	This file is damaged: {0} was changed.	此文件已损坏，{0} 被改动过。	src/core/archive.js:531	{0} = name
-21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	此文件已损坏，无法读取 {1} 的第 {0} 行。	src/core/archive.js:557	{0} = i + 1; {1} = name
-1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	此文件已损坏，{1} 第 {0} 行：{2}	src/core/archive.js:561	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
-syvqmc	ok	This file is damaged: its plugin list is not readable.	此文件已损坏，无法读取其中的插件列表。	src/core/archive.js:657	
-qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件的部分内容已从本设备中删除，因此没有导入任何内容。请重新导入。	src/core/archive.js:759	
-cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件要替换的内容在本设备上发生了变化，因此没有导入任何内容。请重新导入。	src/core/archive.js:760	
+1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	此文件是用较新版本的 annai 创建的。请先更新 annai，再重新打开。	src/core/archive.js:471	
+q7ee2s	ok	This file is damaged: {0}	此文件已损坏：{0}	src/core/archive.js:475	{0} = errors; Note: {0} is a developer's detail, in English.
+4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	此文件包含不安全的文件路径（{0}），因此 annai 不会打开它。	src/core/archive.js:478	{0} = path
+hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	此文件不是 annai 文件，或者已损坏（{0}）。	src/core/archive.js:501	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	此 zip 不是 annai 文件，里面没有 annai-archive.json。	src/core/archive.js:503	
+j0v5kk	ok	This file is damaged: its manifest is not readable.	此文件已损坏，无法读取其中的清单。	src/core/archive.js:510	
+lfeohr#other	ok	This file is damaged: {0} are missing.	此文件已损坏，缺少 {0}。	src/core/archive.js:516	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
+1ujco5p	ok	This file is damaged: its keys are not readable.	此文件已损坏，无法读取其中的密钥。	src/core/archive.js:532	
+1aqa7w5	ok	This file is damaged ({0}).	此文件已损坏（{0}）。	src/core/archive.js:544	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1txsojx	ok	This file is damaged: {0} was changed.	此文件已损坏，{0} 被改动过。	src/core/archive.js:549	{0} = name
+21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	此文件已损坏，无法读取 {1} 的第 {0} 行。	src/core/archive.js:575	{0} = i + 1; {1} = name
+1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	此文件已损坏，{1} 第 {0} 行：{2}	src/core/archive.js:579	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
+syvqmc	ok	This file is damaged: its plugin list is not readable.	此文件已损坏，无法读取其中的插件列表。	src/core/archive.js:675	
+qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件的部分内容已从本设备中删除，因此没有导入任何内容。请重新导入。	src/core/archive.js:777	
+cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	导入期间，此文件要替换的内容在本设备上发生了变化，因此没有导入任何内容。请重新导入。	src/core/archive.js:778	
 e0756x	ok	annai tries again later.	稍后会自动重试。	src/core/backup.js:42	
 pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} 的插件没有运行。请到设置 → 备份中打开这个备份位置，开启插件。	src/core/backup.js:44	{0} = name; Note: "it" is the plugin: the backup place's screen turns its plugin on.
 al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	请输入 {0} 加密备份的密码短语，然后保存。	src/core/backup.js:45	{0} = name
@@ -964,8 +964,8 @@ mf44l1	ok	Her words go to {0}, which sends back the sound.	她的话会发给 {0
 jy2arc	draft	Waiting with Shiori	交给 Shiori 的文件	src/core/waiting.js:46	context: a conversation's name; Note: the name annai gives the conversation the files handed to Shiori while no trip was open move into (timeline stage 7); a name, short; 交给 (handed to), 文件 for files.
 1izzjz4	ok	Trip record checks	旅行数据检查	src/plugins/core-schemas/index.js:7	
 19upcdj	ok	Checks trip.json, itinerary items, bookings and watches when they are saved.	保存时检查 trip.json、行程项目、预订和提醒条件。	src/plugins/core-schemas/index.js:10	Note: A watch is what live mode watches for (a time, a place, a change); no screen names one yet, so ja ウォッチ and zh 监测项 are a first pick.
-6t16a0	ok	File tools	文件工具	src/plugins/files/index.js:15	
-1dyo7ln	ok	Shiori's tools for the trip's files and your own: list, read, write, edit, patch, search and delete.	Shiori 用来处理旅行文件和个人文件的工具：list、read、write、edit、patch、search 和 delete。	src/plugins/files/index.js:18	Note: The tools' names stay as written: Settings → Tools lists them by those names.
+6t16a0	ok	File tools	文件工具	src/plugins/files/index.js:16	
+1dyo7ln	ok	Shiori's tools for the trip's files and your own: list, read, write, edit, patch, search and delete.	Shiori 用来处理旅行文件和个人文件的工具：list、read、write、edit、patch、search 和 delete。	src/plugins/files/index.js:19	Note: The tools' names stay as written: Settings → Tools lists them by those names.
 jh5a9s	ok	Go tools	出行工具	src/plugins/go/index.js:7	Note: Go as its tool group is named in Settings → Tools (移動 / 出行).
 1xge7qy	ok	maps_link and search_link: directions, and prefilled flight, hotel and car searches for you to book.	maps_link 和 search_link：导航路线，以及预先填好的航班、酒店和租车搜索，方便你预订。	src/plugins/go/index.js:10	
 13a1ine	ok	The MCP server {0} speaks an unknown version of MCP; annai speaks 2025-03-26 to 2025-11-25.	MCP 服务器“{0}”使用的 MCP 版本未知；annai 支持 2025-03-26 至 2025-11-25 的版本。	src/plugins/mcp/client.js:86	{0} = this.server; Note: A server's name is quoted (「」, “”) so it stands apart from the words around it.

@@ -13,6 +13,7 @@ import { moveFile, FILE_HERE, PASTED_TEXT } from './waiting.js';
 import { blobJSON, blobBytes } from './reach.js';
 import { SYS_WAITING, DRAFT_TITLE, talks } from './scopes.js';
 import { NOT_TRANSCRIBED } from './voice/resolve.js';
+import { DIR as PACK_DIR } from './pack/download.js';
 
 /** The stored words of a hand-over with no words of the user's (the screens show none). */
 export const FILES_ONLY = /* en */ '(files)';
@@ -346,15 +347,15 @@ async function writeMark(ws, scope, mark, log) {
 
 /**
  * Whether a trip holds a file that keeps it from this hand-over's Undo: one whose last write is the user's own (not an Undo's), or
- * another hand-over's (that one has its own Undo). Her writes or annai's with no hand-over (a later turn's note, housekeeping) and her
- * short names don't keep it. @param {import('./types.js').Store} store @param {string} scope @param {string} handover
+ * another hand-over's (that one has its own Undo). Her writes or annai's with no hand-over (a later turn's note, housekeeping), her
+ * short names and the offline pack (annai's, with no write entry kept) don't keep it. @param {import('./types.js').Store} store @param {string} scope @param {string} handover
  */
 async function holdsOthers(store, scope, handover) {
   return store.tx(['files', 'events'], 'readonly', async (t) => {
     const last = new Map();
     for (const e of await t.listEvents(scope, { types: ['file.write'] })) last.set(e.data?.path, e);
     return (await t.listFiles(scope)).some((f) => {
-      if (f.path === NAMES_FILE) return false;
+      if (f.path === NAMES_FILE || f.path.startsWith(PACK_DIR)) return false;
       const e = last.get(f.path);
       if (!e) return true;
       if (e.data?.undo === handover) return false;

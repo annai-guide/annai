@@ -213,13 +213,16 @@ export async function exportArchive(store, opts) {
     }
     /** @type {ManifestScope} */
     const ms = { dir, record };
-    for (const f of files) {
+    for (const listed of files) {
       // Memory is what she keeps: the memory file, and a trip's to-do list (spec §12.2).
-      if (!include.memory && (f.path === '/memory.md' || f.path === TODO_FILE) && scope.kind !== 'sys') continue;
-      if (noPlaces && f.path.startsWith(WATCH_DIR)) continue;
+      if (!include.memory && (listed.path === '/memory.md' || listed.path === TODO_FILE) && scope.kind !== 'sys') continue;
+      if (noPlaces && listed.path.startsWith(WATCH_DIR)) continue;
+      const read = await readFileNow(store, scope.id, listed);
+      if (!read) continue; // removed since it was listed
+      const { f } = read;
       const name = dir + f.path;
       /** @type {Uint8Array} */
-      let bytes = await readBlob(store, f.hash, f.path);
+      let bytes = read.bytes;
       let hash = f.hash;
       if (noPlaces && TEXT_FILE.test(f.path)) {
         const clean = withoutPoints(bytes);
@@ -432,13 +435,28 @@ async function sharePhoto(f, bytes, share) {
   return clean && !readPhotoMeta(out.bytes).place ? out : null;
 }
 
-/** @param {Store} store @param {string} hash @param {string} path */
-async function readBlob(store, hash, path) {
-  const rec = await store.tx(['blobs'], 'readonly', (t) => t.getBlob(hash));
-  if (!(rec?.data instanceof ArrayBuffer)) {
-    throw new ArchiveError(/* en */ `The content of ${path} is missing from storage.`, { said: { code: 'content-missing', path } });
+/**
+ * A listed file with its content as it is now: a change since the listing (a pack download, Delete for good) may have freed the content it
+ * names, so the file is read again, entry and content together. Null: it is gone. @param {Store} store @param {string} scope @param {import('./types.js').FileEntry} listed
+ * @returns {Promise<{ f: import('./types.js').FileEntry, bytes: Uint8Array } | null>}
+ */
+async function readFileNow(store, scope, listed) {
+  const got = await store.tx(['files', 'blobs'], 'readonly', async (t) => {
+    let f = listed;
+    let rec = await t.getBlob(f.hash);
+    if (!(rec?.data instanceof ArrayBuffer)) {
+      const now = await t.getFile(scope, listed.path);
+      if (!now) return null;
+      f = now;
+      rec = await t.getBlob(f.hash);
+    }
+    return { f, rec };
+  });
+  if (!got) return null;
+  if (!(got.rec?.data instanceof ArrayBuffer)) {
+    throw new ArchiveError(/* en */ `The content of ${got.f.path} is missing from storage.`, { said: { code: 'content-missing', path: got.f.path } });
   }
-  return new Uint8Array(rec.data);
+  return { f: got.f, bytes: new Uint8Array(got.rec.data) };
 }
 
 /**

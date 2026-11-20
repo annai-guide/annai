@@ -204,6 +204,24 @@ test('personalities are refused however the path is written (the check is on the
   await assert.rejects(run('delete', { path: '/me//personalities/shiori.md' }), /tune_personality/);
 });
 
+test("the offline pack is annai's, not hers to write: refused with where to write instead, however the path is written; paths that only look like it, and /me, are hers", async () => {
+  const { ws, trip, run } = await setup();
+  await ws.write(trip, '/offline/pack.json', '{"format":1}', { author: 'system' });
+  const before = await ws.history(trip, '/offline/pack.json');
+  for (const path of ['/trip/offline/road.md', '/trip/offline//road.md', '/trip//offline/road.md', '/trip/offline/osm/x.json']) {
+    await assert.rejects(run('write', { path, content: 'x' }), /offline pack[^]*somewhere else in the trip/, path);
+  }
+  await assert.rejects(run('edit', { path: '/trip/offline/pack.json', old: 'format', new: 'size' }), /offline pack/);
+  await assert.rejects(run('patch', { path: '/trip/offline/pack.json', changes: { format: 2 } }), /offline pack/);
+  await assert.rejects(run('delete', { path: '/trip/offline/pack.json' }), /offline pack/);
+  assert.equal(await ws.readText(trip, '/offline/pack.json'), '{"format":1}');
+  assert.deepEqual(await ws.history(trip, '/offline/pack.json'), before);
+  assert.deepEqual((await ws.list(trip, '/offline/')).map((f) => f.path), ['/offline/pack.json']);
+  for (const path of ['/trip/offline-list.md', '/trip/notes/offline/road.md', '/trip/Offline/road.md', '/me/offline/road.md']) {
+    assert.match(await run('write', { path, content: 'x' }), /Wrote/, path);
+  }
+});
+
 test('read: a Wallet pass as what it says, and an email as its text', async () => {
   const { ws, trip, run } = await setup();
   const z = new ZipWriter();

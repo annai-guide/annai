@@ -9,6 +9,7 @@ import { readPass } from '../../core/pkpass.js';
 import { isBookingPath, shioriBooking, unalias, checkNote } from '../../core/bookings.js';
 import { t } from '../../core/l10n.js';
 import { NAMES_FILE } from '../../core/names.js';
+import { DIR as PACK_DIR } from '../../core/pack/download.js';
 
 export const manifest = {
   id: 'files',
@@ -41,6 +42,8 @@ export function activate(annai) {
     if (scope === 'me' && (path === '/personalities' || path.startsWith('/personalities/'))) throw new Error('Personalities change only through tune_personality.');
     /* en */
     if (scope === 'me' && (path === '/instructions' || path.startsWith('/instructions/'))) throw new Error('Your instructions are the user\'s to change, in Settings → Shiori.');
+    /* en */
+    if (kindOf(scope) === 'trip' && path.startsWith(PACK_DIR)) throw new Error("The offline pack (/trip/offline/) is annai's: each download replaces what is in it. Write somewhere else in the trip, such as /trip/notes/.");
   };
   /**
    * Plan items and bookings sit directly in their folders, where the format check and the booking rule cover them (spec §4.4).

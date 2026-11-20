@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createMemoryStore } from '../fakes/store-memory.js';
+import { createMemoryStore, afterListing } from '../fakes/store-memory.js';
+import { forget } from '../../src/core/forget.js';
 import { Workspace, StorageFullError } from '../../src/core/workspace.js';
 import { sha256Hex } from '../../src/core/hash.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
@@ -710,6 +711,34 @@ test('an import whose content is removed before it finishes imports nothing and 
   assert.deepEqual((await listTrips(a.store)).active, []);
   const [copy] = (await importArchive(a.store, await peekArchive(bytes))).trips;
   assert.deepEqual((await a.ws.read(copy, '/files/photo.jpg'))?.bytes, photo);
+});
+
+test('an export that overlaps a change freeing content it listed reads that file again: what is there now, and not a file that is gone', async () => {
+  const a = await device();
+  const trip = await sampleTrip(a.ws);
+  const photo = (await a.ws.read(trip, '/files/photo.jpg'))?.bytes;
+  // After the export listed the trip's files: a note written again with its history forgotten (the content listed is freed), and a plan
+  // item deleted for good (its file and content go).
+  const racing = afterListing(a.store, async () => {
+    await a.ws.write(trip, '/notes/案内.md', 'third', { author: 'user' });
+    await forget(a.store, trip, { history: (p) => p === '/notes/案内.md' });
+    await forget(a.store, trip, { files: (p) => p === '/plan/dinner.json', history: (p) => p === '/plan/dinner.json' });
+  });
+  const { blob, manifest } = await exportArchive(racing, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' });
+  assert.deepEqual(manifest.files.map((f) => f.path).sort(), ['/files/photo.jpg', '/memory.md', '/notes/案内.md', '/trip.json'].sort());
+  const b = await device();
+  const [copy] = (await importArchive(b.store, await peekArchive(await bytesOf(blob)))).trips;
+  assert.equal(await b.ws.readText(copy, '/notes/案内.md'), 'third');
+  assert.equal(await b.ws.read(copy, '/plan/dinner.json'), undefined);
+  assert.deepEqual((await b.ws.read(copy, '/files/photo.jpg'))?.bytes, photo);
+});
+
+test("an export whose file's content is missing for good, and its entry is still there, says so", async () => {
+  const a = await device();
+  const trip = await sampleTrip(a.ws);
+  const hash = /** @type {string} */ ((await a.ws.read(trip, '/notes/案内.md'))?.entry.hash);
+  await a.store.tx(['blobs'], 'readwrite', (t) => t.deleteBlob(hash));
+  await assert.rejects(exportArchive(a.store, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: '0.1.0' }), (e) => e instanceof ArchiveError && /missing from storage/.test(e.message));
 });
 
 test('a failed import keeps content that history came to point at while it ran', async () => {

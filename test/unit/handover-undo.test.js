@@ -11,6 +11,9 @@ import { Transcript } from '../../src/core/agent/transcript.js';
 import { readNames, syncNames } from '../../src/core/names.js';
 import { moveFile } from '../../src/core/waiting.js';
 import { utf8 } from '../../src/core/bytes.js';
+import { downloadPack } from '../../src/core/pack/download.js';
+import { forget } from '../../src/core/forget.js';
+import { services, STOPS } from './pack-kit.js';
 
 const HERS = { author: 'shiori', handover: 'h-1' };
 const flightBooking = { id: 'flight', kind: 'flight', status: 'unverified', source: '/files/flight.pdf', title: 'AS 123' };
@@ -849,4 +852,34 @@ test("an Undo cut off at any point, then tapped again: the file moved for the ha
     assert.deepEqual((await ws.list(trip, '/files/')).map((f) => f.path), ['/files/flight.pdf'], `cut after ${cutAt}`);
     assert.deepEqual((await ws.list(kyoto, '/files/')).map((f) => f.path), [], `cut after ${cutAt}`);
   }
+});
+
+test("a trip she started for the hand-over whose offline pack was downloaded: Undo still removes it, and the file it brought waits again (the pack is annai's, never the user's work)", async () => {
+  const { store, ws } = await kit();
+  await ws.write(SYS_WAITING, '/files/flight.pdf', utf8('%PDF flight'), { author: 'user', type: 'application/pdf' });
+  const started = await startedFrom(ws, store, ME, 'h-1', 'Big Sur');
+  await moveFile(ws, { scope: SYS_WAITING, path: '/files/flight.pdf' }, started, { handover: 'h-1' });
+  await ws.write(started, '/plan/bixby.json', STOPS.bixby, HERS);
+  await ws.write(started, '/plan/nepenthe.json', STOPS.nepenthe, HERS);
+  // The traveller taps Download for the pack, then Undo. Each download forgets the pack's history, so its files have no write entry.
+  let at = Date.parse('2026-11-01T08:00:00Z');
+  await downloadPack({ ws, scope: started, ...services(), version: '9.9.9', editions: ['en'], gapMs: 0, now: () => at });
+  assert.ok((await ws.list(started, '/offline/')).length > 2, 'a pack');
+  assert.deepEqual(await eventsIn(store, started, ['file.write']).then((es) => es.filter((e) => e.data.path.startsWith('/offline/'))), []);
+  assert.equal(await undoable(store, started, 'h-1'), true);
+  const out = await undoEverywhere(ws, started, 'h-1', { remove: async (s) => removeTrip(store, s) });
+  assert.deepEqual(out.removed, ['Big Sur']);
+  assert.equal(await store.tx(['scopes'], 'readonly', (t) => t.getScope(started)), undefined);
+  assert.deepEqual((await ws.list(SYS_WAITING, '/files/')).map((f) => f.path), ['/files/flight.pdf']);
+  // And Undo itself, on its own, says the trip is empty.
+  const again = await startedFrom(ws, store, ME, 'h-1', 'Big Sur again');
+  await ws.write(again, '/files/flight.pdf', utf8('%PDF flight'), { author: 'user', type: 'application/pdf', handover: 'h-1' });
+  await ws.write(again, '/plan/bixby.json', STOPS.bixby, HERS);
+  await downloadPack({ ws, scope: again, ...services(), version: '9.9.9', editions: ['en'], gapMs: 0, now: () => at });
+  assert.deepEqual([(await undoHandover(ws, again, 'h-1')).tripEmpty], [true]);
+  // Only the pack's folder is annai's: a file at a path that only looks like it, with no write entry left, still keeps a trip.
+  const near = await startedFrom(ws, store, ME, 'h-1', 'Near');
+  await ws.write(near, '/offline-list.md', 'Things to do offline', { author: 'user' });
+  await forget(store, near, { history: (p) => p === '/offline-list.md' });
+  assert.equal((await undoHandover(ws, near, 'h-1')).tripEmpty, false);
 });
