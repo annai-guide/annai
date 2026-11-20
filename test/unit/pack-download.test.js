@@ -470,6 +470,25 @@ test("a second stage is fetched again when its lists are (a month old) or came a
   assert.deepEqual(old.asked.filter((a) => /wikipedia|wikidata/.test(a.url)).map((a) => new URL(a.url).hostname), ['ja.wikipedia.org', 'en.wikipedia.org', 'www.wikidata.org', 'ja.wikipedia.org', 'en.wikipedia.org']);
 });
 
+test("a second stage whose list is asked again and not answered is left with that list's old copy kept: nothing is asked for the stage, which is counted with the list's failure", async () => {
+  const { ws, trip } = await packTrip({ '/plan/yufuin.json': yufuinStop('Yufuin Station', YUFUIN, 1) });
+  const part = /** @type {any} */ ((await planFor(ws, trip)).parts.find((p) => p.kind === 'wikipedia'));
+  const stageFile = morePath(part, ['ja', 'en']);
+  const t0 = Date.parse('2026-11-20T09:00:00Z');
+  await downloadPack({ ws, scope: trip, ...services({ overpass: quiet, wikipedia: yufuinWikipedia, wikidata: wikidataOf() }), version: V, editions: ['ja', 'en'], gapMs: 0, now: () => t0 });
+  // Japanese's list a month old, so asked again; Japanese Wikipedia refuses.
+  const m = /** @type {any} */ (await readManifest(ws, trip));
+  await ws.write(trip, MANIFEST, JSON.stringify({ ...m, files: m.files.map((/** @type {any} */ f) => (f.path === pathOf(part, 'ja') ? { ...f, at: t0 - STALE_MS } : f)) }), { author: 'system' });
+  const refused = services({ overpass: quiet, wikipedia: (url) => (url.includes('ja.wikipedia.org') ? new Response('', { status: 503 }) : yufuinWikipedia(url)), wikidata: wikidataOf() });
+  const r = await downloadPack({ ws, scope: trip, fetch: refused.fetch, version: V, editions: ['ja', 'en'], gapMs: 0, now: () => t0 + 2 * 86_400_000 });
+  assert.deepEqual(r.failed.map((f) => f.label), ['Wikipedia near Yufuin Station', "Wikipedia's other editions near Yufuin Station"]);
+  assert.deepEqual(r.failed[1].said, r.failed[0].said, "the stage carries its list's failure");
+  assert.deepEqual(stageAsked(refused.asked), [], 'the old list is not fed to a stage against the host that just failed');
+  // Both old copies stay, as they were.
+  assert.equal(r.files.find((f) => f.path === pathOf(part, 'ja'))?.at, t0 - STALE_MS);
+  assert.equal(r.files.find((f) => f.path === stageFile)?.at, t0);
+});
+
 test("Wikidata that never answers is left after three parts in a row, as an edition is: the second stages after are counted and not asked, every list comes", async () => {
   // Stops 33 km apart: each its own Wikipedia part, and a part between.
   const { ws, trip } = await packTrip(Object.fromEntries(Array.from({ length: 4 }, (_, k) => [`/plan/s${k}.json`, yufuinStop(`Stop ${k}`, { lat: 33.2627 + k * 0.3, lng: 131.3553 }, k + 1)])));
