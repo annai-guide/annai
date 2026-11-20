@@ -314,7 +314,11 @@ test("each trip card is its own colour, lit by the traveller's lines: happening,
   for (const name of ['Pastville', 'Oldtown', 'Ramen']) await expect(row(name)).not.toHaveClass(/\blit\b/);
   await page.evaluate(COLOURS);
   const paint = () => page.evaluate(async () => {
-    const { HUES } = await import(/** @type {string} */ ('/src/ui/screens/trips.js'));
+    const { HUES, hueOf } = await import(/** @type {string} */ ('/src/ui/screens/trips.js'));
+    const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+    const store = await createIdbStore();
+    const records = await store.tx(['scopes'], 'readonly', (/** @type {any} */ t) => t.listScopes());
+    store.close();
     const colourOf = /** @type {any} */ (window).colourOf;
     /** @param {string} name */
     const card = (name) => /** @type {HTMLElement} */ ([...document.querySelectorAll('.trip-card')].find((c) => c.querySelector('.name')?.textContent === name));
@@ -322,7 +326,9 @@ test("each trip card is its own colour, lit by the traveller's lines: happening,
     const of = (name) => {
       const el = card(name);
       const css = getComputedStyle(el);
-      return { lit: el.style.getPropertyValue('--lit'), hue: el.style.getPropertyValue('--hue'), bg: css.backgroundColor, edge: css.borderTopColor, lab: colourOf(css.backgroundColor).lab };
+      // Its own hue is the one its record's `created` gives, never its id's (an import or a restore mints a new id) or anything a change moves.
+      const own = hueOf(records.find((/** @type {any} */ r) => r.title === name).created);
+      return { lit: el.style.getPropertyValue('--lit'), hue: el.style.getPropertyValue('--hue'), own, bg: css.backgroundColor, edge: css.borderTopColor, lab: colourOf(css.backgroundColor).lab };
     };
     return { hues: HUES, cards: Object.fromEntries(['Nowville', 'Laterton', 'Busyville', 'Quietville', 'Pastville', 'Oldtown', 'Ramen'].map((n) => [n, of(n)])) };
   });
@@ -339,6 +345,7 @@ test("each trip card is its own colour, lit by the traveller's lines: happening,
     const depth = (/** @type {{ lab: number[] }} */ c) => Math.hypot(...c.lab.map((v, i) => v - sheet[i]));
     for (const c of [now, ahead, busy, quiet]) {
       expect(hues).toContain(Number(c.hue));
+      expect(Number(c.hue)).toBe(c.own);
       expect(c.bg).not.toBe(chat.bg);
       expect(c.edge).not.toBe(chat.edge);
       // Its colour's hue is the card's: on white, exactly (the dark sheet's own blue tint pulls a faint wash toward it there).
