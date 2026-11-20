@@ -1113,15 +1113,15 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### A removed trip's cost leaves the spending figures
 - **Kind:** known limitation.
-- **What the traveller sees:** after a trip or chat is removed, Settings → Models → Spending's figures (All time, and the other ranges when its calls were in them) drop by what it cost, and so does today's spend that Spend per day counts, as before.
+- **What the traveller sees:** after a trip or conversation is removed, Settings → Models → Spending's figures (All time, and the other ranges when its calls were in them) drop by what it cost, and so does today's spend that Spend per day counts, as before.
 - **Why:** removing means removing (spec §4.9): the figures are summed from the trips' own logs, and keeping a removed trip's cost would need a ledger outside the trips, new stored state to keep right through every write, removal, import and restore.
 - **Revisit when:** a traveller wants spend to outlive removals.
 - **Approved:** 2026-11-19, the user's answer "All recommended" to the cost-display design's questions.
 
 ### After a long, heavy history, the spending figures take a moment
 - **Kind:** known limitation.
-- **What the traveller sees:** Settings → Models opens a moment later than before, and takes the same moment each time it is drawn again (after a change to a role's list), since it shows Spending's figures only once it has read them from every trip's log (its other sections wait with it: nothing fills in later). In the cost-display design's measurements, made-up stores read in Docker on a desktop and not measured on a phone, which may be slower: about 0.3 s more in WebKit after a heavy year (19,300 log entries in 100 conversations), about 2.3 s after a year at the heaviest day of real use every day (122,000 in 300); about 0.02 s after a month like the one measured.
-- **Why:** nothing is stored for the figures: a running total would be state to keep right through every write, removal, import and restore, for the extreme case only. The whole read is only on Models; a turn's start reads only today's, and only with a Spend per day set.
+- **What the traveller sees:** Settings → Models opens a moment later than before, and takes the same moment each time it is drawn again (after a change to a role's list), since it shows Spending's figures only once it has read them from every trip's log (its other sections wait with it: nothing fills in later). In the cost-display design's measurements, made-up stores read in Docker on a Ryzen 9 9950X3D machine, not measured on a phone, which may be slower: about 0.3 s more in WebKit after a heavy year (19,300 log entries in 100 trips and conversations), about 2.3 s after a year at the heaviest day of real use every day (122,000 in 300); about 0.02 s after a month like the one measured.
+- **Why:** nothing is stored for the figures: a running total would be state to keep right through every write, removal, import and restore, for the extreme case only. The whole read is only on Models; a turn's start reads each trip's and conversation's newest 20 entries, going on only while all of them are from today, and only with a Spend per day set.
 - **Revisit when:** a traveller reports Settings → Models slow to open.
 - **Approved:** 2026-11-19, the user's answer "All recommended" to the cost-display design's questions.
 

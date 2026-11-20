@@ -7,7 +7,7 @@ import { updateAppSettings } from '../../src/core/settings.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
-import { ensureBaseScopes, createTrip, ME } from '../../src/core/scopes.js';
+import { ensureBaseScopes, createTrip, ME, SYS } from '../../src/core/scopes.js';
 import { logEvent } from '../../src/core/events.js';
 
 const at = (/** @type {string} */ iso) => Date.parse(iso);
@@ -190,7 +190,7 @@ test("today's spending is all counted, however many web requests the day made (s
 });
 
 // The Spending section's figures (the cost-display design, option A): one read for Today, 7 days, 30 days and All time, and
-// Spend per day's Today is the same read's.
+// Spend per day's Today is the same number (spentToday is spentIn's Today).
 /** A store with annai's own scopes, and a trip of its own. */
 async function spendStore() {
   const store = createMemoryStore();
@@ -228,12 +228,14 @@ test("spentIn: on a day the clocks change, today starts at that day's midnight",
   assert.deepEqual((await spentIn(store, at('2026-10-25T11:00:00Z'), 'Europe/Berlin', [1, 7, 30, Infinity])).sums, [4, 4, 4, 7]);
 });
 
-test('spentIn: what counts is what Spend per day counts; a call that answered with no price is counted once as not counted, one that failed or a model attempt never', async () => {
+test('spentIn: what counts is what Spend per day counts, annai\'s own log too; a call that answered with no price is counted once as not counted, a call that failed or a model attempt never as not counted', async () => {
   const { store, trip } = await spendStore();
   const now = at('2026-11-27T12:00:00Z');
   /** @param {string} scope @param {string} type @param {any} data */
   const log = (scope, type, data) => logEvent(store, scope, { type, data }, now - 60_000);
   const failed = [{ model: 'm', name: 'M', outcome: 'timeout', ms: 30_000 }];
+  // First, so that its time follows its place in the log, as every entry's does: a call that answered 100 days ago with no price, in All time only.
+  await logEvent(store, trip, { type: 'model.turn', data: { role: 'main', answeredBy: 'C', attempts: [{ model: 'c', name: 'C', outcome: 'ok', ms: 900 }] } }, now - 100 * 86_400_000);
   await log(trip, 'model.turn', { role: 'main', answeredBy: 'A', attempts: [{ model: 'a', name: 'A', outcome: 'ok', ms: 900, cost: 0.5 }], cost: 0.5 });
   await log(trip, 'net.request', { kind: 'model', model: 'A', outcome: 'ok', cost: 0.5 }); // its attempt: the turn holds its cost
   await log(trip, 'model.turn', { role: 'main', answeredBy: 'B', attempts: [{ model: 'b', name: 'B', outcome: 'ok', ms: 900 }] }); // no prices
@@ -246,9 +248,11 @@ test('spentIn: what counts is what Spend per day counts; a call that answered wi
   await log(trip, 'net.request', { kind: 'realtime', outcome: 'ok', cost: undefined }); // a live turn with no prices
   await log(trip, 'net.request', { kind: 'realtime', outcome: 'ok', cost: 0 }); // a free tier's
   await log(trip, 'net.request', { kind: 'web', tool: 'fetch', outcome: 'ok' });
+  await log(SYS, 'model.turn', { role: 'try', answeredBy: 'A', attempts: [{ model: 'a', name: 'A', outcome: 'ok', ms: 900, cost: 0.0625 }], cost: 0.0625 }); // Try this model, in annai's own log
   const { sums, unpriced } = await spentIn(store, now, 'UTC', [1, 7, 30, Infinity]);
-  assert.deepEqual(sums, [0.875, 0.875, 0.875, 0.875]);
-  assert.equal(unpriced, 3, 'B, the voice and the live turn, once across the four ranges');
+  assert.deepEqual(sums, [0.9375, 0.9375, 0.9375, 0.9375], "the System log's call is in every range");
+  assert.equal(unpriced, 4, "B, the voice, the live turn and the call 100 days ago, once across the four ranges (All time's)");
+  assert.equal((await spentIn(store, now, 'UTC', [1, 7, 30])).unpriced, 3, "the call 100 days ago is outside the longest range asked for, whose count it is");
   assert.equal((await spentIn(store, now + 86_400_000, 'UTC', [1])).unpriced, 0, 'only in the longest range asked for: none tomorrow');
 });
 

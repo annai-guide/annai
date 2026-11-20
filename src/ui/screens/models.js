@@ -75,11 +75,11 @@ function requestSections(ctx, s, spent) {
   const mib = h('input', { id: 'compaction-max', inputmode: 'decimal', placeholder: '8', value: numField(c.maxRequestMiB) });
   return [
     section(t`Spending`,
-      h('p', { class: 'sub', text: t`What Shiori's model calls, voices and live talk have cost on this phone, in all your trips. A day starts at midnight here.` }),
+      h('p', { class: 'sub', text: t`What Shiori's model calls, voices and live talk have cost on this phone, in all your trips and in annai's own calls, such as Try this model. A day starts at midnight here.` }),
       h('dl', { class: 'facts' }, ...RANGES.flatMap(([, name], i) => [h('dt', { text: name }), h('dd', { text: money(spent.sums[i]) })])),
       spent.unpriced ? h('p', { class: 'sub', text: plural(spent.unpriced, "Not counted: # call to a model with no prices. A model's page takes its prices, 0 for a server of your own.",
         "Not counted: # calls to models with no prices. A model's page takes its prices, 0 for a server of your own.") }) : null,
-      h('p', { class: 'sub', text: t`What Shiori's model calls may cost in a day, in all your trips. Once it is spent, her turn ends with a card, and she goes on the next day. Empty: no limit.` }),
+      h('p', { class: 'sub', text: t`What Shiori's model calls may cost in a day, in all your trips and in annai's own calls, such as Try this model. Once it is spent, her turn ends with a card, and she goes on the next day. Empty: no limit.` }),
       savedField(t`Spend per day (USD)`, spend, () => numberIn(spend, 0.01, Infinity, t`A day costs at least $0.01; leave it empty for no limit.`), (v) => save({ budgets: { spendPerDay: v } }))),
     section(t`Cache`,
       h('p', { class: 'sub', text: t`Providers keep the start of the conversation for a while, so her next request costs less. An hour costs more to write than five minutes, and pays off when you talk less often than every few minutes. A model that keeps it only five minutes is asked for five.` }),

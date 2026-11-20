@@ -80,6 +80,7 @@ export async function spentIn(store, now, timeZone, days) {
           if (typeof cost === 'number') since.forEach((c, i) => { if (e.ts >= c) sums[i] += cost; });
           else if (answered(e)) unpriced++;
         }
+        // Stops at the first entry before the range: a newer entry in the log is taken to be newer in time, so a phone clock set back past midnight can leave entries uncounted.
         if (page.length < limit || inside.length < page.length) break;
         before = page[page.length - 1].seq;
       }
