@@ -6,7 +6,7 @@ import { Workspace } from '../../../src/core/workspace.js';
 import { ensureBaseScopes, createTrip } from '../../../src/core/scopes.js';
 import { snapshot } from '../../contract/snapshot.js';
 import { exportArchive, peekArchive, importArchive, PRESETS } from '../../../src/core/archive.js';
-import { StorageFullError } from '../../../src/core/errors.js';
+import { StorageFullError, StoppedError } from '../../../src/core/errors.js';
 
 /**
  * Aborts the next requests on the files store in flight, as a browser can: the request is placed, then its transaction goes.
@@ -639,4 +639,51 @@ export default function (test, assert) {
     assert.equal(connections.length, 1);
     await eraseDatabase(name);
   });
+
+  // The store stops (another tab took annai over: main.js's onStolen; or Erase) while a write waits on its reopen. Before the stop was kept
+  // where connections open, such a write landed, in both engines (storage-next's fix round, 2026-11-19). The reopen stops the store as it starts.
+  for (const shape of /** @type {const} */ (['its connection was dropped', 'its first try lost the connection'])) {
+    test(`idb: a write waiting on its reopen when the store stops (${shape}) rejects with StoppedError, writes nothing, and leaves no connection open`, async () => {
+      const name = `annai-test-stop-${Date.now()}-${n++}`;
+      await eraseDatabase(name);
+      /** @type {IDBDatabase[]} */
+      const connections = [];
+      const s = await createIdbStore(name, { onOpen: (db) => connections.push(db) });
+      const dropped = shape === 'its connection was dropped';
+      if (dropped) {
+        // What the browser does to a connection it drops (Safari, a page in the background): closes it and says so.
+        connections[0].close();
+        connections[0].dispatchEvent(new Event('close'));
+      }
+      const open = IDBFactory.prototype.open;
+      IDBFactory.prototype.open = /** @type {any} */ (function (/** @type {any} */ ...a) {
+        const r = open.apply(this, /** @type {any} */ (a));
+        s.close();
+        return r;
+      });
+      let runs = 0;
+      const got = await s.tx(['files'], 'readwrite', async (t) => {
+        runs++;
+        // The error WebKit gives a transaction that was in flight when it dropped the connection.
+        if (!dropped && runs === 1) throw new DOMException('Connection to Indexed Database server lost. Refresh the page to try again', 'UnknownError');
+        await t.putFile(rec);
+      }).then(() => null, (e) => e).finally(() => { IDBFactory.prototype.open = open; });
+      assert.ok(got instanceof StoppedError, String(got));
+      assert.equal(runs, dropped ? 0 : 1, 'nothing runs on the connection that opened after the stop');
+      assert.equal(connections.length, 2, 'the reopen opened');
+      for (const [i, c] of connections.entries()) {
+        let closed = '';
+        try {
+          c.transaction(['files']);
+        } catch (e) {
+          closed = /** @type {any} */ (e).name;
+        }
+        assert.equal(closed, 'InvalidStateError', `connection ${i} is closed`);
+      }
+      const other = await createIdbStore(name); // the tab that took over
+      assert.equal(await other.tx(['files'], 'readonly', (t) => t.getFile('trip-1', '/a.md')), undefined, 'the write did not land');
+      other.close();
+      await eraseDatabase(name);
+    });
+  }
 }

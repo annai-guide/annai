@@ -1,5 +1,5 @@
 {
-  "build": "f839c2cd4104",
+  "build": "e57aff49e7e4",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -155,7 +155,7 @@
     "/src/core/shown.js": "450af0a8c563",
     "/src/core/signals.js": "1ba83a24e15c",
     "/src/core/skills.js": "f53f24999247",
-    "/src/core/store-idb.js": "9862378c9ad1",
+    "/src/core/store-idb.js": "e960cecbf13c",
     "/src/core/storage-types.js": "e20d91a457a9",
     "/src/core/sun.js": "c979f1473031",
     "/src/core/time.js": "fa5bc95db577",
@@ -183,7 +183,7 @@
     "/src/core/voice/stream-start.js": "824d34b902ff",
     "/src/core/voice/voice.js": "2b0133918f50",
     "/src/core/voice/where.js": "91b1deb9d78f",
-    "/src/core/types.js": "e971cf466c02",
+    "/src/core/types.js": "34ef03fe15fb",
     "/src/core/ui-slots.js": "355a32f019cb",
     "/src/core/web-search.js": "9b03656c0764",
     "/src/core/workspace.js": "fc5e4cd505f2",

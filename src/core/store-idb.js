@@ -67,7 +67,11 @@ export function eraseDatabase(name = DB_NAME) {
 export async function createIdbStore(name = DB_NAME, hooks = {}) {
   /** @type {IDBDatabase | null} */
   let db = null;
+  let closed = false;
+  // The stop is kept where every connection opens (close() leaves db null, so every later tx comes here): once stopped (another tab
+  // owns the data now, or Erase runs) nothing opens, and one opening as it stopped closes before anything runs on it.
   const connect = async () => {
+    if (closed) throw new StoppedError();
     const d = await openDatabase(name);
     d.onversionchange = () => {
       d.close();
@@ -77,15 +81,17 @@ export async function createIdbStore(name = DB_NAME, hooks = {}) {
       if (db === d) db = null;
     };
     hooks.onOpen?.(d);
+    if (closed) {
+      d.close();
+      throw new StoppedError();
+    }
     db = d;
     return d;
   };
   // The first open passes the door a reopen does: Chromium's backing store writes as it opens, so at its last bytes it fails too.
   await connect().catch((e) => { throw storeError(e, { write: true, open: true }); });
-  let closed = false;
   return {
     async tx(stores, mode, fn) {
-      if (closed) throw new StoppedError(); // never reopen: another tab owns the data now
       for (let attempt = 0; ; attempt++) {
         /** @type {IDBDatabase | undefined} */
         let d;
