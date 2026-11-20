@@ -28,20 +28,31 @@ export const VOYAGE_COUNT = VOYAGE.size;
 export const guideEditions = (editions) => editions.filter((e) => VOYAGE.has(e));
 /** An edition's Wikivoyage API. @param {string} edition */
 export const voyageApi = (edition) => `https://${edition}.wikivoyage.org/w/api.php`;
-/** An edition's language, in English, for a model: "Japanese" for ja, "Chinese" for zh; the edition itself where the engine has no name for it. @param {string} edition */
-export const editionName = (edition) => new Intl.DisplayNames(['en'], { type: 'language' }).of(edition) ?? edition;
+/**
+ * An edition's language, in English, for a model: "Japanese" for ja, "Chinese" for zh. A label the engine refuses (zh-yue: Intl.DisplayNames throws
+ * on it in Node, Chromium and WebKit, checked 2026-11-20) is named by its language's row ("Cantonese"), else it is its own name.
+ * @param {string} edition
+ */
+export function editionName(edition) {
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'language' }).of(edition) ?? edition;
+  } catch {
+    return LANGUAGES.find((l) => (HOST[l.id] ?? l.id) === edition)?.name ?? edition;
+  }
+}
 
 /** How annai names itself to Wikimedia (MediaWiki's API:Etiquette). @param {string} version */
 export const agentHeader = (version) => ({ 'Api-User-Agent': /* en */ `annai/${version} (https://annai.guide)` });
 
 /**
  * Wikimedia asks for 3 requests or fewer at once from a client, across all its sites (mediawiki.org, "Wikimedia APIs/Rate limits", read
- * 2026-11-20: "Limit the number of concurrent requests to 3 or fewer"). Every request annai sends to a Wikipedia or Wikivoyage host takes a
- * turn here, as Nominatim's do in nominatim.js: the places tools, free search's floor and the offline pack, whichever runs beside which.
+ * 2026-11-20: "Limit the number of concurrent requests to 3 or fewer"). Every request annai sends to a Wikipedia or Wikivoyage host, or to
+ * Wikidata, takes a turn here, as Nominatim's do in nominatim.js: the places tools, free search's floor and the offline pack, whichever runs
+ * beside which.
  */
 export const WIKIMEDIA_AT_ONCE = 3;
-const WIKIMEDIA = /^[a-z0-9-]+\.(?:wikipedia|wikivoyage)\.org$/;
-/** Whether a url is to a Wikipedia or Wikivoyage host: the ones that take turns, and that the pack gives the foreground's time. @param {string} url */
+const WIKIMEDIA = /^(?:[a-z0-9-]+\.(?:wikipedia|wikivoyage)\.org|www\.wikidata\.org)$/;
+/** Whether a url is to a Wikipedia or Wikivoyage host or to Wikidata: the ones that take turns, and whose requests the pack gives 25 s (download.js WIKIMEDIA_MS), not Overpass's two minutes. @param {string} url */
 export const isWikimedia = (url) => WIKIMEDIA.test(hostOf(url));
 /** A url's host, '' for one that isn't a whole address (URL.canParse came in Safari 17: annai's floor is iOS 16.4). @param {string} url */
 const hostOf = (url) => {
@@ -91,15 +102,26 @@ export async function wikimediaTurn(url, job, signal) {
   }
 }
 
+/** The widest circle Wikipedia's geosearch takes, in meters (MediaWiki's limit, paraminfo 2026-11-19): the widest radius annai asks it, online and for the pack. */
+export const GEOSEARCH_MAX_M = 10000;
 /**
  * An edition's nearest articles, with coordinates, Wikidata ids and, with extracts, 400 characters of summary. MediaWiki's limits (paraminfo,
- * 2026-11-19): geosearch 500 within 10 km; coordinates 10 unless colimit asks; extracts 20. No distance comes with this form.
+ * 2026-11-19): geosearch 500 within GEOSEARCH_MAX_M; coordinates 10 unless colimit asks; extracts 20. No distance comes with this form.
  * @param {string} edition @param {[number, number]} at @param {number} radius @param {number} limit @param {{ extracts?: boolean }} [o]
  */
 export function nearUrl(edition, [lat, lng], radius, limit, { extracts = false } = {}) {
   return `https://${edition}.wikipedia.org/w/api.php?action=query&format=json&formatversion=2&origin=*&generator=geosearch&ggscoord=${lat}%7C${lng}&ggsradius=${radius}`
     + `&ggslimit=${limit}&prop=${extracts ? 'extracts%7C' : ''}coordinates%7Cpageprops&ppprop=wikibase_item&colimit=${limit}${extracts ? `&exintro=1&explaintext=1&exlimit=${limit}&exchars=400` : ''}`;
 }
+
+/** The summaries one request may ask for by title: TextExtracts' most (exlimit, paraminfo 2026-11-19). */
+export const SUMMARIES_PER_ASK = 20;
+/**
+ * An edition's articles by their titles (SUMMARIES_PER_ASK at most), each with its 400 characters of summary, as nearUrl's, and its Wikidata id;
+ * redirects followed. @param {string} edition @param {string[]} titles
+ */
+export const summariesUrl = (edition, titles) => `https://${edition}.wikipedia.org/w/api.php?action=query&format=json&formatversion=2&origin=*&redirects=1`
+  + `&prop=extracts%7Cpageprops&ppprop=wikibase_item&exintro=1&explaintext=1&exlimit=${SUMMARIES_PER_ASK}&exchars=400&titles=${encodeURIComponent(titles.join('|'))}`;
 
 const isNum = (/** @type {unknown} */ x) => typeof x === 'number' && Number.isFinite(x);
 
@@ -120,16 +142,65 @@ export function articlesOf(r, edition) {
 }
 
 /**
- * Each article once: by Wikidata id, the order's first edition's (one outside it last); without an id, once in its edition by title.
- * @template {Article} A @param {A[]} rows @param {string[]} editions @returns {A[]}
+ * Each article once: by Wikidata id, the order's first edition's row (one outside it last), with `also`, the same item's rows in the later
+ * editions, one per edition, in the order. A row with no id takes the id its page (its title in its edition) has in another row: an older list, fetched
+ * before its article had an item, holds the page with none, and a later second stage or part holds it with one. Without an id anywhere, once in
+ * its edition by title, with none.
+ * @template {Article} A @param {A[]} rows @param {string[]} editions @returns {(A & { also: A[] })[]}
  */
 export function merged(rows, editions) {
   const rank = (/** @type {A} */ a) => (editions.includes(a.edition) ? editions.indexOf(a.edition) : editions.length);
-  const seen = new Set();
-  return [...rows].sort((a, b) => rank(a) - rank(b)).filter((a) => {
-    const key = a.id ?? `${a.edition} ${a.title}`;
-    return !seen.has(key) && Boolean(seen.add(key));
-  });
+  const page = (/** @type {A} */ a) => `${a.edition} ${a.title}`;
+  /** @type {Map<string, string>} each page's id, from any row that has one */
+  const ids = new Map();
+  for (const a of rows) if (a.id) ids.set(page(a), a.id);
+  /** @type {Map<string, A & { also: A[] }>} */
+  const by = new Map();
+  for (const a of [...rows].sort((x, y) => rank(x) - rank(y))) {
+    const id = a.id ?? ids.get(page(a)) ?? null;
+    const key = id ?? page(a);
+    const first = by.get(key);
+    if (!first) by.set(key, { ...a, id, also: [] });
+    else if (first.edition !== a.edition && !first.also.some((x) => x.edition === a.edition)) first.also.push({ ...a, id });
+  }
+  return [...by.values()];
+}
+
+/**
+ * The most Wikipedia articles nearby lists, and each edition is asked for: one Wikidata request names 50 items (`wbgetentities`' `ids`, without
+ * bot rights: paraminfo, 2026-11-20). It lists the whole kilometre at 20 of 34 stops measured (the editions design, 2026-11-20: zh, ja and en
+ * merged); a city centre holds 200 to 560 articles there, past what one tool result carries (tools.js RESULT_MAX, 40,000 characters), so it is a
+ * list to choose from, and nearby says how far it reaches when it is cut.
+ */
+export const ARTICLES = 50;
+/** An edition's Wikidata site: its host label with `-` as `_`, then `wiki` (jawiki, zh_yuewiki, tlwiki: checked on Q1490, 2026-11-20). @param {string} edition */
+export const siteOf = (edition) => `${edition.replace(/-/g, '_')}wiki`;
+/**
+ * Wikidata's request for which of these editions have an article about each of these items (ARTICLES at most), and its title there.
+ * @param {string[]} ids @param {string[]} editions
+ */
+export const sitelinksUrl = (ids, editions) => 'https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&origin=*&props=sitelinks'
+  + `&sitefilter=${editions.map(siteOf).join('%7C')}&ids=${ids.join('%7C')}`;
+/**
+ * Wikidata's answer as titles: each item asked, by its id, to its title in each of these editions that has it (an item it names as another,
+ * merged into it, under the id asked too). An item missing, or an edition without it, has none.
+ * @param {any} r @param {string[]} editions @returns {Map<string, Map<string, string>>}
+ */
+export function titlesOf(r, editions) {
+  /** @type {Map<string, Map<string, string>>} */
+  const out = new Map();
+  const entities = r?.entities && typeof r.entities === 'object' ? Object.entries(r.entities) : [];
+  for (const [asked, item] of entities) {
+    /** @type {Map<string, string>} */
+    const titles = new Map();
+    for (const e of editions) {
+      const t = /** @type {any} */ (item)?.sitelinks?.[siteOf(e)]?.title;
+      if (typeof t === 'string' && t) titles.set(e, t);
+    }
+    out.set(asked, titles);
+    if (typeof (/** @type {any} */ (item)?.id) === 'string') out.set(/** @type {any} */ (item).id, titles);
+  }
+  return out;
 }
 
 const hex = (/** @type {string} */ c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`;

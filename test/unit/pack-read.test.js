@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPack, toLine } from '../../src/core/pack/read.js';
-import { downloadPack, MANIFEST, pathOf, guideFile } from '../../src/core/pack/download.js';
+import { downloadPack, MANIFEST, pathOf, morePath, guideFile } from '../../src/core/pack/download.js';
 import { planFor } from '../../src/core/pack/plan.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { readingEditions } from '../../src/core/wiki.js';
@@ -42,6 +42,36 @@ test("a downloaded pack: what it covers, its places and pages, its guides by nam
   assert.match(pack.pages({ lat: 36.2203, lng: -121.7612 }, 500, ['en'])[0][6], / https:\/\/en\.wikipedia\.org\/wiki\/Nepenthe_%28restaurant%29$/); // as pageUrl writes it
   assert.equal(pack.name({ lat: 36.5, lng: -121.95 }, ['en']), null);
   assert.equal(await loadPack(ws, trip), pack); // read once for each version of the manifest
+});
+
+test("a second stage's rows are read into the articles of their editions: each article's every held edition, its summary and address, in the order, joined; a broken row left out", async () => {
+  const { ws, trip } = await packTrip();
+  const at = [36.3715, -121.9017];
+  const write = (/** @type {string} */ path, /** @type {any} */ v) => ws.write(trip, path, JSON.stringify(v), { author: 'system' });
+  await write('/offline/osm/o1.json', { area: { points: [at], radius: 5000 }, rows: [] });
+  // Japanese's list holds the bridge, English's Big Sur; the second stage holds English's bridge and Japanese's Big Sur, and Chinese's bridge.
+  await write('/offline/wikipedia/w1.ja.json', { at, radius: 10000, pages: [['ビクスビー・クリーク橋', 36.3715, -121.9017, 'ビクスビー・クリーク橋は、ビッグ・サーにある橋。', 'Q1']] });
+  await write('/offline/wikipedia/w1.json', { at, radius: 10000, pages: [['Big Sur', 36.2704, -121.8081, 'Big Sur is a rugged section of coast.', 'Q2']] });
+  await write('/offline/wikipedia/w1.x.en.ja.zh.json', { at, pages: [
+    ['Bixby Creek Bridge', 36.3715, -121.9017, 'Bixby Creek Bridge is an arch bridge in Big Sur.', 'Q1', 'en'],
+    ['比克斯比溪橋', 36.3715, -121.9017, '比克斯比溪橋是大蘇爾的一座拱橋。', 'Q1', 'zh'],
+    ['ビッグ・サー', 36.2704, -121.8081, 'ビッグ・サーはカリフォルニア州の海岸。', 'Q2', 'ja'],
+    // Broken: no edition, no id, a number for a title.
+    ['No edition', 36.3715, -121.9017, 'x', 'Q3'], ['No id', 36.3715, -121.9017, 'x', '', 'en'], [5, 36.3715, -121.9017, 'x', 'Q4', 'en']] });
+  await write('/offline/pack.json', { format: 1, key: 'k', at: '2026-11-20T09:00:00.000Z', failed: [], stopped: false, bytes: 1, guides: [], voyage: ['en'],
+    files: [{ id: 'o1', kind: 'osm', path: '/offline/osm/o1.json', bytes: 1, items: 0 }, { id: 'w1', kind: 'wikipedia', path: '/offline/wikipedia/w1.ja.json', bytes: 1, items: 1, edition: 'ja' },
+      { id: 'w1', kind: 'wikipedia', path: '/offline/wikipedia/w1.json', bytes: 1, items: 1, edition: 'en' }, { id: 'w1', kind: 'wikipedia-editions', path: '/offline/wikipedia/w1.x.en.ja.zh.json', bytes: 1, items: 6 }] });
+  const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
+  const bixby = { lat: 36.3715, lng: -121.9017 };
+  const rows = pack.pages(bixby, 20_000, ['ja', 'zh', 'en']);
+  assert.deepEqual(rows.map((r) => r[0]), ['ビクスビー・クリーク橋', 'ビッグ・サー']);
+  assert.equal(rows[0][6], 'ビクスビー・クリーク橋は、ビッグ・サーにある橋。 https://ja.wikipedia.org/wiki/ビクスビー・クリーク橋 · 比克斯比溪橋是大蘇爾的一座拱橋。 https://zh.wikipedia.org/wiki/比克斯比溪橋 · Bixby Creek Bridge is an arch bridge in Big Sur. https://en.wikipedia.org/wiki/Bixby_Creek_Bridge');
+  assert.equal(rows[1][6], 'ビッグ・サーはカリフォルニア州の海岸。 https://ja.wikipedia.org/wiki/ビッグ・サー · Big Sur is a rugged section of coast. https://en.wikipedia.org/wiki/Big_Sur');
+  // Only the editions read: English alone, English's rows, from the lists or the stage.
+  assert.deepEqual(pack.pages(bixby, 20_000, ['en']).map((r) => [r[0], r[6]]).sort(), [['Big Sur', 'Big Sur is a rugged section of coast. https://en.wikipedia.org/wiki/Big_Sur'], ['Bixby Creek Bridge', 'Bixby Creek Bridge is an arch bridge in Big Sur. https://en.wikipedia.org/wiki/Bixby_Creek_Bridge']]);
+  assert.deepEqual(pack.articles(bixby, 20_000, ['en', 'ja']).map((a) => [a.title, a.also.map((x) => x.edition)]).sort(), [['Big Sur', ['ja']], ['Bixby Creek Bridge', ['ja']]]);
+  // Live mode's name: the first edition's title.
+  assert.equal(pack.name(bixby, ['zh', 'en'])?.name, '比克斯比溪橋');
 });
 
 test('a broken pack is no pack, and a broken part is left out: never an error', async () => {
@@ -136,7 +166,7 @@ test("a language taken off the list is no more read, though its files stay until
   await downloadPack({ ws, scope: trip, ...net(), version: '1.0.0', editions: await readingEditions(ws, 'en-US'), gapMs: 0 });
   const part = /** @type {any} */ ((await planFor(ws, trip)).parts.find((p) => p.kind === 'wikipedia'));
   const wikipediaFiles = async () => (await ws.list(trip, '/offline/')).map((f) => f.path).filter((path) => path.includes('/wikipedia/')).sort();
-  assert.deepEqual(await wikipediaFiles(), [pathOf(part, 'ja'), pathOf(part)].sort());
+  assert.deepEqual(await wikipediaFiles(), [pathOf(part, 'ja'), pathOf(part), morePath(part, ['ja', 'en'])].sort());
   const town = { lat: 33.26442, lng: 131.35558 };
   const named = async () => {
     const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
@@ -148,7 +178,7 @@ test("a language taken off the list is no more read, though its files stay until
   assert.ok(withJapanese.titles.includes('湯布院町'));
   // Japanese taken off the list: the files stay, and are no more read.
   await updateAppSettings(ws, { languages: { spoken: ['en'], answer: 'follow' } });
-  assert.deepEqual(await wikipediaFiles(), [pathOf(part, 'ja'), pathOf(part)].sort(), 'the files stay');
+  assert.deepEqual(await wikipediaFiles(), [pathOf(part, 'ja'), pathOf(part), morePath(part, ['ja', 'en'])].sort(), 'the files stay');
   const english = await named();
   assert.equal(english.name, 'Yufuin Onsen');
   assert.ok(!english.titles.includes('湯布院町'));
@@ -207,4 +237,53 @@ test("a name is one guide's alone: the first kind of match that finds any, and n
   await ws.write(trip, guideFile('Peach State').path, JSON.stringify({ title: 'Peach State', text: 'Peach State text' }), { author: 'system' });
   await ws.write(trip, guideFile('Georgia, Cambria').path, JSON.stringify({ title: 'Georgia, Cambria', text: 'Georgia, Cambria text' }), { author: 'system' });
   assert.deepEqual(await read('Georgia, Cambria'), ['en Georgia, Cambria']);
+});
+
+test("what the pack lacks, from its manifest alone: whether a Wikipedia part holds no second stage for exactly the editions read, or no list of one of them, by part and edition; never under English alone, and no edition's name is built (Cantonese has none)", async () => {
+  const { ws, trip } = await packTrip();
+  const list = (/** @type {string} */ edition, /** @type {string} */ id) => ({ id, kind: 'wikipedia', path: `/offline/wikipedia/${id}.${edition}.json`, bytes: 1, items: 1, edition });
+  const stage = (/** @type {string} */ id, /** @type {string[]} */ editions) => ({ id, kind: 'wikipedia-editions', path: morePath(/** @type {any} */ ({ id }), editions), bytes: 1, items: 0 });
+  /** The pack a manifest of these files makes, asked what it lacks of the editions read. @param {any[]} files @param {string[]} editions */
+  const lacks = async (files, editions) => {
+    await ws.write(trip, MANIFEST, JSON.stringify({ format: 1, key: 'k', at: '2026-11-20T09:00:00.000Z', failed: [], stopped: false, bytes: 1, guides: [], files }), { author: 'system' });
+    return /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip)).lacks(editions);
+  };
+  const two = ['ja', 'en'];
+  const w = [list('ja', 'w1'), list('en', 'w1'), list('ja', 'w2'), list('en', 'w2')];
+  // Whole: every part's stage for exactly the editions read.
+  assert.equal(await lacks([...w, stage('w1', two), stage('w2', two)], two), false);
+  // English alone: no stage is wanted, however old the pack, and an edition-less list (a pack from before editions) is English's.
+  assert.equal(await lacks([{ ...list('en', 'w1'), edition: undefined }], ['en']), false);
+  assert.equal(await lacks(w, ['en']), false);
+  // A pack from before the stage; one part without its stage; an edition-less list read with Japanese listed.
+  assert.equal(await lacks(w, two), true);
+  assert.equal(await lacks([...w, stage('w1', two)], two), true);
+  assert.equal(await lacks([{ ...list('en', 'w1'), edition: undefined }], two), true);
+  // A stage for other editions is no stage for these: a language added, or taken off, with no download after.
+  const three = ['ja', 'zh', 'en'];
+  assert.equal(await lacks([...w, stage('w1', two), stage('w2', two)], three), true);
+  assert.equal(await lacks([...w, stage('w1', three), stage('w2', three)], two), true);
+  assert.equal(await lacks([...w, list('zh', 'w1'), list('zh', 'w2'), stage('w1', three), stage('w2', three)], three), false);
+  // Chinese's list in one part only (the download stopped part-way): no stage for the three there or anywhere.
+  assert.equal(await lacks([...w, list('zh', 'w1'), stage('w1', two), stage('w2', two)], three), true);
+  // A part with no list in any edition (they all failed) holds nothing to leave out: it does not count, and a part with one edition's list does.
+  assert.equal(await lacks([list('ja', 'w1'), list('en', 'w1'), stage('w1', two)], two), false);
+  assert.equal(await lacks([list('ja', 'w1'), list('en', 'w1'), stage('w1', two), list('en', 'w2')], two), true);
+  // No Wikipedia file at all (Wikimedia down for the whole download): nothing is listed from it, so nothing is lacking.
+  assert.equal(await lacks([{ id: 'o1', kind: 'osm', path: '/offline/osm/o1.json', bytes: 1, items: 0 }], two), false);
+  assert.equal(await lacks([], two), false);
+  // Cantonese's edition is zh-yue: no list of it, and no name is built to throw.
+  assert.equal(await lacks([...w, stage('w1', two), stage('w2', two)], ['ja', 'zh-yue', 'en']), true);
+  // A stage for exactly the editions read over a part with no list of one of them: a language taken off and put back between downloads (its lists went
+  // as no longer wanted, the stages made for it were kept for the editions still read), or one list lost since. The stage doesn't say its lists are
+  // there, so the lists are read for themselves, by part and edition: English's, here, named `<id>.en.json`, which no path rule would find.
+  assert.equal(await lacks([list('en', 'w1'), list('en', 'w2'), stage('w1', two), stage('w2', two)], two), true, "Japanese's lists gone");
+  assert.equal(await lacks([list('ja', 'w1'), list('en', 'w1'), list('en', 'w2'), stage('w1', two), stage('w2', two)], two), true, "Japanese's list gone in one part");
+  assert.equal(await lacks([list('ja', 'w1'), list('en', 'w2'), stage('w1', two), stage('w2', two)], two), true, 'each part lacks a list the other holds: no list of another part stands for it');
+  assert.equal(await lacks([list('ja', 'w1'), list('en', 'w1'), list('ja', 'w2'), stage('w1', two), stage('w2', two)], two), true, "English's list gone in one part");
+  // An edition-less list is English's, and counts as such.
+  assert.equal(await lacks([{ ...list('en', 'w1'), edition: undefined }, list('ja', 'w1'), stage('w1', two)], two), false);
+  // Under English alone, and with no Wikipedia list left, there is nothing to leave an edition out of.
+  assert.equal(await lacks([list('ja', 'w1'), stage('w1', two)], ['en']), false);
+  assert.equal(await lacks([stage('w1', two), stage('w2', two)], two), false);
 });

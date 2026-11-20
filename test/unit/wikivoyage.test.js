@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readingOrder, LANGUAGES } from '../../src/core/languages.js';
-import { editionsOf, guideEditions, voyageApi, editionName, wikimediaTurn, WIKIMEDIA_AT_ONCE } from '../../src/core/wiki.js';
+import { editionsOf, guideEditions, voyageApi, editionName, wikimediaTurn, isWikimedia, WIKIMEDIA_AT_ONCE } from '../../src/core/wiki.js';
 
 /** The app settings with a list chosen. @param {string[]} spoken */
 const speaks = (spoken) => ({ languages: { spoken, answer: 'follow' } });
@@ -21,6 +21,8 @@ test("Wikivoyage's editions: English and each listed language's that has one, in
   assert.deepEqual(none, ['yue', 'ko', 'sk', 'hu', 'bg', 'hr', 'sr', 'sl', 'ar', 'ta', 'th', 'ms', 'fil', 'no', 'da', 'ca', 'sw']);
   assert.equal(voyageApi('ja'), 'https://ja.wikivoyage.org/w/api.php');
   assert.deepEqual(['en', 'ja', 'zh', 'de'].map(editionName), ['English', 'Japanese', 'Chinese', 'German']);
+  // An edition's label the engine refuses (Intl.DisplayNames throws on zh-yue, in Node, Chromium and WebKit) is named by its language's row; a label with no row is itself.
+  assert.deepEqual(['zh-yue', 'a'].map(editionName), ['Cantonese', 'a']);
 });
 
 /** Starts n jobs on url through the gate, each held until released; notes how many run at once. @param {string} url @param {number} n */
@@ -50,11 +52,18 @@ test('Wikimedia gets 3 requests at once from annai at most (its published rule),
   await tick();
   assert.deepEqual(h.order, ['job 0', 'job 1', 'job 2']);
   assert.equal(h.running(), 3);
-  // Wikivoyage's hosts share the same turns.
+  // Wikivoyage's hosts share the same turns, and Wikidata's (Wikimedia's too: the limit counts the client across its sites).
   let voyage = false;
   const v = wikimediaTurn('https://en.wikivoyage.org/w/api.php', async () => { voyage = true; return 'v'; });
+  let data = false;
+  const d = wikimediaTurn('https://www.wikidata.org/w/api.php?action=wbgetentities', async () => { data = true; return 'd'; });
   await tick();
   assert.equal(voyage, false, 'a Wikivoyage request waits too');
+  assert.equal(data, false, 'a Wikidata request waits too');
+  // Only Wikidata's own host: one that only looks like it is any other host's.
+  assert.equal(isWikimedia('https://www.wikidata.org/w/api.php'), true);
+  assert.equal(isWikimedia('https://query.wikidata.org/sparql'), false);
+  assert.equal(isWikimedia('https://www.wikidata.org.example.com/w/api.php'), false);
   // One ends: the next in order starts, and a request asked at that moment takes no turn ahead of it.
   h.release.shift()?.();
   const late = wikimediaTurn('https://en.wikipedia.org/w/api.php', async () => 'late');
@@ -68,6 +77,7 @@ test('Wikimedia gets 3 requests at once from annai at most (its published rule),
   }
   assert.deepEqual(await Promise.all(h.results), [0, 1, 2, 3, 4, 5, 6, 7]);
   assert.equal(await v, 'v');
+  assert.equal(await d, 'd');
   assert.equal(await late, 'late');
   assert.equal(h.most(), 3, 'never a fourth');
 });

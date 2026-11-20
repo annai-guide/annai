@@ -205,28 +205,30 @@ async function kiyomizuFloor(url) {
   return saved ? jsonFile(`../places/${saved}`) : j({ batchcomplete: '', query: { searchinfo: { totalhits: 0 }, search: [] } });
 }
 
-test("the floor's Wikipedia search: each edition of the reading order asks at once with its own tries; the rows are the first edition's that has any", async () => {
+test("the floor's Wikipedia search: each edition of the reading order asks at once with its own tries; the rows are every edition's that found any, taken in turn in the order, 8 in all", async () => {
   const { run, asked, settings, ws } = await setup();
   await updateAppSettings(ws, { languages: { spoken: ['ja'], answer: 'follow' } });
   await settings({ searchOff: ['exa', 'parallel', 'firecrawl'] });
   const wiki = () => asked.filter((a) => a.url.includes('wikipedia.org')).map((a) => `${new URL(a.url).hostname} ${new URL(a.url).searchParams.get('srsearch')}`);
   // [ja, en]: Japanese finds nothing for the whole question or three words and 清水寺 for two; English has seven hits for the whole question,
-  // about other places. The traveller's language first: only 清水寺 (the user, 2026-11-14: "Read the traveller's language first, English when that has no article").
+  // about other places. The traveller's language first (the user, 2026-11-14: "Read the traveller's language first, English when that has no article"),
+  // and English's too, each edition heard (2026-11-19: "can we pull the english and their edition?"): 清水寺, then English's seven.
   const out = await run('web_search', { query: 'Kiyomizu temple opening hours' }, kiyomizuFloor);
   assert.deepEqual(wiki().sort(), ['en.wikipedia.org kiyomizu temple opening hours', 'ja.wikipedia.org kiyomizu temple', 'ja.wikipedia.org kiyomizu temple opening', 'ja.wikipedia.org kiyomizu temple opening hours']);
   // Both editions' first requests are in flight before either answers: asked together, not one after the other.
   assert.deepEqual(wiki().slice(0, 2), ['ja.wikipedia.org kiyomizu temple opening hours', 'en.wikipedia.org kiyomizu temple opening hours']);
   // (A search row's address is written as the browser would send it: normalizeRows.)
   assert.match(out, /\n清水寺 \(Wikipedia\)\thttps:\/\/ja\.wikipedia\.org\/wiki\/%E6%B8%85%E6%B0%B4%E5%AF%BA\t/);
-  assert.doesNotMatch(out, /Tobu World Square/);
+  const articles = (/** @type {string} */ text) => text.split('\n').filter((r) => r.includes(' (Wikipedia)\t')).map((r) => r.split(' (Wikipedia)\t')[0]);
+  assert.deepEqual(articles(out), ['清水寺', 'Tobu World Square', 'Legoland Japan Resort', 'Japanese garden', 'Konpira Grand Theatre', 'Onoe Kikugorō VIII', 'Heya (sumo)', 'Onbashira']);
   // Nominatim names places in the order's languages too.
   assert.equal(new URL(asked.find((a) => a.url.includes('nominatim'))?.url ?? '').searchParams.get('accept-language'), 'ja,en');
-  // English first: its seven, and no Japanese article.
+  // English first: English's first, then Japanese's, then English's others, 8 in all.
   await updateAppSettings(ws, { languages: { spoken: ['en', 'ja'], answer: 'follow' } });
   asked.length = 0;
   const english = await run('web_search', { query: 'Kiyomizu temple opening hours' }, kiyomizuFloor);
   assert.match(english, /\nTobu World Square \(Wikipedia\)\thttps:\/\/en\.wikipedia\.org\/wiki\/Tobu_World_Square\t/);
-  assert.doesNotMatch(english, /清水寺/);
+  assert.deepEqual(articles(english), ['Tobu World Square', '清水寺', 'Legoland Japan Resort', 'Japanese garden', 'Konpira Grand Theatre', 'Onoe Kikugorō VIII', 'Heya (sumo)', 'Onbashira']);
   // An edition that fails is left out: English not answering, Japanese's two words find 清水寺; Japanese not answering, English's rows come.
   await updateAppSettings(ws, { languages: { spoken: ['ja'], answer: 'follow' } });
   const enDown = await run('web_search', { query: 'Kiyomizu temple opening hours' }, (url) => (url.includes('en.wikipedia.org') ? new Response('', { status: 503 }) : kiyomizuFloor(url)));
@@ -358,11 +360,16 @@ test("the floor's result: the rows of what answered; no rows and something faile
   assert.deepEqual(guideRows.map((r) => r.title), ['Kyoto (Wikivoyage)']);
   // Everything answered, nothing found.
   assert.deepEqual(await search(floor, empty), []);
-  // Japanese answered and found nothing: English's rows, the first edition that found any.
+  // Japanese answered and found nothing: English's rows.
   assert.deepEqual((await search(floor, (url) => (url.includes('ja.wikipedia.org') ? nothing() : url.includes('en.wikipedia.org') ? found('Kiyomizu-dera') : empty(url)))).map((r) => r.title), ['Kiyomizu-dera (Wikipedia)']);
-  // The first edition in the order that found any: Japanese's, though English answered first and found some.
-  const order = await search(floor, (url) => (url.includes('ja.wikipedia.org') ? new Promise((r) => setTimeout(r, 40, found('清水寺'))) : url.includes('en.wikipedia.org') ? found('Kiyomizu-dera') : empty(url)));
-  assert.deepEqual(order.map((r) => r.title), ['清水寺 (Wikipedia)']);
+  // Every edition that found any, taken in turn in the order: Japanese's first, though English answered first.
+  const order = await search(floor, (url) => (url.includes('ja.wikipedia.org') ? new Promise((r) => setTimeout(r, 40, found('清水寺', '金閣寺'))) : url.includes('en.wikipedia.org') ? found('Kiyomizu-dera', 'Kinkaku-ji', 'Ryōan-ji') : empty(url)));
+  assert.deepEqual(order.map((r) => r.title), ['清水寺 (Wikipedia)', 'Kiyomizu-dera (Wikipedia)', '金閣寺 (Wikipedia)', 'Kinkaku-ji (Wikipedia)', 'Ryōan-ji (Wikipedia)']);
+  assert.deepEqual(order.map((r) => new URL(r.url).hostname), ['ja.wikipedia.org', 'en.wikipedia.org', 'ja.wikipedia.org', 'en.wikipedia.org', 'en.wikipedia.org']);
+  // 8 in all: two editions of eight each give four of each.
+  const eight = (/** @type {string} */ p) => Array.from({ length: 8 }, (_, k) => `${p} ${k}`);
+  const full = await search(floor, (url) => (url.includes('ja.wikipedia.org') ? found(...eight('寺')) : url.includes('en.wikipedia.org') ? found(...eight('Temple')) : empty(url)));
+  assert.deepEqual(full.map((r) => r.title.replace(' (Wikipedia)', '')), ['寺 0', 'Temple 0', '寺 1', 'Temple 1', '寺 2', 'Temple 2', '寺 3', 'Temple 3']);
   // The user's stop is a stop.
   const stop = new AbortController();
   setTimeout(() => stop.abort(new DOMException('stopped', 'AbortError')), 10);
@@ -469,11 +476,11 @@ test("the floor's rows are what its parts give, not the chain's 8: five editions
   const rows = out.split('\n').slice(1);
   assert.equal(rows.filter((r) => r.includes('(Wikivoyage)')).length, 5, 'a guide in each edition');
   assert.equal(rows.filter((r) => r.includes('Site ')).length, 3);
-  assert.equal(rows.filter((r) => r.includes('(Wikipedia)')).length, 8, "the first edition's articles");
+  assert.equal(rows.filter((r) => r.includes('(Wikipedia)')).length, 8, "8 in all, taken in turn from the five editions: one each, then the first three's second");
   assert.equal(rows.length, 16);
 });
 
-test("the floor at 2.5 s an answer, the speed FLOOR_MS is sized for, with three editions listed: the three guides come, and the article", async () => {
+test("the floor at 2.5 s an answer, the speed FLOOR_MS is sized for, with three editions listed: the three guides come, and each edition's article", async () => {
   /** Lets what has started run for a few turns (real time: the timers are faked). */
   const turns = async () => {
     for (let k = 0; k < 20; k++) await new Promise((r) => setImmediate(r));
@@ -484,7 +491,7 @@ test("the floor at 2.5 s an answer, the speed FLOOR_MS is sized for, with three 
     if (u.hostname === 'nominatim.openstreetmap.org') return j([]);
     if (u.hostname === 'en.wikivoyage.org') return j({ query: { pages: [{ title: 'Kyoto', index: 1, extract: 'Kyoto is the old capital with a thousand temples.', langlinks: [{ lang: 'ja', title: '京都市' }, { lang: 'zh', title: '京都' }] }] } });
     if (u.hostname.endsWith('.wikivoyage.org')) return j({ query: { pages: [{ title: String(u.searchParams.get('titles')), extract: 'A guide to the old capital with a thousand temples.' }] } });
-    return j({ query: { search: [{ title: 'Kiyomizu-dera', snippet: 'a temple' }] } });
+    return j({ query: { search: [{ title: { ja: '清水寺', zh: '清水寺 (京都)' }[u.hostname.split('.')[0]] ?? 'Kiyomizu-dera', snippet: 'a temple' }] } });
   };
   mock.timers.enable({ apis: /** @type {any[]} */ (['setTimeout', 'AbortSignal.timeout']) });
   try {
@@ -502,7 +509,7 @@ test("the floor at 2.5 s an answer, the speed FLOOR_MS is sized for, with three 
       mock.timers.tick(2500);
     }
     await done;
-    assert.deepEqual(rows.map((/** @type {any} */ r) => r.title), ['京都市 (Wikivoyage)', '京都 (Wikivoyage)', 'Kyoto (Wikivoyage)', 'Kiyomizu-dera (Wikipedia)']);
+    assert.deepEqual(rows.map((/** @type {any} */ r) => r.title), ['京都市 (Wikivoyage)', '京都 (Wikivoyage)', 'Kyoto (Wikivoyage)', '清水寺 (Wikipedia)', '清水寺 (京都) (Wikipedia)', 'Kiyomizu-dera (Wikipedia)']);
   } finally {
     mock.timers.reset();
   }

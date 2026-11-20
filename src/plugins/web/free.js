@@ -15,14 +15,14 @@ import { t } from '../../core/l10n.js';
 
 /** The longest a free service has to answer before the next one is tried. */
 const LIMIT_MS = 12_000;
-/** The articles asked of an edition's search: the chain's own ROWS, as the floor asked before editions. */
+/** The articles asked of each edition's search, and the most the floor gives in all (8 in all, not per edition), taken in turn from the editions that found any: the chain's own ROWS, as the floor asked before editions. */
 const ARTICLES = ROWS;
 /** The official websites asked of Nominatim for the place. */
 const PLACES = 3;
 /**
  * The floor's rows, which the chain cuts its answer to in place of ROWS (web/index.js, for the provider of kind 'knowledge', which only the web
- * plugin's own can be): each part at its most (a guide in every edition annai asks, the PLACES websites, the ARTICLES of the first edition that
- * has any), so none takes another's rows: with 8, five editions left no article (2026-11-20).
+ * plugin's own can be): each part at its most (a guide in every edition annai asks, the PLACES websites, and the ARTICLES articles in all, taken in
+ * turn from the editions that found any), so none takes another's rows: with 8, five editions left no article (2026-11-20).
  */
 export const FLOOR_ROWS = VOYAGE_COUNT + PLACES + ARTICLES;
 
@@ -31,9 +31,11 @@ export const FLOOR_ROWS = VOYAGE_COUNT + PLACES + ARTICLES;
  * second inside it, so the chain's stop never drops its rows. Its requests to Wikimedia take turns, 3 at once in the order asked (wiki.js
  * wikimediaTurn): each edition's Wikipedia search first, then the guide's (one request to English for its best match with text and links, then
  * its other editions' pages at once). At 2.5 s an answer that is three answers in series, 7.5 s, when each edition's first search finds
- * something: with up to four editions listed every guide and the article come, with five the last guide's page is cut, with six only English's
- * and one more (fake timers, 2026-11-20; the plugin-web test runs three). At 3 s an answer the other editions' pages are cut from three
- * editions on. Where an edition's first search finds nothing, its next tries queue first and the guide's pages drop. What came is the answer.
+ * something: the articles come from every edition listed (their searches are the first asked), 8 in all, one edition's after another's, so with
+ * more than eight editions the last ones' first articles don't fit; with up to four editions every guide comes too, with five the last guide's
+ * page is cut, and with six English's guide alone comes (its request ends at 7.5 s, any page after it at 10 s, past the 9 s; fake timers,
+ * 2026-11-20; the plugin-web test runs three). At 3 s an answer the other editions' pages are cut from three editions on. Where an edition's
+ * first search finds nothing, its next tries queue first and the guide's pages drop. What came is the answer.
  */
 export const FLOOR_MS = { ms: CHAIN.reserve - 1_000 };
 
@@ -215,18 +217,22 @@ export const knowledgeFloor = (orderOf) => ({
       return (Array.isArray(found) ? found : []).filter((f) => f?.extratags?.website)
         .map((f) => ({ title: f.name || f.display_name, url: f.extratags.website, snippet: [f.display_name, f.extratags.opening_hours ? `Hours: ${f.extratags.opening_hours}` : ''].filter(Boolean).join('. ') }));
     };
-    // Every part asks at once, each edition too, Wikipedia's editions first, in the reading order, then the guide (FLOOR_MS). The rows are what
-    // answered: the guide's, Nominatim's websites, the first edition's articles that found any. With no rows, the first failure is the failure,
-    // in words; with none, nothing found.
+    // Every part asks at once, each edition too, Wikipedia's editions first, in the reading order, then the guide (FLOOR_MS). The rows are what answered: the guide's, Nominatim's websites,
+    // and the articles of the editions that found any, taken in turn in the reading order (each edition's first, then each one's second…),
+    // ARTICLES in all (8, not per edition): a word search finds each edition's own hits, so every edition that found any is heard, as far as the 8
+    // reach. With no rows, the first failure is the failure, in words; with none, nothing found.
     const editions = editionsOf(order);
     const asked = editions.map((e) => hits(`${e}.wikipedia.org`));
     const parts = await Promise.allSettled([guide(), places(), ...asked]);
     const [guideRows, placeRows, ...editionHits] = parts;
-    const k = editionHits.findIndex((g) => g.status === 'fulfilled' && g.value.length > 0);
+    const each = editionHits.map((g, k) => (g.status === 'fulfilled' ? g.value.map((h) => ({ title: /* en */ `${h.title} (Wikipedia)`, url: articleUrl(editions[k], h.title), snippet: h.snippet })) : []));
+    /** @type {{ title: string, url: string, snippet: string }[]} */
+    const articles = [];
+    for (let n = 0; articles.length < ARTICLES && each.some((hs) => hs.length > n); n++) for (const hs of each) if (n < hs.length && articles.length < ARTICLES) articles.push(hs[n]);
     const rows = [
       ...(guideRows.status === 'fulfilled' ? guideRows.value : []),
       ...(placeRows.status === 'fulfilled' ? placeRows.value : []),
-      ...(k < 0 ? [] : /** @type {PromiseFulfilledResult<any[]>} */ (editionHits[k]).value.map((h) => ({ title: /* en */ `${h.title} (Wikipedia)`, url: articleUrl(editions[k], h.title), snippet: h.snippet }))),
+      ...articles,
     ];
     const bad = /** @type {PromiseRejectedResult | undefined} */ (parts.find((x) => x.status === 'rejected'));
     if (!rows.length && bad) throw bad.reason;

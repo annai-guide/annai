@@ -4,7 +4,7 @@ annai's names for its screens and things in Japanese (ja), Chinese, Simplified (
 
 This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row per term, with where the English shows on screen and a note on why each word was chosen. Rows are in this order of kind (screen, thing, mode, platform, never), then by English. Its English is matched as written, so `Voice` (the screen) and `voice` (one she speaks with) are two rows. Some terms are also ordinary words (Now, Add, Ask, Allow, Share, Main, key, card): the strings check should take them as names only where a message uses them as one.
 
-124 rows: 31 screen, 40 thing, 6 mode, 31 platform, 16 never.
+125 rows: 31 screen, 40 thing, 6 mode, 31 platform, 17 never.
 
 ## Screens and sections
 
@@ -152,6 +152,7 @@ This page is a review aid. The source is [`glossary.tsv`](glossary.tsv): one row
 | OpenStreetMap | OpenStreetMap | OpenStreetMap | OpenStreetMap |
 | Parallel | Parallel | Parallel | Parallel |
 | Shiori | Shiori | Shiori | Shiori |
+| Wikidata | Wikidata | Wikidata | Wikidata |
 | Wikipedia | Wikipedia | Wikipedia | Wikipedia |
 | Wikivoyage | Wikivoyage | Wikivoyage | Wikivoyage |
 
@@ -182,6 +183,7 @@ The choices that want your eye: each line gives the glossary's choice first, the
 - **Install app** (アプリをインストール / 安装应用): Chrome's current words, インストールしてショートカットを作成 → インストール / 安装并创建快捷方式 → 安装, with the English changed to match.
 - **mobile data** (モバイルデータ通信 / 移动数据): zh 移动数据 or iPhone's 蜂窝数据.
 - **Wi-Fi** (Wi-Fi / Wi-Fi): zh Wi-Fi or iPhone's 无线局域网.
+- **Wikidata** (Wikidata / Wikidata): Latin, or the site's own ウィキデータ / 维基数据 (decide with Wikipedia).
 - **Wikipedia** (Wikipedia / Wikipedia): Latin, or the site's own ウィキペディア / 维基百科.
 - **Wikivoyage** (Wikivoyage / Wikivoyage): Latin, or its Chinese site's 维基导游 (decide with Wikipedia).
 

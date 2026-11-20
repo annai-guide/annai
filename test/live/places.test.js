@@ -1,10 +1,10 @@
-// Opt-in: asks Wikipedia (three editions) and Nominatim one real question each, as nearby, geocode and reverse ask them in the traveller's
-// languages (about eight requests, one at a time, a second apart; free services, so run it rarely). Notices an edition that stopped
+// Opt-in: asks Wikipedia (three editions), Wikidata and Nominatim one real question each, as nearby, geocode and reverse ask them in the traveller's
+// languages (about ten requests, one at a time, a second apart; free services, so run it rarely). Notices an edition that stopped
 // answering a web app's request (its CORS, the Api-User-Agent header annai names itself with) before a traveller does.
 //   ANNAI_LIVE_PLACES=1 npm run test:live
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { nearUrl, articlesOf, merged, agentHeader } from '../../src/core/wiki.js';
+import { nearUrl, articlesOf, merged, agentHeader, sitelinksUrl, titlesOf, ARTICLES } from '../../src/core/wiki.js';
 import { nominatimLanguages } from '../../src/core/nominatim.js';
 import { readingOrder } from '../../src/core/languages.js';
 
@@ -18,11 +18,11 @@ test("Wikipedia's editions answer nearby's query from annai's origin, with its h
   const got = {};
   for (const e of ['ja', 'zh', 'en']) {
     // A browser asks first, at the request's own address (with origin=*, which Wikimedia's CORS answers), whether annai may send Api-User-Agent.
-    const pre = await fetch(nearUrl(e, KIYOMIZU, 1000, 30), { method: 'OPTIONS', headers: { origin: ORIGIN, 'access-control-request-method': 'GET', 'access-control-request-headers': 'api-user-agent' } });
+    const pre = await fetch(nearUrl(e, KIYOMIZU, 1000, ARTICLES), { method: 'OPTIONS', headers: { origin: ORIGIN, 'access-control-request-method': 'GET', 'access-control-request-headers': 'api-user-agent' } });
     assert.ok(pre.status >= 200 && pre.status < 300, `${e}: preflight ${pre.status}`);
     assert.match(String(pre.headers.get('access-control-allow-headers')), /api-user-agent|\*/i, `${e}: Api-User-Agent allowed`);
     await gap();
-    const res = await fetch(nearUrl(e, KIYOMIZU, 1000, 30), { headers: { ...agentHeader('0.0.0'), origin: ORIGIN } });
+    const res = await fetch(nearUrl(e, KIYOMIZU, 1000, ARTICLES), { headers: { ...agentHeader('0.0.0'), origin: ORIGIN } });
     assert.equal(res.status, 200, e);
     assert.match(String(res.headers.get('access-control-allow-origin')), /^\*$/, `${e}: the answer is readable from annai`);
     got[e] = articlesOf(await res.json(), e);
@@ -35,6 +35,16 @@ test("Wikipedia's editions answer nearby's query from annai's origin, with its h
   assert.ok(got.ja.some((a) => a.id === 'Q221716' && a.title === '清水寺') && got.en.some((a) => a.id === 'Q221716' && a.title === 'Kiyomizu-dera'), 'the same Wikidata item in both');
   assert.equal(both.filter((a) => a.id === 'Q221716').length, 1);
   assert.ok(both.some((a) => a.id === 'Q221716' && a.edition === 'ja'), '清水寺 is Kiyomizu-dera');
+  // Wikidata, asked as nearby asks it: from annai's origin, with its header, naming each kept article's editions.
+  const url = sitelinksUrl(both.flatMap((a) => (a.id ? [a.id] : [])).slice(0, ARTICLES), ['ja', 'en']);
+  const pre = await fetch(url, { method: 'OPTIONS', headers: { origin: ORIGIN, 'access-control-request-method': 'GET', 'access-control-request-headers': 'api-user-agent' } });
+  assert.ok(pre.status >= 200 && pre.status < 300, `Wikidata: preflight ${pre.status}`);
+  assert.match(String(pre.headers.get('access-control-allow-headers')), /api-user-agent|\*/i, 'Wikidata: Api-User-Agent allowed');
+  await gap();
+  const res = await fetch(url, { headers: { ...agentHeader('0.0.0'), origin: ORIGIN } });
+  assert.equal(res.status, 200);
+  assert.match(String(res.headers.get('access-control-allow-origin')), /^\*$/);
+  assert.equal(titlesOf(await res.json(), ['ja', 'en']).get('Q221716')?.get('en'), 'Kiyomizu-dera');
 });
 
 test('Nominatim names places in the languages it is sent, search and reverse', { skip }, async () => {

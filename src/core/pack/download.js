@@ -6,32 +6,37 @@ import { t } from '../l10n.js';
 import { meters } from '../live/geo.js';
 import { StorageFullError } from '../errors.js';
 import { anySignal } from '../signals.js';
-import { guideEditions, voyageApi, wikimediaTurn, isWikimedia, nearUrl, articlesOf, wikiSaid, agentHeader } from '../wiki.js';
+import { guideEditions, voyageApi, wikimediaTurn, isWikimedia, nearUrl, articlesOf, wikiSaid, agentHeader, sitelinksUrl, titlesOf, summariesUrl, SUMMARIES_PER_ASK } from '../wiki.js';
 import { forget } from '../forget.js';
 
 /**
  * Downloads a trip's offline pack (spec §11.5), one request at a time with a second between them: the parts its plan needs that the pack
- * lacks or has from more than a month ago (a Wikipedia part once per edition the traveller reads), the quick ones first: every Wikipedia part
- * (the stops' and the way's), then the Wikivoyage guides for the names the trip, the plan and those parts' English summaries give (English's, found by
+ * lacks or has from more than a month ago (a Wikipedia part once per edition the traveller reads, and, with more than one, its second stage: each
+ * edition's summary of the articles the part's lists hold that its own list lacks), the quick ones first: every Wikipedia part's lists (the stops'
+ * and the way's), then the Wikivoyage guides for the names the trip, the plan and those lists' English summaries give (English's, found by
  * the names, or by an edition's link to English for a trip name English lacks; each of the traveller's editions' part is the page English's links
- * to), then OpenStreetMap's parts (Overpass answers one in 35 to 54 s). Parts the plan no longer needs go. Each part is a file in the trip, so a download that stops keeps what it got and the next goes on.
- * Positions go only to OpenStreetMap and Wikipedia (§11.7), and to VK's Overpass server while its switch is on; Wikivoyage is asked
- * about names, as the guide tool asks it.
+ * to), then the second stages, then OpenStreetMap's parts (Overpass answers one in 35 to 54 s). Parts the plan no longer needs go. Each part is a file in the trip, so a download that stops keeps what it got and the next goes on.
+ * Positions go only to OpenStreetMap and Wikipedia (§11.7), and to VK's Overpass server while its switch is on; Wikidata is sent Wikidata item
+ * ids, and Wikivoyage place names, as the guide tool sends it.
  * @typedef {import('../workspace.js').Workspace} Workspace
  * @typedef {(url: string, init?: RequestInit) => Promise<Response>} Fetch
  * @typedef {import('./plan.js').Part} Part
  * @typedef {import('./plan.js').PackPlan} PackPlan
- * @typedef {{ id: string, kind: 'osm' | 'wikipedia' | 'wikivoyage', path: string, bytes: number, items: number, at: number, edition?: string }} PackFile
- *   items: places, summaries, or 1 for a guide; at: when it was downloaded (ms). Not the file's own time: a
- *   download that brings the same bytes leaves the file as it was. edition: a Wikipedia file's, written since editions (one without: English, no
- *   ids); a guide's file names its edition in its path, and in its guide's `also`
- * @typedef {{ part: Part, edition: string | null, path: string }} Want  a file a plan's pack holds
+ * @typedef {{ id: string, kind: 'osm' | 'wikipedia' | 'wikipedia-editions' | 'wikivoyage', path: string, bytes: number, items: number, at: number, edition?: string }} PackFile
+ *   kind: 'wikipedia-editions' is a Wikipedia part's second stage (morePath), a kind of its own so that an older annai, which knows the other
+ *   three, never reads it as an edition's list (its download removes it, and this one's brings it again); items: places, summaries, or 1 for a
+ *   guide; at: when it was downloaded (ms). Not the file's own time: a download that brings the same bytes leaves the file as it was. edition: a
+ *   Wikipedia list's, written since editions (one without: English, no ids); a guide's file names its edition in its path, and in its guide's
+ *   `also`; a second stage's rows name theirs, and its path the editions read
+ * @typedef {{ part: Part, edition: string | null, path: string, editions?: string[] }} Want  a file a plan's pack holds: an edition's list of a
+ *   Wikipedia part, an OpenStreetMap part (edition null), or a Wikipedia part's second stage (edition null; editions: the editions read, sorted)
  * @typedef {{ edition: string, title: string }} GuideEdition  the guide in another edition: its title there (its file is guideFile's, by the guide's title and the edition)
  * @typedef {{ title: string, asked: string[], path: string, also: GuideEdition[] }} Guide
  *   title and path: English's; asked: the names that led to it ("Hearst Castle" leads to San Simeon, 台湾 to Taiwan); also: the traveller's other
  *   editions English's page links to, in the reading order of the download, whether or not their text is in the pack (one written before editions has none)
- * @typedef {{ source: 'osm' | 'wikipedia', place: import('./plan.js').Place } | { source: 'wikivoyage', title?: string }} PartRef
- *   which part, as data: a part of the plan by where it is, finding the guides, or one guide
+ * @typedef {{ source: 'osm' | 'wikipedia' | 'wikidata', place: import('./plan.js').Place } | { source: 'wikivoyage', title?: string }} PartRef
+ *   which part, as data: a part of the plan by where it is ('wikidata': a Wikipedia part's second stage, found through Wikidata), finding the
+ *   guides, or one guide
  * @typedef {import('../answer.js').AnswerSaid | { code: 'late', where: string } | { code: 'early', where: string, remark: string }
  *   | { code: 'osm', inner: PackSaid | null, message: string | null } | { code: 'said', where: string, info: string } | { code: 'no-text', where?: string, title: string }} PackSaid
  *   one of annai's own failures, as data: a server's answer, its time running out, Overpass stopping early, no Overpass server answering
@@ -56,32 +61,33 @@ const WIKIVOYAGE = voyageApi('en');
 export const GAP_MS = 1000;
 /** A part older than this is downloaded again. */
 export const STALE_MS = 30 * 86_400_000;
-/** After this many failures in a row (see saysDown) from a source (OpenStreetMap, an edition, Wikivoyage) or an Overpass server, the run leaves it: a host that never answers costs 3 answer times, not one a part. */
+/** After this many failures in a row (see saysDown) from a source (OpenStreetMap, an edition, Wikidata, Wikivoyage) or an Overpass server, the run leaves it: a host that never answers costs 3 answer times, not one a part. */
 const GIVE_UP = 3;
 /** How long one Overpass answer may take: it runs a query for up to a minute, after waiting for a free slot. */
 export const ANSWER_MS = 120_000;
 /**
- * How long one Wikipedia or Wikivoyage answer may take: the foreground's 25 s (they answered in 0.2 to 0.4 s in the editions design's real
- * checks, 2026-11-20), so a hung request holds one of the app's three Wikimedia turns 25 s at most, not two minutes. (`answerMs`, for tests: every request's.)
+ * How long one Wikipedia, Wikidata or Wikivoyage answer may take: the foreground's 25 s (they answered in 0.2 to 0.56 s in the editions design's
+ * real checks, 2026-11-20), so a hung request holds one of the app's three Wikimedia turns 25 s at most, not two minutes. (`answerMs`, for tests: every request's.)
  */
 export const WIKIMEDIA_MS = 25_000;
 /** How long annai waits when Overpass says it has had too many requests (429). */
 export const BUSY_MS = 30_000;
 /** Overpass gives at most this many places for each part. */
 const OSM_LIMIT = 3000;
-/** The titles one request may name (MediaWiki's limit for a client without bot rights). */
+/** The titles one request may name, or the items (MediaWiki's limit for a client without bot rights; Wikidata's `ids` the same). */
 const TITLES_PER_ASK = 50;
 const isNum = (/** @type {unknown} */ x) => typeof x === 'number' && Number.isFinite(x);
 const r4 = (/** @type {number} */ x) => Math.round(x * 1e4) / 1e4;
 
 /** Which part, in annai's English for the log. @param {PartRef} p */
-const partLabel = (p) => /* en */ ('place' in p ? `${p.source === 'osm' ? 'OpenStreetMap' : 'Wikipedia'} ${labelOf(p.place)}` : p.title ? `Wikivoyage: ${p.title}` : 'Wikivoyage');
+const partLabel = (p) => /* en */ ('place' in p ? `${p.source === 'osm' ? 'OpenStreetMap' : p.source === 'wikidata' ? "Wikipedia's other editions" : 'Wikipedia'} ${labelOf(p.place)}` : p.title ? `Wikivoyage: ${p.title}` : 'Wikivoyage');
 
 /** Which part, in the screens' words. @param {PartRef} p */
 export function partWords(p) {
   if (!('place' in p)) return p.title ? t`Wikivoyage: ${p.title}` : /* en */ 'Wikivoyage';
   const [a, b] = p.place.names;
   if (p.source === 'osm') return p.place.how === 'between' ? t`OpenStreetMap between ${a} and ${b}` : t`OpenStreetMap around ${a}`;
+  if (p.source === 'wikidata') return p.place.how === 'between' ? t`Wikipedia's other editions between ${a} and ${b}` : t`Wikipedia's other editions near ${a}`;
   return p.place.how === 'between' ? t`Wikipedia between ${a} and ${b}` : t`Wikipedia near ${a}`;
 }
 
@@ -118,8 +124,19 @@ export function saysDown(e) {
 
 /** Where a part is kept, a Wikipedia part's per edition (English's as before editions). @param {Part} p @param {string} [edition] */
 export const pathOf = (p, edition = 'en') => `${DIR}${p.kind}/${p.id}${p.kind === 'wikipedia' && edition !== 'en' ? `.${edition}` : ''}.json`;
-/** @param {PackPlan} plan @param {string[]} editions @returns {Want[]} */
-export const wanted = (plan, editions) => plan.parts.flatMap((p) => /** @type {Want[]} */ (p.kind === 'wikipedia' ? editions.map((e) => ({ part: p, edition: e, path: pathOf(p, e) })) : [{ part: p, edition: null, path: pathOf(p) }]));
+/**
+ * Where a Wikipedia part's second stage is kept: named by the part and the editions read, sorted (lesson 2026-11-19: a variant's file is named
+ * by both), so a language added or taken off is a new file (the old one goes at the download that brings the new one), and a reorder stores nothing.
+ * @param {Pick<Part, 'id'>} p @param {string[]} editions
+ */
+export const morePath = (p, editions) => `${DIR}wikipedia/${p.id}.x.${[...editions].sort().join('.')}.json`;
+/** Its files: each part's, a Wikipedia part's in every edition and, with more than one edition, its second stage after them. @param {PackPlan} plan @param {string[]} editions @returns {Want[]} */
+export const wanted = (plan, editions) => plan.parts.flatMap((p) => {
+  if (p.kind !== 'wikipedia') return [{ part: p, edition: null, path: pathOf(p) }];
+  /** @type {Want[]} */
+  const lists = editions.map((e) => ({ part: p, edition: e, path: pathOf(p, e) }));
+  return editions.length > 1 ? [...lists, { part: p, edition: null, path: morePath(p, editions), editions: [...editions].sort() }] : lists;
+});
 /** English rows from before editions, without ids to merge by, beside another edition: downloaded again, kept till then. @param {Pick<PackFile, 'kind' | 'edition'> | undefined} f @param {string[]} editions */
 export const lacksIds = (f, editions) => f?.kind === 'wikipedia' && f.edition === undefined && editions.length > 1;
 /** A guide file's id, from its path: its English title's fingerprint, whatever the edition. @param {string} path */
@@ -138,7 +155,7 @@ export async function readManifest(ws, scope) {
   if (!m || typeof m !== 'object' || m.format !== 1 || !Array.isArray(m.files) || !Array.isArray(m.guides) || !Array.isArray(m.failed)) return null;
   return {
     format: 1, key: String(m.key ?? ''), at: String(m.at ?? ''),
-    files: m.files.filter((f) => typeof f?.path === 'string' && typeof f.id === 'string' && ['osm', 'wikipedia', 'wikivoyage'].includes(f.kind))
+    files: m.files.filter((f) => typeof f?.path === 'string' && typeof f.id === 'string' && ['osm', 'wikipedia', 'wikipedia-editions', 'wikivoyage'].includes(f.kind))
       .map((f) => ({ id: f.id, kind: f.kind, path: f.path, bytes: Number(f.bytes) || 0, items: Number(f.items) || 0, at: Number(f.at) || 0, ...(typeof f.edition === 'string' ? { edition: f.edition } : {}) })),
     // A guide written before Wikivoyage's editions is English's alone, and such a pack asked English alone.
     guides: m.guides.filter((g) => typeof g?.title === 'string' && typeof g.path === 'string')
@@ -202,7 +219,7 @@ async function fetchPack(o) {
   let bytes = 0;
   /** @type {Map<string, number>} failures in a row by Overpass server */
   const hosts = new Map();
-  /** @type {Map<string, { n: number, last?: Failure }>} failures in a row by source ('osm', 'wikivoyage' (English's), an edition, another edition's Wikivoyage host), and the last */
+  /** @type {Map<string, { n: number, last?: Failure }>} failures in a row by host ('osm', 'wikivoyage' (English's), an edition's Wikipedia, 'wikidata', another edition's Wikivoyage host), and the last */
   const fails = new Map();
   const gaveUp = (/** @type {string} */ source) => (fails.get(source)?.n ?? 0) >= GIVE_UP;
   let asked = 0;
@@ -239,7 +256,7 @@ async function fetchPack(o) {
     files.set(f.path, { ...f, bytes: size, at: now() });
     bytes += size;
   };
-  /** @param {PartRef} part @param {string} source @param {unknown} e */
+  /** @param {PartRef} part @param {string} source @param {unknown} e @returns {Failure} */
   const failure = (part, source, e) => {
     if (e instanceof StorageFullError) throw e; // the panel's storage-full card says what to do
     /** @type {Failure} */
@@ -247,52 +264,91 @@ async function fetchPack(o) {
     failed.push(f);
     // An answer annai can't use shows the source is there: the count starts over.
     fails.set(source, saysDown(e) ? { n: (fails.get(source)?.n ?? 0) + 1, last: f } : { n: 0 });
+    return f;
   };
 
-  /** A part left for the rest of the run, with the failure that gave its source up: the panel counts it too. @param {PartRef} part @param {string} source */
-  const left = (part, source) => failed.push(/** @type {Failure} */ ({ ...fails.get(source)?.last, label: partLabel(part), part }));
+  /** A part left for the rest of the run, with the failure that gave its source up: the panel counts it too. @param {PartRef} part @param {string} source @returns {Failure} */
+  const left = (part, source) => {
+    const f = /** @type {Failure} */ ({ ...fails.get(source)?.last, label: partLabel(part), part });
+    failed.push(f);
+    return f;
+  };
   /** A file's manifest entry as its path says: another edition's names it, English's doesn't; a save writes 'en', keepOld what the old entry said. */
-  const entry = (/** @type {Want} */ w) => ({ id: w.part.id, kind: w.part.kind, path: w.path, ...(w.edition && w.edition !== 'en' ? { edition: w.edition } : {}) });
+  const entry = (/** @type {Want} */ w) => ({ id: w.part.id, kind: w.editions ? /** @type {const} */ ('wikipedia-editions') : w.part.kind, path: w.path, ...(w.edition && w.edition !== 'en' ? { edition: w.edition } : {}) });
+  /** When a file the pack has came: the manifest's time, else the file's own (a run stopped before its manifest). @param {string} path */
+  const cameAt = (path) => prev.get(path)?.at || have.get(path)?.modified || 0;
+  /** A second stage's lists: its part's file in each edition. @param {Want} w */
+  const listsOf = (w) => (w.editions ?? []).map((e) => pathOf(w.part, e));
   const want = wanted(plan, o.editions);
-  for (const w of want) if (fresh(entry(w))) keepOld(entry(w));
+  // A second stage holds the other editions' summaries of the articles its lists hold: it is kept while they are, and fetched again when any of
+  // them is fetched again in this run (they may name other articles) or came after it (a stage that failed after its lists came keeps its old copy,
+  // which then covers older lists: the next run brings it), or, as every part, when it is a month old.
+  for (const w of want) {
+    if (fresh(entry(w)) && listsOf(w).every((l) => files.has(l) && cameAt(l) <= cameAt(w.path))) keepOld(entry(w));
+  }
   const todo = want.filter((w) => !files.has(w.path));
+  /** @type {Map<string, Failure>} what each file this run didn't get failed with */
+  const lost = new Map();
   let total = todo.length + 1; // and finding the guides
   let done = 0;
   const progress = (/** @type {PartRef} */ part) => o.onProgress?.({ done, total, label: partWords(part) });
   /**
-   * The parts in a list, in order, each in every edition in the reading order; one this download doesn't get stays as it was, however old.
+   * The parts in a list, in order, each in every edition in the reading order; one this download doesn't get stays as it was, however old. A second
+   * stage is left, counted with the failure that gave its source up, when Wikidata or any edition it reads is given up: it is never asked then.
    * @param {Want[]} list
    */
   const fetchParts = async (list) => {
     for (const w of list) {
       if (signal.aborted) break;
       const p = w.part;
-      const source = w.edition ?? p.kind;
+      const source = w.editions ? 'wikidata' : w.edition ?? p.kind;
       /** @type {PartRef} */
-      const part = { source: p.kind, place: p.place };
-      if (gaveUp(source)) {
-        left(part, source);
+      const part = { source: w.editions ? 'wikidata' : p.kind, place: p.place };
+      const out = (w.editions ? [source, ...w.editions] : [source]).find(gaveUp);
+      if (out !== undefined) {
+        lost.set(w.path, left(part, out));
+        done++;
+        continue;
+      }
+      // A second stage needs every edition's list of its part: one this run didn't get leaves it for the next, counted with that list's failure.
+      const gap = listsOf(w).find((l) => lost.has(l));
+      if (gap) {
+        failed.push(/** @type {Failure} */ ({ ...lost.get(gap), label: partLabel(part), part }));
         done++;
         continue;
       }
       progress(part);
       try {
         // The Overpass servers by the switch as it is now, part by part: turned off, VK's server is asked nothing more.
-        const got = p.kind === 'osm' ? await osm(p, ask, () => pause(o.busyMs ?? BUSY_MS, signal), overpassServers(await readAppSettings(ws)), hosts) : await wikipedia(p, w.edition ?? 'en', ask, headers);
+        const got = p.kind === 'osm' ? await osm(p, ask, () => pause(o.busyMs ?? BUSY_MS, signal), overpassServers(await readAppSettings(ws)), hosts)
+          : w.editions ? await more(p, o.editions, (path) => ws.readJSON(scope, path), ask, headers, (host) => fails.set(host, { n: 0 })) : await wikipedia(p, w.edition ?? 'en', ask, headers);
         await save({ ...entry(w), items: got.count, ...(w.edition ? { edition: w.edition } : {}) }, got.content);
-        fails.set(source, { n: 0 });
+        // A second stage's requests start each host's count over as they answer (more); a failure of one counts under that host's own key.
+        if (!w.editions) fails.set(source, { n: 0 });
       } catch (e) {
         if (signal.aborted) break;
-        failure(part, source, e);
+        lost.set(w.path, failure(part, typeof /** @type {any} */ (e)?.source === 'string' ? /** @type {any} */ (e).source : source, e));
       }
       done++;
     }
-    for (const w of list) if (!files.has(w.path) && have.has(w.path)) keepOld(entry(w));
+    for (const w of list) {
+      if (files.has(w.path)) continue;
+      if (have.has(w.path)) keepOld(entry(w));
+      else if (w.editions) {
+        // A stage named by other editions than the pack's (a language added or taken off) has a new file: until it comes, the part's former one
+        // stays (it holds what the old set had, and the reader keeps the rows of the editions read), so a run that stops or fails first
+        // doesn't lose it. It goes at the download that brings the new one, as a file no longer wanted does.
+        for (const path of have.keys()) if (path.startsWith(`${DIR}wikipedia/${w.part.id}.x.`) && !files.has(path)) keepOld({ id: w.part.id, kind: 'wikipedia-editions', path });
+      }
+    }
   };
-  // The quick ones first (a request a second, minutes in all): every Wikipedia part, the stops' and the way's, so the guides read the titles they
-  // give; then the guides; then what takes long, OpenStreetMap's parts (Overpass answers one in 35 to 54 s: hours for a long trip).
-  const quick = (/** @type {Want} */ w) => w.part.kind === 'wikipedia';
-  await fetchParts(todo.filter(quick));
+  // The quick ones first, a request a second: every Wikipedia part's lists, the stops' and the way's, so the guides read the titles they give; then the
+  // guides (they read English's lists alone); then the second stages, which need every list of their part; then what takes long, OpenStreetMap's parts
+  // (Overpass answers one in 35 to 54 s: hours for a long trip). At three editions a part is 3 list requests and about 5 for its stage (8 in all: the
+  // editions design's count, 2026-11-20); at about 1.4 s a request (the 1 s gap and an answer of 0.2 to 0.56 s) a 105-part trip's lists take about
+  // 7 minutes and its stages about 12 more, so the guides come in between: with the stages first, the first guide came 20 minutes in.
+  const isList = (/** @type {Want} */ w) => w.part.kind === 'wikipedia' && !w.editions;
+  await fetchParts(todo.filter(isList));
 
   /** @type {Guide[]} */
   const guides = [];
@@ -425,7 +481,8 @@ async function fetchPack(o) {
       guides.push(g);
     }
   }
-  await fetchParts(todo.filter((w) => !quick(w)));
+  await fetchParts(todo.filter((w) => w.editions));
+  await fetchParts(todo.filter((w) => w.part.kind === 'osm'));
   /** @type {Manifest} */
   const manifest = {
     format: 1, key: plan.key, at: new Date(now()).toISOString(), files: [...files.values()], guides, voyage: guidesDone ? voyage : old?.voyage ?? ['en'], failed,
@@ -499,10 +556,10 @@ async function osm(p, ask, busy, servers, hosts) {
   throw fault(/* en */ `OpenStreetMap didn't answer (${message ?? 'every server was left for the rest of the run'}).`, { code: 'osm', inner: /** @type {any} */ (last)?.said ?? null, message });
 }
 
-/** An edition's nearest 20 summaries to a part's point, with ids. @param {import('./plan.js').WikiPart} p @param {string} edition @param {Ask} ask @param {Record<string, string>} headers */
+/** An edition's nearest summaries to a part's point, with ids: as many as one request gives (SUMMARIES_PER_ASK). @param {import('./plan.js').WikiPart} p @param {string} edition @param {Ask} ask @param {Record<string, string>} headers */
 async function wikipedia(p, edition, ask, headers) {
   /* en */ const where = edition === 'en' ? 'Wikipedia' : `${edition}.wikipedia.org`;
-  const r = await ask(nearUrl(edition, p.at, WIKI_RADIUS_M, 20, { extracts: true }), { headers }, where);
+  const r = await ask(nearUrl(edition, p.at, WIKI_RADIUS_M, SUMMARIES_PER_ASK, { extracts: true }), { headers }, where);
   const info = wikiSaid(r);
   if (info) throw fault(/* en */ `${where} said: ${info}.`, { code: 'said', where, info });
   const pages = articlesOf(r, edition).map((a) => [a.title, r4(a.lat), r4(a.lng), a.summary, a.id]);
@@ -510,10 +567,81 @@ async function wikipedia(p, edition, ask, headers) {
 }
 
 /**
+ * A Wikipedia part's second stage: for each article its editions' lists hold (by Wikidata id; a row with none is its edition's alone), each
+ * edition's summary that edition's list lacks: Wikidata says which editions have each item and its title there (TITLES_PER_ASK ids a request),
+ * then each edition is asked by those titles (SUMMARIES_PER_ASK a request). An edition's list holds only its own nearest 20, so the lists alone
+ * leave most articles in one edition (Tokyo Station: 2 of 38 in ja and en; the editions design, 2026-11-20). Rows as a list's, with the
+ * edition: [title, lat, lng, summary, id, edition], at the place the lists give the item. Any request that fails fails the stage: no file. Each
+ * request counts under its own host, as a list's does ('wikidata', or the edition's label): an answer starts that host's count over (`up`), and a
+ * failure carries its host as `source`.
+ * @param {import('./plan.js').WikiPart} p @param {string[]} editions the reading order's @param {(path: string) => Promise<any>} read
+ * @param {Ask} ask @param {Record<string, string>} headers @param {(source: string) => void} up
+ */
+async function more(p, editions, read, ask, headers, up) {
+  /**
+   * One request to a host, its answer read as an answer annai can use.
+   * @param {string} source @param {string} url @param {string} where
+   */
+  const from = async (source, url, where) => {
+    try {
+      const r = await ask(url, { headers }, where);
+      const info = wikiSaid(r);
+      if (info) throw fault(/* en */ `${where} said: ${info}.`, { code: 'said', where, info });
+      up(source);
+      return r;
+    } catch (e) {
+      throw Object.assign(/** @type {any} */ (e), { source });
+    }
+  };
+  /** @type {Map<string, { lat: number, lng: number, has: Set<string> }>} each item the lists hold: where, and the editions whose list holds it */
+  const items = new Map();
+  for (const e of editions) {
+    const v = await read(pathOf(p, e)).catch(() => null);
+    for (const r of Array.isArray(v?.pages) ? v.pages : []) {
+      if (!Array.isArray(r) || typeof r[4] !== 'string' || !r[4] || !isNum(r[1]) || !isNum(r[2])) continue;
+      const item = items.get(r[4]) ?? { lat: r[1], lng: r[2], has: new Set() };
+      item.has.add(e);
+      items.set(r[4], item);
+    }
+  }
+  /** @type {Map<string, Map<string, string>>} */
+  const titles = new Map();
+  const ids = [...items.keys()];
+  for (let i = 0; i < ids.length; i += TITLES_PER_ASK) {
+    const r = await from('wikidata', sitelinksUrl(ids.slice(i, i + TITLES_PER_ASK), editions), /* en */ 'Wikidata');
+    for (const [id, t] of titlesOf(r, editions)) titles.set(id, t);
+  }
+  /** @type {[string, number, number, string, string, string][]} */
+  const rows = [];
+  for (const e of editions) {
+    /* en */ const where = e === 'en' ? 'Wikipedia' : `${e}.wikipedia.org`;
+    /** @type {Map<string, string>} the titles to ask this edition for, each to its item */
+    const wants = new Map();
+    for (const [id, item] of items) {
+      const title = titles.get(id)?.get(e);
+      if (title && !item.has.has(e)) wants.set(title, id);
+    }
+    const asked = new Set(wants.values());
+    const names = [...wants.keys()];
+    for (let i = 0; i < names.length; i += SUMMARIES_PER_ASK) {
+      const r = await from(e, summariesUrl(e, names.slice(i, i + SUMMARIES_PER_ASK)), where);
+      for (const g of Array.isArray(r?.query?.pages) ? r.query.pages : []) {
+        // By the item it is: a title that now leads to another item's article is not this one's.
+        const id = g?.pageprops?.wikibase_item;
+        const item = items.get(id);
+        if (typeof g?.title !== 'string' || !item || !asked.delete(id)) continue;
+        rows.push([g.title, item.lat, item.lng, typeof g.extract === 'string' ? g.extract.trim() : '', id, e]);
+      }
+    }
+  }
+  return { count: rows.length, content: { at: p.at, pages: rows } };
+}
+
+/**
  * The names to look for in English Wikivoyage: the plan's (the trip's places, then the stops: every one), then the titles of the English
- * Wikipedia articles in the pack, nearest first. No bound on them: a part holds 20 at most, so 240 stops are 4,800 titles, 96 requests, under
- * two minutes against hours of Overpass; and they reach guides the names don't (2026-11-20, 5 real hotel and lodge stops, 10 km: Cambria Pines
- * Lodge's titles lead to "Central Coast (California)", Shinjuku Washington Hotel's to "Tokyo", the stops' own names to none).
+ * Wikipedia articles in English's lists, nearest first (the second stages' English rows, which come after the guides, are not read). No bound on them: a part holds 20 at most, so 240 stops are 4,800 titles, 96 requests, about
+ * two minutes against hours of Overpass; and they reach guides the names don't (2026-11-20, five made-up stops at real hotels and lodges, 10 km:
+ * one lodge's titles lead to a region's guide, one hotel's to a city's, the stops' own names to none).
  * @param {Workspace} ws @param {string} scope @param {PackPlan} plan @param {Map<string, PackFile>} files
  */
 async function namesFor(ws, scope, plan, files) {

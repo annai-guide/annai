@@ -96,17 +96,17 @@ test('the estimate shown before downloading, from the measured sizes: 875 kB for
   assert.equal(Math.round(n / 1024), 875, String(n)); // 3 guides, 117 km of OpenStreetMap, 5 stops' places and 9 Wikipedia parts, at SIZES
   assert.equal(estimate([], 0, ['en']), 0);
   // Each size with its reason (plan.js): what the editions design measured on 2026-11-20.
-  assert.deepEqual({ ...SIZES }, { osmPerKm: 512, osmStop: 110 * 1024, wikipedia: 8 * 1024, wikiEdition: 11 * 1024, guide: 65 * 1024, guideEdition: 8 * 1024 });
+  assert.deepEqual({ ...SIZES }, { osmPerKm: 512, osmStop: 110 * 1024, wikipedia: 8 * 1024, wikiEdition: 11 * 1024, wikiMore: 12 * 1024, guide: 65 * 1024, guideEdition: 8 * 1024 });
 });
 
-test("each language listed adds one Wikipedia part to the estimate for every part, at another edition's size, and each guide edition another edition's guide for every guide", () => {
+test("each language listed adds one Wikipedia part to the estimate for every part, at another edition's size, and to its second stage, and each guide edition another edition's guide for every guide", () => {
   const plan = packPlan({ trip: { places: ['Big Sur'] }, items: bigSur });
   const guides = likelyGuides(plan);
   const n = estimate(wanted(plan, ['en']), guides, ['en']);
   const wiki = plan.parts.filter((p) => p.kind === 'wikipedia').length;
   assert.equal(wiki, 9);
-  assert.equal(estimate(wanted(plan, ['ja', 'en']), guides, ['en']) - n, wiki * SIZES.wikiEdition);
-  assert.equal(estimate(wanted(plan, ['zh', 'ja', 'en']), guides, ['en']) - n, 2 * wiki * SIZES.wikiEdition);
+  assert.equal(estimate(wanted(plan, ['ja', 'en']), guides, ['en']) - n, wiki * (SIZES.wikiEdition + SIZES.wikiMore));
+  assert.equal(estimate(wanted(plan, ['zh', 'ja', 'en']), guides, ['en']) - n, wiki * (2 * SIZES.wikiEdition + 2 * SIZES.wikiMore));
   // Guides in Japanese and Chinese as well as English: two more of another edition's size for each.
   assert.equal(estimate(wanted(plan, ['en']), guides, ['ja', 'zh', 'en']) - n, 2 * guides * SIZES.guideEdition);
   // Only another edition's guides, for guides the pack has in English already: what "Download the rest" brings.
