@@ -581,9 +581,10 @@ uc7dg2	ok	annai couldn't reach {0}. Is the device offline?	无法连接 {0}。�
 qh6gdt	ok	Wrong passphrase, or the file is damaged.	密码短语错误，或文件已损坏。	src/core/archive-crypto.js:104	
 4ngq1	ok	annai couldn't build a file it could open again: {0}	无法生成可以重新打开的文件：{0}	src/core/archive.js:66	{0} = s.why; Note: {0} is a developer's detail, in English.
 gtgen1	ok	The content of {0} is missing from storage, so it can't be exported.	存储空间中找不到 {0} 的内容，因此无法导出。	src/core/archive.js:67	{0} = s.path
-13a6l3r	ok	There is nothing to export.	没有可导出的内容。	src/core/archive.js:68	
-am2v0c	ok	API keys can only be included in an encrypted backup of everything.	只有加密的完整备份才能包含 API 密钥。	src/core/archive.js:68	
-4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	此文件已加密。请输入密码短语来打开。	src/core/archive.js:88	
+iy9qtd	ok	Something on this device changed while exporting, so nothing was exported. Try again.	导出期间，本设备上的内容发生了变化，因此没有导出任何内容。请重试。	src/core/archive.js:68	
+13a6l3r	ok	There is nothing to export.	没有可导出的内容。	src/core/archive.js:69	
+am2v0c	ok	API keys can only be included in an encrypted backup of everything.	只有加密的完整备份才能包含 API 密钥。	src/core/archive.js:69	
+4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	此文件已加密。请输入密码短语来打开。	src/core/archive.js:89	
 1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	此文件是用较新版本的 annai 创建的。请先更新 annai，再重新打开。	src/core/archive.js:471	
 q7ee2s	ok	This file is damaged: {0}	此文件已损坏：{0}	src/core/archive.js:475	{0} = errors; Note: {0} is a developer's detail, in English.
 4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	此文件包含不安全的文件路径（{0}），因此 annai 不会打开它。	src/core/archive.js:478	{0} = path

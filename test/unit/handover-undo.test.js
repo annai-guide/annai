@@ -877,9 +877,12 @@ test("a trip she started for the hand-over whose offline pack was downloaded: Un
   await ws.write(again, '/plan/bixby.json', STOPS.bixby, HERS);
   await downloadPack({ ws, scope: again, ...services(), version: '9.9.9', editions: ['en'], gapMs: 0, now: () => at });
   assert.deepEqual([(await undoHandover(ws, again, 'h-1')).tripEmpty], [true]);
-  // Only the pack's folder is annai's: a file at a path that only looks like it, with no write entry left, still keeps a trip.
-  const near = await startedFrom(ws, store, ME, 'h-1', 'Near');
-  await ws.write(near, '/offline-list.md', 'Things to do offline', { author: 'user' });
-  await forget(store, near, { history: (p) => p === '/offline-list.md' });
-  assert.equal((await undoHandover(ws, near, 'h-1')).tripEmpty, false);
+  // Only the pack's folder, at the trip's root, is annai's: a file at a path that only looks like it, with no write entry left, still
+  // keeps a trip (one trip each, so each path is tried alone).
+  for (const path of ['/offline-list.md', '/notes/offline/road.md']) {
+    const near = await startedFrom(ws, store, ME, 'h-1', `Near ${path}`);
+    await ws.write(near, path, 'Things to do offline', { author: 'user' });
+    await forget(store, near, { history: (p) => p === path });
+    assert.equal((await undoHandover(ws, near, 'h-1')).tripEmpty, false, path);
+  }
 });

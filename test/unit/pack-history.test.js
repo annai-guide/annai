@@ -72,7 +72,7 @@ test("two downloads that change the pack's parts leave none of its older version
   assert.deepEqual(older.filter(isOsm), first.filter(isOsm));
   assert.deepEqual(first.filter((f) => !older.includes(f)).map((f) => f.path.split('/')[2]).sort(), ['wikipedia', 'wikivoyage', 'wikivoyage']);
   assert.deepEqual(await packHistory(store, trip), []);
-  // Each download leaves one forget entry, the newest of the log, numbered above what was there.
+  // Each download leaves one forget entry, its own and the newest of the log (its writes come before it), and the older one is gone.
   for (const { before, after } of ends) {
     assert.equal(after.forgets.length, 1);
     assert.ok(after.forgets[0].seq > before.top);
@@ -208,22 +208,103 @@ test("a forget that fails, as the phone has no room for it, leaves the download'
   for (const h of waiting) assert.equal(await stored(store, h), false, 'its content freed');
 });
 
-test("a Backup that overlaps the end of a download makes what the pack is by then: the parts the download replaced are read again, the parts it removed are left out", async () => {
+/**
+ * A download that waits at its second Overpass request, its first part saved, until `release` is called: a Backup made then lists the trip
+ * with the download mid-way. @param {(url: string, init: any) => any} [answer]
+ */
+function pausedAtSecondPart(answer = overpass) {
+  let release = () => {};
+  const gate = new Promise((resolve) => { release = () => resolve(undefined); });
+  let reach = () => {};
+  const reached = new Promise((resolve) => { reach = () => resolve(undefined); });
+  let asked = 0;
+  return { release, reached, overpass: async (/** @type {string} */ url, /** @type {any} */ init) => { if (++asked === 2) { reach(); await gate; } return answer(url, init); } };
+}
+
+/** The pack's files as an archive carries them: path to hash. @param {{ files: { path: string, hash: string }[] }} manifest */
+const packedHashes = (manifest) => new Map(manifest.files.filter((f) => f.path.startsWith(DIR)).map((f) => [f.path, f.hash]));
+
+/** The archive imported on a phone of its own: the pack there is whole (its manifest names parts that are all there) and loads. @param {Blob} blob @param {Workspace} from @param {string} trip */
+async function restoredPack(blob, from, trip) {
+  const store = createMemoryStore();
+  const ws = new Workspace(store);
+  await ensureBaseScopes(ws);
+  const [copy] = (await importArchive(store, await peekArchive(new Uint8Array(await blob.arrayBuffer())))).trips;
+  const m = await readManifest(ws, copy);
+  const there = new Set((await ws.list(copy, DIR)).map((f) => f.path));
+  assert.deepEqual(m, await readManifest(from, trip));
+  assert.ok(m && m.files.length > 0 && m.files.every((f) => there.has(f.path)), 'every part its manifest names is there');
+  assert.ok(await loadPack(ws, copy), 'the pack loads');
+  return { ws, trip: copy };
+}
+
+test("a Backup or Share that overlaps the end of a download is one moment: the pack as the download left it, whole, never part of one and part of the other", async () => {
+  for (const include of [PRESETS.backup, { ...PRESETS.backup, history: false }]) {
+    // The download starts after the Backup listed the trip, which names the whole older pack; its forget frees every version it replaced.
+    const { store, ws, trip } = await packTrip();
+    let at = Date.parse('2026-11-01T08:00:00Z');
+    const now = () => at;
+    await downloadPack({ ws, scope: trip, ...services(), version: V, editions: EN, gapMs: 0, now });
+    at += STALE_MS + 1;
+    // Nepenthe moved: the refresh removes the parts around the old one, and adds the new ones.
+    await ws.write(trip, '/plan/nepenthe.json', { ...STOPS.nepenthe, place: { name: 'Nepenthe', lat: 36.1, lng: -121.65 } }, { author: 'user' });
+    /** @type {Map<string, string>} */
+    let listed = new Map();
+    const racing = afterListing(store, async () => {
+      listed = new Map((await ws.list(trip, DIR)).map((f) => [f.path, f.hash]));
+      await downloadPack({ ws, scope: trip, ...services({ overpass: later }), version: V, editions: EN, gapMs: 0, now });
+    });
+    const { manifest, blob } = await exportArchive(racing, { kind: 'trip', scopes: [trip], include, app: V });
+    const final = new Map((await ws.list(trip, DIR)).map((f) => [f.path, f.hash]));
+    assert.ok([...listed].some(([p, h]) => final.get(p) !== h), 'the download replaced parts the listing named');
+    assert.ok([...listed.keys()].some((p) => !final.has(p)), 'and removed others');
+    assert.deepEqual(packedHashes(manifest), final);
+    await restoredPack(blob, ws, trip);
+  }
+});
+
+test("a Backup listed while a download is mid-way, that ends before the files are read, is the pack as the download left it: none of its parts missing", async () => {
+  for (const include of [PRESETS.backup, { ...PRESETS.backup, history: false }]) {
+    const { store, ws, trip } = await packTrip();
+    let at = Date.parse('2026-11-01T08:00:00Z');
+    const now = () => at;
+    await downloadPack({ ws, scope: trip, ...services(), version: V, editions: EN, gapMs: 0, now });
+    at += STALE_MS + 1;
+    // Nepenthe moved: the refresh removes the parts around the old one, and adds the new ones.
+    await ws.write(trip, '/plan/nepenthe.json', { ...STOPS.nepenthe, place: { name: 'Nepenthe', lat: 36.1, lng: -121.65 } }, { author: 'user' });
+    // The refresh has saved its first part (a newer one beside the others, with the older manifest) when the Backup lists the trip.
+    const pause = pausedAtSecondPart(later);
+    const download = downloadPack({ ws, scope: trip, ...services({ overpass: pause.overpass }), version: V, editions: EN, gapMs: 0, now });
+    await pause.reached;
+    /** @type {Awaited<ReturnType<typeof readManifest>>} */
+    let seen = null;
+    const racing = afterListing(store, async () => {
+      seen = await readManifest(ws, trip);
+      pause.release();
+      await download;
+    });
+    const { manifest, blob } = await exportArchive(racing, { kind: 'trip', scopes: [trip], include, app: V });
+    const final = await readManifest(ws, trip);
+    assert.notEqual(seen?.at, final?.at, 'the listing named the older manifest');
+    assert.deepEqual(packedHashes(manifest), new Map((await ws.list(trip, DIR)).map((f) => [f.path, f.hash])));
+    await restoredPack(blob, ws, trip);
+  }
+});
+
+test("a Backup listed while a first download is mid-way is the pack as it was listed, a part saved and no manifest yet, however the download ends", async () => {
   const { store, ws, trip } = await packTrip();
-  let at = Date.parse('2026-11-01T08:00:00Z');
-  const now = () => at;
-  await downloadPack({ ws, scope: trip, ...services(), version: V, editions: EN, gapMs: 0, now });
-  const listed = await ws.list(trip, DIR);
-  at += STALE_MS + 1;
-  // The download ends right after the Backup listed the trip's files: its forget frees the older versions the listing names.
-  await ws.write(trip, '/plan/nepenthe.json', { ...STOPS.nepenthe, place: { name: 'Nepenthe', lat: 36.1, lng: -121.65 } }, { author: 'user' });
-  const racing = afterListing(store, () => downloadPack({ ws, scope: trip, ...services({ overpass: later }), version: V, editions: EN, gapMs: 0, now }));
+  const pause = pausedAtSecondPart();
+  const download = downloadPack({ ws, scope: trip, ...services({ overpass: pause.overpass }), version: V, editions: EN, gapMs: 0 });
+  await pause.reached;
+  /** @type {Map<string, string>} */
+  let listed = new Map();
+  const racing = afterListing(store, async () => {
+    listed = new Map((await ws.list(trip, DIR)).map((f) => [f.path, f.hash]));
+    pause.release();
+    await download;
+  });
   const { manifest } = await exportArchive(racing, { kind: 'trip', scopes: [trip], include: PRESETS.backup, app: V });
-  const now_ = new Map((await ws.list(trip, DIR)).map((f) => [f.path, f.hash]));
-  assert.ok(listed.some((f) => !now_.has(f.path)), 'the download removed parts the listing named');
-  assert.ok(listed.some((f) => now_.has(f.path) && now_.get(f.path) !== f.hash), 'and replaced others');
-  const packed = manifest.files.filter((f) => f.path.startsWith(DIR));
-  assert.ok(packed.length > 0);
-  for (const f of packed) assert.equal(f.hash, now_.get(f.path), `${f.path} as it is now`);
-  assert.deepEqual(packed.map((f) => f.path).sort(), listed.map((f) => f.path).filter((p) => now_.has(p)).sort(), 'what the listing named and is still there');
+  assert.equal(listed.size, 1, 'one part, no manifest');
+  assert.deepEqual(packedHashes(manifest), listed);
+  assert.ok((await ws.list(trip, DIR)).length > 2, 'the download went on to make a whole pack');
 });

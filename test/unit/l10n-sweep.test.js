@@ -137,6 +137,11 @@ test("an export that fails while backing up: the hold keeps what it was in data,
   assert.match(holdWords(hold), /^\/notes\/a\.mdの内容がストレージにないため/);
 });
 
+test("an export that found the trip changing twice: the hold keeps its code, which this annai knows, and its card says it in Japanese", () => {
+  const hold = /** @type {any} */ ({ kind: 'error', message: 'Something on this device changed while exporting, so nothing was exported. Try again.', said: { code: 'changed' }, at: 1, count: 1, retryAt: 2, needsYou: false });
+  assert.equal(holdWords(hold), 'エクスポート中にこの端末のデータが変更されたため、エクスポートできませんでした。もう一度お試しください。');
+});
+
 test("a hold whose said this annai doesn't know is shown as an old hold, never as 'this device is offline'", async () => {
   const { oldHold } = await import('../../src/core/backup.js');
   const later = { kind: 'error', message: 'Something a later annai said.', said: { code: 'from-later' }, at: 1, count: 1, retryAt: 2, needsYou: false };

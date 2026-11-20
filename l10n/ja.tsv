@@ -581,9 +581,10 @@ uc7dg2	ok	annai couldn't reach {0}. Is the device offline?	{0}に接続できま
 qh6gdt	ok	Wrong passphrase, or the file is damaged.	パスフレーズが違うか、ファイルが壊れています。	src/core/archive-crypto.js:104	
 4ngq1	ok	annai couldn't build a file it could open again: {0}	もう一度開けるファイルを作れませんでした：{0}	src/core/archive.js:66	{0} = s.why; Note: {0} is a developer's detail, in English.
 gtgen1	ok	The content of {0} is missing from storage, so it can't be exported.	{0}の内容がストレージにないため、エクスポートできません。	src/core/archive.js:67	{0} = s.path
-13a6l3r	ok	There is nothing to export.	エクスポートするものがありません。	src/core/archive.js:68	
-am2v0c	ok	API keys can only be included in an encrypted backup of everything.	APIキーを含められるのは、すべてを含む暗号化バックアップだけです。	src/core/archive.js:68	Note: "a backup of everything" is the kind (everything, not one trip); すべてを暗号化した read as "encrypted everything".
-4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	このファイルは暗号化されています。開くにはパスフレーズを入力してください。	src/core/archive.js:88	
+iy9qtd	ok	Something on this device changed while exporting, so nothing was exported. Try again.	エクスポート中にこの端末のデータが変更されたため、エクスポートできませんでした。もう一度お試しください。	src/core/archive.js:68	
+13a6l3r	ok	There is nothing to export.	エクスポートするものがありません。	src/core/archive.js:69	
+am2v0c	ok	API keys can only be included in an encrypted backup of everything.	APIキーを含められるのは、すべてを含む暗号化バックアップだけです。	src/core/archive.js:69	Note: "a backup of everything" is the kind (everything, not one trip); すべてを暗号化した read as "encrypted everything".
+4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	このファイルは暗号化されています。開くにはパスフレーズを入力してください。	src/core/archive.js:89	
 1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	このファイルは新しいバージョンのannaiで作られています。annaiをアップデートしてから、もう一度開いてください。	src/core/archive.js:471	
 q7ee2s	ok	This file is damaged: {0}	このファイルは壊れています：{0}	src/core/archive.js:475	{0} = errors; Note: {0} is a developer's detail, in English.
 4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	このファイルには安全でないファイルパス（{0}）が含まれているため、開けません。	src/core/archive.js:478	{0} = path

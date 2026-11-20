@@ -43,7 +43,7 @@ export function activate(annai) {
     /* en */
     if (scope === 'me' && (path === '/instructions' || path.startsWith('/instructions/'))) throw new Error('Your instructions are the user\'s to change, in Settings → Shiori.');
     /* en */
-    if (kindOf(scope) === 'trip' && path.startsWith(PACK_DIR)) throw new Error("The offline pack (/trip/offline/) is annai's: each download replaces what is in it. Write somewhere else in the trip, such as /trip/notes/.");
+    if (kindOf(scope) === 'trip' && path.startsWith(PACK_DIR)) throw new Error("The offline pack (/trip/offline/) is annai's: each download replaces what is in it, so it isn't yours to change. Keep your own notes elsewhere in the trip, such as /trip/notes/.");
   };
   /**
    * Plan items and bookings sit directly in their folders, where the format check and the booking rule cover them (spec §4.4).

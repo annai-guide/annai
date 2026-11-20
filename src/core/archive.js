@@ -55,16 +55,17 @@ export function isFullBackup(include, share) {
 
 /**
  * An export's failure, as data a backup's hold keeps (backup.js): its screens' words are archiveWords'.
- * @typedef {{ code: 'keys-plain' | 'nothing' } | { code: 'unbuildable', why: string } | { code: 'content-missing', path: string }} ArchiveSaid
+ * @typedef {{ code: 'keys-plain' | 'nothing' | 'changed' } | { code: 'unbuildable', why: string } | { code: 'content-missing', path: string }} ArchiveSaid
  */
 
 /** The codes archiveWords knows. */
-export const ARCHIVE_CODES = new Set(['keys-plain', 'nothing', 'unbuildable', 'content-missing']);
+export const ARCHIVE_CODES = new Set(['keys-plain', 'nothing', 'changed', 'unbuildable', 'content-missing']);
 
 /** An export's failure in the screens' words, from its data. @param {ArchiveSaid} s */
 export function archiveWords(s) {
   if (s.code === 'unbuildable') return t`annai couldn't build a file it could open again: ${s.why}`;
   if (s.code === 'content-missing') return t`The content of ${s.path} is missing from storage, so it can't be exported.`;
+  if (s.code === 'changed') return t`Something on this device changed while exporting, so nothing was exported. Try again.`;
   return s.code === 'nothing' ? t`There is nothing to export.` : t`API keys can only be included in an encrypted backup of everything.`;
 }
 
@@ -174,6 +175,15 @@ const EVENT_SCHEMA = {
  *   seqs: scope id → the last history entry the archive holds (empty without history)
  */
 export async function exportArchive(store, opts) {
+  // Built whole in memory, written nowhere: starting again leaves nothing behind. A download's end, Delete for good or a removal can free what
+  // the listing named; then it is stale, and the export lists again, once (that change has ended by then). A second change fails it.
+  const built = (await buildArchive(store, opts)) ?? (await buildArchive(store, opts));
+  if (!built) throw new ArchiveError(/* en */ `Something on this device changed while exporting, so nothing was exported. Try again.`, { said: { code: 'changed' } });
+  return built;
+}
+
+/** One try at exportArchive; null: its listing went stale. @param {Store} store @param {Parameters<typeof exportArchive>[1]} opts @returns {Promise<Awaited<ReturnType<typeof exportArchive>> | null>} */
+async function buildArchive(store, opts) {
   const now = opts.now ?? Date.now();
   const noPlaces = Boolean(opts.share && !opts.share.places);
   const include = noPlaces ? { ...opts.include, history: false } : opts.include;
@@ -200,10 +210,11 @@ export async function exportArchive(store, opts) {
 
   for (const scope of scopes) {
     const dir = dirFor(scope.id);
-    const { files, events } = await store.tx(['files', 'events'], 'readonly', async (t) => ({
-      files: await t.listFiles(scope.id, '/'),
+    const { files, events } = await store.tx(['scopes', 'files', 'events'], 'readonly', async (t) => ({
+      files: (await t.getScope(scope.id)) ? await t.listFiles(scope.id, '/') : null, // null: the trip is gone
       events: include.history ? (await t.listEvents(scope.id)).map((e) => withoutPhotoMeta(e, include)) : [],
     }));
+    if (!files) return null;
     // A backup note belongs to the device that made it; the mirror is read again from what comes (backfillTrips).
     const { backup: _, start: _s, end: _e, talked: _t, ...record } = scope;
     // A Share names who made it only as asked, never by a name an import brought; a Backup keeps the record.
@@ -213,16 +224,15 @@ export async function exportArchive(store, opts) {
     }
     /** @type {ManifestScope} */
     const ms = { dir, record };
-    for (const listed of files) {
+    for (const f of files) {
       // Memory is what she keeps: the memory file, and a trip's to-do list (spec §12.2).
-      if (!include.memory && (listed.path === '/memory.md' || listed.path === TODO_FILE) && scope.kind !== 'sys') continue;
-      if (noPlaces && listed.path.startsWith(WATCH_DIR)) continue;
-      const read = await readFileNow(store, scope.id, listed);
-      if (!read) continue; // removed since it was listed
-      const { f } = read;
+      if (!include.memory && (f.path === '/memory.md' || f.path === TODO_FILE) && scope.kind !== 'sys') continue;
+      if (noPlaces && f.path.startsWith(WATCH_DIR)) continue;
+      const stored = await readBlob(store, scope.id, f);
+      if (!stored) return null;
       const name = dir + f.path;
       /** @type {Uint8Array} */
-      let bytes = read.bytes;
+      let bytes = stored;
       let hash = f.hash;
       if (noPlaces && TEXT_FILE.test(f.path)) {
         const clean = withoutPoints(bytes);
@@ -436,27 +446,17 @@ async function sharePhoto(f, bytes, share) {
 }
 
 /**
- * A listed file with its content as it is now: a change since the listing (a pack download, Delete for good) may have freed the content it
- * names, so the file is read again, entry and content together. Null: it is gone. @param {Store} store @param {string} scope @param {import('./types.js').FileEntry} listed
- * @returns {Promise<{ f: import('./types.js').FileEntry, bytes: Uint8Array } | null>}
+ * A listed file's content as listed. Null: gone, and the file changed or went since. An entry that still names content that isn't stored is
+ * content-missing. @param {Store} store @param {string} scope @param {import('./types.js').FileEntry} f @returns {Promise<Uint8Array | null>}
  */
-async function readFileNow(store, scope, listed) {
+async function readBlob(store, scope, f) {
   const got = await store.tx(['files', 'blobs'], 'readonly', async (t) => {
-    let f = listed;
-    let rec = await t.getBlob(f.hash);
-    if (!(rec?.data instanceof ArrayBuffer)) {
-      const now = await t.getFile(scope, listed.path);
-      if (!now) return null;
-      f = now;
-      rec = await t.getBlob(f.hash);
-    }
-    return { f, rec };
+    const rec = await t.getBlob(f.hash);
+    if (rec?.data instanceof ArrayBuffer) return rec.data;
+    return (await t.getFile(scope, f.path))?.hash === f.hash ? undefined : null;
   });
-  if (!got) return null;
-  if (!(got.rec?.data instanceof ArrayBuffer)) {
-    throw new ArchiveError(/* en */ `The content of ${got.f.path} is missing from storage.`, { said: { code: 'content-missing', path: got.f.path } });
-  }
-  return { f: got.f, bytes: new Uint8Array(got.rec.data) };
+  if (got === undefined) throw new ArchiveError(/* en */ `The content of ${f.path} is missing from storage.`, { said: { code: 'content-missing', path: f.path } });
+  return got && new Uint8Array(got);
 }
 
 /**
