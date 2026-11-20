@@ -1110,3 +1110,31 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** IndexedDB refuses to open a database at a lower version than it holds (src/core/store-idb.js opens at an explicit version). Keeping a way for an older release to open a newer database would be a design of its own; the database's version has not changed since 2026-10-16.
 - **Revisit when:** the first release that would raise the database version.
 - **Approved:** 2026-11-19, chief's decision C145 (not the user's words), accepted as recommended.
+
+### Only Fish Audio's voice streams
+- **Kind:** known limitation.
+- **What the traveller sees:** apart from Gemini's own voice, only Fish Audio's, through OpenRouter, can play while it is still being made, with the Stream switch on its voice page (it starts off). OpenAI's own voices, the local speech servers' and a custom address's have no Stream switch (unless it is already on there, typed in the JSON): each sentence arrives whole, in the smallest format the phone plays. Grok's, Voxtral's and Kokoro's voices through OpenRouter stay whole too, with the switch on. This narrows the user's ask of 2026-10-19, "Streamed voice for providers other than Gemini (play a clip while it is still being made)".
+- **Why:** only OpenRouter's voices were measured (the voice probe of 2026-11-19), and of them Fish Audio's alone gains: it starts 2 to 5 seconds sooner, where Grok, Voxtral and Kokoro answer whole in 0.06 to 1.3 seconds. OpenAI's own, the local servers' and a custom address's raw audio was never measured (whether their answer names the rate it is made at, as OpenRouter's does), and a stream that wasn't measured could fail every sentence of a voice.
+- **Revisit when:** another voice is measured and gains from streaming.
+- **Approved:** 2026-11-19, the user's answer in the main session's tab: "Accept (Rec.)".
+
+### A stream that ends cleanly but early is heard short
+- **Kind:** known limitation.
+- **What the traveller sees:** with the Stream switch on, a voice whose connection closes early, without an error, has its sentence heard short: she plays what came and goes on to the next sentence. (A connection that drops with an error is a failed clip: the next voice says the whole sentence.)
+- **Why:** raw audio carries no length, so a clean close early can't be told from the real end, and the clip's length from its words is only an estimate.
+- **Revisit when:** a voice is seen ending a stream early with the switch on.
+- **Approved:** 2026-11-19, the user's answer in the main session's tab: "Accept all three (Rec.)".
+
+### On a slow link a streamed voice starts later
+- **Kind:** known limitation.
+- **What the traveller sees:** with the Stream switch on, on a link slower than about 0.7 Mbps (Fish Audio's raw audio is 705.6 kbit/s) she waits before she starts a sentence (the longer, the slower the link), then plays it without a gap, instead of stuttering. On a good connection she starts sooner, as the switch says.
+- **Why:** a gap in the middle of a word is worse than a wait, so playback starts only when the rest will be in before it is reached (src/core/voice/stream-start.js); raw audio is 5.5 times the data of the MP3 on the same link.
+- **Revisit when:** a traveller reports it; the switch can be turned off.
+- **Approved:** 2026-11-19, the user's answer in the main session's tab: "Accept all three (Rec.)".
+
+### A voice that answers a streamed ask with compressed audio fails that sentence
+- **Kind:** known limitation.
+- **What the traveller sees:** with the Stream switch on, a voice that doesn't send the raw audio annai asked for (an MP3 or a WAV, say, from a server that ignores the ask) fails that sentence: the next voice says it, and that voice rests for a few minutes.
+- **Why:** the stream path takes only raw 16-bit audio at a rate its answer names; playing compressed audio as it arrives would need a decoder in that path, for a server that ignores the ask. The switch is on only where a provider's description names it, or where the user turned it on.
+- **Revisit when:** a voice is seen answering a streamed ask this way in normal use.
+- **Approved:** 2026-11-19, the user's answer in the main session's tab: "Accept all three (Rec.)".

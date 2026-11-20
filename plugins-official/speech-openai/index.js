@@ -65,7 +65,7 @@ function samples(odd, bytes) {
   return { pcm, odd: all.length % 2 ? all.slice(-1) : null };
 }
 /** Whether a voice is asked for raw audio. @param {{ providerId: string }} model @param {Record<string, any>} t */
-const asksPcm = (model, t) => t.format === 'pcm' || t.stream === true
+const asksPcm = (model, t) => t.format === 'pcm' || t.stream !== false
   || [].concat(t.pcmOnly ?? []).some((/** @type {unknown} */ p) => typeof p === 'string' && p !== '' && String(model.providerId).startsWith(p));
 const EXT = /** @type {Record<string, string>} */ ({ 'audio/wav': 'wav', 'audio/mpeg': 'mp3', 'audio/webm': 'webm', 'audio/mp4': 'm4a', 'audio/ogg': 'ogg', 'audio/aac': 'aac', 'audio/flac': 'flac' });
 const CODES = /** @type {Record<string, string>} */ ({ invalid_api_key: 'auth', insufficient_quota: 'credit', model_not_found: 'not-found' });
@@ -206,14 +206,13 @@ export function activate(annai) {
       // which other servers' may not. Raw audio is about 3 times an MP3's data at 24 kHz, 5.5 times at 44.1 kHz: 16-bit mono at 384 and
       // 705.6 kbit/s against a 128 kbit/s MP3 (nominal; the probe's Fish Audio clip, 442,368 bytes against 78,157, was 5.66 times).
       // Streamed, Fish Audio's voice started 2.0, 4.1 and 5.4 s sooner for texts of 4.8, 10.3 and 11.3 s of speech (the probe: the MP3's
-      // last byte less the stream's first piece): the "2 to 5 seconds" of the provider's note.
-      choices: { stream: { label: t`Stream her voice, so she starts sooner, uncompressed: several times the data (off: each sentence arrives whole first, compressed)` } },
+      // last byte less the stream's first piece): the "2 to 5 seconds" of the provider's note. It plays about a second after the request:
+      // the probe's first piece came 460 ms in, and stream-start.js measures the arrival rate for a quarter second before it starts.
+      choices: { stream: { label: t`Stream her voice, so she starts sooner, uncompressed: several times the data (off: each sentence arrives whole first, compressed unless the voice sends only uncompressed audio)` } },
       /** What OpenRouter adds to a Fish Audio model's text, "[style] ", is billed with it. @param {any} c */
       extraChars: ({ model, tunables: t }) => styleOf(t).length + (styleOf(t) && /^fish-audio\//.test(model.providerId) ? 3 : 0),
       /** @param {any} c */
       speechRequest: ({ endpoint, model, key, tunables: t, text }) => {
-        // An update reaches an annai still running its older shell, without WAV, until a restart: raw audio is played as a WAV clip.
-        if (asksPcm(model, t) && !wav) throw new Error('OpenAI-compatible voice needs a newer annai for raw audio: restart annai to update it.');
         /** @type {Record<string, any>} */
         let body = { model: model.providerId, input: text, response_format: asksPcm(model, t) ? 'pcm' : t.format === 'auto' ? 'mp3' : t.format }; // auto: annai chose none
         if (t.voice) body.voice = t.voice; // none: the provider picks (Fish Audio's free voice on OpenRouter picks a different speaker each time)

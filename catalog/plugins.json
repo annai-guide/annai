@@ -519,7 +519,7 @@
       "free": true,
       "local": false,
       "code": true,
-      "size": 32531,
+      "size": 32529,
       "requires": [
         {
           "id": "chat-completions",
@@ -533,7 +533,7 @@
       "featured": "Sign in with OpenRouter is the quickest way, and it starts you on free models.",
       "provides": {},
       "files": {
-        "annai-plugin.json": "8d7203c5964724c53395f97e7fe29a78d785b533c760a7fbde7da9ce32a4fd14",
+        "annai-plugin.json": "f352593aed63c06efa55c59f86ce10ba1dfb3e7b86ee5ebaeab1054bcadb7d6b",
         "index.js": "46007b34a1c7e5274f2f71eca123daac6b38733ecd4e84f3ec5dfdca95e8469b"
       }
     },
@@ -743,7 +743,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 16926,
+      "size": 16871,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -753,7 +753,7 @@
       },
       "files": {
         "annai-plugin.json": "b9983065ff95cbfe1109a6c68084e89398858db52323374b466ee5123b15452f",
-        "index.js": "951ec1a645e4326f8cf320bedef9312c4bef8719cfee3ea5e9ecbaacf0900217"
+        "index.js": "171b6297740783cafc41d1b65533c4e63fa36fb8d16012f0b0a53351d93a6c37"
       }
     },
     {

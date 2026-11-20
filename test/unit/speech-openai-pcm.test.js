@@ -19,14 +19,11 @@ import { useClock } from './clock.js';
 // names. The answers are shaped as OpenRouter's were in the voice probe of 2026-11-19 (test/fixtures/voices/openrouter-pcm-probe.json:
 // their Content-Types, error bodies, and Fish Audio's network pieces, odd sizes among them, with their times).
 
-/** The OpenAI-compatible voice type, activated in a shell that gives these helpers. @param {Record<string, any>} helpers */
-function load(helpers) {
-  /** @type {Record<string, any>} */
-  const types = {};
-  activate({ l10n: pluginWords(), providers: { register: (/** @type {any} */ t) => { types[t.type] = t; return () => {}; } }, helpers });
-  return types['openai-speech'];
-}
-const say = load({ ProviderError, errorFromResponse, mergePatch, wav: { encode: encodeWav, decode: pcm16 } });
+/** @type {Record<string, any>} */
+const types = {};
+activate({ l10n: pluginWords(), providers: { register: (/** @type {any} */ t) => { types[t.type] = t; return () => {}; } },
+  helpers: { ProviderError, errorFromResponse, mergePatch, wav: { encode: encodeWav, decode: pcm16 } } });
+const say = types['openai-speech'];
 const probe = JSON.parse(await readFile(new URL('../fixtures/voices/openrouter-pcm-probe.json', import.meta.url), 'utf8'));
 /** OpenRouter's voice ability and its models, as provider-openrouter describes them. */
 const router = JSON.parse(await readFile(new URL('../../plugins-official/provider-openrouter/annai-plugin.json', import.meta.url), 'utf8')).provider.abilities.voice;
@@ -137,9 +134,6 @@ test("a voice that answers only raw audio (OpenRouter's HeyGen and Gemini voices
   assert.equal(r.clip?.mediaType, 'audio/wav');
   assert.equal(pcm16(/** @type {any} */ (r.clip).data).rate, 24000);
   assert.equal(firstDiff(pcm16(/** @type {any} */ (r.clip).data).pcm, tone(2400).pcm), -1);
-  // A voice whose tunables say nothing of stream is not asked for raw audio (the switch is on only where it says so).
-  const bare = { ...spec('fish-audio/s2.1-pro-free:free'), tunables: { voice: 'x', format: 'auto', audioOut: ['mp3'] } };
-  assert.equal(JSON.parse(say.speechRequest({ ...bare, text: 'Hi.' }).body).response_format, 'mp3');
   // Without the description's prefixes (another server, or an older provider-openrouter), it is asked for MP3 and refuses, as before.
   const plain = await speechCall({ type: say, endpoint: endpoint({ pcmOnly: [] }), model: model('heygen/heygen-voice-1'), key: null, text: 'Hello.', fetch: or.fetch }).catch((e) => e);
   assert.ok(plain instanceof ProviderError && plain.kind === 'bad-request' && /only supports response_format/.test(plain.message), String(plain));
@@ -188,26 +182,22 @@ test('raw audio whose answer is not audio/pcm with one known rate (and, if it sa
   assert.equal(req.cost, undefined);
 });
 
-test('a shell without the WAV helper (annai not yet restarted after an update) refuses a request for raw audio before sending it, in words that say what to do; MP3 voices speak on', async () => {
-  const old = load({ ProviderError, errorFromResponse, mergePatch });
-  assert.throws(() => old.speechRequest({ ...spec('heygen/heygen-voice-1'), text: 'Hi.' }), /needs a newer annai for raw audio: restart annai to update it/);
-  assert.throws(() => old.speechRequest({ ...spec('fish-audio/s2.1-pro-free:free', { stream: true }), text: 'Hi.' }), /needs a newer annai/);
-  assert.equal(JSON.parse(old.speechRequest({ ...spec('fish-audio/s2.1-pro-free:free'), text: 'Hi.' }).body).response_format, 'mp3');
-});
-
 test("Fish Audio's voice streams with the voice page's Stream switch on, at the rate its answer names; off (its default), it is asked for MP3 whole, as before", async (t) => {
   useClock(t);
   const fish = model('fish-audio/s2.1-pro-free:free');
   assert.equal(say.tunables.stream, false, 'no OpenAI-compatible voice streams unless its page turns it on');
   assert.equal(typeof say.choices.stream.label, 'string');
   assert.equal(router.tunables.stream, false, 'OpenRouter names it, so its page shows the switch, off');
+  // One rule for "on", the core's too (speech.js, the switch, plugins.md): anything but false. A value typed in the JSON ("on") streams, so it is asked for raw audio.
+  assert.equal(asked('fish-audio/s2.1-pro-free:free', { stream: 'on' }), 'pcm');
+  assert.equal(asked('fish-audio/s2.1-pro-free:free', { stream: false }), 'mp3');
   // Off: MP3, a whole clip, even where the player could stream.
   const off = openRouter();
   const whole = await speechCall({ type: say, endpoint: endpoint(), model: fish, key: null, text: 'Hello there.', fetch: off.fetch, stream: true });
   assert.equal(off.bodies[0].response_format, 'mp3');
   assert.ok(!whole.stream, 'not streamed');
   assert.equal(whole.clip?.mediaType, 'audio/mpeg');
-  // On: raw audio, read as it comes in Fish Audio's pieces (30 of the 120 the probe saw end mid-sample), at 44.1 kHz.
+  // On: raw audio, read as it comes in Fish Audio's pieces (80 of the 120 the probe saw end mid-sample), at 44.1 kHz.
   const store = createMemoryStore();
   const on = openRouter({ samples: 3 * 44100 });
   const r = await speechCall({ type: say, endpoint: endpoint({ stream: true }), model: fish, key: null, text: 'Hello there.', fetch: on.fetch, stream: true, trace: modelTrace(store, SYS) });
@@ -255,7 +245,7 @@ test('a server that ignores the ask for raw audio fails a streamed voice; a stre
   await assert.rejects(speechCall({ type: say, endpoint: endpoint({ stream: true }), model: fish, key: null, text: 'Hi.', fetch: openRouter({ fail: 3 }).fetch }), (e) => e instanceof ProviderError && e.kind === 'network');
 });
 
-test("Fish Audio's stream cut partway: its player stream stops, the voice is benched, and the same sentence goes to the next voice (as Gemini's)", async (t) => {
+test("Fish Audio's stream cut partway: its player stream stops, the voice is benched, and the same sentence goes to the next voice", async (t) => {
   useClock(t);
   const p = fakePlatform();
   /** @type {{ id: string, kind: string }[]} */
