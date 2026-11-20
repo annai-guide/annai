@@ -1007,7 +1007,7 @@ elkw42	ok	The voice's audio couldn't be played.	無法播放這個聲音的音�
 9gdjo3	ok	The browser voice couldn't speak ({0}).	瀏覽器聲音無法朗讀（{0}）。	src/plugins/voice-browser/index.js:585	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
 1mrk9hl	ok	The microphone stopped.	麥克風已停止。	src/plugins/voice-browser/index.js:650	
 1l4zitw	ok	Phone dictation stopped ({0}).	手機語音輸入已停止（{0}）。	src/plugins/voice-browser/index.js:755	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音聲入力 / 手機語音輸入); {0} is the browser's error code, such as network.
-1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia 和 Nominatim	src/plugins/web/free.js:142	
+1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia 和 Nominatim	src/plugins/web/free.js:143	
 scnz2y	ok	Web tools	網頁工具	src/plugins/web/index.js:13	Note: Web as its tool group is named in Settings → Tools (Web / 網頁).
 eob60g	ok	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetch 可讀取任何網頁，遇到不允許網頁應用程式讀取的網站時，改用 Jina Reader 或 Exa；web_search 依設定 → 工具中的順序使用各搜尋供應商，先用免費的。	src/plugins/web/index.js:16	
 b4g7z9	ok	needs a key (Settings → Tools)	需要金鑰（設定 → 工具）	src/plugins/web/index.js:191	

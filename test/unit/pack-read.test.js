@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPack, toLine } from '../../src/core/pack/read.js';
-import { downloadPack, MANIFEST, pathOf, guideFile } from '../../src/core/pack/download.js';
+import { downloadPack, MANIFEST, pathOf, guideFile, ownKey } from '../../src/core/pack/download.js';
 import { planFor } from '../../src/core/pack/plan.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { readingEditions } from '../../src/core/wiki.js';
@@ -166,7 +166,7 @@ test("a guide in several editions: found by its English title, that title withou
   const en = guideFile('Cambria (California)').path;
   const ja = guideFile('Cambria (California)', 'ja').path;
   const zh = guideFile('Cambria (California)', 'zh').path;
-  const yufuin = guideFile('湯布院', 'ja').path;
+  const yufuin = guideFile(ownKey('ja', '湯布院'), 'ja').path;
   await ws.write(trip, en, JSON.stringify({ title: 'Cambria (California)', text: 'Cambria is a town.' }), { author: 'system' });
   await ws.write(trip, ja, JSON.stringify({ title: 'カンブリア', text: 'カンブリアは海辺の町。' }), { author: 'system' });
   await ws.write(trip, zh, 'not json', { author: 'system', type: 'text/plain' });

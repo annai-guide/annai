@@ -1,6 +1,6 @@
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { downloadPack, readManifest, failWords, guideFile, MANIFEST, pathOf, STALE_MS } from '../../src/core/pack/download.js';
+import { downloadPack, readManifest, failWords, guideFile, ownKey, MANIFEST, pathOf, STALE_MS } from '../../src/core/pack/download.js';
 import { planFor, packPlan } from '../../src/core/pack/plan.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { loadPack, packNamer } from '../../src/core/pack/read.js';
@@ -397,10 +397,10 @@ test("Wikipedia's parts come in the plan's order, each part in every edition in 
   // By host and the point asked about: every part in the plan's order, Japanese then English at each.
   const asks = all.asked.filter((a) => a.url.includes('wikipedia.org')).map((a) => `${new URL(a.url).hostname} ${new URL(a.url).searchParams.get('ggscoord')}`);
   assert.deepEqual(asks, wikis.flatMap((p) => ['ja', 'en'].map((e) => `${e}.wikipedia.org ${p.at.join('|')}`)));
-  // The parts at the stops first (the quick ones: see the order test below); the way's are asked once OpenStreetMap's are.
+  // Every Wikipedia part first (the quick ones: see the order test below), then OpenStreetMap's.
   const kinds = kindsAsked(all.asked, (await planFor(ws, trip)).parts);
   assert.deepEqual(kinds.slice(0, 6), Array(6).fill('wiki stop'));
-  assert.deepEqual(kinds.filter((k) => k !== 'guides').slice(6), [...Array(5).fill('osm'), ...Array(2 * (wikis.length - 3)).fill('wiki way')]);
+  assert.deepEqual(kinds.filter((k) => k !== 'guides').slice(6), [...Array(2 * (wikis.length - 3)).fill('wiki way'), ...Array(5).fill('osm')]);
   assert.deepEqual(m.failed, []);
   assert.equal(m.files.filter((f) => f.kind === 'wikipedia').length, 2 * wikis.length);
   // Past the 20 MB a pack once stopped at: every part is saved. Five OpenStreetMap parts of 52,000 places, each answer 7.6 MB (under what
@@ -414,7 +414,7 @@ test("Wikipedia's parts come in the plan's order, each part in every edition in 
   assert.equal(b.files.filter((f) => f.kind === 'wikipedia').length, wikis.length);
 });
 
-test("an edition whose host never answers is left after three parts in a row, so it costs three answer times, not one a part; the parts left are counted among those that didn't download, the other editions' parts all come, and with every source given up the guides are not looked for", async () => {
+test("an edition whose host never answers is left after three parts in a row, so it costs three answer times, not one a part; the parts left are counted among those that didn't download, the other editions' parts all come, and the guides are looked for all the same: Wikipedia given up is not Wikivoyage given up", async () => {
   const { ws, trip } = await packTrip(farStops(4));
   const wikis = (await planFor(ws, trip)).parts.filter((p) => p.kind === 'wikipedia');
   assert.ok(wikis.length >= 4);
@@ -427,12 +427,19 @@ test("an edition whose host never answers is left after three parts in a row, so
   assert.equal(new Set(m.failed.map((f) => f.label)).size, wikis.length, 'each part by its own name');
   assert.equal(m.files.filter((f) => f.edition === 'en').length, wikis.length);
   assert.equal(m.stopped, true, 'it gave up on one');
-  // Everything given up on is the connection down: the guides are not looked for.
-  const down = services({ overpass: () => new Response('', { status: 503 }), wikipedia: () => new Response('', { status: 503 }) });
+  // Wikipedia given up in every edition, Wikivoyage answering: the trip's own names still get their guides (only Wikipedia's titles are missing).
+  const wikipediaDown = await packTrip(farStops(4));
+  await wikipediaDown.ws.patch(wikipediaDown.trip, '/trip.json', { places: ['Big Sur'] }, { author: 'user' });
+  const apart = services({ overpass: noOsm, wikipedia: () => new Response('', { status: 503 }) });
+  const a = await downloadPack({ ws: wikipediaDown.ws, scope: wikipediaDown.trip, fetch: apart.fetch, version: V, editions: ['ja', 'en'], gapMs: 0 });
+  assert.equal(wikiHosts(apart.asked).length, 6, 'three parts each, then Wikipedia is left in both editions');
+  assert.deepEqual(a.guides.map((g) => g.title), ['Big Sur']);
+  // Everything down: the connection is, and the guides' first request finds it out (a few failed requests on a dead connection, not a part each).
+  const down = services({ overpass: () => new Response('', { status: 503 }), wikipedia: () => new Response('', { status: 503 }), wikivoyage: () => new Response('', { status: 503 }) });
   const offline = await packTrip(farStops(4));
   const d = await downloadPack({ ws: offline.ws, scope: offline.trip, fetch: down.fetch, version: V, editions: ['ja', 'en'], gapMs: 0, busyMs: 1 });
   assert.equal(d.files.length, 0);
-  assert.equal(down.asked.filter((a) => a.url.includes('wikivoyage')).length, 0);
+  assert.equal(down.asked.filter((a) => a.url.includes('wikivoyage')).length, 1);
 });
 
 const osmUrls = (/** @type {{ url: string }[]} */ asked) => asked.filter((a) => a.url.endsWith('/api/interpreter'));
@@ -834,7 +841,7 @@ const kindsAsked = (asked, parts) => asked.map((a) => {
   return parts.find((p) => p.kind === 'wikipedia' && p.at.join(',') === at)?.place.how === 'near' ? 'wiki stop' : 'wiki way';
 });
 
-test("the quick parts come first: Wikipedia's parts at the stops, then the guides, then OpenStreetMap's parts and the summaries along the way; the guides read the titles the stops' parts gave", async () => {
+test("the quick parts come first: every Wikipedia part, the stops' and the way's, then the guides, then OpenStreetMap's parts; the guides read the titles the stops' and the way's parts gave", async () => {
   const { ws, trip } = await packTrip(farStops(3));
   const plan = await planFor(ws, trip);
   const stops = plan.parts.filter((p) => p.kind === 'wikipedia' && p.place.how === 'near').length;
@@ -845,11 +852,11 @@ test("the quick parts come first: Wikipedia's parts at the stops, then the guide
   assert.deepEqual(m.failed, []);
   const kinds = kindsAsked(net.asked, plan.parts);
   // The guides' lookup is one request here, then English's links: no, English alone asks the names, and a text for each guide found.
-  assert.deepEqual(kinds.slice(0, stops), Array(stops).fill('wiki stop'));
-  assert.equal(kinds[stops], 'guides');
+  assert.deepEqual(kinds.slice(0, stops + way), [...Array(stops).fill('wiki stop'), ...Array(way).fill('wiki way')]);
+  assert.equal(kinds[stops + way], 'guides');
   const lastGuides = kinds.lastIndexOf('guides');
-  assert.ok(kinds.slice(stops, lastGuides + 1).every((k) => k === 'guides'), 'the guides together');
-  assert.deepEqual(kinds.slice(lastGuides + 1), [...Array(5).fill('osm'), ...Array(way).fill('wiki way')]);
+  assert.ok(kinds.slice(stops + way, lastGuides + 1).every((k) => k === 'guides'), 'the guides together');
+  assert.deepEqual(kinds.slice(lastGuides + 1), Array(5).fill('osm'));
   // The names it looked for include a title only a Wikipedia part gave.
   const title = YUFUIN_WIKI.en.query.pages[0].title;
   assert.ok(net.asked.filter((a) => a.url.includes('wikivoyage.org')).some((a) => decodeURIComponent(a.url).includes(title)), title);
@@ -914,12 +921,13 @@ test("a guide only the traveller's edition has comes into the pack: each edition
   // English's guides first, each with its Japanese twin; then the guide only Japanese has, by Japanese's title, kept by the names that led to it.
   assert.deepEqual(m.guides.map((g) => [g.title, g.edition ?? 'en', g.also.map((a) => a.edition)]), [['Cambria (California)', 'en', ['ja']], ['Big Sur', 'en', []], ['湯布院', 'ja', []]]);
   assert.deepEqual(m.guides[2].asked, ['湯布院', '由布院']);
-  assert.equal(m.guides[2].path, guideFile('湯布院', 'ja').path);
+  assert.equal(m.guides[2].path, guideFile(ownKey('ja', '湯布院'), 'ja').path);
   assert.deepEqual(JSON.parse(String(await ws.readText(trip, m.guides[2].path))), { title: '湯布院', text: '湯布院は大分県の温泉地。\n\n== 見る ==\n金鱗湖。' });
   assert.equal(m.files.filter((f) => f.kind === 'wikivoyage').length, 4, 'English twice, Japanese twice');
-  // The names, 50 to a request: 66 names (the places and the two stops) in two; each with redirects and converted variants; Wikivoyage's own host.
+  // The names, 50 to a request: 66 names (the places and the two stops), less Nepenthe, which English lists as several places, in two; each with
+  // redirects and converted variants; Wikivoyage's own host.
   const asked = namesAsked(net.asked, 'ja.wikivoyage.org');
-  assert.deepEqual(asked.map((a) => new URL(a.url).searchParams.get('titles')?.split('|').length), [50, 16]);
+  assert.deepEqual(asked.map((a) => new URL(a.url).searchParams.get('titles')?.split('|').length), [50, 15]);
   for (const a of asked) assert.deepEqual(['redirects', 'converttitles', 'ppprop'].map((k) => new URL(a.url).searchParams.get(k)), ['1', '1', 'disambiguation']);
   assert.ok(asked.flatMap((a) => (new URL(a.url).searchParams.get('titles') ?? '').split('|')).includes('Bixby Creek Bridge'), "a stop's name too");
   for (const a of net.asked.filter((x) => x.url.includes('wikivoyage'))) assert.doesNotMatch(a.url, /coord|36\.\d|121\.\d/, 'names, never a position');
@@ -942,6 +950,66 @@ test("a guide only the traveller's edition has comes into the pack: each edition
   assert.deepEqual(only.asked.filter((a) => a.url.includes('ja.wikivoyage.org')), []);
 });
 
+test("a name English lists as several places is not asked of another edition by name: it would bring that edition's one meaning of it (Georgia is the US state in German, the country in Spanish)", async () => {
+  const { ws, trip } = await packTrip();
+  // English Wikivoyage has "Nepenthe" as a disambiguation page (the kit's stand-in), Japanese Wikivoyage has a page of that name.
+  const net = services({ wikivoyage: (url) => {
+    const u = new URL(url);
+    if (u.hostname !== 'ja.wikivoyage.org') return kitGuides(url);
+    const titles = (u.searchParams.get('titles') ?? '').split('|');
+    if (u.searchParams.get('prop') === 'pageprops') return { query: { pages: titles.map((t) => (t === 'Nepenthe' || t === '湯布院' ? { title: t } : { title: t, missing: true })) } };
+    return { query: { pages: [{ title: titles[0], extract: `${titles[0]} in Japanese.` }] } };
+  } });
+  await ws.patch(trip, '/trip.json', { places: ['湯布院'] }, { author: 'user' });
+  const m = await downloadPack({ ws, scope: trip, fetch: net.fetch, version: V, editions: ['ja', 'en'], gapMs: 0 });
+  assert.deepEqual(m.failed, []);
+  assert.ok(!namesAsked(net.asked, 'ja.wikivoyage.org').flatMap((a) => (new URL(a.url).searchParams.get('titles') ?? '').split('|')).includes('Nepenthe'), 'asked of English only');
+  assert.ok(namesAsked(net.asked, 'en.wikivoyage.org').flatMap((a) => (new URL(a.url).searchParams.get('titles') ?? '').split('|')).includes('Nepenthe'));
+  assert.deepEqual(m.guides.map((g) => [g.title, g.edition ?? 'en']), [['Cambria (California)', 'en'], ['Big Sur', 'en'], ['湯布院', 'ja']], "no Japanese guide for the name English lists as several places; one English has no page for still comes");
+  assert.ok(!(await files(ws, trip)).some((p) => p.includes(guideFile(ownKey('ja', 'Nepenthe'), 'ja').id)));
+});
+
+test("a guide only an edition has is a file of its own: it never takes the file of an English guide's twin in that edition", async () => {
+  const { ws, trip } = await packTrip();
+  await ws.patch(trip, '/trip.json', { places: ['Cambria, California'] }, { author: 'user' });
+  // English Cambria (California) has the Japanese twin カンブリア; Japanese Wikivoyage also has a page of its own called "Cambria (California)",
+  // which the trip's name finds there (an edition-only guide, since the twin is another page).
+  const net = services({ wikivoyage: (url) => {
+    const u = new URL(url);
+    if (u.hostname !== 'ja.wikivoyage.org') return kitGuides(url);
+    const titles = (u.searchParams.get('titles') ?? '').split('|');
+    if (u.searchParams.get('prop') === 'pageprops') return { query: { pages: titles.map((t) => (t === 'Cambria (California)' ? { title: t } : { title: t, missing: true })) } };
+    return { query: { pages: [{ title: titles[0], extract: titles[0] === 'カンブリア' ? 'カンブリアは海辺の町。' : 'A page of its own.' }] } };
+  } });
+  const m = await downloadPack({ ws, scope: trip, fetch: net.fetch, version: V, editions: ['ja', 'en'], gapMs: 0 });
+  assert.deepEqual(m.failed, []);
+  const own = m.guides.find((g) => g.edition === 'ja');
+  const twin = m.guides.find((g) => g.title === 'Cambria (California)' && !g.edition);
+  assert.ok(own && twin);
+  const twinPath = guideFile('Cambria (California)', 'ja').path;
+  assert.notEqual(own.path, twinPath);
+  assert.deepEqual(JSON.parse(String(await ws.readText(trip, twinPath))), { title: 'カンブリア', text: 'カンブリアは海辺の町。' });
+  assert.deepEqual(JSON.parse(String(await ws.readText(trip, own.path))), { title: 'Cambria (California)', text: 'A page of its own.' });
+  assert.equal(new Set(m.files.map((f) => f.path)).size, m.files.length, 'every file once');
+  // Both are read, English's twin first.
+  const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
+  assert.deepEqual((await pack.guide('Cambria, California', ['ja'])).map((p) => p.title), ['カンブリア']);
+});
+
+test("the way's Wikipedia titles reach the guides on the first run: every Wikipedia part comes before them, a pack nobody changes never gives them a second chance", async () => {
+  const { ws, trip } = await packTrip(farStops(3));
+  const plan = await planFor(ws, trip);
+  const legs = new Set(plan.parts.flatMap((p) => (p.kind === 'wikipedia' && p.place.how === 'between' ? [p.at.join('|')] : [])));
+  assert.ok(legs.size > 0);
+  // The stops' answers have no guide for any of their titles; a part along the way names San Simeon, which has one.
+  const way = (/** @type {string} */ url) => (legs.has(String(new URL(url).searchParams.get('ggscoord')))
+    ? { query: { pages: [{ ns: 0, title: 'San Simeon', coordinates: [{ lat: 33.5, lon: 131.3, primary: true, globe: 'earth' }], pageprops: { wikibase_item: 'Q1' }, extract: 'San Simeon is a town.' }] } }
+    : same(url));
+  const m = await downloadPack({ ws, scope: trip, ...services({ overpass: noOsm, wikipedia: way }), version: V, editions: EN, gapMs: 0 });
+  assert.deepEqual(m.failed, []);
+  assert.ok(m.guides.some((g) => g.title === 'San Simeon'), m.guides.map((g) => g.title).join());
+});
+
 test("an edition whose names lookup fails keeps the guides only it has, with a failure naming its host, and is asked again next time; a plan that no longer names one drops it", async () => {
   const { ws, trip } = await packTrip();
   await ws.patch(trip, '/trip.json', { places: ['湯布院'] }, { author: 'user' });
@@ -951,7 +1019,7 @@ test("an edition whose names lookup fails keeps the guides only it has, with a f
   const m = await downloadPack({ ws, scope: trip, fetch: refused.fetch, version: V, editions: ['ja', 'en'], gapMs: 0 });
   assert.deepEqual(m.failed.map((f) => f.why), ['ja.wikivoyage.org answered 503.']);
   assert.deepEqual(m.guides.map((g) => g.title), ['Cambria (California)', 'Big Sur', '湯布院'], 'the guide only Japanese has stays, as it was');
-  assert.ok((await files(ws, trip)).includes(guideFile('湯布院', 'ja').path));
+  assert.ok((await files(ws, trip)).includes(guideFile(ownKey('ja', '湯布院'), 'ja').path));
   assert.deepEqual(m.voyage, ['en'], 'Japanese was not asked to its end');
   assert.deepEqual(m.guides[0].also, [{ edition: 'ja', title: 'カンブリア' }], "English's guide keeps its Japanese twin: the links came, and its text is fresh");
   // Asked again, it comes; then the plan drops the name and the guide goes with its file.
@@ -961,7 +1029,7 @@ test("an edition whose names lookup fails keeps the guides only it has, with a f
   await ws.patch(trip, '/trip.json', { places: [] }, { author: 'user' });
   const dropped = await downloadPack({ ws, scope: trip, ...services({ wikivoyage: jaVoyage }), version: V, editions: ['ja', 'en'], gapMs: 0 });
   assert.deepEqual(dropped.guides.map((g) => g.title), ['Cambria (California)', 'Big Sur']);
-  assert.ok(!(await files(ws, trip)).includes(guideFile('湯布院', 'ja').path));
+  assert.ok(!(await files(ws, trip)).includes(guideFile(ownKey('ja', '湯布院'), 'ja').path));
 });
 
 test("a stop while a guide's second edition is fetched keeps the guide with the editions it has: the English file is saved, and the next download brings the Japanese one", async () => {

@@ -103,17 +103,18 @@ function sunOnly(i, e) {
 }
 
 /**
- * A guide's parts, one per edition in the reading order: each its title, which Wikivoyage, its address (CC BY-SA credits by a link to the
- * article, as Wikipedia's rows do), its introduction and the names of its sections. With section: each part's section of that name
- * (each edition names its own), or a line for the part that has none, with its sections.
- * @param {{ edition: string, title: string, text: string }[]} parts @param {string | undefined} section @param {string} [from] where they come from, after the edition
+ * A guide's parts, one per edition in the reading order: each its title, which Wikivoyage (and, for a part of the offline pack, that), its address
+ * (CC BY-SA credits by a link to the article, as Wikipedia's rows do), its introduction and the names of its sections. With section: each part's
+ * section of that name (each edition names its own), or a line for the part that has none, with its sections.
+ * @param {{ edition: string, title: string, text: string, from?: string }[]} parts from: where a part comes from, after its edition, when not online
+ * @param {string | undefined} section
  */
-function guideText(parts, section, from) {
+function guideText(parts, section) {
   const read = parts.map((p) => ({
     ...p,
     heads: [...p.text.matchAll(/^(={2,4}) (.+?) \1$/gm)],
     /* en */
-    which: `${editionName(p.edition)} Wikivoyage${from ? `, ${from}` : ''}`,
+    which: `${editionName(p.edition)} Wikivoyage${p.from ? `, ${p.from}` : ''}`,
     address: pageUrl(`${p.edition}.wikivoyage.org`, p.title),
   }));
   const names = (/** @type {RegExpMatchArray[]} */ heads) => heads.map((m) => m[2]).join(', ');
@@ -153,7 +154,7 @@ function quiet(editions, failed) {
  */
 function lacking(lacks) {
   /* en */
-  return lacks.length ? `\n${lacks.map(editionName).join(' and ')} Wikivoyage ${lacks.length > 1 ? "aren't" : "isn't"} in the offline pack yet; it comes with the pack's next download.` : '';
+  return lacks.length ? `\n${lacks.map(editionName).join(' and ')} Wikivoyage ${lacks.length > 1 ? "aren't" : "isn't"} in the offline pack yet; ${lacks.length > 1 ? 'they come' : 'it comes'} with the pack's next download.` : '';
 }
 
 /** A Nominatim place's website and opening hours, from its extratags, as OpenStreetMap has them: empty where it doesn't. @param {any} f @returns {[string, string]} */
@@ -407,13 +408,16 @@ export function activate(annai) {
         // English, and each listed language's Wikivoyage, in the reading order.
         const editions = guideEditions(editionsOf(orderOf(await readAppSettings(annai.files))));
         const pack = await loadPack(annai.files, call.trip).catch(() => null);
-        const saved = pack ? await pack.guide(i.place, editions).catch(() => []) : [];
-        // The editions its guides pass never asked (a language added since, or a pack from before): the pack's answer lacks them, and only
-        // reading online brings them. An edition it asked and found no guide in is not one.
+        // Each edition's part: the offline pack's where it holds one, else read online, else a line says why not.
+        const from = `offline pack${pack?.day ? ` of ${pack.day}` : ''}`;
+        const held = new Map((pack ? await pack.guide(i.place, editions).catch(() => []) : []).map((p) => [p.edition, { ...p, from }]));
+        // The editions its guides pass never asked (a language added since, or a pack from before) only reading online brings; one it asked and
+        // found no guide in is not one. With no guide of this name in the pack, every edition is read.
         const lacks = pack ? editions.filter((e) => !pack.manifest.voyage.includes(e)) : [];
-        const fromPack = () => `${guideText(saved, i.section, `offline pack${pack?.day ? ` of ${pack.day}` : ''}`)}${lacking(lacks)}`;
-        if (saved.length && (call.offline || !lacks.length)) return fromPack();
-        if (call.offline) return 'Not in the offline pack: ask Kokoro.';
+        const need = held.size ? lacks : editions;
+        if (!need.length || call.offline) {
+          return held.size ? `${guideText(editions.flatMap((e) => held.get(e) ?? []), i.section)}${lacking(lacks)}` : `Not in the offline pack: ask Kokoro.${lacking(lacks)}`;
+        }
         /** @type {Map<string, { edition: string, title: string, text: string, links: Map<string, string> }>} the editions' pages that came */
         const got = new Map();
         /** @type {Map<string, unknown>} the editions that didn't answer, with why */
@@ -421,23 +425,26 @@ export function activate(annai) {
         /** @type {{ edition: string, title: string, text: string } | null} the first disambiguation page seen */
         let several = null;
         /**
-         * An edition's page by title: its text, and its titles in the other editions; null for none (missing, a disambiguation page, no text).
-         * @param {string} e @param {string} title @param {string} [more] @param {AbortSignal} [late] a time limit shared with other requests
+         * An edition's page by title: its text (without, only its titles in the other editions), and those; null for none (missing, a disambiguation
+         * page, no text).
+         * @param {string} e @param {string} title @param {string} [more] @param {AbortSignal} [late] a time limit shared with other requests @param {boolean} [text]
          */
-        const page = async (e, title, more = '', late) => {
+        const page = async (e, title, more = '', late, text = true) => {
           try {
-            const r = await json(`${voyageApi(e)}?action=query&format=json&formatversion=2&origin=*&redirects=1${more}&prop=extracts%7Clanglinks%7Cpageprops&explaintext=1&exsectionformat=wiki&lllimit=500&ppprop=disambiguation&titles=${encodeURIComponent(title)}`, call, {}, late);
+            const r = await json(`${voyageApi(e)}?action=query&format=json&formatversion=2&origin=*&redirects=1${more}&prop=${text ? 'extracts%7C' : ''}langlinks%7Cpageprops${text ? '&explaintext=1&exsectionformat=wiki' : ''}&lllimit=500&ppprop=disambiguation&titles=${encodeURIComponent(title)}`, call, {}, late);
             const said = wikiSaid(r);
             if (said) throw new Error(`${e}.wikivoyage.org said: ${said}.`);
             const p = /** @type {any} */ (Object.values(r?.query?.pages ?? {})[0]);
-            if (!p || p.missing !== undefined || p.invalid !== undefined || typeof p.extract !== 'string' || !p.extract.trim()) return null;
-            if (p.pageprops && typeof p.pageprops === 'object' && 'disambiguation' in p.pageprops) {
-              several ??= { edition: e, title: String(p.title ?? title), text: p.extract };
+            if (!p || p.missing !== undefined || p.invalid !== undefined) return null;
+            const body = typeof p.extract === 'string' ? p.extract : '';
+            if (text && !body.trim()) return null;
+            if (text && p.pageprops && typeof p.pageprops === 'object' && 'disambiguation' in p.pageprops) {
+              several ??= { edition: e, title: String(p.title ?? title), text: body };
               return null;
             }
             const links = new Map((Array.isArray(p.langlinks) ? p.langlinks : []).filter((/** @type {any} */ l) => typeof l?.lang === 'string' && typeof l.title === 'string' && l.title).map((/** @type {any} */ l) => [l.lang, l.title]));
-            const found = { edition: e, title: String(p.title ?? title), text: p.extract, links };
-            got.set(e, found);
+            const found = { edition: e, title: String(p.title ?? title), text: body, links };
+            if (text) got.set(e, found);
             return found;
           } catch (err) {
             if (call.signal.aborted) throw err;
@@ -445,28 +452,37 @@ export function activate(annai) {
             return null;
           }
         };
-        // English first, by the name; with none there, the next edition by the name (zh's variants converted: 东京 is 東京) anchors the rest.
-        // One time limit for all of it: a dead connection takes ASK_MS, not ASK_MS an edition.
+        // One time limit for all of it: a dead connection takes ASK_MS, not ASK_MS a request.
         const anchoring = AbortSignal.timeout(ASK_MS.ms);
-        let anchor = await page('en', i.place, '', anchoring);
-        for (const e of editions.filter((x) => x !== 'en')) anchor ??= await page(e, i.place, '&converttitles=1', anchoring);
-        if (!anchor) {
-          // Where Wikivoyage doesn't answer, or has no such guide, what the pack holds answers.
-          if (saved.length) return fromPack();
-          // A name that is a disambiguation page: the page, which names the places.
-          const d = /** @type {{ edition: string, title: string, text: string } | null} */ (several);
-          /* en */
-          if (d) return `${i.place} names several places: ${d.title} (${editionName(d.edition)} Wikivoyage) ${pageUrl(`${d.edition}.wikivoyage.org`, d.title)}\n\n${d.text.trim()}${quiet(editions, failed)}`;
-          if (failed.has('en')) throw failed.get('en');
-          const s = await json(`${voyageApi('en')}?action=opensearch&search=${encodeURIComponent(i.place)}&limit=5&namespace=0&format=json&origin=*`, call).catch(() => null);
-          const close = Array.isArray(s?.[1]) ? s[1].filter((/** @type {unknown} */ x) => typeof x === 'string') : [];
-          /* en */
-          return `Wikivoyage has no article called "${i.place}".${close.length ? ` Close ones: ${close.join(', ')}.` : ''}${quiet(editions, failed)}`;
+        /** @type {Map<string, string>} the titles the anchor page gives the editions in */
+        let links = new Map();
+        if (held.size) {
+          // The pack's own part is the anchor, English's where it holds it: only its titles in the other editions are read (the pack has its text).
+          const a = /** @type {{ edition: string, title: string }} */ (held.get('en') ?? [...held.values()][0]);
+          links = (await page(a.edition, a.title, '', anchoring, false))?.links ?? links;
+          if (failed.has(a.edition)) for (const e of need) failed.set(e, failed.get(a.edition));
+        } else {
+          // English first, by the name, and it decides the place: a name it lists as several places is answered with that list, not another
+          // edition's own meaning of it (Georgia is the US state in German, the country in Spanish). With no English page at all, the next edition
+          // by the name (zh's variants converted: 东京 is 東京) anchors the rest.
+          let anchor = await page('en', i.place, '', anchoring);
+          if (!several) for (const e of editions.filter((x) => x !== 'en')) anchor ??= await page(e, i.place, '&converttitles=1', anchoring);
+          if (!anchor) {
+            // A name that is a disambiguation page: the page, which names the places.
+            const d = /** @type {{ edition: string, title: string, text: string } | null} */ (several);
+            /* en */
+            if (d) return `${i.place} names several places: ${d.title} (${editionName(d.edition)} Wikivoyage) ${pageUrl(`${d.edition}.wikivoyage.org`, d.title)}\n\n${d.text.trim()}${quiet(editions, failed)}`;
+            if (failed.has('en')) throw failed.get('en');
+            const s = await json(`${voyageApi('en')}?action=opensearch&search=${encodeURIComponent(i.place)}&limit=5&namespace=0&format=json&origin=*`, call).catch(() => null);
+            const close = Array.isArray(s?.[1]) ? s[1].filter((/** @type {unknown} */ x) => typeof x === 'string') : [];
+            /* en */
+            return `Wikivoyage has no article called "${i.place}".${close.length ? ` Close ones: ${close.join(', ')}.` : ''}${quiet(editions, failed)}`;
+          }
+          links = anchor.links;
         }
-        // Every other edition by the title the anchor links to, at once (three at a time).
-        const links = anchor.links;
-        await Promise.all(editions.filter((e) => !got.has(e) && !failed.has(e) && links.has(e)).map((e) => page(e, /** @type {string} */ (links.get(e)))));
-        return `${guideText(editions.flatMap((e) => got.get(e) ?? []), i.section)}${quiet(editions, failed)}`;
+        // The editions still to read, by the titles the anchor links to, at once (three at a time), in the same time limit.
+        await Promise.all(need.filter((e) => !got.has(e) && !failed.has(e) && links.has(e)).map((e) => page(e, /** @type {string} */ (links.get(e)), '', anchoring)));
+        return `${guideText(editions.flatMap((e) => held.get(e) ?? got.get(e) ?? []), i.section)}${quiet(editions.filter((e) => !held.has(e)), failed)}`;
       },
     },
   ];

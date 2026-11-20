@@ -459,6 +459,7 @@ function fiveEditions(/** @type {string} */ url) {
 
 test("the floor's rows are what its parts give, not the chain's 8: five editions' guides, three websites and the articles all come", async () => {
   assert.equal(FLOOR_ROWS, 24 + 3 + 8, 'a guide for each of the 24 Wikivoyage hosts, the websites, the articles asked of an edition');
+  assert.equal('rows' in knowledgeFloor(async () => []), false, 'the chain gives the floor its rows by what it is, not by a field it carries');
   const { run, ws, settings, asked } = await setup();
   await updateAppSettings(ws, { languages: { spoken: ['ja', 'zh-Hant', 'fr', 'de'], answer: 'follow' } });
   await settings({ searchOff: ['exa', 'parallel', 'firecrawl'] });
@@ -695,9 +696,9 @@ test('S2: a third-party provider that says it is always on or the knowledge floo
   assert.equal(asked, 0);
 });
 
-test("a provider of another plugin gets the chain's 8 rows whatever it says of its own: only the floor, the web plugin's, has more", async () => {
+test("a provider of another plugin gets the chain's 8 rows whatever it says of itself (the knowledge floor, rows of its own): only the floor, the web plugin's, has more", async () => {
   const t = await setup();
-  t.registry.add('third', 'search', { id: 'greedy', name: 'Greedy', kind: 'web', rows: 100, search: async (/** @type {string} */ q, /** @type {any} */ c) => {
+  t.registry.add('third', 'search', { id: 'greedy', name: 'Greedy', kind: 'knowledge', always: true, rows: 100, search: async (/** @type {string} */ q, /** @type {any} */ c) => {
     assert.equal(c.limit, 8);
     return Array.from({ length: 30 }, (_, k) => ({ title: `T${k}`, url: `https://g.test/${k}`, snippet: 's' }));
   } });

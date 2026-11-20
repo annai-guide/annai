@@ -11,15 +11,15 @@ import { readingEditions, guideEditions } from '../wiki.js';
 /**
  * Keeps each trip's offline pack (spec §11.5): what it holds and would take, downloading it when
  * asked, and, once a trip has one, bringing it up to date by itself on Wi-Fi while annai and that
- * trip are open ("whenever the phone is on Wi-Fi"): when the plan changed, parts are missing, or it
- * is a month old; by itself at most once an hour. It names places from the open trip's pack for
- * live mode, in the editions the traveller's languages read.
+ * trip are open ("whenever the phone is on Wi-Fi"): when the plan changed, parts are missing (but not after
+ * an answer annai can't use: that waits for Try again), or it is a month old; by itself at most once an
+ * hour. It names places from the open trip's pack for live mode, in the editions the traveller's languages read.
  * @typedef {import('./download.js').Manifest} Manifest
  * @typedef {import('./download.js').Progress} Progress
  * @typedef {'plan' | 'missing' | 'old' | null} Why
- * @typedef {{ stops: number, manifest: Manifest | null, why: Why, estimate: number, running: (Progress & { scope: string }) | null }} PackStatus
- *   why: what an update would bring (null: nothing, or no pack yet); estimate: about how many bytes
- *   downloading takes now (spec §11.5: shown before downloading)
+ * @typedef {{ stops: number, manifest: Manifest | null, why: Why, byItself: boolean, estimate: number, running: (Progress & { scope: string }) | null }} PackStatus
+ *   why: what an update would bring (null: nothing, or no pack yet); byItself: whether annai brings it by itself on Wi-Fi, or waits for the
+ *   traveller's Try again; estimate: about how many bytes downloading takes now (spec §11.5: shown before downloading)
  */
 
 /** By itself, annai waits for the plan to be quiet this long before it updates the pack. */
@@ -36,7 +36,7 @@ export class PackKeeper {
   #abort = null;
   /** @type {Promise<Manifest> | null} */
   #job = null;
-  /** The download that runs is one annai began by itself, which keeps to Wi-Fi: poke() stops it when the phone leaves Wi-Fi. */
+  /** The download that runs is one annai began by itself, which keeps to Wi-Fi: poke() stops it when the phone leaves Wi-Fi; a tap on Download makes it the traveller's. */
   #byItself = false;
   /** @type {ReturnType<typeof setTimeout> | undefined} the one next look at the pack, due at #due (Date.now()'s ms) */
   #timer;
@@ -107,10 +107,15 @@ export class PackKeeper {
       : manifest.key !== plan.key ? 'plan'
         : missing.length || lacking.length || manifest.failed.length || manifest.stopped ? 'missing'
           : old ? 'old' : null;
+    // Whether annai brings it by itself, for the hourly retry and every look alike: the plan changed, the pack is old ('missing' comes first
+    // above), the run was stopped, a source was down, an edition is lacking, or a part is missing that no failure accounts for (a language
+    // added). Failures that are answers annai can't use (Overpass stopping early, no text) would only fail again: they wait for Try again.
+    const byItself = manifest !== null && why !== null
+      && (why === 'plan' || old || manifest.stopped || lacking.length > 0 || manifest.failed.some(saysDown) || missing.length > manifest.failed.length);
     // What downloading brings now: the files it lacks, and its guides in the editions it lacks (with no guides yet, those it would likely get).
     const needed = manifest?.guides.length ? estimate(missing, manifest.guides.length, lacking) : estimate(missing, likelyGuides(plan), voyage);
     return {
-      stops: plan.stops.length, manifest, why,
+      stops: plan.stops.length, manifest, why, byItself,
       estimate: why === 'old' ? estimate(want, likelyGuides(plan), voyage) : needed,
       running: this.running?.scope === scope ? this.running : null,
     };
@@ -123,7 +128,10 @@ export class PackKeeper {
    * @returns {Promise<Manifest>}
    */
   download(scope, { auto = false } = {}) {
-    if (this.#job) return this.#job;
+    if (this.#job) {
+      if (!auto) this.#byItself = false;
+      return this.#job;
+    }
     const { store, ws, version } = this.o;
     const abort = new AbortController();
     this.#abort = abort;
@@ -167,7 +175,8 @@ export class PackKeeper {
    * when the phone is off Wi-Fi (what came stays, the next look on Wi-Fi goes on): nothing else bounds one that runs over mobile data.
    */
   poke() {
-    if (this.#job && this.#byItself && this.o.connection() !== 'wifi') this.stop().catch(() => {});
+    // A look while the stopped run winds down is lost (#auto returns while #job is set): look again once it has ended.
+    if (this.#job && this.#byItself && this.o.connection() !== 'wifi') this.stop().then(() => this.poke(), () => {});
     this.#schedule(this.o.pokeMs ?? POKE_MS);
   }
 
@@ -246,15 +255,14 @@ export class PackKeeper {
     const now = (this.o.now ?? Date.now)();
     if (!scope || this.#job || this.o.connection() !== 'wifi' || !(this.o.visible?.() ?? true)) return;
     const s = await this.status(scope);
-    if (!s.manifest || !s.why) return;
+    if (!s.manifest || !s.why || !s.byItself) return;
     // Too early (the plan is still changing, or the hour isn't out): looked at then.
     const every = this.o.autoMs ?? AUTO_EVERY_MS;
     const wait = Math.max((this.o.quietMs ?? QUIET_MS) - (Date.now() - this.#changedAt), every - (now - (this.#autoAt.get(scope) ?? -Infinity)));
     if (wait > 0) return this.#schedule(wait);
     this.#autoAt.set(scope, now);
-    const m = await this.download(scope, { auto: true });
-    // A run that failed because a source is down tries again by itself, once an hour at most; a failure that is an answer annai can't use
-    // (Overpass stopping early, a guide with no text) would only fail again: it waits for the traveller's Try again.
-    if (m.failed.some(saysDown)) this.#schedule(every);
+    await this.download(scope, { auto: true });
+    // What annai may still bring by itself is tried again an hour on, by the same rule as any look.
+    if ((await this.status(scope)).byItself) this.#schedule(every);
   }
 }

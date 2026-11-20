@@ -3,8 +3,8 @@ import { htmlToText } from '../../core/html-text.js';
 import { toBase64 } from '../../core/bytes.js';
 import { anySignal } from '../../core/signals.js';
 import { readAppSettings } from '../../core/settings.js';
-import { normalizeRows, restsOn, cooldowns, ROWS, CHAIN, READY_MS } from '../../core/web-search.js';
-import { FREE_PROVIDERS, knowledgeFloor, exaRead } from './free.js';
+import { normalizeRows, restsOn, cooldowns, isFloor, ROWS, CHAIN, READY_MS } from '../../core/web-search.js';
+import { FREE_PROVIDERS, FLOOR_ROWS, knowledgeFloor, exaRead } from './free.js';
 import { readingOrder } from '../../core/languages.js';
 import { t } from '../../core/l10n.js';
 
@@ -237,7 +237,7 @@ export function activate(annai) {
           return null;
         }
         try {
-          const limit = p.rows ?? ROWS;
+          const limit = isFloor(p) ? FLOOR_ROWS : ROWS;
           const rows = normalizeRows(await step(call, (signal) => p.search(i.query, { fetch: call.fetch, signal, limit, session: sessionFor(call.scope) }), Math.min(p.limitMs ?? Infinity, room)), i.query, limit);
           cooldowns.clear(p.id);
           if (rows.length) return tsv(['title', 'url', 'snippet'], rows.map((r) => [r.title, r.url, r.snippet]));

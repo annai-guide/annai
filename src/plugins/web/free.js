@@ -20,8 +20,9 @@ const ARTICLES = ROWS;
 /** The official websites asked of Nominatim for the place. */
 const PLACES = 3;
 /**
- * The floor's rows, which the chain cuts its answer to in place of ROWS: each part at its most (a guide in every edition annai asks, the PLACES
- * websites, the ARTICLES of the first edition that has any), so none takes another's rows: with 8, five editions left no article (2026-11-20).
+ * The floor's rows, which the chain cuts its answer to in place of ROWS (web/index.js, for the provider of kind 'knowledge', which only the web
+ * plugin's own can be): each part at its most (a guide in every edition annai asks, the PLACES websites, the ARTICLES of the first edition that
+ * has any), so none takes another's rows: with 8, five editions left no article (2026-11-20).
  */
 export const FLOOR_ROWS = VOYAGE_COUNT + PLACES + ARTICLES;
 
@@ -139,7 +140,7 @@ const keywords = (query) => (query.toLowerCase().match(/[\p{L}\p{N}]{2,}/gu) ?? 
  * @returns {import('../../core/web-search.js').SearchProvider}
  */
 export const knowledgeFloor = (orderOf) => ({
-  id: 'wiki', name: /* en */ 'Wikivoyage, Wikipedia and Nominatim', shown: t`Wikivoyage, Wikipedia and Nominatim`, kind: 'knowledge', always: true, limitMs: LIMIT_MS, rows: FLOOR_ROWS,
+  id: 'wiki', name: /* en */ 'Wikivoyage, Wikipedia and Nominatim', shown: t`Wikivoyage, Wikipedia and Nominatim`, kind: 'knowledge', always: true, limitMs: LIMIT_MS,
   /** @param {string} query @param {{ fetch: any, signal: AbortSignal }} c */
   async search(query, { fetch: get, signal }) {
     // One time for the whole floor, from the start of its search (the settings read counts): what has answered by then is its answer.

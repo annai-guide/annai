@@ -583,7 +583,7 @@ test("a language added inside the hour of an update annai began by itself waits 
  * A keeper whose connection the test sets, over the two Big Sur stops, with Overpass held at its next request when armed: that request ends
  * only with the run's own signal (as a real fetch's does), or when the test lets it go.
  */
-async function leaving() {
+async function leaving(autoMs = 30) {
   const t = await packTrip();
   let connection = 'wifi';
   let armed = false;
@@ -602,7 +602,7 @@ async function leaving() {
     if (cutShort) throw new DOMException('Stopped.', 'AbortError');
     return { elements: [] };
   } });
-  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => connection, fetch: net.fetch, quietMs: 10, pokeMs: 5, autoMs: 30, gapMs: 0 });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => connection, fetch: net.fetch, quietMs: 10, pokeMs: 5, autoMs, gapMs: 0 });
   const move = (/** @type {number} */ lat) => t.ws.write(t.trip, '/plan/nepenthe.json', { ...STOPS.nepenthe, place: { ...STOPS.nepenthe.place, lat } }, { author: 'user' });
   const log = async () => (await t.store.tx(['events'], 'readonly', (x) => x.listEvents(t.trip, { types: ['pack.download'] }))).map((e) => e.data);
   return { ...t, net, keeper, move, log, release: () => release(), arm: () => { armed = true; waiting = false; }, waiting: () => waiting, cutShort: () => cutShort, set: (/** @type {string} */ c) => { connection = c; } };
@@ -672,6 +672,168 @@ test("an update that failed in part is tried again by itself only where a source
     const s = await keeper.status(trip);
     assert.equal(s.why, 'missing', 'the panel still offers Try again');
     assert.ok((s.manifest?.failed.length ?? 0) > 0);
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test("one rule for every look: an update that failed in part on an answer annai can't use is not started again by a poke after the hour either (the app opened, back to the tab); the traveller's Try again does it", async () => {
+  let mode = 'fine';
+  const { keeper, trip, net, move, autoRuns } = await hourly({ overpass: () => (mode === 'early' ? { elements: [], remark: 'runtime error: Query timed out in "query" at line 1 after 61 seconds.' } : { elements: [] }) });
+  try {
+    await keeper.download(trip);
+    mode = 'early';
+    await move(36.2);
+    await until(async () => (await autoRuns()).length === 1);
+    await new Promise((r) => setTimeout(r, 450)); // the hour here is 400 ms
+    const asked = net.asked.length;
+    keeper.poke();
+    await new Promise((r) => setTimeout(r, 100));
+    assert.equal((await autoRuns()).length, 1, 'a poke does not ask again');
+    assert.equal(net.asked.length, asked);
+    // The traveller's Try again does, and it works once Overpass does.
+    mode = 'fine';
+    await keeper.download(trip);
+    assert.equal((await keeper.status(trip)).why, null);
+  } finally {
+    keeper.dispose();
+  }
+});
+
+/** A keeper over the two stops whose clock the test moves, with Overpass saying what `overpass.mode` says. */
+async function aging() {
+  const t = await packTrip();
+  const overpass = { mode: 'fine' };
+  const net = services({ overpass: () => (overpass.mode === 'early' ? { elements: [], remark: 'runtime error: Query timed out in "query" at line 1 after 61 seconds.' } : { elements: [] }) });
+  const clock = { now: Date.now() };
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, autoMs: 400, gapMs: 0, now: () => clock.now });
+  const autoRuns = async () => (await t.store.tx(['events'], 'readonly', (x) => x.listEvents(t.trip, { types: ['pack.download'] }))).filter((e) => e.data.auto);
+  return { ...t, net, keeper, overpass, clock, autoRuns };
+}
+
+test("a pack that is a month old is brought up to date by itself even where an answer annai can't use is among its failures (a failure leaves 'missing' first, 'old' still counts)", async () => {
+  const { keeper, trip, overpass, clock, autoRuns } = await aging();
+  try {
+    overpass.mode = 'early';
+    await keeper.download(trip);
+    const s = await keeper.status(trip);
+    assert.equal(s.why, 'missing');
+    assert.equal(s.byItself, false, 'a failure annai would only meet again waits for Try again');
+    clock.now += STALE_MS + 1;
+    const old = await keeper.status(trip);
+    assert.equal(old.why, 'missing', 'a failure still comes first in the panel');
+    assert.equal(old.byItself, true);
+    keeper.poke();
+    await until(async () => (await autoRuns()).length === 1);
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test("a language added to a pack with a failure annai can't use among them is still brought by itself: its files are missing, no failure accounts for them", async () => {
+  const { keeper, trip, ws, net, overpass, autoRuns } = await aging();
+  try {
+    overpass.mode = 'early';
+    await keeper.download(trip);
+    assert.equal((await keeper.status(trip)).byItself, false);
+    await updateAppSettings(ws, { languages: { spoken: ['en', 'ja'], answer: 'follow' } });
+    assert.equal((await keeper.status(trip)).byItself, true);
+    await until(async () => (await autoRuns()).length === 1);
+    assert.ok(net.asked.some((a) => a.url.includes('ja.wikipedia.org')));
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test('a tap on Download while annai\'s own run goes makes it the traveller\'s: it goes on when the phone leaves Wi-Fi', async () => {
+  const k = await leaving();
+  const { keeper, trip } = k;
+  try {
+    await keeper.download(trip); // by hand
+    k.arm();
+    await k.move(36.2);
+    await until(() => k.waiting()); // annai's own update runs, waiting on Overpass
+    const run = keeper.download(trip); // a tap on a button drawn before the run began
+    k.set('cellular');
+    keeper.poke();
+    await new Promise((r) => setTimeout(r, 60));
+    assert.notEqual(keeper.running, null, 'still running');
+    k.release();
+    const m = await run;
+    assert.equal(k.cutShort(), false);
+    assert.equal(m.stopped, false);
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test("back on Wi-Fi while a stopped run is winding down: the look then is not lost, the run goes on as soon as the hour from its start allows, not an hour after it ended", async () => {
+  const k = await leaving(1500); // the hour here
+  const { keeper, trip, ws } = k;
+  const write = ws.writeMany.bind(ws);
+  let slow = false;
+  // The run's end (its manifest) takes a while, as on a big trip.
+  ws.writeMany = async (...a) => {
+    if (slow) await new Promise((r) => setTimeout(r, 800));
+    return write(...a);
+  };
+  /** When each download began. @type {number[]} */
+  const began = [];
+  let on = false;
+  keeper.onChange(() => {
+    if (keeper.running && !on) began.push(Date.now());
+    on = keeper.running !== null;
+  });
+  try {
+    await keeper.download(trip); // by hand
+    k.arm();
+    await k.move(36.2);
+    await until(() => k.waiting()); // annai's own update, waiting on Overpass
+    slow = true;
+    k.set('cellular');
+    keeper.poke(); // the stop begins
+    await new Promise((r) => setTimeout(r, 50));
+    assert.notEqual(keeper.running, null, 'winding down');
+    k.set('wifi');
+    keeper.poke(); // back on Wi-Fi, while the run is still ending: #auto finds the job and returns
+    await until(async () => (await keeper.status(trip)).why === null, 6000);
+    assert.deepEqual((await k.log()).map((d) => d.auto), [false, true, true]);
+    assert.ok(began[2] - began[1] >= 1400, `not before the hour is out: ${began[2] - began[1]}`);
+    assert.ok(began[2] - began[1] < 1900, `at the hour from the stopped run's start, not an hour after its end: ${began[2] - began[1]}`);
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test("what annai brings by itself, by the manifest alone: a run that was stopped, a source that was down, an edition lacking, a plan changed; not an answer annai can't use", async () => {
+  const { keeper, trip, ws } = await aging();
+  try {
+    await keeper.download(trip);
+    const m = /** @type {any} */ (await ws.readJSON(trip, '/offline/pack.json'));
+    /** @param {any} change */
+    const withManifest = async (change) => {
+      await ws.write(trip, '/offline/pack.json', { ...m, ...change }, { author: 'system' });
+      return keeper.status(trip);
+    };
+    assert.deepEqual(await keeper.status(trip).then((s) => [s.why, s.byItself]), [null, false], 'nothing to bring');
+    // Stopped, with every part there and nothing failed (the stop came at the end of the run).
+    assert.deepEqual(await withManifest({ stopped: true }).then((s) => [s.why, s.byItself]), ['missing', true]);
+    // A failure with its source down: no answer, a 429, a 5xx; or one an older annai kept (it says nothing of why).
+    const part = { source: 'osm', place: { how: 'around', names: ['Nepenthe'] } };
+    for (const said of [null, { code: 'late', where: 'overpass-api.de' }, { code: 'status', where: 'overpass-api.de', status: 429 }, { code: 'status', where: 'overpass-api.de', status: 503 }]) {
+      assert.equal((await withManifest({ failed: [{ label: 'OpenStreetMap around Nepenthe', why: 'x', part, said }] })).byItself, true, JSON.stringify(said));
+    }
+    // An answer annai can't use: waits for the traveller (a file for the part is there, as an older run left it).
+    for (const said of [{ code: 'early', where: 'overpass-api.de', remark: 'x' }, { code: 'said', where: 'Wikipedia', info: 'x' }, { code: 'no-text', title: 'Big Sur' }, { code: 'unreadable', where: 'overpass-api.de' }]) {
+      assert.deepEqual(await withManifest({ failed: [{ label: 'OpenStreetMap around Nepenthe', why: 'x', part, said }] }).then((s) => [s.why, s.byItself]), ['missing', false], JSON.stringify(said));
+    }
+    // A language whose guides were never looked for (every file is there): lacking, the pack asked English only.
+    await updateAppSettings(ws, { languages: { spoken: ['en', 'ja'], answer: 'follow' } });
+    await keeper.download(trip);
+    const whole = /** @type {any} */ (await ws.readJSON(trip, '/offline/pack.json'));
+    assert.deepEqual(await keeper.status(trip).then((s) => [s.why, s.byItself]), [null, false]);
+    await ws.write(trip, '/offline/pack.json', { ...whole, voyage: ['en'] }, { author: 'system' });
+    assert.deepEqual(await keeper.status(trip).then((s) => [s.why, s.byItself]), ['missing', true]);
   } finally {
     keeper.dispose();
   }

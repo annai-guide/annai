@@ -4,9 +4,8 @@ import { decodeEntities } from './html-text.js';
  * Web search's shared parts (spec §7.2): the order of search providers, the rows every provider's
  * answer is made into, and how long a provider that failed is left alone. The web plugin runs the
  * chain; Settings → Tools and the welcome draw the same list.
- * name and ready()'s why are what Shiori is told (English); shown, when there is one, is what the screen shows instead; rows, the web plugin's own
- * providers' only, how many rows its answer may have in place of ROWS.
- * @typedef {{ id: string, name: string, shown?: string, kind?: 'web' | 'knowledge', free?: boolean, always?: boolean, note?: string, limitMs?: number, rows?: number,
+ * name and ready()'s why are what Shiori is told (English); shown, when there is one, is what the screen shows instead.
+ * @typedef {{ id: string, name: string, shown?: string, kind?: 'web' | 'knowledge', free?: boolean, always?: boolean, note?: string, limitMs?: number,
  *   ready?: () => Promise<{ ok: boolean, why?: string, shown?: string }>, search: (query: string, c: { fetch: any, signal: AbortSignal, limit: number, session?: string }) => Promise<any[]> }} SearchProvider
  */
 
@@ -23,7 +22,7 @@ export const READY_MS = { ms: 3_000 };
 /** A search's whole time, and what is kept of it for the floor (ms): the rungs before the floor share the rest. */
 export const CHAIN = { ms: 45_000, reserve: 10_000 };
 
-/** Rows in an answer (a provider of the web plugin's own may say more: its `rows`), and a snippet's and a title's length. */
+/** Rows in an answer (the floor's are its parts' own: web/free.js FLOOR_ROWS), and a snippet's and a title's length. */
 export const ROWS = 8;
 const SNIPPET = 400;
 const TITLE = 160;
@@ -38,7 +37,7 @@ const BUILT_IN = 'web';
  */
 export function trusted(entries) {
   return entries.map(({ pluginId, item }) => (pluginId === BUILT_IN ? item
-    : Object.create(item, { always: { value: false }, free: { value: false }, kind: { value: 'web' }, rows: { value: undefined } })));
+    : Object.create(item, { always: { value: false }, free: { value: false }, kind: { value: 'web' } })));
 }
 
 /** The floor (Wikivoyage, Wikipedia, Nominatim): always last. @param {{ kind?: string }} p */
