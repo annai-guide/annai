@@ -6,7 +6,7 @@ import { logEvent } from '../events.js';
 import { PLAN_FILE } from '../plan.js';
 import { APP } from '../settings.js';
 import { SYS_SETTINGS } from '../scopes.js';
-import { readingEditions } from '../wiki.js';
+import { readingEditions, guideEditions } from '../wiki.js';
 
 /**
  * Keeps each trip's offline pack (spec §11.5): what it holds and would take, downloading it when
@@ -17,7 +17,7 @@ import { readingEditions } from '../wiki.js';
  * @typedef {import('./download.js').Manifest} Manifest
  * @typedef {import('./download.js').Progress} Progress
  * @typedef {'plan' | 'missing' | 'old' | null} Why
- * @typedef {{ stops: number, cut: number, manifest: Manifest | null, why: Why, estimate: number, running: (Progress & { scope: string }) | null }} PackStatus
+ * @typedef {{ stops: number, manifest: Manifest | null, why: Why, estimate: number, running: (Progress & { scope: string }) | null }} PackStatus
  *   why: what an update would bring (null: nothing, or no pack yet); estimate: about how many bytes
  *   downloading takes now (spec §11.5: shown before downloading)
  */
@@ -56,7 +56,7 @@ export class PackKeeper {
    * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace,
    *   agent: { target: string | null, on: (kind: 'open', fn: () => void) => () => unknown },
    *   version: string, locale: string, connection: () => string, visible?: () => boolean, fetch?: import('./download.js').Fetch,
-   *   quietMs?: number, pokeMs?: number, autoMs?: number, gapMs?: number, now?: () => number, maxBytes?: number }} o
+   *   quietMs?: number, pokeMs?: number, autoMs?: number, gapMs?: number, now?: () => number }} o
    *   locale: the phone's; connection: 'wifi', 'cellular', 'unknown' or 'offline' (ui/platform.js connectionOf); fetch: for tests, instead of the traced one;
    *   autoMs: the hour between updates by itself, for tests
    */
@@ -93,19 +93,23 @@ export class PackKeeper {
     const kept = new Map((manifest?.files ?? []).map((f) => [f.path, f]));
     // A file the manifest doesn't name is missing too: a download that stopped before its manifest left it.
     const missing = want.filter((w) => !have.has(w.path) || !kept.has(w.path) || lacksIds(kept.get(w.path), editions));
+    // The traveller's guide editions its guides weren't looked for in (a language added since, or a pack from before Wikivoyage's editions):
+    // missing too. The guides it has in English stay, and are not downloaded again.
+    const voyage = guideEditions(editions);
+    const lacking = manifest ? voyage.filter((e) => !manifest.voyage.includes(e)) : voyage;
     // Old by its oldest part: an update that brought only what the plan changed leaves the rest as old as it was.
     const oldest = manifest ? Math.min(Date.parse(manifest.at), ...manifest.files.map((f) => f.at || Infinity)) : NaN;
     const old = manifest !== null && !(now - oldest <= STALE_MS);
     /** @type {Why} */
-    // A pack that reached its size limit holds all of its plan it can: the rest is no more to come (until it is old).
     const why = !manifest ? null
       : manifest.key !== plan.key ? 'plan'
-        : !manifest.full && (missing.length || manifest.failed.length || manifest.stopped) ? 'missing'
+        : missing.length || lacking.length || manifest.failed.length || manifest.stopped ? 'missing'
           : old ? 'old' : null;
-    const guides = manifest?.guides.length ? 0 : likelyGuides(plan);
+    // What downloading brings now: the files it lacks, and its guides in the editions it lacks (with no guides yet, those it would likely get).
+    const needed = manifest?.guides.length ? estimate(missing, manifest.guides.length, lacking) : estimate(missing, likelyGuides(plan), voyage);
     return {
-      stops: plan.stops.length, cut: plan.cut, manifest, why,
-      estimate: why === 'old' ? estimate(want, likelyGuides(plan)) : estimate(missing, guides),
+      stops: plan.stops.length, manifest, why,
+      estimate: why === 'old' ? estimate(want, likelyGuides(plan), voyage) : needed,
       running: this.running?.scope === scope ? this.running : null,
     };
   }
@@ -124,14 +128,14 @@ export class PackKeeper {
     this.running = { scope, done: 0, total: 0, label: '' };
     this.#emit();
     this.#job = this.#editions().then((editions) => downloadPack({
-      ws, scope, version, editions, signal: abort.signal, gapMs: this.o.gapMs, now: this.o.now, maxBytes: this.o.maxBytes,
+      ws, scope, version, editions, signal: abort.signal, gapMs: this.o.gapMs, now: this.o.now,
       fetch: this.o.fetch ?? tracedFetch(store, scope, { tool: 'offline-pack' }),
       onProgress: (p) => {
         this.running = { scope, ...p };
         this.#emit();
       },
     })).then(async (m) => {
-      const data = { files: m.files.length, bytes: m.bytes, guides: m.guides.length, failed: m.failed.length, stopped: m.stopped, full: m.full, auto };
+      const data = { files: m.files.length, bytes: m.bytes, guides: m.guides.length, failed: m.failed.length, stopped: m.stopped, auto };
       await logEvent(store, scope, { type: 'pack.download', actor: 'system', data }).catch(() => {});
       return m;
     }).finally(() => {

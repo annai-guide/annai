@@ -32,10 +32,10 @@ test("a downloaded pack: what it covers, its places and pages, its guides by nam
   const pages = pack.pages(bixby, 2000, ['en']);
   assert.deepEqual(pages.map((r) => r.slice(0, 2)), [['Bixby Creek Bridge', 'wikipedia article']]);
   assert.match(pages[0][6], /^Bixby Creek Bridge is a reinforced concrete .* https:\/\/en\.wikipedia\.org\/wiki\/Bixby_Creek_Bridge$/);
-  assert.equal((await pack.guide('big sur'))?.title, 'Big Sur');
-  assert.equal((await pack.guide('Cambria'))?.title, 'Cambria (California)');
-  assert.equal((await pack.guide('Cambria, California'))?.title, 'Cambria (California)');
-  assert.equal(await pack.guide('Monterey'), null);
+  assert.deepEqual((await pack.guide('big sur', ['en'])).map((p) => [p.edition, p.title]), [['en', 'Big Sur']]);
+  assert.equal((await pack.guide('Cambria', ['en']))[0]?.title, 'Cambria (California)');
+  assert.equal((await pack.guide('Cambria, California', ['en']))[0]?.title, 'Cambria (California)');
+  assert.deepEqual(await pack.guide('Monterey', ['en']), []);
   assert.deepEqual(pack.name({ lat: 36.3715, lng: -121.9017 }, ['en']), { name: 'Bixby Creek Bridge', m: 0 });
   assert.equal(pack.name({ lat: 36.2203, lng: -121.7612 }, ['en'])?.name, 'Nepenthe (restaurant)'); // a restaurant is no place name; its article is
   assert.equal(pack.name({ lat: 36.5, lng: -121.95 }, ['en']), null);
@@ -59,7 +59,7 @@ test('a broken pack is no pack, and a broken part is left out: never an error', 
   assert.ok(pack);
   assert.deepEqual(pack.places({ lat: 36.3, lng: -121.85 }, 1000, ['sights']).map((r) => r[0]), ['Fine']);
   await ws.write(trip, m.guides.find((/** @type {any} */ g) => g.title === 'Big Sur').path, 'not json', { author: 'user', type: 'text/plain' });
-  assert.equal(await pack.guide('Big Sur'), null);
+  assert.deepEqual(await pack.guide('Big Sur', ['en']), []);
 });
 
 test("a part Overpass cut off at its 3000 places doesn't count as covering: nearby asks online there, and uses it only when offline (C1)", async () => {
@@ -158,4 +158,24 @@ test("a language taken off the list is no more read, though its files stay until
   await updateAppSettings(ws, { languages: { spoken: ['en'], answer: 'follow' } });
   await downloadPack({ ws, scope: trip, ...net(), version: '1.0.0', editions: await readingEditions(ws, 'en-US'), gapMs: 0 });
   assert.deepEqual(await wikipediaFiles(), [pathOf(part)]);
+});
+
+test("a guide in several editions: found by its English title, that title without its bracket, a name that led to it, or its title in any edition; read in the editions given, in their order, a missing or broken file left out", async () => {
+  const { ws, trip } = await packTrip();
+  const g = (/** @type {string} */ id) => `/offline/wikivoyage/${id}.json`;
+  await ws.write(trip, g('g1'), JSON.stringify({ title: 'Cambria (California)', text: 'Cambria is a town.' }), { author: 'system' });
+  await ws.write(trip, g('g1.ja'), JSON.stringify({ title: 'カンブリア', text: 'カンブリアは海辺の町。' }), { author: 'system' });
+  await ws.write(trip, g('g1.zh'), 'not json', { author: 'system', type: 'text/plain' });
+  await ws.write(trip, MANIFEST, JSON.stringify({ format: 1, key: 'k', at: '2026-11-20T09:00:00.000Z', failed: [], stopped: false, bytes: 1, voyage: ['en', 'ja', 'zh'],
+    files: ['g1', 'g1.ja', 'g1.zh'].map((id, k) => ({ id: 'g1', kind: 'wikivoyage', path: g(id), bytes: 1, items: 1, edition: ['en', 'ja', 'zh'][k] })),
+    guides: [{ title: 'Cambria (California)', asked: ['Cambria Pines Lodge'], path: g('g1'), also: [{ edition: 'ja', title: 'カンブリア', path: g('g1.ja') }, { edition: 'zh', title: '坎布里亞', path: g('g1.zh') }] }] }), { author: 'system' });
+  const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
+  const parts = async (/** @type {string} */ name, /** @type {string[]} */ editions) => (await pack.guide(name, editions)).map((p) => `${p.edition} ${p.title} ${p.text}`);
+  for (const name of ['Cambria (California)', 'cambria', 'Cambria Pines Lodge', 'カンブリア', '坎布里亞']) {
+    assert.deepEqual(await parts(name, ['ja', 'zh', 'en']), ['ja カンブリア カンブリアは海辺の町。', 'en Cambria (California) Cambria is a town.'], name);
+  }
+  assert.deepEqual(await parts('Cambria', ['en', 'ja']), ['en Cambria (California) Cambria is a town.', 'ja カンブリア カンブリアは海辺の町。'], 'in the order given');
+  assert.deepEqual(await parts('Cambria', ['en']), ['en Cambria (California) Cambria is a town.'], 'an edition not given is not read');
+  assert.deepEqual(await parts('カンブリア', ['de']), [], 'none held in the editions given');
+  assert.deepEqual(await parts('Monterey', ['ja', 'en']), []);
 });

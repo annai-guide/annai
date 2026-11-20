@@ -1045,14 +1045,14 @@ test("the trace's one-line summaries of live mode: points, firings, reminders an
 });
 
 test('the Offline pack panel: the estimate before anything is downloaded, then what it holds and what an update brings (spec §11.5)', () => {
-  const base = { stops: 2, cut: 0, manifest: null, why: null, estimate: 120 * 1024, running: null };
+  const base = { stops: 2, manifest: null, why: null, estimate: 120 * 1024, running: null };
   const none = packWords(/** @type {any} */ (base), 'unknown');
   assert.equal(none.button, 'Download (about 120 kB)');
   assert.match(none.lines[0], /^For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the itinerary's 2 stops and along the way between them\./);
   assert.equal(none.lines[1], "Downloading sends the itinerary's places to OpenStreetMap and Wikipedia, and place names to Wikivoyage.");
   assert.deepEqual(packWords(/** @type {any} */ ({ ...base, stops: 0 }), 'wifi'), { lines: ['The pack follows the itinerary: once the itinerary has places, it can be downloaded here.'], button: null });
   assert.deepEqual(packWords(/** @type {any} */ ({ ...base, running: { done: 2, total: 6, label: 'Wikipedia near Nepenthe' } }), 'wifi'), { lines: ['Downloading 3 of 6: Wikipedia near Nepenthe…'], button: null });
-  const manifest = { at: new Date().toISOString(), bytes: 1_300_000, places: 1200, summaries: 40, files: [{ kind: 'osm', items: 1300 }, { kind: 'wikipedia', items: 45 }, { kind: 'wikivoyage', items: 1 }], guides: [{ title: 'Big Sur' }], failed: [], full: false, stopped: false };
+  const manifest = { at: new Date().toISOString(), bytes: 1_300_000, places: 1200, summaries: 40, files: [{ kind: 'osm', items: 1300 }, { kind: 'wikipedia', items: 45 }, { kind: 'wikivoyage', items: 1 }], guides: [{ title: 'Big Sur', also: [] }], voyage: ['en'], failed: [], stopped: false };
   const done = packWords(/** @type {any} */ ({ ...base, manifest }), 'wifi');
   assert.equal(done.button, null);
   assert.equal(done.lines[0], 'Downloaded just now · 1.2 MB · 1,200 places, 40 Wikipedia summaries, 1 Wikivoyage guide.');
@@ -1066,15 +1066,15 @@ test('the Offline pack panel: the estimate before anything is downloaded, then w
   assert.equal(failed.button, 'Try again (about 120 kB)');
   assert.ok(failed.lines.includes("One part didn't download: OpenStreetMap around Nepenthe (overpass-api.de answered 504)."));
   assert.equal(packWords(/** @type {any} */ ({ ...base, manifest: { ...manifest, stopped: true }, why: 'missing' }), 'wifi').button, 'Download the rest (about 120 kB)');
-  assert.ok(packWords(/** @type {any} */ ({ ...base, manifest: { ...manifest, full: true } }), 'wifi').lines.includes('It stopped at its 20 MB limit, so it holds only the start of the itinerary.'));
+  // No limit, and nothing left out: no line says so, whatever an older annai's manifest kept.
+  assert.deepEqual(packWords(/** @type {any} */ ({ ...base, manifest: { ...manifest, full: true } }), 'wifi'), done);
   assert.match(packWords(/** @type {any} */ ({ ...base, manifest: { ...manifest, places: 1, summaries: 1, guides: [] } }), 'wifi').lines[0], / · 1 place, 1 Wikipedia summary, 0 Wikivoyage guides\.$/);
-  assert.ok(packWords(/** @type {any} */ ({ ...base, manifest, cut: 3 }), 'wifi').lines.includes('This itinerary is longer than a pack holds, so some of the way between stops is left out.'));
   assert.equal(packWords(/** @type {any} */ ({ ...base, manifest, why: 'old' }), 'wifi').button, 'Update (about 120 kB)');
 });
 
 test("a pack whose manifest doesn't say when it was downloaded says only that it was, never \"just now\"", () => {
-  const base = { stops: 2, cut: 0, why: null, estimate: 120 * 1024, running: null };
-  const manifest = { at: '', bytes: 1_300_000, places: 1200, summaries: 40, files: [], guides: [], failed: [], full: false, stopped: false };
+  const base = { stops: 2, why: null, estimate: 120 * 1024, running: null };
+  const manifest = { at: '', bytes: 1_300_000, places: 1200, summaries: 40, files: [], guides: [], voyage: ['en'], failed: [], stopped: false };
   assert.equal(packWords(/** @type {any} */ ({ ...base, manifest }), 'wifi').lines[0], 'Downloaded · 1.2 MB · 1,200 places, 40 Wikipedia summaries, 0 Wikivoyage guides.');
   assert.equal(downloadedWhen(''), '');
   assert.equal(downloadedWhen('not a time'), '');

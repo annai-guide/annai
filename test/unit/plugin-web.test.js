@@ -409,7 +409,8 @@ test("the floor's time starts with its search, before it reads the settings: a s
       return init.signal.aborted ? Promise.reject(init.signal.reason) : hang(init);
     }).then(() => null, (/** @type {any} */ e) => e);
   });
-  assert.ok(stopped.length > 0 && stopped.every(Boolean), 'the time had run out when the settings came');
+  // The time had run out when the settings came: no request goes out (Wikimedia's turn and Nominatim's turn see the time is up first).
+  assert.ok(stopped.every(Boolean), 'none with time left');
   assert.match(failure?.message, /didn't answer in time/);
 });
 
@@ -422,6 +423,61 @@ test("the floor's addresses: a Wikivoyage guide's keeps its title as written wit
   const rows = await search(floorOf(['en']), (url) => (url.includes('wikivoyage') && url.includes('list=search') ? found('Cambria (California)') : url.includes('wikivoyage')
     ? new Response(JSON.stringify({ query: { pages: { 1: { extract: 'Cambria is a seaside town on the coast.' } } } })) : url.includes('nominatim') ? new Response('[]') : found('Cambria, California (town)')));
   assert.deepEqual(rows.map((r) => r.url), ['https://en.wikivoyage.org/wiki/Cambria_%28California%29', 'https://en.wikipedia.org/wiki/Cambria,_California_%28town%29']);
+});
+
+test("the floor's guide: English's best match and, by the titles it links to, its page in each of the traveller's other editions that has one, a row each in the reading order; an edition's search is never used", async () => {
+  // English Wikivoyage's real answer shape (2026-11-20): the page with its links, formatversion 2.
+  const kyoto = { batchcomplete: true, query: { pages: [{ pageid: 18579, ns: 0, title: 'Kyoto', extract: 'Kyoto was the capital of Japan for over a millennium.\nKiyomizu-dera, the wooden temple on the hill, opens at six.', langlinks: [{ lang: 'de', title: 'Kyōto' }, { lang: 'ja', title: '京都市' }, { lang: 'zh', title: '京都' }] }] } };
+  const ja = { batchcomplete: true, query: { pages: [{ ns: 0, title: '京都市', extract: '京都市は京都府の府庁所在地で、千年にわたって都だった。\n清水寺は東山にある寺で、朝六時に開門する。' }] } };
+  /** @type {string[]} */
+  const asked = [];
+  const answer = (/** @type {string} */ url) => {
+    const u = new URL(url);
+    asked.push(`${u.hostname} ${u.searchParams.get('list') ?? u.searchParams.get('prop')} ${u.searchParams.get('srsearch') ?? u.searchParams.get('titles')}`);
+    if (u.hostname === 'en.wikivoyage.org') return new Response(JSON.stringify(u.searchParams.get('list') === 'search' ? { query: { search: [{ title: 'Kyoto' }] } } : kyoto));
+    if (u.hostname === 'ja.wikivoyage.org') return new Response(JSON.stringify(ja));
+    return url.includes('nominatim') ? new Response('[]') : nothing();
+  };
+  const rows = await search(floorOf(['ja']), answer, 'kiyomizu temple');
+  assert.deepEqual(rows.map((r) => [r.title, r.url]), [['京都市 (Wikivoyage)', 'https://ja.wikivoyage.org/wiki/京都市'], ['Kyoto (Wikivoyage)', 'https://en.wikivoyage.org/wiki/Kyoto']]);
+  assert.equal(rows[1].snippet, 'Kiyomizu-dera, the wooden temple on the hill, opens at six.', "English's line that shares the query's words");
+  assert.equal(rows[0].snippet, '京都市は京都府の府庁所在地で、千年にわたって都だった。 清水寺は東山にある寺で、朝六時に開門する。', 'none shares them: its first lines');
+  const voyage = asked.filter((a) => a.includes('wikivoyage'));
+  assert.deepEqual(voyage, ['en.wikivoyage.org search kiyomizu temple', 'en.wikivoyage.org extracts|langlinks Kyoto', 'ja.wikivoyage.org extracts 京都市'], 'no search of Japanese Wikivoyage, and nothing of Chinese, which is not listed');
+  // Japanese's page not coming: English's row all the same.
+  const down = await search(floorOf(['ja']), (url) => (url.includes('ja.wikivoyage') ? new Response('', { status: 503 }) : answer(url)), 'kiyomizu temple');
+  assert.deepEqual(down.map((r) => r.title), ['Kyoto (Wikivoyage)']);
+});
+
+test("the floor takes Wikimedia's turns, 3 requests at once: Wikipedia's editions first, in the reading order, then the guide, which waits for a turn", async () => {
+  // Chinese, Japanese and English: three editions' searches and the guide's, four requests to Wikimedia; the fourth waits.
+  /** @type {string[]} */
+  const started = [];
+  /** @type {(() => void)[]} */
+  const finish = [];
+  const answer = (/** @type {string} */ url, /** @type {any} */ init) => {
+    if (url.includes('nominatim')) return new Response('[]');
+    started.push(new URL(url).hostname);
+    return new Promise((resolve, reject) => {
+      finish.push(() => resolve(nothing()));
+      init.signal.addEventListener('abort', () => reject(init.signal.reason), { once: true });
+    });
+  };
+  const done = search(floorOf(['zh', 'ja']), answer, 'kiyomizu temple opening hours');
+  await new Promise((r) => setTimeout(r, 30));
+  assert.deepEqual(started, ['zh.wikipedia.org', 'ja.wikipedia.org', 'en.wikipedia.org'], 'three at once, the editions first');
+  finish.shift()?.();
+  await new Promise((r) => setTimeout(r, 30));
+  assert.deepEqual(started.slice(3), ['en.wikivoyage.org'], 'one ends: the guide has its turn, before the next try of the one that ended');
+  // The rest answer one at a time, each as it is asked: three tries an edition and the guide's three searches, 12 in all, never more than 3
+  // waiting at once; then the floor ends with nothing found.
+  for (let k = 1; k < 12; k++) {
+    for (let wait = 0; !finish.length && wait < 200; wait++) await new Promise((r) => setTimeout(r, 2));
+    assert.ok(finish.length > 0 && finish.length <= 3, `request ${k + 1}: ${finish.length} waiting`);
+    finish.shift()?.();
+  }
+  assert.deepEqual(await done, []);
+  assert.equal(started.length, 12);
 });
 
 test('web_search: Jina Search goes first when its key is set; without the key it is passed over and the free services answer', async () => {

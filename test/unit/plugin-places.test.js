@@ -688,6 +688,32 @@ test("nearby reads Wikipedia in each of the traveller's languages and English: e
   assert.ok(zh.includes('Kiyomizu-dera'));
 });
 
+test("nearby with four editions asks Wikimedia three at once, as it asks: the fourth when one has answered (Wikimedia's published rule)", async () => {
+  const { run, asked, ws } = await setup();
+  await speaks(ws, ['ja', 'zh', 'de']);
+  /** @type {(() => void)[]} */
+  const answer = [];
+  let most = 0;
+  const done = run('nearby', KIYOMIZU, (url, init) => {
+    if (url.includes('overpass')) return { elements: [] };
+    return new Promise((resolve, reject) => {
+      answer.push(() => resolve(geo()));
+      most = Math.max(most, answer.length);
+      init.signal.addEventListener('abort', () => reject(init.signal.reason), { once: true });
+    });
+  });
+  for (let wait = 0; answer.length < 3 && wait < 500; wait++) await new Promise((r) => setTimeout(r, 2));
+  await new Promise((r) => setTimeout(r, 20));
+  const wiki = () => asked.filter((a) => a.url.includes('wikipedia.org')).map((a) => new URL(a.url).hostname);
+  assert.deepEqual(wiki(), ['ja.wikipedia.org', 'zh.wikipedia.org', 'de.wikipedia.org']);
+  answer.shift()?.();
+  for (let wait = 0; wiki().length < 4 && wait < 500; wait++) await new Promise((r) => setTimeout(r, 2));
+  assert.deepEqual(wiki(), ['ja.wikipedia.org', 'zh.wikipedia.org', 'de.wikipedia.org', 'en.wikipedia.org']);
+  while (answer.length) answer.shift()?.();
+  await done;
+  assert.equal(most, 3);
+});
+
 /**
  * A trip's offline pack at Kiyomizu-dera: Wikipedia's real answers as the pack holds them (a part's 20 nearest: two overlapping Japanese parts and one
  * English), and OpenStreetMap's 5 km around, with some places in it. @param {any} ws @param {string} trip @param {{ id: number, lat: number, lon: number, tags: any }[]} [places]
@@ -836,10 +862,109 @@ test('guide: the introduction and the sections, with the article\'s address (CC 
   const { run } = await setup();
   const extract = 'Big Sur is a region.\n\n== Understand ==\nRugged coast.\n\n== Eat ==\nNepenthe.\n\n=== Budget ===\nDeli.\n\n== Sleep ==\nCamp.';
   const page = { query: { pages: { 1: { title: 'Big Sur', extract } } } };
-  assert.equal(await run('guide', { place: 'Big Sur' }, () => page), 'Big Sur (Wikivoyage) https://en.wikivoyage.org/wiki/Big_Sur\n\nBig Sur is a region.\n\nSections: Understand, Eat, Budget, Sleep. Ask for one with section.');
-  assert.equal(await run('guide', { place: 'Big Sur', section: 'eat' }, () => page), 'Big Sur: Eat (Wikivoyage) https://en.wikivoyage.org/wiki/Big_Sur\n\nNepenthe.\n\n=== Budget ===\nDeli.');
+  assert.equal(await run('guide', { place: 'Big Sur' }, () => page), 'Big Sur (English Wikivoyage) https://en.wikivoyage.org/wiki/Big_Sur\n\nBig Sur is a region.\n\nSections: Understand, Eat, Budget, Sleep. Ask for one with section.');
+  assert.equal(await run('guide', { place: 'Big Sur', section: 'eat' }, () => page), 'Big Sur: Eat (English Wikivoyage) https://en.wikivoyage.org/wiki/Big_Sur\n\nNepenthe.\n\n=== Budget ===\nDeli.');
+  assert.equal(await run('guide', { place: 'Big Sur', section: 'Nightlife' }, () => page), 'Big Sur (English Wikivoyage) has no section "Nightlife". Its sections: Understand, Eat, Budget, Sleep.');
   const missing = await run('guide', { place: 'Bigg Sur' }, (url) => (url.includes('opensearch') ? ['Bigg Sur', ['Big Sur', 'Big Sur River']] : { query: { pages: { '-1': { title: 'Bigg Sur', missing: '' } } } }));
   assert.equal(missing, 'Wikivoyage has no article called "Bigg Sur". Close ones: Big Sur, Big Sur River.');
+});
+
+/**
+ * Wikivoyage's editions as their real answers are shaped (2026-11-20; the texts cut short and made up): English's Kyoto with its links
+ * (de, ja, zh), Japanese's 京都市 (Japanese has no "Kyoto", and its 京都 is a disambiguation page), Chinese's 京都, 東京 (asked as 东京, converted)
+ * and 臺北 (台北 a redirect to it).
+ */
+const VOYAGE = /** @type {Record<string, Record<string, any>>} */ ({
+  en: { Kyoto: { pageid: 18579, ns: 0, title: 'Kyoto', extract: 'Kyoto was the capital of Japan for over a millennium.\n\n== Understand ==\nTemples.\n\n== See ==\nKiyomizu-dera.', langlinks: [{ lang: 'de', title: 'Kyōto' }, { lang: 'ja', title: '京都市' }, { lang: 'zh', title: '京都' }] } },
+  ja: {
+    京都市: { ns: 0, title: '京都市', extract: '京都市は京都府の府庁所在地。\n\n== 分かる ==\n千年の都。\n\n== 観る ==\n清水寺。', langlinks: [{ lang: 'en', title: 'Kyoto' }, { lang: 'zh', title: '京都' }] },
+    京都: { ns: 0, title: '京都', extract: '京都は次のどれか。', pageprops: { disambiguation: '' } },
+  },
+  zh: {
+    京都: { ns: 0, title: '京都', extract: '京都是日本的古都。\n\n== 了解 ==\n千年古都。', langlinks: [{ lang: 'en', title: 'Kyoto' }, { lang: 'ja', title: '京都市' }] },
+    東京: { ns: 0, title: '東京', extract: '東京是日本的首都。' },
+    臺北: { ns: 0, title: '臺北', extract: '臺北是臺灣的首都。', langlinks: [{ lang: 'en', title: 'Taipei' }] },
+  },
+});
+/** A Wikivoyage edition's answer to the guide's query, by its host and title, converting and following redirects as MediaWiki does. @param {string} url */
+function voyage(url) {
+  const u = new URL(url);
+  const edition = u.hostname.split('.')[0];
+  if (u.searchParams.get('action') === 'opensearch') return [u.searchParams.get('search'), []];
+  let title = String(u.searchParams.get('titles'));
+  const query = /** @type {any} */ ({});
+  if (edition === 'zh' && u.searchParams.get('converttitles') && title === '东京') query.converted = [{ from: (title), to: (title = '東京') }];
+  if (edition === 'zh' && title === '台北') query.redirects = [{ from: title, to: (title = '臺北') }];
+  return { batchcomplete: true, query: { ...query, pages: [VOYAGE[edition]?.[title] ?? { ns: 0, title, missing: true }] } };
+}
+const voyageHosts = (/** @type {{ url: string }[]} */ asked) => asked.filter((a) => a.url.includes('wikivoyage')).map((a) => `${new URL(a.url).hostname} ${new URL(a.url).searchParams.get('titles')}`);
+
+test("guide: English's and each of the traveller's editions' guide in one answer, a part each in the reading order, every edition but the first asked by the title English links to", async () => {
+  const { run, asked, ws } = await setup();
+  await speaks(ws, ['ja']);
+  const out = await run('guide', { place: 'Kyoto' }, voyage);
+  assert.equal(out, [
+    '京都市 (Japanese Wikivoyage) https://ja.wikivoyage.org/wiki/京都市\n\n京都市は京都府の府庁所在地。\n\nSections: 分かる, 観る. Ask for one with section.',
+    'Kyoto (English Wikivoyage) https://en.wikivoyage.org/wiki/Kyoto\n\nKyoto was the capital of Japan for over a millennium.\n\nSections: Understand, See. Ask for one with section.',
+  ].join('\n\n'));
+  assert.deepEqual(voyageHosts(asked), ['en.wikivoyage.org Kyoto', 'ja.wikivoyage.org 京都市']);
+  // English's text and its links in one request (MediaWiki's paraminfo: lllimit up to 500, and Kyoto's 20 links came in one answer).
+  const english = new URL(asked[0].url).searchParams;
+  assert.deepEqual([english.get('prop'), english.get('lllimit'), english.get('redirects'), english.get('formatversion')], ['extracts|langlinks|pageprops', '500', '1', '2']);
+  // A section is each edition's own: the same section in two editions is two calls.
+  assert.equal(await run('guide', { place: 'Kyoto', section: 'see' }, voyage), 'Kyoto: See (English Wikivoyage) https://en.wikivoyage.org/wiki/Kyoto\n\nKiyomizu-dera.');
+  assert.equal(await run('guide', { place: 'Kyoto', section: '観る' }, voyage), '京都市: 観る (Japanese Wikivoyage) https://ja.wikivoyage.org/wiki/京都市\n\n清水寺。');
+  assert.equal(await run('guide', { place: 'Kyoto', section: 'Nightlife' }, voyage),
+    '京都市 (Japanese Wikivoyage) has no section "Nightlife". Its sections: 分かる, 観る.\nKyoto (English Wikivoyage) has no section "Nightlife". Its sections: Understand, See.');
+});
+
+test("guide: with no English page by the name, the next edition by it (its variants converted) anchors the rest; 京都, a disambiguation page in Japanese, passes on to Chinese", async () => {
+  const { run, asked, ws } = await setup();
+  await speaks(ws, ['ja', 'zh-Hant']);
+  const out = await run('guide', { place: '京都' }, voyage);
+  assert.deepEqual(out.split('\n\n').filter((l) => /wikivoyage\.org\/wiki/.test(l)), [
+    '京都市 (Japanese Wikivoyage) https://ja.wikivoyage.org/wiki/京都市',
+    '京都 (Chinese Wikivoyage) https://zh.wikivoyage.org/wiki/京都',
+    'Kyoto (English Wikivoyage) https://en.wikivoyage.org/wiki/Kyoto',
+  ]);
+  assert.deepEqual(voyageHosts(asked).slice(0, 3), ['en.wikivoyage.org 京都', 'ja.wikivoyage.org 京都', 'zh.wikivoyage.org 京都']);
+  assert.deepEqual(voyageHosts(asked).slice(3).sort(), ['en.wikivoyage.org Kyoto', 'ja.wikivoyage.org 京都市']);
+  assert.ok(asked.slice(1, 3).every((a) => new URL(a.url).searchParams.get('converttitles') === '1'));
+  // English's missing, Japanese's anchoring by its own name.
+  asked.length = 0;
+  assert.match(await run('guide', { place: '京都市' }, voyage), /^京都市 \(Japanese Wikivoyage\)[\s\S]*\n\n京都 \(Chinese Wikivoyage\)[\s\S]*\n\nKyoto \(English Wikivoyage\)/);
+  assert.deepEqual(voyageHosts(asked).slice(0, 2), ['en.wikivoyage.org 京都市', 'ja.wikivoyage.org 京都市']);
+  assert.deepEqual(voyageHosts(asked).slice(2).sort(), ['en.wikivoyage.org Kyoto', 'zh.wikivoyage.org 京都']);
+  // Chinese's names: a variant converted (东京 to 東京) and a redirect (台北 to 臺北), each anchoring.
+  await speaks(ws, ['zh']);
+  assert.match(await run('guide', { place: '东京' }, voyage), /^東京 \(Chinese Wikivoyage\) https:\/\/zh\.wikivoyage\.org\/wiki\/東京\n\n東京是日本的首都。$/);
+  assert.match(await run('guide', { place: '台北' }, voyage), /^臺北 \(Chinese Wikivoyage\)/);
+});
+
+test("guide: nothing in any edition is today's line with English's close names; an edition that fails is named, and the others come; English failing with no other page is the failure", async () => {
+  const { run, ws } = await setup();
+  await speaks(ws, ['ja']);
+  const none = await run('guide', { place: 'Atlantis' }, (url) => (url.includes('opensearch') ? ['Atlantis', ['Atlanta', 'Atlantic City']] : voyage(url)));
+  assert.equal(none, 'Wikivoyage has no article called "Atlantis". Close ones: Atlanta, Atlantic City.');
+  const jaDown = await run('guide', { place: 'Kyoto' }, (url) => (url.includes('ja.wikivoyage') ? new Response('', { status: 503 }) : voyage(url)));
+  assert.match(jaDown, /^Kyoto \(English Wikivoyage\) [\s\S]*\nja\.wikivoyage\.org didn't answer, so this has no part from it\.$/);
+  assert.doesNotMatch(jaDown, /Japanese Wikivoyage/);
+  const enDown = await run('guide', { place: '京都市' }, (url) => (url.includes('en.wikivoyage') ? new Response('', { status: 503 }) : voyage(url)));
+  assert.match(enDown, /^京都市 \(Japanese Wikivoyage\) [\s\S]*\nen\.wikivoyage\.org didn't answer, so this has no part from it\.$/);
+  await assert.rejects(run('guide', { place: 'Kyoto' }, (url) => (url.includes('en.wikivoyage') ? new Response('', { status: 503 }) : voyage(url))), /en\.wikivoyage\.org answered 503/);
+  // Both down, with nothing found: named, after the no-article line.
+  const both = await run('guide', { place: 'Atlantis' }, (url) => (url.includes('ja.wikivoyage') ? new Response('', { status: 503 }) : url.includes('opensearch') ? ['Atlantis', []] : voyage(url)));
+  assert.equal(both, 'Wikivoyage has no article called "Atlantis".\nja.wikivoyage.org didn\'t answer, so this has no part from it.');
+});
+
+test("guide asks only the 24 Wikivoyage hosts: a language without an edition (Korean, Cantonese) is never asked, English always is", async () => {
+  const { run, asked, ws } = await setup();
+  await speaks(ws, ['ko', 'yue', 'zh-Hant']);
+  await run('guide', { place: 'Kyoto' }, voyage);
+  assert.deepEqual([...new Set(asked.map((a) => new URL(a.url).hostname))].sort(), ['en.wikivoyage.org', 'zh.wikivoyage.org']);
+  asked.length = 0;
+  await run('guide', { place: 'Atlantis' }, voyage);
+  assert.deepEqual([...new Set(asked.map((a) => new URL(a.url).hostname))].sort(), ['en.wikivoyage.org', 'zh.wikivoyage.org']);
 });
 
 test('nearby: toilets and parking count without a name; sights and food are asked for with one, matched whole', async () => {
@@ -930,18 +1055,36 @@ test("past the pack's edge nearby asks the services, and the pack fills in for a
 test('guide reads the pack first: by its title, without "(California)", or by a name that led to it; a section too', async () => {
   const { run, ws, trip } = await setup({ trip: true });
   await mcwayPack(ws, /** @type {string} */ (trip));
-  assert.equal(await run('guide', { place: 'Cambria' }, nothing), 'Cambria (California) (Wikivoyage, offline pack of 2026-10-16) https://en.wikivoyage.org/wiki/Cambria_%28California%29\n\nCambria is a town.\n\nSections: See. Ask for one with section.');
-  assert.equal(await run('guide', { place: 'cambria, california', section: 'see' }, nothing), 'Cambria (California): See (Wikivoyage, offline pack of 2026-10-16) https://en.wikivoyage.org/wiki/Cambria_%28California%29\n\nMoonstone Beach.');
-  assert.match(await run('guide', { place: 'Hearst Castle' }, nothing), /^San Simeon \(Wikivoyage, offline pack of 2026-10-16\)/);
+  assert.equal(await run('guide', { place: 'Cambria' }, nothing), 'Cambria (California) (English Wikivoyage, offline pack of 2026-10-16) https://en.wikivoyage.org/wiki/Cambria_%28California%29\n\nCambria is a town.\n\nSections: See. Ask for one with section.');
+  assert.equal(await run('guide', { place: 'cambria, california', section: 'see' }, nothing), 'Cambria (California): See (English Wikivoyage, offline pack of 2026-10-16) https://en.wikivoyage.org/wiki/Cambria_%28California%29\n\nMoonstone Beach.');
+  assert.match(await run('guide', { place: 'Hearst Castle' }, nothing), /^San Simeon \(English Wikivoyage, offline pack of 2026-10-16\)/);
   const page = { query: { pages: { 1: { title: 'Big Sur', extract: 'Big Sur is a region.' } } } };
-  assert.equal(await run('guide', { place: 'Big Sur' }, () => page), 'Big Sur (Wikivoyage) https://en.wikivoyage.org/wiki/Big_Sur\n\nBig Sur is a region.');
+  assert.equal(await run('guide', { place: 'Big Sur' }, () => page), 'Big Sur (English Wikivoyage) https://en.wikivoyage.org/wiki/Big_Sur\n\nBig Sur is a region.');
+});
+
+test("guide reads the pack first in each of the traveller's editions it holds, by any edition's title, in the reading order; an edition it doesn't hold isn't asked online", async () => {
+  const { run, ws, trip } = await setup({ trip: true });
+  const id = /** @type {string} */ (trip);
+  await mcwayPack(ws, id);
+  await ws.write(id, '/offline/wikivoyage/g1.ja.json', JSON.stringify({ title: 'カンブリア', text: 'カンブリアは海辺の町。\n\n== 観る ==\nムーンストーン・ビーチ。' }), { author: 'system' });
+  const m = JSON.parse(String(await ws.readText(id, '/offline/pack.json')));
+  m.guides[0].also = [{ edition: 'ja', title: 'カンブリア', path: '/offline/wikivoyage/g1.ja.json' }];
+  await ws.write(id, '/offline/pack.json', JSON.stringify(m), { author: 'system' });
+  await speaks(ws, ['ja']);
+  assert.equal(await run('guide', { place: 'カンブリア' }, nothing), [
+    'カンブリア (Japanese Wikivoyage, offline pack of 2026-10-16) https://ja.wikivoyage.org/wiki/カンブリア\n\nカンブリアは海辺の町。\n\nSections: 観る. Ask for one with section.',
+    'Cambria (California) (English Wikivoyage, offline pack of 2026-10-16) https://en.wikivoyage.org/wiki/Cambria_%28California%29\n\nCambria is a town.\n\nSections: See. Ask for one with section.',
+  ].join('\n\n'));
+  // Chinese listed too, which the pack doesn't hold: what it holds, with no request (it comes with the pack's next download).
+  await speaks(ws, ['zh', 'ja']);
+  assert.match(await run('guide', { place: 'Cambria', section: '観る' }, nothing), /^カンブリア: 観る \(Japanese Wikivoyage, offline pack of 2026-10-16\)/);
 });
 
 test('a broken pack is no pack: the tools go online', async () => {
   const { run, ws, trip, asked } = await setup({ trip: true });
   await ws.write(/** @type {string} */ (trip), '/offline/pack.json', '{"format":1,', { author: 'system', type: 'text/plain' });
   const page = { query: { pages: { 1: { title: 'Big Sur', extract: 'Big Sur is a region.' } } } };
-  assert.equal(await run('guide', { place: 'Big Sur' }, () => page), 'Big Sur (Wikivoyage) https://en.wikivoyage.org/wiki/Big_Sur\n\nBig Sur is a region.');
+  assert.equal(await run('guide', { place: 'Big Sur' }, () => page), 'Big Sur (English Wikivoyage) https://en.wikivoyage.org/wiki/Big_Sur\n\nBig Sur is a region.');
   await run('nearby', McWay, (url) => (url.includes('overpass') ? { elements: [] } : geo()));
   assert.ok(asked.some((a) => a.url.includes('overpass')));
 });
@@ -981,7 +1124,7 @@ test('a pack whose manifest has no download time says the day of its newest part
   assert.match(await run('nearby', { ...McWay, radius: 1000, kinds: ['sights'] }, nothing), /\nFrom the offline pack \(downloaded 2026-10-18\)\.$/);
   await ws.write(id, '/offline/pack.json', JSON.stringify({ ...m, at: '' }), { author: 'system' });
   assert.match(await run('nearby', { ...McWay, radius: 1000, kinds: ['sights'] }, nothing), /\nFrom the offline pack\.$/);
-  assert.match(await run('guide', { place: 'Cambria' }, nothing), /^Cambria \(California\) \(Wikivoyage, offline pack\) https:\/\/en\.wikivoyage\.org\/wiki\/Cambria_%28California%29\n/);
+  assert.match(await run('guide', { place: 'Cambria' }, nothing), /^Cambria \(California\) \(English Wikivoyage, offline pack\) https:\/\/en\.wikivoyage\.org\/wiki\/Cambria_%28California%29\n/);
 });
 
 test("nearby online takes an Overpass answer that says \"runtime error\" as no answer: the next server (the VK switch on), then the pack, as for any failure", async () => {

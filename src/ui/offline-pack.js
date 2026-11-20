@@ -2,7 +2,7 @@ import { h, t, plural, linkIn, messageOf } from './dom.js';
 import { size, relTime, num, list, sentences, sentenceGap } from './format.js';
 import { connectionOf } from './platform.js';
 import { explainStorageFull } from './storage-full.js';
-import { MAX_BYTES, partWords, failWords } from '../core/pack/download.js';
+import { partWords, failWords } from '../core/pack/download.js';
 
 /**
  * The trip's Offline pack panel and the Itinerary's line (spec §11.5): what the pack holds, about how much
@@ -49,8 +49,6 @@ export function packWords(s, connection) {
   const when = downloadedWhen(m.at);
   const lines = [when ? t`Downloaded ${when} · ${size(m.bytes)} · ${holds(m)}.` : t`Downloaded · ${size(m.bytes)} · ${holds(m)}.`];
   if (m.guides.length) lines.push(t`Guides: ${list(m.guides.map((g) => g.title), 'plain')}.`);
-  if (m.full) lines.push(t`It stopped at its ${size(MAX_BYTES)} limit, so it holds only the start of the itinerary.`);
-  if (s.cut) lines.push(t`This itinerary is longer than a pack holds, so some of the way between stops is left out.`);
   if (m.failed.length) {
     // Which part and why, from what the failure kept; one kept before then, in the English it kept.
     const f = m.failed[0];

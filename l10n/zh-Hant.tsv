@@ -797,17 +797,17 @@ sejc5h	ok	{0} was switched off after errors.	{0} 因多次出錯已被關閉。	
 xzxdhp	ok	The plugin didn't provide a model provider.	該外掛程式沒有提供模型供應商。	src/core/llm/service.js:323	Note: said of a plugin.
 2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	該外掛程式不是 annai 官方的。請從原來的來源重新安裝。	src/core/llm/service.js:402	
 1k9wkd0	ok	The plugin it names doesn't provide models, so it wasn't installed.	指定的外掛程式不提供模型，所以沒有安裝。	src/core/llm/service.js:411	Note: said after the provider's name ("OpenRouter: …"); the plugin its record names, with no 它.
-3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:73	{0} = p.title
-1rb0o7n	ok	OpenStreetMap around {0}	{0} 周邊的 OpenStreetMap	src/core/pack/download.js:75	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
-hdsgog	ok	OpenStreetMap between {0} and {1}	{0} 與 {1} 之間的 OpenStreetMap	src/core/pack/download.js:75	{0} = a; {1} = b
-1ff3ec8	ok	Wikipedia near {0}	{0} 附近的 Wikipedia	src/core/pack/download.js:76	{0} = a
-i9ok5g	ok	Wikipedia between {0} and {1}	{0} 與 {1} 之間的 Wikipedia	src/core/pack/download.js:76	{0} = a; {1} = b
-1qn6l15	ok	{0} didn't answer in time.	{0} 回應逾時。	src/core/pack/download.js:82	{0} = s.where
-16rip5y	ok	{0} stopped early: {1}.	{0} 中途停止了：{1}。	src/core/pack/download.js:83	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
-zy85n2	draft	every server was left for the rest of the run	本次下載不再向任何伺服器請求	src/core/pack/download.js:85	
-cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMap 沒有回應（{0}）。	src/core/pack/download.js:86	{0} = why.replace(/[.。]$/u, '')
-rhruvr	ok	{0} said: {1}.	{0} 回覆：{1}。	src/core/pack/download.js:88	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
-1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyage 沒有傳來 {0} 的內文。	src/core/pack/download.js:89	{0} = s.title
+3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:77	{0} = p.title
+1rb0o7n	ok	OpenStreetMap around {0}	{0} 周邊的 OpenStreetMap	src/core/pack/download.js:79	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
+hdsgog	ok	OpenStreetMap between {0} and {1}	{0} 與 {1} 之間的 OpenStreetMap	src/core/pack/download.js:79	{0} = a; {1} = b
+1ff3ec8	ok	Wikipedia near {0}	{0} 附近的 Wikipedia	src/core/pack/download.js:80	{0} = a
+i9ok5g	ok	Wikipedia between {0} and {1}	{0} 與 {1} 之間的 Wikipedia	src/core/pack/download.js:80	{0} = a; {1} = b
+1qn6l15	ok	{0} didn't answer in time.	{0} 回應逾時。	src/core/pack/download.js:86	{0} = s.where
+16rip5y	ok	{0} stopped early: {1}.	{0} 中途停止了：{1}。	src/core/pack/download.js:87	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
+zy85n2	draft	every server was left for the rest of the run	本次下載不再向任何伺服器請求	src/core/pack/download.js:89	
+cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMap 沒有回應（{0}）。	src/core/pack/download.js:90	{0} = why.replace(/[.。]$/u, '')
+rhruvr	ok	{0} said: {1}.	{0} 回覆：{1}。	src/core/pack/download.js:92	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
+1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyage 沒有傳來 {0} 的內文。	src/core/pack/download.js:93	{0} = s.title
 aaicx8	ok	{0} couldn't be checked: {1}	無法檢查 {0}：{1}	src/core/package-updates.js:40	{0} = s.name ?? id; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 trd90h	ok	It wasn't installed from an address, so annai has nowhere to look for an update.	不是從網址安裝的，所以無法檢查更新。	src/core/package-updates.js:67	
 2olq9a	ok	The address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	這個網址現在提供的是另一個套件（{0}），因此沒有更新。如果想用那個套件，請移除這個，再安裝那個。	src/core/package-updates.js:71	{0} = pkg.id; Note: Remove → 移除, as annai's Remove buttons say.
@@ -1007,7 +1007,7 @@ elkw42	ok	The voice's audio couldn't be played.	無法播放這個聲音的音�
 9gdjo3	ok	The browser voice couldn't speak ({0}).	瀏覽器聲音無法朗讀（{0}）。	src/plugins/voice-browser/index.js:585	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
 1mrk9hl	ok	The microphone stopped.	麥克風已停止。	src/plugins/voice-browser/index.js:650	
 1l4zitw	ok	Phone dictation stopped ({0}).	手機語音輸入已停止（{0}）。	src/plugins/voice-browser/index.js:755	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音聲入力 / 手機語音輸入); {0} is the browser's error code, such as network.
-1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia 和 Nominatim	src/plugins/web/free.js:128	
+1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia 和 Nominatim	src/plugins/web/free.js:134	
 scnz2y	ok	Web tools	網頁工具	src/plugins/web/index.js:13	Note: Web as its tool group is named in Settings → Tools (Web / 網頁).
 eob60g	ok	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetch 可讀取任何網頁，遇到不允許網頁應用程式讀取的網站時，改用 Jina Reader 或 Exa；web_search 依設定 → 工具中的順序使用各搜尋供應商，先用免費的。	src/plugins/web/index.js:16	
 b4g7z9	ok	needs a key (Settings → Tools)	需要金鑰（設定 → 工具）	src/plugins/web/index.js:191	
@@ -1056,7 +1056,7 @@ rcp6ga	ok	A photo was kept as it is	照片已按原圖儲存	src/ui/composer.js:
 1waossz	ok	Places nearby and along the itinerary, for Shiori's nearby tool and the offline pack, found through Overpass at overpass-api.de, and at maps.mail.ru, run by VK, while Settings → Tools has it on.	附近和行程沿途的地點，供 Shiori 的 nearby 工具和離線資料包使用，透過 Overpass 查詢（overpass-api.de）；在設定 → 工具中勾選時，也會透過 VK 營運的 maps.mail.ru 查詢。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
 g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	依名稱查詢地點，或依位置查出地名，供 Shiori 的 geocode 和 reverse 工具使用；作為免費搜尋的最後備案，還會查詢地點的官網。annai 遵照其使用政策，每秒最多請求一次。	src/ui/credits.js:26	
 oa9m21	draft	Articles about places nearby, and their summaries in the offline pack, from the editions in the languages you speak and in English. Each article Shiori reads comes with its address. Free search's last resort, on whatever you tick, sends it the words searched.	附近地點的相關文章，以及離線資料包中的文章摘要，來自你說的語言和英文的各語言版本。Shiori 讀到的每篇文章都附帶連結。免費搜尋的最後備案不受勾選影響，會把搜尋字詞傳給 Wikipedia。	src/ui/credits.js:33	Note: Settings → About, Wikipedia's credit. Since 2026-11-19 it names the editions read: the languages you speak, and English.
-1ufrhy7	ok	Travel guides, for Shiori's guide tool and the offline pack, and where free search falls back to.	旅遊指南，供 Shiori 的 guide 工具和離線資料包使用，也是免費搜尋的備選。	src/ui/credits.js:40	
+4og7nu	draft	Travel guides, from English Wikivoyage and from its editions in the languages you speak, for Shiori's guide tool and the offline pack, and where free search falls back to.	旅遊指南，來自 Wikivoyage 的英文版和你說的語言的版本，供 Shiori 的 guide 工具和離線資料包使用，也是免費搜尋的備選。	src/ui/credits.js:40	Note: Settings → About, Wikivoyage's credit. Since 2026-11-20 it names the editions read: English's, and those of the languages you speak that have one.
 czha5t	ok	Weather forecasts, for Shiori's weather tool. Sunrise and sunset in the forecast are Open-Meteo's too; the Itinerary's golden hour, and the sun's times when Open-Meteo doesn't answer, are worked out on the phone.	天氣預報，供 Shiori 的 weather 工具使用。預報中的日出日落時間也來自 Open-Meteo；「行程」頁面的黃金時刻，以及 Open-Meteo 沒有回應時的日出日落時間，都在手機上計算。	src/ui/credits.js:47	
 a8awk7	ok	Free web search for web_search, and a reader of pages other readers can't read for fetch, while ticked in Settings → Tools. Only the words searched, or the page's address, are sent.	僅在設定 → 工具中勾選時，為 web_search 提供免費網頁搜尋，並為 fetch 讀取其他方式讀不到的網頁。只傳送搜尋字詞或網址。	src/ui/credits.js:54	
 1obxox	ok	Free web search for web_search, while ticked in Settings → Tools. Only the words searched, and a random id for each conversation, are sent.	僅在設定 → 工具中勾選時，為 web_search 提供免費網頁搜尋。只傳送搜尋字詞，以及每段對話的隨機 ID。	src/ui/credits.js:61	
@@ -1401,25 +1401,23 @@ an1pf7	ok	Dismiss	關閉	src/ui/notices.js:271
 13ryfn7	ok	Downloaded · {0} · {1}.	已下載 · {0} · {1}。	src/ui/offline-pack.js:50	{0} = size(m.bytes); {1} = holds(m)
 1yax0wt	ok	Downloaded {0} · {1} · {2}.	{0}下載 · {1} · {2}。	src/ui/offline-pack.js:50	{0} = when; {1} = size(m.bytes); {2} = holds(m); Note: {0} is a relative time ("2 hours ago").
 11sehoe	ok	Guides: {0}.	指南：{0}。	src/ui/offline-pack.js:51	{0} = list(m.guides.map((g) => g.title), 'plain')
-vrun6k	ok	It stopped at its {0} limit, so it holds only the start of the itinerary.	已達到 {0} 的上限，所以只包含行程開頭的部分。	src/ui/offline-pack.js:52	{0} = size(MAX_BYTES)
-1nd5e79	ok	This itinerary is longer than a pack holds, so some of the way between stops is left out.	行程太長，超出了離線資料包的容量，因此停留點之間的部分路段沒有包含在內。	src/ui/offline-pack.js:53	
-1nbogz3#other	ok	# parts didn't download: {0} ({1}).	# 個部分未能下載：{0}（{1}）。	src/ui/offline-pack.js:58	plural; # = m.failed.length; {0} = f.part ? partWords(f.part) : f.label; {1} = why.replace(/[.!?。]$/u, ''); English: "One part didn't download: {0} ({1})." (one), "# parts didn't download: {0} ({1})." (other)
-1pbas9l	ok	The download was stopped before the end.	下載未完成就被停止了。	src/ui/offline-pack.js:59	
-asj4tr	ok	The itinerary changed since.	之後行程有了變化。	src/ui/offline-pack.js:63	
-w5716a	ok	Update (about {0})	更新（約 {0}）	src/ui/offline-pack.js:64	{0} = about
-13cigs6	ok	Download the rest (about {0})	下載其餘部分（約 {0}）	src/ui/offline-pack.js:65	{0} = about
-o81vpw	ok	Try again (about {0})	重試（約 {0}）	src/ui/offline-pack.js:65	{0} = about
-16r6naq	ok	It is more than a month old.	已下載超過一個月。	src/ui/offline-pack.js:67	
-1vwbp7l	ok	This browser doesn't tell annai when it is on Wi-Fi, so update it here.	此瀏覽器無法告訴 annai 何時連上 Wi-Fi，請在這裡手動更新。	src/ui/offline-pack.js:70	
-p6stxk	ok	On Wi-Fi, annai keeps it up to date by itself while this conversation is open.	連上 Wi-Fi 時，只要這個對話開著，annai 就會自動更新離線資料包。	src/ui/offline-pack.js:70	
-5pklax	ok	Offline pack	離線資料包	src/ui/offline-pack.js:80	
-1bk5sw	ok	What came is kept. Try again in a moment.	已下載的部分會保留。請稍後再試。	src/ui/offline-pack.js:86	
-v6p0ku	ok	The offline pack didn't download	離線資料包下載失敗	src/ui/offline-pack.js:86	
-qtuxek	ok	Places © {0}; summaries from Wikipedia and guides from Wikivoyage, {1}.	地點 © {0}；摘要來自 Wikipedia，指南來自 Wikivoyage，{1}。	src/ui/offline-pack.js:118	{0} = osm.textContent; {1} = cc.textContent; Note: {0} and {1} are the licence's own words ("OpenStreetMap contributors", "CC BY-SA"), links, and stay English.
-uwd3a2	ok	No offline pack yet.	還沒有離線資料包。	src/ui/offline-pack.js:129	
-1k132lx	ok	The offline pack is from before the itinerary changed.	離線資料包是行程變動前下載的。	src/ui/offline-pack.js:130	
-ksuwxs	ok	Offline pack: downloaded.	離線資料包：已下載。	src/ui/offline-pack.js:131	
-r91312	ok	Offline pack: downloaded {0}.	離線資料包：{0}下載。	src/ui/offline-pack.js:131	{0} = when; Note: {0} is a relative time ("2 hours ago").
+1nbogz3#other	ok	# parts didn't download: {0} ({1}).	# 個部分未能下載：{0}（{1}）。	src/ui/offline-pack.js:56	plural; # = m.failed.length; {0} = f.part ? partWords(f.part) : f.label; {1} = why.replace(/[.!?。]$/u, ''); English: "One part didn't download: {0} ({1})." (one), "# parts didn't download: {0} ({1})." (other)
+1pbas9l	ok	The download was stopped before the end.	下載未完成就被停止了。	src/ui/offline-pack.js:57	
+asj4tr	ok	The itinerary changed since.	之後行程有了變化。	src/ui/offline-pack.js:61	
+w5716a	ok	Update (about {0})	更新（約 {0}）	src/ui/offline-pack.js:62	{0} = about
+13cigs6	ok	Download the rest (about {0})	下載其餘部分（約 {0}）	src/ui/offline-pack.js:63	{0} = about
+o81vpw	ok	Try again (about {0})	重試（約 {0}）	src/ui/offline-pack.js:63	{0} = about
+16r6naq	ok	It is more than a month old.	已下載超過一個月。	src/ui/offline-pack.js:65	
+1vwbp7l	ok	This browser doesn't tell annai when it is on Wi-Fi, so update it here.	此瀏覽器無法告訴 annai 何時連上 Wi-Fi，請在這裡手動更新。	src/ui/offline-pack.js:68	
+p6stxk	ok	On Wi-Fi, annai keeps it up to date by itself while this conversation is open.	連上 Wi-Fi 時，只要這個對話開著，annai 就會自動更新離線資料包。	src/ui/offline-pack.js:68	
+5pklax	ok	Offline pack	離線資料包	src/ui/offline-pack.js:78	
+1bk5sw	ok	What came is kept. Try again in a moment.	已下載的部分會保留。請稍後再試。	src/ui/offline-pack.js:84	
+v6p0ku	ok	The offline pack didn't download	離線資料包下載失敗	src/ui/offline-pack.js:84	
+qtuxek	ok	Places © {0}; summaries from Wikipedia and guides from Wikivoyage, {1}.	地點 © {0}；摘要來自 Wikipedia，指南來自 Wikivoyage，{1}。	src/ui/offline-pack.js:116	{0} = osm.textContent; {1} = cc.textContent; Note: {0} and {1} are the licence's own words ("OpenStreetMap contributors", "CC BY-SA"), links, and stay English.
+uwd3a2	ok	No offline pack yet.	還沒有離線資料包。	src/ui/offline-pack.js:127	
+1k132lx	ok	The offline pack is from before the itinerary changed.	離線資料包是行程變動前下載的。	src/ui/offline-pack.js:128	
+ksuwxs	ok	Offline pack: downloaded.	離線資料包：已下載。	src/ui/offline-pack.js:129	
+r91312	ok	Offline pack: downloaded {0}.	離線資料包：{0}下載。	src/ui/offline-pack.js:129	{0} = when; Note: {0} is a relative time ("2 hours ago").
 8f98y9	ok	Open an annai file	開啟 annai 檔案	src/ui/open-file.js:6	
 13548dd	ok	That conversation didn't open	無法開啟那段對話	src/ui/open-trip.js:9	Note: Taiwan wording: 開啟 for open, 對話 as the glossary's Conversation.
 ow6fak	ok	This browser could not draw the photo.	此瀏覽器無法處理這張照片。	src/ui/photo-codec.js:73	

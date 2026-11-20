@@ -797,17 +797,17 @@ sejc5h	ok	{0} was switched off after errors.	{0}はエラーが続いたため�
 xzxdhp	ok	The plugin didn't provide a model provider.	このプラグインはモデルのプロバイダーを提供していませんでした。	src/core/llm/service.js:323	Note: said of a plugin.
 2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	そのプラグインはannai公式のものではありません。入手元からもう一度インストールしてください。	src/core/llm/service.js:402	
 1k9wkd0	ok	The plugin it names doesn't provide models, so it wasn't installed.	指定されているプラグインはモデルを提供していないため、インストールされませんでした。	src/core/llm/service.js:411	Note: said after the provider's name ("OpenRouter: …"); the plugin its record names.
-3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:73	{0} = p.title
-1rb0o7n	ok	OpenStreetMap around {0}	{0}周辺のOpenStreetMap	src/core/pack/download.js:75	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
-hdsgog	ok	OpenStreetMap between {0} and {1}	{0}と{1}の間のOpenStreetMap	src/core/pack/download.js:75	{0} = a; {1} = b
-1ff3ec8	ok	Wikipedia near {0}	{0}付近のWikipedia	src/core/pack/download.js:76	{0} = a
-i9ok5g	ok	Wikipedia between {0} and {1}	{0}と{1}の間のWikipedia	src/core/pack/download.js:76	{0} = a; {1} = b
-1qn6l15	ok	{0} didn't answer in time.	{0}から時間内に応答がありませんでした。	src/core/pack/download.js:82	{0} = s.where
-16rip5y	ok	{0} stopped early: {1}.	{0}が途中で止まりました：{1}。	src/core/pack/download.js:83	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
-zy85n2	draft	every server was left for the rest of the run	このダウンロードでは、どのサーバーにももう問い合わせません	src/core/pack/download.js:85	
-cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMapから応答がありませんでした（{0}）。	src/core/pack/download.js:86	{0} = why.replace(/[.。]$/u, '')
-rhruvr	ok	{0} said: {1}.	{0}の応答：{1}。	src/core/pack/download.js:88	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
-1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyageから{0}の本文が届きませんでした。	src/core/pack/download.js:89	{0} = s.title
+3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:77	{0} = p.title
+1rb0o7n	ok	OpenStreetMap around {0}	{0}周辺のOpenStreetMap	src/core/pack/download.js:79	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
+hdsgog	ok	OpenStreetMap between {0} and {1}	{0}と{1}の間のOpenStreetMap	src/core/pack/download.js:79	{0} = a; {1} = b
+1ff3ec8	ok	Wikipedia near {0}	{0}付近のWikipedia	src/core/pack/download.js:80	{0} = a
+i9ok5g	ok	Wikipedia between {0} and {1}	{0}と{1}の間のWikipedia	src/core/pack/download.js:80	{0} = a; {1} = b
+1qn6l15	ok	{0} didn't answer in time.	{0}から時間内に応答がありませんでした。	src/core/pack/download.js:86	{0} = s.where
+16rip5y	ok	{0} stopped early: {1}.	{0}が途中で止まりました：{1}。	src/core/pack/download.js:87	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
+zy85n2	draft	every server was left for the rest of the run	このダウンロードでは、どのサーバーにももう問い合わせません	src/core/pack/download.js:89	
+cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMapから応答がありませんでした（{0}）。	src/core/pack/download.js:90	{0} = why.replace(/[.。]$/u, '')
+rhruvr	ok	{0} said: {1}.	{0}の応答：{1}。	src/core/pack/download.js:92	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
+1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyageから{0}の本文が届きませんでした。	src/core/pack/download.js:93	{0} = s.title
 aaicx8	ok	{0} couldn't be checked: {1}	{0}を確認できませんでした：{1}	src/core/package-updates.js:40	{0} = s.name ?? id; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 trd90h	ok	It wasn't installed from an address, so annai has nowhere to look for an update.	アドレスからインストールしたものではないため、更新を確認できません。	src/core/package-updates.js:67	
 2olq9a	ok	The address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	そのアドレスのパッケージが別のもの（{0}）に変わっているため、アップデートしませんでした。そちらを使う場合は、これを削除してからインストールしてください。	src/core/package-updates.js:71	{0} = pkg.id
@@ -1007,7 +1007,7 @@ elkw42	ok	The voice's audio couldn't be played.	読み上げの音声を再生�
 9gdjo3	ok	The browser voice couldn't speak ({0}).	ブラウザの声で読み上げられませんでした（{0}）。	src/plugins/voice-browser/index.js:585	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
 1mrk9hl	ok	The microphone stopped.	マイクが停止しました。	src/plugins/voice-browser/index.js:650	
 1l4zitw	ok	Phone dictation stopped ({0}).	端末の音声入力が停止しました（{0}）。	src/plugins/voice-browser/index.js:755	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音声入力 / 手机语音输入); {0} is the browser's error code, such as network.
-1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia、Nominatim	src/plugins/web/free.js:128	
+1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia、Nominatim	src/plugins/web/free.js:134	
 scnz2y	ok	Web tools	Webツール	src/plugins/web/index.js:13	Note: Web as its tool group is named in Settings → Tools (Web / 网页).
 eob60g	ok	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetchはWebページを読み込みます。サイトがWebアプリからの読み込みを許可していないときは、Jina ReaderかExaを経由します。web_searchは検索プロバイダーで検索します。順番は「設定 → ツール」で決まり、初期状態では無料のものが先です。	src/plugins/web/index.js:16	
 b4g7z9	ok	needs a key (Settings → Tools)	キーが必要：「設定 → ツール」	src/plugins/web/index.js:191	
@@ -1056,7 +1056,7 @@ rcp6ga	ok	A photo was kept as it is	写真をそのまま保存しました	src/
 1waossz	ok	Places nearby and along the itinerary, for Shiori's nearby tool and the offline pack, found through Overpass at overpass-api.de, and at maps.mail.ru, run by VK, while Settings → Tools has it on.	周辺や旅程沿いの場所。Shioriのnearbyツールとオフラインパックで使います。Overpass（overpass-api.de）を通じて探し、「設定 → ツール」でチェックを入れている間は、VKが運営するmaps.mail.ruでも探します。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
 g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	名前から場所を探したり、地点から地名を調べたりします。Shioriのgeocodeとreverseツールで使い、無料検索の最後の手段として場所の公式サイトを探すのにも使います。利用ポリシーに従い、問い合わせは1秒に1回までにしています。	src/ui/credits.js:26	
 oa9m21	draft	Articles about places nearby, and their summaries in the offline pack, from the editions in the languages you speak and in English. Each article Shiori reads comes with its address. Free search's last resort, on whatever you tick, sends it the words searched.	周辺の場所に関する記事と、オフラインパック内のその要約。話す言語と英語の各版から取得します。Shioriが読む記事にはそれぞれアドレスが付きます。無料検索の最後の手段は、チェックの有無にかかわらず、検索キーワードをWikipediaに送ります。	src/ui/credits.js:33	Note: Settings → About, Wikipedia's credit. Since 2026-11-19 it names the editions read: the languages you speak, and English.
-1ufrhy7	ok	Travel guides, for Shiori's guide tool and the offline pack, and where free search falls back to.	旅行ガイド。Shioriのguideツールとオフラインパックで使うほか、無料検索の予備にもなります。	src/ui/credits.js:40	Note: free search falls back to it; 代わり read as replacing free search.
+4og7nu	draft	Travel guides, from English Wikivoyage and from its editions in the languages you speak, for Shiori's guide tool and the offline pack, and where free search falls back to.	旅行ガイド。Wikivoyageの英語版と、話す言語の版から取得します。Shioriのguideツールとオフラインパックで使うほか、無料検索の予備にもなります。	src/ui/credits.js:40	Note: Settings → About, Wikivoyage's credit. Since 2026-11-20 it names the editions read: English's, and those of the languages you speak that have one.
 czha5t	ok	Weather forecasts, for Shiori's weather tool. Sunrise and sunset in the forecast are Open-Meteo's too; the Itinerary's golden hour, and the sun's times when Open-Meteo doesn't answer, are worked out on the phone.	天気予報。Shioriのweatherツールで使います。予報の日の出・日の入り時刻もOpen-Meteoのものです。「旅程」のゴールデンアワーと、Open-Meteoが応答しないときの日の出・日の入り時刻は、端末で計算します。	src/ui/credits.js:47	
 a8awk7	ok	Free web search for web_search, and a reader of pages other readers can't read for fetch, while ticked in Settings → Tools. Only the words searched, or the page's address, are sent.	web_searchの無料Web検索と、ほかの方法では読めないページをfetchで読むための手段。「設定 → ツール」でチェックを入れている間だけ使います。送信するのは検索キーワードか、ページのアドレスだけです。	src/ui/credits.js:54	
 1obxox	ok	Free web search for web_search, while ticked in Settings → Tools. Only the words searched, and a random id for each conversation, are sent.	web_searchの無料Web検索。「設定 → ツール」でチェックを入れている間だけ使います。送信するのは、検索キーワードと、会話ごとのランダムなIDだけです。	src/ui/credits.js:61	
@@ -1401,25 +1401,23 @@ an1pf7	ok	Dismiss	閉じる	src/ui/notices.js:271
 13ryfn7	ok	Downloaded · {0} · {1}.	ダウンロード済み · {0} · {1}。	src/ui/offline-pack.js:50	{0} = size(m.bytes); {1} = holds(m)
 1yax0wt	ok	Downloaded {0} · {1} · {2}.	ダウンロード：{0} · {1} · {2}。	src/ui/offline-pack.js:50	{0} = when; {1} = size(m.bytes); {2} = holds(m); Note: {0} is a relative time ("2 hours ago").
 11sehoe	ok	Guides: {0}.	ガイド：{0}。	src/ui/offline-pack.js:51	{0} = list(m.guides.map((g) => g.title), 'plain')
-vrun6k	ok	It stopped at its {0} limit, so it holds only the start of the itinerary.	上限の{0}に達したため、旅程の最初の部分だけが入っています。	src/ui/offline-pack.js:52	{0} = size(MAX_BYTES)
-1nd5e79	ok	This itinerary is longer than a pack holds, so some of the way between stops is left out.	旅程が長くてオフラインパックに収まりきらないため、立ち寄り先の間の道の一部は含まれていません。	src/ui/offline-pack.js:53	
-1nbogz3#other	ok	# parts didn't download: {0} ({1}).	#件をダウンロードできませんでした：{0}（{1}）。	src/ui/offline-pack.js:58	plural; # = m.failed.length; {0} = f.part ? partWords(f.part) : f.label; {1} = why.replace(/[.!?。]$/u, ''); English: "One part didn't download: {0} ({1})." (one), "# parts didn't download: {0} ({1})." (other)
-1pbas9l	ok	The download was stopped before the end.	ダウンロードは途中で中止されました。	src/ui/offline-pack.js:59	
-asj4tr	ok	The itinerary changed since.	その後、旅程が変更されています。	src/ui/offline-pack.js:63	
-w5716a	ok	Update (about {0})	更新（約{0}）	src/ui/offline-pack.js:64	{0} = about
-13cigs6	ok	Download the rest (about {0})	残りをダウンロード（約{0}）	src/ui/offline-pack.js:65	{0} = about
-o81vpw	ok	Try again (about {0})	再試行（約{0}）	src/ui/offline-pack.js:65	{0} = about
-16r6naq	ok	It is more than a month old.	1か月以上前のものです。	src/ui/offline-pack.js:67	
-1vwbp7l	ok	This browser doesn't tell annai when it is on Wi-Fi, so update it here.	このブラウザではWi-Fiへの接続を確認できないため、ここで更新してください。	src/ui/offline-pack.js:70	
-p6stxk	ok	On Wi-Fi, annai keeps it up to date by itself while this conversation is open.	Wi-Fiに接続していれば、この会話を開いている間は自動で最新の状態に保たれます。	src/ui/offline-pack.js:70	
-5pklax	ok	Offline pack	オフラインパック	src/ui/offline-pack.js:80	
-1bk5sw	ok	What came is kept. Try again in a moment.	ダウンロードできた分は残してあります。少ししてから、もう一度お試しください。	src/ui/offline-pack.js:86	
-v6p0ku	ok	The offline pack didn't download	オフラインパックをダウンロードできませんでした	src/ui/offline-pack.js:86	
-qtuxek	ok	Places © {0}; summaries from Wikipedia and guides from Wikivoyage, {1}.	場所 © {0}。要約はWikipedia、ガイドはWikivoyageより（{1}）。	src/ui/offline-pack.js:118	{0} = osm.textContent; {1} = cc.textContent; Note: {0} and {1} are the licence's own words ("OpenStreetMap contributors", "CC BY-SA"), links, and stay English.
-uwd3a2	ok	No offline pack yet.	オフラインパックはまだありません。	src/ui/offline-pack.js:129	
-1k132lx	ok	The offline pack is from before the itinerary changed.	オフラインパックは旅程が変わる前のものです。	src/ui/offline-pack.js:130	
-ksuwxs	ok	Offline pack: downloaded.	オフラインパック：ダウンロード済み。	src/ui/offline-pack.js:131	
-r91312	ok	Offline pack: downloaded {0}.	オフラインパック：ダウンロード済み（{0}）。	src/ui/offline-pack.js:131	{0} = when; Note: {0} is a relative time ("2 hours ago").
+1nbogz3#other	ok	# parts didn't download: {0} ({1}).	#件をダウンロードできませんでした：{0}（{1}）。	src/ui/offline-pack.js:56	plural; # = m.failed.length; {0} = f.part ? partWords(f.part) : f.label; {1} = why.replace(/[.!?。]$/u, ''); English: "One part didn't download: {0} ({1})." (one), "# parts didn't download: {0} ({1})." (other)
+1pbas9l	ok	The download was stopped before the end.	ダウンロードは途中で中止されました。	src/ui/offline-pack.js:57	
+asj4tr	ok	The itinerary changed since.	その後、旅程が変更されています。	src/ui/offline-pack.js:61	
+w5716a	ok	Update (about {0})	更新（約{0}）	src/ui/offline-pack.js:62	{0} = about
+13cigs6	ok	Download the rest (about {0})	残りをダウンロード（約{0}）	src/ui/offline-pack.js:63	{0} = about
+o81vpw	ok	Try again (about {0})	再試行（約{0}）	src/ui/offline-pack.js:63	{0} = about
+16r6naq	ok	It is more than a month old.	1か月以上前のものです。	src/ui/offline-pack.js:65	
+1vwbp7l	ok	This browser doesn't tell annai when it is on Wi-Fi, so update it here.	このブラウザではWi-Fiへの接続を確認できないため、ここで更新してください。	src/ui/offline-pack.js:68	
+p6stxk	ok	On Wi-Fi, annai keeps it up to date by itself while this conversation is open.	Wi-Fiに接続していれば、この会話を開いている間は自動で最新の状態に保たれます。	src/ui/offline-pack.js:68	
+5pklax	ok	Offline pack	オフラインパック	src/ui/offline-pack.js:78	
+1bk5sw	ok	What came is kept. Try again in a moment.	ダウンロードできた分は残してあります。少ししてから、もう一度お試しください。	src/ui/offline-pack.js:84	
+v6p0ku	ok	The offline pack didn't download	オフラインパックをダウンロードできませんでした	src/ui/offline-pack.js:84	
+qtuxek	ok	Places © {0}; summaries from Wikipedia and guides from Wikivoyage, {1}.	場所 © {0}。要約はWikipedia、ガイドはWikivoyageより（{1}）。	src/ui/offline-pack.js:116	{0} = osm.textContent; {1} = cc.textContent; Note: {0} and {1} are the licence's own words ("OpenStreetMap contributors", "CC BY-SA"), links, and stay English.
+uwd3a2	ok	No offline pack yet.	オフラインパックはまだありません。	src/ui/offline-pack.js:127	
+1k132lx	ok	The offline pack is from before the itinerary changed.	オフラインパックは旅程が変わる前のものです。	src/ui/offline-pack.js:128	
+ksuwxs	ok	Offline pack: downloaded.	オフラインパック：ダウンロード済み。	src/ui/offline-pack.js:129	
+r91312	ok	Offline pack: downloaded {0}.	オフラインパック：ダウンロード済み（{0}）。	src/ui/offline-pack.js:129	{0} = when; Note: {0} is a relative time ("2 hours ago").
 8f98y9	ok	Open an annai file	annaiのファイルを開く	src/ui/open-file.js:6	
 13548dd	ok	That conversation didn't open	その会話を開けませんでした	src/ui/open-trip.js:9	Note: a card when a conversation fails to open (+, the type box, the camera, Ask Shiori about this); 会話 as the glossary's Conversation.
 ow6fak	ok	This browser could not draw the photo.	このブラウザでは写真を描画できませんでした。	src/ui/photo-codec.js:73	

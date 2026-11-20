@@ -139,13 +139,25 @@ export class Pack {
     /* en */ return this.articles(p, radius, editions).map((w) => [w.title, 'wikipedia article', Math.round(meters(p, w)), w.lat, w.lng, 'wikipedia', `${short(w.summary)} ${articleUrl(w.edition, w.title)}`.trim()]);
   }
 
-  /** Its guide for a name: by title, by title without "(California)", or by a name that led to it. @param {string} name @returns {Promise<{ title: string, text: string } | null>} */
-  async guide(name) {
+  /**
+   * Its guide for a name, in each of these editions it holds it in, in their order: found by its English title, that title without
+   * "(California)", a name that led to it, or its title in any edition it holds. A file that is missing or broken is left out; none, [].
+   * @param {string} name @param {string[]} editions the traveller's guide editions, in the reading order (wiki.js guideEditions)
+   * @returns {Promise<{ edition: string, title: string, text: string }[]>}
+   */
+  async guide(name, editions) {
     const n = norm(String(name));
-    const g = this.manifest.guides.find((x) => [x.title, x.title.replace(/\s*\([^)]*\)$/, ''), ...x.asked].some((t) => norm(t) === n));
-    if (!g) return null;
-    const v = await this.#read(g.path).catch(() => null);
-    return typeof v?.text === 'string' && v.text.trim() ? { title: g.title, text: v.text } : null;
+    const g = this.manifest.guides.find((x) => [x.title, x.title.replace(/\s*\([^)]*\)$/, ''), ...x.asked, ...x.also.map((a) => a.title)].some((t) => norm(t) === n));
+    if (!g) return [];
+    const held = [{ edition: 'en', title: g.title, path: g.path }, ...g.also];
+    /** @type {{ edition: string, title: string, text: string }[]} */
+    const out = [];
+    for (const e of editions) {
+      const f = held.find((x) => x.edition === e);
+      const v = f ? await this.#read(f.path).catch(() => null) : null;
+      if (f && typeof v?.text === 'string' && v.text.trim()) out.push({ edition: e, title: f.title, text: v.text });
+    }
+    return out;
   }
 
   /** The nearest sight, park, place to stay or Wikipedia article within 500 m, for live mode. @param {Point} p @param {string[]} editions @returns {{ name: string, m: number } | null} */

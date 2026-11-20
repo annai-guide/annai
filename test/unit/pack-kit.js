@@ -48,18 +48,33 @@ const GUIDES = /** @type {Record<string, string>} */ ({
 });
 /** Titles that are redirects to a guide. */
 const REDIRECTS = /** @type {Record<string, string>} */ ({ 'Hearst Castle': 'San Simeon' });
+/**
+ * The guides' titles in other editions, as English Wikivoyage's links name them, and their texts there: made up for the tests, in the shape of
+ * the real answers (2026-11-20: a page with no link in the edition asked has no langlinks key, as Big Sur's has none in Japanese).
+ */
+export const LINKS = /** @type {Record<string, Record<string, string>>} */ ({ 'Big Sur': { zh: '大蘇爾' }, 'Cambria (California)': { ja: 'カンブリア' }, 'San Simeon': { ja: 'サンシメオン', zh: '聖西蒙' } });
+export const EDITION_GUIDES = /** @type {Record<string, Record<string, string>>} */ ({
+  ja: { カンブリア: 'カンブリアは海辺の町。\n\n== 見る ==\nムーンストーン・ビーチ。', サンシメオン: 'サンシメオンはハースト・キャッスルの町。' },
+  zh: { 大蘇爾: '大蘇爾是加州中部的一段海岸。\n\n== 吃 ==\nNepenthe。', 聖西蒙: '聖西蒙是赫氏古堡所在的小鎮。' },
+});
 
 /**
- * Wikivoyage: which titles it has (Hearst Castle leads to San Simeon), and their text. With redirects=1 its pages are the targets of the titles
- * asked, as MediaWiki lists them, not the titles themselves. @param {string} url
+ * Wikivoyage: which titles English's has (Hearst Castle leads to San Simeon), their titles in other editions, and every edition's text. With
+ * redirects=1 its pages are the targets of the titles asked, as MediaWiki lists them, not the titles themselves. @param {string} url
  */
 export function wikivoyage(url) {
   const u = new URL(url);
+  const edition = u.hostname.split('.')[0];
   const titles = (u.searchParams.get('titles') ?? '').split('|');
+  if (edition !== 'en') return { query: { pages: [EDITION_GUIDES[edition]?.[titles[0]] ? { title: titles[0], extract: EDITION_GUIDES[edition][titles[0]] } : { title: titles[0], missing: true }] } };
   if (u.searchParams.get('prop') === 'pageprops') {
     const redirects = titles.filter((t) => REDIRECTS[t]).map((t) => ({ from: t, to: REDIRECTS[t] }));
     const pages = [...new Set(titles.map((t) => REDIRECTS[t] ?? t))].map((t) => (GUIDES[t] ? { title: t } : t === 'Nepenthe' ? { title: t, pageprops: { disambiguation: '' } } : { title: t, missing: true }));
     return { query: { ...(redirects.length ? { redirects } : {}), pages } };
+  }
+  if (u.searchParams.get('prop') === 'langlinks') {
+    const lang = String(u.searchParams.get('lllang'));
+    return { batchcomplete: true, query: { pages: titles.map((t) => (LINKS[t]?.[lang] ? { title: t, langlinks: [{ lang, title: LINKS[t][lang] }] } : { title: t })) } };
   }
   return { query: { pages: [{ title: titles[0], extract: GUIDES[titles[0]] ?? '' }] } };
 }
@@ -76,9 +91,9 @@ export function services(o = {}) {
     asked.push({ url, init, at: Date.now() });
     const host = new URL(url).hostname;
     // Every Overpass server answers at /api/interpreter: overpass-api.de's, and VK's at maps.mail.ru/osm/tools/overpass.
-    // Wikipedia at any edition's host: the stand-in for Big Sur answers in English only, as an edition with nothing there answers.
+    // Wikipedia at any edition's host: the stand-in for Big Sur answers in English only, as an edition with nothing there answers; Wikivoyage at any edition's.
     const answer = url.endsWith('/api/interpreter') ? o.overpass ?? overpass : host.endsWith('.wikipedia.org') ? o.wikipedia ?? (host === 'en.wikipedia.org' ? wikipedia : () => ({ batchcomplete: true }))
-      : host === 'en.wikivoyage.org' ? o.wikivoyage ?? wikivoyage : () => new Response('', { status: 404 });
+      : host.endsWith('.wikivoyage.org') ? o.wikivoyage ?? wikivoyage : () => new Response('', { status: 404 });
     const a = await answer(url, init);
     return a instanceof Response ? a : new Response(JSON.stringify(a));
   };

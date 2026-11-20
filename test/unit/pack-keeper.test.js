@@ -4,7 +4,7 @@ import { PackKeeper } from '../../src/core/pack/keeper.js';
 import { STALE_MS } from '../../src/core/pack/download.js';
 import { packTrip, services, fakeAgent, STOPS, YUFUIN, yufuinStop, yufuinAnswer } from './pack-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
-import { SIZES } from '../../src/core/pack/plan.js';
+import { SIZES, planFor } from '../../src/core/pack/plan.js';
 import { readFile } from 'node:fs/promises';
 import { packWords } from '../../src/ui/offline-pack.js';
 
@@ -29,12 +29,16 @@ async function kit(o = {}) {
 }
 
 test('status before any download: the stops, about how much it takes, nothing outdated', async () => {
-  const { keeper, trip } = await kit();
+  const t = await kit();
+  const { keeper, trip } = t;
   const s = await keeper.status(trip);
   assert.equal(s.stops, 2);
   assert.equal(s.manifest, null);
   assert.equal(s.why, null);
-  assert.ok(s.estimate > 50 * 1024 && s.estimate < 200 * 1024, String(s.estimate));
+  // Both stops' places, the 21 km between, both stops' summaries, and one guide (one for every two names), at the measured sizes.
+  const plan = await planFor(t.ws, trip);
+  const km = plan.parts.reduce((n, p) => n + (p.kind === 'osm' ? p.km : 0), 0);
+  assert.equal(s.estimate, Math.round(2 * SIZES.osmStop + km * SIZES.osmPerKm + 2 * SIZES.wikipedia + SIZES.guide), String(s.estimate));
   assert.equal(s.running, null);
   keeper.dispose();
 });
@@ -54,7 +58,7 @@ test("one download at a time, with progress; then the pack is up to date, and th
   assert.equal(s.why, null);
   assert.ok(s.manifest);
   const log = await store.tx(['events'], 'readonly', (t) => t.listEvents(trip, { types: ['pack.download'] }));
-  assert.deepEqual(log.map((e) => e.data), [{ files: 7, bytes: m.bytes, guides: 2, failed: 0, stopped: false, full: false, auto: false }]);
+  assert.deepEqual(log.map((e) => e.data), [{ files: 7, bytes: m.bytes, guides: 2, failed: 0, stopped: false, auto: false }]);
   keeper.dispose();
 });
 
@@ -180,24 +184,86 @@ test('a plan change while a download runs is kept: once it ends, annai brings th
   keeper.dispose();
 });
 
-test('a pack at its size limit is complete for its plan: no "Download the rest", and nothing asked again by itself every hour', async () => {
-  let now = Date.now();
+test('a pack an older annai stopped at its size limit (full: true) is missing what it lacks: "Download the rest", and on Wi-Fi it comes by itself', async () => {
   const t = await packTrip();
   const agent = fakeAgent(t.trip);
   const net = services();
-  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0, now: () => now, maxBytes: 600 });
-  const m = await keeper.download(t.trip);
-  assert.equal(m.full, true);
-  const s = await keeper.status(t.trip);
-  assert.equal(s.why, null);
-  assert.equal(packWords(s, 'wifi').button, null);
-  assert.ok(packWords(s, 'wifi').lines.some((l) => /stopped at its .* limit/.test(l)));
-  const asked = net.asked.length;
-  now += 2 * 3_600_000;
-  keeper.poke();
-  await new Promise((r) => setTimeout(r, 60));
-  assert.equal(net.asked.length, asked);
-  keeper.dispose();
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0 });
+  try {
+    const m = await keeper.download(t.trip);
+    // As an older annai left it: a part it had no room for, and full.
+    await t.ws.delete(t.trip, m.files[0].path, { author: 'system' });
+    await t.ws.write(t.trip, '/offline/pack.json', JSON.stringify({ ...(await t.ws.readJSON(t.trip, '/offline/pack.json')), files: m.files.slice(1), full: true }), { author: 'system' });
+    const s = await keeper.status(t.trip);
+    assert.equal(s.why, 'missing');
+    assert.match(String(packWords(s, 'wifi').button), /^Download the rest \(about /);
+    assert.ok(packWords(s, 'wifi').lines.every((l) => !/limit|longer than a pack/.test(l)), 'no limit, and nothing left out');
+    keeper.poke();
+    await until(async () => (await keeper.status(t.trip)).why === null);
+    assert.ok(!('full' in /** @type {any} */ (await t.ws.readJSON(t.trip, '/offline/pack.json'))));
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test("a pack the release before wrote with Japanese listed (its Wikipedia whole in both editions, its guides English's only, no voyage) is missing its Japanese guides alone: \"Download the rest\", about them, and nothing else is asked", async () => {
+  const t = await packTrip();
+  const agent = fakeAgent(t.trip);
+  const net = services();
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1', connection: () => 'unknown', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0 });
+  try {
+    await updateAppSettings(t.ws, { languages: { spoken: ['ja'], answer: 'follow' } });
+    await keeper.download(t.trip);
+    // As the release before wrote it: no voyage, no also, and no Japanese guide's file.
+    const m = /** @type {any} */ (await t.ws.readJSON(t.trip, '/offline/pack.json'));
+    const ja = m.guides.flatMap((/** @type {any} */ g) => g.also.map((/** @type {any} */ a) => a.path));
+    assert.ok(ja.length > 0);
+    for (const path of ja) await t.ws.delete(t.trip, path, { author: 'system' });
+    await t.ws.write(t.trip, '/offline/pack.json', JSON.stringify({ ...m, voyage: undefined, files: m.files.filter((/** @type {any} */ f) => !ja.includes(f.path)), guides: m.guides.map((/** @type {any} */ g) => ({ title: g.title, asked: g.asked, path: g.path })) }), { author: 'system' });
+    const s = await keeper.status(t.trip);
+    assert.equal(s.why, 'missing');
+    assert.equal(s.estimate, m.guides.length * SIZES.guideEdition, 'its guides in Japanese, nothing more');
+    const asked = net.asked.length;
+    await keeper.download(t.trip);
+    const since = net.asked.slice(asked);
+    assert.deepEqual(since.filter((a) => a.url.includes('wikipedia.org') || a.url.includes('overpass') || (a.url.includes('en.wikivoyage') && new URL(a.url).searchParams.get('prop') === 'extracts')), []);
+    assert.deepEqual(since.filter((a) => a.url.includes('ja.wikivoyage.org')).map((a) => new URL(a.url).searchParams.get('titles')), ['カンブリア']);
+    assert.equal((await keeper.status(t.trip)).why, null);
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test("a language added: the pack's guides are missing in its edition (\"Download the rest\", about its guides and summaries there); on Wi-Fi they come by themselves, English's guides not again; a language taken off asks for nothing", async () => {
+  const t = await packTrip();
+  const agent = fakeAgent(t.trip);
+  const net = services();
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent, locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, gapMs: 0 });
+  try {
+    await keeper.download(t.trip);
+    assert.equal((await keeper.status(t.trip)).why, null);
+    // Chinese and Korean added: two Wikipedia parts in each edition, and the pack's two guides in Chinese Wikivoyage; Korean has no Wikivoyage.
+    await updateAppSettings(t.ws, { languages: { spoken: ['en', 'zh', 'ko'], answer: 'follow' } });
+    const s = await keeper.status(t.trip);
+    assert.equal(s.why, 'missing');
+    assert.equal(s.estimate, 4 * SIZES.wikiEdition + 2 * SIZES.guideEdition);
+    assert.match(String(packWords(s, 'wifi').button), /^Download the rest \(about /);
+    const asked = net.asked.length;
+    await until(async () => (await keeper.status(t.trip)).why === null);
+    const since = net.asked.slice(asked);
+    assert.deepEqual(since.filter((a) => a.url.includes('en.wikivoyage.org') && new URL(a.url).searchParams.get('prop') === 'extracts'), [], "English's guides are not downloaded again");
+    assert.deepEqual(since.filter((a) => a.url.includes('zh.wikivoyage.org')).map((a) => new URL(a.url).searchParams.get('titles')), ['大蘇爾']);
+    assert.ok(since.every((a) => !a.url.includes('ko.wikivoyage') && new URL(a.url).searchParams.get('lllang') !== 'ko'), 'nothing asked of a Wikivoyage there is none of');
+    assert.deepEqual((await keeper.status(t.trip)).manifest?.voyage, ['en', 'zh']);
+    // Chinese and Korean taken off: nothing is missing, and nothing is asked by itself.
+    const now = net.asked.length;
+    await updateAppSettings(t.ws, { languages: { spoken: ['en'], answer: 'follow' } });
+    assert.equal((await keeper.status(t.trip)).why, null);
+    await new Promise((r) => setTimeout(r, 60));
+    assert.equal(net.asked.length, now);
+  } finally {
+    keeper.dispose();
+  }
 });
 
 test('stop() can be awaited: once it settles, the download has ended and what came is written down', async () => {
@@ -285,7 +351,7 @@ test("a change of languages is noticed: on Wi-Fi the new edition's files come by
     await updateAppSettings(t.ws, { languages: { spoken: ['en', 'ja'], answer: 'follow' } });
     const s = await keeper.status(t.trip);
     assert.equal(s.why, 'missing');
-    assert.equal(s.estimate, SIZES.wikiEdition + SIZES.guide); // and a guide, as the pack has none yet
+    assert.equal(s.estimate, SIZES.wikiEdition + SIZES.guide + SIZES.guideEdition); // and a guide, in English and Japanese, as the pack has none yet
     await until(async () => hosts().length === 2 && (await keeper.status(t.trip)).why === null);
     assert.deepEqual(hosts(), ['en.wikipedia.org', 'ja.wikipedia.org']);
     // The names read the new files (the pack is read again), English first all the same where English has an article.
@@ -313,7 +379,7 @@ test("a pack from before editions, with Japanese listed: its English parts count
     await updateAppSettings(t.ws, { languages: { spoken: ['ja', 'en'], answer: 'follow' } });
     const s = await keeper.status(t.trip);
     assert.equal(s.why, 'missing');
-    assert.equal(s.estimate, 2 * SIZES.wikipedia + 2 * SIZES.wikiEdition); // two parts, each in English again and in Japanese
+    assert.equal(s.estimate, 2 * SIZES.wikipedia + 2 * SIZES.wikiEdition + 2 * SIZES.guideEdition); // two parts, each in English again and in Japanese, and its two guides in Japanese
     await keeper.download(t.trip);
     assert.deepEqual(net.asked.filter((a) => a.url.includes('wikipedia.org')).map((a) => new URL(a.url).hostname).sort(), ['en.wikipedia.org', 'en.wikipedia.org', 'ja.wikipedia.org', 'ja.wikipedia.org']);
     assert.equal((await keeper.status(t.trip)).why, null, 'every part has its edition now');
