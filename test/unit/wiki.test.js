@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { readingOrder } from '../../src/core/languages.js';
-import { editionsOf, articlesOf, wikiSaid, merged, articleUrl, pageUrl } from '../../src/core/wiki.js';
+import { editionsOf, articlesOf, wikiSaid, merged, articleUrl, pageUrl, siteOf, sitelinksUrl, titlesOf, summariesUrl, ARTICLES } from '../../src/core/wiki.js';
 import { nominatimLanguages } from '../../src/core/nominatim.js';
 import { parseInline } from '../../src/ui/markdown.js';
 import { ADDRESS_ENDS } from '../../src/core/address-ends.js';
@@ -65,6 +65,56 @@ test('editions merged by Wikidata id: each article once, under the first edition
   // Without an id (a part written before editions), an article is its edition's own, once by its title.
   const old = [{ ...en[0], id: null }, { ...en[0], id: null }, { ...ja[12], id: null }];
   assert.equal(merged(old, ['ja', 'en']).length, 2);
+  assert.ok(merged(old, ['ja', 'en']).every((a) => a.also.length === 0));
+});
+
+test("merged keeps each article's later editions' rows in `also`, in the order, one an edition", async () => {
+  const [ja, en, zh] = await Promise.all(['ja', 'en', 'zh'].map(async (e) => articlesOf(await kiyomizu(e), e)));
+  // 地主神社 (Q10928238) is in the Japanese and Chinese lists; 清水寺 (Q221716) in the Japanese and English; 圓山公園 (Q1108695) in the English and Chinese.
+  const all = merged([...en, ...zh, ...ja], ['ja', 'zh', 'en']);
+  const of = (/** @type {string} */ id) => all.find((a) => a.id === id);
+  assert.deepEqual([of('Q10928238')?.edition, of('Q10928238')?.also.map((a) => [a.edition, a.title])], ['ja', [['zh', '地主神社']]]);
+  assert.deepEqual([of('Q221716')?.title, of('Q221716')?.also.map((a) => [a.edition, a.title])], ['清水寺', [['en', 'Kiyomizu-dera']]]);
+  assert.deepEqual([of('Q1108695')?.title, of('Q1108695')?.also.map((a) => [a.edition, a.title])], ['圓山公園 (京都府)', [['en', 'Maruyama Park (Kyoto)']]]);
+  // An article only one edition lists has none; the same edition twice (overlapping parts) is one.
+  assert.deepEqual(of('Q11526741')?.also, []);
+  const twice = merged([...ja, ...ja, ...en], ['ja', 'en']);
+  assert.deepEqual(twice.find((a) => a.id === 'Q221716')?.also.map((a) => a.edition), ['en']);
+  assert.equal(twice.length, 38);
+  // Rows as given stay as they were: merged makes its own.
+  assert.ok(!('also' in ja[0]));
+});
+
+test("Wikidata: an edition's site, the request for which editions have each item, and its answer as titles (the real answer's shape)", () => {
+  assert.deepEqual(['en', 'ja', 'zh', 'zh-yue', 'tl', 'no'].map(siteOf), ['enwiki', 'jawiki', 'zhwiki', 'zh_yuewiki', 'tlwiki', 'nowiki']);
+  assert.equal(ARTICLES, 50);
+  const url = new URL(sitelinksUrl(['Q283196', 'Q221716'], ['ja', 'zh-yue', 'en']));
+  assert.equal(url.origin + url.pathname, 'https://www.wikidata.org/w/api.php');
+  assert.deepEqual(Object.fromEntries(url.searchParams), { action: 'wbgetentities', format: 'json', origin: '*', props: 'sitelinks', sitefilter: 'jawiki|zh_yuewiki|enwiki', ids: 'Q283196|Q221716' });
+  // Tokyo Station, as Wikidata answered (the editions design, 2026-11-20); an item in one edition has that one key only; a missing item none.
+  const answer = { entities: {
+    Q283196: { type: 'item', id: 'Q283196', sitelinks: { enwiki: { site: 'enwiki', title: 'Tokyo Station', badges: [] }, jawiki: { site: 'jawiki', title: '東京駅', badges: [] }, zhwiki: { site: 'zhwiki', title: '東京站', badges: [] } } },
+    Q11526741: { type: 'item', id: 'Q11526741', sitelinks: { jawiki: { site: 'jawiki', title: '東山警察署', badges: [] } } },
+    Q999999999: { id: 'Q999999999', missing: '' },
+  }, success: 1 };
+  const titles = titlesOf(answer, ['ja', 'en']);
+  assert.deepEqual([...(titles.get('Q283196') ?? [])], [['ja', '東京駅'], ['en', 'Tokyo Station']], 'the editions asked, in their order: not Chinese');
+  assert.deepEqual([...(titles.get('Q11526741') ?? [])], [['ja', '東山警察署']]);
+  assert.deepEqual([...(titles.get('Q999999999') ?? [])], []);
+  // An item merged into another is answered under the id asked, with the item's own id: both name it.
+  const merged = titlesOf({ entities: { Q1: { type: 'item', id: 'Q2', sitelinks: { enwiki: { title: 'Two' } } } } }, ['en']);
+  assert.equal(merged.get('Q1')?.get('en'), 'Two');
+  assert.equal(merged.get('Q2')?.get('en'), 'Two');
+  // An error answer, or nothing readable, names nothing.
+  assert.equal(titlesOf({ error: { code: 'no-such-entity' } }, ['en']).size, 0);
+  assert.equal(titlesOf(null, ['en']).size, 0);
+});
+
+test("the second stage's request: an edition's articles by title, 20 a request, with the summaries nearby's pack takes and their items", () => {
+  const u = new URL(summariesUrl('ja', ['別府ロープウェイ', '庄内駅 (大分県)']));
+  assert.equal(u.origin + u.pathname, 'https://ja.wikipedia.org/w/api.php');
+  assert.deepEqual(Object.fromEntries(u.searchParams), { action: 'query', format: 'json', formatversion: '2', origin: '*', redirects: '1', prop: 'extracts|pageprops', ppprop: 'wikibase_item',
+    exintro: '1', explaintext: '1', exlimit: '20', exchars: '400', titles: '別府ロープウェイ|庄内駅 (大分県)' });
 });
 
 test("a Wikimedia page's address keeps its title as written, encoding only what a browser would read as another part of it, and the brackets (an unpaired one ends a link in chat)", () => {

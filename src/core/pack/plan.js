@@ -5,8 +5,9 @@ import { PLAN_FILE, LEG_MAX_KM } from '../plan.js';
  * What a trip's offline pack holds (spec §11.5), worked out from its plan. The stops are the plan's
  * items with a place, in the order of their times. Around each stop, OpenStreetMap places within
  * 5 km; between one stop and the next, within 3 km of the straight line (legs are straight lines:
- * there is no routing); Wikipedia summaries at each stop and every 15 km on the way. Wikivoyage
- * guides are found when downloading, from the names here and Wikipedia's.
+ * there is no routing); Wikipedia summaries at each stop and every 15 km on the way (each edition's nearest 20, and with more than one
+ * edition, each edition's summary of the articles the others' lists hold). Wikivoyage guides are found when downloading, from the names here
+ * and Wikipedia's.
  * @typedef {import('../workspace.js').Workspace} Workspace
  * @typedef {[lat: number, lng: number]} LatLng
  * @typedef {{ how: 'around' | 'near' | 'between', names: string[] }} Place  where a part is, as data: around or near a stop, or between two
@@ -41,8 +42,12 @@ export const WIKI_RADIUS_M = 10000; // the largest Wikipedia searches
  * - guide: an English guide, the mean of 7 measured (11 to 130 KB), rounded.
  * - guideEdition: another edition's guide, wanted for each English one: the 13 Japanese and Chinese guides measured were 1.5 to 35 KB
  *   (mean 13 KB), and 7 of 12 English guides have a Japanese one, 7 of 12 a Chinese one, so 13 × 7/12, rounded up.
+ * - wikiMore: a Wikipedia part's second stage, for each edition read past the first: stored at Tokyo Station (editions-b-next's real check,
+ *   2026-11-20) as 11.6 KB with Japanese and English (22 summaries) and 24.0 KB with Japanese, Chinese and English (49): 12 KB an edition
+ *   past the first, as each edition added brings its 20 articles' summaries in the others (the spec check's answers at Tokyo: 2.7, 6.2 and
+ *   4.6 KB by title in zh, ja and en, before rows and ids).
  */
-export const SIZES = Object.freeze({ osmPerKm: 512, osmStop: 110 * 1024, wikipedia: 8 * 1024, wikiEdition: 11 * 1024, guide: 65 * 1024, guideEdition: 8 * 1024 });
+export const SIZES = Object.freeze({ osmPerKm: 512, osmStop: 110 * 1024, wikipedia: 8 * 1024, wikiEdition: 11 * 1024, wikiMore: 12 * 1024, guide: 65 * 1024, guideEdition: 8 * 1024 });
 
 const r4 = (/** @type {number} */ x) => Math.round(x * 1e4) / 1e4;
 const pt = (/** @type {LatLng} */ p) => ({ lat: p[0], lng: p[1] });
@@ -160,12 +165,14 @@ export async function planFor(ws, scope) {
 
 /**
  * About how many bytes some of a pack's files and guides take (spec §11.5: shown before downloading).
- * @param {{ part: Part, edition: string | null }[]} files as wanted() in download.js gives them @param {number} guides how many guides
+ * @param {{ part: Part, edition: string | null, editions?: string[] }[]} files as wanted() in download.js gives them @param {number} guides how many guides
  * @param {string[]} editions the guides' Wikivoyage editions to count (English's at SIZES.guide, another's at SIZES.guideEdition)
  */
 export function estimate(files, guides, editions) {
   let n = guides * editions.reduce((sum, e) => sum + (e === 'en' ? SIZES.guide : SIZES.guideEdition), 0);
-  for (const { part: p, edition } of files) n += p.kind === 'wikipedia' ? (edition === 'en' ? SIZES.wikipedia : SIZES.wikiEdition) : p.km > 0 ? p.km * SIZES.osmPerKm : SIZES.osmStop;
+  for (const { part: p, edition, editions: read } of files) {
+    n += read ? (read.length - 1) * SIZES.wikiMore : p.kind === 'wikipedia' ? (edition === 'en' ? SIZES.wikipedia : SIZES.wikiEdition) : p.km > 0 ? p.km * SIZES.osmPerKm : SIZES.osmStop;
+  }
   return Math.round(n);
 }
 

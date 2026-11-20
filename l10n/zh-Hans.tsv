@@ -798,17 +798,19 @@ sejc5h	ok	{0} was switched off after errors.	{0} 因多次出错已被关闭。	
 xzxdhp	ok	The plugin didn't provide a model provider.	该插件不含模型提供商。	src/core/llm/service.js:323	Note: said of a plugin.
 2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	该插件不是 annai 官方的。请从原来的来源重新安装。	src/core/llm/service.js:419	
 1k9wkd0	ok	The plugin it names doesn't provide models, so it wasn't installed.	指定的插件不提供模型，所以没有安装。	src/core/llm/service.js:428	Note: said after the provider's name ("OpenRouter: …"); the plugin its record names, with no 它.
-3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:82	{0} = p.title
-1rb0o7n	ok	OpenStreetMap around {0}	{0} 周边的 OpenStreetMap	src/core/pack/download.js:84	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
-hdsgog	ok	OpenStreetMap between {0} and {1}	{0} 与 {1} 之间的 OpenStreetMap	src/core/pack/download.js:84	{0} = a; {1} = b
-1ff3ec8	ok	Wikipedia near {0}	{0} 附近的 Wikipedia	src/core/pack/download.js:85	{0} = a
-i9ok5g	ok	Wikipedia between {0} and {1}	{0} 与 {1} 之间的 Wikipedia	src/core/pack/download.js:85	{0} = a; {1} = b
-1qn6l15	ok	{0} didn't answer in time.	{0} 响应超时。	src/core/pack/download.js:91	{0} = s.where
-16rip5y	ok	{0} stopped early: {1}.	{0} 中途停止了：{1}。	src/core/pack/download.js:92	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
-zy85n2	draft	every server was left for the rest of the run	本次下载不再向任何服务器请求	src/core/pack/download.js:94	
-cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMap 没有响应（{0}）。	src/core/pack/download.js:95	{0} = why.replace(/[.。]$/u, '')
-rhruvr	ok	{0} said: {1}.	{0} 回复：{1}。	src/core/pack/download.js:97	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
-nejb7z	draft	{0} sent no text for {1}.	{0} 没有发来 {1} 的正文。	src/core/pack/download.js:100	{0} = where; {1} = s.title
+3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:87	{0} = p.title
+1rb0o7n	ok	OpenStreetMap around {0}	{0} 周边的 OpenStreetMap	src/core/pack/download.js:89	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
+hdsgog	ok	OpenStreetMap between {0} and {1}	{0} 与 {1} 之间的 OpenStreetMap	src/core/pack/download.js:89	{0} = a; {1} = b
+1e7u0sz	draft	Wikipedia's other editions between {0} and {1}	{0} 与 {1} 之间的 Wikipedia（其他语言版本）	src/core/pack/download.js:90	{0} = a; {1} = b
+1vz4hht	draft	Wikipedia's other editions near {0}	{0} 附近的 Wikipedia（其他语言版本）	src/core/pack/download.js:90	{0} = a; Note: a part of the offline pack: each language's Wikipedia summaries near a stop that its own list lacked, found through Wikidata.
+1ff3ec8	ok	Wikipedia near {0}	{0} 附近的 Wikipedia	src/core/pack/download.js:91	{0} = a
+i9ok5g	ok	Wikipedia between {0} and {1}	{0} 与 {1} 之间的 Wikipedia	src/core/pack/download.js:91	{0} = a; {1} = b
+1qn6l15	ok	{0} didn't answer in time.	{0} 响应超时。	src/core/pack/download.js:97	{0} = s.where
+16rip5y	ok	{0} stopped early: {1}.	{0} 中途停止了：{1}。	src/core/pack/download.js:98	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
+zy85n2	draft	every server was left for the rest of the run	本次下载不再向任何服务器请求	src/core/pack/download.js:100	
+cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMap 没有响应（{0}）。	src/core/pack/download.js:101	{0} = why.replace(/[.。]$/u, '')
+rhruvr	ok	{0} said: {1}.	{0} 回复：{1}。	src/core/pack/download.js:103	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
+nejb7z	draft	{0} sent no text for {1}.	{0} 没有发来 {1} 的正文。	src/core/pack/download.js:106	{0} = where; {1} = s.title
 aaicx8	ok	{0} couldn't be checked: {1}	无法检查 {0}：{1}	src/core/package-updates.js:40	{0} = s.name ?? id; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 trd90h	ok	It wasn't installed from an address, so annai has nowhere to look for an update.	不是从地址安装的，所以无法查找更新。	src/core/package-updates.js:67	
 2olq9a	ok	The address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	这个地址现在提供的是另一个包（{0}），因此没有更新。如果想用那个包，请移除这个，再安装那个。	src/core/package-updates.js:71	{0} = pkg.id
@@ -996,8 +998,8 @@ z6ass1	ok	annai sends {0} itself, so it can't be one of these headers. Leave tha
 129gp7y	ok	There is no MCP server called {0}.	没有名为“{0}”的 MCP 服务器。	src/plugins/mcp/index.js:275	{0} = name
 i69zke	ok	A server's name is 1 to 20 lowercase letters, digits and dashes, like trail.	服务器名称由 1 到 20 个小写字母、数字和连字符组成，例如 trail。	src/plugins/mcp/index.js:314	Note: trail is an example name, as the form's placeholder; kept as written.
 ku5jlk	ok	There is a server called {0} already.	已经有名为“{0}”的服务器了。	src/plugins/mcp/index.js:315	{0} = n
-126nbeu	ok	Places tools	地点工具	src/plugins/places/index.js:18	Note: Places as its tool group is named in Settings → Tools (場所 / 地点).
-1gghsme	ok	nearby, geocode, reverse, weather and guide, from OpenStreetMap, Wikipedia, Nominatim, Open-Meteo and Wikivoyage.	nearby、geocode、reverse、weather 和 guide，数据来自 OpenStreetMap、Wikipedia、Nominatim、Open-Meteo 和 Wikivoyage。	src/plugins/places/index.js:21	
+126nbeu	ok	Places tools	地点工具	src/plugins/places/index.js:19	Note: Places as its tool group is named in Settings → Tools (場所 / 地点).
+1gghsme	ok	nearby, geocode, reverse, weather and guide, from OpenStreetMap, Wikipedia, Nominatim, Open-Meteo and Wikivoyage.	nearby、geocode、reverse、weather 和 guide，数据来自 OpenStreetMap、Wikipedia、Nominatim、Open-Meteo 和 Wikivoyage。	src/plugins/places/index.js:22	
 143ff3s	ok	Sensors	传感器	src/plugins/sensors/index.js:6	
 3mo7sf	ok	Where the phone is (GPS, only while GPS is on in annai and annai is on screen), whether annai is on screen, and whether there is a connection.	手机的位置（GPS，仅在 annai 中开启 GPS 且 annai 显示在屏幕上时）、annai 是否显示在屏幕上，以及是否有网络连接。	src/plugins/sensors/index.js:9	
 gec6zp	ok	Built-in skills	内置技能	src/plugins/skills/index.js:15	
@@ -1008,7 +1010,7 @@ elkw42	ok	The voice's audio couldn't be played.	无法播放这个声音的音�
 9gdjo3	ok	The browser voice couldn't speak ({0}).	浏览器声音无法朗读（{0}）。	src/plugins/voice-browser/index.js:585	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
 1mrk9hl	ok	The microphone stopped.	麦克风已停止。	src/plugins/voice-browser/index.js:650	
 1l4zitw	ok	Phone dictation stopped ({0}).	手机语音输入已停止（{0}）。	src/plugins/voice-browser/index.js:755	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音声入力 / 手机语音输入); {0} is the browser's error code, such as network.
-1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia 和 Nominatim	src/plugins/web/free.js:143	
+1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia 和 Nominatim	src/plugins/web/free.js:144	
 scnz2y	ok	Web tools	网页工具	src/plugins/web/index.js:13	Note: Web as its tool group is named in Settings → Tools (Web / 网页).
 eob60g	ok	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetch 可读取任何网页，遇到不允许网页应用读取的网站时，改用 Jina Reader 或 Exa；web_search 按设置 → 工具中的顺序使用各搜索提供商，先用免费的。	src/plugins/web/index.js:16	
 b4g7z9	ok	needs a key (Settings → Tools)	需要密钥（设置 → 工具）	src/plugins/web/index.js:191	
@@ -1057,15 +1059,16 @@ rcp6ga	ok	A photo was kept as it is	照片已按原图保存	src/ui/composer.js:
 1waossz	ok	Places nearby and along the itinerary, for Shiori's nearby tool and the offline pack, found through Overpass at overpass-api.de, and at maps.mail.ru, run by VK, while Settings → Tools has it on.	附近和行程沿途的地点，供 Shiori 的 nearby 工具和离线包使用，通过 Overpass 查找（overpass-api.de）；在设置 → 工具中勾选时，也会通过 VK 运营的 maps.mail.ru 查找。	src/ui/credits.js:19	Note: Tool names (nearby, geocode, web_search, fetch…) stay as written: they are the model's names.
 g4c01g	ok	Finds a place by name, and names the place at a point, for Shiori's geocode and reverse tools, and as free search's last resort looks for a place's own website. annai asks it once a second at most, as its usage policy asks.	按名称查找地点，或根据位置查出地名，供 Shiori 的 geocode 和 reverse 工具使用；作为免费搜索的最后备选，还会查找地点的官网。annai 遵照其使用政策，每秒最多请求一次。	src/ui/credits.js:26	
 oa9m21	draft	Articles about places nearby, and their summaries in the offline pack, from the editions in the languages you speak and in English. Each article Shiori reads comes with its address. Free search's last resort, on whatever you tick, sends it the words searched.	附近地点的相关文章，以及离线包中的文章摘要，来自你说的语言和英语的各语言版本。Shiori 读到的每篇文章都附带链接。免费搜索的最后备选不受勾选影响，会把搜索词发给 Wikipedia。	src/ui/credits.js:33	Note: Settings → About, Wikipedia's credit. Since 2026-11-19 it names the editions read: the languages you speak, and English.
-4og7nu	draft	Travel guides, from English Wikivoyage and from its editions in the languages you speak, for Shiori's guide tool and the offline pack, and where free search falls back to.	旅行指南，来自 Wikivoyage 的英语版和你说的语言的版本，供 Shiori 的 guide 工具和离线包使用，也是免费搜索的备选。	src/ui/credits.js:40	Note: Settings → About, Wikivoyage's credit. Since 2026-11-20 it names the editions read: English's, and those of the languages you speak that have one.
-czha5t	ok	Weather forecasts, for Shiori's weather tool. Sunrise and sunset in the forecast are Open-Meteo's too; the Itinerary's golden hour, and the sun's times when Open-Meteo doesn't answer, are worked out on the phone.	天气预报，供 Shiori 的 weather 工具使用。预报中的日出日落时间也来自 Open-Meteo；“行程”页面的黄金时刻，以及 Open-Meteo 无响应时的日出日落时间，都在手机上计算。	src/ui/credits.js:47	
-a8awk7	ok	Free web search for web_search, and a reader of pages other readers can't read for fetch, while ticked in Settings → Tools. Only the words searched, or the page's address, are sent.	仅在设置 → 工具中勾选时，为 web_search 提供免费网页搜索，并为 fetch 读取其他方式读不了的网页。只发送搜索词或网页地址。	src/ui/credits.js:54	
-1obxox	ok	Free web search for web_search, while ticked in Settings → Tools. Only the words searched, and a random id for each conversation, are sent.	仅在设置 → 工具中勾选时，为 web_search 提供免费网页搜索。只发送搜索词，以及每段对话的随机 ID。	src/ui/credits.js:61	
-382qu6	ok	Free web search for web_search, while ticked in Settings → Tools. Only the words searched are sent.	仅在设置 → 工具中勾选时，为 web_search 提供免费网页搜索。只发送搜索词。	src/ui/credits.js:68	
-138nh47	ok	Web search for web_search, with your key, once the Tavily Search plugin is installed.	安装“Tavily 搜索”插件后，用你的密钥为 web_search 提供网页搜索。	src/ui/credits.js:75	Note: Plugin names are shown as written (decision 10).; Note: Names the plugin as its own zh name, Tavily 搜索 (L7).
-1a5kitj	ok	Web search for web_search, with your key, once the Serper Search plugin is installed.	安装“Serper 搜索”插件后，用你的密钥为 web_search 提供网页搜索。	src/ui/credits.js:82	Note: Names the plugin as its own zh name, Serper 搜索 (L7).
-1yvqge7	ok	Read pages that don't let web apps read them, and search the web, for Shiori's fetch and web_search tools, as Settings → Tools chooses.	读取不允许网页应用读取的网页，并进行网页搜索，供 Shiori 的 fetch 和 web_search 工具按设置 → 工具中的选择使用。	src/ui/credits.js:89	
-l5jx6y	ok	Shiori's art: designed for annai with AI image generation, then traced into vector art.	Shiori 的形象：用 AI 图像生成为 annai 设计，再描摹成矢量图。	src/ui/credits.js:107	
+bhxug6	draft	Which editions of Wikipedia have each article about a place nearby, and its title there, so Shiori's nearby tool and the offline pack bring it in each of your languages. It is sent the articles' ids, never your location.	附近地点的文章在 Wikipedia 的哪些语言版本中有，以及在那个版本中的标题，供 Shiori 的 nearby 工具和离线包用你说的每种语言提供文章。只发送文章的 ID，从不发送你的位置。	src/ui/credits.js:40	Note: Settings → About, Wikidata's credit (since 2026-11-20).
+4og7nu	draft	Travel guides, from English Wikivoyage and from its editions in the languages you speak, for Shiori's guide tool and the offline pack, and where free search falls back to.	旅行指南，来自 Wikivoyage 的英语版和你说的语言的版本，供 Shiori 的 guide 工具和离线包使用，也是免费搜索的备选。	src/ui/credits.js:47	Note: Settings → About, Wikivoyage's credit. Since 2026-11-20 it names the editions read: English's, and those of the languages you speak that have one.
+czha5t	ok	Weather forecasts, for Shiori's weather tool. Sunrise and sunset in the forecast are Open-Meteo's too; the Itinerary's golden hour, and the sun's times when Open-Meteo doesn't answer, are worked out on the phone.	天气预报，供 Shiori 的 weather 工具使用。预报中的日出日落时间也来自 Open-Meteo；“行程”页面的黄金时刻，以及 Open-Meteo 无响应时的日出日落时间，都在手机上计算。	src/ui/credits.js:54	
+a8awk7	ok	Free web search for web_search, and a reader of pages other readers can't read for fetch, while ticked in Settings → Tools. Only the words searched, or the page's address, are sent.	仅在设置 → 工具中勾选时，为 web_search 提供免费网页搜索，并为 fetch 读取其他方式读不了的网页。只发送搜索词或网页地址。	src/ui/credits.js:61	
+1obxox	ok	Free web search for web_search, while ticked in Settings → Tools. Only the words searched, and a random id for each conversation, are sent.	仅在设置 → 工具中勾选时，为 web_search 提供免费网页搜索。只发送搜索词，以及每段对话的随机 ID。	src/ui/credits.js:68	
+382qu6	ok	Free web search for web_search, while ticked in Settings → Tools. Only the words searched are sent.	仅在设置 → 工具中勾选时，为 web_search 提供免费网页搜索。只发送搜索词。	src/ui/credits.js:75	
+138nh47	ok	Web search for web_search, with your key, once the Tavily Search plugin is installed.	安装“Tavily 搜索”插件后，用你的密钥为 web_search 提供网页搜索。	src/ui/credits.js:82	Note: Plugin names are shown as written (decision 10).; Note: Names the plugin as its own zh name, Tavily 搜索 (L7).
+1a5kitj	ok	Web search for web_search, with your key, once the Serper Search plugin is installed.	安装“Serper 搜索”插件后，用你的密钥为 web_search 提供网页搜索。	src/ui/credits.js:89	Note: Names the plugin as its own zh name, Serper 搜索 (L7).
+1yvqge7	ok	Read pages that don't let web apps read them, and search the web, for Shiori's fetch and web_search tools, as Settings → Tools chooses.	读取不允许网页应用读取的网页，并进行网页搜索，供 Shiori 的 fetch 和 web_search 工具按设置 → 工具中的选择使用。	src/ui/credits.js:96	
+l5jx6y	ok	Shiori's art: designed for annai with AI image generation, then traced into vector art.	Shiori 的形象：用 AI 图像生成为 annai 设计，再描摹成矢量图。	src/ui/credits.js:114	
 gb19et	ok	Message to Shiori	发消息给 Shiori	src/ui/dock.js:53	
 1vatbdb	ok	Send	发送	src/ui/dock.js:80	
 12d978v	draft	Your message is back in the box.	消息已放回输入框。	src/ui/dock.js:136	Note: a sentence of a card, when the line typed in the box could not be saved or sent and is back in it: the storage card's first, or its second after "Your files didn't reach Shiori." when files went with the line, and the first of the body on the card a hand-over of files shows for another failure; 输入框 for the type box.
@@ -1397,7 +1400,7 @@ an1pf7	ok	Dismiss	关闭	src/ui/notices.js:271
 1y7mim7	ok	Downloading {0} of {1}: {2}…	正在下载（{0}/{1}）：{2}…	src/ui/offline-pack.js:33	{0} = done; {1} = total; {2} = r.label
 1uxbvr1	ok	The pack follows the itinerary: once the itinerary has places, it can be downloaded here.	离线包随行程而定。行程中有地点后，就可以在这里下载。	src/ui/offline-pack.js:36	
 1mpvke9#other	ok	For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the itinerary's # stops and along the way between them. Shiori's nearby and guide read it first.	供没有网络时使用：行程中 # 个停留点周边及沿途的 OpenStreetMap 地点、Wikipedia 摘要和 Wikivoyage 指南。Shiori 的 nearby 和 guide 工具会优先读取离线包。	src/ui/offline-pack.js:42	plural; # = s.stops; English: "For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the itinerary's stop and along the way between them. Shiori's nearby and guide read it first." (one), "For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the itinerary's # stops and along the way between them. Shiori's nearby and guide read it first." (other); Note: nearby and guide are Shiori's tools, named as in Settings → Tools.
-922fxy	ok	Downloading sends the itinerary's places to OpenStreetMap and Wikipedia, and place names to Wikivoyage.	下载时会把行程中的地点发送给 OpenStreetMap 和 Wikipedia，把地名发送给 Wikivoyage。	src/ui/offline-pack.js:44	
+ty53av	draft	Downloading sends the itinerary's places to OpenStreetMap and Wikipedia, the ids of Wikipedia's articles to Wikidata, and place names to Wikivoyage.	下载时会把行程中的地点发送给 OpenStreetMap 和 Wikipedia，把 Wikipedia 文章的 ID 发送给 Wikidata，把地名发送给 Wikivoyage。	src/ui/offline-pack.js:44	
 1452e43	ok	Download (about {0})	下载（约 {0}）	src/ui/offline-pack.js:46	{0} = about
 13ryfn7	ok	Downloaded · {0} · {1}.	已下载 · {0} · {1}。	src/ui/offline-pack.js:50	{0} = size(m.bytes); {1} = holds(m)
 1yax0wt	ok	Downloaded {0} · {1} · {2}.	{0}下载 · {1} · {2}。	src/ui/offline-pack.js:50	{0} = when; {1} = size(m.bytes); {2} = holds(m); Note: {0} is a relative time ("2 hours ago").

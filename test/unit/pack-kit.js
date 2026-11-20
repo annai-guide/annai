@@ -128,9 +128,42 @@ export function voyageWorld(world) {
   };
 }
 
+/** Wikidata's real answer naming 50 items' titles in ja, en and zh: the 24 articles near Kiyomizu-dera only Japanese listed, and the 26 of Yufuin's two lists (2026-11-20; CC0). */
+export const SITELINKS = JSON.parse(await readFile(new URL('../fixtures/places/wikidata-sitelinks.json', import.meta.url), 'utf8'));
 /**
- * Stand-ins for Overpass, Wikipedia and Wikivoyage, answering as they do; each request is noted.
- * @param {{ overpass?: (url: string, init: any) => any, wikipedia?: (url: string, init: any) => any, wikivoyage?: (url: string, init: any) => any }} [o]
+ * Wikidata answering wbgetentities from a table of items, as it answers (the shape of SITELINKS): each id asked, with its titles in the sites the
+ * filter names; an item the table lacks has none (as if no edition but its lists' had it). @param {Record<string, any>} [table] items by id
+ * @returns {(url: string) => any}
+ */
+export const wikidataOf = (table = SITELINKS.entities) => (url) => {
+  const u = new URL(url).searchParams;
+  const sites = new Set(String(u.get('sitefilter')).split('|'));
+  const entities = Object.fromEntries(String(u.get('ids')).split('|').map((id) => [id, { type: 'item', id,
+    sitelinks: Object.fromEntries(Object.entries(table[id]?.sitelinks ?? {}).filter(([site]) => sites.has(site))) }]));
+  return { entities, success: 1 };
+};
+
+/**
+ * An edition's Wikipedia answering the second stage's request by titles (prop=extracts|pageprops, as it answers: formatversion 2, each page its
+ * title, its item and a summary) from Wikidata's items: a title no item has there is missing. The summaries are made up for the tests.
+ * @param {Record<string, any>} [table] Wikidata's items by id @returns {(url: string) => any}
+ */
+export const summariesFrom = (table = SITELINKS.entities) => (url) => {
+  const u = new URL(url);
+  const site = `${u.hostname.split('.')[0].replace(/-/g, '_')}wiki`;
+  const pages = String(u.searchParams.get('titles')).split('|').map((title, k) => {
+    const id = Object.keys(table).find((x) => table[x].sitelinks?.[site]?.title === title);
+    return id ? { pageid: 5000 + k, ns: 0, title, extract: `${title}: its summary on ${u.hostname}.`, pageprops: { wikibase_item: id } } : { ns: 0, title, missing: true };
+  });
+  return { batchcomplete: true, query: { pages } };
+};
+/** Yufuin's Wikipedia: the saved lists (yufuinAnswer), and articles by title from Wikidata's real titles (summariesFrom). @param {string} url */
+export const yufuinWikipedia = (url) => (new URL(url).searchParams.has('titles') ? summariesFrom()(url) : yufuinAnswer(url));
+
+/**
+ * Stand-ins for Overpass, Wikipedia, Wikidata and Wikivoyage, answering as they do; each request is noted. Wikidata, unless given, knows no
+ * item's other editions: a second stage asks it and nothing more.
+ * @param {{ overpass?: (url: string, init: any) => any, wikipedia?: (url: string, init: any) => any, wikidata?: (url: string, init: any) => any, wikivoyage?: (url: string, init: any) => any }} [o]
  */
 export function services(o = {}) {
   /** @type {{ url: string, init: any, at: number }[]} */
@@ -142,7 +175,7 @@ export function services(o = {}) {
     // Every Overpass server answers at /api/interpreter: overpass-api.de's, and VK's at maps.mail.ru/osm/tools/overpass.
     // Wikipedia at any edition's host: the stand-in for Big Sur answers in English only, as an edition with nothing there answers; Wikivoyage at any edition's.
     const answer = url.endsWith('/api/interpreter') ? o.overpass ?? overpass : host.endsWith('.wikipedia.org') ? o.wikipedia ?? (host === 'en.wikipedia.org' ? wikipedia : () => ({ batchcomplete: true }))
-      : host.endsWith('.wikivoyage.org') ? o.wikivoyage ?? wikivoyage : () => new Response('', { status: 404 });
+      : host === 'www.wikidata.org' ? o.wikidata ?? wikidataOf({}) : host.endsWith('.wikivoyage.org') ? o.wikivoyage ?? wikivoyage : () => new Response('', { status: 404 });
     const a = await answer(url, init);
     return a instanceof Response ? a : new Response(JSON.stringify(a));
   };

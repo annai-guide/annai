@@ -10,7 +10,8 @@ import { isCJK } from '../languages.js';
  * @typedef {import('./osm.js').OsmRow} OsmRow
  * @typedef {import('./download.js').Manifest} Manifest
  * @typedef {{ points: [number, number][], radius: number }} Area
- * @typedef {[title: string, lat: number, lng: number, summary: string, wikidata?: string | null]} WikiPage  as stored; no id before editions
+ * @typedef {[title: string, lat: number, lng: number, summary: string, wikidata?: string | null, edition?: string]} WikiPage  as stored; no id before
+ *   editions; edition: a second stage's row's (an edition's list says its edition in the manifest)
  * @typedef {import('../wiki.js').Article} Article
  * @typedef {{ lat: number, lng: number }} Point
  */
@@ -129,14 +130,20 @@ export class Pack {
     return out;
   }
 
-  /** Its articles of these editions within radius, each once (parts overlap): a language taken off the list is no more read, though its files stay till the next download. @param {Point} p @param {number} radius @param {string[]} editions */
+  /**
+   * Its articles of these editions within radius, each once (parts overlap), with `also`, its rows in the later editions it holds: a language taken
+   * off the list is no more read, though its files stay till the next download. @param {Point} p @param {number} radius @param {string[]} editions
+   */
   articles(p, radius, editions) {
     return merged(this.#wiki.filter((w) => editions.includes(w.edition) && meters(p, w) <= radius), editions);
   }
 
-  /** nearby's rows for its Wikipedia articles within radius, each with its summary. @param {Point} p @param {number} radius @param {string[]} editions @returns {any[][]} */
+  /**
+   * nearby's rows for its Wikipedia articles within radius, named in the first edition that has it: its note, each edition's it holds, in the order,
+   * its cut summary and address, joined by " · ". @param {Point} p @param {number} radius @param {string[]} editions @returns {any[][]}
+   */
   pages(p, radius, editions) {
-    /* en */ return this.articles(p, radius, editions).map((w) => [w.title, 'wikipedia article', Math.round(meters(p, w)), w.lat, w.lng, 'wikipedia', `${short(w.summary)} ${articleUrl(w.edition, w.title)}`.trim()]);
+    /* en */ return this.articles(p, radius, editions).map((w) => [w.title, 'wikipedia article', Math.round(meters(p, w)), w.lat, w.lng, 'wikipedia', [w, ...w.also].map((x) => `${short(x.summary)} ${articleUrl(x.edition, x.title)}`.trim()).join(' · ')]);
   }
 
   /**
@@ -182,6 +189,8 @@ const goodArea = (a) => Boolean(a) && isNum(a.radius) && Array.isArray(a.points)
 const goodRow = (r) => Array.isArray(r) && typeof r[0] === 'string' && typeof r[1] === 'string' && typeof r[2] === 'string' && isNum(r[3]) && isNum(r[4]) && typeof r[5] === 'string' && typeof r[6] === 'string';
 /** @param {any} w @returns {w is WikiPage} */
 const goodPage = (w) => Array.isArray(w) && typeof w[0] === 'string' && isNum(w[1]) && isNum(w[2]) && typeof w[3] === 'string';
+/** A second stage's row: a list's, with its id and its edition. @param {any} w @returns {w is [string, number, number, string, string, string]} */
+const goodMore = (w) => goodPage(w) && typeof w[4] === 'string' && w[4] !== '' && typeof w[5] === 'string' && w[5] !== '';
 
 /** A trip's pack as the journey's namer (the recap's, Replay's). @param {import('../workspace.js').Workspace} ws @param {string} scope @param {string} locale @returns {Promise<(p: Point) => { name: string, m: number } | null>} */
 export async function packNamer(ws, scope, locale) {
@@ -218,6 +227,9 @@ export async function loadPack(ws, scope) {
     // A part from before editions is English.
     else if (f.kind === 'wikipedia' && Array.isArray(v?.pages)) {
       for (const [title, lat, lng, summary, id] of v.pages.filter(goodPage)) wiki.push({ title, lat, lng, summary, id: typeof id === 'string' && id ? id : null, edition: f.edition ?? 'en' });
+    } else if (f.kind === 'wikipedia-editions' && Array.isArray(v?.pages)) {
+      // A second stage's rows go to the articles of their editions, merged by id where they are read, as the lists' are.
+      for (const [title, lat, lng, summary, id, edition] of v.pages.filter(goodMore)) wiki.push({ title, lat, lng, summary, id, edition });
     }
   }
   const pack = new Pack(manifest, osm, wiki, (path) => ws.readJSON(scope, path));

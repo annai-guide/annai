@@ -41,7 +41,7 @@ export function packWords(s, connection) {
       lines: [
         plural(s.stops, "For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the itinerary's stop and along the way between them. Shiori's nearby and guide read it first.",
           "For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the itinerary's # stops and along the way between them. Shiori's nearby and guide read it first."),
-        t`Downloading sends the itinerary's places to OpenStreetMap and Wikipedia, and place names to Wikivoyage.`,
+        t`Downloading sends the itinerary's places to OpenStreetMap and Wikipedia, the ids of Wikipedia's articles to Wikidata, and place names to Wikivoyage.`,
       ],
       button: t`Download (about ${about})`,
     };

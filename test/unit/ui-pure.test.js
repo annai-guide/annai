@@ -1049,7 +1049,8 @@ test('the Offline pack panel: the estimate before anything is downloaded, then w
   const none = packWords(/** @type {any} */ (base), 'unknown');
   assert.equal(none.button, 'Download (about 120 kB)');
   assert.match(none.lines[0], /^For when there's no connection: places from OpenStreetMap, Wikipedia summaries and Wikivoyage guides, around the itinerary's 2 stops and along the way between them\./);
-  assert.equal(none.lines[1], "Downloading sends the itinerary's places to OpenStreetMap and Wikipedia, and place names to Wikivoyage.");
+  // Wikidata is named with what it gets: article ids, never a place.
+  assert.equal(none.lines[1], "Downloading sends the itinerary's places to OpenStreetMap and Wikipedia, the ids of Wikipedia's articles to Wikidata, and place names to Wikivoyage.");
   assert.deepEqual(packWords(/** @type {any} */ ({ ...base, stops: 0 }), 'wifi'), { lines: ['The pack follows the itinerary: once the itinerary has places, it can be downloaded here.'], button: null });
   assert.deepEqual(packWords(/** @type {any} */ ({ ...base, running: { done: 2, total: 6, label: 'Wikipedia near Nepenthe' } }), 'wifi'), { lines: ['Downloading 3 of 6: Wikipedia near Nepenthe…'], button: null });
   const manifest = { at: new Date().toISOString(), bytes: 1_300_000, places: 1200, summaries: 40, files: [{ kind: 'osm', items: 1300 }, { kind: 'wikipedia', items: 45 }, { kind: 'wikivoyage', items: 1 }], guides: [{ title: 'Big Sur', also: [] }], voyage: ['en'], failed: [], stopped: false };

@@ -35,6 +35,13 @@ export const SOURCES = [
     links: /* en */ [{ href: 'https://www.wikipedia.org/', text: 'Wikipedia' }, CC_BY_SA],
   },
   {
+    name: 'Wikidata',
+    hosts: ['www.wikidata.org'],
+    use: t`Which editions of Wikipedia have each article about a place nearby, and its title there, so Shiori's nearby tool and the offline pack bring it in each of your languages. It is sent the articles' ids, never your location.`,
+    credit: /* en */ 'Data from Wikidata, under CC0.',
+    links: /* en */ [{ href: 'https://www.wikidata.org/', text: 'Wikidata' }, { href: 'https://creativecommons.org/publicdomain/zero/1.0/', text: 'CC0' }],
+  },
+  {
     name: 'Wikivoyage',
     hosts: ['*.wikivoyage.org'],
     use: t`Travel guides, from English Wikivoyage and from its editions in the languages you speak, for Shiori's guide tool and the offline pack, and where free search falls back to.`,
