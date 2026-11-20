@@ -1078,12 +1078,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the build that measures the pack's size and either drops the limit or makes it a setting the traveller can change (its row in docs/progress.md; the user, 2026-11-19: "I doubt if we need a limit.. if we have one, maybe make it also user changeable?").
 - **Approved:** 2026-11-19, the user: "accept. why do we have a 20mb limit?" (the pack at its limit) and "accept. why 20mb limit?" (a full pack and a new language); chief's decision C133 (2026-11-19) accepted an earlier wording of the language order.
 
-### A Wikipedia or Wikivoyage title ending in punctuation links to a shorter address in chat
-- **Kind:** deferred.
-- **What the traveller sees:** when Shiori writes an article's address bare in chat, a title ending in `.`, `,`, `;`, `:`, `!`, `?`, `'` or `"` (`…/wiki/Yahoo!`, `…/wiki/Washington,_D.C.`) is linked without that last character, so the link opens a different or missing page; an address with a bracket is cut at the bracket. A `[text](address)` link is unaffected unless its address holds a `)`.
-- **Why:** the renderer's rule for a bare address (src/ui/markdown.js:12) ends it at a bracket or whitespace and drops a trailing stop, so that a sentence's own full stop isn't taken into the link; the places tools now send their addresses with brackets encoded (`pageUrl`, src/core/wiki.js), so it bites only on titles ending in punctuation.
-- **Revisit when:** its row in docs/progress.md ("A bare address in chat that ends in punctuation"), a small build after places-lang-next.
-
 ### A line given back while another conversation is open can be sent there
 - **Kind:** known limitation.
 - **What the traveller sees:** on a phone too full to write, a line typed for one conversation whose write is refused comes back into the one type box; if another conversation is open by then, the line sits in its box, and sent without a look it goes to that conversation.

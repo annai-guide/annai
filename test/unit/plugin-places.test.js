@@ -671,6 +671,7 @@ test("nearby reads Wikipedia in each of the traveller's languages and English: e
   assert.deepEqual(named('清水寺'), ['清水寺', 'wikipedia article', '8', '34.9948', '135.785', 'wikipedia', 'https://ja.wikipedia.org/wiki/清水寺']);
   assert.equal(named('Kiyomizu-dera'), undefined, 'the same article, under Japanese');
   assert.equal(named('Ryozen Museum of History')?.[6], 'https://en.wikipedia.org/wiki/Ryozen_Museum_of_History', "English's own articles stay, under English");
+  assert.equal(named('正法寺 (京都市東山区)')?.[6], 'https://ja.wikipedia.org/wiki/正法寺_%28京都市東山区%29', 'an address as pageUrl writes it (src/core/wiki.js)');
   assert.equal(named('Higashiyama-ku'), undefined, 'the 35th nearest');
   // Each edition asked once, as annai names itself to Wikimedia, for its 30 nearest with their coordinates and Wikidata ids.
   const wiki = asked.filter((a) => a.url.includes('wikipedia.org'));
