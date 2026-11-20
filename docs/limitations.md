@@ -1110,3 +1110,45 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** IndexedDB refuses to open a database at a lower version than it holds (src/core/store-idb.js opens at an explicit version). Keeping a way for an older release to open a newer database would be a design of its own; the database's version has not changed since 2026-10-16.
 - **Revisit when:** the first release that would raise the database version.
 - **Approved:** 2026-11-19, chief's decision C145 (not the user's words), accepted as recommended.
+
+### A rule picks when her conversation is summarized; she only marks where
+- **Kind:** known limitation.
+- **What the traveller sees:** Shiori doesn't choose when the older part of a conversation is summarized: a rule does, when they come back after her cache has run out (an hour unless Settings → Models → Cache says five minutes) to a conversation over 100,000 tokens, or over the threshold of Settings → Models → Housekeeping on a model with a small window; then the utility model writes the summary. On the rare page still open just before her cache runs out after a turn over that size, her own model writes it while the cache is warm. She only marks, with `mark_done`, where a summary may cut. Afterwards she remembers the earlier part as a summary and brings back its exact words with `recall`.
+- **Why:** what costs is the return after a pause, which writes the whole conversation to the cache again; a rule sees that moment without her, and a summary there costs no cache. A tool that compacts at once would add a cache rewrite at every call, and a way for a page's text to talk her into it, for at most the warm reads' share of the cost (the self-compaction design, its option D).
+- **Revisit when:** the trace shows her recalling often after summaries, or long warm spells over 100,000 tokens.
+- **Approved:** chief's decision C138 (2026-11-19, not the user's words), accepted as recommended. Its words changed to what is built: chief's "the utility model writes it" holds at a cold return; on the warm timer's path (kept, C144) her own model writes it.
+
+### An open item she never wrote into the to-do list survives a summary only if the summary kept it
+- **Kind:** known limitation.
+- **What the traveller sees:** something asked, promised or waited for that Shiori never put in `/trip/todo.md` is in her context after a summary only if the summary mentioned it. Its words are still in the log, and `recall` brings them back when she thinks to look.
+- **Why:** the to-do list is the part no summary touches (it is in her now block at every request); whatever else is open is summarized with the rest of the conversation. Her instructions and the list's own label tell her to keep every such item there.
+- **Revisit when:** a real-model check or the trace shows open items lost at a summary that were never on the list.
+- **Approved:** chief's decision C139 (2026-11-19, not the user's words), accepted as recommended. Its words changed: "the summary" for chief's "the utility model", since on the warm timer's path her own model writes it.
+
+### Koe doesn't see the to-do list
+- **Kind:** known limitation.
+- **What the traveller sees:** while Shiori is two halves, Koe, her quick voice (chat or live), has no to-do list in its context: asked what is still open, it answers from what it has or asks Kokoro, who has the list. It could read `/trip/todo.md` with its read tool, as any file, but isn't told of it.
+- **Why:** Koe's context is small for speed (spec §6.3), and its now block carries no plan line either; Kokoro holds the list and works on it.
+- **Revisit when:** a drive or the trace shows Koe answering wrongly about what is still open.
+- **Approved:** chief's decision C140 (2026-11-19, not the user's words), accepted as recommended. Its words widened: chief's "Koe (the live voice)" is both of Koe's modes, chat and live, which share one now block.
+
+### A conversation never paused for her cache's life grows until a request would overflow
+- **Kind:** known limitation.
+- **What the traveller sees:** a conversation that never pauses long enough for her cache to run out is not summarized at 100,000 tokens: each return reads the cached conversation, at the cached price. It grows until a request would overflow (over 90% of her model's window, or over the largest request size in Settings → Models → Housekeeping), where it is summarized inside the turn before her next call. Each call costs more as it grows (Claude Opus 5.5: about $0.06 a call at 300,000 tokens).
+- **Why:** while the cache is warm a summary rewrites the cache, which pays back only after about 13 more warm calls (the design's replay of a month of real use; the median spell between pauses had 5 calls); at a return after a pause the rewrite costs nothing extra. No spell like this is in the trace.
+- **Revisit when:** the trace shows long warm spells over 100,000 tokens.
+- **Approved:** chief's decision C141 (2026-11-19, not the user's words), accepted as recommended. Its words changed: chief's "grows to the old threshold (70% of the window)" is where housekeeping is due, and due housekeeping waits for a pause either way; with none, it runs only where it is forced.
+
+### After a cold return over 100,000 tokens, her first answer waits for the summary
+- **Kind:** known limitation.
+- **What the traveller sees:** the dock says Tidying, then the conversation shows "Earlier conversation summarized", and her first answer comes after the utility model has written the summary: WAIT_MEASURED. Koe, while Shiori is two halves, answers at once as before.
+- **Why:** without it, that first answer would write the whole conversation to the cache at full price; answering first and summarizing after would pay that write and the summary both.
+- **Revisit when:** travellers find the wait too long, or the utility model in use is much slower.
+- **Approved:** chief's decision C142 (2026-11-19, not the user's words), accepted as recommended. Its words changed: chief's "about 20 s" is replaced by the wait measured.
+
+### A reply that took several attempts can bring one summary early; one that searched, one late
+- **Kind:** known limitation.
+- **What the traveller sees:** after a reload, or with another conversation opened in between, housekeeping reads the last call's count from the conversation's log, which keeps one count per reply, the sum of its attempts: a reply whose first attempt failed after spending tokens, or that another model finished, counts each attempt's prompt, up to about twice the real one, so a conversation from about 50,000 tokens can be summarized at its next cold return. A reply in which the provider ran its own web search gives no count at all (its count sums the steps inside it, up to 2.1 times the prompt in the trace); the request's own estimate stands, which reads about 0.7 of Claude's own count, so a conversation of up to about 140,000 tokens whose last reply searched can be sent whole at a cold return, one summary late.
+- **Why:** a field for the answering call's own count would be one more stored field for a rare case (the spec check's 3.7: no new field). One summary early loses nothing the to-do list and the kept third hold; one late costs one return at full price.
+- **Revisit when:** the trace shows summaries well under 100,000 tokens, or cold returns over 100,000 sent whole.
+- **Approved:** chief's decision C143 (2026-11-19, not the user's words), accepted as recommended. Its words changed: chief's web-search case is fixed (a reply with the provider's own tool calls gives no count), so what comes early is a reply of several attempts, and a search now comes late instead.
