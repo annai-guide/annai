@@ -45,7 +45,7 @@ test('a provider\'s state: a ready() that never answers is "couldn\'t check", a 
   }
 });
 
-test('the wait a resting provider shows is worked out from one reading of the clock, so the last minute never reads "now"', async () => {
+test('the wait a resting provider shows reads "1 minute" in its last minute, never "now"', async () => {
   cooldowns.clear('exa');
   cooldowns.rest('exa');
   const real = Date.now;

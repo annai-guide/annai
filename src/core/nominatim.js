@@ -8,7 +8,7 @@ export const NOMINATIM_GAP = { ms: 1100 };
 
 let next = 0;
 
-/** Resolves at this request's turn; the next is a gap later. A signal ends the wait, rejecting (the turn goes unused). @param {AbortSignal} [signal] */
+/** Resolves at this request's turn, the next a gap later. A signal ends the wait, rejecting (a turn it booked stays booked). @param {AbortSignal} [signal] */
 export async function nominatimTurn(signal) {
   signal?.throwIfAborted();
   const wait = next - Date.now();

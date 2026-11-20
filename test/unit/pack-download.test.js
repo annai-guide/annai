@@ -662,7 +662,7 @@ async function sizes(editions) {
   return { m, osm: total((f) => f.kind === 'osm'), en: total((f) => f.edition === 'en'), ja: total((f) => f.edition === 'ja') };
 }
 
-test("a pack that filled up takes a language added first at its monthly refresh (the refresh as main's: the parts in the order until one no longer fits), and not before: a pack under a month old stays as it is", async () => {
+test("a pack that filled up takes a language added first at its monthly refresh, and not before: a pack under a month old stays as it is", async () => {
   const net = () => services({ overpass: (url, init) => overpass(url, init), wikipedia: same });
   const english = await sizes(EN);
   const both = await sizes(['ja', 'en']);

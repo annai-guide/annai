@@ -285,7 +285,7 @@ test("the floor: a Nominatim that answers after the floor's time loses only its 
   });
 });
 
-test("the floor: a Nominatim turn that comes after the floor's time is not waited for: the floor ends at its time with the guide's and Wikipedia's rows, Nominatim is not asked, and with no rows the failure is Nominatim's lateness", async () => {
+test("the floor: a Nominatim turn that comes after the floor's time is not waited for: the floor ends at its time with Wikipedia's rows, Nominatim is not asked, and with no rows the failure is Nominatim's lateness", async () => {
   const wiki = (/** @type {string} */ url) => (url.includes('nominatim') ? new Response('[]') : url.includes('en.wikipedia.org') ? found('Kiyomizu-dera') : nothing());
   try {
     // The app's gate is booked for 2 s (another request's turns, queued ahead of the floor's); the floor's time is 100 ms.
@@ -312,7 +312,7 @@ test("the floor: a Nominatim turn that comes after the floor's time is not waite
       const stopped = await search(floorOf(['en']), () => nothing(), 'kiyomizu temple', stop.signal).then(() => null, (/** @type {any} */ e) => e);
       assert.ok(Date.now() - t2 < 1000);
       assert.equal(stopped?.name, 'AbortError');
-      // A floor whose time ran out before its parts began (a slow settings read) takes no turn at all.
+      // A floor whose time ran out before its parts began (a slow settings read) ends at once, without waiting for a turn.
       const t3 = Date.now();
       const slowRead = knowledgeFloor(async () => {
         await new Promise((resolve) => setTimeout(resolve, 150));
