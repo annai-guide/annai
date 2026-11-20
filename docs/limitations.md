@@ -1289,3 +1289,24 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** an export reads a trip one moment at a time and starts again once when a change frees what it listed; one fresh start covers one change, and an unbounded retry could hang an export behind a fault.
 - **Revisit when:** a traveller meets it.
 - **Approved:** chief's decision C157 (2026-11-20, not the user's words), accepted as recommended.
+
+### A guide only the traveller's edition has is not in the offline pack
+- **Kind:** known limitation.
+- **What the traveller sees:** offline, `guide` has nothing for a place English Wikivoyage has no guide for, though the traveller's own edition has one; online it is read under that edition's own title. In a small sample (the first page of Japanese Wikivoyage's list, 2026-11-20, biased toward its early titles) 11 of 21 pages had no English twin, most of them towns, so this is not a rare case for a Japanese reader. Where English has a guide by the name asked, another edition's guide comes only where English's page links to it.
+- **Why:** English decides which place a name means, so the same question brings the same place in every language and with or without the pack (the design check of the editions build: storing an edition's own guides let one edition's meaning of a name sit beside or replace English's, as "Kashmir", "Granada" and 「台湾」 did); a guide with no English twin has no second edition to set beside it.
+- **Revisit when:** the user's answer to U111 (keep them out, or keep them in the pack as the design check's section 2 describes), or a traveller misses such a guide offline.
+- **Approved:** chief's decision C154 (2026-11-20, not the user's words), accepted as recommended; its first reason ("the rare case") corrected to the sample by chief (2026-11-20); the user's own word is asked as U111.
+
+### A stopped offline-pack download goes on by itself an hour later
+- **Kind:** known limitation.
+- **What the traveller sees:** on Wi-Fi, after a download stops, annai waits an hour before going on by itself, whatever stopped it: their own Stop (so on a phone tethered to a hotspot, which says Wi-Fi, a Stop holds an hour, not until they tap Download); leaving Wi-Fi for a moment during annai's own update, or opening another conversation during a download (back, nothing happens for up to an hour; "Download the rest" goes on at once); a change to the itinerary or the languages inside that hour waits for its end (the panel says "The itinerary changed since" with Update).
+- **Why:** the pack's manifest says that a run was stopped and when, not who stopped it; telling them apart needs a stored field or a mark a relaunch loses, and three fix rounds found holes in that state. One rule needs none and holds across a relaunch (the keeper's design check, 2026-11-20).
+- **Revisit when:** a traveller reports a pack left incomplete after a Wi-Fi drop or a look at another conversation, or a download restarting on a hotspot.
+- **Approved:** chief's decision C159 (2026-11-20, not the user's words), accepted as written; the user may say "my Stop holds until I tap Download".
+
+### On a slow link, web search's fallback keeps fewer guides with several languages
+- **Kind:** known limitation.
+- **What the traveller sees:** when the free search providers fail and annai's own fallback answers, on a connection where a request takes 2.5 s or more and four or more Wikivoyage editions are read, the later editions' guides are left out (English's stays).
+- **Why:** the fallback has 9 s in all (the chain's reserve), Wikimedia's rule allows 3 requests at once, and each edition's guide is one more request.
+- **Revisit when:** a slow-link report, or measured request times from a phone.
+- **Approved:** chief's decision C160 (2026-11-20, not the user's words), accepted as written.
