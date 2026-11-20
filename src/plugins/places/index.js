@@ -8,7 +8,7 @@ import { loadPack } from '../../core/pack/read.js';
 import { anySignal } from '../../core/signals.js';
 import { NOMINATIM_GAP, nominatimTurn, nominatimLanguages } from '../../core/nominatim.js';
 import { readingOrder } from '../../core/languages.js';
-import { editionsOf, nearUrl, articlesOf, wikiSaid, merged, articleUrl, pageUrl, agentHeader, guideEditions, voyageApi, editionName, wikimediaTurn, ARTICLES, sitelinksUrl, titlesOf, SUMMARIES_PER_ASK } from '../../core/wiki.js';
+import { editionsOf, nearUrl, GEOSEARCH_MAX_M, articlesOf, wikiSaid, merged, articleUrl, pageUrl, agentHeader, guideEditions, voyageApi, editionName, wikimediaTurn, ARTICLES, sitelinksUrl, titlesOf, SUMMARIES_PER_ASK } from '../../core/wiki.js';
 import { WIKI_EVERY_KM } from '../../core/pack/plan.js';
 import { RESULT_MAX } from '../../core/agent/tools.js';
 import { t as words } from '../../core/l10n.js';
@@ -166,7 +166,7 @@ function lacking(lacks) {
 function lackingArticles({ editions, more }) {
   /* en */
   const said = [
-    editions.length ? `${editions.map(editionName).join(' and ')} Wikipedia ${editions.length > 1 ? "aren't" : "isn't"} in the offline pack yet; ${editions.length > 1 ? 'they come' : 'it comes'} with the pack's next download.` : '',
+    editions.length ? `${editions.map(editionName).join(' and ')} Wikipedia ${editions.length > 1 ? "aren't" : "isn't"} in the offline pack for every part yet; ${editions.length > 1 ? 'they come' : 'it comes'} with the pack's next download.` : '',
     more ? "Some of its parts don't hold the other editions' summaries yet, so a row may leave out an edition that has its article; they come with the pack's next download." : '',
   ].filter(Boolean);
   return said.length ? `\n${said.join(' ')}` : '';
@@ -238,7 +238,7 @@ export function activate(annai) {
   const tools = [
     {
       name: 'nearby', group: 'Places',
-      description: `Places near a point, nearest first, as TSV: name, kind, distance_m, lat, lng, source, note (website, opening hours). kinds: ${KIND_NAMES.join(', ')} (default sights and food). Up to ${ROWS} places and ${ARTICLES} Wikipedia articles. A Wikipedia article is one row, named in the first of the user's languages whose edition has it, its note holding its address in each of those editions that has it (from the offline pack, each edition's short summary too, before its address): each edition is written on its own, and can tell the story of a contested place differently. Reads the trip's offline pack first, so it works without a connection along the planned route.`,
+      description: `Places near a point, nearest first, as TSV: name, kind, distance_m, lat, lng, source, note (website, opening hours). kinds: ${KIND_NAMES.join(', ')} (default sights and food). Up to ${ROWS} places and ${ARTICLES} Wikipedia articles. A Wikipedia article is one row, named in the first of the user's languages whose edition has it, its note holding its address in each of those editions that has it (an answer from the offline pack also gives each edition's short summary, before its address): each edition is written on its own, and can tell the story of a contested place differently. Reads the trip's offline pack first, so it works without a connection along the planned route.`,
       input: { type: 'object', properties: { ...POINT, radius: { type: 'number', minimum: 50, maximum: 20000, description: 'Meters, default 1000.' }, kinds: { type: 'array', items: { enum: KIND_NAMES } } }, required: ['lat', 'lng'] },
       /** @param {{ lat: number, lng: number, radius?: number, kinds?: string[] }} i @param {any} call */
       async run(i, call) {
@@ -340,7 +340,7 @@ export function activate(annai) {
         const late = AbortSignal.timeout(ASK_MS.ms);
         const headers = agentHeader(VERSION);
         const wikipedia = Promise.allSettled(editions.map(async (e) => {
-          const r = await ask(call, nearUrl(e, [round(i.lat), round(i.lng)], Math.min(radius, 10000), ARTICLES), { headers }, late);
+          const r = await ask(call, nearUrl(e, [round(i.lat), round(i.lng)], Math.min(radius, GEOSEARCH_MAX_M), ARTICLES), { headers }, late);
           const said = wikiSaid(r);
           if (said) throw new Error(`${e}.wikipedia.org said: ${said}.`);
           // Full: the edition may have more within the circle than it sent (counted as it sent them, not as kept).
@@ -349,7 +349,7 @@ export function activate(annai) {
           if (got.every((g) => g.status === 'rejected')) throw /** @type {PromiseRejectedResult} */ (got[0]).reason;
           const quiet = editions.filter((_, k) => got[k].status === 'rejected');
           const answered = got.flatMap((g) => (g.status === 'fulfilled' ? [g.value] : []));
-          const packed = quiet.length && pack?.touches(i) ? pack.articles(i, Math.min(radius, 10000), quiet).flatMap((a) => [a, ...a.also]) : [];
+          const packed = quiet.length && pack?.touches(i) ? pack.articles(i, Math.min(radius, GEOSEARCH_MAX_M), quiet).flatMap((a) => [a, ...a.also]) : [];
           const all = merged([...answered.flatMap((g) => g.rows), ...packed], editions).map((a) => ({ a, m: Math.round(meters(i.lat, i.lng, a.lat, a.lng)) })).sort((x, y) => x.m - y.m);
           const kept = all.slice(0, ARTICLES);
           // Which editions have each article kept, and its title there: an edition's list names it only among that edition's own nearest (at Tokyo
@@ -382,8 +382,8 @@ export function activate(annai) {
           // Named, so a missing edition's articles aren't taken for none.
           const hosts = quiet.map((e) => `${e}.wikipedia.org`).join(' and ');
           const note = !quiet.length ? '' : `\n${hosts} didn't answer, so ${quiet.length > 1 ? 'their' : 'its'} articles ${packed.length ? `come from the offline pack${pack?.downloaded}, where it holds them` : 'are missing from this list'}.`;
-          // Wikipedia's geosearch takes 10 km at most (wiki.js nearUrl): a wider circle is asked 10 km of articles, and says so.
-          const wide = radius > 10000 ? "\nWikipedia's articles are asked within 10 km only (its geosearch's limit); farther ones aren't listed." : '';
+          // Wikipedia's geosearch takes GEOSEARCH_MAX_M at most: a wider circle is asked that much of articles, and says so.
+          const wide = radius > GEOSEARCH_MAX_M ? `\nWikipedia's articles are asked within ${GEOSEARCH_MAX_M / 1000} km only (its geosearch's limit); farther ones aren't listed.` : '';
           return { rows, cut: all.length > ARTICLES || answered.some((g) => g.full), note: `${note}${unsaid}${wide}`, packed: packed.length > 0 };
         });
         // A service that didn't answer is null; a stopped call is no answer at all. OpenStreetMap is busy when every server asked said so

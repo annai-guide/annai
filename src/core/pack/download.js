@@ -126,7 +126,7 @@ export function saysDown(e) {
 export const pathOf = (p, edition = 'en') => `${DIR}${p.kind}/${p.id}${p.kind === 'wikipedia' && edition !== 'en' ? `.${edition}` : ''}.json`;
 /**
  * Where a Wikipedia part's second stage is kept: named by the part and the editions read, sorted (lesson 2026-11-19: a variant's file is named
- * by both), so a language added or taken off is a new file (the old one goes at that download), and a reorder stores nothing.
+ * by both), so a language added or taken off is a new file (the old one goes at the download that brings the new one), and a reorder stores nothing.
  * @param {Pick<Part, 'id'>} p @param {string[]} editions
  */
 export const morePath = (p, editions) => `${DIR}wikipedia/${p.id}.x.${[...editions].sort().join('.')}.json`;
@@ -294,7 +294,7 @@ async function fetchPack(o) {
   const progress = (/** @type {PartRef} */ part) => o.onProgress?.({ done, total, label: partWords(part) });
   /**
    * The parts in a list, in order, each in every edition in the reading order; one this download doesn't get stays as it was, however old. A second
-   * stage is left, counted with the failure that gave its source up, when Wikidata or any edition it asks is given up: it is never asked then.
+   * stage is left, counted with the failure that gave its source up, when Wikidata or any edition it reads is given up: it is never asked then.
    * @param {Want[]} list
    */
   const fetchParts = async (list) => {
@@ -639,9 +639,9 @@ async function more(p, editions, read, ask, headers, up) {
 
 /**
  * The names to look for in English Wikivoyage: the plan's (the trip's places, then the stops: every one), then the titles of the English
- * Wikipedia articles in English's lists, nearest first (the second stages' English rows, which come after the guides, are not read). No bound on them: a part holds 20 at most, so 240 stops are 4,800 titles, 96 requests, under
- * two minutes against hours of Overpass; and they reach guides the names don't (2026-11-20, 5 real hotel and lodge stops, 10 km: Cambria Pines
- * Lodge's titles lead to "Central Coast (California)", Shinjuku Washington Hotel's to "Tokyo", the stops' own names to none).
+ * Wikipedia articles in English's lists, nearest first (the second stages' English rows, which come after the guides, are not read). No bound on them: a part holds 20 at most, so 240 stops are 4,800 titles, 96 requests, about
+ * two minutes against hours of Overpass; and they reach guides the names don't (2026-11-20, five made-up stops at real hotels and lodges, 10 km:
+ * one lodge's titles lead to a region's guide, one hotel's to a city's, the stops' own names to none).
  * @param {Workspace} ws @param {string} scope @param {PackPlan} plan @param {Map<string, PackFile>} files
  */
 async function namesFor(ws, scope, plan, files) {

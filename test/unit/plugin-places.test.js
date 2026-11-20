@@ -854,14 +854,17 @@ test("nearby says its articles are cut at 50 and not at 49, and when an edition'
 });
 
 /**
- * A trip's offline pack at Kiyomizu-dera: Wikipedia's real answers as the pack holds them (a part's 20 nearest: two overlapping Japanese parts and one
- * English), and OpenStreetMap's 5 km around, with some places in it, and, unless `stages` is false (a pack from before them), each part's second stage for
- * Japanese and English (empty: what these tests read is the lists). @param {any} ws @param {string} trip @param {{ id: number, lat: number, lon: number, tags: any }[]} [places] @param {{ stages?: boolean }} [o]
+ * A trip's offline pack at Kiyomizu-dera: Wikipedia's real answers as the pack holds them (a part's 20 nearest: two overlapping parts, each in Japanese
+ * and in English: English's second part holds the first's last pages again), and OpenStreetMap's 5 km around, with some places in it, and, unless `stages` is
+ * false (a pack from before them), each part's second stage for Japanese and English (empty: what these tests read is the lists). `zh`: the parts that also
+ * hold Chinese's list (a download that added Chinese and stopped part-way).
+ * @param {any} ws @param {string} trip @param {{ id: number, lat: number, lon: number, tags: any }[]} [places] @param {{ stages?: boolean, zh?: string[] }} [o]
  */
-async function kiyomizuPack(ws, trip, places = [], { stages = true } = {}) {
+async function kiyomizuPack(ws, trip, places = [], { stages = true, zh = [] } = {}) {
   const at = [KIYOMIZU.lat, KIYOMIZU.lng];
   const pagesOf = (/** @type {string} */ host, /** @type {number} */ from, /** @type {number} */ to) => KIYOMIZU_WIKI[host].query.pages.slice(from, to).map((/** @type {any} */ g) => [g.title, g.coordinates[0].lat, g.coordinates[0].lon, '', g.pageprops.wikibase_item]);
-  const parts = /** @type {[string, string, string, any[]][]} */ ([['ja', 'w1', '/offline/wikipedia/w1.ja.json', pagesOf('ja.wikipedia.org', 0, 20)], ['ja', 'w2', '/offline/wikipedia/w2.ja.json', pagesOf('ja.wikipedia.org', 10, 30)], ['en', 'w1', '/offline/wikipedia/w1.json', pagesOf('en.wikipedia.org', 0, 20)]]);
+  const parts = /** @type {[string, string, string, any[]][]} */ ([['ja', 'w1', '/offline/wikipedia/w1.ja.json', pagesOf('ja.wikipedia.org', 0, 20)], ['ja', 'w2', '/offline/wikipedia/w2.ja.json', pagesOf('ja.wikipedia.org', 10, 30)], ['en', 'w1', '/offline/wikipedia/w1.json', pagesOf('en.wikipedia.org', 0, 20)], ['en', 'w2', '/offline/wikipedia/w2.json', pagesOf('en.wikipedia.org', 10, 30)],
+    ...zh.map((id) => /** @type {[string, string, string, any[]]} */ (['zh', id, `/offline/wikipedia/${id}.zh.json`, pagesOf('zh.wikipedia.org', 0, 20)]))]);
   for (const [, , path, pages] of parts) await ws.write(trip, path, JSON.stringify({ at, radius: 10000, pages }), { author: 'system' });
   const more = stages ? ['w1', 'w2'].map((id) => ({ id, kind: 'wikipedia-editions', path: `/offline/wikipedia/${id}.x.en.ja.json`, bytes: 1, items: 0 })) : [];
   for (const m of more) await ws.write(trip, m.path, JSON.stringify({ at, pages: [] }), { author: 'system' });
@@ -904,15 +907,35 @@ test("from the pack, nearby says what the pack lacks yet of the editions read: a
   assert.equal(english.split('\n').at(-1), HOLDS);
   // Chinese added since the download: no list of it, and no stage for the three. One line, the edition first, named as guide's lacking names one.
   await speaks(ws, ['ja', 'zh-Hant']);
-  assert.deepEqual((await run('nearby', KIYOMIZU, offline)).split('\n').slice(-2), [HOLDS, `Chinese Wikipedia isn't in the offline pack yet; it comes with the pack's next download. ${OLD_STAGES}`]);
+  assert.deepEqual((await run('nearby', KIYOMIZU, offline)).split('\n').slice(-2), [HOLDS, `Chinese Wikipedia isn't in the offline pack for every part yet; it comes with the pack's next download. ${OLD_STAGES}`]);
   // Two editions with no list: both named, in the reading order.
   await speaks(ws, ['ja', 'zh-Hant', 'de']);
-  assert.match((await run('nearby', KIYOMIZU, offline)).split('\n').at(-1) ?? '', /^Chinese and German Wikipedia aren't in the offline pack yet; they come with the pack's next download\. Some of its parts/);
+  assert.match((await run('nearby', KIYOMIZU, offline)).split('\n').at(-1) ?? '', /^Chinese and German Wikipedia aren't in the offline pack for every part yet; they come with the pack's next download\. Some of its parts/);
+  // Chinese added and the download stopped part-way: its list is in one of the two parts, so it is named all the same, for every part; in both, it is not.
+  const part = await setup({ trip: true });
+  await kiyomizuPack(part.ws, /** @type {string} */ (part.trip), [], { zh: ['w1'] });
+  await speaks(part.ws, ['ja', 'zh-Hant']);
+  assert.deepEqual((await part.run('nearby', KIYOMIZU, offline)).split('\n').slice(-2), [HOLDS, `Chinese Wikipedia isn't in the offline pack for every part yet; it comes with the pack's next download. ${OLD_STAGES}`]);
+  const both = await setup({ trip: true });
+  await kiyomizuPack(both.ws, /** @type {string} */ (both.trip), [], { zh: ['w1', 'w2'] });
+  await speaks(both.ws, ['ja', 'zh-Hant']);
+  assert.deepEqual((await both.run('nearby', KIYOMIZU, offline)).split('\n').slice(-2), [HOLDS, OLD_STAGES], 'a list in every part: Chinese is not named');
   // A pack with its stages lacks nothing for Japanese and English: the line is not there.
   const whole = await setup({ trip: true });
   await kiyomizuPack(whole.ws, /** @type {string} */ (whole.trip));
   await speaks(whole.ws, ['ja']);
   assert.equal((await whole.run('nearby', KIYOMIZU, offline)).split('\n').at(-1), HOLDS);
+});
+
+test("a Cantonese reader's nearby from a pack with no Cantonese list answers and names Cantonese (the engine has no name for the edition zh-yue)", async () => {
+  const { run, ws, trip } = await setup({ trip: true });
+  const offline = () => { throw new Error('asked'); };
+  await kiyomizuPack(ws, /** @type {string} */ (trip));
+  await speaks(ws, ['yue', 'ja']);
+  const out = await run('nearby', KIYOMIZU, offline);
+  assert.ok(rowsOf(out).some((r) => r[0] === '清水寺'), 'the pack answers');
+  assert.match(out.split('\n').at(-1) ?? '', /^Cantonese Wikipedia isn't in the offline pack for every part yet; it comes with the pack's next download\./);
+  assert.match(await run('nearby', KIYOMIZU, offline, { offline: true }), /\nCantonese Wikipedia isn't in the offline pack for every part yet;/);
 });
 
 test("nearby with the pack filling in for an edition that doesn't answer says what the pack holds and lacks, and nothing where the pack gave no article", async () => {
@@ -1001,7 +1024,7 @@ test("nearby asks Wikipedia's articles within 10 km at most, and says so when th
   assert.equal(new URL(asked.find((a) => a.url.includes('wikipedia.org'))?.url ?? '').searchParams.get('ggsradius'), '10000');
   // 10 km and under: asked as wide as the radius, and nothing said.
   assert.doesNotMatch(await run('nearby', { ...KIYOMIZU, radius: 10000 }, kiyomizuOnly), /geosearch/);
-  assert.match(tools.nearby.description, /\(from the offline pack, each edition's short summary too, before its address\)/);
+  assert.match(tools.nearby.description, /\(an answer from the offline pack also gives each edition's short summary, before its address\)/);
 });
 
 test("nearby: an edition that doesn't answer is left out and named, one that never answers holds up none of the others, an error answer is no answer, and none answering is today's line", async () => {

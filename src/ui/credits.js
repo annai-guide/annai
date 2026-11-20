@@ -37,7 +37,7 @@ export const SOURCES = [
   {
     name: 'Wikidata',
     hosts: ['www.wikidata.org'],
-    use: t`Which editions of Wikipedia have each article about a place nearby, and its title there, so Shiori's nearby tool and the offline pack bring it in each of your languages. It is sent the articles' ids, never your location.`,
+    use: t`Which editions of Wikipedia have each article about a place nearby, and its title there, so Shiori's nearby tool and the offline pack bring it in each of your languages. It is sent Wikidata item ids, never your location.`,
     credit: /* en */ 'Data from Wikidata, under CC0.',
     links: /* en */ [{ href: 'https://www.wikidata.org/', text: 'Wikidata' }, { href: 'https://creativecommons.org/publicdomain/zero/1.0/', text: 'CC0' }],
   },

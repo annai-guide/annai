@@ -21,6 +21,8 @@ test("Wikivoyage's editions: English and each listed language's that has one, in
   assert.deepEqual(none, ['yue', 'ko', 'sk', 'hu', 'bg', 'hr', 'sr', 'sl', 'ar', 'ta', 'th', 'ms', 'fil', 'no', 'da', 'ca', 'sw']);
   assert.equal(voyageApi('ja'), 'https://ja.wikivoyage.org/w/api.php');
   assert.deepEqual(['en', 'ja', 'zh', 'de'].map(editionName), ['English', 'Japanese', 'Chinese', 'German']);
+  // An edition's label the engine refuses (Intl.DisplayNames throws on zh-yue, in Node, Chromium and WebKit) is named by its language's row; a label with no row is itself.
+  assert.deepEqual(['zh-yue', 'a'].map(editionName), ['Cantonese', 'a']);
 });
 
 /** Starts n jobs on url through the gate, each held until released; notes how many run at once. @param {string} url @param {number} n */

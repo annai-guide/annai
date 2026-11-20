@@ -139,17 +139,21 @@ export class Pack {
   }
 
   /**
-   * What its Wikipedia doesn't hold yet of these editions, from its manifest: the editions it has no list of (a language added since the download),
-   * and whether a part lacks its second stage for exactly these editions (a pack from before it, a stage that failed, a language change under way:
-   * until then an article's row holds only the editions whose own list names it). The keeper brings both with the next download.
+   * What its Wikipedia doesn't hold yet of these editions, from its manifest: the editions it has a list of in fewer parts than it has parts (a
+   * language added since the download, or one the download stopped before it reached every part), and whether a part lacks its second stage for
+   * exactly these editions (a pack from before it, a stage that failed, a language change under way: until then an article's row holds only the
+   * editions whose own list names it). The keeper brings both with the next download.
    * @param {string[]} editions the reading order's @returns {{ editions: string[], more: boolean }}
    */
   lacks(editions) {
     const { files } = this.manifest;
     const lists = files.filter((f) => f.kind === 'wikipedia');
-    const held = new Set(lists.map((f) => f.edition ?? 'en'));
+    const parts = new Set(lists.map((f) => f.id));
     const stages = new Set(files.filter((f) => f.kind === 'wikipedia-editions').map((f) => f.path));
-    return { editions: editions.filter((e) => !held.has(e)), more: editions.length > 1 && lists.some((f) => !stages.has(morePath(f, editions))) };
+    return {
+      editions: editions.filter((e) => new Set(lists.filter((f) => (f.edition ?? 'en') === e).map((f) => f.id)).size < parts.size),
+      more: editions.length > 1 && lists.some((f) => !stages.has(morePath(f, editions))),
+    };
   }
 
   /**

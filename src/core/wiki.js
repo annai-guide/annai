@@ -28,8 +28,18 @@ export const VOYAGE_COUNT = VOYAGE.size;
 export const guideEditions = (editions) => editions.filter((e) => VOYAGE.has(e));
 /** An edition's Wikivoyage API. @param {string} edition */
 export const voyageApi = (edition) => `https://${edition}.wikivoyage.org/w/api.php`;
-/** An edition's language, in English, for a model: "Japanese" for ja, "Chinese" for zh; the edition itself where the engine has no name for it. @param {string} edition */
-export const editionName = (edition) => new Intl.DisplayNames(['en'], { type: 'language' }).of(edition) ?? edition;
+/**
+ * An edition's language, in English, for a model: "Japanese" for ja, "Chinese" for zh. A label the engine refuses (zh-yue: Intl.DisplayNames throws
+ * on it in Node, Chromium and WebKit, checked 2026-11-20) is named by its language's row ("Cantonese"), else it is its own name.
+ * @param {string} edition
+ */
+export function editionName(edition) {
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'language' }).of(edition) ?? edition;
+  } catch {
+    return LANGUAGES.find((l) => (HOST[l.id] ?? l.id) === edition)?.name ?? edition;
+  }
+}
 
 /** How annai names itself to Wikimedia (MediaWiki's API:Etiquette). @param {string} version */
 export const agentHeader = (version) => ({ 'Api-User-Agent': /* en */ `annai/${version} (https://annai.guide)` });
@@ -92,9 +102,11 @@ export async function wikimediaTurn(url, job, signal) {
   }
 }
 
+/** The widest circle Wikipedia's geosearch takes, in meters (MediaWiki's limit, paraminfo 2026-11-19): the widest radius annai asks it, online and for the pack. */
+export const GEOSEARCH_MAX_M = 10000;
 /**
  * An edition's nearest articles, with coordinates, Wikidata ids and, with extracts, 400 characters of summary. MediaWiki's limits (paraminfo,
- * 2026-11-19): geosearch 500 within 10 km; coordinates 10 unless colimit asks; extracts 20. No distance comes with this form.
+ * 2026-11-19): geosearch 500 within GEOSEARCH_MAX_M; coordinates 10 unless colimit asks; extracts 20. No distance comes with this form.
  * @param {string} edition @param {[number, number]} at @param {number} radius @param {number} limit @param {{ extracts?: boolean }} [o]
  */
 export function nearUrl(edition, [lat, lng], radius, limit, { extracts = false } = {}) {

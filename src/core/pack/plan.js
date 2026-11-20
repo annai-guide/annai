@@ -1,5 +1,6 @@
 import { meters } from '../live/geo.js';
 import { PLAN_FILE, LEG_MAX_KM } from '../plan.js';
+import { GEOSEARCH_MAX_M } from '../wiki.js';
 
 /**
  * What a trip's offline pack holds (spec §11.5), worked out from its plan. The stops are the plan's
@@ -27,7 +28,7 @@ export const CORRIDOR_M = 3000;
 export const STRETCH_KM = 40;
 export const WIKI_EVERY_KM = 15;
 export const WIKI_APART_KM = 7;
-export const WIKI_RADIUS_M = 10000; // the largest Wikipedia searches
+export const WIKI_RADIUS_M = GEOSEARCH_MAX_M; // the largest Wikipedia searches
 
 /**
  * Rough sizes for the estimate shown before downloading, as stored (the editions design's measurements, 2026-11-20, real answers at made-up

@@ -647,6 +647,24 @@ test("a second stage's requests count under their own host, as a list's do: Wiki
   assert.equal(m.failed.length, wikis.length, 'every stage counted once: three failed at Wikidata, three at Japanese, the seventh left');
 });
 
+test("an edition's by-title answer starts its own count over: Japanese's requests fail and answer in turn across the stages, three failures not in a row, and it is never given up", async () => {
+  const { ws, trip } = await packTrip(farStops(4));
+  const wikis = (await planFor(ws, trip)).parts.filter((p) => p.kind === 'wikipedia');
+  assert.equal(wikis.length, 7);
+  // One Japanese by-title request a stage: stages 1, 3 and 5 fail, 2, 4, 6 and 7 answer. Three failures, but never three in a row.
+  let ja = 0;
+  const net = services({
+    overpass: noOsm, wikipedia: (url) => (new URL(url).searchParams.has('titles') && url.includes('ja.wikipedia.org') && ++ja <= 5 && ja % 2 === 1 ? new Response('', { status: 503 }) : farWikipedia(url)),
+    wikidata: wikidataOf(),
+  });
+  const m = await downloadPack({ ws, scope: trip, fetch: net.fetch, version: V, editions: ['ja', 'en'], gapMs: 0 });
+  assert.equal(ja, 7, 'asked at every stage: never given up');
+  assert.equal(m.failed.length, 3);
+  assert.ok(m.failed.every((f) => f.why === 'ja.wikipedia.org answered 503.'));
+  assert.equal(m.stopped, false);
+  assert.equal(m.files.filter((f) => f.kind === 'wikipedia-editions').length, 4, 'the stages that answered');
+});
+
 test("a second stage whose edition the run gave up is left, never asked: the lists a run had kept, the edition's others refused three times in a row", async () => {
   const { ws, trip } = await packTrip(farStops(4));
   const wikis = (await planFor(ws, trip)).parts.filter((p) => p.kind === 'wikipedia');
