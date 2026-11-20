@@ -1235,3 +1235,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** a field for the answering call's own count would be one more stored field for a rare case (the spec check's 3.7: no new field). One summary early loses nothing the to-do list and the kept third hold; one late costs one return at full price.
 - **Revisit when:** the trace shows summaries well under 100,000 tokens, or cold returns over 100,000 sent whole.
 - **Approved:** chief's decision C147 (2026-11-19, not the user's words): C143 corrected, a searched reply gives no count, so one late; several attempts after a reload or a switch, one early.
+
+### A summary forced in the middle of a turn can carry the to-do list as it stood at that turn's earlier steps
+- **Kind:** known limitation.
+- **What the traveller sees:** nothing directly. On Claude, when a request would overflow in the middle of a turn that runs warm, the summary her own model writes sees the turn's earlier now blocks, each with the to-do list as its step sent it, so the summary may mention an item she has since closed. The list itself stays true in todo.md, and her next request carries it as it is.
+- **Why:** those kept blocks are what lets the warm summary read the cache instead of writing it again; leaving them out would cost a full write of the conversation each time.
+- **Revisit when:** a trace shows her acting on a closed item after a summary.
+- **Approved:** chief's decision C150 (2026-11-19, not the user's words), accepted as recommended.
