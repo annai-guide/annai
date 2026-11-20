@@ -116,7 +116,9 @@ export function packPlan({ trip, items }) {
   /** @type {WikiPart[]} */
   const wiki = [];
   const wikiNear = (/** @type {LatLng} */ p) => wiki.some((w) => meters(pt(w.at), pt(p)) < WIKI_APART_KM * 1000);
-  // The stops first, then the way between them: a download takes the parts in this order, so one stopped partway has the stops' before the way's.
+  // The stops first, then the way between them, in OpenStreetMap's parts and then Wikipedia's. A download takes Wikipedia's parts at the stops
+  // first, then the guides, then OpenStreetMap's parts and Wikipedia's along the way (download.js), each in this order: one stopped partway has
+  // the stops' before the way's.
   for (const s of stops) {
     const here = /** @type {LatLng} */ ([r4(s.lat), r4(s.lng)]);
     if (!osm.some((o) => o.km === 0 && meters(pt(o.points[0]), s) < 1000)) osm.push(osmPart([here], STOP_M, 0, { how: 'around', names: [s.name] }));

@@ -116,7 +116,8 @@ test("a storage plugin's server that can't be reached while the phone is online:
 test("an offline pack whose servers can't be reached: its failure keeps what it was, and the panel says it in Japanese", async () => {
   const { ws, trip } = await packTrip();
   const m = await downloadPack({ ws, scope: trip, fetch: tracedFetch(ws.store, trip, { tool: 'offline-pack' }, down), version: '9.9.9', editions: ['en'], gapMs: 0, busyMs: 1 });
-  const [f] = m.failed;
+  // Wikipedia's parts come first now, and fail the same way: the one this test is about is OpenStreetMap's.
+  const f = /** @type {NonNullable<typeof m.failed[number]>} */ (m.failed.find((x) => x.said?.code === 'osm'));
   assert.equal(f.said?.code, 'osm');
   assert.deepEqual(/** @type {any} */ (f.said).inner, { code: 'unreachable', where: 'lz4.overpass-api.de', info: 'Failed to fetch' });
   assert.match(failWords(/** @type {any} */ (f.said)), /^OpenStreetMapから応答がありませんでした（lz4\.overpass-api\.deに接続できませんでした（Failed to fetch）。オフラインになっていませんか？）。$/);

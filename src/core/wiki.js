@@ -17,21 +17,18 @@ export const readingEditions = async (ws, locale) => editionsOf(readingOrder(awa
 
 /**
  * Wikivoyage's editions among the hosts annai's languages read (Wikimedia's sitematrix, 2026-11-20: 28 editions; 25 of annai's 42 languages have
- * one, on these 24 hosts, both Chinese rows on zh). A language without one is never asked: its host answers a 95 KB page, not an API's answer.
+ * one, on these 24 hosts, both Chinese rows on zh). A language without one is never asked: its host redirects to the Incubator's page (ko's
+ * is a 302, checked 2026-11-20), not an API's answer.
  */
 const VOYAGE = new Set(['bn', 'cs', 'de', 'el', 'en', 'es', 'fa', 'fi', 'fr', 'he', 'hi', 'id', 'it', 'ja', 'nl', 'pl', 'pt', 'ro', 'ru', 'sv', 'tr', 'uk', 'vi', 'zh']);
+/** How many Wikivoyage editions annai asks: the most guides a search of the floor can give. */
+export const VOYAGE_COUNT = VOYAGE.size;
 /** The editions of these (in the reading order, as editionsOf gives them) that have a Wikivoyage: English, and each listed language's that has one. @param {string[]} editions */
 export const guideEditions = (editions) => editions.filter((e) => VOYAGE.has(e));
 /** An edition's Wikivoyage API. @param {string} edition */
 export const voyageApi = (edition) => `https://${edition}.wikivoyage.org/w/api.php`;
 /** An edition's language, in English, for a model: "Japanese" for ja, "Chinese" for zh; the edition itself where the engine has no name for it. @param {string} edition */
-export function editionName(edition) {
-  try {
-    return new Intl.DisplayNames(['en'], { type: 'language' }).of(edition) ?? edition;
-  } catch {
-    return edition;
-  }
-}
+export const editionName = (edition) => new Intl.DisplayNames(['en'], { type: 'language' }).of(edition) ?? edition;
 
 /** How annai names itself to Wikimedia (MediaWiki's API:Etiquette). @param {string} version */
 export const agentHeader = (version) => ({ 'Api-User-Agent': /* en */ `annai/${version} (https://annai.guide)` });
@@ -43,6 +40,8 @@ export const agentHeader = (version) => ({ 'Api-User-Agent': /* en */ `annai/${v
  */
 export const WIKIMEDIA_AT_ONCE = 3;
 const WIKIMEDIA = /^[a-z0-9-]+\.(?:wikipedia|wikivoyage)\.org$/;
+/** Whether a url is to a Wikipedia or Wikivoyage host: the ones that take turns, and that the pack gives the foreground's time. @param {string} url */
+export const isWikimedia = (url) => WIKIMEDIA.test(hostOf(url));
 /** A url's host, '' for one that isn't a whole address (URL.canParse came in Safari 17: annai's floor is iOS 16.4). @param {string} url */
 const hostOf = (url) => {
   try {
@@ -63,7 +62,7 @@ const turns = [];
  * @template T @param {string} url @param {() => Promise<T>} job @param {AbortSignal} [signal] @returns {Promise<T>}
  */
 export async function wikimediaTurn(url, job, signal) {
-  if (!WIKIMEDIA.test(hostOf(url))) return job();
+  if (!isWikimedia(url)) return job();
   signal?.throwIfAborted();
   if (running < WIKIMEDIA_AT_ONCE) running++;
   else {

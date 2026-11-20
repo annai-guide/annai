@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PackKeeper } from '../../src/core/pack/keeper.js';
-import { STALE_MS } from '../../src/core/pack/download.js';
+import { STALE_MS, guideFile } from '../../src/core/pack/download.js';
 import { packTrip, services, fakeAgent, STOPS, YUFUIN, yufuinStop, yufuinAnswer } from './pack-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { SIZES, planFor } from '../../src/core/pack/plan.js';
@@ -216,7 +216,7 @@ test("a pack the release before wrote with Japanese listed (its Wikipedia whole 
     await keeper.download(t.trip);
     // As the release before wrote it: no voyage, no also, and no Japanese guide's file.
     const m = /** @type {any} */ (await t.ws.readJSON(t.trip, '/offline/pack.json'));
-    const ja = m.guides.flatMap((/** @type {any} */ g) => g.also.map((/** @type {any} */ a) => a.path));
+    const ja = m.guides.flatMap((/** @type {any} */ g) => g.also.map((/** @type {any} */ a) => guideFile(g.title, a.edition).path));
     assert.ok(ja.length > 0);
     for (const path of ja) await t.ws.delete(t.trip, path, { author: 'system' });
     await t.ws.write(t.trip, '/offline/pack.json', JSON.stringify({ ...m, voyage: undefined, files: m.files.filter((/** @type {any} */ f) => !ja.includes(f.path)), guides: m.guides.map((/** @type {any} */ g) => ({ title: g.title, asked: g.asked, path: g.path })) }), { author: 'system' });
@@ -227,7 +227,7 @@ test("a pack the release before wrote with Japanese listed (its Wikipedia whole 
     await keeper.download(t.trip);
     const since = net.asked.slice(asked);
     assert.deepEqual(since.filter((a) => a.url.includes('wikipedia.org') || a.url.includes('overpass') || (a.url.includes('en.wikivoyage') && new URL(a.url).searchParams.get('prop') === 'extracts')), []);
-    assert.deepEqual(since.filter((a) => a.url.includes('ja.wikivoyage.org')).map((a) => new URL(a.url).searchParams.get('titles')), ['カンブリア']);
+    assert.deepEqual(since.filter((a) => a.url.includes('ja.wikivoyage.org') && new URL(a.url).searchParams.get('prop') === 'extracts').map((a) => new URL(a.url).searchParams.get('titles')), ['カンブリア']);
     assert.equal((await keeper.status(t.trip)).why, null);
   } finally {
     keeper.dispose();
@@ -252,7 +252,7 @@ test("a language added: the pack's guides are missing in its edition (\"Download
     await until(async () => (await keeper.status(t.trip)).why === null);
     const since = net.asked.slice(asked);
     assert.deepEqual(since.filter((a) => a.url.includes('en.wikivoyage.org') && new URL(a.url).searchParams.get('prop') === 'extracts'), [], "English's guides are not downloaded again");
-    assert.deepEqual(since.filter((a) => a.url.includes('zh.wikivoyage.org')).map((a) => new URL(a.url).searchParams.get('titles')), ['大蘇爾']);
+    assert.deepEqual(since.filter((a) => a.url.includes('zh.wikivoyage.org') && new URL(a.url).searchParams.get('prop') === 'extracts').map((a) => new URL(a.url).searchParams.get('titles')), ['大蘇爾']);
     assert.ok(since.every((a) => !a.url.includes('ko.wikivoyage') && new URL(a.url).searchParams.get('lllang') !== 'ko'), 'nothing asked of a Wikivoyage there is none of');
     assert.deepEqual((await keeper.status(t.trip)).manifest?.voyage, ['en', 'zh']);
     // Chinese and Korean taken off: nothing is missing, and nothing is asked by itself.
@@ -574,6 +574,104 @@ test("a language added inside the hour of an update annai began by itself waits 
     assert.equal(net.asked.length, asked, 'inside the hour');
     await until(async () => (await autoRuns()).length === 2 && (await keeper.status(trip)).why === null, 3000);
     assert.ok(net.asked.slice(asked).some((a) => a.url.includes('ja.wikipedia.org')));
+  } finally {
+    keeper.dispose();
+  }
+});
+
+/**
+ * A keeper whose connection the test sets, over the two Big Sur stops, with Overpass held at its next request when armed: that request ends
+ * only with the run's own signal (as a real fetch's does), or when the test lets it go.
+ */
+async function leaving() {
+  const t = await packTrip();
+  let connection = 'wifi';
+  let armed = false;
+  let waiting = false;
+  /** @type {boolean | undefined} */
+  let cutShort;
+  /** @type {() => void} */
+  let release = () => {};
+  const letGo = new Promise((r) => { release = () => r(undefined); });
+  const net = services({ overpass: async (url, init) => {
+    if (!armed) return { elements: [] };
+    armed = false;
+    waiting = true;
+    await Promise.race([letGo, new Promise((r) => init.signal.addEventListener('abort', r, { once: true }))]);
+    cutShort = init.signal.aborted;
+    if (cutShort) throw new DOMException('Stopped.', 'AbortError');
+    return { elements: [] };
+  } });
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => connection, fetch: net.fetch, quietMs: 10, pokeMs: 5, autoMs: 30, gapMs: 0 });
+  const move = (/** @type {number} */ lat) => t.ws.write(t.trip, '/plan/nepenthe.json', { ...STOPS.nepenthe, place: { ...STOPS.nepenthe.place, lat } }, { author: 'user' });
+  const log = async () => (await t.store.tx(['events'], 'readonly', (x) => x.listEvents(t.trip, { types: ['pack.download'] }))).map((e) => e.data);
+  return { ...t, net, keeper, move, log, release: () => release(), arm: () => { armed = true; waiting = false; }, waiting: () => waiting, cutShort: () => cutShort, set: (/** @type {string} */ c) => { connection = c; } };
+}
+
+test('an update annai began by itself on Wi-Fi stops when the phone leaves Wi-Fi: what came stays, and the next look on Wi-Fi goes on', async () => {
+  const k = await leaving();
+  const { keeper, trip, net } = k;
+  try {
+    await keeper.download(trip); // by hand
+    k.arm();
+    await k.move(36.2);
+    await until(() => k.waiting()); // annai's own update runs, waiting on Overpass
+    k.set('cellular');
+    keeper.poke(); // the connection changed (main.js pokes on it)
+    await until(async () => keeper.running === null && (await k.log()).length === 2);
+    assert.equal(k.cutShort(), true, 'the request it waited for was cut short by the stop');
+    const s = await keeper.status(trip);
+    assert.equal(s.manifest?.stopped, true);
+    assert.equal(s.why, 'missing');
+    assert.ok((s.manifest?.files.length ?? 0) > 0, 'what came stays');
+    const asked = net.asked.length;
+    await new Promise((r) => setTimeout(r, 120));
+    assert.equal(net.asked.length, asked, 'nothing more over mobile data, though the hour is out');
+    // Back on Wi-Fi: the next look goes on, and finishes the pack.
+    k.set('wifi');
+    keeper.poke();
+    await until(async () => (await keeper.status(trip)).why === null, 3000);
+    assert.deepEqual((await k.log()).map((d) => d.auto), [false, true, true]);
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test('a download the traveller started goes on when the phone leaves Wi-Fi: the stop is for what annai began by itself', async () => {
+  const k = await leaving();
+  const { keeper, trip } = k;
+  try {
+    k.arm();
+    const running = keeper.download(trip); // by hand
+    await until(() => k.waiting());
+    k.set('cellular');
+    keeper.poke();
+    await new Promise((r) => setTimeout(r, 60));
+    assert.notEqual(keeper.running, null, 'still running');
+    k.release();
+    const m = await running;
+    assert.equal(k.cutShort(), false);
+    assert.equal(m.stopped, false);
+  } finally {
+    keeper.dispose();
+  }
+});
+
+test("an update that failed in part is tried again by itself only where a source is down: an answer annai can't use (Overpass stopping early) waits for the traveller's Try again", async () => {
+  let mode = 'fine';
+  const { keeper, trip, net, move, autoRuns } = await hourly({ overpass: () => (mode === 'early' ? { elements: [], remark: 'runtime error: Query timed out in "query" at line 1 after 61 seconds.' } : { elements: [] }) });
+  try {
+    await keeper.download(trip);
+    mode = 'early';
+    await move(36.2);
+    await until(async () => (await autoRuns()).length === 1);
+    const asked = net.asked.length;
+    await new Promise((r) => setTimeout(r, 700)); // the hour here is 400 ms
+    assert.equal((await autoRuns()).length, 1, 'not tried again by itself');
+    assert.equal(net.asked.length, asked);
+    const s = await keeper.status(trip);
+    assert.equal(s.why, 'missing', 'the panel still offers Try again');
+    assert.ok((s.manifest?.failed.length ?? 0) > 0);
   } finally {
     keeper.dispose();
   }

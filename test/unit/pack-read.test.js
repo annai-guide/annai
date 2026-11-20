@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPack, toLine } from '../../src/core/pack/read.js';
-import { downloadPack, MANIFEST, pathOf } from '../../src/core/pack/download.js';
+import { downloadPack, MANIFEST, pathOf, guideFile } from '../../src/core/pack/download.js';
 import { planFor } from '../../src/core/pack/plan.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { readingEditions } from '../../src/core/wiki.js';
@@ -160,15 +160,23 @@ test("a language taken off the list is no more read, though its files stay until
   assert.deepEqual(await wikipediaFiles(), [pathOf(part)]);
 });
 
-test("a guide in several editions: found by its English title, that title without its bracket, a name that led to it, or its title in any edition; read in the editions given, in their order, a missing or broken file left out", async () => {
+test("a guide in several editions: found by its English title, that title without its bracket, a name that led to it, or its title in any edition; read in the editions given, in their order, a missing or broken file left out; a guide only one edition has is read in that edition", async () => {
   const { ws, trip } = await packTrip();
-  const g = (/** @type {string} */ id) => `/offline/wikivoyage/${id}.json`;
-  await ws.write(trip, g('g1'), JSON.stringify({ title: 'Cambria (California)', text: 'Cambria is a town.' }), { author: 'system' });
-  await ws.write(trip, g('g1.ja'), JSON.stringify({ title: 'カンブリア', text: 'カンブリアは海辺の町。' }), { author: 'system' });
-  await ws.write(trip, g('g1.zh'), 'not json', { author: 'system', type: 'text/plain' });
+  // Each edition's file sits by the guide's title (English's, or the edition's own for a guide English hasn't), as guideFile says.
+  const en = guideFile('Cambria (California)').path;
+  const ja = guideFile('Cambria (California)', 'ja').path;
+  const zh = guideFile('Cambria (California)', 'zh').path;
+  const yufuin = guideFile('湯布院', 'ja').path;
+  await ws.write(trip, en, JSON.stringify({ title: 'Cambria (California)', text: 'Cambria is a town.' }), { author: 'system' });
+  await ws.write(trip, ja, JSON.stringify({ title: 'カンブリア', text: 'カンブリアは海辺の町。' }), { author: 'system' });
+  await ws.write(trip, zh, 'not json', { author: 'system', type: 'text/plain' });
+  await ws.write(trip, yufuin, JSON.stringify({ title: '湯布院', text: '湯布院は温泉地。' }), { author: 'system' });
   await ws.write(trip, MANIFEST, JSON.stringify({ format: 1, key: 'k', at: '2026-11-20T09:00:00.000Z', failed: [], stopped: false, bytes: 1, voyage: ['en', 'ja', 'zh'],
-    files: ['g1', 'g1.ja', 'g1.zh'].map((id, k) => ({ id: 'g1', kind: 'wikivoyage', path: g(id), bytes: 1, items: 1, edition: ['en', 'ja', 'zh'][k] })),
-    guides: [{ title: 'Cambria (California)', asked: ['Cambria Pines Lodge'], path: g('g1'), also: [{ edition: 'ja', title: 'カンブリア', path: g('g1.ja') }, { edition: 'zh', title: '坎布里亞', path: g('g1.zh') }] }] }), { author: 'system' });
+    files: [en, ja, zh, yufuin].map((path) => ({ id: 'g1', kind: 'wikivoyage', path, bytes: 1, items: 1 })),
+    guides: [
+      { title: 'Cambria (California)', asked: ['Cambria Pines Lodge'], path: en, also: [{ edition: 'ja', title: 'カンブリア' }, { edition: 'zh', title: '坎布里亞' }] },
+      { title: '湯布院', edition: 'ja', asked: ['由布院'], path: yufuin, also: [] },
+    ] }), { author: 'system' });
   const pack = /** @type {import('../../src/core/pack/read.js').Pack} */ (await loadPack(ws, trip));
   const parts = async (/** @type {string} */ name, /** @type {string[]} */ editions) => (await pack.guide(name, editions)).map((p) => `${p.edition} ${p.title} ${p.text}`);
   for (const name of ['Cambria (California)', 'cambria', 'Cambria Pines Lodge', 'カンブリア', '坎布里亞']) {
@@ -178,4 +186,7 @@ test("a guide in several editions: found by its English title, that title withou
   assert.deepEqual(await parts('Cambria', ['en']), ['en Cambria (California) Cambria is a town.'], 'an edition not given is not read');
   assert.deepEqual(await parts('カンブリア', ['de']), [], 'none held in the editions given');
   assert.deepEqual(await parts('Monterey', ['ja', 'en']), []);
+  // A guide only Japanese has: by its title or a name that led to it, in Japanese; not at all when Japanese isn't read.
+  for (const name of ['湯布院', '由布院']) assert.deepEqual(await parts(name, ['en', 'ja']), ['ja 湯布院 湯布院は温泉地。'], name);
+  assert.deepEqual(await parts('湯布院', ['en']), []);
 });

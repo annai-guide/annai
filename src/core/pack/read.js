@@ -1,5 +1,5 @@
 import { meters } from '../live/geo.js';
-import { MANIFEST, readManifest } from './download.js';
+import { MANIFEST, readManifest, heldIn } from './download.js';
 import { merged, articleUrl, readingEditions } from '../wiki.js';
 import { isCJK } from '../languages.js';
 
@@ -141,15 +141,14 @@ export class Pack {
 
   /**
    * Its guide for a name, in each of these editions it holds it in, in their order: found by its English title, that title without
-   * "(California)", a name that led to it, or its title in any edition it holds. A file that is missing or broken is left out; none, [].
+   * "(California)", a name that led to it, or its title in any edition it holds. A guide only one edition has is that edition's alone; a
+   * name two such guides share gives both. A file that is missing or broken is left out; none, [].
    * @param {string} name @param {string[]} editions the traveller's guide editions, in the reading order (wiki.js guideEditions)
    * @returns {Promise<{ edition: string, title: string, text: string }[]>}
    */
   async guide(name, editions) {
     const n = norm(String(name));
-    const g = this.manifest.guides.find((x) => [x.title, x.title.replace(/\s*\([^)]*\)$/, ''), ...x.asked, ...x.also.map((a) => a.title)].some((t) => norm(t) === n));
-    if (!g) return [];
-    const held = [{ edition: 'en', title: g.title, path: g.path }, ...g.also];
+    const held = this.manifest.guides.filter((x) => [x.title, x.title.replace(/\s*\([^)]*\)$/, ''), ...x.asked, ...x.also.map((a) => a.title)].some((t) => norm(t) === n)).flatMap(heldIn);
     /** @type {{ edition: string, title: string, text: string }[]} */
     const out = [];
     for (const e of editions) {

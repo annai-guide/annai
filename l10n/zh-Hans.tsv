@@ -797,17 +797,17 @@ sejc5h	ok	{0} was switched off after errors.	{0} 因多次出错已被关闭。	
 xzxdhp	ok	The plugin didn't provide a model provider.	该插件不含模型提供商。	src/core/llm/service.js:323	Note: said of a plugin.
 2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	该插件不是 annai 官方的。请从原来的来源重新安装。	src/core/llm/service.js:402	
 1k9wkd0	ok	The plugin it names doesn't provide models, so it wasn't installed.	指定的插件不提供模型，所以没有安装。	src/core/llm/service.js:411	Note: said after the provider's name ("OpenRouter: …"); the plugin its record names, with no 它.
-3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:77	{0} = p.title
-1rb0o7n	ok	OpenStreetMap around {0}	{0} 周边的 OpenStreetMap	src/core/pack/download.js:79	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
-hdsgog	ok	OpenStreetMap between {0} and {1}	{0} 与 {1} 之间的 OpenStreetMap	src/core/pack/download.js:79	{0} = a; {1} = b
-1ff3ec8	ok	Wikipedia near {0}	{0} 附近的 Wikipedia	src/core/pack/download.js:80	{0} = a
-i9ok5g	ok	Wikipedia between {0} and {1}	{0} 与 {1} 之间的 Wikipedia	src/core/pack/download.js:80	{0} = a; {1} = b
-1qn6l15	ok	{0} didn't answer in time.	{0} 响应超时。	src/core/pack/download.js:86	{0} = s.where
-16rip5y	ok	{0} stopped early: {1}.	{0} 中途停止了：{1}。	src/core/pack/download.js:87	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
-zy85n2	draft	every server was left for the rest of the run	本次下载不再向任何服务器请求	src/core/pack/download.js:89	
-cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMap 没有响应（{0}）。	src/core/pack/download.js:90	{0} = why.replace(/[.。]$/u, '')
-rhruvr	ok	{0} said: {1}.	{0} 回复：{1}。	src/core/pack/download.js:92	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
-1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyage 没有发来 {0} 的正文。	src/core/pack/download.js:93	{0} = s.title
+3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:82	{0} = p.title
+1rb0o7n	ok	OpenStreetMap around {0}	{0} 周边的 OpenStreetMap	src/core/pack/download.js:84	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
+hdsgog	ok	OpenStreetMap between {0} and {1}	{0} 与 {1} 之间的 OpenStreetMap	src/core/pack/download.js:84	{0} = a; {1} = b
+1ff3ec8	ok	Wikipedia near {0}	{0} 附近的 Wikipedia	src/core/pack/download.js:85	{0} = a
+i9ok5g	ok	Wikipedia between {0} and {1}	{0} 与 {1} 之间的 Wikipedia	src/core/pack/download.js:85	{0} = a; {1} = b
+1qn6l15	ok	{0} didn't answer in time.	{0} 响应超时。	src/core/pack/download.js:91	{0} = s.where
+16rip5y	ok	{0} stopped early: {1}.	{0} 中途停止了：{1}。	src/core/pack/download.js:92	{0} = s.where; {1} = s.remark; Note: {1} is the server's own words, in English.
+zy85n2	draft	every server was left for the rest of the run	本次下载不再向任何服务器请求	src/core/pack/download.js:94	
+cvcpkl	ok	OpenStreetMap didn't answer ({0}).	OpenStreetMap 没有响应（{0}）。	src/core/pack/download.js:95	{0} = why.replace(/[.。]$/u, '')
+rhruvr	ok	{0} said: {1}.	{0} 回复：{1}。	src/core/pack/download.js:97	{0} = s.where; {1} = s.info; Note: {1} is the service's own words, in English.
+1a1kgp9	ok	Wikivoyage sent no text for {0}.	Wikivoyage 没有发来 {0} 的正文。	src/core/pack/download.js:98	{0} = s.title
 aaicx8	ok	{0} couldn't be checked: {1}	无法检查 {0}：{1}	src/core/package-updates.js:40	{0} = s.name ?? id; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 trd90h	ok	It wasn't installed from an address, so annai has nowhere to look for an update.	不是从地址安装的，所以无法查找更新。	src/core/package-updates.js:67	
 2olq9a	ok	The address now holds another package ({0}), so it wasn't updated. Remove this one and install that one if you want it.	这个地址现在提供的是另一个包（{0}），因此没有更新。如果想用那个包，请移除这个，再安装那个。	src/core/package-updates.js:71	{0} = pkg.id
@@ -1007,7 +1007,7 @@ elkw42	ok	The voice's audio couldn't be played.	无法播放这个声音的音�
 9gdjo3	ok	The browser voice couldn't speak ({0}).	浏览器声音无法朗读（{0}）。	src/plugins/voice-browser/index.js:585	{0} = e.error; Note: {0} is the browser's error code, such as synthesis-failed.
 1mrk9hl	ok	The microphone stopped.	麦克风已停止。	src/plugins/voice-browser/index.js:650	
 1l4zitw	ok	Phone dictation stopped ({0}).	手机语音输入已停止（{0}）。	src/plugins/voice-browser/index.js:755	{0} = e.error; Note: Phone dictation as its row in Settings → Voice says (端末の音声入力 / 手机语音输入); {0} is the browser's error code, such as network.
-1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia 和 Nominatim	src/plugins/web/free.js:134	
+1435xg0	ok	Wikivoyage, Wikipedia and Nominatim	Wikivoyage、Wikipedia 和 Nominatim	src/plugins/web/free.js:142	
 scnz2y	ok	Web tools	网页工具	src/plugins/web/index.js:13	Note: Web as its tool group is named in Settings → Tools (Web / 网页).
 eob60g	ok	fetch reads any web page, through Jina Reader or Exa when a site doesn't let web apps read it; web_search searches with the search providers, in the order Settings → Tools sets: free ones to start with.	fetch 可读取任何网页，遇到不允许网页应用读取的网站时，改用 Jina Reader 或 Exa；web_search 按设置 → 工具中的顺序使用各搜索提供商，先用免费的。	src/plugins/web/index.js:16	
 b4g7z9	ok	needs a key (Settings → Tools)	需要密钥（设置 → 工具）	src/plugins/web/index.js:191	

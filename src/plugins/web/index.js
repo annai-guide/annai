@@ -237,7 +237,8 @@ export function activate(annai) {
           return null;
         }
         try {
-          const rows = normalizeRows(await step(call, (signal) => p.search(i.query, { fetch: call.fetch, signal, limit: ROWS, session: sessionFor(call.scope) }), Math.min(p.limitMs ?? Infinity, room)), i.query);
+          const limit = p.rows ?? ROWS;
+          const rows = normalizeRows(await step(call, (signal) => p.search(i.query, { fetch: call.fetch, signal, limit, session: sessionFor(call.scope) }), Math.min(p.limitMs ?? Infinity, room)), i.query, limit);
           cooldowns.clear(p.id);
           if (rows.length) return tsv(['title', 'url', 'snippet'], rows.map((r) => [r.title, r.url, r.snippet]));
           empty = true;

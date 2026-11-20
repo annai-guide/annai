@@ -1,5 +1,5 @@
 import { planFor, estimate, likelyGuides } from './plan.js';
-import { downloadPack, readManifest, wanted, lacksIds, DIR, MANIFEST, STALE_MS } from './download.js';
+import { downloadPack, readManifest, wanted, lacksIds, saysDown, DIR, MANIFEST, STALE_MS } from './download.js';
 import { loadPack } from './read.js';
 import { tracedFetch } from '../agent/net.js';
 import { logEvent } from '../events.js';
@@ -36,6 +36,8 @@ export class PackKeeper {
   #abort = null;
   /** @type {Promise<Manifest> | null} */
   #job = null;
+  /** The download that runs is one annai began by itself, which keeps to Wi-Fi: poke() stops it when the phone leaves Wi-Fi. */
+  #byItself = false;
   /** @type {ReturnType<typeof setTimeout> | undefined} the one next look at the pack, due at #due (Date.now()'s ms) */
   #timer;
   #due = 0;
@@ -125,6 +127,7 @@ export class PackKeeper {
     const { store, ws, version } = this.o;
     const abort = new AbortController();
     this.#abort = abort;
+    this.#byItself = auto;
     this.running = { scope, done: 0, total: 0, label: '' };
     this.#emit();
     this.#job = this.#editions().then((editions) => downloadPack({
@@ -159,8 +162,12 @@ export class PackKeeper {
     await this.#job?.catch(() => {});
   }
 
-  /** The connection or the screen changed: maybe the open trip's pack can be brought up to date. */
+  /**
+   * The connection or the screen changed: maybe the open trip's pack can be brought up to date; and a download annai began by itself stops
+   * when the phone is off Wi-Fi (what came stays, the next look on Wi-Fi goes on): nothing else bounds one that runs over mobile data.
+   */
   poke() {
+    if (this.#job && this.#byItself && this.o.connection() !== 'wifi') this.stop().catch(() => {});
     this.#schedule(this.o.pokeMs ?? POKE_MS);
   }
 
@@ -246,7 +253,8 @@ export class PackKeeper {
     if (wait > 0) return this.#schedule(wait);
     this.#autoAt.set(scope, now);
     const m = await this.download(scope, { auto: true });
-    // A run that failed in part tries again by itself, once an hour at most.
-    if (m.failed.length) this.#schedule(every);
+    // A run that failed because a source is down tries again by itself, once an hour at most; a failure that is an answer annai can't use
+    // (Overpass stopping early, a guide with no text) would only fail again: it waits for the traveller's Try again.
+    if (m.failed.some(saysDown)) this.#schedule(every);
   }
 }
