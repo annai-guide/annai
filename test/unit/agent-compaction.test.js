@@ -16,7 +16,15 @@ test('when housekeeping is due, and when it is forced', () => {
   assert.equal(compactionNeed({ ...base, tokens: 91_000, bytes: 1000 }), 'forced');
   assert.equal(compactionNeed({ ...base, tokens: 10, bytes: 6 * 2 ** 20 }), 'due');
   assert.equal(compactionNeed({ ...base, tokens: 10, bytes: 9 * 2 ** 20 }), 'forced');
-  assert.equal(compactionNeed({ ...base, window: null, tokens: 1e9, bytes: 10 }), null);
+  // Due at 100,000 tokens, or at the threshold's share of a smaller window (70% of 100,000 is 70,000), whichever comes first.
+  assert.equal(compactionNeed({ ...base, tokens: 69_999, bytes: 10 }), null);
+  assert.equal(compactionNeed({ ...base, window: null, tokens: 99_999, bytes: 10 }), null);
+  assert.equal(compactionNeed({ ...base, window: null, tokens: 100_000, bytes: 10 }), 'due');
+  assert.equal(compactionNeed({ ...base, window: 1_000_000, tokens: 99_999, bytes: 10 }), null);
+  assert.equal(compactionNeed({ ...base, window: 1_000_000, tokens: 100_000, bytes: 10 }), 'due');
+  assert.equal(compactionNeed({ ...base, window: 1_000_000, tokens: 899_000, bytes: 10 }), 'due');
+  assert.equal(compactionNeed({ ...base, window: 1_000_000, tokens: 900_001, bytes: 10 }), 'forced');
+  assert.equal(compactionNeed({ ...base, window: null, tokens: 1e9, bytes: 10 }), 'due', 'no window: never forced by tokens, only by the size');
 });
 
 test('the cut keeps about a third of the threshold, never fewer than three exchanges, and always compacts the oldest', () => {
@@ -656,7 +664,7 @@ test("the retry after housekeeping for a request too long doesn't describe the u
 });
 
 test("the housekeeping estimate counts what the main models are sent: one photo sent five times is one picture, not five (round 9)", async () => {
-  const k = await agentKit([[say('A view.')]], { models: [{ input: ['text', 'image'], contextWindow: 7000 }], utility: [{ text: 'Summary.' }] });
+  const k = await agentKit([[say('A view.')]], { models: [{ input: ['text', 'image'], contextWindow: 7000 }], utility: [{ text: 'Summary.' }], agent: { timers: { set: () => 1, clear: () => {} } } }); // due would time a real 255 s warm summary, which keeps the run open
   await k.ws.write(k.trip, '/files/view.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
   for (let i = 0; i < 5; i++) {
     k.agent.send(`Look ${i}`, { photos: [{ path: '/trip/files/view.webp' }] });

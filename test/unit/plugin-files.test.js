@@ -61,9 +61,24 @@ test("a failed write, edit or patch says plainly that the file wasn't changed (e
   await assert.rejects(run('edit', { path: '/trip/plan/drive.json', old: '"title": "Drive north"', new: '"title": "Drive later"' }), /^Error: That text isn't in \/trip\/plan\/drive\.json, so it wasn't changed\./);
   await assert.rejects(run('edit', { path: '/trip/plan/drive.json', old: '"', new: "'" }), /appears \d+ times in \/trip\/plan\/drive\.json, so it wasn't changed\./);
   await assert.rejects(run('edit', { path: '/trip/plan/none.json', old: 'a', new: 'b' }), /No file at \/trip\/plan\/none\.json, so nothing was changed\./);
+  // A call with no new (or one that isn't text or a number or a boolean) would put the word "undefined" or "[object Object]" over old.
+  await assert.rejects(run('edit', { path: '/trip/plan/drive.json', old: 'Drive south' }), /^Error: new is the text to put in old's place, so \/trip\/plan\/drive\.json wasn't changed\./);
+  await assert.rejects(run('edit', { path: '/trip/plan/drive.json', old: 'Drive south', new: null }), /new is the text to put in old's place/);
+  await assert.rejects(run('edit', { path: '/trip/plan/drive.json', old: 'Drive south', new: { a: 1 } }), /new is the text to put in old's place/);
   await assert.rejects(run('patch', { path: '/trip/plan/none.json', changes: { title: 'x' } }), /No file at \/trip\/plan\/none\.json, so nothing was changed\./);
   await assert.rejects(run('write', { path: '/trip/plan/drive.json', content: { title: 3 } }), /doesn't match its format, so it wasn't written:/);
   assert.equal(await ws.readText(trip, '/plan/drive.json'), before);
+});
+
+test('edit writes a number or a boolean as its text, the obvious variant a model sends for "3" or "true"', async () => {
+  const { ws, trip, run } = await setup();
+  await run('write', { path: '/trip/notes/count.md', content: 'Nights: two\nPaid: no\n' });
+  await run('edit', { path: '/trip/notes/count.md', old: 'two', new: 3 });
+  await run('edit', { path: '/trip/notes/count.md', old: 'no', new: true });
+  assert.equal(await ws.readText(trip, '/notes/count.md'), 'Nights: 3\nPaid: true\n');
+  await run('edit', { path: '/trip/notes/count.md', old: '3', new: 0 });
+  await run('edit', { path: '/trip/notes/count.md', old: 'true', new: false });
+  assert.equal(await ws.readText(trip, '/notes/count.md'), 'Nights: 0\nPaid: false\n', '0 and false are values, not nothing');
 });
 
 test("patch takes only an object: anything else (JSON text that isn't one, from a model that gives objects as text) changes nothing, where a merge patch would replace the whole file with it", async () => {

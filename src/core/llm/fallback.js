@@ -282,6 +282,9 @@ export function koeWay(cfg, { voiceOn, types, until, now }) {
   return { mode, why, live: hasLive, split: classic.length > 0 || (wanted && realtime.length > 0), path: text ? { kind: 'text' } : null };
 }
 
+/** Characters to a token in annai's rough counts (estimateTokens, a cut's sizes): on the 2026-11-19 real-model check they read 0.45 to 1.14 of providers' counts. */
+export const CHARS_PER_TOKEN = 3.5;
+
 /**
  * A rough token count, enough to skip models whose window is clearly too small: of the messages as this model is sent
  * them (another's search steps aren't). @param {Request} request @param {string} [modelKey] its provider model id
@@ -295,7 +298,7 @@ export function estimateTokens(request, modelKey) {
       else chars += p.type === 'native' ? nativeExtra(m.parts, i) : JSON.stringify(p).length;
     });
   }
-  return Math.ceil(chars / 3.5) + images * 1600 + (request.maxOutput ?? 0);
+  return Math.ceil(chars / CHARS_PER_TOKEN) + images * 1600 + (request.maxOutput ?? 0);
 }
 
 /**

@@ -1522,8 +1522,9 @@ test("a tidy-up or a Summarize that failed names each model by its provider's na
   assert.match(String((await forced.events(['error'])).at(-1).data.message), /^model-u: .*bad utility key/i, 'the log keeps annai\'s English with the model\'s name alone');
   // At the start of a turn, when the cache went cold (not forced): the info card.
   const small = (/** @type {string} */ text) => ({ ...say(text), usage: { input: 50, output: 5 } });
-  const clock = { t: Date.parse('2026-10-23T10:00:00Z') };
-  const cold = await agentKit([[small('b1'), small('b2'), { ...say('a1'), usage: { input: 9500, output: 5 } }, say('a2')]], {
+  // The device's clock, as the log's times are (due at 7,000 of 10,000, not forced: 9,000).
+  const clock = { t: Date.now() };
+  const cold = await agentKit([[small('b1'), small('b2'), { ...say('a1'), usage: { input: 7500, output: 5 } }, say('a2')]], {
     models: [{ contextWindow: 10_000 }], utility: [bad], agent: { now: () => clock.t, timers: { set: () => 1, clear: () => {} } },
   });
   for (const m of ['one', 'two', 'three']) { cold.agent.send(m); await cold.agent.idle(); }
@@ -1560,8 +1561,8 @@ test("a tap on Shiori during the cold tidy-up that starts a turn (not forced, so
   useClock(t);
   // Housekeeping that came due waits for the cache to go cold, then runs at the start of the next turn (#tidyUp, not forced).
   const small = (/** @type {string} */ text) => ({ ...say(text), usage: { input: 50, output: 5 } });
-  const clock = { t: Date.parse('2026-10-23T10:00:00Z') };
-  const o = await agentKit([[small('b1'), small('b2'), { ...say('a1'), usage: { input: 9500, output: 5 } }, say('a2')]], {
+  const clock = { t: Date.now() }; // the device's, as the log's times are; due, not forced
+  const o = await agentKit([[small('b1'), small('b2'), { ...say('a1'), usage: { input: 7500, output: 5 } }, say('a2')]], {
     models: [{ contextWindow: 10_000 }], utility: [{ text: 'Summary.' }],
     agent: { now: () => clock.t, timers: { set: () => 1, clear: () => {} } },
   });

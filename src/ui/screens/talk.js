@@ -1028,7 +1028,7 @@ function tidyMenu(ctx, trip) {
       close();
       ctx.notices.toast(t`Summarizing…`);
       const r = await agent.summarizeNow();
-      ctx.notices.toast({ done: t`Earlier conversation summed up. Every line stays here, and she can still look them up.`, nothing: t`There is not enough yet to summarize.`, busy: t`Shiori is working. Try again in a moment.`, failed: t`She couldn't summarize it. A card says why.` }[/** @type {'done' | 'nothing' | 'busy' | 'failed'} */ (r)]);
+      if (r !== 'stopped') ctx.notices.toast({ done: t`Earlier conversation summed up. Every line stays here, and she can still look them up.`, nothing: t`There is not enough yet to summarize.`, busy: t`Shiori is working. Try again in a moment.`, failed: t`She couldn't summarize it. A card says why.` }[r]);
       if (r === 'done') ctx.render();
     },
   }, t`Summarize now`);

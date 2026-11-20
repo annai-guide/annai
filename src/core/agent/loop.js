@@ -1,8 +1,8 @@
 import { claimLine, quote, conversationLines, USER_LINES } from './blocks.js';
-import { ME, newId } from '../scopes.js';
+import { ME, TODO_FILE, newId } from '../scopes.js';
 import { readAppSettings } from '../settings.js';
 import { languageSettings, strayLanguage } from '../languages.js';
-import { AllFailedError, estimateTokens, candidates, chatCandidates, whyOf, whyWords, levelOf } from '../llm/fallback.js';
+import { AllFailedError, estimateTokens, CHARS_PER_TOKEN, candidates, chatCandidates, whyOf, whyWords, levelOf } from '../llm/fallback.js';
 import { ProviderError } from '../llm/contract.js';
 import { modelOf, modelNames, providerOf, updateModel } from '../llm/config.js';
 import { NotFoundError } from '../workspace.js';
@@ -10,7 +10,7 @@ import { fromBase64, toBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
 import { record, storedTexts, TALK_TAG } from './log.js';
 import { blobBytes, canRead } from '../reach.js';
-import { compactionNeed, cutAt, promptTokens, requestBytes, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
+import { compactionNeed, cutAt, replyPrompt, dueTokens, tokensAfter, requestBytes, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
 import { Transcript, resolveEvent, repair, NOT_SAID, SAID, STOPPED, CUT, NOT_RUN, NOT_ANSWERED, NOT_HEARD, LET_GO, MOVED } from './transcript.js';
 import { toolList, definitions, runTool, Stuck, toolSwitches, resolvePath, ALWAYS_ON } from './tools.js';
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint, systemText } from './context.js';
@@ -384,7 +384,7 @@ export class Agent {
   #by = null;
   /** @type {any} the timer that runs warm housekeeping shortly before the cache expires */
   #timer = null;
-  /** The prompt the last call sent, in tokens, as the provider counted it. */
+  /** The prompt the last call sent, in tokens, as housekeeping counts it (replyPrompt): the answering call's own, or on opening the log's. */
   #lastPrompt = 0;
   /** @type {LoopTool[]} */
   #loopTools;
@@ -400,7 +400,7 @@ export class Agent {
   #free = [];
   /** The page is being left. */
   #leaving = false;
-  /** The warm summary's call, which leaving the page or a tap on Shiori cuts short. @type {AbortController | null} */
+  /** The summary's controller, made as compact() starts: leaving the page, a tap on Shiori or another conversation opening cuts it. @type {AbortController | null} */
   #tidy = null;
   /** @type {PhotoCopies | null} */
   #photos = null;
@@ -766,9 +766,9 @@ export class Agent {
     this.#lastTurn = 0; // seqs are each conversation's own
     for (const l of this.#late.splice(0)) this.#joinLate(l.e, l.r);
     this.#snapshot = null;
-    // The last conversation's housekeeping stays with it: it is checked again at its next turn.
+    // The last conversation's housekeeping stays with it: it is checked again at its next turn, from this one's own log.
     this.#due = false;
-    this.#lastPrompt = 0;
+    this.#lastPrompt = transcript.lastCall?.prompt ?? 0;
     this.#clearTimer();
     this.owed = owed;
     const left = this.#leftOwing.get(scope);
@@ -1407,7 +1407,6 @@ export class Agent {
   interrupt() {
     this.#userStop = true;
     if (this.#ear?.owner === 'after') this.#closeEar(); // the listening after her line, opened as her turn ends: a Stop leaves nothing listening on
-    this.#tidy?.abort(); // a warm summary under way: its call deletes the turn it borrowed
     if (this.#gathering) this.#stopGathered();
     this.#halt();
   }
@@ -1439,7 +1438,7 @@ export class Agent {
       });
   }
 
-  /** Stops the turn: the user's stop, or another conversation opening. */
+  /** Stops the turn: the user's stop, or another conversation opening; a summary under way is cut too (a due one is made again). */
   #halt() {
     // Her line still being said didn't reach the user: what it would settle stays owed (a reminder it carried shows at the cut).
     if (this.#saying !== null) {
@@ -1448,6 +1447,7 @@ export class Agent {
       this.#cutSaying = true;
     }
     this.#abort?.abort();
+    this.#tidy?.abort();
     if (this.#half.voice()) this.voice?.speaker.stop();
     const p = this.#pending;
     this.#pending = null;
@@ -1548,25 +1548,23 @@ export class Agent {
     this.#armEar();
   }
 
-  /** A due housekeeping waits for this pause, then runs warm shortly before the cache expires, or cold now (spec §6.5). */
+  /** A due housekeeping waits for this pause, then runs warm shortly before the cache expires (spec §6.5); if it is out already, the next cold turn does it. */
   #schedule() {
     this.#clearTimer();
     if (!this.#due || this.#opens || this.#still) return;
     const last = this.#warmth.last;
     const wait = last ? last.at + last.ttlMs - WARM_LEAD_MS - this.now() : 0;
-    if (wait <= 0) this.#housekeep('cold');
-    else this.#timer = this.timers.set(() => { this.#timer = null; this.#housekeep('warm'); }, wait);
+    if (wait > 0) this.#timer = this.timers.set(() => { this.#timer = null; if (this.cacheState()?.warm) this.#housekeep(); }, wait);
   }
 
-  /** @param {'warm' | 'cold'} mode */
-  async #housekeep(mode) {
+  async #housekeep() {
     if (this.#busy || this.#opens || this.#still) return;
     this.#busy = true;
     try {
-      await this.compact(mode);
+      await this.compact('warm');
     } catch (e) {
       if (e instanceof ProviderError && e.kind === 'cancelled') return; // the user left or tapped her: nothing failed
-      await this.#notice({ tone: 'info', title: t`Shiori couldn't tidy up the conversation`, body: sentences(await this.#words(e, mode === 'cold' ? 'utility' : 'main'), t`She will try again later.`) });
+      await this.#notice({ tone: 'info', title: t`Shiori couldn't tidy up the conversation`, body: sentences(await this.#words(e, 'main'), t`She will try again later.`) });
     } finally {
       this.#busy = false;
       this.#rest();
@@ -1629,10 +1627,24 @@ export class Agent {
     return { now: this.now(), timeZone: this.timeZone(), voice: voice ? 'on' : 'off', voiceWhy: voiceWhy(this.voice?.mode), online: this.online(), reasons, place: here.place, activity: here.activity };
   }
 
-  /** The block a request ends with: the half's own, or the now block. @param {Parameters<NonNullable<Half['tail']>>[0]} now */
+  /** The block a request ends with: the half's own, or the now block, with the trip's to-do list. @param {Parameters<NonNullable<Half['tail']>>[0]} now */
   async #tailFor(now) {
     const koe = this.#half.koe?.() ?? null;
-    return this.#half.tail ? this.#half.tail(now) : nowBlock({ ...now, plan: await nextPlanItems(this.ws, this.trip, this.now(), { fallbackTz: now.timeZone }), ...(koe ? { koe } : {}) });
+    if (this.#half.tail) return this.#half.tail(now);
+    // Read at every request, so an edit shows at the next step: '' no file yet; null it couldn't be read; undefined no trip open.
+    const todo = this.trip ? await this.ws.readText(this.trip, TODO_FILE).then((x) => x ?? '', () => null) : undefined;
+    return nowBlock({ ...now, plan: await nextPlanItems(this.ws, this.trip, this.now(), { fallbackTz: now.timeZone }), ...(todo === undefined ? {} : { todo }), ...(koe ? { koe } : {}) });
+  }
+
+  /**
+   * Whether this conversation's cache is cold or about to expire (spec §6.4), for the snapshot and housekeeping alike: from its own log, this
+   * half's last answered call since its latest compaction and the answering model's lifetime, by the device's clock (the log's), so a reload or
+   * another conversation opened in between reads it as it is. No such call, or a model no longer there: cold. @param {AgentSettings} settings
+   */
+  async #cold(settings) {
+    const last = this.transcript.lastCall;
+    const model = last ? await this.#model(last.model) : null;
+    return !last || !model || this.#real.now() >= last.at + TTL_MS[ttlFor(model, settings.cacheTtl)] - SOON_MS;
   }
 
   /**
@@ -1643,8 +1655,7 @@ export class Agent {
   async sees() {
     await this.opening.catch(() => {});
     const settings = await this.settings();
-    const last = this.#warmth.last;
-    const cold = !last || this.now() >= last.at + last.ttlMs - SOON_MS;
+    const cold = await this.#cold(settings);
     const snapshot = nextSnapshot(this.#snapshot, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale }), { cold });
     const { tools, shows } = await this.#toolsNow();
     return { system: this.#systemFor(snapshot, shows), tools: tools.map((x) => x.name), messages: await this.#sendable(), tail: await this.#tailFor(this.#nowFor([])) };
@@ -1686,15 +1697,16 @@ export class Agent {
    * Housekeeping (spec §6.5): the older part of the conversation becomes a compaction event; the
    * most recent part stays word for word. Returns whether anything was compacted.
    * @param {'warm' | 'cold'} mode @param {{ forced?: boolean, keepTokens?: number, frozen?: Frozen | null }} [o] forced: down to the last exchange, if the
-   * kept part is still about a third of the threshold; keepTokens: kept, at least (Summarize now's 0 keeps the last exchange only);
+   * kept part is still about a third of where housekeeping is due; keepTokens: kept, at least (Summarize now's 0 keeps the last exchange only);
    * frozen: the turn it runs inside, whose tools, provider tools and level it keeps
    */
   async compact(mode, o = {}) {
+    // The summary's one controller, made before anything is awaited, joined with the turn's (#abort; null outside one): a cut reaches it at any point.
+    const tidy = new AbortController();
+    this.#tidy = tidy;
+    const signal = this.#abort ? anySignal([tidy.signal, this.#abort.signal]) : tidy.signal;
     const settings = await this.settings();
     const window = (await this.#mainModel())?.contextWindow ?? null;
-    const keepTokens = o.keepTokens ?? (window
-      ? (settings.compaction.threshold * window) / 3
-      : (settings.compaction.threshold * settings.compaction.maxRequestMiB * 2 ** 20) / 3.5 / 3);
     const [latest] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['compaction'], reverse: true, limit: 1 }));
     // The conversation only, by type: what the summary is made of, and what the cut is measured on (not Koe's).
     const split = this.#rules() === 'kokoro';
@@ -1704,9 +1716,14 @@ export class Agent {
     for (const e of events) {
       const texts = await storedTexts(this.store, e);
       const size = JSON.stringify(e.data ?? {}).length + Object.values(texts).reduce((n, s) => n + s.length, 0);
-      items.push({ seq: e.seq, tokens: Math.ceil(size / 3.5) + (e.data?.images?.length ?? 0) * 1600, exchange: e.type === 'wake' && !e.data?.meanwhile });
+      items.push({ seq: e.seq, tokens: Math.ceil(size / CHARS_PER_TOKEN) + (e.data?.images?.length ?? 0) * 1600, exchange: e.type === 'wake' && !e.data?.meanwhile });
     }
-    const cut = cutAt(items, { keepTokens, minExchanges: o.forced ? 1 : KEEP_EXCHANGES });
+    // Her mark (mark_done) since the last compaction: what the exchanges after it hold is kept, when that is less; never fewer exchanges than
+    // the floor (three, one when forced), so a mark in the last ones keeps them, and an old one changes nothing. Its result as it ran (not a refused or cut call's).
+    const mark = events.findLast((e) => e.type === 'tool.result' && e.data?.name === 'mark_done' && e.data?.ok !== false && e.data?.wake !== 'housekeeping' && e.seq > (latest?.seq ?? 0));
+    // A third of where it is due stays word for word (by tokens: the request size's is never nearer, 149,796 tokens at Settings' least).
+    const keep = Math.min(o.keepTokens ?? dueTokens(window, settings.compaction.threshold) / 3, mark ? tokensAfter(items, mark.seq) : Infinity);
+    const cut = cutAt(items, { keepTokens: keep, minExchanges: o.forced ? 1 : KEEP_EXCHANGES });
     if (cut === null) return false;
     // What was heard in the part summarized is written down first, the last time its sound is at hand (spec §10.3): the
     // summary and the log both have the words. While it can't be, housekeeping waits, unless the next request would overflow.
@@ -1724,34 +1741,41 @@ export class Agent {
     const lines = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: [...USER_LINES], ...(latest ? { after: latest.data.to } : {}) }));
     const said = (await conversationLines(this.store, lines)).flatMap(({ text }) => (typeof text === 'string' ? [text] : []));
     const language = summaryLanguage(said, await this.#languages());
-    const summary = mode === 'warm' ? await this.#warmSummary(marker, settings, language, o.frozen) : await this.#coldSummary(cut, language);
+    const summary = mode === 'warm' ? await this.#warmSummary(marker, settings, language, signal, o.frozen) : await this.#coldSummary(cut, language, signal);
     if (!summary) return false;
     // Start fresh wrote a compaction meanwhile: this one, cut before it, would bring back the lines it left.
     const [now] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['compaction'], reverse: true, limit: 1 }));
     if (now?.seq !== latest?.seq) return false;
-    const done = await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'compaction', actor: 'system', data: { from: this.transcript.from || 1, to: cut - 1, mode }, texts: [['summary', summary]] });
+    // The range it covers: the summary it is written from covered its own from on (a fresh start, nothing before it); with neither, the first event.
+    const from = latest ? (latest.data?.mode === 'fresh' ? latest.data.to + 1 : latest.data?.from) : this.transcript.from || 1;
+    const done = await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'compaction', actor: 'system', data: { from, to: cut - 1, mode }, texts: [['summary', summary]] });
     await this.#serially(async () => {
       await this.reread();
       await this.#half.logged?.(done, { texts: {}, images: [] }); // Koe reads its window again from here
     });
     this.#snapshot = null;
     this.#due = false;
+    this.#lastPrompt = 0; // that count was of the conversation before this summary
     return true;
   }
 
   /**
    * "Summarize now" on the Conversation screen (spec §6.5, §16.2): housekeeping as it would run, warm while the cache
    * is, else cold, whatever the size, with only the last exchange kept word for word.
-   * @returns {Promise<'done' | 'nothing' | 'busy' | 'failed'>} nothing: too little to summarize; busy: she is working or a conversation is opening
+   * @returns {Promise<'done' | 'nothing' | 'busy' | 'failed' | 'stopped'>} nothing: too little to summarize; busy: she is working or a conversation is opening;
+   * stopped: cut short, no failure
    */
   async summarizeNow() {
     if (this.#busy || this.#opens || this.#still) return 'busy';
     this.#clearTimer();
     this.#busy = true;
-    const warm = Boolean(this.cacheState()?.warm);
+    /** Warm or cold as this conversation's own log says (#cold): after another one was opened, the last call's cache is that one's. */
+    let warm = false;
     try {
+      warm = !(await this.#cold(await this.settings()));
       return (await this.compact(warm ? 'warm' : 'cold', { forced: true, keepTokens: 0 })) ? 'done' : 'nothing';
     } catch (e) {
+      if (e instanceof ProviderError && e.kind === 'cancelled') return 'stopped';
       await this.#notice({ tone: 'info', title: t`Shiori couldn't summarize the conversation`, body: await this.#words(e, warm ? 'main' : 'utility') });
       return 'failed';
     } finally {
@@ -1838,6 +1862,7 @@ export class Agent {
       });
       this.#snapshot = null;
       this.#due = false;
+      this.#lastPrompt = 0;
       return result;
     } finally {
       this.#busy = false;
@@ -1850,9 +1875,9 @@ export class Agent {
   /**
    * Warm: the cached conversation, the housekeeping instruction as the tail; memory moves only. Its system text is the half's own, as a turn's
    * is, so it reads the turn's cache; within a turn (frozen), the turn's tools, provider tools and level too (the keep-reasoning design §3).
-   * @param {string} marker @param {AgentSettings} settings @param {string} language @param {Frozen | null} [frozen]
+   * @param {string} marker @param {AgentSettings} settings @param {string} language @param {AbortSignal} signal @param {Frozen | null} [frozen]
    */
-  async #warmSummary(marker, settings, language, frozen = null) {
+  async #warmSummary(marker, settings, language, signal, frozen = null) {
     const { tools, providerTools, shows } = frozen ?? (await this.#toolsNow());
     if (!this.#snapshot) this.#snapshot = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale });
     const system = frozen?.system ?? this.#systemFor(this.#snapshot, shows);
@@ -1861,46 +1886,40 @@ export class Agent {
     const cacheAt = frozen ? frozen.cacheAt : this.transcript.turnStart;
     /** @type {import('../llm/contract.js').Message[]} */
     let messages = await this.#sendable();
-    const tidy = new AbortController();
-    this.#tidy = tidy;
-    try {
-      for (let step = 0; step < 4; step++) {
-        const request = { ...buildRequest({ snapshot: this.#snapshot, system, tools: defs, transcript: { messages }, tail: instruction(marker, language), cacheTtl: settings.cacheTtl }), ...providerTools, ...(cacheAt >= 0 ? { cacheAt } : {}),
-          // A summary never needs to read a file (the part it summarizes holds what was said of it): a model that can't take one gets
-          // each as words, wherever it is (a PDF just read kept every model from tidying up).
-          newestPhoto: false, newestDocument: false };
-        await this.#loadKept(this.scope);
-        const r = await this.llm.call({ role: 'main', request, ...(frozen ? { level: frozen.level } : {}), scope: this.scope, prefer: this.#warmth.last?.modelId, borrow: true, signal: tidy.signal, record: { tag: 'compaction' }, readings: (/** @type {string} */ hash, /** @type {boolean} */ sees) => this.#keptNow(hash, sees), ...(this.voice ? { speech: this.voice.resolver(this.scope) } : {}) });
-        const calls = r.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
-        if (!calls.length) return r.reply.text.trim() || null;
-        /** @type {import('../llm/contract.js').Part[]} */
-        const results = [];
-        for (const c of calls) {
-          const memory = ['write', 'edit', 'patch'].includes(c.name) && /^\/(me|trip)\/memory\.md$/.test(String(c.input?.path ?? ''));
-          const tool = tools.find((t) => t.name === c.name);
-          const out = memory && tool
-            ? (await runTool(tool, c.input, { id: c.id, scope: this.scope, trip: this.trip, signal: new AbortController().signal, model: null, wake: 'housekeeping', llm: this.llm, author: 'shiori', fetch: this.get })).output
-            : { content: /* en */ 'Not during housekeeping: only memory moves work now.', isError: true };
-          await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: !out.isError, ms: 0, wake: 'housekeeping' }, texts: [['content', out.content]] });
-          results.push({ type: 'tool_result', id: c.id, content: out.content, ...(out.isError ? { isError: true } : {}) });
-        }
-        messages = [...messages, { role: 'assistant', parts: r.reply.parts }, { role: 'user', parts: results }];
+    for (let step = 0; step < 4; step++) {
+      const request = { ...buildRequest({ snapshot: this.#snapshot, system, tools: defs, transcript: { messages }, tail: instruction(marker, language), cacheTtl: settings.cacheTtl }), ...providerTools, ...(cacheAt >= 0 ? { cacheAt } : {}),
+        // A summary never needs to read a file (the part it summarizes holds what was said of it): a model that can't take one gets
+        // each as words, wherever it is (a PDF just read kept every model from tidying up).
+        newestPhoto: false, newestDocument: false };
+      await this.#loadKept(this.scope);
+      const r = await this.llm.call({ role: 'main', request, ...(frozen ? { level: frozen.level } : {}), scope: this.scope, prefer: this.#warmth.last?.modelId, borrow: true, signal, record: { tag: 'compaction' }, readings: (/** @type {string} */ hash, /** @type {boolean} */ sees) => this.#keptNow(hash, sees), ...(this.voice ? { speech: this.voice.resolver(this.scope) } : {}) });
+      const calls = r.reply.parts.filter((/** @type {any} */ p) => p.type === 'tool_call');
+      if (!calls.length) return r.reply.text.trim() || null;
+      /** @type {import('../llm/contract.js').Part[]} */
+      const results = [];
+      for (const c of calls) {
+        const memory = ['write', 'edit', 'patch'].includes(c.name) && /^\/(me|trip)\/memory\.md$/.test(String(c.input?.path ?? ''));
+        const tool = tools.find((t) => t.name === c.name);
+        const out = memory && tool
+          ? (await runTool(tool, c.input, { id: c.id, scope: this.scope, trip: this.trip, signal: new AbortController().signal, model: null, wake: 'housekeeping', llm: this.llm, author: 'shiori', fetch: this.get })).output
+          : { content: /* en */ 'Not during housekeeping: only memory moves work now.', isError: true };
+        await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: !out.isError, ms: 0, wake: 'housekeeping' }, texts: [['content', out.content]] });
+        results.push({ type: 'tool_result', id: c.id, content: out.content, ...(out.isError ? { isError: true } : {}) });
       }
-      return null;
-    } finally {
-      if (this.#tidy === tidy) this.#tidy = null;
+      messages = [...messages, { role: 'assistant', parts: r.reply.parts }, { role: 'user', parts: results }];
     }
+    return null;
   }
 
-  /** Cold: the utility model, from the older part as text. @param {number} cut @param {string} language */
-  async #coldSummary(cut, language) {
+  /** Cold: the utility model, from the older part as text. @param {number} cut @param {string} language @param {AbortSignal} signal */
+  async #coldSummary(cut, language, signal) {
     const old = await this.#load(this.scope, { before: cut });
     // Words written down since (by housekeeping, just now) count for the part summarized.
     for (const e of await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['heard.text'], after: cut - 1 }))) old.apply(e, { texts: {}, images: [] });
     // Half the utility model's window, in characters, leaves room for the instructions and the summary.
     const window = (await this.#roleModel('utility'))?.contextWindow;
-    const text = renderForSummary(old.messages, window ? Math.floor(window * 3.5 * 0.5) : SUMMARY_MAX_CHARS);
-    const r = await this.llm.call({ role: 'utility', request: { system: coldSystem(language), messages: [{ role: 'user', parts: [{ type: 'text', text }] }] }, scope: this.scope, record: { tag: 'compaction' } });
+    const text = renderForSummary(old.messages, window ? Math.floor(window * CHARS_PER_TOKEN * 0.5) : SUMMARY_MAX_CHARS);
+    const r = await this.llm.call({ role: 'utility', request: { system: coldSystem(language), messages: [{ role: 'user', parts: [{ type: 'text', text }] }] }, scope: this.scope, signal, record: { tag: 'compaction' } });
     return r.reply.text.trim() || null;
   }
 
@@ -2193,12 +2212,9 @@ export class Agent {
     // Its wake's record names the hand-over the turn works on, as join takes it below: the Conversation's Undo line follows it.
     await this.#logWakes(wakes, wakeId, false, { handover: handoverOf(wakes) ?? this.#handover });
     const settings = await this.settings();
-    const last = this.#warmth.last;
-    const cold = !last || this.now() >= last.at + last.ttlMs - SOON_MS;
+    const cold = await this.#cold(settings);
     const fresh = await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale });
     this.#snapshot = nextSnapshot(this.#snapshot, fresh, { cold });
-    // Housekeeping that came due waits for a pause; by now the cache is cold, so the utility model does it (spec §6.5).
-    if (cold && this.#due && (await this.#tidyUp('cold', {}, wakeId))) this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale }), { cold: true });
     /** What woke her, then what joins her turn, until a request of hers has said it (the now block says each once). */
     const reasons = wakes.map((w) => this.#reason(w));
     // The user reordered the list (or changed it) since: their order applies from this turn, warm cache or not.
@@ -2325,6 +2341,8 @@ export class Agent {
     let frozen = null;
     /** Claude's thinking still goes back this turn: one flag stops it, for a change, a refusal or the size (§5, §6). */
     let thinking = true;
+    /** The turn started cold: its first request is where housekeeping that is due runs, as nothing is cached to lose (spec §6.5). */
+    let coldStart = cold;
     /** What the turn's requests have carried of it so far, in characters. */
     let keptSent = 0;
     const stopThinking = () => {
@@ -2381,7 +2399,10 @@ export class Agent {
       const uploaded = await this.#uploading();
       // What the main models are sent: their photo limit of the pictures, each once.
       const sent = { ...request, messages: limitImages(request.messages, (await this.#mainImages()).maxCount) };
-      const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimateTokens(sent, (await this.#mainModel())?.providerId), this.#lastPrompt), window, bytes: requestBytes(sent, { uploaded }), maxBytes, threshold: settings.compaction.threshold }) : null;
+      const estimate = estimateTokens(sent, (await this.#mainModel())?.providerId);
+      const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window, bytes: requestBytes(sent, { uploaded }), maxBytes, threshold: settings.compaction.threshold }) : null;
+      const tidy = coldStart;
+      coldStart = false; // once a turn: its first request
       if (need === 'forced') {
         // The next request would overflow: housekeeping first, warm if the cache still is (spec §6.4, §6.5).
         const warm = this.#warmth.last ? this.#warmth.state(this.#warmth.last.modelId, fingerprint, this.now()).warm : false;
@@ -2391,7 +2412,15 @@ export class Agent {
           break;
         }
         if (done) {
-          this.#lastPrompt = 0;
+          this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale }), { cold: true });
+          continue;
+        }
+      } else if (need === 'due' && tidy) {
+        // Due, and the cache is cold already: the utility model summarizes the older part first, so the turn writes the shorter
+        // conversation to the cache, not the whole one (spec §6.5). Not done (a failure says so on a card), the turn goes on as it is.
+        const done = await this.#tidyUp('cold', {}, wakeId);
+        if (done === null) break; // cut short (a tap, an open, leaving): the turn ends
+        if (done) {
           this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale }), { cold: true });
           continue;
         }
@@ -2468,10 +2497,7 @@ export class Agent {
             failed = true;
             break;
           }
-          if (done) {
-            this.#lastPrompt = 0;
-            continue;
-          }
+          if (done) continue;
         }
         await this.#failed(e, wakeId);
         failed = true;
@@ -2483,12 +2509,12 @@ export class Agent {
       this.#heardBy = result.modelId;
       answered = true;
       owed = owed.filter((r) => !r.cue);
-      // The answering call's own prompt, not the turn's sum with calls that failed.
-      this.#lastPrompt = promptTokens(result.reply.usage);
+      // The answering call's own prompt, not the turn's sum with calls that failed; none from one that ran the provider's own tools (replyPrompt).
+      this.#lastPrompt = replyPrompt(result.reply.usage);
       spent += result.cost ?? 0;
       const model = await this.#model(result.modelId);
       if (model) this.#warmth.note(result.modelId, fingerprint, TTL_MS[ttlFor(model, settings.cacheTtl)], this.now());
-      if (this.#half.housekeeping && compactionNeed({ tokens: this.#lastPrompt, window: model?.contextWindow ?? null, bytes: requestBytes(sent, { uploaded }), maxBytes, threshold: settings.compaction.threshold })) this.#due = true;
+      if (this.#half.housekeeping && compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window: model?.contextWindow ?? null, bytes: requestBytes(sent, { uploaded }), maxBytes, threshold: settings.compaction.threshold })) this.#due = true;
       // A request whose thinking couldn't go (something before it changed) or was refused stops it for the rest of the turn; else this
       // reply keeps the now block its request ended with and the reply as it came, until the turn ends or the requests have carried KEPT_SENT_MAX.
       if (result.reply.natives) stopThinking();
@@ -2626,7 +2652,7 @@ export class Agent {
    * Housekeeping within a turn. When it fails a card says why; when the turn can't go on without it
    * (the next request would overflow), an error event ends the turn.
    * @param {'warm' | 'cold'} mode @param {{ forced?: boolean, frozen?: Frozen | null }} o @param {string} wakeId
-   * @returns {Promise<boolean | null>} whether anything was compacted; null: it failed and the turn ends
+   * @returns {Promise<boolean | null>} whether anything was compacted; null: failed (forced) or cut short; the turn ends
    */
   async #tidyUp(mode, o, wakeId) {
     try {

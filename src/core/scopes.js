@@ -57,6 +57,8 @@ export function newId(prefix) {
 
 /** A draft's stored name until its first line names it (chats.js); the screens show it in theirs. */
 export const DRAFT_TITLE = /* en */ 'New conversation';
+/** A trip's to-do list, Shiori's (spec §4.3): what is still open in it with no time, in her now block whole at every request. */
+export const TODO_FILE = '/todo.md';
 
 /** A new install's profile: no Language line, as the Languages setting says which (spec §10.9). */
 /* en */

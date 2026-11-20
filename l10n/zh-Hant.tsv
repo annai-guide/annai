@@ -522,38 +522,38 @@ vjxaph	ok	Your turn	輪到你了	src/core/agent/loop.js:676
 19793n8	ok	Shiori skipped a wake	Shiori 跳過了一次喚醒	src/core/agent/loop.js:1272	
 16ny0z2	ok	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1529	
 1sxm1ou	ok	Something went wrong: {0}	出了點問題：{0}	src/core/agent/loop.js:1529	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 無法整理對話	src/core/agent/loop.js:1569	
-oeaxaa	ok	She will try again later.	她稍後會再試。	src/core/agent/loop.js:1569	
-x10s30	ok	Shiori couldn't summarize the conversation	Shiori 無法總結對話	src/core/agent/loop.js:1755	
-1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:1953	
-1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1953	
-nxpady	ok	The message went without it.	訊息已送出，但不含這張照片。	src/core/agent/loop.js:2110	
-sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:2110	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
-ssozn1	ok	A photo wasn't sent to Shiori	有一張照片沒有傳給 Shiori	src/core/agent/loop.js:2110	
-311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 剛才的事還沒做完，你回來後她會接著做。	src/core/agent/loop.js:2181	
-1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她三次呼叫同一個工具，結果都一樣，所以這一輪結束了。請換個說法再問。	src/core/agent/loop.js:2555	Note: "Ask again" is the verb (再問), not the glossary's Ask, Safari's 詢問 choice.
-pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重複操作	src/core/agent/loop.js:2555	
-1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什麼也沒對你說就結束了。	src/core/agent/loop.js:2599	
-2bgbpn	ok	Shiori didn't answer	Shiori 沒有回答	src/core/agent/loop.js:2603	
-1mjdfzn	ok	Shiori can't reach her model	Shiori 無法連線到模型	src/core/agent/loop.js:2688	
-12qfj9m	ok	This model takes photos only as {0}, which this browser can't make. Try another model in Settings → Models.	這個模型只接受 {0} 格式的照片，但這個瀏覽器無法產生。可以在設定 → 模型中換一個模型。	src/core/agent/loop.js:2715	{0} = names
-1uhz9dg	ok	Shiori couldn't send the photo	Shiori 無法傳送照片	src/core/agent/loop.js:2774	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	這個瀏覽器要點一下才能播放聲音。她說的話在對話裡。	src/core/agent/loop.js:3415	
-1h2ina6	ok	Shiori couldn't speak aloud	Shiori 無法朗讀	src/core/agent/loop.js:3416	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → 模型 → 朗讀中的聲音都無法使用，原因見「記錄」。她說的話在對話裡。	src/core/agent/loop.js:3416	
-1r1dhd7	ok	Shiori can't hear you yet	Shiori 還聽不到你	src/core/agent/loop.js:3599	
-8wd0xv	ok	Listening stopped	聆聽已停止	src/core/agent/loop.js:3830	
-43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:4091	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	每邊最多 # 畫素	src/core/agent/loop.js:4092	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一次最多 # 張照片	src/core/agent/loop.js:4093	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	僅限 {0}	src/core/agent/loop.js:4094	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受這張照片（它的要求：{0}），也無法轉換成它能接受的照片。可以在設定 → 照片 → 傳給 Shiori 的照片中把照片調小，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:4095	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受這張照片，也無法轉換成它能接受的照片。可以在設定 → 照片 → 傳給 Shiori 的照片中把照片調小，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:4096	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	對話太長，整理之前她的模型處理不了。請在設定 → 模型中檢查模型，或稍後再試。	src/core/agent/loop.js:4106	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	外掛程式 {0} 喚醒她的次數超過了你設定的上限（每小時 # 次）。	src/core/agent/loop.js:4116	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她在留意的事情喚醒她的次數超過了你設定的上限（每小時 # 次）：{0}。	src/core/agent/loop.js:4117	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你新增的檔案喚醒她的次數超過了你設定的上限（每小時 # 次）：{0}。	src/core/agent/loop.js:4118	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	她被喚醒的次數超過了你設定的上限（每小時 # 次）。	src/core/agent/loop.js:4119	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 無法整理對話	src/core/agent/loop.js:1567	
+oeaxaa	ok	She will try again later.	她稍後會再試。	src/core/agent/loop.js:1567	
+x10s30	ok	Shiori couldn't summarize the conversation	Shiori 無法總結對話	src/core/agent/loop.js:1779	
+1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:1972	
+1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:1972	
+nxpady	ok	The message went without it.	訊息已送出，但不含這張照片。	src/core/agent/loop.js:2129	
+sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:2129	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
+ssozn1	ok	A photo wasn't sent to Shiori	有一張照片沒有傳給 Shiori	src/core/agent/loop.js:2129	
+311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 剛才的事還沒做完，你回來後她會接著做。	src/core/agent/loop.js:2200	
+1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她三次呼叫同一個工具，結果都一樣，所以這一輪結束了。請換個說法再問。	src/core/agent/loop.js:2581	Note: "Ask again" is the verb (再問), not the glossary's Ask, Safari's 詢問 choice.
+pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重複操作	src/core/agent/loop.js:2581	
+1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什麼也沒對你說就結束了。	src/core/agent/loop.js:2625	
+2bgbpn	ok	Shiori didn't answer	Shiori 沒有回答	src/core/agent/loop.js:2629	
+1mjdfzn	ok	Shiori can't reach her model	Shiori 無法連線到模型	src/core/agent/loop.js:2714	
+12qfj9m	ok	This model takes photos only as {0}, which this browser can't make. Try another model in Settings → Models.	這個模型只接受 {0} 格式的照片，但這個瀏覽器無法產生。可以在設定 → 模型中換一個模型。	src/core/agent/loop.js:2741	{0} = names
+1uhz9dg	ok	Shiori couldn't send the photo	Shiori 無法傳送照片	src/core/agent/loop.js:2800	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	這個瀏覽器要點一下才能播放聲音。她說的話在對話裡。	src/core/agent/loop.js:3441	
+1h2ina6	ok	Shiori couldn't speak aloud	Shiori 無法朗讀	src/core/agent/loop.js:3442	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → 模型 → 朗讀中的聲音都無法使用，原因見「記錄」。她說的話在對話裡。	src/core/agent/loop.js:3442	
+1r1dhd7	ok	Shiori can't hear you yet	Shiori 還聽不到你	src/core/agent/loop.js:3625	
+8wd0xv	ok	Listening stopped	聆聽已停止	src/core/agent/loop.js:3856	
+43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:4117	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	每邊最多 # 畫素	src/core/agent/loop.js:4118	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一次最多 # 張照片	src/core/agent/loop.js:4119	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	僅限 {0}	src/core/agent/loop.js:4120	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受這張照片（它的要求：{0}），也無法轉換成它能接受的照片。可以在設定 → 照片 → 傳給 Shiori 的照片中把照片調小，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:4121	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受這張照片，也無法轉換成它能接受的照片。可以在設定 → 照片 → 傳給 Shiori 的照片中把照片調小，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:4122	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	對話太長，整理之前她的模型處理不了。請在設定 → 模型中檢查模型，或稍後再試。	src/core/agent/loop.js:4132	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	外掛程式 {0} 喚醒她的次數超過了你設定的上限（每小時 # 次）。	src/core/agent/loop.js:4142	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她在留意的事情喚醒她的次數超過了你設定的上限（每小時 # 次）：{0}。	src/core/agent/loop.js:4143	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你新增的檔案喚醒她的次數超過了你設定的上限（每小時 # 次）：{0}。	src/core/agent/loop.js:4144	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	她被喚醒的次數超過了你設定的上限（每小時 # 次）。	src/core/agent/loop.js:4145	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	這則訊息含有金鑰，所以不顯示。	src/core/agent/net.js:94	
 157dl17	ok	Shiori wants to adjust her personality	Shiori 想調整自己的性格	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	不用了	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
@@ -584,21 +584,21 @@ gtgen1	ok	The content of {0} is missing from storage, so it can't be exported.	�
 13a6l3r	ok	There is nothing to export.	沒有可匯出的內容。	src/core/archive.js:68	
 am2v0c	ok	API keys can only be included in an encrypted backup of everything.	只有加密的完整備份才能包含 API 金鑰。	src/core/archive.js:68	
 4ohc37	ok	This file is encrypted. Enter its passphrase to open it.	此檔案已加密。請輸入密碼片語來開啟。	src/core/archive.js:88	
-1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	此檔案是用較新版本的 annai 建立的。請先更新 annai，再重新開啟。	src/core/archive.js:452	
-q7ee2s	ok	This file is damaged: {0}	此檔案已損壞：{0}	src/core/archive.js:456	{0} = errors; Note: {0} is a developer's detail, in English.
-4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	此檔案包含不安全的檔案路徑（{0}），因此 annai 不會開啟它。	src/core/archive.js:459	{0} = path
-hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	此檔案不是 annai 檔案，或者已損壞（{0}）。	src/core/archive.js:482	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	此 zip 不是 annai 檔案，裡面沒有 annai-archive.json。	src/core/archive.js:484	
-j0v5kk	ok	This file is damaged: its manifest is not readable.	此檔案已損壞，無法讀取其中的清單。	src/core/archive.js:491	
-lfeohr#other	ok	This file is damaged: {0} are missing.	此檔案已損壞，缺少 {0}。	src/core/archive.js:497	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
-1ujco5p	ok	This file is damaged: its keys are not readable.	此檔案已損壞，無法讀取其中的金鑰。	src/core/archive.js:513	
-1aqa7w5	ok	This file is damaged ({0}).	此檔案已損壞（{0}）。	src/core/archive.js:525	{0} = (e).message; Note: {0} is a developer's detail, in English.
-1txsojx	ok	This file is damaged: {0} was changed.	此檔案已損壞，{0} 被改動過。	src/core/archive.js:530	{0} = name
-21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	此檔案已損壞，無法讀取 {1} 的第 {0} 行。	src/core/archive.js:556	{0} = i + 1; {1} = name
-1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	此檔案已損壞，{1} 第 {0} 行：{2}	src/core/archive.js:560	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
-syvqmc	ok	This file is damaged: its plugin list is not readable.	此檔案已損壞，無法讀取其中的外掛程式清單。	src/core/archive.js:656	
-qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	匯入期間，此檔案的部分內容已從本裝置中刪除，因此沒有匯入任何內容。請重新匯入。	src/core/archive.js:758	
-cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	匯入期間，此檔案要替換的內容在本裝置上發生了變化，因此沒有匯入任何內容。請重新匯入。	src/core/archive.js:759	
+1oint3e	ok	This file was made by a newer version of annai. Update annai, then open it again.	此檔案是用較新版本的 annai 建立的。請先更新 annai，再重新開啟。	src/core/archive.js:453	
+q7ee2s	ok	This file is damaged: {0}	此檔案已損壞：{0}	src/core/archive.js:457	{0} = errors; Note: {0} is a developer's detail, in English.
+4er14u	ok	This file contains an unsafe file path ({0}), so annai won't open it.	此檔案包含不安全的檔案路徑（{0}），因此 annai 不會開啟它。	src/core/archive.js:460	{0} = path
+hwph32	ok	This file isn't an annai file, or it is damaged ({0}).	此檔案不是 annai 檔案，或者已損壞（{0}）。	src/core/archive.js:483	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1cut10v	ok	This zip isn't an annai file: it has no annai-archive.json.	此 zip 不是 annai 檔案，裡面沒有 annai-archive.json。	src/core/archive.js:485	
+j0v5kk	ok	This file is damaged: its manifest is not readable.	此檔案已損壞，無法讀取其中的清單。	src/core/archive.js:492	
+lfeohr#other	ok	This file is damaged: {0} are missing.	此檔案已損壞，缺少 {0}。	src/core/archive.js:498	plural; # = missing.length; {0} = list(missing); English: "This file is damaged: {0} is missing." (one), "This file is damaged: {0} are missing." (other)
+1ujco5p	ok	This file is damaged: its keys are not readable.	此檔案已損壞，無法讀取其中的金鑰。	src/core/archive.js:514	
+1aqa7w5	ok	This file is damaged ({0}).	此檔案已損壞（{0}）。	src/core/archive.js:526	{0} = (e).message; Note: {0} is a developer's detail, in English.
+1txsojx	ok	This file is damaged: {0} was changed.	此檔案已損壞，{0} 被改動過。	src/core/archive.js:531	{0} = name
+21t6o3	ok	This file is damaged: line {0} of {1} is not readable.	此檔案已損壞，無法讀取 {1} 的第 {0} 行。	src/core/archive.js:557	{0} = i + 1; {1} = name
+1ln7rqe	ok	This file is damaged: line {0} of {1}: {2}	此檔案已損壞，{1} 第 {0} 行：{2}	src/core/archive.js:561	{0} = i + 1; {1} = name; {2} = errors.join('; '); Note: {2} is a developer's detail, in English.
+syvqmc	ok	This file is damaged: its plugin list is not readable.	此檔案已損壞，無法讀取其中的外掛程式清單。	src/core/archive.js:657	
+qf3pcd	ok	Part of this file's content was removed from this device while it was importing, so nothing was imported. Import it again.	匯入期間，此檔案的部分內容已從本裝置中刪除，因此沒有匯入任何內容。請重新匯入。	src/core/archive.js:759	
+cr2az9	ok	What this file replaces changed on this device while it was importing, so nothing was imported. Import it again.	匯入期間，此檔案要替換的內容在本裝置上發生了變化，因此沒有匯入任何內容。請重新匯入。	src/core/archive.js:760	
 e0756x	ok	annai tries again later.	稍後會自動重試。	src/core/backup.js:42	
 pak6iu	ok	The plugin for {0} isn't running. Open this backup place in Settings → Backups to turn it on.	{0} 的外掛程式沒有在執行。請到設定 → 備份中進入這個備份位置，開啟外掛程式。	src/core/backup.js:44	{0} = name; Note: "it" is the plugin: the backup place's screen turns its plugin on.
 al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	請輸入 {0} 加密備份的密碼片語，然後儲存。	src/core/backup.js:45	{0} = name
@@ -902,11 +902,11 @@ t7oyho	ok	It needs {0} {1}, and annai's catalog has version {2} ({3} is installe
 ubg3u	ok	It isn't in annai's catalog.	不在 annai 的目錄中。	src/core/requires.js:203	
 4umazb	ok	The one installed came from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.	已安裝的版本來自其他來源，不是 annai 官方的。要新增官方版本，請先在設定 → 外掛程式中移除它。	src/core/requires.js:206	Note: Remove → 移除, as annai's Remove buttons say.
 seoih8	ok	{0}, which you turned off, isn't switched on by adding it.	{0} 已被你關閉，新增時不會自動開啟。	src/core/requires.js:208	{0} = officialName(entry.id, entry.name)
-stkvyf	ok	Me	我	src/core/scopes.js:115	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
-1imxpae	ok	System log	系統日誌	src/core/scopes.js:116	
-ktdb8o	ok	Settings	設定	src/core/scopes.js:117	
-13w3r95	ok	This device	這台裝置	src/core/scopes.js:119	
-1jqhjwe	ok	Waiting with Shiori	Shiori 暫存的檔案	src/core/scopes.js:120	Note: Taiwan wording: 檔案 for files (glossary Files), 暫存 for held for now.
+stkvyf	ok	Me	我	src/core/scopes.js:117	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
+1imxpae	ok	System log	系統日誌	src/core/scopes.js:118	
+ktdb8o	ok	Settings	設定	src/core/scopes.js:119	
+13w3r95	ok	This device	這台裝置	src/core/scopes.js:121	
+1jqhjwe	ok	Waiting with Shiori	Shiori 暫存的檔案	src/core/scopes.js:122	Note: Taiwan wording: 檔案 for files (glossary Files), 暫存 for held for now.
 ulzb3n	ok	Midnight sun	極晝	src/core/sun.js:78	
 1fjho8h	ok	Polar night	極夜	src/core/sun.js:79	
 tqn1pi	ok	Sunrise {0}	日出 {0}	src/core/sun.js:82	{0} = hm(sunrise)
@@ -1903,7 +1903,7 @@ el1opd	ok	Providers keep the start of the conversation for a while, so her next 
 3eima2	ok	1 hour	1 小時	src/ui/screens/models.js:86	
 kl14fu	ok	Keep it for	保留時長	src/ui/screens/models.js:86	
 uw7pcm	ok	Housekeeping	對話整理	src/ui/screens/models.js:87	
-qfzxri	ok	When a conversation gets long, Shiori summarizes its older part. She does it when it reaches this share of her model's context, or when a request would get this big. Empty: the usual.	對話變長後，Shiori 會總結較早的部分。當對話佔到模型上下文的這個比例，或請求將達到這個大小時，就會進行總結。留空則使用預設值。	src/ui/screens/models.js:88	
+1tzf0lu	draft	When a conversation gets long, Shiori summarizes its older part: at this share of her model's context or of the largest request below, or at 100,000 tokens if that comes first. She does it when you come back after her cache has run out, or just before it runs out if annai stays open. A request that would pass the largest size, or 90% of her model's context, is summarized at once. Empty: the usual.	對話變長後，Shiori 會總結較早的部分。對話佔到模型上下文或最大請求的這個比例，或達到 10 萬 token（以先到者為準）時，就會總結。快取過期後回來時會總結；如果 annai 一直開著，則在快取過期前一刻總結。請求將超過最大請求大小，或模型上下文的 90% 時，會立即總結。留空則使用預設值。	src/ui/screens/models.js:88	
 1sywcgn	ok	Summarize at a share from 50 to 90%.	總結比例請設在 50% 到 90% 之間。	src/ui/screens/models.js:90	
 5gbpvm	ok	Summarize at (% of the context)	總結門檻（佔上下文的 %）	src/ui/screens/models.js:90	
 gbbwof	ok	The largest request is from 1 to 64 MiB.	最大請求須介於 1 到 64 MiB 之間。	src/ui/screens/models.js:91	

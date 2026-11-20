@@ -232,15 +232,23 @@ export function activate(annai) {
       input: { type: 'object', properties: { path: PATH, old: { type: 'string' }, new: { type: 'string' } }, required: ['path', 'old', 'new'] },
       /** @param {{ path: string, old: string, new: string }} i @param {any} call */
       run: caseTolerant('edited', async (i, call) => {
+        const text = ['number', 'boolean'].includes(typeof i.new) ? String(i.new) : i.new;
+        if (typeof text !== 'string') throw new Error(`new is the text to put in old's place, so ${i.path} wasn't changed.`);
         const { scope, path } = where(i.path, call);
         writable(scope, path);
         recordPlace(scope, path);
         const now = await ws.readText(scope, path);
         if (now === undefined) throw new Error(`No file at ${i.path}, so nothing was changed.`);
-        const n = i.old ? now.split(i.old).length - 1 : 0;
+        const count = (/** @type {string} */ s) => (s ? now.split(s).length - 1 : 0);
+        let [old, next] = [i.old, text];
+        // Text copied from a view that shows "<" as <lt> (her to-do list in the now block, search's TSV rows) is read in that layout, the new text
+        // too, when as given it matches nothing and so read it matches once.
+        const lt = (/** @type {string} */ s) => s.replaceAll('<lt>', '<');
+        if (!count(old) && old?.includes('<lt>') && count(lt(old)) === 1) [old, next] = [lt(old), lt(next)];
+        const n = count(old);
         if (n === 0) throw new Error(`That text isn't in ${i.path}, so it wasn't changed. read it to see what is.`);
         if (n > 1) throw new Error(`That text appears ${n} times in ${i.path}, so it wasn't changed. Give more of it, so it appears once.`);
-        await ws.write(scope, path, now.replace(i.old, () => i.new), { author: 'shiori', guard: guardOf(scope, path), ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
+        await ws.write(scope, path, now.replace(old, () => next), { author: 'shiori', guard: guardOf(scope, path), ...turnOf(call) }).catch((/** @type {unknown} */ x) => { throw plain(x, i.path); });
         return `Edited ${i.path}.`;
       }),
     },
