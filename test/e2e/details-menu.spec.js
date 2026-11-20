@@ -114,6 +114,8 @@ for (const [width, height] of /** @type {const} */ ([[360, 640], [390, 844], [43
     const ids = await makeConversations(page, [{ title: 'Pelican chat', lines: 1 }, { title: 'Big Sur', start: '2099-03-03', end: '2099-03-05', lines: 1 }]);
     for (const id of ids) {
       await goToHash(page, `#/trip/${id}/talk`);
+      // Its own screen: until it draws, the one before still shows, its menu open, and a click on that ⋯ closed it (Chromium, 2 of 192 runs at 16 workers).
+      await expect(page.locator('.talk-head .talk-name')).toHaveAttribute('href', `#/trip/${encodeURIComponent(id)}`);
       const toggle = page.locator('.talk-head .tidy-toggle');
       await expect(toggle).toBeVisible();
       await toggle.click();
