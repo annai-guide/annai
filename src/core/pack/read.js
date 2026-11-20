@@ -142,7 +142,8 @@ export class Pack {
   /**
    * Its one guide for a name, by the first kind of match that finds any: its English title, a name that led to it, its title in an edition: only
    * what the tool matches online, which never drops a bracket ("Georgia" is not "Georgia (country)": online, English's list answers it), so the pack and
-   * the tool agree on every name, and a name held only under its bracketed title reads online; in each of these editions it is in, in their order, the
+   * the tool agree on a name (apart from a trip name written with a comma, which the download also looks up as its bracketed form), and a name
+   * held only under its bracketed title reads online; in each of these editions it is in, in their order, the
    * text empty where the file is missing or broken. None, [].
    * @param {string} name @param {string[]} editions the traveller's guide editions, in the reading order (wiki.js guideEditions)
    * @returns {Promise<{ edition: string, title: string, text: string }[]>}

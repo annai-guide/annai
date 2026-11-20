@@ -1097,6 +1097,34 @@ test("a manifest dated far ahead (another clock) with a source down: the run goe
   }
 });
 
+test('a run that ended with the clock weeks ahead, then the clock put back, with a source down: the looks do not spin (a wait past setTimeout\'s limit fires at once)', async () => {
+  const t = await packTrip();
+  const net = services({ overpass: () => ({ elements: [] }) });
+  await downloadPack({ ws: t.ws, scope: t.trip, fetch: net.fetch, version: '1', editions: ['en'], gapMs: 0 });
+  let ahead = 25 * 86_400_000; // past 2^31 - 1 ms, setTimeout's limit
+  const keeper = new PackKeeper({ store: t.store, ws: t.ws, agent: fakeAgent(t.trip), locale: 'en-US', version: '1', connection: () => 'wifi', fetch: net.fetch, quietMs: 10, pokeMs: 5, autoMs: 400, gapMs: 0, now: () => Date.now() + ahead });
+  const { began } = watching(keeper);
+  try {
+    await keeper.download(t.trip);
+    ahead = 0;
+    const m = /** @type {any} */ (await t.ws.readJSON(t.trip, MANIFEST));
+    const part = { source: 'osm', place: { how: 'around', names: ['Nepenthe'] } };
+    await t.ws.write(t.trip, MANIFEST, { ...m, at: new Date().toISOString(), failed: [{ label: 'OpenStreetMap around Nepenthe', why: 'x', part, said: { code: 'late', where: 'overpass-api.de' } }] }, { author: 'system' });
+    let looks = 0;
+    const status = keeper.status.bind(keeper);
+    keeper.status = (scope) => {
+      looks++;
+      return status(scope);
+    };
+    keeper.poke();
+    await sleep(300);
+    assert.ok(looks < 10, `${looks} looks in 300 ms`);
+    assert.equal(began.length, 1, 'only the traveller\'s run: the down source rests its hour');
+  } finally {
+    keeper.dispose();
+  }
+});
+
 test("another conversation opened during the traveller's download stops it; back, it rests an hour, and then goes on (shape 11, K4 as ruled)", async () => {
   const k = await leaving(600); // the hour here
   const { keeper, trip, agent } = k;

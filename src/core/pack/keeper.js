@@ -262,12 +262,16 @@ export class PackKeeper {
     const every = this.o.autoMs ?? AUTO_EVERY_MS;
     // When the last run ended: this session's (one that wrote no manifest too), or what the manifest says (a relaunch); a time that is no time, or after now (another clock), says nothing.
     const at = Date.parse(s.manifest.at);
-    const last = Math.max(this.#ranAt.get(scope) ?? 0, at <= now ? at : 0);
+    const ran = this.#ranAt.get(scope) ?? 0;
+    const last = Math.max(ran <= now ? ran : 0, at <= now ? at : 0); // a run's end after now: the clock was put back since
     // A change no run has begun since waits only for the quiet. A run that was stopped rests an hour whatever changed (the traveller's Stop is one), and so does every retry.
     const rest = this.#fresh && !s.manifest.stopped ? 0 : every - (now - last);
     // Too early (the plan is still changing, or the hour isn't out): looked at then.
-    const wait = Math.max((this.o.quietMs ?? QUIET_MS) - (Date.now() - this.#changedAt), rest);
+    // Each part at most its own span (a change dated after now, the clock put back, waits the quiet), so no wait passes setTimeout's limit and spins.
+    const wait = Math.max((this.o.quietMs ?? QUIET_MS) - Math.max(0, Date.now() - this.#changedAt), rest);
     if (wait > 0) return this.#schedule(wait);
+    // The trip, the connection or a download may have changed while the status was read.
+    if (this.#job || scope !== this.o.agent.target || this.o.connection() !== 'wifi') return;
     await this.download(scope, { auto: true });
   }
 }
