@@ -1,6 +1,6 @@
 // Shiori keeps her own long work (the self-compaction design 2): a cold return to a long conversation is summarized first, her to-do
 // list is in every request's now block, and her mark (mark_done) moves where the next summary cuts. Usage numbers are shaped as real
-// replies of Claude Opus reported them (numbers and field names only).
+// replies of Claude Opus reported them (numbers and field names only), but UNDER's: LONG's with a smaller cache read, to fall under 100,000.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, until } from './agent-kit.js';
