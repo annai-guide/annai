@@ -296,12 +296,23 @@ export async function until(fn, ms = 2000) {
 }
 
 /**
- * idle(), after a bounded wait for nothing to be busy or queued. idle() waits for a wake left queued until the test's own timeout (120 s); here a regression
- * that leaves one fails at once (on the clock's time, when the test has one), saying what is wrong. @param {any} k
+ * p, or a failure saying why once 2000 ms have passed (on the clock's time, when the test has one): a regression fails at once, not at the test's own
+ * timeout (120 s). A race on p itself, not a poll of a flag, so whatever p waits for is still waited for. @param {Promise<unknown>} p @param {string} why
  */
+async function inTime(p, why) {
+  /** @type {any} */
+  let timer;
+  const late = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(why)), 2000); });
+  try {
+    await Promise.race([p, late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** idle(), bounded: a wake left queued, or a turn still busy, fails at once, saying so. @param {any} k */
 export async function idleAtOnce(k) {
-  await until(() => !k.agent.busy).catch(() => assert.fail('nothing waits in memory: a wake is left queued, or a turn is still busy'));
-  await k.agent.idle();
+  await inTime(k.agent.idle(), 'nothing waits in memory: a wake is left queued, or a turn is still busy');
 }
 
 /**
@@ -393,7 +404,7 @@ export async function settlesOnlyAfter(k, door, why, done = () => {}) {
   await new Promise((r) => setTimeout(r, 60));
   assert.equal(settled, false, why);
   door.open();
-  await idle;
+  await inTime(idle, `${why}: once the door is open, idle() settles (nothing waits in memory)`);
 }
 
 /**

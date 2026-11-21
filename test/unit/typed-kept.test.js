@@ -210,7 +210,7 @@ test('a typed line she is still gathering when the user stops her, refused, come
   k.agent.send('Hold on a moment', { typed: true });
   store.full('all');
   k.agent.interrupt();
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(store.back.map((x) => x.words), ['Hold on a moment']);
   assert.ok(store.back[0].error instanceof StorageFullError);
   const told = k.notices.filter((n) => n.title === NOT_SAVED);

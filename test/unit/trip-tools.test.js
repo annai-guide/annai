@@ -564,7 +564,7 @@ for (const [how, which] of /** @type {const} */ ([['reads and writes refused (Ch
     await idleAtOnce(k);
     assert.equal(k.agent.trip, k.kyoto);
     // A write that came late, after room was back (on a timer, as a phone slow to answer), would land now and count: the order above holds the refusal, the
-    // wait here that nothing arrives behind it (virtual time).
+    // wait here that nothing arrives behind it within 50 ms (virtual time; a write later still would go uncounted).
     await new Promise((r) => setTimeout(r, 50));
     // One line of the move where its write worked; none where the phone refused it.
     assert.equal((await eventsIn(k, k.trip, ['conversation.moved'])).length, which === 'reads' ? 1 : 0);

@@ -282,7 +282,9 @@ for (const [how, o] of MODES) {
     // taken at the first turn's end, as #showOwed once did, would show them with its Reminder, before "Shiori stopped"). Read from the one half's own
     // cards: with Koe on, the other half's stops fall between them at the timing of the two.
     const seq = its.map((n) => (n.title === 'Reminder' ? n.body : n.title));
-    assert.ok(seq.indexOf('Shiori stopped', seq.indexOf(LEAVE)) < seq.indexOf('Check out by 11'), 'the stopped turn is told before the wake behind it is shown');
+    const leave = seq.indexOf(LEAVE), stop = seq.indexOf('Shiori stopped', leave), next = seq.indexOf('Check out by 11');
+    assert.ok(leave >= 0 && stop > leave && next >= 0, 'the first reminder, the stop after it, and the next wake\'s reminder are each there');
+    assert.ok(stop < next, 'the stopped turn is told before the wake behind it is shown');
     assert.equal(k.agent.busy, false, 'nothing waits for a next wake');
   });
 }
