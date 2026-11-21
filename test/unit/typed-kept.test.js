@@ -3,7 +3,7 @@
 // once. The dock puts them in the one type box, whichever conversation is open (test/e2e/dock-text.spec.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, refusing, until } from './agent-kit.js';
+import { agentKit, refusing, until, idleAtOnce } from './agent-kit.js';
 import { useClock } from './clock.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { createTrip, ME } from '../../src/core/scopes.js';
@@ -158,13 +158,16 @@ test("a typed line queued for the conversation it was typed in as another opens,
   k.agent.typing(true); // her turn gathers while they type
   k.agent.send('Book the ryokan', { typed: true });
   store.full('all');
-  const opened = await k.agent.open(other).then(() => null, (/** @type {unknown} */ e) => e);
-  assert.ok(opened instanceof StorageFullError, 'the open fails with the full phone');
+  await k.agent.open(other); // the refused keep is told, and fails no open
+  assert.equal(k.agent.trip, other);
   assert.deepEqual(store.back.map((x) => x.words), ['Book the ryokan'], 'the one type box takes it, whichever conversation is open');
+  const told = k.notices.filter((n) => n.title === NOT_SAVED);
+  assert.deepEqual(told.map((n) => n.error), [store.back[0].error], 'one card, with the error the line came back with: the storage card shows once');
+  assert.equal(k.agent.busy, false, 'nothing waits for it');
   store.full(null);
   k.agent.typing(false);
   await k.agent.open(k.trip);
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(await lines(k), [], 'nothing is written later: the words are in the traveller\'s hands');
   assert.equal(store.back.length, 1);
 });
@@ -207,7 +210,7 @@ test('a typed line she is still gathering when the user stops her, refused, come
   k.agent.send('Hold on a moment', { typed: true });
   store.full('all');
   k.agent.interrupt();
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(store.back.map((x) => x.words), ['Hold on a moment']);
   assert.ok(store.back[0].error instanceof StorageFullError);
   const told = k.notices.filter((n) => n.title === NOT_SAVED);

@@ -296,6 +296,27 @@ export async function until(fn, ms = 2000) {
 }
 
 /**
+ * p, or a failure saying why once 2000 ms have passed (on the clock's time, when the test has one): a regression fails at once, not at the test's own
+ * timeout (120 s). A race on p itself, not a poll of a flag, so whatever p waits for is still waited for. 2000 ms: the longest of the 107 such waits in the
+ * five files that use it took 65 ms of clock time (measured 2026-11-20), so 2 s is a hang, not a slow wait. @param {Promise<unknown>} p @param {string} why
+ */
+async function inTime(p, why) {
+  /** @type {any} */
+  let timer;
+  const late = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(why)), 2000); });
+  try {
+    await Promise.race([p, late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** idle(), bounded: a wake left queued, or a turn still busy, fails at once, saying so. @param {any} k */
+export async function idleAtOnce(k) {
+  await inTime(k.agent.idle(), 'nothing waits in memory: still waiting after 2000 ms, a wake left queued, a turn still busy, or a wait longer than that');
+}
+
+/**
  * Holds the store transactions `which` names at the door until it is opened, outside the store's queue (a phone slow to read or write), so a wait that
  * doesn't count what is held finishes first. @param {any} k @param {(stores: string[], mode: string) => boolean} which @returns {{ open: () => void }}
  */
@@ -374,7 +395,7 @@ export function turnEnds(k) {
 
 /**
  * idle() does not settle while the door is shut, and does once it is open. `done` is what the door doesn't hold, finished first (her turn's end,
- * the reminder's card): the 60 ms of real time then only has to outlast what idle() itself still does, never the rest of the work.
+ * the reminder's card): the clock's 60 ms (real time where a test has no clock) then only has to outlast what idle() itself still does, never the rest of the work.
  * @param {any} k @param {{ open: () => void }} door @param {string} why @param {() => Promise<unknown> | unknown} [done]
  */
 export async function settlesOnlyAfter(k, door, why, done = () => {}) {
@@ -384,7 +405,7 @@ export async function settlesOnlyAfter(k, door, why, done = () => {}) {
   await new Promise((r) => setTimeout(r, 60));
   assert.equal(settled, false, why);
   door.open();
-  await idle;
+  await inTime(idle, `${why}: once the door is open, idle() settles (nothing waits in memory)`);
 }
 
 /**

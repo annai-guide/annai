@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until, hear } from './agent-kit.js';
+import { agentKit, until, hear, idleAtOnce } from './agent-kit.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { ProviderError } from '../../src/core/llm/contract.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
@@ -1284,7 +1284,7 @@ test("a cut, by what the turn was: one waiting on the user, or that annai starte
       k.agent.open(B);
       await k.agent.open(C);
     } else await k.agent.open(B);
-    await k.agent.idle();
+    await idleAtOnce(k);
     eq((await eventsIn(k, A, ['paused'])).length, r.picked ? 1 : 0, `${row}: the paused line`);
     eq(k.notices.filter((/** @type {any} */ n) => n.toast).length, r.picked ? 1 : 0, `${row}: the toast`);
     const results = (await eventsIn(k, A, ['tool.result'])).filter((/** @type {any} */ e) => e.data.name === r.running);
@@ -1759,12 +1759,12 @@ test('a wake for a trip that is not open is written into its conversation, and a
   const A = k.trip;
   const B = await createTrip(k.ws, { title: 'Kyoto' });
   k.agent.wake({ kind: 'file', scope: B, files: ['/files/flight.pkpass'], text: 'The user added a file to the trip: /trip/files/flight.pkpass (application/vnd.apple.pkpass).' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, 0);
   assert.equal((await eventsIn(k, A, ['wake'])).length, 0);
   assert.deepEqual((await eventsIn(k, B, ['wake'])).map((/** @type {any} */ e) => e.data.reasons.map((/** @type {any} */ r) => [r.kind, r.files])), [[['file', ['/files/flight.pkpass']]]]);
   await k.agent.open(B);
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, 1);
   assert.match(userTexts(k.requests[0]), /flight\.pkpass/);
   // She isn't told annai restarted: it came while the conversation was closed.
@@ -1865,7 +1865,7 @@ test('a wake kept for a trip that is not open is written by the time wake() sett
   await k.agent.wake({ kind: 'file', scope: B, text: 'The user added a file to the trip: /trip/files/flight.pkpass (application/vnd.apple.pkpass).' });
   assert.deepEqual((await eventsIn(k, B, ['wake'])).map((/** @type {any} */ e) => e.data.reasons.map((/** @type {any} */ r) => r.kind)), [['file']]);
   k.store.tx = tx;
-  await k.agent.idle();
+  await idleAtOnce(k);
 });
 
 test('a wake for the open trip, named by its scope, runs there as before', async (t) => {
@@ -2587,24 +2587,44 @@ function failWrites(k, text, times) {
   })));
 }
 
-test('lines typed during a failed open, one of whose writes fails too: the good open writes each once', async () => {
-  const k = await agentKit([{ rules: [{ match: '.', reply: say('ok') }] }]);
-  const road = await createTrip(k.ws, { title: 'Road' });
-  failWrites(k, 'Second', 1);
-  /** @type {() => void} */
-  let go = () => {};
-  const reached = failOnce(k, road, new Promise((r) => { go = () => r(undefined); }));
-  const first = k.agent.open(road);
-  await reached;
-  k.agent.send('First');
-  k.agent.send('Second');
-  go();
-  await first.catch(() => {});
-  await k.agent.open(road);
-  await k.agent.idle();
-  const lines = await typed(k, road);
-  assert.deepEqual(lines.toSorted(), ['First', 'Second'], 'the first line isn\'t written again');
-});
+// What waited for a conversation whose open failed is kept as another opens (#keepElsewhere): a write the phone refuses there is told and dropped, never kept
+// waiting in memory, and the typed lines among it go back to the box (the dock's lines carry the typed mark; a plugin's or a tap's don't).
+/** The cards for a write nobody waits on, and what the agent handed back. @param {any} k */
+function told(k) {
+  /** @type {any[]} */
+  const cards = [];
+  /** @type {string[]} */
+  const back = [];
+  k.agent.on('notice', (/** @type {any} */ n) => { if (n.title === "Something for Shiori wasn't saved") cards.push(n); });
+  k.agent.on('unsaved', (/** @type {any} */ x) => back.push(x.words));
+  return { cards, back };
+}
+
+for (const typedMark of [false, true]) {
+  const how = typedMark ? ', typed in the box' : '';
+  test(`lines typed during a failed open, one of whose writes fails too: the refused one is told and dropped (handed back when typed), nothing waits, and no refused line is written late${how}`, async () => {
+    const k = await agentKit([{ rules: [{ match: '.', reply: say('ok') }] }]);
+    const road = await createTrip(k.ws, { title: 'Road' });
+    const seen = told(k);
+    failWrites(k, 'Second', 1);
+    /** @type {() => void} */
+    let go = () => {};
+    const reached = failOnce(k, road, new Promise((r) => { go = () => r(undefined); }));
+    const first = k.agent.open(road);
+    await reached;
+    k.agent.send('First', { typed: typedMark });
+    k.agent.send('Second', { typed: typedMark });
+    go();
+    await first.catch(() => {});
+    assert.equal(k.agent.busy, false, 'nothing waits in memory'); // before idle(), which waits for a wake left queued until the test's own timeout
+    await k.agent.idle();
+    assert.equal(seen.cards.length, 1, 'told');
+    assert.deepEqual(seen.back, typedMark ? ['Second'] : [], 'a typed line goes back to the box');
+    await k.agent.open(road);
+    await idleAtOnce(k);
+    assert.deepEqual(await typed(k, road), ['First'], 'the first line once, the refused one never written late');
+  });
+}
 
 test('a failed open with a newer one under way leaves the newer one its target', async () => {
   const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }]);
@@ -2659,57 +2679,69 @@ test('a line typed during an open that fails is written into its conversation, a
   assert.deepEqual(await typed(k, k.trip), []);
 });
 
-test("a line typed during an open that fails, its write failing too, stays queued: not lost, and written once when the trip opens", async () => {
-  const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'speak', input: { text: 'ok' } }, { name: 'sleep', input: {} }] } }] }]);
-  const road = await createTrip(k.ws, { title: 'Road' });
-  /** @type {() => void} */
-  let go = () => {};
-  const reached = failOnce(k, road, new Promise((r) => { go = () => r(undefined); }));
-  const opening = k.agent.open(road);
-  await reached;
-  k.agent.send('Typed during the open');
-  const real = k.store.tx;
-  k.store.tx = /** @type {any} */ ((/** @type {any} */ s, /** @type {any} */ m, /** @type {any} */ f) => (m === 'readwrite' ? Promise.reject(new Error('QuotaExceededError')) : real.call(k.store, s, m, f)));
-  go();
-  await assert.rejects(opening, /IDB read failed/);
-  assert.equal(k.agent.busy, true, 'owed, until it can be written');
-  k.store.tx = real;
-  await k.agent.open(road);
-  await k.agent.idle();
-  assert.deepEqual(await typed(k, road), ['Typed during the open']);
-  assert.equal(k.agent.trip, road);
-});
+for (const typedMark of [false, true]) {
+  const how = typedMark ? ', typed in the box' : '';
+  test(`a line typed during an open that fails, its write failing too, is told and dropped (handed back when typed): nothing waits, and nothing is written when the trip opens${how}`, async () => {
+    const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'speak', input: { text: 'ok' } }, { name: 'sleep', input: {} }] } }] }]);
+    const road = await createTrip(k.ws, { title: 'Road' });
+    const seen = told(k);
+    /** @type {() => void} */
+    let go = () => {};
+    const reached = failOnce(k, road, new Promise((r) => { go = () => r(undefined); }));
+    const opening = k.agent.open(road);
+    await reached;
+    k.agent.send('Typed during the open', { typed: typedMark });
+    const real = k.store.tx;
+    k.store.tx = /** @type {any} */ ((/** @type {any} */ s, /** @type {any} */ m, /** @type {any} */ f) => (m === 'readwrite' ? Promise.reject(new Error('QuotaExceededError')) : real.call(k.store, s, m, f)));
+    go();
+    await assert.rejects(opening, /IDB read failed/);
+    assert.equal(k.agent.busy, false, 'nothing waits in memory'); // before idle(), as above
+    await k.agent.idle();
+    assert.equal(seen.cards.length, 1, 'told');
+    assert.deepEqual(seen.back, typedMark ? ['Typed during the open'] : []);
+    k.store.tx = real;
+    await k.agent.open(road);
+    await idleAtOnce(k);
+    assert.deepEqual(await typed(k, road), [], 'nothing written late');
+    assert.equal(k.agent.trip, road);
+  });
 
-test("a heard line and a typed one queued together, the typed one's write failing: the heard line is written once, not again with the retry", async () => {
-  const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'speak', input: { text: 'ok' } }, { name: 'sleep', input: {} }] } }] }]);
-  const road = await createTrip(k.ws, { title: 'Road' });
-  /** @type {() => void} */
-  let go = () => {};
-  const reached = failOnce(k, road, new Promise((r) => { go = () => r(undefined); }));
-  const opening = k.agent.open(road);
-  await reached;
-  k.agent.enqueue({ kind: 'heard', heard: { id: 'h1', text: 'Is the fuel far?', ms: 900, source: 'live' }, scope: road });
-  k.agent.send('Typed during the open');
-  const real = k.store.tx;
-  let armed = true;
-  k.store.tx = /** @type {any} */ ((/** @type {any} */ s, /** @type {any} */ m, /** @type {any} */ f) => real.call(k.store, s, m, (/** @type {any} */ t) => f(new Proxy(t, {
-    get: (o, p) => (p !== 'appendEvent' ? (typeof o[p] === 'function' ? o[p].bind(o) : o[p]) : async (/** @type {string} */ id, /** @type {any} */ ev) => {
-      if (armed && ev.type === 'msg.user') {
-        armed = false;
-        throw new Error('QuotaExceededError');
-      }
-      return o.appendEvent(id, ev);
-    }),
-  }))));
-  go();
-  await opening.catch(() => {});
-  k.store.tx = real;
-  await k.agent.open(road);
-  await k.agent.idle();
-  const heard = await k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(road, { types: ['heard'] }));
-  assert.equal(heard.length, 1);
-  assert.deepEqual(await typed(k, road), ['Typed during the open']);
-});
+  test(`a heard line and a typed one queued together, the typed one's write failing: the heard line is written once, the other told and dropped (handed back when typed)${how}`, async () => {
+    const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'speak', input: { text: 'ok' } }, { name: 'sleep', input: {} }] } }] }]);
+    const road = await createTrip(k.ws, { title: 'Road' });
+    const seen = told(k);
+    /** @type {() => void} */
+    let go = () => {};
+    const reached = failOnce(k, road, new Promise((r) => { go = () => r(undefined); }));
+    const opening = k.agent.open(road);
+    await reached;
+    k.agent.enqueue({ kind: 'heard', heard: { id: 'h1', text: 'Is the fuel far?', ms: 900, source: 'live' }, scope: road });
+    k.agent.send('Typed during the open', { typed: typedMark });
+    const real = k.store.tx;
+    let armed = true;
+    k.store.tx = /** @type {any} */ ((/** @type {any} */ s, /** @type {any} */ m, /** @type {any} */ f) => real.call(k.store, s, m, (/** @type {any} */ t) => f(new Proxy(t, {
+      get: (o, p) => (p !== 'appendEvent' ? (typeof o[p] === 'function' ? o[p].bind(o) : o[p]) : async (/** @type {string} */ id, /** @type {any} */ ev) => {
+        if (armed && ev.type === 'msg.user') {
+          armed = false;
+          throw new Error('QuotaExceededError');
+        }
+        return o.appendEvent(id, ev);
+      }),
+    }))));
+    go();
+    await opening.catch(() => {});
+    k.store.tx = real;
+    assert.equal(k.agent.busy, false, 'nothing waits in memory'); // before idle(), as above
+    await k.agent.idle();
+    assert.equal(seen.cards.length, 1, 'told');
+    assert.deepEqual(seen.back, typedMark ? ['Typed during the open'] : []);
+    await k.agent.open(road);
+    await idleAtOnce(k);
+    const heard = await k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(road, { types: ['heard'] }));
+    assert.equal(heard.length, 1);
+    assert.deepEqual(await typed(k, road), [], 'nothing written late');
+  });
+}
 
 test("Koe's open failing while Kokoro's holds: a tap and the words spoken after it land in the trip, not the old conversation", async () => {
   const sleeps = { rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] };

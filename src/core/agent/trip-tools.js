@@ -508,9 +508,10 @@ export function tripTools(app) {
         // Where the files went (Undo finds the trip by it); then the chat's line saying where they went, its last: after what the halves still held of it
         // (the yes Koe heard, a cue) is written, so that line settles it, and no line after it is owed.
         if (m.size || call.handover) await moved(rec.id, false, m.size, call);
-        // The chat's line of a move follows the screen: an open that failed (a card told the user) left them here, and writes none. In her turn the open
-        // has ended this call, and #runCall wrote MOVED: the same words, whatever this finds.
-        if (await app.carryOn(rec.id, wakes, call.signal)) await logIn(call, { type: 'conversation.moved', actor: 'shiori', data: { to: rec.id, title: rec.title, wake: call.wake } });
+        // The chat's line of a move says where the lines went, and links to that conversation: written whether or not the open worked (a card says one
+        // that failed). In her turn the open has ended this call, and #runCall wrote MOVED: the same words.
+        await app.carryOn(rec.id, wakes, call.signal);
+        await logIn(call, { type: 'conversation.moved', actor: 'shiori', data: { to: rec.id, title: rec.title, wake: call.wake } });
         return MOVED;
       },
     },
