@@ -1065,10 +1065,38 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** a traveller loses something that way.
 - **Approved:** 2026-11-19, chief's decision C131 (not the user's words), accepted as recommended.
 
+### Two typed lines refused in the same instant come back in the wrong order
+- **Kind:** known limitation.
+- **What the traveller sees:** on a phone too full to write, two lines sent within the fraction of a second it takes the phone to refuse the first both come back to the type box, the later above the earlier; so do two conversations' lines given back by one failed open. Nothing is lost, and the box can be edited.
+- **Why:** the first comes back from the write that failed and the second from the turn that stopped on it; the box puts what comes back before what it holds. One hand-back per turn would rewrite the part two fix rounds settled.
+- **Revisit when:** a traveller reports lines swapped in the box, or typed lines come to be written at send.
+- **Approved:** 2026-11-20, chief's decision C166 (not the user's words), accepted as recommended (option a).
+
+### A file sent with a message the phone refuses stays in Files, and the card doesn't say so
+- **Kind:** known limitation.
+- **What the traveller sees:** when the phone fills between keeping a file and writing its message, the words come back with the storage card and the file's chip is gone; the file is in that conversation's Files, and Shiori hasn't been told of it. Attached again, a second copy is kept; "Ask Shiori about this" in Files sends the kept one.
+- **Why:** the file is kept before the message that names it, and a full iPhone refuses a removal too. Giving the chip back needs the files and their conversation carried back with the words.
+- **Revisit when:** a traveller reports a file kept twice, or one Shiori never read, after the storage card.
+- **Approved:** 2026-11-20, chief's decision C167 (not the user's words), accepted as recommended (option a).
+
+### On a full phone, what was meant for a conversation that isn't open is dropped or waits, not given back
+- **Kind:** known limitation.
+- **What the traveller sees:** on a phone too full to write, something handed straight to a conversation that isn't open (a watch's wake, files added) is dropped, its reminders shown and a card saying "Something for Shiori wasn't saved"; Shiori there isn't told, and the files stay in Files. A spoken line, a tap or a note waiting for a conversation as another is opened fails that open with the card. One for a conversation neither open nor being opened waits in memory, fails other opens until there is room, keeps an app update waiting until a conversation is opened (even after room returns), and is lost at a restart; a move's carried copies (her recap, the traveller's last line) are dropped when the phone refuses the moved-to conversation's first write, the originals staying where they were. After Open on annai's card whose open fails, the card says so and the chat shows no line of a move, but Shiori's own record of the call can still say the conversation is open now, so at the traveller's next line there she may speak as if they had moved. Typed words come back as ever.
+- **Why:** C131's: these have no box to go back to, and each would need its own place to wait; her call's result can't wait for the open, which waits for her turn to end.
+- **Revisit when:** a traveller loses something that way, reports conversations that won't open with the storage card up, or Shiori saying they moved when the open had failed; or the design check of what the storage fix leaves removes the waiting.
+- **Approved:** 2026-11-20, chief's decision C168 (not the user's words), accepted as recommended (option a).
+
+### On a phone that stays full, a reminder already shown shows again at each start
+- **Kind:** known limitation.
+- **What the traveller sees:** "Leave for the airport by 14:10" shows each time they open annai that evening while the phone stays full, with nothing saying it is late; with room again, the next start wakes Shiori once more with the catch-up.
+- **Why:** a firing is remembered across starts only by its entry, which the phone refused, and the one-time watch's file can't be removed either; a second store for it would be a new part. Before storage-rest-next it was never shown at all.
+- **Revisit when:** a traveller reports a reminder repeating with the storage card up.
+- **Approved:** 2026-11-20, chief's decision C169 (not the user's words), accepted as recommended (option a).
+
 ### What the storage fix leaves for lines and wakes on a full phone
 - **Kind:** deferred.
-- **What the traveller sees:** on a phone too full to write: two typed lines refused within the moment it takes the phone to refuse the first come back to the type box in reverse order (also two conversations' lines given back by one failed open); a file kept with a message whose write is refused stays in the trip's Files and the card doesn't say so; what was meant for a conversation that isn't open (a watch's wake, files added, a move's carried lines) waits in memory, fails other opens until there is room, keeps an app update waiting, and is lost at a restart, while its reminders are shown and a card says it wasn't saved; a reminder already shown shows again at each start while the phone stays full; after Open on annai's card whose open fails, Shiori's own record of the call can still say the conversation is open now; and, in narrow shapes, a queued cue can show as a card before a model has had it, a kept reminder may be said again by Shiori later, a later conversation's refused keep shows no card of its own, and with Koe on a failed open can still write the chat's line of a move.
-- **Why:** storage-rest-next (merged 56b29e221) fixed the silent paths and made a reminder show before its entry is written; its reviews' findings kept landing in one part (the reminders and wakes held in memory while a turn runs or a conversation is closed), so RULES' step back sends what is left to a design check before any further fix round. Four of the shapes above are proposed known limitations waiting for the user (docs/progress.md, "Waiting for the user").
+- **What the traveller sees:** on a phone too full to write, in narrow shapes: a queued cue can show as a card before a model has had it; a reminder annai kept for a closed conversation may be said again by Shiori there later; a later conversation's refused keep shows no card of its own; with Koe on, a failed open can still write the chat's line of a move; and a reminder that fires as the page is being left is neither shown nor kept.
+- **Why:** storage-rest-next (merged 56b29e221) fixed the silent paths and made a reminder show before its entry is written; its reviews' findings kept landing in one part (the reminders and wakes held in memory while a turn runs or a conversation is closed), so RULES' step back sends what is left to a design check before any further fix round. The rest of what the build left is accepted (C166 to C169, above).
 - **Revisit when:** its row in docs/progress.md ("Typed lines on a full phone, what the storage fix leaves"): the design check, then its build.
 ### A phone language annai doesn't list reads English Wikipedia only
 - **Kind:** known limitation.
