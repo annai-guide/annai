@@ -3,7 +3,7 @@
 // once. The dock puts them in the one type box, whichever conversation is open (test/e2e/dock-text.spec.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, refusing, until } from './agent-kit.js';
+import { agentKit, refusing, until, idleAtOnce } from './agent-kit.js';
 import { useClock } from './clock.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { createTrip, ME } from '../../src/core/scopes.js';
@@ -167,7 +167,7 @@ test("a typed line queued for the conversation it was typed in as another opens,
   store.full(null);
   k.agent.typing(false);
   await k.agent.open(k.trip);
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(await lines(k), [], 'nothing is written later: the words are in the traveller\'s hands');
   assert.equal(store.back.length, 1);
 });

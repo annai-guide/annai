@@ -1175,8 +1175,8 @@ export class Halves {
    * Takes the user into a trip they chose on annai's card (open_trip's Open), at once, as their tap on its row would: the turn that asked is
    * let go, nothing owed where it was (open's `moved`), and 'went' tells the screens. Then the trip's lines (their
    * line, her recap) go in, for one turn there. If they went elsewhere since (signal: the call's, which a Stop or another open ends), nothing
-   * opens: the lines are written into the trip, in order, and wait there. An open that fails says so, as one asked for from Trips does (tellNotOpen:
-   * the storage card for a full phone); the lines carried are written all the same, where the phone takes their writes, and the caller's line of the move says where they went.
+   * opens: the lines are written into the trip, in order, and wait there. An open that fails says so with a notice titled as Trips' own is, its error carried (main.js turns it
+   * into the storage card for a full phone: src/app/main.js); the lines carried are written all the same, where the phone takes their writes, and the caller's line of the move says where they went.
    * @param {string} trip @param {import('./loop.js').Wake[]} wakes @param {AbortSignal} signal
    */
   async carryOn(trip, wakes, signal) {
