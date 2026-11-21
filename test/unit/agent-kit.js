@@ -301,7 +301,7 @@ export async function until(fn, ms = 2000) {
  * waits in the five files that use it, 65 ms of clock time (measured 2026-11-20); a test whose wait runs longer on its clock needs its own bound.
  * @param {Promise<unknown>} p @param {string} why
  */
-async function inTime(p, why) {
+export async function inTime(p, why) {
   /** @type {any} */
   let timer;
   const late = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(why)), 2000); });

@@ -45,6 +45,8 @@ export const NOT_SAID = new Set(['location', 'trigger.fired']);
  * read by type: a day of location points is never walked. A type apply() learns goes here too.
  */
 export const SAID = Object.freeze(['wake', 'msg.user', 'model.turn', 'photo.replace', 'error', 'heard', 'heard.text', 'reminder', 'tool.result', 'note', 'halves', 'out.speak', 'out.show', 'out.ask', 'handover.undo', 'conversation.moved', 'turn.end', 'grounded']);
+/** A line of hers that reached the user (never annai's own card), or a reply shown as written: the loop's count and #owing share it. @param {{ type: string, actor?: string }} e */
+export const reaches = (e) => (e.type.startsWith('out.') && e.actor !== 'system') || e.type === 'grounded';
 /** Koe's window (plan decision 5): its last 12 exchanges, its start moving in jumps of 6. */
 export const KOE_WINDOW = 12;
 export const KOE_JUMP = 6;
@@ -115,7 +117,7 @@ export class Transcript {
   #handover = null;
   /** What the restart carries: a cut turn's own, as its wakes and the user's lines it took up name it; undefined when nothing says (the newest owed). @type {string | null | undefined} */
   #carried = undefined;
-  /** What a turn taken up still owes. @type {import('./loop.js').Reminder[]} */
+  /** What the log still owes the traveller: reminders its wake records carried that nothing settled (Agent.open shows them). @type {import('./loop.js').Reminder[]} */
   owedReminders = [];
   #koe = new WeakSet(); // Koe's
   /** @type {Map<string, string>} Shiori's tool calls by id, to their tool names */
@@ -418,8 +420,7 @@ export class Transcript {
     const koe = d.half === 'koe';
     /** @type {any[]} */
     const list = e.type === 'wake' && Array.isArray(d.reminders) ? d.reminders.filter((r) => r?.text) : e.type === 'reminder' ? [d] : [];
-    const line = (e.type.startsWith('out.') && e.actor !== 'system') || e.type === 'grounded';
-    this.owedReminders = this.owedReminders.filter((x) => !(line && this.#koe.has(x) === koe) && !list.some((r) => r.watch === x.watch && r.text === x.text));
+    this.owedReminders = this.owedReminders.filter((x) => !(reaches(e) && this.#koe.has(x) === koe) && !list.some((r) => r.watch === x.watch && r.text === x.text));
     if (e.type !== 'wake') return;
     for (const r of list) if (koe) this.#koe.add(r);
     this.owedReminders.push(...list);

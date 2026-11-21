@@ -169,8 +169,9 @@ test('a reload after her turn ended takes nothing up: the next request is the us
   }
 });
 
-// A reminder her turn owes when the page goes reaches the traveller at the next start (spec §11.3): the wake's record keeps it, and the restart owes it.
-test("a reload while her turn for a watch's reminder waits on her model: nothing is shown as the page goes, and the restart turn owes it, so annai shows it once when she sleeps without a word", async ({ page }) => {
+// A reminder her turn owes when the page goes reaches the traveller at the next start (spec §11.3): the wake's record keeps it, and the open shows what the
+// log still owes, at once, whatever she then does; the restart she gets is told annai showed it.
+test("a reload while her turn for a watch's reminder waits on her model: nothing is shown as the page goes, and the next start's open shows it once, telling her so", async ({ page }) => {
   const LEAVE = 'Leave for the airport by 14:10';
   const llm = await startModelServer({ [MESSAGES]: [held(), sse(anthropicToolReply([sleep]))] });
   try {
@@ -196,9 +197,11 @@ test("a reload while her turn for a watch's reminder waits on her model: nothing
     // Its entry, written once it was shown, in the conversation (the trip's page is where the reload lands; a hash change is no new start).
     await page.evaluate((trip) => { location.hash = `#/trip/${encodeURIComponent(trip)}/talk`; }, trip);
     await expect(page.locator('.convo').getByText(LEAVE)).toHaveCount(1);
+    // The card comes at the open, before her restart turn asks her model.
+    await expect.poll(() => llm.bodies(MESSAGES).length, { timeout: 30_000 }).toBe(2);
     const bodies = llm.bodies(MESSAGES);
-    expect(bodies.length).toBe(2);
     expect(lastUser(bodies[1])).toContain('before annai restarted');
+    expect(lastUser(bodies[1])).toContain('annai has already shown the user its reminder');
     noRecord(bodies);
     await page.waitForTimeout(1000); // nothing more is asked or shown
     expect(llm.bodies(MESSAGES).length).toBe(2);
