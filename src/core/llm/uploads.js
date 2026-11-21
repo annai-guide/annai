@@ -116,6 +116,8 @@ export const REQUEST_MS = 15_000;
  * sends the photo in the request, as any failed one does, and uploads go off there.
  */
 export const UPLOAD_MS = 120_000;
+/** bit/s: the slowest uplink a model call's request has time for (call.js), the one UPLOAD_MS is sized for (see there). */
+export const SLOW_UPLINK = 70_000;
 
 /**
  * @typedef {{ outcome: 'done' | 'none' | 'refused' | 'unreadable' | 'unreachable', deleted: number, left: number }} Swept
