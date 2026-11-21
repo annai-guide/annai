@@ -1176,9 +1176,8 @@ export class Halves {
    * let go, nothing owed where it was (open's `moved`), and 'went' tells the screens. Then the trip's lines (their
    * line, her recap) go in, for one turn there. If they went elsewhere since (signal: the call's, which a Stop or another open ends), nothing
    * opens: the lines are written into the trip, in order, and wait there. An open that fails says so, as one asked for from Trips does (tellNotOpen:
-   * the storage card for a full phone), and the caller is told whether the screen is in the trip: it follows Kokoro's target, so a Koe that alone
-   * failed to open (its card says so) leaves them there, and only the line of a move that follows them is the caller's.
-   * @param {string} trip @param {import('./loop.js').Wake[]} wakes @param {AbortSignal} signal @returns {Promise<boolean>} false: they are not in the trip
+   * the storage card for a full phone); the lines carried are there all the same, and the caller's line of the move says where they went.
+   * @param {string} trip @param {import('./loop.js').Wake[]} wakes @param {AbortSignal} signal
    */
   async carryOn(trip, wakes, signal) {
     const opening = !signal.aborted;
@@ -1195,9 +1194,7 @@ export class Halves {
     }
     // What the halves write of the conversation they leave (a line or cue they held, a session's last words) is written by now: the caller's line about the move settles it.
     await left;
-    const there = !opening || this.kokoro.target === trip;
     await this.live.written();
-    return there;
   }
 
   /** @param {boolean} [yes] */

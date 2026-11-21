@@ -158,9 +158,12 @@ test("a typed line queued for the conversation it was typed in as another opens,
   k.agent.typing(true); // her turn gathers while they type
   k.agent.send('Book the ryokan', { typed: true });
   store.full('all');
-  const opened = await k.agent.open(other).then(() => null, (/** @type {unknown} */ e) => e);
-  assert.ok(opened instanceof StorageFullError, 'the open fails with the full phone');
+  await k.agent.open(other); // the refused keep is told, and fails no open
+  assert.equal(k.agent.trip, other);
   assert.deepEqual(store.back.map((x) => x.words), ['Book the ryokan'], 'the one type box takes it, whichever conversation is open');
+  const told = k.notices.filter((n) => n.title === NOT_SAVED);
+  assert.deepEqual(told.map((n) => n.error), [store.back[0].error], 'one card, with the error the line came back with: the storage card shows once');
+  assert.equal(k.agent.busy, false, 'nothing waits for it');
   store.full(null);
   k.agent.typing(false);
   await k.agent.open(k.trip);
