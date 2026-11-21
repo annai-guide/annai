@@ -297,8 +297,9 @@ export async function until(fn, ms = 2000) {
 
 /**
  * p, or a failure saying why once 2000 ms have passed (on the clock's time, when the test has one): a regression fails at once, not at the test's own
- * timeout (120 s). A race on p itself, not a poll of a flag, so whatever p waits for is still waited for. 2000 ms: the longest of the 107 such waits in the
- * five files that use it took 65 ms of clock time (measured 2026-11-20), so 2 s is a hang, not a slow wait. @param {Promise<unknown>} p @param {string} why
+ * timeout (120 s). A race on p itself, not a poll of a flag, so whatever p waits for is still waited for. 2000 ms: 30 times the longest of the 131 such
+ * waits in the five files that use it, 65 ms of clock time (measured 2026-11-20); a test whose wait runs longer on its clock needs its own bound.
+ * @param {Promise<unknown>} p @param {string} why
  */
 async function inTime(p, why) {
   /** @type {any} */
@@ -405,7 +406,7 @@ export async function settlesOnlyAfter(k, door, why, done = () => {}) {
   await new Promise((r) => setTimeout(r, 60));
   assert.equal(settled, false, why);
   door.open();
-  await inTime(idle, `${why}: once the door is open, idle() settles (nothing waits in memory)`);
+  await inTime(idle, `${why}: once the door is open, idle() settles (still waiting after 2000 ms: a wake left queued, a turn still busy, or a wait longer than that)`);
 }
 
 /**
