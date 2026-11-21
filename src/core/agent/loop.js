@@ -732,7 +732,7 @@ export class Agent {
       if (generation === this.#generation) {
         this.#target = this.trip; // it stays the one open, so opening it is asked for again
         this.#closeEar(); // a microphone made meanwhile (a tap's) was for the one that failed
-        await this.#keepElsewhere(this.scope).catch(() => {}); // else idle() waits on lines typed meanwhile
+        await this.#keepElsewhere(this.scope).catch((e) => this.#notSaved(e)); // else idle() waits on lines typed meanwhile; a write refused is told
       }
       throw e;
     }).finally(() => {
@@ -799,19 +799,33 @@ export class Agent {
     await this.#keepWakes((w) => w.scope !== scope);
   }
 
-  /** Writes the queued wakes it picks into their conversations' logs, each's reminders said first, and takes them out of the queue. @param {(w: Wake) => boolean} which */
+  /**
+   * Writes the queued wakes it picks into their conversations' logs, each's reminders said first, and takes them out of the queue. A conversation whose
+   * write is refused keeps its wakes (their typed lines go back: #unsaved) and the others go on: the first refusal is thrown once all are tried.
+   * @param {(w: Wake) => boolean} which
+   */
   async #keepWakes(which) {
     const elsewhere = this.#queue.filter(which);
+    let refused = false;
+    /** @type {unknown} */
+    let first;
     for (const s of new Set(elsewhere.map((w) => /** @type {string} */ (w.scope)))) {
       const those = elsewhere.filter((w) => w.scope === s);
       // A reminder among them is shown now, as one firing for a conversation that isn't open is (live.js): the wake waits for its turn there.
       const owed = those.flatMap((w) => w.fallbacks ?? []);
       if (owed.length) await this.remind(owed, s);
       for (const w of those) w.fallbacks = [];
-      await this.#logWakes(those, newId('w'), false, { log: this.#keptIn(s), trip: s === ME ? null : s });
+      try {
+        await this.#logWakes(those, newId('w'), false, { log: this.#keptIn(s), trip: s === ME ? null : s });
+      } catch (e) {
+        if (!refused) first = e;
+        refused = true;
+        continue; // a failed write keeps them (typed lines go back: #unsaved), their reminders shown once; the next conversation's are tried
+      }
       this.#leftClosed(s);
-      this.#queue = this.#queue.filter((w) => !those.includes(w)); // a failed write keeps them (typed lines go back: #unsaved, but for one case: docs/limitations.md)
+      this.#queue = this.#queue.filter((w) => !those.includes(w));
     }
+    if (refused) throw first;
   }
 
   /** A wake was written into a conversation that isn't open: unless an open cut its turn (that is said), it came while it was closed. @param {string} scope */
@@ -828,12 +842,12 @@ export class Agent {
     };
   }
 
-  /** Writes a wake into a conversation that isn't open. idle() waits for it, and so can the caller. @param {string} scope @param {Wake} w */
+  /** Writes a wake into a conversation that isn't open, and says so if it can't (#notSaved). idle() waits for it, and so can the caller. @param {string} scope @param {Wake} w */
   #keepFor(scope, w) {
     this.#checking++;
     return this.#logWakes([{ ...w, scope }], newId('w'), false, { log: this.#keptIn(scope), trip: scope === ME ? null : scope })
       .then(() => this.#leftClosed(scope))
-      .catch(() => {})
+      .catch((e) => this.#notSaved(e))
       .finally(() => {
         this.#checking--;
         this.#settle();
@@ -867,10 +881,32 @@ export class Agent {
     if (!p?.byHand) return;
     // A cue stays on its wake (it's hers), but annai's card may wait for ever: behind it, a place alert is said too (the user's pick, 2026-11-12).
     const owed = (/** @type {Reminder} */ r) => !r.cue || Boolean(p.ask);
+    const list = [...(this.#owedNow?.() ?? []), ...this.#takeQueued(owed)];
+    if (list.length) this.#remindCounted(list, this.scope, { waiting: true });
+  }
+
+  /**
+   * The reminders of the wakes queued for this conversation that `owed` picks, taken: the wakes stay queued without them, and say annai showed them
+   * (a reminder is shown once). @param {(r: Reminder) => boolean} owed @returns {Reminder[]}
+   */
+  #takeQueued(owed) {
     const queued = this.#queue.filter((w) => w.scope === this.scope && w.fallbacks?.some(owed));
-    const list = [...(this.#owedNow?.() ?? []), ...queued.flatMap((w) => (w.fallbacks ?? []).filter(owed))];
+    const list = queued.flatMap((w) => (w.fallbacks ?? []).filter(owed));
     for (const w of queued) Object.assign(w, { fallbacks: w.fallbacks?.filter((r) => !owed(r)), shown: true });
-    if (list.length) this.remind(list, this.scope, { waiting: true }).catch(() => {});
+    return list;
+  }
+
+  /**
+   * Reminders shown now by something that doesn't wait for them (a wake that comes while her question waits, a Stop): idle() waits for their entries,
+   * as it does for a wake whose budgets are being checked. Never rejects; a caller that must wait for them waits on what it returns.
+   * @param {Reminder[]} list @param {string} scope @param {Parameters<Agent['remind']>[2]} o
+   */
+  #remindCounted(list, scope, o) {
+    this.#checking++;
+    return this.remind(list, scope, o).catch(() => {}).finally(() => {
+      this.#checking--;
+      this.#settle();
+    });
   }
 
   /** @param {Wake} w */
@@ -1229,11 +1265,23 @@ export class Agent {
       return Promise.resolve();
     }
     this.#checking++;
-    this.admit(w).then((ok) => { if (ok) this.enqueue(w); }).finally(() => {
+    this.admit(w).then((ok) => { if (ok) this.enqueue(w); }, (e) => this.wakeFailed(w, e)).finally(() => {
       this.#checking--;
       this.#settle();
     });
     return Promise.resolve();
+  }
+
+  /**
+   * A wake that failed before it reached a turn (its budgets, or the halves' route, couldn't be worked out: a phone that refuses a read): no turn will take
+   * its reminders up, so they are shown now (spec §11.3: shown or spoken directly), and the failure is told (#notSaved). A cue is shown too: it is owed only
+   * until a model has it, and none will, as at a turn's end she never answered (#showOwed does the same). The failure comes before any hand-on that
+   * could have shown them (admit shows them only in the branches that return, the route's hand-ons come last and can't throw), so they are shown once.
+   * Never rejects. @param {Wake} w @param {unknown} e
+   */
+  async wakeFailed(w, e) {
+    await this.remind(w.fallbacks ?? [], w.scope);
+    await this.#notSaved(e);
   }
 
   /** @param {(w: Wake) => boolean} which queued wakes to take out @returns {Wake[]} those taken out */
@@ -1259,10 +1307,10 @@ export class Agent {
     const now = this.now(); // quiet hours follow the day as lived, a simulation's too
     if (budgets.quietHours && inQuiet(now, budgets.quietHours, this.timeZone())) {
       // Quiet hours hold Shiori, not the reminders (spec §11.3).
-      if (w.fallbacks?.length) this.remind(w.fallbacks).catch(() => {});
       const later = { ...w, fallbacks: [] };
       const held = setTimeout(() => again(later), Math.max(1000, quietEnds(now, budgets.quietHours, this.timeZone()) - now));
       /** @type {any} */ (held).unref?.(); // in Node (tests), a held wake must not keep the process alive
+      if (w.fallbacks?.length) await this.remind(w.fallbacks).catch(() => {}); // waited for: whoever waits on the budgets' check (wake, the halves' route) waits for the entry
       return false;
     }
     // Wakes an hour count real hours, even during a simulation.
@@ -1270,7 +1318,7 @@ export class Agent {
     this.#recentWakes = this.#recentWakes.filter((t) => t > real - 3_600_000 && t <= real);
     if (budgets.wakesPerHour && this.#recentWakes.length >= budgets.wakesPerHour) {
       this.#notice({ tone: 'info', title: t`Shiori skipped a wake`, body: skippedWords(w, budgets.wakesPerHour) });
-      if (w.fallbacks?.length) this.remind(w.fallbacks).catch(() => {});
+      if (w.fallbacks?.length) await this.remind(w.fallbacks).catch(() => {});
       return false;
     }
     this.#recentWakes.push(real);
@@ -1421,17 +1469,17 @@ export class Agent {
     this.poke();
     this.#stopWakes(wakes);
     const owed = wakes.flatMap((w) => w.fallbacks ?? []);
-    if (owed.length) this.remind(owed, this.scope, { silent: true }).catch(() => {}); // the Stop stops her, not the reminder they set
+    if (owed.length) this.#remindCounted(owed, this.scope, { silent: true }); // the Stop stops her, not the reminder they set
   }
 
-  /** Wakes that never start a turn, written into the conversation all the same, with a quiet "stopped". @param {Wake[]} wakes */
+  /** Wakes that never start a turn, written into the conversation all the same, with a quiet "stopped"; a write that fails is told (#notSaved). @param {Wake[]} wakes */
   #stopWakes(wakes) {
     if (!wakes.length) return;
     const wakeId = newId('w');
     this.#checking++;
     this.#logWakes(wakes, wakeId, false)
       .then(() => this.#log({ type: 'error', actor: 'system', data: { kind: 'stopped', wake: wakeId, message: STOPPED, quiet: true } }))
-      .catch((e) => console.warn(/* en */ 'a stopped message was not written', e))
+      .catch((e) => this.#notSaved(e))
       .finally(() => {
         this.#checking--;
         this.#settle();
@@ -1811,7 +1859,7 @@ export class Agent {
     this.#queue = this.#queue.filter((w) => !left.includes(w));
     this.#stopWakes(left);
     const owed = left.flatMap((w) => w.fallbacks ?? []);
-    if (owed.length) await this.remind(owed, this.scope, { silent: true });
+    if (owed.length) await this.#remindCounted(owed, this.scope, { silent: true }); // idle() waits for its entry: Koe's half is not busy while Halves waits here
   }
 
   /** Start fresh is done: what waited (the user's words meanwhile) runs. */
@@ -1952,8 +2000,9 @@ export class Agent {
   }
 
   /**
-   * Reminders annai says or shows by itself (spec §11.3, §17): a card, the words aloud with voice on, and an entry
-   * in the conversation they belong to. They are never in Shiori's voice (§16.1).
+   * Reminders annai says or shows by itself (spec §11.3, §17): a card, the words aloud with voice on, then an entry
+   * in the conversation they belong to. They are never in Shiori's voice (§16.1). Each is shown and said before its entry is written, so a phone
+   * that refuses the entry still shows it; a refused entry is told (#notSaved) and stops nothing: it settles once all are shown.
    * @param {Reminder[]} list @param {string} [scope] their conversation; the open one if not given
    * @param {{ unsaid?: boolean, silent?: boolean, aloud?: boolean, waiting?: boolean }} [o] unsaid: she answered, but her turn ended without telling the user; waiting: it came due
    *   while a question to the user waited for their answer; silent: shown, never said;
@@ -1966,11 +2015,11 @@ export class Agent {
       const text = String(r?.text ?? '').trim();
       if (!text) continue;
       const ev = { type: 'reminder', actor: 'system', data: { watch: String(r.watch ?? ''), text, ...(r.answer ? { answer: true } : {}), ...(r.plan ? { plan: r.plan } : {}), ...(aloud ? { aloud: true } : {}), ...(o.unsaid ? { unsaid: true } : {}), ...(o.waiting ? { waiting: true } : {}) } };
-      await this.#logIn(scope, ev);
       // A plan's reminder in the screens' words, made from its data; anyone else's as they wrote it.
       const shown = r.plan ? planWords(r.plan) : text;
       await this.#notice({ tone: 'info', title: r.answer ? t`Shiori's answer` : t`Reminder`, body: shown });
       if (aloud) this.voice?.say(shown).catch(() => {});
+      await this.#logIn(scope, ev).catch((e) => this.#notSaved(e));
     }
   }
 
@@ -2104,6 +2153,15 @@ export class Agent {
   }
 
   /**
+   * A write nobody waits on failed (a wake kept for a conversation that isn't open, what a Stop stopped, a reminder's entry): a card says so, with the
+   * error, so main.js shows the storage card in its place for a full phone, once for an error the dock showed already (typed words given back). Never rejects.
+   * @param {unknown} e
+   */
+  #notSaved(e) {
+    return this.#notice({ tone: 'warn', title: t`Something for Shiori wasn't saved`, body: String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e), error: e }).catch(() => {});
+  }
+
+  /**
    * The request copies of the photos a user sent (a crop when they chose a part), and the bytes to
    * keep with their message (spec §4.8, §4.9). A path that isn't a stored photo is left out.
    * @param {SentPhoto[]} photos @param {string | null} trip
@@ -2142,16 +2200,24 @@ export class Agent {
     this.#userStop = false;
     this.#cutByOpen = this.#cutWaiting = this.#cutSaying = this.#cutMoved = this.#annais = this.#userIn = false;
     this.#running = null;
-    await this.#half.ready?.(); // the half's rules are known (Halves reads the settings as annai starts)
-    await this.#workOutVoice(wakes);
-    this.#heardBy = null;
-    this.#facts = { finalText: '', told: false, slept: false, closed: false, spoke: false, aloud: wakes.some((w) => w.window), wrote: false, answeredAt: null, watched: wakes.some(isWatched), kinds: wakes.map((w) => w.kind) };
-    // Shiori became two halves, or one again.
-    if (this.transcript.half !== this.#rules()) await this.#serially(() => this.reread());
+    try {
+      await this.#half.ready?.(); // the half's rules are known (Halves reads the settings as annai starts)
+      await this.#workOutVoice(wakes);
+      this.#heardBy = null;
+      this.#facts = { finalText: '', told: false, slept: false, closed: false, spoke: false, aloud: wakes.some((w) => w.window), wrote: false, answeredAt: null, watched: wakes.some(isWatched), kinds: wakes.map((w) => w.kind) };
+      // Shiori became two halves, or one again.
+      if (this.transcript.half !== this.#rules()) await this.#serially(() => this.reread());
+    } catch (e) {
+      await this.#showOwed(wakes, abort); // a read the phone fails before the steps: what the turn owes is shown all the same
+      throw e;
+    }
     let ok = false;
     this.#turning = true;
     try {
-      ok = await this.#steps(wakes, wakeId, abort);
+      ok = await this.#steps(wakes, wakeId, abort).catch(async (e) => {
+        await this.#showOwed(wakes, abort);
+        throw e;
+      });
       await this.#paused(abort);
     } finally {
       // The turn's thinking and kept now blocks end with it (the keep-reasoning design §1).
@@ -2172,6 +2238,22 @@ export class Agent {
         console.warn(/* en */ 'the end of a turn failed', e);
       }
     }
+  }
+
+  /**
+   * A turn that threw, in its setup or its steps (a write the phone refused, a read it failed), shows what it still owes before the failure goes on to
+   * #drain's card: no turn takes it up again, and the reminders are annai's to show (spec §11.3). The one place for every way a turn stops short: the list is
+   * taken once, the one the turn keeps (#owedNow: the end's own remind takes it first, so a failure after that shows nothing twice, and one she reached the user
+   * after is settled), or, when it stopped before it had one (its setup, its first write, a read before the list), its wakes' own; and with them those of the
+   * wakes queued behind it, which no turn takes up until the next wake (#drain gives back only their typed lines): they stay queued, their reminders shown.
+   * A cue is shown too, as at the turn's end when no model answered. Not on a page being left: the next start answers (spec §6.7).
+   * @param {Wake[]} wakes @param {AbortController} abort
+   */
+  async #showOwed(wakes, abort) {
+    const list = this.#owedNow ? this.#owedNow() : wakes.flatMap((w) => w.fallbacks ?? []);
+    if (this.#leaving) return;
+    list.push(...this.#takeQueued(() => true));
+    if (list.length) await this.remind(list, this.scope, abort.signal.aborted && this.#userStop ? { silent: true } : {});
   }
 
   /**
@@ -2480,9 +2562,9 @@ export class Agent {
           const more = this.#take();
           settle();
           if (more.length) {
+            owed.push(...more.flatMap((w) => w.fallbacks ?? [])); // before the write: a refused write shows them (#showOwed)
             await this.#logWakes(more, wakeId, true);
             reasons.push(...more.map((w) => this.#reason(w)));
-            owed.push(...more.flatMap((w) => w.fallbacks ?? []));
             this.#annais &&= more.every(byAnnai);
             await join(more);
           }
@@ -2601,9 +2683,9 @@ export class Agent {
       const more = this.#take();
       settle();
       if (more.length) {
+        owed.push(...more.flatMap((w) => w.fallbacks ?? [])); // before the write: a refused write shows them (#showOwed)
         await this.#logWakes(more, wakeId, true);
         reasons.push(...more.map((w) => this.#reason(w)));
-        owed.push(...more.flatMap((w) => w.fallbacks ?? []));
         this.#facts.kinds.push(...more.map((w) => w.kind));
         this.#annais &&= more.every(byAnnai);
         await join(more);
@@ -2634,7 +2716,11 @@ export class Agent {
     // A reminder the turn still owes is annai's to show: when no model said it, and at a cut (an open; the user's Stop, silently, as the Stop
     // stops her talking, not the reminder they set), so it reaches them now, once; a restart reads it as shown.
     const cut = abort.signal.aborted && !this.#leaving && (this.#userStop || this.#cutByOpen);
-    if (owed.length && (cut || (!abort.signal.aborted && !this.#leaving))) await this.remind(owed, this.scope, { unsaid: cut || (answered && !failed), ...(abort.signal.aborted && this.#userStop ? { silent: true } : {}) });
+    if (owed.length && (cut || (!abort.signal.aborted && !this.#leaving))) {
+      const list = owed;
+      owed = []; // taken: a write of the end that fails after this must not show them again (#showOwed)
+      await this.remind(list, this.scope, { unsaid: cut || (answered && !failed), ...(abort.signal.aborted && this.#userStop ? { silent: true } : {}) });
+    }
     // The user stopped her: the turn is over, and opening the conversation again doesn't take it up (spec §6.7). Nothing to show.
     if (abort.signal.aborted && this.#userStop) await this.#log({ type: 'error', actor: 'system', data: { kind: 'stopped', wake: wakeId, message: STOPPED, quiet: true } });
     // Let go at an open (#lettingGo): written as settled, so no paused line shows and nothing is taken up.

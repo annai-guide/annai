@@ -1,7 +1,7 @@
 // K5: Koe live (the Koe and Kokoro design, "Realtime sessions"; plan K5), against the stand-in realtime server.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { until, rescript } from './agent-kit.js';
+import { until, rescript, slowEntry, settlesOnlyAfter, raw } from './agent-kit.js';
 import { tripTools } from '../../src/core/agent/trip-tools.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { readConfig, saveRoles } from '../../src/core/llm/config.js';
@@ -14,6 +14,9 @@ import { mediaKeys } from '../../src/ui/media-keys.js';
 import { Live } from '../../src/core/live/live.js';
 import { ManualClock } from '../../src/core/live/clock.js';
 import { at, iso, off, LA, BIXBY } from './live-kit.js';
+
+/** @param {any[]} cards @param {string} title */
+const count = (cards, title) => cards.filter((n) => n.title === title).length;
 
 // Task 1: choosing the pathway.
 test("a realtime model first in Koe's list: Koe is live; resting, the text model after it talks", async () => {
@@ -551,6 +554,70 @@ test('a trigger or a note while the page is out of view opens nothing; back in v
     k.agent.shown();
     await k.agent.idle();
     assert.equal(k.server.connections().length, 1, 'nothing waits: nothing opens');
+  } finally {
+    hidden(false);
+    await k.done();
+  }
+});
+
+// What annai shows itself of a trigger's reminders is waited for by idle(), written entry and all: while the page is out of view (the session waits for it),
+// and when no session can take the trigger (the storage-rest fix: both were fire-and-forget).
+test("a trigger's reminder while the page is out of view is shown by annai at once, and idle() settles once its entry is written", async () => {
+  const k = await liveKit([{ said: 'Your train leaves in twenty minutes, from platform 4.', audio: tone(0.3) }]);
+  try {
+    await k.voice.unlock(); // an earlier tap
+    hidden(true);
+    const own = raw(k); // each half's own cards: k.notices drops a repeat within 5 s, which would hide a double show
+    const entry = await slowEntry(k, () => k.agent.wake({ kind: 'trigger', text: 'Train in 20 minutes', fallbacks: [{ watch: 'train', text: 'Train at 10:40' }] }));
+    await settlesOnlyAfter(k, entry, 'idle() waits for the reminder annai shows, entry and all');
+    assert.equal(count(own, 'Reminder'), 1);
+    assert.deepEqual((await k.events(['reminder'])).map((/** @type {any} */ e) => e.data.text), ['Train at 10:40']);
+  } finally {
+    hidden(false);
+    await k.done();
+  }
+});
+
+test("a trigger's reminder when no session can open (today's spend reached) and Koe stays live: annai shows it, and idle() settles once its entry is written", async () => {
+  const usage = { promptTokenCount: 1_000_000, responseTokenCount: 0, promptTokensDetails: [{ modality: 'TEXT', tokenCount: 1_000_000 }] };
+  const k = await liveKit([{ said: 'Sure.', audio: tone(0.1), usage }]);
+  try {
+    await updateAppSettings(k.ws, { shiori: { budgets: { spendPerDay: 0.5 } } });
+    k.agent.send('Hi');
+    await soon(async () => (await k.events(['live.session'])).some((/** @type {any} */ e) => e.data.state === 'closed'));
+    await k.agent.idle();
+    const own = raw(k);
+    const entry = await slowEntry(k, () => k.agent.wake({ kind: 'trigger', text: 'Train in 20 minutes', fallbacks: [{ watch: 'train', text: 'Train at 10:40' }] }));
+    await settlesOnlyAfter(k, entry, 'idle() waits for the reminder annai shows, entry and all');
+    assert.equal(count(own, 'Reminder'), 1);
+    assert.deepEqual((await k.events(['reminder'])).map((/** @type {any} */ e) => e.data.text), ['Train at 10:40']);
+  } finally {
+    await k.done();
+  }
+});
+
+// Out of view, annai shows a trigger's reminders at once and the session gets the wake without them (its cues alone): if the page is back by the time the
+// session's turn is tried and no session can take it, the fallback shows what the session was given, not the reminders again.
+test("a trigger's reminder shown while the page was out of view is not shown a second time when the page is back and no session can take the wake", async () => {
+  const usage = { promptTokenCount: 1_000_000, responseTokenCount: 0, promptTokensDetails: [{ modality: 'TEXT', tokenCount: 1_000_000 }] };
+  const k = await liveKit([{ said: 'Sure.', audio: tone(0.1), usage }]);
+  try {
+    await updateAppSettings(k.ws, { shiori: { budgets: { spendPerDay: 0.5 } } });
+    k.agent.send('Hi');
+    await soon(async () => (await k.events(['live.session'])).some((/** @type {any} */ e) => e.data.state === 'closed'));
+    await k.agent.idle();
+    const own = raw(k);
+    /** @type {() => void} */
+    let release = () => {};
+    k.agent.koe.opening = new Promise((r) => { release = () => r(undefined); }); // the session's open is under way when the page comes back
+    hidden(true);
+    await k.agent.wake({ kind: 'trigger', text: 'Train in 20 minutes', fallbacks: [{ watch: 'train', text: 'Train at 10:40' }] });
+    await soon(async () => own.some((n) => n.title === 'Reminder'));
+    hidden(false);
+    release();
+    await k.agent.idle();
+    assert.equal(count(own, 'Reminder'), 1, 'shown once: by annai at once, out of view');
+    assert.deepEqual((await k.events(['reminder'])).map((/** @type {any} */ e) => e.data.text), ['Train at 10:40']);
   } finally {
     hidden(false);
     await k.done();

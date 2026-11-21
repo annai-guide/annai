@@ -262,6 +262,33 @@ test('a turn the full phone stops after its line was kept shows the storage card
   await expect(box(page)).toBeHidden(); // the line was kept: nothing to give back
 });
 
+// A write nobody waits on that the full phone refuses says so (loop.js #notSaved), and main.js shows the storage card in its place; a reminder
+// is shown before its entry is written, so the full phone still shows it (spec §11.3: "shown or spoken directly").
+test("a reminder on a full phone is shown, and its entry's refusal shows the storage card, saying first that something for Shiori wasn't saved", async ({ page, browserName }) => {
+  await inConversation(page);
+  // The page's agent, from the dock's next word about typing on (catchAgent's way): opening the box says the box is empty.
+  await page.evaluate(async () => {
+    const { Halves } = await import(/** @type {string} */ ('/src/core/agent/halves.js'));
+    const typing = Halves.prototype.typing;
+    Halves.prototype.typing = function (/** @type {any[]} */ ...a) {
+      /** @type {any} */ (window).agent = this;
+      return typing.apply(this, a);
+    };
+  });
+  await typeButton(page).click();
+  await page.waitForFunction(() => Boolean(/** @type {any} */ (window).agent));
+  await box(page).press('Escape');
+  await fillDisk(page, browserName);
+  await page.evaluate(() => /** @type {any} */ (window).agent.remind([{ watch: '', text: 'Leave for the airport by 14:10' }]));
+  const notices = page.locator('.notices');
+  await expect(notices.locator('.notice').first()).toContainText('Leave for the airport by 14:10');
+  await expect(notices.getByText("There's no room left", { exact: true })).toBeVisible();
+  await expect(notices.locator('.notice').last()).toContainText("Something for Shiori wasn't saved.");
+  await expect(notices.locator('.notice').last()).toContainText(browserName === 'webkit' ? 'Free up space on this iPhone in Settings → General → iPhone Storage, then try again.' : 'Free up space on this phone in Settings → Storage, then try again.');
+  await expect(notices.locator('.notice')).toHaveCount(2);
+  await expect(page.locator('.convo')).not.toContainText('Leave for the airport by 14:10'); // no entry was kept
+});
+
 test('Escape closes the box and keeps the draft', async ({ page }) => {
   await inConversation(page);
   await typeButton(page).click();

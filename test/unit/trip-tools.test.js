@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, rescript, until } from './agent-kit.js';
+import { agentKit, refusing, rescript, until, raw } from './agent-kit.js';
 import { useClock } from './clock.js';
 import { tripTools } from '../../src/core/agent/trip-tools.js';
 import { Agent } from '../../src/core/agent/loop.js';
@@ -13,6 +13,7 @@ import { storedTexts, record } from '../../src/core/agent/log.js';
 import { importCalendar } from '../../src/core/imports.js';
 import { undoHandover, handOverText } from '../../src/core/handover.js';
 import { dateRange } from '../../src/core/intl.js';
+import { StorageFullError } from '../../src/core/errors.js';
 
 const say = (/** @type {string} */ text, /** @type {Record<string, any>} */ more = {}) => ({ ...more, toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }] });
 const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
@@ -413,6 +414,7 @@ test("start_trip with a hand-over that has words says their message is above; op
 // What the user sees: the card, then at Open the trip at once with their line and her recap; anything else ends the card, nothing moved.
 
 const RECAP = 'We found the ramen place by the station.';
+const NOT_SAVED = "Something for Shiori wasn't saved";
 const ANSWER = 'Here in Kyoto: shall I put the ramen place on the plan?';
 /** She answers a question here, then calls open_trip when they ask to carry on there; in Kyoto, told they came, she answers. @param {any} k */
 const moving = (k) => rescript(k, { rules: [
@@ -497,6 +499,107 @@ test("Open, tapped: Kyoto opens at the tap, with the user's line, her recap belo
   k.agent.send('And the museum?');
   await k.agent.idle();
   assert.ok(userTexts(k.requests.at(-1)).some((x) => /^\[annai\] The user carried this conversation on in "Kyoto": their line and your recap went there, where you answer them\. Nothing of it is left to do here\.$/.test(x)));
+});
+
+// Open tapped, and the store refuses from carryOn on: an open that fails says so as the one the user asks for from Trips does ("That conversation
+// didn't open", tellNotOpen's words), the storage card in its place on a full phone; one whose reads work opens, and her turn there is what stops.
+for (const [how, which] of /** @type {const} */ ([['reads and writes refused (Chromium at no byte free)', 'everything'], ['reads refused (any other failed open)', 'reads'], ['writes refused, reads fine (WebKit on a full disk)', 'all']])) {
+  test(`Open tapped, the store refusing ${how}: ${which === 'all' ? 'Kyoto opens, and her turn there stops' : "a card says that conversation didn't open, with the error; the screens were told of the move, and the chat stays the one open"}`, async (t) => {
+    useClock(t);
+    const k = await chatKit();
+    await rescript(k, { rules: [
+      { match: 'the user wrote', reply: call('open_trip', { trip: k.kyoto, recap: RECAP }), then: say('We stay here, then.') },
+      { match: '.', reply: sleep },
+    ] });
+    const store = refusing(k);
+    const own = raw(k); // each half's own cards: Halves drops a repeat of the card before it, which would hide a keep told twice
+    /** @type {any[]} */
+    const went = [];
+    k.agent.on('went', (/** @type {any} */ x) => went.push(x));
+    const carry = k.agent.carryOn.bind(k.agent);
+    k.agent.carryOn = (/** @type {any[]} */ ...a) => {
+      store.full(which);
+      return carry(...a);
+    };
+    k.agent.send("Let's carry on in Kyoto");
+    await until(() => k.asks.length === 1);
+    k.agent.answer(k.asks[0].data.tap, 'Open');
+    await until(() => went.length === 1);
+    assert.deepEqual(went, [{ trip: k.kyoto }]);
+    const NOT_OPEN = "That conversation didn't open";
+    if (which === 'all') {
+      await until(() => k.notices.some((/** @type {any} */ n) => n.title === 'Shiori stopped'));
+      assert.equal(k.agent.trip, k.kyoto, 'an open only reads');
+      assert.equal(k.notices.some((/** @type {any} */ n) => n.title === NOT_OPEN), false);
+    } else {
+      await until(() => k.notices.some((/** @type {any} */ n) => n.title === NOT_OPEN));
+      const card = k.notices.find((/** @type {any} */ n) => n.title === NOT_OPEN);
+      assert.equal(card.error?.name, 'UnknownError', 'the refused read, carried for the card');
+      assert.equal(card.body, 'Unable to store record in object store');
+      await until(() => k.agent.target === k.trip);
+      assert.equal(k.agent.trip, k.trip, 'the chat stays open');
+      // The lines carried for Kyoto are kept there, as the open's failure leaves them: refused too when reads and writes both are, and then a second card
+      // says so (the storage card in its place for the full phone); nothing is silent, and nothing waits unannounced.
+      const saved = own.filter((/** @type {any} */ n) => n.title === NOT_SAVED);
+      if (which === 'everything') assert.ok(saved.length === 1 && saved[0].error instanceof StorageFullError, 'the keep that was refused is told');
+      else assert.deepEqual(saved, [], 'the keep worked: nothing to tell');
+    }
+    // Room again: whatever waits is written, and nothing is left running.
+    store.full(null);
+    await k.agent.open(k.kyoto);
+    await k.agent.idle();
+    assert.equal(k.agent.trip, k.kyoto);
+    // The open that failed moved no one: the chat has no line of a move (the call ended there, and its tool wrote none).
+    if (which !== 'all') assert.deepEqual(await eventsIn(k, k.trip, ['conversation.moved']), []);
+  });
+}
+
+// In production open_trip runs only in her own turn, and the open it asks for ends that turn at once: the call's result is the one an open gives
+// (#runCall records it, whatever carryOn finds), so the chat's word is annai's card and the missing line of a move, not a result of the tool's.
+test("Open tapped and the open fails, in her own turn: her call's result is the one an open gives, the chat has no line of a move, and the files and lines carried wait in that conversation", async (t) => {
+  useClock(t);
+  const k = await chatKit();
+  await rescript(k, { rules: [
+    { match: 'the user wrote', reply: call('open_trip', { trip: k.kyoto, recap: RECAP, files: ['/trip/files/hotel.pdf'] }), then: say('We stay here, then.') },
+    { match: '.', reply: sleep },
+  ] });
+  const store = refusing(k);
+  const carry = k.agent.carryOn.bind(k.agent);
+  k.agent.carryOn = (/** @type {any[]} */ ...a) => {
+    store.full('reads'); // the open fails, and writes work: the keep of the lines succeeds
+    return carry(...a);
+  };
+  const hotel = await handIn(k, 'hotel.pdf');
+  k.agent.send("Let's carry on in Kyoto", { handed: [hotel], handover: 'h-1' });
+  await until(() => k.asks.length === 1);
+  k.agent.answer(k.asks[0].data.tap, 'Open');
+  await until(() => k.notices.some((/** @type {any} */ n) => n.title === "That conversation didn't open"));
+  store.full(null);
+  await k.agent.idle();
+  assert.deepEqual(await openResults(k, k.trip), ['They chose Open: that conversation is open now, and you answer them there; this one stays.'], 'the open ended her call: the result of one that worked');
+  assert.deepEqual(await eventsIn(k, k.trip, ['conversation.moved']), [], 'no line of a move in the chat');
+  assert.equal(k.agent.trip, k.trip, 'still here');
+  assert.deepEqual((await k.ws.list(k.kyoto, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/hotel.pdf'], 'the files are in that conversation already');
+  assert.deepEqual((await eventsIn(k, k.kyoto, ['wake'])).flatMap((/** @type {any} */ e) => e.data.reasons.map((/** @type {any} */ r) => r.recap ?? r.kind)).includes(RECAP), true, 'her recap is written there');
+});
+
+// The screen follows Kokoro: when Kokoro's open works and only Koe's fails (a wake Koe held for the chat is refused as Kyoto opens), the traveller is in
+// Kyoto under a card that says it didn't open, and the chat has its line of a move: the move happened. Koe's wake waits in memory, as a refused keep leaves it.
+test("Open tapped, and Koe's open alone fails while Kokoro's works: the screen is in Kyoto, so the chat has its line of a move", async (t) => {
+  useClock(t);
+  const k = await chatKit({ koe: { talk: [say('Noted.')], type: [say('Noted.')] } });
+  k.agent.send('Hello');
+  await k.agent.idle();
+  await k.agent.koe.holdStill(); // a wake comes to Koe for the chat and stays queued there
+  k.agent.koe.enqueue({ kind: 'trigger', text: 'Your watch fired.' });
+  const store = refusing(k);
+  store.full((/** @type {any} */ ev) => ev.type === 'wake' && ev.data.reasons.some((/** @type {any} */ r) => r.kind === 'trigger')); // only the keep of that wake is refused
+  const out = await openBy(k, { trip: k.kyoto, recap: RECAP });
+  assert.equal(out, 'They chose Open: that conversation is open now, and you answer them there; this one stays.');
+  assert.equal(k.agent.kokoro.target, k.kyoto, 'the screen follows Kokoro into Kyoto');
+  assert.ok(k.notices.some((/** @type {any} */ n) => n.title === "That conversation didn't open"), "Koe's failure is told");
+  assert.equal((await eventsIn(k, k.trip, ['conversation.moved'])).length, 1, 'the traveller moved: the chat says so');
+  k.agent.koe.letGo();
 });
 
 for (const how of /** @type {const} */ (['Not now', 'a typed line', 'a Stop', 'Start fresh', 'another conversation'])) {
