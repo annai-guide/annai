@@ -5,7 +5,7 @@
 // for its entry.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, refusing, until, holdAtDoor, holdReminders, settlesOnlyAfter } from './agent-kit.js';
+import { agentKit, refusing, until, holdAtDoor, holdReminders, holdEntries, settlesOnlyAfter, turnEnds, raw } from './agent-kit.js';
 import { useClock } from './clock.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { createTrip } from '../../src/core/scopes.js';
@@ -17,16 +17,6 @@ const NOT_SAVED = "Something for Shiori wasn't saved";
 const LEAVE = 'Leave for the airport by 14:10';
 /** The cards with a title, as the screens get them (Halves drops a repeat of the card just before it, within 5 s). @param {any} k @param {string} title */
 const titled = (k, title) => k.notices.filter((/** @type {any} */ n) => n.title === title);
-/**
- * Each half's own cards, as they are raised: what a "shown once" counts, since Halves' own list drops a card identical to the one before it
- * (its #notice), which hides a double show. Made before anything runs. @param {any} k @returns {any[]}
- */
-function raw(k) {
-  /** @type {any[]} */
-  const got = [];
-  for (const half of k.agent.kokoro ? [k.agent.kokoro, k.agent.koe] : [k.agent]) half.on('notice', (/** @type {any} */ n) => got.push(n));
-  return got;
-}
 /** @param {any[]} cards @param {string} title */
 const count = (cards, title) => cards.filter((n) => n.title === title).length;
 
@@ -134,9 +124,30 @@ for (const [how, o] of MODES) {
       await k.agent.idle();
       assert.equal(count(cards, 'Reminder'), 1, 'shown once');
       assert.equal(cards.find((n) => n.title === 'Reminder').body, LEAVE);
+      // One card per error object: the failed read always, and with writes refused too, the reminder's refused entry (the storage card in its place).
       const told = cards.filter((n) => n.title === NOT_SAVED);
-      assert.ok(told.length >= 1 && told.every((n) => n.error), 'the failure told, with its error');
+      assert.deepEqual(told.map((n) => n.error?.name), which === 'everything' ? ['StorageFullError', 'UnknownError'] : ['UnknownError'], 'each failure told once, with its error');
       assert.ok(cards.findIndex((n) => n.title === 'Reminder') < cards.findIndex((n) => n.title === NOT_SAVED), 'shown before the failure is told');
+      assert.equal(k.agent.busy, false);
+    });
+  }
+}
+
+// A cue is owed only until a model has it (a place alert, hers to say or let pass): when no model will, annai shows it, as a turn's end does when she never
+// answered. A wake that fails before it reaches a turn has no model, so wakeFailed shows its cues with its reminders, the same as a turn that stops at
+// its first write (#showOwed); the route keeps cues out only of the reminders it shows ahead of a session that will have them.
+for (const [how, o] of MODES) {
+  for (const [shape, which] of /** @type {const} */ ([['fails before it reaches a turn (reads refused)', 'reads'], ['whose turn stops at its first write (writes refused)', 'all']])) {
+    test(`a watch's wake with a reminder and a cue, ${shape}: both are shown, once${how}`, async (t) => {
+      useClock(t);
+      const k = await agentKit([[say('Noted.')]], o);
+      const cards = raw(k);
+      const store = refusing(k);
+      store.full(which);
+      k.agent.wake({ kind: 'trigger', text: 'Your watch fired.', fallbacks: [{ watch: 'w1', text: LEAVE }, { watch: 'w2', text: 'The station is on your left.', cue: true }] });
+      await until(() => cards.some((n) => n.title === 'Shiori stopped' || n.title === NOT_SAVED));
+      await k.agent.idle();
+      assert.deepEqual(cards.filter((n) => n.title === 'Reminder').map((n) => n.body), [LEAVE, 'The station is on your left.'], 'once each, in the wake\'s order');
       assert.equal(k.agent.busy, false);
     });
   }
@@ -225,6 +236,108 @@ for (const [how, o] of MODES.slice(0, 2)) {
   });
 }
 
+// A wake queued behind a turn that stops waits in the queue (no turn takes it up until the next wake): its reminders are annai's to show with the stopped
+// turn's, once, and the wake stays queued as ever. A second watch's wake comes while the first one's turn waits to write its start.
+for (const [how, o] of MODES.slice(0, 2)) {
+  test(`a reminder in a wake queued behind a turn the full phone stops is shown with the stopped turn's, once: a later stop of a turn that takes that wake up shows it no second time${how}`, async (t) => {
+    useClock(t);
+    const k = await agentKit([[say('Noted.')]], o);
+    const cards = raw(k);
+    const store = refusing(k);
+    store.full('all');
+    let held = false;
+    const door = holdAtDoor(k, (_stores, mode) => mode === 'readwrite' && !held && (held = true)); // the turn's first write, as on a phone slow to write
+    k.agent.wake({ kind: 'trigger', text: 'Your watch fired.', fallbacks: [{ watch: 'w1', text: LEAVE }] });
+    await until(() => held);
+    k.agent.wake({ kind: 'trigger', text: 'Another watch fired.', fallbacks: [{ watch: 'w2', text: 'Check out by 11' }] });
+    await new Promise((r) => setTimeout(r, 30)); // queued behind the turn that has not started
+    door.open();
+    await until(() => titled(k, 'Shiori stopped').length > 0);
+    assert.deepEqual(cards.filter((n) => n.title === 'Reminder').map((n) => n.body), [LEAVE, 'Check out by 11'], "both shown, the turn's own first");
+    assert.equal(k.agent.busy, true, 'the wake still waits for the next one, as ever');
+    // The next wake takes the waiting one up with it, and the phone refuses that turn too: only its own reminder is new.
+    k.agent.wake({ kind: 'trigger', text: 'A third watch fired.', fallbacks: [{ watch: 'w3', text: 'Dinner at 7' }] });
+    await until(() => titled(k, 'Shiori stopped').length > 0 && count(cards, 'Reminder') >= 3);
+    await k.agent.idle();
+    assert.deepEqual(cards.filter((n) => n.title === 'Reminder').map((n) => n.body), [LEAVE, 'Check out by 11', 'Dinner at 7'], 'the second watch\'s is not shown again');
+    assert.equal(k.agent.busy, false);
+  });
+}
+
+// A turn that fails in its setup, before its steps (the half's rules, its voice, the rules read again), shows its reminders too: the one place for every
+// way a turn stops short. The phone at no byte free (Chromium) closes the connection at the first refused write, and every transaction after it fails,
+// reads too: with Koe on and voice on, Kokoro's copy of the wake (it carries no reminders) writes first and is refused, and Koe's turn then fails reading
+// the voice's settings.
+for (const [how, o] of MODES) {
+  for (const voice of [false, true]) {
+    test(`a reminder a wake owes when the first refused write makes every read fail too (no byte free) is shown once, voice ${voice ? 'on' : 'off'}${how}`, async (t) => {
+      useClock(t);
+      const k = await agentKit([[say('Noted.')]], { ...o, ...(voice ? { voice: { mode: 'on' } } : {}) });
+      const cards = raw(k);
+      const store = refusing(k);
+      store.full(() => {
+        store.full('everything');
+        return true;
+      });
+      k.agent.wake({ kind: 'trigger', text: 'Your watch fired.', fallbacks: [{ watch: 'w1', text: LEAVE }] });
+      await until(() => titled(k, 'Shiori stopped').length > 0);
+      await k.agent.idle();
+      assert.equal(count(cards, 'Reminder'), 1, 'once');
+      assert.equal(cards.find((n) => n.title === 'Reminder').body, LEAVE);
+      assert.equal(k.agent.busy, false);
+    });
+  }
+}
+
+// The same setup, with its reads refused from the start (the wake goes in past its budgets): the voice's read fails in the turn's setup, and her reminder is shown.
+for (const [how, o] of MODES.slice(0, 2)) {
+  test(`a reminder a wake owes, whose turn can't read the voice's settings as it starts, is shown once${how}`, async (t) => {
+    useClock(t);
+    const k = await agentKit([[say('Noted.')]], { ...o, voice: { mode: 'on' } });
+    const cards = raw(k);
+    const store = refusing(k);
+    store.full('reads');
+    (k.agent.kokoro ?? k.agent).enqueue({ kind: 'trigger', text: 'Your watch fired.', fallbacks: [{ watch: 'w1', text: LEAVE }] });
+    await until(() => titled(k, 'Shiori stopped').length > 0);
+    await k.agent.idle();
+    assert.equal(count(cards, 'Reminder'), 1, 'once');
+    assert.equal(k.agent.busy, false);
+  });
+}
+
+// The user's Stop shows the reminder silently, whichever write of the end the phone then refuses: it is shown (the Stop stops her, not the reminder they
+// set) and not said, once. Voice on, the Stop lands as she goes to sleep, and the write of the turn's end is refused.
+for (const [how, o] of MODES.slice(0, 2)) {
+  test(`a reminder the user's Stop cut the turn on, when the write of the turn's end is refused, is shown once and not said${how}`, async (t) => {
+    useClock(t);
+    const k = await agentKit([[sleep]], { ...o, voice: { mode: 'on' } });
+    const cards = raw(k);
+    const store = refusing(k);
+    store.full((/** @type {any} */ ev) => ev.type === 'turn.end');
+    k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'tool.call' && e.data.name === 'sleep') k.agent.interrupt(); });
+    k.agent.wake({ kind: 'trigger', text: 'Your watch fired.', fallbacks: [{ watch: 'w1', text: LEAVE }] });
+    await until(() => titled(k, 'Shiori stopped').length > 0);
+    await k.agent.idle();
+    assert.equal(count(cards, 'Reminder'), 1, 'once');
+    assert.deepEqual(k.said, [], 'silently: the Stop stops her, not the reminder');
+  });
+
+  // A page being left shows nothing: its next start answers (spec §6.7).
+  test(`a turn the full phone stops while the page is being left shows no reminder: the next start answers${how}`, async (t) => {
+    useClock(t);
+    const k = await agentKit([[say('Noted.')]], o);
+    const cards = raw(k);
+    const store = refusing(k);
+    store.full('all');
+    k.agent.leaving();
+    k.agent.wake({ kind: 'trigger', text: 'Your watch fired.', fallbacks: [{ watch: 'w1', text: LEAVE }] });
+    await until(() => titled(k, 'Shiori stopped').length > 0);
+    await k.agent.idle();
+    assert.equal(count(cards, 'Reminder'), 0, 'not shown: no turn is left to tell, and the page is going');
+    assert.equal(k.agent.busy, false);
+  });
+}
+
 // The exception the typed-line hand-back first accepted: a typed line and a reminder queued for a conversation still opening when another is tapped.
 // With Koe talking they are in Koe's queue (Halves sends both there), not Kokoro's.
 for (const [how, o] of MODES) {
@@ -261,9 +374,75 @@ for (const [how, o] of MODES) {
   });
 }
 
+// A refused wake kept for one conversation does not stop the lines typed for the next one from coming back (#keepWakes goes on over its scopes, and the
+// first refusal is the one the open fails with): a watch's wake queued for Kyoto while it opens, then Nara tapped, and a line typed while Nara opens. Nara's
+// open fails on Kyoto's wake first; the line waiting for Nara is handed back all the same, once, and never written there later.
+for (const [how, o] of MODES) {
+  test(`a line typed for the conversation being opened, queued behind another conversation's refused wake, comes back to the box: it is not held in memory${how}`, async (t) => {
+    useClock(t);
+    const k = await agentKit([[say('Noted.')]], o);
+    const cards = raw(k);
+    const store = refusing(k);
+    const half = o.koe ? k.agent.koe : (k.agent.kokoro ?? k.agent); // the loop's own queue, as the wake and the line reach it while the conversations open
+    const kyoto = await createTrip(k.ws, { title: 'Kyoto' });
+    const nara = await createTrip(k.ws, { title: 'Nara' });
+    store.full('all');
+    const toKyoto = k.agent.open(kyoto);
+    half.enqueue({ kind: 'trigger', text: 'Your watch fired.', fallbacks: [{ watch: 'w1', text: LEAVE }] }); // queued for Kyoto
+    const toNara = k.agent.open(nara);
+    half.send('Book the ryokan', { typed: true }); // queued for Nara, whose open then fails on Kyoto's wake
+    const failed = await toNara.then(() => null, (/** @type {unknown} */ e) => e);
+    await toKyoto.catch(() => {});
+    assert.ok(failed instanceof StorageFullError, "Nara didn't open: the storage card says so");
+    assert.deepEqual(store.back.map((x) => x.words), ['Book the ryokan'], 'the line is in the traveller\'s hands again');
+    assert.equal(store.back[0].error instanceof StorageFullError, true);
+    assert.equal(count(cards, 'Reminder'), 1, "the watch's reminder is shown once");
+    // Room again: Nara opens and Kyoto has the watch's wake, once; the line is not written anywhere (it is the traveller's, in the box).
+    store.full(null);
+    await k.agent.open(nara);
+    await k.agent.idle();
+    assert.equal(k.agent.trip, nara);
+    assert.deepEqual((await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(kyoto, { types: ['wake', 'msg.user', 'reminder'] }))).map((/** @type {any} */ e) => e.type), ['wake']);
+    assert.deepEqual(await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(nara, { types: ['msg.user'] })), [], 'nothing written for the line');
+    assert.equal(count(cards, 'Reminder'), 1);
+    assert.equal(store.back.length, 1, 'it came back once');
+  });
+}
+
+// With Koe talking the split that follows a refused open (Kokoro in Nara, Koe still behind) made every line typed after it vanish the same way: each send
+// asks Koe to open Nara again, and its keep stopped on Kyoto's wake. Now each comes back.
+test("lines typed after a refused open, with Koe on and Kyoto's wake still waiting in its queue, each come back to the box", async (t) => {
+  useClock(t);
+  const k = await agentKit([[say('Noted.')]], { halves: true, koe: KOE });
+  const store = refusing(k);
+  const kyoto = await createTrip(k.ws, { title: 'Kyoto' });
+  const nara = await createTrip(k.ws, { title: 'Nara' });
+  store.full('all');
+  const toKyoto = k.agent.open(kyoto);
+  k.agent.koe.enqueue({ kind: 'trigger', text: 'Your watch fired.', fallbacks: [{ watch: 'w1', text: LEAVE }] });
+  const toNara = k.agent.open(nara);
+  k.agent.koe.send('First line', { typed: true });
+  await toNara.catch(() => {});
+  await toKyoto.catch(() => {});
+  assert.deepEqual(store.back.map((x) => x.words), ['First line']);
+  assert.equal(k.agent.kokoro.target, nara, 'Kokoro is in Nara: the screen follows it, and the traveller types there');
+  k.agent.send('Second line', { typed: true });
+  await until(() => store.back.length === 2);
+  k.agent.send('Third line', { typed: true });
+  await until(() => store.back.length === 3);
+  assert.deepEqual(store.back.map((x) => x.words), ['First line', 'Second line', 'Third line']);
+  assert.equal(store.back.every((x) => x.error instanceof StorageFullError), true);
+  // Room again: the lines the traveller has in the box were written nowhere.
+  store.full(null);
+  await k.agent.open(nara);
+  await k.agent.idle();
+  assert.deepEqual(await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(nara, { types: ['msg.user'] })), []);
+});
+
 // idle() waits for a reminder's entry: it is shown first and written after, so the write is behind the card, and the callers that don't wait for it
-// themselves count it (#checking, Halves' #sending). The first two (admit's budgets) fail on the store's own timing, with no door; for the others
-// the card or the entry waits at the door (agent-kit's holdAtDoor), as on a phone slow to read or write, and idle() must wait for it.
+// themselves count it (#checking, Halves' #sending). The entry's write waits at the door (agent-kit's holdEntries: the first write after the card, as on a
+// phone slow to write) and idle() must wait for it: the store's own queue would show the entry to whoever looks, and hide a wait that doesn't count it.
+// The rest of the work (her turn's end) is done before idle() is looked at, so the wait that is seen is the door's.
 /** The reminders' entries. @param {any} k */
 const written = async (k) => (await k.events(['reminder'])).map((/** @type {any} */ e) => e.data.text);
 
@@ -272,19 +451,21 @@ test("a wake skipped for the hour's limit, its reminder shown by annai: idle() s
   await updateAppSettings(k.ws, { shiori: { budgets: { wakesPerHour: 1 } } });
   k.agent.wake({ kind: 'plugin', plugin: 'tides', text: 'Low tide in 30 minutes.' });
   await k.agent.idle();
+  const door = holdEntries(k);
   k.agent.wake({ kind: 'plugin', plugin: 'tides', text: 'Low tide now.', fallbacks: [{ watch: 'w1', text: LEAVE }] });
-  await k.agent.idle();
-  assert.equal(titled(k, 'Reminder').length, 1);
+  await until(() => titled(k, 'Reminder').length === 1);
+  await settlesOnlyAfter(k, door, 'idle() waits for the entry still being written');
   assert.deepEqual(await written(k), [LEAVE]);
 });
 
 test("a wake held for quiet hours, its reminder shown by annai: idle() settles once the entry is written", async () => {
   const k = await agentKit([[say('Noted.')]], { agent: { now: () => Date.parse('2026-11-26T23:00:00Z') } });
   await updateAppSettings(k.ws, { shiori: { budgets: { quietHours: { from: '22:00', to: '07:00' } } } });
+  const door = holdEntries(k);
   k.agent.wake({ kind: 'plugin', plugin: 'tides', text: 'Low tide in 30 minutes.', fallbacks: [{ watch: 'w1', text: LEAVE }] });
-  await k.agent.idle();
+  await until(() => titled(k, 'Reminder').length === 1);
+  await settlesOnlyAfter(k, door, 'idle() waits for the entry still being written');
   assert.equal(k.requests.length, 0, 'held');
-  assert.equal(titled(k, 'Reminder').length, 1);
   assert.deepEqual(await written(k), [LEAVE]);
 });
 
@@ -295,10 +476,10 @@ test('a reminder a Stop shows for what she was still gathering: idle() settles o
   k.agent.send('Keep it', { chose: true }); // the user's tap holds her turn while they type
   k.agent.wake({ kind: 'trigger', text: 'Your watch fired.', fallbacks: [{ watch: 'w1', text: LEAVE }] });
   await new Promise((r) => setTimeout(r, 5)); // queued behind the tap, within the 50 ms the typing counts for
-  const door = holdReminders(k); // the card waits at the door, as on a phone slow to read: the Stop's own writes are done long before
+  const door = holdEntries(k); // the entry waits at the door, as on a phone slow to write: the Stop's own writes come first
   k.agent.interrupt();
-  await settlesOnlyAfter(k, door, 'idle() waits for the reminder the Stop shows');
-  assert.equal(titled(k, 'Reminder').length, 1);
+  await until(() => titled(k, 'Reminder').length === 1);
+  await settlesOnlyAfter(k, door, 'idle() waits for the reminder the Stop shows, entry and all');
   assert.deepEqual(await written(k), [LEAVE]);
 });
 
@@ -307,12 +488,36 @@ test("a reminder shown while her question waits for the user's answer: idle() se
   const k = await agentKit([[{ toolCalls: [ask] }, say('Moved it.')]]);
   k.agent.send('We are running late');
   await until(() => k.agent.pendingId !== null);
-  // The first write from here is the reminder's entry: it waits at the door, as a phone slow to write makes it wait, while her turn goes on.
-  let first = true;
-  const door = holdAtDoor(k, (_stores, mode) => mode === 'readwrite' && first && !(first = false));
+  const door = holdEntries(k); // the reminder's entry waits at the door, as a phone slow to write makes it wait, while her turn goes on
   k.agent.wake({ kind: 'trigger', text: 'Your watch fired.', fallbacks: [{ watch: 'w1', text: LEAVE }] });
   await until(() => titled(k, 'Reminder').length === 1);
+  const ended = turnEnds(k);
   k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'Move it');
-  await settlesOnlyAfter(k, door, 'idle() waits for the entry still being written');
+  await settlesOnlyAfter(k, door, 'idle() waits for the entry still being written', () => ended);
+  assert.deepEqual(await written(k), [LEAVE]);
+});
+
+// Start fresh shows what waited behind the turn it stopped, silently, and idle() waits for it: Koe's half is not busy while Halves waits for it.
+test("Start fresh in Koe · Classic, a reminder waiting behind the turn it stops is shown, and idle() settles once its entry is written", async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { type: { rules: [{ match: 'the user wrote', reply: { ...say('Sure.'), delayMs: 1500 } }, { match: '.', reply: sleep }] } } });
+  const cards = raw(k);
+  k.agent.send('Is Nepenthe open?');
+  await until(() => (k.sent['model-koe']?.length ?? 0) >= 1); // Koe's slow turn is under way
+  k.agent.wake({ kind: 'trigger', text: 'Your watch fired.', fallbacks: [{ watch: 'w1', text: LEAVE }] });
+  await new Promise((r) => setTimeout(r, 50)); // behind it, in Koe's queue
+  let reminding = false;
+  const koe = k.agent.koe;
+  const remind = koe.remind.bind(koe);
+  koe.remind = (/** @type {any[]} */ ...a) => {
+    reminding = true;
+    return remind(...a);
+  };
+  const door = holdReminders(k, koe); // its card's read waits at the door, as on a phone slow to read
+  const fresh = k.agent.startFresh();
+  await until(() => reminding);
+  await settlesOnlyAfter(k, door, "idle() waits for the reminder Start fresh shows");
+  assert.equal(await fresh, 'done');
+  assert.equal(count(cards, 'Reminder'), 1, 'once');
   assert.deepEqual(await written(k), [LEAVE]);
 });

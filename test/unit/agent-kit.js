@@ -310,35 +310,92 @@ export function holdAtDoor(k, which) {
 
 /**
  * The first read of each reminder annai shows (its card's) waits at the door, so the card and the entry come after whatever else is done, as on a
- * phone slow to read; nothing else is held. @param {any} k @returns {{ open: () => void }}
+ * phone slow to read; nothing else is held. @param {any} k @param {any} [half] the half whose reminders (Kokoro's, or one Shiori's; Koe's for Start fresh's)
+ * @returns {{ open: () => void, reached: () => boolean }} reached: a reminder has come to be shown, and is held
  */
-export function holdReminders(k) {
-  const half = k.agent.kokoro ?? k.agent;
+export function holdReminders(k, half = k.agent.kokoro ?? k.agent) {
   let holding = false;
+  let reached = false;
   const door = holdAtDoor(k, (stores) => holding && stores.length === 1 && stores[0] === 'secrets');
   const remind = half.remind.bind(half);
   half.remind = (/** @type {any[]} */ ...a) => {
-    holding = true; // its card's read is its first call to the store, made before remind() returns
+    holding = reached = true; // its card's read is its first call to the store, made before remind() returns
     try {
       return remind(...a);
     } finally {
       holding = false;
     }
   };
-  return door;
+  return { ...door, reached: () => reached };
 }
 
 /**
- * idle() does not settle while the door is shut (60 ms of real time: everything else is done long before), and does once it is open.
- * @param {any} k @param {{ open: () => void }} door @param {string} why
+ * The first write after a reminder's card is raised, which is its entry's (everything else of the work is done by then, or counted on its own), waits
+ * at the door, as on a phone slow to write: the card is out and the entry is not. A wait that doesn't count the entry finishes first. Made before the
+ * reminder comes. @param {any} k @returns {{ open: () => void, cardShown: () => boolean }}
  */
-export async function settlesOnlyAfter(k, door, why) {
+export function holdEntries(k) {
+  let card = false;
+  let taken = false;
+  k.agent.on('notice', (/** @type {any} */ n) => { if (n.title === 'Reminder') card = true; });
+  return { ...holdAtDoor(k, (_stores, mode) => mode === 'readwrite' && card && !taken && (taken = true)), cardShown: () => card };
+}
+
+/**
+ * Starts the work with `start` (a wake whose reminder annai shows) so that everything but the reminder's entry is done first, then holds the entry at
+ * the door: the card's read waits while both halves finish what they do for the wake, then the card comes and the entry's write waits (holdEntries), so
+ * nothing else of the work can be the one held. Settles once the card is out; open the door it returns to let the entry through. For Halves.
+ * @param {any} k @param {() => unknown} start @returns {Promise<{ open: () => void }>}
+ */
+export async function slowEntry(k, start) {
+  const cardDoor = holdReminders(k);
+  await start();
+  await until(() => cardDoor.reached());
+  await k.agent.kokoro.idle();
+  await k.agent.koe.idle();
+  const entryDoor = holdEntries(k);
+  cardDoor.open();
+  await until(() => entryDoor.cardShown());
+  return entryDoor;
+}
+
+/**
+ * A promise for the end of the next turn, her own (turn.end), asked for before the work that ends it. @param {any} k @returns {Promise<void>}
+ */
+export function turnEnds(k) {
+  return new Promise((resolve) => {
+    const off = k.agent.on('event', (/** @type {any} */ e) => {
+      if (e.type !== 'turn.end') return;
+      off?.();
+      resolve(undefined);
+    });
+  });
+}
+
+/**
+ * idle() does not settle while the door is shut, and does once it is open. `done` is what the door doesn't hold, finished first (her turn's end,
+ * the reminder's card): the 60 ms of real time then only has to outlast what idle() itself still does, never the rest of the work.
+ * @param {any} k @param {{ open: () => void }} door @param {string} why @param {() => Promise<unknown> | unknown} [done]
+ */
+export async function settlesOnlyAfter(k, door, why, done = () => {}) {
+  await done();
   let settled = false;
   const idle = k.agent.idle().then(() => { settled = true; });
   await new Promise((r) => setTimeout(r, 60));
   assert.equal(settled, false, why);
   door.open();
   await idle;
+}
+
+/**
+ * Each half's own cards, as they are raised: what a "shown once" counts, since Halves' own list (k.notices) drops a card identical to the one before it
+ * within 5 s (its #notice), which hides a double show. Made before anything runs. @param {any} k @returns {any[]}
+ */
+export function raw(k) {
+  /** @type {any[]} */
+  const got = [];
+  for (const half of k.agent.kokoro ? [k.agent.kokoro, k.agent.koe] : [k.agent]) half.on('notice', (/** @type {any} */ n) => got.push(n));
+  return got;
 }
 
 /** The microphone hears one of the speech clips, then a pause: one segment. @param {any} k @param {string} name */

@@ -897,7 +897,9 @@ export class Halves {
       // by annai, so she doesn't say them too (a recorded drive); if Koe never does, they are annai's to say or show (owed).
       if (!w.aloud) this.#wakeKokoro({ ...w, ...(w.fallbacks?.length && !away ? { text: `${w.text} ${KOE_SAYING(w.fallbacks)}` } : {}), fallbacks: [] });
       if (away) this.#alongside(this.kokoro.remind(reminders)); // idle() waits for its entry
-      if (this.koeState === 'live') this.#alongside(this.#live(() => this.live.wake(away ? { ...w, fallbacks: w.fallbacks?.filter((r) => r.cue) } : w), w));
+      // What the session gets is what #live falls back on too: the reminders annai showed above are not shown again if the session can't take it.
+      const given = away ? { ...w, fallbacks: w.fallbacks?.filter((r) => r.cue) } : w;
+      if (this.koeState === 'live') this.#alongside(this.#live(() => this.live.wake(given), given));
       else this.koe.enqueue(w);
     }, (e) => this.kokoro.wakeFailed(w, e)); // a route that fails before its hand-ons (the refresh, the budgets' check): its reminders are shown, once
     return Promise.resolve();
@@ -1174,19 +1176,16 @@ export class Halves {
    * let go, nothing owed where it was (open's `moved`), and 'went' tells the screens. Then the trip's lines (their
    * line, her recap) go in, for one turn there. If they went elsewhere since (signal: the call's, which a Stop or another open ends), nothing
    * opens: the lines are written into the trip, in order, and wait there. An open that fails says so, as one asked for from Trips does (tellNotOpen:
-   * the storage card for a full phone), and the caller is told, so it says no move happened.
-   * @param {string} trip @param {import('./loop.js').Wake[]} wakes @param {AbortSignal} signal @returns {Promise<boolean>} false: the open failed
+   * the storage card for a full phone), and the caller is told whether the screen is in the trip: it follows Kokoro's target, so a Koe that alone
+   * failed to open (its card says so) leaves them there, and only the line of a move that follows them is the caller's.
+   * @param {string} trip @param {import('./loop.js').Wake[]} wakes @param {AbortSignal} signal @returns {Promise<boolean>} false: they are not in the trip
    */
   async carryOn(trip, wakes, signal) {
     const opening = !signal.aborted;
     let left = Promise.resolve();
-    let opened = true;
     if (opening) {
       updateAppSettings(this.ws, { activeTrip: trip }).catch(() => {});
-      left = this.open(trip, { moved: true }).catch((e) => {
-        opened = false;
-        return this.notify({ tone: 'warn', title: t`That conversation didn't open`, body: String(e?.shown ?? e?.message ?? e), error: e });
-      });
+      left = this.open(trip, { moved: true }).catch((e) => this.notify({ tone: 'warn', title: t`That conversation didn't open`, body: String(e?.shown ?? e?.message ?? e), error: e }));
       this.#emit('went', { trip });
     }
     // Into its queue at once when it opens (one turn), else written into it, one after the other.
@@ -1196,8 +1195,9 @@ export class Halves {
     }
     // What the halves write of the conversation they leave (a line or cue they held, a session's last words) is written by now: the caller's line about the move settles it.
     await left;
+    const there = !opening || this.kokoro.target === trip;
     await this.live.written();
-    return opened;
+    return there;
   }
 
   /** @param {boolean} [yes] */
