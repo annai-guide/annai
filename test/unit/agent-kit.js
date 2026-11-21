@@ -296,6 +296,15 @@ export async function until(fn, ms = 2000) {
 }
 
 /**
+ * idle(), after a bounded wait for nothing to be busy or queued. idle() waits for a wake left queued until the test's own timeout (120 s); here a regression
+ * that leaves one fails at once (on the clock's time, when the test has one), saying what is wrong. @param {any} k
+ */
+export async function idleAtOnce(k) {
+  await until(() => !k.agent.busy).catch(() => assert.fail('nothing waits in memory: a wake is left queued, or a turn is still busy'));
+  await k.agent.idle();
+}
+
+/**
  * Holds the store transactions `which` names at the door until it is opened, outside the store's queue (a phone slow to read or write), so a wait that
  * doesn't count what is held finishes first. @param {any} k @param {(stores: string[], mode: string) => boolean} which @returns {{ open: () => void }}
  */

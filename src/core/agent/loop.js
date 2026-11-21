@@ -2238,7 +2238,7 @@ export class Agent {
    * #drain's card: no turn takes it up again, and the reminders are annai's to show (spec §11.3). The one place for every way a turn stops short: the list is
    * taken once, the one the turn keeps (#owedNow: the end's own remind takes it first, so a failure after that shows nothing twice, and one she reached the user
    * after is settled), or, when it stopped before it had one (its setup, its first write, a read before the list), its wakes' own. A wake queued behind it
-   * keeps its own: it gets its own turn at once (#drain), which shows them if it stops too. A cue is shown too, as at the turn's end when no model answered.
+   * keeps its own: it gets its own turn at once (#drain), which shows them if it stops too (a line typed for it goes back to the box instead: #drain's catch, #unsaved). A cue is shown too, as at the turn's end when no model answered.
    * Not on a page being left: a card there reaches no one.
    * @param {Wake[]} wakes @param {AbortController} abort
    */

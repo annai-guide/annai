@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, refusing, rescript, until, raw } from './agent-kit.js';
+import { agentKit, refusing, rescript, until, raw, holdAtDoor } from './agent-kit.js';
 import { useClock } from './clock.js';
 import { tripTools } from '../../src/core/agent/trip-tools.js';
 import { Agent } from '../../src/core/agent/loop.js';
@@ -503,7 +503,7 @@ test("Open, tapped: Kyoto opens at the tap, with the user's line, her recap belo
 
 // Open tapped, and the store refuses from carryOn on: an open that fails says so as the one the user asks for from Trips does ("That conversation
 // didn't open", tellNotOpen's words), the storage card in its place on a full phone; one whose reads work opens, and her turn there is what stops. The
-// chat's line of a move is written whether or not the open worked (it says where the lines went, and opens that conversation): on a full phone its own
+// chat's line of a move is written whether or not the open worked (it says where the lines went, and links to that conversation): on a full phone its own
 // write is refused.
 for (const [how, which] of /** @type {const} */ ([['reads and writes refused (Chromium at no byte free)', 'everything'], ['reads refused (any other failed open)', 'reads'], ['writes refused, reads fine (WebKit on a full disk)', 'all']])) {
   test(`Open tapped, the store refusing ${how}: ${which === 'all' ? 'Kyoto opens, and her turn there stops' : `a card says that conversation didn't open, with the error; the screens were told of the move, and the chat stays the one open${which === 'reads' ? ', with its line of the move' : ''}`}`, async (t) => {
@@ -519,9 +519,12 @@ for (const [how, which] of /** @type {const} */ ([['reads and writes refused (Ch
     const went = [];
     k.agent.on('went', (/** @type {any} */ x) => went.push(x));
     const carry = k.agent.carryOn.bind(k.agent);
+    /** @type {Promise<void>} */
+    let carried = Promise.resolve();
     k.agent.carryOn = (/** @type {any[]} */ ...a) => {
       store.full(which);
-      return carry(...a);
+      carried = carry(...a);
+      return carried;
     };
     k.agent.send("Let's carry on in Kyoto");
     await until(() => k.asks.length === 1);
@@ -546,6 +549,11 @@ for (const [how, which] of /** @type {const} */ ([['reads and writes refused (Ch
       if (which === 'everything') assert.ok(saved.length === 1 && saved[0].error instanceof StorageFullError, 'the keep that was refused is told');
       else assert.deepEqual(saved, [], 'the keep worked: nothing to tell');
     }
+    // The line of the move is asked for as carryOn returns: it is dealt with (written, or refused) before room comes back, by order, so the count below
+    // is the phone's answer to that write and not whether the lift happened to fall first. The store runs its transactions in turn, so one asked for now is last.
+    await carried;
+    await new Promise((r) => setImmediate(r));
+    await k.store.tx(['events'], 'readonly', async () => {}).catch(() => {});
     // Room again: nothing is left running, and Kyoto opens.
     store.full(null);
     await k.agent.open(k.kyoto);
@@ -558,10 +566,15 @@ for (const [how, which] of /** @type {const} */ ([['reads and writes refused (Ch
 
 // In production open_trip runs only in her own turn, and the open it asks for ends that turn at once: the call's result is the one an open gives
 // (#runCall records it, whatever carryOn finds; chief's decision C171 of 2026-11-20 accepts it), so the chat's word is annai's card, and its line of the
-// move says where the files and lines went: they are in that conversation. Kokoro alone, and with Koe on and the halves split, in either order: Koe's open,
-// free, fails first while Kokoro's waits for her stopped turn; or Koe's works and Kokoro's read, after it, fails. The line no longer depends on which.
+// move says where the files and lines went: they are in that conversation. Kokoro alone, and with Koe on and the halves split, in each order: Koe's open,
+// free, fails first while Kokoro's waits for her stopped turn; Koe's works and Kokoro's read, after it, fails; or Koe's alone fails and Kokoro's works, so the
+// screen is in Kyoto under the card. The line no longer depends on which: it says where the lines went, wherever the traveller is. Both halves read the
+// same store, so no refusal fails one half's read alone: Koe's open alone failing is a stand-in (its open rejects), as a read of its own refused would.
 const KOE_ON = { koe: { talk: [say('Noted.')], type: [say('Noted.')] } };
-for (const [how, o] of /** @type {[string, { koe?: any, koeFirst?: boolean }][]} */ ([['', {}], [', with Koe on', KOE_ON], [", with Koe on, Koe's open working and Kokoro's failing after it", { ...KOE_ON, koeFirst: true }]])) {
+for (const [how, o] of /** @type {[string, { koe?: any, koeFirst?: boolean, koeAlone?: boolean }][]} */ ([
+  ['', {}], [', with Koe on', KOE_ON], [", with Koe on, Koe's open working and Kokoro's failing after it", { ...KOE_ON, koeFirst: true }],
+  [", with Koe on, Koe's open alone failing while Kokoro's works: the screen is in Kyoto", { ...KOE_ON, koeAlone: true }],
+])) {
   test(`Open tapped and the open fails, in her own turn: her call's result is the one an open gives, the chat has its line of the move, and the files and lines carried are in that conversation${how}`, async (t) => {
     useClock(t);
     const k = await chatKit(o.koe ? { koe: o.koe } : {});
@@ -577,11 +590,18 @@ for (const [how, o] of /** @type {[string, { koe?: any, koeFirst?: boolean }][]}
     const carry = k.agent.carryOn.bind(k.agent);
     k.agent.carryOn = (/** @type {any[]} */ ...a) => {
       if (o.koeFirst) {
-        const off = k.agent.koe.on('open', () => { // Koe opened Kyoto: Kokoro's read, which comes after her turn ends, fails
+        // Koe opens Kyoto before Kokoro reads: her open waits for her turn to end, and her turn's own writes wait at a door until Koe's open is done, when
+        // the reads are refused, so her read, which comes after, fails.
+        let holding = true;
+        const door = holdAtDoor(k, (_stores, mode) => holding && mode === 'readwrite');
+        const off = k.agent.koe.on('open', () => {
           off?.();
+          holding = false;
           store.full('reads');
+          door.open();
         });
       }
+      else if (o.koeAlone) k.agent.koe.open = () => Promise.reject(new Error('IDB read failed')); // Kokoro's reads work
       else store.full('reads'); // the open fails, and writes work: the keep of the lines succeeds
       return carry(...a);
     };
@@ -590,12 +610,14 @@ for (const [how, o] of /** @type {[string, { koe?: any, koeFirst?: boolean }][]}
     await until(() => k.asks.length === 1);
     k.agent.answer(k.asks[0].data.tap, 'Open');
     await until(() => k.notices.some((/** @type {any} */ n) => n.title === "That conversation didn't open"));
+    await k.agent.kokoro.opening.catch(() => {}); // her read is made, refused or not, before room comes back: the lift can't fall before it
     store.full(null);
     await k.agent.idle();
     assert.deepEqual(await openResults(k, k.trip), ['They chose Open: that conversation is open now, and you answer them there; this one stays.'], 'the open ended her call: the result of one that worked');
     assert.deepEqual((await eventsIn(k, k.trip, ['conversation.moved'])).map((/** @type {any} */ e) => e.data.to), [k.kyoto], 'one line of the move in the chat');
-    assert.equal(k.agent.trip, k.trip, 'still here');
-    assert.equal(k.agent.kokoro.target, k.trip);
+    const where = o.koeAlone ? k.kyoto : k.trip; // the screen follows Kokoro: with only Koe's open failed they are in Kyoto
+    assert.equal(k.agent.trip, where, o.koeAlone ? 'in Kyoto, under the card' : 'still here');
+    assert.equal(k.agent.kokoro.target, where);
     assert.deepEqual((await k.ws.list(k.kyoto, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/hotel.pdf'], 'the files are in that conversation already');
     const lines = await eventsIn(k, k.kyoto, ['msg.user']);
     assert.deepEqual(lines.map((/** @type {any} */ e) => [e.data.text, e.data.from, e.data.handover]), [["Let's carry on in Kyoto", k.trip, 'h-1']], 'their line, with its hand-over');

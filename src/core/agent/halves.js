@@ -1176,7 +1176,7 @@ export class Halves {
    * let go, nothing owed where it was (open's `moved`), and 'went' tells the screens. Then the trip's lines (their
    * line, her recap) go in, for one turn there. If they went elsewhere since (signal: the call's, which a Stop or another open ends), nothing
    * opens: the lines are written into the trip, in order, and wait there. An open that fails says so, as one asked for from Trips does (tellNotOpen:
-   * the storage card for a full phone); the lines carried are there all the same, and the caller's line of the move says where they went.
+   * the storage card for a full phone); the lines carried are written all the same, where the phone takes their writes, and the caller's line of the move says where they went.
    * @param {string} trip @param {import('./loop.js').Wake[]} wakes @param {AbortSignal} signal
    */
   async carryOn(trip, wakes, signal) {

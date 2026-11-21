@@ -2602,7 +2602,7 @@ function told(k) {
 
 for (const typedMark of [false, true]) {
   const how = typedMark ? ', typed in the box' : '';
-  test(`lines typed during a failed open, one of whose writes fails too: the refused one is told and dropped (handed back when typed), nothing waits, and the good open writes nothing late${how}`, async () => {
+  test(`lines typed during a failed open, one of whose writes fails too: the refused one is told and dropped (handed back when typed), nothing waits, and no refused line is written late${how}`, async () => {
     const k = await agentKit([{ rules: [{ match: '.', reply: say('ok') }] }]);
     const road = await createTrip(k.ws, { title: 'Road' });
     const seen = told(k);
@@ -2616,8 +2616,8 @@ for (const typedMark of [false, true]) {
     k.agent.send('Second', { typed: typedMark });
     go();
     await first.catch(() => {});
+    assert.equal(k.agent.busy, false, 'nothing waits in memory'); // before idle(), which waits for a wake left queued until the test's own timeout
     await k.agent.idle();
-    assert.equal(k.agent.busy, false, 'nothing waits in memory');
     assert.equal(seen.cards.length, 1, 'told');
     assert.deepEqual(seen.back, typedMark ? ['Second'] : [], 'a typed line goes back to the box');
     await k.agent.open(road);
@@ -2695,8 +2695,8 @@ for (const typedMark of [false, true]) {
     k.store.tx = /** @type {any} */ ((/** @type {any} */ s, /** @type {any} */ m, /** @type {any} */ f) => (m === 'readwrite' ? Promise.reject(new Error('QuotaExceededError')) : real.call(k.store, s, m, f)));
     go();
     await assert.rejects(opening, /IDB read failed/);
+    assert.equal(k.agent.busy, false, 'nothing waits in memory'); // before idle(), as above
     await k.agent.idle();
-    assert.equal(k.agent.busy, false, 'nothing waits in memory');
     assert.equal(seen.cards.length, 1, 'told');
     assert.deepEqual(seen.back, typedMark ? ['Typed during the open'] : []);
     k.store.tx = real;
@@ -2731,6 +2731,7 @@ for (const typedMark of [false, true]) {
     go();
     await opening.catch(() => {});
     k.store.tx = real;
+    assert.equal(k.agent.busy, false, 'nothing waits in memory'); // before idle(), as above
     await k.agent.idle();
     assert.equal(seen.cards.length, 1, 'told');
     assert.deepEqual(seen.back, typedMark ? ['Typed during the open'] : []);
