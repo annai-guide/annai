@@ -244,6 +244,11 @@ const byAnnai = (w) => w.kind === 'live' || w.kind === 'trigger' || w.kind === '
 /** What a wake tells her: its words, and that annai showed the user its reminder already, when it did (#remindWaiting, #keepWakes). @param {Wake} w */
 const told = (w) => (w.shown ? `${w.text} ${SHOWN}` : w.text);
 const SHOWN = /* en */ '(annai has already shown the user its reminder.)';
+/** A reminder as its entry and a wake's record keep it. @param {Reminder} r */
+const reminderData = (r) => {
+  const text = String(r?.text ?? '').trim();
+  return text ? { watch: String(r.watch ?? ''), text, ...(r.answer ? { answer: true } : {}), ...(r.plan ? { plan: r.plan } : {}) } : null;
+};
 /** Her calls that talk to the user and then listen or wait for them. */
 const TALKS = ['speak', 'ask', 'wait'];
 
@@ -785,7 +790,7 @@ export class Agent {
               : transcript.waiting === 'wake' ? `You haven't answered this yet: it came before annai restarted. ${quiet}`
                 : `annai restarted before you answered. ${quiet}`;
       // A hand-over still owed is the restart turn's, so what she does with it can be undone (the page closed before she was done).
-      this.#queue.push({ kind: 'restart', text, scope, ...(transcript.handover ? { handover: transcript.handover } : {}) }); // it runs once the open is done
+      this.#queue.push({ kind: 'restart', text, scope, fallbacks: transcript.owedReminders, ...(transcript.handover ? { handover: transcript.handover } : {}) }); // it runs once the open is done
     }
     this.#emit('open', { trip, scope });
   }
@@ -2005,11 +2010,11 @@ export class Agent {
     // Said with voice on, whichever conversation it is for (choice 3), after whatever is being said (the speaker queues), never over a live session.
     const aloud = Boolean(this.voice?.on) && (o.aloud || !this.#half.hushed?.()) && !o.silent;
     for (const r of list) {
-      const text = String(r?.text ?? '').trim();
-      if (!text) continue;
-      const ev = { type: 'reminder', actor: 'system', data: { watch: String(r.watch ?? ''), text, ...(r.answer ? { answer: true } : {}), ...(r.plan ? { plan: r.plan } : {}), ...(aloud ? { aloud: true } : {}), ...(o.unsaid ? { unsaid: true } : {}), ...(o.waiting ? { waiting: true } : {}) } };
+      const kept = reminderData(r);
+      if (!kept) continue;
+      const ev = { type: 'reminder', actor: 'system', data: { ...kept, ...(aloud ? { aloud: true } : {}), ...(o.unsaid ? { unsaid: true } : {}), ...(o.waiting ? { waiting: true } : {}) } };
       // A plan's reminder in the screens' words, made from its data; anyone else's as they wrote it.
-      const shown = r.plan ? planWords(r.plan) : text;
+      const shown = r.plan ? planWords(r.plan) : kept.text;
       await this.#notice({ tone: 'info', title: r.answer ? t`Shiori's answer` : t`Reminder`, body: shown });
       if (aloud) this.voice?.say(shown).catch(() => {});
       await this.#logIn(scope, ev).catch((e) => this.#notSaved(e));
@@ -2107,11 +2112,13 @@ export class Agent {
       // Her recap is her line, shown where it is written: below the user's line it came with (a move's arrival).
       const below = wakes.some((w) => theirs(w) && !w.logged) ? wakes.filter((w) => w.recap) : [];
       const first = wakes.filter((w) => !below.includes(w));
-      if (!meanwhile) await log({ type: 'wake', actor: 'system', data: { id: wakeId, reasons: first.map(reasonOf), ...(handover !== undefined ? { handover } : {}) } });
+      const reminders = wakes.flatMap((w) => w.fallbacks ?? []).flatMap((r) => (r.cue ? [] : reminderData(r) ?? [])); // a cue is hers
+      const carried = reminders.length ? { reminders } : {};
+      if (!meanwhile) await log({ type: 'wake', actor: 'system', data: { id: wakeId, reasons: first.map(reasonOf), ...(handover !== undefined ? { handover } : {}), ...carried } });
       else {
         // A cue already in the log (a review, "Koe answered the user") is still a line here: "woke for" gives it only once.
         const others = first.filter((w) => !theirs(w) && (!w.logged || w.kind === 'cue'));
-        if (others.length) await log({ type: 'wake', actor: 'system', data: { id: wakeId, meanwhile: true, reasons: others.map(reasonOf) } });
+        if (others.length || reminders.length) await log({ type: 'wake', actor: 'system', data: { id: wakeId, meanwhile: true, reasons: others.map(reasonOf), ...carried } });
       }
       for (const w of wakes) {
         if (w.logged) continue;
@@ -2693,7 +2700,8 @@ export class Agent {
       else if (this.#still) this.#half.left?.(unsaid);
     }
     // The turn's end, written once, where it is known: the log's reader takes it from this record, never from her reply's words.
-    if (ended && !cutOwing && !(silent && unanswered())) await this.#log({ type: 'turn.end', actor: 'system', data: { wake: wakeId, handover: this.#handover } });
+    // Not leaving with a reminder unshown: the next start takes it up.
+    if (ended && !cutOwing && !(silent && unanswered()) && !(this.#leaving && owed.length)) await this.#log({ type: 'turn.end', actor: 'system', data: { wake: wakeId, handover: this.#handover } });
     if (silent && unanswered()) {
       // Asked once more, she still said nothing: the user isn't left waiting in silence.
       const body = t`Her model finished without saying anything to you.`;

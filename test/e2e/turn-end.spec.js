@@ -169,6 +169,46 @@ test('a reload after her turn ended takes nothing up: the next request is the us
   }
 });
 
+// A reminder her turn owes when the page goes reaches the traveller at the next start (spec §11.3): the wake's record keeps it, and the restart owes it.
+test("a reload while her turn for a watch's reminder waits on her model: nothing is shown as the page goes, and the restart turn owes it, so annai shows it once when she sleeps without a word", async ({ page }) => {
+  const LEAVE = 'Leave for the airport by 14:10';
+  const llm = await startModelServer({ [MESSAGES]: [held(), sse(anthropicToolReply([sleep]))] });
+  try {
+    await modelSetUp(page, llm.origin, 'Big Sur');
+    const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    // The page's agent, from the dock's next word about typing on (opening the box says the box is empty), so the test can fire a watch.
+    await page.evaluate(async () => {
+      const { Halves } = await import(/** @type {string} */ ('/src/core/agent/halves.js'));
+      const typing = Halves.prototype.typing;
+      Halves.prototype.typing = function (/** @type {any[]} */ ...a) {
+        /** @type {any} */ (window).agent = this;
+        return typing.apply(this, a);
+      };
+    });
+    await page.getByRole('button', { name: 'Type', exact: true }).click();
+    await page.waitForFunction(() => Boolean(/** @type {any} */ (window).agent));
+    await page.getByLabel('Message to Shiori').press('Escape');
+    await page.evaluate((text) => /** @type {any} */ (window).agent.wake({ kind: 'trigger', text: `Your watch fired: ${text}.`, fallbacks: [{ watch: 'w1', text }] }), LEAVE);
+    await expect.poll(() => llm.bodies(MESSAGES).length, { timeout: 30_000 }).toBe(1);
+    await page.reload();
+    const notices = page.locator('.notices .notice');
+    await expect(notices.filter({ hasText: LEAVE })).toHaveCount(1, { timeout: 30_000 });
+    // Its entry, written once it was shown, in the conversation (the trip's page is where the reload lands; a hash change is no new start).
+    await page.evaluate((trip) => { location.hash = `#/trip/${encodeURIComponent(trip)}/talk`; }, trip);
+    await expect(page.locator('.convo').getByText(LEAVE)).toHaveCount(1);
+    const bodies = llm.bodies(MESSAGES);
+    expect(bodies.length).toBe(2);
+    expect(lastUser(bodies[1])).toContain('before annai restarted');
+    noRecord(bodies);
+    await page.waitForTimeout(1000); // nothing more is asked or shown
+    expect(llm.bodies(MESSAGES).length).toBe(2);
+    await expect(notices.filter({ hasText: LEAVE })).toHaveCount(1);
+    expect(await ends(page, trip)).toBe(1);
+  } finally {
+    await llm.stop();
+  }
+});
+
 test('another trip opened while she works on a hand-over: the conversation left says she picks it up, coming back takes it up once, and Undo takes back both files', async ({ page }) => {
   const llm = await startModelServer({ [MESSAGES]: [
     sse(anthropicToolReply([write('a.md')])),
