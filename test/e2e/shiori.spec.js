@@ -647,6 +647,46 @@ test('review S3: after a photo, the conversation keeps following: her answer sho
   }
 });
 
+test("a photo going up slowly is not a model that never started: on a slow uplink, her answer comes once the request is in, past the role's wait (the user's photo to Shiori, 2026-11-20)", async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', "the upload is slowed through Chromium's DevTools protocol (Network.emulateNetworkConditions); WebKit has no such throttle");
+  // The stand-in answers the moment the whole request is in, as Anthropic's API does.
+  const llm = await startModelServer({ '/b/v1/messages': [sse(anthropicToolReply([{ name: 'speak', input: { text: 'That is Bixby Bridge.' } }, { name: 'sleep', input: {} }]))] });
+  try {
+    await modelSetUp(page, llm.origin);
+    await page.goto('/#/models');
+    // A wait of 2 seconds for the first words, which the photo's send outlasts.
+    const wait = page.locator('#role-main-wait');
+    await wait.fill('2');
+    await leaveSaved(wait);
+    await page.getByRole('region', { name: 'Providers' }).getByRole('link', { name: /Stand-in/ }).click();
+    await page.getByRole('link', { name: /^b-model/ }).click();
+    await page.getByLabel('Takes photos').check();
+    await expect(savedBy(page.getByLabel('Takes photos'))).toHaveText('Saved');
+    await page.goto('/#/talk');
+    // Noise, which no encoder makes small: 0.7 MB in the request as base64 (measured 2026-11-20).
+    const noisy = await page.evaluate(async () => {
+      const c = new OffscreenCanvas(800, 800);
+      const g = /** @type {OffscreenCanvasRenderingContext2D} */ (c.getContext('2d'));
+      const px = g.createImageData(800, 800);
+      for (let i = 0; i < px.data.length; i++) px.data[i] = i % 4 === 3 ? 255 : Math.floor(Math.random() * 256);
+      g.putImageData(px, 0, 0);
+      return [...new Uint8Array(await (await c.convertToBlob({ type: 'image/jpeg', quality: 0.9 })).arrayBuffer())];
+    });
+    // 160 KB a second up (1.3 Mbit/s, a busy hotel Wi-Fi): the request takes some 4.4 seconds to go up, past the wait of 2.
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Network.enable');
+    await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: 160_000 });
+    await page.locator('#dock-camera').setInputFiles({ name: 'IMG_0003.JPG', mimeType: 'image/jpeg', buffer: Buffer.from(noisy) });
+    await expect(page.locator('.convo .you img')).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator('.convo .shiori p').last()).toHaveText('That is Bixby Bridge.', { timeout: 40_000 });
+    await expect(page.locator('.notice', { hasText: "Shiori can't reach her model" })).toHaveCount(0);
+    const sent = JSON.stringify(llm.bodies('/b/v1/messages').at(-1));
+    expect(sent.length, 'the photo went in the request, and took longer than the wait to go up').toBeGreaterThan(2 * 160_000);
+  } finally {
+    await llm.stop();
+  }
+});
+
 test('review S3: a scroll of the user\'s own stops the following: what comes then stays where the user is reading', async ({ page }) => {
   const llm = await startModelServer({ '/b/v1/messages': [{ ...sse(anthropicToolReply([{ name: 'speak', input: { text: 'Light rain around 1 PM.' } }, { name: 'sleep', input: {} }])), delayMs: 1500 }] });
   try {

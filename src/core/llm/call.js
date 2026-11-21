@@ -4,7 +4,7 @@ import { levelPatch } from './reasoning.js';
 import { NO_USAGE, mergeUsage, costOf } from './cost.js';
 import { fromBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
-import { UPLOAD_TTL_S, UPLOAD_MS, MARGIN_MS, uploadName, deleteUpload } from './uploads.js';
+import { UPLOAD_TTL_S, UPLOAD_MS, MARGIN_MS, SLOW_UPLINK, uploadName, deleteUpload } from './uploads.js';
 import { deleteTurn, lookTurn, keyPrint, hash } from './kept.js';
 import { ttlFor } from '../agent/warmth.js';
 import { formatOf } from '../voice/formats.js';
@@ -245,7 +245,7 @@ async function billed(usage, tools, tally) {
  *   fetch?: Fetch, signal?: AbortSignal, firstOutputMs?: number, onEvent?: (e: StreamEvent) => void, trace?: ModelTrace,
  *   registry?: import('../registry.js').Registry, now?: () => number, uploads?: import('./uploads.js').Uploads, keep?: Keep,
  *   tally?: import('../workspace.js').Workspace, keepNative?: boolean }} c
- *   firstOutputMs: how long to wait for the first output, and then between pieces of output
+ *   firstOutputMs: how long to wait for the first output once the provider has the request, and then between pieces of output
  *   uploads: photos go to the provider's files API once, then by id, where the endpoint type can (spec §4.8)
  *   keep: kept on the provider's side where its type can and its switch is on
  *   tally: where this device counts provider tools with a monthly allowance (billMonth)
@@ -326,6 +326,8 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   const timer = new AbortController();
   const late = () => timer.abort(/* en */ new DOMException('No output in time.', 'TimeoutError'));
   let t = setTimeout(late, firstOutputMs);
+  const wait = (/** @type {number} */ ms) => { clearTimeout(t); t = setTimeout(late, ms); };
+  let sending = 0; // the time the request has, until the answer's headers
   const linked = signal ? anySignal([signal, timer.signal]) : timer.signal;
   /** @type {Part[]} */
   const parts = [];
@@ -360,8 +362,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       nativeCovers = ev.covers;
       return;
     }
-    clearTimeout(t);
-    t = setTimeout(late, firstOutputMs);
+    wait(firstOutputMs);
     if (firstMs === null && ev.type !== 'usage') firstMs = now() - started;
     if (ev.type === 'text') {
       const last = parts.at(-1);
@@ -404,11 +405,16 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       let res;
       const body = JSON.stringify(applyPatches(built.body, endpoint, model, level, patches));
       bytes = utf8Length(body); // in the trace: how much a kept turn saves
+      // The model's wait starts once the provider has the request (the answer's headers); before, plus the body's time at SLOW_UPLINK.
+      sending = firstOutputMs + Math.ceil((bytes * 8 * 1000) / SLOW_UPLINK);
+      wait(sending);
       try {
         res = await get(built.url, { method: 'POST', headers: built.headers, body, signal: linked, redirect: 'manual' });
       } catch (e) {
         throw cannotConnect(e, linked);
       }
+      sending = 0;
+      wait(firstOutputMs);
       status = res.status;
       noRedirect(res, endpoint);
       if (!res.ok) {
@@ -425,6 +431,12 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   } catch (e) {
     clearTimeout(t);
     let err = asProviderError(e, linked, type, registry);
+    // With photos, likelier the send than the model; text alone stays late (a server that never streams).
+    if (err.said?.code === 'late' && sending && spec.request.messages.some((m) => m.parts.some((p) => p.type === 'image' && !p.fileId))) {
+      const seconds = Math.max(1, Math.round(sending / 1000));
+      /* en */
+      err = new ProviderError('timeout', `No answer in ${seconds} ${seconds === 1 ? 'second' : 'seconds'}. The connection may be too slow to send photos.`, { cause: e, said: { code: 'send', seconds } });
+    }
     // Output that started and then stopped is not "no output in time": it says so, and how long it waited.
     if (err.said?.code === 'late' && firstMs !== null) {
       const seconds = Math.max(1, Math.round(firstOutputMs / 1000));

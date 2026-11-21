@@ -421,7 +421,8 @@ function nextStep(err, retry) {
     case 'bad-request':
       return {};
     default:
-      return { bench: COOLDOWN_MS };
+      // Photos not sent in time (call.js): the link, likelier than the model, so no rest.
+      return err.said?.code === 'send' ? {} : { bench: COOLDOWN_MS };
   }
 }
 

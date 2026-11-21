@@ -508,3 +508,64 @@ test("a photo's upload has a time limit of its own (UPLOAD_MS): a stall ends it,
     AbortSignal.timeout = real;
   }
 });
+
+/** A request whose photo goes in the body (no files API), its data n base64 characters. @param {number} n @returns {any} */
+const photoRequest = (n) => ({ messages: [{ role: 'user', parts: [{ type: 'text', text: 'What is this?' }, { type: 'image', mediaType: 'image/jpeg', data: 'A'.repeat(n) }] }] });
+/**
+ * A fetch whose answer's headers come ms after it is asked (its body going up until then), ended by its signal as a browser's is;
+ * sent: the bodies it was given. @param {number} ms @param {() => Response} [answer]
+ */
+const answersAfter = (ms, answer = () => new Response('streamed')) => {
+  /** @type {string[]} */
+  const sent = [];
+  const get = (/** @type {string} */ _url, /** @type {any} */ init) => new Promise((done, fail) => {
+    sent.push(init.body);
+    const t = ms === Infinity ? undefined : setTimeout(() => done(answer()), ms);
+    init.signal?.addEventListener('abort', () => { clearTimeout(t); fail(init.signal.reason); }, { once: true });
+  });
+  return Object.assign(get, { sent });
+};
+/** An HTTP endpoint type whose answer gives these events, then nothing more until it is stopped. @param {any[]} events */
+const stallsAfter = (events) => httpType([], { read: async function* () { for (const e of events) yield e; await new Promise(() => {}); } });
+const seesPhotos = model({ input: ['text', 'image'] });
+
+test("the model's wait starts once the provider has the whole request: a body slower to send than the wait, answered at once when it is in, is the reply (the user's photo to Shiori, 2026-11-20)", async () => {
+  // A 20 KB body: 2.3 s to send at the slow link the wait allows for, so the provider's answer at 600 ms is well within it, and long past the 100 ms wait.
+  const get = answersAfter(600);
+  const reply = await callOnce({ type: httpType([{ type: 'text', text: 'A pelican.' }, { type: 'stop', reason: 'end' }]), endpoint: endpoint(), model: seesPhotos, key: 'k', request: photoRequest(20_000), fetch: /** @type {any} */ (get), firstOutputMs: 100 });
+  assert.equal(reply.text, 'A pelican.');
+});
+
+test("a request whose body never finishes sending ends once the wait and the body's time on a slow link are up, in words that name the connection and the photos; with no photo, as no output in time", async () => {
+  const { SLOW_UPLINK } = await import('../../src/core/llm/uploads.js');
+  const get = answersAfter(Infinity);
+  const started = performance.now();
+  await assert.rejects(callOnce({ type: httpType([]), endpoint: endpoint(), model: seesPhotos, key: 'k', request: photoRequest(1_000), fetch: /** @type {any} */ (get), firstOutputMs: 100 }), (/** @type {any} */ e) => {
+    assert.equal(e.kind, 'timeout');
+    assert.deepEqual(e.said, { code: 'send', seconds: 1 });
+    assert.equal(e.shown, 'No answer in 1 second. The connection may be too slow to send photos.');
+    assert.equal(e.message, 'No answer in 1 second. The connection may be too slow to send photos.');
+    return true;
+  });
+  const sendMs = (new TextEncoder().encode(get.sent[0]).byteLength * 8 * 1000) / SLOW_UPLINK;
+  assert.ok(sendMs > 100, `the body takes ${sendMs} ms at the slow link`);
+  assert.ok(performance.now() - started >= 100 + sendMs - 2, `it waited ${Math.round(performance.now() - started)} ms, for the wait and the send's ${Math.round(sendMs)} ms`);
+  // Text alone, or a photo sent by its upload's id: the send is no likelier than a slow model, so a server that never streams still says what
+  // its note tells the user to look for.
+  const byId = { messages: [{ role: 'user', parts: [{ type: 'text', text: 'What is this?' }, { type: 'image', mediaType: 'image/jpeg', data: 'A'.repeat(1_000), hash: 'h1', fileId: 'file-1' }] }] };
+  for (const [what, r] of /** @type {const} */ ([['text', request], ['by id', byId]])) {
+    await assert.rejects(callOnce({ type: httpType([]), endpoint: endpoint(), model: seesPhotos, key: 'k', request: /** @type {any} */ (r), fetch: /** @type {any} */ (answersAfter(Infinity)), firstOutputMs: 100 }),
+      (/** @type {any} */ e) => e.kind === 'timeout' && e.said?.code === 'late' && e.message === 'No output started in time.', what);
+  }
+});
+
+test("once the provider has answered, the wait is the model's alone: no output within it ends as no output in time, and output that stops part-way as stopped, never later for the body's size", async () => {
+  for (const [events, code] of /** @type {[any[], string][]} */ ([[[], 'late'], [[{ type: 'text', text: 'A peli' }], 'paused']])) {
+    const started = performance.now();
+    // A 20 KB body (2.3 s at the slow link): the answer's headers at once, then nothing more.
+    await assert.rejects(callOnce({ type: stallsAfter(events), endpoint: endpoint(), model: seesPhotos, key: 'k', request: photoRequest(20_000), fetch: /** @type {any} */ (answersAfter(0)), firstOutputMs: 100 }),
+      (/** @type {any} */ e) => e.kind === 'timeout' && e.said?.code === code);
+    const ms = performance.now() - started;
+    assert.ok(ms < 1000, `${code}: it ended ${Math.round(ms)} ms in, by the model's 100 ms wait from the answer`);
+  }
+});
