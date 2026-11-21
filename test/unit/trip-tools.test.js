@@ -692,7 +692,7 @@ test("a reminder's turn that calls open_trip shows the card, and nothing moves w
   assert.equal(k.agent.kokoro.pendingId, k.asks[0].data.tap, 'the card waits');
   assert.deepEqual(await eventsIn(k, k.kyoto, ['msg.user', 'wake']), []);
   k.agent.answer(k.asks[0].data.tap, 'Open');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.agent.trip, k.kyoto);
   assert.deepEqual((await eventsIn(k, k.kyoto, ['out.speak'])).map((/** @type {any} */ e) => e.data.text), [ANSWER]);
   // The reminder its turn owed is shown in the chat at the cut, once.

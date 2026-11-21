@@ -1284,7 +1284,7 @@ test("a cut, by what the turn was: one waiting on the user, or that annai starte
       k.agent.open(B);
       await k.agent.open(C);
     } else await k.agent.open(B);
-    await k.agent.idle();
+    await idleAtOnce(k);
     eq((await eventsIn(k, A, ['paused'])).length, r.picked ? 1 : 0, `${row}: the paused line`);
     eq(k.notices.filter((/** @type {any} */ n) => n.toast).length, r.picked ? 1 : 0, `${row}: the toast`);
     const results = (await eventsIn(k, A, ['tool.result'])).filter((/** @type {any} */ e) => e.data.name === r.running);
