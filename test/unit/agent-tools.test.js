@@ -172,6 +172,30 @@ test('tracedFetch: no secret annai keeps reaches the trace, whatever its paramet
   assert.match(evs[0].data.url, /q=big\+sur/);
 });
 
+test("tracedFetch: when the keys annai keeps can't be read, a request's record keeps only its host and no error words, and the tool's error none either", async () => {
+  const store = createMemoryStore();
+  await store.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:weather:key', 'WXSECRET9876'));
+  const tx = store.tx;
+  // The store refuses the read the blanking needs (Chromium's at no byte free).
+  store.tx = /** @type {any} */ ((/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => tx.call(store, stores, mode, (/** @type {any} */ t) => fn(stores.includes('secrets') ? { ...t, listSecretIds: () => Promise.reject(new Error('The database connection is closing.')) } : t)));
+  const ok = tracedFetch(store, 'sys', { tool: 'plugin:weather' }, async () => new Response('ok'));
+  await ok('https://api.weather.test/v1/WXSECRET9876/forecast?q=big+sur');
+  const failing = tracedFetch(store, 'sys', { tool: 'plugin:weather' }, async () => { throw new TypeError('Failed to fetch https://api.weather.test/?k=WXSECRET9876'); });
+  const e = await failing('https://api.weather.test/?k=WXSECRET9876').catch((/** @type {any} */ x) => x);
+  assert.equal(e.message, "annai couldn't reach api.weather.test. Is the device offline?");
+  assert.deepEqual(e.said, { code: 'unreachable', where: 'api.weather.test' });
+  assert.equal(e.cause, undefined, 'no browser words');
+  // A key handed over to blank (in an address being tried) is still blanked, in the host too.
+  await tracedFetch(store, 'sys', { tool: 'plugins', blank: ['TRIEDKEY55'] }, async () => new Response('ok'))('https://TRIEDKEY55.example.test/x');
+  store.tx = tx;
+  const evs = await store.tx(['events'], 'readonly', (t) => t.listEvents('sys', { types: ['net.request'] }));
+  assert.deepEqual(evs.map((x) => [x.data.url, x.data.error]), [
+    ['https://api.weather.test/«key»', undefined],
+    ['https://api.weather.test/«key»', "The request failed. (annai couldn't check its error message for keys, so it is not kept.)"],
+    ['https://«key»/«key»', undefined],
+  ]);
+});
+
 test('tracedFetch: a secret is blanked however the address encodes it (encoding differences)', async () => {
   const store = createMemoryStore();
   const key = 'Ab+c/d e=fGh~Xy9';

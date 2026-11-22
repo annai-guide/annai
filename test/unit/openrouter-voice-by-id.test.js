@@ -244,9 +244,10 @@ test("A refused sample's words: the provider's reason as plain text (outside tex
   assert.ok(!blanked.includes('sk-or'), blanked);
   // A key the blanking can't read (broken by a space) leaves no reason: the kind's words, not a prefix of the key.
   assert.equal(await fromBody(400, msg(`Bad header ${KEY.slice(0, 12)} ${KEY.slice(12)}`)), "The provider didn't accept the request. Check the tunables on its provider's page.");
-  // Keys that can't be read (the store fails): no reason at all, whatever the answer says, so a key it echoes can't show; the kind's words.
+  // Keys that can't be read (the store fails): no reason at all, whatever the answer says, so a key it echoes can't show; and the status line, which
+  // can't be checked either, says so in place of its words (spec §9.9).
   const unreadable = /** @type {any} */ ({ tx: () => Promise.reject(new Error('the store cannot be read')) });
-  assert.equal(await speechProblem(unreadable, errorFromResponse(400, msg(`Voice ${KEY} not found`)), true), "The provider didn't accept the request. Check the tunables on its provider's page.");
+  assert.equal(await speechProblem(unreadable, errorFromResponse(400, msg(`Voice ${KEY} not found`)), true), "annai couldn't check this message for keys, so it is not shown.");
   // A voice's 404: the answer gave no words, so the card says what to check, the Voice too; the same for one with words ("Not Found" of a
   // wrong address says the address too); a transcription model's 404 is its model's or address's.
   const bare = msg('Provider returned 404', 404);

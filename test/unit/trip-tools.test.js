@@ -544,7 +544,8 @@ for (const [how, which] of /** @type {const} */ ([['reads and writes refused (Ch
       await until(() => k.notices.some((/** @type {any} */ n) => n.title === NOT_OPEN));
       const card = k.notices.find((/** @type {any} */ n) => n.title === NOT_OPEN);
       assert.equal(card.error?.name, 'UnknownError', 'the refused read, carried for the card');
-      assert.equal(card.body, 'Unable to store record in object store');
+      // Its words: the store refuses the read that checks them for keys too, so the card says so in their place (spec §9.9).
+      assert.equal(card.body, "annai couldn't check this message for keys, so it is not shown.");
       await until(() => k.agent.target === k.trip);
       assert.equal(k.agent.trip, k.trip, 'the chat stays open');
       // The lines carried for Kyoto are kept there, as the open's failure leaves them: refused too when reads and writes both are, and then a second card

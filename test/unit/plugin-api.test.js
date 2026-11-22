@@ -93,7 +93,7 @@ test("annai.secrets.blank gives a copy with every secret annai keeps, and anythi
   assert.equal(await a.secrets.blank(42), 42);
 });
 
-test("annai.secrets.blank fails closed: when annai can't read the secrets it keeps, it rejects rather than give back text it couldn't check; annai's own cards still blank what they can", async () => {
+test("annai.secrets.blank fails closed: when annai can't read the secrets it keeps, it rejects rather than give back text it couldn't check; annai's own cards keep no text they couldn't check", async () => {
   const k = await agentKit([[{ text: '' }]]);
   const KEY = 'sk-planted-endpoint-key-0123456789';
   await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('endpoint:stand-in:key', KEY));
@@ -103,8 +103,8 @@ test("annai.secrets.blank fails closed: when annai can't read the secrets it kee
   k.store.tx = /** @type {any} */ ((/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => (stores.includes('secrets') ? Promise.reject(new Error('The database connection is closing.')) : tx.call(k.store, stores, mode, fn)));
   try {
     await assert.rejects(a.secrets.blank({ text: `key ${KEY}` }), /couldn't read the keys it keeps/);
-    // On the device, a card's text is still shown with what can be blanked (net.js withoutSecretsIn, unchanged).
-    assert.deepEqual(await withoutSecretsIn(k.store, { text: 'Bearer abcdefghijklmnop' }), { text: 'Bearer «key»' });
+    // On the device, a text that can't be checked is a note saying so (net.js withoutSecretsIn, not strict).
+    assert.deepEqual(await withoutSecretsIn(k.store, { text: 'Bearer abcdefghijklmnop' }), { text: "annai couldn't check this message for keys, so it is not shown." });
   } finally {
     k.store.tx = tx;
   }

@@ -664,9 +664,13 @@ export class Agent {
     this.wake({ kind: 'cue', text: AGAIN, again: true, scope: this.scope });
   }
 
-  /** A system card, with any key annai keeps blanked from what it says (spec §9.9). @param {Notice} n */
-  async #notice(n) {
-    const shown = { ...n, title: await shownWithoutSecrets(this.store, n.title), body: await shownWithoutSecrets(this.store, n.body) };
+  /**
+   * A system card, with any key annai keeps blanked from what it says (spec §9.9). Its title is annai's own words, and so are a reminder's (own),
+   * which are Shiori's or the plan's, with no key in them (none is ever in her context): they show as they are when the keys can't be read.
+   * @param {Notice} n @param {{ own?: boolean }} [o]
+   */
+  async #notice(n, { own = false } = {}) {
+    const shown = { ...n, title: await shownWithoutSecrets(this.store, n.title, { own: true }), body: await shownWithoutSecrets(this.store, n.body, { own }) };
     this.#emit('notice', shown);
   }
 
@@ -2057,7 +2061,7 @@ export class Agent {
       const ev = { type: 'reminder', actor: 'system', data: { ...kept, ...(aloud ? { aloud: true } : {}), ...(o.unsaid ? { unsaid: true } : {}), ...(o.waiting ? { waiting: true } : {}) } };
       // A plan's reminder in the screens' words, made from its data; anyone else's as they wrote it.
       const shown = r.plan ? planWords(r.plan) : kept.text;
-      await this.#notice({ tone: 'info', title: r.answer ? t`Shiori's answer` : t`Reminder`, body: shown });
+      await this.#notice({ tone: 'info', title: r.answer ? t`Shiori's answer` : t`Reminder`, body: shown }, { own: true });
       if (aloud) this.voice?.say(shown).catch(() => {});
       await this.#logIn(scope, ev).catch((e) => this.#notSaved(e));
     }

@@ -1499,6 +1499,25 @@ test('an error card and error event never show a key, even when the provider ech
   assert.doesNotMatch(JSON.stringify(await k.events(['error'])), /SECRETKEY/);
 });
 
+test("when annai can't read the keys it keeps, an error card says it couldn't check the message, and neither the card nor the error event shows the key", async (t) => {
+  useClock(t);
+  const KEY = 'sk-ant-SECRETKEY1234567890';
+  const k = await agentKit([[{ error: 'auth', status: 401, message: `Incorrect API key provided: ${KEY}` }]]);
+  await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('llm:ep-0', KEY));
+  const tx = k.store.tx;
+  // Reading one key works (the model's); listing them all, which the blanking needs, is refused (Chromium's store at no byte free).
+  k.store.tx = /** @type {any} */ ((/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => tx.call(k.store, stores, mode, (/** @type {any} */ t) => fn(stores.includes('secrets') ? { ...t, listSecretIds: () => Promise.reject(new Error('The database connection is closing.')) } : t)));
+  k.agent.send('Hi');
+  await k.agent.idle();
+  k.store.tx = tx;
+  assert.equal(k.notices.length, 1);
+  assert.equal(k.notices[0].body, "annai couldn't check this message for keys, so it is not shown.");
+  assert.doesNotMatch(JSON.stringify(k.notices), /SECRETKEY/);
+  const errors = await k.events(['error']);
+  assert.equal(errors.length, 1);
+  assert.doesNotMatch(JSON.stringify(errors), /SECRETKEY/);
+});
+
 test("housekeeping that fails inside a turn ends it with a card and an error event that say so", async (t) => {
   useClock(t);
   const k = await agentKit([[say('one'), say('two'), { error: 'context', status: 413, message: 'prompt is too long' }]],

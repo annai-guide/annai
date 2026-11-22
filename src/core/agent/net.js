@@ -7,7 +7,8 @@ import { answerWords } from '../answer.js';
  * shows every request the agent sends. The address is kept as sent, except that no secret annai
  * keeps may reach the trace (§9.9): a username or password in it, the values of credential-named
  * query parameters, and any stored secret wherever it appears (path, query, an error message) are
- * blanked.
+ * blanked. When the keys annai keeps can't be read, nothing that could hold one is kept: the address
+ * only to its host, and no error's words.
  * @typedef {(url: string, init?: RequestInit) => Promise<Response>} Fetch
  * @typedef {import('../types.js').Store} Store
  */
@@ -19,9 +20,9 @@ const SECRET_MIN = 8;
 /* en */ const BLANK = '«key»';
 
 /**
- * Every secret value annai keeps (keys for models and plugins), longest first. strict: when they can't be
- * read, reject rather than give none (annai.secrets.blank, for what leaves the device).
- * @param {Store} store @param {{ strict?: boolean }} [o] @returns {Promise<string[]>}
+ * Every secret value annai keeps (keys for models and plugins), longest first; null when they can't be read: unknown, never none, so
+ * each reader keeps nothing it can't check (spec §9.9). strict: reject instead (annai.secrets.blank, for what leaves the device).
+ * @param {Store} store @param {{ strict?: boolean }} [o] @returns {Promise<string[] | null>}
  */
 export async function knownSecrets(store, { strict = false } = {}) {
   /** @type {Set<string>} */
@@ -39,7 +40,7 @@ export async function knownSecrets(store, { strict = false } = {}) {
     });
   } catch (e) {
     if (strict) throw new Error(/* en */ "annai couldn't read the keys it keeps, so it couldn't blank them. Try again.", { cause: e }); // a plugin's
-    // no secrets to read: nothing to blank
+    return null; // unknown: any text could hold one
   }
   return [...out].sort((a, b) => b.length - a.length);
 }
@@ -78,30 +79,39 @@ function blankAll(text, secrets) {
 
 /* en */
 const HIDDEN = 'The message held a key, so it is not shown.';
+/* en */
+const UNCHECKED = "annai couldn't check this message for keys, so it is not shown.";
 
 /**
  * Text kept or read (an error in the log, a hold, what a model reads) with every secret annai keeps blanked, and anything shaped like a
- * credential; when one might still show, a plain note instead, in annai's English (spec §9.9). @param {Store} store @param {string} text
- * @param {string} [hidden] that note @param {{ strict?: boolean }} [o] strict: reject when the secrets can't be read
+ * credential; when one might still show, a plain note instead (hidden), and when the keys can't be read, another (unchecked), in annai's
+ * English (spec §9.9). @param {Store} store @param {string} text @param {string} [hidden] that note
+ * @param {{ strict?: boolean, unchecked?: string }} [o] strict: reject when the secrets can't be read
  */
-export async function withoutSecrets(store, text, hidden = HIDDEN, { strict = false } = {}) {
+export async function withoutSecrets(store, text, hidden = HIDDEN, { strict = false, unchecked = UNCHECKED } = {}) {
   const secrets = await knownSecrets(store, { strict });
+  if (!secrets) return text ? unchecked : '';
   const out = blankAll(text, secrets);
   return leaks(out, secrets) ? hidden : out;
 }
 
-/** The same for the user's eyes (a card, a status line): the note in the screens' words. @param {Store} store @param {string} text */
-export const shownWithoutSecrets = (store, text) => withoutSecrets(store, text, t`The message held a key, so it is not shown.`);
+/**
+ * The same for the user's eyes (a card, a status line): the notes in the screens' words. own: annai's own words, or Shiori's, which hold no key: shown as
+ * they are when the keys can't be read. @param {Store} store @param {string} text @param {{ own?: boolean }} [o]
+ */
+export const shownWithoutSecrets = (store, text, { own = false } = {}) => withoutSecrets(store, text, t`The message held a key, so it is not shown.`,
+  { unchecked: own ? text : t`annai couldn't check this message for keys, so it is not shown.` });
 
 /**
- * A value with every text in it as withoutSecrets would show it. strict: reject when the secrets can't be read.
- * @param {Store} store @param {any} value @param {{ strict?: boolean }} [o] @returns {Promise<any>}
+ * A value with every text in it as withoutSecrets would keep it: when the keys can't be read, every text is that note. strict: reject
+ * instead. @param {Store} store @param {any} value @param {{ strict?: boolean }} [o] @returns {Promise<any>}
  */
 export async function withoutSecretsIn(store, value, { strict = false } = {}) {
   const secrets = await knownSecrets(store, { strict });
   /** @param {any} v @returns {any} */
   const walk = (v) => {
     if (typeof v === 'string') {
+      if (!secrets) return v && UNCHECKED;
       const out = blankAll(v, secrets);
       return leaks(out, secrets) ? HIDDEN : out;
     }
@@ -166,9 +176,9 @@ function decodeSafe(text) {
  * The address as the trace keeps it: part by part, any part that holds a secret once decoded is
  * blanked (the host, a path segment, a query name or value), credential-named query values are
  * blanked, and the username, password and fragment are left out.
- * @param {string} url @param {string[]} [secrets]
+ * @param {string} url @param {string[]} [secrets] @param {boolean} [unread] the keys annai keeps couldn't be read: only the host is kept
  */
-export function traceUrl(url, secrets = []) {
+export function traceUrl(url, secrets = [], unread = false) {
   try {
     const u = new URL(url);
     const host = holds(u.hostname, secrets) ? BLANK : u.host;
@@ -180,12 +190,12 @@ export function traceUrl(url, secrets = []) {
     }
     const search = query.toString();
     const out = scrub(`${u.protocol}//${host}${path}${search ? `?${search}` : ''}`, secrets);
-    // Fail closed: if any decoding could still show a secret, the path and query are not kept at all.
-    return leaks(out, secrets) ? `${u.protocol}//${leaks(host, secrets) ? BLANK : host}/${BLANK}` : out;
+    // Fail closed: if any decoding could still show a secret, or the keys couldn't be read, the path and query are not kept at all.
+    return unread || leaks(out, secrets) ? `${u.protocol}//${leaks(host, secrets) ? BLANK : host}/${BLANK}` : out;
   } catch {
     // Not an address: keep only what comes before any query or fragment, if that holds no secret.
     const out = scrub(String(url).split(/[?#]/)[0], secrets);
-    return leaks(out, secrets) ? BLANK : out;
+    return unread || leaks(out, secrets) ? BLANK : out;
   }
 }
 
@@ -198,8 +208,9 @@ export function traceUrl(url, secrets = []) {
 export function tracedFetch(store, scope, who, get = (url, init) => fetch(url, init)) {
   return async (url, init = {}) => {
     const started = Date.now();
-    const secrets = [...new Set([...await knownSecrets(store), ...(who.blank ?? []).filter((k) => typeof k === 'string' && k)])].sort((a, b) => b.length - a.length);
-    const base = { kind: 'web', tool: who.tool, ...(who.wake ? { wake: who.wake } : {}), url: traceUrl(url, secrets), method: init.method ?? 'GET' };
+    const known = await knownSecrets(store);
+    const secrets = [...new Set([...known ?? [], ...(who.blank ?? []).filter((k) => typeof k === 'string' && k)])].sort((a, b) => b.length - a.length);
+    const base = { kind: 'web', tool: who.tool, ...(who.wake ? { wake: who.wake } : {}), url: traceUrl(url, secrets, !known), method: init.method ?? 'GET' };
     try {
       const res = await get(url, init);
       const bytes = Number(res.headers.get('content-length')) || undefined;
@@ -211,8 +222,11 @@ export function tracedFetch(store, scope, who, get = (url, init) => fetch(url, i
       const why = init.signal?.aborted ? /** @type {any} */ (init.signal.reason) : undefined;
       const own = typeof why?.message === 'string' && !(why instanceof DOMException && why.name === 'AbortError');
       const said = blankAll(String(/** @type {any} */ (own ? why : e)?.message ?? e), secrets);
-      const held = leaks(said, secrets);
-      /* en */ const error = held ? 'The request failed. (Its error message held a secret, so it is not kept.)' : said;
+      // Not kept when it held a secret, or when the keys couldn't be read to check it.
+      const held = !known || leaks(said, secrets);
+      /* en */
+      const error = !known ? "The request failed. (annai couldn't check its error message for keys, so it is not kept.)"
+        : held ? 'The request failed. (Its error message held a secret, so it is not kept.)' : said;
       await logEvent(store, scope, { type: 'net.request', data: { ...base, status: 0, ms: Date.now() - started, error } }).catch(() => {});
       if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
       // No answer at all (offline, blocked, no such host): the tool's answer, not a crash in its code (spec §17).
