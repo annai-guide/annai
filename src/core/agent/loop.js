@@ -11,7 +11,7 @@ import { sha256Hex } from '../hash.js';
 import { record, storedTexts, TALK_TAG } from './log.js';
 import { blobBytes, canRead } from '../reach.js';
 import { compactionNeed, cutAt, replyPrompt, dueTokens, tokensAfter, requestBytes, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
-import { Transcript, resolveEvent, repair, NOT_SAID, SAID, STOPPED, CUT, NOT_RUN, NOT_ANSWERED, NOT_HEARD, LET_GO, MOVED } from './transcript.js';
+import { Transcript, resolveEvent, repair, reaches, NOT_SAID, SAID, STOPPED, CUT, NOT_RUN, NOT_ANSWERED, NOT_HEARD, LET_GO, MOVED } from './transcript.js';
 import { toolList, definitions, runTool, Stuck, toolSwitches, resolvePath, ALWAYS_ON } from './tools.js';
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint, systemText } from './context.js';
 import { Warmth, TTL_MS, ttlFor, wantedTtl, SOON_MS } from './warmth.js';
@@ -53,7 +53,7 @@ import { FILES_ONLY, PHOTO_ONLY, handoverOf } from '../handover.js';
  *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate', again?: boolean, at?: number, input?: boolean, why?: string,
  *   call?: { name: string, input: any }, seq?: number, watched?: boolean, forUser?: string, retold?: boolean, files?: string[], titles?: string[],
  *   by?: { name: string, first: string | null, tried: boolean } | null, handed?: import('../handover.js').HandedFile[], handover?: string, recap?: string, claim?: string, chose?: boolean, typed?: boolean, fromScope?: string, turn?: string, urgent?: boolean, shown?: boolean }} Wake
- *   shown: annai showed the user its reminders itself (#remindWaiting, #keepWakes): her line for the wake says so; typed: in the type box;
+ *   shown: annai showed the user its reminders itself (#remindWaiting, #keepWakes, #open): her line for the wake says so; typed: in the type box;
  *   by: a note's, the model that wrote it; turn: a note's, the sender's turn it came from (its wake id)
  *   handed, handover: a hand-over's files and its id (the user's message with files, handover.js): the turn that takes it carries the id;
  *   recap: what Shiori said of a trip before, written into the trip she started or opened for a hand-over; fromScope: a hand-over's copy
@@ -244,6 +244,11 @@ const byAnnai = (w) => w.kind === 'live' || w.kind === 'trigger' || w.kind === '
 /** What a wake tells her: its words, and that annai showed the user its reminder already, when it did (#remindWaiting, #keepWakes). @param {Wake} w */
 const told = (w) => (w.shown ? `${w.text} ${SHOWN}` : w.text);
 const SHOWN = /* en */ '(annai has already shown the user its reminder.)';
+/** A reminder as its entry and a wake's record keep it. @param {Reminder} r */
+const reminderData = (r) => {
+  const text = String(r?.text ?? '').trim();
+  return text ? { watch: String(r.watch ?? ''), text, ...(r.answer ? { answer: true } : {}), ...(r.plan ? { plan: r.plan } : {}) } : null;
+};
 /** Her calls that talk to the user and then listen or wait for them. */
 const TALKS = ['speak', 'ask', 'wait'];
 
@@ -758,6 +763,13 @@ export class Agent {
     // nothing: `me` takes no more turns (timeline stage 7), so a removal or a failed start never queues a restart there.
     const owed = scope !== ME && Boolean(repaired || transcript.unanswered) && (await (this.#half.restart?.() ?? true));
     if (generation !== this.#generation) return;
+    // What the log still owes the traveller (a reminder nothing settled: its turn was cut, or the page was left as it ended) is shown now, in any scope,
+    // whatever the transcript says of the turn. Kokoro's half shows it, not Koe's; a restart either queues says so (SHOWN) and carries none.
+    const showing = transcript.owedReminders.length > 0;
+    if (showing && this.#half.name !== 'koe') {
+      await this.remind(transcript.owedReminders, scope, { unsaid: true });
+      if (generation !== this.#generation) return;
+    }
     this.trip = trip;
     this.scope = scope;
     this.transcript = transcript;
@@ -785,7 +797,7 @@ export class Agent {
               : transcript.waiting === 'wake' ? `You haven't answered this yet: it came before annai restarted. ${quiet}`
                 : `annai restarted before you answered. ${quiet}`;
       // A hand-over still owed is the restart turn's, so what she does with it can be undone (the page closed before she was done).
-      this.#queue.push({ kind: 'restart', text, scope, ...(transcript.handover ? { handover: transcript.handover } : {}) }); // it runs once the open is done
+      this.#queue.push({ kind: 'restart', text, scope, ...(showing ? { shown: true } : {}), ...(transcript.handover ? { handover: transcript.handover } : {}) }); // it runs once the open is done
     }
     this.#emit('open', { trip, scope });
   }
@@ -1749,10 +1761,10 @@ export class Agent {
     const settings = await this.settings();
     const window = (await this.#mainModel())?.contextWindow ?? null;
     const [latest] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['compaction'], reverse: true, limit: 1 }));
-    // The conversation only, by type: what the summary is made of, and what the cut is measured on (not Koe's).
+    // The conversation only, by type: what the summary is made of, and what the cut is measured on (not Koe's, nor a reply shown as written: its model.turn has it).
     const split = this.#rules() === 'kokoro';
     const events = (await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: [...SAID], ...(latest ? { after: latest.data.to } : {}) })))
-      .filter((e) => !NOT_SAID.has(e.type) && (e.data?.half !== 'koe' || e.type === 'heard') && e.data?.tag !== 'koe' && (split || !['note', 'halves'].includes(e.type)) && !e.type.startsWith('out.'));
+      .filter((e) => !NOT_SAID.has(e.type) && (e.data?.half !== 'koe' || e.type === 'heard') && e.data?.tag !== 'koe' && (split || !['note', 'halves'].includes(e.type)) && !e.type.startsWith('out.') && e.type !== 'grounded');
     const items = [];
     for (const e of events) {
       const texts = await storedTexts(this.store, e);
@@ -2005,11 +2017,11 @@ export class Agent {
     // Said with voice on, whichever conversation it is for (choice 3), after whatever is being said (the speaker queues), never over a live session.
     const aloud = Boolean(this.voice?.on) && (o.aloud || !this.#half.hushed?.()) && !o.silent;
     for (const r of list) {
-      const text = String(r?.text ?? '').trim();
-      if (!text) continue;
-      const ev = { type: 'reminder', actor: 'system', data: { watch: String(r.watch ?? ''), text, ...(r.answer ? { answer: true } : {}), ...(r.plan ? { plan: r.plan } : {}), ...(aloud ? { aloud: true } : {}), ...(o.unsaid ? { unsaid: true } : {}), ...(o.waiting ? { waiting: true } : {}) } };
+      const kept = reminderData(r);
+      if (!kept) continue;
+      const ev = { type: 'reminder', actor: 'system', data: { ...kept, ...(aloud ? { aloud: true } : {}), ...(o.unsaid ? { unsaid: true } : {}), ...(o.waiting ? { waiting: true } : {}) } };
       // A plan's reminder in the screens' words, made from its data; anyone else's as they wrote it.
-      const shown = r.plan ? planWords(r.plan) : text;
+      const shown = r.plan ? planWords(r.plan) : kept.text;
       await this.#notice({ tone: 'info', title: r.answer ? t`Shiori's answer` : t`Reminder`, body: shown });
       if (aloud) this.voice?.say(shown).catch(() => {});
       await this.#logIn(scope, ev).catch((e) => this.#notSaved(e));
@@ -2041,10 +2053,11 @@ export class Agent {
     this.#apply(stored, r);
     // The same trip being opened again: its reading may have been made before this write, so #open's splice adds it unless the reading had it (told once, here).
     if (this.#opens && stored.scope === (this.#target ?? ME)) this.#late.push({ e: stored, r });
-    // annai's own card (confirm) is annai's, not her words: it neither answers the user nor settles what she owes them.
-    const hers = ev.type.startsWith('out.') && ev.actor !== 'system';
-    if (hers) this.#facts.spoke = true;
-    if (hers || ev.type === 'grounded') this.#reached++;
+    // annai's own card (confirm) is annai's, not her words: it neither answers the user nor settles what she owes them (reaches).
+    if (reaches(ev)) {
+      this.#reached++;
+      if (ev.type !== 'grounded') this.#facts.spoke = true;
+    }
     this.#emit('event', stored);
     await this.#half.logged?.(stored, r);
     return stored;
@@ -2066,8 +2079,13 @@ export class Agent {
       if (open && scope === this.scope) return this.#write(ev);
       const e = await record(this.store, scope, { now: this.#stamp(scope), ...this.#marked(ev) });
       if (!open) this.#emit('event', e); // heard as a held wake's writer's are (#keptIn): a draft is named by a spoken line, live mode follows its rows
-      else if (scope === this.scope) this.#joinLate(e);
-      else this.#late.push({ e });
+      else {
+        if (scope === this.scope) this.#joinLate(e);
+        else this.#late.push({ e });
+        // The other half reads this conversation too, and may have read it before this entry (Halves opens both at once): #write's path tells it, this one must too
+        // (observe holds it for an open under way), or Koe's next turn doesn't know annai showed the reminder this entry is.
+        await this.#half.logged?.(e, { texts: {}, images: [] });
+      }
       return e;
     });
   }
@@ -2107,11 +2125,13 @@ export class Agent {
       // Her recap is her line, shown where it is written: below the user's line it came with (a move's arrival).
       const below = wakes.some((w) => theirs(w) && !w.logged) ? wakes.filter((w) => w.recap) : [];
       const first = wakes.filter((w) => !below.includes(w));
-      if (!meanwhile) await log({ type: 'wake', actor: 'system', data: { id: wakeId, reasons: first.map(reasonOf), ...(handover !== undefined ? { handover } : {}) } });
+      const reminders = wakes.flatMap((w) => w.fallbacks ?? []).flatMap((r) => (r.cue ? [] : reminderData(r) ?? [])); // a cue is hers
+      const carried = reminders.length ? { reminders } : {};
+      if (!meanwhile) await log({ type: 'wake', actor: 'system', data: { id: wakeId, reasons: first.map(reasonOf), ...(handover !== undefined ? { handover } : {}), ...carried } });
       else {
         // A cue already in the log (a review, "Koe answered the user") is still a line here: "woke for" gives it only once.
         const others = first.filter((w) => !theirs(w) && (!w.logged || w.kind === 'cue'));
-        if (others.length) await log({ type: 'wake', actor: 'system', data: { id: wakeId, meanwhile: true, reasons: others.map(reasonOf) } });
+        if (others.length || reminders.length) await log({ type: 'wake', actor: 'system', data: { id: wakeId, meanwhile: true, reasons: others.map(reasonOf), ...carried } });
       }
       for (const w of wakes) {
         if (w.logged) continue;

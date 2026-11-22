@@ -220,6 +220,14 @@ async function boot() {
   // draft possible, nothing is, and no turn runs (the loop's guard).
   const opened = exists ? active : await chats.whenReady().catch((e) => { console.warn(/* en */ "the new conversation couldn't be made ready", e); return null; });
   if (opened !== active) updateAppSettings(ws, { activeTrip: opened }).catch(() => {});
+  // What the agent says from its open on waits for the shell, in order, as the push mirror's cards do (`early`): the open can finish before the shell is up, and a card
+  // nothing listens for yet is lost, with its entry written (the card for a reminder the log owed, which the open shows at once), so the reminder never reaches the traveller.
+  /** @type {(() => void)[]} */
+  const agentEarly = [];
+  let takeDown = (/** @type {string} */ key) => { agentEarly.push(() => takeDown(key)); };
+  let showCard = (/** @type {any} */ n) => { agentEarly.push(() => showCard(n)); };
+  agent.on('clear', (key) => takeDown(key));
+  agent.on('notice', (n) => showCard(n));
   agent.open(opened).catch((e) => console.warn(/* en */ 'Shiori could not open the conversation', e));
   // Records a released copy wrote get their dates and last talked once; live mode chooses the trip in play from them.
   await backfillTrips(ws).catch((e) => console.warn(/* en */ "trips' dates couldn't be mirrored", e));
@@ -303,14 +311,15 @@ async function boot() {
   // A card the agent names (key) is taken down when a later turn works, and replaced by a newer one of its name.
   /** @type {Map<string, () => void>} */
   const named = new Map();
-  agent.on('clear', (/** @type {string} */ key) => named.get(key)?.());
-  agent.on('notice', (n) => {
+  takeDown = (/** @type {string} */ key) => named.get(key)?.();
+  showCard = (n) => {
     // A card for a full device (a turn stopped by it, a photo it kept back): the storage card in its place, which says what works (spec §17).
     if (explainNotice({ notices: shell.notices, go: (/** @type {string} */ hash) => { location.hash = hash; } }, n)) return;
     if (n.key) named.get(n.key)?.();
     const dismiss = shell.notices.card(n);
     if (n.key) named.set(n.key, dismiss);
-  });
+  };
+  for (const run of agentEarly.splice(0)) run();
   tellGps({ live, notices: shell.notices });
   voice.onNote((note) => shell.notices.card({ title: note, toast: true }));
   // Leaving the page cancels Shiori's request; WebKit does so before pagehide, as the navigation begins.

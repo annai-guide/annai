@@ -44,7 +44,9 @@ export const NOT_SAID = new Set(['location', 'trigger.fired']);
  * The log entry types the conversation is made of (what apply() reads; compaction aside), so it is
  * read by type: a day of location points is never walked. A type apply() learns goes here too.
  */
-export const SAID = Object.freeze(['wake', 'msg.user', 'model.turn', 'photo.replace', 'error', 'heard', 'heard.text', 'reminder', 'tool.result', 'note', 'halves', 'out.speak', 'out.show', 'out.ask', 'handover.undo', 'conversation.moved', 'turn.end']);
+export const SAID = Object.freeze(['wake', 'msg.user', 'model.turn', 'photo.replace', 'error', 'heard', 'heard.text', 'reminder', 'tool.result', 'note', 'halves', 'out.speak', 'out.show', 'out.ask', 'handover.undo', 'conversation.moved', 'turn.end', 'grounded']);
+/** A line of hers that reached the user (never annai's own card), or a reply shown as written: the loop's count and #owing share it. @param {{ type: string, actor?: string }} e */
+export const reaches = (e) => (e.type.startsWith('out.') && e.actor !== 'system') || e.type === 'grounded';
 /** Koe's window (plan decision 5): its last 12 exchanges, its start moving in jumps of 6. */
 export const KOE_WINDOW = 12;
 export const KOE_JUMP = 6;
@@ -115,6 +117,9 @@ export class Transcript {
   #handover = null;
   /** What the restart carries: a cut turn's own, as its wakes and the user's lines it took up name it; undefined when nothing says (the newest owed). @type {string | null | undefined} */
   #carried = undefined;
+  /** What the log still owes the traveller: reminders its wake records carried that nothing settled (Agent.open shows them). @type {import('./loop.js').Reminder[]} */
+  owedReminders = [];
+  #koe = new WeakSet(); // Koe's
   /** @type {Map<string, string>} Shiori's tool calls by id, to their tool names */
   #calls = new Map();
   /** @type {Set<string>} */
@@ -150,6 +155,7 @@ export class Transcript {
     const texts = { ...d, ...r.texts };
     const koe = this.half === 'koe';
     this.#at = e.seq;
+    this.#owing(e, d);
     if (e.type === 'msg.user') this.newestPhoto = r.images.length > 0;
     if (e.type === 'msg.user' && typeof d.handover === 'string') this.#handover = this.#carried = d.handover;
     if (e.type === 'compaction') {
@@ -407,6 +413,17 @@ export class Transcript {
     if (koe) this.#window();
     if (!this.from) this.from = e.seq;
     this.to = e.seq;
+  }
+
+  /** The loop's rule: the newest wake record with a reminder owes it, in its half, till its entry or her next line. @param {any} e @param {any} d */
+  #owing(e, d) {
+    const koe = d.half === 'koe';
+    /** @type {any[]} */
+    const list = e.type === 'wake' && Array.isArray(d.reminders) ? d.reminders.filter((r) => r?.text) : e.type === 'reminder' ? [d] : [];
+    this.owedReminders = this.owedReminders.filter((x) => !(reaches(e) && this.#koe.has(x) === koe) && !list.some((r) => r.watch === x.watch && r.text === x.text));
+    if (e.type !== 'wake') return;
+    for (const r of list) if (koe) this.#koe.add(r);
+    this.owedReminders.push(...list);
   }
 
   /** A line of the user's joined a turn that carries none: join() (loop.js) takes the owed hand-over up for it, though its record may not be written yet (an older log, a kill between the writes). */

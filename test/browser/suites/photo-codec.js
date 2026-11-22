@@ -1,4 +1,5 @@
 import { canEncode, encodePhoto } from '../../../src/ui/photo-codec.js';
+import { photoSettings, MAX_CANVAS_PIXELS } from '../../../src/core/photos.js';
 
 const base = { formats: ['image/webp', 'image/jpeg'], quality: 0.9, maxEdge: null, maxBytes: null, maxPixels: 4096 * 4096 };
 /** @param {string} name */
@@ -25,6 +26,41 @@ async function noise(width, height) {
   for (let i = 0; i < img.data.length; i++) img.data[i] = (i % 4 === 3) ? 255 : (Math.imul(i, 2654435761) >>> 24);
   g.putImageData(img, 0, 0);
   return c.convertToBlob({ type: 'image/png' });
+}
+
+/**
+ * A full-size phone photo, 4032×3024, stored as a JPEG at 0.9 (about 3.7 MB, as a 12 MP camera's): a sky, buildings, a timetable
+ * board with small text, and sensor noise, which keeps it from compressing as a drawing would.
+ */
+async function fullSize() {
+  const [w, h] = [4032, 3024];
+  const c = new OffscreenCanvas(w, h);
+  const g = /** @type {OffscreenCanvasRenderingContext2D} */ (c.getContext('2d'));
+  let seed = 1;
+  const rnd = () => (seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 2 ** 32;
+  const sky = g.createLinearGradient(0, 0, 0, h / 3);
+  sky.addColorStop(0, '#4a7fc0');
+  sky.addColorStop(1, '#cfe0f0');
+  g.fillStyle = sky;
+  g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 80; i++) {
+    g.fillStyle = `hsl(${Math.floor(rnd() * 360)} ${Math.floor(20 + rnd() * 60)}% ${Math.floor(20 + rnd() * 60)}%)`;
+    g.fillRect(rnd() * w, h / 4 + (rnd() * h) / 2, 100 + rnd() * 600, 100 + rnd() * 900);
+  }
+  g.fillStyle = '#f4f1e8';
+  g.fillRect(400, 1400, 3200, 1300);
+  g.fillStyle = '#222';
+  g.font = '40px sans-serif';
+  for (let y = 1460; y < 2680; y += 52) g.fillText(`${String(6 + (y % 17)).padStart(2, '0')}:${String(y % 60).padStart(2, '0')}  Platform ${y % 9}  Limited Express for Kyoto, Osaka and Kobe`, 440, y);
+  const img = g.getImageData(0, 0, w, h);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const n = (rnd() - 0.5) * 24;
+    img.data[i] += n;
+    img.data[i + 1] += n;
+    img.data[i + 2] += n;
+  }
+  g.putImageData(img, 0, 0);
+  return c.convertToBlob({ type: 'image/jpeg', quality: 0.9 });
 }
 
 /** @param {any} test @param {any} assert */
@@ -79,6 +115,16 @@ export default function (test, assert) {
 
   test("a photo the browser can't read is refused, never drawn blank", async () => {
     await assert.rejects(encodePhoto(new Blob(['not a photo'], { type: 'image/jpeg' }), base));
+  });
+
+  test("a full-size photo's copy for Shiori, at the default settings, is at most 256 KiB and still 1000 px or more (spec §4.8; a slow mobile link, 2026-11-21)", async () => {
+    // 1000 px is the spec's example (§4.8) of a small setting that stays usable.
+    const photo = await fullSize();
+    for (const formats of [photoSettings({}).request.formats, ['image/jpeg']]) { // ['image/jpeg']: as an iPhone writes it
+      const r = await encodePhoto(photo, { ...photoSettings({}).request, formats, maxPixels: MAX_CANVAS_PIXELS });
+      assert.ok(r.bytes.length <= 256 * 1024, `${r.type}: ${r.bytes.length} bytes`);
+      assert.ok(Math.max(r.width, r.height) <= 2000 && Math.max(r.width, r.height) >= 1000, `${r.type}: ${r.width}x${r.height}`);
+    }
   });
 
   test('encodePhoto: a crop draws only that part of the photo', async () => {

@@ -56,6 +56,20 @@ test('cold: the utility model writes the summary; the last three exchanges stay 
   assert.deepEqual((await Transcript.load(k.store, k.trip)).messages, msgs);
 });
 
+test("cold: a reply shown as written (grounded) isn't measured again: its words are in its model.turn and the provider's html never reaches her, so the cut falls where it would without the entry", async () => {
+  const k = await agentKit([[say('ok')]], { utility: [{ text: 'They planned dinner at Nepenthe.' }] });
+  for (let i = 0; i < 5; i++) {
+    k.agent.send(`Message ${i}`);
+    await k.agent.idle();
+  }
+  // As the loop writes one (G4): her words in the data, the provider's suggestions (a big block) as a blob. Counted, it would fill the third kept for itself.
+  await record(k.store, k.trip, { type: 'grounded', actor: 'shiori', data: { wake: 'w-x', source: 'Google Search', text: 'Open till 10.', links: [], stored: ['html'] }, texts: [['html', 'x'.repeat(400_000)]] });
+  assert.equal(await k.agent.compact('cold'), true);
+  const all = JSON.stringify(k.agent.transcript.messages);
+  assert.equal(all.includes('Message 0'), false, 'the oldest exchange is summarized');
+  for (const n of [1, 2, 3, 4]) assert.equal(all.includes(`Message ${n}`), true, `Message ${n} stays word for word, as without the entry`);
+});
+
 test('warm: the model holding the cache summarizes from the cached conversation, and may move facts into memory first', async () => {
   const k = await agentKit([[say('a'), say('b'), say('c'), say('d'),
     { toolCalls: [{ name: 'edit', input: { path: '/me/memory.md', old: '# Memory', new: '# Memory\n- Vegetarian' } }, { name: 'write', input: { path: '/trip/notes/x.md', content: 'no' } }] },
@@ -179,7 +193,8 @@ test('with uploads, a big photo makes no housekeeping due (spec §6.5, review I7
     /** @type {any[]} */
     const timers = [];
     const k = await agentKit([[say('ok')]], { uploading, agent: { timers: { set: (/** @type {any} */ fn) => { timers.push(fn); return timers.length; }, clear: (/** @type {number} */ h) => { timers[h - 1] = null; } } } });
-    await updateAppSettings(k.ws, { shiori: { compaction: { maxRequestMiB: 1 } } });
+    // A traveller's own cap of 1 MiB for photos sent: the photo goes as it is, not as a smaller copy.
+    await updateAppSettings(k.ws, { shiori: { compaction: { maxRequestMiB: 1 } }, photos: { request: { maxBytes: 1024 * 1024 } } });
     await k.ws.write(k.trip, '/files/big.webp', new TextEncoder().encode('x'.repeat(700_000)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
     k.agent.send('Look', { photos: [{ path: '/trip/files/big.webp' }] });
     await k.agent.idle();
