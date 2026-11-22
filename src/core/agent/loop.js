@@ -1491,6 +1491,17 @@ export class Agent {
     return owed.length ? this.#remindCounted(owed, scope, { silent: true }) : Promise.resolve();
   }
 
+  /**
+   * The sign's Stop takes wakes out of the queue before any turn has them (the open conversation opening again, housekeeping): what the user sent among them is
+   * written down as stopped, as a gathering turn's is (#stopGathered; spec §6.7: what they sent meanwhile is kept, nothing answers it), and every one's
+   * reminders are shown (remindDropped). Koe's notes and annai's own notices among them are dropped as they were. Never rejects.
+   * @param {Wake[]} wakes @param {string} [scope] their conversation; the open one's if not given
+   */
+  stopDropped(wakes, scope = this.scope) {
+    this.#stopWakes(wakes.filter(isTheirs));
+    return this.remindDropped(wakes, scope);
+  }
+
   /** Wakes that never start a turn, written into the conversation all the same, with a quiet "stopped"; a write that fails is told (#notSaved). @param {Wake[]} wakes */
   #stopWakes(wakes) {
     if (!wakes.length) return;

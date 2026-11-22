@@ -431,7 +431,8 @@ export class Transcript {
   /**
    * The loop's rule: the newest record with a reminder owes it, till its entry; a wake record's, in its half, till her next line too. One a page held
    * (`reminder.held`: no turn has it yet) is settled by no line, only by its entry or by the record of the turn that takes it. Each keeps its page's mark
-   * (`held`) where the record has one: a held record always, a wake record only Koe's session's (`page`), which Koe's own lines settle as any wake's.
+   * (`held`) where the record has one: a held record always, a wake record only Koe's session's (`page`), which Koe's own lines settle as any wake's,
+   * except a live line cut off (`cut`): the session never counts one as passing a note on (LiveKoe#passes), and keeps what it owes for when the page is back.
    * @param {any} e @param {any} d
    */
   #owing(e, d) {
@@ -441,8 +442,10 @@ export class Transcript {
     /** @type {any[]} */
     const list = (e.type === 'wake' || held) && Array.isArray(d.reminders) ? d.reminders.filter((r) => r?.text).map((r) => (mark ? { ...r, ...mark } : r))
       : e.type === 'reminder' ? [d] : [];
-    // A line settles what its half still owes; a held copy is no half's yet (no turn has it), so no line settles it.
-    this.owedReminders = this.owedReminders.filter((x) => !(reaches(e) && this.#koe.has(x) === koe && (koe || !('held' in x))) && !list.some((r) => r.watch === x.watch && r.text === x.text));
+    // A line settles what its half still owes. A `reminder.held` copy is no half's yet (no turn or session record has it), so no line settles it; once a session's
+    // wake record carries it, it is Koe's, and her lines settle it, but not a live one cut off: the session still owes it (a page hidden mid-sentence keeps it).
+    const settles = reaches(e) && !(d.live && d.cut);
+    this.owedReminders = this.owedReminders.filter((x) => !(settles && this.#koe.has(x) === koe && (koe || !('held' in x))) && !list.some((r) => r.watch === x.watch && r.text === x.text));
     if (e.type === 'reminder') return;
     for (const r of list) if (koe) this.#koe.add(r);
     this.owedReminders.push(...list);

@@ -1,10 +1,12 @@
 // A reminder held only in memory reaches the log (the Deferred entry "A reminder held only in memory is lost when annai is closed", which this change
 // closes; spec §11.3). Whatever holds a watch's reminder in memory before a turn's wake record carries it (a wake queued behind her running turn; Koe's live
 // session, out of view too) writes it to its conversation's log as it is first held (`reminder.held`), and the next open shows what the log still owes. A
-// held one is no turn's yet: only its entry, or the record of the turn or session that takes it, settles it, never a line of hers written meanwhile. The
-// open leaves what this page still holds to it (Koe's session's too, by the one page mark). Each test is a kill, as the final review's probe was: the first
-// page is left as it is, frozen (its turn stuck in a tool, its queue, its sockets and timers as they were), and a new page's agent opens the same store,
-// so what it shows is only what the first page wrote.
+// held one is no turn's yet: only its entry, or the record of the turn or session that takes it, settles it, never a line of hers written meanwhile (nor a live
+// line cut off: the session still owes what it was saying). The open leaves what this page still holds to it (Koe's session's too, by the one page mark). Each
+// test is a kill, as the final review's probe was: a new page's agent opens the same store, so what it shows is only what the first page wrote. The first page
+// is left as it is, frozen where the test's clock holds it (its turn stuck in a tool, its queue, its timers); the live tests keep the real clock and a real
+// socket, so their first page is not frozen: its session goes on, or is closed as a page going out of view closes it, while the test runs. A test that is not
+// a kill (a Stop, a second open in the same page) says so, and checks what that page itself shows.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, until, idleAtOnce, inTime, holdAtDoor, raw } from './agent-kit.js';
@@ -236,7 +238,7 @@ for (const [mode, o] of MODES) {
 
 // The wake is held for the conversation it is for (#push's scope is the target's): one that comes as that conversation is being opened is in its log, not
 // in the one still open. Only one Shiori queues it then: Halves' route holds a wake behind an open under way (its refresh waits for the open), so it is
-// not in a queue yet, which the Deferred entry "A reminder in memory can still be lost in annai's first seconds or after an urgent cut" names.
+// not in a queue yet, which the Deferred entry "A reminder in memory can still be lost in annai's first seconds" names.
 test("a watch's wake queued while its conversation is opening as the page is killed: it is held in that conversation's log, not the one still open, and the next start shows its reminder once", async (t) => {
   useClock(t);
   const k = await agentKit([[asleep]]);
@@ -260,11 +262,11 @@ test("a watch's wake queued while its conversation is opening as the page is kil
 // The sign's Stop, or Undo's, while a wake waits in Kokoro's queue with no turn started (a conversation opening, housekeeping): the wake is dropped, and its
 // reminder is shown at the Stop, silently, once (the Stop stops her, not the reminder; spec §6.7), as a Stop of a gathering turn and Start fresh show theirs.
 // Held until then, nothing else would show it in this page: its page mark hides it from this page's open, and the next start would be late.
-/** What the Stop showed: its card once, said nowhere (voice on), and its entry (not said aloud) in the conversation. @param {any} k @param {any[]} cards @param {string} scope */
-async function shownSilently(k, cards, scope) {
-  assert.deepEqual(reminders(cards), [LEAVE], 'shown at the Stop, once');
-  assert.equal(k.said.some((/** @type {string} */ x) => x.includes(LEAVE)), false, 'not said: silently');
-  assert.deepEqual((await k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types: ['reminder'] }))).map((/** @type {any} */ e) => [e.data.text, e.data.aloud ?? false]), [[LEAVE, false]], 'its entry');
+/** What the Stop showed: its card once, said nowhere (voice on), and its entry (not said aloud) in the conversation. @param {any} k @param {any[]} cards @param {string} scope @param {string} [words] */
+async function shownSilently(k, cards, scope, words = LEAVE) {
+  assert.deepEqual(reminders(cards), [words], 'shown at the Stop, once');
+  assert.equal(k.said.some((/** @type {string} */ x) => x.includes(words)), false, 'not said: silently');
+  assert.deepEqual((await k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types: ['reminder'] }))).map((/** @type {any} */ e) => [e.data.text, e.data.aloud ?? false]), [[words, false]], 'its entry');
 }
 
 test("the sign's Stop while a conversation opens, with a wake waiting for it in the queue: its reminder is shown at the Stop, silently, and the next start shows nothing", async (t) => {
@@ -290,6 +292,30 @@ test("the sign's Stop while a conversation opens, with a wake waiting for it in 
   const next = await nextStart(k, true);
   assert.deepEqual(reminders(next.cards), [], 'nothing late');
   assert.deepEqual(await entries(k), [LEAVE]);
+});
+
+// A cue (a place, the road) is hers to say or let pass, held by no one and owed only until a model has it: one the Stop drops will be had by no model, so it is
+// shown, as a wake that failed before a turn (wakeFailed) or a turn that ends unanswered (#showOwed) shows its own.
+test("the sign's Stop while a conversation opens, with a cue's wake (a place) waiting for it in the queue: the cue is shown at the Stop, silently, as no model will say it", async (t) => {
+  useClock(t);
+  const k = await agentKit([[{ toolCalls: [linger] }, asleep]], { halves: true, voice: { mode: 'on' } });
+  const cards = raw(k);
+  const tool = gates(k.agent.kokoro);
+  k.agent.send('What is near?');
+  await until(() => tool.calls === 1);
+  k.agent.wake({ kind: 'trigger', text: 'You are near Bixby Bridge.', fallbacks: [{ watch: 'w2', text: 'Bixby Bridge is near', cue: true }] });
+  await settled(); // queued behind her turn; nothing is held for a cue
+  const slow = slowOpen(k);
+  slow.shut();
+  const opening = k.agent.open(k.trip);
+  await until(() => slow.held() && !k.agent.kokoro.turning);
+  k.agent.stopKokoro();
+  await idleAtOnce({ agent: k.agent.kokoro });
+  await shownSilently(k, cards, k.trip, 'Bixby Bridge is near');
+  slow.open();
+  await opening;
+  await idleAtOnce(k);
+  assert.deepEqual(reminders(cards), ['Bixby Bridge is near'], 'and not again when the open is done');
 });
 
 test("the sign's Stop while housekeeping runs, with a wake waiting behind it in the queue: its reminder is shown at the Stop, silently, and the next start shows nothing", async (t) => {
@@ -324,6 +350,63 @@ test("the sign's Stop while housekeeping runs, with a wake waiting behind it in 
   assert.deepEqual(await entries(k), [LEAVE]);
 });
 
+// The Stop of a turn still gathering the user's messages (one Shiori, or Kokoro's: #stopGathered): what waited is written down as stopped, and its reminder is
+// shown at the Stop, silently, once. Held until then, nothing else would show it in this page (its page mark hides it from this page's open).
+for (const [mode, o] of MODES) {
+  test(`the Stop of a turn gathering the user's messages, with a watch's wake queued behind it: its reminder is shown at the Stop, silently, once, and the next start shows nothing${mode}`, async (t) => {
+    useClock(t);
+    const k = await agentKit([[asleep]], { ...o, voice: { mode: 'on' }, agent: { secondMs: 1000 } }); // a typing box held open for 5 s of the test's own clock
+    const cards = raw(k);
+    k.agent.typing(true);
+    k.agent.send('What is near?');
+    await settled();
+    k.agent.wake(fired());
+    await settled(); // queued behind the gather, held
+    assert.deepEqual(await heldIn(k), [LEAVE]);
+    (k.agent.stopKokoro ?? k.agent.interrupt).call(k.agent);
+    await idleAtOnce(k);
+    await shownSilently(k, cards, k.trip);
+    k.agent.typing(false);
+    const next = await nextStart(k, o.halves);
+    assert.deepEqual(reminders(next.cards), [], 'nothing late');
+    assert.deepEqual(await entries(k), [LEAVE]);
+  });
+}
+
+// What the user typed while her turn was busy, still queued when the conversation opens again (a turn halted, no turn started), is kept by the sign's Stop as a
+// gathering turn's is (spec §6.7: what they sent meanwhile is kept; nothing answers it): written down as stopped. Without the Stop, the open's end starts her
+// turn on it.
+for (const [what, stop] of /** @type {[string, boolean][]} */ ([["the sign's Stop", true], ['no Stop (the control)', false]])) {
+  test(`a line typed behind her running turn, which a conversation opening halts, then ${what}: ${stop ? 'it is written down as stopped, and nothing answers it' : 'it is written and answered'}`, async (t) => {
+    useClock(t);
+    const k = await agentKit([[{ toolCalls: [linger] }, say('It is open until five.'), asleep]], { halves: true });
+    const tool = gates(k.agent.kokoro);
+    k.agent.send('What is near?');
+    await until(() => tool.calls === 1);
+    k.agent.send('Is the temple open?', { typed: true });
+    k.agent.kokoro.enqueue({ kind: 'halves', text: "Koe can't speak right now; talk to the user directly.", logged: true }); // annai's own notice, logged where it came from
+    await settled(); // both queued behind her turn, which is stuck in its tool
+    const slow = slowOpen(k);
+    slow.shut();
+    const opening = k.agent.open(k.trip); // her turn is halted, the line waits on, and the open waits on its first read of the log
+    await until(() => slow.held() && !k.agent.kokoro.turning);
+    const log = async (/** @type {string[]} */ types) => (await k.events(types)).map((/** @type {any} */ e) => e.data.text ?? e.data.kind);
+    if (stop) {
+      k.agent.stopKokoro();
+      await idleAtOnce({ agent: k.agent.kokoro });
+      assert.deepEqual(await log(['error']), ['stopped'], "written by the time idle() returns, which is what Undo waits on (talk.js's settled)");
+    }
+    slow.open();
+    await opening;
+    await idleAtOnce(k);
+    assert.deepEqual(await log(['msg.user']), ['What is near?', 'Is the temple open?'], 'written');
+    assert.deepEqual(await log(['error']), stop ? ['stopped'] : [], 'and stopped, with the Stop');
+    if (stop) assert.deepEqual((await k.events(['wake'])).flatMap((/** @type {any} */ e) => e.data.reasons.map((/** @type {any} */ r) => r.kind)), ['user', 'user'], "annai's own notice is dropped, not written as a reason");
+    assert.equal(k.requests.length, stop ? 1 : 2, stop ? 'no model was asked for it' : 'her turn took it up');
+    assert.deepEqual(await log(['out.speak']), stop ? [] : ['It is open until five.']);
+  });
+}
+
 // Koe on a chat model: the wake with the reminder waits in Koe's own queue behind Koe's turn. Kokoro's half shows it at the next start, once.
 test("Koe on a chat model, a watch's wake queued behind Koe's running turn as the page is killed: the next start shows its reminder once, by Kokoro's half", async (t) => {
   useClock(t);
@@ -342,7 +425,7 @@ test("Koe on a chat model, a watch's wake queued behind Koe's running turn as th
 });
 
 // Both halves carry one page mark: Koe's copy is this page's too, so Kokoro's open of the same conversation in the same page leaves it to Koe's own turn
-// (given Koe its own id, the open showed it as a dead page's, and Koe's turn then showed it again).
+// (given Koe its own id, the open showed it as another page's, and Koe's turn then showed it again).
 test("Koe on a chat model holds a queued reminder, and the same page opens the conversation again: Koe's turn shows it once, Kokoro's open leaves it", async (t) => {
   useClock(t);
   const k = await agentKit([[asleep, asleep, asleep]], { koe: { type: [{ toolCalls: [linger] }, asleep, asleep] } });
@@ -381,6 +464,10 @@ for (const [what, log, owed] of /** @type {[string, any[], any[]][]} */ ([
   ['held twice (a hand-on holds it again), by two pages: one copy, the newer one', [ev('reminder.held', { reminders: [R], page: 'p-older' }, 'system'), held()], [{ ...R, held: PAGE }]],
   ["Koe's session's record carries its page's mark, which Kokoro's line does not settle", [carried({ meanwhile: true, reasons: [], half: 'koe', page: PAGE }), line({ half: 'kokoro' })], [{ ...R, held: PAGE }]],
   ["Koe's line settles Koe's session's record, whatever its mark", [carried({ meanwhile: true, reasons: [], half: 'koe', page: PAGE }), line({ half: 'koe' })], []],
+  ["a live line of Koe's cut off (✂) settles nothing: the session still owes it", [carried({ meanwhile: true, reasons: [], half: 'koe', page: PAGE }), line({ half: 'koe', live: true, cut: true })], [{ ...R, held: PAGE }]],
+  ["an urgent cut-in: the record of the new reminder, then the cut line of the one it cut off, written after it: still owed", [carried({ meanwhile: true, reasons: [], half: 'koe', page: PAGE, reminders: [{ watch: 'w2', text: TRAIN }] }), line({ half: 'koe', live: true, cut: true })], [{ watch: 'w2', text: TRAIN, held: PAGE }]],
+  ['and the whole line she says after it settles it', [carried({ meanwhile: true, reasons: [], half: 'koe', page: PAGE }), line({ half: 'koe', live: true, cut: true }), line({ half: 'koe', live: true })], []],
+  ["a cut line of a text Koe's (no live session) still settles what Koe took, as before", [carried({ half: 'koe' }), line({ half: 'koe', cut: true })], []],
 ])) {
   test(`the read of what is still owed, held by a page: ${what}`, async (t) => {
     useClock(t);
@@ -399,7 +486,7 @@ function hidden(on) {
 const train = () => ({ kind: 'trigger', text: 'Train in 20 minutes', fallbacks: [{ watch: 'train', text: TRAIN }] });
 
 test('Koe live: the session has the reminder and is still saying it as the page is killed: the next start shows it once, by Kokoro\'s half', async () => {
-  // Her answer plays for 20 s at the server's own pace: the page is killed while it does, before her line is written.
+  // Her answer plays for 20 s at the server's own pace: the next page starts while it does (the first is not frozen: its session goes on), before her line is written.
   const k = await liveKit([{ said: 'Your train leaves in twenty minutes, from platform 4.', audio: tone(20) }], { pace: 1 });
   try {
     await k.voice.unlock(); // an earlier tap
@@ -418,7 +505,7 @@ test('Koe live: the session has the reminder and is still saying it as the page 
 });
 
 test("Koe live: the reminder has gone into the session, and the same page opens the conversation again before Koe says it: the open shows nothing, Koe says it once", async () => {
-  const k = await liveKit([{ said: 'Your train leaves in twenty minutes, from platform 4.', audio: tone(20) }], { pace: 1 });
+  const k = await liveKit([{ said: 'Your train leaves in twenty minutes, from platform 4.', audio: tone(2) }], { pace: 1 });
   try {
     await k.voice.unlock();
     await k.agent.wake(train());
@@ -428,6 +515,11 @@ test("Koe live: the reminder has gone into the session, and the same page opens 
     assert.deepEqual(reminders(k.notices), [], "annai shows nothing: Koe is saying it (a second show would be annai's card over Koe's words)");
     assert.deepEqual(await k.events(['reminder']), [], 'and writes no entry');
     assert.equal(texts(k).length, 1, 'the session was given it once');
+    await soon(async () => (await k.events(['out.speak'])).length === 1); // Koe says it, once
+    assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Your train leaves in twenty minutes, from platform 4.']);
+    await idleAtOnce(k);
+    assert.deepEqual(reminders(k.notices), [], 'still nothing of annai\'s own');
+    assert.deepEqual(await k.events(['reminder']), []);
   } finally {
     await k.done();
   }
@@ -469,6 +561,79 @@ test('Koe live: the session holds the reminder while the page is out of view (it
     assert.deepEqual(await entries(k), [TRAIN]);
   } finally {
     hidden(false);
+    await k.done();
+  }
+});
+
+// The page goes out of view (or reloads) while Koe is saying the reminder, and iOS kills it later (hide first, kill later): Koe's line is written cut (✂) after
+// Koe's record, while the session still owes the reminder (it waits for the page to be back). A cut line is no answer (#passes), so it settles nothing: the next
+// start shows the reminder. The page that comes back says it whole instead, and that line settles it.
+const said = 'Your train leaves in twenty minutes, from platform 4.';
+/** Koe is saying the reminder, in real time, and some of it is heard. @param {any} k */
+async function sayingIt(k) {
+  k.platform.streamSpeed = 1; // her sound plays in real time, so some of it is heard when the page goes
+  await k.voice.unlock();
+  await k.agent.wake(train());
+  await soon(async () => texts(k).length === 1);
+  await until(() => k.platform.streams.length === 1, 30_000);
+  await new Promise((r) => setTimeout(r, 1000)); // an eighth of her 8 s is heard
+}
+
+test('Koe live: the page goes out of view while Koe is saying the reminder, and is killed later: the cut line settles nothing, so the next start shows it once', async () => {
+  const k = await liveKit([{ said, audio: tone(8) }], { pace: 1 });
+  try {
+    await sayingIt(k);
+    k.agent.hush('away'); // out of view mid-sentence (a reload does the same at pagehide)
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    const [line] = await k.events(['out.speak']);
+    assert.equal(line.data.cut, true, 'her line is cut');
+    assert.match(line.data.text, /✂$/);
+    assert.deepEqual(await k.events(['reminder']), [], 'annai showed nothing: the page keeps it for when it is back');
+    const next = await nextStart(k, true);
+    assert.deepEqual(reminders(next.cards), [TRAIN], "Koe's cut line settled nothing");
+    assert.deepEqual(await entries(k), [TRAIN]);
+    const again = await nextStart(k, true);
+    assert.deepEqual(reminders(again.cards), [], 'its entry settled it');
+  } finally {
+    await k.done();
+  }
+});
+
+test('Koe live: the page goes out of view mid-sentence and comes back before it is killed: Koe says it whole in the session that opens, and the next start shows nothing', async () => {
+  const k = await liveKit([{ said, audio: tone(8) }, { said, audio: tone(0.3) }], { pace: 1 });
+  try {
+    await sayingIt(k);
+    k.agent.hush('away');
+    await soon(async () => (await k.events(['out.speak'])).length === 1);
+    await k.agent.shown(); // the page is back in view: the session that opens is given the reminder again
+    await soon(async () => (await k.events(['out.speak'])).length === 2, 30_000);
+    const [cut, whole] = await k.events(['out.speak']);
+    assert.equal(cut.data.cut, true);
+    assert.notEqual(whole.data.cut, true, 'said whole the second time');
+    await idleAtOnce(k);
+    assert.deepEqual(await k.events(['reminder']), [], 'annai showed nothing');
+    const next = await nextStart(k, true);
+    assert.deepEqual(reminders(next.cards), [], "her whole line settled it");
+    assert.deepEqual(await entries(k), []);
+  } finally {
+    await k.done();
+  }
+});
+
+test("Koe live: the session closes (quiet) while Koe is saying the reminder: it is handed on and shown once, the same page's open shows nothing more, and nor does the next start", async () => {
+  const k = await liveKit([{ said, audio: tone(8) }], { pace: 1 });
+  try {
+    await sayingIt(k);
+    k.agent.live.close('quiet');
+    await idleAtOnce(k);
+    assert.deepEqual(reminders(k.notices), [TRAIN], 'shown at the hand-on, once');
+    await inTime(k.agent.open(k.trip), 'the open did not finish');
+    await idleAtOnce(k);
+    assert.deepEqual(reminders(k.notices), [TRAIN], 'the same page opening again shows nothing more');
+    const next = await nextStart(k, true);
+    assert.deepEqual(reminders(next.cards), [], 'its entry settled it');
+    assert.deepEqual(await entries(k), [TRAIN]);
+  } finally {
     await k.done();
   }
 });

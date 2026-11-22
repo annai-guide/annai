@@ -282,7 +282,9 @@ test("a reload while a second watch's wake waits behind her turn for the first: 
 });
 
 // Another tab takes annai over while her turn waits on her model, with a second watch's wake queued behind it (held in the log, as above): the new tab's open
-// shows both reminders, so the old tab, whose turn then fails on its closed store, must show and say none of them (main.js's onStolen tells its halves it is leaving).
+// shows both reminders, so the old tab, whose turn then fails on its closed store, must raise no Reminder card for either (main.js's onStolen tells its halves
+// it is leaving). That is what it asserts, in cards: no voice is on here, so what it would say aloud isn't heard. It also checks that onStolen closes the old tab's
+// live session (hush 'away', seen as the call: no live session runs here), which would otherwise keep its microphone and voice in a second visible window.
 test("a tab taken over while her turn waits on her model and a second watch's wake waits behind it: the old tab shows no reminder, the new tab's open shows each once", async ({ page, context }) => {
   const LEAVE = 'Leave for the airport by 14:10';
   const CHECK_OUT = 'Check out by 11';
@@ -300,6 +302,12 @@ test("a tab taken over while her turn waits on her model and a second watch's wa
         /** @type {any} */ (window).agent = this;
         return typing.apply(this, a);
       };
+      const hush = Halves.prototype.hush;
+      Halves.prototype.hush = function (/** @type {any[]} */ ...a) {
+        /** @type {any} */ (window).hushed.push(a[0]);
+        return hush.apply(this, a);
+      };
+      /** @type {any} */ (window).hushed = [];
     });
     await page.getByRole('button', { name: 'Type', exact: true }).click();
     await page.waitForFunction(() => Boolean(/** @type {any} */ (window).agent));
@@ -325,10 +333,12 @@ test("a tab taken over while her turn waits on her model and a second watch's wa
     await second.goto(`/#/trip/${encodeURIComponent(trip)}/talk`);
     await second.getByRole('button', { name: 'Use it here' }).click();
     await expect(page.getByRole('heading', { name: 'annai was opened in another tab' })).toBeVisible();
+    expect(await page.evaluate(() => /** @type {any} */ (window).hushed), 'the old tab closes its live session as it is taken over').toContain('away');
     const notices = second.locator('.notices .notice:not(.notice-stack)');
     await expect(notices.filter({ hasText: LEAVE })).toHaveCount(1, { timeout: 30_000 });
     await expect(notices.filter({ hasText: CHECK_OUT })).toHaveCount(1, { timeout: 30_000 });
-    // The old tab's request is answered now: its turn goes on and fails at its first write, then the wake behind it gets its turn, which fails too.
+    // The old tab's request is answered now: its turn goes on and fails at its first write, then the wake behind it gets its turn, which fails too. The agent is
+    // busy while a wake waits in its queue, so the poll ends after the second wake's turn, and the absence below covers both.
     release();
     await expect.poll(() => page.evaluate(() => {
       const w = /** @type {any} */ (window);

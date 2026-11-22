@@ -79,7 +79,7 @@ const reloadSettled = async () => {
 let acted = false;
 for (const type of ['pointerdown', 'keydown']) addEventListener(type, () => { acted = true; }, { capture: true, once: true });
 const used = () => /** @type {any} */ (navigator).userActivation?.hasBeenActive ?? acted;
-/** @type {{ store: import('../core/types.js').Store, agent?: { leaving: () => void } } | null} */
+/** @type {{ store: import('../core/types.js').Store, agent?: { leaving: () => void, hush: (why: 'away') => void } } | null} */
 let running = null;
 /** Another tab took annai over: this tab has stopped and keeps its blocking screen. Boot reads it after the store opens, before the shell and in its catch. */
 let stolen = false;
@@ -97,6 +97,7 @@ async function boot() {
     onStolen: () => {
       stolen = true;
       running?.agent?.leaving(); // its failing turn says no more reminders: the other tab's open shows what this one held
+      running?.agent?.hush('away'); // and its live session closes, its microphone and voice with it, as when the page goes out of view
       running?.store.close();
       showBlocking(root, {
         title: t`annai was opened in another tab`,

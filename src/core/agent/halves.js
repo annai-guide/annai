@@ -1146,11 +1146,12 @@ export class Halves {
     this.#cue = this.#owed = false; // what was heard before it wakes Kokoro no more, answered or not
     // Still gathering (GATHER): its turn never starts, and a waiting Koe hears so. What it gathered, Koe's question too, is written with a
     // quiet "stopped" (interrupt), so reopening takes nothing up; then Koe's notes left, and wakes queued while a conversation opened (or housekeeping ran)
-    // go, their reminders shown silently, as the Stop's own are: it stops her, not the reminder they set (spec §6.7).
+    // go: what the user sent among them is written as stopped the same way, and their reminders shown silently, as the Stop's own are: it stops her, not what
+    // they sent or the reminder they set (spec §6.7).
     const started = this.kokoro.turning;
     const scope = this.kokoro.target ?? ME;
     this.kokoro.interrupt();
-    this.kokoro.remindDropped(this.kokoro.drop((w) => (w.kind === 'note' && w.from === 'koe') || (!started && w.scope === scope)), scope);
+    this.kokoro.stopDropped(this.kokoro.drop((w) => (w.kind === 'note' && w.from === 'koe') || (!started && w.scope === scope)), scope);
     this.kokoro.poke();
     this.kokoro.idle().then(() => this.#emitHalves(), () => {}); // the sign: that write ends after her last change of state
     if (!this.#works()) return;
