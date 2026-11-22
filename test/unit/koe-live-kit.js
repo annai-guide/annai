@@ -1,6 +1,6 @@
 // Helpers for Koe live's tests (K5): Shiori as two halves with a realtime model, at the stand-in Gemini Live server.
 import assert from 'node:assert/strict';
-import { agentKit } from './agent-kit.js';
+import { agentKit, idleAtOnce } from './agent-kit.js';
 import { clip, quiet, cat } from './voice-kit.js';
 import { startRealtimeServer } from '../fakes/realtime-server.js';
 
@@ -24,7 +24,7 @@ export async function liveKit(turns, o = {}) {
     k = await agentKit(o.kokoro ?? [{ rules: [{ match: '.', reply: sleep }] }], {
       live: { origin: server.origin, ...o.live }, koe: o.koe, agent: o.agent, voice: { speechIn: ['m-hear'], closeAfterSeconds: 300, ...o.voice }, open: o.open, ready: o.ready, hold: o.hold,
     });
-    if (!o.ready) await k.agent.idle();
+    if (!o.ready) await idleAtOnce(k); // bounded: a wait that never ends would keep the server below open, and the run with it
   } catch (e) {
     // A kit that can't be built lets go of its agent and its server, or the open socket keeps the run from ending.
     k?.agent.hush('away');
