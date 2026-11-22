@@ -9,7 +9,7 @@ import { sse } from '../../src/core/llm/sse.js';
 import { parsePartialJSON } from '../../src/core/llm/partial-json.js';
 import { retry } from '../../src/core/llm/retry.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
-import { callRole, photosAsWords, candidates, Bench, AllFailedError, COOLDOWN_MS, continueAfter, failedText, attemptWhy, restText, whyWords } from '../../src/core/llm/fallback.js';
+import { callRole, photosAsWords, candidates, Bench, AllFailedError, COOLDOWN_MS, continueAfter, failedText, attemptWhy, restText, whyWords, estimateTokens } from '../../src/core/llm/fallback.js';
 import { activate as scripted } from '../../plugins-official/scripted-model/index.js';
 
 /** A fresh scripted endpoint type, as the plugin registers it. @returns {any} */
@@ -177,6 +177,19 @@ test("models that can't take the request are skipped: photos, tools, a window to
   const r = await call(s, { request });
   assert.deepEqual(r.attempts.map((a) => a.outcome), ['no-images', 'no-tools', 'too-long', 'ok']);
   assert.equal(r.reply.text, 'D.');
+});
+
+test("a 2 MiB PDF doesn't pass a model with a 200,000-token window over as too long: a PDF counts as one picture, 1,600 tokens, whatever its size; a text over that window still does (pdf-count-next)", async () => {
+  const s = setup([[{ text: 'A.' }], [{ text: 'B.' }]], { models: [{ input: ['text', 'pdf'], contextWindow: 200_000 }, { input: ['text', 'pdf'] }] });
+  const ask = { type: 'text', text: 'When does the train leave?' };
+  const scan = { type: 'document', mediaType: 'application/pdf', data: 'A'.repeat(Math.ceil((2 * 2 ** 20) / 3) * 4), name: 'scan.pdf' };
+  /** @type {any} */
+  const read = { messages: [{ role: 'user', parts: [ask, scan] }] };
+  assert.deepEqual((await call(s, { request: read })).attempts.map((a) => a.outcome), ['ok'], 'about 770,000 tokens at its base64, which a provider counts by its pages');
+  assert.equal(estimateTokens(read) - estimateTokens(/** @type {any} */ ({ messages: [{ role: 'user', parts: [ask] }] })), 1600);
+  /** @type {any} */
+  const long = { messages: [{ role: 'user', parts: [{ type: 'text', text: 'w'.repeat(800_000) }] }] };
+  assert.deepEqual((await call(s, { request: long })).attempts.map((a) => a.outcome), ['too-long', 'ok'], 'about 230,000 tokens of text');
 });
 
 test('a model that takes no photos gets older ones as words, and is passed over only for a photo in the newest message (emulator pass)', async () => {
