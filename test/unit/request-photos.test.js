@@ -7,13 +7,13 @@ import { fakeCodec } from './agent-kit.js';
 
 const request = photoSettings({}).request;
 
-test('request settings default to WebP or JPEG, quality 0.9, 2000 px, 1 MiB (spec §4.8)', () => {
-  assert.deepEqual(request, { formats: ['image/webp', 'image/jpeg'], quality: 0.9, maxEdge: 2000, maxBytes: 1024 * 1024 });
+test('request settings default to WebP or JPEG, quality 0.9, 2000 px, 256 KiB (spec §4.8)', () => {
+  assert.deepEqual(request, { formats: ['image/webp', 'image/jpeg'], quality: 0.9, maxEdge: 2000, maxBytes: 256 * 1024 });
 });
 
 test('the limits are the stricter of the request settings and what the model accepts', () => {
   assert.deepEqual(requestLimits(request, { formats: ['image/jpeg', 'image/png'], maxEdge: 8000, maxBytes: 5 * 2 ** 20, maxCount: 100 }),
-    { formats: ['image/jpeg'], quality: 0.9, maxEdge: 2000, maxBytes: 2 ** 20, maxCount: 100 });
+    { formats: ['image/jpeg'], quality: 0.9, maxEdge: 2000, maxBytes: 256 * 1024, maxCount: 100 });
   assert.deepEqual(requestLimits({ ...request, maxEdge: null }, { maxEdge: 1568 }).maxEdge, 1568);
   assert.deepEqual(requestLimits(request, { formats: ['image/gif'] }).formats, ['image/gif']);
   assert.deepEqual(requestLimits(request, {}).maxCount, null);
@@ -21,8 +21,9 @@ test('the limits are the stricter of the request settings and what the model acc
 
 test('fits: format, longest edge and size', () => {
   const l = requestLimits(request, {});
-  assert.equal(fits({ type: 'image/webp', width: 2000, height: 1500, size: 500_000 }, l), true);
-  assert.equal(fits({ type: 'image/webp', width: 4032, height: 3024, size: 500_000 }, l), false);
+  assert.equal(fits({ type: 'image/webp', width: 2000, height: 1500, size: 150_000 }, l), true);
+  assert.equal(fits({ type: 'image/webp', width: 2000, height: 1500, size: 500_000 }, l), false);
+  assert.equal(fits({ type: 'image/webp', width: 4032, height: 3024, size: 150_000 }, l), false);
   assert.equal(fits({ type: 'image/heic', width: 100, height: 100, size: 1000 }, l), false);
   assert.equal(fits({ type: 'image/jpeg', size: 3 * 2 ** 20 }, l), false);
 });
@@ -32,7 +33,7 @@ test('a photo within the limits goes as it is; one over them is copied once, and
   const codec = fakeCodec();
   const copies = new PhotoCopies({ codec, read: async () => utf8('4032x3024') });
   const l = requestLimits(request, {});
-  const small = await copies.copy({ hash: 'small', type: 'image/webp', width: 1600, height: 1200, size: 300_000 }, l);
+  const small = await copies.copy({ hash: 'small', type: 'image/webp', width: 1600, height: 1200, size: 150_000 }, l);
   assert.deepEqual(small, { hash: 'small', mediaType: 'image/webp', width: 1600, height: 1200, made: false });
   const big = { hash: 'big', type: 'image/webp', width: 4032, height: 3024, size: 3_000_000 };
   const first = await copies.copy(big, l);

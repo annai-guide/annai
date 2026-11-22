@@ -111,9 +111,9 @@ export const REQUEST_MS = 15_000;
  * One chat photo's upload (call.js): 120 s, a limit that only catches a hang. It stands apart from a role's wait for the first words,
  * which starts after the uploads and is for a slow model. Sized for the slowest mobile data still in use, 2G EDGE: 59.2 kbit/s up a
  * timeslot at its best coding (MCS-9), and a class 10 phone uses 2 slots, 118.4 kbit/s, or 1 (59.2), as the network chooses by the traffic
- * (Wikipedia, General Packet Radio Service, multislot classes). A photo at the request cap (1 MiB, photos.js) is 8,388,608
- * bits: 71 s at 118.4 kbit/s, and 120 s lets the link run down to 70 kbit/s (59% of that); 1 slot at 59.2 would need 142 s. A cut upload
- * sends the photo in the request, as any failed one does, and uploads go off there.
+ * (Wikipedia, General Packet Radio Service, multislot classes). A photo of 1 MiB (the request cap until 2026-11-21, 256 KiB since:
+ * photos.js; a traveller can set more) is 8,388,608 bits: 71 s at 118.4 kbit/s, and 120 s lets the link run down to 70 kbit/s (59% of
+ * that); 1 slot at 59.2 would need 142 s. A cut upload sends the photo in the request, as any failed one does, and uploads go off there.
  */
 export const UPLOAD_MS = 120_000;
 /** bit/s: the slowest uplink a model call's request has time for (call.js), the one UPLOAD_MS is sized for (see there). */

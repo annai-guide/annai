@@ -193,7 +193,8 @@ test('with uploads, a big photo makes no housekeeping due (spec §6.5, review I7
     /** @type {any[]} */
     const timers = [];
     const k = await agentKit([[say('ok')]], { uploading, agent: { timers: { set: (/** @type {any} */ fn) => { timers.push(fn); return timers.length; }, clear: (/** @type {number} */ h) => { timers[h - 1] = null; } } } });
-    await updateAppSettings(k.ws, { shiori: { compaction: { maxRequestMiB: 1 } } });
+    // A traveller's own cap of 1 MiB for photos sent: the photo goes as it is, not as a smaller copy.
+    await updateAppSettings(k.ws, { shiori: { compaction: { maxRequestMiB: 1 } }, photos: { request: { maxBytes: 1024 * 1024 } } });
     await k.ws.write(k.trip, '/files/big.webp', new TextEncoder().encode('x'.repeat(700_000)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
     k.agent.send('Look', { photos: [{ path: '/trip/files/big.webp' }] });
     await k.agent.idle();

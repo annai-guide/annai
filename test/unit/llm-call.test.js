@@ -410,13 +410,14 @@ test('uploads: each photo is uploaded once and sent by id; a failed upload sends
   assert.equal(bodies.at(-1).images[0], 'bytes');
 });
 
-test("a chat photo's upload limit (UPLOAD_MS) only catches a hang: a request photo at the default 1 MiB cap goes up on 2G EDGE's uplink (the second opinion's lead 1 on openrouter-f1)", async () => {
+test("a chat photo's upload limit (UPLOAD_MS) only catches a hang: a request photo of 1 MiB, the default cap until 2026-11-21 and more than it now, goes up on 2G EDGE's uplink (the second opinion's lead 1 on openrouter-f1)", async () => {
   const { UPLOAD_MS } = await import('../../src/core/llm/uploads.js');
   const { DEFAULT_PHOTO_SETTINGS } = await import('../../src/core/photos.js');
   // 8,388,608 bits in UPLOAD_MS is the slowest uplink it lets through: 70 kbit/s is 59% of the 118.4 kbit/s published for EDGE (EGPRS multislot
   // class 10, two uplink slots at MCS-9; the 1-slot 59.2 kbit/s would need 142 s). A limit that cuts the link a photo needs is no hang guard: the
   // inline photo is a third larger and would stall there too.
-  const slowest = (DEFAULT_PHOTO_SETTINGS.request.maxBytes * 8) / (UPLOAD_MS / 1000);
+  assert.ok(DEFAULT_PHOTO_SETTINGS.request.maxBytes <= 1024 * 1024);
+  const slowest = (1024 * 1024 * 8) / (UPLOAD_MS / 1000);
   assert.ok(slowest <= 70_000, `a 1 MiB photo needs ${Math.round(slowest)} bit/s up to finish in ${UPLOAD_MS / 1000} s`);
 });
 
