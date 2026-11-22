@@ -37,9 +37,9 @@ import { t } from '../l10n.js';
  *   release: () => void, notice: (n: import('../agent/loop.js').Notice) => void, told: (state: 'live-open' | 'live-closed') => void,
  *   dropped: (cut: boolean) => void, changed: () => void, budgets: () => Promise<any>, timeZone: () => string, asked: () => boolean, secondMs?: number,
  *   unsaid: (notes: Wake[]) => void, owed: (notes: Wake[]) => void, left?: (notes: Wake[], here?: boolean) => void, spoke?: () => void, ws?: import('../workspace.js').Workspace,
- *   held?: () => Promise<void> | null, voiceOut?: () => Promise<void> | null, saying?: (words: string) => void, noisy?: (heard: string) => void, page: string,
+ *   held?: () => Promise<void> | null, voiceOut?: () => Promise<void> | null, saying?: (words: string) => void, noisy?: (heard: string) => void,
  *   heard?: (line: { id: string, text: string, at: number, her: boolean }) => void, speech?: (on: boolean, line?: { id: string, at: number, her: boolean }) => void }} LiveHost
- *   Halves's: page: the page's mark on what it holds (Agent.hold), the one both halves carry; release: the speech pipeline lets go of the voice; asked: Kokoro works on Koe's question; unsaid: Kokoro's notes for the user Koe never
+ *   Halves's: release: the speech pipeline lets go of the voice; asked: Kokoro works on Koe's question; unsaid: Kokoro's notes for the user Koe never
  *   passed on, asked once more; owed: those a session closed on before Koe passed them on, to hand on; left: those a switch to another
  *   conversation leaves, shown there, and those a tap or a sound cut her off in (here), shown silently, as the conversation still open's; spoke: the user's spoken turn ended; ws: where this device keeps that the talk-over card was shown;
  *   held: Start fresh runs, until it settles: a session opens only after it, from the fresh start; voiceOut: annai's other voice is saying something, until it settles
@@ -815,7 +815,7 @@ export class LiveKoe {
     if (this.listening || this.#input || (this.#readying && this.state === 'opening')) {
       // An urgent note she has not begun: a tap means stop and the card stands, not kept for the next session (close would hand it back to wait).
       if (urgent && this.#owed.sent.length) {
-        this.c.left?.([...this.#owed.sent], true);
+        this.c.left?.(this.#owed.sent.splice(0), true);
         this.#passed();
       }
       this.close('tap');
@@ -878,7 +878,7 @@ export class LiveKoe {
     const write = () => { for (const w of behind) if (w.done) this.#said(w, null); };
     if (t?.stream) void t.stream.done.then(write, write); // after hers, as the lines read in order
     else write();
-    if (!this.#passes(t, Boolean(t?.whole)) && this.#owed.sent.length) this.c.left?.([...this.#owed.sent], true);
+    if (!this.#passes(t, Boolean(t?.whole)) && this.#owed.sent.length) this.c.left?.(this.#owed.sent.splice(0), true);
     this.#passed();
     this.#stopped = true;
     this.#holdForUser();
@@ -1032,30 +1032,32 @@ export class LiveKoe {
   #cutIn(begins = false, replaces = false) {
     if (this.#owed.sent.length) {
       const shown = replaces ? this.#owed.sent.filter((w) => w.kind !== 'note') : this.#owed.sent;
-      if (shown.length && !this.#passes(this.#sounding, this.#whole(this.#sounding, begins))) this.c.left?.(shown, true);
+      if (shown.length && !this.#passes(this.#sounding, this.#whole(this.#sounding, begins))) {
+        this.c.left?.(shown, true);
+        this.#owed.sent = []; // shown, so not passed on (#passed)
+      }
       this.#passed();
     }
     return this.#sounding || this.#t || this.#pending || this.#queue.length ? this.#cut() : {};
   }
 
-  /**
-   * Kokoro's notes for the user went in: Koe's next turns are watched for them. A trigger's cues are let go: a model has them, as classic voice's. Its
-   * reminders are the session's now, written as a turn's wake record keeps them, so the log's read settles them by Koe's words from here (spec §11.3);
-   * with this page's mark (Agent.hold), so its own open leaves them to the session as it leaves a held one. @param {Wake[]} notes
-   */
+  /** Kokoro's notes for the user went in: Koe's next turns are watched for them. A trigger's cues are let go: a model has them, as classic voice's. @param {Wake[]} notes */
   #went(notes) {
     for (const w of notes) if (w.kind !== 'note') w.fallbacks = w.fallbacks?.filter((r) => !r.cue);
     const owed = notes.filter((w) => w.kind === 'note' || w.fallbacks?.length);
     if (!owed.length) return;
-    const reminders = owed.flatMap((w) => (w.kind === 'note' ? [] : (w.fallbacks ?? []).flatMap((r) => reminderData(r) ?? [])));
-    if (reminders.length) this.#write({ type: 'wake', actor: 'system', data: { id: newId('w'), meanwhile: true, reasons: [], reminders, page: this.c.page } });
     this.#owed.sent.push(...owed);
     this.#owed.cued = this.#owed.cue = false;
     this.#owed.at = Date.now();
   }
 
-  /** Koe reached the user since its notes went in (its words heard, a card, a question): they are passed on. */
+  /**
+   * Koe reached the user since its notes went in (its words heard, a card, a question): they are passed on. The reminders among them are written as
+   * told (`reminder.told`), the session's own verdict, which settles the copy its page holds (Agent.hold; spec §11.3); one shown instead is taken out first.
+   */
   #passed() {
+    const reminders = this.#owed.sent.flatMap((w) => (w.kind === 'note' ? [] : (w.fallbacks ?? []).flatMap((r) => reminderData(r) ?? [])));
+    if (reminders.length) this.#write({ type: 'reminder.told', actor: 'system', data: { reminders } });
     this.#owed.sent = [];
     this.#owed.cued = this.#owed.cue = false;
   }
@@ -1605,11 +1607,12 @@ export class LiveKoe {
    * (whole: #whole's answer for it, which a line cut off in her quiet tail is too) and goes on after no call: a turn that called a tool she speaks after
    * ends (done, made) before her words for the note come, which her continuation says, so a user starting, a tap or a close in her tail, after the
    * provider's end, is a cut: the note is shown, or sent again, and not lost when the user's question drops the continuation. A whole line that is
-   * only one of annai's own words to her (bare) is no answer, however it ends: the review's R1 found a tap in the quiet tail of "silent" lose the note.
+   * only one of annai's own words to her (bare) is no answer, however it ends: the review's R1 found a tap in the quiet tail of "silent" lose the note. Nor
+   * is a line whose words began before the notes went in (wordAt): an urgent one cuts in on her quiet tail, and that line was no answer to it.
    * @param {Turn | null} t @param {boolean} whole
    */
   #passes(t, whole) {
-    return whole && !t?.goesOn && !bare(t?.said ?? '');
+    return whole && !t?.goesOn && !bare(t?.said ?? '') && (t?.wordAt ?? 0) >= this.#owed.at;
   }
 
   /**
@@ -1675,7 +1678,7 @@ export class LiveKoe {
     // called a tool she speaks after is not her answer yet (real Gemini: "Checking your notes.", then a new turn 2.4 to 7.2 s later): its notes wait
     // for what she says after the answer, and are shown if the user speaks first.
     // A line that is only one of annai's own words to her (bare) is no answer (#passes): #settle asks once more.
-    if (text && this.#passes(t, !cut) && this.#owed.sent.length && t.wordAt >= this.#owed.at) this.#passed();
+    if (text && this.#passes(t, !cut) && this.#owed.sent.length) this.#passed();
     const v = this.c.voice;
     const aloud = Boolean(text && !cut && !t.cut && v?.on && (t.stalled || v.stuck)); // a turn the user stopped is never read aloud
     const voiced = Boolean(t.stream || aloud);

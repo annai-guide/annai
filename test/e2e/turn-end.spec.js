@@ -331,9 +331,10 @@ test("a tab taken over while her turn waits on her model and a second watch's wa
     }, trip), { timeout: 30_000 }).toBe(3); // her turn's wake, and each watch held as it came
     const second = await context.newPage();
     await second.goto(`/#/trip/${encodeURIComponent(trip)}/talk`);
+    expect(await page.evaluate(() => /** @type {any} */ (window).hushed), 'nothing hushed the old tab before the takeover (it never went out of view)').toEqual([]);
     await second.getByRole('button', { name: 'Use it here' }).click();
     await expect(page.getByRole('heading', { name: 'annai was opened in another tab' })).toBeVisible();
-    expect(await page.evaluate(() => /** @type {any} */ (window).hushed), 'the old tab closes its live session as it is taken over').toContain('away');
+    expect(await page.evaluate(() => /** @type {any} */ (window).hushed), 'the old tab closes its live session as it is taken over').toEqual(['away']);
     const notices = second.locator('.notices .notice:not(.notice-stack)');
     await expect(notices.filter({ hasText: LEAVE })).toHaveCount(1, { timeout: 30_000 });
     await expect(notices.filter({ hasText: CHECK_OUT })).toHaveCount(1, { timeout: 30_000 });

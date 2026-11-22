@@ -24,7 +24,7 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Housekeeping: ['compaction'],
   // GPS is what live mode did; its location points (about one a second on a drive) are a kind of their own,
   // so they never crowd the firings out of the newest 300.
-  'GPS': ['trigger.fired', 'state', 'reminder', 'reminder.held', 'app.start'],
+  'GPS': ['trigger.fired', 'state', 'reminder', 'reminder.held', 'reminder.told', 'app.start'],
   Location: ['location'],
   Errors: ['error', 'plugin.error', 'plugin.disabled', 'content.refused'],
   Plugins: ['plugin.install', 'plugin.update', 'plugin.reset', 'plugin.remove', 'plugin.error', 'plugin.disabled'],
@@ -247,7 +247,8 @@ export function traceSummary(e, { costs: perWake, names = (n) => n } = {}) {
   if (e.type === 'location') return /* en */ `${d.lat}, ${d.lng} ±${d.accuracy} m${typeof d.speed === 'number' && d.speed > 0 ? ` · ${Math.round(d.speed * 3.6)} km/h` : ''}${d.source ? ` · ${d.source}` : ''}`;
   if (e.type === 'trigger.fired') return line(d.watch, cut(d.text), d.late ? t`late by ${d.late} min` : null, d.offline ? t`no connection` : null);
   if (e.type === 'reminder') return line(d.aloud ? t`said aloud` : t`shown`, cut(d.text));
-  if (e.type === 'reminder.held') return line(...(d.reminders ?? []).map((/** @type {any} */ r) => cut(r?.text))); // annai holds them to say (Agent.hold)
+  // annai holds them to say (Agent.hold), or Koe's live session passed them on (LiveKoe#passed)
+  if (e.type === 'reminder.held' || e.type === 'reminder.told') return line(...(d.reminders ?? []).map((/** @type {any} */ r) => cut(r?.text)));
   if (e.type === 'voice.route') {
     const unnamed = t`no name`;
     return line(t`audio route ${d.route}`, d.using === null ? t`judged by the devices present` : t`the microphone in use: ${d.using || unnamed}`,

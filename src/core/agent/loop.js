@@ -1492,23 +1492,27 @@ export class Agent {
   }
 
   /**
-   * The sign's Stop takes wakes out of the queue before any turn has them (the open conversation opening again, housekeeping): what the user sent among them is
-   * written down as stopped, as a gathering turn's is (#stopGathered; spec §6.7: what they sent meanwhile is kept, nothing answers it), and every one's
-   * reminders are shown (remindDropped). Koe's notes and annai's own notices among them are dropped as they were. Never rejects.
+   * The sign's Stop, or Undo's or Erase's, takes wakes out of the queue before any turn has them (a conversation opening, housekeeping): what the user sent among
+   * them is written down as stopped, in their conversation, as a gathering turn's is (#stopGathered; spec §6.7: what they sent meanwhile is kept, nothing
+   * answers it), and every one's reminders are shown (remindDropped). Koe's notes and annai's own notices among them are dropped as they were. Never rejects.
    * @param {Wake[]} wakes @param {string} [scope] their conversation; the open one's if not given
    */
   stopDropped(wakes, scope = this.scope) {
-    this.#stopWakes(wakes.filter(isTheirs));
+    this.#stopWakes(wakes.filter(isTheirs), scope);
     return this.remindDropped(wakes, scope);
   }
 
-  /** Wakes that never start a turn, written into the conversation all the same, with a quiet "stopped"; a write that fails is told (#notSaved). @param {Wake[]} wakes */
-  #stopWakes(wakes) {
+  /**
+   * Wakes that never start a turn, written into their conversation all the same, with a quiet "stopped"; a write that fails is told (#notSaved). One being
+   * opened while this one is still open is written as a wake kept for it is (#keepFor). @param {Wake[]} wakes @param {string} [scope] the open one's if not given
+   */
+  #stopWakes(wakes, scope = this.scope) {
     if (!wakes.length) return;
     const wakeId = newId('w');
+    const log = scope === this.scope ? (/** @type {any} */ ev) => this.#log(ev) : this.#keptIn(scope);
     this.#checking++;
-    this.#logWakes(wakes, wakeId, false)
-      .then(() => this.#log({ type: 'error', actor: 'system', data: { kind: 'stopped', wake: wakeId, message: STOPPED, quiet: true } }))
+    this.#logWakes(wakes, wakeId, false, { log, trip: scope === ME ? null : scope })
+      .then(() => log({ type: 'error', actor: 'system', data: { kind: 'stopped', wake: wakeId, message: STOPPED, quiet: true } }))
       .catch((e) => this.#notSaved(e))
       .finally(() => {
         this.#checking--;

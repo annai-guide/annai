@@ -367,7 +367,7 @@ export class Halves {
     this.kokoro.on('open', (x) => this.#emit('open', x));
     // Koe live: its sessions log as Koe, and only Halves opens and closes them.
     this.live = new LiveKoe({
-      koe: this.koe, llm: c.llm, voice: c.voice ?? null, store: c.store, nonce: this.nonce, page,
+      koe: this.koe, llm: c.llm, voice: c.voice ?? null, store: c.store, nonce: this.nonce,
       model: () => this.#liveId,
       setup: () => this.#liveSetup(),
       held: () => this.#fresh?.held ?? null,
@@ -901,7 +901,7 @@ export class Halves {
       // What the session gets is what #live falls back on too: the reminders annai showed above are not shown again if the session can't take it.
       const given = away ? { ...w, fallbacks: w.fallbacks?.filter((r) => r.cue) } : w;
       if (this.koeState === 'live') {
-        this.#alongside(this.koe.hold(given.fallbacks ?? [])); // the session holds it in memory until Koe says it (the text Koe's queue holds its own)
+        this.#alongside(this.koe.hold(given.fallbacks ?? [])); // the session holds it in memory until it passes it on (reminder.told; the text Koe's queue holds its own)
         this.#alongside(this.#live(() => this.live.wake(given), given));
       } else this.koe.enqueue(w);
     }, (e) => this.kokoro.wakeFailed(w, e)); // a route that fails before its hand-ons (the refresh, the budgets' check): its reminders are shown, once
