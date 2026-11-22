@@ -104,11 +104,21 @@ export class Transcript {
   waiting = '';
   /** The user's newest message holds a photo: a model that takes none can't answer it. */
   newestPhoto = false;
+  /** Each turn's wake and where it began: the index of the last message before its first reply (the keep-reasoning design §7). @type {{ wake: string | null, at: number }[]} */
+  #turns = [];
+  /** Where the latest turn began, -1 for none: read at a turn's first step, where the previous turn began, which its requests mark for the cache (cacheAt). */
+  get turnStart() {
+    return Math.max(-1, this.#turns.at(-1)?.at ?? -1);
+  }
+
   /**
-   * Where the latest turn began: the index of the last message before the first reply of its wake (the keep-reasoning design §7), -1 for
-   * none. Read at a turn's first step, it is where the previous turn began, which its requests mark for the cache (cacheAt).
+   * Where a turn's request starts to carry pictures (spec §4.8): the message that began the turn before the wake's (the latest, with no wake), 0 for
+   * none. Read at each step, so what moves the messages (housekeeping, Koe's window) moves it too; the cache mark (cacheAt) is dropped by the first.
+   * @param {string} [wake] the turn going on
    */
-  turnStart = -1;
+  windowFrom(wake) {
+    return Math.max(0, this.#turns.at(this.#turns.at(-1)?.wake === wake ? -2 : -1)?.at ?? 0);
+  }
   /** The wake of this half's last reply. @type {string | null} */
   #lastWake = null;
   /** What this half's next reply keeps for the rest of its turn: the now block its request ended with, and the reply as it came. @type {{ now: string, native: Native } | null} */
@@ -166,7 +176,7 @@ export class Transcript {
       this.#held = [];
       this.#since = [];
       this.#carry = null;
-      this.turnStart = -1;
+      this.#turns = [];
       this.#lastWake = null;
       this.compaction = e.seq;
       this.lastCall = null;
@@ -238,7 +248,7 @@ export class Transcript {
       this.#since = [];
       if (d.wake !== this.#lastWake) {
         this.#lastWake = d.wake ?? null;
-        this.turnStart = this.messages.length - 1;
+        this.#turns.push({ wake: this.#lastWake, at: this.messages.length - 1 });
       }
       const keep = this.#carry;
       this.#carry = null;
@@ -491,7 +501,7 @@ export class Transcript {
     const parts = kept[0].parts;
     kept[0] = { role: 'user', parts: parts.slice(parts.findIndex(line)) };
     this.messages = kept;
-    this.turnStart = Math.max(-1, this.turnStart - starts[KOE_JUMP]);
+    this.#turns = this.#turns.map((x) => ({ ...x, at: x.at - starts[KOE_JUMP] }));
   }
 
   /**

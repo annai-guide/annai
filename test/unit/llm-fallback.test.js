@@ -819,7 +819,7 @@ test("each model gets its photo limit of the raw request's distinct pictures, th
   const shown = seen[0].request.messages.map((/** @type {any} */ m) => m.parts.map((/** @type {any} */ p) => (p.type === 'image' ? p.hash : p.text)));
   assert.deepEqual(shown, [
     ['Here is the menu', 'hA'],
-    ['And the hotel', '[photo /trip/files/hotel.webp, not sent again: read it to see it]'],
+    ['And the hotel', '[photo /trip/files/hotel.webp, not sent: this model takes fewer pictures at a time; read it to see it]'],
     ['Look at the menu again', '[photo /trip/files/menu.webp, the same as above]'],
   ]);
 });
@@ -836,6 +836,21 @@ test("the second pass's check before reading counts the model's photo limit, not
   assert.equal(r.answeredBy, 'model-0');
   assert.equal(reads, 1);
   assert.equal(seen.length, 1);
+});
+
+test("the second pass's check before reading, and what it sends after, leave out the pictures before the turn's window as the first pass does (photo-budget-next)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text', 'image'] }]);
+  s.config.models['m-0'].user.contextWindow = 8000;
+  let reads = 0;
+  // Ten photos of 100,000 bytes: the last two are in the turn's window (from message 8). All ten would be 16,000 tokens, past its window.
+  const older = Array.from({ length: 10 }, (_, i) => ({ role: 'user', parts: [{ type: 'text', text: `photo ${i}` }, { type: 'image', mediaType: 'image/webp', data: 'A'.repeat(100_000), hash: `h${i}`, path: `/trip/files/${i}.webp` }] }));
+  const request = { photosFrom: 8, messages: [...older, { role: 'user', parts: [{ type: 'document', mediaType: 'application/pdf', data: 'JVBERi0=', hash: 'd1', name: 'booking.pdf' }, { type: 'text', text: 'When is my flight?' }] }] };
+  const read = async () => { reads++; return [{ type: 'text', text: '[a PDF: booking.pdf] What it says: flight AN 123 at 08:05.' }]; };
+  const r = await call(s, { read, request });
+  assert.equal(r.answeredBy, 'model-0');
+  assert.equal(reads, 1);
+  const sent = seen[0].request.messages.flatMap((/** @type {any} */ m) => m.parts).filter((/** @type {any} */ p) => p.type === 'image').map((/** @type {any} */ p) => p.hash);
+  assert.deepEqual(sent, ['h8', 'h9']);
 });
 
 test("models that aren't resting have both passes before a resting one is asked: a dead photo model at rest doesn't hold up every photo turn (round 9, N2)", async () => {

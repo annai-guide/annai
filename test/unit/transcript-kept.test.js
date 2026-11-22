@@ -78,6 +78,31 @@ test('turnStart is the last message before the first reply of each new wake, liv
   assert.equal(t.turnStart, 4);
 });
 
+test('windowFrom: the message that began the turn before the one of the wake; 0 with none before; the next turn (no wake) counts the latest as the one before', () => {
+  const t = new Transcript();
+  assert.equal(t.windowFrom('w-1'), 0, 'nothing yet');
+  add(t, 'msg.user', {}, { text: 'One' });
+  assert.equal(t.windowFrom('w-1'), 0, 'its first turn: every picture is its own');
+  turn(t, [call('c1')], { wake: 'w-1' });
+  add(t, 'tool.result', { id: 'c1', name: 'list', ok: true, ms: 1 }, { content: 'x' });
+  turn(t, [{ type: 'text', text: 'Ok.' }], { wake: 'w-1' });
+  assert.equal(t.windowFrom('w-1'), 0, 'still the first turn, after its replies');
+  assert.equal(t.windowFrom(), 0, 'the next turn: the one before began at message 0');
+  add(t, 'msg.user', {}, { text: 'Two' });
+  assert.equal(t.windowFrom('w-2'), 0, 'before its first reply: the turn before is the first');
+  turn(t, [{ type: 'text', text: 'Ok.' }], { wake: 'w-2' });
+  assert.equal(t.windowFrom('w-2'), 0, 'after it: the same');
+  add(t, 'msg.user', {}, { text: 'Three' });
+  assert.equal(t.windowFrom('w-3'), t.turnStart, 'before its first reply: where the latest turn began, as turnStart has it');
+  turn(t, [{ type: 'text', text: 'Ok.' }], { wake: 'w-3' });
+  assert.equal(t.windowFrom('w-3'), 4, 'after it: still where w-2 began');
+  assert.equal(t.windowFrom(), t.turnStart, 'the next turn: where w-3 began');
+  // A summary leaves no turn behind: its indexes are of messages that are gone.
+  add(t, 'compaction', { from: 1, to: t.to, mode: 'cold' }, { summary: 'S' });
+  assert.equal(t.turnStart, -1);
+  assert.equal(t.windowFrom('w-4'), 0, 'a summary and no turn after it');
+});
+
 test("Koe: a kept now block is not escaped, and the window counts no now block as an exchange and moves turnStart with it", () => {
   const t = new Transcript({ half: 'koe', nonce: 'n' });
   /** @param {string} text @param {string} wake */

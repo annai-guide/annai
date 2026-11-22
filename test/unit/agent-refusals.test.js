@@ -18,7 +18,7 @@ test('limitImages: the oldest photos over the count become stubs', () => {
   const img = (/** @type {string} */ path) => ({ type: /** @type {const} */ ('image'), mediaType: 'image/webp', data: 'x', path });
   const messages = [{ role: /** @type {const} */ ('user'), parts: [img('/trip/files/a.webp'), img('/trip/files/b.webp')] }, { role: /** @type {const} */ ('user'), parts: [img('/trip/files/c.webp')] }];
   const out = limitImages(messages, 2);
-  assert.deepEqual(out[0].parts[0], { type: 'text', text: '[photo /trip/files/a.webp, not sent again: read it to see it]' });
+  assert.deepEqual(out[0].parts[0], { type: 'text', text: '[photo /trip/files/a.webp, not sent: this model takes fewer pictures at a time; read it to see it]' });
   assert.equal(out[0].parts[1].type, 'image');
   assert.equal(out[1].parts[0].type, 'image');
   assert.equal(limitImages(messages, 5), messages);
@@ -97,7 +97,7 @@ test("photos over a model's count go as stubs, the oldest first", async () => {
   await k.agent.idle();
   const parts = k.requests[0].messages.at(-1).parts;
   assert.deepEqual(parts.map((/** @type {any} */ p) => p.type), ['text', 'text', 'image']);
-  assert.equal(parts[1].text, '[photo /trip/files/p.webp, not sent again: read it to see it]');
+  assert.equal(parts[1].text, '[photo /trip/files/p.webp, not sent: this model takes fewer pictures at a time; read it to see it]');
 });
 
 test('a refused copy another conversation still names is kept (spec §4.9)', async () => {
