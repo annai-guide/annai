@@ -742,6 +742,7 @@ export function createLlm({
       const found = Object.fromEntries(result.steps.map((s) => [s.step, s.ok]));
       if (found.access && found.key !== false) bench.clear(modelId); // reachable with a working key: no reason to rest
       await markVerified(ws, modelId, { ...found, at: Date.now() });
+      // With the keys unread the steps' words are notes, and their ok flags stay (found above is kept as it was).
       return withoutSecretsIn(store, result);
     },
     /**
@@ -754,7 +755,8 @@ export function createLlm({
     /** Tries each reasoning level of one model, and records which work (spec §9.3). @param {string} modelId */
     async testLevels(modelId) {
       const { type, endpoint, model, key } = await resolve(modelId, { install: true });
-      const levels = await withoutSecretsIn(store, await testLevels({ type, endpoint, model, key, fetch: get }));
+      // Strict: a level's outcome is what the screen and the stored record read ('ok' or not), so with the keys unread a note can't stand in for it.
+      const levels = await withoutSecretsIn(store, await testLevels({ type, endpoint, model, key, fetch: get }), { strict: true });
       await markVerified(ws, modelId, { levels, levelsAt: Date.now() });
       return levels;
     },

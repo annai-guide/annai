@@ -219,7 +219,7 @@ test("A voice added by id before this build (no voice of its own: the ability's 
   assert.equal(or.said.at(-1).voice, 'nadine');
 });
 
-test("A refused sample's words: the provider's reason as plain text (outside text, quoted, never read), its keys blanked before it is cut at 120 characters, its spaces and controls one space, its full stop the sentence's, and none when the keys can't be read; a voice's 404 says what to check (model id, base URL, Voice); any other failure, the kind's words as before", async () => {
+test("A refused sample's words: the provider's reason as plain text (outside text, quoted, never read), its keys blanked before it is cut at 120 characters, its spaces and controls one space, its full stop the sentence's, and none when the keys can't be read (the status line then says it couldn't check the words); a voice's 404 says what to check (model id, base URL, Voice); any other failure, the kind's words as before", async () => {
   const k = await hostKit();
   await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('llm:ep-1', KEY));
   const fromBody = (/** @type {number} */ status, /** @type {string} */ body, speaking = true) => speechProblem(k.store, errorFromResponse(status, body), speaking);

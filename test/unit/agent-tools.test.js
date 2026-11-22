@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createMemoryStore } from '../fakes/store-memory.js';
+import { createMemoryStore, keysUnread } from '../fakes/store-memory.js';
 import { Registry } from '../../src/core/registry.js';
 import { tsv } from '../../src/core/tsv.js';
 import { checkTool, toolList, definitions, runTool, Stuck, resolvePath, RESULT_MAX } from '../../src/core/agent/tools.js';
@@ -172,28 +172,43 @@ test('tracedFetch: no secret annai keeps reaches the trace, whatever its paramet
   assert.match(evs[0].data.url, /q=big\+sur/);
 });
 
-test("tracedFetch: when the keys annai keeps can't be read, a request's record keeps only its host and no error words, and the tool's error none either", async () => {
+test("tracedFetch: when the keys annai keeps can't be read, a request's record keeps its scheme and no host, path or error words, and the tool's error names no host and has no browser words", async () => {
   const store = createMemoryStore();
   await store.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:weather:key', 'WXSECRET9876'));
-  const tx = store.tx;
-  // The store refuses the read the blanking needs (Chromium's at no byte free).
-  store.tx = /** @type {any} */ ((/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => tx.call(store, stores, mode, (/** @type {any} */ t) => fn(stores.includes('secrets') ? { ...t, listSecretIds: () => Promise.reject(new Error('The database connection is closing.')) } : t)));
+  await store.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:host:key', 'HOSTKEY7654321'));
+  const back = keysUnread(store);
   const ok = tracedFetch(store, 'sys', { tool: 'plugin:weather' }, async () => new Response('ok'));
   await ok('https://api.weather.test/v1/WXSECRET9876/forecast?q=big+sur');
   const failing = tracedFetch(store, 'sys', { tool: 'plugin:weather' }, async () => { throw new TypeError('Failed to fetch https://api.weather.test/?k=WXSECRET9876'); });
   const e = await failing('https://api.weather.test/?k=WXSECRET9876').catch((/** @type {any} */ x) => x);
-  assert.equal(e.message, "annai couldn't reach api.weather.test. Is the device offline?");
-  assert.deepEqual(e.said, { code: 'unreachable', where: 'api.weather.test' });
+  assert.equal(e.message, "annai couldn't reach the address. Is the device offline?");
+  assert.deepEqual(e.said, { code: 'unreachable', where: 'the address' });
   assert.equal(e.cause, undefined, 'no browser words');
+  // A stored key can be the host's own name (a provider's per-account address): neither the trace nor the tool's error, which Shiori reads, may show it.
+  const named = await tracedFetch(store, 'sys', { tool: 'plugin:weather' }, async () => { throw new TypeError('Failed to fetch'); })('https://HOSTKEY7654321.weather.test/forecast').catch((/** @type {any} */ x) => x);
+  assert.equal(named.message, "annai couldn't reach the address. Is the device offline?");
+  assert.doesNotMatch(JSON.stringify([named.message, named.said, named.shown]), /hostkey|weather\.test/i);
   // A key handed over to blank (in an address being tried) is still blanked, in the host too.
   await tracedFetch(store, 'sys', { tool: 'plugins', blank: ['TRIEDKEY55'] }, async () => new Response('ok'))('https://TRIEDKEY55.example.test/x');
-  store.tx = tx;
+  back();
   const evs = await store.tx(['events'], 'readonly', (t) => t.listEvents('sys', { types: ['net.request'] }));
   assert.deepEqual(evs.map((x) => [x.data.url, x.data.error]), [
-    ['https://api.weather.test/«key»', undefined],
-    ['https://api.weather.test/«key»', "The request failed. (annai couldn't check its error message for keys, so it is not kept.)"],
+    ['https://«key»/«key»', undefined],
+    ['https://«key»/«key»', "The request failed. (annai couldn't check its error message for keys, so it is not kept.)"],
+    ['https://«key»/«key»', "The request failed. (annai couldn't check its error message for keys, so it is not kept.)"],
     ['https://«key»/«key»', undefined],
   ]);
+  assert.doesNotMatch(JSON.stringify(evs), /HOSTKEY7654321|weather\.test/i);
+});
+
+test("tracedFetch: with the keys unread, an address that is no address keeps nothing of itself either", async () => {
+  const store = createMemoryStore();
+  await store.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:weather:key', 'WXSECRET9876'));
+  const back = keysUnread(store);
+  await tracedFetch(store, 'sys', { tool: 'plugin:weather' }, async () => new Response('ok'))('not an address ?appid=WXSECRET9876');
+  back();
+  const evs = await store.tx(['events'], 'readonly', (t) => t.listEvents('sys', { types: ['net.request'] }));
+  assert.deepEqual(evs.map((x) => x.data.url), ['«key»']);
 });
 
 test('tracedFetch: a secret is blanked however the address encodes it (encoding differences)', async () => {

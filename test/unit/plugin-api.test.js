@@ -93,7 +93,7 @@ test("annai.secrets.blank gives a copy with every secret annai keeps, and anythi
   assert.equal(await a.secrets.blank(42), 42);
 });
 
-test("annai.secrets.blank fails closed: when annai can't read the secrets it keeps, it rejects rather than give back text it couldn't check; annai's own cards keep no text they couldn't check", async () => {
+test("annai.secrets.blank fails closed: when annai can't read the secrets it keeps, it rejects rather than give back text it couldn't check, where the walk behind annai's own logs and choices (not strict) gives a note for it", async () => {
   const k = await agentKit([[{ text: '' }]]);
   const KEY = 'sk-planted-endpoint-key-0123456789';
   await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('endpoint:stand-in:key', KEY));

@@ -7,8 +7,8 @@ import { answerWords } from '../answer.js';
  * shows every request the agent sends. The address is kept as sent, except that no secret annai
  * keeps may reach the trace (§9.9): a username or password in it, the values of credential-named
  * query parameters, and any stored secret wherever it appears (path, query, an error message) are
- * blanked. When the keys annai keeps can't be read, nothing that could hold one is kept: the address
- * only to its host, and no error's words.
+ * blanked. When the keys annai keeps can't be read, nothing that could hold one is kept: of the address
+ * only its scheme (not even its host), and no error's words.
  * @typedef {(url: string, init?: RequestInit) => Promise<Response>} Fetch
  * @typedef {import('../types.js').Store} Store
  */
@@ -154,12 +154,14 @@ export function leaks(text, secrets) {
   return secrets.some((s) => seen.some((x) => x.includes(squash(s))));
 }
 
+/* en */ const THE_ADDRESS = 'the address';
+
 /** The host of an address as the trace keeps it. @param {string} url */
 function hostOf(url) {
   try {
-    /* en */ return new URL(url).host || 'the address';
+    return new URL(url).host || THE_ADDRESS;
   } catch {
-    /* en */ return 'the address';
+    return THE_ADDRESS;
   }
 }
 
@@ -176,7 +178,7 @@ function decodeSafe(text) {
  * The address as the trace keeps it: part by part, any part that holds a secret once decoded is
  * blanked (the host, a path segment, a query name or value), credential-named query values are
  * blanked, and the username, password and fragment are left out.
- * @param {string} url @param {string[]} [secrets] @param {boolean} [unread] the keys annai keeps couldn't be read: only the host is kept
+ * @param {string} url @param {string[]} [secrets] @param {boolean} [unread] the keys annai keeps couldn't be read: not even the host is kept
  */
 export function traceUrl(url, secrets = [], unread = false) {
   try {
@@ -190,8 +192,9 @@ export function traceUrl(url, secrets = [], unread = false) {
     }
     const search = query.toString();
     const out = scrub(`${u.protocol}//${host}${path}${search ? `?${search}` : ''}`, secrets);
-    // Fail closed: if any decoding could still show a secret, or the keys couldn't be read, the path and query are not kept at all.
-    return unread || leaks(out, secrets) ? `${u.protocol}//${leaks(host, secrets) ? BLANK : host}/${BLANK}` : out;
+    // Fail closed: if any decoding could still show a secret, the path and query are not kept at all; if the keys couldn't be read, the host
+    // isn't either (a stored key may be in it).
+    return unread || leaks(out, secrets) ? `${u.protocol}//${unread || leaks(host, secrets) ? BLANK : host}/${BLANK}` : out;
   } catch {
     // Not an address: keep only what comes before any query or fragment, if that holds no secret.
     const out = scrub(String(url).split(/[?#]/)[0], secrets);
@@ -231,7 +234,7 @@ export function tracedFetch(store, scope, who, get = (url, init) => fetch(url, i
       if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
       // No answer at all (offline, blocked, no such host): the tool's answer, not a crash in its code (spec §17).
       // Marked a network failure (what a search provider rests on), with the browser's own error kept as its cause.
-      const host = hostOf(base.url);
+      const host = known ? hostOf(base.url) : THE_ADDRESS; // the trace's address has no host when the keys couldn't be read
       /* en */
       const en = `annai couldn't reach ${host}${held ? '' : ` (${said})`}. Is the device offline?`;
       // What it was goes with it (answer.js's vocabulary): a hold or a pack's failure keeps it, and a screen says it in its words.

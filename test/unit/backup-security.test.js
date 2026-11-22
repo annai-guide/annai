@@ -5,7 +5,8 @@ import { Registry } from '../../src/core/registry.js';
 import { logEvent } from '../../src/core/events.js';
 import { withoutSecrets, withoutSecretsIn, secretFreeLog } from '../../src/core/agent/net.js';
 import { TargetError } from '../../src/core/storage-types.js';
-import { TOKEN, memoryPlace, device, placeOn, everything } from './backup-kit.js';
+import { TOKEN, memoryPlace, device, placeOn, everything, until } from './backup-kit.js';
+import { keysUnread } from '../fakes/store-memory.js';
 
 // What a backup place's errors, notes and listings carry never takes a secret anywhere annai keeps
 // or shows it (spec §9.9, §15).
@@ -75,13 +76,6 @@ test("credentials are blanked by their shape too, even ones annai doesn't keep",
   assert.match(out, /Basic authentication is fine to mention\./);
 });
 
-/** The store refuses the read the blanking needs, listing the keys (Chromium's at no byte free); reading one still works. @param {any} store */
-function keysUnread(store) {
-  const tx = store.tx;
-  store.tx = (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => tx.call(store, stores, mode, (/** @type {any} */ t) => fn(stores.includes('secrets') ? { ...t, listSecretIds: () => Promise.reject(new Error('The database connection is closing.')) } : t));
-  return () => { store.tx = tx; };
-}
-
 const UNCHECKED = "annai couldn't check this message for keys, so it is not shown.";
 
 test("when annai can't read the keys it keeps, a value it keeps has no text it couldn't check, and the registry's log only notes (spec §9.9)", async () => {
@@ -92,10 +86,13 @@ test("when annai can't read the keys it keeps, a value it keeps has no text it c
     { text: UNCHECKED, deep: [{ error: UNCHECKED }, '', 3, true, null] });
   assert.equal(await withoutSecrets(d.store, 'cannot read sk-model-key-0001'), UNCHECKED);
   await assert.rejects(withoutSecretsIn(d.store, { text: 'x' }, { strict: true }), /couldn't read the keys it keeps/);
-  const registry = new Registry({ log: secretFreeLog(d.store, SYS), maxFailures: 1 });
+  const log = secretFreeLog(d.store, SYS);
+  let written = false;
+  // The registry doesn't wait for its log: the keys stay unread until the entry is written.
+  const registry = new Registry({ log: async (ev) => { await log(ev); written ||= ev.type === 'plugin.error'; }, maxFailures: 1 });
   const broken = registry.guard('some-plugin', 'tool search', () => { throw new TypeError('cannot read sk-model-key-0001 of undefined'); });
   await assert.rejects(broken());
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  await until(() => written);
   back();
   const logged = await d.store.tx(['events'], 'readonly', (t) => t.listEvents(SYS, { types: ['plugin.error'] }));
   assert.deepEqual(logged.map((e) => e.data), [{ name: UNCHECKED, message: UNCHECKED, count: 1 }]);

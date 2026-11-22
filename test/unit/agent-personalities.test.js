@@ -103,3 +103,15 @@ test('a review model that refuses the forced tool (it thinks) is asked again wit
   const reviews = k.requests.filter((r) => r.tools?.some((/** @type {any} */ t) => t.name === 'review'));
   assert.deepEqual(reviews.map((r) => r.toolChoice), ['review', undefined]);
 });
+
+test("a review that couldn't run tells Shiori only annai's words, never a provider's, so a key it echoes can't reach her (spec §9.9)", async () => {
+  const KEY = 'sk-ant-SECRETKEY1234567890';
+  const bad = { error: 'bad-request', status: 400, message: `Invalid x-api-key: ${KEY}` };
+  const k = await agentKit([[tune('# Shiori\nChanged.\n', 'change'), sleep]], { utility: [bad, bad] });
+  await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('llm:ep-u', KEY));
+  await syncPersonalities({ ws: k.ws, presets: k.presets });
+  k.agent.send('Go');
+  await k.agent.idle();
+  assert.equal(await k.ws.readText(ME, '/personalities/shiori.md'), k.presets.shiori);
+  assert.equal((await k.events(['tool.result'])).find((e) => e.data.name === 'tune_personality').data.content, "Not changed: the review couldn't run (Shiori can't reach her model.). Try again later.");
+});

@@ -2826,9 +2826,9 @@ export class Agent {
     }
   }
 
-  /** What went wrong with a model call, in annai's English for a model to read. @param {unknown} e @param {string} [role] */
-  #explain(e, role = 'main') {
-    return whyWords(whyOf(e, { role, online: this.online() }), true);
+  /** What went wrong with a model call, in annai's English for a model to read, with every key annai keeps blanked (#whyOf). @param {unknown} e @param {string} [role] */
+  async #explain(e, role = 'main') {
+    return whyWords(await this.#whyOf(e, role), true);
   }
 
   /** The screens' names for models, each after its provider's name (config.js modelNames); a config that can't be read leaves them bare. */

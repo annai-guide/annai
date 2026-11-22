@@ -10,6 +10,7 @@ import { Agent, UNANSWERED, FORCED_STEPS } from '../../src/core/agent/loop.js';
 import { NETWORK_RETRIES } from '../../src/core/llm/fallback.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { useClock } from './clock.js';
+import { keysUnread } from '../fakes/store-memory.js';
 import { noReader } from '../../src/core/agent/reading.js';
 import { askIn } from '../../src/ui/today.js';
 import { askAbout } from '../../src/ui/composer.js';
@@ -1504,18 +1505,29 @@ test("when annai can't read the keys it keeps, an error card says it couldn't ch
   const KEY = 'sk-ant-SECRETKEY1234567890';
   const k = await agentKit([[{ error: 'auth', status: 401, message: `Incorrect API key provided: ${KEY}` }]]);
   await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('llm:ep-0', KEY));
-  const tx = k.store.tx;
-  // Reading one key works (the model's); listing them all, which the blanking needs, is refused (Chromium's store at no byte free).
-  k.store.tx = /** @type {any} */ ((/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => tx.call(k.store, stores, mode, (/** @type {any} */ t) => fn(stores.includes('secrets') ? { ...t, listSecretIds: () => Promise.reject(new Error('The database connection is closing.')) } : t)));
+  // Reading the model's key works (its request is under way); listing them all, which the blanking needs, is refused (the store began refusing).
+  const back = keysUnread(k.store);
   k.agent.send('Hi');
   await k.agent.idle();
-  k.store.tx = tx;
+  back();
   assert.equal(k.notices.length, 1);
   assert.equal(k.notices[0].body, "annai couldn't check this message for keys, so it is not shown.");
   assert.doesNotMatch(JSON.stringify(k.notices), /SECRETKEY/);
   const errors = await k.events(['error']);
   assert.equal(errors.length, 1);
   assert.doesNotMatch(JSON.stringify(errors), /SECRETKEY/);
+});
+
+test("when annai can't read the keys it keeps, a reminder's card shows its words whole (they are Shiori's or the plan's, with no key in them); with them readable, a key is blanked in it as before", async (t) => {
+  useClock(t);
+  const KEY = 'sk-ant-SECRETKEY1234567890';
+  const k = await agentKit([[say('Noted.')]]);
+  await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('llm:ep-0', KEY));
+  const back = keysUnread(k.store);
+  await k.agent.remind([{ watch: 'w1', text: 'Leave for the ferry at 10:40.' }]);
+  back();
+  await k.agent.remind([{ watch: 'w2', text: `Remember ${KEY} on the ferry.` }]);
+  assert.deepEqual(k.notices.map((/** @type {any} */ n) => [n.title, n.body]), [['Reminder', 'Leave for the ferry at 10:40.'], ['Reminder', 'Remember «key» on the ferry.']]);
 });
 
 test("housekeeping that fails inside a turn ends it with a card and an error event that say so", async (t) => {
@@ -2312,6 +2324,24 @@ test("a reading that failed is remembered for the rest of the call: the second p
   assert.equal(k.sent['model-u'].length, 1, 'asked once');
   assert.match(JSON.stringify(k.sent['model-1'][0].messages), /\[a photo: [^\]]+\] It couldn't be described/);
 });
+
+for (const unread of [false, true]) {
+  test(`a photo the reader couldn't describe: the words the model that answers reads hold no key annai keeps, even when the provider echoes it${unread ? ", and when annai can't read the keys they are a note" : ''}`, async (t) => {
+    useClock(t);
+    const KEY = 'sk-ant-SECRETKEY1234567890';
+    const k = await photoKit([say('I could not see it.')], [{ error: 'auth', status: 401, message: `Incorrect API key provided: ${KEY}` }]);
+    await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('llm:ep-0', KEY));
+    const back = unread ? keysUnread(k.store) : () => {};
+    k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+    await k.agent.idle();
+    back();
+    const told = JSON.stringify(k.sent['model-0'][0].messages);
+    assert.match(told, /It couldn't be described: model-u: /);
+    assert.doesNotMatch(told, /SECRETKEY/);
+    assert.match(told, unread ? /annai couldn't check this message for keys, so it is not shown\./ : /«key»/);
+    assert.doesNotMatch(JSON.stringify(await k.events(['tool.result', 'reading'])), /SECRETKEY/);
+  });
+}
 
 test("a blank page isn't sent: the line says which were blank, and count still counts them (the review of reading-files)", async (t) => {
   useClock(t);

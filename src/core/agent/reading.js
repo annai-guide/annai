@@ -3,7 +3,7 @@
  * then Utility's, then the model's own role's; for a PDF then its pages as pictures, drawn by the PDF pages plugin (goal 12);
  * and only when nothing can, a note naming the setting that fixes it. Everything here is words a model reads: English.
  */
-import { chatCandidates, firstWordsMs, whyOf, whyWords } from '../llm/fallback.js';
+import { chatCandidates, firstWordsMs } from '../llm/fallback.js';
 import { KOE_CLASSIC, modelOf } from '../llm/config.js';
 import { fromBase64, toBase64 } from '../bytes.js';
 import { MAX_PAGES, PAGE_EDGE } from '../pdf-pages.js';
@@ -76,8 +76,8 @@ export function noReader(kind, { plugin = false, photos = false } = {}) {
  * DESCRIBE_S or DESCRIBE_PDF_S, or at signal (the turn's stop). "Can read" means can and did: a reader that fails passes it on.
  * @param {FileToRead} file @param {{ input?: string[] }} model the model the reading is for
  * @param {{ llm: { call: Function, config: () => Promise<any> }, half: 'one' | 'kokoro' | 'koe', pages: import('../pdf-pages.js').PdfPages | null,
- *   signal: AbortSignal, wakeId: string, scope: string, secondMs: number, explain?: (e: unknown, role: string) => string }} o
- *   explain: why a reader failed, in English for the model (the loop's, which knows whether the device is online)
+ *   signal: AbortSignal, wakeId: string, scope: string, secondMs: number, explain: (e: unknown, role: string) => string | Promise<string> }} o
+ *   explain: why a reader failed, in English for the model (the loop's, which knows whether the device is online, and blanks every key annai keeps)
  * @returns {Promise<Reading>}
  */
 export async function readFile(file, model, o) {
@@ -85,7 +85,6 @@ export async function readFile(file, model, o) {
   const pdf = file.kind === 'pdf';
   const roles = readerRoles(cfg, o.half);
   const takes = (/** @type {string} */ role, /** @type {string} */ kind) => chatCandidates(cfg, role).some((id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes(kind));
-  const explain = o.explain ?? ((e, role) => whyWords(whyOf(e, { role }), true));
   const limit = pdf ? DESCRIBE_PDF_S : DESCRIBE_S;
   // The turn's stop, and the time limit, end it (without AbortSignal.any, which older browsers lack).
   const stop = new AbortController();
@@ -125,7 +124,7 @@ export async function readFile(file, model, o) {
         if (r.reply.text.trim()) return { ...r, sent };
       } catch (e) {
         /* en */
-        failed ||= `It couldn't be described: ${explain(e, role)}`;
+        failed ||= `It couldn't be described: ${await o.explain(e, role)}`;
       }
     }
     return null;
