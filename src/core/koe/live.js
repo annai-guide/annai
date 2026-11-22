@@ -1,6 +1,6 @@
 import { LiveInput } from '../realtime/input.js';
 import { escapeTags, wrapNote, theirs, koeLine } from '../agent/blocks.js';
-import { LABELS, NOTE_UNSAID, isWatched, STALL_MIN_MS } from '../agent/loop.js';
+import { LABELS, NOTE_UNSAID, isWatched, STALL_MIN_MS, reminderData } from '../agent/loop.js';
 import { newId, SYS_DEVICE, ensureDeviceScope } from '../scopes.js';
 import { forget } from '../forget.js';
 import { resolveEvent } from '../agent/transcript.js';
@@ -815,7 +815,7 @@ export class LiveKoe {
     if (this.listening || this.#input || (this.#readying && this.state === 'opening')) {
       // An urgent note she has not begun: a tap means stop and the card stands, not kept for the next session (close would hand it back to wait).
       if (urgent && this.#owed.sent.length) {
-        this.c.left?.([...this.#owed.sent], true);
+        this.c.left?.(this.#owed.sent.splice(0), true);
         this.#passed();
       }
       this.close('tap');
@@ -878,7 +878,7 @@ export class LiveKoe {
     const write = () => { for (const w of behind) if (w.done) this.#said(w, null); };
     if (t?.stream) void t.stream.done.then(write, write); // after hers, as the lines read in order
     else write();
-    if (!this.#passes(t, Boolean(t?.whole)) && this.#owed.sent.length) this.c.left?.([...this.#owed.sent], true);
+    if (!this.#passes(t, Boolean(t?.whole)) && this.#owed.sent.length) this.c.left?.(this.#owed.sent.splice(0), true);
     this.#passed();
     this.#stopped = true;
     this.#holdForUser();
@@ -1032,7 +1032,10 @@ export class LiveKoe {
   #cutIn(begins = false, replaces = false) {
     if (this.#owed.sent.length) {
       const shown = replaces ? this.#owed.sent.filter((w) => w.kind !== 'note') : this.#owed.sent;
-      if (shown.length && !this.#passes(this.#sounding, this.#whole(this.#sounding, begins))) this.c.left?.(shown, true);
+      if (shown.length && !this.#passes(this.#sounding, this.#whole(this.#sounding, begins))) {
+        this.c.left?.(shown, true);
+        this.#owed.sent = []; // shown, so not passed on (#passed)
+      }
       this.#passed();
     }
     return this.#sounding || this.#t || this.#pending || this.#queue.length ? this.#cut() : {};
@@ -1048,10 +1051,17 @@ export class LiveKoe {
     this.#owed.at = Date.now();
   }
 
-  /** Koe reached the user since its notes went in (its words heard, a card, a question): they are passed on. */
-  #passed() {
-    this.#owed.sent = [];
-    this.#owed.cued = this.#owed.cue = false;
+  /**
+   * Koe reached the user since its notes went in (its words heard, a card, a question): they are passed on. The reminders among them are written as
+   * told (`reminder.told`), the session's own verdict, which settles the copy its page holds (Agent.hold; spec §11.3); one shown instead is taken out first.
+   * @param {Wake[]} [these] only these, those of them still in flight (a card's: what was in flight when it was shown); all in flight if not given
+   */
+  #passed(these = this.#owed.sent) {
+    const passing = this.#owed.sent.filter((w) => these.includes(w));
+    const reminders = passing.flatMap((w) => (w.kind === 'note' ? [] : (w.fallbacks ?? []).flatMap((r) => reminderData(r) ?? [])));
+    if (reminders.length) this.#write({ type: 'reminder.told', actor: 'system', data: { reminders } });
+    this.#owed.sent = this.#owed.sent.filter((w) => !passing.includes(w));
+    if (!this.#owed.sent.length) this.#owed.cued = this.#owed.cue = false;
   }
 
   /**
@@ -1599,11 +1609,12 @@ export class LiveKoe {
    * (whole: #whole's answer for it, which a line cut off in her quiet tail is too) and goes on after no call: a turn that called a tool she speaks after
    * ends (done, made) before her words for the note come, which her continuation says, so a user starting, a tap or a close in her tail, after the
    * provider's end, is a cut: the note is shown, or sent again, and not lost when the user's question drops the continuation. A whole line that is
-   * only one of annai's own words to her (bare) is no answer, however it ends: the review's R1 found a tap in the quiet tail of "silent" lose the note.
+   * only one of annai's own words to her (bare) is no answer, however it ends: the review's R1 found a tap in the quiet tail of "silent" lose the note. Nor
+   * is a line whose words began before the notes went in (wordAt): an urgent one cuts in on her quiet tail, and that line was no answer to it.
    * @param {Turn | null} t @param {boolean} whole
    */
   #passes(t, whole) {
-    return whole && !t?.goesOn && !bare(t?.said ?? '');
+    return whole && !t?.goesOn && !bare(t?.said ?? '') && (t?.wordAt ?? 0) >= this.#owed.at;
   }
 
   /**
@@ -1669,7 +1680,7 @@ export class LiveKoe {
     // called a tool she speaks after is not her answer yet (real Gemini: "Checking your notes.", then a new turn 2.4 to 7.2 s later): its notes wait
     // for what she says after the answer, and are shown if the user speaks first.
     // A line that is only one of annai's own words to her (bare) is no answer (#passes): #settle asks once more.
-    if (text && this.#passes(t, !cut) && this.#owed.sent.length && t.wordAt >= this.#owed.at) this.#passed();
+    if (text && this.#passes(t, !cut) && this.#owed.sent.length) this.#passed();
     const v = this.c.voice;
     const aloud = Boolean(text && !cut && !t.cut && v?.on && (t.stalled || v.stuck)); // a turn the user stopped is never read aloud
     const voiced = Boolean(t.stream || aloud);
@@ -1734,6 +1745,7 @@ export class LiveKoe {
    * Koe's is. @param {LiveSession} s @param {Turn} t @param {{ id: string, name: string, input: any }} e
    */
   async #tool(s, t, e) {
+    const flight = [...this.#owed.sent]; // what a card answers: the notes in flight as the call came, not one that goes in while it runs (an urgent reminder)
     t.tools = true;
     if (!REACH.includes(e.name) && !SILENT.includes(e.name)) t.goesOn = true;
     t.calls++;
@@ -1746,8 +1758,12 @@ export class LiveKoe {
       // the user has the note, which she may have said of another (real Gemini, 2026-11-12: she said note 1, and called it for note 2, lost): the
       // note is shown on a silent card, at worst something the user heard (the user's pick).
       if (REACH.includes(e.name) && !out.isError) {
-        if (e.name === 'already_told' && this.#owed.sent.length) this.c.left?.(this.#owed.sent.splice(0), true);
-        this.#passed();
+        const those = this.#owed.sent.filter((w) => flight.includes(w)); // one that went in during the call is for the ask once more (#settle)
+        if (e.name === 'already_told' && those.length) {
+          this.c.left?.(those, true);
+          this.#owed.sent = this.#owed.sent.filter((w) => !those.includes(w));
+        }
+        this.#passed(those);
       }
       if ((e.name === 'show' || e.name === 'ask') && !out.isError) {
         this.#answered(false); // a card or question answers what was heard
@@ -1775,7 +1791,7 @@ export class LiveKoe {
     } finally {
       t.calls--;
       this.#tools--;
-      if (t.done && !t.calls) this.#settle(t);
+      if (t.done && !t.calls) { if (this.#owed.sent[0] === flight[0]) this.#settle(t); } // a note that went in during the call is no miss of the card's turn
       else if (!t.calls && t.made && t.endBy && (this.#t === t || (t.alone && !this.#t))) this.#endNow(t); // all made before its last answer
       this.#poke();
       this.#heardOut();

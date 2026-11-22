@@ -102,6 +102,7 @@ import { FILES_ONLY, PHOTO_ONLY, handoverOf } from '../handover.js';
  * @property {string} role the role it calls
  * @property {boolean} registryTools false: its own loop tools only @property {() => boolean} voice whether it may use the voice now
  * @property {boolean} logVoice @property {boolean} housekeeping @property {string} [nonce] Koe's, in its notes' marker
+ * @property {string} [page] the page's mark on what it holds (Agent.hold), one for both halves
  * @property {boolean} [listenLast] its speak doesn't listen when a question to the other half or a wait follows it: they run at once
  * @property {() => import('./transcript.js').HalfName} [rules] whose rules its transcript reads now
  * @property {(snapshot: import('./context.js').Snapshot) => string} [system]
@@ -246,7 +247,7 @@ const byAnnai = (w) => w.kind === 'live' || w.kind === 'trigger' || w.kind === '
 const told = (w) => (w.shown ? `${w.text} ${SHOWN}` : w.text);
 const SHOWN = /* en */ '(annai has already shown the user its reminder.)';
 /** A reminder as its entry and a wake's record keep it. @param {Reminder} r */
-const reminderData = (r) => {
+export const reminderData = (r) => {
   const text = String(r?.text ?? '').trim();
   return text ? { watch: String(r.watch ?? ''), text, ...(r.answer ? { answer: true } : {}), ...(r.plan ? { plan: r.plan } : {}) } : null;
 };
@@ -396,6 +397,8 @@ export class Agent {
   #loopTools;
   /** The trip of the conversation being opened, or open: what the user is looking at. @type {string | null} */
   #target = null;
+  /** This page's own mark on what it holds in memory (hold): both halves share it. */
+  #page = '';
   /** Opens asked for and not finished: no turn starts meanwhile. */
   #opens = 0;
   /** Counts opens: only the latest one does anything. */
@@ -567,6 +570,7 @@ export class Agent {
     // Read for the conversation a copy is for (reach.js): one made for another trip is made again.
     this.#photos = codec ? new PhotoCopies({ codec, read: (hash, scope) => blobBytes(this.store, scope ?? this.scope, hash, { via: /* en */ 'a request copy' }) }) : null;
     this.#half = half;
+    this.#page = half.page ?? newId('p');
     this.transcript = new Transcript({ half: this.#rules(), nonce: half.nonce });
     this.#loopTools = this.#talkTools();
     this.voice = voice ?? null;
@@ -764,11 +768,13 @@ export class Agent {
     // nothing: `me` takes no more turns (timeline stage 7), so a removal or a failed start never queues a restart there.
     const owed = scope !== ME && Boolean(repaired || transcript.unanswered) && (await (this.#half.restart?.() ?? true));
     if (generation !== this.#generation) return;
-    // What the log still owes the traveller (a reminder nothing settled: its turn was cut, or the page was left as it ended) is shown now, in any scope,
-    // whatever the transcript says of the turn. Kokoro's half shows it, not Koe's; a restart either queues says so (SHOWN) and carries none.
-    const showing = transcript.owedReminders.length > 0;
+    // What the log still owes the traveller (a reminder nothing settled: its turn was cut, the page was left as it ended, or it died holding it) is shown now,
+    // in any scope, whatever the transcript says of the turn; what this page still holds is its own to say (hold). Kokoro's half shows it, not Koe's; a
+    // restart either queues says so (SHOWN) and carries none.
+    const owes = transcript.owedReminders.filter((r) => r.held !== this.#page);
+    const showing = owes.length > 0;
     if (showing && this.#half.name !== 'koe') {
-      await this.remind(transcript.owedReminders, scope, { unsaid: true });
+      await this.remind(owes, scope, { unsaid: true });
       if (generation !== this.#generation) return;
     }
     this.trip = trip;
@@ -913,7 +919,9 @@ export class Agent {
 
   /** @param {Wake} w */
   #push(w) {
-    this.#queue.push({ ...w, scope: this.#target ?? ME, at: Date.now() });
+    const scope = this.#target ?? ME;
+    this.hold(w.fallbacks ?? [], scope);
+    this.#queue.push({ ...w, scope, at: Date.now() });
     this.#remindWaiting();
     // A heard line its verdict queued after a wait began listening ends it now; under one voice going off stopped, it waits for its end.
     if (w.kind === 'note' || (w.kind === 'heard' && this.#pending?.listening) || w.fallbacks?.length) this.#noted();
@@ -1470,17 +1478,41 @@ export class Agent {
     this.#queue = this.#queue.filter((w) => w.scope !== this.scope);
     this.poke();
     this.#stopWakes(wakes);
-    const owed = wakes.flatMap((w) => w.fallbacks ?? []);
-    if (owed.length) this.#remindCounted(owed, this.scope, { silent: true }); // the Stop stops her, not the reminder they set
+    this.remindDropped(wakes);
   }
 
-  /** Wakes that never start a turn, written into the conversation all the same, with a quiet "stopped"; a write that fails is told (#notSaved). @param {Wake[]} wakes */
-  #stopWakes(wakes) {
+  /**
+   * The reminders of wakes that are taken out of the queue so that no turn takes them (a Stop, Start fresh): shown now, silently, the Stop stops her, not the
+   * reminder they set (spec §6.7, §11.3); their entries settle what was held (hold). idle() waits for the entries; a caller that must wait for them waits on
+   * what it returns. Never rejects. @param {Wake[]} wakes @param {string} [scope] their conversation; the open one's if not given
+   */
+  remindDropped(wakes, scope = this.scope) {
+    const owed = wakes.flatMap((w) => w.fallbacks ?? []);
+    return owed.length ? this.#remindCounted(owed, scope, { silent: true }) : Promise.resolve();
+  }
+
+  /**
+   * The sign's Stop, or Undo's or Erase's, takes wakes out of the queue before any turn has them (a conversation opening, housekeeping): what the user sent among
+   * them is written down as stopped, in their conversation, as a gathering turn's is (#stopGathered; spec §6.7: what they sent meanwhile is kept, nothing
+   * answers it), and every one's reminders are shown (remindDropped). Koe's notes and annai's own notices among them are dropped as they were. Never rejects.
+   * @param {Wake[]} wakes @param {string} [scope] their conversation; the open one's if not given
+   */
+  stopDropped(wakes, scope = this.scope) {
+    this.#stopWakes(wakes.filter(isTheirs), scope);
+    return this.remindDropped(wakes, scope);
+  }
+
+  /**
+   * Wakes that never start a turn, written into their conversation all the same, with a quiet "stopped"; a write that fails is told (#notSaved). One being
+   * opened while this one is still open is written as its late entries are (#logIn: the open takes a stopped line into its transcript, except one over 2000 characters or with photos, which joins at its next read). @param {Wake[]} wakes @param {string} [scope] the open one's if not given
+   */
+  #stopWakes(wakes, scope = this.scope) {
     if (!wakes.length) return;
     const wakeId = newId('w');
+    const log = scope === this.scope ? (/** @type {any} */ ev) => this.#log(ev) : (/** @type {any} */ ev) => this.#logIn(scope, ev);
     this.#checking++;
-    this.#logWakes(wakes, wakeId, false)
-      .then(() => this.#log({ type: 'error', actor: 'system', data: { kind: 'stopped', wake: wakeId, message: STOPPED, quiet: true } }))
+    this.#logWakes(wakes, wakeId, false, { log, trip: scope === ME ? null : scope })
+      .then(() => log({ type: 'error', actor: 'system', data: { kind: 'stopped', wake: wakeId, message: STOPPED, quiet: true } }))
       .catch((e) => this.#notSaved(e))
       .finally(() => {
         this.#checking--;
@@ -1866,8 +1898,7 @@ export class Agent {
     this.#before = [];
     this.#queue = this.#queue.filter((w) => !left.includes(w));
     this.#stopWakes(left);
-    const owed = left.flatMap((w) => w.fallbacks ?? []);
-    if (owed.length) await this.#remindCounted(owed, this.scope, { silent: true }); // idle() waits for its entry: Koe's half is not busy while Halves waits here
+    await this.remindDropped(left); // idle() waits for its entry: Koe's half is not busy while Halves waits here
   }
 
   /** Start fresh is done: what waited (the user's words meanwhile) runs. */
@@ -2030,6 +2061,19 @@ export class Agent {
       if (aloud) this.voice?.say(shown).catch(() => {});
       await this.#logIn(scope, ev).catch((e) => this.#notSaved(e));
     }
+  }
+
+  /**
+   * Reminders this page now holds in memory to say (a wake queued, Koe's session), written to their conversation's log before anything else of
+   * theirs, so the next open shows them if the page dies first (spec §11.3); its open leaves this page's own to it. A cue is none. Never rejects:
+   * a refused one is quiet, as the page still says the reminders and, on a full phone, their entries' refusal brings the storage card (only one that then
+   * dies loses them, as before it was written).
+   * @param {Reminder[]} list @param {string} [scope]
+   */
+  hold(list, scope = this.#target ?? ME) {
+    const reminders = list.flatMap((r) => (r.cue ? [] : reminderData(r) ?? []));
+    if (!reminders.length) return Promise.resolve();
+    return this.#logIn(scope, { type: 'reminder.held', actor: 'system', data: { reminders, page: this.#page } }).then(() => {}, () => {});
   }
 
   /** An entry written while a conversation was being opened: added to the open one's transcript unless the reading had it; this half's own told to the screens either way, as nothing told them yet (Driving's card; the conversation screen skips a seq it drew). @param {any} e @param {Resolved} [r] set for an entry already written and told by #write or the other half's writer */

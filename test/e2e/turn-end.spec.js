@@ -231,6 +231,129 @@ for (const [how, back] of /** @type {const} */ ([
   });
 }
 
+// A watch that fires while her turn for another waits on her model waits in the queue behind it (it joins at her next step): held only in memory, it is
+// written to the log as it is held (`reminder.held`, spec §11.3), so the reload's open shows it too, once, beside the cut turn's own.
+test("a reload while a second watch's wake waits behind her turn for the first: the next start's open shows both reminders, once each", async ({ page }) => {
+  const LEAVE = 'Leave for the airport by 14:10';
+  const CHECK_OUT = 'Check out by 11';
+  const llm = await startModelServer({ [MESSAGES]: [held(), sse(anthropicToolReply([sleep]))] });
+  try {
+    await modelSetUp(page, llm.origin, 'Big Sur');
+    const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    await page.evaluate(async () => {
+      const { Halves } = await import(/** @type {string} */ ('/src/core/agent/halves.js'));
+      const typing = Halves.prototype.typing;
+      Halves.prototype.typing = function (/** @type {any[]} */ ...a) {
+        /** @type {any} */ (window).agent = this;
+        return typing.apply(this, a);
+      };
+    });
+    await page.getByRole('button', { name: 'Type', exact: true }).click();
+    await page.waitForFunction(() => Boolean(/** @type {any} */ (window).agent));
+    await page.getByLabel('Message to Shiori').press('Escape');
+    const fire = (/** @type {string} */ text, /** @type {string} */ watch) => page.evaluate(([text, watch]) => /** @type {any} */ (window).agent.wake({ kind: 'trigger', text: `Your watch fired: ${text}.`, fallbacks: [{ watch, text }] }), [text, watch]);
+    await fire(LEAVE, 'w1');
+    await expect.poll(() => llm.bodies(MESSAGES).length, { timeout: 30_000 }).toBe(1);
+    await fire(CHECK_OUT, 'w2');
+    await expect.poll(() => page.evaluate(async (trip) => {
+      const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+      const store = await createIdbStore();
+      const n = (await store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(trip, { types: ['wake', 'reminder.held'] }))).length;
+      store.close();
+      return n;
+    }, trip), { timeout: 30_000 }).toBe(3); // her turn's wake, and each watch held as it came: the second waits in the queue
+    await page.reload();
+    // Each card on its own, not the stack two cards of one kind fold into (it holds both cards' words).
+    const notices = page.locator('.notices .notice:not(.notice-stack)');
+    await expect(notices.filter({ hasText: LEAVE })).toHaveCount(1, { timeout: 30_000 });
+    await expect(notices.filter({ hasText: CHECK_OUT })).toHaveCount(1, { timeout: 30_000 });
+    await expect.poll(() => llm.bodies(MESSAGES).length, { timeout: 30_000 }).toBe(2);
+    await expect.poll(() => ends(page, trip), { timeout: 30_000 }).toBe(1); // her restart turn has ended: nothing more is shown
+    await expect(notices.filter({ hasText: LEAVE })).toHaveCount(1);
+    await expect(notices.filter({ hasText: CHECK_OUT })).toHaveCount(1);
+    await expect(page.locator('.notices .notice-stack').filter({ hasText: /^Reminder \(2\)/ })).toHaveCount(1); // two cards in all
+    await page.evaluate((trip) => { location.hash = `#/trip/${encodeURIComponent(trip)}/talk`; }, trip);
+    await expect(page.locator('.convo').getByText(LEAVE)).toHaveCount(1);
+    await expect(page.locator('.convo').getByText(CHECK_OUT)).toHaveCount(1);
+    noRecord(llm.bodies(MESSAGES));
+  } finally {
+    await llm.stop();
+  }
+});
+
+// Another tab takes annai over while her turn waits on her model, with a second watch's wake queued behind it (held in the log, as above): the new tab's open
+// shows both reminders, so the old tab, whose turn then fails on its closed store, must raise no Reminder card for either (main.js's onStolen tells its halves
+// it is leaving). That is what it asserts, in cards: no voice is on here, so what it would say aloud isn't heard. It also checks that onStolen closes the old tab's
+// live session (hush 'away', seen as the call: no live session runs here), which would otherwise keep its microphone and voice in a second visible window.
+test("a tab taken over while her turn waits on her model and a second watch's wake waits behind it: the old tab shows no reminder, the new tab's open shows each once", async ({ page, context }) => {
+  const LEAVE = 'Leave for the airport by 14:10';
+  const CHECK_OUT = 'Check out by 11';
+  /** @type {() => void} */
+  let release = () => {};
+  const answer = new Promise((resolve) => { release = () => resolve(undefined); });
+  const llm = await startModelServer({ [MESSAGES]: [{ ...sse(anthropicToolReply([speak('Never said.'), sleep])), until: answer }, sse(anthropicToolReply([sleep]))] });
+  try {
+    await modelSetUp(page, llm.origin, 'Big Sur');
+    const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    await page.evaluate(async () => {
+      const { Halves } = await import(/** @type {string} */ ('/src/core/agent/halves.js'));
+      const typing = Halves.prototype.typing;
+      Halves.prototype.typing = function (/** @type {any[]} */ ...a) {
+        /** @type {any} */ (window).agent = this;
+        return typing.apply(this, a);
+      };
+      const hush = Halves.prototype.hush;
+      Halves.prototype.hush = function (/** @type {any[]} */ ...a) {
+        /** @type {any} */ (window).hushed.push(a[0]);
+        return hush.apply(this, a);
+      };
+      /** @type {any} */ (window).hushed = [];
+    });
+    await page.getByRole('button', { name: 'Type', exact: true }).click();
+    await page.waitForFunction(() => Boolean(/** @type {any} */ (window).agent));
+    await page.getByLabel('Message to Shiori').press('Escape');
+    // What this tab's agent tells the screens from here: its cards' titles.
+    await page.evaluate(() => {
+      const w = /** @type {any} */ (window);
+      w.cards = [];
+      w.agent.on('notice', (/** @type {any} */ n) => w.cards.push(n.title));
+    });
+    const fire = (/** @type {string} */ text, /** @type {string} */ watch) => page.evaluate(([text, watch]) => /** @type {any} */ (window).agent.wake({ kind: 'trigger', text: `Your watch fired: ${text}.`, fallbacks: [{ watch, text }] }), [text, watch]);
+    await fire(LEAVE, 'w1');
+    await expect.poll(() => llm.bodies(MESSAGES).length, { timeout: 30_000 }).toBe(1);
+    await fire(CHECK_OUT, 'w2');
+    await expect.poll(() => page.evaluate(async (trip) => {
+      const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+      const store = await createIdbStore();
+      const n = (await store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(trip, { types: ['wake', 'reminder.held'] }))).length;
+      store.close();
+      return n;
+    }, trip), { timeout: 30_000 }).toBe(3); // her turn's wake, and each watch held as it came
+    const second = await context.newPage();
+    await second.goto(`/#/trip/${encodeURIComponent(trip)}/talk`);
+    expect(await page.evaluate(() => /** @type {any} */ (window).hushed), 'nothing hushed the old tab before the takeover (it never went out of view)').toEqual([]);
+    await second.getByRole('button', { name: 'Use it here' }).click();
+    await expect(page.getByRole('heading', { name: 'annai was opened in another tab' })).toBeVisible();
+    expect(await page.evaluate(() => /** @type {any} */ (window).hushed), 'the old tab closes its live session as it is taken over').toEqual(['away']);
+    const notices = second.locator('.notices .notice:not(.notice-stack)');
+    await expect(notices.filter({ hasText: LEAVE })).toHaveCount(1, { timeout: 30_000 });
+    await expect(notices.filter({ hasText: CHECK_OUT })).toHaveCount(1, { timeout: 30_000 });
+    // The old tab's request is answered now: its turn goes on and fails at its first write, then the wake behind it gets its turn, which fails too. The agent is
+    // busy while a wake waits in its queue, so the poll ends after the second wake's turn, and the absence below covers both.
+    release();
+    await expect.poll(() => page.evaluate(() => {
+      const w = /** @type {any} */ (window);
+      return !w.agent.busy && w.cards.includes('Shiori stopped');
+    }), { timeout: 30_000 }).toBe(true);
+    expect(await page.evaluate(() => /** @type {any} */ (window).cards.filter((/** @type {string} */ title) => title === 'Reminder'))).toEqual([]);
+    await expect(notices.filter({ hasText: LEAVE })).toHaveCount(1);
+    await expect(notices.filter({ hasText: CHECK_OUT })).toHaveCount(1);
+  } finally {
+    release();
+    await llm.stop();
+  }
+});
+
 test('another trip opened while she works on a hand-over: the conversation left says she picks it up, coming back takes it up once, and Undo takes back both files', async ({ page }) => {
   const llm = await startModelServer({ [MESSAGES]: [
     sse(anthropicToolReply([write('a.md')])),
