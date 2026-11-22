@@ -185,7 +185,7 @@ test("a 2 MiB PDF doesn't pass a model with a 200,000-token window over as too l
   const scan = { type: 'document', mediaType: 'application/pdf', data: 'A'.repeat(Math.ceil((2 * 2 ** 20) / 3) * 4), name: 'scan.pdf' };
   /** @type {any} */
   const read = { messages: [{ role: 'user', parts: [ask, scan] }] };
-  assert.deepEqual((await call(s, { request: read })).attempts.map((a) => a.outcome), ['ok'], 'about 770,000 tokens at its base64, which a provider counts by its pages');
+  assert.deepEqual((await call(s, { request: read })).attempts.map((a) => a.outcome), ['ok'], 'about 800,000 tokens at its base64, which a provider counts by its pages');
   assert.equal(estimateTokens(read) - estimateTokens(/** @type {any} */ ({ messages: [{ role: 'user', parts: [ask] }] })), 1600);
   /** @type {any} */
   const long = { messages: [{ role: 'user', parts: [{ type: 'text', text: 'w'.repeat(800_000) }] }] };
