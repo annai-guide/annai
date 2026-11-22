@@ -118,7 +118,7 @@ export default function (test, assert) {
   });
 
   test("a full-size photo's copy for Shiori, at the default settings, is at most 256 KiB and still 1000 px or more (spec §4.8; a slow mobile link, 2026-11-21)", async () => {
-    // 1000 px is the spec's floor for request settings that stay usable (§4.8, a closer look).
+    // 1000 px is the spec's example (§4.8) of a small setting that stays usable.
     const photo = await fullSize();
     for (const formats of [photoSettings({}).request.formats, ['image/jpeg']]) { // ['image/jpeg']: as an iPhone writes it
       const r = await encodePhoto(photo, { ...photoSettings({}).request, formats, maxPixels: MAX_CANVAS_PIXELS });
