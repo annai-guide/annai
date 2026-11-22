@@ -268,7 +268,7 @@ test("a reload while a second watch's wake waits behind her turn for the first: 
     await expect(notices.filter({ hasText: LEAVE })).toHaveCount(1, { timeout: 30_000 });
     await expect(notices.filter({ hasText: CHECK_OUT })).toHaveCount(1, { timeout: 30_000 });
     await expect.poll(() => llm.bodies(MESSAGES).length, { timeout: 30_000 }).toBe(2);
-    await page.waitForTimeout(1000); // her restart turn has ended by now: nothing more is shown
+    await expect.poll(() => ends(page, trip), { timeout: 30_000 }).toBe(1); // her restart turn has ended: nothing more is shown
     await expect(notices.filter({ hasText: LEAVE })).toHaveCount(1);
     await expect(notices.filter({ hasText: CHECK_OUT })).toHaveCount(1);
     await expect(page.locator('.notices .notice-stack').filter({ hasText: /^Reminder \(2\)/ })).toHaveCount(1); // two cards in all
@@ -277,6 +277,68 @@ test("a reload while a second watch's wake waits behind her turn for the first: 
     await expect(page.locator('.convo').getByText(CHECK_OUT)).toHaveCount(1);
     noRecord(llm.bodies(MESSAGES));
   } finally {
+    await llm.stop();
+  }
+});
+
+// Another tab takes annai over while her turn waits on her model, with a second watch's wake queued behind it (held in the log, as above): the new tab's open
+// shows both reminders, so the old tab, whose turn then fails on its closed store, must show and say none of them (main.js's onStolen tells its halves it is leaving).
+test("a tab taken over while her turn waits on her model and a second watch's wake waits behind it: the old tab shows no reminder, the new tab's open shows each once", async ({ page, context }) => {
+  const LEAVE = 'Leave for the airport by 14:10';
+  const CHECK_OUT = 'Check out by 11';
+  /** @type {() => void} */
+  let release = () => {};
+  const answer = new Promise((resolve) => { release = () => resolve(undefined); });
+  const llm = await startModelServer({ [MESSAGES]: [{ ...sse(anthropicToolReply([speak('Never said.'), sleep])), until: answer }, sse(anthropicToolReply([sleep]))] });
+  try {
+    await modelSetUp(page, llm.origin, 'Big Sur');
+    const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    await page.evaluate(async () => {
+      const { Halves } = await import(/** @type {string} */ ('/src/core/agent/halves.js'));
+      const typing = Halves.prototype.typing;
+      Halves.prototype.typing = function (/** @type {any[]} */ ...a) {
+        /** @type {any} */ (window).agent = this;
+        return typing.apply(this, a);
+      };
+    });
+    await page.getByRole('button', { name: 'Type', exact: true }).click();
+    await page.waitForFunction(() => Boolean(/** @type {any} */ (window).agent));
+    await page.getByLabel('Message to Shiori').press('Escape');
+    // What this tab's agent tells the screens from here: its cards' titles.
+    await page.evaluate(() => {
+      const w = /** @type {any} */ (window);
+      w.cards = [];
+      w.agent.on('notice', (/** @type {any} */ n) => w.cards.push(n.title));
+    });
+    const fire = (/** @type {string} */ text, /** @type {string} */ watch) => page.evaluate(([text, watch]) => /** @type {any} */ (window).agent.wake({ kind: 'trigger', text: `Your watch fired: ${text}.`, fallbacks: [{ watch, text }] }), [text, watch]);
+    await fire(LEAVE, 'w1');
+    await expect.poll(() => llm.bodies(MESSAGES).length, { timeout: 30_000 }).toBe(1);
+    await fire(CHECK_OUT, 'w2');
+    await expect.poll(() => page.evaluate(async (trip) => {
+      const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+      const store = await createIdbStore();
+      const n = (await store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(trip, { types: ['wake', 'reminder.held'] }))).length;
+      store.close();
+      return n;
+    }, trip), { timeout: 30_000 }).toBe(3); // her turn's wake, and each watch held as it came
+    const second = await context.newPage();
+    await second.goto(`/#/trip/${encodeURIComponent(trip)}/talk`);
+    await second.getByRole('button', { name: 'Use it here' }).click();
+    await expect(page.getByRole('heading', { name: 'annai was opened in another tab' })).toBeVisible();
+    const notices = second.locator('.notices .notice:not(.notice-stack)');
+    await expect(notices.filter({ hasText: LEAVE })).toHaveCount(1, { timeout: 30_000 });
+    await expect(notices.filter({ hasText: CHECK_OUT })).toHaveCount(1, { timeout: 30_000 });
+    // The old tab's request is answered now: its turn goes on and fails at its first write, then the wake behind it gets its turn, which fails too.
+    release();
+    await expect.poll(() => page.evaluate(() => {
+      const w = /** @type {any} */ (window);
+      return !w.agent.busy && w.cards.includes('Shiori stopped');
+    }), { timeout: 30_000 }).toBe(true);
+    expect(await page.evaluate(() => /** @type {any} */ (window).cards.filter((/** @type {string} */ title) => title === 'Reminder'))).toEqual([]);
+    await expect(notices.filter({ hasText: LEAVE })).toHaveCount(1);
+    await expect(notices.filter({ hasText: CHECK_OUT })).toHaveCount(1);
+  } finally {
+    release();
     await llm.stop();
   }
 });

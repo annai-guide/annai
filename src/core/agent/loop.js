@@ -1478,8 +1478,17 @@ export class Agent {
     this.#queue = this.#queue.filter((w) => w.scope !== this.scope);
     this.poke();
     this.#stopWakes(wakes);
+    this.remindDropped(wakes);
+  }
+
+  /**
+   * The reminders of wakes that are taken out of the queue so that no turn takes them (a Stop, Start fresh): shown now, silently, the Stop stops her, not the
+   * reminder they set (spec §6.7, §11.3); their entries settle what was held (hold). idle() waits for the entries; a caller that must wait for them waits on
+   * what it returns. Never rejects. @param {Wake[]} wakes @param {string} [scope] their conversation; the open one's if not given
+   */
+  remindDropped(wakes, scope = this.scope) {
     const owed = wakes.flatMap((w) => w.fallbacks ?? []);
-    if (owed.length) this.#remindCounted(owed, this.scope, { silent: true }); // the Stop stops her, not the reminder they set
+    return owed.length ? this.#remindCounted(owed, scope, { silent: true }) : Promise.resolve();
   }
 
   /** Wakes that never start a turn, written into the conversation all the same, with a quiet "stopped"; a write that fails is told (#notSaved). @param {Wake[]} wakes */
@@ -1874,8 +1883,7 @@ export class Agent {
     this.#before = [];
     this.#queue = this.#queue.filter((w) => !left.includes(w));
     this.#stopWakes(left);
-    const owed = left.flatMap((w) => w.fallbacks ?? []);
-    if (owed.length) await this.#remindCounted(owed, this.scope, { silent: true }); // idle() waits for its entry: Koe's half is not busy while Halves waits here
+    await this.remindDropped(left); // idle() waits for its entry: Koe's half is not busy while Halves waits here
   }
 
   /** Start fresh is done: what waited (the user's words meanwhile) runs. */
@@ -2043,7 +2051,8 @@ export class Agent {
   /**
    * Reminders this page now holds in memory to say (a wake queued, Koe's session), written to their conversation's log before anything else of
    * theirs, so the next open shows them if the page dies first (spec §11.3); its open leaves this page's own to it. A cue is none. Never rejects:
-   * a refused one is annai's own record, quiet, as the page still says them (only one that then dies loses them, as before it was written).
+   * a refused one is quiet, as the page still says the reminders and, on a full phone, their entries' refusal brings the storage card (only one that then
+   * dies loses them, as before it was written).
    * @param {Reminder[]} list @param {string} [scope]
    */
   hold(list, scope = this.#target ?? ME) {

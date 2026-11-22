@@ -79,7 +79,7 @@ const reloadSettled = async () => {
 let acted = false;
 for (const type of ['pointerdown', 'keydown']) addEventListener(type, () => { acted = true; }, { capture: true, once: true });
 const used = () => /** @type {any} */ (navigator).userActivation?.hasBeenActive ?? acted;
-/** @type {{ store: import('../core/types.js').Store } | null} */
+/** @type {{ store: import('../core/types.js').Store, agent?: { leaving: () => void } } | null} */
 let running = null;
 /** Another tab took annai over: this tab has stopped and keeps its blocking screen. Boot reads it after the store opens, before the shell and in its catch. */
 let stolen = false;
@@ -96,6 +96,7 @@ async function boot() {
     }),
     onStolen: () => {
       stolen = true;
+      running?.agent?.leaving(); // its failing turn says no more reminders: the other tab's open shows what this one held
       running?.store.close();
       showBlocking(root, {
         title: t`annai was opened in another tab`,
@@ -171,6 +172,7 @@ async function boot() {
   // Shiori (spec §6), talking about the trip that was open last: one half, or two when a Koe model is set
   // (the Koe and Kokoro design). Her own tools are Kokoro's.
   const agent = new Halves({ store, ws, llm, registry, codec, voice });
+  running.agent = agent;
   agent.addLoopTools(selfTools(agent.kokoro));
   // Starting, opening and listing trips, and moving a file into one, for what the user hands her (the bookings-and-trips design).
   agent.addLoopTools(tripTools(agent));

@@ -37,9 +37,9 @@ import { t } from '../l10n.js';
  *   release: () => void, notice: (n: import('../agent/loop.js').Notice) => void, told: (state: 'live-open' | 'live-closed') => void,
  *   dropped: (cut: boolean) => void, changed: () => void, budgets: () => Promise<any>, timeZone: () => string, asked: () => boolean, secondMs?: number,
  *   unsaid: (notes: Wake[]) => void, owed: (notes: Wake[]) => void, left?: (notes: Wake[], here?: boolean) => void, spoke?: () => void, ws?: import('../workspace.js').Workspace,
- *   held?: () => Promise<void> | null, voiceOut?: () => Promise<void> | null, saying?: (words: string) => void, noisy?: (heard: string) => void,
+ *   held?: () => Promise<void> | null, voiceOut?: () => Promise<void> | null, saying?: (words: string) => void, noisy?: (heard: string) => void, page: string,
  *   heard?: (line: { id: string, text: string, at: number, her: boolean }) => void, speech?: (on: boolean, line?: { id: string, at: number, her: boolean }) => void }} LiveHost
- *   Halves's: release: the speech pipeline lets go of the voice; asked: Kokoro works on Koe's question; unsaid: Kokoro's notes for the user Koe never
+ *   Halves's: page: the page's mark on what it holds (Agent.hold), the one both halves carry; release: the speech pipeline lets go of the voice; asked: Kokoro works on Koe's question; unsaid: Kokoro's notes for the user Koe never
  *   passed on, asked once more; owed: those a session closed on before Koe passed them on, to hand on; left: those a switch to another
  *   conversation leaves, shown there, and those a tap or a sound cut her off in (here), shown silently, as the conversation still open's; spoke: the user's spoken turn ended; ws: where this device keeps that the talk-over card was shown;
  *   held: Start fresh runs, until it settles: a session opens only after it, from the fresh start; voiceOut: annai's other voice is saying something, until it settles
@@ -1040,15 +1040,15 @@ export class LiveKoe {
 
   /**
    * Kokoro's notes for the user went in: Koe's next turns are watched for them. A trigger's cues are let go: a model has them, as classic voice's. Its
-   * reminders are the session's now, written as a turn's wake record keeps them, so the log's read settles them by Koe's words from here (spec §11.3).
-   * @param {Wake[]} notes
+   * reminders are the session's now, written as a turn's wake record keeps them, so the log's read settles them by Koe's words from here (spec §11.3);
+   * with this page's mark (Agent.hold), so its own open leaves them to the session as it leaves a held one. @param {Wake[]} notes
    */
   #went(notes) {
     for (const w of notes) if (w.kind !== 'note') w.fallbacks = w.fallbacks?.filter((r) => !r.cue);
     const owed = notes.filter((w) => w.kind === 'note' || w.fallbacks?.length);
     if (!owed.length) return;
     const reminders = owed.flatMap((w) => (w.kind === 'note' ? [] : (w.fallbacks ?? []).flatMap((r) => reminderData(r) ?? [])));
-    if (reminders.length) this.#write({ type: 'wake', actor: 'system', data: { id: newId('w'), meanwhile: true, reasons: [], reminders } });
+    if (reminders.length) this.#write({ type: 'wake', actor: 'system', data: { id: newId('w'), meanwhile: true, reasons: [], reminders, page: this.c.page } });
     this.#owed.sent.push(...owed);
     this.#owed.cued = this.#owed.cue = false;
     this.#owed.at = Date.now();

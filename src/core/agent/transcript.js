@@ -128,8 +128,8 @@ export class Transcript {
   /** What the restart carries: a cut turn's own, as its wakes and the user's lines it took up name it; undefined when nothing says (the newest owed). @type {string | null | undefined} */
   #carried = undefined;
   /**
-   * What the log still owes the traveller: reminders its records carried that nothing settled (Agent.open shows them); held: the page that held one no
-   * turn has yet. @type {(import('./loop.js').Reminder & { held?: string })[]}
+   * What the log still owes the traveller: reminders its records carried that nothing settled (Agent.open shows them); held: the page that still holds
+   * it (one no turn has yet, or Koe's live session has taken in), which its own open leaves to it. @type {(import('./loop.js').Reminder & { held?: string })[]}
    */
   owedReminders = [];
   #koe = new WeakSet(); // Koe's
@@ -430,16 +430,19 @@ export class Transcript {
 
   /**
    * The loop's rule: the newest record with a reminder owes it, till its entry; a wake record's, in its half, till her next line too. One a page held
-   * (`reminder.held`: no turn has it yet) is settled by no line, only by its entry or by the record of the turn that takes it; it keeps that page's mark
-   * (`held`). @param {any} e @param {any} d
+   * (`reminder.held`: no turn has it yet) is settled by no line, only by its entry or by the record of the turn that takes it. Each keeps its page's mark
+   * (`held`) where the record has one: a held record always, a wake record only Koe's session's (`page`), which Koe's own lines settle as any wake's.
+   * @param {any} e @param {any} d
    */
   #owing(e, d) {
     const koe = d.half === 'koe';
     const held = e.type === 'reminder.held';
+    const mark = held ? { held: String(d.page ?? '') } : e.type === 'wake' && d.page ? { held: String(d.page) } : null;
     /** @type {any[]} */
-    const list = (e.type === 'wake' || held) && Array.isArray(d.reminders) ? d.reminders.filter((r) => r?.text).map((r) => (held ? { ...r, held: String(d.page ?? '') } : r))
+    const list = (e.type === 'wake' || held) && Array.isArray(d.reminders) ? d.reminders.filter((r) => r?.text).map((r) => (mark ? { ...r, ...mark } : r))
       : e.type === 'reminder' ? [d] : [];
-    this.owedReminders = this.owedReminders.filter((x) => !(reaches(e) && !('held' in x) && this.#koe.has(x) === koe) && !list.some((r) => r.watch === x.watch && r.text === x.text));
+    // A line settles what its half still owes; a held copy is no half's yet (no turn has it), so no line settles it.
+    this.owedReminders = this.owedReminders.filter((x) => !(reaches(e) && this.#koe.has(x) === koe && (koe || !('held' in x))) && !list.some((r) => r.watch === x.watch && r.text === x.text));
     if (e.type === 'reminder') return;
     for (const r of list) if (koe) this.#koe.add(r);
     this.owedReminders.push(...list);

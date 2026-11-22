@@ -954,8 +954,8 @@ test('with no Koe model, Halves and the one Agent send the same requests and wri
     /** @param {any} x */
     const norm = (x) => JSON.parse(JSON.stringify(x, (key, v) => {
       // What differs run to run by nature: ids, hashes, times.
-      if (['id', 'wake', 'ms', 'firstMs', 'ts', 'seq', 'prefix', 'now', 'answer', 'of', 'hash', 'refs', 'new', 'old', 'page'].includes(key)) return undefined;
-      return typeof v === 'string' ? v.replace(/scripted_\d+_\d+|\b[wct]-[a-z0-9]+/g, 'ID').replace(/\d{4}-\d\d-\d\dT[\d:.]+Z/g, 'TIME') : v;
+      if (['id', 'wake', 'ms', 'firstMs', 'ts', 'seq', 'prefix', 'now', 'answer', 'of', 'hash', 'refs', 'new', 'old'].includes(key)) return undefined;
+      return typeof v === 'string' ? v.replace(/scripted_\d+_\d+|\b[wctp]-[a-z0-9]+/g, 'ID').replace(/\d{4}-\d\d-\d\dT[\d:.]+Z/g, 'TIME') : v;
     }));
     return { requests: norm(k.requests), events: (await k.events()).map((e) => ({ type: e.type, actor: e.actor, data: norm(e.data) })), notices: k.notices.map((/** @type {any} */ n) => n.title) };
   };
