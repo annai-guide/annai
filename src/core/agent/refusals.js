@@ -48,9 +48,10 @@ const notSent = (p, byCount) => {
  * From `from` on (Transcript.windowFrom: this turn's messages and the turn before's) the distinct pictures (by hash; one without a hash is its
  * own) are ranked by their newest appearance, and the model's count of them kept, newest first; within one message, its PDF's pages give way
  * before its own photos, the last page the first to go. Each goes at its earliest place from `from` on. Every other copy is a stub, a copy before
- * `from` for good: "the same as above", or "not sent" for a picture left out. So a picture read again goes at the read's own place and nothing
- * earlier changes, as long as the model's count holds the window's pictures; when a read pushes the oldest kept one out, that one's place changes
- * (the "earlier thinking" entry in docs/limitations.md).
+ * `from` for good: "the same as above", or "not sent" for a picture left out. So a picture from before the window, read again, goes at the read's own place
+ * and nothing earlier changes, as long as the model's count holds the window's pictures; when a read pushes the oldest kept one out, that one's
+ * place changes, and one the count had left out goes back to its first place in the window (docs/limitations.md: "earlier thinking", "A photo
+ * brought back").
  * @param {Message[]} messages @param {number | null | undefined} [maxCount] none: every distinct picture, each once
  * @param {number} [from] none (a request outside a conversation's turns: a reader's, the recap's): every picture
  * @returns {Message[]}
