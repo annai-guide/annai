@@ -1351,8 +1351,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Kind:** known limitation.
 - **What the traveller sees:** after "annai was opened in another tab", the stopped tab keeps its timers and listeners (and GPS only in a narrow window during start-up) until it is closed; nothing writes, since its store is closed. On main before 2026-11-20 too, after any takeover.
 - **Why:** stopping all of it means reordering start-up (the agent's open, Live and push depend on each other's order), for a tab that usually sits in the background, where the phone pauses it.
-- **Revisit when:** battery or GPS use is reported from a stopped tab, or start-up's order changes.
-- **Approved:** chief's decision C156 (2026-11-20, not the user's words), accepted as recommended.
+- **Since remind-log-next (2026-11-22), also:** with two tabs of annai open at once (a desktop's tabs or windows, an iPad's split view), the tab that was taken over can still say a reminder that fires there while the new tab says the same one, and a line Koe was finishing at the takeover can show again in the new tab: a reminder heard twice, never lost. The takeover silences that tab's turn (`leaving()`) and closes its live session (`hush('away')`); its other paths stay, as the rest of this entry says.
+- **Revisit when:** battery or GPS use is reported from a stopped tab, or start-up's order changes; or a reminder heard twice from a stopped tab is reported; or the user says "reload the old tab".
+- **Approved:** chief's decision C156 (2026-11-20, not the user's words), accepted as recommended. The remind-log-next clause: chief's decision C187 (2026-11-22, not the user's words; to undo: "reload the old tab").
 
 ### A Backup or Share during which two changes land fails with Try again
 - **Kind:** known limitation.
