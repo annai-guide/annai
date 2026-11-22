@@ -4,7 +4,7 @@ import { cut as cutAt } from '../../core/web-search.js';
 import { isTextType } from '../../core/paths.js';
 import { kindOf } from '../../core/scopes.js';
 import { ValidationError, NotFoundError } from '../../core/workspace.js';
-import { sizeLine, healRegion } from '../../core/request-photos.js';
+import { photoLine, healRegion } from '../../core/request-photos.js';
 import { readPass } from '../../core/pkpass.js';
 import { isBookingPath, shioriBooking, unalias, checkNote } from '../../core/bookings.js';
 import { t } from '../../core/l10n.js';
@@ -174,10 +174,9 @@ export function activate(annai) {
             const healed = healRegion(i.region, m.width, m.height);
             const sent = call.photos ? await call.photos.copy(source, healed.crop) : null;
             if (!sent) return "Photos can't be cropped here.";
-            const part = `part [${healed.used.join(', ')}] (${healed.crop.width}×${healed.crop.height} of ${m.width}×${m.height})`;
             const note = healed.notes.length ? ` (The region was healed: ${healed.notes.join('; ')}.)` : '';
             return {
-              content: `The photo ${i.path}, ${part}, sent as ${sent.width}×${sent.height}.${note}`,
+              content: `${photoLine(i.path, source, sent, healed)}.${note}`,
               images: [{ mediaType: sent.mediaType, hash: sent.hash, ...(sent.data ? { data: sent.data } : {}), path: i.path, region: healed.used }],
             };
           }
@@ -185,7 +184,7 @@ export function activate(annai) {
           const sent = call.photos ? await call.photos.copy(source) : { hash: entry.hash, mediaType: entry.type, width: m.width ?? null, height: m.height ?? null, made: false };
           const taken = m.taken ? `, taken ${m.taken}` : '';
           return {
-            content: `The photo ${i.path}, ${sizeLine(source, sent)}${taken}.`,
+            content: `${photoLine(i.path, source, sent)}${taken}.`,
             images: [{ mediaType: sent.mediaType, hash: sent.hash, ...(sent.data ? { data: sent.data } : {}), path: i.path }],
           };
         }

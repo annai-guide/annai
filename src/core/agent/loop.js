@@ -18,7 +18,7 @@ import { Warmth, TTL_MS, ttlFor, wantedTtl, SOON_MS } from './warmth.js';
 import { tracedFetch, withoutSecrets, shownWithoutSecrets } from './net.js';
 import { webVia } from './via.js';
 import { inQuiet, quietEnds, spentToday, budgetStop, budgetWords } from './budgets.js';
-import { PhotoCopies, requestLimits, healRegion } from '../request-photos.js';
+import { PhotoCopies, requestLimits, healRegion, photoLine } from '../request-photos.js';
 import { readRefusal, stricter, tighter, limitImages } from './refusals.js';
 import { photoSettings } from '../photos.js';
 import { parsePartialJSON } from '../llm/partial-json.js';
@@ -2180,11 +2180,12 @@ export class Agent {
 
   /**
    * The request copies of the photos a user sent (a crop when they chose a part), and the bytes to
-   * keep with their message (spec §4.8, §4.9). A path that isn't a stored photo is left out.
+   * keep with their message (spec §4.8, §4.9). A path that isn't a stored photo is left out. Each keeps the words she reads before it (told), as
+   * written, so its requests stay the same.
    * @param {SentPhoto[]} photos @param {string | null} trip
    */
   async #userPhotos(photos, trip) {
-    /** @type {{ hash: string, mediaType: string, path: string, region?: number[] }[]} */
+    /** @type {{ hash: string, mediaType: string, path: string, region?: number[], told: string }[]} */
     const images = [];
     /** @type {{ hash?: string, bytes?: Uint8Array, type: string }[]} */
     const blobs = [];
@@ -2197,7 +2198,7 @@ export class Agent {
         const source = { hash: got.entry.hash, type: got.entry.type, width: m.width ?? null, height: m.height ?? null, size: got.entry.size };
         const healed = p.region && m.width && m.height ? healRegion(p.region, m.width, m.height) : null;
         const sent = await this.#copy(source, healed?.crop, trip ?? ME);
-        images.push({ hash: sent.hash, mediaType: sent.mediaType, path: p.path, ...(healed ? { region: healed.used } : {}) });
+        images.push({ hash: sent.hash, mediaType: sent.mediaType, path: p.path, ...(healed ? { region: healed.used } : {}), told: /* en */ `[annai] ${photoLine(quote(p.path), source, sent, healed)}.` });
         blobs.push(sent.data ? { bytes: fromBase64(sent.data), type: sent.mediaType } : { hash: sent.hash, type: sent.mediaType });
       } catch (e) {
         // Not dropped quietly: the user hears which photo didn't go, and why (spec §17).

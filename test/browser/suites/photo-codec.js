@@ -127,6 +127,29 @@ export default function (test, assert) {
     }
   });
 
+  test('a size step aims at the cap: a full-size JPEG at 128 KiB lands within it, at 80% of it or more, after five qualities and one size step (spec §4.8)', async () => {
+    // Aiming at 93% of the cap, this photo's copy lands at 86% (Chromium) and 93% (WebKit) of it at the first size step; the old fixed step
+    // (0.8 of the edge) landed at 77% in Chromium, and in WebKit needed a second step (2026-11-21). 80% leaves an engine's update room.
+    const cap = 128 * 1024;
+    const photo = await fullSize();
+    /** @type {number[]} */
+    const encodes = [];
+    const was = OffscreenCanvas.prototype.convertToBlob;
+    OffscreenCanvas.prototype.convertToBlob = async function (/** @type {any} */ o) {
+      const blob = await was.call(this, o);
+      if (this.width > 1) encodes.push(blob.size); // not a format's 1×1 test
+      return blob;
+    };
+    try {
+      const r = await encodePhoto(photo, { ...photoSettings({}).request, formats: ['image/jpeg'], maxBytes: cap, maxPixels: MAX_CANVAS_PIXELS });
+      assert.ok(r.bytes.length <= cap && r.bytes.length >= 0.8 * cap, `${r.bytes.length} bytes, ${r.width}x${r.height}`);
+      assert.ok(r.width < 2000, `no size step was taken, so the step is not what this tests: ${r.width}x${r.height} (the edge stays 2000 until one)`);
+      assert.ok(encodes.length <= 6, `${encodes.length} encodes: ${encodes.join(', ')} bytes`);
+    } finally {
+      OffscreenCanvas.prototype.convertToBlob = was;
+    }
+  });
+
   test('encodePhoto: a crop draws only that part of the photo', async () => {
     const c = new OffscreenCanvas(200, 100);
     const g = /** @type {OffscreenCanvasRenderingContext2D} */ (c.getContext('2d'));
