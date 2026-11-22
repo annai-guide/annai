@@ -263,13 +263,15 @@ test("a reload while a second watch's wake waits behind her turn for the first: 
       return n;
     }, trip), { timeout: 30_000 }).toBe(3); // her turn's wake, and each watch held as it came: the second waits in the queue
     await page.reload();
-    const notices = page.locator('.notices .notice');
+    // Each card on its own, not the stack two cards of one kind fold into (it holds both cards' words).
+    const notices = page.locator('.notices .notice:not(.notice-stack)');
     await expect(notices.filter({ hasText: LEAVE })).toHaveCount(1, { timeout: 30_000 });
     await expect(notices.filter({ hasText: CHECK_OUT })).toHaveCount(1, { timeout: 30_000 });
     await expect.poll(() => llm.bodies(MESSAGES).length, { timeout: 30_000 }).toBe(2);
     await page.waitForTimeout(1000); // her restart turn has ended by now: nothing more is shown
     await expect(notices.filter({ hasText: LEAVE })).toHaveCount(1);
     await expect(notices.filter({ hasText: CHECK_OUT })).toHaveCount(1);
+    await expect(page.locator('.notices .notice-stack').filter({ hasText: /^Reminder \(2\)/ })).toHaveCount(1); // two cards in all
     await page.evaluate((trip) => { location.hash = `#/trip/${encodeURIComponent(trip)}/talk`; }, trip);
     await expect(page.locator('.convo').getByText(LEAVE)).toHaveCount(1);
     await expect(page.locator('.convo').getByText(CHECK_OUT)).toHaveCount(1);
