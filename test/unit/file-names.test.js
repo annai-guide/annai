@@ -57,6 +57,8 @@ test('outsideName: the characters a path reads back without are each run one "-"
   assert.equal(outsideName('Day 1\u2028"Kyoto" <plan>.txt', 'file'), 'Day 1-Kyoto- -plan-.txt');
   assert.equal(outsideName('a/b\\c\u0000d\u2029e.pdf', 'file'), 'a-b-c-d-e.pdf');
   assert.equal(outsideName('a\u0085b\u009fc\u007fd.pdf', 'file'), 'a-b-c-d.pdf'); // C1 controls too: NEL (U+0085) is a line break to some readers
+  assert.equal(outsideName('Document\u202efdp.exe', 'file'), 'Document-fdp.exe'); // an override would show it as "Documentexe.pdf"
+  assert.equal(outsideName('a\u2066b\u2069c\u202ad.pdf', 'file'), 'a-b-c-d.pdf');
   assert.equal(outsideName('Cafe\u0301 menu.pdf', 'file'), 'Caf\u00e9 menu.pdf'); // NFC, as normPath keeps paths
   // 80 before the extension: an emoji across the 80th is left out whole, one inside it kept whole.
   assert.equal(outsideName(`${'a'.repeat(79)}🗻 view.pdf`, 'file'), `${'a'.repeat(79)}.pdf`);
@@ -99,7 +101,7 @@ test('a shared photo whose name has an emoji across the 80th character keeps who
   assert.deepEqual(read.map((r) => r.images[0].path), paths.map((p) => `/trip${p}`));
 });
 
-test('a shared file whose name is over 80 characters (an emoji across the 100th) is stored cut at 80, so the hand-over names it whole and it reads back', async () => {
+test('a shared file whose name is over 80 characters (an emoji past the 80th) is stored cut at 80, so the hand-over names it whole and it reads back', async () => {
   const { run, add } = await phone();
   const { paths } = await add([file('Seat 12A', `${'c'.repeat(99)}🗻 seat.txt`, 'text/plain')]);
   assert.deepEqual(paths, [`/files/${'c'.repeat(80)}.txt`]);

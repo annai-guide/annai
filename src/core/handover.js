@@ -29,7 +29,7 @@ const NAMED = 20;
 /** A MIME type as Shiori is told it: a real one, else "a file" (a file's type is whatever its sender said). @param {string} type */
 const shownType = (type) => (type.length <= 100 && /^[a-z0-9][a-z0-9.+-]*\/[a-z0-9][a-z0-9.+-]*$/i.test(type) ? type : /* en */ 'a file');
 
-/** A path as quoted data (quote: a line separator in an older file's name is escaped), its name cut at 100 characters, between whole ones (an older file's; outsideName's are shorter): a file's name can say anything. @param {string} path */
+/** A path as quoted data (quote: a line separator in an older file's name is escaped), its name cut at 100 characters, between whole code points (an older file's; outsideName's are shorter): a file's name can say anything. @param {string} path */
 export function quotedPath(path) {
   const at = path.lastIndexOf('/') + 1;
   const name = path.slice(at);
