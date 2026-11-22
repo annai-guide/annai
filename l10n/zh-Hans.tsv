@@ -628,8 +628,8 @@ rg5j3b	draft	Free up space on this device, then try again.	请释放这台设备
 1rgff8l	ok	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	annai 已在另一个标签页中打开，因此这个标签页里的 annai 已停止运行。要在这里使用 annai，请重新加载此标签页。	src/core/errors.js:42	
 gnrtev	ok	Shiori can't reach her model.	Shiori 无法连接到模型。	src/core/errors.js:43	
 98c05r	ok	This calendar has more than {0} events. Export only the dates you need from your calendar, and add that file.	此日历中的日程超过 {0} 个。请在日历中只导出需要的日期，再添加导出的文件。	src/core/ics.js:115	{0} = num(MAX_EVENTS)
-10s60wn	ok	No file at {0}.	{0} 处没有文件。	src/core/imports.js:15	{0} = path
-13ujlu9	ok	{0} is too large (over {1}). Export only the dates you need from your calendar, and add that file.	{0} 太大了（超过 {1}）。请在日历中只导出所需日期的日程，再添加导出的文件。	src/core/imports.js:16	{0} = path; {1} = size(MAX_ICS_BYTES)
+10s60wn	ok	No file at {0}.	{0} 处没有文件。	src/core/imports.js:16	{0} = path
+13ujlu9	ok	{0} is too large (over {1}). Export only the dates you need from your calendar, and add that file.	{0} 太大了（超过 {1}）。请在日历中只导出所需日期的日程，再添加导出的文件。	src/core/imports.js:17	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:36	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	刚刚	src/core/intl.js:152	
 1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	使用手机扬声器时，Shiori 说话期间听不到你的声音，插话会被忽略。轻点一下即可让她停下来听你说。	src/core/koe/live.js:669	

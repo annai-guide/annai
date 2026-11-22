@@ -3,6 +3,7 @@ import { t } from './l10n.js';
 import { size } from './intl.js';
 import { FILE_BOOKING } from './bookings.js';
 import { cut } from './web-search.js';
+import { quote } from './agent/blocks.js';
 
 /**
  * Importing a calendar file creates plan items (spec §8): one per event, written as the user's (or Shiori's, for a hand-over she
@@ -22,11 +23,11 @@ export async function importCalendar(ws, scope, path, { defaultTz, author = 'use
 /** A MIME type as Shiori is told it: a real one, else "a file" (a shared file's type is whatever its sender said). @param {string} type */
 const shownType = (type) => (type.length <= 100 && /^[a-z0-9][a-z0-9.+-]*\/[a-z0-9][a-z0-9.+-]*$/i.test(type) ? type : /* en */ 'a file');
 
-/** A file's path as quoted data, its name cut at 100 characters, between whole ones (an older file's; outsideName's are shorter): a name can say anything. @param {string} path */
+/** A file's path as quoted data (quote: a line separator in an older file's name is escaped), its name cut at 100 characters, between whole ones (an older file's; outsideName's are shorter): a name can say anything. @param {string} path */
 function quotedPath(path) {
   const at = path.lastIndexOf('/') + 1;
   const name = path.slice(at);
-  return JSON.stringify(`/trip${path.slice(0, at)}${name.length > 100 ? `${cut(name, 100)}…` : name}`);
+  return quote(`/trip${path.slice(0, at)}${name.length > 100 ? `${cut(name, 100)}…` : name}`);
 }
 
 /**

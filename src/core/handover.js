@@ -15,6 +15,7 @@ import { SYS_WAITING, DRAFT_TITLE, talks } from './scopes.js';
 import { NOT_TRANSCRIBED } from './voice/resolve.js';
 import { DIR as PACK_DIR } from './pack/download.js';
 import { cut } from './web-search.js';
+import { quote } from './agent/blocks.js';
 
 /** The stored words of a hand-over with no words of the user's (the screens show none). */
 export const FILES_ONLY = /* en */ '(files)';
@@ -28,11 +29,11 @@ const NAMED = 20;
 /** A MIME type as Shiori is told it: a real one, else "a file" (a file's type is whatever its sender said). @param {string} type */
 const shownType = (type) => (type.length <= 100 && /^[a-z0-9][a-z0-9.+-]*\/[a-z0-9][a-z0-9.+-]*$/i.test(type) ? type : /* en */ 'a file');
 
-/** A path as quoted data, its name cut at 100 characters, between whole ones (an older file's; outsideName's are shorter): a file's name can say anything. @param {string} path */
+/** A path as quoted data (quote: a line separator in an older file's name is escaped), its name cut at 100 characters, between whole ones (an older file's; outsideName's are shorter): a file's name can say anything. @param {string} path */
 export function quotedPath(path) {
   const at = path.lastIndexOf('/') + 1;
   const name = path.slice(at);
-  return JSON.stringify(`${path.slice(0, at)}${name.length > 100 ? `${cut(name, 100)}…` : name}`);
+  return quote(`${path.slice(0, at)}${name.length > 100 ? `${cut(name, 100)}…` : name}`);
 }
 
 /** Whether a handed file is a pasted text (the + turns a long paste into one). @param {HandedFile} f */

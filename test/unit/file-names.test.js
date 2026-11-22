@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
@@ -9,7 +10,7 @@ import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
 import { addFiles } from '../../src/ui/add-files.js';
 import { outsideName } from '../../src/core/paths.js';
-import { handOverText } from '../../src/core/handover.js';
+import { handOverText, quotedPath } from '../../src/core/handover.js';
 import { newFilesText } from '../../src/core/imports.js';
 import { escapeTags } from '../../src/core/agent/blocks.js';
 import { wellFormed } from '../../src/core/web-search.js';
@@ -55,19 +56,36 @@ const whole = (s) => wellFormed(s) === s;
 test('outsideName: the characters a path reads back without are each run one "-", cut by whole characters before the extension', () => {
   assert.equal(outsideName('Day 1\u2028"Kyoto" <plan>.txt', 'file'), 'Day 1-Kyoto- -plan-.txt');
   assert.equal(outsideName('a/b\\c\u0000d\u2029e.pdf', 'file'), 'a-b-c-d-e.pdf');
+  assert.equal(outsideName('a\u0085b\u009fc\u007fd.pdf', 'file'), 'a-b-c-d.pdf'); // C1 controls too: NEL (U+0085) is a line break to some readers
   assert.equal(outsideName('Cafe\u0301 menu.pdf', 'file'), 'Caf\u00e9 menu.pdf'); // NFC, as normPath keeps paths
   // 80 before the extension: an emoji across the 80th is left out whole, one inside it kept whole.
   assert.equal(outsideName(`${'a'.repeat(79)}🗻 view.pdf`, 'file'), `${'a'.repeat(79)}.pdf`);
   assert.equal(outsideName(`${'a'.repeat(78)}🗻 view.pdf`, 'file'), `${'a'.repeat(78)}🗻.pdf`);
   assert.equal(outsideName(`${'e'.repeat(120)}.pkpass`, 'file'), `${'e'.repeat(80)}.pkpass`);
-  // A joined emoji may lose its later parts: each part is a character of its own, so the name is still whole text.
-  const family = outsideName(`${'f'.repeat(77)}👨\u200d👩\u200d👧.pdf`, 'file');
-  assert.equal(family, `${'f'.repeat(77)}👨\u200d.pdf`);
-  assert.ok(whole(family));
+  // A character as a person sees it is kept or left out whole: a joined emoji never leaves a lone joiner (U+200D) before the extension.
+  const family = '👨\u200d👩\u200d👧';
+  assert.equal(outsideName(`${'f'.repeat(72)}${family}.pdf`, 'file'), `${'f'.repeat(72)}${family}.pdf`);
+  for (const at of [73, 75, 77, 79]) assert.equal(outsideName(`${'f'.repeat(at)}${family}.pdf`, 'file'), `${'f'.repeat(at)}.pdf`);
+  assert.equal(outsideName(`${'g'.repeat(78)}🇯🇵.pdf`, 'file'), `${'g'.repeat(78)}.pdf`); // a flag is two letters of one character
+  assert.equal(outsideName(`${'h'.repeat(79)}q\u0301.pdf`, 'file'), `${'h'.repeat(79)}.pdf`); // a letter with an accent that has no single character
+  // A character longer than the 80 itself is cut between code points, so the name is never empty; one after others is left out whole.
+  const long = `e${'\u0301'.repeat(100)}`;
+  assert.equal(outsideName(`${long}.pdf`, 'file'), `\u00e9${'\u0301'.repeat(79)}.pdf`);
+  assert.equal(outsideName(`ab${long}.pdf`, 'file'), 'ab.pdf');
+  // The stem is trimmed after the cut: no "… to .pdf".
+  assert.equal(outsideName(`${'a'.repeat(79)} ${'b'.repeat(10)}.pdf`, 'file'), `${'a'.repeat(79)}.pdf`);
   // Not an extension: words after a dot, or a run past 10 letters, are cut with the rest.
   assert.equal(outsideName(`Mr. ${'g'.repeat(90)}`, 'file'), `Mr. ${'g'.repeat(76)}`);
   assert.equal(outsideName(`x.${'h'.repeat(90)}`, 'file').length, 80);
-  for (const empty of ['', '  ', '.', '..', '\u2028']) assert.equal(outsideName(empty, 'file'), empty === '\u2028' ? '-' : 'file');
+  for (const empty of ['', '  ', '.', '..', `.${' '.repeat(90)}x`]) assert.equal(outsideName(empty, 'file'), 'file');
+  assert.equal(outsideName('\u2028', 'file'), '-');
+});
+
+test('outsideName where the browser has no grapheme segmenter: cut between code points, never half of one', () => {
+  const url = new URL('../../src/core/paths.js', import.meta.url).href;
+  const code = `delete Intl.Segmenter; const { outsideName } = await import(${JSON.stringify(url)}); console.log(JSON.stringify([outsideName('${'a'.repeat(79)}🗻 view.pdf', 'file'), outsideName('${'f'.repeat(77)}👨\u200d👩.pdf', 'file')]))`;
+  const got = JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', code], { encoding: 'utf8' }));
+  assert.deepEqual(got, [`${'a'.repeat(79)}.pdf`, `${'f'.repeat(77)}👨\u200d.pdf`]);
 });
 
 test('a shared photo whose name has an emoji across the 80th character keeps whole characters, and reads back by the path Shiori is told', async () => {
@@ -81,7 +99,7 @@ test('a shared photo whose name has an emoji across the 80th character keeps who
   assert.deepEqual(read.map((r) => r.images[0].path), paths.map((p) => `/trip${p}`));
 });
 
-test('a shared file whose name has an emoji across the 100th character is kept whole and shorter, so the hand-over names it uncut and it reads back', async () => {
+test('a shared file whose name is over 80 characters (an emoji across the 100th) is stored cut at 80, so the hand-over names it whole and it reads back', async () => {
   const { run, add } = await phone();
   const { paths } = await add([file('Seat 12A', `${'c'.repeat(99)}🗻 seat.txt`, 'text/plain')]);
   assert.deepEqual(paths, [`/files/${'c'.repeat(80)}.txt`]);
@@ -136,4 +154,37 @@ test("an older file's name over 100 characters is cut where Shiori is told it be
   for (const text of [handOverText([{ path: `/trip/files/${name}`, type: 'application/pdf', name, new: false }]), newFilesText([{ path: `/files/${name}`, type: 'application/pdf' }], [])]) {
     assert.ok(text.includes(`${'e'.repeat(99)}…"`), text);
   }
+});
+
+test('a shared name with a "\\", a "/", only spaces or over 505 characters is kept as one plain name, and reads back by its path', async () => {
+  const { run, add } = await phone();
+  // On main a "\" or a name over about 505 characters stopped the add (a PathError), and a "/" made a folder the Files list doesn't show.
+  const names = ['tickets\\kyoto.txt', 'a/b/c.txt', '   ', `${'x'.repeat(600)}.txt`];
+  const { paths, types } = await add(names.map((n, i) => file(`body ${i}`, n, 'text/plain')));
+  assert.deepEqual(paths, ['/files/tickets-kyoto.txt', '/files/a-b-c.txt', '/files/file', `/files/${'x'.repeat(80)}.txt`]);
+  const told = quoted(newFilesText(paths.map((p) => ({ path: p, type: types[p] })), []));
+  assert.deepEqual(told, paths.map((p) => `/trip${p}`));
+  assert.deepEqual(await Promise.all(told.map((p) => run('read', { path: p }))), names.map((_, i) => `body ${i}`));
+});
+
+test('a photo whose name is nothing but its ending is kept as photo.<ending>, and reads back', async () => {
+  const { run, add } = await phone();
+  const { paths, types } = await add([file(await jpeg(), '.jpg', 'image/jpeg')]);
+  assert.match(paths[0], /^\/files\/photo\.(jpg|webp)$/);
+  const [path] = quoted(newFilesText([{ path: paths[0], type: types[paths[0]] }], []));
+  assert.equal((await run('read', { path })).images[0].path, `/trip${paths[0]}`);
+});
+
+test("an older file's name with a line separator is quoted with it escaped, in both texts that name a path", () => {
+  const name = 'Old\u2028plan\u2029b.txt';
+  const texts = [
+    handOverText([{ path: `/trip/files/${name}`, type: 'text/plain', name, new: true }]),
+    handOverText([{ path: `/trip/files/${name}`, type: 'text/plain', name, new: false }]),
+    newFilesText([{ path: `/files/${name}`, type: 'text/plain' }], []),
+  ];
+  for (const text of texts) {
+    assert.ok(!/[\u2028\u2029]/.test(text), text); // a raw one reads as a line break, where a line "[annai] …" could start
+    assert.ok(text.includes('"/trip/files/Old\\u2028plan\\u2029b.txt"'), text);
+  }
+  assert.equal(quotedPath('/trip/files/a\u2028b.txt'), '"/trip/files/a\\u2028b.txt"'); // the moved-file words use it too
 });

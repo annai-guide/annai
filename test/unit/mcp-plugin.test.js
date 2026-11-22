@@ -404,6 +404,20 @@ test("an MCP tool's image is kept as a named file in the trip, and the result te
   }
 });
 
+test("an MCP tool's image with a long name is kept under a name cut at 80 units between whole characters", async () => {
+  // A server picks its tools' names: letters of any script stay in the file's name, and 𠮷 is two units.
+  const s = await startMcpServer({ tools: [{ name: `a${'𠮷'.repeat(50)}`, description: 'A picture.', image: true }] });
+  try {
+    const k = await kit();
+    await k.servers.add({ name: 'trail', url: s.url });
+    const [{ name }] = (await k.servers.list()).find((x) => x.name === 'trail').tools;
+    await k.call(name, {});
+    assert.deepEqual((await k.ws.list(k.trip, '/files/')).map((x) => x.path), [`/files/trail_a${'𠮷'.repeat(36)}.png`]);
+  } finally {
+    await s.stop();
+  }
+});
+
 test("an MCP tool's image that can't be kept (storage full) leaves its words, and says so", async () => {
   const s = await startMcpServer({ token: TOKEN });
   try {

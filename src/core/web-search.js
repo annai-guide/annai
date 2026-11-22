@@ -80,6 +80,8 @@ export function cut(s, n) {
   const c = s.charCodeAt(n - 1);
   return s.slice(0, c >= 0xd800 && c <= 0xdbff ? n - 1 : n);
 }
+/** Where text splits into what a person sees as one character (a flag, a joined emoji, a letter with its accent); null where the browser has no Intl.Segmenter. */
+export const graphemes = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;
 /** s with each unpaired surrogate replaced by U+FFFD (String.prototype.toWellFormed where the browser has it). @param {string} s */
 export function wellFormed(s) {
   const native = /** @type {any} */ (s).toWellFormed;

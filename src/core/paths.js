@@ -1,4 +1,4 @@
-import { cut } from './web-search.js';
+import { cut, graphemes } from './web-search.js';
 
 export class PathError extends Error {
   /** @param {string} message */
@@ -104,20 +104,38 @@ export function isCompressedType(type) {
     type === 'application/pdf' || type === 'application/zip' || type === 'application/vnd.apple.pkpass';
 }
 
-/** What a name from outside never keeps: a slash, a backslash, control characters, `"`, `<` and `>` (Koe reads other brackets), U+2028, U+2029. */
-const NOT_IN_NAMES = /[\\/\u0000-\u001f\u007f"<>\u2028\u2029]+/g;
+/** What a name from outside never keeps: a slash, a backslash, control characters (C0, DEL, C1), `"`, `<` and `>` (Koe reads other brackets), U+2028, U+2029. */
+const NOT_IN_NAMES = /[\\/\u0000-\u001f\u007f-\u009f"<>\u2028\u2029]+/g;
+/**
+ * The most of a name, before its ending, that outsideName keeps, in UTF-16 units (what a quoted path's 100 counts). 80 is where a photo's name
+ * was cut before; with ENDING's longest (11) and a free name's " (99)" a new name is at most 96 (a photo's, with its own ending and "-99", 99), so
+ * Shiori is told it whole. A real trace held 0 of 253 file names over 80 (the main session's count, 2026-11-22).
+ */
+const STEM_MAX = 80;
+/** The ending outsideName keeps whole: a dot and 1 to 10 letters or digits. The longest annai knows, ".pkpass", is 6; 10 leaves room, and still keeps a name under 100 with STEM_MAX and " (99)". */
+const ENDING = /\.[a-z0-9]{1,10}$/i;
+
+/** s cut to at most n UTF-16 units between what a person sees as one character; between code points where the browser has no segmenter or the first one is longer than n. @param {string} s @param {number} n */
+function wholeCut(s, n) {
+  if (s.length <= n) return s;
+  let out = '';
+  for (const { segment } of graphemes?.segment(s) ?? []) {
+    if (out.length + segment.length > n) break;
+    out += segment;
+  }
+  return out === '' ? cut(s, n) : out;
+}
 
 /**
  * A file's name that its sender chose (a photo's with no date taken, a shared or picked file's), as annai keeps it, so the path Shiori is
- * told reads back (spec §4.3): NFC, each run of NOT_IN_NAMES one "-", trimmed, and before its extension (up to 10 letters or digits) at
- * most 80 UTF-16 units, cut between whole characters: 80, the photo's cut before, which with an extension and a free name's " (99)" stays
- * under the 100 a quoted path is cut at (handover.js). A joined emoji may lose its later parts, each a whole character, which reads back.
- * Nothing left, ".", or "..": fallback. @param {string} name @param {string} fallback
+ * told reads back (spec §4.3): NFC, each run of NOT_IN_NAMES one "-", trimmed, and before its ending (ENDING) at most STEM_MAX units, cut
+ * between whole characters (wholeCut) and trimmed again. Nothing left, ".", or "..": fallback.
+ * @param {string} name @param {string} fallback
  */
 export function outsideName(name, fallback) {
   const s = name.normalize('NFC').replace(NOT_IN_NAMES, '-').trim();
-  const ext = /\.[a-z0-9]{1,10}$/i.exec(s)?.[0] ?? '';
-  const out = `${cut(s.slice(0, s.length - ext.length), 80)}${ext}`;
+  const ext = ENDING.exec(s)?.[0] ?? '';
+  const out = `${wholeCut(s.slice(0, s.length - ext.length), STEM_MAX).trimEnd()}${ext}`;
   return out === '' || out === '.' || out === '..' ? fallback : out;
 }
 
@@ -130,9 +148,9 @@ export function freeName(path, taken) {
   if (!taken.has(path)) return path;
   const slash = path.lastIndexOf('/');
   const dot = path.lastIndexOf('.');
-  const cut = dot > slash + 1 ? dot : path.length;
+  const at = dot > slash + 1 ? dot : path.length;
   for (let i = 2; ; i++) {
-    const p = `${path.slice(0, cut)} (${i})${path.slice(cut)}`;
+    const p = `${path.slice(0, at)} (${i})${path.slice(at)}`;
     if (!taken.has(p)) return p;
   }
 }

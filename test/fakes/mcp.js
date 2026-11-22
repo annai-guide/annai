@@ -31,7 +31,7 @@ const TYPES = { '.md': 'text/markdown; charset=utf-8', '.json': 'application/jso
  * its origins, a request from any other Origin (403, as the spec's DNS-rebinding rule says). A request
  * with no Origin passes, as in the SDK's validateRequestHeaders: clients outside a browser send none.
  * @param {{ token?: string, sse?: boolean, sessions?: boolean, exposeSession?: boolean, cors?: boolean, port?: number, host?: string, files?: string,
- *   tools?: { name: string, description?: string, inputSchema?: any }[], origins?: string[] }} [o]
+ *   tools?: { name: string, description?: string, inputSchema?: any, image?: boolean }[], origins?: string[] }} [o]
  */
 export async function startMcpServer({ token, sse = false, sessions = true, exposeSession = true, cors = true, port = 0, host = '127.0.0.1', files, tools, origins } = {}) {
   /** @type {{ method: string, rpc: any, headers: Record<string, string | undefined>, path?: string }[]} */
@@ -41,6 +41,7 @@ export async function startMcpServer({ token, sse = false, sessions = true, expo
   let n = 0;
   let listDelay = 0;
   let hangDeletes = false;
+  /** @type {readonly { name: string, image?: boolean }[]} */
   const list = tools ?? STAND_IN_TOOLS;
   const filesRoot = files ? resolve(files) : null;
 
@@ -149,7 +150,7 @@ export async function startMcpServer({ token, sse = false, sessions = true, expo
         const name = String(msg.params?.name ?? '');
         const args = msg.params?.arguments ?? {};
         if (!list.some((t) => t.name === name)) return fail(-32602, `Unknown tool: ${name}`);
-        if (tools) return answer({ content: [{ type: 'text', text: name }] });
+        if (tools) return answer({ content: [list.find((t) => t.name === name)?.image ? { type: 'image', data: PNG, mimeType: 'image/png' } : { type: 'text', text: name }] });
         if (name === 'echo') return answer({ content: [{ type: 'text', text: String(args.text ?? '') }] });
         if (name === 'add') {
           const sum = Number(args.a) + Number(args.b);
