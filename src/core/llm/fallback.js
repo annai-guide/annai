@@ -289,9 +289,10 @@ export const CHARS_PER_TOKEN = 3.5;
 /**
  * A rough token count, enough to skip models whose window is clearly too small: of the messages as this model is sent
  * them (another's search steps aren't). A PDF counts as one picture, whatever its size: a provider counts it by its pages, not its bytes
- * (seven reads on real calls: 1 to 118 tokens a KiB, 1,814 tokens at the fewest, so a picture's 1600 is under each). A long PDF is
- * counted under its pages: housekeeping takes the call's own count from its reply on (not after a summary, nor after a reply that ran
- * the provider's own tools, which give none), and a request that overflows is refused by its provider, the next model tried.
+ * (seven reads on real calls: 1.3 to 118 tokens a KiB, 1,814 tokens at the fewest, so a picture's 1600 is under each). So a PDF is
+ * counted under what its provider counts: housekeeping takes the call's own count from its reply on (not after a summary or Start fresh,
+ * nor after a reply that ran the provider's own tools, which give none), and a request that overflows is refused by its provider, which
+ * doesn't rest the model: the next is tried, then housekeeping runs once and the request goes again.
  * @param {Request} request @param {string} [modelKey] its provider model id
  */
 export function estimateTokens(request, modelKey) {
