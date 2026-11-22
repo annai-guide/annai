@@ -104,9 +104,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 ### A photo brought back after the photo limit dropped it makes the provider's prompt cache miss once
 - **Kind:** known limitation.
 - **What the user sees:** nothing on screen. A model takes at most so many pictures per request (often 100; fewer after a provider refuses for count). In a conversation holding more photos than that, the oldest are left out with a stub. When Shiori re-reads one of them, or the user sends it again, it goes back where it first appeared. The request then changes from that early message, so that one turn pays full input price and processing time for the conversation before it. Nothing is lost or wrong.
-- **Why:** avoiding it needs annai to remember what each previous request sent, per model: more moving parts for a rare, one-turn cost.
-- **Revisit when:** long trips with many photos get slow or expensive after a re-read.
-- **Approved:** 2026-10-28, the user: "Accept as known limitation".
+- **Since photo-budget-next (2026-11-21), also:** a turn's requests carry only the pictures of that turn and the one before; every older one is the "not sent again: read it" stub. So each picture leaves the request two turns after it came, and that turn's request misses the provider's prompt cache from the picture's place on, once per picture; with a provider that keeps turns (OpenAI Responses, Gemini) it starts the kept chain over once. Nothing is lost or wrong; the request stays text-sized on a slow link.
+- **Why:** avoiding it needs annai to remember what each previous request sent, per model: more moving parts for a rare, one-turn cost. For the window: a text-sized request beats a cache hit on a spotty link ("we are an agent on the go possibly with spotty internet", the user, 2026-10-19).
+- **Revisit when:** long trips with many photos get slow or expensive after a re-read, or the cache misses show as a cost the traveller notices; or the user says "keep photos in the request".
+- **Approved:** 2026-10-28, the user: "Accept as known limitation"; widened for the window 2026-11-21, chief's decision C176 (not the user's words; to undo: "keep photos in the request").
 
 ### A booking's PDF shows a blank frame on Linux WebKit browsers
 - **Kind:** known limitation.
@@ -1391,6 +1392,13 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the traveller sees:** on a phone too full to write, when Shiori's tool call (her question card, Open on annai's card) can't have its result written, the conversation is left with a call that has no result; after room returns, the traveller's next lines there go to her model behind that open call (the transcript holds lines while a call waits, src/core/agent/transcript.js `#line`), so a provider is likely to refuse the request or answer without reading them, until another conversation is opened and this one again, or annai restarts (an open repairs it). While the phone stays full, that conversation doesn't open at all: the open's own repair is a write, refused, so the open fails with the storage card (storage-rest2-next's final review, 2026-11-20, run on main too). So a reminder that conversation's cut turn still owes isn't shown at its open either until there is room: the open fails at its repair before it shows (owed-leave-next's re-review, 2026-11-21).
 - **Why:** found by storage-rest-next's re-review (2026-11-20; on main too, not that build's); its fix is at the source, a turn that stops with calls open giving them results as an open's repair does (or the next turn's start repairing them), which needs its own small design; an open whose repair write is refused should go on without it, or the conversation stays shut on a full phone.
 - **Revisit when:** its row in docs/progress.md ("A tool call whose result the phone refused"), in the next version.
+
+### A message with several photos carries them all for its turn and the next
+- **Kind:** known limitation.
+- **What the traveller sees:** photos sent together in one message all go in each request of Shiori's turn about them and of the next one, both halves: four at the default (256 KiB each, about 1.4 MB as sent) make requests the size that broke off on a car's mobile data (2026-11-21), so on a weak connection such a message can fail where one or two photos go through. Older photos are not sent again after that (photo-budget-next).
+- **Why:** what the traveller just sent is what they ask about; stubbing some of it would hide part of the question, and a cap per message would refuse what they chose to send. Each photo is already small.
+- **Revisit when:** the trace shows messages of several photos failing on slow links; or the user says "cap the photos per message" or "send only the newest".
+- **Approved:** 2026-11-21, chief's decision C177 (not the user's words), with a README line saying what the traveller can do.
 
 ### Two other waits still count the sending, and the photo words' two edges
 - **Kind:** deferred.
