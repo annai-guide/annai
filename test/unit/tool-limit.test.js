@@ -58,7 +58,7 @@ test("runTool: when annai can't read the keys it keeps, the time limit's words a
   }
 }));
 
-test('runTool: tools that wait for the user, and the helper of task, have no time limit',() => limited(20, async () => {
+test('runTool: tools that wait for the user, and the helper of task, have no time limit', () => limited(20, async () => {
   for (const name of ['ask', 'wait', 'speak', 'task']) {
     const r = await runTool(tool(name, () => new Promise((resolve) => setTimeout(() => resolve('answered'), 60))), {}, call(), store);
     assert.deepEqual(r.output, { content: 'answered' }, name);
