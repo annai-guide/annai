@@ -1791,7 +1791,7 @@ export class LiveKoe {
     } finally {
       t.calls--;
       this.#tools--;
-      if (t.done && !t.calls) this.#settle(t);
+      if (t.done && !t.calls) { if (this.#owed.sent[0] === flight[0]) this.#settle(t); } // a note that went in during the call is no miss of the card's turn
       else if (!t.calls && t.made && t.endBy && (this.#t === t || (t.alone && !this.#t))) this.#endNow(t); // all made before its last answer
       this.#poke();
       this.#heardOut();

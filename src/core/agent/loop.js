@@ -1504,7 +1504,7 @@ export class Agent {
 
   /**
    * Wakes that never start a turn, written into their conversation all the same, with a quiet "stopped"; a write that fails is told (#notSaved). One being
-   * opened while this one is still open is written as its late entries are (#logIn: its open takes them into the transcript it reads). @param {Wake[]} wakes @param {string} [scope] the open one's if not given
+   * opened while this one is still open is written as its late entries are (#logIn: the open takes a stopped line into its transcript, except one over 2000 characters or with photos, which joins at its next read). @param {Wake[]} wakes @param {string} [scope] the open one's if not given
    */
   #stopWakes(wakes, scope = this.scope) {
     if (!wakes.length) return;

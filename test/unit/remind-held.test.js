@@ -413,8 +413,8 @@ for (const [what, stop] of /** @type {[string, boolean][]} */ ([["Undo's or Eras
 // Once Koe has had a conversation open in this page, an open of another skips the halves' route (Halves.open), so with Koe since off, a line typed while that
 // one opens is in Kokoro's queue for it while the one being left is still open: a Stop then (Undo's or Erase's) writes the line and its "stopped" into the
 // conversation it was typed for, never the one being left (the code re-read's F1), and the open's transcript has the line, whether the Stop lands before
-// the open reads the log (its read has it) or after (the open takes it in as a late entry: #logIn; #keptIn, which serves a conversation that isn't being
-// opened, left Kokoro's transcript without it until its next read: the final review's F-A).
+// the open reads the log (its read has it) or after (the open takes it in as a late entry: #logIn; the Stop wrote through `#keptIn`, which doesn't
+// put a line into the transcript of a conversation being opened: the review's F-A).
 for (const [when, late] of /** @type {[string, boolean][]} */ ([['before the open has read the log', false], ['after the open has read the log', true]])) {
   test(`Koe on, then off, another conversation opening, a line typed, then Undo's or Erase's Stop ${when}: the line and its stopped are written in the conversation it was typed for, and its transcript has the line`, async (t) => {
     useClock(t);
@@ -799,6 +799,9 @@ for (const [what, race] of /** @type {[string, boolean][]} */ ([['while the card
           return call(c, ...rest);
         };
       }
+      /** @type {number[]} */
+      const askedAt = []; // the asks that had gone in as each reminder's card was raised
+      k.agent.on('notice', (/** @type {any} */ n) => { if (n.title === 'Reminder') askedAt.push(texts(k).filter((/** @type {string} */ x) => x.includes("hasn't reached the user")).length); });
       await k.voice.unlock();
       k.agent.send('Show me the bridge');
       if (race) await until(() => calling, 30_000);
@@ -810,6 +813,7 @@ for (const [what, race] of /** @type {[string, boolean][]} */ ([['while the card
       await soon(async () => texts(k).filter((/** @type {string} */ x) => x.includes("hasn't reached the user")).length === 1, 10_000); // asked once more
       await soon(async () => (await entries(k)).length === 1, 30_000); // she says only "Silent." again: annai shows it
       assert.deepEqual(reminders(k.notices), [TRAIN], 'shown once');
+      assert.deepEqual(askedAt, [1], 'she was asked once more before annai showed it, not after: the card\'s own turn settles nothing that went in during its call');
       assert.deepEqual(await k.events(['reminder.told']), [], 'never written as told: no one was given it');
       assert.equal(texts(k).filter((/** @type {string} */ x) => x.includes("hasn't reached the user")).length, 1, 'asked once, not more');
       const next = await nextStart(k, true);
