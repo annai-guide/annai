@@ -381,7 +381,7 @@ async function readFor(request, model, read, signal, readings) {
   })));
   const sees = model.input.includes('image');
   const out = photosAsWords({ ...request, messages }, { photos: !sees, documents: !model.input.includes('pdf'), sees, readings });
-  return { request: { ...out, messages: limitImages(out.messages, model.images?.maxCount, out.cacheAt) }, unread };
+  return { request: { ...out, messages: limitImages(out.messages, model.images?.maxCount, out.photosFrom) }, unread };
 }
 
 /**
@@ -551,8 +551,8 @@ export async function callRole(c) {
     // The same for a PDF: an older one goes as a note; only one in the newest message needs a model that reads it.
     const notes = Boolean(model && !reads && !newestDocument(sent) && sent.messages.some((m) => m.parts.some((p) => p.type === 'document')));
     if (words || notes) sent = photosAsWords(sent, { photos: words, documents: notes, sees, readings: c.readings });
-    // The model's photo limit of the request's distinct pictures, kept pages included, and the bytes older ones may add, each once (spec §4.8).
-    sent = { ...sent, messages: limitImages(sent.messages, model?.images?.maxCount, sent.cacheAt) };
+    // The model's photo limit of the request's distinct pictures, kept pages included, in the turn's window, each once (spec §4.8).
+    sent = { ...sent, messages: limitImages(sent.messages, model?.images?.maxCount, sent.photosFrom) };
     if (!sent.toolRequired || !bench.unforced.has(id)) return sent;
     const { toolRequired, ...rest } = sent;
     return rest;
@@ -756,7 +756,7 @@ export async function callRole(c) {
       // What else keeps it out (too long, no tools…) is checked before anything is read for it, on what it would be sent.
       const pRec = config.providers[config.models[id].provider];
       const worded = photosAsWords(c.request, { photos: !model.input.includes('image'), documents: !model.input.includes('pdf') });
-      const other = gap(model, { ...worded, messages: limitImages(worded.messages, model.images?.maxCount, worded.cacheAt) }, pRec ? providerOf(pRec) : undefined);
+      const other = gap(model, { ...worded, messages: limitImages(worded.messages, model.images?.maxCount, worded.photosFrom) }, pRec ? providerOf(pRec) : undefined);
       if (other) {
         attempts.push({ model: id, name: model.name, outcome: other, ms: 0 });
         continue;

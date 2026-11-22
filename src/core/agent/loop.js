@@ -74,7 +74,7 @@ import { FILES_ONLY, PHOTO_ONLY, handoverOf } from '../handover.js';
  * @typedef {import('./listen.js').Got} Got
  * @typedef {{ snapshot: import('./context.js').Snapshot, system: string, tools: LoopTool[], defs: import('../llm/contract.js').ToolDef[], via: ReturnType<typeof webVia>,
  *   providerTools: { providerTools?: { kinds: string[], off: string[] } }, shows: string, level: string, send: (m: import('../llm/contract.js').Message[]) => import('../llm/contract.js').Message[],
- *   cacheAt: number }} Frozen
+ *   cacheAt: number, wake: string }} Frozen
  *   what a turn's requests keep from its first step to its end (the keep-reasoning design §3): the system text (rebuilt only from a new snapshot,
  *   after housekeeping), the tools and provider tools, the reasoning level, the half's rule for its messages, and where the previous turn began
  * @typedef {{ owner: 'tap' | 'turn' | 'after', tap: boolean, by: number, timer?: ReturnType<typeof setTimeout>, scope: string, session: { stop(): void, kind?: string } | null }} Ear
@@ -1711,17 +1711,18 @@ export class Agent {
     const cold = await this.#cold(settings);
     const snapshot = nextSnapshot(this.#snapshot, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale }), { cold });
     const { tools, shows } = await this.#toolsNow();
-    return { system: this.#systemFor(snapshot, shows), tools: tools.map((x) => x.name), messages: await this.#sendable(), tail: await this.#tailFor(this.#nowFor([])) };
+    const messages = limitImages(await this.#sendable(), (await this.#mainImages()).maxCount, this.transcript.windowFrom());
+    return { system: this.#systemFor(snapshot, shows), tools: tools.map((x) => x.name), messages, tail: await this.#tailFor(this.#nowFor([])) };
   }
 
-  /** What the turn keeps from its first step (the keep-reasoning design §3). @param {import('./context.js').Snapshot} snapshot @returns {Promise<Frozen>} */
-  async #freeze(snapshot) {
+  /** What the turn keeps from its first step (the keep-reasoning design §3). @param {import('./context.js').Snapshot} snapshot @param {string} wake @returns {Promise<Frozen>} */
+  async #freeze(snapshot, wake) {
     const { tools, via, providerTools, shows } = await this.#toolsNow();
     return {
       snapshot, system: this.#systemFor(snapshot, shows), tools, defs: definitions(tools), via, providerTools, shows,
       level: levelOf(await this.llm.config(), this.#half.role), send: await this.#sendRule(),
       // Where the previous turn began: read before any reply of this one.
-      cacheAt: this.transcript.turnStart,
+      cacheAt: this.transcript.turnStart, wake,
     };
   }
 
@@ -1937,10 +1938,11 @@ export class Agent {
     const defs = frozen?.defs ?? definitions(tools);
     // Where the turn that is cached began: the turn's own mark within it, the latest turn's between turns.
     const cacheAt = frozen ? frozen.cacheAt : this.transcript.turnStart;
+    const photosFrom = this.transcript.windowFrom(frozen?.wake);
     /** @type {import('../llm/contract.js').Message[]} */
     let messages = await this.#sendable();
     for (let step = 0; step < 4; step++) {
-      const request = { ...buildRequest({ snapshot: this.#snapshot, system, tools: defs, transcript: { messages }, tail: instruction(marker, language), cacheTtl: settings.cacheTtl }), ...providerTools, ...(cacheAt >= 0 ? { cacheAt } : {}),
+      const request = { ...buildRequest({ snapshot: this.#snapshot, system, tools: defs, transcript: { messages }, tail: instruction(marker, language), cacheTtl: settings.cacheTtl }), ...providerTools, ...(cacheAt >= 0 ? { cacheAt } : {}), photosFrom,
         // A summary never needs to read a file (the part it summarizes holds what was said of it): a model that can't take one gets
         // each as words, wherever it is (a PDF just read kept every model from tidying up).
         newestPhoto: false, newestDocument: false };
@@ -2465,7 +2467,7 @@ export class Agent {
       // and no mark where the previous turn began (what was cached there belonged to the old prefix).
       /** @type {Frozen | null} */
       const was = frozen;
-      const turn = was ? (was.snapshot === snapshot ? was : { ...was, snapshot, system: this.#systemFor(snapshot, was.shows), cacheAt: -1 }) : await this.#freeze(snapshot);
+      const turn = was ? (was.snapshot === snapshot ? was : { ...was, snapshot, system: this.#systemFor(snapshot, was.shows), cacheAt: -1 }) : await this.#freeze(snapshot, wakeId);
       frozen = turn;
       const { tools, via, providerTools } = turn;
       const now = this.#nowFor(reasons);
@@ -2478,6 +2480,8 @@ export class Agent {
       const request = {
         ...buildRequest({ snapshot, system: turn.system, tools: turn.defs, transcript: { messages }, tail, cacheTtl: settings.cacheTtl }),
         ...(turn.cacheAt >= 0 ? { cacheAt: turn.cacheAt } : {}),
+        // Kept apart from the cache mark, which housekeeping drops.
+        photosFrom: this.transcript.windowFrom(turn.wake),
         ...providerTools, newestPhoto: this.transcript.newestPhoto, // a model that takes no photos gets older ones as words
         // She reaches the user only through tools: the model must call one, where its endpoint can say so (the nudge stays
         // the backstop). Not with the model's own search on: it answers in words, shown as written (G4).
@@ -2491,8 +2495,8 @@ export class Agent {
       const window = (await this.#mainModel())?.contextWindow ?? null;
       const maxBytes = settings.compaction.maxRequestMiB * 2 ** 20;
       const uploaded = await this.#uploading();
-      // What the main models are sent: their photo limit of the pictures, and the bytes older ones may add, each once.
-      const sent = { ...request, messages: limitImages(request.messages, (await this.#mainImages()).maxCount, request.cacheAt) };
+      // What the main models are sent: their photo limit of the pictures, each once.
+      const sent = { ...request, messages: limitImages(request.messages, (await this.#mainImages()).maxCount, request.photosFrom) };
       const estimate = estimateTokens(sent, (await this.#mainModel())?.providerId);
       const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window, bytes: requestBytes(sent, { uploaded }), maxBytes, threshold: settings.compaction.threshold }) : null;
       const tidy = coldStart;
@@ -2844,7 +2848,7 @@ export class Agent {
     });
     // Too many photos: the oldest go as stubs, and no photo is made again.
     if (learned.maxCount && !learned.maxBytes && !learned.maxEdge && !learned.formats?.length) {
-      return { ...request, messages: limitImages(request.messages, images.maxCount, request.cacheAt) };
+      return { ...request, messages: limitImages(request.messages, images.maxCount, request.photosFrom) };
     }
     const limits = await this.#limits(); // now with what this model just taught
     /** @type {Map<string, import('../request-photos.js').Copy>} */
@@ -2874,7 +2878,7 @@ export class Agent {
       const bytes = await blobBytes(this.store, this.scope, copy.hash);
       if (bytes) swaps.set(old, { ...copy, data: toBase64(bytes) });
     }
-    return { ...request, messages: limitImages(replaceImages(request.messages, swaps), images.maxCount, request.cacheAt) };
+    return { ...request, messages: limitImages(replaceImages(request.messages, swaps), images.maxCount, request.photosFrom) };
   }
 
   /** The stored photo an image part was made from, with its part, while it is still a file. @param {any} p */

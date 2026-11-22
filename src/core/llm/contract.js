@@ -32,9 +32,10 @@ import { list } from '../intl.js';
  * @typedef {{ role: 'user' | 'assistant', parts: Part[] }} Message
  * @typedef {{ name: string, description: string, input: Record<string, any> }} ToolDef  input: a JSON Schema
  * @typedef {{ system?: string, messages: Message[], tools?: ToolDef[], maxOutput?: number, cacheTtl?: '5m' | '1h',
- *   tail?: string, toolChoice?: string, logprobs?: number, providerTools?: { kinds: string[], off?: string[] }, needsProviderTool?: string, newestPhoto?: boolean, newestDocument?: boolean, toolRequired?: boolean, cacheAt?: number }} Request
+ *   tail?: string, toolChoice?: string, logprobs?: number, providerTools?: { kinds: string[], off?: string[] }, needsProviderTool?: string, newestPhoto?: boolean, newestDocument?: boolean, toolRequired?: boolean, cacheAt?: number, photosFrom?: number }} Request
  *   cacheAt: the index of the message where the previous turn began: a type that places cache markers marks its last block too, before any
- *   now block kept in it (the keep-reasoning design §7). limitImages reads it too (spec §4.8).
+ *   now block kept in it (the keep-reasoning design §7).
+ *   photosFrom: the first message whose pictures go; older ones are stubs (limitImages, spec §4.8); none: all.
  *   tail: the now block, last, after any cache marker: in the final user message, or where the type puts it (OpenAI Responses: a developer message).
  *   toolChoice: a tool the model must call. logprobs: how many alternatives to report for the first token. toolRequired: the model must call
  *   one of the tools, any (Shiori's turns: she reaches the user only through tools), where its endpoint type can say so; toolChoice wins.
