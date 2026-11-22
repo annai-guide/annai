@@ -380,8 +380,8 @@ async function readFor(request, model, read, signal, readings) {
     }))).flat(),
   })));
   const sees = model.input.includes('image');
-  const out = photosAsWords({ ...request, messages }, { photos: !sees, documents: !model.input.includes('pdf'), sees, readings });
-  return { request: { ...out, messages: limitImages(out.messages, model.images?.maxCount, out.photosFrom) }, unread };
+  // The photo limit comes from requestFor, which `one` applies to this: same model, same window.
+  return { request: photosAsWords({ ...request, messages }, { photos: !sees, documents: !model.input.includes('pdf'), sees, readings }), unread };
 }
 
 /**

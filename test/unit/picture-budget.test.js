@@ -7,7 +7,8 @@ import { KOE_TAG } from '../../src/core/agent/log.js';
 import { DEFAULT_PHOTO_SETTINGS } from '../../src/core/photos.js';
 
 // A turn's request sends the pictures of its own messages and of the turn before's; every older one is a stub she reads again at need
-// (photo-budget-next). Sizes come from the code's own values: a photo as sent at the default cap, and a copy at the cap before 2026-11-21 (1 MiB).
+// (photo-budget-next). Sizes come from the code's own values: PHOTO is a photo as sent at the default cap; OLD is a literal, the 1 MiB default
+// before 2026-11-21, which the code no longer has.
 /** base64 of n bytes */
 const base64 = (/** @type {number} */ n) => Math.ceil(n / 3) * 4;
 const PHOTO = base64(DEFAULT_PHOTO_SETTINGS.request.maxBytes);
@@ -22,6 +23,8 @@ const reply = (/** @type {string} */ t) => ({ role: /** @type {const} */ ('assis
 const shown = (messages) => messages.map((m) => m.parts.flatMap((/** @type {any} */ p) => (p.type === 'image' ? [p.page ? `page ${p.page}` : p.hash] : p.text?.startsWith('[') ? [p.text] : [])));
 const say = (/** @type {string} */ words) => ({ toolCalls: [{ name: 'speak', input: { text: words } }, { name: 'sleep', input: {} }] });
 const stub = (/** @type {string} */ path) => `[photo ${path}, not sent again: read it to see it]`;
+/** The words of a photo the model's count left out. */
+const counted = (/** @type {string} */ path) => `[photo ${path}, not sent: this model takes fewer pictures at a time; read it to see it]`;
 
 test("the trip's case: a photo goes in its own turn and the next, whatever its size; two turns on it is a stub that names the file, and a text turn carries no photo", () => {
   const talk = (/** @type {number} */ size) => [user(text('Look'), img('menu', size, { path: '/trip/files/menu.jpg' })), reply('A menu.'), user(text('And the price?')), reply('12 euros.'), user(text('Thanks'))];
@@ -34,6 +37,9 @@ test("the trip's case: a photo goes in its own turn and the next, whatever its s
   // The message the window starts at goes whole; the one before it doesn't.
   const edge = [user(img('a', 10, { path: '/a.webp' })), reply('.'), user(img('b', 10, { path: '/b.webp' })), reply('.'), user(text('Hi'))];
   assert.deepEqual(shown(limitImages(edge, null, 2)), [[stub('/a.webp')], [], ['b'], [], []]);
+  // The same with a photo in the message just before the start (a read's result, say): it is a stub, and the start's goes whole.
+  const adjacent = [user(img('a', 10, { path: '/a.webp' })), user(img('b', 10, { path: '/b.webp' })), reply('.'), user(text('Hi'))];
+  assert.deepEqual(shown(limitImages(adjacent, null, 1)), [[stub('/a.webp')], ['b'], [], []]);
 });
 
 test('three photos in one message all go in its turn and the next; a fourth, older one is a stub with the path she can read, and two turns on none goes', () => {
@@ -88,10 +94,12 @@ test("a picture read again in a turn goes at the read's own place and every copy
 
 test("the model's count comes after the window: of the pictures in it, the oldest over the count is a stub; older ones are the window's stubs, whatever the count", () => {
   const messages = [user(text('Three'), img('a', 10, { path: '/a.webp' }), img('b', 10, { path: '/b.webp' }), img('c', 10, { path: '/c.webp' }))];
-  assert.deepEqual(shown(limitImages(messages, 2, 0)), [[stub('/a.webp'), 'b', 'c']]);
+  assert.deepEqual(shown(limitImages(messages, 2, 0)), [[counted('/a.webp'), 'b', 'c']]);
   assert.equal(limitImages(messages, 3, 0), messages, 'all within both: the request as it is');
   const more = [user(img('old', 10, { path: '/old.webp' })), reply('.'), ...messages];
-  assert.deepEqual(shown(limitImages(more, 2, 2)), [[stub('/old.webp')], [], [stub('/a.webp'), 'b', 'c']], 'the count and the window both act');
+  assert.deepEqual(shown(limitImages(more, 2, 2)), [[stub('/old.webp')], [], [counted('/a.webp'), 'b', 'c']], 'the count and the window both act');
+  // A count that admits every picture there is, the older one too, doesn't bring it back: it is the window's stub.
+  assert.deepEqual(shown(limitImages(more, 9, 2)), [[stub('/old.webp')], [], ['a', 'b', 'c']]);
 });
 
 test("a PDF's page pictures: before the window every page says to read the PDF again, in it they go from page 1 and the count's own stub stays for the rest", () => {
@@ -118,7 +126,26 @@ test('a stub says what brings its picture back: the region of a part, and for a 
 test("a request outside a conversation's turns (no photosFrom: a reader's, the recap's) sends every picture, as far as the count", () => {
   const messages = [user(img('a', OLD, { path: '/a.webp' }), img('b', OLD, { path: '/b.webp' }), img('c', OLD, { path: '/c.webp' }))];
   assert.equal(limitImages(messages, null), messages);
-  assert.deepEqual(shown(limitImages(messages, 2))[0], [stub('/a.webp'), 'b', 'c']);
+  assert.deepEqual(shown(limitImages(messages, 2))[0], [counted('/a.webp'), 'b', 'c']);
+});
+
+test("a picture the model's count leaves out says so, and how to see it: a photo, a part of one, one from a tool's result; before the window the window's words stay", () => {
+  const part = { path: '/trip/files/p.webp', region: [0, 0.25, 0.5, 0.75] };
+  const messages = [user(text('Four'), img('a', 10, { path: '/trip/files/a.webp' }), img('c', 10, part), img('w', 10), img('z', 10, { path: '/trip/files/z.webp' })), reply('.'), user(text('Thanks'))];
+  const why = 'not sent: this model takes fewer pictures at a time';
+  assert.deepEqual(shown(limitImages(messages, 1, 0))[0], [
+    `[photo /trip/files/a.webp, ${why}; read it to see it]`,
+    `[photo /trip/files/p.webp, the part [0,0.25,0.5,0.75], ${why}; read it with that region to see it]`,
+    `[a picture from a tool's result, ${why}; call that tool again to see it]`,
+    'z',
+  ]);
+  // Before the window the count says nothing: the same pictures have the window's words, with the same advice.
+  assert.deepEqual(shown(limitImages(messages, 1, 2))[0], [
+    stub('/trip/files/a.webp'),
+    '[photo /trip/files/p.webp, the part [0,0.25,0.5,0.75], not sent again: read it with that region to see it]',
+    "[a picture from a tool's result, not sent again: read can't bring it back; call that tool again to see it]",
+    stub('/trip/files/z.webp'),
+  ]);
 });
 
 /** The images a request sends, and their sizes. @param {any} r */
@@ -146,6 +173,8 @@ test("the trip's case through the agent: a photo of 1 MiB goes in its own turn a
   assert.ok(size > PHOTO, 'a copy bigger than a photo at the default cap');
   assert.deepEqual([next1, next2].map((r) => images(r)[0]?.data.length), [size, size], 'the turn after: what she just sent, at each of its steps');
   assert.deepEqual(images(text), [], 'two turns on');
+  // Text-sized again: no part but words and the calls' own, so no picture and no document rides along either.
+  assert.deepEqual([...new Set(text.messages.flatMap((/** @type {any} */ m) => m.parts.map((/** @type {any} */ p) => p.type)))].sort(), ['text', 'tool_call', 'tool_result']);
   assert.equal(at(text, stub('/trip/files/menu.webp')), 0, 'the stub is where the photo was');
   assert.ok(JSON.stringify(text).length < size, 'smaller than the photo alone');
   // Her read, in the same turn: the picture is at the read's place; nothing before it has changed.
@@ -160,7 +189,7 @@ test('the housekeeping measure weighs what is sent: an older photo left out make
   /** @type {any[]} */
   const timers = [];
   const k = await agentKit([[done, done, done, done]], { agent: { timers: { set: (/** @type {any} */ fn) => { timers.push(fn); return timers.length; }, clear: (/** @type {number} */ h) => { timers[h - 1] = null; } } } });
-  // The largest request at 1 MiB: two turns on, the first photo (400 KB as sent) and the new one (800 KB) together would be over it.
+  // The largest request at 1 MiB: in the fourth turn, three turns on from the first photo's, that photo (400 KB as sent) and the new one (800 KB) together would be over it.
   await updateAppSettings(k.ws, { shiori: { compaction: { maxRequestMiB: 1 } }, photos: { request: { maxBytes: 1024 * 1024 } } });
   await k.ws.write(k.trip, '/files/a.webp', new TextEncoder().encode('x'.repeat(300_000)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
   await k.ws.write(k.trip, '/files/b.webp', new TextEncoder().encode('x'.repeat(600_000)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
@@ -204,7 +233,7 @@ test("after a summary between turns the next turn has its window: the previous t
     await k.agent.idle();
   }
   assert.equal(await k.agent.compact('cold'), true);
-  assert.ok(JSON.stringify(k.agent.transcript.messages).includes('m1'), 'the photos of m1 to m4 are in the part kept');
+  for (const words of ['m1', 'm3', 'm4']) assert.ok(JSON.stringify(k.agent.transcript.messages).includes(words), `the turn of ${words}, with its photo, is in the part kept`);
   k.agent.send('m5');
   await k.agent.idle();
   const next = k.requests.at(-1);
@@ -261,4 +290,21 @@ test("Koe's window moving in the middle of its turn takes the turn starts with i
   assert.ok(from < first, `the start moved with the messages (${first} to ${from})`);
   assert.equal(JSON.stringify(t.messages[from].parts).includes('line 15'), true, 'it is still the line that began the turn before');
   assert.deepEqual(shown(limitImages(t.messages, null, from)).flat().filter((x) => x.startsWith('[photo ') || x === 'prev' || x === 'now'), [stub('/trip/files/mid.webp'), 'prev', 'now']);
+});
+
+test("Koe's own requests carry the window too: a chat Koe that sees photos is sent a photo in its turn and the next, at each step, and a stub after", async () => {
+  const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
+  const k = await agentKit([[sleep]], { koe: { type: [sleep], input: ['text', 'image'] } });
+  await k.ws.write(k.trip, '/files/a.webp', new TextEncoder().encode('a'.repeat(3000)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+  const turns = ['m0', 'm1', 'm2', 'm3'];
+  for (const [words, photos] of /** @type {[string, any[]][]} */ ([['m0', []], ['m1', [{ path: '/trip/files/a.webp' }]], ['m2', []], ['m3', []]])) {
+    k.agent.send(words, { photos });
+    await k.agent.idle();
+  }
+  const koe = k.sent['model-koe'];
+  const turnOf = (/** @type {any} */ r) => turns.findLastIndex((w) => JSON.stringify(r.messages).includes(`[typed] ${w}`));
+  // What each of Koe's requests sends, by the turn it belongs to (it asks twice in a turn here: Kokoro's note is not an answer).
+  const sends = turns.map((_, t) => [...new Set(koe.filter((/** @type {any} */ r) => turnOf(r) === t).map((/** @type {any} */ r) => images(r).map((/** @type {any} */ p) => p.path).join()))]);
+  assert.deepEqual(sends, [[''], ['/trip/files/a.webp'], ['/trip/files/a.webp'], ['']]);
+  assert.ok(JSON.stringify(koe.at(-1).messages).includes(stub('/trip/files/a.webp')), 'the stub she can read');
 });

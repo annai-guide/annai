@@ -819,7 +819,7 @@ test("each model gets its photo limit of the raw request's distinct pictures, th
   const shown = seen[0].request.messages.map((/** @type {any} */ m) => m.parts.map((/** @type {any} */ p) => (p.type === 'image' ? p.hash : p.text)));
   assert.deepEqual(shown, [
     ['Here is the menu', 'hA'],
-    ['And the hotel', '[photo /trip/files/hotel.webp, not sent again: read it to see it]'],
+    ['And the hotel', '[photo /trip/files/hotel.webp, not sent: this model takes fewer pictures at a time; read it to see it]'],
     ['Look at the menu again', '[photo /trip/files/menu.webp, the same as above]'],
   ]);
 });

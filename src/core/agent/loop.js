@@ -76,7 +76,8 @@ import { FILES_ONLY, PHOTO_ONLY, handoverOf } from '../handover.js';
  *   providerTools: { providerTools?: { kinds: string[], off: string[] } }, shows: string, level: string, send: (m: import('../llm/contract.js').Message[]) => import('../llm/contract.js').Message[],
  *   cacheAt: number, wake: string }} Frozen
  *   what a turn's requests keep from its first step to its end (the keep-reasoning design §3): the system text (rebuilt only from a new snapshot,
- *   after housekeeping), the tools and provider tools, the reasoning level, the half's rule for its messages, and where the previous turn began
+ *   after housekeeping), the tools and provider tools, the reasoning level, the half's rule for its messages, and where the previous turn began;
+ *   wake: the turn's wake, whose window (Transcript.windowFrom) the step request and the warm summary read
  * @typedef {{ owner: 'tap' | 'turn' | 'after', tap: boolean, by: number, timer?: ReturnType<typeof setTimeout>, scope: string, session: { stop(): void, kind?: string } | null }} Ear
  *   a microphone open (spec §10.4). owner: how it ends; tap: a tap opened or claimed it, until her turn takes it: a line begun in it is for her (#route);
  *   by: when it closes by itself (#armEar), 0 for her turn's; timer: that close; scope: its conversation (#route)
@@ -1702,7 +1703,8 @@ export class Agent {
 
   /**
    * What this half's next request would hold, from the code that builds it, so it can't disagree with what the model gets.
-   * Changes nothing: the snapshot is the one the next wake would take, and isn't kept.
+   * Changes nothing: the snapshot is the one the next wake would take, and isn't kept. Its window is the next wake's too, so during a turn a
+   * picture of the turn before shows as a stub, though that turn's own steps still send it.
    * @returns {Promise<{ system: string, tools: string[], messages: import('../llm/contract.js').Message[], tail: string }>}
    */
   async sees() {

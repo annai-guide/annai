@@ -31,18 +31,26 @@ export function readRefusal(message) {
 /** A copy of a picture sent at an earlier place in the request. @param {any} p */
 /* en */
 const same = (p) => ({ type: /** @type {const} */ ('text'), text: p.page ? `[page ${p.page} of the PDF, the same picture as above]` : `[photo${p.path ? ` ${p.path}` : ''}, the same as above]` });
-/** A picture left out, and how she sees it again (one with no path came from a tool's result: that tool shows it again). @param {any} p @param {boolean} byCount the count left it out, not the window */
+/**
+ * A picture left out, and how she sees it again (one with no path came from a tool's result: that tool shows it again).
+ * @param {any} p @param {boolean} byCount the model's count left it out, not the window: it says so, as a PDF page does
+ */
 /* en */
-const notSent = (p, byCount) => ({ type: /** @type {const} */ ('text'), text: p.page ? (byCount ? `[page ${p.page} of the PDF above, not sent: this model takes fewer pictures at a time]` : `[page ${p.page} of the PDF above, not sent again: read the PDF to see it]`)
-  : !p.path ? '[a picture from a tool\'s result, not sent again: read can\'t bring it back; call that tool again to see it]'
-    : p.region ? `[photo ${p.path}, the part ${JSON.stringify(p.region)}, not sent again: read it with that region to see it]` : `[photo ${p.path}, not sent again: read it to see it]` });
+const notSent = (p, byCount) => {
+  const no = byCount ? 'not sent: this model takes fewer pictures at a time;' : 'not sent again:';
+  return { type: /** @type {const} */ ('text'), text: p.page ? (byCount ? `[page ${p.page} of the PDF above, not sent: this model takes fewer pictures at a time]` : `[page ${p.page} of the PDF above, not sent again: read the PDF to see it]`)
+    : !p.path ? `[a picture from a tool's result, ${no} ${byCount ? '' : 'read can\'t bring it back; '}call that tool again to see it]`
+      : `[photo ${p.path}, ${p.region ? `the part ${JSON.stringify(p.region)}, ` : ''}${no} read it${p.region ? ' with that region' : ''} to see it]` };
+};
 
 /**
  * The pictures a request sends to a model (spec §4.8): one rule, applied once, per model, to the request as the conversation holds it.
  * From `from` on (Transcript.windowFrom: this turn's messages and the turn before's) the distinct pictures (by hash; one without a hash is its
  * own) are ranked by their newest appearance, and the model's count of them kept, newest first; within one message, its PDF's pages give way
  * before its own photos, the last page the first to go. Each goes at its earliest place from `from` on. Every other copy is a stub, a copy before
- * `from` for good, so one read again goes at the read's own place and nothing earlier changes: "the same as above", or "not sent" for a picture left out.
+ * `from` for good: "the same as above", or "not sent" for a picture left out. So a picture read again goes at the read's own place and nothing
+ * earlier changes, as long as the model's count holds the window's pictures; when a read pushes the oldest kept one out, that one's place changes
+ * (the "earlier thinking" entry in docs/limitations.md).
  * @param {Message[]} messages @param {number | null | undefined} [maxCount] none: every distinct picture, each once
  * @param {number} [from] none (a request outside a conversation's turns: a reader's, the recap's): every picture
  * @returns {Message[]}
