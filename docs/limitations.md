@@ -1402,8 +1402,8 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### A PDF in a conversation goes again in every request
 - **Kind:** deferred.
-- **What the traveller sees:** after a PDF (a booking, a ticket) is handed to Shiori, every later request of that conversation carries it again, as a document for a model that reads PDFs (Claude) or as up to 10 page pictures (1600 px, JPEG 0.85, no byte cap) for one that doesn't, until housekeeping summarizes it; on a slow link plain messages there go slowly or break off, as photos did before photo-budget-next.
-- **Why:** found by photo-budget-next's builder and reviews (2026-11-21): the window that stops older photos riding along (`limitImages`) counts only image parts, and a document part has no path for a stub to name. The fix is the same window for document parts and page pictures (this turn's and the one before; older ones a stub she can read again), with a path kept on the document part.
+- **What the traveller sees:** after a PDF (a booking, a ticket) is handed to Shiori, every later request of that conversation carries it again as a document, for a model that reads PDFs (Claude), until housekeeping summarizes it; on a slow link plain messages there go slowly or break off, as photos did before photo-budget-next. For a model that doesn't read PDFs, its page pictures (up to 10, 1600 px, JPEG 0.85) follow the photo window since photo-budget-next: two turns on they are a "read the PDF" stub, and only the reading's words ride along.
+- **Why:** found by photo-budget-next's builder and reviews (2026-11-21; corrected by its re-review): the window that stops older photos riding along (`limitImages`) counts only image parts, and a document part has no path for a stub to name. The fix is the same window for document parts (this turn's and the one before; older ones a stub she can read again), with a path kept on the document part.
 - **Revisit when:** its row in docs/progress.md ("A PDF in a conversation goes again in every request"), early in the next version.
 
 ### Two other waits still count the sending, and the photo words' two edges
