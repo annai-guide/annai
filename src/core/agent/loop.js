@@ -2198,7 +2198,7 @@ export class Agent {
         const source = { hash: got.entry.hash, type: got.entry.type, width: m.width ?? null, height: m.height ?? null, size: got.entry.size };
         const healed = p.region && m.width && m.height ? healRegion(p.region, m.width, m.height) : null;
         const sent = await this.#copy(source, healed?.crop, trip ?? ME);
-        images.push({ hash: sent.hash, mediaType: sent.mediaType, path: p.path, ...(healed ? { region: healed.used } : {}), told: `${photoLine(p.path, source, sent, healed)}.` });
+        images.push({ hash: sent.hash, mediaType: sent.mediaType, path: p.path, ...(healed ? { region: healed.used } : {}), told: /* en */ `[annai] ${photoLine(p.path, source, sent, healed)}.` });
         blobs.push(sent.data ? { bytes: fromBase64(sent.data), type: sent.mediaType } : { hash: sent.hash, type: sent.mediaType });
       } catch (e) {
         // Not dropped quietly: the user hears which photo didn't go, and why (spec §17).

@@ -117,12 +117,14 @@ test('a photo reaches Koe only when its model takes photos; otherwise a stub, an
     k.agent.send('', { photos: [{ path: '/trip/files/p.webp' }] });
     await k.agent.idle();
     const types = (/** @type {any} */ req) => req.messages.flatMap((/** @type {any} */ m) => m.parts.map((/** @type {any} */ p) => (p.type === 'text' ? p.text : p.type)));
+    // Each half reads the user's words, the [annai] line with the photo's path and sizes, then the picture (or Koe's stub for it).
+    const words = '[annai] The photo /trip/files/p.webp, 4032×3024, sent as 2000×1500.';
     const koe = types(k.sent['model-koe'][0]);
-    if (input.includes('image')) assert.ok(koe.includes('image'), JSON.stringify(koe));
-    else assert.deepEqual(koe.slice(0, 3), ['[the user sent a photo]', 'The photo /trip/files/p.webp, 4032×3024, sent as 2000×1500.', '[a photo; Kokoro sees it]']);
-    assert.ok(types(k.sent['model-0'][0]).includes('image'), 'Kokoro sees it');
-    assert.ok(types(k.sent['model-0'][0]).includes('The photo /trip/files/p.webp, 4032×3024, sent as 2000×1500.'), "Kokoro is told its path and sizes, as Koe is");
-    assert.ok(types(k.sent['model-0'][0]).includes('[the user sent a photo]'));
+    assert.deepEqual(koe.slice(0, 3), ['[the user sent a photo]', words, input.includes('image') ? 'image' : '[a photo; Kokoro sees it]']);
+    const kokoro = types(k.sent['model-0'][0]);
+    const at = kokoro.indexOf('[the user sent a photo]');
+    assert.ok(at >= 0, JSON.stringify(kokoro));
+    assert.deepEqual(kokoro.slice(at, at + 3), ['[the user sent a photo]', words, 'image'], 'Kokoro is told its path and sizes before it sees it, as Koe is');
   }
 });
 

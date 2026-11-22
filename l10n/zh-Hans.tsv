@@ -1426,8 +1426,8 @@ uwd3a2	ok	No offline pack yet.	还没有离线包。	src/ui/offline-pack.js:130
 ksuwxs	ok	Offline pack: downloaded.	离线包：已下载。	src/ui/offline-pack.js:132	
 r91312	ok	Offline pack: downloaded {0}.	离线包：{0}下载。	src/ui/offline-pack.js:132	{0} = when; Note: {0} is a relative time ("2 hours ago").
 8f98y9	ok	Open an annai file	打开 annai 文件	src/ui/open-file.js:6	
-ow6fak	ok	This browser could not draw the photo.	此浏览器无法处理这张照片。	src/ui/photo-codec.js:82	
-11dn6um	ok	This browser could not write {0}.	此浏览器无法生成 {0} 格式。	src/ui/photo-codec.js:90	{0} = type
+ow6fak	ok	This browser could not draw the photo.	此浏览器无法处理这张照片。	src/ui/photo-codec.js:83	
+11dn6um	ok	This browser could not write {0}.	此浏览器无法生成 {0} 格式。	src/ui/photo-codec.js:91	{0} = type
 1l0xxoj	ok	Close	关闭	src/ui/photo-viewer.js:32	
 1s1o4yb	ok	Show Shiori this part	把这部分给 Shiori 看	src/ui/photo-viewer.js:33	
 u3xlwb	ok	The plugin "{0}" was turned off	插件“{0}”已被关闭	src/ui/plugin-cards.js:13	{0} = name

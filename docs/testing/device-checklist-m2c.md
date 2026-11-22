@@ -4,7 +4,7 @@ Run on a real iPhone (Safari, iOS 26+) and a real Android phone (Chrome), instal
 
 ## Photos
 - [ ] Tap the camera in the dock and take a photo of a menu: it shows in your bubble, and Shiori says what it is.
-- [ ] Trace → Tools: Shiori's read of a photo says both sizes ("4032×3024, sent as N×M"; N×M is 2000×1500 or smaller, as the photo needs).
+- [ ] Trace → Tools: Shiori's read of a photo says both sizes ("4032×3024, sent as N×M"; N×M is 2000×1500 or smaller, as the photo needs). A photo you send in the chat has the same words, after "[annai] ", before it in the conversation's menu → What each half sees → Its conversation.
 - [ ] Ask about a detail ("what does the small print say?"): Shiori reads a region; the trace shows the part she cut.
 - [ ] Open a photo from the trip's files, zoom to a part, tap "Show Shiori this part": she answers about that part.
 - [ ] With the Anthropic endpoint: Trace → Web shows one upload per photo (kind upload); later turns don't upload it again.

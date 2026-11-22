@@ -143,6 +143,7 @@ export default function (test, assert) {
     try {
       const r = await encodePhoto(photo, { ...photoSettings({}).request, formats: ['image/jpeg'], maxBytes: cap, maxPixels: MAX_CANVAS_PIXELS });
       assert.ok(r.bytes.length <= cap && r.bytes.length >= 0.8 * cap, `${r.bytes.length} bytes, ${r.width}x${r.height}`);
+      assert.ok(r.width < 2000, `no size step was taken, so the step is not what this tests: ${r.width}x${r.height} (the edge stays 2000 until one)`);
       assert.ok(encodes.length <= 6, `${encodes.length} encodes: ${encodes.join(', ')} bytes`);
     } finally {
       OffscreenCanvas.prototype.convertToBlob = was;

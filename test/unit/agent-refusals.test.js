@@ -98,7 +98,7 @@ test("photos over a model's count go as stubs, the oldest first", async () => {
   const parts = k.requests[0].messages.at(-1).parts;
   assert.deepEqual(parts.map((/** @type {any} */ p) => p.type), ['text', 'text', 'text', 'text', 'image']);
   // The photo's words stay with its stub, which says how to see it.
-  assert.equal(parts[1].text, 'The photo /trip/files/p.webp, 4032×3024, sent as 2000×1500.');
+  assert.equal(parts[1].text, '[annai] The photo /trip/files/p.webp, 4032×3024, sent as 2000×1500.');
   assert.equal(parts[2].text, '[photo /trip/files/p.webp, not sent: this model takes fewer pictures at a time; read it to see it]');
 });
 
@@ -165,7 +165,8 @@ test('a copy whose bytes are gone is made again, never sent as nothing (review C
   await k.agent.idle();
   const [msg] = await k.store.tx(['events'], 'readonly', (t) => t.listEvents(kyoto, { types: ['msg.user'] }));
   assert.equal(await k.store.tx(['blobs'], 'readonly', (t) => t.hasBlob(msg.data.images[0].hash)), true);
-  assert.deepEqual(k.requests.at(-1).messages.at(-1).parts.map((/** @type {any} */ p) => p.type), ['text', 'text', 'image']);
+  // The copy made again is told as the first was: its words, then its picture.
+  assert.deepEqual(k.requests.at(-1).messages.at(-1).parts.map((/** @type {any} */ p) => (p.type === 'text' ? p.text : p.type)), ['And here', '[annai] The photo /trip/files/p.webp, 4032×3024, sent as 2000×1500.', 'image']);
 });
 
 test('record refuses a log entry that names content that is not stored (review C2)', async () => {
@@ -197,7 +198,13 @@ test('a refusal of too many photos sends the oldest as stubs, and no photo is ma
   assert.equal(k.notices.length, 0);
   assert.equal((await k.events(['photo.replace'])).length, 0);
   assert.equal(k.codec.calls.length, 2);
-  assert.deepEqual(k.requests.at(-1).messages.at(-1).parts.map((/** @type {any} */ p) => p.type), ['text', 'text', 'text', 'text', 'image']);
+  assert.deepEqual(k.requests.at(-1).messages.at(-1).parts.map((/** @type {any} */ p) => (p.type === 'text' ? p.text : p.type)), [
+    'Two',
+    '[annai] The photo /trip/files/p.webp, 4032×3024, sent as 2000×1500.',
+    '[photo /trip/files/p.webp, not sent: this model takes fewer pictures at a time; read it to see it]',
+    '[annai] The photo /trip/files/p.webp, part [0, 0, 0.5, 0.5] (2016×1512 of 4032×3024), sent as 2000×1500.',
+    'image',
+  ]);
 });
 
 test('a refusal that states the limit annai already keeps: a quarter less, once; then a card in plain words (review I3)', async () => {

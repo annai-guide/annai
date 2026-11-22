@@ -1721,7 +1721,7 @@ test('read with a region sends a crop, kept in the conversation, and says which 
   assert.equal((await k.ws.list(k.trip, '/files/')).length, 1);
 });
 
-test('a photo the user sends goes in their message as a request copy, after its path and both sizes as her read says them, and comes back the same after a reload (spec §4.8)', async (t) => {
+test('a photo the user sends goes in their message as a request copy, after an [annai] line with its path and both sizes as her read says them, and comes back the same after a reload (spec §4.8)', async (t) => {
   useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]]);
   await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('4032x3024'), { author: 'user', type: 'image/webp', meta: { width: 4032, height: 3024 } });
@@ -1730,8 +1730,8 @@ test('a photo the user sends goes in their message as a request copy, after its 
   const [msg] = await k.events(['msg.user']);
   assert.deepEqual(msg.data.images.map((/** @type {any} */ i) => [i.path, i.region ?? null]), [['/trip/files/p.webp', null], ['/trip/files/p.webp', [0, 0, 0.5, 0.5]]]);
   assert.deepEqual(msg.refs.slice(-2), msg.data.images.map((/** @type {any} */ i) => i.hash));
-  const whole = 'The photo /trip/files/p.webp, 4032×3024, sent as 2000×1500.';
-  const part = 'The photo /trip/files/p.webp, part [0, 0, 0.5, 0.5] (2016×1512 of 4032×3024), sent as 2000×1500.';
+  const whole = '[annai] The photo /trip/files/p.webp, 4032×3024, sent as 2000×1500.';
+  const part = '[annai] The photo /trip/files/p.webp, part [0, 0, 0.5, 0.5] (2016×1512 of 4032×3024), sent as 2000×1500.';
   const user = k.requests[0].messages.at(-1);
   assert.deepEqual(user.parts.map((/** @type {any} */ p) => (p.type === 'text' ? p.text : p.type)), ['What is this?', whole, 'image', part, 'image']);
   assert.deepEqual(user.parts.filter((/** @type {any} */ p) => p.type === 'image').map((/** @type {any} */ p) => p.hash), msg.data.images.map((/** @type {any} */ i) => i.hash));
@@ -1740,7 +1740,7 @@ test('a photo the user sends goes in their message as a request copy, after its 
   assert.deepEqual((await Transcript.load(k.store, k.trip)).messages, k.agent.transcript.messages);
 });
 
-test("a photo in a message written before its words were kept is sent as it was, with no words added: the request's bytes stay the same (spec §4.8; the provider's cache)", async (t) => {
+test("a photo in a message written before its words were kept is sent as it was, with no words added: every message of the request is main's, byte for byte (spec §4.8; the provider's cache)", async (t) => {
   useClock(t);
   const { sha256Hex } = await import('../../src/core/hash.js');
   const { toBase64 } = await import('../../src/core/bytes.js');
@@ -1751,13 +1751,15 @@ test("a photo in a message written before its words were kept is sent as it was,
   await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: { wake: 'w-0', images: [{ hash, mediaType: 'image/webp', path: '/trip/files/p.webp' }] }, texts: [['text', 'What is this?']], blobs: [{ bytes, type: 'image/webp' }] });
   await k.agent.open(k.trip);
   await k.agent.idle();
-  // Its words and its photo as main sent them, then annai's note that it restarted.
-  const parts = k.requests[0].messages.at(-1).parts;
-  assert.equal(JSON.stringify(parts.slice(0, 2)), JSON.stringify([{ type: 'text', text: 'What is this?' }, { type: 'image', mediaType: 'image/webp', data: toBase64(bytes), hash, path: '/trip/files/p.webp' }]));
-  assert.deepEqual(parts.slice(2).map((/** @type {any} */ p) => p.text.slice(0, 22)), ['[annai] annai restarte']);
+  // What main's code sent for this log: its words, its photo, then annai's note that it restarted (taken from a run on main, 45263bdc8).
+  assert.deepEqual(k.requests[0].messages, [{ role: 'user', parts: [
+    { type: 'text', text: 'What is this?' },
+    { type: 'image', mediaType: 'image/webp', data: toBase64(bytes), hash, path: '/trip/files/p.webp' },
+    { type: 'text', text: '[annai] annai restarted before you answered. Don\'t explain the interruption to the user beyond, at most, "we got cut off".' },
+  ] }]);
 });
 
-test('a photo sent with no words says "(a photo)"; one sent while Shiori waits for an answer answers nothing: her question closes, and the photo reaches her right after it, one bubble', async (t) => {
+test('a photo sent with no words says "(a photo)"; one sent while Shiori waits for an answer answers nothing: her question closes, and the photo reaches her right after it, one bubble, with its path and size said before it (spec §4.8)', async (t) => {
   useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'ask', input: { question: 'Which?', options: ['A', 'B'] } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]]);
   await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
@@ -1773,7 +1775,7 @@ test('a photo sent with no words says "(a photo)"; one sent while Shiori waits f
   assert.equal(msgs[1].data.answer, undefined, 'not written as her question\'s answer');
   const last = k.requests[1].messages.at(-1).parts;
   assert.deepEqual(last.map((/** @type {any} */ p) => p.type), ['tool_result', 'text', 'text', 'image']);
-  assert.equal(last[2].text, 'The photo /trip/files/p.webp, 800×600.', 'within the limits: sent as it is');
+  assert.equal(last[2].text, '[annai] The photo /trip/files/p.webp, 800×600.', 'within the limits: sent as it is');
 });
 
 test('a wake for a trip that is not open is written into its conversation, and answered when it opens (spec §7.3)', async (t) => {

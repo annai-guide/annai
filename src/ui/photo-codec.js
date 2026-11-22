@@ -10,10 +10,11 @@ import { t } from '../core/l10n.js';
 const support = new Map();
 /**
  * A size step (spec §4.8): at one quality a copy's bytes grow with its longest edge to about the power GROWTH, so the next edge is the one whose
- * copy would be AIM of the cap. Measured 2026-11-21 at quality 0.5 in Linux Chromium and WebKit: the power 1.47 to 1.73 as JPEG, 1.28 to 1.42 as
- * WebP on real 12 MP photos (photo-small-next's), 1.0 to 2.1 on synthetic ones; on those, at caps of 128 to 384 KiB, aiming at 93% landed 72 of
- * 80 size steps within the cap at the first try and filled a 256 KiB cap to 93% on average (the old step, 0.8 of the edge: 86%, with more encodes); 90%
- * filled less and missed as often, 96% missed more.
+ * copy would be AIM of the cap. GROWTH was worked out from photo-small-next's tables of eight real photos (10.8 to 12.2 MP), at quality 0.5,
+ * from 2000 to 1600 px, in Linux Chromium and WebKit: 1.47 to 1.73 from ten JPEG pairs of copies, 1.28 to 1.42 from two WebP pairs. AIM comes
+ * from a synthetic table made on 2026-11-21 (8 photos: the browser suite's full-size one and 7 scenes, whose power ran 1.0 to 2.1): at caps of
+ * 128 to 384 KiB, aiming at 93% landed 72 of 80 size steps within the cap at the first try and filled a 256 KiB cap to 93% on average (the
+ * old step, 0.8 of the edge: 86%, with more encodes); 90% filled less and missed as often, 96% missed more. No iPhone has been measured.
  */
 const GROWTH = 1.5;
 const AIM = 0.93;
