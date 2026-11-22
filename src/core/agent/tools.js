@@ -3,6 +3,7 @@ import { ME } from '../scopes.js';
 import { readAppSettings, updateAppSettings } from '../settings.js';
 import { anySignal } from '../signals.js';
 import { cut as cutAt } from '../web-search.js';
+import { withoutSecrets } from './net.js';
 
 /**
  * Tools (spec §5.4, §7.2). The loop's own tools come first, then each name's owner among running
@@ -95,20 +96,23 @@ function cut(s) {
 }
 
 /**
- * Runs a tool. Errors become results the model sees (spec §6.7); a stop by the user ends a tool
+ * Runs a tool. Errors become results the model sees (spec §6.7), every key annai keeps blanked in their words (§9.9: a plugin may repeat
+ * its provider's error, its key in the address); a stop by the user ends a tool
  * that hangs, and so does its time limit, which also stops its requests; a huge result is cut.
- * @param {Tool} tool @param {any} input @param {ToolCall} call @returns {Promise<{ output: ToolOutput, ms: number }>}
+ * @param {Tool} tool @param {any} input @param {ToolCall} call @param {import('../types.js').Store} store whose keys are blanked
+ * @returns {Promise<{ output: ToolOutput, ms: number }>}
  */
-export async function runTool(tool, input, call) {
+export async function runTool(tool, input, call, store) {
   const started = Date.now();
   const limit = UNTIMED.includes(tool.name) ? 0 : TOOL_MS.ms;
   const late = new AbortController();
+  /* en */ const timedOut = new Error(`${tool.name} didn't finish in time, so annai stopped waiting for it. Try again later, or answer without it.`);
   /** @type {Promise<never>} */
   const stopped = new Promise((_, reject) => {
     const why = () => reject(Object.assign(new Error(/* en */ 'Stopped by the user.'), { stopped: true }));
     if (call.signal.aborted) why();
     else call.signal.addEventListener('abort', why, { once: true });
-    /* en */ late.signal.addEventListener('abort', () => reject(new Error(`${tool.name} didn't finish in time, so annai stopped waiting for it. Try again later, or answer without it.`)));
+    late.signal.addEventListener('abort', () => reject(timedOut));
   });
   const timer = limit ? setTimeout(() => late.abort(), limit) : undefined;
   /** @type {ToolOutput} */
@@ -117,7 +121,8 @@ export async function runTool(tool, input, call) {
     output = normalize(await Promise.race([Promise.resolve().then(() => tool.run(input, limit ? { ...call, signal: anySignal([call.signal, late.signal]) } : call)), stopped]));
   } catch (e) {
     const err = /** @type {any} */ (e);
-    /* en */ output = { content: err?.stopped ? 'Stopped by the user.' : `Error: ${err?.message ?? err}`, isError: true };
+    // The stop's and the time limit's words are annai's; a tool's are the note when the keys can't be read.
+    /* en */ output = { content: err?.stopped ? 'Stopped by the user.' : `Error: ${e === timedOut ? timedOut.message : await withoutSecrets(store, err?.message ?? err)}`, isError: true };
   } finally {
     clearTimeout(timer);
   }

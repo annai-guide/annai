@@ -24,6 +24,7 @@ const { scopeTitle, ME, SYS } = await import('../../src/core/scopes.js');
 const { StorageFullError, StoppedError } = await import('../../src/core/errors.js');
 const { messageOf } = await import('../../src/ui/dom.js');
 const { runTool } = await import('../../src/core/agent/tools.js');
+const { createMemoryStore } = await import('../fakes/store-memory.js');
 const { keeperOf } = await import('../../src/core/llm/kept.js');
 const { disabledCard } = await import('../../src/ui/plugin-cards.js');
 const { reminderParts, errorWords } = await import('../../src/ui/screens/talk.js');
@@ -163,7 +164,7 @@ test("an error a model may read keeps annai's English in message; the screens sh
     assert.equal(messageOf(e), e.shown);
   }
   // A tool that hits a full disk: Shiori reads the English.
-  const { output } = await runTool(/** @type {any} */ ({ name: 'write', run: async () => { throw new StorageFullError(); } }), {}, /** @type {any} */ ({ signal: new AbortController().signal }));
+  const { output } = await runTool(/** @type {any} */ ({ name: 'write', run: async () => { throw new StorageFullError(); } }), {}, /** @type {any} */ ({ signal: new AbortController().signal }), createMemoryStore());
   assert.equal(output.content, `Error: ${new StorageFullError().message}`);
   // Kept as data in a turn's error: the Conversation's words in Japanese, a model's in English.
   const why = whyOf(new StorageFullError());

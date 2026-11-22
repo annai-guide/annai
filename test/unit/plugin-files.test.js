@@ -101,13 +101,13 @@ test('list and search answer in TSV with the paths Shiori uses', async () => {
 });
 
 test("read's line that says how to read on reaches her: each piece leaves it room in the result's limit, so the result's own cut never takes it (found in backlog 6's build)", async () => {
-  const { trip, run, tools } = await setup();
+  const { ws, trip, run, tools } = await setup();
   const text = Array.from({ length: 3000 }, (_, n) => `Line ${n}: the ferry leaves at ${n % 24}:00.`).join('\n');
   await run('write', { path: '/trip/notes/ferries.md', content: text });
   const call = /** @type {any} */ ({ scope: trip, trip, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' });
   let read = '';
   for (let from = 0, n = 0; n < 10; n++) {
-    const out = (await runTool(tools.read, { path: '/trip/notes/ferries.md', ...(from ? { from } : {}) }, call)).output.content;
+    const out = (await runTool(tools.read, { path: '/trip/notes/ferries.md', ...(from ? { from } : {}) }, call, ws.store)).output.content;
     assert.ok(out.length <= RESULT_MAX, `piece ${n} fits the result's limit`);
     const on = /\n… (\d+) more characters; read again with from: (\d+)$/.exec(out);
     read += on ? out.slice(0, on.index) : out;
@@ -119,7 +119,7 @@ test("read's line that says how to read on reaches her: each piece leaves it roo
 });
 
 test("read's line that says how to read on also survives the note a path's other case puts in front: even for a long path (review of backlog 6)", async () => {
-  const { trip, run, tools } = await setup();
+  const { ws, trip, run, tools } = await setup();
   const call = /** @type {any} */ ({ scope: trip, trip, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' });
   const text = Array.from({ length: 4000 }, (_, n) => `Line ${n}: the ferry leaves at ${n % 24}:00.`).join('\n');
   assert.ok(text.length > 2 * RESULT_MAX);
@@ -127,7 +127,7 @@ test("read's line that says how to read on also survives the note a path's other
   for (const path of ['/trip/notes/ferries.md', `/trip/notes/${'d'.repeat(267)}/ferries.md`]) {
     await run('write', { path, content: text });
     const asked = path.replace(/ferries\.md$/, 'Ferries.md');
-    const out = (await runTool(tools.read, { path: asked }, call)).output.content;
+    const out = (await runTool(tools.read, { path: asked }, call, ws.store)).output.content;
     assert.ok(out.startsWith(`(read ${path}: the path's case differed)\n`), 'the note is in front');
     assert.ok(out.length <= RESULT_MAX, `the result (${out.length}) fits its limit`);
     assert.doesNotMatch(out, /were cut\.$/, 'the result is not cut');
@@ -147,7 +147,7 @@ test("read's line that says how to read on survives a case-differed read at the 
   await ws.write(trip, inner, text, { author: 'user' });
   const open = { scope: trip, trip, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' };
   for (const [path, call] of /** @type {const} */ ([[long, open], [`/trip${inner}`, open]])) {
-    const out = (await runTool(tools.read, { path: path.replace(/ferries\.md$/, 'Ferries.md') }, /** @type {any} */ (call))).output.content;
+    const out = (await runTool(tools.read, { path: path.replace(/ferries\.md$/, 'Ferries.md') }, /** @type {any} */ (call), ws.store)).output.content;
     assert.ok(out.startsWith(`(read ${path}: the path's case differed)\n`), 'the note is in front');
     assert.ok(out.length <= RESULT_MAX, `the result (${out.length}) fits its limit`);
     assert.doesNotMatch(out, /were cut\.$/, 'the result is not cut');
@@ -156,7 +156,7 @@ test("read's line that says how to read on survives a case-differed read at the 
 });
 
 test("a cut never splits an emoji: read's piece ends before the pair and the next begins with it, and the pieces are the file (review of backlog 6)", async () => {
-  const { trip, run, tools } = await setup();
+  const { ws, trip, run, tools } = await setup();
   const call = /** @type {any} */ ({ scope: trip, trip, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' });
   // Emoji are two UTF-16 units: with one letter before them or none, the piece's end falls inside a pair in one of the two.
   for (const lead of ['', 'a']) {
@@ -164,7 +164,7 @@ test("a cut never splits an emoji: read's piece ends before the pair and the nex
     await run('write', { path: '/trip/notes/faces.md', content: text });
     let read = '';
     for (let from = 0, n = 0; n < 10; n++) {
-      const out = (await runTool(tools.read, { path: '/trip/notes/faces.md', ...(from ? { from } : {}) }, call)).output.content;
+      const out = (await runTool(tools.read, { path: '/trip/notes/faces.md', ...(from ? { from } : {}) }, call, ws.store)).output.content;
       assert.ok(wellFormed(out) === out, `piece ${n} (lead ${JSON.stringify(lead)}) has no half of an emoji`);
       const on = /\n… (\d+) more characters; read again with from: (\d+)$/.exec(out);
       read += on ? out.slice(0, on.index) : out;
