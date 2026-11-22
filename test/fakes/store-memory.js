@@ -151,3 +151,14 @@ export function afterListing(store, after, times = 1) {
     },
   });
 }
+
+/**
+ * The store refuses the read that lists the keys annai keeps, while reading one key still works: a request that read its key just before the
+ * store began refusing (Chromium at no byte free then refuses every read). Returns what puts it back. @param {Store} store @returns {() => void}
+ */
+export function keysUnread(store) {
+  const tx = store.tx;
+  store.tx = /** @type {any} */ ((/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => tx.call(store, stores, mode,
+    (/** @type {any} */ t) => fn(stores.includes('secrets') ? { ...t, listSecretIds: () => Promise.reject(new Error('The database connection is closing.')) } : t)));
+  return () => { store.tx = tx; };
+}

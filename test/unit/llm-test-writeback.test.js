@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { createMemoryStore } from '../fakes/store-memory.js';
+import { createMemoryStore, keysUnread } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, SYS_PLUGINS } from '../../src/core/scopes.js';
@@ -45,7 +45,7 @@ async function slowModel() {
   desc.provider.abilities.chat.tunables = { script: [{ text: 'OK', delayMs: 100 }, { toolCalls: [{ name: 'report_color', input: { color: 'red' } }], delayMs: 100 }] };
   await addProvider({ ws, store }, desc, { roles: null });
   const [id] = Object.keys((await readConfig(ws)).models);
-  return { llm, ws, id };
+  return { llm, ws, store, id };
 }
 
 /** The model page's field saver, as the user types a context window while the Test runs. */
@@ -77,6 +77,25 @@ test('a field saved while the reasoning levels are tried survives, and the level
   const after = (await readConfig(ws)).models[id];
   assert.equal(modelOf(after).contextWindow, 12345);
   assert.equal(typeof after.verified?.levelsAt, 'number');
+});
+
+test("when annai can't read the keys it keeps, the reasoning levels' Test fails instead of recording a note for every level; the model Test keeps what worked and says its details in a note (spec §9.9)", async () => {
+  const { llm, ws, store, id } = await slowModel();
+  const rec = (await readConfig(ws)).models[id];
+  await saveModel(ws, { ...rec, user: { ...(rec.user ?? {}), reasoning: { low: {}, high: {} } } });
+  const back = keysUnread(store);
+  try {
+    await assert.rejects(llm.testLevels(id), /couldn't read the keys it keeps/);
+    assert.equal((await readConfig(ws)).models[id].verified?.levels, undefined, 'no note stored as a level\'s outcome');
+    const r = await llm.test(id);
+    assert.equal(r.ok, true, 'what worked stays worked');
+    assert.deepEqual([...new Set(r.steps.map((/** @type {any} */ s) => s.detail))], ["annai couldn't check this message for keys, so it is not shown."]);
+    assert.equal((await readConfig(ws)).models[id].verified?.access, true, 'and is recorded as it was found');
+  } finally {
+    back();
+  }
+  assert.deepEqual(Object.keys(await llm.testLevels(id)).sort(), ['high', 'low'], 'readable again, the levels are tried and recorded');
+  assert.deepEqual(Object.values((await readConfig(ws)).models[id].verified?.levels ?? {}), ['ok', 'ok']);
 });
 
 test('markVerified changes only what a Test found, and a model removed meanwhile stays removed', async () => {

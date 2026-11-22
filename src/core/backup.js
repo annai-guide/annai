@@ -186,14 +186,15 @@ export function createBackups({ store, ws, registry, plugins = null, app, label,
 
   /**
    * The error as annai shows and keeps it: a TargetError without any secret annai keeps (spec §9.9), and
-   * the choices a place offers (fields left empty) only as settings of its own fields.
+   * the choices a place offers (fields left empty) only as settings of its own fields; none when the keys can't be read to check them.
    * @param {unknown} e @param {Target} [rec] @returns {Promise<TargetError>}
    */
   async function clean(e, rec) {
     const te = e instanceof TargetError ? e : null;
     const message = await withoutSecrets(store, String(/** @type {any} */ (e)?.message ?? e));
     const choices = rec && Array.isArray(te?.choices)
-      ? await withoutSecretsIn(store, te.choices.slice(0, 20).map((c) => ({ label: String(c?.label ?? '').slice(0, 200), config: settingsOf(rec, c?.config) })))
+      ? await withoutSecretsIn(store, te.choices.slice(0, 20).map((c) => ({ label: String(c?.label ?? '').slice(0, 200), config: settingsOf(rec, c?.config) })), { strict: true })
+        .catch(() => undefined)
       : undefined;
     const cleaned = new TargetError(te?.kind ?? 'other', message, { remote: te?.remote, bytes: te?.bytes, retryAt: te?.retryAt, ...(choices ? { choices } : {}) });
     // The screens' words and what it was go with it (annai's own errors, an archive's): message stays the English the log keeps.
@@ -216,7 +217,8 @@ export function createBackups({ store, ws, registry, plugins = null, app, label,
 
   /**
    * A backup a place listed, as annai keeps and shows it: only what it needs, and no secret, since
-   * its words come from the place (a commit message, a file name).
+   * its words come from the place (a commit message, a file name). When the keys can't be read, it rejects: its id and
+   * device are what annai builds on, restores by and tells another device's backups by, so a note can't stand in for them.
    * @param {any} r @returns {Promise<RemoteBackup>}
    */
   async function keptRemote(r) {
@@ -225,7 +227,7 @@ export function createBackups({ store, ws, registry, plugins = null, app, label,
       ...(typeof r?.device === 'string' ? { device: r.device.slice(0, 64) } : {}),
       ...(typeof r?.label === 'string' ? { label: r.label.slice(0, 40) } : {}),
       ...(typeof r?.encrypted === 'boolean' ? { encrypted: r.encrypted } : {}),
-    });
+    }, { strict: true });
   }
 
   /**

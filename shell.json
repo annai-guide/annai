@@ -1,5 +1,5 @@
 {
-  "build": "d68099dee362",
+  "build": "26b61058984e",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -43,14 +43,14 @@
     "/src/core/agent/instructions.js": "dc44316f3b47",
     "/src/core/agent/listen.js": "41cbb9219102",
     "/src/core/agent/log.js": "be1f6eedd6f8",
-    "/src/core/agent/loop.js": "96a90f48cef4",
-    "/src/core/agent/reading.js": "dfcf146e5005",
+    "/src/core/agent/loop.js": "be36b899f348",
+    "/src/core/agent/reading.js": "f6326135ff51",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/her-instructions.js": "b90fb982b678",
     "/src/core/agent/refusals.js": "ccbb44dc91f5",
     "/src/core/agent/self-tools.js": "0422c460334e",
     "/src/core/agent/spoken-yes.js": "728ad4b1b0e6",
-    "/src/core/agent/net.js": "53414b193546",
+    "/src/core/agent/net.js": "94d6f6b98a3b",
     "/src/core/agent/tools.js": "616bb58c5d19",
     "/src/core/agent/trip-tools.js": "3e9653488194",
     "/src/core/agent/transcript.js": "5faa5350bc8a",
@@ -60,7 +60,7 @@
     "/src/core/address.js": "d677ad7a10ba",
     "/src/core/answer.js": "f8a90a19b416",
     "/src/core/archive.js": "d4b1032ee8d7",
-    "/src/core/backup.js": "f5cfcc1fb58a",
+    "/src/core/backup.js": "046a845c999f",
     "/src/core/backup-auto.js": "64ed2407b9ec",
     "/src/core/backup-targets.js": "91309d766eea",
     "/src/core/bookings.js": "623e999ee789",
@@ -89,7 +89,7 @@
     "/src/core/llm/partial-json.js": "05dab759f366",
     "/src/core/llm/reasoning.js": "944a3f6e351d",
     "/src/core/llm/retry.js": "fdb90e75be0d",
-    "/src/core/llm/service.js": "54d34763de1d",
+    "/src/core/llm/service.js": "80bf73cc6fef",
     "/src/core/llm/speech.js": "ac78e5273ec6",
     "/src/core/llm/sse.js": "656d2989d833",
     "/src/core/llm/trace.js": "ce4c33d5516e",
@@ -287,7 +287,7 @@
     "/src/ui/slots.js": "f2f6183cc470",
     "/src/ui/stamps.js": "9c0f976db8fa",
     "/src/ui/shiori.css": "d60391764a06",
-    "/src/ui/speech-check.js": "378161ac2201",
+    "/src/ui/speech-check.js": "457b62b37c33",
     "/src/ui/storage-full.js": "104720278679",
     "/src/ui/talk-panel.js": "cc1fb4a04f43",
     "/src/ui/tap-keeps-keyboard.js": "6693e1e90f5c",
@@ -301,8 +301,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "25f0fc7575f5",
-    "/l10n/zh-Hans.json": "f993803e53c8",
-    "/l10n/zh-Hant.json": "41222d16d512"
+    "/l10n/ja.json": "ea7e21e59816",
+    "/l10n/zh-Hans.json": "5a5992e610f2",
+    "/l10n/zh-Hant.json": "ccd5c670c5e2"
   }
 }

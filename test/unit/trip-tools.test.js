@@ -506,7 +506,7 @@ test("Open, tapped: Kyoto opens at the tap, with the user's line, her recap belo
 // chat's line of a move is written whether or not the open worked (it says where the lines went, and links to that conversation): on a full phone its own
 // write is refused.
 for (const [how, which] of /** @type {const} */ ([['reads and writes refused (Chromium at no byte free)', 'everything'], ['reads refused (any other failed open)', 'reads'], ['writes refused, reads fine (WebKit on a full disk)', 'all']])) {
-  test(`Open tapped, the store refusing ${how}: ${which === 'all' ? 'Kyoto opens, and her turn there stops' : `a card says that conversation didn't open, with the error; the screens were told of the move, and the chat stays the one open${which === 'reads' ? ', with its line of the move' : ''}`}`, async (t) => {
+  test(`Open tapped, the store refusing ${how}: ${which === 'all' ? 'Kyoto opens, and her turn there stops' : `a card says that conversation didn't open and carries the error (its words are the note that they couldn't be checked: the store refuses that read too); the screens were told of the move, and the chat stays the one open${which === 'reads' ? ', with its line of the move' : ''}`}`, async (t) => {
     useClock(t);
     const k = await chatKit();
     await rescript(k, { rules: [
@@ -544,7 +544,8 @@ for (const [how, which] of /** @type {const} */ ([['reads and writes refused (Ch
       await until(() => k.notices.some((/** @type {any} */ n) => n.title === NOT_OPEN));
       const card = k.notices.find((/** @type {any} */ n) => n.title === NOT_OPEN);
       assert.equal(card.error?.name, 'UnknownError', 'the refused read, carried for the card');
-      assert.equal(card.body, 'Unable to store record in object store');
+      // Its words: the store refuses the read that checks them for keys too, so the card says so in their place (spec §9.9).
+      assert.equal(card.body, "annai couldn't check this message for keys, so it is not shown.");
       await until(() => k.agent.target === k.trip);
       assert.equal(k.agent.trip, k.trip, 'the chat stays open');
       // The lines carried for Kyoto are kept there, as the open's failure leaves them: refused too when reads and writes both are, and then a second card
