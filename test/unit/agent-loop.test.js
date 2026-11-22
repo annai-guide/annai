@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until, hear, idleAtOnce } from './agent-kit.js';
+import { agentKit, until, hear, idleAtOnce, refusing } from './agent-kit.js';
+import { builtinUrl } from './package-kit.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { ProviderError } from '../../src/core/llm/contract.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
@@ -692,6 +693,27 @@ test('pages the plugin can\'t draw (a locked PDF) say why, and the note names th
   assert.match(r.data.content, /\nThe PDF pages plugin couldn't draw its pages: This PDF is locked with a password, so its pages can't be drawn\.\nNo model here can read PDFs, .*Settings → Models\)\.$/s);
   assert.equal(k.registry.isDisabled('pdf-pages'), false);
 });
+
+for (const unread of [false, true]) {
+  test(`pages the plugin can't draw, its error repeating a key annai keeps: what she reads and the trace's tool result hold «key»${unread ? ", and the note when annai can't read the keys" : ''} (tool-errors-next)`, async (t) => {
+    useClock(t);
+    const KEY = 'Tr4il key/9876+x'; // made up; URL-encoding changes it
+    const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text', 'image'] }] });
+    await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:pages:key', KEY));
+    k.registry.add('pdf-pages', 'pdf-pages', { id: 'keyed', pages: async () => { throw new Error(`403 Forbidden for https://pages.example/draw?key=${encodeURIComponent(KEY)}&raw=${KEY}`); } });
+    const back = unread ? keysUnread(k.store) : () => {};
+    k.agent.send('Read it');
+    await k.agent.idle();
+    back();
+    const line = `\nThe PDF pages plugin couldn't draw its pages: ${unread ? "annai couldn't check this message for keys, so it is not shown." : '403 Forbidden for https://pages.example/draw?key=«key»&raw=«key»'}\n`;
+    const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+    assert.ok(r.data.content.includes(line), r.data.content);
+    const read = k.requests[1].messages.at(-1).parts.find((/** @type {any} */ p) => p.type === 'tool_result');
+    assert.ok(read.content.includes(line), read.content);
+    const all = JSON.stringify([k.requests, await k.events()]);
+    for (const form of [KEY, encodeURIComponent(KEY)]) assert.equal(all.includes(form), false, form);
+  });
+}
 
 test('with nothing that reads it and no plugin, the note names Takes PDFs, and the plugin only when a model here sees photos', async (t) => {
   useClock(t);
@@ -1486,6 +1508,30 @@ test("opening a conversation leaves the last one's housekeeping behind: no compa
   assert.equal((await eventsIn(k, B, ['compaction'])).length, 0);
   assert.equal(timers.filter(Boolean).length, 0, 'nothing is due in B');
 });
+
+for (const unread of [false, true]) {
+  test(`a plugin tool's error repeating its key (a 403 for its address): what she reads and the trace's tool result hold «key», as the key is and URL-encoded, through annai's wrapper and as the tool threw it${unread ? "; when annai can't read the keys, the note" : ''} (tool-errors-next)`, async (t) => {
+    useClock(t);
+    const KEY = 'Tr4il key/9876+x'; // made up; URL-encoding changes it
+    const said = `403 Forbidden for https://api.trails.example/v1/forecast?key=${encodeURIComponent(KEY)}&raw=${KEY}`;
+    const k = await agentKit([[{ toolCalls: [{ name: 'trail_bug', input: {} }, { name: 'trail_own', input: {} }] }, say('The trail service refused.')]]);
+    await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:trails:key', KEY));
+    // annai's wrapper is the same for every plugin's tool (plugins.js, tools.register): a TypeError is a bug in its code, an Error its own answer.
+    await k.host.addBuiltin(builtinUrl('trails', `const said = ${JSON.stringify(said)};
+      annai.tools.register({ name: 'trail_bug', description: 'Trails.', input: { type: 'object' }, run: () => { throw new TypeError(said); } });
+      annai.tools.register({ name: 'trail_own', description: 'Trails.', input: { type: 'object' }, run: () => { throw new Error(said); } });`));
+    const back = unread ? keysUnread(k.store) : () => {};
+    k.agent.send('Is the coast trail open?');
+    await k.agent.idle();
+    back();
+    const words = unread ? "annai couldn't check this message for keys, so it is not shown." : '403 Forbidden for https://api.trails.example/v1/forecast?key=«key»&raw=«key»';
+    const want = [`Error: ${unread ? '' : 'trails: The tool trail_bug failed: '}${words}`, `Error: ${words}`];
+    assert.deepEqual((await k.events(['tool.result'])).filter((e) => e.data.name.startsWith('trail_')).map((e) => e.data.content), want);
+    assert.deepEqual(k.requests[1].messages.at(-1).parts.filter((/** @type {any} */ p) => p.type === 'tool_result').map((/** @type {any} */ p) => p.content), want);
+    const all = JSON.stringify([k.requests, await k.events()]);
+    for (const form of [KEY, encodeURIComponent(KEY)]) assert.equal(all.includes(form), false, form);
+  });
+}
 
 test('an error card and error event never show a key, even when the provider echoes it', async (t) => {
   useClock(t);
@@ -2340,6 +2386,24 @@ for (const unread of [false, true]) {
     assert.doesNotMatch(told, /SECRETKEY/);
     assert.match(told, unread ? /annai couldn't check this message for keys, so it is not shown\./ : /«key»/);
     assert.doesNotMatch(JSON.stringify(await k.events(['tool.result', 'reading'])), /SECRETKEY/);
+  });
+}
+
+for (const unread of [false, true]) {
+  test(`a photo whose reading failed in annai's own steps (keeping it refused, the error repeating a key): the words the model that answers reads hold «key»${unread ? ", and the note when annai can't read the keys" : ''} (tool-errors-next)`, async (t) => {
+    useClock(t);
+    const KEY = 'Tr4il key/9876+x'; // made up; URL-encoding changes it
+    const k = await photoKit([say('A menu.')], [{ text: 'A menu; the fish is circled.' }]);
+    await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:trails:key', KEY));
+    refusing(k, { error: () => new Error(`403 Forbidden for https://api.trails.example/v1?key=${encodeURIComponent(KEY)}&raw=${KEY}`) }).full((/** @type {any} */ ev) => ev.type === 'reading');
+    const back = unread ? keysUnread(k.store) : () => {};
+    k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+    await k.agent.idle();
+    back();
+    const told = JSON.stringify(k.sent['model-0'][0].messages);
+    assert.ok(told.includes(`It couldn't be described: ${unread ? "annai couldn't check this message for keys, so it is not shown." : '403 Forbidden for https://api.trails.example/v1?key=«key»&raw=«key»'}`), told);
+    const all = JSON.stringify([k.requests, await k.events()]);
+    for (const form of [KEY, encodeURIComponent(KEY)]) assert.equal(all.includes(form), false, form);
   });
 }
 

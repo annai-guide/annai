@@ -267,7 +267,7 @@ test('__proto__, constructor and prototype stay keys, never the prototype: at th
   const call = /** @type {any} */ (reply.parts.find((p) => p.type === 'tool_call'));
   assert.equal(call.input.path, undefined);
   assert.deepEqual(Object.keys(call.input), ['__proto__']);
-  const { output } = await runTool(tools.write, call.input, /** @type {any} */ ({ id: call.id, scope: trip, trip, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' }));
+  const { output } = await runTool(tools.write, call.input, /** @type {any} */ ({ id: call.id, scope: trip, trip, signal: new AbortController().signal, model: { input: ['text'] }, wake: 'w', author: 'shiori' }), ws.store);
   assert.equal(output.isError, true);
   assert.equal(await ws.readText(ME, '/memory.md').catch(() => null), before);
 });

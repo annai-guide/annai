@@ -11,6 +11,8 @@ import { hostKit, codePlugin, builtinUrl } from './package-kit.js';
 
 const tool = (/** @type {string} */ name, /** @type {any} */ run = () => 'ok') => ({ name, description: `The ${name} tool.`, input: { type: 'object' }, run });
 const call = (/** @type {AbortSignal} */ signal = new AbortController().signal) => /** @type {any} */ ({ scope: 'trip-1', trip: 'trip-1', signal, model: null, wake: 'w', author: 'shiori' });
+/** The keys a tool's error words are blanked of: none kept here. */
+const store = createMemoryStore();
 
 test('tsv: a header row, and tabs, newlines and "<" escaped the TSVZ way (spec §4.7)', () => {
   assert.equal(tsv(['name', 'note'], [['A\tB', 'x<y\nz\r'], [null, 3]]), 'name\tnote\nA<sep>B\tx<lt>y<LF>z<CR>\n\t3');
@@ -58,19 +60,19 @@ test("a third-party tool with a built-in's name is not used, and the built-in an
 });
 
 test('runTool: text, objects as JSON, photos kept, errors as results, and huge results cut with a note', async () => {
-  assert.deepEqual((await runTool(tool('a', () => 'fine'), {}, call())).output, { content: 'fine' });
-  assert.deepEqual((await runTool(tool('a', () => ({ temp: 21 })), {}, call())).output, { content: '{"temp":21}' });
+  assert.deepEqual((await runTool(tool('a', () => 'fine'), {}, call(), store)).output, { content: 'fine' });
+  assert.deepEqual((await runTool(tool('a', () => ({ temp: 21 })), {}, call(), store)).output, { content: '{"temp":21}' });
   const photo = { content: 'A photo', images: [{ mediaType: 'image/webp', hash: 'h' }] };
-  assert.deepEqual((await runTool(tool('a', () => photo), {}, call())).output, photo);
-  assert.deepEqual((await runTool(tool('a', () => { throw new Error('No such file: /trip/x.md'); }), {}, call())).output, { content: 'Error: No such file: /trip/x.md', isError: true });
-  const big = (await runTool(tool('a', () => 'x'.repeat(RESULT_MAX + 10)), {}, call())).output.content;
+  assert.deepEqual((await runTool(tool('a', () => photo), {}, call(), store)).output, photo);
+  assert.deepEqual((await runTool(tool('a', () => { throw new Error('No such file: /trip/x.md'); }), {}, call(), store)).output, { content: 'Error: No such file: /trip/x.md', isError: true });
+  const big = (await runTool(tool('a', () => 'x'.repeat(RESULT_MAX + 10)), {}, call(), store)).output.content;
   assert.equal(big.length < RESULT_MAX + 200, true);
   assert.match(big, /10 more characters were cut/);
 });
 
 test("runTool: the cut of a huge result never splits an emoji, and counts what it took (review of backlog 6)", async () => {
   const text = `${'x'.repeat(RESULT_MAX - 1)}😀${'y'.repeat(10)}`;
-  const out = (await runTool(tool('a', () => text), {}, call())).output.content;
+  const out = (await runTool(tool('a', () => text), {}, call(), store)).output.content;
   assert.ok(wellFormed(out) === out, 'no half of the emoji is left at the cut');
   const on = /\n… (\d+) more characters were cut\.$/.exec(out);
   assert.ok(on);
@@ -81,8 +83,33 @@ test("runTool: the cut of a huge result never splits an emoji, and counts what i
 test('runTool: a tool that hangs stops when the user stops Shiori, with a result', async () => {
   const stop = new AbortController();
   setTimeout(() => stop.abort(), 20);
-  const r = await runTool(tool('a', () => new Promise(() => {})), {}, call(stop.signal));
+  const r = await runTool(tool('a', () => new Promise(() => {})), {}, call(stop.signal), store);
   assert.deepEqual(r.output, { content: 'Stopped by the user.', isError: true });
+});
+
+test("runTool: a third-party plugin's error repeating its key (a 403 for its address) holds «key», as the key is and URL-encoded, through annai's wrapper (a bug in its code) and as its tool threw it, and a tool run directly; when the keys can't be read, the note (tool-errors-next)", async () => {
+  const { host, registry, store: kept } = await hostKit();
+  const KEY = 'Tr4il key/9876+x'; // made up; URL-encoding changes its space, slash and plus
+  await kept.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:trails:key', KEY));
+  const said = `403 Forbidden for https://api.trails.example/v1/forecast?key=${encodeURIComponent(KEY)}&raw=${KEY}`;
+  // A TypeError is a bug in its code, which annai's wrapper words as "The tool … failed: …"; an Error is its own answer, passed on as it is.
+  await host.install(codePlugin('trails', `const said = ${JSON.stringify(said)};
+    annai.tools.register({ name: 'trail_bug', description: 'Trails.', input: { type: 'object' }, run: () => { throw new TypeError(said); } });
+    annai.tools.register({ name: 'trail_own', description: 'Trails.', input: { type: 'object' }, run: () => { throw new Error(said); } });`));
+  await host.start('trails');
+  const tools = Object.fromEntries(registry.entries('tool').map((e) => [e.item.name, e.item]));
+  const direct = tool('trail_direct', () => { throw new Error(said); });
+  const run = async (/** @type {any} */ t) => (await runTool(t, {}, call(), kept)).output;
+  const blanked = '403 Forbidden for https://api.trails.example/v1/forecast?key=«key»&raw=«key»';
+  assert.deepEqual(await run(tools.trail_bug), { content: `Error: trails: The tool trail_bug failed: ${blanked}`, isError: true });
+  assert.deepEqual(await run(tools.trail_own), { content: `Error: ${blanked}`, isError: true });
+  assert.deepEqual(await run(direct), { content: `Error: ${blanked}`, isError: true });
+  const back = keysUnread(kept);
+  try {
+    for (const t of [tools.trail_bug, tools.trail_own, direct]) assert.deepEqual(await run(t), { content: "Error: annai couldn't check this message for keys, so it is not shown.", isError: true }, t.name);
+  } finally {
+    back();
+  }
 });
 
 test('Stuck: three identical calls in a row with identical results (spec §6.6)', () => {

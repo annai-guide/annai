@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { runTool, TOOL_MS } from '../../src/core/agent/tools.js';
 import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
-import { createMemoryStore } from '../fakes/store-memory.js';
+import { createMemoryStore, keysUnread } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { ensureBaseScopes } from '../../src/core/scopes.js';
 import { ASK_MS, NOMINATIM_GAP, OVERPASS_MS } from '../../src/plugins/places/index.js';
@@ -11,6 +11,8 @@ import { ASK_MS, NOMINATIM_GAP, OVERPASS_MS } from '../../src/plugins/places/ind
 // The emulator pass: a mirror that never answered held Shiori's turn for 7 minutes (shot 274).
 const tool = (/** @type {string} */ name, /** @type {any} */ run) => ({ name, description: `The ${name} tool.`, input: { type: 'object' }, run });
 const call = (/** @type {AbortSignal} */ signal = new AbortController().signal) => /** @type {any} */ ({ scope: 'trip-1', trip: 'trip-1', signal, model: null, wake: 'w', author: 'shiori' });
+/** The keys a tool's error words are blanked of: none kept here. */
+const store = createMemoryStore();
 
 /** Runs f with a tool's time limit of ms. @param {number} ms @param {() => Promise<void>} f */
 async function limited(ms, f) {
@@ -27,7 +29,7 @@ test('runTool: a tool that never finishes ends at its time limit with an error i
   /** @type {AbortSignal | null} */
   let seen = null;
   const stop = new AbortController();
-  const r = await runTool(tool('nearby', (/** @type {any} */ _i, /** @type {any} */ c) => { seen = c.signal; return new Promise(() => {}); }), {}, call(stop.signal));
+  const r = await runTool(tool('nearby', (/** @type {any} */ _i, /** @type {any} */ c) => { seen = c.signal; return new Promise(() => {}); }), {}, call(stop.signal), store);
   assert.equal(r.output.isError, true);
   assert.match(r.output.content, /^Error: nearby didn't finish in time, so annai stopped waiting for it\./);
   assert.equal(/** @type {any} */ (seen)?.aborted, true);
@@ -38,13 +40,27 @@ test('runTool: a tool that never finishes ends at its time limit with an error i
 test('runTool: the user stopping Shiori still says so, within the limit', () => limited(5_000, async () => {
   const stop = new AbortController();
   setTimeout(() => stop.abort(), 20);
-  const r = await runTool(tool('nearby', () => new Promise(() => {})), {}, call(stop.signal));
+  const r = await runTool(tool('nearby', () => new Promise(() => {})), {}, call(stop.signal), store);
   assert.deepEqual(r.output, { content: 'Stopped by the user.', isError: true });
 }));
 
-test('runTool: tools that wait for the user, and the helper of task, have no time limit', () => limited(20, async () => {
+test("runTool: when annai can't read the keys it keeps, the time limit's words and the stop's are annai's, and stay as they are (tool-errors-next)", () => limited(40, async () => {
+  const back = keysUnread(store);
+  try {
+    const late = await runTool(tool('nearby', () => new Promise(() => {})), {}, call(), store);
+    assert.deepEqual(late.output, { content: "Error: nearby didn't finish in time, so annai stopped waiting for it. Try again later, or answer without it.", isError: true });
+    const stop = new AbortController();
+    setTimeout(() => stop.abort(), 5);
+    const stopped = await runTool(tool('nearby', () => new Promise(() => {})), {}, call(stop.signal), store);
+    assert.deepEqual(stopped.output, { content: 'Stopped by the user.', isError: true });
+  } finally {
+    back();
+  }
+}));
+
+test('runTool: tools that wait for the user, and the helper of task, have no time limit',() => limited(20, async () => {
   for (const name of ['ask', 'wait', 'speak', 'task']) {
-    const r = await runTool(tool(name, () => new Promise((resolve) => setTimeout(() => resolve('answered'), 60))), {}, call());
+    const r = await runTool(tool(name, () => new Promise((resolve) => setTimeout(() => resolve('answered'), 60))), {}, call(), store);
     assert.deepEqual(r.output, { content: 'answered' }, name);
   }
 }));

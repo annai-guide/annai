@@ -175,7 +175,7 @@ test("read_trip with a path: that text file, as that trip's data: an instruction
 /** read_trip run as her turn runs a tool, through the result's own cut. @param {any} k @param {any} input @returns {Promise<string>} */
 const readCut = async (k, input) => (await runTool(k.agent.kokoro.loopTools().find((/** @type {any} */ t) => t.name === 'read_trip'), input, /** @type {any} */ ({
   id: 'c', scope: k.agent.scope, trip: k.agent.trip, signal: new AbortController().signal, model: null, wake: 'w', author: 'shiori',
-}))).output.content;
+}), k.store)).output.content;
 const READ_ON = /\n… (\d+) more characters; read_trip again with from: (\d+)$/;
 /**
  * A file read in pieces from the start, each from where the last one's read-on line says, with theirs()'s escape of a line's leading [ taken back.
@@ -320,7 +320,7 @@ test("read_trip is Kokoro's alone: Koe's quick tools don't have it, and it has n
   const was = TOOL_MS.ms;
   TOOL_MS.ms = 20;
   try {
-    const r = await runTool(slow, {}, /** @type {any} */ ({ scope: k.trip, trip: k.trip, signal: new AbortController().signal, model: null, wake: 'w', author: 'shiori' }));
+    const r = await runTool(slow, {}, /** @type {any} */ ({ scope: k.trip, trip: k.trip, signal: new AbortController().signal, model: null, wake: 'w', author: 'shiori' }), k.store);
     assert.deepEqual(r.output, { content: 'read' });
   } finally {
     TOOL_MS.ms = was;

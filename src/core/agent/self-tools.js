@@ -69,7 +69,7 @@ export function selfTools(agent) {
               // The helper's own model, the one that answered: its tools see what it takes (read's PDF, a photo).
               const model = cfg.models[r.modelId] ? modelOf(cfg.models[r.modelId]) : null;
               /* en */ const ran = tool
-                ? await runTool(tool, c.input ?? {}, { ...call, id: c.id, model, fetch: tracedFetch(agent.store, agent.scope, { tool: c.name, wake: call.wake }, agent.get) })
+                ? await runTool(tool, c.input ?? {}, { ...call, id: c.id, model, fetch: tracedFetch(agent.store, agent.scope, { tool: c.name, wake: call.wake }, agent.get) }, agent.store)
                 : { output: { content: `Error: the helper has no tool called ${c.name}.`, isError: true }, ms: 0 };
               const { ms } = ran;
               // A photo or PDF reaches it as one, or in words from a model that can, as it does for Shiori (never as a bare stub).

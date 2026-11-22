@@ -1993,7 +1993,7 @@ export class Agent {
         const memory = ['write', 'edit', 'patch'].includes(c.name) && /^\/(me|trip)\/memory\.md$/.test(String(c.input?.path ?? ''));
         const tool = tools.find((t) => t.name === c.name);
         const out = memory && tool
-          ? (await runTool(tool, c.input, { id: c.id, scope: this.scope, trip: this.trip, signal: new AbortController().signal, model: null, wake: 'housekeeping', llm: this.llm, author: 'shiori', fetch: this.get })).output
+          ? (await runTool(tool, c.input, { id: c.id, scope: this.scope, trip: this.trip, signal: new AbortController().signal, model: null, wake: 'housekeeping', llm: this.llm, author: 'shiori', fetch: this.get }, this.store)).output
           : { content: /* en */ 'Not during housekeeping: only memory moves work now.', isError: true };
         await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'tool.result', actor: 'system', data: { id: c.id, name: c.name, ok: !out.isError, ms: 0, wake: 'housekeeping' }, texts: [['content', out.content]] });
         results.push({ type: 'tool_result', id: c.id, content: out.content, ...(out.isError ? { isError: true } : {}) });
@@ -3076,7 +3076,7 @@ export class Agent {
         sleeping: o.sleeping, watched: o.watched ?? this.#facts.watched, ...(this.#handover && !o.live ? { handover: this.#handover, handovers: [...this.#handovers] } : {}), ...(o.last ? { last: true } : {}), ...(o.more ? { more: o.more } : {}), ...(o.live ? { live: true } : {}), voice: this.#voiceNow, providerOff: o.providerOff ?? [], fetch: tracedFetch(this.store, this.scope, { tool: c.name, wake: o.wakeId }, this.get),
         photos: { copy: (/** @type {any} */ source, /** @type {any} */ crop) => this.#copy(source, crop, scope) },
       };
-      ({ output, ms } = await runTool(tool, input, call));
+      ({ output, ms } = await runTool(tool, input, call, this.store));
       // A photo or PDF by its hash alone must be this conversation's (reach.js): another trip's is the tool's error.
       /* en */
       if (!(await this.#readable(output, scope, c.name))) output = { content: `Error: ${c.name} gave back an image annai can't read, so its answer was left out.`, isError: true };
@@ -3177,7 +3177,7 @@ export class Agent {
         const pending = (async () => {
           const r = await readFile({ kind, mediaType: m.mediaType, data, ...(m.name ? { name: m.name } : {}), ...(m.path ? { path: m.path } : {}) }, model ?? {}, {
             llm: this.llm, half: this.#half.name, pages: kind === 'pdf' ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope,
-            secondMs: this.secondMs, explain: (e, role) => this.#explain(e, role),
+            secondMs: this.secondMs, explain: (e, role) => this.#explain(e, role), store: this.store,
           });
           return (key ? await this.#keep(scope, key, kind, r, wakeId) : null) ?? r;
         })();
@@ -3219,7 +3219,7 @@ export class Agent {
           if (kept) return kept;
           const fresh = await readFile({ kind: pdf ? 'pdf' : 'image', mediaType: part.mediaType, data: bytes ? toBase64(bytes) : '', ...(pdf && part.name ? { name: part.name } : {}), ...(!pdf && part.path ? { path: part.path } : {}) }, model, {
             llm: this.llm, half: this.#half.name, pages: pdf ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope, secondMs: this.secondMs,
-            explain: (e, role) => this.#explain(e, role),
+            explain: (e, role) => this.#explain(e, role), store: this.store,
           });
           return (key ? await this.#keep(this.scope, key, pdf ? 'pdf' : 'image', fresh, wakeId) : null) ?? fresh;
         })();
@@ -3232,7 +3232,7 @@ export class Agent {
       return reading.how === 'told' || reading.how === 'pages' ? parts : Object.assign(parts, { unread: true });
     } catch (e) {
       /* en */
-      return Object.assign([{ type: /** @type {const} */ ('text'), text: `${stub} It couldn't be described: ${/** @type {any} */ (e)?.message ?? e}` }], { unread: true });
+      return Object.assign([{ type: /** @type {const} */ ('text'), text: `${stub} It couldn't be described: ${await withoutSecrets(this.store, /** @type {any} */ (e)?.message ?? e)}` }], { unread: true });
     }
   }
 

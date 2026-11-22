@@ -7,6 +7,7 @@ import { chatCandidates, firstWordsMs } from '../llm/fallback.js';
 import { KOE_CLASSIC, modelOf } from '../llm/config.js';
 import { fromBase64, toBase64 } from '../bytes.js';
 import { MAX_PAGES, PAGE_EDGE } from '../pdf-pages.js';
+import { withoutSecrets } from './net.js';
 
 /**
  * How long a photo's description may take, in seconds: the same as a role waits for a model's first words (§9.6),
@@ -76,8 +77,9 @@ export function noReader(kind, { plugin = false, photos = false } = {}) {
  * DESCRIBE_S or DESCRIBE_PDF_S, or at signal (the turn's stop). "Can read" means can and did: a reader that fails passes it on.
  * @param {FileToRead} file @param {{ input?: string[] }} model the model the reading is for
  * @param {{ llm: { call: Function, config: () => Promise<any> }, half: 'one' | 'kokoro' | 'koe', pages: import('../pdf-pages.js').PdfPages | null,
- *   signal: AbortSignal, wakeId: string, scope: string, secondMs: number, explain: (e: unknown, role: string) => string | Promise<string> }} o
- *   explain: why a reader failed, in English for the model (the loop's, which knows whether the device is online, and blanks every key annai keeps)
+ *   signal: AbortSignal, wakeId: string, scope: string, secondMs: number, explain: (e: unknown, role: string) => string | Promise<string>, store: import('../types.js').Store }} o
+ *   explain: why a reader failed, in English for the model (the loop's, which knows whether the device is online, and blanks every key annai keeps);
+ *   store: whose keys the PDF pages plugin's error is blanked of
  * @returns {Promise<Reading>}
  */
 export async function readFile(file, model, o) {
@@ -156,7 +158,7 @@ export async function readFile(file, model, o) {
           /* en */
           // What the readers said when they failed (out of credit, say) comes first; "no model here reads PDFs" only when none does.
           /* en */
-          const why = `The PDF pages plugin couldn't draw its pages: ${/** @type {any} */ (e)?.message ?? e}`;
+          const why = `The PDF pages plugin couldn't draw its pages: ${await withoutSecrets(o.store, /** @type {any} */ (e)?.message ?? e)}`;
           return reading('failed', [failed, why, reader ? '' : noReader('pdf')].filter(Boolean).join('\n'));
         }
         // A page with nothing drawn on it isn't sent (a booking's empty last page went as a picture every turn).
