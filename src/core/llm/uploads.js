@@ -118,6 +118,11 @@ export const REQUEST_MS = 15_000;
 export const UPLOAD_MS = 120_000;
 /** bit/s: the slowest uplink a model call's request has time for (call.js), the one UPLOAD_MS is sized for (see there). */
 export const SLOW_UPLINK = 70_000;
+/**
+ * How long a request's bytes take to go up at SLOW_UPLINK, in ms: the time a wait gets on top of its own until the provider has the
+ * whole request (a model's in call.js, a voice's in speech.js, a reading's in reading.js). @param {number} bytes
+ */
+export const sendMs = (bytes) => Math.ceil((bytes * 8 * 1000) / SLOW_UPLINK);
 
 /**
  * @typedef {{ outcome: 'done' | 'none' | 'refused' | 'unreadable' | 'unreachable', deleted: number, left: number }} Swept

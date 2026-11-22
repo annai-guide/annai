@@ -544,8 +544,8 @@ test("a request whose body never finishes sending ends once the wait and the bod
   await assert.rejects(callOnce({ type: httpType([]), endpoint: endpoint(), model: seesPhotos, key: 'k', request: photoRequest(1_000), fetch: /** @type {any} */ (get), firstOutputMs: 100 }), (/** @type {any} */ e) => {
     assert.equal(e.kind, 'timeout');
     assert.deepEqual(e.said, { code: 'send', seconds: 1 });
-    assert.equal(e.shown, 'No answer in 1 second. The connection may be too slow to send photos.');
-    assert.equal(e.message, 'No answer in 1 second. The connection may be too slow to send photos.');
+    assert.equal(e.shown, 'No answer in 1 second. The connection may be too slow to send photos or files.');
+    assert.equal(e.message, 'No answer in 1 second. The connection may be too slow to send photos or files.');
     return true;
   });
   const sendMs = (new TextEncoder().encode(get.sent[0]).byteLength * 8 * 1000) / SLOW_UPLINK;
@@ -569,4 +569,37 @@ test("once the provider has answered, the wait is the model's alone: no output w
     const ms = performance.now() - started;
     assert.ok(ms < 1000, `${code}: it ended ${Math.round(ms)} ms in, by the model's 100 ms wait from the answer`);
   }
+});
+
+// photo-wait's follow-ups (the Deferred entry "Two other waits still count the sending, and the photo words' two edges").
+
+test("the card's seconds are the wait and the send's time together: a body whose time at the slow link makes them 1.5 s or more says 2 seconds, not the wait's (4)", async () => {
+  // About 12.6 KB: 1.45 s at 70 kbit/s, and the 100 ms wait: 1.55 s, so 2 seconds; the wait alone would round to 0, shown as 1.
+  await assert.rejects(callOnce({ type: httpType([]), endpoint: endpoint(), model: seesPhotos, key: 'k', request: photoRequest(12_500), fetch: /** @type {any} */ (answersAfter(Infinity)), firstOutputMs: 100 }),
+    (/** @type {any} */ e) => e.said?.code === 'send' && e.said.seconds === 2 && e.shown === 'No answer in 2 seconds. The connection may be too slow to send photos or files.');
+});
+
+test("a PDF going up is a send as a photo's is: cut, it says the connection may be too slow to send photos or files ('send', which rests no model), not no output in time (6)", async () => {
+  const pdf = { messages: [{ role: 'user', parts: [{ type: 'text', text: 'When is check-in?' }, { type: 'document', mediaType: 'application/pdf', data: 'J'.repeat(1_000), name: 'booking.pdf' }] }] };
+  await assert.rejects(callOnce({ type: httpType([]), endpoint: endpoint(), model: model({ input: ['text', 'pdf'] }), key: 'k', request: /** @type {any} */ (pdf), fetch: /** @type {any} */ (answersAfter(Infinity)), firstOutputMs: 100 }),
+    (/** @type {any} */ e) => e.kind === 'timeout' && e.said?.code === 'send' && e.message === 'No answer in 1 second. The connection may be too slow to send photos or files.');
+});
+
+test("a photo in the turns a kept chain already holds isn't sent, so a text request after it that gets no answer is no output in time, not the photos' send (3)", async () => {
+  const photo = photoRequest(1_000).messages[0];
+  const request = { messages: [photo, { role: 'assistant', parts: [{ type: 'text', text: 'A pelican.' }] }, { role: 'user', parts: [{ type: 'text', text: 'Where is it from?' }] }] };
+  // A provider that keeps turns (OpenAI Responses, Gemini): the request sends only what comes after the turn it continues.
+  const keeps = httpType([], { keeps: { days: 30 }, build: (/** @type {any} */ c) => ({ url: `${c.endpoint.baseUrl}/v1/chat`, headers: {}, body: { previous: c.kept?.id, messages: c.request.messages.slice(c.kept?.from ?? 0) } }) });
+  const kept = { isOff: () => false, match: async () => ({ id: 'resp-1', from: 2 }), off: () => {}, ended: () => {}, record: async () => 'kept' };
+  const get = answersAfter(Infinity);
+  await assert.rejects(callOnce({ type: keeps, endpoint: endpoint(), model: seesPhotos, key: 'k', request: /** @type {any} */ (request), fetch: /** @type {any} */ (get), firstOutputMs: 100, keep: /** @type {any} */ ({ kept, scope: 'trip-a', chain: true, secret: 's' }) }),
+    (/** @type {any} */ e) => e.kind === 'timeout' && e.said?.code === 'late' && e.message === 'No output started in time.');
+  assert.ok(!get.sent[0].includes('AAAA') && get.sent[0].includes('resp-1'), 'the photo stayed with the kept turn');
+});
+
+test("a send beside the other half's on the same link (shared) has the time of twice its bytes: answered after its own bytes' time but within twice it, it is the reply; alone, the send ran out (5)", async () => {
+  // About 5.2 KB: 0.59 s at the slow link, so 0.69 s with the 100 ms wait alone, 1.28 s shared; the provider has it at 0.95 s.
+  const ask = (/** @type {boolean} */ shared) => callOnce({ type: httpType([{ type: 'text', text: 'A pelican.' }, { type: 'stop', reason: 'end' }]), endpoint: endpoint(), model: seesPhotos, key: 'k', request: photoRequest(5_000), fetch: /** @type {any} */ (answersAfter(950)), firstOutputMs: 100, shared });
+  assert.equal((await ask(true)).text, 'A pelican.');
+  await assert.rejects(ask(false), (/** @type {any} */ e) => e.said?.code === 'send');
 });

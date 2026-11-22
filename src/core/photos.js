@@ -26,10 +26,11 @@ export const DEFAULT_PHOTO_SETTINGS = Object.freeze({
   ingest: Object.freeze({ formats: Object.freeze(['image/webp', 'image/jpeg']), quality: 0.9, maxEdge: null, maxBytes: null }),
   // What Shiori is sent (spec §4.8): within these and what the model accepts. 256 KiB is about 341 KiB as base64; with a request's text
   // (about 110 KB, 2026-11-21) about 52 s at SLOW_UPLINK (llm/uploads.js), 105 s for both halves at once; a send's limit is the wait
-  // plus that time (llm/call.js). At about 1 MiB, the old cap, requests of 1.2 to 1.4 MB broke off after 76 to 130 s (2026-11-21; both
-  // halves in the same second: a connection event, its speed unknown). 256 KiB, not 192, by a probe (2026-11-21; annai's encoder in
-  // Linux WebKit, JPEG, read by Gemini 3.8 Flash for Claude): of 44 facts on five photos with text, about 41 at 256 KiB, 32 at 192 and
-  // 44 at 1 MiB; a distant menu board's prices 7 to 8 of 10 at 256 KiB, 0 at 192. An iPhone's copies are unmeasured, likely a step smaller.
+  // plus that time, twice it while both halves send (llm/call.js). At about 1 MiB, the old cap, requests of 1.2 to 1.4 MB broke off
+  // after 76 to 130 s (2026-11-21; both halves in the same second: a connection event, its speed unknown). 256 KiB, not 192, by a probe
+  // (2026-11-21; annai's encoder in Linux WebKit, JPEG, read by Gemini 3.8 Flash for Claude): of 44 facts on five photos with text, about
+  // 41 at 256 KiB, 32 at 192 and 44 at 1 MiB; a distant menu board's prices 7 to 8 of 10 at 256 KiB, 0 at 192. An iPhone's copies are
+  // unmeasured, likely a step smaller.
   request: Object.freeze({ formats: Object.freeze(['image/webp', 'image/jpeg']), quality: 0.9, maxEdge: 2000, maxBytes: 256 * 1024 }),
 });
 /** @type {Record<string, string>} */

@@ -702,9 +702,23 @@ test("a request with photos the provider never answered (its send ran out) doesn
     assert.equal(r.answeredBy, 'model-1', said.code);
     assert.deepEqual(r.attempts.map((a) => a.outcome), ['timeout', 'ok'], said.code);
     assert.equal(s.bench.until('m-0') > 1_000_000, rests, `${said.code}: rests`);
-    if (said.code === 'send') assert.equal(attemptWhy(r.attempts[0]), 'No answer in 190 seconds. The connection may be too slow to send photos.');
+    if (said.code === 'send') assert.equal(attemptWhy(r.attempts[0]), 'No answer in 190 seconds. The connection may be too slow to send photos or files.');
     assert.equal((await call(s)).attempts[0].outcome, rests ? 'benched' : 'timeout', `${said.code}: the next turn`);
   }
+});
+
+test("a half's call beside the other half's (shared) reaches its model's send, which has the time of twice its bytes: a request in by then is answered (photo-wait's follow-ups, 5)", async () => {
+  /** @type {any} */
+  const http = { type: 'http', name: 'HTTP', pluginId: 'http', build: (/** @type {any} */ c) => ({ url: 'https://llm.example/v1/chat', headers: {}, body: { messages: c.request.messages } }), async *read() { yield { type: 'text', text: 'A pelican.' }; } };
+  const s = setup([[]], { types: [['http', http]], endpointTypes: ['http'], models: [{ input: ['text', 'image'] }] });
+  s.config.providers['pv-0'].user = { ...s.config.providers['pv-0'].user, baseUrl: 'https://llm.example/v1' };
+  // About 5.2 KB: 0.59 s at the slow link, so 0.69 s with the 100 ms wait alone, 1.28 s shared; the provider has the request at 0.95 s.
+  const fetch = (/** @type {any} */ _url, /** @type {any} */ init) => new Promise((done, fail) => {
+    const t = setTimeout(() => done(new Response('streamed')), 950);
+    init.signal.addEventListener('abort', () => { clearTimeout(t); fail(init.signal.reason); }, { once: true });
+  });
+  const request = { messages: [{ role: 'user', parts: [{ type: 'text', text: 'What is this?' }, { type: 'image', mediaType: 'image/jpeg', data: 'A'.repeat(5_000) }] }] };
+  assert.equal((await call(s, { request, fetch, firstOutputMs: 100, shared: true })).reply.text, 'A pelican.');
 });
 
 test("when every model the role could use is resting, the one whose rest ends soonest is asked anyway (the real-PDF check: one stall failed the next turn; round 8)", async () => {

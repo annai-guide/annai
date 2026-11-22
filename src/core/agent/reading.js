@@ -8,6 +8,7 @@ import { KOE_CLASSIC, modelOf } from '../llm/config.js';
 import { fromBase64, toBase64 } from '../bytes.js';
 import { MAX_PAGES, PAGE_EDGE } from '../pdf-pages.js';
 import { withoutSecrets } from './net.js';
+import { sendMs } from '../llm/uploads.js';
 
 /**
  * How long a photo's description may take, in seconds: the same as a role waits for a model's first words (§9.6),
@@ -74,7 +75,8 @@ export function noReader(kind, { plugin = false, photos = false } = {}) {
 /**
  * Reads a file for a model that can't take it. Every reader call is a side job: reasoning off, in the trace as a describe, waiting for
  * its first words the longer of its role's wait and DESCRIBE_S (for a PDF, at most two thirds of its reading). The whole reading, pages included, stops at
- * DESCRIBE_S or DESCRIBE_PDF_S, or at signal (the turn's stop). "Can read" means can and did: a reader that fails passes it on.
+ * DESCRIBE_S or DESCRIBE_PDF_S, or at signal (the turn's stop); each request a reader is sent adds its time at SLOW_UPLINK, as a model's
+ * wait starts once the provider has the request (call.js). "Can read" means can and did: a reader that fails passes it on.
  * @param {FileToRead} file @param {{ input?: string[] }} model the model the reading is for
  * @param {{ llm: { call: Function, config: () => Promise<any> }, half: 'one' | 'kokoro' | 'koe', pages: import('../pdf-pages.js').PdfPages | null,
  *   signal: AbortSignal, wakeId: string, scope: string, secondMs: number, explain: (e: unknown, role: string) => string | Promise<string>, store: import('../types.js').Store }} o
@@ -91,7 +93,14 @@ export async function readFile(file, model, o) {
   // The turn's stop, and the time limit, end it (without AbortSignal.any, which older browsers lack).
   const stop = new AbortController();
   const end = () => stop.abort();
-  const late = setTimeout(end, limit * o.secondMs);
+  /** The send time of what readers were sent, owed to the limit when it runs out (sendMs). */
+  let owed = 0;
+  const expire = () => {
+    if (!owed) return end();
+    late = setTimeout(expire, owed);
+    owed = 0;
+  };
+  let late = setTimeout(expire, limit * o.secondMs);
   o.signal.addEventListener('abort', end, { once: true });
   if (o.signal.aborted) end();
   const stopped = new Promise((_, no) => stop.signal.addEventListener('abort', () => no(new Error('stopped')), { once: true }));
@@ -119,6 +128,7 @@ export async function readFile(file, model, o) {
       if (stop.signal.aborted) break;
       try {
         const sent = typeof parts === 'function' ? parts(role) : parts;
+        owed += sendMs(sent.reduce((/** @type {number} */ n, /** @type {any} */ p) => n + (p.data?.length ?? 0), 0)); // base64, as in the request
         const r = await o.llm.call({
           role, level: 'off', signal: stop.signal, scope: o.scope, record: { tag: 'describe', wake: o.wakeId }, firstOutputMs: wait(role),
           request: { system, maxOutput, messages: [{ role: 'user', parts: [...sent, { type: 'text', text: ask }] }] },

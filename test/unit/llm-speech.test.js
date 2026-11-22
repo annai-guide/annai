@@ -131,6 +131,25 @@ test('speech errors come back as the usual kinds, with an echoed key blanked out
   assert.ok(!JSON.stringify(await traced(store)).includes('sk-hear-secret'));
 });
 
+test("a transcription's time limit starts once the provider has the recording, as a model's wait does: a recording slower to go up than the limit is heard; one that never goes up still ends; once the answer came, the limit is its own (photo-wait's follow-ups, 1)", async () => {
+  // 4,000 bytes: 0.46 s at the slow link (SLOW_UPLINK, 70 kbit/s), past the 50 ms limit; a WAV of 10 s is about 320 KB, 37 s.
+  const audio = { data: new Uint8Array(4_000), mediaType: 'audio/wav', seconds: 0.1 };
+  /** A fetch whose answer's headers come ms after it is asked, its body then the transcript, or nothing until it is stopped. @param {number} ms @param {boolean} [stalls] */
+  const answersAfter = (ms, stalls = false) => (/** @type {any} */ _url, /** @type {any} */ init) => new Promise((done, fail) => {
+    const body = () => (stalls ? new ReadableStream({ start: (c) => init.signal.addEventListener('abort', () => c.error(init.signal.reason), { once: true }) }) : JSON.stringify({ text: 'Where should we eat?' }));
+    const t = ms === Infinity ? undefined : setTimeout(() => done(new Response(body())), ms);
+    init.signal.addEventListener('abort', () => { clearTimeout(t); fail(init.signal.reason); }, { once: true });
+  });
+  const hear = (/** @type {any} */ fetch) => speechCall({ type: /** @type {any} */ (hears), endpoint: endpoint('test-in'), model: model(null), key: null, audio, fetch, timeoutMs: 50 });
+  assert.equal((await hear(answersAfter(250))).text, 'Where should we eat?');
+  let started = performance.now();
+  await assert.rejects(hear(answersAfter(Infinity)), (e) => e instanceof ProviderError && e.kind === 'timeout');
+  assert.ok(performance.now() - started >= 50 + 457 - 2, `it waited ${Math.round(performance.now() - started)} ms, for the limit and the recording's 457 ms`);
+  started = performance.now();
+  await assert.rejects(hear(answersAfter(0, true)), (e) => e instanceof ProviderError && e.kind === 'timeout');
+  assert.ok(performance.now() - started < 400, `it ended ${Math.round(performance.now() - started)} ms in, by the 50 ms limit from the answer`);
+});
+
 test('speech prices: per minute (with a minimum), per million characters, or unknown', () => {
   assert.ok(near(/** @type {number} */ (speechCost({ perMinute: 0.006 }, { seconds: 30 })), 0.003));
   assert.ok(near(/** @type {number} */ (speechCost({ perMinute: 0.6, minSeconds: 10 }, { seconds: 2 })), 0.1));
@@ -184,6 +203,23 @@ test('the service transcribes and speaks through speech models; a chat role neve
     (e) => /** @type {any} */ (e).attempts[0].outcome === 'not-chat');
   await saveProvider(ws, { ...outEp, user: { ...outEp.user, abilities: { voice: { kind: 'voice', type: 'test-out', on: false } } } });
   assert.equal(speechKind(await readConfig(ws), llm.types(), outM.id), null, 'a voice whose ability is off is no voice');
+});
+
+test("the service's role call passes a half's shared link on to its model's send, which then has the time of twice its bytes (photo-wait's follow-ups, 5)", async () => {
+  const { registry, store, ws } = await setup();
+  registry.add('test', 'endpoint-type', { type: 'test-chat', name: 'Test chat', pluginId: 'test', tunables: {}, build: (/** @type {any} */ c) => ({ url: `${c.endpoint.baseUrl}/chat`, headers: {}, body: { messages: c.request.messages } }), read: async function* () { yield { type: 'text', text: 'A pelican.' }; } });
+  const p = newProvider('provider-test', { user: { name: 'Chat', baseUrl: 'https://chat.test/v1', abilities: { chat: { kind: 'chat', type: 'test-chat' } } } });
+  const m = newModel(p.id, 'chat', { user: { providerId: 'chat-1', input: ['text', 'image'] } });
+  await saveProvider(ws, p, [m]);
+  await saveRoles(ws, { ...(await readConfig(ws)).roles, main: { models: [m.id], level: 'off' } });
+  // About 5.2 KB: 0.59 s at the slow link, so 0.69 s with the 100 ms wait alone, 1.28 s shared; the provider has the request at 0.95 s.
+  const fetch = (/** @type {any} */ _url, /** @type {any} */ init) => new Promise((done, fail) => {
+    const t = setTimeout(() => done(new Response('streamed')), 950);
+    init.signal.addEventListener('abort', () => { clearTimeout(t); fail(init.signal.reason); }, { once: true });
+  });
+  const llm = createLlm({ store, ws, plugins: new PluginHost({ registry, workspace: ws }), fetch: /** @type {any} */ (fetch) });
+  const request = { messages: [{ role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('text'), text: 'What is this?' }, { type: /** @type {const} */ ('image'), mediaType: 'image/jpeg', data: 'A'.repeat(5_000) }] }] };
+  assert.equal((await llm.call({ request, firstOutputMs: 100, shared: true })).reply.text, 'A pelican.');
 });
 
 test('a plugin registers a speech type only with what its direction needs', async () => {

@@ -160,7 +160,7 @@ export function saidWords(s, kind, provider) {
   switch (s.code) {
     case 'late': return t`No output started in time.`;
     case 'paused': return plural(Number(s.seconds) || 0, 'Its output stopped for # second.', 'Its output stopped for # seconds.');
-    case 'send': return plural(Number(s.seconds) || 0, 'No answer in # second. The connection may be too slow to send photos.', 'No answer in # seconds. The connection may be too slow to send photos.');
+    case 'send': return plural(Number(s.seconds) || 0, 'No answer in # second. The connection may be too slow to send photos or files.', 'No answer in # seconds. The connection may be too slow to send photos or files.');
     case 'stalled': return t`The voice stopped arriving for longer than annai waits.`;
     case 'held': return t`annai needs a reload: it opened without its offline service, so its plugins can't start.`;
     case 'zdr': return t`The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.`;

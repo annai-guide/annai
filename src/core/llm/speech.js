@@ -1,5 +1,6 @@
 import { typeError, sameOrigin, noRedirect, ProviderError } from './contract.js';
 import { cannotConnect, asProviderError } from './call.js';
+import { sendMs } from './uploads.js';
 import { speechCost } from './cost.js';
 import { pickOut, formatOf } from '../voice/formats.js';
 import { anySignal } from '../signals.js';
@@ -13,7 +14,9 @@ const playable = (p) => p?.pcm instanceof Int16Array && Number.isFinite(p.rate);
  * with its cost, with each clip's format and size. Keys never reach the trace (§9.9). A voice whose format is 'auto' is asked for the
  * smallest it offers (audioOut) that the device plays. A voice that streams (readSpeechStream, its stream tunable not off), asked for a
  * stream, gives its PCM as it comes: the call resolves at the first piece, which must come within the time limit, as a whole clip must;
- * then no gap may be longer. It is traced once all of it is in, or when it fails.
+ * then no gap may be longer. The time limit starts once the provider has the whole request, as a model's wait does (call.js): until its
+ * answer's headers come, it is longer by the request's time at SLOW_UPLINK, so a recording going up slowly isn't cut. It is traced once
+ * all of it is in, or when it fails.
  * @typedef {import('./contract.js').EndpointType} EndpointType
  * @typedef {{ data: Uint8Array, mediaType: string }} Clip
  * @typedef {import('./contract.js').SpeechStream} SpeechStream
@@ -51,12 +54,13 @@ export async function speechCall(c) {
   const timer = new AbortController();
   /** @type {ReturnType<typeof setTimeout> | undefined} */
   let t;
-  /** The time limit, from now: to the first piece, or from one piece to the next. @param {string} why */
-  const limit = (why) => {
+  /** The time limit, from now: to the first piece, or from one piece to the next; ms: while the request goes up. @param {string} why @param {number} [ms] */
+  const limit = (why, ms = timeoutMs) => {
     clearTimeout(t);
-    t = setTimeout(() => timer.abort(new DOMException(why, 'TimeoutError')), timeoutMs);
+    t = setTimeout(() => timer.abort(new DOMException(why, 'TimeoutError')), ms);
   };
-  limit(/* en */ 'No answer in time.');
+  // The request's bytes: at least the recording's, more as base64 in JSON (a string body).
+  limit(/* en */ 'No answer in time.', timeoutMs + sendMs(Math.max(c.audio?.data.byteLength ?? 0, typeof built.body === 'string' ? built.body.length : 0)));
   const signal = c.signal ? anySignal([c.signal, timer.signal]) : timer.signal;
   /** A stream's format and size so far. @type {{ format: string, bytes: number } | null} */
   let sound = null;
@@ -85,6 +89,7 @@ export async function speechCall(c) {
     } catch (e) {
       throw cannotConnect(e, signal);
     }
+    limit(/* en */ 'No answer in time.'); // the provider has the request
     status = res.status;
     noRedirect(res, endpoint);
     if (!res.ok) {

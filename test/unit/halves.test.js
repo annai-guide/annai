@@ -49,6 +49,32 @@ test('no Koe model: one call per message, Kokoro speaks, exactly as before', asy
   assert.equal(k.agent.koeState, 'off');
 });
 
+test("both halves' turns send at once on one link, so each tells its call so (shared: each send timed on twice its bytes); one Shiori's turn doesn't (photo-wait's follow-ups, 5)", async (t) => {
+  useClock(t);
+  /** The turns' own calls (keepNative), by role, with whether each said it shares the link. @param {any} k */
+  const watch = (k) => {
+    /** @type {[string, boolean | undefined][]} */
+    const seen = [];
+    const call = k.llm.call;
+    k.llm.call = (/** @type {any} */ c) => {
+      if (c.keepNative) seen.push([c.role, c.shared]);
+      return call(c);
+    };
+    return seen;
+  };
+  const k = await agentKit([KOKORO], { koe: { type: KOE } });
+  const both = watch(k);
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  assert.deepEqual([...new Set(both.map(([role]) => role))].sort(), ['koe-classic', 'main']);
+  assert.ok(both.every(([, shared]) => shared === true), JSON.stringify(both));
+  const one = await agentKit([[calls(['speak', { text: 'Hello!' }])]], { halves: true });
+  const alone = watch(one);
+  one.agent.send('Hi');
+  await one.agent.idle();
+  assert.deepEqual(alone, [['main', undefined]]);
+});
+
 test("an import that replaced \"me\" while a conversation is open: both halves' next request carries the profile that came, though its author is hers and the cache is warm (the snapshot review: F3)", async (t) => {
   useClock(t);
   const k = await agentKit([KOKORO], { koe: { type: KOE } });
