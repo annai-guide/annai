@@ -665,6 +665,19 @@ test("output that started and then stopped says so, not that none started (the r
   await assert.rejects(call(s, { firstOutputMs: 1000 }), (e) => e instanceof AllFailedError && e.attempts[0].outcome === 'timeout' && /^Its output stopped for 1 second\.$/.test(e.attempts[0].error ?? '') && e.attempts[0].said?.code === 'paused');
 });
 
+test("a request with photos the provider never answered (its send ran out) doesn't rest the model, as no output in time does: the next is tried, and the next turn asks the first again (the user's photo, 2026-11-20)", async () => {
+  for (const [said, rests] of /** @type {const} */ ([[{ code: 'send', seconds: 190 }, false], [{ code: 'late' }, true]])) {
+    const slow = /** @type {any} */ ({ type: 'slow', name: 'Slow', pluginId: 'slow', run: async function* () { throw new ProviderError('timeout', 'No answer.', { said }); } });
+    const s = setup([[], [{ text: 'From model-1.' }]], { types: [['slow', slow]], endpointTypes: ['slow'] });
+    const r = await call(s);
+    assert.equal(r.answeredBy, 'model-1', said.code);
+    assert.deepEqual(r.attempts.map((a) => a.outcome), ['timeout', 'ok'], said.code);
+    assert.equal(s.bench.until('m-0') > 1_000_000, rests, `${said.code}: rests`);
+    if (said.code === 'send') assert.equal(attemptWhy(r.attempts[0]), 'No answer in 190 seconds. The connection may be too slow to send photos.');
+    assert.equal((await call(s)).attempts[0].outcome, rests ? 'benched' : 'timeout', `${said.code}: the next turn`);
+  }
+});
+
 test("when every model the role could use is resting, the one whose rest ends soonest is asked anyway (the real-PDF check: one stall failed the next turn; round 8)", async () => {
   const s = setup([[{ text: 'From model-0.' }], [{ text: 'From model-1.' }]]);
   s.bench.bench('m-1', 300_000, 1_000_000 - 60_000); // its rest ends first
