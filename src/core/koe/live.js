@@ -1054,12 +1054,14 @@ export class LiveKoe {
   /**
    * Koe reached the user since its notes went in (its words heard, a card, a question): they are passed on. The reminders among them are written as
    * told (`reminder.told`), the session's own verdict, which settles the copy its page holds (Agent.hold; spec §11.3); one shown instead is taken out first.
+   * @param {Wake[]} [these] only these, those of them still in flight (a card's: what was in flight when it was shown); all in flight if not given
    */
-  #passed() {
-    const reminders = this.#owed.sent.flatMap((w) => (w.kind === 'note' ? [] : (w.fallbacks ?? []).flatMap((r) => reminderData(r) ?? [])));
+  #passed(these = this.#owed.sent) {
+    const passing = this.#owed.sent.filter((w) => these.includes(w));
+    const reminders = passing.flatMap((w) => (w.kind === 'note' ? [] : (w.fallbacks ?? []).flatMap((r) => reminderData(r) ?? [])));
     if (reminders.length) this.#write({ type: 'reminder.told', actor: 'system', data: { reminders } });
-    this.#owed.sent = [];
-    this.#owed.cued = this.#owed.cue = false;
+    this.#owed.sent = this.#owed.sent.filter((w) => !passing.includes(w));
+    if (!this.#owed.sent.length) this.#owed.cued = this.#owed.cue = false;
   }
 
   /**
@@ -1743,6 +1745,7 @@ export class LiveKoe {
    * Koe's is. @param {LiveSession} s @param {Turn} t @param {{ id: string, name: string, input: any }} e
    */
   async #tool(s, t, e) {
+    const flight = [...this.#owed.sent]; // what a card answers: the notes in flight as the call came, not one that goes in while it runs (an urgent reminder)
     t.tools = true;
     if (!REACH.includes(e.name) && !SILENT.includes(e.name)) t.goesOn = true;
     t.calls++;
@@ -1755,8 +1758,12 @@ export class LiveKoe {
       // the user has the note, which she may have said of another (real Gemini, 2026-11-12: she said note 1, and called it for note 2, lost): the
       // note is shown on a silent card, at worst something the user heard (the user's pick).
       if (REACH.includes(e.name) && !out.isError) {
-        if (e.name === 'already_told' && this.#owed.sent.length) this.c.left?.(this.#owed.sent.splice(0), true);
-        this.#passed();
+        const those = this.#owed.sent.filter((w) => flight.includes(w)); // one that went in during the call is for the ask once more (#settle)
+        if (e.name === 'already_told' && those.length) {
+          this.c.left?.(those, true);
+          this.#owed.sent = this.#owed.sent.filter((w) => !those.includes(w));
+        }
+        this.#passed(those);
       }
       if ((e.name === 'show' || e.name === 'ask') && !out.isError) {
         this.#answered(false); // a card or question answers what was heard

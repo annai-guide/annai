@@ -1504,12 +1504,12 @@ export class Agent {
 
   /**
    * Wakes that never start a turn, written into their conversation all the same, with a quiet "stopped"; a write that fails is told (#notSaved). One being
-   * opened while this one is still open is written as a wake kept for it is (#keepFor). @param {Wake[]} wakes @param {string} [scope] the open one's if not given
+   * opened while this one is still open is written as its late entries are (#logIn: its open takes them into the transcript it reads). @param {Wake[]} wakes @param {string} [scope] the open one's if not given
    */
   #stopWakes(wakes, scope = this.scope) {
     if (!wakes.length) return;
     const wakeId = newId('w');
-    const log = scope === this.scope ? (/** @type {any} */ ev) => this.#log(ev) : this.#keptIn(scope);
+    const log = scope === this.scope ? (/** @type {any} */ ev) => this.#log(ev) : (/** @type {any} */ ev) => this.#logIn(scope, ev);
     this.#checking++;
     this.#logWakes(wakes, wakeId, false, { log, trip: scope === ME ? null : scope })
       .then(() => log({ type: 'error', actor: 'system', data: { kind: 'stopped', wake: wakeId, message: STOPPED, quiet: true } }))

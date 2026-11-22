@@ -9,7 +9,7 @@
 // page are no kill: those tests check what that page itself shows, and most then what a next start shows; the read rows read logs written by hand.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until, idleAtOnce, inTime, holdAtDoor, raw } from './agent-kit.js';
+import { agentKit, until, idleAtOnce, inTime, holdAtDoor, holdReminders, raw } from './agent-kit.js';
 import { liveKit, soon, tone, texts } from './koe-live-kit.js';
 import { useClock } from './clock.js';
 import { Agent } from '../../src/core/agent/loop.js';
@@ -412,31 +412,43 @@ for (const [what, stop] of /** @type {[string, boolean][]} */ ([["Undo's or Eras
 
 // Once Koe has had a conversation open in this page, an open of another skips the halves' route (Halves.open), so with Koe since off, a line typed while that
 // one opens is in Kokoro's queue for it while the one being left is still open: a Stop then (Undo's or Erase's) writes the line and its "stopped" into the
-// conversation it was typed for, never the one being left (the code re-read's F1).
-test("Koe on, then off, another conversation opening, a line typed, then Undo's or Erase's Stop: the line and its stopped are written in the conversation it was typed for", async (t) => {
-  useClock(t);
-  const k = await agentKit([[asleep]], { koe: { type: [asleep] } });
-  await idleAtOnce(k);
-  assert.equal(k.agent.koe.target, k.trip, 'Koe has had this conversation open');
-  await saveRoles(k.ws, { ...(await readConfig(k.ws)).roles, 'koe-classic': { models: [], level: 'off' } });
-  const other = await createTrip(k.ws, { title: 'Kyoto' });
-  const slow = slowOpen(k);
-  slow.shut();
-  const opening = k.agent.open(other);
-  await until(slow.held);
-  k.agent.send('Is the temple open?', { typed: true });
-  await settled(); // in Kokoro's queue, for the conversation being opened
-  assert.equal(k.agent.kokoro.scope, k.trip, 'the one being left is still open: Kokoro waits on its first read of the other');
-  k.agent.stopKokoro();
-  await idleAtOnce({ agent: k.agent.kokoro });
-  const log = async (/** @type {string} */ scope, /** @type {string} */ type) => (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(scope, { types: [type] }))).map((/** @type {any} */ e) => e.data.text ?? e.data.kind);
-  assert.deepEqual([await log(other, 'msg.user'), await log(other, 'error')], [['Is the temple open?'], ['stopped']], 'in the conversation it was typed for');
-  assert.deepEqual([await log(k.trip, 'msg.user'), await log(k.trip, 'error')], [[], []], 'nothing in the one being left');
-  slow.open();
-  await opening;
-  await idleAtOnce(k);
-  assert.equal(k.requests.length, 0, 'nothing answers it');
-});
+// conversation it was typed for, never the one being left (the code re-read's F1), and the open's transcript has the line, whether the Stop lands before
+// the open reads the log (its read has it) or after (the open takes it in as a late entry: #logIn; #keptIn, which serves a conversation that isn't being
+// opened, left Kokoro's transcript without it until its next read: the final review's F-A).
+for (const [when, late] of /** @type {[string, boolean][]} */ ([['before the open has read the log', false], ['after the open has read the log', true]])) {
+  test(`Koe on, then off, another conversation opening, a line typed, then Undo's or Erase's Stop ${when}: the line and its stopped are written in the conversation it was typed for, and its transcript has the line`, async (t) => {
+    useClock(t);
+    const k = await agentKit([[asleep]], { koe: { type: [asleep] } });
+    await idleAtOnce(k);
+    assert.equal(k.agent.koe.target, k.trip, 'Koe has had this conversation open');
+    await saveRoles(k.ws, { ...(await readConfig(k.ws)).roles, 'koe-classic': { models: [], level: 'off' } });
+    const other = await createTrip(k.ws, { title: 'Kyoto' });
+    // The open waits at its first read of the log, or, after it, at the card of a reminder the log still owes (a reminder shown is a first call to the store).
+    const slow = slowOpen(k);
+    const card = holdReminders(k, k.agent.kokoro);
+    if (late) await record(k.store, other, { type: 'wake', actor: 'system', data: { id: 'w-old', reasons: [], reminders: [{ watch: 'train', text: TRAIN }] } });
+    else slow.shut();
+    const opening = k.agent.open(other);
+    await until(() => (late ? card.reached() : slow.held()));
+    k.agent.send('Is the temple open?', { typed: true });
+    await settled(); // in Kokoro's queue, for the conversation being opened
+    assert.equal(k.agent.kokoro.scope, k.trip, 'the one being left is still open: Kokoro waits on its first read of the other');
+    k.agent.stopKokoro();
+    await idleAtOnce({ agent: k.agent.kokoro });
+    const log = async (/** @type {string} */ scope, /** @type {string} */ type) => (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(scope, { types: [type] }))).map((/** @type {any} */ e) => e.data.text ?? e.data.kind);
+    assert.deepEqual([await log(other, 'msg.user'), await log(other, 'error')], [['Is the temple open?'], ['stopped']], 'in the conversation it was typed for');
+    assert.deepEqual([await log(k.trip, 'msg.user'), await log(k.trip, 'error')], [[], []], 'nothing in the one being left');
+    slow.open();
+    card.open();
+    await opening;
+    await idleAtOnce(k);
+    assert.equal(k.agent.kokoro.scope, other, 'the open is done');
+    const said = JSON.stringify(k.agent.kokoro.transcript.messages).split('Is the temple open?').length - 1;
+    assert.equal(said, 1, "Kokoro's transcript of the conversation has the line, once");
+    assert.deepEqual(await log(other, 'msg.user'), ['Is the temple open?'], 'written once');
+    assert.equal(k.requests.length, 0, 'nothing answers it');
+  });
+}
 
 // Koe on a chat model: the wake with the reminder waits in Koe's own queue behind Koe's turn. Kokoro's half shows it at the next start, once.
 test("Koe on a chat model, a watch's wake queued behind Koe's running turn as the page is killed: the next start shows its reminder once, by Kokoro's half", async (t) => {
@@ -735,6 +747,80 @@ test('Koe live: Koe\'s first line is a bare "Silent.", she is asked once more, a
   }
 });
 
+// An urgent reminder cuts in on her quiet tail (her words said and their loud part heard, the silence after them still playing), and the page is killed before her
+// answer to it: her line before it, whole, was no answer to it (#passes: its words began before the reminder went in, wordAt), so the session writes no
+// `reminder.told` for it and the next start shows it. Without the check, the end of that line wrote it as told, and the reminder was lost.
+test('Koe live: an urgent reminder cuts in on her quiet tail, and the page is killed before her answer: that line was no answer to it, so the next start shows it once', async () => {
+  const loud = tone(3);
+  const tail = new Uint8Array(Math.round(24_000 * 4) * 2); // four seconds of silence after her words
+  const line = new Uint8Array(loud.length + tail.length);
+  line.set(loud, 0);
+  line.set(tail, loud.length);
+  const k = await liveKit([{ said: 'The weather is fine here today.', audio: line }, { said, audio: tone(8) }], { pace: 0 });
+  try {
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    await k.agent.wake({ kind: 'trigger', text: 'Your watch fired: Weather.', fallbacks: [{ watch: 'weather', text: 'Weather', cue: true }] });
+    await until(() => k.platform.streams.length === 1, 30_000);
+    await new Promise((r) => setTimeout(r, 3500)); // her words are said and their loud part heard (3 s): her quiet tail still plays
+    await k.agent.wake({ ...train(), urgent: true }); // it cuts in on that tail
+    await until(() => k.platform.streams.length === 2, 30_000); // her answer to it plays
+    await new Promise((r) => setTimeout(r, 1000));
+    k.agent.hush('away'); // out of view mid-answer, killed later
+    await soon(async () => (await k.events(['out.speak'])).length === 2, 30_000);
+    assert.deepEqual(await k.events(['reminder.told']), [], 'the session passed nothing on');
+    const next = await nextStart(k, true);
+    assert.deepEqual(reminders(next.cards), [TRAIN]);
+    assert.deepEqual(await entries(k), [TRAIN]);
+    const again = await nextStart(k, true);
+    assert.deepEqual(reminders(again.cards), []);
+  } finally {
+    await k.done();
+  }
+});
+
+// A card or question passes on what was in flight when its call came, and no more (#tool): an urgent reminder that goes in while a `show` call runs is no note the
+// card answered. Koe then says only "Silent." (one of annai's own words: no answer), so she is asked once more, and then annai shows it, never written as
+// told, which would settle the held copy for a reminder no one was given. The control: the card answered first, then the reminder.
+for (const [what, race] of /** @type {[string, boolean][]} */ ([['while the card is being shown', true], ['after the card is answered (the control)', false]])) {
+  test(`Koe live: an urgent reminder goes in ${what}, and Koe says only "Silent.": she is asked once more, then annai shows it, and the session never writes it as told`, async () => {
+    const card = { name: 'show', args: { card: { title: 'Bixby Bridge', text: 'About twenty minutes ahead.' } } };
+    // The answer to the reminder is slow (delayMs), so the call comes back before it is said, as it can on a phone: the call, then "Silent.".
+    const k = await liveKit([{ tool: card }, { said: 'Silent.', audio: tone(0.3), delayMs: race ? 1500 : 0 }, { said: 'Silent.', audio: tone(0.3) }], { pace: 0 });
+    /** @type {() => void} */
+    let release = () => {};
+    let calling = false;
+    try {
+      if (race) {
+        const gate = new Promise((r) => { release = () => r(undefined); });
+        const call = k.agent.koe.liveCall.bind(k.agent.koe);
+        k.agent.koe.liveCall = async (/** @type {any} */ c, /** @type {any[]} */ ...rest) => {
+          if (c.name === 'show') { calling = true; await gate; }
+          return call(c, ...rest);
+        };
+      }
+      await k.voice.unlock();
+      k.agent.send('Show me the bridge');
+      if (race) await until(() => calling, 30_000);
+      else await soon(async () => (await k.events(['out.show'])).length === 1);
+      await k.agent.wake({ ...train(), urgent: true });
+      await soon(async () => texts(k).some((/** @type {string} */ x) => x.includes('Train in 20 minutes'))); // it is with the session
+      release(); // the card is shown now
+      await soon(async () => (await k.events(['out.show'])).length === 1);
+      await soon(async () => texts(k).filter((/** @type {string} */ x) => x.includes("hasn't reached the user")).length === 1, 10_000); // asked once more
+      await soon(async () => (await entries(k)).length === 1, 30_000); // she says only "Silent." again: annai shows it
+      assert.deepEqual(reminders(k.notices), [TRAIN], 'shown once');
+      assert.deepEqual(await k.events(['reminder.told']), [], 'never written as told: no one was given it');
+      assert.equal(texts(k).filter((/** @type {string} */ x) => x.includes("hasn't reached the user")).length, 1, 'asked once, not more');
+      const next = await nextStart(k, true);
+      assert.deepEqual(reminders(next.cards), [], 'its entry settled it');
+    } finally {
+      release();
+      await k.done();
+    }
+  });
+}
+
 // Cut off before she passed it on (§10.4, §7.1): a tap while Koe is saying it, a line typed then, or a tap on an urgent reminder she hasn't begun shows what the
 // traveller didn't hear at once, silently, and its entry settles the held copy. The session passed nothing on, so it writes no `reminder.told`.
 for (const [what, turns, cut] of /** @type {[string, any[], (k: any) => Promise<void>][]} */ ([
@@ -757,7 +843,7 @@ for (const [what, turns, cut] of /** @type {[string, any[], (k: any) => Promise<
     const k = await liveKit(turns, { pace: 1 });
     try {
       await cut(k);
-      await soon(async () => (await entries(k)).length === 1); // a tap holds the floor for the traveller for 2 s (#holdForUser): idle() waits that long
+      await soon(async () => (await entries(k)).length === 1); // a tap holds the floor for the traveller for two seconds of the session's clock, 1 s in this kit (#holdForUser: 2 * max(500 ms, secondMs)): idle() waits that long
       assert.deepEqual(reminders(k.notices), [TRAIN], 'shown once');
       assert.equal(k.said.some((/** @type {string} */ x) => x.includes(TRAIN)), false, 'silently');
       assert.deepEqual(await k.events(['reminder.told']), []);
