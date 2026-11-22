@@ -101,7 +101,8 @@ test("a request outside a conversation's turns (no cacheAt: a reader's, the reca
 test("the trip's case through the agent: after a photo of 1 MiB, the second text turn sends it as a stub, and the request is text-sized again", async () => {
   const { updateAppSettings } = await import('../../src/core/settings.js');
   const done = { toolCalls: [{ name: 'speak', input: { text: 'Got it.' } }, { name: 'sleep', input: {} }] };
-  const k = await agentKit([[done, done, done]]);
+  const readIt = { toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.webp' } }] };
+  const k = await agentKit([[done, done, readIt, done]]);
   // A traveller's cap of 1 MiB, as every photo had before 2026-11-21: the photo goes as it is.
   await updateAppSettings(k.ws, { photos: { request: { maxBytes: 1024 * 1024 } } });
   await k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('x'.repeat(1_000_000)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
@@ -112,10 +113,35 @@ test("the trip's case through the agent: after a photo of 1 MiB, the second text
   k.agent.send('Thanks');
   await k.agent.idle();
   const images = (/** @type {any} */ r) => r.messages.flatMap((/** @type {any} */ m) => m.parts).filter((/** @type {any} */ p) => p.type === 'image');
-  assert.equal(k.requests.length, 3);
+  assert.equal(k.requests.length, 4);
   assert.equal(images(k.requests[0])[0]?.data.length, 1_333_336, 'its own turn');
   assert.equal(images(k.requests[1])[0]?.data.length, 1_333_336, 'the turn after: what she just sent');
   assert.deepEqual(images(k.requests[2]), [], 'two turns on');
-  assert.ok(k.requests[2].messages.some((/** @type {any} */ m) => m.parts.some((/** @type {any} */ p) => p.text === '[photo /trip/files/menu.webp, not sent again: read it to see it]')));
+  const stub = '[photo /trip/files/menu.webp, not sent again: read it to see it]';
+  const at = (/** @type {any} */ r) => r.messages.findIndex((/** @type {any} */ m) => m.parts.some((/** @type {any} */ p) => p.text === stub || p.type === 'image'));
+  assert.ok(k.requests[2].messages[at(k.requests[2])].parts.some((/** @type {any} */ p) => p.text === stub));
   assert.ok(JSON.stringify(k.requests[2]).length < 100_000, `${JSON.stringify(k.requests[2]).length} bytes`);
+  // The stub is true: she reads the path, and the photo is back for that turn, at its own place, the read's copy said as the same.
+  assert.equal(images(k.requests[3]).length, 1);
+  assert.equal(at(k.requests[3]), at(k.requests[2]), 'at its earliest place');
+  assert.ok(k.requests[3].messages.some((/** @type {any} */ m) => m.parts.some((/** @type {any} */ p) => p.text === '[photo /trip/files/menu.webp, the same as above]')));
+});
+
+test('the housekeeping measure weighs what is sent: an older photo left out makes no summary forced', async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const done = { toolCalls: [{ name: 'speak', input: { text: 'Got it.' } }, { name: 'sleep', input: {} }] };
+  /** @type {any[]} */
+  const timers = [];
+  const k = await agentKit([[done, done, done, done]], { agent: { timers: { set: (/** @type {any} */ fn) => { timers.push(fn); return timers.length; }, clear: (/** @type {number} */ h) => { timers[h - 1] = null; } } } });
+  // The largest request at 1 MiB: two turns on, the first photo (400 KB as sent) and the new one (800 KB) together would be over it.
+  await updateAppSettings(k.ws, { shiori: { compaction: { maxRequestMiB: 1 } }, photos: { request: { maxBytes: 1024 * 1024 } } });
+  await k.ws.write(k.trip, '/files/a.webp', new TextEncoder().encode('x'.repeat(300_000)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+  await k.ws.write(k.trip, '/files/b.webp', new TextEncoder().encode('x'.repeat(600_000)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+  for (const [words, photos] of /** @type {[string, any[]][]} */ ([['Look', [{ path: '/trip/files/a.webp' }]], ['Nice', []], ['And?', []], ['This one', [{ path: '/trip/files/b.webp' }]]])) {
+    k.agent.send(words, { photos });
+    await k.agent.idle();
+  }
+  assert.equal(k.requests.length, 4);
+  assert.deepEqual(await k.events(['compaction']), [], 'no summary was forced');
+  assert.deepEqual(k.requests[3].messages.flatMap((/** @type {any} */ m) => m.parts).filter((/** @type {any} */ p) => p.type === 'image').map((/** @type {any} */ p) => p.data.length), [800_000]);
 });
