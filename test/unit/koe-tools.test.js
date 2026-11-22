@@ -119,8 +119,9 @@ test('a photo reaches Koe only when its model takes photos; otherwise a stub, an
     const types = (/** @type {any} */ req) => req.messages.flatMap((/** @type {any} */ m) => m.parts.map((/** @type {any} */ p) => (p.type === 'text' ? p.text : p.type)));
     const koe = types(k.sent['model-koe'][0]);
     if (input.includes('image')) assert.ok(koe.includes('image'), JSON.stringify(koe));
-    else assert.deepEqual(koe.slice(0, 2), ['[the user sent a photo]', '[a photo; Kokoro sees it]']);
+    else assert.deepEqual(koe.slice(0, 3), ['[the user sent a photo]', 'The photo /trip/files/p.webp, 4032×3024, sent as 2000×1500.', '[a photo; Kokoro sees it]']);
     assert.ok(types(k.sent['model-0'][0]).includes('image'), 'Kokoro sees it');
+    assert.ok(types(k.sent['model-0'][0]).includes('The photo /trip/files/p.webp, 4032×3024, sent as 2000×1500.'), "Kokoro is told its path and sizes, as Koe is");
     assert.ok(types(k.sent['model-0'][0]).includes('[the user sent a photo]'));
   }
 });

@@ -203,7 +203,7 @@ export class Transcript {
         this.waiting = 'wake';
       }
     } else if (e.type === 'msg.user' && this.half === 'kokoro' && d.split) {
-      this.#line([{ type: 'text', text: /** @type {string} */ (blockFor(e, texts)) }, ...r.images, ...this.#handed(d)]);
+      this.#line([{ type: 'text', text: /** @type {string} */ (blockFor(e, texts)) }, ...this.#pictures(d, r), ...this.#handed(d)]);
       this.unanswered = true;
       this.waiting = 'user';
       this.#joined();
@@ -212,7 +212,7 @@ export class Transcript {
       if (texts.text && !(d.answer && (this.half === 'one' || this.#calls.has(d.answer)))) {
         // Koe reads typed words marked; one half's plain lines are the typed ones, as its instructions say.
         /* en */ const said = koe ? koeLine(d, texts.text, { files: false }) : d.claim ? claimLine(texts.text) : d.meanwhile ? `[meanwhile, the user wrote] ${texts.text}` : texts.text;
-        this.#line([...(said ? /** @type {Part[]} */ ([{ type: 'text', text: said }]) : []), ...r.images, ...this.#handed(d)]);
+        this.#line([...(said ? /** @type {Part[]} */ ([{ type: 'text', text: said }]) : []), ...this.#pictures(d, r), ...this.#handed(d)]);
         // Koe owes an answer only to what was typed to it.
         if (!koe || d.split) {
           this.unanswered = true;
@@ -458,6 +458,14 @@ export class Transcript {
    */
   get owedHandover() {
     return this.#handover;
+  }
+
+  /** A message's photos, each after its words as written (spec §4.8; loop.js #userPhotos); one written before them has none. r.images pairs with d.images by index (resolveEvent). @param {any} d @param {Resolved} r @returns {Part[]} */
+  #pictures(d, r) {
+    return r.images.flatMap((p, i) => {
+      const told = d.images?.[i]?.told;
+      return typeof told === 'string' ? [{ type: /** @type {const} */ ('text'), text: told }, p] : [p];
+    });
   }
 
   /** What annai tells her of a message's files, after its words (handover.js), from its data. @param {any} d @returns {Part[]} */

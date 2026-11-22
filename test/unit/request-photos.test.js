@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { requestLimits, fits, PhotoCopies, sizeLine, healRegion } from '../../src/core/request-photos.js';
+import { requestLimits, fits, PhotoCopies, sizeLine, photoLine, healRegion } from '../../src/core/request-photos.js';
 import { photoSettings } from '../../src/core/photos.js';
 import { utf8 } from '../../src/core/bytes.js';
 import { fakeCodec } from './agent-kit.js';
@@ -46,6 +46,15 @@ test('a photo within the limits goes as it is; one over them is copied once, and
   assert.equal(codec.calls.length, 1);
   assert.equal(sizeLine(big, first), '4032×3024, sent as 2000×1500');
   assert.equal(sizeLine({ hash: 's', type: 'image/webp', width: 1600, height: 1200, size: 1 }, small), '1600×1200');
+});
+
+test("photoLine: what Shiori reads before a photo she is sent, her read's and the user's alike: its path, both sizes, and a part's region (spec §4.8)", () => {
+  const big = { hash: 'big', type: 'image/webp', width: 4032, height: 3024, size: 3_000_000 };
+  const copy = (/** @type {number} */ width, /** @type {number} */ height, made = true) => ({ hash: 'c', mediaType: 'image/webp', width, height, made });
+  assert.equal(photoLine('/trip/files/a.webp', big, copy(1280, 960)), 'The photo /trip/files/a.webp, 4032×3024, sent as 1280×960');
+  assert.equal(photoLine('/trip/files/a.webp', big, copy(4032, 3024, false)), 'The photo /trip/files/a.webp, 4032×3024', 'sent as it is');
+  assert.equal(photoLine('/trip/files/a.heic', { hash: 'h', type: 'image/heic', size: 1 }, copy(2000, 1500)), 'The photo /trip/files/a.heic, size unknown, sent as 2000×1500');
+  assert.equal(photoLine('/trip/files/a.webp', big, copy(2000, 1500), healRegion([0, 0, 0.5, 0.5], 4032, 3024)), 'The photo /trip/files/a.webp, part [0, 0, 0.5, 0.5] (2016×1512 of 4032×3024), sent as 2000×1500');
 });
 
 test('a crop is always a copy, made from the stored photo', async () => {

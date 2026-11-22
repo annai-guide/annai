@@ -8,6 +8,15 @@ import { t } from '../core/l10n.js';
 
 /** @type {Map<string, Promise<boolean>>} */
 const support = new Map();
+/**
+ * A size step (spec §4.8): at one quality a copy's bytes grow with its longest edge to about the power GROWTH, so the next edge is the one whose
+ * copy would be AIM of the cap. Measured 2026-11-21 at quality 0.5 in Linux Chromium and WebKit: the power 1.47 to 1.73 as JPEG, 1.28 to 1.42 as
+ * WebP on real 12 MP photos (photo-small-next's), 1.0 to 2.1 on synthetic ones; on those, at caps of 128 to 384 KiB, aiming at 93% landed 72 of
+ * 80 size steps within the cap at the first try and filled a 256 KiB cap to 93% on average (the old step, 0.8 of the edge: 86%, with more encodes); 90%
+ * filled less and missed as often, 96% missed more.
+ */
+const GROWTH = 1.5;
+const AIM = 0.93;
 
 /** A canvas of the given size: an OffscreenCanvas where there is one. @param {number} width @param {number} height */
 function canvas(width, height) {
@@ -83,7 +92,7 @@ export async function encodePhoto(source, opts) {
         return { bytes: new Uint8Array(await blob.arrayBuffer()), type, width, height };
       }
       if (quality > 0.5) quality = Math.max(0.5, Math.round((quality - 0.1) * 100) / 100);
-      else ({ width, height } = fitSize(width, height, Math.floor(Math.max(width, height) * 0.8), null));
+      else ({ width, height } = fitSize(width, height, Math.floor(Math.max(width, height) * ((AIM * opts.maxBytes) / blob.size) ** (1 / GROWTH)), null));
     }
   } finally {
     bitmap.close();
