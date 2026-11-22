@@ -2079,8 +2079,13 @@ export class Agent {
       if (open && scope === this.scope) return this.#write(ev);
       const e = await record(this.store, scope, { now: this.#stamp(scope), ...this.#marked(ev) });
       if (!open) this.#emit('event', e); // heard as a held wake's writer's are (#keptIn): a draft is named by a spoken line, live mode follows its rows
-      else if (scope === this.scope) this.#joinLate(e);
-      else this.#late.push({ e });
+      else {
+        if (scope === this.scope) this.#joinLate(e);
+        else this.#late.push({ e });
+        // The other half reads this conversation too, and may have read it before this entry (Halves opens both at once): #write's path tells it, this one must too
+        // (observe holds it for an open under way), or Koe's next turn doesn't know annai showed the reminder this entry is.
+        await this.#half.logged?.(e, { texts: {}, images: [] });
+      }
       return e;
     });
   }

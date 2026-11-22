@@ -30,6 +30,8 @@ const fired = (text = LEAVE, watch = 'w1') => ({ kind: 'trigger', text: `Your wa
 const KILLED = Array(1 + NETWORK_RETRIES.length).fill({ delayMs: 30, error: 'network', message: 'Load failed' });
 /** The reminders' cards, by their words. @param {any[]} cards */
 const reminders = (cards) => cards.filter((n) => n.title === 'Reminder').map((n) => n.body);
+/** Which half raised each reminder's card (listen's `by`). @param {any[]} cards */
+const raisedBy = (cards) => cards.filter((n) => n.title === 'Reminder').map((n) => n.by);
 /** The reminders' entries in the log, by their words. @param {any} k */
 const entries = async (k) => (await k.events(['reminder'])).map((/** @type {any} */ e) => e.data.text);
 
@@ -43,8 +45,8 @@ function lingers(half) {
 const linger = { name: 'linger', input: {} };
 
 /**
- * The cards an agent (or both its halves) raises from now on, and how many requests her models had been given when the first reminder came: 0 is at the
- * open, before any restart turn asked anything. @param {any} k @param {any} agent
+ * The cards an agent (or both its halves) raises from now on, each with the half that raised it (`by`: 'one', 'kokoro' or 'koe'), and how many requests her
+ * models had been given when the first reminder came: 0 is at the open, before any restart turn asked anything. @param {any} k @param {any} agent
  */
 function listen(k, agent) {
   const asked = k.requests.length;
@@ -52,8 +54,9 @@ function listen(k, agent) {
   const cards = [];
   const first = { requests: -1 };
   for (const half of agent.kokoro ? [agent.kokoro, agent.koe] : [agent]) {
+    const by = !agent.kokoro ? 'one' : half === agent.kokoro ? 'kokoro' : 'koe';
     half.on('notice', (/** @type {any} */ n) => {
-      cards.push(n);
+      cards.push({ ...n, by });
       if (n.title === 'Reminder' && first.requests < 0) first.requests = k.requests.length - asked;
     });
   }
@@ -117,7 +120,7 @@ for (const [mode, o] of MODES) {
     assert.equal((await Transcript.load(k.store, k.trip)).unanswered, false);
   });
 
-  test(`put away (hidden, then pagehide) while a tool of hers runs in a watch's turn, the turn then ending by itself: its end is written as ever, and the next start shows the reminder once, with no restart and no model call${mode}`, async (t) => {
+  test(`put away (${o.halves ? 'hidden, then pagehide' : 'pagehide'}) while a tool of hers runs in a watch's turn, the turn then ending by itself: its end is written as ever, and the next start shows the reminder once, with no restart and no model call${mode}`, async (t) => {
     useClock(t);
     const k = await agentKit([[{ toolCalls: [linger, sleep] }, asleep]], o);
     const tool = lingers(k.agent.kokoro ?? k.agent);
@@ -165,6 +168,7 @@ for (const [mode, o] of MODES) {
     k.agent.leaving();
     await idleAtOnce(k);
     const [wake] = await k.events(['wake']);
+    assert.equal((await Transcript.load(k.store, k.trip)).unanswered, true, 'the cut turn is still owed before the error');
     await record(k.store, k.trip, { type: 'error', actor: 'system', data: { kind: 'budget', wake: wake.data.id, message: 'A limit was reached.', quiet: true } });
     assert.equal((await Transcript.load(k.store, k.trip)).unanswered, false, 'the error ended the turn it was written for');
     const next = await (o.halves ? nextHalves(k) : nextStart(k));
@@ -190,8 +194,6 @@ for (const [mode, o] of MODES) {
     assert.deepEqual(await entries(k), [LEAVE]);
     const again = await (o.halves ? nextHalves(k) : nextStart(k));
     assert.deepEqual(reminders(again.cards), [], 'its entry settled it');
-    door.open(); // the dead page's show ends; nothing waits on it any more
-    await idleAtOnce(k);
   });
 
   test(`a plan's reminder and an answer's, carried by a wake's record: shown at the next start in their own words, and kept as entries as they were${mode}`, async (t) => {
@@ -209,8 +211,9 @@ for (const [mode, o] of MODES) {
     assert.deepEqual((await k.events(['reminder'])).map((/** @type {any} */ e) => [e.data.watch, e.data.text, e.data.plan, e.data.answer]), [['plan:dinner:coming-up', 'Dinner soon', plan, undefined], ['a1', answer, undefined, true]]);
   });
 
-  // The guard in #showOwed: a turn that stops short shows what it owes, but not on a page being left: a card there reaches no one, and the record
-  // the next start reads its reminder from is the wake's, which this write refusal kept from being written (a full phone: C169, C172).
+  // The guard in #showOwed: a turn that stops short (here, the phone refuses its first write, so it never reaches her model) shows what its wake carried, but
+  // not on a page being left: a card there reaches no one. The next start is not read here: the wake's record was refused too (a full phone), so the log has
+  // nothing for the open to show; the Deferred entry says C169's catch-up shows it then, by reading the code, which this test does not reach.
   for (const [leaving, shows] of /** @type {const} */ ([[true, []], [false, [LEAVE]]])) {
     test(`a watch's wake whose first write the phone refuses ${leaving ? 'as the page is being left' : 'on a page that stays'}: the turn stops short and ${leaving ? 'shows no card there' : 'shows the reminder, as it always did'}${mode}`, async (t) => {
       useClock(t);
@@ -443,13 +446,15 @@ for (const [what, log, owed] of /** @type {[string, any[], any[]][]} */ ([
 }
 
 // Koe on: a watch's reminder rides Koe's wake (spec §11.3: so it is said once), and Kokoro is told Koe says it. Koe's own records keep it. At the next start
-// Kokoro's half shows what the log still owes (both halves read it; Koe's open waits for Kokoro's), once, and whichever half queues the restart says so.
+// Kokoro's half shows what the log still owes, once, and whichever half queues the restart says so when its own read was made before the entry (Koe's does not:
+// on a first open Halves opens Koe once Kokoro's open is done, so Koe reads the entry itself; Koe's restart hook, asked only when its turn was cut, waits for
+// Kokoro's open).
 const KOE_KILLED = { type: [...KILLED, asleep] };
 for (const [who, kokoro] of /** @type {const} */ ([
   ['Koe takes its own turn up (Kokoro had finished)', [asleep]],
   ['Kokoro takes both up (its turn was cut too)', [...KILLED, asleep]],
 ])) {
-  test(`Koe on, closed in Koe's model call of a watch's turn: ${who}, the reminder is shown once at the open, and that restart is told so`, async (t) => {
+  test(`Koe on, closed in Koe's model call of a watch's turn: ${who}, Kokoro's half shows the reminder once at the open, and the restart carries none (Kokoro's is told it was shown, Koe's reads the entry)`, async (t) => {
     useClock(t);
     const k = await agentKit([kokoro], { koe: KOE_KILLED });
     const cards = raw(k);
@@ -462,6 +467,7 @@ for (const [who, kokoro] of /** @type {const} */ ([
     const wakes = await k.events(['wake']);
     const next = await nextHalves(k);
     assert.deepEqual(reminders(next.cards), [LEAVE], 'once, though both halves open the conversation');
+    assert.deepEqual(raisedBy(next.cards), ['kokoro'], "by Kokoro's half, which can hold it back while a live session talks (Koe has no such hold)");
     assert.equal(next.first.requests, 0, 'at the open');
     assert.deepEqual(await entries(k), [LEAVE]);
     assert.deepEqual(wakes.filter((/** @type {any} */ e) => e.data.half === 'koe').map((/** @type {any} */ e) => e.data.reminders), [[{ watch: 'w1', text: LEAVE }]], "Koe's wake record keeps it");
@@ -469,41 +475,52 @@ for (const [who, kokoro] of /** @type {const} */ ([
     const taken = await restarts(k);
     assert.deepEqual(taken.map((/** @type {any} */ e) => e.data.half), [kokoro.length === 1 ? 'koe' : 'kokoro']);
     assert.equal('reminders' in taken[0].data, false);
-    // Kokoro's restart is told annai showed it. Koe opens after Kokoro's open is done here, so it reads the entry itself.
-    if (kokoro.length === 1) assert.match(JSON.stringify(k.sent['model-koe'].at(-1).messages), /Shown by annai itself.*Leave for the airport/);
-    else assert.match(taken[0].data.reasons[0].text, SHOWN);
+    // Kokoro's restart is told annai showed it. Koe opens after Kokoro's open is done here, so it reads the entry itself, and its restart has nothing to be told.
+    if (kokoro.length === 1) {
+      assert.doesNotMatch(taken[0].data.reasons[0].text, SHOWN);
+      assert.match(JSON.stringify(k.sent['model-koe'].at(-1).messages), /Shown by annai itself.*Leave for the airport/);
+    } else assert.match(taken[0].data.reasons[0].text, SHOWN);
   });
 }
 
 // Coming back to the conversation from another one: both halves open it at once (Halves.open), Koe's read made before Kokoro's show, so its transcript
-// still lists the reminder: Koe doesn't show it, and its restart says annai did.
-test('Koe on, the conversation opened from another one: Kokoro shows the reminder once, and the restart Koe queues says it was shown', async (t) => {
-  useClock(t);
-  const k = await agentKit([[asleep]], { koe: KOE_KILLED });
-  k.agent.wake(fired());
-  await until(() => (k.sent['model-koe']?.length ?? 0) === 1 && (k.sent['model-0']?.length ?? 0) === 1);
-  await idleAtOnce({ agent: k.agent.kokoro }); // its sleep ended its turn
-  k.agent.leaving();
-  await idleAtOnce(k);
-  const other = await createTrip(k.ws, { title: 'Kyoto' });
-  for (const m of ['m-0', 'm-koe']) k.llm.bench.clear(m);
-  const agent = new Halves({ store: k.store, ws: k.ws, llm: k.llm, registry: k.registry, codec: k.codec, voice: null, timeZone: () => 'UTC', secondMs: 10 });
-  agent.addLoopTools(selfTools(agent.kokoro));
-  const { cards } = listen(k, agent);
-  await inTime(agent.open(other), 'the open did not finish');
-  await idleAtOnce({ agent });
-  await inTime(agent.opening, 'Koe did not open');
-  assert.deepEqual(reminders(cards), [], 'another conversation: nothing owed there');
-  await inTime(agent.open(k.trip), 'the open did not finish');
-  await idleAtOnce({ agent });
-  await inTime(agent.opening, 'Koe did not open');
-  await idleAtOnce({ agent });
-  assert.deepEqual(reminders(cards), [LEAVE], 'once');
-  assert.deepEqual(await entries(k), [LEAVE]);
-  const taken = await restarts(k);
-  assert.deepEqual(taken.map((/** @type {any} */ e) => e.data.half), ['koe']);
-  assert.match(taken[0].data.reasons[0].text, SHOWN);
-});
+// still lists the reminder: Koe doesn't show it, the restart that is queued (Koe's, or Kokoro's when its turn was cut too) says annai did, and Koe's
+// transcript gets the entry Kokoro wrote (the other half's copy: Koe's next turn knows annai showed it, and doesn't owe it).
+for (const [who, kokoro, restarter] of /** @type {const} */ ([
+  ['Kokoro had finished, Koe was cut', [asleep], 'koe'],
+  ['both were cut', [...KILLED, asleep], 'kokoro'],
+])) {
+  test(`Koe on, the conversation opened from another one (${who}): Kokoro shows the reminder once, the restart is told so, and Koe's transcript holds its entry`, async (t) => {
+    useClock(t);
+    const k = await agentKit([kokoro], { koe: KOE_KILLED });
+    k.agent.wake(fired());
+    await until(() => (k.sent['model-koe']?.length ?? 0) === 1 && (k.sent['model-0']?.length ?? 0) === 1);
+    if (kokoro.length === 1) await idleAtOnce({ agent: k.agent.kokoro }); // its sleep ended its turn
+    k.agent.leaving();
+    await idleAtOnce(k);
+    const other = await createTrip(k.ws, { title: 'Kyoto' });
+    for (const m of ['m-0', 'm-koe']) k.llm.bench.clear(m);
+    const agent = new Halves({ store: k.store, ws: k.ws, llm: k.llm, registry: k.registry, codec: k.codec, voice: null, timeZone: () => 'UTC', secondMs: 10 });
+    agent.addLoopTools(selfTools(agent.kokoro));
+    const { cards } = listen(k, agent);
+    await inTime(agent.open(other), 'the open did not finish');
+    await idleAtOnce({ agent });
+    await inTime(agent.opening, 'Koe did not open');
+    assert.deepEqual(reminders(cards), [], 'another conversation: nothing owed there');
+    await inTime(agent.open(k.trip), 'the open did not finish');
+    await idleAtOnce({ agent });
+    await inTime(agent.opening, 'Koe did not open');
+    await idleAtOnce({ agent });
+    assert.deepEqual(reminders(cards), [LEAVE], 'once');
+    assert.deepEqual(raisedBy(cards), ['kokoro']);
+    assert.deepEqual(await entries(k), [LEAVE]);
+    const taken = await restarts(k);
+    assert.deepEqual(taken.map((/** @type {any} */ e) => e.data.half), [restarter]);
+    assert.match(taken[0].data.reasons[0].text, SHOWN);
+    assert.deepEqual(agent.koe.transcript.owedReminders, [], "Koe's transcript holds the entry that settles it");
+    assert.match(JSON.stringify(agent.koe.transcript.messages), /Shown by annai itself.*Leave for the airport/);
+  });
+}
 
 // The final review's finding (Fable 2): Kokoro's restart turn carried the reminder, could not settle it while Koe worked (Koe's line never reaches Kokoro's
 // count), and showed it at its end, after a Koe that said it. Now no turn owes it: annai shows it once at the open, before anything is told to Koe, and the
@@ -518,11 +535,12 @@ test("Koe on, both halves cut, Kokoro's restart tells Koe and Koe says the remin
   await idleAtOnce(k);
   const next = await nextHalves(k);
   assert.deepEqual(reminders(next.cards), [LEAVE], 'one card');
+  assert.deepEqual(raisedBy(next.cards), ['kokoro']);
   assert.deepEqual(await entries(k), [LEAVE], 'one entry');
+  const taken = await restarts(k);
+  assert.deepEqual(taken.map((/** @type {any} */ e) => e.data.half), ['kokoro'], 'one restart, Kokoro\'s: Koe takes none up');
+  assert.match(taken[0].data.reasons[0].text, SHOWN);
   assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => [e.data.half, e.data.text]), [['koe', LEAVE]], "Koe's own line, as its model chose");
-  const [restart] = await restarts(k);
-  assert.equal(restart.data.half, 'kokoro');
-  assert.match(restart.data.reasons[0].text, SHOWN);
 });
 
 test("Koe on, put away (hidden, then pagehide) while a tool of Koe's runs in a watch's turn, Koe's turn then ending by itself: its end is written, and the next start shows the reminder once with no restart", async (t) => {
@@ -542,6 +560,7 @@ test("Koe on, put away (hidden, then pagehide) while a tool of Koe's runs in a w
   const asked = k.requests.length;
   const next = await nextHalves(k);
   assert.deepEqual(reminders(next.cards), [LEAVE]);
+  assert.deepEqual(raisedBy(next.cards), ['kokoro']);
   assert.deepEqual(ends, ['koe', 'kokoro'], 'both turns ended');
   assert.deepEqual(await restarts(k), []);
   assert.equal(k.requests.length, asked, 'no model call at the next start');
