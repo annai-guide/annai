@@ -407,7 +407,8 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       let res;
       const body = JSON.stringify(applyPatches(built.body, endpoint, model, level, patches));
       bytes = utf8Length(body); // in the trace: how much a kept turn saves
-      // The model's wait starts once the provider has the request (the answer's headers); before, plus the body's time at SLOW_UPLINK.
+      // The model's wait starts once the provider has the request (the answer's headers); before, plus the body's time at SLOW_UPLINK, twice
+      // that when `shared` (the other half sends on the same link).
       sending = firstOutputMs + sendMs(shared ? 2 * bytes : bytes);
       wait(sending);
       try {
@@ -433,9 +434,9 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   } catch (e) {
     clearTimeout(t);
     let err = asProviderError(e, linked, type, registry);
-    // With a photo's or a PDF's bytes in what was sent (not the turns a kept one holds), likelier the send than the model; text alone stays
-    // late (a server that never streams).
-    if (err.said?.code === 'late' && sending && spec.request.messages.slice(spec.kept?.from ?? 0).some((m) => m.parts.some((p) => (p.type === 'image' && !p.fileId) || p.type === 'document'))) {
+    // With a photo's, a PDF's or a recording's bytes in what was sent (not the turns a kept one holds), likelier the send than the model; text
+    // alone stays late (a server that never streams).
+    if (err.said?.code === 'late' && sending && spec.request.messages.slice(spec.kept?.from ?? 0).some((m) => m.parts.some((p) => (p.type === 'image' && !p.fileId) || p.type === 'document' || p.type === 'audio'))) {
       const seconds = Math.max(1, Math.round(sending / 1000));
       /* en */
       err = new ProviderError('timeout', `No answer in ${seconds} ${seconds === 1 ? 'second' : 'seconds'}. The connection may be too slow to send photos or files.`, { cause: e, said: { code: 'send', seconds } });

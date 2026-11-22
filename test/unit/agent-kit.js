@@ -286,6 +286,21 @@ export function refusing(k, { error = () => new DOMException('Unable to store re
   return { full: (w) => { which = w; }, back };
 }
 
+/**
+ * What each of Shiori's own turns' calls (the ones with keepNative) asked of the model, from now on: its role, whether it said it shares the link
+ * with the other half (callOnce's `shared`), and Koe's state when it was made. @param {any} k @returns {[string, boolean | undefined, string][]}
+ */
+export function watchShared(k) {
+  /** @type {[string, boolean | undefined, string][]} */
+  const seen = [];
+  const call = k.llm.call;
+  k.llm.call = (/** @type {any} */ c) => {
+    if (c.keepNative) seen.push([c.role, c.shared, k.agent.koeState]);
+    return call(c);
+  };
+  return seen;
+}
+
 /** Waits until fn() is true (every 2 ms, at most ms). @param {() => boolean} fn @param {number} [ms] */
 export async function until(fn, ms = 2000) {
   const end = Date.now() + ms;

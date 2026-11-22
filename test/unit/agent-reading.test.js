@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { noReader, readerRoles, readFile } from '../../src/core/agent/reading.js';
+import { sendMs } from '../../src/core/llm/uploads.js';
+import { useClock } from './clock.js';
 
 test('with nothing here that reads a PDF, the note names the setting, and the plugin only when asked to', () => {
   assert.equal(noReader('pdf', { plugin: false }), "No model here can read PDFs, so what it says can't be told. Tell the user what fixes it: a model that reads PDFs (Takes PDFs on its page in Settings → Models).");
@@ -34,7 +36,8 @@ test("the roles that read for a half: Koe's first for Kokoro; for Koe, Utility's
   assert.deepEqual(readerRoles(cfg, 'kokoro'), ['utility', 'main'], 'a realtime model is no reader');
 });
 
-test("a reading's limit counts from when its reader has the request, as a model's wait does: a photo slower to go up than the limit is still described, and a reader that never answers still ends (photo-wait's follow-ups, 2)", async () => {
+test("a reading's limit has each request's time to go up on top, added once when it is sent: a photo slower to go up than the limit is still described, and a reader that never answers ends at the limit and that time, not later (photo-wait's follow-ups, 2)", async (t) => {
+  useClock(t); // a clock that moves only by its timers: an end is exact, whatever the machine's speed
   /** @type {any} */
   const cfg = {
     providers: { p: { id: 'p', user: { name: 'P', abilities: { chat: { kind: 'chat', type: 'scripted', on: true } } } } },
@@ -52,7 +55,7 @@ test("a reading's limit counts from when its reader has the request, as a model'
     secondMs: 1, explain: () => 'it failed', store: /** @type {any} */ ({}),
   });
   assert.deepEqual(await read(250), { how: 'told', text: "What it shows (described by Reader, as you can't see photos): A pelican on a post.", images: [] });
-  const started = performance.now();
+  const started = Date.now();
   assert.equal((await read(Infinity)).how, 'late');
-  assert.ok(performance.now() - started >= 30 + 457 - 2, `it waited ${Math.round(performance.now() - started)} ms, for the limit and the photo's 457 ms`);
+  assert.equal(Date.now() - started, 30 + sendMs(4_000), "the limit and the photo's send time, once");
 });

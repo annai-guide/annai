@@ -1,7 +1,7 @@
 // K5: Koe live (the Koe and Kokoro design, "Realtime sessions"; plan K5), against the stand-in realtime server.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { until, rescript, slowEntry, settlesOnlyAfter, raw } from './agent-kit.js';
+import { until, rescript, slowEntry, settlesOnlyAfter, raw, watchShared } from './agent-kit.js';
 import { tripTools } from '../../src/core/agent/trip-tools.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { readConfig, saveRoles } from '../../src/core/llm/config.js';
@@ -1676,6 +1676,21 @@ const refuse = (k, only = null) => {
   const real = k.llm.live;
   k.llm.live = async (/** @type {string} */ id, /** @type {any} */ ...rest) => { if (only && id !== only) return real(id, ...rest); throw new Error('the connection was refused'); };
 };
+
+test("Koe live: Kokoro's turn is shared, as beside Koe's text turns: a live session sends the photo on the same link (photo-wait's follow-ups, 5)", async () => {
+  const k = await liveKit([], { kokoro: [[{ toolCalls: [{ name: 'speak', input: { text: 'Here is the note.' } }] }, sleep]], koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  try {
+    k.llm.bench.bench('m-koe', 60_000);
+    assert.equal(await k.agent.split(), true);
+    assert.equal(k.agent.koeState, 'live');
+    const seen = watchShared(k);
+    k.agent.kokoro.send('Where are we?');
+    await k.agent.idle();
+    assert.ok(seen.length > 0 && seen.every(([role, shared, state]) => role === 'main' && shared === true && state === 'live'), JSON.stringify(seen));
+  } finally {
+    await k.done();
+  }
+});
 
 test("fix pass 2, finding 2: a tap whose live session can't open leaves a Kokoro turn that is working alone (no Stopped by the user), and says so", async () => {
   const k = await liveKit([], { kokoro: [[{ delayMs: 400, toolCalls: [{ name: 'speak', input: { text: 'Here is the note.' } }] }, sleep]], koe: { type: { rules: [{ match: '.', reply: sleep }] } } });

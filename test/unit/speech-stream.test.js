@@ -114,6 +114,19 @@ test('the first piece must come within the time limit, and then no gap may be lo
   assert.deepEqual((await traced(store)).map((d) => d.outcome), ['timeout', 'timeout', 'ok']);
 });
 
+test("a stream's first piece is timed from the answer's headers, as a clip is (photo-wait's follow-ups, 1): headers at 100 ms and the piece 250 ms after them is played within a 300 ms limit, 350 ms after them is not", async (t) => {
+  useClock(t);
+  /** A fetch whose answer's headers come after 100 ms, its pieces at these times after them. @param {{ at: number }[]} pieces */
+  const afterHeaders = (pieces) => async (/** @type {string} */ url, /** @type {RequestInit} */ init) => {
+    await tick(100);
+    return slowFetch(pieces)(url, init);
+  };
+  const r = await speechCall({ type: /** @type {any} */ (streams), endpoint: endpoint(), model, key: null, text: 'Hi.', stream: true, timeoutMs: 300, fetch: afterHeaders([{ at: 250 }]) });
+  assert.equal(await drain(/** @type {any} */ (r.stream).chunks), PIECE);
+  await assert.rejects(speechCall({ type: /** @type {any} */ (streams), endpoint: endpoint(), model, key: null, text: 'Hi.', stream: true, timeoutMs: 300, fetch: afterHeaders([{ at: 350 }]) }),
+    (e) => e instanceof ProviderError && e.kind === 'timeout');
+});
+
 test("a whole clip has one wait for all of it, not the voice's silence: a clip that takes longer than the wait fails, so a heavy voice on a slow link is handed over after one wait, and \"Wait for the voice\" is how a traveller waits longer", async (t) => {
   useClock(t);
   const store = createMemoryStore();

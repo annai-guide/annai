@@ -14,6 +14,8 @@ import { readConfig, saveProvider, saveRoles, newProvider, newModel, speechKind 
 import { costs, spentToday } from '../../src/core/agent/budgets.js';
 import { createLlm } from '../../src/core/llm/service.js';
 import { callRole, Bench } from '../../src/core/llm/fallback.js';
+import { sendMs } from '../../src/core/llm/uploads.js';
+import { useClock } from './clock.js';
 
 /** A speech type of each direction, as a plugin would register them. */
 const hears = {
@@ -131,7 +133,8 @@ test('speech errors come back as the usual kinds, with an echoed key blanked out
   assert.ok(!JSON.stringify(await traced(store)).includes('sk-hear-secret'));
 });
 
-test("a transcription's time limit starts once the provider has the recording, as a model's wait does: a recording slower to go up than the limit is heard; one that never goes up still ends; once the answer came, the limit is its own (photo-wait's follow-ups, 1)", async () => {
+test("a transcription's time limit starts once the provider has the recording, as a model's wait does: a recording slower to go up than the limit is heard; one that never goes up ends at the limit and the send's time once; once the answer came, the limit is its own (photo-wait's follow-ups, 1)", async (t) => {
+  useClock(t); // a clock that moves only by its timers: an end is exact, whatever the machine's speed
   // 4,000 bytes: 0.46 s at the slow link (SLOW_UPLINK, 70 kbit/s), past the 50 ms limit; a WAV of 10 s is about 320 KB, 37 s.
   const audio = { data: new Uint8Array(4_000), mediaType: 'audio/wav', seconds: 0.1 };
   /** A fetch whose answer's headers come ms after it is asked, its body then the transcript, or nothing until it is stopped. @param {number} ms @param {boolean} [stalls] */
@@ -142,12 +145,27 @@ test("a transcription's time limit starts once the provider has the recording, a
   });
   const hear = (/** @type {any} */ fetch) => speechCall({ type: /** @type {any} */ (hears), endpoint: endpoint('test-in'), model: model(null), key: null, audio, fetch, timeoutMs: 50 });
   assert.equal((await hear(answersAfter(250))).text, 'Where should we eat?');
-  let started = performance.now();
+  let started = Date.now();
   await assert.rejects(hear(answersAfter(Infinity)), (e) => e instanceof ProviderError && e.kind === 'timeout');
-  assert.ok(performance.now() - started >= 50 + 457 - 2, `it waited ${Math.round(performance.now() - started)} ms, for the limit and the recording's 457 ms`);
-  started = performance.now();
-  await assert.rejects(hear(answersAfter(0, true)), (e) => e instanceof ProviderError && e.kind === 'timeout');
-  assert.ok(performance.now() - started < 400, `it ended ${Math.round(performance.now() - started)} ms in, by the 50 ms limit from the answer`);
+  assert.equal(Date.now() - started, 50 + sendMs(4_000), "the limit and the recording's send time, once");
+  started = Date.now();
+  await assert.rejects(hear(answersAfter(10, true)), (e) => e instanceof ProviderError && e.kind === 'timeout');
+  assert.equal(Date.now() - started, 10 + 50, 'the answer at 10 ms, then the limit from it');
+});
+
+test("a voice's time limit counts the text's send as a transcription's does: a text slower to go up than the limit is spoken; one that never goes up ends at the limit and the send's time (photo-wait's follow-ups, 1)", async (t) => {
+  useClock(t);
+  // 4,000 characters: 0.46 s at the slow link, past the 100 ms limit; the answer's headers at 300 ms.
+  const say = (/** @type {number} */ ms) => speechCall({ type: /** @type {any} */ (speaks), endpoint: endpoint('test-out'), model: model(null), key: null, text: 'a'.repeat(4_000), timeoutMs: 100,
+    fetch: (_url, init) => new Promise((done, fail) => {
+      const t = ms === Infinity ? undefined : setTimeout(() => done(new Response(new Uint8Array(10), { headers: { 'content-type': 'audio/mpeg' } })), ms);
+      /** @type {any} */ (init).signal.addEventListener('abort', () => { clearTimeout(t); fail(/** @type {any} */ (init).signal.reason); }, { once: true });
+    }) });
+  assert.equal((await say(300)).clip?.data.length, 10);
+  const started = Date.now();
+  await assert.rejects(say(Infinity), (e) => e instanceof ProviderError && e.kind === 'timeout');
+  const sent = JSON.stringify({ model: 'ears-1', text: 'a'.repeat(4_000) }).length;
+  assert.equal(Date.now() - started, 100 + sendMs(sent), "the limit and the text's send time, once");
 });
 
 test('speech prices: per minute (with a minimum), per million characters, or unknown', () => {

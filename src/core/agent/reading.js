@@ -75,8 +75,9 @@ export function noReader(kind, { plugin = false, photos = false } = {}) {
 /**
  * Reads a file for a model that can't take it. Every reader call is a side job: reasoning off, in the trace as a describe, waiting for
  * its first words the longer of its role's wait and DESCRIBE_S (for a PDF, at most two thirds of its reading). The whole reading, pages included, stops at
- * DESCRIBE_S or DESCRIBE_PDF_S, or at signal (the turn's stop); each request a reader is sent adds its time at SLOW_UPLINK, as a model's
- * wait starts once the provider has the request (call.js). "Can read" means can and did: a reader that fails passes it on.
+ * DESCRIBE_S or DESCRIBE_PDF_S, or at signal (the turn's stop): one budget for all its readers, to which each request a reader is sent adds
+ * its time at SLOW_UPLINK once, when it is sent (a fixed extra: unlike a model's wait, it isn't started again at the reader's answer's
+ * headers, call.js). "Can read" means can and did: a reader that fails passes it on.
  * @param {FileToRead} file @param {{ input?: string[] }} model the model the reading is for
  * @param {{ llm: { call: Function, config: () => Promise<any> }, half: 'one' | 'kokoro' | 'koe', pages: import('../pdf-pages.js').PdfPages | null,
  *   signal: AbortSignal, wakeId: string, scope: string, secondMs: number, explain: (e: unknown, role: string) => string | Promise<string>, store: import('../types.js').Store }} o

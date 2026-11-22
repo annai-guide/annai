@@ -14,9 +14,9 @@ const playable = (p) => p?.pcm instanceof Int16Array && Number.isFinite(p.rate);
  * with its cost, with each clip's format and size. Keys never reach the trace (§9.9). A voice whose format is 'auto' is asked for the
  * smallest it offers (audioOut) that the device plays. A voice that streams (readSpeechStream, its stream tunable not off), asked for a
  * stream, gives its PCM as it comes: the call resolves at the first piece, which must come within the time limit, as a whole clip must;
- * then no gap may be longer. The time limit starts once the provider has the whole request, as a model's wait does (call.js): until its
- * answer's headers come, it is longer by the request's time at SLOW_UPLINK, so a recording going up slowly isn't cut. It is traced once
- * all of it is in, or when it fails.
+ * then no gap may be longer. The time limit (a transcription's 15 s, a voice's 10 s, unless the role says: service.js) starts once the
+ * provider has the whole request, as a model's wait does (call.js): until its answer's headers come, it is longer by the request's time at
+ * SLOW_UPLINK, so a recording going up slowly isn't cut. It is traced once all of it is in, or when it fails.
  * @typedef {import('./contract.js').EndpointType} EndpointType
  * @typedef {{ data: Uint8Array, mediaType: string }} Clip
  * @typedef {import('./contract.js').SpeechStream} SpeechStream
