@@ -1,5 +1,5 @@
 // A reminder a turn owes when annai is closed or put away mid-turn reaches the traveller at the next start (the Deferred entry "A reminder owed as the
-// page is left isn't shown at the next start", 2026-11-20; spec §11.3: "shown or spoken directly"). Nothing is shown on a page being left (a card there
+// page is left isn't shown at the next start", 2026-11-20, which this change closes; spec §11.3: "shown or spoken directly"). Nothing is shown on a page being left (a card there
 // reaches no one), so the wake's record keeps the reminders it carried (`reminders`), and the open of that conversation shows what the log still owes,
 // at once, through `remind` (the card, said with voice on, its entry, which settles it), whatever the transcript says of the turn; a restart it queues too
 // says annai showed it, and doesn't carry it. "Still owed" is the loop's own rule read back from the log (Transcript.owedReminders): a reminder's entry
@@ -386,7 +386,7 @@ test("a reminder owed in the `me` conversation is shown at its open too (a remin
   assert.deepEqual(mine.map((/** @type {any} */ e) => e.data.text), [LEAVE]);
 });
 
-// C169: a phone too full to write refuses the entry, so nothing settles the reminder, and it shows again each time its conversation opens (C174). No state is kept to stop it.
+// C169: a phone too full to write refuses the entry, so nothing settles the reminder, and it shows again at each start, and each time its conversation opens (C174; this test checks starts). No state is kept to stop it.
 test('on a phone too full to write the entry, the open shows the reminder and tells the refusal; it shows again at the next start, and settles once there is room', async (t) => {
   useClock(t);
   const k = await agentKit([[...KILLED, asleep, asleep, asleep]]);
