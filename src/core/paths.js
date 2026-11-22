@@ -104,12 +104,15 @@ export function isCompressedType(type) {
     type === 'application/pdf' || type === 'application/zip' || type === 'application/vnd.apple.pkpass';
 }
 
-/** What a name from outside never keeps: a slash, a backslash, control characters (C0, DEL, C1), `"`, `<` and `>` (Koe reads other brackets), U+2028, U+2029. */
-const NOT_IN_NAMES = /[\\/\u0000-\u001f\u007f-\u009f"<>\u2028\u2029]+/g;
+/**
+ * What a name from outside never keeps: a slash, a backslash, control characters (C0, DEL, C1), `"`, `<` and `>` (Koe reads other brackets),
+ * U+2028, U+2029, and the direction embeddings, overrides and isolates (U+202A-U+202E, U+2066-U+2069), which can show a name's ending reversed.
+ */
+const NOT_IN_NAMES = /[\\/\u0000-\u001f\u007f-\u009f"<>\u2028\u2029\u202a-\u202e\u2066-\u2069]+/g;
 /**
  * The most of a name, before its ending, that outsideName keeps, in UTF-16 units (what a quoted path's 100 counts). 80 is where a photo's name
- * was cut before; with ENDING's longest (11) and a free name's " (99)" a new name is at most 96 (a photo's, with its own ending and "-99", 99), so
- * Shiori is told it whole. A real trace held 0 of 253 file names over 80 (the main session's count, 2026-11-22).
+ * was cut before; with ENDING's longest (11) and a free name's " (99)" a new name is at most 96 (a photo's, with its own ending of at most 5 and
+ * "-99", 88), so Shiori is told it whole.
  */
 const STEM_MAX = 80;
 /** The ending outsideName keeps whole: a dot and 1 to 10 letters or digits. The longest annai knows, ".pkpass", is 6; 10 leaves room, and still keeps a name under 100 with STEM_MAX and " (99)". */
