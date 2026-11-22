@@ -133,7 +133,7 @@ async function photoControls(ctx, app) {
     const mb = numberIn(x, 0.1, Infinity, words);
     return mb === null ? null : Math.round(mb * 1_000_000);
   };
-  // A size shown rounded and left as it was keeps its exact value (1 MiB shows as 1.05).
+  // A size shown rounded and left as it was keeps its exact value (192 KiB shows as 0.2).
   const sentBytes = () => (sentSize.value.trim() === asMB(s.request.maxBytes) ? s.request.maxBytes : bytesOf(sentSize, t`The largest photo sent is at least ${num(0.1)} MB. Leave it empty for no limit.`));
   return [
     h('p', { class: 'sub', text: sentences(t`annai keeps one copy of each photo you add.`, webp ? t`This browser writes WebP.` : t`This browser can't write WebP, so photos are saved as JPEG.`, t`The originals stay in your phone's photo library.`) }),
