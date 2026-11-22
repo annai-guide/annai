@@ -663,7 +663,7 @@ test("a photo going up slowly is not a model that never started: on a slow uplin
     await page.getByLabel('Takes photos').check();
     await expect(savedBy(page.getByLabel('Takes photos'))).toHaveText('Saved');
     await page.goto('/#/talk');
-    // Noise, which no encoder makes small: 0.7 MB in the request as base64 (measured 2026-11-20).
+    // Noise, which no encoder makes small: it goes at the default cap of 192 KiB, some 220 KB in the request as base64 (measured 2026-11-21).
     const noisy = await page.evaluate(async () => {
       const c = new OffscreenCanvas(800, 800);
       const g = /** @type {OffscreenCanvasRenderingContext2D} */ (c.getContext('2d'));
@@ -672,16 +672,16 @@ test("a photo going up slowly is not a model that never started: on a slow uplin
       g.putImageData(px, 0, 0);
       return [...new Uint8Array(await (await c.convertToBlob({ type: 'image/jpeg', quality: 0.9 })).arrayBuffer())];
     });
-    // 160 KB a second up (1.3 Mbit/s, a busy hotel Wi-Fi): the request takes some 4.4 seconds to go up, past the wait of 2.
+    // 64 KB a second up (512 kbit/s, mobile data in a car or a busy hotel Wi-Fi): the request takes some 3.5 seconds to go up, past the wait of 2.
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('Network.enable');
-    await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: 160_000 });
+    await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: 64_000 });
     await page.locator('#dock-camera').setInputFiles({ name: 'IMG_0003.JPG', mimeType: 'image/jpeg', buffer: Buffer.from(noisy) });
     await expect(page.locator('.convo .you img')).toBeVisible({ timeout: 20_000 });
     await expect(page.locator('.convo .shiori p').last()).toHaveText('That is Bixby Bridge.', { timeout: 40_000 });
     await expect(page.locator('.notice', { hasText: "Shiori can't reach her model" })).toHaveCount(0);
     const sent = JSON.stringify(llm.bodies('/b/v1/messages').at(-1));
-    expect(sent.length, 'the photo went in the request, and took longer than the wait to go up').toBeGreaterThan(2 * 160_000);
+    expect(sent.length, 'the photo went in the request, and took longer than the wait to go up').toBeGreaterThan(2 * 64_000);
   } finally {
     await llm.stop();
   }
