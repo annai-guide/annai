@@ -1,5 +1,5 @@
 import { readPhotoMeta, displaySize, stripMetadata } from './photo-meta.js';
-import { normPath, typeForPath } from './paths.js';
+import { normPath, typeForPath, outsideName } from './paths.js';
 import { t } from './l10n.js';
 
 /**
@@ -77,13 +77,12 @@ export function fitSize(width, height, maxEdge, maxPixels) {
 
 /**
  * A file name for a photo: when it was taken ("2026-11-26-1904") if known, otherwise its own
- * name, with the extension of the format it is stored in.
+ * name as a name from outside (outsideName), with the extension of the format it is stored in.
  * @param {string | undefined} taken @param {string} original @param {string} type
  */
 export function photoName(taken, original, type) {
   const m = taken ? /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(taken) : null;
-  let base = m ? `${m[1]}-${m[2]}-${m[3]}-${m[4]}${m[5]}` : original.normalize('NFC').replace(/\.[^.]*$/, '').replace(/[\\/\u0000-\u001f\u007f]+/g, '-').trim().slice(0, 80);
-  if (base === '' || base === '.' || base === '..') base = 'photo';
+  const base = m ? `${m[1]}-${m[2]}-${m[3]}-${m[4]}${m[5]}` : outsideName(original.replace(/\.[^.]*$/, ''), 'photo');
   return `${base}.${EXTENSIONS[type] ?? 'bin'}`;
 }
 

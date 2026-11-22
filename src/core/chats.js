@@ -6,6 +6,7 @@ import { timeIn } from './time.js';
 import { isPhotoType } from './photos.js';
 import { blobJSON } from './reach.js';
 import { t } from './l10n.js';
+import { graphemes } from './web-search.js';
 
 /** @typedef {import('./workspace.js').Workspace} Workspace */
 
@@ -85,7 +86,6 @@ export async function undoDating(ws, scope, { before, set }) {
   return undone;
 }
 
-const graphemes = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null;
 const sentences = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, { granularity: 'sentence' }) : null;
 /** @param {string} s */
 const clip = (s) => (graphemes ? [...graphemes.segment(s)].map((g) => g.segment) : [...s]).slice(0, NAME_MAX).join('').trim();

@@ -7,6 +7,7 @@ import { withoutSecrets } from '../../core/agent/net.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { anySignal } from '../../core/signals.js';
 import { freePath } from '../../core/photos.js';
+import { outsideName } from '../../core/paths.js';
 import { readPhotoMeta } from '../../core/photo-meta.js';
 import { fromBase64 } from '../../core/bytes.js';
 import { sha256Hex } from '../../core/hash.js';
@@ -242,7 +243,7 @@ export async function activate(annai) {
       const there = (await annai.files.list(scope, '/files/')).find((/** @type {any} */ f) => f.hash === hash);
       if (there) return there;
       const meta = readPhotoMeta(bytes);
-      const path = await freePath(annai.files, scope, `${`${server}_${tool}`.replace(/[^\p{L}\p{N}_-]+/gu, '-').slice(0, 60)}.${EXT[type] ?? 'png'}`);
+      const path = await freePath(annai.files, scope, `${outsideName(`${server}_${tool}`.replace(/[^\p{L}\p{N}_-]+/gu, '-'), 'image')}.${EXT[type] ?? 'png'}`);
       return annai.files.write(scope, path, bytes, { author: 'shiori', type, source: `${server}: ${tool}`, meta: meta.width && meta.height ? { width: meta.width, height: meta.height } : {} });
     });
     keeping = work.catch(() => {});

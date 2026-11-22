@@ -104,6 +104,8 @@ The result is version history and undo of any change (including Shiori's) for fr
 
 **Short names.** A file's name is often not words ("IMG_3021.PNG"), so Shiori names each file she is handed for what it is ("ANNAI AIR flight · Nov 20"), in `names.json` beside the files, in a trip: a path under `/files/` to a name of 1 to 80 characters. The file keeps its own name; the name moves with the file, and goes when the file is deleted (by anyone), so a new file at that path never takes it.
 
+**A name from outside.** A file's own name that its sender chose (a photo's with no date taken, a shared or picked file's, an MCP tool's picture) is stored as `outsideName` makes it, so the path Shiori is told reads back: NFC; each run of `/`, `\`, control characters (C0, DEL and C1), `"`, `<`, `>`, U+2028 and U+2029 made one `-`; trimmed; at most 80 UTF-16 units before its ending (a dot and up to 10 letters or digits), cut between whole characters as a person sees them, so a joined emoji or a flag is kept or left out whole, and between code points only where the browser has no `Intl.Segmenter` or one character is longer than 80 units; trimmed again; a name with nothing left, `.` or `..` becomes `file` (`photo` for a photo, `image` for an MCP tool's). An older file keeps the name it had: nothing is renamed.
+
 App settings (providers, plugins, tool switches, budgets) live outside this view, so Shiori can't change her own setup. Personalities are the deliberate exception (§14).
 
 The top-level folder `/.annai` is reserved inside every scope; archives keep their metadata there.

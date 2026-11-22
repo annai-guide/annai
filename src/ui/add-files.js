@@ -1,12 +1,12 @@
 import { ingestPhoto, isPhotoType, photoSettings } from '../core/photos.js';
 import { sniffImageType } from '../core/photo-meta.js';
 import { readAppSettings } from '../core/settings.js';
-import { normPath, typeForPath, freeName } from '../core/paths.js';
+import { normPath, typeForPath, freeName, outsideName } from '../core/paths.js';
 import { codec } from './photo-codec.js';
 
 /**
  * Adds files to a trip one at a time, so a hundred photos never sit in memory together: photos
- * through ingest (spec §4.8), anything else as it is, under /files/. A file that can't be kept (no room) stops the rest, and what
+ * through ingest (spec §4.8), anything else as it is, under /files/ (each named by outsideName). A file that can't be kept (no room) stops the rest, and what
  * was kept before it comes back with why (`failed`), so whatever follows a keep (a calendar read, Shiori's wake, the share inbox
  * let go of) is done for what was kept, and an add again takes only the rest. Every caller looks at `failed`.
  * @param {any} ctx @param {string} scope @param {(Blob & { name?: string })[]} files
@@ -34,7 +34,7 @@ export async function addFiles(ctx, scope, files, progress = () => {}) {
       } else {
         // An added file never replaces another, or a booking's source would point at the wrong one (spec §7.3).
         const taken = new Set((await ctx.ws.list(scope, '/files/')).map((/** @type {any} */ f) => f.path));
-        const path = freeName(normPath(`/files/${name}`), taken);
+        const path = freeName(normPath(`/files/${outsideName(name, 'file')}`), taken);
         await ctx.ws.write(scope, path, new Uint8Array(await file.arrayBuffer()), { author: 'user', type });
         paths.push(path);
         types[path] = type;
