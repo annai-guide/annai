@@ -11,7 +11,8 @@ import { formatRefused } from '../voice/formats.js';
 import { SYS } from '../scopes.js';
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 import { shownFor } from '../errors.js';
-import { limitImages } from '../agent/refusals.js';
+import { limitMedia } from '../agent/refusals.js';
+import { quote } from '../agent/blocks.js';
 
 /**
  * Roles and fallback (spec §9.6). A role's models are tried front to back; an empty chat role uses
@@ -331,8 +332,8 @@ function newestDocument(request) {
  */
 
 /**
- * The request for a model that takes no photos or no PDFs: each as words, "[a photo: /trip/files/….webp]" or
- * "[a PDF: booking.pdf]", so a conversation that once held one can still go on with it; followed by what the conversation kept of it
+ * The request for a model that takes no photos or no PDFs: each as words, '[a photo: "/trip/files/….webp"]' or
+ * '[a PDF: "booking.pdf"]' (quoted: a file's name can be its sender's), so a conversation that once held one can still go on with it; followed by what the conversation kept of it
  * (readings), and its pages for a model that sees photos. @param {Request} request
  * @param {{ photos?: boolean, documents?: boolean, sees?: boolean, readings?: Readings, kept?: boolean }} [which] what to word (both when not
  *   given); sees: the model sees photos (a reading's pages go to it); kept: word only those with a kept reading, and leave the rest
@@ -345,9 +346,9 @@ export function photosAsWords(request, { photos = true, documents = true, sees =
     const r = p.hash && readings ? readings(p.hash, sees) : null;
     if (kept && !r) return [p];
     /* en */
-    const stub = p.type === 'image' ? `[a photo${p.path ? `: ${p.path}` : ''}]` : `[a PDF${p.type === 'document' && p.name ? `: ${p.name}` : ''}]`;
+    const stub = p.type === 'image' ? `[a photo${p.path ? `: ${quote(p.path)}` : ''}]` : `[a PDF${p.type === 'document' && p.name ? `: ${quote(p.name)}` : ''}]`;
     if (!r) return [{ type: 'text', text: stub }];
-    // A picture already in the request goes once: callRole sends every request through limitImages (the photo limit, each picture once).
+    // A picture already in the request goes once: callRole sends every request through limitMedia (the photo limit, each picture once).
     const pages = sees ? r.images : [];
     // With their hashes, so a provider's files API can take them by upload rather than as bytes in every request.
     return [{ type: 'text', text: `${stub} ${r.text}` }, ...pages.map((i) => ({ type: /** @type {const} */ ('image'), mediaType: i.mediaType, data: i.data, ...(i.hash ? { hash: i.hash } : {}), ...(i.page ? { page: i.page } : {}) }))];
@@ -551,8 +552,8 @@ export async function callRole(c) {
     // The same for a PDF: an older one goes as a note; only one in the newest message needs a model that reads it.
     const notes = Boolean(model && !reads && !newestDocument(sent) && sent.messages.some((m) => m.parts.some((p) => p.type === 'document')));
     if (words || notes) sent = photosAsWords(sent, { photos: words, documents: notes, sees, readings: c.readings });
-    // The model's photo limit of the request's distinct pictures, kept pages included, in the turn's window, each once (spec §4.8).
-    sent = { ...sent, messages: limitImages(sent.messages, model?.images?.maxCount, sent.photosFrom) };
+    // The model's photo limit of the request's distinct pictures, kept pages included, in the turn's window, each once, and its PDFs, each once (spec §4.8).
+    sent = { ...sent, messages: limitMedia(sent.messages, model?.images?.maxCount, sent.photosFrom) };
     if (!sent.toolRequired || !bench.unforced.has(id)) return sent;
     const { toolRequired, ...rest } = sent;
     return rest;
@@ -756,7 +757,7 @@ export async function callRole(c) {
       // What else keeps it out (too long, no tools…) is checked before anything is read for it, on what it would be sent.
       const pRec = config.providers[config.models[id].provider];
       const worded = photosAsWords(c.request, { photos: !model.input.includes('image'), documents: !model.input.includes('pdf') });
-      const other = gap(model, { ...worded, messages: limitImages(worded.messages, model.images?.maxCount, worded.photosFrom) }, pRec ? providerOf(pRec) : undefined);
+      const other = gap(model, { ...worded, messages: limitMedia(worded.messages, model.images?.maxCount, worded.photosFrom) }, pRec ? providerOf(pRec) : undefined);
       if (other) {
         attempts.push({ model: id, name: model.name, outcome: other, ms: 0 });
         continue;

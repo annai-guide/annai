@@ -764,22 +764,22 @@ w1fuif	ok	The schedule is a list: [{"from": "2027-01-01", "input": 2}].	"schedul
 zo2if3	ok	A schedule's "from" is missing: each entry starts on a date like 2027-01-01.	"schedule" 中有一项缺少 "from"：每一项都需要开始日期，例如 2027-01-01。	src/core/llm/cost.js:104	Note: "schedule" is the JSON key, named as typed.
 1k2ht3r	ok	The schedule has {0} twice: put what changes that day in one entry.	"schedule" 中 {0} 出现了两次，请把当天的改动合并到同一项。	src/core/llm/cost.js:105	{0} = f.from; Note: "schedule" is the JSON key, named as typed.
 1dfcj24	ok	The schedule names "{0}", which isn't a price annai knows.	"schedule" 中的“{0}”不是 annai 支持的价格项。	src/core/llm/cost.js:106	{0} = f.key; Note: "schedule" is the JSON key, named as typed.
-4zknwy	ok	It is resting for a few minutes after an error.	出错后暂停使用几分钟。	src/core/llm/fallback.js:124	
-9bk0c8	ok	It doesn't take photos.	不支持照片。	src/core/llm/fallback.js:125	
-12h1lml	ok	It doesn't read PDFs.	不能读取 PDF。	src/core/llm/fallback.js:126	
-uxj42v	ok	It doesn't take audio.	不支持音频。	src/core/llm/fallback.js:127	
-19lcshx	ok	It can't use tools.	不能使用工具。	src/core/llm/fallback.js:128	
-1coimht	ok	The conversation is too long for it.	对话太长，超出了它的上限。	src/core/llm/fallback.js:129	
-6o9g3j	ok	It doesn't have the provider tool this needs.	缺少所需的提供商工具。	src/core/llm/fallback.js:130	
-8xm1wt	ok	It isn't a chat model.	不是对话模型。	src/core/llm/fallback.js:131	Note: chat model → 对话模型, as the glossary's Koe · Chat note names Koe's list of chat models.
-1i0eq06	ok	It is switched off.	已关闭。	src/core/llm/fallback.js:132	
-10vxomx	ok	It was removed.	已移除。	src/core/llm/fallback.js:133	Note: 移除, as Remove model.
-s8uown	ok	The speech couldn't be sent to it.	无法把语音发给它。	src/core/llm/fallback.js:134	
-13y0hea	ok	Its daily limit is used up; it rests until {0}.	已用完每日限额，将暂停到 {0}。	src/core/llm/fallback.js:153	{0} = at; Note: {0} is a time, or a weekday and a time.
-22cbmy	ok	This device is offline.	这台设备已离线。	src/core/llm/fallback.js:181	
-1av83fe	ok	No model is set for the utility role. Add one in Settings → Models.	还没有为“辅助”角色设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:231	Note: the role by its screen name (補助 / 辅助).
-35l8v	ok	No model is set for Koe · Chat. Add one in Settings → Models.	还没有为 Koe · 聊天设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:232	
-1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	还没有为“主要”角色设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:233	Note: the role by its screen name (メイン / 主要).
+4zknwy	ok	It is resting for a few minutes after an error.	出错后暂停使用几分钟。	src/core/llm/fallback.js:125	
+9bk0c8	ok	It doesn't take photos.	不支持照片。	src/core/llm/fallback.js:126	
+12h1lml	ok	It doesn't read PDFs.	不能读取 PDF。	src/core/llm/fallback.js:127	
+uxj42v	ok	It doesn't take audio.	不支持音频。	src/core/llm/fallback.js:128	
+19lcshx	ok	It can't use tools.	不能使用工具。	src/core/llm/fallback.js:129	
+1coimht	ok	The conversation is too long for it.	对话太长，超出了它的上限。	src/core/llm/fallback.js:130	
+6o9g3j	ok	It doesn't have the provider tool this needs.	缺少所需的提供商工具。	src/core/llm/fallback.js:131	
+8xm1wt	ok	It isn't a chat model.	不是对话模型。	src/core/llm/fallback.js:132	Note: chat model → 对话模型, as the glossary's Koe · Chat note names Koe's list of chat models.
+1i0eq06	ok	It is switched off.	已关闭。	src/core/llm/fallback.js:133	
+10vxomx	ok	It was removed.	已移除。	src/core/llm/fallback.js:134	Note: 移除, as Remove model.
+s8uown	ok	The speech couldn't be sent to it.	无法把语音发给它。	src/core/llm/fallback.js:135	
+13y0hea	ok	Its daily limit is used up; it rests until {0}.	已用完每日限额，将暂停到 {0}。	src/core/llm/fallback.js:154	{0} = at; Note: {0} is a time, or a weekday and a time.
+22cbmy	ok	This device is offline.	这台设备已离线。	src/core/llm/fallback.js:182	
+1av83fe	ok	No model is set for the utility role. Add one in Settings → Models.	还没有为“辅助”角色设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:232	Note: the role by its screen name (補助 / 辅助).
+35l8v	ok	No model is set for Koe · Chat. Add one in Settings → Models.	还没有为 Koe · 聊天设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:233	
+1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	还没有为“主要”角色设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:234	Note: the role by its screen name (メイン / 主要).
 g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	无法加载 annai 的插件列表。请检查网络连接，然后重试。	src/core/llm/official.js:47	
 2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	无法加载 annai 的插件列表（HTTP {0}）。请稍后再试。	src/core/llm/official.js:49	{0} = res.status
 1on7jro	ok	The plugin couldn't be downloaded. Check the connection and try again.	无法下载插件。请检查网络连接，然后重试。	src/core/llm/official.js:169	Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.

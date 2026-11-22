@@ -177,7 +177,7 @@ test("cold: what the utility model is sent fits its window, so a huge exchange c
 
 test('summaries see photos as stubs with their path and part', async () => {
   const text = renderForSummary([{ role: 'user', parts: [{ type: 'image', mediaType: 'image/webp', data: 'x', path: '/trip/files/menu.webp', region: [0, 0, 0.5, 0.5] }] }]);
-  assert.equal(text, 'User: [photo /trip/files/menu.webp, part [0, 0, 0.5, 0.5]]');
+  assert.equal(text, 'User: [photo "/trip/files/menu.webp", part [0, 0, 0.5, 0.5]]');
 });
 
 test('requestBytes: photos uploaded to the provider count as their id (spec §6.5)', async () => {
@@ -658,7 +658,7 @@ test("warm housekeeping goes on past a reader that fails to a model that reads n
   assert.match(JSON.stringify(k.agent.transcript.messages.at(-1)), /"type":"document"/, 'the PDF is in the newest message');
   assert.equal(await k.agent.summarizeNow(), 'done');
   const asked = JSON.stringify(k.sent['model-1'].at(-1).messages);
-  assert.match(asked, /\[a PDF: booking\.pdf\]/);
+  assert.match(asked, /\[a PDF: \\"booking\.pdf\\"\]/);
   assert.doesNotMatch(asked, /"type":"document"/);
   assert.equal((await k.events(['compaction'])).at(-1).data.mode, 'warm');
   assert.equal((await k.events(['error'])).filter((e) => e.data.kind === 'compaction').length, 0);

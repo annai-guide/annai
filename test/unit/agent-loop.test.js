@@ -556,7 +556,7 @@ test('a PDF read earlier does not close the conversation to a model that reads n
   await k.agent.idle();
   const asked = k.sent['model-1'].at(-1);
   assert.doesNotMatch(JSON.stringify(asked.messages), /"type":"document"/);
-  assert.match(JSON.stringify(asked.messages), /\[a PDF: booking\.pdf\]/);
+  assert.match(JSON.stringify(asked.messages), /\[a PDF: \\"booking\.pdf\\"\]/);
   assert.equal(k.notices.length, 0);
 });
 
@@ -739,12 +739,12 @@ test('a model that takes no photos answers once the conversation holds one; a ph
   k.agent.send('Look', { photos: [{ path: '/trip/files/p.webp' }] });
   await k.agent.idle();
   // The one model that sees photos is out of credit, so the photo couldn't be described, and the result says so to the model that answers.
-  assert.match(JSON.stringify(k.sent['model-1'][0].messages), /\[a photo: \/trip\/files\/p\.webp\] It couldn't be described: /);
+  assert.match(JSON.stringify(k.sent['model-1'][0].messages), /\[a photo: \\"\/trip\/files\/p\.webp\\"\] It couldn't be described: /);
   assert.equal(k.notices.length, 0);
   k.agent.send("What's around here?");
   await k.agent.idle();
   const asked = k.sent['model-1'].at(-1);
-  assert.match(JSON.stringify(asked.messages), /\[a photo: \/trip\/files\/p\.webp\]/);
+  assert.match(JSON.stringify(asked.messages), /\[a photo: \\"\/trip\/files\/p\.webp\\"\]/);
   assert.doesNotMatch(JSON.stringify(asked.messages), /"type":"image"/);
   assert.equal((await k.events(['out.speak']))[0].data.text, 'Pfeiffer Beach is close.');
 });
@@ -2083,7 +2083,7 @@ test("the reader fails after reading, and a model that reads no PDFs answers wit
   k.agent.send('When is check-in?');
   await k.agent.idle();
   const sent = JSON.stringify(k.sent['model-1'][0].messages);
-  assert.match(sent, /\[a PDF: booking\.pdf\] What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\./);
+  assert.match(sent, /\[a PDF: \\"booking\.pdf\\"\] What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\./);
   assert.doesNotMatch(sent, /"type":"document"/);
   const turn = (await k.events(['model.turn'])).find((e) => e.data.answeredBy === 'model-1');
   assert.deepEqual(turn.data.attempts.map((/** @type {any} */ a) => a.outcome), ['credit', 'no-documents', 'ok']);
@@ -2096,7 +2096,7 @@ test('the user\'s photo, when no model of Kokoro\'s sees photos: described by on
   await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
   k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
   await k.agent.idle();
-  assert.match(JSON.stringify(k.sent['model-0'][0].messages), /\[a photo: \/trip\/files\/[^\]]+\] What it shows \(described by model-u, as you can't see photos\): A menu; the fish is circled\./);
+  assert.match(JSON.stringify(k.sent['model-0'][0].messages), /\[a photo: \\"\/trip\/files\/[^\]]+\] What it shows \(described by model-u, as you can't see photos\): A menu; the fish is circled\./);
   assert.equal((await k.events(['error'])).length, 0);
 });
 
@@ -2178,7 +2178,7 @@ test("the user's photo, described for a model that can't see it, is still descri
   await k.agent.idle();
   const [first, second] = k.sent['model-0'];
   assert.match(JSON.stringify(first.messages), /fish is circled/);
-  assert.match(JSON.stringify(second.messages), /\[a photo: \/trip\/files\/[^\]]+\] What it shows \(described by model-u, as you can't see photos\): A menu; the fish is circled\./);
+  assert.match(JSON.stringify(second.messages), /\[a photo: \\"\/trip\/files\/[^\]]+\] What it shows \(described by model-u, as you can't see photos\): A menu; the fish is circled\./);
   assert.equal(k.sent['model-u'].length, 1, 'described once');
 });
 
@@ -2209,7 +2209,7 @@ test('a PDF read in the second pass is still read at every later step', async (t
   k.agent.send('When is check-in?');
   await k.agent.idle();
   assert.ok(k.sent['model-1'].length >= 2);
-  for (const r of k.sent['model-1']) assert.match(JSON.stringify(r.messages), /\[a PDF: booking\.pdf\] What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\./);
+  for (const r of k.sent['model-1']) assert.match(JSON.stringify(r.messages), /\[a PDF: \\"booking\.pdf\\"\] What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\./);
   assert.equal(k.sent['model-u'].length, 1);
 });
 
@@ -2225,8 +2225,8 @@ test('a PDF told in words serves a model that sees photos and one that does not 
   await saveRoles(k.ws, { ...cfg.roles, main: { ...cfg.roles.main, models: ['m-2'] } });
   k.agent.send('When again?');
   await k.agent.idle();
-  assert.match(JSON.stringify(k.sent['model-1'][0].messages), /\[a PDF: booking\.pdf\] What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\./);
-  assert.match(JSON.stringify(k.sent['model-2'].at(-1).messages), /\[a PDF: booking\.pdf\] What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\./);
+  assert.match(JSON.stringify(k.sent['model-1'][0].messages), /\[a PDF: \\"booking\.pdf\\"\] What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\./);
+  assert.match(JSON.stringify(k.sent['model-2'].at(-1).messages), /\[a PDF: \\"booking\.pdf\\"\] What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\./);
   assert.equal(k.sent['model-u'].length, 1);
 });
 
@@ -2298,7 +2298,7 @@ test("an explicit read reads afresh, and its reading replaces the kept one: the 
   await k.agent.idle();
   assert.equal(k.sent['model-u'].length, 2, 'read once at first, and once more when asked');
   const last = JSON.stringify(k.sent['model-1'].at(-1).messages);
-  assert.match(last, /\[a PDF: booking\.pdf\] What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\./);
+  assert.match(last, /\[a PDF: \\"booking\.pdf\\"\] What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\./);
   assert.doesNotMatch(last, /Blurry/);
   const kept = await k.events(['reading']);
   assert.deepEqual(kept.map((e) => e.data.how), ['told', 'told'], 'both kept in the log; the newest is the one used');
@@ -2406,7 +2406,7 @@ test("a later reading as pages doesn't take a PDF's words from a model that sees
   await only('m-2');
   k.agent.send('So when?');
   await k.agent.idle();
-  assert.match(JSON.stringify(k.sent['model-2'].at(-1).messages), /\[a PDF: booking\.pdf\] What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\./);
+  assert.match(JSON.stringify(k.sent['model-2'].at(-1).messages), /\[a PDF: \\"booking\.pdf\\"\] What it says \(told by model-u, as you can't read PDFs\): Hotel booking: check-in 3 PM\./);
   assert.deepEqual((await k.events(['reading'])).map((e) => e.data.how), ['told', 'pages']);
 });
 

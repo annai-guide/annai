@@ -2,6 +2,7 @@ import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 import { NO_WORDS } from '../handover.js';
 import { EITHER, LANGUAGES, MANDARIN, firstHan, hanRow, languageSettings, named, placed, units } from '../languages.js';
 import { nativeOverlap } from '../llm/contract.js';
+import { quote } from './blocks.js';
 
 /**
  * Housekeeping (spec §6.5). Two limits trigger it, the context window and the maximum request
@@ -211,8 +212,8 @@ export function renderForSummary(messages, max = Infinity) {
   return full.slice(0, head) + marker(full.length - head - tail) + full.slice(full.length - tail);
 }
 
-/** A photo in words: where it came from, and which part (spec §6.5 stubs). @param {{ path?: string, region?: number[] }} p */
-export const photoStub = (p) => `[photo${p.path ? ` ${p.path}` : ''}${p.region ? `, part [${p.region.join(', ')}]` : ''}]`;
+/** A photo in words: where it came from, quoted (a file's name can be its sender's), and which part (spec §6.5 stubs). @param {{ path?: string, region?: number[] }} p */
+export const photoStub = (p) => `[photo${p.path ? ` ${quote(p.path)}` : ''}${p.region ? `, part [${p.region.join(', ')}]` : ''}]`;
 
 /** @param {Message[]} messages */
 function asText(messages) {

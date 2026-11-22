@@ -200,7 +200,7 @@ test('a model that takes no photos gets older ones as words, and is passed over 
   const r = await call(s, { request: older });
   assert.equal(r.reply.text, 'From the text model.');
   assert.deepEqual(r.attempts.map((a) => a.outcome), ['credit', 'ok']);
-  assert.deepEqual(seen[0].messages[0].parts, [{ type: 'text', text: 'Look at this' }, { type: 'text', text: '[a photo: /trip/files/2026-10-18-1530.webp]' }]);
+  assert.deepEqual(seen[0].messages[0].parts, [{ type: 'text', text: 'Look at this' }, { type: 'text', text: '[a photo: "/trip/files/2026-10-18-1530.webp"]' }]);
   assert.equal(older.messages[0].parts[1], photo, "the request itself isn't changed: the next model may see photos");
   // The newest message is a photo: a model that can't see it can't answer it. The loop says so (newestPhoto); else the last line is read.
   const t = setup([[{ text: 'never' }]], { models: [{ input: ['text'] }] });
@@ -227,7 +227,7 @@ test('a model that reads no PDFs gets an older one as a note, and is passed over
   const r = await call(s, { request: older });
   assert.equal(r.reply.text, 'Fine.');
   assert.deepEqual(r.attempts.map((a) => a.outcome), ['credit', 'ok']);
-  assert.deepEqual(seen[0].messages[1].parts[1], { type: 'text', text: '[a PDF: booking.pdf]' });
+  assert.deepEqual(seen[0].messages[1].parts[1], { type: 'text', text: '[a PDF: "booking.pdf"]' });
   assert.equal(older.messages[1].parts[1], pdf, "the request itself isn't changed: the next model may read PDFs");
   // The newest message holds the PDF: a model that can't read it can't answer it.
   const t = setup([[{ text: 'never' }]], { models: [{ input: ['text', 'image'] }] });
@@ -267,7 +267,7 @@ test("read is asked only for the newest message's files: an older photo goes as 
   const r = await call(s, { request, read });
   assert.deepEqual(r.attempts.map((a) => a.outcome), ['no-images', 'ok']);
   assert.deepEqual(asked, [['image', 'model-0']]);
-  assert.match(JSON.stringify(seen[0].messages), /"text":"\[a photo: \/trip\/files\/2026-10-18-1530\.webp\]"/);
+  assert.match(JSON.stringify(seen[0].messages), /"text":"\[a photo: \\"\/trip\/files\/2026-10-18-1530\.webp\\"\]"/);
   assert.deepEqual(seen[0].messages[2].parts[1], { type: 'text', text: "[a photo: /trip/files/new.webp] What it shows (described by model-u, as you can't see photos): A menu." });
 });
 
@@ -284,7 +284,7 @@ test('newestDocument: false sends a newest PDF as a note, as newestPhoto: false 
   const s = setup([[]], { types: [['spy', spyType(seen)]], endpointTypes: ['spy'], models: [{ input: ['text'] }] });
   const r = await call(s, { request: { messages: [older.messages[0], older.messages[1]], newestDocument: false } });
   assert.deepEqual(r.attempts.map((a) => a.outcome), ['ok']);
-  assert.deepEqual(seen[0].messages[1].parts[1], { type: 'text', text: '[a PDF: booking.pdf]' });
+  assert.deepEqual(seen[0].messages[1].parts[1], { type: 'text', text: '[a PDF: "booking.pdf"]' });
 });
 
 test('a model that refuses a required tool call is asked again without it, and not asked with it again this session (review A1)', async () => {
@@ -819,8 +819,8 @@ test("each model gets its photo limit of the raw request's distinct pictures, th
   const shown = seen[0].request.messages.map((/** @type {any} */ m) => m.parts.map((/** @type {any} */ p) => (p.type === 'image' ? p.hash : p.text)));
   assert.deepEqual(shown, [
     ['Here is the menu', 'hA'],
-    ['And the hotel', '[photo /trip/files/hotel.webp, not sent: this model takes fewer pictures at a time; read it to see it]'],
-    ['Look at the menu again', '[photo /trip/files/menu.webp, the same as above]'],
+    ['And the hotel', '[photo "/trip/files/hotel.webp", not sent: this model takes fewer pictures at a time; read it to see it]'],
+    ['Look at the menu again', '[photo "/trip/files/menu.webp", the same as above]'],
   ]);
 });
 
@@ -884,7 +884,7 @@ test('a refused photo count is repaired though the request carries kept pages: t
     yield { type: 'stop', reason: 'end' };
   } });
   const s = setup([[]], { types: [['strict', strict]], endpointTypes: ['strict'], models: [{ input: ['text', 'image'] }] });
-  const { limitImages } = await import('../../src/core/agent/refusals.js');
+  const { limitMedia } = await import('../../src/core/agent/refusals.js');
   const img = (/** @type {string} */ hash) => ({ type: 'image', mediaType: 'image/webp', data: 'AAAA', hash, path: `/trip/files/${hash}.webp` });
   const pages = [1, 2, 3].map((n) => ({ mediaType: 'image/jpeg', data: 'AAAA', hash: `P${n}`, page: n }));
   const request = { messages: [
@@ -893,7 +893,7 @@ test('a refused photo count is repaired though the request carries kept pages: t
     { role: 'user', parts: [{ type: 'text', text: 'When is the flight?' }] },
   ] };
   const readings = (/** @type {string} */ hash, /** @type {boolean} */ sees) => (hash === 'd1' && sees ? { text: 'Its pages as pictures: pages 1–3 of 3.', images: pages } : null);
-  const repairImages = async (/** @type {any} */ _e, /** @type {string} */ _id, /** @type {any} */ req) => ({ ...req, messages: limitImages(req.messages, 3) });
+  const repairImages = async (/** @type {any} */ _e, /** @type {string} */ _id, /** @type {any} */ req) => ({ ...req, messages: limitMedia(req.messages, 3) });
   const r = await call(s, { request, readings, repairImages });
   assert.equal(r.answeredBy, 'model-0');
   assert.deepEqual(sizes, [5, 3]);
@@ -912,7 +912,7 @@ test("a repair is that model's own: the next model gets the request as the conve
     yield { type: 'stop', reason: 'end' };
   } });
   const s = setup([[], [], []], { types: [['spy', spy]], endpointTypes: ['spy', 'spy', 'spy'], models: [{ input: ['text', 'image'] }, { input: ['text', 'image', 'pdf'] }, { input: ['text'] }] });
-  const { limitImages } = await import('../../src/core/agent/refusals.js');
+  const { limitMedia } = await import('../../src/core/agent/refusals.js');
   const img = (/** @type {string} */ hash) => ({ type: 'image', mediaType: 'image/webp', data: 'AAAA', hash, path: `/trip/files/${hash}.webp` });
   const pages = [1, 2, 3].map((n) => ({ mediaType: 'image/jpeg', data: 'AAAA', hash: `P${n}`, page: n }));
   const request = { messages: [
@@ -921,7 +921,7 @@ test("a repair is that model's own: the next model gets the request as the conve
     { role: 'user', parts: [{ type: 'text', text: 'When is the flight?' }] },
   ] };
   const readings = (/** @type {string} */ hash, /** @type {boolean} */ sees) => (hash !== 'd1' ? null : sees ? { text: 'Its pages as pictures: pages 1–3 of 3.', images: pages } : { text: 'What it says: flight AN 123 at 08:05.', images: [] });
-  const repairImages = async (/** @type {any} */ _e, /** @type {string} */ _id, /** @type {any} */ req) => ({ ...req, messages: limitImages(req.messages, 3) });
+  const repairImages = async (/** @type {any} */ _e, /** @type {string} */ _id, /** @type {any} */ req) => ({ ...req, messages: limitMedia(req.messages, 3) });
   const r = await call(s, { request, readings, repairImages });
   assert.equal(r.answeredBy, 'model-2');
   assert.deepEqual(got['model-1'][0], ['two photos', 'IMG:A', 'IMG:B', 'DOC', 'my booking', 'When is the flight?'], 'the PDF reader gets the document and both photos');
