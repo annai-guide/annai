@@ -386,7 +386,7 @@ test("a reminder owed in the `me` conversation is shown at its open too (a remin
   assert.deepEqual(mine.map((/** @type {any} */ e) => e.data.text), [LEAVE]);
 });
 
-// C169: a phone too full to write refuses the entry, so nothing settles the reminder, and it shows again at each start. No state is kept to stop it.
+// C169: a phone too full to write refuses the entry, so nothing settles the reminder, and it shows again each time its conversation opens (C174). No state is kept to stop it.
 test('on a phone too full to write the entry, the open shows the reminder and tells the refusal; it shows again at the next start, and settles once there is room', async (t) => {
   useClock(t);
   const k = await agentKit([[...KILLED, asleep, asleep, asleep]]);
@@ -467,7 +467,7 @@ for (const [who, kokoro] of /** @type {const} */ ([
     const wakes = await k.events(['wake']);
     const next = await nextHalves(k);
     assert.deepEqual(reminders(next.cards), [LEAVE], 'once, though both halves open the conversation');
-    assert.deepEqual(raisedBy(next.cards), ['kokoro'], "by Kokoro's half, which can hold it back while a live session talks (Koe has no such hold)");
+    assert.deepEqual(raisedBy(next.cards), ['kokoro'], "by Kokoro's half: the open shows the card on the half that isn't Koe's");
     assert.equal(next.first.requests, 0, 'at the open');
     assert.deepEqual(await entries(k), [LEAVE]);
     assert.deepEqual(wakes.filter((/** @type {any} */ e) => e.data.half === 'koe').map((/** @type {any} */ e) => e.data.reminders), [[{ watch: 'w1', text: LEAVE }]], "Koe's wake record keeps it");
