@@ -233,7 +233,7 @@ test("after a summary between turns the next turn has its window: the previous t
     await k.agent.idle();
   }
   assert.equal(await k.agent.compact('cold'), true);
-  for (const words of ['m1', 'm3', 'm4']) assert.ok(JSON.stringify(k.agent.transcript.messages).includes(words), `the turn of ${words}, with its photo, is in the part kept`);
+  for (const words of ['m1', 'm3', 'm4']) assert.ok(JSON.stringify(k.agent.transcript.messages).includes(words), `the turn of ${words} is in the part kept`);
   k.agent.send('m5');
   await k.agent.idle();
   const next = k.requests.at(-1);
@@ -303,7 +303,7 @@ test("Koe's own requests carry the window too: a chat Koe that sees photos is se
   }
   const koe = k.sent['model-koe'];
   const turnOf = (/** @type {any} */ r) => turns.findLastIndex((w) => JSON.stringify(r.messages).includes(`[typed] ${w}`));
-  // What each of Koe's requests sends, by the turn it belongs to (it asks twice in a turn here: Kokoro's note is not an answer).
+  // What each of Koe's requests sends, by the turn it belongs to (two requests in each turn here).
   const sends = turns.map((_, t) => [...new Set(koe.filter((/** @type {any} */ r) => turnOf(r) === t).map((/** @type {any} */ r) => images(r).map((/** @type {any} */ p) => p.path).join()))]);
   assert.deepEqual(sends, [[''], ['/trip/files/a.webp'], ['/trip/files/a.webp'], ['']]);
   assert.ok(JSON.stringify(koe.at(-1).messages).includes(stub('/trip/files/a.webp')), 'the stub she can read');

@@ -1703,8 +1703,8 @@ export class Agent {
 
   /**
    * What this half's next request would hold, from the code that builds it, so it can't disagree with what the model gets.
-   * Changes nothing: the snapshot is the one the next wake would take, and isn't kept. Its window is the next wake's too, so during a turn a
-   * picture of the turn before shows as a stub, though that turn's own steps still send it.
+   * Changes nothing: the snapshot is the one the next wake would take, and isn't kept. Its window is the next wake's too, so once a turn has
+   * replied, a picture of the turn before it shows as a stub, though the running turn's own steps still send it.
    * @returns {Promise<{ system: string, tools: string[], messages: import('../llm/contract.js').Message[], tail: string }>}
    */
   async sees() {
