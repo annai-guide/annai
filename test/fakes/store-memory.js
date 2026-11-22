@@ -153,8 +153,8 @@ export function afterListing(store, after, times = 1) {
 }
 
 /**
- * The store refuses the read that lists the keys annai keeps, as a request already under way meets Chromium's store when it begins refusing at no
- * byte free; reading one key still works. Returns what puts it back. @param {Store} store @returns {() => void}
+ * The store refuses the read that lists the keys annai keeps, while reading one key still works: a request that read its key just before the
+ * store began refusing (Chromium at no byte free then refuses every read). Returns what puts it back. @param {Store} store @returns {() => void}
  */
 export function keysUnread(store) {
   const tx = store.tx;

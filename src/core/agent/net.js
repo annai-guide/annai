@@ -234,7 +234,8 @@ export function tracedFetch(store, scope, who, get = (url, init) => fetch(url, i
       if (/** @type {any} */ (e)?.name === 'AbortError') throw e;
       // No answer at all (offline, blocked, no such host): the tool's answer, not a crash in its code (spec §17).
       // Marked a network failure (what a search provider rests on), with the browser's own error kept as its cause.
-      const host = known ? hostOf(base.url) : THE_ADDRESS; // the trace's address has no host when the keys couldn't be read
+      // No host when the keys couldn't be read, or when it held one (the trace's blanked host would read back as punycode).
+      const host = known && !leaks(hostOf(String(url)), secrets) ? hostOf(base.url) : THE_ADDRESS;
       /* en */
       const en = `annai couldn't reach ${host}${held ? '' : ` (${said})`}. Is the device offline?`;
       // What it was goes with it (answer.js's vocabulary): a hold or a pack's failure keeps it, and a screen says it in its words.

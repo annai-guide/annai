@@ -666,7 +666,7 @@ export class Agent {
 
   /**
    * A system card, with any key annai keeps blanked from what it says (spec §9.9). Its title is annai's own words, and so are a reminder's (own),
-   * which are Shiori's or the plan's, with no key in them (none is ever in her context): they show as they are when the keys can't be read.
+   * which are Shiori's or the plan's (no stored key is put in her context; one the traveller types reaches it as typed): they show as they are when the keys can't be read.
    * @param {Notice} n @param {{ own?: boolean }} [o]
    */
   async #notice(n, { own = false } = {}) {

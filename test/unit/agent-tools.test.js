@@ -201,6 +201,14 @@ test("tracedFetch: when the keys annai keeps can't be read, a request's record k
   assert.doesNotMatch(JSON.stringify(evs), /HOSTKEY7654321|weather\.test/i);
 });
 
+test("tracedFetch: with the keys readable, a host that is a stored key is named as the address in the tool's error, not as its blank read back", async () => {
+  const store = createMemoryStore();
+  await store.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:host:key', 'HOSTKEY7654321'));
+  const e = await tracedFetch(store, 'sys', { tool: 'plugin:weather' }, async () => { throw new TypeError('Failed to fetch'); })('https://HOSTKEY7654321.weather.test/forecast').catch((/** @type {any} */ x) => x);
+  assert.equal(e.said.where, 'the address');
+  assert.doesNotMatch(JSON.stringify([e.message, e.said, e.shown]), /hostkey|xn--/i);
+});
+
 test("tracedFetch: with the keys unread, an address that is no address keeps nothing of itself either", async () => {
   const store = createMemoryStore();
   await store.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:weather:key', 'WXSECRET9876'));

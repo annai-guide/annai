@@ -13,7 +13,7 @@ export const sample = (speaks) => asUser(speaks)`Hello! This is how I sound when
  * A speech call that failed, in plain words with what to do next, with every key annai keeps blanked (spec §9.9). A 400 says the
  * provider's reason where its answer gave one ("Voice not found") and the keys can be read; a voice's 404 says what to check (a router
  * passes on Grok's and Voxtral's bare "Provider returned 404"); else the kind's words; none of these when the keys can't be read: the note that they
- * couldn't be checked. Kind and status decide, never the text; annai's own not-found (no status) keeps its words. @param {import('../core/types.js').Store} store @param {unknown} e @param {boolean} [speaking] a voice, not a transcription model
+ * couldn't be checked. Kind and status decide, never the text; annai's own not-found (no status) keeps its words when the keys can be read. @param {import('../core/types.js').Store} store @param {unknown} e @param {boolean} [speaking] a voice, not a transcription model
  */
 export async function speechProblem(store, e, speaking = false) {
   if (!(e instanceof ProviderError)) {
