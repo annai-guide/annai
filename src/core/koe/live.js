@@ -1,6 +1,6 @@
 import { LiveInput } from '../realtime/input.js';
 import { escapeTags, wrapNote, theirs, koeLine } from '../agent/blocks.js';
-import { LABELS, NOTE_UNSAID, isWatched, STALL_MIN_MS } from '../agent/loop.js';
+import { LABELS, NOTE_UNSAID, isWatched, STALL_MIN_MS, reminderData } from '../agent/loop.js';
 import { newId, SYS_DEVICE, ensureDeviceScope } from '../scopes.js';
 import { forget } from '../forget.js';
 import { resolveEvent } from '../agent/transcript.js';
@@ -1038,11 +1038,17 @@ export class LiveKoe {
     return this.#sounding || this.#t || this.#pending || this.#queue.length ? this.#cut() : {};
   }
 
-  /** Kokoro's notes for the user went in: Koe's next turns are watched for them. A trigger's cues are let go: a model has them, as classic voice's. @param {Wake[]} notes */
+  /**
+   * Kokoro's notes for the user went in: Koe's next turns are watched for them. A trigger's cues are let go: a model has them, as classic voice's. Its
+   * reminders are the session's now, written as a turn's wake record keeps them, so the log's read settles them by Koe's words from here (spec §11.3).
+   * @param {Wake[]} notes
+   */
   #went(notes) {
     for (const w of notes) if (w.kind !== 'note') w.fallbacks = w.fallbacks?.filter((r) => !r.cue);
     const owed = notes.filter((w) => w.kind === 'note' || w.fallbacks?.length);
     if (!owed.length) return;
+    const reminders = owed.flatMap((w) => (w.kind === 'note' ? [] : (w.fallbacks ?? []).flatMap((r) => reminderData(r) ?? [])));
+    if (reminders.length) this.#write({ type: 'wake', actor: 'system', data: { id: newId('w'), meanwhile: true, reasons: [], reminders } });
     this.#owed.sent.push(...owed);
     this.#owed.cued = this.#owed.cue = false;
     this.#owed.at = Date.now();

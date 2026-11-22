@@ -231,6 +231,54 @@ for (const [how, back] of /** @type {const} */ ([
   });
 }
 
+// A watch that fires while her turn for another waits on her model waits in the queue behind it (it joins at her next step): held only in memory, it is
+// written to the log as it is held (`reminder.held`, spec §11.3), so the reload's open shows it too, once, beside the cut turn's own.
+test("a reload while a second watch's wake waits behind her turn for the first: the next start's open shows both reminders, once each", async ({ page }) => {
+  const LEAVE = 'Leave for the airport by 14:10';
+  const CHECK_OUT = 'Check out by 11';
+  const llm = await startModelServer({ [MESSAGES]: [held(), sse(anthropicToolReply([sleep]))] });
+  try {
+    await modelSetUp(page, llm.origin, 'Big Sur');
+    const trip = decodeURIComponent(new URL(page.url()).hash.split('/')[2]);
+    await page.evaluate(async () => {
+      const { Halves } = await import(/** @type {string} */ ('/src/core/agent/halves.js'));
+      const typing = Halves.prototype.typing;
+      Halves.prototype.typing = function (/** @type {any[]} */ ...a) {
+        /** @type {any} */ (window).agent = this;
+        return typing.apply(this, a);
+      };
+    });
+    await page.getByRole('button', { name: 'Type', exact: true }).click();
+    await page.waitForFunction(() => Boolean(/** @type {any} */ (window).agent));
+    await page.getByLabel('Message to Shiori').press('Escape');
+    const fire = (/** @type {string} */ text, /** @type {string} */ watch) => page.evaluate(([text, watch]) => /** @type {any} */ (window).agent.wake({ kind: 'trigger', text: `Your watch fired: ${text}.`, fallbacks: [{ watch, text }] }), [text, watch]);
+    await fire(LEAVE, 'w1');
+    await expect.poll(() => llm.bodies(MESSAGES).length, { timeout: 30_000 }).toBe(1);
+    await fire(CHECK_OUT, 'w2');
+    await expect.poll(() => page.evaluate(async (trip) => {
+      const { createIdbStore } = await import(/** @type {string} */ ('/src/core/store-idb.js'));
+      const store = await createIdbStore();
+      const n = (await store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(trip, { types: ['wake', 'reminder.held'] }))).length;
+      store.close();
+      return n;
+    }, trip), { timeout: 30_000 }).toBe(3); // her turn's wake, and each watch held as it came: the second waits in the queue
+    await page.reload();
+    const notices = page.locator('.notices .notice');
+    await expect(notices.filter({ hasText: LEAVE })).toHaveCount(1, { timeout: 30_000 });
+    await expect(notices.filter({ hasText: CHECK_OUT })).toHaveCount(1, { timeout: 30_000 });
+    await expect.poll(() => llm.bodies(MESSAGES).length, { timeout: 30_000 }).toBe(2);
+    await page.waitForTimeout(1000); // her restart turn has ended by now: nothing more is shown
+    await expect(notices.filter({ hasText: LEAVE })).toHaveCount(1);
+    await expect(notices.filter({ hasText: CHECK_OUT })).toHaveCount(1);
+    await page.evaluate((trip) => { location.hash = `#/trip/${encodeURIComponent(trip)}/talk`; }, trip);
+    await expect(page.locator('.convo').getByText(LEAVE)).toHaveCount(1);
+    await expect(page.locator('.convo').getByText(CHECK_OUT)).toHaveCount(1);
+    noRecord(llm.bodies(MESSAGES));
+  } finally {
+    await llm.stop();
+  }
+});
+
 test('another trip opened while she works on a hand-over: the conversation left says she picks it up, coming back takes it up once, and Undo takes back both files', async ({ page }) => {
   const llm = await startModelServer({ [MESSAGES]: [
     sse(anthropicToolReply([write('a.md')])),

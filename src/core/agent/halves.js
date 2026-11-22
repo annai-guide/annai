@@ -271,10 +271,11 @@ export class Halves {
     });
     const serial = (/** @type {() => Promise<any>} */ fn) => this.#serial(fn);
     const ready = () => this.#ready;
+    const page = newId('p'); // one page's mark on what both halves hold (Agent.hold)
     this.kokoro = new Agent({
       ...c,
       half: {
-        name: 'kokoro', tag: TALK_TAG, role: 'main', registryTools: true, logVoice: true, housekeeping: true, serial, ready,
+        name: 'kokoro', tag: TALK_TAG, role: 'main', registryTools: true, logVoice: true, housekeeping: true, serial, ready, page,
         voice: () => !this.#works(),
         rules: () => (this.#split ? 'kokoro' : 'one'),
         system: (s) => systemText(s, this.#split ? s.edited?.kokoro ?? KOKORO_PART : ''),
@@ -309,7 +310,7 @@ export class Halves {
     this.koe = new Agent({
       ...c,
       half: {
-        name: 'koe', tag: KOE_TAG, role: KOE_CLASSIC, registryTools: false, logVoice: false, housekeeping: false, listenLast: true, nonce: this.nonce, serial, ready,
+        name: 'koe', tag: KOE_TAG, role: KOE_CLASSIC, registryTools: false, logVoice: false, housekeeping: false, listenLast: true, nonce: this.nonce, serial, ready, page,
         voice: () => this.koeState === 'text',
         // annai's card, Kokoro's, with Koe on a chat model: who speaks into Koe's microphone, and when each line began; and each line, first.
         speech: (on, line) => {
@@ -899,8 +900,10 @@ export class Halves {
       if (away) this.#alongside(this.kokoro.remind(reminders)); // idle() waits for its entry
       // What the session gets is what #live falls back on too: the reminders annai showed above are not shown again if the session can't take it.
       const given = away ? { ...w, fallbacks: w.fallbacks?.filter((r) => r.cue) } : w;
-      if (this.koeState === 'live') this.#alongside(this.#live(() => this.live.wake(given), given));
-      else this.koe.enqueue(w);
+      if (this.koeState === 'live') {
+        this.#alongside(this.koe.hold(given.fallbacks ?? [])); // the session holds it in memory until Koe says it (the text Koe's queue holds its own)
+        this.#alongside(this.#live(() => this.live.wake(given), given));
+      } else this.koe.enqueue(w);
     }, (e) => this.kokoro.wakeFailed(w, e)); // a route that fails before its hand-ons (the refresh, the budgets' check): its reminders are shown, once
     return Promise.resolve();
   }

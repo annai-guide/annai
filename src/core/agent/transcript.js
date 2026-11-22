@@ -44,7 +44,7 @@ export const NOT_SAID = new Set(['location', 'trigger.fired']);
  * The log entry types the conversation is made of (what apply() reads; compaction aside), so it is
  * read by type: a day of location points is never walked. A type apply() learns goes here too.
  */
-export const SAID = Object.freeze(['wake', 'msg.user', 'model.turn', 'photo.replace', 'error', 'heard', 'heard.text', 'reminder', 'tool.result', 'note', 'halves', 'out.speak', 'out.show', 'out.ask', 'handover.undo', 'conversation.moved', 'turn.end', 'grounded']);
+export const SAID = Object.freeze(['wake', 'msg.user', 'model.turn', 'photo.replace', 'error', 'heard', 'heard.text', 'reminder', 'tool.result', 'note', 'halves', 'out.speak', 'out.show', 'out.ask', 'handover.undo', 'conversation.moved', 'turn.end', 'grounded', 'reminder.held']);
 /** A line of hers that reached the user (never annai's own card), or a reply shown as written: the loop's count and #owing share it. @param {{ type: string, actor?: string }} e */
 export const reaches = (e) => (e.type.startsWith('out.') && e.actor !== 'system') || e.type === 'grounded';
 /** Koe's window (plan decision 5): its last 12 exchanges, its start moving in jumps of 6. */
@@ -127,7 +127,10 @@ export class Transcript {
   #handover = null;
   /** What the restart carries: a cut turn's own, as its wakes and the user's lines it took up name it; undefined when nothing says (the newest owed). @type {string | null | undefined} */
   #carried = undefined;
-  /** What the log still owes the traveller: reminders its wake records carried that nothing settled (Agent.open shows them). @type {import('./loop.js').Reminder[]} */
+  /**
+   * What the log still owes the traveller: reminders its records carried that nothing settled (Agent.open shows them); held: the page that held one no
+   * turn has yet. @type {(import('./loop.js').Reminder & { held?: string })[]}
+   */
   owedReminders = [];
   #koe = new WeakSet(); // Koe's
   /** @type {Map<string, string>} Shiori's tool calls by id, to their tool names */
@@ -425,13 +428,19 @@ export class Transcript {
     this.to = e.seq;
   }
 
-  /** The loop's rule: the newest wake record with a reminder owes it, in its half, till its entry or her next line. @param {any} e @param {any} d */
+  /**
+   * The loop's rule: the newest record with a reminder owes it, till its entry; a wake record's, in its half, till her next line too. One a page held
+   * (`reminder.held`: no turn has it yet) is settled by no line, only by its entry or by the record of the turn that takes it; it keeps that page's mark
+   * (`held`). @param {any} e @param {any} d
+   */
   #owing(e, d) {
     const koe = d.half === 'koe';
+    const held = e.type === 'reminder.held';
     /** @type {any[]} */
-    const list = e.type === 'wake' && Array.isArray(d.reminders) ? d.reminders.filter((r) => r?.text) : e.type === 'reminder' ? [d] : [];
-    this.owedReminders = this.owedReminders.filter((x) => !(reaches(e) && this.#koe.has(x) === koe) && !list.some((r) => r.watch === x.watch && r.text === x.text));
-    if (e.type !== 'wake') return;
+    const list = (e.type === 'wake' || held) && Array.isArray(d.reminders) ? d.reminders.filter((r) => r?.text).map((r) => (held ? { ...r, held: String(d.page ?? '') } : r))
+      : e.type === 'reminder' ? [d] : [];
+    this.owedReminders = this.owedReminders.filter((x) => !(reaches(e) && !('held' in x) && this.#koe.has(x) === koe) && !list.some((r) => r.watch === x.watch && r.text === x.text));
+    if (e.type === 'reminder') return;
     for (const r of list) if (koe) this.#koe.add(r);
     this.owedReminders.push(...list);
   }

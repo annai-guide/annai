@@ -120,7 +120,7 @@ test('with no Koe model and voice on, Halves and the one Agent send the same req
     await until(() => !k.platform.mic.isOpen(), 2000); // her last sleep leaves the window to run out: the log ends when it does
     /** @param {any} x */
     const norm = (x) => JSON.parse(JSON.stringify(x, (key, v) => {
-      if (['id', 'wake', 'ms', 'firstMs', 'ts', 'seq', 'prefix', 'now', 'answer', 'of', 'hash', 'refs', 'new', 'old', 'heard', 'at'].includes(key)) return undefined;
+      if (['id', 'wake', 'ms', 'firstMs', 'ts', 'seq', 'prefix', 'now', 'answer', 'of', 'hash', 'refs', 'new', 'old', 'heard', 'at', 'page'].includes(key)) return undefined;
       return typeof v === 'string' ? v.replace(/scripted_\d+_\d+|\b[wctsh]-[a-z0-9]+/g, 'ID').replace(/\d{4}-\d\d-\d\dT[\d:.]+Z/g, 'TIME') : v;
     }));
     return {
