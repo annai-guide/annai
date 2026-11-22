@@ -727,3 +727,31 @@ test("a reply that searched gives no count, and the request's own estimate still
   await talk(k.agent, [`Long paste ${'w'.repeat(360_000)}`]); // over 100,000 tokens by the estimate
   assert.equal(timers.length, 1);
 });
+
+test("a PDF counts as one picture, not by its bytes: a talk far below 100,000 tokens that reads one of 256 KiB makes nothing due, live or at a cold return; the provider's own count over 100,000 still does (pdf-count-next)", async (t) => {
+  const jump = clockOf(t);
+  const reads = { ...OPUS, contextWindow: 200_000, input: ['text', 'image', 'pdf'] };
+  const readIt = { toolCalls: [{ name: 'read', input: { path: '/trip/files/timetable.pdf' } }], usage: SHORT };
+  /** The step after her read reports `counted`: SHORT and 26,205 more is the most a PDF added on real calls (222 KiB); LONG is over 100,000. @param {any} counted */
+  const kit = async (counted) => {
+    /** @type {number[]} */
+    const timers = [];
+    const k = await agentKit([[say('Hi.'), say('Kyoto.'), say('Sure.'), readIt, say('The 9:40.', counted), say('Platform 2.', counted)]], {
+      models: [reads], utility: [{ text: 'Summary.' }], agent: { timers: { set: (/** @type {any} */ _fn, /** @type {number} */ ms) => timers.push(ms), clear: () => {} } },
+    });
+    await k.ws.write(k.trip, '/files/timetable.pdf', new TextEncoder().encode(`%PDF-1.4 ${'t'.repeat(256 * 1024 - 9)}`), { author: 'user', type: 'application/pdf' });
+    // Three exchanges before hers, so a summary would have a part to take.
+    await talk(k.agent, ['Hello', 'Where are we?', 'Thanks', 'Read the timetable']);
+    return { k, timers };
+  };
+  const { k, timers } = await kit({ ...SHORT, cacheWrite1h: SHORT.cacheWrite1h + 26_205 });
+  const pdf = (/** @type {any} */ r) => r.messages.flatMap((/** @type {any} */ m) => m.parts).filter((/** @type {any} */ p) => p.type === 'document');
+  assert.deepEqual(pdf(k.requests[4]).map((p) => p.data.length), [349_528], 'it went whole: 256 KiB as base64');
+  assert.deepEqual(timers, [], 'live: nothing came due, so no warm housekeeping is timed');
+  jump(61 * MINUTE);
+  await talk(await reload(k), ['Which platform?']);
+  assert.equal(pdf(k.requests.at(-1)).length, 1, 'the turn after its own still sends it');
+  assert.deepEqual(await k.events(['compaction']), [], 'cold: nothing is summarized first');
+  assert.equal(k.requests.some(isUtility), false);
+  assert.equal((await kit(LONG)).timers.length, 1, "the provider's own count over 100,000 makes it due");
+});
