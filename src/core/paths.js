@@ -1,3 +1,5 @@
+import { cut } from './web-search.js';
+
 export class PathError extends Error {
   /** @param {string} message */
   constructor(message) {
@@ -100,6 +102,23 @@ export function isCompressedType(type) {
   if (type === 'image/svg+xml') return false;
   return type.startsWith('image/') || type.startsWith('audio/') || type.startsWith('video/') || type.startsWith('font/') ||
     type === 'application/pdf' || type === 'application/zip' || type === 'application/vnd.apple.pkpass';
+}
+
+/** What a name from outside never keeps: a slash, a backslash, control characters, `"`, `<` and `>` (Koe reads other brackets), U+2028, U+2029. */
+const NOT_IN_NAMES = /[\\/\u0000-\u001f\u007f"<>\u2028\u2029]+/g;
+
+/**
+ * A file's name that its sender chose (a photo's with no date taken, a shared or picked file's), as annai keeps it, so the path Shiori is
+ * told reads back (spec §4.3): NFC, each run of NOT_IN_NAMES one "-", trimmed, and before its extension (up to 10 letters or digits) at
+ * most 80 UTF-16 units, cut between whole characters: 80, the photo's cut before, which with an extension and a free name's " (99)" stays
+ * under the 100 a quoted path is cut at (handover.js). A joined emoji may lose its later parts, each a whole character, which reads back.
+ * Nothing left, ".", or "..": fallback. @param {string} name @param {string} fallback
+ */
+export function outsideName(name, fallback) {
+  const s = name.normalize('NFC').replace(NOT_IN_NAMES, '-').trim();
+  const ext = /\.[a-z0-9]{1,10}$/i.exec(s)?.[0] ?? '';
+  const out = `${cut(s.slice(0, s.length - ext.length), 80)}${ext}`;
+  return out === '' || out === '.' || out === '..' ? fallback : out;
 }
 
 /**

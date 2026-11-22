@@ -628,8 +628,8 @@ rg5j3b	draft	Free up space on this device, then try again.	請釋放這台裝置
 1rgff8l	ok	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	annai 已在另一個分頁中開啟，因此這個分頁裡的 annai 已停止運作。要在這裡使用 annai，請重新載入這個分頁。	src/core/errors.js:42	
 gnrtev	ok	Shiori can't reach her model.	Shiori 無法連線到模型。	src/core/errors.js:43	
 98c05r	ok	This calendar has more than {0} events. Export only the dates you need from your calendar, and add that file.	此行事曆中的活動超過 {0} 個。請在行事曆中只匯出需要的日期，再新增匯出的檔案。	src/core/ics.js:115	{0} = num(MAX_EVENTS)
-10s60wn	ok	No file at {0}.	{0} 處沒有檔案。	src/core/imports.js:14	{0} = path
-13ujlu9	ok	{0} is too large (over {1}). Export only the dates you need from your calendar, and add that file.	{0} 太大了（超過 {1}）。請在行事曆中只匯出所需日期的活動，再新增匯出的檔案。	src/core/imports.js:15	{0} = path; {1} = size(MAX_ICS_BYTES)
+10s60wn	ok	No file at {0}.	{0} 處沒有檔案。	src/core/imports.js:15	{0} = path
+13ujlu9	ok	{0} is too large (over {1}). Export only the dates you need from your calendar, and add that file.	{0} 太大了（超過 {1}）。請在行事曆中只匯出所需日期的活動，再新增匯出的檔案。	src/core/imports.js:16	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:36	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	剛剛	src/core/intl.js:152	
 1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	使用手機喇叭時，Shiori 說話期間聽不到你的聲音，插話會被忽略。點一下就能讓她停下來聽你說。	src/core/koe/live.js:669	
@@ -837,7 +837,7 @@ apv0y3	ok	annai couldn't read {0} from {1}, a file its {2} names. Check that it 
 1j0uwka	ok	the personality {0}	性格 {0}	src/core/packages.js:668	{0} = p.name
 14wn58m	ok	a provider that sends keys to {0}	會把金鑰傳送到 {0} 的供應商	src/core/packages.js:669	{0} = o; Note: one of a list of what an update adds.
 tqmba2	ok	an address your searches are sent to: {0}	會接收搜尋內容的網址 {0}	src/core/packages.js:669	{0} = o; Note: one of a list of what an update adds.
-18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	這個瀏覽器無法轉換 {0}，因此保留了原始檔案，可能只有 Safari 能顯示。	src/core/photos.js:140	{0} = name
+18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	這個瀏覽器無法轉換 {0}，因此保留了原始檔案，可能只有 Safari 能顯示。	src/core/photos.js:139	{0} = name
 1009iza	ok	Restaurant	餐廳	src/core/plan.js:70	
 1cyh7n5	draft	Coach	長途客運	src/core/plan.js:70	Note: a plan item's kind, or a booking's, shown under its title: a long-distance coach, not a train carriage.
 1imb8nt	draft	Bus	巴士	src/core/plan.js:70	Note: a plan item's kind, or a booking's, shown under its title: a bus or shuttle ride.
@@ -989,18 +989,18 @@ igm0pc	ok	The MCP server {0} refused annai's key. Check its token or headers in 
 25n9uk	ok	The MCP server {0} started a session annai can't see. It must list Mcp-Session-Id in Access-Control-Expose-Headers.	MCP 伺服器「{0}」開啟了工作階段，但 annai 讀取不到工作階段 ID。它必須在 Access-Control-Expose-Headers 中列出 Mcp-Session-Id。	src/plugins/mcp/client.js:275	{0} = this.server; Note: Header names stay as written: they are what the server is set up with.
 lzl064	ok	The MCP server {0} sent an answer annai can't read.	MCP 伺服器「{0}」傳來了 annai 無法讀取的回覆。	src/plugins/mcp/client.js:289	{0} = this.server
 1kq4f3c	ok	The MCP server {0} sent more than annai reads ({1} MB).	MCP 伺服器「{0}」傳來的內容超過了 annai 能讀取的上限（{1} MB）。	src/plugins/mcp/client.js:294	{0} = this.server; {1} = num(ANSWER_MAX / 1_048_576)
-195b0jb	ok	MCP servers	MCP 伺服器	src/plugins/mcp/index.js:24	Note: The glossary's screen name.
-pnu9f5	ok	Tools from MCP servers you add in Settings → Tools.	你在設定 → 工具中新增的 MCP 伺服器所提供的工具。	src/plugins/mcp/index.js:27	
-hs6d0h	ok	The token has a character a web request can't carry: U+{0}, at character {1}. Copy it again without it.	權杖的第 {1} 個字元（U+{0}）無法放進網頁請求。請重新複製，不要帶上這個字元。	src/plugins/mcp/index.js:54	{0} = code; {1} = n
-1akzgkh	ok	The header {0} has a character a web request can't carry: U+{1}, at character {2}. Copy it again without it.	請求標頭 {0} 的第 {2} 個字元（U+{1}）無法放進網頁請求。請重新複製，不要帶上這個字元。	src/plugins/mcp/index.js:55	{0} = header; {1} = code; {2} = n
-zgh0se	ok	The address must start with https:// (or http://localhost or http://127.0.0.1 on this device).	網址必須以 https:// 開頭（在本裝置上也可以用 http://localhost 或 http://127.0.0.1）。	src/plugins/mcp/index.js:76	
-1xt26lz	ok	This address holds a name or password before an @. Leave it out, and put the key in the Token or Headers field.	這個網址的 @ 前面帶有使用者名稱或密碼。請去掉這部分，把金鑰填到「權杖」或「請求標頭」欄位中。	src/plugins/mcp/index.js:78	Note: Token and Headers as the form names its fields (トークン, ヘッダー / 令牌, 請求頭).
-1v5ab85	ok	Each header is one line: Name: value.	每個請求標頭佔一行，格式為「Name: value」。	src/plugins/mcp/index.js:89	Note: "Name: value" stays English: it is the form of what is typed.
-z6ass1	ok	annai sends {0} itself, so it can't be one of these headers. Leave that line out.	annai 會自動傳送 {0}，所以不能在這裡填寫。請刪掉那一行。	src/plugins/mcp/index.js:90	{0} = m[1]
-1wffyf4#other	ok	The MCP server didn't answer within # seconds. Check that it is running, then try again.	MCP 伺服器在 # 秒內沒有回應。請確認它正在執行，然後重試。	src/plugins/mcp/index.js:259	plural; # = LIST_MS / 1000; English: "The MCP server didn't answer within # second. Check that it is running, then try again." (one), "The MCP server didn't answer within # seconds. Check that it is running, then try again." (other)
-129gp7y	ok	There is no MCP server called {0}.	沒有名為「{0}」的 MCP 伺服器。	src/plugins/mcp/index.js:275	{0} = name
-i69zke	ok	A server's name is 1 to 20 lowercase letters, digits and dashes, like trail.	伺服器名稱由 1 到 20 個小寫字母、數字和連字元組成，例如 trail。	src/plugins/mcp/index.js:314	Note: trail is an example name, as the form's placeholder; kept as written.
-ku5jlk	ok	There is a server called {0} already.	已經有名為「{0}」的伺服器了。	src/plugins/mcp/index.js:315	{0} = n
+195b0jb	ok	MCP servers	MCP 伺服器	src/plugins/mcp/index.js:25	Note: The glossary's screen name.
+pnu9f5	ok	Tools from MCP servers you add in Settings → Tools.	你在設定 → 工具中新增的 MCP 伺服器所提供的工具。	src/plugins/mcp/index.js:28	
+hs6d0h	ok	The token has a character a web request can't carry: U+{0}, at character {1}. Copy it again without it.	權杖的第 {1} 個字元（U+{0}）無法放進網頁請求。請重新複製，不要帶上這個字元。	src/plugins/mcp/index.js:55	{0} = code; {1} = n
+1akzgkh	ok	The header {0} has a character a web request can't carry: U+{1}, at character {2}. Copy it again without it.	請求標頭 {0} 的第 {2} 個字元（U+{1}）無法放進網頁請求。請重新複製，不要帶上這個字元。	src/plugins/mcp/index.js:56	{0} = header; {1} = code; {2} = n
+zgh0se	ok	The address must start with https:// (or http://localhost or http://127.0.0.1 on this device).	網址必須以 https:// 開頭（在本裝置上也可以用 http://localhost 或 http://127.0.0.1）。	src/plugins/mcp/index.js:77	
+1xt26lz	ok	This address holds a name or password before an @. Leave it out, and put the key in the Token or Headers field.	這個網址的 @ 前面帶有使用者名稱或密碼。請去掉這部分，把金鑰填到「權杖」或「請求標頭」欄位中。	src/plugins/mcp/index.js:79	Note: Token and Headers as the form names its fields (トークン, ヘッダー / 令牌, 請求頭).
+1v5ab85	ok	Each header is one line: Name: value.	每個請求標頭佔一行，格式為「Name: value」。	src/plugins/mcp/index.js:90	Note: "Name: value" stays English: it is the form of what is typed.
+z6ass1	ok	annai sends {0} itself, so it can't be one of these headers. Leave that line out.	annai 會自動傳送 {0}，所以不能在這裡填寫。請刪掉那一行。	src/plugins/mcp/index.js:91	{0} = m[1]
+1wffyf4#other	ok	The MCP server didn't answer within # seconds. Check that it is running, then try again.	MCP 伺服器在 # 秒內沒有回應。請確認它正在執行，然後重試。	src/plugins/mcp/index.js:260	plural; # = LIST_MS / 1000; English: "The MCP server didn't answer within # second. Check that it is running, then try again." (one), "The MCP server didn't answer within # seconds. Check that it is running, then try again." (other)
+129gp7y	ok	There is no MCP server called {0}.	沒有名為「{0}」的 MCP 伺服器。	src/plugins/mcp/index.js:276	{0} = name
+i69zke	ok	A server's name is 1 to 20 lowercase letters, digits and dashes, like trail.	伺服器名稱由 1 到 20 個小寫字母、數字和連字元組成，例如 trail。	src/plugins/mcp/index.js:315	Note: trail is an example name, as the form's placeholder; kept as written.
+ku5jlk	ok	There is a server called {0} already.	已經有名為「{0}」的伺服器了。	src/plugins/mcp/index.js:316	{0} = n
 126nbeu	ok	Places tools	地點工具	src/plugins/places/index.js:20	Note: Places as its tool group is named in Settings → Tools (場所 / 地點).
 1gghsme	ok	nearby, geocode, reverse, weather and guide, from OpenStreetMap, Wikipedia, Nominatim, Open-Meteo and Wikivoyage.	nearby、geocode、reverse、weather 和 guide，資料來自 OpenStreetMap、Wikipedia、Nominatim、Open-Meteo 和 Wikivoyage。	src/plugins/places/index.js:23	
 143ff3s	ok	Sensors	感測器	src/plugins/sensors/index.js:6	

@@ -628,8 +628,8 @@ rg5j3b	draft	Free up space on this device, then try again.	この端末の空き
 1rgff8l	ok	annai has stopped in this tab because it was opened in another one. Reload this tab to use annai here.	別のタブでannaiが開かれたため、このタブでは停止しました。このタブで使うには、再読み込みしてください。	src/core/errors.js:42	
 gnrtev	ok	Shiori can't reach her model.	Shioriがモデルに接続できません。	src/core/errors.js:43	
 98c05r	ok	This calendar has more than {0} events. Export only the dates you need from your calendar, and add that file.	このカレンダーには{0}件を超える予定があります。必要な期間の予定だけをカレンダーからエクスポートして、そのファイルを追加してください。	src/core/ics.js:115	{0} = num(MAX_EVENTS)
-10s60wn	ok	No file at {0}.	{0}にファイルがありません。	src/core/imports.js:14	{0} = path
-13ujlu9	ok	{0} is too large (over {1}). Export only the dates you need from your calendar, and add that file.	{0}は大きすぎます（{1}超）。カレンダーから必要な期間だけをエクスポートして、そのファイルを追加してください。	src/core/imports.js:15	{0} = path; {1} = size(MAX_ICS_BYTES)
+10s60wn	ok	No file at {0}.	{0}にファイルがありません。	src/core/imports.js:15	{0} = path
+13ujlu9	ok	{0} is too large (over {1}). Export only the dates you need from your calendar, and add that file.	{0}は大きすぎます（{1}超）。カレンダーから必要な期間だけをエクスポートして、そのファイルを追加してください。	src/core/imports.js:16	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:36	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Japanese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	たった今	src/core/intl.js:152	
 1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	端末のスピーカーでは、Shioriが話している間は声を聞き取れないため、重ねて話した内容は使われません。タップするとShioriが話すのをやめ、聞き取りを始めます。	src/core/koe/live.js:669	
@@ -837,7 +837,7 @@ apv0y3	ok	annai couldn't read {0} from {1}, a file its {2} names. Check that it 
 1j0uwka	ok	the personality {0}	性格「{0}」	src/core/packages.js:668	{0} = p.name
 14wn58m	ok	a provider that sends keys to {0}	キーを{0}に送信するプロバイダー	src/core/packages.js:669	{0} = o; Note: one of a list of what an update adds.
 tqmba2	ok	an address your searches are sent to: {0}	検索内容の送信先（{0}）	src/core/packages.js:669	{0} = o; Note: one of a list of what an update adds.
-18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	このブラウザでは{0}を変換できないため、元の形式のまま保存しました。Safariでしか表示されない場合があります。	src/core/photos.js:140	{0} = name
+18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	このブラウザでは{0}を変換できないため、元の形式のまま保存しました。Safariでしか表示されない場合があります。	src/core/photos.js:139	{0} = name
 1009iza	ok	Restaurant	レストラン	src/core/plan.js:70	
 1cyh7n5	draft	Coach	長距離バス	src/core/plan.js:70	Note: a plan item's kind, or a booking's, shown under its title: a long-distance coach, not a train carriage.
 1imb8nt	draft	Bus	バス	src/core/plan.js:70	Note: a plan item's kind, or a booking's, shown under its title: a bus or shuttle ride.
@@ -989,18 +989,18 @@ igm0pc	ok	The MCP server {0} refused annai's key. Check its token or headers in 
 25n9uk	ok	The MCP server {0} started a session annai can't see. It must list Mcp-Session-Id in Access-Control-Expose-Headers.	MCPサーバー「{0}」が開始したセッションをannaiから確認できません。サーバー側でAccess-Control-Expose-HeadersにMcp-Session-Idを含める必要があります。	src/plugins/mcp/client.js:275	{0} = this.server; Note: Header names stay as written: they are what the server is set up with.
 lzl064	ok	The MCP server {0} sent an answer annai can't read.	MCPサーバー「{0}」から、読み取れない応答が届きました。	src/plugins/mcp/client.js:289	{0} = this.server
 1kq4f3c	ok	The MCP server {0} sent more than annai reads ({1} MB).	MCPサーバー「{0}」から、annaiが読み込める上限（{1} MB）を超えるデータが届きました。	src/plugins/mcp/client.js:294	{0} = this.server; {1} = num(ANSWER_MAX / 1_048_576)
-195b0jb	ok	MCP servers	MCPサーバー	src/plugins/mcp/index.js:24	Note: The glossary's screen name.
-pnu9f5	ok	Tools from MCP servers you add in Settings → Tools.	「設定 → ツール」で追加したMCPサーバーのツール。	src/plugins/mcp/index.js:27	
-hs6d0h	ok	The token has a character a web request can't carry: U+{0}, at character {1}. Copy it again without it.	トークンに、Webリクエストで送れない文字（{1}文字目のU+{0}）が含まれています。その文字を除いてコピーし直してください。	src/plugins/mcp/index.js:54	{0} = code; {1} = n
-1akzgkh	ok	The header {0} has a character a web request can't carry: U+{1}, at character {2}. Copy it again without it.	ヘッダー{0}に、Webリクエストで送れない文字（{2}文字目のU+{1}）が含まれています。その文字を除いてコピーし直してください。	src/plugins/mcp/index.js:55	{0} = header; {1} = code; {2} = n
-zgh0se	ok	The address must start with https:// (or http://localhost or http://127.0.0.1 on this device).	アドレスは https:// で始めてください（この端末上のサーバーなら http://localhost または http://127.0.0.1 も使えます）。	src/plugins/mcp/index.js:76	
-1xt26lz	ok	This address holds a name or password before an @. Leave it out, and put the key in the Token or Headers field.	このアドレスには、@の前にユーザー名かパスワードが含まれています。その部分を削除し、キーは「トークン」か「ヘッダー」の欄に入れてください。	src/plugins/mcp/index.js:78	Note: Token and Headers as the form names its fields (トークン, ヘッダー / 令牌, 请求头).
-1v5ab85	ok	Each header is one line: Name: value.	ヘッダーは1行に1つずつ、「Name: value」の形で入力してください。	src/plugins/mcp/index.js:89	Note: "Name: value" stays English: it is the form of what is typed.
-z6ass1	ok	annai sends {0} itself, so it can't be one of these headers. Leave that line out.	{0}はannaiが自動で送るため、ここには指定できません。その行を削除してください。	src/plugins/mcp/index.js:90	{0} = m[1]
-1wffyf4#other	ok	The MCP server didn't answer within # seconds. Check that it is running, then try again.	MCPサーバーから#秒以内に応答がありませんでした。サーバーが動作していることを確認して、もう一度お試しください。	src/plugins/mcp/index.js:259	plural; # = LIST_MS / 1000; English: "The MCP server didn't answer within # second. Check that it is running, then try again." (one), "The MCP server didn't answer within # seconds. Check that it is running, then try again." (other)
-129gp7y	ok	There is no MCP server called {0}.	「{0}」というMCPサーバーはありません。	src/plugins/mcp/index.js:275	{0} = name
-i69zke	ok	A server's name is 1 to 20 lowercase letters, digits and dashes, like trail.	サーバー名は、英小文字・数字・ハイフンの1〜20文字で入力してください（例：trail）。	src/plugins/mcp/index.js:314	Note: trail is an example name, as the form's placeholder; kept as written.
-ku5jlk	ok	There is a server called {0} already.	「{0}」というサーバーはすでにあります。	src/plugins/mcp/index.js:315	{0} = n
+195b0jb	ok	MCP servers	MCPサーバー	src/plugins/mcp/index.js:25	Note: The glossary's screen name.
+pnu9f5	ok	Tools from MCP servers you add in Settings → Tools.	「設定 → ツール」で追加したMCPサーバーのツール。	src/plugins/mcp/index.js:28	
+hs6d0h	ok	The token has a character a web request can't carry: U+{0}, at character {1}. Copy it again without it.	トークンに、Webリクエストで送れない文字（{1}文字目のU+{0}）が含まれています。その文字を除いてコピーし直してください。	src/plugins/mcp/index.js:55	{0} = code; {1} = n
+1akzgkh	ok	The header {0} has a character a web request can't carry: U+{1}, at character {2}. Copy it again without it.	ヘッダー{0}に、Webリクエストで送れない文字（{2}文字目のU+{1}）が含まれています。その文字を除いてコピーし直してください。	src/plugins/mcp/index.js:56	{0} = header; {1} = code; {2} = n
+zgh0se	ok	The address must start with https:// (or http://localhost or http://127.0.0.1 on this device).	アドレスは https:// で始めてください（この端末上のサーバーなら http://localhost または http://127.0.0.1 も使えます）。	src/plugins/mcp/index.js:77	
+1xt26lz	ok	This address holds a name or password before an @. Leave it out, and put the key in the Token or Headers field.	このアドレスには、@の前にユーザー名かパスワードが含まれています。その部分を削除し、キーは「トークン」か「ヘッダー」の欄に入れてください。	src/plugins/mcp/index.js:79	Note: Token and Headers as the form names its fields (トークン, ヘッダー / 令牌, 请求头).
+1v5ab85	ok	Each header is one line: Name: value.	ヘッダーは1行に1つずつ、「Name: value」の形で入力してください。	src/plugins/mcp/index.js:90	Note: "Name: value" stays English: it is the form of what is typed.
+z6ass1	ok	annai sends {0} itself, so it can't be one of these headers. Leave that line out.	{0}はannaiが自動で送るため、ここには指定できません。その行を削除してください。	src/plugins/mcp/index.js:91	{0} = m[1]
+1wffyf4#other	ok	The MCP server didn't answer within # seconds. Check that it is running, then try again.	MCPサーバーから#秒以内に応答がありませんでした。サーバーが動作していることを確認して、もう一度お試しください。	src/plugins/mcp/index.js:260	plural; # = LIST_MS / 1000; English: "The MCP server didn't answer within # second. Check that it is running, then try again." (one), "The MCP server didn't answer within # seconds. Check that it is running, then try again." (other)
+129gp7y	ok	There is no MCP server called {0}.	「{0}」というMCPサーバーはありません。	src/plugins/mcp/index.js:276	{0} = name
+i69zke	ok	A server's name is 1 to 20 lowercase letters, digits and dashes, like trail.	サーバー名は、英小文字・数字・ハイフンの1〜20文字で入力してください（例：trail）。	src/plugins/mcp/index.js:315	Note: trail is an example name, as the form's placeholder; kept as written.
+ku5jlk	ok	There is a server called {0} already.	「{0}」というサーバーはすでにあります。	src/plugins/mcp/index.js:316	{0} = n
 126nbeu	ok	Places tools	場所ツール	src/plugins/places/index.js:20	Note: Places as its tool group is named in Settings → Tools (場所 / 地点).
 1gghsme	ok	nearby, geocode, reverse, weather and guide, from OpenStreetMap, Wikipedia, Nominatim, Open-Meteo and Wikivoyage.	nearby、geocode、reverse、weather、guide。OpenStreetMap、Wikipedia、Nominatim、Open-Meteo、Wikivoyageのデータを使います。	src/plugins/places/index.js:23	
 143ff3s	ok	Sensors	センサー	src/plugins/sensors/index.js:6	
