@@ -1,5 +1,5 @@
 {
-  "build": "9c3c5abe5ce2",
+  "build": "76ff2154f4c0",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -93,7 +93,7 @@
     "/src/core/llm/speech.js": "ac78e5273ec6",
     "/src/core/llm/sse.js": "656d2989d833",
     "/src/core/llm/trace.js": "ce4c33d5516e",
-    "/src/core/llm/uploads.js": "805c1054a13e",
+    "/src/core/llm/uploads.js": "10c8ceaa6e0c",
     "/src/core/llm/kept.js": "312be2a7089a",
     "/src/core/live/activity.js": "d1fe254c6571",
     "/src/core/live/clock.js": "e8699d74a329",
@@ -134,7 +134,7 @@
     "/src/core/pdf-pages.js": "dbede6cb6600",
     "/src/core/photo-meta.js": "7021827cca8d",
     "/src/core/pkpass.js": "b3e3dc6d825a",
-    "/src/core/photos.js": "906db1c66ccd",
+    "/src/core/photos.js": "87f30ec52c39",
     "/src/core/nominatim.js": "d51fa61a8129",
     "/src/core/wiki.js": "0f5680bb024a",
     "/src/core/paths.js": "b519fae60471",
@@ -270,7 +270,7 @@
     "/src/ui/screens/provider.js": "943ce7c195fd",
     "/src/ui/screens/recap.js": "abc8f1c81507",
     "/src/ui/screens/replay.js": "e4648e86a038",
-    "/src/ui/screens/settings.js": "46670de0819d",
+    "/src/ui/screens/settings.js": "f8d507e910bd",
     "/src/ui/screens/simulate.js": "16dddd363254",
     "/src/ui/screens/shiori.js": "570d16acdc88",
     "/src/ui/screens/sees.js": "6a674fc473ae",

@@ -24,11 +24,15 @@ export const MAX_CANVAS_PIXELS = 4096 * 4096;
 export const DEFAULT_PHOTO_SETTINGS = Object.freeze({
   keepOriginals: false,
   ingest: Object.freeze({ formats: Object.freeze(['image/webp', 'image/jpeg']), quality: 0.9, maxEdge: null, maxBytes: null }),
-  // What Shiori is sent (spec §4.8): within these and what the model accepts. 192 KiB is 256 KiB as base64, 30 s at SLOW_UPLINK
-  // (llm/uploads.js), the main role's wait for the first words: at 1 MiB, photos sent from a car broke off after 76 to 130 s (2026-11-21).
-  // Measured with encodePhoto on eight 10 to 12 MP photos of a traveller's kinds, copies stay 1600 to 2000 px as WebP and 1280 to 2000 px
-  // as JPEG, at quality 0.5 to 0.9 (spec §4.8); a closer look crops the stored photo, full size, through these same limits.
-  request: Object.freeze({ formats: Object.freeze(['image/webp', 'image/jpeg']), quality: 0.9, maxEdge: 2000, maxBytes: 192 * 1024 }),
+  // What Shiori is sent (spec §4.8): within these and what the model accepts. 256 KiB is about 341 KiB as base64 in the request: about
+  // 40 s at SLOW_UPLINK (llm/uploads.js), about 80 s with both halves sending at once. It is not sized to fit a wait: a send's limit is
+  // the wait plus the body's own time (llm/call.js). At about 1 MiB, requests of 1.2 to 1.4 MB sent over a mobile link broke off after
+  // 76 to 130 s (2026-11-21). Why not 192 KiB (probe, 2026-11-21: copies by annai's encoder in Linux WebKit, JPEG, read by Gemini 3.8
+  // Flash standing in for Claude; so not an iPhone's encoder, not Claude): of 44 facts on five photos with text it read 41 at 256 KiB, 32
+  // at 192 KiB and 44 at 1 MiB; a distant menu board's prices, 7 of 10 at 256 KiB and 0 at 192. Linux Chromium and WebKit on eight 10 to
+  // 12 MP photos: WebP copies 2000 px, JPEG 1600 to 2000 px, quality 0.5 to 0.9; an iPhone is unmeasured, likely a step smaller. A closer
+  // look crops the stored photo, full size, through these same limits.
+  request: Object.freeze({ formats: Object.freeze(['image/webp', 'image/jpeg']), quality: 0.9, maxEdge: 2000, maxBytes: 256 * 1024 }),
 });
 /** @type {Record<string, string>} */
 const EXTENSIONS = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic', 'image/heif': 'heif', 'image/avif': 'avif' };

@@ -663,7 +663,7 @@ test("a photo going up slowly is not a model that never started: on a slow uplin
     await page.getByLabel('Takes photos').check();
     await expect(savedBy(page.getByLabel('Takes photos'))).toHaveText('Saved');
     await page.goto('/#/talk');
-    // Noise, which no encoder makes small: it goes at the default cap of 192 KiB, some 220 KB in the request as base64 (measured 2026-11-21).
+    // Noise, which no encoder makes small: its copy, made at the default limits, brings the request to some 220 KB (measured 2026-11-21).
     const noisy = await page.evaluate(async () => {
       const c = new OffscreenCanvas(800, 800);
       const g = /** @type {OffscreenCanvasRenderingContext2D} */ (c.getContext('2d'));
@@ -672,7 +672,8 @@ test("a photo going up slowly is not a model that never started: on a slow uplin
       g.putImageData(px, 0, 0);
       return [...new Uint8Array(await (await c.convertToBlob({ type: 'image/jpeg', quality: 0.9 })).arrayBuffer())];
     });
-    // 64 KB a second up (512 kbit/s, mobile data in a car or a busy hotel Wi-Fi): the request takes some 3.5 seconds to go up, past the wait of 2.
+    // Throttled to 64 KB a second up, the request takes some 3.5 seconds to go up, past the wait of 2. This tests a send that outlasts the
+    // wait; it claims no real link's speed.
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('Network.enable');
     await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: 64_000 });

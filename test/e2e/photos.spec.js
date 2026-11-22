@@ -255,7 +255,7 @@ test('only the latest share waits, and its photos are shown before they are adde
 test('Photos for Shiori: how large the photos she is sent may be, kept after a reload (spec §4.8)', async ({ page }) => {
   await openApp(page, '#/settings');
   await expect(page.getByLabel('Longest side sent, pixels')).toHaveValue('2000');
-  await expect(page.getByLabel('Largest photo sent, MB')).toHaveValue('0.2');
+  await expect(page.getByLabel('Largest photo sent, MB')).toHaveValue('0.26');
   await expect(page.getByLabel('Quality sent (0.5 to 1)')).toHaveValue('0.9');
   await expect(page.getByText('A closer look always sends more detail, so small settings stay usable.')).toBeVisible();
   await page.getByLabel('Longest side sent, pixels').fill('1200');

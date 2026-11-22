@@ -837,7 +837,7 @@ apv0y3	ok	annai couldn't read {0} from {1}, a file its {2} names. Check that it 
 1j0uwka	ok	the personality {0}	性格 {0}	src/core/packages.js:668	{0} = p.name
 14wn58m	ok	a provider that sends keys to {0}	会把密钥发送到 {0} 的提供商	src/core/packages.js:669	{0} = o; Note: one of a list of what an update adds.
 tqmba2	ok	an address your searches are sent to: {0}	会接收搜索内容的地址 {0}	src/core/packages.js:669	{0} = o; Note: one of a list of what an update adds.
-18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	此浏览器无法转换 {0}，因此保留了原文件，可能只有 Safari 浏览器能显示。	src/core/photos.js:138	{0} = name
+18tp402	ok	This browser can't convert {0}, so annai kept it as it is. It may show only in Safari.	此浏览器无法转换 {0}，因此保留了原文件，可能只有 Safari 浏览器能显示。	src/core/photos.js:142	{0} = name
 1009iza	ok	Restaurant	餐厅	src/core/plan.js:70	
 1cyh7n5	draft	Coach	长途大巴	src/core/plan.js:70	Note: a plan item's kind, or a booking's, shown under its title: a long-distance coach, not a train carriage.
 1imb8nt	draft	Bus	巴士	src/core/plan.js:70	Note: a plan item's kind, or a booking's, shown under its title: a bus or shuttle ride.

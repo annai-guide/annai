@@ -7,13 +7,13 @@ import { fakeCodec } from './agent-kit.js';
 
 const request = photoSettings({}).request;
 
-test('request settings default to WebP or JPEG, quality 0.9, 2000 px, 192 KiB (spec §4.8)', () => {
-  assert.deepEqual(request, { formats: ['image/webp', 'image/jpeg'], quality: 0.9, maxEdge: 2000, maxBytes: 192 * 1024 });
+test('request settings default to WebP or JPEG, quality 0.9, 2000 px, 256 KiB (spec §4.8)', () => {
+  assert.deepEqual(request, { formats: ['image/webp', 'image/jpeg'], quality: 0.9, maxEdge: 2000, maxBytes: 256 * 1024 });
 });
 
 test('the limits are the stricter of the request settings and what the model accepts', () => {
   assert.deepEqual(requestLimits(request, { formats: ['image/jpeg', 'image/png'], maxEdge: 8000, maxBytes: 5 * 2 ** 20, maxCount: 100 }),
-    { formats: ['image/jpeg'], quality: 0.9, maxEdge: 2000, maxBytes: 192 * 1024, maxCount: 100 });
+    { formats: ['image/jpeg'], quality: 0.9, maxEdge: 2000, maxBytes: 256 * 1024, maxCount: 100 });
   assert.deepEqual(requestLimits({ ...request, maxEdge: null }, { maxEdge: 1568 }).maxEdge, 1568);
   assert.deepEqual(requestLimits(request, { formats: ['image/gif'] }).formats, ['image/gif']);
   assert.deepEqual(requestLimits(request, {}).maxCount, null);

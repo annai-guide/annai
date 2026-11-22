@@ -39,21 +39,12 @@ function fakeCodec(result = {}) {
 }
 
 test('settings: defaults, and anything missing or out of range falls back to them', () => {
-  assert.deepEqual(photoSettings({}), { keepOriginals: false, ingest: { formats: ['image/webp', 'image/jpeg'], quality: 0.9, maxEdge: null, maxBytes: null }, request: { formats: ['image/webp', 'image/jpeg'], quality: 0.9, maxEdge: 2000, maxBytes: 192 * 1024 } });
+  assert.deepEqual(photoSettings({}), { keepOriginals: false, ingest: { formats: ['image/webp', 'image/jpeg'], quality: 0.9, maxEdge: null, maxBytes: null }, request: { formats: ['image/webp', 'image/jpeg'], quality: 0.9, maxEdge: 2000, maxBytes: 256 * 1024 } });
   assert.deepEqual(DEFAULT_PHOTO_SETTINGS.ingest.formats, ['image/webp', 'image/jpeg']);
   const s = photoSettings({ photos: { keepOriginals: true, ingest: { formats: [], quality: 7, maxEdge: 2000, maxBytes: 'big' } } });
-  assert.deepEqual(s, { keepOriginals: true, ingest: { formats: ['image/webp', 'image/jpeg'], quality: 0.9, maxEdge: 2000, maxBytes: null }, request: { formats: ['image/webp', 'image/jpeg'], quality: 0.9, maxEdge: 2000, maxBytes: 192 * 1024 } });
+  assert.deepEqual(s, { keepOriginals: true, ingest: { formats: ['image/webp', 'image/jpeg'], quality: 0.9, maxEdge: 2000, maxBytes: null }, request: { formats: ['image/webp', 'image/jpeg'], quality: 0.9, maxEdge: 2000, maxBytes: 256 * 1024 } });
   assert.deepEqual(photoSettings({ photos: { ingest: { formats: ['image/jpeg'], quality: 0.8, maxBytes: 2_000_000 } } }).ingest,
     { formats: ['image/jpeg'], quality: 0.8, maxEdge: null, maxBytes: 2_000_000 });
-});
-
-test("a photo sent at the default size goes up within the main role's wait for the first words on the slow uplink annai sizes sends for (the user's photos from the car, 2026-11-21)", async () => {
-  const { SLOW_UPLINK } = await import('../../src/core/llm/uploads.js');
-  const { firstWordsMs } = await import('../../src/core/llm/fallback.js');
-  // In the request the photo is base64, 4 bytes for every 3.
-  const bits = Math.ceil(DEFAULT_PHOTO_SETTINGS.request.maxBytes / 3) * 4 * 8;
-  const ms = (bits * 1000) / SLOW_UPLINK;
-  assert.ok(ms <= firstWordsMs(/** @type {any} */ ({}), 'main'), `a photo at the default cap takes ${Math.round(ms / 1000)} s at ${SLOW_UPLINK / 1000} kbit/s`);
 });
 
 test('settings: no limit is kept as 0, which a merge patch can write where null would delete it and bring the default back', async () => {
