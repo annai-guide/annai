@@ -55,7 +55,7 @@ test('recall brings back the exact words from before a compaction, with photos a
   await k.agent.idle();
   const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'recall');
   const text = r.data.content ?? '';
-  assert.match(text, /user: When does Nepenthe open\? \[photo \/trip\/files\/menu\.webp, part \[0, 0, 0\.5, 0\.5\]\]/);
+  assert.match(text, /user: When does Nepenthe open\? \[photo "\/trip\/files\/menu\.webp", part \[0, 0, 0\.5, 0\.5\]\]/);
   assert.match(text, /Shiori said: Nepenthe opens at 11:30\./);
 });
 

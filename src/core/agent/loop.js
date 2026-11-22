@@ -2,7 +2,7 @@ import { claimLine, quote, conversationLines, USER_LINES } from './blocks.js';
 import { ME, TODO_FILE, newId } from '../scopes.js';
 import { readAppSettings } from '../settings.js';
 import { languageSettings, strayLanguage } from '../languages.js';
-import { AllFailedError, estimateTokens, CHARS_PER_TOKEN, candidates, chatCandidates, whyOf, whyWords, levelOf } from '../llm/fallback.js';
+import { AllFailedError, estimateTokens, CHARS_PER_TOKEN, candidates, chatCandidates, whyOf, whyWords, levelOf, fileWords } from '../llm/fallback.js';
 import { ProviderError } from '../llm/contract.js';
 import { modelOf, modelNames, providerOf, updateModel } from '../llm/config.js';
 import { NotFoundError } from '../workspace.js';
@@ -19,7 +19,7 @@ import { tracedFetch, withoutSecrets, shownWithoutSecrets } from './net.js';
 import { webVia } from './via.js';
 import { inQuiet, quietEnds, spentToday, budgetStop, budgetWords } from './budgets.js';
 import { PhotoCopies, requestLimits, healRegion, photoLine } from '../request-photos.js';
-import { readRefusal, stricter, tighter, limitImages } from './refusals.js';
+import { readRefusal, stricter, tighter, limitMedia } from './refusals.js';
 import { photoSettings } from '../photos.js';
 import { parsePartialJSON } from '../llm/partial-json.js';
 import { spokenText, unspoken } from './listen.js';
@@ -1649,13 +1649,13 @@ export class Agent {
 
   /**
    * The conversation as it is sent: no photo whose bytes are gone. Each model's call then sends its own photo limit of it, each picture
-   * once (callRole, limitImages; spec §4.8).
+   * once (callRole, limitMedia; spec §4.8).
    */
   async #sendable() {
     return (await this.#sendRule())(this.#visible());
   }
 
-  /** The conversation as it holds it, less photos whose bytes are gone. Each model's call sends its own photo limit of it, each picture once (callRole, limitImages). */
+  /** The conversation as it holds it, less photos whose bytes are gone. Each model's call sends its own photo limit of it, each picture once (callRole, limitMedia). */
   #visible() {
     return this.transcript.messages.map((m) => ({ role: m.role, parts: m.parts.filter((p) => !/** @type {any} */ (p).missing) }));
   }
@@ -1713,7 +1713,7 @@ export class Agent {
     const cold = await this.#cold(settings);
     const snapshot = nextSnapshot(this.#snapshot, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale }), { cold });
     const { tools, shows } = await this.#toolsNow();
-    const messages = limitImages(await this.#sendable(), (await this.#mainImages()).maxCount, this.transcript.windowFrom());
+    const messages = limitMedia(await this.#sendable(), (await this.#mainImages()).maxCount, this.transcript.windowFrom());
     return { system: this.#systemFor(snapshot, shows), tools: tools.map((x) => x.name), messages, tail: await this.#tailFor(this.#nowFor([])) };
   }
 
@@ -2499,7 +2499,7 @@ export class Agent {
       const maxBytes = settings.compaction.maxRequestMiB * 2 ** 20;
       const uploaded = await this.#uploading();
       // What the main models are sent: their photo limit of the pictures, each once.
-      const sent = { ...request, messages: limitImages(request.messages, (await this.#mainImages()).maxCount, request.photosFrom) };
+      const sent = { ...request, messages: limitMedia(request.messages, (await this.#mainImages()).maxCount, request.photosFrom) };
       const estimate = estimateTokens(sent, (await this.#mainModel())?.providerId);
       const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window, bytes: requestBytes(sent, { uploaded }), maxBytes, threshold: settings.compaction.threshold }) : null;
       const tidy = coldStart;
@@ -2851,7 +2851,7 @@ export class Agent {
     });
     // Too many photos: the oldest go as stubs, and no photo is made again.
     if (learned.maxCount && !learned.maxBytes && !learned.maxEdge && !learned.formats?.length) {
-      return { ...request, messages: limitImages(request.messages, images.maxCount, request.photosFrom) };
+      return { ...request, messages: limitMedia(request.messages, images.maxCount, request.photosFrom) };
     }
     const limits = await this.#limits(); // now with what this model just taught
     /** @type {Map<string, import('../request-photos.js').Copy>} */
@@ -2881,7 +2881,7 @@ export class Agent {
       const bytes = await blobBytes(this.store, this.scope, copy.hash);
       if (bytes) swaps.set(old, { ...copy, data: toBase64(bytes) });
     }
-    return { ...request, messages: limitImages(replaceImages(request.messages, swaps), images.maxCount, request.photosFrom) };
+    return { ...request, messages: limitMedia(replaceImages(request.messages, swaps), images.maxCount, request.photosFrom) };
   }
 
   /** The stored photo an image part was made from, with its part, while it is still a file. @param {any} p */
@@ -3156,8 +3156,7 @@ export class Agent {
    */
   async #readFor(part, model, signal, wakeId, memo = new Map()) {
     const pdf = part.type === 'document';
-    /* en */
-    const stub = pdf ? `[a PDF${part.name ? `: ${part.name}` : ''}]` : `[a photo${part.path ? `: ${part.path}` : ''}]`;
+    const stub = fileWords(part);
     try {
       const bytes = part.data ? fromBase64(part.data) : part.type === 'image' && part.hash ? await blobBytes(this.store, this.scope, part.hash) : null;
       const key = part.hash || (bytes ? await sha256Hex(bytes) : '');

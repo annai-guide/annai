@@ -18,8 +18,8 @@ export function escapeTags(text) {
 /** Words not annai's, as Koe reads them: no tag, and no line that starts like one of annai's labels. @param {string} text */
 export const theirs = (text) => escapeTags(text).replace(/^(\s*)\[/gm, '$1\\[');
 
-/** Words inside a label, quoted, so a label or a new line in them can't pass for annai's. @param {unknown} text */
-export const quote = (text) => JSON.stringify(String(text ?? ''));
+/** Words inside a label, quoted, so a label or a new line in them can't pass for annai's (JSON leaves U+2028 and U+2029 raw, which read as line breaks). @param {unknown} text */
+export const quote = (text) => JSON.stringify(String(text ?? '')).replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
 
 /**
  * A note from Kokoro as Koe reads it, in the one marker Koe trusts, with her words for the user (tell_koe's for_user) when its text only points

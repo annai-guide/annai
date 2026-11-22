@@ -112,7 +112,7 @@ export class Transcript {
   }
 
   /**
-   * Where a turn's request starts to carry pictures (spec §4.8): the message that began the turn before the wake's (the latest, with no wake), 0 for
+   * Where a turn's request starts to carry pictures and PDFs (spec §4.8): the message that began the turn before the wake's (the latest, with no wake), 0 for
    * none. Read at each step, so what moves the messages (housekeeping, Koe's window) moves it too; the cache mark (cacheAt) is dropped by the first.
    * @param {string} [wake] the turn going on
    */
@@ -612,7 +612,8 @@ export async function resolveEvent(store, e) {
   const doc = e.type === 'tool.result' ? e.data?.document : null;
   if (doc) {
     const bytes = await read(doc.hash);
-    images.push({ type: 'document', mediaType: doc.mediaType, data: bytes ? toBase64(bytes) : '', hash: doc.hash, ...(doc.name ? { name: doc.name } : {}), ...(bytes ? {} : { missing: true }) });
+    // Its path, for the stub once it leaves the request (refusals.js).
+    images.push({ type: 'document', mediaType: doc.mediaType, data: bytes ? toBase64(bytes) : '', hash: doc.hash, ...(doc.name ? { name: doc.name } : {}), ...(doc.path ? { path: doc.path } : {}), ...(bytes ? {} : { missing: true }) });
   }
   return { texts, images };
 }

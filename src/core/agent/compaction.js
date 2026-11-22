@@ -2,6 +2,7 @@ import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 import { NO_WORDS } from '../handover.js';
 import { EITHER, LANGUAGES, MANDARIN, firstHan, hanRow, languageSettings, named, placed, units } from '../languages.js';
 import { nativeOverlap } from '../llm/contract.js';
+import { quote } from './blocks.js';
 
 /**
  * Housekeeping (spec §6.5). Two limits trigger it, the context window and the maximum request
@@ -211,8 +212,8 @@ export function renderForSummary(messages, max = Infinity) {
   return full.slice(0, head) + marker(full.length - head - tail) + full.slice(full.length - tail);
 }
 
-/** A photo in words: where it came from, and which part (spec §6.5 stubs). @param {{ path?: string, region?: number[] }} p */
-export const photoStub = (p) => `[photo${p.path ? ` ${p.path}` : ''}${p.region ? `, part [${p.region.join(', ')}]` : ''}]`;
+/** A photo in words: where it came from, quoted (a file's name can be its sender's), and which part (spec §6.5 stubs). @param {{ path?: string, region?: number[] }} p */
+export const photoStub = (p) => `[photo${p.path ? ` ${quote(p.path)}` : ''}${p.region ? `, part [${p.region.join(', ')}]` : ''}]`;
 
 /** @param {Message[]} messages */
 function asText(messages) {
@@ -222,7 +223,7 @@ function asText(messages) {
     if (p.type === 'tool_call') /* en */ return `Shiori → ${p.name}(${cut(JSON.stringify(p.input ?? {}), 300)})`;
     if (p.type === 'tool_result') return `← ${cut(String(p.content), 1500)}`;
     if (p.type === 'image') /* en */ return m.role === 'user' ? `User: ${photoStub(p)}` : photoStub(p);
-    if (p.type === 'document') /* en */ return '[a PDF]';
+    if (p.type === 'document') /* en */ return `[a PDF${p.path || p.name ? ` ${quote(p.path || p.name)}` : ''}]`;
     if (p.type === 'speech') /* en */ return `User (spoke): ${p.text ?? NOT_TRANSCRIBED}`;
     if (p.type === 'audio') /* en */ return 'User: [audio]';
     return '';
