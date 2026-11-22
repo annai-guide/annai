@@ -2,7 +2,7 @@ import { claimLine, quote, conversationLines, USER_LINES } from './blocks.js';
 import { ME, TODO_FILE, newId } from '../scopes.js';
 import { readAppSettings } from '../settings.js';
 import { languageSettings, strayLanguage } from '../languages.js';
-import { AllFailedError, estimateTokens, CHARS_PER_TOKEN, candidates, chatCandidates, whyOf, whyWords, levelOf } from '../llm/fallback.js';
+import { AllFailedError, estimateTokens, CHARS_PER_TOKEN, candidates, chatCandidates, whyOf, whyWords, levelOf, fileWords } from '../llm/fallback.js';
 import { ProviderError } from '../llm/contract.js';
 import { modelOf, modelNames, providerOf, updateModel } from '../llm/config.js';
 import { NotFoundError } from '../workspace.js';
@@ -3156,8 +3156,7 @@ export class Agent {
    */
   async #readFor(part, model, signal, wakeId, memo = new Map()) {
     const pdf = part.type === 'document';
-    /* en */
-    const stub = pdf ? `[a PDF${part.name ? `: ${quote(part.name)}` : ''}]` : `[a photo${part.path ? `: ${quote(part.path)}` : ''}]`;
+    const stub = fileWords(part);
     try {
       const bytes = part.data ? fromBase64(part.data) : part.type === 'image' && part.hash ? await blobBytes(this.store, this.scope, part.hash) : null;
       const key = part.hash || (bytes ? await sha256Hex(bytes) : '');

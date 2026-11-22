@@ -331,9 +331,16 @@ function newestDocument(request) {
  * @typedef {(hash: string, sees: boolean) => { text: string, images: { mediaType: string, data: string, hash?: string, page?: number }[] } | null} Readings
  */
 
+/** A photo or PDF in words: its quoted path, else a PDF's quoted name (a name can be its sender's). @param {Extract<import('./contract.js').Part, { type: 'image' | 'document' }>} p */
+/* en */
+export const fileWords = (p) => {
+  const who = p.path || (p.type === 'document' ? p.name : '');
+  return `[a ${p.type === 'document' ? 'PDF' : 'photo'}${who ? `: ${quote(who)}` : ''}]`;
+};
+
 /**
  * The request for a model that takes no photos or no PDFs: each as words, '[a photo: "/trip/files/….webp"]' or
- * '[a PDF: "booking.pdf"]' (quoted: a file's name can be its sender's), so a conversation that once held one can still go on with it; followed by what the conversation kept of it
+ * '[a PDF: "/trip/files/booking.pdf"]', so a conversation that once held one can still go on with it; followed by what the conversation kept of it
  * (readings), and its pages for a model that sees photos. @param {Request} request
  * @param {{ photos?: boolean, documents?: boolean, sees?: boolean, readings?: Readings, kept?: boolean }} [which] what to word (both when not
  *   given); sees: the model sees photos (a reading's pages go to it); kept: word only those with a kept reading, and leave the rest
@@ -345,8 +352,7 @@ export function photosAsWords(request, { photos = true, documents = true, sees =
     if (!((photos && p.type === 'image') || (documents && p.type === 'document'))) return [p];
     const r = p.hash && readings ? readings(p.hash, sees) : null;
     if (kept && !r) return [p];
-    /* en */
-    const stub = p.type === 'image' ? `[a photo${p.path ? `: ${quote(p.path)}` : ''}]` : `[a PDF${p.type === 'document' && p.name ? `: ${quote(p.name)}` : ''}]`;
+    const stub = fileWords(p);
     if (!r) return [{ type: 'text', text: stub }];
     // A picture already in the request goes once: callRole sends every request through limitMedia (the photo limit, each picture once).
     const pages = sees ? r.images : [];
