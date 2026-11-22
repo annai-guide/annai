@@ -1,6 +1,6 @@
 /**
  * Image refusals (spec §4.8, §9.9): the usual messages are read by rules; the utility model reads
- * unfamiliar ones. A request over a model's photo count sends the oldest photos as stubs.
+ * unfamiliar ones. A request over a model's photo count, or over the bytes older pictures may add, sends the oldest photos as stubs.
  * @typedef {{ maxBytes?: number, maxEdge?: number, formats?: string[], maxCount?: number }} Learned
  * @typedef {import('../llm/contract.js').Message} Message
  */
@@ -31,20 +31,32 @@ export function readRefusal(message) {
 /** A copy of a picture sent at an earlier place in the request. @param {any} p */
 /* en */
 const same = (p) => ({ type: /** @type {const} */ ('text'), text: p.page ? `[page ${p.page} of the PDF, the same picture as above]` : `[photo${p.path ? ` ${p.path}` : ''}, the same as above]` });
-/** A picture the limit left out. @param {any} p */
+/** A picture left out, and how she sees it again. @param {any} p @param {boolean} byCount the model's count left it out, not the bytes */
 /* en */
-const notSent = (p) => ({ type: /** @type {const} */ ('text'), text: p.page ? `[page ${p.page} of the PDF above, not sent: this model takes fewer pictures at a time]` : `[photo ${p.path ?? ''}, not sent again: read it to see it]`.replace('photo ,', 'photo,') });
+const notSent = (p, byCount) => ({ type: /** @type {const} */ ('text'), text: p.page ? (byCount ? `[page ${p.page} of the PDF above, not sent: this model takes fewer pictures at a time]` : `[page ${p.page} of the PDF above, not sent again: read the PDF to see it]`)
+  : !p.path ? '[a picture, not sent again: no file holds it, so read can\'t bring it back]'
+    : p.region ? `[photo ${p.path}, the part ${JSON.stringify(p.region)}, not sent again: read it with that region to see it]` : `[photo ${p.path}, not sent again: read it to see it]` });
+
+/**
+ * Bytes as sent (base64) up to which a turn's request carries pictures from before its previous turn (limitImages): one photo at the
+ * 192 KiB request cap of 2026-11-21 (photos.js), 30 s at SLOW_UPLINK, the main role's wait. After one photo the trip's trace had 25
+ * requests of 1.2 to 1.4 MB, text turns too (text alone: 30 to 110 KB); on the car's mobile data, ones of 1.3 MB broke off after 76 to 130 s.
+ */
+export const PICTURE_BYTES = 256 * 1024;
 
 /**
  * The pictures a request sends to a model (spec §4.8): one rule, applied once, per model, to the request as the conversation holds it.
  * The distinct pictures (by hash; one without a hash is its own) are ranked by their newest appearance, and the model's count of them
- * kept, newest first; within one message, its PDF's pages give way before its own photos, its last page first. Each kept picture goes
- * at its earliest place, so a new copy of one already sent changes nothing earlier; only a picture the limit drops, or one that comes
- * back, changes its own places. Every other copy is a stub: "the same as above", or "not sent" for one the limit left out.
+ * kept, newest first; within one message, its PDF's pages give way before its own photos, its last page first. Of those, the pictures
+ * from `from` on (a turn's: where the previous turn began) always go; older ones while all kept fit PICTURE_BYTES, none past the first
+ * that doesn't. Each kept picture goes at its earliest place, so a new copy of one already sent changes nothing earlier; only a picture
+ * the limits drop, or one that comes back, changes its own places. Every other copy is a stub: "the same as above", or "not sent" for one
+ * the limits left out.
  * @param {Message[]} messages @param {number | null | undefined} [maxCount] none: every distinct picture, each once
+ * @param {number} [from] none (not a turn's request): all go
  * @returns {Message[]}
  */
-export function limitImages(messages, maxCount) {
+export function limitImages(messages, maxCount, from) {
   /** @typedef {{ mi: number, pi: number, p: any, key: string }} Seen */
   /** @type {Seen[]} */
   const seen = [];
@@ -65,16 +77,27 @@ export function limitImages(messages, maxCount) {
     for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return y[i] - x[i];
     return 0;
   };
-  const kept = new Set([...pictures.values()].sort((a, b) => newer(a.last, b.last)).slice(0, maxCount || Infinity).map((x) => x.first));
+  const counted = [...pictures.values()].sort((a, b) => newer(a.last, b.last)).slice(0, maxCount || Infinity);
+  // Newest first: those from `from` on are all in before an older one is weighed.
+  let bytes = 0;
+  let full = false;
+  const kept = new Set();
+  for (const x of counted) {
+    const size = x.first.p.data?.length ?? 0;
+    if (from !== undefined && x.last.mi < from && (full ||= bytes + size > PICTURE_BYTES)) continue;
+    bytes += size;
+    kept.add(x.first);
+  }
   if (kept.size === seen.length) return messages;
   const keptKeys = new Set([...kept].map((s) => s.key));
+  const countedKeys = new Set(counted.map((x) => x.first.key));
   const at = new Map(seen.map((s) => [`${s.mi}:${s.pi}`, s]));
   return messages.map((m, mi) => ({
     ...m,
     parts: m.parts.map((p, pi) => {
       const s = at.get(`${mi}:${pi}`);
       if (!s || kept.has(s)) return p;
-      return keptKeys.has(s.key) ? same(p) : notSent(p);
+      return keptKeys.has(s.key) ? same(p) : notSent(p, !countedKeys.has(s.key));
     }),
   }));
 }

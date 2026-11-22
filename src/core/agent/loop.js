@@ -2471,8 +2471,8 @@ export class Agent {
       const window = (await this.#mainModel())?.contextWindow ?? null;
       const maxBytes = settings.compaction.maxRequestMiB * 2 ** 20;
       const uploaded = await this.#uploading();
-      // What the main models are sent: their photo limit of the pictures, each once.
-      const sent = { ...request, messages: limitImages(request.messages, (await this.#mainImages()).maxCount) };
+      // What the main models are sent: their photo limit of the pictures, and the bytes older ones may add, each once.
+      const sent = { ...request, messages: limitImages(request.messages, (await this.#mainImages()).maxCount, request.cacheAt) };
       const estimate = estimateTokens(sent, (await this.#mainModel())?.providerId);
       const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window, bytes: requestBytes(sent, { uploaded }), maxBytes, threshold: settings.compaction.threshold }) : null;
       const tidy = coldStart;
@@ -2824,7 +2824,7 @@ export class Agent {
     });
     // Too many photos: the oldest go as stubs, and no photo is made again.
     if (learned.maxCount && !learned.maxBytes && !learned.maxEdge && !learned.formats?.length) {
-      return { ...request, messages: limitImages(request.messages, images.maxCount) };
+      return { ...request, messages: limitImages(request.messages, images.maxCount, request.cacheAt) };
     }
     const limits = await this.#limits(); // now with what this model just taught
     /** @type {Map<string, import('../request-photos.js').Copy>} */
@@ -2854,7 +2854,7 @@ export class Agent {
       const bytes = await blobBytes(this.store, this.scope, copy.hash);
       if (bytes) swaps.set(old, { ...copy, data: toBase64(bytes) });
     }
-    return { ...request, messages: limitImages(replaceImages(request.messages, swaps), images.maxCount) };
+    return { ...request, messages: limitImages(replaceImages(request.messages, swaps), images.maxCount, request.cacheAt) };
   }
 
   /** The stored photo an image part was made from, with its part, while it is still a file. @param {any} p */
