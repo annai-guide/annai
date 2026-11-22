@@ -117,8 +117,8 @@ test('a photo reaches Koe only when its model takes photos; otherwise a stub, an
     k.agent.send('', { photos: [{ path: '/trip/files/p.webp' }] });
     await k.agent.idle();
     const types = (/** @type {any} */ req) => req.messages.flatMap((/** @type {any} */ m) => m.parts.map((/** @type {any} */ p) => (p.type === 'text' ? p.text : p.type)));
-    // Each half reads the user's words, the [annai] line with the photo's path and sizes, then the picture (or Koe's stub for it).
-    const words = '[annai] The photo /trip/files/p.webp, 4032×3024, sent as 2000×1500.';
+    // With no words typed, each half reads "[the user sent a photo]", then the [annai] line with the photo's path and sizes, then the picture (or Koe's stub for it).
+    const words = '[annai] The photo "/trip/files/p.webp", 4032×3024, sent as 2000×1500.';
     const koe = types(k.sent['model-koe'][0]);
     assert.deepEqual(koe.slice(0, 3), ['[the user sent a photo]', words, input.includes('image') ? 'image' : '[a photo; Kokoro sees it]']);
     const kokoro = types(k.sent['model-0'][0]);

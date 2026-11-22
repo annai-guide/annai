@@ -43,7 +43,7 @@ export function sizeLine(s, c) {
   /* en */ return c.made && c.width && c.height ? `${from}, sent as ${c.width}×${c.height}` : from;
 }
 
-/** What Shiori reads before a photo she is sent, read or sent in the chat (spec §4.8): "The photo /trip/files/a.jpg, 4032×3024, sent as 1280×960", or which part. @param {string} path @param {Source} s @param {Copy} c @param {{ crop: Crop, used: number[] } | null} [part] healRegion's */
+/** What Shiori reads before a photo she is sent, read or sent in the chat (spec §4.8): "The photo /trip/files/a.jpg, 4032×3024, sent as 1280×960", or which part. @param {string} path (a sent photo's is quoted: its name is its sender's) @param {Source} s @param {Copy} c @param {{ crop: Crop, used: number[] } | null} [part] healRegion's */
 export function photoLine(path, s, c, part) {
   /* en */ return part ? `The photo ${path}, part [${part.used.join(', ')}] (${part.crop.width}×${part.crop.height} of ${s.width}×${s.height}), sent as ${c.width}×${c.height}`
     : `The photo ${path}, ${sizeLine(s, c)}`;

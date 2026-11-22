@@ -1,5 +1,5 @@
 {
-  "build": "8c81d82014a0",
+  "build": "3b63a63881a1",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -43,7 +43,7 @@
     "/src/core/agent/instructions.js": "dc44316f3b47",
     "/src/core/agent/listen.js": "41cbb9219102",
     "/src/core/agent/log.js": "be1f6eedd6f8",
-    "/src/core/agent/loop.js": "eae0e59737d1",
+    "/src/core/agent/loop.js": "6cb8445167cf",
     "/src/core/agent/reading.js": "dfcf146e5005",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/her-instructions.js": "b90fb982b678",
@@ -147,7 +147,7 @@
     "/src/core/realtime/input.js": "13d294e9fdb1",
     "/src/core/realtime/open.js": "549396a9a25b",
     "/src/core/registry.js": "0f0c41d96c34",
-    "/src/core/request-photos.js": "0873b1523d44",
+    "/src/core/request-photos.js": "a4c9212adc70",
     "/src/core/schema.js": "f21af27d5902",
     "/src/core/search.js": "62a0a393233e",
     "/src/core/scopes.js": "1650ca6c0568",
@@ -235,7 +235,7 @@
     "/src/ui/offline-pack.js": "5170b0416517",
     "/src/ui/open-file.js": "0d6655f94391",
     "/src/ui/open-trip.js": "3ea153777b02",
-    "/src/ui/photo-codec.js": "7d0735f18b68",
+    "/src/ui/photo-codec.js": "1a47b78739f8",
     "/src/ui/preview.js": "da6502865335",
     "/src/ui/photo-viewer.js": "e367a335bbda",
     "/src/ui/platform.js": "d92cd56df069",

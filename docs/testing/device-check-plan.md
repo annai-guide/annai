@@ -103,7 +103,7 @@ Setup: the emulator image has Google Play services, so Chrome installs annai as 
 
 ### A7. Photos to Shiori
 
-- [ ] **m2c #2**: Trace → Tools: her read of a 12 MP photo says both sizes ("4032×3024, sent as N×M"; N×M is 2000×1500 or smaller, as the photo needs); the same 12 MP photo sent in the chat has the same words, after "[annai] ", before it in the conversation's menu → What each half sees → Its conversation. How: a pushed 12 MP JPEG; Trace; screen.
+- [ ] **m2c #2**: Trace → Tools: her read of a 12 MP photo says both sizes ("4032×3024, sent as N×M"; N×M is 2000×1500 or smaller, as the photo needs); the same 12 MP photo sent in the chat has the same words after "[annai] ", with its path in quotes (her read adds ", taken <date>" where the photo has a date; the sent words don't), before the picture's line in the conversation's menu → What each half sees → Its conversation (with Koe set up: with one Shiori that screen shows no conversation). How: a pushed 12 MP JPEG; Trace; screen.
 - [ ] **m2c #3**: "What does the small print say?": she reads a region; the Trace shows the part she cut. How: the pushed menu JPEG; Trace.
 - [ ] **m2c #4**: A photo from the trip's files, zoomed to a part, "Show Shiori this part": she answers about that part. How: touch zoom; screen.
 - [ ] **m2c #5**: With the Anthropic endpoint: Trace → Web has one upload per photo (kind upload); later turns don't upload it again. How: Trace.
