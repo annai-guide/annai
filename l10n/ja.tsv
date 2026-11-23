@@ -951,9 +951,9 @@ xi9ch6	ok	Shiori can't hear you: the speech-in list is empty. Add an entry in Se
 1oy92m8	ok	This browser has no phone dictation either.	このブラウザでは端末の音声入力も使えません。	src/core/voice/resolve.js:164	
 l80ifa	ok	Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	「設定 → モデル」で、OpenAIやGroqなどの文字起こしモデルか、音声を受け付けるメインのモデルを追加してください。	src/core/voice/resolve.js:164	
 m5s9f4	ok	This browser can't play a voice as it arrives.	このブラウザでは、声をストリーミング再生できません。	src/core/voice/speaker.js:128	
-jo5o9d	ok	This browser can't play sound here.	このブラウザでは、ここで音声を再生できません。	src/core/voice/voice.js:425	
-ocv5zw	ok	This browser can't use the microphone here.	このブラウザでは、ここでマイクを使えません。	src/core/voice/voice.js:468	
-55949q	ok	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	音声が止まったため、声を聞き取れません。画面をタップすると再開します。	src/core/voice/voice.js:799	
+jo5o9d	ok	This browser can't play sound here.	このブラウザでは、ここで音声を再生できません。	src/core/voice/voice.js:429	
+ocv5zw	ok	This browser can't use the microphone here.	このブラウザでは、ここでマイクを使えません。	src/core/voice/voice.js:472	
+55949q	ok	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	音声が止まったため、声を聞き取れません。画面をタップすると再開します。	src/core/voice/voice.js:803	
 pib2vo	ok	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	ブラウザに組み込まれた音声サービスが聞き取ります。Androidでは多くの場合Googleのサーバー、iPhoneではAppleのサーバーで処理されます（端末上で処理されることもあります）。このリクエストはannaiが送るものではないため、記録には表示されません。	src/core/voice/where.js:15	
 m93xm3	ok	On this phone only: the browser recognizes your speech on the device.	ブラウザがこの端末上で音声を認識します。端末の外には送られません。	src/core/voice/where.js:16	
 1m5zm0a	ok	Phone dictation	端末の音声入力	src/core/voice/where.js:18	

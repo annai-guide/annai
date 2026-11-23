@@ -951,9 +951,9 @@ xi9ch6	ok	Shiori can't hear you: the speech-in list is empty. Add an entry in Se
 1oy92m8	ok	This browser has no phone dictation either.	这个浏览器也不支持手机语音输入。	src/core/voice/resolve.js:164	
 l80ifa	ok	Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	请在设置 → 模型中添加语音转文字模型（例如 OpenAI 或 Groq），或添加一个能接受音频的主要模型。	src/core/voice/resolve.js:164	
 m5s9f4	ok	This browser can't play a voice as it arrives.	这个浏览器无法边接收边播放声音。	src/core/voice/speaker.js:128	
-jo5o9d	ok	This browser can't play sound here.	这个浏览器无法在这里播放声音。	src/core/voice/voice.js:425	
-ocv5zw	ok	This browser can't use the microphone here.	这个浏览器无法在这里使用麦克风。	src/core/voice/voice.js:468	
-55949q	ok	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	声音卡住了，annai 听不到你说话。轻点屏幕即可恢复。	src/core/voice/voice.js:799	
+jo5o9d	ok	This browser can't play sound here.	这个浏览器无法在这里播放声音。	src/core/voice/voice.js:429	
+ocv5zw	ok	This browser can't use the microphone here.	这个浏览器无法在这里使用麦克风。	src/core/voice/voice.js:472	
+55949q	ok	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	声音卡住了，annai 听不到你说话。轻点屏幕即可恢复。	src/core/voice/voice.js:803	
 pib2vo	ok	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	由浏览器自带的语音服务识别：Android 上通常是 Google 的服务器，iPhone 上是 Apple 的（有时直接在手机上完成）。这个请求不是 annai 发出的，所以“记录”中看不到。	src/core/voice/where.js:15	
 m93xm3	ok	On this phone only: the browser recognizes your speech on the device.	只在这部手机上：浏览器直接在本机识别你的语音。	src/core/voice/where.js:16	
 1m5zm0a	ok	Phone dictation	手机语音输入	src/core/voice/where.js:18	

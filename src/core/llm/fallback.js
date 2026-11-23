@@ -438,6 +438,9 @@ export function continueAfter(request, said) {
   return { ...request, messages: [...request.messages, { role: 'user', parts: [{ type: 'text', text: note }] }] };
 }
 
+/** A failure to connect or a dropped reply with no connection on the device: nothing waits or rests for it (nextStep, voice.js restFor). @param {ProviderError} err @param {boolean} [online] */
+export const noLink = (err, online = deviceOnline()) => (err.kind === 'unreachable' || err.kind === 'network') && !online;
+
 /**
  * What a failed try does next, by the one rule for every send annai retries: chat's (callRole) and a transcription's (voice.js `#hear`). Wait and go
  * again, rest the model once its retries are done, or neither. With no connection on the device (airplane mode, say) the model did nothing wrong,
@@ -446,7 +449,7 @@ export function continueAfter(request, said) {
  * @returns {{ wait?: number, bench?: number }}
  */
 export function nextStep(err, retry, online = deviceOnline()) {
-  if ((err.kind === 'unreachable' || err.kind === 'network') && !online) return {};
+  if (noLink(err, online)) return {};
   switch (err.kind) {
     case 'overloaded':
       return retry < OVERLOAD_RETRIES.length ? { wait: OVERLOAD_RETRIES[retry] } : { bench: COOLDOWN_MS };
