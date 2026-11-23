@@ -302,7 +302,7 @@ test("a transcription model cut every time rests once another heard the recordin
   assert.equal(restLeft(k, 'g2'), 0);
 });
 
-test('a Stop during a transcription rests no model: the next call asks it again (cut-send-next, 5)', async () => {
+test("a Stop on a transcription's upload rests no model: the next call asks it again (cut-send-next, 5)", async () => {
   const k = await phone({});
   const request = asked([{ type: 'speech', id: (await k.hear()).id }]);
   const hears = k.llm.transcribe;
@@ -313,7 +313,37 @@ test('a Stop during a transcription rests no model: the next call asks it again 
   assert.equal(partsOf(await k.voice.resolver('trip-1', 'w-2')(textModel('txt'), request, false))[0].text, 'what was said');
 });
 
-test("offline, a transcription that can't connect or whose connection dropped rests no model; online, a dropped connection rests it, as a chat model's does (cut-send-next, 6)", async () => {
+test("a Stop on the wait between a transcription's retries rests no model, as chat's does, whatever failure it waited out; a failure with nobody stopping still rests it (cut-send-next, 5b)", async () => {
+  // The server's failure (a 5xx or 503 as annai reads it, or a dropped connection) is not rethrown as the model's once the traveller stopped.
+  for (const kind of /** @type {const} */ (['server', 'overloaded', 'network'])) {
+    const k = await phone({});
+    k.voice.retryMs = [200, 200];
+    const request = asked([{ type: 'speech', id: (await k.hear()).id }]);
+    k.llm.transcribe = async (/** @type {any} */ c) => { k.llm.uploads.push({ modelId: c.modelId }); throw new ProviderError(kind, kind); };
+    const stop = new AbortController();
+    const asking = k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request, false, stop.signal);
+    await new Promise((r) => setTimeout(r, 20));
+    stop.abort();
+    await assert.rejects(asking);
+    assert.equal(k.llm.uploads.length, 1, `${kind}: one upload, then the stop`);
+    assert.equal(restLeft(k, 'groq'), 0, `${kind}: nothing rests`);
+  }
+  // A failure that comes back as the traveller stops: no wait, the same.
+  const late = await phone({});
+  const heard = asked([{ type: 'speech', id: (await late.hear()).id }]);
+  const stopped = new AbortController();
+  late.llm.transcribe = async () => { stopped.abort(); throw new ProviderError('server', 'down'); };
+  await assert.rejects(late.voice.resolver('trip-1', 'w-1')(textModel('txt'), heard, false, stopped.signal));
+  assert.equal(restLeft(late, 'groq'), 0, 'a failure that lands as the Stop does rests nothing');
+  // With nobody stopping, the failure is real.
+  const down = await phone({}, { failing: ['groq'] });
+  await assert.rejects(down.voice.resolver('trip-1', 'w-1')(textModel('txt'), asked([{ type: 'speech', id: (await down.hear()).id }]), false, new AbortController().signal));
+  assert.ok(restLeft(down, 'groq') > 180_000 - 1000, 'no Stop: it rests');
+});
+
+test("offline, a transcription that can't connect (unreachable) or whose connection dropped while its reply was read (network) rests no model; online, a dropped reply rests it, as a chat model's does (cut-send-next, 6)", async () => {
+  // `network` is what speechCall makes of a reply whose body failed after its headers (llm-speech.test.js, cut-send-next fix 1, 2); `unreachable`
+  // of a request that never connected (a cut send online, test Call 4's).
   for (const kind of /** @type {const} */ (['unreachable', 'network'])) {
     const k = await phone({});
     const request = asked([{ type: 'speech', id: (await k.hear()).id }]);

@@ -43,13 +43,22 @@ export function compareRanks(a, b) {
 const BUGS = [TypeError, ReferenceError, RangeError, SyntaxError, EvalError];
 
 /**
+ * Whether an error is the browser's own account of a request it couldn't make or finish (offline: "Failed to fetch", Safari's "Load failed",
+ * Chrome's "network error", Firefox's "NetworkError when attempting to fetch resource"): the link's, whatever code was reading the reply (§17).
+ * @param {unknown} e
+ */
+export function isFetchFailure(e) {
+  return e instanceof TypeError && /fetch|load failed|network/i.test(e.message);
+}
+
+/**
  * Whether an error is a bug in a plugin's code (spec §5.5) rather than its answer. A fetch the
- * browser couldn't make (offline: "Failed to fetch", Safari's "Load failed") is an answer (§17).
+ * browser couldn't make (isFetchFailure) is an answer (§17).
  * @param {unknown} e
  */
 export function isPluginBug(e) {
   if (!(e instanceof Error)) return true;
-  const offline = e instanceof TypeError && /fetch|load failed|network/i.test(e.message);
+  const offline = isFetchFailure(e);
   // An address the user typed that isn't one is the user's to fix, not a bug.
   const address = e instanceof TypeError && /invalid url|failed to parse url/i.test(e.message);
   return !offline && !address && BUGS.some((B) => e instanceof B);

@@ -240,7 +240,7 @@ test("a PDF told in words after the drawing's 90 seconds is the result while the
   assert.equal(drawn, 0);
 });
 
-test("a reader cut in one role rests once a reader of a later role described the photo, and a reader that failed otherwise rests as its failure says (here a refused request: not at all); not when that reader is the cut model itself, listed in both roles, and not when its reply was empty, which is no description (cut-send-next, 9)", async () => {
+test("a reader cut in one role rests once a reader of a later role described the photo; a reader that failed with a refused request rests nothing; no reader rests when the one that answered is the cut model itself (listed in both roles), when its reply was empty (which is no description), or when every later reader failed too (cut-send-next, 9; fix 1)", async () => {
   const cut = new AllFailedError([
     { model: 'u', name: 'U', outcome: 'timeout', ms: 70_000, error: 'No answer in 70 seconds.', said: { code: 'send', seconds: 70 } },
     { model: 'u2', name: 'U2', outcome: 'bad-request', ms: 5, error: 'The photo is too large.' },
@@ -252,5 +252,15 @@ test("a reader cut in one role rests once a reader of a later role described the
     assert.equal(read.how, text.trim() ? 'told' : 'failed');
     assert.equal(bench.until('u') > Date.now(), rests, `answered by ${by}: ${JSON.stringify(text)}`);
     assert.equal(bench.until('u2'), 0);
+  }
+  // Nothing described it: no later reader answered in the cut one's place, so it rests nothing, and the next photo asks it again.
+  for (const later of /** @type {const} */ ([
+    () => new AllFailedError([{ model: 'm', name: 'M', outcome: 'server', ms: 5, error: 'M is down.' }]),
+    () => new ProviderError('server', 'M is down.'),
+  ])) {
+    const bench = new Bench();
+    const r = readers({ utility: async () => { throw cut; }, main: async () => { throw later(); } });
+    assert.equal((await readWith(photo, { call: r.call, bench })).how, 'failed');
+    assert.equal(bench.until('u'), 0, 'the later reader failed too: nothing rests');
   }
 });

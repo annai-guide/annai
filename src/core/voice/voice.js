@@ -527,9 +527,10 @@ export class Voice {
           return this.#hear(id, kept, scope, wake, signal, shared, plain);
         }
         if (kind === 'bad-request' && audio.format !== 'wav' && audioIn(cfg, this.llm.types(), id).includes('wav')) return this.#hear(id, kept, scope, wake, signal, shared, true);
-        if (!['network', 'server', 'overloaded'].includes(kind) || retry >= this.retryMs.length || signal?.aborted) throw e;
-        await new Promise((r) => setTimeout(r, this.retryMs[retry]));
-        if (signal?.aborted) throw e;
+        if (!['network', 'server', 'overloaded'].includes(kind) || retry >= this.retryMs.length) throw e;
+        if (!signal?.aborted) await new Promise((r) => setTimeout(r, this.retryMs[retry]));
+        // A Stop before or during the wait ends the retries: the failure it cut short is not the model's to be rested for (restOf), as chat's is not.
+        if (signal?.aborted) throw new ProviderError('cancelled', /* en */ 'Stopped.', { cause: e, said: { code: 'kind' } });
       }
     }
   }

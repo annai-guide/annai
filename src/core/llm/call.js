@@ -11,6 +11,7 @@ import { formatOf } from '../voice/formats.js';
 import { SYS_DEVICE, ensureDeviceScope } from '../scopes.js';
 import { forget as forgetHistory } from '../forget.js';
 import { anySignal } from '../signals.js';
+import { isFetchFailure } from '../registry.js';
 
 /**
  * One model call (spec §9.1): the endpoint type builds the request, annai merges in the
@@ -559,8 +560,9 @@ export function sendCut(cause, ms) {
 
 /**
  * Whatever went wrong, as a ProviderError. Running out of time is "timeout", the caller stopping
- * is "cancelled", and any other error from the endpoint type's code is a bug in its plugin, which
- * counts against the plugin (spec §5.5).
+ * is "cancelled", the browser's account of a connection that dropped while the reply was read (a body that failed
+ * after its headers: isFetchFailure, as sse.js says it of a stream) is "network", the link's and no plugin's,
+ * and any other error from the endpoint type's code is a bug in its plugin, which counts against the plugin (spec §5.5).
  * @param {unknown} e @param {AbortSignal} signal @param {EndpointType} type @param {import('../registry.js').Registry} [registry]
  */
 export function asProviderError(e, signal, type, registry) {
@@ -568,6 +570,7 @@ export function asProviderError(e, signal, type, registry) {
   const name = /** @type {any} */ (e)?.name;
   if (name === 'TimeoutError' || signal.reason?.name === 'TimeoutError') return new ProviderError('timeout', /* en */ 'No output started in time.', { cause: e, said: { code: 'late' } });
   if (name === 'AbortError' || signal.aborted) return new ProviderError('cancelled', /* en */ 'Stopped.', { cause: e, said: { code: 'kind' } });
+  if (isFetchFailure(e)) return new ProviderError('network', /* en */ 'The connection dropped.', { cause: e, said: { code: 'kind' } });
   // The plugin that registered the type is blamed, never a field the type carries.
   const by = registry?.owner('endpoint-type', type.type)?.pluginId;
   if (by) registry?.fail(by, /* en */ `endpoint type ${type.type}`, e);

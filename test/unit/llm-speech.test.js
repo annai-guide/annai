@@ -201,6 +201,36 @@ test("a recording that got no answer's headers within its send's time fails as a
   await assert.rejects(speechCall({ type: /** @type {any} */ (speaks), endpoint: endpoint('test-out'), model: model(null), key: null, text: 'Hello', fetch: answersAfter(Infinity) }), (e) => e instanceof ProviderError && e.said?.code === 'late');
 });
 
+test("a connection dropped while a transcription's reply is read is the link's: kind network, and never counted against the speech plugin, three in a row included; a bug in the plugin's own reading still is (cut-send-next, 2)", async () => {
+  const { registry, store, ws } = await setup();
+  registry.add('test', 'endpoint-type', hears);
+  const audio = { data: new Uint8Array(4_000), mediaType: 'audio/wav', seconds: 0.1 };
+  /** A reply whose headers came and whose body then fails as the browser says its connection dropped (Chrome, Safari and Firefox's words). @param {string} message */
+  const drops = (message) => async () => new Response(new ReadableStream({ start: (c) => c.error(new TypeError(message)) }));
+  for (const message of ['Load failed', 'network error', 'NetworkError when attempting to fetch resource.', 'Failed to fetch']) {
+    await assert.rejects(speechCall({ type: /** @type {any} */ (hears), endpoint: endpoint('test-in'), model: model(null), key: null, audio, fetch: drops(message), registry }),
+      (e) => e instanceof ProviderError && e.kind === 'network' && e.said?.code === 'kind' && e.cause instanceof TypeError, message);
+  }
+  assert.equal(registry.isDisabled('test'), false, 'four drops: the plugin is on');
+  // Through the service, as the voice reaches it: three drops in a row, then a reply that comes.
+  const { p, m } = speechProvider('transcription', 'test-in', 'Ears', 'https://ears.test', 'ears-1');
+  await saveProvider(ws, p, [m]);
+  let left = 3;
+  const fetch = async () => (left-- > 0 ? drops('Load failed')() : Response.json({ text: 'Where should we eat?' }));
+  const llm = createLlm({ store, ws, plugins: new PluginHost({ registry, workspace: ws }), fetch: /** @type {any} */ (fetch) });
+  for (let i = 0; i < 3; i++) await assert.rejects(llm.transcribe({ modelId: m.id, audio }), (e) => e instanceof ProviderError && e.kind === 'network');
+  assert.equal(registry.isDisabled('test'), false, 'three in a row: the plugin is still on');
+  assert.equal(/** @type {any} */ (await llm.transcribe({ modelId: m.id, audio })).text, 'Where should we eat?', 'and the model hears');
+  // A real bug in the plugin's code (a TypeError that is no fetch failure, a plain Error) is still the plugin's: three in a row switch it off.
+  for (const [type, bug] of /** @type {const} */ ([['test-bug', new TypeError("Cannot read properties of undefined (reading 'text')")], ['test-oops', new Error('oops')]])) {
+    const buggy = { ...hears, type, pluginId: type, readTranscript: async () => { throw bug; } };
+    registry.add(type, 'endpoint-type', buggy);
+    for (let i = 0; i < 3; i++) await assert.rejects(speechCall({ type: /** @type {any} */ (buggy), endpoint: endpoint(type), model: model(null), key: null, audio, fetch: async () => Response.json({}), registry }), (e) => e instanceof ProviderError && e.kind === 'plugin');
+    assert.equal(registry.isDisabled(type), true, `${type}: counted, and switched off`);
+  }
+  assert.equal(registry.isDisabled('test'), false);
+});
+
 test("a gate's transcription cut before its provider's headers, through the real service and voice, leaves the model awake: the turn's own transcription of the same words asks it again and hears (read-wait-fix1, 1)", async (t) => {
   useClock(t);
   const { registry, store, ws } = await setup();

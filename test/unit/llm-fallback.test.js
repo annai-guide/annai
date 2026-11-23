@@ -694,7 +694,7 @@ test("output that started and then stopped says so, not that none started (the r
   await assert.rejects(call(s, { firstOutputMs: 1000 }), (e) => e instanceof AllFailedError && e.attempts[0].outcome === 'timeout' && /^Its output stopped for 1 second\.$/.test(e.attempts[0].error ?? '') && e.attempts[0].said?.code === 'paused');
 });
 
-test("a request with photos the provider never answered (its send ran out) says so, and rests its model once the next model answered in its place, as no output in time does; with nothing else answering it rests nothing and the next turn asks it again, where no output in time rests it (the user's photo, 2026-11-20; cut-send-next, 2)", async () => {
+test("a send that ran out (a request with photos that the provider never answered, as callOnce says it) says so, and rests its model once the next model answered in its place, as no output in time does; with nothing else answering it rests nothing and the next turn asks it again, where no output in time rests it (the user's photo, 2026-11-20; cut-send-next, 2)", async () => {
   for (const [said, rests] of /** @type {const} */ ([[{ code: 'send', seconds: 190 }, false], [{ code: 'late' }, true]])) {
     const slow = /** @type {any} */ ({ type: 'slow', name: 'Slow', pluginId: 'slow', run: async function* () { throw new ProviderError('timeout', 'No answer.', { said }); } });
     const s = setup([[], [{ text: 'From model-1.' }]], { types: [['slow', slow]], endpointTypes: ['slow'] });
@@ -712,7 +712,7 @@ test("a request with photos the provider never answered (its send ran out) says 
   }
 });
 
-test("a model cut by its send rests 3 minutes once another model answered the same call, as one that gave no first words does: something else answers meanwhile, and the next call passes it over; with every model cut, nothing rests and the next call asks each again (cut-send-next, 1)", async () => {
+test("a model cut by its send rests 3 minutes once another model answered the same call: something else answers meanwhile, and the next call passes it over; with every model cut, nothing rests and the next call asks each again (cut-send-next, 1)", async () => {
   const cut = /** @type {any} */ ({ type: 'cut', name: 'Cut', pluginId: 'cut', run: async function* () { throw new ProviderError('timeout', 'No answer in 82 seconds.', { said: { code: 'send', seconds: 82 } }); } });
   const s = setup([[], [{ text: 'From model-1.' }]], { types: [['cut', cut]], endpointTypes: ['cut'] });
   assert.equal((await call(s)).answeredBy, 'model-1');
@@ -726,10 +726,39 @@ test("a model cut by its send rests 3 minutes once another model answered the sa
   await assert.rejects(call(dead), (e) => e instanceof AllFailedError && e.attempts.map((a) => `${a.model}:${a.outcome}`).join() === 'm-0:timeout,m-1:timeout', 'both asked again');
 });
 
-test("restOf, what a failure rests once its retries are done, is callRole's rule: nothing for a stop, for no connection while the device is offline, for a request the model refused or a cut send; else what nextStep benches (cut-send-next, restOf)", () => {
+test("a photo model cut by its send that a turn asked while it rested is marked as asked, as a failure that rests it is: the turn after passes it over, and its text model answers at once, not after the photo model's send time again (cut-send-next, fix 1, 3)", async () => {
+  const cut = /** @type {any} */ ({ type: 'cut', name: 'Cut', pluginId: 'cut', run: async function* () { throw new ProviderError('timeout', 'No answer in 82 seconds.', { said: { code: 'send', seconds: 82 } }); } });
+  const s = setup([[{ text: 'Without the photo.' }], []], { types: [['cut', cut]], endpointTypes: ['scripted', 'cut'], models: [{ input: ['text'] }, { input: ['text', 'image'] }] });
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
+  const request = { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What does this menu say?' }] }] };
+  const failed = async () => Object.assign([{ type: 'text', text: "[a photo: /trip/files/menu.webp] It couldn't be described." }], { unread: true });
+  const turn = async () => (await call(s, { askResting: true, read: failed, request })).attempts.map((a) => `${a.model}:${a.outcome}`);
+  // Awake: asked, cut, and the text model answers without the photo; it rests now that another answered (§9.6).
+  assert.deepEqual(await turn(), ['m-0:no-images', 'm-1:timeout', 'm-0:ok']);
+  assert.ok(s.bench.until('m-1') > 1_000_000);
+  // Resting, and the reading failed: a resting model that takes the photo as it is is asked once (round 10, R1), cut again, and rests again.
+  assert.deepEqual(await turn(), ['m-0:no-images', 'm-1:timeout', 'm-0:ok']);
+  // Asked while it rested: the next photo turns don't hold the text model back for it again (round 12, T1), however many.
+  assert.deepEqual(await turn(), ['m-0:no-images', 'm-1:benched', 'm-0:ok']);
+  assert.deepEqual(await turn(), ['m-0:no-images', 'm-1:benched', 'm-0:ok']);
+  // Its rest over, it is asked as an awake model again, and the mark with it.
+  s.tick(180_001);
+  assert.deepEqual(await turn(), ['m-0:no-images', 'm-1:timeout', 'm-0:ok']);
+  assert.deepEqual(await turn(), ['m-0:no-images', 'm-1:timeout', 'm-0:ok'], 'a new rest: asked once while it rests');
+  assert.deepEqual(await turn(), ['m-0:no-images', 'm-1:benched', 'm-0:ok']);
+});
+
+test("restOf, what a failure rests once its retries are done, by nextStep's table with callRole's two exceptions: nothing for a stop, for no connection while the device is offline, for a request the model refused or a cut send; else what nextStep benches, a rate limit's own time, and 3 minutes for a 5xx whatever its Retry-After says, as chat's (cut-send-next, restOf)", () => {
   const rest = (/** @type {any} */ kind, /** @type {any} */ more = {}, online = true) => restOf(new ProviderError(kind, kind, more), online);
-  assert.deepEqual([rest('cancelled'), rest('unreachable', {}, false), rest('network', {}, false), rest('bad-request'), rest('timeout', { said: { code: 'send', seconds: 82 } })], [0, 0, 0, 0, 0]);
+  const sent = { said: { code: 'send', seconds: 82 } };
+  assert.deepEqual([rest('cancelled'), rest('unreachable', {}, false), rest('network', {}, false), rest('bad-request'), rest('timeout', sent), rest('unreachable', sent)], [0, 0, 0, 0, 0, 0]);
   assert.deepEqual([rest('unreachable'), rest('network'), rest('server'), rest('overloaded'), rest('timeout', { said: { code: 'late' } }), rest('rate'), rest('rate', { retryAfter: 600_000 })], [180_000, 180_000, 180_000, 180_000, 180_000, 180_000, 600_000]);
+  // Offline, only a failure to connect says nothing about the model: a model that was reached and timed out rests.
+  assert.equal(rest('timeout', { said: { code: 'late' } }, false), 180_000);
+  // A short rate limit: its own time, as after chat's one retry (nextStep waits a Retry-After of up to 10 s once, then rests by it).
+  assert.equal(rest('rate', { retryAfter: 5_000 }), 5_000);
+  // A 5xx's Retry-After doesn't set the rest: chat's rule, kept (the Fable review, Call 4); a change belongs in nextStep, for chat too.
+  assert.deepEqual([rest('server', { retryAfter: 20_000 }), rest('server', { retryAfter: 600_000 }), rest('overloaded', { retryAfter: 5_000 })], [180_000, 180_000, 180_000]);
 });
 
 test("a half's call beside the other half's (shared) reaches its model's send, which has the time of twice its bytes: a request in by then is answered (photo-wait's follow-ups, 5)", async () => {

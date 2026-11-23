@@ -684,8 +684,13 @@ export async function callRole(c) {
         attempts.push({ model: id, name: model.name, outcome: 'ok', ms: now() - started, ...(reply.cost !== undefined ? { cost: reply.cost } : {}) });
         // Asked while it rested, and it answered: it rests no more, so the next call asks it in its place again.
         if (restingAsked === id) bench.clear(id);
-        // A model whose send was cut in this call rests now that another answered in its place: something else answers meanwhile (§9.6).
-        for (const a of attempts) if (a.said?.code === 'send') bench.bench(a.model, COOLDOWN_MS, now());
+        // A model whose send was cut in this call rests now that another answered in its place: something else answers meanwhile (§9.6). Asked
+        // while it rested, it is marked as asked, as a failure that rests it is (below): it holds no awake model back again in this rest.
+        for (const a of attempts) {
+          if (a.said?.code !== 'send') continue;
+          bench.bench(a.model, COOLDOWN_MS, now());
+          if (restingAsked === a.model) bench.askedResting(a.model);
+        }
         const answered = unreasoned ? { ...reply, natives: /** @type {const} */ ('refused') } : reply;
         const full = said ? prefixed(answered, said) : answered;
         const reasoning = full.parts.map((p) => (p.type === 'reasoning' ? p.text : '')).filter(Boolean).join('\n\n');
