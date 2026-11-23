@@ -156,6 +156,23 @@ for (const full of [false, true]) {
   });
 }
 
+// A refusal that isn't a full phone's (a bug of ours, a TypeError) is told as itself: the plain card with that error's words, and no storage card.
+test("what was heard, written down after the turn, refused with an error that isn't a full phone's: a plain card with that error, no storage card", async (t) => {
+  useClock(t);
+  const k = await agentKit([[say('Tacos are close.')]], { voice: { speechIn: ['m-hear'], hears: ['where should we eat'] } });
+  const cards = raw(k);
+  const store = refusing(k, { error: () => new TypeError('a bug of ours') });
+  store.full((ev) => ev.type === 'heard.text');
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'where-eat');
+  await k.agent.idle();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(told(cards).length, 1, JSON.stringify(cards.map((c) => c.title)));
+  assert.ok(told(cards)[0].error instanceof TypeError, 'its own error, not a StorageFullError');
+  assert.equal(told(cards)[0].body, 'a bug of ours');
+});
+
 // halves.js #note: annai's note from Kokoro to Koe ("Kokoro was stopped"), written, then handed to Koe.
 for (const full of [false, true]) {
   test(`the user's Stop on Kokoro while Koe waits: the note telling Koe so ${full ? 'refused: one card says so' : 'written with room: no card'}`, async (t) => {
@@ -601,7 +618,7 @@ for (const cut of [true, false]) {
         await k.agent.idle();
         store.full(null);
         await toldOnce(cards, reads && cut ? 1 : 0, 'the drop', { read: true });
-        if (reads) return;
+        if (reads) return assert.equal((await k.events(['out.speak'])).length, 0, 'nobody finished the answer: the route was gone');
         assert.equal(k.agent.koeState, 'down');
         assert.deepEqual(await blocks(k), [], 'the blocks were refused');
         assert.equal((await k.events(['out.speak'])).length, cut ? 1 : 0, cut ? 'Kokoro finished the answer' : 'nothing to finish');

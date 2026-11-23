@@ -499,12 +499,12 @@ bo3wjk	ok	Shiori stopped: today's budget is spent	Shiori 已停止：今天的�
 177194c	ok	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	她自己在做一件没人让她做的事，已经做了 {0} 步，所以先停在这里。想让她继续，告诉她就行。	src/core/agent/budgets.js:149	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告诉她), not the glossary's Ask, Safari's 询问 choice.
 1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	这次唤醒最多可以做 {0} 步（设置 → Shiori → 她主动行动的频率），她已经做完了。想让她继续，告诉她就行。	src/core/agent/budgets.js:150	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告诉她), not the glossary's Ask, Safari's 询问 choice; the setting's path as the screens name it.
 jkajtp	ok	Thinking	思考中	src/core/agent/halves.js:88	
-1vskjkw	ok	Live is resting; Koe · Chat is answering	实时语音暂停中，改由 Koe · 聊天 回答	src/core/agent/halves.js:624	
-13gz10	ok	Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.	暂时由 Shiori 直接回答。原因见“记录”中的“模型”；Koe 几分钟后会自动重试。	src/core/agent/halves.js:707	Note: Models is the Trace's Kind filter, as it is named there.
-yvabm6	ok	Koe's live voice couldn't start	Koe 的实时语音无法启动	src/core/agent/halves.js:707	Note: "live voice" is the glossary's Live voice (实时语音), not a voice she speaks with (声音).
-bzrasi	ok	Shiori answers as one half for now	Shiori 暂时独自回答	src/core/agent/halves.js:880	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
-o0lfar	ok	annai couldn't pass your message to Koe: {0}	无法把消息转给 Koe：{0}	src/core/agent/halves.js:880	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-13548dd	ok	That conversation didn't open	没能打开那段对话	src/core/agent/halves.js:1202	Note: 对话 as the glossary's Conversation.
+1vskjkw	ok	Live is resting; Koe · Chat is answering	实时语音暂停中，改由 Koe · 聊天 回答	src/core/agent/halves.js:629	
+13gz10	ok	Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.	暂时由 Shiori 直接回答。原因见“记录”中的“模型”；Koe 几分钟后会自动重试。	src/core/agent/halves.js:720	Note: Models is the Trace's Kind filter, as it is named there.
+yvabm6	ok	Koe's live voice couldn't start	Koe 的实时语音无法启动	src/core/agent/halves.js:720	Note: "live voice" is the glossary's Live voice (实时语音), not a voice she speaks with (声音).
+bzrasi	ok	Shiori answers as one half for now	Shiori 暂时独自回答	src/core/agent/halves.js:893	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
+o0lfar	ok	annai couldn't pass your message to Koe: {0}	无法把消息转给 Koe：{0}	src/core/agent/halves.js:893	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+13548dd	ok	That conversation didn't open	没能打开那段对话	src/core/agent/halves.js:1215	Note: 对话 as the glossary's Conversation.
 15junxn	ok	One moment…	请稍候…	src/core/agent/loop.js:146	Note: the dock's words between the user's tap and Listening (Shiori getting ready to hear them).
 1dhsqvv	ok	Tap to talk	轻点说话	src/core/agent/loop.js:146	
 1ldobgc	ok	Tap to interrupt	轻点打断	src/core/agent/loop.js:146	

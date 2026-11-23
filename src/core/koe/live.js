@@ -1723,8 +1723,8 @@ export class LiveKoe {
   }
 
   /**
-   * Writes in order; an entry may be worked out first. Nobody waits on it: one refused is told (Agent.notSaved), unless it is only for the Trace (quiet: the
-   * turn's numbers, the reply's, a silent session: annai's own record of itself, as the request trace). @param {any} ev @param {boolean} [quiet] @returns {Promise<unknown>}
+   * Writes in order; an entry may be worked out first. Nobody waits on it: one refused is told (Agent.notSaved), unless it is for the Trace alone (quiet: the
+   * turn's and the reply's numbers, a silent session: annai's own record). @param {any} ev @param {boolean} [quiet] @returns {Promise<unknown>}
    */
   #write(ev, quiet = false) {
     const scope = this.#scope;

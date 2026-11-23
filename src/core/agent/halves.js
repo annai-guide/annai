@@ -580,9 +580,9 @@ export class Halves {
 
   /**
    * What the user typed and what woke Shiori, and what follows a change of Koe's way, in order. failed: what a route that fails says. The default is a console
-   * line: a route that only reads Koe's way again writes nothing but annai's own record of it (Kokoro's block, written again by the next refresh: #tell), and
-   * nothing waits behind that. A route that carries something for the user or Shiori (what #backstop shows, Kokoro told to talk directly, a tap) says it's gone
-   * (#gone). @param {() => unknown} fn @param {(e: unknown) => unknown} [failed]
+   * line: a route that only reads Koe's way again writes nothing but annai's own record of it (Kokoro's block, written again by the next refresh), which nothing
+   * waits behind. A route that carries something for the user or Shiori (what #backstop shows, Kokoro told to talk directly, a tap) says it's gone (#gone).
+   * @param {() => unknown} fn @param {(e: unknown) => unknown} [failed]
    */
   #route(fn, failed = (e) => console.warn(/* en */ 'routing failed', e)) {
     this.#routes++;
@@ -642,7 +642,7 @@ export class Halves {
     else if (voiceOn) this.live.unmute();
     this.#voiceWas = voiceOn;
     if (this.state.name !== was) this.#emitState();
-    // Kokoro's block for Koe's state is annai's own record, as #block's: refused, it is written again by the next refresh (#tell), and it never fails the route that carries something
+    // annai's own record, as #block's: refused, the next refresh writes it again (#tell), and it never fails the route
     if (this.#split && tell) await this.#tell(told).catch(() => {});
     this.#emitHalves();
   }
@@ -657,11 +657,11 @@ export class Halves {
     }
     if (this.#told.state === state) return;
     const was = this.#told;
-    this.#told = { scope, state }; // before the write: a refresh meanwhile doesn't write it twice
+    this.#told = { scope, state }; // before the write, so a refresh meanwhile doesn't write it twice
     const owed = state !== 'koe-up' ? this.#unsaid.splice(0) : [];
     const unsaid = owed.length ? /* en */ " What you last told Koe didn't reach the user." : '';
     await this.kokoro.log({ type: 'halves', actor: 'system', data: { state }, texts: [['text', `${BLOCKS[state]}${unsaid}`]] }).catch((e) => {
-      // Refused: Kokoro wasn't told, so the next refresh writes it, with what it owed
+      // refused: the next refresh writes it, with what it owed
       if (this.#told.scope === scope && this.#told.state === state) this.#told = was;
       this.#unsaid.unshift(...owed);
       throw e;
@@ -826,7 +826,7 @@ export class Halves {
   #koeOpen() {
     if (this.#koeTrip === this.kokoro.target && this.koe.target === this.#koeTrip) return; // an open of Koe's that failed left it behind
     this.#koeTrip = this.kokoro.target;
-    this.koe.open(this.kokoro.target).catch((e) => this.koe.notSaved(e)); // Koe isn't in the conversation the user is in: said (Kokoro's own open says so where the user asked for it; at start it is a console line, main.js)
+    this.koe.open(this.kokoro.target).catch((e) => this.koe.notSaved(e)); // Koe isn't in the conversation the user is in: said (Kokoro's own open at start is a console line, main.js)
   }
 
   /** A Koe with a conversation open follows at once, so neither half writes into one being left. @param {string | null} trip @param {{ quiet?: boolean, moved?: boolean }} [o] */
@@ -925,7 +925,7 @@ export class Halves {
       const given = away ? { ...w, fallbacks: w.fallbacks?.filter((r) => r.cue) } : w;
       if (this.koeState === 'live') {
         this.#alongside(this.koe.hold(given.fallbacks ?? [])); // the session holds it in memory until it passes it on (reminder.told; the text Koe's queue holds its own)
-        this.#alongside(this.#live(() => this.live.wake(given), given), (e) => this.kokoro.wakeFailed(given, e)); // it fails before any hand-on, for a refused read (Koe's way read again): none showed them. Its session may still say them when one next opens
+        this.#alongside(this.#live(() => this.live.wake(given), given), (e) => this.kokoro.wakeFailed(given, e)); // it fails before any hand-on (a refused read): none showed them
       } else this.koe.enqueue(w);
     }, (e) => this.kokoro.wakeFailed(w, e)); // a route that fails before its hand-ons (the refresh, the budgets' check): its reminders are shown, once
     return Promise.resolve();
@@ -1551,14 +1551,14 @@ export class Halves {
   /** @param {string} [text] @param {NoteWhy} [why] @param {string} [wake] the turn of Kokoro's it ends */
   #nothingToAdd(text = /* en */ 'Kokoro has nothing to add.', why = /** @type {NoteWhy} */ ('nothing-to-add'), wake = undefined) {
     if (this.#nothingTold) return;
-    this.#nothingTold = true; // before the write: a second look at Koe's wait meanwhile doesn't send it twice
+    this.#nothingTold = true; // before the write, so a second look meanwhile doesn't send it twice
     this.#note(text, why, wake, undefined, () => { this.#nothingTold = false; }); // refused, Koe never heard it: the next look sends it again
   }
 
   /**
    * A note annai sends Koe from Kokoro, not waited for here; idle() waits for it.
    * @param {string} text @param {NoteWhy} why @param {string} [wake] @param {TurnEnd['by']} [by] the model whose words it is, when its turn is over
-   * @param {() => void} [refused] what a note refused undoes: Koe never got it
+   * @param {() => void} [refused] what a refused note undoes
    */
   #note(text, why, wake, by, refused) {
     const p = this.channel.send('kokoro', text, 'append', why, wake, undefined, false, '', by === undefined ? {} : { by }).catch((e) => { refused?.(); this.#gone(e); });
