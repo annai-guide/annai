@@ -328,6 +328,21 @@ for (const full of [false, true]) {
   });
 }
 
+// The same route when the store then refuses reads (Chromium at no byte free): Koe's way can't be read again, so Kokoro is never told to talk directly: a card says so.
+test("Koe's list failing whole while the user waits, the store then refusing reads: a card says Kokoro was never told to answer", async (t) => {
+  useClock(t);
+  /** @type {() => void} */
+  let refuse = () => {};
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { halves: true, koe: { type: [{ delayMs: 60, error: 'auth', message: 'bad key' }] }, hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-koe') refuse(); } });
+  const cards = raw(k);
+  const store = refusing(k);
+  refuse = () => store.full('reads'); // from Koe's call on
+  k.agent.send('Is Nepenthe open?');
+  await idleAtOnce(k);
+  store.full(null);
+  await toldOnce(cards, 1, 'the route that talks directly', { read: true });
+});
+
 // koe/live.js #write: a live session's lines (here, her answer).
 for (const full of [false, true]) {
   test(`a live session's answer ${full ? 'refused: one card says so' : 'written with room: no card'}`, async () => {
