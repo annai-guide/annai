@@ -292,7 +292,8 @@ export const CHARS_PER_TOKEN = 3.5;
  * (seven reads on real calls: 1.3 to 118 tokens a KiB, 1,814 tokens at the fewest, so a picture's 1600 is under each). So a PDF is
  * counted under what its provider counts: housekeeping takes the call's own count from its reply on (not after a summary or Start fresh,
  * nor after a reply that ran the provider's own tools, which give none), and a request that overflows is refused by its provider, which
- * doesn't rest the model: the next is tried, then housekeeping runs once and the request goes again.
+ * doesn't rest the model: the next is tried, then (with its PDFs as words first, when it carries any: loop.js) housekeeping runs once and the
+ * request goes again.
  * @param {Request} request @param {string} [modelKey] its provider model id
  */
 export function estimateTokens(request, modelKey) {

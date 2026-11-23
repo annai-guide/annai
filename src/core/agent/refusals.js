@@ -48,6 +48,16 @@ const notSent = (p, byCount) => {
 };
 
 /**
+ * A PDF every model refused, as its conversation sends it from then on (spec §4.8): not a stub that asks for a read, which would be refused again.
+ * The models' words are quoted: outside text. @param {any} p the document @param {string} why the models' words, annai's English
+ */
+export const refusedPdf = (p, why) => {
+  const who = p.path || p.name;
+  /* en */
+  return { type: /** @type {const} */ ('text'), text: `[the PDF${who ? ` ${quote(who)}` : ''}, not sent: the models refused it (${quote(why)}); reading it again brings these words, not the PDF. To see a page of it, ask the user to send that page as a photo]` };
+};
+
+/**
  * The pictures and PDFs a request sends to a model (spec §4.8): one rule, applied once, per model, to the request as the conversation holds it.
  * From `from` on (Transcript.windowFrom: this turn's messages and the turn before's) the distinct pictures (by hash; one without a hash is its
  * own) are ranked by their newest appearance, and the model's count of them kept, newest first; within one message, its PDF's pages give way
