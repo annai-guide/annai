@@ -4,7 +4,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, refusing, until, hear, raw, idleAtOnce } from './agent-kit.js';
-import { liveKit, soon, tone, blocks } from './koe-live-kit.js';
+import { liveKit, soon, tone, blocks, say as sayClip } from './koe-live-kit.js';
+import { hum, quiet, cat } from './voice-kit.js';
 import { useClock } from './clock.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { createTrip } from '../../src/core/scopes.js';
@@ -256,6 +257,65 @@ for (const full of [false, true]) {
     }
   });
 }
+
+// koe/live.js #write: a live session's records for the Trace alone (the turn's numbers, live.turn) are annai's own record of itself: refused, nothing shows of
+// its own. A sound at the open microphone that is no line (a door): its turn's end is the one write, and nothing of the traveller's or Shiori's is lost.
+for (const full of [false, true]) {
+  test(`a sound at a live session's open microphone that is no line: its turn's numbers ${full ? 'refused: nothing of their own' : 'written with room: no card'}`, async () => {
+    const k = await liveKit([{}]);
+    try {
+      const cards = raw(k);
+      const store = refusing(k);
+      let tried = 0;
+      store.full((ev) => { if (ev.type === 'live.turn' && full) tried++; return full && ev.type === 'live.turn'; });
+      k.agent.tap();
+      await until(() => k.agent.live.listening, 3000);
+      k.platform.mic.feed(quiet(1.5, 0.006), 16_000);
+      k.platform.mic.feed(cat(hum(0.6, 0.5), quiet(1, 0.006)), 16_000);
+      if (full) await soon(async () => tried > 0, 3000);
+      else await soon(async () => (await k.events(['live.turn'])).length === 1, 3000);
+      await k.agent.live.written();
+      await k.agent.idle();
+      toldOnce(cards, 0, "the turn's numbers");
+      assert.equal((await k.events(['live.turn'])).length, full ? 0 : 1);
+      assert.deepEqual((await k.events(['heard', 'out.speak'])).map((/** @type {any} */ e) => e.type), [], 'no line, no answer');
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+// koe/live.js #write, the other records for the Trace alone: a turn the model never answered (live-silent), and the numbers of how her reply played (live.reply),
+// refused with the turn's own: nothing of their own, and her line, written beside them, stays.
+test("a live session's Trace records refused (a silent turn, her reply's numbers, the turns'): nothing of their own, and her answer is written", async () => {
+  const k = await liveKit([{ heardFirst: true, heard: 'la la', silent: true }, { heard: 'where to', said: 'Tacos ahead.', audio: tone(0.1) }]);
+  try {
+    const cards = raw(k);
+    const store = refusing(k);
+    /** @type {Set<string>} */
+    const tried = new Set();
+    store.full((ev) => {
+      const trace = ev.type === 'live.turn' || ev.type === 'live.reply' || (ev.type === 'error' && ev.data?.kind === 'live-silent');
+      if (trace) tried.add(ev.type === 'error' ? ev.data.kind : ev.type);
+      return trace;
+    });
+    await k.voice.unlock();
+    k.agent.tap();
+    await until(() => k.agent.live.listening, 3000);
+    await sayClip(k, 'where-eat');
+    await soon(async () => tried.has('live-silent'), 5000);
+    await k.agent.live.idle();
+    await sayClip(k, 'where-eat');
+    await soon(async () => (await k.events(['out.speak'])).length === 1 && tried.has('live.reply'), 5000);
+    await k.agent.live.written();
+    await k.agent.idle();
+    assert.deepEqual([...tried].sort(), ['live-silent', 'live.reply', 'live.turn']);
+    toldOnce(cards, 0, "the Trace's records");
+    assert.deepEqual((await k.events(['live.turn', 'live.reply'])).map((/** @type {any} */ e) => e.type), [], 'refused');
+  } finally {
+    await k.done();
+  }
+});
 
 // halves.js #route for #backstop (the session's unsaid): Kokoro's gated card a live Koe never showed, shown by annai.
 for (const full of [false, true]) {
