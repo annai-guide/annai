@@ -493,7 +493,7 @@ export const firstWordsMs = (config, role) => (config.roles?.[role]?.firstOutput
  *   keepNative: Shiori's own turns want each reply as the provider returned it, to send back within the turn (the keep-reasoning design §4)
  *   askResting: a turn's own call (Shiori's): a resting model goes to the end of the list, whose rest ends soonest first, and at most one is asked; side jobs
  *   (readers, housekeeping, plugins', quick decisions) never are
- *   shared: the other half sends its request on the same link at the same time, so each send is timed on twice its bytes (callOnce)
+ *   shared: the other half may send its request on the same link at the same time, so each send is timed on twice its bytes (callOnce)
  * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string,
  *   first: string | null, tried: boolean }>} first: the role's first model, by name; tried: whether it was asked (a warm model may answer first)
  */

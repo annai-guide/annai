@@ -2605,7 +2605,7 @@ export class Agent {
           readings: (/** @type {string} */ hash, /** @type {boolean} */ sees) => this.#keptNow(hash, sees),
           // Her own call: when every model she could use rests, the one rested longest is asked anyway (§9.6).
           askResting: true,
-          // Koe's turn, or Kokoro's while Koe works: the other half sends its request on the same link at the same time (§4.8).
+          // Koe's turn, or Kokoro's while Koe works: the other half may send its request on the same link at the same time (§4.8).
           ...(this.#half.name === 'koe' || ['text', 'live'].includes(this.#half.koe?.() ?? '') ? { shared: true } : {}),
           // The second pass reads a file for a model that can't take it, which takes up to 90 seconds: not Koe's, who answers at once (§7.2).
           ...(this.#half.name === 'koe' ? {} : { read: (/** @type {any} */ part, /** @type {any} */ model, /** @type {AbortSignal | undefined} */ signal) => this.#readFor(part, model, signal ?? abort.signal, wakeId, readMemo) }),
