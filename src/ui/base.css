@@ -1,6 +1,10 @@
 * { box-sizing: border-box; }
 /* No page scroll anchoring: annai keeps the screen in place itself (notices.js, keep-rows.js). Chromium reads it from body; html's alone left it on. */
 html, body { overflow-anchor: none; }
+/* The page is never wider than the phone: a word that runs out of its box (shiori.css wraps the ones we know) is cut off at the screen's edge, not left
+   to make an iPhone draw the page smaller, its dock off the screen's foot (the user, 2026-11-23). `clip`, not `hidden`: no scroll box, so the header
+   still sticks and the dock stays fixed. */
+html, body { overflow-x: clip; }
 html { -webkit-text-size-adjust: 100%; }
 /* Where the screen's own room starts: below the status bar's strip, where iOS gives one (expected to be 0 with the status bar style `default`,
    index.html, and in Safari's portrait; not measured). What sticks at the top (home's box, a conversation's head) sticks there. */
