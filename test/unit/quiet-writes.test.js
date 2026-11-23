@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, refusing, until, hear, raw, idleAtOnce } from './agent-kit.js';
-import { liveKit, soon, tone } from './koe-live-kit.js';
+import { liveKit, soon, tone, blocks } from './koe-live-kit.js';
 import { useClock } from './clock.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { createTrip } from '../../src/core/scopes.js';
@@ -108,6 +108,26 @@ for (const full of [false, true]) {
   });
 }
 
+// halves.js #nothingToAdd: Koe waits on a Kokoro that ends with nothing for it. The note saying so, refused, was never heard: a card says so, and the
+// next look at Koe's wait (its second wait, 60 s later on the test's clock) sends it again. The first note only is refused.
+test("Koe waits on a Kokoro with nothing to add, the first note refused: a card says so, and the next wait of Koe's is told", async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [{ match: 'the user wrote', reply: sleep }] }], { koe: { type: { rules: [
+    { match: 'the user wrote', reply: calls(['speak', { text: 'Let me see.' }], ['wait', { seconds: 60 }], ['wait', { seconds: 60 }]), then: sleep },
+  ] } } });
+  const cards = raw(k);
+  const store = refusing(k);
+  let notes = 0;
+  store.full((ev) => ev.type === 'note' && notes++ === 0);
+  k.agent.send('Anything to see here?');
+  await k.agent.idle();
+  toldOnce(cards, 1, 'the first note');
+  const waits = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'wait').map((/** @type {any} */ e) => e.data.content);
+  assert.equal(waits.length, 2);
+  assert.equal(waits[1], 'Kokoro: see the note below.', 'the second wait heard it');
+  assert.deepEqual((await k.events(['note'])).map((/** @type {any} */ e) => [e.data.from, e.data.why]), [['kokoro', 'nothing-to-add']]);
+});
+
 // halves.js #settleAside: Koe's note Kokoro doesn't take up, as she had told Koe, written as settled (a quiet "answered" record her transcript reads).
 for (const full of [false, true]) {
   test(`Koe's note Kokoro had answered already: its settled record ${full ? 'refused: one card says so' : 'written with room: no card'}`, async (t) => {
@@ -189,19 +209,30 @@ for (const full of [false, true]) {
   });
 }
 
-// halves.js #koeFailed's route: Koe's list failed whole; Kokoro is told to talk directly (its block for Koe down, then its wake).
+// halves.js #koeFailed's route: Koe's list failed whole; Kokoro is told to talk directly (its block for Koe down, then its wake). The block is annai's own
+// record of Koe's state, so a refused one shows nothing of its own and doesn't stop the route: Kokoro answers all the same, and the block is written
+// again by the next refresh once the store takes writes (#tell).
 for (const full of [false, true]) {
-  test(`Koe's list failing whole while the user waits: Kokoro's block that Koe is down ${full ? 'refused: one card says so (nobody would answer)' : 'written with room: Kokoro answers, no card'}`, async (t) => {
+  test(`Koe's list failing whole while the user waits: Kokoro's block that Koe is down ${full ? 'refused: Kokoro answers all the same, no card, and the block is written once the store takes writes' : 'written with room: Kokoro answers, no card'}`, async (t) => {
     useClock(t);
-    const k = await agentKit([{ rules: [{ match: "Koe can't speak", reply: say('Nepenthe is open till 10.') }, { match: '.', reply: sleep }] }], { halves: true, koe: { type: [{ delayMs: 60, error: 'auth', message: 'bad key' }] } });
+    // `then`: with the block refused the wake comes with no words after Kokoro's last results, which the scripted model reads as a follow-up
+    const k = await agentKit([{ rules: [{ match: "Koe can't speak", reply: say('Nepenthe is open till 10.'), then: say('Nepenthe is open till 10.') }, { match: '.', reply: sleep }] }], { halves: true, koe: { type: [{ delayMs: 60, error: 'auth', message: 'bad key' }] } });
     const cards = raw(k);
     const store = refusing(k);
     if (full) store.full((ev) => ev.type === 'halves');
     k.agent.send('Is Nepenthe open?');
     await idleAtOnce(k);
     assert.equal(k.agent.koeState, 'down');
-    toldOnce(cards, full ? 1 : 0, "Kokoro's block");
-    assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), full ? [] : ['Nepenthe is open till 10.']);
+    toldOnce(cards, 0, "Kokoro's block");
+    assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Nepenthe is open till 10.']);
+    const blocks = async () => (await k.events(['halves'])).map((/** @type {any} */ e) => e.data.state);
+    assert.deepEqual(await blocks(), full ? [] : ['koe-down']);
+    if (full) {
+      store.full(null); // room again: the next line's refresh writes what Kokoro wasn't told
+      k.agent.send('And until when?');
+      await idleAtOnce(k);
+      assert.deepEqual(await blocks(), ['koe-down']);
+    }
   });
 }
 
@@ -250,21 +281,21 @@ for (const full of [false, true]) {
   });
 }
 
-// halves.js #alongside, a wake's way to a live session that can't open, with Classic resting: Koe is down, and Kokoro's block says so. Refused, the
-// wake is gone before any hand-on: its reminder is shown (wakeFailed), and the failure told.
-test("a watch's wake with a reminder while Koe is live, no session can open and Classic rests, on a full phone: the reminder shown once, and a card says what failed", async () => {
+// halves.js #alongside, a wake's way to a live session that can't open (Chromium at no byte free: the failed open leaves the store refusing reads, C130's
+// shape): Koe's way can't be read again, so the wake is gone before any hand-on: its reminder is shown (wakeFailed), and the failure told, with the read's words.
+test("a watch's wake with a reminder while Koe is live, when its session can't open and the store then refuses reads: the reminder shown once, and a card says what failed", async () => {
   const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
   try {
-    k.llm.bench.bench('m-koe', 60_000);
-    k.llm.live = async () => { throw new Error('the connection was refused'); };
     const cards = raw(k);
     const store = refusing(k);
-    store.full('all');
+    k.llm.live = async () => { store.full('reads'); throw new Error('the connection was refused'); };
     k.agent.wake({ kind: 'trigger', text: 'Your watch fired.', fallbacks: [{ watch: 'w1', text: LEAVE }] });
     await soon(async () => told(cards).length > 0, 10_000);
+    store.full(null);
     await k.agent.idle();
     assert.deepEqual(cards.filter((n) => n.title === 'Reminder').map((n) => n.body), [LEAVE], 'shown once');
-    toldOnce(cards, 2, "the wake's way to a session (Kokoro's block), and the reminder's own entry");
+    assert.equal(told(cards).length, 1, JSON.stringify(cards.map((c) => c.title)));
+    assert.equal(told(cards)[0].error?.name, 'UnknownError', 'a refused read: its own words, no storage card');
     assert.ok(cards.findIndex((n) => n.title === 'Reminder') < cards.findIndex((n) => n.title === NOT_SAVED), 'shown before the failure is told');
   } finally {
     await k.done();
@@ -272,10 +303,12 @@ test("a watch's wake with a reminder while Koe is live, no session can open and 
 });
 
 // halves.js #alongside, a typed line's way to a live session that can't open, with Classic resting: Koe is down, and Kokoro's block says so before she
-// is told to answer it. That block refused, the line (written already) would go unanswered: a card says so.
+// is told to answer it. The block is annai's own record (Kokoro's request tail says so on every request): refused, nothing shows of its own, she answers
+// the line (written already) all the same, and the block is written again by the next refresh (#tell).
 for (const full of [false, true]) {
-  test(`a typed line to a live Koe when no session can open and Classic rests: ${full ? "Kokoro's block refused, one card says so" : 'Kokoro answers it, no card'}`, async () => {
-    const k = await liveKit([], { kokoro: [{ rules: [{ match: "Koe can't speak", reply: say('Nepenthe is open till 10.') }, { match: '.', reply: sleep }] }], koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+  test(`a typed line to a live Koe when no session can open and Classic rests: ${full ? "Kokoro's block refused: she answers it all the same, no card" : 'Kokoro answers it, no card'}`, async () => {
+    const answer = say('Nepenthe is open till 10.'); // `then`: with the block refused the wake comes with no words after her last results (a follow-up to the scripted model)
+    const k = await liveKit([], { kokoro: [{ rules: [{ match: "Koe can't speak", reply: answer, then: answer }, { match: '.', reply: sleep }] }], koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
     try {
       k.llm.bench.bench('m-koe', 60_000);
       k.llm.live = async () => { throw new Error('the connection was refused'); };
@@ -283,52 +316,70 @@ for (const full of [false, true]) {
       const store = refusing(k);
       if (full) store.full((ev) => ev.type === 'halves');
       k.agent.send('Is Nepenthe open?');
-      if (full) await soon(async () => told(cards).length > 0, 10_000);
-      else await soon(async () => (await k.events(['out.speak'])).length === 1, 10_000);
+      await soon(async () => (await k.events(['out.speak'])).length === 1, 10_000);
       await k.agent.idle();
-      toldOnce(cards, full ? 1 : 0, "the line's way to a session");
+      toldOnce(cards, 0, "the line's way to a session");
       assert.equal((await k.events(['msg.user'])).length, 1, 'the line itself is kept');
+      assert.deepEqual(await blocks(k), full ? [] : ['koe-down']);
     } finally {
       await k.done();
     }
   });
 }
 
-// halves.js #tapFollow: a tap whose live session couldn't open is handed on (#liveTapFailed: Koe's way read again, Kokoro's block).
-test("a tap whose live session can't open, with Classic resting, on a full phone: Kokoro's block refused, a card says so", async () => {
-  const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
-  try {
-    k.llm.bench.bench('m-koe', 60_000);
-    k.llm.live = async () => { throw new Error('the connection was refused'); };
-    const cards = raw(k);
-    const store = refusing(k);
-    store.full('all');
-    assert.equal(k.agent.tap(), 'listening');
-    await soon(async () => told(cards).length > 0, 10_000);
-    await k.agent.idle();
-    toldOnce(cards, 1, 'the tap');
-  } finally {
-    await k.done();
-  }
-});
+// halves.js #tapFollow: a tap whose live session couldn't open is handed on (#liveTapFailed: Koe's way read again, Kokoro's block). The block is annai's own
+// record: refused, the tap goes on to Kokoro with nothing shown of its own. A refused read (Chromium at no byte free) can't read Koe's way: the tap is gone, said.
+for (const reads of [false, true]) {
+  test(`a tap whose live session can't open, with Classic resting, ${reads ? 'the store then refusing reads: a card says the tap is gone' : "Kokoro's block refused: the tap goes on, no card"}`, async () => {
+    const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+    try {
+      k.llm.bench.bench('m-koe', 60_000);
+      const cards = raw(k);
+      const store = refusing(k);
+      k.llm.live = async () => { store.full(reads ? 'reads' : (ev) => ev.type === 'halves'); throw new Error('the connection was refused'); };
+      assert.equal(k.agent.tap(), 'listening');
+      if (reads) await soon(async () => told(cards).length > 0, 10_000);
+      else await soon(async () => k.notices.some((n) => n.title === "Koe's live voice couldn't start"), 10_000);
+      await k.agent.idle();
+      store.full(null);
+      assert.equal(told(cards).length, reads ? 1 : 0, JSON.stringify(cards.map((c) => c.title)));
+      if (reads) assert.equal(told(cards)[0].error?.name, 'UnknownError', 'a refused read: its own words, no storage card');
+      else assert.deepEqual(await blocks(k), [], 'the block was refused');
+    } finally {
+      await k.done();
+    }
+  });
+}
 
-// halves.js deliver.koe: a note of Kokoro's to a live Koe whose session can't open (no catch at all before: a rejection nobody handled).
-test("Kokoro's note to a live Koe when no session can open and Classic rests: its block refused, a card says so", async () => {
-  const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
-  try {
-    k.llm.bench.bench('m-koe', 60_000);
-    k.llm.live = async () => { throw new Error('the connection was refused'); };
-    const cards = raw(k);
-    const store = refusing(k);
-    store.full((ev) => ev.type === 'halves');
-    await k.agent.channel.send('kokoro', 'Say: Nepenthe is open until 10 PM tonight.', 'append', 'tool', undefined, undefined, false, 'Nepenthe is open until 10 tonight.');
-    await soon(async () => told(cards).length > 0, 10_000);
-    await k.agent.idle();
-    toldOnce(cards, 1, 'the note');
-  } finally {
-    await k.done();
-  }
-});
+// halves.js deliver.koe: a note of Kokoro's to a live Koe whose session can't open (no catch at all before: a rejection nobody handled). With Kokoro's block
+// refused (annai's own record, quiet) she is woken to talk directly all the same, and the block is written by the next refresh with what she owed
+// ("What you last told Koe didn't reach the user"); a refused read is told.
+for (const reads of [false, true]) {
+  test(`Kokoro's note to a live Koe when no session can open and Classic rests: ${reads ? 'the store then refusing reads: a card says so' : 'its block refused: nothing of its own, written by the next refresh with what she owed'}`, async () => {
+    const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+    try {
+      k.llm.bench.bench('m-koe', 60_000);
+      const cards = raw(k);
+      const store = refusing(k);
+      k.llm.live = async () => { store.full(reads ? 'reads' : (ev) => ev.type === 'halves'); throw new Error('the connection was refused'); };
+      await k.agent.channel.send('kokoro', 'Say: Nepenthe is open until 10 PM tonight.', 'append', 'tool', undefined, undefined, false, 'Nepenthe is open until 10 tonight.');
+      if (reads) await soon(async () => told(cards).length > 0, 10_000);
+      else await soon(async () => k.agent.koeState === 'down', 10_000);
+      await k.agent.idle();
+      store.full(null); // only now: the block's write is refused first
+      assert.equal(told(cards).length, reads ? 1 : 0, JSON.stringify(cards.map((c) => c.title)));
+      if (reads) return;
+      assert.deepEqual(await blocks(k), [], 'the block was refused');
+      k.agent.send('Anything else?'); // the next refresh writes it
+      await k.agent.idle();
+      const written = await k.events(['halves']);
+      assert.deepEqual(written.map((/** @type {any} */ e) => e.data.state), ['koe-down']);
+      assert.match(JSON.stringify(written[0]), /didn't reach the user/, 'with what she owed');
+    } finally {
+      await k.done();
+    }
+  });
+}
 
 // annai's own records of itself stay quiet: Kokoro's block for a live session's state (#block), refused, shows nothing of its own.
 test("Kokoro's block that a live session opened, refused: nothing of its own", async () => {
@@ -370,25 +421,32 @@ for (const full of [false, true]) {
 }
 
 // halves.js #dropped's route: a session dropped and couldn't resume, Classic resting: Koe is down (Kokoro's block). Cut mid-answer, Kokoro finishes it
-// (#talkDirectly), so a refused block is told; not cut, the route only reads Koe's way again, and stays quiet (as #block does).
+// (#talkDirectly), so a route that fails there is told; not cut, the route only reads Koe's way again and carries nothing, so it stays quiet. Kokoro's
+// block refused is annai's own record, quiet either way: the route goes on, and Kokoro finishes a cut answer all the same.
 for (const cut of [true, false]) {
-  test(`a live session dropped ${cut ? 'mid-answer' : 'between answers'} with Classic resting, Kokoro's blocks refused: ${cut ? 'one card says so (Kokoro would never finish it)' : 'nothing of their own'}`, async () => {
-    const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
-    try {
-      k.llm.bench.bench('m-koe', 60_000);
-      const cards = raw(k);
-      const store = refusing(k);
-      store.full((ev) => ev.type === 'halves');
-      k.agent.live.c.dropped(cut);
-      if (cut) await soon(async () => told(cards).length > 0, 10_000);
-      await k.agent.idle();
-      assert.equal(k.agent.koeState, 'down');
-      assert.equal((await k.events(['halves'])).length, 0, 'the blocks were refused');
-      toldOnce(cards, cut ? 1 : 0, "Kokoro's block");
-    } finally {
-      await k.done();
-    }
-  });
+  for (const reads of [false, true]) {
+    test(`a live session dropped ${cut ? 'mid-answer' : 'between answers'} with Classic resting, ${reads ? `the store refusing reads: ${cut ? 'one card says so (Kokoro would never finish it)' : 'nothing of its own (nothing is lost: the next refresh reads it again)'}` : `Kokoro's blocks refused: ${cut ? 'nothing of their own, Kokoro finishes it all the same' : 'nothing of their own'}`}`, async () => {
+      const finish = say('Nepenthe is open till 10.'); // the scripted model reads a wake after her last results as a follow-up: its `then`
+      const k = await liveKit([], { kokoro: [{ rules: [{ match: "Koe can't speak", reply: finish, then: finish }, { match: '.', reply: sleep }] }], koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+      try {
+        k.llm.bench.bench('m-koe', 60_000);
+        const cards = raw(k);
+        const store = refusing(k);
+        store.full(reads ? 'reads' : (ev) => ev.type === 'halves');
+        k.agent.live.c.dropped(cut);
+        if (reads && cut) await soon(async () => told(cards).length > 0, 10_000);
+        await k.agent.idle();
+        store.full(null);
+        assert.equal(told(cards).length, reads && cut ? 1 : 0, JSON.stringify(cards.map((c) => c.title)));
+        if (reads) return;
+        assert.equal(k.agent.koeState, 'down');
+        assert.deepEqual(await blocks(k), [], 'the blocks were refused');
+        assert.equal((await k.events(['out.speak'])).length, cut ? 1 : 0, cut ? 'Kokoro finished the answer' : 'nothing to finish');
+      } finally {
+        await k.done();
+      }
+    });
+  }
 }
 
 // halves.js tap(), its route as annai starts (Koe's way not known yet), the store refusing reads and writes (Chromium at no byte free): Koe's way can't be

@@ -637,7 +637,8 @@ export class Halves {
     else if (voiceOn) this.live.unmute();
     this.#voiceWas = voiceOn;
     if (this.state.name !== was) this.#emitState();
-    if (this.#split && tell) await this.#tell(told);
+    // Kokoro's block for Koe's state is annai's own record, as #block's: refused, it is written again by the next refresh (#tell), and it never fails the route that carries something
+    if (this.#split && tell) await this.#tell(told).catch(() => {});
     this.#emitHalves();
   }
 
@@ -650,9 +651,16 @@ export class Halves {
       this.#told = { scope, state: last?.data?.state ?? 'koe-up' };
     }
     if (this.#told.state === state) return;
-    this.#told = { scope, state };
-    const unsaid = state !== 'koe-up' && this.#unsaid.splice(0).length ? /* en */ " What you last told Koe didn't reach the user." : '';
-    await this.kokoro.log({ type: 'halves', actor: 'system', data: { state }, texts: [['text', `${BLOCKS[state]}${unsaid}`]] });
+    const was = this.#told;
+    this.#told = { scope, state }; // before the write: a refresh meanwhile doesn't write it twice
+    const owed = state !== 'koe-up' ? this.#unsaid.splice(0) : [];
+    const unsaid = owed.length ? /* en */ " What you last told Koe didn't reach the user." : '';
+    await this.kokoro.log({ type: 'halves', actor: 'system', data: { state }, texts: [['text', `${BLOCKS[state]}${unsaid}`]] }).catch((e) => {
+      // Refused: Kokoro wasn't told, so the next refresh writes it, with what it owed
+      if (this.#told.scope === scope && this.#told.state === state) this.#told = was;
+      this.#unsaid.unshift(...owed);
+      throw e;
+    });
   }
 
   /**
@@ -1537,16 +1545,17 @@ export class Halves {
   /** @param {string} [text] @param {NoteWhy} [why] @param {string} [wake] the turn of Kokoro's it ends */
   #nothingToAdd(text = /* en */ 'Kokoro has nothing to add.', why = /** @type {NoteWhy} */ ('nothing-to-add'), wake = undefined) {
     if (this.#nothingTold) return;
-    this.#nothingTold = true;
-    this.#note(text, why, wake);
+    this.#nothingTold = true; // before the write: a second look at Koe's wait meanwhile doesn't send it twice
+    this.#note(text, why, wake, undefined, () => { this.#nothingTold = false; }); // refused, Koe never heard it: the next look sends it again
   }
 
   /**
    * A note annai sends Koe from Kokoro, not waited for here; idle() waits for it.
    * @param {string} text @param {NoteWhy} why @param {string} [wake] @param {TurnEnd['by']} [by] the model whose words it is, when its turn is over
+   * @param {() => void} [refused] what a note refused undoes: Koe never got it
    */
-  #note(text, why, wake, by) {
-    const p = this.channel.send('kokoro', text, 'append', why, wake, undefined, false, '', by === undefined ? {} : { by }).catch(this.#gone); // refused, Koe never gets it
+  #note(text, why, wake, by, refused) {
+    const p = this.channel.send('kokoro', text, 'append', why, wake, undefined, false, '', by === undefined ? {} : { by }).catch((e) => { refused?.(); this.#gone(e); });
     this.#sending.add(p);
     p.finally(() => this.#sending.delete(p));
   }
