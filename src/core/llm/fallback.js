@@ -463,7 +463,8 @@ function nextStep(err, retry) {
 
 /**
  * How long a failure rests its model once its retries are done, in ms (0: none), by callRole's rule: nothing for a stop or for no connection on
- * the device, else nextStep's. The voice's transcription list rests by it (voice.js). @param {ProviderError} err @param {boolean} [online]
+ * the device, else nextStep's. The voice's transcription list rests by it for the failures it doesn't cut (a cut send or an unreachable model is put in
+ * the call's cut list instead, and rests once another model heard: voice.js). @param {ProviderError} err @param {boolean} [online]
  */
 export function restOf(err, online = deviceOnline()) {
   if (err.kind === 'cancelled' || ((err.kind === 'unreachable' || err.kind === 'network') && !online)) return 0;

@@ -857,8 +857,8 @@ export class Voice {
       },
       // A recording that never went up in its send's time (speech.js), or a model that couldn't be reached at all (offline, a link with no data,
       // or its server down): the link as likely as the model. It is not asked again in this call (cut), as chat doesn't ask a cut model again,
-      // and rests only once another model heard it (transcribe); else the next call's resolver asks it again. Any other failure rests as a
-      // chat model's does (restOf).
+      // and rests only once another model heard it (transcribe); else the next call's resolver asks it again. Any other failure that is a
+      // ProviderError rests as a chat model's does (restOf); one that is not rests COOLDOWN_MS.
       onFail: (id, e) => {
         if (e instanceof ProviderError && (e.said?.code === 'send' || e.kind === 'unreachable')) return void cut.add(id);
         const ms = e instanceof ProviderError ? restOf(e) : COOLDOWN_MS;

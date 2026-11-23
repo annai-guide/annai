@@ -319,7 +319,7 @@ test("a Stop on the wait between a transcription's retries rests no model, as ch
     const k = await phone({});
     k.voice.retryMs = [200, 200];
     const request = asked([{ type: 'speech', id: (await k.hear()).id }]);
-    k.llm.transcribe = async (/** @type {any} */ c) => { k.llm.uploads.push({ modelId: c.modelId }); throw new ProviderError(kind, kind); };
+    k.llm.transcribe = async (/** @type {any} */ c) => { /** @type {any[]} */ (k.llm.uploads).push({ modelId: c.modelId }); throw new ProviderError(kind, kind); };
     const stop = new AbortController();
     const asking = k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request, false, stop.signal);
     await new Promise((r) => setTimeout(r, 20));

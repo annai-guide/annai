@@ -559,10 +559,10 @@ export function sendCut(cause, ms) {
 }
 
 /**
- * Whatever went wrong, as a ProviderError. Running out of time is "timeout", the caller stopping
- * is "cancelled", the browser's account of a connection that dropped while the reply was read (a body that failed
- * after its headers: isFetchFailure, as sse.js says it of a stream) is "network", the link's and no plugin's,
- * and any other error from the endpoint type's code is a bug in its plugin, which counts against the plugin (spec §5.5).
+ * Whatever went wrong, as a ProviderError. Running out of time is "timeout", the caller stopping is "cancelled",
+ * and a connection that dropped while the reply was read (a body that failed after its headers, in the browser's own
+ * words: isFetchFailure, as sse.js says it of a stream) is "network", the link's and no plugin's. Any other error from
+ * the endpoint type's code is a bug in its plugin, which counts against the plugin (spec §5.5).
  * @param {unknown} e @param {AbortSignal} signal @param {EndpointType} type @param {import('../registry.js').Registry} [registry]
  */
 export function asProviderError(e, signal, type, registry) {

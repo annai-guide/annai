@@ -414,7 +414,7 @@ export function activate(annai) {
   - `document` parts: PDFs, base64.
 - **A paused turn** (the provider stopped early and wants the reply back) stops with `pause`.
 - **A server that ignores `stream`** may answer with one whole JSON reply. Read it as the same events, in a stream's order, when the answer is `application/json` (and only then: NDJSON and `problem+json` are not whole replies): annai's Chat Completions and OpenAI Responses do. A connection that drops while you read it is `network`, as a stream's is.
-- **Errors:** throw a `ProviderError` with a kind (`auth`, `credit`, `rate`, `overloaded`, `context`, `network`, …) and the fallback will know what to do. Anything else you throw counts as a bug in your plugin.
+- **Errors:** throw a `ProviderError` with a kind (`auth`, `credit`, `rate`, `overloaded`, `context`, `network`, …) and the fallback will know what to do. Anything else you throw counts as a bug in your plugin, except the browser's own account of a connection that dropped while you read a reply (a `TypeError` saying "Load failed", "network error" or "Failed to fetch"): annai takes that as `network`.
 - **Optional parts:**
   - `classify(status, body)` can give a sharper kind for an error response.
   - `listRequest()` and `readList()` make "Fetch model list" work. A listed model may carry its `contextWindow`, `maxOutput`, `input` and its `reasoning` map (spec §9.3), as Gemini API's list does, and `loaded: true` for one a server you run has loaded now (the list says so).
