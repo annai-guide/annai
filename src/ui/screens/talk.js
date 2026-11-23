@@ -188,24 +188,25 @@ export const wokeTitles = (reasons) => reasons.flatMap((r) => (r.kind === 'trigg
 /**
  * A reminder annai showed by itself, for the Conversation and Driving's latest card, from its data. Her note shown for her (halves.js) is "Shiori's answer", anything else a reminder.
  * A plan watch's words are made from its data, in the screens' language (an older one's are annai's English as stored, so marked). @param {any} d the event's data
- * @param {(text: string) => Record<string, any>} mine @param {(tag: string, attrs: Record<string, any>) => Node | string} [make] drawn, or a test's own
+ * @param {(text: string) => Record<string, any>} mine @param {(tag: string, attrs: Record<string, any>) => Node | string} [make] a test's own; else drawn
  */
-export function reminderParts(d, mine, make = drawn) {
+export function reminderParts(d, mine, make) {
   const message = kokorosWords(d) ? (d.aloud ? t`Shiori's answer, said aloud: ${WORDS}` : t`Shiori's answer: ${WORDS}`) : d.aloud ? t`Reminder, said aloud: ${WORDS}` : t`Reminder: ${WORDS}`;
   return around(message, reminderWords(d, mine, make));
 }
 
-/**
- * A reminder's words on screen, their links and emphasis drawn as her cards' are (markdown.js): but for a plan's, they are a model's words for
- * the user. Kokoro's showed their markdown as written (the user, 2026-11-23). @param {string} tag @param {Record<string, any>} attrs
- */
+/** A model's words in a reminder, their links and emphasis drawn as her cards' are (markdown.js); Kokoro's showed them as written (the user, 2026-11-23). @param {string} tag @param {Record<string, any>} attrs */
 const drawn = (tag, { text, ...attrs }) => h(tag, attrs, ...inlineMarkdown(String(text)));
 
-/** A reminder's words alone, marked with their language. @param {any} d the event's data @param {(text: string) => Record<string, any>} mine @param {(tag: string, attrs: Record<string, any>) => Node | string} [make] */
-function reminderWords(d, mine, make = drawn) {
+/**
+ * A reminder's words alone, marked with their language. A plan watch's are annai's own, made from the plan's data, not a model's: they stay plain, so a
+ * gate's `*1234*` keeps its stars. @param {any} d the event's data @param {(text: string) => Record<string, any>} mine @param {(tag: string, attrs: Record<string, any>) => Node | string} [make]
+ */
+function reminderWords(d, mine, make) {
   const words = d.plan ? planWords(d.plan) : String(d.text ?? '');
-  const marked = d.plan ? {} : String(d.watch ?? '').startsWith('plan:') ? { lang: 'en' } : mine(words);
-  return make('span', { ...marked, text: words });
+  const planned = Boolean(d.plan) || String(d.watch ?? '').startsWith('plan:');
+  const marked = d.plan ? {} : planned ? { lang: 'en' } : mine(words);
+  return (make ?? (planned ? h : drawn))('span', { ...marked, text: words });
 }
 
 const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });

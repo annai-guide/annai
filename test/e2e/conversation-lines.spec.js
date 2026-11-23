@@ -153,7 +153,7 @@ test("a Koe line, a Kokoro line and a halves' note name a configured model by it
 const MAP = 'https://maps.example.com/?daddr=Sample%20Visitor%20Center%2C%20Sample%20Lake%20Road%2C%20Testland&dirflg=d&saddr=Current%20Location';
 const OTHER = 'https://other-maps.example.com/dir/?api=1&destination=Sample%20Visitor%20Center%2C%20Sample%20Lake%20Road%2C%20Testland&travelmode=driving';
 
-test("a halves' note with a long address wraps inside its box: the page stays the phone's width, and the dock at the foot of the screen", async ({ page }) => {
+test("a halves' note with a long address wraps inside its box: the page stays the phone's width", async ({ page }) => {
   await page.setViewportSize({ width: 420, height: 912 }); // the user's phone
   await openApp(page, '#/trips');
   const trip = await startTrip(page, 'Sample trip');
@@ -161,12 +161,13 @@ test("a halves' note with a long address wraps inside its box: the page stays th
   await page.goto('/#/talk');
   const note = page.locator('.convo .halves-note');
   await expect(note).toContainText(OTHER);
-  expect(await note.evaluate((li) => li.scrollWidth <= li.clientWidth + 1)).toBe(true);
   expect(await fitsPhone(page)).toEqual({ wider: 0, dock: [0, 0] });
+  expect(await note.evaluate((li) => li.scrollWidth <= li.clientWidth + 1)).toBe(true);
 });
 
 /**
- * How the page fits the phone: how much wider than the screen it is, and how far the dock's right and foot are from the screen's.
+ * How the page fits the phone: how much wider than the screen it is, and how far the dock's right and foot are from the screen's. A page too wide
+ * moves the dock in Chromium (its window widens); WebKit here scrolls sideways instead, so there only the width shows it.
  * @param {import('@playwright/test').Page} page
  */
 const fitsPhone = (page) => page.evaluate(() => {
@@ -190,16 +191,73 @@ test("an error's message, a system line, a card's title and an option with a lon
   await page.goto('/#/talk');
   await expect(page.locator('.convo > li')).toHaveCount(4);
   await expect(page.locator('.convo .acts .btn')).toHaveCount(3);
+  expect(await fitsPhone(page)).toEqual({ wider: 0, dock: [0, 0] });
   const wide = await page.evaluate(() => [...document.querySelectorAll('.convo > li')].flatMap((li) =>
     li.scrollWidth > li.clientWidth + 1 || li.getBoundingClientRect().right > document.documentElement.clientWidth ? [li.className] : []));
   expect(wide).toEqual([]);
-  expect(await fitsPhone(page)).toEqual({ wider: 0, dock: [0, 0] });
   // Each button keeps its words inside it, on one line but the long one's (44 px: its least height, one line).
   const buttons = await page.locator('.convo .acts .btn').evaluateAll((bs) => bs.map((b) => {
     const r = b.getBoundingClientRect();
     return { inside: b.scrollWidth <= b.clientWidth + 1 && r.right <= /** @type {Element} */ (b.closest('li')).getBoundingClientRect().right, oneLine: r.height <= 45 };
   }));
   expect(buttons).toEqual([{ inside: true, oneLine: true }, { inside: true, oneLine: false }, { inside: true, oneLine: true }]);
+});
+
+// What a card's text can hold that a long word runs out of: a list of map addresses (a likely thing for her to write), and a place with a long name.
+// Each wraps inside its card; the page-wide clip (base.css) is behind them, so one missed is a cut-off word, never the shrunk page and its dock.
+test("a card's list of long addresses and a card's long place name wrap inside the card: the page stays the phone's width", async ({ page }) => {
+  await page.setViewportSize({ width: 420, height: 912 });
+  await openApp(page, '#/trips');
+  const trip = await startTrip(page, 'Sample trip');
+  await writeEvent(page, trip, { type: 'out.show', data: { id: 'c1', card: { title: 'Routes', text: `Routes to the lake:\n\n- Maps: ${MAP}\n- Other maps: ${OTHER}` }, by } });
+  await writeEvent(page, trip, { type: 'out.show', data: { id: 'c2', card: { title: 'Sample Lake', place: { name: `Sample${'Lake'.repeat(30)}` } }, by } });
+  await page.goto('/#/talk');
+  await expect(page.locator('.convo .card')).toHaveCount(2);
+  await expect(page.locator('.convo .card .md li')).toHaveCount(2);
+  expect(await fitsPhone(page)).toEqual({ wider: 0, dock: [0, 0] });
+  // Each piece keeps its words inside its card, whatever the page does about a word that is not.
+  const out = await page.locator('.convo .card').evaluateAll((cards) => cards.flatMap((card) => {
+    const box = card.getBoundingClientRect();
+    return [...card.querySelectorAll('.md li, .md a, .card-place span')].filter((x) => x.getBoundingClientRect().right > box.right + 0.5 || x.getBoundingClientRect().left < box.left - 0.5).map((x) => x.className || x.tagName);
+  }));
+  expect(out).toEqual([]);
+});
+
+// Driving draws her latest card with the same renderer, outside the Conversation: a choice and a link whose label is one long word wrap inside the card there too.
+test("Driving's latest card with a long choice, a long link and a long place name wraps inside the card: the page stays the phone's width", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 }); // the narrowest phone
+  await openApp(page, '#/trips');
+  const trip = await startTrip(page, 'Sample trip');
+  const word = `Sample${'Lake'.repeat(30)}`;
+  await writeEvent(page, trip, { type: 'out.show', data: { id: 'c1', card: { title: 'Which map?', place: { name: word }, links: [{ label: word, url: OTHER }, { label: OTHER, url: MAP }], choice: [word, 'No'] }, by } });
+  await page.goto('/#/drive');
+  await expect(page.locator('.shiori-card .card .btn')).toHaveCount(5); // Open in Maps, two links, two choices
+  expect(await fitsPhone(page)).toEqual({ wider: 0, dock: [0, 0] });
+  const out = await page.locator('.shiori-card .card').evaluate((card) => {
+    const box = card.getBoundingClientRect();
+    return [...card.querySelectorAll('.btn, .card-place span')].filter((x) => x.getBoundingClientRect().right > box.right + 0.5 || x.scrollWidth > x.clientWidth + 1).map((x) => x.textContent?.slice(0, 20));
+  });
+  expect(out).toEqual([]);
+});
+
+// A plan reminder's words are annai's own, made from the plan's data, not a model's: a code written between stars keeps them (a gate's
+// `*1234*` read without its stars is a wrong code). The model's words in a reminder draw their emphasis, as her cards' do.
+test("a plan reminder's words keep their asterisks, while a model's reminder draws its emphasis", async ({ page }) => {
+  await page.setViewportSize({ width: 420, height: 912 });
+  await openApp(page, '#/trips');
+  const trip = await startTrip(page, 'Sample trip');
+  const notes = 'Gate code *1234*, then the door *5*.';
+  await writeEvent(page, trip, { type: 'reminder', data: { watch: 'plan:inn:arrived', text: `Sample Inn: Check-in. ${notes}`, plan: { event: 'arrived', title: 'Check-in', place: 'Sample Inn', notes } } });
+  await writeEvent(page, trip, { type: 'reminder', data: { watch: 'plan:inn:arrived', text: `Sample Inn: Check-in. ${notes}` } }); // an older entry: its English as stored
+  await writeEvent(page, trip, { type: 'reminder', data: { watch: 'w1', text: 'Take the *early* train.' } });
+  await page.goto('/#/talk');
+  const lines = page.locator('.convo > li.note p');
+  await expect(lines).toHaveCount(3);
+  await expect(lines.nth(0)).toHaveText(`Sample Inn: Check-in. ${notes}`);
+  await expect(lines.nth(1)).toHaveText(`Sample Inn: Check-in. ${notes}`);
+  await expect(lines.nth(2)).toHaveText('Take the early train.');
+  await expect(lines.nth(2).locator('em')).toHaveText('early');
+  await expect(page.locator('.convo > li.note em')).toHaveCount(1);
 });
 
 // Kokoro's words annai shows itself (a note's for_user Koe never said) are the model's words for the user, as a card's text is: their

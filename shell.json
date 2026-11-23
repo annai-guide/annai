@@ -1,5 +1,5 @@
 {
-  "build": "171ec8d9d4be",
+  "build": "113da7e749b7",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -203,7 +203,7 @@
     "/src/plugins/voice-browser/index.js": "bf3e200a094a",
     "/src/plugins/web/free.js": "a53fce528491",
     "/src/plugins/web/index.js": "15fdc1005752",
-    "/src/ui/base.css": "ac3c36541e56",
+    "/src/ui/base.css": "c57b735a44ab",
     "/src/ui/cards.js": "cc78cef84d11",
     "/src/ui/composer.js": "b05c0677dd23",
     "/src/ui/credits.js": "41a7b364b5ae",
@@ -274,7 +274,7 @@
     "/src/ui/screens/simulate.js": "16dddd363254",
     "/src/ui/screens/shiori.js": "570d16acdc88",
     "/src/ui/screens/sees.js": "6a674fc473ae",
-    "/src/ui/screens/talk.js": "59eaecfd5cc6",
+    "/src/ui/screens/talk.js": "dc9f1a9a7e70",
     "/src/ui/screens/tools.js": "52d6c4d56a08",
     "/src/ui/screens/trace.js": "e50cc0a686e4",
     "/src/ui/screens/trip.js": "16b903f6b61b",
@@ -286,7 +286,7 @@
     "/src/ui/shell.js": "79d363b3e955",
     "/src/ui/slots.js": "f2f6183cc470",
     "/src/ui/stamps.js": "9c0f976db8fa",
-    "/src/ui/shiori.css": "99b358cdd3fb",
+    "/src/ui/shiori.css": "41ea6d589e75",
     "/src/ui/speech-check.js": "457b62b37c33",
     "/src/ui/storage-full.js": "104720278679",
     "/src/ui/talk-panel.js": "cc1fb4a04f43",

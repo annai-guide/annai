@@ -2461,58 +2461,58 @@ urusz7#other	ok	Left # files as you changed them.	自分で変更したファイ
 7ew4gb	ok	Shiori's answer: {0}	Shioriの答え：{0}	src/ui/screens/talk.js:194	{0} = WORDS; Note: {0} is her answer, shown by annai.
 n22tq9	ok	Reminder: {0}	リマインダー：{0}	src/ui/screens/talk.js:194	{0} = WORDS; Note: {0} is the reminder's words.
 y16fvl	ok	Shiori's answer, said aloud: {0}	Shioriの答え（読み上げ）：{0}	src/ui/screens/talk.js:194	{0} = WORDS; Note: {0} is her answer, shown by annai.
-qjf670	ok	Three identical tool calls in a row with identical results.	同じ内容のツール呼び出しが3回続き、結果も同じでした。	src/ui/screens/talk.js:230	
-10jxiq6	ok	The watch for "{0}" can't be checked: {1}	「{0}」の見守りを確認できません：{1}	src/ui/screens/talk.js:235	{0} = name; {1} = String(d.why ?? ''); Note: a watch is named by its reminder, {0}, in her words; {1} is the trigger's own words, last, with their own end: annai adds 。 only where they have none, so no stop here.
-1m8lxbu	ok	Google Search	Google 検索	src/ui/screens/talk.js:243	Note: the grounded card's source, "From {0}" (1gblst7) and read aloud (4fzxin): as Google writes it, the glossary's Google row; the same as Settings → Tools.
-6xevdr	ok	Search suggestions from Google	Googleの検索候補	src/ui/screens/talk.js:253	
-v84pjn	ok	Shiori, no trip	Shiori（旅なし）	src/ui/screens/talk.js:323	Note: the name of `me`'s row among the chats on Trips, and the title of its read-only lines: the old conversation outside any trip (from before every conversation belonged to a trip), a row of old lines to read, not a button back to a conversation; 旅 / 旅行 as the glossary's trip.
-137bppl	ok	Heard, not for Shiori: {0}	聞こえた言葉（Shiori宛てではありません）：{0}	src/ui/screens/talk.js:339	{0} = WORDS; Note: {0} is the words annai heard.
-1re6l79	ok	Heard: {0}	聞こえた言葉：{0}	src/ui/screens/talk.js:339	{0} = WORDS; Note: read by a screen reader; {0} is the words annai heard.
-yexh35	ok	Heard, she didn't answer: {0}	聞こえた言葉（返事なし）：{0}	src/ui/screens/talk.js:339	{0} = WORDS
-1v011e1	ok	This trip so far: {0}	この旅のここまでの費用：{0}	src/ui/screens/talk.js:347	{0} = formatCost(c.total)
-glbwh5	ok	This conversation so far: {0}	この会話のここまでの費用：{0}	src/ui/screens/talk.js:347	{0} = formatCost(c.total)
-45z4a3	ok	This was for Shiori	Shiori宛てに送る	src/ui/screens/talk.js:379	
-td8u17	ok	A photo you sent	送った写真	src/ui/screens/talk.js:396	
-9e5yo5	ok	(a photo)	（写真）	src/ui/screens/talk.js:443	
-1sjvjoo	ok	From {0}	「{0}」から	src/ui/screens/talk.js:454	context: a conversation; {0} = scopeTitle(src); Note: under a line the user said in another conversation, copied here when Shiori took them here; a link to that conversation.
-n8s7gz	ok	Tap to answer	タップして答える	src/ui/screens/talk.js:513	Note: a small line under the buttons of annai's own card (Allow, Always for my trips, Not now; Open, Not now) while it waits: only a tap on a button answers it, not a spoken or typed yes. Built as "Tap to talk" is.
-fv3xhc	ok	Kokoro to Koe:	KokoroからKoeへ：	src/ui/screens/talk.js:528	Note: a note from Kokoro to Koe; its words follow.
-upsxi0	ok	Koe to Kokoro:	KoeからKokoroへ：	src/ui/screens/talk.js:528	Note: a note from Koe to Kokoro; its words follow.
-16ol023	ok	Shiori read {0}	Shioriが「{0}」を読みました	src/ui/screens/talk.js:557	{0} = scopeTitle({ id: String(d.trip), title: String(d.title ?? '') })
-e34nbi	ok	Started fresh	新しく始めました	src/ui/screens/talk.js:561	Note: the divider where a fresh start began.
-3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	これまでの会話を要約しました。会話の全文は「記録」にあります。	src/ui/screens/talk.js:562	
-1o41up	ok	A budget ended her turn	上限に達したため、Shioriが応答を終えました	src/ui/screens/talk.js:572	
-1p4yyw7	ok	Her turn ended	Shioriの応答が終わりました	src/ui/screens/talk.js:572	
-1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	まだ会話はありません。下の「Shiori」か「入力」をタップして話しかけてください。	src/ui/screens/talk.js:587	Note: "Type" is the dock's button: its words must match it.
-1pm5i13	ok	Back to Trips	「旅」に戻る	src/ui/screens/talk.js:683	Note: The Trips screen, quoted so it reads apart from 旅に戻る (Back to trip).
-16zeyyr	ok	Next: {0} {1}	次の予定：{0} {1}	src/ui/screens/talk.js:727	{0} = r.time; {1} = name
-puj2r7	ok	Next: {0} {1} {2}	次の予定：{0} {1} {2}	src/ui/screens/talk.js:727	{0} = day(r.day, true); {1} = r.time; {2} = name
-1frlw7l	ok	Undo the dates Shiori set	Shioriが設定した日付を元に戻す	src/ui/screens/talk.js:785	
-1l3merh	ok	Shiori set the dates	Shioriが日付を設定しました	src/ui/screens/talk.js:804	
-159f82q	ok	Undone	元に戻しました	src/ui/screens/talk.js:806	
-1v37fcy	ok	Undo what Shiori did with these files	このファイルについてShioriがしたことを元に戻す	src/ui/screens/talk.js:905	Note: the Undo button's label for screen readers; 元に戻す as Undo.
-1nl0tpx	ok	Conversation menu	会話メニュー	src/ui/screens/talk.js:969	
-7flpxf	ok	Summarizing…	要約中…	src/ui/screens/talk.js:1036	
-12707g	ok	She couldn't summarize it. A card says why.	要約できませんでした。理由はカードに表示されています。	src/ui/screens/talk.js:1038	
-5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	これまでの会話を要約しました。会話はすべてここに残り、Shioriもあとから見返せます。	src/ui/screens/talk.js:1038	
-u82uid	ok	Shiori is working. Try again in a moment.	Shioriは作業中です。少ししてからもう一度お試しください。	src/ui/screens/talk.js:1038	
-va2k72	ok	There is not enough yet to summarize.	まだ要約するほどの内容がありません。	src/ui/screens/talk.js:1038	
-mienoe	ok	Summarize now	今すぐ要約	src/ui/screens/talk.js:1041	
-10sfmur	ok	Starting fresh…	新しく始めています…	src/ui/screens/talk.js:1043	
-va77q0	ok	Start fresh?	新しく始めますか？	src/ui/screens/talk.js:1056	Note: the glossary's 新しく始める, conjugated as a question (始めますか).
-19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shioriはこれまでのやり取りを踏まえず、ここから新しく始めます。やり取りはすべて会話に残るので、読んだり検索したりでき、Shioriも見返せます。削除されるものはありません。ライブ音声のセッションも開始し直します。	src/ui/screens/talk.js:1057	
-czdqlz	ok	Start fresh	新しく始める	src/ui/screens/talk.js:1058	
-1h9wwbn	ok	She couldn't start fresh: {0}	新しく始められませんでした：{0}	src/ui/screens/talk.js:1068	{0} = messageOf(e)
-1thzla3	ok	Already fresh: nothing has been said since.	新しく始めたあと、まだ何も話していません。	src/ui/screens/talk.js:1071	
-3fntk0	ok	Started fresh.	新しく始めました。	src/ui/screens/talk.js:1071	
-mg70bg	ok	The conversation is still opening. Try again in a moment.	会話を開いているところです。少ししてからもう一度お試しください。	src/ui/screens/talk.js:1071	
-p5pj7b	ok	There is nothing to start fresh from yet.	まだ何も話していないため、新しく始められません。	src/ui/screens/talk.js:1071	
-1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	今すぐ要約：これまでの会話をShioriが要約して、会話を短く保ちます。やり取りはすべてここに残り、Shioriもあとから見返せます。	src/ui/screens/talk.js:1093	
-18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	新しく始める：Shioriはこれまでのやり取りを踏まえず、ここから新しく始めます。やり取りはすべて区切り線の上に残ります。	src/ui/screens/talk.js:1094	
-15ve7m7	ok	What each half sees	KoeとKokoroに見えているもの	src/ui/screens/talk.js:1095	
-1u5l4hx	ok	Details: the trip's name and dates, Export, Archive and Remove.	詳細：旅の名前と日付、エクスポート、アーカイブ、削除。	src/ui/screens/talk.js:1106	
-o7tevg	ok	Details: the chat's name and dates, Export, Archive and Remove.	詳細：チャットの名前と日付、エクスポート、アーカイブ、削除。	src/ui/screens/talk.js:1106	
-16pl3gf	ok	Undone. Her old personality applies at her next wake.	元に戻しました。前の性格は、Shioriが次に起動したときから反映されます。	src/ui/screens/talk.js:1122	
+qjf670	ok	Three identical tool calls in a row with identical results.	同じ内容のツール呼び出しが3回続き、結果も同じでした。	src/ui/screens/talk.js:231	
+10jxiq6	ok	The watch for "{0}" can't be checked: {1}	「{0}」の見守りを確認できません：{1}	src/ui/screens/talk.js:236	{0} = name; {1} = String(d.why ?? ''); Note: a watch is named by its reminder, {0}, in her words; {1} is the trigger's own words, last, with their own end: annai adds 。 only where they have none, so no stop here.
+1m8lxbu	ok	Google Search	Google 検索	src/ui/screens/talk.js:244	Note: the grounded card's source, "From {0}" (1gblst7) and read aloud (4fzxin): as Google writes it, the glossary's Google row; the same as Settings → Tools.
+6xevdr	ok	Search suggestions from Google	Googleの検索候補	src/ui/screens/talk.js:254	
+v84pjn	ok	Shiori, no trip	Shiori（旅なし）	src/ui/screens/talk.js:324	Note: the name of `me`'s row among the chats on Trips, and the title of its read-only lines: the old conversation outside any trip (from before every conversation belonged to a trip), a row of old lines to read, not a button back to a conversation; 旅 / 旅行 as the glossary's trip.
+137bppl	ok	Heard, not for Shiori: {0}	聞こえた言葉（Shiori宛てではありません）：{0}	src/ui/screens/talk.js:340	{0} = WORDS; Note: {0} is the words annai heard.
+1re6l79	ok	Heard: {0}	聞こえた言葉：{0}	src/ui/screens/talk.js:340	{0} = WORDS; Note: read by a screen reader; {0} is the words annai heard.
+yexh35	ok	Heard, she didn't answer: {0}	聞こえた言葉（返事なし）：{0}	src/ui/screens/talk.js:340	{0} = WORDS
+1v011e1	ok	This trip so far: {0}	この旅のここまでの費用：{0}	src/ui/screens/talk.js:348	{0} = formatCost(c.total)
+glbwh5	ok	This conversation so far: {0}	この会話のここまでの費用：{0}	src/ui/screens/talk.js:348	{0} = formatCost(c.total)
+45z4a3	ok	This was for Shiori	Shiori宛てに送る	src/ui/screens/talk.js:380	
+td8u17	ok	A photo you sent	送った写真	src/ui/screens/talk.js:397	
+9e5yo5	ok	(a photo)	（写真）	src/ui/screens/talk.js:444	
+1sjvjoo	ok	From {0}	「{0}」から	src/ui/screens/talk.js:455	context: a conversation; {0} = scopeTitle(src); Note: under a line the user said in another conversation, copied here when Shiori took them here; a link to that conversation.
+n8s7gz	ok	Tap to answer	タップして答える	src/ui/screens/talk.js:514	Note: a small line under the buttons of annai's own card (Allow, Always for my trips, Not now; Open, Not now) while it waits: only a tap on a button answers it, not a spoken or typed yes. Built as "Tap to talk" is.
+fv3xhc	ok	Kokoro to Koe:	KokoroからKoeへ：	src/ui/screens/talk.js:529	Note: a note from Kokoro to Koe; its words follow.
+upsxi0	ok	Koe to Kokoro:	KoeからKokoroへ：	src/ui/screens/talk.js:529	Note: a note from Koe to Kokoro; its words follow.
+16ol023	ok	Shiori read {0}	Shioriが「{0}」を読みました	src/ui/screens/talk.js:558	{0} = scopeTitle({ id: String(d.trip), title: String(d.title ?? '') })
+e34nbi	ok	Started fresh	新しく始めました	src/ui/screens/talk.js:562	Note: the divider where a fresh start began.
+3r1u8z	ok	Earlier conversation summarized. The full log is in Trace.	これまでの会話を要約しました。会話の全文は「記録」にあります。	src/ui/screens/talk.js:563	
+1o41up	ok	A budget ended her turn	上限に達したため、Shioriが応答を終えました	src/ui/screens/talk.js:573	
+1p4yyw7	ok	Her turn ended	Shioriの応答が終わりました	src/ui/screens/talk.js:573	
+1m7l4ua	ok	Nothing yet. Tap Shiori or Type below to talk.	まだ会話はありません。下の「Shiori」か「入力」をタップして話しかけてください。	src/ui/screens/talk.js:588	Note: "Type" is the dock's button: its words must match it.
+1pm5i13	ok	Back to Trips	「旅」に戻る	src/ui/screens/talk.js:684	Note: The Trips screen, quoted so it reads apart from 旅に戻る (Back to trip).
+16zeyyr	ok	Next: {0} {1}	次の予定：{0} {1}	src/ui/screens/talk.js:728	{0} = r.time; {1} = name
+puj2r7	ok	Next: {0} {1} {2}	次の予定：{0} {1} {2}	src/ui/screens/talk.js:728	{0} = day(r.day, true); {1} = r.time; {2} = name
+1frlw7l	ok	Undo the dates Shiori set	Shioriが設定した日付を元に戻す	src/ui/screens/talk.js:786	
+1l3merh	ok	Shiori set the dates	Shioriが日付を設定しました	src/ui/screens/talk.js:805	
+159f82q	ok	Undone	元に戻しました	src/ui/screens/talk.js:807	
+1v37fcy	ok	Undo what Shiori did with these files	このファイルについてShioriがしたことを元に戻す	src/ui/screens/talk.js:906	Note: the Undo button's label for screen readers; 元に戻す as Undo.
+1nl0tpx	ok	Conversation menu	会話メニュー	src/ui/screens/talk.js:970	
+7flpxf	ok	Summarizing…	要約中…	src/ui/screens/talk.js:1037	
+12707g	ok	She couldn't summarize it. A card says why.	要約できませんでした。理由はカードに表示されています。	src/ui/screens/talk.js:1039	
+5x85ju	ok	Earlier conversation summed up. Every line stays here, and she can still look them up.	これまでの会話を要約しました。会話はすべてここに残り、Shioriもあとから見返せます。	src/ui/screens/talk.js:1039	
+u82uid	ok	Shiori is working. Try again in a moment.	Shioriは作業中です。少ししてからもう一度お試しください。	src/ui/screens/talk.js:1039	
+va2k72	ok	There is not enough yet to summarize.	まだ要約するほどの内容がありません。	src/ui/screens/talk.js:1039	
+mienoe	ok	Summarize now	今すぐ要約	src/ui/screens/talk.js:1042	
+10sfmur	ok	Starting fresh…	新しく始めています…	src/ui/screens/talk.js:1044	
+va77q0	ok	Start fresh?	新しく始めますか？	src/ui/screens/talk.js:1057	Note: the glossary's 新しく始める, conjugated as a question (始めますか).
+19vk5z3	ok	Shiori will start over from here, without the earlier lines in mind. They all stay in the conversation, for you to read and search, and she can still look them up: nothing is deleted. A live voice session restarts too.	Shioriはこれまでのやり取りを踏まえず、ここから新しく始めます。やり取りはすべて会話に残るので、読んだり検索したりでき、Shioriも見返せます。削除されるものはありません。ライブ音声のセッションも開始し直します。	src/ui/screens/talk.js:1058	
+czdqlz	ok	Start fresh	新しく始める	src/ui/screens/talk.js:1059	
+1h9wwbn	ok	She couldn't start fresh: {0}	新しく始められませんでした：{0}	src/ui/screens/talk.js:1069	{0} = messageOf(e)
+1thzla3	ok	Already fresh: nothing has been said since.	新しく始めたあと、まだ何も話していません。	src/ui/screens/talk.js:1072	
+3fntk0	ok	Started fresh.	新しく始めました。	src/ui/screens/talk.js:1072	
+mg70bg	ok	The conversation is still opening. Try again in a moment.	会話を開いているところです。少ししてからもう一度お試しください。	src/ui/screens/talk.js:1072	
+p5pj7b	ok	There is nothing to start fresh from yet.	まだ何も話していないため、新しく始められません。	src/ui/screens/talk.js:1072	
+1ggbtyi	ok	Summarize now: Shiori sums up the earlier conversation now, to keep it short. Every line stays here, and she can still look them up.	今すぐ要約：これまでの会話をShioriが要約して、会話を短く保ちます。やり取りはすべてここに残り、Shioriもあとから見返せます。	src/ui/screens/talk.js:1094	
+18xqtne	ok	Start fresh: Shiori puts the earlier lines out of mind and starts over from here. Every line stays here, above a divider.	新しく始める：Shioriはこれまでのやり取りを踏まえず、ここから新しく始めます。やり取りはすべて区切り線の上に残ります。	src/ui/screens/talk.js:1095	
+15ve7m7	ok	What each half sees	KoeとKokoroに見えているもの	src/ui/screens/talk.js:1096	
+1u5l4hx	ok	Details: the trip's name and dates, Export, Archive and Remove.	詳細：旅の名前と日付、エクスポート、アーカイブ、削除。	src/ui/screens/talk.js:1107	
+o7tevg	ok	Details: the chat's name and dates, Export, Archive and Remove.	詳細：チャットの名前と日付、エクスポート、アーカイブ、削除。	src/ui/screens/talk.js:1107	
+16pl3gf	ok	Undone. Her old personality applies at her next wake.	元に戻しました。前の性格は、Shioriが次に起動したときから反映されます。	src/ui/screens/talk.js:1123	
 11gkctr	ok	Places	場所	src/ui/screens/tools.js:12	context: tool group
 13mxqrp	ok	Talk	会話	src/ui/screens/tools.js:12	context: tool group; Note: the tools Shiori talks with (speak, show, ask).
 16crtql	ok	Go	移動	src/ui/screens/tools.js:12	context: tool group; Note: the tools for getting somewhere (routes, maps).
