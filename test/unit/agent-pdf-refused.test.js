@@ -5,7 +5,7 @@
 // PDF over its page limit (kind bad-request): the kinds are what the classifier gives them, the wordings are not seen from a real API.
 //
 // What the fix rounds pin (the mark's reach; one card; Start fresh; a resting model): the test runs only when every model the request went to ended in a refusal, and a request too
-// long goes through housekeeping first; the mark is written only when a model that refused the whole request answers the words, is its half's, and
+// long goes through housekeeping first; the mark is written only when a model that refused the request (one asked with the PDF's reading counts) answers the words, is its half's, and
 // ends at its conversation's next summary or Start fresh.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
