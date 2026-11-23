@@ -1722,10 +1722,10 @@ export class LiveKoe {
     });
   }
 
-  /** Writes in order; an entry may be worked out first. @param {any} ev @returns {Promise<unknown>} */
+  /** Writes in order; an entry may be worked out first. Nobody waits on it: one refused is told (Agent.notSaved). @param {any} ev @returns {Promise<unknown>} */
   #write(ev) {
     const scope = this.#scope;
-    /* en */ this.#chain = this.#chain.then(async () => this.c.koe.log(typeof ev === 'function' ? await ev() : ev, { scope })).catch((e) => console.warn('a live line was not written', e));
+    this.#chain = this.#chain.then(async () => this.c.koe.log(typeof ev === 'function' ? await ev() : ev, { scope })).catch((e) => this.c.koe.notSaved(e));
     return this.#chain;
   }
 
