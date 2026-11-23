@@ -409,7 +409,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       bytes = utf8Length(body); // in the trace: how much a kept turn saves
       // The model's wait starts once the provider has the request (the answer's headers); before, plus the body's time at SLOW_UPLINK, twice
       // that when `shared` (the other half may send on the same link).
-      sending = firstOutputMs + sendMs(shared ? 2 * bytes : bytes);
+      sending = firstOutputMs + sendMs(bytes, shared);
       wait(sending);
       try {
         res = await get(built.url, { method: 'POST', headers: built.headers, body, signal: linked, redirect: 'manual' });

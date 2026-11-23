@@ -502,10 +502,11 @@ export class Voice {
    * One transcription, in the smallest format both sides handle (spec §10.6). A failed upload goes
    * again with the same bytes. Any refusal of another format is answered with WAV once (whisper.cpp
    * says only "Invalid request"): WAV from then on if that works.
-   * @param {string} id @param {import('./resolve.js').Kept} kept @param {string} scope @param {string} [wake] @param {AbortSignal} [signal] @param {boolean} [plain]
+   * @param {string} id @param {import('./resolve.js').Kept} kept @param {string} scope @param {string} [wake] @param {AbortSignal} [signal]
+   * @param {boolean} [shared] a half's turn's, timed as its other sends are (speechCall) @param {boolean} [plain]
    * @returns {Promise<string>}
    */
-  async #hear(id, kept, scope, wake, signal, plain = this.wavOnly.has(id)) {
+  async #hear(id, kept, scope, wake, signal, shared = false, plain = this.wavOnly.has(id)) {
     const cfg = await this.llm.config();
     const accepts = plain ? ['wav'] : audioIn(cfg, this.llm.types(), id);
     const audio = await audioFor(kept, accepts, this.platform?.encoder);
@@ -515,7 +516,7 @@ export class Voice {
       try {
         const hints = modelLanguages(await this.languages());
         const languages = this.unhinted.has(id) ? { ...hints, spoken: [] } : hints;
-        const text = String((await this.llm.transcribe({ modelId: id, audio: { ...audio, seconds: kept.audio?.seconds }, scope, wake, signal, languages })).text ?? '');
+        const text = String((await this.llm.transcribe({ modelId: id, audio: { ...audio, seconds: kept.audio?.seconds }, scope, wake, signal, languages, shared })).text ?? '');
         if (plain) this.wavOnly.add(id);
         return text;
       } catch (e) {
@@ -523,9 +524,9 @@ export class Voice {
         // A 400 naming the language field: asked again without the user's languages, and not hinted again (as a refused style is dropped).
         if (kind === 'bad-request' && /language/i.test(/** @type {Error} */ (e).message) && !this.unhinted.has(id) && modelLanguages(await this.languages()).spoken.length) {
           this.unhinted.add(id);
-          return this.#hear(id, kept, scope, wake, signal, plain);
+          return this.#hear(id, kept, scope, wake, signal, shared, plain);
         }
-        if (kind === 'bad-request' && audio.format !== 'wav' && audioIn(cfg, this.llm.types(), id).includes('wav')) return this.#hear(id, kept, scope, wake, signal, true);
+        if (kind === 'bad-request' && audio.format !== 'wav' && audioIn(cfg, this.llm.types(), id).includes('wav')) return this.#hear(id, kept, scope, wake, signal, shared, true);
         if (!['network', 'server', 'overloaded'].includes(kind) || retry >= this.retryMs.length || signal?.aborted) throw e;
         await new Promise((r) => setTimeout(r, this.retryMs[retry]));
         if (signal?.aborted) throw e;
@@ -822,25 +823,26 @@ export class Voice {
    * Transcriptions are traced in scope, for the wake, and stop with the call's signal. plain: the model
    * refused the audio format it was sent: WAV until annai restarts.
    * @param {string} scope @param {string} [wake] @param {string[]} [list] the speech-in list, when not the role's
+   * @param {boolean} [shared] a half's turn that shares the link with the other half's: its transcriptions are timed on twice their bytes (§4.8)
    * @returns {(model: { id?: string, name: string, input: string[] }, request: import('../llm/contract.js').Request, plain?: boolean, signal?: AbortSignal) => Promise<import('../llm/contract.js').Request>}
    */
-  resolver(scope, wake, list) {
+  resolver(scope, wake, list, shared = false) {
     return async (model, request, plain, signal) => {
       if (plain && model.id) this.wavOnly.add(model.id);
-      const c = await this.#resolve(scope, wake, signal);
+      const c = await this.#resolve(scope, wake, signal, shared);
       return resolveSpeech(request, model, { ...c, ...(list ? { list } : {}), plain: Boolean(model.id && this.wavOnly.has(model.id)) });
     };
   }
 
-  /** @param {string} scope @param {string} [wake] @param {AbortSignal} [signal] @returns {Promise<import('./resolve.js').Resolve>} */
-  async #resolve(scope, wake, signal) {
+  /** @param {string} scope @param {string} [wake] @param {AbortSignal} [signal] @param {boolean} [shared] @returns {Promise<import('./resolve.js').Resolve>} */
+  async #resolve(scope, wake, signal, shared = false) {
     const cfg = await this.llm.config();
     const types = this.llm.types();
     return {
       list: cfg.roles['speech-in']?.models ?? [],
       memory: this.memory,
       asr: (id) => speechKind(cfg, types, id) === 'in' && this.llm.bench.until(id) <= this.now(),
-      transcribe: (id, kept) => this.#hear(id, kept, scope, wake, signal),
+      transcribe: (id, kept) => this.#hear(id, kept, scope, wake, signal, shared),
       // A kept clip is read for the conversation it was heard in: another trip's, named by its hash, isn't there (reach.js).
       clip: async (hash) => {
         const b = this.store ? await readBlob(this.store, scope, hash, { quiet: true }) : undefined;

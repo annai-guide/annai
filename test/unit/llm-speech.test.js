@@ -153,6 +153,32 @@ test("a transcription's time limit starts once the provider has the recording, a
   assert.equal(Date.now() - started, 10 + 50, 'the answer at 10 ms, then the limit from it');
 });
 
+test("8. a half's turn's transcription beside the other half's send (shared) has the time of twice its bytes, as its model's send has: a recording up within that is heard where alone it is cut, and one that never goes up ends at the limit and twice its send's time (read-wait-next, shape 6)", async (t) => {
+  useClock(t);
+  // 4,000 bytes: 0.46 s at the slow link alone, 0.92 s shared; the 50 ms limit after.
+  const audio = { data: new Uint8Array(4_000), mediaType: 'audio/wav', seconds: 0.1 };
+  /** A fetch whose answer's headers come ms after it is asked (Infinity: never), ended by its signal. @param {number} ms */
+  const answersAfter = (ms) => (/** @type {any} */ _url, /** @type {any} */ init) => new Promise((done, fail) => {
+    const t = ms === Infinity ? undefined : setTimeout(() => done(Response.json({ text: 'Where should we eat?' })), ms);
+    init.signal.addEventListener('abort', () => { clearTimeout(t); fail(init.signal.reason); }, { once: true });
+  });
+  const hear = (/** @type {any} */ fetch, /** @type {boolean} */ shared) => speechCall({ type: /** @type {any} */ (hears), endpoint: endpoint('test-in'), model: model(null), key: null, audio, fetch, timeoutMs: 50, shared });
+  assert.equal((await hear(answersAfter(900), true)).text, 'Where should we eat?');
+  await assert.rejects(hear(answersAfter(900), false), (e) => e instanceof ProviderError && e.kind === 'timeout');
+  const started = Date.now();
+  await assert.rejects(hear(answersAfter(Infinity), true), (e) => e instanceof ProviderError && e.kind === 'timeout');
+  assert.equal(Date.now() - started, 50 + sendMs(2 * 4_000));
+  // The service's transcription passes it on: 40,000 bytes take 4.6 s alone, 9.1 s shared, after the role's 15 s; the answer comes at 22 s.
+  const { registry, store, ws } = await setup();
+  registry.add('test', 'endpoint-type', hears);
+  const { p, m } = speechProvider('transcription', 'test-in', 'Ears', 'https://ears.test', 'ears-1');
+  await saveProvider(ws, p, [m]);
+  const llm = createLlm({ store, ws, plugins: new PluginHost({ registry, workspace: ws }), fetch: /** @type {any} */ (answersAfter(22_000)) });
+  const long = { data: new Uint8Array(40_000), mediaType: 'audio/wav', seconds: 1 };
+  assert.equal(/** @type {any} */ (await llm.transcribe({ modelId: m.id, audio: long, shared: true })).text, 'Where should we eat?');
+  await assert.rejects(llm.transcribe({ modelId: m.id, audio: long }), (e) => e instanceof ProviderError && e.kind === 'timeout');
+});
+
 test("a voice's time limit counts the text's send as a transcription's does: a text slower to go up than the limit is spoken; one that never goes up ends at the limit and the send's time (photo-wait's follow-ups, 1)", async (t) => {
   useClock(t);
   // 4,000 characters: 0.46 s at the slow link, past the 100 ms limit; the answer's headers at 300 ms.

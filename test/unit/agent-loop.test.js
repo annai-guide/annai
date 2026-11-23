@@ -1757,19 +1757,19 @@ test("a model that can't see photos reads one, and no model here can: the result
   assert.equal(k.sent['model-u'], undefined);
 });
 
-test("describing a photo for a model that can't see it has a time limit, and stops with the turn; either way the result says so in words and the turn goes on (review A5)", async (t) => {
+test("describing a photo for a model that can't see it waits for the describer's first words as its role waits for any model's (§9.6), and stops with the turn; either way the result says so in words and the turn goes on (review A5; read-wait-next)", async (t) => {
   useClock(t);
   const photo = async (/** @type {any} */ k) => k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('4000x3000'), { author: 'user', type: 'image/webp', meta: { width: 4000, height: 3000 } });
   const read = { toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.webp' } }] };
-  // A describer slower than the limit (30 s; 300 ms at secondMs 10): words, and her turn goes on.
-  const slow = await agentKit([[read, say('I could not see it.')]], { models: [{ input: ['text'] }], utility: [{ delayMs: 3000, text: 'Too late.' }] });
+  // A describer that never starts within its role's wait (Utility's 30 s, on the clock): it ends there, in the call's words, and her turn goes on.
+  const slow = await agentKit([[read, say('I could not see it.')]], { models: [{ input: ['text'] }], utility: [{ delayMs: 60_000, text: 'Too late.' }] });
   await photo(slow);
   const t0 = Date.now();
   slow.agent.send('What does the menu say?');
-  await idleAtOnce(slow);
-  assert.ok(Date.now() - t0 < 2000, `${Date.now() - t0} ms`);
+  await idleAtOnce(slow, 30_000 + 2000);
+  assert.ok(Date.now() - t0 >= 30_000 && Date.now() - t0 < 30_000 + 2000, `${Date.now() - t0} ms`);
   const r = (await slow.events(['tool.result'])).find((e) => e.data.name === 'read');
-  assert.match(r.data.content, /\nIt couldn't be described in time \(30 seconds\)\.$/);
+  assert.match(r.data.content, /\nIt couldn't be described: model-u: No output started in time\.$/);
   assert.equal(r.data.ok, true);
   assert.deepEqual((await slow.events(['out.speak'])).map((e) => e.data.text), ['I could not see it.']);
   // The user stops her while it is described: the turn ends at once.
@@ -1782,6 +1782,30 @@ test("describing a photo for a model that can't see it has a time limit, and sto
   await idleAtOnce(stopped);
   assert.ok(Date.now() - t1 < 1000, `${Date.now() - t1} ms`);
   assert.equal((await stopped.events(['out.speak'])).length, 0);
+});
+
+test("10. a reader that never starts answering ends at its own wait and rests, as any model does: the next reader describes the photo, and a reading in the next 3 minutes doesn't ask the resting one (read-wait-next)", async (t) => {
+  useClock(t);
+  const photo = async (/** @type {any} */ k) => k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+  const read = { toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.webp' } }] };
+  // Readers for one Shiori: Utility's (stalled), then Main's, where model-1 sees photos (model-0, hers, doesn't).
+  const k = await agentKit([[read, say('A menu.'), read, say('Still a menu.')], [{ text: 'A menu; the fish is circled.' }]], { models: [{ input: ['text'] }, { input: ['text', 'image'] }], utility: [{ delayMs: 600_000, text: 'never' }] });
+  await photo(k);
+  const t0 = Date.now();
+  k.agent.send('What does the menu say?');
+  await idleAtOnce(k, 30_000 + 2000); // Utility's wait for its first words, 30 s, on the clock
+  assert.ok(Date.now() - t0 >= 30_000, `${Date.now() - t0} ms`);
+  const told = /\nWhat it shows \(described by model-1, as you can't see photos\): A menu; the fish is circled\.$/;
+  const results = async () => (await k.events(['tool.result'])).filter((e) => e.data.name === 'read').map((e) => e.data.content);
+  assert.match((await results())[0], told);
+  assert.ok(k.llm.bench.until('m-u') > Date.now(), 'the stalled reader rests');
+  const t1 = Date.now();
+  k.agent.send('Read it again');
+  await idleAtOnce(k);
+  assert.ok(Date.now() - t1 < 2000, `${Date.now() - t1} ms: no wait on the resting reader`);
+  assert.match((await results())[1], told);
+  assert.equal(k.sent['model-u'].length, 1, 'the resting reader was not asked again');
+  assert.equal(k.sent['model-1'].length, 2);
 });
 
 test('read with a region sends a crop, kept in the conversation, and says which region was used', async (t) => {
@@ -2363,12 +2387,15 @@ test("a reading is kept in the conversation's log: after a reload it is read fro
 
 test("a reading that failed is remembered for the rest of the call: the second pass's next model doesn't wait for it again", async (t) => {
   useClock(t);
-  // Utility's reader never answers within the photo's 30 seconds; two models of Kokoro's see no photos.
-  const k = await photoKit([{ error: 'credit', status: 402 }], [{ delayMs: 60_000, text: 'never' }], { more: [[say('I could not see it.')]], models: [{ input: ['text'] }] });
+  // Utility's reader fails after 20 seconds, in a way that rests no model (a refusal: so only the call's memory keeps it from being asked
+  // again); two models of Kokoro's see no photos.
+  const k = await photoKit([{ error: 'credit', status: 402 }], [{ delayMs: 20_000, error: 'bad-request', message: 'The photo is too big.' }], { more: [[say('I could not see it.')]], models: [{ input: ['text'] }] });
+  const t0 = Date.now();
   k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
-  await idleAtOnce(k);
+  await idleAtOnce(k, 20_000 + 2000); // the reader's 20 s, once, on the clock
+  assert.ok(Date.now() - t0 < 2 * 20_000, `${Date.now() - t0} ms: not waited for twice`);
   assert.equal(k.sent['model-u'].length, 1, 'asked once');
-  assert.match(JSON.stringify(k.sent['model-1'][0].messages), /\[a photo: [^\]]+\] It couldn't be described/);
+  assert.match(JSON.stringify(k.sent['model-1'][0].messages), /\[a photo: [^\]]+\] It couldn't be described: model-u: The photo is too big\./);
 });
 
 for (const unread of [false, true]) {
@@ -2482,16 +2509,20 @@ test("kept page pictures go with their hashes (so uploads can name them), within
   }
 });
 
-test("a reader's first-words wait never takes a PDF's whole reading: at most two thirds of it, so the pages get their turn (C)", async (t) => {
+test("a reader's first-words wait is its role's, however long: one that never starts answering ends there, and the pages get their turn then (C; read-wait-next: no two-thirds rule)", async (t) => {
   useClock(t);
   const k = await bookingKit([[readPdf, say('Done.')]], { agent: { secondMs: 1000 }, models: [{ input: ['text', 'image'] }], utility: [{ delayMs: 200_000, text: 'Hotel.' }] }, ['text', 'pdf']);
   const { saveRoles, readConfig } = await import('../../src/core/llm/config.js');
   const cfg = await readConfig(k.ws);
   await saveRoles(k.ws, { ...cfg.roles, utility: { ...cfg.roles.utility, firstOutputSeconds: 120 } });
   const asked = fakePages(k, 1);
+  const t0 = Date.now();
   k.agent.send('Read it');
-  await idleAtOnce(k, 60_000 + 2000); // the reader's wait for its first words, two thirds of the PDF's 90 s, on the clock
+  await idleAtOnce(k, 120_000 + 2000); // the reader's wait for its first words, its role's 120 s, on the clock
   assert.equal(asked.length, 1, 'the pages were drawn');
+  assert.ok(Date.now() - t0 >= 120_000, `${Date.now() - t0} ms: after the reader's whole wait, more than the PDF's 90 s`);
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(r.data.content, /\nIts pages as pictures, as you can't read PDFs: page 1 of 1\.$/);
 });
 
 // Fix round 3 (the re-check of reading-files).

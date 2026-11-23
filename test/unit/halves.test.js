@@ -1,7 +1,7 @@
 // K1 Task 6: Halves, the coordinator (the Koe and Kokoro design; plan decisions 15, 16, 18, 20, 21; Review Focus 2, 3, 5).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until, rescript, watchShared } from './agent-kit.js';
+import { agentKit, until, rescript, watchShared, hear } from './agent-kit.js';
 import { tripTools } from '../../src/core/agent/trip-tools.js';
 import { channelTool } from '../../src/core/agent/halves.js';
 import { createTrip, ME } from '../../src/core/scopes.js';
@@ -79,6 +79,104 @@ test("while Koe is down, Kokoro's turns are not shared: its send has the link to
   const main = seen.filter(([role]) => role === 'main').map(([, shared, state]) => `${state}: ${shared}`);
   assert.equal(main[0], 'text: true', 'while Koe works, Kokoro shares the link with her');
   assert.ok(main.length >= 3 && main.slice(1).every((m) => m === 'down: undefined'), `once she is down, it doesn't: ${JSON.stringify(main)}`);
+});
+
+/**
+ * What each reader's call (a describe) and each turn's transcription were told of the link from now on, by the half whose turn made it (its wake):
+ * [half, what, shared]. A turn's transcription is seen where the loop hands it to the voice (its resolver), and where it is sent (llm.transcribe).
+ * @param {any} k
+ */
+function watchSends(k) {
+  /** @type {[string, string | undefined, string, unknown][]} wake, Koe's state, what, shared */
+  const seen = [];
+  const call = k.llm.call;
+  k.llm.call = (/** @type {any} */ c) => {
+    if (c.record?.tag === 'describe') seen.push([c.record.wake, k.agent.koeState, 'reader', c.shared]);
+    return call(c);
+  };
+  const transcribe = k.llm.transcribe;
+  k.llm.transcribe = (/** @type {any} */ c) => {
+    seen.push([c.wake, k.agent.koeState, 'heard', c.shared]);
+    return transcribe(c);
+  };
+  if (k.voice) {
+    const resolver = k.voice.resolver.bind(k.voice);
+    k.voice.resolver = (/** @type {string} */ scope, /** @type {string} */ wake, /** @type {any} */ list, /** @type {any} */ shared) => {
+      seen.push([wake, k.agent.koeState, 'resolver', shared]);
+      return resolver(scope, wake, list, shared);
+    };
+  }
+  /** The calls seen, each with its half, Koe's state then, and what was told of the link. */
+  return async () => {
+    const halves = new Map((await k.events(['wake'])).map((/** @type {any} */ e) => [e.data.id, e.data.half ?? 'one']));
+    return seen.map(([wake, state, what, shared]) => [halves.get(wake) ?? '?', state, what, shared]);
+  };
+}
+/** A photo in the trip. @param {any} k */
+const photo = (k) => k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+const readPhoto = calls(['read', { path: '/trip/files/p.webp' }]);
+/** The user taps and says a clip. @param {any} k @param {string} clip */
+async function say(k, clip) {
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, clip);
+  await k.agent.idle();
+  await new Promise((r) => setTimeout(r, 30));
+  await k.agent.idle();
+}
+
+test("9. a reader's send and a turn's transcription are timed as their half's turn is: Kokoro's while Koe works, never one Shiori's or Kokoro's while Koe is down, and Koe's always (read-wait-next)", async (t) => {
+  useClock(t);
+  /** @type {any[][]} */
+  const all = [];
+  // Kokoro's model sees no photos: the user's photo is read for her turn (the second pass), and so is the one her read gives (a tool's).
+  const both = await agentKit([{ rules: [{ match: 'the user wrote', reply: readPhoto }] }], { koe: { type: { rules: [{ match: '.', reply: sleep }] }, input: ['text'] }, models: [{ input: ['text'] }], utility: [{ text: 'A pelican on a post.' }] });
+  await photo(both);
+  let seen = watchSends(both);
+  both.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+  await both.agent.idle();
+  const kokoro = (await seen()).filter(([half, , what]) => half === 'kokoro' && what === 'reader');
+  assert.deepEqual(kokoro, [['kokoro', 'text', 'reader', true], ['kokoro', 'text', 'reader', true]], 'the second pass and the read, each shared');
+  all.push(...await seen());
+  // One Shiori.
+  const one = await agentKit([{ rules: [{ match: 'the user wrote', reply: readPhoto }] }], { halves: true, models: [{ input: ['text'] }], utility: [{ text: 'A pelican on a post.' }] });
+  await photo(one);
+  seen = watchSends(one);
+  one.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+  await one.agent.idle();
+  all.push(...await seen());
+  // Koe reads a photo of her own; then she is down, and Kokoro reads alone.
+  const down = await agentKit([{ rules: [{ match: 'the user wrote', reply: readPhoto }, { match: "Koe can't speak", reply: sleep }] }], {
+    koe: { type: { rules: [{ match: 'the user wrote', reply: readPhoto, times: 1 }, { match: 'the user wrote', reply: { error: 'auth', message: 'bad key' } }] }, input: ['text'] },
+    models: [{ input: ['text'] }], utility: [{ text: 'A pelican on a post.' }],
+  });
+  await photo(down);
+  seen = watchSends(down);
+  for (const text of ['What is the photo in my files?', 'And now?', 'And this one?']) {
+    down.agent.send(text);
+    await down.agent.idle();
+  }
+  assert.equal(down.agent.koeState, 'down');
+  all.push(...await seen());
+  // Heard speech: Koe's turn transcribes it while she talks; Kokoro's turn hands the voice what hers is; one Shiori's, and Kokoro's once Koe is down, aren't.
+  const talks = { talk: { rules: [{ match: 'the user spoke', reply: calls(['speak', { text: 'A bridge.' }]) }] } };
+  const heard = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: talks, voice: { speechIn: ['m-hear'], hears: ['what is that bridge'] } });
+  seen = watchSends(heard);
+  await say(heard, 'where-eat');
+  all.push(...await seen());
+  const alone = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { halves: true, voice: { speechIn: ['m-hear'], hears: ['what is that bridge'] } });
+  seen = watchSends(alone);
+  await say(alone, 'where-eat');
+  all.push(...await seen());
+  const fails = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { talk: [{ error: 'auth', message: 'bad key' }] }, voice: { speechIn: ['m-hear'], hears: ['what is that bridge', 'and that one'] } });
+  seen = watchSends(fails);
+  await say(fails, 'where-eat');
+  assert.equal(fails.agent.koeState, 'down');
+  await say(fails, 'where-eat');
+  all.push(...await seen());
+  for (const [half, state, what, shared] of all) assert.equal(Boolean(shared), half === 'koe' || (half === 'kokoro' && ['text', 'live'].includes(state)), JSON.stringify([half, state, what, shared]));
+  const kinds = new Set(all.map(([half, state, what]) => `${half} ${half === 'kokoro' ? state : ''} ${what}`.replace(/  /, ' ')));
+  for (const kind of ['koe reader', 'kokoro text reader', 'kokoro down reader', 'one reader', 'koe resolver', 'koe heard', 'kokoro text resolver', 'kokoro down resolver', 'kokoro down heard', 'one resolver', 'one heard']) assert.ok(kinds.has(kind), `${kind}: ${[...kinds].join(', ')}`);
 });
 
 test("an import that replaced \"me\" while a conversation is open: both halves' next request carries the profile that came, though its author is hers and the cache is warm (the snapshot review: F3)", async (t) => {

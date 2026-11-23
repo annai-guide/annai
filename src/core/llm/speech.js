@@ -16,14 +16,15 @@ const playable = (p) => p?.pcm instanceof Int16Array && Number.isFinite(p.rate);
  * stream, gives its PCM as it comes: the call resolves at the first piece, which must come within the time limit, as a whole clip must;
  * then no gap may be longer. The time limit (a transcription's 15 s, a voice's 10 s, unless the role says: service.js) starts once the
  * provider has the whole request, as a model's wait does (call.js): until its answer's headers come, it is longer by the request's time at
- * SLOW_UPLINK, so a recording going up slowly isn't cut. It is traced once all of it is in, or when it fails.
+ * SLOW_UPLINK, so a recording going up slowly isn't cut, twice that when shared (a half's turn's transcription, as its model's send is). It
+ * is traced once all of it is in, or when it fails.
  * @typedef {import('./contract.js').EndpointType} EndpointType
  * @typedef {{ data: Uint8Array, mediaType: string }} Clip
  * @typedef {import('./contract.js').SpeechStream} SpeechStream
  * @param {{ type: EndpointType, endpoint: import('./config.js').Endpoint, model: import('./config.js').Model, key: string | null,
  *   audio?: { data: Uint8Array, mediaType: string, seconds?: number }, text?: string, fetch?: (url: string, init: RequestInit) => Promise<Response>,
  *   signal?: AbortSignal, timeoutMs?: number, trace?: ReturnType<typeof import('./trace.js').modelTrace>, registry?: import('../registry.js').Registry,
- *   now?: () => number, wake?: string, plays?: string[], stream?: boolean, unstyled?: boolean, languages?: import('./contract.js').Languages }} c  audio: transcribe it, with an 'in' type; text: say it, with an 'out' type;
+ *   now?: () => number, wake?: string, plays?: string[], stream?: boolean, unstyled?: boolean, languages?: import('./contract.js').Languages, shared?: boolean }} c  audio: transcribe it, with an 'in' type; text: say it, with an 'out' type;
  *   plays: what the device plays; stream: the caller plays a stream; unstyled: send no style (a server refused it); languages: what the user speaks, for a
  *   transcription's language hint: a voice is given none, the voice APIs called here take none (a multilingual voice follows the text; one made for one language reads everything in it)
  * @returns {Promise<{ text?: string, clip?: Clip, stream?: SpeechStream, cost: number | undefined, ms: number }>} text from an 'in' type, a clip or a stream from an 'out' type
@@ -60,7 +61,7 @@ export async function speechCall(c) {
     t = setTimeout(() => timer.abort(new DOMException(why, 'TimeoutError')), ms);
   };
   // The request's bytes: at least the recording's, more as base64 in JSON (a string body).
-  limit(/* en */ 'No answer in time.', timeoutMs + sendMs(Math.max(c.audio?.data.byteLength ?? 0, typeof built.body === 'string' ? built.body.length : 0)));
+  limit(/* en */ 'No answer in time.', timeoutMs + sendMs(Math.max(c.audio?.data.byteLength ?? 0, typeof built.body === 'string' ? built.body.length : 0), c.shared));
   const signal = c.signal ? anySignal([c.signal, timer.signal]) : timer.signal;
   /** A stream's format and size so far. @type {{ format: string, bytes: number } | null} */
   let sound = null;

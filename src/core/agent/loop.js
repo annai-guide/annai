@@ -2632,15 +2632,14 @@ export class Agent {
           record: { tag: this.#half.tag, ...this.#mark('model.turn'), wake: wakeId, prefix: fingerprint.slice(0, 16), context, keepParts: true, handover: this.#handover, endLogged: true },
           repairImages: (/** @type {ProviderError} */ err, /** @type {string} */ modelId, /** @type {any} */ req) => this.#repair(err, modelId, req, wakeId),
           onEvent: (/** @type {any} */ ev) => this.#streamed(ev, wakeId),
-          ...(this.voice ? { speech: this.voice.resolver(this.scope, wakeId) } : {}),
+          ...(this.voice ? { speech: this.voice.resolver(this.scope, wakeId, undefined, this.#shared) } : {}),
           ...(this.#voiceNow ? { firstOutputMs: await this.#firstWordsMs(role) } : {}),
           // What this conversation has kept of its files, for a model that can't take one.
           readings: (/** @type {string} */ hash, /** @type {boolean} */ sees) => this.#keptNow(hash, sees),
           // Her own call: when every model she could use rests, the one rested longest is asked anyway (§9.6).
           askResting: true,
-          // Koe's turn, or Kokoro's while Koe works: the other half may send its request on the same link at the same time (§4.8).
-          ...(this.#half.name === 'koe' || ['text', 'live'].includes(this.#half.koe?.() ?? '') ? { shared: true } : {}),
-          // The second pass reads a file for a model that can't take it, which takes up to 90 seconds: not Koe's, who answers at once (§7.2).
+          ...(this.#shared ? { shared: true } : {}),
+          // The second pass reads a file for a model that can't take it, which waits on its readers' models: not Koe's, who answers at once (§7.2).
           ...(this.#half.name === 'koe' ? {} : { read: (/** @type {any} */ part, /** @type {any} */ model, /** @type {AbortSignal | undefined} */ signal) => this.#readFor(part, model, signal ?? abort.signal, wakeId, readMemo) }),
         });
         // Who answered: Shiori's lines from this call's tools carry it (the Conversation names the model under each).
@@ -3223,6 +3222,14 @@ export class Agent {
   }
 
   /**
+   * Koe's turn, or Kokoro's while Koe works: the other half may send its request on the same link at the same time (§4.8), so this half's
+   * sends are timed as shared (callOnce, speechCall): its turn's model call, its readers' calls and its turn's transcription.
+   */
+  get #shared() {
+    return this.#half.name === 'koe' || ['text', 'live'].includes(this.#half.koe?.() ?? '');
+  }
+
+  /**
    * A tool's photos and PDF for a model that can't see photos or read PDFs (the bookings design, goals 11 and 12): read by whoever can (reading.js), a crop when
    * one was asked for; a PDF's pages go with the result, for a model that sees photos. Stopped or timed out, the result says so in words.
    * @param {import('./tools.js').ToolOutput} output @param {string} wakeId
@@ -3256,7 +3263,7 @@ export class Agent {
         const pending = (async () => {
           const r = await readFile({ kind, mediaType: m.mediaType, data, ...(m.name ? { name: m.name } : {}), ...(m.path ? { path: m.path } : {}) }, model ?? {}, {
             llm: this.llm, half: this.#half.name, pages: kind === 'pdf' ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope,
-            secondMs: this.secondMs, explain: (e, role) => this.#explain(e, role), store: this.store,
+            secondMs: this.secondMs, explain: (e, role) => this.#explain(e, role), store: this.store, shared: this.#shared,
           });
           return (key ? await this.#keep(scope, key, kind, r, wakeId) : null) ?? r;
         })();
@@ -3298,7 +3305,7 @@ export class Agent {
           if (kept) return kept;
           const fresh = await readFile({ kind: pdf ? 'pdf' : 'image', mediaType: part.mediaType, data: bytes ? toBase64(bytes) : '', ...(pdf && part.name ? { name: part.name } : {}), ...(!pdf && part.path ? { path: part.path } : {}) }, model, {
             llm: this.llm, half: this.#half.name, pages: pdf ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope, secondMs: this.secondMs,
-            explain: (e, role) => this.#explain(e, role), store: this.store,
+            explain: (e, role) => this.#explain(e, role), store: this.store, shared: this.#shared,
           });
           return (key ? await this.#keep(this.scope, key, pdf ? 'pdf' : 'image', fresh, wakeId) : null) ?? fresh;
         })();

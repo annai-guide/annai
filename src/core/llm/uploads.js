@@ -120,9 +120,10 @@ export const UPLOAD_MS = 120_000;
 export const SLOW_UPLINK = 70_000;
 /**
  * How long a request's bytes take to go up at SLOW_UPLINK, in ms: the time a wait gets on top of its own until the provider has the
- * whole request (a model's in call.js, a voice's in speech.js, a reading's in reading.js). @param {number} bytes
+ * whole request (a model's in call.js, a transcription's or a voice's in speech.js). shared: the other half may send on the same link at
+ * the same time (a half's turn, §4.8), so the time of twice the bytes. @param {number} bytes @param {boolean} [shared]
  */
-export const sendMs = (bytes) => Math.ceil((bytes * 8 * 1000) / SLOW_UPLINK);
+export const sendMs = (bytes, shared = false) => Math.ceil(((shared ? 2 : 1) * bytes * 8 * 1000) / SLOW_UPLINK);
 
 /**
  * @typedef {{ outcome: 'done' | 'none' | 'refused' | 'unreadable' | 'unreachable', deleted: number, left: number }} Swept
