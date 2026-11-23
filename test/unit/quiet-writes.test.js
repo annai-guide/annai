@@ -54,6 +54,60 @@ for (const full of [false, true]) {
   });
 }
 
+// loop.js #writeChatter at a step's boundary: chatter heard while she thinks is written in before her next step. A line refused is told, the next line is
+// still written, and the next step goes on (it ended the turn before: "Shiori stopped"); the model's third call still runs and she says her answer.
+for (const full of [false, true]) {
+  test(`two chatter lines heard while she thinks, written in before her next step: ${full ? 'the first refused: one card says so, the second is written, and her next step still runs' : 'with room: written, no card'}`, async (t) => {
+    useClock(t);
+    const k = await agentKit([[
+      { toolCalls: [{ name: 'speak', input: { text: 'Want tacos?' } }] },
+      { delayMs: 120, toolCalls: [{ name: 'list', input: { path: '/trip/' } }] },
+      say('Tacos, noted.'),
+    ]], { voice: { decide: [choose('A'), choose('B'), choose('B')], speechIn: ['m-hear'], hears: ['yes please', 'did you lock the car', 'is the pump free'] } });
+    const cards = raw(k);
+    const store = refusing(k);
+    let lines = 0;
+    if (full) store.full((ev) => ev.type === 'heard' && ev.data?.meanwhile === true && lines++ === 0); // the first only
+    const mine = () => k.requests.filter((/** @type {any} */ r) => !String(r.system ?? '').startsWith('You make one quick decision'));
+    k.agent.send('Lunch?');
+    await until(() => k.agent.state.name === 'listening');
+    await hear(k, 'first-one');
+    await until(() => mine().length === 2);
+    await hear(k, 'gas-station'); // chatter while the second call runs
+    await hear(k, 'thanks');
+    await k.agent.idle();
+    toldOnce(cards, full ? 1 : 0, 'the chatter line');
+    assert.equal(mine().length, 3, 'her next step ran');
+    assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Want tacos?', 'Tacos, noted.']);
+    assert.equal((await k.events(['heard'])).filter((/** @type {any} */ e) => e.data.meanwhile).length, full ? 1 : 2, 'the refused line is gone, the other is written');
+    assert.ok(!cards.some((n) => /stopped/i.test(n.title)), 'her turn was not stopped');
+  });
+}
+
+// loop.js #cutSpeech at an immediate note (cutIn): her words cut while the call that holds them is still being written are written marked cut, inside the turn. A line refused is told and the turn
+// goes on (it ended the turn before: "Shiori stopped"): her next call still runs.
+for (const full of [false, true]) {
+  test(`cutIn while her speak is still streaming in: her cut line ${full ? 'refused: one card says so, and the turn goes on' : 'written with room: no card'}`, async () => {
+    // A half as Halves makes one, without Halves (agent-half.test.js).
+    const half = { name: 'kokoro', tag: 'talk', role: 'main', registryTools: true, voice: () => true, logVoice: true, housekeeping: true, mark: (/** @type {string} */ type) => (type === 'msg.user' ? {} : { half: 'kokoro' }) };
+    const k = await agentKit([[
+      { stream: true, pieceMs: 30, toolCalls: [{ name: 'speak', input: { text: 'First sentence here. Second one is never finished, as the note cuts in.' } }] },
+      sleep,
+    ]], { voice: { playMs: 60, speechIn: ['m-hear'] }, agent: { half } });
+    const cards = raw(k);
+    const store = refusing(k);
+    if (full) store.full((ev) => ev.type === 'out.speak' && ev.data?.cut === true);
+    k.agent.send('What is ahead?');
+    await until(() => k.platform.log.some((/** @type {string} */ l) => l.startsWith('play ')));
+    k.agent.cutIn();
+    await k.agent.idle();
+    toldOnce(cards, full ? 1 : 0, 'the cut line');
+    assert.ok(k.requests.length > 1, 'the turn went on: her next call ran'); // refused, nothing in the log says she answered, so she is asked once more (a third call)
+    assert.ok(!cards.some((n) => /stopped/i.test(n.title)), 'the turn was not stopped');
+    assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => Boolean(e.data.cut)), full ? [] : [true]);
+  });
+}
+
 // loop.js #streamed's #cutSpeech: her words said aloud on a call that broke off, which the next call starts over; written marked cut, nobody waiting.
 for (const full of [false, true]) {
   test(`what she said on a call that broke off and started over, ${full ? 'its cut line refused: one card says so' : 'with room: written cut, no card'}`, async (t) => {
@@ -179,7 +233,7 @@ for (const full of [false, true]) {
 
 // halves.js #leftUnsaid: Kokoro's card that Koe · Classic still owed, shown in the conversation left as another opens.
 for (const full of [false, true]) {
-  test(`opening another conversation while Koe owes Kokoro's card: shown in the one left, ${full ? 'refused: one card says so' : 'with room: no card'}`, async (t) => {
+  test(`opening another conversation while Koe owes Kokoro's card and a note after it: shown in the one left, ${full ? 'the card refused: one card says so, the note still shown' : 'with room: no card'}`, async (t) => {
     useClock(t);
     /** @type {() => void} */
     let release = () => {};
@@ -197,6 +251,7 @@ for (const full of [false, true]) {
     k.agent.send('Where is fuel?');
     await until(() => k.agent.koe.waiting);
     await k.agent.channel.send('kokoro', 'Kokoro wants to show: Fuel: Open until ten tonight.', 'append', 'gated:show', undefined, { name: 'show', input: { card } }, false, '');
+    await k.agent.channel.send('kokoro', 'Say: The pump takes cards.', 'append', 'tool', undefined, undefined, false, 'The pump takes cards.'); // a note after it, with words for the user
     await until(() => koeCalls === 2 && !k.agent.kokoro.busy);
     const left = k.trip;
     const other = await createTrip(k.ws, { title: 'Carmel' });
@@ -207,6 +262,8 @@ for (const full of [false, true]) {
     toldOnce(cards, full ? 1 : 0, 'the card shown in the conversation left');
     const shows = await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(left, { types: ['out.show'] }));
     assert.equal(shows.length, full ? 0 : 1);
+    // The refused card is gone, said; the note after it is still shown.
+    assert.deepEqual(cards.filter((n) => n.title === "Shiori's answer").map((n) => n.body), ['The pump takes cards.']);
   });
 }
 
@@ -460,7 +517,7 @@ test("Kokoro's block that a live session opened, refused: nothing of its own", a
 
 // halves.js #handOn's route: Kokoro's note for the user a closing session never passed on, with Koe still live and no session: annai shows it (#backstop).
 for (const full of [false, true]) {
-  test(`Kokoro's gated card a closing session hands on, shown by annai: ${full ? 'refused, one card says so' : 'with room, shown, no card'}`, async () => {
+  test(`Kokoro's gated card and a note after it, a closing session hands on, shown by annai: ${full ? 'the card refused, one card says so, the note still shown' : 'with room, shown, no card'}`, async () => {
     const card = { title: 'Nepenthe', text: 'Open 11:30–22:00 today.' };
     const k = await liveKit([]);
     try {
@@ -468,12 +525,15 @@ for (const full of [false, true]) {
       const store = refusing(k);
       if (full) store.full((ev) => ev.type === 'out.show');
       const note = { kind: 'note', logged: true, from: 'kokoro', note: 'Kokoro wants to show: Nepenthe: Open 11:30–22:00 today.', mode: 'append', why: 'gated:show', call: { name: 'show', input: { card } }, text: 'a note from Kokoro' };
-      k.agent.live.c.owed([note]); // a session that held it, closing
+      const words = { kind: 'note', logged: true, from: 'kokoro', note: 'Say: Nepenthe takes cards.', mode: 'append', why: 'tool', forUser: 'Nepenthe takes cards.', text: 'a note from Kokoro' };
+      k.agent.live.c.owed([note, words]); // a session that held them, closing
       if (full) await soon(async () => told(cards).length > 0, 10_000);
       else await soon(async () => (await k.events(['out.show'])).length === 1, 10_000);
       await k.agent.idle();
       toldOnce(cards, full ? 1 : 0, 'the card handed on');
       assert.equal((await k.events(['out.show'])).length, full ? 0 : 1);
+      // The refused card is gone, said; the note after it is still shown.
+      assert.deepEqual(cards.filter((n) => n.title === "Shiori's answer").map((n) => n.body), ['Nepenthe takes cards.']);
     } finally {
       await k.done();
     }

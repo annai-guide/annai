@@ -467,11 +467,15 @@ export class Halves {
     const scope = this.kokoro.target ?? ME; // a switch moves the open conversation while the first is being written: each goes where it belongs
     const shown = (async () => {
       for (const w of notes) {
-        if (w.kind !== 'note') await this.kokoro.remind(w.fallbacks ?? [], scope, { unsaid: true, silent: true });
-        else if (here || w.why !== 'gated:ask') await this.#present(w, true, scope);
-        else await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ "Kokoro's question wasn't shown: the conversation was left, or started fresh, before Koe asked it.", quiet: true } }, { scope });
+        try {
+          if (w.kind !== 'note') await this.kokoro.remind(w.fallbacks ?? [], scope, { unsaid: true, silent: true });
+          else if (here || w.why !== 'gated:ask') await this.#present(w, true, scope);
+          else await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ "Kokoro's question wasn't shown: the conversation was left, or started fresh, before Koe asked it.", quiet: true } }, { scope });
+        } catch (e) {
+          await this.#gone(e); // this one is gone, said; the next still shows
+        }
       }
-    })().catch(this.#gone).finally(() => { this.#left = this.#left.filter((x) => x !== shown); });
+    })().finally(() => { this.#left = this.#left.filter((x) => x !== shown); });
     this.#left.push(shown);
   }
   get busy() { return this.#routes > 0 || this.#sending.size > 0 || this.kokoro.busy || this.koe.busy || this.live.busy; }
@@ -1376,14 +1380,15 @@ export class Halves {
   async #backstop(notes) {
     this.#unsaid = [];
     for (const w of notes) {
-      // A trigger's reminders, which she didn't say: annai says them.
-      if (w.kind !== 'note') {
-        await this.kokoro.remind(w.fallbacks ?? [], undefined, { aloud: true });
-        continue;
+      try {
+        // A trigger's reminders, which she didn't say: annai says them.
+        if (w.kind !== 'note') await this.kokoro.remind(w.fallbacks ?? [], undefined, { aloud: true });
+        else if (await this.#present(w, false)) continue;
+        else if (w.why === 'tool' && !w.retold) this.#retell.push(w);
+        else if (w.why === 'tool') await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ "Kokoro's note wasn't passed on: Koe didn't say it, twice, and it had no words for the user (for_user).", quiet: true } });
+      } catch (e) {
+        await this.#gone(e); // this one is gone, said; the next still shows
       }
-      if (await this.#present(w, false)) continue;
-      if (w.why === 'tool' && !w.retold) this.#retell.push(w);
-      else if (w.why === 'tool') await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ "Kokoro's note wasn't passed on: Koe didn't say it, twice, and it had no words for the user (for_user).", quiet: true } });
     }
   }
 

@@ -3642,7 +3642,7 @@ export class Agent {
       const spoken = await u.done;
       if (!spoken.heard) continue;
       said = spoken.heard;
-      await this.#log({ type: 'out.speak', actor: 'shiori', data: { id, wake: wakeId, voice: true, by, ...(spoken.cut ? { cut: true } : {}) }, texts: [['text', said]] });
+      await this.#log({ type: 'out.speak', actor: 'shiori', data: { id, wake: wakeId, voice: true, by, ...(spoken.cut ? { cut: true } : {}) }, texts: [['text', said]] }).catch((e) => this.#notSaved(e)); // said aloud all the same: a refused line is told, the next goes on
     }
     return said;
   }
@@ -4079,7 +4079,7 @@ export class Agent {
 
   /** Chatter heard while she worked, written in now (spec §10.4: dismissed speech still goes into the transcript). @param {string} wakeId */
   async #writeChatter(wakeId) {
-    for (const h of this.#chatter.splice(0)) await this.#logHeard(h, { wake: wakeId, meanwhile: true, dismissed: true, gate: 'chatter' });
+    for (const h of this.#chatter.splice(0)) await this.#logHeard(h, { wake: wakeId, meanwhile: true, dismissed: true, gate: 'chatter' }).catch((e) => this.#notSaved(e)); // a refused line is told, the next goes on, the turn goes on
   }
 
   /** Someone started speaking: Hearing you, and no timer runs while they speak, so a line across a time is heard to its end (#armEar, #listenFor). */
