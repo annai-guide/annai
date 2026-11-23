@@ -250,7 +250,7 @@ for (const full of [false, true]) {
 }
 
 // halves.js #koeOpen: Koe's own open, whose repair of a call its cut turn left open is a write. Refused, the open goes on without it (tool-result-next):
-// Koe opens the conversation on the full phone too, and its next turn's start gives the call its result.
+// Koe opens the conversation on the full phone too (its next turn's start gives the call its result: refused-result.test.js).
 for (const full of [false, true]) {
   test(`Koe's own open, a call of its cut turn still open: ${full ? 'its repair refused, one card says so, and Koe opens it all the same' : 'with room, repaired, no card'}`, async (t) => {
     useClock(t);

@@ -96,8 +96,8 @@ for (const [who, o] of WHO) {
       const k = await askingKit(o);
       const store = refusing(k);
       const id = await refusedAnswer(k, store, which);
-      // Still full: the turn's start gives the call its result first, refused, so the turn stops as at its first write: the line comes back.
-      store.full('all');
+      // Still full for the result: the turn's start gives the call its result first, refused, so the turn stops there, before its first write: the line comes back.
+      store.full((ev) => ev.type === 'tool.result');
       const asked = k.asked().length;
       k.agent.send('Hello?', { typed: true });
       await idleAtOnce(k);
@@ -110,11 +110,12 @@ for (const [who, o] of WHO) {
 }
 
 // The turn's start repairs inside its setup, so a refused repair stops it as a refused read of its setup does (#showOwed): a reminder it carried is shown.
-test("her question card's answer refused, then a watch fires there on the full phone: the turn stops at its start and shows the reminder once", async (t) => {
+test("her question card's answer refused, then a watch fires there on the full phone: the turn stops at its repair and shows the reminder once", async (t) => {
   useClock(t);
   const k = await askingKit({});
   const store = refusing(k);
   await refusedAnswer(k, store, 'all');
+  store.full((ev) => ev.type === 'tool.result');
   const asked = k.asked().length;
   k.agent.wake({ kind: 'trigger', text: `Your watch fired: ${LEAVE}.`, fallbacks: [{ watch: 'w1', text: LEAVE }] });
   await idleAtOnce(k);
