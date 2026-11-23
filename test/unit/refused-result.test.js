@@ -109,6 +109,19 @@ for (const [who, o] of WHO) {
   }
 }
 
+// The turn's start repairs inside its setup, so a refused repair stops it as a refused read of its setup does (#showOwed): a reminder it carried is shown.
+test("her question card's answer refused, then a watch fires there on the full phone: the turn stops at its start and shows the reminder once", async (t) => {
+  useClock(t);
+  const k = await askingKit({});
+  const store = refusing(k);
+  await refusedAnswer(k, store, 'all');
+  const asked = k.asked().length;
+  k.agent.wake({ kind: 'trigger', text: `Your watch fired: ${LEAVE}.`, fallbacks: [{ watch: 'w1', text: LEAVE }] });
+  await idleAtOnce(k);
+  assert.equal(k.asked().length, asked, 'no request while the phone is full');
+  assert.deepEqual(k.notices.filter((/** @type {any} */ n) => n.title === 'Reminder').map((/** @type {any} */ n) => n.body), [LEAVE]);
+});
+
 for (const [what, which] of SHAPES) {
   test(`her question card answered as the phone fills (${what}): the conversation opens again on the full phone, the refused repair told once; once there is room the next line is heard`, async (t) => {
     useClock(t);
