@@ -1447,6 +1447,18 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** found by cut-send-next's re-review (2026-11-23, probed; older than that branch): `registry.succeeded` is called where a tool's call works but never where an endpoint type's call does (`callOnce`, `speechCall`), so its failure count only grows. Since cut-send-next a dropped connection no longer counts against the plugin, so it is rarer; not in the user's setup. The fix: one `succeeded` call where a type's call works.
 - **Revisit when:** its row in docs/progress.md, in the next version.
 
+### A Stop during a retry's wait takes effect only when the wait ends
+- **Kind:** deferred.
+- **What the traveller sees:** a Stop (or an urgent note's cut-in) while a model's or a transcription's call waits before sending again (1 or 3 s after a dropped reply or a 5xx, 0.5 or 1.5 s for an overloaded server, up to 10 s for a short rate limit) is seen only when that wait ends, and a line typed just after it waits too; nothing more is sent after the Stop.
+- **Why:** found by cut-send-next's re-reviews (2026-11-23): both waits (`callRole`'s `sleep` and `Voice.sleep`) are plain timers; since cut-send-next a transcription waits as chat does, so its longest wait went from 3 s to 10 s. The fix: one wait that ends on the call's signal, shared by both.
+- **Revisit when:** its row in docs/progress.md, in the next version.
+
+### A server voice that fails while the phone is offline rests 3 minutes
+- **Kind:** deferred.
+- **What the traveller sees:** after a speech-out voice fails while the phone is offline, it is passed over for 3 minutes, also once the connection is back, and the phone's own voice speaks meanwhile.
+- **Why:** found by cut-send-next's second re-read (2026-11-23): a voice rests by `restFor` (voice.js), a second rule beside chat's and transcription's `nextStep`, which rests nothing for a failure to connect while offline (spec §9.6). The fix: `restFor` takes the same offline test, or a voice's rest comes from the shared rule; it goes with the design check of whose failure an error is (its row).
+- **Revisit when:** its row in docs/progress.md, in the next version.
+
 ### A PDF's page pictures have no size limit
 - **Kind:** deferred.
 - **What the traveller sees:** when the main model can't read PDFs and a reader that sees photos reads a PDF's pages (not the user's setup: Claude reads PDFs itself), up to 10 pages at 1600 px go in one request, 5.0 to 7.6 MB of JPEG for ten pages (read-wait-next's measurement), with no cap like a photo's 256 KiB; on a slow or dead link that send takes minutes before it is answered or cut, about 13 to 19 minutes per reader model that sees photos at 70 kbit/s, twice that while Koe works, and it uses that much mobile data.
