@@ -162,12 +162,44 @@ test("a halves' note with a long address wraps inside its box: the page stays th
   const note = page.locator('.convo .halves-note');
   await expect(note).toContainText(OTHER);
   expect(await note.evaluate((li) => li.scrollWidth <= li.clientWidth + 1)).toBe(true);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
-  expect(await page.evaluate(() => {
-    const r = /** @type {Element} */ (document.querySelector('nav.dock')).getBoundingClientRect();
-    const v = /** @type {VisualViewport} */ (visualViewport);
-    return [Math.round(r.right - v.width), Math.round(r.bottom - v.height)];
-  })).toEqual([0, 0]);
+  expect(await fitsPhone(page)).toEqual({ wider: 0, dock: [0, 0] });
+});
+
+/**
+ * How the page fits the phone: how much wider than the screen it is, and how far the dock's right and foot are from the screen's.
+ * @param {import('@playwright/test').Page} page
+ */
+const fitsPhone = (page) => page.evaluate(() => {
+  const r = /** @type {Element} */ (document.querySelector('nav.dock')).getBoundingClientRect();
+  const v = /** @type {VisualViewport} */ (visualViewport);
+  return { wider: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth), dock: [Math.round(r.right - v.width), Math.round(r.bottom - v.height)] };
+});
+
+// The other lines a long word made the page wider than the phone from, found beside the user's (2026-11-23): an error's message, a system
+// line, a card's title and a question's option. A long option wraps inside its button; a short one keeps its word whole, as its row
+// wraps it to a line of its own rather than squeeze it.
+test("an error's message, a system line, a card's title and an option with a long word wrap inside their lines; a short option keeps its word whole", async ({ page }) => {
+  await page.setViewportSize({ width: 420, height: 912 });
+  await openApp(page, '#/trips');
+  const trip = await startTrip(page, 'Sample trip');
+  const word = `Sample${'Lake'.repeat(30)}`;
+  await writeEvent(page, trip, { type: 'error', data: { kind: 'other', message: `The request failed: ${MAP}` } });
+  await writeEvent(page, trip, { type: 'trip.read', data: { trip: 'other-trip', title: word } });
+  await writeEvent(page, trip, { type: 'out.show', data: { id: 'c1', card: { title: word, text: 'The lake road.' }, by } });
+  await writeEvent(page, trip, { type: 'out.ask', data: { id: 'a1', question: 'Which map?', options: ['No', OTHER, 'Not now'], by } });
+  await page.goto('/#/talk');
+  await expect(page.locator('.convo > li')).toHaveCount(4);
+  await expect(page.locator('.convo .acts .btn')).toHaveCount(3);
+  const wide = await page.evaluate(() => [...document.querySelectorAll('.convo > li')].flatMap((li) =>
+    li.scrollWidth > li.clientWidth + 1 || li.getBoundingClientRect().right > document.documentElement.clientWidth ? [li.className] : []));
+  expect(wide).toEqual([]);
+  expect(await fitsPhone(page)).toEqual({ wider: 0, dock: [0, 0] });
+  // Each button keeps its words inside it, on one line but the long one's (44 px: its least height, one line).
+  const buttons = await page.locator('.convo .acts .btn').evaluateAll((bs) => bs.map((b) => {
+    const r = b.getBoundingClientRect();
+    return { inside: b.scrollWidth <= b.clientWidth + 1 && r.right <= /** @type {Element} */ (b.closest('li')).getBoundingClientRect().right, oneLine: r.height <= 45 };
+  }));
+  expect(buttons).toEqual([{ inside: true, oneLine: true }, { inside: true, oneLine: false }, { inside: true, oneLine: true }]);
 });
 
 // Kokoro's words annai shows itself (a note's for_user Koe never said) are the model's words for the user, as a card's text is: their
