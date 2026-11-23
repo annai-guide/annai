@@ -265,3 +265,17 @@ test("on an annai from before G.711 and WAV were its own, chat and transcription
   assert.ok(old.get('gemini-transcription').transcribeRequest({ ...spec(hear, 'gemini-3.5-transcribe'), audio: { data: new Uint8Array(1), mediaType: 'audio/ogg' } }).body);
   assert.throws(() => old.get('gemini-speech').speechRequest({ ...spec(say, 'gemini-3.8-flash-lite-tts'), text: 'Hi.' }), /needs a newer annai: restart annai to update it/);
 });
+
+test("a Gemini transcription whose reply drops while it is read is the link's: network, not \"Gemini's answer couldn't be read.\", and offline neither sent again nor rested (fail-owner-next, G)", async () => {
+  const { speechCall } = await import('../../src/core/llm/speech.js');
+  const { nextStep, restOf } = await import('../../src/core/llm/fallback.js');
+  const endpoint = /** @type {any} */ ({ id: 'pv-g/x', provider: 'pv-g', ability: 'x', type: hear.type, name: 'Google Gemini', baseUrl: 'https://generativelanguage.googleapis.com/', headers: {}, tunables: hear.tunables, extraBody: {} });
+  const model = /** @type {any} */ ({ id: 'm', providerId: 'gemini-flash-lite', name: 'Lite', prices: null, tunables: {} });
+  const drops = async () => new Response(new ReadableStream({ start: (c) => c.error(new TypeError('Load failed')) }), { headers: { 'content-type': 'application/json' } });
+  /** @type {any} */
+  let err;
+  await assert.rejects(speechCall({ type: hear, endpoint, model, key: KEY, audio: { data: new Uint8Array(4000), mediaType: 'audio/wav', seconds: 0.1 }, fetch: drops }), (e) => { err = e; return true; });
+  assert.ok(err instanceof ProviderError && err.kind === 'network', `${err?.kind}: ${err?.message}`);
+  assert.equal(err.message, 'The connection dropped.');
+  assert.deepEqual([nextStep(err, 0, false), restOf(err, false)], [{}, 0]);
+});

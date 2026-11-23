@@ -45,9 +45,9 @@ const BUGS = [TypeError, ReferenceError, RangeError, SyntaxError, EvalError];
 /**
  * Whether an error is the browser's own account of a request it couldn't make or finish (offline: "Failed to fetch", Safari's "Load failed",
  * Chrome's "network error", Firefox's "NetworkError when attempting to fetch resource"): the link's, whatever code was reading the reply (§17).
- * The one rule for whose failure an error is, on the tool path (isPluginBug) and the endpoint path (call.js asProviderError) alike. By whole words,
- * so a plugin's own TypeError that only names something with "fetch" or "network" in it (`this.fetchModels is not a function`, `reading 'networkState'`)
- * is its bug. The browsers give no code for these, so words are all there is (an error's position would be the other rule: sse.js's, for a stream).
+ * The tool path's rule (isPluginBug), where a plugin's own code reads the reply; the endpoint path decides by position (call.js asProviderError).
+ * By whole words, so a plugin's own TypeError that only names something with "fetch" or "network" in it (`this.fetchModels is not a function`,
+ * `reading 'networkState'`) is its bug. The browsers give no code for these, so words are all there is.
  * @param {unknown} e
  */
 export function isFetchFailure(e) {
@@ -55,8 +55,8 @@ export function isFetchFailure(e) {
 }
 
 /**
- * Whether an error is a bug in a plugin's code (spec §5.5) rather than its answer. A fetch the
- * browser couldn't make (isFetchFailure) is an answer (§17).
+ * Whether an error is a bug in a plugin's code (spec §5.5) rather than its answer, where its own code makes its requests (not an endpoint type's
+ * call: asProviderError). A fetch the browser couldn't make (isFetchFailure) is an answer (§17).
  * @param {unknown} e
  */
 export function isPluginBug(e) {
