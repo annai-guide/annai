@@ -33,23 +33,31 @@ export const codePlugin = (id, body, more = {}) => files({
 export const builtinUrl = (id, body) => `data:text/javascript;base64,${Buffer.from(`export const manifest = ${JSON.stringify({ id, name: `Built-in ${id}`, version: '1.0.0', api: 1 })};
 export function activate(annai) { ${body} }`).toString('base64')}`;
 
-/** A host on memory storage, its log appends handed to plugins' hooks, that loads installed modules from storage as data: URLs (as plugins.test.js does). */
-export async function hostKit() {
-  const registry = new Registry();
-  const store = watchAppends(createMemoryStore(), (evs) => deliverHooks(registry, evs));
-  const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
-  await ensureBaseScopes(ws);
+/**
+ * A host's importModule that loads installed modules from storage as data: URLs (as plugins.test.js does), and any other address as it is.
+ * @param {Workspace} ws
+ */
+export function storedModules(ws) {
   /** A stored module as a data: address, its own imports ('./steps.js') made data: addresses too, as a data: module can't resolve them. @param {string} id @param {string} file @returns {Promise<string>} */
   const dataUrl = async (id, file) => {
     let code = (await ws.readText(SYS_PLUGINS, `/${id}/${file}`)) ?? '';
     for (const [whole, rel] of [...code.matchAll(/from\s+'\.\/([^']+)'/g)]) code = code.replace(whole, `from '${await dataUrl(id, rel)}'`);
     return `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`;
   };
-  const importModule = async (/** @type {string} */ url) => {
+  return async (/** @type {string} */ url) => {
     const m = /^\/plugins\/([^/]+)\/(.+)$/.exec(url);
     if (!m) return import(url);
     return import(await dataUrl(decodeURIComponent(m[1]), m[2]));
   };
+}
+
+/** A host on memory storage, its log appends handed to plugins' hooks, that loads installed modules from storage (storedModules). */
+export async function hostKit() {
+  const registry = new Registry();
+  const store = watchAppends(createMemoryStore(), (evs) => deliverHooks(registry, evs));
+  const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
+  await ensureBaseScopes(ws);
+  const importModule = storedModules(ws);
   const host = new PluginHost({ registry, workspace: ws, importModule });
   const log = () => store.tx(['events'], 'readonly', (t) => t.listEvents(SYS));
   return { registry, store, ws, host, importModule, log, relaunch: () => new PluginHost({ registry: new Registry(), workspace: ws, importModule }) };

@@ -14,6 +14,7 @@ import { phaseOf } from '../timeline.js';
 import { validate } from '../schema.js';
 import { tsv } from '../tsv.js';
 import { isPluginBug } from '../plugins.js';
+import { withoutSecrets } from '../agent/net.js';
 import { isArrival } from '../after/stamps.js';
 import { SIMULATION } from './simulate.js';
 import { t } from '../l10n.js';
@@ -1389,12 +1390,14 @@ export class Live {
    */
   #noteOnce(scope, d) {
     // The trigger's words keep their own end ("Really?", "wait…"); asSentence adds one where they have none.
-    const message = asSentence(/* en */ `The ${d.type} watch ${d.watch} can't be checked: ${d.why}`, true);
-    const key = `${scope}\n${message}`;
+    const line = (/** @type {string} */ why) => asSentence(/* en */ `The ${d.type} watch ${d.watch} can't be checked: ${why}`, true);
+    const key = `${scope}\n${line(d.why)}`;
     if (this.#noted.has(key)) return;
     this.#noted.add(key);
     this.#bg(async () => {
-      if (await this.#exists(scope)) await logEvent(this.store, scope, { type: 'error', actor: 'system', data: { kind: 'trigger', ...d, message } });
+      // A plugin's words (a fetch's error may hold its address, key and all): blanked, the note when the keys can't be read (§9.9).
+      const why = await withoutSecrets(this.store, d.why);
+      if (await this.#exists(scope)) await logEvent(this.store, scope, { type: 'error', actor: 'system', data: { kind: 'trigger', ...d, why, message: line(why) } });
     });
   }
 

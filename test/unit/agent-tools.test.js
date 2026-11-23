@@ -4,7 +4,7 @@ import { createMemoryStore, keysUnread } from '../fakes/store-memory.js';
 import { Registry } from '../../src/core/registry.js';
 import { tsv } from '../../src/core/tsv.js';
 import { checkTool, toolList, definitions, runTool, Stuck, resolvePath, RESULT_MAX } from '../../src/core/agent/tools.js';
-import { tracedFetch } from '../../src/core/agent/net.js';
+import { tracedFetch, withoutSecrets, withoutSecretsIn, traceUrl } from '../../src/core/agent/net.js';
 import { wellFormed } from '../../src/core/web-search.js';
 import { readAppSettings } from '../../src/core/settings.js';
 import { hostKit, codePlugin, builtinUrl } from './package-kit.js';
@@ -110,6 +110,149 @@ test("runTool: a third-party plugin's error repeating its key (a 403 for its add
   } finally {
     back();
   }
+});
+
+const KEY = 'Tr4il key/9876+x'; // made up; URL-encoding changes its space, slash and plus
+const once = encodeURIComponent(KEY);
+const twice = encodeURIComponent(once);
+/**
+ * A trail service's links as a plugin might pass them on, holding the key: as it is, URL-encoded, and encoded twice (inside another address).
+ * @param {string} self @param {string} next @param {string} via
+ */
+const links = (self, next, via) => ({ self: `https://api.trails.example/v1/trails?key=${self}`, next: `https://api.trails.example/v1/trails?page=2&key=${next}`,
+  via: `https://go.example/?to=${encodeURIComponent('https://api.trails.example/v1/map?key=')}${via}` });
+const NOTE = "annai couldn't check this message for keys, so it is not shown.";
+const HELD = 'The message held a key, so it is not shown.';
+
+test("runTool: a third-party plugin's result repeating its key (its service's links) holds «key» as text, as JSON and as a returned error, the key as it is, URL-encoded and encoded twice, whether the plugin is installed or comes from annai's catalog; of the result only its text, its photos and document (their type, data or hash) and isError are kept; a built-in's is as it gave it; when the keys can't be read, its text is the note (plugin-words-next)", async () => {
+  const { host, registry, store: kept } = await hostKit();
+  const PICTURE = 'QmlnU3VyVHJhaWxz'; // made up, a key of base64's letters, as a picture's or a document's data may hold
+  await kept.tx(['secrets'], 'readwrite', async (t) => {
+    await t.putSecret('plugin:trails:key', KEY);
+    await t.putSecret('plugin:maps:key', PICTURE);
+  });
+  const said = links(KEY, once, twice);
+  // A picture or a document as a plugin may give it: with the parts docs/plugins.md offers, and others (a path or a name may carry an address, key and all).
+  const image = { mediaType: 'image/png', data: `iVBORw0KGgo${PICTURE}AAAA`, path: `https://api.trails.example/v1/map.png?key=${KEY}`, name: 'map.png', region: [0, 0, 1, 1] };
+  const stored = { mediaType: 'image/webp', hash: 'a'.repeat(64), path: `https://api.trails.example/v1/map.webp?key=${once}`, name: 'map.webp' };
+  const document = { mediaType: 'application/pdf', data: `JVBERi0x${PICTURE}AA==`, name: `map-${KEY}.pdf` };
+  const escaped = `{"next":"https:\\/\\/api.trails.example\\/v1?key=${KEY.replace('/', '\\/')}"}`; // a JSON body as PHP writes it
+  const body = (/** @type {string} */ name) => `const l = ${JSON.stringify(said)}, image = ${JSON.stringify(image)}, stored = ${JSON.stringify(stored)}, document = ${JSON.stringify(document)};
+    annai.tools.register({ name: '${name}_text', description: 'Trails.', input: { type: 'object' }, run: () => 'Two trails. Next: ' + l.next + ' (self: ' + l.self + '; map: ' + l.via + ')' });
+    annai.tools.register({ name: '${name}_json', description: 'Trails.', input: { type: 'object' }, run: () => ({ trails: ['Pine Ridge', 'Ewoldsen'], links: l }) });
+    annai.tools.register({ name: '${name}_error', description: 'Trails.', input: { type: 'object' }, run: () => ({ content: '403 Forbidden for ' + l.self, isError: true, heard: ['seg-1'], endTurn: true }) });
+    annai.tools.register({ name: '${name}_map', description: 'Trails.', input: { type: 'object' }, run: () => ({ content: 'The map, from ' + l.self, images: [image, stored], document }) });
+    annai.tools.register({ name: '${name}_body', description: 'Trails.', input: { type: 'object' }, run: () => ${JSON.stringify(escaped)} });`;
+  await host.install(codePlugin('trails', body('trail')));
+  await host.start('trails');
+  await host.install(codePlugin('catalog', body('catalog')), { source: 'official' });
+  await host.start('catalog');
+  await host.addBuiltin(builtinUrl('own-trails', body('own')));
+  const tools = Object.fromEntries(registry.entries('tool').map((e) => [e.item.name, e.item]));
+  const run = async (/** @type {string} */ name) => (await runTool(tools[name], {}, call(), kept)).output;
+  /** What each tool gives Shiori. own: as it gave it; else blanked (the texts it gives in place of the default ones, in order: text, JSON, error, map, escaped body), with only the offered parts of what it returned. */
+  const results = (/** @type {string} */ name, /** @type {Record<string, string>} */ l, /** @type {boolean} */ own, /** @type {(string | undefined)[]} */ [text, json, error, map, escapedBody] = []) => ({
+    [`${name}_text`]: { content: text ?? `Two trails. Next: ${l.next} (self: ${l.self}; map: ${l.via})` },
+    [`${name}_json`]: { content: json ?? JSON.stringify({ trails: ['Pine Ridge', 'Ewoldsen'], links: l }) },
+    [`${name}_error`]: { content: error ?? `403 Forbidden for ${l.self}`, isError: true, ...(own ? { heard: ['seg-1'], endTurn: true } : {}) },
+    [`${name}_map`]: { content: map ?? `The map, from ${l.self}`, images: own ? [image, stored] : [{ mediaType: image.mediaType, data: image.data }, { mediaType: stored.mediaType, hash: stored.hash }],
+      document: own ? document : { mediaType: document.mediaType, data: document.data } },
+    [`${name}_body`]: { content: escapedBody ?? escaped },
+  });
+  const all = async (/** @type {string} */ name) => Object.fromEntries(await Promise.all(['text', 'json', 'error', 'map', 'body'].map(async (k) => [`${name}_${k}`, await run(`${name}_${k}`)])));
+  const blanked = links('«key»', '«key»', '«key»');
+  for (const name of ['trail', 'catalog']) assert.deepEqual(await all(name), results(name, blanked, false, [undefined, undefined, undefined, undefined, HELD]), name);
+  assert.deepEqual(await all('own'), results('own', said, true), "a built-in's result is as it gave it");
+  const back = keysUnread(kept);
+  try {
+    for (const name of ['trail', 'catalog']) assert.deepEqual(await all(name), results(name, said, false, [NOTE, NOTE, NOTE, NOTE, NOTE]), name);
+    assert.deepEqual(await all('own'), results('own', said, true));
+  } finally {
+    back();
+  }
+});
+
+test("withoutSecrets: a key encoded twice is blanked, and three or four times the text is the note; a key with its slash written \\/ or broken by a line break makes the text the note; its form-encoded (+) form is blanked; a stray % does not switch off the check (plugin-words-next)", async () => {
+  const kept = createMemoryStore();
+  await kept.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:trails:key', KEY));
+  const form = new URLSearchParams({ k: KEY }).toString().slice(2);
+  assert.equal(form, 'Tr4il+key%2F9876%2Bx');
+  const four = encodeURIComponent(encodeURIComponent(twice));
+  const cases = [
+    [`403 for https://go.example/?to=https%3A%2F%2Fapi.trails.example%2Fv1%3Fkey%3D${twice}`, '403 for https://go.example/?to=https%3A%2F%2Fapi.trails.example%2Fv1%3Fkey%3D«key»'],
+    [`403 for https://go.example/?to=${encodeURIComponent(`https://a.example/?to=${encodeURIComponent(`https://api.trails.example/v1?key=${once}`)}`)}`, HELD],
+    [`403 for https://go.example/?to=${four}`, HELD],
+    [`{"next":"https:\\/\\/api.trails.example\\/v1?key=${KEY.replace('/', '\\/')}"}`, HELD],
+    [`Your key, ${KEY.replace(' ', '\n')}, was refused.`, HELD],
+    [`403 for https://api.trails.example/v1?${new URLSearchParams({ key: KEY })}`, '403 for https://api.trails.example/v1?key=«key»'],
+    // A stray "%" ("100%") is no reason to read nothing else: the key as Python's quote() writes it (its slash kept), and a key encoded three times.
+    ['Trails 100% open. next: https://api.trails.example/v1?k=Tr4il%20key/9876%2Bx', HELD],
+    ['403 for https://api.trails.example/v1?k=Tr4il+key/9876%2Bx', HELD], // a form's "+" for the space, the slash kept
+    [`Trails 100% open. next: https://go.example/?to=${encodeURIComponent(twice)}`, HELD],
+    ['Trails 100% open, 50% full; see https://api.trails.example/v1?k=%ZZ', 'Trails 100% open, 50% full; see https://api.trails.example/v1?k=%ZZ'],
+  ];
+  for (const [text, want] of cases) assert.equal(await withoutSecrets(kept, text), want, text);
+  // The trace's address: a key encoded twice in a path or a query, part by part.
+  const traced = traceUrl(`https://api.trails.example/v1/${twice}/map?to=${encodeURIComponent(`https://x.example/?key=${once}`)}`, [KEY]);
+  assert.equal(traced, 'https://api.trails.example/v1/«key»/map?to=%C2%ABkey%C2%BB');
+});
+
+test("withoutSecretsIn: the names of an object are text too, so a map keyed by address holds «key» in its names (plugin-words-next)", async () => {
+  const kept = createMemoryStore();
+  await kept.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:trails:key', KEY));
+  const seen = { [`https://api.trails.example/v1/trails?key=${KEY}`]: 'today', 'plain name': { [`go.example/?to=${twice}`]: [`${once}`, 3, null] } };
+  assert.deepEqual(await withoutSecretsIn(kept, seen), { 'https://api.trails.example/v1/trails?key=«key»': 'today', 'plain name': { 'go.example/?to=«key»': ['«key»', 3, null] } });
+});
+
+test("withoutSecretsIn keeps what JSON keeps: a Date is its ISO text, not an empty object (plugin-words-next)", async () => {
+  const kept = createMemoryStore();
+  await kept.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:trails:key', KEY));
+  assert.deepEqual(await withoutSecretsIn(kept, { at: new Date(0), why: `403 for ${KEY}` }), { at: '1970-01-01T00:00:00.000Z', why: '403 for «key»' });
+});
+
+test("a credential is blanked by its shape, in an error's words and in a tool's text, and words that only look like one stay: Basic needs base64 of user:password, Bearer a digit or a JWT (plugin-words-next)", async () => {
+  const { host, registry, store: kept } = await hostKit();
+  const BASIC = btoa('trail-user:pa55word'); // RFC 7617: base64 of the user id, ":" and the password
+  const BEARER = 'tok3nValue99xyz';
+  const JWT = `eyJhbGciOiJIUzI1NiJ9.${btoa('{"sub":"trail"}').replaceAll('=', '')}.c2lnbmF0dXJl`;
+  const LETTERS = `${btoa('{"alg":"abc"}')}.${btoa('{"sub":"abc"}')}.signature`.replaceAll('=', ''); // a JWT with no digit in it
+  assert.ok(LETTERS.startsWith('eyJ') && !/\d/.test(LETTERS));
+  const blanked = [
+    [`Authorization: Basic ${BASIC} was refused.`, 'Authorization: Basic «key» was refused.'],
+    [`Authorization: Bearer ${BEARER} was refused.`, 'Authorization: Bearer «key» was refused.'],
+    [`Authorization: Bearer ${JWT} was refused.`, 'Authorization: Bearer «key» was refused.'],
+    [`Authorization: Bearer ${LETTERS} was refused.`, 'Authorization: Bearer «key» was refused.'],
+  ];
+  const kept_ = [
+    'Delta Basic Economy/Main Cabin fares compared.',
+    'Basic Economy2025 rules apply.',
+    'Basic authentication is fine to mention.',
+    // Each half of the Basic rule alone keeps one of these: "Lorenzo" read as base64 is no UTF-8 text, "academy" is text with no ":".
+    'Basic Lorenzo and Basic academy are words.',
+    'Bearer instruments are out of stock; Bearer certificates 2 and 3 too.',
+  ];
+  for (const [text, want] of blanked) assert.equal(await withoutSecrets(kept, text), want, text);
+  for (const text of kept_) assert.equal(await withoutSecrets(kept, text), text, text);
+  const words = [...blanked, ...kept_.map((x) => [x, x])];
+  await host.install(codePlugin('trails', `const words = ${JSON.stringify(words.map(([x]) => x))};
+    annai.tools.register({ name: 'trail_say', description: 'Trails.', input: { type: 'object', properties: { n: { type: 'number' } } }, run: ({ n }) => words[n] });
+    annai.tools.register({ name: 'trail_fail', description: 'Trails.', input: { type: 'object', properties: { n: { type: 'number' } } }, run: ({ n }) => { throw new Error(words[n]); } });`));
+  await host.start('trails');
+  const tools = Object.fromEntries(registry.entries('tool').map((e) => [e.item.name, e.item]));
+  for (const [n, [, want]] of words.entries()) {
+    assert.deepEqual((await runTool(tools.trail_say, { n }, call(), kept)).output, { content: want }, `text ${n}`);
+    assert.deepEqual((await runTool(tools.trail_fail, { n }, call(), kept)).output, { content: `Error: ${want}`, isError: true }, `error ${n}`);
+  }
+});
+
+test("runTool: a third-party plugin's error ending in annai's time-limit words, its key in it, holds «key», then the words: they are annai's only when its own time limit came (plugin-words-next)", async () => {
+  const { host, registry, store: kept } = await hostKit();
+  await kept.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:trails:key', KEY));
+  const words = "trail_slow didn't finish in time, so annai stopped waiting for it. Try again later, or answer without it.";
+  await host.install(codePlugin('trails', `annai.tools.register({ name: 'trail_slow', description: 'Trails.', input: { type: 'object' }, run: () => { throw new Error(${JSON.stringify(`403 for https://api.trails.example/v1?key=${once}&raw=${KEY}. ${words}`)}); } });`));
+  await host.start('trails');
+  const t = registry.entries('tool').find((e) => e.item.name === 'trail_slow')?.item;
+  assert.deepEqual((await runTool(t, {}, call(), kept)).output, { content: `Error: 403 for https://api.trails.example/v1?key=«key»&raw=«key». ${words}`, isError: true });
 });
 
 test('Stuck: three identical calls in a row with identical results (spec §6.6)', () => {

@@ -556,8 +556,8 @@ vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Che
 1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她在留意的事情唤醒她的次数超过了你设定的上限（每小时 # 次）：{0}。	src/core/agent/loop.js:4297	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
 1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你设定的上限（每小时 # 次）：{0}。	src/core/agent/loop.js:4298	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
 pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	她被唤醒的次数超过了你设定的上限（每小时 # 次）。	src/core/agent/loop.js:4299	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
-1ptx7ob	ok	The message held a key, so it is not shown.	这条消息含有密钥，所以不显示。	src/core/agent/net.js:102	
-1jmdvnh	ok	annai couldn't check this message for keys, so it is not shown.	无法检查这条消息是否含有密钥，所以不显示。	src/core/agent/net.js:103	Note: shown in place of a card's or status line's text when annai can't read the keys it keeps to blank them; worded as the "held a key" note beside it (1ptx7ob).
+1ptx7ob	ok	The message held a key, so it is not shown.	这条消息含有密钥，所以不显示。	src/core/agent/net.js:127	
+1jmdvnh	ok	annai couldn't check this message for keys, so it is not shown.	无法检查这条消息是否含有密钥，所以不显示。	src/core/agent/net.js:128	Note: shown in place of a card's or status line's text when annai can't read the keys it keeps to blank them; worded as the "held a key" note beside it (1ptx7ob).
 157dl17	ok	Shiori wants to adjust her personality	Shiori 想调整自己的性格	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	不用了	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
 1izvp43	ok	Agree	同意	src/core/agent/personalities.js:131	
@@ -659,7 +659,7 @@ bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 会用你对她
 1qt7a9v	ok	Shiori answers in	Shiori 的回答语言	src/core/languages.js:572	Note: A label, so a noun: "the language Shiori answers in".
 k4u05v	ok	The language you speak to her	你对她说的语言	src/core/languages.js:573	
 cc69cl	ok	None picked: annai uses the browser’s language.	未选择时，annai 使用浏览器的语言。	src/core/languages.js:574	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
-1dyfzsg	ok	A simulation is already running.	已有模拟正在运行。	src/core/live/live.js:324	
+1dyfzsg	ok	A simulation is already running.	已有模拟正在运行。	src/core/live/live.js:325	
 157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0} 于 {1} 起飞（{2}）	src/core/live/plan-watches.js:221	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	航班 {0} 于 {1} 起飞	src/core/live/plan-watches.js:221	{0} = w.flight; {1} = time
 1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}，{2}）	src/core/live/plan-watches.js:222	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.
@@ -850,17 +850,17 @@ d57q3n	ok	Flight	航班	src/core/plan.js:70
 jj8u9s	ok	Stay	住宿	src/core/plan.js:70	Note: A kind of booking: a hotel or other lodging.
 sksosh	ok	Car	租车	src/core/plan.js:70	Note: A kind of booking: a car, nearly always a rental.
 1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	无法识别时区“{0}”，按 {1} 显示。	src/core/plan.js:155	{0} = String(own ?? ''); {1} = fallbackTz
-o6vv9a	ok	"{0}" is a name annai uses for one of its own parts, so a skill can't have it.	“{0}”已被 annai 自身的某个部分使用，不能用作技能名称。	src/core/plugins.js:179	{0} = id; Note: {0} is the skill's name.
-1fdobr5	ok	It has the same id as a plugin built into annai.	与 annai 内置插件的 ID 相同。	src/core/plugins.js:180	
-wq5ezj	ok	Its name, "{0}", is annai's own name, or the name of one of its parts. Ask its author to rename it.	名称“{0}”与 annai 或其某个部分的名称相同。请联系作者改名。	src/core/plugins.js:184	{0} = pkg.name; Note: Ask here is the plain verb (to ask the author), not Safari's permission choice.
-15gukav	ok	A plugin with this id is installed already. Remove it first.	已安装了相同 ID 的插件，请先移除。	src/core/plugins.js:190	
-masbkh	ok	A skill with this id is installed already. Remove it first.	已安装了相同 ID 的技能，请先移除。	src/core/plugins.js:190	
-1idb6oe	ok	{0} is handed the keys you give it, so the one used is annai's own, else the one installed first.	{0} 会拿到你提供的密钥，所以会优先使用 annai 自带的；没有的话，就用最先安装的那个。	src/core/plugins.js:241	{0} = name
-7ot8m8	ok	{0} is annai's own, so no plugin replaces it.	{0} 是 annai 自带的，插件不能替换它。	src/core/plugins.js:243	{0} = name
-1863007	ok	It is being removed.	正在移除。	src/core/plugins.js:438	
-u30lhr	ok	It was updated. Restart annai to run the new version.	已更新。请重新启动 annai 来运行新版本。	src/core/plugins.js:439	
-12roxwh	ok	It keeps MCP servers, not settings: remove a server on its own screen.	保存的是 MCP 服务器，而不是设置。要移除服务器，请前往该服务器的页面。	src/core/plugins.js:609	
-1k8fwg2#other	ok	It didn't finish within # seconds.	# 秒内未完成。	src/core/plugins.js:806	plural; # = s; English: "It didn't finish within # second." (one), "It didn't finish within # seconds." (other); Note: a sentence of its own, under the card's "didn't start" title; after "Starting failed:" it is the reason.
+o6vv9a	ok	"{0}" is a name annai uses for one of its own parts, so a skill can't have it.	“{0}”已被 annai 自身的某个部分使用，不能用作技能名称。	src/core/plugins.js:181	{0} = id; Note: {0} is the skill's name.
+1fdobr5	ok	It has the same id as a plugin built into annai.	与 annai 内置插件的 ID 相同。	src/core/plugins.js:182	
+wq5ezj	ok	Its name, "{0}", is annai's own name, or the name of one of its parts. Ask its author to rename it.	名称“{0}”与 annai 或其某个部分的名称相同。请联系作者改名。	src/core/plugins.js:186	{0} = pkg.name; Note: Ask here is the plain verb (to ask the author), not Safari's permission choice.
+15gukav	ok	A plugin with this id is installed already. Remove it first.	已安装了相同 ID 的插件，请先移除。	src/core/plugins.js:192	
+masbkh	ok	A skill with this id is installed already. Remove it first.	已安装了相同 ID 的技能，请先移除。	src/core/plugins.js:192	
+1idb6oe	ok	{0} is handed the keys you give it, so the one used is annai's own, else the one installed first.	{0} 会拿到你提供的密钥，所以会优先使用 annai 自带的；没有的话，就用最先安装的那个。	src/core/plugins.js:243	{0} = name
+7ot8m8	ok	{0} is annai's own, so no plugin replaces it.	{0} 是 annai 自带的，插件不能替换它。	src/core/plugins.js:245	{0} = name
+1863007	ok	It is being removed.	正在移除。	src/core/plugins.js:440	
+u30lhr	ok	It was updated. Restart annai to run the new version.	已更新。请重新启动 annai 来运行新版本。	src/core/plugins.js:441	
+12roxwh	ok	It keeps MCP servers, not settings: remove a server on its own screen.	保存的是 MCP 服务器，而不是设置。要移除服务器，请前往该服务器的页面。	src/core/plugins.js:611	
+1k8fwg2#other	ok	It didn't finish within # seconds.	# 秒内未完成。	src/core/plugins.js:808	plural; # = s; English: "It didn't finish within # second." (one), "It didn't finish within # seconds." (other); Note: a sentence of its own, under the card's "didn't start" title; after "Starting failed:" it is the reason.
 u8bf72	ok	Notifications are on. Reminders come like this while annai is closed.	通知已开启。annai 关闭时，提醒会像这样推送过来。	src/core/push/mirror.js:75	
 1dxa9va	ok	Notifications are on again: reminders come like this while annai is closed.	通知已重新开启：annai 关闭时，提醒会像这样推送过来。	src/core/push/mirror.js:76	
 dcq7bh	ok	annai has a reminder for you. Open annai to see it.	你有一条提醒，打开 annai 即可查看。	src/core/push/mirror.js:83	Note: a notification for a reminder the phone couldn't read.

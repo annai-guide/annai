@@ -78,8 +78,8 @@ export function definitions(tools) {
   return tools.map((t) => ({ name: t.name, description: t.description, input: t.input }));
 }
 
-/** @param {any} out @returns {ToolOutput} */
-function normalize(out) {
+/** What a tool gave back, as a result: text, an object as JSON, a result as it is. @param {any} out @returns {ToolOutput} */
+export function normalize(out) {
   if (typeof out === 'string') return { content: out };
   if (out && typeof out === 'object' && typeof out.content === 'string' && (out.images || out.document || out.heard || out.endTurn || out.isError !== undefined || Object.keys(out).length === 1)) {
     return /** @type {ToolOutput} */ (out);
