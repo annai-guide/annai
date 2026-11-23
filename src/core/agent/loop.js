@@ -2689,7 +2689,7 @@ export class Agent {
         }
         // Every model the request went to refused it (refusedBy), and it carried PDFs whole (spec §4.8, §9.9): a provider's words don't say which
         // part, so it goes once more with them as words. Answered by a model that refused it (in Kokoro's half one asked with the PDF's reading counts), the PDFs are taken as the cause (#pdfRefused);
-        // refused too, they weren't (a request too long has had its housekeeping above); answered by another model, nothing is known, and nothing is marked.
+        // refused too, they weren't (in Kokoro's half a request too long has had its housekeeping above); answered by another model, nothing is known, and nothing is marked.
         const refusers = !tested && e instanceof AllFailedError ? refusedBy(e.attempts) : null;
         const pdfs = new Map(refusers ? sent.messages.flatMap((m) => m.parts).flatMap((p) => (p.type === 'document' && p.hash ? [[p.hash, p]] : [])) : []);
         if (refusers && pdfs.size) {

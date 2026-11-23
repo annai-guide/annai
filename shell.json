@@ -1,5 +1,5 @@
 {
-  "build": "524d86c17f28",
+  "build": "e647f92961f8",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -43,7 +43,7 @@
     "/src/core/agent/instructions.js": "dc44316f3b47",
     "/src/core/agent/listen.js": "41cbb9219102",
     "/src/core/agent/log.js": "be1f6eedd6f8",
-    "/src/core/agent/loop.js": "70be431b7659",
+    "/src/core/agent/loop.js": "644ecc32232b",
     "/src/core/agent/reading.js": "f5d6ac2c65b2",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/her-instructions.js": "b90fb982b678",
@@ -139,7 +139,7 @@
     "/src/core/wiki.js": "0f5680bb024a",
     "/src/core/paths.js": "5e352c868ea6",
     "/src/core/plan.js": "65fe56177ee7",
-    "/src/core/plugins.js": "301a401cdea4",
+    "/src/core/plugins.js": "94298ed9a952",
     "/src/core/push/mirror.js": "9f1dea36cd3a",
     "/src/core/push/relay-client.js": "a2f4fe58a177",
     "/src/core/push/webpush.js": "7273918284c6",
