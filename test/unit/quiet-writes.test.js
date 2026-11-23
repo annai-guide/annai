@@ -615,6 +615,25 @@ for (const full of [false, true]) {
   });
 }
 
+// The same hand-on when the store refuses reads (Chromium at no byte free): Koe's way can't be read again, so none of the notes is shown, and a card says so.
+test("Kokoro's gated card a closing session hands on, the store refusing reads: a card says so (the note isn't shown)", async () => {
+  const k = await liveKit([]);
+  try {
+    const cards = raw(k);
+    const store = refusing(k);
+    store.full('reads');
+    const note = { kind: 'note', logged: true, from: 'kokoro', note: 'Kokoro wants to show: Nepenthe: Open 11:30–22:00 today.', mode: 'append', why: 'gated:show', call: { name: 'show', input: { card: { title: 'Nepenthe', text: 'Open 11:30–22:00 today.' } } }, text: 'a note from Kokoro' };
+    k.agent.live.c.owed([note]);
+    await soon(async () => told(cards).length > 0, 10_000);
+    await k.agent.idle();
+    store.full(null);
+    await toldOnce(cards, 1, 'the hand-on', { read: true });
+    assert.equal((await k.events(['out.show'])).length, 0, 'nothing was shown');
+  } finally {
+    await k.done();
+  }
+});
+
 // halves.js #dropped's route: a session dropped and couldn't resume, Classic resting: Koe is down (Kokoro's block). Cut mid-answer, Kokoro finishes it
 // (#talkDirectly), so a route that fails there is told; not cut, the route only reads Koe's way again and carries nothing, so it stays quiet. Kokoro's
 // block refused is annai's own record, quiet either way: the route goes on, and Kokoro finishes a cut answer all the same.
