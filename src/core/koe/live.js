@@ -628,7 +628,7 @@ export class LiveKoe {
       send: { activity: (edge) => this.#activity(edge), audio: (b) => this.#audio(b) }, onLevel: (x) => v.level(x, 'you'), onError: (e) => this.#deaf(e),
       // Each turn's end, why and in numbers only, for the Trace.
       onTurn: (t) => {
-        this.#write({ type: 'live.turn', actor: 'system', data: { wake: this.#wake, ...t, voiceDb: this.#rounded(this.level.db) } });
+        this.#write({ type: 'live.turn', actor: 'system', data: { wake: this.#wake, ...t, voiceDb: this.#rounded(this.level.db) } }, true);
         if (t.end === 'kept' || t.end === 'dropped') return; // no turn went on: nothing of the user's to learn from, or to end
         if (this.#hear) {
           if (t.peakDb !== null) this.#hear.peak = t.peakDb; // a noise thrown away once sent has none
@@ -1183,14 +1183,14 @@ export class LiveKoe {
     this.#due = null;
     // Nothing after a call she speaks after: her turn said nothing for the notes in flight, so she is asked once more (#settle); what waited goes in.
     if (due.more && due.text === '') {
-      /* en */ this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', message: `The live session said nothing within ${SILENT_S} seconds of a tool's answer.`, quiet: true } });
+      /* en */ this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', message: `The live session said nothing within ${SILENT_S} seconds of a tool's answer.`, quiet: true } }, true);
       this.#settle(null);
       this.#heardOut(); // the urgent mark's answer has come, though it was a lookup: the microphone hears again, and the ask goes in
       return this.#idle();
     }
     // Asked once more, and nothing back: annai shows them and says them (Halves), with no fresh session; what waited goes in.
     if (due.cue && this.#owed.sent.length) {
-      /* en */ this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', message: `The live session gave nothing back within ${SILENT_S} seconds of being asked once more.`, quiet: true } });
+      /* en */ this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', message: `The live session gave nothing back within ${SILENT_S} seconds of being asked once more.`, quiet: true } }, true);
       this.#owed.cued = false;
       this.c.unsaid(this.#owed.sent.splice(0));
       return this.#idle();
@@ -1198,7 +1198,7 @@ export class LiveKoe {
     // The user's turn, with nothing at all back: Gemini's way of letting a turn go (measured: the design, section 3, item 6). The model chose: nothing is
     // retried, least of all by a fresh session with the words. A session really dead shows itself at the next note or typed line.
     if (due.text === null && !due.alive) {
-      /* en */ this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', message: `The live session gave nothing back within ${SILENT_S} seconds of a turn: taken as let go.`, quiet: true } });
+      /* en */ this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', message: `The live session gave nothing back within ${SILENT_S} seconds of a turn: taken as let go.`, quiet: true } }, true);
       this.#complete();
       // A second turn in a row with nothing back, not even what was heard: a dead connection, not a choice. The same conversation on a new one; no words go
       // again. Once, until an answer, and sound going in is no exchange, so the quiet spell runs on: a session that stays silent closes, and the next keeps its context.
@@ -1208,12 +1208,12 @@ export class LiveKoe {
     }
     // A tap stopped her: nothing is asked aloud (the ask again says "answer them aloud") and no fresh session gets the words; what waits goes in (#idle).
     if (this.#stopped) {
-      /* en */ this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', message: `The live session gave no answer within ${SILENT_S} seconds, and the user had stopped her: nothing is asked.`, quiet: true } });
+      /* en */ this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', message: `The live session gave no answer within ${SILENT_S} seconds, and the user had stopped her: nothing is asked.`, quiet: true } }, true);
       return this.#idle();
     }
     const again = !this.#rescued;
     /* en */ const how = !again ? '' : due.alive ? ': it is asked again' : ': a fresh one gets it again';
-    /* en */ this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', message: `The live session gave no answer within ${SILENT_S} seconds${how}.`, quiet: true } });
+    /* en */ this.#write({ type: 'error', actor: 'system', data: { kind: 'live-silent', message: `The live session gave no answer within ${SILENT_S} seconds${how}.`, quiet: true } }, true);
     // Twice in a row: not a session to keep (its cut flag has Halves give the answer to Koe's next model, or Kokoro).
     if (!again) return this.#gone(true);
     this.#rescued = true;
@@ -1652,7 +1652,7 @@ export class LiveKoe {
    */
   #played(t, r) {
     const { playedMs, ...rest } = r;
-    this.#write({ type: 'live.reply', actor: 'system', data: { wake: this.#wake, ms: playedMs, ...rest, cut: t.cut && !t.whole, ...(t.stalled ? { stalled: true } : {}) } });
+    this.#write({ type: 'live.reply', actor: 'system', data: { wake: this.#wake, ms: playedMs, ...rest, cut: t.cut && !t.whole, ...(t.stalled ? { stalled: true } : {}) } }, true);
   }
 
   /** What Koe said, written once: whole, or cut where its voice stopped (✂). @param {Turn} t @param {number | null} playedMs null: none played */
@@ -1722,10 +1722,13 @@ export class LiveKoe {
     });
   }
 
-  /** Writes in order; an entry may be worked out first. @param {any} ev @returns {Promise<unknown>} */
-  #write(ev) {
+  /**
+   * Writes in order; an entry may be worked out first. Nobody waits on it: one refused is told (Agent.notSaved), unless it is for the Trace alone (quiet: the
+   * turn's and the reply's numbers, a silent session: annai's own record). @param {any} ev @param {boolean} [quiet] @returns {Promise<unknown>}
+   */
+  #write(ev, quiet = false) {
     const scope = this.#scope;
-    /* en */ this.#chain = this.#chain.then(async () => this.c.koe.log(typeof ev === 'function' ? await ev() : ev, { scope })).catch((e) => console.warn('a live line was not written', e));
+    this.#chain = this.#chain.then(async () => this.c.koe.log(typeof ev === 'function' ? await ev() : ev, { scope })).catch((e) => (quiet ? console.warn(/* en */ 'a live line was not written', e) : this.c.koe.notSaved(e)));
     return this.#chain;
   }
 

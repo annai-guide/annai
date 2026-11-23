@@ -2071,6 +2071,14 @@ export class Agent {
   }
 
   /**
+   * A write nobody waits on failed where the loop doesn't catch it (the halves' notes and routes, a live session's lines, a move's line after its call
+   * ended): #notSaved's card, with the error. Never rejects. @param {unknown} e
+   */
+  notSaved(e) {
+    return this.#notSaved(e);
+  }
+
+  /**
    * Reminders annai says or shows by itself (spec §11.3, §17): a card, the words aloud with voice on, then an entry
    * in the conversation they belong to. They are never in Shiori's voice (§16.1). Each is shown and said before its entry is written, so a phone
    * that refuses the entry still shows it; a refused entry is told (#notSaved) and stops nothing: it settles once all are shown.
@@ -2245,7 +2253,9 @@ export class Agent {
   }
 
   /**
-   * A write nobody waits on failed (a wake kept for a conversation that isn't open, what a Stop stopped, a reminder's entry): a card says so, with the
+   * A write nobody waits on failed (a wake kept for a conversation that isn't open, what a Stop stopped, a reminder's entry, a heard line's route, her
+   * words a restart or a note's cut-in cut and the chatter written in between her steps (neither stops her turn), a turn's end records; the halves' and a
+   * live session's through notSaved): a card says so, with the
    * error, so main.js shows the storage card in its place for a full phone, once for an error the dock showed already (typed words given back). Never rejects.
    * @param {unknown} e
    */
@@ -2317,7 +2327,7 @@ export class Agent {
       this.transcript.dropKept();
       const by = this.#by; // for what the other half is told of this turn once it has ended (Kokoro's final text)
       this.#by = null;
-      await this.#afterTurn(ok, wakeId).catch((e) => console.warn(/* en */ 'the end of a turn failed', e));
+      await this.#afterTurn(ok, wakeId).catch((e) => this.#notSaved(e)); // the chatter heard and the words written down: the user's lines
       // A turn that worked takes down the cards about a model failing; a turn of the user's that spoke to them, the card about
       // her saying nothing in its conversation (not a reminder's turn, nor another conversation's).
       if (ok) {
@@ -3605,7 +3615,7 @@ export class Agent {
    */
   #streamed(ev, wakeId) {
     if (ev.type === 'restart') {
-      this.#cutSpeech(wakeId, ev.by ?? null).catch(() => {});
+      this.#cutSpeech(wakeId, ev.by ?? null).catch((e) => this.#notSaved(e)); // what she said aloud, for her transcript: nobody waits on it
       return;
     }
     if (!this.#voiceNow || !this.#half.voice() || !this.voice || (ev.type !== 'tool_input' && ev.type !== 'tool_call') || ev.name !== 'speak') return;
@@ -3645,7 +3655,7 @@ export class Agent {
       const spoken = await u.done;
       if (!spoken.heard) continue;
       said = spoken.heard;
-      await this.#log({ type: 'out.speak', actor: 'shiori', data: { id, wake: wakeId, voice: true, by, ...(spoken.cut ? { cut: true } : {}) }, texts: [['text', said]] });
+      await this.#log({ type: 'out.speak', actor: 'shiori', data: { id, wake: wakeId, voice: true, by, ...(spoken.cut ? { cut: true } : {}) }, texts: [['text', said]] }).catch((e) => this.#notSaved(e)); // said aloud all the same: a refused line is told, the next goes on
     }
     return said;
   }
@@ -3961,7 +3971,7 @@ export class Agent {
     this.#hearing = this.#hearing.then(async () => {
       const r = (this.#routing = this.#route(h, began, ear));
       try { await r; } finally { this.#routing = null; }
-    }).catch((e) => { console.warn(/* en */ 'heard speech was not handled', e); });
+    }).catch((e) => this.#notSaved(e)); // the spoken line is gone: a refused write of it (the card's answer, chatter) says so
   }
 
   /**
@@ -4082,7 +4092,7 @@ export class Agent {
 
   /** Chatter heard while she worked, written in now (spec §10.4: dismissed speech still goes into the transcript). @param {string} wakeId */
   async #writeChatter(wakeId) {
-    for (const h of this.#chatter.splice(0)) await this.#logHeard(h, { wake: wakeId, meanwhile: true, dismissed: true, gate: 'chatter' });
+    for (const h of this.#chatter.splice(0)) await this.#logHeard(h, { wake: wakeId, meanwhile: true, dismissed: true, gate: 'chatter' }).catch((e) => this.#notSaved(e)); // a refused line is told, the next goes on, the turn goes on
   }
 
   /** Someone started speaking: Hearing you, and no timer runs while they speak, so a line across a time is heard to its end (#armEar, #listenFor). */

@@ -504,9 +504,9 @@ test("Open, tapped: Kyoto opens at the tap, with the user's line, her recap belo
 // Open tapped, and the store refuses from carryOn on: an open that fails says so as the one the user asks for from Trips does ("That conversation
 // didn't open", tellNotOpen's words), the storage card in its place on a full phone; one whose reads work opens, and her turn there is what stops. The
 // chat's line of a move is written whether or not the open worked (it says where the lines went, and links to that conversation): on a full phone its own
-// write is refused.
+// write is refused, and told (quiet-writes-next: nobody waits on it once her call has ended).
 for (const [how, which] of /** @type {const} */ ([['reads and writes refused (Chromium at no byte free)', 'everything'], ['reads refused (any other failed open)', 'reads'], ['writes refused, reads fine (WebKit on a full disk)', 'all']])) {
-  test(`Open tapped, the store refusing ${how}: ${which === 'all' ? 'Kyoto opens, and her turn there stops' : `a card says that conversation didn't open and carries the error (its words are the note that they couldn't be checked: the store refuses that read too); the screens were told of the move, and the chat stays the one open${which === 'reads' ? ', with its line of the move' : ''}`}`, async (t) => {
+  test(`Open tapped, the store refusing ${how}: ${which === 'all' ? 'Kyoto opens, her turn there stops, and the line of the move is told once and not written' : `a card says that conversation didn't open and carries the error (its words are the note that they couldn't be checked: the store refuses that read too); the screens were told of the move, and the chat stays the one open${which === 'reads' ? ', with its line of the move' : ''}`}`, async (t) => {
     useClock(t);
     const k = await chatKit();
     await rescript(k, { rules: [
@@ -551,7 +551,7 @@ for (const [how, which] of /** @type {const} */ ([['reads and writes refused (Ch
       // The lines carried for Kyoto are kept there, as the open's failure leaves them: refused too when reads and writes both are, and then a second card
       // says so (the storage card in its place for the full phone); nothing is silent, and nothing waits unannounced.
       const saved = own.filter((/** @type {any} */ n) => n.title === NOT_SAVED);
-      if (which === 'everything') assert.ok(saved.length === 1 && saved[0].error instanceof StorageFullError, 'the keep that was refused is told');
+      if (which === 'everything') assert.ok(saved.length >= 1 && saved[0].error instanceof StorageFullError, 'the keep that was refused is told');
       else assert.deepEqual(saved, [], 'the keep worked: nothing to tell');
     }
     // The line of the move is asked for as carryOn returns: it is dealt with (written, or refused) before room comes back, by order, so the count below
@@ -559,6 +559,20 @@ for (const [how, which] of /** @type {const} */ ([['reads and writes refused (Ch
     await carried;
     await new Promise((r) => setImmediate(r));
     await k.store.tx(['events'], 'readonly', async () => {}).catch(() => {});
+    // Reads and writes refused: the keep and the line of the move, each told once; reads alone refused: the keep and the line are written, nothing told.
+    if (which === 'everything') await until(() => own.filter((/** @type {any} */ n) => n.title === NOT_SAVED).length === 2);
+    if (which !== 'all') {
+      const saved = own.filter((/** @type {any} */ n) => n.title === NOT_SAVED);
+      assert.equal(saved.length, which === 'everything' ? 2 : 0, 'the keep and the line of the move, refused, told once each');
+      assert.ok(saved.every((/** @type {any} */ n) => n.error instanceof StorageFullError));
+    } else {
+      // Writes refused, reads fine: the keep worked (an open only reads), the line of the move is the one refused write, and it is told once.
+      await until(() => own.some((/** @type {any} */ n) => n.title === NOT_SAVED));
+      await new Promise((r) => setTimeout(r, 20)); // a second would land after it
+      const saved = own.filter((/** @type {any} */ n) => n.title === NOT_SAVED);
+      assert.equal(saved.length, 1, 'the line of the move, refused, told once');
+      assert.ok(saved.every((/** @type {any} */ n) => n.error instanceof StorageFullError));
+    }
     // Room again: nothing is left running, and Kyoto opens.
     store.full(null);
     await k.agent.open(k.kyoto);
