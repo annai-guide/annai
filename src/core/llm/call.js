@@ -11,6 +11,7 @@ import { formatOf } from '../voice/formats.js';
 import { SYS_DEVICE, ensureDeviceScope } from '../scopes.js';
 import { forget as forgetHistory } from '../forget.js';
 import { anySignal } from '../signals.js';
+import { isFetchFailure } from '../registry.js';
 
 /**
  * One model call (spec §9.1): the endpoint type builds the request, annai merges in the
@@ -549,7 +550,7 @@ export function cannotConnect(e, signal) {
 /**
  * What a request that held a photo's, a file's or a recording's bytes becomes when its answer's headers did not come within its send's time
  * (spec §4.8): likelier the link than the model, so it says so, with the seconds it waited (said 'send'), and callRole and the voice's
- * transcription list rest nothing for it. @param {unknown} cause @param {number} ms the time it waited
+ * transcription list rest its model only once another model answered in its place. @param {unknown} cause @param {number} ms the time it waited
  */
 export function sendCut(cause, ms) {
   const seconds = Math.max(1, Math.round(ms / 1000));
@@ -558,9 +559,11 @@ export function sendCut(cause, ms) {
 }
 
 /**
- * Whatever went wrong, as a ProviderError. Running out of time is "timeout", the caller stopping
- * is "cancelled", and any other error from the endpoint type's code is a bug in its plugin, which
- * counts against the plugin (spec §5.5).
+ * Whatever went wrong, as a ProviderError. Running out of time is "timeout", the caller stopping is "cancelled",
+ * and a request the browser couldn't make or finish, in the browser's own words (isFetchFailure: a body that failed after its headers, or a type's own
+ * fetch that never connected) is "network", the link's and no plugin's. A stream's rule is by position (sse.js: a reader's error is "network"),
+ * this path's by words; the same rule decides it on the tool path (isPluginBug). Any other error from the endpoint type's code is a bug in
+ * its plugin, which counts against the plugin (spec §5.5).
  * @param {unknown} e @param {AbortSignal} signal @param {EndpointType} type @param {import('../registry.js').Registry} [registry]
  */
 export function asProviderError(e, signal, type, registry) {
@@ -568,6 +571,7 @@ export function asProviderError(e, signal, type, registry) {
   const name = /** @type {any} */ (e)?.name;
   if (name === 'TimeoutError' || signal.reason?.name === 'TimeoutError') return new ProviderError('timeout', /* en */ 'No output started in time.', { cause: e, said: { code: 'late' } });
   if (name === 'AbortError' || signal.aborted) return new ProviderError('cancelled', /* en */ 'Stopped.', { cause: e, said: { code: 'kind' } });
+  if (isFetchFailure(e)) return new ProviderError('network', /* en */ 'The connection dropped.', { cause: e, said: { code: 'kind' } });
   // The plugin that registered the type is blamed, never a field the type carries.
   const by = registry?.owner('endpoint-type', type.type)?.pluginId;
   if (by) registry?.fail(by, /* en */ `endpoint type ${type.type}`, e);

@@ -63,7 +63,7 @@ export function fakeCodec(formats) {
  * A memory-backed annai with the built-in file tools, one scripted provider and model per script
  * (all in the main role, in order), and an Agent on a fresh trip. Every request a model receives is
  * kept in `requests`.
- * @param {(any[] | Record<string, any>)[]} scripts @param {{ models?: any[], open?: boolean, ready?: Promise<void>, agent?: Record<string, any>, utility?: any[], utilityModel?: Record<string, any>, codecFormats?: string[], uploading?: boolean,
+ * @param {(any[] | Record<string, any>)[]} scripts @param {{ models?: any[], open?: boolean, ready?: Promise<void>, agent?: Record<string, any>, utility?: any[] | Record<string, any>, utilityModel?: Record<string, any>, codecFormats?: string[], uploading?: boolean,
  *   voice?: { mode?: 'on' | 'off' | 'auto', speechIn?: string[], hears?: string[], failing?: string[], decide?: any[], dictation?: boolean, keepClips?: boolean, playMs?: number, micFails?: string,
  *     encoder?: { makes: string[] }, plays?: string[], closeAfterSeconds?: number, speechOut?: string[] },
  *   halves?: boolean, koe?: { type?: any[] | Record<string, any>, talk?: any[] | Record<string, any>, input?: string[], model?: Record<string, any> },
@@ -72,7 +72,7 @@ export function fakeCodec(formats) {
  *   hold: a scripted call waits for this before it answers, so a test sets an order without a delay
  *   uploading: whether the main model's provider takes photos by upload; a script (or koe's type) with an ability is a model on that
  *   endpoint type (anthropic-messages, chat-completions), its requests sent through fetch (a stand-in)
- *   utility: a script for one more scripted model, in the utility role; utilityModel: what its model record has besides (its input)
+ *   utility: a script for one more model, in the utility role (one with an ability as a script's is); utilityModel: what its model record has besides (its input)
  *   voice: Shiori with a voice (spec §10): a fake device; a voice (m-say) and a transcription model (m-hear) that hears hears, in turn (the last
  *   repeats); decide: a script for a quick-decision model (the gate); micFails: the microphone refuses with this error name; closeAfterSeconds: Settings →
  *   Voice's quiet spell, saved before the agent is made (koe-live-kit's liveKit gives its own); speechOut: the speech-out list (m-say; ['browser-voice'] for the phone's voice)
@@ -143,7 +143,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
     }
   }
   if (utility) {
-    add('pv-u', 'm-u', 'EU', { kind: 'chat', type: 'scripted', tunables: { script: utility } }, { providerId: 'model-u', prices: { input: 1, output: 1 }, input: ['text', 'image'], ...utilityModel });
+    add('pv-u', 'm-u', 'EU', ability(utility), { providerId: 'model-u', prices: { input: 1, output: 1 }, input: ['text', 'image'], ...utilityModel });
     config.roles.utility.models = ['m-u'];
   }
   if (v) {
@@ -233,7 +233,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
     registry.add('voice-browser', 'voice-platform', platform);
     await updateAppSettings(ws, { voice: { mode: v.mode ?? 'on', keepClips: Boolean(v.keepClips), ...(v.closeAfterSeconds === undefined ? {} : { closeAfterSeconds: v.closeAfterSeconds }) } });
     voice = new Voice({ llm, ws, registry, store, locale: 'en', where: 'ios' });
-    voice.retryMs = [0, 0]; // a failed upload is sent again at once here
+    voice.sleep = async () => {}; // a failed upload is sent again at once here
     await voice.refresh(); // as the app does when it starts
   }
   /** @type {any} */

@@ -438,8 +438,15 @@ export function continueAfter(request, said) {
   return { ...request, messages: [...request.messages, { role: 'user', parts: [{ type: 'text', text: note }] }] };
 }
 
-/** @param {ProviderError} err @param {number} retry @returns {{ wait?: number, bench?: number }} */
-function nextStep(err, retry) {
+/**
+ * What a failed try does next, by the one rule for every send annai retries: chat's (callRole) and a transcription's (voice.js `#hear`). Wait and go
+ * again, rest the model once its retries are done, or neither. With no connection on the device (airplane mode, say) the model did nothing wrong,
+ * so it doesn't rest, and waiting won't help: it is asked again as soon as the connection is back.
+ * @param {ProviderError} err @param {number} retry how many times this send was already sent again (0 after the first try) @param {boolean} [online] what the device says (default: the browser's)
+ * @returns {{ wait?: number, bench?: number }}
+ */
+export function nextStep(err, retry, online = deviceOnline()) {
+  if ((err.kind === 'unreachable' || err.kind === 'network') && !online) return {};
   switch (err.kind) {
     case 'overloaded':
       return retry < OVERLOAD_RETRIES.length ? { wait: OVERLOAD_RETRIES[retry] } : { bench: COOLDOWN_MS };
@@ -455,9 +462,20 @@ function nextStep(err, retry) {
     case 'bad-request':
       return {};
     default:
-      // Photos or files not sent in time (call.js): the link, likelier than the model, so no rest.
+      // Photos or files not sent in time (call.js): the link, likelier than the model, so no rest; callRole rests it once another model
+      // answered in its place (§9.6).
       return err.said?.code === 'send' ? {} : { bench: COOLDOWN_MS };
   }
+}
+
+/**
+ * How long a failure rests its model once its retries are done, in ms (0: none), by callRole's rule: nothing for a stop, else nextStep's (nothing
+ * for no connection on the device). The voice's transcription list rests by it for the failures it doesn't cut (a cut send or an unreachable model
+ * is put in the call's cut list instead, and rests once another model heard: voice.js). @param {ProviderError} err @param {boolean} [online]
+ */
+export function restOf(err, online = deviceOnline()) {
+  if (err.kind === 'cancelled') return 0;
+  return nextStep(err, Infinity, online).bench ?? 0;
 }
 
 /** The reply with what an earlier, cut-off reply had said in front of its text. @param {Reply} reply @param {string} said @returns {Reply} */
@@ -674,6 +692,13 @@ export async function callRole(c) {
         attempts.push({ model: id, name: model.name, outcome: 'ok', ms: now() - started, ...(reply.cost !== undefined ? { cost: reply.cost } : {}) });
         // Asked while it rested, and it answered: it rests no more, so the next call asks it in its place again.
         if (restingAsked === id) bench.clear(id);
+        // A model whose send was cut in this call rests now that another answered in its place: something else answers meanwhile (§9.6). Asked
+        // while it rested, it is marked as asked, as a failure that rests it is (below): it holds no awake model back again in this rest.
+        for (const a of attempts) {
+          if (a.said?.code !== 'send') continue;
+          bench.bench(a.model, COOLDOWN_MS, now());
+          if (restingAsked === a.model) bench.askedResting(a.model);
+        }
         const answered = unreasoned ? { ...reply, natives: /** @type {const} */ ('refused') } : reply;
         const full = said ? prefixed(answered, said) : answered;
         const reasoning = full.parts.map((p) => (p.type === 'reasoning' ? p.text : '')).filter(Boolean).join('\n\n');
@@ -741,10 +766,8 @@ export async function callRole(c) {
             continue; // the same model again (spec §9.9)
           }
         }
-        // No connection on this device (airplane mode, say): the model did nothing wrong, so it doesn't rest, and
-        // waiting won't help. It is asked again as soon as the connection is back.
-        if ((err.kind === 'unreachable' || err.kind === 'network') && !online()) break;
-        const step = nextStep(err, retry);
+        // (With no connection on this device, nextStep says neither wait nor rest: the model is asked again as soon as the connection is back.)
+        const step = nextStep(err, retry, online());
         if (step.wait !== undefined) {
           await sleep(step.wait);
           continue;

@@ -2,7 +2,7 @@ import { readAppSettings, updateAppSettings } from '../settings.js';
 import { voiceMode, routeOf, offNote } from './mode.js';
 import { SYS, SYS_DEVICE, ensureDeviceScope, newId } from '../scopes.js';
 import { ProviderError } from '../llm/contract.js';
-import { COOLDOWN_MS, NETWORK_RETRIES, chatCandidates } from '../llm/fallback.js';
+import { COOLDOWN_MS, chatCandidates, nextStep, restOf } from '../llm/fallback.js';
 import { speechKind, modelOf, modelNames, abilityOf, STAND_INS } from '../llm/config.js';
 import { Speaker, speechOutEntries, Arrivals, playStream } from './speaker.js';
 import { estimateSeconds } from './stream-start.js';
@@ -67,8 +67,8 @@ export class Voice {
   memory = new HeardMemory();
   /** Phone dictation failed in this session: listening records instead (spec §10.3). */
   dictationFailed = false;
-  /** The waits before a failed upload's same bytes go again. */
-  retryMs = NETWORK_RETRIES;
+  /** The wait before a failed upload's same bytes go again (how long: fallback.js nextStep's). A plain timer: a Stop in it ends the retries when it is over. Tests replace it. @type {(ms: number) => Promise<void>} */
+  sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   /** Models that refused a format they said they take: WAV until annai restarts. @type {Set<string>} */
   wavOnly = new Set();
   /** Voices that refused the format they offered: what to say the phone plays to them, until annai restarts. @type {Map<string, string[]>} */
@@ -500,7 +500,8 @@ export class Voice {
 
   /**
    * One transcription, in the smallest format both sides handle (spec §10.6). A failed upload goes
-   * again with the same bytes. Any refusal of another format is answered with WAV once (whisper.cpp
+   * again with the same bytes, when and after how long chat's one rule says (fallback.js nextStep), and a Stop comes before any of it: it ends the
+   * retries and rests no model (restOf). Any refusal of another format is answered with WAV once (whisper.cpp
    * says only "Invalid request"): WAV from then on if that works.
    * @param {string} id @param {import('./resolve.js').Kept} kept @param {string} scope @param {string} [wake] @param {AbortSignal} [signal]
    * @param {boolean} [shared] a half's turn's, timed as its other sends are (speechCall) @param {boolean} [plain]
@@ -512,7 +513,9 @@ export class Voice {
     const audio = await audioFor(kept, accepts, this.platform?.encoder);
     const name = modelOf(cfg.models[id]).name;
     if (!audio) throw new ProviderError('bad-request', /* en */ `${name} takes no audio format this phone makes (${accepts.join(', ')}).`, { said: { code: 'formats', name, formats: accepts } });
+    const stopped = (/** @type {unknown} */ cause = undefined) => new ProviderError('cancelled', /* en */ 'Stopped.', { cause, said: { code: 'kind' } });
     for (let retry = 0; ; retry++) {
+      if (signal?.aborted) throw stopped();
       try {
         const hints = modelLanguages(await this.languages());
         const languages = this.unhinted.has(id) ? { ...hints, spoken: [] } : hints;
@@ -520,6 +523,8 @@ export class Voice {
         if (plain) this.wavOnly.add(id);
         return text;
       } catch (e) {
+        // A Stop first, whatever failed (the last try's error body, read as the traveller stopped, too): the failure it cut short is not the model's to be rested for.
+        if (signal?.aborted) throw stopped(e);
         const kind = e instanceof ProviderError ? e.kind : '';
         // A 400 naming the language field: asked again without the user's languages, and not hinted again (as a refused style is dropped).
         if (kind === 'bad-request' && /language/i.test(/** @type {Error} */ (e).message) && !this.unhinted.has(id) && modelLanguages(await this.languages()).spoken.length) {
@@ -527,9 +532,11 @@ export class Voice {
           return this.#hear(id, kept, scope, wake, signal, shared, plain);
         }
         if (kind === 'bad-request' && audio.format !== 'wav' && audioIn(cfg, this.llm.types(), id).includes('wav')) return this.#hear(id, kept, scope, wake, signal, shared, true);
-        if (!['network', 'server', 'overloaded'].includes(kind) || retry >= this.retryMs.length || signal?.aborted) throw e;
-        await new Promise((r) => setTimeout(r, this.retryMs[retry]));
-        if (signal?.aborted) throw e;
+        // Whether to send again, and after how long, is chat's rule and no list of ours (nextStep): a dropped reply isn't, offline; a 5xx, an overloaded server
+        // and a short rate limit are, as chat's are. What it leaves is rested by restOf, the same rule.
+        const wait = e instanceof ProviderError ? nextStep(e, retry).wait : undefined;
+        if (wait === undefined) throw e;
+        await this.sleep(wait);
       }
     }
   }
@@ -827,7 +834,7 @@ export class Voice {
    * @returns {(model: { id?: string, name: string, input: string[] }, request: import('../llm/contract.js').Request, plain?: boolean, signal?: AbortSignal) => Promise<import('../llm/contract.js').Request>}
    */
   resolver(scope, wake, list, shared = false) {
-    /** Transcription models whose send was cut in this call: asked once a call, as chat asks a cut model once (fallback.js's nextStep). @type {Set<string>} */
+    /** Transcription models whose send was cut in this call, or that couldn't be reached: asked once a call, as chat asks a cut model once (fallback.js's nextStep). @type {Set<string>} */
     const cut = new Set();
     return async (model, request, plain, signal) => {
       if (plain && model.id) this.wavOnly.add(model.id);
@@ -844,15 +851,25 @@ export class Voice {
       list: cfg.roles['speech-in']?.models ?? [],
       memory: this.memory,
       asr: (id) => speechKind(cfg, types, id) === 'in' && this.llm.bench.until(id) <= this.now() && !cut.has(id),
-      transcribe: (id, kept) => this.#hear(id, kept, scope, wake, signal, shared),
+      transcribe: async (id, kept) => {
+        const text = await this.#hear(id, kept, scope, wake, signal, shared);
+        for (const x of cut) this.llm.bench.bench(x, COOLDOWN_MS, this.now()); // another heard it in their place: the cut ones rest (§10.3)
+        return text;
+      },
       // A kept clip is read for the conversation it was heard in: another trip's, named by its hash, isn't there (reach.js).
       clip: async (hash) => {
         const b = this.store ? await readBlob(this.store, scope, hash, { quiet: true }) : undefined;
         return b ? { data: new Uint8Array(b.data), mediaType: b.type } : null;
       },
-      // A recording that never went up in its send's time (speech.js) rests no model: the link, likelier than the model, as for a chat call
-      // (fallback.js's nextStep). It is not asked again in this call (cut), as chat doesn't; the next call's resolver asks it again.
-      onFail: (id, e) => { if (e instanceof ProviderError && e.said?.code === 'send') cut.add(id); else this.llm.bench.bench(id, restFor(e), this.now()); },
+      // A recording that never went up in its send's time (speech.js), or a model that couldn't be reached at all (offline, a link with no data,
+      // or its server down): the link as likely as the model. It is not asked again in this call (cut), as chat doesn't ask a cut model again,
+      // and rests only once another model heard it (transcribe); else the next call's resolver asks it again. Any other failure that is a
+      // ProviderError rests as a chat model's does (restOf); one that is not rests COOLDOWN_MS.
+      onFail: (id, e) => {
+        if (e instanceof ProviderError && (e.said?.code === 'send' || e.kind === 'unreachable')) return void cut.add(id);
+        const ms = e instanceof ProviderError ? restOf(e) : COOLDOWN_MS;
+        if (ms) this.llm.bench.bench(id, ms, this.now());
+      },
       accepts: (id) => audioIn(cfg, types, id),
       encoder: this.platform?.encoder,
     };

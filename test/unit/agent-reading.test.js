@@ -4,6 +4,7 @@ import { noReader, readerRoles, readFile } from '../../src/core/agent/reading.js
 import { sendMs } from '../../src/core/llm/uploads.js';
 import { callOnce } from '../../src/core/llm/call.js';
 import { ProviderError } from '../../src/core/llm/contract.js';
+import { AllFailedError, Bench } from '../../src/core/llm/fallback.js';
 import { useClock } from './clock.js';
 
 test('with nothing here that reads a PDF, the note names the setting, and the plugin only when asked to', () => {
@@ -121,7 +122,7 @@ test("a PDF whose readers refuse at once, then whose pages plugin hangs, ends at
   const r = readers({ utility: after(7, refused), main: after(3, refused) });
   const started = Date.now();
   const read = await readFile(pdf, { input: ['text', 'image'] }, {
-    llm: { config: async () => twoReaders, call: r.call }, half: 'one', pages: /** @type {any} */ (hangs), signal: new AbortController().signal, wakeId: 'w-1', scope: 'trip-a',
+    llm: { config: async () => twoReaders, call: r.call, bench: new Bench() }, half: 'one', pages: /** @type {any} */ (hangs), signal: new AbortController().signal, wakeId: 'w-1', scope: 'trip-a',
     secondMs: 1, explain: (/** @type {any} */ e) => e.message, store: /** @type {any} */ ({}),
   });
   assert.deepEqual([read.how, read.text], ['late', "It couldn't be described in time (90 seconds)."]);
@@ -140,7 +141,7 @@ test("a PDF's telling that arrives after the drawing's 90 seconds is the result,
   seer.roles.main.models = [];
   const pages = { pages: async () => ({ count: 1, pages: [{ type: 'image/jpeg', bytes: new Uint8Array([0xff, 0xd8, 0xff, 0]), width: 10, height: 10 }] }) };
   const told = await readFile({ ...pdf, data: 'JVBE' }, { input: ['text'] }, {
-    llm: { config: async () => seer, call: readers({ utility: after(200) }).call }, half: 'one', pages: /** @type {any} */ (pages), signal: new AbortController().signal, wakeId: 'w-1', scope: 'trip-a',
+    llm: { config: async () => seer, call: readers({ utility: after(200) }).call, bench: new Bench() }, half: 'one', pages: /** @type {any} */ (pages), signal: new AbortController().signal, wakeId: 'w-1', scope: 'trip-a',
     secondMs: 1, explain: (/** @type {any} */ e) => e.message, store: /** @type {any} */ ({}),
   });
   assert.equal(told.text, "What it says (told by utility from pictures of page 1 of 1, as you can't read PDFs): Read by utility.");
@@ -237,4 +238,29 @@ test("a PDF told in words after the drawing's 90 seconds is the result while the
   const read = await readWith({ ...pdf, data: 'JVBE' }, r, { pages });
   assert.equal(read.how, 'told');
   assert.equal(drawn, 0);
+});
+
+test("a reader cut in one role rests once a reader of a later role described the photo; a reader that failed with a refused request rests nothing; no reader rests when the one that answered is the cut model itself (listed in both roles), when its reply was empty (which is no description), or when every later reader failed too (cut-send-next, 9; fix 1)", async () => {
+  const cut = new AllFailedError([
+    { model: 'u', name: 'U', outcome: 'timeout', ms: 70_000, error: 'No answer in 70 seconds.', said: { code: 'send', seconds: 70 } },
+    { model: 'u2', name: 'U2', outcome: 'bad-request', ms: 5, error: 'The photo is too large.' },
+  ]);
+  for (const [by, text, rests] of /** @type {const} */ ([['m', 'A pelican.', true], ['u', 'A pelican.', false], ['m', ' ', false]])) {
+    const bench = new Bench();
+    const r = readers({ utility: async () => { throw cut; }, main: async () => ({ reply: { text, stop: 'end' }, answeredBy: by, modelId: by }) });
+    const read = await readWith(photo, { call: r.call, bench });
+    assert.equal(read.how, text.trim() ? 'told' : 'failed');
+    assert.equal(bench.until('u') > Date.now(), rests, `answered by ${by}: ${JSON.stringify(text)}`);
+    assert.equal(bench.until('u2'), 0);
+  }
+  // Nothing described it: no later reader answered in the cut one's place, so it rests nothing, and the next photo asks it again.
+  for (const later of /** @type {const} */ ([
+    () => new AllFailedError([{ model: 'm', name: 'M', outcome: 'server', ms: 5, error: 'M is down.' }]),
+    () => new ProviderError('server', 'M is down.'),
+  ])) {
+    const bench = new Bench();
+    const r = readers({ utility: async () => { throw cut; }, main: async () => { throw later(); } });
+    assert.equal((await readWith(photo, { call: r.call, bench })).how, 'failed');
+    assert.equal(bench.until('u'), 0, 'the later reader failed too: nothing rests');
+  }
 });

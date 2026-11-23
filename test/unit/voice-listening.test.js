@@ -59,7 +59,7 @@ async function voiceKit(o, { dictation = false } = {}) {
   registry.add('voice-browser', 'voice-platform', platform);
   const llm = fakeLlm(o);
   const voice = new Voice({ llm, ws, registry, store, locale: 'en', where: 'ios' });
-  voice.retryMs = [0, 0];
+  voice.sleep = async () => {}; // a failed upload is sent again at once here
   return { voice, platform, llm, ws };
 }
 
