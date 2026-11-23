@@ -854,8 +854,8 @@ export class Voice {
         const b = this.store ? await readBlob(this.store, scope, hash, { quiet: true }) : undefined;
         return b ? { data: new Uint8Array(b.data), mediaType: b.type } : null;
       },
-      // A recording that never went up in its send's time (speech.js), or no connection to the model (offline, or a link with no data while the
-      // phone says online): the link as likely as the model. It is not asked again in this call (cut), as chat doesn't ask a cut model again,
+      // A recording that never went up in its send's time (speech.js), or a model that couldn't be reached at all (offline, a link with no data,
+      // or its server down): the link as likely as the model. It is not asked again in this call (cut), as chat doesn't ask a cut model again,
       // and rests only once another model heard it (transcribe); else the next call's resolver asks it again. Any other failure rests as a
       // chat model's does (restOf).
       onFail: (id, e) => {
