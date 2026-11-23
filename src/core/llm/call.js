@@ -4,7 +4,7 @@ import { levelPatch } from './reasoning.js';
 import { NO_USAGE, mergeUsage, costOf } from './cost.js';
 import { fromBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
-import { UPLOAD_TTL_S, UPLOAD_MS, MARGIN_MS, SLOW_UPLINK, uploadName, deleteUpload } from './uploads.js';
+import { UPLOAD_TTL_S, UPLOAD_MS, MARGIN_MS, sendMs, uploadName, deleteUpload } from './uploads.js';
 import { deleteTurn, lookTurn, keyPrint, hash } from './kept.js';
 import { ttlFor } from '../agent/warmth.js';
 import { formatOf } from '../voice/formats.js';
@@ -244,15 +244,17 @@ async function billed(usage, tools, tally) {
  * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, request: Request, level?: string,
  *   fetch?: Fetch, signal?: AbortSignal, firstOutputMs?: number, onEvent?: (e: StreamEvent) => void, trace?: ModelTrace,
  *   registry?: import('../registry.js').Registry, now?: () => number, uploads?: import('./uploads.js').Uploads, keep?: Keep,
- *   tally?: import('../workspace.js').Workspace, keepNative?: boolean }} c
+ *   tally?: import('../workspace.js').Workspace, keepNative?: boolean, shared?: boolean }} c
  *   firstOutputMs: how long to wait for the first output once the provider has the request, and then between pieces of output
+ *   shared: the other half may send its request on the same link at the same time (Koe and Kokoro): the send is timed on twice its bytes, as two
+ *   sends sharing a link evenly carry, by the time the first is up, its bytes and as many of the other's
  *   uploads: photos go to the provider's files API once, then by id, where the endpoint type can (spec §4.8)
  *   keep: kept on the provider's side where its type can and its switch is on
  *   tally: where this device counts provider tools with a monthly allowance (billMonth)
  *   keepNative: the reply as the provider returned it is wanted (Shiori's own turns: the keep-reasoning design §4)
  * @returns {Promise<Reply>}
  */
-export async function callOnce({ type, endpoint, model, key, request, level = 'off', fetch: get = defaultFetch, signal, firstOutputMs = 30_000, onEvent = () => {}, trace, registry, now = Date.now, uploads, keep, tally, keepNative = false }) {
+export async function callOnce({ type, endpoint, model, key, request, level = 'off', fetch: get = defaultFetch, signal, firstOutputMs = 30_000, onEvent = () => {}, trace, registry, now = Date.now, uploads, keep, tally, keepNative = false, shared = false }) {
   if (key) trace?.secret(key);
   // Credentials can also sit in an endpoint's extra headers; none may reach the trace (spec §9.9).
   for (const [name, value] of Object.entries(endpoint.headers ?? {})) {
@@ -405,8 +407,9 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       let res;
       const body = JSON.stringify(applyPatches(built.body, endpoint, model, level, patches));
       bytes = utf8Length(body); // in the trace: how much a kept turn saves
-      // The model's wait starts once the provider has the request (the answer's headers); before, plus the body's time at SLOW_UPLINK.
-      sending = firstOutputMs + Math.ceil((bytes * 8 * 1000) / SLOW_UPLINK);
+      // The model's wait starts once the provider has the request (the answer's headers); before, plus the body's time at SLOW_UPLINK, twice
+      // that when `shared` (the other half may send on the same link).
+      sending = firstOutputMs + sendMs(shared ? 2 * bytes : bytes);
       wait(sending);
       try {
         res = await get(built.url, { method: 'POST', headers: built.headers, body, signal: linked, redirect: 'manual' });
@@ -431,11 +434,12 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   } catch (e) {
     clearTimeout(t);
     let err = asProviderError(e, linked, type, registry);
-    // With photos, likelier the send than the model; text alone stays late (a server that never streams).
-    if (err.said?.code === 'late' && sending && spec.request.messages.some((m) => m.parts.some((p) => p.type === 'image' && !p.fileId))) {
+    // With a photo's, a PDF's or a recording's bytes in what was sent (not the turns a kept one holds), likelier the send than the model; text
+    // alone stays late (a server that never streams).
+    if (err.said?.code === 'late' && sending && spec.request.messages.slice(spec.kept?.from ?? 0).some((m) => m.parts.some((p) => (p.type === 'image' && !p.fileId) || p.type === 'document' || p.type === 'audio'))) {
       const seconds = Math.max(1, Math.round(sending / 1000));
       /* en */
-      err = new ProviderError('timeout', `No answer in ${seconds} ${seconds === 1 ? 'second' : 'seconds'}. The connection may be too slow to send photos.`, { cause: e, said: { code: 'send', seconds } });
+      err = new ProviderError('timeout', `No answer in ${seconds} ${seconds === 1 ? 'second' : 'seconds'}. The connection may be too slow to send photos or files.`, { cause: e, said: { code: 'send', seconds } });
     }
     // Output that started and then stopped is not "no output in time": it says so, and how long it waited.
     if (err.said?.code === 'late' && firstMs !== null) {

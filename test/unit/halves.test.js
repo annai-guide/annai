@@ -1,7 +1,7 @@
 // K1 Task 6: Halves, the coordinator (the Koe and Kokoro design; plan decisions 15, 16, 18, 20, 21; Review Focus 2, 3, 5).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until, rescript } from './agent-kit.js';
+import { agentKit, until, rescript, watchShared } from './agent-kit.js';
 import { tripTools } from '../../src/core/agent/trip-tools.js';
 import { channelTool } from '../../src/core/agent/halves.js';
 import { createTrip, ME } from '../../src/core/scopes.js';
@@ -47,6 +47,38 @@ test('no Koe model: one call per message, Kokoro speaks, exactly as before', asy
   assert.deepEqual(await shown(k), [['msg.user', '', 'Hi'], ['out.speak', '', 'Hello!']]);
   assert.equal((await k.events(['wake']))[0].data.half, undefined);
   assert.equal(k.agent.koeState, 'off');
+});
+
+test("both halves' turns send at once on one link, so each tells its call so (shared: each send timed on twice its bytes); one Shiori's turn doesn't (photo-wait's follow-ups, 5)", async (t) => {
+  useClock(t);
+  const k = await agentKit([KOKORO], { koe: { type: KOE } });
+  const both = watchShared(k);
+  k.agent.send('Is Nepenthe open?');
+  await k.agent.idle();
+  assert.deepEqual([...new Set(both.map(([role]) => role))].sort(), ['koe-classic', 'main']);
+  assert.ok(both.every(([, shared]) => shared === true), JSON.stringify(both));
+  const one = await agentKit([[calls(['speak', { text: 'Hello!' }])]], { halves: true });
+  const alone = watchShared(one);
+  one.agent.send('Hi');
+  await one.agent.idle();
+  assert.deepEqual(alone, [['main', undefined, 'off']]);
+});
+
+test("while Koe is down, Kokoro's turns are not shared: its send has the link to itself (photo-wait's follow-ups, 5)", async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [
+    { match: 'the user wrote', reply: calls(['tell_koe', { text: 'Open till 10.' }]) },
+    { match: "Koe can't speak", reply: calls(['speak', { text: 'Nepenthe is open till 10.' }]) },
+  ] }], { koe: { type: [{ delayMs: 60, error: 'auth', message: 'bad key' }] } });
+  const seen = watchShared(k);
+  k.agent.send('Is Nepenthe open?'); // Koe is up when Kokoro's turn starts, and fails meanwhile
+  await k.agent.idle();
+  assert.equal(k.agent.koeState, 'down');
+  k.agent.send('Thanks'); // Kokoro alone
+  await k.agent.idle();
+  const main = seen.filter(([role]) => role === 'main').map(([, shared, state]) => `${state}: ${shared}`);
+  assert.equal(main[0], 'text: true', 'while Koe works, Kokoro shares the link with her');
+  assert.ok(main.length >= 3 && main.slice(1).every((m) => m === 'down: undefined'), `once she is down, it doesn't: ${JSON.stringify(main)}`);
 });
 
 test("an import that replaced \"me\" while a conversation is open: both halves' next request carries the profile that came, though its author is hers and the cache is warm (the snapshot review: F3)", async (t) => {

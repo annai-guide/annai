@@ -433,7 +433,7 @@ function nextStep(err, retry) {
     case 'bad-request':
       return {};
     default:
-      // Photos not sent in time (call.js): the link, likelier than the model, so no rest.
+      // Photos or files not sent in time (call.js): the link, likelier than the model, so no rest.
       return err.said?.code === 'send' ? {} : { bench: COOLDOWN_MS };
   }
 }
@@ -475,7 +475,7 @@ export const firstWordsMs = (config, role) => (config.roles?.[role]?.firstOutput
  *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null>, uploads?: import('./uploads.js').Uploads,
  *   speech?: (model: Model, request: Request, plain?: boolean, signal?: AbortSignal) => Promise<Request>, models?: string[],
  *   kept?: import('./kept.js').Kept, scope?: string, tally?: import('../workspace.js').Workspace, missing?: string, read?: ReadFor, readings?: Readings,
- *   askResting?: boolean, keepNative?: boolean }} c
+ *   askResting?: boolean, keepNative?: boolean, shared?: boolean }} c
  *   models: the models to try in place of the role's list ("Try this model" passes one: no fallback); missing: why a
  *   model's protocol plugin can't be running, when annai knows (no service worker took the page, spec §5.3)
  *   record: what the model.turn notes besides the call; keepParts keeps the reply's parts so the conversation can be rebuilt
@@ -493,6 +493,7 @@ export const firstWordsMs = (config, role) => (config.roles?.[role]?.firstOutput
  *   keepNative: Shiori's own turns want each reply as the provider returned it, to send back within the turn (the keep-reasoning design §4)
  *   askResting: a turn's own call (Shiori's): a resting model goes to the end of the list, whose rest ends soonest first, and at most one is asked; side jobs
  *   (readers, housekeeping, plugins', quick decisions) never are
+ *   shared: the other half sends its request on the same link at the same time, so each send is timed on twice its bytes (callOnce)
  * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string,
  *   first: string | null, tried: boolean }>} first: the role's first model, by name; tried: whether it was asked (a warm model may answer first)
  */
@@ -641,7 +642,7 @@ export async function callRole(c) {
       try {
         const reply = await callOnce({
           type: set.type, endpoint, model, key, request: sendable, level, fetch: c.fetch, signal: c.signal, onEvent: c.onEvent,
-          trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads, tally: c.tally, keepNative: Boolean(c.keepNative), ...(keeps ? { keep: { kept: keeps, scope: c.scope ?? SYS, chain: !whole, secret: own, ...(c.borrow ? { borrow: true } : {}), ...(again ? { again: true } : {}) } } : {}),
+          trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads, tally: c.tally, keepNative: Boolean(c.keepNative), shared: Boolean(c.shared), ...(keeps ? { keep: { kept: keeps, scope: c.scope ?? SYS, chain: !whole, secret: own, ...(c.borrow ? { borrow: true } : {}), ...(again ? { again: true } : {}) } } : {}),
         });
         usage = addUsage(usage, reply.usage);
         cost = addCost(cost, reply.cost);

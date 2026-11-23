@@ -188,7 +188,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
     call: async (c) => callRole({
       role: c.role ?? 'main', request: c.request, level: c.level, config: await readConfig(ws), types, keyFor: async () => null, bench,
       signal: c.signal, onEvent: c.onEvent, prefer: c.prefer, record: c.record, repairImages: c.repairImages, sleep: async () => {}, trace: modelTrace(store, c.scope ?? SYS),
-      speech: c.speech, firstOutputMs: c.firstOutputMs, read: c.read, readings: c.readings, askResting: c.askResting, keepNative: c.keepNative, fetch,
+      speech: c.speech, firstOutputMs: c.firstOutputMs, read: c.read, readings: c.readings, askResting: c.askResting, keepNative: c.keepNative, shared: c.shared, fetch,
     }),
     types: () => types,
     /** @param {{ modelId: string, text: string }} c */
@@ -284,6 +284,21 @@ export function refusing(k, { error = () => new DOMException('Unable to store re
   const back = [];
   k.agent.on('unsaved', (/** @type {any} */ x) => back.push(x));
   return { full: (w) => { which = w; }, back };
+}
+
+/**
+ * What each of Shiori's own turns' calls (the ones with keepNative) asked of the model, from now on: its role, whether it said it shares the link
+ * with the other half (callOnce's `shared`), and Koe's state when it was made. @param {any} k @returns {[string, boolean | undefined, string][]}
+ */
+export function watchShared(k) {
+  /** @type {[string, boolean | undefined, string][]} */
+  const seen = [];
+  const call = k.llm.call;
+  k.llm.call = (/** @type {any} */ c) => {
+    if (c.keepNative) seen.push([c.role, c.shared, k.agent.koeState]);
+    return call(c);
+  };
+  return seen;
 }
 
 /** Waits until fn() is true (every 2 ms, at most ms). @param {() => boolean} fn @param {number} [ms] */
