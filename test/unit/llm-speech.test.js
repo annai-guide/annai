@@ -221,8 +221,10 @@ test("a connection dropped while a transcription's reply is read is the link's: 
   for (let i = 0; i < 3; i++) await assert.rejects(llm.transcribe({ modelId: m.id, audio }), (e) => e instanceof ProviderError && e.kind === 'network');
   assert.equal(registry.isDisabled('test'), false, 'three in a row: the plugin is still on');
   assert.equal(/** @type {any} */ (await llm.transcribe({ modelId: m.id, audio })).text, 'Where should we eat?', 'and the model hears');
-  // A real bug in the plugin's code (a TypeError that is no fetch failure, a plain Error) is still the plugin's: three in a row switch it off.
-  for (const [type, bug] of /** @type {const} */ ([['test-bug', new TypeError("Cannot read properties of undefined (reading 'text')")], ['test-oops', new Error('oops')]])) {
+  // A real bug in the plugin's code (a TypeError that is no fetch failure, a plain Error, a TypeError that only names an identifier with "fetch" or "network"
+  // in it) is still the plugin's: three in a row switch it off (cut-send-fix2, 2).
+  for (const [type, bug] of /** @type {const} */ ([['test-bug', new TypeError("Cannot read properties of undefined (reading 'text')")], ['test-oops', new Error('oops')],
+    ['test-fetchy', new TypeError('this.fetchModels is not a function')], ['test-state', new TypeError("Cannot read properties of undefined (reading 'networkState')")]])) {
     const buggy = { ...hears, type, pluginId: type, readTranscript: async () => { throw bug; } };
     registry.add(type, 'endpoint-type', buggy);
     for (let i = 0; i < 3; i++) await assert.rejects(speechCall({ type: /** @type {any} */ (buggy), endpoint: endpoint(type), model: model(null), key: null, audio, fetch: async () => Response.json({}), registry }), (e) => e instanceof ProviderError && e.kind === 'plugin');

@@ -233,7 +233,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
     registry.add('voice-browser', 'voice-platform', platform);
     await updateAppSettings(ws, { voice: { mode: v.mode ?? 'on', keepClips: Boolean(v.keepClips), ...(v.closeAfterSeconds === undefined ? {} : { closeAfterSeconds: v.closeAfterSeconds }) } });
     voice = new Voice({ llm, ws, registry, store, locale: 'en', where: 'ios' });
-    voice.retryMs = [0, 0]; // a failed upload is sent again at once here
+    voice.sleep = async () => {}; // a failed upload is sent again at once here
     await voice.refresh(); // as the app does when it starts
   }
   /** @type {any} */

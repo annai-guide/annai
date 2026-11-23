@@ -2,7 +2,7 @@ import { readAppSettings, updateAppSettings } from '../settings.js';
 import { voiceMode, routeOf, offNote } from './mode.js';
 import { SYS, SYS_DEVICE, ensureDeviceScope, newId } from '../scopes.js';
 import { ProviderError } from '../llm/contract.js';
-import { COOLDOWN_MS, NETWORK_RETRIES, chatCandidates, restOf } from '../llm/fallback.js';
+import { COOLDOWN_MS, chatCandidates, nextStep, restOf } from '../llm/fallback.js';
 import { speechKind, modelOf, modelNames, abilityOf, STAND_INS } from '../llm/config.js';
 import { Speaker, speechOutEntries, Arrivals, playStream } from './speaker.js';
 import { estimateSeconds } from './stream-start.js';
@@ -67,8 +67,8 @@ export class Voice {
   memory = new HeardMemory();
   /** Phone dictation failed in this session: listening records instead (spec §10.3). */
   dictationFailed = false;
-  /** The waits before a failed upload's same bytes go again. */
-  retryMs = NETWORK_RETRIES;
+  /** The wait before a failed upload's same bytes go again (how long: fallback.js nextStep's). A plain timer: a Stop in it ends the retries when it is over. Tests replace it. @type {(ms: number) => Promise<void>} */
+  sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   /** Models that refused a format they said they take: WAV until annai restarts. @type {Set<string>} */
   wavOnly = new Set();
   /** Voices that refused the format they offered: what to say the phone plays to them, until annai restarts. @type {Map<string, string[]>} */
@@ -500,7 +500,8 @@ export class Voice {
 
   /**
    * One transcription, in the smallest format both sides handle (spec §10.6). A failed upload goes
-   * again with the same bytes. Any refusal of another format is answered with WAV once (whisper.cpp
+   * again with the same bytes, when and after how long chat's one rule says (fallback.js nextStep), and a Stop comes before any of it: it ends the
+   * retries and rests no model (restOf). Any refusal of another format is answered with WAV once (whisper.cpp
    * says only "Invalid request"): WAV from then on if that works.
    * @param {string} id @param {import('./resolve.js').Kept} kept @param {string} scope @param {string} [wake] @param {AbortSignal} [signal]
    * @param {boolean} [shared] a half's turn's, timed as its other sends are (speechCall) @param {boolean} [plain]
@@ -512,7 +513,9 @@ export class Voice {
     const audio = await audioFor(kept, accepts, this.platform?.encoder);
     const name = modelOf(cfg.models[id]).name;
     if (!audio) throw new ProviderError('bad-request', /* en */ `${name} takes no audio format this phone makes (${accepts.join(', ')}).`, { said: { code: 'formats', name, formats: accepts } });
+    const stopped = (/** @type {unknown} */ cause = undefined) => new ProviderError('cancelled', /* en */ 'Stopped.', { cause, said: { code: 'kind' } });
     for (let retry = 0; ; retry++) {
+      if (signal?.aborted) throw stopped();
       try {
         const hints = modelLanguages(await this.languages());
         const languages = this.unhinted.has(id) ? { ...hints, spoken: [] } : hints;
@@ -520,6 +523,8 @@ export class Voice {
         if (plain) this.wavOnly.add(id);
         return text;
       } catch (e) {
+        // A Stop first, whatever failed (the last try's error body, read as the traveller stopped, too): the failure it cut short is not the model's to be rested for.
+        if (signal?.aborted) throw stopped(e);
         const kind = e instanceof ProviderError ? e.kind : '';
         // A 400 naming the language field: asked again without the user's languages, and not hinted again (as a refused style is dropped).
         if (kind === 'bad-request' && /language/i.test(/** @type {Error} */ (e).message) && !this.unhinted.has(id) && modelLanguages(await this.languages()).spoken.length) {
@@ -527,10 +532,11 @@ export class Voice {
           return this.#hear(id, kept, scope, wake, signal, shared, plain);
         }
         if (kind === 'bad-request' && audio.format !== 'wav' && audioIn(cfg, this.llm.types(), id).includes('wav')) return this.#hear(id, kept, scope, wake, signal, shared, true);
-        if (!['network', 'server', 'overloaded'].includes(kind) || retry >= this.retryMs.length) throw e;
-        if (!signal?.aborted) await new Promise((r) => setTimeout(r, this.retryMs[retry]));
-        // A Stop before or during the wait ends the retries: the failure it cut short is not the model's to be rested for (restOf), as chat's is not.
-        if (signal?.aborted) throw new ProviderError('cancelled', /* en */ 'Stopped.', { cause: e, said: { code: 'kind' } });
+        // Whether to send again, and after how long, is chat's rule and no list of ours (nextStep): a dropped reply isn't, offline; a 5xx, an overloaded server
+        // and a short rate limit are, as chat's are. What it leaves is rested by restOf, the same rule.
+        const wait = e instanceof ProviderError ? nextStep(e, retry).wait : undefined;
+        if (wait === undefined) throw e;
+        await this.sleep(wait);
       }
     }
   }

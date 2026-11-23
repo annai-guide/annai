@@ -5,7 +5,7 @@ import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace, ValidationError, StorageFullError } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip, SYS_PLUGINS } from '../../src/core/scopes.js';
-import { Registry, PluginError } from '../../src/core/registry.js';
+import { Registry, PluginError, isFetchFailure, isPluginBug } from '../../src/core/registry.js';
 import { PluginHost, PLUGIN_MAX_BYTES } from '../../src/core/plugins.js';
 import { utf8 } from '../../src/core/bytes.js';
 import { messageOf } from '../../src/ui/dom.js';
@@ -303,6 +303,18 @@ test("host: a fetch that fails because the device is offline is the tool's answe
     await assert.rejects(safari.run({}), /Load failed/);
   }
   assert.equal(registry.isDisabled('online'), false);
+});
+
+test("the one rule for whose failure an error is, on the tool path and the endpoint path alike: the browser's own words for a request it couldn't make or finish are the link's, by whole words, so a plugin's own TypeError that only names an identifier is its bug (cut-send-fix2, 2)", () => {
+  for (const message of ['Failed to fetch', 'Load failed', 'network error', 'NetworkError when attempting to fetch resource.', 'The network connection was lost.', 'Failed to fetch https://a.test/']) {
+    assert.equal(isFetchFailure(new TypeError(message)), true, message);
+    assert.equal(isPluginBug(new TypeError(message)), false, message);
+  }
+  for (const message of ['this.fetchModels is not a function', "Cannot read properties of undefined (reading 'networkState')", 'networks is not iterable', "Cannot read properties of undefined (reading 'fetchModels')"]) {
+    assert.equal(isFetchFailure(new TypeError(message)), false, message);
+    assert.equal(isPluginBug(new TypeError(message)), true, message);
+  }
+  assert.equal(isFetchFailure(new Error('Failed to fetch')), false, 'only a TypeError is the browser');
 });
 
 test('registry: switching a plugin off after repeated errors is told once, with its last error (spec §5.5)', async () => {
