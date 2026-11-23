@@ -48,13 +48,14 @@ const notSent = (p, byCount) => {
 };
 
 /**
- * A PDF every model refused, as its conversation sends it from then on (spec §4.8): not a stub that asks for a read, which would be refused again.
- * The models' words are quoted: outside text. @param {any} p the document @param {string} why the models' words, annai's English
+ * A PDF of a request every model it went to refused, as Shiori's requests send it until its conversation's next summary or fresh start (spec §4.8): not
+ * a stub that asks for a read, which would be refused again. The models' words are quoted: outside text. @param {any} p the document @param {string} why the
+ * models' words, annai's English
  */
 export const refusedPdf = (p, why) => {
   const who = p.path || p.name;
   /* en */
-  return { type: /** @type {const} */ ('text'), text: `[the PDF${who ? ` ${quote(who)}` : ''}, not sent: the models refused it (${quote(why)}); reading it again brings these words, not the PDF. To see a page of it, ask the user to send that page as a photo]` };
+  return { type: /** @type {const} */ ('text'), text: `[the PDF${who ? ` ${quote(who)}` : ''}, not sent: the models refused a request that held it (${quote(why)}); until the conversation is next summarized or started fresh, it goes as these words, a read of it again too. To see a page of it, ask the user to send that page as a photo]` };
 };
 
 /**
