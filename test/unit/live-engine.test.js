@@ -9,6 +9,7 @@ import { createTrip, removeTrip, ME, SYS_DEVICE } from '../../src/core/scopes.js
 import { ManualClock, realClock } from '../../src/core/live/clock.js';
 import { Live } from '../../src/core/live/live.js';
 import { planWords } from '../../src/core/live/plan-watches.js';
+import { keysUnread } from '../fakes/store-memory.js';
 
 const NEP = { title: 'Lunch at Nepenthe', fixed: true, start: { at: iso('12:00'), tz: LA }, end: { at: iso('13:15'), tz: LA }, place: { name: 'Nepenthe', ...NEPENTHE } };
 const BIX = { title: 'Bixby Bridge photo stop', fixed: false, start: { at: iso('09:45'), tz: LA }, place: { name: 'Bixby Creek Bridge', ...BIXBY } };
@@ -370,6 +371,24 @@ test("a plugin trigger's plain error is noted once in the trip's log and doesn't
   assert.equal(noted.length, 1);
   assert.match(noted[0].data.message, /^The tide watch w-[0-9a-z]+ can't be checked: tide table not downloaded yet\.$/);
 });
+
+for (const unread of [false, true]) {
+  test(`a plugin trigger's error repeating its key (its last request's 403) is noted with «key» in its words${unread ? ", and the note when annai can't read the keys" : ''}; the reminder's own words stay as they are (plugin-words-next)`, async () => {
+    const k = await liveKit();
+    const KEY = 'Tr4il key/9876+x'; // made up; URL-encoding changes it
+    await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:tides:key', KEY));
+    const said = (/** @type {string[]} */ [plain, once, twice]) => `403 for https://tides.example/v1?raw=${plain}&key=${once}, via https://go.example/?to=${encodeURIComponent('https://tides.example/v1?key=')}${twice}`;
+    k.registry.add('tides', 'trigger', { type: 'tide', check() { throw new Error(said([KEY, encodeURIComponent(KEY), encodeURIComponent(encodeURIComponent(KEY))])); } });
+    const w = await k.live.setWatch(k.trip, { when: { type: 'tide' }, fallback: 'Low tide at Pescadero.' });
+    const back = unread ? keysUnread(k.store) : () => {};
+    for (let s = 0; s < 3; s++) await k.fix(at('08:31') + s * 1000, MONTEREY);
+    await k.settle();
+    back();
+    const noted = (await k.events(['error'])).filter((e) => e.data?.kind === 'trigger');
+    const why = unread ? "annai couldn't check this message for keys, so it is not shown." : said(['«key»', '«key»', '«key»']);
+    assert.deepEqual(noted.map((e) => [e.data.why, e.data.message, e.data.reminder]), [[why, `The tide watch ${w.id} can't be checked: ${why}${unread ? '' : '.'}`, 'Low tide at Pescadero.']]);
+  });
+}
 
 test("a plugin trigger whose describe throws: what fired still reaches Shiori", async () => {
   const k = await liveKit({ live: false });

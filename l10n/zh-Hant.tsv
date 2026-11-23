@@ -556,8 +556,8 @@ vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Che
 1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她在留意的事情喚醒她的次數超過了你設定的上限（每小時 # 次）：{0}。	src/core/agent/loop.js:4297	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
 1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你新增的檔案喚醒她的次數超過了你設定的上限（每小時 # 次）：{0}。	src/core/agent/loop.js:4298	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
 pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	她被喚醒的次數超過了你設定的上限（每小時 # 次）。	src/core/agent/loop.js:4299	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
-1ptx7ob	ok	The message held a key, so it is not shown.	這則訊息含有金鑰，所以不顯示。	src/core/agent/net.js:102	
-1jmdvnh	ok	annai couldn't check this message for keys, so it is not shown.	無法檢查這則訊息是否含有金鑰，所以不顯示。	src/core/agent/net.js:103	Note: shown in place of a card's or status line's text when annai can't read the keys it keeps to blank them; worded as the "held a key" note beside it (1ptx7ob).
+1ptx7ob	ok	The message held a key, so it is not shown.	這則訊息含有金鑰，所以不顯示。	src/core/agent/net.js:109	
+1jmdvnh	ok	annai couldn't check this message for keys, so it is not shown.	無法檢查這則訊息是否含有金鑰，所以不顯示。	src/core/agent/net.js:110	Note: shown in place of a card's or status line's text when annai can't read the keys it keeps to blank them; worded as the "held a key" note beside it (1ptx7ob).
 157dl17	ok	Shiori wants to adjust her personality	Shiori 想調整自己的性格	src/core/agent/personalities.js:130	
 13g1wjf	ok	No thanks	不用了	src/core/agent/personalities.js:131	Note: a card's button that declines her change.
 1izvp43	ok	Agree	同意	src/core/agent/personalities.js:131	
@@ -659,7 +659,7 @@ bgn4sv	ok	Shiori answers in the language you speak to her	Shiori 會用你對她
 1qt7a9v	ok	Shiori answers in	Shiori 的回答語言	src/core/languages.js:572	Note: A label, so a noun: "the language Shiori answers in".
 k4u05v	ok	The language you speak to her	你對她說的語言	src/core/languages.js:573	
 cc69cl	ok	None picked: annai uses the browser’s language.	未選擇時，annai 使用瀏覽器的語言。	src/core/languages.js:574	Note: the first sentence of the earlier hint; the order's meaning is its own line now.
-1dyfzsg	ok	A simulation is already running.	已有模擬正在執行。	src/core/live/live.js:324	
+1dyfzsg	ok	A simulation is already running.	已有模擬正在執行。	src/core/live/live.js:325	
 157qf8n	ok	Flight {0} departs {1}, {2}	航班 {0} 於 {1} 起飛（{2}）	src/core/live/plan-watches.js:221	{0} = w.flight; {1} = time; {2} = w.place; Note: an item in a few words, inside a reminder ("Leave soon: …"): {2} is the airport and terminal.
 1tvx4k9	ok	Flight {0} departs {1}	航班 {0} 於 {1} 起飛	src/core/live/plan-watches.js:221	{0} = w.flight; {1} = time
 1d0bfhb	ok	{0} at {1}, {2}	{0}（{1}，{2}）	src/core/live/plan-watches.js:222	{0} = w.title; {1} = time; {2} = w.place; Note: an item in a few words: its title, then its time and place in brackets, the order the reminders read best in.

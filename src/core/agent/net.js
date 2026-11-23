@@ -45,9 +45,16 @@ export async function knownSecrets(store, { strict = false } = {}) {
   return [...out].sort((a, b) => b.length - a.length);
 }
 
-/** Every way a secret may be written: as it is, and as a URL or a form encodes it. @param {string} s */
+/** A text as a form encodes it ("+" for a space). @param {string} s */
+const formOf = (s) => new URLSearchParams({ s }).toString().slice(2);
+
+/**
+ * Every way a secret may be written: as it is, and as a URL or a form encodes it, once or twice (an address holding it inside another
+ * address's parameter). @param {string} s
+ */
 function forms(s) {
-  return [...new Set([s, encodeURIComponent(s), new URLSearchParams({ s }).toString().slice(2), encodeURI(s)])];
+  const once = [s, encodeURIComponent(s), formOf(s), encodeURI(s)];
+  return [...new Set([...once, ...once.flatMap((f) => [encodeURIComponent(f), formOf(f)])])];
 }
 
 /** Blanks each secret in any of its forms, whatever the case of letters and of percent-escapes. @param {string} text @param {string[]} secrets */
@@ -131,26 +138,40 @@ export function secretFreeLog(store, scope) {
   return async (ev) => logEvent(store, scope, { ...ev, data: await withoutSecretsIn(store, ev.data ?? {}) });
 }
 
+/**
+ * Decodings a key is looked for in: a key in an address inside another address's parameter is encoded twice, and two more cover a redirect
+ * or link guard around that. Each is one pass over the text, so one made to decode on and on can't hold annai up.
+ */
+const DECODES = 4;
+
+/** text, as it is and with "+" as a space, each percent-decoded until that changes nothing (at most DECODES times). @param {string} text */
+function decodings(text) {
+  const out = [];
+  for (let x of [text, text.replace(/\+/g, ' ')]) {
+    out.push(x);
+    for (let i = 0; i < DECODES; i++) {
+      const next = decodeSafe(x);
+      if (next === x) break;
+      out.push((x = next));
+    }
+  }
+  return out;
+}
+
 /** Whether text, decoded, holds a secret. @param {string} text @param {string[]} secrets */
 function holds(text, secrets) {
-  let decoded = text;
-  try {
-    decoded = decodeURIComponent(text.replace(/\+/g, ' '));
-  } catch {
-    // not valid percent-encoding: the text as it is
-  }
-  const lower = [text, decoded, decodeSafe(text)].map((x) => x.toLowerCase());
+  const lower = decodings(text).map((x) => x.toLowerCase());
   return secrets.some((s) => lower.some((x) => x.includes(s.toLowerCase())));
 }
 
 /**
- * Whether any decoding of text could still show a secret: as it is, percent-decoded, with "+" as a
+ * Whether any decoding of text could still show a secret: as it is, percent-decoded (again and again), with "+" as a
  * space, ignoring case, white space, slashes and backslashes. Used to fail closed, whatever the
  * parsers in between do. @param {string} text @param {string[]} secrets
  */
 export function leaks(text, secrets) {
   const squash = (/** @type {string} */ x) => x.toLowerCase().replace(/[\s/\\]+/g, '');
-  const seen = [text, decodeSafe(text), decodeSafe(text.replace(/\+/g, ' '))].map(squash);
+  const seen = decodings(text).map(squash);
   return secrets.some((s) => seen.some((x) => x.includes(squash(s))));
 }
 

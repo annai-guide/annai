@@ -272,7 +272,8 @@ test('host: a tool keeps its own "this" when annai runs it', async () => {
     annai.tools.register({ name: 'greet', description: 'Greets.', input: { type: 'object' }, prefix: 'hi ', run(x) { return this.prefix + x; } });
   }`));
   await host.start('tooly');
-  assert.equal(await registry.list('tool')[0].run('there'), 'hi there');
+  // An installed plugin's result comes back as Shiori reads it: a result, its text blanked of every key annai keeps (plugin-words-next).
+  assert.deepEqual(await registry.list('tool')[0].run('there'), { content: 'hi there' });
 });
 
 test("host: a tool's own errors are answers Shiori sees, not crashes; a crash counts against the plugin (spec §5.5, §6.7)", async () => {

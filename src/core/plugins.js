@@ -19,7 +19,7 @@ import { ProviderError, errorFromResponse } from './llm/contract.js';
 import { sse } from './llm/sse.js';
 import { parsePartialJSON } from './llm/partial-json.js';
 import { retry } from './llm/retry.js';
-import { checkTool, TALK, ALWAYS_ON } from './agent/tools.js';
+import { checkTool, normalize, TALK, ALWAYS_ON } from './agent/tools.js';
 import { tsv } from './tsv.js';
 import { orderSearch, searchOffIn, trusted } from './web-search.js';
 import { mergePatch } from './patch.js';
@@ -837,6 +837,12 @@ export class PluginHost {
       async (/** @type {string} */ role, /** @type {any} */ request) => (await need('llm').call({ role, request, scope: SYS, record: { tag: `plugin:${id}` } })).reply,
       { decide: (/** @type {any} */ c) => need('llm').decide({ ...c, scope: SYS, tag: `plugin:${id}` }) },
     );
+    const store = this.ws.store;
+    // A built-in's words are annai's own, and a file it reads is the file's (a read then a write must not put «key» into it). Any other,
+    // official or not, may pass on its provider's answer, the address with its key in it.
+    const own = this.builtins.has(id);
+    /** What a plugin hands annai for Shiori or the log, any but a built-in's with every key annai keeps blanked; the note when they can't be read (§9.9). @param {any} v */
+    const theirs = (v) => (own ? v : withoutSecretsIn(store, v));
     return Object.freeze({
       id,
       /** Its words in the screens' language, and the formats (localization design, section 8). */
@@ -847,6 +853,9 @@ export class PluginHost {
         if (call) /* en */ throw new PluginError(id, `annai.register can't add ${kind}: use ${call}`);
         // An always-on microphone feed, with no sign of it on the phone: annai's own and its official plugins only.
         if (kind === 'heard-clips' && !this.builtins.has(id) && this.#known[id]?.source !== 'official') /* en */ throw new PluginError(id, "Only annai's official plugins can hear the microphone (heard-clips)");
+        // A search provider's rows reach Shiori through web_search, as a tool's result does.
+        const p = item;
+        if (kind === 'search' && !own && typeof p?.search === 'function') item = Object.create(p, { search: { value: async (/** @type {any[]} */ ...a) => theirs(await p.search(...a)) } });
         return registry.add(id, kind, item);
       },
       schemas: Object.freeze({ register: (/** @type {any} */ entry) => registry.add(id, 'schema', entry) }),
@@ -858,10 +867,11 @@ export class PluginHost {
           return registry.add(id, 'tool', {
             ...tool,
             run: async (/** @type {any} */ input, /** @type {any} */ call) => {
+              /** @type {any} */
+              let out;
               try {
-                const out = await run(input, call);
+                out = await run(input, call);
                 registry.succeeded(id);
-                return out;
               } catch (e) {
                 // A tool's own error is its answer: Shiori sees it and adapts (spec §6.7). Only a crash counts
                 // against the plugin, which is switched off when it keeps crashing (§5.5).
@@ -870,14 +880,21 @@ export class PluginHost {
                 registry.fail(id, /* en */ `tool ${tool.name}`, e);
                 throw new PluginError(id, /* en */ `The tool ${tool.name} failed: ${/** @type {any} */ (e)?.message ?? e}`, { cause: e });
               }
+              if (own) return out;
+              // Its text: pictures and a document are base64, and pass as they are.
+              const result = normalize(out);
+              return { ...result, content: await theirs(result.content) };
             },
           });
         },
       }),
       events: Object.freeze({
-        /** An entry in a scope's log, signed plugin:<id>; content it keeps is stored and named in its refs (spec §5.4). */
-        append: (/** @type {string} */ scope, /** @type {string} */ type, /** @type {any} */ data, /** @type {any} */ keep = {}) =>
-          record(this.ws.store, scope, { type, actor: `plugin:${id}`, data: data ?? {}, texts: keep.texts ?? [], blobs: keep.blobs ?? [] }),
+        /** An entry in a scope's log, signed plugin:<id>; content it keeps is stored and named in its refs (spec §5.4). Blobs are bytes, kept as they are. */
+        append: async (/** @type {string} */ scope, /** @type {string} */ type, /** @type {any} */ data, /** @type {any} */ keep = {}) => {
+          const texts = keep.texts ?? [];
+          const [words, ...kept] = await theirs([data ?? {}, ...texts.map((/** @type {any} */ x) => x?.[1])]);
+          return record(store, scope, { type, actor: `plugin:${id}`, data: words, texts: texts.map((/** @type {any} */ x, /** @type {number} */ i) => [x?.[0], kept[i]]), blobs: keep.blobs ?? [] });
+        },
       }),
       /** Log appends, as frozen copies, never this plugin's own (spec §5.4: read-only in v1). */
       hooks: Object.freeze({
@@ -887,7 +904,11 @@ export class PluginHost {
         },
       }),
       llm,
-      wake: (/** @type {string} */ reason) => need('agent').wake({ kind: 'plugin', plugin: id, text: String(reason) }),
+      wake: (/** @type {string} */ reason) => {
+        const agent = need('agent');
+        const wake = (/** @type {string} */ text) => agent.wake({ kind: 'plugin', plugin: id, text });
+        return own ? wake(String(reason)) : theirs(String(reason)).then(wake);
+      },
       net: Object.freeze({
         /** A web request, in the trace as plugin:<id> (spec §5.4). */
         fetch: (/** @type {string} */ url, /** @type {RequestInit} */ init) => tracedFetch(this.ws.store, SYS, { tool: `plugin:${id}` }, this.#services.fetch)(url, init),

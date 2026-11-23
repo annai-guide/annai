@@ -98,6 +98,8 @@ export function activate(annai) {
 | `annai.register('search', { id, name, kind?, ready?(), search(query, { fetch, signal, limit }) })` | a search provider for `web_search`: see "Search providers" below |
 | `annai.register('pdf-pages', { id, pages(bytes, { from, max, edge, signal }) })` | draws a PDF's pages as pictures, for a model that sees photos but reads no PDFs and for a PDF's preview: see "PDF pages" below |
 
+What your plugin hands annai for Shiori or the log (a tool's text, a search provider's rows, a wake's reason, a log entry's data and texts) has every key annai keeps (each of 8 characters or more, as it is or encoded once or twice in an address), and anything shaped like a credential, blanked as `«key»`, as `annai.secrets.blank` blanks them. A text that could still show one is a note instead, and so is each such text while annai can't read its keys. Photos, documents, blobs and files pass as they are. It catches a key your service repeats; it is no reason to put one there.
+
 Every file write goes through one function. It keeps the old version and adds an entry to the log, so anything a plugin changes can be seen in the trace and undone (spec §4.2).
 
 ## Skills
@@ -231,9 +233,9 @@ export function activate(annai) {
 ```
 
 - **What `call` holds:** `trip` (the open trip's scope, or null), `signal` (stop when it aborts: the user tapped Shiori, or the call ran past its time limit, 150 seconds, after which Shiori is told it didn't finish; give each request of your own a shorter limit, so a server that never answers leaves time for another way), `model` (the model that called the tool, with what it takes, such as `input: ['text', 'image']`), and `fetch` (traced).
-- **What to return:** text, or an object (sent as JSON), or `{ content, images?, document? }`. Lists are best as TSV with `annai.helpers.tsv` (spec §4.7).
+- **What to return:** text, or an object (sent as JSON), or `{ content, images?, document? }`. Lists are best as TSV with `annai.helpers.tsv` (spec §4.7). Shiori reads the text, and the trace keeps it, with every key annai keeps blanked as `«key»` (a service may repeat its address, key and all, in a paging link); photos and a document pass as they are. While annai can't read the keys it keeps, the text is a note saying it couldn't check it.
 - **Photos in a result:** `images: [{ mediaType, data }]` (base64) or `[{ mediaType, hash }]` (content annai already stores). annai keeps them named by the result, so they survive a reload and go when the trip is removed (spec §4.9). A hash alone must be the open conversation's own content: a file of its trip or of `/me/`, or something its log already names. Another trip's content, named by its hash, isn't there: the result is the tool's error (spec §4.1).
-- **Errors are answers.** Throw an `Error` with plain words and what to do; Shiori sees it, every key annai keeps blanked as `«key»`, and adapts. Only a crash (a `TypeError` and the like) counts against your plugin, which annai switches off when it keeps crashing.
+- **Errors are answers.** Throw an `Error` with plain words and what to do; Shiori sees it, every key annai keeps blanked as `«key»` (while annai can't read them, a note saying it couldn't check the words), and adapts. Only a crash (a `TypeError` and the like) counts against your plugin, which annai switches off when it keeps crashing.
 - **Keep results short.** A result over 40 000 characters is cut. Return a page of results, and take a `from` or `page` input for more.
 - **Every tool can be switched off** in Settings → Tools, and every call, its input and its result are in the trace.
 - **When Shiori is two halves** (Koe and Kokoro, spec §6.8), a plugin's tools are Kokoro's: the half that thinks and works. Koe, the half that talks, has annai's own quick set (reads, the offline pack's places, light changes), and asks Kokoro for the rest. annai's places tools are called with `call.offline` for Koe: read only what is on the device, and say so when it isn't there. A tool switched off is off for both halves.
