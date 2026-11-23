@@ -758,15 +758,19 @@ export async function putFile(page, scope, path, bytes, type) {
 /**
  * The phone's disk fills, as the Linux builds of the engines refuse a full one (the builder's probe of 2026-11-19): every request of a write succeeds, and the
  * browser aborts its commit. WebKit's abort has no error; Chromium's, with no byte free, ends the transaction with an UnknownError of its own ("Connection
- * is closing because of: IO error"). Each write that touches one of `stores` is kept open until `release()` (held), then aborted 100 ms on, well after
- * annai's few requests in it. `room()` ends it.
+ * is closing because of: IO error"). Each write that touches one of `stores` is kept open, by a count of its own at a time, until `release()` (held),
+ * then aborted where it would commit: at a count that succeeds with no request of annai's succeeding since the count before it. A transaction runs its
+ * requests in order, so every request annai made before that count has succeeded; one it makes on a success comes before the next count, so it has made
+ * none since. Never by the clock: on a loaded machine annai's requests can still be waiting long after the write began. A write that touches one of
+ * `stores` is refused whether or not it writes anything. `room()` ends the refusals for writes begun after it, until a later `release()` brings them
+ * back; one already open still aborts, at its next quiet count.
  * @param {import('@playwright/test').Page} page @param {string} browserName
  * @param {{ held?: boolean, stores?: string[] }} [o] stores: the writes it refuses are those that touch one of them: the log's, unless said
  */
 export const fillDisk = (page, browserName, { held = false, stores = ['events'] } = {}) => page.evaluate(({ held, stores, chromium }) => {
   const w = /** @type {any} */ (window);
-  w.full = { held, since: Date.now() };
-  w.release = () => { w.full = { held: false, since: Date.now() }; };
+  w.full = { held };
+  w.release = () => { w.full = { held: false }; };
   w.room = () => { w.full = null; };
   const real = IDBDatabase.prototype.transaction;
   IDBDatabase.prototype.transaction = /** @type {any} */ (/** @this {IDBDatabase} */ function (/** @type {any} */ names, /** @type {any} */ mode, /** @type {any[]} */ ...rest) {
@@ -777,14 +781,18 @@ export const fillDisk = (page, browserName, { held = false, stores = ['events'] 
       const own = new DOMException('Connection is closing because of: IO error', 'UnknownError');
       Object.defineProperty(t, 'error', { get: () => own });
     }
-    const made = Date.now();
+    let annais = true; // a request of annai's succeeded since the last count did; true at first, as annai's first request comes after the first count
+    let mine = t.objectStore(touched[0]).count();
+    t.addEventListener('success', (e) => { if (e.target !== mine) annais = true; }, true); // capturing: a request's success doesn't bubble (probed, both engines)
     const keep = () => {
       try {
-        if (!w.full?.held && Date.now() - Math.max(made, w.full?.since ?? 0) > 100) return void t.abort();
-        t.objectStore(touched[0]).count().onsuccess = keep;
+        if (!w.full?.held && !annais) return void t.abort();
+        annais = false;
+        mine = t.objectStore(touched[0]).count();
+        mine.onsuccess = keep;
       } catch { /* it ended */ }
     };
-    keep();
+    mine.onsuccess = keep;
     return t;
   });
 }, { held, stores, chromium: browserName === 'chromium' });

@@ -296,15 +296,17 @@ export async function until(fn, ms = 2000) {
 }
 
 /**
- * p, or a failure saying why once 2000 ms have passed (on the clock's time, when the test has one): a regression fails at once, not at the test's own
+ * p, or a failure saying why once ms have passed (on the clock's time, when the test has one): a regression fails at once, not at the test's own
  * timeout (120 s). A race on p itself, not a poll of a flag, so whatever p waits for is still waited for. 2000 ms: 30 times the longest of the 131 such
- * waits in the five files that use it, 65 ms of clock time (measured 2026-11-20); a test whose wait runs longer on its clock needs its own bound.
- * @param {Promise<unknown>} p @param {string} why
+ * waits in the five files that use it, 65 ms of clock time (measured 2026-11-20). Of the waits agent-loop, trip-tools and typed-kept passed to it
+ * (2026-11-22), the longest on real time is under 40 ms, and on a test's clock 1650 ms, a reader's 1.5 s: a clock's time is the timers waited out, the same
+ * on any machine. A test whose wait runs longer on its clock passes its own ms, saying why.
+ * @param {Promise<unknown>} p @param {string} why @param {number} [ms]
  */
-export async function inTime(p, why) {
+export async function inTime(p, why, ms = 2000) {
   /** @type {any} */
   let timer;
-  const late = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(why)), 2000); });
+  const late = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(why)), ms); });
   try {
     await Promise.race([p, late]);
   } finally {
@@ -312,9 +314,9 @@ export async function inTime(p, why) {
   }
 }
 
-/** idle(), bounded: a wake left queued, or a turn still busy, fails at once, saying so. @param {any} k */
-export async function idleAtOnce(k) {
-  await inTime(k.agent.idle(), 'nothing waits in memory: still waiting after 2000 ms, a wake left queued, a turn still busy, or a wait longer than that');
+/** idle(), bounded: a wake left queued, or a turn still busy, fails at once, saying so. @param {any} k @param {number} [ms] as inTime's */
+export async function idleAtOnce(k, ms = 2000) {
+  await inTime(k.agent.idle(), `nothing waits in memory: still waiting after ${ms} ms, a wake left queued, a turn still busy, or a wait longer than that`, ms);
 }
 
 /**

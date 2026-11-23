@@ -27,7 +27,7 @@ for (const [how, o] of /** @type {const} */ ([['', {}], [' (Shiori as two halves
     const store = refusing(k);
     store.full('all');
     k.agent.send('Is the castle open today?', { typed: true });
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(store.back.map((x) => x.words), ['Is the castle open today?'], 'once: the write that failed and the turn that stopped on it both gave it back');
     assert.ok(store.back[0].error instanceof StorageFullError, 'the dock shows the storage card for it');
     assert.deepEqual(await lines(k), []);
@@ -38,7 +38,7 @@ for (const [how, o] of /** @type {const} */ ([['', {}], [' (Shiori as two halves
     // Room again: sent again, it is written once, and nothing more comes back.
     store.full(null);
     k.agent.send('Is the castle open today?', { typed: true });
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await lines(k), ['Is the castle open today?']);
     assert.equal(store.back.length, 1);
   });
@@ -66,7 +66,7 @@ for (const [how, scripts, o] of /** @type {[string, any[], any][]} */ ([
     // Room again: sent again, it is written once, and nothing more comes back.
     store.full(null);
     k.agent.send('Second thing', { typed: true });
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await lines(k), ['First thing', 'Second thing']);
     assert.equal(store.back.length, 1);
   });
@@ -84,7 +84,7 @@ test('a typed line whose turn fails before it writes the line, on a read (Chromi
   assert.equal(k.notices.at(-1).title, 'Shiori stopped');
   store.full(null);
   k.agent.send('Is the castle open today?', { typed: true });
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(await lines(k), ['Is the castle open today?'], 'a retype is written once');
   assert.equal(store.back.length, 1);
 });
@@ -97,7 +97,7 @@ test('a typed line that came while she worked, refused at her next call, comes b
   await new Promise((r) => setTimeout(r, 10));
   store.full('lines');
   k.agent.send('Second thing', { typed: true });
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(store.back.map((x) => x.words), ['Second thing']);
   assert.deepEqual(await lines(k), ['First thing']);
 });
@@ -112,7 +112,7 @@ test("of two typed lines her turn takes together, in one wake, only the one the 
   store.full((ev) => ev.type === 'msg.user' && ev.data?.text === 'Second thing');
   k.agent.typing(false);
   k.agent.poke();
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(store.back.map((x) => x.words), ['Second thing']);
   assert.deepEqual(await lines(k), ['First thing']);
   const wakes = await k.events(['wake']);
@@ -127,7 +127,7 @@ test('a typed answer to her question that is refused comes back, and her turn go
   await until(() => k.agent.state.name === 'waiting');
   store.full('lines');
   k.agent.send('Neither, the café', { typed: true });
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(store.back.map((x) => x.words), ['Neither, the café']);
   assert.ok(store.back[0].error instanceof StorageFullError);
   assert.deepEqual(await lines(k), ['Start']);
@@ -142,11 +142,11 @@ test("a line that wasn't typed in the box (a card's tap, a plugin's words, a pho
   const store = refusing(k);
   store.full('all');
   k.agent.send('Keep it', { chose: true });
-  await k.agent.idle();
+  await idleAtOnce(k);
   k.agent.send('From a plugin');
-  await k.agent.idle();
+  await idleAtOnce(k);
   k.agent.send('', { typed: true, photos: [{ path: '/trip/files/a.jpg' }] });
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(store.back, []);
 });
 
@@ -225,11 +225,11 @@ test("a typed line with nothing open (a race the dock's draft normally prevents)
   await k.agent.open(null);
   store.full('all');
   k.agent.send('Is the bus late?', { typed: true });
-  await k.agent.idle(); // it settles: the line isn't left queued, keeping her busy
+  await idleAtOnce(k); // it settles: the line isn't left queued, keeping her busy
   assert.deepEqual(store.back.map((x) => x.words), ['Is the bus late?']);
   store.full(null);
   k.agent.send('A second line', { typed: true });
-  await k.agent.idle();
+  await idleAtOnce(k);
   const inMe = await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(ME, { types: ['msg.user'] }));
   assert.deepEqual(inMe.map((/** @type {any} */ e) => e.data.text), ['A second line'], 'only the second line was written into me: the first was handed back, not kept');
 });
@@ -257,7 +257,7 @@ test("a photo a full device keeps the message from carrying: the notice carries 
   const read = k.ws.read.bind(k.ws);
   k.ws.read = (/** @type {string} */ scope, /** @type {string} */ path) => (path === '/files/a.jpg' ? Promise.reject(new StorageFullError()) : read(scope, path));
   k.agent.send('Here is the photo', { typed: true, photos: [{ path: '/trip/files/a.jpg' }] });
-  await k.agent.idle();
+  await idleAtOnce(k);
   const card = k.notices.find((n) => n.title === "A photo wasn't sent to Shiori");
   assert.ok(card?.error instanceof StorageFullError);
   assert.equal(card.said, "A photo wasn't sent to Shiori. The message went without it.");

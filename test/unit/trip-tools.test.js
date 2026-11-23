@@ -148,7 +148,7 @@ test('a trip she started opens later with its hand-over owed: the turn that take
   k.agent.hush?.('away');
   const fresh = new Agent({ store: k.store, ws: k.ws, llm: k.llm, registry: k.registry, timeZone: () => 'UTC', secondMs: 10 });
   await fresh.open(kyoto.id);
-  await fresh.idle();
+  await idleAtOnce({ agent: fresh });
   const wrote = (await eventsIn(k, kyoto.id, ['file.write'])).find((/** @type {any} */ e) => e.data.path === '/notes/temple.md');
   assert.equal(wrote?.data.handover, 'h-1');
 });
@@ -159,7 +159,7 @@ test('start_trip naming a file that is not there makes no trip and moves nothing
   useClock(t);
   const k = await kit([sleep]);
   k.agent.send('', { handed: [handedFlight], handover: 'h-1' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   await assert.rejects(run(k, 'start_trip', { title: 'Anchorage', files: ['/trip/files/flight.pdf', '/trip/files/fligth.pdf'] }, 'h-1'), /Nothing was done[\s\S]*fligth\.pdf/);
   assert.equal((await listTrips(k.store)).active.some((s) => s.title === 'Anchorage'), false);
   assert.deepEqual(await tripFiles(k), ['/files/flight.pdf']);
@@ -173,7 +173,7 @@ test("start_trip forgives a path's case, as the files tools do", async (t) => {
   useClock(t);
   const k = await kit([sleep]);
   k.agent.send('', { handed: [handedFlight], handover: 'h-1' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   await run(k, 'start_trip', { title: 'Anchorage', files: ['/trip/Files/Flight.PDF'] }, 'h-1');
   const trip = await tripNamed(k, 'Anchorage');
   assert.deepEqual((await k.ws.list(trip.id, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/flight.pdf']);
@@ -197,7 +197,7 @@ test("start_trip with the hand-over's file named: the copy of a long message kee
   const k = await kit([sleep]);
   const words = `Our trip. ${'We land late and want a quiet hotel near the water. '.repeat(50)}`;
   k.agent.send(words, { handed: [handedFlight], handover: 'h-1' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   await run(k, 'start_trip', { title: 'Anchorage', files: ['/trip/files/flight.pdf'] }, 'h-1');
   const trip = await tripNamed(k, 'Anchorage');
   assert.deepEqual((await k.ws.list(trip.id, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/flight.pdf']);
@@ -211,7 +211,7 @@ test('start_trip with no hand-over and no files writes no copy of a message: onl
   useClock(t);
   const k = await kit([sleep]);
   k.agent.send('Start a trip for Kyoto, please');
-  await k.agent.idle();
+  await idleAtOnce(k);
   await run(k, 'start_trip', { title: 'Kyoto' });
   const trip = await tripNamed(k, 'Kyoto');
   assert.deepEqual(await eventsIn(k, trip.id, ['msg.user']), []);
@@ -319,7 +319,7 @@ test('open_trip is refused in a dated trip, saying they open that trip from Trip
   useClock(t);
   const k = await chatKit();
   k.agent.send("Let's carry on here");
-  await k.agent.idle();
+  await idleAtOnce(k);
   const before = (await eventsIn(k, k.trip)).length;
   await assert.rejects(run(k, 'open_trip', { trip: k.trip }), /this conversation/);
   assert.equal((await eventsIn(k, k.trip)).length, before);
@@ -335,9 +335,9 @@ test("open_trip in a chat with no files named takes the hand-over's fresh files 
   const k = await chatKit();
   const [hotel, tickets] = [await handIn(k, 'hotel.pdf'), await handIn(k, 'tickets.pdf')];
   k.agent.send('Our Kyoto stay', { handed: [hotel, tickets], handover: 'h-1' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   await openBy(k, { trip: k.kyoto }, 'h-1');
-  await k.agent.idle(); // their lines go in as Kyoto opens
+  await idleAtOnce(k); // their lines go in as Kyoto opens
   assert.deepEqual((await k.ws.list(k.kyoto, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/hotel.pdf', '/files/tickets.pdf']);
   assert.deepEqual(await k.ws.list(k.trip, '/files/'), []);
   const copy = (await eventsIn(k, k.kyoto, ['msg.user']))[0];
@@ -346,7 +346,7 @@ test("open_trip in a chat with no files named takes the hand-over's fresh files 
   const k2 = await chatKit();
   const [a, b] = [await handIn(k2, 'hotel.pdf'), await handIn(k2, 'tickets.pdf')];
   k2.agent.send('Our Kyoto stay', { handed: [a, b], handover: 'h-1' });
-  await k2.agent.idle();
+  await idleAtOnce(k2);
   await openBy(k2, { trip: k2.kyoto, files: ['/trip/files/tickets.pdf'] }, 'h-1');
   assert.deepEqual((await k2.ws.list(k2.kyoto, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/tickets.pdf']);
   assert.deepEqual((await k2.ws.list(k2.trip, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/hotel.pdf']);
@@ -357,9 +357,9 @@ test('open_trip in a chat with no hand-over moves no file, and the trip opens at
   const k = await chatKit();
   await handIn(k, 'hotel.pdf'); // the chat's own, from before: not handed in this turn
   k.agent.send("Let's carry on in Kyoto");
-  await k.agent.idle();
+  await idleAtOnce(k);
   await openBy(k, { trip: k.kyoto });
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.agent.trip, k.kyoto);
   assert.deepEqual(await k.ws.list(k.kyoto, '/files/'), []);
   assert.deepEqual((await k.ws.list(k.trip, '/files/')).map((/** @type {any} */ f) => f.path), ['/files/hotel.pdf']);
@@ -373,7 +373,7 @@ test("start_trip in a dated trip with a hand-over and no files named moves none,
   await k.agent.opening;
   const hotel = await handIn(k, 'hotel.pdf');
   k.agent.send('', { handed: [hotel], handover: 'h-1' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   await run(k, 'start_trip', { title: 'Kyoto' }, 'h-1');
   const kyoto = await tripNamed(k, 'Kyoto');
   assert.deepEqual(await k.ws.list(kyoto.id, '/files/'), []);
@@ -392,7 +392,7 @@ test("start_trip with a hand-over that has words says their message is above; op
   await k.agent.opening;
   const hotel = await handIn(k, 'hotel.pdf');
   k.agent.send('Our Kyoto stay', { handed: [hotel], handover: 'h-1' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   await run(k, 'start_trip', { title: 'Kyoto' }, 'h-1');
   const kyoto = await tripNamed(k, 'Kyoto');
   const cueOf = (await eventsIn(k, kyoto.id, ['wake'])).flatMap((/** @type {any} */ e) => e.data.reasons).find((/** @type {any} */ r) => /You started this trip/.test(r.text ?? ''));
@@ -402,9 +402,9 @@ test("start_trip with a hand-over that has words says their message is above; op
   const c = await chatKit();
   const [tickets, other] = [await handIn(c, 'tickets.pdf'), await handIn(c, 'other.pdf')];
   c.agent.send('', { handed: [tickets], handover: 'h-1' });
-  await c.agent.idle();
+  await idleAtOnce(c);
   await openBy(c, { trip: c.kyoto, files: [other.path] }, 'h-1');
-  await c.agent.idle();
+  await idleAtOnce(c);
   assert.deepEqual(await eventsIn(c, c.kyoto, ['msg.user']), [], 'no copy of the hand-over');
   const cue = (await eventsIn(c, c.kyoto, ['wake'])).flatMap((/** @type {any} */ e) => e.data.reasons).find((/** @type {any} */ r) => /You moved the user here/.test(r.text ?? ''));
   assert.match(cue.text, /^You moved the user here from another conversation, ".*", to carry on here\./);
@@ -437,7 +437,7 @@ test("Open, tapped: Kyoto opens at the tap, with the user's line, her recap belo
   const went = [];
   k.agent.on('went', (/** @type {any} */ x) => went.push(x));
   k.agent.send('Where was the ramen place in Kyoto?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await scopeRec(k, k.kyoto)).talked, null, 'nobody talked in Kyoto yet');
   k.agent.send("Let's carry on in Kyoto");
   await until(() => k.asks.length === 1);
@@ -449,7 +449,7 @@ test("Open, tapped: Kyoto opens at the tap, with the user's line, her recap belo
   k.agent.answer(k.asks[0].data.tap, 'Open');
   await until(() => k.agent.target === k.kyoto);
   assert.deepEqual(went, [{ trip: k.kyoto }], 'a trip opened on the user\'s own choice: from home the screen follows');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.agent.trip, k.kyoto);
   assert.equal((await readAppSettings(k.ws)).activeTrip, k.kyoto);
   // Kyoto: exactly the user's last line, copied as theirs (from the chat), then her recap below it, both in one turn; then her one answer.
@@ -492,12 +492,12 @@ test("Open, tapped: Kyoto opens at the tap, with the user's line, her recap belo
   assert.equal((await Transcript.load(k.store, k.trip)).unanswered, false);
   const before = k.requests.length;
   await k.agent.open(k.trip);
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, before, 'nobody wakes in the chat');
   // A later turn there reads where they went.
   await rescript(k, { rules: [{ match: 'the user wrote', reply: say('Back in the chat.') }] });
   k.agent.send('And the museum?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.ok(userTexts(k.requests.at(-1)).some((x) => /^\[annai\] The user carried this conversation on in "Kyoto": their line and your recap went there, where you answer them\. Nothing of it is left to do here\.$/.test(x)));
 });
 
@@ -662,7 +662,7 @@ for (const how of /** @type {const} */ (['Not now', 'a typed line', 'a Stop', 'S
     else if (how === 'a Stop') k.agent.stopKokoro();
     else if (how === 'Start fresh') await k.agent.startFresh();
     else await k.agent.open(other);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.agent.kokoro.pendingId, null, 'the card ended');
     assert.equal(k.agent.trip, how === 'another conversation' ? other : k.trip);
     assert.equal(went, 0);
@@ -708,13 +708,13 @@ for (const how of ['removed', 'archived']) {
     let went = 0;
     k.agent.on('went', () => { went++; });
     k.agent.send('Where was the ramen place in Kyoto?');
-    await k.agent.idle();
+    await idleAtOnce(k);
     k.agent.send("Let's carry on in Kyoto");
     await until(() => k.asks.length === 1);
     if (how === 'removed') await removeTrip(k.store, k.kyoto);
     else await setTripStatus(k.store, k.kyoto, 'archived');
     k.agent.answer(k.asks[0].data.tap, 'Open');
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.agent.trip, k.trip, 'the chat is still the one open');
     assert.equal(went, 0);
     assert.notEqual((await readAppSettings(k.ws)).activeTrip, k.kyoto);
@@ -729,16 +729,16 @@ test("the user's last line is what they said last: a heard line counts, one set 
   const k = await chatKit();
   const heard = (/** @type {string} */ id, /** @type {Record<string, any>} */ more) => record(k.store, k.trip, { type: 'heard', actor: 'user', data: { id, ...more } });
   k.agent.send('Is it far?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   await heard('h1', { text: 'Take me to Kyoto' });
   await heard('h2', { text: 'turn left here', dismissed: true });
   /** The move, and back to the chat. @param {string} to */
   const move = async (to) => {
     await openBy(k, { trip: to, recap: RECAP });
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.agent.trip, to);
     await k.agent.open(k.trip);
-    await k.agent.idle();
+    await idleAtOnce(k);
   };
   await move(k.kyoto);
   assert.deepEqual((await eventsIn(k, k.kyoto, ['msg.user'])).map((/** @type {any} */ e) => e.data.text), ['Take me to Kyoto'], 'not "Open"');
@@ -755,14 +755,14 @@ test("the user's last line is what they said last: a heard line counts, one set 
   await until(() => k.asks.length === n + 1);
   k.agent.send('Actually, Osaka first');
   assert.match(String(await unanswered), /^Not opened: .* The user wrote: Actually, Osaka first$/);
-  await k.agent.idle();
+  await idleAtOnce(k);
   await move(osaka);
   assert.deepEqual((await eventsIn(k, osaka, ['msg.user'])).map((/** @type {any} */ e) => e.data.text), ['Actually, Osaka first']);
   // No words yet: no copy, and nothing in its place; her recap goes.
   const nara = await createTrip(k.ws, { title: 'Nara', start: '2027-07-01' });
   await heard('h4', {});
   await openBy(k, { trip: nara, recap: RECAP });
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(await eventsIn(k, nara, ['msg.user']), []);
   assert.ok((await eventsIn(k, nara, ['wake'])).some((/** @type {any} */ e) => e.data.reasons.some((/** @type {any} */ r) => r.recap === RECAP)));
 });
@@ -773,9 +773,9 @@ test("a hand-over and a line after it, then the move: the hand-over's message wi
   const hotel = await handIn(k, 'hotel.pdf');
   k.agent.send('Our hotel', { handed: [hotel], handover: 'h-1' });
   k.agent.send("and let's carry on in Kyoto");
-  await k.agent.idle();
+  await idleAtOnce(k);
   await openBy(k, { trip: k.kyoto, recap: RECAP }, 'h-1');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const copies = await eventsIn(k, k.kyoto, ['msg.user']);
   assert.deepEqual(copies.map((/** @type {any} */ e) => [e.data.text, e.data.handed?.map((/** @type {any} */ f) => f.path) ?? null, e.data.handover ?? null]), [
     ['Our hotel', ['/trip/files/hotel.pdf'], 'h-1'], ["and let's carry on in Kyoto", null, null],
@@ -791,15 +791,15 @@ for (const word of ['yes', 'Nope']) {
     useClock(t);
     const k = await chatKit();
     k.agent.send("Let's carry on in Kyoto");
-    await k.agent.idle();
+    await idleAtOnce(k);
     const n = k.asks.length;
     const unanswered = run(k, 'open_trip', { trip: k.kyoto, recap: RECAP });
     await until(() => k.asks.length === n + 1);
     k.agent.send(word); // typed: annai's card takes a tap, or a word it hears, and a typed yes opens nothing
     assert.match(String(await unanswered), new RegExp(`^Not opened: .* The user wrote: ${word}$`));
-    await k.agent.idle();
+    await idleAtOnce(k);
     await openBy(k, { trip: k.kyoto, recap: RECAP });
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual((await eventsIn(k, k.kyoto, ['msg.user'])).map((/** @type {any} */ e) => e.data.text), ["Let's carry on in Kyoto"]);
   });
 }
@@ -810,22 +810,22 @@ test("a second open_trip copies no line an earlier move carried, and one said af
   const tokyo = await createTrip(k.ws, { title: 'Tokyo', start: '2027-05-01' });
   const nara = await createTrip(k.ws, { title: 'Nara', start: '2027-06-01' });
   k.agent.send("Let's carry on in Kyoto");
-  await k.agent.idle();
+  await idleAtOnce(k);
   await openBy(k, { trip: k.kyoto, recap: RECAP });
-  await k.agent.idle();
+  await idleAtOnce(k);
   await k.agent.open(k.trip);
-  await k.agent.idle();
+  await idleAtOnce(k);
   // Back in the chat with nothing new from them (a reminder's turn, or her own call): Tokyo gets her recap, and no copy of that line.
   await openBy(k, { trip: tokyo, recap: RECAP });
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(await eventsIn(k, tokyo, ['msg.user']), []);
   assert.ok((await eventsIn(k, tokyo, ['wake'])).some((/** @type {any} */ e) => e.data.reasons.some((/** @type {any} */ r) => r.recap === RECAP)));
   await k.agent.open(k.trip);
-  await k.agent.idle();
+  await idleAtOnce(k);
   k.agent.send('And Nara, later');
-  await k.agent.idle();
+  await idleAtOnce(k);
   await openBy(k, { trip: nara, recap: RECAP });
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual((await eventsIn(k, nara, ['msg.user'])).map((/** @type {any} */ e) => e.data.text), ['And Nara, later']);
 });
 
@@ -886,11 +886,11 @@ for (const [what, budgets, spent] of /** @type {[string, Record<string, any>, bo
     await updateAppSettings(k.ws, { shiori: { budgets } });
     if (spent) { // one wake of annai's admitted this hour; the move is the next
       k.agent.wake({ kind: 'plugin', plugin: 'tides', text: 'a tide' });
-      await k.agent.idle();
+      await idleAtOnce(k);
     }
     await openBy(k, { trip: k.kyoto, recap: RECAP });
     await until(() => k.agent.target === k.kyoto);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const kyotos = k.requests.filter((/** @type {any} */ r) => JSON.stringify(r.messages).includes('You moved the user here'));
     assert.equal(kyotos.length, 1, 'her turn in Kyoto ran at once, on the move');
     assert.deepEqual((await eventsIn(k, k.kyoto, ['out.speak'])).map((/** @type {any} */ e) => e.data.text), [ANSWER]);
