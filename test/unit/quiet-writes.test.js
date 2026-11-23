@@ -249,9 +249,10 @@ for (const full of [false, true]) {
   });
 }
 
-// halves.js #koeOpen: Koe's own open, whose repair of a call its cut turn left open is a write.
+// halves.js #koeOpen: Koe's own open, whose repair of a call its cut turn left open is a write. Refused, the open goes on without it (tool-result-next):
+// Koe opens the conversation on the full phone too (its next turn's start gives the call its result: refused-result.test.js).
 for (const full of [false, true]) {
-  test(`Koe's own open, a call of its cut turn still open: ${full ? 'its repair refused, one card says so' : 'with room, repaired, no card'}`, async (t) => {
+  test(`Koe's own open, a call of its cut turn still open: ${full ? 'its repair refused, one card says so, and Koe opens it all the same' : 'with room, repaired, no card'}`, async (t) => {
     useClock(t);
     const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { type: { rules: [{ match: '.', reply: sleep }] } }, open: false });
     // Koe's turn was cut in the middle of a call (annai was closed): its reply is in the log, the call's result never came.
@@ -263,7 +264,7 @@ for (const full of [false, true]) {
     if (full) await until(() => told(cards).length > 0);
     await k.agent.idle();
     await toldOnce(cards, full ? 1 : 0, "Koe's open");
-    assert.equal(k.agent.koe.target, full ? null : k.trip, full ? 'Koe stays out of it' : 'Koe opened it');
+    assert.equal(k.agent.koe.target, k.trip, 'Koe opened it');
     assert.equal(k.agent.kokoro.trip, k.trip, 'Kokoro opened it either way');
     const repairs = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.id === 'k-cut');
     assert.equal(repairs.length, full ? 0 : 1, full ? 'the repair of the cut call was refused' : 'the cut call got its result');

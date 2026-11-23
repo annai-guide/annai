@@ -648,8 +648,8 @@ export function linesOf(messages) {
 }
 
 /**
- * After a crash or reload mid-turn, every tool call without a result gets one (spec §6.7), so the
- * transcript stays valid for every provider. A sleep among them never ran, and the restart takes her turn up (no turn.end was logged).
+ * Every tool call without a result gets one (spec §6.7), so the transcript stays valid for every provider: at an open, after a crash or reload
+ * mid-turn, and at a turn's start, for a turn the phone stopped before it wrote them (loop.js #turn). A sleep among them never ran, and the restart takes her turn up (no turn.end was logged).
  * @param {Store} store @param {string} scope @param {Transcript} t
  * @param {Record<string, string>} [mark] its results' half mark
  * @returns {Promise<number>} how many were answered

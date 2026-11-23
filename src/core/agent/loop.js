@@ -779,7 +779,9 @@ export class Agent {
     const scope = trip ?? ME;
     const transcript = await this.#load(scope);
     if (generation !== this.#generation) return;
-    const repaired = await repair(this.store, scope, transcript, this.#mark('tool.result'));
+    // A cut turn's calls get their results (spec §6.7). A phone that refuses the write opens it all the same, told: its next turn's start gives them (#turn).
+    const repaired = transcript.open().length;
+    await repair(this.store, scope, transcript, this.#mark('tool.result')).catch((e) => this.#notSaved(e));
     if (generation !== this.#generation) return;
     await this.#keepElsewhere(scope);
     if (generation !== this.#generation) return;
@@ -2310,6 +2312,9 @@ export class Agent {
       this.#facts = { finalText: '', told: false, slept: false, closed: false, spoke: false, aloud: wakes.some((w) => w.window), wrote: false, answeredAt: null, watched: wakes.some(isWatched), kinds: wakes.map((w) => w.kind) };
       // Shiori became two halves, or one again.
       if (this.transcript.half !== this.#rules()) await this.#serially(() => this.reread());
+      // Calls a turn left open (the phone refused their results, or an open's repair) get them before this turn's first line, so its requests hold
+      // what comes after them (spec §6.7). Refused, the turn stops as at its first write.
+      await this.#serially(() => repair(this.store, this.scope, this.transcript, this.#mark('tool.result')));
     } catch (e) {
       await this.#showOwed(wakes, abort); // a read the phone fails before the steps: what the turn owes is shown all the same
       throw e;
