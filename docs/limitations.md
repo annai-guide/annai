@@ -1460,6 +1460,12 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** found by cut-send-next's second re-read (2026-11-23): a voice rests by `restFor` (voice.js), a second rule beside chat's and transcription's `nextStep`, which rests nothing for a failure to connect while offline (spec §9.6). The fix: `restFor` takes the same offline test, or a voice's rest comes from the shared rule; it goes with the design check of whose failure an error is (its row).
 - **Revisit when:** its row in docs/progress.md, in the next version.
 
+### Kokoro's words shown at the top and said aloud keep their markdown
+- **Kind:** deferred.
+- **What the traveller sees:** when annai shows Kokoro's words itself (Koe never said them), the "Shiori's answer" card at the top of the screen reads them as written, `Sample Lake: [Maps](https://…)`, a long address cut at the card's edge; with voice on, the same raw text goes to the voice. In the conversation's line and on Driving they draw as links since ui-phone-next (2026-11-23).
+- **Why:** found by ui-phone-next's final review (2026-11-23), from the user's screenshots ("tell annai session I sent screenshots via tailscale about ui bugs."): the fix drew the line's words, not the card's or the voice's. The fix: one plain-words reading of the words (a link by its name), made where they are shown, for the card and the voice (one answer for every client).
+- **Revisit when:** its row in docs/progress.md, in the next version.
+
 ### A PDF's page pictures have no size limit
 - **Kind:** deferred.
 - **What the traveller sees:** when the main model can't read PDFs and a reader that sees photos reads a PDF's pages (not the user's setup: Claude reads PDFs itself), up to 10 pages at 1600 px go in one request, 5.0 to 7.6 MB of JPEG for ten pages (read-wait-next's measurement), with no cap like a photo's 256 KiB; on a slow or dead link that send takes minutes before it is answered or cut, about 13 to 19 minutes per reader model that sees photos at 70 kbit/s, twice that while Koe works, and it uses that much mobile data.
