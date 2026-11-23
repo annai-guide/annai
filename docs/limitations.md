@@ -1441,6 +1441,12 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the trace shows a fine PDF marked this way; or the user says "retry the PDF before marking it".
 - **Approved:** 2026-11-22, chief's decision C202 (not the user's words), with the README's line.
 
+### An endpoint type's failures in a row are counted across its successes
+- **Kind:** deferred.
+- **What the traveller sees:** a plugin's endpoint type (a chat or speech provider) whose calls fail now and then is switched off after three failures counted over time, not three in a row: two bad replies, a good one, then one more bad reply switch it off, and the card says it "failed 3 times in a row", which isn't true (a speech plugin takes its voice down with it).
+- **Why:** found by cut-send-next's re-review (2026-11-23, probed; older than that branch): `registry.succeeded` is called where a tool's call works but never where an endpoint type's call does (`callOnce`, `speechCall`), so its failure count only grows. Since cut-send-next a dropped connection no longer counts against the plugin, so it is rarer; not in the user's setup. The fix: one `succeeded` call where a type's call works.
+- **Revisit when:** its row in docs/progress.md, in the next version.
+
 ### A PDF's page pictures have no size limit
 - **Kind:** deferred.
 - **What the traveller sees:** when the main model can't read PDFs and a reader that sees photos reads a PDF's pages (not the user's setup: Claude reads PDFs itself), up to 10 pages at 1600 px go in one request, 5.0 to 7.6 MB of JPEG for ten pages (read-wait-next's measurement), with no cap like a photo's 256 KiB; on a slow or dead link that send takes minutes before it is answered or cut, about 13 to 19 minutes per reader model that sees photos at 70 kbit/s, twice that while Koe works, and it uses that much mobile data.
