@@ -336,6 +336,26 @@ for (const full of [false, true]) {
   });
 }
 
+// halves.js #tell's in-flight guard: Kokoro's block for Koe's state is marked told before its write, so a second refresh while the write is out (#refresh has callers
+// outside the route's chain: split(), #live, #liveTapFailed) doesn't write the same block twice. The write is held here, a second refresh runs, and one is written.
+test("Kokoro's block that Koe is down, its write still out when a second refresh finds the same state: written once", async (t) => {
+  useClock(t);
+  const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { halves: true, koe: { type: [{ delayMs: 60, error: 'auth', message: 'bad key' }] } });
+  /** @type {() => void} */
+  let release = () => {};
+  const door = new Promise((r) => { release = () => r(undefined); });
+  const log = k.agent.kokoro.log.bind(k.agent.kokoro);
+  let writes = 0;
+  k.agent.kokoro.log = (/** @type {any} */ ev, /** @type {any} */ o) => (ev.type === 'halves' && writes++ === 0 ? door.then(() => log(ev, o)) : log(ev, o));
+  k.agent.send('Is Nepenthe open?');
+  await until(() => writes === 1);
+  await k.agent.split(); // a second refresh, the first's write still out
+  assert.equal(writes, 1, 'the second refresh wrote nothing');
+  release();
+  await idleAtOnce(k);
+  assert.deepEqual((await k.events(['halves'])).map((/** @type {any} */ e) => e.data.state), ['koe-down'], 'one block');
+});
+
 // The same route when the store then refuses reads (Chromium at no byte free): Koe's way can't be read again, so Kokoro is never told to talk directly (never
 // woken: no request of hers), and a card says so. Beside it, Koe's own failed turn shows "Shiori stopped".
 test("Koe's list failing whole while the user waits, the store then refusing reads: Kokoro is never woken to answer, and a card says so", async (t) => {
@@ -629,6 +649,29 @@ for (const full of [false, true]) {
       assert.equal((await k.events(['out.show'])).length, full ? 0 : 1);
       // The refused card is gone, said; the note after it is still shown.
       assert.deepEqual(cards.filter((n) => n.title === "Shiori's answer").map((n) => n.body), ['Nepenthe takes cards.']);
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+// halves.js #backstop's "unshown" record: a note of Kokoro's for the user that Koe never said, already retold once, with no words to show instead. It is a line for the
+// Trace alone (quiet: true), so refused it shows no card, as a live session's Trace records show none (#block keeps the same quiet catch).
+for (const full of [false, true]) {
+  test(`a note of Kokoro's with no words for the user, retold once, that a closing session hands on: its Trace line ${full ? 'refused: no card' : 'written with room: no card'}`, async () => {
+    const k = await liveKit([]);
+    try {
+      const cards = raw(k);
+      const store = refusing(k);
+      if (full) store.full((ev) => ev.type === 'error' && ev.data?.kind === 'unshown');
+      const note = { kind: 'note', logged: true, from: 'kokoro', note: 'Say: it is nothing.', mode: 'append', why: 'tool', retold: true, forUser: '', text: 'a note from Kokoro' };
+      k.agent.live.c.owed([note]); // a session that held it, closing
+      const unshown = async () => (await k.events(['error'])).filter((/** @type {any} */ e) => e.data.kind === 'unshown');
+      if (full) await soon(async () => store.tried.some((/** @type {any} */ e) => e.data?.kind === 'unshown'), 10_000);
+      else await soon(async () => (await unshown()).length === 1, 10_000);
+      await k.agent.idle();
+      await toldOnce(cards, 0, "the Trace's line");
+      assert.equal((await unshown()).length, full ? 0 : 1);
     } finally {
       await k.done();
     }
