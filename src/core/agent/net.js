@@ -84,7 +84,8 @@ function userPass(v) {
 
 /**
  * Credentials by their shape, whoever's they are, so that even one annai doesn't keep never shows: a SigV4 Authorization header, a Bearer
- * value (one holding a digit, or a JWT, which starts "eyJ": a real token has one, and "Bearer instruments" stays), a Basic value (RFC 7617's
+ * value (one holding a digit, or a JWT, which starts "eyJ": most real tokens have one, and "Bearer instruments" stays; a token of letters
+ * only, if annai doesn't keep it, is left, and one annai keeps is blanked whatever its shape), a Basic value (RFC 7617's
  * user:password; "Basic authentication" and "Basic Economy/Main" stay), and a presigned URL's signature, credential and token. They run over
  * ordinary answers too (a search provider's rows, a tool's text), so each is as narrow as its credential allows.
  * @type {[RegExp, (whole: string, ...parts: string[]) => string][]}
@@ -134,13 +135,16 @@ export async function withoutSecretsIn(store, value, { strict = false } = {}) {
   const secrets = await knownSecrets(store, { strict });
   /** @param {any} v @returns {any} */
   const walk = (v) => {
+    // What JSON keeps of it: a Date as its ISO text, not an empty object.
+    if (v && typeof v === 'object' && typeof v.toJSON === 'function') v = v.toJSON();
     if (typeof v === 'string') {
       if (!secrets) return v && UNCHECKED;
       const out = blankAll(v, secrets);
       return leaks(out, secrets) ? HIDDEN : out;
     }
     if (Array.isArray(v)) return v.map(walk);
-    // Its names are text too (a map keyed by address). While the keys can't be read they stay as they are: made notes, they would all be one name.
+    // Its names are text too (a map keyed by address). While the keys can't be read they stay as they are: made notes, they would all be one
+    // name; and the one way a plugin's names come in, events.append, writes to the store that is then refusing reads.
     if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [secrets ? walk(k) : k, walk(x)]));
     return v;
   };

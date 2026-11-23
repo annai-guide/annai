@@ -887,7 +887,8 @@ export class PluginHost {
               }
               if (own) return out;
               // What docs/plugins.md offers a tool to return: its text, blanked of every key annai keeps; pictures and a document, base64, with
-              // their type and their data or hash; isError. Nothing else of an object it returned (a picture's path or name, heard, endTurn) is kept.
+              // their type and their data or hash; isError. Of a picture or the document nothing else is copied (its path or name), and heard and endTurn
+              // are left out (an images value that isn't a list goes on as given, and the loop refuses it).
               const { content, images, document, isError } = normalize(out);
               return {
                 content: await theirs(content),

@@ -150,7 +150,7 @@ test("runTool: a third-party plugin's result repeating its key (its service's li
   await host.addBuiltin(builtinUrl('own-trails', body('own')));
   const tools = Object.fromEntries(registry.entries('tool').map((e) => [e.item.name, e.item]));
   const run = async (/** @type {string} */ name) => (await runTool(tools[name], {}, call(), kept)).output;
-  /** What each tool gives Shiori. own: as it gave it; else blanked (words: what its text becomes), with only the offered parts of what it returned. */
+  /** What each tool gives Shiori. own: as it gave it; else blanked (the texts it gives in place of the default ones, in order: text, JSON, error, map, escaped body), with only the offered parts of what it returned. */
   const results = (/** @type {string} */ name, /** @type {Record<string, string>} */ l, /** @type {boolean} */ own, /** @type {(string | undefined)[]} */ [text, json, error, map, escapedBody] = []) => ({
     [`${name}_text`]: { content: text ?? `Two trails. Next: ${l.next} (self: ${l.self}; map: ${l.via})` },
     [`${name}_json`]: { content: json ?? JSON.stringify({ trails: ['Pine Ridge', 'Ewoldsen'], links: l }) },
@@ -204,6 +204,12 @@ test("withoutSecretsIn: the names of an object are text too, so a map keyed by a
   assert.deepEqual(await withoutSecretsIn(kept, seen), { 'https://api.trails.example/v1/trails?key=«key»': 'today', 'plain name': { 'go.example/?to=«key»': ['«key»', 3, null] } });
 });
 
+test("withoutSecretsIn keeps what JSON keeps: a Date is its ISO text, not an empty object (plugin-words-next)", async () => {
+  const kept = createMemoryStore();
+  await kept.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:trails:key', KEY));
+  assert.deepEqual(await withoutSecretsIn(kept, { at: new Date(0), why: `403 for ${KEY}` }), { at: '1970-01-01T00:00:00.000Z', why: '403 for «key»' });
+});
+
 test("a credential is blanked by its shape, in an error's words and in a tool's text, and words that only look like one stay: Basic needs base64 of user:password, Bearer a digit or a JWT (plugin-words-next)", async () => {
   const { host, registry, store: kept } = await hostKit();
   const BASIC = btoa('trail-user:pa55word'); // RFC 7617: base64 of the user id, ":" and the password
@@ -221,6 +227,8 @@ test("a credential is blanked by its shape, in an error's words and in a tool's 
     'Delta Basic Economy/Main Cabin fares compared.',
     'Basic Economy2025 rules apply.',
     'Basic authentication is fine to mention.',
+    // Each half of the Basic rule alone keeps one of these: "Lorenzo" read as base64 is no UTF-8 text, "academy" is text with no ":".
+    'Basic Lorenzo and Basic academy are words.',
     'Bearer instruments are out of stock; Bearer certificates 2 and 3 too.',
   ];
   for (const [text, want] of blanked) assert.equal(await withoutSecrets(kept, text), want, text);
