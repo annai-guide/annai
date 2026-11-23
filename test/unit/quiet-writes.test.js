@@ -323,3 +323,65 @@ test("Kokoro's block that a live session opened, refused: nothing of its own", a
     await k.done();
   }
 });
+
+// halves.js #handOn's route: Kokoro's note for the user a closing session never passed on, with Koe still live and no session: annai shows it (#backstop).
+for (const full of [false, true]) {
+  test(`Kokoro's gated card a closing session hands on, shown by annai: ${full ? 'refused, one card says so' : 'with room, shown, no card'}`, async () => {
+    const card = { title: 'Nepenthe', text: 'Open 11:30–22:00 today.' };
+    const k = await liveKit([]);
+    try {
+      const cards = raw(k);
+      const store = refusing(k);
+      if (full) store.full((ev) => ev.type === 'out.show');
+      const note = { kind: 'note', logged: true, from: 'kokoro', note: 'Kokoro wants to show: Nepenthe: Open 11:30–22:00 today.', mode: 'append', why: 'gated:show', call: { name: 'show', input: { card } }, text: 'a note from Kokoro' };
+      k.agent.live.c.owed([note]); // a session that held it, closing
+      if (full) await soon(async () => told(cards).length > 0, 10_000);
+      else await soon(async () => (await k.events(['out.show'])).length === 1, 10_000);
+      await k.agent.idle();
+      toldOnce(cards, full ? 1 : 0, 'the card handed on');
+      assert.equal((await k.events(['out.show'])).length, full ? 0 : 1);
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+// halves.js #dropped's route: a session dropped and couldn't resume, Classic resting: Koe is down (Kokoro's block). Cut mid-answer, Kokoro finishes it
+// (#talkDirectly), so a refused block is told; not cut, the route only reads Koe's way again, and stays quiet (as #block does).
+for (const cut of [true, false]) {
+  test(`a live session dropped ${cut ? 'mid-answer' : 'between answers'} with Classic resting, Kokoro's blocks refused: ${cut ? 'one card says so (Kokoro would never finish it)' : 'nothing of their own'}`, async () => {
+    const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+    try {
+      k.llm.bench.bench('m-koe', 60_000);
+      const cards = raw(k);
+      const store = refusing(k);
+      store.full((ev) => ev.type === 'halves');
+      k.agent.live.c.dropped(cut);
+      if (cut) await soon(async () => told(cards).length > 0, 10_000);
+      await k.agent.idle();
+      assert.equal(k.agent.koeState, 'down');
+      assert.equal((await k.events(['halves'])).length, 0, 'the blocks were refused');
+      toldOnce(cards, cut ? 1 : 0, "Kokoro's block");
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+// halves.js tap(), its route as annai starts (Koe's way not known yet), the store refusing reads and writes (Chromium at no byte free): Koe's way can't be
+// read, so the tap goes nowhere, and a card says so (with room, a test in halves-live.test.js: live opens).
+test("a tap as annai starts, before Koe's way is known, on a phone that refuses reads and writes: one card says so (the tap went nowhere)", async (t) => {
+  /** @type {() => void} */
+  let started = () => {};
+  const k = await liveKit([], { open: false, ready: new Promise((resolve) => { started = () => resolve(undefined); }) });
+  t.after(k.done);
+  const cards = raw(k);
+  const store = refusing(k);
+  store.full('everything');
+  assert.equal(k.agent.tap(), 'listening');
+  started();
+  await soon(async () => told(cards).length > 0, 10_000);
+  await k.agent.idle();
+  assert.equal(told(cards).length, 1, JSON.stringify(cards.map((c) => c.title)));
+  assert.equal(told(cards)[0].error?.name, 'UnknownError', 'a refused read: its own words, no storage card');
+});
