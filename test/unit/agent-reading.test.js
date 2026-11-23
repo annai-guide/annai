@@ -240,13 +240,17 @@ test("a PDF told in words after the drawing's 90 seconds is the result while the
   assert.equal(drawn, 0);
 });
 
-test("a reader cut in one role rests once a reader of a later role described the photo; not when that reader is the cut model itself, listed in both roles, and not when its reply was empty, which is no description (cut-send-next, 9)", async () => {
-  const cut = new AllFailedError([{ model: 'u', name: 'U', outcome: 'timeout', ms: 70_000, error: 'No answer in 70 seconds.', said: { code: 'send', seconds: 70 } }]);
+test("a reader cut in one role rests once a reader of a later role described the photo, and a reader that failed otherwise rests as its failure says (here a refused request: not at all); not when that reader is the cut model itself, listed in both roles, and not when its reply was empty, which is no description (cut-send-next, 9)", async () => {
+  const cut = new AllFailedError([
+    { model: 'u', name: 'U', outcome: 'timeout', ms: 70_000, error: 'No answer in 70 seconds.', said: { code: 'send', seconds: 70 } },
+    { model: 'u2', name: 'U2', outcome: 'bad-request', ms: 5, error: 'The photo is too large.' },
+  ]);
   for (const [by, text, rests] of /** @type {const} */ ([['m', 'A pelican.', true], ['u', 'A pelican.', false], ['m', ' ', false]])) {
     const bench = new Bench();
     const r = readers({ utility: async () => { throw cut; }, main: async () => ({ reply: { text, stop: 'end' }, answeredBy: by, modelId: by }) });
     const read = await readWith(photo, { call: r.call, bench });
     assert.equal(read.how, text.trim() ? 'told' : 'failed');
     assert.equal(bench.until('u') > Date.now(), rests, `answered by ${by}: ${JSON.stringify(text)}`);
+    assert.equal(bench.until('u2'), 0);
   }
 });

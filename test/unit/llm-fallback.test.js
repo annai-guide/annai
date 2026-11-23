@@ -9,7 +9,7 @@ import { sse } from '../../src/core/llm/sse.js';
 import { parsePartialJSON } from '../../src/core/llm/partial-json.js';
 import { retry } from '../../src/core/llm/retry.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
-import { callRole, photosAsWords, candidates, Bench, AllFailedError, COOLDOWN_MS, continueAfter, failedText, attemptWhy, restText, whyWords, estimateTokens } from '../../src/core/llm/fallback.js';
+import { callRole, photosAsWords, candidates, Bench, AllFailedError, COOLDOWN_MS, continueAfter, failedText, attemptWhy, restText, whyWords, estimateTokens, restOf } from '../../src/core/llm/fallback.js';
 import { activate as scripted } from '../../plugins-official/scripted-model/index.js';
 
 /** A fresh scripted endpoint type, as the plugin registers it. @returns {any} */
@@ -724,6 +724,12 @@ test("a model cut by its send rests 3 minutes once another model answered the sa
   assert.equal(dead.bench.until('m-0'), 0);
   assert.equal(dead.bench.until('m-1'), 0);
   await assert.rejects(call(dead), (e) => e instanceof AllFailedError && e.attempts.map((a) => `${a.model}:${a.outcome}`).join() === 'm-0:timeout,m-1:timeout', 'both asked again');
+});
+
+test("restOf, what a failure rests once its retries are done, is callRole's rule: nothing for a stop, for no connection while the device is offline, for a request the model refused or a cut send; else what nextStep benches (cut-send-next, restOf)", () => {
+  const rest = (/** @type {any} */ kind, /** @type {any} */ more = {}, online = true) => restOf(new ProviderError(kind, kind, more), online);
+  assert.deepEqual([rest('cancelled'), rest('unreachable', {}, false), rest('network', {}, false), rest('bad-request'), rest('timeout', { said: { code: 'send', seconds: 82 } })], [0, 0, 0, 0, 0]);
+  assert.deepEqual([rest('unreachable'), rest('network'), rest('server'), rest('overloaded'), rest('timeout', { said: { code: 'late' } }), rest('rate'), rest('rate', { retryAfter: 600_000 })], [180_000, 180_000, 180_000, 180_000, 180_000, 180_000, 600_000]);
 });
 
 test("a half's call beside the other half's (shared) reaches its model's send, which has the time of twice its bytes: a request in by then is answered (photo-wait's follow-ups, 5)", async () => {

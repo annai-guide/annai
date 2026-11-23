@@ -809,7 +809,7 @@ The default order is "Send audio to the model", then phone dictation. Transcript
 What makes this work:
 - Each segment stays in memory until the turn that used it succeeds.
 - Transcripts are cached per segment: the words any ASR model made for it are its words for every later attempt (a text version's too), so ASR-A runs once however many models need its transcript.
-- A failed ASR model is benched like any other model (§9.6): a stop, no connection on the device or a refused recording rests nothing. One whose recording got no answer in its send's time (§4.8), or that couldn't be reached while the device says it is online (likelier a link with no data than the model), is not asked again in that call, and rests only once another model heard the recording.
+- A failed ASR model is benched like any other model (§9.6): a stop, a connection dropped while the device is offline, or a refused recording rests nothing. One whose recording got no answer in its send's time (§4.8), or that couldn't be reached at all (the device offline, or a link with no data while it says it is online), is not asked again in that call, and rests only once another model heard the recording.
 - **Text versions are made lazily.** A segment sent as raw audio is transcribed only when something text-only first needs it: a later text-only model, compaction, or the trace. The first transcription-capable entry does it, and the result is cached. With no such entry, it's stored as "[audio, not transcribed]".
 - **Dictation is exclusive.** If phone dictation is the first *usable* entry, segments arrive as text only, and audio-based entries can't apply to them. If dictation fails, listening switches to recording from the next segment.
 

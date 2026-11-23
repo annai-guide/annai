@@ -360,13 +360,20 @@ test("a transcription that can't connect while the phone says it is online is a 
   assert.equal(one.llm.uploads.length, 2, 'the next call asks it again');
 });
 
-test("words a transcription model made for a segment are used while every transcription entry rests (cut-send-next, 7)", async () => {
+test("words a transcription model made for a segment are used while every transcription entry rests, and by an earlier entry once it rests no more: made once (cut-send-next, 7)", async () => {
   const k = await phone({});
   const request = asked([{ type: 'speech', id: (await k.hear()).id }]);
   assert.equal(partsOf(await k.voice.resolver('trip-1')(textModel('txt'), request, false))[0].text, 'what was said');
   k.llm.bench.bench('groq', 180_000, Date.now());
   assert.equal(partsOf(await k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request, false))[0].text, 'what was said');
   assert.deepEqual(k.llm.uploads.map((u) => u.modelId), ['groq']);
+  // The first entry cut, the second's words; the first's rest over, the next call takes the second's words and doesn't ask the first.
+  const two = await phone({}, { asr: ['groq', 'g2'], speechIn: ['send-audio', 'groq', 'g2'], cut: { groq: 1 } });
+  const heard = asked([{ type: 'speech', id: (await two.hear()).id }]);
+  assert.equal(partsOf(await two.voice.resolver('trip-1')(textModel('txt'), heard, false))[0].text, 'what was said');
+  two.llm.bench.clear('groq');
+  assert.equal(partsOf(await two.voice.resolver('trip-1', 'w-1')(textModel('txt'), heard, false))[0].text, 'what was said');
+  assert.deepEqual(two.llm.uploads.map((u) => u.modelId), ['groq', 'g2']);
 });
 
 test("a call whose only transcription model was cut uses the words another call made since, for its next chat model (cut-send-next, 8: R1)", async () => {

@@ -1,5 +1,5 @@
 {
-  "build": "78789a5258b7",
+  "build": "f236a56f62a9",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -79,7 +79,7 @@
     "/src/core/llm/config.js": "008b753fa725",
     "/src/core/llm/contract.js": "1a93b2547b3a",
     "/src/core/llm/decide.js": "4aff39cf2ab3",
-    "/src/core/llm/fallback.js": "09c0e3df9f8d",
+    "/src/core/llm/fallback.js": "1d58a594d2b1",
     "/src/core/llm/move-over.js": "9584243ec1f4",
     "/src/core/llm/official.js": "43a4783de11b",
     "/src/core/llm/provider-desc.js": "f1a1406b822b",
@@ -182,7 +182,7 @@
     "/src/core/voice/settings.js": "1b17d242614f",
     "/src/core/voice/speaker.js": "e9f619791d40",
     "/src/core/voice/stream-start.js": "824d34b902ff",
-    "/src/core/voice/voice.js": "ac5b91f4c075",
+    "/src/core/voice/voice.js": "1241bae89322",
     "/src/core/voice/where.js": "91b1deb9d78f",
     "/src/core/types.js": "34ef03fe15fb",
     "/src/core/ui-slots.js": "355a32f019cb",

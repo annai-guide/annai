@@ -486,7 +486,7 @@ export const levelOf = (config, role) => config.roles?.[role]?.level ?? /** @typ
 
 const defaultSleep = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
 /** The browser's word on the connection: false is reliable, true can be wrong (a network with no internet). */
-export const deviceOnline = () => globalThis.navigator?.onLine !== false;
+const deviceOnline = () => globalThis.navigator?.onLine !== false;
 
 /** Parts made from heard speech keep its id (G2): as sound or words, the same to a kept turn; not words nothing wrote down. @param {Request} was @param {Request} now @returns {Request} */
 const heardIds = (was, now) => (was === now ? now : {
@@ -685,7 +685,7 @@ export async function callRole(c) {
         // Asked while it rested, and it answered: it rests no more, so the next call asks it in its place again.
         if (restingAsked === id) bench.clear(id);
         // A model whose send was cut in this call rests now that another answered in its place: something else answers meanwhile (§9.6).
-        for (const a of attempts) if (a.said?.code === 'send' && a.model !== id) bench.bench(a.model, COOLDOWN_MS, now());
+        for (const a of attempts) if (a.said?.code === 'send') bench.bench(a.model, COOLDOWN_MS, now());
         const answered = unreasoned ? { ...reply, natives: /** @type {const} */ ('refused') } : reply;
         const full = said ? prefixed(answered, said) : answered;
         const reasoning = full.parts.map((p) => (p.type === 'reasoning' ? p.text : '')).filter(Boolean).join('\n\n');
