@@ -1466,6 +1466,12 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** found by ui-phone-next's final review (2026-11-23), from the user's screenshots ("tell annai session I sent screenshots via tailscale about ui bugs."): the fix drew the line's words, not the card's or the voice's. The fix: one plain-words reading of the words (a link by its name), made where they are shown, for the card and the voice (one answer for every client).
 - **Revisit when:** its row in docs/progress.md, in the next version.
 
+### A photo upload that drops turns uploads off until a restart
+- **Kind:** deferred.
+- **What the traveller sees:** with a provider that takes photos by upload (OpenRouter's), one photo upload that fails for any reason, a dropped connection included, turns uploads off for that provider until annai restarts, its key or address changes or its Test passes; every later photo then goes inside the request as bytes, so requests are larger on the slow link that dropped the upload. Not the user's setup (their photos go to Anthropic, which takes no uploads from a browser).
+- **Why:** found by fail-owner-next's review (2026-11-23; older than that branch): `withUploads` calls `uploads.off` on every failure. The fix: only a refusal that is the provider's or the plugin's turns uploads off; a dropped or cut upload sends that photo as bytes and leaves uploads on.
+- **Revisit when:** its row in docs/progress.md, in the next version.
+
 ### A PDF's page pictures have no size limit
 - **Kind:** deferred.
 - **What the traveller sees:** when the main model can't read PDFs and a reader that sees photos reads a PDF's pages (not the user's setup: Claude reads PDFs itself), up to 10 pages at 1600 px go in one request, 5.0 to 7.6 MB of JPEG for ten pages (read-wait-next's measurement), with no cap like a photo's 256 KiB; on a slow or dead link that send takes minutes before it is answered or cut, about 13 to 19 minutes per reader model that sees photos at 70 kbit/s, twice that while Koe works, and it uses that much mobile data.
