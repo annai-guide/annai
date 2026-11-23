@@ -144,7 +144,7 @@ export async function withoutSecretsIn(store, value, { strict = false } = {}) {
     }
     if (Array.isArray(v)) return v.map(walk);
     // Its names are text too (a map keyed by address). While the keys can't be read they stay as they are: made notes, they would all be one
-    // name; and the one way a plugin's names come in, events.append, writes to the store that is then refusing reads.
+    // name, and annai's own records' names are fixed words; no plugin keys what it logs by an address.
     if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [secrets ? walk(k) : k, walk(x)]));
     return v;
   };

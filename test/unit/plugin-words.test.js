@@ -16,7 +16,7 @@ const formOf = (s) => new URLSearchParams({ s }).toString().slice(2);
 const ONCE = [KEY, encodeURIComponent(KEY), formOf(KEY), encodeURI(KEY)];
 /** The key as a service may echo it: as written, as a URL component, a whole address or a form encodes it, and each of those encoded once more. */
 const FORMS = [...new Set([...ONCE, ...ONCE.flatMap((f) => [encodeURIComponent(f), formOf(f)])])];
-/** The same in capitals, and in lower case: a service's own case. */
+/** The URL-component form in capitals and in lower case: a service's own case. */
 const CASES = [encodeURIComponent(KEY).toUpperCase(), encodeURIComponent(KEY).toLowerCase()];
 /** A trail service's answer with the key in each of those forms, and once inside another address's parameter; `of` gives what stands for the key. @param {(form: string) => string} of */
 const linked = (of = (f) => f) => [
