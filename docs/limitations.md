@@ -1390,6 +1390,54 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the trace shows messages of several photos failing on slow links; or the user says "cap the photos per message" or "send only the newest".
 - **Approved:** 2026-11-21, chief's decision C177 (not the user's words), with a README line saying what the traveller can do.
 
+### A plugin trigger's firing text, fallback and place aren't blanked
+- **Kind:** known limitation.
+- **What the traveller sees:** nothing on screen. A third-party plugin that registers a trigger type and puts its service's answer, key included, into a firing's text, fallback or place would put the key in the conversation's log and Shiori's wake line (src/core/live/live.js `#fire`, `#reason`). Its error words are blanked (`#noteOnce`), as is everything a plugin hands annai through its API (plugin-words-next).
+- **Why:** a trigger's `check()` is synchronous, so blanking its words needs a place of its own in live.js, the per-channel route plugin-words-next's step back avoided; no plugin registers a trigger and docs/plugins.md doesn't offer them. Under the user's "redaction for accidental leaks only, with simple rules" (2026-11-13).
+- **Revisit when:** docs/plugins.md documents triggers, or a plugin registers one; or the user says "blank the trigger text too".
+- **Approved:** 2026-11-22, chief's decision C197 (not the user's words).
+
+### A file a plugin writes, and a plugin's blobs, are kept as written
+- **Kind:** known limitation.
+- **What the traveller sees:** nothing on screen. A plugin that caches its service's raw answer, its key in an address, in a trip file (`annai.files`) or as a blob kept with a log entry (`events.append`) leaves the key there: the files tool reads the file as it is, and backups carry both.
+- **Why:** a file stays as written: its bytes, its schema, undo and the plugin's own read-back depend on it, and blanking on write would change files a plugin writes on purpose. docs/plugins.md tells authors never to put keys in files. Under "redaction for accidental leaks only, with simple rules" (2026-11-13).
+- **Revisit when:** a plugin is seen writing a key into a file or blob; or the user says "blank what a plugin writes".
+- **Approved:** 2026-11-22, chief's decision C198 (not the user's words), with a line in docs/plugins.md.
+
+### A credential annai doesn't keep, shaped unlike a key, isn't blanked by its shape
+- **Kind:** known limitation.
+- **What the traveller sees:** nothing on screen. annai blanks every key it keeps wherever it shows; a credential it doesn't keep is blanked only by its shape, and since plugin-words-next the Basic and Bearer shapes are narrow: a Basic value only as base64 of UTF-8 `user:pass`, a Bearer value only with a digit or as a JWT. A Bearer token of letters only (about 3% of 20-character random tokens), or a Latin-1 or colon-less Basic value, echoed in a provider's error or a plugin's answer, stays in the trace and in what Shiori reads.
+- **Why:** the shapes now run over ordinary answers (an installed plugin's text, search rows), where the wider rule garbled travel words ("Delta Basic Economy/Main Cabin" became "Basic «key» Cabin" in the official search plugins' rows; "Bearer instruments" became «key»). The shapes exist for credentials annai doesn't keep; a second rule, wide for errors and narrow for answers, adds a part.
+- **Revisit when:** an unknown credential is seen unblanked in a trace or log; or the user says "the wider shapes for error words".
+- **Approved:** 2026-11-22, chief's decision C199 (not the user's words).
+
+### PDFs sent with a refused one go as words until the next summary or Start fresh
+- **Kind:** known limitation.
+- **What the traveller sees:** when every model a request went to refuses it while it holds several PDFs, and the request with them as words is answered, every PDF of that request goes as words in that half of the conversation, a fine one beside the refused one too, until the conversation is next summarized or started fresh; one card names them all. After that she can read them one at a time.
+- **Why:** the providers' words don't name which PDF they refused, so annai can't tell them apart without one more send per PDF on the link that just refused; one refused file among several is rare; the mark ends at the next summary (pdf-refused-next).
+- **Revisit when:** a traveller is seen losing a fine PDF this way; or the user says "test each PDF on its own".
+- **Approved:** 2026-11-22, chief's decision C200 (not the user's words), with the README's line.
+
+### A model that was resting and not asked gets a refused PDF's words too
+- **Kind:** known limitation.
+- **What the traveller sees:** when the models asked all refuse a request holding a PDF, and one model was resting and so not asked (Koe never asks a resting model; Kokoro asks one resting model at most), the PDF is marked for that half, and the resting model, awake again, gets the words though it might have read the PDF, until the next summary or Start fresh.
+- **Why:** making a resting model block the test would bring the original failure back (every turn failing) while a model stays rested for a key or credit problem; the mark ends at the next summary (pdf-refused-next; a test pins the choice).
+- **Revisit when:** the trace shows a PDF lost this way; or the user says "ask the resting model first".
+- **Approved:** 2026-11-22, chief's decision C201 (not the user's words), with the README's line.
+
+### A refusal that wouldn't happen again can mark a PDF
+- **Kind:** known limitation.
+- **What the traveller sees:** a provider's passing refusal (a 400 that goes away on the next send) of a request that holds a PDF, when the request with the PDF as words is then answered, marks the PDF: it goes as words, with the card, until the next summary or Start fresh, though it was fine.
+- **Why:** the test (the same request with its PDFs as words) can't tell a passing failure from the PDF; telling them apart would take one more whole send of the PDF on the link that just failed; the mark ends at the next summary (pdf-refused-next).
+- **Revisit when:** the trace shows a fine PDF marked this way; or the user says "retry the PDF before marking it".
+- **Approved:** 2026-11-22, chief's decision C202 (not the user's words), with the README's line.
+
+### A PDF too long for every model's window comes back after each summary
+- **Kind:** deferred.
+- **What the traveller sees:** a PDF too long for every model's window but under the page limit, still in its two turns or read again after the conversation is summarized, is sent whole again: in Kokoro's half, each model gets it whole twice (before and after one more summary that compacts an older exchange) before the test marks it again, with the card; with two models, four whole uploads of a large PDF on mobile data each time a summary ends the mark.
+- **Why:** found by pdf-refused-next's re-review (2026-11-22, a probe with scripted providers): the mark ends at a summary (so a fine PDF comes back), and "too long" brings housekeeping first (so a PDF that fits after a summary is answered from it); together they repeat the cost for a PDF that never fits. Chief's decision C203 (not the user's words): Deferred, not a known limitation, under the user's words of 2026-10-19, "we are an agent on the go possibly with spotty internet. thus we shall make these optimizations when possible." The fix (about four lines): `#loadKept` keeps this half's marks from before the latest summary in a second set, and the catch block skips the too-long housekeeping when the request holds one of them, testing at once.
+- **Revisit when:** its row in docs/progress.md, in the next version.
+
 ### A reading's and a transcription's waits estimate their send apart from a model's
 - **Kind:** deferred.
 - **What the traveller sees:** when a reader model describes a photo or reads a PDF for a main model that can't (not the user's setup: Claude sees photos and reads PDFs itself), the reading's 30 or 90 seconds get each reader's send time at 70 kbit/s added once, when that reader is asked (photo-wait2-next). So (1) a reader that fails after its send leaves its extra to the readers after it, and the wait can run long: three readers each stalled after their answer's headers take 90 s where main stopped at 30, and a 2 MiB PDF whose reader refuses at once, then whose pages plugin hangs, about 410 s (a tap on Shiori stops it); (2) a send the reader's call makes again (an overloaded answer's retry, a network retry, the role's next model) isn't counted, so on a slow link the second send is cut "in time"; (3) on a 40 to 60 kbit/s link little of the 30 seconds is left once the reader has the request; (4) while Koe works, a reader's send shares the link with Koe's request and isn't timed as shared, so a default photo's reading is cut below about 80 kbit/s; (5) the line Shiori reads says "(30 seconds)" after a longer wait. And (6) a transcription is never timed as shared: a WAV recording sent to a speech-to-text model that takes only WAV, while the other half's request goes up the same link, is cut with "No output started in time." from about 4 s of recording near 70 kbit/s (not the user's setup: speech-openai takes webm).
