@@ -581,8 +581,8 @@ export class Halves {
   /**
    * What the user typed and what woke Shiori, and what follows a change of Koe's way, in order. failed: what a route that fails says. The default is a console
    * line: a route that only reads Koe's way again writes nothing but annai's own record of it (Kokoro's block, written again by the next refresh), which nothing
-   * waits behind; so is shown(), which opens a session for the notes that wait in one: they were written when they were sent, so a read refused there shows
-   * nothing, and they are said at the next session open. A route that carries something for the user or Shiori (what #backstop shows, Kokoro told to talk
+   * waits behind. shown() is a default route too, though it carries notes: those waiting in a live session were written when sent, so a read refused as it opens
+   * shows nothing, and they are said at the next session open. A route that carries something for the user or Shiori (what #backstop shows, Kokoro told to talk
    * directly, a tap) says it's gone (#gone).
    * @param {() => unknown} fn @param {(e: unknown) => unknown} [failed]
    */
