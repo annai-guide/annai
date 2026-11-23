@@ -517,7 +517,7 @@ test('a PDF over the request size: one forced summary in its turn, not one for e
 
 // A PDF marked before a summary or fresh start, and back after it (docs/limitations.md, "A PDF too long for every model's window comes back after each
 // summary"; pdf-refused-next's re-review, N2): whatever the mark was for, it is taken as one a summary won't make room for, so a refusal by every model asked
-// of a request holding whole only such PDFs is tested at once, with no housekeeping first. A request that isn't refused sends it whole; one no model was asked for,
+// of a request holding whole only such PDFs is tested at once, with no too-long housekeeping first. A request that isn't refused sends it whole; one no model was asked for,
 // or one that also holds a PDF not so marked, keeps its housekeeping.
 /** The conversation's summaries and fresh starts so far. @param {any} k */
 const summaries = async (k) => (await k.events(['compaction'])).length;
