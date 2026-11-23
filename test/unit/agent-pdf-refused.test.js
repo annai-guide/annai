@@ -5,7 +5,7 @@
 // PDF over its page limit (kind bad-request): the kinds are what the classifier gives them, the wordings are not seen from a real API.
 //
 // What the fix rounds pin (the mark's reach; one card; Start fresh; a resting model): the test runs only when every model the request went to ended in a refusal, and a request too
-// long goes through housekeeping first, unless the test would run and every PDF it holds whole was marked before a summary or fresh start (the last tests); the mark is written only
+// long goes through housekeeping first, unless the test would run and every PDF it holds whole was marked before a summary or fresh start; the mark is written only
 // when a model that refused the request (one asked with the PDF's reading counts) answers the words, is its half's, and ends at its conversation's next summary or Start fresh.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -518,7 +518,7 @@ test('a PDF over the request size: one forced summary in its turn, not one for e
 // A PDF marked before a summary or fresh start, and back after it (docs/limitations.md, "A PDF too long for every model's window comes back after each
 // summary"; pdf-refused-next's re-review, N2): whatever the mark was for, it is taken as one a summary won't make room for, so a refusal by every model asked
 // of a request holding whole only such PDFs is tested at once, with no housekeeping first. A request that isn't refused sends it whole; one no model was asked for,
-// or one that also holds a PDF never marked, keeps its housekeeping.
+// or one that also holds a PDF not so marked, keeps its housekeeping.
 /** The conversation's summaries and fresh starts so far. @param {any} k */
 const summaries = async (k) => (await k.events(['compaction'])).length;
 /** Her model's step that writes a summary while her cache is warm (Summarize now). */
@@ -581,7 +581,7 @@ test('marked two summaries ago, then a reload: the PDF read again is still teste
 
 test('a fresh PDF beside an earlier-marked one, in a request too long only because of the conversation: housekeeping first, then both go whole, and she answers from both, with no new mark', async (t) => {
   useClock(t);
-  // The manual is refused (too long for its window) until its mark, and marked; the small PDF is refused in any request of more than 10 messages, as a window the
+  // The manual is refused (too long for its window) until `wide` is set after the summary, and her first read of it marks it; the small PDF is refused in any request of more than 10 messages, as a window the
   // conversation fills would (a count stands in for a window: the shape, not the sizes). Measured: her request with both PDFs holds 11 messages, and 9 after the housekeeping.
   let wide = false;
   const hold = async (/** @type {any} */ c) => {
@@ -604,7 +604,7 @@ test('a fresh PDF beside an earlier-marked one, in a request too long only becau
   await talk(k.agent, k, ['Read both']);
   const turn = k.requests.slice(before);
   assert.deepEqual(turn.map(pdfsOf), [[], ['manual.pdf', 'small.pdf'], ['manual.pdf', 'small.pdf'], [], ['manual.pdf', 'small.pdf']],
-    'her read; both PDFs, refused by both models; the summary (the small one was never refused after one, so the conversation may be the cause: no test yet); both again, answered');
+    'her read; both PDFs, refused by both models; the summary (the small one was never marked before one, so the conversation may be the cause: no test yet); both again, answered');
   assert.equal(await summaries(k), was + 1, 'housekeeping ran before any test');
   assert.equal((await k.events(['pdf.refused'])).length, 1, 'no new mark');
   assert.equal((await spoken(k)).at(-1), 'Both PDFs.');
@@ -623,8 +623,8 @@ for (const [shape, lines] of /** @type {const} */ ([
   ['a bigger window now', EARLIER],
   // A window of 7,400 tokens throughout. Measured (annai's estimates): the earlier lines' requests are at most 7,172 tokens; the read's request without the PDF is
   // 7,263, with it 8,915, and after its turn's housekeeping 7,866 (refused); with it as words 6,385, and every other until Summarize now at most 6,643 (taken). After it,
-  // her read again with the PDF, 5,785. Any window from 7,173 to 7,865 does it: from 7,866 up the request after the housekeeping fits and nothing is marked (the bound that
-  // decides it); from 7,172 down the earlier lines are refused too, and a summary comes before the read.
+  // her read again with the PDF, 5,785. Any window from 7,172 to 7,865 does it: from 7,866 up the request after the housekeeping fits and nothing is marked (the bound that
+  // decides it); from 7,262 down the read's own request is refused too and a summary comes before the read, the shape still holding; from 7,171 down the earlier lines are refused as well.
   ['the conversation was what was too long', EARLIER.map((l) => `${l} ${LONG}`)],
 ])) {
   test(`a PDF marked before a summary that fits after it (${shape}) goes whole, and she answers from it: the earlier mark sends no words`, async (t) => {

@@ -3009,7 +3009,7 @@ export class Agent {
    * The PDFs of a request every model it went to refused, which one that refused it answered without (spec §4.8): each is marked in the conversation's
    * log (this half's own), which this half's later requests read until the conversation's next summary or fresh start, a reload's too (#loadKept,
    * #visible); one card names them all, with the models' words. A mark the phone can't write holds only while the conversation stays open in this
-   * run: a reload, another conversation opened or Erase ends it, and a summary as a mark (its PDF skips the too-long housekeeping until one of those) (#notSaved).
+   * run: a reload, another conversation opened or Erase ends it, and a summary ends only its mark: its PDF skips the too-long housekeeping until one of those (#notSaved).
    * @param {{ why: import('../llm/fallback.js').Why, words: string, files: Map<string, any>, models: Set<string> }} trial @param {string} wakeId
    */
   async #pdfRefused(trial, wakeId) {
