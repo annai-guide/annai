@@ -397,14 +397,22 @@ async function readFor(request, model, read, signal, readings) {
   const newest = request.messages.findLastIndex((m) => m.role === 'user');
   const cant = (/** @type {import('./contract.js').Part} */ p) => (p.type === 'image' && !model.input.includes('image')) || (p.type === 'document' && !model.input.includes('pdf'));
   let unread = false;
-  const messages = await Promise.all(request.messages.map(async (m, i) => (i !== newest ? m : {
-    ...m, parts: (await Promise.all(m.parts.map(async (p) => {
-      if (!cant(p)) return [p];
+  const messages = await Promise.all(request.messages.map(async (m, i) => {
+    if (i !== newest) return m;
+    /** @type {import('./contract.js').Part[]} */
+    const parts = [];
+    // One after another, as a tool's photos are read (loop.js #described): sends made together would share the link, each timed as sent alone.
+    for (const p of m.parts) {
+      if (!cant(p)) {
+        parts.push(p);
+        continue;
+      }
       const got = await read(/** @type {any} */ (p), model, signal);
       if (got.unread) unread = true;
-      return got;
-    }))).flat(),
-  })));
+      parts.push(...got);
+    }
+    return { ...m, parts };
+  }));
   const sees = model.input.includes('image');
   // The photo limit comes from requestFor, which `one` applies to this: same model, same window.
   return { request: photosAsWords({ ...request, messages }, { photos: !sees, documents: !model.input.includes('pdf'), sees, readings }), unread };

@@ -8,16 +8,17 @@ import { KOE_CLASSIC, modelOf } from '../llm/config.js';
 import { fromBase64, toBase64 } from '../bytes.js';
 import { MAX_PAGES, PAGE_EDGE } from '../pdf-pages.js';
 import { withoutSecrets } from './net.js';
-import { sendMs } from '../llm/uploads.js';
 
 /**
- * How long a photo's description may take, in seconds, plus each reader's time to go up (§4.8): the same as a role waits for a model's first words (§9.6),
- * as a turn shouldn't wait on a side job longer than on its own model; a description is a few sentences.
+ * The least a reader waits for its first words, in seconds: what a role waits for a model's first words by default (§9.6), so a role's
+ * shorter wait (Koe's 8 s) doesn't cut a reading. A reader is a model call, timed as any is (call.js, §4.8).
  */
 export const DESCRIBE_S = 30;
 /**
- * And a PDF's reading, its pages drawn included: its words, up to 3,000 tokens, take a slow model (a local one, at
- * some 35 tokens a second) near 90 seconds, where a photo's few sentences fit in 30. Only Kokoro and one Shiori wait for it; Koe never does.
+ * The PDF pages' drawing's time limit, in seconds: no call times it, and a plugin that never answers would hold the turn until a tap. A
+ * limit that only catches a hang, kept from when it was the whole reading's: the official plugin drew ten pages at 1600 px in under a
+ * second in the e2e browsers on a desktop CPU (2026-11-23: 0.45 s for a text PDF, 0.61 s for a 3.2 MB scan, in Chromium; 0.93 and 0.69 s
+ * in WebKit; PDF.js's load included): 90 s gives a slower phone about a hundred times as long. Only Kokoro and one Shiori wait for it; Koe never does.
  */
 export const DESCRIBE_PDF_S = 90;
 /** What a PDF told only up to the output limit ends with. */
@@ -74,15 +75,18 @@ export function noReader(kind, { plugin = false, photos = false } = {}) {
 
 /**
  * Reads a file for a model that can't take it. Every reader call is a side job: reasoning off, in the trace as a describe, waiting for
- * its first words the longer of its role's wait and DESCRIBE_S (for a PDF, at most two thirds of its reading). The whole reading, pages included, stops at
- * DESCRIBE_S or DESCRIBE_PDF_S, or at signal (the turn's stop): one budget for all its readers, to which each reader adds the time its file takes
- * to go up at SLOW_UPLINK each time it is asked (a fixed extra: unlike a model's wait, it isn't started again at the reader's answer's
- * headers, call.js). "Can read" means can and did: a reader that fails passes it on.
+ * its first words the longer of its role's wait and DESCRIBE_S, and timed as any model call is (call.js: until the answer's headers, also
+ * its request's time to go up, twice that when shared). The reading has no clock over its readers: one that sends headers and then no
+ * first words fails and rests 3 minutes, as any model does (§9.6); one whose send got no headers in its time fails and rests nothing
+ * (§4.8), so the next reading asks it again; either way the next reader is asked. Only a PDF's pages' drawing, which no call times,
+ * stops at DESCRIBE_PDF_S; all of it stops at signal (the turn's stop). "Can read" means can and did: a reader that fails passes it on.
  * @param {FileToRead} file @param {{ input?: string[] }} model the model the reading is for
  * @param {{ llm: { call: Function, config: () => Promise<any> }, half: 'one' | 'kokoro' | 'koe', pages: import('../pdf-pages.js').PdfPages | null,
- *   signal: AbortSignal, wakeId: string, scope: string, secondMs: number, explain: (e: unknown, role: string) => string | Promise<string>, store: import('../types.js').Store }} o
+ *   signal: AbortSignal, wakeId: string, scope: string, secondMs: number, explain: (e: unknown, role: string) => string | Promise<string>, store: import('../types.js').Store,
+ *   shared?: boolean }} o
  *   explain: why a reader failed, in English for the model (the loop's, which knows whether the device is online, and blanks every key annai keeps);
- *   store: whose keys the PDF pages plugin's error is blanked of
+ *   store: whose keys the PDF pages plugin's error is blanked of; shared: the half's turn shares the link with the other half's (loop.js), and
+ *   so does each reader's send
  * @returns {Promise<Reading>}
  */
 export async function readFile(file, model, o) {
@@ -90,33 +94,17 @@ export async function readFile(file, model, o) {
   const pdf = file.kind === 'pdf';
   const roles = readerRoles(cfg, o.half);
   const takes = (/** @type {string} */ role, /** @type {string} */ kind) => chatCandidates(cfg, role).some((id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes(kind));
-  const limit = pdf ? DESCRIBE_PDF_S : DESCRIBE_S;
-  // The turn's stop, and the time limit, end it (without AbortSignal.any, which older browsers lack).
+  // The turn's stop, and the pages' drawing's time limit, end it (without AbortSignal.any, which older browsers lack).
   const stop = new AbortController();
   const end = () => stop.abort();
-  /** The send time of what readers were sent, owed to the limit when it runs out (sendMs). */
-  let owed = 0;
-  const expire = () => {
-    if (!owed) return end();
-    late = setTimeout(expire, owed);
-    owed = 0;
-  };
-  let late = setTimeout(expire, limit * o.secondMs);
   o.signal.addEventListener('abort', end, { once: true });
   if (o.signal.aborted) end();
   const stopped = new Promise((_, no) => stop.signal.addEventListener('abort', () => no(new Error('stopped')), { once: true }));
   stopped.catch(() => {});
   /** @type {(how: Reading['how'], text: string, images?: Reading['images']) => Reading} */
   const reading = (how, text, images = []) => ({ how, text, images });
-  /**
-   * How long a reader waits for its first words: the longer of its role's own wait and DESCRIBE_S, so a role's short wait (Koe's 8 s)
-   * doesn't cut a reading; for a PDF, never more than two thirds of its reading, so a reader that never starts answering always leaves
-   * the pages their turn. @param {string} role
-   */
-  const wait = (role) => {
-    const ms = Math.max(firstWordsMs(cfg, role), DESCRIBE_S * o.secondMs);
-    return pdf ? Math.min(ms, Math.floor((limit * o.secondMs * 2) / 3)) : ms;
-  };
+  /** How long a reader waits for its first words: the longer of its role's own wait and DESCRIBE_S. @param {string} role */
+  const wait = (role) => Math.max(firstWordsMs(cfg, role), DESCRIBE_S * o.secondMs);
   /** What failed last, in words. */
   let failed = '';
   /**
@@ -129,9 +117,8 @@ export async function readFile(file, model, o) {
       if (stop.signal.aborted) break;
       try {
         const sent = typeof parts === 'function' ? parts(role) : parts;
-        owed += sendMs(sent.reduce((/** @type {number} */ n, /** @type {any} */ p) => n + (p.data?.length ?? 0), 0)); // base64, as in the request
         const r = await o.llm.call({
-          role, level: 'off', signal: stop.signal, scope: o.scope, record: { tag: 'describe', wake: o.wakeId }, firstOutputMs: wait(role),
+          role, level: 'off', signal: stop.signal, scope: o.scope, record: { tag: 'describe', wake: o.wakeId }, firstOutputMs: wait(role), shared: Boolean(o.shared),
           request: { system, maxOutput, messages: [{ role: 'user', parts: [...sent, { type: 'text', text: ask }] }] },
         });
         if (r.reply.text.trim()) return { ...r, sent };
@@ -160,6 +147,7 @@ export async function readFile(file, model, o) {
       if (o.pages && (sees || seer) && !stop.signal.aborted) {
         /** @type {import('../pdf-pages.js').Drawn} */
         let drawn;
+        const late = setTimeout(end, DESCRIBE_PDF_S * o.secondMs);
         try {
           // Up to MAX_PAGES, whatever this model's photo limit: the reading is kept for every model, and each request sends only its
           // model's limit, from page 1.
@@ -171,6 +159,8 @@ export async function readFile(file, model, o) {
           /* en */
           const why = `The PDF pages plugin couldn't draw its pages: ${await withoutSecrets(o.store, /** @type {any} */ (e)?.message ?? e)}`;
           return reading('failed', [failed, why, reader ? '' : noReader('pdf')].filter(Boolean).join('\n'));
+        } finally {
+          clearTimeout(late);
         }
         // A page with nothing drawn on it isn't sent (a booking's empty last page went as a picture every turn).
         const blank = Array.isArray(drawn.blank) ? drawn.blank : [];
@@ -212,13 +202,13 @@ export async function readFile(file, model, o) {
   } catch {
     // stopped: said below
   } finally {
-    clearTimeout(late);
     o.signal.removeEventListener('abort', end);
   }
   /* en */
   if (o.signal.aborted) return reading('stopped', "It wasn't described: the turn was stopped first.");
+  // Only the pages' drawing has a time limit of the reading's own.
   /* en */
-  if (stop.signal.aborted) return reading('late', `It couldn't be described in time (${limit} seconds).`);
+  if (stop.signal.aborted) return reading('late', `It couldn't be described in time (${DESCRIBE_PDF_S} seconds).`);
   /* en */
   return reading('failed', failed || "It couldn't be described.");
 }
