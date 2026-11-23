@@ -1784,7 +1784,7 @@ test("describing a photo for a model that can't see it waits for the describer's
   assert.equal((await stopped.events(['out.speak'])).length, 0);
 });
 
-test("10. a reader that never starts answering ends at its own wait and rests, as any model does: the next reader describes the photo, and a reading in the next 3 minutes doesn't ask the resting one (read-wait-next)", async (t) => {
+test("a reader that never starts answering ends at its own wait and rests, as any model does: the next reader describes the photo, and a reading in the next 3 minutes doesn't ask the resting one (read-wait-next, 10)", async (t) => {
   useClock(t);
   const photo = async (/** @type {any} */ k) => k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
   const read = { toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.webp' } }] };

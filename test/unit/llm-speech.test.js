@@ -153,7 +153,7 @@ test("a transcription's time limit starts once the provider has the recording, a
   assert.equal(Date.now() - started, 10 + 50, 'the answer at 10 ms, then the limit from it');
 });
 
-test("8. a half's turn's transcription beside the other half's send (shared) has the time of twice its bytes, as its model's send has: a recording up within that is heard where alone it is cut, and one that never goes up ends at the limit and twice its send's time (read-wait-next, shape 6)", async (t) => {
+test("a half's turn's transcription beside the other half's send (shared) has the time of twice its bytes, as its model's send has: a recording up within that is heard where alone it is cut, and one that never goes up ends at the limit and twice its send's time (read-wait-next, 8, shape 6)", async (t) => {
   useClock(t);
   // 4,000 bytes: 0.46 s at the slow link alone, 0.92 s shared; the 50 ms limit after.
   const audio = { data: new Uint8Array(4_000), mediaType: 'audio/wav', seconds: 0.1 };

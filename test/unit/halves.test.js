@@ -125,7 +125,7 @@ async function say(k, clip) {
   await k.agent.idle();
 }
 
-test("9. a reader's send and a turn's transcription are timed as their half's turn is: Kokoro's while Koe works, never one Shiori's or Kokoro's while Koe is down, and Koe's always (read-wait-next)", async (t) => {
+test("a reader's send and a turn's transcription are timed as their half's turn is: Kokoro's while Koe works, never one Shiori's or Kokoro's while Koe is down, and Koe's always (read-wait-next, 9)", async (t) => {
   useClock(t);
   /** @type {any[][]} */
   const all = [];

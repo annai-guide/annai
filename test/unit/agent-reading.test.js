@@ -79,7 +79,7 @@ const readWith = (file, llm, more = {}) => readFile(file, { input: ['text'] }, {
 /** @type {import('../../src/core/agent/reading.js').FileToRead} */
 const photo = { kind: 'image', mediaType: 'image/jpeg', data: 'A'.repeat(4_000) };
 
-test("1. a reader's call that takes longer than the reading's old limit and its send's estimate is still the description: the call times itself", async (t) => {
+test("a reader's call that takes longer than the reading's old limit and its send's estimate is still the description: the call times itself (read-wait-next, 1)", async (t) => {
   useClock(t);
   const r = readers({ utility: after(1_000) });
   const started = Date.now();
@@ -88,7 +88,7 @@ test("1. a reader's call that takes longer than the reading's old limit and its 
   assert.ok(1_000 > 30 + sendMs(4_000));
 });
 
-test("2. a send that never ends is ended by the reader's call, in its own words, at the moment it ends it; the reading says them", async (t) => {
+test("a send that never ends is ended by the reader's call, in its own words, at the moment it ends it; the reading says them (read-wait-next, 2)", async (t) => {
   useClock(t);
   const send = new ProviderError('timeout', 'No answer in 70 seconds. The connection may be too slow to send photos or files.', { said: { code: 'send', seconds: 70 } });
   const r = readers({ utility: after(70_000, send), main: after(70_000, send) });
@@ -100,7 +100,7 @@ test("2. a send that never ends is ended by the reader's call, in its own words,
   assert.deepEqual(r.asked.map((a) => a.role), ['utility', 'main']);
 });
 
-test("3. a reader that never starts answering passes the photo on at its own wait, the longer of its role's and DESCRIBE_S: the next reader describes it", async (t) => {
+test("a reader that never starts answering passes the photo on at its own wait, the longer of its role's and DESCRIBE_S: the next reader describes it (read-wait-next, 3)", async (t) => {
   useClock(t);
   const r = readers({ utility: neverStarts, main: after(5) });
   const started = Date.now();
@@ -115,7 +115,7 @@ const pdf = { kind: 'pdf', mediaType: 'application/pdf', data: 'A'.repeat(40_000
 /** A PDF pages plugin that never draws, until it is stopped. */
 const hangs = { pages: (/** @type {any} */ _b, /** @type {any} */ o) => new Promise((_, no) => o.signal.addEventListener('abort', () => no(new Error('Stopped.')), { once: true })) };
 
-test("4. a PDF whose readers refuse at once, then whose pages plugin hangs, ends at DESCRIBE_PDF_S from the drawing's start, not later for the PDF's size", async (t) => {
+test("a PDF whose readers refuse at once, then whose pages plugin hangs, ends at DESCRIBE_PDF_S from the drawing's start, not later for the PDF's size (read-wait-next, 4)", async (t) => {
   useClock(t);
   const refused = new ProviderError('bad-request', 'The PDF is too long.');
   const r = readers({ utility: after(7, refused), main: after(3, refused) });
@@ -128,7 +128,7 @@ test("4. a PDF whose readers refuse at once, then whose pages plugin hangs, ends
   assert.equal(Date.now() - started, 7 + 3 + 90, "the readers' 10 ms, then the drawing's 90 seconds at secondMs 1 (main: 90 and the PDF's 40,000 characters' estimate)");
 });
 
-test("5. a PDF's telling that arrives after the drawing's 90 seconds is the result, from its words or from its pages' pictures: the reading has no clock over its readers, and the drawing's ends once the pages are drawn", async (t) => {
+test("a PDF's telling that arrives after the drawing's 90 seconds is the result, from its words or from its pages' pictures: the reading has no clock over its readers, and the drawing's ends once the pages are drawn (read-wait-next, 5)", async (t) => {
   useClock(t);
   const r = readers({ utility: after(200) });
   const read = await readWith({ ...pdf, data: 'JVBE' }, r);
@@ -146,7 +146,7 @@ test("5. a PDF's telling that arrives after the drawing's 90 seconds is the resu
   assert.equal(told.text, "What it says (told by utility from pictures of page 1 of 1, as you can't read PDFs): Read by utility.");
 });
 
-test("6. a reader is asked as shared when its reading is (the half's turn shares the link), and not when it isn't", async (t) => {
+test("a reader is asked as shared when its reading is (the half's turn shares the link), and not when it isn't (read-wait-next, 6)", async (t) => {
   useClock(t);
   for (const shared of [true, false, undefined]) {
     const r = readers({ utility: after(5) });
@@ -155,7 +155,7 @@ test("6. a reader is asked as shared when its reading is (the half's turn shares
   }
 });
 
-test("7. over the real callOnce, a reader whose request never goes up ends at its wait and its send's time, twice that when shared: the reading's own limit no longer ends it first", async (t) => {
+test("over the real callOnce, a reader whose request never goes up ends at its wait and its send's time, twice that when shared: the reading's own limit no longer ends it first (read-wait-next, 7)", async (t) => {
   useClock(t);
   const type = /** @type {any} */ ({
     type: 'test', name: 'Test', pluginId: 'test-plugin', read: async function* () {},
