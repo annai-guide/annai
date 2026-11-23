@@ -271,6 +271,29 @@ test("a watch's wake with a reminder while Koe is live, no session can open and 
   }
 });
 
+// halves.js #alongside, a typed line's way to a live session that can't open, with Classic resting: Koe is down, and Kokoro's block says so before she
+// is told to answer it. That block refused, the line (written already) would go unanswered: a card says so.
+for (const full of [false, true]) {
+  test(`a typed line to a live Koe when no session can open and Classic rests: ${full ? "Kokoro's block refused, one card says so" : 'Kokoro answers it, no card'}`, async () => {
+    const k = await liveKit([], { kokoro: [{ rules: [{ match: "Koe can't speak", reply: say('Nepenthe is open till 10.') }, { match: '.', reply: sleep }] }], koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
+    try {
+      k.llm.bench.bench('m-koe', 60_000);
+      k.llm.live = async () => { throw new Error('the connection was refused'); };
+      const cards = raw(k);
+      const store = refusing(k);
+      if (full) store.full((ev) => ev.type === 'halves');
+      k.agent.send('Is Nepenthe open?');
+      if (full) await soon(async () => told(cards).length > 0, 10_000);
+      else await soon(async () => (await k.events(['out.speak'])).length === 1, 10_000);
+      await k.agent.idle();
+      toldOnce(cards, full ? 1 : 0, "the line's way to a session");
+      assert.equal((await k.events(['msg.user'])).length, 1, 'the line itself is kept');
+    } finally {
+      await k.done();
+    }
+  });
+}
+
 // halves.js #tapFollow: a tap whose live session couldn't open is handed on (#liveTapFailed: Koe's way read again, Kokoro's block).
 test("a tap whose live session can't open, with Classic resting, on a full phone: Kokoro's block refused, a card says so", async () => {
   const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
