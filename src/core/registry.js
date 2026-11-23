@@ -44,27 +44,27 @@ const BUGS = [TypeError, ReferenceError, RangeError, SyntaxError, EvalError];
 
 /**
  * Whether an error is the browser's own account of a request it couldn't make or finish (offline: "Failed to fetch", Safari's "Load failed",
- * Chrome's "network error", Firefox's "NetworkError when attempting to fetch resource"): the link's, whatever code was reading the reply (§17).
- * The tool path's rule (isPluginBug), where a plugin's own code reads the reply; the endpoint path decides by position (call.js asProviderError).
- * By whole words, so a plugin's own TypeError that only names something with "fetch" or "network" in it (`this.fetchModels is not a function`,
- * `reading 'networkState'`) is its bug. The browsers give no code for these, so words are all there is.
+ * Chrome's "network error", Firefox's "NetworkError when attempting to fetch resource"): the link's, when a plugin's own code reads the reply (§17).
+ * The rule (isPluginBug) wherever the plugin's own code makes the request and reads the reply (a tool, a provider's list, sign-in and the like); an
+ * endpoint type's call decides by position (call.js asProviderError). By whole words, so a plugin's own TypeError that only names something with
+ * "fetch" or "network" in it (`this.fetchModels is not a function`, `reading 'networkState'`) is its bug. The browsers give no code, so words are all there is.
  * @param {unknown} e
  */
 export function isFetchFailure(e) {
   return e instanceof TypeError && /\b(fetch|network|load failed)\b/i.test(e.message);
 }
 
+/** An address the user typed that isn't one (`new URL` throws): the user's to fix, not a plugin's bug. @param {unknown} e */
+export const isBadAddress = (e) => e instanceof TypeError && /invalid url|failed to parse url/i.test(e.message);
+
 /**
- * Whether an error is a bug in a plugin's code (spec §5.5) rather than its answer, where its own code makes its requests (not an endpoint type's
- * call: asProviderError). A fetch the browser couldn't make (isFetchFailure) is an answer (§17).
+ * Whether an error is a bug in a plugin's code (spec §5.5) rather than its answer, outside callOnce's and speechCall's calls (asProviderError).
+ * A fetch the browser couldn't make (isFetchFailure) is an answer (§17).
  * @param {unknown} e
  */
 export function isPluginBug(e) {
   if (!(e instanceof Error)) return true;
-  const offline = isFetchFailure(e);
-  // An address the user typed that isn't one is the user's to fix, not a bug.
-  const address = e instanceof TypeError && /invalid url|failed to parse url/i.test(e.message);
-  return !offline && !address && BUGS.some((B) => e instanceof B);
+  return !isFetchFailure(e) && !isBadAddress(e) && BUGS.some((B) => e instanceof B);
 }
 
 export class PluginError extends Error {

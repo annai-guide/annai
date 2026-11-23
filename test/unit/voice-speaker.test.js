@@ -68,6 +68,18 @@ test('done names the voices that failed and why, for the Voice test to say befor
   assert.deepEqual((await u2.done).failedVoices, []);
 });
 
+test('a voice that fails and rests nothing (the phone is offline: voice.js restFor) is asked again for each sentence, and listed once among the failed voices (fail-owner-next, fix 2)', async (t) => {
+  useClock(t);
+  const p = fakePlatform();
+  const v = fakeVoices(['v1'], { failing: { v1: true }, browser: true });
+  const u = new Speaker({ entries: v.entries, synthesize: v.synthesize, bench: () => {}, platform: () => /** @type {any} */ (p), locale: 'en' }).begin();
+  u.end('First thing. Second thing. Third thing.');
+  const done = await u.done;
+  assert.deepEqual(v.log.filter((l) => l.startsWith('fetch')).map((l) => l.split(' ')[1]), ['v1', 'v1', 'v1'], 'asked for each sentence: nothing rested it');
+  assert.deepEqual(done.failedVoices.map((f) => [f.name, f.why]), [['v1', 'v1 failed']], 'listed once, as the Voice test says it once');
+  assert.deepEqual(done.voices, ['Browser voice']);
+});
+
 test('the browser voice speaks when it comes first, or when every API voice failed; a cut is kept by word', async (t) => {
   useClock(t);
   const p = fakePlatform({ playMs: 40 });

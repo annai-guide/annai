@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
+import net from 'node:net';
 import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { SYS, ensureBaseScopes } from '../../src/core/scopes.js';
@@ -66,7 +67,7 @@ const withType = (id, type) => {
   return registry;
 };
 
-test("P1: a dropped reply is the link's whatever the browser calls it (words no list holds): network, never counted, for a transcription, a voice and chat", async () => {
+test("P1: a dropped reply is the link's whatever the browser calls it (words no list holds): network, never counted, for a transcription, a voice, a voice's stream that breaks off after its first piece, and chat", async () => {
   const errors = [new TypeError('terminated'), new TypeError('Error in body stream'), new Error('The Internet connection appears to be offline.'), new DOMException('The network connection was lost.', 'NetworkError')];
   const registry = withType('test', hears);
   registry.add('test', 'endpoint-type', speaks);
@@ -141,7 +142,7 @@ test("P4: a bug in a speech type's request builder is its plugin's: plugin, coun
   }
 });
 
-test("P5: a call that works ends its plugin's run of failures: two bugs, a reply, a bug leave it on; three in a row switch it off (chat and speech)", async () => {
+test("P5: a call that works ends its plugin's run of failures: two bugs, a reply, a bug leave it on; three in a row switch it off (chat, a transcription, and a voice's stream, one that breaks after its first piece too)", async () => {
   const bug = new TypeError("Cannot read properties of undefined (reading 'text')");
   let fail = true;
   const flaky = { ...hears, type: 'flaky-in', readTranscript: async (/** @type {Response} */ res) => { if (fail) throw bug; return { text: (await res.json()).text }; } };
@@ -169,6 +170,9 @@ test("P5: a call that works ends its plugin's run of failures: two bugs, a reply
   failChat = true;
   await assert.rejects(ask());
   assert.equal(r2.isDisabled('flaky-c'), false, 'chat: two, a reply, one: on');
+  await assert.rejects(ask());
+  await assert.rejects(ask());
+  assert.equal(r2.isDisabled('flaky-c'), true, 'chat: three in a row: off');
 
   // A voice's stream that ends ends the run too.
   let failSay = true;
@@ -184,6 +188,18 @@ test("P5: a call that works ends its plugin's run of failures: two bugs, a reply
   failSay = true;
   await assert.rejects(say());
   assert.equal(r3.isDisabled('flaky-s'), false, 'a stream: two, a stream that ended, one: on');
+  await assert.rejects(say());
+  await assert.rejects(say());
+  assert.equal(r3.isDisabled('flaky-s'), true, 'a stream: three in a row: off');
+
+  // A stream's first piece is no success: three streams that give one piece and then break are three failures in a row.
+  const lateBug = { ...speaks, type: 'late-out', readSpeechStream: async function* () { yield { pcm: new Int16Array(240), rate: 24_000 }; throw bug; } };
+  const r4 = withType('late-s', lateBug);
+  for (let n = 0; n < 3; n++) {
+    const piece = /** @type {any} */ (await speechCall({ type: /** @type {any} */ (lateBug), endpoint: endpoint('late-out'), model: model(), key: null, text: 'Hello', stream: true, fetch: async () => new Response('x'), registry: r4 })).stream;
+    await assert.rejects(async () => { for await (const _ of piece.chunks); }, (e) => e instanceof ProviderError && e.kind === 'plugin', `late bug ${n}`);
+    assert.equal(r4.isDisabled('late-s'), n === 2, `after ${n + 1} broken streams`);
+  }
 });
 
 test('P6: what a type makes of a dropped body does not change whose it is: its own "server" error, or a plain error of its own, after the read failed is network, not counted', async () => {
@@ -199,7 +215,7 @@ test('P6: what a type makes of a dropped body does not change whose it is: its o
   }
 });
 
-test("P7: a Stop or annai's time limit while a reply is read is cancelled or timeout, whatever the type made of the read that the stop failed (Chrome gives such a body's whole read \"Failed to fetch\")", async () => {
+test("P7: a Stop or annai's time limit while a reply is read is cancelled or timeout, and a voice's stream that stalls after its first piece is stalled, whatever the type made of the read that the stop failed (Chrome gives such a body's whole read \"Failed to fetch\"); none of them counts against the plugin", async () => {
   // As the official types read a whole reply: any failure of the read that is no AbortError is theirs to call network.
   const wraps = { ...hears, type: 'wrap', readTranscript: async (/** @type {Response} */ res) => { try { return await res.json(); } catch (e) { throw new ProviderError('network', 'The connection dropped.', { cause: e }); } } };
   const registry = withType('w', wraps);
@@ -215,19 +231,38 @@ test("P7: a Stop or annai's time limit while a reply is read is cancelled or tim
     (e) => e instanceof ProviderError && e.kind === 'timeout');
   // Chat the same: a Stop during the read is a stop.
   const chatWraps = chat({ type: 'chat-wrap', read: async function* (/** @type {Response} */ res) { try { yield { type: 'text', text: (await res.json()).text }; } catch (e) { throw new ProviderError('network', 'The connection dropped.', { cause: e }); } } });
+  registry.add('w', 'endpoint-type', chatWraps);
   const halt = new AbortController();
   setTimeout(() => halt.abort(), 20);
-  await assert.rejects(callOnce({ type: chatWraps, endpoint: endpoint('chat-wrap'), model: model(), key: null, request, fetch: stalls, registry: withType('cw', chatWraps), signal: halt.signal }),
+  await assert.rejects(callOnce({ type: chatWraps, endpoint: endpoint('chat-wrap'), model: model(), key: null, request, fetch: stalls, registry, signal: halt.signal }),
     (e) => e instanceof ProviderError && e.kind === 'cancelled');
-  assert.equal(registry.isDisabled('w'), false);
   // A voice's stream that stalls after its first piece is stalled, though the type made its own "network" of the read annai's limit ended.
   const wrapsStream = streamsOut((e) => new ProviderError('network', 'The voice stopped before it finished.', { cause: e }));
+  registry.add('w', 'endpoint-type', wrapsStream);
   const hangs = async (/** @type {any} */ url, /** @type {any} */ init) => {
     let n = 0;
     return new Response(new ReadableStream({ pull: (c) => (n++ === 0 ? c.enqueue(new Uint8Array(480)) : new Promise((_, no) => init.signal.addEventListener('abort', () => no(init.signal.reason), { once: true }))) }));
   };
-  const voice = /** @type {any} */ (await speechCall({ type: /** @type {any} */ (wrapsStream), endpoint: endpoint('test-stream'), model: model(), key: null, text: 'Hello', stream: true, fetch: hangs, timeoutMs: 20 })).stream;
+  const voice = /** @type {any} */ (await speechCall({ type: /** @type {any} */ (wrapsStream), endpoint: endpoint('test-stream'), model: model(), key: null, text: 'Hello', stream: true, fetch: hangs, timeoutMs: 20, registry })).stream;
   await assert.rejects(async () => { for await (const _ of voice.chunks); }, (e) => e instanceof ProviderError && e.kind === 'timeout' && e.said?.code === 'stalled');
+  assert.equal(registry.isDisabled('w'), false, 'a Stop, a limit, a Stop in chat and a stall: four calls, none counted');
+});
+
+test("a Stop or annai's time limit is never the plugin's: three speech calls each stopped (while the request goes up, or the reply is read) and three each out of time are cancelled or timeout, and the plugin stays on (fail-owner-next)", async () => {
+  const registry = withType('test', hears);
+  const hangs = (/** @type {any} */ url, /** @type {any} */ init) => new Promise((_, no) => init.signal.addEventListener('abort', () => no(new DOMException('Stopped.', 'AbortError')), { once: true }));
+  const stalls = async (/** @type {any} */ url, /** @type {any} */ init) => new Response(new ReadableStream({ start: (c) => { init.signal.addEventListener('abort', () => c.error(new TypeError('Failed to fetch')), { once: true }); } }));
+  for (const [where, fetch] of /** @type {const} */ ([['request', hangs], ['reply', stalls]])) {
+    for (let n = 0; n < 3; n++) {
+      const stop = new AbortController();
+      setTimeout(() => stop.abort(), 10);
+      await assert.rejects(speechCall({ type: /** @type {any} */ (hears), endpoint: endpoint('test-in'), model: model(), key: null, audio, fetch, registry, signal: stop.signal }), (e) => e instanceof ProviderError && e.kind === 'cancelled', `stopped in the ${where}, call ${n + 1}`);
+    }
+  }
+  for (let n = 0; n < 3; n++) {
+    await assert.rejects(speechCall({ type: /** @type {any} */ (hears), endpoint: endpoint('test-in'), model: model(), key: null, audio, fetch: stalls, registry, timeoutMs: 20 }), (e) => e instanceof ProviderError && e.kind === 'timeout', `out of time, call ${n + 1}`);
+  }
+  assert.equal(registry.isDisabled('test'), false);
 });
 
 test('P8: a type that ends its reading early with its own error (the reply still open) keeps its kind, and a reply read whole is as it came (status, headers, bytes)', async () => {
@@ -248,7 +283,7 @@ test('P8: a type that ends its reading early with its own error (the reply still
   assert.deepEqual([got, [...(r.clip?.data ?? [])]], [{ status: 200, type: 'audio/mpeg', ok: true }, [1, 2, 3]]);
 });
 
-test("a bug in a type's upload request is its plugin's, counted once, and the photo still goes, as bytes; uploads stop there (fail-owner-next)", async () => {
+test("a bug in a type's upload request is its plugin's, counted once, and the photo still goes, as bytes; uploads stop there; a server's refusal, or a reply it can't read, is not counted (fail-owner-next)", async () => {
   const store = createMemoryStore();
   const ws = new Workspace(store);
   await ensureBaseScopes(ws);
@@ -294,4 +329,160 @@ test("a bug in a type's upload request is its plugin's, counted once, and the ph
     await callOnce({ type: refused, endpoint: endpoint('test', 'https://llm.test'), model: m, key: 'k', request: withPhoto, fetch: /** @type {any} */ (answers), uploads: new Uploads(ws), registry: r2 });
     assert.deepEqual(seen.filter((e) => e.type === 'plugin.error'), [], 'the server\'s answer is not counted');
   }
+});
+
+/**
+ * A local server that answers every request with this status line (the reason phrase as it comes, raw) and body; `cut`: its length says more than
+ * it sends, and the connection is destroyed after the first piece, as a link that drops. @param {number} status @param {string} reason @param {string} body
+ * @param {{ cut?: boolean, headers?: string }} [o] @returns {Promise<{ base: string, close: () => void }>}
+ */
+async function rawServer(status, reason, body, { cut = false, headers = '' } = {}) {
+  /** @type {Set<import('node:net').Socket>} */
+  const sockets = new Set();
+  const server = net.createServer((s) => {
+    sockets.add(s);
+    s.on('error', () => {});
+    s.once('data', () => {
+      s.write(`HTTP/1.1 ${status} ${reason}\r\ncontent-type: application/json\r\ncontent-length: ${Buffer.byteLength(body) + (cut ? 5000 : 0)}\r\nconnection: close\r\n${headers}\r\n${body}`);
+      if (cut) setTimeout(() => s.destroy(), 30);
+      else s.end();
+    });
+  });
+  await new Promise((r) => server.listen(0, '127.0.0.1', () => r(null)));
+  return { base: `http://127.0.0.1:${/** @type {any} */ (server.address()).port}`, close: () => { for (const s of sockets) s.destroy(); server.close(); } };
+}
+
+test('a reply whose status text the Response constructor refuses (200 成功, a control character) is read as any other: annai copies status and headers only, so three calls never switch the plugin off (fail-owner-next, fix 1)', async () => {
+  for (const reason of ['成功', 'O\u0001K']) {
+    const server = await rawServer(200, reason, '{"text":"x"}');
+    try {
+      const registry = withType('test', hears);
+      registry.add('test', 'endpoint-type', chat());
+      for (let n = 0; n < 3; n++) {
+        assert.equal((await speechCall({ type: /** @type {any} */ (hears), endpoint: endpoint('test-in', server.base), model: model(), key: null, audio, registry })).text, 'x', `heard: ${JSON.stringify(reason)}`);
+        assert.equal((await callOnce({ type: chat(), endpoint: endpoint('test', server.base), model: model(), key: null, request, registry })).text, 'x', `chat: ${JSON.stringify(reason)}`);
+      }
+      assert.equal(registry.isDisabled('test'), false, 'the plugin is on');
+    } finally {
+      server.close();
+    }
+  }
+});
+
+test("a reply with no body reaches the type as annai's own, as any other does: its url and status text are empty, so the docs' sentence is true of every reply (fail-owner-next, fix 7)", async () => {
+  /** @type {any} */
+  let seen;
+  const looks = { ...speaks, readSpeech: async (/** @type {Response} */ res) => { seen = { url: res.url, status: res.status, body: res.body }; return { data: new Uint8Array(), mediaType: 'audio/mpeg' }; } };
+  const real = new Response(null, { status: 200 });
+  Object.defineProperty(real, 'url', { value: 'https://speech.test/v1/say' });
+  await speechCall({ type: /** @type {any} */ (looks), endpoint: endpoint('test-out'), model: model(), key: null, text: 'Hello', fetch: async () => real });
+  assert.deepEqual(seen, { url: '', status: 200, body: null });
+});
+
+test("an error reply whose body drops while annai reads it is network (tried again, never counted), not the status's kind: a context overflow whose body is cut is no refused request (fail-owner-next, fix 4)", async () => {
+  const overflow = JSON.stringify({ error: { message: "This model's maximum context length is 8192 tokens" } });
+  const registry = withType('test', hears);
+  registry.add('test', 'endpoint-type', chat());
+  // The whole body: its words give the kind, as before.
+  const whole = await rawServer(400, 'Bad Request', overflow);
+  try {
+    await assert.rejects(callOnce({ type: chat(), endpoint: endpoint('test', whole.base), model: model(), key: null, request, registry }), (e) => e instanceof ProviderError && e.kind === 'context', 'chat, whole');
+    await assert.rejects(speechCall({ type: /** @type {any} */ (hears), endpoint: endpoint('test-in', whole.base), model: model(), key: null, audio, registry }), (e) => e instanceof ProviderError && e.kind === 'context', 'heard, whole');
+  } finally {
+    whole.close();
+  }
+  // Cut: the kind is not known, so it is the link's: network, three in a row included.
+  for (const status of [400, 500]) {
+    const cut = await rawServer(status, 'Error', overflow, { cut: true });
+    try {
+      for (let n = 0; n < 3; n++) {
+        await assert.rejects(callOnce({ type: chat(), endpoint: endpoint('test', cut.base), model: model(), key: null, request, registry }), (e) => e instanceof ProviderError && e.kind === 'network' && e.said?.code === 'kind', `chat, ${status} cut`);
+        await assert.rejects(speechCall({ type: /** @type {any} */ (hears), endpoint: endpoint('test-in', cut.base), model: model(), key: null, audio, registry }), (e) => e instanceof ProviderError && e.kind === 'network', `heard, ${status} cut`);
+      }
+    } finally {
+      cut.close();
+    }
+  }
+  assert.equal(registry.isDisabled('test'), false);
+  // A Stop while an error body is read is still a stop, and annai's time limit a timeout.
+  const stalls = async (/** @type {any} */ url, /** @type {any} */ init) => new Response(new ReadableStream({ start: (c) => { init.signal.addEventListener('abort', () => c.error(new TypeError('Failed to fetch')), { once: true }); } }), { status: 400 });
+  const stop = new AbortController();
+  setTimeout(() => stop.abort(), 20);
+  await assert.rejects(callOnce({ type: chat(), endpoint: endpoint('test'), model: model(), key: null, request, fetch: stalls, registry, signal: stop.signal }), (e) => e instanceof ProviderError && e.kind === 'cancelled');
+  await assert.rejects(speechCall({ type: /** @type {any} */ (hears), endpoint: endpoint('test-in'), model: model(), key: null, audio, fetch: stalls, registry, timeoutMs: 20 }), (e) => e instanceof ProviderError && e.kind === 'timeout');
+});
+
+/**
+ * One call with a photo through a type whose uploadRequest is this; what it logged, the bodies the call sent, and whether uploads went off.
+ * @param {(c: any) => any} uploadRequest
+ */
+async function uploadedWith(uploadRequest) {
+  const store = createMemoryStore();
+  const ws = new Workspace(store);
+  await ensureBaseScopes(ws);
+  const uploads = new Uploads(ws);
+  /** @type {any[]} */
+  const logged = [];
+  /** @type {any[]} */
+  const bodies = [];
+  const get = async (/** @type {string} */ url, /** @type {any} */ init) => {
+    bodies.push(JSON.parse(init.body));
+    return Response.json({ text: 'ok' });
+  };
+  const t = chat({
+    uploadRequest, readUpload: (/** @type {any} */ j) => ({ id: j.id }),
+    build: (/** @type {any} */ c) => ({ url: `${c.endpoint.baseUrl}/v1/chat`, headers: {}, body: { images: c.request.messages[0].parts.map((/** @type {any} */ p) => p.fileId ?? 'bytes') } }),
+  });
+  const registry = new Registry({ log: (ev) => { logged.push(ev); } });
+  registry.add('test-plugin', 'endpoint-type', t);
+  const withPhoto = /** @type {any} */ ({ messages: [{ role: 'user', parts: [{ type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1' }] }] });
+  const reply = await callOnce({ type: t, endpoint: endpoint('test', 'https://llm.test'), model: { ...model(), input: ['text', 'image'] }, key: 'k', request: withPhoto, fetch: /** @type {any} */ (get), uploads, registry });
+  await new Promise((r) => setTimeout(r, 5)); // a rejected promise nobody handled would be reported by now
+  return { reply, counted: logged.filter((e) => e.type === 'plugin.error').map((e) => e.data.count), bodies: bodies.map((b) => b.images[0]), off: uploads.isOff('pv-1/a') };
+}
+
+test("an uploadRequest whose result is not a request (an async function's promise, an object with no url) is its plugin's bug, counted once; the photo goes as bytes (fail-owner-next, fix 5)", async () => {
+  /** @type {unknown[]} */
+  const unhandled = [];
+  const note = (/** @type {unknown} */ e) => { unhandled.push(e); };
+  process.on('unhandledRejection', note);
+  try {
+    const request = (/** @type {any} */ c) => ({ url: `${c.endpoint.baseUrl}/v1/files`, headers: {}, body: new FormData() });
+    for (const [name, build] of /** @type {const} */ ([
+      ['an async function that returns a request', async (/** @type {any} */ c) => request(c)],
+      ['an async function that throws', async () => { throw new TypeError("Cannot read properties of undefined (reading 'baseUrl')"); }],
+      ['an object with no url', () => ({ headers: {} })],
+      ['nothing', () => undefined],
+      ['a request with a url that is no string', () => ({ url: 42, headers: {} })],
+    ])) {
+      const r = await uploadedWith(build);
+      assert.equal(r.reply.text, 'ok', `${name}: the call answers`);
+      assert.deepEqual([r.counted, r.bodies, r.off], [[1], ['bytes'], true], name);
+    }
+    // Its own ProviderError is its answer, and a request that is one works: neither counted.
+    const answers = await uploadedWith(() => { throw new ProviderError('upload', 'no files here'); });
+    assert.deepEqual([answers.counted, answers.bodies, answers.off], [[], ['bytes'], true], 'a ProviderError of its own');
+  } finally {
+    process.off('unhandledRejection', note);
+  }
+  assert.deepEqual(unhandled, [], 'no rejected promise is left for the page to report');
+});
+
+test("an address the user typed that a builder can't parse is not its plugin's bug: bad-request, never counted, for a call, a transcription and a voice (fail-owner-next, fix 6)", async () => {
+  const bad = () => new URL('not an address');
+  const types = /** @type {const} */ ([
+    ['chat', chat({ type: 'addr-chat', build: bad }), (/** @type {any} */ t, /** @type {any} */ registry) => callOnce({ type: t, endpoint: endpoint('addr-chat'), model: model(), key: null, request, registry })],
+    ['hear', { ...hears, type: 'addr-in', transcribeRequest: bad }, (/** @type {any} */ t, /** @type {any} */ registry) => speechCall({ type: t, endpoint: endpoint('addr-in'), model: model(), key: null, audio, registry })],
+    ['say', { ...speaks, type: 'addr-out', speechRequest: bad }, (/** @type {any} */ t, /** @type {any} */ registry) => speechCall({ type: t, endpoint: endpoint('addr-out'), model: model(), key: null, text: 'Hello', registry })],
+  ]);
+  for (const [name, type, call] of types) {
+    const registry = withType(`a-${name}`, type);
+    for (let n = 0; n < 3; n++) await assert.rejects(call(type, registry), (e) => e instanceof ProviderError && e.kind === 'bad-request', name);
+    assert.equal(registry.isDisabled(`a-${name}`), false, `${name}: not counted`);
+  }
+  // Any other TypeError from a builder is still its bug.
+  const buggy = { ...hears, type: 'addr-bug', transcribeRequest: () => { throw new TypeError("Cannot read properties of undefined (reading 'path')"); } };
+  const registry = withType('a-bug', buggy);
+  for (let n = 0; n < 3; n++) await assert.rejects(speechCall({ type: /** @type {any} */ (buggy), endpoint: endpoint('addr-bug'), model: model(), key: null, audio, registry }), (e) => e instanceof ProviderError && e.kind === 'plugin');
+  assert.equal(registry.isDisabled('a-bug'), true);
 });

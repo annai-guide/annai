@@ -106,11 +106,9 @@ export async function speechCall(c) {
     limit(/* en */ 'No answer in time.'); // the provider has the request
     status = res.status;
     noRedirect(res, endpoint);
-    if (!res.ok) {
-      throw typeError(type, res.status, await res.text().catch(() => ''), res.headers);
-    }
     const reply = watched(res);
     dropped = reply.dropped;
+    if (!res.ok) throw typeError(type, res.status, await reply.res.text().catch(() => ''), res.headers);
     res = reply.res;
     if (streams) {
       const pieces = /** @type {NonNullable<EndpointType['readSpeechStream']>} */ (type.readSpeechStream)(res, spec)[Symbol.asyncIterator]();

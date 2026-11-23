@@ -165,8 +165,16 @@ test("a voice that can't connect while the phone is offline rests nothing: the p
     delete (/** @type {any} */ (globalThis.navigator)).onLine;
   }
   assert.equal(restFor(new ProviderError('unreachable', 'x')), COOLDOWN_MS, 'online, it rests as before');
+  // Back online the voice is asked at the next sentence and speaks: nothing rested it.
+  /** @type {any} */ (k.llm).synthesize = async (/** @type {{ modelId: string, text: string }} */ { modelId, text }) => ({ clip: { data: enc.encode(`${modelId}:${text}`), mediaType: 'audio/mpeg' } });
   await k.voice.say('Again.');
-  assert.ok(k.bench.until('v1') > Date.now() + COOLDOWN_MS - 5_000, 'online: benched');
+  assert.deepEqual(k.platform.log.filter((l) => l.startsWith('play')), ['play v1:Again.'], 'back online, the voice is asked and speaks');
+  assert.equal(k.bench.until('v1'), 0, 'and is not benched');
+  // The same failure with the phone online rests the voice, as before.
+  const online = await voiceKit();
+  /** @type {any} */ (online.llm).synthesize = async () => { throw new ProviderError('unreachable', 'Failed to fetch'); };
+  await online.voice.say('Hello.');
+  assert.ok(online.bench.until('v1') > Date.now() + COOLDOWN_MS - 5_000, 'online: benched');
 });
 
 test('listenOnce(): the mic opens, one segment comes back, the mic closes and the session goes back to playback', async () => {
