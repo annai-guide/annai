@@ -2,6 +2,7 @@ import { h, whenGone, t, tc, plural, linkIn, messageOf } from '../dom.js';
 import { readAppSettings, updateAppSettings } from '../../core/settings.js';
 import { shownSettings } from '../../core/shown.js';
 import { shownCard, cardWho, cardKind } from '../cards.js';
+import { inlineMarkdown } from '../markdown.js';
 import { costs, budgetWords } from '../../core/agent/budgets.js';
 import { whyWords } from '../../core/llm/fallback.js';
 import { modelNames } from '../../core/llm/config.js';
@@ -187,15 +188,21 @@ export const wokeTitles = (reasons) => reasons.flatMap((r) => (r.kind === 'trigg
 /**
  * A reminder annai showed by itself, for the Conversation and Driving's latest card, from its data. Her note shown for her (halves.js) is "Shiori's answer", anything else a reminder.
  * A plan watch's words are made from its data, in the screens' language (an older one's are annai's English as stored, so marked). @param {any} d the event's data
- * @param {(text: string) => Record<string, any>} mine @param {(tag: string, attrs: Record<string, any>) => Node | string} [make] h, or a test's own
+ * @param {(text: string) => Record<string, any>} mine @param {(tag: string, attrs: Record<string, any>) => Node | string} [make] drawn, or a test's own
  */
-export function reminderParts(d, mine, make = h) {
+export function reminderParts(d, mine, make = drawn) {
   const message = kokorosWords(d) ? (d.aloud ? t`Shiori's answer, said aloud: ${WORDS}` : t`Shiori's answer: ${WORDS}`) : d.aloud ? t`Reminder, said aloud: ${WORDS}` : t`Reminder: ${WORDS}`;
   return around(message, reminderWords(d, mine, make));
 }
 
+/**
+ * A reminder's words on screen, their links and emphasis drawn as her cards' are (markdown.js): but for a plan's, they are a model's words for
+ * the user. Kokoro's showed their markdown as written (the user, 2026-11-23). @param {string} tag @param {Record<string, any>} attrs
+ */
+const drawn = (tag, { text, ...attrs }) => h(tag, attrs, ...inlineMarkdown(String(text)));
+
 /** A reminder's words alone, marked with their language. @param {any} d the event's data @param {(text: string) => Record<string, any>} mine @param {(tag: string, attrs: Record<string, any>) => Node | string} [make] */
-function reminderWords(d, mine, make = h) {
+function reminderWords(d, mine, make = drawn) {
   const words = d.plan ? planWords(d.plan) : String(d.text ?? '');
   const marked = d.plan ? {} : String(d.watch ?? '').startsWith('plan:') ? { lang: 'en' } : mine(words);
   return make('span', { ...marked, text: words });
@@ -631,8 +638,8 @@ export async function renderTalk(ctx, route) {
           const choices = (e.type === 'out.ask' ? e.data?.options : kind ? [] : e.data?.card?.choice);
           const pick = Array.isArray(choices) ? choices.slice(0, 6).map(String) : [];
           let words = plain(node);
-          // A reminder reads as it says itself, not its words run into its label.
-          if (e.type === 'reminder') words = reminderParts(e.data ?? {}, mine, (_, a) => String(a.text)).join('');
+          // A reminder reads as it says itself, not its words run into its label: its links by their names, as they are drawn.
+          if (e.type === 'reminder') words = reminderParts(e.data ?? {}, mine).map((p) => (typeof p === 'string' ? p : p.textContent)).join('');
           else if (e.type === 'out.speak') words = node.querySelector('p')?.textContent ?? '';
           else if (e.type === 'out.ask') words = String(e.data?.question ?? '');
           else if (e.type === 'out.show') {

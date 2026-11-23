@@ -1,5 +1,5 @@
 {
-  "build": "1eaa931b2141",
+  "build": "11690adbea79",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -227,7 +227,7 @@
     "/src/ui/line-kind.js": "d7698dd518b9",
     "/src/ui/live-chip.js": "07529e604f2d",
     "/src/ui/live-help.js": "0ce080ef7d9a",
-    "/src/ui/markdown.js": "f6eaf0b1e151",
+    "/src/ui/markdown.js": "f773b2ea95f7",
     "/src/ui/media-keys.js": "21e06a476345",
     "/src/ui/mic-help.js": "845ccacb506a",
     "/src/ui/model-check.js": "843189985928",
@@ -274,7 +274,7 @@
     "/src/ui/screens/simulate.js": "16dddd363254",
     "/src/ui/screens/shiori.js": "570d16acdc88",
     "/src/ui/screens/sees.js": "6a674fc473ae",
-    "/src/ui/screens/talk.js": "59cdd9942d28",
+    "/src/ui/screens/talk.js": "59eaecfd5cc6",
     "/src/ui/screens/tools.js": "52d6c4d56a08",
     "/src/ui/screens/trace.js": "e50cc0a686e4",
     "/src/ui/screens/trip.js": "16b903f6b61b",
@@ -286,7 +286,7 @@
     "/src/ui/shell.js": "79d363b3e955",
     "/src/ui/slots.js": "f2f6183cc470",
     "/src/ui/stamps.js": "9c0f976db8fa",
-    "/src/ui/shiori.css": "d60391764a06",
+    "/src/ui/shiori.css": "53bd7612dcc3",
     "/src/ui/speech-check.js": "457b62b37c33",
     "/src/ui/storage-full.js": "104720278679",
     "/src/ui/talk-panel.js": "cc1fb4a04f43",

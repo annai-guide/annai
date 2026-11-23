@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
-import { savedBy, openApp, startTrip, writeEvent, startModelServer, modelSetUp, anthropicToolReply } from './helpers.js';
+import { savedBy, openApp, startTrip, writeEvent, startModelServer, modelSetUp, anthropicToolReply, catchAgent, atConversation } from './helpers.js';
 
 // The Conversation shows faithfully what happened (the second-drive design, section 1), read from stored events. Fixtures are synthetic.
 const LONG = 'A-very-long-model-name-with-no-spaces-to-break-at-whatsoever-preview-2026-11-04-experimental-build';
@@ -145,6 +145,58 @@ test("a Koe line, a Kokoro line and a halves' note name a configured model by it
   } finally {
     await llm.stop();
   }
+});
+
+// What the user saw on an iPhone (2026-11-23), here with made-up places: a halves' note holding a long map address ran past its box and
+// the screen's edge, the phone drew the whole page smaller to fit it, and the dock landed in the middle of the screen. A page wider than
+// the phone scrolls sideways in WebKit here; Chromium widens the window to it and draws the dock below what shows.
+const MAP = 'https://maps.example.com/?daddr=Sample%20Visitor%20Center%2C%20Sample%20Lake%20Road%2C%20Testland&dirflg=d&saddr=Current%20Location';
+const OTHER = 'https://other-maps.example.com/dir/?api=1&destination=Sample%20Visitor%20Center%2C%20Sample%20Lake%20Road%2C%20Testland&travelmode=driving';
+
+test("a halves' note with a long address wraps inside its box: the page stays the phone's width, and the dock at the foot of the screen", async ({ page }) => {
+  await page.setViewportSize({ width: 420, height: 912 }); // the user's phone
+  await openApp(page, '#/trips');
+  const trip = await startTrip(page, 'Sample trip');
+  await writeEvent(page, trip, { type: 'note', data: { id: 'n1', from: 'kokoro', mode: 'append', why: 'tool', wake: 'w-1', text: `Show a card titled "Sample Lake" with links: Maps ${MAP} and Other maps ${OTHER}. Say: here's the route.`, by } });
+  await page.goto('/#/talk');
+  const note = page.locator('.convo .halves-note');
+  await expect(note).toContainText(OTHER);
+  expect(await note.evaluate((li) => li.scrollWidth <= li.clientWidth + 1)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => {
+    const r = /** @type {Element} */ (document.querySelector('nav.dock')).getBoundingClientRect();
+    const v = /** @type {VisualViewport} */ (visualViewport);
+    return [Math.round(r.right - v.width), Math.round(r.bottom - v.height)];
+  })).toEqual([0, 0]);
+});
+
+// Kokoro's words annai shows itself (a note's for_user Koe never said) are the model's words for the user, as a card's text is: their
+// links are drawn as links, by their names (the user saw the markdown itself, 2026-11-23), and the announcer says the names.
+test("Kokoro's words shown by annai draw their links as her cards do; the announcer says the links' names", async ({ page }) => {
+  await page.setViewportSize({ width: 420, height: 912 });
+  await openApp(page, '#/trips');
+  await catchAgent(page);
+  await startTrip(page, 'Sample trip');
+  await page.goto('/#/talk');
+  await atConversation(page);
+  await page.evaluate(() => {
+    const w = /** @type {any} */ (window);
+    const announcer = /** @type {HTMLElement} */ (document.querySelector('main [aria-live="polite"]'));
+    w.announced = [];
+    new MutationObserver(() => w.announced.push(announcer.textContent)).observe(announcer, { childList: true, characterData: true, subtree: true });
+  });
+  const text = `Sample Lake: [Maps](${MAP}) · [Other maps](${OTHER}). After the tunnel, turn off at the **visitor center** sign.`;
+  await page.evaluate((text) => /** @type {any} */ (window).agent.remind([{ watch: '', text, answer: true }]), text);
+  const line = page.locator('.convo .line-kokoros-words');
+  const said = 'Sample Lake: Maps · Other maps. After the tunnel, turn off at the visitor center sign.';
+  await expect(line.locator('p')).toHaveText(said);
+  await expect(line.getByRole('link')).toHaveText(['Maps', 'Other maps']);
+  expect(await line.getByRole('link').evaluateAll((a) => a.map((x) => x.getAttribute('href')))).toEqual([MAP, OTHER]);
+  await expect(line.locator('strong')).toHaveText('visitor center');
+  await expect.poll(() => page.evaluate(() => /** @type {any} */ (window).announced)).toEqual([`Shiori's answer: ${said}`]);
+  // Drawn again from the log, the same.
+  await page.reload();
+  await expect(page.locator('.convo .line-kokoros-words').getByRole('link')).toHaveText(['Maps', 'Other maps']);
 });
 
 test('"This was for Shiori" on an old line: a tap sends the words as a spoken line, the quiet line loses its button, and the model reads what happened', async ({ page }) => {

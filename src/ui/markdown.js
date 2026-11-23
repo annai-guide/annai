@@ -99,6 +99,9 @@ export function parseMarkdown(src) {
   return blocks;
 }
 
+/** A line's words, their links, bold, italic and code drawn, never blocks: a model's words in a line annai draws (a reminder). @param {string} src */
+export const inlineMarkdown = (src) => inlineNodes(parseInline(src));
+
 /** @param {Inline[]} c @returns {(Node | string)[]} */
 function inlineNodes(c) {
   return c.map((x) => {

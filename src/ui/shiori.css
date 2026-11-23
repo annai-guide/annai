@@ -281,9 +281,10 @@ a.attach-chip, .attach-chip.gone { padding-inline: 12px; text-decoration: none; 
 .system-line { align-self: center; font-size: 12px; color: var(--ink-2); }
 /* The record lines keep their Undo button's height (44 px) with it and without, so nothing above them moves when it goes. */
 .dates-line, .undo-line { display: flex; align-items: center; gap: 6px; min-height: 44px; }
-/* What the halves tell each other: a dashed note of its own, not one of her reminders' quiet lines. */
+/* What the halves tell each other: a dashed note of its own, not one of her reminders' quiet lines. A long word in it (an address) breaks, as in
+   her lines and yours: one that ran past the screen's edge made an iPhone draw the whole page smaller, its dock mid-screen (the user, 2026-11-23). */
 .convo .by { display: block; font-size: 12px; }
-.convo .halves-note { align-self: center; max-width: 92%; padding: 4px 10px; border: 1px dashed var(--line); border-radius: 10px; font-size: 12px; color: var(--ink-2); }
+.convo .halves-note { align-self: center; max-width: 92%; padding: 4px 10px; border: 1px dashed var(--line); border-radius: 10px; font-size: 12px; color: var(--ink-2); overflow-wrap: anywhere; }
 .convo .system { align-self: stretch; border: 1px solid var(--amber); background: var(--amber-wash); border-radius: 12px; padding: 8px 12px; }
 .convo .system p { white-space: pre-line; }
 .card { display: flex; flex-direction: column; gap: 6px; }
