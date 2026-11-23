@@ -553,7 +553,7 @@ export class Agent {
    * The readings kept in the open conversation's log (`reading` entries), by the hash of what was read: told in words (for any model) and drawn as
    * pages (for one that sees photos); and the PDFs of a request every model of this half refused (`pdf.refused`, its own, those after the conversation's
    * last summary or fresh start), with the models' words (#visible); and the PDFs of its marks a summary or fresh start ended (`earlier`), which go whole
-   * again but skip the too-long housekeeping before the test (#steps). Loaded after the last entry read, so what the other half kept arrives at the next call.
+   * again; a request holding only them whole skips the too-long housekeeping before the test (#steps). Loaded after the last entry read, so what the other half kept arrives at the next call.
    * @type {{ scope: string, through: number, map: Map<string, { told?: KeptReading, pages?: KeptReading, newest?: 'told' | 'pages' }>, refused: Map<string, string>, earlier: Set<string> }}
    */
   #kept = { scope: '', through: 0, map: new Map(), refused: new Map(), earlier: new Set() };
@@ -2680,9 +2680,9 @@ export class Agent {
         const pdfs = new Map(refusers ? sent.messages.flatMap((m) => m.parts).flatMap((p) => (p.type === 'document' && p.hash ? [[p.hash, p]] : [])) : []);
         // "Request too long" from a model (every model failed): compact first, then try once more (spec §9.6), also for a request that carries PDFs, before
         // the test below: the conversation may be what was too long, and the PDF then answers in this turn, unmarked. Not for a request the test would take
-        // that holds a PDF this half marked before the latest summary (#loadKept): a summary made no room for it then, so it is tested at once.
+        // that holds whole only PDFs this half marked before a summary or fresh start (#loadKept), whatever for: taken as ones a summary won't make room for.
         const tooLong = this.#half.housekeeping && e instanceof AllFailedError && e.attempts.some((a) => a.outcome === 'context' || a.outcome === 'too-long');
-        if (tooLong && !triedCompacting && ![...pdfs.keys()].some((hash) => this.#kept.earlier.has(hash))) {
+        if (tooLong && !triedCompacting && !(pdfs.size && [...pdfs.keys()].every((hash) => this.#kept.earlier.has(hash)))) {
           triedCompacting = true;
           const done = await this.#tidyUp('cold', { forced: true }, wakeId);
           if (done === null) {
@@ -3009,7 +3009,7 @@ export class Agent {
    * The PDFs of a request every model it went to refused, which one that refused it answered without (spec §4.8): each is marked in the conversation's
    * log (this half's own), which this half's later requests read until the conversation's next summary or fresh start, a reload's too (#loadKept,
    * #visible); one card names them all, with the models' words. A mark the phone can't write holds only while the conversation stays open in this
-   * run: a summary, a reload, another conversation opened or Erase ends it (#notSaved).
+   * run: a reload, another conversation opened or Erase ends it, and a summary as a mark (its PDF skips the too-long housekeeping until one of those) (#notSaved).
    * @param {{ why: import('../llm/fallback.js').Why, words: string, files: Map<string, any>, models: Set<string> }} trial @param {string} wakeId
    */
   async #pdfRefused(trial, wakeId) {
@@ -3321,8 +3321,8 @@ export class Agent {
    * The readings kept in a conversation's log, loaded from after the last entry read (another half's arrive this way); a conversation
    * switch loads the new one's from its start. The PDFs refused (`pdf.refused`) are this half's own marks after the latest summary or fresh
    * start (`compaction`): a summary or a fresh start ends them, in memory too, so a PDF that is still in the conversation goes whole again; their hashes
-   * move to `earlier`, kept for the whole conversation (a switch back or a reload reads them again from its log), as a PDF marked two summaries ago
-   * still didn't fit then. @param {string} scope
+   * move to `earlier`, kept for the whole conversation (a switch back or a reload reads them again from its log): whatever a mark was for, its PDF is taken as one a summary
+   * won't make room for. @param {string} scope
    */
   async #loadKept(scope) {
     if (this.#kept.scope !== scope) this.#kept = { scope, through: 0, map: new Map(), refused: new Map(), earlier: new Set() };
