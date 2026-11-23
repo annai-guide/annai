@@ -2,7 +2,7 @@ import { readAppSettings, updateAppSettings } from '../settings.js';
 import { voiceMode, routeOf, offNote } from './mode.js';
 import { SYS, SYS_DEVICE, ensureDeviceScope, newId } from '../scopes.js';
 import { ProviderError } from '../llm/contract.js';
-import { COOLDOWN_MS, NETWORK_RETRIES, chatCandidates } from '../llm/fallback.js';
+import { COOLDOWN_MS, NETWORK_RETRIES, chatCandidates, restOf, deviceOnline } from '../llm/fallback.js';
 import { speechKind, modelOf, modelNames, abilityOf, STAND_INS } from '../llm/config.js';
 import { Speaker, speechOutEntries, Arrivals, playStream } from './speaker.js';
 import { estimateSeconds } from './stream-start.js';
@@ -827,7 +827,7 @@ export class Voice {
    * @returns {(model: { id?: string, name: string, input: string[] }, request: import('../llm/contract.js').Request, plain?: boolean, signal?: AbortSignal) => Promise<import('../llm/contract.js').Request>}
    */
   resolver(scope, wake, list, shared = false) {
-    /** Transcription models whose send was cut in this call: asked once a call, as chat asks a cut model once (fallback.js's nextStep). @type {Set<string>} */
+    /** Transcription models whose send was cut in this call (or that couldn't connect, the phone online): asked once a call, as chat asks a cut model once (fallback.js's nextStep). @type {Set<string>} */
     const cut = new Set();
     return async (model, request, plain, signal) => {
       if (plain && model.id) this.wavOnly.add(model.id);
@@ -844,15 +844,24 @@ export class Voice {
       list: cfg.roles['speech-in']?.models ?? [],
       memory: this.memory,
       asr: (id) => speechKind(cfg, types, id) === 'in' && this.llm.bench.until(id) <= this.now() && !cut.has(id),
-      transcribe: (id, kept) => this.#hear(id, kept, scope, wake, signal, shared),
+      transcribe: async (id, kept) => {
+        const text = await this.#hear(id, kept, scope, wake, signal, shared);
+        for (const x of cut) this.llm.bench.bench(x, COOLDOWN_MS, this.now()); // another heard it in their place: the cut ones rest (§10.3)
+        return text;
+      },
       // A kept clip is read for the conversation it was heard in: another trip's, named by its hash, isn't there (reach.js).
       clip: async (hash) => {
         const b = this.store ? await readBlob(this.store, scope, hash, { quiet: true }) : undefined;
         return b ? { data: new Uint8Array(b.data), mediaType: b.type } : null;
       },
-      // A recording that never went up in its send's time (speech.js) rests no model: the link, likelier than the model, as for a chat call
-      // (fallback.js's nextStep). It is not asked again in this call (cut), as chat doesn't; the next call's resolver asks it again.
-      onFail: (id, e) => { if (e instanceof ProviderError && e.said?.code === 'send') cut.add(id); else this.llm.bench.bench(id, restFor(e), this.now()); },
+      // A recording that never went up in its send's time (speech.js), or no connection to the model while the phone says it has one: the link
+      // as likely as the model. It is not asked again in this call (cut), as chat doesn't ask a cut model again, and rests only once another
+      // model heard it (transcribe); else the next call's resolver asks it again. Any other failure rests as a chat model's does (restOf).
+      onFail: (id, e) => {
+        if (e instanceof ProviderError && (e.said?.code === 'send' || (e.kind === 'unreachable' && deviceOnline()))) return void cut.add(id);
+        const ms = e instanceof ProviderError ? restOf(e) : COOLDOWN_MS;
+        if (ms) this.llm.bench.bench(id, ms, this.now());
+      },
       accepts: (id) => audioIn(cfg, types, id),
       encoder: this.platform?.encoder,
     };

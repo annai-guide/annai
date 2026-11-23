@@ -1812,6 +1812,53 @@ test("a reader that never starts answering ends at its own wait and rests, as an
   assert.equal(k.sent['model-1'].length, 2);
 });
 
+test("a reader whose send was cut rests once a reader of another role described the photo in its place, so the next reading doesn't wait on it; with none describing, nothing rests and the next reading asks it again (cut-send-next, 9)", async (t) => {
+  useClock(t);
+  const photo = async (/** @type {any} */ k) => k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+  const read = { toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.webp' } }] };
+  /** Utility's reader over the real callOnce, whose request never gets its answer's headers: cut at its wait and its send's time. */
+  const hung = () => {
+    /** @type {string[]} */
+    const urls = [];
+    const fetch = (/** @type {string} */ url, /** @type {any} */ init) => new Promise((_, fail) => {
+      urls.push(url);
+      init.signal.addEventListener('abort', () => fail(init.signal.reason), { once: true });
+    });
+    return { urls, fetch: /** @type {any} */ (fetch) };
+  };
+  const utility = { ability: { type: 'chat-completions', baseUrl: 'https://llm.example/v1' } };
+  // Readers for one Shiori: Utility's (cut), then Main's, where model-1 sees photos (model-0, hers, doesn't), as in the test above.
+  const one = hung();
+  const k = await agentKit([[read, say('A menu.'), read, say('Still a menu.')], [{ text: 'A menu; the fish is circled.' }]], { models: [{ input: ['text'] }, { input: ['text', 'image'] }], utility, fetch: one.fetch });
+  await photo(k);
+  k.agent.send('What does the menu say?');
+  await idleAtOnce(k, 60_000);
+  const told = /\nWhat it shows \(described by model-1, as you can't see photos\): A menu; the fish is circled\.$/;
+  const results = async () => (await k.events(['tool.result'])).filter((e) => e.data.name === 'read').map((e) => e.data.content);
+  assert.match((await results())[0], told);
+  assert.deepEqual(one.urls, ['https://llm.example/v1/chat/completions'], "Utility's reader asked once");
+  const left = k.llm.bench.until('m-u') - Date.now();
+  assert.ok(left > 180_000 - 2000 && left <= 180_000, `the cut reader rests 3 minutes (§9.6), ${left} ms left`);
+  const t1 = Date.now();
+  k.agent.send('Read it again');
+  await idleAtOnce(k);
+  assert.ok(Date.now() - t1 < 2000, `${Date.now() - t1} ms: no wait on the resting reader`);
+  assert.match((await results())[1], told);
+  assert.equal(one.urls.length, 1, 'the resting reader was not asked again');
+  assert.equal(k.sent['model-1'].length, 2);
+  // Nothing else describes it (Main's one model, hers, sees no photos): nothing rests, and the next reading asks it again.
+  const alone = hung();
+  const n = await agentKit([[read, say('No.'), read, say('Still no.')]], { models: [{ input: ['text'] }], utility, fetch: alone.fetch });
+  await photo(n);
+  n.agent.send('What does the menu say?');
+  await idleAtOnce(n, 60_000);
+  assert.match((await n.events(['tool.result'])).find((e) => e.data.name === 'read').data.content, /\nIt couldn't be described: .*The connection may be too slow to send photos or files\.$/);
+  assert.equal(n.llm.bench.until('m-u'), 0);
+  n.agent.send('Read it again');
+  await idleAtOnce(n, 60_000);
+  assert.equal(alone.urls.length, 2, 'asked again');
+});
+
 test('read with a region sends a crop, kept in the conversation, and says which region was used', async (t) => {
   useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.webp', region: [0.75, 0.6, 0.25, 0.1] } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]]);

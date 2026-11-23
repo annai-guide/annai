@@ -3,7 +3,7 @@
  * then Utility's, then the model's own role's; for a PDF then its pages as pictures, drawn by the PDF pages plugin (goal 12);
  * and only when nothing can, a note naming the setting that fixes it. Everything here is words a model reads: English.
  */
-import { chatCandidates, firstWordsMs } from '../llm/fallback.js';
+import { chatCandidates, firstWordsMs, AllFailedError, COOLDOWN_MS } from '../llm/fallback.js';
 import { KOE_CLASSIC, modelOf } from '../llm/config.js';
 import { fromBase64, toBase64 } from '../bytes.js';
 import { MAX_PAGES, PAGE_EDGE } from '../pdf-pages.js';
@@ -81,7 +81,7 @@ export function noReader(kind, { plugin = false, photos = false } = {}) {
  * (§4.8), so the next reading asks it again; either way the next reader is asked. Only a PDF's pages' drawing, which no call times,
  * stops at DESCRIBE_PDF_S; all of it stops at signal (the turn's stop). "Can read" means can and did: a reader that fails passes it on.
  * @param {FileToRead} file @param {{ input?: string[] }} model the model the reading is for
- * @param {{ llm: { call: Function, config: () => Promise<any> }, half: 'one' | 'kokoro' | 'koe', pages: import('../pdf-pages.js').PdfPages | null,
+ * @param {{ llm: { call: Function, config: () => Promise<any>, bench: import('../llm/fallback.js').Bench }, half: 'one' | 'kokoro' | 'koe', pages: import('../pdf-pages.js').PdfPages | null,
  *   signal: AbortSignal, wakeId: string, scope: string, secondMs: number, explain: (e: unknown, role: string) => string | Promise<string>, store: import('../types.js').Store,
  *   shared?: boolean }} o
  *   explain: why a reader failed, in English for the model (the loop's, which knows whether the device is online, and blanks every key annai keeps);
@@ -107,6 +107,8 @@ export async function readFile(file, model, o) {
   const wait = (role) => Math.max(firstWordsMs(cfg, role), DESCRIBE_S * o.secondMs);
   /** What failed last, in words. */
   let failed = '';
+  /** The readers whose send was cut in this reading: they rest once a reader of another role read it in their place (callRole's rule, across roles). @type {string[]} */
+  const cut = [];
   /**
    * The first reader role's model that takes kind and answers, else null; sent: the parts it was sent. @param {string} kind
    * @param {any[] | ((role: string) => any[])} parts what is sent, or what is sent to a role
@@ -121,8 +123,12 @@ export async function readFile(file, model, o) {
           role, level: 'off', signal: stop.signal, scope: o.scope, record: { tag: 'describe', wake: o.wakeId }, firstOutputMs: wait(role), shared: Boolean(o.shared),
           request: { system, maxOutput, messages: [{ role: 'user', parts: [...sent, { type: 'text', text: ask }] }] },
         });
-        if (r.reply.text.trim()) return { ...r, sent };
+        if (r.reply.text.trim()) {
+          for (const id of cut) if (id !== r.modelId) o.llm.bench.bench(id, COOLDOWN_MS);
+          return { ...r, sent };
+        }
       } catch (e) {
+        if (e instanceof AllFailedError) cut.push(...e.attempts.filter((a) => a.said?.code === 'send').map((a) => a.model));
         /* en */
         failed ||= `It couldn't be described: ${await o.explain(e, role)}`;
       }

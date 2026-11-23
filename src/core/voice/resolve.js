@@ -204,9 +204,11 @@ async function resolvePart(p, model, c) {
       if (a) return { type: 'audio', mediaType: a.mediaType, data: toBase64(a.data) };
       continue;
     }
-    if (id === 'dictation' || !c.asr(id)) continue; // dictation can't read recorded audio
-    const had = kept.transcripts.get(id) ?? kept.transcripts.values().next().value; // any model's words for the segment, as textVersion's: made once (§10.3)
+    if (id === 'dictation') continue; // dictation can't read recorded audio
+    // Any model's words for the segment, as textVersion's: made once (§10.3), whichever transcription model can work now.
+    const had = kept.transcripts.get(id) ?? kept.transcripts.values().next().value;
     if (had !== undefined) return { type: 'text', text: said(had) };
+    if (!c.asr(id)) continue;
     try {
       const text = await c.transcribe(id, kept);
       kept.transcripts.set(id, text);
