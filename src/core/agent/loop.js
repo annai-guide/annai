@@ -552,10 +552,11 @@ export class Agent {
   /**
    * The readings kept in the open conversation's log (`reading` entries), by the hash of what was read: told in words (for any model) and drawn as
    * pages (for one that sees photos); and the PDFs of a request every model of this half refused (`pdf.refused`, its own, those after the conversation's
-   * last summary or fresh start), with the models' words (#visible). Loaded after the last entry read, so what the other half kept arrives at the next call.
-   * @type {{ scope: string, through: number, map: Map<string, { told?: KeptReading, pages?: KeptReading, newest?: 'told' | 'pages' }>, refused: Map<string, string> }}
+   * last summary or fresh start), with the models' words (#visible); and the PDFs of its marks a summary or fresh start ended (`earlier`), which go whole
+   * again but skip the too-long housekeeping before the test (#steps). Loaded after the last entry read, so what the other half kept arrives at the next call.
+   * @type {{ scope: string, through: number, map: Map<string, { told?: KeptReading, pages?: KeptReading, newest?: 'told' | 'pages' }>, refused: Map<string, string>, earlier: Set<string> }}
    */
-  #kept = { scope: '', through: 0, map: new Map(), refused: new Map() };
+  #kept = { scope: '', through: 0, map: new Map(), refused: new Map(), earlier: new Set() };
   /** The last entry a request read whose reply then reached the user: notes up to it were answered (Koe's). */
   #reachedTo = { scope: '', to: 0 };
 
@@ -666,7 +667,7 @@ export class Agent {
 
   /** Erase: what it keeps in memory of the conversations' files goes. */
   forgetTold() {
-    this.#kept = { scope: '', through: 0, map: new Map(), refused: new Map() };
+    this.#kept = { scope: '', through: 0, map: new Map(), refused: new Map(), earlier: new Set() };
   }
 
   /** An import replaced "me": the turn's next step, or the next wake, takes a fresh snapshot (the files keep the backup's authors, which a warm one follows only when they are the user's). */
@@ -2675,10 +2676,13 @@ export class Agent {
         // The test's own refusal ends it: it is never tested.
         const tested = trial !== null;
         trial = null;
+        const refusers = !tested && e instanceof AllFailedError ? refusedBy(e.attempts) : null;
+        const pdfs = new Map(refusers ? sent.messages.flatMap((m) => m.parts).flatMap((p) => (p.type === 'document' && p.hash ? [[p.hash, p]] : [])) : []);
         // "Request too long" from a model (every model failed): compact first, then try once more (spec §9.6), also for a request that carries PDFs, before
-        // the test below: the conversation may be what was too long, and the PDF then answers in this turn, unmarked.
+        // the test below: the conversation may be what was too long, and the PDF then answers in this turn, unmarked. Not for a request the test would take
+        // that holds a PDF this half marked before the latest summary (#loadKept): a summary made no room for it then, so it is tested at once.
         const tooLong = this.#half.housekeeping && e instanceof AllFailedError && e.attempts.some((a) => a.outcome === 'context' || a.outcome === 'too-long');
-        if (tooLong && !triedCompacting) {
+        if (tooLong && !triedCompacting && ![...pdfs.keys()].some((hash) => this.#kept.earlier.has(hash))) {
           triedCompacting = true;
           const done = await this.#tidyUp('cold', { forced: true }, wakeId);
           if (done === null) {
@@ -2689,9 +2693,7 @@ export class Agent {
         }
         // Every model the request went to refused it (refusedBy), and it carried PDFs whole (spec §4.8, §9.9): a provider's words don't say which
         // part, so it goes once more with them as words. Answered by a model that refused it (in Kokoro's half one asked with the PDF's reading counts), the PDFs are taken as the cause (#pdfRefused);
-        // refused too, they weren't (in Kokoro's half a request too long has had its housekeeping above); answered by another model, nothing is known, and nothing is marked.
-        const refusers = !tested && e instanceof AllFailedError ? refusedBy(e.attempts) : null;
-        const pdfs = new Map(refusers ? sent.messages.flatMap((m) => m.parts).flatMap((p) => (p.type === 'document' && p.hash ? [[p.hash, p]] : [])) : []);
+        // refused too, they weren't (in Kokoro's half a request too long has had its housekeeping, before the test or, for one tested at once, after it); answered by another model, nothing is known, and nothing is marked.
         if (refusers && pdfs.size) {
           const own = await this.#whyOf(e);
           // What the refusing models said, not those passed over.
@@ -3318,15 +3320,18 @@ export class Agent {
   /**
    * The readings kept in a conversation's log, loaded from after the last entry read (another half's arrive this way); a conversation
    * switch loads the new one's from its start. The PDFs refused (`pdf.refused`) are this half's own marks after the latest summary or fresh
-   * start (`compaction`): a summary or a fresh start ends them, in memory too, so a PDF that is still in the conversation goes whole again. @param {string} scope
+   * start (`compaction`): a summary or a fresh start ends them, in memory too, so a PDF that is still in the conversation goes whole again; their hashes
+   * move to `earlier`, kept for the whole conversation (a switch back or a reload reads them again from its log), as a PDF marked two summaries ago
+   * still didn't fit then. @param {string} scope
    */
   async #loadKept(scope) {
-    if (this.#kept.scope !== scope) this.#kept = { scope, through: 0, map: new Map(), refused: new Map() };
+    if (this.#kept.scope !== scope) this.#kept = { scope, through: 0, map: new Map(), refused: new Map(), earlier: new Set() };
     const kept = this.#kept;
     const entries = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['reading', REFUSED_PDF, 'compaction'], after: kept.through }));
     for (const e of entries) {
       kept.through = Math.max(kept.through, e.seq);
       if (e.type === 'compaction') {
+        for (const hash of kept.refused.keys()) kept.earlier.add(hash);
         kept.refused.clear();
         continue;
       }

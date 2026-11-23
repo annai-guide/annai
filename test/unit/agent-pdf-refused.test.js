@@ -509,3 +509,32 @@ test('a PDF over the request size: one forced summary in its turn, not one for e
   assert.deepEqual(turn.map(hasPdf), [false, true, true], 'her read, the warm summary, her answer');
   assert.equal((await spoken(k)).at(-1), 'The lever by the seat.');
 });
+
+// A PDF too long for every window, marked before a summary and back after it (docs/limitations.md, "A PDF too long for every model's window comes back
+// after each summary"; pdf-refused-next's re-review, N2): a summary made no room for it then, so its refusal is tested at once, with no housekeeping first.
+/** The conversation's summaries so far. @param {any} k */
+const summaries = async (k) => (await k.events(['compaction'])).length;
+
+test('a PDF too long for every window, marked before a summary and read again after it: tested at once, each model sent it whole once, and no summary first', async (t) => {
+  useClock(t);
+  // Her cache is warm at Summarize now, so that summary is her model's text step; the housekeeping summaries are the utility model's.
+  const k = await manualKit([[...EXCHANGES, readIt, say('Lever by the seat.'), say('The trunk has a button.'), say('Sure.'), { text: 'They asked about the fuel cap and the trunk.' }, say('Hello.'), readIt, say('The lever, still.')], [say('never')]], { hold: refusing(TOO_LONG) });
+  await talk(k.agent, k, EARLIER);
+  await talk(k.agent, k, ['How do I open the fuel cap?']);
+  assert.equal((await k.events(['pdf.refused'])).length, 1, 'marked, after the housekeeping of its own turn');
+  // Two turns, so the PDF is out of its window; Summarize now; one more exchange, so housekeeping would have one to summarize.
+  await talk(k.agent, k, ['And the trunk?', 'Thanks']);
+  assert.equal(await k.agent.summarizeNow(), 'done');
+  await talk(k.agent, k, ['Hi']);
+  const before = k.requests.length;
+  const was = await summaries(k);
+  await talk(k.agent, k, ['Read the manual once more']);
+  const turn = k.requests.slice(before);
+  assert.deepEqual(turn.map(hasPdf), [false, true, true, false], 'her read; each model with the PDF, refused; the first with it as words, answered (main: the summary, and each with it whole again, between)');
+  assert.equal(turn.length, 4, 'four requests (main: seven)');
+  assert.equal(pdfBytes(turn), 2 * Math.ceil(2 ** 20 / 3) * 4, 'the PDF went up twice, once to each model (main: four times)');
+  assert.equal(await summaries(k), was, 'no summary in that turn');
+  assert.equal((await k.events(['pdf.refused'])).length, 2, 'marked again');
+  assert.deepEqual(cards(k), [TITLE, TITLE]);
+  assert.equal((await spoken(k)).at(-1), 'The lever, still.');
+});
