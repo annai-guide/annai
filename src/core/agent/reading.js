@@ -11,7 +11,7 @@ import { withoutSecrets } from './net.js';
 import { sendMs } from '../llm/uploads.js';
 
 /**
- * How long a photo's description may take, in seconds: the same as a role waits for a model's first words (§9.6),
+ * How long a photo's description may take, in seconds, before each reader's time to go up (§4.8): the same as a role waits for a model's first words (§9.6),
  * as a turn shouldn't wait on a side job longer than on its own model; a description is a few sentences.
  */
 export const DESCRIBE_S = 30;
@@ -75,8 +75,8 @@ export function noReader(kind, { plugin = false, photos = false } = {}) {
 /**
  * Reads a file for a model that can't take it. Every reader call is a side job: reasoning off, in the trace as a describe, waiting for
  * its first words the longer of its role's wait and DESCRIBE_S (for a PDF, at most two thirds of its reading). The whole reading, pages included, stops at
- * DESCRIBE_S or DESCRIBE_PDF_S, or at signal (the turn's stop): one budget for all its readers, to which each request a reader is sent adds
- * its time at SLOW_UPLINK once, when it is sent (a fixed extra: unlike a model's wait, it isn't started again at the reader's answer's
+ * DESCRIBE_S or DESCRIBE_PDF_S, or at signal (the turn's stop): one budget for all its readers, to which each reader adds the time its request takes
+ * to go up at SLOW_UPLINK once, when it is asked (a fixed extra: unlike a model's wait, it isn't started again at the reader's answer's
  * headers, call.js). "Can read" means can and did: a reader that fails passes it on.
  * @param {FileToRead} file @param {{ input?: string[] }} model the model the reading is for
  * @param {{ llm: { call: Function, config: () => Promise<any> }, half: 'one' | 'kokoro' | 'koe', pages: import('../pdf-pages.js').PdfPages | null,

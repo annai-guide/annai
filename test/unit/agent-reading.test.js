@@ -36,7 +36,7 @@ test("the roles that read for a half: Koe's first for Kokoro; for Koe, Utility's
   assert.deepEqual(readerRoles(cfg, 'kokoro'), ['utility', 'main'], 'a realtime model is no reader');
 });
 
-test("a reading's limit has each request's time to go up on top, added once when it is sent: a photo slower to go up than the limit is still described, and a reader that never answers ends at the limit and that time, not later (photo-wait's follow-ups, 2)", async (t) => {
+test("a reading's limit has each reader's time to go up on top, added once when it is asked: a photo slower to go up than the limit is still described, and a reader that never answers ends at the limit and that time, not later (photo-wait's follow-ups, 2)", async (t) => {
   useClock(t); // a clock that moves only by its timers: an end is exact, whatever the machine's speed
   /** @type {any} */
   const cfg = {

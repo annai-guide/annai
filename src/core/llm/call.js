@@ -246,7 +246,7 @@ async function billed(usage, tools, tally) {
  *   registry?: import('../registry.js').Registry, now?: () => number, uploads?: import('./uploads.js').Uploads, keep?: Keep,
  *   tally?: import('../workspace.js').Workspace, keepNative?: boolean, shared?: boolean }} c
  *   firstOutputMs: how long to wait for the first output once the provider has the request, and then between pieces of output
- *   shared: the other half sends its request on the same link at the same time (Koe and Kokoro): the send is timed on twice its bytes, as two
+ *   shared: the other half may send its request on the same link at the same time (Koe and Kokoro): the send is timed on twice its bytes, as two
  *   sends sharing a link evenly carry, by the time the first is up, its bytes and as many of the other's
  *   uploads: photos go to the provider's files API once, then by id, where the endpoint type can (spec §4.8)
  *   keep: kept on the provider's side where its type can and its switch is on
@@ -408,7 +408,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       const body = JSON.stringify(applyPatches(built.body, endpoint, model, level, patches));
       bytes = utf8Length(body); // in the trace: how much a kept turn saves
       // The model's wait starts once the provider has the request (the answer's headers); before, plus the body's time at SLOW_UPLINK, twice
-      // that when `shared` (the other half sends on the same link).
+      // that when `shared` (the other half may send on the same link).
       sending = firstOutputMs + sendMs(shared ? 2 * bytes : bytes);
       wait(sending);
       try {

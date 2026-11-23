@@ -1,5 +1,5 @@
 {
-  "build": "cf3d479da29a",
+  "build": "013be801e723",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -44,7 +44,7 @@
     "/src/core/agent/listen.js": "41cbb9219102",
     "/src/core/agent/log.js": "be1f6eedd6f8",
     "/src/core/agent/loop.js": "62ece7911834",
-    "/src/core/agent/reading.js": "255e09c114da",
+    "/src/core/agent/reading.js": "eb9187fd20a3",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/her-instructions.js": "b90fb982b678",
     "/src/core/agent/refusals.js": "ccbb44dc91f5",
@@ -74,7 +74,7 @@
     "/src/core/hash.js": "e3cf309df8cf",
     "/src/core/hooks.js": "61bf90a384c1",
     "/src/core/html-text.js": "ad9b5709befa",
-    "/src/core/llm/call.js": "d0220fd7c638",
+    "/src/core/llm/call.js": "ebbb19337c1f",
     "/src/core/llm/check.js": "e0549be66ba3",
     "/src/core/llm/config.js": "008b753fa725",
     "/src/core/llm/contract.js": "1a93b2547b3a",
