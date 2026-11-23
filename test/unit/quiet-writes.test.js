@@ -661,8 +661,8 @@ for (const full of [false, true]) {
 for (const [what, note, said] of /** @type {[string, any, RegExp][]} */ ([
   ["a note of Kokoro's with no words for the user, retold once,", { note: 'Say: it is nothing.', why: 'tool', retold: true, forUser: '' }, /note wasn't passed on/],
   ["Kokoro's gated speak with no words", { note: '', why: 'gated:speak', call: { name: 'speak', input: { text: '' } } }, /speak wasn't shown/],
-  ["Kokoro's gated card too broken to show, with no words,", { note: '', why: 'gated:show', call: { name: 'show', input: { card: {} } } }, /card wasn't shown/],
-  ["Kokoro's gated question too broken to show, with no words,", { note: '', why: 'gated:ask', call: { name: 'ask', input: { options: [] } } }, /question wasn't shown/],
+  ["Kokoro's gated card too broken to show, with no words,", { note: '', why: 'gated:show', call: { name: 'show', input: { card: {} } } }, /card wasn't shown: annai couldn't show it/],
+  ["Kokoro's gated question too broken to show, with no words,", { note: '', why: 'gated:ask', call: { name: 'ask', input: { options: [] } } }, /question wasn't shown: annai couldn't show it/],
 ])) {
   for (const full of [false, true]) {
     test(`${what} that a closing session hands on: its Trace line ${full ? 'refused: no card' : 'written with room: no card'}`, async () => {
@@ -720,7 +720,7 @@ for (const full of [false, true]) {
     const unshown = async (/** @type {string} */ scope) => (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(scope, { types: ['error'] }))).filter((/** @type {any} */ e) => e.data.kind === 'unshown');
     const lines = full ? store.tried.filter((/** @type {any} */ e) => e.data?.kind === 'unshown') : await unshown(left);
     assert.equal(lines.length, 1, full ? 'the line was tried' : 'in the conversation left');
-    assert.match(lines[0].data.message, /question wasn't shown/);
+    assert.match(lines[0].data.message, /question wasn't shown: the conversation was left/);
     assert.equal((await unshown(left)).length, full ? 0 : 1);
     assert.equal((await unshown(other)).length, 0, 'and not in the one opened');
   });
