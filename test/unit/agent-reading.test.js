@@ -79,7 +79,7 @@ const readWith = (file, llm, more = {}) => readFile(file, { input: ['text'] }, {
 /** @type {import('../../src/core/agent/reading.js').FileToRead} */
 const photo = { kind: 'image', mediaType: 'image/jpeg', data: 'A'.repeat(4_000) };
 
-test("a reader's call that takes longer than the reading's old limit and its send's estimate is still the description: the call times itself (read-wait-next, 1)", async (t) => {
+test("a reader's call that takes longer than the reading's old limit and its send's estimate is still the description: readFile puts no clock over a reader's call (read-wait-next, 1)", async (t) => {
   useClock(t);
   const r = readers({ utility: after(1_000) });
   const started = Date.now();
@@ -88,7 +88,7 @@ test("a reader's call that takes longer than the reading's old limit and its sen
   assert.ok(1_000 > 30 + sendMs(4_000));
 });
 
-test("a send that never ends is ended by the reader's call, in its own words, at the moment it ends it; the reading says them (read-wait-next, 2)", async (t) => {
+test("a reader whose call fails at its own limit (a send that never went up) is ended at that moment, in the call's own words, and the next reader is asked; the reading says the first's (read-wait-next, 2)", async (t) => {
   useClock(t);
   const send = new ProviderError('timeout', 'No answer in 70 seconds. The connection may be too slow to send photos or files.', { said: { code: 'send', seconds: 70 } });
   const r = readers({ utility: after(70_000, send), main: after(70_000, send) });
@@ -125,10 +125,10 @@ test("a PDF whose readers refuse at once, then whose pages plugin hangs, ends at
     secondMs: 1, explain: (/** @type {any} */ e) => e.message, store: /** @type {any} */ ({}),
   });
   assert.deepEqual([read.how, read.text], ['late', "It couldn't be described in time (90 seconds)."]);
-  assert.equal(Date.now() - started, 7 + 3 + 90, "the readers' 10 ms, then the drawing's 90 seconds at secondMs 1 (main: 90 and the PDF's 40,000 characters' estimate)");
+  assert.equal(Date.now() - started, 7 + 3 + 90, "the readers' 10 ms, then the drawing's 90 seconds at secondMs 1; the PDF's size adds nothing");
 });
 
-test("a PDF's telling that arrives after the drawing's 90 seconds is the result, from its words or from its pages' pictures: the reading has no clock over its readers, and the drawing's ends once the pages are drawn (read-wait-next, 5)", async (t) => {
+test("a PDF's telling that arrives after the drawing's 90 seconds is the result, from its words (no drawing runs) or from its pages' pictures: the reading has no clock over its readers, and the drawing's ends once the pages are drawn (read-wait-next, 5)", async (t) => {
   useClock(t);
   const r = readers({ utility: after(200) });
   const read = await readWith({ ...pdf, data: 'JVBE' }, r);
@@ -146,12 +146,25 @@ test("a PDF's telling that arrives after the drawing's 90 seconds is the result,
   assert.equal(told.text, "What it says (told by utility from pictures of page 1 of 1, as you can't read PDFs): Read by utility.");
 });
 
-test("a reader is asked as shared when its reading is (the half's turn shares the link), and not when it isn't (read-wait-next, 6)", async (t) => {
+test("every reader call is asked as shared when its reading is, and not when it isn't: a photo's two readers, a PDF's words from the second, and its pages' pictures from the second (read-wait-next, 6)", async (t) => {
   useClock(t);
+  const refused = new ProviderError('bad-request', 'No.');
+  // Neither reader reads PDFs, both see photos; one page is drawn.
+  const seers = structuredClone(twoReaders);
+  for (const m of Object.values(seers.models)) /** @type {any} */ (m).user.input = ['text', 'image'];
+  const pages = { pages: async () => ({ count: 1, pages: [{ type: 'image/jpeg', bytes: new Uint8Array([0xff, 0xd8, 0xff, 0]), width: 10, height: 10 }] }) };
   for (const shared of [true, false, undefined]) {
-    const r = readers({ utility: after(5) });
-    await readWith(photo, r, shared === undefined ? {} : { shared });
-    assert.deepEqual(r.asked.map((a) => a.shared), [Boolean(shared)], `shared ${shared}`);
+    const more = shared === undefined ? {} : { shared };
+    const want = Boolean(shared);
+    const photoAsk = readers({ utility: after(5, refused), main: after(5) });
+    await readWith(photo, photoAsk, more);
+    assert.deepEqual(photoAsk.asked.map((a) => [a.role, a.shared]), [['utility', want], ['main', want]], `a photo, shared ${shared}`);
+    const words = readers({ utility: after(5, refused), main: after(5) });
+    await readWith({ ...pdf, data: 'JVBE' }, words, more);
+    assert.deepEqual(words.asked.map((a) => [a.role, a.shared]), [['utility', want], ['main', want]], `a PDF's words, shared ${shared}`);
+    const drawn = readers({ utility: after(5, refused), main: after(5) });
+    await readWith({ ...pdf, data: 'JVBE' }, { call: drawn.call, config: async () => seers }, { pages, ...more });
+    assert.deepEqual(drawn.asked.map((a) => [a.role, a.shared]), [['utility', want], ['main', want]], `a PDF's pictures, shared ${shared}`);
   }
 });
 
@@ -179,4 +192,49 @@ test("over the real callOnce, a reader whose request never goes up ends at its w
     assert.equal(read.how, 'failed');
     assert.match(read.text, /^It couldn't be described: utility: No answer in \d+ seconds\. The connection may be too slow to send photos or files\.$/);
   }
+});
+
+// read-wait-fix1: what the second opinions' mutants showed the tests above left open.
+
+test("a reader whose role waits less than DESCRIBE_S (Koe's 8 s) is asked with DESCRIBE_S at the production second, and ends at it (read-wait-fix1, the floor)", async (t) => {
+  useClock(t);
+  const koe = { ...twoReaders, roles: { main: { models: [] }, utility: { models: [] }, 'koe-classic': { models: ['u'] } } };
+  const r = readers({ 'koe-classic': neverStarts });
+  const started = Date.now();
+  const read = await readWith(photo, { call: r.call, config: async () => koe }, { secondMs: 1000 });
+  assert.deepEqual(r.asked.map((a) => a.firstOutputMs), [30_000], "DESCRIBE_S's 30 s, not Koe's 8");
+  assert.equal(Date.now() - started, 30_000);
+  assert.equal(read.how, 'failed');
+});
+
+test("the turn's stop reaches a reader that never answers: the reading says so at once, and asks no further reader (read-wait-fix1)", async (t) => {
+  useClock(t);
+  const turn = new AbortController();
+  const r = readers({ utility: after(Infinity), main: after(Infinity) });
+  setTimeout(() => turn.abort(), 5);
+  const started = Date.now();
+  const read = await readWith(photo, r, { signal: turn.signal, secondMs: 1000 });
+  assert.equal(read.how, 'stopped');
+  assert.equal(Date.now() - started, 5);
+  assert.deepEqual(r.asked.map((a) => a.role), ['utility']);
+});
+
+test('a turn already stopped when the reading starts ends it before any reader is asked (read-wait-fix1)', async (t) => {
+  useClock(t);
+  const turn = new AbortController();
+  turn.abort();
+  const r = readers({ utility: after(Infinity), main: after(Infinity) });
+  const read = await readWith(photo, r, { signal: turn.signal, secondMs: 1000 });
+  assert.equal(read.how, 'stopped');
+  assert.deepEqual(r.asked, []);
+});
+
+test("a PDF told in words after the drawing's 90 seconds is the result while the pages plugin is installed: no drawing's clock runs over a telling that needs no pages (read-wait-fix1)", async (t) => {
+  useClock(t);
+  let drawn = 0;
+  const pages = { pages: async () => { drawn++; return { count: 1, pages: [] }; } };
+  const r = readers({ utility: after(200) });
+  const read = await readWith({ ...pdf, data: 'JVBE' }, r, { pages });
+  assert.equal(read.how, 'told');
+  assert.equal(drawn, 0);
 });

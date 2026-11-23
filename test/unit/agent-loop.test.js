@@ -1757,11 +1757,11 @@ test("a model that can't see photos reads one, and no model here can: the result
   assert.equal(k.sent['model-u'], undefined);
 });
 
-test("describing a photo for a model that can't see it waits for the describer's first words as its role waits for any model's (§9.6), and stops with the turn; either way the result says so in words and the turn goes on (review A5; read-wait-next)", async (t) => {
+test("describing a photo for a model that can't see it waits for the describer's first words the longer of its role's wait and 30 seconds (§9.6), and stops with the turn; either way the result says so in words and the turn goes on (review A5; read-wait-next)", async (t) => {
   useClock(t);
   const photo = async (/** @type {any} */ k) => k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('4000x3000'), { author: 'user', type: 'image/webp', meta: { width: 4000, height: 3000 } });
   const read = { toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.webp' } }] };
-  // A describer that never starts within its role's wait (Utility's 30 s, on the clock): it ends there, in the call's words, and her turn goes on.
+  // A describer that never starts within its wait (Utility's role waits 30 s, on the clock): it ends there, in the call's words, and her turn goes on.
   const slow = await agentKit([[read, say('I could not see it.')]], { models: [{ input: ['text'] }], utility: [{ delayMs: 60_000, text: 'Too late.' }] });
   await photo(slow);
   const t0 = Date.now();
@@ -1799,6 +1799,8 @@ test("a reader that never starts answering ends at its own wait and rests, as an
   const results = async () => (await k.events(['tool.result'])).filter((e) => e.data.name === 'read').map((e) => e.data.content);
   assert.match((await results())[0], told);
   assert.ok(k.llm.bench.until('m-u') > Date.now(), 'the stalled reader rests');
+  await new Promise((r) => setTimeout(r, 60_000)); // a minute on: the rest is 3 minutes, not seconds
+  assert.ok(k.llm.bench.until('m-u') > Date.now(), 'a minute after the stall it still rests');
   const t1 = Date.now();
   k.agent.send('Read it again');
   await idleAtOnce(k);
@@ -2387,7 +2389,7 @@ test("a reading is kept in the conversation's log: after a reload it is read fro
 
 test("a reading that failed is remembered for the rest of the call: the second pass's next model doesn't wait for it again", async (t) => {
   useClock(t);
-  // Utility's reader fails after 20 seconds, in a way that rests no model (a refusal: so only the call's memory keeps it from being asked
+  // Utility's reader fails after 20 seconds, in a way that rests no model (a bad request: so only the call's memory keeps it from being asked
   // again); two models of Kokoro's see no photos.
   const k = await photoKit([{ error: 'credit', status: 402 }], [{ delayMs: 20_000, error: 'bad-request', message: 'The photo is too big.' }], { more: [[say('I could not see it.')]], models: [{ input: ['text'] }] });
   const t0 = Date.now();
@@ -2509,7 +2511,7 @@ test("kept page pictures go with their hashes (so uploads can name them), within
   }
 });
 
-test("a reader's first-words wait is its role's, however long: one that never starts answering ends there, and the pages get their turn then (C; read-wait-next: no two-thirds rule)", async (t) => {
+test("a reader's first-words wait is the longer of its role's and 30 seconds, however long: one whose role waits 120 seconds ends there, and the pages get their turn then (C; read-wait-next: no two-thirds rule)", async (t) => {
   useClock(t);
   const k = await bookingKit([[readPdf, say('Done.')]], { agent: { secondMs: 1000 }, models: [{ input: ['text', 'image'] }], utility: [{ delayMs: 200_000, text: 'Hotel.' }] }, ['text', 'pdf']);
   const { saveRoles, readConfig } = await import('../../src/core/llm/config.js');

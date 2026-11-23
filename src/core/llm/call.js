@@ -437,9 +437,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     // With a photo's, a PDF's or a recording's bytes in what was sent (not the turns a kept one holds), likelier the send than the model; text
     // alone stays late (a server that never streams).
     if (err.said?.code === 'late' && sending && spec.request.messages.slice(spec.kept?.from ?? 0).some((m) => m.parts.some((p) => (p.type === 'image' && !p.fileId) || p.type === 'document' || p.type === 'audio'))) {
-      const seconds = Math.max(1, Math.round(sending / 1000));
-      /* en */
-      err = new ProviderError('timeout', `No answer in ${seconds} ${seconds === 1 ? 'second' : 'seconds'}. The connection may be too slow to send photos or files.`, { cause: e, said: { code: 'send', seconds } });
+      err = sendCut(e, sending);
     }
     // Output that started and then stopped is not "no output in time": it says so, and how long it waited.
     if (err.said?.code === 'late' && firstMs !== null) {
@@ -546,6 +544,17 @@ export function cannotConnect(e, signal) {
   const name = /** @type {any} */ (e)?.name;
   if (signal.aborted || name === 'AbortError' || name === 'TimeoutError') return e;
   return new ProviderError('unreachable', String(/** @type {any} */ (e)?.message ?? e), { cause: e });
+}
+
+/**
+ * What a request that held a photo's, a file's or a recording's bytes becomes when its answer's headers did not come within its send's time
+ * (spec §4.8): likelier the link than the model, so it says so, with the seconds it waited (said 'send'), and callRole and the voice's
+ * transcription list rest nothing for it. @param {unknown} cause @param {number} ms the time it waited
+ */
+export function sendCut(cause, ms) {
+  const seconds = Math.max(1, Math.round(ms / 1000));
+  /* en */
+  return new ProviderError('timeout', `No answer in ${seconds} ${seconds === 1 ? 'second' : 'seconds'}. The connection may be too slow to send photos or files.`, { cause, said: { code: 'send', seconds } });
 }
 
 /**

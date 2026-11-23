@@ -868,6 +868,28 @@ test("each model gets its photo limit of the raw request's distinct pictures, th
 });
 
 // Round 9.
+test("the second pass reads a message's photos one after another, so no two sends share the link while each is timed as alone: the reader is never called while another call of it is under way (read-wait-fix1, 2)", async () => {
+  const { s, seen } = spyWorld([{ input: ['text'] }]);
+  const photos = [0, 1, 2].map((i) => ({ type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: `h${i}`, path: `/trip/files/${i}.webp` }));
+  let active = 0;
+  let most = 0;
+  /** @type {string[]} */
+  const order = [];
+  const read = async (/** @type {any} */ p) => {
+    active++;
+    most = Math.max(most, active);
+    order.push(p.hash);
+    await new Promise((r) => setTimeout(r, 1));
+    active--;
+    return [{ type: 'text', text: `[a photo] Read ${p.hash}.` }];
+  };
+  const r = await call(s, { read, request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'What are these? ' }, ...photos, { type: 'text', text: 'Tell me.' }] }] } });
+  assert.equal(r.answeredBy, 'model-0');
+  assert.deepEqual(order, ['h0', 'h1', 'h2']);
+  assert.equal(most, 1, 'one at a time');
+  assert.deepEqual(seen[0].request.messages[0].parts.map((/** @type {any} */ p) => p.text), ['What are these? ', '[a photo] Read h0.', '[a photo] Read h1.', '[a photo] Read h2.', 'Tell me.'], 'each in its place');
+});
+
 test("the second pass's check before reading counts the model's photo limit, not every picture (round 9, N7)", async () => {
   const { s, seen } = spyWorld([{ input: ['text', 'image'], images: { maxCount: 2 } }]);
   s.config.models['m-0'].user.contextWindow = 8000;

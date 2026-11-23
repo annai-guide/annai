@@ -76,9 +76,10 @@ export function noReader(kind, { plugin = false, photos = false } = {}) {
 /**
  * Reads a file for a model that can't take it. Every reader call is a side job: reasoning off, in the trace as a describe, waiting for
  * its first words the longer of its role's wait and DESCRIBE_S, and timed as any model call is (call.js: until the answer's headers, also
- * its request's time to go up, twice that when shared). The reading has no clock over its readers: one that doesn't answer in time fails
- * and rests as any model does, and the next is asked. Only a PDF's pages' drawing, which no call times, stops at DESCRIBE_PDF_S; all of
- * it stops at signal (the turn's stop). "Can read" means can and did: a reader that fails passes it on.
+ * its request's time to go up, twice that when shared). The reading has no clock over its readers: one that sends headers and then no
+ * first words fails and rests 3 minutes, as any model does (§9.6); one whose send got no headers in its time fails and rests nothing
+ * (§4.8), so the next reading asks it again; either way the next reader is asked. Only a PDF's pages' drawing, which no call times,
+ * stops at DESCRIBE_PDF_S; all of it stops at signal (the turn's stop). "Can read" means can and did: a reader that fails passes it on.
  * @param {FileToRead} file @param {{ input?: string[] }} model the model the reading is for
  * @param {{ llm: { call: Function, config: () => Promise<any> }, half: 'one' | 'kokoro' | 'koe', pages: import('../pdf-pages.js').PdfPages | null,
  *   signal: AbortSignal, wakeId: string, scope: string, secondMs: number, explain: (e: unknown, role: string) => string | Promise<string>, store: import('../types.js').Store,

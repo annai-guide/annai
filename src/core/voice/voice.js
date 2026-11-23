@@ -848,7 +848,9 @@ export class Voice {
         const b = this.store ? await readBlob(this.store, scope, hash, { quiet: true }) : undefined;
         return b ? { data: new Uint8Array(b.data), mediaType: b.type } : null;
       },
-      onFail: (id, e) => this.llm.bench.bench(id, restFor(e), this.now()),
+      // A recording that never went up in its send's time (speech.js) rests no model: the link, likelier than the model, as for a chat call
+      // (fallback.js's nextStep). The turn's own transcription of the same words asks it again.
+      onFail: (id, e) => { if (!(e instanceof ProviderError && e.said?.code === 'send')) this.llm.bench.bench(id, restFor(e), this.now()); },
       accepts: (id) => audioIn(cfg, types, id),
       encoder: this.platform?.encoder,
     };

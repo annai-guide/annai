@@ -15,6 +15,7 @@ import { costs, spentToday } from '../../src/core/agent/budgets.js';
 import { createLlm } from '../../src/core/llm/service.js';
 import { callRole, Bench } from '../../src/core/llm/fallback.js';
 import { sendMs } from '../../src/core/llm/uploads.js';
+import { Voice } from '../../src/core/voice/voice.js';
 import { useClock } from './clock.js';
 
 /** A speech type of each direction, as a plugin would register them. */
@@ -153,7 +154,7 @@ test("a transcription's time limit starts once the provider has the recording, a
   assert.equal(Date.now() - started, 10 + 50, 'the answer at 10 ms, then the limit from it');
 });
 
-test("a half's turn's transcription beside the other half's send (shared) has the time of twice its bytes, as its model's send has: a recording up within that is heard where alone it is cut, and one that never goes up ends at the limit and twice its send's time (read-wait-next, 8, shape 6)", async (t) => {
+test("a half's turn's transcription beside the other half's send (shared) has the send time of twice its bytes, as its model's send has: a recording up within that is heard where alone it is cut, one that never goes up ends at the limit and that time, and the service's transcribe passes it on (read-wait-next, 8, shape 6)", async (t) => {
   useClock(t);
   // 4,000 bytes: 0.46 s at the slow link alone, 0.92 s shared; the 50 ms limit after.
   const audio = { data: new Uint8Array(4_000), mediaType: 'audio/wav', seconds: 0.1 };
@@ -167,7 +168,7 @@ test("a half's turn's transcription beside the other half's send (shared) has th
   await assert.rejects(hear(answersAfter(900), false), (e) => e instanceof ProviderError && e.kind === 'timeout');
   const started = Date.now();
   await assert.rejects(hear(answersAfter(Infinity), true), (e) => e instanceof ProviderError && e.kind === 'timeout');
-  assert.equal(Date.now() - started, 50 + sendMs(2 * 4_000));
+  assert.equal(Date.now() - started, 50 + sendMs(4_000, true));
   // The service's transcription passes it on: 40,000 bytes take 4.6 s alone, 9.1 s shared, after the role's 15 s; the answer comes at 22 s.
   const { registry, store, ws } = await setup();
   registry.add('test', 'endpoint-type', hears);
@@ -177,6 +178,50 @@ test("a half's turn's transcription beside the other half's send (shared) has th
   const long = { data: new Uint8Array(40_000), mediaType: 'audio/wav', seconds: 1 };
   assert.equal(/** @type {any} */ (await llm.transcribe({ modelId: m.id, audio: long, shared: true })).text, 'Where should we eat?');
   await assert.rejects(llm.transcribe({ modelId: m.id, audio: long }), (e) => e instanceof ProviderError && e.kind === 'timeout');
+});
+
+test("a recording that got no answer's headers within its send's time fails as a cut send, in a photo's words and with its code (so the voice rests no model for it); a stall after the headers, and a voice's text that never goes up, stay late (read-wait-fix1, 1)", async (t) => {
+  useClock(t);
+  const { store } = await setup();
+  // 4,000 bytes at the default 15 s limit: 15.458 s alone, 15.916 s shared.
+  const audio = { data: new Uint8Array(4_000), mediaType: 'audio/wav', seconds: 0.1 };
+  /** A fetch whose headers come ms after it is asked (Infinity: never), its body then never; ended by its signal. @param {number} ms */
+  const answersAfter = (ms) => (/** @type {any} */ _url, /** @type {any} */ init) => new Promise((done, fail) => {
+    const t = ms === Infinity ? undefined : setTimeout(() => done(new Response(new ReadableStream({ start: (c) => init.signal.addEventListener('abort', () => c.error(init.signal.reason), { once: true }) }))), ms);
+    init.signal.addEventListener('abort', () => { clearTimeout(t); fail(init.signal.reason); }, { once: true });
+  });
+  const hear = (/** @type {any} */ fetch, /** @type {boolean} */ shared = false) => speechCall({ type: /** @type {any} */ (hears), endpoint: endpoint('test-in'), model: model(null), key: null, audio, fetch, shared, trace: modelTrace(store, SYS) });
+  await assert.rejects(hear(answersAfter(Infinity)), (e) => e instanceof ProviderError && e.kind === 'timeout' && e.said?.code === 'send' && e.said?.seconds === 15
+    && e.message === 'No answer in 15 seconds. The connection may be too slow to send photos or files.');
+  await assert.rejects(hear(answersAfter(Infinity), true), (e) => e instanceof ProviderError && e.said?.code === 'send' && e.said?.seconds === 16);
+  assert.equal((await traced(store))[0].data.error, 'No answer in 15 seconds. The connection may be too slow to send photos or files.', 'the trace says it too');
+  // The provider had the request (its headers came), then nothing: late, which rests the model.
+  await assert.rejects(hear(answersAfter(10)), (e) => e instanceof ProviderError && e.kind === 'timeout' && e.said?.code === 'late' && e.message === 'No output started in time.');
+  // A voice's text is small: no send to blame.
+  await assert.rejects(speechCall({ type: /** @type {any} */ (speaks), endpoint: endpoint('test-out'), model: model(null), key: null, text: 'Hello', fetch: answersAfter(Infinity) }), (e) => e instanceof ProviderError && e.said?.code === 'late');
+});
+
+test("a gate's transcription cut before its provider's headers, through the real service and voice, leaves the model awake: the turn's own transcription of the same words asks it again and hears (read-wait-fix1, 1)", async (t) => {
+  useClock(t);
+  const { registry, store, ws } = await setup();
+  registry.add('test', 'endpoint-type', hears);
+  const { p, m } = speechProvider('transcription', 'test-in', 'Ears', 'https://ears.test', 'ears-1');
+  await saveProvider(ws, p, [m]);
+  await saveRoles(ws, { 'speech-in': { models: [m.id], level: 'off' } });
+  let sent = 0;
+  // The first recording never goes up; the second is answered at once.
+  const fetch = (/** @type {any} */ _url, /** @type {any} */ init) => new Promise((done, fail) => {
+    if (sent++ === 0) init.signal.addEventListener('abort', () => fail(init.signal.reason), { once: true });
+    else done(Response.json({ text: 'Where should we eat?' }));
+  });
+  const llm = createLlm({ store, ws, plugins: new PluginHost({ registry, workspace: ws }), fetch: /** @type {any} */ (fetch) });
+  const voice = new Voice({ llm, ws, registry, store, locale: 'en' });
+  voice.memory.keep({ id: 's-1', source: 'mic', audio: { data: new Uint8Array(4_000), mediaType: 'audio/wav', seconds: 0.1 }, ms: 100, at: 0 }, 'trip-1');
+  const ask = () => /** @type {Promise<any>} */ (voice.resolver('trip-1', 'w-1')({ id: 'm-chat', name: 'Chat', input: ['text'] }, { messages: [{ role: 'user', parts: [{ type: 'speech', id: 's-1' }] }] }, false));
+  await assert.rejects(ask(), /nothing in the speech-in list worked for Chat/);
+  assert.equal(llm.bench.until(m.id), 0, 'a cut send rests no model');
+  assert.match((await ask()).messages[0].parts[0].text, /Where should we eat\?/);
+  assert.equal(sent, 2);
 });
 
 test("a voice's time limit counts the text's send as a transcription's does: a text slower to go up than the limit is spoken; one that never goes up ends at the limit and the send's time (photo-wait's follow-ups, 1)", async (t) => {

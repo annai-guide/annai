@@ -1,5 +1,5 @@
 import { typeError, sameOrigin, noRedirect, ProviderError } from './contract.js';
-import { cannotConnect, asProviderError } from './call.js';
+import { cannotConnect, asProviderError, sendCut } from './call.js';
 import { sendMs } from './uploads.js';
 import { speechCost } from './cost.js';
 import { pickOut, formatOf } from '../voice/formats.js';
@@ -16,8 +16,9 @@ const playable = (p) => p?.pcm instanceof Int16Array && Number.isFinite(p.rate);
  * stream, gives its PCM as it comes: the call resolves at the first piece, which must come within the time limit, as a whole clip must;
  * then no gap may be longer. The time limit (a transcription's 15 s, a voice's 10 s, unless the role says: service.js) starts once the
  * provider has the whole request, as a model's wait does (call.js): until its answer's headers come, it is longer by the request's time at
- * SLOW_UPLINK, so a recording going up slowly isn't cut, twice that when shared (a half's turn's transcription, as its model's send is). It
- * is traced once all of it is in, or when it fails.
+ * SLOW_UPLINK, so a recording going up slowly isn't cut, twice that when shared (a half's turn's transcription, as its model's send is). A
+ * recording that got no headers in that time fails as a cut send (call.js's sendCut, as a photo's request does), which rests no model
+ * (voice.js). It is traced once all of it is in, or when it fails.
  * @typedef {import('./contract.js').EndpointType} EndpointType
  * @typedef {{ data: Uint8Array, mediaType: string }} Clip
  * @typedef {import('./contract.js').SpeechStream} SpeechStream
@@ -60,8 +61,9 @@ export async function speechCall(c) {
     clearTimeout(t);
     t = setTimeout(() => timer.abort(new DOMException(why, 'TimeoutError')), ms);
   };
-  // The request's bytes: at least the recording's, more as base64 in JSON (a string body).
-  limit(/* en */ 'No answer in time.', timeoutMs + sendMs(Math.max(c.audio?.data.byteLength ?? 0, typeof built.body === 'string' ? built.body.length : 0), c.shared));
+  // The request's bytes: at least the recording's, more as base64 in JSON (a string body). `sending` is that time until the headers come.
+  let sending = timeoutMs + sendMs(Math.max(c.audio?.data.byteLength ?? 0, typeof built.body === 'string' ? built.body.length : 0), c.shared);
+  limit(/* en */ 'No answer in time.', sending);
   const signal = c.signal ? anySignal([c.signal, timer.signal]) : timer.signal;
   /** A stream's format and size so far. @type {{ format: string, bytes: number } | null} */
   let sound = null;
@@ -76,7 +78,9 @@ export async function speechCall(c) {
   const failed = async (e) => {
     // A voice that started, then stalled: what it was, as it is made (the said its words come from), never a message patched after.
     const stalled = firstMs !== null && (/** @type {any} */ (e)?.name === 'TimeoutError' || signal.reason?.name === 'TimeoutError') && !(e instanceof ProviderError);
-    const err = stalled ? new ProviderError('timeout', /* en */ 'The voice stopped arriving for longer than annai waits.', { cause: e, said: { code: 'stalled' } }) : asProviderError(e, signal, type, c.registry);
+    let err = stalled ? new ProviderError('timeout', /* en */ 'The voice stopped arriving for longer than annai waits.', { cause: e, said: { code: 'stalled' } }) : asProviderError(e, signal, type, c.registry);
+    // A recording that never went up in its send's time, as a photo's request does (call.js): likelier the link than the model. A voice's text is small: late.
+    if (hearing && sending && err.said?.code === 'late') err = sendCut(e, sending);
     await trace(err.kind, err.message);
     return err;
   };
@@ -90,6 +94,7 @@ export async function speechCall(c) {
     } catch (e) {
       throw cannotConnect(e, signal);
     }
+    sending = 0;
     limit(/* en */ 'No answer in time.'); // the provider has the request
     status = res.status;
     noRedirect(res, endpoint);

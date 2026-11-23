@@ -275,12 +275,14 @@ export function fakeVoices(ids, { failing = {}, fetchMs = 2, browser = false } =
  * A fake llm service for the Voice: chat models in the main role (with their inputs), a voice (v1),
  * transcription models, and the two speech lists. calls records what was asked.
  * @param {{ main?: { id: string, input: string[] }[], asr?: string[], speechIn?: string[], speechOut?: string[], hears?: string[], failing?: string[], reply?: string,
- *   audioIn?: Record<string, string[]>, refuses?: Record<string, string>, flaky?: Record<string, number> }} [o]
+ *   audioIn?: Record<string, string[]>, refuses?: Record<string, string>, flaky?: Record<string, number>, cut?: Record<string, number>, unhintable?: string[] }} [o]
  *   hears: what transcription answers, in turn (the last repeats); failing: transcription models that fail; reply: what a chat call answers;
- *   audioIn: the formats a model takes; refuses: a transcription model that refuses this media type ('*': every file); flaky: one whose upload fails this many times first
+ *   audioIn: the formats a model takes; refuses: a transcription model that refuses this media type ('*': every file); flaky: one whose upload fails this many times first;
+ *   cut: one whose recording never goes up in its send's time this many times first (speechCall's cut send); unhintable: models that answer 400 naming the language field
+ *   when the user's languages are sent
  * The transcription models' type takes webm, mp4, mp3 and wav unless a model says otherwise, as OpenAI's does.
  */
-export function fakeLlm({ main = [{ id: 'm1', input: ['text'] }], asr = ['t1'], speechIn = ['send-audio', 't1', 'dictation'], speechOut = ['v1', 'browser-voice'], hears = ['what was said'], failing = [], reply = 'the words', audioIn = {}, refuses = {}, flaky = {} } = {}) {
+export function fakeLlm({ main = [{ id: 'm1', input: ['text'] }], asr = ['t1'], speechIn = ['send-audio', 't1', 'dictation'], speechOut = ['v1', 'browser-voice'], hears = ['what was said'], failing = [], reply = 'the words', audioIn = {}, refuses = {}, flaky = {}, cut = {}, unhintable = [] } = {}) {
   const bench = new Bench();
   /** @type {string[]} */
   const calls = [];
@@ -298,7 +300,7 @@ export function fakeLlm({ main = [{ id: 'm1', input: ['text'] }], asr = ['t1'], 
   for (const id of asr) cfg.models[id] = { id, provider: 'pi', ability: 'transcription', template: null, user: { providerId: id }, created: 0 };
   for (const [id, formats] of Object.entries(audioIn)) cfg.models[id].user.tunables = { audioIn: formats };
   let heard = 0;
-  /** What each transcription upload carried. @type {{ modelId: string, mediaType: string, data: Uint8Array, signal?: AbortSignal, languages?: any }[]} */
+  /** What each transcription upload carried (shared: the turn's link is shared, as speechCall times it). @type {{ modelId: string, mediaType: string, data: Uint8Array, signal?: AbortSignal, languages?: any, shared?: boolean }[]} */
   const uploads = [];
   /** The system text of each call a model answered. @type {string[]} */
   const systems = [];
@@ -314,11 +316,17 @@ export function fakeLlm({ main = [{ id: 'm1', input: ['text'] }], asr = ['t1'], 
       calls.push(`say ${modelId} ${text}`);
       return { clip: { data: enc.encode(`${modelId}:${text}`), mediaType: 'audio/mpeg' } };
     },
-    /** @param {{ modelId: string, audio: any, scope?: string, wake?: string, signal?: AbortSignal, languages?: any }} c */
-    async transcribe({ modelId, audio, scope, wake, signal, languages }) {
+    /** @param {{ modelId: string, audio: any, scope?: string, wake?: string, signal?: AbortSignal, languages?: any, shared?: boolean }} c */
+    async transcribe({ modelId, audio, scope, wake, signal, languages, shared }) {
       calls.push(['hear', modelId, audio.mediaType, scope, wake].filter(Boolean).join(' '));
-      uploads.push({ modelId, mediaType: audio.mediaType, data: audio.data, signal, languages });
+      uploads.push({ modelId, mediaType: audio.mediaType, data: audio.data, signal, languages, shared });
       if (failing.includes(modelId)) throw new ProviderError('server', `${modelId} is down`);
+      if (cut[modelId]) {
+        cut[modelId]--;
+        // As speechCall makes it when no headers came within the recording's send time (llm-speech.test.js pins the real one).
+        throw new ProviderError('timeout', 'No answer in 18 seconds. The connection may be too slow to send photos or files.', { said: { code: 'send', seconds: 18 } });
+      }
+      if (unhintable.includes(modelId) && languages?.spoken?.length) throw new ProviderError('bad-request', 'Unknown parameter: language');
       // whisper.cpp's server: any refusal comes back as "Invalid request" (its error handler replaces the body); '*' refuses every file.
       if (refuses[modelId] === audio.mediaType || refuses[modelId] === '*') throw new ProviderError('bad-request', 'Invalid request');
       if (flaky[modelId]) {
