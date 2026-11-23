@@ -77,7 +77,7 @@ const LINES = ['msg.user', 'heard', 'out.speak', 'out.show', 'out.ask'];
 /** The notes between the halves: written into the conversation, then handed over; the sender never waits. */
 /** The key of Kokoro's card for a turn its models all failed. */
 const KOKORO_CARD = 'model:kokoro';
-/** The notes annai writes to a half, which no model wrote. @type {string[]} */
+/** The notes annai writes to a half, which no model wrote (notes between the halves: a refused one tells, as #note does). @type {string[]} */
 const ANNAI_NOTES = ['kokoro-failed', 'nothing-to-add', 'stopped'];
 /** The key of the card for both halves' models failing. */
 const BOTH_CARD = 'model:both';

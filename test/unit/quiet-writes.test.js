@@ -680,6 +680,7 @@ for (const [what, note, said] of /** @type {[string, any, RegExp][]} */ ([
         const lines = full ? store.tried.filter((/** @type {any} */ e) => e.data?.kind === 'unshown') : await unshown();
         assert.equal(lines.length, 1);
         assert.match(lines[0].data.message, said);
+        if (!full) assert.equal(lines[0].data.quiet, true, 'quiet: the conversation draws no card for it');
         assert.equal((await unshown()).length, full ? 0 : 1);
       } finally {
         await k.done();
@@ -721,6 +722,7 @@ for (const full of [false, true]) {
     const lines = full ? store.tried.filter((/** @type {any} */ e) => e.data?.kind === 'unshown') : await unshown(left);
     assert.equal(lines.length, 1, full ? 'the line was tried' : 'in the conversation left');
     assert.match(lines[0].data.message, /question wasn't shown: the conversation was left/);
+    if (!full) assert.equal(lines[0].data.quiet, true, 'quiet: the conversation draws no card for it');
     assert.equal((await unshown(left)).length, full ? 0 : 1);
     assert.equal((await unshown(other)).length, 0, 'and not in the one opened');
   });
