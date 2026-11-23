@@ -264,13 +264,16 @@ export async function rescript(k, script, provider = 'pv-0') {
 /**
  * The kit's store refuses writes as WebKit refuses them on a full disk (UnknownError): every write, the user's lines, or the log
  * entries a test picks; or every transaction, reads too, as Chromium's does at no byte free (the builder's probe of 2026-11-19: a read fails after a failed
- * write); or reads alone, as any other failed open; and what the agent hands back.
+ * write); or reads alone, as any other failed open; and what the agent hands back, and (tried) each log entry a refusal turned away: a test's "was
+ * refused" is then a fact, not an absence.
  * @param {any} k @param {{ error?: () => unknown }} [o] error: what each refusal throws, made fresh as a store's is (a TypeError: a bug of ours, not a full phone)
- * @returns {{ full: (which: 'all' | 'everything' | 'reads' | 'lines' | ((ev: any) => boolean) | null) => void, back: { words: string, error: unknown }[] }}
+ * @returns {{ full: (which: 'all' | 'everything' | 'reads' | 'lines' | ((ev: any) => boolean) | null) => void, back: { words: string, error: unknown }[], tried: any[] }}
  */
 export function refusing(k, { error = () => new DOMException('Unable to store record in object store', 'UnknownError') } = {}) {
   /** @type {'all' | 'everything' | 'reads' | 'lines' | ((ev: any) => boolean) | null} */
   let which = null;
+  /** @type {any[]} */
+  const tried = [];
   const refuse = () => Promise.reject(error());
   const real = k.store.tx.bind(k.store);
   k.store.tx = (/** @type {any} */ stores, /** @type {any} */ mode, /** @type {any} */ fn) => real(stores, mode, (/** @type {any} */ t) => {
@@ -278,12 +281,16 @@ export function refusing(k, { error = () => new DOMException('Unable to store re
     if (mode !== 'readwrite' || !which || which === 'reads') return fn(t);
     if (which === 'all') return refuse();
     const refused = which === 'lines' ? (/** @type {any} */ ev) => ev.type === 'msg.user' : which;
-    return fn({ ...t, appendEvent: (/** @type {string} */ scope, /** @type {any} */ ev) => (refused(ev) ? refuse() : t.appendEvent(scope, ev)) });
+    return fn({ ...t, appendEvent: (/** @type {string} */ scope, /** @type {any} */ ev) => { // the predicate is called once: a test's may count its calls
+      if (!refused(ev)) return t.appendEvent(scope, ev);
+      tried.push(ev);
+      return refuse();
+    } });
   });
   /** @type {{ words: string, error: unknown }[]} */
   const back = [];
   k.agent.on('unsaved', (/** @type {any} */ x) => back.push(x));
-  return { full: (w) => { which = w; }, back };
+  return { full: (w) => { which = w; }, back, tried };
 }
 
 /**
