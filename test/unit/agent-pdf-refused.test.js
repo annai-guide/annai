@@ -14,6 +14,7 @@ import { useClock } from './clock.js';
 import { Agent } from '../../src/core/agent/loop.js';
 import { selfTools } from '../../src/core/agent/self-tools.js';
 import { ProviderError } from '../../src/core/llm/contract.js';
+import { estimateTokens } from '../../src/core/llm/fallback.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { traceSummary } from '../../src/ui/screens/trace.js';
 
@@ -510,31 +511,159 @@ test('a PDF over the request size: one forced summary in its turn, not one for e
   assert.equal((await spoken(k)).at(-1), 'The lever by the seat.');
 });
 
-// A PDF too long for every window, marked before a summary and back after it (docs/limitations.md, "A PDF too long for every model's window comes back
-// after each summary"; pdf-refused-next's re-review, N2): a summary made no room for it then, so its refusal is tested at once, with no housekeeping first.
-/** The conversation's summaries so far. @param {any} k */
+// A PDF marked before the conversation's latest summary or fresh start, and back after it (docs/limitations.md, "A PDF too long for every model's window
+// comes back after each summary"; pdf-refused-next's re-review, N2): a summary made no room for it then, so a refusal of a request holding it whole by every
+// model asked is tested at once, with no housekeeping first. A request that isn't refused sends it whole, and one no model was asked for keeps its housekeeping.
+/** The conversation's summaries and fresh starts so far. @param {any} k */
 const summaries = async (k) => (await k.events(['compaction'])).length;
+/** Her model's step that writes a summary while her cache is warm (Summarize now). */
+const SUMMARY = { text: 'They asked about the fuel cap and the trunk.' };
+/** The same Shiori again on the kit's store, as after a reload. @param {any} k */
+async function reload(k) {
+  const agent = new Agent({ store: k.store, ws: k.ws, llm: k.llm, registry: k.registry, codec: k.codec, timeZone: () => 'UTC', secondMs: 10, timers: NO_TIMERS });
+  agent.addLoopTools(selfTools(agent));
+  agent.on('notice', (/** @type {any} */ n) => k.notices.push(n));
+  await agent.open(k.trip);
+  return agent;
+}
 
-test('a PDF too long for every window, marked before a summary and read again after it: tested at once, each model sent it whole once, and no summary first', async (t) => {
+for (const [how, end, step] of /** @type {const} */ ([
+  ['a summary (Summarize now)', (/** @type {any} */ k) => k.agent.summarizeNow(), [SUMMARY]],
+  ['Start fresh', (/** @type {any} */ k) => k.agent.startFresh(), []],
+])) {
+  test(`a PDF too long for every window, marked before ${how} and read again after it: tested at once, each model sent it whole once, and no summary first`, async (t) => {
+    useClock(t);
+    const k = await manualKit([[...EXCHANGES, readIt, say('Lever by the seat.'), say('The trunk has a button.'), say('Sure.'), ...step, say('Hello.'), readIt, say('The lever, still.')], [say('never')]], { hold: refusing(TOO_LONG) });
+    await talk(k.agent, k, EARLIER);
+    await talk(k.agent, k, ['How do I open the fuel cap?']);
+    assert.equal((await k.events(['pdf.refused'])).length, 1, 'marked, after the housekeeping of its own turn');
+    // Two turns, so the PDF is out of its window; then the summary or fresh start; then one more exchange, so housekeeping would have one to summarize.
+    await talk(k.agent, k, ['And the trunk?', 'Thanks']);
+    assert.equal(await end(k), 'done');
+    await talk(k.agent, k, ['Hi']);
+    const before = k.requests.length;
+    const was = await summaries(k);
+    await talk(k.agent, k, ['Read the manual once more']);
+    const turn = k.requests.slice(before);
+    assert.deepEqual(turn.map(hasPdf), [false, true, true, false], 'four requests: her read; each model with the PDF, refused; the first with it as words, answered (main: seven, the summary and each with it whole again between)');
+    assert.equal(pdfBytes(turn), 2 * Math.ceil(2 ** 20 / 3) * 4, 'the PDF went up twice, once to each model (main: four times)');
+    assert.equal(await summaries(k), was, 'no summary in that turn');
+    assert.equal((await k.events(['pdf.refused'])).length, 2, 'marked again');
+    assert.deepEqual(cards(k), [TITLE, TITLE]);
+    assert.equal((await spoken(k)).at(-1), 'The lever, still.');
+  });
+}
+
+test('marked two summaries ago, then a reload: the PDF read again is still tested at once (the earlier marks are read from the log, and kept across summaries)', async (t) => {
   useClock(t);
-  // Her cache is warm at Summarize now, so that summary is her model's text step; the housekeeping summaries are the utility model's.
-  const k = await manualKit([[...EXCHANGES, readIt, say('Lever by the seat.'), say('The trunk has a button.'), say('Sure.'), { text: 'They asked about the fuel cap and the trunk.' }, say('Hello.'), readIt, say('The lever, still.')], [say('never')]], { hold: refusing(TOO_LONG) });
+  const k = await manualKit([[...EXCHANGES, readIt, say('Lever by the seat.'), say('The trunk has a button.'), say('Sure.'), SUMMARY, say('Ok.'), say('Fine.'), SUMMARY, say('Hello.'), readIt, say('The lever, still.')], [say('never')]], { hold: refusing(TOO_LONG) });
   await talk(k.agent, k, EARLIER);
   await talk(k.agent, k, ['How do I open the fuel cap?']);
-  assert.equal((await k.events(['pdf.refused'])).length, 1, 'marked, after the housekeeping of its own turn');
-  // Two turns, so the PDF is out of its window; Summarize now; one more exchange, so housekeeping would have one to summarize.
   await talk(k.agent, k, ['And the trunk?', 'Thanks']);
   assert.equal(await k.agent.summarizeNow(), 'done');
-  await talk(k.agent, k, ['Hi']);
+  await talk(k.agent, k, ['Ok?', 'Fine?']);
+  assert.equal(await k.agent.summarizeNow(), 'done', 'a second summary, with no mark between');
+  const reloaded = await reload(k);
+  await talk(reloaded, k, ['Hi']);
+  const before = k.requests.length;
+  const was = await summaries(k);
+  await talk(reloaded, k, ['Read the manual once more']);
+  assert.deepEqual(k.requests.slice(before).map(hasPdf), [false, true, true, false], 'her read; each model with the PDF, refused; the words, answered');
+  assert.equal(await summaries(k), was, 'no summary in that turn');
+  assert.equal((await k.events(['pdf.refused'])).length, 2);
+  assert.equal((await spoken(k)).at(-1), 'The lever, still.');
+});
+
+/** A provider's window, by annai's own count of a request: over it, a request is refused as too long, whatever it holds (the utility model's never). @param {number} tokens */
+const providerWindow = (tokens) => async (/** @type {any} */ c) => {
+  if (c.model.providerId !== 'model-u' && estimateTokens(c.request, c.model.providerId) > tokens) throw new ProviderError('context', TOO_LONG.message, { status: 400 });
+};
+/** 3,500 characters, about 1,000 tokens by annai's count: with two or three lines of it the PDF is too long for a window of 7,400 tokens, two without it aren't. */
+const LONG = 'x'.repeat(3500);
+
+for (const [shape, lines] of /** @type {const} */ ([
+  // Every request that carries the PDF is refused until the summary; then the models take it.
+  ['a bigger window now', EARLIER],
+  // A window of 7,400 tokens throughout. Measured (annai's estimates): the read's request without the PDF is 7,263 tokens, with it 8,915, and after its
+  // turn's housekeeping 7,866 (refused); with it as words 6,385, and every other until Summarize now at most 6,634 (taken). After it, her read again with the PDF, 5,781.
+  ['the conversation was what was too long', EARLIER.map((l) => `${l} ${LONG}`)],
+])) {
+  test(`a PDF marked before a summary that fits after it (${shape}) goes whole, and she answers from it: the earlier mark sends no words`, async (t) => {
+    useClock(t);
+    let wide = false;
+    const hold = shape === 'a bigger window now' ? async (/** @type {any} */ c) => (wide ? undefined : refusing(TOO_LONG)(c)) : providerWindow(7_400);
+    const k = await manualKit([[...EXCHANGES, readIt, say('Lever by the seat.'), say('The trunk has a button.'), say('Sure.'), SUMMARY, readIt, say('From the PDF.')], [say('never')]], { hold });
+    await talk(k.agent, k, lines);
+    await talk(k.agent, k, ['How do I open the fuel cap?']);
+    assert.equal((await k.events(['pdf.refused'])).length, 1, 'marked');
+    await talk(k.agent, k, ['And the trunk?', 'Thanks']);
+    assert.equal(await k.agent.summarizeNow(), 'done');
+    wide = true;
+    const before = k.requests.length;
+    await talk(k.agent, k, ['Read the manual once more']);
+    assert.deepEqual(k.requests.slice(before).map(hasPdf), [false, true], 'her read; the first model with the PDF whole, answered');
+    assert.equal((await spoken(k)).at(-1), 'From the PDF.');
+    assert.equal((await k.events(['pdf.refused'])).length, 1, 'no new mark');
+    assert.deepEqual(cards(k), [TITLE]);
+  });
+}
+
+test("a PDF marked before a summary, whose request every model passes over as too long by annai's own estimate: no test, so housekeeping runs first, and she answers from the PDF", async (t) => {
+  useClock(t);
+  // The first model's key is refused, so it rests until the user acts and isn't asked; its window (a million tokens) is the one housekeeping measures by,
+  // so no summary is forced before a request. The second's window is 7,500 tokens. Measured (annai's estimates, with a line of 8,000 characters before
+  // Summarize now, which keeps it): every request until her read again is at most 6,858 tokens (the mark's request with the PDF 5,740); her read again
+  // with the PDF is 8,070, so the second model passes it over, and no model is asked; after the summary of the long line, 5,692. Any window from 6,858
+  // to 8,069 does it; 7,500 is about the middle.
+  let refused = false;
+  const hold = async (/** @type {any} */ c) => {
+    if (c.model.providerId === 'model-0') throw new ProviderError('auth', 'invalid x-api-key', { status: 401 });
+    if (c.model.providerId === 'model-1' && hasPdf(c.request) && !refused) {
+      refused = true;
+      throw new ProviderError(PAGES.kind, PAGES.message, { status: 400 });
+    }
+  };
+  const k = await manualKit([[say('never')], [say('Hi.'), readIt, say('Lever.'), say('Ok.'), say('Sure.'), say('Noted.'), { text: 'They asked about the fuel cap.' }, readIt, say('From the PDF.')]], {
+    models: [{ ...READS, contextWindow: 1_000_000 }, { ...READS, contextWindow: 7_500 }], hold,
+  });
+  await talk(k.agent, k, ['Hi', 'How do I open the fuel cap?']);
+  assert.equal((await k.events(['pdf.refused'])).length, 1, 'marked: the second model refused it, and answered the words');
+  await talk(k.agent, k, ['Ok', 'Thanks', `Note this. ${'x'.repeat(8000)}`]);
+  assert.equal(await k.agent.summarizeNow(), 'done');
   const before = k.requests.length;
   const was = await summaries(k);
   await talk(k.agent, k, ['Read the manual once more']);
-  const turn = k.requests.slice(before);
-  assert.deepEqual(turn.map(hasPdf), [false, true, true, false], 'her read; each model with the PDF, refused; the first with it as words, answered (main: the summary, and each with it whole again, between)');
-  assert.equal(turn.length, 4, 'four requests (main: seven)');
-  assert.equal(pdfBytes(turn), 2 * Math.ceil(2 ** 20 / 3) * 4, 'the PDF went up twice, once to each model (main: four times)');
-  assert.equal(await summaries(k), was, 'no summary in that turn');
-  assert.equal((await k.events(['pdf.refused'])).length, 2, 'marked again');
-  assert.deepEqual(cards(k), [TITLE, TITLE]);
-  assert.equal((await spoken(k)).at(-1), 'The lever, still.');
+  assert.deepEqual(k.requests.slice(before).map(hasPdf), [false, false, true], 'her read; the summary (the request with the PDF went to no model); the PDF whole, answered');
+  assert.equal(await summaries(k), was + 1, 'housekeeping ran');
+  assert.equal((await spoken(k)).at(-1), 'From the PDF.');
+  assert.equal((k.sent['model-0'] ?? []).length, 1, 'the first model was asked once, at the start');
+  assert.equal((await k.events(['pdf.refused'])).length, 1, 'no new mark');
+  assert.deepEqual(cards(k), [TITLE], "no \"can't reach\" card");
+});
+
+test("the earlier marks are the half's own: after Koe's models refused the PDF and Start fresh, Kokoro's own read of it, too long for her model, gets her housekeeping first", async (t) => {
+  useClock(t);
+  // Koe's models refuse every request that carries the PDF (a page limit), and Koe marks it; Kokoro's model refuses it as too long. Kokoro's first step is her
+  // wake in the first turn; then two reviews, the second her read.
+  const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
+  const hold = async (/** @type {any} */ c) => {
+    if (!hasPdf(c.request)) return;
+    if (c.model.providerId === 'model-0') throw new ProviderError(TOO_LONG.kind, TOO_LONG.message, { status: 400 });
+    if (c.model.providerId !== 'model-u') throw new ProviderError(PAGES.kind, PAGES.message, { status: 400 });
+  };
+  const k = await manualKit([[sleep, sleep, readIt, sleep]], {
+    models: [READS], hold, koe: { talk: [readIt, say('The lever by the seat.')], type: [say('never')], input: ['text', 'image', 'pdf'] },
+  });
+  await talk(k.agent, k, ['How do I open the fuel cap?']);
+  assert.deepEqual((await k.events(['pdf.refused'])).map((m) => m.data.role), ['koe-classic']);
+  assert.equal(await k.agent.startFresh(), 'done');
+  const before = (k.sent['model-0'] ?? []).length;
+  const was = await summaries(k);
+  for (const cue of ['a review: one', 'a review: two']) {
+    k.agent.kokoro.enqueue({ kind: 'cue', text: cue, logged: true });
+    await k.agent.idle();
+  }
+  assert.deepEqual(k.sent['model-0'].slice(before).map(hasPdf), [false, false, true, true, false], 'the first review; her read; the PDF, refused; after the summary, again; the words, answered');
+  assert.equal(await summaries(k), was + 1, 'her housekeeping ran before the test');
+  assert.deepEqual((await k.events(['pdf.refused'])).map((m) => m.data.role), ['koe-classic', 'main'], 'marked by the test, for her half');
 });
