@@ -901,8 +901,8 @@ ip7w4y#other	ok	It didn't answer aloud within # seconds.	# 秒内没有语音回
 ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	这个名称已被 annai 官方插件使用，其他来源的插件不能再用。请联系作者改名。	src/core/registry.js:17	Note: "Ask its author" is asking a person (请让作者…), not the phones' permission choice Ask (询问).
 1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	这个名称属于 annai 官方插件，但已安装的同名插件来自其他来源，因此不会使用它。请在设置 → 插件中移除它，然后重试。	src/core/registry.js:18	
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	请在设置 → 插件中开启它，然后重试。	src/core/registry.js:19	
-mzoa87	ok	It is switched off after repeated errors.	因多次出错，已自动关闭。	src/core/registry.js:231	
-dhg5k6	ok	Starting failed: {0}	启动失败：{0}	src/core/registry.js:244	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
+mzoa87	ok	It is switched off after repeated errors.	因多次出错，已自动关闭。	src/core/registry.js:234	
+dhg5k6	ok	Starting failed: {0}	启动失败：{0}	src/core/registry.js:247	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
 19bu7pw	ok	Version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	版本 {0} 会导致 {1} 无法运行，因为它需要 {2} {3}。请先更新 {4}，或保留当前版本。	src/core/requires.js:52	{0} = version; {1} = them; {2} = it; {3} = r.version; {4} = them
 1ee40s4	ok	It needs {0}, which you turned off.	需要 {0}，但你已把它关闭。	src/core/requires.js:79	{0} = shown
 8xu6se	ok	It needs {0}, which isn't installed. Install it from {1} first, then try again.	需要 {0}，但尚未安装。请先从 {1} 安装，然后再试一次。	src/core/requires.js:82	{0} = r.id; {1} = r.homepage
@@ -953,7 +953,7 @@ l80ifa	ok	Add a transcription model in Settings → Models, such as OpenAI or Gr
 m5s9f4	ok	This browser can't play a voice as it arrives.	这个浏览器无法边接收边播放声音。	src/core/voice/speaker.js:128	
 jo5o9d	ok	This browser can't play sound here.	这个浏览器无法在这里播放声音。	src/core/voice/voice.js:425	
 ocv5zw	ok	This browser can't use the microphone here.	这个浏览器无法在这里使用麦克风。	src/core/voice/voice.js:468	
-55949q	ok	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	声音卡住了，annai 听不到你说话。轻点屏幕即可恢复。	src/core/voice/voice.js:793	
+55949q	ok	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	声音卡住了，annai 听不到你说话。轻点屏幕即可恢复。	src/core/voice/voice.js:799	
 pib2vo	ok	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	由浏览器自带的语音服务识别：Android 上通常是 Google 的服务器，iPhone 上是 Apple 的（有时直接在手机上完成）。这个请求不是 annai 发出的，所以“记录”中看不到。	src/core/voice/where.js:15	
 m93xm3	ok	On this phone only: the browser recognizes your speech on the device.	只在这部手机上：浏览器直接在本机识别你的语音。	src/core/voice/where.js:16	
 1m5zm0a	ok	Phone dictation	手机语音输入	src/core/voice/where.js:18	
