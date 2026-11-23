@@ -549,7 +549,7 @@ export function cannotConnect(e, signal) {
 /**
  * What a request that held a photo's, a file's or a recording's bytes becomes when its answer's headers did not come within its send's time
  * (spec §4.8): likelier the link than the model, so it says so, with the seconds it waited (said 'send'), and callRole and the voice's
- * transcription list rest nothing for it. @param {unknown} cause @param {number} ms the time it waited
+ * transcription list rest its model only once another model answered in its place. @param {unknown} cause @param {number} ms the time it waited
  */
 export function sendCut(cause, ms) {
   const seconds = Math.max(1, Math.round(ms / 1000));

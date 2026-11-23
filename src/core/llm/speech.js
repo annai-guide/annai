@@ -17,8 +17,8 @@ const playable = (p) => p?.pcm instanceof Int16Array && Number.isFinite(p.rate);
  * then no gap may be longer. The time limit (a transcription's 15 s, a voice's 10 s, unless the role says: service.js) starts once the
  * provider has the whole request, as a model's wait does (call.js): until its answer's headers come, it is longer by the request's time at
  * SLOW_UPLINK, so a recording going up slowly isn't cut, twice that when shared (a half's turn's transcription, as its model's send is). A
- * recording that got no headers in that time fails as a cut send (call.js's sendCut, as a photo's request does), which rests no model
- * (voice.js). It is traced once all of it is in, or when it fails.
+ * recording that got no headers in that time fails as a cut send (call.js's sendCut, as a photo's request does), which rests its model
+ * only once another model heard the recording (voice.js). It is traced once all of it is in, or when it fails.
  * @typedef {import('./contract.js').EndpointType} EndpointType
  * @typedef {{ data: Uint8Array, mediaType: string }} Clip
  * @typedef {import('./contract.js').SpeechStream} SpeechStream
