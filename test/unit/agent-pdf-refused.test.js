@@ -1,6 +1,6 @@
 // A PDF every model refuses (pdf-refused-next; docs/limitations.md, "A PDF every model refuses keeps its conversation failing" and "A PDF over
 // the request size brings a run of summaries before her answer"). The providers here refuse as a provider does: every request that carries the
-// PDF, whatever else it holds, before the script moves on (the kit's hold). Their words are Anthropic's: "prompt is too long: … > … maximum" for a
+// PDF, whatever else it holds, before the script moves on (the kit's hold). Their words are Anthropic's, as remembered: "prompt is too long: … > … maximum" for a
 // request over the window (kind context), and, from memory (pdf-count-next's final review), "A maximum of 100 PDF pages may be provided." for a
 // PDF over its page limit (kind bad-request): the kinds are what the classifier gives them, the wordings are not seen from a real API.
 //
@@ -75,7 +75,7 @@ const cards = (k) => k.notices.map((/** @type {any} */ n) => n.title);
 const EARLIER = ['Hello', 'Where are we?', 'Thanks'];
 const EXCHANGES = [say('Hi.'), say('Big Sur.'), say('Sure.')];
 
-/** The PDF's words for the first model, in the second test of a request: they hold the models' own words and say what happens next. @param {string} words @param {string} message */
+/** The PDF's words as the test sends them (the request once more, with the PDF as words): they hold the models' own words and say what happens next. @param {string} words @param {string} message */
 const wordsSay = (words, message) => {
   assert.ok(words.includes(message.slice(1).replace(/\.$/, '')), "the models' own words are in it, for her to tell the user");
   assert.match(words, /until the conversation is next summarized or started fresh, it goes as these words, a read of it again too\. To see a page of it, ask the user to send that page as a photo\]$/);
@@ -93,7 +93,7 @@ for (const [shape, why, sends, said] of /** @type {const} */ ([
     await talk(k.agent, k, ['How do I open the fuel cap?']);
     const turn = k.requests.slice(before);
     assert.deepEqual(turn.map(hasPdf), sends, said);
-    assert.equal(pdfBytes(turn), sends.filter(Boolean).length * Math.ceil(2 ** 20 / 3) * 4, 'the PDF went up each time it was whole, 1 MiB as base64');
+    assert.equal(pdfBytes(turn), sends.filter(Boolean).length * Math.ceil(2 ** 20 / 3) * 4, 'the PDF went up each time it was whole: its 1 MiB as 1,398,104 characters of base64');
     assert.equal((await spoken(k)).at(-1), 'The fuel cap opens from the lever by the seat.', 'answered in the same turn');
     const [words, ...more] = refusedWords(turn.at(-1));
     assert.equal(more.length, 0);
@@ -111,10 +111,10 @@ for (const [shape, why, sends, said] of /** @type {const} */ ([
 }
 
 /**
- * Failures that are not a refusal of the PDF by every model asked, from the request after her read on, whatever it holds (the main role's models;
- * the utility model answers): a setting every provider refuses (a tunable: a refusal of every request, so the test is refused too), a conversation
- * too long with or without the PDF, a refused key, and a refused photo. Each: what her turn sends (with the PDF or not), and its card's words.
- * Only the first two are refusals, which the test then decides: its extra passes are the price of the test, and the card is the same.
+ * Failures other than a refusal of the PDF itself, from the request after her read on, whatever it holds (the main role's models; the utility
+ * model answers): a setting every provider refuses (a tunable: a refusal of every request, so the test is refused too), a conversation too long
+ * with or without the PDF, a refused key, and a refused photo. Each: what her turn sends (with the PDF or not), and its card's words.
+ * Only the first two are refusals by every model asked, which the test then decides: its extra passes are the price of the test, and the card is the same.
  */
 const OTHER = /** @type {const} */ ([
   ['a setting every provider refuses', { kind: 'bad-request', message: 'Unsupported parameter: top_k.', status: 400 }, [false, true, true, false, false], 'her read; both models with the PDF; both once more with it as words (refused too); then the card'],
@@ -138,7 +138,7 @@ for (const [shape, why, sends, said, card = CANT] of OTHER) {
     await talk(k.agent, k, ['How do I open the fuel cap?']);
     const turn = k.requests.slice(before);
     assert.deepEqual(turn.map(hasPdf), sends, said);
-    assert.deepEqual(cards(k).slice(-1), [card], 'the card of a failed turn, not the PDF card');
+    assert.deepEqual(cards(k), [card], 'the card of a failed turn, one, and not the PDF card');
     if (card === CANT) assert.ok(k.notices.at(-1).body.includes(why.message.slice(1)), "with the providers' own words");
     assert.equal((await k.events(['pdf.refused'])).length, 0, 'nothing marked: the PDF was not the cause');
     if (why.kind !== 'bad-request') return;
@@ -265,7 +265,8 @@ test('a PDF too long only together with the conversation: after housekeeping it 
 
 test('a PDF over its page limit in a conversation too long without it: the test at once is refused as too long, housekeeping runs, and the PDF is tested again after it', async (t) => {
   useClock(t);
-  // The PDF is refused whatever else is in the request; a request with no summary yet is too long too (a request of words, which the first test sends).
+  // The PDF is refused whatever else is in the request, and once the earlier exchanges are in, a request with no summary yet is too long too, the test's own
+  // (the PDF as words) included.
   const summarized = (/** @type {any} */ r) => JSON.stringify(r.messages).includes('[Earlier conversation, summarized');
   const hold = async (/** @type {any} */ c) => {
     if (c.model.providerId === 'model-u') return;
@@ -320,6 +321,21 @@ test('a summary ends the mark: her read of the PDF again goes whole, is refused,
   assert.equal((await spoken(k)).at(-1), 'The lever, still.');
 });
 
+test("Start fresh ends the mark with no summary before it: her read of the PDF goes whole again, is refused, and is tested and marked again, with a second card", async (t) => {
+  useClock(t);
+  const k = await manualKit([[readIt, say('Lever by the seat.'), readIt, say('The lever, still.')], [say('never')]], { hold: refusing(PAGES) });
+  await talk(k.agent, k, ['How do I open the fuel cap?']);
+  assert.equal((await k.events(['pdf.refused'])).length, 1);
+  assert.equal((await k.events(['compaction'])).length, 0, 'no summary in this conversation: only Start fresh ends the mark');
+  assert.equal(await k.agent.startFresh(), 'done');
+  const before = k.requests.length;
+  await talk(k.agent, k, ['Read the manual once more']);
+  assert.deepEqual(k.requests.slice(before).map(hasPdf), [false, true, true, false], 'her read; the PDF whole again, refused by both; the words, answered');
+  assert.equal((await k.events(['pdf.refused'])).length, 2, 'marked again');
+  assert.deepEqual(cards(k), [TITLE, TITLE]);
+  assert.equal((await spoken(k)).at(-1), 'The lever, still.');
+});
+
 test("a mark the phone can't write: she still answers, the storage card says so, and the PDF goes as words while the conversation stays open", async (t) => {
   useClock(t);
   const k = await manualKit([[readIt, say('The lever by the seat.'), say('The trunk has a button.')], [say('never')]], { hold: refusing(PAGES) });
@@ -352,9 +368,9 @@ test("Koe's half does the same: her own read refused by every Koe model, the req
   assert.deepEqual(marks.map((m) => m.data.role), ['koe-classic'], "one mark, Koe's, never tested again");
 });
 
-test("a mark is its half's: Koe's models refused the PDF, and Kokoro's own read of it goes whole to her models, which answer from it", async (t) => {
+test("a mark is its half's: Koe's models refused the PDF, and Kokoro's own read of it goes whole to her models, with none of Koe's words", async (t) => {
   useClock(t);
-  // Koe's list refuses a PDF (Koe's window is small); Kokoro's model, with a window of a million tokens, reads it.
+  // Both of Koe's models refuse every request that carries a PDF (as over a page limit); Kokoro's own model, no part of that, takes it.
   const k = await manualKit([[readIt, say('From the PDF: the lever.')]], {
     hold: refusing(PAGES, ['model-koet', 'model-koe']), models: [{ input: ['text', 'image', 'pdf'], contextWindow: 1_000_000 }],
     koe: { talk: [readIt, say('The lever by the seat.')], type: [say('never')], input: ['text', 'image', 'pdf'] },
@@ -369,6 +385,39 @@ test("a mark is its half's: Koe's models refused the PDF, and Kokoro's own read 
   assert.equal(hers.flatMap((r) => refusedWords(r)).length, 0, "and no words of Koe's mark");
   assert.deepEqual((await k.events(['pdf.refused'])).map((m) => m.data.role), ['koe-classic'], "one mark, Koe's, and none of Kokoro's");
   assert.deepEqual(cards(k), [TITLE], "only Koe's card");
+});
+
+test("a model resting in Koe's turn is not asked, so the other's refusal marks the PDF, and the resting one, awake later, gets the words until the next summary (accepted: a proposed known limitation)", async (t) => {
+  useClock(t);
+  // Koe's list: the first model takes this PDF but is rate-limited at its first request and rests for 3 minutes (Koe never asks a resting model); the
+  // second is refused every request that carries it (a page limit). The mark rests on the one model asked, as the test's rule has it: models passed over
+  // (resting among them) don't count. A rule that made a resting model block the test would bring the failure the test is for back to Koe's half for as long as a model stays benched (one that only the user's key or credit can wake: for good).
+  let limited = false;
+  const k = await manualKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]], {
+    models: [READS], koe: { talk: [readIt, say('Not from the PDF.')], type: [say('Hello.'), readIt, say('The lever by the seat.')], input: ['text', 'image', 'pdf'] },
+    hold: async (/** @type {any} */ c) => {
+      if (c.model.providerId === 'model-koet' && !limited) {
+        limited = true;
+        throw new ProviderError('rate', 'Rate limited', { status: 429 });
+      }
+      if (c.model.providerId === 'model-koe' && hasPdf(c.request)) throw new ProviderError(PAGES.kind, PAGES.message, { status: 400 });
+    },
+  });
+  await talk(k.agent, k, ['Hi']);
+  assert.deepEqual(k.sent['model-koet'].map(hasPdf), [false], 'rate-limited, resting');
+  await talk(k.agent, k, ['How do I open the fuel cap?']);
+  assert.equal(k.sent['model-koet'].length, 1, 'not asked while it rests');
+  assert.deepEqual(k.sent['model-koe'].map(hasPdf), [false, false, true, false], 'her read; the PDF, refused; the words, answered');
+  assert.deepEqual(cards(k), [TITLE]);
+  assert.deepEqual((await k.events(['pdf.refused'])).map((m) => m.data.role), ['koe-classic'], 'marked on the second model alone');
+  // Ten minutes on, the first model is awake and goes first: it is sent the words, never the PDF.
+  await new Promise((r) => setTimeout(r, 10 * 60_000));
+  await talk(k.agent, k, ['Read it again']);
+  assert.deepEqual(k.sent['model-koet'].slice(1).map(hasPdf), [false, false], 'her read, and the request after it: no PDF');
+  assert.equal(refusedWords(k.sent['model-koet'].at(-1)).length, 1, 'the words in its place');
+  assert.equal((await spoken(k)).at(-1), 'Not from the PDF.');
+  assert.equal((await k.events(['pdf.refused'])).length, 1, 'never tested again');
+  assert.deepEqual(cards(k), [TITLE]);
 });
 
 test('words answered by a model that did not refuse the whole request are no proof: the model that refused it refuses the words too, a text-only model answers them, and nothing is marked', async (t) => {
@@ -404,7 +453,7 @@ test('three PDFs, one locked: one refused request marks them together, one card 
   await talk(k.agent, k, ['Read the hotel again']);
   assert.deepEqual(pdfsOf(k.requests.at(-1)), [], 'the hotel is words');
   assert.equal(refusedWords(k.requests.at(-1), '/trip/files/hotel.pdf').length, 2);
-  // A summary ends the marks: the hotel, in the kept exchange, goes whole, and so does the ticket she reads next, one at a time, and neither is refused.
+  // A summary ends the marks: the hotel, in the kept exchange, goes whole, and so does the ticket she reads next, both in the one request, and neither is refused.
   assert.equal(await k.agent.summarizeNow(), 'done');
   await talk(k.agent, k, ['And the ticket?']);
   assert.deepEqual(pdfsOf(k.requests.at(-1)).sort(), ['hotel.pdf', 'ticket.pdf'], 'the fine ones whole again');

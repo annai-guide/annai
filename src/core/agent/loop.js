@@ -2580,7 +2580,7 @@ export class Agent {
       // What the main models are sent: their photo limit of the pictures, each once.
       const sent = { ...request, messages: limitMedia(request.messages, (await this.#mainImages()).maxCount, request.photosFrom) };
       const estimate = estimateTokens(sent, (await this.#mainModel())?.providerId);
-      // After a size-forced summary this turn, the size forces no other (the tokens still do): what is still over it is the newest exchanges' (a PDF
+      // After a forced summary this turn (the size or the tokens), the size forces no other (the tokens still do): what is still over it is the newest exchanges' (a PDF
       // read in them), which no summary of older ones makes smaller (in a probe, a PDF of 6.5 MiB brought five in a row). It goes as it is.
       const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window, bytes: summarized ? 0 : requestBytes(sent, { uploaded }), maxBytes, threshold: settings.compaction.threshold }) : null;
       const tidy = coldStart;
@@ -3008,7 +3008,7 @@ export class Agent {
    * log (this half's own), which this half's later requests read until the conversation's next summary or fresh start, a reload's too (#loadKept,
    * #visible); one card names them all, with the models' words. A mark the phone can't write holds only while the conversation stays open in this
    * run: a summary, a reload, another conversation opened or Erase ends it (#notSaved).
-   * @param {{ why: import('../llm/fallback.js').Why, words: string, files: Map<string, any> }} trial @param {string} wakeId
+   * @param {{ why: import('../llm/fallback.js').Why, words: string, files: Map<string, any>, models: Set<string> }} trial @param {string} wakeId
    */
   async #pdfRefused(trial, wakeId) {
     const names = await this.#names();
@@ -3025,8 +3025,9 @@ export class Agent {
     await this.#notice({ tone: 'warn', title: plural(n, "Shiori's models refused a request with a PDF in it", "Shiori's models refused a request with PDFs in it"), body });
   }
 
-  /** A card for a photo that couldn't be sent; the turn's error then shows no second card. @param {string} why @param {string} wakeId */
+  /** A card for a photo that couldn't be sent; the turn's error then shows no second card, nor the next model's repair (each model that refuses the photo comes here). @param {string} why @param {string} wakeId */
   async #cantSend(why, wakeId) {
+    if (this.#photoCard === wakeId) return null;
     this.#photoCard = wakeId;
     await this.#notice({ tone: 'warn', title: t`Shiori couldn't send the photo`, body: why });
     return null;
