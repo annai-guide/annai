@@ -2253,7 +2253,8 @@ export class Agent {
 
   /**
    * A write nobody waits on failed (a wake kept for a conversation that isn't open, what a Stop stopped, a reminder's entry, a heard line's route, her
-   * words a restart cut, a turn's end records; the halves' and a live session's through notSaved): a card says so, with the
+   * words a restart or a note's cut-in cut and the chatter written in between her steps (neither stops her turn), a turn's end records; the halves' and a
+   * live session's through notSaved): a card says so, with the
    * error, so main.js shows the storage card in its place for a full phone, once for an error the dock showed already (typed words given back). Never rejects.
    * @param {unknown} e
    */

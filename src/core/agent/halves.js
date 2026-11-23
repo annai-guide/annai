@@ -581,7 +581,9 @@ export class Halves {
   /**
    * What the user typed and what woke Shiori, and what follows a change of Koe's way, in order. failed: what a route that fails says. The default is a console
    * line: a route that only reads Koe's way again writes nothing but annai's own record of it (Kokoro's block, written again by the next refresh), which nothing
-   * waits behind. A route that carries something for the user or Shiori (what #backstop shows, Kokoro told to talk directly, a tap) says it's gone (#gone).
+   * waits behind; so is shown(), which opens a session for the notes that wait in one: they were written when they were sent, so a read refused there shows
+   * nothing, and they are said at the next session open. A route that carries something for the user or Shiori (what #backstop shows, Kokoro told to talk
+   * directly, a tap) says it's gone (#gone).
    * @param {() => unknown} fn @param {(e: unknown) => unknown} [failed]
    */
   #route(fn, failed = (e) => console.warn(/* en */ 'routing failed', e)) {
@@ -1386,7 +1388,7 @@ export class Halves {
         if (w.kind !== 'note') await this.kokoro.remind(w.fallbacks ?? [], undefined, { aloud: true });
         else if (await this.#present(w, false)) continue;
         else if (w.why === 'tool' && !w.retold) this.#retell.push(w);
-        else if (w.why === 'tool') await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ "Kokoro's note wasn't passed on: Koe didn't say it, twice, and it had no words for the user (for_user).", quiet: true } });
+        else if (w.why === 'tool') await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ "Kokoro's note wasn't passed on: Koe didn't say it, twice, and it had no words for the user (for_user).", quiet: true } }).catch(() => {}); // a Trace line: no card, as #block
       } catch (e) {
         await this.#gone(e); // this one is gone, said; the next still shows
       }
@@ -1561,7 +1563,7 @@ export class Halves {
    * @param {() => void} [refused] what a refused note undoes
    */
   #note(text, why, wake, by, refused) {
-    const p = this.channel.send('kokoro', text, 'append', why, wake, undefined, false, '', by === undefined ? {} : { by }).catch((e) => { refused?.(); this.#gone(e); });
+    const p = this.channel.send('kokoro', text, 'append', why, wake, undefined, false, '', by === undefined ? {} : { by }).catch((e) => { refused?.(); return this.#gone(e); });
     this.#sending.add(p);
     p.finally(() => this.#sending.delete(p));
   }
