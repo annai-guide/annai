@@ -762,7 +762,8 @@ export async function putFile(page, scope, path, bytes, type) {
  * then aborted where it would commit: at a count that succeeds with no request of annai's succeeding since the count before it. A transaction runs its
  * requests in order, so every request annai made before that count has succeeded; one it makes on a success comes before the next count, so it has made
  * none since. Never by the clock: on a loaded machine annai's requests can still be waiting long after the write began. A write that touches one of
- * `stores` is refused whether or not it writes anything. `room()` ends the refusals for writes begun after it; one already open still aborts.
+ * `stores` is refused whether or not it writes anything. `room()` ends the refusals for writes begun after it, until a later `release()` brings them
+ * back; one already open still aborts, at its next quiet count.
  * @param {import('@playwright/test').Page} page @param {string} browserName
  * @param {{ held?: boolean, stores?: string[] }} [o] stores: the writes it refuses are those that touch one of them: the log's, unless said
  */
