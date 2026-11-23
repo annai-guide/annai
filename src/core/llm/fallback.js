@@ -442,7 +442,7 @@ export function continueAfter(request, said) {
  * What a failed try does next, by the one rule for every send annai retries: chat's (callRole) and a transcription's (voice.js `#hear`). Wait and go
  * again, rest the model once its retries are done, or neither. With no connection on the device (airplane mode, say) the model did nothing wrong,
  * so it doesn't rest, and waiting won't help: it is asked again as soon as the connection is back.
- * @param {ProviderError} err @param {number} retry the tries made so far @param {boolean} [online] what the device says (default: the browser's)
+ * @param {ProviderError} err @param {number} retry how many times this send was already sent again (0 after the first try) @param {boolean} [online] what the device says (default: the browser's)
  * @returns {{ wait?: number, bench?: number }}
  */
 export function nextStep(err, retry, online = deviceOnline()) {
