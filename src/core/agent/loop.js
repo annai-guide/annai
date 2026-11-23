@@ -427,7 +427,7 @@ export class Agent {
   #tidy = null;
   /** @type {PhotoCopies | null} */
   #photos = null;
-  /** The wake whose photo couldn't be sent: its card already says why. */
+  /** The wake whose photo couldn't be sent: its card already says it couldn't send the photo (one card a turn). */
   #photoCard = '';
   /** @type {Record<string, Set<(x: any) => void>>} */
   #on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set(), clear: new Set(), unsaved: new Set() };
@@ -2917,7 +2917,7 @@ export class Agent {
     const quiet = said === true;
     const why = typeof said === 'object' ? said : own;
     if (quiet || this.#photoCard === wakeId) {
-      // said elsewhere, or its card already says why
+      // said elsewhere, or its card already says it couldn't send the photo (one card a turn)
     } else if (last?.outcome === 'image') await this.#cantSend(refusedText(readRefusal(last.error ?? '')), wakeId); // repairs ran out
     // The card for both halves has a key of its own (Halves takes it down at either half's good turn).
     else await this.#notice({ tone: 'warn', title: t`Shiori can't reach her model`, body: whyWords(why, false, { names: await this.#names() }), key: why.halves ? 'model:both' : 'model' });
@@ -3025,7 +3025,7 @@ export class Agent {
     await this.#notice({ tone: 'warn', title: plural(n, "Shiori's models refused a request with a PDF in it", "Shiori's models refused a request with PDFs in it"), body });
   }
 
-  /** A card for a photo that couldn't be sent; the turn's error then shows no second card, nor the next model's repair (each model that refuses the photo comes here). @param {string} why @param {string} wakeId */
+  /** A card for a photo that couldn't be sent; the turn's error then shows no second card, and the next model's repair, which still runs, shows none either (each model that refuses the photo comes here). @param {string} why @param {string} wakeId */
   async #cantSend(why, wakeId) {
     if (this.#photoCard === wakeId) return null;
     this.#photoCard = wakeId;

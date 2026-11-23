@@ -4,7 +4,7 @@
 // request over the window (kind context), and, from memory (pdf-count-next's final review), "A maximum of 100 PDF pages may be provided." for a
 // PDF over its page limit (kind bad-request): the kinds are what the classifier gives them, the wordings are not seen from a real API.
 //
-// What the fix round pins (fix 1: the mark's reach): the test runs only when every model the request went to ended in a refusal, and a request too
+// What the fix rounds pin (the mark's reach; one card; Start fresh; a resting model): the test runs only when every model the request went to ended in a refusal, and a request too
 // long goes through housekeeping first; the mark is written only when a model that refused the whole request answers the words, is its half's, and
 // ends at its conversation's next summary or Start fresh.
 import { test } from 'node:test';
@@ -387,7 +387,7 @@ test("a mark is its half's: Koe's models refused the PDF, and Kokoro's own read 
   assert.deepEqual(cards(k), [TITLE], "only Koe's card");
 });
 
-test("a model resting in Koe's turn is not asked, so the other's refusal marks the PDF, and the resting one, awake later, gets the words until the next summary (accepted: a proposed known limitation)", async (t) => {
+test("a model resting in Koe's turn is not asked, so the other's refusal marks the PDF, and the resting one, awake later, gets the words until the next summary (a proposed known limitation)", async (t) => {
   useClock(t);
   // Koe's list: the first model takes this PDF but is rate-limited at its first request and rests for 3 minutes (Koe never asks a resting model); the
   // second is refused every request that carries it (a page limit). The mark rests on the one model asked, as the test's rule has it: models passed over
