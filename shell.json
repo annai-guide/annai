@@ -1,5 +1,5 @@
 {
-  "build": "917c0aaca8db",
+  "build": "0899839a6bb6",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -43,11 +43,11 @@
     "/src/core/agent/instructions.js": "dc44316f3b47",
     "/src/core/agent/listen.js": "41cbb9219102",
     "/src/core/agent/log.js": "be1f6eedd6f8",
-    "/src/core/agent/loop.js": "451f10a5f617",
+    "/src/core/agent/loop.js": "e40e043457c7",
     "/src/core/agent/reading.js": "f5d6ac2c65b2",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/her-instructions.js": "b90fb982b678",
-    "/src/core/agent/refusals.js": "ccbb44dc91f5",
+    "/src/core/agent/refusals.js": "5d12a5980e98",
     "/src/core/agent/self-tools.js": "75847defd5bf",
     "/src/core/agent/spoken-yes.js": "728ad4b1b0e6",
     "/src/core/agent/net.js": "a87817dc59bf",
@@ -79,7 +79,7 @@
     "/src/core/llm/config.js": "008b753fa725",
     "/src/core/llm/contract.js": "1a93b2547b3a",
     "/src/core/llm/decide.js": "4aff39cf2ab3",
-    "/src/core/llm/fallback.js": "ba0b24cb9bec",
+    "/src/core/llm/fallback.js": "a531fc68d262",
     "/src/core/llm/move-over.js": "9584243ec1f4",
     "/src/core/llm/official.js": "43a4783de11b",
     "/src/core/llm/provider-desc.js": "f1a1406b822b",
@@ -276,7 +276,7 @@
     "/src/ui/screens/sees.js": "6a674fc473ae",
     "/src/ui/screens/talk.js": "59cdd9942d28",
     "/src/ui/screens/tools.js": "52d6c4d56a08",
-    "/src/ui/screens/trace.js": "0c0a20906f29",
+    "/src/ui/screens/trace.js": "e50cc0a686e4",
     "/src/ui/screens/trip.js": "16b903f6b61b",
     "/src/ui/screens/trips.js": "3d934411975e",
     "/src/ui/screens/updates.js": "663857e51861",
@@ -301,8 +301,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "11b19b9db37a",
-    "/l10n/zh-Hans.json": "5bb3bb8960c4",
-    "/l10n/zh-Hant.json": "c2a8b99c017c"
+    "/l10n/ja.json": "e2cee60e95c1",
+    "/l10n/zh-Hans.json": "f188804f73e3",
+    "/l10n/zh-Hant.json": "f716a75d04fc"
   }
 }

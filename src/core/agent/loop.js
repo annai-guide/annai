@@ -2,7 +2,7 @@ import { claimLine, quote, conversationLines, USER_LINES } from './blocks.js';
 import { ME, TODO_FILE, newId } from '../scopes.js';
 import { readAppSettings } from '../settings.js';
 import { languageSettings, strayLanguage } from '../languages.js';
-import { AllFailedError, estimateTokens, CHARS_PER_TOKEN, candidates, chatCandidates, whyOf, whyWords, levelOf, fileWords } from '../llm/fallback.js';
+import { AllFailedError, estimateTokens, CHARS_PER_TOKEN, candidates, chatCandidates, whyOf, whyWords, levelOf, fileWords, askedBy } from '../llm/fallback.js';
 import { ProviderError } from '../llm/contract.js';
 import { modelOf, modelNames, providerOf, updateModel } from '../llm/config.js';
 import { NotFoundError } from '../workspace.js';
@@ -19,7 +19,7 @@ import { tracedFetch, withoutSecrets, shownWithoutSecrets } from './net.js';
 import { webVia } from './via.js';
 import { inQuiet, quietEnds, spentToday, budgetStop, budgetWords } from './budgets.js';
 import { PhotoCopies, requestLimits, healRegion, photoLine } from '../request-photos.js';
-import { readRefusal, stricter, tighter, limitMedia } from './refusals.js';
+import { readRefusal, stricter, tighter, limitMedia, refusedPdf } from './refusals.js';
 import { photoSettings } from '../photos.js';
 import { parsePartialJSON } from '../llm/partial-json.js';
 import { spokenText, unspoken } from './listen.js';
@@ -184,6 +184,20 @@ const GATE_LINES = 6;
 export const FORCED_STEPS = 10;
 /** The most kept thinking and now blocks a turn's requests may carry in all, in characters (the keep-reasoning design §6): past it, the turn sends no more. */
 export const KEPT_SENT_MAX = 360 * 1024;
+/** A PDF of a request every model it went to refused, in its conversation's log: `{ hash, path, name, role, why, wake }`, path and name null where it has none; role is the half's (spec §4.8, §9.9). */
+const REFUSED_PDF = 'pdf.refused';
+/** A provider refused what a request holds: over its window or size (context), or not accepted (a PDF's page limit, a locked file). Neither rests the model. */
+const REFUSALS = ['context', 'bad-request'];
+
+/**
+ * The models a call's request went to, when each of them ended in a refusal (REFUSALS, by its last attempt): their ids. null when one failed
+ * otherwise (rate-limited, overloaded, the network, the server, a refused key or photo) or none was asked: models passed over for what they
+ * can't take (no PDFs, too long by annai's estimate, resting) don't count. @param {import('../llm/trace.js').Attempt[]} attempts
+ */
+function refusedBy(attempts) {
+  const asked = askedBy(attempts);
+  return asked.length && asked.every((a) => REFUSALS.includes(a.outcome)) ? new Set(asked.map((a) => a.model)) : null;
+}
 /** A sleep in a reply whose call failed: the turn goes on, so the error is hers to act on (a malformed card ended a turn with nothing shown). */
 const AWAKE = /* en */ 'Not asleep: a call in this reply failed (its error is above), so your turn goes on.';
 /** How often a turn goes on past a sleep beside a failed call: a booking took Haiku two failed writes at most in the reruns (8 hand-overs). */
@@ -413,7 +427,7 @@ export class Agent {
   #tidy = null;
   /** @type {PhotoCopies | null} */
   #photos = null;
-  /** The wake whose photo couldn't be sent: its card already says why. */
+  /** The wake whose photo couldn't be sent: its card already says it couldn't send the photo (one card a turn). */
   #photoCard = '';
   /** @type {Record<string, Set<(x: any) => void>>} */
   #on = { state: new Set(), event: new Set(), notice: new Set(), open: new Set(), clear: new Set(), unsaved: new Set() };
@@ -537,10 +551,11 @@ export class Agent {
   #order = null;
   /**
    * The readings kept in the open conversation's log (`reading` entries), by the hash of what was read: told in words (for any model) and drawn as
-   * pages (for one that sees photos). Loaded after the last entry read, so a reading the other half kept arrives at the next call.
-   * @type {{ scope: string, through: number, map: Map<string, { told?: KeptReading, pages?: KeptReading, newest?: 'told' | 'pages' }> }}
+   * pages (for one that sees photos); and the PDFs of a request every model of this half refused (`pdf.refused`, its own, those after the conversation's
+   * last summary or fresh start), with the models' words (#visible). Loaded after the last entry read, so what the other half kept arrives at the next call.
+   * @type {{ scope: string, through: number, map: Map<string, { told?: KeptReading, pages?: KeptReading, newest?: 'told' | 'pages' }>, refused: Map<string, string> }}
    */
-  #kept = { scope: '', through: 0, map: new Map() };
+  #kept = { scope: '', through: 0, map: new Map(), refused: new Map() };
   /** The last entry a request read whose reply then reached the user: notes up to it were answered (Koe's). */
   #reachedTo = { scope: '', to: 0 };
 
@@ -651,7 +666,7 @@ export class Agent {
 
   /** Erase: what it keeps in memory of the conversations' files goes. */
   forgetTold() {
-    this.#kept = { scope: '', through: 0, map: new Map() };
+    this.#kept = { scope: '', through: 0, map: new Map(), refused: new Map() };
   }
 
   /** An import replaced "me": the turn's next step, or the next wake, takes a fresh snapshot (the files keep the backup's authors, which a warm one follows only when they are the user's). */
@@ -1688,12 +1703,23 @@ export class Agent {
    * once (callRole, limitMedia; spec §4.8).
    */
   async #sendable() {
+    await this.#loadKept(this.scope);
     return (await this.#sendRule())(this.#visible());
   }
 
-  /** The conversation as it holds it, less photos whose bytes are gone. Each model's call sends its own photo limit of it, each picture once (callRole, limitMedia). */
-  #visible() {
-    return this.transcript.messages.map((m) => ({ role: m.role, parts: m.parts.filter((p) => !/** @type {any} */ (p).missing) }));
+  /**
+   * The conversation as it holds it, less photos whose bytes are gone, and each PDF of a request this half's models refused (#loadKept) as words
+   * saying so, wherever it is in Shiori's requests, a read of it again too. Each model's call sends its own photo limit of it, each picture once
+   * (callRole, limitMedia). @param {{ words: string, files: Map<string, any> } | null} [trial] a turn's test (#steps): these PDFs as words too
+   */
+  #visible(trial = null) {
+    const refused = this.#kept.scope === this.scope ? this.#kept.refused : null;
+    /** @param {any} p */
+    const sent = (p) => {
+      const why = p.type === 'document' && p.hash ? (trial?.files.has(p.hash) ? trial.words : refused?.get(p.hash)) : undefined;
+      return why === undefined ? p : refusedPdf(p, why);
+    };
+    return this.transcript.messages.map((m) => ({ role: m.role, parts: m.parts.filter((p) => !/** @type {any} */ (p).missing).map(sent) }));
   }
 
   /** How this half sends its messages now (Koe's photo rule). @returns {Promise<(m: import('../llm/contract.js').Message[]) => import('../llm/contract.js').Message[]>} */
@@ -2475,6 +2501,10 @@ export class Agent {
     const stuck = new Stuck();
     let steps = 0;
     let triedCompacting = false;
+    /** A forced summary ran in this turn: the request's size forces no other (below). */
+    let summarized = false;
+    /** The test of a request every model it went to refused: its PDFs as words, for the next request (below); models: those that refused it. @type {{ why: import('../llm/fallback.js').Why, words: string, files: Map<string, any>, models: Set<string> } | null} */
+    let trial = null;
     // The real day's spend, read only when a Spend per day is set.
     const today = () => settings.budgets.spendPerDay ? spentToday(this.store, this.#real.now(), this.#real.timeZone()) : 0;
     let spent = await today();
@@ -2525,8 +2555,9 @@ export class Agent {
       const reachedUser = this.#reached !== begun || this.#facts.told;
       const force = !providerTools.providerTools && ((owes() && this.#half.voice()) || !(reachedUser || forced >= FORCED_STEPS));
       const tail = await this.#tailFor(now);
-      // What the request holds, read together: lines written later follow this reply.
-      const messages = turn.send(this.#visible());
+      // What the request holds, read together: lines written later follow this reply. The log's refused PDFs first (#visible).
+      await this.#loadKept(this.scope);
+      const messages = turn.send(this.#visible(trial));
       const context = { from: this.transcript.from, to: this.transcript.to };
       const request = {
         ...buildRequest({ snapshot, system: turn.system, tools: turn.defs, transcript: { messages }, tail, cacheTtl: settings.cacheTtl }),
@@ -2549,7 +2580,9 @@ export class Agent {
       // What the main models are sent: their photo limit of the pictures, each once.
       const sent = { ...request, messages: limitMedia(request.messages, (await this.#mainImages()).maxCount, request.photosFrom) };
       const estimate = estimateTokens(sent, (await this.#mainModel())?.providerId);
-      const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window, bytes: requestBytes(sent, { uploaded }), maxBytes, threshold: settings.compaction.threshold }) : null;
+      // After a forced summary this turn (the size or the tokens), the size forces no other (the tokens still do): what is still over it is the newest exchanges' (a PDF
+      // read in them), which no summary of older ones makes smaller (in a probe, a PDF of 6.5 MiB brought five in a row). It goes as it is.
+      const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window, bytes: summarized ? 0 : requestBytes(sent, { uploaded }), maxBytes, threshold: settings.compaction.threshold }) : null;
       const tidy = coldStart;
       coldStart = false; // once a turn: its first request
       if (need === 'forced') {
@@ -2561,6 +2594,7 @@ export class Agent {
           break;
         }
         if (done) {
+          summarized = true;
           this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale }), { cold: true });
           continue;
         }
@@ -2586,7 +2620,6 @@ export class Agent {
       const before = this.#reached;
       /** This call's readings, for its second pass: one per file, the same file twice or for the next model. @type {Map<string, Promise<import('./reading.js').Reading>>} */
       const readMemo = new Map();
-      await this.#loadKept(this.scope);
       try {
         this.#half.calling?.(context);
         this.#calling = true;
@@ -2639,7 +2672,11 @@ export class Agent {
           }
           continue;
         }
-        // "Request too long" from every model: compact first, then try once more (spec §9.6).
+        // The test's own refusal ends it: it is never tested.
+        const tested = trial !== null;
+        trial = null;
+        // "Request too long" from a model (every model failed): compact first, then try once more (spec §9.6), also for a request that carries PDFs, before
+        // the test below: the conversation may be what was too long, and the PDF then answers in this turn, unmarked.
         const tooLong = this.#half.housekeeping && e instanceof AllFailedError && e.attempts.some((a) => a.outcome === 'context' || a.outcome === 'too-long');
         if (tooLong && !triedCompacting) {
           triedCompacting = true;
@@ -2650,11 +2687,28 @@ export class Agent {
           }
           if (done) continue;
         }
+        // Every model the request went to refused it (refusedBy), and it carried PDFs whole (spec §4.8, §9.9): a provider's words don't say which
+        // part, so it goes once more with them as words. Answered by a model that refused the whole one, the PDFs are taken as the cause (#pdfRefused);
+        // refused too, they weren't (a request too long has had its housekeeping above); answered by another model, nothing is known, and nothing is marked.
+        const refusers = !tested && e instanceof AllFailedError ? refusedBy(e.attempts) : null;
+        const pdfs = new Map(refusers ? sent.messages.flatMap((m) => m.parts).flatMap((p) => (p.type === 'document' && p.hash ? [[p.hash, p]] : [])) : []);
+        if (refusers && pdfs.size) {
+          const own = await this.#whyOf(e);
+          // What the refusing models said, not those passed over.
+          const why = { attempts: (own.attempts ?? []).filter((a) => REFUSALS.includes(a.outcome)) };
+          trial = { why, words: whyWords(why, true), files: pdfs, models: refusers };
+          continue;
+        }
         await this.#failed(e, wakeId);
         failed = true;
         break;
       }
       this.#callCut = null;
+      // The test's request answered: by a model that refused the whole one, the PDFs are taken as the cause; by another, nothing is known.
+      if (trial) {
+        if (trial.models.has(result.modelId)) await this.#pdfRefused(trial, wakeId);
+        trial = null;
+      }
       reasons.length = 0; // the model has read them
       steps++;
       this.#heardBy = result.modelId;
@@ -2863,7 +2917,7 @@ export class Agent {
     const quiet = said === true;
     const why = typeof said === 'object' ? said : own;
     if (quiet || this.#photoCard === wakeId) {
-      // said elsewhere, or its card already says why
+      // said elsewhere, or its card already says it couldn't send the photo (one card a turn)
     } else if (last?.outcome === 'image') await this.#cantSend(refusedText(readRefusal(last.error ?? '')), wakeId); // repairs ran out
     // The card for both halves has a key of its own (Halves takes it down at either half's good turn).
     else await this.#notice({ tone: 'warn', title: t`Shiori can't reach her model`, body: whyWords(why, false, { names: await this.#names() }), key: why.halves ? 'model:both' : 'model' });
@@ -2949,8 +3003,31 @@ export class Agent {
     }
   }
 
-  /** A card for a photo that couldn't be sent; the turn's error then shows no second card. @param {string} why @param {string} wakeId */
+  /**
+   * The PDFs of a request every model it went to refused, which one that refused it answered without (spec §4.8): each is marked in the conversation's
+   * log (this half's own), which this half's later requests read until the conversation's next summary or fresh start, a reload's too (#loadKept,
+   * #visible); one card names them all, with the models' words. A mark the phone can't write holds only while the conversation stays open in this
+   * run: a summary, a reload, another conversation opened or Erase ends it (#notSaved).
+   * @param {{ why: import('../llm/fallback.js').Why, words: string, files: Map<string, any>, models: Set<string> }} trial @param {string} wakeId
+   */
+  async #pdfRefused(trial, wakeId) {
+    const names = await this.#names();
+    for (const [hash, p] of trial.files) {
+      if (this.#kept.scope === this.scope) this.#kept.refused.set(hash, trial.words);
+      const data = { hash, path: p.path ?? null, name: p.name ?? null, role: this.#half.role, why: trial.why, wake: wakeId };
+      await record(this.store, this.scope, { now: this.#stamp(this.scope), type: REFUSED_PDF, actor: 'system', data }).catch((e) => this.#notSaved(e));
+    }
+    // One card for the request, naming every PDF it held: the models refused the request, not each file. The models' words a line each, as on the card of a model that can't be reached.
+    const n = trial.files.size;
+    const files = [...trial.files.values()].map((p) => p.name || p.path || t`a PDF without a name`);
+    const body = [sentences(t`The models refused a request that held ${list(files)}.`, plural(n, 'She goes on without it until the conversation is next summarized or started fresh.', 'She goes on without them until the conversation is next summarized or started fresh.'),
+      t`To show her a page, send it as a photo.`), whyWords(trial.why, false, { names })].join('\n');
+    await this.#notice({ tone: 'warn', title: plural(n, "Shiori's models refused a request with a PDF in it", "Shiori's models refused a request with PDFs in it"), body });
+  }
+
+  /** A card for a photo that couldn't be sent; the turn's error then shows no second card, and the next model's repair, which still runs, shows none either (each model that refuses the photo comes here). @param {string} why @param {string} wakeId */
   async #cantSend(why, wakeId) {
+    if (this.#photoCard === wakeId) return null;
     this.#photoCard = wakeId;
     await this.#notice({ tone: 'warn', title: t`Shiori couldn't send the photo`, body: why });
     return null;
@@ -3240,14 +3317,23 @@ export class Agent {
 
   /**
    * The readings kept in a conversation's log, loaded from after the last entry read (another half's arrive this way); a conversation
-   * switch loads the new one's from its start. @param {string} scope
+   * switch loads the new one's from its start. The PDFs refused (`pdf.refused`) are this half's own marks after the latest summary or fresh
+   * start (`compaction`): a summary or a fresh start ends them, in memory too, so a PDF that is still in the conversation goes whole again. @param {string} scope
    */
   async #loadKept(scope) {
-    if (this.#kept.scope !== scope) this.#kept = { scope, through: 0, map: new Map() };
+    if (this.#kept.scope !== scope) this.#kept = { scope, through: 0, map: new Map(), refused: new Map() };
     const kept = this.#kept;
-    const entries = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['reading'], after: kept.through }));
+    const entries = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['reading', REFUSED_PDF, 'compaction'], after: kept.through }));
     for (const e of entries) {
       kept.through = Math.max(kept.through, e.seq);
+      if (e.type === 'compaction') {
+        kept.refused.clear();
+        continue;
+      }
+      if (e.type === REFUSED_PDF) {
+        if (typeof e.data?.hash === 'string' && e.data.role === this.#half.role) kept.refused.set(e.data.hash, whyWords(e.data.why ?? {}, true));
+        continue;
+      }
       const text = (await storedTexts(this.store, e)).text ?? e.data?.text;
       const how = e.data?.how;
       if (typeof e.data?.hash !== 'string' || typeof text !== 'string' || (how !== 'told' && how !== 'pages')) continue;

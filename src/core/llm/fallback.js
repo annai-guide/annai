@@ -119,6 +119,19 @@ const PASSED = Object.freeze({
   'not-chat': "It isn't a chat model.", off: 'It is switched off.', removed: 'It was removed.', 'no-speech': "The speech couldn't be sent to it.",
 });
 
+/** An attempt that is no ask: a model passed over for what it can't take, or that can't be asked at all (PASSED, and a protocol plugin that isn't running). */
+const NOT_ASKED = new Set([...Object.keys(PASSED), 'type-missing']);
+
+/**
+ * The models a call's request went to, each with its last attempt: a model passed over for a file it can't take is asked again with the file read,
+ * and a resting or rate-limited one asked again after its wait, so the later attempt is its answer. Those never asked (NOT_ASKED) are left out.
+ * @param {Pick<Attempt, 'model' | 'outcome'>[]} attempts @returns {Pick<Attempt, 'model' | 'outcome'>[]}
+ */
+export function askedBy(attempts) {
+  const last = new Map(attempts.map((a) => [a.model, a]));
+  return [...last.values()].filter((a) => !NOT_ASKED.has(a.outcome));
+}
+
 /** The same, for the user, in the screens' language. @param {string} outcome */
 function passedShown(outcome) {
   switch (outcome) {
@@ -291,8 +304,9 @@ export const CHARS_PER_TOKEN = 3.5;
  * them (another's search steps aren't). A PDF counts as one picture, whatever its size: a provider counts it by its pages, not its bytes
  * (seven reads on real calls: 1.3 to 118 tokens a KiB, 1,814 tokens at the fewest, so a picture's 1600 is under each). So a PDF is
  * counted under what its provider counts: housekeeping takes the call's own count from its reply on (not after a summary or Start fresh,
- * nor after a reply that ran the provider's own tools, which give none), and a request that overflows is refused by its provider, which
- * doesn't rest the model: the next is tried, then housekeeping runs once and the request goes again.
+ * nor after a reply that ran the provider's own tools, which give none), and a request that overflows is refused by its provider as too long, which
+ * doesn't rest the model: the next is tried, then housekeeping runs once and the request goes again; and a request that carries PDFs, which every
+ * model it went to refused (too long, after that housekeeping, or not accepted), goes once more with them as words (loop.js, spec §4.8).
  * @param {Request} request @param {string} [modelKey] its provider model id
  */
 export function estimateTokens(request, modelKey) {

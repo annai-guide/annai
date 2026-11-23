@@ -20,7 +20,7 @@ const KINDS = /** @type {Record<string, string[] | null>} */ ({
   Halves: ['note', 'halves'],
   Tools: ['tool.call', 'tool.result', 'trip.read'],
   Web: ['net.request', 'pack.download'],
-  Models: ['model.turn', 'net.request', 'decide', 'speech.browser', 'recap', 'live.session', 'live.turn', 'live.reply', 'voice.route', 'voice.mic', 'voice.shown', 'reading'],
+  Models: ['model.turn', 'net.request', 'decide', 'speech.browser', 'recap', 'live.session', 'live.turn', 'live.reply', 'voice.route', 'voice.mic', 'voice.shown', 'reading', 'pdf.refused'],
   Housekeeping: ['compaction'],
   // GPS is what live mode did; its location points (about one a second on a drive) are a kind of their own,
   // so they never crowd the firings out of the newest 300.
@@ -151,6 +151,7 @@ export function traceStored(e, { names } = {}) {
   else if (e.type === 'note' || e.type === 'halves' || e.type === 'trigger.fired') kept = [cut(d.text)];
   else if (e.type === 'tool.result') kept = [d.content ? cut(d.content) : ''];
   else if (e.type === 'reading') kept = [d.text ? cut(d.text) : ''];
+  else if (e.type === 'pdf.refused') kept = [d.why ? cut(whyWords(d.why, true, { names })) : ''];
   else if (e.type === 'net.request' || e.type === 'push.sync') kept = [d.error ? cut(d.error) : ''];
   else if (e.type === 'live.session') kept = [d.why ? cut(d.why) : ''];
   else if (e.type === 'error') kept = [`${d.kind ?? /* en */ 'error'}: ${cut(errorMessage(d, names))}`];
@@ -227,6 +228,9 @@ export function traceSummary(e, { costs: perWake, names = (n) => n } = {}) {
   if (e.type === 'net.request' && d.kind === 'upload-list') return line(t`photo uploads listed`, d.endpoint, d.status || t`no answer`, `${d.ms ?? '?'} ms`);
   if (e.type === 'net.request' && d.kind === 'upload-delete') return line(d.outcome === 'ok' ? t`photo upload deleted` : t`photo upload not deleted yet`, d.endpoint, d.status || t`no answer`, `${d.ms ?? '?'} ms`);
   if (e.type === 'photo.replace') return t`a refused photo sent again as a new copy (${d.mediaType})`;
+  // A PDF of a request every model it went to refused: Shiori's requests of that half send words saying so in its place until the conversation's next summary or fresh start
+  // (loop.js #visible, #loadKept; written by #pdfRefused); the models' words are theirs.
+  if (e.type === 'pdf.refused') return line(t`a PDF of a request the models refused, sent as words until the conversation is next summarized or started fresh`, d.path ?? d.name ?? null, d.why ? cut(whyWords(d.why, true, { names })) : null);
   // A reading kept for a model that can't take the file; its words are the model's, English.
   if (e.type === 'reading') return line(d.kind === 'pdf' ? (d.how === 'pages' ? t`a PDF's pages kept for models that can't read PDFs` : t`a PDF's words kept for models that can't read PDFs`) : t`a photo's description kept for models that can't see photos`, d.text ? cut(d.text) : null);
   if (e.type === 'import') {
