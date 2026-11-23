@@ -3296,8 +3296,8 @@ export class Agent {
       const key = part.hash || (bytes ? await sha256Hex(bytes) : '');
       const sees = model.input.includes('image');
       const once = `${key}\n${sees}`;
-      // One reading per file in a call: the same file twice in a message (or for the next model, after one that failed) takes the
-      // first's, while it is still being read too.
+      // One reading per file in a call: the same file twice in a message (its photos are read one after another, fallback.js's readFor, so
+      // the second finds the first done) or for the next model, after one that failed, takes the first's.
       let pending = memo.get(once);
       if (!pending) {
         pending = (async () => {

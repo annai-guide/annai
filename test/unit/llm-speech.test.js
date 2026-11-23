@@ -180,7 +180,7 @@ test("a half's turn's transcription beside the other half's send (shared) has th
   await assert.rejects(llm.transcribe({ modelId: m.id, audio: long }), (e) => e instanceof ProviderError && e.kind === 'timeout');
 });
 
-test("a recording that got no answer's headers within its send's time fails as a cut send, in a photo's words and with its code (so the voice rests no model for it); a stall after the headers, and a voice's text that never goes up, stay late (read-wait-fix1, 1)", async (t) => {
+test("a recording that got no answer's headers within its send's time fails as a cut send, in a photo's words and with its code (the voice's rule on it is in the next test and in voice-resolve's); a stall after the headers, and a voice's text that never goes up, stay late (read-wait-fix1, 1)", async (t) => {
   useClock(t);
   const { store } = await setup();
   // 4,000 bytes at the default 15 s limit: 15.458 s alone, 15.916 s shared.
@@ -195,7 +195,7 @@ test("a recording that got no answer's headers within its send's time fails as a
     && e.message === 'No answer in 15 seconds. The connection may be too slow to send photos or files.');
   await assert.rejects(hear(answersAfter(Infinity), true), (e) => e instanceof ProviderError && e.said?.code === 'send' && e.said?.seconds === 16);
   assert.equal((await traced(store))[0].data.error, 'No answer in 15 seconds. The connection may be too slow to send photos or files.', 'the trace says it too');
-  // The provider had the request (its headers came), then nothing: late, which rests the model.
+  // The provider had the request (its headers came), then nothing: late.
   await assert.rejects(hear(answersAfter(10)), (e) => e instanceof ProviderError && e.kind === 'timeout' && e.said?.code === 'late' && e.message === 'No output started in time.');
   // A voice's text is small: no send to blame.
   await assert.rejects(speechCall({ type: /** @type {any} */ (speaks), endpoint: endpoint('test-out'), model: model(null), key: null, text: 'Hello', fetch: answersAfter(Infinity) }), (e) => e instanceof ProviderError && e.said?.code === 'late');
@@ -217,10 +217,44 @@ test("a gate's transcription cut before its provider's headers, through the real
   const llm = createLlm({ store, ws, plugins: new PluginHost({ registry, workspace: ws }), fetch: /** @type {any} */ (fetch) });
   const voice = new Voice({ llm, ws, registry, store, locale: 'en' });
   voice.memory.keep({ id: 's-1', source: 'mic', audio: { data: new Uint8Array(4_000), mediaType: 'audio/wav', seconds: 0.1 }, ms: 100, at: 0 }, 'trip-1');
-  const ask = () => /** @type {Promise<any>} */ (voice.resolver('trip-1', 'w-1')({ id: 'm-chat', name: 'Chat', input: ['text'] }, { messages: [{ role: 'user', parts: [{ type: 'speech', id: 's-1' }] }] }, false));
+  /** The gate's resolver (loop.js: the scope alone), then the turn's (with its wake, and shared). @param {boolean} [turn] */
+  const ask = (turn = false) => /** @type {Promise<any>} */ ((turn ? voice.resolver('trip-1', 'w-1', undefined, true) : voice.resolver('trip-1'))({ id: 'm-chat', name: 'Chat', input: ['text'] }, { messages: [{ role: 'user', parts: [{ type: 'speech', id: 's-1' }] }] }, false));
   await assert.rejects(ask(), /nothing in the speech-in list worked for Chat/);
   assert.equal(llm.bench.until(m.id), 0, 'a cut send rests no model');
-  assert.match((await ask()).messages[0].parts[0].text, /Where should we eat\?/);
+  assert.match((await ask(true)).messages[0].parts[0].text, /Where should we eat\?/);
+  assert.equal(sent, 2);
+});
+
+test("a transcription model whose recording was cut is asked once a call, through the real llm.call: the second text-only chat model it tries doesn't send it again, and the next call asks it (read-wait-fix2, 1)", async (t) => {
+  useClock(t);
+  const { registry, store, ws } = await setup();
+  registry.add('test', 'endpoint-type', hears);
+  registry.add('test', 'endpoint-type', { type: 'test-chat', name: 'Test chat', pluginId: 'test', tunables: {}, build: (/** @type {any} */ c) => ({ url: `${c.endpoint.baseUrl}/chat`, headers: {}, body: { messages: c.request.messages } }), read: async function* () { yield { type: 'text', text: 'Yes.' }; } });
+  const { p, m } = speechProvider('transcription', 'test-in', 'Ears', 'https://ears.test', 'ears-1');
+  const chat = newProvider('provider-test', { user: { name: 'Chat', baseUrl: 'https://chat.test/v1', abilities: { chat: { kind: 'chat', type: 'test-chat' } } } });
+  const texts = [newModel(chat.id, 'chat', { user: { providerId: 'chat-1', input: ['text'] } }), newModel(chat.id, 'chat', { user: { providerId: 'chat-2', input: ['text'] } })];
+  await saveProvider(ws, p, [m]);
+  await saveProvider(ws, chat, texts);
+  await saveRoles(ws, { ...(await readConfig(ws)).roles, main: { models: texts.map((x) => x.id), level: 'off' }, 'speech-in': { models: [m.id], level: 'off' } });
+  let sent = 0;
+  const fetch = (/** @type {any} */ url, /** @type {any} */ init) => new Promise((done, fail) => {
+    // The chat models are asked only once the transcription model has heard: its words are what they take.
+    if (String(url).startsWith('https://chat.test')) return done(new Response('streamed'));
+    if (sent++ === 0) init.signal.addEventListener('abort', () => fail(init.signal.reason), { once: true });
+    else done(Response.json({ text: 'Where should we eat?' }));
+  });
+  const llm = createLlm({ store, ws, plugins: new PluginHost({ registry, workspace: ws }), fetch: /** @type {any} */ (fetch) });
+  const voice = new Voice({ llm, ws, registry, store, locale: 'en' });
+  // 40,000 bytes (a 10 s clip's size): 4.6 s alone, 9.1 s shared; the turn's call is shared.
+  voice.memory.keep({ id: 's-1', source: 'mic', audio: { data: new Uint8Array(40_000), mediaType: 'audio/wav', seconds: 10 }, ms: 10_000, at: 0 }, 'trip-1');
+  const request = { messages: [{ role: /** @type {const} */ ('user'), parts: [{ type: /** @type {const} */ ('speech'), id: 's-1' }] }] };
+  const started = Date.now();
+  await assert.rejects(llm.call({ request, speech: voice.resolver('trip-1', 'w-1', undefined, true) }));
+  assert.equal(sent, 1, 'one send for the call, not one for each chat model');
+  assert.equal(Date.now() - started, 15_000 + sendMs(40_000, true), 'one wait, not two');
+  assert.equal(llm.bench.until(m.id), 0, 'and no rest');
+  // The call's next step is a call of its own: it asks the model again, and it hears.
+  assert.equal(/** @type {any} */ (await llm.call({ request, speech: voice.resolver('trip-1', 'w-1', undefined, true) })).reply.text, 'Yes.');
   assert.equal(sent, 2);
 });
 

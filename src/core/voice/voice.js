@@ -827,21 +827,23 @@ export class Voice {
    * @returns {(model: { id?: string, name: string, input: string[] }, request: import('../llm/contract.js').Request, plain?: boolean, signal?: AbortSignal) => Promise<import('../llm/contract.js').Request>}
    */
   resolver(scope, wake, list, shared = false) {
+    /** Transcription models whose send was cut in this call: asked once a call, as chat asks a cut model once (fallback.js's nextStep). @type {Set<string>} */
+    const cut = new Set();
     return async (model, request, plain, signal) => {
       if (plain && model.id) this.wavOnly.add(model.id);
-      const c = await this.#resolve(scope, wake, signal, shared);
+      const c = await this.#resolve(scope, wake, signal, shared, cut);
       return resolveSpeech(request, model, { ...c, ...(list ? { list } : {}), plain: Boolean(model.id && this.wavOnly.has(model.id)) });
     };
   }
 
-  /** @param {string} scope @param {string} [wake] @param {AbortSignal} [signal] @param {boolean} [shared] @returns {Promise<import('./resolve.js').Resolve>} */
-  async #resolve(scope, wake, signal, shared = false) {
+  /** @param {string} scope @param {string} [wake] @param {AbortSignal} [signal] @param {boolean} [shared] @param {Set<string>} [cut] the models cut in this call (resolver's) @returns {Promise<import('./resolve.js').Resolve>} */
+  async #resolve(scope, wake, signal, shared = false, cut = new Set()) {
     const cfg = await this.llm.config();
     const types = this.llm.types();
     return {
       list: cfg.roles['speech-in']?.models ?? [],
       memory: this.memory,
-      asr: (id) => speechKind(cfg, types, id) === 'in' && this.llm.bench.until(id) <= this.now(),
+      asr: (id) => speechKind(cfg, types, id) === 'in' && this.llm.bench.until(id) <= this.now() && !cut.has(id),
       transcribe: (id, kept) => this.#hear(id, kept, scope, wake, signal, shared),
       // A kept clip is read for the conversation it was heard in: another trip's, named by its hash, isn't there (reach.js).
       clip: async (hash) => {
@@ -849,8 +851,8 @@ export class Voice {
         return b ? { data: new Uint8Array(b.data), mediaType: b.type } : null;
       },
       // A recording that never went up in its send's time (speech.js) rests no model: the link, likelier than the model, as for a chat call
-      // (fallback.js's nextStep). The turn's own transcription of the same words asks it again.
-      onFail: (id, e) => { if (!(e instanceof ProviderError && e.said?.code === 'send')) this.llm.bench.bench(id, restFor(e), this.now()); },
+      // (fallback.js's nextStep). It is not asked again in this call (cut), as chat doesn't; the next call's resolver asks it again.
+      onFail: (id, e) => { if (e instanceof ProviderError && e.said?.code === 'send') cut.add(id); else this.llm.bench.bench(id, restFor(e), this.now()); },
       accepts: (id) => audioIn(cfg, types, id),
       encoder: this.platform?.encoder,
     };

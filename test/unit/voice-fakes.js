@@ -324,7 +324,7 @@ export function fakeLlm({ main = [{ id: 'm1', input: ['text'] }], asr = ['t1'], 
       if (cut[modelId]) {
         cut[modelId]--;
         // As speechCall makes it when no headers came within the recording's send time (llm-speech.test.js pins the real one).
-        throw new ProviderError('timeout', 'No answer in 18 seconds. The connection may be too slow to send photos or files.', { said: { code: 'send', seconds: 18 } });
+        throw new ProviderError('timeout', 'No answer in 15 seconds. The connection may be too slow to send photos or files.', { said: { code: 'send', seconds: 15 } });
       }
       if (unhintable.includes(modelId) && languages?.spoken?.length) throw new ProviderError('bad-request', 'Unknown parameter: language');
       // whisper.cpp's server: any refusal comes back as "Invalid request" (its error handler replaces the body); '*' refuses every file.

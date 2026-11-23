@@ -1757,7 +1757,7 @@ test("a model that can't see photos reads one, and no model here can: the result
   assert.equal(k.sent['model-u'], undefined);
 });
 
-test("describing a photo for a model that can't see it waits for the describer's first words the longer of its role's wait and 30 seconds (§9.6), and stops with the turn; either way the result says so in words and the turn goes on (review A5; read-wait-next)", async (t) => {
+test("describing a photo for a model that can't see it waits 30 seconds for the describer's first words, its role's wait (a role that waits longer or less is in the 120-second reader test below and agent-reading's floor test; §9.6), and stops with the turn; either way the result says so in words and the turn goes on (review A5; read-wait-next)", async (t) => {
   useClock(t);
   const photo = async (/** @type {any} */ k) => k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('4000x3000'), { author: 'user', type: 'image/webp', meta: { width: 4000, height: 3000 } });
   const read = { toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.webp' } }] };
@@ -1798,8 +1798,10 @@ test("a reader that never starts answering ends at its own wait and rests, as an
   const told = /\nWhat it shows \(described by model-1, as you can't see photos\): A menu; the fish is circled\.$/;
   const results = async () => (await k.events(['tool.result'])).filter((e) => e.data.name === 'read').map((e) => e.data.content);
   assert.match((await results())[0], told);
-  assert.ok(k.llm.bench.until('m-u') > Date.now(), 'the stalled reader rests');
-  await new Promise((r) => setTimeout(r, 60_000)); // a minute on: the rest is 3 minutes, not seconds
+  // It rests as any model does, 3 minutes (§9.6's rest; a literal here, so a change of the constant meets this check) from the stall, which ended a moment ago on the clock (2 s of slack, as the wait above).
+  const left = k.llm.bench.until('m-u') - Date.now();
+  assert.ok(left > 180_000 - 2000 && left <= 180_000, `the stalled reader rests ${left} ms more, not 3 minutes`);
+  await new Promise((r) => setTimeout(r, 60_000)); // a minute on
   assert.ok(k.llm.bench.until('m-u') > Date.now(), 'a minute after the stall it still rests');
   const t1 = Date.now();
   k.agent.send('Read it again');

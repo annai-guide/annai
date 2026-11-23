@@ -244,18 +244,42 @@ test("a refusal that isn't the format (WAV refused too, such as OpenAI's \"Audio
   assert.ok(!k.voice.wavOnly.has('groq'));
 });
 
-test("a recording that never went up in its send's time rests no transcription model: the gate's transcription is cut, and the turn's own transcription of the same words asks the same model (read-wait-fix1, 1)", async () => {
+test("a recording that never went up in its send's time rests no transcription model, and any other failure still rests it: the gate's transcription is cut, and the turn's own transcription of the same words asks the same model (read-wait-fix1, 1)", async () => {
   const k = await phone({}, { cut: { groq: 1 } });
   const h = await k.hear();
-  // The gate's transcription (the quick-decision call's resolver) goes first: cut, and with nothing else in the speech-in list it fails safe.
-  await assert.rejects(k.to(h, 'txt'), /nothing in the speech-in list worked for/);
+  const chat = { id: 'txt', name: 'txt', input: ['text'] };
+  // The gate's transcription (the quick-decision call: loop.js's resolver(scope), no wake) goes first: cut, and with nothing else in the speech-in list it fails safe.
+  await assert.rejects(k.voice.resolver('trip-1')(chat, asked([{ type: 'speech', id: h.id }]), false), /nothing in the speech-in list worked for/);
   assert.equal(k.llm.bench.until('groq'), 0, 'a cut send rests no model');
-  assert.equal((await k.to(h, 'txt')).text, 'what was said', "the turn's transcription asks the same model, and it hears");
-  assert.deepEqual(k.llm.uploads.map((u) => u.modelId), ['groq', 'groq']);
+  // The turn's own (shared, with the call's wake, as the turn's call makes it).
+  assert.equal(partsOf(await k.voice.resolver('trip-1', 'w-1', undefined, true)(chat, asked([{ type: 'speech', id: h.id }]), false))[0].text, 'what was said', "the turn's transcription asks the same model, and it hears");
+  assert.deepEqual(k.llm.uploads.map((u) => [u.modelId, u.shared]), [['groq', false], ['groq', true]]);
   // A transcription that failed in another way still rests it.
   const down = await phone({}, { failing: ['groq'] });
   await assert.rejects(down.to(await down.hear(), 'txt'), /nothing in the speech-in list worked for/);
   assert.ok(down.llm.bench.until('groq') > Date.now(), 'a failure that is not a cut send rests it');
+});
+
+test("a call asks a transcription model whose recording was cut once, as chat asks a cut model once: the second text-only chat model it tries doesn't send it again, and the next call asks it (read-wait-fix2, 1)", async () => {
+  const k = await phone({}, { cut: { groq: 1 } });
+  const h = await k.hear();
+  const text = (/** @type {string} */ id) => ({ id, name: id, input: ['text'] });
+  const request = asked([{ type: 'speech', id: h.id }]);
+  const call = k.voice.resolver('trip-1', 'w-1');
+  await assert.rejects(call(text('txt'), request, false), /nothing in the speech-in list worked for txt/);
+  await assert.rejects(call(text('txt2'), request, false), /nothing in the speech-in list worked for txt2/);
+  assert.deepEqual(k.llm.uploads.map((u) => u.modelId), ['groq'], 'asked once for the call');
+  assert.equal(k.llm.bench.until('groq'), 0, 'and not rested');
+  assert.equal(partsOf(await k.voice.resolver('trip-1', 'w-1')(text('txt'), request, false))[0].text, 'what was said', "the next call's resolver asks it again, and it hears");
+  assert.deepEqual(k.llm.uploads.map((u) => u.modelId), ['groq', 'groq']);
+});
+
+test("a segment's words that one transcription model made are used by the next call at once, even where an earlier model that was cut comes first in the list: the gate's call and the turn's two steps ask the first once and the second once (read-wait-fix2, 1)", async () => {
+  const k = await phone({}, { asr: ['groq', 'g2'], speechIn: ['send-audio', 'groq', 'g2'], cut: { groq: 9 } });
+  const h = await k.hear();
+  // The gate's call, then the turn's two steps: each its own resolver.
+  for (let i = 0; i < 3; i++) assert.equal((await k.to(h, 'txt')).text, 'what was said');
+  assert.deepEqual(k.llm.uploads.map((u) => u.modelId), ['groq', 'g2'], "the first asked once, then the words the second made");
 });
 
 test("a turn's transcription stays shared through its own retries: the WAV a model that refuses the format is asked for, and the call without the user's languages (read-wait-fix1, shared through #hear)", async () => {

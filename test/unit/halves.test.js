@@ -125,7 +125,7 @@ async function say(k, clip) {
   await k.agent.idle();
 }
 
-test("a reader's call, a turn's transcription and its resolver are told the link is shared as their half's turn is: Kokoro's while Koe works, never one Shiori's or Kokoro's while Koe is down, and Koe's always (read-wait-next, 9; the timing from the flag is pinned in the llm files)", async (t) => {
+test("a reader's call, a turn's transcription and its resolver are told the link is shared as their half's turn is: Kokoro's while Koe works in text (live is halves-live's), never one Shiori's or Kokoro's while Koe is down, and Koe's always (read-wait-next, 9; the timing from the flag is pinned in the llm files)", async (t) => {
   useClock(t);
   /** @type {any[][]} */
   const all = [];
