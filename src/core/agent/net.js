@@ -1,6 +1,7 @@
 import { logEvent } from '../events.js';
 import { t } from '../l10n.js';
 import { answerWords } from '../answer.js';
+import { isBase64, fromBase64 } from '../bytes.js';
 
 /**
  * Web requests by tools and plugins, each recorded as a net.request (spec §4.5, §15): the trace
@@ -66,17 +67,33 @@ function scrub(text, secrets) {
   return out;
 }
 
+/** Strict, so that bytes that aren't UTF-8 text (what a word read as base64 mostly gives) are no user:password. */
+const UTF8 = new TextDecoder('utf-8', { fatal: true });
+
 /**
- * Credentials by their shape, whoever's they are, so that even one annai doesn't keep never shows:
- * a SigV4 Authorization header, a Bearer value, a Basic value (when it looks like base64, so "Basic
- * authentication" stays), and a presigned URL's signature, credential and token.
- * @type {[RegExp, string][]}
+ * Whether a Basic value is RFC 7617's: base64 of UTF-8 text holding the ":" between a user id and a password. Words that merely read as base64
+ * ("Basic Economy/Main") are not, almost always: their bytes are no text. @param {string} v
+ */
+function userPass(v) {
+  try {
+    return isBase64(v) && UTF8.decode(fromBase64(v)).includes(':');
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Credentials by their shape, whoever's they are, so that even one annai doesn't keep never shows: a SigV4 Authorization header, a Bearer
+ * value (one holding a digit, or a JWT, which starts "eyJ": a real token has one, and "Bearer instruments" stays), a Basic value (RFC 7617's
+ * user:password; "Basic authentication" and "Basic Economy/Main" stay), and a presigned URL's signature, credential and token. They run over
+ * ordinary answers too (a search provider's rows, a tool's text), so each is as narrow as its credential allows.
+ * @type {[RegExp, (whole: string, ...parts: string[]) => string][]}
  */
 const SHAPES = [
-  [/\bAWS4-HMAC-SHA256\s+Credential=[^\s,]+(?:,\s*SignedHeaders=[^\s,]+)?(?:,\s*Signature=[0-9a-f]+)?/gi, `AWS4-HMAC-SHA256 ${BLANK}`],
-  [/\b(Bearer)\s+[A-Za-z0-9._~+/=-]{8,}/g, `$1 ${BLANK}`],
-  [/\b(Basic)\s+(?=[A-Za-z0-9+/]*[0-9+/=])[A-Za-z0-9+/]{6,}={0,2}/g, `$1 ${BLANK}`],
-  [/\b(Signature|X-Amz-Signature|X-Amz-Credential|X-Amz-Security-Token)=[^&\s"'<>]+/gi, `$1=${BLANK}`],
+  [/\bAWS4-HMAC-SHA256\s+Credential=[^\s,]+(?:,\s*SignedHeaders=[^\s,]+)?(?:,\s*Signature=[0-9a-f]+)?/gi, () => `AWS4-HMAC-SHA256 ${BLANK}`],
+  [/\b(Bearer)\s+([A-Za-z0-9._~+/=-]{8,})/g, (whole, word, value) => (/\d/.test(value) || value.startsWith('eyJ') ? `${word} ${BLANK}` : whole)],
+  [/\b(Basic)\s+([A-Za-z0-9+/]{6,}={0,2})/g, (whole, word, value) => (userPass(value) ? `${word} ${BLANK}` : whole)],
+  [/\b(Signature|X-Amz-Signature|X-Amz-Credential|X-Amz-Security-Token)=[^&\s"'<>]+/gi, (_, name) => `${name}=${BLANK}`],
 ];
 
 /** Every secret annai keeps, and every credential-shaped text, blanked. @param {string} text @param {string[]} secrets */
@@ -123,7 +140,8 @@ export async function withoutSecretsIn(store, value, { strict = false } = {}) {
       return leaks(out, secrets) ? HIDDEN : out;
     }
     if (Array.isArray(v)) return v.map(walk);
-    if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x)]));
+    // Its names are text too (a map keyed by address). While the keys can't be read they stay as they are: made notes, they would all be one name.
+    if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [secrets ? walk(k) : k, walk(x)]));
     return v;
   };
   return walk(value);
@@ -139,8 +157,9 @@ export function secretFreeLog(store, scope) {
 }
 
 /**
- * Decodings a key is looked for in: a key in an address inside another address's parameter is encoded twice, and two more cover a redirect
- * or link guard around that. Each is one pass over the text, so one made to decode on and on can't hold annai up.
+ * Decodings a text is searched in for a key, to make it a note: four. Blanking (forms()) covers a key encoded twice, as an address inside
+ * another address's parameter is; the two more cover a redirect or link guard around that. Each is one pass over the text, so one made to
+ * decode on and on can't hold annai up. A key encoded five times passes: that takes five deliberate encodings, and this is for accidents.
  */
 const DECODES = 4;
 
@@ -186,13 +205,15 @@ function hostOf(url) {
   }
 }
 
-/** @param {string} text */
+/** Each run of %XX escapes decoded on its own, one that isn't text left as it is: a stray "%" ("100%") spares the rest. @param {string} text */
 function decodeSafe(text) {
-  try {
-    return decodeURIComponent(text);
-  } catch {
-    return text;
-  }
+  return text.replace(/(?:%[0-9a-f]{2})+/gi, (run) => {
+    try {
+      return decodeURIComponent(run);
+    } catch {
+      return run;
+    }
+  });
 }
 
 /**

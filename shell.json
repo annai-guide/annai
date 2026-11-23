@@ -1,5 +1,5 @@
 {
-  "build": "9114888a50a1",
+  "build": "445653c57ae4",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -50,7 +50,7 @@
     "/src/core/agent/refusals.js": "ccbb44dc91f5",
     "/src/core/agent/self-tools.js": "75847defd5bf",
     "/src/core/agent/spoken-yes.js": "728ad4b1b0e6",
-    "/src/core/agent/net.js": "c7d2fe5fa7d7",
+    "/src/core/agent/net.js": "001e95431d2c",
     "/src/core/agent/tools.js": "03ffdc7f3e06",
     "/src/core/agent/trip-tools.js": "3e9653488194",
     "/src/core/agent/transcript.js": "5faa5350bc8a",
@@ -139,7 +139,7 @@
     "/src/core/wiki.js": "0f5680bb024a",
     "/src/core/paths.js": "5e352c868ea6",
     "/src/core/plan.js": "65fe56177ee7",
-    "/src/core/plugins.js": "3701bc01cbe8",
+    "/src/core/plugins.js": "c279c58b08ce",
     "/src/core/push/mirror.js": "9f1dea36cd3a",
     "/src/core/push/relay-client.js": "a2f4fe58a177",
     "/src/core/push/webpush.js": "7273918284c6",

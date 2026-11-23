@@ -373,7 +373,7 @@ test("a plugin trigger's plain error is noted once in the trip's log and doesn't
 });
 
 for (const unread of [false, true]) {
-  test(`a plugin trigger's error repeating its key (its last request's 403) is noted with «key» in its words${unread ? ", and the note when annai can't read the keys" : ''}; the reminder's own words stay as they are (plugin-words-next)`, async () => {
+  test(`a plugin trigger's error repeating its key (its last request's 403) is noted with «key» in its words${unread ? ", and the note when annai can't read the keys" : ''}; the watch's own fallback, which is not the trigger's words, is kept as given (plugin-words-next)`, async () => {
     const k = await liveKit();
     const KEY = 'Tr4il key/9876+x'; // made up; URL-encoding changes it
     await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('plugin:tides:key', KEY));
