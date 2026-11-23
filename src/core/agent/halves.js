@@ -579,9 +579,10 @@ export class Halves {
   }
 
   /**
-   * What the user typed and what woke Shiori, and what follows a change of Koe's way, in order. failed: what a route that fails says; a refresh alone
-   * (Koe's way read again, Kokoro's block) loses nothing the next one doesn't read and write again, and a route that carries something for the user or
-   * Shiori (what #backstop shows, Kokoro told to talk directly, a tap) says it's gone (#gone). @param {() => unknown} fn @param {(e: unknown) => unknown} [failed]
+   * What the user typed and what woke Shiori, and what follows a change of Koe's way, in order. failed: what a route that fails says. The default is a console
+   * line: a route that only reads Koe's way again writes nothing but annai's own record of it (Kokoro's block, written again by the next refresh: #tell), and
+   * nothing waits behind that. A route that carries something for the user or Shiori (what #backstop shows, Kokoro told to talk directly, a tap) says it's gone
+   * (#gone). @param {() => unknown} fn @param {(e: unknown) => unknown} [failed]
    */
   #route(fn, failed = (e) => console.warn(/* en */ 'routing failed', e)) {
     this.#routes++;
@@ -825,7 +826,7 @@ export class Halves {
   #koeOpen() {
     if (this.#koeTrip === this.kokoro.target && this.koe.target === this.#koeTrip) return; // an open of Koe's that failed left it behind
     this.#koeTrip = this.kokoro.target;
-    this.koe.open(this.kokoro.target).catch((e) => this.koe.notSaved(e)); // Koe isn't in the conversation the user is in: said, as Kokoro's own open is
+    this.koe.open(this.kokoro.target).catch((e) => this.koe.notSaved(e)); // Koe isn't in the conversation the user is in: said (Kokoro's own open says so where the user asked for it; at start it is a console line, main.js)
   }
 
   /** A Koe with a conversation open follows at once, so neither half writes into one being left. @param {string | null} trip @param {{ quiet?: boolean, moved?: boolean }} [o] */
@@ -924,7 +925,7 @@ export class Halves {
       const given = away ? { ...w, fallbacks: w.fallbacks?.filter((r) => r.cue) } : w;
       if (this.koeState === 'live') {
         this.#alongside(this.koe.hold(given.fallbacks ?? [])); // the session holds it in memory until it passes it on (reminder.told; the text Koe's queue holds its own)
-        this.#alongside(this.#live(() => this.live.wake(given), given), (e) => this.kokoro.wakeFailed(given, e)); // it fails before any hand-on: none showed them
+        this.#alongside(this.#live(() => this.live.wake(given), given), (e) => this.kokoro.wakeFailed(given, e)); // it fails before any hand-on, for a refused read (Koe's way read again): none showed them. Its session may still say them when one next opens
       } else this.koe.enqueue(w);
     }, (e) => this.kokoro.wakeFailed(w, e)); // a route that fails before its hand-ons (the refresh, the budgets' check): its reminders are shown, once
     return Promise.resolve();

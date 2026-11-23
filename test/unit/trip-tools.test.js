@@ -565,6 +565,13 @@ for (const [how, which] of /** @type {const} */ ([['reads and writes refused (Ch
       const saved = own.filter((/** @type {any} */ n) => n.title === NOT_SAVED);
       assert.equal(saved.length, which === 'everything' ? 2 : 0, 'the keep and the line of the move, refused, told once each');
       assert.ok(saved.every((/** @type {any} */ n) => n.error instanceof StorageFullError));
+    } else {
+      // Writes refused, reads fine: the keep worked (an open only reads), the line of the move is the one refused write, and it is told once.
+      await until(() => own.some((/** @type {any} */ n) => n.title === NOT_SAVED));
+      await new Promise((r) => setTimeout(r, 20)); // a second would land after it
+      const saved = own.filter((/** @type {any} */ n) => n.title === NOT_SAVED);
+      assert.equal(saved.length, 1, 'the line of the move, refused, told once');
+      assert.ok(saved.every((/** @type {any} */ n) => n.error instanceof StorageFullError));
     }
     // Room again: nothing is left running, and Kyoto opens.
     store.full(null);
