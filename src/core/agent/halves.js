@@ -470,7 +470,7 @@ export class Halves {
         try {
           if (w.kind !== 'note') await this.kokoro.remind(w.fallbacks ?? [], scope, { unsaid: true, silent: true });
           else if (here || w.why !== 'gated:ask') await this.#present(w, true, scope);
-          else await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ "Kokoro's question wasn't shown: the conversation was left, or started fresh, before Koe asked it.", quiet: true } }, { scope });
+          else await this.#unshown(/* en */ "Kokoro's question wasn't shown: the conversation was left, or started fresh, before Koe asked it.", scope);
         } catch (e) {
           await this.#gone(e); // this one is gone, said; the next still shows
         }
@@ -686,6 +686,11 @@ export class Halves {
   #block(state) {
     if (state !== 'live-open') this.#koeSaid(); // a session closed or dropped says nothing more: Kokoro waits no longer
     this.kokoro.log({ type: 'halves', actor: 'system', data: { state }, texts: [['text', BLOCKS[state]]] }).catch(() => {});
+  }
+
+  /** A Trace line for something of Kokoro's annai had nothing to show for: annai's own, so a refused one shows no card and never rejects, as #block. @param {string} message @param {string} [scope] */
+  #unshown(message, scope) {
+    return this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message, quiet: true } }, { scope }).catch(() => {});
   }
 
   /**
@@ -1388,7 +1393,7 @@ export class Halves {
         if (w.kind !== 'note') await this.kokoro.remind(w.fallbacks ?? [], undefined, { aloud: true });
         else if (await this.#present(w, false)) continue;
         else if (w.why === 'tool' && !w.retold) this.#retell.push(w);
-        else if (w.why === 'tool') await this.kokoro.log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ "Kokoro's note wasn't passed on: Koe didn't say it, twice, and it had no words for the user (for_user).", quiet: true } }).catch(() => {}); // a Trace line: no card, as #block
+        else if (w.why === 'tool') await this.#unshown(/* en */ "Kokoro's note wasn't passed on: Koe didn't say it, twice, and it had no words for the user (for_user).");
       } catch (e) {
         await this.#gone(e); // this one is gone, said; the next still shows
       }
@@ -1415,9 +1420,9 @@ export class Halves {
       const said = card ? [i.card?.title, i.card?.text].filter((x) => typeof x === 'string' && x.trim()).join(': ')
         : typeof i.question === 'string' && i.question.trim() ? `${i.question}${Array.isArray(i.options) && i.options.length ? ` (${i.options.map(String).join(', ')})` : ''}` : '';
       if (said) await this.kokoro.remind([{ watch: '', text: capped(said, CAPS.text), answer: true }], scope, { unsaid: true, silent });
-      else await log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ `Kokoro's ${card ? 'card' : 'question'} wasn't shown: annai couldn't show it, and it had no words to give instead.`, quiet: true } });
+      else await this.#unshown(/* en */ `Kokoro's ${card ? 'card' : 'question'} wasn't shown: annai couldn't show it, and it had no words to give instead.`, scope);
     } else if (words) await this.kokoro.remind([{ watch: '', text: capped(words, CAPS.text), answer: true }], scope, { unsaid: true, silent, aloud: !silent });
-    else if (w.why === 'gated:speak') await log({ type: 'error', actor: 'system', data: { kind: 'unshown', message: /* en */ "Kokoro's speak wasn't shown: it had no words.", quiet: true } });
+    else if (w.why === 'gated:speak') await this.#unshown(/* en */ "Kokoro's speak wasn't shown: it had no words.", scope);
     else return false;
     return true;
   }

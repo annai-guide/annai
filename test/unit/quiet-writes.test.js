@@ -655,26 +655,74 @@ for (const full of [false, true]) {
   });
 }
 
-// halves.js #backstop's "unshown" record: a note of Kokoro's for the user that Koe never said, already retold once, with no words to show instead. It is a line for the
-// Trace alone (quiet: true), so refused it shows no card, as a live session's Trace records show none (#block keeps the same quiet catch).
+// halves.js's "unshown" records (#unshown): a line for the Trace alone when annai had nothing to show of Kokoro's, so refused it shows no card, as a live session's
+// Trace records show none. Here what a closing session hands on (#backstop, #present): a note with no words for the user, already retold once; a gated speak with no
+// words; a gated card or question too broken to show, with no words to give instead.
+for (const [what, note, said] of /** @type {[string, any, RegExp][]} */ ([
+  ["a note of Kokoro's with no words for the user, retold once,", { note: 'Say: it is nothing.', why: 'tool', retold: true, forUser: '' }, /note wasn't passed on/],
+  ["Kokoro's gated speak with no words", { note: '', why: 'gated:speak', call: { name: 'speak', input: { text: '' } } }, /speak wasn't shown/],
+  ["Kokoro's gated card too broken to show, with no words,", { note: '', why: 'gated:show', call: { name: 'show', input: { card: {} } } }, /card wasn't shown/],
+  ["Kokoro's gated question too broken to show, with no words,", { note: '', why: 'gated:ask', call: { name: 'ask', input: { options: [] } } }, /question wasn't shown/],
+])) {
+  for (const full of [false, true]) {
+    test(`${what} that a closing session hands on: its Trace line ${full ? 'refused: no card' : 'written with room: no card'}`, async () => {
+      const k = await liveKit([]);
+      try {
+        const cards = raw(k);
+        const store = refusing(k);
+        if (full) store.full((ev) => ev.type === 'error' && ev.data?.kind === 'unshown');
+        k.agent.live.c.owed([{ kind: 'note', logged: true, from: 'kokoro', mode: 'append', text: 'a note from Kokoro', ...note }]); // a session that held it, closing
+        const unshown = async () => (await k.events(['error'])).filter((/** @type {any} */ e) => e.data.kind === 'unshown');
+        if (full) await soon(async () => store.tried.some((/** @type {any} */ e) => e.data?.kind === 'unshown'), 10_000);
+        else await soon(async () => (await unshown()).length === 1, 10_000);
+        await k.agent.idle();
+        await toldOnce(cards, 0, "the Trace's line");
+        const lines = full ? store.tried.filter((/** @type {any} */ e) => e.data?.kind === 'unshown') : await unshown();
+        assert.equal(lines.length, 1);
+        assert.match(lines[0].data.message, said);
+        assert.equal((await unshown()).length, full ? 0 : 1);
+      } finally {
+        await k.done();
+      }
+    });
+  }
+}
+
+// halves.js #leftUnsaid's "unshown" record: Kokoro's question that Koe · Classic still owed, let go as another conversation opens. A line for the Trace alone,
+// in the conversation left: refused, no card.
 for (const full of [false, true]) {
-  test(`a note of Kokoro's with no words for the user, retold once, that a closing session hands on: its Trace line ${full ? 'refused: no card' : 'written with room: no card'}`, async () => {
-    const k = await liveKit([]);
-    try {
-      const cards = raw(k);
-      const store = refusing(k);
-      if (full) store.full((ev) => ev.type === 'error' && ev.data?.kind === 'unshown');
-      const note = { kind: 'note', logged: true, from: 'kokoro', note: 'Say: it is nothing.', mode: 'append', why: 'tool', retold: true, forUser: '', text: 'a note from Kokoro' };
-      k.agent.live.c.owed([note]); // a session that held it, closing
-      const unshown = async () => (await k.events(['error'])).filter((/** @type {any} */ e) => e.data.kind === 'unshown');
-      if (full) await soon(async () => store.tried.some((/** @type {any} */ e) => e.data?.kind === 'unshown'), 10_000);
-      else await soon(async () => (await unshown()).length === 1, 10_000);
-      await k.agent.idle();
-      await toldOnce(cards, 0, "the Trace's line");
-      assert.equal((await unshown()).length, full ? 0 : 1);
-    } finally {
-      await k.done();
-    }
+  test(`opening another conversation while Koe owes Kokoro's question: its Trace line ${full ? 'refused: no card' : 'written with room in the conversation left, no card'}`, async (t) => {
+    useClock(t);
+    /** @type {() => void} */
+    let release = () => {};
+    const go = new Promise((r) => { release = () => r(undefined); });
+    let koeCalls = 0;
+    const ask = { question: 'Diesel or petrol?', options: ['Diesel', 'Petrol'] };
+    const KOE = { rules: [
+      { match: 'the user wrote', reply: { toolCalls: [{ name: 'speak', input: { text: 'Let me look.' } }, { name: 'tell_kokoro', input: { text: 'Which fuel?' } }, { name: 'wait', input: { seconds: 60 } }] } },
+      { match: '.', reply: calls(['ask', ask]) },
+    ] };
+    // Koe's call that holds the note is held while the other conversation opens.
+    const k = await agentKit([[sleep, sleep, sleep]], { koe: { type: KOE }, hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-koe' && ++koeCalls === 2) await go; } });
+    const cards = raw(k);
+    const store = refusing(k);
+    k.agent.send('Which fuel?');
+    await until(() => k.agent.koe.waiting);
+    await k.agent.channel.send('kokoro', 'Kokoro wants to ask: Diesel or petrol? (Diesel, Petrol)', 'append', 'gated:ask', undefined, { name: 'ask', input: ask }, false, '');
+    await until(() => koeCalls === 2 && !k.agent.kokoro.busy);
+    const left = k.trip;
+    const other = await createTrip(k.ws, { title: 'Carmel' });
+    if (full) store.full((ev) => ev.type === 'error' && ev.data?.kind === 'unshown');
+    await k.agent.open(other);
+    release();
+    await k.agent.idle();
+    await toldOnce(cards, 0, "the Trace's line");
+    const unshown = async (/** @type {string} */ scope) => (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(scope, { types: ['error'] }))).filter((/** @type {any} */ e) => e.data.kind === 'unshown');
+    const lines = full ? store.tried.filter((/** @type {any} */ e) => e.data?.kind === 'unshown') : await unshown(left);
+    assert.equal(lines.length, 1, full ? 'the line was tried' : 'in the conversation left');
+    assert.match(lines[0].data.message, /question wasn't shown/);
+    assert.equal((await unshown(left)).length, full ? 0 : 1);
+    assert.equal((await unshown(other)).length, 0, 'and not in the one opened');
   });
 }
 
