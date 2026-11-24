@@ -621,7 +621,7 @@ export class Live {
     });
   }
 
-  /** The reminders annai said itself on screen or in a catch-up, by key, with when: the push mirror writes them down for the service worker. @returns {[string, number][]} */
+  /** The reminders annai said itself on screen, in a catch-up that ended in view, or as its own card for the open conversation with no connection, by key, with when: the push mirror writes them down for the service worker. @returns {[string, number][]} */
   given() {
     return [...this.#said];
   }
