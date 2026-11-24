@@ -366,7 +366,11 @@ for (const [how, o] of MODES) {
         assert.equal(count(cards, 'Reminder'), 1, 'once');
         assert.equal(cards.find((n) => n.title === 'Reminder').body, LEAVE);
         assert.equal(k.agent.busy, false);
-        if (first === 'its hold') assert.equal(k.requests.length, 0, 'no turn: the budgets\' check failed');
+        if (first === 'its hold') {
+          // On a241fd148 the wake got past its budgets' read into a turn that failed in its own reads (a "Shiori stopped" card, and no request either).
+          assert.equal(titled(k, 'Shiori stopped').length, 0, 'no turn started: the hold was refused, the budgets\' check failed, and wakeFailed showed the reminder');
+          assert.equal(k.requests.length, 0, 'no model call');
+        }
       });
     }
   }

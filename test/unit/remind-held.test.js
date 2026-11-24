@@ -114,7 +114,7 @@ for (const [mode, o] of MODES) {
     k.agent.wake(fired());
     await settled(); // the wake waits in the queue: her turn is in its tool
     assert.deepEqual(reminders(k.notices), [], 'not shown on the first page');
-    assert.deepEqual(await heldIn(k), [LEAVE], 'held once: as it came, and not again as it was queued');
+    assert.deepEqual(await heldIn(k), [LEAVE], 'held once: the hold at its entry is not written again as it is queued');
     const next = await nextStart(k, o.halves);
     assert.deepEqual(reminders(next.cards), [LEAVE]);
     assert.deepEqual(await entries(k), [LEAVE], 'its entry, once');
