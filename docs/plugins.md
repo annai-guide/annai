@@ -64,8 +64,8 @@ export function activate(annai) {
 ```
 
 - `activate` must finish within 10 seconds.
-- A plugin that fails to start on 3 launches in a row is turned off, with a card saying why. A start that fails only because a request couldn't be made for want of a link (the device is offline, say) doesn't count, on a launch or within one, and the card still says it didn't start. That is the error `annai.net.fetch` gives when it can't reach a server, or a `TypeError` of the browser's own `fetch` ("Failed to fetch" in Chrome, "Load failed" in Safari, "NetworkError when attempting to fetch resource." in Firefox; a `TypeError` with the whole word "fetch", "network" or "load failed" anywhere in its message is taken as the browser's).
-- An error from `activate` is recorded as a `plugin.error` event and never stops annai; a tool's `run` counts only when it crashes (see "Tools Shiori uses"). A plugin that fails several times in a row is switched off until the user turns it back on (spec §5.5).
+- A plugin that fails to start on 3 launches in a row is turned off, with a card saying why. A start that fails only because a request couldn't be made for want of a link (the device is offline, say) doesn't count (not as one of the 3 launches, nor as one of the plugin's failures in a row), and the card still says it didn't start. That is the error `annai.net.fetch` gives when it can't reach a server, or a `TypeError` of the browser's own `fetch` ("Failed to fetch" in Chrome, "Load failed" in Safari, "NetworkError when attempting to fetch resource." in Firefox; a `TypeError` with the whole word "fetch", "network" or "load failed" anywhere in its message is taken as the browser's).
+- An error from `activate` (bar a failure for want of a link, above) is recorded as a `plugin.error` event and never stops annai; a tool's `run` counts only when it crashes (see "Tools Shiori uses"). A plugin that fails several times in a row is switched off until the user turns it back on (spec §5.5).
 
 ## What `annai` gives you
 
