@@ -145,6 +145,12 @@ function shown(kind, provider) {
  */
 
 /**
+ * An ability in a provider error's data: its name where its description gives one, else its kind, which the screens name (saidWords).
+ * @param {{ named: boolean, kind: string, name: string }} a
+ */
+export const saidAbility = (a) => (a.named ? { ability: a.name } : { abilityKind: a.kind });
+
+/**
  * What each kind of ability is called in the screens' words, when its description gives no name: annai's own descriptive name
  * (decision 10), as the Add screen names them. @param {string | undefined} kind @returns {string | undefined}
  */
@@ -233,21 +239,23 @@ const originOf = (url) => {
 
 /**
  * A request a protocol built goes only to its ability's address: tunables such as path and listPath are joined into the URL, so a
- * description could otherwise send the key to another host while every check names the right one. annai calls this before it fetches. Asked
- * of the ability's own address (before any builder runs), one that isn't an http(s) address is no address, in words that never repeat it (it may hold a key).
- * @param {{ name?: string, ability?: string, baseUrl: string }} endpoint @param {string} url
+ * description could otherwise send the key to another host while every check names the right one. annai calls this before it fetches.
+ * An ability's own address that isn't an http(s) one is no address, whatever is asked of it (a typed one may hold a key, so the words never repeat it).
+ * ability: the ability itself, for its name in the words; without it (a caller that has none) the endpoint's id of it stands.
+ * @param {{ name?: string, ability?: string, baseUrl: string }} endpoint @param {string} url @param {{ named: boolean, kind: string, name: string }} [ability]
  */
-export function sameOrigin(endpoint, url) {
+export function sameOrigin(endpoint, url, ability) {
   const want = originOf(endpoint.baseUrl);
   const got = originOf(url);
   if (want && got === want) return;
-  if (!want && url === endpoint.baseUrl) {
-    throw new ProviderError('bad-request', /* en */ `${endpoint.name ?? 'This provider'}'s ${endpoint.ability ?? 'ability'} has no working address. Give its address in Settings → Models.`,
-      { said: { code: 'no-address', name: endpoint.name ?? '', ability: endpoint.ability ?? '' } });
+  const of = ability ?? { named: true, kind: '', name: endpoint.ability ?? 'ability' };
+  const name = endpoint.name ?? '';
+  if (!want) {
+    throw new ProviderError('bad-request', /* en */ `${endpoint.name ?? 'This provider'}'s ${of.name} has no working address. Give its address in Settings → Models.`,
+      { said: { code: 'no-address', name, ...saidAbility(of) } });
   }
-  const where = want || endpoint.baseUrl || /* en */ '(none)';
-  throw new ProviderError('bad-request', /* en */ `${endpoint.name ?? 'This provider'}'s ${endpoint.ability ?? 'ability'} built a request to ${got || "an address that isn't one"}, not its address ${where}. Check its tunables.`,
-    { said: { code: 'origin', name: endpoint.name ?? '', ability: endpoint.ability ?? '', to: got, want: where } });
+  throw new ProviderError('bad-request', /* en */ `${endpoint.name ?? 'This provider'}'s ${of.name} built a request to ${got || "an address that isn't one"}, not its address ${want}. Check its tunables.`,
+    { said: { code: 'origin', name, ...saidAbility(of), to: got, want } });
 }
 
 /** A keyed request never follows a redirect: it'd take x-api-key and the body elsewhere. @param {Response} res @param {{ name?: string }} endpoint */

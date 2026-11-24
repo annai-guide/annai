@@ -27,7 +27,7 @@ const room = (model) => Math.min(4096, model.maxOutput ?? 4096);
  *   upload is advice: when it fails, photos still go in each request, so the model still passes; live: a realtime model answered aloud
  * @typedef {{ type: import('./contract.js').EndpointType, endpoint: import('./config.js').Endpoint, model: import('./config.js').Model,
  *   key: string | null, fetch?: import('./call.js').Fetch, probe?: (url: string) => Promise<boolean>, firstOutputMs?: number,
- *   role?: { id: string, level: string }, uploads?: import('./uploads.js').Uploads }} TestCase  role: a role asking this model at a level of its own (main, koe-classic or utility);
+ *   role?: { id: string, level: string }, uploads?: import('./uploads.js').Uploads, ability?: import('./config.js').Ability }} TestCase  ability: the endpoint's, for its name where annai says its address is wrong; role: a role asking this model at a level of its own (main, koe-classic or utility);
  *   uploads: the endpoints' uploads, turned off where Test's own upload fails, or annai can't delete the test photo or read the list, and on again where Test passes
  *   detail: what the step found, in the screens' language
  */
@@ -54,7 +54,7 @@ const asError = (e) => (e instanceof ProviderError ? e : new ProviderError('plug
  */
 export async function testModel(c) {
   const { type, endpoint, model, key, probe } = c;
-  const base = { type, endpoint, model, key, fetch: c.fetch, firstOutputMs: c.firstOutputMs ?? 60_000, level: 'off' };
+  const base = { type, endpoint, ability: c.ability, model, key, fetch: c.fetch, firstOutputMs: c.firstOutputMs ?? 60_000, level: 'off' };
   /** @type {TestStep[]} */
   const steps = [];
   try {

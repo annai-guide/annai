@@ -244,7 +244,8 @@ async function billed(usage, tools, tally) {
  * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, request: Request, level?: string,
  *   fetch?: Fetch, signal?: AbortSignal, firstOutputMs?: number, onEvent?: (e: StreamEvent) => void, trace?: ModelTrace,
  *   registry?: import('../registry.js').Registry, now?: () => number, uploads?: import('./uploads.js').Uploads, keep?: Keep,
- *   tally?: import('../workspace.js').Workspace, keepNative?: boolean, shared?: boolean }} c
+ *   tally?: import('../workspace.js').Workspace, keepNative?: boolean, shared?: boolean, ability?: import('./config.js').Ability }} c
+ *   ability: the endpoint's ability, for its name where annai says the address is wrong
  *   firstOutputMs: how long to wait for the first output once the provider has the request, and then between pieces of output
  *   shared: the other half may send its request on the same link at the same time (Koe and Kokoro): the send is timed on twice its bytes, as two
  *   sends sharing a link evenly carry, by the time the first is up, its bytes and as many of the other's
@@ -254,8 +255,8 @@ async function billed(usage, tools, tally) {
  *   keepNative: the reply as the provider returned it is wanted (Shiori's own turns: the keep-reasoning design §4)
  * @returns {Promise<Reply>}
  */
-export async function callOnce({ type, endpoint, model, key, request, level = 'off', fetch: get = defaultFetch, signal, firstOutputMs = 30_000, onEvent = () => {}, trace, registry, now = Date.now, uploads, keep, tally, keepNative = false, shared = false }) {
-  if (!type.run) sameOrigin(endpoint, endpoint.baseUrl); // annai calls a type's code only with an address that parses (else bad-request, the user's to fix)
+export async function callOnce({ type, endpoint, model, key, request, level = 'off', fetch: get = defaultFetch, signal, firstOutputMs = 30_000, onEvent = () => {}, trace, registry, now = Date.now, uploads, keep, tally, keepNative = false, shared = false, ability }) {
+  if (!type.run) sameOrigin(endpoint, endpoint.baseUrl, ability); // annai calls a type's code only with an address that parses (else bad-request, the user's to fix)
   if (key) trace?.secret(key);
   // Credentials can also sit in an endpoint's extra headers; none may reach the trace (spec §9.9).
   for (const [name, value] of Object.entries(endpoint.headers ?? {})) {
@@ -405,7 +406,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     } else {
       const built = /** @type {NonNullable<EndpointType['build']>} */ (type.build)(spec);
       url = built.url;
-      sameOrigin(endpoint, built.url); // the key goes only to the ability's address
+      sameOrigin(endpoint, built.url, ability); // the key goes only to the ability's address
       /** @type {Response} */
       let res;
       const body = JSON.stringify(applyPatches(built.body, endpoint, model, level, patches));

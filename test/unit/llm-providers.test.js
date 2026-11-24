@@ -10,6 +10,7 @@ import { ttlFor } from '../../src/core/agent/warmth.js';
 import { OPENAI_SRC, ROUTER_SRC, ANTHROPIC_SRC, ANOTHER_SRC, PROTO, PROVIDER, site } from './provider-kit.js';
 import { hostKit } from './package-kit.js';
 import { createLlm } from '../../src/core/llm/service.js';
+import { explain } from '../../src/core/llm/contract.js';
 import { QUIET_MS } from '../../src/core/answer.js';
 import { messageOf } from '../../src/ui/dom.js';
 import { dead, watch, turns } from './dead-kit.js';
@@ -889,6 +890,25 @@ test("listing an ability's models: by its address, with the provider's key; an a
   await saveProvider(k.ws, { ...rec, user: { baseUrl: 'https://x.example', abilities: { chat: { tunables: { listPath: '.attacker.example/models' } } } } });
   await assert.rejects(k.llm.listModels(id, 'chat'), (/** @type {any} */ e) => e.kind === 'bad-request' && /built a request to https:\/\/x\.example\.attacker\.example/.test(e.message));
   assert.equal(k.reached.length, before);
+});
+
+test("a typed address that isn't one, on the model list and a voice: no-address and the same words, with the ability's name, the typed text never repeated, nothing sent (fail-owner-next, round 4 item 3)", async () => {
+  const k = await serviceKit();
+  const id = await k.llm.addProvider('provider-x', { key: 'sk-x-1' });
+  const cfg = await k.llm.config();
+  const one = (/** @type {string} */ ability) => /** @type {any} */ (Object.values(cfg.models).find((m) => m.ability === ability));
+  /** @param {any} e @param {string} ability @param {string} typed */
+  const says = (e, ability, typed) => e.kind === 'bad-request' && e.said?.code === 'no-address' && explain(e) === `X's ${ability} has no working address. Give its address in Settings → Models.`
+    && e.message === `X's ${ability} has no working address. Give its address in Settings → Models.` && !(typed && `${e.message} ${explain(e)}`.includes(typed));
+  for (const typed of ['', 'api.x.example/v1']) {
+    const rec = (await k.llm.config()).providers[id];
+    // The provider's address and its voice's own, both typed so.
+    await saveProvider(k.ws, { ...rec, user: { ...rec.user, baseUrl: typed, abilities: { voice: { baseUrl: typed } } } });
+    const before = k.reached.length;
+    await assert.rejects(k.llm.listModels(id, 'chat'), (/** @type {any} */ e) => says(e, 'Chat', typed), `the model list at ${JSON.stringify(typed)}`);
+    await assert.rejects(k.llm.synthesize({ modelId: one('voice').id, text: 'Hello.' }), (/** @type {any} */ e) => says(e, 'Voice', typed), `a voice at ${JSON.stringify(typed)}`);
+    assert.equal(k.reached.length, before, 'nothing was sent');
+  }
 });
 
 test("security review: an installed copy of an official provider's id that came from elsewhere is never used as annai's own; one from annai whose files no longer match the catalog is fetched again", async () => {

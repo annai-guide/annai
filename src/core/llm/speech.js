@@ -25,7 +25,8 @@ const playable = (p) => p?.pcm instanceof Int16Array && Number.isFinite(p.rate);
  * @param {{ type: EndpointType, endpoint: import('./config.js').Endpoint, model: import('./config.js').Model, key: string | null,
  *   audio?: { data: Uint8Array, mediaType: string, seconds?: number }, text?: string, fetch?: (url: string, init: RequestInit) => Promise<Response>,
  *   signal?: AbortSignal, timeoutMs?: number, trace?: ReturnType<typeof import('./trace.js').modelTrace>, registry?: import('../registry.js').Registry,
- *   now?: () => number, wake?: string, plays?: string[], stream?: boolean, unstyled?: boolean, languages?: import('./contract.js').Languages, shared?: boolean }} c  audio: transcribe it, with an 'in' type; text: say it, with an 'out' type;
+ *   now?: () => number, wake?: string, plays?: string[], stream?: boolean, unstyled?: boolean, languages?: import('./contract.js').Languages, shared?: boolean,
+ *   ability?: import('./config.js').Ability }} c  audio: transcribe it, with an 'in' type; text: say it, with an 'out' type; ability: the endpoint's, for its name where annai says the address is wrong;
  *   plays: what the device plays; stream: the caller plays a stream; unstyled: send no style (a server refused it); languages: what the user speaks, for a
  *   transcription's language hint: a voice is given none, the voice APIs called here take none (a multilingual voice follows the text; one made for one language reads everything in it)
  * @returns {Promise<{ text?: string, clip?: Clip, stream?: SpeechStream, cost: number | undefined, ms: number }>} text from an 'in' type, a clip or a stream from an 'out' type
@@ -86,7 +87,7 @@ export async function speechCall(c) {
   let handed = false;
   try {
     // From the request's build on, what the type's code throws is classified (asProviderError), and a builder gets only an address that parses.
-    sameOrigin(endpoint, endpoint.baseUrl);
+    sameOrigin(endpoint, endpoint.baseUrl, c.ability);
     const built = hearing
       ? /** @type {NonNullable<EndpointType['transcribeRequest']>} */ (type.transcribeRequest)({ ...spec, audio: /** @type {{ data: Uint8Array, mediaType: string }} */ (c.audio), ...(c.languages ? { languages: c.languages } : {}) })
       : /** @type {NonNullable<EndpointType['speechRequest']>} */ (type.speechRequest)({ ...spec, text });
@@ -97,7 +98,7 @@ export async function speechCall(c) {
     limit(/* en */ 'No answer in time.', sending);
     /** @type {Response} */
     let res;
-    sameOrigin(endpoint, built.url); // the key goes only to the ability's address
+    sameOrigin(endpoint, built.url, c.ability); // the key goes only to the ability's address
     try {
       res = await (c.fetch ?? ((url, init) => fetch(url, init)))(built.url, { method: 'POST', headers: built.headers, body: built.body, signal, redirect: 'manual' });
     } catch (e) {

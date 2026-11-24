@@ -8,6 +8,7 @@ import { SYS, ensureBaseScopes } from '../../src/core/scopes.js';
 import { Registry } from '../../src/core/registry.js';
 import { ProviderError, explain } from '../../src/core/llm/contract.js';
 import { callOnce } from '../../src/core/llm/call.js';
+import { testModel } from '../../src/core/llm/check.js';
 import { speechCall } from '../../src/core/llm/speech.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { Uploads } from '../../src/core/llm/uploads.js';
@@ -583,7 +584,7 @@ test("an uploadRequest whose result is not a request (an async function's promis
   assert.deepEqual(unhandled, [], 'no rejected promise is left for the page to report');
 });
 
-test("a typed address is checked by annai, by state, before any builder runs: one that doesn't parse (an empty one included) is bad-request, never counted, with no builder called; a builder's own `new URL` failure at a good address is its plugin's bug, counted (fail-owner-next, round 2 item 2)", async () => {
+test("a typed address is checked by annai, by state, before any builder runs: one that doesn't parse (an empty one included) is bad-request, never counted, with no builder called; a builder's own `new URL` failure at a good address is its plugin's bug, counted (fail-owner-next, round 2 item 2); the words name the ability as the other said codes do (round 4 item 3)", async () => {
   /** @type {string[]} */
   const built = [];
   const request1 = (/** @type {string} */ who, /** @type {any} */ c) => { built.push(who); return { url: `${c.endpoint.baseUrl}/x`, headers: {}, body: '{}' }; };
@@ -604,6 +605,22 @@ test("a typed address is checked by annai, by state, before any builder runs: on
       }
       assert.deepEqual([counted(registry), registry.isDisabled(`a-${name}`)], [0, false], `${name} at ${JSON.stringify(address)}: not counted`);
     }
+  }
+  // The words name the ability as the other codes do: the name its description gives, else its kind's; a caller with no ability leaves the endpoint's id of it.
+  for (const [ability, shown] of /** @type {[any, string][]} */ ([
+    [{ id: 'chat', kind: 'chat', name: 'Chat', named: false }, 'Chat'],
+    [{ id: 'chat-completions', kind: 'chat', name: 'Chat Completions', named: true }, 'Chat Completions'],
+    [undefined, 'a'],
+  ])) {
+    const words = `A's ${shown} has no working address. Give its address in Settings → Models.`;
+    const type = chat({ type: 'addr-named' });
+    const errors = [
+      await callOnce({ type, endpoint: endpoint('addr-named', ''), ability, model: model(), key: null, request, registry: withType('a-named', type) }).catch((e) => e),
+      await speechCall({ type: /** @type {any} */ ({ ...hears, type: 'addr-named-in' }), endpoint: endpoint('addr-named-in', ''), ability, model: model(), key: null, audio, registry: withType('a-named-in', hears) }).catch((e) => e),
+    ];
+    for (const e of errors) assert.ok(e instanceof ProviderError && e.kind === 'bad-request' && e.said?.code === 'no-address' && e.message === words && explain(e) === words, words);
+    const tested = await testModel({ type, endpoint: endpoint('addr-named', ''), ability, model: model(), key: null });
+    assert.deepEqual([tested.ok, tested.steps[0].detail], [false, words], `Test: ${words}`);
   }
   // A photo's upload is a builder too: with such an address it is never asked.
   const store = createMemoryStore();

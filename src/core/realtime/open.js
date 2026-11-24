@@ -32,11 +32,11 @@ const pick = (list, name) => list?.find((f) => f.format === name) ?? list?.[0];
 /**
  * Refuses a session address not at the ability's origin, before anything opens: the one rule HTTP requests follow
  * (sameOrigin), wss: as https and ws: as http, which the security policy allows only for localhost and 127.0.0.1.
- * @param {import('../llm/config.js').Endpoint} endpoint @param {string} url
+ * @param {import('../llm/config.js').Endpoint} endpoint @param {string} url @param {import('../llm/config.js').Ability} [ability] the endpoint's, for its name in the words
  */
-export function liveOrigin(endpoint, url) {
+export function liveOrigin(endpoint, url, ability) {
   const web = /^wss?:\/\//i.test(url) ? url.replace(/^ws/i, 'http') : '';
-  sameOrigin(endpoint, web);
+  sameOrigin(endpoint, web, ability);
   const wrong = addressProblem(new URL(web).origin);
   if (wrong) throw new ProviderError('bad-request', wrong);
 }
@@ -64,7 +64,7 @@ export function closeKind(type, code, reason) {
 /**
  * Opens a live session; an address not at the ability's origin throws at once. A protocol may open once more, before
  * the session is ready, with the tunables its reopen() gives, twice at most.
- * @param {{ type: EndpointType, endpoint: import('../llm/config.js').Endpoint, model: import('../llm/config.js').Model, key: string | null,
+ * @param {{ type: EndpointType, endpoint: import('../llm/config.js').Endpoint, ability?: import('../llm/config.js').Ability, model: import('../llm/config.js').Model, key: string | null,
  *   tunables: Record<string, any>, setup: Omit<LiveSetup, 'audioIn' | 'audioOut'> & Partial<LiveSetup>, trace: ReturnType<typeof import('../llm/trace.js').modelTrace> | null,
  *   socket?: (url: string, protocols: string[]) => any, registry?: { fail(id: string, what: string, e: unknown): void }, wake?: string, now?: () => number, readyMs?: number,
  *   output?: { sampleRate: number, baseLatency?: number, outputLatency?: number } }} c  output: the phone's sound (its rate, and its processing and output
@@ -72,7 +72,7 @@ export function closeKind(type, code, reason) {
  * @returns {LiveSession}
  */
 export function openLive(c) {
-  const { type, endpoint, model, key, trace, registry, wake, now = Date.now, readyMs = READY_MS } = c;
+  const { type, endpoint, ability, model, key, trace, registry, wake, now = Date.now, readyMs = READY_MS } = c;
   const setup = { ...c.setup, audioIn: c.setup.audioIn ?? pick(type.audio?.in, c.tunables.input), audioOut: c.setup.audioOut ?? pick(type.audio?.out, c.tunables.output) };
   const socket = c.socket ?? ((url, protocols) => new WebSocket(url, protocols));
   // The key as given, and as an address escapes it (a protocol may put it in the query): an echo of either is blanked.
@@ -92,7 +92,7 @@ export function openLive(c) {
       // A live session's own words are the log's: its screens say its kind (whyWords, testLive).
       throw e instanceof ProviderError ? e : new ProviderError('plugin', /* en */ `${type.name} couldn't start a live session.`);
     }
-    liveOrigin(endpoint, String(r?.url));
+    liveOrigin(endpoint, String(r?.url), ability);
     return r;
   };
   const first = build(c.tunables);

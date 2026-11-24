@@ -6,7 +6,7 @@ import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, SYS } from '../../src/core/scopes.js';
 import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
-import { ProviderError } from '../../src/core/llm/contract.js';
+import { ProviderError, explain } from '../../src/core/llm/contract.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { readConfig, saveProvider, saveRoles, newProvider, newModel, setKey } from '../../src/core/llm/config.js';
 import { spentToday } from '../../src/core/agent/budgets.js';
@@ -121,6 +121,13 @@ test("a session opens only at its ability's origin (https → wss, http localhos
   // http on another computer is never an ability's address, and ws: to it never opens either.
   assert.throws(() => open({ endpoint: endpoint('http://192.168.1.9:9931') }), (e) => e instanceof ProviderError && e.kind === 'bad-request');
   assert.equal(FakeSocket.made.length, 3, 'nothing else was opened');
+  // A typed address that isn't one is no address, whatever the protocol built from it; the words name the ability as the other said codes do (round 4 item 3).
+  for (const [ability, shown] of /** @type {const} */ ([[{ id: 'live', kind: 'realtime', name: 'Live voice', named: true }, 'Live voice'], [{ id: 'live', kind: 'realtime', name: 'Live voice', named: false }, 'Live voice']])) {
+    for (const typed of ['', 'live.test/v1']) {
+      assert.throws(() => open({ endpoint: endpoint(typed), ability }), (e) => e instanceof ProviderError && e.kind === 'bad-request' && e.said?.code === 'no-address'
+        && explain(e) === `Gemini's ${shown} has no working address. Give its address in Settings → Models.` && !(typed && explain(e).includes(typed)), typed);
+    }
+  }
   // A protocol that crashes building its address counts against its plugin.
   /** @type {any[]} */
   const failed = [];

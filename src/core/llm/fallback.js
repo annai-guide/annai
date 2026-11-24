@@ -634,7 +634,7 @@ export async function callRole(c) {
     return { rec, pRec, provider, ability, type, model, out };
   };
   const one = async (id) => {
-    const { rec, pRec, provider, type, model, out } = lookUp(id);
+    const { rec, pRec, provider, ability, type, model, out } = lookUp(id);
     const forModel = requestFor(model, id);
     const skip = out ?? (bench.until(id) > now() && !(restingNow.has(id) && (!restingAsked || restingAsked === id)) ? 'benched' : gap(/** @type {Model} */ (model), forModel(request), provider ?? undefined));
     if (skip || !model || !type || !pRec || !provider) {
@@ -684,7 +684,7 @@ export async function callRole(c) {
       const started = now();
       try {
         const reply = await callOnce({
-          type: set.type, endpoint, model, key, request: sendable, level, fetch: c.fetch, signal: c.signal, onEvent: c.onEvent,
+          type: set.type, endpoint, ability, model, key, request: sendable, level, fetch: c.fetch, signal: c.signal, onEvent: c.onEvent,
           trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads, tally: c.tally, keepNative: Boolean(c.keepNative), shared: Boolean(c.shared), ...(keeps ? { keep: { kept: keeps, scope: c.scope ?? SYS, chain: !whole, secret: own, ...(c.borrow ? { borrow: true } : {}), ...(again ? { again: true } : {}) } } : {}),
         });
         usage = addUsage(usage, reply.usage);
