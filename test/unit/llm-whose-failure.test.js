@@ -592,7 +592,7 @@ test("an uploadRequest whose result is not a request (an async function's promis
   assert.deepEqual(unhandled, [], 'no rejected promise is left for the page to report');
 });
 
-test("a typed address is checked by annai, by state, before any builder runs: one that doesn't parse (an empty one included) is bad-request, never counted, with no builder called; a builder's own `new URL` failure at a good address is its plugin's bug, counted (fail-owner-next, round 2 item 2); a request a builder made to another address, or to one that isn't an address, keeps the built-address words, and both of those said codes (no-address, before and after the build, and origin) name the ability as the other said codes do, in a call, a speech call and a Test (round 4 items 3 and 5, round 5)", async () => {
+test("a typed address is checked by annai, by state, before any builder runs: one that doesn't parse (an empty one included) is bad-request, never counted, with no builder called; a builder's own `new URL` failure at a good address is its plugin's bug, counted (fail-owner-next, round 2 item 2); a request a builder made to another address, or to one that isn't an address, keeps the built-address words, and both said codes name the ability as the other said codes do: no-address, from the check before the build, in a call, a speech call and a Test; origin, from the check after it, in a call and a speech call (round 4 items 3 and 5, round 5)", async () => {
   /** @type {string[]} */
   const built = [];
   const request1 = (/** @type {string} */ who, /** @type {any} */ c) => { built.push(who); return { url: `${c.endpoint.baseUrl}/x`, headers: {}, body: '{}' }; };
