@@ -223,6 +223,18 @@ test("a card's list of long addresses and a card's long place name wrap inside t
   expect(out).toEqual([]);
 });
 
+// The page-wide clip (base.css) is the guard behind every wrap rule: a long word that no rule wraps, here a plain line outside any card,
+// costs its cut-off end at the screen's edge, never the page's width and the dock's place (found by the fix round's re-read, 2026-11-23).
+test("a long word no wrap rule reaches is cut at the screen's edge: the page stays the phone's width", async ({ page }) => {
+  await page.setViewportSize({ width: 420, height: 912 });
+  await openApp(page, '#/trips');
+  await startTrip(page, 'Sample trip');
+  await page.goto('/#/talk');
+  await expect(page.locator('nav.dock')).toBeVisible();
+  await page.evaluate((word) => { const p = document.createElement('p'); p.textContent = word; document.body.append(p); }, `Sample${'Lake'.repeat(50)}`);
+  expect(await fitsPhone(page)).toEqual({ wider: 0, dock: [0, 0] });
+});
+
 // Driving draws her latest card with the same renderer, outside the Conversation: a choice and a link whose label is one long word wrap inside the card there too.
 test("Driving's latest card with a long choice, a long link and a long place name wraps inside the card: the page stays the phone's width", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 }); // the narrowest phone
