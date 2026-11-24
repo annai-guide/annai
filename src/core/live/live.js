@@ -621,7 +621,7 @@ export class Live {
     });
   }
 
-  /** The reminders annai said itself on screen, in a catch-up that ended in view, or as its own card for the open conversation with no connection, by key, with when: the push mirror writes them down for the service worker. @returns {[string, number][]} */
+  /** The reminders annai said itself on screen, or in a catch-up that ended with the page in view, by key, with when: the push mirror writes them down for the service worker. @returns {[string, number][]} */
   given() {
     return [...this.#said];
   }
@@ -1098,7 +1098,7 @@ export class Live {
     const by = new Map();
     for (const h of held) by.set(h.scope, [...(by.get(h.scope) ?? []), h.text]);
     for (const [scope, texts] of by) {
-      const text = /* en */ `While there was no connection (for ${span(this.clock.now() - since)}, since ${timeIn(since, this.timeZone())}), these came, and annai showed their reminders by itself: ${texts.join(' ')}`;
+      const text = /* en */ `While there was no connection (for ${span(this.clock.now() - since)}, since ${timeIn(since, this.timeZone())}), these came, and annai gave their reminders by itself as cards (on screen, or kept in the chat while annai was out of view): ${texts.join(' ')}`;
       await this.agent.wake({ kind: 'trigger', text, fallbacks: [], ...(scope === this.#scope() ? {} : { scope }) });
     }
   }
@@ -1671,16 +1671,13 @@ export class Live {
       done.push(x);
       // A one-time watch goes; a watch file that can't be removed is told, and the reminder still comes.
       if (x.watch.owner !== 'system' && (x.watch.when.type === 'time' || (!x.watch.repeat && x.watch.when.type !== 'every'))) await this.#drop(x.scope, x.watch).catch((e) => this.#fail(e));
-      // Said on screen, now or in the catch-up: a notification for it from now on is a double (one shown while away was read first).
-      if (this.shown) this.#say(x);
+      // Said on screen (made with the page in view, the one write point; a card given out of view was seen by no one): a notification for it from now on is a double (one shown while away was read first).
+      if (this.shown) {
+        this.#said.set(this.#keyOf(x.scope, x.watch), this.clock.now());
+        if (this.#said.size > 200) this.#said.delete(/** @type {string} */ (this.#said.keys().next().value));
+      }
     }
     return done;
-  }
-
-  /** Marks a reminder annai said itself: a notification for it from now on is a double. @param {Fired} x */
-  #say(x) {
-    this.#said.set(this.#keyOf(x.scope, x.watch), this.clock.now());
-    if (this.#said.size > 200) this.#said.delete(/** @type {string} */ (this.#said.keys().next().value));
   }
 
   /**
@@ -1701,8 +1698,8 @@ export class Live {
     for (const [scope, xs] of by) {
       // A reminder whose notification the phone showed has reached the user: annai doesn't show it again. A reminder (see reminds) stays owed
       // until she tells the user; a cue (a place, the road, an arrival, a stop off the plan) only until a model answers.
-      const owed = xs.filter((x) => this.#shownFor(x) === undefined);
-      const fallbacks = owed.map((x) => ({ watch: x.watch.id, text: x.fallback, ...(x.say ? { plan: x.say } : {}), ...(reminds(x.watch) ? {} : { cue: true }) }));
+      const fallbacks = xs.filter((x) => this.#shownFor(x) === undefined)
+        .map((x) => ({ watch: x.watch.id, text: x.fallback, ...(x.say ? { plan: x.say } : {}), ...(reminds(x.watch) ? {} : { cue: true }) }));
       const reasons = xs.map((x) => this.#reason(x));
       // What fired, for the wake's line: a plan item's title, or a watch's reminder; never annai's own English.
       const titles = xs.map((x) => (x.watch.owner === 'system' ? x.watch.when.title : x.watch.fallback)).filter((s) => typeof s === 'string' && s);
@@ -1716,9 +1713,8 @@ export class Live {
       }
       const text = [header, ...lines, ...reasons].filter(Boolean).join(' ');
       if (!this.online) {
-        // No connection: annai says the reminders itself now, with the page in view or not; Shiori hears of them when it is back (spec §17, choice 8).
+        // No connection: annai says the reminders itself now (said on screen only if the page is in view, see #made); Shiori hears of them when it is back (spec §17, choice 8).
         if (fallbacks.length) await this.agent.remind(fallbacks);
-        for (const x of owed) this.#say(x);
         this.#held.push({ scope, text });
         continue;
       }

@@ -255,9 +255,10 @@ test('a reminder in a catch-up that ended with the page out of view was not said
   k.live.dispose();
 });
 
-// remind-first-next, fix round 2 (a regression against a241fd148): with no data, a catch-up that ends out of view gives its reminders as cards at
-// once, so they count as said: the relay's copy, sent after the traveller has left, is closed as a double. On a241fd148 the first look said them.
-test('an offline glance that ends out of view still gave the card: the relay\'s copy shown later is closed as a double', async () => {
+// said-mark-b (the design check's route B): the said mark has one write point, #made with the page in view. With no data a catch-up that ends out of
+// view gives its reminders as cards at once (the chat keeps them), but no one saw them, so they don't count as said: the relay's copy, sent after the
+// traveller has left, is the only notice that reached them, and it is shown (with sound), not closed as a double.
+test('an offline glance that ends out of view gave the card but did not say it: the relay\'s copy shown later is no double', async () => {
   const k = await liveKit();
   const w = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
   k.sensors.visible(false);
@@ -270,9 +271,22 @@ test('an offline glance that ends out of view still gave the card: the relay\'s 
   k.sensors.visible(false); // gone before any fix: annai gives the card at once, out of view
   await k.settle();
   assert.deepEqual(k.agent.reminders.map((r) => r.text), ['Tea time.']);
-  assert.deepEqual(k.live.given().map(([key]) => key), [`${k.trip}|${w.id}`], 'the push mirror hears it was given');
+  assert.deepEqual(k.live.given(), [], 'no one saw the card: not said');
   const later = await arrives(k.live, [{ kind: 'shown', key: `${k.trip}|${w.id}`, scope: k.trip, watch: w.id, t: at('10:20:30') }]);
-  assert.deepEqual(later, [`${k.trip}|${w.id}`]);
+  assert.deepEqual(later, []);
+  k.live.dispose();
+});
+
+// The other side of that rule (said-mark-b's review): a reminder annai gives on screen with no connection is said, so the relay's copy that
+// comes once data returns is a double, closed. A mark that also asked for a connection would let it come again with sound.
+test('a reminder given on screen with no connection is said; its copy that comes later is a double', async () => {
+  const k = await liveKit();
+  const w = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
+  k.sensors.online(false);
+  await k.settle();
+  await k.to(at('10:00'));
+  assert.deepEqual(k.live.given().map(([key]) => key), [`${k.trip}|${w.id}`]);
+  assert.deepEqual(await arrives(k.live, [{ kind: 'shown', key: `${k.trip}|${w.id}`, scope: k.trip, watch: w.id, t: at('10:00:30') }]), [`${k.trip}|${w.id}`]);
   k.live.dispose();
 });
 
