@@ -7,6 +7,7 @@ import { ManualClock } from '../../src/core/live/clock.js';
 
 const NEP = { title: 'Lunch at Nepenthe', fixed: true, start: { at: iso('12:00'), tz: LA }, end: { at: iso('13:15'), tz: LA }, place: { name: 'Nepenthe', ...NEPENTHE } };
 const BIX = { title: 'Bixby Bridge photo stop', fixed: false, start: { at: iso('09:45'), tz: LA }, place: { name: 'Bixby Creek Bridge', ...BIXBY } };
+const TEA = { title: 'Tea at the inn', fixed: true, start: { at: iso('16:00'), tz: LA } };
 
 test('back on screen: a time watch that came due fires late and labelled, with moved, in one catch-up wake with the time away and the distance (spec §11.4)', async () => {
   const k = await liveKit();
@@ -115,6 +116,84 @@ test('after a restart: an overdue time watch fires late, an every watch once (no
   await clock.advanceTo(at('19:00'), () => live.settled());
   assert.equal(agent.wakes.length, 2); // every goes on from now
   assert.equal(agent.wakes[1].kind, 'trigger');
+});
+
+// The Deferred entry "A reminder in memory can still be lost in annai's first seconds", shape (1): a catch-up holds what came due while it waits for a fix
+// (FIX_WAIT_MS). It makes those firings (their trigger.fired, a one-time watch's removal) only as it delivers them, so a page killed in that wait, never out of
+// view, leaves its watches as they were, and the next start fires them again. On a241fd148 they were logged and removed at once, and lost.
+test('a page killed while its catch-up waits for a fix: the next start fires what came due again, late, and the start after that nothing', async () => {
+  const k = await liveKit();
+  const once = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('09:00') }, fallback: 'Nine.' });
+  const every = await k.live.setWatch(k.trip, { when: { type: 'every', minutes: 30 }, fallback: 'Half hour.' });
+  await k.fix(at('08:31'), MONTEREY);
+  k.live.dispose();
+  /** annai starts at t: a page of its own (its clock, sensors and agent). @param {number} t */
+  const page = async (t) => {
+    const agent = fakeAgent(k.trip);
+    const sensors = fakeSensors(k.registry);
+    const live = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent, clock: new ManualClock(t), timeZone: () => LA });
+    await live.start();
+    await live.settled();
+    return { agent, sensors, live, fix: async () => { sensors.fix({ lat: MONTEREY.lat, lng: MONTEREY.lng, accuracy: 8, speed: 0 }); await live.settled(); } };
+  };
+  const killed = await page(at('10:00'));
+  assert.equal(killed.agent.wakes.length, 0, 'live mode is on: it waits for a fix');
+  killed.live.dispose(); // killed in that wait: no fix came, no timer ran, and the page never went out of view
+  const next = await page(at('10:05'));
+  await next.fix();
+  assert.equal(next.agent.wakes.length, 1);
+  const w = next.agent.wakes[0];
+  assert.equal(w.kind, 'catch-up');
+  assert.ok(w.text.includes(`Your watch ${once.id} (at ${dueWords(iso('09:00'))}) fired: the time came: ${dueWords(iso('09:00'))} (late by 65 min: annai was closed).`), w.text);
+  assert.ok(w.text.includes(`Your watch ${every.id} (every 30 min) fired`), w.text);
+  assert.deepEqual(w.fallbacks.map((/** @type {any} */ f) => f.text).sort(), ['Half hour.', 'Nine.']);
+  const made = (await k.events(['trigger.fired'])).map((e) => [e.data.watch, e.data.late, e.data.catchUp, e.ts]);
+  assert.deepEqual(made.sort(), [[once.id, 65, true, at('10:05')], [every.id, 65, true, at('10:05')]].sort(), 'made once, at that start');
+  next.live.dispose();
+  const after = await page(at('10:10'));
+  await after.fix();
+  assert.deepEqual(after.agent.wakes, [], 'the start after that: nothing');
+  after.live.dispose();
+});
+
+// What a catch-up makes goes to the push mirror as it is made (#endCatchUp), so the relay's copy of it is called off at once: on a241fd148 the look that
+// made it told the mirror, and here the look only collects.
+test("a catch-up whose wait ends by its timer (no fix came) tells the push mirror that its plan reminder went, once, as it makes it", async () => {
+  const k = await liveKit({ plan: { tea: TEA } });
+  k.sensors.visible(false);
+  await k.settle();
+  await k.to(at('15:50')); // "In 15 min" came due at 15:45, while away
+  k.sensors.visible(true);
+  await k.settle();
+  assert.equal(k.agent.wakes.length, 0, 'it waits for a fix');
+  /** @type {string[]} */
+  const told = [];
+  k.live.onReminders((level) => { told.push(level); });
+  await k.to(at('15:50:15')); // no fix came: the wait ends by its timer
+  assert.equal(k.agent.wakes.length, 1);
+  assert.equal(k.agent.wakes[0].kind, 'catch-up');
+  assert.deepEqual(told, ['urgent']);
+  k.live.dispose();
+});
+
+// Shape (1) ends the wait by the page going out of view too: what it found due is made and delivered then, as the page goes, and not dropped.
+test('a catch-up that waits for a fix and then goes out of view before any fix delivers what it found: one wake naming the watch, one trigger.fired', async () => {
+  const k = await liveKit();
+  const tea = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
+  k.sensors.visible(false);
+  await k.settle();
+  await k.to(at('10:10'));
+  k.sensors.visible(true);
+  await k.settle();
+  assert.equal(k.agent.wakes.length, 0, 'it waits for a fix');
+  k.sensors.visible(false); // gone again before any fix and before the timer
+  await k.settle();
+  assert.equal(k.agent.wakes.length, 1);
+  assert.equal(k.agent.wakes[0].kind, 'catch-up');
+  assert.ok(k.agent.wakes[0].text.includes(`Your watch ${tea.id} (at ${dueWords(iso('10:00'))}) fired`), k.agent.wakes[0].text);
+  assert.deepEqual(k.agent.wakes[0].fallbacks.map((/** @type {any} */ f) => f.text), ['Tea time.']);
+  assert.equal((await k.events(['trigger.fired'])).length, 1);
+  k.live.dispose();
 });
 
 test('with no connection, annai says each reminder at once and holds the wakes; back online, one wake says what came (spec §17, choice 8)', async () => {

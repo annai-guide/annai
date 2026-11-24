@@ -588,12 +588,15 @@ export class Live {
       }
       const m = this.#moment();
       const time = this.types().get('time');
+      // What a catch-up found due while it waits for a fix is annai's to say, made or not yet: the relay's copy of it is called off now, not when the wait
+      // ends (its copy would be sent in the wait, with sound). A page killed in the wait fires it again at the next start (#fire).
+      const found = new Set((this.#catch?.fired ?? []).map((x) => this.#keyOf(x.scope, x.watch)));
       /** @type {Mirrored[]} */
       const out = [];
       for (const [scope, list] of this.#watches) {
         if (!this.#inPlay(scope)) continue; // a simulation's own trip, outside its run
         for (const w of list) {
-          if (w.when?.type !== 'time' || !time || this.#broken(time, w)) continue;
+          if (w.when?.type !== 'time' || !time || this.#broken(time, w) || found.has(this.#keyOf(scope, w))) continue;
           const due = Date.parse(w.when.at);
           if (Number.isFinite(due) && !expired(w, due)) out.push({ key: this.#keyOf(scope, w), scope, watch: w.id, due, when: dueWords(w.when.at), text: w.fallback, here: true });
         }
@@ -601,7 +604,7 @@ export class Live {
       for (const [scope, list, here] of plans) {
         for (const w of list) {
           const event = /** @type {any} */ (w.when).event;
-          if ((event !== 'coming-up' && event !== 'leave') || this.#spent(scope, w)) continue;
+          if ((event !== 'coming-up' && event !== 'leave') || this.#spent(scope, w) || found.has(this.#keyOf(scope, w))) continue;
           /** @type {number | null} */
           let due = null;
           try {
@@ -618,7 +621,7 @@ export class Live {
     });
   }
 
-  /** The reminders annai said itself on screen or in a catch-up, by key, with when: the push mirror writes them down for the service worker. @returns {[string, number][]} */
+  /** The reminders annai said itself on screen, in a catch-up that ended in view, or as its own card for the open conversation with no connection, by key, with when: the push mirror writes them down for the service worker. @returns {[string, number][]} */
   given() {
     return [...this.#said];
   }
@@ -1146,11 +1149,13 @@ export class Live {
     this.#catch = null;
     if (c.timer !== null) this.clock.clear(c.timer);
     const opened = this.#openedNews.splice(0);
+    const made = await this.#made(c.fired, this.clock.now(), true); // made as they are delivered (#fire)
+    if (made.length) this.#tellReminders('urgent'); // the relay's copies of them are called off now, as when a look makes them at once
     // An item's leave reminder is left out when the same catch-up fires its arrival: the traveller got there while annai was away, and
     // "Leave soon" beside "Nepenthe: Lunch at Nepenthe." was of no use. It fired and is logged, so it doesn't come again.
     const item = (/** @type {Fired} */ x, /** @type {string} */ event) => (x.watch.when.type === 'plan' && /** @type {any} */ (x.watch.when).event === event ? `${x.scope}\n${/** @type {any} */ (x.watch.when).item}` : null);
-    const arrived = new Set(c.fired.map((x) => item(x, 'arrived')).filter(Boolean));
-    const fired = c.fired.filter((x) => !arrived.has(item(x, 'leave')));
+    const arrived = new Set(made.map((x) => item(x, 'arrived')).filter(Boolean));
+    const fired = made.filter((x) => !arrived.has(item(x, 'leave')));
     if (fired.length || opened.length) await this.#deliver(fired, 'catch-up', this.#catchUpHeader(c), opened);
   }
 
@@ -1616,8 +1621,25 @@ export class Live {
     return { scope, watch, type, firing, late, ...(this.#catch ? { away: this.#catch.how } : {}), fallback: firing.fallback ?? watch.fallback, ...(say ? { say } : {}) };
   }
 
-  /** Logs each firing, then wakes Shiori: one wake a conversation (spec §6.1). @param {Fired[]} list @param {number} now */
+  /**
+   * Makes each firing, then wakes Shiori: one wake a conversation (spec §6.1). A catch-up only collects what is due, once a watch, and makes it as it delivers
+   * it (#endCatchUp): a page that dies while it waits for a fix leaves its watches as they were, to fire again at the next start. @param {Fired[]} list @param {number} now
+   */
   async #fire(list, now) {
+    const c = this.#catch;
+    if (c) {
+      for (const x of list) if (!c.fired.some((y) => y.scope === x.scope && y.watch.id === x.watch.id)) c.fired.push(x);
+      return;
+    }
+    const done = await this.#made(list, now);
+    if (done.length) await this.#deliver(done);
+  }
+
+  /**
+   * Logs each firing and remembers it (its watch's memory; a one-time watch goes): from then on it doesn't fire again, so only what goes on to be delivered
+   * is made. @param {Fired[]} list @param {number} now @param {boolean} [catchUp] @returns {Promise<Fired[]>} those made: a removed trip's aren't
+   */
+  async #made(list, now, catchUp = false) {
     const open = this.#scope();
     /** @type {Fired[]} */
     const done = [];
@@ -1636,7 +1658,7 @@ export class Live {
         type: 'trigger.fired', actor: 'system',
         data: {
           watch: x.watch.id, type: x.watch.when.type, ...(x.watch.when.event ? { event: x.watch.when.event } : {}), ...(forAt(x.watch) !== null ? { for: forAt(x.watch) } : {}), owner: x.watch.owner, text: f.text, fallback: x.fallback,
-          ...(x.late ? { late: x.late } : {}), ...(f.place ? { place: f.place } : {}), ...(x.watch.when.type === 'moved' ? { km: round3(this.odometer) } : {}), ...(tz ? { tz } : {}), ...(this.#catch ? { catchUp: true } : {}), ...(this.online ? {} : { offline: true }),
+          ...(x.late ? { late: x.late } : {}), ...(f.place ? { place: f.place } : {}), ...(x.watch.when.type === 'moved' ? { km: round3(this.odometer) } : {}), ...(tz ? { tz } : {}), ...(catchUp ? { catchUp: true } : {}), ...(this.online ? {} : { offline: true }),
         },
       }, now).catch((e) => this.#fail(e));
       this.#fired.set(key, { at: now, place: f.place ?? null, ...(forAt(x.watch) !== null ? { for: /** @type {number} */ (forAt(x.watch)) } : {}), ...(x.watch.when.type === 'moved' ? { km: this.odometer } : {}) });
@@ -1650,13 +1672,15 @@ export class Live {
       // A one-time watch goes; a watch file that can't be removed is told, and the reminder still comes.
       if (x.watch.owner !== 'system' && (x.watch.when.type === 'time' || (!x.watch.repeat && x.watch.when.type !== 'every'))) await this.#drop(x.scope, x.watch).catch((e) => this.#fail(e));
       // Said on screen, now or in the catch-up: a notification for it from now on is a double (one shown while away was read first).
-      if (this.shown) {
-        this.#said.set(this.#keyOf(x.scope, x.watch), this.clock.now());
-        if (this.#said.size > 200) this.#said.delete(/** @type {string} */ (this.#said.keys().next().value));
-      }
+      if (this.shown) this.#say(x);
     }
-    if (this.#catch) this.#catch.fired.push(...done);
-    else if (done.length) await this.#deliver(done);
+    return done;
+  }
+
+  /** Marks a reminder annai said itself: a notification for it from now on is a double. @param {Fired} x */
+  #say(x) {
+    this.#said.set(this.#keyOf(x.scope, x.watch), this.clock.now());
+    if (this.#said.size > 200) this.#said.delete(/** @type {string} */ (this.#said.keys().next().value));
   }
 
   /**
@@ -1677,8 +1701,8 @@ export class Live {
     for (const [scope, xs] of by) {
       // A reminder whose notification the phone showed has reached the user: annai doesn't show it again. A reminder (see reminds) stays owed
       // until she tells the user; a cue (a place, the road, an arrival, a stop off the plan) only until a model answers.
-      const fallbacks = xs.filter((x) => this.#shownFor(x) === undefined)
-        .map((x) => ({ watch: x.watch.id, text: x.fallback, ...(x.say ? { plan: x.say } : {}), ...(reminds(x.watch) ? {} : { cue: true }) }));
+      const owed = xs.filter((x) => this.#shownFor(x) === undefined);
+      const fallbacks = owed.map((x) => ({ watch: x.watch.id, text: x.fallback, ...(x.say ? { plan: x.say } : {}), ...(reminds(x.watch) ? {} : { cue: true }) }));
       const reasons = xs.map((x) => this.#reason(x));
       // What fired, for the wake's line: a plan item's title, or a watch's reminder; never annai's own English.
       const titles = xs.map((x) => (x.watch.owner === 'system' ? x.watch.when.title : x.watch.fallback)).filter((s) => typeof s === 'string' && s);
@@ -1692,8 +1716,9 @@ export class Live {
       }
       const text = [header, ...lines, ...reasons].filter(Boolean).join(' ');
       if (!this.online) {
-        // No connection: annai says the reminders itself now; Shiori hears of them when it is back (spec §17, choice 8).
+        // No connection: annai says the reminders itself now, with the page in view or not; Shiori hears of them when it is back (spec §17, choice 8).
         if (fallbacks.length) await this.agent.remind(fallbacks);
+        for (const x of owed) this.#say(x);
         this.#held.push({ scope, text });
         continue;
       }

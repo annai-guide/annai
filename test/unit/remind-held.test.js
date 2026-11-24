@@ -114,6 +114,7 @@ for (const [mode, o] of MODES) {
     k.agent.wake(fired());
     await settled(); // the wake waits in the queue: her turn is in its tool
     assert.deepEqual(reminders(k.notices), [], 'not shown on the first page');
+    assert.deepEqual(await heldIn(k), [LEAVE], 'held once: the hold at its entry is not written again as it is queued');
     const next = await nextStart(k, o.halves);
     assert.deepEqual(reminders(next.cards), [LEAVE]);
     assert.deepEqual(await entries(k), [LEAVE], 'its entry, once');
@@ -237,28 +238,53 @@ for (const [mode, o] of MODES) {
   });
 }
 
-// The wake is held for the conversation it is for (#push's scope is the target's): one that comes as that conversation is being opened is in its log, not
-// in the one still open. Only one Shiori queues it then: Halves' route holds a wake behind an open under way (its refresh waits for the open), so it is
-// not in a queue yet, which the Deferred entry "A reminder in memory can still be lost in annai's first seconds" names.
-test("a watch's wake queued while its conversation is opening as the page is killed: it is held in that conversation's log, not the one still open, and the next start shows its reminder once", async (t) => {
-  useClock(t);
-  const k = await agentKit([[asleep]]);
-  const other = await createTrip(k.ws, { title: 'Kyoto' });
-  const slow = slowOpen(k);
-  slow.shut();
-  const opening = k.agent.open(other);
-  await until(slow.held); // the open waits on its first read of the log
-  k.agent.wake(fired());
-  await settled();
-  assert.deepEqual(await heldIn(k, other), [LEAVE], 'held in the conversation being opened');
-  assert.deepEqual(await heldIn(k), [], 'not in the one still open');
-  const next = await nextStart(k, false, other);
-  assert.deepEqual(reminders(next.cards), [LEAVE]);
-  assert.deepEqual(await entries(k, other), [LEAVE]);
-  slow.open();
-  await opening;
-  await idleAtOnce(k);
-});
+// A wake is held as it first comes, before its budgets' check (the settings read) and, with two halves, before Halves' route (the Deferred entry "A reminder
+// in memory can still be lost in annai's first seconds", shape (2)): the page is killed while that check never ends. On a241fd148 nothing was written until
+// the wake reached a queue, and the next start showed nothing.
+for (const [mode, o] of MODES) {
+  test(`a watch's wake still in its budgets' check as the page is killed: it is held as it came, and the next start shows its reminder once, and the start after that nothing${mode}`, async (t) => {
+    useClock(t);
+    const k = await agentKit([[asleep]], o);
+    const half = k.agent.kokoro ?? k.agent;
+    let checking = false;
+    half.settings = () => { checking = true; return new Promise(() => {}); }; // the read never ends: the page is killed in it
+    k.agent.wake(fired());
+    await until(() => checking);
+    await settled();
+    assert.deepEqual(reminders(k.notices), [], 'not shown on the first page');
+    assert.deepEqual(await heldIn(k), [LEAVE], 'held once, as it came');
+    const next = await nextStart(k, o.halves);
+    assert.deepEqual(reminders(next.cards), [LEAVE]);
+    assert.deepEqual(await entries(k), [LEAVE], 'its entry, once');
+    const again = await nextStart(k, o.halves);
+    assert.deepEqual(reminders(again.cards), []);
+  });
+}
+
+// The wake is held for the conversation it is for (the target's): one that comes as that conversation is being opened is in its log, not in the one still
+// open. One Shiori queues it at once; Halves' route holds it behind the open under way (its refresh waits for the open), and it is held as it comes all
+// the same (shape (2) of the Deferred entry above: on a241fd148 the two halves held nothing until the route ran).
+for (const [mode, o] of MODES) {
+  test(`a watch's wake that comes while its conversation is opening as the page is killed: it is held in that conversation's log, not the one still open, and the next start shows its reminder once${mode}`, async (t) => {
+    useClock(t);
+    const k = await agentKit([[asleep]], o);
+    const other = await createTrip(k.ws, { title: 'Kyoto' });
+    const slow = slowOpen(k);
+    slow.shut();
+    const opening = k.agent.open(other);
+    await until(slow.held); // the open waits on its first read of the log
+    k.agent.wake(fired());
+    await settled();
+    assert.deepEqual(await heldIn(k, other), [LEAVE], 'held in the conversation being opened');
+    assert.deepEqual(await heldIn(k), [], 'not in the one still open');
+    const next = await nextStart(k, o.halves, other);
+    assert.deepEqual(reminders(next.cards), [LEAVE]);
+    assert.deepEqual(await entries(k, other), [LEAVE]);
+    slow.open();
+    await opening;
+    await idleAtOnce(k);
+  });
+}
 
 // A Stop while a wake waits in Kokoro's queue with no turn started (a conversation opening: Undo's or Erase's, as the sign is hidden while one opens;
 // housekeeping: the sign's): the wake is dropped, and its reminder is shown at the Stop, silently, once (the Stop stops her, not the reminder; spec §6.7), as a
@@ -824,6 +850,76 @@ for (const [what, race] of /** @type {[string, boolean][]} */ ([['while the card
     }
   });
 }
+
+/**
+ * A slow link from the stand-in: from the first message that matches `at.match` (set by the test), that message and every one after it wait, in order,
+ * until `at.go()`, as messages already sent wait on a slow mobile link. Taken by the sessions opened after it. @returns {{ match: RegExp | null, held: boolean, go: () => void, restore: () => void }}
+ */
+function slowLink() {
+  const Real = globalThis.WebSocket;
+  const at = { match: /** @type {RegExp | null} */ (null), held: false, go: () => {}, restore: () => { globalThis.WebSocket = Real; } };
+  globalThis.WebSocket = /** @type {any} */ (function Slow(/** @type {string} */ url, /** @type {string[]} */ protocols) {
+    const w = new Real(url, protocols);
+    const add = w.addEventListener.bind(w);
+    /** @type {any} */ (w).addEventListener = (/** @type {string} */ type, /** @type {(e: any) => void} */ fn, /** @type {any[]} */ ...rest) => {
+      if (type !== 'message') return add(type, fn, ...rest);
+      /** @type {any[] | null} */
+      let queue = null;
+      return add('message', (/** @type {any} */ e) => {
+        if (queue) return void queue.push(e);
+        if (at.match?.test(typeof e.data === 'string' ? e.data : Buffer.from(e.data).toString())) {
+          at.match = null;
+          at.held = true;
+          queue = [e];
+          at.go = () => {
+            const q = queue ?? [];
+            queue = null;
+            at.held = false;
+            for (const x of q) fn(x);
+          };
+          return;
+        }
+        fn(e);
+      }, ...rest);
+    };
+    return w;
+  });
+  return at;
+}
+
+// The Deferred entry "A reminder in memory can still be lost in annai's first seconds", shape (3): Koe is saying a line with a card after it when an urgent
+// reminder cuts in, and the card's call, sent before the reminder reached the provider, comes after it went in (a slow link). That call is her cut turn's,
+// begun before the reminder went in: it passes nothing on (#tool). Her answer to the reminder is only "Silent.", so annai shows it, never written as told.
+// On a241fd148 the card passed the reminder on as told, and nothing showed it.
+test('Koe live: an urgent reminder cuts in while Koe talks, and the card she had already sent comes after it: the card passes nothing on, so after a bare answer annai shows it, never written as told', async () => {
+  const card = { name: 'show', args: { card: { title: 'Bixby Bridge', text: 'About twenty minutes ahead.' } } };
+  const link = slowLink(); // before the session opens
+  const k = await liveKit([{ said: 'Here is the bridge.', audio: tone(3), tool: card }, { said: 'Silent.', audio: tone(0.3) }, { said: 'Silent.', audio: tone(0.3) }], { pace: 1 });
+  try {
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    /** @type {number[]} */
+    const askedAt = []; // the asks that had gone in as the reminder's card was raised
+    k.agent.on('notice', (/** @type {any} */ n) => { if (n.title === 'Reminder') askedAt.push(texts(k).filter((/** @type {string} */ x) => x.includes("hasn't reached the user")).length); });
+    link.match = /"toolCall"/;
+    k.agent.send('Show me the bridge');
+    await until(() => link.held && k.platform.streams.length === 1, 30_000); // her words play, and her card's call is on its way
+    await k.agent.wake({ ...train(), urgent: true }); // it cuts in on her
+    await soon(async () => texts(k).some((/** @type {string} */ x) => x.includes('Train in 20 minutes'))); // it is with the session
+    link.go(); // the call comes now, after the reminder went in
+    await soon(async () => (await k.events(['out.show'])).length === 1);
+    // Her answer is only "Silent.": annai shows it (on a241fd148 the card had written it as told, and nothing showed it).
+    await soon(async () => (await entries(k)).length === 1 || (await k.events(['reminder.told'])).length > 0, 30_000);
+    assert.deepEqual((await k.events(['reminder.told'])).map((/** @type {any} */ e) => e.data.reminders.map((/** @type {any} */ r) => r.text)), [], 'never written as told: the card was no answer to it');
+    assert.deepEqual(reminders(k.notices), [TRAIN], 'shown once');
+    assert.deepEqual(askedAt, [1], 'asked once more first: her cut turn missed nothing either');
+    const next = await nextStart(k, true);
+    assert.deepEqual(reminders(next.cards), [], 'its entry settled it');
+  } finally {
+    link.restore();
+    await k.done();
+  }
+});
 
 // Cut off before she passed it on (§10.4, §7.1): a tap while Koe is saying it, a line typed then, or a tap on an urgent reminder she hasn't begun shows what the
 // traveller didn't hear at once, silently, and its entry settles the held copy. The session passed nothing on, so it writes no `reminder.told`.

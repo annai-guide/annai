@@ -914,6 +914,12 @@ export class Halves {
   /** Both halves get it while Koe talks, budgets checked once, its reminders with Koe (plan decision 16); asked to hear her, Koe alone. @param {Wake} w @returns {Promise<void>} */
   wake(w) {
     if (w.scope && w.scope !== (this.kokoro.target ?? ME)) return this.kokoro.wake(w);
+    // Its reminders are held as it first comes (Agent.wake), before the route, which may wait behind a conversation being opened: a page killed
+    // meanwhile leaves them to the next open. Whoever takes it settles that copy: the session's reminder.told, an entry, or her turn's wake record.
+    if (w.fallbacks?.length && !w.held) {
+      this.#alongside(this.kokoro.hold(w.fallbacks));
+      w = { ...w, held: true };
+    }
     this.#route(async () => {
       await this.#refresh();
       if (!this.#works() || KOKORO_ONLY.includes(w.kind)) return void (await this.kokoro.wake(w));
@@ -931,7 +937,7 @@ export class Halves {
       // What the session gets is what #live falls back on too: the reminders annai showed above are not shown again if the session can't take it.
       const given = away ? { ...w, fallbacks: w.fallbacks?.filter((r) => r.cue) } : w;
       if (this.koeState === 'live') {
-        this.#alongside(this.koe.hold(given.fallbacks ?? [])); // the session holds it in memory until it passes it on (reminder.told; the text Koe's queue holds its own)
+        // The session holds it in memory, held in the log as it came, until it passes it on (reminder.told).
         this.#alongside(this.#live(() => this.live.wake(given), given), (e) => this.kokoro.wakeFailed(given, e)); // it fails before any hand-on (a refused read): none showed them
       } else this.koe.enqueue(w);
     }, (e) => this.kokoro.wakeFailed(w, e)); // a route that fails before its hand-ons (the refresh, the budgets' check): its reminders are shown, once
