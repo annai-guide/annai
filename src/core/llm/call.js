@@ -245,7 +245,7 @@ async function billed(usage, tools, tally) {
  *   fetch?: Fetch, signal?: AbortSignal, firstOutputMs?: number, onEvent?: (e: StreamEvent) => void, trace?: ModelTrace,
  *   registry?: import('../registry.js').Registry, now?: () => number, uploads?: import('./uploads.js').Uploads, keep?: Keep,
  *   tally?: import('../workspace.js').Workspace, keepNative?: boolean, shared?: boolean, ability?: import('./config.js').Ability }} c
- *   ability: the endpoint's ability, for its name where annai says the address is wrong
+ *   ability: the endpoint's, for its name where the address is wrong
  *   firstOutputMs: how long to wait for the first output once the provider has the request, and then between pieces of output
  *   shared: the other half may send its request on the same link at the same time (Koe and Kokoro): the send is timed on twice its bytes, as two
  *   sends sharing a link evenly carry, by the time the first is up, its bytes and as many of the other's
@@ -566,8 +566,8 @@ export function sendCut(cause, ms) {
 
 /**
  * A reply as its endpoint type reads it: the same headers over a body annai reads from the real one, noting when that read fails. By position, as
- * sse.js for a stream: a failed read is the link's, whatever the type then throws or the browser calls it (Chrome puts "Failed to fetch" in place of
- * any such body's error, a stop's too), so the note is kept here, never on the error. A type that stops early leaves none; its cancel reaches the real
+ * sse.js for a stream: a failed read is the link's, whatever the type then throws or the browser calls it (Chromium's `json()`, `text()` and `arrayBuffer()`
+ * on such a body give their own `TypeError: Failed to fetch`, a stop's too; annai's read gets `network error`), so the note is kept here, never on the error. A type that stops early leaves none; its cancel reaches the real
  * body. Headers only, no status and no status text: the constructor refuses a status text of some phrases, a 204 or 205 with the body stream browsers
  * give it, and a status of 600 to 999 that browsers deliver, so each would throw here; annai reads the status of the real reply itself. An error
  * reply's body goes through it too.
@@ -600,7 +600,7 @@ export function typeWorked(type, registry) {
 /**
  * Whatever went wrong in an endpoint type's call, as a ProviderError, by where it went wrong, never by its words: the call's own signal first (out
  * of time "timeout", stopped "cancelled", whatever was thrown as it stopped); then a reply whose body annai couldn't read (watched), "network",
- * whatever the type made of it or the browser calls it (Firefox gives a body cut mid-way an AbortError); then an AbortError or TimeoutError the call's
+ * whatever the type made of it or the browser calls it (Firefox: annai's read of a body cut mid-way gives a TypeError, the type's `res.json()` an AbortError); then an AbortError or TimeoutError the call's
  * signal didn't cause, by its name (the type's own timer, say); then the type's own ProviderError. Anything else is a bug in its plugin, counted
  * (spec §5.5). A `run` type names its own send's failures. @param {unknown} e @param {AbortSignal} signal @param {EndpointType} type
  * @param {import('../registry.js').Registry} [registry] @param {unknown} [dropped] the error the reply's body failed with (watched)

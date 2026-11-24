@@ -241,7 +241,7 @@ const originOf = (url) => {
  * A request a protocol built goes only to its ability's address: tunables such as path and listPath are joined into the URL, so a
  * description could otherwise send the key to another host while every check names the right one. annai calls this before it fetches.
  * An ability's own address that isn't an http(s) one is no address, whatever is asked of it (a typed one may hold a key, so the words never repeat it).
- * ability: the ability itself, for its name in the words; without it (a caller that has none) the endpoint's id of it stands.
+ * ability: its name in the words; a caller with none leaves the endpoint's id of it.
  * @param {{ name?: string, ability?: string, baseUrl: string }} endpoint @param {string} url @param {{ named: boolean, kind: string, name: string }} [ability]
  */
 export function sameOrigin(endpoint, url, ability) {
@@ -466,7 +466,7 @@ export function safeId(id) {
  * @property {boolean} [tail]  true when build() places request.tail; else annai adds it as the last text
  * @property {(c: CallSpec) => { url: string, headers: Record<string, string>, body: any }} [build]  the HTTP request for annai's request
  * @property {(res: Response, c: CallSpec) => AsyncIterable<StreamEvent>} [read]  the events of a successful streamed response
- * @property {(c: CallSpec) => AsyncIterable<StreamEvent>} [run]  instead of build and read, for types that need no network
+ * @property {(c: CallSpec) => AsyncIterable<StreamEvent>} [run]  instead of build and read, for types that make their own requests, or none: annai sends nothing for it
  * @property {(status: number, body: string) => ErrorKind | null} [classify]  a sharper kind for an error response, or null
  * @property {(c: { model: import('./config.js').Model, tunables: Record<string, any> }) => string} [nativeScope]  who of an endpoint's models can read
  *   the natives one of them made (default: all of them): a string, equal for models that read each other's, which annai adds to the endpoint and key a

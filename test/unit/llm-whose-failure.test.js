@@ -312,6 +312,13 @@ test("a body that drops with an AbortError or a TimeoutError (Firefox's own word
   }
   assert.equal(registry.isDisabled('test'), false, 'twenty-four drops: the plugin is on');
   assert.equal(counted(registry), 0, 'none counted against it');
+  // Firefox's own pair (measured, 155): annai's read of the body gives a TypeError, and the type's `res.json()` on it an AbortError.
+  const inFirefox = { ...hears, type: 'test-in-firefox', readTranscript: async (/** @type {Response} */ res) => { try { return { text: (await res.json()).text }; } catch { throw aborted; } } };
+  registry.add('test', 'endpoint-type', inFirefox);
+  for (let n = 0; n < 3; n++) {
+    await assert.rejects(speechCall({ type: /** @type {any} */ (inFirefox), endpoint: endpoint('test-in-firefox'), model: model(), key: null, audio, fetch: drops(new TypeError('Error in input stream')), registry }),
+      (e) => e instanceof ProviderError && e.kind === 'network' && e.cause instanceof TypeError, `Firefox's pair ${n + 1}`);
+  }
   // A Stop or annai's limit while such a body is read: the call's own signal comes first, though the same read failed with the same AbortError.
   const dropsOnStop = async (/** @type {any} */ url, /** @type {any} */ init) => new Response(new ReadableStream({ start: (c) => { init.signal.addEventListener('abort', () => c.error(aborted), { once: true }); } }));
   for (let n = 0; n < 3; n++) {
@@ -322,6 +329,7 @@ test("a body that drops with an AbortError or a TimeoutError (Firefox's own word
     setTimeout(() => halt.abort(), 10);
     await assert.rejects(callOnce({ type: chat(), endpoint: endpoint('test'), model: model(), key: null, request, fetch: dropsOnStop, registry, signal: halt.signal }), (e) => e instanceof ProviderError && e.kind === 'cancelled', `stopped during the drop, chat ${n + 1}`);
     await assert.rejects(speechCall({ type: /** @type {any} */ (hears), endpoint: endpoint('test-in'), model: model(), key: null, audio, fetch: dropsOnStop, registry, timeoutMs: 20 }), (e) => e instanceof ProviderError && e.kind === 'timeout', `out of time during the drop, speech ${n + 1}`);
+    await assert.rejects(callOnce({ type: chat(), endpoint: endpoint('test'), model: model(), key: null, request, fetch: dropsOnStop, registry, firstOutputMs: 20 }), (e) => e instanceof ProviderError && e.kind === 'timeout', `out of time during the drop, chat ${n + 1}`);
   }
   // No drop: what the type's own code throws is read by its name, uncounted (a browser's, or the plugin's own timer).
   for (const [name, kind] of /** @type {const} */ ([['AbortError', 'cancelled'], ['TimeoutError', 'timeout']])) {
@@ -584,7 +592,7 @@ test("an uploadRequest whose result is not a request (an async function's promis
   assert.deepEqual(unhandled, [], 'no rejected promise is left for the page to report');
 });
 
-test("a typed address is checked by annai, by state, before any builder runs: one that doesn't parse (an empty one included) is bad-request, never counted, with no builder called; a builder's own `new URL` failure at a good address is its plugin's bug, counted (fail-owner-next, round 2 item 2); the words name the ability as the other said codes do (round 4 item 3)", async () => {
+test("a typed address is checked by annai, by state, before any builder runs: one that doesn't parse (an empty one included) is bad-request, never counted, with no builder called; a builder's own `new URL` failure at a good address is its plugin's bug, counted (fail-owner-next, round 2 item 2); a request a builder made to another address, or to one that isn't an address, keeps the built-address words, and every said code names the ability as the other said codes do (round 4 items 3 and 5)", async () => {
   /** @type {string[]} */
   const built = [];
   const request1 = (/** @type {string} */ who, /** @type {any} */ c) => { built.push(who); return { url: `${c.endpoint.baseUrl}/x`, headers: {}, body: '{}' }; };
@@ -634,6 +642,10 @@ test("a typed address is checked by annai, by state, before any builder runs: on
   const elsewhere = chat({ type: 'addr-else', build: () => ({ url: 'https://other.test/x', headers: {}, body: '{}' }) });
   await assert.rejects(callOnce({ type: elsewhere, endpoint: endpoint('addr-else', 'https://speech.test/v1'), model: model(), key: null, request, registry: withType('a-else', elsewhere) }),
     (e) => e instanceof ProviderError && e.kind === 'bad-request' && e.said?.code === 'origin' && /built a request to https:\/\/other\.test, not its address https:\/\/speech\.test/.test(e.message));
+  // A builder whose address isn't one, at a good address (a relative path): the words say so and name the address it should have gone to, never the built text, which may hold a key.
+  const relative = chat({ type: 'addr-rel', build: () => ({ url: '/v1/chat?key=sk-secret', headers: {}, body: '{}' }) });
+  await assert.rejects(callOnce({ type: relative, endpoint: endpoint('addr-rel', 'https://speech.test/v1'), model: model(), key: null, request, registry: withType('a-rel', relative) }),
+    (e) => e instanceof ProviderError && e.kind === 'bad-request' && e.said?.code === 'origin' && e.said.to === '' && explain(e) === "A's a built a request to an address that isn't one, not its address https://speech.test. Check its tunables." && !explain(e).includes('sk-secret'));
   // A builder that parses something of its own, at a good address, and gets it wrong: its bug, whatever words the engine gives.
   for (const [name, type, call] of kinds) {
     const bad = () => new URL('not an address');

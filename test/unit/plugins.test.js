@@ -306,7 +306,7 @@ test("host: a plugin whose start fetches, offline, is not counted against it: th
 /** A browser's fetch with no connection, as each engine's own words: what annai.net.fetch (the real tracedFetch) is given. */
 const offlineFetch = async () => { throw new TypeError('Failed to fetch'); };
 
-test("host: a plugin whose start fails only for want of a link stays on however many launches it happens on, whether it fetches itself or through annai.net.fetch; a bug between them is counted, and neither breaks the run nor extends it (fail-owner-next, round 3 item 1)", async () => {
+test("host: a plugin whose start fails only for want of a link stays on however many launches it happens on, whether its start throws the browser's own fetch failure or sends through annai.net.fetch; a bug between them is counted, and neither breaks the run nor extends it (fail-owner-next, round 3 item 1)", async () => {
   const { ws, host, relaunch } = await setup();
   const start = `export async function activate(annai) {
     const how = globalThis.__startHow;
@@ -346,7 +346,7 @@ test("host: a plugin whose start fails only for want of a link stays on however 
   }
 });
 
-test("host: a start that sends through annai.net.fetch with no link is not counted in one session either: four starts, none logged, the plugin on; the same start with a bug is off at the third (fail-owner-next, round 3 item 1)", async () => {
+test("host: a start that sends through annai.net.fetch with no link is not counted in one session either: four starts, none logged, the plugin on (fail-owner-next, round 3 item 1)", async () => {
   const { host, registry, logged } = await setup();
   host.connect({ fetch: offlineFetch });
   await host.install(inline('sender', `export async function activate(annai) { await annai.net.fetch('https://plugin.example/data'); }`));
@@ -355,7 +355,7 @@ test("host: a start that sends through annai.net.fetch with no link is not count
   assert.deepEqual(logged.filter((e) => e.type === 'plugin.error'), []);
 });
 
-test("isLinkFailure: the browser's own fetch failure, or annai's kind for a request it couldn't make or finish (annai.net.fetch's error: network; unreachable), and nothing else (fail-owner-next, round 3 item 1)", () => {
+test("isLinkFailure: the browser's own fetch failure, or annai's kind for a request it couldn't make or finish (the kind `network`, which annai.net.fetch throws, or `unreachable`, which annai's own sends throw), and nothing else (fail-owner-next, round 3 item 1)", () => {
   for (const e of [new TypeError('Failed to fetch'), new TypeError('Load failed'), Object.assign(new Error("annai couldn't reach a.test. Is the device offline?"), { kind: 'network' }), new ProviderError('unreachable', 'x'), new ProviderError('network', 'x')]) assert.equal(isLinkFailure(e), true, String(e.message));
   for (const e of [new Error('boom'), new TypeError('x is not a function'), new ProviderError('server', 'x'), Object.assign(new Error('x'), { kind: 'auth' }), 'Failed to fetch', undefined, null]) assert.equal(isLinkFailure(e), false, String(/** @type {any} */ (e)?.message ?? e));
 });
