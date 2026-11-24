@@ -55,10 +55,8 @@ export function isFetchFailure(e) {
 }
 
 /**
- * Whether a plugin's start or hook failed for want of a link (§17): the browser's own fetch failure (isFetchFailure), or annai's kind for a request
- * it couldn't make or finish, which is what `annai.net.fetch` throws (agent/net.js: a plain Error of kind `network`) and docs/plugins.md tells every
- * plugin to send through; `unreachable` is the other kind a call to a model gives. The pair `noLink` reads (llm/fallback.js). guard counts nothing
- * for it, and nor does startInstalled's count of launches. @param {unknown} e
+ * Whether a start or a hook failed for want of a link (§17): the browser's own fetch failure, or annai's kind `network` (what `annai.net.fetch`
+ * throws, agent/net.js) or `unreachable`, the pair `noLink` reads. guard and startInstalled's count of launches count nothing for it. @param {unknown} e
  */
 export const isLinkFailure = (e) => isFetchFailure(e) || ['network', 'unreachable'].includes(/** @type {any} */ (e)?.kind);
 

@@ -234,8 +234,7 @@ const originOf = (url) => {
 /**
  * A request a protocol built goes only to its ability's address: tunables such as path and listPath are joined into the URL, so a
  * description could otherwise send the key to another host while every check names the right one. annai calls this before it fetches. Asked
- * of the ability's own address (before any builder runs, so nothing was built), one that isn't an http(s) address is the user's to give: no
- * address, in words that name where, and never the typed text, which may hold a key.
+ * of the ability's own address (before any builder runs), one that isn't an http(s) address is no address, in words that never repeat it (it may hold a key).
  * @param {{ name?: string, ability?: string, baseUrl: string }} endpoint @param {string} url
  */
 export function sameOrigin(endpoint, url) {
