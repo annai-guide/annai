@@ -85,7 +85,8 @@ export async function speechCall(c) {
   };
   let handed = false;
   try {
-    // From the request's build on, what the type's code throws is classified (asProviderError).
+    // From the request's build on, what the type's code throws is classified (asProviderError), and a builder gets only an address that parses.
+    sameOrigin(endpoint, endpoint.baseUrl);
     const built = hearing
       ? /** @type {NonNullable<EndpointType['transcribeRequest']>} */ (type.transcribeRequest)({ ...spec, audio: /** @type {{ data: Uint8Array, mediaType: string }} */ (c.audio), ...(c.languages ? { languages: c.languages } : {}) })
       : /** @type {NonNullable<EndpointType['speechRequest']>} */ (type.speechRequest)({ ...spec, text });

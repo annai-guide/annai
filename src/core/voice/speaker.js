@@ -387,11 +387,16 @@ export class Utterance {
     this.#deps.onVoice?.(entry, system);
   }
 
-  /** Sentence i's clip or stream: fetched ahead by the same voice, or now. @param {number} i @param {VoiceEntry} entry @param {string} text */
+  /**
+   * Sentence i's clip or stream: fetched ahead by the same voice, or now. A read-ahead of another voice (the first, asked again for each sentence
+   * offline, failed) is aborted, unpaid, as when its voice fails (#say). @param {number} i @param {VoiceEntry} entry @param {string} text
+   */
   #clip(i, entry, text) {
     const ahead = this.#prefetched.get(i);
     this.#prefetched.delete(i);
-    return ahead && ahead.entry === entry.id ? ahead.clip : this.#fetch(entry, text);
+    if (ahead && ahead.entry === entry.id) return ahead.clip;
+    ahead?.stop.abort();
+    return this.#fetch(entry, text);
   }
 
   /** A voice's clip, or its stream, read from the moment it starts. @param {VoiceEntry} entry @param {string} text @param {AbortSignal} [signal] @returns {Promise<Clip | Arrivals>} */

@@ -11,7 +11,6 @@ import { formatOf } from '../voice/formats.js';
 import { SYS_DEVICE, ensureDeviceScope } from '../scopes.js';
 import { forget as forgetHistory } from '../forget.js';
 import { anySignal } from '../signals.js';
-import { isBadAddress } from '../registry.js';
 
 /**
  * One model call (spec §9.1): the endpoint type builds the request, annai merges in the
@@ -256,6 +255,7 @@ async function billed(usage, tools, tally) {
  * @returns {Promise<Reply>}
  */
 export async function callOnce({ type, endpoint, model, key, request, level = 'off', fetch: get = defaultFetch, signal, firstOutputMs = 30_000, onEvent = () => {}, trace, registry, now = Date.now, uploads, keep, tally, keepNative = false, shared = false }) {
+  if (!type.run) sameOrigin(endpoint, endpoint.baseUrl); // annai calls a type's code only with an address that parses (else bad-request, theirs to fix)
   if (key) trace?.secret(key);
   // Credentials can also sit in an endpoint's extra headers; none may reach the trace (spec §9.9).
   for (const [name, value] of Object.entries(endpoint.headers ?? {})) {
@@ -564,10 +564,12 @@ export function sendCut(cause, ms) {
 }
 
 /**
- * A reply as its endpoint type reads it: the same status and headers over a body annai reads from the real one, noting when that read fails. By
- * position, as sse.js for a stream: a failed read is the link's, whatever the type then throws or the browser calls it (Chrome puts "Failed to
- * fetch" in place of any such body's error, a stop's too), so the note is kept here, never on the error. A type that stops early leaves none; its
- * cancel reaches the real body. No status text: a phrase the Response constructor refuses would throw here. An error reply's body goes through it too.
+ * A reply as its endpoint type reads it: the same headers over a body annai reads from the real one, noting when that read fails. By position, as
+ * sse.js for a stream: a failed read is the link's, whatever the type then throws or the browser calls it (Chrome puts "Failed to fetch" in place of
+ * any such body's error, a stop's too), so the note is kept here, never on the error. A type that stops early leaves none; its cancel reaches the real
+ * body. Headers only, no status and no status text: the constructor refuses a status text of some phrases, a 204 or 205 with the body stream browsers
+ * give it, and a status of 600 to 999 that browsers deliver, so each would throw here; annai reads the status of the real reply itself. An error
+ * reply's body goes through it too.
  * @param {Response} res @returns {{ res: Response, dropped: () => unknown }} dropped: the read's error
  */
 export function watched(res) {
@@ -582,7 +584,7 @@ export function watched(res) {
     },
     cancel: (why) => reader.cancel(why),
   }) : null;
-  return { res: new Response(body, { status: res.status, headers: res.headers }), dropped: () => failed };
+  return { res: new Response(body, { headers: res.headers }), dropped: () => failed };
 }
 
 /** The plugin that registered an endpoint type, blamed and credited for its code (never a field the type carries). @param {EndpointType} type @param {import('../registry.js').Registry} [registry] */
@@ -597,8 +599,8 @@ export function typeWorked(type, registry) {
 /**
  * Whatever went wrong in an endpoint type's call, as a ProviderError, by where it went wrong, never by its words: the call's own signal first (out
  * of time "timeout", stopped "cancelled", whatever was thrown as it stopped); then a reply whose body annai couldn't read (watched), "network",
- * whatever the type made of it; then the type's own ProviderError. Anything else is a bug in its plugin, counted (spec §5.5), unless it is
- * isBadAddress (a "bad-request", the user's to fix). A `run` type names its own send's failures. @param {unknown} e @param {AbortSignal} signal @param {EndpointType} type @param {import('../registry.js').Registry} [registry]
+ * whatever the type made of it; then the type's own ProviderError. Anything else is a bug in its plugin, counted (spec §5.5). A `run` type names its
+ * own send's failures. @param {unknown} e @param {AbortSignal} signal @param {EndpointType} type @param {import('../registry.js').Registry} [registry]
  * @param {unknown} [dropped] the error the reply's body failed with (watched)
  */
 export function asProviderError(e, signal, type, registry, dropped) {
@@ -608,7 +610,6 @@ export function asProviderError(e, signal, type, registry, dropped) {
   if (signal.aborted || (!own && name === 'AbortError')) return new ProviderError('cancelled', /* en */ 'Stopped.', { cause: e, said: { code: 'kind' } });
   if (dropped !== undefined) return new ProviderError('network', /* en */ 'The connection dropped.', { cause: dropped, said: { code: 'kind' } });
   if (own) return e;
-  if (isBadAddress(e)) return new ProviderError('bad-request', /** @type {Error} */ (e).message, { cause: e });
   const by = ownerOf(type, registry);
   if (by) registry?.fail(by, /* en */ `endpoint type ${type.type}`, e);
   return new ProviderError('plugin', String(/** @type {any} */ (e)?.message ?? e), { cause: e });

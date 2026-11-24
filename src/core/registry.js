@@ -54,8 +54,13 @@ export function isFetchFailure(e) {
   return e instanceof TypeError && /\b(fetch|network|load failed)\b/i.test(e.message);
 }
 
-/** An address the user typed that isn't one (`new URL` throws): the user's to fix, not a plugin's bug. @param {unknown} e */
-export const isBadAddress = (e) => e instanceof TypeError && /invalid url|failed to parse url/i.test(e.message);
+/**
+ * An address the user typed that isn't one (`new URL` throws): the user's to fix, not a plugin's bug. Where a plugin's own code makes the request
+ * (isPluginBug's paths) annai has no address to check, so the engine's words are what there is: Chromium's "Invalid URL", WebKit's "cannot be parsed
+ * as a URL", Firefox's "is not a valid URL". An endpoint type's call checks its address by state, before any builder runs (call.js).
+ * @param {unknown} e
+ */
+export const isBadAddress = (e) => e instanceof TypeError && /invalid url|failed to parse url|cannot be parsed as a url|is not a valid url/i.test(e.message);
 
 /**
  * Whether an error is a bug in a plugin's code (spec §5.5) rather than its answer, outside callOnce's and speechCall's calls (asProviderError).
@@ -86,9 +91,10 @@ export class PluginError extends Error {
 
 /**
  * Everything plugins contribute, grouped by kind ("schema", "tool", …).
- * Functions plugins hand over go through guard(): a failure becomes a
- * plugin.error event, and a plugin that fails maxFailures times in a row is
- * switched off until enable() is called (spec §5.5).
+ * Functions plugins hand over go through guard(): a failure (not a fetch the
+ * browser couldn't make, isFetchFailure) becomes a plugin.error event, and a
+ * plugin that fails maxFailures times in a row is switched off until enable()
+ * is called (spec §5.5).
  */
 /**
  * Why a plugin was switched off, as data: it failed count times in a row, or its hooks were handed more than entries log entries in
@@ -237,7 +243,7 @@ export class Registry {
         this.#failures.set(pluginId, 0);
         return result;
       } catch (e) {
-        this.#fail(pluginId, name, e);
+        if (!isFetchFailure(e)) this.#fail(pluginId, name, e); // a fetch the browser couldn't make is an answer (§17), not a failure; it still reaches the caller
         const was = /** @type {any} */ (e);
         const message = String(was?.message ?? e);
         // What went wrong: annai's words for the screens where it has them (shown), else the plugin's own, or annai's own English check (en).

@@ -60,12 +60,19 @@ const streamsOut = (made) => ({ ...speaks, type: 'test-stream', readSpeechStream
     yield { pcm: new Int16Array(240), rate: 24_000 };
   }
 } });
+/** The plugin.error events each registry here has logged: what a count against a plugin leaves. @type {WeakMap<Registry, any[]>} */
+const logs = new WeakMap();
 /** @param {string} id @param {any} type */
 const withType = (id, type) => {
-  const registry = new Registry();
+  /** @type {any[]} */
+  const errors = [];
+  const registry = new Registry({ log: (ev) => { if (ev.type === 'plugin.error') errors.push(ev); } });
+  logs.set(registry, errors);
   registry.add(id, 'endpoint-type', type);
   return registry;
 };
+/** How many failures were counted against plugins on this registry (a plugin.error each): what "never counted" means, since a plugin is switched off only at the third in a row. @param {Registry} registry */
+const counted = (registry) => logs.get(registry)?.length ?? 0;
 
 test("P1: a dropped reply is the link's whatever the browser calls it (words no list holds): network, never counted, for a transcription, a voice, a voice's stream that breaks off after its first piece, and chat", async () => {
   const errors = [new TypeError('terminated'), new TypeError('Error in body stream'), new Error('The Internet connection appears to be offline.'), new DOMException('The network connection was lost.', 'NetworkError')];
@@ -84,6 +91,7 @@ test("P1: a dropped reply is the link's whatever the browser calls it (words no 
     await assert.rejects(async () => { for await (const _ of said.chunks); }, network, `streamed: ${error.message}`);
   }
   assert.equal(registry.isDisabled('test'), false, 'sixteen drops: the plugin is on');
+  assert.equal(counted(registry), 0, 'sixteen drops: none counted against it');
 });
 
 test("P2: a real connection destroyed mid-body (a local server, the engine's own error) is network, three in a row included", async () => {
@@ -101,6 +109,7 @@ test("P2: a real connection destroyed mid-body (a local server, the engine's own
         (e) => e instanceof ProviderError && e.kind === 'network');
     }
     assert.equal(registry.isDisabled('test'), false);
+    assert.equal(counted(registry), 0, 'none counted');
   } finally {
     server.closeAllConnections();
     server.close();
@@ -212,6 +221,7 @@ test('P6: what a type makes of a dropped body does not change whose it is: its o
         (e) => e instanceof ProviderError && e.kind === 'network' && e.cause === drop, String(made));
     }
     assert.equal(registry.isDisabled(`w-${i}`), false);
+    assert.equal(counted(registry), 0, `${made}: none counted`);
   }
 });
 
@@ -245,11 +255,14 @@ test("P7: a Stop or annai's time limit while a reply is read is cancelled or tim
   };
   const voice = /** @type {any} */ (await speechCall({ type: /** @type {any} */ (wrapsStream), endpoint: endpoint('test-stream'), model: model(), key: null, text: 'Hello', stream: true, fetch: hangs, timeoutMs: 20, registry })).stream;
   await assert.rejects(async () => { for await (const _ of voice.chunks); }, (e) => e instanceof ProviderError && e.kind === 'timeout' && e.said?.code === 'stalled');
-  assert.equal(registry.isDisabled('w'), false, 'a Stop, a limit, a Stop in chat and a stall: four calls, none counted');
+  assert.equal(counted(registry), 0, 'a Stop, a limit, a Stop in chat and a stall: four calls, none counted');
 });
 
-test("a Stop or annai's time limit is never the plugin's: three speech calls each stopped (while the request goes up, or the reply is read) and three each out of time are cancelled or timeout, and the plugin stays on (fail-owner-next)", async () => {
+test("a Stop or annai's time limit is never the plugin's: three speech calls each stopped (while the request goes up, or the reply is read), three each out of time, three chat calls each stopped, and three voice streams that give a piece and then stall are cancelled, timeout or stalled, and none is counted (fail-owner-next)", async () => {
   const registry = withType('test', hears);
+  registry.add('test', 'endpoint-type', chat());
+  const streamed = streamsOut((e) => e);
+  registry.add('test', 'endpoint-type', streamed);
   const hangs = (/** @type {any} */ url, /** @type {any} */ init) => new Promise((_, no) => init.signal.addEventListener('abort', () => no(new DOMException('Stopped.', 'AbortError')), { once: true }));
   const stalls = async (/** @type {any} */ url, /** @type {any} */ init) => new Response(new ReadableStream({ start: (c) => { init.signal.addEventListener('abort', () => c.error(new TypeError('Failed to fetch')), { once: true }); } }));
   for (const [where, fetch] of /** @type {const} */ ([['request', hangs], ['reply', stalls]])) {
@@ -257,12 +270,25 @@ test("a Stop or annai's time limit is never the plugin's: three speech calls eac
       const stop = new AbortController();
       setTimeout(() => stop.abort(), 10);
       await assert.rejects(speechCall({ type: /** @type {any} */ (hears), endpoint: endpoint('test-in'), model: model(), key: null, audio, fetch, registry, signal: stop.signal }), (e) => e instanceof ProviderError && e.kind === 'cancelled', `stopped in the ${where}, call ${n + 1}`);
+      const halt = new AbortController();
+      setTimeout(() => halt.abort(), 10);
+      await assert.rejects(callOnce({ type: chat(), endpoint: endpoint('test'), model: model(), key: null, request, fetch, registry, signal: halt.signal }), (e) => e instanceof ProviderError && e.kind === 'cancelled', `chat stopped in the ${where}, call ${n + 1}`);
     }
   }
   for (let n = 0; n < 3; n++) {
     await assert.rejects(speechCall({ type: /** @type {any} */ (hears), endpoint: endpoint('test-in'), model: model(), key: null, audio, fetch: stalls, registry, timeoutMs: 20 }), (e) => e instanceof ProviderError && e.kind === 'timeout', `out of time, call ${n + 1}`);
   }
+  // A voice's stream: one piece comes, then none until annai's limit.
+  const hangsAfterOne = async (/** @type {any} */ url, /** @type {any} */ init) => {
+    let n = 0;
+    return new Response(new ReadableStream({ pull: (c) => (n++ === 0 ? c.enqueue(new Uint8Array(480)) : new Promise((_, no) => init.signal.addEventListener('abort', () => no(init.signal.reason), { once: true }))) }));
+  };
+  for (let n = 0; n < 3; n++) {
+    const voice = /** @type {any} */ (await speechCall({ type: /** @type {any} */ (streamed), endpoint: endpoint('test-stream'), model: model(), key: null, text: 'Hello', stream: true, fetch: hangsAfterOne, timeoutMs: 20, registry })).stream;
+    await assert.rejects(async () => { for await (const _ of voice.chunks); }, (e) => e instanceof ProviderError && e.kind === 'timeout' && e.said?.code === 'stalled', `stream stalled, ${n + 1}`);
+  }
   assert.equal(registry.isDisabled('test'), false);
+  assert.equal(counted(registry), 0, 'twenty-one calls, none counted');
 });
 
 test('P8: a type that ends its reading early with its own error (the reply still open) keeps its kind, and a reply read whole is as it came (status, headers, bytes)', async () => {
@@ -333,7 +359,7 @@ test("a bug in a type's upload request is its plugin's, counted once, and the ph
 
 /**
  * A local server that answers every request with this status line (the reason phrase as it comes, raw) and body; `cut`: its length says more than
- * it sends, and the connection is destroyed after the first piece, as a link that drops. @param {number} status @param {string} reason @param {string} body
+ * it sends; the connection is destroyed 30 ms after the one write of the head and body, as a link that drops. @param {number} status @param {string} reason @param {string} body
  * @param {{ cut?: boolean, headers?: string }} [o] @returns {Promise<{ base: string, close: () => void }>}
  */
 async function rawServer(status, reason, body, { cut = false, headers = '' } = {}) {
@@ -352,7 +378,7 @@ async function rawServer(status, reason, body, { cut = false, headers = '' } = {
   return { base: `http://127.0.0.1:${/** @type {any} */ (server.address()).port}`, close: () => { for (const s of sockets) s.destroy(); server.close(); } };
 }
 
-test('a reply whose status text the Response constructor refuses (200 成功, a control character) is read as any other: annai copies status and headers only, so three calls never switch the plugin off (fail-owner-next, fix 1)', async () => {
+test("a reply whose status text the Response constructor refuses (200 成功, a control character) is read as any other: the type gets its text, and nothing is counted (fail-owner-next, fix 1)", async () => {
   for (const reason of ['成功', 'O\u0001K']) {
     const server = await rawServer(200, reason, '{"text":"x"}');
     try {
@@ -362,11 +388,56 @@ test('a reply whose status text the Response constructor refuses (200 成功, a 
         assert.equal((await speechCall({ type: /** @type {any} */ (hears), endpoint: endpoint('test-in', server.base), model: model(), key: null, audio, registry })).text, 'x', `heard: ${JSON.stringify(reason)}`);
         assert.equal((await callOnce({ type: chat(), endpoint: endpoint('test', server.base), model: model(), key: null, request, registry })).text, 'x', `chat: ${JSON.stringify(reason)}`);
       }
-      assert.equal(registry.isDisabled('test'), false, 'the plugin is on');
+      assert.equal(counted(registry), 0, `${JSON.stringify(reason)}: six calls, none counted`);
     } finally {
       server.close();
     }
   }
+});
+
+/**
+ * A reply as the browsers hand a 204 or a 205 over: a stream for its body, though that status allows none (Chromium and WebKit; Node gives such a
+ * reply a null body, which is why a test in Node alone saw nothing). @param {number} status
+ */
+const withStreamAs = (status) => async () => {
+  const res = new Response(new ReadableStream({ start: (c) => c.close() }));
+  Object.defineProperty(res, 'status', { value: status });
+  return res;
+};
+
+test("a 204 or 205 that comes with a body stream, as in the browsers, is read as any other reply: the type gets its body and a status of 200, and nothing is counted (fail-owner-next, round 2 item 1)", async () => {
+  /** @type {number[]} */
+  const seen = [];
+  const reads = chat({ type: 'test-reads', read: async function* (/** @type {Response} */ res) { seen.push(res.status); yield { type: 'text', text: await res.text() }; } });
+  const looks = { ...speaks, type: 'test-looks', readSpeech: async (/** @type {Response} */ res) => { seen.push(res.status); return { data: new Uint8Array(await res.arrayBuffer()), mediaType: 'audio/mpeg' }; } };
+  const registry = withType('test', reads);
+  registry.add('test', 'endpoint-type', looks);
+  for (const status of [204, 205]) {
+    for (let n = 0; n < 3; n++) {
+      assert.equal((await callOnce({ type: reads, endpoint: endpoint('test-reads'), model: model(), key: null, request, fetch: withStreamAs(status), registry })).text, '', `chat, ${status}`);
+      assert.deepEqual([...((await speechCall({ type: /** @type {any} */ (looks), endpoint: endpoint('test-looks'), model: model(), key: null, text: 'Hello', fetch: withStreamAs(status), registry })).clip?.data ?? [1])], [], `voice, ${status}`);
+    }
+  }
+  assert.deepEqual([...new Set(seen)], [200], 'the type is told a status of 200 whatever the reply had: annai reads the real one');
+  assert.equal(counted(registry), 0, 'twelve calls, none counted');
+});
+
+test("an error reply with a status of 600 to 999, which a browser delivers and the Response constructor refuses, is read as any other: its kind, as on main, and never counted; a 503 is the control (fail-owner-next, round 2 item 1)", async () => {
+  const registry = withType('test', hears);
+  registry.add('test', 'endpoint-type', chat());
+  for (const [status, kind] of /** @type {const} */ ([[600, 'server'], [999, 'server'], [503, 'overloaded']])) {
+    const server = await rawServer(status, 'Odd', '{"error":{"message":"odd"}}');
+    try {
+      for (let n = 0; n < 3; n++) {
+        await assert.rejects(callOnce({ type: chat(), endpoint: endpoint('test', server.base), model: model(), key: null, request, registry }), (e) => e instanceof ProviderError && e.kind === kind, `chat, ${status}`);
+        await assert.rejects(speechCall({ type: /** @type {any} */ (hears), endpoint: endpoint('test-in', server.base), model: model(), key: null, audio, registry }), (e) => e instanceof ProviderError && e.kind === kind, `heard, ${status}`);
+      }
+    } finally {
+      server.close();
+    }
+  }
+  assert.equal(counted(registry), 0, 'eighteen calls, none counted');
+  assert.equal(registry.isDisabled('test'), false);
 });
 
 test("a reply with no body reaches the type as annai's own, as any other does: its url and status text are empty, so the docs' sentence is true of every reply (fail-owner-next, fix 7)", async () => {
@@ -379,7 +450,7 @@ test("a reply with no body reaches the type as annai's own, as any other does: i
   assert.deepEqual(seen, { url: '', status: 200, body: null });
 });
 
-test("an error reply whose body drops while annai reads it is network (tried again, never counted), not the status's kind: a context overflow whose body is cut is no refused request (fail-owner-next, fix 4)", async () => {
+test("an error reply whose body drops while annai reads it is network, never counted, not the status's kind: a context overflow whose body is cut is no refused request (fail-owner-next, fix 4)", async () => {
   const overflow = JSON.stringify({ error: { message: "This model's maximum context length is 8192 tokens" } });
   const registry = withType('test', hears);
   registry.add('test', 'endpoint-type', chat());
@@ -403,13 +474,14 @@ test("an error reply whose body drops while annai reads it is network (tried aga
       cut.close();
     }
   }
-  assert.equal(registry.isDisabled('test'), false);
+  assert.equal(counted(registry), 0, 'cut bodies: none counted');
   // A Stop while an error body is read is still a stop, and annai's time limit a timeout.
   const stalls = async (/** @type {any} */ url, /** @type {any} */ init) => new Response(new ReadableStream({ start: (c) => { init.signal.addEventListener('abort', () => c.error(new TypeError('Failed to fetch')), { once: true }); } }), { status: 400 });
   const stop = new AbortController();
   setTimeout(() => stop.abort(), 20);
   await assert.rejects(callOnce({ type: chat(), endpoint: endpoint('test'), model: model(), key: null, request, fetch: stalls, registry, signal: stop.signal }), (e) => e instanceof ProviderError && e.kind === 'cancelled');
   await assert.rejects(speechCall({ type: /** @type {any} */ (hears), endpoint: endpoint('test-in'), model: model(), key: null, audio, fetch: stalls, registry, timeoutMs: 20 }), (e) => e instanceof ProviderError && e.kind === 'timeout');
+  assert.equal(counted(registry), 0, 'a Stop and a limit while an error body is read: none counted either');
 });
 
 /**
@@ -459,7 +531,7 @@ test("an uploadRequest whose result is not a request (an async function's promis
       assert.equal(r.reply.text, 'ok', `${name}: the call answers`);
       assert.deepEqual([r.counted, r.bodies, r.off], [[1], ['bytes'], true], name);
     }
-    // Its own ProviderError is its answer, and a request that is one works: neither counted.
+    // Its own ProviderError is its answer, not counted.
     const answers = await uploadedWith(() => { throw new ProviderError('upload', 'no files here'); });
     assert.deepEqual([answers.counted, answers.bodies, answers.off], [[], ['bytes'], true], 'a ProviderError of its own');
   } finally {
@@ -468,21 +540,38 @@ test("an uploadRequest whose result is not a request (an async function's promis
   assert.deepEqual(unhandled, [], 'no rejected promise is left for the page to report');
 });
 
-test("an address the user typed that a builder can't parse is not its plugin's bug: bad-request, never counted, for a call, a transcription and a voice (fail-owner-next, fix 6)", async () => {
-  const bad = () => new URL('not an address');
-  const types = /** @type {const} */ ([
-    ['chat', chat({ type: 'addr-chat', build: bad }), (/** @type {any} */ t, /** @type {any} */ registry) => callOnce({ type: t, endpoint: endpoint('addr-chat'), model: model(), key: null, request, registry })],
-    ['hear', { ...hears, type: 'addr-in', transcribeRequest: bad }, (/** @type {any} */ t, /** @type {any} */ registry) => speechCall({ type: t, endpoint: endpoint('addr-in'), model: model(), key: null, audio, registry })],
-    ['say', { ...speaks, type: 'addr-out', speechRequest: bad }, (/** @type {any} */ t, /** @type {any} */ registry) => speechCall({ type: t, endpoint: endpoint('addr-out'), model: model(), key: null, text: 'Hello', registry })],
+test("a typed address is checked by annai, by state, before any builder runs: one that doesn't parse (an empty one included) is bad-request, never counted, with no builder called; a builder's own `new URL` failure at a good address is its plugin's bug, counted (fail-owner-next, round 2 item 2)", async () => {
+  /** @type {string[]} */
+  const built = [];
+  const request1 = (/** @type {string} */ who, /** @type {any} */ c) => { built.push(who); return { url: `${c.endpoint.baseUrl}/x`, headers: {}, body: '{}' }; };
+  const kinds = /** @type {const} */ ([
+    ['chat', chat({ type: 'addr-chat', build: (/** @type {any} */ c) => request1('build', c) }), (/** @type {any} */ t, /** @type {any} */ registry, /** @type {string} */ at) => callOnce({ type: t, endpoint: endpoint('addr-chat', at), model: model(), key: null, request, registry })],
+    ['hear', { ...hears, type: 'addr-in', transcribeRequest: (/** @type {any} */ c) => request1('transcribeRequest', c) }, (/** @type {any} */ t, /** @type {any} */ registry, /** @type {string} */ at) => speechCall({ type: t, endpoint: endpoint('addr-in', at), model: model(), key: null, audio, registry })],
+    ['say', { ...speaks, type: 'addr-out', speechRequest: (/** @type {any} */ c) => request1('speechRequest', c), extraChars: () => { built.push('extraChars'); return 0; } },
+      (/** @type {any} */ t, /** @type {any} */ registry, /** @type {string} */ at) => speechCall({ type: t, endpoint: endpoint('addr-out', at), model: model(), key: null, text: 'Hello', registry })],
   ]);
-  for (const [name, type, call] of types) {
-    const registry = withType(`a-${name}`, type);
-    for (let n = 0; n < 3; n++) await assert.rejects(call(type, registry), (e) => e instanceof ProviderError && e.kind === 'bad-request', name);
-    assert.equal(registry.isDisabled(`a-${name}`), false, `${name}: not counted`);
+  for (const [name, type, call] of kinds) {
+    for (const address of ['', 'not an address', 'https://']) {
+      const registry = withType(`a-${name}`, type);
+      for (let n = 0; n < 3; n++) await assert.rejects(call(type, registry, address), (e) => e instanceof ProviderError && e.kind === 'bad-request', `${name} at ${JSON.stringify(address)}`);
+      assert.deepEqual([counted(registry), registry.isDisabled(`a-${name}`)], [0, false], `${name} at ${JSON.stringify(address)}: not counted`);
+    }
   }
-  // Any other TypeError from a builder is still its bug.
-  const buggy = { ...hears, type: 'addr-bug', transcribeRequest: () => { throw new TypeError("Cannot read properties of undefined (reading 'path')"); } };
-  const registry = withType('a-bug', buggy);
-  for (let n = 0; n < 3; n++) await assert.rejects(speechCall({ type: /** @type {any} */ (buggy), endpoint: endpoint('addr-bug'), model: model(), key: null, audio, registry }), (e) => e instanceof ProviderError && e.kind === 'plugin');
-  assert.equal(registry.isDisabled('a-bug'), true);
+  // A photo's upload is a builder too: with such an address it is never asked.
+  const store = createMemoryStore();
+  const ws = new Workspace(store);
+  await ensureBaseScopes(ws);
+  const withUpload = chat({ type: 'addr-up', uploadRequest: (/** @type {any} */ c) => request1('uploadRequest', c), readUpload: (/** @type {any} */ j) => ({ id: j.id }), build: (/** @type {any} */ c) => request1('build', c) });
+  const withPhoto = /** @type {any} */ ({ messages: [{ role: 'user', parts: [{ type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1' }] }] });
+  await assert.rejects(callOnce({ type: withUpload, endpoint: endpoint('addr-up', ''), model: { ...model(), input: ['text', 'image'] }, key: 'k', request: withPhoto, uploads: new Uploads(ws), registry: withType('a-up', withUpload) }), (e) => e instanceof ProviderError && e.kind === 'bad-request');
+  assert.deepEqual(built, [], 'no builder of any type was called with an address that does not parse');
+  // A builder that parses something of its own, at a good address, and gets it wrong: its bug, whatever words the engine gives.
+  for (const [name, type, call] of kinds) {
+    const bad = () => new URL('not an address');
+    const buggy = { ...type, type: `${type.type}-bug`, build: bad, transcribeRequest: bad, speechRequest: bad };
+    const registry = withType(`bug-${name}`, buggy);
+    for (let n = 0; n < 3; n++) await assert.rejects(call(buggy, registry, 'https://speech.test/v1'), (e) => e instanceof ProviderError && e.kind === 'plugin', name);
+    assert.deepEqual([counted(registry), registry.isDisabled(`bug-${name}`)], [3, true], `${name}: counted, and switched off at the third`);
+  }
 });
+

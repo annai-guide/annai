@@ -5,7 +5,7 @@ import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace, ValidationError, StorageFullError } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip, SYS_PLUGINS } from '../../src/core/scopes.js';
-import { Registry, PluginError, isFetchFailure, isPluginBug } from '../../src/core/registry.js';
+import { Registry, PluginError, isFetchFailure, isPluginBug, isBadAddress } from '../../src/core/registry.js';
 import { PluginHost, PLUGIN_MAX_BYTES } from '../../src/core/plugins.js';
 import { utf8 } from '../../src/core/bytes.js';
 import { messageOf } from '../../src/ui/dom.js';
@@ -73,6 +73,21 @@ test('registry: guard logs failures and switches a plugin off after three in a r
   fail = false;
   assert.equal(await fn(), 'ok');
   assert.equal(r.list('tool').length, 1);
+});
+
+test("registry: a fetch the browser couldn't make is no failure of what guard wraps either (a plugin's start, a hook; spec §5.5, §17): the error reaches the caller, nothing is counted, and a bug still is (fail-owner-next, round 2 item 3)", async () => {
+  /** @type {any[]} */
+  const logged = [];
+  const r = new Registry({ log: (ev) => logged.push(ev) });
+  for (const message of ['Failed to fetch', 'Load failed', 'network error']) {
+    const offline = r.guard('poster', 'hook', async () => { throw new TypeError(message); });
+    for (let i = 0; i < 4; i++) await assert.rejects(offline(), (e) => e instanceof PluginError && e.cause instanceof TypeError && e.cause.message === message);
+  }
+  assert.equal(r.isDisabled('poster'), false, 'twelve offline posts: still on');
+  assert.deepEqual(logged, [], 'none counted or logged');
+  const buggy = r.guard('buggy', 'hook', async () => { throw new TypeError('x is not a function'); });
+  for (let i = 0; i < 3; i++) await assert.rejects(buggy(), PluginError);
+  assert.equal(r.isDisabled('buggy'), true, 'its own bug is still counted: off at the third');
 });
 
 test('host: built-in core schemas take effect', async () => {
@@ -276,6 +291,17 @@ test('host: a tool keeps its own "this" when annai runs it', async () => {
   assert.deepEqual(await registry.list('tool')[0].run('there'), { content: 'hi there' });
 });
 
+test("host: a plugin whose start fetches, offline, is not counted against it: three offline starts leave it on, each start's error reaches the caller; a start with a bug is off at the third (fail-owner-next, round 2 item 3)", async () => {
+  const { host, registry, logged } = await setup();
+  await host.install(inline('fetcher', `export async function activate(annai) { throw new TypeError('Failed to fetch'); }`));
+  for (let i = 0; i < 4; i++) await assert.rejects(host.start('fetcher'), /Failed to fetch/);
+  assert.equal(registry.isDisabled('fetcher'), false);
+  assert.deepEqual(logged.filter((e) => e.type === 'plugin.error'), []);
+  await host.install(inline('bugged', `export function activate(annai) { return undefined.x; }`));
+  for (let i = 0; i < 3; i++) await assert.rejects(host.start('bugged'));
+  assert.equal(registry.isDisabled('bugged'), true);
+});
+
 test("host: a tool's own errors are answers Shiori sees, not crashes; a crash counts against the plugin (spec §5.5, §6.7)", async () => {
   const { host, registry } = await setup();
   await host.install(inline('picky', `export function activate(annai) {
@@ -305,7 +331,7 @@ test("host: a fetch that fails because the device is offline is the tool's answe
   assert.equal(registry.isDisabled('online'), false);
 });
 
-test("the one rule for whose failure an error is, on the tool path and the endpoint path alike: the browser's own words for a request it couldn't make or finish are the link's, by whole words, so a plugin's own TypeError that only names an identifier is its bug (cut-send-fix2, 2)", () => {
+test("the rule for whose failure an error is wherever a plugin's own code makes the request and reads the reply (the tool path, and the like; an endpoint type's call goes by position): the browser's own words for a request it couldn't make or finish are the link's, by whole words, so a plugin's own TypeError that only names an identifier is its bug (cut-send-fix2, 2)", () => {
   for (const message of ['Failed to fetch', 'Load failed', 'network error', 'NetworkError when attempting to fetch resource.', 'The network connection was lost.', 'Failed to fetch https://a.test/']) {
     assert.equal(isFetchFailure(new TypeError(message)), true, message);
     assert.equal(isPluginBug(new TypeError(message)), false, message);
@@ -315,6 +341,18 @@ test("the one rule for whose failure an error is, on the tool path and the endpo
     assert.equal(isPluginBug(new TypeError(message)), true, message);
   }
   assert.equal(isFetchFailure(new Error('Failed to fetch')), false, 'only a TypeError is the browser');
+});
+
+test("isBadAddress reads each engine's own words for a `new URL` that refused an address (measured in Playwright's Chromium, WebKit and Firefox builds, and Node), from a TypeError only; so does the tool path's rule (fail-owner-next, round 2 item 2)", () => {
+  for (const message of ["Failed to construct 'URL': Invalid URL", '"not an address" cannot be parsed as a URL.', 'URL constructor: not an address is not a valid URL.', 'Invalid URL', 'Failed to parse URL from not an address']) {
+    assert.equal(isBadAddress(new TypeError(message)), true, message);
+    assert.equal(isPluginBug(new TypeError(message)), false, message);
+  }
+  for (const message of ["Cannot read properties of undefined (reading 'path')", 'Failed to fetch', 'this.url is not a function', 'is not a valid value']) {
+    assert.equal(isBadAddress(new TypeError(message)), false, message);
+  }
+  assert.equal(isBadAddress(new Error('Invalid URL')), false, 'only a TypeError is the engine');
+  assert.equal(isBadAddress('Invalid URL'), false);
 });
 
 test('registry: switching a plugin off after repeated errors is told once, with its last error (spec §5.5)', async () => {

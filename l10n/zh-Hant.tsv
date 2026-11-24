@@ -901,8 +901,8 @@ ip7w4y#other	ok	It didn't answer aloud within # seconds.	# 秒內沒有語音回
 ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	這個名稱已被 annai 官方外掛程式使用，其他來源的外掛程式不能再用。請聯絡作者改名。	src/core/registry.js:17	Note: "Ask its author" is asking a person (請讓作者…), not the phones' permission choice Ask (詢問).
 1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	這個名稱屬於 annai 官方外掛程式，但已安裝的同名外掛程式來自其他來源，因此不會使用它。請在設定 → 外掛程式中移除它，然後重試。	src/core/registry.js:18	Note: Remove → 移除, as annai's Remove buttons say.
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	請在設定 → 外掛程式中開啟它，然後重試。	src/core/registry.js:19	
-mzoa87	ok	It is switched off after repeated errors.	因多次出錯，已自動關閉。	src/core/registry.js:234	
-dhg5k6	ok	Starting failed: {0}	啟動失敗：{0}	src/core/registry.js:247	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
+mzoa87	ok	It is switched off after repeated errors.	因多次出錯，已自動關閉。	src/core/registry.js:240	
+dhg5k6	ok	Starting failed: {0}	啟動失敗：{0}	src/core/registry.js:253	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
 19bu7pw	ok	Version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	版本 {0} 會導致 {1} 無法運作，因為它需要 {2} {3}。請先更新 {4}，或保留目前的版本。	src/core/requires.js:52	{0} = version; {1} = them; {2} = it; {3} = r.version; {4} = them
 1ee40s4	ok	It needs {0}, which you turned off.	需要 {0}，但你已把它關閉。	src/core/requires.js:79	{0} = shown
 8xu6se	ok	It needs {0}, which isn't installed. Install it from {1} first, then try again.	需要 {0}，但尚未安裝。請先從 {1} 安裝，然後再試一次。	src/core/requires.js:82	{0} = r.id; {1} = r.homepage

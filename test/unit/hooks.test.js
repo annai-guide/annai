@@ -159,6 +159,23 @@ test('8b-1 (M1): a write the store tries again reports its entries once', async 
   });
   assert.deepEqual(seen.map((evs) => evs.map((e) => e.type)), [['x']]);
 });
+test("a hook that posts to its own server while the device is offline is not counted: its fetch failing three times and more leaves it on and logs nothing; a hook with a bug is off at the third (fail-owner-next, round 2 item 3)", async () => {
+  /** @type {any[]} */
+  const logged = [];
+  const registry = new Registry({ log: (ev) => logged.push(ev) });
+  let posts = 0;
+  let bugs = 0;
+  registry.add('poster', 'hook', { fn: () => { posts++; throw new TypeError('Failed to fetch'); } });
+  registry.add('bugged', 'hook', { fn: () => { bugs++; throw new TypeError('x is not a function'); } });
+  const ev = (/** @type {number} */ seq) => ({ scope: SYS, seq, ts: 1, type: 'x', actor: 'system' });
+  deliverHooks(registry, [1, 2, 3, 4, 5].map(ev), () => 1_000);
+  await settle();
+  assert.equal(posts, 5, 'asked each time');
+  assert.equal(registry.isDisabled('poster'), false, 'five offline posts: still on');
+  assert.deepEqual(logged.filter((e) => e.actor === 'plugin:poster'), [], 'none counted');
+  assert.equal(registry.isDisabled('bugged'), true, "a hook's own bug: off");
+  assert.equal(bugs, 3, 'at the third');
+});
 test("a plugin switched off at the hooks' limit and turned on again starts with a window of its own, not the one that switched it off", async () => {
   const registry = new Registry();
   let got = 0;
