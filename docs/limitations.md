@@ -1128,7 +1128,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Kind:** known limitation.
 - **What the traveller sees:** with live mode and GPS on, a reminder that came due in the half minute before annai came back on screen gets no notification if annai is put away or closed before it has found where they are (up to 15 s); it shows when that conversation next opens. As on main for the notification (the relay's copy was called off at the first look there too); better than main for the card, which main lost.
 - **Why:** found by remind-first-next's re-reviews (2026-11-23, probed with the unit kit's push stand-in): annai calls the relay's copy off as soon as its catch-up finds the reminder, because it will say it itself; keeping the copy until annai has shown the card means moving the copy's send time in the push mirror (more parts for a glance shorter than 15 s), and not calling it off brings back a sounding notification over annai on screen (measured).
-- **Revisit when:** a traveller reports a missed reminder after a short glance at annai; the push mirror is next reworked; or the user says "move the relay's copy to the end of the wait".
+- **Revisit when:** a traveller reports a missed reminder after a short glance at annai; the push mirror is next reworked; or the user says "keep the relay's copy until annai has made the reminder" (moving the copy to the end of the wait doesn't do it: the design check of 2026-11-23 measured it).
 - **Approved:** 2026-11-23, chief's decision C215 (not the user's words), Q-R option (1), with the README clause under Notifications.
 
 ### After a catch-up that ended out of view, a reminder's notification can come with sound, or stay beside its card
