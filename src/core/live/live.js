@@ -1098,7 +1098,7 @@ export class Live {
     const by = new Map();
     for (const h of held) by.set(h.scope, [...(by.get(h.scope) ?? []), h.text]);
     for (const [scope, texts] of by) {
-      const text = /* en */ `While there was no connection (for ${span(this.clock.now() - since)}, since ${timeIn(since, this.timeZone())}), these came, and annai showed their reminders by itself: ${texts.join(' ')}`;
+      const text = /* en */ `While there was no connection (for ${span(this.clock.now() - since)}, since ${timeIn(since, this.timeZone())}), these came, and annai gave their reminders by itself as cards (on screen, or kept in the chat while annai was out of view): ${texts.join(' ')}`;
       await this.agent.wake({ kind: 'trigger', text, fallbacks: [], ...(scope === this.#scope() ? {} : { scope }) });
     }
   }

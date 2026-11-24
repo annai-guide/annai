@@ -211,7 +211,7 @@ test('with no connection, annai says each reminder at once and holds the wakes; 
   await k.settle();
   assert.equal(k.agent.wakes.length, 1);
   assert.equal(k.agent.wakes[0].kind, 'trigger');
-  assert.match(k.agent.wakes[0].text, /^While there was no connection \(for 3 h, since 08:30\), these came, and annai showed their reminders by itself: Your watch w-\S+ \(at Fri 2026-11-27 10:00 \(GMT-8\)\) fired: the time came: Fri 2026-11-27 10:00 \(GMT-8\)\. Its reminder: "Tea time\." Plan: time to leave soon for "Lunch at Nepenthe" \(can't be moved, 12:00\)\.$/);
+  assert.match(k.agent.wakes[0].text, /^While there was no connection \(for 3 h, since 08:30\), these came, and annai gave their reminders by itself as cards \(on screen, or kept in the chat while annai was out of view\): Your watch w-\S+ \(at Fri 2026-11-27 10:00 \(GMT-8\)\) fired: the time came: Fri 2026-11-27 10:00 \(GMT-8\)\. Its reminder: "Tea time\." Plan: time to leave soon for "Lunch at Nepenthe" \(can't be moved, 12:00\)\.$/);
   assert.deepEqual(k.agent.wakes[0].fallbacks, []);
   assert.ok((await k.events(['trigger.fired'])).every((e) => e.data.offline === true));
   k.sensors.online(true);

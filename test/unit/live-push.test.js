@@ -277,6 +277,19 @@ test('an offline glance that ends out of view gave the card but did not say it: 
   k.live.dispose();
 });
 
+// The other side of that rule (said-mark-b's review): a reminder annai gives on screen with no connection is said, so the relay's copy that
+// comes once data returns is a double, closed. A mark that also asked for a connection would let it come again with sound.
+test('a reminder given on screen with no connection is said; its copy that comes later is a double', async () => {
+  const k = await liveKit();
+  const w = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
+  k.sensors.online(false);
+  await k.settle();
+  await k.to(at('10:00'));
+  assert.deepEqual(k.live.given().map(([key]) => key), [`${k.trip}|${w.id}`]);
+  assert.deepEqual(await arrives(k.live, [{ kind: 'shown', key: `${k.trip}|${w.id}`, scope: k.trip, watch: w.id, t: at('10:00:30') }]), [`${k.trip}|${w.id}`]);
+  k.live.dispose();
+});
+
 test("archiving a trip takes its reminders out of what a closed annai can say at once; unarchiving brings them back", async () => {
   const k = await liveKit({ plan: { tea: TEA } });
   const w = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
