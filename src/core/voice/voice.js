@@ -2,7 +2,7 @@ import { readAppSettings, updateAppSettings } from '../settings.js';
 import { voiceMode, routeOf, offNote } from './mode.js';
 import { SYS, SYS_DEVICE, ensureDeviceScope, newId } from '../scopes.js';
 import { ProviderError } from '../llm/contract.js';
-import { COOLDOWN_MS, chatCandidates, nextStep, restOf } from '../llm/fallback.js';
+import { COOLDOWN_MS, chatCandidates, nextStep, restOf, noLink } from '../llm/fallback.js';
 import { speechKind, modelOf, modelNames, abilityOf, STAND_INS } from '../llm/config.js';
 import { Speaker, speechOutEntries, Arrivals, playStream } from './speaker.js';
 import { estimateSeconds } from './stream-start.js';
@@ -36,8 +36,9 @@ const SAMPLE_EVERY_MS = 60_000;
 /** A heard segment; a live session's speech comes as its samples. @param {import('./resolve.js').Heard | { id: string, pcm: Int16Array, rate: number }} h */
 const segmentOf = (h) => ('pcm' in h ? { id: h.id, audio: { data: encodeWav(h.pcm, h.rate), mediaType: 'audio/wav', seconds: h.pcm.length / h.rate } } : h);
 
-/** How long a failed voice rests: what the provider asked for, else the usual cooldown (spec §9.6). @param {unknown} e */
+/** How long a failed voice rests: none offline (noLink), else what the provider asked for, else the usual cooldown (spec §9.6). @param {unknown} e */
 export function restFor(e) {
+  if (e instanceof ProviderError && noLink(e)) return 0;
   return e instanceof ProviderError && e.retryAfter !== undefined ? e.retryAfter : COOLDOWN_MS;
 }
 
@@ -128,7 +129,10 @@ export class Voice {
       platform: () => this.platform,
       now: () => this.now(),
       onBlocked: () => this.soundStopped(),
-      bench: (id, error) => this.llm.bench.bench(id, restFor(error), this.now()),
+      bench: (id, error) => {
+        const ms = restFor(error);
+        if (ms) this.llm.bench.bench(id, ms, this.now());
+      },
       browserOptions: async (text, { before }) => {
         const app = await readAppSettings(this.ws);
         const s = voiceSettings(app);

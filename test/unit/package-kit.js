@@ -51,9 +51,9 @@ export function storedModules(ws) {
   };
 }
 
-/** A host on memory storage, its log appends handed to plugins' hooks, that loads installed modules from storage (storedModules). */
-export async function hostKit() {
-  const registry = new Registry();
+/** A host on memory storage, its log appends handed to plugins' hooks, that loads installed modules from storage (storedModules). @param {{ log?: (ev: any) => unknown }} [opts] log: what the registry logs (plugin.error, plugin.disabled) */
+export async function hostKit({ log: registryLog } = {}) {
+  const registry = new Registry({ log: registryLog });
   const store = watchAppends(createMemoryStore(), (evs) => deliverHooks(registry, evs));
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
   await ensureBaseScopes(ws);

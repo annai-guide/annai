@@ -734,30 +734,31 @@ r34ccn	ok	This model's protocol plugin isn't running. Open its provider in Setti
 1kl65kc	ok	The provider refused the reasoning annai sent back.	annaiが送り返した推論を、プロバイダーが受け付けませんでした。	src/core/llm/contract.js:131	Note: reasoning is the model's thinking (推論, as the Reasoning levels setting names it); 送り返した: annai sent it back to the model that wrote it.
 1bhiyow	ok	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0}からリダイレクトが返されました。キーを付けたままリダイレクト先にはアクセスしないため、アドレスを確認してください。	src/core/llm/contract.js:132	{0} = provider
 sek2pk	ok	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	プロバイダーからリダイレクトが返されました。キーを付けたままリダイレクト先にはアクセスしないため、アドレスを確認してください。	src/core/llm/contract.js:133	
-17ifucf	ok	Transcription	文字起こし	src/core/llm/contract.js:151	
-9kdcjv	ok	Chat	チャット	src/core/llm/contract.js:151	Note: a provider's ability (chat models); 聊天 is the word for a chat model.
-b1qn4p	ok	Voice	声	src/core/llm/contract.js:151	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen (Settings' Voice section and its button say tc('screen'), 音声).
-su5wo1	ok	Live voice	ライブ音声	src/core/llm/contract.js:151	
-izfolc	ok	No output started in time.	時間内に出力が始まりませんでした。	src/core/llm/contract.js:161	
-1l28lx6#other	ok	Its output stopped for # seconds.	出力が#秒間止まりました。	src/core/llm/contract.js:162	plural; # = Number(s.seconds) || 0; English: "Its output stopped for # second." (one), "Its output stopped for # seconds." (other); Note: the model's output had started, then stopped arriving for this long; a card line under the model's name.
-1jcxa5s#other	ok	No answer in # seconds. The connection may be too slow to send photos or files.	#秒待っても応答がありませんでした。通信が遅く、写真やファイルを送りきれていない可能性があります。	src/core/llm/contract.js:163	plural; # = Number(s.seconds) || 0; English: "No answer in # second. The connection may be too slow to send photos or files." (one), "No answer in # seconds. The connection may be too slow to send photos or files." (other); Note: the provider never answered a request that held photos or a PDF (files), in the role's wait plus the time the request takes to go up on a slow link: the send most likely ran out; a card line under the model's name.
-1ox7mn5	ok	The voice stopped arriving for longer than annai waits.	音声が届かないまま、annaiが待つ時間を超えました。	src/core/llm/contract.js:164	
-1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	annaiを再読み込みしてください。オフライン用のサービスが動いていない状態で開いたため、プラグインを起動できません。	src/core/llm/contract.js:165	
-b4ie5	ok	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	数分前に保存した会話がサーバーに残っていませんでした。このアカウントではデータが保存されない設定（Zero Data Retention）になっているようです。annaiを次に起動するまでサーバーには何も保存せず、会話全体を送ります。	src/core/llm/contract.js:166	
-1e0qpon	ok	That model no longer exists.	そのモデルはもうありません。	src/core/llm/contract.js:167	
-6e3b54	ok	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0}の{1}にはプラグインが必要ですが、動いていません。「設定 → モデル」で{2}を開いて、インストールしてください。	src/core/llm/contract.js:168	{0} = name; {1} = ability; {2} = name; Note: The plugin it needs isn't running: said as two facts, not "needs a plugin that isn't running".
-11neb14	ok	{0} isn't a transcription model.	{0}は文字起こし用のモデルではありません。	src/core/llm/contract.js:169	{0} = name
-akhc81	ok	{0} isn't a voice.	{0}は読み上げ用の声ではありません。	src/core/llm/contract.js:170	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
-67wwku	ok	{0} isn't a live voice model.	{0}はライブ音声のモデルではありません。	src/core/llm/contract.js:171	{0} = name
-x31pwm	ok	That provider or ability no longer exists.	そのプロバイダーまたは機能はもうありません。	src/core/llm/contract.js:172	
-il3b75	ok	That provider no longer exists, or its plugin isn't running.	そのプロバイダーはもう存在しないか、プラグインが動いていません。	src/core/llm/contract.js:173	
-1urfnpy	ok	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0}はannaiのようなWebアプリからのアクセスを許可していません（CORSヘッダーがありません）。そのため、ブラウザからモデルの一覧を取得したり使ったりできません。プロバイダーに別のアドレスがあればそちらを試すか、ブラウザからのアクセスを許可するようプロバイダーに依頼してください。	src/core/llm/contract.js:175	{0} = host
-10qbfg	ok	annai couldn't reach {0}. Check the address and your connection.	{0}に接続できませんでした。アドレスとネットワーク接続を確認してください。	src/core/llm/contract.js:176	{0} = host
-16osh89	ok	{0} can't list its models here. Add them by id.	{0}はここでモデルの一覧を取得できません。IDで追加してください。	src/core/llm/contract.js:177	{0} = ability
-1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0}は、この端末で録音できる音声形式（{1}）に対応していません。	src/core/llm/contract.js:178	{0} = name; {1} = list(formats ?? [], 'plain')
-1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0}の{1}が、本来のアドレス{3}ではなく{2}宛てのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:179	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
-o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0}の{1}が、本来のアドレス{2}ではなく、無効なアドレス宛てのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:180	{0} = name; {1} = ability; {2} = s.want
-16rym9p	ok	Nothing in the speech-in list worked for {0}.	「聞き取り」のリストに、{0}に使えるものがありませんでした。	src/core/llm/contract.js:181	{0} = name; Note: the speech-in list holds transcription models and "send the audio"; none of them could pass the recording to the model {0}.
+17ifucf	ok	Transcription	文字起こし	src/core/llm/contract.js:157	
+9kdcjv	ok	Chat	チャット	src/core/llm/contract.js:157	Note: a provider's ability (chat models); 聊天 is the word for a chat model.
+b1qn4p	ok	Voice	声	src/core/llm/contract.js:157	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen (Settings' Voice section and its button say tc('screen'), 音声).
+su5wo1	ok	Live voice	ライブ音声	src/core/llm/contract.js:157	
+izfolc	ok	No output started in time.	時間内に出力が始まりませんでした。	src/core/llm/contract.js:167	
+1l28lx6#other	ok	Its output stopped for # seconds.	出力が#秒間止まりました。	src/core/llm/contract.js:168	plural; # = Number(s.seconds) || 0; English: "Its output stopped for # second." (one), "Its output stopped for # seconds." (other); Note: the model's output had started, then stopped arriving for this long; a card line under the model's name.
+1jcxa5s#other	ok	No answer in # seconds. The connection may be too slow to send photos or files.	#秒待っても応答がありませんでした。通信が遅く、写真やファイルを送りきれていない可能性があります。	src/core/llm/contract.js:169	plural; # = Number(s.seconds) || 0; English: "No answer in # second. The connection may be too slow to send photos or files." (one), "No answer in # seconds. The connection may be too slow to send photos or files." (other); Note: the provider never answered a request that held photos or a PDF (files), in the role's wait plus the time the request takes to go up on a slow link: the send most likely ran out; a card line under the model's name.
+1ox7mn5	ok	The voice stopped arriving for longer than annai waits.	音声が届かないまま、annaiが待つ時間を超えました。	src/core/llm/contract.js:170	
+1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	annaiを再読み込みしてください。オフライン用のサービスが動いていない状態で開いたため、プラグインを起動できません。	src/core/llm/contract.js:171	
+b4ie5	ok	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	数分前に保存した会話がサーバーに残っていませんでした。このアカウントではデータが保存されない設定（Zero Data Retention）になっているようです。annaiを次に起動するまでサーバーには何も保存せず、会話全体を送ります。	src/core/llm/contract.js:172	
+1e0qpon	ok	That model no longer exists.	そのモデルはもうありません。	src/core/llm/contract.js:173	
+6e3b54	ok	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0}の{1}にはプラグインが必要ですが、動いていません。「設定 → モデル」で{2}を開いて、インストールしてください。	src/core/llm/contract.js:174	{0} = name; {1} = ability; {2} = name; Note: The plugin it needs isn't running: said as two facts, not "needs a plugin that isn't running".
+11neb14	ok	{0} isn't a transcription model.	{0}は文字起こし用のモデルではありません。	src/core/llm/contract.js:175	{0} = name
+akhc81	ok	{0} isn't a voice.	{0}は読み上げ用の声ではありません。	src/core/llm/contract.js:176	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
+67wwku	ok	{0} isn't a live voice model.	{0}はライブ音声のモデルではありません。	src/core/llm/contract.js:177	{0} = name
+x31pwm	ok	That provider or ability no longer exists.	そのプロバイダーまたは機能はもうありません。	src/core/llm/contract.js:178	
+il3b75	ok	That provider no longer exists, or its plugin isn't running.	そのプロバイダーはもう存在しないか、プラグインが動いていません。	src/core/llm/contract.js:179	
+1urfnpy	ok	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0}はannaiのようなWebアプリからのアクセスを許可していません（CORSヘッダーがありません）。そのため、ブラウザからモデルの一覧を取得したり使ったりできません。プロバイダーに別のアドレスがあればそちらを試すか、ブラウザからのアクセスを許可するようプロバイダーに依頼してください。	src/core/llm/contract.js:181	{0} = host
+10qbfg	ok	annai couldn't reach {0}. Check the address and your connection.	{0}に接続できませんでした。アドレスとネットワーク接続を確認してください。	src/core/llm/contract.js:182	{0} = host
+16osh89	ok	{0} can't list its models here. Add them by id.	{0}はここでモデルの一覧を取得できません。IDで追加してください。	src/core/llm/contract.js:183	{0} = ability
+1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0}は、この端末で録音できる音声形式（{1}）に対応していません。	src/core/llm/contract.js:184	{0} = name; {1} = list(formats ?? [], 'plain')
+1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0}の{1}が、本来のアドレス{3}ではなく{2}宛てのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:185	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
+o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0}の{1}が、本来のアドレス{2}ではなく、無効なアドレス宛てのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:186	{0} = name; {1} = ability; {2} = s.want
+xs9g3f	draft	{0}'s {1} has no working address. Give its address in Settings → Models.	{0}の{1}に使えるアドレスが設定されていません。「設定 → モデル」でアドレスを入力してください。	src/core/llm/contract.js:187	{0} = name; {1} = ability
+16rym9p	ok	Nothing in the speech-in list worked for {0}.	「聞き取り」のリストに、{0}に使えるものがありませんでした。	src/core/llm/contract.js:188	{0} = name; Note: the speech-in list holds transcription models and "send the audio"; none of them could pass the recording to the model {0}.
 g63xkc	ok	Prices are an object, like {"input": 1, "output": 4}.	料金は {"input": 1, "output": 4} のようなオブジェクトで書いてください。	src/core/llm/cost.js:96	
 m0hi3r	ok	In a tier, {0} is not a price: it is a number, not below 0.	"tiers" の {0} が料金として正しくありません。0以上の数値にしてください。	src/core/llm/cost.js:97	{0} = f.key; Note: a tier is a price step for long prompts; "tiers" is the JSON key the user types.
 z6957a	ok	In the schedule, {0} is not a price: it is a number, not below 0.	"schedule" の {0} が料金として正しくありません。0以上の数値にしてください。	src/core/llm/cost.js:97	{0} = f.key; Note: the schedule is the JSON key "schedule" (prices that start on a date), named as typed: 予定 is the Plan screen's word.
@@ -801,12 +802,12 @@ cpehgy	ok	The plugin didn't provide an endpoint type {0}.	このプラグイン�
 y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	アドレスは https:// で始めてください（http:// はlocalhostか127.0.0.1の場合のみ）。httpsのページからの暗号化されていないhttp通信はブラウザがブロックし、annaiもネットワーク内ではhttpsのアドレスにしか接続しないため、別のコンピューターのサーバーにはhttpsのアドレスが必要です。Tailscale Serveで用意できます：{0}。サーバーは annai.guide からのCORSも許可している必要があります。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
 1qpfdfv	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1).	アドレスは https:// で始めてください（http:// はlocalhostか127.0.0.1の場合のみ）。	src/core/llm/provider-desc.js:166	
 xx043p	ok	"{0}" is already added here.	「{0}」はすでに追加されています。	src/core/llm/providers.js:324	{0} = providerModelId
-1xwbser	ok	It is turned off.	オフになっています。	src/core/llm/service.js:305	Note: said of a plugin named before it on the screen.
-1pqsrb3	ok	It isn't running. Look at it in Settings → Plugins.	動作していません。「設定 → プラグイン」で確認してください。	src/core/llm/service.js:307	Note: said of a plugin named before it on the screen.
-sejc5h	ok	{0} was switched off after errors.	{0}はエラーが続いたためオフになりました。	src/core/llm/service.js:322	{0} = shown
-xzxdhp	ok	The plugin didn't provide a model provider.	このプラグインはモデルのプロバイダーを提供していませんでした。	src/core/llm/service.js:323	Note: said of a plugin.
-2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	そのプラグインはannai公式のものではありません。入手元からもう一度インストールしてください。	src/core/llm/service.js:419	
-1k9wkd0	ok	The plugin it names doesn't provide models, so it wasn't installed.	指定されているプラグインはモデルを提供していないため、インストールされませんでした。	src/core/llm/service.js:428	Note: said after the provider's name ("OpenRouter: …"); the plugin its record names.
+1xwbser	ok	It is turned off.	オフになっています。	src/core/llm/service.js:299	Note: said of a plugin named before it on the screen.
+1pqsrb3	ok	It isn't running. Look at it in Settings → Plugins.	動作していません。「設定 → プラグイン」で確認してください。	src/core/llm/service.js:301	Note: said of a plugin named before it on the screen.
+sejc5h	ok	{0} was switched off after errors.	{0}はエラーが続いたためオフになりました。	src/core/llm/service.js:316	{0} = shown
+xzxdhp	ok	The plugin didn't provide a model provider.	このプラグインはモデルのプロバイダーを提供していませんでした。	src/core/llm/service.js:317	Note: said of a plugin.
+2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	そのプラグインはannai公式のものではありません。入手元からもう一度インストールしてください。	src/core/llm/service.js:413	
+1k9wkd0	ok	The plugin it names doesn't provide models, so it wasn't installed.	指定されているプラグインはモデルを提供していないため、インストールされませんでした。	src/core/llm/service.js:422	Note: said after the provider's name ("OpenRouter: …"); the plugin its record names.
 3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:87	{0} = p.title
 1rb0o7n	ok	OpenStreetMap around {0}	{0}周辺のOpenStreetMap	src/core/pack/download.js:89	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
 hdsgog	ok	OpenStreetMap between {0} and {1}	{0}と{1}の間のOpenStreetMap	src/core/pack/download.js:89	{0} = a; {1} = b
@@ -862,10 +863,10 @@ wq5ezj	ok	Its name, "{0}", is annai's own name, or the name of one of its parts.
 masbkh	ok	A skill with this id is installed already. Remove it first.	同じIDのスキルがすでにインストールされています。先に削除してください。	src/core/plugins.js:192	
 1idb6oe	ok	{0} is handed the keys you give it, so the one used is annai's own, else the one installed first.	{0}には入力したキーが渡されるため、annai公式のものを使い、なければ最初にインストールしたものを使います。	src/core/plugins.js:243	{0} = name
 7ot8m8	ok	{0} is annai's own, so no plugin replaces it.	{0}はannaiに組み込まれたものなので、プラグインで置き換えることはできません。	src/core/plugins.js:245	{0} = name
-1863007	ok	It is being removed.	削除中です。	src/core/plugins.js:440	
-u30lhr	ok	It was updated. Restart annai to run the new version.	アップデートされました。新しいバージョンを使うには、annaiを再起動してください。	src/core/plugins.js:441	
-12roxwh	ok	It keeps MCP servers, not settings: remove a server on its own screen.	設定ではなくMCPサーバーを保存しています。サーバーはそれぞれの画面で削除してください。	src/core/plugins.js:611	
-1k8fwg2#other	ok	It didn't finish within # seconds.	#秒以内に完了しませんでした。	src/core/plugins.js:808	plural; # = s; English: "It didn't finish within # second." (one), "It didn't finish within # seconds." (other); Note: a sentence of its own, under the card's "didn't start" title; after "Starting failed:" it is the reason.
+1863007	ok	It is being removed.	削除中です。	src/core/plugins.js:441	
+u30lhr	ok	It was updated. Restart annai to run the new version.	アップデートされました。新しいバージョンを使うには、annaiを再起動してください。	src/core/plugins.js:442	
+12roxwh	ok	It keeps MCP servers, not settings: remove a server on its own screen.	設定ではなくMCPサーバーを保存しています。サーバーはそれぞれの画面で削除してください。	src/core/plugins.js:612	
+1k8fwg2#other	ok	It didn't finish within # seconds.	#秒以内に完了しませんでした。	src/core/plugins.js:809	plural; # = s; English: "It didn't finish within # second." (one), "It didn't finish within # seconds." (other); Note: a sentence of its own, under the card's "didn't start" title; after "Starting failed:" it is the reason.
 u8bf72	ok	Notifications are on. Reminders come like this while annai is closed.	通知がオンになりました。annaiを閉じているときは、リマインダーがこのように届きます。	src/core/push/mirror.js:75	
 1dxa9va	ok	Notifications are on again: reminders come like this while annai is closed.	通知が再びオンになりました。annaiを閉じているときは、リマインダーがこのように届きます。	src/core/push/mirror.js:76	
 dcq7bh	ok	annai has a reminder for you. Open annai to see it.	リマインダーがあります。annaiを開いて確認してください。	src/core/push/mirror.js:83	Note: a notification for a reminder the phone couldn't read.
@@ -901,8 +902,8 @@ ip7w4y#other	ok	It didn't answer aloud within # seconds.	#秒待っても音声�
 ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	この名前はannai公式のプラグインが使っているため、ほかから入手したパッケージには使えません。作者に名前の変更を依頼してください。	src/core/registry.js:17	Note: "Ask its author" is asking a person (頼む), not the phones' permission choice Ask (確認).
 1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	この名前はannai公式のプラグインが使っていますが、インストールされているのはほかから入手したものなので、annaiでは使いません。「設定 → プラグイン」で削除してから、もう一度お試しください。	src/core/registry.js:18	
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	「設定 → プラグイン」でオンにしてから、もう一度お試しください。	src/core/registry.js:19	
-mzoa87	ok	It is switched off after repeated errors.	エラーが続いたため、オフになっています。	src/core/registry.js:234	
-dhg5k6	ok	Starting failed: {0}	起動に失敗しました：{0}	src/core/registry.js:247	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
+mzoa87	ok	It is switched off after repeated errors.	エラーが続いたため、オフになっています。	src/core/registry.js:246	
+dhg5k6	ok	Starting failed: {0}	起動に失敗しました：{0}	src/core/registry.js:259	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
 19bu7pw	ok	Version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	バージョン{0}にすると{1}が動かなくなります（{1}には{2} {3}が必要です）。先に{4}をアップデートするか、このバージョンのままにしてください。	src/core/requires.js:52	{0} = version; {1} = them; {2} = it; {3} = r.version; {4} = them
 1ee40s4	ok	It needs {0}, which you turned off.	{0}が必要ですが、オフになっています。	src/core/requires.js:79	{0} = shown
 8xu6se	ok	It needs {0}, which isn't installed. Install it from {1} first, then try again.	{0}が必要ですが、インストールされていません。{1} からインストールしてから、もう一度お試しください。	src/core/requires.js:82	{0} = r.id; {1} = r.homepage
@@ -951,9 +952,9 @@ xi9ch6	ok	Shiori can't hear you: the speech-in list is empty. Add an entry in Se
 1oy92m8	ok	This browser has no phone dictation either.	このブラウザでは端末の音声入力も使えません。	src/core/voice/resolve.js:164	
 l80ifa	ok	Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	「設定 → モデル」で、OpenAIやGroqなどの文字起こしモデルか、音声を受け付けるメインのモデルを追加してください。	src/core/voice/resolve.js:164	
 m5s9f4	ok	This browser can't play a voice as it arrives.	このブラウザでは、声をストリーミング再生できません。	src/core/voice/speaker.js:128	
-jo5o9d	ok	This browser can't play sound here.	このブラウザでは、ここで音声を再生できません。	src/core/voice/voice.js:425	
-ocv5zw	ok	This browser can't use the microphone here.	このブラウザでは、ここでマイクを使えません。	src/core/voice/voice.js:468	
-55949q	ok	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	音声が止まったため、声を聞き取れません。画面をタップすると再開します。	src/core/voice/voice.js:799	
+jo5o9d	ok	This browser can't play sound here.	このブラウザでは、ここで音声を再生できません。	src/core/voice/voice.js:429	
+ocv5zw	ok	This browser can't use the microphone here.	このブラウザでは、ここでマイクを使えません。	src/core/voice/voice.js:472	
+55949q	ok	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	音声が止まったため、声を聞き取れません。画面をタップすると再開します。	src/core/voice/voice.js:803	
 pib2vo	ok	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	ブラウザに組み込まれた音声サービスが聞き取ります。Androidでは多くの場合Googleのサーバー、iPhoneではAppleのサーバーで処理されます（端末上で処理されることもあります）。このリクエストはannaiが送るものではないため、記録には表示されません。	src/core/voice/where.js:15	
 m93xm3	ok	On this phone only: the browser recognizes your speech on the device.	ブラウザがこの端末上で音声を認識します。端末の外には送られません。	src/core/voice/where.js:16	
 1m5zm0a	ok	Phone dictation	端末の音声入力	src/core/voice/where.js:18	

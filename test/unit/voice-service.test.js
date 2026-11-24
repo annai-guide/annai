@@ -150,6 +150,33 @@ test('a resting voice rests as long as the provider asked, else the usual cooldo
   assert.equal(restFor(new Error('x')), COOLDOWN_MS);
 });
 
+test("a voice that can't connect while the phone is offline rests nothing: the phone's own voice says the sentence, and the voice is asked again at the next once the connection is back (fail-owner-next, 6)", async () => {
+  const k = await voiceKit();
+  /** @type {any} */ (k.llm).synthesize = async () => { throw new ProviderError('unreachable', 'Failed to fetch'); };
+  Object.defineProperty(globalThis.navigator, 'onLine', { value: false, configurable: true });
+  try {
+    assert.equal(restFor(new ProviderError('unreachable', 'x')), 0);
+    assert.equal(restFor(new ProviderError('network', 'x')), 0);
+    assert.equal(restFor(new ProviderError('server', 'x')), COOLDOWN_MS, 'offline, a refused or failed answer still rests');
+    await k.voice.say('Hello.');
+    assert.deepEqual(k.platform.log.filter((l) => l.startsWith('browser')), ['browser Hello.']);
+    assert.equal(k.bench.until('v1'), 0, 'not benched');
+  } finally {
+    delete (/** @type {any} */ (globalThis.navigator)).onLine;
+  }
+  assert.equal(restFor(new ProviderError('unreachable', 'x')), COOLDOWN_MS, 'online, it rests as before');
+  // Back online the voice is asked at the next sentence and speaks: nothing rested it.
+  /** @type {any} */ (k.llm).synthesize = async (/** @type {{ modelId: string, text: string }} */ { modelId, text }) => ({ clip: { data: enc.encode(`${modelId}:${text}`), mediaType: 'audio/mpeg' } });
+  await k.voice.say('Again.');
+  assert.deepEqual(k.platform.log.filter((l) => l.startsWith('play')), ['play v1:Again.'], 'back online, the voice is asked and speaks');
+  assert.equal(k.bench.until('v1'), 0, 'and is not benched');
+  // The same failure with the phone online rests the voice, as before.
+  const online = await voiceKit();
+  /** @type {any} */ (online.llm).synthesize = async () => { throw new ProviderError('unreachable', 'Failed to fetch'); };
+  await online.voice.say('Hello.');
+  assert.ok(online.bench.until('v1') > Date.now() + COOLDOWN_MS - 5_000, 'online: benched');
+});
+
 test('listenOnce(): the mic opens, one segment comes back, the mic closes and the session goes back to playback', async () => {
   const k = await voiceKit();
   /** @type {string[]} */

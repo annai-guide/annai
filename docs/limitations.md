@@ -1435,12 +1435,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** the trace shows a fine PDF marked this way; or the user says "retry the PDF before marking it".
 - **Approved:** 2026-11-22, chief's decision C202 (not the user's words), with the README's line.
 
-### An endpoint type's failures in a row are counted across its successes
-- **Kind:** deferred.
-- **What the traveller sees:** a plugin's endpoint type (a chat or speech provider) whose calls fail now and then is switched off after three failures counted over time, not three in a row: two bad replies, a good one, then one more bad reply switch it off, and the card says it "failed 3 times in a row", which isn't true (a speech plugin takes its voice down with it).
-- **Why:** found by cut-send-next's re-review (2026-11-23, probed; older than that branch): `registry.succeeded` is called where a tool's call works but never where an endpoint type's call does (`callOnce`, `speechCall`), so its failure count only grows. Since cut-send-next a dropped connection no longer counts against the plugin, so it is rarer; not in the user's setup. The fix: one `succeeded` call where a type's call works.
-- **Revisit when:** its row in docs/progress.md, in the next version.
-
 ### A model with nothing else in its list that never answers a request with a photo, a file or a recording is asked again every time
 - **Kind:** known limitation.
 - **What the traveller sees:** since cut-send-next, a model cut before its headers, or a transcription model that can't be reached, rests only once another model answered the same call (so a 20 s dip no longer takes voice away for 3 minutes). With nothing else answering: one transcription model whose server hangs makes each heard line wait about 20 s at the gate (with a quick-decision model) and about 24 s in the turn, then the card; one that can't be reached at all (its server down, a wrong address, a self-hosted server whose tunnel is off) or refuses every recording fails each heard line at once with "Nothing in the speech-in list worked for …", and phone dictation listed after it no longer takes over as it did for 3 minutes before (new with cut-send-next for those two; for a hang it shipped 2026-11-20); one reader model that hangs makes each photo wait 70 s (110 s while Koe works) and come back undescribed. A model rested after a cut send once another answered is also passed over as a reader and by Koe for those 3 minutes. What the traveller can do: move Phone dictation above the model in Settings → Models, or switch the model off.
@@ -1454,17 +1448,17 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** found by cut-send-next's re-reviews (2026-11-23): both waits (`callRole`'s `sleep` and `Voice.sleep`) are plain timers; since cut-send-next a transcription waits as chat does, so its longest wait went from 3 s to 10 s. The fix: one wait that ends on the call's signal, shared by both.
 - **Revisit when:** its row in docs/progress.md, in the next version.
 
-### A server voice that fails while the phone is offline rests 3 minutes
-- **Kind:** deferred.
-- **What the traveller sees:** after a speech-out voice fails while the phone is offline, it is passed over for 3 minutes, also once the connection is back, and the phone's own voice speaks meanwhile.
-- **Why:** found by cut-send-next's second re-read (2026-11-23): a voice rests by `restFor` (voice.js), a second rule beside chat's and transcription's `nextStep`, which rests nothing for a failure to connect while offline (spec §9.6). The fix: `restFor` takes the same offline test, or a voice's rest comes from the shared rule; it goes with the design check of whose failure an error is (its row).
-- **Revisit when:** its row in docs/progress.md, in the next version.
-
 ### Kokoro's words shown at the top and said aloud keep their markdown
 - **Kind:** deferred.
 - **What the traveller sees:** when annai shows Kokoro's words itself (Koe never said them), the "Shiori's answer" card at the top of the screen reads them as written, `Sample Lake: [Maps](https://…)`, a long address cut at the card's edge; with voice on, the same raw text goes to the voice. In the conversation's line and on Driving they draw as links since ui-phone-next (2026-11-23).
 - **Why:** found by ui-phone-next's final review (2026-11-23), from the user's screenshots ("tell annai session I sent screenshots via tailscale about ui bugs."): the fix drew the line's words, not the card's or the voice's. The fix: one plain-words reading of the words (a link by its name), made where they are shown, for the card and the voice (one answer for every client).
 - **Revisit when:** its row in docs/progress.md, in the next version.
+
+### A plugin's start, hook or screen that fails for want of a link can still count against it
+- **Kind:** deferred.
+- **What the traveller sees:** a third-party plugin (no official plugin does any of this) can still be switched off for a link that was missing: a start or hook that asks `annai.llm` or `annai.llm.decide` with no connection (their `AllFailedError` counts), a start that waits past annai's 10-second start limit on a weak link, a start or hook whose own time limit on `annai.net.fetch` fires in Safari (WebKit names that abort an `AbortError`, which counts; Chrome's `AbortSignal.timeout` is spared), and a dock action, card, screen, avatar or heard-clips function that fails offline (those count every error). Three in a row switch the plugin off, with a card, until the traveller turns it on in Settings → Plugins; a start's count is kept across launches. fail-owner-next spares only the browser's own fetch failure and annai's `network` or `unreachable` kind in a start, a hook and the launch count.
+- **Why:** found by fail-owner-next's re-reviews 3 and 4 (2026-11-23, measured with the real plugin host): each round added one more error shape to the answer to "is it the link's", and each of annai's own APIs fails in a shape of its own, so RULES' step back stopped fix rounds on that part. Main counts all of these too. The design check weighs: counting only crash classes and annai's own start limit, as the tool path does; marking annai's own link errors once where they are made (`tracedFetch`, `callRole`), so a plugin's own malformed request through `annai.net.fetch` is told from a missing link by position; one rule for the screens' catches (`slots.js`, `dock.js`, `voice.js`'s heard clips); a live protocol's `open` and a list builder checking the typed address before the plugin's code runs; and whether a hook needs a count beyond its 1,000-entries guard.
+- **Revisit when:** its row in docs/progress.md ("A plugin's start, hook or screen that fails for want of a link"), in the next version, its design check first.
 
 ### A photo upload that drops turns uploads off until a restart
 - **Kind:** deferred.

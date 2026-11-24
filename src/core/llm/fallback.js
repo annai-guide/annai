@@ -438,6 +438,9 @@ export function continueAfter(request, said) {
   return { ...request, messages: [...request.messages, { role: 'user', parts: [{ type: 'text', text: note }] }] };
 }
 
+/** A failure to connect or a dropped reply with no connection on the device: nothing waits or rests for it (nextStep, voice.js restFor). @param {ProviderError} err @param {boolean} [online] */
+export const noLink = (err, online = deviceOnline()) => (err.kind === 'unreachable' || err.kind === 'network') && !online;
+
 /**
  * What a failed try does next, by the one rule for every send annai retries: chat's (callRole) and a transcription's (voice.js `#hear`). Wait and go
  * again, rest the model once its retries are done, or neither. With no connection on the device (airplane mode, say) the model did nothing wrong,
@@ -446,7 +449,7 @@ export function continueAfter(request, said) {
  * @returns {{ wait?: number, bench?: number }}
  */
 export function nextStep(err, retry, online = deviceOnline()) {
-  if ((err.kind === 'unreachable' || err.kind === 'network') && !online) return {};
+  if (noLink(err, online)) return {};
   switch (err.kind) {
     case 'overloaded':
       return retry < OVERLOAD_RETRIES.length ? { wait: OVERLOAD_RETRIES[retry] } : { bench: COOLDOWN_MS };
@@ -631,7 +634,7 @@ export async function callRole(c) {
     return { rec, pRec, provider, ability, type, model, out };
   };
   const one = async (id) => {
-    const { rec, pRec, provider, type, model, out } = lookUp(id);
+    const { rec, pRec, provider, ability, type, model, out } = lookUp(id);
     const forModel = requestFor(model, id);
     const skip = out ?? (bench.until(id) > now() && !(restingNow.has(id) && (!restingAsked || restingAsked === id)) ? 'benched' : gap(/** @type {Model} */ (model), forModel(request), provider ?? undefined));
     if (skip || !model || !type || !pRec || !provider) {
@@ -681,7 +684,7 @@ export async function callRole(c) {
       const started = now();
       try {
         const reply = await callOnce({
-          type: set.type, endpoint, model, key, request: sendable, level, fetch: c.fetch, signal: c.signal, onEvent: c.onEvent,
+          type: set.type, endpoint, ability, model, key, request: sendable, level, fetch: c.fetch, signal: c.signal, onEvent: c.onEvent,
           trace, registry: c.registry, now, firstOutputMs, uploads: c.uploads, tally: c.tally, keepNative: Boolean(c.keepNative), shared: Boolean(c.shared), ...(keeps ? { keep: { kept: keeps, scope: c.scope ?? SYS, chain: !whole, secret: own, ...(c.borrow ? { borrow: true } : {}), ...(again ? { again: true } : {}) } } : {}),
         });
         usage = addUsage(usage, reply.usage);

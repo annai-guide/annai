@@ -11,7 +11,6 @@ import { formatOf } from '../voice/formats.js';
 import { SYS_DEVICE, ensureDeviceScope } from '../scopes.js';
 import { forget as forgetHistory } from '../forget.js';
 import { anySignal } from '../signals.js';
-import { isFetchFailure } from '../registry.js';
 
 /**
  * One model call (spec §9.1): the endpoint type builds the request, annai merges in the
@@ -245,7 +244,8 @@ async function billed(usage, tools, tally) {
  * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, request: Request, level?: string,
  *   fetch?: Fetch, signal?: AbortSignal, firstOutputMs?: number, onEvent?: (e: StreamEvent) => void, trace?: ModelTrace,
  *   registry?: import('../registry.js').Registry, now?: () => number, uploads?: import('./uploads.js').Uploads, keep?: Keep,
- *   tally?: import('../workspace.js').Workspace, keepNative?: boolean, shared?: boolean }} c
+ *   tally?: import('../workspace.js').Workspace, keepNative?: boolean, shared?: boolean, ability?: import('./config.js').Ability }} c
+ *   ability: the endpoint's, for its name where the address is wrong
  *   firstOutputMs: how long to wait for the first output once the provider has the request, and then between pieces of output
  *   shared: the other half may send its request on the same link at the same time (Koe and Kokoro): the send is timed on twice its bytes, as two
  *   sends sharing a link evenly carry, by the time the first is up, its bytes and as many of the other's
@@ -255,7 +255,8 @@ async function billed(usage, tools, tally) {
  *   keepNative: the reply as the provider returned it is wanted (Shiori's own turns: the keep-reasoning design §4)
  * @returns {Promise<Reply>}
  */
-export async function callOnce({ type, endpoint, model, key, request, level = 'off', fetch: get = defaultFetch, signal, firstOutputMs = 30_000, onEvent = () => {}, trace, registry, now = Date.now, uploads, keep, tally, keepNative = false, shared = false }) {
+export async function callOnce({ type, endpoint, model, key, request, level = 'off', fetch: get = defaultFetch, signal, firstOutputMs = 30_000, onEvent = () => {}, trace, registry, now = Date.now, uploads, keep, tally, keepNative = false, shared = false, ability }) {
+  if (!type.run) sameOrigin(endpoint, endpoint.baseUrl, ability); // annai calls a type's code only with an address that parses (else bad-request, the user's to fix)
   if (key) trace?.secret(key);
   // Credentials can also sit in an endpoint's extra headers; none may reach the trace (spec §9.9).
   for (const [name, value] of Object.entries(endpoint.headers ?? {})) {
@@ -280,7 +281,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   /** @type {Awaited<ReturnType<typeof withUploads>>} */
   let uploaded;
   try {
-    uploaded = await withUploads(timed, { type, endpoint, model, key, uploads, get, trace, signal, now, from: matched?.from ?? 0 });
+    uploaded = await withUploads(timed, { type, endpoint, model, key, uploads, get, trace, signal, now, registry, from: matched?.from ?? 0 });
   } catch (e) {
     // A stop during an upload is a stop, by the caller or its deadline (only an aborted call's upload throws): never a failure of the plugin or the model, which would bench it.
     if (signal?.aborted || /** @type {any} */ (e)?.name === 'AbortError') throw new ProviderError('cancelled', /* en */ 'Stopped.', { cause: e, said: { code: 'kind' } });
@@ -348,6 +349,8 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   let firstMs = null;
   let status = 0;
   let url = `${type.type}:`;
+  /** The reply's failed read, once annai reads its body for the type (watched). @type {() => unknown} */
+  let dropped = () => undefined;
   /** @param {StreamEvent} ev */
   const take = (ev) => {
     if (ev.type === 'kept') {
@@ -403,7 +406,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     } else {
       const built = /** @type {NonNullable<EndpointType['build']>} */ (type.build)(spec);
       url = built.url;
-      sameOrigin(endpoint, built.url); // the key goes only to the ability's address
+      sameOrigin(endpoint, built.url, ability); // the key goes only to the ability's address
       /** @type {Response} */
       let res;
       const body = JSON.stringify(applyPatches(built.body, endpoint, model, level, patches));
@@ -421,20 +424,22 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       wait(firstOutputMs);
       status = res.status;
       noRedirect(res, endpoint);
+      const reply = watched(res);
+      dropped = reply.dropped;
       if (!res.ok) {
-        const text = await res.text().catch(() => '');
+        const text = await reply.res.text().catch(() => '');
         // An error response that is the model declining (Gemini's safety block) is an answer: it ends the turn, as any refusal does.
         const declined = type.refusal?.(res.status, text, spec);
         if (typeof declined !== 'string' || !declined) throw typeError(type, res.status, text, res.headers);
         take({ type: 'text', text: declined });
         take({ type: 'stop', reason: 'refusal' });
       } else {
-        for await (const ev of untilAborted(/** @type {NonNullable<EndpointType['read']>} */ (type.read)(res, spec), linked)) take(ev);
+        for await (const ev of untilAborted(/** @type {NonNullable<EndpointType['read']>} */ (type.read)(reply.res, spec), linked)) take(ev);
       }
     }
   } catch (e) {
     clearTimeout(t);
-    let err = asProviderError(e, linked, type, registry);
+    let err = asProviderError(e, linked, type, registry, dropped());
     // With a photo's, a PDF's or a recording's bytes in what was sent (not the turns a kept one holds), likelier the send than the model; text
     // alone stays late (a server that never streams).
     if (err.said?.code === 'late' && sending && spec.request.messages.slice(spec.kept?.from ?? 0).some((m) => m.parts.some((p) => (p.type === 'image' && !p.fileId) || p.type === 'document' || p.type === 'audio'))) {
@@ -490,6 +495,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     throw err;
   }
   clearTimeout(t);
+  typeWorked(type, registry);
   // The turn kept, to continue next time; one refused is deleted, or it would be in every later turn's history.
   // Borrowed (warm housekeeping): nothing is recorded, the response is deleted, and the chain it continued is as it was.
   await settle((c) => (keeping?.borrow || /** @type {StopReason} */ (stop) === 'refusal' ? Promise.resolve('now') : /** @type {any} */ (keeping).kept.record(
@@ -559,21 +565,58 @@ export function sendCut(cause, ms) {
 }
 
 /**
- * Whatever went wrong, as a ProviderError. Running out of time is "timeout", the caller stopping is "cancelled",
- * and a request the browser couldn't make or finish, in the browser's own words (isFetchFailure: a body that failed after its headers, or a type's own
- * fetch that never connected) is "network", the link's and no plugin's. A stream's rule is by position (sse.js: a reader's error is "network"),
- * this path's by words; the same rule decides it on the tool path (isPluginBug). Any other error from the endpoint type's code is a bug in
- * its plugin, which counts against the plugin (spec §5.5).
- * @param {unknown} e @param {AbortSignal} signal @param {EndpointType} type @param {import('../registry.js').Registry} [registry]
+ * A reply as its endpoint type reads it: the same headers over a body annai reads from the real one, noting when that read fails. By position, as
+ * sse.js for a stream: a failed read is the link's, whatever the type then throws or the browser calls it (Chromium's `json()`, `text()` and `arrayBuffer()`
+ * on such a body give their own `TypeError: Failed to fetch`, a stop's too; annai's read gets `network error`), so the note is kept here, never on the error. A type that stops early leaves none; its cancel reaches the real
+ * body. Headers only, no status and no status text: the constructor refuses a status text of some phrases, a 204 or 205 with the body stream browsers
+ * give it, and a status of 600 to 999 that browsers deliver, so each would throw here; annai reads the status of the real reply itself. An error
+ * reply's body goes through it too.
+ * @param {Response} res @returns {{ res: Response, dropped: () => unknown }} dropped: the read's error
  */
-export function asProviderError(e, signal, type, registry) {
-  if (e instanceof ProviderError) return e;
+export function watched(res) {
+  /** @type {unknown} */
+  let failed;
+  const reader = res.body?.getReader();
+  const body = reader ? new ReadableStream({
+    async pull(c) {
+      const r = await reader.read().catch((e) => { failed = e ?? new Error(); throw e; });
+      if (r.done) c.close();
+      else c.enqueue(r.value);
+    },
+    cancel: (why) => reader.cancel(why),
+  }) : null;
+  return { res: new Response(body, { headers: res.headers }), dropped: () => failed };
+}
+
+/** The plugin that registered an endpoint type, blamed and credited for its code (never a field the type carries). @param {EndpointType} type @param {import('../registry.js').Registry} [registry] */
+const ownerOf = (type, registry) => registry?.owner('endpoint-type', type.type)?.pluginId;
+
+/** An endpoint type's call worked: its plugin's run of failures is over (spec §5.5). @param {EndpointType} type @param {import('../registry.js').Registry} [registry] */
+export function typeWorked(type, registry) {
+  const by = ownerOf(type, registry);
+  if (by) registry?.succeeded(by);
+}
+
+/**
+ * Whatever went wrong in an endpoint type's call, as a ProviderError, by where it went wrong, never by its words: the call's own signal first (out
+ * of time "timeout", stopped "cancelled", whatever was thrown as it stopped); then a reply whose body annai couldn't read (watched), "network",
+ * whatever the type made of it or the browser calls it (Firefox: annai's read of a body cut mid-way gives a TypeError, the type's `res.json()` an AbortError); then an AbortError or TimeoutError the call's
+ * signal didn't cause, by its name (the type's own timer, say); then the type's own ProviderError. Anything else is a bug in its plugin, counted
+ * (spec §5.5). A `run` type names its own send's failures. @param {unknown} e @param {AbortSignal} signal @param {EndpointType} type
+ * @param {import('../registry.js').Registry} [registry] @param {unknown} [dropped] the error the reply's body failed with (watched)
+ */
+export function asProviderError(e, signal, type, registry, dropped) {
+  const own = e instanceof ProviderError;
   const name = /** @type {any} */ (e)?.name;
-  if (name === 'TimeoutError' || signal.reason?.name === 'TimeoutError') return new ProviderError('timeout', /* en */ 'No output started in time.', { cause: e, said: { code: 'late' } });
-  if (name === 'AbortError' || signal.aborted) return new ProviderError('cancelled', /* en */ 'Stopped.', { cause: e, said: { code: 'kind' } });
-  if (isFetchFailure(e)) return new ProviderError('network', /* en */ 'The connection dropped.', { cause: e, said: { code: 'kind' } });
-  // The plugin that registered the type is blamed, never a field the type carries.
-  const by = registry?.owner('endpoint-type', type.type)?.pluginId;
+  const late = () => new ProviderError('timeout', /* en */ 'No output started in time.', { cause: e, said: { code: 'late' } });
+  const stopped = () => new ProviderError('cancelled', /* en */ 'Stopped.', { cause: e, said: { code: 'kind' } });
+  if (signal.reason?.name === 'TimeoutError') return late();
+  if (signal.aborted) return stopped();
+  if (dropped !== undefined) return new ProviderError('network', /* en */ 'The connection dropped.', { cause: dropped, said: { code: 'kind' } });
+  if (!own && name === 'TimeoutError') return late();
+  if (!own && name === 'AbortError') return stopped();
+  if (own) return e;
+  const by = ownerOf(type, registry);
   if (by) registry?.fail(by, /* en */ `endpoint type ${type.type}`, e);
   return new ProviderError('plugin', String(/** @type {any} */ (e)?.message ?? e), { cause: e });
 }
@@ -615,11 +658,13 @@ export async function photoHash(data) {
  * uploads went off there (a failed upload, a refused key, a list annai can't read), or while its provider goes, changes its key or
  * address, or everything is erased (Erase), is deleted at once and its photo sent in the request.
  * @param {Request} request
- * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, uploads?: import('./uploads.js').Uploads, get: Fetch, trace?: ModelTrace, signal?: AbortSignal, now: () => number, from?: number }} c
- * from: the first message that is sent, the ones before it being held by a kept turn; expires: when the earliest of the photos sent by id expires (0: none)
+ * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, uploads?: import('./uploads.js').Uploads, get: Fetch, trace?: ModelTrace, signal?: AbortSignal, now: () => number,
+ *   registry?: import('../registry.js').Registry, from?: number }} c
+ * from: the first message that is sent, the ones before it being held by a kept turn; expires: when the earliest of the photos sent by id expires (0: none);
+ * registry: where a bug in the type's upload request counts (spec §5.5)
  * @returns {Promise<{ request: Request, expires: number }>}
  */
-async function withUploads(request, { type, endpoint, model, key, uploads, get, trace, signal, now, from = 0 }) {
+async function withUploads(request, { type, endpoint, model, key, uploads, get, trace, signal, now, registry, from = 0 }) {
   if (!uploads || !type.uploadRequest || !type.readUpload || endpoint.tunables?.uploads === false || uploads.isOff(endpoint.id) || !model.input.includes('image')) return { request, expires: 0 };
   /** @type {Map<string, string>} upload ids, by the hash of the bytes uploaded */
   const ids = new Map();
@@ -640,10 +685,12 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
         expiry.set(hash, (await uploads.expires?.(endpoint.id, hash)) || 0);
         continue;
       }
-      const r = type.uploadRequest({ endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(p.data), mediaType: p.mediaType, name: uploadName(hash, p.mediaType), expiresInSeconds: UPLOAD_TTL_S });
+      let r;
       const started = now();
       let traced = false;
       try {
+        r = type.uploadRequest({ endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(p.data), mediaType: p.mediaType, name: uploadName(hash, p.mediaType), expiresInSeconds: UPLOAD_TTL_S });
+        if (typeof r?.url !== 'string') throw new TypeError(/* en */ `${type.type}'s uploadRequest gave no request (a result with a url, not a promise)`);
         sameOrigin(endpoint, r.url); // elsewhere: never sent, and the photo goes in the request
         // Its own time limit, body included: a cut upload fails as any other; a Stop is told apart in the catch (the caller's signal aborted).
         const limit = AbortSignal.timeout(UPLOAD_MS);
@@ -665,7 +712,13 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
         expiry.set(hash, expiresAt);
       } catch (e) {
         if (signal?.aborted) throw e;
-        if (!traced) await trace?.upload({ endpoint: endpoint.name, url: r.url, status: 0, ms: now() - started, error: String(/** @type {any} */ (e)?.message ?? e) });
+        // A request the type couldn't build (it threw, or gave no url) is its plugin's bug, counted once; a refusal or an unreadable reply is not.
+        const by = typeof r?.url !== 'string' && !(e instanceof ProviderError) ? ownerOf(type, registry) : undefined;
+        if (by) {
+          registry?.fail(by, /* en */ `endpoint type ${type.type}`, e);
+          Promise.resolve(r).catch(() => {}); // an async builder's rejection: not the page's to report
+        }
+        if (!traced) await trace?.upload({ endpoint: endpoint.name, url: typeof r?.url === 'string' ? r.url : `${type.type}:`, status: 0, ms: now() - started, error: String(/** @type {any} */ (e)?.message ?? e) });
         uploads.off(endpoint.id); // photos go as bytes here until annai restarts, or a new key or address, or a Test that passes
       }
     }

@@ -511,6 +511,20 @@ test("fix pass: a key sent in a header of its own (keyHeader) never reaches the 
   assert.ok(!JSON.stringify(events).includes(KEY), 'no trace entry holds it');
 });
 
+test("a provider whose typed address isn't one fails its model with the ability's name in the words (its description's name, else its kind's), and is asked nothing (fail-owner-next, round 4 item 3)", async () => {
+  let built = 0;
+  /** @type {any} */
+  const echo = { type: 'echo', name: 'Echo', pluginId: 'echo', build: () => { built++; return { url: 'https://llm.example/v1/chat', headers: {}, body: {} }; }, async *read() {} };
+  for (const [name, shown] of [[undefined, 'Chat'], ['Chat Completions', 'Chat Completions']]) {
+    const s = setup([[]], { types: [['echo', echo]], endpointTypes: ['echo'] });
+    const user = s.config.providers['pv-0'].user;
+    s.config.providers['pv-0'].user = { ...user, baseUrl: '', abilities: { chat: { ...user.abilities.chat, ...(name ? { name } : {}) } } };
+    await assert.rejects(call(s), (e) => e instanceof AllFailedError && e.attempts.length === 1 && e.attempts[0].outcome === 'bad-request' && e.attempts[0].said?.code === 'no-address'
+      && attemptWhy(e.attempts[0]) === `E0's ${shown} has no working address. Give its address in Settings → Models.`, shown);
+  }
+  assert.equal(built, 0, 'no builder was called');
+});
+
 test('a model that refuses the audio format it was sent gets the same request again with WAV, once; the trace says what each attempt carried (Koe and Kokoro design, "Audio formats")', async () => {
   const refusal = { error: 'bad-request', status: 400, message: 'Invalid value: ogg. Valid formats are: [wav, mp3]' };
   const s = setup([[refusal, { text: 'Heard you.' }], [{ text: 'B heard you.' }]], { models: [{ input: ['text', 'audio'] }, { input: ['text', 'audio'] }] });

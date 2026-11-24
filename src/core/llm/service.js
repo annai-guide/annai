@@ -4,7 +4,7 @@ import { ROLE_KINDS, OLD_KOE } from './provider-desc.js';
 import { decide as decideWith } from './decide.js';
 import { logEvent } from '../events.js';
 import { testModel, testLevels } from './check.js';
-import { endpointTypes, ProviderError, typeError, sameOrigin, noRedirect, explain } from './contract.js';
+import { endpointTypes, ProviderError, typeError, sameOrigin, noRedirect, explain, saidAbility } from './contract.js';
 import { ensureType } from './official.js';
 import { addProvider as addProviderRecords, syncProviders, useSuggestion, addListedModel, addModelById } from './providers.js';
 import { addFromCatalog, prune, pruneable } from '../requires.js';
@@ -21,12 +21,6 @@ import { Kept, keyPrint, keeperOf } from './kept.js';
 import { speechCall } from './speech.js';
 import { withoutSecretsIn } from '../agent/net.js';
 import { openLive, testLive } from '../realtime/open.js';
-
-/**
- * An ability in a provider error's data: its name where its description gives one, else its kind, which the screens name (saidWords).
- * @param {import('./config.js').Ability} a
- */
-const saidAbility = (a) => (a.named ? { ability: a.name } : { abilityKind: a.kind });
 
 /**
  * Everything the UI needs to talk to models (spec §9): providers and their settings, the protocol
@@ -204,7 +198,7 @@ export function createLlm({
     if (!type && held) throw new ProviderError('type-missing', held, { said: { code: 'held' } });
     /* en */
     if (!type) throw new ProviderError('type-missing', `${provider.name}'s ${ability.name} needs its plugin, which isn't running. Open ${provider.name} in Settings → Models to install it.`, { said: { code: 'no-plugin', name: provider.name, ...saidAbility(ability) } });
-    return { rec, .../** @type {NonNullable<Awaited<ReturnType<typeof reach>>>} */ (await reach(pRec, rec.ability, type)), model: modelOf(rec) };
+    return { rec, ability, .../** @type {NonNullable<Awaited<ReturnType<typeof reach>>>} */ (await reach(pRec, rec.ability, type)), model: modelOf(rec) };
   };
   /**
    * A provider's ability as calls see it: its type, endpoint and key (secret; key: the protocol's). null: no type running.
@@ -223,14 +217,14 @@ export function createLlm({
    * @param {string} modelId @param {'in' | 'out'} dir
    */
   const speechOf = async (modelId, dir, scope = SYS) => {
-    const { type, endpoint, model, key, secret } = await resolve(modelId);
+    const { type, endpoint, ability, model, key, secret } = await resolve(modelId);
     /* en */
     if (type.speech !== dir) throw new ProviderError('bad-request', dir === 'in' ? `${model.name} isn't a transcription model.` : `${model.name} isn't a voice.`, { said: { code: dir === 'in' ? 'not-in' : 'not-out', name: model.name } });
     const role = (await readConfig(ws)).roles[dir === 'in' ? 'speech-in' : 'speech-out'];
     // The trace learns the key, though a keyHeader gives the protocol none.
     const trace = modelTrace(store, scope);
     if (secret) trace.secret(secret);
-    return { type, endpoint, model, key, trace, timeoutMs: (role?.firstOutputSeconds ?? (dir === 'in' ? 15 : 10)) * 1000 };
+    return { type, endpoint, ability, model, key, trace, timeoutMs: (role?.firstOutputSeconds ?? (dir === 'in' ? 15 : 10)) * 1000 };
   };
   /** The types the providers' switched-on abilities use: their protocol plugins stay. @param {import('./config.js').ProviderRecord[]} list */
   const inUse = (list) => new Set(list.flatMap((p) => Object.values(providerOf(p).abilities).filter((a) => a.on).map((a) => a.type)));
@@ -661,13 +655,13 @@ export function createLlm({
      * @returns {Promise<import('../realtime/open.js').LiveSession>}
      */
     async live(modelId, setup, { scope = SYS, wake, output } = {}) {
-      const { type, endpoint, model, key, secret } = await resolve(modelId);
+      const { type, endpoint, ability, model, key, secret } = await resolve(modelId);
       if (!type.realtime || !type.audio) throw new ProviderError('bad-request', /* en */ `${model.name} isn't a live voice model.`, { said: { code: 'not-live', name: model.name } });
       const trace = modelTrace(store, scope);
       if (secret) trace.secret(secret);
       const tunables = { ...endpoint.tunables, ...model.tunables, ...liveTunables.get(modelId) };
       const session = openLive({
-        type, endpoint, model, key, tunables, setup, trace,
+        type, endpoint, ability, model, key, tunables, setup, trace,
         registry: plugins.registry, wake, output, ...(openSocket ? { socket: openSocket } : {}),
       });
       // What a refusal taught the protocol (its language hints, its proactive audio) is remembered, even when the reopened session then
@@ -733,12 +727,12 @@ export function createLlm({
      * @param {string} modelId @param {{ onAudio?: (data: Uint8Array, format: import('./contract.js').AudioFormat) => void }} [o]
      */
     async test(modelId, { onAudio } = {}) {
-      const { type, endpoint, model, key } = await resolve(modelId, { install: true });
+      const { type, endpoint, ability, model, key } = await resolve(modelId, { install: true });
       // Test asks at the level of the first role that asks this model at one.
       const { roles } = await readConfig(ws);
       const r = /** @type {const} */ (['main', 'koe-classic', 'utility']).find((x) => roles[x]?.models.includes(modelId) && roles[x].level !== 'off');
       const role = r ? { id: r, level: roles[r].level } : undefined;
-      /* en */ const result = !type.realtime ? await testModel({ type, endpoint, model, key, fetch: get, probe, role, uploads })
+      /* en */ const result = !type.realtime ? await testModel({ type, endpoint, ability, model, key, fetch: get, probe, role, uploads })
         : await service.live(modelId, { instructions: 'This is a connection test. Answer in a word or two.', context: '', tools: [] })
           .then((s) => testLive(s, { onAudio: onAudio ? (d) => onAudio(d, s.audioOut) : undefined }), (e) => ({ ok: false, steps: [{ step: /** @type {const} */ ('access'), ok: false, detail: explain(e) }] }));
       const found = Object.fromEntries(result.steps.map((s) => [s.step, s.ok]));
@@ -778,7 +772,7 @@ export function createLlm({
        * words, by host, whether the server doesn't allow web apps or can't be reached (spec §9.8). @param {string} url @param {RequestInit} [init]
        */
       const send = async (url, init = {}) => {
-        sameOrigin(endpoint, url);
+        sameOrigin(endpoint, url, ability);
         /** @type {Response} */
         let res;
         try {

@@ -83,7 +83,7 @@ const windows = new WeakMap();
 
 /**
  * Hands each running plugin's hooks the entries of the types they asked for, after the current task,
- * each call guarded: an error counts against its plugin and is never thrown here. Past HOOK_LIMIT in
+ * each call guarded: an error counts against its plugin (not a request that couldn't be made for want of a link, registry.js guard) and is never thrown here. Past HOOK_LIMIT in
  * a window, the entry is dropped, it counts as the plugin's failure, and the plugin is switched off.
  * @param {Registry} registry @param {EventRecord[]} events @param {() => number} [now]
  */

@@ -8,7 +8,7 @@ import { STAND_IN_NAMES } from './where.js';
 /**
  * Speaking (spec §10.1). What Shiori says arrives as text, a piece at a time; each complete sentence goes to the first working entry of the
  * speech-out list, an API voice or the browser's. An API voice's next sentence is fetched while one plays, so there are no gaps. A voice
- * that fails partway is benched and the same sentence plays on the next one. When the user cuts her off, playing stops at once and what
+ * that fails partway is benched (not when the phone is offline: voice.js restFor) and the same sentence plays on the next one. When the user cuts her off, playing stops at once and what
  * she had said is kept: by sentence and the fraction played, or by word with the browser voice. A voice that streams is played as it
  * comes, once the start rule says it won't stutter; the next sentence's stream reads ahead.
  * @typedef {import('./platform.js').VoicePlatform} VoicePlatform
@@ -17,7 +17,7 @@ import { STAND_IN_NAMES } from './where.js';
  * @typedef {{ id: string, name: string, kind: 'browser' | 'api' }} VoiceEntry
  * @typedef {{ sentences: string[], said: number, cut: { index: number, at: number } | null, heard: string, failed: null | 'no-voice' | 'blocked', voices: string[], failedVoices: { name: string, why: string, error: unknown }[] }} Spoken
  *   said: sentences spoken whole; cut: where she was stopped (a sentence, and characters into it); heard: what the user heard; voices: who spoke, in order;
- *   failedVoices: the voices that failed and were benched, with why in the provider's own plain words, so the Voice test can say the first voice failed;
+ *   failedVoices: the voices that failed, each once, with why in the provider's own plain words, so the Voice test can say the first voice failed;
  *   failed: no voice could speak ('no-voice'), or the page may not play sound yet ('blocked', an iPhone before the first tap)
  * @typedef {{ entries: () => Promise<VoiceEntry[]>, synthesize: (entry: VoiceEntry, text: string, signal: AbortSignal) => Promise<Clip | SpeechStream>,
  *   platform: () => VoicePlatform | null, bench: (id: string, error: unknown) => void,
@@ -329,7 +329,7 @@ export class Utterance {
   }
 
   /**
-   * Sentence i on the first voice that can say it. A voice that fails is benched and the next one
+   * Sentence i on the first voice that can say it. A voice that fails is benched (nothing offline: voice.js restFor) and the next one
    * says the same sentence (spec §10.1); a page that may not play sound yet is nobody's fault.
    * @param {number} i @param {string} text @returns {Promise<Said>}
    */
@@ -372,7 +372,7 @@ export class Utterance {
           ahead.stop.abort();
           this.#prefetched.delete(k);
         }
-        this.#failedVoices.push({ name: entry.name, why: String(/** @type {any} */ (e)?.message ?? e).slice(0, 300), error: e });
+        if (!this.#failedVoices.some((f) => f.name === entry.name)) this.#failedVoices.push({ name: entry.name, why: String(/** @type {any} */ (e)?.message ?? e).slice(0, 300), error: e });
         this.#deps.bench(entry.id, e);
       } finally {
         this.#playing = null;
@@ -387,11 +387,16 @@ export class Utterance {
     this.#deps.onVoice?.(entry, system);
   }
 
-  /** Sentence i's clip or stream: fetched ahead by the same voice, or now. @param {number} i @param {VoiceEntry} entry @param {string} text */
+  /**
+   * Sentence i's clip or stream: fetched ahead by the same voice, or now. A read-ahead of another voice (the first, asked again for each sentence
+   * offline, failed) is aborted, unpaid, as when its voice fails (#say). @param {number} i @param {VoiceEntry} entry @param {string} text
+   */
   #clip(i, entry, text) {
     const ahead = this.#prefetched.get(i);
     this.#prefetched.delete(i);
-    return ahead && ahead.entry === entry.id ? ahead.clip : this.#fetch(entry, text);
+    if (ahead && ahead.entry === entry.id) return ahead.clip;
+    ahead?.stop.abort();
+    return this.#fetch(entry, text);
   }
 
   /** A voice's clip, or its stream, read from the moment it starts. @param {VoiceEntry} entry @param {string} text @param {AbortSignal} [signal] @returns {Promise<Clip | Arrivals>} */

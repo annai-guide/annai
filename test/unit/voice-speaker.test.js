@@ -68,6 +68,55 @@ test('done names the voices that failed and why, for the Voice test to say befor
   assert.deepEqual((await u2.done).failedVoices, []);
 });
 
+test('a voice that fails and rests nothing (the phone is offline: voice.js restFor) is asked again for each sentence, and listed once among the failed voices (fail-owner-next, fix 2)', async (t) => {
+  useClock(t);
+  const p = fakePlatform();
+  const v = fakeVoices(['v1'], { failing: { v1: true }, browser: true });
+  const u = new Speaker({ entries: v.entries, synthesize: v.synthesize, bench: () => {}, platform: () => /** @type {any} */ (p), locale: 'en' }).begin();
+  u.end('First thing. Second thing. Third thing.');
+  const done = await u.done;
+  assert.deepEqual(v.log.filter((l) => l.startsWith('fetch')).map((l) => l.split(' ')[1]), ['v1', 'v1', 'v1'], 'asked for each sentence: nothing rested it');
+  assert.deepEqual(done.failedVoices.map((f) => [f.name, f.why]), [['v1', 'v1 failed']], 'listed once, as the Voice test says it once');
+  assert.deepEqual(done.voices, ['Browser voice']);
+});
+
+test("a fallback voice's read-ahead that the first voice's turn makes unwanted is aborted, not left running: with the first voice failing and nothing resting it (offline), each sentence asks it first, and what the fallback was fetching for the next sentence stops (fail-owner-next, round 2 item 4)", async (t) => {
+  useClock(t);
+  const p = fakePlatform({ playMs: 5 });
+  const entries = [{ id: 'v1', name: 'v1', kind: /** @type {const} */ ('api') }, { id: 'v2', name: 'v2', kind: /** @type {const} */ ('api') }];
+  /** The fallback's requests in flight. */
+  let running = 0;
+  /** How many of them were in flight each time the first voice was asked. @type {number[]} */
+  const whenAsked = [];
+  /** @type {string[]} */
+  const aborted = [];
+  const synthesize = (/** @type {{ id: string }} */ entry, /** @type {string} */ text, /** @type {AbortSignal} */ signal) => new Promise((resolve, reject) => {
+    if (entry.id === 'v1') {
+      whenAsked.push(running);
+      setTimeout(() => reject(Object.assign(new Error('v1 failed'), { kind: 'network' })), 1);
+      return;
+    }
+    running++;
+    let over = false;
+    const done = setTimeout(() => { over = true; running--; resolve({ data: new TextEncoder().encode(`v2:${text}`), mediaType: 'audio/mpeg' }); }, 30);
+    signal.addEventListener('abort', () => {
+      if (over) return;
+      over = true;
+      running--;
+      clearTimeout(done);
+      aborted.push(text);
+      reject(new DOMException('Stopped.', 'AbortError'));
+    }, { once: true });
+  });
+  const u = new Speaker({ entries: async () => entries, synthesize: /** @type {any} */ (synthesize), bench: () => {}, platform: () => /** @type {any} */ (p), locale: 'en' }).begin();
+  u.end('First thing. Second thing. Third thing.');
+  const done = await u.done;
+  assert.deepEqual(plays(p.log), ['v2:First thing.', 'v2:Second thing.', 'v2:Third thing.']);
+  assert.equal(done.said, 3);
+  assert.deepEqual(whenAsked, [0, 0, 0], 'the fallback has nothing in flight for a sentence by the time the first voice is asked for it again');
+  assert.deepEqual(aborted, ['Second thing.', 'Third thing.'], 'the two read-aheads the first voice made unwanted were aborted when dropped');
+});
+
 test('the browser voice speaks when it comes first, or when every API voice failed; a cut is kept by word', async (t) => {
   useClock(t);
   const p = fakePlatform({ playMs: 40 });

@@ -44,10 +44,10 @@ const BUGS = [TypeError, ReferenceError, RangeError, SyntaxError, EvalError];
 
 /**
  * Whether an error is the browser's own account of a request it couldn't make or finish (offline: "Failed to fetch", Safari's "Load failed",
- * Chrome's "network error", Firefox's "NetworkError when attempting to fetch resource"): the link's, whatever code was reading the reply (§17).
- * The one rule for whose failure an error is, on the tool path (isPluginBug) and the endpoint path (call.js asProviderError) alike. By whole words,
- * so a plugin's own TypeError that only names something with "fetch" or "network" in it (`this.fetchModels is not a function`, `reading 'networkState'`)
- * is its bug. The browsers give no code for these, so words are all there is (an error's position would be the other rule: sse.js's, for a stream).
+ * Chrome's "network error", Firefox's "NetworkError when attempting to fetch resource"): the link's, when a plugin's own code reads the reply (§17).
+ * The rule (isPluginBug) wherever the plugin's own code makes the request and reads the reply (a tool, a provider's list, sign-in and the like); an
+ * endpoint type's call decides by position (call.js asProviderError). By whole words, so a plugin's own TypeError that only names something with
+ * "fetch" or "network" in it (`this.fetchModels is not a function`, `reading 'networkState'`) is its bug. The browsers give no code, so words are all there is.
  * @param {unknown} e
  */
 export function isFetchFailure(e) {
@@ -55,16 +55,27 @@ export function isFetchFailure(e) {
 }
 
 /**
- * Whether an error is a bug in a plugin's code (spec §5.5) rather than its answer. A fetch the
- * browser couldn't make (isFetchFailure) is an answer (§17).
+ * Whether a start or a hook failed for want of a link (§17): the browser's own fetch failure, or annai's kind `network` (what `annai.net.fetch`
+ * throws, agent/net.js) or `unreachable`, the pair `noLink` reads. guard and startInstalled's count of launches count nothing for it. @param {unknown} e
+ */
+export const isLinkFailure = (e) => isFetchFailure(e) || ['network', 'unreachable'].includes(/** @type {any} */ (e)?.kind);
+
+/**
+ * An address the user typed that isn't one (`new URL` throws): the user's to fix, not a plugin's bug. Where a plugin's own code makes the request
+ * (isPluginBug's paths) annai has no address to check, so the engine's words are what there is: Chromium's "Invalid URL", WebKit's "cannot be parsed
+ * as a URL", Firefox's "is not a valid URL". An endpoint type's call checks its address by state, before any builder runs (call.js).
+ * @param {unknown} e
+ */
+export const isBadAddress = (e) => e instanceof TypeError && /invalid url|failed to parse url|cannot be parsed as a url|is not a valid url/i.test(e.message);
+
+/**
+ * Whether an error is a bug in a plugin's code (spec §5.5) rather than its answer, outside callOnce's and speechCall's calls (asProviderError).
+ * A fetch the browser couldn't make (isFetchFailure) is an answer (§17).
  * @param {unknown} e
  */
 export function isPluginBug(e) {
   if (!(e instanceof Error)) return true;
-  const offline = isFetchFailure(e);
-  // An address the user typed that isn't one is the user's to fix, not a bug.
-  const address = e instanceof TypeError && /invalid url|failed to parse url/i.test(e.message);
-  return !offline && !address && BUGS.some((B) => e instanceof B);
+  return !isFetchFailure(e) && !isBadAddress(e) && BUGS.some((B) => e instanceof B);
 }
 
 export class PluginError extends Error {
@@ -86,9 +97,10 @@ export class PluginError extends Error {
 
 /**
  * Everything plugins contribute, grouped by kind ("schema", "tool", …).
- * Functions plugins hand over go through guard(): a failure becomes a
- * plugin.error event, and a plugin that fails maxFailures times in a row is
- * switched off until enable() is called (spec §5.5).
+ * Functions plugins hand over go through guard(): a failure (not one for want
+ * of a link, isLinkFailure) becomes a plugin.error event, and a
+ * plugin that fails maxFailures times in a row is switched off until enable()
+ * is called (spec §5.5).
  */
 /**
  * Why a plugin was switched off, as data: it failed count times in a row, or its hooks were handed more than entries log entries in
@@ -237,7 +249,7 @@ export class Registry {
         this.#failures.set(pluginId, 0);
         return result;
       } catch (e) {
-        this.#fail(pluginId, name, e);
+        if (!isLinkFailure(e)) this.#fail(pluginId, name, e); // a request that couldn't be made for want of a link is an answer (§17), not a failure; it still reaches the caller
         const was = /** @type {any} */ (e);
         const message = String(was?.message ?? e);
         // What went wrong: annai's words for the screens where it has them (shown), else the plugin's own, or annai's own English check (en).

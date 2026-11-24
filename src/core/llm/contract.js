@@ -139,10 +139,16 @@ function shown(kind, provider) {
  * One of annai's own provider errors, as data: a call's attempt keeps it, and the screens make its words (saidWords), while message
  * is the log's and a model's English (the shown rule; the design's "Store data, not words"). kind: the kind's words say it.
  * @typedef {{ code: 'kind' | 'late' | 'paused' | 'send' | 'stalled' | 'held' | 'zdr' | 'model-gone' | 'no-plugin' | 'not-in' | 'not-out' | 'not-live'
- *   | 'provider-gone' | 'provider-off' | 'provider-removed' | 'cors' | 'unreachable' | 'no-list' | 'formats' | 'origin' | 'not-heard',
+ *   | 'provider-gone' | 'provider-off' | 'provider-removed' | 'cors' | 'unreachable' | 'no-list' | 'formats' | 'origin' | 'no-address' | 'not-heard',
  *   name?: string, ability?: string, abilityKind?: string, host?: string, formats?: string[], to?: string, want?: string, seconds?: number }} Said
  * ability: the ability's name where its description gives one; abilityKind: its kind, which the screens name otherwise.
  */
+
+/**
+ * An ability in a provider error's data: its name where its description gives one, else its kind, which the screens name (saidWords).
+ * @param {{ named: boolean, kind: string, name: string }} a
+ */
+export const saidAbility = (a) => (a.named ? { ability: a.name } : { abilityKind: a.kind });
 
 /**
  * What each kind of ability is called in the screens' words, when its description gives no name: annai's own descriptive name
@@ -178,6 +184,7 @@ export function saidWords(s, kind, provider) {
     case 'formats': return t`${name} takes no audio format this phone makes (${list(formats ?? [], 'plain')}).`;
     case 'origin': return s.to ? t`${name}'s ${ability} built a request to ${s.to}, not its address ${s.want}. Check its tunables.`
       : t`${name}'s ${ability} built a request to an address that isn't one, not its address ${s.want}. Check its tunables.`;
+    case 'no-address': return t`${name}'s ${ability} has no working address. Give its address in Settings → Models.`;
     case 'not-heard': return t`Nothing in the speech-in list worked for ${name}.`;
     default: return shown(kind, provider) ?? '';
   }
@@ -233,15 +240,22 @@ const originOf = (url) => {
 /**
  * A request a protocol built goes only to its ability's address: tunables such as path and listPath are joined into the URL, so a
  * description could otherwise send the key to another host while every check names the right one. annai calls this before it fetches.
- * @param {{ name?: string, ability?: string, baseUrl: string }} endpoint @param {string} url
+ * An ability's own address that isn't an http(s) one is no address, whatever is asked of it (a typed one may hold a key, so the words never repeat it).
+ * ability: its name in the words; a caller with none leaves the ability's id (`endpoint.ability`).
+ * @param {{ name?: string, ability?: string, baseUrl: string }} endpoint @param {string} url @param {{ named: boolean, kind: string, name: string }} [ability]
  */
-export function sameOrigin(endpoint, url) {
+export function sameOrigin(endpoint, url, ability) {
   const want = originOf(endpoint.baseUrl);
   const got = originOf(url);
   if (want && got === want) return;
-  const where = want || endpoint.baseUrl || /* en */ '(none)';
-  throw new ProviderError('bad-request', /* en */ `${endpoint.name ?? 'This provider'}'s ${endpoint.ability ?? 'ability'} built a request to ${got || "an address that isn't one"}, not its address ${where}. Check its tunables.`,
-    { said: { code: 'origin', name: endpoint.name ?? '', ability: endpoint.ability ?? '', to: got, want: where } });
+  const of = ability ?? { named: true, kind: '', name: endpoint.ability ?? 'ability' };
+  const name = endpoint.name ?? '';
+  if (!want) {
+    throw new ProviderError('bad-request', /* en */ `${endpoint.name ?? 'This provider'}'s ${of.name} has no working address. Give its address in Settings → Models.`,
+      { said: { code: 'no-address', name, ...saidAbility(of) } });
+  }
+  throw new ProviderError('bad-request', /* en */ `${endpoint.name ?? 'This provider'}'s ${of.name} built a request to ${got || "an address that isn't one"}, not its address ${want}. Check its tunables.`,
+    { said: { code: 'origin', name, ...saidAbility(of), to: got, want } });
 }
 
 /** A keyed request never follows a redirect: it'd take x-api-key and the body elsewhere. @param {Response} res @param {{ name?: string }} endpoint */
@@ -452,7 +466,7 @@ export function safeId(id) {
  * @property {boolean} [tail]  true when build() places request.tail; else annai adds it as the last text
  * @property {(c: CallSpec) => { url: string, headers: Record<string, string>, body: any }} [build]  the HTTP request for annai's request
  * @property {(res: Response, c: CallSpec) => AsyncIterable<StreamEvent>} [read]  the events of a successful streamed response
- * @property {(c: CallSpec) => AsyncIterable<StreamEvent>} [run]  instead of build and read, for types that need no network
+ * @property {(c: CallSpec) => AsyncIterable<StreamEvent>} [run]  instead of build and read, for types that make their own requests, or none: annai sends nothing for it
  * @property {(status: number, body: string) => ErrorKind | null} [classify]  a sharper kind for an error response, or null
  * @property {(c: { model: import('./config.js').Model, tunables: Record<string, any> }) => string} [nativeScope]  who of an endpoint's models can read
  *   the natives one of them made (default: all of them): a string, equal for models that read each other's, which annai adds to the endpoint and key a

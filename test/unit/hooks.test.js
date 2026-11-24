@@ -159,6 +159,67 @@ test('8b-1 (M1): a write the store tries again reports its entries once', async 
   });
   assert.deepEqual(seen.map((evs) => evs.map((e) => e.type)), [['x']]);
 });
+test("a hook that throws the browser's own fetch failure while the device is offline is not counted: it failing three times and more leaves its plugin on and logs nothing; a hook with a bug is off at the third (fail-owner-next, round 2 item 3)", async () => {
+  /** @type {any[]} */
+  const logged = [];
+  const registry = new Registry({ log: (ev) => logged.push(ev) });
+  let posts = 0;
+  let bugs = 0;
+  registry.add('poster', 'hook', { fn: () => { posts++; throw new TypeError('Failed to fetch'); } });
+  registry.add('bugged', 'hook', { fn: () => { bugs++; throw new TypeError('x is not a function'); } });
+  const ev = (/** @type {number} */ seq) => ({ scope: SYS, seq, ts: 1, type: 'x', actor: 'system' });
+  deliverHooks(registry, [1, 2, 3, 4, 5].map(ev), () => 1_000);
+  await settle();
+  assert.equal(posts, 5, 'asked each time');
+  assert.equal(registry.isDisabled('poster'), false, 'five offline posts: still on');
+  assert.deepEqual(logged.filter((e) => e.actor === 'plugin:poster'), [], 'none counted');
+  assert.equal(registry.isDisabled('bugged'), true, "a hook's own bug: off");
+  assert.equal(bugs, 3, 'at the third');
+});
+test("a hook that posts through annai.net.fetch while the device is offline is not counted either (the real tracedFetch's error, kind network): five entries leave the plugin on and log no plugin.error; the same hook with a bug is off at the third (fail-owner-next, round 3 item 1)", async () => {
+  /** @type {any[]} */
+  const logged = [];
+  const { host, ws, registry } = await hostKit({ log: (ev) => logged.push(ev) });
+  host.connect({ fetch: async () => { throw new TypeError('Load failed'); } });
+  await host.install(files({
+    'annai-plugin.json': JSON.stringify({ id: 'poster', name: 'Poster', version: '1.0.0', api: 1, entry: 'index.js' }),
+    'index.js': `export function activate(annai) {
+      globalThis.__posts = 0;
+      return annai.hooks.on(async () => {
+        globalThis.__posts++;
+        await annai.net.fetch('https://poster.example/log', { method: 'POST', body: 'x' });
+      }, { types: ['file.write'] });
+    }`,
+  }));
+  await host.install(files({
+    'annai-plugin.json': JSON.stringify({ id: 'bugged', name: 'Bugged', version: '1.0.0', api: 1, entry: 'index.js' }),
+    'index.js': `export function activate(annai) {
+      globalThis.__bugs = 0;
+      return annai.hooks.on(async () => {
+        globalThis.__bugs++;
+        await annai.net.fetch('https://poster.example/log').catch(() => {});
+        return undefined.x;
+      }, { types: ['file.write'] });
+    }`,
+  }));
+  const g = /** @type {any} */ (globalThis);
+  try {
+    await host.start('poster');
+    await host.start('bugged');
+    for (let i = 0; i < 5; i++) {
+      await ws.write('me', `/notes/${i}.md`, 'hi', { author: 'user' });
+      for (let k = 0; k < 20; k++) await settle();
+    }
+    assert.equal(g.__posts, 5, 'asked each time');
+    assert.equal(registry.isDisabled('poster'), false, 'five offline posts: still on');
+    assert.deepEqual(logged.filter((e) => e.actor === 'plugin:poster'), [], 'none counted or logged');
+    assert.equal(registry.isDisabled('bugged'), true, "a hook's own bug: off");
+    assert.equal(g.__bugs, 3, 'at the third');
+  } finally {
+    delete g.__posts;
+    delete g.__bugs;
+  }
+});
 test("a plugin switched off at the hooks' limit and turned on again starts with a window of its own, not the one that switched it off", async () => {
   const registry = new Registry();
   let got = 0;

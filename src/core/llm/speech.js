@@ -1,5 +1,5 @@
 import { typeError, sameOrigin, noRedirect, ProviderError } from './contract.js';
-import { cannotConnect, asProviderError, sendCut } from './call.js';
+import { cannotConnect, asProviderError, sendCut, watched, typeWorked } from './call.js';
 import { sendMs } from './uploads.js';
 import { speechCost } from './cost.js';
 import { pickOut, formatOf } from '../voice/formats.js';
@@ -25,7 +25,8 @@ const playable = (p) => p?.pcm instanceof Int16Array && Number.isFinite(p.rate);
  * @param {{ type: EndpointType, endpoint: import('./config.js').Endpoint, model: import('./config.js').Model, key: string | null,
  *   audio?: { data: Uint8Array, mediaType: string, seconds?: number }, text?: string, fetch?: (url: string, init: RequestInit) => Promise<Response>,
  *   signal?: AbortSignal, timeoutMs?: number, trace?: ReturnType<typeof import('./trace.js').modelTrace>, registry?: import('../registry.js').Registry,
- *   now?: () => number, wake?: string, plays?: string[], stream?: boolean, unstyled?: boolean, languages?: import('./contract.js').Languages, shared?: boolean }} c  audio: transcribe it, with an 'in' type; text: say it, with an 'out' type;
+ *   now?: () => number, wake?: string, plays?: string[], stream?: boolean, unstyled?: boolean, languages?: import('./contract.js').Languages, shared?: boolean,
+ *   ability?: import('./config.js').Ability }} c  audio: transcribe it, with an 'in' type; text: say it, with an 'out' type; ability: the endpoint's, for its name where the address is wrong;
  *   plays: what the device plays; stream: the caller plays a stream; unstyled: send no style (a server refused it); languages: what the user speaks, for a
  *   transcription's language hint: a voice is given none, the voice APIs called here take none (a multilingual voice follows the text; one made for one language reads everything in it)
  * @returns {Promise<{ text?: string, clip?: Clip, stream?: SpeechStream, cost: number | undefined, ms: number }>} text from an 'in' type, a clip or a stream from an 'out' type
@@ -44,10 +45,11 @@ export async function speechCall(c) {
   if (!hearing && spec.tunables.format === 'auto') spec.tunables.format = pickOut([].concat(spec.tunables.audioOut ?? []), c.plays ?? ['mp3', 'wav']) ?? 'mp3';
   /** @type {{ data: Uint8Array, mediaType: string } | undefined} */
   let clip = c.audio;
-  const built = hearing
-    ? /** @type {NonNullable<EndpointType['transcribeRequest']>} */ (type.transcribeRequest)({ ...spec, audio: /** @type {{ data: Uint8Array, mediaType: string }} */ (c.audio), ...(c.languages ? { languages: c.languages } : {}) })
-    : /** @type {NonNullable<EndpointType['speechRequest']>} */ (type.speechRequest)({ ...spec, text });
-  const cost = endpoint.free ? 0 : hearing ? speechCost(model.prices, { seconds: c.audio?.seconds, at: now() }) : speechCost(model.prices, { chars: text.length + (type.extraChars?.(spec) ?? 0), at: now() });
+  /** @type {number | undefined} */
+  let cost;
+  let url = `${type.type}:`;
+  /** The reply's failed read (call.js watched). @type {() => unknown} */
+  let dropped = () => undefined;
   const started = now();
   let status = 0;
   const streams = !hearing && c.stream === true && typeof type.readSpeechStream === 'function' && spec.tunables.stream !== false;
@@ -61,24 +63,22 @@ export async function speechCall(c) {
     clearTimeout(t);
     t = setTimeout(() => timer.abort(new DOMException(why, 'TimeoutError')), ms);
   };
-  // The request's bytes: at least the recording's, more as base64 in JSON (a string body). `sending` is that time until the headers come.
-  let sending = timeoutMs + sendMs(Math.max(c.audio?.data.byteLength ?? 0, typeof built.body === 'string' ? built.body.length : 0), c.shared);
-  limit(/* en */ 'No answer in time.', sending);
+  let sending = 0; // the time the request has, until the answer's headers
   const signal = c.signal ? anySignal([c.signal, timer.signal]) : timer.signal;
   /** A stream's format and size so far. @type {{ format: string, bytes: number } | null} */
   let sound = null;
   /** @param {string} outcome @param {string} [error] */
   const trace = (outcome, error) => c.trace?.request({
     ...(clip ? { format: formatOf(clip.mediaType) ?? clip.mediaType, bytes: clip.data.byteLength } : sound ?? {}),
-    kind: hearing ? 'speech-in' : 'speech-out', endpoint: endpoint.name, model: model.name, providerModel: model.providerId, url: built.url, status,
+    kind: hearing ? 'speech-in' : 'speech-out', endpoint: endpoint.name, model: model.name, providerModel: model.providerId, url, status,
     ms: now() - started, firstMs, outcome, usage: null, ...(error ? { error } : {}), ...(outcome === 'ok' && cost !== undefined ? { cost } : {}),
     ...(c.wake ? { wake: c.wake } : {}), ...(hearing ? { seconds: c.audio?.seconds } : { chars: text.length }),
   });
   /** @param {unknown} e */
   const failed = async (e) => {
+    let err = asProviderError(e, signal, type, c.registry, dropped());
     // A voice that started, then stalled: what it was, as it is made (the said its words come from), never a message patched after.
-    const stalled = firstMs !== null && (/** @type {any} */ (e)?.name === 'TimeoutError' || signal.reason?.name === 'TimeoutError') && !(e instanceof ProviderError);
-    let err = stalled ? new ProviderError('timeout', /* en */ 'The voice stopped arriving for longer than annai waits.', { cause: e, said: { code: 'stalled' } }) : asProviderError(e, signal, type, c.registry);
+    if (err.said?.code === 'late' && firstMs !== null) err = new ProviderError('timeout', /* en */ 'The voice stopped arriving for longer than annai waits.', { cause: e, said: { code: 'stalled' } });
     // A recording that never went up in its send's time, as a photo's request does (call.js): likelier the link than the model. A voice's text is small: late.
     if (hearing && sending && err.said?.code === 'late') err = sendCut(e, sending);
     await trace(err.kind, err.message);
@@ -86,9 +86,19 @@ export async function speechCall(c) {
   };
   let handed = false;
   try {
+    // From the request's build on, what the type's code throws is classified (asProviderError), and a builder gets only an address that parses.
+    sameOrigin(endpoint, endpoint.baseUrl, c.ability);
+    const built = hearing
+      ? /** @type {NonNullable<EndpointType['transcribeRequest']>} */ (type.transcribeRequest)({ ...spec, audio: /** @type {{ data: Uint8Array, mediaType: string }} */ (c.audio), ...(c.languages ? { languages: c.languages } : {}) })
+      : /** @type {NonNullable<EndpointType['speechRequest']>} */ (type.speechRequest)({ ...spec, text });
+    url = built.url;
+    cost = endpoint.free ? 0 : hearing ? speechCost(model.prices, { seconds: c.audio?.seconds, at: started }) : speechCost(model.prices, { chars: text.length + (type.extraChars?.(spec) ?? 0), at: started });
+    // The request's bytes: at least the recording's, more as base64 in JSON (a string body). `sending` is that time until the headers come.
+    sending = timeoutMs + sendMs(Math.max(c.audio?.data.byteLength ?? 0, typeof built.body === 'string' ? built.body.length : 0), c.shared);
+    limit(/* en */ 'No answer in time.', sending);
     /** @type {Response} */
     let res;
-    sameOrigin(endpoint, built.url); // the key goes only to the ability's address
+    sameOrigin(endpoint, built.url, c.ability); // the key goes only to the ability's address
     try {
       res = await (c.fetch ?? ((url, init) => fetch(url, init)))(built.url, { method: 'POST', headers: built.headers, body: built.body, signal, redirect: 'manual' });
     } catch (e) {
@@ -98,9 +108,10 @@ export async function speechCall(c) {
     limit(/* en */ 'No answer in time.'); // the provider has the request
     status = res.status;
     noRedirect(res, endpoint);
-    if (!res.ok) {
-      throw typeError(type, res.status, await res.text().catch(() => ''), res.headers);
-    }
+    const reply = watched(res);
+    dropped = reply.dropped;
+    if (!res.ok) throw typeError(type, res.status, await reply.res.text().catch(() => ''), res.headers);
+    res = reply.res;
     if (streams) {
       const pieces = /** @type {NonNullable<EndpointType['readSpeechStream']>} */ (type.readSpeechStream)(res, spec)[Symbol.asyncIterator]();
       const first = await pieces.next();
@@ -113,6 +124,7 @@ export async function speechCall(c) {
     const out = hearing
       ? { text: String((await /** @type {NonNullable<EndpointType['readTranscript']>} */ (type.readTranscript)(res, spec)).text ?? '').trim() }
       : { clip: (clip = await /** @type {NonNullable<EndpointType['readSpeech']>} */ (type.readSpeech)(res, spec)) };
+    typeWorked(type, c.registry);
     await trace('ok');
     return { ...out, cost, ms: now() - started };
   } catch (e) {
@@ -141,6 +153,7 @@ export async function speechCall(c) {
         yield next.value.pcm;
       }
       settled = true;
+      typeWorked(type, c.registry);
       await trace('ok');
     } catch (e) {
       settled = true;
