@@ -55,6 +55,14 @@ export function isFetchFailure(e) {
 }
 
 /**
+ * Whether a plugin's start or hook failed for want of a link (§17): the browser's own fetch failure (isFetchFailure), or annai's kind for a request
+ * it couldn't make or finish, which is what `annai.net.fetch` throws (agent/net.js: a plain Error of kind `network`) and docs/plugins.md tells every
+ * plugin to send through; `unreachable` is the other kind a call to a model gives. The pair `noLink` reads (llm/fallback.js). guard counts nothing
+ * for it, and nor does startInstalled's count of launches. @param {unknown} e
+ */
+export const isLinkFailure = (e) => isFetchFailure(e) || ['network', 'unreachable'].includes(/** @type {any} */ (e)?.kind);
+
+/**
  * An address the user typed that isn't one (`new URL` throws): the user's to fix, not a plugin's bug. Where a plugin's own code makes the request
  * (isPluginBug's paths) annai has no address to check, so the engine's words are what there is: Chromium's "Invalid URL", WebKit's "cannot be parsed
  * as a URL", Firefox's "is not a valid URL". An endpoint type's call checks its address by state, before any builder runs (call.js).
@@ -91,8 +99,8 @@ export class PluginError extends Error {
 
 /**
  * Everything plugins contribute, grouped by kind ("schema", "tool", …).
- * Functions plugins hand over go through guard(): a failure (not a fetch the
- * browser couldn't make, isFetchFailure) becomes a plugin.error event, and a
+ * Functions plugins hand over go through guard(): a failure (not one for want
+ * of a link, isLinkFailure) becomes a plugin.error event, and a
  * plugin that fails maxFailures times in a row is switched off until enable()
  * is called (spec §5.5).
  */
@@ -243,7 +251,7 @@ export class Registry {
         this.#failures.set(pluginId, 0);
         return result;
       } catch (e) {
-        if (!isFetchFailure(e)) this.#fail(pluginId, name, e); // a fetch the browser couldn't make is an answer (§17), not a failure; it still reaches the caller
+        if (!isLinkFailure(e)) this.#fail(pluginId, name, e); // a request that couldn't be made for want of a link is an answer (§17), not a failure; it still reaches the caller
         const was = /** @type {any} */ (e);
         const message = String(was?.message ?? e);
         // What went wrong: annai's words for the screens where it has them (shown), else the plugin's own, or annai's own English check (en).

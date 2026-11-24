@@ -12,7 +12,7 @@ import { logEvent } from './events.js';
 import { ZipReader, ZipWriter } from './zip.js';
 import { xmlElements, xmlText } from './xml.js';
 import { TargetError, checkStorageType, backupFileName, parseBackupFileName, readAnswer } from './storage-types.js';
-import { PluginError, TAKEN, NOT_OWN, KEYED, NAMED, isPluginBug, compareRanks, takenShown, notOwnShown } from './registry.js';
+import { PluginError, TAKEN, NOT_OWN, KEYED, NAMED, isPluginBug, isLinkFailure, compareRanks, takenShown, notOwnShown } from './registry.js';
 import { t, plural, lang, dir, wordsOver } from './l10n.js';
 import { num, size, list, sentences } from './intl.js';
 import { ProviderError, errorFromResponse } from './llm/contract.js';
@@ -393,7 +393,9 @@ export class PluginHost {
         await this.start(id);
         if (s.startFailures) await this.#updateState(id, { startFailures: 0 }).catch(() => {});
       } catch (error) {
-        const n = (s.startFailures ?? 0) + 1;
+        // A start that failed for want of a link (the device is offline: guard keeps the error as the cause) neither breaks the run of failed launches
+        // nor extends it, as guard counts nothing for it; it stays in the list, so the card still says the plugin didn't start.
+        const n = (s.startFailures ?? 0) + (isLinkFailure(/** @type {any} */ (error)?.cause) ? 0 : 1);
         const disabled = n >= MAX_START_FAILURES;
         await this.#updateState(id, { startFailures: n, ...(disabled ? { enabled: false } : {}) }).catch(() => {});
         if (disabled) /* en */ this.#log({ type: 'plugin.disabled', actor: 'system', data: { plugin: id, reason: `didn't start on ${n} launches in a row` } });

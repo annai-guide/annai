@@ -757,7 +757,8 @@ il3b75	ok	That provider no longer exists, or its plugin isn't running.	そのプ
 1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0}は、この端末で録音できる音声形式（{1}）に対応していません。	src/core/llm/contract.js:178	{0} = name; {1} = list(formats ?? [], 'plain')
 1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0}の{1}が、本来のアドレス{3}ではなく{2}宛てのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:179	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
 o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0}の{1}が、本来のアドレス{2}ではなく、無効なアドレス宛てのリクエストを作りました。調整項目を確認してください。	src/core/llm/contract.js:180	{0} = name; {1} = ability; {2} = s.want
-16rym9p	ok	Nothing in the speech-in list worked for {0}.	「聞き取り」のリストに、{0}に使えるものがありませんでした。	src/core/llm/contract.js:181	{0} = name; Note: the speech-in list holds transcription models and "send the audio"; none of them could pass the recording to the model {0}.
+xs9g3f	draft	{0}'s {1} has no working address. Give its address in Settings → Models.	{0}の{1}に使えるアドレスが設定されていません。「設定 → モデル」でアドレスを入力してください。	src/core/llm/contract.js:181	{0} = name; {1} = ability
+16rym9p	ok	Nothing in the speech-in list worked for {0}.	「聞き取り」のリストに、{0}に使えるものがありませんでした。	src/core/llm/contract.js:182	{0} = name; Note: the speech-in list holds transcription models and "send the audio"; none of them could pass the recording to the model {0}.
 g63xkc	ok	Prices are an object, like {"input": 1, "output": 4}.	料金は {"input": 1, "output": 4} のようなオブジェクトで書いてください。	src/core/llm/cost.js:96	
 m0hi3r	ok	In a tier, {0} is not a price: it is a number, not below 0.	"tiers" の {0} が料金として正しくありません。0以上の数値にしてください。	src/core/llm/cost.js:97	{0} = f.key; Note: a tier is a price step for long prompts; "tiers" is the JSON key the user types.
 z6957a	ok	In the schedule, {0} is not a price: it is a number, not below 0.	"schedule" の {0} が料金として正しくありません。0以上の数値にしてください。	src/core/llm/cost.js:97	{0} = f.key; Note: the schedule is the JSON key "schedule" (prices that start on a date), named as typed: 予定 is the Plan screen's word.
@@ -862,10 +863,10 @@ wq5ezj	ok	Its name, "{0}", is annai's own name, or the name of one of its parts.
 masbkh	ok	A skill with this id is installed already. Remove it first.	同じIDのスキルがすでにインストールされています。先に削除してください。	src/core/plugins.js:192	
 1idb6oe	ok	{0} is handed the keys you give it, so the one used is annai's own, else the one installed first.	{0}には入力したキーが渡されるため、annai公式のものを使い、なければ最初にインストールしたものを使います。	src/core/plugins.js:243	{0} = name
 7ot8m8	ok	{0} is annai's own, so no plugin replaces it.	{0}はannaiに組み込まれたものなので、プラグインで置き換えることはできません。	src/core/plugins.js:245	{0} = name
-1863007	ok	It is being removed.	削除中です。	src/core/plugins.js:440	
-u30lhr	ok	It was updated. Restart annai to run the new version.	アップデートされました。新しいバージョンを使うには、annaiを再起動してください。	src/core/plugins.js:441	
-12roxwh	ok	It keeps MCP servers, not settings: remove a server on its own screen.	設定ではなくMCPサーバーを保存しています。サーバーはそれぞれの画面で削除してください。	src/core/plugins.js:611	
-1k8fwg2#other	ok	It didn't finish within # seconds.	#秒以内に完了しませんでした。	src/core/plugins.js:808	plural; # = s; English: "It didn't finish within # second." (one), "It didn't finish within # seconds." (other); Note: a sentence of its own, under the card's "didn't start" title; after "Starting failed:" it is the reason.
+1863007	ok	It is being removed.	削除中です。	src/core/plugins.js:442	
+u30lhr	ok	It was updated. Restart annai to run the new version.	アップデートされました。新しいバージョンを使うには、annaiを再起動してください。	src/core/plugins.js:443	
+12roxwh	ok	It keeps MCP servers, not settings: remove a server on its own screen.	設定ではなくMCPサーバーを保存しています。サーバーはそれぞれの画面で削除してください。	src/core/plugins.js:613	
+1k8fwg2#other	ok	It didn't finish within # seconds.	#秒以内に完了しませんでした。	src/core/plugins.js:810	plural; # = s; English: "It didn't finish within # second." (one), "It didn't finish within # seconds." (other); Note: a sentence of its own, under the card's "didn't start" title; after "Starting failed:" it is the reason.
 u8bf72	ok	Notifications are on. Reminders come like this while annai is closed.	通知がオンになりました。annaiを閉じているときは、リマインダーがこのように届きます。	src/core/push/mirror.js:75	
 1dxa9va	ok	Notifications are on again: reminders come like this while annai is closed.	通知が再びオンになりました。annaiを閉じているときは、リマインダーがこのように届きます。	src/core/push/mirror.js:76	
 dcq7bh	ok	annai has a reminder for you. Open annai to see it.	リマインダーがあります。annaiを開いて確認してください。	src/core/push/mirror.js:83	Note: a notification for a reminder the phone couldn't read.
@@ -901,8 +902,8 @@ ip7w4y#other	ok	It didn't answer aloud within # seconds.	#秒待っても音声�
 ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	この名前はannai公式のプラグインが使っているため、ほかから入手したパッケージには使えません。作者に名前の変更を依頼してください。	src/core/registry.js:17	Note: "Ask its author" is asking a person (頼む), not the phones' permission choice Ask (確認).
 1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	この名前はannai公式のプラグインが使っていますが、インストールされているのはほかから入手したものなので、annaiでは使いません。「設定 → プラグイン」で削除してから、もう一度お試しください。	src/core/registry.js:18	
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	「設定 → プラグイン」でオンにしてから、もう一度お試しください。	src/core/registry.js:19	
-mzoa87	ok	It is switched off after repeated errors.	エラーが続いたため、オフになっています。	src/core/registry.js:240	
-dhg5k6	ok	Starting failed: {0}	起動に失敗しました：{0}	src/core/registry.js:253	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
+mzoa87	ok	It is switched off after repeated errors.	エラーが続いたため、オフになっています。	src/core/registry.js:248	
+dhg5k6	ok	Starting failed: {0}	起動に失敗しました：{0}	src/core/registry.js:261	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
 19bu7pw	ok	Version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	バージョン{0}にすると{1}が動かなくなります（{1}には{2} {3}が必要です）。先に{4}をアップデートするか、このバージョンのままにしてください。	src/core/requires.js:52	{0} = version; {1} = them; {2} = it; {3} = r.version; {4} = them
 1ee40s4	ok	It needs {0}, which you turned off.	{0}が必要ですが、オフになっています。	src/core/requires.js:79	{0} = shown
 8xu6se	ok	It needs {0}, which isn't installed. Install it from {1} first, then try again.	{0}が必要ですが、インストールされていません。{1} からインストールしてから、もう一度お試しください。	src/core/requires.js:82	{0} = r.id; {1} = r.homepage

@@ -6,7 +6,7 @@ import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { SYS, ensureBaseScopes } from '../../src/core/scopes.js';
 import { Registry } from '../../src/core/registry.js';
-import { ProviderError } from '../../src/core/llm/contract.js';
+import { ProviderError, explain } from '../../src/core/llm/contract.js';
 import { callOnce } from '../../src/core/llm/call.js';
 import { speechCall } from '../../src/core/llm/speech.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
@@ -291,7 +291,50 @@ test("a Stop or annai's time limit is never the plugin's: three speech calls eac
   assert.equal(counted(registry), 0, 'twenty-one calls, none counted');
 });
 
-test('P8: a type that ends its reading early with its own error (the reply still open) keeps its kind, and a reply read whole is as it came (status, headers, bytes)', async () => {
+test("a body that drops with an AbortError or a TimeoutError (Firefox's own words for a reply cut mid-body: \"The operation was aborted.\") is network and never counted, for a transcription, a voice, a voice's later pieces and chat, as one that drops with a TypeError is; a Stop or annai's limit during such a drop is still cancelled or timeout; an AbortError or TimeoutError of the type's own with no drop is read by its name (fail-owner-next, round 3 item 2)", async () => {
+  const aborted = new DOMException('The operation was aborted.', 'AbortError');
+  const slow = new DOMException('The operation timed out.', 'TimeoutError');
+  const registry = withType('test', hears);
+  registry.add('test', 'endpoint-type', speaks);
+  registry.add('test', 'endpoint-type', chat());
+  const stream = streamsOut((e) => e);
+  registry.add('test', 'endpoint-type', stream);
+  for (const error of [aborted, slow]) {
+    const network = (/** @type {any} */ e) => e instanceof ProviderError && e.kind === 'network' && e.said?.code === 'kind' && e.cause === error;
+    for (let n = 0; n < 3; n++) {
+      await assert.rejects(speechCall({ type: /** @type {any} */ (hears), endpoint: endpoint('test-in'), model: model(), key: null, audio, fetch: drops(error), registry }), network, `heard: ${error.name}`);
+      await assert.rejects(speechCall({ type: /** @type {any} */ (speaks), endpoint: endpoint('test-out'), model: model(), key: null, text: 'Hello', fetch: drops(error), registry }), network, `said: ${error.name}`);
+      await assert.rejects(callOnce({ type: chat(), endpoint: endpoint('test'), model: model(), key: null, request, fetch: drops(error), registry }), network, `chat: ${error.name}`);
+      const said = /** @type {any} */ (await speechCall({ type: /** @type {any} */ (stream), endpoint: endpoint('test-stream'), model: model(), key: null, text: 'Hello', stream: true, fetch: breaksOff(error), registry })).stream;
+      await assert.rejects(async () => { for await (const _ of said.chunks); }, network, `streamed: ${error.name}`);
+    }
+  }
+  assert.equal(registry.isDisabled('test'), false, 'twenty-four drops: the plugin is on');
+  assert.equal(counted(registry), 0, 'none counted against it');
+  // A Stop or annai's limit while such a body is read: the call's own signal comes first, though the same read failed with the same AbortError.
+  const dropsOnStop = async (/** @type {any} */ url, /** @type {any} */ init) => new Response(new ReadableStream({ start: (c) => { init.signal.addEventListener('abort', () => c.error(aborted), { once: true }); } }));
+  for (let n = 0; n < 3; n++) {
+    const stop = new AbortController();
+    setTimeout(() => stop.abort(), 10);
+    await assert.rejects(speechCall({ type: /** @type {any} */ (hears), endpoint: endpoint('test-in'), model: model(), key: null, audio, fetch: dropsOnStop, registry, signal: stop.signal }), (e) => e instanceof ProviderError && e.kind === 'cancelled', `stopped during the drop, speech ${n + 1}`);
+    const halt = new AbortController();
+    setTimeout(() => halt.abort(), 10);
+    await assert.rejects(callOnce({ type: chat(), endpoint: endpoint('test'), model: model(), key: null, request, fetch: dropsOnStop, registry, signal: halt.signal }), (e) => e instanceof ProviderError && e.kind === 'cancelled', `stopped during the drop, chat ${n + 1}`);
+    await assert.rejects(speechCall({ type: /** @type {any} */ (hears), endpoint: endpoint('test-in'), model: model(), key: null, audio, fetch: dropsOnStop, registry, timeoutMs: 20 }), (e) => e instanceof ProviderError && e.kind === 'timeout', `out of time during the drop, speech ${n + 1}`);
+  }
+  // No drop: what the type's own code throws is read by its name, uncounted (a browser's, or the plugin's own timer).
+  for (const [name, kind] of /** @type {const} */ ([['AbortError', 'cancelled'], ['TimeoutError', 'timeout']])) {
+    const own = { ...hears, type: `own-${name}`, readTranscript: async () => { throw new DOMException('its own timer', name); } };
+    registry.add('test', 'endpoint-type', own);
+    for (let n = 0; n < 3; n++) {
+      await assert.rejects(speechCall({ type: /** @type {any} */ (own), endpoint: endpoint(own.type), model: model(), key: null, audio, fetch: async () => Response.json({ text: 'x' }), registry }), (e) => e instanceof ProviderError && e.kind === kind, `${name} of its own, ${n + 1}`);
+    }
+  }
+  assert.equal(registry.isDisabled('test'), false);
+  assert.equal(counted(registry), 0, 'stops, limits and its own timers: none counted');
+});
+
+test('P8: a type that ends its reading early with its own error (the reply still open) keeps its kind, and a reply read whole is as it came (headers and bytes; its status is 200, as the 204 test says)', async () => {
   const early = chat({ read: async function* (/** @type {Response} */ res) {
     const reader = /** @type {ReadableStream<Uint8Array>} */ (res.body).getReader();
     await reader.read();
@@ -405,7 +448,7 @@ const withStreamAs = (status) => async () => {
   return res;
 };
 
-test("a 204 or 205 that comes with a body stream, as in the browsers, is read as any other reply: the type gets its body and a status of 200, and nothing is counted (fail-owner-next, round 2 item 1)", async () => {
+test("a 204 or 205 that comes with a body stream, as in the browsers, is read as any other reply: the type is told a status of 200 whatever the reply had, and nothing is counted (fail-owner-next, round 2 item 1)", async () => {
   /** @type {number[]} */
   const seen = [];
   const reads = chat({ type: 'test-reads', read: async function* (/** @type {Response} */ res) { seen.push(res.status); yield { type: 'text', text: await res.text() }; } });
@@ -553,7 +596,12 @@ test("a typed address is checked by annai, by state, before any builder runs: on
   for (const [name, type, call] of kinds) {
     for (const address of ['', 'not an address', 'https://']) {
       const registry = withType(`a-${name}`, type);
-      for (let n = 0; n < 3; n++) await assert.rejects(call(type, registry, address), (e) => e instanceof ProviderError && e.kind === 'bad-request', `${name} at ${JSON.stringify(address)}`);
+      // The words say what is wrong and where to fix it (the address, in Settings → Models), not that a request was built to an address that isn't one,
+      // and never repeat the typed text, which may hold a key.
+      const words = "A's a has no working address. Give its address in Settings → Models.";
+      for (let n = 0; n < 3; n++) {
+        await assert.rejects(call(type, registry, address), (e) => e instanceof ProviderError && e.kind === 'bad-request' && e.said?.code === 'no-address' && e.message === words && explain(e) === words && !(address && e.message.includes(address)), `${name} at ${JSON.stringify(address)}`);
+      }
       assert.deepEqual([counted(registry), registry.isDisabled(`a-${name}`)], [0, false], `${name} at ${JSON.stringify(address)}: not counted`);
     }
   }
@@ -565,6 +613,10 @@ test("a typed address is checked by annai, by state, before any builder runs: on
   const withPhoto = /** @type {any} */ ({ messages: [{ role: 'user', parts: [{ type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1' }] }] });
   await assert.rejects(callOnce({ type: withUpload, endpoint: endpoint('addr-up', ''), model: { ...model(), input: ['text', 'image'] }, key: 'k', request: withPhoto, uploads: new Uploads(ws), registry: withType('a-up', withUpload) }), (e) => e instanceof ProviderError && e.kind === 'bad-request');
   assert.deepEqual(built, [], 'no builder of any type was called with an address that does not parse');
+  // A request a builder made to another address, at a good one, keeps its own words (what the built-address check says): the address it built, not the typed one.
+  const elsewhere = chat({ type: 'addr-else', build: () => ({ url: 'https://other.test/x', headers: {}, body: '{}' }) });
+  await assert.rejects(callOnce({ type: elsewhere, endpoint: endpoint('addr-else', 'https://speech.test/v1'), model: model(), key: null, request, registry: withType('a-else', elsewhere) }),
+    (e) => e instanceof ProviderError && e.kind === 'bad-request' && e.said?.code === 'origin' && /built a request to https:\/\/other\.test, not its address https:\/\/speech\.test/.test(e.message));
   // A builder that parses something of its own, at a good address, and gets it wrong: its bug, whatever words the engine gives.
   for (const [name, type, call] of kinds) {
     const bad = () => new URL('not an address');

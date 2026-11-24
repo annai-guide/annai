@@ -757,7 +757,8 @@ il3b75	ok	That provider no longer exists, or its plugin isn't running.	這個供
 1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0} 不支援這支手機能錄製的任何音訊格式（{1}）。	src/core/llm/contract.js:178	{0} = name; {1} = list(formats ?? [], 'plain')
 1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} 的 {1} 產生的請求指向了 {2}，而不是它的網址 {3}。請檢查它的可調參數。	src/core/llm/contract.js:179	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
 o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} 的 {1} 產生的請求指向了無效網址，而不是它的網址 {2}。請檢查它的可調參數。	src/core/llm/contract.js:180	{0} = name; {1} = ability; {2} = s.want
-16rym9p	ok	Nothing in the speech-in list worked for {0}.	語音辨識清單中沒有一項能用於 {0}。	src/core/llm/contract.js:181	{0} = name; Note: the speech-in list holds transcription models and "send the audio"; none of them could pass the recording to the model {0}.
+xs9g3f	draft	{0}'s {1} has no working address. Give its address in Settings → Models.	{0} 的 {1} 沒有可用的網址。請在設定 → 模型中填寫它的網址。	src/core/llm/contract.js:181	{0} = name; {1} = ability
+16rym9p	ok	Nothing in the speech-in list worked for {0}.	語音辨識清單中沒有一項能用於 {0}。	src/core/llm/contract.js:182	{0} = name; Note: the speech-in list holds transcription models and "send the audio"; none of them could pass the recording to the model {0}.
 g63xkc	ok	Prices are an object, like {"input": 1, "output": 4}.	價格應為物件，例如 {"input": 1, "output": 4}。	src/core/llm/cost.js:96	
 m0hi3r	ok	In a tier, {0} is not a price: it is a number, not below 0.	在 "tiers" 中，{0} 的值不是有效價格，必須是不小於 0 的數字。	src/core/llm/cost.js:97	{0} = f.key; Note: a tier is a price step for long prompts; "tiers" is the JSON key the user types.
 z6957a	ok	In the schedule, {0} is not a price: it is a number, not below 0.	在 "schedule" 中，{0} 的值不是有效價格，必須是不小於 0 的數字。	src/core/llm/cost.js:97	{0} = f.key; Note: the schedule is the JSON key "schedule" (prices that start on a date), named as typed: 計劃 read as a plan.
@@ -862,10 +863,10 @@ wq5ezj	ok	Its name, "{0}", is annai's own name, or the name of one of its parts.
 masbkh	ok	A skill with this id is installed already. Remove it first.	已安裝了相同 ID 的技能，請先移除。	src/core/plugins.js:192	
 1idb6oe	ok	{0} is handed the keys you give it, so the one used is annai's own, else the one installed first.	{0} 會拿到你提供的金鑰，所以會優先使用 annai 內建的；沒有的話，就用最先安裝的那個。	src/core/plugins.js:243	{0} = name
 7ot8m8	ok	{0} is annai's own, so no plugin replaces it.	{0} 是 annai 內建的，外掛程式不能取代它。	src/core/plugins.js:245	{0} = name
-1863007	ok	It is being removed.	正在移除。	src/core/plugins.js:440	Note: Remove → 移除, as annai's Remove buttons say.
-u30lhr	ok	It was updated. Restart annai to run the new version.	已更新。請重新啟動 annai 來執行新版本。	src/core/plugins.js:441	
-12roxwh	ok	It keeps MCP servers, not settings: remove a server on its own screen.	儲存的是 MCP 伺服器，而不是設定。要移除伺服器，請前往該伺服器的頁面。	src/core/plugins.js:611	Note: Remove → 移除, as annai's Remove buttons say.
-1k8fwg2#other	ok	It didn't finish within # seconds.	# 秒內未完成。	src/core/plugins.js:808	plural; # = s; English: "It didn't finish within # second." (one), "It didn't finish within # seconds." (other); Note: a sentence of its own, under the card's "didn't start" title; after "Starting failed:" it is the reason.
+1863007	ok	It is being removed.	正在移除。	src/core/plugins.js:442	Note: Remove → 移除, as annai's Remove buttons say.
+u30lhr	ok	It was updated. Restart annai to run the new version.	已更新。請重新啟動 annai 來執行新版本。	src/core/plugins.js:443	
+12roxwh	ok	It keeps MCP servers, not settings: remove a server on its own screen.	儲存的是 MCP 伺服器，而不是設定。要移除伺服器，請前往該伺服器的頁面。	src/core/plugins.js:613	Note: Remove → 移除, as annai's Remove buttons say.
+1k8fwg2#other	ok	It didn't finish within # seconds.	# 秒內未完成。	src/core/plugins.js:810	plural; # = s; English: "It didn't finish within # second." (one), "It didn't finish within # seconds." (other); Note: a sentence of its own, under the card's "didn't start" title; after "Starting failed:" it is the reason.
 u8bf72	ok	Notifications are on. Reminders come like this while annai is closed.	通知已開啟。annai 關閉時，提醒會像這樣推播給你。	src/core/push/mirror.js:75	
 1dxa9va	ok	Notifications are on again: reminders come like this while annai is closed.	通知已重新開啟：annai 關閉時，提醒會像這樣推播給你。	src/core/push/mirror.js:76	
 dcq7bh	ok	annai has a reminder for you. Open annai to see it.	你有一則提醒，開啟 annai 即可查看。	src/core/push/mirror.js:83	Note: a notification for a reminder the phone couldn't read.
@@ -901,8 +902,8 @@ ip7w4y#other	ok	It didn't answer aloud within # seconds.	# 秒內沒有語音回
 ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	這個名稱已被 annai 官方外掛程式使用，其他來源的外掛程式不能再用。請聯絡作者改名。	src/core/registry.js:17	Note: "Ask its author" is asking a person (請讓作者…), not the phones' permission choice Ask (詢問).
 1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	這個名稱屬於 annai 官方外掛程式，但已安裝的同名外掛程式來自其他來源，因此不會使用它。請在設定 → 外掛程式中移除它，然後重試。	src/core/registry.js:18	Note: Remove → 移除, as annai's Remove buttons say.
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	請在設定 → 外掛程式中開啟它，然後重試。	src/core/registry.js:19	
-mzoa87	ok	It is switched off after repeated errors.	因多次出錯，已自動關閉。	src/core/registry.js:240	
-dhg5k6	ok	Starting failed: {0}	啟動失敗：{0}	src/core/registry.js:253	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
+mzoa87	ok	It is switched off after repeated errors.	因多次出錯，已自動關閉。	src/core/registry.js:248	
+dhg5k6	ok	Starting failed: {0}	啟動失敗：{0}	src/core/registry.js:261	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
 19bu7pw	ok	Version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	版本 {0} 會導致 {1} 無法運作，因為它需要 {2} {3}。請先更新 {4}，或保留目前的版本。	src/core/requires.js:52	{0} = version; {1} = them; {2} = it; {3} = r.version; {4} = them
 1ee40s4	ok	It needs {0}, which you turned off.	需要 {0}，但你已把它關閉。	src/core/requires.js:79	{0} = shown
 8xu6se	ok	It needs {0}, which isn't installed. Install it from {1} first, then try again.	需要 {0}，但尚未安裝。請先從 {1} 安裝，然後再試一次。	src/core/requires.js:82	{0} = r.id; {1} = r.homepage

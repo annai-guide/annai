@@ -139,7 +139,7 @@ function shown(kind, provider) {
  * One of annai's own provider errors, as data: a call's attempt keeps it, and the screens make its words (saidWords), while message
  * is the log's and a model's English (the shown rule; the design's "Store data, not words"). kind: the kind's words say it.
  * @typedef {{ code: 'kind' | 'late' | 'paused' | 'send' | 'stalled' | 'held' | 'zdr' | 'model-gone' | 'no-plugin' | 'not-in' | 'not-out' | 'not-live'
- *   | 'provider-gone' | 'provider-off' | 'provider-removed' | 'cors' | 'unreachable' | 'no-list' | 'formats' | 'origin' | 'not-heard',
+ *   | 'provider-gone' | 'provider-off' | 'provider-removed' | 'cors' | 'unreachable' | 'no-list' | 'formats' | 'origin' | 'no-address' | 'not-heard',
  *   name?: string, ability?: string, abilityKind?: string, host?: string, formats?: string[], to?: string, want?: string, seconds?: number }} Said
  * ability: the ability's name where its description gives one; abilityKind: its kind, which the screens name otherwise.
  */
@@ -178,6 +178,7 @@ export function saidWords(s, kind, provider) {
     case 'formats': return t`${name} takes no audio format this phone makes (${list(formats ?? [], 'plain')}).`;
     case 'origin': return s.to ? t`${name}'s ${ability} built a request to ${s.to}, not its address ${s.want}. Check its tunables.`
       : t`${name}'s ${ability} built a request to an address that isn't one, not its address ${s.want}. Check its tunables.`;
+    case 'no-address': return t`${name}'s ${ability} has no working address. Give its address in Settings → Models.`;
     case 'not-heard': return t`Nothing in the speech-in list worked for ${name}.`;
     default: return shown(kind, provider) ?? '';
   }
@@ -232,13 +233,19 @@ const originOf = (url) => {
 
 /**
  * A request a protocol built goes only to its ability's address: tunables such as path and listPath are joined into the URL, so a
- * description could otherwise send the key to another host while every check names the right one. annai calls this before it fetches.
+ * description could otherwise send the key to another host while every check names the right one. annai calls this before it fetches. Asked
+ * of the ability's own address (before any builder runs, so nothing was built), one that isn't an http(s) address is the user's to give: no
+ * address, in words that name where, and never the typed text, which may hold a key.
  * @param {{ name?: string, ability?: string, baseUrl: string }} endpoint @param {string} url
  */
 export function sameOrigin(endpoint, url) {
   const want = originOf(endpoint.baseUrl);
   const got = originOf(url);
   if (want && got === want) return;
+  if (!want && url === endpoint.baseUrl) {
+    throw new ProviderError('bad-request', /* en */ `${endpoint.name ?? 'This provider'}'s ${endpoint.ability ?? 'ability'} has no working address. Give its address in Settings → Models.`,
+      { said: { code: 'no-address', name: endpoint.name ?? '', ability: endpoint.ability ?? '' } });
+  }
   const where = want || endpoint.baseUrl || /* en */ '(none)';
   throw new ProviderError('bad-request', /* en */ `${endpoint.name ?? 'This provider'}'s ${endpoint.ability ?? 'ability'} built a request to ${got || "an address that isn't one"}, not its address ${where}. Check its tunables.`,
     { said: { code: 'origin', name: endpoint.name ?? '', ability: endpoint.ability ?? '', to: got, want: where } });

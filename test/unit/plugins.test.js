@@ -5,7 +5,8 @@ import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace, ValidationError, StorageFullError } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip, SYS_PLUGINS } from '../../src/core/scopes.js';
-import { Registry, PluginError, isFetchFailure, isPluginBug, isBadAddress } from '../../src/core/registry.js';
+import { Registry, PluginError, isFetchFailure, isLinkFailure, isPluginBug, isBadAddress } from '../../src/core/registry.js';
+import { ProviderError } from '../../src/core/llm/contract.js';
 import { PluginHost, PLUGIN_MAX_BYTES } from '../../src/core/plugins.js';
 import { utf8 } from '../../src/core/bytes.js';
 import { messageOf } from '../../src/ui/dom.js';
@@ -300,6 +301,63 @@ test("host: a plugin whose start fetches, offline, is not counted against it: th
   await host.install(inline('bugged', `export function activate(annai) { return undefined.x; }`));
   for (let i = 0; i < 3; i++) await assert.rejects(host.start('bugged'));
   assert.equal(registry.isDisabled('bugged'), true);
+});
+
+/** A browser's fetch with no connection, as each engine's own words: what annai.net.fetch (the real tracedFetch) is given. */
+const offlineFetch = async () => { throw new TypeError('Failed to fetch'); };
+
+test("host: a plugin whose start fails only for want of a link stays on however many launches it happens on, whether it fetches itself or through annai.net.fetch; a bug between them is counted, and neither breaks the run nor extends it (fail-owner-next, round 3 item 1)", async () => {
+  const { ws, host, relaunch } = await setup();
+  const start = `export async function activate(annai) {
+    const how = globalThis.__startHow;
+    if (how === 'browser') throw new TypeError('Load failed');
+    if (how === 'net') await annai.net.fetch('https://plugin.example/data');
+    if (how === 'bug') return undefined.x;
+  }`;
+  await host.install(inline('loader', start));
+  /** @param {string} how */
+  const launch = async (how) => {
+    /** @type {any} */ (globalThis).__startHow = how;
+    const next = relaunch();
+    next.connect({ fetch: offlineFetch });
+    return next.startInstalled();
+  };
+  try {
+    // Three launches of each kind with no link: the start fails each time, shows in the list (the card still says it didn't start), and counts nothing.
+    for (const how of ['browser', 'net']) {
+      for (let i = 1; i <= 3; i++) {
+        const failures = await launch(how);
+        assert.deepEqual(failures.map((f) => [f.id, f.disabled]), [['loader', false]], `${how}, launch ${i}`);
+        assert.match(messageOf(failures[0].error), /Starting failed/);
+      }
+      assert.equal((await host.installed()).loader.enabled, true, `${how}: still on after three launches`);
+      assert.equal((await host.installed()).loader.startFailures ?? 0, 0, `${how}: nothing counted`);
+    }
+    // A bug is still counted, and an offline launch between bugs neither resets the run nor adds to it: three bugs make it three, off at the third bug.
+    assert.deepEqual((await launch('bug')).map((f) => f.disabled), [false]);
+    await launch('net');
+    assert.equal((await host.installed()).loader.startFailures, 1, 'a launch with no link left the run as it was');
+    assert.deepEqual((await launch('bug')).map((f) => f.disabled), [false]);
+    assert.deepEqual((await launch('bug')).map((f) => f.disabled), [true]);
+    assert.equal((await host.installed()).loader.enabled, false);
+    assert.equal((await ws.list(SYS_PLUGINS, '/loader/')).length > 0, true);
+  } finally {
+    delete (/** @type {any} */ (globalThis)).__startHow;
+  }
+});
+
+test("host: a start that sends through annai.net.fetch with no link is not counted in one session either: four starts, none logged, the plugin on; the same start with a bug is off at the third (fail-owner-next, round 3 item 1)", async () => {
+  const { host, registry, logged } = await setup();
+  host.connect({ fetch: offlineFetch });
+  await host.install(inline('sender', `export async function activate(annai) { await annai.net.fetch('https://plugin.example/data'); }`));
+  for (let i = 0; i < 4; i++) await assert.rejects(host.start('sender'), (e) => e instanceof PluginError && /couldn't reach plugin\.example/.test(/** @type {any} */ (e.cause).message) && /** @type {any} */ (e.cause).kind === 'network');
+  assert.equal(registry.isDisabled('sender'), false);
+  assert.deepEqual(logged.filter((e) => e.type === 'plugin.error'), []);
+});
+
+test("isLinkFailure: the browser's own fetch failure, or annai's kind for a request it couldn't make or finish (annai.net.fetch's error: network; unreachable), and nothing else (fail-owner-next, round 3 item 1)", () => {
+  for (const e of [new TypeError('Failed to fetch'), new TypeError('Load failed'), Object.assign(new Error("annai couldn't reach a.test. Is the device offline?"), { kind: 'network' }), new ProviderError('unreachable', 'x'), new ProviderError('network', 'x')]) assert.equal(isLinkFailure(e), true, String(e.message));
+  for (const e of [new Error('boom'), new TypeError('x is not a function'), new ProviderError('server', 'x'), Object.assign(new Error('x'), { kind: 'auth' }), 'Failed to fetch', undefined, null]) assert.equal(isLinkFailure(e), false, String(/** @type {any} */ (e)?.message ?? e));
 });
 
 test("host: a tool's own errors are answers Shiori sees, not crashes; a crash counts against the plugin (spec §5.5, §6.7)", async () => {

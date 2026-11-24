@@ -255,7 +255,7 @@ async function billed(usage, tools, tally) {
  * @returns {Promise<Reply>}
  */
 export async function callOnce({ type, endpoint, model, key, request, level = 'off', fetch: get = defaultFetch, signal, firstOutputMs = 30_000, onEvent = () => {}, trace, registry, now = Date.now, uploads, keep, tally, keepNative = false, shared = false }) {
-  if (!type.run) sameOrigin(endpoint, endpoint.baseUrl); // annai calls a type's code only with an address that parses (else bad-request, theirs to fix)
+  if (!type.run) sameOrigin(endpoint, endpoint.baseUrl); // annai calls a type's code only with an address that parses (else bad-request, the user's to fix)
   if (key) trace?.secret(key);
   // Credentials can also sit in an endpoint's extra headers; none may reach the trace (spec §9.9).
   for (const [name, value] of Object.entries(endpoint.headers ?? {})) {
@@ -599,16 +599,21 @@ export function typeWorked(type, registry) {
 /**
  * Whatever went wrong in an endpoint type's call, as a ProviderError, by where it went wrong, never by its words: the call's own signal first (out
  * of time "timeout", stopped "cancelled", whatever was thrown as it stopped); then a reply whose body annai couldn't read (watched), "network",
- * whatever the type made of it; then the type's own ProviderError. Anything else is a bug in its plugin, counted (spec §5.5). A `run` type names its
- * own send's failures. @param {unknown} e @param {AbortSignal} signal @param {EndpointType} type @param {import('../registry.js').Registry} [registry]
- * @param {unknown} [dropped] the error the reply's body failed with (watched)
+ * whatever the type made of it or the browser calls it (Firefox gives a body cut mid-way an AbortError); then an AbortError or TimeoutError the call's
+ * signal didn't cause, by its name (the type's own timer, say); then the type's own ProviderError. Anything else is a bug in its plugin, counted
+ * (spec §5.5). A `run` type names its own send's failures. @param {unknown} e @param {AbortSignal} signal @param {EndpointType} type
+ * @param {import('../registry.js').Registry} [registry] @param {unknown} [dropped] the error the reply's body failed with (watched)
  */
 export function asProviderError(e, signal, type, registry, dropped) {
   const own = e instanceof ProviderError;
   const name = /** @type {any} */ (e)?.name;
-  if (signal.reason?.name === 'TimeoutError' || (!own && name === 'TimeoutError')) return new ProviderError('timeout', /* en */ 'No output started in time.', { cause: e, said: { code: 'late' } });
-  if (signal.aborted || (!own && name === 'AbortError')) return new ProviderError('cancelled', /* en */ 'Stopped.', { cause: e, said: { code: 'kind' } });
+  const late = () => new ProviderError('timeout', /* en */ 'No output started in time.', { cause: e, said: { code: 'late' } });
+  const stopped = () => new ProviderError('cancelled', /* en */ 'Stopped.', { cause: e, said: { code: 'kind' } });
+  if (signal.reason?.name === 'TimeoutError') return late();
+  if (signal.aborted) return stopped();
   if (dropped !== undefined) return new ProviderError('network', /* en */ 'The connection dropped.', { cause: dropped, said: { code: 'kind' } });
+  if (!own && name === 'TimeoutError') return late();
+  if (!own && name === 'AbortError') return stopped();
   if (own) return e;
   const by = ownerOf(type, registry);
   if (by) registry?.fail(by, /* en */ `endpoint type ${type.type}`, e);
