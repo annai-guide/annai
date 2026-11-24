@@ -292,7 +292,7 @@ test('host: a tool keeps its own "this" when annai runs it', async () => {
   assert.deepEqual(await registry.list('tool')[0].run('there'), { content: 'hi there' });
 });
 
-test("host: a plugin whose start fetches, offline, is not counted against it: three offline starts leave it on, each start's error reaches the caller; a start with a bug is off at the third (fail-owner-next, round 2 item 3)", async () => {
+test("host: a plugin whose start fetches, offline, is not counted against it: four offline starts, one past the third that switches a plugin off, leave it on, each start's error reaches the caller; a start with a bug is off at the third (fail-owner-next, round 2 item 3)", async () => {
   const { host, registry, logged } = await setup();
   await host.install(inline('fetcher', `export async function activate(annai) { throw new TypeError('Failed to fetch'); }`));
   for (let i = 0; i < 4; i++) await assert.rejects(host.start('fetcher'), /Failed to fetch/);
@@ -306,7 +306,7 @@ test("host: a plugin whose start fetches, offline, is not counted against it: th
 /** A browser's fetch with no connection, as each engine's own words: what annai.net.fetch (the real tracedFetch) is given. */
 const offlineFetch = async () => { throw new TypeError('Failed to fetch'); };
 
-test("host: a plugin whose start fails only for want of a link stays on however many launches it happens on, whether its start throws the browser's own fetch failure or sends through annai.net.fetch; a bug between them is counted, and neither breaks the run nor extends it (fail-owner-next, round 3 item 1)", async () => {
+test("host: a plugin whose start fails only for want of a link stays on through three launches of each kind with no link, whether its start throws the browser's own fetch failure or sends through annai.net.fetch; a bug between them is counted, and neither breaks the run nor extends it (fail-owner-next, round 3 item 1)", async () => {
   const { ws, host, relaunch } = await setup();
   const start = `export async function activate(annai) {
     const how = globalThis.__startHow;

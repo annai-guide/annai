@@ -292,7 +292,7 @@ test("a Stop or annai's time limit is never the plugin's: three speech calls eac
   assert.equal(counted(registry), 0, 'twenty-one calls, none counted');
 });
 
-test("a body that drops with an AbortError or a TimeoutError (Firefox's own words for a reply cut mid-body: \"The operation was aborted.\") is network and never counted, for a transcription, a voice, a voice's later pieces and chat, as one that drops with a TypeError is; a Stop or annai's limit during such a drop is still cancelled or timeout; an AbortError or TimeoutError of the type's own with no drop is read by its name (fail-owner-next, round 3 item 2)", async () => {
+test("a body that drops with an AbortError or a TimeoutError (Firefox's own words for a reply cut mid-body: \"The operation was aborted.\") is network and never counted, for a transcription, a voice, a voice's later pieces and chat, as one that drops with a TypeError is, and so is Firefox's pair (annai's read of the body fails with a TypeError, then the type's own read of it with an AbortError); a Stop or annai's limit during such a drop is still cancelled or timeout; an AbortError or TimeoutError of the type's own with no drop is read by its name (fail-owner-next, round 3 item 2)", async () => {
   const aborted = new DOMException('The operation was aborted.', 'AbortError');
   const slow = new DOMException('The operation timed out.', 'TimeoutError');
   const registry = withType('test', hears);
@@ -592,7 +592,7 @@ test("an uploadRequest whose result is not a request (an async function's promis
   assert.deepEqual(unhandled, [], 'no rejected promise is left for the page to report');
 });
 
-test("a typed address is checked by annai, by state, before any builder runs: one that doesn't parse (an empty one included) is bad-request, never counted, with no builder called; a builder's own `new URL` failure at a good address is its plugin's bug, counted (fail-owner-next, round 2 item 2); a request a builder made to another address, or to one that isn't an address, keeps the built-address words, and every said code names the ability as the other said codes do (round 4 items 3 and 5)", async () => {
+test("a typed address is checked by annai, by state, before any builder runs: one that doesn't parse (an empty one included) is bad-request, never counted, with no builder called; a builder's own `new URL` failure at a good address is its plugin's bug, counted (fail-owner-next, round 2 item 2); a request a builder made to another address, or to one that isn't an address, keeps the built-address words, and both of those said codes (no-address, before and after the build, and origin) name the ability as the other said codes do, in a call, a speech call and a Test (round 4 items 3 and 5, round 5)", async () => {
   /** @type {string[]} */
   const built = [];
   const request1 = (/** @type {string} */ who, /** @type {any} */ c) => { built.push(who); return { url: `${c.endpoint.baseUrl}/x`, headers: {}, body: '{}' }; };
@@ -615,20 +615,32 @@ test("a typed address is checked by annai, by state, before any builder runs: on
     }
   }
   // The words name the ability as the other codes do: the name its description gives, else its kind's; a caller with no ability leaves the endpoint's id of it.
-  for (const [ability, shown] of /** @type {[any, string][]} */ ([
-    [{ id: 'chat', kind: 'chat', name: 'Chat', named: false }, 'Chat'],
-    [{ id: 'chat-completions', kind: 'chat', name: 'Chat Completions', named: true }, 'Chat Completions'],
-    [undefined, 'a'],
+  // The address check before the build and the one after it (the builder's own request) both name it: a builder that goes to another host is refused in the same words.
+  const hear = /** @type {any} */ ({ ...hears, type: 'addr-named-in' });
+  const away = /** @type {any} */ ({ ...hears, type: 'addr-away-in', transcribeRequest: () => ({ url: 'https://other.test/x', headers: {}, body: '{}' }) });
+  for (const [ability, shown, said] of /** @type {[any, string, any][]} */ ([
+    [{ id: 'chat', kind: 'chat', name: 'Chat', named: false }, 'Chat', { abilityKind: 'chat' }],
+    [{ id: 'chat-completions', kind: 'chat', name: 'Chat Completions', named: true }, 'Chat Completions', { ability: 'Chat Completions' }],
+    [undefined, 'a', { ability: 'a' }],
   ])) {
     const words = `A's ${shown} has no working address. Give its address in Settings → Models.`;
     const type = chat({ type: 'addr-named' });
     const errors = [
       await callOnce({ type, endpoint: endpoint('addr-named', ''), ability, model: model(), key: null, request, registry: withType('a-named', type) }).catch((e) => e),
-      await speechCall({ type: /** @type {any} */ ({ ...hears, type: 'addr-named-in' }), endpoint: endpoint('addr-named-in', ''), ability, model: model(), key: null, audio, registry: withType('a-named-in', hears) }).catch((e) => e),
+      await speechCall({ type: hear, endpoint: endpoint('addr-named-in', ''), ability, model: model(), key: null, audio, registry: withType('a-named-in', hear) }).catch((e) => e),
     ];
     for (const e of errors) assert.ok(e instanceof ProviderError && e.kind === 'bad-request' && e.said?.code === 'no-address' && e.message === words && explain(e) === words, words);
     const tested = await testModel({ type, endpoint: endpoint('addr-named', ''), ability, model: model(), key: null });
     assert.deepEqual([tested.ok, tested.steps[0].detail], [false, words], `Test: ${words}`);
+    // The builder's own request, at a good address, to another host: the origin words, with the same ability name.
+    const toOther = `A's ${shown} built a request to https://other.test, not its address https://speech.test. Check its tunables.`;
+    const other = chat({ type: 'addr-away', build: () => ({ url: 'https://other.test/x', headers: {}, body: '{}' }) });
+    const moved = [
+      await callOnce({ type: other, endpoint: endpoint('addr-away', 'https://speech.test/v1'), ability, model: model(), key: null, request, registry: withType('a-away', other) }).catch((e) => e),
+      await speechCall({ type: away, endpoint: endpoint('addr-away-in', 'https://speech.test/v1'), ability, model: model(), key: null, audio, registry: withType('a-away-in', away) }).catch((e) => e),
+    ];
+    for (const e of moved) assert.ok(e instanceof ProviderError && e.kind === 'bad-request' && e.message === toOther && explain(e) === toOther && e.said?.code === 'origin'
+      && e.said.ability === said.ability && e.said.abilityKind === said.abilityKind, toOther);
   }
   // A photo's upload is a builder too: with such an address it is never asked.
   const store = createMemoryStore();

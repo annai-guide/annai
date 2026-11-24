@@ -168,6 +168,22 @@ test("an unnamed ability's missing plugin or model list is named in the screens'
   assert.match(saidWords({ code: 'no-plugin', name: 'X', ability: 'Talk' }, 'type-missing'), /Talk/, "a description's own name, as written");
 });
 
+test("an unnamed ability's no-address words, from the address check itself, name the kind in the screens' language, and its message stays annai's English (fail-owner-next, round 5)", async () => {
+  const { sameOrigin, explain } = await import('../../src/core/llm/contract.js');
+  const endpoint = /** @type {any} */ ({ id: 'pv-1/chat', provider: 'pv-1', ability: 'chat', type: 'test', name: 'X', baseUrl: '', headers: {}, tunables: {}, extraBody: {} });
+  const refusal = (/** @type {{ named: boolean, kind: string, name: string }} */ ability) => {
+    try { sameOrigin(endpoint, '', ability); } catch (e) { return /** @type {any} */ (e); }
+    throw new assert.AssertionError({ message: 'the address check let an address that is none through' });
+  };
+  const unnamed = refusal({ named: false, kind: 'chat', name: 'Chat' });
+  assert.match(explain(unnamed), /チャット/, "the screens' name for the kind");
+  assert.doesNotMatch(explain(unnamed), /Chat/);
+  assert.match(unnamed.message, /^X's Chat has no working address/, "what a model and the log read: annai's English");
+  const named = refusal({ named: true, kind: 'chat', name: 'Talk' });
+  assert.match(explain(named), /Talk/, "a description's own name, as written");
+  assert.doesNotMatch(explain(named), /チャット/);
+});
+
 test("review 3 and 4: a failed attempt's words come from what it was, in the Try panel's line, explain, and the Conversation's line", async () => {
   const { explain } = await import('../../src/core/llm/contract.js');
   const { attemptWhy } = await import('../../src/core/llm/fallback.js');

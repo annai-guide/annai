@@ -904,10 +904,12 @@ test("a typed address that isn't one, on the model list and a voice: no-address 
     const rec = (await k.llm.config()).providers[id];
     // The provider's address and its voice's own, both typed so.
     await saveProvider(k.ws, { ...rec, user: { ...rec.user, baseUrl: typed, abilities: { voice: { baseUrl: typed } } } });
-    const before = k.reached.length;
+    // A typed address with no scheme goes to the site stand-in (k.s.asked), not to k.reached, so both count.
+    const sent = () => k.reached.length + k.s.asked.length;
+    const before = sent();
     await assert.rejects(k.llm.listModels(id, 'chat'), (/** @type {any} */ e) => says(e, 'Chat', typed), `the model list at ${JSON.stringify(typed)}`);
     await assert.rejects(k.llm.synthesize({ modelId: one('voice').id, text: 'Hello.' }), (/** @type {any} */ e) => says(e, 'Voice', typed), `a voice at ${JSON.stringify(typed)}`);
-    assert.equal(k.reached.length, before, 'nothing was sent');
+    assert.equal(sent(), before, 'nothing was sent');
   }
 });
 

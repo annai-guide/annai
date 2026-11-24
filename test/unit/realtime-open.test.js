@@ -105,7 +105,7 @@ function open(o = {}) {
   return { store, session, ws: () => /** @type {FakeSocket} */ (FakeSocket.made.at(-1)) };
 }
 
-test("a session opens only at its ability's origin (https → wss, http localhost → ws); another origin is refused, never opened", async () => {
+test("a session opens only at its ability's origin (https → wss, http localhost → ws); another origin is refused, never opened; a typed address that isn't one is no address, in words that name the ability", async () => {
   FakeSocket.made = [];
   open();
   assert.equal(FakeSocket.made[0].url, `wss://live.test/live/v1?key=${KEY}`);
