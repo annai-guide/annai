@@ -345,25 +345,30 @@ for (const [how, o] of MODES.slice(0, 2)) {
 // A turn that fails in its setup, before its steps (the half's rules, its voice, the rules read again), shows its reminders too: the one place for every
 // way a turn stops short. The phone at no byte free (Chromium) closes the connection at the first refused write, and every transaction after it fails,
 // reads too: with Koe on and voice on, Kokoro's copy of the wake (it carries no reminders) writes first and is refused, and Koe's turn then fails reading
-// the voice's settings.
+// the voice's settings. The wake's own hold (`reminder.held`, written as it comes) is the first write of all: refused, the budgets' check that follows it
+// fails, and the wake never reaches a turn (wakeFailed shows the reminder and tells it); so the turn's case refuses from the first write after the hold.
 for (const [how, o] of MODES) {
   for (const voice of [false, true]) {
-    test(`a reminder a wake owes when the first refused write makes every read fail too (no byte free) is shown once, voice ${voice ? 'on' : 'off'}${how}`, async (t) => {
-      useClock(t);
-      const k = await agentKit([[say('Noted.')]], { ...o, ...(voice ? { voice: { mode: 'on' } } : {}) });
-      const cards = raw(k);
-      const store = refusing(k);
-      store.full(() => {
-        store.full('everything');
-        return true;
+    for (const first of ['her turn', 'its hold']) {
+      test(`a reminder a wake owes when the first refused write (${first}'s) makes every read fail too (no byte free) is shown once, voice ${voice ? 'on' : 'off'}${how}`, async (t) => {
+        useClock(t);
+        const k = await agentKit([[say('Noted.')]], { ...o, ...(voice ? { voice: { mode: 'on' } } : {}) });
+        const cards = raw(k);
+        const store = refusing(k);
+        store.full((/** @type {any} */ ev) => {
+          if (first === 'her turn' && ev.type === 'reminder.held') return false;
+          store.full('everything');
+          return true;
+        });
+        k.agent.wake({ kind: 'trigger', text: 'Your watch fired.', fallbacks: [{ watch: 'w1', text: LEAVE }] });
+        await until(() => titled(k, first === 'her turn' ? 'Shiori stopped' : NOT_SAVED).length > 0);
+        await idleAtOnce(k);
+        assert.equal(count(cards, 'Reminder'), 1, 'once');
+        assert.equal(cards.find((n) => n.title === 'Reminder').body, LEAVE);
+        assert.equal(k.agent.busy, false);
+        if (first === 'its hold') assert.equal(k.requests.length, 0, 'no turn: the budgets\' check failed');
       });
-      k.agent.wake({ kind: 'trigger', text: 'Your watch fired.', fallbacks: [{ watch: 'w1', text: LEAVE }] });
-      await until(() => titled(k, 'Shiori stopped').length > 0);
-      await idleAtOnce(k);
-      assert.equal(count(cards, 'Reminder'), 1, 'once');
-      assert.equal(cards.find((n) => n.title === 'Reminder').body, LEAVE);
-      assert.equal(k.agent.busy, false);
-    });
+    }
   }
 }
 

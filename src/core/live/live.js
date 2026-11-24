@@ -1146,11 +1146,12 @@ export class Live {
     this.#catch = null;
     if (c.timer !== null) this.clock.clear(c.timer);
     const opened = this.#openedNews.splice(0);
+    const made = await this.#made(c.fired, this.clock.now(), true); // made as they are delivered (#fire)
     // An item's leave reminder is left out when the same catch-up fires its arrival: the traveller got there while annai was away, and
     // "Leave soon" beside "Nepenthe: Lunch at Nepenthe." was of no use. It fired and is logged, so it doesn't come again.
     const item = (/** @type {Fired} */ x, /** @type {string} */ event) => (x.watch.when.type === 'plan' && /** @type {any} */ (x.watch.when).event === event ? `${x.scope}\n${/** @type {any} */ (x.watch.when).item}` : null);
-    const arrived = new Set(c.fired.map((x) => item(x, 'arrived')).filter(Boolean));
-    const fired = c.fired.filter((x) => !arrived.has(item(x, 'leave')));
+    const arrived = new Set(made.map((x) => item(x, 'arrived')).filter(Boolean));
+    const fired = made.filter((x) => !arrived.has(item(x, 'leave')));
     if (fired.length || opened.length) await this.#deliver(fired, 'catch-up', this.#catchUpHeader(c), opened);
   }
 
@@ -1616,8 +1617,25 @@ export class Live {
     return { scope, watch, type, firing, late, ...(this.#catch ? { away: this.#catch.how } : {}), fallback: firing.fallback ?? watch.fallback, ...(say ? { say } : {}) };
   }
 
-  /** Logs each firing, then wakes Shiori: one wake a conversation (spec §6.1). @param {Fired[]} list @param {number} now */
+  /**
+   * Makes each firing, then wakes Shiori: one wake a conversation (spec §6.1). A catch-up only collects what is due, once a watch, and makes it as it delivers
+   * it (#endCatchUp): a page that dies while it waits for a fix leaves its watches as they were, to fire again at the next start. @param {Fired[]} list @param {number} now
+   */
   async #fire(list, now) {
+    const c = this.#catch;
+    if (c) {
+      for (const x of list) if (!c.fired.some((y) => y.scope === x.scope && y.watch.id === x.watch.id)) c.fired.push(x);
+      return;
+    }
+    const done = await this.#made(list, now);
+    if (done.length) await this.#deliver(done);
+  }
+
+  /**
+   * Logs each firing and remembers it (its watch's memory; a one-time watch goes): from then on it doesn't fire again, so only what goes on to be delivered
+   * is made. @param {Fired[]} list @param {number} now @param {boolean} [catchUp] @returns {Promise<Fired[]>} those made: a removed trip's aren't
+   */
+  async #made(list, now, catchUp = false) {
     const open = this.#scope();
     /** @type {Fired[]} */
     const done = [];
@@ -1636,7 +1654,7 @@ export class Live {
         type: 'trigger.fired', actor: 'system',
         data: {
           watch: x.watch.id, type: x.watch.when.type, ...(x.watch.when.event ? { event: x.watch.when.event } : {}), ...(forAt(x.watch) !== null ? { for: forAt(x.watch) } : {}), owner: x.watch.owner, text: f.text, fallback: x.fallback,
-          ...(x.late ? { late: x.late } : {}), ...(f.place ? { place: f.place } : {}), ...(x.watch.when.type === 'moved' ? { km: round3(this.odometer) } : {}), ...(tz ? { tz } : {}), ...(this.#catch ? { catchUp: true } : {}), ...(this.online ? {} : { offline: true }),
+          ...(x.late ? { late: x.late } : {}), ...(f.place ? { place: f.place } : {}), ...(x.watch.when.type === 'moved' ? { km: round3(this.odometer) } : {}), ...(tz ? { tz } : {}), ...(catchUp ? { catchUp: true } : {}), ...(this.online ? {} : { offline: true }),
         },
       }, now).catch((e) => this.#fail(e));
       this.#fired.set(key, { at: now, place: f.place ?? null, ...(forAt(x.watch) !== null ? { for: /** @type {number} */ (forAt(x.watch)) } : {}), ...(x.watch.when.type === 'moved' ? { km: this.odometer } : {}) });
@@ -1655,8 +1673,7 @@ export class Live {
         if (this.#said.size > 200) this.#said.delete(/** @type {string} */ (this.#said.keys().next().value));
       }
     }
-    if (this.#catch) this.#catch.fired.push(...done);
-    else if (done.length) await this.#deliver(done);
+    return done;
   }
 
   /**

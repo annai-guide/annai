@@ -1748,7 +1748,9 @@ export class LiveKoe {
    * Koe's is. @param {LiveSession} s @param {Turn} t @param {{ id: string, name: string, input: any }} e
    */
   async #tool(s, t, e) {
-    const flight = [...this.#owed.sent]; // what a card answers: the notes in flight as the call came, not one that goes in while it runs (an urgent reminder)
+    // What a card answers: the notes in flight as the call came, not one that goes in while it runs (an urgent reminder); none in a cut turn's call, which was
+    // on its way before them (they go in only between her turns, #idle, or after a cut of each one, #now): a turn begun before the notes went in passes none.
+    const flight = t.cut ? [] : [...this.#owed.sent];
     t.tools = true;
     if (!REACH.includes(e.name) && !SILENT.includes(e.name)) t.goesOn = true;
     t.calls++;

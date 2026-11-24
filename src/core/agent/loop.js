@@ -52,8 +52,9 @@ import { FILES_ONLY, PHOTO_ONLY, handoverOf } from '../handover.js';
  * @typedef {{ kind: WakeKind, text: string, plugin?: string, scope?: string, photos?: SentPhoto[], heard?: import('../voice/resolve.js').Heard, gate?: string, fallbacks?: Reminder[], aloud?: boolean, window?: boolean,
  *   logged?: boolean, from?: 'koe' | 'kokoro', note?: string, mode?: 'append' | 'immediate', again?: boolean, at?: number, input?: boolean, why?: string,
  *   call?: { name: string, input: any }, seq?: number, watched?: boolean, forUser?: string, retold?: boolean, files?: string[], titles?: string[],
- *   by?: { name: string, first: string | null, tried: boolean } | null, handed?: import('../handover.js').HandedFile[], handover?: string, recap?: string, claim?: string, chose?: boolean, typed?: boolean, fromScope?: string, turn?: string, urgent?: boolean, shown?: boolean }} Wake
+ *   by?: { name: string, first: string | null, tried: boolean } | null, handed?: import('../handover.js').HandedFile[], handover?: string, recap?: string, claim?: string, chose?: boolean, typed?: boolean, fromScope?: string, turn?: string, urgent?: boolean, shown?: boolean, held?: boolean }} Wake
  *   shown: annai showed the user its reminders itself (#remindWaiting, #keepWakes, #open): her line for the wake says so; typed: in the type box;
+ *   held: its reminders are in the log already (`reminder.held`, written as it first came: wake, Halves' wake), so the queue doesn't hold them again;
  *   by: a note's, the model that wrote it; turn: a note's, the sender's turn it came from (its wake id)
  *   handed, handover: a hand-over's files and its id (the user's message with files, handover.js): the turn that takes it carries the id;
  *   recap: what Shiori said of a trip before, written into the trip she started or opened for a hand-over; fromScope: a hand-over's copy
@@ -942,7 +943,7 @@ export class Agent {
   /** @param {Wake} w */
   #push(w) {
     const scope = this.#target ?? ME;
-    this.hold(w.fallbacks ?? [], scope);
+    if (!w.held) this.hold(w.fallbacks ?? [], scope);
     this.#queue.push({ ...w, scope, at: Date.now() });
     this.#remindWaiting();
     // A heard line its verdict queued after a wait began listening ends it now; under one voice going off stopped, it waits for its end.
@@ -1292,6 +1293,11 @@ export class Agent {
     // A wake for another conversation than the one open (files added to another trip) is written
     // into it now, and answered when it opens (spec §6.1, §7.3).
     if (w.scope && w.scope !== (this.#target ?? ME)) return this.#keepFor(w.scope, w);
+    // Its reminders are held as it first comes, before its budgets' check: a page killed meanwhile leaves them to the next open.
+    if (w.fallbacks?.length && !w.held) {
+      this.hold(w.fallbacks);
+      w = { ...w, held: true };
+    }
     if (['user', 'choice', 'restart', 'file', 'live', 'recap', 'note', 'cue', 'halves', 'move'].includes(w.kind)) {
       this.enqueue(w);
       return Promise.resolve();
