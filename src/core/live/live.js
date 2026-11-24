@@ -588,12 +588,15 @@ export class Live {
       }
       const m = this.#moment();
       const time = this.types().get('time');
+      // What a catch-up found due while it waits for a fix is annai's to say, made or not yet: the relay's copy of it is called off now, not when the wait
+      // ends (its copy would be sent in the wait, with sound). A page killed in the wait fires it again at the next start (#fire).
+      const found = new Set((this.#catch?.fired ?? []).map((x) => this.#keyOf(x.scope, x.watch)));
       /** @type {Mirrored[]} */
       const out = [];
       for (const [scope, list] of this.#watches) {
         if (!this.#inPlay(scope)) continue; // a simulation's own trip, outside its run
         for (const w of list) {
-          if (w.when?.type !== 'time' || !time || this.#broken(time, w)) continue;
+          if (w.when?.type !== 'time' || !time || this.#broken(time, w) || found.has(this.#keyOf(scope, w))) continue;
           const due = Date.parse(w.when.at);
           if (Number.isFinite(due) && !expired(w, due)) out.push({ key: this.#keyOf(scope, w), scope, watch: w.id, due, when: dueWords(w.when.at), text: w.fallback, here: true });
         }
@@ -601,7 +604,7 @@ export class Live {
       for (const [scope, list, here] of plans) {
         for (const w of list) {
           const event = /** @type {any} */ (w.when).event;
-          if ((event !== 'coming-up' && event !== 'leave') || this.#spent(scope, w)) continue;
+          if ((event !== 'coming-up' && event !== 'leave') || this.#spent(scope, w) || found.has(this.#keyOf(scope, w))) continue;
           /** @type {number | null} */
           let due = null;
           try {
@@ -1147,6 +1150,7 @@ export class Live {
     if (c.timer !== null) this.clock.clear(c.timer);
     const opened = this.#openedNews.splice(0);
     const made = await this.#made(c.fired, this.clock.now(), true); // made as they are delivered (#fire)
+    if (made.length) this.#tellReminders('urgent'); // the relay's copies of them are called off now, as when a look makes them at once
     // An item's leave reminder is left out when the same catch-up fires its arrival: the traveller got there while annai was away, and
     // "Leave soon" beside "Nepenthe: Lunch at Nepenthe." was of no use. It fired and is logged, so it doesn't come again.
     const item = (/** @type {Fired} */ x, /** @type {string} */ event) => (x.watch.when.type === 'plan' && /** @type {any} */ (x.watch.when).event === event ? `${x.scope}\n${/** @type {any} */ (x.watch.when).item}` : null);

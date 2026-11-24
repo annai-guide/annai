@@ -52,6 +52,38 @@ test('annai on screen says it at its time and calls off the relay\'s copy before
   }
 });
 
+// A catch-up only collects what it finds due while it waits for a fix (FIX_WAIT_MS, 15 s) and makes it as it delivers it, so the relay is told at its first look
+// that annai has it: its copy waited for a sendAt 10 s ahead, and the wait ends 15 s after the page came back, so without that the relay would send it, with
+// sound, to a phone with annai in its hand.
+for (const [what, o, due, watch] of /** @type {const} */ ([['a time watch', {}, '10:00', true], ["a plan item's coming-up", { plan: { tea: TEA } }, '15:45', false]])) {
+  test(`annai back on screen waiting for a fix calls off the relay's copy of ${what} it found due, so the relay does not send it in the wait`, async () => {
+    const k = await pushKit(o);
+    try {
+      await k.mirror.turnOn(RELAY);
+      const w = watch ? await k.live.setWatch(k.trip, { when: { type: 'time', at: iso(due) }, fallback: 'Tea time.' }) : null;
+      await k.flush();
+      assert.deepEqual((await k.waiting()).map((x) => x.sendAt), [at(due) + GRACE_MS]);
+      k.sensors.visible(false);
+      await k.settle();
+      await k.to(at(due) + 20_000); // 20 s after it came due: the relay sends it in 10 s
+      k.sensors.visible(true); // the catch-up finds it due and waits for a fix, 15 s
+      await k.settle();
+      await k.flush(1000);
+      assert.equal(k.agent.wakes.length, 0, 'still waiting for a fix');
+      assert.deepEqual(await k.waiting(), [], 'called off');
+      await k.deliver(at(due) + 32_000); // the relay would have sent it at 30 s
+      assert.equal(k.pushed().length, 1, 'only the turn-on notification');
+      await k.flush(5000); // the wait ends: annai says it, once, and the mirror hears it at once: a push the phone held back for it would come quietly
+      assert.equal(k.agent.wakes.length, 1);
+      assert.deepEqual(await k.waiting(), []);
+      assert.equal(k.pushed().length, 1);
+      assert.deepEqual(Object.keys((await k.ws.readJSON(SYS_DEVICE, FILE)).given), [w ? `${k.trip}|${w.id}` : `${k.trip}|plan:tea:coming-up|${at('16:00')}`]);
+    } finally {
+      await k.stop();
+    }
+  });
+}
+
 test('a reminder said on screen while many are still being sent is called off first; the rest follow', async () => {
   const k = await pushKit({ live: false });
   try {
