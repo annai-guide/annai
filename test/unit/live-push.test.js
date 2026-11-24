@@ -255,6 +255,27 @@ test('a reminder in a catch-up that ended with the page out of view was not said
   k.live.dispose();
 });
 
+// remind-first-next, fix round 2 (a regression against a241fd148): with no data, a catch-up that ends out of view gives its reminders as cards at
+// once, so they count as said: the relay's copy, sent after the traveller has left, is closed as a double. On a241fd148 the first look said them.
+test('an offline glance that ends out of view still gave the card: the relay\'s copy shown later is closed as a double', async () => {
+  const k = await liveKit();
+  const w = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
+  k.sensors.visible(false);
+  await k.settle();
+  await k.to(at('10:20'));
+  k.sensors.online(false);
+  k.sensors.visible(true); // back with no data: the catch-up finds it due and waits for a fix
+  await k.settle();
+  assert.deepEqual(k.agent.reminders, []);
+  k.sensors.visible(false); // gone before any fix: annai gives the card at once, out of view
+  await k.settle();
+  assert.deepEqual(k.agent.reminders.map((r) => r.text), ['Tea time.']);
+  assert.deepEqual(k.live.given().map(([key]) => key), [`${k.trip}|${w.id}`], 'the push mirror hears it was given');
+  const later = await arrives(k.live, [{ kind: 'shown', key: `${k.trip}|${w.id}`, scope: k.trip, watch: w.id, t: at('10:20:30') }]);
+  assert.deepEqual(later, [`${k.trip}|${w.id}`]);
+  k.live.dispose();
+});
+
 test("archiving a trip takes its reminders out of what a closed annai can say at once; unarchiving brings them back", async () => {
   const k = await liveKit({ plan: { tea: TEA } });
   const w = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: 'Tea time.' });
