@@ -796,6 +796,9 @@ test('milestone 4 done: a pass and a calendar are added, Shiori writes the booki
     ],
   });
   try {
+    // The plan's times are real dates (the flight at 08:00 on Nov 25, 2026, the calendar's dinner on Nov 26): run while one comes up, annai's own
+    // reminder for it (leave for the flight, coming up) woke Shiori again, a 4th request. The page's clock runs from a week before the trip.
+    await page.clock.install({ time: new Date('2026-11-18T12:00:00-08:00') });
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
     await addProvider(page, 'Custom provider', { ability: 'Anthropic Messages', name: 'Endpoint B', url: `${llm.origin}/b`, key: 'sk-test-secret-b', model: 'b-model' });
