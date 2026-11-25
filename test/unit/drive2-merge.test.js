@@ -399,7 +399,7 @@ test("Her instructions saved while the window after she spoke is open apply to t
   await until(() => k.agent.state.name === 'listening');
   await hear(k, 'gas-station');
   await until(() => main().length === 2);
-  while (k.agent.busy) await wait(5);
+  await until(() => !k.agent.busy);
   assert.equal(k.platform.mic.isOpen(), true, 'it listens after the turn');
   assert.doesNotMatch(String(main().at(-1).system), /My own rules/);
   assert.equal(await saveInstruction(k.ws, 'shiori', 'My own rules.'), true);

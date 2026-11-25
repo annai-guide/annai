@@ -354,7 +354,7 @@ test("classic: the window after a turn isn't a tap's: chatter goes through the g
   const from = Date.now();
   await hear(k, 'gas-station'); // the answer
   await until(() => k.requests.filter((/** @type {any} */ r) => !String(r.system ?? '').startsWith('You make one quick decision')).length === 2);
-  while (k.agent.busy) await new Promise((r) => setTimeout(r, 5));
+  await until(() => !k.agent.busy);
   assert.equal(k.platform.mic.isOpen(), true, 'it listens after the turn');
   const wakes = (await k.events(['wake'])).length;
   await hear(k, 'first-one');
@@ -384,7 +384,7 @@ test("classic: the window after a turn, chatter back to back (talk radio, music)
   const from = Date.now();
   await hear(k, 'gas-station'); // the answer
   await until(() => k.requests.filter((/** @type {any} */ r) => !String(r.system ?? '').startsWith('You make one quick decision')).length === 2);
-  while (k.agent.busy) await new Promise((r) => setTimeout(r, 5));
+  await until(() => !k.agent.busy);
   await hear(k, 'first-one'); // a line of the radio's: its verdict is slow
   await until(() => gates === 2);
   k.platform.mic.feed(cat(quiet(0.3), await clip('gas-station')), 16_000); // the next line begins
@@ -417,7 +417,7 @@ async function strayInWindow(k) {
   await until(() => k.agent.state.name === 'listening' && k.requests.length === 1);
   await hear(k, 'gas-station'); // passes the gate: a word, maybe not for her
   await until(() => k.requests.length >= 2); // a reply whose call failed (already_told is no tool of hers alone) has one more step
-  while (k.agent.busy) await new Promise((r) => setTimeout(r, 5));
+  await until(() => !k.agent.busy);
 }
 
 test('classic: a stray word in the window answered with sleep alone keeps the window open, with no cue and no card, to the same deadline', async (t) => {

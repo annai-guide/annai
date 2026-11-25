@@ -49,7 +49,7 @@ for (const full of [false, true]) {
     await until(() => k.agent.state.name === 'listening'); // she spoke, and listens
     await hear(k, 'gas-station'); // the answer
     await until(() => k.requests.filter((/** @type {any} */ r) => !String(r.system ?? '').startsWith('You make one quick decision')).length === 2);
-    while (k.agent.busy) await new Promise((r) => setTimeout(r, 5));
+    await until(() => !k.agent.busy);
     assert.equal(k.platform.mic.isOpen(), true, 'it listens after the turn');
     if (full) store.full((ev) => ev.type === 'heard');
     await hear(k, 'first-one');
