@@ -61,7 +61,7 @@ import { FILES_ONLY, PHOTO_ONLY, handoverOf } from '../handover.js';
  *   recap: what Shiori said of a trip before, written into the trip she started or opened for a hand-over; fromScope: a hand-over's copy
  *   written into another conversation, the one it came from
  *   files, titles: a file wake's paths, and what a trigger's watches are for: the screens' data for its line
- *   scope: the conversation it was meant for, set when it is queued; heard: what the microphone heard (spec §6.1); gate: what the quick-decision gate made of it;
+ *   scope: the conversation it was meant for, set as it comes (wake: the one open then) or when it is queued, and kept: one that lands once another is open is written there (#keepFor); heard: what the microphone heard (spec §6.1); gate: what the quick-decision gate made of it;
  *   fallbacks: what annai shows and says by itself if no model answers (spec §11.3); aloud: this turn is spoken even with voice off (the user asked to hear her, spec §13); window: it was heard in the window after she spoke, so it may not be for her (it owes no answer);
  *   logged: its lines are in the log already (the other half's), so only the wake is written; from, note, mode: a note's half, words and mode;
  *   again: the user tapped Try again after a turn that said nothing to them: the turn is theirs; at: when it was queued (GATHER's cap counts from it);
@@ -855,13 +855,21 @@ export class Agent {
     const elsewhere = this.#queue.filter(which);
     for (const s of new Set(elsewhere.map((w) => /** @type {string} */ (w.scope)))) {
       const those = elsewhere.filter((w) => w.scope === s);
-      // A reminder among them is shown now, as one firing for a conversation that isn't open is (live.js), taken off its wake first, which says so.
-      const owed = those.flatMap((w) => w.fallbacks ?? []);
-      for (const w of those) if (w.fallbacks?.length) Object.assign(w, { fallbacks: [], shown: true });
-      if (owed.length) await this.remind(owed, s);
-      await this.#logWakes(those, newId('w'), false, { log: this.#keptIn(s), trip: s === ME ? null : s }).then(() => this.#leftClosed(s), (e) => this.#notSaved(e));
+      await this.#keepIn(s, those);
       this.#queue = this.#queue.filter((w) => !those.includes(w));
     }
+  }
+
+  /**
+   * Writes wakes into a conversation that isn't open (#keepWakes, #keepFor). A reminder among them is shown now, as one firing for a conversation that
+   * isn't open is (live.js), taken off its wake first, which says so; its entry settles what was held. Never rejects for a write.
+   * @param {string} scope @param {Wake[]} wakes
+   */
+  async #keepIn(scope, wakes) {
+    const owed = wakes.flatMap((w) => w.fallbacks ?? []);
+    for (const w of wakes) if (w.fallbacks?.length) Object.assign(w, { fallbacks: [], shown: true });
+    if (owed.length) await this.remind(owed, scope);
+    await this.#logWakes(wakes, newId('w'), false, { log: this.#keptIn(scope), trip: scope === ME ? null : scope }).then(() => this.#leftClosed(scope), (e) => this.#notSaved(e));
   }
 
   /** A wake was written into a conversation that isn't open: unless an open cut its turn (that is said), it came while it was closed. @param {string} scope */
@@ -878,12 +886,10 @@ export class Agent {
     };
   }
 
-  /** Writes a wake into a conversation that isn't open, and says so if it can't (#notSaved). idle() waits for it, and so can the caller. @param {string} scope @param {Wake} w */
+  /** Writes a wake into a conversation that isn't open, its reminders shown first, and says so if it can't (#keepIn). idle() waits for it, and so can the caller. @param {string} scope @param {Wake} w */
   #keepFor(scope, w) {
     this.#checking++;
-    return this.#logWakes([{ ...w, scope }], newId('w'), false, { log: this.#keptIn(scope), trip: scope === ME ? null : scope })
-      .then(() => this.#leftClosed(scope))
-      .catch((e) => this.#notSaved(e))
+    return this.#keepIn(scope, [{ ...w, scope }])
       .finally(() => {
         this.#checking--;
         this.#settle();
@@ -1292,15 +1298,20 @@ export class Agent {
    * A wake that isn't the user typing: a plugin, a new file, a choice tapped later (spec §6.1).
    * Quiet hours hold one that isn't the user's; a per-hour limit can drop it (§6.6).
    * @param {Wake} w
-   * @returns {Promise<void>} settles once a wake for a conversation that isn't open is written; at once for any other
+   * @returns {Promise<void>} settles once a wake for a conversation that isn't open at the call is written; at once for any other (one that lands after a
+   *   switch, once its budgets are read, is written then, and idle() waits for it: #keepFor)
    */
   wake(w) {
-    // A wake for another conversation than the one open (files added to another trip) is written
-    // into it now, and answered when it opens (spec §6.1, §7.3).
-    if (w.scope && w.scope !== (this.#target ?? ME)) return this.#keepFor(w.scope, w);
+    // A wake keeps the conversation it came for: the one open as it comes, unless it names one. For another than the one open (files added to
+    // another trip, or one opened while its budgets were read) it is written into it, and answered when it opens (spec §6.1, §7.3): a wake for `me` is
+    // written there and never answered, as `me` takes no turns.
+    const scope = w.scope ?? this.#target ?? ME;
+    const here = () => scope === (this.#target ?? ME);
+    if (!here()) return this.#keepFor(scope, w);
+    w = { ...w, scope };
     // Its reminders are held as it first comes, before its budgets' check: a page killed meanwhile leaves them to the next open.
     if (w.fallbacks?.length && !w.held) {
-      this.hold(w.fallbacks);
+      this.hold(w.fallbacks, scope);
       w = { ...w, held: true };
     }
     if (['user', 'choice', 'restart', 'file', 'live', 'recap', 'note', 'cue', 'halves', 'move'].includes(w.kind)) {
@@ -1308,7 +1319,7 @@ export class Agent {
       return Promise.resolve();
     }
     this.#checking++;
-    this.admit(w).then((ok) => { if (ok) this.enqueue(w); }, (e) => this.wakeFailed(w, e)).finally(() => {
+    this.admit(w).then((ok) => { if (ok) return here() ? this.enqueue(w) : this.#keepFor(scope, w); }, (e) => this.wakeFailed(w, e)).finally(() => {
       this.#checking--;
       this.#settle();
     });
@@ -1349,11 +1360,11 @@ export class Agent {
     const { budgets } = await this.settings();
     const now = this.now(); // quiet hours follow the day as lived, a simulation's too
     if (budgets.quietHours && inQuiet(now, budgets.quietHours, this.timeZone())) {
-      // Quiet hours hold Shiori, not the reminders (spec §11.3).
+      // Quiet hours hold Shiori, not the reminders (spec §11.3), which go to the wake's own conversation, whichever is open now.
       const later = { ...w, fallbacks: [] };
       const held = setTimeout(() => again(later), Math.max(1000, quietEnds(now, budgets.quietHours, this.timeZone()) - now));
       /** @type {any} */ (held).unref?.(); // in Node (tests), a held wake must not keep the process alive
-      if (w.fallbacks?.length) await this.remind(w.fallbacks).catch(() => {}); // waited for: whoever waits on the budgets' check (wake, the halves' route) waits for the entry
+      if (w.fallbacks?.length) await this.remind(w.fallbacks, w.scope).catch(() => {}); // waited for: whoever waits on the budgets' check (wake, the halves' route) waits for the entry
       return false;
     }
     // Wakes an hour count real hours, even during a simulation.
@@ -1361,7 +1372,7 @@ export class Agent {
     this.#recentWakes = this.#recentWakes.filter((t) => t > real - 3_600_000 && t <= real);
     if (budgets.wakesPerHour && this.#recentWakes.length >= budgets.wakesPerHour) {
       this.#notice({ tone: 'info', title: t`Shiori skipped a wake`, body: skippedWords(w, budgets.wakesPerHour) });
-      if (w.fallbacks?.length) await this.remind(w.fallbacks).catch(() => {});
+      if (w.fallbacks?.length) await this.remind(w.fallbacks, w.scope).catch(() => {});
       return false;
     }
     this.#recentWakes.push(real);

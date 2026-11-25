@@ -711,21 +711,46 @@ export class Halves {
    */
   async #live(fn, w) {
     await this.koe.opening.catch(() => {});
+    if (this.#elsewhere(w)) return;
     if (await fn()) return;
     const failed = this.#liveId;
     await this.#refresh();
+    if (this.#elsewhere(w)) return;
     if (this.koeState === 'text') return this.koe.enqueue(w);
     // That model rests now, and the next in Koe's list can take it: a note or a reminder doesn't lose its moment. (A typed line is written by the try.)
     if (this.koeState === 'live' && this.#liveId !== failed && (await fn())) return;
+    if (this.#elsewhere(w)) return; // after every wait: the one the second model's connection was
     if (this.koeState !== 'down') {
       this.#koeSaid(); // no session can answer a typed line now (today's spend reached): Kokoro waits no longer
       // No session could take Kokoro's note for the user, and Koe stays live (today's spend reached): annai shows it.
       if (isForUser(w) && !this.#shown.has(w)) await this.#backstop([w]);
-      if (w.fallbacks?.length) this.#alongside(this.kokoro.remind(w.fallbacks)); // idle() waits for its entry
+      this.#annai(w); // in the open conversation, which is the wake's: #elsewhere has just asked
       return;
     }
     this.#notice({ tone: 'warn', title: t`Koe's live voice couldn't start`, body: t`Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.` });
+    if (w.aloud) this.#annai({ ...w, fallbacks: [] }); // the recap asked aloud, which Kokoro was never given: hers now, with the voice (its reminders, if any, go with the koe-down wake)
     this.#talkDirectly(w.fallbacks);
+  }
+
+  /**
+   * A wake #live or #handOn is placing whose conversation another has replaced while it waited (Koe's open, a refresh, a session closed by the switch): it goes to
+   * no session and not to Koe, which would say it in the conversation opened (Halves.wake's own check). Its reminders are shown in its own, Kokoro having the
+   * wake already; one Kokoro never got (aloud: the recap) is Kokoro's to write there. A wake naming no conversation is the open one's wherever it lands.
+   * @param {Wake} w @returns {boolean} whether it was
+   */
+  #elsewhere(w) {
+    if (!w.scope || w.scope === (this.kokoro.target ?? ME)) return false;
+    this.#annai(w, w.scope);
+    return true;
+  }
+
+  /**
+   * What no live session takes of a wake is annai's: its reminders are shown (idle() waits for their entries), and one Kokoro was never given (aloud: the
+   * recap) is hers to write and answer (in text while Koe stays live; aloud when Koe is down, as she then has the voice). @param {Wake} w @param {string} [scope] the conversation they belong to, when it isn't the open one
+   */
+  #annai(w, scope) {
+    if (w.aloud) this.#alongside(this.kokoro.wake(w));
+    else if (w.fallbacks?.length) this.#alongside(this.kokoro.remind(w.fallbacks, scope));
   }
 
   /**
@@ -738,6 +763,7 @@ export class Halves {
     if (!notes.length) return;
     this.#route(async () => {
       await this.#refresh();
+      notes = notes.filter((w) => !this.#elsewhere(w)); // a wake of the conversation left, whose reminders annai shows there, as #live does after its waits
       if (this.koeState === 'text') for (const w of notes) this.koe.enqueue(w);
       else await this.#backstop(notes);
     }, this.#gone);
@@ -913,17 +939,22 @@ export class Halves {
 
   /** Both halves get it while Koe talks, budgets checked once, its reminders with Koe (plan decision 16); asked to hear her, Koe alone. @param {Wake} w @returns {Promise<void>} */
   wake(w) {
-    if (w.scope && w.scope !== (this.kokoro.target ?? ME)) return this.kokoro.wake(w);
+    // It keeps the conversation it came for, as Agent.wake: one for another than the one open is Kokoro's to write into it.
+    const scope = w.scope ?? this.kokoro.target ?? ME;
+    if (scope !== (this.kokoro.target ?? ME)) return this.kokoro.wake(w);
+    w = { ...w, scope };
     // Its reminders are held as it first comes (Agent.wake), before the route, which may wait behind a conversation being opened: a page killed
     // meanwhile leaves them to the next open. Whoever takes it settles that copy: the session's reminder.told, an entry, or her turn's wake record.
     if (w.fallbacks?.length && !w.held) {
-      this.#alongside(this.kokoro.hold(w.fallbacks));
+      this.#alongside(this.kokoro.hold(w.fallbacks, scope));
       w = { ...w, held: true };
     }
     this.#route(async () => {
       await this.#refresh();
       if (!this.#works() || KOKORO_ONLY.includes(w.kind)) return void (await this.kokoro.wake(w));
       if (!w.aloud && !THEIRS.includes(w.kind) && !(await this.kokoro.admit(w, (x) => this.wake(x)))) return;
+      // Another conversation opened in the route (its refresh, its budgets' read): Kokoro writes it into its own, its reminders shown now.
+      if (scope !== (this.kokoro.target ?? ME)) return void (await this.kokoro.wake(w));
       this.#koeOpen();
       // A cue is hers to say or let pass, owed only until a model has it: not shown by annai before then. Kokoro is told of cues as of reminders, as released:
       // nothing shows that it leaves a cue alone, and one it passes on is a note, which Koe must say.
@@ -1395,8 +1426,8 @@ export class Halves {
     this.#unsaid = [];
     for (const w of notes) {
       try {
-        // A trigger's reminders, which she didn't say: annai says them.
-        if (w.kind !== 'note') await this.kokoro.remind(w.fallbacks ?? [], undefined, { aloud: true });
+        // A trigger's reminders, which she didn't say: annai says them, in its own conversation (a route queued by the session's hook can run after a switch).
+        if (w.kind !== 'note') await this.kokoro.remind(w.fallbacks ?? [], w.scope, { aloud: true });
         else if (await this.#present(w, false)) continue;
         else if (w.why === 'tool' && !w.retold) this.#retell.push(w);
         else if (w.why === 'tool') await this.#unshown(/* en */ "Kokoro's note wasn't passed on: Koe didn't say it, twice, and it had no words for the user (for_user).");

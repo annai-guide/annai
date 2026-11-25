@@ -3,7 +3,7 @@ import { parseSkill, SKILL_FILE } from './skills.js';
 import { forget } from './forget.js';
 import { checkSlot, checkCardType, checkComponent, checkScreen, checkTheme, COMPONENTS } from './ui-slots.js';
 import { normPath, typeForPath } from './paths.js';
-import { SYS, SYS_PLUGINS, SYS_SETTINGS } from './scopes.js';
+import { ME, SYS, SYS_PLUGINS, SYS_SETTINGS } from './scopes.js';
 import { tracedFetch, withoutSecretsIn } from './agent/net.js';
 import { addressParts, KEY_BLANK } from './address.js';
 import { record } from './agent/log.js';
@@ -919,7 +919,9 @@ export class PluginHost {
       llm,
       wake: (/** @type {string} */ reason) => {
         const agent = need('agent');
-        const wake = (/** @type {string} */ text) => agent.wake({ kind: 'plugin', plugin: id, text });
+        // Its conversation is the one open as it calls, not the one open once its words have been checked for keys: a switch in between leaves it written into its own.
+        const scope = agent.target ?? ME;
+        const wake = (/** @type {string} */ text) => agent.wake({ kind: 'plugin', plugin: id, text, scope });
         return own ? wake(String(reason)) : theirs(String(reason)).then(wake);
       },
       net: Object.freeze({
