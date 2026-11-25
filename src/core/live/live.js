@@ -1718,7 +1718,7 @@ export class Live {
         this.#held.push({ scope, text });
         continue;
       }
-      // With the scope read at the start: another conversation may open while an earlier firing is written, and this wake then lands by its own rule (Agent.wake).
+      // With the scope read at the start: another conversation may open while an earlier firing is written, and this wake then lands by its own rule (the agent's wake: Halves.wake with Koe on, Agent.wake without).
       await this.agent.wake({ kind, text, fallbacks, titles, scope, ...(urgent ? { urgent } : {}) });
     }
   }

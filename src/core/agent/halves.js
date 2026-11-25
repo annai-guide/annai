@@ -719,15 +719,16 @@ export class Halves {
     if (this.koeState === 'text') return this.koe.enqueue(w);
     // That model rests now, and the next in Koe's list can take it: a note or a reminder doesn't lose its moment. (A typed line is written by the try.)
     if (this.koeState === 'live' && this.#liveId !== failed && (await fn())) return;
+    if (this.#elsewhere(w)) return; // after every wait: the one the second model's connection was
     if (this.koeState !== 'down') {
       this.#koeSaid(); // no session can answer a typed line now (today's spend reached): Kokoro waits no longer
       // No session could take Kokoro's note for the user, and Koe stays live (today's spend reached): annai shows it.
       if (isForUser(w) && !this.#shown.has(w)) await this.#backstop([w]);
-      if (w.fallbacks?.length) this.#alongside(this.kokoro.remind(w.fallbacks, w.scope)); // idle() waits for its entry; in the wake's own conversation
+      this.#annai(w); // in the open conversation, which is the wake's: #elsewhere has just asked
       return;
     }
     this.#notice({ tone: 'warn', title: t`Koe's live voice couldn't start`, body: t`Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.` });
-    if (!this.#elsewhere(w)) this.#talkDirectly(w.fallbacks);
+    this.#talkDirectly(w.fallbacks);
   }
 
   /**
@@ -738,9 +739,17 @@ export class Halves {
    */
   #elsewhere(w) {
     if (!w.scope || w.scope === (this.kokoro.target ?? ME)) return false;
-    if (w.aloud) this.#alongside(this.kokoro.wake(w));
-    else if (w.fallbacks?.length) this.#alongside(this.kokoro.remind(w.fallbacks, w.scope)); // idle() waits for its entry
+    this.#annai(w, w.scope);
     return true;
+  }
+
+  /**
+   * What no live session takes of a wake is annai's: its reminders are shown (idle() waits for their entries), and one Kokoro was never given (aloud: the
+   * recap) is hers to write, and answer in text. @param {Wake} w @param {string} [scope] the conversation they belong to, when it isn't the open one
+   */
+  #annai(w, scope) {
+    if (w.aloud) this.#alongside(this.kokoro.wake(w));
+    else if (w.fallbacks?.length) this.#alongside(this.kokoro.remind(w.fallbacks, scope));
   }
 
   /**
@@ -753,6 +762,7 @@ export class Halves {
     if (!notes.length) return;
     this.#route(async () => {
       await this.#refresh();
+      notes = notes.filter((w) => !this.#elsewhere(w)); // a wake of the conversation left, whose reminders annai shows there, as #live does after its waits
       if (this.koeState === 'text') for (const w of notes) this.koe.enqueue(w);
       else await this.#backstop(notes);
     }, this.#gone);
@@ -1415,8 +1425,8 @@ export class Halves {
     this.#unsaid = [];
     for (const w of notes) {
       try {
-        // A trigger's reminders, which she didn't say: annai says them.
-        if (w.kind !== 'note') await this.kokoro.remind(w.fallbacks ?? [], undefined, { aloud: true });
+        // A trigger's reminders, which she didn't say: annai says them, in its own conversation (a route queued by the session's hook can run after a switch).
+        if (w.kind !== 'note') await this.kokoro.remind(w.fallbacks ?? [], w.scope, { aloud: true });
         else if (await this.#present(w, false)) continue;
         else if (w.why === 'tool' && !w.retold) this.#retell.push(w);
         else if (w.why === 'tool') await this.#unshown(/* en */ "Kokoro's note wasn't passed on: Koe didn't say it, twice, and it had no words for the user (for_user).");
