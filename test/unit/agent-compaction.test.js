@@ -78,7 +78,7 @@ test("cold: a reply shown as written (grounded) isn't measured again: its words 
 
 // keepTokens 30,000 fails if the line is counted twice (40,000 alone fills it); 15,000 fails if it is counted as nothing (the 20,000 it is would fill 15,000
 // alone, and the three exchanges the floor keeps are then the last three).
-for (const [keepTokens, stays] of /** @type {const} */ ([[30_000, [1, 2, 3, 4]], [15_000, [2, 3, 4]]])) {
+for (const [keepTokens, stays] of /** @type {[number, number[]][]} */ ([[30_000, [1, 2, 3, 4]], [15_000, [2, 3, 4]]])) {
   test(`housekeeping sizes a typed line once: its words are in its msg.user, and its wake's reason (the same words) is not counted again, so the part kept word for word is what spec §6.5 says: keeping ${keepTokens} tokens (llm-rest-next)`, async () => {
     const k = await agentKit([[say('ok')]], { utility: [{ text: 'They planned dinner at Nepenthe.' }] });
     for (let i = 0; i < 5; i++) {
