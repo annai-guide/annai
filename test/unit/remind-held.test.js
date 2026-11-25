@@ -1216,88 +1216,134 @@ test("Koe live: an urgent watch's wake whose first live model refused and whose 
 });
 
 // The wake is with the session, whose connection is slow, when another conversation opens: the switch closes the session, which can't take it, and #live
-// (#elsewhere, after its refresh) shows the reminder in its own conversation. An urgent wake is not with the session until it is open, so the close hands
-// nothing on: one copy in the conversation left, said once. A wake that is not urgent is handed on at the close (written there silently, the approved entry "A
-// reminder can be written twice into its conversation when a switch lands while the live session connects"), and #live shows it
-// again: two entries there and one card on screen, said once. The one opened has none.
+// (#elsewhere, after its refresh) shows the reminder in its own conversation. The close lets go of what #live waits to place before it hands anything on
+// (live.js #go), so the close writes no silent copy of its own, urgent or not: one entry in the conversation left, said once (on 4fb14e7d2 a wake that was not
+// urgent had two there, the approved entry "A reminder can be written twice into its conversation when a switch lands while the live session connects",
+// which this closes). The one opened has none.
 for (const urgent of [true, false]) {
-  test(`Koe live: ${urgent ? 'an urgent' : 'a'} watch's wake while the session is connecting when another conversation opens: its reminder is shown in its own conversation, ${urgent ? 'once' : 'twice there (a silent copy at the close, then #live\'s), said once'}, and never in the one opened, and the next start that opens its own shows nothing more`, async () => {
+  test(`Koe live: ${urgent ? 'an urgent' : 'a'} watch's wake while the session is connecting when another conversation opens: its reminder is shown in its own conversation, once, said once, and never in the one opened, and the next start that opens its own shows nothing more`, async () => {
     const k = await liveKit([{ said: 'Your train leaves in twenty minutes, from platform 4.', audio: tone(1) }], { pace: 1 });
     try {
       await k.voice.unlock();
       const cards = raw(k); // each half's own: Halves' list drops a card identical to the one before it
       const other = await createTrip(k.ws, { title: 'Kyoto' });
-      /** @type {() => void} */
-      let open = () => {};
-      const door = new Promise((r) => { open = () => r(undefined); });
-      const live = k.llm.live.bind(k.llm);
-      let reached = false;
-      k.llm.live = async (/** @type {any} */ ...a) => { reached = true; await door; return /** @type {any} */ (live)(...a); }; // the connection is slow
+      const conn = slowConnection(k);
       k.agent.wake({ ...train(), ...(urgent ? { urgent: true } : {}) });
-      await until(() => reached, 30_000);
+      await until(conn.reached, 30_000);
       const opening = k.agent.open(other);
       await settled();
-      open();
+      conn.open();
       await inTime(opening, 'the open did not finish', 5000);
-      await soon(async () => reminders(cards).length >= (urgent ? 1 : 2)); // wherever they are shown
+      await soon(async () => reminders(cards).length >= 1); // wherever they are shown
       await settled();
       await idleAtOnce(k);
-      assert.deepEqual(await entries(k), urgent ? [TRAIN] : [TRAIN, TRAIN], 'its entries, in its own conversation');
+      assert.deepEqual(await entries(k), [TRAIN], 'its entry, in its own conversation, once');
       assert.deepEqual(await entries(k, other), [], 'none in the one opened');
-      assert.deepEqual(reminders(cards), urgent ? [TRAIN] : [TRAIN, TRAIN], 'shown in the one left: each card once');
-      assert.deepEqual(k.said.filter((/** @type {string} */ x) => x.includes(TRAIN)), [TRAIN], 'said once: the silent copy of the close is not');
+      assert.deepEqual(reminders(cards), [TRAIN], 'shown once');
+      assert.deepEqual(k.said.filter((/** @type {string} */ x) => x.includes(TRAIN)), [TRAIN], 'said once');
       assert.deepEqual([await recordsIn(k, other, 'wake'), await recordsIn(k, other, 'out.speak')], [[], []], 'nothing of it told, or answered, in the one opened');
       assert.equal(texts(k).length, 0, 'the session never got it');
       const next = await nextStart(k, true);
       assert.deepEqual(reminders(next.cards), [], 'the next start that opens its own shows nothing more');
-      assert.deepEqual(await entries(k), urgent ? [TRAIN] : [TRAIN, TRAIN], 'and writes no entry');
+      assert.deepEqual(await entries(k), [TRAIN], 'and writes no entry');
     } finally {
       await k.done();
     }
   });
 }
 
-// The session's own copy of a wake, handed on as voice goes off while it connects (#handOn: a route, its refresh, then Koe's text list or annai), is the same
-// wake: another conversation opened during that refresh, it is shown in its own, and goes to no turn and no entry in the one opened (the re-review's probe;
-// on 8a0290bb9 Koe's text turn in the one opened was given it, or annai wrote it there). With no Koe model the hand-on is annai's.
+/**
+ * The live model's connection, held until open() lets it go (a slow connection): reached() says the session is connecting. @param {any} k
+ * @returns {{ reached: () => boolean, open: () => void }}
+ */
+function slowConnection(k) {
+  /** @type {() => void} */
+  let open = () => {};
+  const door = new Promise((r) => { open = () => r(undefined); });
+  const live = k.llm.live.bind(k.llm);
+  let reached = false;
+  k.llm.live = async (/** @type {any} */ ...a) => { reached = true; await door; return /** @type {any} */ (live)(...a); };
+  return { reached: () => reached, open };
+}
+
+/**
+ * Voice goes off (the chip, or auto mode as the car stops), which closes the session that is connecting; with other, the traveller opens that conversation
+ * right after the close, before anything the close set going has run (a tap during the refreshes that follow it, which read the phone's store). @param {any} k
+ * @param {string} [other] @returns {Promise<{ opening: Promise<void> | undefined }>}
+ */
+async function voiceOff(k, other) {
+  const at = { opening: /** @type {Promise<void> | undefined} */ (undefined) };
+  const close = k.agent.live.close.bind(k.agent.live);
+  k.agent.live.close = (/** @type {string} */ why, /** @type {any} */ o) => {
+    close(why, o);
+    if (other && why === 'voice off' && !at.opening) at.opening = k.agent.open(other);
+  };
+  await k.voice.choose('off');
+  if (other) await until(() => at.opening !== undefined, 30_000);
+  return at;
+}
+
+/** Koe's (chat) wake records in a conversation that carry these words (a wake's reminders). @param {any} k @param {string} scope @param {string} words */
+const koeWokeIn = async (k, scope, words) => (await recordsIn(k, scope, 'wake')).filter((/** @type {any} */ e) => e.data?.half === 'koe' && JSON.stringify(e.data).includes(words)).length;
+/** The requests Koe's chat model got that carry these words. @param {any} k @param {string} words */
+const koeAsked = (k, words) => (k.sent['model-koe'] ?? []).filter((/** @type {any} */ r) => JSON.stringify(r).includes(words)).length;
+
+// Voice goes off while the session is connecting with a watch's wake (the deferred entry "Voice going off while the live session connects can give a reminder
+// twice, or a note of Kokoro's to the conversation opened"): the close lets go of the wake #live waits to place, and #live places it once, after its refresh:
+// Koe · Chat gets it (one turn, one entry when she sleeps on it), or, with no Koe model, annai shows it. On 4fb14e7d2 the close handed the session's copy on
+// as well (#handOn): two Koe turns and two entries, or two entries.
 for (const [mode, koe] of /** @type {[string, any][]} */ ([[' (Koe on a chat model)', { koe: { type: [asleep, asleep, asleep] } }], [' (no Koe model)', {}]])) {
-  test(`Koe live: a watch's wake with the session connecting when voice goes off and another conversation opens as the close hands it on: its reminder is shown in its own conversation, and nothing of it in the one opened${mode}`, async () => {
+  test(`Koe live: a watch's wake with the session connecting when voice goes off: it is placed once, in its own conversation${mode}`, async () => {
+    const k = await liveKit([{ said, audio: tone(1) }], { pace: 1, ...koe });
+    try {
+      await k.voice.unlock();
+      const cards = raw(k);
+      const conn = slowConnection(k);
+      k.agent.wake(train());
+      await until(conn.reached, 30_000);
+      await voiceOff(k);
+      await soon(async () => (await entries(k)).length > 0);
+      conn.open();
+      await settled();
+      await idleAtOnce(k);
+      await settled();
+      await idleAtOnce(k);
+      assert.deepEqual(await entries(k), [TRAIN], 'one entry, in its own conversation');
+      assert.deepEqual(reminders(cards), [TRAIN], 'one card');
+      if (koe.koe) assert.equal(await koeWokeIn(k, k.trip, TRAIN), 1, 'Koe · Chat got it once');
+      assert.equal(texts(k).length, 0, 'the session never got it');
+      const next = await nextStart(k, true);
+      assert.deepEqual(reminders(next.cards), [], 'the next start shows nothing more');
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+// The same, and the traveller opens another conversation just after voice went off (on 8a0290bb9 Koe's text turn in the one opened was given the session's
+// copy, or annai wrote it there; on 4fb14e7d2 both copies went to its own: two entries there). #live alone places it, after its refresh (#elsewhere): shown
+// once in its own conversation, nothing of it in the one opened.
+for (const [mode, koe] of /** @type {[string, any][]} */ ([[' (Koe on a chat model)', { koe: { type: [asleep, asleep, asleep] } }], [' (no Koe model)', {}]])) {
+  test(`Koe live: a watch's wake with the session connecting when voice goes off and another conversation opens just after: its reminder is shown once, in its own conversation, and nothing of it in the one opened${mode}`, async () => {
     const k = await liveKit([{ said, audio: tone(1) }], { pace: 1, ...koe });
     try {
       await k.voice.unlock();
       const cards = raw(k);
       const other = await createTrip(k.ws, { title: 'Kyoto' });
-      /** @type {() => void} */
-      let open = () => {};
-      const door = new Promise((r) => { open = () => r(undefined); });
-      const live = k.llm.live.bind(k.llm);
-      let reached = false;
-      k.llm.live = async (/** @type {any} */ ...a) => { reached = true; await door; return /** @type {any} */ (live)(...a); }; // the connection is slow
-      const order = /** @type {string[]} */ ([]);
-      const owed = k.agent.live.c.owed;
-      /** @type {Promise<void> | undefined} */
-      let opening;
-      k.agent.live.c.owed = (/** @type {any[]} */ notes) => { // the close hands the session's copy on: the traveller opens another conversation as it is made
-        order.push(`handed on ${notes.length}`);
-        owed(notes);
-        order.push('open');
-        opening = k.agent.open(other);
-      };
+      const conn = slowConnection(k);
       k.agent.wake(train());
-      await until(() => reached, 30_000);
-      await k.voice.choose('off'); // voice goes off: the session that is connecting closes, and hands the wake on
-      await until(() => opening !== undefined, 30_000);
-      open();
+      await until(conn.reached, 30_000);
+      const { opening } = await voiceOff(k, other);
       await inTime(/** @type {Promise<void>} */ (opening), 'the open did not finish', 5000);
       await soon(async () => reminders(cards).length > 0);
+      conn.open();
       await settled();
       await idleAtOnce(k);
-      assert.deepEqual(order, ['handed on 1', 'open'], 'the hand-on came first, the switch in its refresh');
+      assert.deepEqual(await entries(k), [TRAIN], 'one entry, in its own conversation');
+      assert.deepEqual(reminders(cards), [TRAIN], 'one card');
       assert.deepEqual(await entries(k, other), [], 'none in the one opened');
       assert.deepEqual([await recordsIn(k, other, 'wake'), await recordsIn(k, other, 'out.speak')], [[], []], 'nothing of it told, or answered, in the one opened');
       assert.equal(texts(k).length, 0, 'the session never got it');
-      assert.deepEqual(reminders(k.notices), [TRAIN], 'one card on screen (Halves drops the identical one that follows within 5 s)');
-      assert.deepEqual(await entries(k), [TRAIN, TRAIN], 'its entries, in its own conversation: the hand-on shows it there, and so does #live after its refresh');
       const next = await nextStart(k, true);
       assert.deepEqual(reminders(next.cards), [], 'the next start that opens its own shows nothing more');
     } finally {
@@ -1305,6 +1351,123 @@ for (const [mode, koe] of /** @type {[string, any][]} */ ([[' (Koe on a chat mod
     }
   });
 }
+
+const ANSWER = 'The Bixby bridge viewpoint is open until ten tonight.';
+/** The cards of Kokoro's answers annai shows, by their words. @param {any[]} cards */
+const answers = (cards) => cards.filter((n) => n.title === "Shiori's answer").map((n) => n.body);
+/** Kokoro tells Koe something for the user (tell_koe with for_user): logged in the conversation open, then given to Koe. @param {any} k */
+const tellKoe = (k) => k.agent.channel.send('kokoro', ANSWER, 'append', 'tool', undefined, undefined, false, ANSWER);
+/** What of the answer a conversation holds: annai's entries for it, and any wake or line of Shiori's that carries it. @param {any} k @param {string} scope */
+const answerIn = async (k, scope) => ({
+  entries: (await entries(k, scope)).filter((x) => x === ANSWER),
+  told: (await Promise.all(['wake', 'out.speak', 'out.show'].map((type) => recordsIn(k, scope, type)))).flat().filter((/** @type {any} */ e) => JSON.stringify(e.data).includes('Bixby')).length,
+});
+
+// A note of Kokoro's for the traveller is with the session that is connecting when voice goes off, and the traveller opens another conversation just after:
+// the note carries the conversation it was written in (Channel.send), so #live, after its refresh, shows it there, silently (#elsewhere, as a switch shows
+// what it leaves), and nothing of it goes to the one opened: no card's entry, no Koe turn, no wake of Kokoro's. On 4fb14e7d2 the close's hand-on and
+// #live's copy both went to the conversation opened (Koe · Chat's turn there, or "Shiori's answer" there), and nothing of it to its own.
+for (const [mode, koe] of /** @type {[string, any][]} */ ([[' (Koe on a chat model)', { koe: { type: [asleep, asleep, asleep] } }], [' (no Koe model)', {}]])) {
+  test(`Koe live: a note of Kokoro's for the user with the session connecting when voice goes off and another conversation opens just after: it is shown in its own conversation, silently, and nothing of it in the one opened${mode}`, async () => {
+    const k = await liveKit([{ said, audio: tone(1) }], { pace: 1, ...koe });
+    try {
+      await k.voice.unlock();
+      const cards = raw(k);
+      const other = await createTrip(k.ws, { title: 'Kyoto' });
+      const conn = slowConnection(k);
+      await tellKoe(k);
+      await until(conn.reached, 30_000);
+      const { opening } = await voiceOff(k, other);
+      await inTime(/** @type {Promise<void>} */ (opening), 'the open did not finish', 5000);
+      await soon(async () => answers(cards).length > 0 || (await answerIn(k, other)).told > 0 || (await answerIn(k, other)).entries.length > 0);
+      conn.open();
+      await settled();
+      await idleAtOnce(k);
+      assert.deepEqual(await answerIn(k, other), { entries: [], told: 0 }, 'nothing of it in the one opened');
+      assert.deepEqual((await answerIn(k, k.trip)).entries, [ANSWER], 'shown in its own conversation, once');
+      assert.deepEqual(answers(cards), [ANSWER], 'one card');
+      assert.deepEqual(k.said.filter((/** @type {string} */ x) => x.includes('Bixby')), [], 'never said');
+      assert.equal(koeAsked(k, 'Bixby'), 0, 'Koe · Chat never had it');
+      assert.equal(texts(k).length, 0, 'the session never got it');
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+// A note of Kokoro's for the traveller whose write is still in flight when the traveller opens another conversation (the approved entry "Live Koe's tool
+// calls in flight when another conversation opens are written into the conversation opened", its note in flight): it is written in the conversation left,
+// and stays there (Koe's delivery asks #elsewhere): shown there, silently, never said or given to Koe in the one opened. On 4fb14e7d2 Koe said it there: Koe ·
+// Chat's turn, or the live session that opened there for it.
+for (const [mode, chat] of /** @type {[string, boolean][]} */ ([[' (Koe live)', false], [' (Koe on a chat model, voice off)', true]])) {
+  test(`Koe: a note of Kokoro's for the user still being written when another conversation opens: it stays in its own conversation, and nothing of it in the one opened${mode}`, async () => {
+    const k = await liveKit([{ said: 'The viewpoint is open until ten.', audio: tone(0.5) }], { pace: 1, koe: { type: [asleep, asleep, asleep] } });
+    try {
+      await k.voice.unlock();
+      if (chat) await k.voice.choose('off'); // Koe · Chat talks
+      await soon(async () => k.agent.koeState === (chat ? 'text' : 'live'));
+      const cards = raw(k);
+      const other = await createTrip(k.ws, { title: 'Kyoto' });
+      /** @type {() => void} */
+      let open = () => {};
+      const door = new Promise((r) => { open = () => r(undefined); });
+      const log = k.agent.kokoro.log.bind(k.agent.kokoro);
+      k.agent.kokoro.log = async (/** @type {any} */ ev, /** @type {any} */ o) => {
+        const e = await log(ev, o);
+        if (ev.type === 'note') await door; // written; Channel.send still waits on it
+        return e;
+      };
+      const sending = tellKoe(k);
+      await soon(async () => (await recordsIn(k, k.trip, 'note')).length > 0);
+      const opening = k.agent.open(other);
+      open();
+      await inTime(opening, 'the open did not finish', 5000);
+      await sending;
+      await soon(async () => answers(cards).length > 0 || (await answerIn(k, other)).told > 0 || texts(k).length > 0);
+      await settled();
+      await idleAtOnce(k);
+      assert.deepEqual(await answerIn(k, other), { entries: [], told: 0 }, 'nothing of it in the one opened');
+      assert.equal(texts(k).length, 0, 'no session had it');
+      assert.equal(koeAsked(k, 'Bixby'), 0, 'Koe · Chat never had it');
+      assert.deepEqual(answers(cards), [ANSWER], 'one card');
+      assert.deepEqual((await answerIn(k, k.trip)).entries, [ANSWER], 'shown in its own conversation, once');
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+// Kokoro's note for the traveller went in and the session said nothing of it, twice: annai takes it over (the session's `unsaid`, a route of Halves', #backstop),
+// and another conversation opens before that route runs: it is shown in its own conversation, silently (#elsewhere), as the wake's reminder is shown in
+// its own (the test below). On 4fb14e7d2 annai showed it as "Shiori's answer" in the one opened, and said it there.
+test("Koe live: a note of Kokoro's for the user the session passed on in no words, asked once more, when another conversation opens as annai takes it over: it is shown in its own conversation, silently, and nothing of it in the one opened", async () => {
+  const k = await liveKit([{ said: 'Silent.', audio: tone(0.4) }, { said: 'Silent.', audio: tone(0.4) }], { pace: 1 });
+  try {
+    await k.voice.unlock();
+    const cards = raw(k);
+    const other = await createTrip(k.ws, { title: 'Kyoto' });
+    const unsaid = k.agent.live.c.unsaid;
+    const order = /** @type {string[]} */ ([]);
+    k.agent.live.c.unsaid = (/** @type {any[]} */ notes) => { // the route that shows them is queued; the traveller opens another conversation before it runs
+      order.push(`taken over ${notes.length}`);
+      unsaid(notes);
+      order.push('open');
+      k.agent.open(other).catch(() => {});
+    };
+    await tellKoe(k);
+    await soon(async () => order.length === 2, 30_000);
+    await soon(async () => answers(cards).length > 0);
+    await settled();
+    await idleAtOnce(k);
+    assert.deepEqual(order, ['taken over 1', 'open']);
+    assert.deepEqual(await answerIn(k, other), { entries: [], told: 0 }, 'nothing of it in the one opened');
+    assert.deepEqual((await answerIn(k, k.trip)).entries, [ANSWER], 'shown in its own conversation, once');
+    assert.deepEqual(answers(cards), [ANSWER], 'one card');
+    assert.deepEqual(k.said.filter((/** @type {string} */ x) => x.includes('Bixby')), [], 'not said');
+  } finally {
+    await k.done();
+  }
+});
 
 // The session was asked once more and said nothing of the reminder: annai takes it over (the session's `unsaid`, a route of Halves' that shows it, #backstop),
 // and another conversation opens before that route runs: it shows the reminder in the wake's own conversation (the wake's scope), as everything that waits does.

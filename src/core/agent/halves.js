@@ -121,8 +121,8 @@ export class Channel {
     // Which model wrote it, taken now: annai's own notes to a half name none.
     const by = ANNAI_NOTES.includes(why) ? null : o.by !== undefined ? o.by : this.by?.[from]() ?? null;
     const e = await this.log[from]({ type: 'note', actor: 'shiori', data: { id: newId('n'), from, mode, why, ...(wake ? { wake } : {}), by }, texts: [['text', text], ...(forUser ? /** @type {[string, string][]} */ ([['forUser', forUser]]) : [])] });
-    // The other half's "woke for": Koe never mentions Kokoro, so its says only that a note came.
-    this.deliver[to]({ kind: 'note', logged: true, from, note: text, mode, why, seq: e?.seq, by, ...(wake ? { turn: wake } : {}), ...(call ? { call } : {}), ...(from === 'koe' ? { watched } : {}), ...(forUser ? { forUser } : {}), text: from === 'koe' ? /* en */ `Koe ${asksOrNotes(text)}: ${quote(text.length > 120 ? `${text.slice(0, 120)}…` : text)}` : /* en */ 'a note from Kokoro' });
+    // The other half's "woke for": Koe never mentions Kokoro, so its says only that a note came. It keeps the conversation it was written in (scope).
+    this.deliver[to]({ kind: 'note', logged: true, from, note: text, mode, why, seq: e?.seq, by, ...(e?.scope ? { scope: e.scope } : {}), ...(wake ? { turn: wake } : {}), ...(call ? { call } : {}), ...(from === 'koe' ? { watched } : {}), ...(forUser ? { forUser } : {}), text: from === 'koe' ? /* en */ `Koe ${asksOrNotes(text)}: ${quote(text.length > 120 ? `${text.slice(0, 120)}…` : text)}` : /* en */ 'a note from Kokoro' });
     if (mode === 'immediate') this.cut[to]();
     return 'sent';
   }
@@ -249,6 +249,7 @@ export class Halves {
       by: { koe: () => this.koe.by, kokoro: () => this.kokoro.by },
       deliver: {
         koe: (w) => {
+          if (this.#elsewhere(w)) return; // another conversation opened while it was written: it stays in its own
           // Kokoro's note for a stretch of non-stop sound (its sleep) is Koe's alone, nothing the user is owed.
           const stretch = this.#ofStretch({ from: w.from, why: String(w.why ?? ''), wake: w.turn, forUser: w.forUser ?? '' });
           const owed = isForUser(w) && !stretch;
@@ -459,12 +460,12 @@ export class Halves {
 
   /**
    * What Kokoro meant for the user in notes Koe's session never passed on, shown, never aloud, as #backstop shows it: in the conversation still open
-   * (here: a tap or a sound cut her), or into the one a switch or Start fresh leaves, where a question is let go.
+   * (here: a tap or a sound cut her), or into the one a switch or Start fresh leaves, where a question is let go; or into their own, no longer open (#elsewhere).
    * @param {Wake[]} notes @param {boolean} [here]
+   * @param {string} [scope] where they go, read as they come: a switch moves the open conversation while the first is being written, and each goes where it belongs
    */
-  #leftUnsaid(notes, here = false) {
+  #leftUnsaid(notes, here = false, scope = this.kokoro.target ?? ME) {
     for (const w of notes) this.#shown.add(w); // a live part that then finds no session doesn't show it again (#live)
-    const scope = this.kokoro.target ?? ME; // a switch moves the open conversation while the first is being written: each goes where it belongs
     const shown = (async () => {
       for (const w of notes) {
         try {
@@ -733,14 +734,17 @@ export class Halves {
   }
 
   /**
-   * A wake #live or #handOn is placing whose conversation another has replaced while it waited (Koe's open, a refresh, a session closed by the switch): it goes to
-   * no session and not to Koe, which would say it in the conversation opened (Halves.wake's own check). Its reminders are shown in its own, Kokoro having the
-   * wake already; one Kokoro never got (aloud: the recap) is Kokoro's to write there. A wake naming no conversation is the open one's wherever it lands.
+   * A wake or a note of Kokoro's being placed (#live, #handOn, #backstop, Koe's delivery) whose conversation another has replaced while it waited (Koe's open, a refresh,
+   * a session closed by the switch, the note's own write): it goes to no session and not to Koe, which would say it in the conversation opened (Halves.wake's own
+   * check). A wake's reminders are shown in its own, Kokoro having the wake already; one Kokoro never got (aloud: the recap) is Kokoro's to write there. A note of
+   * Kokoro's (scope: where Channel.send wrote it) is shown in its own as a switch shows those it leaves (#leftUnsaid), silently, a question let go: kept for
+   * when the user goes back, as a reminder is, and Kokoro is not woken there. One naming no conversation is the open one's wherever it lands.
    * @param {Wake} w @returns {boolean} whether it was
    */
   #elsewhere(w) {
     if (!w.scope || w.scope === (this.kokoro.target ?? ME)) return false;
-    this.#annai(w, w.scope);
+    if (w.kind === 'note') this.#leftUnsaid([w], false, w.scope);
+    else this.#annai(w, w.scope);
     return true;
   }
 
@@ -763,7 +767,7 @@ export class Halves {
     if (!notes.length) return;
     this.#route(async () => {
       await this.#refresh();
-      notes = notes.filter((w) => !this.#elsewhere(w)); // a wake of the conversation left, whose reminders annai shows there, as #live does after its waits
+      notes = notes.filter((w) => !this.#elsewhere(w)); // a wake or note of the conversation left, which annai shows there, as #live does after its waits
       if (this.koeState === 'text') for (const w of notes) this.koe.enqueue(w);
       else await this.#backstop(notes);
     }, this.#gone);
@@ -1428,6 +1432,7 @@ export class Halves {
       try {
         // A trigger's reminders, which she didn't say: annai says them, in its own conversation (a route queued by the session's hook can run after a switch).
         if (w.kind !== 'note') await this.kokoro.remind(w.fallbacks ?? [], w.scope, { aloud: true });
+        else if (this.#elsewhere(w)) continue; // a note of a conversation no longer open: shown there, silently
         else if (await this.#present(w, false)) continue;
         else if (w.why === 'tool' && !w.retold) this.#retell.push(w);
         else if (w.why === 'tool') await this.#unshown(/* en */ "Kokoro's note wasn't passed on: Koe didn't say it, twice, and it had no words for the user (for_user).");

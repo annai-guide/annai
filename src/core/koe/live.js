@@ -243,6 +243,11 @@ export class LiveKoe {
    * @type {{ waiting: (Wake & { line?: string })[], sent: Wake[], cued: boolean, cue: boolean, at: number }}
    */
   #owed = { waiting: [], sent: [], cued: false, cue: false, at: 0 };
+  /**
+   * What a part of Halves waits for a session to take (#go): until a session has it, it is that part's. A close lets go of each at once, before it hands
+   * anything on, and that part places it (#live): one copy lands, the one it says. @type {Set<() => void>}
+   */
+  #placing = new Set();
   /** A tap stopped her: a turn of hers that begins before the next input (the user speaks, any text goes in, a close) is written as her answer, never spoken. */
   #stopped = false;
   /** @type {any} */
@@ -699,6 +704,9 @@ export class LiveKoe {
     // made, in a pause of her sound, or whose words came before any sound, or that goes on after a call, is cut: its notes are kept, or shown at a switch.
     const t = this.#sounding;
     if (t && !t.cut && this.#passes(t, this.#whole(t))) this.#passed();
+    // What a part of Halves still waits for a session to take is let go first, and that part places it (#go): never handed on here as well.
+    for (const leave of this.#placing) leave();
+    this.#placing.clear();
     // Another conversation, or a fresh start: Kokoro's notes it owed are shown in the one left, never lost.
     if (forget && (why === 'switch' || why === 'fresh') && this.owing) this.c.left?.([...this.#owed.sent, ...this.#owed.waiting]);
     this.#closing = null;
@@ -1103,12 +1111,19 @@ export class LiveKoe {
 
   /**
    * What waits goes in once Koe's turn and voice end, in a session opened for it that listens after where sound was unlocked;
-   * out of view, it waits (shown()). With no session, it is let go here (undo), and Halves hands it on (never twice).
+   * out of view, it waits (shown()). With no session, it is let go here (undo), and Halves places it (never twice): a close while it waits lets go of it
+   * at once, before the close hands anything on (#placing), not when the connection it waited on ends.
    * @param {string} why @param {() => void} undo @returns {Promise<boolean>} whether it will be said
    */
   async #go(why, undo) {
     if (!this.c.visible()) return true;
-    if ((await this.open(why, { mic: Boolean(this.c.voice?.unlocked) })) && this.state === 'open') {
+    /** @type {() => void} */
+    let leave = () => {};
+    const left = new Promise((/** @type {(v: false) => void} */ r) => { leave = () => { undo(); r(false); }; });
+    this.#placing.add(leave);
+    const open = (await Promise.race([this.open(why, { mic: Boolean(this.c.voice?.unlocked) }), left])) && this.state === 'open';
+    this.#placing.delete(leave);
+    if (open) {
       this.#idle();
       return true;
     }
