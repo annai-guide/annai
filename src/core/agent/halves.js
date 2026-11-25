@@ -453,7 +453,7 @@ export class Halves {
   #works() { return this.koeState === 'text' || this.koeState === 'live'; }
   /** @type {Promise<unknown>[]} Kokoro's owed words being shown in the conversation left or started fresh from */
   #left = [];
-  /** Kokoro's notes already shown as left unsaid. @type {WeakSet<Wake>} */
+  /** Kokoro's notes already shown as left unsaid: a session's hand-on doesn't show them again (#handOn). @type {WeakSet<Wake>} */
   #shown = new WeakSet();
   /** Start fresh, while it runs: held settles once it is done, and a live session opens only then. @type {{ held: Promise<void>, done: Promise<import('./loop.js').Fresh> } | null} */
   #fresh = null;
@@ -465,7 +465,7 @@ export class Halves {
    * @param {string} [scope] where they go, read as they come: a switch moves the open conversation while the first is being written, and each goes where it belongs
    */
   #leftUnsaid(notes, here = false, scope = this.kokoro.target ?? ME) {
-    for (const w of notes) this.#shown.add(w); // a live part that then finds no session doesn't show it again (#live)
+    for (const w of notes) this.#shown.add(w);
     const shown = (async () => {
       for (const w of notes) {
         try {
@@ -708,7 +708,8 @@ export class Halves {
    * A live session's part (a message, a wake, a note) once Koe has the conversation open. When no session can open, Koe's
    * next model takes it; with none left, a card says so, and Kokoro talks directly at once, told so (with what it last told
    * Koe that didn't reach the user), the wake's reminders said by annai only if it can't; a session that closed
-   * meanwhile leaves them to annai. @param {() => Promise<boolean>} fn @param {Wake} w
+   * meanwhile leaves them to annai. A close while the session connects leaves it to this part at once, and hands no copy of it on (live.js #go): this
+   * part places it, once. @param {() => Promise<boolean>} fn @param {Wake} w
    */
   async #live(fn, w) {
     await this.koe.opening.catch(() => {});
@@ -724,7 +725,7 @@ export class Halves {
     if (this.koeState !== 'down') {
       this.#koeSaid(); // no session can answer a typed line now (today's spend reached): Kokoro waits no longer
       // No session could take Kokoro's note for the user, and Koe stays live (today's spend reached): annai shows it.
-      if (isForUser(w) && !this.#shown.has(w)) await this.#backstop([w]);
+      if (isForUser(w)) await this.#backstop([w]);
       this.#annai(w); // in the open conversation, which is the wake's: #elsewhere has just asked
       return;
     }
@@ -758,8 +759,9 @@ export class Halves {
   }
 
   /**
-   * Kokoro's notes for the user a live session closed on before Koe passed them on (a close, a drop it didn't come back from,
-   * Koe moving to text): the text Koe owes them as its own (§6.8); while Koe stays live with no session, or is down, annai shows them.
+   * Kokoro's notes for the user, and wakes with reminders, a live session closed on before Koe passed them on (a close, a drop it didn't come back from,
+   * Koe moving to text): the text Koe owes them as its own (§6.8); while Koe stays live with no session, or is down, annai shows them. Never one #live
+   * still waited for the session to take: the close leaves that one to #live (live.js #go), so one copy lands.
    * @param {Wake[]} notes
    */
   #handOn(notes) {

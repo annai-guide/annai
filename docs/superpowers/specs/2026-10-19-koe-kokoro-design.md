@@ -165,7 +165,7 @@ In code and the spec they're Koe and Kokoro.
 
 ### Realtime sessions
 - **Opening:** a session opens when voice is on with Koe · Realtime chosen and one of its models able to answer. It needs the user's tap for audio, as voice does today. The setup carries Koe's instructions, compact context and tools.
-- **Closing:** it closes when voice turns off, or after a quiet spell (the builder picks the length and says why), so the free limits aren't wasted.
+- **Closing:** it closes when voice turns off, or after a quiet spell (the builder picks the length and says why), so the free limits aren't wasted. What it closes on before Koe said it (a reminder, Kokoro's note for the user) is handed on; what it was still connecting to take is placed once by the part of annai that gave it, in the conversation it belongs to (2026-11-25; spec §6.8 and §11.3).
 - **Reopening while voice is on** (the user's choice: "tap or a reminder"), as Shiori wakes today:
   - a tap on Shiori;
   - a trigger or a note from Kokoro that Koe should say, which opens a session, speaks, then listens.
