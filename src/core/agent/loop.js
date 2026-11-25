@@ -3016,7 +3016,8 @@ export class Agent {
     const canMake = this.codec?.canMake?.bind(this.codec);
     if (images.formats?.length && canMake && !(await Promise.all(images.formats.map((x) => canMake(x)))).some(Boolean)) return { learned, unmade: images.formats };
     // A model removed meanwhile needs no limits: nothing is saved, and nothing is made again for it.
-    await updateModel(this.ws, rec.id, (now) => ({ ...now, user: { ...(now.user ?? {}), images } })).catch((/** @type {unknown} */ e) => {
+    // Merged with the record as it is now: another refusal saved meanwhile keeps its limit.
+    await updateModel(this.ws, rec.id, (now) => ({ ...now, user: { ...(now.user ?? {}), images: stricter(modelOf(now).images ?? {}, learned) } })).catch((/** @type {unknown} */ e) => {
       if (!(e instanceof NotFoundError)) throw e;
     });
     return { learned, images };
@@ -3024,7 +3025,7 @@ export class Agent {
 
   /**
    * A reader's call refused for a photo (reading.js passes this as the call's repairImages): the limit the provider's words state is saved on
-   * the reader's record, so the next copy is made for it (#limits). No retry and no swapped copy (a reader's request is no part of the
+   * the reader's record, so the next copy is made for it while a model of the half sees none (#limits). No retry and no swapped copy (a reader's request is no part of the
    * conversation's log), and no model reads a refusal the rules can't: a reader may be Utility itself, and the reading is a side job. Null,
    * as repairImages says there is no fix: the next reader is asked.
    * @param {ProviderError} err @param {string} modelId

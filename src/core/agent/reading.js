@@ -85,7 +85,8 @@ export function noReader(kind, { plugin = false, photos = false } = {}) {
  * and a PDF's pages as copy makes them: the loop makes both for the readers' own photo limits too, as their records state them, when a
  * model of the half sees no photos (loop.js #limits); a copy made before, for another list or setting, is as it was made. A reader that
  * refuses a photo is not asked again with a copy of its own: the next reader is asked, and `learn` saves the limit its refusal states on
- * its record, so the copies made from then on fit it.
+ * its record, so the copies made from then on fit it while a model of the half sees none (a task helper's photos are made for the half's
+ * limits alone).
  * @param {FileToRead} file @param {{ input?: string[] }} model the model the reading is for
  * @param {{ llm: { call: Function, config: () => Promise<any>, bench: import('../llm/fallback.js').Bench }, half: 'one' | 'kokoro' | 'koe', pages: import('../pdf-pages.js').PdfPages | null,
  *   signal: AbortSignal, wakeId: string, scope: string, secondMs: number, explain: (e: unknown, role: string) => string | Promise<string>, store: import('../types.js').Store,
