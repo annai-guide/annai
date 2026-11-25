@@ -1345,7 +1345,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### Text right after an address with no space can be taken into its link
 - **Kind:** known limitation.
-- **What the traveller sees:** a Japanese or Chinese letter (`…/清水寺をご覧ください`), a mark outside the set that ends an address (`・ ー ： 【 「 〜 … 》 〉 〕 » ’`), or an ASCII `(…)` note (`…/清水寺(英語版)`) written right after an address is linked with it.
+- **What the traveller sees:** a Japanese or Chinese letter (`…/清水寺をご覧ください`), a mark outside the set that ends an address (`・ ー ： 【 「 〜 … 》 〉 〕 » ’`), or an ASCII `(…)` note (`…/清水寺(英語版)`) written right after an address is linked with it. Where annai shows Kokoro's words on the card at the top and says them (since answer-words-next, 2026-11-24), the address reads as its site and those words follow it, so they are still shown and said.
 - **Why:** no rule can split a raw title from the text after it; titles are written raw on purpose (a model reads one %XX as several tokens).
 - **Revisit when:** as the entry above.
 - **Approved:** chief's decision C152 (2026-11-20, not the user's words), accepted as recommended.
