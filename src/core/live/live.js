@@ -42,9 +42,9 @@ import { asSentence } from '../intl.js';
  * @typedef {{ key: string, scope: string, watch: string, due: number, when: string, text: string, shown?: string, start?: number, what?: string, says?: string, here?: boolean }} Mirrored
  *   a reminder a closed annai can still give through the push relay (spec §11.6): key names it and, for the plan's, the item's time;
  *   when: its due time as both halves read it (dueWords), in its own zone: a time watch's as written, a plan reminder's in its item's;
- *   text: what Koe's view reads (a plan's in annai's English; Shiori's as she wrote them), and shown what the push says (plainReminder): a plan's in the
- *   screens' words, made from its data (the shown rule), anyone else's as plain words, as annai's own card says them; start and what: a "coming up" item's, for the minutes left and the item in the screens'
- *   words, which the service worker words (sw.js); says: a plan reminder's (saysOf); here: annai says it itself when its time comes while it is open
+ *   text: what Koe's view reads (a plan's in annai's English; Shiori's as she wrote them), and shown what the push says, as annai's card does (plainReminder):
+ *   a plan's in the screens' words, made from its data, anyone else's as plain words; start and what: a "coming up" item's, for the minutes left and the
+ *   item in the screens' words, which the service worker words (sw.js); says: a plan reminder's (saysOf); here: annai says it itself when its time comes while it is open
  *   (time watches, and the plan of the trip in play), so a sync just before it leaves it to annai; false for the plans of an open trip that isn't
  *   happening and of the next trip, which only the relay gives
  * @typedef {{ kind: 'shown' | 'opened' | 'changed', key?: string, scope?: string, watch?: string, at?: number, title?: string, body?: string, test?: boolean, stale?: boolean, t?: number }} PushNews
@@ -1383,7 +1383,7 @@ export class Live {
       return type.check(w.when, m, mem) ?? null;
     } catch (e) {
       if (type.pluginId && isPluginBug(e)) this.registry.fail(type.pluginId, `trigger ${type.type}`, e);
-      else this.#noteOnce(scope, { type: type.type, watch: w.id, ...(w.owner === 'system' ? { title: String(w.when.title ?? '') } : { reminder: w.fallback }), why: String(/** @type {any} */ (e)?.message ?? e) });
+      else this.#noteOnce(scope, { type: type.type, watch: w.id, ...(planned({ watch: w.id }) ? { title: String(w.when.title ?? '') } : { reminder: w.fallback }), why: String(/** @type {any} */ (e)?.message ?? e) });
       return null;
     }
   }

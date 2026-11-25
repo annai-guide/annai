@@ -87,11 +87,11 @@ test("the phone's notification says her words as plain words, as annai's card do
     const w = await k.live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: HERS });
     await k.flush();
     const list = /** @type {any[]} */ (await k.live.reminders());
-    assert.deepEqual(list.map((m) => [m.watch, m.text, m.shown]), [[w.id, HERS, PLAIN], ['plan:tea:coming-up', 'In 15 min: Tea at the *old* inn at 16:00.', planWords(COMING)]]);
     k.sensors.visible(false); // annai off screen: only the relay can say it
     await k.settle();
     await k.deliver(at('10:00') + GRACE_MS);
     assert.equal(k.pushed().at(-1).body, PLAIN);
+    assert.deepEqual(list.map((m) => [m.watch, m.text, m.shown]), [[w.id, HERS, PLAIN], ['plan:tea:coming-up', 'In 15 min: Tea at the *old* inn at 16:00.', planWords(COMING)]], 'what the mirror is given: Koe\'s view keeps her words');
     await k.deliver(at('15:45') + GRACE_MS);
     const tea = k.pushed().at(-1);
     assert.deepEqual([tea.watch, tea.body, tea.what], ['plan:tea:coming-up', planWords(COMING), 'Tea at the *old* inn at 16:00']);
