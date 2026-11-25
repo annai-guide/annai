@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, until, idleAtOnce } from './agent-kit.js';
+import { useClock } from './clock.js';
 import { inQuiet, quietEnds, spentToday, spentIn, costs, UNWATCHED_STEPS } from '../../src/core/agent/budgets.js';
 import { isWatched } from '../../src/core/agent/loop.js';
 import { updateAppSettings } from '../../src/core/settings.js';
@@ -24,7 +25,8 @@ test('quiet hours in local time, across midnight', () => {
   assert.equal(inQuiet(at('2026-11-27T07:30:00Z'), q, 'America/Los_Angeles'), true); // 23:30 the night before, there
 });
 
-test('no budget is set by default: a long turn runs on', async () => {
+test('no budget is set by default: a long turn runs on', async (t) => {
+  useClock(t);
   // Different calls each step: three identical ones in a row would be stopped as stuck (spec §6.6).
   const other = { toolCalls: [{ name: 'list', input: { path: '/me/' } }] };
   const k = await agentKit([[loop, other, loop, other, done]]);
@@ -33,7 +35,8 @@ test('no budget is set by default: a long turn runs on', async () => {
   assert.equal(k.requests.length, 5);
 });
 
-test('steps per wake: the turn ends with a card, and every call has its result', async () => {
+test('steps per wake: the turn ends with a card, and every call has its result', async (t) => {
+  useClock(t);
   const k = await agentKit([[loop]]);
   await updateAppSettings(k.ws, { shiori: { budgets: { stepsPerWake: 2 } } });
   k.agent.send('Go');
@@ -44,7 +47,8 @@ test('steps per wake: the turn ends with a card, and every call has its result',
   assert.deepEqual(k.agent.transcript.open(), []);
 });
 
-test("spend per day: once today's calls cost the budget, no more calls", async () => {
+test("spend per day: once today's calls cost the budget, no more calls", async (t) => {
+  useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]]);
   await modelTrace(k.store, k.trip).turn({ role: 'main', level: 'off', answeredBy: 'A', attempts: [], usage: {}, cost: 0.5 }, 'earlier', '');
   assert.equal(await spentToday(k.store, Date.now(), 'UTC'), 0.5);
@@ -75,7 +79,8 @@ async function earlier(k, cost) {
   return other;
 }
 
-test("no Spend per day set: a turn reads no other conversation's log, though other conversations spent", async () => {
+test("no Spend per day set: a turn reads no other conversation's log, though other conversations spent", async (t) => {
+  useClock(t);
   const k = await agentKit([[done]]);
   const other = await earlier(k, 0.5);
   const reads = readsOf(k.store);
@@ -86,7 +91,8 @@ test("no Spend per day set: a turn reads no other conversation's log, though oth
   assert.ok(!reads.includes(other), "the other conversation's log was not read");
 });
 
-test("no Spend per day set: a call cut for a note doesn't read the other conversations' logs either", async () => {
+test("no Spend per day set: a call cut for a note doesn't read the other conversations' logs either", async (t) => {
+  useClock(t);
   const k = await agentKit([[{ delayMs: 500, text: 'thinking' }, done]]);
   const other = await earlier(k, 0.5);
   const reads = readsOf(k.store);
@@ -98,7 +104,8 @@ test("no Spend per day set: a call cut for a note doesn't read the other convers
   assert.ok(!reads.includes(other), "the other conversation's log was not read");
 });
 
-test("Spend per day set: other conversations' spend today counts before the turn's first call, and the turn's own calls add to it", async () => {
+test("Spend per day set: other conversations' spend today counts before the turn's first call, and the turn's own calls add to it", async (t) => {
+  useClock(t);
   const k = await agentKit([[loop, loop, loop, loop, done]], { models: [dear] });
   await earlier(k, 0.3);
   await updateAppSettings(k.ws, { shiori: { budgets: { spendPerDay: 0.5 } } });
@@ -109,7 +116,8 @@ test("Spend per day set: other conversations' spend today counts before the turn
   assert.equal((await k.events(['error']))[0].data.which, 'spend');
 });
 
-test("Spend per day set: what a call cut for a note cost, by its trace, counts before the next call is made", async () => {
+test("Spend per day set: what a call cut for a note cost, by its trace, counts before the next call is made", async (t) => {
+  useClock(t);
   const k = await agentKit([[{ delayMs: 500, text: 'thinking' }, loop, done]]);
   await earlier(k, 0.3);
   await updateAppSettings(k.ws, { shiori: { budgets: { spendPerDay: 0.5 } } });
@@ -123,7 +131,8 @@ test("Spend per day set: what a call cut for a note cost, by its trace, counts b
   assert.equal((await k.events(['error']))[0].data.which, 'spend');
 });
 
-test("a Spend per day set while a turn runs takes hold at the next turn, with the day's spend before it: the first turn's too", async () => {
+test("a Spend per day set while a turn runs takes hold at the next turn, with the day's spend before it: the first turn's too", async (t) => {
+  useClock(t);
   /** @type {(() => void)[]} */
   const held = [];
   const k = await agentKit([[loop, done, loop, done]], { models: [dear], hold: () => new Promise((r) => held.push(() => r(undefined))) });
@@ -143,7 +152,8 @@ test("a Spend per day set while a turn runs takes hold at the next turn, with th
   assert.equal((await k.events(['error']))[0].data.which, 'spend');
 });
 
-test("wakes per hour count only wakes that aren't the user's", async () => {
+test("wakes per hour count only wakes that aren't the user's", async (t) => {
+  useClock(t);
   const k = await agentKit([[done]]);
   await updateAppSettings(k.ws, { shiori: { budgets: { wakesPerHour: 1 } } });
   k.agent.wake({ kind: 'plugin', plugin: 'tides', text: 'Low tide in 30 minutes.' });
@@ -155,7 +165,8 @@ test("wakes per hour count only wakes that aren't the user's", async () => {
   assert.equal(k.notices[0].title, 'Shiori skipped a wake');
 });
 
-test('quiet hours hold wakes that are not the user’s, but the user is always heard', async () => {
+test('quiet hours hold wakes that are not the user’s, but the user is always heard', async (t) => {
+  useClock(t);
   const k = await agentKit([[done]], { agent: { now: () => at('2026-11-26T23:00:00Z') } });
   await updateAppSettings(k.ws, { shiori: { budgets: { quietHours: { from: '22:00', to: '07:00' } } } });
   k.agent.wake({ kind: 'plugin', plugin: 'tides', text: 'Low tide.' });
@@ -166,7 +177,8 @@ test('quiet hours hold wakes that are not the user’s, but the user is always h
   assert.equal(k.requests.length, 1);
 });
 
-test('costs: per wake and for the whole trip', async () => {
+test('costs: per wake and for the whole trip', async (t) => {
+  useClock(t);
   const k = await agentKit([[{ ...done, usage: { input: 1000, output: 0 } }]]);
   k.agent.send('One');
   await idleAtOnce(k);
@@ -299,7 +311,8 @@ test("spentIn: one entry written late, stamped before today, doesn't hide today'
   assert.equal((await spentIn(store, now, 'UTC', [1, 7])).sums[1], 13.5, 'and its 7 days hold the late one');
 });
 
-test("Spend per day counts both halves' turns, and stops either at the budget, with one card (K1)", async () => {
+test("Spend per day counts both halves' turns, and stops either at the budget, with one card (K1)", async (t) => {
+  useClock(t);
   const sleep = { toolCalls: [{ name: 'sleep', input: {} }] };
   const dear = { prices: { input: 10_000, output: 10_000 } }; // 12 and 6 tokens: $0.18 a call
   const k = await agentKit([[sleep]], { models: [dear], koe: { type: [done], model: dear } });
@@ -325,7 +338,8 @@ const stepCard = (/** @type {any} */ k) => k.notices.filter((/** @type {any} */ 
 
 test('unwatched steps: 50, a number of annai\'s own', () => assert.equal(UNWATCHED_STEPS, 50));
 
-test("a turn the user started (their message) runs 60 tool calls with no step card", async () => {
+test("a turn the user started (their message) runs 60 tool calls with no step card", async (t) => {
+  useClock(t);
   const k = await agentKit([calls(60)]);
   k.agent.send('Plan everything');
   await idleAtOnce(k);
@@ -333,7 +347,8 @@ test("a turn the user started (their message) runs 60 tool calls with no step ca
   assert.deepEqual(k.notices, []);
 });
 
-test('a trigger wake nobody is watching stops at 50 model calls, with the step-limit card', async () => {
+test('a trigger wake nobody is watching stops at 50 model calls, with the step-limit card', async (t) => {
+  useClock(t);
   const k = await agentKit([calls(60)]);
   k.agent.wake({ kind: 'trigger', text: 'Your watch w-1 fired: the time came.', fallbacks: [] });
   await idleAtOnce(k);
@@ -345,7 +360,8 @@ test('a trigger wake nobody is watching stops at 50 model calls, with the step-l
   assert.deepEqual(k.agent.transcript.open(), []);
 });
 
-test('a reminder (a plugin wake) stops at 50 too', async () => {
+test('a reminder (a plugin wake) stops at 50 too', async (t) => {
+  useClock(t);
   const k = await agentKit([calls(60)]);
   k.agent.wake({ kind: 'plugin', plugin: 'tides', text: 'Low tide in 30 minutes.' });
   await idleAtOnce(k);
@@ -353,7 +369,8 @@ test('a reminder (a plugin wake) stops at 50 too', async () => {
   assert.equal(stepCard(k).length, 1);
 });
 
-test("an unwatched turn the user's message joins at step 10 runs past 50", async () => {
+test("an unwatched turn the user's message joins at step 10 runs past 50", async (t) => {
+  useClock(t);
   const script = calls(60);
   script[9] = { delayMs: 200, ...script[9] };
   const k = await agentKit([script]);
@@ -365,7 +382,8 @@ test("an unwatched turn the user's message joins at step 10 runs past 50", async
   assert.deepEqual(stepCard(k), []);
 });
 
-test('a set Steps per wake of 5 stops a turn of the user\'s at 5', async () => {
+test('a set Steps per wake of 5 stops a turn of the user\'s at 5', async (t) => {
+  useClock(t);
   const k = await agentKit([calls(60)]);
   await updateAppSettings(k.ws, { shiori: { budgets: { stepsPerWake: 5 } } });
   k.agent.send('Plan everything');
@@ -375,7 +393,8 @@ test('a set Steps per wake of 5 stops a turn of the user\'s at 5', async () => {
   assert.match(stepCard(k)[0].body, /5 steps a wake may take/);
 });
 
-test('a set Steps per wake is the limit of an unwatched turn too, not 50', async () => {
+test('a set Steps per wake is the limit of an unwatched turn too, not 50', async (t) => {
+  useClock(t);
   const k = await agentKit([calls(60)]);
   await updateAppSettings(k.ws, { shiori: { budgets: { stepsPerWake: 7 } } });
   k.agent.wake({ kind: 'plugin', plugin: 'tides', text: 'Low tide in 30 minutes.' });
@@ -387,7 +406,8 @@ test('a set Steps per wake is the limit of an unwatched turn too, not 50', async
 const KOE = { rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] };
 const kokoroOf = (/** @type {any} */ k) => k.sent['model-0'] ?? [];
 
-test("Kokoro's turn woken by Koe's note runs past 50", async () => {
+test("Kokoro's turn woken by Koe's note runs past 50", async (t) => {
+  useClock(t);
   const k = await agentKit([calls(60, { toolCalls: [{ name: 'sleep', input: {} }] })], { koe: { type: KOE } });
   await k.agent.channel.send('koe', 'Is Nepenthe open tonight?', 'append', 'tool', undefined, undefined, true); // from a Koe turn the user watches
   await idleAtOnce(k);
@@ -395,7 +415,8 @@ test("Kokoro's turn woken by Koe's note runs past 50", async () => {
   assert.deepEqual(stepCard(k), []);
 });
 
-test('Kokoro woken by "Koe answered the user" runs past 50 too', async () => {
+test('Kokoro woken by "Koe answered the user" runs past 50 too', async (t) => {
+  useClock(t);
   const k = await agentKit([calls(60, { toolCalls: [{ name: 'sleep', input: {} }] })], { koe: { type: KOE } });
   k.agent.kokoro.enqueue({ kind: 'cue', text: 'Koe answered the user', logged: true, input: true, watched: true });
   await idleAtOnce(k);
@@ -403,7 +424,8 @@ test('Kokoro woken by "Koe answered the user" runs past 50 too', async () => {
   assert.deepEqual(stepCard(k), []);
 });
 
-test("Kokoro's 3-minute review cue stops at 50, with the card", async () => {
+test("Kokoro's 3-minute review cue stops at 50, with the card", async (t) => {
+  useClock(t);
   const k = await agentKit([calls(60, { toolCalls: [{ name: 'sleep', input: {} }] })], { koe: { type: KOE } });
   k.agent.kokoro.enqueue({ kind: 'cue', text: 'a review: 3 minutes or more of conversation since you last looked.', logged: true });
   await idleAtOnce(k);
@@ -427,7 +449,8 @@ test('isWatched: a note of Koe\'s or its "answered the user" cue is watched only
   assert.equal(isWatched({ kind: 'cue', text: 'a review' }), false);
 });
 
-test('a trigger wakes Koe, Koe tells Kokoro: Kokoro\'s turn is not watched, and stops at 50', async () => {
+test('a trigger wakes Koe, Koe tells Kokoro: Kokoro\'s turn is not watched, and stops at 50', async (t) => {
+  useClock(t);
   const k = await agentKit([calls(60, sleeps)], { koe: { type: ASKS } });
   await k.agent.koe.open(k.trip);
   k.agent.koe.enqueue({ kind: 'trigger', text: 'Your watch w-1 fired: the time came.', fallbacks: [] }); // Koe alone: Kokoro is woken only by its note
@@ -438,7 +461,8 @@ test('a trigger wakes Koe, Koe tells Kokoro: Kokoro\'s turn is not watched, and 
   assert.equal(stepCard(k).length, 1);
 });
 
-test('a message of the user\'s wakes Koe, Koe tells Kokoro: Kokoro\'s turn is watched, and runs past 50', async () => {
+test('a message of the user\'s wakes Koe, Koe tells Kokoro: Kokoro\'s turn is watched, and runs past 50', async (t) => {
+  useClock(t);
   const k = await agentKit([calls(60, sleeps)], { koe: { type: ASKS } });
   await k.agent.koe.open(k.trip);
   k.agent.koe.enqueue({ kind: 'user', text: 'Is Nepenthe open tonight?' });
@@ -449,7 +473,8 @@ test('a message of the user\'s wakes Koe, Koe tells Kokoro: Kokoro\'s turn is wa
   assert.deepEqual(stepCard(k), []);
 });
 
-test('an unwatched Kokoro turn tells Koe, Koe (woken by that note) tells it back: Kokoro does not get an unlimited turn, and stops at 50 overall', async () => {
+test('an unwatched Kokoro turn tells Koe, Koe (woken by that note) tells it back: Kokoro does not get an unlimited turn, and stops at 50 overall', async (t) => {
+  useClock(t);
   const tellKoe = { toolCalls: [{ name: 'tell_koe', input: { text: 'Nepenthe is open till 10.' } }] };
   const k = await agentKit([[tellKoe, ...calls(60, sleeps)]], { koe: { type: { rules: [{ match: 'note from Kokoro', reply: TELL }, { match: '.', reply: sleeps }] } } });
   k.agent.kokoro.enqueue({ kind: 'cue', text: 'a review: 3 minutes or more of conversation since you last looked.', logged: true });
@@ -460,7 +485,8 @@ test('an unwatched Kokoro turn tells Koe, Koe (woken by that note) tells it back
 });
 
 // The user turning live mode on is their own act; live mode's sensing wakes (a watch that fired, a catch-up) are not.
-test('a live wake (the user turned live mode on) is watched: it runs past 50', async () => {
+test('a live wake (the user turned live mode on) is watched: it runs past 50', async (t) => {
+  useClock(t);
   const k = await agentKit([calls(60)]);
   k.agent.wake({ kind: 'live', text: 'The user turned live mode on.' });
   await idleAtOnce(k);
@@ -468,7 +494,8 @@ test('a live wake (the user turned live mode on) is watched: it runs past 50', a
   assert.deepEqual(stepCard(k), []);
 });
 
-test("live mode's sensing wakes (a catch-up, a watch that fired) are not: they stop at 50", async () => {
+test("live mode's sensing wakes (a catch-up, a watch that fired) are not: they stop at 50", async (t) => {
+  useClock(t);
   for (const kind of /** @type {const} */ (['catch-up', 'trigger'])) {
     const k = await agentKit([calls(60)]);
     k.agent.wake({ kind, text: 'You arrived somewhere.', fallbacks: [] });
