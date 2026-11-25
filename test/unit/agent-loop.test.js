@@ -709,7 +709,7 @@ function sizedPages(k, sizes) {
 /** What the fake codec makes of page i: its size, no crop, the cap it was asked for. @param {number} i */
 const copyOf = (i) => `${1131 - i}x1600:null:${256 * 1024}`;
 
-test("ten pages over a photo's 256 KiB each go to a reader that sees photos as a copy under it, made by the photos' encoder at a photo's request limits (pdf-pages-cap-next)", async (t) => {
+test("ten pages over a photo's 256 KiB each go to a reader that sees photos as the copy the photos' encoder makes at a photo's request limits (the fake encoder keeps no size: the copy's bytes are the e2e's) (pdf-pages-cap-next)", async (t) => {
   useClock(t);
   const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text'] }], utility: [{ text: 'Flight AN 123.' }] }, ['text', 'image']);
   sizedPages(k, Array(10).fill(300 * 1024));
@@ -756,6 +756,26 @@ test("a page whose copy this browser can't make goes as drawn, and the reading s
   assert.match(r.data.content, /Its pages as pictures, as you can't read PDFs: pages 1–2 of 2\.$/);
   const sent = k.sent['model-0'].at(-1).messages.at(-1).parts.filter((/** @type {any} */ p) => p.type === 'image');
   assert.deepEqual(sent.map((/** @type {any} */ p) => Buffer.from(p.data, 'base64').toString()), [new TextDecoder().decode(drawn[0].bytes), copyOf(1)]);
+});
+
+test("a PDF a model read whole, its turn then answered by a model that sees only photos, goes to that model as the pages' copies (#readFor; pdf-pages-cap-next)", async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, { error: 'credit', status: 402 }], [say('Done.')]], { models: [{ input: ['text', 'pdf'] }, { input: ['text', 'image'], images: { maxCount: 2 } }] });
+  sizedPages(k, [300 * 1024, 300 * 1024, 300 * 1024]);
+  k.agent.send('When is check-in?');
+  await idleAtOnce(k);
+  const parts = k.sent['model-1'][0].messages.at(-1).parts;
+  assert.deepEqual(parts.filter((/** @type {any} */ p) => p.type === 'image').map((/** @type {any} */ p) => Buffer.from(p.data, 'base64').toString()), [copyOf(0), copyOf(1)]);
+});
+
+test("the traveller's own request limit for photos is a page copy's cap too (Settings → Photos; pdf-pages-cap-next)", async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text', 'image'] }] });
+  await updateAppSettings(k.ws, { photos: { request: { maxBytes: 128 * 1024 } } });
+  sizedPages(k, [300 * 1024]);
+  k.agent.send('Read it');
+  await idleAtOnce(k);
+  assert.deepEqual(k.codec.calls.map((/** @type {any} */ o) => o.maxBytes), [128 * 1024]);
 });
 
 test('pages that take longer than the PDF\'s limit stop there, and the result says it couldn\'t be read in time', async (t) => {

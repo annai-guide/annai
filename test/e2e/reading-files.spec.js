@@ -68,7 +68,9 @@ test("a page of small print over a photo's 256 KiB goes to the model as a copy u
     const images = [...second.matchAll(/"source":\{"type":"base64","media_type":"(image\/[a-z]+)","data":"([^"]+)"/g)];
     expect(images).toHaveLength(1);
     const bytes = Buffer.from(images[0][2], 'base64');
-    // Drawn at 1600 px as JPEG, the page is about 480 KB in both engines (2026-11-25); its copy, the photo encoder's, is under the cap.
+    // Drawn at 1600 px as JPEG, the page is about 480 KB in both engines (2026-11-25); its copy, the photo encoder's, is under the cap, and WebP in
+    // both test engines (a page sent as drawn would be its JPEG, so this tells a copy from a page that happened to fit).
+    expect(images[0][1]).toBe('image/webp');
     expect(bytes.length).toBeLessThanOrEqual(256 * 1024);
   } finally {
     await llm.stop();
