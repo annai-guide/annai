@@ -32,7 +32,7 @@ async function kit(o = {}, plugin = 'provider-openrouter') {
   const uploads = new Uploads(k.ws);
   const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch, uploads });
   const id = await llm.addProvider(plugin, { key: KEY, roles: 'recommended' });
-  /** Whether photos to the chat ability go in each request, as its upload record says: what the tests read, never by a send, which would change it. */
+  /** Whether the upload record has the chat ability's uploads off (a refusal, a list annai can't read, or its provider going), not whether it uploads at all (the switch, the model's input): what the tests read, never by a send, which would change it. */
   const off = () => uploads.isOff(`${id}/chat`);
   const modelId = async () => Object.values((await readConfig(k.ws)).models).find((m) => m.provider === id && m.ability === 'chat' && /haiku|llama/.test(m.template?.values?.providerId ?? m.user?.providerId ?? ''))?.id
     ?? Object.values((await readConfig(k.ws)).models).find((m) => m.provider === id && m.ability === 'chat')?.id ?? '';
@@ -69,7 +69,7 @@ test('OpenRouter: photo uploads are on by default, the photo goes once and then 
   assert.equal(k.or.chats.at(-1).messages.at(-1).content.find((/** @type {any} */ b) => b.type === 'file').file.file_id, k.or.held[0].id);
 });
 
-test('another Chat Completions provider sends exactly what it sent before: no switch default, no upload, no sweep', async () => {
+test("another Chat Completions provider's files path is left alone by the sweep: no request to it (that its calls upload nothing is llm-call's, by the type's hooks and the switch)", async () => {
   const k = await kit({}, 'provider-groq');
   await k.llm.sweepUploads();
   assert.equal(k.or.requests.some((r) => new URL(r.url).pathname.endsWith('/files')), false);
