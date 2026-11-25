@@ -834,7 +834,8 @@ test('a link too slow for photos pays the wait for one new photo at a time, not 
   out.push(await secs(k, 'AAAB'));
   await k.call('pv-1/chat');
   out.push(await secs(k, 'AAAC'));
-  assert.deepEqual(out, [150, 30, 30], 'with an answer between each, as with none (main: 150, 30, 30)');
+  // The same as with no answer between (below), and as on main, where a cut turned uploads off.
+  assert.deepEqual(out, [150, 30, 30], 'with an answer between each, as with none');
   assert.equal(k.tries, 1, 'one try');
   const none = await heldKit();
   none.files = 'hang';
