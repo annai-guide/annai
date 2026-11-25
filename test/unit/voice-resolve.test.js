@@ -353,9 +353,10 @@ test("a Stop while a transcription waits to be sent again ends it at once, not w
     k.llm.transcribe = async (/** @type {any} */ c) => { /** @type {any[]} */ (k.llm.uploads).push({ modelId: c.modelId }); throw failure; };
     const stop = new AbortController();
     const at = Date.now();
-    setTimeout(() => stop.abort(), 20);
-    await assert.rejects(k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request, false, stop.signal));
-    assert.equal(Date.now() - at, 20, `${failure.kind}: over as the Stop came`);
+    setTimeout(() => stop.abort(), 20); // 20 ms on the test clock: the first try failed, and inside the shortest wait (0.5 s)
+    // The Stop's own error (kind cancelled) goes to onFail, which rests nothing for it (asserted below); the caller gets the list's "nobody heard it".
+    await assert.rejects(k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request, false, stop.signal), (/** @type {any} */ e) => e?.said?.code === 'not-heard', failure.kind);
+    assert.equal(Date.now() - at, 20, `${failure.kind}: over as the Stop came (main: at the wait's end, 500 to 10,000)`);
     assert.equal(k.llm.uploads.length, 1, `${failure.kind}: one upload, then the Stop`);
     assert.equal(restLeft(k, 'groq'), 0, `${failure.kind}: nothing rests`);
   }

@@ -2,7 +2,8 @@ import { sleep as wait } from '../signals.js';
 
 /**
  * Runs fn until it succeeds or the tries run out, waiting base ms, then 3× as long each time:
- * "retry with backoff" (spec §5.4).
+ * "retry with backoff" (spec §5.4). A plugin's `helpers.retry` takes no signal, so its default wait (the shared one, signals.js) is a plain timer there:
+ * a Stop doesn't end it.
  * @template T
  * @param {(attempt: number) => Promise<T>} fn
  * @param {{ tries?: number, base?: number, retryIf?: (e: unknown) => boolean, sleep?: (ms: number) => Promise<void> }} [opts]

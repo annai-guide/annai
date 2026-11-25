@@ -395,9 +395,9 @@ test("a Stop while a model waits to be sent again ends the call at once, not whe
     const { sleep: _, ...base } = s.base(); // the call's own wait, on the test clock
     const stop = new AbortController();
     const at = Date.now();
-    setTimeout(() => stop.abort(), 20);
+    setTimeout(() => stop.abort(), 20); // 20 ms on the test clock: the first try failed, and inside the shortest wait (0.5 s)
     await assert.rejects(callRole({ ...base, types: s.types, bench: s.bench, role: 'main', request: hello, signal: stop.signal }), (e) => e instanceof ProviderError && e.kind === 'cancelled', failure.error);
-    assert.equal(Date.now() - at, 20, `${failure.error}: over as the Stop came`);
+    assert.equal(Date.now() - at, 20, `${failure.error}: over as the Stop came (main: at the wait's end, 500 to 10,000)`);
     assert.equal(s.bench.until('m-0'), 0, `${failure.error}: a Stop rests nothing`);
   }
 });

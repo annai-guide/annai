@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
-import { anySignal } from '../../src/core/signals.js';
+import { anySignal, sleep } from '../../src/core/signals.js';
 import { useClock } from './clock.js';
 
 // AbortSignal.any came in Chrome 116 and Safari 17.4; annai runs on Chrome 113 and iOS 16.4 (the emulator pass).
@@ -58,7 +58,6 @@ test('where AbortSignal.any exists, it is used', () => {
 });
 
 test("sleep waits its time, or until its signal aborts, whichever comes first: the one wait between a call's tries (llm-rest-next)", async (t) => {
-  const { sleep } = await import('../../src/core/signals.js'); // here, so the tests above run where it is missing
   useClock(t);
   const at = Date.now();
   await sleep(1000);

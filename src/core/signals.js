@@ -16,8 +16,9 @@ export function anySignal(signals) {
 }
 
 /**
- * Waits ms, or until the signal aborts, whichever comes first: the wait before a call is sent again (callRole's, a transcription's, the plugins'
- * retry), which a Stop ends at once. It settles either way; the caller reads its signal after it. @param {number} ms @param {AbortSignal} [signal]
+ * Waits ms, or until the signal aborts, whichever comes first: the wait before a call is sent again (callRole's, a transcription's), which a Stop
+ * ends at once. It settles either way; the caller reads its signal after it. No signal reaches a plugin's `helpers.retry` (retry.js defaults to this
+ * wait, and there it is a plain timer). @param {number} ms @param {AbortSignal} [signal]
  * @returns {Promise<void>}
  */
 export function sleep(ms, signal) {

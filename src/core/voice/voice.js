@@ -70,7 +70,7 @@ export class Voice {
   /** Phone dictation failed in this session: listening records instead (spec §10.3). */
   dictationFailed = false;
   /** The wait before a failed upload's same bytes go again (how long: fallback.js nextStep's), callRole's own: a Stop ends it at once. Tests replace it. @type {(ms: number, signal?: AbortSignal) => Promise<void>} */
-  sleep = sleep;
+  sleep = sleep; // the imported one
   /** Models that refused a format they said they take: WAV until annai restarts. @type {Set<string>} */
   wavOnly = new Set();
   /** Voices that refused the format they offered: what to say the phone plays to them, until annai restarts. @type {Map<string, string[]>} */

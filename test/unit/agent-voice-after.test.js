@@ -47,12 +47,13 @@ test("tapping Shiori while her heard line's transcription waits to be sent again
   await until(() => k.agent.state.name === 'listening');
   await hear(k, 'where-eat');
   await until(() => tries === 1);
-  await new Promise((r) => setTimeout(r, 20)); // the transcription waits now
+  await new Promise((r) => setTimeout(r, 20)); // 20 ms on the test clock: the first try failed, and the 1 s wait has begun
   const stopped = Date.now();
   k.agent.interrupt();
   k.agent.send('Next one');
-  await idleAtOnce(k, 20_000); // past the wait, so a turn held by it ends too, and the time says so
+  await idleAtOnce(k, 20_000); // far past the 1 s wait, so a turn held by it ends too, and the time says so
   const next = got.find((g) => g.next);
+  // 500 ms, half the wait it must not sit out: on the test clock it comes at 0, and on main (the wait a plain timer) at 978.
   assert.ok(next && next.at - stopped < 500, `the typed line went at once, not after the wait: ${next ? next.at - stopped : 'never'} ms after the tap`);
   assert.deepEqual((await k.events(['out.speak'])).map((e) => e.data.text), ['Here.']);
 });
