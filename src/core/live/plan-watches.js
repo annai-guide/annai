@@ -3,6 +3,7 @@ import { timeIn, validZone, instantAt, dayIn, dueWords, isoInZone } from '../tim
 import { bookingRef, fixedWords, timeUnsure, LEG_MAX_KM, kindOf, kindWord, anotherThing, CARRIERS } from '../plan.js';
 import { t } from '../l10n.js';
 import { sentences, num, when as clockAt, dayClock } from '../intl.js';
+import { plainWords } from '../markdown.js';
 
 /**
  * The plan's own watches (spec §11.3): leave in X minutes, arrived, running late, coming up; and off plan (§11.5). Worked out from the plan
@@ -246,6 +247,22 @@ export function planWords(say) {
 
 /** The item a coming-up reminder is about, for the user: a push that counts down to it says the minutes itself. @param {PlanSay} say */
 export const planItemWords = (say) => (say.what ? whatWords(say.what) : '');
+
+/**
+ * Whether a reminder is the plan's own, its words annai's (made from the plan's data where they are shown; an older entry's are annai's English as
+ * stored), not a model's: it carries the plan's data, or its watch is one of the plan's (`plan:`; no other watch's id starts so). The one test for
+ * the card, the voice, the notification, the wake line, the error line and the conversation's line. @param {{ watch?: unknown, plan?: PlanSay }} r
+ *   a reminder, an entry's data, or a watch by its id
+ */
+export const planned = (r) => Boolean(r.plan) || String(r.watch ?? '').startsWith('plan:');
+
+/**
+ * A reminder's words where nothing is drawn (the card annai shows, the voice, the phone's notification, a line of annai's own): a plan's made from
+ * its data, in the screens' language (an older one's as stored); anyone else's, a model's (Shiori's watch, Kokoro's answer) or a plugin's, as plain
+ * words (markdown.js): a link by its name, no marks, a star before a code's digits or `#` kept. The conversation's line draws those instead.
+ * @param {{ watch?: unknown, text: string, plan?: PlanSay }} r
+ */
+export const plainReminder = (r) => (r.plan ? planWords(r.plan) : planned(r) ? r.text : plainWords(r.text));
 
 /** @param {any} w @param {number} [t] */
 const hhmm = (w, t = w.at) => timeIn(t, w.tz);

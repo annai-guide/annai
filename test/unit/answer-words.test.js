@@ -126,10 +126,13 @@ test("a key in Kokoro's words is blanked once, and the card and the voice (a pro
   }
 });
 
-test("a reminder without the answer flag keeps its words as written in the card and the voice: they are not changed here", async (t) => {
-  const s = await shown(t, 'Show code *1234* at the gate.', { answer: false });
+// watch-words-next: a reminder without the answer flag (Shiori's own watch) reads as plain words too, by the same rule (plan-watches.js plainReminder); the
+// rest of its places are in watch-words.test.js.
+test("a reminder without the answer flag reads as plain words in the card and the voice too, a code's stars kept", async (t) => {
+  const s = await shown(t, 'Show code *1234* at the **gate**.', { answer: false });
   assert.deepEqual(s.cards, [['Reminder', 'Show code *1234* at the gate.']]);
   assert.deepEqual(s.given, ['Show code *1234* at the gate.']);
+  assert.deepEqual(s.line, ['Show code *1234* at the **gate**.']);
 });
 
 test("through the halves: Kokoro's gated speak that Koe never passes on shows its links by their names on the card, and the line keeps them", async (t) => {
