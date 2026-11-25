@@ -59,6 +59,7 @@ test("a simulation never touches the relay: the user's real reminders keep their
     await mirror.sync();
     await new Promise((r) => setTimeout(r, 2));
   }
+  assert.equal(run.state?.error, null); // the run worked: the checks below would hold on one that threw at once
   await mirror.sync();
   for (let i = 0; i < 40; i++) await step(); // and after it, as real time goes on
   const touched = rig.net.calls.slice(from).filter((c) => c.method !== 'GET').map((c) => `${c.method} ${new URL(c.url).pathname}`);

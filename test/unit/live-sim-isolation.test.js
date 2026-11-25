@@ -47,6 +47,7 @@ test("a simulation never fires, spends or drops the user's own time watches; aft
   await live.setWatch(ME, { when: { type: 'time', at: '2026-11-20T21:00:00-08:00' }, fallback: 'Call home.' });
   await simAtOnce(run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' }));
   await simAtOnce(run.finished);
+  assert.equal(run.state?.error, null); // the run worked: the checks below would hold on one that threw at once
   for (const scope of [k.trip, ME]) assert.deepEqual(await events(scope, ['trigger.fired', 'wake', 'reminder']), [], scope);
   assert.equal((await readWatches(k.ws, k.trip)).watches.length, 2);
   assert.equal((await readWatches(k.ws, ME)).watches.length, 1);
@@ -116,6 +117,7 @@ test('a reload in the middle of a simulation opens the trip that was open before
   assert.equal(await /** @type {any} */ (simRun).recoverSimulation({ store: k.store, ws: k.ws }), null); // nothing to recover now
   run.stop();
   await simAtOnce(run.finished);
+  assert.equal(run.state?.error, null); // it ran, and was stopped: it did not throw before the reload
 });
 
 test("outside its run, a simulation's trip is still: no reminders, watches or road of the real world go into it (review 4)", async (t) => {
@@ -123,6 +125,7 @@ test("outside its run, a simulation's trip is still: no reminders, watches or ro
   const { k, live, run, to, events } = await anApp({ live: true });
   const { trip } = await simAtOnce(run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' }));
   await simAtOnce(run.finished);
+  assert.equal(run.state?.error, null); // the run worked: the checks below would hold on one that threw at once
   k.notices.length = 0; // the run's own reminders were shown during it
   // A reminder Shiori set during the run for later that day, as she might with real models.
   await saveWatch(k.ws, trip, { id: 'w-castle', owner: 'shiori', when: { type: 'time', at: '2026-11-27T16:15:00-08:00' }, repeat: false, fallback: 'Leave for the castle.', created: iso('09:00') }, 'shiori');

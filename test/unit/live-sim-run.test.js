@@ -108,6 +108,7 @@ test('each simulation makes a trip with a title of its own, so Trips and the Tra
   for (let i = 0; i < 3; i++) {
     await simAtOnce(run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' }));
     await simAtOnce(run.finished);
+    assert.equal(run.state?.error, null, `run ${i + 1}`);
     titles.push(String(run.state?.title));
   }
   assert.deepEqual(titles, [
