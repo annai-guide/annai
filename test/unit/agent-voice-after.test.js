@@ -8,6 +8,7 @@ import { record } from '../../src/core/agent/log.js';
 import { useClock } from './clock.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { clip, quiet, cat } from './voice-kit.js';
+import { ProviderError } from '../../src/core/llm/contract.js';
 
 const say = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }] });
 const speakOnly = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }] });
@@ -31,6 +32,29 @@ test('after a turn that worked, what was heard is written down and its sound let
   await idleAtOnce(k);
   assert.deepEqual(k.transcribed, ['m-hear'], 'the transcript made for the reply was reused, and not made again');
   assert.deepEqual(k.requests[1].messages[0].parts.slice(0, 2), [{ type: 'text', text: '[heard]' }, { type: 'text', text: 'where should we eat' }]);
+});
+
+test("tapping Shiori while her heard line's transcription waits to be sent again ends her turn at once, and a line typed just after it reaches her without that wait (llm-rest-next)", async (t) => {
+  useClock(t);
+  /** Each request the model got: when, by the clock, and whether it holds the typed line. @type {{ at: number, next: boolean }[]} */
+  const got = [];
+  const k = await agentKit([[say('Here.')]], { waits: true, voice: { speechIn: ['m-hear'], hears: ['where should we eat'] }, hold: async (c) => { got.push({ at: Date.now(), next: JSON.stringify(c.request).includes('Next one') }); } });
+  // The transcription model's server fails once: the same recording would go again after 1 s (nextStep). The next turn's transcription works.
+  const hears = k.llm.transcribe;
+  let tries = 0;
+  k.llm.transcribe = async (/** @type {any} */ c) => { if (!tries++) throw new ProviderError('server', 'down'); return hears(c); };
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'where-eat');
+  await until(() => tries === 1);
+  await new Promise((r) => setTimeout(r, 20)); // the transcription waits now
+  const stopped = Date.now();
+  k.agent.interrupt();
+  k.agent.send('Next one');
+  await idleAtOnce(k, 20_000); // past the wait, so a turn held by it ends too, and the time says so
+  const next = got.find((g) => g.next);
+  assert.ok(next && next.at - stopped < 500, `the typed line went at once, not after the wait: ${next ? next.at - stopped : 'never'} ms after the tap`);
+  assert.deepEqual((await k.events(['out.speak'])).map((e) => e.data.text), ['Here.']);
 });
 
 test('sound sent to a model that takes audio is written down by that model, after the turn (spec §10.3)', async (t) => {
