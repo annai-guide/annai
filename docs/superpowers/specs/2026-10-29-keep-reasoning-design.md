@@ -330,7 +330,7 @@ It also keeps a refused attempt, and `natives: { sent, changed }` on each `net.r
 - Koe's escaping of user parts (`#unmarked`) leaves a kept now block exactly as it was sent.
 - Koe's `#window()` (transcript.js:322) ignores `now` parts. It counts exchanges by user messages holding a text part, so a kept now block would otherwise count as one.
 
-**Estimates.** `estimateTokens` and `requestBytes` count natives and now blocks, since they are in the request. For a model on another endpoint that is a small overcount.
+**Estimates.** `estimateTokens` and `bytesLessFiles` count natives and now blocks, since they are in the request. For a model on another endpoint that is an overcount of at most what a turn may keep (`KEPT_SENT_MAX`, 360 KiB: about 4% of the 8 MiB default size, 35% of its 1 MiB least).
 
 ### 11. Money
 

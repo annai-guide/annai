@@ -1,5 +1,5 @@
 {
-  "build": "0d575f2ced94",
+  "build": "2d32d7cf2a1d",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -37,13 +37,13 @@
     "/src/core/archive-crypto.js": "9b6e09565a09",
     "/src/core/agent/blocks.js": "889d3a6f66e2",
     "/src/core/agent/budgets.js": "a7804d7ea6b2",
-    "/src/core/agent/compaction.js": "cc2208bf03e4",
+    "/src/core/agent/compaction.js": "86815c245a52",
     "/src/core/agent/context.js": "2d75cd3369f6",
     "/src/core/agent/halves.js": "f190cf8d0ff4",
     "/src/core/agent/instructions.js": "dc44316f3b47",
     "/src/core/agent/listen.js": "41cbb9219102",
     "/src/core/agent/log.js": "be1f6eedd6f8",
-    "/src/core/agent/loop.js": "46644189e57d",
+    "/src/core/agent/loop.js": "9325aa5aeb44",
     "/src/core/agent/reading.js": "032133e5fc3c",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/her-instructions.js": "b90fb982b678",
@@ -89,7 +89,7 @@
     "/src/core/llm/partial-json.js": "05dab759f366",
     "/src/core/llm/reasoning.js": "944a3f6e351d",
     "/src/core/llm/retry.js": "fdb90e75be0d",
-    "/src/core/llm/service.js": "f53c87cc81eb",
+    "/src/core/llm/service.js": "d2fda4d78fea",
     "/src/core/llm/speech.js": "ee116edd53ba",
     "/src/core/llm/sse.js": "656d2989d833",
     "/src/core/llm/trace.js": "ce4c33d5516e",
@@ -261,7 +261,7 @@
     "/src/ui/screens/item.js": "aaf8d3ec01d0",
     "/src/ui/screens/mcp.js": "8594db2419e8",
     "/src/ui/screens/model.js": "6976470d905a",
-    "/src/ui/screens/models.js": "ed7deaf77756",
+    "/src/ui/screens/models.js": "66967e78a52e",
     "/src/ui/screens/notifications.js": "d1de25d1c4ae",
     "/src/ui/screens/plan.js": "14ce476afd90",
     "/src/ui/screens/plugin-install.js": "00ac186440d9",
@@ -301,8 +301,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "1f7e8af6d11c",
-    "/l10n/zh-Hans.json": "4bac0cd3de69",
-    "/l10n/zh-Hant.json": "008b651b0697"
+    "/l10n/ja.json": "dc8071a0b1a0",
+    "/l10n/zh-Hans.json": "de20d1dc2977",
+    "/l10n/zh-Hant.json": "df9b35314bfe"
   }
 }

@@ -125,3 +125,16 @@ export function useClock(t) {
     if (turn) real.clearImmediate(turn);
   });
 }
+
+/**
+ * The device's clock moved on by hand, Date.now alone (the log's times and the agent's clock both read it); timers stay real, unlike useClock's.
+ * Set before the kit is made. Returns the jump: `jump(ms)` moves the clock on by that much.
+ * @param {import('node:test').TestContext} t
+ */
+export function clockOf(t) {
+  const real = Date.now;
+  let shift = 0;
+  Date.now = () => real() + shift;
+  t.after(() => { Date.now = real; });
+  return (/** @type {number} */ ms) => { shift += ms; };
+}
