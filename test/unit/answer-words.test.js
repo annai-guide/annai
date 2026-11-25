@@ -75,9 +75,11 @@ test('a Japanese line with a link: the link by its name, a bare address cut at �
   assert.deepEqual(s.voiced, ['正法寺は地図で見られます。', '詳しくは ja.wikipedia.org 正法寺。']);
 });
 
-test("Kokoro's words with a heading, a list, code and italics: no `#`, `*`, `_` or backtick, each block on a line of its own; a fenced block as written", async (t) => {
-  const s = await shown(t, '## Tomorrow\n* **Ferry** at 10:40\n* Gate `B3`\n1. Walk to the pier\n2. Board\nGate *1234* and the _side_ door.\n```\nrun *a* and *b*\n- kept\n# kept\n```\nDone.');
-  assert.deepEqual(s.cards, [["Shiori's answer", 'Tomorrow\nFerry at 10:40\nGate B3\n1. Walk to the pier\n2. Board\nGate 1234 and the side door.\nrun *a* and *b*\n- kept\n# kept\nDone.']]);
+// star-codes-next changed one reading here: `*1234*` keeps its stars. A `*` straight before a digit never opens italics, since a gate code's star must reach the
+// traveller (`*1234#`, `*100*1#`), and a model's `*1234*` can't be told from one; a code without its stars is a wrong code, stars round an emphasised number a blemish.
+test("Kokoro's words with a heading, a list, code and italics: no `#`, `*`, `_` or backtick, each block on a line of its own; a fenced block as written; a star before a digit stays", async (t) => {
+  const s = await shown(t, '## Tomorrow\n* **Ferry** at 10:40\n* Gate `B3`\n1. Walk to the pier\n2. Board\nGate *1234* and the _side_ door, the *early* one.\n```\nrun *a* and *b*\n- kept\n# kept\n```\nDone.');
+  assert.deepEqual(s.cards, [["Shiori's answer", 'Tomorrow\nFerry at 10:40\nGate B3\n1. Walk to the pier\n2. Board\nGate *1234* and the side door, the early one.\nrun *a* and *b*\n- kept\n# kept\nDone.']]);
 });
 
 test('a numbered line keeps its number as written, in the card and in the voice: a list starting at 2, blank lines between items, a nested bullet, a date', async (t) => {
@@ -150,7 +152,8 @@ test("an address's words: a `+` reads as a space, a link named by its address re
 });
 
 // star-codes-next (the Deferred entry "Two star codes on one line lose their stars, and links the parser doesn't draw stay raw", 2026-11-24): the shared
-// parser reads a star by CommonMark's flanking rule and a link it doesn't draw by its name. Its nodes are what every line and card draws (src/ui/markdown.js:
+// parser reads a star by the whitespace half of CommonMark's flanking rule and by a digit rule (a star straight before a digit or `#` never opens italics), and a link
+// it doesn't draw by its name (a phone or mail link with its number or address). Its nodes are what every line and card draws (src/ui/markdown.js:
 // text, strong, em, code, and a link only to an http(s) address); plainWords' words are the card at the top and the voice. Numbers and places are made up.
 
 const CODES = 'Press *1234# at the gate, then *9#. Dial *67 then *82 for the **front** desk, not the *side* one.';
@@ -162,8 +165,54 @@ test('two star codes on one line keep their stars in the drawn line and card, an
   assert.deepEqual(parseInline(CODES), drawn);
   assert.deepEqual(parseMarkdown(CODES), [{ t: 'p', c: drawn }]);
   assert.deepEqual(parseInline('Dial *67 then *82'), [{ t: 'text', v: 'Dial *67 then *82' }]);
-  // The same rule for `**` and `_`: a mark with a space on its inner side neither opens nor closes; a `_` inside a word is none, as before.
+  // A `_` inside a word is none, as before (the four half-rule lines, one side with a space each, are the next test).
   assert.deepEqual(parseInline('a ** b ** c and _d _ e, snake_case_name'), [{ t: 'text', v: 'a ** b ** c and _d _ e, snake_case_name' }]);
+});
+
+/** @param {string} v */
+const textOnly = (v) => [{ t: 'text', v }];
+
+// Fable's table (the final review of star-codes-next): a code's star is no italic's, with no space before it (Japanese and Chinese), with a star inside the code,
+// in a list of codes, in a bold, and a model's own `*1234*`. Each line reads as written, in the drawn line and as plain words.
+test("a code's stars stay with no space before them, with a star inside, in a list of codes, and in a bold; italics that start with a digit show their stars", () => {
+  for (const line of [
+    '門で*1234#を押し、次に*9#を押してください。',
+    '请在大门按*1234#，然后按*9#。',
+    'Dial *100*1# to check the balance.',
+    'Use *67,*82 or *69.',
+    'Codes: *67/*82',
+    'Dial *#06#*#21# for both.',
+    'Dial **21*0900000000# to forward.',
+    'Gate *1234* and the door *5*, in *3 nights* or *10:30*.',
+    'It costs 2*3*4 and 3 * 4 = 12.',
+  ]) {
+    assert.deepEqual(parseInline(line), textOnly(line), line);
+    assert.equal(plainWords(line), line, line);
+  }
+  // A code and an emphasis on one line: the code keeps its stars, the emphasis draws.
+  const mixed = 'ゲートは*1234#です。*重要*な番号です。';
+  assert.deepEqual(parseInline(mixed), [{ t: 'text', v: 'ゲートは*1234#です。' }, { t: 'i', c: textOnly('重要') }, { t: 'text', v: 'な番号です。' }]);
+  assert.equal(plainWords(mixed), 'ゲートは*1234#です。重要な番号です。');
+  // A code in a bold, and the entry's own line in one: the bold draws and holds the stars as text.
+  for (const [line, inner] of [['**Gate code: *1234#**', 'Gate code: *1234#'], ['**Press *1234# at the gate, then *9#.**', 'Press *1234# at the gate, then *9#.'], ['**3 * 4 = 12**', '3 * 4 = 12'], ['**ゲート*1234#*9#**', 'ゲート*1234#*9#']]) {
+    assert.deepEqual(parseInline(line), [{ t: 'b', c: textOnly(inner) }], line);
+    assert.equal(plainWords(line), inner, line);
+  }
+  assert.deepEqual(parseInline('**Gate code: *1234#** and *side*'), [{ t: 'b', c: textOnly('Gate code: *1234#') }, { t: 'text', v: ' and ' }, { t: 'i', c: textOnly('side') }]);
+});
+
+test('a mark with a space on its inner side neither opens nor closes: each half of the rule, on a line of its own', () => {
+  for (const line of ['a **b ** c', 'a ** b** c', '_ d_ e', '_d _ e', '* a* b', 'a * b* c']) {
+    assert.deepEqual(parseInline(line), textOnly(line), line);
+    assert.equal(plainWords(`ok ${line}`), `ok ${line}`, line); // a line that starts with `* ` is a bullet; the others, too, after a word
+  }
+  assert.equal(plainWords('* a* b'), 'a* b', 'a line of its own that starts with `* ` is a bullet');
+  // A bold that doesn't close keeps its stars, and what its inner pieces read follows the same rules: a star after a space closes no italics there, one before a space
+  // or a digit opens none.
+  assert.deepEqual(parseInline('**a *b * c**'), textOnly('**a *b * c**'));
+  for (const line of ['**a * b*c**', '**a *3 b*c**']) assert.deepEqual(parseInline(line), [{ t: 'text', v: line.slice(0, -4) }, { t: 'i', c: textOnly('c') }, { t: 'text', v: '*' }], line);
+  // Beside them, a mark with a word on both sides still draws.
+  assert.deepEqual(parseInline('a **b** _c_ *d*'), [{ t: 'text', v: 'a ' }, { t: 'b', c: textOnly('b') }, { t: 'text', v: ' ' }, { t: 'i', c: textOnly('c') }, { t: 'text', v: ' ' }, { t: 'i', c: textOnly('d') }]);
 });
 
 test('two star codes on one line keep their stars on the card at the top and in the voice, without the marks of bold and italic', async (t) => {
@@ -175,19 +224,75 @@ test('two star codes on one line keep their stars on the card at the top and in 
 });
 
 const LINKS = 'Call [the **inn**](tel:+1-555-0100), mail [the desk](mailto:desk@example.com), see [the plan](/trip/plan.md) and [this](javascript:alert(1)), or [Maps](https://maps.example.com/x).';
-const LINKS_PLAIN = 'Call the inn, mail the desk, see the plan and this, or Maps.';
+const LINKS_PLAIN = 'Call the inn (+1-555-0100), mail the desk (desk@example.com), see the plan and this, or Maps.';
 
 test("a link the drawer doesn't open (tel:, mailto:, a path, a script) is drawn by its name and never as a link; an http(s) one still is", () => {
   assert.deepEqual(parseInline(LINKS), [
-    { t: 'text', v: 'Call the ' }, { t: 'b', c: [{ t: 'text', v: 'inn' }] }, { t: 'text', v: ', mail the desk, see the plan and this, or ' },
+    { t: 'text', v: 'Call the ' }, { t: 'b', c: [{ t: 'text', v: 'inn' }] }, { t: 'text', v: ' (+1-555-0100), mail the desk (desk@example.com), see the plan and this, or ' },
     { t: 'a', href: 'https://maps.example.com/x', c: [{ t: 'text', v: 'Maps' }] }, { t: 'text', v: '.' },
   ]);
   assert.deepEqual(parseMarkdown(`- ${LINKS}`), [{ t: 'ul', items: [parseInline(LINKS)] }]);
-  for (const href of ['javascript:alert(1)', 'JaVaScRiPt:alert(1)', 'data:text/html,x', 'vbscript:x', 'tel:+1-555-0100']) {
+  for (const href of ['javascript:alert(1)', 'JaVaScRiPt:alert(1)', 'data:text/html,x', 'vbscript:x', '/trip/plan.md']) {
     assert.deepEqual(parseInline(`[go](${href})`), [{ t: 'text', v: 'go' }], href);
   }
-  // An address in the name of a link not drawn stays text, as in the name of one drawn.
-  assert.deepEqual(parseInline('[see https://a.example.com/x](tel:1)'), [{ t: 'text', v: 'see https://a.example.com/x' }]);
+  // The drawer opens only what an allowlist names (http, https): a scheme a denylist of scripts would pass is never a link either.
+  for (const href of ['ftp://a.example.com/x', 'blob:https://a.example.com/1', 'intent://x#Intent;end', 'file:///etc/hosts', 'sms:+15550100']) {
+    assert.deepEqual(parseInline(`[go](${href})`), [{ t: 'text', v: 'go' }], href);
+    assert.equal(plainWords(`[go](${href})`), 'go', href);
+  }
+});
+
+test('a phone or mail link named in words reads `name (number or address)`, once, in the drawn line, the card and the voice; the number named already is not said twice', async (t) => {
+  for (const [line, words] of [
+    ['Call [the hotel](tel:+81-00-0000-0000) now.', 'Call the hotel (+81-00-0000-0000) now.'],
+    ['[ホテルに電話](tel:+81-00-0000-0000)してください。', 'ホテルに電話 (+81-00-0000-0000)してください。'],
+    ['Call [the inn](tel:+1 555 0100) now.', 'Call the inn (+1 555 0100) now.'],
+    ['Write to [the desk](mailto:desk@example.com?subject=Late%20check-in&body=Hi) now.', 'Write to the desk (desk@example.com) now.'],
+    ['Call [+81 00 0000 0000](tel:+81000000000) now.', 'Call +81 00 0000 0000 now.'],
+    ['Call [0120-00-0000](tel:+81-120-00-0000) now.', 'Call 0120-00-0000 (+81-120-00-0000) now.'], // the name is another form of the number: both are shown
+    ['Call [**+81-00-0000-0000**](tel:+81-00-0000-0000) now.', 'Call +81-00-0000-0000 now.'],
+    ['Mail [Desk@Example.com](mailto:desk@example.com?subject=x) now.', 'Mail Desk@Example.com now.'],
+    ['Mail [the desk at desk@example.com](mailto:desk@example.com) now.', 'Mail the desk at desk@example.com now.'],
+    ['Call [the inn](TEL:+1-555-0100) now.', 'Call the inn (+1-555-0100) now.'],
+  ]) {
+    assert.equal(plainWords(line), words, line);
+    const s = await shown(t, line);
+    assert.deepEqual(s.cards, [["Shiori's answer", words]], line);
+    assert.deepEqual(s.given, [words], line);
+  }
+  // Drawn as words, never as a link: the drawn line holds the number or address in a text node, and no `a` node.
+  assert.deepEqual(parseInline('Call [the **inn**](tel:+1-555-0100) now.'), [{ t: 'text', v: 'Call the ' }, { t: 'b', c: textOnly('inn') }, { t: 'text', v: ' (+1-555-0100) now.' }]);
+});
+
+test("a link not drawn that is named by an address draws its name as a link and the voice says it by its site; inside a link's own name it stays text", async (t) => {
+  const line = '[https://sample-inn.example.com/rooms](sample-inn.example.com/rooms) and [see https://a.example.com/x](/trip/plan.md)';
+  assert.deepEqual(parseInline(line), [
+    { t: 'a', href: 'https://sample-inn.example.com/rooms', c: textOnly('https://sample-inn.example.com/rooms') }, { t: 'text', v: ' and see ' },
+    { t: 'a', href: 'https://a.example.com/x', c: textOnly('https://a.example.com/x') },
+  ]);
+  const words = 'sample-inn.example.com and see a.example.com';
+  assert.equal(plainWords(line), words);
+  const s = await shown(t, line);
+  assert.deepEqual(s.cards, [["Shiori's answer", words]]);
+  assert.deepEqual(s.given, [words]);
+  // A drawn link's name holds no link (a link in a link): its address stays text.
+  assert.deepEqual(parseInline('[see https://a.example.com/x](https://b.example.com/y)'), [{ t: 'a', href: 'https://b.example.com/y', c: textOnly('see https://a.example.com/x') }]);
+});
+
+test("a link's address may hold a space, never a quote: it is drawn whole; a titled link is left as it was", async (t) => {
+  const line = 'See [Big Sur](https://en.wikipedia.org/wiki/Big Sur) or [the inn](tel:+1 555 0100) today.';
+  assert.deepEqual(parseInline(line), [
+    { t: 'text', v: 'See ' }, { t: 'a', href: 'https://en.wikipedia.org/wiki/Big%20Sur', c: textOnly('Big Sur') }, { t: 'text', v: ' or the inn (+1 555 0100) today.' },
+  ]);
+  const words = 'See Big Sur or the inn (+1 555 0100) today.';
+  assert.equal(plainWords(line), words);
+  const s = await shown(t, line);
+  assert.deepEqual(s.cards, [["Shiori's answer", words]]);
+  assert.deepEqual(s.given, [words]);
+  // A title in quotes is no part of the address: the link is not drawn as one with the title in its address, as before.
+  const titled = parseInline('[a](https://x.test/p "title") x');
+  assert.deepEqual(titled.filter((n) => n.t === 'a').map((n) => /** @type {any} */ (n).href), ['https://x.test/p']);
+  assert.equal(plainWords('[a](https://x.test/p "title") x'), '[a](x.test "title") x');
 });
 
 test("a link the drawer doesn't open reads by its name on the card at the top and in the voice", async (t) => {
@@ -207,6 +312,8 @@ test('***very*** reads as bold italic (a bold may hold italics), and a backslash
   ]);
   const words = 'It is very good, not that far. Press *1234# then *9#, a _ and a \\, but a\\*b.';
   assert.equal(plainWords(text), words);
+  // `\\n` is an escaped backslash and an n, so `\n` as text (with the backslash out of the escape's class, both backslashes would stay).
+  assert.deepEqual(parseInline(String.raw`a \\n b`), textOnly('a \\n b'));
   const s = await shown(t, text);
   assert.deepEqual(s.cards, [["Shiori's answer", words]]);
   assert.deepEqual(s.given, [words]);

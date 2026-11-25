@@ -11,17 +11,20 @@ export const MD_MAX = 20_000;
 // A bare address runs to whitespace, `<`, `>`, an unpaired parenthesis, a `[ ] { } |` (MediaWiki refuses them in a title; so an IP-literal address, http://[::1]/,
 // doesn't link) or a mark of ADDRESS_ENDS; a pair of parentheses that closes (one level of it, GFM's rule) stays in it; a last `.,;:!?'"` stays out, as a sentence's
 // own stop. A `_` opens or closes italics only at the edge of a word of Latin letters or digits (CommonMark's; `_重要_` in Japanese or Chinese is italics).
-// A `*`, `**` or `_` opens only before a non-space and closes only after one (CommonMark's flanking rule), so two codes' stars (`*1234# then *9#`) stay;
-// `**` may hold `*italic*` (`***very***`). A `\` before ASCII punctuation is CommonMark's escape: dropped.
+// A `*`, `**` or `_` opens only before a non-space and closes only after one: the whitespace half of CommonMark's flanking rule (its punctuation half is left out,
+// which is right for Japanese: `**「重要」**です` draws). What keeps a code's stars, with or without a space before them (`*1234# then *9#`, `*100*1#`, `*67,*82`, and
+// `*1234#です。次に*9#` in Japanese or Chinese), is the digit rule: a `*` straight before a digit or `#` never opens italics, and a bold may hold one as text
+// (`**Gate code: *1234#**`); the cost is italics that start with a digit (`*3 nights*`), which show their stars. `**` may hold `*italic*` (`***very***`).
+// A `\` before ASCII punctuation is CommonMark's escape and reads as the mark alone, outside a code span, an address, and an emphasis opened before it (which has taken the star).
 const WORD = String.raw`[\p{Script=Latin}\p{N}]`;
 const IN_ADDRESS = String.raw`[^\s<>()\[\]{}|${ADDRESS_ENDS}]`;
 const PAIR = String.raw`\(${IN_ADDRESS}*\)`;
 const INLINE = new RegExp([
   '`([^`\\n]+)`',
-  String.raw`\*\*(?!\s)((?:[^*\n]|\*(?!\s)[^*\n]+(?<!\s)\*)+)(?<!\s)\*\*`,
-  String.raw`\*(?!\s)([^*\n]+)(?<!\s)\*`,
+  String.raw`\*\*(?!\s)((?:[^*\n]|\*(?![\s\d#])[^*\n]+(?<!\s)\*|\*(?=[\s\d#]))+)(?<!\s)\*\*`,
+  String.raw`\*(?![\s\d#])([^*\n]+)(?<!\s)\*`,
   String.raw`(?<!${WORD})_(?!\s)([^_\n]+)(?<!\s)_(?!${WORD})`,
-  String.raw`\[([^\[\]\n]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)`,
+  String.raw`\[([^\[\]\n]+)\]\(((?:[^()\n"]|\([^()\n"]*\))+)\)`,
   String.raw`(https?:\/\/(?:${IN_ADDRESS}|${PAIR})*(?:[^\s<>()\[\]{}|.,;:!?'"${ADDRESS_ENDS}]|${PAIR}))`,
   String.raw`\\([!-\/:-@\[-\x60{-~])`,
 ].join('|'), 'gu');
@@ -34,6 +37,19 @@ function safeHref(href) {
   } catch {
     return null;
   }
+}
+
+/**
+ * What a phone or mail link adds to its name, so the number or address reaches the traveller though the link is not drawn: ` (+81-00-0000-0000)`, never twice (a
+ * number is compared by its digits, an address without regard to case, both against the name), and a `mailto:`'s `?subject=…` left out; '' for any other link.
+ * @param {string} name the link's name as written @param {string} dest its destination
+ */
+function reach(name, dest) {
+  const m = /^\s*(tel|mailto):([^?]*)/i.exec(dest);
+  if (!m) return '';
+  const to = m[2].trim();
+  const held = m[1].toLowerCase() === 'tel' ? name.replace(/\D/g, '').includes(to.replace(/\D/g, '')) : name.toLowerCase().includes(to.toLowerCase());
+  return held ? '' : ` (${to})`;
 }
 
 /** @param {string} s @param {boolean} [inLink] the text of a [link](address): its own bare addresses stay text, not a link in a link @returns {Inline[]} */
@@ -56,7 +72,10 @@ export function parseInline(s, inLink = false) {
     else if (m[5] !== undefined) {
       const href = safeHref(m[6]);
       if (href) out.push({ t: 'a', href: m[6] === href ? m[6] : href, c: parseInline(m[5], true) });
-      else for (const x of parseInline(m[5], true)) if (x.t === 'text') text(x.v); else out.push(x); // tel:, mailto:, a path, a script: by its name, never a link
+      else { // tel:, mailto:, a path, a script: by its name, never a link
+        for (const x of parseInline(m[5], inLink)) if (x.t === 'text') text(x.v); else out.push(x);
+        text(reach(m[5], m[6]));
+      }
     } else if (m[7] !== undefined) {
       const href = inLink ? null : safeHref(m[7]);
       if (href) out.push({ t: 'a', href: m[7], c: [{ t: 'text', v: m[7] }] });
