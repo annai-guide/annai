@@ -54,10 +54,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### PDF pages draws at most a PDF's first 10 pages for a model
 - **Kind:** known limitation.
-- **What the user sees:** when no model here reads PDFs and the PDF pages plugin shows a PDF to a model that sees photos, only its first 10 pages go, at up to 1600 px on the longest side, each under a photo's request size (256 KiB by default, since pdf-pages-cap-next, 2026-11-25). The model is told how many were left out ("pages 1–10 of 23; the rest weren't sent"), so Shiori can say so. A model that reads PDFs itself still gets the whole file.
+- **What the user sees:** when no model here reads PDFs and the PDF pages plugin shows a PDF to a model that sees photos, only its first 10 pages go, at up to 1600 px on the longest side, each under a photo's request size (256 KiB by default, since pdf-pages-cap-next, 2026-11-25), so ten pages in one request are up to 2.5 MiB of pictures, 3.3 MiB as sent, in the PDF's turn and the next. The model is told how many were left out ("pages 1–10 of 23; the rest weren't sent"), so Shiori can say so. A model that reads PDFs itself still gets the whole file.
 - **Why:** each page is a picture of about 1,600 tokens, and a booking's facts are on its first pages. More pages would cost more and take longer on the phone, for pages a booking rarely needs.
 - **Revisit when:** a booking needs more than its first 10 pages.
-- **Approved:** 2026-10-28, the user: "Accept".
+- **Approved:** 2026-10-28, the user: "Accept" (the first-10 rule). The sentence on what ten pages send in one request: chief's decision C239 (2026-11-25, not the user's words, Q-AA option (1); undo: "about four pages a request" or "a total for the pages").
 
 ### JPEG 2000 and JBIG2 pictures in a PDF may come out blank in PDF pages
 - **Kind:** known limitation.
