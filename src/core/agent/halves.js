@@ -711,9 +711,11 @@ export class Halves {
    */
   async #live(fn, w) {
     await this.koe.opening.catch(() => {});
+    if (this.#elsewhere(w)) return;
     if (await fn()) return;
     const failed = this.#liveId;
     await this.#refresh();
+    if (this.#elsewhere(w)) return;
     if (this.koeState === 'text') return this.koe.enqueue(w);
     // That model rests now, and the next in Koe's list can take it: a note or a reminder doesn't lose its moment. (A typed line is written by the try.)
     if (this.koeState === 'live' && this.#liveId !== failed && (await fn())) return;
@@ -721,11 +723,24 @@ export class Halves {
       this.#koeSaid(); // no session can answer a typed line now (today's spend reached): Kokoro waits no longer
       // No session could take Kokoro's note for the user, and Koe stays live (today's spend reached): annai shows it.
       if (isForUser(w) && !this.#shown.has(w)) await this.#backstop([w]);
-      if (w.fallbacks?.length) this.#alongside(this.kokoro.remind(w.fallbacks)); // idle() waits for its entry
+      if (w.fallbacks?.length) this.#alongside(this.kokoro.remind(w.fallbacks, w.scope)); // idle() waits for its entry; in the wake's own conversation
       return;
     }
     this.#notice({ tone: 'warn', title: t`Koe's live voice couldn't start`, body: t`Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.` });
-    this.#talkDirectly(w.fallbacks);
+    if (!this.#elsewhere(w)) this.#talkDirectly(w.fallbacks);
+  }
+
+  /**
+   * A wake #live is placing whose conversation another has replaced while it waited (Koe's open, a refresh, a session closed by the switch): it goes to
+   * no session and not to Koe, which would say it in the conversation opened (Halves.wake's own check). Its reminders are shown in its own, Kokoro having the
+   * wake already; one Kokoro never got (aloud: the recap) is Kokoro's to write there. A wake naming no conversation is the open one's wherever it lands.
+   * @param {Wake} w @returns {boolean} whether it was
+   */
+  #elsewhere(w) {
+    if (!w.scope || w.scope === (this.kokoro.target ?? ME)) return false;
+    if (w.aloud) this.#alongside(this.kokoro.wake(w));
+    else if (w.fallbacks?.length) this.#alongside(this.kokoro.remind(w.fallbacks, w.scope)); // idle() waits for its entry
+    return true;
   }
 
   /**

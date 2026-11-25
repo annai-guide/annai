@@ -1714,11 +1714,12 @@ export class Live {
       const text = [header, ...lines, ...reasons].filter(Boolean).join(' ');
       if (!this.online) {
         // No connection: annai says the reminders itself now (said on screen only if the page is in view, see #made); Shiori hears of them when it is back (spec §17, choice 8).
-        if (fallbacks.length) await this.agent.remind(fallbacks);
+        if (fallbacks.length) await this.agent.remind(fallbacks, scope);
         this.#held.push({ scope, text });
         continue;
       }
-      await this.agent.wake({ kind, text, fallbacks, titles, ...(urgent ? { urgent } : {}) });
+      // With the scope read at the start: another conversation may open while an earlier firing is written, and this wake then lands by its own rule (Agent.wake).
+      await this.agent.wake({ kind, text, fallbacks, titles, scope, ...(urgent ? { urgent } : {}) });
     }
   }
 

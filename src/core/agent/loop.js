@@ -1298,11 +1298,13 @@ export class Agent {
    * A wake that isn't the user typing: a plugin, a new file, a choice tapped later (spec §6.1).
    * Quiet hours hold one that isn't the user's; a per-hour limit can drop it (§6.6).
    * @param {Wake} w
-   * @returns {Promise<void>} settles once a wake for a conversation that isn't open is written; at once for any other
+   * @returns {Promise<void>} settles once a wake for a conversation that isn't open at the call is written; at once for any other (one that lands after a
+   *   switch, once its budgets are read, is written then, and idle() waits for it: #keepFor)
    */
   wake(w) {
     // A wake keeps the conversation it came for: the one open as it comes, unless it names one. For another than the one open (files added to
-    // another trip, or one opened while its budgets were read) it is written into it, and answered when it opens (spec §6.1, §7.3).
+    // another trip, or one opened while its budgets were read) it is written into it, and answered when it opens (spec §6.1, §7.3): a wake for `me` is
+    // written there and never answered, as `me` takes no turns.
     const scope = w.scope ?? this.#target ?? ME;
     const here = () => scope === (this.#target ?? ME);
     if (!here()) return this.#keepFor(scope, w);
