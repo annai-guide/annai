@@ -1469,6 +1469,18 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** found by cut-send-next's re-reviews (2026-11-23): both waits (`callRole`'s `sleep` and `Voice.sleep`) are plain timers; since cut-send-next a transcription waits as chat does, so its longest wait went from 3 s to 10 s. The fix: one wait that ends on the call's signal, shared by both.
 - **Revisit when:** its row in docs/progress.md, in the next version.
 
+### Two star codes on one line lose their stars, and links the parser doesn't draw stay raw
+- **Kind:** deferred.
+- **What the traveller sees:** in her cards, the conversation's lines, and (since answer-words-next) the answer card and the voice, `Press *1234# at the gate, then *9#.` reads `Press 1234# at the gate, then 9#.` and `Dial *67 then *82` reads `Dial 67 then 82`: the italics rule lets a closing star follow a space, so two codes' stars pair up. A link to a phone number or an address that isn't a web page (`[the hotel](tel:+81…)`, `mailto:`, a relative link) is shown and said as raw markup. Rarer leftovers stay as written too: nested or triple emphasis (`***very***` keeps a pair of stars), tables, `>` quotes, `---` rules, a `\*` escape's backslash, and a link cut by the 4000-character cap on Kokoro's words.
+- **Why:** found by answer-words-next's final review and its second opinions (2026-11-24); older than that branch (her cards read this way all along, the line since ui-phone-next), which brought the same reading to the answer card and the voice. The fix at source is in the shared parser (src/core/markdown.js): CommonMark's rule for a closing star (not after a space), links of any scheme read by their names where they aren't drawn as links, and the cheap ones of the rest; it changes how every card and line draws, so it is its own change with its own e2e.
+- **Revisit when:** its row in docs/progress.md, in the next version.
+
+### Shiori's own reminders keep their markdown on the card, in the voice and in the notification
+- **Kind:** deferred.
+- **What the traveller sees:** a reminder Shiori set (a watch's words, not a plan's) shows its links and marks drawn in the conversation's line, but the card at the top and the voice read it as written (`[Maps](https://…)`, `**`), and so do the phone's notification and the wake line's title. Kokoro's words read as plain words on the card and in the voice since answer-words-next.
+- **Why:** found by answer-words-next's build and final review (2026-11-24). One condition in `remind` would read them too (talk.js's `planned` rule: `r.plan` or a watch starting `plan:`), but it changes every watch's card and voice, should come after the star-code fix above so a code keeps its stars, and the notification (src/core/push/mirror.js) and the wake line (src/ui/screens/talk.js) need the same answer: one place that decides where a watch's words are read plain, one `planned` rule shared by loop.js and talk.js.
+- **Revisit when:** its row in docs/progress.md, in the next version, after the star-code entry above.
+
 ### Kokoro's words shown at the top and said aloud keep their markdown
 - **Kind:** deferred.
 - **What the traveller sees:** when annai shows Kokoro's words itself (Koe never said them), the "Shiori's answer" card at the top of the screen reads them as written, `Sample Lake: [Maps](https://…)`, a long address cut at the card's edge; with voice on, the same raw text goes to the voice. In the conversation's line and on Driving they draw as links since ui-phone-next (2026-11-23).
