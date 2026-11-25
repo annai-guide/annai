@@ -1,7 +1,7 @@
 // K1 Task 4: the loop runs as a half (the Koe and Kokoro plan, "Agent as a half").
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until } from './agent-kit.js';
+import { agentKit, until, idleAtOnce } from './agent-kit.js';
 import { record, TALK_TAG, KOE_TAG } from '../../src/core/agent/log.js';
 import { resolveEvent, Transcript } from '../../src/core/agent/transcript.js';
 import { readConfig, saveRoles } from '../../src/core/llm/config.js';
@@ -39,7 +39,7 @@ test("a half with registryTools false offers only its own loop tools, and calls 
   const cfg = await readConfig(k.ws);
   await saveRoles(k.ws, { ...cfg.roles, main: { models: ['m-0'], level: 'medium' }, 'koe-classic': { models: ['m-1'], level: 'off' } });
   k.agent.send('Hi');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const names = k.requests[0].tools.map((/** @type {any} */ t) => t.name);
   assert.ok(names.includes('speak') && names.includes('sleep'));
   assert.ok(!names.includes('read') && !names.includes('write'), "the files plugin's tools aren't Koe's: only its own");
@@ -61,7 +61,7 @@ test('cutIn during a model call cancels that call only; the turn goes on, and th
   await noteFrom(k, 'koe', 'They asked about tonight, not lunch.');
   k.agent.wake({ kind: 'note', logged: true, from: 'koe', text: 'Koe notes: They asked about tonight, not lunch.' });
   k.agent.cutIn();
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, 2);
   assert.ok(lastUser(k.requests[1]).includes('[Koe notes] "They asked about tonight, not lunch."'), JSON.stringify(lastUser(k.requests[1])));
   assert.match(k.requests[1].tail, /woke for: the user wrote; Koe notes: They asked/);
@@ -77,7 +77,7 @@ test('cutIn while speak plays stops the voice at that point; the turn goes on', 
   k.agent.send('What is ahead?');
   await until(() => k.platform.log.some((/** @type {string} */ l) => l.startsWith('play ')));
   k.agent.cutIn();
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.ok(!k.platform.log.includes('play m-say:It opened in 1932.'));
   assert.equal(k.requests.length, 2, 'the turn went on');
   const [speak] = (await k.events(['tool.result'])).filter((e) => e.data.name === 'speak');
@@ -105,7 +105,7 @@ test('a logged wake writes only its wake event; its user lines are not written a
   const e = await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: { split: true }, texts: [['text', 'Is Nepenthe open?']] });
   await k.agent.observe(e, await resolveEvent(k.store, e));
   k.agent.wake({ kind: 'user', text: 'Is Nepenthe open?', logged: true });
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await k.events(['msg.user'])).length, 1);
   const [wake] = await k.events(['wake']);
   assert.deepEqual(wake.data.reasons, [{ kind: 'user', text: 'Is Nepenthe open?' }]);
@@ -123,7 +123,7 @@ test("#applyTurn picks this half's model.turn when the other half wrote one sinc
     return r;
   };
   k.agent.send('Hi');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const assistant = k.agent.transcript.messages.filter((m) => m.role === 'assistant');
   assert.equal(assistant.length, 1);
   assert.deepEqual(assistant[0].parts.map((p) => (p.type === 'tool_call' ? p.name : p.type)), ['speak', 'sleep']);
@@ -141,7 +141,7 @@ test('ended() gets the final text, whether the turn told the other half, slept, 
   k.agent.addLoopTools([{ name: 'tell_koe', pluginId: 'core', description: 'Tell Koe.', input: { type: 'object', properties: { text: { type: 'string' } } }, run: async () => 'sent' }]);
   for (const text of ['one', 'two', 'three']) {
     k.agent.send(text);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   assert.deepEqual(ends.map((t) => [t.ok, t.finalText, t.told, t.slept, t.spoke]), [
     [true, 'Plain words, out of habit.', false, false, false],
@@ -185,7 +185,7 @@ test("Koe's wait ends when a note is queued, and when nothing-to-add is; the use
   await until(() => k.agent.state.name === 'waiting');
   await noteFrom(k, 'kokoro', 'Nepenthe is open till 10 tonight.');
   k.agent.wake({ kind: 'note', logged: true, from: 'kokoro', text: 'a note from Kokoro' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   const waits = (await k.events(['tool.result'])).filter((e) => e.data.name === 'wait');
   assert.equal(waits[0].data.content, 'Kokoro: see the note below.');
   assert.deepEqual(lastUser(k.requests[1]), ['<from_kokoro id="testnonce">Nepenthe is open till 10 tonight.</from_kokoro>']);
@@ -194,12 +194,12 @@ test("Koe's wait ends when a note is queued, and when nothing-to-add is; the use
   await until(() => k.agent.state.name === 'waiting');
   await noteFrom(k, 'kokoro', 'Kokoro has nothing to add.');
   k.agent.wake({ kind: 'note', logged: true, from: 'kokoro', text: 'a note from Kokoro' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   // Typing ends it as before.
   k.agent.send('And tomorrow?');
   await until(() => k.agent.state.name === 'waiting');
   k.agent.send('Never mind');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const after = (await k.events(['tool.result'])).filter((e) => e.data.name === 'wait').map((e) => e.data.content);
   assert.deepEqual(after.slice(1), ['Kokoro: see the note below.', 'The user wrote: Never mind']);
 });
@@ -225,12 +225,12 @@ test("Kokoro's housekeeping during Koe's model call: Koe reads its window again 
     return r;
   };
   k.agent.send('Hello');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const ids = k.agent.transcript.messages.flatMap((m) => m.parts.flatMap((p) => (p.type === 'tool_call' ? [p.id] : [])));
   assert.equal(ids.length, new Set(ids).size, JSON.stringify(ids));
   assert.equal(ids.length, 2);
   k.agent.send('Again');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const sent = k.requests.at(-1).messages.filter((/** @type {any} */ m) => m.role === 'assistant').flatMap((/** @type {any} */ m) => m.parts.filter((/** @type {any} */ p) => p.type === 'tool_call').map((/** @type {any} */ p) => p.id));
   assert.equal(sent.length, new Set(sent).size, 'no call sent twice');
   assert.deepEqual((await Transcript.load(k.store, k.trip, { half: 'koe', nonce: 'testnonce' })).messages, k.agent.transcript.messages);
@@ -246,7 +246,7 @@ test("a half that may no longer use the voice doesn't play a speak streaming in,
   k.agent.send('Is Nepenthe open?');
   await new Promise((r) => setTimeout(r, 20));
   mine = false; // the other half has the voice now
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(k.platform.log.filter((/** @type {string} */ l) => l.startsWith('play ') || l.startsWith('mic ')), []);
   const [speak] = (await k.events(['tool.result'])).filter((e) => e.data.name === 'speak');
   assert.equal(speak.data.content, "Shown on screen. Voice is off, so you didn't listen; the user may type.");
@@ -258,7 +258,7 @@ test("a half that may no longer use the voice doesn't play a speak streaming in,
   k2.agent.send('What is ahead?');
   await until(() => k2.platform.log.some((/** @type {string} */ l) => l.startsWith('play ')));
   mine = false;
-  await k2.agent.idle();
+  await idleAtOnce(k2);
   assert.equal(k2.platform.log.filter((/** @type {string} */ l) => l.startsWith('mic open')).length, 0);
   assert.match((await k2.events(['tool.result'])).find((e) => e.data.name === 'speak')?.data.content, /^Said aloud\. annai couldn't listen: /);
 });
@@ -274,7 +274,7 @@ test('voice off, a turn asked aloud that gets the voice mid-turn says it aloud a
   k.agent.wake({ kind: 'recap', aloud: true, text: 'The user asked to hear the recap.' });
   await new Promise((r) => setTimeout(r, 20));
   mine = true; // the voice is this half's now
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(k.platform.log.filter((/** @type {string} */ l) => l.startsWith('play ') || l.startsWith('mic ')), ['play m-say:We drove the coast.']);
   assert.equal((await k.events(['tool.result'])).find((e) => e.data.name === 'speak')?.data.content, "Said aloud. Voice mode is off, so you didn't listen; the user may type.");
 });

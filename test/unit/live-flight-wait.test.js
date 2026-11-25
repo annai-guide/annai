@@ -6,7 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { liveKit, tone, soon, say } from './koe-live-kit.js';
-import { until } from './agent-kit.js';
+import { until, idleAtOnce } from './agent-kit.js';
 import { SAID, PASS, FOR_USER, NOTE, LOOKS, CONT, tell, tell2, shown, words, cues, asks, silences, wait, start, quietSession, lineAt } from './live-flight-kit.js';
 
 /** The user asks, in the car, a real second; she answers with these turns, and once Kokoro's tell_kokoro has run, Kokoro's note comes. @param {any[]} turns */
@@ -45,7 +45,7 @@ test('OpenAI Realtime: her words, a call she speaks after, answered at once, and
   try {
     await soon(async () => (await words(k)).includes(SAID), 10_000);
     await wait(1500);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await words(k), ['Hello there.', 'Checking your notes.', SAID]);
     assert.deepEqual(cues(k), []);
     assert.deepEqual(await shown(k), []);
@@ -61,7 +61,7 @@ test('no continuation after her lookup, and a second note 3 s in: at 8 s she is 
     await wait(3000);
     await tell2(k);
     await soon(async () => (await words(k)).includes(PASS), 20_000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const asked = w.at(/^\[annai\] .*Kokoro/);
     assert.ok(asked > 7000 && asked < 10_000, `asked once more at ${asked} ms (the call was answered at about 0.8 s)`);
     assert.equal(cues(k).length, 1);
@@ -79,7 +79,7 @@ test('her lookup never gets its turnComplete and nothing follows: at 8 s she is 
   const { k, w } = await start({ turns: [STALLS, { said: SAID, audio: tone(1) }, { said: 'Okay.', audio: tone(0.3) }] });
   try {
     await soon(async () => (await words(k)).includes(SAID), 20_000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(cues(k).length, 1);
     assert.deepEqual(await shown(k), []);
     assert.equal(k.agent.live.state, 'open');
@@ -111,7 +111,7 @@ for (const made of [true, false]) {
       await wait(1300);
       await tell(k);
       await soon(async () => (await words(k)).includes(SAID), 15_000);
-      await k.agent.idle();
+      await idleAtOnce(k);
       const contAt = await lineAt(k, t0, 'You have two reminders set.');
       assert.ok(w.at(/<from_kokoro/) >= contAt - 100, `the note went in at ${w.at(/<from_kokoro/)} ms, her continuation was written at ${contAt} ms`);
       assert.deepEqual((await words(k)).slice(-3), ['Checking your notes.', 'You have two reminders set.', SAID]);
@@ -128,7 +128,7 @@ test('her continuation is another lookup she speaks after: the wait starts again
   const { k, w } = await start({ turns: [LOOKS, AGAIN, { said: SAID, audio: tone(1), delayMs: 6500 }, { said: 'Okay.', audio: tone(0.3) }] });
   try {
     await soon(async () => (await words(k)).includes(SAID), 20_000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual((await words(k)).slice(-3), ['Checking your notes.', 'And the weather.', SAID]);
     assert.deepEqual(cues(k), []);
     assert.deepEqual(await silences(k), []);
@@ -145,7 +145,7 @@ test('her continuation is an empty turn: the note is asked for at once, not afte
     await soon(async () => cues(k).length > 0, 10_000);
     assert.ok(w.at(/^\[annai\] .*Kokoro/) < 5000, `asked at ${w.at(/^\[annai\] .*Kokoro/)} ms`);
     await soon(async () => (await words(k)).includes(SAID), 10_000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await silences(k), []);
   } finally {
     w.stop();
@@ -160,7 +160,7 @@ test('the provider ends a turn annai had ended with interrupted and its turnComp
   const k = await quietSessionAsks([{ heard: 'where to', said: 'One moment.', audio: tone(0.8), tool: { name: 'tell_kokoro', args: { text: 'Where should we stop?' } }, endAt: 900 }, { silent: true }, { said: SAID, audio: tone(0.3) }]);
   try {
     await soon(async () => (await words(k)).includes(SAID), 20_000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await silences(k), ['The live session gave no answer within 8 seconds: a fresh one gets it again.']);
     assert.deepEqual(asks(k), [], 'nothing asked of the old one');
   } finally {
@@ -194,7 +194,7 @@ test('Kokoro\'s immediate note answered by a lookup and no continuation: she is 
     const asked = w.at(/^\[annai\] .*Kokoro/) - sent;
     assert.ok(asked > 7500 && asked < 12_000, `asked once more ${asked} ms after the note`);
     await soon(async () => (await words(k)).includes(SAID), 10_000);
-    await k.agent.idle();
+    await idleAtOnce(k);
   } finally {
     w.stop();
     await k.done();

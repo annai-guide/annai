@@ -6,6 +6,7 @@ import { ensureBaseScopes, createTrip, ME, SYS_WAITING } from '../../src/core/sc
 import { canRead } from '../../src/core/reach.js';
 import { record } from '../../src/core/agent/log.js';
 import { text } from '../../src/core/bytes.js';
+import { idleAtOnce } from './agent-kit.js';
 
 /**
  * One trip can't read another's content by naming its hash (backlog-hash): each path that takes a hash from
@@ -78,7 +79,7 @@ async function kitWithOther(/** @type {any[]} */ scripts, /** @type {any} */ opt
 test("a tool's result naming another trip's photo by its hash is that tool's error; the trip's own photo goes", async () => {
   const k = await kitWithOther([[{ toolCalls: [{ name: 'claim', input: {} }] }, say('Nothing there.'), { toolCalls: [{ name: 'claim', input: {} }] }, say('Your coast.')]]);
   k.agent.send('Show me.');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const [claimed] = (await k.events(['tool.result'])).filter((e) => e.data.name === 'claim');
   assert.equal(claimed.data.ok, false);
   assert.match(claimed.data.content, /claim gave back an image annai can't read/);
@@ -87,7 +88,7 @@ test("a tool's result naming another trip's photo by its hash is that tool's err
   assert.equal((await refusals(k.store, k.trip)).length, 1);
   k.ask.hash = k.ours;
   k.agent.send('And the coast?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const [, own] = (await k.events(['tool.result'])).filter((e) => e.data.name === 'claim');
   assert.equal(own.data.ok, true);
   assert.equal(imagesIn(k.requests.at(-1)).length, 1);
@@ -109,7 +110,7 @@ test("a tool's request copy of another trip's photo, by its hash, is refused", a
     return 'tried';
   } });
   k.agent.send('Copy it.');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(copied, ['That photo is no longer stored.', 'a copy']);
   assert.equal((await refusals(k.store, k.trip)).length, 1);
 });
@@ -121,10 +122,10 @@ test('a photo in both trips is sent from each: its request copy is made for each
   for (const t of [k.kyoto, k.trip]) await k.ws.write(t, '/files/same.jpg', same, { author: 'user', type: 'image/jpeg', meta: { width: 600, height: 400 } });
   await k.agent.open(k.kyoto);
   k.agent.send('Show the view.');
-  await k.agent.idle();
+  await idleAtOnce(k);
   await k.agent.open(k.trip);
   k.agent.send('Show the view here.');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const reads = (await k.store.tx(['events'], 'readonly', (t) => Promise.all([k.kyoto, k.trip].map((s) => t.listEvents(s, { types: ['tool.result'] })))))
     .map((list) => list.filter((e) => e.data.name === 'read').map((e) => ({ ok: e.data.ok, images: e.data.images?.length ?? 0 })));
   assert.deepEqual(reads, [[{ ok: true, images: 1 }], [{ ok: true, images: 1 }]]);
@@ -139,7 +140,7 @@ test("the task helper's tools get no other trip's photo by its hash", async () =
     utility: [{ toolCalls: [{ name: 'claim', input: {} }] }, { text: 'Nothing to see.' }],
   });
   k.agent.send('Have a helper look.');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const helper = k.sent['model-u'];
   assert.equal(helper.length, 2);
   assert.deepEqual(imagesIn(helper[1]), []);

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit } from './agent-kit.js';
+import { agentKit, idleAtOnce } from './agent-kit.js';
 import { SYS } from '../../src/core/scopes.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { withoutSecretsIn } from '../../src/core/agent/net.js';
@@ -29,7 +29,7 @@ test('plugins can call models, decide, wake Shiori, fetch (traced), show cards, 
   assert.ok(requests.length && requests.every((e) => e.data.tag === 'plugin:probe'), JSON.stringify(requests.map((e) => e.data.tag)));
   assert.deepEqual(await a.llm.decide({ prompt: 'p', options: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }] }), { a: 0.9, b: 0.1 });
   a.wake('Low tide in 30 minutes.');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await k.events(['wake']))[0].data.reasons[0].plugin, 'probe');
   assert.equal(a.cache.state()?.warm, true);
   a.ui.card({ title: 'Tides', body: 'Low at 4:12' });

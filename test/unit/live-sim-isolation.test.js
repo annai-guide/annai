@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until } from './agent-kit.js';
+import { agentKit, until, idleAtOnce, simAtOnce } from './agent-kit.js';
+import { useClock } from './clock.js';
 import { RULES, DRIVE, places } from './big-sur-kit.js';
 import { LA, MONTEREY, BIXBY, NEPENTHE, iso } from './live-kit.js';
 import { Live } from '../../src/core/live/live.js';
@@ -32,19 +33,21 @@ async function anApp({ live: on = false, base } = {}) {
   await live.start();
   const run = new SimRun({ store: k.store, ws: k.ws, registry: k.registry, agent: k.agent, live, ...(base ? { base } : {}) });
   /** Moves the real clock, letting live mode and Shiori do what comes due. @param {number} t */
-  const to = (t) => real.advanceTo(t, async () => { await live.settled(); await k.agent.idle(); await live.settled(); });
+  const to = (t) => real.advanceTo(t, async () => { await live.settled(); await idleAtOnce(k); await live.settled(); });
   /** @param {string} scope @param {string[]} types */
   const events = (scope, types) => k.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types }));
   return { k, live, run, real, to, events };
 }
 
-test("a simulation never fires, spends or drops the user's own time watches; afterwards they fire at their real times (review 1)", async () => {
+test("a simulation never fires, spends or drops the user's own time watches; afterwards they fire at their real times (review 1)", async (t) => {
+  useClock(t);
   const { k, live, run, to, events } = await anApp();
   await live.setWatch(k.trip, { when: { type: 'time', at: '2026-11-20T20:00:00-08:00' }, fallback: 'Pack the camera batteries.' });
   await live.setWatch(k.trip, { when: { type: 'time', at: '2026-12-24T20:00:00-08:00' }, expires: '2026-11-26T00:00:00-08:00', fallback: 'Christmas eve.' });
   await live.setWatch(ME, { when: { type: 'time', at: '2026-11-20T21:00:00-08:00' }, fallback: 'Call home.' });
-  await run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' });
-  await run.finished;
+  await simAtOnce(run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' }));
+  await simAtOnce(run.finished);
+  assert.equal(run.state?.error, null); // the run worked: the checks below would hold on one that threw at once
   for (const scope of [k.trip, ME]) assert.deepEqual(await events(scope, ['trigger.fired', 'wake', 'reminder']), [], scope);
   assert.equal((await readWatches(k.ws, k.trip)).watches.length, 2);
   assert.equal((await readWatches(k.ws, ME)).watches.length, 1);
@@ -59,23 +62,24 @@ test("a simulation never fires, spends or drops the user's own time watches; aft
   assert.deepEqual((await readWatches(k.ws, k.trip)).watches.map((w) => w.fallback), []); // Christmas eve expired then, not before
 });
 
-test('after a simulation dated in the future, the hourly wake budget counts real hours: its wakes count in the hour they came, not until its date (review 2a)', async () => {
+test('after a simulation dated in the future, the hourly wake budget counts real hours: its wakes count in the hour they came, not until its date (review 2a)', async (t) => {
+  useClock(t);
   const { k, run, real } = await anApp();
   await updateAppSettings(k.ws, { shiori: { budgets: { wakesPerHour: 3 } } });
-  await run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' });
-  await run.finished;
+  await simAtOnce(run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' }));
+  await simAtOnce(run.finished);
   // As fast as it can go, the run woke her (with real models) more than 3 times in this real hour.
   k.notices.length = 0;
   const n = (await k.events(['wake'])).length;
   await k.agent.wake({ kind: 'trigger', text: 'a real watch fired, just after the simulation' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await k.events(['wake'])).length, n);
   await until(() => k.notices.length > 0); // the card comes a moment after
   assert.deepEqual(k.notices.map((x) => x.title), ['Shiori skipped a wake']);
   // An hour later by the real clock (not on Nov 27, the simulation's date), she wakes again.
   await real.advanceTo(TODAY + 61 * 60_000);
   await k.agent.wake({ kind: 'trigger', text: 'a real watch fired, an hour later' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await k.events(['wake'])).length, n + 1);
 });
 
@@ -86,9 +90,9 @@ test("during a simulation, the day's spend counts the real day's calls, and entr
   await updateAppSettings(k.ws, { shiori: { budgets: { spendPerDay: 0.00001 } } });
   const restore = k.agent.useClock({ now: () => SIM, online: () => true, timeZone: () => LA, scope: k.trip });
   k.agent.send('First');
-  await k.agent.idle();
+  await idleAtOnce(k);
   k.agent.send('Second');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.ok(k.notices.some((n) => n.title === "Shiori stopped: today's budget is spent"), k.notices.map((n) => n.title).join(', '));
   // The simulation's own conversation is in its time; another one's entries are in the real world's.
   const other = await createTrip(k.ws, { title: 'Kyoto in spring' });
@@ -100,10 +104,11 @@ test("during a simulation, the day's spend counts the real day's calls, and entr
   restore();
 });
 
-test('a reload in the middle of a simulation opens the trip that was open before, and live mode goes on into it (review 3)', async () => {
+test('a reload in the middle of a simulation opens the trip that was open before, and live mode goes on into it (review 3)', async (t) => {
+  useClock(t);
   const base = new ManualClock(0);
   const { k, run } = await anApp({ base });
-  const { trip } = await run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 10 });
+  const { trip } = await simAtOnce(run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 10 }));
   assert.equal((await readAppSettings(k.ws)).activeTrip, trip);
   // The page is gone (iOS let it go in the background); annai starts again.
   assert.equal(await /** @type {any} */ (simRun).recoverSimulation({ store: k.store, ws: k.ws }), k.trip);
@@ -111,13 +116,16 @@ test('a reload in the middle of a simulation opens the trip that was open before
   assert.deepEqual([s.activeTrip, s.simulation], [k.trip, undefined]);
   assert.equal(await /** @type {any} */ (simRun).recoverSimulation({ store: k.store, ws: k.ws }), null); // nothing to recover now
   run.stop();
-  await run.finished;
+  await simAtOnce(run.finished);
+  assert.equal(run.state?.error, null); // it ran, and was stopped: it did not throw before the reload
 });
 
-test("outside its run, a simulation's trip is still: no reminders, watches or road of the real world go into it (review 4)", async () => {
+test("outside its run, a simulation's trip is still: no reminders, watches or road of the real world go into it (review 4)", async (t) => {
+  useClock(t);
   const { k, live, run, to, events } = await anApp({ live: true });
-  const { trip } = await run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' });
-  await run.finished;
+  const { trip } = await simAtOnce(run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' }));
+  await simAtOnce(run.finished);
+  assert.equal(run.state?.error, null); // the run worked: the checks below would hold on one that threw at once
   k.notices.length = 0; // the run's own reminders were shown during it
   // A reminder Shiori set during the run for later that day, as she might with real models.
   await saveWatch(k.ws, trip, { id: 'w-castle', owner: 'shiori', when: { type: 'time', at: '2026-11-27T16:15:00-08:00' }, repeat: false, fallback: 'Leave for the castle.', created: iso('09:00') }, 'shiori');

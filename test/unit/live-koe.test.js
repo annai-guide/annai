@@ -1,11 +1,11 @@
 // K5: what a live Koe hears and says, its tools, typing to it, and its drops (plan K5, Tasks 3, 4, 6 and 7).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { until } from './agent-kit.js';
+import { until, idleAtOnce } from './agent-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { liveKit, got, texts, soon, tone, say, sleep, lives } from './koe-live-kit.js';
 import { quiet, cat, clip, room, hum } from './voice-kit.js';
-import { cleanSaid, realWord } from '../../src/core/koe/live.js';
+import { cleanSaid, realWord, HOLD_MS } from '../../src/core/koe/live.js';
 
 /** A half's transcript as text. @param {any} half */
 const read = (half) => half.transcript.messages.flatMap((/** @type {any} */ m) => m.parts.map((/** @type {any} */ p) => (p.type === 'text' ? p.text : p.type === 'speech' ? `speech:${p.text ?? p.id}` : '')));
@@ -15,7 +15,7 @@ async function exchange(k, clip, n = 1) {
   await until(() => k.agent.live.listening);
   await say(k, clip);
   await soon(async () => (await k.events(['out.speak'])).length >= n);
-  await k.agent.idle();
+  await idleAtOnce(k);
 }
 
 // Task 3: audio both ways, and both transcripts.
@@ -79,7 +79,7 @@ test('what was heard and what Koe said are logged per turn; Kokoro reads "[heard
     const chunks = input.filter((/** @type {string} */ x) => x === 'audio').length;
     assert.ok(chunks >= 8 && chunks <= 30, `${chunks} chunks of speech`);
     await soon(async () => (k.sent['model-0']?.length ?? 0) === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.sent['model-0'].length, 1, 'Kokoro checks the answer once');
     const lines = read(k.agent.kokoro).join('|');
     assert.ok(lines.includes('[heard]|speech:Where should we eat?'), lines);
@@ -189,7 +189,7 @@ test('chatter: speech the model chose not to answer (proactive audio) is in both
     k.agent.live.level.heard(10); // the user's voice is far louder: at their own level, it would cue Kokoro (live-drive2.test.js)
     await say(k, 'gas-station');
     await soon(async () => (await k.events(['heard'])).length === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const [heard] = await k.events(['heard']);
     assert.deepEqual([heard.data.text, heard.data.dismissed, heard.data.gate], ['Did you lock the car?', true, 'chatter']);
     assert.deepEqual(await k.events(['out.speak']), []);
@@ -208,9 +208,9 @@ test('markup in the output transcript never reaches the log; a turn with no real
   ]);
   try {
     k.agent.send('Hello');
-    await k.agent.idle();
+    await idleAtOnce(k);
     k.agent.send('Hello?');
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await k.events(['out.speak']), []);
     assert.equal(k.platform.streams.length, 0, 'nothing played');
     await exchange(k, 'where-lunch');
@@ -236,7 +236,7 @@ test("words that trail Koe's turn are its own while it is still being said; they
     await k.voice.unlock();
     k.agent.send('Is it open?');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal((await k.events(['out.speak']))[0].data.text, 'It is open until ten.');
     assert.equal(k.platform.streams.length, 1);
     assert.ok(k.platform.streams.every((/** @type {any} */ s) => s.ended || s.stopped));
@@ -671,7 +671,7 @@ test('tell_kokoro is answered "sent", with scheduling SILENT, while Kokoro is st
     assert.ok(k.agent.kokoro.busy, 'Kokoro is still at work: Koe never waits for it');
     const [a] = answers(k);
     assert.deepEqual([a.name, a.response, a.scheduling], ['tell_kokoro', { result: 'sent' }, 'SILENT']);
-    await k.agent.idle();
+    await idleAtOnce(k, HOLD_MS + 2000); // her voice holds HOLD_MS (1.2 s) after the user's words end, on the real clock (1212 ms measured)
     const calls = (await k.events(['tool.call', 'tool.result'])).filter((/** @type {any} */ e) => e.data.half === 'koe').map((/** @type {any} */ e) => [e.type, e.data.name, e.data.half]);
     assert.deepEqual(calls, [['tool.call', 'tell_kokoro', 'koe'], ['tool.result', 'tell_kokoro', 'koe']]);
     assert.equal(k.sent['model-0'].length, 1, 'one Kokoro call for the question');
@@ -691,7 +691,7 @@ test("a live session is watched once the user speaks or types in it, so Koe's no
     await say(k, 'where-eat');
     await until(() => answers(k).length === 1);
     assert.equal(k.agent.live.watched, true);
-    await k.agent.idle();
+    await idleAtOnce(k, HOLD_MS + 2000); // her voice holds HOLD_MS (1.2 s) after the user's words end, on the real clock (1212 ms measured)
     k.agent.live.close('quiet');
     assert.equal(k.agent.live.watched, false);
   } finally {
@@ -751,7 +751,7 @@ test('ask shows its buttons and is answered at once; the tap comes as the next t
     await until(() => answers(k).length === 1);
     const [a] = answers(k);
     assert.deepEqual([a.response.result, a.scheduling], ['Shown; their tap comes as their next turn.', 'SILENT']);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const [ask] = await k.events(['out.ask']);
     assert.deepEqual([ask.data.question, ask.data.options, ask.data.half], ['Tacos or ramen?', ['Tacos', 'Ramen'], 'koe']);
     k.agent.answer(ask.data.id, 'Ramen');
@@ -772,18 +772,18 @@ test('voice off, Koe types through Classic: with Realtime chosen and Classic emp
     assert.equal(k.agent.koeState, 'off', 'voice off with only a realtime model: Classic is empty, so Shiori is one');
     assert.deepEqual([k.agent.way.mode, k.agent.way.path, k.agent.way.why], ['realtime', null, 'voice off']);
     k.agent.send('Where can we eat?');
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.server.connections().length, 0, 'no live session, whose reply would be sound nobody hears');
     assert.equal((await k.events(['out.speak'])).length, 0);
     // Voice comes on (the chip is a tap): Koe is live; a typed message opens a session that speaks, and the microphone opens only at a tap on Shiori.
     await updateAppSettings(k.ws, { voice: { mode: 'on' } });
     await k.voice.unlock();
     await k.voice.refresh();
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.agent.koeState, 'live');
     k.agent.send('Where can we eat?');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const [said] = await k.events(['out.speak']);
     assert.deepEqual([said.data.text, said.data.voice, said.data.live], ["There's a taco stand two minutes ahead.", true, true]);
     assert.equal(k.agent.live.state, 'open');
@@ -806,7 +806,7 @@ test('a photo goes in as a turn of its own, then the words that ask about it; Ko
     await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('4032x3024'), { author: 'user', type: 'image/webp', meta: { width: 4032, height: 3024 } });
     k.agent.send('What is this?', { photos: [{ path: '/trip/files/p.webp' }] });
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const turns = got(k, 'clientContent').map((/** @type {any} */ m) => [m.clientContent.turns[0].parts[0].inlineData?.mimeType ?? m.clientContent.turns[0].parts[0].text, m.clientContent.turnComplete]);
     assert.deepEqual(turns, [['image/webp', false], ['[typed] What is this?', true]]);
     const [msg] = await k.events(['msg.user']);
@@ -896,7 +896,7 @@ test("a drop that can't resume: its model rests, Kokoro is told, and the next mo
     await new Promise((r) => setTimeout(r, 500));
     await k.server.stop(); // gone: no resuming
     await soon(async () => (await k.events(['out.speak'])).length === 2, 5000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const said = (await k.events(['out.speak'])).map((/** @type {any} */ e) => [e.data.text.replace(/^(.{12}).*✂$/, '$1…✂'), Boolean(e.data.live), Boolean(e.data.voice)]);
     assert.deepEqual(said, [['Nepenthe is …✂', true, true], ['Sorry, we got cut off: it has a view south along the coast.', false, true]]);
     assert.ok(k.platform.log.includes('play m-say:Sorry, we got cut off: it has a view south along the coast.'), 'through the speech pipeline');
@@ -924,7 +924,7 @@ test("a drop that can't resume, with no model after it: Koe is down, and Kokoro 
     await new Promise((r) => setTimeout(r, 400));
     await k.server.stop();
     await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.half === 'kokoro'), 5000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.agent.koeState, 'down');
     const states = (await k.events(['halves'])).map((/** @type {any} */ e) => e.data.state);
     assert.ok(states.includes('live-dropped') && states.includes('koe-down'), states.join());
@@ -949,7 +949,7 @@ test("Spend per day reached: the session closes with the budget card, its turns 
     assert.equal(turn.data.cost, 0.75, 'priced at $0.75 a million text tokens in');
     assert.ok(k.notices.some((/** @type {any} */ n) => n.title === "Shiori stopped: today's budget is spent"));
     k.agent.send('Hi again');
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.server.connections().length, 1, 'no session opens over the budget');
   } finally {
     await k.done();
@@ -1093,7 +1093,7 @@ test("a tap that closes the session while the user speaks ends their turn first 
     await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
     await speaking(k);
     assert.equal(k.agent.tap(), 'stopped');
-    await k.agent.idle();
+    await idleAtOnce(k);
     await soon(async () => k.server.connections().length === 1 && got(k, 'realtimeInput').some((/** @type {any} */ m) => m.realtimeInput.activityEnd), 1000);
     const input = got(k, 'realtimeInput').map((/** @type {any} */ m) => Object.keys(m.realtimeInput)[0]);
     assert.equal(input.at(-1), 'activityEnd', 'the turn was ended before the close');
@@ -1110,7 +1110,7 @@ test('a quiet spell keeps the handle: the next session resumes it', async () => 
   try {
     k.agent.send('Hi');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     k.agent.live.close('quiet');
     k.agent.send('Again');
     await soon(async () => (await k.events(['out.speak'])).length === 2);
@@ -1125,7 +1125,7 @@ test('a handle Gemini no longer keeps (1008 "session not found or expired") is l
   try {
     k.agent.send('Hi');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     k.agent.live.close('quiet');
     k.agent.send('Are you there?');
     await soon(async () => (await k.events(['out.speak'])).length === 2, 5000);
@@ -1248,7 +1248,7 @@ test('the watchdog never runs while a connection is being made: a message typed 
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
     k.agent.send('Hi');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     slowOpen(k, 1600); // past the watchdog's 1 s here
     k.server.close(1001, 'Going away.'); // a network drop: the model doesn't rest
     await soon(async () => (await k.events(['live.session'])).some((/** @type {any} */ e) => e.data.kind === 'network'));
@@ -1293,7 +1293,7 @@ test('a new session waits afresh: the fresh session the watchdog made last time,
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
     k.agent.send('First?');
     await soon(async () => k.server.connections().length === 2, 5000); // silent, so a fresh session
-    await k.agent.idle();
+    await idleAtOnce(k);
     k.agent.live.close('tap');
     k.agent.send('Second?'); // a new session, silent too: it gets its own fresh session, not the end
     await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.text === 'Got it.'), 6000);
@@ -1464,7 +1464,7 @@ test('a hand-over typed while Koe is live is logged with its files, and Kokoro i
     await k.ws.write(k.trip, '/files/flight.pdf', new TextEncoder().encode('%PDF-1.4'), { author: 'user', type: 'application/pdf' });
     k.agent.send('', { handed: [{ path: '/trip/files/flight.pdf', type: 'application/pdf', name: 'flight.pdf', new: true }], handover: 'h-1' });
     await soon(async () => (await k.events(['file.write'])).some((/** @type {any} */ e) => e.data.path === '/notes/flight.md'));
-    await k.agent.idle();
+    await idleAtOnce(k);
     const typed = (await k.events(['msg.user'])).at(-1);
     assert.deepEqual([typed.data.split, typed.data.handover, typed.data.handed.length], [true, 'h-1', 1]);
     assert.equal(texts(k).at(-1), '[the user handed you a file; Kokoro reads them]');

@@ -3,11 +3,12 @@
 // when her sound began.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { until, agentKit } from './agent-kit.js';
+import { until, agentKit, idleAtOnce } from './agent-kit.js';
 import { liveKit, texts, soon, tone } from './koe-live-kit.js';
 import { hum, quiet, cat } from './voice-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { ProviderError } from '../../src/core/llm/contract.js';
+import { HOLD_MS } from '../../src/core/koe/live.js';
 
 const wait = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
 const RATE = 16_000;
@@ -31,7 +32,7 @@ async function learned(k, db = -5) {
   k.platform.mic.feed(room(1.5), RATE);
   k.platform.mic.feed(cat(hum(0.6, 0.5), room(1)), RATE);
   await soon(async () => (await k.events(['live.turn'])).length === 1, 3000);
-  await k.agent.live.idle();
+  await idleAtOnce({ agent: k.agent.live });
   await wait(1050);
   k.agent.live.level.reset();
   k.agent.live.level.heard(db);
@@ -50,7 +51,7 @@ test('1: a lyric let go while a note goes in teaches no level, though her reply 
     await soon(async () => (await k.events(['live.turn'])).length === 2, 3000);
     await tell(k, 'immediate'); // goes in as the lyric ends; her reply to it is the first thing the model says
     await soon(async () => (await lines(k)).length === 1, 3000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     assert.equal(k.agent.live.level.db, -40, 'the lyric taught nothing');
   } finally {
     await k.done();
@@ -128,7 +129,7 @@ test('6: two turns answered inside one tap\'s lift both teach the level: it rese
     await soon(async () => (await k.events(['heard'])).length === 1, 3000); // answered, still inside the lift
     k.platform.mic.feed(cat(hum(0.6, 0.4), room(1)), RATE);
     await soon(async () => (await k.events(['heard'])).length === 2, 3000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live }, HOLD_MS + 2000); // her voice holds HOLD_MS (1.2 s) after the user's words end, on the real clock (1204 ms measured)
     assert.notEqual(k.agent.live.level.db, null, 'two peaks are a level');
   } finally {
     await k.done();

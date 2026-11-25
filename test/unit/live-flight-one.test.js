@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { tone, soon } from './koe-live-kit.js';
 import { hum, quiet, cat } from './voice-kit.js';
 import { RATE, SAID, PASS, FERRY, FOR_USER, LOOKS, CONT, tell, tell2, tell3, shown, words, lines, notesIn, textsIn, cues, wait, start, quietSession, lineAt, join, zeros } from './live-flight-kit.js';
+import { idleAtOnce } from './agent-kit.js';
 
 test('a second note comes 1.3 s into "Checking your notes.", before her continuation: it goes in only once her line for the first is written, and both are said, in order', async () => {
   const { k, t0, w } = await start({ turns: [LOOKS, CONT, { said: PASS, audio: tone(0.8) }, { said: 'Okay.', audio: tone(0.3) }] });
@@ -14,7 +15,7 @@ test('a second note comes 1.3 s into "Checking your notes.", before her continua
     await wait(1300);
     await tell2(k);
     await soon(async () => (await words(k)).includes(PASS), 15_000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     w.stop();
     const contAt = await lineAt(k, t0, CONT.said);
     assert.ok(w.at(/pass closes/) >= contAt - 100, `the second went in at ${w.at(/pass closes/)} ms, her line for the first was written at ${contAt} ms`);
@@ -38,7 +39,7 @@ test('two notes 0.3 s apart, and a tap in her answer to the first: the second go
     k.agent.tap();
     const tapped = w.log.length;
     await soon(async () => (await words(k)).includes(PASS), 12_000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     w.stop();
     assert.deepEqual(await shown(k), [[FOR_USER, false]], 'the cut note alone is shown');
     const pass = (await lines(k)).filter((l) => l.text === PASS);
@@ -56,7 +57,7 @@ test('three notes at once go in one at a time, in Kokoro\'s order, each once her
   try {
     await Promise.all([tell(k), tell2(k), tell3(k)]);
     await soon(async () => (await words(k)).length === 4, 15_000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     w.stop();
     const notes = notesIn(k);
     assert.equal(notes.length, 3);
@@ -79,7 +80,7 @@ test('a note 0.3 s after annai asked for a recap aloud goes in once her recap li
     await wait(300);
     await tell(k);
     await soon(async () => (await words(k)).length === 3, 12_000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     w.stop();
     const recapAt = await lineAt(k, t0, 'Here is your recap.');
     assert.ok(w.at(/<from_kokoro/) >= recapAt - 100, `the note went in at ${w.at(/<from_kokoro/)} ms, the recap line was written at ${recapAt} ms`);
@@ -97,7 +98,7 @@ test('a note gets nothing back and a second waits: at 8 s a fresh session gets t
     await wait(1000);
     await tell2(k);
     await soon(async () => (await words(k)).includes(PASS), 20_000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     w.stop();
     const notes = notesIn(k);
     assert.ok(notes.every((n) => n.split('<from_kokoro').length === 2), 'one note in each text');
@@ -123,7 +124,7 @@ test('the connection drops with a note in flight: it goes in again once on the n
     const again = Date.now() - dropAt;
     assert.ok(again < 5000, `it went in again ${again} ms after the drop`);
     await soon(async () => (await words(k)).includes(SAID), 8000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     w.stop();
     assert.equal(notesIn(k).length, 2);
     assert.deepEqual(cues(k), []);
@@ -143,7 +144,7 @@ test('a note that comes as the user\'s turn ends goes in only once her answer to
     await tell(k); // as their turn ends (the stand-in's microphone hears it end at once)
     k.platform.mic.feed(quiet(1), RATE);
     await soon(async () => (await words(k)).includes(SAID), 15_000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     w.stop();
     const answerAt = await lineAt(k, t0, 'Try the harbour cafe.');
     assert.ok(w.at(/<from_kokoro/) >= answerAt - 100, `the note went in at ${w.at(/<from_kokoro/)} ms, her answer to the user was written at ${answerAt} ms`);
@@ -162,7 +163,7 @@ test('she answers the second of three notes with already_told: it is shown on a 
   try {
     await Promise.all([tell(k), tell2(k), tell3(k)]);
     await soon(async () => (await words(k)).includes(FERRY), 20_000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     w.stop();
     assert.deepEqual(await shown(k), [[PASS, false]], 'the second, on a silent card');
     assert.deepEqual(await words(k), ['Hello there.', SAID, FERRY]);
@@ -182,7 +183,7 @@ for (const [what, word] of [['"silent"', 'silent'], ['"Silent." with its case an
     try {
       await Promise.all([tell(k), tell2(k)]);
       await soon(async () => (await words(k)).includes(PASS), 20_000);
-      await k.agent.idle();
+      await idleAtOnce(k);
       w.stop();
       assert.equal(cues(k).length, 1, 'asked once more');
       assert.deepEqual(await words(k), ['Hello there.', SAID, word, PASS]);
@@ -199,7 +200,7 @@ test('her whole line for the second note is "silent" again after the ask once mo
   try {
     await Promise.all([tell(k), tell2(k)]);
     await soon(async () => (await shown(k)).length > 0, 20_000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     w.stop();
     assert.equal(cues(k).length, 1, 'asked once, not twice');
     assert.deepEqual(await shown(k), [[PASS, true]], 'shown, and said in annai\'s own voice');
@@ -220,7 +221,7 @@ test('her whole line for the note is "silent" and the user taps in its quiet tai
   try {
     await wait(750);
     k.agent.tap();
-    await k.agent.idle();
+    await idleAtOnce(k);
     w.stop();
     assert.deepEqual(await shown(k), [[FOR_USER, false]], 'the note, on a silent card');
     assert.equal(k.agent.live.owing, false, 'nothing owed any more');
@@ -236,7 +237,7 @@ test('her whole line for the note is "silent" and the user starts speaking in it
     await wait(700);
     k.platform.mic.feed(cat(hum(0.8), quiet(1)), RATE);
     await soon(async () => (await shown(k)).length > 0, 8000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     w.stop();
     assert.deepEqual(await shown(k), [[FOR_USER, false]], 'the note, on a silent card');
   } finally {
@@ -250,7 +251,7 @@ test('her whole line for the note is "silent" and the session closes in its quie
   try {
     await wait(750);
     await k.agent.live.close('sleep');
-    await k.agent.idle();
+    await idleAtOnce(k);
     w.stop();
     assert.ok((await shown(k)).some(([text]) => text === FOR_USER), 'the note is shown');
   } finally {
@@ -265,7 +266,7 @@ test('a sentence that only holds brackets is an answer: "The pass (closing at ni
   try {
     await Promise.all([tell(k), tell2(k)]);
     await soon(async () => (await words(k)).includes(line), 20_000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     w.stop();
     assert.deepEqual(cues(k), [], 'not asked once more');
     assert.deepEqual(await shown(k), []);
@@ -280,7 +281,7 @@ test('a short line that only looks like an instruction word is an answer: "Show 
   try {
     await Promise.all([tell(k), tell2(k)]);
     await soon(async () => (await words(k)).includes('Show them the way.'), 20_000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     w.stop();
     assert.deepEqual(cues(k), [], 'not asked once more');
     assert.deepEqual(await shown(k), []);
@@ -304,7 +305,7 @@ test('a note gets nothing back, and the user types a line while the fresh sessio
     k.agent.send('What about lunch?');
     await soon(async () => (await words(k)).includes(LUNCH.said), 15_000);
     await wait(1500);
-    await k.agent.idle();
+    await idleAtOnce(k);
     w.stop();
     assert.equal(notesIn(k).length, 1, 'the note went in once, and not again after the typed line');
     assert.deepEqual(await shown(k), [[FOR_USER, false]], 'the typed line showed the note on a silent card');
@@ -327,7 +328,7 @@ test('a typed line gets nothing back, and the user types another while the fresh
     await wait(1500);
     k.agent.send('What about lunch?');
     await soon(async () => textsIn(k).filter((t) => t.includes('What time is the ferry?')).length >= 2, 15_000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     w.stop();
     const ins = textsIn(k).filter((t) => /ferry\?|lunch\?/.test(t));
     assert.equal(ins.filter((t) => t.includes('What time is the ferry?')).length, 2, 'the first line: once, and again');

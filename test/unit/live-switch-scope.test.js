@@ -3,7 +3,7 @@
 // kept to be said again, or written where it was made, never lost. Lines and places are synthetic.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { until, agentKit } from './agent-kit.js';
+import { until, agentKit, idleAtOnce } from './agent-kit.js';
 import { liveKit, soon, tone, say } from './koe-live-kit.js';
 import { hum, quiet, cat } from './voice-kit.js';
 import { createTrip } from '../../src/core/scopes.js';
@@ -28,7 +28,7 @@ async function noteBegun(turns) {
   await until(() => k.agent.live.listening, 3000);
   await say(k, 'where-eat');
   await soon(async () => (await k.events(['out.speak'])).length === 1, 4000);
-  await k.agent.live.idle();
+  await idleAtOnce({ agent: k.agent.live });
   k.platform.mic.feed(quiet(0.5), RATE);
   await k.agent.channel.send('kokoro', NOTE, 'append', 'tool', undefined, undefined, false, SAID);
   await soon(async () => k.agent.live.view.name === 'speaking', 3000);
@@ -46,7 +46,7 @@ for (const at of [400, 800, 1650]) {
       await wait(at);
       const other = await createTrip(k.ws, { title: 'Carmel' });
       await k.agent.open(other);
-      await k.agent.idle();
+      await idleAtOnce(k);
       await wait(500);
       const left = await inTrip(k, k.trip, ['out.speak']);
       assert.deepEqual(await inTrip(k, other, ['out.speak', 'reminder']), [], 'nothing of hers in the trip opened');
@@ -68,12 +68,12 @@ test("the user's own words, cut by a switch, are written into the conversation t
     await until(() => k.agent.live.listening, 3000);
     await say(k, 'where-eat');
     await soon(async () => (await k.events(['out.speak'])).length === 1, 4000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     k.platform.mic.feed(cat(hum(3), quiet(1)), RATE);
     await wait(800);
     const other = await createTrip(k.ws, { title: 'Carmel' });
     await k.agent.open(other);
-    await k.agent.idle();
+    await idleAtOnce(k);
     await wait(500);
     assert.deepEqual(await inTrip(k, other, ['heard']), [], 'nothing of the trip left in the trip opened');
   } finally {
@@ -112,7 +112,7 @@ for (const how of ['switch', 'away']) {
         await k.agent.shown();
         await soon(async () => (await inTrip(k, k.trip, ['out.speak'])).some((l) => l === `out.speak:${SAID}`), 8000);
       }
-      await k.agent.idle();
+      await idleAtOnce(k);
       await wait(500);
       const left = [...(await inTrip(k, k.trip, ['out.speak', 'reminder'])), ...(other ? await inTrip(k, other, ['out.speak', 'reminder']) : [])];
       assert.ok(left.some((l) => l.endsWith(SAID)), `the note is said again or shown where it was made: ${JSON.stringify(left)}`);
@@ -129,7 +129,7 @@ test('a tap on Shiori as her words begin, before any sound, keeps the note: it i
   try {
     await wait(300);
     k.agent.tap();
-    await k.agent.idle();
+    await idleAtOnce(k, 1900 + 2000); // the stand-in's turn ends at its endAt, 1900 ms, on the real clock (1599 ms after the tap, measured)
     await wait(800);
     const shown = [...(await inTrip(k, k.trip, ['out.speak', 'reminder']))];
     assert.ok(shown.some((l) => l.endsWith(SAID)), `the note's words are shown: ${JSON.stringify(shown)}`);

@@ -11,7 +11,7 @@ import { kindOf, ensureBaseScopes, ME } from '../../src/core/scopes.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { Agent } from '../../src/core/agent/loop.js';
 import { fakePlatform, fakeLlm } from './voice-fakes.js';
-import { agentKit, until } from './agent-kit.js';
+import { agentKit, until, idleAtOnce } from './agent-kit.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 5));
 
@@ -114,7 +114,7 @@ test('Shiori hears about voice changes: a state event, the now block, and the mi
   await until(() => k.agent.state.name === 'listening');
   assert.match(k.requests[0].tail, /voice: on .*\(while driving\)/);
   await k.voice.choose('off');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const states = (await k.events(['state'])).map((/** @type {any} */ e) => [e.data.voice, e.data.setting, e.data.why]);
   assert.deepEqual(states.slice(-2), [['on', 'off', 'driving'], ['off', 'off', 'off']]);
   assert.equal(k.platform.log.filter((/** @type {string} */ l) => l.startsWith('mic ')).at(-1), 'mic close');

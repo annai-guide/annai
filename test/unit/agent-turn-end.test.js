@@ -4,7 +4,7 @@
 // row 5; row 6 (annai takes Koe's owed notes at a switch) is halves.test.js's switch test.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until } from './agent-kit.js';
+import { agentKit, until, idleAtOnce } from './agent-kit.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { record, TALK_TAG } from '../../src/core/agent/log.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
@@ -49,16 +49,16 @@ const away = async (k, cut) => {
   const A = k.trip;
   const B = await createTrip(k.ws, { title: 'Kyoto' });
   await (cut ? cut() : k.agent.open(B));
-  await k.agent.idle();
+  await idleAtOnce(k);
   const before = k.requests.length;
-  return { A, B, back: async () => { await k.agent.open(A); await k.agent.idle(); return k.requests.length - before; } };
+  return { A, B, back: async () => { await k.agent.open(A); await idleAtOnce(k); return k.requests.length - before; } };
 };
 
 test('row 1: a reply in words, the nudge declining (she had spoken): the loop logs her end, and the hand-over is answered', async (t) => {
   useClock(t);
   const k = await agentKit([[{ toolCalls: [speak('On it.')] }, { text: 'Done.' }]]);
   hand(k);
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(await ends(k), ['turn.end:h-1']);
   assert.deepEqual(await reads(k), [false, '', null]);
 });
@@ -67,7 +67,7 @@ test('row 2: asleep, the nudge declining: the loop logs her end, and the hand-ov
   useClock(t);
   const k = await agentKit([[say('Filed.')]]);
   hand(k);
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(await ends(k), ['turn.end:h-1']);
   assert.deepEqual(await reads(k), [false, '', null]);
 });
@@ -76,7 +76,7 @@ test('row 3: silent once, the cue, then she speaks and sleeps: one end, the hand
   useClock(t);
   const k = await agentKit([[{ text: 'Filing it.' }, say('Filed.')]]);
   hand(k);
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.match(k.requests[1].tail, /The user hasn't been answered/);
   assert.deepEqual(await ends(k), ['turn.end:h-1']);
   assert.deepEqual(await reads(k), [false, '', null]);
@@ -87,7 +87,7 @@ test('row 4: silent twice, "Shiori didn\'t answer": its error is the end, and th
   for (const reply of [{ text: 'Filing it.' }, { toolCalls: [sleep] }]) {
     const k = await agentKit([[reply, reply]]);
     hand(k);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.title), ["Shiori didn't answer"]);
     assert.deepEqual(await ends(k), ['error:silent']);
     assert.deepEqual(await reads(k), [false, '', 'h-1']);
@@ -100,7 +100,7 @@ test("row 5: Koe after its cue and two more steps, only Kokoro's notes owed: Koe
   const kokoro = [{ toolCalls: [{ name: 'tell_koe', input: { text: 'Say: it is open.', for_user: 'It is open.' } }, sleep] }];
   const k = await agentKit([kokoro], { koe: { type: [CHECK, ...more] } });
   k.agent.send('Is Nepenthe open?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.sent['model-koe'].length, 4, 'the step that owed, then two more after the cue');
   const koe = (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(k.trip, { types: ['turn.end', 'error'] }))).filter((/** @type {any} */ e) => e.data.half === 'koe');
   assert.deepEqual(koe.map((/** @type {any} */ e) => `${e.type}:${e.data.kind ?? e.data.handover}`), ['turn.end:null']);
@@ -110,7 +110,7 @@ test("row 5: Koe after its cue and two more steps, only Kokoro's notes owed: Koe
   w.agent.send('Is Nepenthe open?');
   await until(() => w.agent.koe.waiting);
   w.agent.send('And tomorrow?');
-  await w.agent.idle();
+  await idleAtOnce(w);
   const koeW = (await w.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(w.trip, { types: ['turn.end', 'error'] }))).filter((/** @type {any} */ e) => e.data.half === 'koe');
   const first = koeW.filter((/** @type {any} */ e) => e.data.wake === koeW[0].data.wake); // Kokoro's note, come later, is a Koe turn of its own
   assert.deepEqual(first.map((/** @type {any} */ e) => `${e.type}:${e.data.kind ?? e.data.handover}`), ['error:silent']);
@@ -126,7 +126,7 @@ test('row 7: killed after a reply with no calls (a plain-text reply before the n
     await modelTrace(k.store, k.trip).turn(/** @type {any} */ (info), 'Looking at it.', '', [{ type: 'text', text: 'Looking at it.' }]);
     assert.deepEqual(await reads(k), [true, '', 'h-1'], paused ? 'paused' : 'plain text');
     await k.agent.open(k.trip);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const restarts = (await k.events(['wake'])).flatMap((/** @type {any} */ e) => e.data.reasons).filter((/** @type {any} */ r) => r.kind === 'restart');
     assert.equal(restarts.length, 1);
     assert.match(restarts[0].text, /^annai restarted before you answered\./);
@@ -147,7 +147,7 @@ test('row 8: a sleep that gave way (a failed call, or her question came back): n
     await until(() => k.requests.length === 2);
     assert.deepEqual(await ends(k), []);
     assert.deepEqual(await reads(k), [true, 'turn', 'h-1']);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await ends(k), ['turn.end:h-1']);
   }
 });
@@ -159,15 +159,15 @@ test('row 9: a budget, a stuck loop, every model failing, a tidy-up that failed:
   const b = await agentKit([[{ toolCalls: [failing] }, say('Never.')]]);
   await updateAppSettings(b.ws, { shiori: { budgets: { stepsPerWake: 1 } } });
   hand(b);
-  await b.agent.idle();
+  await idleAtOnce(b);
   // The same call three times with the same result.
   const s = await agentKit([[list, list, list, say('Never.')]]);
   hand(s);
-  await s.agent.idle();
+  await idleAtOnce(s);
   // Every model failing.
   const m = await agentKit([[fails, fails, fails, fails]]);
   hand(m);
-  await m.agent.idle();
+  await idleAtOnce(m);
   // The tidy-up the turn can't go on without fails (the request too long, then the utility model's call refused).
   const c = await agentKit([[say('one'), say('two'), { error: 'context', status: 413, message: 'prompt is too long' }]], { utility: [{ text: 'Summary.' }] });
   const was = c.llm.call;
@@ -175,9 +175,9 @@ test('row 9: a budget, a stuck loop, every model failing, a tidy-up that failed:
     if (x.record?.tag !== 'compaction') return was(x);
     throw new ProviderError('server', 'Scripted failure.');
   };
-  for (const line of ['first', 'second']) { c.agent.send(line); await c.agent.idle(); }
+  for (const line of ['first', 'second']) { c.agent.send(line); await idleAtOnce(c); }
   hand(c);
-  await c.agent.idle();
+  await idleAtOnce(c);
   for (const [k, kind, before] of /** @type {[any, string, string[]][]} */ ([[b, 'budget', []], [s, 'stuck', []], [m, 'model', []], [c, 'compaction', ['turn.end:null', 'turn.end:null']]])) {
     assert.deepEqual(await ends(k), [...before, `error:${kind}`], kind);
     assert.deepEqual(await reads(k), [false, '', 'h-1'], kind);
@@ -191,17 +191,17 @@ test("row 10: the user's Stop during a tool: its error alone, the hand-over owed
   hand(k);
   await until(() => at.lingering);
   k.agent.interrupt();
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(await ends(k), ['error:stopped']);
   assert.deepEqual(await reads(k), [false, '', 'h-1']);
   k.agent.send('Put it in Notes');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(await hers(k), [['/notes/f.md', 'h-1']], 'their next line carries it');
   // The Stop lands as the sleep is called.
   const s = await agentKit([[say('Filed.'), say('Never.')]]);
   s.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'tool.call' && e.data.name === 'sleep') s.agent.interrupt(); });
   hand(s);
-  await s.agent.idle();
+  await idleAtOnce(s);
   assert.deepEqual(await ends(s), ['turn.end:h-1', 'error:stopped']);
   assert.deepEqual(await reads(s), [false, '', null]);
 });
@@ -216,7 +216,7 @@ test('row 11: an open while her card waits, let go: its error, nothing taken up 
   assert.deepEqual(await reads(k), [false, '', 'h-1']);
   assert.equal(await back(), 0);
   k.agent.send('Yes, Notes');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(await hers(k), [['/notes/f.md', 'h-1']]);
 });
 
@@ -239,12 +239,12 @@ test('row 12: an open that cuts her at work (in a call, between steps, in her mo
     await cut(k, () => { opening ??= k.agent.open(B); });
     await until(() => opening !== null);
     await opening;
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await ends(k, A), ['paused'], what);
     assert.deepEqual(await reads(k, A), [true, 'turn', 'h-1'], what);
     const before = k.requests.length;
     await k.agent.open(A);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.requests.length - before, 1, `${what}: taken up once`);
     assert.deepEqual(await hers(k), [['/notes/f.md', 'h-1']], what);
     assert.deepEqual((await undoHandover(k.ws, A, 'h-1')).undone, ['/notes/f.md'], what);
@@ -262,12 +262,12 @@ test("row 13: an open that lands on the reply's sleep, every other call done: he
   hand(k);
   await until(() => opening !== null);
   await opening;
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(await ends(k, A), ['turn.end:h-1']);
   assert.deepEqual(await reads(k, A), [false, '', null]);
   const before = k.requests.length;
   await k.agent.open(A);
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length - before, 0);
 });
 
@@ -290,13 +290,13 @@ for (const [what, silent, moment] of MOMENTS) {
     hand(k);
     await until(() => opening !== null);
     await opening;
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await ends(k, A), ['paused']);
     const [owed, , handover] = await reads(k, A);
     assert.deepEqual([owed, handover], [true, 'h-1']);
     const before = k.requests.length;
     await k.agent.open(A);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.requests.length - before, 1, 'taken up once');
     assert.deepEqual(await hers(k), [['/notes/f.md', 'h-1']]);
   });
@@ -307,11 +307,11 @@ for (const [what, silent, moment] of MOMENTS) {
     let stopped = false;
     k.agent.on('event', (/** @type {any} */ e) => { if (!stopped && moment(e)) { stopped = true; k.agent.interrupt(); } });
     hand(k);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await ends(k), ['error:stopped']);
     assert.deepEqual(await reads(k), [false, '', 'h-1']);
     k.agent.send('Put it in Notes');
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await hers(k), [['/notes/f.md', 'h-1']], 'their next line carries it');
   });
 }
@@ -325,13 +325,13 @@ test('row 14: the page left (or killed) in her model call: nothing logged, a rel
   hand(k);
   await until(() => k.requests.length === 2);
   k.agent.leaving();
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(await ends(k), []);
   assert.deepEqual(await reads(k), [true, 'turn', 'h-1']);
   k.llm.bench.clear('m-0'); // a new page starts with no model benched
   const next = new Agent({ store: k.store, ws: k.ws, llm: k.llm, registry: k.registry, timeZone: () => 'UTC', secondMs: 10 });
   await next.open(k.trip);
-  await next.idle();
+  await idleAtOnce({ agent: next });
   const restarts = (await k.events(['wake'])).flatMap((/** @type {any} */ e) => e.data.reasons).filter((/** @type {any} */ r) => r.kind === 'restart');
   assert.deepEqual(restarts.map((/** @type {any} */ r) => r.handover), ['h-1']);
   assert.deepEqual(await hers(k), [['/notes/a.md', 'h-1'], ['/notes/f.md', 'h-1']]);
@@ -352,7 +352,7 @@ const nextPage = async (k) => {
   k.llm.bench.clear('m-0'); // a new page starts with no model benched
   const next = new Agent({ store: k.store, ws: k.ws, llm: k.llm, registry: k.registry, timeZone: () => 'UTC', secondMs: 10 });
   await next.open(k.trip);
-  await next.idle();
+  await idleAtOnce({ agent: next });
   return (await k.events(['wake'])).flatMap((/** @type {any} */ e) => e.data.reasons).filter((/** @type {any} */ r) => r.kind === 'restart');
 };
 const WATCH = 'The watch fired: Nepenthe is 2 km away.';
@@ -363,12 +363,12 @@ for (const cut of ['before her first reply', 'after a write']) {
     const first = cut === 'after a write' ? [note('watch-1')] : [];
     const k = await agentKit([[...FAILED, ...first, ...KILLED, { toolCalls: [...note('watch-2').toolCalls, speak('Noted.'), sleep] }]]);
     hand(k);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await ends(k), ['error:model'], "Shiori can't reach her model; no Try again");
     k.agent.wake({ kind: 'trigger', text: WATCH });
     await until(() => k.requests.length === FAILED.length + first.length + 1);
     k.agent.leaving();
-    await k.agent.idle();
+    await idleAtOnce(k);
     const t0 = await Transcript.load(k.store, k.trip);
     assert.deepEqual([t0.unanswered, t0.handover, t0.owedHandover], [true, null, 'h-1'], "under way, carrying none; h-1 still owed to the user's next line");
     const restarts = await nextPage(k);
@@ -384,7 +384,7 @@ test("a hand-over's turn fails and is left alone, then a watch fires while anoth
   useClock(t);
   const k = await agentKit([[...FAILED, { toolCalls: [...note('watch-1').toolCalls, speak('Noted.'), sleep] }]]);
   hand(k);
-  await k.agent.idle();
+  await idleAtOnce(k);
   const { A, back } = await away(k);
   await k.agent.wake({ kind: 'trigger', text: WATCH, scope: A });
   const t0 = await Transcript.load(k.store, A);
@@ -403,7 +403,7 @@ for (const order of ['the line, then the watch', 'the watch, then the line']) {
     useClock(t);
     const k = await agentKit([[...FAILED, files]]);
     hand(k);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const { A, back } = await away(k);
     const line = () => k.agent.wake({ kind: 'user', text: 'Please file my flight', scope: A });
     const watch = () => k.agent.wake({ kind: 'trigger', text: WATCH, scope: A });
@@ -425,7 +425,7 @@ test("a cut turn that did carry a hand-over still restarts with it: the user's h
   hand(own);
   await until(() => own.requests.length === 1);
   own.agent.leaving();
-  await own.agent.idle();
+  await idleAtOnce(own);
   assert.deepEqual((await nextPage(own)).map((/** @type {any} */ r) => r.handover), ['h-1']);
   assert.deepEqual(await hers(own), [['/notes/f.md', 'h-1']]);
   assert.deepEqual((await undoHandover(own.ws, own.trip, 'h-1')).undone, ['/notes/f.md']);
@@ -436,7 +436,7 @@ test("a cut turn that did carry a hand-over still restarts with it: the user's h
   const held = new Promise((r) => { release = () => r(undefined); });
   const k = await agentKit([[...FAILED, { toolCalls: [speak('The watch fired.')] }, note('watch-1'), ...KILLED, files]], { hold: async () => { if (++calls === FAILED.length + 1) await held; } });
   hand(k);
-  await k.agent.idle();
+  await idleAtOnce(k);
   k.agent.wake({ kind: 'trigger', text: WATCH });
   await until(() => calls === FAILED.length + 1);
   k.agent.send('Please file my flight');
@@ -444,7 +444,7 @@ test("a cut turn that did carry a hand-over still restarts with it: the user's h
   release();
   await until(() => k.requests.length === FAILED.length + 3);
   k.agent.leaving();
-  await k.agent.idle();
+  await idleAtOnce(k);
   const took = (await k.events(['wake'])).filter((/** @type {any} */ e) => e.data.meanwhile && 'handover' in e.data);
   assert.deepEqual(took.map((/** @type {any} */ e) => e.data.handover), ['h-1'], 'the take-up record');
   assert.deepEqual((await nextPage(k)).map((/** @type {any} */ r) => r.handover), ['h-1']);
@@ -473,7 +473,7 @@ test('turns the version before this update left unfinished are read as finished:
   await record(k.store, k.trip, { type: 'paused', actor: 'system', data: { text: 'Shiori was in the middle of something. She picks it up when you come back.' } });
   assert.deepEqual(await reads(k), [false, '', null]);
   await k.agent.open(k.trip);
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, 0, 'opening runs nothing');
 });
 
@@ -490,7 +490,7 @@ test('turns the version before this update left unfinished are read as finished:
   const k = await agentKit([[files]], { open: false });
   await older(k, [[['w', 'write', { path: '/trip/notes/a.md', content: 'AS' }]]]);
   await k.agent.open(k.trip);
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, 1, 'repair() answered her open call, so the open takes it up');
   assert.deepEqual(await hers(k), [['/notes/f.md', null]]);
 });
@@ -503,10 +503,10 @@ test('turns the version before this update left unfinished are read as finished:
   await modelTrace(k.store, k.trip).turn(/** @type {any} */ ({ role: 'main', level: 'medium', answeredBy: 'A', attempts: [], usage: {}, cost: 0, tag: TALK_TAG, wake: 'w-0', handover: 'h-1' }), '', '', [{ type: 'text', text: 'Filed it.' }]);
   await record(k.store, k.trip, { type: 'error', actor: 'system', data: { kind: 'silent', wake: 'w-0', message: 'Her model finished without saying anything to you.' } });
   await k.agent.open(k.trip);
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, 0);
   k.agent.tryAgain();
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(await hers(k), [['/notes/f.md', null]]);
 });
 
@@ -524,11 +524,11 @@ test('turns the version before this update left unfinished are read as finished:
   const k = await agentKit([[{ toolCalls: [{ name: 'write', input: { path: '/trip/notes/b.md', content: 'x' } }] }, { delayMs: 300, ...say('Filed.') }]], { open: false });
   await older(k, [[]]);
   await k.agent.open(k.trip);
-  await k.agent.idle();
+  await idleAtOnce(k);
   k.agent.send('And this one', { handed: [flight], handover: 'h-2' });
   await until(() => k.requests.length === 2);
   assert.deepEqual(await reads(k), [true, 'turn', 'h-2'], 'her reply has the key, and no end yet: under way');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(await ends(k), ['turn.end:h-2']);
   assert.deepEqual(await reads(k), [false, '', null]);
 });

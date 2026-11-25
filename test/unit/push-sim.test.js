@@ -17,7 +17,7 @@ const TODAY = Date.parse('2026-11-26T09:00:00-08:00');
 const CAMERA = '2026-11-28T20:00:00-08:00';
 const HOME = '2026-11-29T21:00:00-08:00';
 
-test("a simulation never touches the relay: the user's real reminders keep their real times, the run's never go, and the real ones still come at their times (M6×M7)", async () => {
+test("a simulation never touches the relay: the user's real reminders keep their real times, the run's never go, and the real ones still come at their times (M6×M7)", async (t) => {
   const real = new ManualClock(TODAY);
   const k = await agentKit([{ rules: RULES }], { agent: { fetch: places, now: real.now, timeZone: () => LA }, voice: { mode: 'auto' } });
   await k.host.addBuiltin(new URL('../../src/plugins/places/index.js', import.meta.url).href);
@@ -35,38 +35,41 @@ test("a simulation never touches the relay: the user's real reminders keep their
     await live.settled();
     await mirror.settled();
   };
-  try {
-    await mirror.start();
-    await live.setWatch(k.trip, { when: { type: 'time', at: CAMERA }, fallback: 'Pack the camera batteries.' });
-    await live.setWatch(ME, { when: { type: 'time', at: HOME }, fallback: 'Call home.' });
-    await mirror.turnOn(RELAY);
-    await step();
-    const before = (await rig.env.RELAY.waiting()).map((w) => `${w.id} ${w.sendAt}`).sort();
-    assert.deepEqual((await rig.env.RELAY.waiting()).map((w) => w.sendAt).sort(), [Date.parse(CAMERA) + GRACE_MS, Date.parse(HOME) + GRACE_MS]);
-    const from = rig.net.calls.length;
-    await run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' });
-    // While it runs, the mirror looks as often as it can.
-    let done = false;
-    run.finished.then(() => { done = true; });
-    while (!done) {
-      await mirror.sync();
-      await new Promise((r) => setTimeout(r, 2));
-    }
-    await mirror.sync();
-    for (let i = 0; i < 40; i++) await step(); // and after it, as real time goes on
-    const touched = rig.net.calls.slice(from).filter((c) => c.method !== 'GET').map((c) => `${c.method} ${new URL(c.url).pathname}`);
-    assert.deepEqual(touched, [], 'no schedule and no cancel from the run');
-    assert.deepEqual((await rig.env.RELAY.waiting()).map((w) => `${w.id} ${w.sendAt}`).sort(), before, 'the real reminders wait as they were');
-    // On the real clock they come at their real times: with annai off screen, through the relay.
-    live.visible(false);
-    await live.settled();
-    await real.advanceTo(Date.parse(CAMERA) + GRACE_MS, async () => { await live.settled(); });
-    await rig.env.RELAY.runDue();
-    const pushed = rig.service.received.filter((r) => r.status === 201).map((r) => JSON.parse(String(r.plaintext)));
-    assert.deepEqual(pushed.filter((p) => !p.test).map((p) => p.body), ['Pack the camera batteries.']);
-  } finally {
+  // The stand-in push service is a real HTTP server, so this test keeps the real clock (clock.js: a test with a live socket does) and its waits have
+  // no bound of their own: a leaked busy count fails it at the test's timeout. This cleanup runs then too (node:test runs t.after on a timeout), so
+  // the open server does not keep the process, and `npm test`, from ending.
+  t.after(async () => {
     mirror.dispose();
     live.dispose();
     await rig.service.stop();
+  });
+  await mirror.start();
+  await live.setWatch(k.trip, { when: { type: 'time', at: CAMERA }, fallback: 'Pack the camera batteries.' });
+  await live.setWatch(ME, { when: { type: 'time', at: HOME }, fallback: 'Call home.' });
+  await mirror.turnOn(RELAY);
+  await step();
+  const before = (await rig.env.RELAY.waiting()).map((w) => `${w.id} ${w.sendAt}`).sort();
+  assert.deepEqual((await rig.env.RELAY.waiting()).map((w) => w.sendAt).sort(), [Date.parse(CAMERA) + GRACE_MS, Date.parse(HOME) + GRACE_MS]);
+  const from = rig.net.calls.length;
+  await run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' });
+  // While it runs, the mirror looks as often as it can.
+  let done = false;
+  run.finished.then(() => { done = true; });
+  while (!done) {
+    await mirror.sync();
+    await new Promise((r) => setTimeout(r, 2));
   }
+  assert.equal(run.state?.error, null); // the run worked: the checks below would hold on one that threw at once
+  await mirror.sync();
+  for (let i = 0; i < 40; i++) await step(); // and after it, as real time goes on
+  const touched = rig.net.calls.slice(from).filter((c) => c.method !== 'GET').map((c) => `${c.method} ${new URL(c.url).pathname}`);
+  assert.deepEqual(touched, [], 'no schedule and no cancel from the run');
+  assert.deepEqual((await rig.env.RELAY.waiting()).map((w) => `${w.id} ${w.sendAt}`).sort(), before, 'the real reminders wait as they were');
+  // On the real clock they come at their real times: with annai off screen, through the relay.
+  live.visible(false);
+  await live.settled();
+  await real.advanceTo(Date.parse(CAMERA) + GRACE_MS, async () => { await live.settled(); });
+  await rig.env.RELAY.runDue();
+  const pushed = rig.service.received.filter((r) => r.status === 201).map((r) => JSON.parse(String(r.plaintext)));
+  assert.deepEqual(pushed.filter((p) => !p.test).map((p) => p.body), ['Pack the camera batteries.']);
 });

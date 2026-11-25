@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { whereHeard, whereSaid, browserVoiceFor, DICTATION_AWAY, DICTATION_HERE } from '../../src/core/voice/where.js';
 import { saveRoles, readConfig } from '../../src/core/llm/config.js';
-import { agentKit, until } from './agent-kit.js';
+import { agentKit, until, idleAtOnce } from './agent-kit.js';
 
 /** A config with an audio main model on OpenRouter, a transcription model on Groq, a voice on OpenAI, and the stand-ins. @param {{ audio?: boolean, speechIn?: string[], speechOut?: string[] }} [o] */
 function config({ audio = true, speechIn = ['send-audio', 'asr', 'dictation'], speechOut = ['tts', 'browser-voice'] } = {}) {
@@ -70,7 +70,7 @@ test('the trace says when phone dictation listened, without the words; on this p
   k.agent.tap();
   await until(() => k.agent.state.name === 'listening');
   k.platform.dictation.say('is there a gas station nearby');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const [line] = await k.events(['speech.browser']);
   assert.equal(line.data.kind, 'dictation');
   assert.equal(line.data.local, false);
@@ -93,7 +93,7 @@ test('the trace says when a browser voice that is not on this phone spoke; one o
   await saveRoles(k.ws, { ...cfg.roles, 'speech-out': { models: ['browser-voice'], level: 'off' } });
   k.platform.voiceList = [{ id: 'g', name: 'Google US English', lang: 'en-US', local: false }];
   k.agent.send('Hi');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const lines = () => k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(k.voice.scope, { types: ['speech.browser'] }));
   const [line] = await lines();
   assert.deepEqual([line.data.kind, line.data.voice, line.data.local], ['voice', 'Google US English', false]);
@@ -101,7 +101,7 @@ test('the trace says when a browser voice that is not on this phone spoke; one o
   assert.ok(!JSON.stringify(line).includes('Noted'), 'no words in it');
   k.platform.voiceList = [{ id: 's', name: 'Samantha', lang: 'en-US', local: true }];
   k.agent.send('Hi again');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await lines()).length, 1);
   assert.ok(k.platform.log.includes('browser Again.'));
 });

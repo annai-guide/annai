@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit } from './agent-kit.js';
+import { agentKit, idleAtOnce } from './agent-kit.js';
 import { TASK_STEPS } from '../../src/core/agent/self-tools.js';
 import { utf8 } from '../../src/core/bytes.js';
 import { typeForPath } from '../../src/core/paths.js';
@@ -15,7 +15,7 @@ test('task: a helper on the utility model, with only the tools it was given, ret
   const states = [];
   k.agent.on('state', (s) => states.push(s.label));
   k.agent.send('What files do we have?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const helper = k.requests.filter((r) => r.messages[0].parts[0].text === 'List the trip files');
   assert.equal(helper.length, 2);
   assert.deepEqual(helper[0].tools.map((/** @type {any} */ t) => t.name), ['list']);
@@ -28,7 +28,7 @@ test('task: a helper on the utility model, with only the tools it was given, ret
 test(`task: a helper that never finishes stops after ${TASK_STEPS} steps`, async () => {
   const k = await agentKit([[{ toolCalls: [{ name: 'task', input: { prompt: 'Loop' } }] }, sleep]], { utility: Array.from({ length: TASK_STEPS + 5 }, (_, i) => ({ toolCalls: [{ name: 'list', input: { path: `/me/${i}/` } }] })) });
   k.agent.send('Go');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.filter((r) => r.messages[0].parts[0].text === 'Loop').length, TASK_STEPS);
   assert.match((await k.events(['tool.result'])).find((e) => e.data.name === 'task').data.content, /stopped after 25 steps/);
 });
@@ -37,7 +37,7 @@ test('skill: a registered skill by name, or the ones there are', async () => {
   const k = await agentKit([[{ toolCalls: [{ name: 'skill', input: { name: 'driving' } }, { name: 'skill', input: { name: 'hiking' } }, { name: 'speak', input: { text: 'Ready.' } }, { name: 'sleep', input: {} }] }]]);
   k.registry.add('drive', 'skill', { name: 'driving', description: 'Guiding while driving.', text: 'Keep it short while driving.' });
   k.agent.send('Go');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const results = (await k.events(['tool.result'])).filter((e) => e.data.name === 'skill').map((e) => e.data.content);
   assert.deepEqual(results, ['Keep it short while driving.', 'There is no skill called "hiking". Skills: driving.']);
 });
@@ -48,11 +48,11 @@ test('recall brings back the exact words from before a compaction, with photos a
   await k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
   for (const [m, photos] of /** @type {[string, any[]][]} */ ([['When does Nepenthe open?', [{ path: '/trip/files/menu.webp', region: [0, 0, 0.5, 0.5] }]], ['One', []], ['Two', []], ['Three', []]])) {
     k.agent.send(m, { photos });
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   assert.equal(await k.agent.compact('cold'), true);
   k.agent.send('What did you say about Nepenthe?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'recall');
   const text = r.data.content ?? '';
   assert.match(text, /user: When does Nepenthe open\? \[photo "\/trip\/files\/menu\.webp", part \[0, 0, 0\.5, 0\.5\]\]/);
@@ -75,7 +75,7 @@ test('skill: a file from the skill, as text or as an image; a missing one says w
     files: async () => [...kept.keys()], read: async (/** @type {string} */ f) => (kept.has(f) ? { bytes: kept.get(f), type: typeForPath(f) } : null),
   });
   k.agent.send('Go');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const r = (await k.events(['tool.result'])).filter((e) => e.data.name === 'skill');
   assert.equal(r[0].data.content, '# Tide pools\n\nFiles in this skill (read one with skill({ name: "tide-pools", file })): references/safety.md, assets/chart.png, scripts/fetch.py, assets/data.bin');
   assert.equal(r[1].data.content, 'Watch the waves.');
@@ -104,7 +104,7 @@ const helperRequests = (k) => k.requests.filter((/** @type {any} */ r) => r.mess
 test("task: a helper whose model reads PDFs gets the document itself from its read, as Shiori would (the third emulator pass)", async () => {
   const k = await helperKit([delegate, sleep], [helperReads, { text: 'Check-in 4 PM, PRI-88412.' }], { helperPdf: true });
   k.agent.send('What does the booking say?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const last = helperRequests(k)[1].messages.at(-1);
   const doc = last.parts.find((/** @type {any} */ p) => p.type === 'document');
   assert.equal(doc?.mediaType, 'application/pdf');
@@ -115,7 +115,7 @@ test("task: a helper whose model reads PDFs gets the document itself from its re
 test("task: a helper whose model reads no PDFs is told it in words by a model that does, with the main loop's words", async () => {
   const k = await helperKit([delegate, { text: 'Hotel booking: check-in 4 PM, PRI-88412.' }, sleep], [helperReads, { text: 'Check-in 4 PM.' }], { mainInput: ['text', 'pdf'] });
   k.agent.send('What does the booking say?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const last = helperRequests(k)[1].messages.at(-1);
   assert.equal(last.parts.some((/** @type {any} */ p) => p.type === 'document'), false);
   assert.match(last.parts[0].content, /^The PDF \/trip\/files\/booking\.pdf\.\nWhat it says \(told by model-0, as you can't read PDFs\): Hotel booking: check-in 4 PM, PRI-88412\.$/);
@@ -124,7 +124,7 @@ test("task: a helper whose model reads no PDFs is told it in words by a model th
 test("task: with no model that reads PDFs, the helper's result says it can't be read, not just that a PDF is there", async () => {
   const k = await helperKit([delegate, sleep], [helperReads, { text: 'I could not read it.' }]);
   k.agent.send('What does the booking say?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const last = helperRequests(k)[1].messages.at(-1);
   assert.match(last.parts[0].content, /\nNo model here can read PDFs, so what it says can't be told\. Tell the user what fixes it: .*Takes PDFs on its page in Settings → Models\)/);
 });
@@ -134,7 +134,7 @@ test("task: a helper's photo goes to it as an image when its model sees photos",
   const k = await helperKit([delegate, sleep], [photo, { text: 'A menu.' }]);
   await k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
   k.agent.send('Look at the menu');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(helperRequests(k)[1].messages.at(-1).parts.some((/** @type {any} */ p) => p.type === 'image'), true);
 });
 
@@ -142,7 +142,7 @@ test('task (fix pass): a telling that fails is not sent again in the task, and t
   // Main reads PDFs but answers a telling with nothing (its next scripted reply is a sleep), so every telling fails; the helper keeps reading the same PDF.
   const k = await helperKit([delegate, sleep], [helperReads, helperReads, helperReads, helperReads, helperReads, { text: 'never' }], { mainInput: ['text', 'pdf'] });
   k.agent.send('What does the booking say?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const sent = k.requests.filter((/** @type {any} */ r) => JSON.stringify(r.messages).includes('"type":"document"')).length;
   assert.equal(sent, 1, 'sent once; the same PDF is not sent again in this task');
   const result = (await k.events(['tool.result'])).find((e) => e.data.name === 'task');
@@ -168,7 +168,7 @@ test("task (fix pass): a photo or PDF whose bytes are gone is said so in the res
     content: 'A photo.', images: [{ mediaType: 'image/png', data: toBase64(new TextEncoder().encode('png')), path: '/trip/files/new.png' }],
   }) });
   k.agent.send('Go');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const last = k.requests.filter((/** @type {any} */ r) => r.messages[0].parts[0].text === 'Look at both')[1].messages.at(-1).parts;
   const results = last.filter((/** @type {any} */ p) => p.type === 'tool_result').map((/** @type {any} */ p) => p.content);
   assert.match(results[0], /\nThe photo \/trip\/files\/old\.png couldn't be read: its file is no longer stored\.\nThe PDF \/trip\/files\/old\.pdf couldn't be read: its file is no longer stored\.$/);

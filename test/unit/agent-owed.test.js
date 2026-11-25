@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, rescript, until, hear } from './agent-kit.js';
+import { agentKit, rescript, until, hear, idleAtOnce } from './agent-kit.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { record, TALK_TAG } from '../../src/core/agent/log.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
@@ -42,7 +42,7 @@ for (const [how, { voice, answer }] of Object.entries(answers)) {
         if (voice) await until(() => k.agent.state.name === 'listening');
         else await until(() => k.agent.pendingId !== null);
         await answer(k);
-        await k.agent.idle();
+        await idleAtOnce(k);
         assert.equal(k.requests.length, 2 + reply.length, 'the answer, her reply, then the one request more');
         assert.match(k.requests.at(-1).tail, /The user hasn't been answered/);
         assert.equal((await k.events(['out.speak'])).at(-1).data.text, 'Moved to 7.');
@@ -59,7 +59,7 @@ test("a question answered, and her reply says nothing twice: the card \"Shiori d
   k.agent.send('We are running late');
   await until(() => k.agent.pendingId !== null);
   k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'Move it');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, 3, 'asked once more, not twice');
   assert.deepEqual(k.notices.map((/** @type {any} */ n) => [n.title, n.actions.map((/** @type {any} */ a) => a.label)]), [["Shiori didn't answer", ['Try again']]]);
   assert.equal(k.agent.transcript.unanswered, false, 'the card says so: a later start owes nothing');
@@ -72,7 +72,7 @@ test('a question answered, then a reply that reaches them (speak or show): nothi
     k.agent.send('We are running late');
     await until(() => k.agent.pendingId !== null);
     k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'Move it');
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.requests.length, 2, `${reach.name}: no nudge`);
     assert.deepEqual(k.notices, []);
   }
@@ -84,7 +84,7 @@ test('a question answered, then a lookup before she speaks: the answer is owed o
   k.agent.send('We are running late');
   await until(() => k.agent.pendingId !== null);
   k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'Move it');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, 4);
   assert.ok(k.requests.every((/** @type {any} */ r) => !/hasn't been answered/.test(r.tail)), 'no cue');
   assert.deepEqual(k.requests.map((/** @type {any} */ r) => r.toolRequired), [true, undefined, undefined, undefined], 'forced only as a first step, as before');
@@ -97,7 +97,7 @@ test('a tap that arrives before her question is up answers it when it is: the an
   k.agent.send('We are running late');
   await until(() => k.requests.length === 1);
   k.agent.answer('nobody-waits', 'Move it'); // her question isn't up yet: the tap is queued, and her question takes it
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(k.requests.map((/** @type {any} */ r) => /hasn't been answered/.test(r.tail)), [false, false, true], 'asked once more after her silent reply');
   assert.deepEqual(k.notices, []);
   assert.equal((await k.events(['out.speak'])).at(-1).data.text, 'Moved to 7.');
@@ -119,7 +119,7 @@ test('a question answered, then her reply is shown as written (grounded by the m
   k.agent.send('We are running late');
   await until(() => k.agent.pendingId !== null);
   k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'Move it');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await k.events(['grounded'])).length, 1, 'her words were shown as written');
   assert.equal(k.requests.length, 2, 'no nudge after words that reached them');
   assert.deepEqual(k.notices, []);
@@ -131,7 +131,7 @@ test('a question answered, and she speaks after it in the same reply: what she s
   k.agent.send('We are running late');
   await until(() => k.agent.pendingId !== null);
   k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'Move it');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, 2, 'her next reply is a bare sleep: nothing owed, no nudge');
   assert.deepEqual(k.notices, []);
 });
@@ -140,7 +140,7 @@ test('a line the user typed to her, not at a card, still needs its own reply: th
   useClock(t);
   const k = await agentKit([[{ toolCalls: [sleep] }]]);
   k.agent.send('Hello');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, 2, 'asked once more, as before');
   assert.equal(k.notices.length, 1);
 });
@@ -156,7 +156,7 @@ for (const [shape, reply] of Object.entries({ 'plain text': [{ text: 'Booked Fri
       if (voice) await until(() => k.agent.state.name === 'listening');
       else await until(() => k.agent.waiting);
       k.agent.send('Friday');
-      await k.agent.idle();
+      await idleAtOnce(k);
       assert.equal(k.requests.length, 2 + reply.length, 'the answer, her reply, then the one request more');
       assert.match(JSON.stringify(k.requests[1].messages), /The user wrote: Friday/, 'typed into the wait: its result');
       assert.match(k.requests.at(-1).tail, /The user hasn't been answered/);
@@ -177,7 +177,7 @@ for (const [what, replies, cued, notices] of /** @type {const} */ ([
     k.agent.send('Book us a table');
     await until(() => k.agent.state.name === 'listening');
     k.agent.send('Friday');
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.requests.length, 1 + replies.length, 'her line, her reply to the typed one, and the one request more');
     assert.equal(/The user hasn't been answered/.test(k.requests.at(-1).tail), cued, 'the cue');
     assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.title), notices ? ["Shiori didn't answer"] : []);
@@ -200,9 +200,9 @@ test("her ask and sleep answered, her hand-over's turn goes on: what she does af
       await until(() => k.agent.pendingId !== null);
       k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'Yes');
     }
-    await k.agent.idle();
+    await idleAtOnce(k);
     k.agent.tryAgain();
-    await k.agent.idle();
+    await idleAtOnce(k);
     got.push((await hers(k)).map((/** @type {any} */ e) => [e.data.path, e.data.handover ?? null]));
     const out = await undoHandover(k.ws, k.trip, 'h-1');
     assert.deepEqual(out.undone, ['/notes/f.md'], 'its Undo takes it back');
@@ -223,9 +223,9 @@ test("her ask and sleep answered with a hand-over, the page left during her next
   await until(() => k.requests.length === 2);
   assert.equal((await Transcript.load(k.store, k.trip)).handover, 'h-1', 'a reload now: the answer is owed, with its hand-over');
   await k.agent.open(other);
-  await k.agent.idle();
+  await idleAtOnce(k);
   await k.agent.open(k.trip);
-  await k.agent.idle();
+  await idleAtOnce(k);
   const writes = (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(k.trip, { types: ['file.write'] }))).filter((/** @type {any} */ e) => e.actor === 'shiori');
   assert.deepEqual(writes.map((/** @type {any} */ e) => [e.data.path, e.data.handover ?? null]), [['/notes/f.md', 'h-1']]);
 });
@@ -253,10 +253,10 @@ test("a hand-over, her card answered, her reply to the answer silent, and the on
       k.agent.send('Here', { handed: [flight], handover: 'h-1' });
       await until(() => k.agent.pendingId !== null);
       k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'Yes');
-      await k.agent.idle();
+      await idleAtOnce(k);
       assert.match(k.requests[1 + reply.length].tail, /The user hasn't been answered/, `${what}: the cue was sent, and failed`);
       k.agent.tryAgain();
-      await k.agent.idle();
+      await idleAtOnce(k);
       assert.deepEqual(await hers(k), [['/notes/f.md', 'h-1']], `${what}: Try again's write is the hand-over's`);
       await undone(k, what);
       // The one more request cut by another conversation opened, and returned to.
@@ -268,9 +268,9 @@ test("a hand-over, her card answered, her reply to the answer silent, and the on
       await until(() => c.requests.length === 2 + reply.length);
       assert.equal((await Transcript.load(c.store, c.trip)).handover, 'h-1', `${what}: a reload now finds the hand-over owed`);
       await c.agent.open(other);
-      await c.agent.idle();
+      await idleAtOnce(c);
       await c.agent.open(c.trip);
-      await c.agent.idle();
+      await idleAtOnce(c);
       assert.deepEqual(await hers(c), [['/notes/f.md', 'h-1']], `${what}: the turn taken up on return carries it`);
       await undone(c, `${what}, cut`);
     }
@@ -282,10 +282,10 @@ test("a typed line with a hand-over, her reply silent (plain text, a bare sleep)
   for (const [shape, reply] of Object.entries({ 'plain text': { text: 'I will file it.' }, 'a bare sleep': { toolCalls: [sleep] } })) {
     const k = await agentKit([[reply, fails, fails, fails, fails, files]]);
     k.agent.send('Here is my flight', { handed: [flight], handover: 'h-1' });
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal((await Transcript.load(k.store, k.trip)).owedHandover, 'h-1', `${shape}: after the failure the hand-over is still owed`);
     k.agent.tryAgain();
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await hers(k), [['/notes/f.md', 'h-1']], `${shape}: Try again's write is the hand-over's`);
     await undone(k, shape);
     const c = await agentKit([[reply, { delayMs: 300, ...say('x') }, files]]);
@@ -294,9 +294,9 @@ test("a typed line with a hand-over, her reply silent (plain text, a bare sleep)
     await until(() => c.requests.length === 2);
     assert.deepEqual([(await Transcript.load(c.store, c.trip)).unanswered, (await Transcript.load(c.store, c.trip)).handover], [true, 'h-1'], `${shape}: a reload now takes the turn up with the hand-over`);
     await c.agent.open(other);
-    await c.agent.idle();
+    await idleAtOnce(c);
     await c.agent.open(c.trip);
-    await c.agent.idle();
+    await idleAtOnce(c);
     assert.deepEqual(await hers(c), [['/notes/f.md', 'h-1']], `${shape}: the turn taken up on return carries it`);
     await undone(c, `${shape}, cut`);
   }
@@ -311,13 +311,13 @@ const slow = (k) => {
   k.agent.addLoopTools([{ name: 'linger', pluginId: 'core', group: 'Time', description: 'Wait.', input: { type: 'object' }, run: async () => { at.lingering = true; await new Promise((r) => setTimeout(r, 60_000)); return 'Done.'; } }]);
   return at;
 };
-/** After the cut: an open comes back to the conversation, a Stop has the user's next line. @param {any} k @param {string} how */
-const after = async (k, how) => {
+/** After the cut: an open comes back to the conversation, a Stop has the user's next line. @param {any} k @param {string} how @param {number} [ms] idleAtOnce's */
+const after = async (k, how, ms) => {
   const A = k.trip;
   const before = k.requests.length;
   if (how === 'stop') k.agent.send('Put it in Notes');
   else await k.agent.open(A);
-  await k.agent.idle();
+  await idleAtOnce(k, ms);
   const paused = (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(A, { types: ['paused'] }))).length;
   return { paused, requests: k.requests.length - before };
 };
@@ -331,8 +331,9 @@ for (const how of ['open', 'stop']) {
       const B = await createTrip(k.ws, { title: 'Kyoto' });
       if (how === 'open') await k.agent.open(B);
       else k.agent.interrupt();
-      await k.agent.idle();
-      assert.deepEqual(await after(k, how), { paused: how === 'open' ? 1 : 0, requests: 1 });
+      await idleAtOnce(k);
+      // her "Filed." is said in playMs's 60 s (60 000 ms on the clock, measured)
+      assert.deepEqual(await after(k, how, 60_000 + 2000), { paused: how === 'open' ? 1 : 0, requests: 1 });
       assert.deepEqual(await hers(k), [['/notes/f.md', 'h-1']]);
       await undone(k, `${how}, ${spent ? 'spent' : 'control'}`);
     });
@@ -346,7 +347,7 @@ for (const how of ['open', 'stop']) {
     const B = await createTrip(k.ws, { title: 'Kyoto' });
     if (how === 'open') await k.agent.open(B);
     else k.agent.interrupt();
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await after(k, how), { paused: how === 'open' ? 1 : 0, requests: 1 });
     assert.deepEqual(await hers(k), [['/notes/f.md', 'h-1']]);
     await undone(k, how);
@@ -361,7 +362,7 @@ test("a turn past two sleeps beside failed calls, then a reply cut by an open in
     k.agent.send('Plan the afternoon');
     await until(() => at.lingering);
     await k.agent.open(await createTrip(k.ws, { title: 'Kyoto' }));
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await after(k, 'open'), { paused: 1, requests: 1 }, what);
   }
 });
@@ -371,11 +372,11 @@ test("a hand-over, her reply silent twice (the card \"Shiori didn't answer\"), T
   for (const [shape, reply] of Object.entries({ 'plain text': { text: 'Filed it.' }, 'a bare sleep': { toolCalls: [sleep] } })) {
     const k = await agentKit([[reply, reply, files]]);
     k.agent.send('Here', { handed: [flight], handover: 'h-1' });
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.title), ["Shiori didn't answer"], shape);
     assert.equal((await Transcript.load(k.store, k.trip)).owedHandover, 'h-1', `${shape}: the card's turn left it owed`);
     k.agent.tryAgain();
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await hers(k), [['/notes/f.md', 'h-1']], shape);
     await undone(k, shape);
   }
@@ -406,7 +407,7 @@ test("a hand-over, annai restarted while her card waited (or between her answer 
     if (cs.includes(q)) await record(k.store, k.trip, { type: 'out.ask', actor: 'shiori', data: { id: 'q', wake: 'w-0', question: 'File it?', options: ['Yes'] } }); // her question is shown before it waits
     for (const id of result) await record(k.store, k.trip, { type: 'tool.result', actor: 'system', data: { id, name: cs.find((c) => c[0] === id)[1], ok: true, cut: false, ms: 1, wake: 'w-0' }, texts: [['content', 'The user chose: Yes']] });
     await k.agent.open(k.trip);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const hers = (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(k.trip, { types: ['file.write'] }))).filter((/** @type {any} */ e) => e.actor === 'shiori' && e.data.path === '/notes/f.md');
     assert.deepEqual(hers.map((/** @type {any} */ e) => e.data.handover ?? null), ['h-1'], `${what}: the turn taken up carries the hand-over`);
     const restart = (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(k.trip, { types: ['wake'] }))).filter((/** @type {any} */ e) => !e.data.meanwhile).at(-1);
@@ -426,9 +427,9 @@ test("a sleep that gave way whatever became of its input (one that was not an ob
   assert.equal('awake' in stored.data, false, 'no `awake`: the turn is under way because no turn.end was logged');
   assert.equal((await k.events(['turn.end'])).length, 0, 'her turn is under way: it has not ended');
   await k.agent.open(other);
-  await k.agent.idle();
+  await idleAtOnce(k);
   await k.agent.open(k.trip);
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, 3, 'taken up on return');
   assert.equal((await k.events(['out.speak'])).at(-1).data.text, 'Taken up.');
 });
@@ -440,13 +441,13 @@ test("a question waiting with a sleep beside it, and another conversation opened
     k.agent.send('Plan tonight');
     await until(() => k.agent.pendingId !== null);
     await k.agent.open(await createTrip(k.ws, { title: 'Kyoto' }));
-    await k.agent.idle();
+    await idleAtOnce(k);
     const events = (/** @type {string[]} */ types) => k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(k.trip, { types }));
     const stored = (await events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === 'sleep');
     assert.equal(stored && 'awake' in stored.data, calls.length === 2 ? false : undefined, 'a sleep cut before it ran stores no `awake`');
     const before = k.requests.length;
     await k.agent.open(k.trip);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual([(await events(['paused'])).length, k.requests.length - before], [0, 0], `${calls.length} calls: no paused line, nothing taken up`);
   }
 });
@@ -469,18 +470,18 @@ for (const recap of ['with a recap', 'no recap']) {
       { match: 'the user wrote', reply: { toolCalls: [{ name: 'open_trip', input: { trip: kyoto, ...(recap === 'with a recap' ? { recap: 'We found the ramen place.' } : {}) } }] }, then: say('We stay here, then.') },
     ] });
     await k.agent.open(kyoto);
-    await k.agent.idle();
+    await idleAtOnce(k);
     await k.ws.write(kyoto, '/files/hotel.pdf', utf8('%PDF hotel'), { author: 'user', type: 'application/pdf' });
     k.agent.send('Here', { handed: [{ path: '/trip/files/hotel.pdf', type: 'application/pdf', name: 'hotel.pdf', new: true }], handover: 'h-0' });
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal((await Transcript.load(k.store, kyoto)).owedHandover, null, 'her sleep settled h-0');
     await k.agent.open(k.trip);
-    await k.agent.idle();
+    await idleAtOnce(k);
     k.agent.send("Let's carry on in Kyoto");
     await until(() => asks.length === 1);
     k.agent.answer(asks[0].data.tap, 'Open');
     await until(() => k.agent.target === kyoto);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const hers = (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(kyoto, { types: ['file.write'] }))).filter((/** @type {any} */ e) => e.actor === 'shiori');
     assert.deepEqual(hers.map((/** @type {any} */ e) => [e.data.path, e.data.handover ?? null]), [['/notes/a.md', 'h-0'], ['/notes/b.md', null]]);
     const out = await undoHandover(k.ws, kyoto, 'h-0');

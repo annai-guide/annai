@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until, hear } from './agent-kit.js';
+import { agentKit, until, hear, idleAtOnce } from './agent-kit.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { WRITE_DOWN } from '../../src/core/voice/voice.js';
 import { NOT_TRANSCRIBED } from '../../src/core/voice/resolve.js';
@@ -16,7 +16,7 @@ async function tapAndSay(k, name) {
   k.agent.tap();
   await until(() => k.agent.state.name === 'listening');
   await hear(k, name);
-  await k.agent.idle();
+  await idleAtOnce(k);
 }
 
 test('after a turn that worked, what was heard is written down and its sound let go; later turns send the words (spec §10.3)', async (t) => {
@@ -28,7 +28,7 @@ test('after a turn that worked, what was heard is written down and its sound let
   assert.deepEqual([written.data.of, written.data.text, written.data.by], [heard.data.id, 'where should we eat', 'ears']);
   assert.equal(k.voice.memory.size, 0);
   k.agent.send('And again?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(k.transcribed, ['m-hear'], 'the transcript made for the reply was reused, and not made again');
   assert.deepEqual(k.requests[1].messages[0].parts.slice(0, 2), [{ type: 'text', text: '[heard]' }, { type: 'text', text: 'where should we eat' }]);
 });
@@ -53,7 +53,7 @@ test('a turn that fails keeps what was heard; the next one still has the words, 
   assert.equal((await k.events(['heard.text'])).length, 0);
   assert.equal(k.voice.memory.size, 1);
   k.agent.send('Try again');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.match(JSON.stringify(k.requests[1].messages), /find a gas station/);
   assert.deepEqual(k.transcribed, ['m-hear']);
   assert.equal((await k.events(['heard.text'])).length, 1);
@@ -108,7 +108,7 @@ test('after a reload, the conversation has the same heard speech (spec §6.7)', 
   await hear(k, 'where-eat');
   await until(() => k.agent.state.name === 'listening' && k.requests.length === 1);
   await hear(k, 'first-one');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual((await Transcript.load(k.store, k.trip)).messages, k.agent.transcript.messages);
 });
 
@@ -120,7 +120,7 @@ test("no usable entry: a tap says what to add; speak says it couldn't listen, wi
   assert.equal(k.notices[0].title, "Shiori can't hear you yet");
   assert.match(k.notices[0].body, /speech-in list is empty/);
   k.agent.send('Hi');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const speaks = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'speak');
   assert.match(speaks[0].data.content, /^Said aloud\. annai couldn't listen: Shiori can't hear you: the speech-in list is empty\./);
   assert.equal(k.notices.length, 1);
@@ -136,7 +136,7 @@ test("the card for a main model that takes no audio names it by its provider's n
   assert.equal(k.notices[0].title, "Shiori can't hear you yet");
   assert.match(k.notices[0].body, /^Shiori can't hear you yet: E0 \/ model-0 doesn't take audio,/);
   k.agent.send('Hi');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const speaks = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'speak');
   assert.match(speaks[0].data.content, /annai couldn't listen: Shiori can't hear you yet: model-0 doesn't take audio/);
 });
@@ -157,7 +157,7 @@ test('phone dictation in the loop: its words need no transcription; when it fail
   k.agent.tap();
   await until(() => k.agent.state.name === 'listening');
   k.platform.dictation.say('is there a gas station nearby');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(k.requests[0].messages[0].parts.slice(0, 2), [{ type: 'text', text: '[heard]' }, { type: 'text', text: 'is there a gas station nearby' }]);
   assert.deepEqual(k.transcribed, []);
   k.agent.tap();
@@ -165,7 +165,7 @@ test('phone dictation in the loop: its words need no transcription; when it fail
   k.platform.dictation.fail('network');
   await until(() => k.platform.log.includes('mic open'));
   await hear(k, 'gas-station');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(k.transcribed, ['m-hear']);
   assert.match(JSON.stringify(k.requests[1].messages.at(-1)), /and a coffee/);
 });
@@ -177,7 +177,7 @@ test('phone dictation that hears a noise and no words: the silence limit starts 
   await until(() => k.agent.state.name === 'listening');
   k.platform.dictation.noise();
   await until(() => k.agent.state.name === 'sleeping', 1500);
-  await k.agent.idle();
+  await idleAtOnce(k);
   const [speak] = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'speak');
   assert.equal(speak.data.content, 'Said aloud. Heard nothing (20 seconds).');
   k.agent.tap();
@@ -195,7 +195,7 @@ test('a write-down that fails keeps the sound: nothing is written as not transcr
   assert.equal((await k.events(['heard.text'])).length, 0, 'nothing is written while the sound is at hand');
   assert.equal(k.voice.memory.size, 1);
   k.agent.send('And again?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests[2].messages[0].parts[1].type, 'audio', 'the next turn still sends the sound');
   assert.deepEqual((await k.events(['heard.text'])).map((/** @type {any} */ e) => e.data.text), ['where should we eat']);
   assert.equal(k.voice.memory.size, 0);
@@ -209,7 +209,7 @@ test('a segment that three turns in a row could not write down is written as not
   for (const text of ['Again', 'And again']) {
     assert.equal((await k.events(['heard.text'])).length, 0);
     k.agent.send(text);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   assert.deepEqual((await k.events(['heard.text'])).map((/** @type {any} */ e) => e.data.text), ['[audio, not transcribed]']);
   assert.equal(k.voice.memory.size, 0);
@@ -221,7 +221,7 @@ test('housekeeping first writes down what was heard in the part it summarizes: t
   const k = await agentKit([[fail, fail]], { utility: [{ text: 'They looked for food.' }], voice: { speechIn: ['m-hear'], hears: ['where should we eat'] } });
   await tapAndSay(k, 'where-eat'); // the turn fails: the words aren't written down yet
   k.agent.send('Hello?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await k.events(['heard.text'])).length, 0);
   assert.equal(await k.agent.compact('cold', { forced: true }), true);
   assert.match(k.requests.at(-1).messages[0].parts[0].text, /User \(spoke\): where should we eat/);
@@ -238,7 +238,7 @@ test('a spoken line housekeeping writes down at the cut counts for the language 
   await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
   await tapAndSay(k, 'where-eat'); // the turn fails: the words aren't written down yet
   k.agent.send('Hello?'); // one word: a reply, no vote for a language
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await k.events(['heard.text'])).length, 0);
   assert.equal(await k.agent.compact('cold', { forced: true }), true);
   assert.equal((await k.events(['heard.text'])).length, 1, 'housekeeping wrote the line down');
@@ -251,7 +251,7 @@ test('housekeeping waits while what was heard can\'t be written down, unless the
   await tapAndSay(k, 'where-eat');
   for (let i = 0; i < 4; i++) {
     k.agent.send(`Message ${i}`);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   assert.equal(await k.agent.compact('cold'), false, 'not now: the sound is still at hand');
   assert.equal((await k.events(['compaction'])).length, 0);
@@ -269,7 +269,7 @@ test('heard sound that is no longer in memory (annai restarted) is written as no
   await record(k.store, k.trip, { type: 'heard', actor: 'user', data: { id: 'h-gone', ms: 1200, source: 'mic' } });
   await k.agent.open(k.trip);
   k.agent.send('Are you there?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const written = (await k.events(['heard.text'])).map((e) => [e.data.of, e.data.text]);
   assert.deepEqual(written, [['h-gone', NOT_TRANSCRIBED]]);
   assert.deepEqual(k.agent.transcript.unwritten(), []);
@@ -284,14 +284,14 @@ test('a short dictated line in a language the user does not speak is flagged in 
   k.agent.tap();
   await until(() => k.agent.state.name === 'listening');
   k.platform.dictation.say('¿Qué?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const [flagged] = await k.events(['heard']);
   assert.deepEqual([flagged.data.text, flagged.data.strayLanguage], ['¿Qué?', 'Spanish']);
   assert.deepEqual(k.requests[0].messages[0].parts.slice(0, 2), [{ type: 'text', text: '[heard]' }, { type: 'text', text: '¿Qué? (heard; may be misheard as Spanish)' }]);
   k.agent.tap();
   await until(() => k.agent.state.name === 'listening');
   k.platform.dictation.say('is there a gas station nearby');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const heard = await k.events(['heard']);
   assert.equal(heard.at(-1).data.strayLanguage, undefined);
   assert.match(JSON.stringify(k.requests[1].messages.at(-1)), /is there a gas station nearby"/);
@@ -307,7 +307,7 @@ test('words written down later (heard.text) are flagged too, and the model reads
   const [written] = await k.events(['heard.text']);
   assert.deepEqual([written.data.text, written.data.strayLanguage], ['¿Qué?', 'Spanish']);
   k.agent.send('Hello again');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(k.requests[1].messages[0].parts.slice(0, 2), [{ type: 'text', text: '[heard]' }, { type: 'text', text: '¿Qué? (heard; may be misheard as Spanish)' }]);
 });
 
@@ -354,7 +354,7 @@ test("classic: the window after a turn isn't a tap's: chatter goes through the g
   const from = Date.now();
   await hear(k, 'gas-station'); // the answer
   await until(() => k.requests.filter((/** @type {any} */ r) => !String(r.system ?? '').startsWith('You make one quick decision')).length === 2);
-  while (k.agent.busy) await new Promise((r) => setTimeout(r, 5));
+  await until(() => !k.agent.busy);
   assert.equal(k.platform.mic.isOpen(), true, 'it listens after the turn');
   const wakes = (await k.events(['wake'])).length;
   await hear(k, 'first-one');
@@ -371,9 +371,10 @@ test("classic: the window after a turn, chatter back to back (talk radio, music)
   let gates = 0;
   /** @type {Record<number, () => void>} */
   const verdict = {};
+  let slow = true; // the verdicts from the second on wait for the test, until it lets them all go
   const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text: 'Let me check.' } }] }, { text: 'done' }]], {
     voice: { speechIn: ['m-hear'], hears: ['where should we eat', 'yes', 'la la', 'la la la'], decide: [{ toolCalls: [{ name: 'decide', input: { option: 'A' } }] }, ...[1, 2, 3].map(() => ({ toolCalls: [{ name: 'decide', input: { option: 'B' } }] }))] },
-    hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-d' && ++gates >= 2) await new Promise((r) => { verdict[gates] = () => r(undefined); }); },
+    hold: async (/** @type {any} */ c) => { if (c.model.providerId === 'model-d' && ++gates >= 2 && slow) await new Promise((r) => { verdict[gates] = () => r(undefined); }); },
   });
   await updateAppSettings(k.ws, { voice: { silenceSeconds: 60 } }); // 600 ms here (the setting takes 2 to 60)
   k.agent.tap();
@@ -383,7 +384,7 @@ test("classic: the window after a turn, chatter back to back (talk radio, music)
   const from = Date.now();
   await hear(k, 'gas-station'); // the answer
   await until(() => k.requests.filter((/** @type {any} */ r) => !String(r.system ?? '').startsWith('You make one quick decision')).length === 2);
-  while (k.agent.busy) await new Promise((r) => setTimeout(r, 5));
+  await until(() => !k.agent.busy);
   await hear(k, 'first-one'); // a line of the radio's: its verdict is slow
   await until(() => gates === 2);
   k.platform.mic.feed(cat(quiet(0.3), await clip('gas-station')), 16_000); // the next line begins
@@ -394,8 +395,9 @@ test("classic: the window after a turn, chatter back to back (talk radio, music)
   k.platform.mic.feed(quiet(1), 16_000); // it ends, its verdict and the one before it still to come: the window closes there, for no verdict
   await until(() => !k.platform.mic.isOpen(), 300);
   assert.ok(Date.now() - ended <= 50, `${Date.now() - ended} ms: one line past the deadline, no more`);
+  slow = false; // the line's verdict is asked only once the one before it is given: it isn't held either, or it would wait out its call's 30 s
   for (const n of Object.keys(verdict)) verdict[/** @type {any} */ (n)]();
-  await k.agent.idle();
+  await idleAtOnce(k);
 });
 
 test('silenceSeconds: the default is 20, a saved value stays; a tap window and a question aloud keep 8 s', async () => {
@@ -415,7 +417,7 @@ async function strayInWindow(k) {
   await until(() => k.agent.state.name === 'listening' && k.requests.length === 1);
   await hear(k, 'gas-station'); // passes the gate: a word, maybe not for her
   await until(() => k.requests.length >= 2); // a reply whose call failed (already_told is no tool of hers alone) has one more step
-  while (k.agent.busy) await new Promise((r) => setTimeout(r, 5));
+  await until(() => !k.agent.busy);
 }
 
 test('classic: a stray word in the window answered with sleep alone keeps the window open, with no cue and no card, to the same deadline', async (t) => {
@@ -441,7 +443,7 @@ test('classic: a real reply after the stray word is answered, and speak plus sle
   await strayInWindow(k);
   await hear(k, 'first-one');
   await until(() => k.requests.length === 3);
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.ok(k.platform.log.some((/** @type {string} */ l) => l === 'play m-say:It is open.'), JSON.stringify(k.platform.log));
   assert.equal(k.notices.length, 0);
   assert.equal(k.platform.mic.isOpen(), false);

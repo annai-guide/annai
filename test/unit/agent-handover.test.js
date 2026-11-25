@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit } from './agent-kit.js';
+import { agentKit, idleAtOnce } from './agent-kit.js';
 import { useClock } from './clock.js';
 import { record } from '../../src/core/agent/log.js';
 import { Transcript, SAID as LOGGED, resolveEvent } from '../../src/core/agent/transcript.js';
@@ -59,7 +59,7 @@ test("a message with files: the user's line keeps them and its hand-over, and Sh
   const k = await agentKit([[say('A flight to Anchorage: filed.')]]);
   await k.ws.write(k.trip, '/files/flight.pdf', utf8('%PDF-1.4 flight'), { author: 'user', type: 'application/pdf' });
   k.agent.send('Our Testville trip', { handed: [flight], handover: 'h-1' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   const [msg] = await k.events(['msg.user']);
   assert.deepEqual(msg.data.handed.map((/** @type {any} */ f) => f.path), ['/trip/files/flight.pdf']);
   assert.equal(msg.data.handover, 'h-1');
@@ -75,7 +75,7 @@ test('files with no words: the line holds FILES_ONLY, and she is still told', as
   useClock(t);
   const k = await agentKit([[say('Filed.')]]);
   k.agent.send('', { handed: [flight], handover: 'h-1' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   const [msg] = await k.events(['msg.user']);
   assert.equal(msg.data.text, FILES_ONLY);
   assert.match(lastWords(k.requests[0]), /\[annai\] The user handed you a file/);
@@ -88,9 +88,9 @@ test("what she writes in the turn that took a hand-over carries it; a later turn
     { toolCalls: [{ name: 'write', input: { path: '/trip/notes/b.md', content: 'b' } }, { name: 'speak', input: { text: 'Noted b.' } }, { name: 'sleep', input: {} }] },
   ]]);
   k.agent.send('Here', { handed: [flight], handover: 'h-1' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   k.agent.send('And note b');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual((await hers(k)).map((e) => [e.data.path, e.data.handover ?? null]), [['/notes/a.md', 'h-1'], ['/notes/b.md', null]]);
 });
 
@@ -100,7 +100,7 @@ test('a hand-over that answers a pending ask resolves it with the words, and wak
   k.agent.send('Start');
   await new Promise((r) => setTimeout(r, 30));
   k.agent.send('Yes', { handed: [flight], handover: 'h-1' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await k.events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === 'ask').data.content, 'The user wrote: Yes');
   const users = await k.events(['msg.user']);
   const withFiles = users.find((/** @type {any} */ e) => e.data.handed);
@@ -115,7 +115,7 @@ test('a conversation that opens owing a hand-over starts a turn that carries it'
   await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: { wake: 'w-0', handed: [flight], handover: 'h-2' }, texts: [['text', FILES_ONLY]] });
   assert.equal((await Transcript.load(k.store, k.trip)).handover, 'h-2');
   await k.agent.open(k.trip);
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual((await hers(k)).map((e) => e.data.handover), ['h-2']);
   // Answered: nothing owed, and no hand-over left to carry.
   assert.equal((await Transcript.load(k.store, k.trip)).handover, null);
@@ -126,7 +126,7 @@ test('twenty-five files: all on the line; the first 20 named to her, then "and 5
   const k = await agentKit([[say('Lots of photos.')]]);
   const many = Array.from({ length: 25 }, (_, i) => ({ path: `/trip/files/IMG_${3000 + i}.PNG`, type: 'image/png', name: `IMG_${3000 + i}.PNG`, new: true }));
   k.agent.send('', { handed: many, handover: 'h-1' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   const [msg] = await k.events(['msg.user']);
   assert.equal(msg.data.handed.length, 25);
   const last = lastWords(k.requests[0]);
@@ -205,7 +205,7 @@ test('in a trip, a handed PDF is read as before: a document her model gets', asy
   const k = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/flight.pdf' } }] }, say('Filed.')]], { models: [readsPdf], utility: [{ text: SAID }], utilityModel: readsPdf });
   await k.ws.write(k.trip, '/files/flight.pdf', PDF, { author: 'user', type: 'application/pdf' });
   k.agent.send('', { handed: [flight], handover: 'h-1' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   const [result] = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'read');
   assert.equal(result.data.document?.mediaType, 'application/pdf');
   assert.ok(k.sent['model-0'].at(-1).messages.some((/** @type {any} */ m) => m.parts.some((/** @type {any} */ p) => p.type === 'document')));
@@ -221,13 +221,13 @@ test("a hand-over whose turn failed is still owed: Try again's turn, or the user
   ]]);
   await k.ws.write(k.trip, '/files/flight.pdf', utf8('%PDF-1.4 flight'), { author: 'user', type: 'application/pdf' });
   k.agent.send('', { handed: [flight], handover: 'h-1' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.ok((await k.events(['error'])).length >= 1, 'the turn failed');
   assert.equal((await hers(k)).length, 0);
   k.agent.tryAgain();
-  await k.agent.idle();
+  await idleAtOnce(k);
   k.agent.send('And a note for later');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual((await hers(k)).map((e) => [e.data.path, e.data.handover ?? null]), [['/notes/flight.md', 'h-1'], ['/notes/later.md', null]]);
 });
 
@@ -237,11 +237,11 @@ test("an owed hand-over goes only to a turn of the user's (their message, a choi
   const w = (/** @type {string} */ path) => ({ toolCalls: [{ name: 'write', input: { path, content: 'x' } }, { name: 'speak', input: { text: 'ok' } }, { name: 'sleep', input: {} }] });
   const k = await agentKit([[fails, fails, fails, fails, w('/trip/notes/reminder.md'), w('/trip/notes/flight.md')]]);
   k.agent.send('', { handed: [flight], handover: 'h-1' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   k.agent.wake({ kind: 'cue', text: 'Reminder: leave for the airport at 9.', scope: k.agent.scope });
-  await k.agent.idle();
+  await idleAtOnce(k);
   k.agent.tryAgain();
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual((await hers(k)).map((e) => [e.data.path, e.data.handover ?? null]), [['/notes/reminder.md', null], ['/notes/flight.md', 'h-1']]);
 });
 
@@ -251,13 +251,13 @@ test("each turn's wake names the hand-over the turn carries, null for none: the 
   const w = (/** @type {string} */ path) => ({ toolCalls: [{ name: 'write', input: { path, content: 'x' } }, { name: 'speak', input: { text: 'ok' } }, { name: 'sleep', input: {} }] });
   const k = await agentKit([[fails, fails, fails, fails, w('/trip/notes/reminder.md'), w('/trip/notes/flight.md'), say('You are welcome.')]]);
   k.agent.send('', { handed: [flight], handover: 'h-1' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   k.agent.wake({ kind: 'cue', text: 'Reminder: leave for the airport at 9.', scope: k.agent.scope });
-  await k.agent.idle();
+  await idleAtOnce(k);
   k.agent.send('Please file it');
-  await k.agent.idle();
+  await idleAtOnce(k);
   k.agent.send('Thanks');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const wakes = (await k.events(['wake'])).filter((/** @type {any} */ e) => !e.data.meanwhile);
   assert.ok(wakes.every((/** @type {any} */ e) => 'handover' in e.data), 'every turn\'s wake has the key');
   assert.deepEqual(wakes.map((/** @type {any} */ e) => e.data.handover), ['h-1', null, 'h-1', null]);
@@ -276,13 +276,13 @@ test("the user's words join a turn of hers that carries none while a hand-over i
     { toolCalls: [{ name: 'write', input: { path: '/trip/notes/flight.md', content: 'AN 123' } }, { name: 'speak', input: { text: 'Filed.' } }, { name: 'sleep', input: {} }] },
   ]], { hold: async () => { if (++calls === 5) await held; } }); // the reminder's first request waits while the user types
   k.agent.send('', { handed: [flight], handover: 'h-1' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   k.agent.wake({ kind: 'cue', text: 'Reminder: leave for the airport at 9.', scope: k.agent.scope });
   await new Promise((r) => setTimeout(r, 30));
   k.agent.send('Please file it');
   await new Promise((r) => setTimeout(r, 30));
   release();
-  await k.agent.idle();
+  await idleAtOnce(k);
   const wakes = (await k.events(['wake'])).filter((/** @type {any} */ e) => !e.data.meanwhile);
   assert.deepEqual(wakes.map((/** @type {any} */ e) => e.data.handover), ['h-1', null], 'the reminder\'s turn started with none');
   assert.deepEqual(await story(k), ['wake 0 h-1', 'user h-1', 'wake 1 null', 'user -', 'took 1 h-1', 'write /notes/flight.md h-1', 'end 1 h-1']);
@@ -310,7 +310,7 @@ test('a hand-over that joins her running turn: that turn takes it up, written ri
   await new Promise((r) => setTimeout(r, 30));
   k.agent.send('Thanks');
   releases[1]();
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, 3, 'one turn: the hand-over and the user\'s words joined it');
   assert.deepEqual(await story(k), ['wake 0 null', 'user -', 'user h-1', 'took 0 h-1', 'write /notes/flight.md h-1', 'user -', 'end 0 h-1']);
   const [took] = (await k.events(['wake'])).filter(tookUp);
@@ -340,7 +340,7 @@ test('a second hand-over that joins the turn while it carries the first: written
   await new Promise((r) => setTimeout(r, 30));
   k.agent.send('', { handed: [hotel], handover: 'h-2' });
   releases[1]();
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, 3, 'one turn: both hand-overs joined it');
   assert.deepEqual(await story(k), ['wake 0 null', 'user -', 'user h-1', 'took 0 h-1', 'user h-2', 'took 0 h-2', 'write /notes/flight.md h-2', 'end 0 h-2']);
   const [first] = await k.events(['wake']);
@@ -358,7 +358,7 @@ test('a hand-over that cuts in on her model call: the turn takes it up as a wake
   await new Promise((r) => setTimeout(r, 50)); // her first call is still thinking
   k.agent.send('', { handed: [flight], handover: 'h-1' });
   k.agent.cutIn(); // the cut path (loop.js: cut.signal.aborted), not the step's end
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, 2, 'the cut call went on to a second request, in the same turn');
   assert.deepEqual(await story(k), ['wake 0 null', 'user -', 'user h-1', 'took 0 h-1', 'write /notes/flight.md h-1', 'end 0 h-1']);
   const [took, ...more] = (await k.events(['wake'])).filter(tookUp);
@@ -387,7 +387,7 @@ for (const owed of [false, true]) {
     await k.ws.write(k.trip, '/files/flight.pdf', utf8('%PDF-1.4'), { author: 'user', type: 'application/pdf' });
     if (owed) {
       k.agent.send('', { handed: [flight], handover: 'h-1' });
-      await k.agent.idle();
+      await idleAtOnce(k);
       k.agent.wake({ kind: 'cue', text: 'Reminder: leave for the airport at 9.', scope: k.agent.scope });
       await new Promise((r) => setTimeout(r, 80));
       k.agent.send('Please file it');
@@ -398,7 +398,7 @@ for (const owed of [false, true]) {
     }
     await new Promise((r) => setTimeout(r, 80));
     release();
-    await k.agent.idle();
+    await idleAtOnce(k);
     const kokoros = (await k.events(['wake'])).filter((/** @type {any} */ e) => e.data.half === 'kokoro' && !e.data.meanwhile);
     const [took, ...more] = (await k.events(['wake'])).filter(tookUp);
     assert.equal(more.length, 0, 'one take-up');
@@ -424,15 +424,15 @@ test('the take-up record reaches no model: a reload reads the same transcript as
     say('You are welcome.'),
   ]], { hold: async () => { if (++calls === 5) await held; } });
   one.agent.send('', { handed: [flight], handover: 'h-1' });
-  await one.agent.idle();
+  await idleAtOnce(one);
   one.agent.wake({ kind: 'cue', text: 'Reminder: leave for the airport at 9.', scope: one.agent.scope });
   await new Promise((r) => setTimeout(r, 30));
   one.agent.send('Please file it');
   await new Promise((r) => setTimeout(r, 30));
   release();
-  await one.agent.idle();
+  await idleAtOnce(one);
   one.agent.send('Thanks');
-  await one.agent.idle();
+  await idleAtOnce(one);
   assert.equal(await readsAlike(one, 'one'), 1);
   const loaded = await Transcript.load(one.store, one.trip);
   assert.deepEqual(reading(loaded), reading(one.agent.transcript), 'a reload reads what the live one holds');
@@ -453,7 +453,7 @@ test('the take-up record reaches no model: a reload reads the same transcript as
   two.agent.send('', { handed: [flight], handover: 'h-1' });
   await new Promise((r) => setTimeout(r, 80));
   go();
-  await two.agent.idle();
+  await idleAtOnce(two);
   assert.equal(await readsAlike(two, 'kokoro'), 1);
   assert.equal(await readsAlike(two, 'koe'), 1);
 });
@@ -465,11 +465,11 @@ test('an Undo is told to her as a line of annai\'s, and settles the hand-over it
     say('Understood.'),
   ]]);
   k.agent.send('', { handed: [flight], handover: 'h-1' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   await undoHandover(k.ws, k.trip, 'h-1', { log: (/** @type {any} */ ev) => k.agent.log(ev) });
   assert.equal(k.agent.transcript.owedHandover, null);
   k.agent.send('Thanks');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const words = k.requests.at(-1).messages.flatMap((/** @type {any} */ m) => m.parts.map((/** @type {any} */ p) => p.text ?? '')).join('\n');
   assert.match(words, /\[annai\] The user tapped Undo for what you did with the files they handed you: 1 file put back as it was\./);
   assert.equal((await Transcript.load(k.store, k.trip)).owedHandover, null);

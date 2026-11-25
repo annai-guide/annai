@@ -2,7 +2,7 @@
 // the review's findings on the windows, the notes and a dead session.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { until, agentKit, hear } from './agent-kit.js';
+import { until, agentKit, hear, idleAtOnce } from './agent-kit.js';
 import { useClock } from './clock.js';
 import { liveKit, texts, soon, tone, say, lives } from './koe-live-kit.js';
 import { hum, quiet, cat } from './voice-kit.js';
@@ -33,7 +33,7 @@ async function learned(k, db = -5) {
   k.platform.mic.feed(room(1.5), RATE); // the floor is learned
   k.platform.mic.feed(cat(hum(0.6, 0.5), room(1)), RATE); // the tap's turn
   await soon(async () => (await k.events(['live.turn'])).length === 1, 3000);
-  await k.agent.live.idle();
+  await idleAtOnce({ agent: k.agent.live });
   await wait(1050); // a tap's lift: 8 s of the session's clock
   k.agent.live.level.reset();
   k.agent.live.level.heard(db);
@@ -89,7 +89,7 @@ test('H1: a stall as her sound starts, her turn still coming: the words are writ
     await wait(30);
     assert.deepEqual(await lines(k), [], 'at the turn\'s end');
     await soon(async () => (await lines(k)).length === 1, 3000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal((await k.events(['out.speak']))[0].data.cut, undefined);
     assert.deepEqual(await shown(k), [], 'her words reached the user');
   } finally {
@@ -117,15 +117,15 @@ test('level: a turn she let go teaches nothing and is not the user\'s own level 
     await tell(k);
     await until(() => k.agent.live.listening, 60_000);
     await soon(async () => (await lines(k)).length === 1);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     k.platform.mic.feed(cat(room(1.5), hum(0.6, 0.1), room(1)), RATE); // lyrics, in a session nobody tapped
     await soon(async () => (await k.events(['heard'])).length === 1);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     assert.equal(k.agent.live.level.db, null, 'a turn let go teaches nothing');
     assert.equal((await k.events(['heard']))[0].data.ownLevel, undefined, 'no level learned: not the user\'s own');
     k.platform.mic.feed(cat(hum(0.6, 0.1), room(1)), RATE);
     await soon(async () => (await lines(k)).length === 2);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     assert.equal(k.agent.live.level.db, null, 'she answered it, but one may be a lyric');
   } finally {
     await k.done();
@@ -141,11 +141,11 @@ test('level: a tapped turn she answers sets voiceDb anew, down too: the old leve
     await opened(k);
     k.platform.mic.feed(cat(room(1.5), hum(0.6, 0.03), room(1)), RATE);
     await soon(async () => (await lines(k)).length === 1, 3000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     assert.equal(k.agent.live.level.db, null, 'what it knew is gone, and one turn says nothing yet');
     k.platform.mic.feed(cat(hum(0.6, 0.03), room(1)), RATE);
     await soon(async () => (await lines(k)).length === 2, 3000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     assert.ok(/** @type {number} */ (k.agent.live.level.db) < -20, `${k.agent.live.level.db}`);
   } finally {
     await k.done();
@@ -159,12 +159,12 @@ test('level: the floor carries across sessions, so a lyric in the first second o
     await k.voice.unlock();
     await learned(k);
     k.agent.live.close('sleep');
-    await k.agent.idle();
+    await idleAtOnce(k);
     const before = starts(k);
     await tell(k);
     await until(() => k.agent.live.listening, 3000);
     await soon(async () => (await lines(k)).length === 1, 3000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     k.platform.mic.feed(cat(room(0.2), hum(0.5, 0.05), room(0.5)), RATE); // the session's first second of sound
     await wait(50);
     assert.equal(starts(k), before, 'kept out');
@@ -189,7 +189,7 @@ test('a tap while Ignoring lifts the minimum for 8 s, not for one turn: a lyric 
     await soon(async () => starts(k) === before + 2, 1000);
     assert.notEqual(k.agent.state.name, 'ignoring');
     await wait(1050);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     k.agent.live.level.heard(-5);
     k.agent.live.level.heard(-5);
     k.platform.mic.feed(hum(0.5, 0.03), RATE);
@@ -207,7 +207,7 @@ test('the dock says she is working, not Listening, while the microphone is deaf 
     await until(() => k.agent.live.listening, 3000);
     assert.equal(k.agent.live.view.name, 'thinking');
     await soon(async () => (await lines(k)).length === 1, 3000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     assert.equal(k.agent.live.view.name, 'listening');
   } finally {
     await k.done();
@@ -334,7 +334,7 @@ test('Step 2: a tap that cuts her off inside a note: not said again, and its wor
     await opened(k);
     await say(k, 'where-eat');
     await soon(async () => (await lines(k)).length === 1, 4000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     await tell(k);
     await soon(async () => k.agent.live.view.name === 'speaking', 3000);
     assert.equal(k.agent.live.tap(), 'cut');
@@ -401,7 +401,7 @@ test('Step 5: a note\'s words cut off in a turn that called a tool it speaks aft
     await opened(k);
     await say(k, 'where-eat');
     await soon(async () => (await lines(k)).length === 1, 4000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     k.platform.mic.feed(quiet(0.5), RATE);
     await tell(k);
     await soon(async () => k.agent.live.view.name === 'speaking', 3000);
@@ -431,7 +431,7 @@ test('item 10: chatter in speak\'s window neither closes the microphone nor exte
   assert.equal(k.platform.mic.isOpen(), true, 'chatter closes nothing');
   assert.equal(k.agent.state.name, 'listening');
   await hear(k, 'where-lunch');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.ok(Date.now() - from <= 1100, `${Date.now() - from} ms`);
   const speak = (await k.events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === 'speak');
   assert.match(speak.data.content, /Heard nothing/);
@@ -446,7 +446,7 @@ test('Step 1: a turn cut by opening another conversation leaves no microphone op
   k.agent.send('What is ahead?');
   await until(() => k.agent.state.name === 'speaking');
   await k.agent.open(null);
-  await k.agent.idle();
+  await idleAtOnce(k);
   await wait(30);
   assert.equal(k.platform.mic.isOpen(), false, 'no microphone');
   assert.notEqual(k.agent.state.name, 'listening');
@@ -463,7 +463,7 @@ test('level: a turn after the tap\'s lift ran out says nothing about the user\'s
     await wait(1050);
     k.platform.mic.feed(cat(hum(0.6, 0.5), room(1)), RATE);
     await soon(async () => (await k.events(['live.turn'])).length === 1, 3000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     assert.equal(k.agent.live.level.db, 0, 'as it was');
   } finally {
     await k.done();

@@ -1,6 +1,7 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit } from './agent-kit.js';
+import { agentKit, idleAtOnce, simAtOnce } from './agent-kit.js';
+import { useClock } from './clock.js';
 import { liveKit, at, LA, MONTEREY, BIXBY } from './live-kit.js';
 import { RULES, DRIVE, places } from './big-sur-kit.js';
 import { Live } from '../../src/core/live/live.js';
@@ -48,7 +49,7 @@ test("the Agent on a simulation's clock stamps the conversation in its time, the
   const restore = k.agent.useClock({ now: () => t, online: () => true, timeZone: () => LA });
   k.agent.send('Hello');
   assert.equal(k.agent.busy, true);
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.agent.busy, false);
   for (const e of await k.events(['msg.user', 'wake', 'out.speak'])) assert.equal(e.ts, t, e.type);
   restore();
@@ -77,12 +78,13 @@ async function anApp(/** @type {any} */ o = {}) {
   return { k, live, run };
 }
 
-test('Simulate a trip: the Big Sur sample, as fast as it can go, in a new trip of its own; afterwards everything is as it was (spec §13)', async () => {
+test('Simulate a trip: the Big Sur sample, as fast as it can go, in a new trip of its own; afterwards everything is as it was (spec §13)', async (t) => {
+  useClock(t);
   const { k, live, run } = await anApp();
-  const { trip } = await run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' });
+  const { trip } = await simAtOnce(run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' }));
   assert.notEqual(trip, k.trip);
   assert.equal(run.running, true);
-  await run.finished;
+  await simAtOnce(run.finished);
   assert.deepEqual([run.state?.done, run.state?.error, run.state?.stopped], [true, null, false]);
   assert.equal(run.state?.title, 'Big Sur on Highway 1: Monterey to Cambria (simulation)');
   const j = await readJourney({ store: k.store, ws: k.ws, trip });
@@ -99,12 +101,14 @@ test('Simulate a trip: the Big Sur sample, as fast as it can go, in a new trip o
   assert.ok(Math.abs(k.agent.now() - Date.now()) < 5000);
 });
 
-test('each simulation makes a trip with a title of its own, so Trips and the Trace can tell them apart (the second emulator re-check)', async () => {
+test('each simulation makes a trip with a title of its own, so Trips and the Trace can tell them apart (the second emulator re-check)', async (t) => {
+  useClock(t);
   const { k, run } = await anApp();
   const titles = /** @type {string[]} */ ([]);
   for (let i = 0; i < 3; i++) {
-    await run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' });
-    await run.finished;
+    await simAtOnce(run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' }));
+    await simAtOnce(run.finished);
+    assert.equal(run.state?.error, null, `run ${i + 1}`);
     titles.push(String(run.state?.title));
   }
   assert.deepEqual(titles, [
@@ -117,12 +121,13 @@ test('each simulation makes a trip with a title of its own, so Trips and the Tra
   for (const t of titles) assert.equal(shown.filter((x) => x === t).length, 1, t);
 });
 
-test("a recorded track: a trip's own points, played again in a new trip, earn the same stamps (choice 12)", async () => {
+test("a recorded track: a trip's own points, played again in a new trip, earn the same stamps (choice 12)", async (t) => {
+  useClock(t);
   const { k, run } = await anApp();
-  const { trip: first } = await run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' });
-  await run.finished;
-  const { trip } = await run.start({ kind: 'trip', trip: first }, { speed: 'fast' });
-  await run.finished;
+  const { trip: first } = await simAtOnce(run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' }));
+  await simAtOnce(run.finished);
+  const { trip } = await simAtOnce(run.start({ kind: 'trip', trip: first }, { speed: 'fast' }));
+  await simAtOnce(run.finished);
   assert.equal(run.state?.error, null);
   assert.equal(run.state?.title, 'Big Sur on Highway 1: Monterey to Cambria (simulation) (simulation)');
   const j = await readJourney({ store: k.store, ws: k.ws, trip });
@@ -130,11 +135,12 @@ test("a recorded track: a trip's own points, played again in a new trip, earn th
   assert.equal((await k.ws.readJSON(trip, '/bookings/lodge.json')).confirmation, 'CPL-5531');
 });
 
-test('at ten times real time it plays on its clock, pauses, changes speed and stops; stopped, everything is as it was', async () => {
+test('at ten times real time it plays on its clock, pauses, changes speed and stops; stopped, everything is as it was', async (t) => {
+  useClock(t);
   const base = new ManualClock(0);
   const { k, live, run } = await anApp({ base });
   const short = { name: 'Around Monterey', start: '2026-11-27T09:00:00-08:00', timezone: LA, route: [{ ...MONTEREY, leave: '09:05' }, { ...BIXBY, arrive: '09:35' }], endMin: 10 };
-  await run.start({ kind: 'itinerary', itinerary: short }, { speed: 10 });
+  await simAtOnce(run.start({ kind: 'itinerary', itinerary: short }, { speed: 10 }));
   const t0 = /** @type {number} */ (run.now());
   await base.advanceTo(60_000, () => live.settled());
   assert.equal(run.now(), t0 + 600_000); // a minute is ten
@@ -148,26 +154,28 @@ test('at ten times real time it plays on its clock, pauses, changes speed and st
   await base.advanceTo(150_000, () => live.settled());
   assert.equal(run.now(), t0 + 600_000 + 1_800_000);
   run.stop();
-  await run.finished;
+  await simAtOnce(run.finished);
   assert.deepEqual([run.state?.done, run.state?.stopped], [true, true]);
   assert.deepEqual([live.simulating, live.on, k.agent.target], [false, false, k.trip]);
   assert.ok((await k.store.tx(['events'], 'readonly', (t) => t.listEvents(/** @type {string} */ (run.state?.trip), { types: ['location'] }))).length > 10);
 });
 
-test('opening another trip stops the simulation; that trip stays open, and nothing of the simulation goes into it (choice 10)', async () => {
+test('opening another trip stops the simulation; that trip stays open, and nothing of the simulation goes into it (choice 10)', async (t) => {
+  useClock(t);
   const base = new ManualClock(0);
   const { k, live, run } = await anApp({ base });
   const other = await createTrip(k.ws, { title: 'Kyoto in spring' });
-  await run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 10 });
+  await simAtOnce(run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 10 }));
   await base.advanceTo(120_000, () => live.settled()); // twenty minutes into the drive
   await k.agent.open(other);
   await base.advanceTo(240_000, () => live.settled());
-  await run.finished;
+  await simAtOnce(run.finished);
   assert.deepEqual([run.state?.stopped, run.state?.done, k.agent.target], [true, true, other]);
   assert.deepEqual(await k.store.tx(['events'], 'readonly', (t) => t.listEvents(other, { types: ['location', 'trigger.fired'] })), []);
 });
 
-test('a broken itinerary is a plain error, and no trip is made; one already running refuses a second', async () => {
+test('a broken itinerary is a plain error, and no trip is made; one already running refuses a second', async (t) => {
+  useClock(t);
   /** @type {string[]} */
   const forgot = [];
   const { k, run } = await anApp({ llm: { forgetScope: async (/** @type {string} */ id) => { forgot.push(id); return { queued: 0 }; } } });
@@ -178,19 +186,20 @@ test('a broken itinerary is a plain error, and no trip is made; one already runn
   assert.equal(forgot.length, 1, 'the trip it made and removed: what a provider kept of it is deleted too (G2)');
   assert.match(forgot[0], /^trip-/);
   assert.equal(run.running, false);
-  await run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' });
+  await simAtOnce(run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' }));
   await assert.rejects(run.start({ kind: 'itinerary', itinerary: DRIVE }), /^Error: A simulation is already running\. Stop it first\.$/);
   run.stop();
-  await run.finished;
+  await simAtOnce(run.finished);
 });
 
-test("the simulation's trip opens with live mode already on the simulation's clock: no check of it on the real clock first", async () => {
+test("the simulation's trip opens with live mode already on the simulation's clock: no check of it on the real clock first", async (t) => {
+  useClock(t);
   const { k, live, run } = await anApp();
   /** @type {boolean[]} */
   const simulating = [];
   k.agent.on('open', (/** @type {{ trip: string | null }} */ o) => { if (o.trip !== k.trip) simulating.push(live.simulating); });
-  await run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' });
-  await run.finished;
+  await simAtOnce(run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' }));
+  await simAtOnce(run.finished);
   assert.deepEqual(simulating, [true]);
   assert.equal(run.state?.error, null);
 });

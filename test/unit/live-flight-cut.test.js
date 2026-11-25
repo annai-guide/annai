@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { tone, soon } from './koe-live-kit.js';
 import { SAID, PASS, FOR_USER, LOOKS, CONT, tell, tell2, notesIn, shown, lines, words, cues, wait, start, quietSession } from './live-flight-kit.js';
+import { idleAtOnce } from './agent-kit.js';
 
 const LUNCH = { said: 'Lunch is at noon.', audio: tone(0.5) };
 const OKAY = { said: 'Okay.', audio: tone(0.3) };
@@ -50,7 +51,7 @@ test('annai\'s urgent reminder cuts in while she says a note: the note is shown 
     await urgent(k);
     await soon(async () => (await words(k)).includes('Leave now for the ferry.'), 8000);
     await wait(500);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await shown(k), [[FOR_USER, false]], 'the note, not the reminder');
     assert.ok((await lines(k)).some((l) => l.text.startsWith('The fuel') && l.cut));
   } finally {
@@ -66,7 +67,7 @@ test('annai\'s urgent reminder cuts in on a note, and her answer to it says noth
     await urgent(k);
     await soon(async () => cues(k).length > 0, 14_000); // once the urgent mark's own bound has passed (URGENT_S, 8 s: no sound of hers came)
     await soon(async () => (await words(k)).includes('Leave now for the ferry.'), 8000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await shown(k), [[FOR_USER, false]]);
   } finally {
     w.stop();
@@ -85,7 +86,7 @@ test('Kokoro\'s immediate note cuts in while she says a note, and a tap stops he
     await wait(800);
     k.agent.tap();
     await wait(1000);
-    await k.agent.idle();
+    await idleAtOnce(k, 3000 + 2000); // the cut turn still ends at its 3 s (tone(3)), as Gemini's do, on the real clock (1197 ms after the 1 s, measured)
     assert.deepEqual(await shown(k), [[NOW, false]], 'the first note, replaced, is neither shown nor asked for');
     assert.deepEqual(cues(k), []);
   } finally {
@@ -108,7 +109,7 @@ test('Kokoro\'s immediate note replaces Kokoro\'s notes still waiting too: one f
     await k.agent.channel.send('kokoro', `Tell the user: ${NOW}`, 'immediate', 'tool', undefined, undefined, false, NOW);
     await soon(async () => (await words(k)).includes(NOW), 10_000);
     await wait(2500); // what waits would go in now
-    await k.agent.idle();
+    await idleAtOnce(k);
     w.stop();
     assert.ok(!notesIn(k).some((t) => /pass closes|windy/.test(t)), `the waiting notes never went in: ${JSON.stringify(notesIn(k))}`);
     assert.ok(!(await words(k)).includes(PASS), 'the waiting note was never said');
@@ -132,7 +133,7 @@ test('Kokoro\'s immediate note cuts in while she says annai\'s reminder: the rem
     await k.agent.channel.send('kokoro', `Tell the user: ${NOW}`, 'immediate', 'tool', undefined, undefined, false, NOW);
     await soon(async () => (await words(k)).includes(NOW), 8000);
     await wait(500);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await shown(k), [[REMIND, false]], 'the reminder, on a silent card, and not the note she said');
     assert.deepEqual(cues(k), []);
   } finally {

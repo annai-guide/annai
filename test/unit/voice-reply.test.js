@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until } from './agent-kit.js';
+import { agentKit, until, idleAtOnce } from './agent-kit.js';
 import { useClock } from './clock.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 
@@ -24,7 +24,7 @@ async function kit(t, steps) {
 test("her reply's second speak call reads 「東京駅。」 in the language of the first's 「今日は新宿に行きましょう。」 (main: the first listed in Han, Chinese)", async (t) => {
   const k = await kit(t, [{ toolCalls: [speak('今日は新宿に行きましょう。'), speak('東京駅。'), sleep] }]);
   k.agent.send('今日はどこに行く？');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(read(k), [['今日は新宿に行きましょう。', 'ja-JP'], ['東京駅。', 'ja-JP']]);
 });
 
@@ -39,7 +39,7 @@ test("a first speak that played as it streamed (its first sentence before its ca
   const arrives = Math.ceil(JSON.stringify({ text: first }).length / 8) * 15;
   const sent = Date.now();
   k.agent.send('今日はどこに行く？');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.ok(saidAt[0] - sent < arrives, `the first sentence played ${saidAt[0] - sent} ms in, the call had arrived by ${arrives}`);
   assert.deepEqual(read(k), [['今日は新宿に行きましょう。', 'ja-JP'], ['駅は近いです。', 'ja-JP'], ['東京駅。', 'ja-JP']]);
 });
@@ -53,23 +53,23 @@ test('her question said aloud after a speak call reads in the language of her re
   await until(() => k.agent.pendingId !== null && k.platform.said.length === 2);
   assert.deepEqual(read(k), [['今日は新宿に行きましょう。', 'ja-JP'], ['東京駅？', 'ja-JP']]);
   k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'はい');
-  await k.agent.idle();
+  await idleAtOnce(k);
 });
 
 test("a reply's first utterance, and a new turn's, start with nothing before them: 「東京駅。」 alone is the first listed in Han, whatever was said before", async (t) => {
   const k = await kit(t, [{ toolCalls: [speak('東京駅。'), speak('今日は新宿に行きましょう。'), sleep] }, { toolCalls: [speak('東京駅。'), sleep] }]);
   k.agent.send('今日はどこに行く？');
-  await k.agent.idle();
+  await idleAtOnce(k);
   k.agent.send('駅は？');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(read(k), [['東京駅。', 'zh-CN'], ['今日は新宿に行きましょう。', 'ja-JP'], ['東京駅。', 'zh-CN']]);
 });
 
 test("a sentence of her reply is read by the ones before it in its own call, never by the ones after it: 「東京駅。今日は新宿に行きましょう。」 is zh-CN, then ja-JP; 「今日は新宿に行きましょう。東京駅。」 is ja-JP twice", async (t) => {
   const k = await kit(t, [{ toolCalls: [speak('東京駅。今日は新宿に行きましょう。'), sleep] }, { toolCalls: [speak('今日は新宿に行きましょう。東京駅。'), sleep] }]);
   k.agent.send('今日はどこに行く？');
-  await k.agent.idle();
+  await idleAtOnce(k);
   k.agent.send('駅は？');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(read(k), [['東京駅。', 'zh-CN'], ['今日は新宿に行きましょう。', 'ja-JP'], ['今日は新宿に行きましょう。', 'ja-JP'], ['東京駅。', 'ja-JP']]);
 });

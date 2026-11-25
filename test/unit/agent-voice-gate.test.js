@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until, hear } from './agent-kit.js';
+import { agentKit, until, hear, idleAtOnce } from './agent-kit.js';
 import { useClock } from './clock.js';
 
 const choose = (/** @type {'A' | 'B'} */ letter) => ({ toolCalls: [{ name: 'decide', input: { option: letter } }] });
@@ -17,7 +17,7 @@ test('chatter after she speaks is recorded, and when her window ends she goes ba
   k.agent.send('What is ahead?');
   await until(() => k.agent.state.name === 'listening');
   await hear(k, 'where-lunch');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const speak = (await k.events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === 'speak');
   assert.equal(speak.data.content, 'Said aloud. Heard nothing (20 seconds).');
   const [heard] = await k.events(['heard']);
@@ -36,7 +36,7 @@ test('meant for Shiori, or unsure: it reaches the main model (spec §10.4)', asy
     k.agent.send('Lunch?');
     await until(() => k.agent.state.name === 'listening');
     await hear(k, 'first-one');
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(mainRequests(k).length, 2, String(gate));
     assert.equal((await k.events(['heard']))[0].data.gate, gate);
   }
@@ -48,14 +48,14 @@ test("a tap's first words need no gate; without a quick-decision model there is 
   k.agent.tap();
   await until(() => k.agent.state.name === 'listening');
   await hear(k, 'where-eat');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(gateRequests(k).length, 0);
   assert.equal(mainRequests(k).length, 1);
   const plain = await agentKit([[speakOnly('Want tacos?'), say('OK.')]], { voice: { speechIn: ['m-hear'] } });
   plain.agent.send('Lunch?');
   await until(() => plain.agent.state.name === 'listening');
   await hear(plain, 'first-one');
-  await plain.agent.idle();
+  await idleAtOnce(plain);
   assert.equal((await plain.events(['heard']))[0].data.gate, undefined);
   assert.equal(mainRequests(plain).length, 2);
 });
@@ -72,7 +72,7 @@ test('chatter while she thinks is written in at her next step, and wakes nothing
   await hear(k, 'first-one');
   await until(() => mainRequests(k).length === 2);
   await hear(k, 'gas-station');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(mainRequests(k).length, 3, 'chatter wakes no turn of its own');
   assert.deepEqual(mainRequests(k)[2].messages.at(-1).parts.slice(-2), [{ type: 'text', text: '[heard, not meant for you]' }, { type: 'text', text: 'did you lock the car' }]);
   const chatter = (await k.events(['heard']))[1];
@@ -91,7 +91,7 @@ test('chatter during an ask is written in, and the buttons keep waiting (spec §
   await until(() => k.agent.state.name === 'waiting');
   const ask = (await k.events(['tool.call'])).find((/** @type {any} */ e) => e.data.name === 'ask');
   k.agent.answer(ask.data.id, 'Keep it');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await k.events(['tool.result'])).find((/** @type {any} */ e) => e.data.name === 'ask').data.content, 'The user chose: Keep it');
   const heard = await k.events(['heard']);
   assert.equal(heard.length, 1);
@@ -107,7 +107,7 @@ test('chatter leaves her turn going: a later speak in the same reply is said; th
   k.agent.send('What is ahead?');
   await until(() => k.agent.state.name === 'listening');
   await hear(k, 'where-lunch');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const [a, b] = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'speak');
   assert.match(a.data.content, /Heard nothing/);
   assert.match(b.data.content, /Heard nothing/);
@@ -119,7 +119,7 @@ test('chatter leaves her turn going: a later speak in the same reply is said; th
   await hear(k, 'gas-station');
   await until(() => mainRequests(k).length === 2);
   await hear(k, 'first-one');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.match(gateRequests(k)[0].messages[0].parts[0].text, /She: "Bixby Bridge is ahead\."/, 'the speak it listens after');
   assert.match(gateRequests(k).at(-1).messages[0].parts[0].text, /She: "Bixby Bridge is ahead\."\nShe: "Want to stop there\?"/);
   assert.doesNotMatch(gateRequests(k).at(-1).messages[0].parts[0].text, /turn the radio down/, 'what it set aside, written at the turn\'s end, is not a line');
@@ -134,6 +134,6 @@ test("the gate is shown the question an ask just spoke aloud, so the answer to i
   k.agent.send('Which way should we go?');
   await until(() => k.agent.state.name === 'listening');
   await hear(k, 'where-lunch');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.match(gateRequests(k)[0].messages[0].parts[0].text, /She: "Coastal or inland\?"/);
 });

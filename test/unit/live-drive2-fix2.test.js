@@ -2,10 +2,11 @@
 // order of what the user sends, and a note that waited for a turnComplete that never came.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { until, agentKit } from './agent-kit.js';
+import { until, agentKit, idleAtOnce } from './agent-kit.js';
 import { liveKit, texts, soon, tone } from './koe-live-kit.js';
 import { hum, quiet, cat } from './voice-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
+import { HOLD_MS } from '../../src/core/koe/live.js';
 
 const wait = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
 const RATE = 16_000;
@@ -29,7 +30,7 @@ async function learned(k, db = -5) {
   k.platform.mic.feed(room(1.5), RATE);
   k.platform.mic.feed(cat(hum(0.6, 0.5), room(1)), RATE);
   await soon(async () => (await k.events(['live.turn'])).length === 1, 3000);
-  await k.agent.live.idle();
+  await idleAtOnce({ agent: k.agent.live });
   await wait(1050);
   k.agent.live.level.reset();
   k.agent.live.level.heard(db);
@@ -46,11 +47,11 @@ test('1: a tap while Ignoring, music on: the lyric after it teaches nothing, rea
     assert.equal(k.agent.live.tap(), 'listening');
     k.platform.mic.feed(cat(room(0.3), hum(0.6, 0.05), room(1)), RATE); // the first sound after the tap: a lyric, at about -26 dB
     await soon(async () => (await k.events(['heard'])).length === heard + 1, 3000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     assert.equal(k.agent.live.level.db, -5, 'let go: nothing learned, nothing forgotten');
     k.platform.mic.feed(cat(hum(0.6, 0.05), room(1)), RATE);
     await soon(async () => (await k.events(['heard'])).length === heard + 2, 3000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual((await k.events(['heard'])).slice(heard).map((/** @type {any} */ e) => e.data.ownLevel), [undefined, undefined]);
     assert.deepEqual(await cues(k), []);
   } finally {
@@ -66,17 +67,17 @@ test('1: a first answered lyric, music on, doesn\'t make the next lyrics the use
     await tell(k);
     await until(() => k.agent.live.listening, 3000);
     await soon(async () => (await lines(k)).length === 1, 3000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     k.platform.mic.feed(cat(room(1.5), hum(0.6, 0.1), room(1)), RATE);
     await soon(async () => (await lines(k)).length === 2, 3000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     assert.equal(k.agent.live.level.db, null);
     for (const n of [2, 3]) {
       k.platform.mic.feed(cat(hum(0.6, 0.1), room(1)), RATE);
       await soon(async () => (await k.events(['heard'])).length === n, 3000);
-      await k.agent.live.idle();
+      await idleAtOnce({ agent: k.agent.live });
     }
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual((await k.events(['heard'])).slice(1).map((/** @type {any} */ e) => e.data.ownLevel), [undefined, undefined]);
     assert.deepEqual(await cues(k), []);
   } finally {
@@ -93,8 +94,8 @@ test('1: turns at the user\'s own level, let go, cue Kokoro once until an exchan
     const turn = async (/** @type {number} */ n) => {
       k.platform.mic.feed(loud, RATE);
       await soon(async () => (await k.events(['heard'])).length === heard + n, 3000);
-      await k.agent.live.idle();
-      await k.agent.idle();
+      await idleAtOnce({ agent: k.agent.live }, HOLD_MS + 2000); // her voice holds HOLD_MS (1.2 s) after the user's words end, on the real clock (1201 ms measured)
+      await idleAtOnce(k);
     };
     await turn(1);
     await turn(2);
@@ -118,7 +119,7 @@ test('decision 8: a real first turn let go in a note\'s session, in a quiet car 
     await tell(k);
     await until(() => k.agent.live.listening, 3000);
     await soon(async () => (await lines(k)).length === 1, 3000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     k.platform.mic.feed(cat(quiet(1.5), hum(0.6, 0.1), quiet(1)), RATE);
     await soon(async () => (await k.events(['heard'])).length === 1, 3000);
     await soon(async () => (await cues(k)).length === 1, 3000);
@@ -136,7 +137,7 @@ test('decision 7: a loud answered lyric leaves the normal voice able to open a t
     k.agent.live.level.heard(-35);
     k.platform.mic.feed(cat(hum(0.6, 0.5), room(1)), RATE); // about -8 dB, answered
     await soon(async () => (await lines(k)).length === 1, 3000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     const before = starts(k);
     k.platform.mic.feed(cat(hum(0.6, 0.03), room(1)), RATE); // about -33 dB: the normal voice
     await soon(async () => starts(k) === before + 1, 1000);
@@ -180,7 +181,7 @@ test('2: an answer after the rescue lets a later dead stretch reconnect once mor
     await soon(async () => k.agent.live.busy === false, 3000);
     await burst(0); // answered
     await soon(async () => (await lines(k)).length === 1, 3000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     await burst(3);
     await burst(4);
     await soon(async () => k.server.connections().length === 3, 3000);
@@ -236,7 +237,7 @@ test('4: Classic\'s tap while sound stays stuck shows the sound card, not one ab
   k.voice.soundStopped();
   k.platform.player.unlock = async () => false;
   k.agent.tap();
-  await k.agent.idle();
+  await idleAtOnce(k);
   await soon(async () => k.notices.some((/** @type {any} */ n) => n.key === 'sound'), 1000);
   assert.deepEqual(k.notices.filter((/** @type {any} */ n) => /microphone/i.test(n.title)), []);
   assert.equal(k.platform.mic.isOpen(), false);
@@ -363,10 +364,10 @@ test('6: a turnComplete that comes after the bound is that turn\'s: never an ans
     await opened(k);
     k.platform.mic.feed(cat(room(1.5), hum(0.6, 0.5), room(1)), RATE);
     await soon(async () => (await lines(k)).length === 1, 3000); // ended at the bound, about 350 ms in
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     k.platform.mic.feed(cat(hum(0.6, 0.5), room(1)), RATE);
     await soon(async () => (await lines(k)).length === 2, 3000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual((await k.events(['heard'])).map((/** @type {any} */ e) => e.data.dismissed), [undefined, undefined]);
   } finally {
     await k.done();

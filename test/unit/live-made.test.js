@@ -7,7 +7,7 @@
 // would empty, a quiet tail of 0.22 to 0.56 s, pauses up to 1.23 s. Lines and places are synthetic.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { until } from './agent-kit.js';
+import { until, idleAtOnce } from './agent-kit.js';
 import { liveKit, texts, soon, tone, say } from './koe-live-kit.js';
 import { hum, quiet, cat } from './voice-kit.js';
 
@@ -56,7 +56,7 @@ async function noteSaid({ note = { said: SAID, audio: tone(1.5) }, turns = [ANSW
   await until(() => k.agent.live.listening, 3000);
   await say(k, 'where-eat');
   await soon(async () => (await k.events(['out.speak'])).length === 1, 4000);
-  await k.agent.live.idle();
+  await idleAtOnce({ agent: k.agent.live });
   k.platform.mic.feed(quiet(0.5), RATE);
   await tell(k);
   await soon(async () => k.agent.live.view.name === 'speaking', 3000);
@@ -81,7 +81,7 @@ test('the user answers once all of her sound has played, before the provider end
     assert.ok(after < 1400, `their turn began ${after} ms after her sound, before the provider's end`);
     await soon(async () => (await lines(k)).some(([text]) => text === ANSWER.said), 8000);
     await wait(1000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await shown(k), [], 'nothing shown: they heard it');
     assert.equal(await wholeNotes(k), 1, 'her line written whole, once');
     assert.deepEqual(asks(k), [], 'nothing asked again');
@@ -111,7 +111,7 @@ test('the user answers in the quiet tail of her sound, as real Gemini\'s ends: p
     assert.ok(after < 1400, `their turn began ${after} ms after her last loud sample, inside the 1.5 s tail`);
     await soon(async () => (await lines(k)).some(([text]) => text === ANSWER.said), 8000);
     await wait(500);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await shown(k), [], 'nothing shown: they heard it');
     assert.equal(await wholeNotes(k), 1, 'her line written whole, once');
     assert.deepEqual(asks(k), []);
@@ -129,7 +129,7 @@ test('her note is all made and has no loud frame: a tap while it plays is a cut,
     await wait(at + 1000 - Date.now());
     k.agent.tap();
     await wait(1000);
-    await k.agent.idle();
+    await idleAtOnce(k, 3000 + 2000); // the cut turn still ends at its 3 s of sound, as Gemini's do, on the real clock (996 ms after the 1 s, measured)
     assert.deepEqual(await shown(k), [[FOR_USER, false]]);
     assert.equal(await wholeNotes(k), 0);
   } finally {
@@ -160,7 +160,7 @@ for (const [what, dbfs, heardWhole] of /** @type {const} */ ([['a soft last syll
       assert.ok(after < 1400, `their turn began ${after} ms after her loud words, inside the 1.5 s syllable`);
       await soon(async () => (await lines(k)).some(([text]) => text === ANSWER.said), 8000);
       await wait(500);
-      await k.agent.idle();
+      await idleAtOnce(k);
       assert.deepEqual(await shown(k), heardWhole ? [] : [[FOR_USER, false]]);
       assert.equal(await wholeNotes(k), heardWhole ? 1 : 0);
     } finally {
@@ -176,7 +176,7 @@ test('a tap in a pause of her sound, the provider still making the rest of the n
     assert.equal(k.agent.live.view.name, 'speaking');
     k.agent.tap();
     await wait(2500); // the rest, made and ended meanwhile, changes nothing
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await shown(k), [[FOR_USER, false]], 'what they never heard is shown, and not said');
     assert.equal(await wholeNotes(k), 0);
     assert.ok((await lines(k)).some(([text, cut]) => cut && /✂$/.test(String(text))), JSON.stringify(await lines(k)));
@@ -193,7 +193,7 @@ test('another trip opened in a pause of her sound: a cut, so the note is shown i
     const { createTrip } = await import('../../src/core/scopes.js');
     const other = await createTrip(k.ws, { title: 'Carmel' });
     await k.agent.open(other);
-    await k.agent.idle();
+    await idleAtOnce(k);
     await wait(300);
     assert.deepEqual(await cards(k, k.trip), [FOR_USER], 'shown in the trip left');
     assert.deepEqual(await cards(k, other), []);
@@ -212,7 +212,7 @@ test('the page out of view in a pause of her sound, and back: a cut, so the note
     hidden(false);
     await k.agent.shown();
     await soon(async () => (await wholeNotes(k)) === 1, 8000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(wentIn(k), 2, 'it went in again: they never heard its rest');
     assert.deepEqual(await shown(k), []);
   } finally {
@@ -235,7 +235,7 @@ for (const how of /** @type {const} */ (['a tap', 'the page out of view'])) {
         await k.agent.shown();
       }
       await wait(2500);
-      await k.agent.idle();
+      await idleAtOnce(k);
       assert.deepEqual(await shown(k), []);
       assert.equal(await wholeNotes(k), 1, 'written whole, once');
       assert.equal(wentIn(k), 1, 'not sent again');
@@ -267,7 +267,7 @@ test('a tap while her sound for a note all made still plays (the provider had ma
     await wait(at + 1000 - Date.now());
     k.agent.tap();
     await wait(1000);
-    await k.agent.idle();
+    await idleAtOnce(k, 3000 + 2000); // the cut turn still ends at its 3 s of sound, as Gemini's do, on the real clock (995 ms after the 1 s, measured)
     assert.deepEqual(await shown(k), [[FOR_USER, false]]);
     assert.equal(await wholeNotes(k), 0);
   } finally {
@@ -316,7 +316,7 @@ test('the user says nothing in the gap: her continuation, a turn of its own, say
   try {
     await soon(async () => (await lines(k)).some(([text]) => text === CONTINUES.said), 12_000);
     await wait(500);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual((await lines(k)).map(([text]) => text).slice(-2), ['Checking your notes.', CONTINUES.said]);
     assert.deepEqual(await shown(k), []);
     assert.deepEqual(asks(k), []);
@@ -370,7 +370,7 @@ test("the page out of view in the quiet tail of a turn that goes on, after its t
     hidden(false);
     await k.agent.shown();
     await soon(async () => (await wholeNotes(k)) === 1, 8000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(wentIn(k), 2, 'it went in again: her continuation, which would have said it, never came');
     assert.deepEqual(await shown(k), []);
   } finally {
@@ -386,7 +386,7 @@ test('a provider that never says: the user answering at once still gets the sile
   try {
     await answersAtOnce(k, at, 1500);
     await soon(async () => (await lines(k)).some(([text]) => text === ANSWER.said), 8000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await shown(k), [[FOR_USER, false]]);
     assert.equal(await wholeNotes(k), 1);
   } finally {
@@ -400,7 +400,7 @@ test('a provider that never says: a tap in a pause of her sound counts the note 
     await wait(at + 1350 - Date.now());
     k.agent.tap();
     await wait(2500);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await shown(k), []);
     assert.equal(await wholeNotes(k), 0, 'its line holds only what had come, unmarked');
     assert.ok((await lines(k)).some(([text, cut]) => !cut && String(text).startsWith('The fuel')), JSON.stringify(await lines(k)));
@@ -416,7 +416,7 @@ test('a provider that never says: another trip opened in a pause of her sound sh
     const { createTrip } = await import('../../src/core/scopes.js');
     const other = await createTrip(k.ws, { title: 'Carmel' });
     await k.agent.open(other);
-    await k.agent.idle();
+    await idleAtOnce(k);
     await wait(300);
     assert.deepEqual(await cards(k, k.trip), []);
   } finally {
