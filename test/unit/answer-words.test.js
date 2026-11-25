@@ -62,30 +62,75 @@ test('two links and a bare address: the links by their names, the bare address b
   const s = await shown(t, text);
   assert.deepEqual(s.cards, [["Shiori's answer", words]]);
   assert.deepEqual(s.given, [words]);
-  assert.ok(!s.voiced.join(' ').includes('http'), s.voiced.join(' '));
+  assert.deepEqual(s.voiced, ['Directions: Apple Maps or Google Maps.', 'Hours at sample-lake.example.org today.']);
 });
 
-test('a Japanese line with a link: the link by its name, a bare address cut at 。 by its site, the card and the voice alike', async (t) => {
+test('a Japanese line with a link: the link by its name, a bare address cut at 。 by its site and the title in it, the card and the voice alike', async (t) => {
   const text = `正法寺は[地図](${MAP})で見られます。詳しくは https://ja.wikipedia.org/wiki/正法寺。`;
-  const words = '正法寺は地図で見られます。詳しくは ja.wikipedia.org。';
+  const words = '正法寺は地図で見られます。詳しくは ja.wikipedia.org 正法寺。';
   const s = await shown(t, text);
   assert.deepEqual(s.cards, [["Shiori's answer", words]]);
   assert.deepEqual(s.given, [words]);
-  assert.deepEqual(s.voiced, ['正法寺は地図で見られます。', '詳しくは ja.wikipedia.org。']);
+  assert.deepEqual(s.voiced, ['正法寺は地図で見られます。', '詳しくは ja.wikipedia.org 正法寺。']);
 });
 
-test("Kokoro's words with a heading, a list and code: no `#`, `*` or backtick, each block on a line of its own", async (t) => {
-  const s = await shown(t, '## Tomorrow\n* **Ferry** at 10:40\n* Gate `B3`\n1. Walk to the pier\n2. Board');
-  assert.deepEqual(s.cards, [["Shiori's answer", 'Tomorrow\nFerry at 10:40\nGate B3\n1. Walk to the pier\n2. Board']]);
+test("Kokoro's words with a heading, a list, code and italics: no `#`, `*`, `_` or backtick, each block on a line of its own; a fenced block as written", async (t) => {
+  const s = await shown(t, '## Tomorrow\n* **Ferry** at 10:40\n* Gate `B3`\n1. Walk to the pier\n2. Board\nGate *1234* and the _side_ door.\n```\nrun *a* and *b*\n- kept\n# kept\n```\nDone.');
+  assert.deepEqual(s.cards, [["Shiori's answer", 'Tomorrow\nFerry at 10:40\nGate B3\n1. Walk to the pier\n2. Board\nGate 1234 and the side door.\nrun *a* and *b*\n- kept\n# kept\nDone.']]);
 });
 
-test("a reminder that isn't Kokoro's words (a watch's) keeps its words as written in the card and the voice: Shiori's own are not changed here", async (t) => {
+test('a numbered line keeps its number as written, in the card and in the voice: a list starting at 2, blank lines between items, a nested bullet, a date', async (t) => {
+  for (const [text, words] of [
+    ['Two options are left:\n2. The 10:40 ferry\n3. The 12:15 ferry', 'Two options are left:\n2. The 10:40 ferry\n3. The 12:15 ferry'],
+    ['1. Take the ferry at 10:40.\n\n2. Walk to the pier.\n\n3. Board.', '1. Take the ferry at 10:40.\n2. Walk to the pier.\n3. Board.'],
+    ['1. Ferry at 10:40\n   - from pier B\n2. Bus at **11:05**', '1. Ferry at 10:40\nfrom pier B\n2. Bus at 11:05'],
+    ['24. Dezember ist der Markt geschlossen.', '24. Dezember ist der Markt geschlossen.'],
+  ]) {
+    const s = await shown(t, text);
+    assert.deepEqual(s.cards, [["Shiori's answer", words]], text);
+    assert.deepEqual(s.given, [words], text);
+  }
+});
+
+test('a bare address with a site in another script is read by the site as written, not as punycode, in the card and in the voice', async (t) => {
+  const s = await shown(t, 'See https://www.サンプル.example.jp/shop?x=1 today.');
+  assert.deepEqual(s.cards, [["Shiori's answer", 'See サンプル.example.jp today.']]);
+  assert.deepEqual(s.given, ['See サンプル.example.jp today.']);
+  assert.deepEqual(s.voiced, ['See サンプル.example.jp today.']);
+});
+
+test("words written right after an address with no space (the parser takes them into it) are kept, and so is a title in another script, percent-encoded or not", async (t) => {
+  const title = 'サンプル湖';
+  for (const [text, words] of [
+    ['詳細はhttps://www.sample-tera.example.jp/をご覧ください。', '詳細はsample-tera.example.jp をご覧ください。'],
+    ['访问https://www.sample-hu.example.cn/了解更多信息', '访问sample-hu.example.cn 了解更多信息'],
+    [`詳しくは https://ja.wikipedia.org/wiki/${encodeURIComponent(title)} を参照。`, '詳しくは ja.wikipedia.org サンプル湖 を参照。'],
+    [`詳しくは https://ja.wikipedia.org/wiki/${title}_%28北区%29 を参照。`, '詳しくは ja.wikipedia.org サンプル湖 (北区) を参照。'],
+    ['Cut mid-escape https://sample.example.org/wiki/%E3%82 today.', 'Cut mid-escape sample.example.org today.'],
+  ]) {
+    const s = await shown(t, text);
+    assert.deepEqual(s.cards, [["Shiori's answer", words]], text);
+    assert.deepEqual(s.given, [words], text);
+  }
+});
+
+test("a key in Kokoro's words is blanked once, and the card and the voice (a provider's, the phone's) get that one text", async (t) => {
+  for (const phone of [false, true]) {
+    const s = await shown(t, 'Your code is Bearer sk12345678abc now.', { phone });
+    assert.deepEqual(s.cards, [["Shiori's answer", 'Your code is Bearer «key» now.']]);
+    assert.deepEqual(s.given, ['Your code is Bearer «key» now.']);
+    assert.deepEqual(s.voiced, ['Your code is Bearer «key» now.']);
+  }
+});
+
+test("a reminder without the answer flag keeps its words as written in the card and the voice: Shiori's own (a watch's) are not changed here", async (t) => {
   const s = await shown(t, 'Show code *1234* at the gate.', { answer: false });
   assert.deepEqual(s.cards, [['Reminder', 'Show code *1234* at the gate.']]);
   assert.deepEqual(s.given, ['Show code *1234* at the gate.']);
 });
 
-test("through the halves: Kokoro's gated speak that Koe never passes on shows its links by their names on the card, and the line keeps them", async () => {
+test("through the halves: Kokoro's gated speak that Koe never passes on shows its links by their names on the card, and the line keeps them", async (t) => {
+  useClock(t);
   const text = `It opens at 11:30 today: [Maps](${MAP}).`;
   const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }] }]], {
     koe: { type: [{ toolCalls: [{ name: 'speak', input: { text: 'Let me check.' } }, { name: 'tell_kokoro', input: { text: 'Is Nepenthe open?' } }, { name: 'wait', input: { seconds: 600 } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }, { toolCalls: [{ name: 'sleep', input: {} }] }] },

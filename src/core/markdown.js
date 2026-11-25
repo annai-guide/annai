@@ -98,9 +98,25 @@ export function parseMarkdown(src) {
 }
 
 /**
+ * An address as words: its site as written (no scheme, no `www.`, cut at the first `/ ? # :`; not URL's punycode), then what it says in other than ASCII,
+ * percent-decoded: a title in Japanese or Cyrillic, or the words written right after it with no space, which the parser took into it (a known limitation),
+ * so a Japanese answer keeps them. @param {string} address
+ */
+function addressWords(address) {
+  const bare = address.replace(/^https?:\/\//i, '');
+  const [site] = bare.split(/[/?#:]/);
+  let path = bare.slice(site.length);
+  try {
+    path = decodeURIComponent(path);
+  } catch { /* a cut %XX: as written */ }
+  return [site.replace(/^www\./i, ''), ...path.split(/[/?#&=]/).filter((p) => /\P{ASCII}/u.test(p)).map((p) => p.replace(/_/g, ' '))].join(' ');
+}
+
+/**
  * A model's Markdown as plain words, for what draws no link and no mark: the card annai shows Kokoro's words in, and the voice (loop.js remind). The drawer's
- * reading, as words: a link by its name, one named by its address (a bare one) by its site; no marks of bold, italic, code, a heading or a list (a numbered
- * one keeps its numbers, as drawn); a block to a line. @param {string} src
+ * reading, as words, one line at a time (every rule of the inline reader is within a line): a link by its name, one named by its address (a bare one) by
+ * addressWords; no marks of bold, italic, code, a heading or a bullet; a number as written (the block reader keeps none, a blank line or a nested bullet
+ * would restart a count); a fenced block as written; no blank line and no fence line. @param {string} src
  */
 export function plainWords(src) {
   /** @param {Inline[]} c @returns {string} */
@@ -109,8 +125,18 @@ export function plainWords(src) {
     if (x.t === 'code') return x.c;
     if (x.t !== 'a') return words(x.c);
     const name = words(x.c);
-    return safeHref(name) ? new URL(x.href).hostname.replace(/^www\./, '') : name;
+    return safeHref(name) ? addressWords(x.href) : name;
   }).join('');
-  return parseMarkdown(src).map((b) => (b.t === 'pre' ? b.v : b.t === 'ul' ? b.items.map(words).join('\n')
-    : b.t === 'ol' ? b.items.map((it, i) => `${i + 1}. ${words(it)}`).join('\n') : words(b.c))).join('\n');
+  /** @type {string[]} */
+  const lines = [];
+  let fenced = false;
+  for (const line of String(src ?? '').slice(0, MD_MAX).replace(/\r\n?/g, '\n').split('\n')) {
+    if (line.startsWith('```')) {
+      fenced = !fenced;
+      continue;
+    }
+    const text = fenced ? line : words(parseInline(line.replace(/^(?:#{1,6}|\s*[-*])\s+/, '').trim()));
+    if (text.trim()) lines.push(text);
+  }
+  return lines.join('\n');
 }

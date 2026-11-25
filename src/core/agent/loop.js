@@ -687,9 +687,13 @@ export class Agent {
    * which are Shiori's or the plan's (no stored key is put in her context; one the traveller types reaches it as typed): they show as they are when the keys can't be read.
    * @param {Notice} n @param {{ own?: boolean }} [o]
    */
-  async #notice(n, { own = false } = {}) {
-    const shown = { ...n, title: await shownWithoutSecrets(this.store, n.title, { own: true }), body: await shownWithoutSecrets(this.store, n.body, { own }) };
-    this.#emit('notice', shown);
+  async #notice(n, o) {
+    this.#emit('notice', await this.#card(n, o));
+  }
+
+  /** The card as the user sees it: #notice's blanking, made once for a text that is also said (remind). @param {Notice} n @param {{ own?: boolean }} [o] @returns {Promise<Notice>} */
+  async #card(n, { own = false } = {}) {
+    return { ...n, title: await shownWithoutSecrets(this.store, n.title, { own: true }), body: await shownWithoutSecrets(this.store, n.body, { own }) };
   }
 
   /** @param {'state' | 'event' | 'notice' | 'open' | 'clear' | 'unsaved'} kind @param {any} x */
@@ -2098,10 +2102,11 @@ export class Agent {
       if (!kept) continue;
       const ev = { type: 'reminder', actor: 'system', data: { ...kept, ...(aloud ? { aloud: true } : {}), ...(o.unsaid ? { unsaid: true } : {}), ...(o.waiting ? { waiting: true } : {}) } };
       // A plan's reminder in the screens' words, made from its data; Kokoro's words as plain words, a link by its name (the card and the voice draw no
-      // link; the user saw the markdown itself, 2026-11-23); anyone else's as they wrote it.
-      const shown = r.plan ? planWords(r.plan) : r.answer ? plainWords(kept.text) : kept.text;
-      await this.#notice({ tone: 'info', title: r.answer ? t`Shiori's answer` : t`Reminder`, body: shown }, { own: true });
-      if (aloud) this.voice?.say(shown).catch(() => {});
+      // link; the user saw the markdown itself, 2026-11-23); anyone else's as they wrote it. The voice says the card's words, blanked of keys once.
+      const words = r.plan ? planWords(r.plan) : r.answer ? plainWords(kept.text) : kept.text;
+      const card = await this.#card({ tone: 'info', title: r.answer ? t`Shiori's answer` : t`Reminder`, body: words }, { own: true });
+      this.#emit('notice', card);
+      if (aloud) this.voice?.say(card.body).catch(() => {});
       await this.#logIn(scope, ev).catch((e) => this.#notSaved(e));
     }
   }
