@@ -81,15 +81,21 @@ export function noReader(kind, { plugin = false, photos = false } = {}) {
  * first words fails and rests 3 minutes, as any model does (§9.6); one whose send got no headers in its time fails, and rests as long only
  * once a later reader read the file in its place (something else reads meanwhile), else the next reading asks it again (§4.8); either way
  * the next reader is asked. Only a PDF's pages' drawing, which no call times, stops at DESCRIBE_PDF_S; all of it stops at signal (the
- * turn's stop). "Can read" means can and did: a reader that fails passes it on.
+ * turn's stop). "Can read" means can and did: a reader that fails passes it on. A photo goes to a reader as it came, its request copy,
+ * and a PDF's pages as copy makes them: the loop makes both for the readers' own photo limits too, as their records state them, when a
+ * model of the half sees no photos (loop.js #limits); a copy made before, for another list or setting, is as it was made. A reader that
+ * refuses a photo is not asked again with a copy of its own: the next reader is asked, and `learn` saves the limit its refusal states on
+ * its record, so the copies made from then on fit it while a model of the half sees none.
  * @param {FileToRead} file @param {{ input?: string[] }} model the model the reading is for
  * @param {{ llm: { call: Function, config: () => Promise<any>, bench: import('../llm/fallback.js').Bench }, half: 'one' | 'kokoro' | 'koe', pages: import('../pdf-pages.js').PdfPages | null,
  *   signal: AbortSignal, wakeId: string, scope: string, secondMs: number, explain: (e: unknown, role: string) => string | Promise<string>, store: import('../types.js').Store,
- *   shared?: boolean, copy?: (page: import('../pdf-pages.js').PageImage) => Promise<import('../pdf-pages.js').PageImage> }} o
+ *   shared?: boolean, copy?: (page: import('../pdf-pages.js').PageImage) => Promise<import('../pdf-pages.js').PageImage>,
+ *   learn?: (err: import('../llm/contract.js').ProviderError, modelId: string) => Promise<null> }} o
  *   explain: why a reader failed, in English for the model (the loop's, which knows whether the device is online, and blanks every key annai keeps);
  *   store: whose keys the PDF pages plugin's error is blanked of; shared: the half's turn shares the link with the other half's (loop.js), and
- *   so does each reader's send; copy: a page picture as a request sends it (the loop's: under the photos' request limits, by their encoder,
- *   spec §7.2), else each goes as drawn
+ *   so does each reader's send; copy: a page picture as a request sends it (the loop's: under the photos' request limits, the readers'
+ *   among them, by their encoder, spec §7.2), else each goes as drawn; learn: a reader's call refused for a photo (the loop's: saves the limit the
+ *   provider's words state on the reader's record, and answers null, no fix: the call is not retried)
  * @returns {Promise<Reading>}
  */
 export async function readFile(file, model, o) {
@@ -123,7 +129,7 @@ export async function readFile(file, model, o) {
       try {
         const sent = typeof parts === 'function' ? parts(role) : parts;
         const r = await o.llm.call({
-          role, level: 'off', signal: stop.signal, scope: o.scope, record: { tag: 'describe', wake: o.wakeId }, firstOutputMs: wait(role), shared: Boolean(o.shared),
+          role, level: 'off', signal: stop.signal, scope: o.scope, record: { tag: 'describe', wake: o.wakeId }, firstOutputMs: wait(role), shared: Boolean(o.shared), repairImages: o.learn,
           request: { system, maxOutput, messages: [{ role: 'user', parts: [...sent, { type: 'text', text: ask }] }] },
         });
         if (r.reply.text.trim()) {
