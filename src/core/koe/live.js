@@ -1521,8 +1521,8 @@ export class LiveKoe {
     // Heard, and answered by nothing at all: not meant for Koe (the model's own choice, proactive audio).
     const dismissed = !t?.spoken && !t?.tools;
     if (!dismissed) this.#poke(); // her turn ended: the quiet spell runs from here
-    // Nothing for what a session with nobody in it said (#idle): no voice is coming. (An urgent note's mark isn't matched to turns.)
-    else if (this.#urgent?.idle && !this.#urgent.spoke) this.#unmark();
+    // Its own question: no voice is coming for what a session with nobody in it said (#idle), a silent call alone too. (An urgent note's mark isn't matched to turns.)
+    if (this.#urgent?.idle && !this.#urgent.spoke && !t?.spoken && !t?.goesOn) this.#unmark();
     const h = this.#hear;
     this.#answered(dismissed, Boolean(t?.spoken));
     if (!t?.calls) this.#settle(t); // else once its calls are answered: a refused show passes nothing on
