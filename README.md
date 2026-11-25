@@ -109,6 +109,7 @@ memories afterwards.
 - What is around a place comes as the nearest 40 places and the nearest 50 Wikipedia articles, and the answer says how far each reaches (in a city centre the articles reach a few hundred metres). Offline, and online inside the pack's circles, the articles are the pack's: each language's nearest 20 at each stop and every 15 km of the way, with every listed language's summary of them; a language you add comes into the pack with its next download on Wi-Fi, and where Wikipedia's part of a download failed the pack panel says so.
 - Offline, a Wikivoyage guide only your own language's edition has (none in English) isn't in the pack yet (planned); online it is read. A stopped pack download goes on by itself an hour later on Wi-Fi (a hotspot says Wi-Fi too); "Download the rest" goes on at once.
 - An article's address from the places tools links whole in chat; one Shiori writes herself, or text written right after an address with no space, can link short or long.
+- A star Shiori writes before a code's digits or `#` (a gate's `*1234#`) always shows, and a phone or mail link reads with its number or address; other stars, tables and quotes she writes that annai can't read as she meant show as written ([docs/limitations.md](docs/limitations.md)).
 - To translate, or to correct a translation: [docs/translating.md](docs/translating.md).
 
 ## Principles
