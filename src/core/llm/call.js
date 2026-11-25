@@ -693,8 +693,8 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
   const hashOf = async (/** @type {string} */ data) => hashes.get(data) ?? hashes.set(data, await photoHash(data)).get(data);
   /** An upload of this request failed on the link at once (not made, or its answer broke off before its limit): its other new photos go as bytes without a try, and uploads stay on. */
   let dropped = false;
-  // Only what is sent is uploaded: a photo in the turns a kept turn already holds is left as it is.
-  for (const m of request.messages.slice(from)) {
+  // Only what is sent is uploaded: a photo in the turns a kept turn already holds is left as it is. from counts the messages portable sends, as the match does.
+  for (const m of portable(request.messages, model.providerId).slice(from)) {
     for (const p of m.parts) {
       if (p.type !== 'image' || !p.hash || !p.data || uploads.isOff(endpoint.id)) continue;
       const hash = /** @type {string} */ (await hashOf(p.data));
