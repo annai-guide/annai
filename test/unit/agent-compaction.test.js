@@ -317,6 +317,28 @@ test('a forced summary in a turn leaves words over the request size: another fol
   assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['1', '2', '3']);
 });
 
+test("a second cold summary in one turn is written from the first one's summary and the part after it, not from the conversation's first line (llm-rest-next)", async (t) => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const jump = clockOf(t);
+  // As above, with the cache cold when the long line comes: both forced summaries are the utility model's. The first takes the first message only; the
+  // second cuts inside the part the first kept, before the first's own record.
+  const k = await agentKit([[say('1'), say('2'), say('3')]], { utility: [{ text: 'They sent a greeting.' }, { text: 'They pasted a long text.' }], agent: { timers: { set: () => 1, clear: () => {} } } });
+  await updateAppSettings(k.ws, { shiori: { compaction: { maxRequestMiB: 1 } } });
+  for (const m of ['Hello from the first line', 'b'.repeat(2 ** 20 - 40_000)]) {
+    k.agent.send(m);
+    await idleAtOnce(k);
+  }
+  jump(61 * 60_000);
+  k.agent.send('c'.repeat(45_000));
+  await idleAtOnce(k);
+  assert.deepEqual((await k.events(['compaction'])).map((/** @type {any} */ e) => e.data.mode), ['cold', 'cold']);
+  const [first, second] = k.sent['model-u'].map((/** @type {any} */ r) => JSON.stringify(r.messages));
+  assert.ok(first.includes('Hello from the first line'), 'the first summarizes the first message');
+  assert.ok(second.includes('They sent a greeting.'), "the second is written from the first's summary");
+  assert.equal(second.includes('Hello from the first line'), false, 'and not from the line it summarized');
+  assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['1', '2', '3']);
+});
+
 for (const what of ['a photo', 'a PDF']) {
   test(`a cold return with ${what} of about 700 KB in the window brings no summary: the cold-start check leaves the window's files out too (size-forced-next)`, async (t) => {
     const { updateAppSettings } = await import('../../src/core/settings.js');

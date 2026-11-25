@@ -586,11 +586,13 @@ export class Transcript {
 
   /**
    * The conversation of a scope: the latest compaction's summary, then the events after the part
-   * it covers (spec §6.5), up to before (exclusive) when given; by one half's rules.
+   * it covers (spec §6.5), up to before (exclusive) when given; by one half's rules. With before, the latest summary whose part ends before it,
+   * wherever its own record is: a second summary in a turn cuts inside the part the first kept, before the first's record.
    * @param {Store} store @param {string} scope @param {{ before?: number, half?: HalfName, nonce?: string }} [o]
    */
   static async load(store, scope, o = {}) {
-    const [latest] = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['compaction'], reverse: true, limit: 1, ...(o.before ? { before: o.before } : {}) }));
+    const summaries = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types: ['compaction'], reverse: true, ...(o.before ? {} : { limit: 1 }) }));
+    const latest = o.before ? summaries.find((c) => c.data?.to < /** @type {number} */ (o.before)) : summaries[0];
     const events = await store.tx(['events'], 'readonly', (t) => t.listEvents(scope, {
       types: [...SAID], ...(latest ? { after: latest.data.to } : {}), ...(o.before ? { before: o.before } : {}),
     }));
