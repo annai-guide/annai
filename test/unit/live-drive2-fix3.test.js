@@ -156,7 +156,7 @@ test('9: the bound counts from when her sound began: her first word coming late 
   }
 });
 
-test('8: a silently answered call alone, no turnComplete ever: Kokoro\'s owed note is asked again at the bound, not at the silent wait', async () => {
+test('8: a silently answered call alone, no turnComplete ever: Kokoro\'s owed note is asked again as the call is answered, not at the silent wait', async () => {
   const k = await liveKit([{ tool: { name: 'tell_kokoro', args: { text: 'Anything on the way?' } }, noEnd: true }, { said: 'The fuel station is open until ten.', audio: tone(0.1) }]);
   try {
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });
@@ -166,7 +166,7 @@ test('8: a silently answered call alone, no turnComplete ever: Kokoro\'s owed no
     await soon(async () => (await koeCalls(k)).length === 1, 10_000);
     await soon(async () => texts(k).filter((x) => /^\[annai\]/.test(x)).length === 1, 10_000);
     const silent = (await k.events(['error'])).filter((/** @type {any} */ e) => e.data.kind === 'live-silent');
-    assert.deepEqual(silent, [], 'asked at the bound, before the silent wait gave up');
+    assert.deepEqual(silent, [], 'asked as the call was answered, before the silent wait gave up');
   } finally {
     await k.done();
   }

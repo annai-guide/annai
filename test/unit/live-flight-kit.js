@@ -79,37 +79,47 @@ export function watch(k, t0) {
 export async function start({ turns, live, server, note = true, pace = 1 }) {
   const first = note ? [{ said: 'Hello there.', audio: tone(0.1) }] : [];
   const k = await liveKit([...first, ...turns], { pace, agent: { secondMs: 1000 }, ...(live ? { live } : {}), ...(server ? { server } : {}) });
-  await k.voice.unlock();
-  k.voice.route = async () => 'car';
-  k.platform.streamSpeed = 1;
-  k.agent.tap();
-  await until(() => k.agent.live.listening, 3000);
-  await say(k, 'where-eat');
-  if (note) {
-    await soon(async () => (await k.events(['out.speak'])).length === 1, 6000);
-    await idleAtOnce({ agent: k.agent.live });
-    k.platform.mic.feed(quiet(0.5), RATE);
-    await tell(k);
+  try {
+    await k.voice.unlock();
+    k.voice.route = async () => 'car';
+    k.platform.streamSpeed = 1;
+    k.agent.tap();
+    await until(() => k.agent.live.listening, 3000);
+    await say(k, 'where-eat');
+    if (note) {
+      await soon(async () => (await k.events(['out.speak'])).length === 1, 6000);
+      await idleAtOnce({ agent: k.agent.live });
+      k.platform.mic.feed(quiet(0.5), RATE);
+      await tell(k);
+    }
+    await soon(async () => k.agent.live.view.name === 'speaking', 6000);
+    const t0 = Date.now();
+    return { k, t0, w: watch(k, t0) };
+  } catch (e) {
+    await k.done(); // a wait that failed leaves no one to close it: the stand-in's open socket would keep the run from ending
+    throw e;
   }
-  await soon(async () => k.agent.live.view.name === 'speaking', 6000);
-  const t0 = Date.now();
-  return { k, t0, w: watch(k, t0) };
 }
 
 /** A live session in the car, the user in it, her answer to their question said, and nothing going on: resolves with the clock started. @param {any[]} turns @param {{ live?: any, server?: any }} [o] */
 export async function quietSession(turns, o = {}) {
   const k = await liveKit([{ said: 'Hello there.', audio: tone(0.1) }, ...turns], { pace: 1, agent: { secondMs: 1000 }, ...o });
-  await k.voice.unlock();
-  k.voice.route = async () => 'car';
-  k.platform.streamSpeed = 1;
-  k.agent.tap();
-  await until(() => k.agent.live.listening, 3000);
-  await say(k, 'where-eat');
-  await soon(async () => (await k.events(['out.speak'])).length === 1, 6000);
-  await idleAtOnce({ agent: k.agent.live });
-  k.platform.mic.feed(quiet(0.5), RATE);
-  const t0 = Date.now();
-  return { k, t0, w: watch(k, t0) };
+  try {
+    await k.voice.unlock();
+    k.voice.route = async () => 'car';
+    k.platform.streamSpeed = 1;
+    k.agent.tap();
+    await until(() => k.agent.live.listening, 3000);
+    await say(k, 'where-eat');
+    await soon(async () => (await k.events(['out.speak'])).length === 1, 6000);
+    await idleAtOnce({ agent: k.agent.live });
+    k.platform.mic.feed(quiet(0.5), RATE);
+    const t0 = Date.now();
+    return { k, t0, w: watch(k, t0) };
+  } catch (e) {
+    await k.done(); // as in start
+    throw e;
+  }
 }
 
 /** When her line with these words was written (ms from t0), Infinity if never. @param {any} k @param {number} t0 @param {string} text */
