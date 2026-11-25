@@ -54,7 +54,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### PDF pages draws at most a PDF's first 10 pages for a model
 - **Kind:** known limitation.
-- **What the user sees:** when no model here reads PDFs and the PDF pages plugin shows a PDF to a model that sees photos, only its first 10 pages go, at 1600 px on the longest side. The model is told how many were left out ("pages 1–10 of 23; the rest weren't sent"), so Shiori can say so. A model that reads PDFs itself still gets the whole file.
+- **What the user sees:** when no model here reads PDFs and the PDF pages plugin shows a PDF to a model that sees photos, only its first 10 pages go, at up to 1600 px on the longest side, each under a photo's request size (256 KiB by default, since pdf-pages-cap-next, 2026-11-25). The model is told how many were left out ("pages 1–10 of 23; the rest weren't sent"), so Shiori can say so. A model that reads PDFs itself still gets the whole file.
 - **Why:** each page is a picture of about 1,600 tokens, and a booking's facts are on its first pages. More pages would cost more and take longer on the phone, for pages a booking rarely needs.
 - **Revisit when:** a booking needs more than its first 10 pages.
 - **Approved:** 2026-10-28, the user: "Accept".
@@ -1476,6 +1476,12 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the kept turn is matched on the portable messages (src/core/llm/call.js about :277, which drop a message left empty), while `withUploads` slices the request's own messages at that index (about :694); `forEndpoint` can empty a message that held only another endpoint's native blocks, so the slice starts early by that many messages. The fix: find the photos to upload in the same array the match used.
 - **Revisit when:** its row in docs/progress.md, in the next version.
 
+### A reader's own photo limits don't shape the copies it is sent, so a reader that takes no WebP loses PDFs too
+- **Kind:** deferred.
+- **What the traveller sees:** when the main model sees no photos (or reads no PDFs) and a reader role's model reads for it, the photos' and the PDF pages' copies are made for the main models' limits, not the reader's: a reader whose provider refuses WebP, on a browser that makes WebP (Android or desktop Chrome; an iPhone makes JPEG), refuses them and "It couldn't be described" (since pdf-pages-cap-next a PDF's pages join the photos here; on main they went as drawn JPEG and were read); a reader with a byte limit under a photo's 256 KiB refuses them and learns nothing, so the next one fails the same way. Not the user's setup. Found by pdf-pages-cap-next's reviews (2026-11-25, probed).
+- **Why:** `#limits()` / `#mainImages()` (src/core/agent/loop.js) read the half's own role and main; a reader's call has no `repairImages`, so nothing is learned. The fix: the limits a picture is made for when a reader is sent it include that reader role's photo-seeing models, for photos and pages alike.
+- **Revisit when:** its row in docs/progress.md, in the next version.
+
 ### A plugin's start, hook or screen that fails for want of a link can still count against it
 - **Kind:** deferred.
 - **What the traveller sees:** a third-party plugin (no official plugin does any of this, by reading their code: remote-trace sends from its own timers with its own catch, OpenRouter's sign-in is on the words path) can still be switched off for a link that was missing: a start or hook that asks `annai.llm` or `annai.llm.decide` with no connection (their `AllFailedError` counts), a start that waits past annai's 10-second start limit on a weak link, a start or hook whose own time limit on `annai.net.fetch` fires as an `AbortError` (which counts; Chrome's `AbortSignal.timeout` gives a `TimeoutError`, which is spared; what Safari gives a time limit is from annai's net layer's notes and tests, not measured on a phone), and a dock action, card, screen, avatar or heard-clips function that fails offline (those count every error). Three in a row switch the plugin off, with a card, until the traveller turns it on in Settings → Plugins; a start's count is kept across launches. fail-owner-next spares only the browser's own fetch failure and annai's `network` or `unreachable` kind in a start, a hook and the launch count.
@@ -1505,12 +1511,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the traveller sees:** with Koe · Realtime on OpenAI's Realtime (not the user's: their Koe is Gemini Live), an urgent reminder that cuts Koe while a card's call of the cut reply is still on its way counts as told by that card, and isn't shown, then or at the next open (on main too).
 - **Why:** found by remind-first-next's second opinion (2026-11-23, probed with the stand-in): the adapter emits `interrupted` as it sends the cancel, before the cut reply's last events, so a call that arrives after it opens a new, uncut turn that passes what is in flight. The fix at source, in the adapter: emit `interrupted` for a cancelled reply when its `response.done` arrives, not when the cancel is sent (a sound-only cut keeps emitting at once). OpenAI Realtime itself is still untested against the real service (its row).
 - **Revisit when:** its row in docs/progress.md, in the next version, or with the OpenAI Realtime run.
-
-### A PDF's page pictures have no size limit
-- **Kind:** deferred.
-- **What the traveller sees:** when the main model can't read PDFs and a reader that sees photos reads a PDF's pages (not the user's setup: Claude reads PDFs itself), up to 10 pages at 1600 px go in one request, 5.0 to 7.6 MB of JPEG for ten pages (read-wait-next's measurement), with no cap like a photo's 256 KiB; on a slow or dead link that send takes minutes before it is answered or cut, about 13 to 19 minutes per reader model that sees photos at 70 kbit/s, twice that while Koe works, and it uses that much mobile data.
-- **Why:** found by read-wait-next's reviews (2026-11-23); older than that branch (the pictures were never capped), which made each reader model time its own send, so the wait repeats per model. The user's words of 2026-10-19: "we are an agent on the go possibly with spotty internet. thus we shall make these optimizations when possible." The fix: encode the page pictures under a byte cap, as a photo's copy is (the photo encoder's cap and size step), or send fewer pages a request.
-- **Revisit when:** its row in docs/progress.md ("A PDF's page pictures have no size limit"), in the next version.
 
 ### What "Largest request" still decides, now that it weighs words only
 - **Kind:** deferred.
