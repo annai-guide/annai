@@ -1118,8 +1118,8 @@ export class LiveKoe {
    * What waits goes in once Koe's turn and voice end, in a session opened for it that listens after where sound was unlocked;
    * out of view, it waits (shown()). With no session, it is let go here (undo takes it out of its list and says whether it was still there) and Halves places
    * it, once: a close, any but the traveller's tap, lets go of it at once, before it hands anything on (#placing), not when the connection it waited on ends.
-   * One that had already gone in (a typed line's session sent it before the microphone started) is the session's, never placed again: the close hands it on,
-   * shows it or a cut did.
+   * One that had already gone in (a typed line's session sent it before the microphone started) is the session's, never placed again (the close hands it on
+   * or shows it).
    * @param {string} why @param {() => boolean} undo whether it was still waiting @returns {Promise<boolean>} whether the session has it, or will say it
    */
   async #go(why, undo) {
