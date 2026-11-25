@@ -320,8 +320,8 @@ export async function until(fn, ms = 2000) {
  * flag, so whatever p waits for is still waited for. On the real clock ms is real time. On a test's clock (useClock) it is not the time of p's work, which
  * costs none: the bound is one more timer there, and clock.js fires the earliest timer once 16 turns of the event loop in a row find no request in flight.
  * So ms counts the timers that may fire before p settles (a pause, a delay, a window), and with none due sooner the bound fires after 16 quiet turns, a few
- * ms of real time: a leak fails at once, and a wait whose work takes 16 turns with no timer and no request (a deeper setImmediate chain, a stream:
- * clock.js lists them) would fail the same way. 2000 ms: 30 times the longest of the 131 such waits in the five files that use it, 65 ms of clock time (measured
+ * ms of real time: a leak fails at once (while no request is in flight: with one, the clock waits for it), and a wait whose work takes 16 turns with no timer and no request (a deeper setImmediate chain, a stream:
+ * clock.js lists them) would fail the same way. 2000 ms: 30 times the longest of the 131 such waits in the five files measured on 2026-11-20, 65 ms of clock time (measured
  * 2026-11-20). Of the waits agent-loop, trip-tools and typed-kept passed to it (2026-11-22), the longest on real time is under 40 ms, and on a test's clock
  * 1650 ms, a reader's 1.5 s: a clock's time is the timers waited out, the same on any machine. A test whose wait runs longer on its clock passes its own
  * ms, saying why. Of the 75 324 waits in one run of the whole suite (6536 tests, 2026-11-24) beside 32 CPU-burning loops (a load average of 80 to 150),
@@ -458,7 +458,7 @@ export async function settlesOnlyAfter(k, door, why, done = () => {}) {
   await new Promise((r) => setTimeout(r, 60));
   assert.equal(settled, false, why);
   door.open();
-  await inTime(idle, `${why}: once the door is open, idle() settles (still waiting after 2000 ms: a wake left queued, a turn still busy, or a wait longer than that)`);
+  await inTime(idle, `${why}: once the door is open, idle() settles (still waiting after 2000 ms (${MS_ARE}): a wake left queued, a turn still busy, or a wait longer than that)`);
 }
 
 /**

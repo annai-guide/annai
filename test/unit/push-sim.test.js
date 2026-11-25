@@ -37,8 +37,10 @@ test("a simulation never touches the relay: the user's real reminders keep their
   };
   // The stand-in push service is a real HTTP server, so this test keeps the real clock (clock.js: a test with a live socket does) and its waits have
   // no bound of their own: a leaked busy count fails it at the test's timeout. This cleanup runs then too (node:test runs t.after on a timeout), so
-  // the open server does not keep the process, and `npm test`, from ending.
+  // the open server and the poll below (`over`) do not keep the process, and `npm test`, from ending.
+  let over = false;
   t.after(async () => {
+    over = true;
     mirror.dispose();
     live.dispose();
     await rig.service.stop();
@@ -54,12 +56,16 @@ test("a simulation never touches the relay: the user's real reminders keep their
   await run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' });
   // While it runs, the mirror looks as often as it can.
   let done = false;
-  run.finished.then(() => { done = true; });
-  while (!done) {
+  const ended = run.finished.then(() => null, (e) => e).finally(() => { done = true; });
+  while (!done && !over) {
     await mirror.sync();
     await new Promise((r) => setTimeout(r, 2));
   }
+  const failed = await ended;
+  if (failed) throw failed;
   assert.equal(run.state?.error, null); // the run worked: the checks below would hold on one that threw at once
+  const points = await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(run.state?.trip, { types: ['location'] }));
+  assert.ok(points.length > 0, 'the run played its track: the checks below would hold on one that did nothing');
   await mirror.sync();
   for (let i = 0; i < 40; i++) await step(); // and after it, as real time goes on
   const touched = rig.net.calls.slice(from).filter((c) => c.method !== 'GET').map((c) => `${c.method} ${new URL(c.url).pathname}`);
