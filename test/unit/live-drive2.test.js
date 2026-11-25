@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { until, idleAtOnce } from './agent-kit.js';
-import { liveKit, texts, soon, tone, say, lives } from './koe-live-kit.js';
+import { liveKit, texts, soon, tone, say, lives, got } from './koe-live-kit.js';
 import { hum, quiet, cat } from './voice-kit.js';
 import { COOLDOWN_MS } from '../../src/core/llm/fallback.js';
 import { updateAppSettings } from '../../src/core/settings.js';
@@ -102,6 +102,81 @@ test('item 13: in a session a note opened, with nobody in it, lyrics at the micr
     const [line] = await k.events(['out.speak']);
     assert.equal(line.data.cut, undefined, 'said whole');
     assert.deepEqual(await shown(k), []);
+  } finally {
+    done = true;
+    await k.done();
+  }
+});
+
+// In a session a note opened, with nobody in it, the microphone is deaf from the note going in until she has said it (the test above). When her whole answer is a
+// call she makes without speaking, no voice of hers is coming: the microphone hears again as the call is answered, not at the mark's 8 s (URGENT_S), which in such a
+// session is all the time it listens (LIVE_ANSWER_S): the traveller's word about the card would be heard by no one, and a note she only asked Kokoro about would
+// wait 8 s for its ask once more. Two orders of the provider's end of that turn: before the page's answer (the stand-in's own order: on main too the mark stayed
+// then), and never (real Gemini's came up to 2.9 s after the answer, or not at all: the 2026-11-04 design, item 6; koe-flake-next's round 2 left the mark standing here).
+// A real second, so the 8 s are real; 3 s only ends a failing test (5 ms in a probe).
+const CARD = { name: 'show', args: { card: { title: 'Bixby Bridge', text: 'About twenty minutes ahead.' } } };
+const ASK_KOKORO = { name: 'tell_kokoro', args: { text: 'What should I tell them about the station?' } };
+for (const [what, noEnd] of /** @type {[string, boolean][]} */ ([["the provider's end of it before the page's answer", false], ["the provider's end of it never coming", true]])) {
+  test(`item 13: in a session a note opened, her only answer is a card, ${what}: she listens again as it is answered, and what the traveller says next is heard`, async () => {
+    const k = await liveKit([{ tool: CARD, noEnd }, { heard: 'where to eat', said: 'Tacos ahead.', audio: tone(0.3) }], { pace: 1, agent: { secondMs: 1000 } });
+    try {
+      await k.voice.unlock();
+      k.voice.route = async () => 'car';
+      await tell(k);
+      await soon(async () => got(k, 'toolResponse').length === 1, 30_000);
+      await until(() => k.agent.live.view.name === 'listening', 3000);
+      await say(k, 'where-eat');
+      await soon(async () => (await k.events(['out.speak'])).length === 1, 6000);
+      assert.deepEqual((await k.events(['heard'])).map((/** @type {any} */ e) => [e.data.text, Boolean(e.data.dismissed)]), [['where to eat', false]], 'heard, and answered');
+      assert.deepEqual(await shown(k), [], 'the card passed the note on');
+      assert.ok(!texts(k).some((t) => CUE.test(t)), 'nothing asked once more');
+    } finally {
+      await k.done();
+    }
+  });
+
+  test(`item 13: in a session a note opened, her only answer is to ask Kokoro, ${what}: she is asked once more as it is answered, not 8 s on, and says it with the microphone deaf`, async () => {
+    const k = await liveKit([{ tool: ASK_KOKORO, noEnd }, { said: 'The fuel station is open until ten.', audio: tone(0.5), delayMs: 800 }], { pace: 1, agent: { secondMs: 1000 } });
+    let done = false;
+    try {
+      await k.voice.unlock();
+      k.voice.route = async () => 'car';
+      await tell(k);
+      await soon(async () => got(k, 'toolResponse').length === 1, 30_000);
+      const feeding = lyrics(k, () => done); // sound at the microphone while her answer to the ask once more is still to come
+      await soon(async () => texts(k).some((t) => CUE.test(t)), 3000);
+      await soon(async () => (await k.events(['out.speak'])).length === 1, 6000);
+      done = true;
+      await feeding;
+      const [line] = await k.events(['out.speak']);
+      assert.equal(line.data.cut, undefined, 'said whole: the ask once more has its own mark');
+      assert.deepEqual(await shown(k), []);
+    } finally {
+      done = true;
+      await k.done();
+    }
+  });
+}
+
+// The mark ends at a turn's end only when no voice of hers is coming from it: a call she speaks after (a lookup) keeps it through the wait, so sound at the
+// microphone then starts no turn of the user's and her answer is said whole (with the end question asked only of a silent call alone, the note was shown on a
+// card at about 0.75 s and her answer dropped: route A's reviews). The sound starts once the call is answered: a frame in the mark's first moment would reset the
+// detector's floor and hear nothing either way.
+test("item 13: in a session a note opened, her first answer is a lookup she speaks after: the microphone stays deaf through the wait, and she says the note whole", async () => {
+  const k = await liveKit([{ tool: { name: 'list', args: { path: '/trip/' } }, andThen: true }, { said: 'The fuel station is open until ten.', audio: tone(0.5), delayMs: 1500 }], { pace: 1, agent: { secondMs: 1000 } });
+  let done = false;
+  try {
+    await k.voice.unlock();
+    k.voice.route = async () => 'car';
+    await tell(k);
+    await soon(async () => got(k, 'toolResponse').length === 1, 30_000);
+    const feeding = lyrics(k, () => done, 0.3);
+    await soon(async () => (await k.events(['out.speak'])).length === 1, 8000);
+    done = true;
+    await feeding;
+    const [line] = await k.events(['out.speak']);
+    assert.equal(line.data.cut, undefined, 'said whole: the mark held through the lookup');
+    assert.deepEqual(await shown(k), [], 'nothing shown on a card');
   } finally {
     done = true;
     await k.done();

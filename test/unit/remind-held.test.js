@@ -10,7 +10,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, until, idleAtOnce, inTime, holdAtDoor, holdReminders, raw } from './agent-kit.js';
-import { liveKit, soon, tone, texts } from './koe-live-kit.js';
+import { liveKit, soon, tone, texts, got } from './koe-live-kit.js';
+import { quietSession, tell, tell2, cues, notesIn, words, shown, wait, SAID, PASS } from './live-flight-kit.js';
 import { useClock } from './clock.js';
 import { Agent } from '../../src/core/agent/loop.js';
 import { Halves } from '../../src/core/agent/halves.js';
@@ -853,29 +854,48 @@ for (const [what, race] of /** @type {[string, boolean][]} */ ([['while the card
 
 /**
  * A slow link from the stand-in: from the first message that matches `at.match` (set by the test), that message and every one after it wait, in order,
- * until `at.go()`, as messages already sent wait on a slow mobile link. Taken by the sessions opened after it. @returns {{ match: RegExp | null, held: boolean, go: () => void, restore: () => void }}
+ * until `at.go()`, as messages already sent wait on a slow mobile link. `go('after')` lets out only those before the provider's cut of her turn
+ * (`interrupted`) and holds the cut and all after it until the page has sent its answer to a tool call: the link delivers her call, the page answers it,
+ * and only then the cut comes. Taken by the sessions opened after it. @returns {{ match: RegExp | null, held: boolean, waiting: () => string[], go: (order?: 'with' | 'after') => void, restore: () => void }}
  */
 function slowLink() {
   const Real = globalThis.WebSocket;
-  const at = { match: /** @type {RegExp | null} */ (null), held: false, go: () => {}, restore: () => { globalThis.WebSocket = Real; } };
+  const says = (/** @type {any} */ e) => (typeof e.data === 'string' ? e.data : Buffer.from(e.data).toString());
+  const at = { match: /** @type {RegExp | null} */ (null), held: false, waiting: () => /** @type {string[]} */ ([]), go: (/** @type {'with' | 'after' | undefined} */ _order) => {}, restore: () => { globalThis.WebSocket = Real; } };
   globalThis.WebSocket = /** @type {any} */ (function Slow(/** @type {string} */ url, /** @type {string[]} */ protocols) {
     const w = new Real(url, protocols);
+    /** @type {(() => void) | null} */
+    let onAnswer = null; // lets out what still waits, once the page's answer to a tool call has gone out (go('after'))
+    const send = w.send.bind(w);
+    /** @type {any} */ (w).send = (/** @type {any} */ data) => {
+      send(data);
+      if (onAnswer && typeof data === 'string' && data.includes('"toolResponse"')) setTimeout(onAnswer, 0); // after the code that sent it has run on
+    };
     const add = w.addEventListener.bind(w);
     /** @type {any} */ (w).addEventListener = (/** @type {string} */ type, /** @type {(e: any) => void} */ fn, /** @type {any[]} */ ...rest) => {
       if (type !== 'message') return add(type, fn, ...rest);
       /** @type {any[] | null} */
       let queue = null;
+      const release = () => {
+        const q = queue ?? [];
+        queue = null;
+        at.held = false;
+        for (const x of q) fn(x);
+      };
       return add('message', (/** @type {any} */ e) => {
         if (queue) return void queue.push(e);
-        if (at.match?.test(typeof e.data === 'string' ? e.data : Buffer.from(e.data).toString())) {
+        if (at.match?.test(says(e))) {
           at.match = null;
           at.held = true;
           queue = [e];
-          at.go = () => {
+          at.waiting = () => (queue ?? []).map(says);
+          at.go = (order = 'with') => {
             const q = queue ?? [];
-            queue = null;
-            at.held = false;
-            for (const x of q) fn(x);
+            const cut = order === 'after' ? q.findIndex((x) => says(x).includes('"interrupted"')) : -1;
+            if (cut < 0) return release();
+            queue = q.slice(cut); // the cut and all after it wait for the page's answer to the call
+            onAnswer = () => { onAnswer = null; release(); };
+            for (const x of q.slice(0, cut)) fn(x);
           };
           return;
         }
@@ -887,36 +907,215 @@ function slowLink() {
   return at;
 }
 
-// The Deferred entry "A reminder in memory can still be lost in annai's first seconds", shape (3): Koe is saying a line with a card after it when an urgent
-// reminder cuts in, and the card's call, sent before the reminder reached the provider, comes after it went in (a slow link). That call is her cut turn's,
-// begun before the reminder went in: it passes nothing on (#tool). Her answer to the reminder is only "Silent.", so annai shows it, never written as told.
-// On a241fd148 the card passed the reminder on as told, and nothing showed it.
-test('Koe live: an urgent reminder cuts in while Koe talks, and the card she had already sent comes after it: the card passes nothing on, so after a bare answer annai shows it, never written as told', async () => {
-  const card = { name: 'show', args: { card: { title: 'Bixby Bridge', text: 'About twenty minutes ahead.' } } };
+// Shape (3) of the Deferred entry "A reminder in memory can still be lost in annai's first seconds" (closed by remind-first-next, 2026-11-23): Koe is saying a line
+// with a card after it when an urgent reminder cuts in, and the card's call, sent before the reminder reached the provider, comes after it went in (a slow link).
+// That call is her cut turn's, begun before the reminder went in: it passes nothing on (#tool), and that turn is no miss of it either (#settle), whichever order the
+// provider's cut of her turn and the page's answer come in: the cut with the call, or only once the page has answered it. With Gemini a cut ends the turn with no
+// #settle (#on ends it without #complete, and the adapter drops the turnComplete that follows an interrupted: gemini-live's `cut`), so the cut-first order is the
+// control; the rule is pinned by the after order (the page's answer ends the turn, #endNow) and by the race test above.
+// Her answer to the reminder is only "Silent.", so she is asked once more, and then annai shows it, never written as told. On a241fd148 the card passed the
+// reminder on as told, and nothing showed it; on d26249410 the page's answer, first, counted her cut turn as a miss: annai showed it with no ask first, and a
+// stray ask followed (the order was the machine's load, a flaky test).
+for (const [what, order] of /** @type {[string, 'with' | 'after'][]} */ ([['with the call', 'with'], ['only after the page has answered it', 'after']])) {
+  test(`Koe live: an urgent reminder cuts in while Koe talks, and the card she had already sent comes after it, the provider's cut of her turn ${what}: the card passes nothing on, and after a bare answer annai shows it, once, never written as told`, async () => {
+    const card = { name: 'show', args: { card: { title: 'Bixby Bridge', text: 'About twenty minutes ahead.' } } };
+    const link = slowLink(); // before the session opens
+    const k = await liveKit([{ said: 'Here is the bridge.', audio: tone(3), tool: card }, { said: 'Silent.', audio: tone(0.3) }, { said: 'Silent.', audio: tone(0.3) }], { pace: 1 });
+    const asks = () => texts(k).filter((/** @type {string} */ x) => x.includes("hasn't reached the user")).length;
+    try {
+      k.platform.streamSpeed = 1;
+      await k.voice.unlock();
+      /** @type {number[]} */
+      const askedAt = []; // the asks that had gone in as the reminder's card was raised
+      k.agent.on('notice', (/** @type {any} */ n) => { if (n.title === 'Reminder') askedAt.push(asks()); });
+      link.match = /"toolCall"/;
+      k.agent.send('Show me the bridge');
+      await until(() => link.held && k.platform.streams.length === 1, 30_000); // her words play, and her card's call is on its way
+      await k.agent.wake({ ...train(), urgent: true }); // it cuts in on her
+      await soon(async () => texts(k).some((/** @type {string} */ x) => x.includes('Train in 20 minutes'))); // it is with the session
+      await until(() => link.waiting().some((x) => x.includes('"interrupted"')), 30_000); // the provider's cut of her turn is on the link too: which comes first is the test's
+      link.go(order); // the call comes now, after the reminder went in
+      await soon(async () => (await k.events(['out.show'])).length === 1);
+      // Her answer is only "Silent.": annai shows it (on a241fd148 the card had written it as told, and nothing showed it).
+      await soon(async () => (await entries(k)).length === 1 || (await k.events(['reminder.told'])).length > 0, 30_000);
+      assert.deepEqual((await k.events(['reminder.told'])).map((/** @type {any} */ e) => e.data.reminders.map((/** @type {any} */ r) => r.text)), [], 'never written as told: the card was no answer to it');
+      assert.deepEqual(reminders(k.notices), [TRAIN], 'shown once');
+      assert.deepEqual(askedAt, [1], 'asked once more first: her cut turn missed nothing either');
+      assert.equal(asks(), 1, 'asked once, not more');
+      const next = await nextStart(k, true);
+      assert.deepEqual(reminders(next.cards), [], 'its entry settled it');
+      assert.equal(asks(), 1, 'asked once, not more, to the end');
+    } finally {
+      link.restore();
+      await k.done();
+    }
+  });
+}
+
+// A card answered as her whole reply (#tool: a call alone, answered silently, ends her turn at the page's answer, #endNow) while the provider's end of that turn is still
+// on its way, and a note or an urgent reminder that goes in after it: her turn began before it went in, so its end is no miss of it (#settle), and the provider's end,
+// when it comes, is swallowed as the end of a turn annai ended itself (#endedEarly). The stand-in sends the turn's generationComplete and turnComplete right after
+// its call; the link (slowLink) holds that message and all after it, and the test lets them out `afterMs` after the note or the reminder went in, which is after
+// the page's answer to the call (the test waits for the answer first), as a slow link would. 3 s is past TURN_END_S (2 s), the timer that ends a turn whose sound began
+// and whose end did not come; a card-only turn has none, so its end is swallowed however late it comes.
+const ENDS = /** @type {[string, number][]} */ ([['at once', 0], ['3 s late', 3000]]);
+const CARD = { name: 'show', args: { card: { title: 'Bixby Bridge', text: 'About twenty minutes ahead.' } } };
+/** The page's answers to tool calls that the stand-in has got. @param {any} k */
+const answered = (k) => got(k, 'toolResponse').length;
+
+for (const [what, afterMs] of ENDS) {
+  test(`Koe live: her only answer to a note is a card, answered before the provider's end of that turn, and the next note went in after it: that end, ${what}, is no miss of it, so nothing is asked once more`, async () => {
+    const link = slowLink(); // before the session opens
+    /** @type {any} */
+    let k;
+    /** @type {any} */
+    let w;
+    try {
+      ({ k, w } = await quietSession([{ tool: CARD }, { said: PASS, audio: tone(0.3) }]));
+      link.match = /"generationComplete"/;
+      await tell(k);
+      await tell2(k); // waits behind the first
+      await soon(async () => answered(k) === 1, 30_000); // her card is answered: the next note goes in
+      await soon(async () => notesIn(k).length === 2, 30_000);
+      await wait(afterMs);
+      link.go();
+      await soon(async () => (await words(k)).includes(PASS), 30_000);
+      assert.equal(cues(k).length, 0, 'never asked once more: her turn began before the second note went in');
+      assert.deepEqual((await words(k)).filter((x) => x === PASS), [PASS], 'her answer to the second note, once');
+      assert.deepEqual(await shown(k), [], 'annai showed nothing');
+    } finally {
+      w?.stop();
+      link.restore();
+      await k?.done();
+    }
+  });
+
+  test(`Koe live: her only answer is a card, answered before the provider's end of that turn, an urgent reminder goes in after it, and her answer to it is bare: that end, ${what}, is no miss of the reminder, so she is asked once more first, and says it, once`, async () => {
+    const link = slowLink();
+    /** @type {any} */
+    let k;
+    try {
+      k = await liveKit([{ tool: CARD }, { said: 'Silent.', audio: tone(0.3) }, { said, audio: tone(0.3) }, { said: 'Silent.', audio: tone(0.3) }], { pace: 1, agent: { secondMs: 1000 } });
+      const asks = () => texts(k).filter((/** @type {string} */ x) => x.includes("hasn't reached the user")).length;
+      await k.voice.unlock();
+      /** @type {number[]} */
+      const askedAt = []; // the asks that had gone in as a reminder's card was raised
+      k.agent.on('notice', (/** @type {any} */ n) => { if (n.title === 'Reminder') askedAt.push(asks()); });
+      link.match = /"generationComplete"/;
+      k.agent.send('Show me the bridge');
+      await soon(async () => answered(k) === 1, 30_000); // her card is answered
+      await k.agent.wake({ ...train(), urgent: true });
+      await soon(async () => texts(k).some((/** @type {string} */ x) => x.includes('Train in 20 minutes')), 30_000); // it is with the session
+      await wait(afterMs);
+      link.go();
+      await soon(async () => (await k.events(['reminder.told'])).length + (await entries(k)).length >= 1, 30_000);
+      await idleAtOnce(k);
+      assert.deepEqual(askedAt, [], 'annai showed nothing: she said it');
+      assert.equal(asks(), 1, 'asked once more, once, after her bare answer');
+      assert.deepEqual((await k.events(['reminder.told'])).map((/** @type {any} */ e) => e.data.reminders.map((/** @type {any} */ r) => r.text)), [[TRAIN]], 'written as told, once: she said it');
+      assert.deepEqual(reminders(k.notices), [], 'no card for it');
+    } finally {
+      link.restore();
+      await k?.done();
+    }
+  });
+}
+
+// The card's turn never gets its end from the provider, and her answer to the note is an empty turn (a turnComplete, no sound, no words, no call: what Gemini gives
+// music, and what spec §7.1 plans for: "ends with no words ... it gets the same words once"). The card's turn is over at the page's answer (#endNow), so that empty
+// turn is her answer to the note, and she is asked once more. Had the card's turn been kept as over with its end still to come (as a round of this fix did), the empty
+// turn's end would have been read as the card's, and the note would have waited in flight until the quiet spell closed the session (300 s in these kits). The stand-in ends the card's turn only as the next text
+// meets it, as Gemini does (interrupted, then its turnComplete 20 ms later), and the link holds that and her empty turn until the page's answer has gone out.
+const EMPTY = {};
+
+test('Koe live: her only answer to a note is a card whose end never comes, the next note goes in at its answer, and her answer to that is an empty turn: she is asked once more, and says it', async () => {
   const link = slowLink(); // before the session opens
-  const k = await liveKit([{ said: 'Here is the bridge.', audio: tone(3), tool: card }, { said: 'Silent.', audio: tone(0.3) }, { said: 'Silent.', audio: tone(0.3) }], { pace: 1 });
+  /** @type {any} */
+  let k;
+  /** @type {any} */
+  let w;
   try {
-    k.platform.streamSpeed = 1;
+    ({ k, w } = await quietSession([{ tool: CARD, noEnd: true }, EMPTY, { said: PASS, audio: tone(0.3) }, { said: 'Silent.', audio: tone(0.3) }]));
+    link.match = /"generationComplete"/;
+    await tell(k);
+    await tell2(k); // waits behind the first
+    await soon(async () => answered(k) === 1, 30_000); // her card is answered: the next note goes in
+    await soon(async () => notesIn(k).length === 2, 30_000);
+    link.go();
+    // The ask once more went in at 252 ms in a probe, with the close 300 s on: this bound ends only a failing test.
+    await soon(async () => cues(k).length === 1, 10_000).catch(() => assert.fail('never asked once more: her empty answer was read as the end of the card turn, and the note waits in flight for the session to close'));
+    await soon(async () => (await words(k)).includes(PASS), 30_000);
+    assert.deepEqual(await words(k), ['Hello there.', PASS], 'she said it, once');
+    assert.equal(cues(k).length, 1, 'asked once more, once');
+    assert.deepEqual(await shown(k), [], 'annai showed nothing');
+  } finally {
+    w?.stop();
+    link.restore();
+    await k?.done();
+  }
+});
+
+test('Koe live: her only answer is a card whose end never comes, an urgent reminder goes in at its answer, and her answer to that is an empty turn: she is asked once more, and says it, once', async () => {
+  const link = slowLink();
+  /** @type {any} */
+  let k;
+  try {
+    k = await liveKit([{ tool: CARD, noEnd: true }, EMPTY, { said, audio: tone(0.3) }, { said: 'Silent.', audio: tone(0.3) }], { pace: 1, agent: { secondMs: 1000 } });
+    const asks = () => texts(k).filter((/** @type {string} */ x) => x.includes("hasn't reached the user")).length;
     await k.voice.unlock();
-    /** @type {number[]} */
-    const askedAt = []; // the asks that had gone in as the reminder's card was raised
-    k.agent.on('notice', (/** @type {any} */ n) => { if (n.title === 'Reminder') askedAt.push(texts(k).filter((/** @type {string} */ x) => x.includes("hasn't reached the user")).length); });
-    link.match = /"toolCall"/;
+    link.match = /"generationComplete"/;
     k.agent.send('Show me the bridge');
-    await until(() => link.held && k.platform.streams.length === 1, 30_000); // her words play, and her card's call is on its way
-    await k.agent.wake({ ...train(), urgent: true }); // it cuts in on her
-    await soon(async () => texts(k).some((/** @type {string} */ x) => x.includes('Train in 20 minutes'))); // it is with the session
-    link.go(); // the call comes now, after the reminder went in
-    await soon(async () => (await k.events(['out.show'])).length === 1);
-    // Her answer is only "Silent.": annai shows it (on a241fd148 the card had written it as told, and nothing showed it).
-    await soon(async () => (await entries(k)).length === 1 || (await k.events(['reminder.told'])).length > 0, 30_000);
-    assert.deepEqual((await k.events(['reminder.told'])).map((/** @type {any} */ e) => e.data.reminders.map((/** @type {any} */ r) => r.text)), [], 'never written as told: the card was no answer to it');
-    assert.deepEqual(reminders(k.notices), [TRAIN], 'shown once');
-    assert.deepEqual(askedAt, [1], 'asked once more first: her cut turn missed nothing either');
-    const next = await nextStart(k, true);
-    assert.deepEqual(reminders(next.cards), [], 'its entry settled it');
+    await soon(async () => answered(k) === 1, 30_000); // her card is answered
+    await k.agent.wake({ ...train(), urgent: true });
+    await soon(async () => texts(k).some((/** @type {string} */ x) => x.includes('Train in 20 minutes')), 30_000); // it is with the session
+    link.go();
+    // Nothing of hers plays in the urgent mark, so it ends at its cap, 8 s past the reminder (URGENT_S, a real second here): the ask once more goes in then (8.0 s in a
+    // probe), with the close 300 s on. This bound ends only a failing test.
+    await soon(async () => (await k.events(['reminder.told'])).length + (await entries(k)).length >= 1, 30_000).catch(() => assert.fail(`the reminder reached no one (asked once more ${asks()}): her empty answer was read as the end of the card turn`));
+    await idleAtOnce(k);
+    assert.equal(asks(), 1, 'asked once more, once');
+    assert.deepEqual((await k.events(['reminder.told'])).map((/** @type {any} */ e) => e.data.reminders.map((/** @type {any} */ r) => r.text)), [[TRAIN]], 'written as told, once: she said it');
+    assert.deepEqual(reminders(k.notices), [], 'no card for it');
   } finally {
     link.restore();
+    await k?.done();
+  }
+});
+
+// The same rule where no call is involved: her answer to the first note is a line with no sound (bubbles, no voice), written as her turn ends (#complete), which lets
+// the second note in (#said, #idle) before that turn is settled. Her turn began before the second went in: it is no miss of it, so nothing is asked once more.
+test('Koe live: a note goes in as her line for the one before it is written, as her turn ends: that turn is no miss of it, so nothing is asked once more', async () => {
+  const { k, w } = await quietSession([{ said: SAID, audio: tone(0.3) }, { said: PASS, audio: tone(0.3) }, { said: 'Silent.', audio: tone(0.3) }]);
+  try {
+    k.platform.player.stream = null; // no sound: her lines are bubbles, written as each turn ends
+    await tell(k);
+    await tell2(k); // waits for the first to be passed on
+    await soon(async () => (await words(k)).includes(PASS) || cues(k).length > 0, 30_000);
+    assert.equal(cues(k).length, 0, 'never asked once more');
+    assert.deepEqual(await words(k), ['Hello there.', SAID, PASS], 'each note said once, in order');
+    assert.deepEqual(await shown(k), [], 'annai showed nothing');
+  } finally {
+    w.stop();
+    await k.done();
+  }
+});
+
+// The ask once more is owed from her first bare answer, and waits behind the urgent mark (#idle); her second bare answer follows at once (andThen: the stand-in's next turn,
+// with no input between), before the ask went in, so annai shows the reminder (#settle's unsaid branch). Shown, nothing is owed: the ask not yet gone in is stale and is never sent
+// (it would have her say the reminder, and the card shows it too).
+test('Koe live: an urgent reminder, her first bare answer owes the ask once more behind the urgent mark, and her second follows at once: annai shows it, and the ask is never sent', async () => {
+  const k = await liveKit([{ said: 'Silent.', audio: tone(0.3), andThen: true }, { said: 'Silent.', audio: tone(0.3) }, { said, audio: tone(0.3) }], { pace: 1, agent: { secondMs: 1000 } });
+  try {
+    await k.voice.unlock();
+    await k.agent.wake({ ...train(), urgent: true });
+    await soon(async () => (await entries(k)).length === 1, 30_000); // her second bare answer: annai shows it
+    // The stray ask went in 6 ms after the card in a probe, and her answer to it makes the dock speak: it listens again only once that is over, or if there was none.
+    await soon(async () => k.agent.live.view.name === 'listening', 30_000);
+    await idleAtOnce(k);
+    assert.deepEqual(reminders(k.notices), [TRAIN], 'shown once');
+    assert.equal(texts(k).filter((/** @type {string} */ x) => x.includes("hasn't reached the user")).length, 0, 'no ask once more: the reminder was shown, so nothing was owed');
+    assert.deepEqual(await k.events(['reminder.told']), [], 'never written as told: she said none of it');
+  } finally {
     await k.done();
   }
 });

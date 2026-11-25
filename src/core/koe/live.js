@@ -18,13 +18,13 @@ import { t } from '../l10n.js';
  * Koe live (spec §10.8): Koe as a realtime voice model, a session at a time, opened and closed as §10.8 says, never by itself.
  * @typedef {import('../realtime/open.js').LiveSession} LiveSession
  * @typedef {import('../agent/loop.js').Wake} Wake
- * @typedef {{ said: string, bytes: number, held: Uint8Array[], stream: import('../voice/platform.js').PlayerStream | null, spoken: boolean, wordAt: number, soundAt: number, alone?: boolean,
- *   tools: boolean, cut: boolean, whole: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean, loud: import('./loud.js').Loud, made?: boolean, playedMs?: number, stalled?: boolean, audible?: boolean, endBy?: any }} Turn  one of Koe's; held: its sound until a real word;
+ * @typedef {{ said: string, bytes: number, held: Uint8Array[], stream: import('../voice/platform.js').PlayerStream | null, spoken: boolean, wordAt: number, soundAt: number,
+ *   tools: boolean, cut: boolean, whole: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean, loud: import('./loud.js').Loud, made?: boolean, playedMs?: number, stalled?: boolean, audible?: boolean, endBy?: any, first?: Wake }} Turn  one of Koe's; held: its sound until a real word;
  *   stalled: its sound stopped coming out, so its stream was let go, and its words are said by the speech voice;
  *   goesOn: it called a tool it speaks after; calls: its tool calls not answered yet; done: the provider ended it; made: the provider said all of it is made
  *   (its `made`), so no more of it comes (what a call answered without `silent` brings is the next turn, #endNow); loud: where its last loud frame of sound ends (#whole);
  *   playedMs: how much was heard, once its stream was stopped (#heardMs); whole: cut, but all of it was heard (#whole); audible: its sound has started playing, so its words may show; endBy: the timer that ends it if no turnComplete comes (#endLater);
- *   soundAt: when its sound began; alone: a call alone, answered silently, which #tool let go of
+ *   soundAt: when its sound began; first: the first of Kokoro's notes in flight as it began (#settle)
  * @typedef {{ sent: number, spoke: boolean, timer: any, idle?: boolean }} Mark  an urgent note's (LiveKoe's #urgent); idle: what waited, going in with nothing before it, so its turn is the next to end
  * @typedef {{ text: string, told?: boolean, kokoro?: boolean }} Waiting  what waits to go in (LiveKoe's #notes); told: annai's own line, which the log holds none of; kokoro: Kokoro's own note, which its immediate note replaces
  * @typedef {{ text: string, of: object, by: number, more: boolean, timer: any }} Late  the stretch's note waiting (LiveKoe's #late)
@@ -280,10 +280,8 @@ export class LiveKoe {
   #liftBy = 0;
   /** A tap's first answered turn says what the user's voice is now (the level resets once); the tap's later ones add to it. */
   #fresh = false;
-  /** A turn was ended without its turnComplete (#endLater): the end that comes after all (its turnComplete, or the interrupted Gemini sends when a note meets it), with no new turn of hers, is that one's. */
+  /** A turn was ended without its turnComplete (#endNow, #endLater): the end that comes after all (its turnComplete, or the interrupted Gemini sends when a note meets it), with no new turn of hers, is that one's. */
   #endedEarly = false;
-  /** Turns of hers ended so far (#complete). */
-  #ends = 0;
   /** The user's turns ended since this connection last gave anything back: two is a dead session. */
   #noBack = 0;
   /** The session's provider says when each of her turns is all made (its type's `made`): only then is all played not yet heard whole (#whole). */
@@ -1082,6 +1080,10 @@ export class LiveKoe {
    */
   #settle(t) {
     const o = this.#owed;
+    // A turn that began before these notes went in (they go in between her turns, or cut in on one: #now) is no miss of them, whichever message ends it: the
+    // provider's end, the answer to its call, or its timer (a cut one is never settled: #on). Notes go in from an empty flight, so the first of them says which
+    // went in since the turn began.
+    if (t && t.first !== o.sent[0]) return;
     // A turn with words still going out: heard whole, they pass them on; cut, they are shown as the user's turn begins (#activity).
     if (!o.sent.length || t?.goesOn || (t?.spoken && !t.cut && !t.logged && !bare(t.said))) return;
     if (!o.cued) {
@@ -1089,7 +1091,7 @@ export class LiveKoe {
       return;
     }
     this.c.unsaid(o.sent.splice(0));
-    o.cued = false;
+    o.cued = o.cue = false; // as #passed: an ask not yet gone in is stale, nothing is owed
   }
 
   /** Words said once Koe's turn and voice end (#go). @param {string} text @param {string} why @returns {Promise<boolean>} */
@@ -1361,6 +1363,7 @@ export class LiveKoe {
   /** A turn of hers begins; after a tap that stopped her (#stopped), one never spoken: written as her answer. @returns {Turn} */
   #begin() {
     const t = newTurn();
+    t.first = this.#owed.sent[0];
     if (this.#stopped) t.cut = true;
     return t;
   }
@@ -1509,22 +1512,20 @@ export class LiveKoe {
 
   /** The provider's turn ended: her voice plays out, or her words are a bubble; a turn with no real word is dropped. */
   #complete() {
-    this.#ends++;
     const t = (this.#trail = this.#t);
     this.#t = null;
     this.#tries = 0;
     if (t) t.done = true; // before its line is written below: the provider ended it
-    const flight = this.#owed.sent[0]; // writing her line below may let the next note in (#said, #idle): it isn't settled here
     if (t?.stream) this.#ending(t);
     else if (t?.spoken && !this.#waits(t)) this.#said(t, null);
     // Heard, and answered by nothing at all: not meant for Koe (the model's own choice, proactive audio).
     const dismissed = !t?.spoken && !t?.tools;
     if (!dismissed) this.#poke(); // her turn ended: the quiet spell runs from here
-    // Nothing for what a session with nobody in it said (#idle): no voice is coming. (An urgent note's mark isn't matched to turns.)
-    else if (this.#urgent?.idle && !this.#urgent.spoke) this.#unmark();
+    // Its own question: no voice is coming for what a session with nobody in it said (#idle), a silent call alone too. (An urgent note's mark isn't matched to turns.)
+    if (this.#urgent?.idle && !this.#urgent.spoke && !t?.spoken && !t?.goesOn) this.#unmark();
     const h = this.#hear;
     this.#answered(dismissed, Boolean(t?.spoken));
-    if (!t?.calls && this.#owed.sent[0] === flight) this.#settle(t); // else once its calls are answered: a refused show passes nothing on
+    if (!t?.calls) this.#settle(t); // else once its calls are answered: a refused show passes nothing on
     this.#heardOut();
     this.#idle();
     if (!dismissed || !this.#lapsed) return;
@@ -1780,11 +1781,10 @@ export class LiveKoe {
       if (s === this.#s) answer(s);
       else if (this.state === 'open' && this.#handle) this.#send(answer);
       if (this.#t === t) { // a turn whose call is answered is over once all made (#endNow); its turnComplete may never come
-        if (silent && !t.bytes && !t.said) { // a call alone, answered silently
-          this.#t = null;
-          t.alone = true;
-        }
-        this.#endLater(t);
+        // A call alone, answered silently, is all of her turn: it ends here, and what she says next is a turn of its own. The finally settles it with its own `first`;
+        // the provider's end, when it comes, is swallowed (#endedEarly), and if it never does the 8-second rule still covers a note.
+        if (silent && !t.bytes && !t.said) this.#endNow(t);
+        else this.#endLater(t);
       }
       // What she says after the answer is due, as after any input (#silent, SILENT_S): nothing new goes in until it comes (#idle).
       if (!silent && this.state === 'open') {
@@ -1796,8 +1796,8 @@ export class LiveKoe {
     } finally {
       t.calls--;
       this.#tools--;
-      if (t.done && !t.calls) { if (this.#owed.sent[0] === flight[0]) this.#settle(t); } // a note that went in during the call is no miss of the card's turn
-      else if (!t.calls && t.made && t.endBy && (this.#t === t || (t.alone && !this.#t))) this.#endNow(t); // all made before its last answer
+      if (t.done && !t.calls) this.#settle(t);
+      else if (!t.calls && t.made && t.endBy && this.#t === t) this.#endNow(t); // all made before its last answer
       this.#poke();
       this.#heardOut();
       this.#changed();
@@ -1806,8 +1806,9 @@ export class LiveKoe {
   }
 
   /**
-   * Her turn's calls are answered and all of it is made: it ends now, in the same tick, so nothing of the provider's comes between and what she says
-   * after (a call she speaks after) is a turn of its own; the provider's own end, when it comes, is swallowed (#endedEarly). @param {Turn} t
+   * Her turn's calls are answered and all of it is made, or it is a call alone answered silently (all of it, with no sound or words): it ends now, in the same
+   * tick, so nothing of the provider's comes between and what she says after (a call she speaks after) is a turn of its own; the provider's own end, when it comes,
+   * is swallowed (#endedEarly). @param {Turn} t
    */
   #endNow(t) {
     clearTimeout(t.endBy);
@@ -1823,11 +1824,9 @@ export class LiveKoe {
    */
   #endLater(t) {
     clearTimeout(t.endBy);
-    const ends = this.#ends;
     const began = t.soundAt || Date.now();
     t.endBy = setTimeout(() => {
-      // It ended, or the last call's answer sets this again; one let go of (alone) ends only if nothing of hers began or ended since.
-      if (t.calls || (this.#t ? this.#t !== t : !t.alone || this.#ends !== ends)) return;
+      if (t.calls || this.#t !== t) return; // it ended, or the last call's answer sets this again
       this.#endedEarly = true;
       this.#complete();
       this.#changed();
