@@ -20,6 +20,9 @@ import { Transcript } from '../../src/core/agent/transcript.js';
 import { record } from '../../src/core/agent/log.js';
 import { ME, createTrip, removeTrip } from '../../src/core/scopes.js';
 import { readConfig, saveRoles } from '../../src/core/llm/config.js';
+import { Live } from '../../src/core/live/live.js';
+import { ManualClock } from '../../src/core/live/clock.js';
+import { fakeSensors, at, iso, LA } from './live-kit.js';
 
 const sleep = { name: 'sleep', input: {} };
 const speak = (/** @type {string} */ text) => ({ name: 'speak', input: { text } });
@@ -284,6 +287,189 @@ for (const [mode, o] of MODES) {
     slow.open();
     await opening;
     await idleAtOnce(k);
+  });
+}
+
+// A wake keeps the conversation it came for (the Deferred entry "A reminder on its way when another conversation opens is shown again at the next start"):
+// a watch's wake for the open conversation, still in its budgets' read or, with two halves, in Halves' route, when another conversation opens. Where it
+// lands, its own is no longer the open one: its reminder is shown now and the wake is written into its own log (#keepFor, as a firing for a conversation
+// that isn't open is), and the reminder's entry settles the copy held there. On 50887655f it was queued in the conversation just opened and told there, and
+// the first kept its held copy, shown once more at the next start that opened it. With no other conversation opened, the path is as before (the controls).
+const KOE = { koe: { type: [asleep] } };
+const BOTH = /** @type {[string, any][]} */ ([['', {}], [' (Koe and Kokoro, Koe on a chat model)', KOE]]);
+const ALL = /** @type {[string, any][]} */ ([...BOTH, [' (two halves, Kokoro alone)', { halves: true }]]);
+
+/**
+ * The next call to a half's settings(), its budgets' read, waits at the door until open() lets it go; budgets, when given, are what it then reads.
+ * @param {any} half @param {any} [budgets] @returns {{ reached: () => boolean, open: () => void }}
+ */
+function holdBudgets(half, budgets) {
+  const real = half.settings.bind(half);
+  let armed = true;
+  let reached = false;
+  /** @type {() => void} */
+  let open = () => {};
+  const door = new Promise((r) => { open = () => r(undefined); });
+  half.settings = () => {
+    if (!armed) return real();
+    armed = false;
+    reached = true;
+    return door.then(real).then((/** @type {any} */ s) => (budgets ? { ...s, budgets } : s));
+  };
+  return { reached: () => reached, open };
+}
+
+/** Halves' routes wait at their refresh (`llm.ready`, which at a start waits for the plugins) until open() lets them go. @param {any} k */
+function holdRoutes(k) {
+  /** @type {() => void} */
+  let open = () => {};
+  k.llm.ready = new Promise((r) => { open = () => r(undefined); });
+  return { open };
+}
+
+/** A conversation's records of a type, as written. @param {any} k @param {string} scope @param {string} type */
+const recordsIn = async (k, scope, type) => k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(scope, { types: [type] }));
+
+/**
+ * What the traveller got once the wake for Big Sur landed with Kyoto open: its reminder shown once, its entry in Big Sur, nothing of it in Kyoto (no entry,
+ * no wake that tells it, no turn), the wake in Big Sur's own log; and the next start that opens Big Sur shows nothing more.
+ * @param {any} k @param {any} o @param {string} other @param {any[]} cards @param {number} before the requests made before it came
+ */
+async function toldInItsOwn(k, o, other, cards, before) {
+  assert.deepEqual(reminders(cards), [LEAVE], 'shown now, once');
+  assert.deepEqual(await entries(k), [LEAVE], 'its entry, in its own conversation');
+  assert.deepEqual(await entries(k, other), [], 'none in the one opened');
+  assert.equal(JSON.stringify(await recordsIn(k, other, 'wake')).includes(LEAVE), false, 'no wake in the one opened tells it');
+  assert.equal(k.requests.length, before, 'no turn took it in the one opened');
+  assert.deepEqual((await recordsIn(k, k.trip, 'wake')).filter((/** @type {any} */ e) => e.data.reasons.some((/** @type {any} */ r) => r.kind === 'trigger')).map((/** @type {any} */ e) => [e.data.reasons[0].text.endsWith('(annai has already shown the user its reminder.)'), e.data.reminders ?? []]),
+    [[true, []]], 'written into its own conversation, saying annai showed it, carrying none');
+  const next = await nextStart(k, Boolean(o.halves || o.koe));
+  assert.deepEqual(reminders(next.cards), [], 'the next start that opens it shows nothing more');
+  assert.deepEqual(await entries(k), [LEAVE], 'and writes no second entry');
+}
+
+for (const [mode, o] of BOTH) {
+  for (const opens of [true, false]) {
+    test(`a watch's wake still in its budgets' read ${opens ? 'when another conversation opens: its reminder is shown now and the wake written into its own conversation, never told in the one opened, and the next start that opens its own shows nothing more' : 'and no other conversation opens (the control): her turn takes it in its own conversation, as before'}${mode}`, async (t) => {
+      useClock(t);
+      const k = await agentKit([[asleep]], o);
+      await idleAtOnce(k);
+      const cards = raw(k);
+      const other = await createTrip(k.ws, { title: 'Kyoto' });
+      const before = k.requests.length;
+      const read = holdBudgets(k.agent.kokoro ?? k.agent);
+      k.agent.wake(fired());
+      await until(read.reached);
+      await settled();
+      assert.deepEqual(await heldIn(k), [LEAVE], 'held in its own conversation as it came');
+      if (opens) await k.agent.open(other);
+      read.open();
+      await idleAtOnce(k);
+      if (o.koe) await idleAtOnce(k);
+      if (opens) return toldInItsOwn(k, o, other, cards, before);
+      assert.ok(k.requests.length > before, 'her turn took it');
+      assert.deepEqual((await recordsIn(k, k.trip, 'wake')).flatMap((/** @type {any} */ e) => (e.data.reminders ?? []).map((/** @type {any} */ r) => r.text)), [LEAVE], "her turn's record carries it");
+      assert.deepEqual(reminders(cards), [LEAVE], 'she slept without telling it: annai shows it at her turn\'s end, once');
+      const next = await nextStart(k, Boolean(o.koe));
+      assert.deepEqual(reminders(next.cards), []);
+    });
+  }
+
+  // The budgets' other exits (quiet hours, the hourly limit) show the reminder themselves: in the wake's own conversation, whichever is open by then.
+  test(`a watch's wake in its budgets' read under quiet hours when another conversation opens: its reminder is shown in its own conversation, whose entry settles what was held, and nothing of it in the one opened${mode}`, async () => {
+    const k = await agentKit([[asleep]], o);
+    await idleAtOnce(k);
+    const cards = raw(k);
+    const other = await createTrip(k.ws, { title: 'Kyoto' });
+    const hh = (/** @type {number} */ ms) => new Date(ms).toISOString().slice(11, 16);
+    const read = holdBudgets(k.agent.kokoro ?? k.agent, { quietHours: { from: hh(Date.now() - 3_600_000), to: hh(Date.now() + 3_600_000) } });
+    k.agent.wake(fired());
+    await until(read.reached);
+    await settled();
+    await k.agent.open(other);
+    read.open();
+    await idleAtOnce(k);
+    assert.deepEqual(reminders(cards), [LEAVE], 'shown now, once');
+    assert.deepEqual([await entries(k), await entries(k, other)], [[LEAVE], []], 'its entry in its own conversation, none in the one opened');
+    const next = await nextStart(k, Boolean(o.koe));
+    assert.deepEqual(reminders(next.cards), [], 'the next start that opens it shows nothing more');
+  });
+}
+
+// With two halves the wake waits in Halves' route (its refresh: at a start, the plugins; an open under way) before Kokoro has it.
+for (const [mode, o] of ALL.slice(1)) {
+  for (const opens of [true, false]) {
+    test(`a watch's wake still in Halves' route ${opens ? 'when another conversation opens: its reminder is shown now and the wake written into its own conversation, never told in the one opened, and the next start that opens its own shows nothing more' : 'and no other conversation opens (the control): it goes on as before, told once in its own conversation'}${mode}`, async (t) => {
+      useClock(t);
+      const k = await agentKit([[asleep]], o);
+      await idleAtOnce(k);
+      const cards = raw(k);
+      const other = await createTrip(k.ws, { title: 'Kyoto' });
+      const before = k.requests.length;
+      const route = holdRoutes(k);
+      k.agent.wake(fired());
+      await settled();
+      assert.deepEqual(await heldIn(k), [LEAVE], 'held in its own conversation as it came');
+      assert.equal(k.agent.busy, true, 'still in the route');
+      if (opens) await k.agent.open(other);
+      route.open();
+      await idleAtOnce(k);
+      await inTime(k.agent.opening, 'Koe did not open');
+      await idleAtOnce(k);
+      if (opens) return toldInItsOwn(k, o, other, cards, before);
+      assert.ok(k.requests.length > before, 'a turn took it');
+      assert.deepEqual(reminders(cards), [LEAVE], 'told once');
+      assert.deepEqual(await entries(k, other), []);
+      const next = await nextStart(k, true);
+      assert.deepEqual(reminders(next.cards), []);
+    });
+  }
+}
+
+// A tap on another trip's notification as annai comes back on screen: the catch-up (live mode's, a real Live) gives the open conversation its own due
+// reminder, and the tap opens the trip the notification was for while that wake's budgets are read. F1's notification flow (remind-first-next's final review).
+for (const [mode, o] of BOTH) {
+  test(`a tap on another trip's notification opens it as the catch-up gives the open conversation its own due reminder: told once, in its own conversation, never in the one opened, and the next start that opens its own shows nothing more${mode}`, async () => {
+    const clock = new ManualClock(at('09:00'));
+    const k = await agentKit([[asleep]], { ...o, agent: { now: clock.now, timeZone: () => LA } });
+    const sensors = fakeSensors(k.registry);
+    /** @type {any[]} */
+    const news = [];
+    const live = new Live({ store: k.store, ws: k.ws, registry: k.registry, agent: k.agent, clock, timeZone: () => LA, news: async () => news.splice(0) });
+    const settle = async () => {
+      await live.settled();
+      await idleAtOnce(k);
+      await live.settled();
+    };
+    await live.start();
+    await settle();
+    const other = await createTrip(k.ws, { title: 'Kyoto' });
+    await live.setWatch(k.trip, { when: { type: 'time', at: iso('10:00') }, fallback: LEAVE });
+    const train = await live.setWatch(other, { when: { type: 'time', at: iso('10:00') }, fallback: TRAIN });
+    await settle();
+    const cards = raw(k);
+    const before = k.requests.length;
+    sensors.visible(false); // put away; at 10:00 the phone shows both notifications
+    await settle();
+    await clock.advanceTo(at('10:05'), settle);
+    const key = `${other}|${train.id}`;
+    news.push({ kind: 'shown', key, scope: other, watch: train.id, at: at('10:00'), t: at('10:00:30') }, { kind: 'opened', key, scope: other, watch: train.id, title: 'Kyoto', body: TRAIN, t: at('10:05') });
+    const read = holdBudgets(k.agent.kokoro ?? k.agent);
+    sensors.visible(true); // the tap brings annai forward: its catch-up gives Big Sur its reminder
+    await until(read.reached);
+    assert.deepEqual(await heldIn(k), [LEAVE], 'held in its own conversation as it came');
+    await k.agent.open(other); // and opens Kyoto, the notification's trip
+    read.open();
+    await settle();
+    if (o.koe) await settle();
+    live.dispose();
+    assert.deepEqual(reminders(cards), [LEAVE], "shown now, once (Kyoto's was shown by the phone)");
+    assert.deepEqual([await entries(k), await entries(k, other)], [[LEAVE], []], 'its entry in its own conversation, none in the one opened');
+    assert.equal(JSON.stringify(await recordsIn(k, other, 'wake')).includes(LEAVE), false, 'no wake in the one opened tells it');
+    assert.ok(JSON.stringify(await recordsIn(k, other, 'wake')).includes('from its notification'), "Kyoto's own catch-up is there, with the tap");
+    assert.ok(k.requests.length > before, "a turn answered Kyoto's");
+    const next = await nextStart(k, Boolean(o.koe));
+    assert.deepEqual(reminders(next.cards), [], 'the next start that opens Big Sur shows nothing more');
   });
 }
 

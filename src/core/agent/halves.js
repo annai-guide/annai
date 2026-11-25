@@ -913,17 +913,22 @@ export class Halves {
 
   /** Both halves get it while Koe talks, budgets checked once, its reminders with Koe (plan decision 16); asked to hear her, Koe alone. @param {Wake} w @returns {Promise<void>} */
   wake(w) {
-    if (w.scope && w.scope !== (this.kokoro.target ?? ME)) return this.kokoro.wake(w);
+    // It keeps the conversation it came for, as Agent.wake: one for another than the one open is Kokoro's to write into it.
+    const scope = w.scope ?? this.kokoro.target ?? ME;
+    if (scope !== (this.kokoro.target ?? ME)) return this.kokoro.wake(w);
+    w = { ...w, scope };
     // Its reminders are held as it first comes (Agent.wake), before the route, which may wait behind a conversation being opened: a page killed
     // meanwhile leaves them to the next open. Whoever takes it settles that copy: the session's reminder.told, an entry, or her turn's wake record.
     if (w.fallbacks?.length && !w.held) {
-      this.#alongside(this.kokoro.hold(w.fallbacks));
+      this.#alongside(this.kokoro.hold(w.fallbacks, scope));
       w = { ...w, held: true };
     }
     this.#route(async () => {
       await this.#refresh();
       if (!this.#works() || KOKORO_ONLY.includes(w.kind)) return void (await this.kokoro.wake(w));
       if (!w.aloud && !THEIRS.includes(w.kind) && !(await this.kokoro.admit(w, (x) => this.wake(x)))) return;
+      // Another conversation opened in the route (its refresh, its budgets' read): Kokoro writes it into its own, its reminders shown now.
+      if (scope !== (this.kokoro.target ?? ME)) return void (await this.kokoro.wake(w));
       this.#koeOpen();
       // A cue is hers to say or let pass, owed only until a model has it: not shown by annai before then. Kokoro is told of cues as of reminders, as released:
       // nothing shows that it leaves a cue alone, and one it passes on is a note, which Koe must say.
