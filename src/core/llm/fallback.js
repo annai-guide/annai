@@ -772,7 +772,7 @@ export async function callRole(c) {
         // (With no connection on this device, nextStep says neither wait nor rest: the model is asked again as soon as the connection is back.)
         const step = nextStep(err, retry, online());
         if (step.wait !== undefined) {
-          await sleep(step.wait, c.signal); // a Stop ends the wait at once, and the try after it as stopped
+          await sleep(step.wait, c.signal); // a Stop ends the wait at once; the next try meets the Stop
           continue;
         }
         if (step.bench !== undefined) {
