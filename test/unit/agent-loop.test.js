@@ -778,6 +778,88 @@ test("the traveller's own request limit for photos is a page copy's cap too (Set
   assert.deepEqual(k.codec.calls.map((/** @type {any} */ o) => o.maxBytes), [128 * 1024]);
 });
 
+// reader-limits-next (the Deferred entry "A reader's own photo limits don't shape the copies it is sent"): what a reader is sent for a
+// model that sees no photos fits the reader's own photo limits, as its model record states them.
+/** The image a reader was sent, as [its type, what the fake codec wrote in it]. @param {any} k */
+const readerSaw = (k) => k.sent['model-u'][0].messages[0].parts.filter((/** @type {any} */ p) => p.type === 'image').map((/** @type {any} */ p) => [p.mediaType, Buffer.from(p.data, 'base64').toString()]);
+/** A stored photo whose text names its size for the fake codec, padded to bytes. @param {any} k @param {string} path @param {string} type @param {number} [bytes] */
+async function storedPhoto(k, path, type, bytes = 0) {
+  const data = new Uint8Array(Math.max(bytes, 9)).fill(0x20);
+  data.set(new TextEncoder().encode('1600x1200'));
+  await k.ws.write(k.trip, path, data, { author: 'user', type, meta: { width: 1600, height: 1200 } });
+}
+
+test("the user's photo, read for a model that sees none by a reader that takes no WebP, goes to the reader as a JPEG copy (#readFor; reader-limits-next)", async (t) => {
+  useClock(t);
+  const k = await agentKit([[say('A menu.')]], { models: [{ input: ['text'] }], utility: [{ text: 'A menu; the fish is circled.' }], utilityModel: { images: { formats: ['image/jpeg'] } } });
+  await storedPhoto(k, '/files/p.webp', 'image/webp');
+  k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+  await idleAtOnce(k);
+  assert.deepEqual(readerSaw(k), [['image/jpeg', `1600x1200:null:${256 * 1024}`]]);
+  assert.match(JSON.stringify(k.sent['model-0'][0].messages), /described by model-u, as you can't see photos\): A menu; the fish is circled\./);
+});
+
+test("a tool's photo, read for a model that sees none by a reader that takes at most 100 KiB, goes to the reader as a copy under that (#described; reader-limits-next)", async (t) => {
+  useClock(t);
+  const k = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/menu.jpg' } }] }, say('The fish is $32.')]],
+    { models: [{ input: ['text'] }], utility: [{ text: 'A menu; the fish is $32.' }], utilityModel: { images: { maxBytes: 100 * 1024 } } });
+  await storedPhoto(k, '/files/menu.jpg', 'image/jpeg', 150 * 1024);
+  k.agent.send('What does the menu say?');
+  await idleAtOnce(k);
+  assert.deepEqual(k.codec.calls.map((/** @type {any} */ o) => o.maxBytes), [100 * 1024]);
+  assert.deepEqual(readerSaw(k), [['image/webp', `1600x1200:null:${100 * 1024}`]]);
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(r.data.content, /\nWhat it shows \(described by model-u, as you can't see photos\): A menu; the fish is \$32\.$/);
+});
+
+test("a PDF's pages, read for a model that sees no photos by a reader that takes only JPEG of at most 100 KiB, go to it as JPEG copies under that (reader-limits-next)", async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text'] }], utility: [{ text: 'Flight AN 123.' }], utilityModel: { images: { formats: ['image/jpeg'], maxBytes: 100 * 1024 } } }, ['text', 'image']);
+  sizedPages(k, [300 * 1024, 300 * 1024]);
+  k.agent.send('Read it');
+  await idleAtOnce(k);
+  assert.deepEqual(k.codec.calls, Array(2).fill({ ...PHOTO_LIMITS, formats: ['image/jpeg'], maxBytes: 100 * 1024 }));
+  assert.deepEqual(readerSaw(k), [0, 1].map((i) => ['image/jpeg', `${1131 - i}x1600:null:${100 * 1024}`]));
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(r.data.content, /told by model-u from pictures of pages 1–2 of 2, as you can't read PDFs\): Flight AN 123\.$/);
+});
+
+test("a main model that sees photos is sent what it was before, whatever a reader's own limits: the user's photo as stored, a PDF's pages at a photo's request limits (reader-limits-next)", async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text', 'image'] }], utility: [{ text: 'never' }], utilityModel: { images: { formats: ['image/jpeg'], maxBytes: 100 * 1024 } } });
+  await storedPhoto(k, '/files/p.webp', 'image/webp');
+  sizedPages(k, [300 * 1024]);
+  k.agent.send('Read it', { photos: [{ path: '/trip/files/p.webp' }] });
+  await idleAtOnce(k);
+  const sent = k.sent['model-0'].at(-1).messages.flatMap((/** @type {any} */ m) => m.parts).filter((/** @type {any} */ p) => p.type === 'image');
+  assert.deepEqual(sent.map((/** @type {any} */ p) => p.mediaType), ['image/webp', 'image/webp']);
+  assert.deepEqual(k.codec.calls, [PHOTO_LIMITS], "only the page is copied, at a photo's request limits; the photo goes as stored");
+  assert.doesNotMatch(JSON.stringify(k.sent['model-u'] ?? []), /"type":"image"/);
+});
+
+test("with a fallback that sees no photos, the one copy of the user's photo fits the reader that reads for it, and the model that sees photos is sent that copy too (reader-limits-next)", async (t) => {
+  useClock(t);
+  const k = await agentKit([[say('A menu.')], [say('never')]], { models: [{ input: ['text', 'image'] }, { input: ['text'] }], utility: [{ text: 'never' }], utilityModel: { images: { formats: ['image/jpeg'] } } });
+  await storedPhoto(k, '/files/p.webp', 'image/webp');
+  k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+  await idleAtOnce(k);
+  const sent = k.sent['model-0'][0].messages.at(-1).parts.find((/** @type {any} */ p) => p.type === 'image');
+  assert.equal(sent.mediaType, 'image/jpeg');
+});
+
+test("Koe's model, Kokoro's first reader, that takes no WebP is sent a photo Kokoro's tool read as a JPEG copy (halves; reader-limits-next)", async (t) => {
+  useClock(t);
+  const k = await agentKit([[{ toolCalls: [{ name: 'read', input: { path: '/trip/files/p.webp' } }] }, say('A menu.')]],
+    { halves: true, models: [{ input: ['text'] }], koe: { type: koeReads({ text: 'A menu; the fish is circled.' }), input: ['text', 'image'], model: { images: { formats: ['image/jpeg'] } } } });
+  await storedPhoto(k, '/files/p.webp', 'image/webp');
+  k.agent.send('What does it show?');
+  await idleAtOnce(k);
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read' && e.data.half === 'kokoro');
+  assert.match(r.data.content, /\nWhat it shows \(described by model-koe, as you can't see photos\): A menu; the fish is circled\.$/);
+  const seen = k.sent['model-koe'].flatMap((/** @type {any} */ q) => q.messages.flatMap((/** @type {any} */ m) => m.parts)).filter((/** @type {any} */ p) => p.type === 'image');
+  assert.deepEqual(seen.map((/** @type {any} */ p) => p.mediaType), ['image/jpeg']);
+});
+
 test('pages that take longer than the PDF\'s limit stop there, and the result says it couldn\'t be read in time', async (t) => {
   useClock(t);
   const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text', 'image'] }] });

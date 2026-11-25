@@ -81,15 +81,17 @@ export function noReader(kind, { plugin = false, photos = false } = {}) {
  * first words fails and rests 3 minutes, as any model does (§9.6); one whose send got no headers in its time fails, and rests as long only
  * once a later reader read the file in its place (something else reads meanwhile), else the next reading asks it again (§4.8); either way
  * the next reader is asked. Only a PDF's pages' drawing, which no call times, stops at DESCRIBE_PDF_S; all of it stops at signal (the
- * turn's stop). "Can read" means can and did: a reader that fails passes it on.
+ * turn's stop). "Can read" means can and did: a reader that fails passes it on. A photo goes to a reader as it came, its request copy,
+ * and a PDF's pages as copy makes them: the loop makes both for the readers' own photo limits too (loop.js #limits), as a reader's call
+ * learns nothing from a refusal.
  * @param {FileToRead} file @param {{ input?: string[] }} model the model the reading is for
  * @param {{ llm: { call: Function, config: () => Promise<any>, bench: import('../llm/fallback.js').Bench }, half: 'one' | 'kokoro' | 'koe', pages: import('../pdf-pages.js').PdfPages | null,
  *   signal: AbortSignal, wakeId: string, scope: string, secondMs: number, explain: (e: unknown, role: string) => string | Promise<string>, store: import('../types.js').Store,
  *   shared?: boolean, copy?: (page: import('../pdf-pages.js').PageImage) => Promise<import('../pdf-pages.js').PageImage> }} o
  *   explain: why a reader failed, in English for the model (the loop's, which knows whether the device is online, and blanks every key annai keeps);
  *   store: whose keys the PDF pages plugin's error is blanked of; shared: the half's turn shares the link with the other half's (loop.js), and
- *   so does each reader's send; copy: a page picture as a request sends it (the loop's: under the photos' request limits, by their encoder,
- *   spec §7.2), else each goes as drawn
+ *   so does each reader's send; copy: a page picture as a request sends it (the loop's: under the photos' request limits, the readers'
+ *   among them, by their encoder, spec §7.2), else each goes as drawn
  * @returns {Promise<Reading>}
  */
 export async function readFile(file, model, o) {

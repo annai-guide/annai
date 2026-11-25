@@ -33,7 +33,7 @@ import { t, plural } from '../l10n.js';
 import { sentences, list, num } from '../intl.js';
 import { plainReminder } from '../live/plan-watches.js';
 import { scopeTitle } from '../scopes.js';
-import { readFile } from './reading.js';
+import { readFile, readerRoles } from './reading.js';
 import { runningPdfPages } from '../pdf-pages.js';
 import { FILES_ONLY, PHOTO_ONLY, handoverOf } from '../handover.js';
 
@@ -646,9 +646,23 @@ export class Agent {
     return images;
   }
 
-  /** What photos sent now must fit: the stricter of the request settings and the main models' limits (spec §4.8, §9.2). */
+  /**
+   * What photos sent now must fit: the stricter of the request settings and the main models' limits (spec §4.8, §9.2), and, when a model
+   * this half's turn may call sees no photos, of every reader role's model that sees them (reading.js readerRoles), as any of those may be
+   * sent the photo, or a PDF's pages, as made here for that model. Not their counts: a reader's is its own (reading.js), a turn's #mainImages'.
+   */
   async #limits() {
-    return requestLimits(photoSettings(await readAppSettings(this.ws)).request, await this.#mainImages());
+    const cfg = await this.llm.config();
+    let images = await this.#mainImages();
+    const role = this.#half.role;
+    const sees = (/** @type {string} */ id) => Boolean(cfg.models[id] && modelOf(cfg.models[id]).input?.includes('image'));
+    if (![...chatCandidates(cfg, role), ...(role === 'main' ? [] : chatCandidates(cfg, 'main'))].every(sees)) {
+      for (const id of readerRoles(cfg, this.#half.name).flatMap((r) => chatCandidates(cfg, r)).filter(sees)) {
+        const { maxCount: _, ...reader } = modelOf(cfg.models[id]).images ?? {};
+        images = stricter(images, reader);
+      }
+    }
+    return requestLimits(photoSettings(await readAppSettings(this.ws)).request, images);
   }
 
   /**
