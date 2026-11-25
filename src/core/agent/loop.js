@@ -18,9 +18,9 @@ import { Warmth, TTL_MS, ttlFor, wantedTtl, SOON_MS } from './warmth.js';
 import { tracedFetch, withoutSecrets, shownWithoutSecrets } from './net.js';
 import { webVia } from './via.js';
 import { inQuiet, quietEnds, spentToday, budgetStop, budgetWords } from './budgets.js';
-import { PhotoCopies, requestLimits, healRegion, photoLine } from '../request-photos.js';
+import { PhotoCopies, requestLimits, healRegion, photoLine, fits } from '../request-photos.js';
 import { readRefusal, stricter, tighter, limitMedia, refusedPdf } from './refusals.js';
-import { photoSettings } from '../photos.js';
+import { photoSettings, MAX_CANVAS_PIXELS } from '../photos.js';
 import { parsePartialJSON } from '../llm/partial-json.js';
 import { spokenText, unspoken } from './listen.js';
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
@@ -658,6 +658,18 @@ export class Agent {
   async #copy(source, crop, scope) {
     if (!this.#photos) return { hash: source.hash, mediaType: source.type, width: source.width ?? null, height: source.height ?? null, made: false };
     return this.#photos.copy(source, await this.#limits(), crop, scope);
+  }
+
+  /**
+   * A PDF's page picture as a request sends it (spec §7.2): as drawn within the limits a photo's copy has (#limits), else a copy under
+   * them by the same encoder, so its 1600 px stay unless its bytes need fewer. A copy this browser can't make (a phone out of canvas
+   * memory) leaves the page as drawn: larger, still read. @param {import('../pdf-pages.js').PageImage} page
+   */
+  async #pageCopy(page) {
+    const limits = await this.#limits();
+    if (!this.codec || fits({ type: page.type, width: page.width, height: page.height, size: page.bytes.length }, limits)) return page;
+    const { formats, quality, maxEdge, maxBytes } = limits;
+    return this.codec.encode(new Blob([/** @type {BlobPart} */ (page.bytes)], { type: page.type }), { formats, quality, maxEdge, maxBytes, maxPixels: MAX_CANVAS_PIXELS }).catch(() => page);
   }
 
   /** open: another conversation was opened ({ trip, scope }), for live mode to follow (spec §11); clear: a card's key, to take down; unsaved: typed words no write kept ({ words, error }: #unsaved). @param {'state' | 'event' | 'notice' | 'open' | 'clear' | 'unsaved'} kind @param {(x: any) => void} fn */
@@ -3307,7 +3319,7 @@ export class Agent {
         const pending = (async () => {
           const r = await readFile({ kind, mediaType: m.mediaType, data, ...(m.name ? { name: m.name } : {}), ...(m.path ? { path: m.path } : {}) }, model ?? {}, {
             llm: this.llm, half: this.#half.name, pages: kind === 'pdf' ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope,
-            secondMs: this.secondMs, explain: (e, role) => this.#explain(e, role), store: this.store, shared: this.#shared,
+            secondMs: this.secondMs, explain: (e, role) => this.#explain(e, role), store: this.store, shared: this.#shared, copy: (p) => this.#pageCopy(p),
           });
           return (key ? await this.#keep(scope, key, kind, r, wakeId) : null) ?? r;
         })();
@@ -3349,7 +3361,7 @@ export class Agent {
           if (kept) return kept;
           const fresh = await readFile({ kind: pdf ? 'pdf' : 'image', mediaType: part.mediaType, data: bytes ? toBase64(bytes) : '', ...(pdf && part.name ? { name: part.name } : {}), ...(!pdf && part.path ? { path: part.path } : {}) }, model, {
             llm: this.llm, half: this.#half.name, pages: pdf ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope, secondMs: this.secondMs,
-            explain: (e, role) => this.#explain(e, role), store: this.store, shared: this.#shared,
+            explain: (e, role) => this.#explain(e, role), store: this.store, shared: this.#shared, copy: (p) => this.#pageCopy(p),
           });
           return (key ? await this.#keep(this.scope, key, pdf ? 'pdf' : 'image', fresh, wakeId) : null) ?? fresh;
         })();

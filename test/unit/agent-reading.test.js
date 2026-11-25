@@ -5,6 +5,7 @@ import { sendMs } from '../../src/core/llm/uploads.js';
 import { callOnce } from '../../src/core/llm/call.js';
 import { ProviderError } from '../../src/core/llm/contract.js';
 import { AllFailedError, Bench } from '../../src/core/llm/fallback.js';
+import { toBase64 } from '../../src/core/bytes.js';
 import { useClock } from './clock.js';
 
 test('with nothing here that reads a PDF, the note names the setting, and the plugin only when asked to', () => {
@@ -263,4 +264,48 @@ test("a reader cut in one role rests once a reader of a later role described the
     assert.equal((await readWith(photo, { call: r.call, bench })).how, 'failed');
     assert.equal(bench.until('u'), 0, 'the later reader failed too: nothing rests');
   }
+});
+
+// pdf-pages-cap-next: a PDF's page pictures go through copy (the loop's: a photo's request copy), after the drawing's time limit.
+
+/** Both readers see photos and neither reads PDFs. @type {any} */
+const seers = structuredClone(twoReaders);
+for (const m of Object.values(seers.models)) /** @type {any} */ (m).user.input = ['text', 'image'];
+/** A plugin that draws two pages, each a JPEG whose fourth byte is its page. */
+const twoPages = { pages: async () => ({ count: 2, pages: [1, 2].map((n) => ({ type: 'image/jpeg', bytes: new Uint8Array([0xff, 0xd8, 0xff, n]), width: 1131, height: 1600 })) }) };
+/** A copy that takes ms, a WebP whose third byte is the page's. @param {number} ms */
+const slowCopy = (ms) => async (/** @type {any} */ p) => {
+  await new Promise((done) => setTimeout(done, ms));
+  return { type: 'image/webp', bytes: new Uint8Array([0x52, 0x49, p.bytes[3]]), width: 1131, height: 1600 };
+};
+const copied = [1, 2].map((n) => ({ mediaType: 'image/webp', data: toBase64(new Uint8Array([0x52, 0x49, n])), page: n }));
+
+test("a PDF's drawn pages go through copy one after another, outside the drawing's 90 seconds: copies slower than that are still the reading's, for the model and for its reader (pdf-pages-cap-next)", async (t) => {
+  useClock(t);
+  const o = { half: /** @type {const} */ ('one'), pages: /** @type {any} */ (twoPages), signal: new AbortController().signal, wakeId: 'w-1', scope: 'trip-a', secondMs: 1, explain: (/** @type {any} */ e) => e.message, store: /** @type {any} */ ({}), copy: slowCopy(60_000) };
+  let started = Date.now();
+  const shown = await readFile({ ...pdf, data: 'JVBE' }, { input: ['text', 'image'] }, { ...o, llm: { config: async () => seers, call: readers({}).call, bench: new Bench() } });
+  assert.deepEqual([shown.how, shown.images], ['pages', copied]);
+  assert.equal(Date.now() - started, 120_000, 'one after another, past the drawing\'s 90 ms at secondMs 1');
+  /** @type {any[]} */
+  const parts = [];
+  const r = readers({ utility: async (/** @type {any} */ c) => { parts.push(...c.request.messages[0].parts); return { reply: { text: 'Read by utility.', stop: 'end' }, answeredBy: 'utility' }; } });
+  started = Date.now();
+  const told = await readFile({ ...pdf, data: 'JVBE' }, { input: ['text'] }, { ...o, llm: { config: async () => seers, call: r.call, bench: new Bench() } });
+  assert.equal(told.text, "What it says (told by utility from pictures of pages 1–2 of 2, as you can't read PDFs): Read by utility.");
+  assert.deepEqual(parts.filter((p) => p.type === 'image'), copied.map((c) => ({ type: 'image', ...c })), 'the reader is sent the copies');
+  assert.equal(Date.now() - started, 120_000);
+});
+
+test("the turn's stop during a page's copy ends the reading at once, as stopped (pdf-pages-cap-next)", async (t) => {
+  useClock(t);
+  const turn = new AbortController();
+  setTimeout(() => turn.abort(), 5);
+  const started = Date.now();
+  const read = await readFile({ ...pdf, data: 'JVBE' }, { input: ['text', 'image'] }, {
+    llm: { config: async () => seers, call: readers({}).call, bench: new Bench() }, half: 'one', pages: /** @type {any} */ (twoPages), signal: turn.signal, wakeId: 'w-1', scope: 'trip-a',
+    secondMs: 1, explain: (/** @type {any} */ e) => e.message, store: /** @type {any} */ ({}), copy: () => new Promise(() => {}),
+  });
+  assert.deepEqual([read.how, read.text], ['stopped', "It wasn't described: the turn was stopped first."]);
+  assert.equal(Date.now() - started, 5);
 });

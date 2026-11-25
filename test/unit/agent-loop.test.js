@@ -689,6 +689,75 @@ test('a model that sees no photos gets the pages told in words by a reader role\
   assert.equal(k.sent['model-u'][0].messages[0].parts.filter((/** @type {any} */ p) => p.type === 'image').length, 3);
 });
 
+// pdf-pages-cap-next (the Deferred entry "A PDF's page pictures have no size limit"): a page picture goes as a photo's request copy does.
+/** The default request limits a photo's copy is made with (spec §4.8), as the codec is asked them. */
+const PHOTO_LIMITS = { formats: ['image/webp', 'image/jpeg'], quality: 0.9, maxEdge: 2000, maxBytes: 256 * 1024, maxPixels: 4096 * 4096 };
+/**
+ * A plugin that draws pages of the given sizes in bytes, each a JPEG whose text names its size for the fake codec ("1131x1600", a pixel
+ * narrower a page, so no two copies are alike). @param {any} k @param {number[]} sizes
+ */
+function sizedPages(k, sizes) {
+  const page = (/** @type {number} */ size, /** @type {number} */ i) => {
+    const bytes = new Uint8Array(size).fill(0x20);
+    bytes.set(new TextEncoder().encode(`${1131 - i}x1600`));
+    return { type: 'image/jpeg', bytes, width: 1131 - i, height: 1600 };
+  };
+  const drawn = sizes.map(page);
+  k.registry.add('pdf-pages', 'pdf-pages', { id: 'fake', pages: async () => ({ count: sizes.length, pages: drawn }) });
+  return drawn;
+}
+/** What the fake codec makes of page i: its size, no crop, the cap it was asked for. @param {number} i */
+const copyOf = (i) => `${1131 - i}x1600:null:${256 * 1024}`;
+
+test("ten pages over a photo's 256 KiB each go to a reader that sees photos as a copy under it, made by the photos' encoder at a photo's request limits (pdf-pages-cap-next)", async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text'] }], utility: [{ text: 'Flight AN 123.' }] }, ['text', 'image']);
+  sizedPages(k, Array(10).fill(300 * 1024));
+  k.agent.send('Read it');
+  await idleAtOnce(k);
+  const sent = k.sent['model-u'][0].messages[0].parts.filter((/** @type {any} */ p) => p.type === 'image');
+  assert.deepEqual(sent.map((/** @type {any} */ p) => [p.mediaType, Buffer.from(p.data, 'base64').toString()]), sent.map((/** @type {any} */ _, /** @type {number} */ i) => ['image/webp', copyOf(i)]));
+  assert.equal(sent.length, 10);
+  assert.deepEqual(k.codec.calls, Array(10).fill(PHOTO_LIMITS), "each page once, at a photo's request limits");
+});
+
+test("a model that sees photos is sent each page over the cap as its copy, kept with the reading, and a page within the limits as drawn, the encoder not asked for it (pdf-pages-cap-next)", async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Your flight leaves at 8:05.')]], { models: [{ input: ['text', 'image'] }] });
+  const drawn = sizedPages(k, [300 * 1024, 100 * 1024, 300 * 1024]);
+  k.agent.send('When do I fly?');
+  await idleAtOnce(k);
+  const want = [copyOf(0), new TextDecoder().decode(drawn[1].bytes), copyOf(2)];
+  const sent = k.sent['model-0'].at(-1).messages.at(-1).parts.filter((/** @type {any} */ p) => p.type === 'image');
+  assert.deepEqual(sent.map((/** @type {any} */ p) => Buffer.from(p.data, 'base64').toString()), want);
+  assert.deepEqual(sent.map((/** @type {any} */ p) => p.mediaType), ['image/webp', 'image/jpeg', 'image/webp']);
+  assert.equal(k.codec.calls.length, 2, 'the page within the limits is not encoded');
+  const [kept] = await k.events(['reading']);
+  const stored = await Promise.all(kept.data.images.map((/** @type {any} */ im) => k.store.tx(['blobs'], 'readonly', (/** @type {any} */ t) => t.getBlob(im.hash))));
+  assert.deepEqual(stored.map((/** @type {any} */ b) => new TextDecoder().decode(b.data)), want, 'the kept pictures are what was sent');
+});
+
+test("a page whose copy this browser can't make goes as drawn, and the reading still reads it; the next page is copied (pdf-pages-cap-next)", async (t) => {
+  useClock(t);
+  const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text', 'image'] }] });
+  const drawn = sizedPages(k, [300 * 1024, 300 * 1024]);
+  const encode = k.codec.encode;
+  let first = true;
+  k.codec.encode = async (/** @type {Blob} */ blob, /** @type {any} */ o) => {
+    if (first) {
+      first = false;
+      throw new Error('This browser could not draw the photo.');
+    }
+    return encode(blob, o);
+  };
+  k.agent.send('Read it');
+  await idleAtOnce(k);
+  const r = (await k.events(['tool.result'])).find((e) => e.data.name === 'read');
+  assert.match(r.data.content, /Its pages as pictures, as you can't read PDFs: pages 1–2 of 2\.$/);
+  const sent = k.sent['model-0'].at(-1).messages.at(-1).parts.filter((/** @type {any} */ p) => p.type === 'image');
+  assert.deepEqual(sent.map((/** @type {any} */ p) => Buffer.from(p.data, 'base64').toString()), [new TextDecoder().decode(drawn[0].bytes), copyOf(1)]);
+});
+
 test('pages that take longer than the PDF\'s limit stop there, and the result says it couldn\'t be read in time', async (t) => {
   useClock(t);
   const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text', 'image'] }] });
