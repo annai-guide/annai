@@ -1823,8 +1823,10 @@ export class Agent {
    * Housekeeping (spec §6.5): the older part of the conversation becomes a compaction event; the
    * most recent part stays word for word. Returns whether anything was compacted.
    * @param {'warm' | 'cold'} mode @param {{ forced?: boolean, keepTokens?: number, frozen?: Frozen | null }} [o] forced: down to the last exchange, if the
-   * kept part is still about a third of where housekeeping is due; keepTokens: kept, at least (Summarize now's 0 keeps the last exchange only);
-   * frozen: the turn it runs inside, whose tools, provider tools and level it keeps
+   * kept part is still about a third of where housekeeping is due, and a warm summary that fails for anything but a cut is written cold instead
+   * (the warm request is the whole cached conversation: it can be over the window itself, or carry a PDF every model refuses; the cold one sends
+   * only the part it summarizes, as words), for the turn's tidy-up and Summarize now alike; keepTokens: kept, at least (Summarize now's 0 keeps
+   * the last exchange only); frozen: the turn it runs inside, whose tools, provider tools and level it keeps
    */
   async compact(mode, o = {}) {
     // The summary's one controller, made before anything is awaited, joined with the turn's (#abort; null outside one): a cut reaches it at any point.
@@ -1869,14 +1871,24 @@ export class Agent {
     const lines = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: [...USER_LINES], ...(latest ? { after: latest.data.to } : {}) }));
     const said = (await conversationLines(this.store, lines)).flatMap(({ text }) => (typeof text === 'string' ? [text] : []));
     const language = summaryLanguage(said, await this.#languages());
-    const summary = mode === 'warm' ? await this.#warmSummary(marker, settings, language, signal, o.frozen) : await this.#coldSummary(cut, language, signal);
+    /** How the summary was written: a forced warm one that failed is cold. */
+    let wrote = mode;
+    let summary;
+    try {
+      summary = mode === 'warm' ? await this.#warmSummary(marker, settings, language, signal, o.frozen) : await this.#coldSummary(cut, language, signal);
+    } catch (e) {
+      // A cut first (leaving the page aborts only this summary's controller, a tap the turn's): nothing failed, and nothing more is sent.
+      if (!o.forced || mode !== 'warm' || this.#leaving || (e instanceof ProviderError && e.kind === 'cancelled')) throw e;
+      wrote = 'cold';
+      summary = await this.#coldSummary(cut, language, signal);
+    }
     if (!summary) return false;
     // Start fresh wrote a compaction meanwhile: this one, cut before it, would bring back the lines it left.
     const [now] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['compaction'], reverse: true, limit: 1 }));
     if (now?.seq !== latest?.seq) return false;
     // The range it covers: the summary it is written from covered its own from on (a fresh start, nothing before it); with neither, the first event.
     const from = latest ? (latest.data?.mode === 'fresh' ? latest.data.to + 1 : latest.data?.from) : this.transcript.from || 1;
-    const done = await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'compaction', actor: 'system', data: { from, to: cut - 1, mode }, texts: [['summary', summary]] });
+    const done = await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'compaction', actor: 'system', data: { from, to: cut - 1, mode: wrote }, texts: [['summary', summary]] });
     await this.#serially(async () => {
       await this.reread();
       await this.#half.logged?.(done, { texts: {}, images: [] }); // Koe reads its window again from here
@@ -2880,7 +2892,7 @@ export class Agent {
 
   /**
    * Housekeeping within a turn. When it fails a card says why; when the turn can't go on without it
-   * (the next request would overflow), an error event ends the turn; a forced warm one that fails is first tried cold.
+   * (the next request would overflow), an error event ends the turn (a forced warm one that fails is first written cold: compact).
    * @param {'warm' | 'cold'} mode @param {{ forced?: boolean, frozen?: Frozen | null }} o @param {string} wakeId
    * @returns {Promise<boolean | null>} whether anything was compacted; null: failed (forced) or cut short; the turn ends
    */
@@ -2890,9 +2902,6 @@ export class Agent {
     } catch (e) {
       // Leaving the page, or a tap on Shiori that cut it short: nothing failed, so no card and no error.
       if (this.#leaving || (e instanceof ProviderError && e.kind === 'cancelled')) return null;
-      // A forced warm summary that can't be sent (over the window itself, or carrying a PDF every model refuses): the cold one, which sends only the
-      // part it summarizes, and no file; only its failure ends the turn.
-      if (o.forced && mode === 'warm') return this.#tidyUp('cold', o, wakeId);
       const why = await this.#whyOf(e, mode === 'cold' ? 'utility' : 'main');
       const names = await this.#names();
       if (!o.forced) {
