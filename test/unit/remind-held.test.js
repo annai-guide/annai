@@ -853,29 +853,48 @@ for (const [what, race] of /** @type {[string, boolean][]} */ ([['while the card
 
 /**
  * A slow link from the stand-in: from the first message that matches `at.match` (set by the test), that message and every one after it wait, in order,
- * until `at.go()`, as messages already sent wait on a slow mobile link. Taken by the sessions opened after it. @returns {{ match: RegExp | null, held: boolean, go: () => void, restore: () => void }}
+ * until `at.go()`, as messages already sent wait on a slow mobile link. `go('after')` lets out only those before the provider's cut of her turn
+ * (`interrupted`) and holds the cut and all after it until the page has sent its answer to a tool call: the link delivers her call, the page answers it,
+ * and only then the cut comes. Taken by the sessions opened after it. @returns {{ match: RegExp | null, held: boolean, waiting: () => string[], go: (order?: 'with' | 'after') => void, restore: () => void }}
  */
 function slowLink() {
   const Real = globalThis.WebSocket;
-  const at = { match: /** @type {RegExp | null} */ (null), held: false, go: () => {}, restore: () => { globalThis.WebSocket = Real; } };
+  const says = (/** @type {any} */ e) => (typeof e.data === 'string' ? e.data : Buffer.from(e.data).toString());
+  const at = { match: /** @type {RegExp | null} */ (null), held: false, waiting: () => /** @type {string[]} */ ([]), go: (/** @type {'with' | 'after' | undefined} */ _order) => {}, restore: () => { globalThis.WebSocket = Real; } };
   globalThis.WebSocket = /** @type {any} */ (function Slow(/** @type {string} */ url, /** @type {string[]} */ protocols) {
     const w = new Real(url, protocols);
+    /** @type {(() => void) | null} */
+    let onAnswer = null; // lets out what still waits, once the page's answer to a tool call has gone out (go('after'))
+    const send = w.send.bind(w);
+    /** @type {any} */ (w).send = (/** @type {any} */ data) => {
+      send(data);
+      if (onAnswer && typeof data === 'string' && data.includes('"toolResponse"')) setTimeout(onAnswer, 0); // after the code that sent it has run on
+    };
     const add = w.addEventListener.bind(w);
     /** @type {any} */ (w).addEventListener = (/** @type {string} */ type, /** @type {(e: any) => void} */ fn, /** @type {any[]} */ ...rest) => {
       if (type !== 'message') return add(type, fn, ...rest);
       /** @type {any[] | null} */
       let queue = null;
+      const release = () => {
+        const q = queue ?? [];
+        queue = null;
+        at.held = false;
+        for (const x of q) fn(x);
+      };
       return add('message', (/** @type {any} */ e) => {
         if (queue) return void queue.push(e);
-        if (at.match?.test(typeof e.data === 'string' ? e.data : Buffer.from(e.data).toString())) {
+        if (at.match?.test(says(e))) {
           at.match = null;
           at.held = true;
           queue = [e];
-          at.go = () => {
+          at.waiting = () => (queue ?? []).map(says);
+          at.go = (order = 'with') => {
             const q = queue ?? [];
-            queue = null;
-            at.held = false;
-            for (const x of q) fn(x);
+            const cut = order === 'after' ? q.findIndex((x) => says(x).includes('"interrupted"')) : -1;
+            if (cut < 0) return release();
+            queue = q.slice(cut); // the cut and all after it wait for the page's answer to the call
+            onAnswer = () => { onAnswer = null; release(); };
+            for (const x of q.slice(0, cut)) fn(x);
           };
           return;
         }
@@ -889,37 +908,45 @@ function slowLink() {
 
 // The Deferred entry "A reminder in memory can still be lost in annai's first seconds", shape (3): Koe is saying a line with a card after it when an urgent
 // reminder cuts in, and the card's call, sent before the reminder reached the provider, comes after it went in (a slow link). That call is her cut turn's,
-// begun before the reminder went in: it passes nothing on (#tool). Her answer to the reminder is only "Silent.", so annai shows it, never written as told.
-// On a241fd148 the card passed the reminder on as told, and nothing showed it.
-test('Koe live: an urgent reminder cuts in while Koe talks, and the card she had already sent comes after it: the card passes nothing on, so after a bare answer annai shows it, never written as told', async () => {
-  const card = { name: 'show', args: { card: { title: 'Bixby Bridge', text: 'About twenty minutes ahead.' } } };
-  const link = slowLink(); // before the session opens
-  const k = await liveKit([{ said: 'Here is the bridge.', audio: tone(3), tool: card }, { said: 'Silent.', audio: tone(0.3) }, { said: 'Silent.', audio: tone(0.3) }], { pace: 1 });
-  try {
-    k.platform.streamSpeed = 1;
-    await k.voice.unlock();
-    /** @type {number[]} */
-    const askedAt = []; // the asks that had gone in as the reminder's card was raised
-    k.agent.on('notice', (/** @type {any} */ n) => { if (n.title === 'Reminder') askedAt.push(texts(k).filter((/** @type {string} */ x) => x.includes("hasn't reached the user")).length); });
-    link.match = /"toolCall"/;
-    k.agent.send('Show me the bridge');
-    await until(() => link.held && k.platform.streams.length === 1, 30_000); // her words play, and her card's call is on its way
-    await k.agent.wake({ ...train(), urgent: true }); // it cuts in on her
-    await soon(async () => texts(k).some((/** @type {string} */ x) => x.includes('Train in 20 minutes'))); // it is with the session
-    link.go(); // the call comes now, after the reminder went in
-    await soon(async () => (await k.events(['out.show'])).length === 1);
-    // Her answer is only "Silent.": annai shows it (on a241fd148 the card had written it as told, and nothing showed it).
-    await soon(async () => (await entries(k)).length === 1 || (await k.events(['reminder.told'])).length > 0, 30_000);
-    assert.deepEqual((await k.events(['reminder.told'])).map((/** @type {any} */ e) => e.data.reminders.map((/** @type {any} */ r) => r.text)), [], 'never written as told: the card was no answer to it');
-    assert.deepEqual(reminders(k.notices), [TRAIN], 'shown once');
-    assert.deepEqual(askedAt, [1], 'asked once more first: her cut turn missed nothing either');
-    const next = await nextStart(k, true);
-    assert.deepEqual(reminders(next.cards), [], 'its entry settled it');
-  } finally {
-    link.restore();
-    await k.done();
-  }
-});
+// begun before the reminder went in: it passes nothing on (#tool), and that turn is no miss of it either (#settle), whichever message comes first: the provider's
+// cut of her turn comes with the call, or only once the page has answered it. Her answer to the reminder is only "Silent.", so she is asked once more, and then
+// annai shows it, never written as told. On a241fd148 the card passed the reminder on as told, and nothing showed it; on d26249410 the cut that came after the
+// page's answer counted her cut turn as a miss: annai showed it with no ask first, and a stray ask followed (the order was the machine's load, a flaky test).
+for (const [what, order] of /** @type {[string, 'with' | 'after'][]} */ ([['with the call', 'with'], ['only after the page has answered it', 'after']])) {
+  test(`Koe live: an urgent reminder cuts in while Koe talks, and the card she had already sent comes after it, the provider's cut of her turn ${what}: the card passes nothing on, and after a bare answer annai shows it, once, never written as told`, async () => {
+    const card = { name: 'show', args: { card: { title: 'Bixby Bridge', text: 'About twenty minutes ahead.' } } };
+    const link = slowLink(); // before the session opens
+    const k = await liveKit([{ said: 'Here is the bridge.', audio: tone(3), tool: card }, { said: 'Silent.', audio: tone(0.3) }, { said: 'Silent.', audio: tone(0.3) }], { pace: 1 });
+    const asks = () => texts(k).filter((/** @type {string} */ x) => x.includes("hasn't reached the user")).length;
+    try {
+      k.platform.streamSpeed = 1;
+      await k.voice.unlock();
+      /** @type {number[]} */
+      const askedAt = []; // the asks that had gone in as the reminder's card was raised
+      k.agent.on('notice', (/** @type {any} */ n) => { if (n.title === 'Reminder') askedAt.push(asks()); });
+      link.match = /"toolCall"/;
+      k.agent.send('Show me the bridge');
+      await until(() => link.held && k.platform.streams.length === 1, 30_000); // her words play, and her card's call is on its way
+      await k.agent.wake({ ...train(), urgent: true }); // it cuts in on her
+      await soon(async () => texts(k).some((/** @type {string} */ x) => x.includes('Train in 20 minutes'))); // it is with the session
+      await until(() => link.waiting().some((x) => x.includes('"interrupted"')), 30_000); // the provider's cut of her turn is on the link too: which comes first is the test's
+      link.go(order); // the call comes now, after the reminder went in
+      await soon(async () => (await k.events(['out.show'])).length === 1);
+      // Her answer is only "Silent.": annai shows it (on a241fd148 the card had written it as told, and nothing showed it).
+      await soon(async () => (await entries(k)).length === 1 || (await k.events(['reminder.told'])).length > 0, 30_000);
+      assert.deepEqual((await k.events(['reminder.told'])).map((/** @type {any} */ e) => e.data.reminders.map((/** @type {any} */ r) => r.text)), [], 'never written as told: the card was no answer to it');
+      assert.deepEqual(reminders(k.notices), [TRAIN], 'shown once');
+      assert.deepEqual(askedAt, [1], 'asked once more first: her cut turn missed nothing either');
+      assert.equal(asks(), 1, 'asked once, not more');
+      const next = await nextStart(k, true);
+      assert.deepEqual(reminders(next.cards), [], 'its entry settled it');
+      assert.equal(asks(), 1, 'asked once, not more, to the end');
+    } finally {
+      link.restore();
+      await k.done();
+    }
+  });
+}
 
 // Cut off before she passed it on (§10.4, §7.1): a tap while Koe is saying it, a line typed then, or a tap on an urgent reminder she hasn't begun shows what the
 // traveller didn't hear at once, silently, and its entry settles the held copy. The session passed nothing on, so it writes no `reminder.told`.
