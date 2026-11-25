@@ -10,7 +10,7 @@ import { fromBase64, toBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
 import { record, storedTexts, TALK_TAG } from './log.js';
 import { blobBytes, canRead } from '../reach.js';
-import { compactionNeed, cutAt, replyPrompt, dueTokens, tokensAfter, requestBytes, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
+import { compactionNeed, cutAt, replyPrompt, dueTokens, tokensAfter, bytesLessFiles, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
 import { Transcript, resolveEvent, repair, reaches, NOT_SAID, SAID, STOPPED, CUT, NOT_RUN, NOT_ANSWERED, NOT_HEARD, LET_GO, MOVED } from './transcript.js';
 import { toolList, definitions, runTool, Stuck, toolSwitches, resolvePath, ALWAYS_ON } from './tools.js';
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint, systemText } from './context.js';
@@ -1799,12 +1799,6 @@ export class Agent {
     };
   }
 
-  /** Whether the main role's first model gets photos by upload, so they count as their id (spec §6.5). */
-  async #uploading() {
-    const id = chatCandidates(await this.llm.config(), this.#half.role)[0];
-    return Boolean(id && this.llm.uploading && (await this.llm.uploading(id)));
-  }
-
   /** The first model of this half's role. */
   async #mainModel() {
     return this.#roleModel(this.#half.role);
@@ -2523,8 +2517,6 @@ export class Agent {
     const stuck = new Stuck();
     let steps = 0;
     let triedCompacting = false;
-    /** A forced summary ran in this turn: the request's size forces no other (below). */
-    let summarized = false;
     /** The test of a request every model it went to refused: its PDFs as words, for the next request (below); models: those that refused it. @type {{ why: import('../llm/fallback.js').Why, words: string, files: Map<string, any>, models: Set<string> } | null} */
     let trial = null;
     // The real day's spend, read only when a Spend per day is set.
@@ -2598,13 +2590,12 @@ export class Agent {
       const fingerprint = await prefixFingerprint(request, this.transcript.compaction);
       const window = (await this.#mainModel())?.contextWindow ?? null;
       const maxBytes = settings.compaction.maxRequestMiB * 2 ** 20;
-      const uploaded = await this.#uploading();
       // What the main models are sent: their photo limit of the pictures, each once.
       const sent = { ...request, messages: limitMedia(request.messages, (await this.#mainImages()).maxCount, request.photosFrom) };
       const estimate = estimateTokens(sent, (await this.#mainModel())?.providerId);
-      // After a forced summary this turn (the size or the tokens), the size forces no other (the tokens still do): what is still over it is the newest exchanges' (a PDF
-      // read in them), which no summary of older ones makes smaller (in a probe, a PDF of 6.5 MiB brought five in a row). It goes as it is.
-      const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window, bytes: summarized ? 0 : requestBytes(sent, { uploaded }), maxBytes, threshold: settings.compaction.threshold }) : null;
+      // The size weighs what a summary can make smaller, not the window's pictures and PDFs, which go whatever it does (bytesLessFiles): a request over it
+      // by them goes as it is, and one over it by words is summarized, in a later step again only while more than one exchange is left to cut (cutAt).
+      const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window, bytes: bytesLessFiles(sent), maxBytes, threshold: settings.compaction.threshold }) : null;
       const tidy = coldStart;
       coldStart = false; // once a turn: its first request
       if (need === 'forced') {
@@ -2616,7 +2607,6 @@ export class Agent {
           break;
         }
         if (done) {
-          summarized = true;
           this.#snapshot = nextSnapshot(null, await takeSnapshot({ ws: this.ws, registry: this.registry, trip: this.trip, personalityName: settings.personality, locale: this.voice?.locale }), { cold: true });
           continue;
         }
@@ -2741,7 +2731,7 @@ export class Agent {
       spent += result.cost ?? 0;
       const model = await this.#model(result.modelId);
       if (model) this.#warmth.note(result.modelId, fingerprint, TTL_MS[ttlFor(model, settings.cacheTtl)], this.now());
-      if (this.#half.housekeeping && compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window: model?.contextWindow ?? null, bytes: requestBytes(sent, { uploaded }), maxBytes, threshold: settings.compaction.threshold })) this.#due = true;
+      if (this.#half.housekeeping && compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window: model?.contextWindow ?? null, bytes: bytesLessFiles(sent), maxBytes, threshold: settings.compaction.threshold })) this.#due = true;
       // A request whose thinking couldn't go (something before it changed) or was refused stops it for the rest of the turn; else this
       // reply keeps the now block its request ended with and the reply as it came, until the turn ends or the requests have carried KEPT_SENT_MAX.
       if (result.reply.natives) stopThinking();

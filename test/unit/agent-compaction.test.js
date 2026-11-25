@@ -196,26 +196,61 @@ test("summaries see a PDF as a stub as they do a photo: its quoted path, else it
   assert.equal(pdf({ path: odd }), `[a PDF ${JSON.stringify(odd)}]`, 'a name its sender chose stays inside the quotes');
 });
 
-test('requestBytes: photos uploaded to the provider count as their id (spec §6.5)', async () => {
-  const { requestBytes } = await import('../../src/core/agent/compaction.js');
-  const request = { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Hi' }, { type: 'image', mediaType: 'image/webp', data: 'A'.repeat(100_000), hash: 'h' }] }] };
-  assert.ok(requestBytes(request) > 100_000);
-  assert.ok(requestBytes(request, { uploaded: true }) < 1000);
+test("bytesLessFiles: a picture's or a PDF's bytes count for nothing, uploaded or not; their other fields and the words count (spec §6.5)", async () => {
+  const { bytesLessFiles } = await import('../../src/core/agent/compaction.js');
+  const text = { role: 'user', parts: [{ type: 'text', text: 'Hi' }] };
+  const bare = bytesLessFiles({ messages: [text] });
+  for (const part of [
+    { type: 'image', mediaType: 'image/webp', data: 'A'.repeat(100_000), hash: 'h' },
+    { type: 'image', mediaType: 'image/webp', data: 'A'.repeat(100_000), hash: 'h', fileId: 'file_0123456789abcdefghijklmn' },
+    { type: 'document', mediaType: 'application/pdf', data: 'P'.repeat(100_000), hash: 'h', name: 'booking.pdf', path: '/trip/files/booking.pdf' },
+  ]) {
+    const n = bytesLessFiles({ messages: [{ role: 'user', parts: [...text.parts, part] }] }) - bare;
+    assert.ok(n > 0 && n < 200, `${part.type}: ${n}`);
+  }
+  assert.equal(bytesLessFiles({ messages: [{ role: 'user', parts: [{ type: 'text', text: 'W'.repeat(100_000) }] }] }) - bare, 100_000 - 2, 'words count whole');
 });
 
-test('with uploads, a big photo makes no housekeeping due (spec §6.5, review I7)', async () => {
+test('a big photo or PDF in the window makes no housekeeping due, sent as bytes or uploaded: a summary would leave it where it is (spec §6.5; review I7, size-forced-next)', async () => {
   const { updateAppSettings } = await import('../../src/core/settings.js');
-  for (const uploading of [false, true]) {
+  const readIt = { toolCalls: [{ name: 'read', input: { path: '/trip/files/big.pdf' } }] };
+  /** @type {Record<string, boolean>} */
+  const due = {};
+  for (const [what, uploading] of /** @type {const} */ ([['a photo sent as bytes', false], ['a photo uploaded', true], ['a PDF she reads', false]])) {
     /** @type {any[]} */
     const timers = [];
-    const k = await agentKit([[say('ok')]], { uploading, agent: { timers: { set: (/** @type {any} */ fn) => { timers.push(fn); return timers.length; }, clear: (/** @type {number} */ h) => { timers[h - 1] = null; } } } });
-    // A traveller's own cap of 1 MiB for photos sent: the photo goes as it is, not as a smaller copy.
+    const pdf = what === 'a PDF she reads';
+    const k = await agentKit([[...(pdf ? [readIt] : []), say('ok')]], { uploading, models: [{ input: ['text', 'image', 'pdf'] }], agent: { timers: { set: (/** @type {any} */ fn) => { timers.push(fn); return timers.length; }, clear: (/** @type {number} */ h) => { timers[h - 1] = null; } } } });
+    // A traveller's own cap of 1 MiB for photos sent: the photo goes as it is, not as a smaller copy. Each is 933,336 characters as base64, past the
+    // 70% due of a request size of 1 MiB (734,003) and under the size: 8ff7cba1c made housekeeping due for both, and its timer's warm summary sent them whole.
     await updateAppSettings(k.ws, { shiori: { compaction: { maxRequestMiB: 1 } }, photos: { request: { maxBytes: 1024 * 1024 } } });
-    await k.ws.write(k.trip, '/files/big.webp', new TextEncoder().encode('x'.repeat(700_000)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
-    k.agent.send('Look', { photos: [{ path: '/trip/files/big.webp' }] });
+    if (pdf) await k.ws.write(k.trip, '/files/big.pdf', new TextEncoder().encode(`%PDF-1.4 ${'x'.repeat(700_000 - 9)}`), { author: 'user', type: 'application/pdf' });
+    else await k.ws.write(k.trip, '/files/big.webp', new TextEncoder().encode('x'.repeat(700_000)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+    k.agent.send('Look', pdf ? {} : { photos: [{ path: '/trip/files/big.webp' }] });
     await idleAtOnce(k);
-    assert.equal(timers.some(Boolean), !uploading, uploading ? 'uploaded: counted as its id' : 'sent as bytes: due');
+    assert.equal(k.requests.filter((/** @type {any} */ r) => r.messages.some((/** @type {any} */ m) => m.parts.some((/** @type {any} */ p) => p.data?.length === 933_336))).length, 1, `${what}: sent whole once`);
+    due[what] = timers.some(Boolean);
   }
+  assert.deepEqual(due, { 'a photo sent as bytes': false, 'a photo uploaded': false, 'a PDF she reads': false }, 'no housekeeping due for any');
+});
+
+test('a conversation of words alone over the request size is still summarized before the request that would pass it, which then goes under it (size-forced-next)', async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  /** A request's size: words only, so all of it. @param {any} r */
+  const size = (r) => JSON.stringify(r).length;
+  // No window, so the tokens never force a summary, and the cache stays warm, so the due one waits for a pause; four messages of 300,000 characters
+  // over a request size of 1 MiB (1,048,576): the fourth's request would pass it. Her model writes the summary (warm), then answers.
+  const k = await agentKit([[say('1'), say('2'), say('3'), { text: 'They pasted three long texts.' }, say('4')]], { agent: { timers: { set: () => 1, clear: () => {} } } });
+  await updateAppSettings(k.ws, { shiori: { compaction: { maxRequestMiB: 1 } } });
+  for (const c of 'abcd') {
+    k.agent.send(c.repeat(300_000));
+    await idleAtOnce(k);
+  }
+  assert.equal((await k.events(['compaction'])).length, 1, 'one summary, forced by the size');
+  assert.equal(String(k.requests.at(-2).tail).startsWith('[annai: housekeeping]'), true, 'her own, while the cache is warm');
+  assert.ok(size(k.requests.at(-3)) < 2 ** 20 && size(k.requests.at(-2)) > 2 ** 20, 'the third under the size, the fourth over it');
+  assert.ok(size(k.requests.at(-1)) < 2 ** 20 / 2, 'after it, the request holds the summary and the last message');
+  assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['1', '2', '3', '4']);
 });
 
 test('housekeeping reads the conversation by type: location points and the like are not walked (A6)', async () => {
@@ -705,8 +740,8 @@ test("the housekeeping estimate counts what the main models are sent: one photo 
   assert.equal((await k.events(['model.turn'])).filter((e) => e.data.tag === 'compaction').length, 0, 'no tidy-up tried for copies it never sends');
 });
 
-test('requestBytes and estimateTokens count a native for what it adds beyond the parts it covers, not twice (the keep-reasoning review)', async () => {
-  const { requestBytes } = await import('../../src/core/agent/compaction.js');
+test('bytesLessFiles and estimateTokens count a native for what it adds beyond the parts it covers, not twice (the keep-reasoning review)', async () => {
+  const { bytesLessFiles: requestBytes } = await import('../../src/core/agent/compaction.js');
   const { estimateTokens } = await import('../../src/core/llm/fallback.js');
   const page = 'P'.repeat(60_000);
   const parts = [{ type: 'provider', block: { type: 'result', page }, model: 'm' }];

@@ -6,7 +6,7 @@ import { quote } from './blocks.js';
 
 /**
  * Housekeeping (spec §6.5). Two limits trigger it, the context window and the maximum request
- * size: it is due at a threshold and forced before an overflow. The older part becomes a compaction
+ * size (less the window's pictures and PDFs, bytesLessFiles): it is due at a threshold and forced before an overflow. The older part becomes a compaction
  * event; the most recent part stays word for word. Warm, the model holding the cache writes the
  * summary from the cached conversation; cold, the utility model writes it from the text.
  * @typedef {import('../llm/contract.js').Message} Message
@@ -37,12 +37,14 @@ export function replyPrompt(u) {
   return Object.values(u?.serverTools ?? {}).some((n) => Number(n) > 0) ? 0 : promptTokens(u);
 }
 
-/** A request's size as sent; photos count at their base64 size, a native only for what it adds beyond the parts it covers (nativeOverlap). @param {any} request */
-export function requestBytes(request, { uploaded = false } = {}) {
-  const twice = nativeOverlap(request.messages ?? []);
-  if (!uploaded) return JSON.stringify(request).length - twice;
-  // Photos uploaded to the provider count only as their id (spec §6.5).
-  return JSON.stringify(request, (_k, v) => (v && typeof v === 'object' && v.type === 'image' && typeof v.data === 'string' ? { ...v, data: 'file_0123456789abcdefghijklmn' } : v)).length - twice;
+/**
+ * A request's size as the size rule weighs it (spec §6.5): what a summary can make smaller, so its pictures' and PDFs' bytes count for nothing.
+ * Those a request still holds whole are the window's (limitMedia: its turn's and the turn before's; older ones are stubs), which its requests
+ * send whatever a summary does. A native counts only for what it adds beyond the parts it covers (nativeOverlap). @param {any} request
+ */
+export function bytesLessFiles(request) {
+  const files = (/** @type {string} */ _k, /** @type {any} */ v) => (v && typeof v === 'object' && (v.type === 'image' || v.type === 'document') && typeof v.data === 'string' ? { ...v, data: '' } : v);
+  return JSON.stringify(request, files).length - nativeOverlap(request.messages ?? []);
 }
 
 /** Where housekeeping is due by tokens: the threshold's share of the window, or DUE_TOKENS, whichever comes first. @param {number | null} window @param {number} threshold */

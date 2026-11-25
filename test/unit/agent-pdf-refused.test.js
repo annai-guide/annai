@@ -496,22 +496,83 @@ test('a refusal that passes: one 400 on the only model marks the PDF (the test c
   assert.deepEqual(cards(k), [TITLE]);
 });
 
-test('a PDF over the request size: one forced summary in its turn, not one for each earlier exchange; then the request goes as it is', async (t) => {
-  useClock(t);
-  // Five exchanges before the read, a PDF of 1.5 MiB (2 MiB as base64) over a request size of 1 MiB. The first forced summary is warm on her own
-  // model (its text step), the rest would be the utility model's.
-  const k = await agentKit([[say('1.'), say('2.'), say('3.'), say('4.'), say('5.'), readIt, { text: 'They talked about the car.' }, say('The lever by the seat.')]], {
-    models: [{ input: ['text', 'image', 'pdf'], contextWindow: 1_000_000 }], utility: [{ text: 'They talked.' }], agent: { timers: NO_TIMERS },
+// A PDF over the request size (docs/limitations.md, "A PDF over the request size still brings a forced summary each of its turns"; size-forced-next): the
+// size weighs what a summary can make smaller, which the window's PDF isn't, so it brings no summary and the request goes as it is. 8ff7cba1c forced one in
+// each of the PDF's two turns, warm with the PDF whole, and a refused PDF's warm summary was refused before the PDF's test could run.
+/** A request that writes a summary: her model's from the cached conversation (the housekeeping instruction its tail), or the utility model's from the text. @param {any} r */
+const summaryRequest = (r) => String(r.tail ?? '').startsWith('[annai: housekeeping]') || String(r.system ?? '').startsWith('You summarize a conversation');
+/** The base64 of the PDF of 1.5 MiB below, in characters. */
+const BIG = Math.ceil((1.5 * 2 ** 20) / 3) * 4;
+
+/**
+ * Five exchanges, then a PDF of 1.5 MiB (2 MiB as base64) over a request size of 1 MiB. Her two models read PDFs and have a window of a million tokens,
+ * so the tokens force nothing; the second writes a summary her first passes on (8ff7cba1c's forced ones, warm on her model; here none comes), so her own
+ * steps are the first model's script either way. @param {any[]} script the first model's, after the five exchanges' @param {(c: any) => Promise<void>} [refuse]
+ * what her two models also refuse
+ */
+async function overSize(script, refuse = async () => {}) {
+  const hold = async (/** @type {any} */ c) => {
+    if (c.model.providerId === 'model-u') return;
+    await refuse(c);
+    if (c.model.providerId === 'model-0' && summaryRequest(c.request)) throw new ProviderError('bad-request', 'Not this model.', { status: 400 });
+  };
+  const reads = { input: ['text', 'image', 'pdf'], contextWindow: 1_000_000 };
+  const k = await agentKit([[say('1.'), say('2.'), say('3.'), say('4.'), say('5.'), ...script], [{ text: 'They talked about the car.' }]], {
+    models: [reads, reads], utility: [{ text: 'They talked.' }], agent: { timers: NO_TIMERS }, hold,
   });
   await updateAppSettings(k.ws, { shiori: { compaction: { maxRequestMiB: 1 } } });
   await k.ws.write(k.trip, '/files/manual.pdf', new TextEncoder().encode(`%PDF-1.4 ${'m'.repeat(1.5 * 2 ** 20 - 9)}`), { author: 'user', type: 'application/pdf' });
   await talk(k.agent, k, ['a', 'b', 'c', 'd', 'e']);
+  return k;
+}
+const ANSWERS = [readIt, say('The lever by the seat.'), say('On the left.')];
+
+test('a PDF over the request size brings no summary in its turn or the next, which no summary makes smaller: each request goes as it is', async (t) => {
+  useClock(t);
+  const k = await overSize(ANSWERS);
   const before = k.requests.length;
   await talk(k.agent, k, ['How do I open the fuel cap?']);
-  const turn = k.requests.slice(before);
-  assert.equal((await k.events(['compaction'])).length, 1, 'one summary');
-  assert.equal(turn.filter((r) => String(r.system ?? '').startsWith('You summarize a conversation')).length, 0, 'no utility summary after it');
-  assert.deepEqual(turn.map(hasPdf), [false, true, true], 'her read, the warm summary, her answer');
+  const first = await summaries(k);
+  await talk(k.agent, k, ['Which side?']);
+  assert.deepEqual([first, await summaries(k) - first], [0, 0], 'no summary in its turn, none in the next (8ff7cba1c: one forced in each)');
+  assert.deepEqual(k.requests.slice(before).map(hasPdf), [false, true, true], "her read; her answer, with the PDF; the next turn's answer, with it too");
+  assert.deepEqual((await spoken(k)).slice(-2), ['The lever by the seat.', 'On the left.']);
+});
+
+test('a PDF over the request size goes up in her own requests only: no summary sends it whole once more while the cache is warm', async (t) => {
+  useClock(t);
+  const k = await overSize(ANSWERS);
+  const before = k.requests.length;
+  await talk(k.agent, k, ['How do I open the fuel cap?', 'Which side?']);
+  const turns = k.requests.slice(before);
+  assert.equal(turns.filter((r) => summaryRequest(r) && hasPdf(r)).length, 0, 'no summary request with the PDF in it (8ff7cba1c: a warm one in each turn)');
+  assert.equal(pdfBytes(turns), 2 * BIG, "the PDF went up twice: her answer, and the next turn's");
+});
+
+test("a PDF over the request size that every model refuses is tested in its turn: she answers from its words in that turn and the next, with the PDF's one card", async (t) => {
+  useClock(t);
+  const k = await overSize(ANSWERS, refusing(PAGES));
+  const before = k.requests.length;
+  await talk(k.agent, k, ['How do I open the fuel cap?', 'Which side?']);
+  assert.deepEqual(cards(k), [TITLE], "the PDF's card, and no \"couldn't tidy up\" card (8ff7cba1c: each turn ended in one, its warm summary refused with the PDF in it)");
+  assert.equal((await k.events(['pdf.refused'])).length, 1, 'marked in its turn');
+  assert.deepEqual(k.requests.slice(before).map(hasPdf), [false, true, true, false, false], 'her read; each model with the PDF; the first with it as words, answered; the next turn with the words');
+  assert.deepEqual((await spoken(k)).slice(-2), ['The lever by the seat.', 'On the left.']);
+  assert.equal((await k.events(['error'])).length, 0, 'no turn failed');
+});
+
+test('after the too-long summary of a turn, a PDF she reads later in it over the request size brings no second summary', async (t) => {
+  useClock(t);
+  // Her first request of the turn, with no summary yet, is too long for both models: the conversation was.
+  const conversation = async (/** @type {any} */ c) => {
+    const text = JSON.stringify(c.request.messages);
+    if (text.includes('fuel cap') && !text.includes('[Earlier conversation, summarized')) throw new ProviderError('context', TOO_LONG.message, { status: 400 });
+  };
+  const k = await overSize([readIt, say('The lever by the seat.')], conversation);
+  const before = k.requests.length;
+  await talk(k.agent, k, ['How do I open the fuel cap?']);
+  assert.equal(await summaries(k), 1, "the too-long summary, and no other (8ff7cba1c: the size forced one more, the flag that stops a second being the size's own)");
+  assert.deepEqual(k.requests.slice(before).map(hasPdf), [false, false, false, false, true], 'both models refuse her first request; the summary; her read; her answer, with the PDF');
   assert.equal((await spoken(k)).at(-1), 'The lever by the seat.');
 });
 
