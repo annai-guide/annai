@@ -249,7 +249,7 @@ test("a conversation of words alone that would pass the request size is summariz
   }
   assert.equal((await k.events(['compaction'])).length, 1, 'one summary, forced by the size');
   assert.equal(String(k.requests.at(-2).tail).startsWith('[annai: housekeeping]'), true, 'her own, while the cache is warm');
-  assert.ok(size(k.requests.at(-3)) < 2 ** 20 && size(k.requests.at(-2)) > 2 ** 20, "the third under the size, the summary's own over it: it holds the conversation the cache holds, which is the fourth's request whole");
+  assert.ok(size(k.requests.at(-3)) < 2 ** 20 && size(k.requests.at(-2)) > 2 ** 20, "the third under the size, the summary's own over it: it holds the conversation the cache holds and the fourth's words, so it is the fourth's request whole");
   assert.ok(size(k.requests.at(-1)) < 2 ** 20 / 2, 'after it, the request holds the summary and the last message');
   assert.ok(JSON.stringify(k.requests.at(-1)).includes('d'.repeat(300_000)), 'the newest message stays word for word');
   assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['1', '2', '3', '4']);

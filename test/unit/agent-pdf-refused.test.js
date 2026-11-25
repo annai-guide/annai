@@ -514,7 +514,8 @@ async function overSize(script, refuse = async () => {}) {
   const hold = async (/** @type {any} */ c) => {
     if (c.model.providerId === 'model-u') return;
     await refuse(c);
-    // Never fires after 8ff7cba1c (no summary request comes): it is here so that these tests' counts are real on 8ff7cba1c, whose warm summary her first model
+    // Never fires after 8ff7cba1c (her first model gets no summary request here; the one in the last test is the utility model's, which its first line
+    // passes by): it is here so that these tests' counts are real on 8ff7cba1c, whose warm summary her first model
     // refuses and passes on to the second, which leaves the scripted steps of her first model her own.
     if (c.model.providerId === 'model-0' && summaryRequest(c.request)) throw new ProviderError('bad-request', 'Not this model.', { status: 400 });
   };
