@@ -525,42 +525,42 @@ vjxaph	ok	Your turn	轮到你了	src/core/agent/loop.js:712
 1sxm1ou	ok	Something went wrong: {0}	出了点问题：{0}	src/core/agent/loop.js:1647	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
 n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 无法整理对话	src/core/agent/loop.js:1686	
 oeaxaa	ok	She will try again later.	她稍后会再试。	src/core/agent/loop.js:1686	
-x10s30	ok	Shiori couldn't summarize the conversation	Shiori 无法总结对话	src/core/agent/loop.js:1905	
-1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:2107	
-1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:2107	
-e7liir	ok	Something for Shiori wasn't saved	给 Shiori 的内容没能保存	src/core/agent/loop.js:2272	Note: a card's title: something annai keeps for Shiori (a line or files for a conversation that isn't open, a tap a Stop stopped, a reminder's record) couldn't be saved; on a full phone it is the storage card's first sentence. Topic first, as the Chinese reads it: what was meant for Shiori, then 没能保存 (as 没能打开那段对话).
-nxpady	ok	The message went without it.	消息已发出，但不含这张照片。	src/core/agent/loop.js:2299	
-sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:2299	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
-ssozn1	ok	A photo wasn't sent to Shiori	有一张照片没有发给 Shiori	src/core/agent/loop.js:2299	
-311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 刚才的事还没做完，你回来后她会接着做。	src/core/agent/loop.js:2396	
-1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她三次调用同一个工具，结果都一样，所以这一轮结束了。请换个说法再问。	src/core/agent/loop.js:2805	Note: "Ask again" is the verb (再问), not the glossary's Ask, Safari's 询问 choice.
-pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重复操作	src/core/agent/loop.js:2805	
-1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什么也没对你说就结束了。	src/core/agent/loop.js:2849	
-2bgbpn	ok	Shiori didn't answer	Shiori 没有回答	src/core/agent/loop.js:2853	
-1mjdfzn	ok	Shiori can't reach her model	Shiori 无法连接到模型	src/core/agent/loop.js:2942	
-12qfj9m	ok	This model takes photos only as {0}, which this browser can't make. Try another model in Settings → Models.	这个模型只接受 {0} 格式的照片，但这个浏览器无法生成。可以在设置 → 模型中换一个模型。	src/core/agent/loop.js:2969	{0} = names
-plw9ns	draft	a PDF without a name	一份没有名称的 PDF	src/core/agent/loop.js:3041	Note: a PDF with neither a name nor a path, named on the card in its list (a trip's files have names, so rare).
-pw7lmw#other	draft	She goes on without them until the conversation is next summarized or started fresh.	在下次总结对话或重新开始之前，Shiori 会略过该 PDF，继续对话。	src/core/agent/loop.js:3042	plural; # = n; English: "She goes on without it until the conversation is next summarized or started fresh." (one), "She goes on without them until the conversation is next summarized or started fresh." (other); Note: one text for one PDF and for several (zh has one form): 该 PDF names the PDFs of the sentence before.
-z09dhs	draft	The models refused a request that held {0}.	模型拒绝了包含 {0} 的请求。	src/core/agent/loop.js:3042	{0} = list(files); Note: on that card; {0} is the PDFs' file names as a list (manual.pdf, ticket.pdf). The models refused the request, not each file: it is said of the request.
-ib7y1w	draft	To show her a page, send it as a photo.	如果想让她看其中某一页，请把那一页作为照片发送。	src/core/agent/loop.js:3043	
-qz6v7v#other	draft	Shiori's models refused a request with PDFs in it	Shiori 的模型拒绝了含 PDF 的请求	src/core/agent/loop.js:3044	plural; # = n; English: "Shiori's models refused a request with a PDF in it" (one), "Shiori's models refused a request with PDFs in it" (other); Note: a card's title: the models refused a request that held PDFs, so Shiori goes without them until the next summary or Start fresh. One text for one PDF and for several.
-1uhz9dg	ok	Shiori couldn't send the photo	Shiori 无法发送照片	src/core/agent/loop.js:3051	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	这个浏览器要轻点一下才能播放声音。她说的话在对话里。	src/core/agent/loop.js:3711	
-1h2ina6	ok	Shiori couldn't speak aloud	Shiori 无法朗读	src/core/agent/loop.js:3712	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	设置 → 模型 → 朗读中的声音都无法使用，原因见“记录”。她说的话在对话里。	src/core/agent/loop.js:3712	
-1r1dhd7	ok	Shiori can't hear you yet	Shiori 还听不到你	src/core/agent/loop.js:3895	
-8wd0xv	ok	Listening stopped	聆听已停止	src/core/agent/loop.js:4126	
-43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:4387	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	每边最多 # 像素	src/core/agent/loop.js:4388	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一次最多 # 张照片	src/core/agent/loop.js:4389	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	仅限 {0}	src/core/agent/loop.js:4390	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受这张照片（它的要求：{0}），也无法转换成它能接受的照片。可以在设置 → 照片 → 发给 Shiori 的照片中把照片调小，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:4391	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受这张照片，也无法转换成它能接受的照片。可以在设置 → 照片 → 发给 Shiori 的照片中把照片调小，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:4392	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	对话太长，整理之前她的模型处理不了。请在设置 → 模型中检查模型，或稍后再试。	src/core/agent/loop.js:4402	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	插件 {0} 唤醒她的次数超过了你设定的上限（每小时 # 次）。	src/core/agent/loop.js:4412	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她在留意的事情唤醒她的次数超过了你设定的上限（每小时 # 次）：{0}。	src/core/agent/loop.js:4413	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你设定的上限（每小时 # 次）：{0}。	src/core/agent/loop.js:4414	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	她被唤醒的次数超过了你设定的上限（每小时 # 次）。	src/core/agent/loop.js:4415	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+x10s30	ok	Shiori couldn't summarize the conversation	Shiori 无法总结对话	src/core/agent/loop.js:1907	
+1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:2109	
+1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:2109	
+e7liir	ok	Something for Shiori wasn't saved	给 Shiori 的内容没能保存	src/core/agent/loop.js:2274	Note: a card's title: something annai keeps for Shiori (a line or files for a conversation that isn't open, a tap a Stop stopped, a reminder's record) couldn't be saved; on a full phone it is the storage card's first sentence. Topic first, as the Chinese reads it: what was meant for Shiori, then 没能保存 (as 没能打开那段对话).
+nxpady	ok	The message went without it.	消息已发出，但不含这张照片。	src/core/agent/loop.js:2301	
+sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:2301	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
+ssozn1	ok	A photo wasn't sent to Shiori	有一张照片没有发给 Shiori	src/core/agent/loop.js:2301	
+311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 刚才的事还没做完，你回来后她会接着做。	src/core/agent/loop.js:2398	
+1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她三次调用同一个工具，结果都一样，所以这一轮结束了。请换个说法再问。	src/core/agent/loop.js:2807	Note: "Ask again" is the verb (再问), not the glossary's Ask, Safari's 询问 choice.
+pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重复操作	src/core/agent/loop.js:2807	
+1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什么也没对你说就结束了。	src/core/agent/loop.js:2851	
+2bgbpn	ok	Shiori didn't answer	Shiori 没有回答	src/core/agent/loop.js:2855	
+1mjdfzn	ok	Shiori can't reach her model	Shiori 无法连接到模型	src/core/agent/loop.js:2947	
+12qfj9m	ok	This model takes photos only as {0}, which this browser can't make. Try another model in Settings → Models.	这个模型只接受 {0} 格式的照片，但这个浏览器无法生成。可以在设置 → 模型中换一个模型。	src/core/agent/loop.js:2974	{0} = names
+plw9ns	draft	a PDF without a name	一份没有名称的 PDF	src/core/agent/loop.js:3046	Note: a PDF with neither a name nor a path, named on the card in its list (a trip's files have names, so rare).
+pw7lmw#other	draft	She goes on without them until the conversation is next summarized or started fresh.	在下次总结对话或重新开始之前，Shiori 会略过该 PDF，继续对话。	src/core/agent/loop.js:3047	plural; # = n; English: "She goes on without it until the conversation is next summarized or started fresh." (one), "She goes on without them until the conversation is next summarized or started fresh." (other); Note: one text for one PDF and for several (zh has one form): 该 PDF names the PDFs of the sentence before.
+z09dhs	draft	The models refused a request that held {0}.	模型拒绝了包含 {0} 的请求。	src/core/agent/loop.js:3047	{0} = list(files); Note: on that card; {0} is the PDFs' file names as a list (manual.pdf, ticket.pdf). The models refused the request, not each file: it is said of the request.
+ib7y1w	draft	To show her a page, send it as a photo.	如果想让她看其中某一页，请把那一页作为照片发送。	src/core/agent/loop.js:3048	
+qz6v7v#other	draft	Shiori's models refused a request with PDFs in it	Shiori 的模型拒绝了含 PDF 的请求	src/core/agent/loop.js:3049	plural; # = n; English: "Shiori's models refused a request with a PDF in it" (one), "Shiori's models refused a request with PDFs in it" (other); Note: a card's title: the models refused a request that held PDFs, so Shiori goes without them until the next summary or Start fresh. One text for one PDF and for several.
+1uhz9dg	ok	Shiori couldn't send the photo	Shiori 无法发送照片	src/core/agent/loop.js:3056	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	这个浏览器要轻点一下才能播放声音。她说的话在对话里。	src/core/agent/loop.js:3716	
+1h2ina6	ok	Shiori couldn't speak aloud	Shiori 无法朗读	src/core/agent/loop.js:3717	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	设置 → 模型 → 朗读中的声音都无法使用，原因见“记录”。她说的话在对话里。	src/core/agent/loop.js:3717	
+1r1dhd7	ok	Shiori can't hear you yet	Shiori 还听不到你	src/core/agent/loop.js:3900	
+8wd0xv	ok	Listening stopped	聆听已停止	src/core/agent/loop.js:4131	
+43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:4392	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	每边最多 # 像素	src/core/agent/loop.js:4393	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一次最多 # 张照片	src/core/agent/loop.js:4394	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	仅限 {0}	src/core/agent/loop.js:4395	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受这张照片（它的要求：{0}），也无法转换成它能接受的照片。可以在设置 → 照片 → 发给 Shiori 的照片中把照片调小，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:4396	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受这张照片，也无法转换成它能接受的照片。可以在设置 → 照片 → 发给 Shiori 的照片中把照片调小，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:4397	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	对话太长，整理之前她的模型处理不了。请在设置 → 模型中检查模型，或稍后再试。	src/core/agent/loop.js:4407	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	插件 {0} 唤醒她的次数超过了你设定的上限（每小时 # 次）。	src/core/agent/loop.js:4417	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她在留意的事情唤醒她的次数超过了你设定的上限（每小时 # 次）：{0}。	src/core/agent/loop.js:4418	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你设定的上限（每小时 # 次）：{0}。	src/core/agent/loop.js:4419	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	她被唤醒的次数超过了你设定的上限（每小时 # 次）。	src/core/agent/loop.js:4420	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	这条消息含有密钥，所以不显示。	src/core/agent/net.js:127	
 1jmdvnh	ok	annai couldn't check this message for keys, so it is not shown.	无法检查这条消息是否含有密钥，所以不显示。	src/core/agent/net.js:128	Note: shown in place of a card's or status line's text when annai can't read the keys it keeps to blank them; worded as the "held a key" note beside it (1ptx7ob).
 157dl17	ok	Shiori wants to adjust her personality	Shiori 想调整自己的性格	src/core/agent/personalities.js:130	
@@ -694,20 +694,20 @@ lh9fzn	ok	Tool calls work.	工具调用可用。	src/core/llm/check.js:90
 rk5rlm	ok	The model answered but didn't call the test tool.	模型回答了，但没有调用测试工具。	src/core/llm/check.js:90	
 1xj1cuk	ok	Photos work: it saw the red square.	照片可用：它看到了红色方块。	src/core/llm/check.js:96	
 dhnf3r	ok	It didn't see the red square (it said {0}).	它没有看到红色方块（它说：{0}）。	src/core/llm/check.js:96	{0} = answer.slice(0, 60)
-1u5s6ep	ok	Uploading photos didn't work with this key.	用这个密钥无法上传照片。	src/core/llm/check.js:157	
-1uj9pv4	ok	annai will send photos in each request instead.	将改为在每次请求中附带照片。	src/core/llm/check.js:157	
-d9hh16	ok	Photo uploads work: each photo is uploaded once, and expires after 48 hours.	照片上传可用：每张照片只上传一次，48 小时后过期。	src/core/llm/check.js:161	
-isa2u8	ok	Photos upload, but annai can't read the list of its photos there, which it needs to delete them.	照片可以上传，但无法读取删除所需的照片列表。	src/core/llm/check.js:167	Note: annai is left out as the subject (zh-style rule 3); 列表 as in the other rows (插件列表, 模型列表).
-1owzksi	ok	Photo uploads work: each photo is uploaded once, and annai deletes it after 48 hours (it just deleted the test photo).	照片上传可用：每张照片只上传一次，48 小时后由 annai 删除（测试照片刚刚已删除）。	src/core/llm/check.js:170	
-qer7un	ok	Tap Test again later. annai deletes the test photo with the others, after 48 hours.	请稍后再轻点“测试”。测试照片会和其他照片一样，在 48 小时后由 annai 删除。	src/core/llm/check.js:173	Note: Tap is 轻点 (the fixed words); “测试” is the button as it is named (model-check.js:15).
-qpr4b9	ok	Photos upload, but annai couldn't check just now that it can delete the test photo.	照片可以上传，但暂时无法确认能否删除测试照片。	src/core/llm/check.js:173	Note: annai is left out as the subject (zh-style rule 3).
-1g1zzzw	ok	Photos upload, but annai couldn't delete the test photo with this key.	照片可以上传，但用这个密钥无法删除测试照片。	src/core/llm/check.js:176	Note: annai is left out as the subject (zh-style rule 3); 密钥 as in the row before it.
-16s9khr	ok	Utility	辅助	src/core/llm/check.js:185	
-2qw9g9	ok	Koe · Chat	Koe · 聊天	src/core/llm/check.js:185	
-mlh3jc	ok	Main	主要	src/core/llm/check.js:185	
-1q9bibx	ok	It also answers at {0}'s level ({1}).	在“{0}”的推理级别（{1}）下也能回答。	src/core/llm/check.js:187	{0} = roleName(role); {1} = role.level; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
-1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	在“{0}”的推理级别（{1}）下，此模型拒绝了请求：{2}	src/core/llm/check.js:189	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
-1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	请在设置 → 模型中调低“{0}”的推理级别，或在此模型的页面上修改其“推理级别”。	src/core/llm/check.js:191	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
+1u5s6ep	ok	Uploading photos didn't work with this key.	用这个密钥无法上传照片。	src/core/llm/check.js:158	
+1uj9pv4	ok	annai will send photos in each request instead.	将改为在每次请求中附带照片。	src/core/llm/check.js:158	
+d9hh16	ok	Photo uploads work: each photo is uploaded once, and expires after 48 hours.	照片上传可用：每张照片只上传一次，48 小时后过期。	src/core/llm/check.js:162	
+isa2u8	ok	Photos upload, but annai can't read the list of its photos there, which it needs to delete them.	照片可以上传，但无法读取删除所需的照片列表。	src/core/llm/check.js:168	Note: annai is left out as the subject (zh-style rule 3); 列表 as in the other rows (插件列表, 模型列表).
+1owzksi	ok	Photo uploads work: each photo is uploaded once, and annai deletes it after 48 hours (it just deleted the test photo).	照片上传可用：每张照片只上传一次，48 小时后由 annai 删除（测试照片刚刚已删除）。	src/core/llm/check.js:171	
+qer7un	ok	Tap Test again later. annai deletes the test photo with the others, after 48 hours.	请稍后再轻点“测试”。测试照片会和其他照片一样，在 48 小时后由 annai 删除。	src/core/llm/check.js:174	Note: Tap is 轻点 (the fixed words); “测试” is the button as it is named (model-check.js:15).
+qpr4b9	ok	Photos upload, but annai couldn't check just now that it can delete the test photo.	照片可以上传，但暂时无法确认能否删除测试照片。	src/core/llm/check.js:174	Note: annai is left out as the subject (zh-style rule 3).
+1g1zzzw	ok	Photos upload, but annai couldn't delete the test photo with this key.	照片可以上传，但用这个密钥无法删除测试照片。	src/core/llm/check.js:177	Note: annai is left out as the subject (zh-style rule 3); 密钥 as in the row before it.
+16s9khr	ok	Utility	辅助	src/core/llm/check.js:186	
+2qw9g9	ok	Koe · Chat	Koe · 聊天	src/core/llm/check.js:186	
+mlh3jc	ok	Main	主要	src/core/llm/check.js:186	
+1q9bibx	ok	It also answers at {0}'s level ({1}).	在“{0}”的推理级别（{1}）下也能回答。	src/core/llm/check.js:188	{0} = roleName(role); {1} = role.level; Note: {0} is a role's name as the screens give it (メイン, 補助, Koe · クラシック).
+1bbu08l	ok	At {0}'s level ({1}), this model refused: {2}	在“{0}”的推理级别（{1}）下，此模型拒绝了请求：{2}	src/core/llm/check.js:190	{0} = roleName(role); {1} = role.level; {2} = said; Note: {0} is a role's name as the screens give it.
+1f0dxr7	ok	Lower {0}'s level in Settings → Models, or change this model's Reasoning levels on its page.	请在设置 → 模型中调低“{0}”的推理级别，或在此模型的页面上修改其“推理级别”。	src/core/llm/check.js:192	{0} = roleName(role); Note: {0} is a role's name as the screens give it.
 1f43jmt	ok	{0} / {1}	{0} / {1}	src/core/llm/config.js:107	context: a model, after its provider; {0} = provider; {1} = model; Note: a provider's name, then its model's, both Latin names: a spaced slash, not the middle dot that tells a label's parts apart, as in “Koe · 实时 · Anthropic / Claude Opus 5.5”, so the pair reads as one name.
 1nuav0n	ok	That provider no longer exists.	这个提供商已不存在。	src/core/llm/config.js:424	
 1qjc2dh	ok	That provider has no ability called {0}.	这个提供商没有名为 {0} 的功能。	src/core/llm/config.js:426	{0} = rec.ability
@@ -771,22 +771,22 @@ w1fuif	ok	The schedule is a list: [{"from": "2027-01-01", "input": 2}].	"schedul
 zo2if3	ok	A schedule's "from" is missing: each entry starts on a date like 2027-01-01.	"schedule" 中有一项缺少 "from"：每一项都需要开始日期，例如 2027-01-01。	src/core/llm/cost.js:104	Note: "schedule" is the JSON key, named as typed.
 1k2ht3r	ok	The schedule has {0} twice: put what changes that day in one entry.	"schedule" 中 {0} 出现了两次，请把当天的改动合并到同一项。	src/core/llm/cost.js:105	{0} = f.from; Note: "schedule" is the JSON key, named as typed.
 1dfcj24	ok	The schedule names "{0}", which isn't a price annai knows.	"schedule" 中的“{0}”不是 annai 支持的价格项。	src/core/llm/cost.js:106	{0} = f.key; Note: "schedule" is the JSON key, named as typed.
-4zknwy	ok	It is resting for a few minutes after an error.	出错后暂停使用几分钟。	src/core/llm/fallback.js:138	
-9bk0c8	ok	It doesn't take photos.	不支持照片。	src/core/llm/fallback.js:139	
-12h1lml	ok	It doesn't read PDFs.	不能读取 PDF。	src/core/llm/fallback.js:140	
-uxj42v	ok	It doesn't take audio.	不支持音频。	src/core/llm/fallback.js:141	
-19lcshx	ok	It can't use tools.	不能使用工具。	src/core/llm/fallback.js:142	
-1coimht	ok	The conversation is too long for it.	对话太长，超出了它的上限。	src/core/llm/fallback.js:143	
-6o9g3j	ok	It doesn't have the provider tool this needs.	缺少所需的提供商工具。	src/core/llm/fallback.js:144	
-8xm1wt	ok	It isn't a chat model.	不是对话模型。	src/core/llm/fallback.js:145	Note: chat model → 对话模型, as the glossary's Koe · Chat note names Koe's list of chat models.
-1i0eq06	ok	It is switched off.	已关闭。	src/core/llm/fallback.js:146	
-10vxomx	ok	It was removed.	已移除。	src/core/llm/fallback.js:147	Note: 移除, as Remove model.
-s8uown	ok	The speech couldn't be sent to it.	无法把语音发给它。	src/core/llm/fallback.js:148	
-13y0hea	ok	Its daily limit is used up; it rests until {0}.	已用完每日限额，将暂停到 {0}。	src/core/llm/fallback.js:167	{0} = at; Note: {0} is a time, or a weekday and a time.
-22cbmy	ok	This device is offline.	这台设备已离线。	src/core/llm/fallback.js:195	
-1av83fe	ok	No model is set for the utility role. Add one in Settings → Models.	还没有为“辅助”角色设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:245	Note: the role by its screen name (補助 / 辅助).
-35l8v	ok	No model is set for Koe · Chat. Add one in Settings → Models.	还没有为 Koe · 聊天设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:246	
-1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	还没有为“主要”角色设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:247	Note: the role by its screen name (メイン / 主要).
+4zknwy	ok	It is resting for a few minutes after an error.	出错后暂停使用几分钟。	src/core/llm/fallback.js:139	
+9bk0c8	ok	It doesn't take photos.	不支持照片。	src/core/llm/fallback.js:140	
+12h1lml	ok	It doesn't read PDFs.	不能读取 PDF。	src/core/llm/fallback.js:141	
+uxj42v	ok	It doesn't take audio.	不支持音频。	src/core/llm/fallback.js:142	
+19lcshx	ok	It can't use tools.	不能使用工具。	src/core/llm/fallback.js:143	
+1coimht	ok	The conversation is too long for it.	对话太长，超出了它的上限。	src/core/llm/fallback.js:144	
+6o9g3j	ok	It doesn't have the provider tool this needs.	缺少所需的提供商工具。	src/core/llm/fallback.js:145	
+8xm1wt	ok	It isn't a chat model.	不是对话模型。	src/core/llm/fallback.js:146	Note: chat model → 对话模型, as the glossary's Koe · Chat note names Koe's list of chat models.
+1i0eq06	ok	It is switched off.	已关闭。	src/core/llm/fallback.js:147	
+10vxomx	ok	It was removed.	已移除。	src/core/llm/fallback.js:148	Note: 移除, as Remove model.
+s8uown	ok	The speech couldn't be sent to it.	无法把语音发给它。	src/core/llm/fallback.js:149	
+13y0hea	ok	Its daily limit is used up; it rests until {0}.	已用完每日限额，将暂停到 {0}。	src/core/llm/fallback.js:168	{0} = at; Note: {0} is a time, or a weekday and a time.
+22cbmy	ok	This device is offline.	这台设备已离线。	src/core/llm/fallback.js:196	
+1av83fe	ok	No model is set for the utility role. Add one in Settings → Models.	还没有为“辅助”角色设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:246	Note: the role by its screen name (補助 / 辅助).
+35l8v	ok	No model is set for Koe · Chat. Add one in Settings → Models.	还没有为 Koe · 聊天设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:247	
+1a34oxt	ok	No model is set for the main role. Add one in Settings → Models.	还没有为“主要”角色设置模型。请在设置 → 模型中添加。	src/core/llm/fallback.js:248	Note: the role by its screen name (メイン / 主要).
 g4h5be	ok	annai's list of plugins couldn't be loaded. Check the connection and try again.	无法加载 annai 的插件列表。请检查网络连接，然后重试。	src/core/llm/official.js:47	
 2vsb85	ok	annai's list of plugins couldn't be loaded (HTTP {0}). Try again later.	无法加载 annai 的插件列表（HTTP {0}）。请稍后再试。	src/core/llm/official.js:49	{0} = res.status
 1on7jro	ok	The plugin couldn't be downloaded. Check the connection and try again.	无法下载插件。请检查网络连接，然后重试。	src/core/llm/official.js:169	Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
@@ -802,12 +802,12 @@ cpehgy	ok	The plugin didn't provide an endpoint type {0}.	该插件没有提供�
 y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	地址必须以 https:// 开头（只有 localhost 或 127.0.0.1 可以用 http://）。浏览器会拦截 https 页面发出的普通 http 请求，而 annai 访问局域网内的服务器时只使用 https，所以另一台电脑上的服务器需要 https 地址。可以用 Tailscale Serve 实现：{0}。服务器还必须允许来自 annai.guide 的 CORS 请求。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
 1qpfdfv	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1).	地址必须以 https:// 开头（只有 localhost 或 127.0.0.1 可以用 http://）。	src/core/llm/provider-desc.js:166	
 xx043p	ok	"{0}" is already added here.	“{0}”已经添加过了。	src/core/llm/providers.js:324	{0} = providerModelId
-1xwbser	ok	It is turned off.	已关闭。	src/core/llm/service.js:299	Note: said of a plugin named before it on the screen.
-1pqsrb3	ok	It isn't running. Look at it in Settings → Plugins.	没有运行。请在设置 → 插件中查看。	src/core/llm/service.js:301	Note: said of a plugin named before it on the screen.
-sejc5h	ok	{0} was switched off after errors.	{0} 因多次出错已被关闭。	src/core/llm/service.js:316	{0} = shown
-xzxdhp	ok	The plugin didn't provide a model provider.	该插件不含模型提供商。	src/core/llm/service.js:317	Note: said of a plugin.
-2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	该插件不是 annai 官方的。请从原来的来源重新安装。	src/core/llm/service.js:413	
-1k9wkd0	ok	The plugin it names doesn't provide models, so it wasn't installed.	指定的插件不提供模型，所以没有安装。	src/core/llm/service.js:422	Note: said after the provider's name ("OpenRouter: …"); the plugin its record names, with no 它.
+1xwbser	ok	It is turned off.	已关闭。	src/core/llm/service.js:301	Note: said of a plugin named before it on the screen.
+1pqsrb3	ok	It isn't running. Look at it in Settings → Plugins.	没有运行。请在设置 → 插件中查看。	src/core/llm/service.js:303	Note: said of a plugin named before it on the screen.
+sejc5h	ok	{0} was switched off after errors.	{0} 因多次出错已被关闭。	src/core/llm/service.js:318	{0} = shown
+xzxdhp	ok	The plugin didn't provide a model provider.	该插件不含模型提供商。	src/core/llm/service.js:319	Note: said of a plugin.
+2spuok	ok	Its plugin isn't annai's own. Install it again from where it came from.	该插件不是 annai 官方的。请从原来的来源重新安装。	src/core/llm/service.js:415	
+1k9wkd0	ok	The plugin it names doesn't provide models, so it wasn't installed.	指定的插件不提供模型，所以没有安装。	src/core/llm/service.js:424	Note: said after the provider's name ("OpenRouter: …"); the plugin its record names, with no 它.
 3ds0qg	ok	Wikivoyage: {0}	Wikivoyage：{0}	src/core/pack/download.js:87	{0} = p.title
 1rb0o7n	ok	OpenStreetMap around {0}	{0} 周边的 OpenStreetMap	src/core/pack/download.js:89	{0} = a; Note: a part of the offline pack: places from OpenStreetMap around a stop.
 hdsgog	ok	OpenStreetMap between {0} and {1}	{0} 与 {1} 之间的 OpenStreetMap	src/core/pack/download.js:89	{0} = a; {1} = b
@@ -952,9 +952,9 @@ xi9ch6	ok	Shiori can't hear you: the speech-in list is empty. Add an entry in Se
 1oy92m8	ok	This browser has no phone dictation either.	这个浏览器也不支持手机语音输入。	src/core/voice/resolve.js:164	
 l80ifa	ok	Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	请在设置 → 模型中添加语音转文字模型（例如 OpenAI 或 Groq），或添加一个能接受音频的主要模型。	src/core/voice/resolve.js:164	
 m5s9f4	ok	This browser can't play a voice as it arrives.	这个浏览器无法边接收边播放声音。	src/core/voice/speaker.js:128	
-jo5o9d	ok	This browser can't play sound here.	这个浏览器无法在这里播放声音。	src/core/voice/voice.js:429	
-ocv5zw	ok	This browser can't use the microphone here.	这个浏览器无法在这里使用麦克风。	src/core/voice/voice.js:472	
-55949q	ok	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	声音卡住了，annai 听不到你说话。轻点屏幕即可恢复。	src/core/voice/voice.js:803	
+jo5o9d	ok	This browser can't play sound here.	这个浏览器无法在这里播放声音。	src/core/voice/voice.js:430	
+ocv5zw	ok	This browser can't use the microphone here.	这个浏览器无法在这里使用麦克风。	src/core/voice/voice.js:473	
+55949q	ok	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	声音卡住了，annai 听不到你说话。轻点屏幕即可恢复。	src/core/voice/voice.js:804	
 pib2vo	ok	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	由浏览器自带的语音服务识别：Android 上通常是 Google 的服务器，iPhone 上是 Apple 的（有时直接在手机上完成）。这个请求不是 annai 发出的，所以“记录”中看不到。	src/core/voice/where.js:15	
 m93xm3	ok	On this phone only: the browser recognizes your speech on the device.	只在这部手机上：浏览器直接在本机识别你的语音。	src/core/voice/where.js:16	
 1m5zm0a	ok	Phone dictation	手机语音输入	src/core/voice/where.js:18	
