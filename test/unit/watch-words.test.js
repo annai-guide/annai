@@ -16,7 +16,7 @@ import { wokeText, wokeTitles, errorWords } from '../../src/ui/screens/talk.js';
 
 // watch-words-next (the Deferred entry "Shiori's own reminders keep their markdown on the card, in the voice and in the notification", 2026-11-24, from the
 // user's screenshots of 2026-11-23): a reminder Shiori set reads as plain words wherever nothing is drawn (the card at the top, the voice, the phone's
-// notification, the wake line, a watch's error line), from one rule (plan-watches.js plainReminder, with its one `planned` test); the conversation's line
+// notification, the wake line and the hourly limit's card, a watch's error line), from one rule (plan-watches.js plainReminder, with its one `planned` test); the conversation's line
 // still draws her links, and a plan's words are annai's own, unchanged. Places, codes and addresses are made up.
 
 const MAP = 'https://maps.example.com/?q=North%20Gate%2C%20Sample%20Park';
