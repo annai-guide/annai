@@ -397,8 +397,8 @@ export async function slowEntry(k, start) {
   const cardDoor = holdReminders(k);
   await start();
   await until(() => cardDoor.reached());
-  await k.agent.kokoro.idle();
-  await k.agent.koe.idle();
+  await idleAtOnce({ agent: k.agent.kokoro });
+  await idleAtOnce({ agent: k.agent.koe });
   const entryDoor = holdEntries(k);
   cardDoor.open();
   await until(() => entryDoor.cardShown());

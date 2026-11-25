@@ -1,7 +1,7 @@
 // K5's fix pass: the privacy and security review's findings, each from its probe (scratchpad review-koe-k5).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until } from './agent-kit.js';
+import { agentKit, until, idleAtOnce } from './agent-kit.js';
 import { liveKit, got, texts, soon, tone, say, sleep, blocks, lives } from './koe-live-kit.js';
 import { startRealtimeServer } from '../fakes/realtime-server.js';
 
@@ -48,11 +48,11 @@ test("item 1 (probe K2): a typed message when no live session can open: Kokoro i
     throw e;
   });
   try {
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.agent.koeState, 'live');
     k.agent.send('Where can we eat?');
     await soon(async () => (await k.events(['out.speak'])).some((/** @type {any} */ e) => e.data.half === 'kokoro'), 3000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.agent.koeState, 'down');
     const said = (await k.events(['out.speak'])).map((/** @type {any} */ e) => [e.data.half, e.data.text]);
     assert.ok(said.some(([half, text]) => half === 'kokoro' && /tacos ahead/.test(text)), JSON.stringify(said));
@@ -129,16 +129,16 @@ test('item 3 (probe A3): a close while listen() waits opens no microphone and th
     // A trigger whose session closes as its microphone opens (the quiet spell, say).
     k.agent.send('x');
     await until(() => k.agent.live.state === 'open', 3000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const listen = k.agent.live.listen.bind(k.agent.live);
     k.agent.live.listen = async () => { k.agent.live.close('quiet'); return listen(); };
     await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes', fallbacks: [{ watch: 'sun', text: 'Sunset at 18:40' }] });
-    await k.agent.idle();
+    await idleAtOnce(k);
     await until(() => k.notices.some((/** @type {any} */ n) => n.body === 'Sunset at 18:40'), 2000); // its reminder is shown
     k.agent.live.listen = listen;
     k.agent.send('y');
     await until(() => k.server.connections().length === 3, 3000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.ok(!texts(k).some((t) => t.includes('Sunset in 30 minutes')), JSON.stringify(texts(k)));
     assert.deepEqual(rejections, []);
   } finally {
@@ -175,7 +175,7 @@ test('item 5 (probe L): a server that drops every session it resumes is given up
     await k.voice.unlock();
     k.agent.send('Hello');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     for (let i = 1; i <= 3; i++) {
       k.server.close(1011, 'Internal error encountered.');
       await until(() => k.server.connections().length === i + 1, 3000);
@@ -199,7 +199,7 @@ test('item 14 (K6): a drop with no resume handle (OpenAI has none) still goes on
   try {
     k.agent.send('Hello');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     k.server.close(1011, 'server_error');
     await until(() => k.server.connections().length === 2, 3000);
     await soon(async () => k.agent.live.state === 'open' && !k.agent.live.busy);
@@ -257,7 +257,7 @@ test('item 7 (probe C): a session closed while it opens tells Kokoro nothing: no
     assert.equal(k.agent.live.state, 'opening');
     k.agent.hush('away');
     release();
-    await k.agent.idle(); // the held connection is made, and let go: the opening ends, and what it told Kokoro is written
+    await idleAtOnce(k); // the held connection is made, and let go: the opening ends, and what it told Kokoro is written
     assert.equal(k.sessions.length, 1, 'the connection was made, and closed');
     assert.deepEqual(await blocks(k), []);
   } finally {
@@ -318,7 +318,7 @@ test('item 9 (probe I): a trigger while the page is out of view shows its remind
     await k.voice.unlock();
     hidden(true);
     await k.agent.wake({ kind: 'trigger', text: 'Train in 20 minutes', fallbacks: [{ watch: 'train', text: 'Train at 10:40' }] });
-    await k.agent.idle();
+    await idleAtOnce(k);
     await until(() => k.notices.some((/** @type {any} */ n) => n.body === 'Train at 10:40'), 2000);
     assert.equal(k.server.connections().length, 0);
     hidden(false);
@@ -405,7 +405,7 @@ test('item 12 (probe B3): a tap that first unlocks sound on a session already op
   try {
     k.agent.send('Hello');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.voice.unlocked, false);
     k.platform.player.unlock = async () => { await wait(80); return true; }; // an unlock slower than the microphone
     k.agent.tap(); // the first unlock, then the microphone

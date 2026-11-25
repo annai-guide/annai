@@ -1,6 +1,6 @@
 // Helpers for the tests of one input at a time (live-flight-*): Kokoro's notes, the continuation after a call she speaks after, and the tap,
 // at the stand-in Gemini Live server, in real seconds. Lines and places are synthetic.
-import { until } from './agent-kit.js';
+import { until, idleAtOnce } from './agent-kit.js';
 import { liveKit, texts, soon, tone, say } from './koe-live-kit.js';
 import { quiet } from './voice-kit.js';
 
@@ -87,7 +87,7 @@ export async function start({ turns, live, server, note = true, pace = 1 }) {
   await say(k, 'where-eat');
   if (note) {
     await soon(async () => (await k.events(['out.speak'])).length === 1, 6000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     k.platform.mic.feed(quiet(0.5), RATE);
     await tell(k);
   }
@@ -106,7 +106,7 @@ export async function quietSession(turns, o = {}) {
   await until(() => k.agent.live.listening, 3000);
   await say(k, 'where-eat');
   await soon(async () => (await k.events(['out.speak'])).length === 1, 6000);
-  await k.agent.live.idle();
+  await idleAtOnce({ agent: k.agent.live });
   k.platform.mic.feed(quiet(0.5), RATE);
   const t0 = Date.now();
   return { k, t0, w: watch(k, t0) };

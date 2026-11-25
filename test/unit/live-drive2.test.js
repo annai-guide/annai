@@ -2,7 +2,7 @@
 // retried, a reminder being said isn't cut off, and a model that refuses its setup isn't tried first again.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { until } from './agent-kit.js';
+import { until, idleAtOnce } from './agent-kit.js';
 import { liveKit, texts, soon, tone, say, lives } from './koe-live-kit.js';
 import { hum, quiet, cat } from './voice-kit.js';
 import { COOLDOWN_MS } from '../../src/core/llm/fallback.js';
@@ -30,7 +30,7 @@ test('item 13: the model gives an empty turn for a note, in a session opened for
   try {
     await tell(k);
     await soon(async () => (await shown(k)).length === 1, 5000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await shown(k), [FOR_USER]);
     assert.equal(texts(k).filter((t) => CUE.test(t)).length, 1, 'asked once more, once');
   } finally {
@@ -49,13 +49,13 @@ test("item 13: a note Koe said, cut off by lyrics before the user heard a word, 
     await until(() => k.agent.live.listening, 3000);
     await say(k, 'where-eat');
     await soon(async () => (await k.events(['out.speak'])).length === 1, 4000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     k.platform.mic.feed(quiet(0.5), RATE);
     await tell(k);
     await soon(async () => k.agent.live.view.name === 'speaking', 3000);
     k.platform.mic.feed(cat(hum(0.8), quiet(1)), RATE); // over her
     await soon(async () => (await shown(k)).length === 1, 6000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await shown(k), [FOR_USER], 'shown, so nothing is lost');
     assert.equal((await k.events(['reminder']))[0].data.aloud, undefined, 'and not said');
     assert.ok(!texts(k).some((t) => CUE.test(t)), 'not asked again');
@@ -75,7 +75,7 @@ test("item 13: a note whose words were cut off before they were heard is shown a
     await until(() => k.agent.live.listening, 3000);
     await say(k, 'where-eat');
     await soon(async () => (await k.events(['out.speak'])).length === 1, 4000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     k.platform.mic.feed(quiet(0.5), RATE);
     await tell(k);
     await soon(async () => k.agent.live.view.name === 'speaking', 3000);
@@ -113,7 +113,7 @@ test('item 13: a session opened after a sleep is fresh: the sleep note is not in
   try {
     await k.agent.channel.send('kokoro', 'Go to sleep.', 'append', 'tool', undefined, undefined, false, '');
     await soon(async () => (await lives(k, 'closed')).length === 1, 3000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     await tell(k);
     await soon(async () => (await k.events(['out.speak'])).length === 1, 3000);
     const setups = k.server.received().filter((/** @type {any} */ m) => m.setup);
@@ -132,7 +132,7 @@ test('item 6: a turn the model never answers (the real model sends nothing at al
     await until(() => k.agent.live.listening, 3000);
     await say(k, 'where-eat');
     await soon(async () => (await k.events(['error'])).some((/** @type {any} */ e) => e.data.kind === 'live-silent'), 5000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     await wait(1200); // past another watchdog
     assert.equal(k.server.connections().length, 1, 'no session was opened for it');
     assert.deepEqual(texts(k), [], 'its words were not sent again');
@@ -165,12 +165,12 @@ test('section 2: a dismissed live turn at the user\'s own level wakes Kokoro; a 
     await until(() => k.agent.live.listening, 3000);
     k.platform.mic.feed(cat(quiet(1.2), hum(0.6, 0.3), quiet(1)), RATE);
     await soon(async () => (await cues()).length === 1, 4000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     k.agent.live.level.heard(-5);
     k.agent.live.level.heard(-5); // the user's own level; what follows is 20 dB under it, yet starts a turn (the floor is quiet)
     k.platform.mic.feed(cat(hum(0.6, 0.02), quiet(1)), RATE);
     await soon(async () => (await k.events(['heard'])).length === 2, 4000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal((await cues()).length, 1, 'lyrics cost no Kokoro call');
     assert.deepEqual((await k.events(['heard'])).map((/** @type {any} */ e) => e.data.ownLevel), [true, undefined]); // the first: quiet floor, nothing learned
   } finally {
@@ -240,7 +240,7 @@ test("a trigger's session says nothing for its reminder: annai says the reminder
     await k.voice.unlock();
     await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes', fallbacks: [{ watch: 'sun', text: 'Sunset at 18:40' }] });
     await soon(async () => (await shown(k)).length === 1, 5000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await shown(k), ['Sunset at 18:40']);
     assert.equal((await k.events(['reminder']))[0].data.aloud, true);
   } finally {
@@ -254,7 +254,7 @@ test("a trigger she says herself shows no reminder", async () => {
     await k.voice.unlock();
     await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes', fallbacks: [{ watch: 'sun', text: 'Sunset at 18:40' }] });
     await soon(async () => (await k.events(['out.speak'])).length === 1, 3000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await shown(k), []);
   } finally {
     await k.done();
@@ -296,7 +296,7 @@ async function learned(k, db = -5) {
   k.platform.mic.feed(room(1.5), RATE); // the floor is learned
   k.platform.mic.feed(cat(hum(0.6, 0.5), room(1)), RATE); // the tap's first turn: it lifts the minimum no more
   await soon(async () => (await k.events(['live.turn'])).length === 1, 3000);
-  await k.agent.live.idle();
+  await idleAtOnce({ agent: k.agent.live });
   await wait(1050); // a tap's lift: 8 s of the session's clock
   k.agent.live.level.reset();
   k.agent.live.level.heard(db);
@@ -360,7 +360,7 @@ test("level check: the first turn of a session, with no voice learned, has no mi
     k.platform.mic.feed(cat(hum(0.6, 0.03), room(1)), RATE); // quiet, first
     await soon(async () => starts(k) === 1, 2000);
     await soon(async () => (await k.events(['live.turn'])).length === 1, 3000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     await wait(1050); // a tap's lift
     // Loud once: quiet words are now under the minimum...
     k.agent.live.level.heard(-3);
@@ -409,12 +409,12 @@ test('level check: a session a note opened keeps the level learned before, and l
   try {
     await learned(k);
     k.agent.live.close('sleep');
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(typeof k.agent.live.level.db, 'number', 'kept across sessions');
     await k.agent.wake({ kind: 'trigger', text: 'A reminder' });
     await until(() => k.agent.live.listening, 3000);
     await soon(async () => (await k.events(['out.speak'])).length === 1, 3000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     k.platform.mic.feed(room(1.5), RATE);
     k.platform.mic.feed(hum(1, 0.05), RATE);
     const n = (await k.events(['live.turn'])).length;

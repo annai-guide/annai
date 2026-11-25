@@ -1,7 +1,7 @@
 // Detailed trace's samples of sound the level check kept out: the live session tells the voice when a frame was kept out.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { until } from './agent-kit.js';
+import { until, idleAtOnce } from './agent-kit.js';
 import { liveKit, soon, tone } from './koe-live-kit.js';
 import { hum, quiet, cat } from './voice-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
@@ -19,7 +19,7 @@ async function learned(k) {
   k.platform.mic.feed(room(1.5), RATE);
   k.platform.mic.feed(cat(hum(0.6, 0.5), room(1)), RATE);
   await soon(async () => (await k.events(['live.turn'])).length === 1, 3000);
-  await k.agent.live.idle();
+  await idleAtOnce({ agent: k.agent.live });
   await wait(1050);
   k.agent.live.level.reset();
   k.agent.live.level.heard(-5);

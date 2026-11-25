@@ -55,7 +55,7 @@ for (const full of [false, true]) {
     await hear(k, 'first-one');
     if (full) await until(() => told(cards).length > 0);
     else while ((await k.events(['heard'])).length < 3) await new Promise((r) => setTimeout(r, 5));
-    await k.agent.idle();
+    await idleAtOnce(k);
     await toldOnce(cards, full ? 1 : 0, 'the chatter line');
     assert.deepEqual((await k.events(['heard'])).map((/** @type {any} */ e) => Boolean(e.data.dismissed)), full ? [false, false] : [false, false, true]);
   });
@@ -82,7 +82,7 @@ for (const full of [false, true]) {
     await until(() => mine().length === 2);
     await hear(k, 'gas-station'); // chatter while the second call runs
     await hear(k, 'thanks');
-    await k.agent.idle();
+    await idleAtOnce(k);
     await toldOnce(cards, full ? 1 : 0, 'the chatter line');
     assert.equal(mine().length, 3, 'her next step ran');
     // Written in before her next step: the third request holds the chatter line(s) written by then (the refused one is in no request).
@@ -111,7 +111,7 @@ for (const full of [false, true]) {
     k.agent.send('What is ahead?');
     await until(() => k.platform.log.some((/** @type {string} */ l) => l.startsWith('play ')));
     k.agent.cutIn();
-    await k.agent.idle();
+    await idleAtOnce(k);
     await toldOnce(cards, full ? 1 : 0, 'the cut line');
     assert.equal(k.requests.length, full ? 3 : 2, 'the turn went on: her next call ran'); // refused, nothing in the log says she answered, so she is asked once more (a third call)
     assert.ok(!cards.some((n) => /stopped/i.test(n.title)), 'the turn was not stopped');
@@ -128,7 +128,7 @@ for (const full of [false, true]) {
     const store = refusing(k);
     if (full) store.full((ev) => ev.type === 'out.speak' && ev.data?.cut === true);
     k.agent.send('Hi');
-    await k.agent.idle();
+    await idleAtOnce(k);
     await toldOnce(cards, full ? 1 : 0, 'the cut line');
     assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => [e.data.text, Boolean(e.data.cut)]), [...(full ? [] : [['First sentence here.', true]]), ['Said whole.', false]]);
   });
@@ -145,7 +145,7 @@ for (const full of [false, true]) {
     k.agent.tap();
     await until(() => k.agent.state.name === 'listening');
     await hear(k, 'where-eat');
-    await k.agent.idle();
+    await idleAtOnce(k);
     await toldOnce(cards, full ? 1 : 0, 'the words written down');
     assert.equal((await k.events(['heard.text'])).length, full ? 0 : 1);
     assert.equal((await k.events(['out.speak'])).length, 1, 'her turn worked');
@@ -155,7 +155,7 @@ for (const full of [false, true]) {
     assert.ok(k.voice.memory.get(line.data.id), 'the sound is kept');
     store.full(null);
     k.agent.send('Thanks');
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual((await k.events(['heard.text'])).map((/** @type {any} */ e) => e.data.of), [line.data.id], 'written down by the next turn');
     assert.ok(!k.voice.memory.get(line.data.id), 'and the sound let go');
   });
@@ -171,7 +171,7 @@ test("what was heard, written down after the turn, refused with an error that is
   k.agent.tap();
   await until(() => k.agent.state.name === 'listening');
   await hear(k, 'where-eat');
-  await k.agent.idle();
+  await idleAtOnce(k);
   await new Promise((r) => setTimeout(r, 20));
   assert.equal(told(cards).length, 1, JSON.stringify(cards.map((c) => c.title)));
   assert.ok(told(cards)[0].error instanceof TypeError, 'its own error, not a StorageFullError');
@@ -192,11 +192,11 @@ for (const full of [false, true]) {
     if (full) store.full((ev) => ev.type === 'note');
     k.agent.stopKokoro();
     if (full) await until(() => told(cards).length > 0);
-    else await k.agent.idle();
+    else await idleAtOnce(k);
     await toldOnce(cards, full ? 1 : 0, 'the note');
     assert.deepEqual((await k.events(['note'])).map((/** @type {any} */ e) => e.data.text), full ? [] : ['Kokoro was stopped.']);
     if (full) k.agent.koe.interrupt(); // Koe never heard: its wait is let go here, as the user's next words would
-    await k.agent.idle();
+    await idleAtOnce(k);
   });
 }
 
@@ -212,7 +212,7 @@ test("Koe waits on a Kokoro with nothing to add, the first note refused: a card 
   let notes = 0;
   store.full((ev) => ev.type === 'note' && notes++ === 0);
   k.agent.send('Anything to see here?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   await toldOnce(cards, 1, 'the first note');
   const waits = (await k.events(['tool.result'])).filter((/** @type {any} */ e) => e.data.name === 'wait').map((/** @type {any} */ e) => e.data.content);
   assert.equal(waits.length, 2);
@@ -242,7 +242,7 @@ for (const full of [false, true]) {
     if (full) store.full((ev) => ev.type === 'error' && ev.data?.kind === 'answered');
     k.agent.send('When is check-in?');
     await new Promise((r) => setTimeout(r, 200));
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal((k.sent['model-0'] ?? []).length, 1, 'Koe\'s question took no turn of Kokoro\'s');
     await toldOnce(cards, full ? 1 : 0, 'the settled record');
     assert.deepEqual((await k.events(['error'])).filter((/** @type {any} */ e) => e.data.kind === 'answered').length, full ? 0 : 1);
@@ -262,7 +262,7 @@ for (const full of [false, true]) {
     if (full) store.full('all');
     await k.agent.open(k.trip);
     if (full) await until(() => told(cards).length > 0);
-    await k.agent.idle();
+    await idleAtOnce(k);
     await toldOnce(cards, full ? 1 : 0, "Koe's open");
     assert.equal(k.agent.koe.target, k.trip, 'Koe opened it');
     assert.equal(k.agent.kokoro.trip, k.trip, 'Kokoro opened it either way');
@@ -298,7 +298,7 @@ for (const full of [false, true]) {
     if (full) store.full((ev) => ev.type === 'out.show');
     await k.agent.open(other);
     release();
-    await k.agent.idle();
+    await idleAtOnce(k);
     await toldOnce(cards, full ? 1 : 0, 'the card shown in the conversation left');
     const shows = await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(left, { types: ['out.show'] }));
     assert.equal(shows.length, full ? 0 : 1);
@@ -387,7 +387,7 @@ for (const full of [false, true]) {
       if (full) await soon(async () => told(cards).length > 0, 10_000);
       else await soon(async () => (await k.events(['out.speak'])).length === 1);
       await k.agent.live.written();
-      await k.agent.idle();
+      await idleAtOnce(k);
       await toldOnce(cards, full ? 1 : 0, 'her line');
       assert.equal((await k.events(['out.speak'])).length, full ? 0 : 1);
     } finally {
@@ -413,7 +413,7 @@ for (const full of [false, true]) {
       if (full) await soon(async () => tried > 0, 3000);
       else await soon(async () => (await k.events(['live.turn'])).length === 1, 3000);
       await k.agent.live.written();
-      await k.agent.idle();
+      await idleAtOnce(k);
       await toldOnce(cards, 0, "the turn's numbers");
       assert.equal((await k.events(['live.turn'])).length, full ? 0 : 1);
       assert.deepEqual((await k.events(['heard', 'out.speak'])).map((/** @type {any} */ e) => e.type), [], 'no line, no answer');
@@ -443,11 +443,11 @@ test("a live session's Trace records refused (a turn taken as let go, her reply'
     await until(() => k.agent.live.listening, 3000);
     await sayClip(k, 'where-eat');
     await soon(async () => tried.has('live-silent'), 5000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     await sayClip(k, 'where-eat');
     await soon(async () => (await k.events(['out.speak'])).length === 1 && tried.has('live.reply'), 5000);
     await k.agent.live.written();
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual([...tried].sort(), ['live-silent', 'live.reply', 'live.turn']);
     await toldOnce(cards, 0, "the Trace's records");
     assert.deepEqual((await k.events(['live.turn', 'live.reply'])).map((/** @type {any} */ e) => e.type), [], 'refused');
@@ -467,12 +467,12 @@ for (const full of [false, true]) {
       const store = refusing(k);
       k.agent.send('Is Nepenthe open tonight?');
       await soon(async () => (await k.events(['out.speak'])).length === 1);
-      await k.agent.idle();
+      await idleAtOnce(k);
       if (full) store.full((ev) => ev.type === 'out.show');
       await k.agent.channel.send('kokoro', 'Kokoro wants to show: Nepenthe: Open 11:30–22:00 today.', 'append', 'gated:show', undefined, { name: 'show', input: { card } }, false, '');
       if (full) await soon(async () => told(cards).length > 0, 10_000);
       else await soon(async () => (await k.events(['out.show'])).length === 1);
-      await k.agent.idle();
+      await idleAtOnce(k);
       await toldOnce(cards, full ? 1 : 0, 'the card annai shows');
       assert.equal((await k.events(['out.show'])).length, full ? 0 : 1);
     } finally {
@@ -491,7 +491,7 @@ for (const full of [false, true]) {
       await updateAppSettings(k.ws, { shiori: { budgets: { spendPerDay: 0.5 } } });
       k.agent.send('Hi');
       await soon(async () => (await k.events(['live.session'])).some((/** @type {any} */ e) => e.data.state === 'closed'));
-      await k.agent.idle();
+      await idleAtOnce(k);
       const card = { title: 'Nepenthe', text: 'Open 11:30–22:00 today.' };
       const cards = raw(k);
       const store = refusing(k);
@@ -499,7 +499,7 @@ for (const full of [false, true]) {
       await k.agent.channel.send('kokoro', 'Kokoro wants to show: Nepenthe: Open 11:30–22:00 today.', 'append', 'gated:show', undefined, { name: 'show', input: { card } }, false, '');
       if (full) await soon(async () => told(cards).length > 0, 10_000);
       else await soon(async () => (await k.events(['out.show'])).length === 1, 10_000);
-      await k.agent.idle();
+      await idleAtOnce(k);
       assert.equal(k.agent.koeState, 'live', 'Koe stays live: no session could open, none failed');
       await toldOnce(cards, full ? 1 : 0, 'the card annai shows');
       assert.equal((await k.events(['out.show'])).length, full ? 0 : 1);
@@ -521,7 +521,7 @@ test("a watch's wake with a reminder while Koe is live, when its session can't o
     k.agent.wake({ kind: 'trigger', text: 'Your watch fired.', fallbacks: [{ watch: 'w1', text: LEAVE }] });
     await soon(async () => told(cards).length > 0, 10_000);
     store.full(null);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(cards.filter((n) => n.title === 'Reminder').map((n) => n.body), [LEAVE], 'shown once');
     await toldOnce(cards, 1, "the wake's way to a session", { read: true });
     assert.ok(cards.findIndex((n) => n.title === 'Reminder') < cards.findIndex((n) => n.title === NOT_SAVED), 'shown before the failure is told');
@@ -544,7 +544,7 @@ for (const full of [false, true]) {
       if (full) store.full((ev) => ev.type === 'halves');
       k.agent.send('Is Nepenthe open?');
       await soon(async () => (await k.events(['out.speak'])).length === 1, 10_000);
-      await k.agent.idle();
+      await idleAtOnce(k);
       assert.equal((await k.events(['out.speak'])).length, 1, 'she answered it once');
       await toldOnce(cards, 0, "the line's way to a session");
       assert.equal((await k.events(['msg.user'])).length, 1, 'the line itself is kept');
@@ -568,7 +568,7 @@ for (const reads of [false, true]) {
       assert.equal(k.agent.tap(), 'listening');
       if (reads) await soon(async () => told(cards).length > 0, 10_000);
       else await soon(async () => k.notices.some((n) => n.title === "Koe's live voice couldn't start"), 10_000);
-      await k.agent.idle();
+      await idleAtOnce(k);
       store.full(null);
       await toldOnce(cards, reads ? 1 : 0, 'the tap', { read: reads });
       if (reads) return;
@@ -595,7 +595,7 @@ for (const reads of [false, true]) {
       await k.agent.channel.send('kokoro', 'Say: Nepenthe is open until 10 PM tonight.', 'append', 'tool', undefined, undefined, false, 'Nepenthe is open until 10 tonight.');
       if (reads) await soon(async () => told(cards).length > 0, 10_000);
       else await soon(async () => k.agent.koeState === 'down', 10_000);
-      await k.agent.idle();
+      await idleAtOnce(k);
       store.full(null); // only now: the block's write is refused first
       await toldOnce(cards, reads ? 1 : 0, 'the note', { read: reads });
       if (reads) return;
@@ -603,7 +603,7 @@ for (const reads of [false, true]) {
       assert.deepEqual(await blocks(k), [], 'and never written');
       assert.equal((await k.events(['out.speak'])).length, 1, 'Kokoro was woken to talk directly all the same, and did');
       k.agent.send('Anything else?'); // the next refresh writes it
-      await k.agent.idle();
+      await idleAtOnce(k);
       const written = await k.events(['halves']);
       assert.deepEqual(written.map((/** @type {any} */ e) => e.data.state), ['koe-down']);
       assert.match(JSON.stringify(written[0]), /didn't reach the user/, 'with what she owed');
@@ -622,7 +622,7 @@ test("Kokoro's block that a live session opened, refused: nothing of its own", a
     store.full((ev) => ev.type === 'halves');
     k.agent.send('Where can we eat?');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.ok(store.tried.some((/** @type {any} */ e) => e.data?.state === 'live-open'), 'the block was tried, and refused');
     assert.equal((await k.events(['halves'])).length, 0, 'and never written');
     await toldOnce(cards, 0, "annai's own record");
@@ -645,7 +645,7 @@ for (const full of [false, true]) {
       k.agent.live.c.owed([note, words]); // a session that held them, closing
       if (full) await soon(async () => told(cards).length > 0, 10_000);
       else await soon(async () => (await k.events(['out.show'])).length === 1, 10_000);
-      await k.agent.idle();
+      await idleAtOnce(k);
       await toldOnce(cards, full ? 1 : 0, 'the card handed on');
       assert.equal((await k.events(['out.show'])).length, full ? 0 : 1);
       // The refused card is gone, said; the note after it is still shown.
@@ -676,7 +676,7 @@ for (const [what, note, said] of /** @type {[string, any, RegExp][]} */ ([
         const unshown = async () => (await k.events(['error'])).filter((/** @type {any} */ e) => e.data.kind === 'unshown');
         if (full) await soon(async () => store.tried.some((/** @type {any} */ e) => e.data?.kind === 'unshown'), 10_000);
         else await soon(async () => (await unshown()).length === 1, 10_000);
-        await k.agent.idle();
+        await idleAtOnce(k);
         await toldOnce(cards, 0, "the Trace's line");
         const lines = full ? store.tried.filter((/** @type {any} */ e) => e.data?.kind === 'unshown') : await unshown();
         assert.equal(lines.length, 1);
@@ -717,7 +717,7 @@ for (const full of [false, true]) {
     if (full) store.full((ev) => ev.type === 'error' && ev.data?.kind === 'unshown');
     await k.agent.open(other);
     release();
-    await k.agent.idle();
+    await idleAtOnce(k);
     await toldOnce(cards, 0, "the Trace's line");
     const unshown = async (/** @type {string} */ scope) => (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(scope, { types: ['error'] }))).filter((/** @type {any} */ e) => e.data.kind === 'unshown');
     const lines = full ? store.tried.filter((/** @type {any} */ e) => e.data?.kind === 'unshown') : await unshown(left);
@@ -739,7 +739,7 @@ test("Kokoro's gated card a closing session hands on, the store refusing reads: 
     const note = { kind: 'note', logged: true, from: 'kokoro', note: 'Kokoro wants to show: Nepenthe: Open 11:30–22:00 today.', mode: 'append', why: 'gated:show', call: { name: 'show', input: { card: { title: 'Nepenthe', text: 'Open 11:30–22:00 today.' } } }, text: 'a note from Kokoro' };
     k.agent.live.c.owed([note]);
     await soon(async () => told(cards).length > 0, 10_000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     store.full(null);
     await toldOnce(cards, 1, 'the hand-on', { read: true });
     assert.equal((await k.events(['out.show'])).length, 0, 'nothing was shown');
@@ -763,7 +763,7 @@ for (const cut of [true, false]) {
         store.full(reads ? 'reads' : (ev) => ev.type === 'halves');
         k.agent.live.c.dropped(cut);
         if (reads && cut) await soon(async () => told(cards).length > 0, 10_000);
-        await k.agent.idle();
+        await idleAtOnce(k);
         store.full(null);
         await toldOnce(cards, reads && cut ? 1 : 0, 'the drop', { read: reads });
         if (reads) return assert.equal((await k.events(['out.speak'])).length, 0, 'nobody finished the answer: the route was gone');
@@ -791,7 +791,7 @@ test("a tap as annai starts, before Koe's way is known, on a phone that refuses 
   assert.equal(k.agent.tap(), 'listening');
   started();
   await soon(async () => told(cards).length > 0, 10_000);
-  await k.agent.idle();
+  await idleAtOnce(k);
   await toldOnce(cards, 1, 'the tap', { read: true });
   assert.equal(k.platform.mic.isOpen(), false, 'the tap went nowhere: the microphone is closed');
   assert.deepEqual(k.platform.log, [], 'and nothing reached the phone: no unlock, no microphone');

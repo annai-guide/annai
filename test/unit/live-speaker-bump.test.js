@@ -4,7 +4,7 @@
 // later, so the user heard it without its first words (once in 47 notes). A sound cuts her only once it counts as speech (input.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { until } from './agent-kit.js';
+import { until, idleAtOnce } from './agent-kit.js';
 import { liveKit, got, soon, tone, say } from './koe-live-kit.js';
 import { quiet, burst, cat, RATE } from './voice-kit.js';
 
@@ -36,7 +36,7 @@ test('drive 3 at the live session, the phone\'s speaker in a noisy car: a bump b
     await until(() => k.agent.live.listening, 5000);
     await say(k, 'where-eat');
     await soon(async () => (await k.events(['out.speak'])).length === 1, 15_000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     for (let i = 0; i < 3; i++) k.platform.mic.feed(cat(still(0.3), burst(0.06, 0.4), still(0.3)), RATE); // the car: noises thrown away
     const starts = () => got(k, 'realtimeInput').filter((/** @type {any} */ m) => m.realtimeInput.activityStart).length;
     assert.equal(starts(), 1, 'the question\'s turn');

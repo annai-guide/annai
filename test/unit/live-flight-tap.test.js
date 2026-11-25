@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { tone, soon, liveKit, say } from './koe-live-kit.js';
-import { until } from './agent-kit.js';
+import { until, idleAtOnce } from './agent-kit.js';
 import { hum, quiet, cat } from './voice-kit.js';
 import { RATE, PASS, FOR_USER, LOOKS, CONT, tell2, shown, lines, words, cues, asks, wait, start, quietSession, lineAt, join, zeros } from './live-flight-kit.js';
 
@@ -27,7 +27,7 @@ test('a tap in the quiet after "Checking your notes." has played out: the note o
     await wait(500);
     speaks(k);
     await soon(async () => (await words(k)).includes(YES.said), 8000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await shown(k), [[FOR_USER, false]]);
     const all = await lines(k);
     assert.deepEqual(all.map((l) => [l.text, l.voice, l.cut]), [['Hello there.', true, false], ['Checking your notes.', true, false], [CONT.said, false, false], [YES.said, true, false]]);
@@ -62,7 +62,7 @@ test('a note that comes after a tap in that quiet goes in once her unspoken cont
     await wait(500);
     await tell2(k);
     await soon(async () => (await words(k)).includes(PASS), 10_000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const pass = (await lines(k)).find((l) => l.text === PASS);
     assert.ok(pass?.voice && !pass.cut, 'said aloud');
     assert.deepEqual(cues(k), []);
@@ -83,7 +83,7 @@ test('a tap in the quiet tail of a turn that goes on, a note in flight: a card, 
     k.agent.tap();
     await soon(async () => (await words(k)).includes(CONT.said), 8000);
     await wait(500);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await shown(k), [[FOR_USER, false]]);
     const cont = (await lines(k)).find((l) => l.text === CONT.said);
     assert.ok(cont && !cont.voice && !cont.cut, 'written whole, not heard');
@@ -100,7 +100,7 @@ test('a tap in the quiet tail of her own lookup for the user: her answer is writ
     k.agent.tap();
     await soon(async () => (await words(k)).includes('You have two reminders set.'), 8000);
     await wait(500);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const cont = (await lines(k)).find((l) => l.text === 'You have two reminders set.');
     assert.ok(cont && !cont.voice, 'written, not spoken');
     assert.deepEqual(await shown(k), []);
@@ -214,7 +214,7 @@ test('a note waiting when the user taps to stop her goes in once 2 s pass with n
     assert.equal(k.agent.tap(), 'cut'); // her turn has about a second to go: it ends, and the note could go in at once
     const tapped = Date.now() - t0;
     await soon(async () => (await words(k)).includes(PASS), 12_000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const went = w.at(/pass closes/) - tapped;
     assert.ok(went >= 1900 && went < 4000, `the note went in ${went} ms after the tap (the user's 2 s: #hearFirst)`);
     const pass = (await lines(k)).find((l) => l.text === PASS);
@@ -236,7 +236,7 @@ test('a tap after Kokoro\'s immediate note went in and before she has begun: the
     await wait(500);
     assert.equal(k.agent.live.view.name, 'thinking');
     assert.equal(k.agent.tap(), 'stopped');
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(await shown(k), [[FOR_USER, false]], 'the note, on a silent card');
     assert.equal(k.agent.live.owing, false, 'nothing is kept for the next session');
   } finally {

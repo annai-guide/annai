@@ -2,7 +2,7 @@
 // level check, written-then-sent lines and the window after she speaks.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until, hear } from './agent-kit.js';
+import { agentKit, until, hear, idleAtOnce } from './agent-kit.js';
 import { liveKit, texts, soon, tone, say } from './koe-live-kit.js';
 import { hum, quiet, cat } from './voice-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
@@ -61,7 +61,7 @@ test('"This was for Shiori" while Ignoring: the words reach the session, and the
     k.platform.mic.feed(room(1.5), RATE);
     k.platform.mic.feed(cat(hum(0.6, 0.5), room(1)), RATE);
     await soon(async () => (await k.events(['live.turn'])).length === 1, 3000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     await wait(1050); // the tap's lift ends
     k.agent.live.level.reset();
     k.agent.live.level.heard(-5);
@@ -76,7 +76,7 @@ test('"This was for Shiori" while Ignoring: the words reach the session, and the
     assert.equal(k.agent.live.level.db, db, 'a turn she let go still teaches nothing');
     assert.equal(k.agent.live.listening, true, 'the microphone stays open');
     k.platform.mic.feed(hum(0.5, 0.03), RATE);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     assert.equal(k.agent.state.name, 'ignoring', 'and the minimum still holds what it held');
   } finally {
     await k.done();
@@ -194,14 +194,14 @@ test('Auto: the window after she spoke is part of the exchange: voice stays held
   await until(() => k.agent.state.name === 'listening');
   await hear(k, 'where-eat');
   await until(() => k.platform.log.includes('play m-say:Let me check.'));
-  await k.agent.idle();
+  await idleAtOnce(k);
   await wait(5); // anything the turn's end set going
   assert.equal(k.platform.mic.isOpen(), true, 'she listens on');
   assert.equal(k.voice.on, true, 'the hold lasts as long as the window');
   assert.equal(k.agent.state.name, 'listening');
   await hear(k, 'where-eat');
   await until(() => k.platform.log.includes('play m-say:It is open.'));
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await k.events(['out.speak'])).at(-1).data.voice, true, 'said aloud, not a bubble');
   await until(() => !k.voice.on);
   assert.equal(k.platform.mic.isOpen(), false);
@@ -221,7 +221,7 @@ test('Auto: an answer that ends her turn with the microphone already open keeps 
   await until(() => k.platform.mic.isOpen());
   await hear(k, 'where-eat');
   await until(() => (k.sent['model-koet'] ?? []).length === 2);
-  await k.agent.idle();
+  await idleAtOnce(k);
   await wait(5);
   assert.deepEqual([k.platform.mic.isOpen(), k.voice.on, k.agent.state.name], [true, true, 'listening']);
   await until(() => !k.voice.on);
@@ -239,7 +239,7 @@ test('Auto: a window after she spoke that can\'t open lets the hold go', async (
   await hear(k, 'where-eat');
   await until(() => k.platform.log.includes('play m-say:Let me check.'));
   k.platform.mic.open = async () => { throw Object.assign(new Error('taken'), { name: 'NotReadableError' }); };
-  await k.agent.idle();
+  await idleAtOnce(k);
   await until(() => !k.voice.on);
   assert.equal(k.agent.state.name, 'sleeping');
 });
@@ -260,7 +260,7 @@ test("What each half sees: annai's own placeholder for words nobody wrote down i
   try {
     k.agent.send('Hi');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     await record(k.store, k.trip, { type: 'heard', actor: 'user', data: { id: 's-1', source: 'mic', ms: 100 } });
     await record(k.store, k.trip, { type: 'heard', actor: 'user', data: { id: 's-2', source: 'mic', ms: 100 } });
     await record(k.store, k.trip, { type: 'heard.text', actor: 'system', data: { of: 's-2', text: NOT_TRANSCRIBED } });
@@ -295,7 +295,7 @@ test('a claim has one writer, in every reader: its label is never escaped, its w
     await soon(async () => texts(k).length === 1);
     assert.deepEqual(texts(k), [escaped], 'as the session reads it');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const seen = await k.agent.sees('koe');
     assert.ok(seen.how === 'live' && seen.context.includes(escaped), 'and as What each half sees shows it: a line that opens the session is in its setup');
   } finally {
@@ -309,7 +309,7 @@ test('an urgent reminder, owed as a note is, shows in What each half sees: annai
     await k.voice.unlock();
     await k.agent.wake({ kind: 'trigger', urgent: true, text: 'Train in 20 minutes', fallbacks: [{ watch: 'train', text: 'Train at 10:40' }] });
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal((await linesSince(k)).filter((l) => l === '[annai] "Train in 20 minutes"').length, 1);
     assert.deepEqual((await k.events(['reminder'])).map((/** @type {any} */ e) => e.data.text), [], 'she said it: annai says nothing more');
   } finally {
@@ -327,13 +327,13 @@ test("a note cut off by sound: no cue goes in, What each half sees shows none, a
     await until(() => k.agent.live.listening, 3000);
     await say(k, 'where-eat');
     await soon(async () => (await k.events(['out.speak'])).length === 1, 4000);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     k.platform.mic.feed(quiet(0.5), RATE);
     await k.agent.channel.send('kokoro', FUEL, 'append', 'tool', undefined, undefined, false, 'The fuel station ahead is open until ten tonight.');
     await soon(async () => k.agent.live.view.name === 'speaking', 3000);
     k.platform.mic.feed(cat(hum(0.8), quiet(1)), RATE);
     await soon(async () => (await k.events(['reminder'])).length === 1, 6000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(texts(k).filter((/** @type {string} */ x) => /^\[annai\] /.test(x)), [], 'no cue');
     assert.deepEqual((await linesSince(k)).filter((l) => /^\[annai\] /.test(l)), [], 'What each half sees shows none');
     assert.deepEqual((await k.events(['reminder'])).map((/** @type {any} */ e) => e.data.text), ['The fuel station ahead is open until ten tonight.']);
@@ -350,7 +350,7 @@ test("a stalled reply to a reminder: annai's line and hers show once each in Wha
     await k.agent.wake({ kind: 'trigger', text: 'Train in 20 minutes', fallbacks: [{ watch: 'train', text: 'Train at 10:40' }] });
     await soon(async () => (await k.events(['out.speak'])).length === 1, 8000);
     await soon(async () => k.platform.log.includes('play m-say:Your train leaves in twenty minutes.'), 2000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const seen = await linesSince(k);
     assert.equal(seen.filter((l) => l === '[annai] "Train in 20 minutes"').length, 1, JSON.stringify(seen));
     assert.equal(seen.filter((l) => l === '[you said] "Your train leaves in twenty minutes."').length, 1, JSON.stringify(seen));
@@ -367,7 +367,7 @@ test("a dismissed live turn at the user's own level: Kokoro, woken for it, reads
     await until(() => k.agent.live.listening, 3000);
     k.platform.mic.feed(cat(quiet(1.2), hum(0.6, 0.3), quiet(1)), RATE);
     await soon(async () => (await k.events(['wake'])).some((/** @type {any} */ e) => (e.data.reasons ?? []).some((/** @type {any} */ w) => /didn't answer/.test(String(w.text ?? '')))), 4000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const [line] = await k.events(['heard']);
     assert.equal(line.data.ownLevel, true);
     const asked = JSON.stringify(k.sent['model-0'].at(-1).messages);
@@ -406,5 +406,5 @@ test("Her instructions saved while the window after she spoke is open apply to t
   await hear(k, 'first-one');
   await until(() => main().length >= 3);
   assert.match(String(main()[2].system), /My own rules\./);
-  await k.agent.idle();
+  await idleAtOnce(k);
 });

@@ -2,7 +2,7 @@
 // non-stop sound wakes Kokoro (who decides), urgent notes are said whole, and live Koe's sleep.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { until } from './agent-kit.js';
+import { until, idleAtOnce } from './agent-kit.js';
 import { liveKit, texts, soon, tone, say, sleep, lives } from './koe-live-kit.js';
 import { hum, quiet, cat } from './voice-kit.js';
 import { SAID, tell, notesIn, watch, lineAt } from './live-flight-kit.js';
@@ -400,7 +400,7 @@ test("Kokoro's sleep note, late, to a session that closed in a gap meanwhile is 
     await soon(async () => (await kokoroWakes(k, /non-stop sound/)).length === 1, 5000);
     await until(() => k.agent.live.state === 'closed', 8000);
     await wait(4500); // Kokoro's note comes
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.agent.live.state, 'closed', 'a sleep note to a closed session is nothing');
     assert.equal((await lives(k, 'closed')).length, 1, 'one session, closed in the gap: the note opened no other');
   } finally {
@@ -699,7 +699,7 @@ for (const end of ['final text', 'tell_koe']) {
       k.agent.live.c.noisy?.('la la la');
       await soon(async () => (await kokoroWakes(k, /non-stop sound/)).length === 1);
       await wait(300);
-      await k.agent.idle();
+      await idleAtOnce(k);
       assert.equal(k.agent.live.state, 'closed');
       assert.equal((await lives(k)).length, 0, 'no session opened');
       assert.equal(k.server.received().filter((/** @type {any} */ m) => m.setup).length, 0, 'none connected');
@@ -828,7 +828,7 @@ for (const [when, delayMs] of /** @type {const} */ ([['after Koe answered the us
       await soon(async () => (await k.events(['out.speak'])).some((e) => /Tacos/.test(JSON.stringify(e))), 5000);
       await soon(async () => (await kokoroWakes(k, /non-stop sound/)).length === 1).catch(() => assert.fail('Kokoro was not woken once for the music'));
       await wait(Math.max(0, delayMs - 1000) + 1000);
-      await k.agent.idle();
+      await idleAtOnce(k);
       assert.ok(!texts(k).some((x) => /go to sleep/.test(x)), `the stale sleep note never went in: ${JSON.stringify(texts(k))}`);
       assert.ok(!(await lives(k, 'closed')).some((e) => e.data.why === 'sleep'), 'no sleep closed it (the quiet spell may)');
     } finally {
@@ -967,10 +967,10 @@ test('an urgent watch firing with no live session (Koe in text) is answered as a
   const { agentKit } = await import('./agent-kit.js');
   const run = async (/** @type {boolean} */ urgent) => {
     const k = await agentKit([{ rules: [{ match: '.', reply: sleep }] }], { koe: { talk: [{ toolCalls: [{ name: 'speak', input: { text: 'Turn left at the next exit.' } }, { name: 'sleep', input: {} }] }] } });
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.agent.koeState, 'text');
     await k.agent.wake({ ...FIRED, ...(urgent ? { urgent: true } : {}) });
-    await k.agent.idle();
+    await idleAtOnce(k);
     const koe = k.sent['model-koet'].map((/** @type {any} */ r) => JSON.stringify(r.messages ?? r).replace(/\b[wct]-[a-z0-9]+|\d{4}-\d\d-\d\dT[\d:.]+Z|scripted_\d+_\d+/g, 'ID'));
     assert.ok(koe.some((x) => ALERT.test(x)), 'Koe got it');
     // Each half's events in its own order (a model's requests by the model). The halves take the wake side by side, and which one's
@@ -1015,7 +1015,7 @@ for (const late of [false, true]) {
       await soon(async () => (await k.events(['out.speak'])).some((e) => /Tacos/.test(JSON.stringify(e))), 5000);
       await soon(async () => (await kokoroWakes(k, /non-stop sound/)).length === 1).catch(() => assert.fail('Kokoro was not woken once for the music'));
       await wait(500);
-      await k.agent.idle();
+      await idleAtOnce(k);
       assert.ok(!texts(k).some((x) => /go to sleep/.test(x)), `the sleep note never went in: ${JSON.stringify(texts(k))}`);
       assert.ok(!(await lives(k, 'closed')).some((e) => e.data.why === 'sleep'), 'no sleep closed it');
     } finally {

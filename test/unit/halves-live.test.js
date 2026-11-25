@@ -1,7 +1,7 @@
 // K5: Koe live (the Koe and Kokoro design, "Realtime sessions"; plan K5), against the stand-in realtime server.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { until, rescript, slowEntry, settlesOnlyAfter, raw, watchShared } from './agent-kit.js';
+import { until, rescript, slowEntry, settlesOnlyAfter, raw, watchShared, idleAtOnce } from './agent-kit.js';
 import { tripTools } from '../../src/core/agent/trip-tools.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { readConfig, saveRoles } from '../../src/core/llm/config.js';
@@ -38,7 +38,7 @@ test("Classic chosen: Koe talks through the loop, voice on or off, though Realti
     assert.deepEqual(k.agent.way, { mode: 'classic', why: '', live: true, split: true, path: { kind: 'text' } });
     await updateAppSettings(k.ws, { voice: { mode: 'off' } });
     await k.voice.refresh();
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.agent.koeState, 'text', 'voice off');
     k.llm.bench.bench('m-koe', 60_000);
     assert.equal(await k.agent.split(), true);
@@ -55,7 +55,7 @@ test("Realtime chosen: voice off, Koe types through Classic (a live reply would 
     assert.equal(k.agent.koeState, 'live', 'voice on: Gemini Live, Realtime chosen');
     await updateAppSettings(k.ws, { voice: { mode: 'off' } });
     await k.voice.refresh();
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.agent.koeState, 'text', 'voice off: Classic');
     assert.deepEqual([k.agent.way.path?.kind, k.agent.way.why], ['text', 'voice off']);
     k.llm.bench.bench('m-koe', 60_000);
@@ -64,7 +64,7 @@ test("Realtime chosen: voice off, Koe types through Classic (a live reply would 
     k.llm.bench.clear('m-koe');
     await updateAppSettings(k.ws, { voice: { mode: 'on' } });
     await k.voice.refresh();
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.agent.koeState, 'live');
   } finally {
     await k.done();
@@ -78,7 +78,7 @@ test("the voice chip's switch applies at once: Classic chosen closes an open ses
   try {
     k.agent.send('Where can we eat?');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.agent.live.state, 'open');
     await k.agent.chooseKoe('classic');
     assert.equal(k.agent.koeState, 'text');
@@ -104,7 +104,7 @@ test("a change to Koe's lists in Settings → Models applies at once, with no vo
     const cfg = await readConfig(k.ws);
     await saveRoles(k.ws, { ...cfg.roles, 'koe-realtime': { models: [], level: 'off' } });
     await soon(async () => k.agent.koeState === 'text');
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual([k.agent.way.mode, k.agent.way.path?.kind, k.agent.way.why], ['realtime', 'text', 'none'], 'the choice stays Realtime');
     assert.deepEqual(seen.at(-1), { mode: 'realtime', live: false }, "the chip hears of it");
   } finally {
@@ -141,11 +141,11 @@ test("Live resting because a model failed: one toast as it begins, once per rest
     assert.equal(notes.length, 1, 'not on every turn');
     await updateAppSettings(k.ws, { voice: { mode: 'off' } });
     await k.voice.refresh();
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.agent.way.why, 'voice off');
     await updateAppSettings(k.ws, { voice: { mode: 'on' } });
     await k.voice.refresh();
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.agent.way.why, 'resting');
     assert.equal(notes.length, 1, 'voice off and on in the same rest says nothing new');
     await soon(async () => k.agent.koeState === 'live', 3000);
@@ -235,7 +235,7 @@ test("no model in Koe · Realtime: no Live model, so no session is tried and no 
     await k.agent.split();
     for (const i of [1, 2]) {
       await k.agent.wake({ kind: 'trigger', text: 'A note', fallbacks: [{ watch: 'w', text: `Note ${i}` }] });
-      await k.agent.idle();
+      await idleAtOnce(k);
       await k.agent.split();
     }
     assert.deepEqual([k.agent.koeState, k.agent.way.why, k.agent.way.live], ['text', 'none', false], 'the Live chip shows for way.live: it is hidden');
@@ -276,7 +276,7 @@ test("Realtime coming back while Classic is mid-reply: the reply plays whole, an
     await until(() => k.platform.log.some((/** @type {string} */ x) => x.startsWith('play ')), 2000);
     await new Promise((r) => setTimeout(r, 400)); // the rest ends mid-reply
     assert.equal(k.agent.koeState, 'text', 'Classic keeps the voice to its turn\'s end');
-    await k.agent.idle();
+    await idleAtOnce(k);
     await soon(async () => k.agent.koeState === 'live', 3000);
     const plays = k.platform.log.filter((/** @type {string} */ x) => x.startsWith('play '));
     assert.equal(plays.length, 3, JSON.stringify(k.platform.log));
@@ -296,7 +296,7 @@ test("the Realtime-back timer goes with the page (away, erase) and comes back wi
     assert.equal(await k.agent.split(), true);
     k.agent.hush('away');
     await new Promise((r) => setTimeout(r, 400));
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.agent.koeState, 'text', 'no refresh for a page out of view');
     k.agent.shown();
     await soon(async () => k.agent.koeState === 'live', 2000);
@@ -304,7 +304,7 @@ test("the Realtime-back timer goes with the page (away, erase) and comes back wi
     assert.equal(await k.agent.split(), true);
     k.agent.hush('erase');
     await new Promise((r) => setTimeout(r, 400));
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.agent.koeState, 'text', 'none after Erase');
   } finally {
     await k.done();
@@ -315,13 +315,13 @@ test("many writes under /llm/ at once (a provider saved with its models) make on
   const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } } });
   try {
     const { newProvider, newModel, saveProvider } = await import('../../src/core/llm/config.js');
-    await k.agent.idle();
+    await idleAtOnce(k);
     let n = 0;
     const real = k.voice.refresh.bind(k.voice);
     k.voice.refresh = async () => { n++; return real(); };
     const p = newProvider('provider-test', { user: { name: 'Three', abilities: { chat: { kind: 'chat', type: 'scripted' } } } });
     await saveProvider(k.ws, p, ['a', 'b', 'c'].map((id) => newModel(p.id, 'chat', { user: { providerId: id } })));
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(n, 1);
   } finally {
     await k.done();
@@ -337,7 +337,7 @@ test("Realtime chosen, its model resting, Classic empty: Koe is down and Kokoro 
     assert.deepEqual([k.agent.koeState, k.agent.way.why, k.agent.way.path], ['down', 'resting', null], 'the chip says Realtime is resting, never Classic');
     await updateAppSettings(k.ws, { voice: { mode: 'off' } });
     await k.voice.refresh();
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(await k.agent.split(), false, 'Classic is empty');
     assert.equal(k.agent.koeState, 'off');
   } finally {
@@ -378,7 +378,7 @@ test("a realtime Koe with nothing open: a headset or car key, or a plugin's tap,
     const k = await liveKit([]);
     try {
       await k.agent.open(null);
-      await k.agent.idle();
+      await idleAtOnce(k);
       const draft = await createTrip(k.ws, { title: 'New conversation' });
       const ctx = { chats: { ready: draft, whenReady: () => Promise.resolve(draft) }, agent: k.agent, voice: k.voice, ws: k.ws, notices: { card: () => {} } };
       if (how === 'plugin') pluginUi(ctx, 'trail').shiori.tap();
@@ -438,11 +438,11 @@ test('voice off, a conversation switch, the page going and Erase each close it a
     await closes(async () => {
       await updateAppSettings(k.ws, { voice: { mode: 'off' } });
       await k.voice.refresh();
-      await k.agent.idle();
+      await idleAtOnce(k);
     }, 'voice off');
     await updateAppSettings(k.ws, { voice: { mode: 'on' } });
     await k.voice.refresh();
-    await k.agent.idle();
+    await idleAtOnce(k);
     await closes(() => k.agent.open(null), 'switch');
   } finally {
     await k.done();
@@ -456,7 +456,7 @@ test('a trigger opens a session, says it, then listens; its reminder is never sa
     await k.voice.unlock(); // an earlier tap
     await k.agent.wake({ kind: 'trigger', text: 'Sunset in 30 minutes', fallbacks: [{ watch: 'sun', text: 'Sunset at 18:40' }] });
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(texts(k), ['[annai] "Sunset in 30 minutes"']);
     const [said] = await k.events(['out.speak']);
     assert.deepEqual([said.data.text, said.data.voice, said.data.live, said.data.half], ['The sun sets in half an hour.', true, true, 'koe']);
@@ -537,14 +537,14 @@ test('a trigger or a note while the page is out of view opens nothing; back in v
     hidden(true);
     await k.agent.wake({ kind: 'trigger', text: 'Train in 20 minutes', fallbacks: [{ watch: 'train', text: 'Train at 10:40' }] });
     await k.agent.channel.send('kokoro', 'It leaves from platform 4.', 'immediate', 'tool');
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.server.connections().length, 0, 'no session');
     assert.ok(!k.platform.log.includes('mic open'), 'no microphone');
     assert.equal(k.agent.live.state, 'closed');
     hidden(false);
     k.agent.shown(); // the app, on visibilitychange to visible
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     // Both in one text turn, so neither cuts the other off.
     assert.equal(texts(k).length, 1);
     assert.deepEqual(texts(k)[0].split('\n').sort(), [`<from_kokoro id="${k.agent.nonce}">It leaves from platform 4.</from_kokoro>`, '[annai] "Train in 20 minutes"']);
@@ -552,7 +552,7 @@ test('a trigger or a note while the page is out of view opens nothing; back in v
     assert.ok(!k.platform.log.includes('mic open'), 'the microphone waits for a tap');
     assert.equal(k.agent.live.listening, false);
     k.agent.shown();
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.server.connections().length, 1, 'nothing waits: nothing opens');
   } finally {
     hidden(false);
@@ -585,7 +585,7 @@ test("a trigger's reminder when no session can open (today's spend reached) and 
     await updateAppSettings(k.ws, { shiori: { budgets: { spendPerDay: 0.5 } } });
     k.agent.send('Hi');
     await soon(async () => (await k.events(['live.session'])).some((/** @type {any} */ e) => e.data.state === 'closed'));
-    await k.agent.idle();
+    await idleAtOnce(k);
     const own = raw(k);
     const entry = await slowEntry(k, () => k.agent.wake({ kind: 'trigger', text: 'Train in 20 minutes', fallbacks: [{ watch: 'train', text: 'Train at 10:40' }] }));
     await settlesOnlyAfter(k, entry, 'idle() waits for the reminder annai shows, entry and all');
@@ -605,7 +605,7 @@ test("a trigger's reminder shown while the page was out of view is not shown a s
     await updateAppSettings(k.ws, { shiori: { budgets: { spendPerDay: 0.5 } } });
     k.agent.send('Hi');
     await soon(async () => (await k.events(['live.session'])).some((/** @type {any} */ e) => e.data.state === 'closed'));
-    await k.agent.idle();
+    await idleAtOnce(k);
     const own = raw(k);
     /** @type {() => void} */
     let release = () => {};
@@ -615,7 +615,7 @@ test("a trigger's reminder shown while the page was out of view is not shown a s
     await soon(async () => own.some((n) => n.title === 'Reminder'));
     hidden(false);
     release();
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(count(own, 'Reminder'), 1, 'shown once: by annai at once, out of view');
     assert.deepEqual((await k.events(['reminder'])).map((/** @type {any} */ e) => e.data.text), ['Train at 10:40']);
   } finally {
@@ -629,7 +629,7 @@ test('Erase closes the session and forgets it before anything is wiped: what com
   try {
     k.agent.send('Hello');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     k.agent.hush('erase');
     assert.equal(k.agent.live.state, 'closed');
     await soon(async () => (await lives(k, 'closed')).length === 1);
@@ -706,7 +706,7 @@ test("opening and closing sessions again and again: Kokoro's system text and too
     for (let i = 0; i < 3; i++) {
       k.agent.send(`Question ${i}`);
       await soon(async () => (k.sent['model-0']?.length ?? 0) === i + 1);
-      await k.agent.idle();
+      await idleAtOnce(k);
       k.agent.hush('away');
     }
     const asks = k.sent['model-0'];
@@ -733,7 +733,7 @@ test("with no session open, a live Koe never takes the microphone from the speec
     assert.equal(k.agent.tap(), 'listening');
     await until(() => k.agent.state.name === 'listening');
     await k.agent.split(); // what voice is, worked out again
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.agent.state.name, 'listening');
     assert.notEqual(k.platform.log.at(-1), 'mic close', JSON.stringify(k.platform.log));
   } finally {
@@ -834,7 +834,7 @@ test('an urgent enter watch (a cue to Live, but asked for by name) from another 
     await k.voice.unlock();
     k.agent.send('Hi');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     const before = texts(k).length;
     await k.agent.remind([{ watch: 'w', text: 'Turn-off coming up', cue: true }], 'elsewhere', { urgent: true });
     await soon(async () => texts(k).length > before);
@@ -876,7 +876,7 @@ test('an urgent reminder for another conversation goes into the live session at 
     await k.voice.unlock();
     k.agent.send('Hi');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.live.idle();
+    await idleAtOnce({ agent: k.agent.live });
     const before = texts(k).length;
     await k.agent.remind([{ watch: 'w', text: 'Leave now for the ferry' }], 'elsewhere', { urgent: true });
     await soon(async () => texts(k).length > before);
@@ -897,15 +897,15 @@ const FOR_USER = 'Nepenthe is open until 10 tonight.';
 const noted = async (k, text, why = 'tool', call, forUser = why === 'tool' ? FOR_USER : '') => {
   k.agent.send('Is Nepenthe open tonight?');
   await soon(async () => (await k.events(['out.speak'])).length === 1);
-  await k.agent.idle();
+  await idleAtOnce(k);
   await k.agent.channel.send('kokoro', text, 'append', why, undefined, call, false, forUser);
 };
 const CUE = /^\[annai\] "Kokoro's note/;
 /** Time for a turn that would come, to come. */
 const settled = async (/** @type {any} */ k) => {
-  await k.agent.idle();
+  await idleAtOnce(k);
   await new Promise((r) => setTimeout(r, 150));
-  await k.agent.idle();
+  await idleAtOnce(k);
 };
 
 test("a live Koe's turn after Kokoro's note says nothing: it is asked once more, in the text cue's words, and then says it; annai shows nothing", async () => {
@@ -1081,7 +1081,7 @@ test('L3: no live session could open for the note: the text Koe has it, and a la
     k.llm.live = async () => { k.llm.live = live; throw new Error('no connection'); };
     await k.agent.channel.send('kokoro', 'Say: Nepenthe is open until 10 PM tonight.', 'append', 'tool', undefined, undefined, false, FOR_USER);
     await soon(async () => (await answers(k)).length === 1, 5000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     k.llm.bench.clear('m-live');
     assert.equal(await k.agent.split(), true);
     assert.equal(k.agent.koeState, 'live');
@@ -1231,7 +1231,7 @@ test("review S4: switching to another trip with Kokoro's note still owed shows i
     await until(() => k.agent.live.owing);
     const other = await createTrip(k.ws, { title: 'Carmel' });
     await k.agent.open(other);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const shown = (await k.events(['reminder'])).map((/** @type {any} */ e) => [(e.data.answer && "Shiori's answer"), e.data.text, e.data.unsaid, e.data.aloud]);
     assert.deepEqual(shown, [["Shiori's answer", 'Highway 1 took from 1919 to 1937 to build.', true, undefined]]);
     assert.ok(!k.said.some((/** @type {string} */ t) => t.includes('Highway')), 'not said');
@@ -1348,7 +1348,7 @@ test('after Start fresh, the next live session opens with none of the earlier li
   try {
     k.agent.send('Tell me about otters please');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.match(setups(k).at(-1), /The conversation so far/);
     assert.equal(await k.agent.startFresh(), 'done');
     assert.equal(/otters/i.test((await k.agent.live.c.setup()).context), false, 'a session without a handle starts from the fresh start');
@@ -1367,7 +1367,7 @@ test("a note that comes while Start fresh runs waits for it: the session it open
   try {
     k.agent.send('Tell me about otters please');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     // Kokoro's part of Start fresh is held, as a slow phone would: meanwhile a note of Kokoro's comes for Koe.
     /** @type {() => void} */
     let go = () => {};
@@ -1398,7 +1398,7 @@ test("in Koe · Realtime her words come as the transcript grows, while she speak
     await until(() => k.agent.live.listening);
     await say(k, 'where-eat');
     await soon(async () => (await k.events(['out.speak'])).length === 1, 8000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const saying = seq.filter((x) => x.startsWith('saying'));
     assert.ok(saying.length >= 1, `her words come while she speaks: ${seq.join(' | ')}`);
     assert.ok(seq.indexOf('out.speak') > seq.indexOf(saying.at(-1)), 'all before her line is written');
@@ -1426,7 +1426,7 @@ test('a message typed while Start fresh runs is written below the divider, and a
   try {
     k.agent.send('Tell me about otters please');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const { started, go } = gated(k);
     await new Promise((r) => setTimeout(r, 50));
     k.agent.send('Something new');
@@ -1434,7 +1434,7 @@ test('a message typed while Start fresh runs is written below the divider, and a
     go();
     assert.equal(await started, 'done');
     await soon(async () => (await k.events(['out.speak'])).length === 2, 5000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const ev = (await k.events(['msg.user', 'compaction'])).map((/** @type {any} */ e) => `${e.type}:${e.data.mode ?? e.data.text}`);
     assert.deepEqual(ev, ['msg.user:Tell me about otters please', 'compaction:fresh', 'msg.user:Something new']);
   } finally {
@@ -1447,7 +1447,7 @@ test("Kokoro's note for the user while Start fresh runs, then a switch to anothe
   try {
     k.agent.send('Tell me about otters please');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const { started, go } = gated(k);
     await k.agent.channel.send('kokoro', 'The weather turns at four.', 'append', 'tool', undefined, undefined, false, 'Rain comes at four.');
     await new Promise((r) => setTimeout(r, 100));
@@ -1457,7 +1457,7 @@ test("Kokoro's note for the user while Start fresh runs, then a switch to anothe
     go();
     await started.catch(() => {});
     await opened;
-    await k.agent.idle();
+    await idleAtOnce(k);
     await new Promise((r) => setTimeout(r, 300));
     const left = (await k.events(['reminder'])).map((/** @type {any} */ e) => e.data.text);
     const there = (await k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(other, { types: ['reminder'] }))).map((/** @type {any} */ e) => e.data.text);
@@ -1477,7 +1477,7 @@ test('words she says after the provider ends her turn, while her voice still pla
     k.agent.on('saying', (/** @type {string} */ t) => seq.push(t));
     k.agent.send('Is it open?');
     await soon(async () => (await k.events(['out.speak'])).length === 1, 8000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.match(seq.at(-1) ?? '', /until ten tonight/);
   } finally {
     await k.done();
@@ -1553,7 +1553,7 @@ test("a note Start fresh showed is not shown again when a session that still hel
     await until(() => k.agent.live.owing);
     assert.equal(await k.agent.startFresh(), 'done');
     k.agent.live.c.owed(notes); // a session that still held it, closing without forgetting it
-    await k.agent.idle();
+    await idleAtOnce(k);
     await new Promise((r) => setTimeout(r, 200));
     assert.equal((await k.events(['reminder'])).filter((/** @type {any} */ e) => /Highway 1/.test(e.data.text)).length, 1);
   } finally {
@@ -1574,7 +1574,7 @@ test("a session whose audio rate is missing doesn't stop her voice at once (foll
     await k.voice.unlock();
     k.agent.send('Will it rain?');
     await soon(async () => (await k.events(['out.speak'])).length === 1, 8000);
-    await k.agent.idle();
+    await idleAtOnce(k);
     const [line] = await k.events(['out.speak']);
     assert.equal(Boolean(line.data.cut), false, 'not cut');
     assert.ok(k.platform.streams.at(-1).playedMs > 500, 'played through');
@@ -1588,7 +1588,7 @@ test('voice off, Live on: a tap works Koe out again and opens a live session, he
   try {
     await updateAppSettings(k.ws, { voice: { mode: 'off' } });
     await k.voice.refresh();
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual([k.voice.on, k.agent.koeState], [false, 'text']);
     assert.equal(k.agent.tap(), 'listening');
     assert.equal(k.voice.mode.why, 'tapped');
@@ -1612,7 +1612,7 @@ test('voice off, Live on: a tap works Koe out again and opens a live session, he
 test('voice off, Live on: two quick taps open live, not Classic\'s microphone (the second drive): the second is the same wish, while Koe\'s way is worked out', async () => {
   const k = await liveKit([], { koe: { type: { rules: [{ match: '.', reply: sleep }] } }, voice: { mode: 'off' } });
   try {
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual([k.voice.on, k.agent.koeState], [false, 'text']);
     assert.equal(k.agent.tap(), 'listening');
     assert.equal(k.agent.tap(), 'listening');
@@ -1644,7 +1644,7 @@ for (const mode of /** @type {const} */ (['auto', 'on'])) {
     try {
       if (mode === 'auto') {
         await k.voice.refresh();
-        await k.agent.idle();
+        await idleAtOnce(k);
       }
       k.llm.live = async () => { throw new Error('the connection was refused'); };
       assert.equal(k.agent.tap(), 'listening');
@@ -1685,7 +1685,7 @@ test("Koe live: Kokoro's turn is shared, as beside Koe's text turns: a live sess
     assert.equal(k.agent.koeState, 'live');
     const seen = watchShared(k);
     k.agent.kokoro.send('Where are we?');
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.ok(seen.length > 0 && seen.every(([role, shared, state]) => role === 'main' && shared === true && state === 'live'), JSON.stringify(seen));
   } finally {
     await k.done();
@@ -1703,7 +1703,7 @@ test("fix pass 2, finding 2: a tap whose live session can't open leaves a Kokoro
     await soon(async () => k.agent.kokoro.state.name === 'thinking');
     assert.equal(k.agent.tap(), 'listening');
     await soon(async () => k.notices.some((/** @type {any} */ n) => n.title === "Koe's live voice couldn't start"));
-    await k.agent.idle();
+    await idleAtOnce(k);
     const spoken = (await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text);
     assert.deepEqual(spoken, ['Here is the note.']);
     assert.doesNotMatch(JSON.stringify(await k.events(['msg.tool', 'msg.assistant', 'tool.result'])), /Stopped by the user/);
@@ -1720,9 +1720,9 @@ test("fix pass 2, finding 2: On, tapped then typed while the open fails: the typ
     k.llm.live = async () => { await new Promise((r) => setTimeout(r, 150)); throw new Error('the connection was refused'); };
     assert.equal(k.agent.tap(), 'listening'); // the open is under way
     k.agent.send('Where are we?');
-    await k.agent.idle();
+    await idleAtOnce(k);
     await new Promise((r) => setTimeout(r, 600));
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Typed answer.']);
   } finally {
     await k.done();
@@ -1736,12 +1736,12 @@ test("fix pass 2, finding 3: spend reached: a tap shows the budget card and not 
     await updateAppSettings(k.ws, { shiori: { budgets: { spendPerDay: 0.5 } } });
     k.agent.send('Hi');
     await soon(async () => (await k.events(['live.session'])).some((/** @type {any} */ e) => e.data.state === 'closed'));
-    await k.agent.idle();
+    await idleAtOnce(k);
     const budget = () => k.notices.filter((/** @type {any} */ n) => n.title === "Shiori stopped: today's budget is spent").length;
     assert.equal(budget(), 1);
     assert.equal(k.agent.tap(), 'listening');
     await new Promise((r) => setTimeout(r, 400));
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.title).filter((/** @type {string} */ t) => /couldn't start/.test(t)), []);
   } finally {
     await k.done();
@@ -1765,11 +1765,11 @@ test("fix pass 2, finding 5 (Step): two quick taps on the avatar while the first
   const k = await liveKit([], { live: { first: false }, koe: { type: { rules: [{ match: '.', reply: sleep }] } }, voice: { mode: 'off' } });
   try {
     await k.voice.refresh();
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.agent.tap(), 'listening'); // voice off: held on, the route works Koe's way out
     const second = k.agent.tap();
     assert.equal(second, 'listening');
-    await k.agent.idle();
+    await idleAtOnce(k);
     await new Promise((r) => setTimeout(r, 50));
     assert.equal(k.agent.state.name, 'listening', `the second tap's listening was shut by the first's re-run (${second})`);
     assert.ok(k.platform.log.some((/** @type {string} */ l) => l.startsWith('mic open')));
@@ -1827,7 +1827,7 @@ test("a move with a live session open: annai's card is said aloud, and at Open t
     /** @type {any[]} */
     const asks = [];
     k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'out.ask' && e.data.own) asks.push(e); });
-    await k.agent.idle();
+    await idleAtOnce(k);
     k.agent.send("Let's carry on in Kyoto");
     await soon(async () => asks.length === 1 && k.said.includes(asks[0].data.question), 5_000);
     assert.equal(k.agent.trip, k.trip, 'nothing moved before the answer');
@@ -1835,9 +1835,9 @@ test("a move with a live session open: annai's card is said aloud, and at Open t
     /** @param {string} scope @param {string[]} types */
     const log = (scope, types) => k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(scope, { types }));
     await soon(async () => (await log(kyoto, ['out.speak'])).length > 0);
-    await k.agent.idle();
+    await idleAtOnce(k);
     await new Promise((r) => setTimeout(r, 300)); // time for anything said twice to come
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(k.agent.trip, kyoto);
     // The chat's session closed once, for the switch.
     assert.deepEqual((await lives(k, 'closed')).map((/** @type {any} */ e) => e.data.why), ['switch']);
