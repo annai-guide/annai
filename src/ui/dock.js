@@ -402,8 +402,8 @@ export function createDock(ctx) {
 
 /**
  * The dock's avatar: a plugin's, when one replaces it and makes one that works (spec §16.4: avatar art), else annai's own.
- * A plugin's that fails counts against it, made and on each call after: three throws in a row give annai's own back in its
- * place. A call that works ends its own run, and its plugin's; a setLevel that works doesn't end a setState's.
+ * A plugin's crash counts against it (Registry threw), made and on each call after; any three throws in a row give annai's own
+ * back in its place. A call that works ends its own run, and its plugin's; a setLevel that works doesn't end a setState's.
  * @param {any} ctx
  */
 function dockAvatar(ctx) {
@@ -424,7 +424,7 @@ function dockAvatar(ctx) {
         ctx.registry?.succeeded(c.pluginId);
       }
     } catch (e) {
-      ctx.registry?.fail(c.pluginId, `avatar ${name}`, e);
+      ctx.registry?.threw(c.pluginId, `avatar ${name}`, e);
       runs[name] = (runs[name] ?? 0) + 1;
       if (Object.values(runs).reduce((n, x) => n + x, 0) < 3) return;
       own = createAvatar({ size: 'dock' });

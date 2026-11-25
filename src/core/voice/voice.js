@@ -251,7 +251,7 @@ export class Voice {
       try {
         item.clip({ id: seg.id, kind, format: clip.format, mediaType: clip.mediaType, data: clip.data, ms: Math.round((seg.audio?.seconds ?? 0) * 1000) });
       } catch (e) {
-        this.registry.fail(pluginId, /* en */ 'heard-clips', e);
+        this.registry.threw(pluginId, /* en */ 'heard-clips', e);
       }
     }
   }

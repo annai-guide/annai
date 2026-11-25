@@ -913,6 +913,50 @@ test("a typed address that isn't one, on the model list and a voice: no-address 
   }
 });
 
+test("a provider plugin's own list and a protocol's own list that parse the typed address are never called at one that isn't an address: the model list's no-address sentence, nothing counted (plugin-link-next, test 7)", async () => {
+  // A protocol with a list of its own, and two providers through it: one with a list of its own too, one with none.
+  const parse = (/** @type {string} */ who) => `globalThis.__listed.push('${who}'); return [{ providerId: new URL('/models', endpoint.baseUrl).pathname }];`;
+  const k = await hostKit();
+  const s = await site({
+    'proto-z': {
+      'annai-plugin.json': JSON.stringify({ id: 'proto-z', name: 'Proto type-z', version: '0.1.0', api: 1, entry: 'index.js', provides: { 'endpoint-type': ['type-z'] } }),
+      'index.js': `export function activate(annai) { return annai.providers.register({ type: 'type-z', name: 'type-z',
+        build: (c) => ({ url: c.endpoint.baseUrl + '/chat', headers: c.endpoint.headers, body: '{}' }), read: async () => ({ text: '' }),
+        list: async ({ endpoint }) => { ${parse('protocol')} } }); }`,
+    },
+    'provider-zl': {
+      'annai-plugin.json': JSON.stringify({ id: 'provider-zl', name: 'ZL', version: '1.0.0', api: 1, entry: 'index.js', requires: [{ id: 'proto-z', version: '^0' }],
+        provider: { baseUrl: 'https://zl.example/v1', key: 'optional', abilities: { chat: { kind: 'chat', type: 'type-z' } } } }),
+      'index.js': `export function activate(annai) { return annai.providers.setup({ list: async ({ endpoint }) => { ${parse('provider')} } }); }`,
+    },
+    'provider-zp': {
+      'annai-plugin.json': JSON.stringify({ id: 'provider-zp', name: 'ZP', version: '1.0.0', api: 1, requires: [{ id: 'proto-z', version: '^0' }],
+        provider: { baseUrl: 'https://zp.example/v1', key: 'optional', abilities: { chat: { kind: 'chat', type: 'type-z' } } } }),
+    },
+  });
+  const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch: (/** @type {any} */ url) => s.fetch(url) });
+  const g = /** @type {any} */ (globalThis);
+  g.__listed = [];
+  try {
+    for (const [plugin, name] of [['provider-zl', 'ZL'], ['provider-zp', 'ZP']]) {
+      const id = await llm.addProvider(plugin, {});
+      const words = `${name}'s Chat has no working address. Give its address in Settings → Models.`;
+      for (const typed of ['', 'zl.example/v1']) {
+        const rec = (await llm.config()).providers[id];
+        await saveProvider(k.ws, { ...rec, user: { ...rec.user, baseUrl: typed } });
+        await assert.rejects(llm.listModels(id, 'chat'), (/** @type {any} */ e) => e.kind === 'bad-request' && e.said?.code === 'no-address' && e.message === words && explain(e) === words, `${plugin} at ${JSON.stringify(typed)}`);
+      }
+      const rec = (await llm.config()).providers[id];
+      await saveProvider(k.ws, { ...rec, user: { ...rec.user, baseUrl: `https://${plugin}.example/v1` } });
+      assert.deepEqual(await llm.listModels(id, 'chat'), [{ providerId: '/models' }], `${plugin} at a working address`);
+    }
+    assert.deepEqual(g.__listed, ['provider', 'protocol'], 'neither list was called at an address that is none; each once at a working one');
+    assert.equal(['proto-z', 'provider-zl'].some((p) => k.registry.isDisabled(p)), false);
+  } finally {
+    delete g.__listed;
+  }
+});
+
 test("security review: an installed copy of an official provider's id that came from elsewhere is never used as annai's own; one from annai whose files no longer match the catalog is fetched again", async () => {
   const k = await serviceKit();
   // As if it slipped in (a restored backup, an older annai): a provider-x from a file.

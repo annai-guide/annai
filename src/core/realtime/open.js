@@ -83,6 +83,7 @@ export function openLive(c) {
   const bug = (what, e) => { if (isPluginBug(e)) registry?.fail(type.pluginId, /* en */ `live ${what}`, e); };
   /** @param {Record<string, any>} tunables @returns {{ url: string, protocols?: string[] }} */
   const build = (tunables) => {
+    sameOrigin(endpoint, endpoint.baseUrl, ability); // the typed address first, as callOnce: a protocol's code is called only with one that parses
     /** @type {any} */
     let r;
     try {

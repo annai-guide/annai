@@ -45,9 +45,10 @@ const BUGS = [TypeError, ReferenceError, RangeError, SyntaxError, EvalError];
 /**
  * Whether an error is the browser's own account of a request it couldn't make or finish (offline: "Failed to fetch", Safari's "Load failed",
  * Chrome's "network error", Firefox's "NetworkError when attempting to fetch resource"): the link's, when a plugin's own code reads the reply (§17).
- * The rule (isPluginBug) wherever the plugin's own code makes the request and reads the reply (a tool, a provider's list, sign-in and the like); an
- * endpoint type's call decides by position (call.js asProviderError). By whole words, so a plugin's own TypeError that only names something with
- * "fetch" or "network" in it (`this.fetchModels is not a function`, `reading 'networkState'`) is its bug. The browsers give no code, so words are all there is.
+ * Part of the rule (isPluginBug) wherever annai runs a plugin's code outside an endpoint type's call (a tool, a start, a hook, a drawing, a provider's
+ * list, sign-in and the like), for code that calls the browser's own fetch; an endpoint type's call decides by position (call.js asProviderError).
+ * By whole words, so a plugin's own TypeError that only names something with "fetch" or "network" in it (`this.fetchModels is not a function`,
+ * `reading 'networkState'`) is its bug. The browsers give no code, so words are all there is.
  * @param {unknown} e
  */
 export function isFetchFailure(e) {
@@ -55,22 +56,18 @@ export function isFetchFailure(e) {
 }
 
 /**
- * Whether a start or a hook failed for want of a link (§17): the browser's own fetch failure, or annai's kind `network` (what `annai.net.fetch`
- * throws, agent/net.js) or `unreachable`, the pair `noLink` reads. guard and startInstalled's count of launches count nothing for it. @param {unknown} e
- */
-export const isLinkFailure = (e) => isFetchFailure(e) || ['network', 'unreachable'].includes(/** @type {any} */ (e)?.kind);
-
-/**
  * An address the user typed that isn't one (`new URL` throws): the user's to fix, not a plugin's bug. Where a plugin's own code makes the request
  * (isPluginBug's paths) annai has no address to check, so the engine's words are what there is: Chromium's "Invalid URL", WebKit's "cannot be parsed
- * as a URL", Firefox's "is not a valid URL". An endpoint type's call checks its address by state, before any builder runs (call.js).
+ * as a URL", Firefox's "is not a valid URL". An endpoint type's call, a live open and a model list check the typed address by state, before the
+ * plugin's code runs (call.js, open.js, service.js).
  * @param {unknown} e
  */
 export const isBadAddress = (e) => e instanceof TypeError && /invalid url|failed to parse url|cannot be parsed as a url|is not a valid url/i.test(e.message);
 
 /**
- * Whether an error is a bug in a plugin's code (spec §5.5) rather than its answer, outside callOnce's and speechCall's calls (asProviderError).
- * A fetch the browser couldn't make (isFetchFailure) is an answer (§17).
+ * Whether an error is a bug in a plugin's code (spec §5.5) rather than its answer, outside callOnce's and speechCall's calls (asProviderError):
+ * the one rule for a tool, a start, a hook, a drawing and every other place annai runs a plugin's code (threw). No error class annai makes is a
+ * crash class, so nothing annai's own APIs throw counts. A fetch the browser couldn't make (isFetchFailure) is an answer (§17).
  * @param {unknown} e
  */
 export function isPluginBug(e) {
@@ -97,10 +94,9 @@ export class PluginError extends Error {
 
 /**
  * Everything plugins contribute, grouped by kind ("schema", "tool", …).
- * Functions plugins hand over go through guard(): a failure (not one for want
- * of a link, isLinkFailure) becomes a plugin.error event, and a
- * plugin that fails maxFailures times in a row is switched off until enable()
- * is called (spec §5.5).
+ * Functions plugins hand over go through guard(): what they throw becomes a
+ * plugin.error event (threw), and a plugin that crashes (isPluginBug)
+ * maxFailures times in a row is switched off until enable() is called (spec §5.5).
  */
 /**
  * Why a plugin was switched off, as data: it failed count times in a row, or its hooks were handed more than entries log entries in
@@ -230,9 +226,20 @@ export class Registry {
     this.#failures.set(pluginId, 0);
   }
 
-  /** Counts a failure of a plugin's code that annai caught outside guard(), e.g. while reading a stream. @param {string} pluginId @param {string} name @param {unknown} e */
+  /** Counts a failure annai has judged its plugin's itself (an endpoint type's call by position, a crash on a path that rethrows the answer, the hooks' loop guard). @param {string} pluginId @param {string} name @param {unknown} e */
   fail(pluginId, name, e) {
     this.#fail(pluginId, name, e);
+  }
+
+  /**
+   * What a plugin's code threw where annai called it and nothing reads its answer (a start, a hook, a drawing, a dock action, a component, heard
+   * clips): always logged, and counted only when it is a crash (isPluginBug), as a tool's is. Any other error is its answer (for want of a link, in
+   * its own words, annai's start limit): it neither adds to its plugin's run of failures nor ends it, and its log line has no count.
+   * @param {string} pluginId @param {string} name @param {unknown} e
+   */
+  threw(pluginId, name, e) {
+    if (isPluginBug(e)) this.#fail(pluginId, name, e);
+    else this.#safeLog({ type: 'plugin.error', actor: `plugin:${pluginId}`, data: { name, message: String(/** @type {any} */ (e)?.message ?? e) } });
   }
 
   /**
@@ -249,13 +256,13 @@ export class Registry {
         this.#failures.set(pluginId, 0);
         return result;
       } catch (e) {
-        if (!isLinkFailure(e)) this.#fail(pluginId, name, e); // a request that couldn't be made for want of a link is an answer (§17), not a failure; it still reaches the caller
+        this.threw(pluginId, name, e); // counted only when it is a crash; it still reaches the caller
         const was = /** @type {any} */ (e);
         const message = String(was?.message ?? e);
         // What went wrong: annai's words for the screens where it has them (shown), else the plugin's own, or annai's own English check (en).
         const why = typeof was?.shown === 'string' ? was.shown : message.startsWith(`${pluginId}: `) ? message.slice(pluginId.length + 2) : message;
         // annai's own words are the frame, in the screens' words; no words to frame leaves "Starting failed." (asSentence drops the colon);
-        // only a start reaches a screen (a hook's error is counted and logged, nothing more).
+        // only a start reaches a screen (a hook's error is logged, and counted when it is a crash, nothing more).
         const shown = name !== 'starting' ? undefined : asSentence(t`Starting failed: ${why}`);
         // The English inside it, for lang="en": all of `why` where annai marked all of it, or the part it named; the plugin's own words never.
         const en = was?.en === true ? (shown === undefined ? true : why) : typeof was?.en === 'string' ? was.en : false;

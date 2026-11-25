@@ -87,7 +87,7 @@ test('with no plugin listening, nothing is collected or made', async () => {
 test('a plugin that throws on a clip counts against it, and the voice goes on', async () => {
   const k = await liveKit([{ heard: 'Where should we eat?', said: 'Tacos.', audio: tone(0.2) }], { voice: VOICE });
   try {
-    k.registry.add('remote-trace', 'heard-clips', { clip: () => { throw new Error('broken'); } });
+    k.registry.add('remote-trace', 'heard-clips', { clip: () => { throw new TypeError('broken'); } });
     k.agent.tap();
     await until(() => k.agent.live.listening);
     await say(k, 'where-eat');

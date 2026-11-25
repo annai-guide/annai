@@ -136,6 +136,29 @@ test("a session opens only at its ability's origin (https → wss, http localhos
   assert.deepEqual(failed, [['echo', 'live open']]);
 });
 
+test("a third-party live protocol whose open() parses the typed address is never called at one that isn't an address: bad-request, no-address, the ability named, nothing counted; at a working address it opens (plugin-link-next, test 6)", () => {
+  FakeSocket.made = [];
+  let opened = 0;
+  /** @type {any[]} */
+  const failed = [];
+  const registry = /** @type {any} */ ({ fail: (/** @type {string} */ id, /** @type {string} */ what) => failed.push([id, what]) });
+  const type = { ...ECHO, open: (/** @type {any} */ { endpoint, key }) => {
+    opened++;
+    const u = new URL('/live', endpoint.baseUrl);
+    u.protocol = 'wss:';
+    return { url: `${u}?key=${key}` };
+  } };
+  const ability = { id: 'live', kind: 'realtime', name: 'Live voice', named: true };
+  for (const typed of ['', 'live.test/v1']) {
+    assert.throws(() => open({ type, endpoint: endpoint(typed), ability, registry }), (e) => e instanceof ProviderError && e.kind === 'bad-request' && e.said?.code === 'no-address'
+      && explain(e) === "Gemini's Live voice has no working address. Give its address in Settings → Models." && !(typed && explain(e).includes(typed)), JSON.stringify(typed));
+  }
+  assert.deepEqual([opened, failed, FakeSocket.made.length], [0, [], 0], "the protocol's open was never called, nothing counted, nothing opened");
+  const { session } = open({ type, ability, registry });
+  assert.deepEqual([opened, FakeSocket.made.map((s) => s.url)], [1, [`wss://live.test/live?key=${KEY}`]]);
+  session.close();
+});
+
 test('the key is in no live.session or net.request entry, nor the URL or subprotocols traced', async () => {
   FakeSocket.made = [];
   const { store, session, ws } = open({ model: model({ input: 1, output: 1 }), wake: 'w-1' });

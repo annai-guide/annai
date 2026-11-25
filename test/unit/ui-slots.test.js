@@ -103,7 +103,7 @@ test('8b-4: a drawing, a dock action or a component that works ends its plugin\'
   const ctx = { registry };
   const el = () => /** @type {any} */ ({ hidden: false, replaceChildren() {} });
   const entry = (/** @type {any} */ item) => ({ pluginId: 'flaky', item });
-  const broke = () => { throw new Error('broke'); };
+  const broke = () => { throw new TypeError('broke'); };
   const twoFailures = async () => {
     mount(ctx, entry({}), el(), broke);
     runAction(ctx, entry({ id: 'go', run: async () => broke() }));
@@ -128,6 +128,91 @@ test('8b-4: a drawing, a dock action or a component that works ends its plugin\'
   assert.equal(made(ctx, entry({}), 'dock', () => ({}), () => 'its dock create() must return { el }'), null);
   await twoFailures();
   assert.equal(registry.isDisabled('flaky'), true);
+});
+
+/** A plugin's drawing, dock action and component, each run once with what its code throws (or rejects with), and what annai left of each. */
+const PLACES = {
+  drawing: async (/** @type {any} */ ctx, /** @type {() => any} */ fails) => {
+    const { mount } = await import('../../src/ui/slots.js');
+    const el = /** @type {any} */ ({ hidden: false, replaceChildren() {} });
+    let failed = 0;
+    mount(ctx, { pluginId: 'tides', item: {} }, el, async () => fails(), { onFail: () => failed++ });
+    await new Promise((r) => setTimeout(r, 0));
+    return el.hidden && failed === 1;
+  },
+  'dock action': async (/** @type {any} */ ctx, /** @type {() => any} */ fails) => {
+    const { runAction } = await import('../../src/ui/slots.js');
+    runAction(ctx, { pluginId: 'tides', item: { id: 'go', run: async () => fails() } });
+    await new Promise((r) => setTimeout(r, 0));
+    return true;
+  },
+  component: async (/** @type {any} */ ctx, /** @type {() => any} */ fails) => {
+    const { made } = await import('../../src/ui/slots.js');
+    return made(ctx, { pluginId: 'tides', item: {} }, 'avatar', fails, () => null) === null;
+  },
+};
+
+test("a drawing, a dock action or a component that fails for want of a link (annai.net.fetch's error, the browser's own fetch failure, an AllFailedError, an AbortError) or in its own words leaves its plugin on: three in a row of each, the element hidden and onFail run each time, each logged with no count (plugin-link-next, test 3)", async () => {
+  const { tracedFetch } = await import('../../src/core/agent/net.js');
+  const { AllFailedError } = await import('../../src/core/llm/fallback.js');
+  const { createMemoryStore } = await import('../fakes/store-memory.js');
+  const { SYS } = await import('../../src/core/scopes.js');
+  // annai.net.fetch's own error with no link, from the real tracedFetch.
+  const net = await tracedFetch(createMemoryStore(), SYS, { tool: 'plugin:tides' }, async () => { throw new TypeError('Load failed'); })('https://tides.example/now').catch((e) => e);
+  assert.equal(net.kind, 'network');
+  /** @type {Record<string, unknown>} */
+  const answers = { 'annai.net.fetch': net, 'browser fetch': new TypeError('Failed to fetch'), 'no model': new AllFailedError([]), abort: new DOMException('The operation was aborted.', 'AbortError'), words: new Error('Choose a tide station first.') };
+  /** @type {Record<string, any>} */
+  const seen = {};
+  for (const [place, run] of Object.entries(PLACES)) {
+    for (const [what, e] of Object.entries(answers)) {
+      /** @type {any[]} */
+      const logged = [];
+      const registry = new Registry({ log: (ev) => logged.push(ev) });
+      const shown = [];
+      for (let i = 0; i < 3; i++) shown.push(await run({ registry }, () => { throw e; }));
+      seen[`${place}, ${what}`] = [shown, registry.isDisabled('tides'), logged.map((x) => [x.type, 'count' in x.data])];
+    }
+  }
+  const want = Object.fromEntries(Object.keys(seen).map((k) => [k, [[true, true, true], false, Array(3).fill(['plugin.error', false])]]));
+  assert.deepEqual(seen, want, 'hidden with onFail each time, still on, three lines with no count');
+});
+
+test("a drawing, a dock action or a component that crashes still counts: off at the third, whatever set the crash off (a TypeError, a thrown value that isn't an Error, a TypeError after a link failure it swallowed); so does a create() that returns the wrong thing (plugin-link-next, test 5: as before)", async () => {
+  const { made } = await import('../../src/ui/slots.js');
+  /** @type {Record<string, () => any>} */
+  const crashes = {
+    TypeError: () => { throw new TypeError("Cannot read properties of undefined (reading 'go')"); },
+    'not an Error': () => { throw 'no'; },
+    // Sync, as annai calls a component's create(); the drawing and the dock action run it inside an async function.
+    'after a swallowed link failure': () => {
+      /** @type {any} */
+      const reply = null;
+      try {
+        throw new TypeError('Failed to fetch');
+      } catch {
+        // the plugin let it go
+      }
+      return reply.json();
+    },
+  };
+  /** @type {Record<string, boolean[]>} */
+  const seen = {};
+  for (const [place, run] of Object.entries(PLACES)) {
+    for (const [what, crash] of Object.entries(crashes)) {
+      const registry = new Registry();
+      const off = [];
+      for (let i = 0; i < 3; i++) {
+        await run({ registry }, crash);
+        off.push(registry.isDisabled('tides'));
+      }
+      seen[`${place}, ${what}`] = off;
+    }
+  }
+  assert.deepEqual(seen, Object.fromEntries(Object.keys(seen).map((k) => [k, [false, false, true]])));
+  const registry = new Registry();
+  for (let i = 0; i < 3; i++) assert.equal(made({ registry }, { pluginId: 'tides', item: {} }, 'dock', () => ({}), () => 'its dock create() must return { el }'), null);
+  assert.equal(registry.isDisabled('tides'), true, 'a create() that made nothing usable, three times: off');
 });
 
 test("8b-6: the show tool's type is a string as well as one of the plugins' types", () => {
