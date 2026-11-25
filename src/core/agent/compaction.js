@@ -6,8 +6,9 @@ import { quote } from './blocks.js';
 
 /**
  * Housekeeping (spec §6.5). Two limits trigger it, the context window and the maximum request
- * size (less the window's pictures and PDFs, bytesLessFiles): it is due at a threshold and forced before an overflow. The older part becomes a compaction
- * event; the most recent part stays word for word. Warm, the model holding the cache writes the
+ * size, which weighs the request less the window's pictures and PDFs (bytesLessFiles): it is due
+ * at a threshold and forced before an overflow. The older part becomes a compaction event; the
+ * most recent part stays word for word. Warm, the model holding the cache writes the
  * summary from the cached conversation; cold, the utility model writes it from the text.
  * @typedef {import('../llm/contract.js').Message} Message
  */
