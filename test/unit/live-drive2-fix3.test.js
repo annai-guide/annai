@@ -156,7 +156,7 @@ test('9: the bound counts from when her sound began: her first word coming late 
   }
 });
 
-test('8: a silently answered call alone, no turnComplete ever: Kokoro\'s owed note is asked again as the call is answered, not at the silent wait', async () => {
+test('8: a silently answered call alone, no turnComplete ever: Kokoro\'s owed note is asked again, and no silent wait gives up', async () => {
   const k = await liveKit([{ tool: { name: 'tell_kokoro', args: { text: 'Anything on the way?' } }, noEnd: true }, { said: 'The fuel station is open until ten.', audio: tone(0.1) }]);
   try {
     await updateAppSettings(k.ws, { voice: { closeAfterSeconds: 300 } });

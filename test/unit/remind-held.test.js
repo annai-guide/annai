@@ -1023,12 +1023,12 @@ for (const [what, afterMs] of ENDS) {
 
 // The card's turn never gets its end from the provider, and her answer to the note is an empty turn (a turnComplete, no sound, no words, no call: what Gemini gives
 // music, and what spec §7.1 plans for: "ends with no words ... it gets the same words once"). The card's turn is over at the page's answer (#endNow), so that empty
-// turn is her answer to the note, and she is asked once more at once. Were the card's turn let go with its end still to come, the empty turn's end would be read as
-// its end, and the note would wait in flight until the quiet spell closed the session (300 s in these kits). The stand-in ends the card's turn only as the next text
+// turn is her answer to the note, and she is asked once more. Had the card's turn been kept as over with its end still to come (as a round of this fix did), the empty
+// turn's end would have been read as the card's, and the note would have waited in flight until the quiet spell closed the session (300 s in these kits). The stand-in ends the card's turn only as the next text
 // meets it, as Gemini does (interrupted, then its turnComplete 20 ms later), and the link holds that and her empty turn until the page's answer has gone out.
 const EMPTY = {};
 
-test('Koe live: her only answer to a note is a card whose end never comes, the next note goes in at its answer, and her answer to that is an empty turn: she is asked once more at once, and says it', async () => {
+test('Koe live: her only answer to a note is a card whose end never comes, the next note goes in at its answer, and her answer to that is an empty turn: she is asked once more, and says it', async () => {
   const link = slowLink(); // before the session opens
   /** @type {any} */
   let k;
@@ -1055,7 +1055,7 @@ test('Koe live: her only answer to a note is a card whose end never comes, the n
   }
 });
 
-test('Koe live: her only answer is a card whose end never comes, an urgent reminder goes in at its answer, and her answer to that is an empty turn: she is asked once more as the urgent mark ends, and says it, once', async () => {
+test('Koe live: her only answer is a card whose end never comes, an urgent reminder goes in at its answer, and her answer to that is an empty turn: she is asked once more, and says it, once', async () => {
   const link = slowLink();
   /** @type {any} */
   let k;
@@ -1100,8 +1100,8 @@ test('Koe live: a note goes in as her line for the one before it is written, as 
   }
 });
 
-// The ask once more is owed from her first bare answer, and waits behind the urgent mark (#idle); her second bare answer follows at once (andThen: Gemini goes on by itself
-// after a call), before the ask went in, so annai shows the reminder (#settle's unsaid branch). Shown, nothing is owed: the ask not yet gone in is stale and is never sent
+// The ask once more is owed from her first bare answer, and waits behind the urgent mark (#idle); her second bare answer follows at once (andThen: the stand-in's next turn,
+// with no input between), before the ask went in, so annai shows the reminder (#settle's unsaid branch). Shown, nothing is owed: the ask not yet gone in is stale and is never sent
 // (it would have her say the reminder, and the card shows it too).
 test('Koe live: an urgent reminder, her first bare answer owes the ask once more behind the urgent mark, and her second follows at once: annai shows it, and the ask is never sent', async () => {
   const k = await liveKit([{ said: 'Silent.', audio: tone(0.3), andThen: true }, { said: 'Silent.', audio: tone(0.3) }, { said, audio: tone(0.3) }], { pace: 1, agent: { secondMs: 1000 } });
