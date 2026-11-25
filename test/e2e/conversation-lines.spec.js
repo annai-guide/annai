@@ -273,8 +273,9 @@ test("a plan reminder's words keep their asterisks, while a model's reminder dra
 });
 
 // Kokoro's words annai shows itself (a note's for_user Koe never said) are the model's words for the user, as a card's text is: their
-// links are drawn as links, by their names (the user saw the markdown itself, 2026-11-23), and the announcer says the names.
-test("Kokoro's words shown by annai draw their links as her cards do; the announcer says the links' names", async ({ page }) => {
+// links are drawn as links, by their names (the user saw the markdown itself, 2026-11-23), and the announcer says the names. The card at the
+// top of the screen, which draws no link, reads them as plain words, the links by their names (answer-words-next; the voice gets the same words).
+test("Kokoro's words shown by annai draw their links as her cards do; the announcer and the card at the top say the links' names", async ({ page }) => {
   await page.setViewportSize({ width: 420, height: 912 });
   await openApp(page, '#/trips');
   await catchAgent(page);
@@ -296,6 +297,9 @@ test("Kokoro's words shown by annai draw their links as her cards do; the announ
   expect(await line.getByRole('link').evaluateAll((a) => a.map((x) => x.getAttribute('href')))).toEqual([MAP, OTHER]);
   await expect(line.locator('strong')).toHaveText('visitor center');
   await expect.poll(() => page.evaluate(() => /** @type {any} */ (window).announced)).toEqual([`Shiori's answer: ${said}`]);
+  const card = page.locator('.notices .notice').filter({ has: page.locator('strong', { hasText: "Shiori's answer" }) });
+  await expect(card.locator(':scope > p')).toHaveText(said);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(420);
   // Drawn again from the log, the same.
   await page.reload();
   await expect(page.locator('.convo .line-kokoros-words').getByRole('link')).toHaveText(['Maps', 'Other maps']);

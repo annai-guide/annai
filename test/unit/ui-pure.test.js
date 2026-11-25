@@ -9,7 +9,7 @@ import { explainStorageFull, explainNotice } from '../../src/ui/storage-full.js'
 import { tellNotOpen } from '../../src/ui/open-trip.js';
 import { StorageFullError } from '../../src/core/errors.js';
 import { nextBlinkMs } from '../../src/ui/avatar.js';
-import { parseMarkdown, parseInline, MD_MAX } from '../../src/ui/markdown.js';
+import { parseMarkdown, parseInline, MD_MAX } from '../../src/core/markdown.js';
 import { mapsUrl, tripPath } from '../../src/ui/cards.js';
 import { follow, announced, wokeText, wokeTitles, reminderParts, movedWords, wentWords, settled, undoneWords } from '../../src/ui/screens/talk.js';
 import { visibleRegion } from '../../src/ui/photo-viewer.js';

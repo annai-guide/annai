@@ -32,6 +32,7 @@ import { anySignal } from '../signals.js';
 import { t, plural } from '../l10n.js';
 import { sentences, list, num } from '../intl.js';
 import { planWords } from '../live/plan-watches.js';
+import { plainWords } from '../markdown.js';
 import { scopeTitle } from '../scopes.js';
 import { readFile } from './reading.js';
 import { runningPdfPages } from '../pdf-pages.js';
@@ -2096,8 +2097,9 @@ export class Agent {
       const kept = reminderData(r);
       if (!kept) continue;
       const ev = { type: 'reminder', actor: 'system', data: { ...kept, ...(aloud ? { aloud: true } : {}), ...(o.unsaid ? { unsaid: true } : {}), ...(o.waiting ? { waiting: true } : {}) } };
-      // A plan's reminder in the screens' words, made from its data; anyone else's as they wrote it.
-      const shown = r.plan ? planWords(r.plan) : kept.text;
+      // A plan's reminder in the screens' words, made from its data; Kokoro's words as plain words, a link by its name (the card and the voice draw no
+      // link; the user saw the markdown itself, 2026-11-23); anyone else's as they wrote it.
+      const shown = r.plan ? planWords(r.plan) : r.answer ? plainWords(kept.text) : kept.text;
       await this.#notice({ tone: 'info', title: r.answer ? t`Shiori's answer` : t`Reminder`, body: shown }, { own: true });
       if (aloud) this.voice?.say(shown).catch(() => {});
       await this.#logIn(scope, ev).catch((e) => this.#notSaved(e));

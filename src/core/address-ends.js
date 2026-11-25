@@ -1,7 +1,7 @@
 /**
  * Where a bare address in chat ends, in Japanese and Chinese text: these marks end it wherever they stand, not only last. Such text has no space after a
  * stop, so `…/清水寺。次は八坂神社` would link the whole run, and a `、` list or a （…） or 「…」 around an address would take the mark into the link.
- * Read by chat's renderer (src/ui/markdown.js) and by `pageUrl` (src/core/wiki.js), which encodes them in a title as UTF-8 bytes, so a title that holds one
+ * Read by chat's Markdown reader (src/core/markdown.js) and by `pageUrl` (src/core/wiki.js), which encodes them in a title as UTF-8 bytes, so a title that holds one
  * still links whole. Each is written straight against an address in a reply and seldom held by a title; the price: a raw title Shiori writes is cut at the mark.
  *   。 U+3002  a sentence's end (a title can end in it: モーニング娘。)
  *   、 U+3001  the comma between the addresses of a Japanese list (a title can end in it: 藤岡弘、)

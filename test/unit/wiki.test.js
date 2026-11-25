@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { readingOrder } from '../../src/core/languages.js';
 import { editionsOf, articlesOf, wikiSaid, merged, articleUrl, pageUrl, siteOf, sitelinksUrl, titlesOf, summariesUrl, ARTICLES } from '../../src/core/wiki.js';
 import { nominatimLanguages } from '../../src/core/nominatim.js';
-import { parseInline } from '../../src/ui/markdown.js';
+import { parseInline } from '../../src/core/markdown.js';
 import { ADDRESS_ENDS } from '../../src/core/address-ends.js';
 
 /** Wikipedia's answers near Kiyomizu-dera within 1 km, as they came on 2026-11-19 (nearby's query; text under CC BY-SA 4.0). @param {string} e */
