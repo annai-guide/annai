@@ -270,28 +270,30 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   const base = type.tail ? mine : withTail(mine);
   // The cache lifetime this model has, as its warmth counts it (spec §6.4).
   const timed = base.cacheTtl ? { ...base, cacheTtl: ttlFor(model, base.cacheTtl) } : base;
+  // The messages as this model is sent them, made once: the match, the uploads and the request all count these.
+  const { cacheAt: markedAt, ...unmarked } = timed;
+  const cacheAt = cacheAtAfter(timed.messages, markedAt, model.providerId);
+  const ready = { ...unmarked, messages: portable(timed.messages, model.providerId), ...(cacheAt !== undefined ? { cacheAt } : {}) };
   // Found before the photos are: one in what the kept turn already holds is neither sent nor uploaded.
   let keeping = keep && type.keeps && tunables.keep !== false && keep.secret && !keep.kept.isOff(endpoint.id) ? keep : null;
   const print = keeping ? await keyPrint(keeping.secret, endpoint.baseUrl, endpoint.headers) : '';
   // A record that can't be read is a whole send.
-  const matched = keeping?.chain ? await keeping.kept.match(endpoint.id, portable(timed.messages, model.providerId), { scope: keeping.scope, key: print, ...(keeping.borrow ? { borrow: true } : {}), ...(type.keeps?.perModel ? { model: model.providerId } : {}) }).catch(() => null) : null;
+  const matched = keeping?.chain ? await keeping.kept.match(endpoint.id, ready.messages, { scope: keeping.scope, key: print, ...(keeping.borrow ? { borrow: true } : {}), ...(type.keeps?.perModel ? { model: model.providerId } : {}) }).catch(() => null) : null;
   if (keeping?.borrow && !matched) keeping = null;
   // The id OpenAI repeats in an error for a turn it no longer has is not for the trace.
   if (matched) trace?.secret(matched.id);
   /** @type {Awaited<ReturnType<typeof withUploads>>} */
   let uploaded;
   try {
-    uploaded = await withUploads(timed, { type, endpoint, model, key, uploads, get, trace, signal, now, registry, from: matched?.from ?? 0 });
+    uploaded = await withUploads(ready, { type, endpoint, model, key, uploads, get, trace, signal, now, registry, from: matched?.from ?? 0 });
   } catch (e) {
     // A stop during an upload is a stop, by the caller or its deadline (only an aborted call's upload throws): never a failure of the plugin or the model, which would bench it.
     if (signal?.aborted || /** @type {any} */ (e)?.name === 'AbortError') throw new ProviderError('cancelled', /* en */ 'Stopped.', { cause: e, said: { code: 'kind' } });
     throw e;
   }
   const { request: sent, expires } = uploaded;
-  const { cacheAt: _, ...unmarked } = sent;
-  const cacheAt = cacheAtAfter(sent.messages, sent.cacheAt, model.providerId);
   /** @type {CallSpec} */
-  const spec = { endpoint, model, key, tunables, request: { ...unmarked, messages: portable(sent.messages, model.providerId), ...(cacheAt !== undefined ? { cacheAt } : {}) } };
+  const spec = { endpoint, model, key, tunables, request: sent };
   const patches = enabledProviderTools(model, request, endpoint).map((t) => t.patch);
   // Each native must still follow what it was made after; when one doesn't, none goes this turn (the keep-reasoning design §5).
   const own = holds ? checkNatives(spec.request, patches) : { count: 0, ok: true };
@@ -678,7 +680,7 @@ export async function photoHash(data) {
  * @param {Request} request
  * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, uploads?: import('./uploads.js').Uploads, get: Fetch, trace?: ModelTrace, signal?: AbortSignal, now: () => number,
  *   registry?: import('../registry.js').Registry, from?: number }} c
- * from: the first message that is sent, the ones before it being held by a kept turn; expires: when the earliest of the photos sent by id expires (0: none);
+ * from: the first of request's messages (the portable ones) that is sent, the ones before it being held by a kept turn; expires: when the earliest of the photos sent by id expires (0: none);
  * registry: where a bug in the type's upload request counts (spec §5.5)
  * @returns {Promise<{ request: Request, expires: number }>}
  */
@@ -693,7 +695,7 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
   const hashOf = async (/** @type {string} */ data) => hashes.get(data) ?? hashes.set(data, await photoHash(data)).get(data);
   /** An upload of this request failed on the link at once (not made, or its answer broke off before its limit): its other new photos go as bytes without a try, and uploads stay on. */
   let dropped = false;
-  // Only what is sent is uploaded: a photo in the turns a kept turn already holds is left as it is.
+  // A photo in the turns a kept turn already holds is left as it is (a message a type leaves out, a refused one at Gemini, isn't seen here).
   for (const m of request.messages.slice(from)) {
     for (const p of m.parts) {
       if (p.type !== 'image' || !p.hash || !p.data || uploads.isOff(endpoint.id)) continue;

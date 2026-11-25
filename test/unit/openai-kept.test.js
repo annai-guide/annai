@@ -595,6 +595,43 @@ test('P8: a chained turn uploads nothing for photos it does not send; a new phot
   }
 });
 
+test("after another provider's model answered, a chained turn uploads only the photos it sends: a message left empty for this model doesn't move where what it sends begins", async () => {
+  const c = await callKit([{ text: 'A' }]);
+  const uploads = new Uploads(c.ws);
+  /** Every try at the files service; the first one's link fails at once (mobile data), so its photo goes in the request and uploads stay on. */
+  const tries = { n: 0 };
+  const files = filesFetch({ n: 0 });
+  const fetch = (/** @type {any} */ url, /** @type {any} */ init) => {
+    if (!String(url).endsWith('/files')) return globalThis.fetch(url, init);
+    return tries.n++ ? files(url, init) : Promise.reject(new TypeError('Failed to fetch'));
+  };
+  // A reply that holds only what another provider's model wrote (Claude's search paused before it answered: its signed thinking and its search
+  // go only to Claude), with a user line after it (typed while it was made): for OpenAI that message is left empty, and left out of what is sent.
+  const paused = (/** @type {string} */ q) => msg('assistant',
+    { type: 'reasoning', text: 'Searching.', signature: 'sig', model: 'claude-x' },
+    { type: 'provider', block: { type: 'server_tool_use', id: `srvtoolu_${q}`, name: 'web_search', input: { query: q } }, model: 'claude-x' },
+    { type: 'provider', block: { type: 'web_search_tool_result', tool_use_id: `srvtoolu_${q}`, content: [] }, model: 'claude-x' });
+  const before = [m1, paused('ramen'), msg('user', text('Well?')), msg('assistant', text('Ichiran.')), msg('user', text('And a café?')), paused('cafe'), msg('user', text('Still there?')), msg('assistant', text('Aster.'))];
+  try {
+    const m = [...before, msg('user', text('what is this?'), PHOTO('a'))];
+    const r = await c.call(m, { fetch, uploads });
+    assert.equal(tries.n, 1);
+    assert.match(JSON.stringify(c.s.bodies().at(-1).input), /"input_image"/, 'the photo went in the request');
+    const m2 = [...said(m, r), msg('user', text('and the price?'))];
+    const r2 = await c.call(m2, { fetch, uploads });
+    assert.equal(c.s.bodies().at(-1).previous_response_id, 'resp_stand-in-1');
+    assert.ok(!JSON.stringify(c.s.bodies().at(-1).input).includes('input_image'), 'the photo the kept turn holds is not sent');
+    assert.equal(tries.n, 1, 'nor uploaded');
+    // A new photo in what it sends is uploaded, and only that one.
+    await c.call([...said(m2, r2), msg('user', text('this one?'), PHOTO('b'))], { fetch, uploads });
+    assert.equal(c.s.bodies().at(-1).previous_response_id, 'resp_stand-in-2');
+    assert.equal(tries.n, 2);
+    assert.match(JSON.stringify(c.s.bodies().at(-1).input), /"file_id":"file-1"/);
+  } finally {
+    await c.s.close();
+  }
+});
+
 test('P1: an organization with Zero Data Retention: the response says it is not stored, so nothing is chained, nothing fails, nothing is deleted', async () => {
   const c = await callKit([{ text: 'A' }], { keep: true }, { zdr: true });
   try {
