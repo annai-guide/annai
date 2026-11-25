@@ -885,8 +885,8 @@ export class Live {
         if (this.#said.has(n.key) || n.stale) doubles.push(n.key);
       } else {
         // A plan reminder's notification is in the screens' words: Shiori is quoted its English, from its own trip's plan (two trips can share a plan
-        // watch's id), while it is still planned there. Anyone else's is quoted as written. With no words, none are quoted: an id tells her nothing.
-        const plan = String(n.watch ?? '').startsWith('plan:');
+        // watch's id), while it is still planned there. Anyone else's is quoted as the phone showed it. With no words, none are quoted: an id tells her nothing.
+        const plan = planned({ watch: n.watch });
         const words = (plan ? (await watchesOf(n.scope)).find((w) => w.id === n.watch)?.fallback ?? '' : String(n.body ?? '')).trim().slice(0, 300);
         this.#openedNews.push({ scope: n.scope, text: /* en */ `The user opened ${words ? `the reminder "${words}"` : 'a reminder'} from its notification at ${timeIn(t, zone())}.` });
       }
