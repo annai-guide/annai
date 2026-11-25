@@ -728,7 +728,7 @@ export class Halves {
       return;
     }
     this.#notice({ tone: 'warn', title: t`Koe's live voice couldn't start`, body: t`Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.` });
-    if (w.aloud) this.#annai(w); // the recap asked aloud, which Kokoro was never given: hers now, with the voice (its reminders, if any, go with the koe-down wake)
+    if (w.aloud) this.#annai({ ...w, fallbacks: [] }); // the recap asked aloud, which Kokoro was never given: hers now, with the voice (its reminders, if any, go with the koe-down wake)
     this.#talkDirectly(w.fallbacks);
   }
 

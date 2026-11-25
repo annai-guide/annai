@@ -1360,7 +1360,7 @@ test("Koe live: the recap asked to be told aloud when no session can open (today
 
 // The live model can't connect and Koe has no other way (no chat model): Koe is down, a card says so, and Kokoro talks directly. The recap asked aloud, which
 // Kokoro was never given, is hers with the koe-down wake (#live's down branch), not written nowhere.
-test("Koe live: the recap asked to be told aloud when the live model can't connect and Koe has no other way (Koe down): Kokoro has it, in its own conversation", async () => {
+test("Koe live: the recap asked to be told aloud when the live model can't connect and Koe has no other way (Koe down): Kokoro has it", async () => {
   const k = await liveKit([{ said: 'Sure.', audio: tone(0.1) }], { pace: 1 });
   try {
     k.llm.live = async () => {
