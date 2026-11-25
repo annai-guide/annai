@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit } from './agent-kit.js';
+import { agentKit, simAtOnce } from './agent-kit.js';
+import { useClock } from './clock.js';
 import { RULES, DRIVE, places } from './big-sur-kit.js';
 import { LA } from './live-kit.js';
 import { Live } from '../../src/core/live/live.js';
@@ -17,7 +18,8 @@ const TODAY = Date.parse('2026-11-26T09:00:00-08:00');
 const CAMERA = '2026-11-28T20:00:00-08:00';
 const HOME = '2026-11-29T21:00:00-08:00';
 
-test("a simulation never touches the relay: the user's real reminders keep their real times, the run's never go, and the real ones still come at their times (M6×M7)", async () => {
+test("a simulation never touches the relay: the user's real reminders keep their real times, the run's never go, and the real ones still come at their times (M6×M7)", async (t) => {
+  useClock(t);
   const real = new ManualClock(TODAY);
   const k = await agentKit([{ rules: RULES }], { agent: { fetch: places, now: real.now, timeZone: () => LA }, voice: { mode: 'auto' } });
   await k.host.addBuiltin(new URL('../../src/plugins/places/index.js', import.meta.url).href);
@@ -44,14 +46,16 @@ test("a simulation never touches the relay: the user's real reminders keep their
     const before = (await rig.env.RELAY.waiting()).map((w) => `${w.id} ${w.sendAt}`).sort();
     assert.deepEqual((await rig.env.RELAY.waiting()).map((w) => w.sendAt).sort(), [Date.parse(CAMERA) + GRACE_MS, Date.parse(HOME) + GRACE_MS]);
     const from = rig.net.calls.length;
-    await run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' });
+    await simAtOnce(run.start({ kind: 'itinerary', itinerary: DRIVE }, { speed: 'fast' }));
     // While it runs, the mirror looks as often as it can.
     let done = false;
-    run.finished.then(() => { done = true; });
+    const ended = simAtOnce(run.finished).then(() => null, (e) => e).finally(() => { done = true; });
     while (!done) {
       await mirror.sync();
       await new Promise((r) => setTimeout(r, 2));
     }
+    const failed = await ended;
+    if (failed) throw failed;
     await mirror.sync();
     for (let i = 0; i < 40; i++) await step(); // and after it, as real time goes on
     const touched = rig.net.calls.slice(from).filter((c) => c.method !== 'GET').map((c) => `${c.method} ${new URL(c.url).pathname}`);
