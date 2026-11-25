@@ -862,7 +862,7 @@ test('a link too slow for photos pays the wait for one new photo at a time, not 
   assert.deepEqual(await none.call('pv-1/chat', 'AAAD'), ['file_2']);
 });
 
-test('an answer to a request whose photos all go by id lifts nothing: the next new photo is held, not tried (upload-rest-next, review of fix 1)', async (t) => {
+test('an answer to a request whose photos all go by id lifts nothing: the next new photo is held, not tried; a bytes answer then lifts it (upload-rest-next, review of fix 1)', async (t) => {
   onTestClock(t);
   const k = await heldKit();
   assert.deepEqual(await k.call('pv-1/chat', 'AAAB'), ['file_1'], 'uploaded before');
@@ -878,7 +878,7 @@ test('an answer to a request whose photos all go by id lifts nothing: the next n
   assert.deepEqual(await k.call('pv-1/chat', 'AAAF'), ['file_3'], 'a bytes answer lifts: the next new photo is uploaded');
 });
 
-test("a PDF's or a recording's bytes in an answered request lift nothing either: the wait is about photos, so the next new photo is held, not tried (upload-rest-next, review of fix 1)", async (t) => {
+test("a PDF's or a recording's bytes in an answered request lift nothing either: the wait is about photos, so the next new photo is held, not tried; a bytes answer then lifts it (upload-rest-next, review of fix 1)", async (t) => {
   onTestClock(t);
   const beside = {
     PDF: { type: 'document', mediaType: 'application/pdf', data: 'J'.repeat(100), name: 'booking.pdf' },

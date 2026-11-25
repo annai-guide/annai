@@ -669,7 +669,7 @@ export async function photoHash(data) {
  * photos as bytes too and leaves uploads on for the next. One cut at UPLOAD_MS, or answered 408, 429 or a server error, holds uploads there
  * (Uploads.hold): that photo, and every new one until a reply there that calls no tool answers a request that sent a photo's bytes (Uploads.answered), goes
  * as bytes there from then on, so a link that hangs costs the whole wait once until then, not at each attempt, step or model, and a files service
- * that keeps hanging, one wait a turn that brings new photos (up to one a step when another call's reply lifts it between steps: Uploads.hold); a
+ * that keeps hanging, one wait a turn that brings new photos (up to one a step when a reply like that lifts it between steps: Uploads.hold); a
  * restart, a new key or address or a Test that passes ends a hold too. Any other (a refusal, a redirect, an unreadable
  * reply, the plugin's failure) stops uploading there until annai restarts, or its provider's key or address changes, or a Test passes. A photo
  * uploaded before goes by its id while uploads are held. An upload answered after uploads went off there (a refused upload, a refused key, a list
@@ -716,7 +716,7 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
         if (typeof r?.url !== 'string') throw new TypeError(/* en */ `${type.type}'s uploadRequest gave no request (a result with a url, not a promise)`);
         sameOrigin(endpoint, r.url); // elsewhere: never sent, and the photo goes in the request
         // Its own time limit, body included: one cut by it (a hang) holds uploads there until a reply that calls no tool answers a request that sent a photo's
-        // bytes (Uploads.answered), since a try at once would wait it out again; one not made or broken off before it is the link's, which a later try may meet
+        // bytes (Uploads.answered; or a restart, a new key or address, a Test that passes), since a try at once would wait it out again; one not made or broken off before it is the link's, which a later try may meet
         // again, for as long as that failure took. A Stop is told apart in the catch (the caller's signal aborted).
         const limit = AbortSignal.timeout(UPLOAD_MS);
         const res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, signal: signal ? anySignal([signal, limit]) : limit, redirect: 'manual' }).catch((e) => {

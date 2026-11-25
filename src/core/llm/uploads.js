@@ -78,8 +78,8 @@ export class Uploads {
    * A photo whose upload was cut at UPLOAD_MS, or answered 408, 429 or a server error (call.js withUploads): it goes in the request there from then
    * on, and so does each new one until a reply there that calls no tool answers a request that sent a photo's bytes (answered). A files service that
    * keeps hanging costs one wait a turn that brings new photos, however many steps and models the turn has, but only while no other call there whose
-   * reply calls no tool and whose request sent a photo's bytes (Koe's, a reader's or a task's) comes between its steps: that call lets the next new photo
-   * be tried (with two halves on one endpoint, up to one wait a step). A link that answers nothing costs one wait until such a reply. A restart, a new
+   * reply calls no tool and whose request sent a photo's bytes (Koe's, a reader's or a task's, or the loop's own pause or nudge) comes between its steps: that reply lets the next new
+   * photo be tried (when one comes between two steps, up to one wait a step). A link that answers nothing costs one wait until such a reply. A restart, a new
    * key or address or a Test that passes (retry) ends a hold too.
    * @param {string} endpointId @param {string} hash
    */
