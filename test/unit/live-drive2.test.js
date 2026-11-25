@@ -158,6 +158,31 @@ for (const [what, noEnd] of /** @type {[string, boolean][]} */ ([["the provider'
   });
 }
 
+// The mark ends at a turn's end only when no voice of hers is coming from it: a call she speaks after (a lookup) keeps it through the wait, so sound at the
+// microphone then starts no turn of the user's and her answer is said whole (with the end question asked only of a silent call alone, the note was shown on a
+// card at about 0.75 s and her answer dropped: route A's reviews). The sound starts once the call is answered: a frame in the mark's first moment would reset the
+// detector's floor and hear nothing either way.
+test("item 13: in a session a note opened, her first answer is a lookup she speaks after: the microphone stays deaf through the wait, and she says the note whole", async () => {
+  const k = await liveKit([{ tool: { name: 'list', args: { path: '/trip/' } }, andThen: true }, { said: 'The fuel station is open until ten.', audio: tone(0.5), delayMs: 1500 }], { pace: 1, agent: { secondMs: 1000 } });
+  let done = false;
+  try {
+    await k.voice.unlock();
+    k.voice.route = async () => 'car';
+    await tell(k);
+    await soon(async () => got(k, 'toolResponse').length === 1, 30_000);
+    const feeding = lyrics(k, () => done, 0.3);
+    await soon(async () => (await k.events(['out.speak'])).length === 1, 8000);
+    done = true;
+    await feeding;
+    const [line] = await k.events(['out.speak']);
+    assert.equal(line.data.cut, undefined, 'said whole: the mark held through the lookup');
+    assert.deepEqual(await shown(k), [], 'nothing shown on a card');
+  } finally {
+    done = true;
+    await k.done();
+  }
+});
+
 test('item 13: a session opened after a sleep is fresh: the sleep note is not in its context', async () => {
   const k = await liveKit([{ tool: { name: 'sleep', args: {} }, handle: 'kept-after-sleep' }, { said: 'The fuel station is open until ten.', audio: tone(0.1) }]);
   try {
