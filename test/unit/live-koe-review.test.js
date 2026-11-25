@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { agentKit, until, idleAtOnce } from './agent-kit.js';
 import { liveKit, got, texts, soon, tone, say, sleep, blocks, lives } from './koe-live-kit.js';
 import { startRealtimeServer } from '../fakes/realtime-server.js';
+import { GATHER } from '../../src/core/agent/loop.js';
 
 const wait = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
 /** The page out of view, or back. @param {boolean} on */
@@ -175,7 +176,7 @@ test('item 5 (probe L): a server that drops every session it resumes is given up
     await k.voice.unlock();
     k.agent.send('Hello');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await idleAtOnce(k);
+    await idleAtOnce(k, GATHER.quiet * k.agent.secondMs + 2000); // Kokoro gathers the typed line for GATHER.quiet, 1.5 s on the real second (1490 ms measured)
     for (let i = 1; i <= 3; i++) {
       k.server.close(1011, 'Internal error encountered.');
       await until(() => k.server.connections().length === i + 1, 3000);
@@ -199,7 +200,7 @@ test('item 14 (K6): a drop with no resume handle (OpenAI has none) still goes on
   try {
     k.agent.send('Hello');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await idleAtOnce(k);
+    await idleAtOnce(k, GATHER.quiet * k.agent.secondMs + 2000); // Kokoro gathers the typed line for GATHER.quiet, 1.5 s on the real second (1490 ms measured)
     k.server.close(1011, 'server_error');
     await until(() => k.server.connections().length === 2, 3000);
     await soon(async () => k.agent.live.state === 'open' && !k.agent.live.busy);

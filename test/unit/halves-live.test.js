@@ -14,6 +14,7 @@ import { mediaKeys } from '../../src/ui/media-keys.js';
 import { Live } from '../../src/core/live/live.js';
 import { ManualClock } from '../../src/core/live/clock.js';
 import { at, iso, off, LA, BIXBY } from './live-kit.js';
+import { GATHER } from '../../src/core/agent/loop.js';
 
 /** @param {any[]} cards @param {string} title */
 const count = (cards, title) => cards.filter((n) => n.title === title).length;
@@ -78,7 +79,7 @@ test("the voice chip's switch applies at once: Classic chosen closes an open ses
   try {
     k.agent.send('Where can we eat?');
     await soon(async () => (await k.events(['out.speak'])).length === 1);
-    await idleAtOnce(k);
+    await idleAtOnce(k, GATHER.quiet * k.agent.secondMs + 2000); // Kokoro gathers the typed line for GATHER.quiet, 1.5 s on the real second (1425 ms measured)
     assert.equal(k.agent.live.state, 'open');
     await k.agent.chooseKoe('classic');
     assert.equal(k.agent.koeState, 'text');

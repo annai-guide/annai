@@ -55,7 +55,7 @@ test('the user wrote again inside the wait, and Koe ends without answering: aske
   k.agent.send('Will it rain in Carmel tomorrow?');
   await until(() => k.agent.koe.waiting);
   k.agent.send('Which day is it?');
-  await idleAtOnce(k);
+  await idleAtOnce(k, 2 * 1000 + 2000); // Kokoro's model takes its 1000 ms (delayMs) a call, and the second line can come in her first call and make one more (2034 ms under load, measured)
   assert.equal((await k.events(['tool.result'])).find((e) => e.data.name === 'wait')?.data.content, 'The user wrote: Which day is it?');
   assert.equal(k.sent['model-koe'].length, 3, 'asked once more');
   assert.equal(k.sent['model-koe'][1].toolRequired, true);

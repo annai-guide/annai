@@ -5,7 +5,7 @@ import { until, idleAtOnce } from './agent-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { liveKit, got, texts, soon, tone, say, sleep, lives } from './koe-live-kit.js';
 import { quiet, cat, clip, room, hum } from './voice-kit.js';
-import { cleanSaid, realWord } from '../../src/core/koe/live.js';
+import { cleanSaid, realWord, HOLD_MS } from '../../src/core/koe/live.js';
 
 /** A half's transcript as text. @param {any} half */
 const read = (half) => half.transcript.messages.flatMap((/** @type {any} */ m) => m.parts.map((/** @type {any} */ p) => (p.type === 'text' ? p.text : p.type === 'speech' ? `speech:${p.text ?? p.id}` : '')));
@@ -671,7 +671,7 @@ test('tell_kokoro is answered "sent", with scheduling SILENT, while Kokoro is st
     assert.ok(k.agent.kokoro.busy, 'Kokoro is still at work: Koe never waits for it');
     const [a] = answers(k);
     assert.deepEqual([a.name, a.response, a.scheduling], ['tell_kokoro', { result: 'sent' }, 'SILENT']);
-    await idleAtOnce(k);
+    await idleAtOnce(k, HOLD_MS + 2000); // her voice holds HOLD_MS (1.2 s) after the user's words end, on the real clock (1212 ms measured)
     const calls = (await k.events(['tool.call', 'tool.result'])).filter((/** @type {any} */ e) => e.data.half === 'koe').map((/** @type {any} */ e) => [e.type, e.data.name, e.data.half]);
     assert.deepEqual(calls, [['tool.call', 'tell_kokoro', 'koe'], ['tool.result', 'tell_kokoro', 'koe']]);
     assert.equal(k.sent['model-0'].length, 1, 'one Kokoro call for the question');
@@ -691,7 +691,7 @@ test("a live session is watched once the user speaks or types in it, so Koe's no
     await say(k, 'where-eat');
     await until(() => answers(k).length === 1);
     assert.equal(k.agent.live.watched, true);
-    await idleAtOnce(k);
+    await idleAtOnce(k, HOLD_MS + 2000); // her voice holds HOLD_MS (1.2 s) after the user's words end, on the real clock (1212 ms measured)
     k.agent.live.close('quiet');
     assert.equal(k.agent.live.watched, false);
   } finally {

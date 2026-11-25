@@ -129,7 +129,7 @@ test('a tap on Shiori as her words begin, before any sound, keeps the note: it i
   try {
     await wait(300);
     k.agent.tap();
-    await idleAtOnce(k);
+    await idleAtOnce(k, 1900 + 2000); // the stand-in's turn ends at its endAt, 1900 ms, on the real clock (1599 ms after the tap, measured)
     await wait(800);
     const shown = [...(await inTrip(k, k.trip, ['out.speak', 'reminder']))];
     assert.ok(shown.some((l) => l.endsWith(SAID)), `the note's words are shown: ${JSON.stringify(shown)}`);

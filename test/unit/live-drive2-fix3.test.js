@@ -8,6 +8,7 @@ import { liveKit, texts, soon, tone } from './koe-live-kit.js';
 import { hum, quiet, cat } from './voice-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { ProviderError } from '../../src/core/llm/contract.js';
+import { HOLD_MS } from '../../src/core/koe/live.js';
 
 const wait = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
 const RATE = 16_000;
@@ -128,7 +129,7 @@ test('6: two turns answered inside one tap\'s lift both teach the level: it rese
     await soon(async () => (await k.events(['heard'])).length === 1, 3000); // answered, still inside the lift
     k.platform.mic.feed(cat(hum(0.6, 0.4), room(1)), RATE);
     await soon(async () => (await k.events(['heard'])).length === 2, 3000);
-    await idleAtOnce({ agent: k.agent.live });
+    await idleAtOnce({ agent: k.agent.live }, HOLD_MS + 2000); // her voice holds HOLD_MS (1.2 s) after the user's words end, on the real clock (1204 ms measured)
     assert.notEqual(k.agent.live.level.db, null, 'two peaks are a level');
   } finally {
     await k.done();

@@ -129,7 +129,7 @@ test('her note is all made and has no loud frame: a tap while it plays is a cut,
     await wait(at + 1000 - Date.now());
     k.agent.tap();
     await wait(1000);
-    await idleAtOnce(k);
+    await idleAtOnce(k, 3000 + 2000); // the cut turn still ends at its 3 s of sound, as Gemini's do, on the real clock (996 ms after the 1 s, measured)
     assert.deepEqual(await shown(k), [[FOR_USER, false]]);
     assert.equal(await wholeNotes(k), 0);
   } finally {
@@ -267,7 +267,7 @@ test('a tap while her sound for a note all made still plays (the provider had ma
     await wait(at + 1000 - Date.now());
     k.agent.tap();
     await wait(1000);
-    await idleAtOnce(k);
+    await idleAtOnce(k, 3000 + 2000); // the cut turn still ends at its 3 s of sound, as Gemini's do, on the real clock (995 ms after the 1 s, measured)
     assert.deepEqual(await shown(k), [[FOR_USER, false]]);
     assert.equal(await wholeNotes(k), 0);
   } finally {

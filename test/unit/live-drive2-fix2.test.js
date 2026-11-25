@@ -6,6 +6,7 @@ import { until, agentKit, idleAtOnce } from './agent-kit.js';
 import { liveKit, texts, soon, tone } from './koe-live-kit.js';
 import { hum, quiet, cat } from './voice-kit.js';
 import { updateAppSettings } from '../../src/core/settings.js';
+import { HOLD_MS } from '../../src/core/koe/live.js';
 
 const wait = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
 const RATE = 16_000;
@@ -93,7 +94,7 @@ test('1: turns at the user\'s own level, let go, cue Kokoro once until an exchan
     const turn = async (/** @type {number} */ n) => {
       k.platform.mic.feed(loud, RATE);
       await soon(async () => (await k.events(['heard'])).length === heard + n, 3000);
-      await idleAtOnce({ agent: k.agent.live });
+      await idleAtOnce({ agent: k.agent.live }, HOLD_MS + 2000); // her voice holds HOLD_MS (1.2 s) after the user's words end, on the real clock (1201 ms measured)
       await idleAtOnce(k);
     };
     await turn(1);

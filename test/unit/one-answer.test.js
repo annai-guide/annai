@@ -8,6 +8,7 @@ import { liveKit, texts, soon, tone, say } from './koe-live-kit.js';
 import { hum, quiet, cat, clip } from './voice-kit.js';
 import { KOE_CORE, KOE_LIVE } from '../../src/core/koe/instructions.js';
 import { channelTool } from '../../src/core/agent/halves.js';
+import { GATHER } from '../../src/core/agent/loop.js';
 
 const RATE = 16_000;
 const FOR_USER = 'The fuel station ahead is open until ten tonight.';
@@ -424,7 +425,7 @@ for (const kind of /** @type {const} */ (['speak', 'show', 'ask'])) {
         else await bump(k);
         await soon(async () => (await showing(k, kind)).length === 1, 4000);
         await wait(1500);
-        await idleAtOnce(k);
+        await idleAtOnce(k, 3000 + 2000); // the cut turn still ends at its 3 s (the note's tone(3)), as Gemini's do, on the real clock (1494 ms after the 1.5 s, measured)
         assert.deepEqual(await showing(k, kind), SHOWING[kind], 'shown once');
         if (kind !== 'speak') assert.deepEqual(await shown(k), [], 'as itself, not as words');
         assert.deepEqual(k.said, [], "annai's own voice says nothing");
@@ -743,7 +744,7 @@ test("a reminder's wake that Koe says (live, the page in view; a chat Koe): Koko
   await until(() => starts.length > 0, 5000);
   assert.ok(starts[0] - at < 800, `chat Koe: started ${starts[0] - at} ms after the wake`);
   assert.ok(userTexts(k.sent['model-0'][0]).some((t) => SAYING.test(t)));
-  await idleAtOnce(k);
+  await idleAtOnce(k, 1000 + 2000); // Koe's model takes the hold's 1 s (1003 ms measured)
   assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['Sunset at 18:40.'], 'said once, by Koe');
 });
 
@@ -844,7 +845,7 @@ for (const by of /** @type {const} */ (['a tap', 'a sound'])) {
         if (by === 'a tap') assert.equal(k.agent.live.tap(), 'cut');
         else await bump(k);
         await wait(1500);
-        await idleAtOnce(k);
+        await idleAtOnce(k, 3000 + 2000); // the cut turn still ends at its 3 s (the note's tone(3)), as Gemini's do, on the real clock (1494 ms after the 1.5 s, measured)
         assert.deepEqual(await shown(k), wake === BOTH_W ? [['Sunset at 18:40', false]] : [], 'the cue never shows');
         assert.ok(!k.notices.some((/** @type {any} */ n) => n.body === NEAR), 'no card for it');
         assert.deepEqual(k.said, [], "annai's voice says nothing");
@@ -880,7 +881,7 @@ test('live: a cue the session has and lets pass in silence asks nothing again an
     await updateAppSettings(spent.ws, { shiori: { budgets: { spendPerDay: 0.5 } } });
     spent.agent.send('Hi');
     await soon(async () => (await spent.events(['live.session'])).some((/** @type {any} */ e) => e.data.state === 'closed'));
-    await idleAtOnce(spent);
+    await idleAtOnce(spent, GATHER.quiet * spent.agent.secondMs + 2000); // Kokoro gathers the typed line for GATHER.quiet, 1.5 s on the real second (1486 ms measured)
     await spent.agent.wake(NEAR_W);
     await soon(async () => (await shown(spent)).length === 1, 4000);
     assert.deepEqual((await shown(spent)).map(([text]) => text), [NEAR]);

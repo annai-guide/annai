@@ -86,7 +86,7 @@ test('Kokoro\'s immediate note cuts in while she says a note, and a tap stops he
     await wait(800);
     k.agent.tap();
     await wait(1000);
-    await idleAtOnce(k);
+    await idleAtOnce(k, 3000 + 2000); // the cut turn still ends at its 3 s (tone(3)), as Gemini's do, on the real clock (1197 ms after the 1 s, measured)
     assert.deepEqual(await shown(k), [[NOW, false]], 'the first note, replaced, is neither shown nor asked for');
     assert.deepEqual(cues(k), []);
   } finally {
