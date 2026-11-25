@@ -98,17 +98,20 @@ export function parseMarkdown(src) {
 }
 
 /**
- * An address as words: its site as written (no scheme, no `www.`, cut at the first `/ ? # :`; not URL's punycode), then what it says in other than ASCII,
- * percent-decoded: a title in Japanese or Cyrillic, or the words written right after it with no space, which the parser took into it (a known limitation),
+ * An address as words: its site as written (no scheme, no `www.`, cut at the first `/ ? # :`; not URL's punycode), then the parts of its path that hold other
+ * than ASCII, percent-decoded (`+` a space; each run of escapes on its own, so one stray `%` loses nothing else): a title in Japanese or Cyrillic, or the words written right after it with no space, which the parser took into it (a known limitation),
  * so a Japanese answer keeps them. @param {string} address
  */
 function addressWords(address) {
   const bare = address.replace(/^https?:\/\//i, '');
   const [site] = bare.split(/[/?#:]/);
-  let path = bare.slice(site.length);
-  try {
-    path = decodeURIComponent(path);
-  } catch { /* a cut %XX: as written */ }
+  const path = bare.slice(site.length).replace(/\+/g, ' ').replace(/(?:%[0-9A-Fa-f]{2})+/g, (run) => {
+    try {
+      return decodeURIComponent(run);
+    } catch {
+      return run; // a cut or foreign escape: as written
+    }
+  });
   return [site.replace(/^www\./i, ''), ...path.split(/[/?#&=]/).filter((p) => /\P{ASCII}/u.test(p)).map((p) => p.replace(/_/g, ' '))].join(' ');
 }
 
@@ -125,7 +128,7 @@ export function plainWords(src) {
     if (x.t === 'code') return x.c;
     if (x.t !== 'a') return words(x.c);
     const name = words(x.c);
-    return safeHref(name) ? addressWords(x.href) : name;
+    return safeHref(name) ? addressWords(name) : name; // its name as written, as the line shows it
   }).join('');
   /** @type {string[]} */
   const lines = [];

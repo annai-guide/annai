@@ -2,10 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, idleAtOnce } from './agent-kit.js';
 import { useClock } from './clock.js';
+import { plainWords } from '../../src/core/markdown.js';
 
 // answer-words-next (the Deferred entry "Kokoro's words shown at the top and said aloud keep their markdown", from the user's screenshots, 2026-11-23):
 // Kokoro's words annai shows itself reach the card at the top of the screen and, with voice on, the voice as one plain-words reading made where they are
-// shown (loop.js remind): a link by its name, a bare address by its site, no marks. The line keeps the words as written (talk.js draws its links).
+// shown (loop.js remind): a link by its name, a bare address by its site and the parts of its path in other than ASCII, no marks. The line keeps the words as written (talk.js draws its links).
 // Places and addresses are made up.
 
 const MAP = 'https://maps.example.com/?daddr=Sample%20Visitor%20Center%2C%20Sample%20Lake%20Road%2C%20Testland&dirflg=d';
@@ -123,7 +124,7 @@ test("a key in Kokoro's words is blanked once, and the card and the voice (a pro
   }
 });
 
-test("a reminder without the answer flag keeps its words as written in the card and the voice: Shiori's own (a watch's) are not changed here", async (t) => {
+test("a reminder without the answer flag keeps its words as written in the card and the voice: they are not changed here", async (t) => {
   const s = await shown(t, 'Show code *1234* at the gate.', { answer: false });
   assert.deepEqual(s.cards, [['Reminder', 'Show code *1234* at the gate.']]);
   assert.deepEqual(s.given, ['Show code *1234* at the gate.']);
@@ -139,4 +140,11 @@ test("through the halves: Kokoro's gated speak that Koe never passes on shows it
   await idleAtOnce(k);
   assert.deepEqual(k.notices.filter((/** @type {any} */ n) => n.title === "Shiori's answer").map((/** @type {any} */ n) => n.body), ['It opens at 11:30 today: Maps.']);
   assert.deepEqual((await k.events(['reminder'])).map((/** @type {any} */ e) => e.data.text), [text]);
+});
+
+test("an address's words: a `+` reads as a space, a link named by its address reads its name as written, and one stray `%` loses nothing else", () => {
+  assert.equal(plainWords('See https://www.maps.example.com/search/?api=1&query=サンプル寺+駐車場 today.'), 'See maps.example.com サンプル寺 駐車場 today.');
+  assert.equal(plainWords('[https://見本.jp/店](https://見本.jp/店)を見て'), '見本.jp 店を見て');
+  assert.equal(plainWords('See [https://a.example.com](https://b.example.com/) now.'), 'See a.example.com now.');
+  assert.equal(plainWords('See https://ja.wiki.example.org/wiki/%E6%AD%A3%E6%B3%95%E5%AF%BA?ref=100% today.'), 'See ja.wiki.example.org 正法寺 today.');
 });
