@@ -653,8 +653,10 @@ export async function photoHash(data) {
 
 /**
  * Photos go by id to an endpoint that stores files (spec §4.8): each is uploaded once, named
- * annai-… (uploadName, the rule the sweep deletes by), used for 48 hours. A failed upload (one over UPLOAD_MS is cut) sends the bytes, and stops
- * uploading there until annai restarts, or its provider's key or address changes, or a Test passes. An upload answered after
+ * annai-… (uploadName, the rule the sweep deletes by), used for 48 hours. A failed upload sends the bytes. One the link failed, by where it
+ * failed (annai's own fetch, cut at UPLOAD_MS or not made, or its answer's read: watched), sends this request's other new photos as bytes too and
+ * leaves uploads on for the next; any other (the provider's refusal or its plugin's) stops uploading there until annai restarts, or its
+ * provider's key or address changes, or a Test passes. An upload answered after
  * uploads went off there (a failed upload, a refused key, a list annai can't read), or while its provider goes, changes its key or
  * address, or everything is erased (Erase), is deleted at once and its photo sent in the request.
  * @param {Request} request
@@ -673,6 +675,9 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
   /** @type {Map<string, string>} each photo's hash, by its data: the bytes' own, never the hash a part claims */
   const hashes = new Map();
   const hashOf = async (/** @type {string} */ data) => hashes.get(data) ?? hashes.set(data, await photoHash(data)).get(data);
+  /** An upload of this request failed on the link (annai's fetch threw: cut at its limit, or not made; or its answer's read did: watched): its
+   * other new photos go as bytes at once (one wait for a cut link, not one each). */
+  let dropped = false;
   // Only what is sent is uploaded: a photo in the turns a kept turn already holds is left as it is.
   for (const m of request.messages.slice(from)) {
     for (const p of m.parts) {
@@ -685,6 +690,7 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
         expiry.set(hash, (await uploads.expires?.(endpoint.id, hash)) || 0);
         continue;
       }
+      if (dropped) continue;
       let r;
       const started = now();
       let traced = false;
@@ -692,14 +698,22 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
         r = type.uploadRequest({ endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(p.data), mediaType: p.mediaType, name: uploadName(hash, p.mediaType), expiresInSeconds: UPLOAD_TTL_S });
         if (typeof r?.url !== 'string') throw new TypeError(/* en */ `${type.type}'s uploadRequest gave no request (a result with a url, not a promise)`);
         sameOrigin(endpoint, r.url); // elsewhere: never sent, and the photo goes in the request
-        // Its own time limit, body included: a cut upload fails as any other; a Stop is told apart in the catch (the caller's signal aborted).
+        // Its own time limit, body included: a cut upload is the link's, as one not made; a Stop is told apart in the catch (the caller's signal aborted).
         const limit = AbortSignal.timeout(UPLOAD_MS);
-        const res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, signal: signal ? anySignal([signal, limit]) : limit, redirect: 'manual' });
+        const res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, signal: signal ? anySignal([signal, limit]) : limit, redirect: 'manual' }).catch((e) => {
+          dropped = true;
+          throw e;
+        });
         traced = true;
         await trace?.upload({ endpoint: endpoint.name, url: r.url, status: res.status, ms: now() - started, ...(res.ok ? {} : { error: (await res.text().catch(() => '')).slice(0, 300) }) });
         noRedirect(res, endpoint);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const up = type.readUpload(await res.json());
+        const reply = watched(res);
+        const body = await reply.res.json().catch((e) => {
+          dropped = reply.dropped() !== undefined; // a body that broke off; one that isn't JSON is the provider's
+          throw e;
+        });
+        const up = type.readUpload(body);
         if (uploads.isOff(endpoint.id)) {
           // Answered after uploads went off here (a failed upload, a refused key, a list annai can't read), or while a removal, a key or
           // address change or Erase is under way: no more files are made there, and the workspace may be let go, so this one is deleted now.
@@ -719,7 +733,9 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
           Promise.resolve(r).catch(() => {}); // an async builder's rejection: not the page's to report
         }
         if (!traced) await trace?.upload({ endpoint: endpoint.name, url: typeof r?.url === 'string' ? r.url : `${type.type}:`, status: 0, ms: now() - started, error: String(/** @type {any} */ (e)?.message ?? e) });
-        uploads.off(endpoint.id); // photos go as bytes here until annai restarts, or a new key or address, or a Test that passes
+        // The link's: this photo goes as bytes, and uploads stay on for the next request. The provider's or its plugin's: photos go as bytes here
+        // until annai restarts, or a new key or address, or a Test that passes.
+        if (!dropped) uploads.off(endpoint.id);
       }
     }
   }

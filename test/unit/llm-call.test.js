@@ -423,7 +423,7 @@ test("a chat photo's upload limit (UPLOAD_MS) only catches a hang: a request pho
   assert.ok(slowest <= 70_000, `a 1 MiB photo needs ${Math.round(slowest)} bit/s up to finish in ${UPLOAD_MS / 1000} s`);
 });
 
-test("a photo's upload has a time limit of its own (UPLOAD_MS): a stall ends it, the photo goes in the request and uploads stop there; a Stop still stops (review of openrouter-f1, L1)", async () => {
+test("a photo's upload has a time limit of its own (UPLOAD_MS): a stall ends it, the photo and the request's other new one go in the request, and uploads stay on (the link's, llm-rest-next); a Stop still stops (review of openrouter-f1, L1)", async () => {
   const { Workspace } = await import('../../src/core/workspace.js');
   const { ensureBaseScopes } = await import('../../src/core/scopes.js');
   const { Uploads, UPLOAD_MS } = await import('../../src/core/llm/uploads.js');
@@ -460,11 +460,11 @@ test("a photo's upload has a time limit of its own (UPLOAD_MS): a stall ends it,
     const m = model({ input: ['text', 'image'] });
     const uploads = new Uploads(ws);
     await callOnce({ type: t, endpoint: endpoint(), model: m, key: 'k', request: /** @type {any} */ (withPhoto), fetch: /** @type {any} */ (stalled), uploads });
-    assert.deepEqual(asked, [UPLOAD_MS], 'one upload was tried, with its own limit: the second photo is not tried once uploads are off');
+    assert.deepEqual(asked, [UPLOAD_MS], 'one upload was tried, with its own limit: the second photo is not tried once the link cut one');
     assert.equal(got.length, 1);
     assert.equal(got[0], made[0], 'the fetch got the limit it was made with');
     assert.deepEqual(bodies.map((b) => b.images), [['bytes', 'bytes']], 'both photos went in the request');
-    assert.equal(uploads.isOff('pv-1/chat'), true);
+    assert.equal(uploads.isOff('pv-1/chat'), false, 'a cut is the link\'s: uploads stay on');
     // A turn passes its own signal (loop.js), which never fires here: the limit still ends the stall, through the join. A throw inside the stub
     // is a failed upload too, so whether the limit reached the upload is recorded there and asserted outside it.
     made.length = 0;
@@ -486,7 +486,7 @@ test("a photo's upload has a time limit of its own (UPLOAD_MS): a stall ends it,
     await callOnce({ type: t, endpoint: endpoint(), model: m, key: 'k', request: /** @type {any} */ (withPhoto), fetch: /** @type {any} */ (slow), uploads: joined, signal: turn.signal });
     assert.deepEqual(cut, [true], 'the limit ends the upload of a call that passes its own signal, as every turn does');
     assert.deepEqual(bodies.map((b) => b.images), [['bytes', 'bytes']]);
-    assert.equal(joined.isOff('pv-1/chat'), true);
+    assert.equal(joined.isOff('pv-1/chat'), false);
     asked.length = 0;
     // A Stop during the upload is a Stop: not a failed upload, which would turn uploads off and send the photo.
     asked.length = 0;
@@ -510,6 +510,69 @@ test("a photo's upload has a time limit of its own (UPLOAD_MS): a stall ends it,
   } finally {
     AbortSignal.timeout = real;
   }
+});
+
+test("an upload the link failed (not made, or its answer broken off) sends that photo as bytes and leaves uploads on, so the next request uploads it; one the provider refused, or answered with no upload, turns them off (llm-rest-next)", async () => {
+  const { Workspace } = await import('../../src/core/workspace.js');
+  const { ensureBaseScopes } = await import('../../src/core/scopes.js');
+  const { Uploads } = await import('../../src/core/llm/uploads.js');
+  const t = httpType([{ type: 'text', text: 'ok' }, { type: 'stop', reason: 'end' }], {
+    uploadRequest: (/** @type {any} */ c) => { const f = new FormData(); f.set('file', new Blob([c.bytes], { type: c.mediaType }), c.name); return { url: `${c.endpoint.baseUrl}/v1/files`, headers: {}, body: f }; },
+    readUpload: (/** @type {any} */ j) => { if (!j.id) throw new Error('the upload answered without a file id'); return { id: j.id }; },
+    build: (/** @type {any} */ c) => ({ url: `${c.endpoint.baseUrl}/v1/chat`, headers: {}, body: { images: c.request.messages[0].parts.map((/** @type {any} */ p) => p.fileId ?? 'bytes') } }),
+  });
+  const m = model({ input: ['text', 'image'] });
+  const withPhoto = /** @type {any} */ ({ messages: [{ role: 'user', parts: [{ type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1' }] }] });
+  /**
+   * Two calls with the photo, the first upload answered so, a later one as the provider takes it: whether uploads were off after the first, and how
+   * each call sent the photo. @param {() => Promise<Response>} first
+   */
+  const twice = async (first) => {
+    const ws = new Workspace(createMemoryStore());
+    await ensureBaseScopes(ws);
+    const uploads = new Uploads(ws);
+    /** @type {string[]} */
+    const sent = [];
+    let tries = 0;
+    const get = async (/** @type {string} */ url, /** @type {any} */ init) => {
+      if (url.endsWith('/v1/files')) return tries++ ? Response.json({ id: 'file_1' }) : first();
+      sent.push(JSON.parse(init.body).images[0]);
+      return new Response('');
+    };
+    const call = () => callOnce({ type: t, endpoint: endpoint(), model: m, key: 'k', request: withPhoto, fetch: /** @type {any} */ (get), uploads });
+    await call();
+    const off = uploads.isOff('pv-1/chat');
+    await call();
+    return { off, sent };
+  };
+  const enc = new TextEncoder();
+  // The link's: no connection (the browser's own failure), or an answer whose body broke off.
+  assert.deepEqual(await twice(async () => { throw new TypeError('Failed to fetch'); }), { off: false, sent: ['bytes', 'file_1'] }, 'not made');
+  const broken = () => new Response(new ReadableStream({ start: (c) => { c.enqueue(enc.encode('{"id":"fi')); c.error(new TypeError('network error')); } }));
+  assert.deepEqual(await twice(async () => broken()), { off: false, sent: ['bytes', 'file_1'] }, 'its answer broke off');
+  // The provider's: a refusal, or an answer that is no upload.
+  for (const [what, answer] of /** @type {const} */ ([['a 401', () => new Response('no', { status: 401 })], ['a 500', () => new Response('down', { status: 500 })], ['not JSON', () => new Response('<html>')], ['no id', () => Response.json({})]])) {
+    assert.deepEqual(await twice(async () => answer()), { off: true, sent: ['bytes', 'bytes'] }, what);
+  }
+  // A photo uploaded before still goes by its id beside one whose upload the link failed: only new photos wait for the link.
+  const ws = new Workspace(createMemoryStore());
+  await ensureBaseScopes(ws);
+  const uploads = new Uploads(ws);
+  /** @type {string[][]} */
+  const sent = [];
+  let tries = 0;
+  const get = async (/** @type {string} */ url, /** @type {any} */ init) => {
+    if (url.endsWith('/v1/files')) {
+      if (tries++) throw new TypeError('Failed to fetch');
+      return Response.json({ id: 'file_1' });
+    }
+    sent.push(JSON.parse(init.body).images);
+    return new Response('');
+  };
+  const photo = (/** @type {string} */ data, /** @type {string} */ hash) => ({ type: 'image', mediaType: 'image/webp', data, hash });
+  await callOnce({ type: t, endpoint: endpoint(), model: m, key: 'k', request: withPhoto, fetch: /** @type {any} */ (get), uploads });
+  await callOnce({ type: t, endpoint: endpoint(), model: m, key: 'k', request: /** @type {any} */ ({ messages: [{ role: 'user', parts: [photo('AAAB', 'h2'), photo('AAAA', 'h1')] }] }), fetch: /** @type {any} */ (get), uploads });
+  assert.deepEqual(sent, [['file_1'], ['bytes', 'file_1']]);
 });
 
 /** A request whose photo goes in the body (no files API), its data n base64 characters. @param {number} n @returns {any} */

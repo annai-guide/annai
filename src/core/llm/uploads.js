@@ -26,7 +26,7 @@ export const uploadName = (hash, mediaType) => `annai-${hash.slice(0, 16)}.${EXT
 export class Uploads {
   /** @type {Record<string, Record<string, { id: string, expiresAt: number }>> | null} */
   #map = null;
-  /** @type {Set<string>} endpoints whose upload failed, or whose key was refused or can't delete: until annai restarts, or their provider's key or address changes, or a Test passes */
+  /** @type {Set<string>} endpoints whose upload was refused (not the link's: call.js withUploads), or whose key was refused or can't delete: until annai restarts, or their provider's key or address changes, or a Test passes */
   #off = new Set();
   /** @type {Set<string>} endpoints whose list answered and isn't one annai can read: the provider's, not the key's, so until annai restarts or a Test reads the list */
   #unread = new Set();
@@ -76,7 +76,7 @@ export class Uploads {
   }
   /**
    * What a read of an endpoint's list found (sweepUploads), the one rule for the sweeps and Test, so annai never makes files it can't delete:
-   * a refusal is the key's, and turns uploads off as a failed upload does; a list that answered and isn't one annai can read is the
+   * a refusal is the key's, and turns uploads off as a refused upload does; a list that answered and isn't one annai can read is the
    * provider's, and turns them off whatever key or address comes, until annai restarts or a Test reads the list (test: this read is a
    * Test's). No answer says nothing. @param {string} endpointId @param {Swept | null} r @param {{ test?: boolean }} [o]
    * @returns {boolean} whether the list keeps uploads off there
@@ -113,7 +113,7 @@ export const REQUEST_MS = 15_000;
  * timeslot at its best coding (MCS-9), and a class 10 phone uses 2 slots, 118.4 kbit/s, or 1 (59.2), as the network chooses by the traffic
  * (Wikipedia, General Packet Radio Service, multislot classes). A photo of 1 MiB (the request cap until 2026-11-21, 256 KiB since:
  * photos.js; a traveller can set more) is 8,388,608 bits: 71 s at 118.4 kbit/s, and 120 s lets the link run down to 70 kbit/s (59% of
- * that); 1 slot at 59.2 would need 142 s. A cut upload sends the photo in the request, as any failed one does, and uploads go off there.
+ * that); 1 slot at 59.2 would need 142 s. A cut upload sends the photo in the request, as any failed one does; uploads stay on there (the link's).
  */
 export const UPLOAD_MS = 120_000;
 /** bit/s: the slowest uplink a model call's request has time for (call.js), the one UPLOAD_MS is sized for (see there). */
