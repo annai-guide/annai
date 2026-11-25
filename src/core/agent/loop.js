@@ -2880,7 +2880,7 @@ export class Agent {
 
   /**
    * Housekeeping within a turn. When it fails a card says why; when the turn can't go on without it
-   * (the next request would overflow), an error event ends the turn.
+   * (the next request would overflow), an error event ends the turn; a forced warm one that fails is first tried cold.
    * @param {'warm' | 'cold'} mode @param {{ forced?: boolean, frozen?: Frozen | null }} o @param {string} wakeId
    * @returns {Promise<boolean | null>} whether anything was compacted; null: failed (forced) or cut short; the turn ends
    */
@@ -2890,6 +2890,9 @@ export class Agent {
     } catch (e) {
       // Leaving the page, or a tap on Shiori that cut it short: nothing failed, so no card and no error.
       if (this.#leaving || (e instanceof ProviderError && e.kind === 'cancelled')) return null;
+      // A forced warm summary that can't be sent (over the window itself, or carrying a PDF every model refuses): the cold one, which sends only the
+      // part it summarizes, and no file; only its failure ends the turn.
+      if (o.forced && mode === 'warm') return this.#tidyUp('cold', o, wakeId);
       const why = await this.#whyOf(e, mode === 'cold' ? 'utility' : 'main');
       const names = await this.#names();
       if (!o.forced) {

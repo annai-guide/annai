@@ -6,9 +6,13 @@ import { Transcript } from '../../src/core/agent/transcript.js';
 import { ME } from '../../src/core/scopes.js';
 import { saveModel } from '../../src/core/llm/config.js';
 import { record } from '../../src/core/agent/log.js';
-import { clockOf } from './clock.js';
+import { clockOf, useClock } from './clock.js';
 
 const say = (/** @type {string} */ text, /** @type {any} */ extra = {}) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }], ...extra });
+/** No warm housekeeping timed between turns: it would take script steps at a time the clock picks. */
+const NO_TIMERS = { set: () => 1, clear: () => {} };
+/** A request that writes a summary: her model's from the cached conversation (the housekeeping instruction its tail), or the utility model's from the text. @param {any} r */
+const isSummary = (r) => String(r.tail ?? '').startsWith('[annai: housekeeping]') || String(r.system ?? '').startsWith('You summarize a conversation');
 
 test('when housekeeping is due, and when it is forced', () => {
   const base = { window: 100_000, maxBytes: 8 * 2 ** 20, threshold: 0.7 };
@@ -82,6 +86,28 @@ test("housekeeping sizes a typed line once: its words are in its msg.user, and i
   const all = JSON.stringify(k.agent.transcript.messages);
   assert.equal(all.includes('Message 0'), false, 'the oldest exchange is summarized');
   for (const n of [1, 2, 3, 4]) assert.equal(all.includes(`Message ${n}`), true, `Message ${n} stays word for word: the kept part is under 30,000 tokens until it`);
+});
+
+test("a step whose file reads take the request past 90% of a small window: the forced summary, warm, is over the window itself, so the cold one is written, and she answers in that turn (llm-rest-next)", async (t) => {
+  useClock(t);
+  // A window of 40,000 tokens: forced past 36,000. Three exchanges of about 7,000 tokens each, then one step that reads two notes of about 10,800 tokens each.
+  const reads = { toolCalls: [{ name: 'read', input: { path: '/trip/notes/a.md' } }, { name: 'read', input: { path: '/trip/notes/b.md' } }] };
+  const k = await agentKit([[say('ok'), say('ok'), say('ok'), reads, say('Both read.')]], { models: [{ contextWindow: 40_000 }], utility: [{ text: 'They said hello.' }], agent: { timers: NO_TIMERS } });
+  for (const n of ['a', 'b']) await k.ws.write(k.trip, `/notes/${n}.md`, `${n} ${'n'.repeat(38_000)}`, { author: 'user', type: 'text/markdown' });
+  for (let i = 0; i < 3; i++) {
+    k.agent.send(`Message ${i} ${'w'.repeat(24_000)}`);
+    await idleAtOnce(k);
+  }
+  const before = k.requests.length;
+  k.agent.send('Read both notes');
+  await idleAtOnce(k);
+  assert.deepEqual(k.requests.slice(before).map((r) => isSummary(r)), [false, true, false], 'her reads; the cold summary (the warm one was passed over by her model: over its window); her answer');
+  const tidied = (await k.events(['model.turn'])).filter((e) => e.data.tag === 'compaction');
+  assert.deepEqual(tidied.map((e) => e.data.attempts.map((/** @type {any} */ a) => a.outcome)), [['too-long'], ['ok']], 'the warm summary, asked of no model (over its window); then the cold one');
+  assert.deepEqual((await k.events(['compaction'])).map((e) => e.data.mode), ['cold']);
+  assert.equal((await k.events(['out.speak'])).at(-1)?.data.text, 'Both read.');
+  assert.deepEqual(k.notices.map((n) => n.title), [], "no \"couldn't tidy up\" card");
+  assert.equal((await k.events(['error'])).length, 0, 'the turn did not fail');
 });
 
 test('warm: the model holding the cache summarizes from the cached conversation, and may move facts into memory first', async () => {
