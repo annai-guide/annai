@@ -140,8 +140,8 @@ test("another conversation's call within the hour doesn't make a cold one warm",
   assert.equal(words(k.requests.at(-1)).includes('Question 0'), false);
 });
 
-/** Ten exchanges of about 5,200 tokens each by annai's own measure (compact: a typed line counts in its wake and as the line). */
-const BIG = Array.from({ length: 10 }, (_, i) => `Q${i} ${'x'.repeat(8_500)}`);
+/** Ten exchanges of about 5,200 tokens each by annai's own measure (compact: a typed line counts once, as the line). */
+const BIG = Array.from({ length: 10 }, (_, i) => `Q${i} ${'x'.repeat(17_000)}`);
 
 test('the cold return keeps a third of 100,000 tokens word for word on a window of a million, not a third of its 70%', async (t) => {
   const jump = clockOf(t);
@@ -161,7 +161,7 @@ test('the cold return keeps a third of 100,000 tokens word for word on a window 
 
 test('on a small window the cold return, after a reload, keeps a third of its own threshold, so more than the oldest exchange is summarized', async (t) => {
   const jump = clockOf(t);
-  const small = Array.from({ length: 6 }, (_, i) => `S${i} ${'y'.repeat(6_000)}`);
+  const small = Array.from({ length: 6 }, (_, i) => `S${i} ${'y'.repeat(12_000)}`);
   // A window of 40,000: due at 28,000, forced over 36,000; a third of the threshold is 9,333 tokens, about two and a half exchanges here.
   const k = await agentKit([[...small.map((_, i) => say(`A${i}`, { input: 30_000, output: 5 })), say('Back.')]], { models: [{ contextWindow: 40_000, cacheTtls: ['1h'] }], utility: [{ text: 'Summary.' }], agent: { timers: NO_TIMERS } });
   await talk(k.agent, small);
@@ -504,10 +504,10 @@ test('the mark: none, an old one, one in the last three exchanges, one before th
   const old = await agentKit([[...Array.from({ length: 8 }, (_, i) => say(`Answer ${i}`))]], { utility: [{ text: 'S.' }], models: [{ contextWindow: 30_000 }] });
   await talk(old.agent, ['O0', `O1 ${'z'.repeat(2000)}`]);
   await as({ ok: true })(old);
-  await talk(old.agent, [`O2 ${'z'.repeat(14_000)}`, `O3 ${'z'.repeat(14_000)}`, 'O4', 'O5']);
+  await talk(old.agent, [`O2 ${'z'.repeat(28_000)}`, `O3 ${'z'.repeat(28_000)}`, 'O4', 'O5']);
   assert.equal(await old.agent.compact('cold'), true);
   const octx = words({ messages: old.agent.transcript.messages });
-  assert.deepEqual(['O0', 'O1', 'O2', 'O3', 'O4', 'O5'].filter((m) => octx.includes(`"${m}`)), ['O3', 'O4', 'O5'], 'a third of 21,000 is about two big questions: the mark further back is passed by');
+  assert.deepEqual(['O0', 'O1', 'O2', 'O3', 'O4', 'O5'].filter((m) => octx.includes(`"${m}`)), ['O3', 'O4', 'O5'], 'a third of 21,000 is about one big question: the mark further back is passed by');
 });
 
 test('mark_done is a Self tool, and its result says what it did', async () => {

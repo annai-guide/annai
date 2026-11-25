@@ -50,8 +50,8 @@ export const reaches = (e) => (e.type.startsWith('out.') && e.actor !== 'system'
 /** Koe's window (plan decision 5): its last 12 exchanges, its start moving in jumps of 6. */
 export const KOE_WINDOW = 12;
 export const KOE_JUMP = 6;
-/** Wake reasons that are lines of their own elsewhere. */
-const OWN_LINES = ['user', 'heard', 'note', 'halves'];
+/** Wake reasons that are lines of their own elsewhere: not read from the wake (here, and in housekeeping's sizing, loop.js compact). */
+export const OWN_LINES = Object.freeze(['user', 'heard', 'note', 'halves']);
 /** Wake reasons of the user's, which take up a hand-over still owed (loop.js owesAnswer); Try again is a cue. */
 const TAKES_OWED = ['user', 'choice', 'heard', 'cue'];
 

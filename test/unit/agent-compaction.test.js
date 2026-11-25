@@ -71,6 +71,19 @@ test("cold: a reply shown as written (grounded) isn't measured again: its words 
   for (const n of [1, 2, 3, 4]) assert.equal(all.includes(`Message ${n}`), true, `Message ${n} stays word for word, as without the entry`);
 });
 
+test("housekeeping sizes a typed line once: its words are in its msg.user, and its wake's reason (the same words) is not counted again, so the part kept word for word is what spec §6.5 says (llm-rest-next)", async () => {
+  const k = await agentKit([[say('ok')]], { utility: [{ text: 'They planned dinner at Nepenthe.' }] });
+  for (let i = 0; i < 5; i++) {
+    // The newest a long line: 70,000 characters, 20,000 tokens at 3.5 a token; counted twice it alone would pass the 30,000 kept.
+    k.agent.send(i === 4 ? `Message ${i} ${'x'.repeat(70_000)}` : `Message ${i}`);
+    await idleAtOnce(k);
+  }
+  assert.equal(await k.agent.compact('cold', { keepTokens: 30_000 }), true);
+  const all = JSON.stringify(k.agent.transcript.messages);
+  assert.equal(all.includes('Message 0'), false, 'the oldest exchange is summarized');
+  for (const n of [1, 2, 3, 4]) assert.equal(all.includes(`Message ${n}`), true, `Message ${n} stays word for word: the kept part is under 30,000 tokens until it`);
+});
+
 test('warm: the model holding the cache summarizes from the cached conversation, and may move facts into memory first', async () => {
   const k = await agentKit([[say('a'), say('b'), say('c'), say('d'),
     { toolCalls: [{ name: 'edit', input: { path: '/me/memory.md', old: '# Memory', new: '# Memory\n- Vegetarian' } }, { name: 'write', input: { path: '/trip/notes/x.md', content: 'no' } }] },
