@@ -75,11 +75,9 @@ export class Uploads {
     this.#off.add(endpointId);
   }
   /**
-   * A photo whose upload was cut at UPLOAD_MS, or answered 408, 429 or a server error (call.js withUploads): a later try may work, but one at once
-   * would likely wait it out again. That photo goes in the request there from then on, and so does every photo not yet uploaded there until its
-   * provider next answers a request there (answered); then the next new photo is uploaded again. So a files service that keeps hanging costs
-   * one wait a turn that brings new photos, never one a step or a model, and one until its provider answers on a link that answers nothing.
-   * @param {string} endpointId @param {string} hash
+   * A photo whose upload was cut at UPLOAD_MS, or answered 408, 429 or a server error (call.js withUploads): it goes in the request there from then
+   * on, and so does each new one until its provider next answers a request there (answered). A files service that keeps hanging costs one wait a
+   * turn that brings new photos, never one a step or a model; a link that answers nothing, one until it answers. @param {string} endpointId @param {string} hash
    */
   hold(endpointId, hash) {
     this.#waiting.add(endpointId);
