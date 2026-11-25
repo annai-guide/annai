@@ -152,7 +152,7 @@ test("a Spend per day set while a turn runs takes hold at the next turn, with th
   assert.equal((await k.events(['error']))[0].data.which, 'spend');
 });
 
-test("wakes per hour count only wakes that aren't the user's", async (t) => {
+test("wakes per hour count only wakes that aren't the user's, and each for an hour", async (t) => {
   useClock(t);
   const k = await agentKit([[done]]);
   await updateAppSettings(k.ws, { shiori: { budgets: { wakesPerHour: 1 } } });
@@ -163,6 +163,15 @@ test("wakes per hour count only wakes that aren't the user's", async (t) => {
   await idleAtOnce(k);
   assert.equal(k.requests.length, 2);
   assert.equal(k.notices[0].title, 'Shiori skipped a wake');
+  // The window is the hour: 59 minutes on (on the test's clock, no real time) the first wake still counts, and 61 minutes on it has left the hour.
+  await new Promise((r) => setTimeout(r, 59 * 60_000));
+  k.agent.wake({ kind: 'plugin', plugin: 'tides', text: 'High tide.' });
+  await idleAtOnce(k);
+  assert.equal(k.requests.length, 2, 'skipped: the first wake is 59 minutes old');
+  await new Promise((r) => setTimeout(r, 2 * 60_000));
+  k.agent.wake({ kind: 'plugin', plugin: 'tides', text: 'Low tide again.' });
+  await idleAtOnce(k);
+  assert.equal(k.requests.length, 3, 'counts again: the first wake is 61 minutes old');
 });
 
 test('quiet hours hold wakes that are not the user’s, but the user is always heard', async (t) => {
