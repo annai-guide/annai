@@ -499,12 +499,12 @@ bo3wjk	ok	Shiori stopped: today's budget is spent	Shiori 已停止：今天的�
 177194c	ok	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	她自己在做一件沒人要她做的事，已經做了 {0} 步，所以先停在這裡。想讓她繼續，告訴她就好。	src/core/agent/budgets.js:149	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告訴她), not the glossary's Ask, Safari's 詢問 choice.
 1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	這次喚醒最多可以做 {0} 步（設定 → Shiori → 她主動行動的頻率），她已經做完了。想讓她繼續，告訴她就好。	src/core/agent/budgets.js:150	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告訴她), not the glossary's Ask, Safari's 詢問 choice; the setting's path as the screens name it.
 jkajtp	ok	Thinking	思考中	src/core/agent/halves.js:88	
-1vskjkw	ok	Live is resting; Koe · Chat is answering	即時語音暫停中，改由 Koe · 聊天 回答	src/core/agent/halves.js:631	
-13gz10	ok	Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.	暫時由 Shiori 直接回答。原因請見「記錄」中的「模型」；Koe 幾分鐘後會自動重試。	src/core/agent/halves.js:730	Note: Models is the Trace's Kind filter, as it is named there.
-yvabm6	ok	Koe's live voice couldn't start	Koe 的即時語音無法啟動	src/core/agent/halves.js:730	Note: "live voice" is the glossary's Live voice (即時語音), not a voice she speaks with (聲音).
-bzrasi	ok	Shiori answers as one half for now	Shiori 暫時獨自回答	src/core/agent/halves.js:926	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
-o0lfar	ok	annai couldn't pass your message to Koe: {0}	無法把訊息轉給 Koe：{0}	src/core/agent/halves.js:926	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-13548dd	ok	That conversation didn't open	無法開啟那段對話	src/core/agent/halves.js:1259	Note: Taiwan wording: 開啟 for open, 對話 as the glossary's Conversation.
+1vskjkw	ok	Live is resting; Koe · Chat is answering	即時語音暫停中，改由 Koe · 聊天 回答	src/core/agent/halves.js:632	
+13gz10	ok	Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.	暫時由 Shiori 直接回答。原因請見「記錄」中的「模型」；Koe 幾分鐘後會自動重試。	src/core/agent/halves.js:732	Note: Models is the Trace's Kind filter, as it is named there.
+yvabm6	ok	Koe's live voice couldn't start	Koe 的即時語音無法啟動	src/core/agent/halves.js:732	Note: "live voice" is the glossary's Live voice (即時語音), not a voice she speaks with (聲音).
+bzrasi	ok	Shiori answers as one half for now	Shiori 暫時獨自回答	src/core/agent/halves.js:932	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
+o0lfar	ok	annai couldn't pass your message to Koe: {0}	無法把訊息轉給 Koe：{0}	src/core/agent/halves.js:932	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+13548dd	ok	That conversation didn't open	無法開啟那段對話	src/core/agent/halves.js:1265	Note: Taiwan wording: 開啟 for open, 對話 as the glossary's Conversation.
 15junxn	ok	One moment…	請稍候…	src/core/agent/loop.js:147	Note: the dock's words between the user's tap and Listening (Shiori getting ready to hear them).
 1dhsqvv	ok	Tap to talk	點一下說話	src/core/agent/loop.js:147	
 1ldobgc	ok	Tap to interrupt	點一下打斷	src/core/agent/loop.js:147	
@@ -638,8 +638,8 @@ gnrtev	ok	Shiori can't reach her model.	Shiori 無法連線到模型。	src/core
 13ujlu9	ok	{0} is too large (over {1}). Export only the dates you need from your calendar, and add that file.	{0} 太大了（超過 {1}）。請在行事曆中只匯出所需日期的活動，再新增匯出的檔案。	src/core/imports.js:17	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:36	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	剛剛	src/core/intl.js:152	
-1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	使用手機喇叭時，Shiori 說話期間聽不到你的聲音，插話會被忽略。點一下就能讓她停下來聽你說。	src/core/koe/live.js:667	
-1ml2kgi	ok	Tap Shiori to talk over her	點一下 Shiori 即可打斷她	src/core/koe/live.js:667	Note: The dock's Shiori button: tap it to talk over her.
+1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	使用手機喇叭時，Shiori 說話期間聽不到你的聲音，插話會被忽略。點一下就能讓她停下來聽你說。	src/core/koe/live.js:672	
+1ml2kgi	ok	Tap Shiori to talk over her	點一下 Shiori 即可打斷她	src/core/koe/live.js:672	Note: The dock's Shiori button: tap it to talk over her.
 3fqfy0	ok	Languages	語言	src/core/languages.js:553	
 1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你說的語言和 Shiori 的回答語言會告知每個負責聽和說的模型，以免簡短的回覆被誤認成其他語言。	src/core/languages.js:554	
 1giusr1	ok	Languages you speak	你說的語言	src/core/languages.js:555	
