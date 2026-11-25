@@ -14,7 +14,7 @@ export const MD_MAX = 20_000;
 // A `*`, `**` or `_` opens only before a non-space and closes only after one: the whitespace half of CommonMark's flanking rule (its punctuation half is left out,
 // which is right for Japanese: `**「重要」**です` draws). What keeps a code's stars, with or without a space before them (`*1234# then *9#`, `*100*1#`, `*67,*82`, and
 // `*1234#です。次に*9#` in Japanese or Chinese), is the digit rule: a `*` straight before a digit (of any script) or `#` neither opens italics nor closes them, so such a star is
-// never an italic's (a code's star after its digits, `1234*`, has no such guard); the cost is an italic that starts or ends at a digit (`*3 nights*`, `*大人*1000円`), which shows its stars. A bold closes at the first `**` after it, and only when no space stands before that `**` (else it doesn't draw); of three
+// never an italic's (a code's star after its digits, `1234*`, has no such guard); the cost is an italic that starts or ends at a digit (`*3 nights*`, `*大人*1000円`), which shows its stars, and whose closing star can pair with the next star on the line in text without spaces. A bold closes at the first `**` after it, and only when no space stands before that `**` (else it doesn't draw); of three
 // stars, it closes on the last two when a word comes before them (`***very***` closes, `Card ***1234 and ***5678` doesn't), and it holds any other star as text (`**Gate code: *1234#**`,
 // `**3 * 4 = 12**`); its inside is read again by these rules (`**a *b* c**`).
 // A link's address may hold a space (`Big Sur`) but not before a quote, which starts a title (`[a](x 'title')` reads as `"title"` does: the address, then the words), and one with a space is a
@@ -147,8 +147,8 @@ function addressWords(address) {
 /**
  * A model's Markdown as plain words, for what draws no link and no mark: the card annai shows Kokoro's words in, and the voice (loop.js remind). The drawer's
  * reading, as words, one line at a time (every rule of the inline reader is within a line): a link by its name, one named by its address (a bare one) by
- * addressWords; no marks of bold, italic, code, a heading or a bullet; a star the parser pairs with nothing stays as written (a gate code's, and an italic's that starts
- * or ends at a digit); a number as written (the block reader keeps none, a blank line or a nested bullet
+ * addressWords; no marks of bold, italic, code, a heading or a bullet; a star the parser pairs with nothing stays as written (a star before a code's digits or `#`
+ * always does); a number as written (the block reader keeps none, a blank line or a nested bullet
  * would restart a count); a fenced block as written; no blank line and no fence line. @param {string} src
  */
 export function plainWords(src) {

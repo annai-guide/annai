@@ -210,7 +210,8 @@ test("a code's stars stay with no space before them, with a star inside, several
     assert.deepEqual(parseInline(line), textOnly(line), line);
     assert.equal(plainWords(line), line, line);
   }
-  // The same row with an italic at a word and more after it: the code's star is kept (and the star of `15:00` shows, which is the cost); no code is lost.
+  // The same row with an italic at a word and more after it: the code's star is kept; where the italics land next to `*15:00*` is not pinned (a known shape: the
+  // closing star of an italic the digit rule doesn't read can pair with the next star on the line).
   const row = 'チェックインは*15:00*から、*重要*：鍵は*9#の箱';
   assert.ok(plainWords(row).endsWith('鍵は*9#の箱'), row);
   assert.ok(/** @type {any} */ (parseInline(row).at(-1)).v.endsWith('鍵は*9#の箱'), row);
@@ -226,7 +227,7 @@ test("a code's stars stay with no space before them, with a star inside, several
   assert.deepEqual(parseInline('**Gate code: *1234#** and *side*'), [{ t: 'b', c: textOnly('Gate code: *1234#') }, { t: 'text', v: ' and ' }, { t: 'i', c: textOnly('side') }]);
 });
 
-// A bold is what lies between its `**` (it closes at the first `**` not after a space; of three stars, on the last two), whatever stars it holds: an italic that starts with a
+// A bold is what lies between its `**` (it closes at the first `**` after it, and only when no space stands before that `**`; of three stars, on the last two), whatever stars it holds: an italic that starts with a
 // digit inside a bold shows its stars and the bold still draws, and a star that pairs with nothing is text. (A bold's inside is read again by the italic rules.)
 test("a bold holds the stars of a digit-led italic, a code or a lone star as text, and closes at its own `**`", () => {
   for (const [line, inner, after] of [
@@ -306,7 +307,7 @@ test('a phone or mail link named in words reads `name (number or address)` in th
     ['Mail [Desk@Example.com](mailto:desk@example.com?subject=x) now.', 'Mail Desk@Example.com now.'],
     ['Mail [the desk at desk@example.com](mailto:desk@example.com) now.', 'Mail the desk at desk@example.com now.'],
     ['Call [the inn](TEL:+1-555-0100) now.', 'Call the inn (+1-555-0100) now.'],
-    ['Call [+1 555 0100](TEL:+1-555-0100) now.', 'Call +1 555 0100 now.'], // a capital scheme is a phone link too: its number is held by the name
+    ['Call [+1 555 0100](TEL:+1-555-0100) now.', 'Call +1 555 0100 now.'], // a capital scheme is a phone link too (with no space in its number): its number is held by the name
     ['[ホテル](tel:０３－１２３４－５６７８)に電話。', 'ホテル (０３－１２３４－５６７８)に電話。'], // full-width digits are digits: a name with none doesn't hold the number
     ['Call [０３－１２３４－５６７８](tel:０３－１２３４－５６７８) now.', 'Call ０３－１２３４－５６７８ now.'],
   ]) {
