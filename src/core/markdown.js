@@ -2,7 +2,7 @@ import { ADDRESS_ENDS } from './address-ends.js';
 
 /**
  * annai's own small Markdown reader (spec §15): model output becomes data, never HTML. Paragraphs, headings, lists, code blocks; bold, italic, code
- * and links to http(s) addresses; a link to anything else by its name. Anything else, HTML included, is text. Drawn by src/ui/markdown.js; read as plain words by plainWords.
+ * and links to http(s) addresses; a link to anything else by its name (a phone or mail link with its number or address). Anything else, HTML included, is text. Drawn by src/ui/markdown.js; read as plain words by plainWords.
  * @typedef {{ t: 'text', v: string } | { t: 'b', c: Inline[] } | { t: 'i', c: Inline[] } | { t: 'code', c: string } | { t: 'a', href: string, c: Inline[] }} Inline
  * @typedef {{ t: 'p', c: Inline[] } | { t: 'h', c: Inline[] } | { t: 'ul', items: Inline[][] } | { t: 'ol', items: Inline[][] } | { t: 'pre', v: string }} Block
  */
@@ -13,18 +13,24 @@ export const MD_MAX = 20_000;
 // own stop. A `_` opens or closes italics only at the edge of a word of Latin letters or digits (CommonMark's; `_重要_` in Japanese or Chinese is italics).
 // A `*`, `**` or `_` opens only before a non-space and closes only after one: the whitespace half of CommonMark's flanking rule (its punctuation half is left out,
 // which is right for Japanese: `**「重要」**です` draws). What keeps a code's stars, with or without a space before them (`*1234# then *9#`, `*100*1#`, `*67,*82`, and
-// `*1234#です。次に*9#` in Japanese or Chinese), is the digit rule: a `*` straight before a digit or `#` never opens italics, and a bold may hold one as text
-// (`**Gate code: *1234#**`); the cost is italics that start with a digit (`*3 nights*`), which show their stars. `**` may hold `*italic*` (`***very***`).
+// `*1234#です。次に*9#` in Japanese or Chinese), is the digit rule: a `*` straight before a digit (of any script) or `#` neither opens italics nor closes them, so a code's star is
+// never an italic's; the cost is an italic that starts or ends at a digit (`*3 nights*`, `*大人*1000円`), which shows its stars. A bold closes at the first `**` not after a space (of three
+// stars, on the last two, when a word comes before them: `***very***` closes, `Card ***1234 and ***5678` doesn't) and holds any other star as text (`**Gate code: *1234#**`,
+// `**3 * 4 = 12**`); its inside is read again by these rules (`**a *b* c**`).
+// A link's address may hold a space (`Big Sur`) but not before a quote, which starts a title (`[a](x 'title')` reads as `"title"` does: the address, then the words), and one with a space is a
+// link only to http(s), `tel:` or `mailto:` (`[sic](and then left)` is words in brackets, then words in parentheses, as written).
 // A `\` before ASCII punctuation is CommonMark's escape and reads as the mark alone, outside a code span, an address, and an emphasis opened before it (which has taken the star).
 const WORD = String.raw`[\p{Script=Latin}\p{N}]`;
 const IN_ADDRESS = String.raw`[^\s<>()\[\]{}|${ADDRESS_ENDS}]`;
 const PAIR = String.raw`\(${IN_ADDRESS}*\)`;
+const LINK_CHAR = String.raw`(?!\s['"])[^()\n"]`; // no quote, and no space before one: that is a title's
+const LINK_ADDRESS = String.raw`(?:${LINK_CHAR}|\((?:${LINK_CHAR})*\))+`;
 const INLINE = new RegExp([
   '`([^`\\n]+)`',
-  String.raw`\*\*(?!\s)((?:[^*\n]|\*(?![\s\d#])[^*\n]+(?<!\s)\*|\*(?=[\s\d#]))+)(?<!\s)\*\*`,
-  String.raw`\*(?![\s\d#])([^*\n]+)(?<!\s)\*`,
+  String.raw`\*\*(?!\s)((?:[^*\n]|\*(?!\*)|(?<![*\s])\*(?=\*\*(?!\*)))+)(?<!\s)\*\*`,
+  String.raw`\*(?![\s\p{Nd}#])([^*\n]+)(?<!\s)\*(?![\p{Nd}#])`,
   String.raw`(?<!${WORD})_(?!\s)([^_\n]+)(?<!\s)_(?!${WORD})`,
-  String.raw`\[([^\[\]\n]+)\]\(((?:[^()\n"]|\([^()\n"]*\))+)\)`,
+  String.raw`\[([^\[\]\n]+)\]\((?=\s*(?:https?|tel|mailto):|(?:[^\s()"]|\([^\s()"]*\))+\))(${LINK_ADDRESS})\)`,
   String.raw`(https?:\/\/(?:${IN_ADDRESS}|${PAIR})*(?:[^\s<>()\[\]{}|.,;:!?'"${ADDRESS_ENDS}]|${PAIR}))`,
   String.raw`\\([!-\/:-@\[-\x60{-~])`,
 ].join('|'), 'gu');
@@ -40,15 +46,16 @@ function safeHref(href) {
 }
 
 /**
- * What a phone or mail link adds to its name, so the number or address reaches the traveller though the link is not drawn: ` (+81-00-0000-0000)`, never twice (a
- * number is compared by its digits, an address without regard to case, both against the name), and a `mailto:`'s `?subject=…` left out; '' for any other link.
+ * What a phone or mail link adds to its name, so the number or address reaches the traveller though the link is not drawn: ` (+81-00-0000-0000)`, not when the name holds it
+ * already (a number is compared by its digits as written, so a local and an international form of one number show both; an address without regard to case), and a
+ * `mailto:`'s `?subject=…` left out; '' for any other link.
  * @param {string} name the link's name as written @param {string} dest its destination
  */
 function reach(name, dest) {
   const m = /^\s*(tel|mailto):([^?]*)/i.exec(dest);
   if (!m) return '';
   const to = m[2].trim();
-  const held = m[1].toLowerCase() === 'tel' ? name.replace(/\D/g, '').includes(to.replace(/\D/g, '')) : name.toLowerCase().includes(to.toLowerCase());
+  const held = m[1].toLowerCase() === 'tel' ? name.replace(/\P{Nd}/gu, '').includes(to.replace(/\P{Nd}/gu, '')) : name.toLowerCase().includes(to.toLowerCase());
   return held ? '' : ` (${to})`;
 }
 
@@ -140,7 +147,8 @@ function addressWords(address) {
 /**
  * A model's Markdown as plain words, for what draws no link and no mark: the card annai shows Kokoro's words in, and the voice (loop.js remind). The drawer's
  * reading, as words, one line at a time (every rule of the inline reader is within a line): a link by its name, one named by its address (a bare one) by
- * addressWords; no marks of bold, italic, code, a heading or a bullet; a number as written (the block reader keeps none, a blank line or a nested bullet
+ * addressWords; no marks of bold, italic, code, a heading or a bullet (an italic that starts or ends at a digit is no italic to the parser, so it keeps its stars: the one place a
+ * mark reaches the voice); a number as written (the block reader keeps none, a blank line or a nested bullet
  * would restart a count); a fenced block as written; no blank line and no fence line. @param {string} src
  */
 export function plainWords(src) {
