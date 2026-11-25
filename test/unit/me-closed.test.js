@@ -20,9 +20,10 @@ test("an old turn owed in `me` and its watches, while a trip is open: the remind
   useClock(t);
   const k = await agentKit([[say('Unused.')]]);
   await owedInMe(k);
-  // Live mode says a reminder for a conversation that isn't open, then writes its wake there (live.js #deliver).
+  // Live mode says a reminder for a conversation that isn't open, then writes its wake there, carrying none (live.js #deliver): a wake written into a
+  // conversation that isn't open shows the reminders it carries itself (#keepFor), so carrying them too would show them twice.
   await k.agent.remind(watchWake.fallbacks, ME);
-  await k.agent.wake({ ...watchWake, scope: ME });
+  await k.agent.wake({ kind: watchWake.kind, text: watchWake.text, scope: ME });
   await idleAtOnce(k);
   assert.equal(k.requests.length, 0);
   assert.deepEqual((await eventsIn(k, ME, ['reminder'])).map((e) => e.data.text), ['Call the Hotel Aurora Test.']);
