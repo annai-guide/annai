@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { readingOrder } from '../../src/core/languages.js';
 import { editionsOf, articlesOf, wikiSaid, merged, articleUrl, pageUrl, siteOf, sitelinksUrl, titlesOf, summariesUrl, ARTICLES } from '../../src/core/wiki.js';
 import { nominatimLanguages } from '../../src/core/nominatim.js';
-import { parseInline } from '../../src/ui/markdown.js';
+import { parseInline } from '../../src/core/markdown.js';
 import { ADDRESS_ENDS } from '../../src/core/address-ends.js';
 
 /** Wikipedia's answers near Kiyomizu-dera within 1 km, as they came on 2026-11-19 (nearby's query; text under CC BY-SA 4.0). @param {string} e */
@@ -140,7 +140,7 @@ test("a Wikimedia page's address keeps its title as written, encoding only what 
   assert.equal(pageUrl('en.wikivoyage.org', 'Big Sur'), 'https://en.wikivoyage.org/wiki/Big_Sur');
   assert.equal(pageUrl('en.wikivoyage.org', 'Zürich'), 'https://en.wikivoyage.org/wiki/Zürich');
   assert.equal(articleUrl('de', 'Zürich (Begriffsklärung)'), pageUrl('de.wikipedia.org', 'Zürich (Begriffsklärung)'));
-  // A bracket is encoded, as it always was: an unpaired one ends a link in chat (src/ui/markdown.js, which keeps a pair inside an address it didn't write).
+  // A bracket is encoded, as it always was: an unpaired one ends a link in chat (src/core/markdown.js, which keeps a pair inside an address it didn't write).
   assert.equal(articleUrl('ja', '正法寺 (京都市東山区)'), 'https://ja.wikipedia.org/wiki/正法寺_%28京都市東山区%29');
   assert.equal(articleUrl('en', 'Nepenthe (restaurant)'), 'https://en.wikipedia.org/wiki/Nepenthe_%28restaurant%29');
   assert.equal(articleUrl('en', "Where Is the Friend's House?"), "https://en.wikipedia.org/wiki/Where_Is_the_Friend's_House%3F");

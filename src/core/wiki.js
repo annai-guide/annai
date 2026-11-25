@@ -207,7 +207,7 @@ const hex = (/** @type {string} */ c) => `%${c.charCodeAt(0).toString(16).toUppe
 const ENDS = new RegExp(`[${ADDRESS_ENDS}]`, 'g');
 /**
  * A Wikipedia or Wikivoyage page's address, its title as written (as %XX a model reads 9 characters for one). Encoded: what a browser would read as another
- * part of it (`%`, `?`, `#`, `\`), and what chat's bare links (src/ui/markdown.js) would take for the end of the address or leave out of it: the brackets (an
+ * part of it (`%`, `?`, `#`, `\`), and what chat's bare links (src/core/markdown.js) would take for the end of the address or leave out of it: the brackets (an
  * unpaired one ends a link; kept encoded, as before), a last `.,;:!'"` and any of ADDRESS_ENDS, the last as UTF-8 bytes (`%E3%80%82`; `hex` is for ASCII).
  * @param {string} host @param {string} title
  */
