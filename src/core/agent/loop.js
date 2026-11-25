@@ -649,7 +649,7 @@ export class Agent {
   /**
    * What photos sent now must fit: the stricter of the request settings and the main models' limits (spec §4.8, §9.2), and, when a model
    * this half's turn may call sees no photos, of every reader role's model that sees them (reading.js readerRoles), as any of those may be
-   * sent the photo, or a PDF's pages, as made here for that model. Not their counts: a reader's is its own (reading.js), a turn's #mainImages'.
+   * sent the photo, or a PDF's pages, as made here for that model. Each as its record states it (the description's, what a refusal taught).
    */
   async #limits() {
     const cfg = await this.llm.config();
@@ -658,8 +658,7 @@ export class Agent {
     const sees = (/** @type {string} */ id) => Boolean(cfg.models[id] && modelOf(cfg.models[id]).input?.includes('image'));
     if (![...chatCandidates(cfg, role), ...(role === 'main' ? [] : chatCandidates(cfg, 'main'))].every(sees)) {
       for (const id of readerRoles(cfg, this.#half.name).flatMap((r) => chatCandidates(cfg, r)).filter(sees)) {
-        const { maxCount: _, ...reader } = modelOf(cfg.models[id]).images ?? {};
-        images = stricter(images, reader);
+        images = stricter(images, modelOf(cfg.models[id]).images ?? {});
       }
     }
     return requestLimits(photoSettings(await readAppSettings(this.ws)).request, images);
@@ -677,7 +676,8 @@ export class Agent {
   /**
    * A PDF's page picture as a request sends it (spec §7.2): as drawn within the limits a photo's copy has (#limits), else a copy under
    * them by the same encoder, so its 1600 px stay unless its bytes need fewer. A copy this browser can't make (a phone out of canvas
-   * memory) leaves the page as drawn: larger, still read. @param {import('../pdf-pages.js').PageImage} page
+   * memory) leaves the page as drawn: larger, and the plugin's JPEG, so read by a model that takes that and refused by one that doesn't
+   * (the next reader is asked). @param {import('../pdf-pages.js').PageImage} page
    */
   async #pageCopy(page) {
     const limits = await this.#limits();
@@ -2995,6 +2995,47 @@ export class Agent {
   }
 
   /**
+   * What a model's refusal of a photo teaches (spec §4.8, §9.9), saved on its record: the limit its words state, as the rules read them or,
+   * with `ask`, as the utility model reads one they don't. The one learning step of a turn's repair (#repair) and of a reader's call
+   * (#readerRefused). `images`: what the record now holds, when the refusal taught it something; `unmade`: formats it takes only, none of
+   * which this browser can make (nothing is saved).
+   * @param {ProviderError} err @param {any} rec the model's record @param {boolean} ask
+   * @returns {Promise<{ learned: import('./refusals.js').Learned | null, images?: import('./refusals.js').Learned, unmade?: string[] }>}
+   */
+  async #learn(err, rec, ask) {
+    const before = modelOf(rec).images ?? {};
+    let learned = readRefusal(err.message) ?? (ask ? await this.#askLimits(err.message) : null);
+    // A refusal that states the size annai already keeps: the provider measures photos another way
+    // (as encoded text, a third larger), so a quarter less, once.
+    if (learned?.maxBytes && before.maxBytes && !tighter(before, learned)) {
+      const less = Math.floor((learned.maxBytes * 3) / 4);
+      if (less < before.maxBytes) learned = { ...learned, maxBytes: less };
+    }
+    if (!learned || !tighter(before, learned)) return { learned };
+    const images = stricter(before, learned);
+    const canMake = this.codec?.canMake?.bind(this.codec);
+    if (images.formats?.length && canMake && !(await Promise.all(images.formats.map((x) => canMake(x)))).some(Boolean)) return { learned, unmade: images.formats };
+    // A model removed meanwhile needs no limits: nothing is saved, and nothing is made again for it.
+    await updateModel(this.ws, rec.id, (now) => ({ ...now, user: { ...(now.user ?? {}), images } })).catch((/** @type {unknown} */ e) => {
+      if (!(e instanceof NotFoundError)) throw e;
+    });
+    return { learned, images };
+  }
+
+  /**
+   * A reader's call refused for a photo (reading.js passes this as the call's repairImages): the limit the provider's words state is saved on
+   * the reader's record, so the next copy is made for it (#limits). No retry and no swapped copy (a reader's request is no part of the
+   * conversation's log), and no model reads a refusal the rules can't: a reader may be Utility itself, and the reading is a side job. Null,
+   * as repairImages says there is no fix: the next reader is asked.
+   * @param {ProviderError} err @param {string} modelId
+   */
+  async #readerRefused(err, modelId) {
+    const rec = (await this.llm.config()).models[modelId];
+    if (rec) await this.#learn(err, rec, false);
+    return null;
+  }
+
+  /**
    * Fixes a refused photo (spec §4.8, §9.9): learns the limit, makes new copies from the stored photos, and records the swap.
    * Too many photos go as stubs instead. Null when it can't: a card says why.
    * @param {ProviderError} err @param {string} modelId @param {import('../llm/contract.js').Request} request @param {string} wakeId
@@ -3003,25 +3044,12 @@ export class Agent {
     const cfg = await this.llm.config();
     const rec = cfg.models[modelId];
     if (!rec || !this.#photos || !this.codec) return this.#cantSend(refusedText(null), wakeId);
-    const before = modelOf(rec).images ?? {};
-    let learned = readRefusal(err.message) ?? (await this.#askLimits(err.message));
-    // A refusal that states the size annai already keeps: the provider measures photos another way
-    // (as encoded text, a third larger), so a quarter less, once.
-    if (learned?.maxBytes && before.maxBytes && !tighter(before, learned)) {
-      const less = Math.floor((learned.maxBytes * 3) / 4);
-      if (less < before.maxBytes) learned = { ...learned, maxBytes: less };
-    }
-    if (!learned || !tighter(before, learned)) return this.#cantSend(refusedText(learned), wakeId);
-    const images = stricter(before, learned);
-    const canMake = this.codec.canMake?.bind(this.codec);
-    if (images.formats?.length && canMake && !(await Promise.all(images.formats.map((x) => canMake(x)))).some(Boolean)) {
-      const names = list(images.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or');
+    const { learned, images, unmade } = await this.#learn(err, rec, true);
+    if (unmade) {
+      const names = list(unmade.map((x) => x.replace('image/', '').toUpperCase()), 'or');
       return this.#cantSend(t`This model takes photos only as ${names}, which this browser can't make. Try another model in Settings → Models.`, wakeId);
     }
-    // A model removed meanwhile needs no limits: nothing is saved, and nothing is made again for it.
-    await updateModel(this.ws, rec.id, (now) => ({ ...now, user: { ...(now.user ?? {}), images } })).catch((/** @type {unknown} */ e) => {
-      if (!(e instanceof NotFoundError)) throw e;
-    });
+    if (!learned || !images) return this.#cantSend(refusedText(learned), wakeId);
     // Too many photos: the oldest go as stubs, and no photo is made again.
     if (learned.maxCount && !learned.maxBytes && !learned.maxEdge && !learned.formats?.length) {
       return { ...request, messages: limitMedia(request.messages, images.maxCount, request.photosFrom) };
@@ -3334,6 +3362,7 @@ export class Agent {
           const r = await readFile({ kind, mediaType: m.mediaType, data, ...(m.name ? { name: m.name } : {}), ...(m.path ? { path: m.path } : {}) }, model ?? {}, {
             llm: this.llm, half: this.#half.name, pages: kind === 'pdf' ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope,
             secondMs: this.secondMs, explain: (e, role) => this.#explain(e, role), store: this.store, shared: this.#shared, copy: (p) => this.#pageCopy(p),
+            learn: (e, id) => this.#readerRefused(e, id),
           });
           return (key ? await this.#keep(scope, key, kind, r, wakeId) : null) ?? r;
         })();
@@ -3376,6 +3405,7 @@ export class Agent {
           const fresh = await readFile({ kind: pdf ? 'pdf' : 'image', mediaType: part.mediaType, data: bytes ? toBase64(bytes) : '', ...(pdf && part.name ? { name: part.name } : {}), ...(!pdf && part.path ? { path: part.path } : {}) }, model, {
             llm: this.llm, half: this.#half.name, pages: pdf ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope, secondMs: this.secondMs,
             explain: (e, role) => this.#explain(e, role), store: this.store, shared: this.#shared, copy: (p) => this.#pageCopy(p),
+            learn: (e, id) => this.#readerRefused(e, id),
           });
           return (key ? await this.#keep(this.scope, key, pdf ? 'pdf' : 'image', fresh, wakeId) : null) ?? fresh;
         })();
