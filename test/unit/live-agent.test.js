@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until } from './agent-kit.js';
+import { agentKit, until, idleAtOnce } from './agent-kit.js';
 import { fakeSensors, at, iso, off, LA, NEPENTHE } from './live-kit.js';
 import { Live } from '../../src/core/live/live.js';
 import { ManualClock } from '../../src/core/live/clock.js';
@@ -33,7 +33,7 @@ async function liveAgent(scripts, o = {}) {
     do {
       before = k.requests.length;
       await live.settled();
-      await k.agent.idle();
+      await idleAtOnce(k);
       await live.settled();
     } while (k.requests.length !== before);
   };
@@ -66,11 +66,11 @@ test('a watch fires and Shiori only sleeps: the reminder is still owed, so annai
 test("a cue for her (a place, the road), not a reminder: when she lets it pass in silence, annai shows nothing; when no model answers, its fallback", async () => {
   const k = await liveAgent([[{ toolCalls: [sleep] }]]);
   await k.agent.wake({ kind: 'trigger', text: 'Your watch w-road (activity) fired: moving fast.', fallbacks: [{ watch: 'w-road', text: 'On the road again.', cue: true }] });
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(await k.events(['reminder']), []);
   const down = await liveAgent([[{ error: 'credit', status: 402 }]]);
   await down.agent.wake({ kind: 'trigger', text: 'Your watch w-road (activity) fired: moving fast.', fallbacks: [{ watch: 'w-road', text: 'On the road again.', cue: true }] });
-  await down.agent.idle();
+  await idleAtOnce(down);
   assert.deepEqual((await down.events(['reminder'])).map((e) => e.data.text), ['On the road again.']);
 });
 
@@ -198,7 +198,7 @@ test('thousands of location points never reach her context, and housekeeping doe
   for (let i = 1; i <= 5; i++) {
     if (i === 5) for (let j = 0; j < 2000; j++) await logEvent(k.store, k.trip, { type: 'location', data: { lat: 36 + j / 1e5, lng: -121.9, accuracy: 8, speed: 20 } });
     k.agent.send(`Message ${i}`);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   const loaded = await Transcript.load(k.store, k.trip);
   assert.deepEqual(loaded.messages, k.agent.transcript.messages);
@@ -250,7 +250,7 @@ test('a reminder annai says while the conversation is still being opened (as ann
   await reminding;
   assert.ok(reminding);
   k.agent.send('Hello');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.ok(JSON.stringify(k.requests[0].messages).includes('Leave for the airport now.'));
   assert.deepEqual((await k.events(['reminder'])).length, 1);
 });
@@ -274,7 +274,7 @@ test("a reminder written while its conversation is being opened, before its log 
   assert.ok(r.seq <= k.agent.transcript.through, 'the reading had it');
   assert.deepEqual(told.map((e) => [e.scope, e.seq, e.data.text]), [[k.trip, r.seq, 'Leave for the airport now.']]);
   k.agent.send('Hello');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(JSON.stringify(k.requests[0].messages).split('Leave for the airport now.').length, 2, 'Shiori is given it once');
 });
 
@@ -304,7 +304,7 @@ test("a reminder written while its conversation is being opened is told to the s
   // Its seq is above Kyoto's last, so only the scope keeps it out of Kyoto's transcript and so out of what Shiori is given there.
   assert.ok(!JSON.stringify(k.agent.transcript.messages).includes('Leave for the airport now.'), "the left trip's reminder is not in Kyoto's transcript");
   k.agent.send('Hello');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.ok(!JSON.stringify(k.requests[0].messages).includes('Leave for the airport now.'), "nor in Kyoto's first request");
 });
 
@@ -347,7 +347,7 @@ test("a reminder written while the trip that is open is being opened again is in
   await reminding();
   assert.ok(reminding(), 'written in the opening window, after the log was listed');
   k.agent.send('Hello');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(JSON.stringify(k.requests[0].messages).split('Leave for the airport now.').length, 2, 'Shiori is given it once');
   assert.equal((await k.events(['reminder'])).length, 1, 'stored once');
   assert.deepEqual(told.map((e) => e.data.text), ['Leave for the airport now.'], 'told to the screens once');
@@ -364,7 +364,7 @@ test("a reminder written while the trip that is open is being opened again is in
   assert.ok(reminding(), 'written in the opening window, after the log was listed');
   assert.equal(JSON.stringify(k.agent.transcript.messages).split('Leave for the airport now.').length, 2, 'in the transcript still open, once');
   k.agent.send('Hello');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(JSON.stringify(k.requests[0].messages).split('Leave for the airport now.').length, 2, 'Shiori is given it once');
   assert.equal((await k.events(['reminder'])).length, 1, 'stored once');
   assert.deepEqual(told.map((e) => e.data.text), ['Leave for the airport now.'], 'told to the screens once');

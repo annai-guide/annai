@@ -10,7 +10,7 @@ import { waitingFiles, moveFile, moveWaitingToChat } from '../../src/core/waitin
 import { undoEverywhere } from '../../src/core/handover.js';
 import { record } from '../../src/core/agent/log.js';
 import { exportArchive, peekArchive, importArchive, PRESETS } from '../../src/core/archive.js';
-import { agentKit } from './agent-kit.js';
+import { agentKit, idleAtOnce } from './agent-kit.js';
 import { useClock } from './clock.js';
 import { utf8 } from '../../src/core/bytes.js';
 
@@ -159,7 +159,7 @@ test('the waiting files move into a new chat, "Waiting with Shiori", named by an
   assert.deepEqual(await readNames(k.ws, id), { '/files/flight.pdf': 'ANNAI AIR flight · Nov 20' });
   assert.equal(k.requests.length, 0, 'not open: no turn yet');
   await k.agent.open(id);
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, 1);
   const asked = JSON.stringify(k.requests[0].messages);
   // One text for every source (an older annai's waiting files, an old backup's, an Undo's): she says what is there and asks; nothing is filed until the user says.

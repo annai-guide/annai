@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { agentKit } from './agent-kit.js';
+import { agentKit, idleAtOnce } from './agent-kit.js';
 import { Live } from '../../src/core/live/live.js';
 import { ManualClock } from '../../src/core/live/clock.js';
 import { trackFrom, Simulation } from '../../src/core/live/simulate.js';
@@ -103,7 +103,7 @@ export async function driveBigSur({ utility } = {}) {
     do {
       before = k.requests.length;
       await live.settled();
-      await k.agent.idle();
+      await idleAtOnce(k);
       await live.settled();
     } while (k.requests.length !== before);
   };

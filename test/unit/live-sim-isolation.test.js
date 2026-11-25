@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until } from './agent-kit.js';
+import { agentKit, until, idleAtOnce } from './agent-kit.js';
 import { RULES, DRIVE, places } from './big-sur-kit.js';
 import { LA, MONTEREY, BIXBY, NEPENTHE, iso } from './live-kit.js';
 import { Live } from '../../src/core/live/live.js';
@@ -32,7 +32,7 @@ async function anApp({ live: on = false, base } = {}) {
   await live.start();
   const run = new SimRun({ store: k.store, ws: k.ws, registry: k.registry, agent: k.agent, live, ...(base ? { base } : {}) });
   /** Moves the real clock, letting live mode and Shiori do what comes due. @param {number} t */
-  const to = (t) => real.advanceTo(t, async () => { await live.settled(); await k.agent.idle(); await live.settled(); });
+  const to = (t) => real.advanceTo(t, async () => { await live.settled(); await idleAtOnce(k); await live.settled(); });
   /** @param {string} scope @param {string[]} types */
   const events = (scope, types) => k.store.tx(['events'], 'readonly', (t) => t.listEvents(scope, { types }));
   return { k, live, run, real, to, events };
@@ -68,14 +68,14 @@ test('after a simulation dated in the future, the hourly wake budget counts real
   k.notices.length = 0;
   const n = (await k.events(['wake'])).length;
   await k.agent.wake({ kind: 'trigger', text: 'a real watch fired, just after the simulation' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await k.events(['wake'])).length, n);
   await until(() => k.notices.length > 0); // the card comes a moment after
   assert.deepEqual(k.notices.map((x) => x.title), ['Shiori skipped a wake']);
   // An hour later by the real clock (not on Nov 27, the simulation's date), she wakes again.
   await real.advanceTo(TODAY + 61 * 60_000);
   await k.agent.wake({ kind: 'trigger', text: 'a real watch fired, an hour later' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await k.events(['wake'])).length, n + 1);
 });
 
@@ -86,9 +86,9 @@ test("during a simulation, the day's spend counts the real day's calls, and entr
   await updateAppSettings(k.ws, { shiori: { budgets: { spendPerDay: 0.00001 } } });
   const restore = k.agent.useClock({ now: () => SIM, online: () => true, timeZone: () => LA, scope: k.trip });
   k.agent.send('First');
-  await k.agent.idle();
+  await idleAtOnce(k);
   k.agent.send('Second');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.ok(k.notices.some((n) => n.title === "Shiori stopped: today's budget is spent"), k.notices.map((n) => n.title).join(', '));
   // The simulation's own conversation is in its time; another one's entries are in the real world's.
   const other = await createTrip(k.ws, { title: 'Kyoto in spring' });

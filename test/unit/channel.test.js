@@ -1,7 +1,7 @@
 // K1 Task 5: the channel between the halves (the Koe and Kokoro design, "The channel between the halves").
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until } from './agent-kit.js';
+import { agentKit, until, idleAtOnce } from './agent-kit.js';
 import { record, TALK_TAG } from '../../src/core/agent/log.js';
 import { resolveEvent } from '../../src/core/agent/transcript.js';
 import { Channel, channelTool } from '../../src/core/agent/halves.js';
@@ -48,7 +48,7 @@ test('tell_kokoro returns "sent" in the same step, before Kokoro has done anythi
   // return later than it was called. It returns at the same millisecond, and Kokoro has not so much as sent its request.
   assert.equal(Date.now(), before, 'it never waits: no time passed');
   assert.equal(k.requests.length, 0, 'it never waits for Kokoro: when it returns, Kokoro has not so much as sent its request');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, 1, 'then Kokoro works on it');
   assert.equal(channelTool('kokoro', k.channel).name, 'tell_koe');
   assert.match(String(/** @type {any} */ (await tool.run({ text: '  ' }, /** @type {any} */ ({ wake: 'k1' }))).content), /needs the text/);
@@ -63,12 +63,12 @@ test('append to a busy Kokoro arrives before its next model call; to an idle one
   k.agent.send('Plan the afternoon');
   await until(() => k.requests.length === 1);
   await k.channel.send('koe', 'They want to see the sunset too.', 'append', 'tool', 'k1');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, 2, 'the first call was not cut');
   assert.ok(lastUser(k.requests[1]).includes('[Koe notes] "They want to see the sunset too."'), JSON.stringify(lastUser(k.requests[1])));
   // Idle: a note starts a turn.
   await k.channel.send('koe', 'Is the bridge open?', 'append', 'tool', 'k2');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, 3);
   assert.match(k.requests[2].tail, /woke for: Koe asks: "Is the bridge open\?"/);
   assert.deepEqual(k.order.slice(0, 2), ['logged', 'delivered']);
@@ -89,7 +89,7 @@ test('immediate cuts the current call and the turn continues with the note', asy
   assert.deepEqual(k.cutAt, [sentAt], 'the cut went out at the same millisecond');
   await until(() => k.requests.length === 2, 5000);
   assert.ok(Date.now() - sentAt < 1000, `${Date.now() - sentAt} ms of the clock passed before the second call: the cut call was not waited out`);
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(k.order, ['logged', 'delivered', 'cut']);
   assert.equal(k.requests.length, 2);
   assert.ok(lastUser(k.requests[1]).includes('[Koe notes] "Not lunch: they mean dinner."'));
@@ -100,7 +100,7 @@ test('every note is a note event in the open conversation, with from, mode and w
   const k = await kokoroKit([{ toolCalls: [{ name: 'sleep', input: {} }] }]);
   await channelTool('koe', k.channel).run({ text: 'Is it far?', mode: 'immediate' }, /** @type {any} */ ({ wake: 'k7' }));
   await k.channel.send('kokoro', 'Open till 10.', 'append', 'final-text', 'w3');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const notes = await k.events(['note']);
   assert.deepEqual(notes.map((e) => [e.data.from, e.data.mode, e.data.why, e.data.wake, e.data.text]), [
     ['koe', 'immediate', 'tool', 'k7', 'Is it far?'],

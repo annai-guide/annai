@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until } from './agent-kit.js';
+import { agentKit, until, idleAtOnce } from './agent-kit.js';
 import { fakeSensors, memoryKeep, at, LA, MONTEREY, off } from './live-kit.js';
 import { Live, FIX_WAIT_MS } from '../../src/core/live/live.js';
 import { ManualClock } from '../../src/core/live/clock.js';
@@ -369,7 +369,7 @@ test('the input the microphone is open on disappears: voice goes off at once, mi
   await tick();
   const traced = await k.store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(SYS_DEVICE, { types: ['voice.route'] }));
   assert.deepEqual(traced.at(-1).data.gone, ['Somebody\'s buds']);
-  await k.agent.idle();
+  await idleAtOnce(k);
 });
 
 test('an input with an id and no name is named by what it is: the note says the microphone', async () => {

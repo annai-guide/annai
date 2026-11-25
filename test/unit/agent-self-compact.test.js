@@ -3,7 +3,7 @@
 // replies of Claude Opus reported them (numbers and field names only), but UNDER's: LONG's with a smaller cache read, to fall under 100,000.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until } from './agent-kit.js';
+import { agentKit, until, idleAtOnce } from './agent-kit.js';
 import { anthropicStandIn } from '../fakes/anthropic-binding.js';
 import { Agent } from '../../src/core/agent/loop.js';
 import { selfTools } from '../../src/core/agent/self-tools.js';
@@ -58,7 +58,7 @@ async function reload(k, trip = k.trip) {
 async function talk(agent, lines) {
   for (const l of lines) {
     agent.send(l);
-    await agent.idle();
+    await idleAtOnce({ agent: agent });
   }
 }
 
@@ -71,7 +71,7 @@ test('a cold return over 100,000 tokens, after a reload: the utility model summa
   jump(61 * MINUTE);
   const again = await reload(k);
   again.send('I am back');
-  await again.idle();
+  await idleAtOnce({ agent: again });
   const [c, ...more] = await k.events(['compaction']);
   assert.equal(c?.data.mode, 'cold');
   assert.equal(more.length, 0);
@@ -208,7 +208,7 @@ test('the warm timer firing late, after her cache ran out (the page was asleep):
   const before = k.requests.length;
   jump(61 * MINUTE); // the timer fires only now
   timers.at(-1)?.();
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, before, 'no model was asked: a warm summary would write the whole conversation to the cache again');
   assert.deepEqual(await k.events(['compaction']), []);
   await talk(k.agent, ['I am back']);
@@ -224,7 +224,7 @@ test('the warm timer in time (the cache still holds): her main model writes the 
   });
   await talk(k.agent, ['Question 0', 'Question 1', 'Question 2', 'Question 3', 'Question 4']);
   timers.at(-1)?.();
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual((await k.events(['compaction'])).map((e) => e.data.mode), ['warm']);
 });
 
@@ -237,7 +237,7 @@ test("a summary made in the session (the warm timer's) leaves no count of the ol
   });
   await talk(k.agent, ['Q0', 'Q1', 'Q2', 'Q3', 'Q4', 'Q5']);
   timers.at(-1)?.();
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual((await k.events(['compaction'])).map((e) => e.data.mode), ['warm']); // five exchanges stay
   jump(61 * MINUTE);
   await talk(k.agent, ['Back']); // no reload: the same Agent, whose count of the last prompt was 111,030 before the summary
@@ -257,7 +257,7 @@ test('a tap on Shiori during the cold summary that starts a turn cuts it at once
   k.agent.send('I am back');
   await until(() => k.requests.some(isUtility));
   k.agent.interrupt();
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.ok(performance.now() - real < 5_000, 'the summary was cut, not waited for');
   assert.deepEqual(await k.events(['compaction']), []);
   assert.equal(k.notices.some((n) => /tidy up/.test(n.title ?? '')), false, 'a tap is no failure: no card');
@@ -333,7 +333,7 @@ test("opening another conversation as the dock turns to tidying cuts the summary
   });
   const real = performance.now();
   k.agent.send('I am back');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.ok(performance.now() - real < 5_000, 'the open came at once');
   assert.deepEqual(await k.events(['compaction']), []);
 });
@@ -353,7 +353,7 @@ test("a Stop as the dock turns to tidying cuts the warm summary too, the timer's
   const real = performance.now();
   timers.at(-1)?.();
   await new Promise((r) => setTimeout(r, 50));
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(stopped, true);
   assert.ok(performance.now() - real < 5_000, 'the summary was cut, not waited for');
   assert.deepEqual(await k.events(['compaction']), []);
@@ -366,7 +366,7 @@ test("leaving the page during the cold summary that starts a turn ends the turn:
   k.agent.send('I am back');
   await until(() => k.requests.some(isUtility));
   k.agent.leaving();
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.ok(performance.now() - real < 5_000, 'the summary was cut, not waited for');
   assert.deepEqual(await k.events(['compaction']), []);
   assert.equal(k.requests.some((r) => !isUtility(r) && /I am back/.test(words(r))), false, 'no call of her main model');
@@ -385,9 +385,9 @@ test("a turn that made housekeeping due, ending after her cache ran out: no summ
   });
   const asked = k.requests.length + 1; // her answer to the line
   k.agent.send('Question 4');
-  await k.agent.idle();
+  await idleAtOnce(k);
   await new Promise((r) => setTimeout(r, 100));
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(late, true);
   assert.equal(k.requests.length, asked, 'no summary as the turn ends: no model was asked but for her answer');
   assert.deepEqual(await k.events(['compaction']), []);
@@ -450,7 +450,7 @@ test("a reply that ran the provider's own search gives no prompt count: live, it
   jump(61 * MINUTE);
   const again = await reload(k);
   again.send('I am back');
-  await again.idle();
+  await idleAtOnce({ agent: again });
   assert.deepEqual(await k.events(['compaction']), [], 'from the log: no count, the request is small');
 });
 
@@ -634,7 +634,7 @@ test("Koe's tail has no to-do line; Kokoro's has it", async () => {
   const k = await agentKit([[{ toolCalls: [{ name: 'sleep', input: {} }] }]], { koe: { type: [say('Hi there.')] } });
   await k.ws.write(k.trip, '/todo.md', '- Reserve the ferry', { author: 'shiori' });
   k.agent.send('Hello');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const koe = k.sent['model-koe'] ?? [];
   assert.ok(koe.length > 0);
   assert.ok(koe.every((/** @type {any} */ r) => !r.tail.includes('to-do') && !r.tail.includes('Reserve the ferry')));

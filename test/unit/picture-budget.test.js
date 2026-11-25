@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit } from './agent-kit.js';
+import { agentKit, idleAtOnce } from './agent-kit.js';
 import { limitMedia } from '../../src/core/agent/refusals.js';
 import { Transcript, KOE_WINDOW, KOE_JUMP } from '../../src/core/agent/transcript.js';
 import { KOE_TAG } from '../../src/core/agent/log.js';
@@ -166,7 +166,7 @@ test("the trip's case through the agent: a photo of 1 MiB goes in its own turn a
   await k.ws.write(k.trip, '/files/menu.webp', new TextEncoder().encode('x'.repeat(1024 * 1024 - 100)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
   for (const [words, photos] of /** @type {[string, any[]][]} */ ([['What does it say?', [{ path: '/trip/files/menu.webp' }]], ['And the price?', []], ['Thanks', []]])) {
     k.agent.send(words, { photos });
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   // Her turns: the photo's (one request), the next (two: she lists first), the third (two: she reads the photo first).
   const [own, next1, next2, text, read] = k.requests;
@@ -197,7 +197,7 @@ test('the housekeeping measure weighs what is sent: an older photo left out make
   await k.ws.write(k.trip, '/files/b.webp', new TextEncoder().encode('x'.repeat(600_000)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
   for (const [words, photos] of /** @type {[string, any[]][]} */ ([['Look', [{ path: '/trip/files/a.webp' }]], ['Nice', []], ['And?', []], ['This one', [{ path: '/trip/files/b.webp' }]]])) {
     k.agent.send(words, { photos });
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   assert.equal(k.requests.length, 4);
   assert.deepEqual(await k.events(['compaction']), [], 'no summary was forced');
@@ -213,7 +213,7 @@ test("housekeeping in the middle of a turn drops the cache mark but not the turn
   for (const [name, byte] of [['a', 'x'], ['b', 'y'], ['c', 'z']]) await k.ws.write(k.trip, `/files/${name}.webp`, new TextEncoder().encode(byte.repeat(3000)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
   for (const [words, photos] of /** @type {[string, any[]][]} */ ([['one', []], ['two', [{ path: '/trip/files/a.webp' }]], ['three', [{ path: '/trip/files/b.webp' }]], ['four', [{ path: '/trip/files/c.webp' }]]])) {
     k.agent.send(words, { photos });
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   assert.equal((await k.events(['compaction'])).length, 1, 'the turn tidied up in its middle');
   const paths = (/** @type {any} */ r) => images(r).map((/** @type {any} */ p) => p.path);
@@ -232,12 +232,12 @@ test("after a summary between turns the next turn has its window: the previous t
   for (const [name, byte] of [['a', 'x'], ['c', 'y'], ['d', 'z']]) await k.ws.write(k.trip, `/files/${name}.webp`, new TextEncoder().encode(byte.repeat(3000)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
   for (const [words, photos] of /** @type {[string, any[]][]} */ ([['m0', []], ['m1', [{ path: '/trip/files/a.webp' }]], ['m2', []], ['m3', [{ path: '/trip/files/c.webp' }]], ['m4', [{ path: '/trip/files/d.webp' }]]])) {
     k.agent.send(words, { photos });
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   assert.equal(await k.agent.compact('cold'), true);
   for (const words of ['m1', 'm3', 'm4']) assert.ok(JSON.stringify(k.agent.transcript.messages).includes(words), `the turn of ${words} is in the part kept`);
   k.agent.send('m5');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const next = k.requests.at(-1);
   assert.deepEqual(images(next).map((/** @type {any} */ p) => p.path), ['/trip/files/d.webp']);
   assert.ok(holds(next.messages, stub('/trip/files/a.webp')) && holds(next.messages, stub('/trip/files/c.webp')));
@@ -248,7 +248,7 @@ test("a warm summary between turns carries the window of the turn it reads: the 
   for (const name of ['a', 'c']) await k.ws.write(k.trip, `/files/${name}.webp`, new TextEncoder().encode(name.repeat(3000)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
   for (const [words, photos] of /** @type {[string, any[]][]} */ ([['m0', []], ['m1', [{ path: '/trip/files/a.webp' }]], ['m2', []], ['m3', [{ path: '/trip/files/c.webp' }]]])) {
     k.agent.send(words, { photos });
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   assert.equal(await k.agent.compact('warm'), true);
   const asked = k.requests.at(-1);
@@ -262,7 +262,7 @@ test("what Shiori sees shows the request's stubs: the next turn's window of the 
   for (const name of ['a', 'c']) await k.ws.write(k.trip, `/files/${name}.webp`, new TextEncoder().encode(name.repeat(3000)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
   for (const [words, photos] of /** @type {[string, any[]][]} */ ([['m0', [{ path: '/trip/files/a.webp' }]], ['m1', []], ['m2', [{ path: '/trip/files/c.webp' }]]])) {
     k.agent.send(words, { photos });
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   // The next turn begins after m2's, and the one before it began at m2: c goes, a doesn't.
   const seen = await k.agent.sees();
@@ -301,7 +301,7 @@ test("Koe's own requests carry the window too: a chat Koe that sees photos is se
   const turns = ['m0', 'm1', 'm2', 'm3'];
   for (const [words, photos] of /** @type {[string, any[]][]} */ ([['m0', []], ['m1', [{ path: '/trip/files/a.webp' }]], ['m2', []], ['m3', []]])) {
     k.agent.send(words, { photos });
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   const koe = k.sent['model-koe'];
   const turnOf = (/** @type {any} */ r) => turns.findLastIndex((w) => JSON.stringify(r.messages).includes(`[typed] ${w}`));
@@ -399,7 +399,7 @@ test("the trip's case for a PDF, through the agent: a model that reads PDFs is s
   await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode(`%PDF-1.4 ${'b'.repeat(200_000)}`), { author: 'user', type: 'application/pdf' });
   for (const words of ['Read the booking', 'And the room?', 'Which room?']) {
     k.agent.send(words);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   const documents = (/** @type {any} */ r) => r.messages.flatMap((/** @type {any} */ m) => m.parts).filter((/** @type {any} */ p) => p.type === 'document');
   // Her turns: the read's (two requests), the next (one), the third (two: she reads it again first).
@@ -421,7 +421,7 @@ test("a web page's PDF, through the agent: two turns on, the stub says to call t
   k.registry.add('test', 'tool', { name: 'fetch_pdf', description: 'A PDF from a page.', input: { type: 'object' }, run: async () => ({ content: 'Source: https://example.org/t.pdf (fetched): a PDF.', document: { mediaType: 'application/pdf', data: toBase64(new TextEncoder().encode('%PDF-1.4 timetable')), name: 't.pdf' } }) });
   for (const words of ['Fetch the timetable', 'Hi', 'Thanks']) {
     k.agent.send(words);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   const last = k.requests.at(-1);
   assert.ok(holds(last.messages, "[a PDF from a tool's result, not sent again: read can't bring it back; call that tool again to see it]"));

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit } from './agent-kit.js';
+import { agentKit, idleAtOnce } from './agent-kit.js';
 import { syncPersonalities, keepMine, resetPersonality, undoTuning, PERSONALITY_MAX } from '../../src/core/agent/personalities.js';
 import { readAppSettings, updateAppSettings } from '../../src/core/settings.js';
 import { ME } from '../../src/core/scopes.js';
@@ -30,14 +30,14 @@ test('tune_personality: reviewed, applied at the next wake (never mid-conversati
   const k = await agentKit([[tuneOnly, sleep, sleep]], { utility: [review(true, 'Behaviour only.')] });
   await syncPersonalities({ ws: k.ws, presets: k.presets });
   k.agent.send('Please be shorter while I drive');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(await k.ws.readText(ME, '/personalities/shiori.md'), '# Shiori\nShorter while driving.\n');
   // The same wake goes on with the personality it started with.
   const main = k.requests.filter((r) => r.tools?.some((/** @type {any} */ t) => t.name === 'speak'));
   assert.equal(main.length, 2);
   assert.doesNotMatch(main[1].system, /Shorter while driving/);
   k.agent.send('Thanks');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.match(k.requests.filter((r) => r.tools?.some((/** @type {any} */ t) => t.name === 'speak')).at(-1).system, /Shorter while driving/);
   const card = (await k.events(['out.show'])).find((e) => e.data.tune);
   assert.equal(card.data.card.text, 'shorter answers while driving');
@@ -50,7 +50,7 @@ test('a change the review turns down is not made, and Shiori is told why', async
   const k = await agentKit([[tune('# Shiori\nThe user is vegetarian.\n', 'remember food'), sleep]], { utility: [review(false, 'A fact about the user belongs in memory.')] });
   await syncPersonalities({ ws: k.ws, presets: k.presets });
   k.agent.send('I am vegetarian');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(await k.ws.readText(ME, '/personalities/shiori.md'), k.presets.shiori);
   assert.equal((await k.events(['tool.result'])).find((e) => e.data.name === 'tune_personality').data.content, 'Not changed: A fact about the user belongs in memory.');
 });
@@ -60,7 +60,7 @@ test('"Ask me before Shiori changes her personality": a card asks; agreeing appl
   await syncPersonalities({ ws: k.ws, presets: k.presets });
   await updateAppSettings(k.ws, { shiori: { askBeforeTuning: true } });
   k.agent.send('Tell more stories');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(await k.ws.readText(ME, '/personalities/shiori.md'), k.presets.shiori);
   const ask = k.notices.find((n) => n.title === 'Shiori wants to adjust her personality');
   await ask.actions.find((/** @type {any} */ a) => a.label === 'Agree').run();
@@ -71,7 +71,7 @@ test('a personality that is too long is turned down without a review', async () 
   const k = await agentKit([[tune(`# Shiori\n${'x'.repeat(PERSONALITY_MAX)}`, 'everything'), sleep]]);
   await syncPersonalities({ ws: k.ws, presets: k.presets });
   k.agent.send('Go');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.match((await k.events(['tool.result'])).find((e) => e.data.name === 'tune_personality').data.content, /too long/);
   assert.deepEqual(Object.keys((await readAppSettings(k.ws)).personalities ?? {}).sort(), ['quiet', 'shiori', 'storyteller']);
 });
@@ -88,7 +88,7 @@ test('the review fails closed: no clear approval from its tool, no change', asyn
   const k = await agentKit([[tune('# Shiori\nChanged.\n', 'change'), sleep]], { utility: [{ text: 'Approve? No, this adds facts about the user.' }] });
   await syncPersonalities({ ws: k.ws, presets: k.presets });
   k.agent.send('Go');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(await k.ws.readText(ME, '/personalities/shiori.md'), k.presets.shiori);
   assert.match((await k.events(['tool.result'])).find((e) => e.data.name === 'tune_personality').data.content, /^Not changed: the review gave no clear answer/);
 });
@@ -98,7 +98,7 @@ test('a review model that refuses the forced tool (it thinks) is asked again wit
     { utility: [{ error: 'bad-request', status: 400, message: 'tool_choice that forces tool use is not supported with thinking.' }, review(true, 'Fine.')] });
   await syncPersonalities({ ws: k.ws, presets: k.presets });
   k.agent.send('Tell more stories');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await k.events(['tool.result'])).find((e) => e.data.name === 'tune_personality').data.content, 'Approved. It applies at your next wake.');
   const reviews = k.requests.filter((r) => r.tools?.some((/** @type {any} */ t) => t.name === 'review'));
   assert.deepEqual(reviews.map((r) => r.toolChoice), ['review', undefined]);
@@ -111,7 +111,7 @@ test("a review that couldn't run tells Shiori only annai's words, never a provid
   await k.store.tx(['secrets'], 'readwrite', (t) => t.putSecret('llm:ep-u', KEY));
   await syncPersonalities({ ws: k.ws, presets: k.presets });
   k.agent.send('Go');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(await k.ws.readText(ME, '/personalities/shiori.md'), k.presets.shiori);
   assert.equal((await k.events(['tool.result'])).find((e) => e.data.name === 'tune_personality').data.content, "Not changed: the review couldn't run (Shiori can't reach her model.). Try again later.");
 });

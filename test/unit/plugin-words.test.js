@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit } from './agent-kit.js';
+import { agentKit, idleAtOnce } from './agent-kit.js';
 import { hostKit, codePlugin, builtinUrl, storedModules } from './package-kit.js';
 import { useClock } from './clock.js';
 import { keysUnread } from '../fakes/store-memory.js';
@@ -41,7 +41,7 @@ for (const unread of [false, true]) {
     await k.host.start('trails');
     const back = unread ? keysUnread(k.store) : () => {};
     k.agent.send('Which trails are open?');
-    await k.agent.idle();
+    await idleAtOnce(k);
     back();
     const kept = Object.fromEntries((await k.events(['tool.result'])).map((e) => [e.data.name, e.data.content]));
     const read = Object.fromEntries(k.requests[1].messages.at(-1).parts.filter((/** @type {any} */ p) => p.type === 'tool_result').map((/** @type {any} */ p, /** @type {number} */ i) => [['trail_list', 'read'][i], p.content]));
@@ -71,7 +71,7 @@ test("a third-party plugin's wake and log entry hold «key» where its words hel
   assert.deepEqual(await shown(await append(theirs, { seen })), { why: `403 for ${BLANKED}`, answer: `The service said: ${BLANKED}`, blob: `raw answer ${KEY}`, seen: { 'https://api.trails.example/v1/trails?key=«key»': 'yesterday' } });
   assert.deepEqual(await shown(await append(own, { seen })), { why: `403 for ${linked()}`, answer: `The service said: ${linked()}`, blob: `raw answer ${KEY}`, seen });
   await theirs.wake(`The Pine Ridge trail closed (${linked()}).`);
-  await k.agent.idle();
+  await idleAtOnce(k);
   const wakes = () => k.events(['wake']);
   assert.equal((await wakes())[0].data.reasons[0].text, `The Pine Ridge trail closed (${BLANKED}).`);
   assert.ok(JSON.stringify(k.requests[0].messages).includes(`The Pine Ridge trail closed (${BLANKED}).`));
@@ -79,14 +79,14 @@ test("a third-party plugin's wake and log entry hold «key» where its words hel
   try {
     assert.deepEqual(await shown(await append(theirs)), { why: NOTE, answer: NOTE, blob: `raw answer ${KEY}` });
     await theirs.wake(`The Ewoldsen trail closed (${linked()}).`);
-    await k.agent.idle();
+    await idleAtOnce(k);
   } finally {
     back();
   }
   assert.equal((await wakes())[1].data.reasons[0].text, NOTE);
   assert.equal(holdsKey(k.requests), false, 'no form of the key reached her');
   own.wake(`The Ewoldsen trail opened (${linked()}).`);
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await wakes())[2].data.reasons[0].text, `The Ewoldsen trail opened (${linked()}).`);
 });
 

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until, hear } from './agent-kit.js';
+import { agentKit, until, hear, idleAtOnce } from './agent-kit.js';
 import { clip, quiet, cat } from './voice-kit.js';
 import { useClock } from './clock.js';
 import { createTrip } from '../../src/core/scopes.js';
@@ -24,7 +24,7 @@ test('speak plays as the reply streams in, sentence by sentence, then listens; t
   await until(() => k.agent.state.name === 'listening');
   assert.ok(playedBeforeTheCall >= 1, 'the first sentence played before the reply was complete');
   await hear(k, 'first-one');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(plays(k), ['There is a taco stand ahead.', 'Want to stop?', 'Great.']);
   const [speak] = await results(k, 'speak');
   assert.equal(speak.data.content, 'Said aloud. The user said:');
@@ -43,7 +43,7 @@ test('sleep in the same reply: she speaks and does not listen; the microphone ne
   useClock(t);
   const k = await agentKit([[say('Noted.')]], { voice: {} });
   k.agent.send('Dinner is at 6:30');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(plays(k), ['Noted.']);
   assert.equal(k.platform.opens, 0);
   assert.equal((await results(k, 'speak'))[0].data.content, 'Said aloud.');
@@ -55,7 +55,7 @@ test('heard nothing: speak stops listening after the silence limit (spec §7.1)'
   useClock(t);
   const k = await agentKit([[{ toolCalls: [{ name: 'speak', input: { text: 'Anything else?' } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]], { voice: {} });
   k.agent.send('Thanks');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await results(k, 'speak'))[0].data.content, 'Said aloud. Heard nothing (20 seconds).');
   assert.deepEqual(k.platform.log.filter((/** @type {string} */ l) => l.startsWith('mic')), ['mic open', 'mic close']);
 });
@@ -64,7 +64,7 @@ test('voice off: speak shows a bubble and listens to nothing; the now block says
   useClock(t);
   const off = await agentKit([[say('Here.')]], { voice: { mode: 'off' } });
   off.agent.send('Hi');
-  await off.agent.idle();
+  await idleAtOnce(off);
   assert.deepEqual(plays(off), []);
   assert.equal((await results(off, 'speak'))[0].data.content, 'shown');
   assert.match(off.requests[0].tail, /voice: off/);
@@ -74,7 +74,7 @@ test('voice off: speak shows a bubble and listens to nothing; the now block says
   const call = on.llm.call;
   on.llm.call = (/** @type {any} */ c) => { calls.push(c); return call(c); };
   on.agent.send('Hi');
-  await on.agent.idle();
+  await idleAtOnce(on);
   assert.match(on.requests[0].tail, /voice: on/);
   assert.equal(calls[0].firstOutputMs, 15_000);
   assert.equal(typeof calls[0].speech, 'function');
@@ -88,7 +88,7 @@ test('tapping her while she speaks stops her, keeps where, and opens the microph
   assert.equal(k.agent.tap(), 'cut');
   await until(() => k.agent.state.name === 'listening');
   await hear(k, 'where-lunch');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await results(k, 'speak'))[0].data.content, 'The user stopped you after: "Bixby Bridge is…". The user said:');
   assert.ok(!plays(k).includes('It opened in 1932.'));
   assert.equal(k.platform.log.filter((/** @type {string} */ l) => l === 'mic open').length, 1, 'one listening window, from the tap');
@@ -101,7 +101,7 @@ test('a spoken question answered only in plain text is asked again too, as a typ
   assert.equal(k.agent.tap(), 'listening');
   await until(() => k.agent.state.name === 'listening');
   await hear(k, 'where-lunch');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, 2);
   assert.match(k.requests[1].tail, /The user hasn't been answered/);
   assert.deepEqual((await k.events(['out.speak'])).map((e) => e.data.text), ['Nepenthe, on the cliffs.']);
@@ -116,7 +116,7 @@ test('a heard segment, once it has come, is not still "speaking": the turn it wa
   await until(() => k.requests.length === 1, 10_000);
   const heard = (await k.events(['heard']))[0];
   assert.ok(Date.now() - heard.ts < 3000, `${Date.now() - heard.ts} ms after the words came (the cap is 20 s)`);
-  await k.agent.idle();
+  await idleAtOnce(k);
 });
 
 test('two speaks in one streamed reply: the second plays after the first has listened, never over the open microphone (spec §10.4)', async (t) => {
@@ -126,7 +126,7 @@ test('two speaks in one streamed reply: the second plays after the first has lis
     { toolCalls: [{ name: 'sleep', input: {} }] },
   ]], { voice: { playMs: 40, speechIn: ['m-hear'] } });
   k.agent.send('Hi');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(k.platform.log, ['play m-say:First thing.', 'mic open', 'mic close', 'play m-say:Second thing.', 'mic open', 'mic close']);
 });
 
@@ -141,7 +141,7 @@ test('once she is stopped, a later speak in the same reply is not said and does 
   k.agent.tap();
   await until(() => k.agent.state.name === 'listening');
   await hear(k, 'where-lunch');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const [a, b] = await results(k, 'speak');
   assert.match(a.data.content, /^The user stopped you after: "Bixby Bridge is…"\. The user said:/);
   assert.equal(b.data.content, 'Not said aloud: the user stopped you. It was shown on screen.');
@@ -157,7 +157,7 @@ test('tapping her while she sleeps starts listening; the first thing said wakes 
   assert.equal(k.agent.tap(), 'listening');
   await until(() => k.agent.state.name === 'listening');
   await hear(k, 'gas-station');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(k.requests[0].messages.at(-1).parts.slice(0, 2), [{ type: 'text', text: '[heard]' }, { type: 'text', text: 'is there coffee nearby' }]);
   assert.match(k.requests[0].tail, /woke for: the user spoke/);
   assert.deepEqual(plays(k), ['Yes, there is a café ahead.']);
@@ -194,7 +194,7 @@ test('while she thinks, the microphone keeps recording; what is heard reaches he
   await hear(k, 'first-one');
   await until(() => k.requests.length === 2);
   await hear(k, 'gas-station');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(k.requests[2].messages.at(-1).parts.slice(-2), [{ type: 'text', text: '[heard while you were thinking]' }, { type: 'text', text: 'and a coffee' }]);
   assert.deepEqual((await k.events(['heard'])).map((/** @type {any} */ e) => [Boolean(e.data.answer), Boolean(e.data.meanwhile)]), [[true, false], [false, true]]);
 });
@@ -211,7 +211,7 @@ test('speech heard while she thinks: her next speak does not wait a silence for 
   await hear(k, 'first-one');
   await until(() => k.requests.length === 2);
   await hear(k, 'gas-station');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const second = (await results(k, 'speak'))[1];
   assert.equal(second.data.content, 'Said aloud. Not listening for an answer: the user spoke while you were thinking; it follows.');
   assert.ok(second.data.ms < 80, `it took ${second.data.ms} ms: no silence limit (80 ms here) was waited`);
@@ -230,7 +230,7 @@ test('nothing heard is lost: speech that comes as she goes to sleep starts a new
   await hear(k, 'first-one');
   await until(() => k.requests.length === 2);
   await hear(k, 'gas-station');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, 3);
   assert.equal((await k.events(['wake'])).length, 2);
   assert.match(JSON.stringify(k.requests[2].messages.at(-1)), /actually find gas/);
@@ -249,7 +249,7 @@ test('speech still going on when the microphone closes for her to speak is kept,
   await hear(k, 'first-one');
   await until(() => k.requests.length === 2);
   k.platform.mic.feed(cat(quiet(0.3), (await clip('gas-station')).subarray(0, 12_000)), 16_000); // mid-sentence when she starts to speak
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(k.requests[2].messages.at(-1).parts.slice(-2), [{ type: 'text', text: '[heard while you were thinking]' }, { type: 'text', text: 'and also' }]);
 });
 
@@ -257,7 +257,7 @@ test('a reply that breaks off mid-speak stops what it had begun; the next model 
   useClock(t);
   const k = await agentKit([[speakStep('First sentence here. Second one never comes.', { breakAt: 4 })], [say('From the other model.')]], { voice: {} });
   k.agent.send('Hi');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(plays(k).at(-1), 'From the other model.');
   assert.ok(!plays(k).includes('Second one never comes.'));
   assert.equal((await k.events(['out.speak'])).length, 1);
@@ -278,7 +278,7 @@ test('ask is spoken too, and a spoken answer answers it; wait listens (spec §7.
   await hear(k, 'first-one');
   await until(() => k.requests.length === 2 && k.agent.state.name === 'listening');
   await hear(k, 'gas-station');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await results(k, 'ask'))[0].data.content, 'The user said:');
   assert.deepEqual((await results(k, 'wait')).map((/** @type {any} */ e) => e.data.content), ['The user said:', 'Nothing yet (10 seconds).']);
 });
@@ -292,7 +292,7 @@ test('her spoken question beside a sleep: the spoken answer reaches her, and she
   k.agent.send('We are late');
   await until(() => k.agent.state.name === 'listening');
   await hear(k, 'first-one');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.requests.length, 2, 'a second request carries what they said');
   assert.equal((await results(k, 'ask'))[0].data.content, 'The user said:');
   assert.equal((await k.events(['out.speak'])).at(-1).data.text, 'Kept.');
@@ -303,7 +303,7 @@ test('one half: a claim answers a wait as the words it is, and the line says so;
   useClock(t);
   const k = await agentKit([{ rules: [{ match: '.', reply: { toolCalls: [{ name: 'sleep', input: {} }] } }] }], { voice: { mode: 'off', speechIn: ['m-hear'] }, halves: true });
   k.agent.send('Is there parking?', { claim: 'h1' });
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await k.events(['msg.user']))[0].data.claim, 'h1');
   assert.match(JSON.stringify(k.sent['model-0'][0]), /\[the user says this was for you\] \\+"Is there parking\?/);
   assert.equal(k.agent.tap(), 'listening');
@@ -359,7 +359,7 @@ for (const how of ['by hand', 'auto mode as the car slows']) {
     await until(() => k.said.includes('Which day would you like?') && k.agent.state.name === 'speaking');
     await off();
     await speaks();
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(mics(k), [], 'the microphone never opened');
     assert.ok(!states.includes('listening') && !states.includes('hearing'), `the dock never said Listening: ${states}`);
     assert.deepEqual(k.transcribed, [], 'what was said into it was heard by no one');
@@ -386,7 +386,7 @@ for (const how of ['by hand', 'auto mode as the car slows']) {
     await new Promise((r) => setTimeout(r, 200)); // past her question's 8 s: still waiting
     assert.notEqual(k.agent.pendingId, null, 'it waits for a tap, with no time limit');
     k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'Lunch');
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal((await results(k, 'ask'))[0].data.content, 'The user chose: Lunch');
     assert.deepEqual(mics(k), []);
   });
@@ -397,7 +397,7 @@ for (const how of ['by hand', 'auto mode as the car slows']) {
     k.agent.send('Plan our day');
     await until(() => k.said.includes('Which day would you like?') && k.agent.state.name === 'speaking');
     await off();
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.deepEqual(mics(k), [], 'the microphone never opened');
     assert.equal((await results(k, 'speak'))[0].data.content, 'The user stopped you after: "Which day…".');
     assert.equal(k.agent.state.name, 'sleeping');
@@ -411,7 +411,7 @@ test('a tap on Shiori while she says a speak line that sleeps in the same reply:
   await until(() => k.said.includes('Which day would you like?') && k.agent.state.name === 'speaking');
   assert.equal(k.agent.tap(), 'cut');
   await until(() => mics(k).includes('mic open'));
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await results(k, 'speak'))[0].data.content, 'The user stopped you after: "Which day…". The microphone is open: what they say next wakes you.');
 });
 
@@ -440,7 +440,7 @@ test('voice turning off as the microphone opens for speak: no microphone, no Lis
   useClock(t);
   const { k, states } = await kitVoiceOffWhileOpening([{ toolCalls: [{ name: 'speak', input: { text: 'Which day would you like?' } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]);
   k.agent.send('Plan our day');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.ok(k.said.includes('Which day would you like?'), 'said aloud first');
   assert.deepEqual(mics(k), [], 'the microphone never opened');
   assert.ok(!states.includes('listening') && !states.includes('hearing'), `the dock never said Listening: ${states}`);
@@ -458,7 +458,7 @@ test('voice turning off as the microphone opens for her question: no microphone,
   assert.ok(!states.includes('listening') && !states.includes('hearing'), `the dock never said Listening: ${states}`);
   assert.notEqual(k.agent.pendingId, null, 'it waits for a tap, with no time limit');
   k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'Lunch');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await results(k, 'ask'))[0].data.content, 'The user chose: Lunch');
   assert.deepEqual(mics(k), []);
 });
@@ -472,7 +472,7 @@ test('voice turning off as the microphone opens for the wait tool: no microphone
   assert.ok(!states.includes('listening') && !states.includes('hearing'), `the dock never said Listening: ${states}`);
   assert.equal(k.agent.state.name, 'waiting');
   k.agent.send('Ready');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await results(k, 'wait'))[0].data.content, 'The user wrote: Ready');
 });
 
@@ -482,7 +482,7 @@ test('voice on throughout: the same openings listen as they always did, and a ta
   speak.k.agent.send('Plan our day');
   await until(() => speak.k.agent.state.name === 'listening');
   await hear(speak.k, 'first-one');
-  await speak.k.agent.idle();
+  await idleAtOnce(speak.k);
   assert.equal(speak.asked(), 1);
   assert.ok(speak.states.includes('listening'));
   assert.equal(mics(speak.k)[0], 'mic open');
@@ -520,7 +520,7 @@ test('voice turning off inside the microphone\'s own opening for speak: it close
   useClock(t);
   const { k, states } = await kitVoiceOffInsideOpen([{ toolCalls: [{ name: 'speak', input: { text: 'Which day would you like?' } }] }, { toolCalls: [{ name: 'sleep', input: {} }] }]);
   k.agent.send('Plan our day');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.ok(!states.includes('listening') && !states.includes('hearing'), `the dock never said Listening: ${states}`);
   assert.notEqual(mics(k).at(-1), 'mic open', `none left open: ${mics(k)}`);
   assert.equal((await results(k, 'speak'))[0].data.content, "Said aloud. annai couldn't listen: voice mode is off. The user may type.");
@@ -537,7 +537,7 @@ test('voice turning off inside the microphone\'s own opening for her question: n
   assert.notEqual(mics(k).at(-1), 'mic open', `none left open: ${mics(k)}`);
   assert.notEqual(k.agent.pendingId, null, 'it waits for a tap, with no time limit');
   k.agent.answer(/** @type {string} */ (k.agent.pendingId), 'Lunch');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await results(k, 'ask'))[0].data.content, 'The user chose: Lunch');
 });
 
@@ -551,7 +551,7 @@ test('voice turning off inside the microphone\'s own opening for the wait tool: 
   assert.deepEqual([k.agent.state.name, k.agent.state.label], ['waiting', 'Your turn']);
   assert.notEqual(mics(k).at(-1), 'mic open', `none left open: ${mics(k)}`);
   k.agent.send('Ready');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await results(k, 'wait'))[0].data.content, 'The user wrote: Ready');
 });
 
@@ -595,7 +595,7 @@ for (const how of ['Stop', 'switch']) {
       }
       const requests = k.requests.length;
       k.agent.send('Something else');
-      await k.agent.idle();
+      await idleAtOnce(k);
       assert.ok(k.requests.length > requests, 'the line woke her: it was no one\'s answer');
       const lines = (await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(other ?? k.trip, { types: ['msg.user'] }))).map((/** @type {any} */ e) => [e.data.text ?? '', Boolean(e.data.answer)]);
       assert.deepEqual(lines.at(-1), ['Something else', false], 'written as a line of theirs, not as the stopped call\'s answer');
@@ -644,7 +644,7 @@ for (const when of ['open', 'opening']) {
       k.agent.send('Tuesday'); // typed before her line listens: it answers at once, and nothing is open as the turn ends
       go();
     }
-    await k.agent.idle();
+    await idleAtOnce(k);
     await new Promise((r) => setTimeout(r, 100));
     assert.equal(stop, 'stopped', 'the tap was a Stop');
     assert.equal(k.platform.mic.isOpen(), false, `none left open: ${mics(k)}`);
@@ -658,7 +658,7 @@ test('voice turning off as the microphone opens for the window after she speaks:
   const { k, states } = await kitVoiceOffWhileOpening([{ toolCalls: [{ name: 'speak', input: { text: 'Let me check.' } }, { name: 'note_it', input: {} }] }, { text: 'Done.' }]);
   k.registry.add('test', 'tool', { name: 'note_it', description: 'Notes it.', input: { type: 'object' }, run: async () => 'noted' });
   k.agent.send('Is it open?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.ok(k.said.includes('Let me check.'), 'said aloud first');
   assert.deepEqual(mics(k), [], 'the microphone never opened');
   assert.ok(!states.includes('listening') && !states.includes('hearing'), `the dock never said Listening: ${states}`);
@@ -693,7 +693,7 @@ for (const who of ['one Shiori', 'Koe on a chat model']) {
     assert.ok(question.ts - line.ts < 5000, `the question came ${question.ts - line.ts} ms after her line began (speak's silence limit is 20 s)`);
     await until(() => k.agent.state.name === 'listening');
     await hear(k, 'first-one');
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal((await results(k, 'speak'))[0].data.content, 'Said aloud.');
     assert.equal((await results(k, 'ask'))[0].data.content, 'The user said:');
     const reply = k.platform.log.filter((/** @type {string} */ l) => l !== 'unlock').slice(tapWindow.length);
@@ -715,7 +715,7 @@ for (const who of ['one Shiori', 'Koe on a chat model']) {
     assert.ok(speak.data.heard?.length, 'their words came back on speak');
     const [asked] = await k.events(['out.ask']);
     k.agent.answer(asked.data.id, 'No');
-    await k.agent.idle();
+    await idleAtOnce(k);
   });
 
   // The cut guard is the ask's alone: her question closes the tap's microphone and is said over the user; a wait says nothing and listens on that microphone.
@@ -733,7 +733,7 @@ for (const who of ['one Shiori', 'Koe on a chat model']) {
     await hear(k, 'gas-station');
     await until(() => waited.length > 0, 60_000);
     assert.ok(waited[0] - at < 10_000, `the wait answered ${waited[0] - at} ms after their words (it is 30 s)`);
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.match((await results(k, 'speak'))[0].data.content, /^The user stopped you after: [^]*"\.$/, "speak didn't listen: the wait did");
     assert.equal((await results(k, 'wait'))[0].data.content, 'The user said:');
   });
@@ -751,7 +751,7 @@ for (const who of ['one Shiori', 'Koe on a chat model']) {
     assert.match((await results(k, 'speak'))[0].data.content, /^The user stopped you after: .*The user said:$/);
     const [asked] = await k.events(['out.ask']);
     k.agent.answer(asked.data.id, 'No');
-    await k.agent.idle();
+    await idleAtOnce(k);
   });
 }
 
@@ -767,7 +767,7 @@ for (const what of ['ask', 'wait']) {
       await until(() => plays(k).includes('Stop there for lunch?'), 60_000);
       k.agent.answer((await k.events(['out.ask']))[0].data.id, 'Yes');
     }
-    await k.agent.idle();
+    await idleAtOnce(k, 50_000 + 2000); // speak's 20 s window, then the wait's 30 s, on her 1000 ms second (50 005 ms on the clock, measured)
     assert.equal((await results(k, 'speak'))[0].data.content, 'Said aloud. Heard nothing (20 seconds).', "speak listened to the end of its window");
     assert.equal((await k.events(['out.show'])).length, 1, 'the card was shown, not refused');
   });
@@ -783,7 +783,7 @@ test('controls for speak then ask: with sleep in the reply, and with voice off, 
   await until(() => asleep.agent.state.name === 'listening');
   assert.equal((await asleep.events(['out.ask'])).length, 1);
   asleep.agent.answer((await asleep.events(['out.ask']))[0].data.id, 'Yes');
-  await asleep.agent.idle();
+  await idleAtOnce(asleep);
   assert.equal((await results(asleep, 'speak'))[0].data.content, 'Said aloud.');
   // The change this test pins: the answered question keeps her turn going (a second model request reads it), so the sleep beside it says "Not asleep".
   assert.equal(asleep.requests.length, 2);
@@ -793,13 +793,13 @@ test('controls for speak then ask: with sleep in the reply, and with voice off, 
   await until(() => off.agent.pendingId !== null);
   assert.equal((await results(off, 'speak'))[0].data.content, "Shown on screen. Voice is off, so you didn't listen; the user may type.");
   off.agent.answer(/** @type {string} */ (off.agent.pendingId), 'Yes');
-  await off.agent.idle();
+  await idleAtOnce(off);
   assert.equal((await results(off, 'ask'))[0].data.content, 'The user chose: Yes');
   assert.deepEqual(mics(off), []);
   // speak followed by show (not an ask) listens as before.
   const shown = await agentKit([[{ toolCalls: [speakAsk[0], { name: 'show', input: { card: { title: 'Nepenthe', text: 'On the cliffs.' } } }] }, { toolCalls: [sleep] }]], { voice: {} });
   shown.agent.send('Lunch?');
-  await shown.agent.idle();
+  await idleAtOnce(shown);
   assert.equal((await results(shown, 'speak'))[0].data.content, 'Said aloud. Heard nothing (20 seconds).');
   assert.equal((await shown.events(['out.show'])).length, 1, 'the card was shown, not refused');
 });
@@ -813,7 +813,7 @@ test('one Shiori, voice on, speak then wait in one reply: speak doesn\'t listen;
   await hear(k, 'first-one');
   await until(() => k.requests.length === 2, 60_000);
   assert.ok(Date.now() - at < 10_000, `her next step came ${Date.now() - at} ms after the words (the wait is 30 s)`);
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await results(k, 'speak'))[0].data.content, 'Said aloud.');
   assert.equal((await results(k, 'wait'))[0].data.content, 'The user said:');
   assert.deepEqual(mics(k).slice(0, 1), ['mic open']);

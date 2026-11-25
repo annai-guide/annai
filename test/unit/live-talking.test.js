@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until } from './agent-kit.js';
+import { agentKit, until, idleAtOnce } from './agent-kit.js';
 import { fakeSensors, at, iso, off, LA, BIXBY } from './live-kit.js';
 import { Live } from '../../src/core/live/live.js';
 import { ManualClock } from '../../src/core/live/clock.js';
@@ -37,7 +37,7 @@ async function twoTrips(o = {}) {
     do {
       before = k.requests.length;
       await live.settled();
-      await k.agent.idle();
+      await idleAtOnce(k);
       await live.settled();
     } while (k.requests.length !== before);
   };

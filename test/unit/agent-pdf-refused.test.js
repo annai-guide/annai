@@ -384,7 +384,7 @@ test("a mark is its half's: Koe's models refused the PDF, and Kokoro's own read 
   assert.deepEqual(cards(k), [TITLE], "Koe's models refused it");
   const before = (k.sent['model-0'] ?? []).length;
   k.agent.kokoro.enqueue({ kind: 'cue', text: 'a review: 3 minutes or more of conversation since you last looked.', logged: true });
-  await k.agent.idle();
+  await idleAtOnce(k);
   const hers = (k.sent['model-0'] ?? []).slice(before);
   assert.ok(hers.some(hasPdf), 'Kokoro sent the PDF whole');
   assert.equal(hers.flatMap((r) => refusedWords(r)).length, 0, "and no words of Koe's mark");
@@ -700,7 +700,7 @@ test("the earlier marks are the half's own: after Koe's models refused the PDF a
   const was = await summaries(k);
   for (const cue of ['a review: one', 'a review: two']) {
     k.agent.kokoro.enqueue({ kind: 'cue', text: cue, logged: true });
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   assert.deepEqual(k.sent['model-0'].slice(before).map(hasPdf), [false, false, true, true, false], 'the first review; her read; the PDF, refused; after the summary, again; the words, answered');
   assert.equal(await summaries(k), was + 1, 'her housekeeping ran before the test');

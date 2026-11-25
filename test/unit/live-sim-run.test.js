@@ -1,6 +1,6 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit } from './agent-kit.js';
+import { agentKit, idleAtOnce } from './agent-kit.js';
 import { liveKit, at, LA, MONTEREY, BIXBY } from './live-kit.js';
 import { RULES, DRIVE, places } from './big-sur-kit.js';
 import { Live } from '../../src/core/live/live.js';
@@ -48,7 +48,7 @@ test("the Agent on a simulation's clock stamps the conversation in its time, the
   const restore = k.agent.useClock({ now: () => t, online: () => true, timeZone: () => LA });
   k.agent.send('Hello');
   assert.equal(k.agent.busy, true);
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(k.agent.busy, false);
   for (const e of await k.events(['msg.user', 'wake', 'out.speak'])) assert.equal(e.ts, t, e.type);
   restore();

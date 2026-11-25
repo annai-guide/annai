@@ -1,7 +1,7 @@
 // K1 Task 7: Koe's quick tools and light changes (the Koe and Kokoro design, "Tools: who has what"; plan decision 7, 22).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit } from './agent-kit.js';
+import { agentKit, idleAtOnce } from './agent-kit.js';
 import { readConfig, saveModel } from '../../src/core/llm/config.js';
 import { lightChange, BIGGER } from '../../src/core/koe/tools.js';
 import { selfTools } from '../../src/core/agent/self-tools.js';
@@ -15,7 +15,7 @@ test("Koe's tools are exactly: speak, show, ask, wait, sleep, watch_set, watch_l
   await k.host.addBuiltin(new URL('../../src/plugins/places/index.js', import.meta.url).href);
   k.agent.addLoopTools(WATCH);
   k.agent.send('Hi');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(k.sent['model-koe'][0].tools.map((/** @type {any} */ t) => t.name), [
     'speak', 'show', 'ask', 'wait', 'sleep', 'watch_set', 'watch_list', 'watch_cancel', 'recall', 'list', 'read', 'nearby', 'guide', 'write', 'edit', 'patch', 'tell_kokoro', 'already_told',
   ]);
@@ -30,7 +30,7 @@ test("a live Koe has no watch_set: told the time once as its session opens, whic
   const k = await agentKit([[sleep]], { koe: { type: [sleep] } });
   k.agent.addLoopTools(WATCH);
   k.agent.send('Hi');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.ok(k.sent['model-koe'][0].tools.some((/** @type {any} */ t) => t.name === 'watch_set'), 'a chat Koe sets reminders');
   const live = (await k.agent.koe.liveTools()).map((t) => t.name);
   assert.ok(!live.includes('watch_set'), live.join());
@@ -42,7 +42,7 @@ test('a tool switched off is off for both halves; a helper (task) is never offer
   const { updateAppSettings } = await import('../../src/core/settings.js');
   await updateAppSettings(k.ws, { tools: { read: false } });
   k.agent.send('Hi');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.ok(!k.sent['model-koe'][0].tools.some((/** @type {any} */ t) => t.name === 'read'));
   assert.ok(!k.sent['model-0'][0].tools.some((/** @type {any} */ t) => t.name === 'read'));
   const task = /** @type {any} */ (selfTools(k.agent.kokoro).find((t) => t.name === 'task'));
@@ -90,7 +90,7 @@ test('light changes: a note, a reminder, a flexible item moved, one new flexible
 test("a refused change isn't made, and Koe hears to ask Kokoro", async () => {
   const k = await agentKit([[sleep]], { koe: { type: [{ toolCalls: [{ name: 'write', input: { path: '/trip/bookings/b.json', content: { id: 'b' } } }, { name: 'write', input: { path: '/trip/notes/n.md', content: 'Sunset at 18:40' } }, { name: 'sleep', input: {} }] }] } });
   k.agent.send('Note the sunset, and book the inn');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const results = (await k.events(['tool.result'])).filter((e) => e.data.half === 'koe' && e.data.name === 'write').map((e) => [e.data.ok, e.data.content]);
   assert.deepEqual(results[0], [false, "That's a bigger change: ask Kokoro with tell_kokoro."]);
   assert.equal(results[1][0], true);
@@ -106,7 +106,7 @@ test("a text Koe's photos are judged against its chat models only: a realtime mo
   assert.equal(k.agent.koeState, 'text');
   await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('4032x3024'), { author: 'user', type: 'image/webp', meta: { width: 4032, height: 3024 } });
   k.agent.send('', { photos: [{ path: '/trip/files/p.webp' }] });
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.ok(k.sent['model-koe'][0].messages.some((/** @type {any} */ m) => m.parts.some((/** @type {any} */ p) => p.type === 'image')));
 });
 
@@ -115,7 +115,7 @@ test('a photo reaches Koe only when its model takes photos; otherwise a stub, an
     const k = await agentKit([[sleep]], { koe: { type: [sleep], input } });
     await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('4032x3024'), { author: 'user', type: 'image/webp', meta: { width: 4032, height: 3024 } });
     k.agent.send('', { photos: [{ path: '/trip/files/p.webp' }] });
-    await k.agent.idle();
+    await idleAtOnce(k);
     const types = (/** @type {any} */ req) => req.messages.flatMap((/** @type {any} */ m) => m.parts.map((/** @type {any} */ p) => (p.type === 'text' ? p.text : p.type)));
     // With no words typed, each half reads "[the user sent a photo]", then the [annai] line with the photo's path and sizes, then the picture (or Koe's stub for it).
     const words = '[annai] The photo "/trip/files/p.webp", 4032×3024, sent as 2000×1500.';
@@ -135,7 +135,7 @@ test("Koe reads a PDF its model can't read, typing or live: told at once to ask 
   await saveModel(k.ws, { ...u, user: { ...u.user, input: ['text', 'pdf'] } });
   await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
   k.agent.send('When is check-in?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const read = (await k.events(['tool.result'])).find((e) => e.data.name === 'read' && e.data.half === 'koe');
   assert.equal(read.data.content, "The PDF /trip/files/booking.pdf.\nYou can't read PDFs; ask Kokoro about it.");
   assert.equal(read.data.document, undefined);
@@ -149,6 +149,6 @@ test('a Koe whose model reads PDFs gets the PDF itself', async () => {
   const k = await agentKit([[sleep]], { koe: { type: [{ toolCalls: [{ name: 'read', input: { path: '/trip/files/booking.pdf' } }] }, sleep], input: ['text', 'image', 'pdf'] } });
   await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
   k.agent.send('When is check-in?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.match(JSON.stringify(k.sent['model-koe'][1].messages), /"type":"document"/);
 });

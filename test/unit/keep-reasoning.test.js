@@ -1,7 +1,7 @@
 // Claude's thinking between the steps of a turn, end to end through the loop (the keep-reasoning design, "Tests" 1–12 and 14).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until } from './agent-kit.js';
+import { agentKit, until, idleAtOnce } from './agent-kit.js';
 import { useClock } from './clock.js';
 import { anthropicStandIn } from '../fakes/anthropic-binding.js';
 import { Agent, KEPT_SENT_MAX } from '../../src/core/agent/loop.js';
@@ -66,7 +66,7 @@ test('1. a three-step Kokoro turn on Claude: requests 2 and 3 carry the earlier 
   const k = await agentKit([{ ability: AT }], { models: [SONNET], fetch: claude.fetch });
   await k.ws.write(k.trip, '/notes/hotel.md', 'Hotel in Monterey.', { author: 'user' });
   k.agent.send('Where is our hotel?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(claude.refused, []);
   assert.equal(claude.bodies.length, 3);
   appendOnly(claude.bodies);
@@ -92,7 +92,7 @@ test('2. Shiori as one half: a line logged during a call goes after the reply, a
   k = await agentKit([{ ability: AT }], { models: [SONNET], fetch });
   await k.ws.write(k.trip, '/notes/hotel.md', 'Hotel in Monterey.', { author: 'user' });
   k.agent.send('Where is our hotel?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(claude.refused, []);
   assert.equal(claude.bodies.length, 3);
   appendOnly(claude.bodies);
@@ -113,12 +113,12 @@ test('3. the next turn carries no thinking or now block from the one before, and
   });
   const k = await agentKit([{ ability: AT }], { models: [SONNET], fetch: claude.fetch });
   k.agent.send('Look around, please.');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const first = claude.bodies.length;
   assert.ok(first >= 6);
   appendOnly(claude.bodies);
   k.agent.send('Thanks!');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const next = claude.bodies[first];
   assert.deepEqual(claude.refused, []);
   assert.equal(thoughts(next).length, 0, 'no thinking from the turn before');
@@ -145,7 +145,7 @@ test('4. Koe on Claude: wait, the answer, speak: its second request carries its 
   k.agent.send('Where should we stay?');
   await until(() => k.agent.koe.waiting, 3000);
   k.agent.send('Monterey');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(claude.refused, []);
   const koe = claude.bodies.filter((b) => b.model === 'claude-sonnet-5-5');
   assert.ok(koe.length >= 2);
@@ -168,9 +168,9 @@ test("5. two halves on Claude, then Summarize now: tidy-up's system text is Koko
   });
   const k = await agentKit([{ ability: AT }], { koe: { type: { ability: AT }, model: SONNET }, models: [{ providerId: 'claude-opus-5-5', contextWindow: 1000000 }], fetch: claude.fetch });
   k.agent.send('Is Nepenthe open?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   k.agent.send('Thanks!');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(await k.agent.kokoro.summarizeNow(), 'done');
   assert.deepEqual(claude.refused, []);
   const opus = claude.bodies.filter((b) => b.model === 'claude-opus-5-5');
@@ -194,7 +194,7 @@ test("6. a photo past the model's limit mid-turn: no thinking from there to the 
   await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('4032x3024'), { author: 'user', type: 'image/webp', meta: { width: 4032, height: 3024 } });
   await k.ws.write(k.trip, '/files/q.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
   k.agent.send('Look', { photos: [{ path: '/trip/files/p.webp' }] });
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(claude.refused, []);
   assert.ok(claude.bodies.length >= 3);
   assert.deepEqual(claude.bodies.slice(1).map((b) => thoughts(b).length), claude.bodies.slice(1).map(() => 0), 'none after the change');
@@ -213,7 +213,7 @@ test('7. Claude refuses the thinking once: the same model again without it, no o
   const k = await agentKit([{ ability: AT }, [{ text: 'never asked' }]], { models: [SONNET], fetch });
   await k.ws.write(k.trip, '/notes/hotel.md', 'Hotel in Monterey.', { author: 'user' });
   k.agent.send('Where is our hotel?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(claude.refused.length, 1);
   assert.equal(k.requests.length, 0, 'the other model was never asked');
   const second = (await turns(k))[1];
@@ -239,7 +239,7 @@ test('8. a paused turn with server tools: the continuation ends with her own mes
   });
   const k = await agentKit([{ ability: AT }], { models: [SONNET], fetch: claude.fetch });
   k.agent.send('Is Nepenthe open?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(claude.refused, []);
   const [, cont, after] = claude.bodies;
   assert.equal(cont.messages.at(-1).role, 'assistant');
@@ -266,7 +266,7 @@ test('8b. a web search and a tool call in one reply, twice in a turn: each next 
   const k = await agentKit([{ ability: AT }], { models: [searching], fetch: claude.fetch });
   await k.ws.write(k.trip, '/notes/hotel.md', 'Hotel in Monterey.', { author: 'user' });
   k.agent.send('Is Nepenthe open, and where is our hotel?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(claude.refused, []);
   assert.equal(claude.bodies.length, 3);
   appendOnly(claude.bodies);
@@ -281,7 +281,7 @@ test('8b. a web search and a tool call in one reply, twice in a turn: each next 
   assert.deepEqual(k.notices, []);
   // The now blocks that waited are in the next turn's history in the order they were made, once.
   k.agent.send('Thanks!');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(claude.refused, []);
 });
 
@@ -304,7 +304,7 @@ test("8c. a line typed while a mixed step's tool runs: the next request leaves t
   };
   k = await agentKit([{ ability: AT }], { models: [searching], fetch });
   k.agent.send('Is Nepenthe open tonight?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(claude.refused, []);
   assert.equal(claude.bodies.length, 3);
   appendOnly(claude.bodies);
@@ -333,9 +333,9 @@ test('8d. a mixed step the user stopped while its tool ran, then a new question:
   k.agent.send('Is Nepenthe open tonight?');
   await hanging;
   k.agent.interrupt();
-  await k.agent.idle();
+  await idleAtOnce(k);
   k.agent.send(question);
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(claude.refused, []);
   assert.equal(claude.bodies.length, 2);
   assert.match(JSON.stringify(claude.bodies[1].messages.at(-1)), /Where is our hotel/);
@@ -361,10 +361,10 @@ test("8e. a mixed step whose next request failed, then a new question (as in a c
   const searching = { ...SONNET, providerTools: [{ id: 'anthropic-web-search', name: 'Anthropic web search', kind: 'search', patch: { 'tools+': [{ type: 'web_search_20250305', name: 'web_search', max_uses: 5 }] }, usageKey: 'web_search_requests' }] };
   const k = await agentKit([{ ability: AT }], { models: [searching], fetch });
   k.agent.send('Is Nepenthe open tonight?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   down = false;
   k.agent.send(question);
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(claude.refused, []);
   assert.equal(claude.bodies.length, 2);
   assert.match(JSON.stringify(claude.bodies[1].messages.at(-1)), /Where is our hotel/);
@@ -386,7 +386,7 @@ test('9. a fallback mid-turn to another model and back: the other model gets no 
   const k = await agentKit([{ ability: AT }, [{ toolCalls: [{ name: 'read', input: { path: '/trip/notes/hotel.md' } }] }, { error: 'bad-request', status: 400, message: 'Not now.' }]], { models: [SONNET], fetch });
   await k.ws.write(k.trip, '/notes/hotel.md', 'Hotel in Monterey.', { author: 'user' });
   k.agent.send('Where is our hotel?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const other = k.sent['model-1'];
   assert.ok(other.length >= 1);
   assert.ok(!JSON.stringify(other).includes('"native"') && !other.some((/** @type {any} */ r) => r.messages.some((/** @type {any} */ m) => m.parts.some((/** @type {any} */ p) => p.now))), 'exactly as before');
@@ -419,7 +419,7 @@ test("10. a tool switched off between steps: the tools stay, its call is refused
   const levels = { low: { output_config: { effort: 'low' } }, medium: { output_config: { effort: 'medium' } }, high: { output_config: { effort: 'high' } } };
   k = await agentKit([{ ability: AT }], { models: [{ ...SONNET, reasoning: levels }], fetch });
   k.agent.send('Look around.');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const turn = claude.bodies.length;
   appendOnly(claude.bodies);
   assert.ok(claude.bodies.every((b) => b.output_config?.effort === 'medium'), "the turn's level");
@@ -427,7 +427,7 @@ test("10. a tool switched off between steps: the tools stay, its call is refused
   assert.equal(second.data.ok, false);
   assert.match((await storedTexts(k.store, second)).content ?? second.data.content, /switched list off/);
   k.agent.send('Again');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const next = claude.bodies[turn];
   assert.ok(!next.tools.some((/** @type {any} */ x) => x.name === 'list'), 'the next turn leaves it out');
   assert.equal(next.output_config?.effort, 'high', 'and has the new level');
@@ -462,10 +462,10 @@ test('11. a reload mid-turn, after step 1\'s results: the catch-up turn sends no
   again.addLoopTools(selfTools(again));
   const before = claude.bodies.length;
   await again.open(k.trip);
-  await again.idle();
+  await idleAtOnce({ agent: again });
   // The old page's request ends as a page that left: nothing more of it.
   gone(new DOMException('gone', 'AbortError'));
-  await k.agent.idle();
+  await idleAtOnce(k);
   const after = claude.bodies.slice(before);
   assert.ok(after.length >= 1, 'a catch-up turn ran');
   assert.equal(thoughts(after[0]).length, 0);
@@ -484,7 +484,7 @@ test(`12. a long turn that has sent ${KEPT_SENT_MAX / 1024} KB of kept thinking 
   });
   const k = await agentKit([{ ability: AT }], { models: [SONNET], fetch: claude.fetch });
   k.agent.send('Look around, slowly.');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const counts = claude.bodies.map((b) => thoughts(b).length);
   // Each step's two blocks (its own and the big one) until the total passes the limit after the sixth step; none after.
   assert.deepEqual(counts.slice(0, 8), [0, 2, 4, 6, 8, 10, 0, 0]);
@@ -509,7 +509,7 @@ test('12b. a big server-tool result with small thinking is not thinking: the tur
   });
   const k = await agentKit([{ ability: AT }], { models: [SONNET], fetch: claude.fetch });
   k.agent.send('When does the museum open?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(claude.refused, []);
   assert.ok(JSON.stringify(claude.bodies[1]).length > KEPT_SENT_MAX, 'the result is in the request');
   assert.deepEqual(claude.bodies.slice(0, 3).map((b) => thoughts(b).length), [0, 1, 2]);
@@ -521,7 +521,7 @@ test("14. no native, signature or reasoning_details is stored: not in the log, i
   const k = await agentKit([{ ability: AT }], { models: [SONNET], fetch: claude.fetch });
   await k.ws.write(k.trip, '/notes/hotel.md', 'Hotel in Monterey.', { author: 'user' });
   k.agent.send('Where is our hotel?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const signatures = [...new Set(claude.bodies.flatMap((b) => thoughts(b).map((/** @type {any} */ x) => String(x.signature))))];
   assert.ok(signatures.length >= 2, 'thinking went back');
   /** @param {string} where @param {string} text */
@@ -560,7 +560,7 @@ test("13. a three-step Kokoro turn through OpenRouter's Claude: requests 2 and 3
   const k = await agentKit([{ ability: OR }], { models: [OR_SONNET], fetch: or.fetch });
   await k.ws.write(k.trip, '/notes/hotel.md', 'Hotel in Monterey.', { author: 'user' });
   k.agent.send('Where is our hotel?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.deepEqual(or.refused, []);
   assert.equal(or.bodies.length, 3);
   for (let i = 1; i < 3; i++) {
@@ -585,7 +585,7 @@ test(`13c. through OpenRouter a native covers no parts: a big tool input every s
   });
   const k = await agentKit([{ ability: OR }], { models: [OR_SONNET], fetch: or.fetch });
   k.agent.send('Look around, slowly.');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const kept = (/** @type {any} */ b) => b.messages.filter((/** @type {any} */ m) => m.reasoning_details).length;
   assert.deepEqual(or.bodies.slice(0, 8).map(kept), [0, 1, 2, 3, 4, 5, 0, 0]);
   assert.deepEqual(or.refused, []);
@@ -598,10 +598,10 @@ test("13b. cache markers through OpenRouter's Claude: the system, the end and ca
   const k = await agentKit([{ ability: OR }], { models: [OR_SONNET], fetch: or.fetch });
   await k.ws.write(k.trip, '/notes/hotel.md', 'Hotel in Monterey.', { author: 'user' });
   k.agent.send('Where is our hotel?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const first = or.bodies.length;
   k.agent.send('Thanks!');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const marks = (/** @type {any} */ b) => JSON.stringify(b).split('"cache_control":{"type":"ephemeral","ttl":"1h"}').length - 1;
   assert.equal(marks(or.bodies[0]), 2, 'the system and the end');
   assert.equal(marks(or.bodies[first]), 3, 'and where the last turn began');
@@ -626,7 +626,7 @@ test('13b. a Chat Completions model outside cacheMarkers sends what it always se
   const k = await agentKit([{ ability: { ...OR, tunables: { ...OR.tunables, cacheMarkers: [] } } }], { models: [{ ...OR_SONNET, providerId: 'openai/gpt-6' }], fetch: or.fetch });
   await k.ws.write(k.trip, '/notes/hotel.md', 'Hotel in Monterey.', { author: 'user' });
   k.agent.send('Where is our hotel?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.ok(or.bodies.length >= 2);
   for (const b of or.bodies) {
     assert.ok(!JSON.stringify(b).includes('cache_control'));

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until } from './agent-kit.js';
+import { agentKit, until, idleAtOnce } from './agent-kit.js';
 import { compactionNeed, cutAt, renderForSummary, coldSystem, summaryLanguage } from '../../src/core/agent/compaction.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { ME } from '../../src/core/scopes.js';
@@ -41,7 +41,7 @@ test('cold: the utility model writes the summary; the last three exchanges stay 
   const k = await agentKit([[say('ok')]], { utility: [{ text: 'They planned dinner at Nepenthe.' }] });
   for (let i = 0; i < 5; i++) {
     k.agent.send(`Message ${i}`);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   assert.equal(await k.agent.compact('cold'), true);
   const [c] = await k.events(['compaction']);
@@ -60,7 +60,7 @@ test("cold: a reply shown as written (grounded) isn't measured again: its words 
   const k = await agentKit([[say('ok')]], { utility: [{ text: 'They planned dinner at Nepenthe.' }] });
   for (let i = 0; i < 5; i++) {
     k.agent.send(`Message ${i}`);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   // As the loop writes one (G4): her words in the data, the provider's suggestions (a big block) as a blob. Counted, it would fill the third kept for itself.
   await record(k.store, k.trip, { type: 'grounded', actor: 'shiori', data: { wake: 'w-x', source: 'Google Search', text: 'Open till 10.', links: [], stored: ['html'] }, texts: [['html', 'x'.repeat(400_000)]] });
@@ -76,7 +76,7 @@ test('warm: the model holding the cache summarizes from the cached conversation,
     { text: 'Four greetings; the user is vegetarian.' }]]);
   for (let i = 0; i < 4; i++) {
     k.agent.send(`Hi ${i}`);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   const conversation = structuredClone(k.agent.transcript.messages);
   const lastTurn = k.requests.at(-1);
@@ -101,7 +101,7 @@ test('due at a pause: housekeeping waits until shortly before the cache expires'
     agent: { timers: { set: (/** @type {() => void} */ fn, /** @type {number} */ ms) => timers.push({ fn, ms }), clear: () => {} } },
   });
   k.agent.send('Hello');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(timers.length, 1);
   assert.ok(timers[0].ms > 250_000 && timers[0].ms <= 255_000, String(timers[0].ms));
 });
@@ -116,7 +116,7 @@ test("housekeeping from the timer that fails says so in a notice that names its 
   });
   for (let i = 1; i <= 5; i++) {
     k.agent.send(`Turn ${i}`);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   timers[0]();
   await until(() => k.notices.length > 0);
@@ -131,7 +131,7 @@ test('forced: a turn about to overflow is compacted before its next call', async
     say('done')]], { models: [{ contextWindow: 10000 }] });
   for (let i = 0; i < 4; i++) {
     k.agent.send(`Turn ${i}`);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   assert.equal((await k.events(['compaction'])).length, 1);
   assert.match(k.requests.at(-1).messages[0].parts[0].text, /^\[Earlier conversation, summarized/);
@@ -142,7 +142,7 @@ test('"request too long" from every model: compact cold first, then try again', 
   const k = await agentKit([[say('1'), say('2'), say('3'), { error: 'context', status: 400, message: 'prompt is too long' }, say('fits now')]], { utility: [{ text: 'Summary.' }] });
   for (let i = 0; i < 4; i++) {
     k.agent.send(`Turn ${i}`);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   assert.equal((await k.events(['compaction']))[0].data.mode, 'cold');
   assert.equal((await k.events(['out.speak'])).at(-1).data.text, 'fits now');
@@ -165,7 +165,7 @@ test("cold: what the utility model is sent fits its window, so a huge exchange c
   await saveModel(k.ws, { ...u, user: { ...u.user, contextWindow: 2000 } });
   for (let i = 0; i < 5; i++) {
     k.agent.send(`Message ${i} ${'y'.repeat(6000)}`);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   assert.equal(await k.agent.compact('cold'), true);
   const sent = k.requests.at(-1);
@@ -213,7 +213,7 @@ test('with uploads, a big photo makes no housekeeping due (spec §6.5, review I7
     await updateAppSettings(k.ws, { shiori: { compaction: { maxRequestMiB: 1 } }, photos: { request: { maxBytes: 1024 * 1024 } } });
     await k.ws.write(k.trip, '/files/big.webp', new TextEncoder().encode('x'.repeat(700_000)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
     k.agent.send('Look', { photos: [{ path: '/trip/files/big.webp' }] });
-    await k.agent.idle();
+    await idleAtOnce(k);
     assert.equal(timers.some(Boolean), !uploading, uploading ? 'uploaded: counted as its id' : 'sent as bytes: due');
   }
 });
@@ -223,7 +223,7 @@ test('housekeeping reads the conversation by type: location points and the like 
   const k = await agentKit([[say('ok')]], { utility: [{ text: 'They planned dinner at Nepenthe.' }] });
   for (let i = 0; i < 5; i++) {
     k.agent.send(`Message ${i}`);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   const queries = noteQueries(k.store);
   assert.equal(await k.agent.compact('cold'), true);
@@ -262,7 +262,7 @@ test('the summary is asked for in a language named: the one most of what the use
   const k = await agentKit([[say('ok')]], { utility: [{ text: 'Summary.' }] });
   for (const m of ['Where should we eat tonight?', 'And tomorrow?', 'We are vegetarian, by the way.', 'Is it far?', 'Thanks, that is all for today.']) {
     k.agent.send(m);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   assert.equal(await k.agent.compact('cold'), true);
   assert.match(k.requests.at(-1).system, /as plain text, in English, the language most of what the user wrote is in\.$/);
@@ -297,7 +297,7 @@ test('housekeeping reads the setting: a fixed answer language is the summary\'s,
   await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'], answer: 'ja' } });
   for (const m of ['Where should we eat tonight?', 'And tomorrow?', 'We are vegetarian, by the way.', 'Is it far?', 'Thanks, that is all for today.']) {
     k.agent.send(m);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   assert.equal(await k.agent.compact('cold'), true);
   assert.match(k.requests.at(-1).system, /as plain text, in Japanese, the language Shiori answers in\.$/);
@@ -373,7 +373,7 @@ test('what the user said aloud counts for the summary\'s language, not only what
   await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
   for (const m of ['ok', 'ok again', 'fine', 'go on', 'thanks']) {
     k.agent.send(m);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   // A voice-only user: what they said is a heard line, with its words; the last of what the user said is Japanese.
   await record(k.store, k.trip, { type: 'heard', actor: 'user', data: { id: 'sp1', ms: 1200, source: 'dictation', text: '今日の夕食はどこにしますか' } });
@@ -387,7 +387,7 @@ test('chatter the gate set aside (a dismissed heard line, and the words written 
   await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
   for (const m of ['ok', 'ok ok', 'fine', 'hmm', 'go']) { // none of them places a language
     k.agent.send(m);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   // People talking among themselves in Japanese: heard, "not meant for you", its words written later.
   await record(k.store, k.trip, { type: 'heard', actor: 'user', data: { id: 'ch1', ms: 1200, source: 'mic', dismissed: true, gate: 'chatter' } });
@@ -404,7 +404,7 @@ test("annai's own lines in the window (two reminders in Japanese) do not set the
   await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
   for (const m of ['ok', 'ok ok', 'fine', 'hmm', 'go']) { // none of them places a language
     k.agent.send(m);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   await record(k.store, k.trip, { type: 'reminder', actor: 'system', data: { watch: 'plan:dinner:coming-up', text: '今日の夕食はどこにしますか' } });
   await record(k.store, k.trip, { type: 'reminder', actor: 'system', data: { watch: 'plan:museum:coming-up', text: '明日は美術館に行きますか' } });
@@ -423,7 +423,7 @@ test('a live spoken line logged in two parts is one line with all its words: the
   await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
   for (const m of ['ok', 'Where should we eat tonight?', 'fine', 'Is the museum open today?', 'go on']) { // two English lines; the rest too short to count
     k.agent.send(m);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   await record(k.store, k.trip, { type: 'heard', actor: 'user', data: { id: 'lv1', ms: 1500, source: 'live', text: '今日の夕食' } });
   await record(k.store, k.trip, { type: 'heard.text', actor: 'system', data: { of: 'lv1', text: '今日の夕食はどこにしますか', by: 'Live' } });
@@ -590,7 +590,7 @@ test("files sent alone don't push the user's words out of what housekeeping read
   await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
   for (const m of ['今日の夕食はどこにしますか', 'ラーメンがいいな', '駅の近くで', '明日の予定は？', 'ありがとう']) {
     k.agent.send(m);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   // Three hand-overs with no words, as the log keeps them: annai's "(files)", newest.
   for (let i = 0; i < 3; i++) await record(k.store, k.trip, { type: 'msg.user', actor: 'user', data: { text: '(files)' } });
@@ -604,7 +604,7 @@ test("housekeeping counts every line since the last summary: a Japanese talk tha
   await updateAppSettings(k.ws, { languages: { spoken: ['en', 'ja'] } });
   for (const m of ['今日の夕食はどこにしますか', 'ラーメンがいいな', '明日の予定は？', 'Thank you so much!', 'ok']) {
     k.agent.send(m);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   assert.equal(await k.agent.compact('cold'), true);
   assert.match(k.requests.at(-1).system, /as plain text, in Japanese, the language most of what the user wrote is in\.$/);
@@ -619,14 +619,14 @@ test("housekeeping counts the lines since the last summary, not the whole trip: 
   const english = ['Where should we eat tonight?', 'Is the museum open today?', 'What is the weather like there?', 'Can we get tickets for the show?', 'How far is it from here?'];
   for (const m of english) {
     k.agent.send(m);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   assert.equal(await k.agent.compact('cold', { keepTokens: 0 }), true);
   assert.match(k.requests.at(-1).system, /as plain text, in English, the language most of what the user wrote is in\.$/);
   // The first summary kept the last three English exchanges word for word; the second window is those three and four Japanese lines.
   for (const m of ['今日の夕食はどこにしますか', 'ラーメンがいいな', '明日の予定は？', '駅の近くで']) {
     k.agent.send(m);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   assert.equal(await k.agent.compact('cold'), true);
   assert.match(k.requests.at(-1).system, /as plain text, in Japanese, the language most of what the user wrote is in\.$/, 'the whole trip is five English lines against four Japanese');
@@ -655,7 +655,7 @@ test("a call that failed after reporting its prompt doesn't add to the next prom
     agent: { timers: { set: (/** @type {() => void} */ fn, /** @type {number} */ ms) => timers.push({ fn, ms }), clear: () => {} } },
   });
   k.agent.send('Hello');
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal(n, 2);
   const [turn] = await k.events(['model.turn']);
   assert.equal(turn.data.usage.input, 12000, "the turn's record counts both calls");
@@ -669,7 +669,7 @@ test("warm housekeeping goes on past a reader that fails to a model that reads n
   await k.ws.write(k.trip, '/files/booking.pdf', new TextEncoder().encode('%PDF-1.4 booking'), { author: 'user', type: 'application/pdf' });
   for (const text of ['Hi', 'Hello', 'Hey', 'Read the booking']) {
     k.agent.send(text);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   assert.match(JSON.stringify(k.agent.transcript.messages.at(-1)), /"type":"document"/, 'the PDF is in the newest message');
   assert.equal(await k.agent.summarizeNow(), 'done');
@@ -685,10 +685,10 @@ test("the retry after housekeeping for a request too long doesn't describe the u
   await k.ws.write(k.trip, '/files/p.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
   for (let i = 0; i < 3; i++) {
     k.agent.send(`Turn ${i}`);
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
-  await k.agent.idle();
+  await idleAtOnce(k);
   assert.equal((await k.events(['out.speak'])).at(-1).data.text, 'fits now');
   assert.equal(k.sent['model-u'].length, 2, 'one description and one summary');
   assert.match(JSON.stringify(k.sent['model-0'].at(-1).messages), /the fish is circled/);
@@ -699,7 +699,7 @@ test("the housekeeping estimate counts what the main models are sent: one photo 
   await k.ws.write(k.trip, '/files/view.webp', new TextEncoder().encode('800x600'), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
   for (let i = 0; i < 5; i++) {
     k.agent.send(`Look ${i}`, { photos: [{ path: '/trip/files/view.webp' }] });
-    await k.agent.idle();
+    await idleAtOnce(k);
   }
   assert.equal(new Set(k.requests.at(-1).messages.flatMap((/** @type {any} */ m) => m.parts).filter((/** @type {any} */ p) => p.type === 'image').map((/** @type {any} */ p) => p.hash)).size, 1);
   assert.equal((await k.events(['model.turn'])).filter((e) => e.data.tag === 'compaction').length, 0, 'no tidy-up tried for copies it never sends');

@@ -1,7 +1,7 @@
 // K1 Task 7: Koe's compact view of the trip, in its tail (plan decision 6).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit } from './agent-kit.js';
+import { agentKit, idleAtOnce } from './agent-kit.js';
 import { compactView, VIEW_MAX } from '../../src/core/koe/context.js';
 import { nextPlanItems } from '../../src/core/agent/context.js';
 import { planWatches, PLAN } from '../../src/core/live/plan-watches.js';
@@ -51,7 +51,7 @@ test("the compact view: today's plan, bookings within 48 hours, the place, the t
   k.agent.sense = () => ({ place: 'near Nepenthe', activity: 'still' });
   k.agent.next = async () => ({ when: 'Thu 2026-11-26 12:00 (GMT-8)', text: 'Leave for lunch in 30 minutes' });
   k.agent.send('What is on today?');
-  await k.agent.idle();
+  await idleAtOnce(k);
   const req = k.sent['model-koe'][0];
   assert.match(req.tail, /^<now>\ntime: Thursday 2026-11-26 10:00:00, America\/Los_Angeles[\s\S]*place: near Nepenthe[\s\S]*<\/now>\n<today>[\s\S]*Lunch at Nepenthe[\s\S]*<\/today>\nKokoro's notes carry id="/);
   assert.ok(!req.system.includes('Lunch at Nepenthe'));
