@@ -3017,10 +3017,12 @@ export class Agent {
     if (images.formats?.length && canMake && !(await Promise.all(images.formats.map((x) => canMake(x)))).some(Boolean)) return { learned, unmade: images.formats };
     // A model removed meanwhile needs no limits: nothing is saved, and nothing is made again for it.
     // Merged with the record as it is now: another refusal saved meanwhile keeps its limit.
-    await updateModel(this.ws, rec.id, (now) => ({ ...now, user: { ...(now.user ?? {}), images: stricter(modelOf(now).images ?? {}, learned) } })).catch((/** @type {unknown} */ e) => {
+    // What is answered is what was saved (#repair cuts a retry by its count).
+    const saved = await updateModel(this.ws, rec.id, (now) => ({ ...now, user: { ...(now.user ?? {}), images: stricter(modelOf(now).images ?? {}, learned) } })).catch((/** @type {unknown} */ e) => {
       if (!(e instanceof NotFoundError)) throw e;
+      return null;
     });
-    return { learned, images };
+    return { learned, images: saved ? (modelOf(saved).images ?? images) : images };
   }
 
   /**
