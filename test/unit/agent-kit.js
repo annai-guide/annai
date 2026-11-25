@@ -328,7 +328,8 @@ export async function until(fn, ms = 2000) {
  * (her voice's HOLD_MS, a typed line's gathering, the stand-in's turn) passes its own ms: the timer plus 2000. A wait whose time is CPU work on the real
  * clock, a turn of 50 or 60 scripted calls, a simulation's whole run, has no bound that holds on every machine: in that run they took up to 898 and 2398 ms
  * of real time, and at 2000 ms only 0 and 10 of 24 copies of agent-budgets were clean beside 48 busy loops. Such a test runs on a test clock (useClock),
- * where CPU time costs none and a leak still fails at once.
+ * where CPU time costs none and a leak still fails at once; except a test with a real socket (push-sim's stand-in server), which keeps the real clock
+ * (clock.js) and so has no bound: a leak fails it at the test's timeout.
  * @param {Promise<unknown>} p @param {string} why @param {number} [ms]
  */
 export async function inTime(p, why, ms = 2000) {
@@ -350,7 +351,7 @@ export async function idleAtOnce(k, ms = 2000) {
 /**
  * A simulation's start (SimRun's start()) or its end (its `finished`), bounded as idleAtOnce is, and what it settled with: SimRun waits for the agent's
  * idle() at every moment (#settle), so a leaked busy count, or a turn that never ends, fails here at once, not at the test's 120 s. For a test on a test
- * clock (useClock), where the time of its work is not counted: of the 15 runs in the three simulation files, the longest start or end took 70 ms on it
+ * clock (useClock), where the time of its work is not counted: of the 14 runs in the two simulation files, the longest start or end took 70 ms on it
  * (2026-11-24), so 2000 ms.
  * @template T @param {Promise<T>} p @param {number} [ms] @returns {Promise<T>}
  */
