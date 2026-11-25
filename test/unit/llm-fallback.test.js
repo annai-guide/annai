@@ -501,7 +501,7 @@ test("a model turn names the role's first model, whichever was tried first: the 
 test('an upload the provider no longer knows: the endpoint forgets its uploads, and the same model is tried once more (spec §9.9)', async () => {
   const s = setup([[{ error: 'upload', status: 404, message: 'File `file_1` not found.' }, { text: 'Seen.' }], [{ text: 'B.' }]]);
   let forgot = 0;
-  const uploads = /** @type {any} */ ({ forget: async () => { forgot++; }, isOff: () => false, get: async () => null, set: async () => {}, off: () => {} });
+  const uploads = /** @type {any} */ ({ forget: async () => { forgot++; }, isOff: () => false, get: async () => null, set: async () => {}, off: () => {}, held: () => false, answered: () => {} });
   const r = await call(s, { uploads });
   assert.equal(r.reply.text, 'Seen.');
   assert.deepEqual(r.attempts.map((a) => [a.model, a.outcome]), [['m-0', 'upload'], ['m-0', 'ok']]);

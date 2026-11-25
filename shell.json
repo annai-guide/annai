@@ -1,5 +1,5 @@
 {
-  "build": "5debc3c3ecd8",
+  "build": "56fd4b2504f2",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -74,8 +74,8 @@
     "/src/core/hash.js": "e3cf309df8cf",
     "/src/core/hooks.js": "41f22477e3ab",
     "/src/core/html-text.js": "ad9b5709befa",
-    "/src/core/llm/call.js": "3f260734aa29",
-    "/src/core/llm/check.js": "cdc4f6025d7f",
+    "/src/core/llm/call.js": "48317d55a80a",
+    "/src/core/llm/check.js": "7c6996785ed9",
     "/src/core/llm/config.js": "008b753fa725",
     "/src/core/llm/contract.js": "32b52619a70e",
     "/src/core/llm/decide.js": "4aff39cf2ab3",
@@ -93,7 +93,7 @@
     "/src/core/llm/speech.js": "ee116edd53ba",
     "/src/core/llm/sse.js": "656d2989d833",
     "/src/core/llm/trace.js": "ce4c33d5516e",
-    "/src/core/llm/uploads.js": "7dc9414bd3b9",
+    "/src/core/llm/uploads.js": "b19a82907dac",
     "/src/core/llm/kept.js": "312be2a7089a",
     "/src/core/live/activity.js": "d1fe254c6571",
     "/src/core/live/clock.js": "e8699d74a329",

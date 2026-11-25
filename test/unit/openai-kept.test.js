@@ -513,7 +513,7 @@ test('warm housekeeping after a chain of three turns shares the whole stored pre
 test('P2: a chained call refused for a photo whose upload is gone is sent whole once, the chain it continued is queued for deletion, and the next turn goes on', async () => {
   const gone = { error: { status: 400, body: { error: { message: 'Error while downloading file-abc: file not found.', type: 'invalid_request_error', param: 'input', code: 'image_file_not_found' } } } };
   const c = await callKit([(b) => (b.previous_response_id === 'resp_stand-in-1' ? gone : { text: 'A' })]);
-  const uploads = { isOff: () => true, forget: async () => {}, get: async () => null };
+  const uploads = { isOff: () => true, forget: async () => {}, get: async () => null, answered: () => {} };
   try {
     const r = await c.call([m1], { uploads });
     const m2 = [...said([m1], r), msg('user', text('q1'))];

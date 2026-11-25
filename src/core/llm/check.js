@@ -119,8 +119,8 @@ export async function testModel(c) {
 
 /**
  * Uploads the test photo, expiring in an hour, the shortest a provider allows (spec §9.8). An upload that fails turns uploads off there,
- * a failure with no answer too (a call's fast link failure leaves them on; Test's step says what it did): photos go in each request until annai
- * restarts, or a new key or address, or a Test that passes. Where the provider
+ * a failure with no answer too (a call's fast link failure leaves them on, and its cut or passing error holds them until a reply that calls no tool answers a request that sent a photo's bytes; Test's
+ * step says what it did): photos go in each request until annai restarts, or a new key or address, or a Test that passes. Where the provider
  * keeps files until they are deleted, annai then deletes the photo by the id the upload gave, as it will delete each photo: a key that
  * can't (a refusal, a 404 for the file it just made, or any other 4xx but a 408 or a 429) turns them off the same way; a delete that
  * gets no answer, a 408, a 429 or a server error says nothing about the key, and the upload worked, so photos stay on and the sweep
