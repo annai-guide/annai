@@ -3829,7 +3829,7 @@ test("a Stop that comes as annai's card is being written ends the call at once, 
   k.agent.on('event', (/** @type {any} */ e) => { if (e.type === 'out.ask' && e.data.own) k.agent.interrupt(); }); // the Stop, as the card's entry is written
   const t0 = Date.now();
   k.agent.send('Where did we eat in Testville?');
-  await Promise.race([k.agent.idle(), pause(30 * k.agent.secondMs)]);
+  await idleAtOnce(k, 30 * k.agent.secondMs); // at once (0 ms on the clock); 30 s outlasts the card's 3 s and 8 s, so a limit that ended it shows at the assertion below, and a turn that never ends fails here
   assert.equal(Date.now() - t0, 0, 'at once: on the test clock no time passed, so no limit of the card (its 3 s, its 8 s) ended it');
   assert.equal(k.agent.kokoro.pendingId, null, 'no card waits');
   assert.deepEqual(await readResults(k), ['Stopped by the user.']);
@@ -5661,7 +5661,7 @@ test("classic voice: her question waits by hand (her reply is the question, then
   await startsSpeaking(k);
   await pause(1.5 * k.agent.secondMs);
   await k.agent.open(other);
-  await Promise.race([k.agent.idle(), pause(30 * k.agent.secondMs)]);
+  await idleAtOnce(k, 30 * k.agent.secondMs); // at once (0 ms on the clock); 30 s outlasts the tap's and the card's limits, as above
   assert.deepEqual(await heardIn(k, other), [], 'nothing heard was written in the conversation opened');
   assert.ok(!k.said.includes('Dinner it is.'));
   await k.agent.open(from);
@@ -6018,7 +6018,7 @@ test("Koe on a chat model, annai's card waiting: a line said into Koe's micropho
   await until(() => k.agent.koe.scope === other && k.agent.koe.waiting === true, 20_000); // Koe listens there, before the write-down ends
   release();
   await pause(15 * k.agent.secondMs);
-  await Promise.race([k.agent.idle(), pause(200 * k.agent.secondMs)]);
+  await Promise.race([k.agent.idle(), pause(200 * k.agent.secondMs)]); // a race on purpose: Koe is still waiting there, idle() does not settle (measured: not in 2000 s on the clock), and the 200 s are the time these checks take
   const results = await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(other, { types: ['tool.result'] }));
   const koeWait = results.filter((/** @type {any} */ e) => e.data.half === 'koe' && e.data.name === 'wait').map((/** @type {any} */ e) => String(e.data.content).slice(0, 80));
   assert.deepEqual(koeWait, ['Nothing yet (60 seconds).'], 'Koe heard nothing there');

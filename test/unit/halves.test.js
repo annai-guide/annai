@@ -1355,7 +1355,7 @@ test('Start fresh lets both halves go even when closing live at its end throws (
   k.agent.kokoro.startFresh = async () => { const r = await fresh(); Object.defineProperty(live, 'state', { value: 'open', writable: true, configurable: true, enumerable: true }); return r; };
   await k.agent.startFresh().catch(() => {});
   k.agent.send('Again');
-  await Promise.race([k.agent.idle(), new Promise((r) => setTimeout(r, 3000))]);
+  await idleAtOnce(k); // 15 ms on the clock; a half left held, and a wake left queued, fail here
   assert.equal((await k.events(['out.speak'])).length, 2, 'the message after it is answered');
 });
 
