@@ -322,11 +322,13 @@ export async function until(fn, ms = 2000) {
  * timeout (120 s). A race on p itself, not a poll of a flag, so whatever p waits for is still waited for. 2000 ms: 30 times the longest of the 131 such
  * waits in the five files that use it, 65 ms of clock time (measured 2026-11-20). Of the waits agent-loop, trip-tools and typed-kept passed to it
  * (2026-11-22), the longest on real time is under 40 ms, and on a test's clock 1650 ms, a reader's 1.5 s: a clock's time is the timers waited out, the same
- * on any machine. A test whose wait runs longer on its clock passes its own ms, saying why. Of the 74 598 waits in one run of the 72 files that the
- * sweep of 2026-11-24 changed or that use a kit it changed, measured unbounded beside CPU-burning loops (a load average of about 100), those left at
- * 2000 ms took at most 804 ms on real time and 1515 ms on a test's clock (Kokoro's 1.5 s). Real time grows with the load, so a wait on the real clock
- * that waits out a timer of a second or more (her voice's HOLD_MS, a typed line's gathering, the stand-in's turn) passes its own ms too: the timer plus
- * 2000.
+ * on any machine. A test whose wait runs longer on its clock passes its own ms, saying why. Of the 75 324 waits in one run of the whole suite (6536
+ * tests, 2026-11-24) beside 32 CPU-burning loops (a load average of 80 to 150), those left at 2000 ms on real time took at most 623 ms, and on a test's
+ * clock 1650 ms (agent-loop's, a reader's 1.5 s). Real time grows with the load, so a wait on the real clock that waits out a timer of a second or more
+ * (her voice's HOLD_MS, a typed line's gathering, the stand-in's turn) passes its own ms: the timer plus 2000. A wait whose time is CPU work on the real
+ * clock, a turn of 50 or 60 scripted calls, a simulation's whole run, has no bound that holds on every machine: in that run they took up to 898 and 2398 ms
+ * of real time, and at 2000 ms only 0 and 10 of 24 copies of agent-budgets were clean beside 48 busy loops. Such a test runs on a test clock (useClock),
+ * where CPU time costs none and a leak still fails at once.
  * @param {Promise<unknown>} p @param {string} why @param {number} [ms]
  */
 export async function inTime(p, why, ms = 2000) {
