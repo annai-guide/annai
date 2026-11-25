@@ -733,7 +733,7 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
           Promise.resolve(r).catch(() => {}); // an async builder's rejection: not the page's to report
         }
         if (!traced) await trace?.upload({ endpoint: endpoint.name, url: typeof r?.url === 'string' ? r.url : `${type.type}:`, status: 0, ms: now() - started, error: String(/** @type {any} */ (e)?.message ?? e) });
-        if (!dropped) uploads.off(endpoint.id); // the provider's or its plugin's: until annai restarts, or a new key or address, or a Test that passes
+        if (!dropped) uploads.off(endpoint.id); // refused, or cut at its limit: until annai restarts, or a new key or address, or a Test that passes
       }
     }
   }
