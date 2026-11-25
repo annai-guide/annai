@@ -695,7 +695,7 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
   const hashOf = async (/** @type {string} */ data) => hashes.get(data) ?? hashes.set(data, await photoHash(data)).get(data);
   /** An upload of this request failed on the link at once (not made, or its answer broke off before its limit): its other new photos go as bytes without a try, and uploads stay on. */
   let dropped = false;
-  // Only what is sent is uploaded: a photo in the turns a kept turn already holds is left as it is.
+  // A photo in the turns a kept turn already holds is left as it is (a message a type leaves out, a refused one at Gemini, isn't seen here).
   for (const m of request.messages.slice(from)) {
     for (const p of m.parts) {
       if (p.type !== 'image' || !p.hash || !p.data || uploads.isOff(endpoint.id)) continue;
