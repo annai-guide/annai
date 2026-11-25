@@ -72,7 +72,7 @@ test('every fetch that carries a key asks not to follow redirects; a browser\'s 
   const opaque = /** @type {any} */ ({ type: 'opaqueredirect', status: 0, ok: false, headers: new Headers(), text: async () => '' });
   const fetch = async (/** @type {any} */ _url, /** @type {any} */ init) => { inits.push(init); return opaque; };
   const request = /** @type {any} */ ({ messages: [{ role: 'user', parts: [{ type: 'image', mediaType: 'image/png', data: 'iVBORw0KGgo=', hash: 'h1' }] }] });
-  const uploads = /** @type {any} */ ({ isOff: () => false, get: async () => null, set: async () => {}, off: () => {}, forget: async () => {} });
+  const uploads = /** @type {any} */ ({ isOff: () => false, get: async () => null, set: async () => {}, off: () => {}, forget: async () => {}, held: () => false, answered: () => {} });
   await assert.rejects(callOnce({ type, endpoint: endpoint('https://llm.example'), model, key: KEY, request, fetch, uploads }), redirected);
   assert.equal(inits.length, 2, 'the upload, then the request');
   assert.ok(inits.every((i) => i.redirect === 'manual'));

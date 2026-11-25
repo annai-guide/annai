@@ -26,8 +26,12 @@ export const uploadName = (hash, mediaType) => `annai-${hash.slice(0, 16)}.${EXT
 export class Uploads {
   /** @type {Record<string, Record<string, { id: string, expiresAt: number }>> | null} */
   #map = null;
-  /** @type {Set<string>} endpoints whose upload failed other than on the link before UPLOAD_MS (a call's: call.js withUploads; a Test's, any failure: check.js testUpload), or whose key was refused or can't delete: until annai restarts, or their provider's key or address changes, or a Test passes */
+  /** @type {Set<string>} endpoints whose upload was refused, unreadable or its plugin's failure (a call's: call.js withUploads; a Test's, any failure: check.js testUpload), or whose key was refused or can't delete: until annai restarts, or their provider's key or address changes, or a Test passes */
   #off = new Set();
+  /** @type {Map<string, Set<string>>} by endpoint, the photos that go in the request there (hold, held): until annai restarts, or a new key or address, or a Test that passes, as #off */
+  #held = new Map();
+  /** @type {Set<string>} endpoints held since their provider last answered a request there (answered): no photo is uploaded there meanwhile */
+  #waiting = new Set();
   /** @type {Set<string>} endpoints whose list answered and isn't one annai can read: the provider's, not the key's, so until annai restarts or a Test reads the list */
   #unread = new Set();
   /** @param {Workspace} ws @param {(endpointId: string) => boolean} [going] whether an endpoint's provider is going, or its key or address changing: nothing is uploaded there meanwhile, and an upload answered meanwhile is deleted (withUploads) */
@@ -70,9 +74,34 @@ export class Uploads {
   off(endpointId) {
     this.#off.add(endpointId);
   }
+  /**
+   * A photo whose upload was cut at UPLOAD_MS, or answered 408, 429 or a server error (call.js withUploads): a later try may work, but one at once
+   * would likely wait it out again. That photo goes in the request there from then on, and so does every photo not yet uploaded there until its
+   * provider next answers a request there (answered); then the next new photo is uploaded again. So a files service that keeps hanging costs
+   * one wait a turn that brings new photos, never one a step or a model, and one until its provider answers on a link that answers nothing.
+   * @param {string} endpointId @param {string} hash
+   */
+  hold(endpointId, hash) {
+    this.#waiting.add(endpointId);
+    this.#held.set(endpointId, (this.#held.get(endpointId) ?? new Set()).add(hash));
+  }
+  /** Whether a photo not uploaded there goes in the request without a try: one held, or any while the endpoint waits for its provider's answer, which holds it too. @param {string} endpointId @param {string} hash */
+  held(endpointId, hash) {
+    if (this.#waiting.has(endpointId)) this.hold(endpointId, hash);
+    return !!this.#held.get(endpointId)?.has(hash);
+  }
+  /** Its provider answered a request there (call.js callOnce): the next new photo is uploaded again; those held stay in the request. @param {string} endpointId */
+  answered(endpointId) {
+    this.#waiting.delete(endpointId);
+  }
   /** A new key or address, or a Test that passed: what failed with the old ones says nothing about these. A list annai can't read stays (listed). @param {string} id a provider's id (all its endpoints) or an endpoint's */
   retry(id) {
-    for (const e of [...this.#off]) if (e === id || e.startsWith(`${id}/`)) this.#off.delete(e);
+    for (const e of [...this.#off, ...this.#held.keys()]) {
+      if (e !== id && !e.startsWith(`${id}/`)) continue;
+      this.#off.delete(e);
+      this.#held.delete(e);
+      this.#waiting.delete(e);
+    }
   }
   /**
    * What a read of an endpoint's list found (sweepUploads), the one rule for the sweeps and Test, so annai never makes files it can't delete:
@@ -113,7 +142,8 @@ export const REQUEST_MS = 15_000;
  * timeslot at its best coding (MCS-9), and a class 10 phone uses 2 slots, 118.4 kbit/s, or 1 (59.2), as the network chooses by the traffic
  * (Wikipedia, General Packet Radio Service, multislot classes). A photo of 1 MiB (the request cap until 2026-11-21, 256 KiB since:
  * photos.js; a traveller can set more) is 8,388,608 bits: 71 s at 118.4 kbit/s, and 120 s lets the link run down to 70 kbit/s (59% of
- * that); 1 slot at 59.2 would need 142 s. A cut upload sends the photo in the request, as any failed one does, and uploads go off there.
+ * that); 1 slot at 59.2 would need 142 s. A cut upload sends the photo in the request, as any failed one does, and holds uploads there until
+ * its provider next answers (Uploads.hold).
  */
 export const UPLOAD_MS = 120_000;
 /** bit/s: the slowest uplink a model call's request has time for (call.js), the one UPLOAD_MS is sized for (see there). */
