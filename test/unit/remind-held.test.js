@@ -1067,11 +1067,113 @@ for (const opens of [true, false]) {
   });
 }
 
+// Kokoro is not given a wake asked to be heard (the recap told aloud): the session alone has it, so when the conversation it was asked in is left while Koe's
+// open is awaited, Kokoro writes it into its own conversation, and the session never gets it there.
+test("Koe live: the recap asked to be told aloud, waiting for Koe's own open when another conversation opens: written into its own conversation, never given to the session there", async () => {
+  const k = await liveKit([{ said: 'Here is where you went.', audio: tone(1) }], { pace: 1 });
+  try {
+    await k.voice.unlock();
+    const other = await createTrip(k.ws, { title: 'Kyoto' });
+    /** @type {() => void} */
+    let open = () => {};
+    const door = new Promise((r) => { open = () => r(undefined); });
+    const real = k.agent.koe.opening;
+    k.agent.koe.opening = door.then(() => real);
+    k.agent.wake({ kind: 'recap', aloud: true, text: 'Tell the recap of this trip, aloud.' });
+    await settled();
+    const opening = k.agent.open(other);
+    open();
+    await inTime(opening, 'the open did not finish', 5000);
+    await soon(async () => JSON.stringify(await recordsIn(k, k.trip, 'wake')).includes('Tell the recap') || texts(k).length > 0);
+    await idleAtOnce(k);
+    assert.equal(JSON.stringify(await recordsIn(k, k.trip, 'wake')).includes('Tell the recap'), true, 'written into its own conversation');
+    assert.deepEqual([await recordsIn(k, other, 'wake'), await recordsIn(k, other, 'out.speak')], [[], []], 'nothing of it in the one opened');
+    assert.equal(texts(k).length, 0, 'the session never got it');
+  } finally {
+    await k.done();
+  }
+});
+
 // The wake is with the session, whose connection is slow, when another conversation opens: the switch closes the session, which can't take it, and #live's
 // fallback shows the reminder. An urgent wake is not with the session until it is open, so the close hands nothing on: the reminder was told in the
 // conversation opened (and held in the one left). A wake that is not urgent is handed on at the close (shown silently in the conversation left, the approved
 // entry "A reminder can be written into both conversations when a switch lands while the live session connects"): the fallback then shows it too, in the
 // same conversation, and the one opened has none.
+// The same, and the live model then rests (it could not connect), so Koe's own list answers as text: the wake is not queued for Koe in the conversation opened
+// either (#live checks again after the refresh that finds it so).
+test("Koe live: an urgent watch's wake while the session is connecting when another conversation opens and the live model then rests: its reminder is shown in its own conversation, and Koe's text turn never takes it in the one opened", async () => {
+  const k = await liveKit([{ said: 'Your train leaves in twenty minutes, from platform 4.', audio: tone(1) }], { pace: 1, koe: { type: [asleep] } });
+  try {
+    await k.voice.unlock();
+    const other = await createTrip(k.ws, { title: 'Kyoto' });
+    const cards = raw(k);
+    /** @type {() => void} */
+    let open = () => {};
+    const door = new Promise((r) => { open = () => r(undefined); });
+    const live = k.llm.live.bind(k.llm);
+    let reached = false;
+    k.llm.live = async (/** @type {any} */ ...a) => { reached = true; await door; return /** @type {any} */ (live)(...a); };
+    k.agent.wake({ ...train(), urgent: true });
+    await until(() => reached, 30_000);
+    const opening = k.agent.open(other);
+    await settled();
+    k.llm.bench.bench('m-live', 60_000); // the connection failed: the model rests, and the refresh finds Koe's text list
+    open();
+    await inTime(opening, 'the open did not finish', 5000);
+    await soon(async () => reminders(cards).length > 0 || (await recordsIn(k, other, 'wake')).length > 0);
+    await settled();
+    await idleAtOnce(k);
+    assert.deepEqual(reminders(cards), [TRAIN], 'shown now, once');
+    assert.deepEqual([await entries(k), await entries(k, other)], [[TRAIN], []], 'its entry in its own conversation, none in the one opened');
+    assert.deepEqual([await recordsIn(k, other, 'wake'), await recordsIn(k, other, 'out.speak')], [[], []], 'nothing of it told, or answered, in the one opened');
+  } finally {
+    await k.done();
+  }
+});
+
+// The first live model refuses and the second is connecting when another conversation opens (a wait after #live's refresh): the fallback that follows the
+// session's failure shows the reminder in the wake's own conversation too.
+test("Koe live: an urgent watch's wake whose first live model refused and whose second is connecting when another conversation opens: its reminder is shown in its own conversation, once", async () => {
+  const k = await liveKit([{ said: 'Your train leaves in twenty minutes, from platform 4.', audio: tone(1) }], { pace: 1, live: { second: true } });
+  try {
+    await k.voice.unlock();
+    const other = await createTrip(k.ws, { title: 'Kyoto' });
+    const cards = raw(k);
+    /** @type {() => void} */
+    let first = () => {};
+    /** @type {() => void} */
+    let second = () => {};
+    const doors = [new Promise((r) => { first = () => r(undefined); }), new Promise((r) => { second = () => r(undefined); })];
+    const live = k.llm.live.bind(k.llm);
+    let reached = '';
+    k.llm.live = async (/** @type {string} */ id, /** @type {any} */ ...rest) => {
+      reached = id;
+      if (id === 'm-live') {
+        await doors[0];
+        throw new Error('the connection was refused');
+      }
+      await doors[1];
+      return /** @type {any} */ (live)(id, ...rest);
+    };
+    k.agent.wake({ ...train(), urgent: true });
+    await until(() => reached === 'm-live', 30_000);
+    first();
+    await until(() => reached === 'm-live2', 30_000); // the refresh found the second model, which the wake now waits on
+    const opening = k.agent.open(other);
+    await settled();
+    second();
+    await inTime(opening, 'the open did not finish', 5000);
+    await soon(async () => reminders(cards).length > 0 || (await entries(k, other)).length > 0);
+    await settled();
+    await idleAtOnce(k);
+    assert.deepEqual(reminders(cards), [TRAIN], 'shown now, once');
+    assert.deepEqual([await entries(k), await entries(k, other)], [[TRAIN], []], 'its entry in its own conversation, none in the one opened');
+    assert.equal(texts(k).length, 0, 'the session never got it');
+  } finally {
+    await k.done();
+  }
+});
+
 for (const urgent of [true, false]) {
   test(`Koe live: ${urgent ? 'an urgent' : 'a'} watch's wake while the session is connecting when another conversation opens: its reminder is shown in its own conversation, ${urgent ? 'once' : 'twice there (a silent copy at the close, the fallback\'s)'}, and never in the one opened, and the next start that opens its own shows nothing more`, async () => {
     const k = await liveKit([{ said: 'Your train leaves in twenty minutes, from platform 4.', audio: tone(1) }], { pace: 1 });
