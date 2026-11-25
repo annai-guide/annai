@@ -92,8 +92,9 @@ const shownKey = (s) => `${s.name}\n${s.label}\n${s.over ?? ''}`;
 
 export class Channel {
   /**
-   * @param {{ log: Record<Side, (ev: any) => Promise<any>>, deliver: Record<Side, (w: Wake) => void>, cut: Record<Side, () => void>, by?: Record<Side, () => any>,
+   * @param {{ log: Record<Side, (ev: any) => Promise<any>>, deliver: Record<Side, (w: Wake) => boolean | void>, cut: Record<Side, () => void>, by?: Record<Side, () => any>,
    *   skip?: (n: { from: Side, why: NoteWhy, wake?: string, forUser: string }) => string | null }} c
+   *   deliver: false when the note went to another conversation than the open one (an immediate note then cuts nothing here);
    *   by: the model each half's call that is running was answered by, for the notes it sends; skip: a note that is nothing now, neither
    *   written nor handed over, and what its sender is told instead
    */
@@ -122,8 +123,8 @@ export class Channel {
     const by = ANNAI_NOTES.includes(why) ? null : o.by !== undefined ? o.by : this.by?.[from]() ?? null;
     const e = await this.log[from]({ type: 'note', actor: 'shiori', data: { id: newId('n'), from, mode, why, ...(wake ? { wake } : {}), by }, texts: [['text', text], ...(forUser ? /** @type {[string, string][]} */ ([['forUser', forUser]]) : [])] });
     // The other half's "woke for": Koe never mentions Kokoro, so its says only that a note came. It keeps the conversation it was written in (scope).
-    this.deliver[to]({ kind: 'note', logged: true, from, note: text, mode, why, seq: e?.seq, by, ...(e?.scope ? { scope: e.scope } : {}), ...(wake ? { turn: wake } : {}), ...(call ? { call } : {}), ...(from === 'koe' ? { watched } : {}), ...(forUser ? { forUser } : {}), text: from === 'koe' ? /* en */ `Koe ${asksOrNotes(text)}: ${quote(text.length > 120 ? `${text.slice(0, 120)}…` : text)}` : /* en */ 'a note from Kokoro' });
-    if (mode === 'immediate') this.cut[to]();
+    const here = this.deliver[to]({ kind: 'note', logged: true, from, note: text, mode, why, seq: e?.seq, by, ...(e?.scope ? { scope: e.scope } : {}), ...(wake ? { turn: wake } : {}), ...(call ? { call } : {}), ...(from === 'koe' ? { watched } : {}), ...(forUser ? { forUser } : {}), text: from === 'koe' ? /* en */ `Koe ${asksOrNotes(text)}: ${quote(text.length > 120 ? `${text.slice(0, 120)}…` : text)}` : /* en */ 'a note from Kokoro' });
+    if (mode === 'immediate' && here !== false) this.cut[to](); // a note that stayed in its own conversation cuts nothing in the one open
     return 'sent';
   }
 }
@@ -249,7 +250,7 @@ export class Halves {
       by: { koe: () => this.koe.by, kokoro: () => this.kokoro.by },
       deliver: {
         koe: (w) => {
-          if (this.#elsewhere(w)) return; // another conversation opened while it was written: it stays in its own
+          if (this.#elsewhere(w)) return false; // another conversation opened while it was written: it stays in its own
           // Kokoro's note for a stretch of non-stop sound (its sleep) is Koe's alone, nothing the user is owed.
           const stretch = this.#ofStretch({ from: w.from, why: String(w.why ?? ''), wake: w.turn, forUser: w.forUser ?? '' });
           const owed = isForUser(w) && !stretch;
@@ -453,8 +454,6 @@ export class Halves {
   #works() { return this.koeState === 'text' || this.koeState === 'live'; }
   /** @type {Promise<unknown>[]} Kokoro's owed words being shown in the conversation left or started fresh from */
   #left = [];
-  /** Kokoro's notes already shown as left unsaid: a session's hand-on doesn't show them again (#handOn). @type {WeakSet<Wake>} */
-  #shown = new WeakSet();
   /** Start fresh, while it runs: held settles once it is done, and a live session opens only then. @type {{ held: Promise<void>, done: Promise<import('./loop.js').Fresh> } | null} */
   #fresh = null;
 
@@ -465,7 +464,6 @@ export class Halves {
    * @param {string} [scope] where they go, read as they come: a switch moves the open conversation while the first is being written, and each goes where it belongs
    */
   #leftUnsaid(notes, here = false, scope = this.kokoro.target ?? ME) {
-    for (const w of notes) this.#shown.add(w);
     const shown = (async () => {
       for (const w of notes) {
         try {
@@ -708,13 +706,15 @@ export class Halves {
    * A live session's part (a message, a wake, a note) once Koe has the conversation open. When no session can open, Koe's
    * next model takes it; with none left, a card says so, and Kokoro talks directly at once, told so (with what it last told
    * Koe that didn't reach the user), the wake's reminders said by annai only if it can't; a session that closed
-   * meanwhile leaves them to annai. A close while the session connects leaves it to this part at once, and hands no copy of it on (live.js #go): this
-   * part places it, once. @param {() => Promise<boolean>} fn @param {Wake} w
+   * meanwhile leaves them to annai. A close while the session connects, any but a tap, leaves what the session had not taken to this part at once, and hands no
+   * copy of it on (live.js #go): this part places it, once (an urgent wake and a typed line wait for the attempt to end, as before; a tap's close waits for it
+   * too). @param {() => Promise<boolean>} fn @param {Wake} w
    */
   async #live(fn, w) {
     await this.koe.opening.catch(() => {});
     if (this.#elsewhere(w)) return;
     if (await fn()) return;
+    if (this.#fresh && w.kind === 'note') return this.#leftUnsaid([w]); // Start fresh closed the session it waited on: its words are shown above the divider, as the close showed them before
     const failed = this.#liveId;
     await this.#refresh();
     if (this.#elsewhere(w)) return;
@@ -737,9 +737,9 @@ export class Halves {
   /**
    * A wake or a note of Kokoro's being placed (#live, #handOn, #backstop, Koe's delivery) whose conversation another has replaced while it waited (Koe's open, a refresh,
    * a session closed by the switch, the note's own write): it goes to no session and not to Koe, which would say it in the conversation opened (Halves.wake's own
-   * check). A wake's reminders are shown in its own, Kokoro having the wake already; one Kokoro never got (aloud: the recap) is Kokoro's to write there. A note of
-   * Kokoro's (scope: where Channel.send wrote it) is shown in its own as a switch shows those it leaves (#leftUnsaid), silently, a question let go: kept for
-   * when the user goes back, as a reminder is, and Kokoro is not woken there. One naming no conversation is the open one's wherever it lands.
+   * check). A wake's reminders are shown in its own, Kokoro having the wake already (said, with voice on); one Kokoro never got (aloud: the recap) is Kokoro's to
+   * write there. A note of Kokoro's (scope: where Channel.send wrote it) is shown in its own as a switch shows those it leaves (#leftUnsaid): its words for the
+   * user on a silent card and an entry, a question let go with a Trace line; Kokoro is not woken there. One naming no conversation is the open one's wherever it lands.
    * @param {Wake} w @returns {boolean} whether it was
    */
   #elsewhere(w) {
@@ -761,11 +761,10 @@ export class Halves {
   /**
    * Kokoro's notes for the user, and wakes with reminders, a live session closed on before Koe passed them on (a close, a drop it didn't come back from,
    * Koe moving to text): the text Koe owes them as its own (§6.8); while Koe stays live with no session, or is down, annai shows them. Never one #live
-   * still waited for the session to take: the close leaves that one to #live (live.js #go), so one copy lands.
+   * still waited for the session to take, and the session had not taken: the close leaves that one to #live (live.js #go), so one copy lands.
    * @param {Wake[]} notes
    */
   #handOn(notes) {
-    notes = notes.filter((w) => !this.#shown.has(w)); // shown already, by Start fresh or a switch
     if (!notes.length) return;
     this.#route(async () => {
       await this.#refresh();

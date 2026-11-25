@@ -146,6 +146,12 @@ const bare = (text) => {
   const t = cleanSaid(text);
   return STAGE.test(t) || BARE.includes(t.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').replace(/_/g, ' ').toLowerCase());
 };
+/** Takes an item out of the list it waits in (#go): whether it was still there; if not, a session has it. @template T @param {T[]} list @param {T} item */
+const takeOut = (list, item) => {
+  const i = list.indexOf(item);
+  if (i >= 0) list.splice(i, 1);
+  return i >= 0;
+};
 /** @param {Uint8Array} b 16-bit PCM */
 const samples = (b) => new Int16Array(b.slice(0, b.length & ~1).buffer);
 /** @returns {Turn} */
@@ -244,8 +250,10 @@ export class LiveKoe {
    */
   #owed = { waiting: [], sent: [], cued: false, cue: false, at: 0 };
   /**
-   * What a part of Halves waits for a session to take (#go): until a session has it, it is that part's. A close lets go of each at once, before it hands
-   * anything on, and that part places it (#live): one copy lands, the one it says. @type {Set<() => void>}
+   * What a part of Halves waits for a session to take (#go), one `leave` each while it waits. A close, any but the traveller's tap, lets go of each at once,
+   * before it hands anything on: what was still waiting is that part's to place (#live), and one copy lands, the one it says. What the session had already
+   * taken (#idle sent it before the wait ended) is the session's: #go says so, and the close hands it on, or shows it, as for any item the session holds.
+   * @type {Set<() => void>}
    */
   #placing = new Set();
   /** A tap stopped her: a turn of hers that begins before the next input (the user speaks, any text goes in, a close) is written as her answer, never spoken. */
@@ -704,9 +712,9 @@ export class LiveKoe {
     // made, in a pause of her sound, or whose words came before any sound, or that goes on after a call, is cut: its notes are kept, or shown at a switch.
     const t = this.#sounding;
     if (t && !t.cut && this.#passes(t, this.#whole(t))) this.#passed();
-    // What a part of Halves still waits for a session to take is let go first, and that part places it (#go): never handed on here as well.
-    for (const leave of this.#placing) leave();
-    this.#placing.clear();
+    // What a part of Halves still waits for a session to take is let go first, and that part places it (#go): never handed on here as well. The traveller's
+    // tap lets go of nothing: the wait goes on until the connection attempt ends, as before, and nothing is placed at the tap.
+    if (why !== 'tap') for (const leave of this.#placing) leave();
     // Another conversation, or a fresh start: Kokoro's notes it owed are shown in the one left, never lost.
     if (forget && (why === 'switch' || why === 'fresh') && this.owing) this.c.left?.([...this.#owed.sent, ...this.#owed.waiting]);
     this.#closing = null;
@@ -932,7 +940,7 @@ export class LiveKoe {
     if (w.urgent && this.c.visible()) return this.#now(text, w.kind, owed, true);
     if (!owed) return this.#say(text, w.kind);
     this.#owed.waiting.push(owed);
-    return this.#go(w.kind, () => { this.#owed.waiting = this.#owed.waiting.filter((x) => x !== owed); });
+    return this.#go(w.kind, () => takeOut(this.#owed.waiting, owed));
   }
 
   /**
@@ -954,10 +962,7 @@ export class LiveKoe {
       const n = { text: note, kokoro: true };
       if (owed) this.#owed.waiting.push(owed);
       else this.#notes.push(n);
-      return this.#go('note', () => {
-        if (owed) this.#owed.waiting = this.#owed.waiting.filter((w) => w !== owed);
-        else this.#notes = this.#notes.filter((x) => x !== n);
-      });
+      return this.#go('note', () => (owed ? takeOut(this.#owed.waiting, owed) : takeOut(this.#notes, n)));
     }
     return this.#now(note, 'note', owed, false, true);
   }
@@ -1106,29 +1111,36 @@ export class LiveKoe {
   #say(text, why) {
     const n = { text, told: true };
     this.#notes.push(n);
-    return this.#go(why, () => { this.#notes = this.#notes.filter((x) => x !== n); });
+    return this.#go(why, () => takeOut(this.#notes, n));
   }
 
   /**
    * What waits goes in once Koe's turn and voice end, in a session opened for it that listens after where sound was unlocked;
-   * out of view, it waits (shown()). With no session, it is let go here (undo), and Halves places it (never twice): a close while it waits lets go of it
-   * at once, before the close hands anything on (#placing), not when the connection it waited on ends.
-   * @param {string} why @param {() => void} undo @returns {Promise<boolean>} whether it will be said
+   * out of view, it waits (shown()). With no session, it is let go here (undo takes it out of its list and says whether it was still there) and Halves places
+   * it, once: a close, any but the traveller's tap, lets go of it at once, before it hands anything on (#placing), not when the connection it waited on ends.
+   * One that had already gone in (a typed line's session sent it before the microphone started) is the session's, never placed again: the close hands it on,
+   * shows it or a cut did.
+   * @param {string} why @param {() => boolean} undo whether it was still waiting @returns {Promise<boolean>} whether the session has it, or will say it
    */
   async #go(why, undo) {
     if (!this.c.visible()) return true;
+    let took = false; // set once: it was still waiting when let go, so Halves places it
     /** @type {() => void} */
     let leave = () => {};
-    const left = new Promise((/** @type {(v: false) => void} */ r) => { leave = () => { undo(); r(false); }; });
+    const left = new Promise((/** @type {(v: false) => void} */ r) => { leave = () => { took ||= undo(); r(false); }; });
     this.#placing.add(leave);
-    const open = (await Promise.race([this.open(why, { mic: Boolean(this.c.voice?.unlocked) }), left])) && this.state === 'open';
-    this.#placing.delete(leave);
+    let open = false;
+    try {
+      open = (await Promise.race([this.open(why, { mic: Boolean(this.c.voice?.unlocked) }), left])) && this.state === 'open';
+    } finally {
+      this.#placing.delete(leave);
+    }
     if (open) {
       this.#idle();
       return true;
     }
-    undo();
-    return false;
+    took ||= undo();
+    return !took;
   }
 
   /** The page is back in view: what waited is said, in a session without the microphone, which a tap opens. */
