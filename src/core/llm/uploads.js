@@ -26,7 +26,7 @@ export const uploadName = (hash, mediaType) => `annai-${hash.slice(0, 16)}.${EXT
 export class Uploads {
   /** @type {Record<string, Record<string, { id: string, expiresAt: number }>> | null} */
   #map = null;
-  /** @type {Set<string>} endpoints whose upload was refused or cut at its limit (not one the link failed at once: call.js withUploads), or whose key was refused or can't delete: until annai restarts, or their provider's key or address changes, or a Test passes */
+  /** @type {Set<string>} endpoints whose upload failed other than on the link before UPLOAD_MS (a call's: call.js withUploads; a Test's, any failure: check.js testUpload), or whose key was refused or can't delete: until annai restarts, or their provider's key or address changes, or a Test passes */
   #off = new Set();
   /** @type {Set<string>} endpoints whose list answered and isn't one annai can read: the provider's, not the key's, so until annai restarts or a Test reads the list */
   #unread = new Set();
@@ -108,7 +108,7 @@ const AT_ONCE = 6;
  */
 export const REQUEST_MS = 15_000;
 /**
- * One chat photo's upload (call.js): 120 s, a limit that only catches a hang. It stands apart from a role's wait for the first words,
+ * One chat photo's upload (call.js): 120 s, a limit that catches a hang or a link too slow for the photo. It stands apart from a role's wait for the first words,
  * which starts after the uploads and is for a slow model. Sized for the slowest mobile data still in use, 2G EDGE: 59.2 kbit/s up a
  * timeslot at its best coding (MCS-9), and a class 10 phone uses 2 slots, 118.4 kbit/s, or 1 (59.2), as the network chooses by the traffic
  * (Wikipedia, General Packet Radio Service, multislot classes). A photo of 1 MiB (the request cap until 2026-11-21, 256 KiB since:

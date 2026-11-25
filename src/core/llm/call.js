@@ -698,7 +698,7 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
         if (typeof r?.url !== 'string') throw new TypeError(/* en */ `${type.type}'s uploadRequest gave no request (a result with a url, not a promise)`);
         sameOrigin(endpoint, r.url); // elsewhere: never sent, and the photo goes in the request
         // Its own time limit, body included: one cut by it (a hang) turns uploads off, as the provider's refusal does, since each later try would wait it out
-        // again; one not made or broken off before it is the link's, which costs nothing to try again. A Stop is told apart in the catch (the caller's signal aborted).
+        // again; one not made or broken off before it is the link's, which a later try may meet again, for as long as that failure took. A Stop is told apart in the catch (the caller's signal aborted).
         const limit = AbortSignal.timeout(UPLOAD_MS);
         const res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, signal: signal ? anySignal([signal, limit]) : limit, redirect: 'manual' }).catch((e) => {
           dropped = !limit.aborted;
@@ -733,7 +733,7 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
           Promise.resolve(r).catch(() => {}); // an async builder's rejection: not the page's to report
         }
         if (!traced) await trace?.upload({ endpoint: endpoint.name, url: typeof r?.url === 'string' ? r.url : `${type.type}:`, status: 0, ms: now() - started, error: String(/** @type {any} */ (e)?.message ?? e) });
-        if (!dropped) uploads.off(endpoint.id); // refused, or cut at its limit: until annai restarts, or a new key or address, or a Test that passes
+        if (!dropped) uploads.off(endpoint.id); // any failure but the link's before UPLOAD_MS (a refusal, a cut at its limit, the plugin's or an unreadable reply): until annai restarts, or a new key or address, or a Test that passes
       }
     }
   }
