@@ -65,7 +65,7 @@ test("sleep waits its time, or until its signal aborts, whichever comes first: t
   const stop = new AbortController();
   await sleep(1000, stop.signal);
   assert.equal(Date.now() - at, 2000, 'a signal that never aborts: its time');
-  setTimeout(() => stop.abort(), 30);
+  setTimeout(() => stop.abort(), 30); // 30 ms on the test clock, far inside the 10 s the sleep would take (the longest wait between a call's tries)
   await sleep(10_000, stop.signal);
   assert.equal(Date.now() - at, 2030, 'over as its signal aborts');
   await sleep(10_000, stop.signal);
