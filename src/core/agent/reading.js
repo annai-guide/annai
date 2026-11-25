@@ -1,6 +1,7 @@
 /**
  * Who reads a photo or PDF a model can't take (the bookings design, goal 11; spec §7.2): a model of the other half's that can,
- * then Utility's, then the model's own role's; for a PDF then its pages as pictures, drawn by the PDF pages plugin (goal 12);
+ * then Utility's, then the model's own role's; for a PDF then its pages as pictures, drawn by the PDF pages plugin (goal 12), each sent
+ * as a photo's request copy is, under its byte cap;
  * and only when nothing can, a note naming the setting that fixes it. Everything here is words a model reads: English.
  */
 import { chatCandidates, firstWordsMs, AllFailedError, COOLDOWN_MS } from '../llm/fallback.js';
@@ -84,10 +85,11 @@ export function noReader(kind, { plugin = false, photos = false } = {}) {
  * @param {FileToRead} file @param {{ input?: string[] }} model the model the reading is for
  * @param {{ llm: { call: Function, config: () => Promise<any>, bench: import('../llm/fallback.js').Bench }, half: 'one' | 'kokoro' | 'koe', pages: import('../pdf-pages.js').PdfPages | null,
  *   signal: AbortSignal, wakeId: string, scope: string, secondMs: number, explain: (e: unknown, role: string) => string | Promise<string>, store: import('../types.js').Store,
- *   shared?: boolean }} o
+ *   shared?: boolean, copy?: (page: import('../pdf-pages.js').PageImage) => Promise<import('../pdf-pages.js').PageImage> }} o
  *   explain: why a reader failed, in English for the model (the loop's, which knows whether the device is online, and blanks every key annai keeps);
  *   store: whose keys the PDF pages plugin's error is blanked of; shared: the half's turn shares the link with the other half's (loop.js), and
- *   so does each reader's send
+ *   so does each reader's send; copy: a page picture as a request sends it (the loop's: under the photos' request limits, by their encoder,
+ *   spec §7.2), else each goes as drawn
  * @returns {Promise<Reading>}
  */
 export async function readFile(file, model, o) {
@@ -168,6 +170,14 @@ export async function readFile(file, model, o) {
           return reading('failed', [failed, why, reader ? '' : noReader('pdf')].filter(Boolean).join('\n'));
         } finally {
           clearTimeout(late);
+        }
+        // Each picture as a request sends it (o.copy: under a photo's byte cap, 256 KiB by default, where the plugin's JPEG at 1600 px was
+        // about 500 KB a page of small print), one after another: one canvas at a time on a phone. After the drawing's time limit, which
+        // catches a plugin that hangs: this is annai's own encoder, untimed as a photo's copy is; the turn's stop still ends it.
+        if (o.copy) {
+          const copies = [];
+          for (const p of drawn.pages) copies.push(await Promise.race([o.copy(p), stopped]));
+          drawn = { ...drawn, pages: copies };
         }
         // A page with nothing drawn on it isn't sent (a booking's empty last page went as a picture every turn).
         const blank = Array.isArray(drawn.blank) ? drawn.blank : [];

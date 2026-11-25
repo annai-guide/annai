@@ -4,6 +4,7 @@
 //   booking.pdf: 3 US-letter pages of text in Helvetica (not embedded).
 //   scan.pdf: 1 page holding only test/fixtures/photos/upright.jpg (its left half red, its right half blue) drawn over the page.
 //   blank.pdf: a page of text, then a page with nothing drawn on it.
+//   fine-print.pdf: 1 A4 page of a hotel's terms in 6.5 pt Helvetica, dense enough that its picture at 1600 px is over a photo's 256 KiB.
 // Run: node scripts/make-pdf-fixtures.mjs
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -68,6 +69,25 @@ writeFileSync(`${out}blank.pdf`, pdf([
   ['<< >>', text(['Hotel TEST42 \xb7 Check-in 15:00'])],
   '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 7 0 R >>',
   ['<< >>', Buffer.from('q Q', 'latin1')],
+]));
+
+// fine-print.pdf: a booking's small print, 62 lines of made-up terms, each with a time and a price, as a dense page of text is drawn.
+const terms = 'guest arrival departure deposit refund cancellation breakfast included city tax payable at the property in local currency before the deadline shown on the voucher; shuttle parking luggage storage reception hours late check-in notice written request charges apply'.split(' ');
+const fine = [
+  'BT', '/F1 16 Tf', '54 780 Td', '(HOTEL TEST42 \xb7 Booking terms) Tj', 'ET',
+  'BT', '/F1 6.5 Tf', '54 750 Td', '8 TL',
+  ...Array.from({ length: 62 }, (_, i) => {
+    const words = Array.from({ length: 18 }, (__, j) => terms[(i * 7 + j * 5) % terms.length]).join(' ');
+    return `(${i + 1}. ${words} by ${String(10 + (i % 12)).padStart(2, '0')}:${String((i * 7) % 60).padStart(2, '0')}, JPY ${1200 + i * 130}.) '`;
+  }),
+  'ET',
+].join('\n');
+writeFileSync(`${out}fine-print.pdf`, pdf([
+  '<< /Type /Catalog /Pages 2 0 R >>',
+  '<< /Type /Pages /Kids [4 0 R] /Count 1 >>',
+  '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
+  '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>',
+  ['<< >>', Buffer.from(fine, 'latin1')],
 ]));
 
 const jpeg = readFileSync(fileURLToPath(new URL('../test/fixtures/photos/upright.jpg', import.meta.url)));
