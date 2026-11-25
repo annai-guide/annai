@@ -13,6 +13,8 @@ const KEY = 'AIza-e2e-gemini-stand-in-0123456789abcdef';
 test('Google Gemini from the catalog speaks Gemini\'s own API: Fetch model list, Test with the tool and the photo, Try this model; the key goes only in x-goog-api-key; the free-tier switch makes its calls free', async ({ page }) => {
   const s = await startGeminiServer({ key: KEY });
   try {
+    // Flash's prices and costs below are 2026's: from 2027-01-01 the description's schedule doubles them. The page's clock runs from a day in 2026.
+    await page.clock.install({ time: new Date('2026-11-20T12:00:00-08:00') });
     await openApp(page, '#/models');
     await waitForServiceWorker(page);
     await pickProvider(page, 'Google Gemini');
