@@ -350,7 +350,7 @@ export async function idleAtOnce(k, ms = 2000) {
 /**
  * A simulation's start (SimRun's start()) or its end (its `finished`), bounded as idleAtOnce is, and what it settled with: SimRun waits for the agent's
  * idle() at every moment (#settle), so a leaked busy count, or a turn that never ends, fails here at once, not at the test's 120 s. For a test on a test
- * clock (useClock), where the time of its work is not counted: of the 14 starts and ends in the three simulation files, the longest took 70 ms on it
+ * clock (useClock), where the time of its work is not counted: of the 15 runs in the three simulation files, the longest start or end took 70 ms on it
  * (2026-11-24), so 2000 ms.
  * @template T @param {Promise<T>} p @param {number} [ms] @returns {Promise<T>}
  */
