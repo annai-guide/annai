@@ -6018,7 +6018,9 @@ test("Koe on a chat model, annai's card waiting: a line said into Koe's micropho
   await until(() => k.agent.koe.scope === other && k.agent.koe.waiting === true, 20_000); // Koe listens there, before the write-down ends
   release();
   await pause(15 * k.agent.secondMs);
-  await Promise.race([k.agent.idle(), pause(200 * k.agent.secondMs)]); // a race on purpose: Koe is still waiting there, idle() does not settle (measured: not in 2000 s on the clock), and the 200 s are the time these checks take
+  // A pause, not idle(): annai's card still waits in the conversation left (Kokoro stays busy), so idle() does not settle here (measured: not in 2000 s on the
+  // clock). The 200 s, 200 × secondMs on the kit's clock, outlast Koe's 60 s wait, whose result the first check reads.
+  await pause(200 * k.agent.secondMs);
   const results = await k.store.tx(['events'], 'readonly', (/** @type {any} */ x) => x.listEvents(other, { types: ['tool.result'] }));
   const koeWait = results.filter((/** @type {any} */ e) => e.data.half === 'koe' && e.data.name === 'wait').map((/** @type {any} */ e) => String(e.data.content).slice(0, 80));
   assert.deepEqual(koeWait, ['Nothing yet (60 seconds).'], 'Koe heard nothing there');
