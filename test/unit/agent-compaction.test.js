@@ -6,6 +6,7 @@ import { Transcript } from '../../src/core/agent/transcript.js';
 import { ME } from '../../src/core/scopes.js';
 import { saveModel } from '../../src/core/llm/config.js';
 import { record } from '../../src/core/agent/log.js';
+import { clockOf } from './clock.js';
 
 const say = (/** @type {string} */ text, /** @type {any} */ extra = {}) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }], ...extra });
 
@@ -234,7 +235,7 @@ test('a big photo or PDF in the window makes no housekeeping due: a summary woul
   assert.deepEqual(due, { 'a photo sent as bytes': false, 'a PDF she reads': false }, 'no housekeeping due for either');
 });
 
-test("a conversation of words alone that would pass the request size is summarized first: the summary's own request, written by her model from the cached conversation, is over it, and her request after it is under it (size-forced-next)", async () => {
+test("a conversation of words alone that would pass the request size is summarized first: the summary's own request, written by her model from the cached conversation, is over it, and her request after it is under it with the newest message word for word (size-forced-next)", async () => {
   const { updateAppSettings } = await import('../../src/core/settings.js');
   /** A request's size: words only, so all of it. @param {any} r */
   const size = (r) => JSON.stringify(r).length;
@@ -248,13 +249,13 @@ test("a conversation of words alone that would pass the request size is summariz
   }
   assert.equal((await k.events(['compaction'])).length, 1, 'one summary, forced by the size');
   assert.equal(String(k.requests.at(-2).tail).startsWith('[annai: housekeeping]'), true, 'her own, while the cache is warm');
-  assert.ok(size(k.requests.at(-3)) < 2 ** 20 && size(k.requests.at(-2)) > 2 ** 20, "the third under the size, the summary's own over it: it holds the conversation the cache holds, so the fourth's");
+  assert.ok(size(k.requests.at(-3)) < 2 ** 20 && size(k.requests.at(-2)) > 2 ** 20, "the third under the size, the summary's own over it: it holds the conversation the cache holds, which is the fourth's request whole");
   assert.ok(size(k.requests.at(-1)) < 2 ** 20 / 2, 'after it, the request holds the summary and the last message');
   assert.ok(JSON.stringify(k.requests.at(-1)).includes('d'.repeat(300_000)), 'the newest message stays word for word');
   assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['1', '2', '3', '4']);
 });
 
-test('a forced summary in a turn leaves words over the request size: another follows while more than one exchange is left to cut, and a third asks no model (size-forced-next)', async () => {
+test('a forced summary in a turn leaves words over the request size: another follows while two or more exchanges are left, then her request goes under it (size-forced-next)', async () => {
   const { updateAppSettings } = await import('../../src/core/settings.js');
   /** A request's size: words only, so all of it. @param {any} r */
   const size = (r) => JSON.stringify(r).length;
@@ -272,22 +273,10 @@ test('a forced summary in a turn leaves words over the request size: another fol
   assert.ok(size(k.requests[1]) < 2 ** 20 && size(k.requests[2]) > 2 ** 20, "the second message's request is under the size, the third's (her own summary of it) over it");
   assert.deepEqual((await k.events(['compaction'])).map((/** @type {any} */ e) => e.data.mode), ['warm', 'cold'], "two summaries before her answer: her own, then the utility model's");
   assert.equal(String(k.requests[3].system).startsWith('You summarize a conversation'), true, "the second is the utility model's");
-  assert.equal(k.requests.length, 5, 'her two answers, the two summaries and her answer after them: no model asked for a third');
+  assert.equal(k.requests.length, 5, 'her two answers, the two summaries and her answer after them: no third summary is tried');
   assert.ok(size(k.requests.at(-1)) < 2 ** 20 / 2 && JSON.stringify(k.requests.at(-1)).includes(last), 'her request is under the size, with the last message word for word');
   assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['1', '2', '3']);
 });
-
-/**
- * The device's clock, moved on by hand (Date.now, which the log's times and the agent's clock both read): set before the kit is made.
- * @param {import('node:test').TestContext} t
- */
-function clockOf(t) {
-  const real = Date.now;
-  let shift = 0;
-  Date.now = () => real() + shift;
-  t.after(() => { Date.now = real; });
-  return (/** @type {number} */ ms) => { shift += ms; };
-}
 
 for (const what of ['a photo', 'a PDF']) {
   test(`a cold return with ${what} of about 700 KB in the window brings no summary: the cold-start check leaves the window's files out too (size-forced-next)`, async (t) => {
@@ -309,6 +298,7 @@ for (const what of ['a photo', 'a PDF']) {
     k.agent.send('Look', pdf ? {} : { photos: [{ path: '/trip/files/big.webp' }] });
     await idleAtOnce(k);
     jump(61 * 60_000);
+    assert.equal(k.agent.cacheState()?.warm, false, 'the return is cold: the clock moved past the cache');
     k.agent.send('And then?');
     await idleAtOnce(k);
     const whole = (/** @type {any} */ r) => r.messages.some((/** @type {any} */ m) => m.parts.some((/** @type {any} */ p) => p.data?.length === 933_336));

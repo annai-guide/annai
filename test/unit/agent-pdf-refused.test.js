@@ -496,9 +496,9 @@ test('a refusal that passes: one 400 on the only model marks the PDF (the test c
   assert.deepEqual(cards(k), [TITLE]);
 });
 
-// A PDF over the request size (docs/limitations.md, "A PDF over the request size still brings a forced summary each of its turns"; size-forced-next): the
-// size weighs what a summary can make smaller, which the window's PDF isn't, so it brings no summary and the request goes as it is. 8ff7cba1c forced one in
-// each of the PDF's two turns, warm with the PDF whole, and a refused PDF's warm summary was refused before the PDF's test could run.
+// A PDF over the request size (size-forced-next): the size weighs what a summary can make smaller, which the window's PDF isn't, so it brings no
+// summary and the request goes as it is. 8ff7cba1c forced one in each of the PDF's two turns, warm with the PDF whole, and a refused PDF's warm
+// summary was refused before the PDF's test could run.
 /** A request that writes a summary: her model's from the cached conversation (the housekeeping instruction its tail), or the utility model's from the text. @param {any} r */
 const summaryRequest = (r) => String(r.tail ?? '').startsWith('[annai: housekeeping]') || String(r.system ?? '').startsWith('You summarize a conversation');
 /** The base64 of the PDF of 1.5 MiB below, in characters. */
@@ -514,7 +514,7 @@ async function overSize(script, refuse = async () => {}) {
   const hold = async (/** @type {any} */ c) => {
     if (c.model.providerId === 'model-u') return;
     await refuse(c);
-    // Never fires on this branch (no summary request comes): it is here so that these tests' counts are real on 8ff7cba1c, whose warm summary her first model
+    // Never fires after 8ff7cba1c (no summary request comes): it is here so that these tests' counts are real on 8ff7cba1c, whose warm summary her first model
     // refuses and passes on to the second, which leaves the scripted steps of her first model her own.
     if (c.model.providerId === 'model-0' && summaryRequest(c.request)) throw new ProviderError('bad-request', 'Not this model.', { status: 400 });
   };

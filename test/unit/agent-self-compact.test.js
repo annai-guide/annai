@@ -14,6 +14,7 @@ import { nowBlock } from '../../src/core/agent/context.js';
 import { createTrip } from '../../src/core/scopes.js';
 import { exportArchive, PRESETS } from '../../src/core/archive.js';
 import { setToolSwitch } from '../../src/core/agent/tools.js';
+import { clockOf } from './clock.js';
 
 const MINUTE = 60_000;
 /** A long conversation's call: 111,030 tokens of prompt, most of it read from the cache. */
@@ -32,18 +33,6 @@ const say = (/** @type {string} */ words, /** @type {any} */ usage = SHORT) => (
 const isUtility = (r) => String(r.system ?? '').startsWith('You summarize a conversation');
 /** @param {any} r */
 const words = (r) => JSON.stringify(r.messages);
-
-/**
- * The device's clock, moved on by hand (Date.now, which the log's times and the agent's clock both read): set before the kit is made.
- * @param {import('node:test').TestContext} t
- */
-function clockOf(t) {
-  const real = Date.now;
-  let shift = 0;
-  Date.now = () => real() + shift;
-  t.after(() => { Date.now = real; });
-  return (/** @type {number} */ ms) => { shift += ms; };
-}
 
 /** The page loaded again: a new Agent on the same store, nothing kept in memory. @param {any} k @param {string} [trip] */
 async function reload(k, trip = k.trip) {

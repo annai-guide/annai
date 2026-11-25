@@ -1842,7 +1842,7 @@ export class Agent {
     // Her mark (mark_done) since the last compaction: what the exchanges after it hold is kept, when that is less; never fewer exchanges than
     // the floor (three, one when forced), so a mark in the last ones keeps them, and an old one changes nothing. Its result as it ran (not a refused or cut call's).
     const mark = events.findLast((e) => e.type === 'tool.result' && e.data?.name === 'mark_done' && e.data?.ok !== false && e.data?.wake !== 'housekeeping' && e.seq > (latest?.seq ?? 0));
-    // A third of where it is due stays word for word (by tokens: the request size's is never nearer, 149,796 tokens at Settings' least).
+    // A third of where it is due stays word for word (by tokens: the request size's is never nearer, 299,593 tokens at Settings' least).
     const keep = Math.min(o.keepTokens ?? dueTokens(window, settings.compaction.threshold) / 3, mark ? tokensAfter(items, mark.seq) : Infinity);
     const cut = cutAt(items, { keepTokens: keep, minExchanges: o.forced ? 1 : KEEP_EXCHANGES });
     if (cut === null) return false;
@@ -2594,7 +2594,7 @@ export class Agent {
       const sent = { ...request, messages: limitMedia(request.messages, (await this.#mainImages()).maxCount, request.photosFrom) };
       const estimate = estimateTokens(sent, (await this.#mainModel())?.providerId);
       // The size weighs what a summary can make smaller, not the window's pictures and PDFs (bytesLessFiles): a request over it by them goes as it is, and one
-      // over it by words is summarized, in a later step again only while more than one exchange is left to cut (cutAt).
+      // over it by words is summarized, in a later step again only while two or more exchanges are left (cutAt).
       const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window, bytes: bytesLessFiles(sent), maxBytes, threshold: settings.compaction.threshold }) : null;
       const tidy = coldStart;
       coldStart = false; // once a turn: its first request
