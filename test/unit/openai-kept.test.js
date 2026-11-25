@@ -605,14 +605,13 @@ test("after another provider's model answered, a chained turn uploads only the p
     if (!String(url).endsWith('/files')) return globalThis.fetch(url, init);
     return tries.n++ ? files(url, init) : Promise.reject(new TypeError('Failed to fetch'));
   };
-  // Claude's search paused (Anthropic's pause_turn) before it answered: its thinking and its search go only to Claude (its native only to its
-  // endpoint), so for OpenAI that message is left empty, and left out of what is sent.
+  // A reply that holds only what another provider's model wrote (Claude's search paused before it answered: its signed thinking and its search
+  // go only to Claude), with a user line after it (typed while it was made): for OpenAI that message is left empty, and left out of what is sent.
   const paused = (/** @type {string} */ q) => msg('assistant',
-    { type: 'native', endpoint: 'pv-a/chat|0123456789abcdef', content: [{ type: 'thinking' }], covers: 3, prefix: 'p' },
     { type: 'reasoning', text: 'Searching.', signature: 'sig', model: 'claude-x' },
     { type: 'provider', block: { type: 'server_tool_use', id: `srvtoolu_${q}`, name: 'web_search', input: { query: q } }, model: 'claude-x' },
     { type: 'provider', block: { type: 'web_search_tool_result', tool_use_id: `srvtoolu_${q}`, content: [] }, model: 'claude-x' });
-  const before = [m1, paused('ramen'), msg('assistant', text('Ichiran.')), msg('user', text('And a café?')), paused('cafe'), msg('assistant', text('Aster.'))];
+  const before = [m1, paused('ramen'), msg('user', text('Well?')), msg('assistant', text('Ichiran.')), msg('user', text('And a café?')), paused('cafe'), msg('user', text('Still there?')), msg('assistant', text('Aster.'))];
   try {
     const m = [...before, msg('user', text('what is this?'), PHOTO('a'))];
     const r = await c.call(m, { fetch, uploads });
