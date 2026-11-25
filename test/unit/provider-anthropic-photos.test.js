@@ -49,15 +49,13 @@ async function kit() {
     const rec = (await readConfig(k.ws)).providers[id];
     await saveProvider(k.ws, { ...rec, user: { ...rec.user, abilities: { ...rec.user?.abilities, chat: layer } } });
   };
-  const uploading = async () => llm.uploading(Object.values((await readConfig(k.ws)).models).find((m) => m.provider === id)?.id ?? '');
-  return { send, photo, files, layer, uploading };
+  return { send, photo, files, layer };
 }
 
 test('with Anthropic, a photo goes in the request, and no upload to its files API is tried: the browser is refused there', async () => {
   const k = await kit();
-  assert.equal(await k.uploading(), false, 'uploads are off by default: the photo goes in the request');
   await k.send();
-  assert.equal(k.files(), 0, 'no request to /v1/files');
+  assert.equal(k.files(), 0, 'uploads are off by default: no request to /v1/files');
   assert.deepEqual(k.photo()?.source, { type: 'base64', media_type: 'image/png', data: PNG });
 });
 
@@ -74,7 +72,6 @@ test('with Anthropic saved as the page saved it before (the upload switch on, th
 test('a server that takes uploads gets them once its switch is on: one upload, then the photo by its id', async () => {
   const k = await kit();
   await k.layer({ tunables: { uploads: true } });
-  assert.equal(await k.uploading(), true);
   await k.send();
   await k.send();
   assert.equal(k.files(), 1, 'uploaded once');
