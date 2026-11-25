@@ -638,8 +638,8 @@ gnrtev	ok	Shiori can't reach her model.	Shiori 无法连接到模型。	src/core
 13ujlu9	ok	{0} is too large (over {1}). Export only the dates you need from your calendar, and add that file.	{0} 太大了（超过 {1}）。请在日历中只导出所需日期的日程，再添加导出的文件。	src/core/imports.js:17	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:36	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	刚刚	src/core/intl.js:152	
-1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	使用手机扬声器时，Shiori 说话期间听不到你的声音，插话会被忽略。轻点一下即可让她停下来听你说。	src/core/koe/live.js:669	
-1ml2kgi	ok	Tap Shiori to talk over her	轻点 Shiori 即可打断她	src/core/koe/live.js:669	Note: The dock's Shiori button: tap it to talk over her.
+1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	使用手机扬声器时，Shiori 说话期间听不到你的声音，插话会被忽略。轻点一下即可让她停下来听你说。	src/core/koe/live.js:672	
+1ml2kgi	ok	Tap Shiori to talk over her	轻点 Shiori 即可打断她	src/core/koe/live.js:672	Note: The dock's Shiori button: tap it to talk over her.
 3fqfy0	ok	Languages	语言	src/core/languages.js:553	
 1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你说的语言和 Shiori 的回答语言会告知每个负责听和说的模型，以免简短的回复被误认成别的语言。	src/core/languages.js:554	
 1giusr1	ok	Languages you speak	你说的语言	src/core/languages.js:555	
