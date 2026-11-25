@@ -675,8 +675,7 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
   /** @type {Map<string, string>} each photo's hash, by its data: the bytes' own, never the hash a part claims */
   const hashes = new Map();
   const hashOf = async (/** @type {string} */ data) => hashes.get(data) ?? hashes.set(data, await photoHash(data)).get(data);
-  /** An upload of this request failed on the link (annai's fetch threw: cut at its limit, or not made; or its answer's read did: watched): its
-   * other new photos go as bytes at once (one wait for a cut link, not one each). */
+  /** An upload of this request failed on the link: its other new photos go as bytes at once (one wait for a cut link, not one each). */
   let dropped = false;
   // Only what is sent is uploaded: a photo in the turns a kept turn already holds is left as it is.
   for (const m of request.messages.slice(from)) {
@@ -733,9 +732,7 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
           Promise.resolve(r).catch(() => {}); // an async builder's rejection: not the page's to report
         }
         if (!traced) await trace?.upload({ endpoint: endpoint.name, url: typeof r?.url === 'string' ? r.url : `${type.type}:`, status: 0, ms: now() - started, error: String(/** @type {any} */ (e)?.message ?? e) });
-        // The link's: this photo goes as bytes, and uploads stay on for the next request. The provider's or its plugin's: photos go as bytes here
-        // until annai restarts, or a new key or address, or a Test that passes.
-        if (!dropped) uploads.off(endpoint.id);
+        if (!dropped) uploads.off(endpoint.id); // the provider's or its plugin's: until annai restarts, or a new key or address, or a Test that passes
       }
     }
   }
