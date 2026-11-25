@@ -318,18 +318,22 @@ export async function until(fn, ms = 2000) {
 }
 
 /**
- * p, or a failure saying why once ms have passed (on the clock's time, when the test has one): a regression fails at once, not at the test's own
- * timeout (120 s). A race on p itself, not a poll of a flag, so whatever p waits for is still waited for. 2000 ms: 30 times the longest of the 131 such
- * waits in the five files that use it, 65 ms of clock time (measured 2026-11-20). Of the waits agent-loop, trip-tools and typed-kept passed to it
- * (2026-11-22), the longest on real time is under 40 ms, and on a test's clock 1650 ms, a reader's 1.5 s: a clock's time is the timers waited out, the same
- * on any machine. A test whose wait runs longer on its clock passes its own ms, saying why. Of the 75 324 waits in one run of the whole suite (6536
- * tests, 2026-11-24) beside 32 CPU-burning loops (a load average of 80 to 150), those left at 2000 ms on real time took at most 623 ms, and on a test's
- * clock 1650 ms (agent-loop's, a reader's 1.5 s). Real time grows with the load, so a wait on the real clock that waits out a timer of a second or more
- * (her voice's HOLD_MS, a typed line's gathering, the stand-in's turn) passes its own ms: the timer plus 2000. A wait whose time is CPU work on the real
- * clock, a turn of 50 or 60 scripted calls, a simulation's whole run, has no bound that holds on every machine: in that run they took up to 898 and 2398 ms
- * of real time, and at 2000 ms only 0 and 10 of 24 copies of agent-budgets were clean beside 48 busy loops. Such a test runs on a test clock (useClock),
- * where CPU time costs none and a leak still fails at once; except a test with a real socket (push-sim's stand-in server), which keeps the real clock
- * (clock.js) and so has no bound: a leak fails it at the test's timeout.
+ * p, or a failure saying why once ms have passed: a regression fails at once, not at the test's own timeout (120 s). A race on p itself, not a poll of a
+ * flag, so whatever p waits for is still waited for. On the real clock ms is real time. On a test's clock (useClock) it is not the time of p's work, which
+ * costs none: the bound is one more timer there, and clock.js fires the earliest timer once 16 turns of the event loop in a row find no request in flight.
+ * So ms counts the timers that may fire before p settles (a pause, a delay, a window), and with none due sooner the bound fires after 16 quiet turns, a few
+ * ms of real time: a leak fails at once, and a wait whose work takes 16 turns with no timer and no request (a deeper setImmediate chain, a stream:
+ * clock.js lists them) would fail the same way. 2000 ms: 30 times the longest of the 131 such waits in the five files that use it, 65 ms of clock time (measured
+ * 2026-11-20). Of the waits agent-loop, trip-tools and typed-kept passed to it (2026-11-22), the longest on real time is under 40 ms, and on a test's clock
+ * 1650 ms, a reader's 1.5 s: a clock's time is the timers waited out, the same on any machine. A test whose wait runs longer on its clock passes its own
+ * ms, saying why. Of the 75 324 waits in one run of the whole suite (6536 tests, 2026-11-24) beside 32 CPU-burning loops (a load average of 80 to 150),
+ * those left at 2000 ms on real time took at most 623 ms, and on a test's clock 1650 ms (agent-loop's, a reader's 1.5 s). Real time grows with the load,
+ * so a wait on the real clock that waits out a timer of a second or more (her voice's HOLD_MS, a typed line's gathering, the stand-in's turn) passes its
+ * own ms: the timer plus 2000. A wait whose time is CPU work on the real clock, a turn of 50 or 60 scripted calls, a simulation's whole run, has no bound
+ * that holds on every machine: a simulation's run took up to 2398 ms of real time in a loaded whole-suite run (2026-11-24), and at 2000 ms only 0 and 10
+ * of 24 copies of agent-budgets were clean beside 48 busy loops. Such a test runs on a test clock, where CPU time costs none and a leak still fails at
+ * once; except a test with a real socket (push-sim's stand-in server), which keeps the real clock (clock.js) and so has no bound: a leak fails it at the
+ * test's timeout.
  * @param {Promise<unknown>} p @param {string} why @param {number} [ms]
  */
 export async function inTime(p, why, ms = 2000) {
@@ -343,21 +347,27 @@ export async function inTime(p, why, ms = 2000) {
   }
 }
 
-/** idle(), bounded: a wake left queued, or a turn still busy, fails at once, saying so. @param {any} k @param {number} [ms] as inTime's */
+/** What ms is in the messages below: real time, or on a test's clock the timers that may fire first (inTime). */
+const MS_ARE = "on a test's clock, the timers that may fire first, not the time of work";
+
+/**
+ * idle(), bounded: a wake left queued, or a turn still busy, fails at once, saying so. @param {any} k @param {number} [ms] as inTime's: on a test's clock
+ * the timers that may fire first, not the time of work
+ */
 export async function idleAtOnce(k, ms = 2000) {
-  await inTime(k.agent.idle(), `nothing waits in memory: still waiting after ${ms} ms, a wake left queued, a turn still busy, or a wait longer than that`, ms);
+  await inTime(k.agent.idle(), `nothing waits in memory: still waiting after ${ms} ms (${MS_ARE}), a wake left queued, a turn still busy, or a wait longer than that`, ms);
 }
 
 /**
  * A simulation's start (SimRun's start()) or its end (its `finished`), bounded as idleAtOnce is, and what it settled with: SimRun waits for the agent's
  * idle() at every moment (#settle), so a leaked busy count, or a turn that never ends, fails here at once, not at the test's 120 s. For a test on a test
- * clock (useClock), where the time of its work is not counted: of the 14 runs in the two simulation files, the longest start or end took 70 ms on it
- * (2026-11-24), so 2000 ms.
+ * clock (useClock), where ms are the timers that may fire first, not the time of the work (inTime): of the 14 runs in the two simulation files, the
+ * longest start or end took 70 ms on it (2026-11-24), so 2000 ms.
  * @template T @param {Promise<T>} p @param {number} [ms] @returns {Promise<T>}
  */
 export async function simAtOnce(p, ms = 2000) {
   const settled = p.then((v) => ({ v }));
-  await inTime(settled, `the simulation did not go on: still waiting after ${ms} ms, a wake left queued, a turn still busy, or a wait longer than that`, ms);
+  await inTime(settled, `the simulation did not go on: still waiting after ${ms} ms (${MS_ARE}), a wake left queued, a turn still busy, or a wait longer than that`, ms);
   return (await settled).v;
 }
 
