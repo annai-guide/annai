@@ -30,7 +30,7 @@ export class Uploads {
   #off = new Set();
   /** @type {Map<string, Set<string>>} by endpoint, the photos that go in the request there (hold, held): until annai restarts, or a new key or address, or a Test that passes, as #off */
   #held = new Map();
-  /** @type {Set<string>} endpoints held since a turn there last ended in an answer to a request that sent a photo as bytes (answered): no photo is uploaded there meanwhile */
+  /** @type {Set<string>} endpoints held since a reply there that calls no tool last answered a request that sent a photo's bytes (answered): no photo is uploaded there meanwhile */
   #waiting = new Set();
   /** @type {Set<string>} endpoints whose list answered and isn't one annai can read: the provider's, not the key's, so until annai restarts or a Test reads the list */
   #unread = new Set();
@@ -76,8 +76,10 @@ export class Uploads {
   }
   /**
    * A photo whose upload was cut at UPLOAD_MS, or answered 408, 429 or a server error (call.js withUploads): it goes in the request there from then
-   * on, and so does each new one until a turn there ends in an answer to a request that sent a photo as bytes (answered). A files service that keeps
-   * hanging costs one wait a turn that brings new photos, never one a step or a model; a link that answers nothing, one until a turn is answered.
+   * on, and so does each new one until a reply there that calls no tool answers a request that sent a photo's bytes (answered). A files service that
+   * keeps hanging costs one wait a turn that brings new photos, however many steps and models the turn has, but only while no other call there whose
+   * reply calls no tool and whose request sent a photo's bytes (Koe's, a reader's or a task's) comes between its steps: that call lets the next new photo
+   * be tried (with two halves on one endpoint, up to one wait a step). A link that answers nothing costs one wait until such a reply.
    * @param {string} endpointId @param {string} hash
    */
   hold(endpointId, hash) {
@@ -90,9 +92,10 @@ export class Uploads {
     return !!this.#held.get(endpointId)?.has(hash);
   }
   /**
-   * A call there ended a turn (its reply calls no tool) and its request sent a photo as bytes (call.js callOnce): a photo can get through, so the next
-   * new photo is uploaded again; those held stay in the request. Not a step that calls a tool, whose next request may bring a new photo of its own (a
-   * closer look): it would wait again at each step; nor an answer to a request with no photo in it, which a link too slow for photos gives as well.
+   * A reply there called no tool and its request sent a photo's bytes (call.js callOnce): a photo can get through, so the next new photo is uploaded
+   * again; those held stay in the request. Not a step that calls a tool, whose next request may bring a new photo of its own (a closer look): it would
+   * wait again at each step; nor an answer to a request with no photo in it, which a link too slow for photos gives as well. Such a reply is not always
+   * a turn's end (Koe's, a reader's or a task's between Kokoro's steps, or a pause the loop goes on after, lifts it too).
    * @param {string} endpointId
    */
   answered(endpointId) {
@@ -147,7 +150,7 @@ export const REQUEST_MS = 15_000;
  * (Wikipedia, General Packet Radio Service, multislot classes). A photo of 1 MiB (the request cap until 2026-11-21, 256 KiB since:
  * photos.js; a traveller can set more) is 8,388,608 bits: 71 s at 118.4 kbit/s, and 120 s lets the link run down to 70 kbit/s (59% of
  * that); 1 slot at 59.2 would need 142 s. A cut upload sends the photo in the request, as any failed one does, and holds uploads there until
- * a turn there ends in an answer to a request that sent a photo as bytes (Uploads.hold, answered).
+ * a reply there that calls no tool answers a request that sent a photo's bytes (Uploads.hold, answered).
  */
 export const UPLOAD_MS = 120_000;
 /** bit/s: the slowest uplink a model call's request has time for (call.js), the one UPLOAD_MS is sized for (see there). */
