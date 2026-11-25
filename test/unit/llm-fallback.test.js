@@ -11,6 +11,7 @@ import { retry } from '../../src/core/llm/retry.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { callRole, photosAsWords, candidates, Bench, AllFailedError, COOLDOWN_MS, continueAfter, failedText, attemptWhy, restText, whyWords, estimateTokens, restOf } from '../../src/core/llm/fallback.js';
 import { activate as scripted } from '../../plugins-official/scripted-model/index.js';
+import { useClock } from './clock.js';
 
 /** A fresh scripted endpoint type, as the plugin registers it. @returns {any} */
 function scriptedType() {
@@ -384,6 +385,21 @@ test('stopping a call stops the fallback too', async () => {
   const stop = new AbortController();
   setTimeout(() => stop.abort(), 10);
   await assert.rejects(call(s, { signal: stop.signal }), (e) => e instanceof ProviderError && e.kind === 'cancelled');
+});
+
+test("a Stop while a model waits to be sent again ends the call at once, not when the wait is over: the wait ends on the call's signal (llm-rest-next)", async (t) => {
+  useClock(t);
+  // Each wait nextStep gives: a dropped reply's 1 s, an overloaded server's 0.5 s, a short rate limit's 10 s (the longest).
+  for (const failure of [{ error: 'network' }, { error: 'overloaded' }, { error: 'rate', retryAfter: 10_000 }]) {
+    const s = setup([[failure, { text: 'Too late.' }]]);
+    const { sleep: _, ...base } = s.base(); // the call's own wait, on the test clock
+    const stop = new AbortController();
+    const at = Date.now();
+    setTimeout(() => stop.abort(), 20); // 20 ms on the test clock: the first try failed, and inside the shortest wait (0.5 s)
+    await assert.rejects(callRole({ ...base, types: s.types, bench: s.bench, role: 'main', request: hello, signal: stop.signal }), (e) => e instanceof ProviderError && e.kind === 'cancelled', failure.error);
+    assert.equal(Date.now() - at, 20, `${failure.error}: over as the Stop came (main: at the wait's end, 500 to 10,000)`);
+    assert.equal(s.bench.until('m-0'), 0, `${failure.error}: a Stop rests nothing`);
+  }
 });
 
 test('stopping keeps what the model had said so far, in the error and in the trace (spec §6.7)', async () => {

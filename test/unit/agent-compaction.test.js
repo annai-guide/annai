@@ -6,9 +6,14 @@ import { Transcript } from '../../src/core/agent/transcript.js';
 import { ME } from '../../src/core/scopes.js';
 import { saveModel } from '../../src/core/llm/config.js';
 import { record } from '../../src/core/agent/log.js';
-import { clockOf } from './clock.js';
+import { clockOf, useClock } from './clock.js';
+import { ProviderError } from '../../src/core/llm/contract.js';
 
 const say = (/** @type {string} */ text, /** @type {any} */ extra = {}) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }], ...extra });
+/** No warm housekeeping timed between turns: it would take script steps at a time the clock picks. */
+const NO_TIMERS = { set: () => 1, clear: () => {} };
+/** A request that writes a summary: her model's from the cached conversation (the housekeeping instruction its tail), or the utility model's from the text. @param {any} r */
+const isSummary = (r) => String(r.tail ?? '').startsWith('[annai: housekeeping]') || String(r.system ?? '').startsWith('You summarize a conversation');
 
 test('when housekeeping is due, and when it is forced', () => {
   const base = { window: 100_000, maxBytes: 8 * 2 ** 20, threshold: 0.7 };
@@ -69,6 +74,88 @@ test("cold: a reply shown as written (grounded) isn't measured again: its words 
   const all = JSON.stringify(k.agent.transcript.messages);
   assert.equal(all.includes('Message 0'), false, 'the oldest exchange is summarized');
   for (const n of [1, 2, 3, 4]) assert.equal(all.includes(`Message ${n}`), true, `Message ${n} stays word for word, as without the entry`);
+});
+
+// keepTokens 30,000 fails if the line is counted twice (40,000 alone fills it); 15,000 fails if it is counted as nothing (the 20,000 it is would fill 15,000
+// alone, and the three exchanges the floor keeps are then the last three).
+for (const [keepTokens, stays] of /** @type {[number, number[]][]} */ ([[30_000, [1, 2, 3, 4]], [15_000, [2, 3, 4]]])) {
+  test(`housekeeping sizes a typed line once: its words are in its msg.user, and its wake's reason (the same words) is not counted again, so the part kept word for word is what spec §6.5 says: keeping ${keepTokens} tokens (llm-rest-next)`, async () => {
+    const k = await agentKit([[say('ok')]], { utility: [{ text: 'They planned dinner at Nepenthe.' }] });
+    for (let i = 0; i < 5; i++) {
+      // The newest a long line: 70,000 characters, 20,000 tokens at 3.5 a token; counted twice it alone would pass the 30,000 kept.
+      k.agent.send(i === 4 ? `Message ${i} ${'x'.repeat(70_000)}` : `Message ${i}`);
+      await idleAtOnce(k);
+    }
+    assert.equal(await k.agent.compact('cold', { keepTokens }), true);
+    const all = JSON.stringify(k.agent.transcript.messages);
+    for (const n of [0, 1, 2, 3, 4]) assert.equal(all.includes(`Message ${n}`), stays.includes(n), `Message ${n} ${stays.includes(n) ? 'stays word for word' : 'is summarized'}`);
+  });
+}
+
+test("a step whose file reads take the request past 90% of a small window: the forced summary, warm, is over the window itself, so the cold one is written, and she answers in that turn (llm-rest-next)", async (t) => {
+  useClock(t);
+  // A window of 40,000 tokens: forced past 36,000. Three exchanges of about 7,000 tokens each, then one step that reads two notes of about 10,800 tokens each.
+  const reads = { toolCalls: [{ name: 'read', input: { path: '/trip/notes/a.md' } }, { name: 'read', input: { path: '/trip/notes/b.md' } }] };
+  const k = await agentKit([[say('ok'), say('ok'), say('ok'), reads, say('Both read.')]], { models: [{ contextWindow: 40_000 }], utility: [{ text: 'They said hello.' }], agent: { timers: NO_TIMERS } });
+  for (const n of ['a', 'b']) await k.ws.write(k.trip, `/notes/${n}.md`, `${n} ${'n'.repeat(38_000)}`, { author: 'user', type: 'text/markdown' });
+  for (let i = 0; i < 3; i++) {
+    k.agent.send(`Message ${i} ${'w'.repeat(24_000)}`);
+    await idleAtOnce(k);
+  }
+  const before = k.requests.length;
+  k.agent.send('Read both notes');
+  await idleAtOnce(k);
+  assert.deepEqual(k.requests.slice(before).map((r) => isSummary(r)), [false, true, false], 'her reads; the cold summary (the warm one was passed over by her model: over its window); her answer');
+  const tidied = (await k.events(['model.turn'])).filter((e) => e.data.tag === 'compaction');
+  assert.deepEqual(tidied.map((e) => e.data.attempts.map((/** @type {any} */ a) => a.outcome)), [['too-long'], ['ok']], 'the warm summary, asked of no model (over its window); then the cold one');
+  assert.deepEqual((await k.events(['compaction'])).map((e) => e.data.mode), ['cold']);
+  assert.equal((await k.events(['out.speak'])).at(-1)?.data.text, 'Both read.');
+  assert.deepEqual(k.notices.map((n) => n.title), [], "no \"couldn't tidy up\" card");
+  assert.equal((await k.events(['error'])).length, 0, 'the turn did not fail');
+});
+
+test("Summarize now with her cache warm, when every model refuses the warm summary's request: the cold one is written, as housekeeping writes it, not the card (llm-rest-fix1)", async (t) => {
+  useClock(t);
+  // Her model is refused the request that asks it for the summary (the cached conversation, as long as the window it is over); the utility model is not.
+  const refused = async (/** @type {any} */ c) => {
+    if (c.model.providerId !== 'model-u' && isSummary(c.request)) throw new ProviderError('context', 'prompt is too long: 262144 tokens > 200000 maximum', { status: 400 });
+  };
+  const k = await agentKit([[say('a'), say('b'), say('c')]], { utility: [{ text: 'They said hello.' }], hold: refused, agent: { timers: NO_TIMERS } });
+  for (const m of ['one', 'two', 'three']) {
+    k.agent.send(m);
+    await idleAtOnce(k);
+  }
+  assert.equal(await k.agent.summarizeNow(), 'done');
+  assert.deepEqual(k.requests.filter(isSummary).map((r) => (String(r.tail ?? '').startsWith('[annai: housekeeping]') ? 'warm, to her model' : 'cold, to the utility model')), ['warm, to her model', 'cold, to the utility model']);
+  assert.deepEqual((await k.events(['compaction'])).map((/** @type {any} */ e) => e.data.mode), ['cold']);
+  assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.title), [], "no \"couldn't summarize\" card");
+});
+
+test("a forced warm summary cut by leaving the page writes no cold one: the cut is read before the fallback, whatever the cut request failed as (WebKit cancels it as a dropped connection; llm-rest-next final review, T1)", async (t) => {
+  useClock(t);
+  // As the step above: a window of 40,000 tokens, three exchanges of about 7,000, and a step whose two notes take the request past 90%, so the forced summary is warm.
+  const reads = { toolCalls: [{ name: 'read', input: { path: '/trip/notes/a.md' } }, { name: 'read', input: { path: '/trip/notes/b.md' } }] };
+  const k = await agentKit([[say('ok'), say('ok'), say('ok'), reads, say('never')]], { models: [{ contextWindow: 40_000 }], utility: [{ text: 'They said hello.' }], agent: { timers: NO_TIMERS } });
+  for (const n of ['a', 'b']) await k.ws.write(k.trip, `/notes/${n}.md`, `${n} ${'n'.repeat(38_000)}`, { author: 'user', type: 'text/markdown' });
+  for (let i = 0; i < 3; i++) {
+    k.agent.send(`Message ${i} ${'w'.repeat(24_000)}`);
+    await idleAtOnce(k);
+  }
+  const was = k.llm.call;
+  /** @type {string[]} */
+  const asked = [];
+  k.llm.call = async (/** @type {any} */ c) => {
+    if (c.record?.tag !== 'compaction') return was(c);
+    asked.push(c.role);
+    k.agent.leaving(); // pagehide, in the middle of the summary's request
+    throw new ProviderError('unreachable', 'Load failed');
+  };
+  k.agent.send('Read both notes');
+  await idleAtOnce(k);
+  assert.deepEqual(asked, ['main'], 'the warm summary was asked of her model; no cold one after the page was left');
+  assert.deepEqual(await k.events(['compaction']), []);
+  assert.deepEqual((await k.events(['error'])).map((/** @type {any} */ e) => e.data.kind), [], 'leaving is no failure');
+  assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.title), [], 'no card');
 });
 
 test('warm: the model holding the cache summarizes from the cached conversation, and may move facts into memory first', async () => {
@@ -275,6 +362,29 @@ test('a forced summary in a turn leaves words over the request size: another fol
   assert.equal(String(k.requests[3].system).startsWith('You summarize a conversation'), true, "the second is the utility model's");
   assert.equal(k.requests.length, 5, 'her two answers, the two summaries and her answer after them: no third summary is tried');
   assert.ok(size(k.requests.at(-1)) < 2 ** 20 / 2 && JSON.stringify(k.requests.at(-1)).includes(last), 'her request is under the size, with the last message word for word');
+  assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['1', '2', '3']);
+});
+
+test("a second cold summary in one turn is written from the first one's summary and the part after it, not from the conversation's first line (llm-rest-next)", async (t) => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  const jump = clockOf(t);
+  // As above, with the cache cold when the long line comes: both forced summaries are the utility model's. The first takes the first message only; the
+  // second cuts inside the part the first kept, before the first's own record.
+  const k = await agentKit([[say('1'), say('2'), say('3')]], { utility: [{ text: 'They sent a greeting.' }, { text: 'They pasted a long text.' }], agent: { timers: { set: () => 1, clear: () => {} } } });
+  await updateAppSettings(k.ws, { shiori: { compaction: { maxRequestMiB: 1 } } });
+  for (const m of ['Hello from the first line', 'b'.repeat(2 ** 20 - 40_000)]) {
+    k.agent.send(m);
+    await idleAtOnce(k);
+  }
+  jump(61 * 60_000);
+  k.agent.send('c'.repeat(45_000));
+  await idleAtOnce(k);
+  assert.deepEqual((await k.events(['compaction'])).map((/** @type {any} */ e) => e.data.mode), ['cold', 'cold']);
+  const [first, second] = k.sent['model-u'].map((/** @type {any} */ r) => JSON.stringify(r.messages));
+  assert.ok(first.includes('Hello from the first line'), 'the first summarizes the first message');
+  assert.ok(second.includes('They sent a greeting.'), "the second is written from the first's summary");
+  assert.equal(second.includes('Hello from the first line'), false, 'and not from the line it summarized');
+  assert.ok(second.includes('b'.repeat(40)), "and from the part after the first summary: the long line it left");
   assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['1', '2', '3']);
 });
 

@@ -14,3 +14,22 @@ export function anySignal(signals) {
   else for (const s of signals) s.addEventListener('abort', stop);
   return c.signal;
 }
+
+/**
+ * Waits ms, or until the signal aborts, whichever comes first: the wait before a call is sent again (callRole's, a transcription's), which a Stop
+ * ends at once. It settles either way; the caller reads its signal after it. No signal reaches a plugin's `helpers.retry` (retry.js defaults to this
+ * wait, and there it is a plain timer). @param {number} ms @param {AbortSignal} [signal]
+ * @returns {Promise<void>}
+ */
+export function sleep(ms, signal) {
+  return new Promise((resolve) => {
+    if (signal?.aborted) return resolve();
+    const done = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', done);
+      resolve();
+    };
+    const timer = setTimeout(done, ms);
+    signal?.addEventListener('abort', done);
+  });
+}

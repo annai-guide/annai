@@ -119,7 +119,8 @@ export async function testModel(c) {
 
 /**
  * Uploads the test photo, expiring in an hour, the shortest a provider allows (spec §9.8). An upload that fails turns uploads off there,
- * as a call's does: photos go in each request until annai restarts, or a new key or address, or a Test that passes. Where the provider
+ * a failure with no answer too (a call's fast link failure leaves them on; Test's step says what it did): photos go in each request until annai
+ * restarts, or a new key or address, or a Test that passes. Where the provider
  * keeps files until they are deleted, annai then deletes the photo by the id the upload gave, as it will delete each photo: a key that
  * can't (a refusal, a 404 for the file it just made, or any other 4xx but a 408 or a 429) turns them off the same way; a delete that
  * gets no answer, a 408, a 429 or a server error says nothing about the key, and the upload worked, so photos stay on and the sweep
@@ -152,7 +153,7 @@ async function testUpload({ type, endpoint, model, key, fetch: get = (url, init)
     // The key's words are for an answer that refused the key or wasn't an upload. A redirect, no answer (no reply, a stall, a 2xx body that broke off, a 408), a 402, a 429
     // and a server error are not the key's: each but no answer is read as the first step reads it; no answer says annai couldn't reach the address.
     const said = e instanceof ProviderError ? (['redirect', 'unreachable', 'rate', 'credit', 'overloaded', 'server'].includes(e.kind) ? e : null) : !res ? new ProviderError('unreachable', 'no answer') : null;
-    // As a call's failed upload does, so the words are true: photos go in each request until annai restarts, or a new key or address, or a Test that passes.
+    // So the words are true: photos go in each request until annai restarts, or a new key or address, or a Test that passes.
     uploads?.off(endpoint.id);
     return { step: 'upload', ok: false, detail: sentences(said ? explain(said) : t`Uploading photos didn't work with this key.`, t`annai will send photos in each request instead.`) };
   }

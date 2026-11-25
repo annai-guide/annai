@@ -564,6 +564,22 @@ test("a PDF over the request size that every model refuses is tested in its turn
   assert.equal((await k.events(['error'])).length, 0, 'no turn failed');
 });
 
+test("a PDF every model refuses, read as the conversation passes 90% of the window: the forced summary, warm with the PDF whole, is refused, so the cold one is written, which sends no file; the PDF is tested and she answers in that turn, with the PDF's one card (llm-rest-next)", async (t) => {
+  useClock(t);
+  // Her read's own reply reports a prompt of 181,000 tokens, past 90% of the 200,000 window: the next request is forced through housekeeping.
+  const k = await manualKit([[...EXCHANGES, { ...readIt, usage: { input: 181_000, output: 5 } }, say('The fuel cap opens from the lever by the seat.')], [say('never')]], { hold: refusing(PAGES) });
+  await talk(k.agent, k, EARLIER);
+  const before = k.requests.length;
+  await talk(k.agent, k, ['How do I open the fuel cap?']);
+  const turn = k.requests.slice(before);
+  assert.deepEqual(turn.map((r) => [summaryRequest(r), hasPdf(r)]), [[false, false], [true, true], [true, true], [true, false], [false, true], [false, true], [false, false]],
+    'her read; the warm summary to each model, with the PDF (refused); the cold one, with none; each model with the PDF; the first with it as words, answered');
+  assert.deepEqual((await k.events(['compaction'])).map((e) => e.data.mode), ['cold']);
+  assert.equal((await spoken(k)).at(-1), 'The fuel cap opens from the lever by the seat.', 'answered in the same turn');
+  assert.deepEqual(cards(k), [TITLE], "the PDF's card, and no \"couldn't tidy up\" card");
+  assert.equal((await k.events(['error'])).length, 0, 'the turn did not fail');
+});
+
 test('after the too-long summary of a turn, a PDF she reads later in it over the request size brings no second summary', async (t) => {
   useClock(t);
   // Her first request of the turn, with no summary yet, is too long for both models: the conversation was.

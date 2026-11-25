@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
-import { anySignal } from '../../src/core/signals.js';
+import { anySignal, sleep } from '../../src/core/signals.js';
+import { useClock } from './clock.js';
 
 // AbortSignal.any came in Chrome 116 and Safari 17.4; annai runs on Chrome 113 and iOS 16.4 (the emulator pass).
 const root = new URL('../../', import.meta.url);
@@ -54,6 +55,21 @@ test('where AbortSignal.any exists, it is used', () => {
   const s = anySignal([a.signal]);
   a.abort('x');
   assert.equal(s.reason, 'x');
+});
+
+test("sleep waits its time, or until its signal aborts, whichever comes first: the one wait between a call's tries (llm-rest-next)", async (t) => {
+  useClock(t);
+  const at = Date.now();
+  await sleep(1000);
+  assert.equal(Date.now() - at, 1000, 'no signal: its time');
+  const stop = new AbortController();
+  await sleep(1000, stop.signal);
+  assert.equal(Date.now() - at, 2000, 'a signal that never aborts: its time');
+  setTimeout(() => stop.abort(), 30); // 30 ms on the test clock, far inside the 10 s the sleep would take (the longest wait between a call's tries)
+  await sleep(10_000, stop.signal);
+  assert.equal(Date.now() - at, 2030, 'over as its signal aborts');
+  await sleep(10_000, stop.signal);
+  assert.equal(Date.now() - at, 2030, 'aborted already: over at once');
 });
 
 /** Every .js file under a folder. @param {URL} dir @returns {Promise<URL[]>} */

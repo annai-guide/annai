@@ -12,6 +12,7 @@ import { encodeWav } from '../../src/core/voice/pcm.js';
 import { ProviderError } from '../../src/core/llm/contract.js';
 import { fakePlatform, fakeLlm } from './voice-fakes.js';
 import { clip, quiet, cat } from './voice-kit.js';
+import { useClock } from './clock.js';
 
 const enc = new TextEncoder();
 /** @param {string} name @param {string[]} input */
@@ -158,6 +159,7 @@ async function phone({ makes = ['ogg', 'webm'], records, fails, plays } = {}, o 
     audioIn: { gem: GEMINI, or: OPENROUTER, groq: GROQ }, ...o,
   });
   const voice = new Voice({ llm, ws, registry, store, locale: 'en', where: 'ios' });
+  const ownSleep = voice.sleep;
   voice.sleep = async () => {}; // a failed upload is sent again at once here
   /** Says the lunch question into an open session; gives what was heard. */
   const hear = async () => {
@@ -173,7 +175,7 @@ async function phone({ makes = ['ogg', 'webm'], records, fails, plays } = {}, o 
     const m = /** @type {any} */ ({ gem: ['text', 'audio'], or: ['text', 'audio'], txt: ['text'] })[id];
     return /** @type {any} */ ((await voice.resolver('trip-1', 'w-1')({ id, name: id, input: m }, asked([{ type: 'speech', id: h.id }]), plain)).messages[0].parts[0]);
   };
-  return { voice, platform, llm, store, ws, hear, to, encodes: () => platform.log.filter((/** @type {string} */ l) => l.startsWith('encode ')) };
+  return { voice, platform, llm, store, ws, hear, to, ownSleep, encodes: () => platform.log.filter((/** @type {string} */ l) => l.startsWith('encode ')) };
 }
 
 test("a model's formats: its type's audioIn, then its ability's, then its own; WAV when none says", () => {
@@ -339,6 +341,25 @@ test("a Stop on the wait between a transcription's retries rests no model, as ch
   const down = await phone({}, { failing: ['groq'] });
   await assert.rejects(down.voice.resolver('trip-1', 'w-1')(textModel('txt'), asked([{ type: 'speech', id: (await down.hear()).id }]), false, new AbortController().signal));
   assert.ok(restLeft(down, 'groq') > 180_000 - 1000, 'no Stop: it rests');
+});
+
+test("a Stop while a transcription waits to be sent again ends it at once, not when the wait is over: the wait ends on the call's signal, as chat's does (llm-rest-next)", async (t) => {
+  useClock(t);
+  // Each wait nextStep gives a transcription: a 5xx's 1 s, an overloaded server's 0.5 s, a short rate limit's 10 s (the longest).
+  for (const failure of [new ProviderError('server', 'down'), new ProviderError('overloaded', 'busy'), new ProviderError('rate', 'slow down', { retryAfter: 10_000 })]) {
+    const k = await phone({});
+    k.voice.sleep = k.ownSleep; // the voice's own wait
+    const request = asked([{ type: 'speech', id: (await k.hear()).id }]);
+    k.llm.transcribe = async (/** @type {any} */ c) => { /** @type {any[]} */ (k.llm.uploads).push({ modelId: c.modelId }); throw failure; };
+    const stop = new AbortController();
+    const at = Date.now();
+    setTimeout(() => stop.abort(), 20); // 20 ms on the test clock: the first try failed, and inside the shortest wait (0.5 s)
+    // The Stop's own error (kind cancelled) goes to onFail, which rests nothing for it (asserted below); the caller gets the list's "nobody heard it".
+    await assert.rejects(k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request, false, stop.signal), (/** @type {any} */ e) => e?.said?.code === 'not-heard', failure.kind);
+    assert.equal(Date.now() - at, 20, `${failure.kind}: over as the Stop came (main: at the wait's end, 500 to 10,000)`);
+    assert.equal(k.llm.uploads.length, 1, `${failure.kind}: one upload, then the Stop`);
+    assert.equal(restLeft(k, 'groq'), 0, `${failure.kind}: nothing rests`);
+  }
 });
 
 test("a Stop that lands as any try of a transcription fails, the last one too (its error body read as the traveller stops), rests no model, and no further upload is sent (cut-send-fix2, 1: the Stop is checked first)", async () => {

@@ -11,7 +11,7 @@ import { sha256Hex } from '../hash.js';
 import { record, storedTexts, TALK_TAG } from './log.js';
 import { blobBytes, canRead } from '../reach.js';
 import { compactionNeed, cutAt, replyPrompt, dueTokens, tokensAfter, bytesLessFiles, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
-import { Transcript, resolveEvent, repair, reaches, NOT_SAID, SAID, STOPPED, CUT, NOT_RUN, NOT_ANSWERED, NOT_HEARD, LET_GO, MOVED } from './transcript.js';
+import { Transcript, resolveEvent, repair, reaches, NOT_SAID, SAID, STOPPED, CUT, NOT_RUN, NOT_ANSWERED, NOT_HEARD, LET_GO, MOVED, OWN_LINES } from './transcript.js';
 import { toolList, definitions, runTool, Stuck, toolSwitches, resolvePath, ALWAYS_ON } from './tools.js';
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint, systemText } from './context.js';
 import { Warmth, TTL_MS, ttlFor, wantedTtl, SOON_MS } from './warmth.js';
@@ -1823,8 +1823,10 @@ export class Agent {
    * Housekeeping (spec §6.5): the older part of the conversation becomes a compaction event; the
    * most recent part stays word for word. Returns whether anything was compacted.
    * @param {'warm' | 'cold'} mode @param {{ forced?: boolean, keepTokens?: number, frozen?: Frozen | null }} [o] forced: down to the last exchange, if the
-   * kept part is still about a third of where housekeeping is due; keepTokens: kept, at least (Summarize now's 0 keeps the last exchange only);
-   * frozen: the turn it runs inside, whose tools, provider tools and level it keeps
+   * kept part is still about a third of where housekeeping is due, and a warm summary that fails for anything but a cut is written cold instead
+   * (the warm request is the whole cached conversation: it can be over the window itself, or carry a PDF every model refuses; the cold one sends
+   * only the part it summarizes, as words), for the turn's tidy-up and Summarize now alike; keepTokens: kept, at least (Summarize now's 0 keeps
+   * the last exchange only); frozen: the turn it runs inside, whose tools, provider tools and level it keeps
    */
   async compact(mode, o = {}) {
     // The summary's one controller, made before anything is awaited, joined with the turn's (#abort; null outside one): a cut reaches it at any point.
@@ -1841,7 +1843,9 @@ export class Agent {
     const items = [];
     for (const e of events) {
       const texts = await storedTexts(this.store, e);
-      const size = JSON.stringify(e.data ?? {}).length + Object.values(texts).reduce((n, s) => n + s.length, 0);
+      // A wake's reason that is a line of its own (a typed line's or a tapped choice's words in its msg.user, a heard line's in its heard) counts there, once.
+      const data = e.type === 'wake' && Array.isArray(e.data?.reasons) ? { ...e.data, reasons: e.data.reasons.filter((/** @type {any} */ r) => !OWN_LINES.includes(r?.kind)) } : e.data;
+      const size = JSON.stringify(data ?? {}).length + Object.values(texts).reduce((n, s) => n + s.length, 0);
       items.push({ seq: e.seq, tokens: Math.ceil(size / CHARS_PER_TOKEN) + (e.data?.images?.length ?? 0) * 1600, exchange: e.type === 'wake' && !e.data?.meanwhile });
     }
     // Her mark (mark_done) since the last compaction: what the exchanges after it hold is kept, when that is less; never fewer exchanges than
@@ -1867,14 +1871,24 @@ export class Agent {
     const lines = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: [...USER_LINES], ...(latest ? { after: latest.data.to } : {}) }));
     const said = (await conversationLines(this.store, lines)).flatMap(({ text }) => (typeof text === 'string' ? [text] : []));
     const language = summaryLanguage(said, await this.#languages());
-    const summary = mode === 'warm' ? await this.#warmSummary(marker, settings, language, signal, o.frozen) : await this.#coldSummary(cut, language, signal);
+    /** How the summary was written: a forced warm one that failed is cold. */
+    let wrote = mode;
+    let summary;
+    try {
+      summary = mode === 'warm' ? await this.#warmSummary(marker, settings, language, signal, o.frozen) : await this.#coldSummary(cut, language, signal);
+    } catch (e) {
+      // A cut first (leaving the page aborts only this summary's controller, a tap the turn's): nothing failed, and nothing more is sent.
+      if (!o.forced || mode !== 'warm' || this.#leaving || (e instanceof ProviderError && e.kind === 'cancelled')) throw e;
+      wrote = 'cold';
+      summary = await this.#coldSummary(cut, language, signal);
+    }
     if (!summary) return false;
     // Start fresh wrote a compaction meanwhile: this one, cut before it, would bring back the lines it left.
     const [now] = await this.store.tx(['events'], 'readonly', (t) => t.listEvents(this.scope, { types: ['compaction'], reverse: true, limit: 1 }));
     if (now?.seq !== latest?.seq) return false;
     // The range it covers: the summary it is written from covered its own from on (a fresh start, nothing before it); with neither, the first event.
     const from = latest ? (latest.data?.mode === 'fresh' ? latest.data.to + 1 : latest.data?.from) : this.transcript.from || 1;
-    const done = await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'compaction', actor: 'system', data: { from, to: cut - 1, mode }, texts: [['summary', summary]] });
+    const done = await record(this.store, this.scope, { now: this.#stamp(this.scope), type: 'compaction', actor: 'system', data: { from, to: cut - 1, mode: wrote }, texts: [['summary', summary]] });
     await this.#serially(async () => {
       await this.reread();
       await this.#half.logged?.(done, { texts: {}, images: [] }); // Koe reads its window again from here
@@ -2878,7 +2892,7 @@ export class Agent {
 
   /**
    * Housekeeping within a turn. When it fails a card says why; when the turn can't go on without it
-   * (the next request would overflow), an error event ends the turn.
+   * (the next request would overflow), an error event ends the turn (a forced warm one that fails is first written cold: compact).
    * @param {'warm' | 'cold'} mode @param {{ forced?: boolean, frozen?: Frozen | null }} o @param {string} wakeId
    * @returns {Promise<boolean | null>} whether anything was compacted; null: failed (forced) or cut short; the turn ends
    */

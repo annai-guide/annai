@@ -9,6 +9,7 @@ import { ROLE_LEVELS } from './reasoning.js';
 import { adjusted } from './setup.js';
 import { formatRefused } from '../voice/formats.js';
 import { SYS } from '../scopes.js';
+import { sleep as defaultSleep } from '../signals.js';
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 import { shownFor } from '../errors.js';
 import { limitMedia } from '../agent/refusals.js';
@@ -495,7 +496,6 @@ function prefixed(reply, said) {
 /** A role's reasoning level: its own, else annai's default for it (spec §9.3). @param {ModelConfig} config @param {string} role */
 export const levelOf = (config, role) => config.roles?.[role]?.level ?? /** @type {Record<string, string>} */ (ROLE_LEVELS)[role] ?? 'off';
 
-const defaultSleep = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
 /** The browser's word on the connection: false is reliable, true can be wrong (a network with no internet). */
 const deviceOnline = () => globalThis.navigator?.onLine !== false;
 
@@ -513,7 +513,7 @@ export const firstWordsMs = (config, role) => (config.roles?.[role]?.firstOutput
  * @param {{ role: string, request: Request, level?: string, config: ModelConfig, types: Map<string, EndpointType>,
  *   keyFor: (providerId: string) => Promise<string | null>, bench: Bench, fetch?: import('./call.js').Fetch, signal?: AbortSignal,
  *   onEvent?: (e: import('./contract.js').StreamEvent) => void, trace?: import('./call.js').ModelTrace, registry?: import('../registry.js').Registry,
- *   sleep?: (ms: number) => Promise<void>, now?: () => number, firstOutputMs?: number, online?: () => boolean,
+ *   sleep?: (ms: number, signal?: AbortSignal) => Promise<void>, now?: () => number, firstOutputMs?: number, online?: () => boolean,
  *   prefer?: string, borrow?: boolean, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean, handover?: string | null, endLogged?: boolean },
  *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null>, uploads?: import('./uploads.js').Uploads,
  *   speech?: (model: Model, request: Request, plain?: boolean, signal?: AbortSignal) => Promise<Request>, models?: string[],
@@ -772,7 +772,7 @@ export async function callRole(c) {
         // (With no connection on this device, nextStep says neither wait nor rest: the model is asked again as soon as the connection is back.)
         const step = nextStep(err, retry, online());
         if (step.wait !== undefined) {
-          await sleep(step.wait);
+          await sleep(step.wait, c.signal); // a Stop ends the wait at once; the next try meets the Stop
           continue;
         }
         if (step.bench !== undefined) {

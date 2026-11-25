@@ -20,6 +20,7 @@ import { readBlob } from '../reach.js';
 import { encodeWav, joinPcm } from './pcm.js';
 import { sha256Hex } from '../hash.js';
 import { t } from '../l10n.js';
+import { sleep } from '../signals.js';
 
 /**
  * Voice (spec §10): annai's speaking and hearing, for the screens and for Shiori. Speech goes through the speech-out list;
@@ -68,8 +69,8 @@ export class Voice {
   memory = new HeardMemory();
   /** Phone dictation failed in this session: listening records instead (spec §10.3). */
   dictationFailed = false;
-  /** The wait before a failed upload's same bytes go again (how long: fallback.js nextStep's). A plain timer: a Stop in it ends the retries when it is over. Tests replace it. @type {(ms: number) => Promise<void>} */
-  sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  /** The wait before a failed upload's same bytes go again (how long: fallback.js nextStep's), callRole's own: a Stop ends it at once. Tests replace it. @type {(ms: number, signal?: AbortSignal) => Promise<void>} */
+  sleep = sleep; // the imported one
   /** Models that refused a format they said they take: WAV until annai restarts. @type {Set<string>} */
   wavOnly = new Set();
   /** Voices that refused the format they offered: what to say the phone plays to them, until annai restarts. @type {Map<string, string[]>} */
@@ -540,7 +541,7 @@ export class Voice {
         // and a short rate limit are, as chat's are. What it leaves is rested by restOf, the same rule.
         const wait = e instanceof ProviderError ? nextStep(e, retry).wait : undefined;
         if (wait === undefined) throw e;
-        await this.sleep(wait);
+        await this.sleep(wait, signal);
       }
     }
   }

@@ -28,16 +28,18 @@ import { openLive, testLive } from '../realtime/open.js';
  * with fallback, traced.
  * @param {{ store: import('../types.js').Store, ws: import('../workspace.js').Workspace, plugins: import('../plugins.js').PluginHost,
  *   fetch?: (url: string, init?: RequestInit) => Promise<Response>, base?: string, ready?: Promise<unknown>, pluginsCanLoad?: () => Promise<unknown>,
- *   probe?: (url: string) => Promise<boolean>, openSocket?: (url: string, protocols: string[]) => any, whyNoPlugins?: () => string | undefined }} c
+ *   probe?: (url: string) => Promise<boolean>, openSocket?: (url: string, protocols: string[]) => any, whyNoPlugins?: () => string | undefined, uploads?: Uploads }} c
  *   ready: settles once the installed plugins have started; pluginsCanLoad: settles when a plugin's files can be loaded
  *   (in browsers, once a service worker controls the page), else throws why; whyNoPlugins: why plugins can't load on this
  *   page, if they can't, said for a missing protocol (spec §5.3); probe: whether a server answers at an address at all, asked
  *   in no-cors mode, which a browser lets through to any server, to tell "blocks web apps" from "down" (spec §9.8);
- *   openSocket: makes a live session's WebSocket (tests)
+ *   openSocket: makes a live session's WebSocket (tests); uploads: the photo uploads' record (tests hand in theirs, to ask it what is off; it answers
+ *   for this service's providers going)
  */
 export function createLlm({
   store, ws, plugins, fetch: get = (url, init) => fetch(url, init), base = '', ready = Promise.resolve(), pluginsCanLoad = () => Promise.resolve(),
   probe = (/** @type {string} */ url) => get(url, { mode: 'no-cors', cache: 'no-store' }).then(() => true, () => false), openSocket, whyNoPlugins = () => undefined,
+  uploads = new Uploads(ws),
 }) {
   const bench = new Bench();
   /** Tunables a live model had to open with instead (decision 11: v1beta without proactive audio), until annai restarts. @type {Map<string, Record<string, any>>} */
@@ -47,8 +49,8 @@ export function createLlm({
   let erasing = false;
   /** Whether an endpoint's provider is going or changing key or address, or everything is being erased: it keeps and uploads nothing meanwhile. @param {string} endpointId */
   const going = (endpointId) => erasing || removing.has(endpointId.split('/')[0]);
-  /** Photos uploaded to providers, by provider and ability (spec §4.8). A call made while its provider is going sends its photos in the request. */
-  const uploads = new Uploads(ws, going);
+  // Photos uploaded to providers, by provider and ability (spec §4.8). A call made while its provider is going sends its photos in the request.
+  uploads.going = going;
   /** Conversations' calls under way, for Erase. @type {Set<Promise<unknown>>} */
   const inflight = new Set();
   /** p, for up to ms. @param {Promise<unknown>} p @param {number} ms */
@@ -707,18 +709,6 @@ export function createLlm({
       const r = await decideWith({ prompt, options, threshold, call, logprobs: Boolean(first?.logprobs), parts, fallback: false });
       await logEvent(store, scope, { type: 'decide', data: { prompt: prompt.slice(0, 500), options: options.map((o) => o.id), result: r.probabilities, by: r.by, gate: true } }).catch(() => {});
       return r;
-    },
-    /** Whether photos go to this model's provider by upload, so a request carries only their ids (spec §4.8). Only tests ask. @param {string} modelId */
-    async uploading(modelId) {
-      await ready;
-      const cfg = await readConfig(ws);
-      const rec = cfg.models[modelId];
-      const pRec = rec ? cfg.providers[rec.provider] : null;
-      const ability = rec && pRec ? providerOf(pRec).abilities[rec.ability] : null;
-      const type = ability ? types().get(ability.type) : null;
-      if (!rec || !pRec || !ability?.on || !type?.uploadRequest || !type.readUpload || !modelOf(rec).input.includes('image')) return false;
-      const endpoint = endpointOf(pRec, rec.ability, type.tunables);
-      return endpoint.tunables?.uploads !== false && !uploads.isOff(endpoint.id);
     },
     /**
      * The Test button for one model; what it found is recorded on the model (spec §9.8). What it

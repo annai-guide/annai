@@ -9,6 +9,7 @@ import { createLlm } from '../../src/core/llm/service.js';
 import { hostKit } from './package-kit.js';
 import { SYS } from '../../src/core/scopes.js';
 import { openRouterFiles } from '../fakes/openrouter-files.js';
+import { Uploads } from '../../src/core/llm/uploads.js';
 
 const root = new URL('../../', import.meta.url);
 const KEY = 'sk-or-v1-stand-in-0123456789';
@@ -28,22 +29,29 @@ async function kit(o = {}, plugin = 'provider-openrouter') {
     if (u.origin === 'https://openrouter.ai' || u.origin === 'https://api.groq.com') return or.fetch(String(url), init);
     return new Response(await readFile(new URL(`.${u.pathname}`, root)).catch(() => 'not found'));
   };
-  const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch });
+  const uploads = new Uploads(k.ws);
+  const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch, uploads });
   const id = await llm.addProvider(plugin, { key: KEY, roles: 'recommended' });
+  /** Whether the upload record has the chat ability's uploads off (a refusal, a list annai can't read, or its provider going), not whether it uploads at all (the switch, the model's input): what the tests read, never by a send, which would change it. */
+  const off = () => uploads.isOff(`${id}/chat`);
   const modelId = async () => Object.values((await readConfig(k.ws)).models).find((m) => m.provider === id && m.ability === 'chat' && /haiku|llama/.test(m.template?.values?.providerId ?? m.user?.providerId ?? ''))?.id
     ?? Object.values((await readConfig(k.ws)).models).find((m) => m.provider === id && m.ability === 'chat')?.id ?? '';
   const send = () => llm.call({ role: 'utility', request: { messages: [{ role: 'user', parts: [{ type: 'text', text: 'What is this?' }, { type: 'image', mediaType: 'image/png', data: PNG, hash: 'stand-in-hash' }] }] } });
   /** How the last chat request sent the photo: "file" or "image_url". */
   const sentAs = () => or.chats.at(-1)?.messages.flatMap((/** @type {any} */ m) => (Array.isArray(m.content) ? m.content : [])).find((/** @type {any} */ b) => b.type === 'file' || b.type === 'image_url')?.type;
   const ours = () => or.held.filter((f) => f.filename.startsWith('annai-')).map((f) => f.filename);
-  /** The same annai started again on this device: a new service over the same store and plugins. */
-  const restart = () => createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch });
+  /** The same annai started again on this device: a new service over the same store and plugins; its upload record. */
+  const restart = () => {
+    const again = new Uploads(k.ws);
+    createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch, uploads: again });
+    return again;
+  };
   /** Saves the chat ability's switch as the provider page saves it. @param {boolean} on */
   const uploadsSwitch = async (on) => {
     const rec = (await readConfig(k.ws)).providers[id];
     await saveProvider(k.ws, { ...rec, user: { ...rec.user, abilities: { ...rec.user?.abilities, chat: { ...rec.user?.abilities?.chat, tunables: { uploads: on } } } } });
   };
-  return { ...k, or, llm, id, modelId, send, sentAs, ours, restart, uploadsSwitch };
+  return { ...k, or, llm, id, modelId, off, send, sentAs, ours, restart, uploadsSwitch };
 }
 /** Waits, at most 2 s, for what a background sweep does. @param {() => boolean} done */
 const until = async (done) => {
@@ -53,7 +61,7 @@ const until = async (done) => {
 
 test('OpenRouter: photo uploads are on by default, the photo goes once and then as a file part by its id', async () => {
   const k = await kit();
-  assert.equal(await k.llm.uploading(await k.modelId()), true);
+  assert.equal(k.off(), false);
   await k.send();
   await k.send();
   assert.equal(k.or.requests.filter((r) => r.method === 'POST' && r.url.endsWith('/files')).length, 1);
@@ -61,10 +69,9 @@ test('OpenRouter: photo uploads are on by default, the photo goes once and then 
   assert.equal(k.or.chats.at(-1).messages.at(-1).content.find((/** @type {any} */ b) => b.type === 'file').file.file_id, k.or.held[0].id);
 });
 
-test('another Chat Completions provider sends exactly what it sent before: no switch default, no upload, no sweep', async () => {
+test("another Chat Completions provider's files path is left alone by the sweep: no request to it (that its calls upload nothing is llm-call's, by the type's hooks and the switch)", async () => {
   const k = await kit({}, 'provider-groq');
   await k.llm.sweepUploads();
-  assert.equal(await k.llm.uploading(await k.modelId()), false);
   assert.equal(k.or.requests.some((r) => new URL(r.url).pathname.endsWith('/files')), false);
 });
 
@@ -115,7 +122,7 @@ test('a list annai can’t read turns uploads off too, and so does a list that a
   const g = await kit({ status: (m, p) => (moved && m === 'GET' && p === '/files' ? 404 : null) });
   moved = true;
   await g.llm.sweepUploads();
-  assert.equal(await g.llm.uploading(await g.modelId()), false);
+  assert.equal(g.off(), true);
   await g.send();
   assert.equal(g.sentAs(), 'image_url');
   assert.deepEqual(g.ours(), []);
@@ -127,7 +134,7 @@ test('a list that answers another 4xx (400, 405, 410, 422) is a list annai can�
     const k = await kit({ status: (m, p) => (answer && m === 'GET' && p === '/files' ? status : null) });
     answer = true;
     await k.llm.sweepUploads();
-    assert.equal(await k.llm.uploading(await k.modelId()), false, `a ${status} at a sweep`);
+    assert.equal(k.off(), true, `a ${status} at a sweep`);
     await k.send();
     assert.equal(k.sentAs(), 'image_url', `a ${status}`);
     assert.deepEqual(k.ours(), [], `a ${status}`);
@@ -135,7 +142,7 @@ test('a list that answers another 4xx (400, 405, 410, 422) is a list annai can�
     const step = (await t.llm.test(await t.modelId())).steps.find((s) => s.step === 'upload');
     assert.equal(step?.ok, false, `a ${status} at Test`);
     assert.match(step?.detail ?? '', /can't read the list of its photos there/);
-    assert.equal(await t.llm.uploading(await t.modelId()), false);
+    assert.equal(t.off(), true);
   }
 });
 
@@ -227,27 +234,27 @@ test('a dead key met at start turns uploads off, and a new key (Sign in again, o
   await k.llm.reconnect(k.id, () => setKey(k.store, k.id, 'sk-or-v1-new-key-9876543210'));
   await k.send();
   assert.equal(k.sentAs(), 'file');
-  assert.equal(await k.llm.uploading(await k.modelId()), true);
+  assert.equal(k.off(), false);
 });
 
 test('a new address of the ability turns uploads on again too: what failed at the old one says nothing about the new', async () => {
   let dead = true;
   const k = await kit({ status: (m, p) => (dead && m === 'GET' && p === '/files' ? 401 : null) });
   await k.llm.sweepUploads();
-  assert.equal(await k.llm.uploading(await k.modelId()), false);
+  assert.equal(k.off(), true);
   dead = false;
   await k.llm.reconnect(k.id, async () => {
     const rec = (await readConfig(k.ws)).providers[k.id];
     await saveProvider(k.ws, { ...rec, user: { ...rec.user, abilities: { ...rec.user?.abilities, chat: { ...rec.user?.abilities?.chat, baseUrl: 'https://openrouter.ai/api/v1/' } } } });
   });
-  assert.equal(await k.llm.uploading(await k.modelId()), true);
+  assert.equal(k.off(), false);
 });
 
 test('a key change that fails leaves what it found as it was', async () => {
   const k = await kit({ status: (m, p) => (m === 'GET' && p === '/files' ? 401 : null) });
   await k.llm.sweepUploads();
   await assert.rejects(k.llm.reconnect(k.id, async () => { throw new Error('the store is full'); }), /store is full/);
-  assert.equal(await k.llm.uploading(await k.modelId()), false, 'still off: nothing changed');
+  assert.equal(k.off(), true, 'still off: nothing changed');
 });
 
 test('a photo sent while the key is changing goes in the request, and the old key’s uploads are deleted with nothing new left behind', async () => {
@@ -338,17 +345,17 @@ test('a Test that passes turns uploads on again where a refused list at start ha
   // One that fails turns them off, as before.
   const no = await kit({ status: (m) => (m === 'DELETE' ? 403 : null) });
   await no.llm.test(await no.modelId());
-  assert.equal(await no.llm.uploading(await no.modelId()), false);
+  assert.equal(no.off(), true);
 });
 
 test('a list annai can’t read keeps uploads off through a new key, a new address and Remove key, also once it can be read again: it is OpenRouter’s list, not the key, so only a Test that reads it or a restart ends it; a key save reads no list with the new key', async () => {
   let odd = true;
   const k = await kit({ list: (x) => (odd ? { object: 'list', items: x.data } : x) });
   await k.llm.sweepUploads(); // a start: the list is a shape annai can't read
-  assert.equal(await k.llm.uploading(await k.modelId()), false);
+  assert.equal(k.off(), true);
   const NEW = 'sk-or-v1-new-key-9876543210';
   await k.llm.reconnect(k.id, () => setKey(k.store, k.id, NEW));
-  assert.equal(await k.llm.uploading(await k.modelId()), false, 'a new key');
+  assert.equal(k.off(), true, 'a new key');
   assert.equal(k.or.requests.some((r) => r.headers.authorization === `Bearer ${NEW}`), false, 'the save asked nothing with the new key');
   await k.send();
   assert.equal(k.sentAs(), 'image_url');
@@ -357,39 +364,39 @@ test('a list annai can’t read keeps uploads off through a new key, a new addre
     const rec = (await readConfig(k.ws)).providers[k.id];
     await saveProvider(k.ws, { ...rec, user: { ...rec.user, abilities: { ...rec.user?.abilities, chat: { ...rec.user?.abilities?.chat, baseUrl: 'https://openrouter.ai/api/v1/' } } } });
   });
-  assert.equal(await k.llm.uploading(await k.modelId()), false, 'a new address');
+  assert.equal(k.off(), true, 'a new address');
   // The list can be read again: the next key change's sweep (with the old key) reads it, and still no key change ends the mark.
   odd = false;
   await k.llm.reconnect(k.id, () => setKey(k.store, k.id, 'sk-or-v1-another-key-1122334455'));
-  assert.equal(await k.llm.uploading(await k.modelId()), false, 'another key, with the list readable again');
+  assert.equal(k.off(), true, 'another key, with the list readable again');
   await k.llm.sweepUploads();
-  assert.equal(await k.llm.uploading(await k.modelId()), false, 'a sweep that reads it leaves it to a Test or a restart');
-  assert.equal(await k.restart().uploading(await k.modelId()), true, 'started again: nothing known about the list');
+  assert.equal(k.off(), true, 'a sweep that reads it leaves it to a Test or a restart');
+  assert.equal(k.restart().isOff(`${k.id}/chat`), false, 'started again: nothing known about the list');
   const step = (await k.llm.test(await k.modelId())).steps.find((s) => s.step === 'upload');
   assert.equal(step?.ok, true, JSON.stringify(step));
-  assert.equal(await k.llm.uploading(await k.modelId()), true, 'a Test that read it');
+  assert.equal(k.off(), false, 'a Test that read it');
   // Off again by the list, then Remove key: still off.
   odd = true;
   await k.llm.sweepUploads();
   await k.llm.reconnect(k.id, () => setKey(k.store, k.id, null));
-  assert.equal(await k.llm.uploading(await k.modelId()), false, 'Remove key');
+  assert.equal(k.off(), true, 'Remove key');
 });
 
 test('Remove key clears what the old key was refused; with no key OpenRouter refuses the upload, so the photo goes in the request and nothing is left', async () => {
   let dead = true;
   const k = await kit({ status: (m, p) => (dead && m === 'GET' && p === '/files' ? 401 : null) });
   await k.llm.sweepUploads();
-  assert.equal(await k.llm.uploading(await k.modelId()), false);
+  assert.equal(k.off(), true);
   dead = false;
   await k.llm.reconnect(k.id, () => setKey(k.store, k.id, null));
-  assert.equal(await k.llm.uploading(await k.modelId()), true, 'the refusal was the old key’s');
+  assert.equal(k.off(), false, 'the refusal was the old key’s');
   await k.send();
   const posts = k.or.requests.filter((r) => r.method === 'POST' && r.url.endsWith('/files'));
   assert.equal(posts.length, 1);
   assert.equal(posts[0].headers.authorization, undefined);
   assert.equal(k.sentAs(), 'image_url');
   assert.deepEqual(k.ours(), []);
-  assert.equal(await k.llm.uploading(await k.modelId()), false, 'the refused upload turns them off, as any failed upload');
+  assert.equal(k.off(), true, 'the refused upload turns them off, as any refusal does');
 });
 
 test('a Test that finds the list unreadable (or refused) leaves uploads off and says so; one that can read it turns them on', async () => {
@@ -401,13 +408,13 @@ test('a Test that finds the list unreadable (or refused) leaves uploads off and 
   assert.match(bad?.detail ?? '', /can't read the list of its photos there/);
   assert.match(bad?.detail ?? '', /send photos in each request/);
   assert.deepEqual(k.ours(), [], 'the test photo is deleted by its id all the same');
-  assert.equal(await k.llm.uploading(await k.modelId()), false);
+  assert.equal(k.off(), true);
   await k.send();
   assert.equal(k.sentAs(), 'image_url');
   odd = false;
   const good = (await k.llm.test(await k.modelId())).steps.find((s) => s.step === 'upload');
   assert.equal(good?.ok, true);
-  assert.equal(await k.llm.uploading(await k.modelId()), true);
+  assert.equal(k.off(), false);
   // A list refused to a key that can upload and delete by id does the same.
   let refuse = false;
   const r = await kit({ status: (m, p) => (refuse && m === 'GET' && p === '/files' ? 403 : null) });
@@ -415,7 +422,7 @@ test('a Test that finds the list unreadable (or refused) leaves uploads off and 
   const step = (await r.llm.test(await r.modelId())).steps.find((s) => s.step === 'upload');
   assert.equal(step?.ok, false);
   assert.match(step?.detail ?? '', /can't read the list of its photos there/);
-  assert.equal(await r.llm.uploading(await r.modelId()), false);
+  assert.equal(r.off(), true);
   // A list that answers 404: the same.
   let moved = false;
   const g = await kit({ status: (m, p) => (moved && m === 'GET' && p === '/files' ? 404 : null) });
@@ -423,11 +430,11 @@ test('a Test that finds the list unreadable (or refused) leaves uploads off and 
   const s404 = (await g.llm.test(await g.modelId())).steps.find((s) => s.step === 'upload');
   assert.equal(s404?.ok, false);
   assert.match(s404?.detail ?? '', /can't read the list of its photos there/);
-  assert.equal(await g.llm.uploading(await g.modelId()), false);
+  assert.equal(g.off(), true);
   // A list with no answer says nothing about it: nothing is turned off.
   const n = await kit({ status: (m, p) => (m === 'GET' && p === '/files' ? 503 : null) });
   assert.equal((await n.llm.test(await n.modelId())).steps.find((s) => s.step === 'upload')?.ok, true);
-  assert.equal(await n.llm.uploading(await n.modelId()), true);
+  assert.equal(n.off(), false);
   // Nor on, where the list couldn't be read before: that Test has not read it.
   let down = false;
   odd = true;
@@ -437,7 +444,7 @@ test('a Test that finds the list unreadable (or refused) leaves uploads off and 
   const unsure = (await late.llm.test(await late.modelId())).steps.find((s) => s.step === 'upload');
   assert.equal(unsure?.ok, false);
   assert.match(unsure?.detail ?? '', /can't read the list of its photos there/);
-  assert.equal(await late.llm.uploading(await late.modelId()), false);
+  assert.equal(late.off(), true);
 });
 
 test('a photo whose upload is answered after a key change began is deleted at once, and goes in the request', async () => {
@@ -468,14 +475,14 @@ test('two releases at once: the first to end does not end the other’s hold; on
   const slow = k.llm.reconnect(k.id, async () => { await gate; await setKey(k.store, k.id, 'sk-or-v1-new-key-9876543210'); });
   await until(() => k.or.requests.length > 0);
   await k.llm.reconnect(k.id, async () => {}); // a second, which ends first
-  assert.equal(await k.llm.uploading(await k.modelId()), false, 'the first is still going');
+  assert.equal(k.off(), true, 'the first is still going');
   await k.send();
   assert.equal(k.sentAs(), 'image_url');
   assert.deepEqual(k.ours(), []);
   open();
   await slow;
-  assert.equal(await k.llm.uploading(await k.modelId()), true);
+  assert.equal(k.off(), false);
   // A release that fails leaves the provider as it was, and uploads going again.
   await assert.rejects(k.llm.reconnect(k.id, async () => { throw new Error('the store is full'); }), /store is full/);
-  assert.equal(await k.llm.uploading(await k.modelId()), true);
+  assert.equal(k.off(), false);
 });

@@ -254,6 +254,25 @@ test('tapping Shiori stops a hanging tool and the turn; every call still has a r
   assert.equal(k.agent.state.name, 'sleeping');
 });
 
+test("tapping Shiori while her model waits to be sent again ends her turn at once, and a line typed just after it reaches her without that wait (llm-rest-next)", async (t) => {
+  useClock(t);
+  /** Each request the model got: when, by the clock, and whether it holds the typed line. @type {{ at: number, next: boolean }[]} */
+  const got = [];
+  // A short rate limit is waited out once, 10 s, the longest wait between tries (nextStep); the last step repeats.
+  const k = await agentKit([[{ error: 'rate', retryAfter: 10_000 }, say('Here.')]], { waits: true, hold: async (c) => { got.push({ at: Date.now(), next: JSON.stringify(c.request).includes('Next one') }); } });
+  k.agent.send('Go');
+  await until(() => got.length === 1);
+  await new Promise((r) => setTimeout(r, 20)); // 20 ms on the test clock: the first try failed, and the 10 s wait has begun
+  const stopped = Date.now();
+  k.agent.interrupt();
+  k.agent.send('Next one');
+  await idleAtOnce(k, 20_000); // twice the 10 s wait, so a turn held by it ends too, and the time says so
+  const next = got.find((g) => g.next);
+  // 1,000 ms, a tenth of the wait it must not sit out: on the test clock it comes at 0, and on main (the wait a plain timer) at 9,978.
+  assert.ok(next && next.at - stopped < 1000, `the typed line went at once, not after the wait: ${next ? next.at - stopped : 'never'} ms after the tap`);
+  assert.deepEqual((await k.events(['out.speak'])).map((e) => e.data.text), ['Here.']);
+});
+
 test("an entry written into another conversation (log's scope, as annai writes a held card into the one left) is that one's alone: the turn in the open one doesn't count it as reaching the user, and is asked once more", async (t) => {
   useClock(t);
   /** @type {() => void} */
