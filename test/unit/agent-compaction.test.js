@@ -211,16 +211,16 @@ test("bytesLessFiles: a picture's or a PDF's bytes count for nothing, uploaded o
   assert.equal(bytesLessFiles({ messages: [{ role: 'user', parts: [{ type: 'text', text: 'W'.repeat(100_000) }] }] }) - bare, 100_000 - 2, 'words count whole');
 });
 
-test('a big photo or PDF in the window makes no housekeeping due, sent as bytes or uploaded: a summary would leave it where it is (spec §6.5; review I7, size-forced-next)', async () => {
+test('a big photo or PDF in the window makes no housekeeping due: a summary would leave it where it is (spec §6.5; review I7, size-forced-next)', async () => {
   const { updateAppSettings } = await import('../../src/core/settings.js');
   const readIt = { toolCalls: [{ name: 'read', input: { path: '/trip/files/big.pdf' } }] };
   /** @type {Record<string, boolean>} */
   const due = {};
-  for (const [what, uploading] of /** @type {const} */ ([['a photo sent as bytes', false], ['a photo uploaded', true], ['a PDF she reads', false]])) {
+  for (const what of ['a photo sent as bytes', 'a PDF she reads']) {
     /** @type {any[]} */
     const timers = [];
     const pdf = what === 'a PDF she reads';
-    const k = await agentKit([[...(pdf ? [readIt] : []), say('ok')]], { uploading, models: [{ input: ['text', 'image', 'pdf'] }], agent: { timers: { set: (/** @type {any} */ fn) => { timers.push(fn); return timers.length; }, clear: (/** @type {number} */ h) => { timers[h - 1] = null; } } } });
+    const k = await agentKit([[...(pdf ? [readIt] : []), say('ok')]], { models: [{ input: ['text', 'image', 'pdf'] }], agent: { timers: { set: (/** @type {any} */ fn) => { timers.push(fn); return timers.length; }, clear: (/** @type {number} */ h) => { timers[h - 1] = null; } } } });
     // A traveller's own cap of 1 MiB for photos sent: the photo goes as it is, not as a smaller copy. Each is 933,336 characters as base64, past the
     // 70% due of a request size of 1 MiB (734,003) and under the size: 8ff7cba1c made housekeeping due for both, and its timer's warm summary sent them whole.
     await updateAppSettings(k.ws, { shiori: { compaction: { maxRequestMiB: 1 } }, photos: { request: { maxBytes: 1024 * 1024 } } });
@@ -231,10 +231,10 @@ test('a big photo or PDF in the window makes no housekeeping due, sent as bytes 
     assert.equal(k.requests.filter((/** @type {any} */ r) => r.messages.some((/** @type {any} */ m) => m.parts.some((/** @type {any} */ p) => p.data?.length === 933_336))).length, 1, `${what}: sent whole once`);
     due[what] = timers.some(Boolean);
   }
-  assert.deepEqual(due, { 'a photo sent as bytes': false, 'a photo uploaded': false, 'a PDF she reads': false }, 'no housekeeping due for any');
+  assert.deepEqual(due, { 'a photo sent as bytes': false, 'a PDF she reads': false }, 'no housekeeping due for either');
 });
 
-test('a conversation of words alone over the request size is still summarized before the request that would pass it, which then goes under it (size-forced-next)', async () => {
+test("a conversation of words alone that would pass the request size is summarized first: the summary's own request, written by her model from the cached conversation, is over it, and her request after it is under it (size-forced-next)", async () => {
   const { updateAppSettings } = await import('../../src/core/settings.js');
   /** A request's size: words only, so all of it. @param {any} r */
   const size = (r) => JSON.stringify(r).length;
@@ -248,10 +248,75 @@ test('a conversation of words alone over the request size is still summarized be
   }
   assert.equal((await k.events(['compaction'])).length, 1, 'one summary, forced by the size');
   assert.equal(String(k.requests.at(-2).tail).startsWith('[annai: housekeeping]'), true, 'her own, while the cache is warm');
-  assert.ok(size(k.requests.at(-3)) < 2 ** 20 && size(k.requests.at(-2)) > 2 ** 20, 'the third under the size, the fourth over it');
+  assert.ok(size(k.requests.at(-3)) < 2 ** 20 && size(k.requests.at(-2)) > 2 ** 20, "the third under the size, the summary's own over it: it holds the conversation the cache holds, so the fourth's");
   assert.ok(size(k.requests.at(-1)) < 2 ** 20 / 2, 'after it, the request holds the summary and the last message');
+  assert.ok(JSON.stringify(k.requests.at(-1)).includes('d'.repeat(300_000)), 'the newest message stays word for word');
   assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['1', '2', '3', '4']);
 });
+
+test('a forced summary in a turn leaves words over the request size: another follows while more than one exchange is left to cut, and a third asks no model (size-forced-next)', async () => {
+  const { updateAppSettings } = await import('../../src/core/settings.js');
+  /** A request's size: words only, so all of it. @param {any} r */
+  const size = (r) => JSON.stringify(r).length;
+  // No window; a small message, one of 1 MiB less 40,000 characters (the request still under the size) and one of 45,000: the third's request passes it.
+  // The first summary (her model's, warm) takes the small message only, since the newest exchange is under a third of where housekeeping is due, so the
+  // request is still over the size; the second (the utility model's, cold: the snapshot is new) takes the long one, and the last exchange alone is left.
+  // 8ff7cba1c stopped at the first, and her request went over the size.
+  const k = await agentKit([[say('1'), say('2'), { text: 'They sent a greeting.' }, say('3')]], { utility: [{ text: 'They pasted a long text.' }], agent: { timers: { set: () => 1, clear: () => {} } } });
+  await updateAppSettings(k.ws, { shiori: { compaction: { maxRequestMiB: 1 } } });
+  const last = 'c'.repeat(45_000);
+  for (const m of ['a', 'b'.repeat(2 ** 20 - 40_000), last]) {
+    k.agent.send(m);
+    await idleAtOnce(k);
+  }
+  assert.ok(size(k.requests[1]) < 2 ** 20 && size(k.requests[2]) > 2 ** 20, "the second message's request is under the size, the third's (her own summary of it) over it");
+  assert.deepEqual((await k.events(['compaction'])).map((/** @type {any} */ e) => e.data.mode), ['warm', 'cold'], "two summaries before her answer: her own, then the utility model's");
+  assert.equal(String(k.requests[3].system).startsWith('You summarize a conversation'), true, "the second is the utility model's");
+  assert.equal(k.requests.length, 5, 'her two answers, the two summaries and her answer after them: no model asked for a third');
+  assert.ok(size(k.requests.at(-1)) < 2 ** 20 / 2 && JSON.stringify(k.requests.at(-1)).includes(last), 'her request is under the size, with the last message word for word');
+  assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['1', '2', '3']);
+});
+
+/**
+ * The device's clock, moved on by hand (Date.now, which the log's times and the agent's clock both read): set before the kit is made.
+ * @param {import('node:test').TestContext} t
+ */
+function clockOf(t) {
+  const real = Date.now;
+  let shift = 0;
+  Date.now = () => real() + shift;
+  t.after(() => { Date.now = real; });
+  return (/** @type {number} */ ms) => { shift += ms; };
+}
+
+for (const what of ['a photo', 'a PDF']) {
+  test(`a cold return with ${what} of about 700 KB in the window brings no summary: the cold-start check leaves the window's files out too (size-forced-next)`, async (t) => {
+    const { updateAppSettings } = await import('../../src/core/settings.js');
+    const jump = clockOf(t);
+    const pdf = what === 'a PDF';
+    // Four exchanges, then the file's turn, then an hour on: the next turn starts cold with the file in its window (this turn's and the turn before's), a
+    // utility model to write a summary and enough exchanges to cut. It is 933,336 characters as base64, past the 70% due of a request size of 1 MiB
+    // (734,003) and under the size, so counted it makes housekeeping due, which at a cold start the utility model would answer.
+    const k = await agentKit([[say('1'), say('2'), say('3'), say('4'), ...(pdf ? [{ toolCalls: [{ name: 'read', input: { path: '/trip/files/big.pdf' } }] }] : []), say('5'), say('6')]],
+      { models: [{ input: ['text', 'image', 'pdf'] }], utility: [{ text: 'Summary.' }], agent: { timers: { set: () => 1, clear: () => {} } } });
+    await updateAppSettings(k.ws, { shiori: { compaction: { maxRequestMiB: 1 } }, photos: { request: { maxBytes: 1024 * 1024 } } });
+    if (pdf) await k.ws.write(k.trip, '/files/big.pdf', new TextEncoder().encode(`%PDF-1.4 ${'x'.repeat(700_000 - 9)}`), { author: 'user', type: 'application/pdf' });
+    else await k.ws.write(k.trip, '/files/big.webp', new TextEncoder().encode('x'.repeat(700_000)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+    for (const m of ['a', 'b', 'c', 'd']) {
+      k.agent.send(m);
+      await idleAtOnce(k);
+    }
+    k.agent.send('Look', pdf ? {} : { photos: [{ path: '/trip/files/big.webp' }] });
+    await idleAtOnce(k);
+    jump(61 * 60_000);
+    k.agent.send('And then?');
+    await idleAtOnce(k);
+    const whole = (/** @type {any} */ r) => r.messages.some((/** @type {any} */ m) => m.parts.some((/** @type {any} */ p) => p.data?.length === 933_336));
+    assert.equal(whole(k.requests.at(-1)), true, "the cold return's request carries it whole");
+    assert.deepEqual(await k.events(['compaction']), [], 'no summary');
+    assert.equal(k.sent['model-u'], undefined, 'the utility model is asked nothing');
+  });
+}
 
 test('housekeeping reads the conversation by type: location points and the like are not walked (A6)', async () => {
   const { noteQueries } = await import('./store-spy.js');
@@ -741,7 +806,7 @@ test("the housekeeping estimate counts what the main models are sent: one photo 
 });
 
 test('bytesLessFiles and estimateTokens count a native for what it adds beyond the parts it covers, not twice (the keep-reasoning review)', async () => {
-  const { bytesLessFiles: requestBytes } = await import('../../src/core/agent/compaction.js');
+  const { bytesLessFiles } = await import('../../src/core/agent/compaction.js');
   const { estimateTokens } = await import('../../src/core/llm/fallback.js');
   const page = 'P'.repeat(60_000);
   const parts = [{ type: 'provider', block: { type: 'result', page }, model: 'm' }];
@@ -750,11 +815,11 @@ test('bytesLessFiles and estimateTokens count a native for what it adds beyond t
   // The reply as the provider returned it holds the page again, and 20 KB of thinking.
   const content = [{ type: 'thinking', thinking: '', signature: 'S'.repeat(20_000) }, { type: 'result', page }];
   const kept = /** @type {any} */ ({ messages: [user, { role: 'assistant', parts: [{ type: 'native', endpoint: 'e', content, covers: 1, prefix: 'p' }, ...parts] }] });
-  const extra = requestBytes(kept) - requestBytes(bare);
+  const extra = bytesLessFiles(kept) - bytesLessFiles(bare);
   assert.ok(extra > 19_000 && extra < 21_000, `the native adds its signature, not the page again: ${extra}`);
   const tokens = estimateTokens(kept) - estimateTokens(bare);
   assert.ok(tokens > 5_000 && tokens < 6_500, `${tokens} tokens`);
   // A reply with nothing to add counts as it did.
   const same = /** @type {any} */ ({ messages: [user, { role: 'assistant', parts: [{ type: 'native', endpoint: 'e', content: [{ type: 'result', page }], covers: 1, prefix: 'p' }, ...parts] }] });
-  assert.ok(requestBytes(same) - requestBytes(bare) < 200);
+  assert.ok(bytesLessFiles(same) - bytesLessFiles(bare) < 200);
 });

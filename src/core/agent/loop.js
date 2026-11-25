@@ -2593,8 +2593,8 @@ export class Agent {
       // What the main models are sent: their photo limit of the pictures, each once.
       const sent = { ...request, messages: limitMedia(request.messages, (await this.#mainImages()).maxCount, request.photosFrom) };
       const estimate = estimateTokens(sent, (await this.#mainModel())?.providerId);
-      // The size weighs what a summary can make smaller, not the window's pictures and PDFs, which go whatever it does (bytesLessFiles): a request over it
-      // by them goes as it is, and one over it by words is summarized, in a later step again only while more than one exchange is left to cut (cutAt).
+      // The size weighs what a summary can make smaller, not the window's pictures and PDFs (bytesLessFiles): a request over it by them goes as it is, and one
+      // over it by words is summarized, in a later step again only while more than one exchange is left to cut (cutAt).
       const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window, bytes: bytesLessFiles(sent), maxBytes, threshold: settings.compaction.threshold }) : null;
       const tidy = coldStart;
       coldStart = false; // once a turn: its first request

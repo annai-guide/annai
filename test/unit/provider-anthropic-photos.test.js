@@ -55,7 +55,7 @@ async function kit() {
 
 test('with Anthropic, a photo goes in the request, and no upload to its files API is tried: the browser is refused there', async () => {
   const k = await kit();
-  assert.equal(await k.uploading(), false, 'its size counts as the photo, not an id');
+  assert.equal(await k.uploading(), false, 'uploads are off by default: the photo goes in the request');
   await k.send();
   assert.equal(k.files(), 0, 'no request to /v1/files');
   assert.deepEqual(k.photo()?.source, { type: 'base64', media_type: 'image/png', data: PNG });

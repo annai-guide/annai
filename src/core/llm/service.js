@@ -708,7 +708,7 @@ export function createLlm({
       await logEvent(store, scope, { type: 'decide', data: { prompt: prompt.slice(0, 500), options: options.map((o) => o.id), result: r.probabilities, by: r.by, gate: true } }).catch(() => {});
       return r;
     },
-    /** Whether photos go to this model's provider by upload, so a request carries only their ids (spec §4.8, §6.5). @param {string} modelId */
+    /** Whether photos go to this model's provider by upload, so a request carries only their ids (spec §4.8). Only tests ask. @param {string} modelId */
     async uploading(modelId) {
       await ready;
       const cfg = await readConfig(ws);

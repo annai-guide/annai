@@ -63,15 +63,14 @@ export function fakeCodec(formats) {
  * A memory-backed annai with the built-in file tools, one scripted provider and model per script
  * (all in the main role, in order), and an Agent on a fresh trip. Every request a model receives is
  * kept in `requests`.
- * @param {(any[] | Record<string, any>)[]} scripts @param {{ models?: any[], open?: boolean, ready?: Promise<void>, agent?: Record<string, any>, utility?: any[] | Record<string, any>, utilityModel?: Record<string, any>, codecFormats?: string[], uploading?: boolean,
+ * @param {(any[] | Record<string, any>)[]} scripts @param {{ models?: any[], open?: boolean, ready?: Promise<void>, agent?: Record<string, any>, utility?: any[] | Record<string, any>, utilityModel?: Record<string, any>, codecFormats?: string[],
  *   voice?: { mode?: 'on' | 'off' | 'auto', speechIn?: string[], hears?: string[], failing?: string[], decide?: any[], dictation?: boolean, keepClips?: boolean, playMs?: number, micFails?: string,
  *     encoder?: { makes: string[] }, plays?: string[], closeAfterSeconds?: number, speechOut?: string[] },
  *   halves?: boolean, koe?: { type?: any[] | Record<string, any>, talk?: any[] | Record<string, any>, input?: string[], model?: Record<string, any> },
  *   live?: { origin: string, first?: boolean, second?: boolean, key?: string, tunables?: Record<string, any>, type?: 'gemini-live' | 'openai-realtime', made?: false }, fetch?: import('../../src/core/llm/call.js').Fetch,
  *   hold?: (c: any) => Promise<unknown> }} [opts]
  *   hold: a scripted call waits for this before it answers, so a test sets an order without a delay
- *   uploading: whether the main model's provider takes photos by upload; a script (or koe's type) with an ability is a model on that
- *   endpoint type (anthropic-messages, chat-completions), its requests sent through fetch (a stand-in)
+ *   scripts: a script (or koe's type) with an ability is a model on that endpoint type (anthropic-messages, chat-completions), its requests sent through fetch (a stand-in)
  *   utility: a script for one more model, in the utility role (one with an ability as a script's is); utilityModel: what its model record has besides (its input)
  *   voice: Shiori with a voice (spec §10): a fake device; a voice (m-say) and a transcription model (m-hear) that hears hears, in turn (the last
  *   repeats); decide: a script for a quick-decision model (the gate); micFails: the microphone refuses with this error name; closeAfterSeconds: Settings →
@@ -82,7 +81,7 @@ export function fakeCodec(formats) {
  *   first false chooses Koe · Classic; key and tunables, for the real service (test/live); type: OpenAI's protocol
  *   (gpt-realtime-2.1, at <origin>/v1) in place of Gemini's
  */
-export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility, utilityModel = {}, codecFormats, uploading = false, voice: v, halves = false, koe, live, fetch, hold, ready } = {}) {
+export async function agentKit(scripts, { models = [], open = true, agent: agentOpts = {}, utility, utilityModel = {}, codecFormats, voice: v, halves = false, koe, live, fetch, hold, ready } = {}) {
   const registry = new Registry();
   const store = createMemoryStore();
   const ws = new Workspace(store, { schemaFor: makeSchemaFor(registry, kindOf) });
@@ -183,7 +182,6 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
     bench,
     ready,
     config: () => readConfig(ws),
-    uploading: async () => uploading,
     /** @param {any} c */
     call: async (c) => callRole({
       role: c.role ?? 'main', request: c.request, level: c.level, config: await readConfig(ws), types, keyFor: async () => null, bench,
