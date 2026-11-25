@@ -442,7 +442,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     let err = asProviderError(e, linked, type, registry, dropped());
     // With a photo's, a PDF's or a recording's bytes in what was sent (not the turns a kept one holds), likelier the send than the model; text
     // alone stays late (a server that never streams).
-    if (err.said?.code === 'late' && sending && spec.request.messages.slice(spec.kept?.from ?? 0).some((m) => m.parts.some((p) => (p.type === 'image' && !p.fileId) || p.type === 'document' || p.type === 'audio'))) {
+    if (err.said?.code === 'late' && sending && sendsBytes(spec, (p) => (p.type === 'image' && !p.fileId) || p.type === 'document' || p.type === 'audio')) {
       err = sendCut(e, sending);
     }
     // Output that started and then stopped is not "no output in time": it says so, and how long it waited.
@@ -496,7 +496,10 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   }
   clearTimeout(t);
   typeWorked(type, registry);
-  uploads?.answered(endpoint.id); // a photo upload held there (Uploads.hold) is tried again for the next new photo
+  // A photo upload held there (Uploads.hold) is tried again for the next new photo once a turn ends in an answer to a request that sent a photo as bytes: a
+  // step that calls a tool goes on, and its next request may bring a new photo (a closer look: 120 s a step), and an answer to a request with no photo in it
+  // says nothing about photos getting through (a link too slow for them: 120 s a new photo).
+  if (!parts.some((p) => p.type === 'tool_call') && sendsBytes(spec, (p) => p.type === 'image' && !p.fileId)) uploads?.answered(endpoint.id);
   // The turn kept, to continue next time; one refused is deleted, or it would be in every later turn's history.
   // Borrowed (warm housekeeping): nothing is recorded, the response is deleted, and the chain it continued is as it was.
   await settle((c) => (keeping?.borrow || /** @type {StopReason} */ (stop) === 'refusal' ? Promise.resolve('now') : /** @type {any} */ (keeping).kept.record(
@@ -516,6 +519,11 @@ function utf8Length(s) {
     if (c >= 0x80) n += c >= 0x800 && (c < 0xd800 || c > 0xdfff) ? 2 : 1;
   }
   return n;
+}
+
+/** Whether a request sends a part as bytes, not by its id (what a kept turn already holds isn't sent). @param {CallSpec} spec @param {(p: Part) => boolean} is */
+function sendsBytes(spec, is) {
+  return spec.request.messages.slice(spec.kept?.from ?? 0).some((m) => m.parts.some(is));
 }
 
 /** @param {Part[]} parts */
@@ -657,8 +665,9 @@ export async function photoHash(data) {
  * annai-… (uploadName, the rule the sweep deletes by), used for 48 hours. A failed upload sends the bytes. One the link failed at once, by where it
  * failed (annai's own fetch not made, or its answer's read broken off: watched, both before UPLOAD_MS ran out), sends this request's other new
  * photos as bytes too and leaves uploads on for the next. One cut at UPLOAD_MS, or answered 408, 429 or a server error, holds uploads there
- * (Uploads.hold): that photo, and every new one until its provider next answers a request there, goes as bytes there from then on, so a link
- * that hangs costs the whole wait once until it answers, not at each attempt, step or model. Any other (a refusal, a redirect, an unreadable
+ * (Uploads.hold): that photo, and every new one until a turn there ends in an answer to a request that sent a photo as bytes (Uploads.answered), goes
+ * as bytes there from then on, so a link that hangs costs the whole wait once until then, not at each attempt, step or model, and a files service
+ * that keeps hanging, one wait a turn that brings new photos. Any other (a refusal, a redirect, an unreadable
  * reply, the plugin's failure) stops uploading there until annai restarts, or its provider's key or address changes, or a Test passes. A photo
  * uploaded before goes by its id while uploads are held. An upload answered after uploads went off there (a refused upload, a refused key, a list
  * annai can't read), or while its provider goes, changes its key or address, or everything is erased (Erase), is deleted at once and its photo
@@ -703,7 +712,7 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
         r = type.uploadRequest({ endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(p.data), mediaType: p.mediaType, name: uploadName(hash, p.mediaType), expiresInSeconds: UPLOAD_TTL_S });
         if (typeof r?.url !== 'string') throw new TypeError(/* en */ `${type.type}'s uploadRequest gave no request (a result with a url, not a promise)`);
         sameOrigin(endpoint, r.url); // elsewhere: never sent, and the photo goes in the request
-        // Its own time limit, body included: one cut by it (a hang) holds uploads there until the provider answers, since a try at once would wait it
+        // Its own time limit, body included: one cut by it (a hang) holds uploads there until a turn is answered (Uploads.answered), since a try at once would wait it
         // out again; one not made or broken off before it is the link's, which a later try may meet again, for as long as that failure took. A Stop is told apart in the catch (the caller's signal aborted).
         const limit = AbortSignal.timeout(UPLOAD_MS);
         const res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, signal: signal ? anySignal([signal, limit]) : limit, redirect: 'manual' }).catch((e) => {
@@ -744,7 +753,7 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
           Promise.resolve(r).catch(() => {}); // an async builder's rejection: not the page's to report
         }
         if (!traced) await trace?.upload({ endpoint: endpoint.name, url: typeof r?.url === 'string' ? r.url : `${type.type}:`, status: 0, ms: now() - started, error: String(/** @type {any} */ (e)?.message ?? e) });
-        if (later) uploads.hold(endpoint.id, hash); // this photo, and the new ones until its provider next answers a request there, go as bytes there from then on
+        if (later) uploads.hold(endpoint.id, hash); // this photo, and the new ones until a turn there ends in an answer to a request that sent a photo as bytes, go as bytes there from then on
         else if (!dropped) uploads.off(endpoint.id); // a refusal, a redirect, the plugin's failure or an unreadable reply: until annai restarts, or a new key or address, or a Test that passes
       }
     }

@@ -423,7 +423,7 @@ test("a chat photo's upload limit (UPLOAD_MS) only catches a hang: a request pho
   assert.ok(slowest <= 70_000, `a 1 MiB photo needs ${Math.round(slowest)} bit/s up to finish in ${UPLOAD_MS / 1000} s`);
 });
 
-test("a photo's upload has a time limit of its own (UPLOAD_MS): a stall ends it, the photo and the request's other new one go in the request, and both are held there, so the next call makes no try for them (a hang would cost the wait at each, llm-rest-next; held, not off, since upload-rest-next); a Stop still stops (review of openrouter-f1, L1)", async () => {
+test("a photo's upload has a time limit of its own (UPLOAD_MS): a stall ends it, the photo and the request's other new one go in the request, and both are held there, so the next call makes no try for them; a Stop still stops (review of openrouter-f1, L1)", async () => {
   const { Workspace } = await import('../../src/core/workspace.js');
   const { ensureBaseScopes } = await import('../../src/core/scopes.js');
   const { Uploads, UPLOAD_MS } = await import('../../src/core/llm/uploads.js');
@@ -466,7 +466,8 @@ test("a photo's upload has a time limit of its own (UPLOAD_MS): a stall ends it,
     assert.deepEqual(bodies.map((b) => b.images), [['bytes', 'bytes']], 'both photos went in the request');
     assert.equal(uploads.isOff('pv-1/chat'), false, 'a cut is a hang, not a refusal: uploads are held there, not off');
     await callOnce({ type: t, endpoint: endpoint(), model: m, key: 'k', request: /** @type {any} */ (withPhoto), fetch: /** @type {any} */ (stalled), uploads });
-    assert.deepEqual(asked, [UPLOAD_MS], 'the next call makes no upload try: a link that hangs is waited on once, not at each call (main: once; the build before this: at each)');
+    // A hang is waited on once, not at each call (llm-rest-next's measurement: leaving uploads on after a cut paid it at every attempt).
+    assert.deepEqual(asked, [UPLOAD_MS], 'the next call makes no upload try');
     assert.equal(got.length, 1);
     assert.deepEqual(bodies.map((b) => b.images), [['bytes', 'bytes'], ['bytes', 'bytes']], 'its photos went in the request');
     // A turn passes its own signal (loop.js), which never fires here: the limit still ends the stall, through the join. A throw inside the stub
@@ -490,8 +491,9 @@ test("a photo's upload has a time limit of its own (UPLOAD_MS): a stall ends it,
     await callOnce({ type: t, endpoint: endpoint(), model: m, key: 'k', request: /** @type {any} */ (withPhoto), fetch: /** @type {any} */ (slow), uploads: joined, signal: turn.signal });
     assert.deepEqual(cut, [true], 'the limit ends the upload of a call that passes its own signal, as every turn does');
     assert.deepEqual(bodies.map((b) => b.images), [['bytes', 'bytes']]);
+    // held() holds the photo it is asked about while the endpoint waits for an answer; here the call was answered, so it only reads.
     assert.deepEqual([joined.isOff('pv-1/chat'), joined.held('pv-1/chat', await photoHash('AAAA'))], [false, true]);
-    // The limit also ends an answer whose body stalls after its headers: the same cut, uploads off; a body broken off before the limit is the link's (below).
+    // The limit also ends an answer whose body stalls after its headers: the same cut, held, not off; a body broken off before the limit is the link's (below).
     bodies.length = 0;
     const bodyCut = new Uploads(ws);
     /** @type {boolean[]} */
@@ -509,7 +511,7 @@ test("a photo's upload has a time limit of its own (UPLOAD_MS): a stall ends it,
     await callOnce({ type: t, endpoint: endpoint(), model: m, key: 'k', request: /** @type {any} */ (withPhoto), fetch: /** @type {any} */ (hung), uploads: bodyCut });
     assert.deepEqual(bodyEnded, [true], 'the limit ends the read of an answer too');
     assert.deepEqual(bodies.map((b) => b.images), [['bytes', 'bytes']]);
-    assert.deepEqual([bodyCut.isOff('pv-1/chat'), bodyCut.held('pv-1/chat', await photoHash('AAAA'))], [false, true], 'a cut body read is the same hang');
+    assert.deepEqual([bodyCut.isOff('pv-1/chat'), bodyCut.held('pv-1/chat', await photoHash('AAAA'))], [false, true], 'a cut body read is the same hang (answered, so held() only reads)');
     asked.length = 0;
     // A Stop during the upload is a Stop: not a failed upload, which would turn uploads off and send the photo.
     asked.length = 0;
@@ -529,6 +531,8 @@ test("a photo's upload has a time limit of its own (UPLOAD_MS): a stall ends it,
     await assert.rejects(callOnce({ type: t, endpoint: endpoint(), model: m, key: 'k', request: /** @type {any} */ (withPhoto), fetch: /** @type {any} */ (stoppable), uploads: kept, signal: stop.signal }), (/** @type {any} */ e) => e.kind === 'cancelled');
     assert.deepEqual(reached, [true], 'a Stop ends the upload at once, not at its time limit');
     assert.equal(kept.isOff('pv-1/chat'), false, 'a Stop says nothing about uploads');
+    // The endpoint isn't waiting after a Stop, so asking has no side effect here: a Stop holds nothing, and the photo is tried again.
+    assert.equal(kept.held('pv-1/chat', await photoHash('AAAA')), false, 'a Stop holds nothing');
     assert.deepEqual(bodies, []);
   } finally {
     AbortSignal.timeout = real;
@@ -598,7 +602,12 @@ test("an upload the link failed (not made, or its answer broken off) sends that 
   assert.deepEqual(sent, [['file_1'], ['bytes', 'file_1']]);
 });
 
-/** The test clock (useClock), AbortSignal.timeout on it too: an upload that hangs ends at its limit of the test's time, at no real time. @param {import('node:test').TestContext} t */
+/**
+ * The test clock (useClock), AbortSignal.timeout on it too: an upload that hangs ends at its limit of the test's time, at no real time. The
+ * real one is on real time and can't measure 120 s here; this one aborts with the same TimeoutError. A limit made for an upload that
+ * succeeds is never cleared, so it fires up to UPLOAD_MS of test time later, at a request that is already done: harmless, and no test that
+ * measures a wait has a successful upload before it. @param {import('node:test').TestContext} t
+ */
 const onTestClock = (t) => {
   useClock(t);
   const real = AbortSignal.timeout;
@@ -610,10 +619,15 @@ const onTestClock = (t) => {
   t.after(() => { AbortSignal.timeout = real; });
 };
 
+/** What the chat failing in each way of heldKit ends in; any other error out of a call is a crash. */
+const CHAT_FAILS = { down: 'unreachable', slow: 'timeout' };
+
 /**
  * Calls with photos, by endpoint id, to a files service that answers as `files` says ('hang': only its time limit ends it; a status; 'ok': an
- * upload, `file_<try>`) and a chat that answers as `chat` says ('ok', or 'down': not made). call gives how the request sent each photo (its
- * upload id, or 'bytes'), or 'failed'; tries counts the uploads made.
+ * upload, `file_<try>`) and a chat that answers as `chat` says ('ok'; 'down': not made; 'slow': a link too slow for photos, a request that
+ * sends one as bytes is never answered and ends at its wait, one with none is answered), the model's answer being as `step` says ('end': text,
+ * which ends a turn; 'tool': a call to a tool, which goes on). call gives how the request sent each photo (its upload id, or 'bytes'), or
+ * 'failed'; last, how the last request sent them, answered or not; tries counts the uploads made; model is the model called.
  */
 const heldKit = async () => {
   const { Workspace } = await import('../../src/core/workspace.js');
@@ -621,18 +635,28 @@ const heldKit = async () => {
   const { Uploads } = await import('../../src/core/llm/uploads.js');
   const ws = new Workspace(createMemoryStore());
   await ensureBaseScopes(ws);
-  const t = httpType([{ type: 'text', text: 'ok' }, { type: 'stop', reason: 'end' }], {
+  const t = httpType([], {
     uploadRequest: (/** @type {any} */ c) => ({ url: `${c.endpoint.baseUrl}/v1/files`, headers: {}, body: new Blob([c.bytes]) }),
     readUpload: (/** @type {any} */ j) => ({ id: j.id }),
-    build: (/** @type {any} */ c) => ({ url: `${c.endpoint.baseUrl}/v1/chat`, headers: {}, body: { images: c.request.messages[0].parts.map((/** @type {any} */ p) => p.fileId ?? 'bytes') } }),
+    build: (/** @type {any} */ c) => ({ url: `${c.endpoint.baseUrl}/v1/chat`, headers: {}, body: { images: c.request.messages[0].parts.filter((/** @type {any} */ p) => p.type === 'image').map((/** @type {any} */ p) => p.fileId ?? 'bytes') } }),
+    read: async function* () {
+      if (k.step === 'tool') yield* [{ type: 'tool_call', id: 'c1', name: 'read', input: {} }, { type: 'stop', reason: 'tool' }];
+      else yield* [{ type: 'text', text: 'ok' }, { type: 'stop', reason: 'end' }];
+    },
   });
   const k = {
     ws,
     uploads: new Uploads(ws),
     /** @type {'hang' | 'ok' | number} */
     files: /** @type {'hang' | 'ok' | number} */ ('ok'),
-    chat: 'ok',
+    /** @type {'ok' | 'down' | 'slow'} */
+    chat: /** @type {'ok' | 'down' | 'slow'} */ ('ok'),
+    /** @type {'end' | 'tool'} */
+    step: /** @type {'end' | 'tool'} */ ('end'),
+    model: model({ input: ['text', 'image'] }),
     tries: 0,
+    /** @type {string[]} */
+    last: [],
     /** @param {string} at the endpoint's id @param {...string} photos each photo's data @returns {Promise<string[] | 'failed'>} */
     call: async (at, ...photos) => {
       /** @type {string[] | 'failed'} */
@@ -643,19 +667,24 @@ const heldKit = async () => {
           if (k.files === 'hang') return new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason)));
           return typeof k.files === 'number' ? new Response('busy', { status: k.files }) : Response.json({ id: `file_${k.tries}` });
         }
+        k.last = JSON.parse(init.body).images;
         if (k.chat === 'down') throw new TypeError('Failed to fetch');
-        sent = JSON.parse(init.body).images;
+        if (k.chat === 'slow' && k.last.includes('bytes')) return new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason)));
+        sent = k.last;
         return new Response('');
       };
-      const request = { messages: [{ role: 'user', parts: photos.map((data) => ({ type: 'image', mediaType: 'image/webp', data, hash: data })) }] };
-      await callOnce({ type: t, endpoint: endpoint({ id: at, provider: at.split('/')[0] }), model: model({ input: ['text', 'image'] }), key: 'k', request: /** @type {any} */ (request), fetch: /** @type {any} */ (get), uploads: k.uploads }).catch(() => {});
+      const request = { messages: [{ role: 'user', parts: [{ type: 'text', text: 'What is this?' }, ...photos.map((data) => ({ type: 'image', mediaType: 'image/webp', data, hash: data }))] }] };
+      // Only the chat's own failure is let go as 'failed': any other error (a crash in what the call does after it) is the test's to see.
+      await callOnce({ type: t, endpoint: endpoint({ id: at, provider: at.split('/')[0] }), model: k.model, key: 'k', request: /** @type {any} */ (request), fetch: /** @type {any} */ (get), uploads: k.uploads }).catch((e) => {
+        if (!(e instanceof ProviderError && e.kind === CHAT_FAILS[/** @type {'down' | 'slow'} */ (k.chat)])) throw e;
+      });
       return sent;
     },
   };
   return k;
 };
 
-test('a cut upload holds uploads at its endpoint until its provider answers a request there: that photo goes as bytes there from then on, the next new photo is uploaded; another endpoint is not held (upload-rest-next)', async (t) => {
+test('a cut upload holds uploads at its endpoint until a turn ends in an answer to a request that sent a photo as bytes there: the photo cut, and any first seen while it waits, go as bytes there from then on (for their window) and the next new photo is uploaded; another endpoint is not held, and a photo uploaded before goes by its id meanwhile (upload-rest-next)', async (t) => {
   onTestClock(t);
   const k = await heldKit();
   k.files = 'hang';
@@ -666,30 +695,35 @@ test('a cut upload holds uploads at its endpoint until its provider answers a re
   assert.deepEqual(await k.call('pv-1/chat', 'AAAA', 'AAAB'), ['bytes', 'file_2'], 'and goes by its id after');
   assert.equal(k.tries, 2);
   assert.equal(k.uploads.isOff('pv-1/chat'), false);
-  // Cut on a link that answers nothing: no photo is tried there until its provider answers, a second model at the same endpoint included.
+  // Cut on a link that answers nothing: no photo is tried there until its provider answers, a second model at the same endpoint included. The photo
+  // uploaded before (AAAB) goes by its id while the endpoint waits, beside the cut one and a new one as bytes: held() holds what it is asked about
+  // while the endpoint waits, so a check of it that comes before the known id would send AAAB as bytes, and this call shows it.
   k.files = 'hang';
   k.chat = 'down';
   assert.equal(await k.call('pv-1/chat', 'AAAC'), 'failed');
   assert.equal(k.tries, 3);
   k.files = 'ok';
-  assert.equal(await k.call('pv-1/chat', 'AAAC', 'AAAD'), 'failed', 'a second model there');
+  k.model = model({ id: 'm-2', providerId: 'test-2', input: ['text', 'image'] });
+  assert.equal(await k.call('pv-1/chat', 'AAAB', 'AAAC', 'AAAD'), 'failed', 'a second model there');
+  assert.deepEqual(k.last, ['file_2', 'bytes', 'bytes'], 'while the endpoint waits: the photo uploaded before goes by its id, the cut one and the new one as bytes');
   assert.equal(k.tries, 3, 'no try while the endpoint waits for its provider');
+  k.model = model({ input: ['text', 'image'] });
   k.chat = 'ok';
-  assert.deepEqual(await k.call('pv-2/chat', 'AAAE'), ['file_4'], 'another endpoint is not held');
+  assert.deepEqual(await k.call('pv-2/chat', 'AAAA'), ['file_4'], 'another endpoint is not held: the photo held at pv-1 is uploaded at pv-2');
   assert.deepEqual(await k.call('pv-1/chat', 'AAAD', 'AAAF'), ['bytes', 'bytes'], 'still held there: its provider answers this one');
   assert.equal(k.tries, 4);
-  assert.deepEqual(await k.call('pv-1/chat', 'AAAC', 'AAAD', 'AAAF', 'AAAG', 'AAAB'), ['bytes', 'bytes', 'bytes', 'file_5', 'file_2'], 'only a photo new since that answer is uploaded; one uploaded before goes by its id');
+  assert.deepEqual(await k.call('pv-1/chat', 'AAAC', 'AAAD', 'AAAF', 'AAAG', 'AAAB'), ['bytes', 'bytes', 'bytes', 'file_5', 'file_2'], 'the cut photo, and AAAD and AAAF that were first seen while it waited, stay as bytes after the answer; only a photo new since that answer is uploaded; one uploaded before goes by its id');
 });
 
-test('an upload answered 408, 429 or a server error holds uploads there the same way: that photo and the request\'s other new ones go as bytes, without a try; once its provider answers, the next new photo is uploaded (upload-rest-next)', async (t) => {
+test('an upload answered 408, 429 or a server error (500, 502, 503, 504) holds uploads there the same way: that photo and the request\'s other new ones go as bytes without a try, and stay as bytes for their window after the answer, and the next new photo is uploaded (upload-rest-next)', async (t) => {
   onTestClock(t);
-  for (const status of [408, 429, 500, 503]) {
+  for (const status of [408, 429, 500, 502, 503, 504]) {
     const k = await heldKit();
     k.files = status;
     assert.deepEqual(await k.call('pv-1/chat', 'AAAA', 'AAAB'), ['bytes', 'bytes'], `${status}`);
     assert.equal(k.tries, 1, `${status}: the request's other new photo is not tried`);
     k.files = 'ok';
-    assert.deepEqual(await k.call('pv-1/chat', 'AAAA', 'AAAB', 'AAAC'), ['bytes', 'bytes', 'file_2'], `${status}: answered, the next new photo is uploaded`);
+    assert.deepEqual(await k.call('pv-1/chat', 'AAAA', 'AAAB', 'AAAC'), ['bytes', 'bytes', 'file_2'], `${status}: answered, the next new photo is uploaded, and the two before stay as bytes`);
     assert.equal(k.uploads.isOff('pv-1/chat'), false, `${status}`);
   }
 });
@@ -713,6 +747,8 @@ test('a refused upload (any other 4xx) still turns uploads off there through any
       k.files = first;
       k.chat = 'down'; // a hold stays: nothing answered since
       await k.call('pv-1/chat', 'AAAA');
+      // What the end ends: off for a refusal, a hold for a hang (held() holds what it is asked about while the endpoint waits; AAAA is held already, so it only reads).
+      assert.equal(first === 403 ? k.uploads.isOff('pv-1/chat') : k.uploads.held('pv-1/chat', await photoHash('AAAA')), true, `${what} after ${first}: before it, ${first === 403 ? 'off' : 'held'}`);
       k.files = 'ok';
       k.chat = 'ok';
       end(k);
@@ -721,9 +757,10 @@ test('a refused upload (any other 4xx) still turns uploads off there through any
   }
 });
 
-test('a files service that hangs at every upload while chat answers costs one wait of UPLOAD_MS a turn that brings new photos, on the test clock, never one a step, and none for a turn with none (main: one until a restart, every later photo as bytes); a link that answers nothing costs one until its provider answers (upload-rest-next)', async (t) => {
+test('a files service that hangs at every upload while chat answers costs one wait of UPLOAD_MS a turn that brings new photos, whatever its steps and models, and none for a turn with none, on the test clock; a link that answers nothing costs one until an answer to a request that sent a photo (upload-rest-next)', async (t) => {
   onTestClock(t);
   const { UPLOAD_MS } = await import('../../src/core/llm/uploads.js');
+  // On main a cut turned uploads off until a restart: one wait in all, and every later photo as bytes in the request.
   /** What each turn waited, on the test clock: each turn its steps, each step the photos its request carries (its turn's and the turn before's). @param {Awaited<ReturnType<typeof heldKit>>} k @param {string[][][]} turns */
   const waited = async (k, turns) => {
     /** @type {number[]} */
@@ -745,7 +782,7 @@ test('a files service that hangs at every upload while chat answers costs one wa
   ]), [UPLOAD_MS, 0, UPLOAD_MS, UPLOAD_MS]);
   assert.equal(k.tries, 3, 'one try a turn with new photos');
   assert.deepEqual(await k.call('pv-1/chat', 'AAAB', 'AAAC', 'AAAD'), ['bytes', 'bytes', 'bytes']);
-  // Nothing answers: one wait (two models at the endpoint in a turn), none until the provider answers; then the next new photo's.
+  // Nothing answers: one wait (two models at the endpoint in a turn), none until a request that sent a photo is answered; then the next new photo's.
   const dead = await heldKit();
   dead.files = 'hang';
   dead.chat = 'down';
@@ -753,6 +790,61 @@ test('a files service that hangs at every upload while chat answers costs one wa
   dead.chat = 'ok';
   assert.deepEqual(await waited(dead, [[['AAAF', 'AAAG']], [['AAAH']]]), [0, UPLOAD_MS], 'the turn its provider answers tries nothing; the next new photo is tried');
   assert.equal(dead.tries, 2);
+});
+
+test('a turn whose steps each bring a new photo (a closer look, a photo Shiori reads) pays one wait of UPLOAD_MS, not one a step: only an answer that ends the turn, one that calls no tool, lets the next new photo be uploaded (upload-rest-next, review F1)', async (t) => {
+  onTestClock(t);
+  const k = await heldKit();
+  k.files = 'hang';
+  /** The seconds each step of a turn took, on the test clock: each step the photos its request carries (a tool's picture comes with the step after it) and what the model answers. @param {[string[], 'end' | 'tool'][]} steps */
+  const turn = async (steps) => {
+    /** @type {number[]} */
+    const out = [];
+    for (const [photos, step] of steps) {
+      k.step = step;
+      const t0 = Date.now();
+      await k.call('pv-1/chat', ...photos);
+      out.push((Date.now() - t0) / 1000);
+    }
+    return out;
+  };
+  // The traveller's photo, then three steps that each bring one more by a tool; the last answers in text. On main: 120, 0, 0, 0 (then off for good).
+  assert.deepEqual(await turn([[['AAAA'], 'tool'], [['AAAA', 'AAAB'], 'tool'], [['AAAA', 'AAAB', 'AAAC'], 'tool'], [['AAAA', 'AAAB', 'AAAC', 'AAAD'], 'end']]), [120, 0, 0, 0]);
+  assert.equal(k.tries, 1, 'one try in the turn');
+  assert.deepEqual(k.last, ['bytes', 'bytes', 'bytes', 'bytes']);
+  // The turn after, with a new photo: its end lifted the wait, so that one is tried.
+  assert.deepEqual(await turn([[['AAAE'], 'tool'], [['AAAE', 'AAAF'], 'end']]), [120, 0]);
+  assert.equal(k.tries, 2);
+});
+
+test('a link too slow for photos pays the wait for one new photo at a time, not once more after each answer to a request with no photo in it: only a request that sent a photo as bytes, answered, lets the next new photo be uploaded (upload-rest-next, review F2)', async (t) => {
+  onTestClock(t);
+  /** The seconds a call with these photos took, on the test clock. @param {Awaited<ReturnType<typeof heldKit>>} k @param {...string} photos */
+  const secs = async (k, ...photos) => {
+    const t0 = Date.now();
+    await k.call('pv-1/chat', ...photos);
+    return Math.round((Date.now() - t0) / 1000);
+  };
+  // A photo's upload is cut at UPLOAD_MS (120 s), and its request at the model's wait (30 s, plus the milliseconds its body takes at SLOW_UPLINK).
+  const k = await heldKit();
+  k.files = 'hang';
+  k.chat = 'slow';
+  const out = [await secs(k, 'AAAA')];
+  await k.call('pv-1/chat'); // a small request is answered: a title, a line of Koe's, the traveller's "hello?"
+  out.push(await secs(k, 'AAAB'));
+  await k.call('pv-1/chat');
+  out.push(await secs(k, 'AAAC'));
+  assert.deepEqual(out, [150, 30, 30], 'with an answer between each, as with none (main: 150, 30, 30)');
+  assert.equal(k.tries, 1, 'one try');
+  const none = await heldKit();
+  none.files = 'hang';
+  none.chat = 'slow';
+  assert.deepEqual([await secs(none, 'AAAA'), await secs(none, 'AAAB'), await secs(none, 'AAAC')], [150, 30, 30], 'with none between');
+  // The link carries a photo again: the answer to a request that sent one as bytes lets the next new photo be uploaded.
+  none.chat = 'ok';
+  none.files = 'ok';
+  assert.deepEqual(await none.call('pv-1/chat', 'AAAA'), ['bytes']);
+  assert.deepEqual(await none.call('pv-1/chat', 'AAAD'), ['file_2']);
 });
 
 /** A request whose photo goes in the body (no files API), its data n base64 characters. @param {number} n @returns {any} */
