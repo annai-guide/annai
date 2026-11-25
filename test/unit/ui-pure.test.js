@@ -220,7 +220,7 @@ test('markdown: paragraphs, lists, headings, code; inline bold, italic, code and
 
 test('markdown: hostile output stays text', () => {
   assert.deepEqual(parseInline('<img src=x onerror=alert(1)>'), [{ t: 'text', v: '<img src=x onerror=alert(1)>' }]);
-  assert.deepEqual(parseInline('[x](javascript:alert(1))'), [{ t: 'text', v: '[x](javascript:alert(1))' }]);
+  assert.deepEqual(parseInline('[x](javascript:alert(1))'), [{ t: 'text', v: 'x' }], 'by its name, never a link');
   assert.deepEqual(parseInline('go to https://a.test/x.'), [{ t: 'text', v: 'go to ' }, { t: 'a', href: 'https://a.test/x', c: [{ t: 'text', v: 'https://a.test/x' }] }, { t: 'text', v: '.' }]);
   const long = parseMarkdown('x'.repeat(MD_MAX + 5));
   assert.equal(/** @type {any} */ (long[0]).c[0].v.length, MD_MAX + 1);

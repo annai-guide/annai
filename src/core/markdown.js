@@ -2,7 +2,7 @@ import { ADDRESS_ENDS } from './address-ends.js';
 
 /**
  * annai's own small Markdown reader (spec §15): model output becomes data, never HTML. Paragraphs, headings, lists, code blocks; bold, italic, code
- * and links to http(s) addresses. Anything else, HTML included, is text. Drawn by src/ui/markdown.js; read as plain words by plainWords.
+ * and links to http(s) addresses; a link to anything else by its name. Anything else, HTML included, is text. Drawn by src/ui/markdown.js; read as plain words by plainWords.
  * @typedef {{ t: 'text', v: string } | { t: 'b', c: Inline[] } | { t: 'i', c: Inline[] } | { t: 'code', c: string } | { t: 'a', href: string, c: Inline[] }} Inline
  * @typedef {{ t: 'p', c: Inline[] } | { t: 'h', c: Inline[] } | { t: 'ul', items: Inline[][] } | { t: 'ol', items: Inline[][] } | { t: 'pre', v: string }} Block
  */
@@ -11,16 +11,19 @@ export const MD_MAX = 20_000;
 // A bare address runs to whitespace, `<`, `>`, an unpaired parenthesis, a `[ ] { } |` (MediaWiki refuses them in a title; so an IP-literal address, http://[::1]/,
 // doesn't link) or a mark of ADDRESS_ENDS; a pair of parentheses that closes (one level of it, GFM's rule) stays in it; a last `.,;:!?'"` stays out, as a sentence's
 // own stop. A `_` opens or closes italics only at the edge of a word of Latin letters or digits (CommonMark's; `_重要_` in Japanese or Chinese is italics).
+// A `*`, `**` or `_` opens only before a non-space and closes only after one (CommonMark's flanking rule), so two codes' stars (`*1234# then *9#`) stay;
+// `**` may hold `*italic*` (`***very***`). A `\` before ASCII punctuation is CommonMark's escape: dropped.
 const WORD = String.raw`[\p{Script=Latin}\p{N}]`;
 const IN_ADDRESS = String.raw`[^\s<>()\[\]{}|${ADDRESS_ENDS}]`;
 const PAIR = String.raw`\(${IN_ADDRESS}*\)`;
 const INLINE = new RegExp([
   '`([^`\\n]+)`',
-  String.raw`\*\*([^*\n]+)\*\*`,
-  String.raw`\*([^*\s][^*\n]*)\*`,
-  String.raw`(?<!${WORD})_([^_\s][^_\n]*)_(?!${WORD})`,
+  String.raw`\*\*(?!\s)((?:[^*\n]|\*(?!\s)[^*\n]+(?<!\s)\*)+)(?<!\s)\*\*`,
+  String.raw`\*(?!\s)([^*\n]+)(?<!\s)\*`,
+  String.raw`(?<!${WORD})_(?!\s)([^_\n]+)(?<!\s)_(?!${WORD})`,
   String.raw`\[([^\[\]\n]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)`,
   String.raw`(https?:\/\/(?:${IN_ADDRESS}|${PAIR})*(?:[^\s<>()\[\]{}|.,;:!?'"${ADDRESS_ENDS}]|${PAIR}))`,
+  String.raw`\\([!-\/:-@\[-\x60{-~])`,
 ].join('|'), 'gu');
 
 /** An http(s) address, or null. @param {string} href */
@@ -53,12 +56,12 @@ export function parseInline(s, inLink = false) {
     else if (m[5] !== undefined) {
       const href = safeHref(m[6]);
       if (href) out.push({ t: 'a', href: m[6] === href ? m[6] : href, c: parseInline(m[5], true) });
-      else text(m[0]);
+      else for (const x of parseInline(m[5], true)) if (x.t === 'text') text(x.v); else out.push(x); // tel:, mailto:, a path, a script: by its name, never a link
     } else if (m[7] !== undefined) {
       const href = inLink ? null : safeHref(m[7]);
       if (href) out.push({ t: 'a', href: m[7], c: [{ t: 'text', v: m[7] }] });
       else text(m[0]);
-    }
+    } else text(m[8]);
   }
   text(s.slice(at));
   return out;

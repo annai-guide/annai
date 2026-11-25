@@ -262,14 +262,18 @@ test("a plan reminder's words keep their asterisks, while a model's reminder dra
   await writeEvent(page, trip, { type: 'reminder', data: { watch: 'plan:inn:arrived', text: `Sample Inn: Check-in. ${notes}`, plan: { event: 'arrived', title: 'Check-in', place: 'Sample Inn', notes } } });
   await writeEvent(page, trip, { type: 'reminder', data: { watch: 'plan:inn:arrived', text: `Sample Inn: Check-in. ${notes}` } }); // an older entry: its English as stored
   await writeEvent(page, trip, { type: 'reminder', data: { watch: 'w1', text: 'Take the *early* train.' } });
+  // Two codes' stars don't pair as italics (star-codes-next), and a link the drawer doesn't open is drawn by its name, never as a link.
+  await writeEvent(page, trip, { type: 'reminder', data: { watch: 'w2', text: 'Press *1234# at the gate, then *9#. Call [the inn](tel:+1-555-0100) or [this](javascript:alert(1)).' } });
   await page.goto('/#/talk');
   const lines = page.locator('.convo > li.note p');
-  await expect(lines).toHaveCount(3);
+  await expect(lines).toHaveCount(4);
   await expect(lines.nth(0)).toHaveText(`Sample Inn: Check-in. ${notes}`);
   await expect(lines.nth(1)).toHaveText(`Sample Inn: Check-in. ${notes}`);
   await expect(lines.nth(2)).toHaveText('Take the early train.');
   await expect(lines.nth(2).locator('em')).toHaveText('early');
+  await expect(lines.nth(3)).toHaveText('Press *1234# at the gate, then *9#. Call the inn or this.');
   await expect(page.locator('.convo > li.note em')).toHaveCount(1);
+  await expect(page.locator('.convo > li.note a')).toHaveCount(0);
 });
 
 // Kokoro's words annai shows itself (a note's for_user Koe never said) are the model's words for the user, as a card's text is: their

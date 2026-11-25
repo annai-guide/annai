@@ -1,5 +1,5 @@
 {
-  "build": "b7aa6f5d15ec",
+  "build": "008dac665138",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -119,7 +119,7 @@
     "/src/core/languages.js": "277f7198fd6b",
     "/src/core/links.js": "636b0aeadab9",
     "/src/core/lock.js": "dd40df3552c7",
-    "/src/core/markdown.js": "7e8d960e23c8",
+    "/src/core/markdown.js": "511d44ac4719",
     "/src/core/now.js": "bba789ac01b8",
     "/src/core/names.js": "0d8fc0903f5c",
     "/src/core/official-names.js": "13fd35baa42b",
