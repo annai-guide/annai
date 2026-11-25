@@ -245,6 +245,15 @@ test("a bold holds the stars of a digit-led italic, a code or a lone star as tex
   assert.deepEqual(parseInline('***very***'), [{ t: 'b', c: [{ t: 'i', c: textOnly('very') }] }]);
   assert.deepEqual(parseInline('**a**b**c**'), [{ t: 'b', c: textOnly('a') }, { t: 'text', v: 'b' }, { t: 'b', c: textOnly('c') }]);
   assert.deepEqual(parseInline('**a****b**'), [{ t: 'b', c: textOnly('a') }, { t: 'b', c: textOnly('b') }]);
+  // A lone star inside a bold is text, whatever follows it, and the bold closes at its own `**`.
+  assert.deepEqual(parseInline('**a * b*c**'), [{ t: 'b', c: textOnly('a * b*c') }]);
+  assert.deepEqual(parseInline('**a *3 b*c**'), [{ t: 'b', c: textOnly('a *3 b*c') }]);
+});
+
+test("an italic after a code, or after an italic the digit rule doesn't read, still draws where her stars pair: the code's star (before `#` too) and the digit-led pair stay as written", () => {
+  assert.deepEqual(parseInline('*#06#で確認、*重要*です'), [{ t: 'text', v: '*#06#で確認、' }, { t: 'i', c: textOnly('重要') }, { t: 'text', v: 'です' }]);
+  assert.deepEqual(parseInline('*大人*1000円、*重要*です'), [{ t: 'text', v: '*大人*1000円、' }, { t: 'i', c: textOnly('重要') }, { t: 'text', v: 'です' }]);
+  assert.deepEqual(parseInline('*67 to hide,*重要*'), [{ t: 'text', v: '*67 to hide,' }, { t: 'i', c: textOnly('重要') }]);
 });
 
 test('a mark with a space on its inner side neither opens nor closes: each half of the rule, on a line of its own', () => {
@@ -297,6 +306,7 @@ test('a phone or mail link named in words reads `name (number or address)` in th
     ['Mail [Desk@Example.com](mailto:desk@example.com?subject=x) now.', 'Mail Desk@Example.com now.'],
     ['Mail [the desk at desk@example.com](mailto:desk@example.com) now.', 'Mail the desk at desk@example.com now.'],
     ['Call [the inn](TEL:+1-555-0100) now.', 'Call the inn (+1-555-0100) now.'],
+    ['Call [+1 555 0100](TEL:+1-555-0100) now.', 'Call +1 555 0100 now.'], // a capital scheme is a phone link too: its number is held by the name
     ['[ホテル](tel:０３－１２３４－５６７８)に電話。', 'ホテル (０３－１２３４－５６７８)に電話。'], // full-width digits are digits: a name with none doesn't hold the number
     ['Call [０３－１２３４－５６７８](tel:０３－１２３４－５６７８) now.', 'Call ０３－１２３４－５６７８ now.'],
   ]) {
