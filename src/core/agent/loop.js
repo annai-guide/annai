@@ -31,8 +31,7 @@ import { validate } from '../schema.js';
 import { anySignal } from '../signals.js';
 import { t, plural } from '../l10n.js';
 import { sentences, list, num } from '../intl.js';
-import { planWords } from '../live/plan-watches.js';
-import { plainWords } from '../markdown.js';
+import { plainReminder } from '../live/plan-watches.js';
 import { scopeTitle } from '../scopes.js';
 import { readFile } from './reading.js';
 import { runningPdfPages } from '../pdf-pages.js';
@@ -2126,9 +2125,9 @@ export class Agent {
       const kept = reminderData(r);
       if (!kept) continue;
       const ev = { type: 'reminder', actor: 'system', data: { ...kept, ...(aloud ? { aloud: true } : {}), ...(o.unsaid ? { unsaid: true } : {}), ...(o.waiting ? { waiting: true } : {}) } };
-      // A plan's reminder in the screens' words, made from its data; Kokoro's words as plain words, a link by its name (the card and the voice draw no
-      // link; the user saw the markdown itself, 2026-11-23); anyone else's as they wrote it. The voice says the card's words, blanked of keys once.
-      const words = r.plan ? planWords(r.plan) : r.answer ? plainWords(kept.text) : kept.text;
+      // A plan's reminder in the screens' words, made from its data; a model's words (Kokoro's answer, Shiori's watch) as plain words, a link by its
+      // name: the card and the voice draw no link (the user saw the markdown itself, 2026-11-23). The voice says the card's words, blanked of keys once.
+      const words = plainReminder(kept);
       const card = await this.#card({ tone: 'info', title: r.answer ? t`Shiori's answer` : t`Reminder`, body: words }, { own: true });
       this.#emit('notice', card);
       if (aloud) this.voice?.say(card.body).catch(() => {});

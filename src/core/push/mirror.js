@@ -532,7 +532,7 @@ export class PushMirror {
       if ((m.here !== false ? sendAt <= now + 5000 : sendAt <= now) || sendAt > now + AHEAD_MS) continue;
       if (out.size >= room) break;
       const title = await this.#title(m.scope, titles);
-      // The user's words: a plan reminder's in the screens' language (shown), Shiori's as she wrote them.
+      // The user's words, as annai's own card says them (live.js shown): a plan reminder's in the screens' language, Shiori's as plain words.
       const body = String(m.shown ?? m.text).slice(0, 500);
       const says = m.says && (await this.#hash(m.says));
       out.set(m.key, { m, sendAt, title, body, hash: await this.#hash(`${title}\n${body}`), says });

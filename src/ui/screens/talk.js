@@ -7,7 +7,7 @@ import { costs, budgetWords } from '../../core/agent/budgets.js';
 import { whyWords } from '../../core/llm/fallback.js';
 import { modelNames } from '../../core/llm/config.js';
 import { tidyFailed } from '../../core/agent/loop.js';
-import { planWords } from '../../core/live/plan-watches.js';
+import { planWords, planned, plainReminder } from '../../core/live/plan-watches.js';
 import { storedTexts } from '../../core/agent/log.js';
 import { blobBytes } from '../../core/reach.js';
 import { herDatings, undoDating } from '../../core/chats.js';
@@ -204,9 +204,9 @@ const drawn = (tag, { text, ...attrs }) => h(tag, attrs, ...inlineMarkdown(Strin
  */
 function reminderWords(d, mine, make) {
   const words = d.plan ? planWords(d.plan) : String(d.text ?? '');
-  const planned = Boolean(d.plan) || String(d.watch ?? '').startsWith('plan:');
-  const marked = d.plan ? {} : planned ? { lang: 'en' } : mine(words);
-  return (make ?? (planned ? h : drawn))('span', { ...marked, text: words });
+  const plans = planned(d);
+  const marked = d.plan ? {} : plans ? { lang: 'en' } : mine(words);
+  return (make ?? (plans ? h : drawn))('span', { ...marked, text: words });
 }
 
 const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
@@ -230,8 +230,8 @@ export function errorWords(d, { names } = {}) {
   if (d.kind === 'silent') return t`Her model finished without saying anything to you.`;
   if (d.kind === 'stuck') return t`Three identical tool calls in a row with identical results.`;
   // A watch is named briefly, as the user knows it, never by its id or its trigger's code: a plan watch by its item's title, another
-  // by its reminder's first words. An older plan watch's entry kept its English fallback, no name for these words: shown as stored.
-  const name = d.kind !== 'trigger' ? '' : typeof d.title === 'string' ? d.title : typeof d.reminder === 'string' && !String(d.watch).startsWith('plan:') ? brief(d.reminder) : '';
+  // by its reminder's first words, as plain words (the line draws no link). An older plan watch's entry kept its English fallback, no name for these words: shown as stored.
+  const name = d.kind !== 'trigger' ? '' : typeof d.title === 'string' ? d.title : typeof d.reminder === 'string' && !planned(d) ? brief(plainReminder({ text: d.reminder })) : '';
   // The trigger's words keep their own end ("Really?", "wait…"); asSentence adds one where they have none.
   if (name) return asSentence(t`The watch for "${name}" can't be checked: ${String(d.why ?? '')}`);
   return null;

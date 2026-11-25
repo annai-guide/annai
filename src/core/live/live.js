@@ -1,7 +1,7 @@
 import { meters, keep, fixOf, kmText, span, KEEP_M } from './geo.js';
 import { ActivityTracker, STILL_BELOW, WALK_BELOW, FAST_FROM, SETTLE_MS, LEAVE_FAST_MS, waySpeed } from './activity.js';
 import { TRIGGERS, SAME_DRIVE_MS, sameDrive } from './triggers.js';
-import { PLAN, planWatches, planWords, planItemWords } from './plan-watches.js';
+import { PLAN, planWatches, planItemWords, planned, plainReminder } from './plan-watches.js';
 import { readWatches, saveWatch, removeWatch, newWatchId, expired, watchPath, WATCH_FILE, WATCH_DIR } from './watches.js';
 import { realClock } from './clock.js';
 import { readAppSettings, updateAppSettings } from '../settings.js';
@@ -42,8 +42,8 @@ import { asSentence } from '../intl.js';
  * @typedef {{ key: string, scope: string, watch: string, due: number, when: string, text: string, shown?: string, start?: number, what?: string, says?: string, here?: boolean }} Mirrored
  *   a reminder a closed annai can still give through the push relay (spec §11.6): key names it and, for the plan's, the item's time;
  *   when: its due time as both halves read it (dueWords), in its own zone: a time watch's as written, a plan reminder's in its item's;
- *   text: what Koe's view reads (a plan's in annai's English; Shiori's as she wrote them), and shown a plan's in the screens' words, made
- *   from its data, for the push (the shown rule); start and what: a "coming up" item's, for the minutes left and the item in the screens'
+ *   text: what Koe's view reads (a plan's in annai's English; Shiori's as she wrote them), and shown what the push says (plainReminder): a plan's in the
+ *   screens' words, made from its data (the shown rule), anyone else's as plain words, as annai's own card says them; start and what: a "coming up" item's, for the minutes left and the item in the screens'
  *   words, which the service worker words (sw.js); says: a plan reminder's (saysOf); here: annai says it itself when its time comes while it is open
  *   (time watches, and the plan of the trip in play), so a sync just before it leaves it to annai; false for the plans of an open trip that isn't
  *   happening and of the next trip, which only the relay gives
@@ -598,7 +598,7 @@ export class Live {
         for (const w of list) {
           if (w.when?.type !== 'time' || !time || this.#broken(time, w) || found.has(this.#keyOf(scope, w))) continue;
           const due = Date.parse(w.when.at);
-          if (Number.isFinite(due) && !expired(w, due)) out.push({ key: this.#keyOf(scope, w), scope, watch: w.id, due, when: dueWords(w.when.at), text: w.fallback, here: true });
+          if (Number.isFinite(due) && !expired(w, due)) out.push({ key: this.#keyOf(scope, w), scope, watch: w.id, due, when: dueWords(w.when.at), text: w.fallback, shown: plainReminder({ watch: w.id, text: w.fallback }), here: true });
         }
       }
       for (const [scope, list, here] of plans) {
@@ -614,7 +614,7 @@ export class Live {
           }
           const say = /** @type {import('./plan-watches.js').PlanSay} */ (w.say);
           // In the item's zone, as the Plan says its time.
-          if (typeof due === 'number' && Number.isFinite(due)) out.push({ key: this.#keyOf(scope, w), scope, watch: w.id, due, when: dueWords(isoInZone(due, /** @type {any} */ (w.when).tz)), text: w.fallback, shown: planWords(say), says: saysOf(w), here, ...(event === 'coming-up' ? { start: forAt(w) ?? undefined, what: planItemWords(say) } : {}) });
+          if (typeof due === 'number' && Number.isFinite(due)) out.push({ key: this.#keyOf(scope, w), scope, watch: w.id, due, when: dueWords(isoInZone(due, /** @type {any} */ (w.when).tz)), text: w.fallback, shown: plainReminder({ watch: w.id, text: w.fallback, plan: say }), says: saysOf(w), here, ...(event === 'coming-up' ? { start: forAt(w) ?? undefined, what: planItemWords(say) } : {}) });
         }
       }
       return out.sort((a, b) => a.due - b.due);
@@ -1701,8 +1701,8 @@ export class Live {
       const fallbacks = xs.filter((x) => this.#shownFor(x) === undefined)
         .map((x) => ({ watch: x.watch.id, text: x.fallback, ...(x.say ? { plan: x.say } : {}), ...(reminds(x.watch) ? {} : { cue: true }) }));
       const reasons = xs.map((x) => this.#reason(x));
-      // What fired, for the wake's line: a plan item's title, or a watch's reminder; never annai's own English.
-      const titles = xs.map((x) => (x.watch.owner === 'system' ? x.watch.when.title : x.watch.fallback)).filter((s) => typeof s === 'string' && s);
+      // What fired, for the wake's line, which draws no link: a plan item's title, or a watch's reminder as plain words; never annai's own English.
+      const titles = xs.map((x) => (planned({ watch: x.watch.id }) ? x.watch.when.title : plainReminder({ watch: x.watch.id, text: x.watch.fallback }))).filter((s) => typeof s === 'string' && s);
       const lines = notes.get(scope) ?? [];
       // An urgent alert is said at once in a live voice session (drive-test design §7); a catch-up is late already.
       const urgent = kind === 'trigger' && xs.some((x) => x.watch.urgent === true);
