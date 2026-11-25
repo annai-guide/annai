@@ -728,11 +728,12 @@ export class Halves {
       return;
     }
     this.#notice({ tone: 'warn', title: t`Koe's live voice couldn't start`, body: t`Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.` });
+    if (w.aloud) this.#annai(w); // the recap asked aloud, which Kokoro was never given: hers now, with the voice (its reminders, if any, go with the koe-down wake)
     this.#talkDirectly(w.fallbacks);
   }
 
   /**
-   * A wake #live is placing whose conversation another has replaced while it waited (Koe's open, a refresh, a session closed by the switch): it goes to
+   * A wake #live or #handOn is placing whose conversation another has replaced while it waited (Koe's open, a refresh, a session closed by the switch): it goes to
    * no session and not to Koe, which would say it in the conversation opened (Halves.wake's own check). Its reminders are shown in its own, Kokoro having the
    * wake already; one Kokoro never got (aloud: the recap) is Kokoro's to write there. A wake naming no conversation is the open one's wherever it lands.
    * @param {Wake} w @returns {boolean} whether it was
@@ -745,7 +746,7 @@ export class Halves {
 
   /**
    * What no live session takes of a wake is annai's: its reminders are shown (idle() waits for their entries), and one Kokoro was never given (aloud: the
-   * recap) is hers to write, and answer in text. @param {Wake} w @param {string} [scope] the conversation they belong to, when it isn't the open one
+   * recap) is hers to write and answer (in text while Koe stays live; aloud when Koe is down, as she then has the voice). @param {Wake} w @param {string} [scope] the conversation they belong to, when it isn't the open one
    */
   #annai(w, scope) {
     if (w.aloud) this.#alongside(this.kokoro.wake(w));

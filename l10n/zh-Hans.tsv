@@ -502,9 +502,9 @@ jkajtp	ok	Thinking	思考中	src/core/agent/halves.js:88
 1vskjkw	ok	Live is resting; Koe · Chat is answering	实时语音暂停中，改由 Koe · 聊天 回答	src/core/agent/halves.js:631	
 13gz10	ok	Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.	暂时由 Shiori 直接回答。原因见“记录”中的“模型”；Koe 几分钟后会自动重试。	src/core/agent/halves.js:730	Note: Models is the Trace's Kind filter, as it is named there.
 yvabm6	ok	Koe's live voice couldn't start	Koe 的实时语音无法启动	src/core/agent/halves.js:730	Note: "live voice" is the glossary's Live voice (实时语音), not a voice she speaks with (声音).
-bzrasi	ok	Shiori answers as one half for now	Shiori 暂时独自回答	src/core/agent/halves.js:925	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
-o0lfar	ok	annai couldn't pass your message to Koe: {0}	无法把消息转给 Koe：{0}	src/core/agent/halves.js:925	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-13548dd	ok	That conversation didn't open	没能打开那段对话	src/core/agent/halves.js:1258	Note: 对话 as the glossary's Conversation.
+bzrasi	ok	Shiori answers as one half for now	Shiori 暂时独自回答	src/core/agent/halves.js:926	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
+o0lfar	ok	annai couldn't pass your message to Koe: {0}	无法把消息转给 Koe：{0}	src/core/agent/halves.js:926	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+13548dd	ok	That conversation didn't open	没能打开那段对话	src/core/agent/halves.js:1259	Note: 对话 as the glossary's Conversation.
 15junxn	ok	One moment…	请稍候…	src/core/agent/loop.js:148	Note: the dock's words between the user's tap and Listening (Shiori getting ready to hear them).
 1dhsqvv	ok	Tap to talk	轻点说话	src/core/agent/loop.js:148	
 1ldobgc	ok	Tap to interrupt	轻点打断	src/core/agent/loop.js:148	

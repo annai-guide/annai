@@ -502,9 +502,9 @@ jkajtp	ok	Thinking	考え中	src/core/agent/halves.js:88
 1vskjkw	ok	Live is resting; Koe · Chat is answering	ライブは休止中のため、Koe · チャットが答えています	src/core/agent/halves.js:631	
 13gz10	ok	Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.	しばらくはShioriが直接答えます。理由は「記録」の「モデル」で確認できます。Koeは数分後に自動的に再試行します。	src/core/agent/halves.js:730	Note: Models is the Trace's Kind filter, as it is named there.
 yvabm6	ok	Koe's live voice couldn't start	Koeのライブ音声を開始できませんでした	src/core/agent/halves.js:730	
-bzrasi	ok	Shiori answers as one half for now	しばらくはShioriが一人で答えます	src/core/agent/halves.js:925	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
-o0lfar	ok	annai couldn't pass your message to Koe: {0}	メッセージをKoeに渡せませんでした：{0}	src/core/agent/halves.js:925	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-13548dd	ok	That conversation didn't open	その会話を開けませんでした	src/core/agent/halves.js:1258	Note: a card when a conversation fails to open (+, the type box, the camera, Ask Shiori about this, Open on annai's card); 会話 as the glossary's Conversation.
+bzrasi	ok	Shiori answers as one half for now	しばらくはShioriが一人で答えます	src/core/agent/halves.js:926	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
+o0lfar	ok	annai couldn't pass your message to Koe: {0}	メッセージをKoeに渡せませんでした：{0}	src/core/agent/halves.js:926	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+13548dd	ok	That conversation didn't open	その会話を開けませんでした	src/core/agent/halves.js:1259	Note: a card when a conversation fails to open (+, the type box, the camera, Ask Shiori about this, Open on annai's card); 会話 as the glossary's Conversation.
 15junxn	ok	One moment…	準備中…	src/core/agent/loop.js:148	Note: the dock's words between the user's tap and Listening (Shiori getting ready to hear them).
 1dhsqvv	ok	Tap to talk	タップして話す	src/core/agent/loop.js:148	
 1ldobgc	ok	Tap to interrupt	タップして中断	src/core/agent/loop.js:148	
