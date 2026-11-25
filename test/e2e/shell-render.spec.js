@@ -60,6 +60,7 @@ async function setup(page, hash) {
       entries: (/** @type {string} */ k) => (k === 'ui:screen' ? screens : []),
       onChange: () => () => {},
       fail: () => {},
+      threw: () => {},
       succeeded: () => {},
       isDisabled: () => false,
       clashes: () => [],

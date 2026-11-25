@@ -531,7 +531,7 @@ test("a move made while a cold #/now waits for live mode's read of the trips sta
     const play = await createTrip(ws, { title: 'Testville', start: '2026-11-20', end: '2026-11-27' });
     const tripsRead = new Promise((done) => { w.readTrips = () => done(undefined); });
     const live = { tripsRead, play, clock: realClock(), timeZone: deviceZone, onChange() {}, onReminders() {} };
-    const registry = { entries: () => [], onChange: () => () => {}, fail: () => {}, succeeded: () => {}, isDisabled: () => false, clashes: () => [] };
+    const registry = { entries: () => [], onChange: () => () => {}, fail: () => {}, threw: () => {}, succeeded: () => {}, isDisabled: () => false, clashes: () => [] };
     const root = document.createElement('div');
     document.body.replaceChildren(root);
     startShell(root, { store, ws, registry, live, plugins: { langOf: () => 'en' }, updates: { restart: async () => {}, waiting: false, plugins: async () => [] }, version: 'probe' });

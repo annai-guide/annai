@@ -916,7 +916,9 @@ test("a typed address that isn't one, on the model list and a voice: no-address 
 test("a provider plugin's own list and a protocol's own list that parse the typed address are never called at one that isn't an address: the model list's no-address sentence, nothing counted (plugin-link-next, test 7)", async () => {
   // A protocol with a list of its own, and two providers through it: one with a list of its own too, one with none.
   const parse = (/** @type {string} */ who) => `globalThis.__listed.push('${who}'); return [{ providerId: new URL('/models', endpoint.baseUrl).pathname }];`;
-  const k = await hostKit();
+  /** @type {any[]} */
+  const logged = [];
+  const k = await hostKit({ log: (ev) => logged.push(ev) });
   const s = await site({
     'proto-z': {
       'annai-plugin.json': JSON.stringify({ id: 'proto-z', name: 'Proto type-z', version: '0.1.0', api: 1, entry: 'index.js', provides: { 'endpoint-type': ['type-z'] } }),
@@ -951,10 +953,29 @@ test("a provider plugin's own list and a protocol's own list that parse the type
       assert.deepEqual(await llm.listModels(id, 'chat'), [{ providerId: '/models' }], `${plugin} at a working address`);
     }
     assert.deepEqual(g.__listed, ['provider', 'protocol'], 'neither list was called at an address that is none; each once at a working one');
-    assert.equal(['proto-z', 'provider-zl'].some((p) => k.registry.isDisabled(p)), false);
+    assert.equal(['proto-z', 'provider-zl', 'provider-zp'].some((p) => k.registry.isDisabled(p)), false);
+    // A refusal at an address that is none is annai's own, before any plugin code: no plugin.error at all, so no count (three would switch a plugin off).
+    assert.deepEqual(logged.filter((e) => e.type === 'plugin.error'), []);
   } finally {
     delete g.__listed;
   }
+});
+
+test("a run type's own list is still called at an empty address, as a scripted model's is, and answers: the model list's address check leaves run types out (plugin-link-fix1)", async () => {
+  const k = await hostKit();
+  const s = await site({
+    'proto-s': {
+      'annai-plugin.json': JSON.stringify({ id: 'proto-s', name: 'Proto type-s', version: '0.1.0', api: 1, entry: 'index.js', provides: { 'endpoint-type': ['type-s'] } }),
+      'index.js': `export function activate(annai) { return annai.providers.register({ type: 'type-s', name: 'type-s', run: async function* () {}, list: async () => [{ providerId: 'scripted-s' }] }); }`,
+    },
+    'provider-zs': {
+      'annai-plugin.json': JSON.stringify({ id: 'provider-zs', name: 'ZS', version: '1.0.0', api: 1, requires: [{ id: 'proto-s', version: '^0' }],
+        provider: { baseUrl: '', key: 'none', abilities: { chat: { kind: 'chat', type: 'type-s' } } } }),
+    },
+  });
+  const llm = createLlm({ store: k.store, ws: k.ws, plugins: k.host, fetch: (/** @type {any} */ url) => s.fetch(url) });
+  const id = await llm.addProvider('provider-zs', {});
+  assert.deepEqual(await llm.listModels(id, 'chat'), [{ providerId: 'scripted-s' }], 'its list answers at the empty address');
 });
 
 test("security review: an installed copy of an official provider's id that came from elsewhere is never used as annai's own; one from annai whose files no longer match the catalog is fetched again", async () => {

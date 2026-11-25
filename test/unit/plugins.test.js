@@ -10,6 +10,7 @@ import { AllFailedError } from '../../src/core/llm/fallback.js';
 import { PluginHost, PLUGIN_MAX_BYTES } from '../../src/core/plugins.js';
 import { utf8 } from '../../src/core/bytes.js';
 import { messageOf } from '../../src/ui/dom.js';
+import { CRASH_CODE, ANSWER_CODE, thrownBy } from './engine-throws.js';
 
 /** @param {string} dir @param {string} [prefix] */
 async function fixture(dir, prefix = '') {
@@ -245,7 +246,8 @@ test('host: a plugin whose start crashes on three launches in a row is turned of
   await host.install(await fixture('broken'));
   for (let launch = 1; launch <= 3; launch++) {
     const failures = await relaunch().startInstalled();
-    assert.deepEqual(failures.map((f) => [f.id, f.disabled]), [['crashing', launch === 3], ['broken', false]], `launch ${launch}`);
+    // In no order: the failures come ranked by install time (a millisecond), then id, and the two installs can land in one.
+    assert.deepEqual(failures.map((f) => [f.id, f.disabled]).sort(), [['broken', false], ['crashing', launch === 3]], `launch ${launch}`);
   }
   assert.equal((await host.installed()).crashing.enabled, false);
   assert.equal((await host.installed()).broken.enabled, true);
@@ -412,6 +414,54 @@ test("host: a start that crashes is still turned off at the third launch, whatev
   const kept = await host.installed();
   for (const id of ids) seen[id].push(kept[id].enabled);
   assert.deepEqual(seen, Object.fromEntries(ids.map((id) => [id, [false, false, true, false]])));
+});
+
+test("host: a start that throws what the engine throws for a program that does something wrong counts, a DOMException by its name (SyntaxError, InvalidCharacterError, DataCloneError, HierarchyRequestError, IndexSizeError) and a URIError: off at the third launch; one that throws AbortError, TimeoutError, NetworkError, QuotaExceededError, InvalidStateError or NotFoundError stays on, nothing counted (plugin-link-fix1)", async () => {
+  const { ws, host, importModule } = await setup();
+  const starts = { ...Object.fromEntries(Object.entries(CRASH_CODE).map(([n, code]) => [`crash-${n}`, code])), ...Object.fromEntries(Object.entries(ANSWER_CODE).map(([n, code]) => [`answer-${n}`, code])) };
+  for (const [id, body] of Object.entries(starts)) await host.install(inline(id.toLowerCase(), `export async function activate() { ${body} }`));
+  /** @type {Record<string, any[]>} each launch: whether its card says it was turned off; then whether it is on, and its count */
+  const seen = Object.fromEntries(Object.keys(starts).map((id) => [id.toLowerCase(), []]));
+  for (let launch = 1; launch <= 3; launch++) {
+    const failures = await new PluginHost({ registry: new Registry(), workspace: ws, importModule }).startInstalled();
+    for (const id of Object.keys(seen)) seen[id].push(failures.find((f) => f.id === id)?.disabled ?? 'started');
+  }
+  const kept = await host.installed();
+  for (const id of Object.keys(seen)) seen[id].push(kept[id].enabled, kept[id].startFailures ?? 0);
+  assert.deepEqual(seen, Object.fromEntries(Object.keys(seen).map((id) => [id, id.startsWith('crash-') ? [false, false, true, false, 3] : [false, false, false, true, 0]])));
+});
+
+test("host: a tool that throws what the engine throws for a program doing something wrong is off at the third call, one that throws a link's, a stop's or a limit's DOMException stays on: the tool path takes the same rule (plugin-link-fix1)", async () => {
+  const { host, registry } = await setup();
+  const tools = { ...Object.fromEntries(Object.entries(CRASH_CODE).map(([n, code]) => [`crash-${n}`, code])), ...Object.fromEntries(Object.entries(ANSWER_CODE).map(([n, code]) => [`answer-${n}`, code])) };
+  for (const [id, body] of Object.entries(tools)) {
+    const name = id.toLowerCase();
+    await host.install(inline(name, `export function activate(annai) { annai.tools.register({ name: '${name}', description: 'Throws.', input: { type: 'object' }, run() { ${body} } }); }`));
+    await host.start(name);
+  }
+  /** @type {Record<string, boolean>} */
+  const off = {};
+  for (const id of Object.keys(tools)) {
+    const name = id.toLowerCase();
+    const tool = registry.list('tool').find((x) => x.name === name);
+    for (let i = 0; i < 3; i++) await assert.rejects(tool.run({}));
+    off[name] = registry.isDisabled(name);
+  }
+  assert.deepEqual(off, Object.fromEntries(Object.keys(tools).map((id) => [id.toLowerCase(), id.startsWith('crash-')])));
+});
+
+test("the rule counts the engine's crash classes by class and by DOMException name (each thrown for real where Node can, its name pinned), the other names stay answers (plugin-link-fix1)", () => {
+  for (const [name, code] of Object.entries(CRASH_CODE)) {
+    const e = thrownBy(code);
+    assert.equal(e.name, name, `${name} is what its code throws`);
+    assert.equal(isPluginBug(e), true, name);
+  }
+  for (const [name, code] of Object.entries(ANSWER_CODE)) {
+    const e = thrownBy(code);
+    assert.equal(e.name, name, `${name} is what its code throws`);
+    assert.equal(isPluginBug(e), false, name);
+  }
+  assert.equal(isPluginBug(new URIError('URI malformed')), true);
 });
 
 test("registry: only a crash counts at the one door (threw): a bug, an answer, a bug, a bug is off at the third bug, the answer logged with no count and neither ending the run nor adding to it; a bug, a success, two bugs stays on (plugin-link-next, test 4)", async () => {

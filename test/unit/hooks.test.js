@@ -5,6 +5,7 @@ import { watchAppends, deliverHooks, causedBy, HOOK_LIMIT } from '../../src/core
 import { Registry } from '../../src/core/registry.js';
 import { SYS } from '../../src/core/scopes.js';
 import { files, hostKit } from './package-kit.js';
+import { CRASH_CODE, ANSWER_CODE, throwing } from './engine-throws.js';
 
 const settle = () => new Promise((r) => setTimeout(r, 0));
 
@@ -274,6 +275,36 @@ test("a hook that throws a value that isn't an Error is a crash, as before: off 
   await settle();
   assert.equal(registry.isDisabled('thrower'), true);
   assert.equal(calls, 3);
+});
+test("a hook that throws what the engine throws for a program that does something wrong (a DOMException by its name, a URIError) is off at the third entry; one that throws AbortError, TimeoutError, NetworkError, QuotaExceededError, InvalidStateError or NotFoundError is called for every entry and stays on, each logged with no count (plugin-link-fix1)", async () => {
+  /** @type {any[]} */
+  const logged = [];
+  const registry = new Registry({ log: (ev) => logged.push(ev) });
+  /** @type {Record<string, number>} */
+  const calls = {};
+  const hooks = { ...Object.fromEntries(Object.entries(throwing(CRASH_CODE)).map(([n, fn]) => [`crash-${n}`, fn])), ...Object.fromEntries(Object.entries(throwing(ANSWER_CODE)).map(([n, fn]) => [`answer-${n}`, fn])) };
+  for (const [id, fn] of Object.entries(hooks)) registry.add(id, 'hook', { fn: () => { calls[id] = (calls[id] ?? 0) + 1; fn(); } });
+  const ev = (/** @type {number} */ seq) => ({ scope: SYS, seq, ts: 1, type: 'x', actor: 'system' });
+  deliverHooks(registry, [1, 2, 3, 4].map(ev), () => 1_000);
+  await settle();
+  assert.deepEqual(Object.fromEntries(Object.keys(hooks).map((id) => [id, [calls[id], registry.isDisabled(id)]])), Object.fromEntries(Object.keys(hooks).map((id) => [id, id.startsWith('crash-') ? [3, true] : [4, false]])));
+  assert.deepEqual(logged.filter((e) => e.type === 'plugin.error' && e.actor === 'plugin:answer-AbortError').map((e) => 'count' in e.data), Array(4).fill(false));
+});
+test("a hook that crashed twice and then hits the loop limit is switched off for the loop: its card and its log say so, not 'failed 3 times in a row' (plugin-link-fix1)", async () => {
+  /** @type {any[]} */
+  const logged = [];
+  const registry = new Registry({ log: (ev) => logged.push(ev) });
+  /** @type {any[]} */
+  const told = [];
+  registry.onDisabled((info) => told.push(info));
+  let n = 0;
+  registry.add('looper', 'hook', { fn: () => { if (++n <= 2) throw new TypeError('x is not a function'); } });
+  const ev = (/** @type {number} */ seq) => ({ scope: SYS, seq, ts: 1, type: 'x', actor: 'system' });
+  deliverHooks(registry, Array.from({ length: HOOK_LIMIT + 1 }, (_, i) => ev(i + 1)), () => 1_000);
+  await settle();
+  assert.equal(registry.isDisabled('looper'), true);
+  assert.deepEqual(told.map((t) => [t.why.kind, t.message]), [['loop', `its hooks were handed more than ${HOOK_LIMIT} log entries in 10 seconds, which looks like a loop`]]);
+  assert.deepEqual(logged.filter((e) => e.type === 'plugin.disabled').map((e) => e.data.why.kind), ['loop']);
 });
 test("a plugin switched off at the hooks' limit and turned on again starts with a window of its own, not the one that switched it off", async () => {
   const registry = new Registry();

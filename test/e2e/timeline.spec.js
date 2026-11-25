@@ -1492,7 +1492,7 @@ test("a simulation played at ten times real time: home is drawn again when a Nex
     const id = await createTrip(ws, { title: 'Testville', start: dayIn(Date.now() - 2 * 86_400_000, zone), end: dayIn(Date.now() + 5 * 86_400_000, zone) });
     for (const [name, min] of /** @type {[string, number][]} */ ([['Museum', 60], ['Lunch', 180]])) await ws.write(id, `/plan/${name}.json`, { id: name, title: name, fixed: true, start: { at: isoInZone(Date.now() + min * 60_000, zone), tz: zone } }, { author: 'user' });
     const live = { clock: new PlayClock(Date.now(), { speed: 10 }), timeZone: () => zone, onChange() {}, onReminders() {} };
-    const registry = { entries: () => [], onChange: () => () => {}, fail: () => {}, succeeded: () => {}, isDisabled: () => false, clashes: () => [] };
+    const registry = { entries: () => [], onChange: () => () => {}, fail: () => {}, threw: () => {}, succeeded: () => {}, isDisabled: () => false, clashes: () => [] };
     const root = document.createElement('div');
     document.body.replaceChildren(root);
     startShell(root, { store, ws, registry, live, plugins: { langOf: () => 'en' }, updates: { restart: async () => {}, waiting: false, plugins: async () => [] }, version: 'probe' });
@@ -1516,7 +1516,7 @@ test("home draws again when what plugins add changes (a plugin's screen with a t
     w.store = await createIdbStore();
     w.ws = new Workspace(w.store);
     w.screens = [];
-    const registry = { entries: (/** @type {string} */ k) => (k === 'ui:screen' ? w.screens : []), onChange: (/** @type {() => void} */ fn) => { w.changed = fn; return () => {}; }, fail: () => {}, succeeded: () => {}, isDisabled: () => false, clashes: () => [] };
+    const registry = { entries: (/** @type {string} */ k) => (k === 'ui:screen' ? w.screens : []), onChange: (/** @type {() => void} */ fn) => { w.changed = fn; return () => {}; }, fail: () => {}, threw: () => {}, succeeded: () => {}, isDisabled: () => false, clashes: () => [] };
     const root = document.createElement('div');
     document.body.replaceChildren(root);
     startShell(root, { store: w.store, ws: w.ws, registry, plugins: { langOf: () => 'en' }, updates: { restart: async () => {}, waiting: false, plugins: async () => [] }, version: 'probe' });
@@ -2011,7 +2011,7 @@ test("an automatic backup that ends while home shows: the card says so, not \"ch
       for (const fn of heard) fn();
     };
     const backups = { list: async () => [{ id: 'place', name: 'Test place', last: null }], progress: () => null, on: (/** @type {() => void} */ fn) => { heard.add(fn); return () => heard.delete(fn); } };
-    const registry = { entries: () => [], onChange: () => () => {}, fail: () => {}, succeeded: () => {}, isDisabled: () => false, clashes: () => [] };
+    const registry = { entries: () => [], onChange: () => () => {}, fail: () => {}, threw: () => {}, succeeded: () => {}, isDisabled: () => false, clashes: () => [] };
     const root = document.createElement('div');
     document.body.replaceChildren(root);
     startShell(root, { store, ws, registry, backups, plugins: { langOf: () => 'en' }, updates: { restart: async () => {}, waiting: false, plugins: async () => [] }, version: 'probe' });

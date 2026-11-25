@@ -39,8 +39,15 @@ export function compareRanks(a, b) {
   return 0;
 }
 
-/** Errors that mean a plugin's code is broken, rather than a tool saying it can't do something. */
-const BUGS = [TypeError, ReferenceError, RangeError, SyntaxError, EvalError];
+/** Errors that mean a plugin's code is broken, rather than a tool saying it can't do something: the six classes the language defines for a program that
+ * does something wrong (URIError is `decodeURIComponent` on a bad string). */
+const BUGS = [TypeError, ReferenceError, RangeError, SyntaxError, EvalError, URIError];
+
+/** DOMException names that are a programming error, by allowlist: the engine throws these as a DOMException, so no class above matches them (a bad
+ * selector is a SyntaxError, `atob` on bad input an InvalidCharacterError, `structuredClone` of a function a DataCloneError). Every other name is an
+ * answer: a link, a stop, a time limit, a full phone or annai's own store can all give AbortError, TimeoutError, NetworkError, QuotaExceededError,
+ * InvalidStateError or NotFoundError. */
+const BUG_NAMES = new Set(['SyntaxError', 'InvalidCharacterError', 'DataCloneError', 'HierarchyRequestError', 'IndexSizeError']);
 
 /**
  * Whether an error is the browser's own account of a request it couldn't make or finish (offline: "Failed to fetch", Safari's "Load failed",
@@ -59,7 +66,8 @@ export function isFetchFailure(e) {
  * An address the user typed that isn't one (`new URL` throws): the user's to fix, not a plugin's bug. Where a plugin's own code makes the request
  * (isPluginBug's paths) annai has no address to check, so the engine's words are what there is: Chromium's "Invalid URL", WebKit's "cannot be parsed
  * as a URL", Firefox's "is not a valid URL". An endpoint type's call, a live open and a model list check the typed address by state, before the
- * plugin's code runs (call.js, open.js, service.js).
+ * plugin's code runs (call.js, open.js, service.js); a `run` type's call and its own list are left out, as such a type may need no address (the
+ * scripted model's is empty), so what its own code throws for one is its own.
  * @param {unknown} e
  */
 export const isBadAddress = (e) => e instanceof TypeError && /invalid url|failed to parse url|cannot be parsed as a url|is not a valid url/i.test(e.message);
@@ -67,12 +75,15 @@ export const isBadAddress = (e) => e instanceof TypeError && /invalid url|failed
 /**
  * Whether an error is a bug in a plugin's code (spec §5.5) rather than its answer, outside callOnce's and speechCall's calls (asProviderError):
  * the one rule for a tool, a start, a hook, a drawing and every other place annai runs a plugin's code (threw). No error class annai makes is a
- * crash class, so nothing annai's own APIs throw counts. A fetch the browser couldn't make (isFetchFailure) is an answer (§17).
+ * crash class, so what annai's own APIs throw for a refusal, a limit or a link never counts; a crash class the engine throws inside one does
+ * (`readJSON` on a file that isn't JSON, a wrong argument), as it would in the plugin's own code. A fetch the browser couldn't make
+ * (isFetchFailure) is an answer (§17).
  * @param {unknown} e
  */
 export function isPluginBug(e) {
   if (!(e instanceof Error)) return true;
-  return !isFetchFailure(e) && !isBadAddress(e) && BUGS.some((B) => e instanceof B);
+  if (isFetchFailure(e) || isBadAddress(e)) return false;
+  return BUGS.some((B) => e instanceof B) || (e instanceof DOMException && BUG_NAMES.has(e.name));
 }
 
 export class PluginError extends Error {
@@ -226,7 +237,7 @@ export class Registry {
     this.#failures.set(pluginId, 0);
   }
 
-  /** Counts a failure annai has judged its plugin's itself (an endpoint type's call by position, a crash on a path that rethrows the answer, the hooks' loop guard). @param {string} pluginId @param {string} name @param {unknown} e */
+  /** Counts a failure annai has judged its plugin's itself (an endpoint type's call by position, a crash on a path that rethrows the answer, the hooks' loop guard, a component's or an avatar's create() that returned the wrong thing). @param {string} pluginId @param {string} name @param {unknown} e */
   fail(pluginId, name, e) {
     this.#fail(pluginId, name, e);
   }

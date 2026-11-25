@@ -84,7 +84,7 @@ test('with no plugin listening, nothing is collected or made', async () => {
   }
 });
 
-test('a plugin that throws on a clip counts against it, and the voice goes on', async () => {
+test('a plugin that throws on a clip: the voice goes on', async () => {
   const k = await liveKit([{ heard: 'Where should we eat?', said: 'Tacos.', audio: tone(0.2) }], { voice: VOICE });
   try {
     k.registry.add('remote-trace', 'heard-clips', { clip: () => { throw new TypeError('broken'); } });
@@ -92,6 +92,24 @@ test('a plugin that throws on a clip counts against it, and the voice goes on', 
     await until(() => k.agent.live.listening);
     await say(k, 'where-eat');
     await soon(async () => (await k.events(['out.speak'])).length > 0);
+  } finally {
+    await k.done();
+  }
+});
+
+test('three clips that crash a plugin switch it off; a plain Error, however often, does not (plugin-link-next: only a crash counts)', async () => {
+  const k = await liveKit([], { voice: VOICE });
+  try {
+    k.registry.add('crashing', 'heard-clips', { clip: () => { throw new TypeError('broken'); } });
+    k.registry.add('worded', 'heard-clips', { clip: () => { throw new Error('No room for the clip.'); } });
+    /** @type {boolean[]} */
+    const crashing = [];
+    for (let i = 0; i < 4; i++) {
+      await k.voice.tell({ id: `c${i}`, pcm: new Int16Array(8000).fill(300), rate: 16_000 }, 'kept');
+      crashing.push(k.registry.isDisabled('crashing'));
+    }
+    assert.deepEqual(crashing, [false, false, true, true], 'off at the third');
+    assert.equal(k.registry.isDisabled('worded'), false, 'four plain Errors: still on');
   } finally {
     await k.done();
   }

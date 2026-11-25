@@ -3,7 +3,8 @@ import { tapShiori, sendToShiori } from './plus.js';
 
 /**
  * What plugins add to annai's screens (spec §16.4), drawn. Each item draws itself into an element
- * annai made, with the ui object below; what throws counts against its plugin and never breaks the screen.
+ * annai made, with the ui object below; what throws is logged, counts against its plugin only when it is a crash (Registry threw), and never
+ * breaks the screen.
  * @typedef {{ pluginId: string, item: any }} Entry
  */
 

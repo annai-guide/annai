@@ -108,8 +108,9 @@ export function deliverHooks(registry, events, now = () => Date.now()) {
         if (++w.count > HOOK_LIMIT) {
           const loop = /** @type {const} */ ({ kind: 'loop', entries: HOOK_LIMIT, seconds: HOOK_WINDOW_MS / 1000 });
           const why = disabledReason(loop);
-          registry.fail(pluginId, 'hook', new Error(why));
+          // Switched off first: counted first, a hook with two crashes behind it would go off as "failed 3 times in a row", the loop's reason lost.
           registry.disable(pluginId, loop, why);
+          registry.fail(pluginId, 'hook', new Error(why));
           counts.delete(pluginId); // turned on again, it starts with a window of its own
           break;
         }

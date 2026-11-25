@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { checkSlot, checkCardType, checkComponent, checkScreen, checkTheme, cardSchema, SLOTS, COMPONENTS } from '../../src/core/ui-slots.js';
 import { Registry } from '../../src/core/registry.js';
 import { files, hostKit, codePlugin } from './package-kit.js';
+import { CRASH_CODE, ANSWER_CODE, thrownBy, throwing } from './engine-throws.js';
 
 const draw = () => {};
 
@@ -152,7 +153,7 @@ const PLACES = {
   },
 };
 
-test("a drawing, a dock action or a component that fails for want of a link (annai.net.fetch's error, the browser's own fetch failure, an AllFailedError, an AbortError) or in its own words leaves its plugin on: three in a row of each, the element hidden and onFail run each time, each logged with no count (plugin-link-next, test 3)", async () => {
+test("a drawing, a dock action or a component that throws an answer leaves its plugin on: annai.net.fetch's error and the browser's own fetch failure (Chrome's words and Safari's) for want of a link, an AllFailedError, a DOMException that is no crash (a stop, a time limit, a full phone), or its own words; three in a row of each, the drawing hidden and its onFail run each time, each logged with no count (plugin-link-next, test 3)", async () => {
   const { tracedFetch } = await import('../../src/core/agent/net.js');
   const { AllFailedError } = await import('../../src/core/llm/fallback.js');
   const { createMemoryStore } = await import('../fakes/store-memory.js');
@@ -161,7 +162,14 @@ test("a drawing, a dock action or a component that fails for want of a link (ann
   const net = await tracedFetch(createMemoryStore(), SYS, { tool: 'plugin:tides' }, async () => { throw new TypeError('Load failed'); })('https://tides.example/now').catch((e) => e);
   assert.equal(net.kind, 'network');
   /** @type {Record<string, unknown>} */
-  const answers = { 'annai.net.fetch': net, 'browser fetch': new TypeError('Failed to fetch'), 'no model': new AllFailedError([]), abort: new DOMException('The operation was aborted.', 'AbortError'), words: new Error('Choose a tide station first.') };
+  const answers = {
+    'annai.net.fetch': net,
+    'browser fetch, Chrome': new TypeError('Failed to fetch'),
+    'browser fetch, Safari': new TypeError('Load failed'),
+    'no model': new AllFailedError([]),
+    words: new Error('Choose a tide station first.'),
+    ...Object.fromEntries(Object.entries(ANSWER_CODE).map(([name, code]) => [`DOMException ${name}`, thrownBy(code)])),
+  };
   /** @type {Record<string, any>} */
   const seen = {};
   for (const [place, run] of Object.entries(PLACES)) {
@@ -175,10 +183,38 @@ test("a drawing, a dock action or a component that fails for want of a link (ann
     }
   }
   const want = Object.fromEntries(Object.keys(seen).map((k) => [k, [[true, true, true], false, Array(3).fill(['plugin.error', false])]]));
-  assert.deepEqual(seen, want, 'hidden with onFail each time, still on, three lines with no count');
+  assert.deepEqual(seen, want, "the drawing hidden with onFail each time (a dock action's run is async: true), still on, three lines with no count");
 });
 
-test("a drawing, a dock action or a component that crashes still counts: off at the third, whatever set the crash off (a TypeError, a thrown value that isn't an Error, a TypeError after a link failure it swallowed); so does a create() that returns the wrong thing (plugin-link-next, test 5: as before)", async () => {
+test("the dock's plugin avatar: a setState that crashes counts against its plugin, one that throws a link's or its own words is logged and counts nothing (plugin-link-fix1; unit: the dock's own DOM is the e2e's)", async () => {
+  const { dockAvatar } = await import('../../src/ui/dock.js');
+  const had = Object.getOwnPropertyDescriptor(globalThis, 'Node');
+  Object.defineProperty(globalThis, 'Node', { value: class {}, configurable: true, writable: true }); // the dock checks the avatar's el with instanceof Node
+  try {
+    /** @type {Record<string, [unknown, boolean, boolean]>} what setState throws: whether its plugin is off after two of them, and whether each is logged with a count */
+    const throws = {
+      crash: [new TypeError("Cannot read properties of undefined (reading 'go')"), true, true],
+      'browser fetch': [new TypeError('Load failed'), false, false],
+      'its own words': [new Error('Choose a tide station first.'), false, false],
+    };
+    for (const [what, [e, off, counted]] of Object.entries(throws)) {
+      /** @type {any[]} */
+      const logged = [];
+      const registry = new Registry({ maxFailures: 2, log: (ev) => logged.push(ev) }); // two throws: annai's own avatar (it needs a DOM) is only made at three
+      registry.add('look', 'ui:component', { name: 'avatar', create: () => ({ el: new (/** @type {any} */ (globalThis).Node)(), setState: () => { throw e; }, setLevel: () => {} }) });
+      const avatar = dockAvatar({ registry });
+      avatar.setState('thinking');
+      avatar.setState('thinking');
+      assert.equal(registry.isDisabled('look'), off, what);
+      assert.deepEqual(logged.filter((x) => x.type === 'plugin.error').map((x) => 'count' in x.data), [counted, counted], `${what}: logged each time`);
+    }
+  } finally {
+    if (had) Object.defineProperty(globalThis, 'Node', had);
+    else delete (/** @type {any} */ (globalThis)).Node;
+  }
+});
+
+test("a drawing, a dock action or a component that crashes still counts: off at the third, whatever set the crash off (a TypeError, a thrown value that isn't an Error, a TypeError after a link failure it swallowed, a URIError, a DOMException named for a program's mistake); so does a create() that returns the wrong thing (plugin-link-next, test 5: as before; the engine's classes plugin-link-fix1)", async () => {
   const { made } = await import('../../src/ui/slots.js');
   /** @type {Record<string, () => any>} */
   const crashes = {
@@ -195,6 +231,7 @@ test("a drawing, a dock action or a component that crashes still counts: off at 
       }
       return reply.json();
     },
+    ...throwing(CRASH_CODE),
   };
   /** @type {Record<string, boolean[]>} */
   const seen = {};
