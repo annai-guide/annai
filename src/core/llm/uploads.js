@@ -79,7 +79,8 @@ export class Uploads {
    * on, and so does each new one until a reply there that calls no tool answers a request that sent a photo's bytes (answered). A files service that
    * keeps hanging costs one wait a turn that brings new photos, however many steps and models the turn has, but only while no other call there whose
    * reply calls no tool and whose request sent a photo's bytes (Koe's, a reader's or a task's) comes between its steps: that call lets the next new photo
-   * be tried (with two halves on one endpoint, up to one wait a step). A link that answers nothing costs one wait until such a reply.
+   * be tried (with two halves on one endpoint, up to one wait a step). A link that answers nothing costs one wait until such a reply. A restart, a new
+   * key or address or a Test that passes (retry) ends a hold too.
    * @param {string} endpointId @param {string} hash
    */
   hold(endpointId, hash) {
@@ -94,8 +95,9 @@ export class Uploads {
   /**
    * A reply there called no tool and its request sent a photo's bytes (call.js callOnce): a photo can get through, so the next new photo is uploaded
    * again; those held stay in the request. Not a step that calls a tool, whose next request may bring a new photo of its own (a closer look): it would
-   * wait again at each step; nor an answer to a request with no photo in it, which a link too slow for photos gives as well. Such a reply is not always
-   * a turn's end (Koe's, a reader's or a task's between Kokoro's steps, or a pause the loop goes on after, lifts it too).
+   * wait again at each step; nor an answer to a request that sends no photo's bytes (what a kept chain holds is not sent), which a link too slow for photos gives as well. Such a
+   * reply is not always a turn's end (Koe's, a reader's or a task's between Kokoro's steps, or any reply with no tool call that the loop goes on after,
+   * a pause or its nudge, lifts it too).
    * @param {string} endpointId
    */
   answered(endpointId) {

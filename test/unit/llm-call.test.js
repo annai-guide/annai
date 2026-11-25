@@ -687,7 +687,7 @@ const heldKit = async () => {
   return k;
 };
 
-test('a cut upload holds uploads at its endpoint until an answer to a request that sent a photo as bytes there (one to a request with no photo in it lifts nothing): the photo cut, and any first seen while it waits, go as bytes there until a restart, a new key or address or a Test that passes (a photo leaves the request with its window), and after that answer the next new photo is uploaded; another endpoint is not held, and a photo uploaded before goes by its id meanwhile (upload-rest-next)', async (t) => {
+test('a cut upload holds uploads at its endpoint until an answer to a request that sent a photo as bytes there (one to a request with no photo in it lifts nothing): the photo cut, and any first seen while it waits, go as bytes there (what else ends a hold: the refused-upload test below), and after that answer the next new photo is uploaded; another endpoint is not held, and a photo uploaded before goes by its id meanwhile (upload-rest-next)', async (t) => {
   onTestClock(t);
   const k = await heldKit();
   k.files = 'hang';
@@ -722,7 +722,7 @@ test('a cut upload holds uploads at its endpoint until an answer to a request th
   assert.deepEqual(await k.call('pv-1/chat', 'AAAC', 'AAAD', 'AAAF', 'AAAG', 'AAAB'), ['bytes', 'bytes', 'bytes', 'file_5', 'file_2'], 'the cut photo, and AAAD and AAAF that were first seen while it waited, stay as bytes after the answer; only a photo new since that answer is uploaded; one uploaded before goes by its id');
 });
 
-test('an upload answered 408, 429 or a server error (500, 502, 503, 504) holds uploads there the same way: that photo and the request\'s other new ones go as bytes without a try, and stay as bytes after the answer, until a restart, a new key or address or a Test that passes (a photo leaves the request with its window), and the next new photo is uploaded (upload-rest-next)', async (t) => {
+test('an upload answered 408, 429 or a server error (500, 502, 503, 504) holds uploads there the same way: that photo and the request\'s other new ones go as bytes without a try, and stay as bytes after the answer, and the next new photo is uploaded (upload-rest-next)', async (t) => {
   onTestClock(t);
   for (const status of [408, 429, 500, 502, 503, 504]) {
     const k = await heldKit();
@@ -875,6 +875,7 @@ test('an answer to a request whose photos all go by id lifts nothing: the next n
   assert.deepEqual(await k.call('pv-1/chat', 'AAAB'), ['file_1'], 'by its id only: answered, and nothing lifted');
   assert.deepEqual(await k.call('pv-1/chat', 'AAAE'), ['bytes'], 'still waiting: the new photo is held, not tried');
   assert.equal(k.tries, 2);
+  assert.deepEqual(await k.call('pv-1/chat', 'AAAF'), ['file_3'], 'a bytes answer lifts: the next new photo is uploaded');
 });
 
 test("a PDF's or a recording's bytes in an answered request lift nothing either: the wait is about photos, so the next new photo is held, not tried (upload-rest-next, review of fix 1)", async (t) => {
@@ -896,6 +897,7 @@ test("a PDF's or a recording's bytes in an answered request lift nothing either:
     k.beside = [];
     assert.deepEqual(await k.call('pv-1/chat', 'AAAB'), ['bytes'], `${what}: still waiting: the new photo is held, not tried`);
     assert.equal(k.tries, 1, what);
+    assert.deepEqual(await k.call('pv-1/chat', 'AAAC'), ['file_2'], `${what}: a bytes answer lifts: the next new photo is uploaded`);
   }
 });
 

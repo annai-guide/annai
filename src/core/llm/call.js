@@ -498,8 +498,9 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   typeWorked(type, registry);
   // A photo upload held there (Uploads.hold) is tried again for the next new photo once a reply that calls no tool answers a request that sent a photo's bytes
   // (Uploads.answered): a step that calls a tool goes on, and its next request may bring a new photo (a closer look: 120 s a step), and an answer to a request
-  // with no photo in it says nothing about photos getting through (a link too slow for them: 120 s a new photo). Such a reply is not always a turn's end:
-  // another call there that gives one (Koe's, a reader's or a task's) between Kokoro's steps lets her next new photo be tried, and so does a pause the loop goes on after.
+  // that sends no photo's bytes (what a kept chain holds is not sent) says nothing about photos getting through (a link too slow for them: 120 s a new photo).
+  // Such a reply is not always a turn's end: another call there that gives one (Koe's, a reader's or a task's) between Kokoro's steps lets her next new
+  // photo be tried, and so does any reply with no tool call that the loop goes on after (a pause, or its nudge when a turn would end owing the user).
   if (!parts.some((p) => p.type === 'tool_call') && sendsBytes(spec, (p) => p.type === 'image' && !p.fileId)) uploads?.answered(endpoint.id);
   // The turn kept, to continue next time; one refused is deleted, or it would be in every later turn's history.
   // Borrowed (warm housekeeping): nothing is recorded, the response is deleted, and the chain it continued is as it was.
@@ -668,7 +669,8 @@ export async function photoHash(data) {
  * photos as bytes too and leaves uploads on for the next. One cut at UPLOAD_MS, or answered 408, 429 or a server error, holds uploads there
  * (Uploads.hold): that photo, and every new one until a reply there that calls no tool answers a request that sent a photo's bytes (Uploads.answered), goes
  * as bytes there from then on, so a link that hangs costs the whole wait once until then, not at each attempt, step or model, and a files service
- * that keeps hanging, one wait a turn that brings new photos. Any other (a refusal, a redirect, an unreadable
+ * that keeps hanging, one wait a turn that brings new photos (up to one a step when another call's reply lifts it between steps: Uploads.hold); a
+ * restart, a new key or address or a Test that passes ends a hold too. Any other (a refusal, a redirect, an unreadable
  * reply, the plugin's failure) stops uploading there until annai restarts, or its provider's key or address changes, or a Test passes. A photo
  * uploaded before goes by its id while uploads are held. An upload answered after uploads went off there (a refused upload, a refused key, a list
  * annai can't read), or while its provider goes, changes its key or address, or everything is erased (Erase), is deleted at once and its photo
@@ -755,7 +757,7 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
           Promise.resolve(r).catch(() => {}); // an async builder's rejection: not the page's to report
         }
         if (!traced) await trace?.upload({ endpoint: endpoint.name, url: typeof r?.url === 'string' ? r.url : `${type.type}:`, status: 0, ms: now() - started, error: String(/** @type {any} */ (e)?.message ?? e) });
-        if (later) uploads.hold(endpoint.id, hash); // this photo, and the new ones until a reply there that calls no tool answers a request that sent a photo's bytes, go as bytes there from then on
+        if (later) uploads.hold(endpoint.id, hash); // this photo, and the new ones until a reply there that calls no tool answers a request that sent a photo's bytes (or a restart, a new key or address, a Test that passes), go as bytes there from then on
         else if (!dropped) uploads.off(endpoint.id); // a refusal, a redirect, the plugin's failure or an unreadable reply: until annai restarts, or a new key or address, or a Test that passes
       }
     }
