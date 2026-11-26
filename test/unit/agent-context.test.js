@@ -551,7 +551,7 @@ test("an undated conversation's text says to read another trip and answer here, 
   assert.doesNotMatch(systemText(await takeSnapshot({ ws, registry, trip, personalityName: 'shiori' })), /open_trip/);
 });
 
-/** Today for the two tests that make a trip happening now: before the fixture's Big Sur (Nov 25–29), which must not be the second one happening, whatever the real date is. Noon UTC is the same calendar day from Honolulu to Tokyo. */
+/** Today for the tests that make a trip happening now, or need one ahead: before the fixture's Big Sur (Nov 25–29), which must not be the second one happening, whatever the real date is. Noon UTC is the same calendar day from Honolulu to Tokyo. */
 const BEFORE_BIG_SUR = Date.parse('2026-11-16T12:00:00Z');
 
 test("an undated conversation's text names the trip happening now and the 5 latest other conversations, quoted, says to read one first, and holds while the cache is warm (stage 5)", async (t) => {
@@ -696,7 +696,9 @@ test("the name typed in Settings → Shiori reaches her next wake with the cache
   assert.match(systemText(next), /# About the user \(\/me\/profile\.md\)\n# Profile\n\n- What to call me: Mia\n/);
 });
 
-test("Shiori isn't shown who made a trip from someone's Share: its record's madeBy is in no text of hers, the open conversation's or the list of their others, and what she calls them stays the profile's (the timeline design, 'Nickname and \"From Mia\"'; RULES principle 9)", async () => {
+test("Shiori isn't shown who made a trip from someone's Share: its record's madeBy is in no text of hers, the open conversation's or the list of their others, and what she calls them stays the profile's (the timeline design, 'Nickname and \"From Mia\"'; RULES principle 9)", async (t) => {
+  // Kyoto ahead, so she lists it among their others: while it is happening (April 2027) it is under "Happening now" instead.
+  t.mock.timers.enable({ apis: ['Date'], now: BEFORE_BIG_SUR });
   const { ws, store, trip, registry } = await setup();
   const kyoto = await createTrip(ws, { title: 'Kyoto', start: '2027-04-03', end: '2027-04-10' });
   const chat = await createTrip(ws, { title: 'Where should we eat?' });

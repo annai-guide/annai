@@ -5,6 +5,9 @@ import { fileTrip } from './file-details-fixture.js';
 import { accented } from '../../src/core/l10n-pseudo.js';
 
 test('Files: one row per file, by its first booking day then name, each one link with what it is; no record names, no Ask; a plain photo is not listed', async ({ page }) => {
+  // fileTrip's Anchorage is dated Nov 20-27, 2026, its flight home fixed at 13:00 on the 27th: while its reminder is due, annai gives it and
+  // the failed turn (no model) counts as her last, so new.pdf no longer waits. The page's clock runs from before the trip.
+  await page.clock.install({ time: new Date('2026-11-16T12:00:00Z') });
   await openApp(page);
   await fileTrip(page);
   const files = page.getByRole('region', { name: 'Files', exact: true });
@@ -165,6 +168,9 @@ test('a calendar file lists its plan items with their days, each opening its ite
 });
 
 test('a file waiting to be read says so, with Open, Download and Ask, and no Change it', async ({ page }) => {
+  // fileTrip's Anchorage is dated Nov 20-27, 2026, its flight home fixed at 13:00 on the 27th: while its reminder is due, annai gives it and
+  // the failed turn (no model) counts as her last, so new.pdf no longer waits. The page's clock runs from before the trip.
+  await page.clock.install({ time: new Date('2026-11-16T12:00:00Z') });
   await openApp(page);
   await fileTrip(page);
   await openRow(page, 'new.pdf');
