@@ -217,6 +217,8 @@ export async function startRealtimeServer(o) {
     ws: `ws://127.0.0.1:${port}`,
     /** Every message it got, parsed, in order. */
     received: () => received.slice(),
+    /** How many sessions are open now. */
+    openCount: () => open.size,
     /** Each connection: its API version (Gemini), path, model (OpenAI), the key it gave, its Origin and subprotocols. */
     connections: () => connections.slice(),
     /** Closes every open session with this code and reason, as a dropped or failing server does. @param {number} code @param {string} reason */
