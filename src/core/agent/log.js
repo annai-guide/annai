@@ -25,7 +25,7 @@ export const KOE_TAG = 'koe';
  * (before cc3615ae3, 2026-11-14: replies since then carry an `endLogged` key, older ones none), a reply of hers that a model answered (the approved entry
  * "Turns the version before this update left unfinished are read as finished"). An error with its wake isn't asked: the conversation takes it as the
  * close of her turn (nothing wakes her again for it), but a turn that failed or was stopped isn't known to have read what it was handed. So in a log of
- * this version a stopped, cut or failed turn has no end here, whatever it answered before; in an older log an answered reply before the failure still
+ * this version a turn stopped, cut or failed before the loop logged its end has none here, whatever it answered before; in an older log an answered reply before the failure still
  * reads as its end. @param {{ type: string, data?: any }} e
  */
 export function endsHerTurn(e) {

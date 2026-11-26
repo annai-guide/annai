@@ -293,11 +293,12 @@ test('filesToRead: only the newest file waits, past any run of failed turns (a p
 const olderReply = (/** @type {any} */ store, /** @type {string} */ trip, /** @type {string} */ wake, /** @type {any} */ more = {}) =>
   record(store, trip, { type: 'model.turn', actor: 'system', data: { tag: 'conversation', wake, prefix: 'p', handover: null, ...TURN, answeredBy: 'm1', ...more } });
 
-test("filesToRead: in a log from before turn.end was written, a file handed and answered then stays answered", async () => {
+test("filesToRead: in a log from before turn.end was written, her reply to a file handed reads as her turn's end, for the conversation and for the wait", async () => {
   const { store, trip } = await kit();
   await filesWake(store, trip, 'w-1', ['/files/flight.pdf']);
   assert.deepEqual(await waiting(store, trip), ['/files/flight.pdf']);
-  // Her reply as that version wrote it, through the real writer (its parts, no endLogged key), so the conversation's own reading can be asked too.
+  assert.equal((await Transcript.load(store, trip)).unanswered, true, 'the file wake is owed before her reply');
+  // Her reply through the writer that version used (its parts, no endLogged key), so the conversation's own reading can be asked too.
   await modelTrace(store, trip).turn(/** @type {any} */ ({ ...TURN, answeredBy: 'm1', tag: 'conversation', wake: 'w-1', prefix: 'p', handover: null }), 'Filed it.', '', /** @type {any} */ ([{ type: 'text', text: 'Filed it.' }]));
   assert.equal((await Transcript.load(store, trip)).unanswered, false, 'the conversation reads her reply as her turn\'s end');
   assert.deepEqual(await waiting(store, trip), [], 'and so does the wait');
