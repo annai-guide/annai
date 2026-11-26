@@ -20,6 +20,18 @@ export const TALK_TAG = 'conversation';
 export const KOE_TAG = 'koe';
 
 /**
+ * Whether a record ends a turn of hers (one Shiori's, or Kokoro's: Koe's records carry half: 'koe' and never count, it neither reads files nor files them),
+ * as the conversation is read (Transcript.apply): the loop's `turn.end`, or, in a log from before the loop wrote one (cc3615ae3, 2026-11-14: its replies
+ * have no `endLogged` key), a reply of hers that a model answered. A turn that was stopped, cut at its work or failed has neither, whatever it answered
+ * before. @param {{ type: string, data?: any }} e
+ */
+export function endsHerTurn(e) {
+  const d = e.data ?? {};
+  if (e.type === 'turn.end') return d.half !== 'koe';
+  return e.type === 'model.turn' && d.tag === TALK_TAG && !('endLogged' in d) && Boolean(d.answeredBy);
+}
+
+/**
  * @param {Store} store @param {string} scope
  * @param {{ type: string, actor: string, data: Record<string, any>, texts?: [string, string][], blobs?: { hash?: string, bytes?: Uint8Array, type: string }[], now?: number }} e
  *   texts: [name, text]; a short text goes in data[name], a long one is stored and named in data.stored.

@@ -16,6 +16,7 @@ import { NOT_TRANSCRIBED } from './voice/resolve.js';
 import { DIR as PACK_DIR } from './pack/download.js';
 import { cut } from './web-search.js';
 import { quote } from './agent/blocks.js';
+import { endsHerTurn } from './agent/log.js';
 
 /** The stored words of a hand-over with no words of the user's (the screens show none). */
 export const FILES_ONLY = /* en */ '(files)';
@@ -75,22 +76,24 @@ export function handoverOf(wakes) {
 }
 
 /**
- * The files a conversation's Shiori hasn't read yet: those of its wakes after her last answered turn (files added or moved in while it was
- * closed), still there. A turn nobody answered (no model set, none reachable on the road, a Stop) wrote a model.turn too, but she read
- * nothing in it: the files stay waiting, and her next answered turn has their wakes in what she reads (the transcript keeps them).
+ * The files a conversation's Shiori hasn't read yet: those of its wakes (files added or moved in while it was closed, or while her turn ran) after her last
+ * turn's end, still there. The question is the one the conversation asks of the log (Transcript): has her turn ended since, by the loop's own rule (`turn.end`;
+ * in a log from before it was written, a reply of hers that a model answered: endsHerTurn). A turn that got no answer (no model set, none reachable on the
+ * road), was stopped, or failed after its first reply has no end, so it read nothing for sure: the files stay waiting, and her next turn has their wakes in what
+ * she reads (the transcript keeps them). Koe's wake records for a file (half: 'koe') are not asked: it neither reads files nor files them.
  * @param {import('./types.js').Store} store @param {string} scope @returns {Promise<string[]>} paths in the scope
  */
 export async function filesToRead(store, scope) {
   return store.tx(['events', 'files'], 'readonly', async (t) => {
-    // From her last answered turn on, by type: a long trip's log is never walked whole. A page of 8 turns holds an answered one unless her
-    // last 8 all got no answer (a tap each); then the next page is read, so the count only sets how much one read brings.
+    // From her last turn's end on, by type: a long trip's log is never walked whole. A page of 8 holds that end unless her turns since went on or
+    // failed past it (a turn writes a record a step); then the next page is read, so the count only sets how much one read brings.
     /** @type {import('./types.js').EventRecord | undefined} */
     let last;
     /** @type {number | undefined} */
     let before;
     for (;;) {
-      const page = await t.listEvents(scope, { types: ['model.turn'], reverse: true, limit: 8, ...(before ? { before } : {}) });
-      last = page.find((e) => e.data?.answeredBy);
+      const page = await t.listEvents(scope, { types: ['turn.end', 'model.turn'], reverse: true, limit: 8, ...(before ? { before } : {}) });
+      last = page.find(endsHerTurn);
       if (last || page.length < 8) break;
       before = page[page.length - 1].seq;
     }
@@ -98,7 +101,7 @@ export async function filesToRead(store, scope) {
     /** @type {string[]} */
     const out = [];
     for (const e of after) {
-      if (e.data?.meanwhile) continue;
+      if (e.data?.half === 'koe') continue;
       for (const r of e.data?.reasons ?? []) for (const p of Array.isArray(r?.files) ? r.files : []) if (typeof p === 'string' && !out.includes(p)) out.push(p);
     }
     const there = [];

@@ -10,10 +10,11 @@ import { record, TALK_TAG } from '../../src/core/agent/log.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { ProviderError } from '../../src/core/llm/contract.js';
 import { createTrip } from '../../src/core/scopes.js';
+import { utf8 } from '../../src/core/bytes.js';
 import { Agent } from '../../src/core/agent/loop.js';
 import { NETWORK_RETRIES, OVERLOAD_RETRIES } from '../../src/core/llm/fallback.js';
 import { updateAppSettings } from '../../src/core/settings.js';
-import { undoHandover } from '../../src/core/handover.js';
+import { undoHandover, filesToRead } from '../../src/core/handover.js';
 import { useClock } from './clock.js';
 
 const sleep = { name: 'sleep', input: {} };
@@ -532,3 +533,22 @@ test('turns the version before this update left unfinished are read as finished:
   assert.deepEqual(await ends(k), ['turn.end:h-2']);
   assert.deepEqual(await reads(k), [false, '', null]);
 });
+
+// A file moved into the conversation waits to be read until her turn has ended after it (handover.js filesToRead), through the real loop: Koe's turn and a first reply
+// that answered are not her turn's end.
+for (const [row, opts, script, waits] of /** @type {[string, any, any[], boolean][]} */ ([
+  ['her turn ends', {}, [{ toolCalls: [speak('Read it.'), sleep] }], false],
+  ['no model answers', {}, FAILED, true],
+  ['her first reply answers and her second call fails', {}, [{ toolCalls: [{ name: 'list', input: { path: '/trip/' } }] }, ...FAILED], true],
+  ['two halves, Kokoro ends her turn (Koe woken for the file too)', { halves: true, koe: { type: [say('Got it.')] } }, [say('Read it.')], false],
+  ['two halves, Koe answers and Kokoro fails', { halves: true, koe: { type: [say('Got it.')] } }, FAILED, true],
+])) {
+  test(`a file waits to be read until her turn has ended: ${row}`, async (t) => {
+    useClock(t);
+    const k = await agentKit([script], opts);
+    await k.ws.write(k.trip, '/files/flight.pdf', utf8('%PDF'), { author: 'user', type: 'application/pdf' });
+    k.agent.wake({ kind: 'file', text: 'The user added a file to the trip: /trip/files/flight.pdf', files: ['/files/flight.pdf'], scope: k.trip });
+    await idleAtOnce(k);
+    assert.deepEqual(await filesToRead(k.store, k.trip), waits ? ['/files/flight.pdf'] : []);
+  });
+}
