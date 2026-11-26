@@ -61,12 +61,14 @@ export default function (test, assert) {
     }
   });
 
-  test('the browser voice and dictation say whether this browser has them; the audio session never throws', async () => {
+  test('the browser voice and dictation say whether this browser has them; the audio session never throws, and mixes says whether there is one', async () => {
     const p = browserPlatform();
     assert.equal(p.synth.available(), typeof speechSynthesis !== 'undefined');
     assert.equal(p.dictation.available(), Boolean(/** @type {any} */ (window).SpeechRecognition || /** @type {any} */ (window).webkitSpeechRecognition));
     p.session('play-and-record');
     p.session('playback');
+    p.session('ambient');
+    assert.equal(p.mixes?.(), Boolean(/** @type {any} */ (navigator).audioSession));
     assert.ok(Array.isArray(p.synth.voices()));
   });
 

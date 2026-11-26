@@ -450,17 +450,17 @@ gt9ssw	ok	annai couldn't start	annai 无法启动	src/app/main.js:477
 6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	如果反复出现，可能是浏览器阻止了存储（例如在无痕窗口中）。	src/app/main.js:479	
 982hh6	ok	Try again	重试	src/app/main.js:480	
 1u3dm1p	ok	This address holds a name or password before an @. Leave it out.	该地址的 @ 前含有用户名或密码，请将其删除。	src/core/address.js:68	
-1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	停留过的地点和停留时长，用地名表示；没有地名的地点用坐标表示，只精确到约 100 米。绝不发送 GPS 轨迹本身。	src/core/after/recap.js:61	
-imb4zw	ok	How far you drove or walked between, the stamps, and the itinerary.	地点之间开车或步行的距离、纪念章和行程。	src/core/after/recap.js:62	
-5lqjwd	ok	Shiori's cards and your words, typed or spoken, each shortened.	Shiori 的卡片和你打字或说出的话，每条都会截短。	src/core/after/recap.js:63	
-10xm6na	ok	This conversation's notes and memory, and your profile.	这段对话的笔记和记忆，以及个人资料。	src/core/after/recap.js:64	
-1nvz32n	ok	Up to {0} photos, if the model takes photos. A photo kept as taken (Settings → Photos → Keep originals) can still hold where it was taken.	最多 {0} 张照片（模型支持照片时）。按原图保存的照片（设置 → 照片 → 保留原图）可能仍带有拍摄地点。	src/core/after/recap.js:65	{0} = RECAP_PHOTOS
-rntcrc	ok	No model is set for the utility or main role. Add one in Settings → Models.	“辅助”和“主要”角色都没有设置模型。请在设置 → 模型中添加。	src/core/after/recap.js:175	
-1hy1f74	ok	No model could write it.	所有模型都没能写出回顾。	src/core/after/recap.js:176	Note: "it" is the recap (振り返り / 回顾).
-h5o9ec	ok	Check Settings → Models, then try again.	请检查设置 → 模型，然后再试一次。	src/core/after/recap.js:176	
-1ocmp3v	ok	Try again in a while.	请稍后再试。	src/core/after/recap.js:178	
-11vzyc7	ok	No model is set up to write the recap. Add one in Settings → Models.	没有设置用来写回顾的模型。请在设置 → 模型中添加。	src/core/after/recap.js:194	
-tbxeeg	ok	The model sent back an empty recap. Try again, or put another model first in the utility role (Settings → Models).	模型返回的回顾是空的。请重试，或在设置 → 模型中，把另一个模型移到“辅助”角色的第一位。	src/core/after/recap.js:240	
+1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	停留过的地点和停留时长，用地名表示；没有地名的地点用坐标表示，只精确到约 100 米。绝不发送 GPS 轨迹本身。	src/core/after/recap.js:65	
+imb4zw	ok	How far you drove or walked between, the stamps, and the itinerary.	地点之间开车或步行的距离、纪念章和行程。	src/core/after/recap.js:66	
+5lqjwd	ok	Shiori's cards and your words, typed or spoken, each shortened.	Shiori 的卡片和你打字或说出的话，每条都会截短。	src/core/after/recap.js:67	
+10xm6na	ok	This conversation's notes and memory, and your profile.	这段对话的笔记和记忆，以及个人资料。	src/core/after/recap.js:68	
+1nvz32n	ok	Up to {0} photos, if the model takes photos. A photo kept as taken (Settings → Photos → Keep originals) can still hold where it was taken.	最多 {0} 张照片（模型支持照片时）。按原图保存的照片（设置 → 照片 → 保留原图）可能仍带有拍摄地点。	src/core/after/recap.js:69	{0} = RECAP_PHOTOS
+rntcrc	ok	No model is set for the utility or main role. Add one in Settings → Models.	“辅助”和“主要”角色都没有设置模型。请在设置 → 模型中添加。	src/core/after/recap.js:179	
+1hy1f74	ok	No model could write it.	所有模型都没能写出回顾。	src/core/after/recap.js:180	Note: "it" is the recap (振り返り / 回顾).
+h5o9ec	ok	Check Settings → Models, then try again.	请检查设置 → 模型，然后再试一次。	src/core/after/recap.js:180	
+1ocmp3v	ok	Try again in a while.	请稍后再试。	src/core/after/recap.js:182	
+11vzyc7	ok	No model is set up to write the recap. Add one in Settings → Models.	没有设置用来写回顾的模型。请在设置 → 模型中添加。	src/core/after/recap.js:198	
+tbxeeg	ok	The model sent back an empty recap. Try again, or put another model first in the utility role (Settings → Models).	模型返回的回顾是空的。请重试，或在设置 → 模型中，把另一个模型移到“辅助”角色的第一位。	src/core/after/recap.js:243	
 1sob3wf	ok	1 hour a second	每秒 1 小时	src/core/after/replay.js:22	Note: a playback speed: one hour of the trip a second.
 6jq1bh	ok	1 minute a second	每秒 1 分钟	src/core/after/replay.js:22	
 7013qq	ok	10 minutes a second	每秒 10 分钟	src/core/after/replay.js:22	
@@ -499,68 +499,70 @@ bo3wjk	ok	Shiori stopped: today's budget is spent	Shiori 已停止：今天的�
 177194c	ok	She took {0} steps on something she was doing on her own, with no one asking, so she stopped there. Ask her to go on if you want more.	她自己在做一件没人让她做的事，已经做了 {0} 步，所以先停在这里。想让她继续，告诉她就行。	src/core/agent/budgets.js:149	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告诉她), not the glossary's Ask, Safari's 询问 choice.
 1o4yqf3	ok	She took the {0} steps a wake may take (Settings → Shiori → How often she acts on her own). Ask her to go on if you want more.	这次唤醒最多可以做 {0} 步（设置 → Shiori → 她主动行动的频率），她已经做完了。想让她继续，告诉她就行。	src/core/agent/budgets.js:150	{0} = num(over.steps); Note: "Ask her to go on" is the verb (告诉她), not the glossary's Ask, Safari's 询问 choice; the setting's path as the screens name it.
 jkajtp	ok	Thinking	思考中	src/core/agent/halves.js:88	
-1vskjkw	ok	Live is resting; Koe · Chat is answering	实时语音暂停中，改由 Koe · 聊天 回答	src/core/agent/halves.js:633	
-13gz10	ok	Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.	暂时由 Shiori 直接回答。原因见“记录”中的“模型”；Koe 几分钟后会自动重试。	src/core/agent/halves.js:735	Note: Models is the Trace's Kind filter, as it is named there.
-yvabm6	ok	Koe's live voice couldn't start	Koe 的实时语音无法启动	src/core/agent/halves.js:735	Note: "live voice" is the glossary's Live voice (实时语音), not a voice she speaks with (声音).
-bzrasi	ok	Shiori answers as one half for now	Shiori 暂时独自回答	src/core/agent/halves.js:945	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
-o0lfar	ok	annai couldn't pass your message to Koe: {0}	无法把消息转给 Koe：{0}	src/core/agent/halves.js:945	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-13548dd	ok	That conversation didn't open	没能打开那段对话	src/core/agent/halves.js:1278	Note: 对话 as the glossary's Conversation.
-15junxn	ok	One moment…	请稍候…	src/core/agent/loop.js:147	Note: the dock's words between the user's tap and Listening (Shiori getting ready to hear them).
-1dhsqvv	ok	Tap to talk	轻点说话	src/core/agent/loop.js:147	
-1ldobgc	ok	Tap to interrupt	轻点打断	src/core/agent/loop.js:147	
-4mbury	ok	Thinking · tap to stop	思考中 · 轻点停止	src/core/agent/loop.js:147	
-89yydm	ok	Listening	聆听中	src/core/agent/loop.js:147	Note: one of Shiori's states, as the dock shows her.
-bost42	ok	Ignoring sound · tap to talk	忽略背景音 · 轻点说话	src/core/agent/loop.js:147	
-g8840o	ok	Waiting for your OK	等你确认	src/core/agent/loop.js:147	
-yydchc	ok	Hearing you	正在听你说	src/core/agent/loop.js:147	Note: one of Shiori's states: she hears you speaking.
-akjf4d	ok	Working on …	处理中…	src/core/agent/loop.js:148	
-izy3tv	ok	Offline · reminders still work	离线 · 提醒照常	src/core/agent/loop.js:148	
-gni5zk	ok	Her sound got stuck, and a tap brings it back. Her words are in the conversation.	Shiori 的声音卡住了，轻点一下即可恢复。她说的话都在对话里。	src/core/agent/loop.js:178	
-guullf	ok	Tap the screen so Shiori can speak	轻点屏幕，让 Shiori 能说话	src/core/agent/loop.js:178	
-1080xlr	ok	Working on {0}	处理中：{0}	src/core/agent/loop.js:741	{0} = detail; Note: label: value, {0} is what she works on, in her words.
-1h2c64o	ok	Working on tidying up the conversation	正在整理对话	src/core/agent/loop.js:741	
-vjxaph	ok	Your turn	轮到你了	src/core/agent/loop.js:741	
-19793n8	ok	Shiori skipped a wake	Shiori 跳过了一次唤醒	src/core/agent/loop.js:1403	
-16ny0z2	ok	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1687	
-1sxm1ou	ok	Something went wrong: {0}	出了点问题：{0}	src/core/agent/loop.js:1687	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
-n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 无法整理对话	src/core/agent/loop.js:1726	
-oeaxaa	ok	She will try again later.	她稍后会再试。	src/core/agent/loop.js:1726	
-x10s30	ok	Shiori couldn't summarize the conversation	Shiori 无法总结对话	src/core/agent/loop.js:1959	
-1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:2161	
-1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:2161	
-e7liir	ok	Something for Shiori wasn't saved	给 Shiori 的内容没能保存	src/core/agent/loop.js:2326	Note: a card's title: something annai keeps for Shiori (a line or files for a conversation that isn't open, a tap a Stop stopped, a reminder's record) couldn't be saved; on a full phone it is the storage card's first sentence. Topic first, as the Chinese reads it: what was meant for Shiori, then 没能保存 (as 没能打开那段对话).
-nxpady	ok	The message went without it.	消息已发出，但不含这张照片。	src/core/agent/loop.js:2353	
-sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:2353	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
-ssozn1	ok	A photo wasn't sent to Shiori	有一张照片没有发给 Shiori	src/core/agent/loop.js:2353	
-311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 刚才的事还没做完，你回来后她会接着做。	src/core/agent/loop.js:2450	
-1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她三次调用同一个工具，结果都一样，所以这一轮结束了。请换个说法再问。	src/core/agent/loop.js:2863	Note: "Ask again" is the verb (再问), not the glossary's Ask, Safari's 询问 choice.
-pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重复操作	src/core/agent/loop.js:2863	
-1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什么也没对你说就结束了。	src/core/agent/loop.js:2907	
-2bgbpn	ok	Shiori didn't answer	Shiori 没有回答	src/core/agent/loop.js:2911	
-1mjdfzn	ok	Shiori can't reach her model	Shiori 无法连接到模型	src/core/agent/loop.js:3000	
-12qfj9m	ok	This model takes photos only as {0}, which this browser can't make. Try another model in Settings → Models.	这个模型只接受 {0} 格式的照片，但这个浏览器无法生成。可以在设置 → 模型中换一个模型。	src/core/agent/loop.js:3061	{0} = names
-plw9ns	draft	a PDF without a name	一份没有名称的 PDF	src/core/agent/loop.js:3130	Note: a PDF with neither a name nor a path, named on the card in its list (a trip's files have names, so rare).
-pw7lmw#other	draft	She goes on without them until the conversation is next summarized or started fresh.	在下次总结对话或重新开始之前，Shiori 会略过该 PDF，继续对话。	src/core/agent/loop.js:3131	plural; # = n; English: "She goes on without it until the conversation is next summarized or started fresh." (one), "She goes on without them until the conversation is next summarized or started fresh." (other); Note: one text for one PDF and for several (zh has one form): 该 PDF names the PDFs of the sentence before.
-z09dhs	draft	The models refused a request that held {0}.	模型拒绝了包含 {0} 的请求。	src/core/agent/loop.js:3131	{0} = list(files); Note: on that card; {0} is the PDFs' file names as a list (manual.pdf, ticket.pdf). The models refused the request, not each file: it is said of the request.
-ib7y1w	draft	To show her a page, send it as a photo.	如果想让她看其中某一页，请把那一页作为照片发送。	src/core/agent/loop.js:3132	
-qz6v7v#other	draft	Shiori's models refused a request with PDFs in it	Shiori 的模型拒绝了含 PDF 的请求	src/core/agent/loop.js:3133	plural; # = n; English: "Shiori's models refused a request with a PDF in it" (one), "Shiori's models refused a request with PDFs in it" (other); Note: a card's title: the models refused a request that held PDFs, so Shiori goes without them until the next summary or Start fresh. One text for one PDF and for several.
-1uhz9dg	ok	Shiori couldn't send the photo	Shiori 无法发送照片	src/core/agent/loop.js:3140	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	这个浏览器要轻点一下才能播放声音。她说的话在对话里。	src/core/agent/loop.js:3802	
-1h2ina6	ok	Shiori couldn't speak aloud	Shiori 无法朗读	src/core/agent/loop.js:3803	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	设置 → 模型 → 朗读中的声音都无法使用，原因见“记录”。她说的话在对话里。	src/core/agent/loop.js:3803	
-1r1dhd7	ok	Shiori can't hear you yet	Shiori 还听不到你	src/core/agent/loop.js:3986	
-8wd0xv	ok	Listening stopped	聆听已停止	src/core/agent/loop.js:4217	
-43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:4497	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	每边最多 # 像素	src/core/agent/loop.js:4498	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一次最多 # 张照片	src/core/agent/loop.js:4499	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	仅限 {0}	src/core/agent/loop.js:4500	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受这张照片（它的要求：{0}），也无法转换成它能接受的照片。可以在设置 → 照片 → 发给 Shiori 的照片中把照片调小，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:4501	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受这张照片，也无法转换成它能接受的照片。可以在设置 → 照片 → 发给 Shiori 的照片中把照片调小，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:4502	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	对话太长，整理之前她的模型处理不了。请在设置 → 模型中检查模型，或稍后再试。	src/core/agent/loop.js:4512	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	插件 {0} 唤醒她的次数超过了你设定的上限（每小时 # 次）。	src/core/agent/loop.js:4522	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她在留意的事情唤醒她的次数超过了你设定的上限（每小时 # 次）：{0}。	src/core/agent/loop.js:4523	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你设定的上限（每小时 # 次）：{0}。	src/core/agent/loop.js:4524	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	她被唤醒的次数超过了你设定的上限（每小时 # 次）。	src/core/agent/loop.js:4525	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+1sq4zpb	draft	Sending…	发送中…	src/core/agent/halves.js:90	Note: the dock's words while Kokoro's request sends photos, a PDF or a recording behind a Koe at rest, until the model has them; then Thinking.
+1vskjkw	ok	Live is resting; Koe · Chat is answering	实时语音暂停中，改由 Koe · 聊天 回答	src/core/agent/halves.js:635	
+13gz10	ok	Shiori answers you directly for now. The Trace says why, under Models; Koe tries again in a few minutes.	暂时由 Shiori 直接回答。原因见“记录”中的“模型”；Koe 几分钟后会自动重试。	src/core/agent/halves.js:737	Note: Models is the Trace's Kind filter, as it is named there.
+yvabm6	ok	Koe's live voice couldn't start	Koe 的实时语音无法启动	src/core/agent/halves.js:737	Note: "live voice" is the glossary's Live voice (实时语音), not a voice she speaks with (声音).
+bzrasi	ok	Shiori answers as one half for now	Shiori 暂时独自回答	src/core/agent/halves.js:947	Note: "as one half": Shiori answers alone, not as Koe and Kokoro.
+o0lfar	ok	annai couldn't pass your message to Koe: {0}	无法把消息转给 Koe：{0}	src/core/agent/halves.js:947	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+13548dd	ok	That conversation didn't open	没能打开那段对话	src/core/agent/halves.js:1280	Note: 对话 as the glossary's Conversation.
+15junxn	ok	One moment…	请稍候…	src/core/agent/loop.js:148	Note: the dock's words between the user's tap and Listening (Shiori getting ready to hear them).
+1dhsqvv	ok	Tap to talk	轻点说话	src/core/agent/loop.js:148	
+1ldobgc	ok	Tap to interrupt	轻点打断	src/core/agent/loop.js:148	
+4mbury	ok	Thinking · tap to stop	思考中 · 轻点停止	src/core/agent/loop.js:148	
+89yydm	ok	Listening	聆听中	src/core/agent/loop.js:148	Note: one of Shiori's states, as the dock shows her.
+bost42	ok	Ignoring sound · tap to talk	忽略背景音 · 轻点说话	src/core/agent/loop.js:148	
+g8840o	ok	Waiting for your OK	等你确认	src/core/agent/loop.js:148	
+yydchc	ok	Hearing you	正在听你说	src/core/agent/loop.js:148	Note: one of Shiori's states: she hears you speaking.
+akjf4d	ok	Working on …	处理中…	src/core/agent/loop.js:149	
+izy3tv	ok	Offline · reminders still work	离线 · 提醒照常	src/core/agent/loop.js:149	
+8fjo28	draft	Sending… · tap to stop	发送中… · 轻点停止	src/core/agent/loop.js:151	Note: the dock's words while her request sends photos, a PDF or a recording, until the model has them; then Thinking · tap to stop. The tap stops her, as while she thinks.
+gni5zk	ok	Her sound got stuck, and a tap brings it back. Her words are in the conversation.	Shiori 的声音卡住了，轻点一下即可恢复。她说的话都在对话里。	src/core/agent/loop.js:181	
+guullf	ok	Tap the screen so Shiori can speak	轻点屏幕，让 Shiori 能说话	src/core/agent/loop.js:181	
+1080xlr	ok	Working on {0}	处理中：{0}	src/core/agent/loop.js:747	{0} = detail; Note: label: value, {0} is what she works on, in her words.
+1h2c64o	ok	Working on tidying up the conversation	正在整理对话	src/core/agent/loop.js:747	
+vjxaph	ok	Your turn	轮到你了	src/core/agent/loop.js:747	
+19793n8	ok	Shiori skipped a wake	Shiori 跳过了一次唤醒	src/core/agent/loop.js:1409	
+16ny0z2	ok	Shiori stopped	Shiori 已停止	src/core/agent/loop.js:1693	
+1sxm1ou	ok	Something went wrong: {0}	出了点问题：{0}	src/core/agent/loop.js:1693	{0} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e)
+n7ewdg	ok	Shiori couldn't tidy up the conversation	Shiori 无法整理对话	src/core/agent/loop.js:1732	
+oeaxaa	ok	She will try again later.	她稍后会再试。	src/core/agent/loop.js:1732	
+x10s30	ok	Shiori couldn't summarize the conversation	Shiori 无法总结对话	src/core/agent/loop.js:1965	
+1ds0zov	ok	Reminder	提醒	src/core/agent/loop.js:2167	
+1szzjml	ok	Shiori's answer	Shiori 的回答	src/core/agent/loop.js:2167	
+e7liir	ok	Something for Shiori wasn't saved	给 Shiori 的内容没能保存	src/core/agent/loop.js:2332	Note: a card's title: something annai keeps for Shiori (a line or files for a conversation that isn't open, a tap a Stop stopped, a reminder's record) couldn't be saved; on a full phone it is the storage card's first sentence. Topic first, as the Chinese reads it: what was meant for Shiori, then 没能保存 (as 没能打开那段对话).
+nxpady	ok	The message went without it.	消息已发出，但不含这张照片。	src/core/agent/loop.js:2359	
+sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:2359	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
+ssozn1	ok	A photo wasn't sent to Shiori	有一张照片没有发给 Shiori	src/core/agent/loop.js:2359	
+311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shiori 刚才的事还没做完，你回来后她会接着做。	src/core/agent/loop.js:2456	
+1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	她三次调用同一个工具，结果都一样，所以这一轮结束了。请换个说法再问。	src/core/agent/loop.js:2866	Note: "Ask again" is the verb (再问), not the glossary's Ask, Safari's 询问 choice.
+pydksy	ok	Shiori stopped repeating herself	Shiori 停止了重复操作	src/core/agent/loop.js:2866	
+1nvuxc8	ok	Her model finished without saying anything to you.	她的模型什么也没对你说就结束了。	src/core/agent/loop.js:2910	
+2bgbpn	ok	Shiori didn't answer	Shiori 没有回答	src/core/agent/loop.js:2914	
+1mjdfzn	ok	Shiori can't reach her model	Shiori 无法连接到模型	src/core/agent/loop.js:3003	
+12qfj9m	ok	This model takes photos only as {0}, which this browser can't make. Try another model in Settings → Models.	这个模型只接受 {0} 格式的照片，但这个浏览器无法生成。可以在设置 → 模型中换一个模型。	src/core/agent/loop.js:3064	{0} = names
+plw9ns	draft	a PDF without a name	一份没有名称的 PDF	src/core/agent/loop.js:3133	Note: a PDF with neither a name nor a path, named on the card in its list (a trip's files have names, so rare).
+pw7lmw#other	draft	She goes on without them until the conversation is next summarized or started fresh.	在下次总结对话或重新开始之前，Shiori 会略过该 PDF，继续对话。	src/core/agent/loop.js:3134	plural; # = n; English: "She goes on without it until the conversation is next summarized or started fresh." (one), "She goes on without them until the conversation is next summarized or started fresh." (other); Note: one text for one PDF and for several (zh has one form): 该 PDF names the PDFs of the sentence before.
+z09dhs	draft	The models refused a request that held {0}.	模型拒绝了包含 {0} 的请求。	src/core/agent/loop.js:3134	{0} = list(files); Note: on that card; {0} is the PDFs' file names as a list (manual.pdf, ticket.pdf). The models refused the request, not each file: it is said of the request.
+ib7y1w	draft	To show her a page, send it as a photo.	如果想让她看其中某一页，请把那一页作为照片发送。	src/core/agent/loop.js:3135	
+qz6v7v#other	draft	Shiori's models refused a request with PDFs in it	Shiori 的模型拒绝了含 PDF 的请求	src/core/agent/loop.js:3136	plural; # = n; English: "Shiori's models refused a request with a PDF in it" (one), "Shiori's models refused a request with PDFs in it" (other); Note: a card's title: the models refused a request that held PDFs, so Shiori goes without them until the next summary or Start fresh. One text for one PDF and for several.
+1uhz9dg	ok	Shiori couldn't send the photo	Shiori 无法发送照片	src/core/agent/loop.js:3143	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	这个浏览器要轻点一下才能播放声音。她说的话在对话里。	src/core/agent/loop.js:3819	
+1h2ina6	ok	Shiori couldn't speak aloud	Shiori 无法朗读	src/core/agent/loop.js:3820	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	设置 → 模型 → 朗读中的声音都无法使用，原因见“记录”。她说的话在对话里。	src/core/agent/loop.js:3820	
+1r1dhd7	ok	Shiori can't hear you yet	Shiori 还听不到你	src/core/agent/loop.js:4007	
+8wd0xv	ok	Listening stopped	聆听已停止	src/core/agent/loop.js:4238	
+43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:4519	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	每边最多 # 像素	src/core/agent/loop.js:4520	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一次最多 # 张照片	src/core/agent/loop.js:4521	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	仅限 {0}	src/core/agent/loop.js:4522	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受这张照片（它的要求：{0}），也无法转换成它能接受的照片。可以在设置 → 照片 → 发给 Shiori 的照片中把照片调小，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:4523	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受这张照片，也无法转换成它能接受的照片。可以在设置 → 照片 → 发给 Shiori 的照片中把照片调小，或在设置 → 模型中换一个模型。	src/core/agent/loop.js:4524	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	对话太长，整理之前她的模型处理不了。请在设置 → 模型中检查模型，或稍后再试。	src/core/agent/loop.js:4534	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	插件 {0} 唤醒她的次数超过了你设定的上限（每小时 # 次）。	src/core/agent/loop.js:4544	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她在留意的事情唤醒她的次数超过了你设定的上限（每小时 # 次）：{0}。	src/core/agent/loop.js:4545	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你添加的文件唤醒她的次数超过了你设定的上限（每小时 # 次）：{0}。	src/core/agent/loop.js:4546	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	她被唤醒的次数超过了你设定的上限（每小时 # 次）。	src/core/agent/loop.js:4547	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	这条消息含有密钥，所以不显示。	src/core/agent/net.js:127	
 1jmdvnh	ok	annai couldn't check this message for keys, so it is not shown.	无法检查这条消息是否含有密钥，所以不显示。	src/core/agent/net.js:128	Note: shown in place of a card's or status line's text when annai can't read the keys it keeps to blank them; worded as the "held a key" note beside it (1ptx7ob).
 157dl17	ok	Shiori wants to adjust her personality	Shiori 想调整自己的性格	src/core/agent/personalities.js:130	
@@ -638,8 +640,8 @@ gnrtev	ok	Shiori can't reach her model.	Shiori 无法连接到模型。	src/core
 13ujlu9	ok	{0} is too large (over {1}). Export only the dates you need from your calendar, and add that file.	{0} 太大了（超过 {1}）。请在日历中只导出所需日期的日程，再添加导出的文件。	src/core/imports.js:17	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:36	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	刚刚	src/core/intl.js:152	
-1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	使用手机扬声器时，Shiori 说话期间听不到你的声音，插话会被忽略。轻点一下即可让她停下来听你说。	src/core/koe/live.js:695	
-1ml2kgi	ok	Tap Shiori to talk over her	轻点 Shiori 即可打断她	src/core/koe/live.js:695	Note: The dock's Shiori button: tap it to talk over her.
+1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	使用手机扬声器时，Shiori 说话期间听不到你的声音，插话会被忽略。轻点一下即可让她停下来听你说。	src/core/koe/live.js:697	
+1ml2kgi	ok	Tap Shiori to talk over her	轻点 Shiori 即可打断她	src/core/koe/live.js:697	Note: The dock's Shiori button: tap it to talk over her.
 3fqfy0	ok	Languages	语言	src/core/languages.js:553	
 1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你说的语言和 Shiori 的回答语言会告知每个负责听和说的模型，以免简短的回复被误认成别的语言。	src/core/languages.js:554	
 1giusr1	ok	Languages you speak	你说的语言	src/core/languages.js:555	
@@ -713,52 +715,52 @@ mlh3jc	ok	Main	主要	src/core/llm/check.js:186
 1qjc2dh	ok	That provider has no ability called {0}.	这个提供商没有名为 {0} 的功能。	src/core/llm/config.js:426	{0} = rec.ability
 4iiule	ok	Give the provider's model id.	请填写提供商的模型 ID。	src/core/llm/config.js:429	
 3i9i3z	ok	"{0}" is already used by another model	“{0}”已被另一个模型使用	src/core/llm/config.js:433	{0} = name
-1lqr9y5	ok	The key was rejected. Check it in Settings → Models.	密钥被拒绝了。请在设置 → 模型中检查。	src/core/llm/contract.js:113	
-1do8abu	ok	This account is out of credit.	这个账户的余额已用完。	src/core/llm/contract.js:114	Note: Credit is a prepaid balance (余额), not a quota (额度).
-99g6ol	ok	The provider says too many requests for now.	提供商表示目前请求过于频繁。	src/core/llm/contract.js:115	
-1f1gofm	ok	The provider is overloaded right now.	提供商目前负载过高。	src/core/llm/contract.js:116	
-1m90sjx	ok	The conversation is too long for this model.	对话太长，超出了这个模型的上限。	src/core/llm/contract.js:117	
-ofpdqd	ok	This model didn't accept the photo.	这个模型不接受这张照片。	src/core/llm/contract.js:118	
-1acsflt	ok	A photo uploaded earlier has expired.	之前上传的照片已过期。	src/core/llm/contract.js:119	
-1htll8g	ok	This address doesn't allow web apps like annai to call it.	这个地址不允许 annai 这类网页应用调用。	src/core/llm/contract.js:120	
-reueb3	ok	annai couldn't reach this address. It may be down, or it may not allow web apps.	无法连接这个地址。服务可能已停止，或不允许网页应用访问。	src/core/llm/contract.js:121	
-3bfivn	ok	The provider didn't accept the request. Check the tunables on its provider's page.	提供商不接受这个请求。请到提供商页面检查可调参数。	src/core/llm/contract.js:122	
-z0xde1	ok	The provider doesn't know this model or address. Check the model id and the base URL.	提供商找不到这个模型或地址。请检查模型 ID 和 API 地址。	src/core/llm/contract.js:123	
-11ib30k	ok	The provider had a problem on its side.	提供商那边出了问题。	src/core/llm/contract.js:124	
-1sdnnoc	ok	The connection dropped.	连接中断了。	src/core/llm/contract.js:125	
-vfwfwf	ok	The model took too long to start answering.	模型迟迟没有开始回答。	src/core/llm/contract.js:126	
-5x3mf4	ok	Stopped.	已停止。	src/core/llm/contract.js:127	
-1jk8mhk	ok	The plugin for this model's protocol failed.	这个模型的协议插件出错了。	src/core/llm/contract.js:128	
-r34ccn	ok	This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.	这个模型的协议插件没有运行。请在设置 → 模型中打开它的提供商来安装。	src/core/llm/contract.js:129	
-19gg4yk	ok	The provider no longer has the earlier turns; annai sends the conversation whole.	提供商那边已经没有之前几轮的内容，所以会改为发送完整对话。	src/core/llm/contract.js:130	
-1kl65kc	ok	The provider refused the reasoning annai sent back.	提供商拒绝了 annai 回传的推理内容。	src/core/llm/contract.js:131	Note: reasoning is the model's thinking (推理, as the Reasoning levels setting names it); 发回: annai sent it back to the model that wrote it.
-1bhiyow	ok	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} 返回了重定向，annai 不会带着你的密钥跳转。请检查它的地址。	src/core/llm/contract.js:132	{0} = provider
-sek2pk	ok	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	提供商返回了重定向，annai 不会带着你的密钥跳转。请检查它的地址。	src/core/llm/contract.js:133	
-17ifucf	ok	Transcription	语音转文字	src/core/llm/contract.js:157	
-9kdcjv	ok	Chat	对话	src/core/llm/contract.js:157	Note: a provider's ability (chat models): 对话模型, as the glossary's Koe · Chat note names them.
-b1qn4p	ok	Voice	声音	src/core/llm/contract.js:157	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
-su5wo1	ok	Live voice	实时语音	src/core/llm/contract.js:157	
-izfolc	ok	No output started in time.	没有在限定时间内开始输出。	src/core/llm/contract.js:167	
-1l28lx6#other	ok	Its output stopped for # seconds.	输出中断了 # 秒。	src/core/llm/contract.js:168	plural; # = Number(s.seconds) || 0; English: "Its output stopped for # second." (one), "Its output stopped for # seconds." (other); Note: the model's output had started, then stopped arriving for this long; a card line under the model's name.
-1jcxa5s#other	ok	No answer in # seconds. The connection may be too slow to send photos or files.	等了 # 秒仍没有回应。可能是网络太慢，照片或文件没能发送完。	src/core/llm/contract.js:169	plural; # = Number(s.seconds) || 0; English: "No answer in # second. The connection may be too slow to send photos or files." (one), "No answer in # seconds. The connection may be too slow to send photos or files." (other); Note: the provider never answered a request that held photos or a PDF (files), in the role's wait plus the time the request takes to go up on a slow link: the send most likely ran out; a card line under the model's name.
-1ox7mn5	ok	The voice stopped arriving for longer than annai waits.	声音中断太久，超出了 annai 的等待时间。	src/core/llm/contract.js:170	
-1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	需要重新加载 annai。这次打开时没有离线服务，所以插件无法启动。	src/core/llm/contract.js:171	
-b4ie5	ok	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	服务器上已经找不到 annai 几分钟前保存的对话，这个账户很可能不保存数据（Zero Data Retention）。在 annai 重新启动之前，不会再往那里保存任何内容，并会改为发送完整对话。	src/core/llm/contract.js:172	
-1e0qpon	ok	That model no longer exists.	这个模型已不存在。	src/core/llm/contract.js:173	
-6e3b54	ok	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} 的 {1} 需要对应的插件，但该插件没有运行。请在设置 → 模型中打开 {2} 进行安装。	src/core/llm/contract.js:174	{0} = name; {1} = ability; {2} = name
-11neb14	ok	{0} isn't a transcription model.	{0} 不是语音转文字模型。	src/core/llm/contract.js:175	{0} = name
-akhc81	ok	{0} isn't a voice.	{0} 不是声音模型。	src/core/llm/contract.js:176	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
-67wwku	ok	{0} isn't a live voice model.	{0} 不是实时语音模型。	src/core/llm/contract.js:177	{0} = name; Note: Live voice is 实时语音 (the glossary's mode), not the thing "voice" (声音).
-x31pwm	ok	That provider or ability no longer exists.	这个提供商或功能已不存在。	src/core/llm/contract.js:178	
-il3b75	ok	That provider no longer exists, or its plugin isn't running.	这个提供商已不存在，或它的插件没有运行。	src/core/llm/contract.js:179	
-1urfnpy	ok	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} 不允许 annai 这类网页应用调用（没有 CORS 头），所以无法在浏览器中列出或使用它的模型。如果提供商还有其他地址，可以试试；也可以请提供商开放浏览器访问。	src/core/llm/contract.js:181	{0} = host
-10qbfg	ok	annai couldn't reach {0}. Check the address and your connection.	无法连接 {0}。请检查地址和网络连接。	src/core/llm/contract.js:182	{0} = host
-16osh89	ok	{0} can't list its models here. Add them by id.	{0} 无法在这里列出它的模型。请按 ID 添加。	src/core/llm/contract.js:183	{0} = ability
-1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0} 不支持这部手机能录制的任何音频格式（{1}）。	src/core/llm/contract.js:184	{0} = name; {1} = list(formats ?? [], 'plain')
-1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} 的 {1} 生成的请求指向了 {2}，而不是它的地址 {3}。请检查它的可调参数。	src/core/llm/contract.js:185	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
-o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} 的 {1} 生成的请求指向了无效地址，而不是它的地址 {2}。请检查它的可调参数。	src/core/llm/contract.js:186	{0} = name; {1} = ability; {2} = s.want
-xs9g3f	draft	{0}'s {1} has no working address. Give its address in Settings → Models.	{0} 的 {1} 没有可用的地址。请在设置 → 模型中填写它的地址。	src/core/llm/contract.js:187	{0} = name; {1} = ability
-16rym9p	ok	Nothing in the speech-in list worked for {0}.	语音识别列表中没有一项能用于 {0}。	src/core/llm/contract.js:188	{0} = name; Note: the speech-in list holds transcription models and "send the audio"; none of them could pass the recording to the model {0}.
+1lqr9y5	ok	The key was rejected. Check it in Settings → Models.	密钥被拒绝了。请在设置 → 模型中检查。	src/core/llm/contract.js:117	
+1do8abu	ok	This account is out of credit.	这个账户的余额已用完。	src/core/llm/contract.js:118	Note: Credit is a prepaid balance (余额), not a quota (额度).
+99g6ol	ok	The provider says too many requests for now.	提供商表示目前请求过于频繁。	src/core/llm/contract.js:119	
+1f1gofm	ok	The provider is overloaded right now.	提供商目前负载过高。	src/core/llm/contract.js:120	
+1m90sjx	ok	The conversation is too long for this model.	对话太长，超出了这个模型的上限。	src/core/llm/contract.js:121	
+ofpdqd	ok	This model didn't accept the photo.	这个模型不接受这张照片。	src/core/llm/contract.js:122	
+1acsflt	ok	A photo uploaded earlier has expired.	之前上传的照片已过期。	src/core/llm/contract.js:123	
+1htll8g	ok	This address doesn't allow web apps like annai to call it.	这个地址不允许 annai 这类网页应用调用。	src/core/llm/contract.js:124	
+reueb3	ok	annai couldn't reach this address. It may be down, or it may not allow web apps.	无法连接这个地址。服务可能已停止，或不允许网页应用访问。	src/core/llm/contract.js:125	
+3bfivn	ok	The provider didn't accept the request. Check the tunables on its provider's page.	提供商不接受这个请求。请到提供商页面检查可调参数。	src/core/llm/contract.js:126	
+z0xde1	ok	The provider doesn't know this model or address. Check the model id and the base URL.	提供商找不到这个模型或地址。请检查模型 ID 和 API 地址。	src/core/llm/contract.js:127	
+11ib30k	ok	The provider had a problem on its side.	提供商那边出了问题。	src/core/llm/contract.js:128	
+1sdnnoc	ok	The connection dropped.	连接中断了。	src/core/llm/contract.js:129	
+vfwfwf	ok	The model took too long to start answering.	模型迟迟没有开始回答。	src/core/llm/contract.js:130	
+5x3mf4	ok	Stopped.	已停止。	src/core/llm/contract.js:131	
+1jk8mhk	ok	The plugin for this model's protocol failed.	这个模型的协议插件出错了。	src/core/llm/contract.js:132	
+r34ccn	ok	This model's protocol plugin isn't running. Open its provider in Settings → Models to install it.	这个模型的协议插件没有运行。请在设置 → 模型中打开它的提供商来安装。	src/core/llm/contract.js:133	
+19gg4yk	ok	The provider no longer has the earlier turns; annai sends the conversation whole.	提供商那边已经没有之前几轮的内容，所以会改为发送完整对话。	src/core/llm/contract.js:134	
+1kl65kc	ok	The provider refused the reasoning annai sent back.	提供商拒绝了 annai 回传的推理内容。	src/core/llm/contract.js:135	Note: reasoning is the model's thinking (推理, as the Reasoning levels setting names it); 发回: annai sent it back to the model that wrote it.
+1bhiyow	ok	{0} answered with a redirect, which annai doesn't follow with your key. Check its address.	{0} 返回了重定向，annai 不会带着你的密钥跳转。请检查它的地址。	src/core/llm/contract.js:136	{0} = provider
+sek2pk	ok	The provider answered with a redirect, which annai doesn't follow with your key. Check its address.	提供商返回了重定向，annai 不会带着你的密钥跳转。请检查它的地址。	src/core/llm/contract.js:137	
+17ifucf	ok	Transcription	语音转文字	src/core/llm/contract.js:161	
+9kdcjv	ok	Chat	对话	src/core/llm/contract.js:161	Note: a provider's ability (chat models): 对话模型, as the glossary's Koe · Chat note names them.
+b1qn4p	ok	Voice	声音	src/core/llm/contract.js:161	Note: an ability, a voice to speak with: the glossary's thing "voice", not the Voice screen.
+su5wo1	ok	Live voice	实时语音	src/core/llm/contract.js:161	
+izfolc	ok	No output started in time.	没有在限定时间内开始输出。	src/core/llm/contract.js:171	
+1l28lx6#other	ok	Its output stopped for # seconds.	输出中断了 # 秒。	src/core/llm/contract.js:172	plural; # = Number(s.seconds) || 0; English: "Its output stopped for # second." (one), "Its output stopped for # seconds." (other); Note: the model's output had started, then stopped arriving for this long; a card line under the model's name.
+1jcxa5s#other	ok	No answer in # seconds. The connection may be too slow to send photos or files.	等了 # 秒仍没有回应。可能是网络太慢，照片或文件没能发送完。	src/core/llm/contract.js:173	plural; # = Number(s.seconds) || 0; English: "No answer in # second. The connection may be too slow to send photos or files." (one), "No answer in # seconds. The connection may be too slow to send photos or files." (other); Note: the provider never answered a request that held photos or a PDF (files), in the role's wait plus the time the request takes to go up on a slow link: the send most likely ran out; a card line under the model's name.
+1ox7mn5	ok	The voice stopped arriving for longer than annai waits.	声音中断太久，超出了 annai 的等待时间。	src/core/llm/contract.js:174	
+1rls2oy	ok	annai needs a reload: it opened without its offline service, so its plugins can't start.	需要重新加载 annai。这次打开时没有离线服务，所以插件无法启动。	src/core/llm/contract.js:175	
+b4ie5	ok	The server no longer had a conversation annai stored minutes ago, so it is probably not storing for this account (Zero Data Retention): annai keeps nothing there until it starts again, and sends the whole conversation.	服务器上已经找不到 annai 几分钟前保存的对话，这个账户很可能不保存数据（Zero Data Retention）。在 annai 重新启动之前，不会再往那里保存任何内容，并会改为发送完整对话。	src/core/llm/contract.js:176	
+1e0qpon	ok	That model no longer exists.	这个模型已不存在。	src/core/llm/contract.js:177	
+6e3b54	ok	{0}'s {1} needs its plugin, which isn't running. Open {2} in Settings → Models to install it.	{0} 的 {1} 需要对应的插件，但该插件没有运行。请在设置 → 模型中打开 {2} 进行安装。	src/core/llm/contract.js:178	{0} = name; {1} = ability; {2} = name
+11neb14	ok	{0} isn't a transcription model.	{0} 不是语音转文字模型。	src/core/llm/contract.js:179	{0} = name
+akhc81	ok	{0} isn't a voice.	{0} 不是声音模型。	src/core/llm/contract.js:180	{0} = name; Note: the glossary's thing "voice", a voice to speak with.
+67wwku	ok	{0} isn't a live voice model.	{0} 不是实时语音模型。	src/core/llm/contract.js:181	{0} = name; Note: Live voice is 实时语音 (the glossary's mode), not the thing "voice" (声音).
+x31pwm	ok	That provider or ability no longer exists.	这个提供商或功能已不存在。	src/core/llm/contract.js:182	
+il3b75	ok	That provider no longer exists, or its plugin isn't running.	这个提供商已不存在，或它的插件没有运行。	src/core/llm/contract.js:183	
+1urfnpy	ok	{0} doesn't allow web apps like annai to call it (no CORS headers), so annai can't list or use its models from a browser. If the provider has another address, try it, or ask the provider to allow browser access.	{0} 不允许 annai 这类网页应用调用（没有 CORS 头），所以无法在浏览器中列出或使用它的模型。如果提供商还有其他地址，可以试试；也可以请提供商开放浏览器访问。	src/core/llm/contract.js:185	{0} = host
+10qbfg	ok	annai couldn't reach {0}. Check the address and your connection.	无法连接 {0}。请检查地址和网络连接。	src/core/llm/contract.js:186	{0} = host
+16osh89	ok	{0} can't list its models here. Add them by id.	{0} 无法在这里列出它的模型。请按 ID 添加。	src/core/llm/contract.js:187	{0} = ability
+1cdx16o	ok	{0} takes no audio format this phone makes ({1}).	{0} 不支持这部手机能录制的任何音频格式（{1}）。	src/core/llm/contract.js:188	{0} = name; {1} = list(formats ?? [], 'plain')
+1veszp7	ok	{0}'s {1} built a request to {2}, not its address {3}. Check its tunables.	{0} 的 {1} 生成的请求指向了 {2}，而不是它的地址 {3}。请检查它的可调参数。	src/core/llm/contract.js:189	{0} = name; {1} = ability; {2} = s.to; {3} = s.want
+o2nib5	ok	{0}'s {1} built a request to an address that isn't one, not its address {2}. Check its tunables.	{0} 的 {1} 生成的请求指向了无效地址，而不是它的地址 {2}。请检查它的可调参数。	src/core/llm/contract.js:190	{0} = name; {1} = ability; {2} = s.want
+xs9g3f	draft	{0}'s {1} has no working address. Give its address in Settings → Models.	{0} 的 {1} 没有可用的地址。请在设置 → 模型中填写它的地址。	src/core/llm/contract.js:191	{0} = name; {1} = ability
+16rym9p	ok	Nothing in the speech-in list worked for {0}.	语音识别列表中没有一项能用于 {0}。	src/core/llm/contract.js:192	{0} = name; Note: the speech-in list holds transcription models and "send the audio"; none of them could pass the recording to the model {0}.
 g63xkc	ok	Prices are an object, like {"input": 1, "output": 4}.	价格应为对象，例如 {"input": 1, "output": 4}。	src/core/llm/cost.js:96	
 m0hi3r	ok	In a tier, {0} is not a price: it is a number, not below 0.	在 "tiers" 中，{0} 的值不是有效价格，必须是不小于 0 的数字。	src/core/llm/cost.js:97	{0} = f.key; Note: a tier is a price step for long prompts; "tiers" is the JSON key the user types.
 z6957a	ok	In the schedule, {0} is not a price: it is a number, not below 0.	在 "schedule" 中，{0} 的值不是有效价格，必须是不小于 0 的数字。	src/core/llm/cost.js:97	{0} = f.key; Note: the schedule is the JSON key "schedule" (prices that start on a date), named as typed: 计划 read as a plan.
@@ -952,9 +954,9 @@ xi9ch6	ok	Shiori can't hear you: the speech-in list is empty. Add an entry in Se
 1oy92m8	ok	This browser has no phone dictation either.	这个浏览器也不支持手机语音输入。	src/core/voice/resolve.js:166	
 l80ifa	ok	Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	请在设置 → 模型中添加语音转文字模型（例如 OpenAI 或 Groq），或添加一个能接受音频的主要模型。	src/core/voice/resolve.js:166	
 m5s9f4	ok	This browser can't play a voice as it arrives.	这个浏览器无法边接收边播放声音。	src/core/voice/speaker.js:128	
-jo5o9d	ok	This browser can't play sound here.	这个浏览器无法在这里播放声音。	src/core/voice/voice.js:430	
-ocv5zw	ok	This browser can't use the microphone here.	这个浏览器无法在这里使用麦克风。	src/core/voice/voice.js:473	
-55949q	ok	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	声音卡住了，annai 听不到你说话。轻点屏幕即可恢复。	src/core/voice/voice.js:804	
+jo5o9d	ok	This browser can't play sound here.	这个浏览器无法在这里播放声音。	src/core/voice/voice.js:447	
+ocv5zw	ok	This browser can't use the microphone here.	这个浏览器无法在这里使用麦克风。	src/core/voice/voice.js:490	
+55949q	ok	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	声音卡住了，annai 听不到你说话。轻点屏幕即可恢复。	src/core/voice/voice.js:827	
 pib2vo	ok	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	由浏览器自带的语音服务识别：Android 上通常是 Google 的服务器，iPhone 上是 Apple 的（有时直接在手机上完成）。这个请求不是 annai 发出的，所以“记录”中看不到。	src/core/voice/where.js:15	
 m93xm3	ok	On this phone only: the browser recognizes your speech on the device.	只在这部手机上：浏览器直接在本机识别你的语音。	src/core/voice/where.js:16	
 1m5zm0a	ok	Phone dictation	手机语音输入	src/core/voice/where.js:18	
@@ -1902,52 +1904,50 @@ xy0wl5	draft	30 days	近 30 天	src/ui/screens/models.js:34	Note: a range in Set
 1w4m41d	ok	the browser's own; some voices go online	浏览器自带；有些声音需要联网	src/ui/screens/models.js:36	
 ce8br5	ok	when the model takes audio	当模型接受音频时	src/ui/screens/models.js:36	
 jrbfa0	ok	Where Shiori thinks: the providers annai calls, their models, which models each role tries, in order, and what her requests may cost.	Shiori 的模型：annai 调用的提供商及其模型、每个角色依次尝试的模型，以及她的请求可能产生的费用。	src/ui/screens/models.js:53	Note: "may cost" is an estimate (可能), not what she is allowed to spend.
-o0a9z9	draft	Spending	花费	src/ui/screens/models.js:77	Note: the section of Settings → Models with what was spent and Spend per day; 花费 as in the glossary's 每日花费.
-1ernebb	draft	What Shiori's model calls, voices and live talk have cost on this phone, in all your trips and conversations; annai's own calls, such as Try this model, count too. A day starts at midnight here.	Shiori 在这部手机上调用模型、声音和实时语音的花费，包括所有旅行和对话；“试用这个模型”等 annai 自身的调用也算在内。每天按手机上的时间从午夜算起。	src/ui/screens/models.js:78	Note: "voices and live talk": her voices (声音, the glossary's word, with listening) and live voice sessions (实时语音); "here": the phone's own clock and time zone; "annai's own calls, such as Try this model": the System log's calls (Try this model, Test, plugins'), which Spend per day counts too. "in all your trips and conversations": 所有旅行和对话 (Me and the chats are counted too); "count too" is 也算在内, so 包括 stays with the trips and conversations.
-5eo22y#other	draft	Not counted: # calls to models with no prices. A model's page takes its prices, 0 for a server of your own.	未计入：没有设置价格的模型被调用了 # 次。价格可在模型页面填写，自己部署的服务器填 0。	src/ui/screens/models.js:80	plural; # = spent.unpriced; English: "Not counted: # call to a model with no prices. A model's page takes its prices, 0 for a server of your own." (one), "Not counted: # calls to models with no prices. A model's page takes its prices, 0 for a server of your own." (other); Note: 0 is the price to type for a server the traveller runs.
-glwyow	draft	What Shiori's model calls, voices and live talk may cost in a day, in all your trips and conversations; annai's own calls, such as Try this model, count too. Once it is spent, her turn ends with a card, and she goes on the next day. Empty: no limit.	Shiori 每天调用模型、声音和实时语音的花费上限，包括所有旅行和对话；“试用这个模型”等 annai 自身的调用也算在内。用完后，她这一轮会以一张卡片结束，第二天再继续。留空则不限。	src/ui/screens/models.js:82	Note: "annai's own calls, such as Try this model": the System log's calls, which count too; the same words as the Spending line above it. "count too" is 也算在内, so 包括 does not attach to the limit; no 当前, "this turn" is 这一轮.
-3bernd	ok	Spend per day (USD)	每日花费（美元）	src/ui/screens/models.js:83	
-yp0c9i	ok	A day costs at least $0.01; leave it empty for no limit.	每日至少 0.01 美元；留空则不限。	src/ui/screens/models.js:83	
-1kmogw5	ok	Cache	缓存	src/ui/screens/models.js:84	
-el1opd	ok	Providers keep the start of the conversation for a while, so her next request costs less. An hour costs more to write than five minutes, and pays off when you talk less often than every few minutes. A model that keeps it only five minutes is asked for five.	提供商会把对话开头缓存一段时间，让她的下一个请求更便宜。缓存一小时的写入费用比五分钟高，但如果你说话的间隔超过几分钟，选一小时更划算。只支持缓存五分钟的模型会按五分钟请求。	src/ui/screens/models.js:85	
-1bz9ywx	ok	5 minutes	5 分钟	src/ui/screens/models.js:86	
-3eima2	ok	1 hour	1 小时	src/ui/screens/models.js:86	
-kl14fu	ok	Keep it for	保留时长	src/ui/screens/models.js:86	
-uw7pcm	ok	Housekeeping	对话整理	src/ui/screens/models.js:87	
-bsmo7	draft	When a conversation gets long, Shiori summarizes its older part: at this share of her model's context or of the largest request below, or at 100,000 tokens if that comes first. She does it when you come back after her cache has run out, or just before it runs out if annai stays open. A request that would pass the largest size, or 90% of her model's context, is summarized at once. Photos and PDFs don't count toward the largest request: a summary can't make them smaller. Empty: the usual.	对话变长后，Shiori 会总结较早的部分。对话占到模型上下文或最大请求的这一比例，或达到 10 万 token（以先到者为准）时，就会总结。缓存过期后回来时会总结；如果 annai 一直开着，则在缓存过期前一刻总结。请求将超过最大请求大小，或模型上下文的 90% 时，会立即总结。照片和 PDF 不计入最大请求大小：总结无法让它们变小。留空则使用默认值。	src/ui/screens/models.js:88	
-1sywcgn	ok	Summarize at a share from 50 to 90%.	总结比例请设在 50% 到 90% 之间。	src/ui/screens/models.js:90	
-5gbpvm	ok	Summarize at (% of the context)	总结阈值（占上下文的 %）	src/ui/screens/models.js:90	
-gbbwof	ok	The largest request is from 1 to 64 MiB.	最大请求须在 1 到 64 MiB 之间。	src/ui/screens/models.js:91	
-jg9kdh	ok	Largest request (MiB)	最大请求（MiB）	src/ui/screens/models.js:91	
-9ubpo0	ok	Nothing switched on	未开启任何功能	src/ui/screens/models.js:108	
-y7dwt8#other	ok	# models	# 个模型	src/ui/screens/models.js:108	plural; # = n; English: "# model" (one), "# models" (other)
-awnddp	ok	Providers	提供商	src/ui/screens/models.js:110	
-rwmbqk	ok	No providers yet. Add one below.	还没有提供商。请在下方添加。	src/ui/screens/models.js:112	
-1cjfpwc	ok	Add a provider	添加提供商	src/ui/screens/models.js:113	
-hbz43i	ok	Roles	角色	src/ui/screens/models.js:143	
-1r5c1sj	ok	Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list, except Koe's.	每个角色从上往下依次尝试模型，一个失败就由下一个回答。空的角色使用主要列表（Koe 的除外）。	src/ui/screens/models.js:145	
-7uxkel	ok	The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.	语音列表也从上往下尝试：语音识别使用第一个适合当前模型的项目，朗读使用第一个有响应的声音。	src/ui/screens/models.js:148	
-1erapbm	ok	Remove {0} from {1}	从“{1}”中移除 {0}	src/ui/screens/models.js:172	{0} = nameOf(id); {1} = called
-1w3dq5v	ok	No models yet. Add one.	还没有模型。请添加一个。	src/ui/screens/models.js:178	
-14zzm1c	ok	Empty: Koe has no live voice, so Koe · Chat answers. Add one, such as Gemini Live, from a provider with live voice.	列表为空。Koe 没有实时语音，所以由 Koe · 聊天回答。请从支持实时语音的提供商添加一个，例如 Gemini Live。	src/ui/screens/models.js:179	Note: "realtime voice" and "live voice" are the glossary's Live voice (实时语音), not a voice she speaks with (声音).
-12bm0vn	ok	Empty: with Live off, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.	列表为空。实时关闭时，Shiori 独自用主要模型运行。在这里添加一个快速模型，让她能用它先快速开口。	src/ui/screens/models.js:180	Note: "one half" is 独自, per the glossary's halves note.
-wer5y9	ok	Nothing here, so annai can't hear you. Add an entry.	这里还没有任何项目，annai 听不到你说话。请添加一项。	src/ui/screens/models.js:181	
-1n694n2	ok	Nothing here, so Shiori can't speak aloud. Add a voice.	这里还没有任何项目，Shiori 无法出声说话。请添加一个声音。	src/ui/screens/models.js:182	
-el9rbx	ok	Uses the main list.	使用主要列表。	src/ui/screens/models.js:183	
-1rqw64m	ok	Wait for the voice (seconds)	等待声音（秒）	src/ui/screens/models.js:184	
-48wtk9	ok	Wait for the words (seconds)	等待文字（秒）	src/ui/screens/models.js:184	
-796n77	ok	Wait for the first words (seconds)	等待第一句（秒）	src/ui/screens/models.js:184	
-1xx9c0t	ok	When Shiori's model can't see a photo or read a PDF, a model of Koe's that can reads it, else one here, else Main's. With the PDF pages plugin, a model that sees photos reads a PDF's pages.	Shiori 的模型看不了照片或读不了 PDF 时，先由 Koe 中能处理的模型来读；没有的话，用这里的模型；再没有，就用主要模型。安装“PDF 页面”插件后，能看照片的模型也能读 PDF 的页面。	src/ui/screens/models.js:189	Note: "one here" is a model of this role (辅助), so 这里的模型; PDF 页面 is the plugin's name in Chinese (its pdf-pages:@name).
-14w2ppx	ok	Add a provider for {0}	为“{0}”添加提供商	src/ui/screens/models.js:191	{0} = called
-17olz31	ok	Add a model to {0}	向“{0}”添加模型	src/ui/screens/models.js:193	{0} = called
-58mvoq	ok	Reasoning for {0}	推理级别（{0}）	src/ui/screens/models.js:201	{0} = called; Note: A label under a role: "主要的推理" read oddly; the role in brackets.
-1cwghfv	ok	Wait from 1 to 600 seconds; leave it empty for the usual.	等待时间须为 1 到 600 秒；留空则使用默认值。	src/ui/screens/models.js:202	
-8nhvom	ok	Reorder {0}, {1} of {2}	重新排序 {0}，第 {1} 项，共 {2} 项	src/ui/screens/models.js:217	{0} = name; {1} = num(i + 1); {2} = num(n)
-17wwgww	ok	 ({0})	（{0}）	src/ui/screens/models.js:230	{0} = note; Note: no space before the full-width bracket.
-1r8iepd	ok	Drag, or use the arrow keys	拖动，或使用方向键	src/ui/screens/models.js:235	Note: "arrow keys" are keyboard keys (方向键), not an API key (密钥).
-1ln5v12	ok	Move {0}	移动 {0}	src/ui/screens/models.js:237	{0} = name
-1rvkqip	ok	Move up	上移	src/ui/screens/models.js:238	
-c2tjmw	ok	Move down	下移	src/ui/screens/models.js:239	
+o0a9z9	draft	Spending	花费	src/ui/screens/models.js:75	Note: the section of Settings → Models with what was spent and Spend per day; 花费 as in the glossary's 每日花费.
+1ernebb	draft	What Shiori's model calls, voices and live talk have cost on this phone, in all your trips and conversations; annai's own calls, such as Try this model, count too. A day starts at midnight here.	Shiori 在这部手机上调用模型、声音和实时语音的花费，包括所有旅行和对话；“试用这个模型”等 annai 自身的调用也算在内。每天按手机上的时间从午夜算起。	src/ui/screens/models.js:76	Note: "voices and live talk": her voices (声音, the glossary's word, with listening) and live voice sessions (实时语音); "here": the phone's own clock and time zone; "annai's own calls, such as Try this model": the System log's calls (Try this model, Test, plugins'), which Spend per day counts too. "in all your trips and conversations": 所有旅行和对话 (Me and the chats are counted too); "count too" is 也算在内, so 包括 stays with the trips and conversations.
+5eo22y#other	draft	Not counted: # calls to models with no prices. A model's page takes its prices, 0 for a server of your own.	未计入：没有设置价格的模型被调用了 # 次。价格可在模型页面填写，自己部署的服务器填 0。	src/ui/screens/models.js:78	plural; # = spent.unpriced; English: "Not counted: # call to a model with no prices. A model's page takes its prices, 0 for a server of your own." (one), "Not counted: # calls to models with no prices. A model's page takes its prices, 0 for a server of your own." (other); Note: 0 is the price to type for a server the traveller runs.
+glwyow	draft	What Shiori's model calls, voices and live talk may cost in a day, in all your trips and conversations; annai's own calls, such as Try this model, count too. Once it is spent, her turn ends with a card, and she goes on the next day. Empty: no limit.	Shiori 每天调用模型、声音和实时语音的花费上限，包括所有旅行和对话；“试用这个模型”等 annai 自身的调用也算在内。用完后，她这一轮会以一张卡片结束，第二天再继续。留空则不限。	src/ui/screens/models.js:80	Note: "annai's own calls, such as Try this model": the System log's calls, which count too; the same words as the Spending line above it. "count too" is 也算在内, so 包括 does not attach to the limit; no 当前, "this turn" is 这一轮.
+3bernd	ok	Spend per day (USD)	每日花费（美元）	src/ui/screens/models.js:81	
+yp0c9i	ok	A day costs at least $0.01; leave it empty for no limit.	每日至少 0.01 美元；留空则不限。	src/ui/screens/models.js:81	
+1kmogw5	ok	Cache	缓存	src/ui/screens/models.js:82	
+el1opd	ok	Providers keep the start of the conversation for a while, so her next request costs less. An hour costs more to write than five minutes, and pays off when you talk less often than every few minutes. A model that keeps it only five minutes is asked for five.	提供商会把对话开头缓存一段时间，让她的下一个请求更便宜。缓存一小时的写入费用比五分钟高，但如果你说话的间隔超过几分钟，选一小时更划算。只支持缓存五分钟的模型会按五分钟请求。	src/ui/screens/models.js:83	
+1bz9ywx	ok	5 minutes	5 分钟	src/ui/screens/models.js:84	
+3eima2	ok	1 hour	1 小时	src/ui/screens/models.js:84	
+kl14fu	ok	Keep it for	保留时长	src/ui/screens/models.js:84	
+uw7pcm	ok	Housekeeping	对话整理	src/ui/screens/models.js:85	
+3iix7u	draft	When a conversation gets long, Shiori summarizes its older part: at this share of her model's context, or at 100,000 tokens if that comes first. She does it when you come back after her cache has run out, or just before it runs out if annai stays open. A request that would pass 90% of her model's context is summarized at once. Empty: the usual.	对话变长后，Shiori 会总结较早的部分。对话占到模型上下文的这一比例，或达到 10 万 token（以先到者为准）时，就会总结。缓存过期后回来时会总结；如果 annai 一直开着，则在缓存过期前一刻总结。请求将超过模型上下文的 90% 时，会立即总结。留空则使用默认值。	src/ui/screens/models.js:86	
+1sywcgn	ok	Summarize at a share from 50 to 90%.	总结比例请设在 50% 到 90% 之间。	src/ui/screens/models.js:87	
+5gbpvm	ok	Summarize at (% of the context)	总结阈值（占上下文的 %）	src/ui/screens/models.js:87	
+9ubpo0	ok	Nothing switched on	未开启任何功能	src/ui/screens/models.js:104	
+y7dwt8#other	ok	# models	# 个模型	src/ui/screens/models.js:104	plural; # = n; English: "# model" (one), "# models" (other)
+awnddp	ok	Providers	提供商	src/ui/screens/models.js:106	
+rwmbqk	ok	No providers yet. Add one below.	还没有提供商。请在下方添加。	src/ui/screens/models.js:108	
+1cjfpwc	ok	Add a provider	添加提供商	src/ui/screens/models.js:109	
+hbz43i	ok	Roles	角色	src/ui/screens/models.js:139	
+1r5c1sj	ok	Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list, except Koe's.	每个角色从上往下依次尝试模型，一个失败就由下一个回答。空的角色使用主要列表（Koe 的除外）。	src/ui/screens/models.js:141	
+7uxkel	ok	The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.	语音列表也从上往下尝试：语音识别使用第一个适合当前模型的项目，朗读使用第一个有响应的声音。	src/ui/screens/models.js:144	
+1erapbm	ok	Remove {0} from {1}	从“{1}”中移除 {0}	src/ui/screens/models.js:168	{0} = nameOf(id); {1} = called
+1w3dq5v	ok	No models yet. Add one.	还没有模型。请添加一个。	src/ui/screens/models.js:174	
+14zzm1c	ok	Empty: Koe has no live voice, so Koe · Chat answers. Add one, such as Gemini Live, from a provider with live voice.	列表为空。Koe 没有实时语音，所以由 Koe · 聊天回答。请从支持实时语音的提供商添加一个，例如 Gemini Live。	src/ui/screens/models.js:175	Note: "realtime voice" and "live voice" are the glossary's Live voice (实时语音), not a voice she speaks with (声音).
+12bm0vn	ok	Empty: with Live off, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.	列表为空。实时关闭时，Shiori 独自用主要模型运行。在这里添加一个快速模型，让她能用它先快速开口。	src/ui/screens/models.js:176	Note: "one half" is 独自, per the glossary's halves note.
+wer5y9	ok	Nothing here, so annai can't hear you. Add an entry.	这里还没有任何项目，annai 听不到你说话。请添加一项。	src/ui/screens/models.js:177	
+1n694n2	ok	Nothing here, so Shiori can't speak aloud. Add a voice.	这里还没有任何项目，Shiori 无法出声说话。请添加一个声音。	src/ui/screens/models.js:178	
+el9rbx	ok	Uses the main list.	使用主要列表。	src/ui/screens/models.js:179	
+1rqw64m	ok	Wait for the voice (seconds)	等待声音（秒）	src/ui/screens/models.js:180	
+48wtk9	ok	Wait for the words (seconds)	等待文字（秒）	src/ui/screens/models.js:180	
+796n77	ok	Wait for the first words (seconds)	等待第一句（秒）	src/ui/screens/models.js:180	
+1xx9c0t	ok	When Shiori's model can't see a photo or read a PDF, a model of Koe's that can reads it, else one here, else Main's. With the PDF pages plugin, a model that sees photos reads a PDF's pages.	Shiori 的模型看不了照片或读不了 PDF 时，先由 Koe 中能处理的模型来读；没有的话，用这里的模型；再没有，就用主要模型。安装“PDF 页面”插件后，能看照片的模型也能读 PDF 的页面。	src/ui/screens/models.js:185	Note: "one here" is a model of this role (辅助), so 这里的模型; PDF 页面 is the plugin's name in Chinese (its pdf-pages:@name).
+14w2ppx	ok	Add a provider for {0}	为“{0}”添加提供商	src/ui/screens/models.js:187	{0} = called
+17olz31	ok	Add a model to {0}	向“{0}”添加模型	src/ui/screens/models.js:189	{0} = called
+58mvoq	ok	Reasoning for {0}	推理级别（{0}）	src/ui/screens/models.js:197	{0} = called; Note: A label under a role: "主要的推理" read oddly; the role in brackets.
+1cwghfv	ok	Wait from 1 to 600 seconds; leave it empty for the usual.	等待时间须为 1 到 600 秒；留空则使用默认值。	src/ui/screens/models.js:198	
+8nhvom	ok	Reorder {0}, {1} of {2}	重新排序 {0}，第 {1} 项，共 {2} 项	src/ui/screens/models.js:213	{0} = name; {1} = num(i + 1); {2} = num(n)
+17wwgww	ok	 ({0})	（{0}）	src/ui/screens/models.js:226	{0} = note; Note: no space before the full-width bracket.
+1r8iepd	ok	Drag, or use the arrow keys	拖动，或使用方向键	src/ui/screens/models.js:231	Note: "arrow keys" are keyboard keys (方向键), not an API key (密钥).
+1ln5v12	ok	Move {0}	移动 {0}	src/ui/screens/models.js:233	{0} = name
+1rvkqip	ok	Move up	上移	src/ui/screens/models.js:234	
+c2tjmw	ok	Move down	下移	src/ui/screens/models.js:235	
 1yveacd	ok	Notifications are turned off for annai on this iPhone. Turn them on in Settings → Notifications → annai, then come back here.	这台 iPhone 上 annai 的通知已关闭。请在设置 → 通知 → annai 中开启，然后回到这里。	src/ui/screens/notifications.js:9	
 x5n8yx	ok	Notifications are blocked for annai. Touch and hold annai's icon, then App info → Notifications, and allow them; then come back here.	annai 的通知已被屏蔽。请长按 annai 的图标，进入应用信息 → 通知，允许通知后再回到这里。	src/ui/screens/notifications.js:10	
 3e712g	ok	Notifications are blocked for this site. Allow them in the browser's site settings (the icon beside the address), then come back here.	此网站的通知已被屏蔽。请在浏览器的网站设置（地址栏旁的图标）中允许通知，然后回到这里。	src/ui/screens/notifications.js:11	Note: "site settings" as the glossary's Site settings (サイトの設定 / 网站设置).
@@ -2715,61 +2715,63 @@ fceyoz	ok	Voice	语音	src/ui/screens/voice.js:47	context: voice mode; Note: voi
 3gprw9	ok	Keep voice clips	保留语音片段	src/ui/screens/voice.js:55	Note: Voice clips are recordings of what you said (语音片段), not a voice she speaks with (声音).
 1r528n6	ok	Keep the screen on while GPS is on	GPS 开启时保持屏幕常亮	src/ui/screens/voice.js:61	
 o7g54g	ok	Cut her off by speaking	说话即可打断她	src/ui/screens/voice.js:62	
-1maeag1	ok	Speaking…	正在朗读…	src/ui/screens/voice.js:70	
-1rasxdf	ok	This browser didn't let annai play sound yet. Tap anywhere on the page, then try again.	浏览器暂时不允许播放声音。请先轻点页面任意位置，再试一次。	src/ui/screens/voice.js:75	
-m6lqjc	ok	{0} couldn't speak: {1}	{0} 无法朗读：{1}	src/ui/screens/voice.js:76	{0} = names(f.name); {1} = await speechProblem(ctx.store, f.error, true)
-39tqta	ok	No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.	所有声音都无法朗读。各声音的返回信息见“记录”，请在设置 → 模型中检查。	src/ui/screens/voice.js:77	
-1v88hol	ok	{0}, then {1}	{0}，然后是 {1}	src/ui/screens/voice.js:78	context: one voice, then the next; {0} = a; {1} = b; Note: voices in the order they spoke: "A, then B, then C".
-1w6xnpw	ok	Spoken by {0}.	朗读的声音：{0}。	src/ui/screens/voice.js:78	{0} = r.voices.map(names).reduce((/** @type {string} */ a, /** @type {string} */ b) => tc('one voice, then the next')`${a}, then ${b}`)
-1l6oe5c	ok	Test the voice	测试声音	src/ui/screens/voice.js:85	
-1bbvn6f	ok	Automatic: one on this phone when there is one	自动：优先使用本机声音	src/ui/screens/voice.js:92	
-1swzhj6	ok	{0} ({1}, online)	{0}（{1}，在线）	src/ui/screens/voice.js:93	{0} = v.name; {1} = v.lang; Note: a browser voice, its language code, and that it sends her words online.
-1er0uz6	ok	How loud the microphone hears you	麦克风收音音量	src/ui/screens/voice.js:103	
-1v58i1s	ok	Say something…	说点什么…	src/ui/screens/voice.js:109	
-bjwya4	ok	Hearing you…	正在听你说…	src/ui/screens/voice.js:113	
-1hsov55	ok	Nothing was heard in 15 seconds. Check that the microphone is on and that no other app is using it, then try again.	15 秒内没听到声音。请确认麦克风已开启且没有被别的应用占用，然后再试一次。	src/ui/screens/voice.js:115	Note: 应用 for an app on any phone, as the microphone's other rows say it.
-1plbhzy	ok	Heard {0} of speech.	听到了 {0}的语音。	src/ui/screens/voice.js:118	{0} = seconds(seg.ms, 'long')
-u495xc	ok	Writing it down…	正在转成文字…	src/ui/screens/voice.js:121	
-1fnqjaw	ok	{0} heard: "{1}"	{0} 听到：“{1}”	src/ui/screens/voice.js:125	{0} = name; {1} = text
-1rgfjj8	ok	{0} heard speech but wrote nothing down.	{0} 听到了语音，但没有转出任何文字。	src/ui/screens/voice.js:125	{0} = name
-1rec7os	ok	Add a transcription model in Settings → Models to see the words.	在设置 → 模型中添加语音转文字模型，就能看到文字。	src/ui/screens/voice.js:127	
-5uf1sa	ok	Test the microphone	测试麦克风	src/ui/screens/voice.js:138	
-1du6nik	ok	Settings → Models	设置 → 模型	src/ui/screens/voice.js:140	
-1tl20ub	ok	How Shiori speaks and hears you. Which voices and which transcription models she uses, and in what order, is in Settings → Models.	Shiori 说话和听你说话的方式。她使用哪些声音和语音转文字模型、按什么顺序使用，可在设置 → 模型中调整。	src/ui/screens/voice.js:144	
-1nt5zac	ok	On or off	开启或关闭	src/ui/screens/voice.js:145	
-u0woti	ok	On: Shiori speaks aloud and listens for your answer. Off: she writes. A tap on Shiori always turns voice on until that exchange ends; the keyboard button is how to type. With GPS on, voice is on while driving. It goes off by itself when a drive ends or headphones disconnect. The chip on the dock changes it too.	开启：Shiori 会出声说话，并听你回答。关闭：她用文字回答。无论开启还是关闭，轻点 Shiori 都会开启语音，直到这一轮结束；要打字请用键盘按钮。GPS 开启时，驾驶期间语音会开启；驾驶结束或耳机断开时会自动关闭。底栏的语音按钮也可以切换。	src/ui/screens/voice.js:146	Note: voice is the Voice setting (语音), not her voice (声音).
-1hwskdv	ok	Listen for 2 to 60 seconds.	请设为 2 到 60 秒。	src/ui/screens/voice.js:149	
-qyfmia	ok	Listen for an answer (seconds)	等待回答（秒）	src/ui/screens/voice.js:149	
-1f9vvmr	ok	Wait for her first words (seconds)	等待她开口（秒）	src/ui/screens/voice.js:150	
-1sz04rq	ok	Wait 5 to 120 seconds.	请设为 5 到 120 秒。	src/ui/screens/voice.js:150	
-17b2a79	ok	On the screen	屏幕显示	src/ui/screens/voice.js:151	
-4xxyqf	ok	On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".	开启：她出声说的话会显示在对话中，并标为“已朗读”；她说话时，上方的气泡里也会显示。关闭：屏幕保持简洁，她说过的话在对话中收起，轻点“查看她说的话”才会显示。	src/ui/screens/voice.js:153	Note: "said aloud" and "Show what she said" are the conversation's own words: they must match those rows.
-y61lbz	ok	Shiori's voice	Shiori 的声音	src/ui/screens/voice.js:154	
-1879vb9	ok	Voices, tried in order: none.	依次尝试的声音：无。	src/ui/screens/voice.js:155	
-1su08w7	ok	Voices, tried in order: {0}.	依次尝试的声音：{0}。	src/ui/screens/voice.js:155	{0} = list(entries.map((/** @type {any} */ e) => names(e.name)), 'plain')
-1oc2cqc	ok	The browser’s own voice. Some of its voices speak on this phone; those marked online send her words to their service.	浏览器自带的声音。部分声音在本机朗读；标有“在线”的会把她的话发送到相应的服务。	src/ui/screens/voice.js:158	
-t9jotl	ok	This browser has no voice of its own.	此浏览器没有自带声音。	src/ui/screens/voice.js:158	
-154la7x	ok	The speed goes from 0.5 (slow) to 2 (fast); 1 is normal.	速度范围为 0.5（慢）到 2（快），1 为正常速度。	src/ui/screens/voice.js:161	
-1r7xlh3	ok	Speed (0.5 to 2)	速度（0.5 到 2）	src/ui/screens/voice.js:161	
-1hnhxk8	ok	Listening	语音识别	src/ui/screens/voice.js:162	context: section; Note: Settings → Voice's section on how annai hears you (the glossary's Speech in), not Shiori's state.
-rwdfwh	ok	annai hears that you finished a sentence when you pause. A longer pause lets you think mid-sentence; a shorter one answers sooner.	你一停顿，annai 就认为这句话说完了。停顿时间设长一点，说到一半可以停下来想想；设短一点，回应更快。	src/ui/screens/voice.js:163	
-11q2yij	ok	Pause that ends a sentence (ms)	断句停顿（毫秒）	src/ui/screens/voice.js:164	
-mfkrny	ok	The pause goes from 300 to 3000 milliseconds; 700 is the usual.	停顿范围为 300 到 3000 毫秒，一般为 700。	src/ui/screens/voice.js:164	
-d3o3oq	ok	Off: what the microphone hears is sent to be written down, then let go. On: each clip is kept with the conversation, and in backups.	关闭：麦克风录到的声音发去转成文字后即丢弃。开启：每段语音都随对话保存，也会包含在备份中。	src/ui/screens/voice.js:167	
-1xjm3fg	ok	Live on: Shiori hears you and answers in one stream, with a live model. Live off: what you say is written down, then answered. The Live chip on the dock switches it.	实时开启：Shiori 用实时模型在同一条音频流中听你说话并回答。实时关闭：先把你说的话转成文字，再回答。底栏的“实时”按钮可以切换。	src/ui/screens/voice.js:170	
-byedp9	ok	While a live session listens, what you say goes straight to {0} as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.	实时会话收听时，你说的话会以音频形式直接发送给 {0}（仅在有人说话时发送），按钮上会显示“正在实时收听”。超过下方设定的时间没有交流、你让她睡觉、关闭语音，或 annai 离开屏幕时，会话就会结束。如果一直有声音（比如音乐），由 Shiori 决定什么时候睡觉。	src/ui/screens/voice.js:172	{0} = list(live, 'or'); Note: "on voice off" is the glossary's Voice off mode (关闭语音).
-8znos	ok	While a live session listens, what you say goes straight to its provider as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.	实时会话收听时，你说的话会以音频形式直接发送给它的提供商（仅在有人说话时发送），按钮上会显示“正在实时收听”。超过下方设定的时间没有交流、你让她睡觉、关闭语音，或 annai 离开屏幕时，会话就会结束。如果一直有声音（比如音乐），由 Shiori 决定什么时候睡觉。	src/ui/screens/voice.js:173	Note: "on voice off" is the glossary's Voice off mode (关闭语音).
-lqovw2	ok	While she listens, set her voice's volume with the iPhone's volume buttons: iPhone may keep it apart from the volume of music and videos.	她在听的时候，请用 iPhone 的音量键调节她的音量。iPhone 可能会把它和音乐、视频的音量分开。	src/ui/screens/voice.js:175	
-18jgtvh	ok	Close after 10 to 300 seconds with no exchange.	请设为 10 到 300 秒。	src/ui/screens/voice.js:176	
-csv386	ok	Close a live session after (seconds with no exchange)	多久无交流后结束实时会话（秒）	src/ui/screens/voice.js:176	
-w195po	ok	Only with headphones or car audio: on the phone's own speaker the microphone hears her, so there only a tap cuts her off. Off: only a tap, everywhere, for a car whose speakers echo her voice back.	仅在使用耳机或车载音响时有效。用手机扬声器时，麦克风会听到她的声音，所以只能轻点打断。关闭：无论在哪里都只能轻点打断，适合扬声器会把她的声音传回麦克风的车。	src/ui/screens/voice.js:178	
-10ndarn	ok	GPS	GPS	src/ui/screens/voice.js:179	
-15itdyc	ok	The chip on the dock turns GPS on and off. Keeping the screen on uses more battery; without it, a locked phone stops following where you are.	底栏的 GPS 按钮可以开启或关闭 GPS。屏幕常亮会更耗电；但不开的话，手机锁屏后就无法继续追踪你的位置。	src/ui/screens/voice.js:181	
-ph6h35	ok	Where your voice goes	语音的去向	src/ui/screens/voice.js:182	
-rfzxba	ok	What you say goes to the first of these that can hear it; what she says, to the first voice that works. To change the order, go to {0}.	你说的话会交给下面第一个能识别的；她说的话，由第一个能用的声音朗读。要调整顺序，请前往{0}。	src/ui/screens/voice.js:183	{0} = models
-283rev	ok	What you say	你说的话	src/ui/screens/voice.js:184	
-127uny	ok	To keep your voice on the phone, type with your keyboard's microphone key: iPhone and most Android keyboards can dictate on the phone itself.	如果不想让语音离开手机，请用键盘上的麦克风键输入。iPhone 和大多数 Android 键盘都能在本机完成语音输入。	src/ui/screens/voice.js:186	Note: "microphone key" is a keyboard key (麦克风键), not an API key (密钥); "your voice" is your own speech.
-bewa4v	ok	What she says	她说的话	src/ui/screens/voice.js:187	
+mylzwr	draft	Keep my music playing	保持音乐播放	src/ui/screens/voice.js:64	Note: a switch label: 保持……播放, as a setting reads.
+1maeag1	ok	Speaking…	正在朗读…	src/ui/screens/voice.js:72	
+1rasxdf	ok	This browser didn't let annai play sound yet. Tap anywhere on the page, then try again.	浏览器暂时不允许播放声音。请先轻点页面任意位置，再试一次。	src/ui/screens/voice.js:77	
+m6lqjc	ok	{0} couldn't speak: {1}	{0} 无法朗读：{1}	src/ui/screens/voice.js:78	{0} = names(f.name); {1} = await speechProblem(ctx.store, f.error, true)
+39tqta	ok	No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.	所有声音都无法朗读。各声音的返回信息见“记录”，请在设置 → 模型中检查。	src/ui/screens/voice.js:79	
+1v88hol	ok	{0}, then {1}	{0}，然后是 {1}	src/ui/screens/voice.js:80	context: one voice, then the next; {0} = a; {1} = b; Note: voices in the order they spoke: "A, then B, then C".
+1w6xnpw	ok	Spoken by {0}.	朗读的声音：{0}。	src/ui/screens/voice.js:80	{0} = r.voices.map(names).reduce((/** @type {string} */ a, /** @type {string} */ b) => tc('one voice, then the next')`${a}, then ${b}`)
+1l6oe5c	ok	Test the voice	测试声音	src/ui/screens/voice.js:87	
+1bbvn6f	ok	Automatic: one on this phone when there is one	自动：优先使用本机声音	src/ui/screens/voice.js:94	
+1swzhj6	ok	{0} ({1}, online)	{0}（{1}，在线）	src/ui/screens/voice.js:95	{0} = v.name; {1} = v.lang; Note: a browser voice, its language code, and that it sends her words online.
+1er0uz6	ok	How loud the microphone hears you	麦克风收音音量	src/ui/screens/voice.js:105	
+1v58i1s	ok	Say something…	说点什么…	src/ui/screens/voice.js:111	
+bjwya4	ok	Hearing you…	正在听你说…	src/ui/screens/voice.js:115	
+1hsov55	ok	Nothing was heard in 15 seconds. Check that the microphone is on and that no other app is using it, then try again.	15 秒内没听到声音。请确认麦克风已开启且没有被别的应用占用，然后再试一次。	src/ui/screens/voice.js:117	Note: 应用 for an app on any phone, as the microphone's other rows say it.
+1plbhzy	ok	Heard {0} of speech.	听到了 {0}的语音。	src/ui/screens/voice.js:120	{0} = seconds(seg.ms, 'long')
+u495xc	ok	Writing it down…	正在转成文字…	src/ui/screens/voice.js:123	
+1fnqjaw	ok	{0} heard: "{1}"	{0} 听到：“{1}”	src/ui/screens/voice.js:127	{0} = name; {1} = text
+1rgfjj8	ok	{0} heard speech but wrote nothing down.	{0} 听到了语音，但没有转出任何文字。	src/ui/screens/voice.js:127	{0} = name
+1rec7os	ok	Add a transcription model in Settings → Models to see the words.	在设置 → 模型中添加语音转文字模型，就能看到文字。	src/ui/screens/voice.js:129	
+5uf1sa	ok	Test the microphone	测试麦克风	src/ui/screens/voice.js:140	
+1du6nik	ok	Settings → Models	设置 → 模型	src/ui/screens/voice.js:142	
+1tl20ub	ok	How Shiori speaks and hears you. Which voices and which transcription models she uses, and in what order, is in Settings → Models.	Shiori 说话和听你说话的方式。她使用哪些声音和语音转文字模型、按什么顺序使用，可在设置 → 模型中调整。	src/ui/screens/voice.js:146	
+1nt5zac	ok	On or off	开启或关闭	src/ui/screens/voice.js:147	
+u0woti	ok	On: Shiori speaks aloud and listens for your answer. Off: she writes. A tap on Shiori always turns voice on until that exchange ends; the keyboard button is how to type. With GPS on, voice is on while driving. It goes off by itself when a drive ends or headphones disconnect. The chip on the dock changes it too.	开启：Shiori 会出声说话，并听你回答。关闭：她用文字回答。无论开启还是关闭，轻点 Shiori 都会开启语音，直到这一轮结束；要打字请用键盘按钮。GPS 开启时，驾驶期间语音会开启；驾驶结束或耳机断开时会自动关闭。底栏的语音按钮也可以切换。	src/ui/screens/voice.js:148	Note: voice is the Voice setting (语音), not her voice (声音).
+1hwskdv	ok	Listen for 2 to 60 seconds.	请设为 2 到 60 秒。	src/ui/screens/voice.js:151	
+qyfmia	ok	Listen for an answer (seconds)	等待回答（秒）	src/ui/screens/voice.js:151	
+1f9vvmr	ok	Wait for her first words (seconds)	等待她开口（秒）	src/ui/screens/voice.js:152	
+1sz04rq	ok	Wait 5 to 120 seconds.	请设为 5 到 120 秒。	src/ui/screens/voice.js:152	
+nmzc3s	draft	On: your music plays on at its own volume while Shiori speaks. She can't be heard while the phone is in silent mode, and she doesn't listen by herself after speaking: tap her to answer, which stops the music. With Live voice, a session she opens by herself doesn't listen; one you start with a tap listens until it closes, which stops the music too.	开启：Shiori 说话时，音乐继续以原音量播放。手机处于静音模式时听不到她的声音；她说完后也不会自动聆听，要回答时请轻点 Shiori（音乐将停止）。实时语音中，Shiori 自己开启的实时会话不会收听；轻点开启的实时会话会一直收听，直到会话结束，音乐同样将停止。	src/ui/screens/voice.js:154	Note: 静音模式 for the phone's silent mode (not yet checked against the iPhone's own word); 以原音量 says "at its own volume" (not lowered); 音乐将停止, never 音乐会停止 (read as 音乐会, a concert); 实时会话 as the style page's table; 收听 for a live session's listening, as the Live chip (正在实时收听), 聆听 for the dock's; 直到会话结束, "until it closes".
+17b2a79	ok	On the screen	屏幕显示	src/ui/screens/voice.js:155	
+4xxyqf	ok	On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".	开启：她出声说的话会显示在对话中，并标为“已朗读”；她说话时，上方的气泡里也会显示。关闭：屏幕保持简洁，她说过的话在对话中收起，轻点“查看她说的话”才会显示。	src/ui/screens/voice.js:157	Note: "said aloud" and "Show what she said" are the conversation's own words: they must match those rows.
+y61lbz	ok	Shiori's voice	Shiori 的声音	src/ui/screens/voice.js:158	
+1879vb9	ok	Voices, tried in order: none.	依次尝试的声音：无。	src/ui/screens/voice.js:159	
+1su08w7	ok	Voices, tried in order: {0}.	依次尝试的声音：{0}。	src/ui/screens/voice.js:159	{0} = list(entries.map((/** @type {any} */ e) => names(e.name)), 'plain')
+1oc2cqc	ok	The browser’s own voice. Some of its voices speak on this phone; those marked online send her words to their service.	浏览器自带的声音。部分声音在本机朗读；标有“在线”的会把她的话发送到相应的服务。	src/ui/screens/voice.js:162	
+t9jotl	ok	This browser has no voice of its own.	此浏览器没有自带声音。	src/ui/screens/voice.js:162	
+154la7x	ok	The speed goes from 0.5 (slow) to 2 (fast); 1 is normal.	速度范围为 0.5（慢）到 2（快），1 为正常速度。	src/ui/screens/voice.js:165	
+1r7xlh3	ok	Speed (0.5 to 2)	速度（0.5 到 2）	src/ui/screens/voice.js:165	
+1hnhxk8	ok	Listening	语音识别	src/ui/screens/voice.js:166	context: section; Note: Settings → Voice's section on how annai hears you (the glossary's Speech in), not Shiori's state.
+rwdfwh	ok	annai hears that you finished a sentence when you pause. A longer pause lets you think mid-sentence; a shorter one answers sooner.	你一停顿，annai 就认为这句话说完了。停顿时间设长一点，说到一半可以停下来想想；设短一点，回应更快。	src/ui/screens/voice.js:167	
+11q2yij	ok	Pause that ends a sentence (ms)	断句停顿（毫秒）	src/ui/screens/voice.js:168	
+mfkrny	ok	The pause goes from 300 to 3000 milliseconds; 700 is the usual.	停顿范围为 300 到 3000 毫秒，一般为 700。	src/ui/screens/voice.js:168	
+d3o3oq	ok	Off: what the microphone hears is sent to be written down, then let go. On: each clip is kept with the conversation, and in backups.	关闭：麦克风录到的声音发去转成文字后即丢弃。开启：每段语音都随对话保存，也会包含在备份中。	src/ui/screens/voice.js:171	
+1xjm3fg	ok	Live on: Shiori hears you and answers in one stream, with a live model. Live off: what you say is written down, then answered. The Live chip on the dock switches it.	实时开启：Shiori 用实时模型在同一条音频流中听你说话并回答。实时关闭：先把你说的话转成文字，再回答。底栏的“实时”按钮可以切换。	src/ui/screens/voice.js:174	
+byedp9	ok	While a live session listens, what you say goes straight to {0} as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.	实时会话收听时，你说的话会以音频形式直接发送给 {0}（仅在有人说话时发送），按钮上会显示“正在实时收听”。超过下方设定的时间没有交流、你让她睡觉、关闭语音，或 annai 离开屏幕时，会话就会结束。如果一直有声音（比如音乐），由 Shiori 决定什么时候睡觉。	src/ui/screens/voice.js:176	{0} = list(live, 'or'); Note: "on voice off" is the glossary's Voice off mode (关闭语音).
+8znos	ok	While a live session listens, what you say goes straight to its provider as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.	实时会话收听时，你说的话会以音频形式直接发送给它的提供商（仅在有人说话时发送），按钮上会显示“正在实时收听”。超过下方设定的时间没有交流、你让她睡觉、关闭语音，或 annai 离开屏幕时，会话就会结束。如果一直有声音（比如音乐），由 Shiori 决定什么时候睡觉。	src/ui/screens/voice.js:177	Note: "on voice off" is the glossary's Voice off mode (关闭语音).
+lqovw2	ok	While she listens, set her voice's volume with the iPhone's volume buttons: iPhone may keep it apart from the volume of music and videos.	她在听的时候，请用 iPhone 的音量键调节她的音量。iPhone 可能会把它和音乐、视频的音量分开。	src/ui/screens/voice.js:179	
+18jgtvh	ok	Close after 10 to 300 seconds with no exchange.	请设为 10 到 300 秒。	src/ui/screens/voice.js:180	
+csv386	ok	Close a live session after (seconds with no exchange)	多久无交流后结束实时会话（秒）	src/ui/screens/voice.js:180	
+w195po	ok	Only with headphones or car audio: on the phone's own speaker the microphone hears her, so there only a tap cuts her off. Off: only a tap, everywhere, for a car whose speakers echo her voice back.	仅在使用耳机或车载音响时有效。用手机扬声器时，麦克风会听到她的声音，所以只能轻点打断。关闭：无论在哪里都只能轻点打断，适合扬声器会把她的声音传回麦克风的车。	src/ui/screens/voice.js:182	
+10ndarn	ok	GPS	GPS	src/ui/screens/voice.js:183	
+15itdyc	ok	The chip on the dock turns GPS on and off. Keeping the screen on uses more battery; without it, a locked phone stops following where you are.	底栏的 GPS 按钮可以开启或关闭 GPS。屏幕常亮会更耗电；但不开的话，手机锁屏后就无法继续追踪你的位置。	src/ui/screens/voice.js:185	
+ph6h35	ok	Where your voice goes	语音的去向	src/ui/screens/voice.js:186	
+rfzxba	ok	What you say goes to the first of these that can hear it; what she says, to the first voice that works. To change the order, go to {0}.	你说的话会交给下面第一个能识别的；她说的话，由第一个能用的声音朗读。要调整顺序，请前往{0}。	src/ui/screens/voice.js:187	{0} = models
+283rev	ok	What you say	你说的话	src/ui/screens/voice.js:188	
+127uny	ok	To keep your voice on the phone, type with your keyboard's microphone key: iPhone and most Android keyboards can dictate on the phone itself.	如果不想让语音离开手机，请用键盘上的麦克风键输入。iPhone 和大多数 Android 键盘都能在本机完成语音输入。	src/ui/screens/voice.js:190	Note: "microphone key" is a keyboard key (麦克风键), not an API key (密钥); "your voice" is your own speech.
+bewa4v	ok	What she says	她说的话	src/ui/screens/voice.js:191	
 12fg67m	ok	Searching the web	网络搜索	src/ui/screens/welcome.js:20	
 13sqoog	ok	Shiori, Koe and Kokoro	Shiori、Koe 和 Kokoro	src/ui/screens/welcome.js:20	
 1okgje1	ok	What annai can do	annai 能做什么	src/ui/screens/welcome.js:20	

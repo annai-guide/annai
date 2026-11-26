@@ -70,9 +70,7 @@ const section = (title, ...children) => h('section', { class: 'panel', 'aria-lab
 function requestSections(ctx, s, spent) {
   const save = (/** @type {Record<string, any>} */ c) => updateAppSettings(ctx.ws, { shiori: c });
   const spend = h('input', { id: 'budget-spend', inputmode: 'decimal', placeholder: t`No limit`, value: numField(s.budgets?.spendPerDay) });
-  const c = { threshold: 0.7, maxRequestMiB: 8, ...(s.compaction ?? {}) };
-  const share = h('input', { id: 'compaction-threshold', inputmode: 'numeric', placeholder: '70', value: numField(Math.round(c.threshold * 100)) });
-  const mib = h('input', { id: 'compaction-max', inputmode: 'decimal', placeholder: '8', value: numField(c.maxRequestMiB) });
+  const share = h('input', { id: 'compaction-threshold', inputmode: 'numeric', placeholder: '70', value: numField(Math.round((s.compaction?.threshold ?? 0.7) * 100)) });
   return [
     section(t`Spending`,
       h('p', { class: 'sub', text: t`What Shiori's model calls, voices and live talk have cost on this phone, in all your trips and conversations; annai's own calls, such as Try this model, count too. A day starts at midnight here.` }),
@@ -85,10 +83,8 @@ function requestSections(ctx, s, spent) {
       h('p', { class: 'sub', text: t`Providers keep the start of the conversation for a while, so her next request costs less. An hour costs more to write than five minutes, and pays off when you talk less often than every few minutes. A model that keeps it only five minutes is asked for five.` }),
       savedRadios(t`Keep it for`, [['1h', t`1 hour`], ['5m', t`5 minutes`]], wantedTtl(s.cacheTtl), (v) => save({ cacheTtl: v }))),
     section(t`Housekeeping`,
-      h('p', { class: 'sub', text: t`When a conversation gets long, Shiori summarizes its older part: at this share of her model's context or of the largest request below, or at 100,000 tokens if that comes first. She does it when you come back after her cache has run out, or just before it runs out if annai stays open. A request that would pass the largest size, or 90% of her model's context, is summarized at once. Photos and PDFs don't count toward the largest request: a summary can't make them smaller. Empty: the usual.` }),
-      h('div', { class: 'row' },
-        savedField(t`Summarize at (% of the context)`, share, () => numberIn(share, 50, 90, t`Summarize at a share from 50 to 90%.`, { whole: true }), (v) => save({ compaction: { threshold: v === null ? null : v / 100 } })),
-        savedField(t`Largest request (MiB)`, mib, () => numberIn(mib, 1, 64, t`The largest request is from 1 to 64 MiB.`), (v) => save({ compaction: { maxRequestMiB: v } })))),
+      h('p', { class: 'sub', text: t`When a conversation gets long, Shiori summarizes its older part: at this share of her model's context, or at 100,000 tokens if that comes first. She does it when you come back after her cache has run out, or just before it runs out if annai stays open. A request that would pass 90% of her model's context is summarized at once. Empty: the usual.` }),
+      savedField(t`Summarize at (% of the context)`, share, () => numberIn(share, 50, 90, t`Summarize at a share from 50 to 90%.`, { whole: true }), (v) => save({ compaction: { threshold: v === null ? null : v / 100 } }))),
   ];
 }
 

@@ -9,7 +9,6 @@ import { Agent } from '../../src/core/agent/loop.js';
 import { selfTools } from '../../src/core/agent/self-tools.js';
 import { record } from '../../src/core/agent/log.js';
 import { replyPrompt, tokensAfter, dueTokens, DUE_TOKENS } from '../../src/core/agent/compaction.js';
-import { CHARS_PER_TOKEN } from '../../src/core/llm/fallback.js';
 import { nowBlock } from '../../src/core/agent/context.js';
 import { createTrip } from '../../src/core/scopes.js';
 import { exportArchive, PRESETS } from '../../src/core/archive.js';
@@ -155,8 +154,6 @@ test('the cold return keeps a third of 100,000 tokens word for word on a window 
   assert.equal(dueTokens(1_000_000, 0.7), DUE_TOKENS);
   assert.equal(dueTokens(null, 0.7), DUE_TOKENS, 'no window: the one figure');
   assert.equal(dueTokens(40_000, 0.7), 28_000, "a small window's share comes first");
-  // The kept part is a third of this, never of the request size's due point: the Settings' nearest (50% of 1 MiB, in tokens) is past it.
-  assert.ok((0.5 * 2 ** 20) / CHARS_PER_TOKEN > DUE_TOKENS);
 });
 
 test('on a small window the cold return, after a reload, keeps a third of its own threshold, so more than the oldest exchange is summarized', async (t) => {

@@ -1,13 +1,12 @@
 import { NOT_TRANSCRIBED } from '../voice/resolve.js';
 import { NO_WORDS } from '../handover.js';
 import { EITHER, LANGUAGES, MANDARIN, firstHan, hanRow, languageSettings, named, placed, units } from '../languages.js';
-import { nativeOverlap } from '../llm/contract.js';
 import { quote } from './blocks.js';
 
 /**
- * Housekeeping (spec §6.5). Two limits trigger it, the context window and the maximum request
- * size (bytesLessFiles): it is due at a threshold and forced before an overflow. The older part becomes a compaction event; the
- * most recent part stays word for word. Warm, the model holding the cache writes the
+ * Housekeeping (spec §6.5). The tokens trigger it: it is due at a threshold of the context window or at DUE_TOKENS, whichever comes
+ * first, and forced before an overflow (over 90% of the window; with no window known, at the provider's refusal of a request too long).
+ * The older part becomes a compaction event; the most recent part stays word for word. Warm, the model holding the cache writes the
  * summary from the cached conversation; cold, the utility model writes it from the text.
  * @typedef {import('../llm/contract.js').Message} Message
  */
@@ -37,26 +36,16 @@ export function replyPrompt(u) {
   return Object.values(u?.serverTools ?? {}).some((n) => Number(n) > 0) ? 0 : promptTokens(u);
 }
 
-/**
- * A request's size as the size rule weighs it (spec §6.5): what a summary can make smaller, so its pictures' and PDFs' bytes count for nothing.
- * Those a request still holds whole are the window's (limitMedia), there for their turn and the follow-up: a summary never takes this turn's, and one
- * forced in the follow-up can take the turn before's (a read brings them back). A native counts only for what it adds beyond the parts it covers (nativeOverlap). @param {any} request
- */
-export function bytesLessFiles(request) {
-  const files = (/** @type {string} */ _k, /** @type {any} */ v) => (v && typeof v === 'object' && (v.type === 'image' || v.type === 'document') && typeof v.data === 'string' ? { ...v, data: '' } : v);
-  return JSON.stringify(request, files).length - nativeOverlap(request.messages ?? []);
-}
-
 /** Where housekeeping is due by tokens: the threshold's share of the window, or DUE_TOKENS, whichever comes first. @param {number | null} window @param {number} threshold */
 export const dueTokens = (window, threshold) => Math.min(window ? threshold * window : Infinity, DUE_TOKENS);
 
 /**
- * @param {{ tokens: number, window: number | null, bytes: number, maxBytes: number, threshold: number }} c
+ * @param {{ tokens: number, window: number | null, threshold: number }} c
  * @returns {'forced' | 'due' | null}
  */
-export function compactionNeed({ tokens, window, bytes, maxBytes, threshold }) {
-  if ((window && tokens > 0.9 * window) || bytes > maxBytes) return 'forced';
-  if (tokens >= dueTokens(window, threshold) || bytes >= threshold * maxBytes) return 'due';
+export function compactionNeed({ tokens, window, threshold }) {
+  if (window && tokens > 0.9 * window) return 'forced';
+  if (tokens >= dueTokens(window, threshold)) return 'due';
   return null;
 }
 

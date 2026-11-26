@@ -30,8 +30,12 @@ import { languageSettings, NATIVE } from '../languages.js';
 export const RECAP_FILE = '/recap.md';
 /** Photos sent with it at most… */
 export const RECAP_PHOTOS = 6;
-/** …taking at most this part of the maximum request size (spec §6.5). */
-export const PHOTO_SHARE = 0.5;
+/**
+ * …in at most this many characters of base64 (4 MiB): the room they had at Housekeeping's default, half of its Largest request's 8 MiB, from the
+ * recap's first version (2026-10-16) until that field went (2026-11-26), so a recap sends what it sent. Six copies at the default photo size
+ * (256 KiB, about 341 KiB as base64) take half of it; it binds only when Settings → Photos sends photos over about 512 KiB each.
+ */
+export const PHOTO_ROOM = 4 * 2 ** 20;
 /** The text sent, at most (about 17,000 tokens). */
 export const RECAP_CHARS = 60_000;
 /** Each card and message, at most. */
@@ -215,7 +219,6 @@ export async function writeRecap({ store, ws, llm, trip, codec = null, namer, lo
     let images = {};
     for (const m of models) images = stricter(images, /** @type {any} */ (m).images ?? {});
     const limits = requestLimits(photoSettings(app).request, images);
-    const room = (app.shiori?.compaction?.maxRequestMiB ?? 8) * 2 ** 20 * PHOTO_SHARE;
     // The trip's own photos, read for the trip (reach.js).
     const copies = codec ? new PhotoCopies({ codec: /** @type {any} */ (codec), read: (h) => blobBytes(store, trip, h, { via: 'recap' }) }) : null;
     let used = 0;
@@ -226,7 +229,7 @@ export async function writeRecap({ store, ws, llm, trip, codec = null, namer, lo
           ? await copies.copy({ hash: ph.hash, type: ph.type, width: ph.width, height: ph.height, size: ph.size }, limits)
           : { hash: ph.hash, mediaType: ph.type, data: undefined };
         const data = c.data ?? toBase64(/** @type {Uint8Array} */ ((await blobBytes(store, trip, c.hash, { via: 'recap' })) ?? new Uint8Array()));
-        if (!data || used + data.length > room) continue;
+        if (!data || used + data.length > PHOTO_ROOM) continue;
         used += data.length;
         parts.push({ type: 'text', text: /* en */ `Photo /trip${ph.path}, ${dayIn(ph.at, j.tz)} ${timeIn(ph.at, j.tz)}:` }, { type: 'image', mediaType: c.mediaType, data, hash: c.hash, path: `/trip${ph.path}` });
         blobs.push(c.data ? { bytes: fromBase64(c.data), type: c.mediaType } : { hash: c.hash, type: c.mediaType });

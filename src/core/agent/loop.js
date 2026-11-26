@@ -10,7 +10,7 @@ import { fromBase64, toBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
 import { record, storedTexts, TALK_TAG } from './log.js';
 import { blobBytes, canRead } from '../reach.js';
-import { compactionNeed, cutAt, replyPrompt, dueTokens, tokensAfter, bytesLessFiles, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
+import { compactionNeed, cutAt, replyPrompt, dueTokens, tokensAfter, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
 import { Transcript, resolveEvent, repair, reaches, NOT_SAID, SAID, STOPPED, CUT, NOT_RUN, NOT_ANSWERED, NOT_HEARD, LET_GO, MOVED, OWN_LINES } from './transcript.js';
 import { toolList, definitions, runTool, Stuck, toolSwitches, resolvePath, ALWAYS_ON } from './tools.js';
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint, systemText } from './context.js';
@@ -89,13 +89,14 @@ import { FILES_ONLY, PHOTO_ONLY, handoverOf } from '../handover.js';
  *   ask: annai's own card's (confirm): answer: its call's id, its heard lines' mark; armed: the newest listed no
  * @typedef {{ id: string, her?: boolean, kept?: boolean, text?: string, h?: Heard, gate?: string }} AskLine  heard while annai's card waits: her: begun over
  *   her voice; kept: the verdict, once it comes; h: this half's own segment
- * @typedef {{ name: StateName, label: string, detail?: string, wait?: 'ask' | 'wait', over?: StateName }} State  label: the dock's words for it (LABELS); detail: what she is away doing (TIDYING, or a task's words);
- *   wait: what she waits for while waiting, her question's answer (ask) or the user's turn (wait); over: Halves' dock state only, standing over Koe's own state of that name (Halves.state)
+ * @typedef {{ name: StateName, label: string, detail?: string, wait?: 'ask' | 'wait', over?: StateName, sending?: true }} State  label: the dock's words for it (LABELS); detail: what she is away doing (TIDYING, or a task's words);
+ *   wait: what she waits for while waiting, her question's answer (ask) or the user's turn (wait); over: Halves' dock state only, standing over Koe's own state of that name (Halves.state);
+ *   sending: thinking while her call's photos, PDF or recording go up, until its uploads are done, the answer's headers come, or it fails or stops (the dock says Sending…: callOnce's sending events)
  * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[], key?: string, toast?: boolean, error?: unknown, said?: string }} Notice
  *   key: names a card a later turn takes down (the clear event, when that turn works): model, or silent:<its conversation>; error: what stopped it, when a screen has words of its
  *   own for that (the storage card for a full device: main.js shows it in place of this card); said: what that card says first, if not the title
  * @typedef {{ stepsPerWake?: number, spendPerDay?: number, wakesPerHour?: number, quietHours?: { from: string, to: string } }} Budgets
- * @typedef {{ personality: string, cacheTtl: '5m' | '1h', askBeforeTuning: boolean, budgets: Budgets, compaction: { threshold: number, maxRequestMiB: number } }} AgentSettings
+ * @typedef {{ personality: string, cacheTtl: '5m' | '1h', askBeforeTuning: boolean, budgets: Budgets, compaction: { threshold: number } }} AgentSettings
  * @typedef {import('./tools.js').Tool & { pluginId: string }} LoopTool
  * @typedef {import('./transcript.js').Resolved} Resolved
  * @typedef {object} Half  how the loop runs as a half of Shiori (the Koe and Kokoro plan, "Agent as a half")
@@ -146,6 +147,8 @@ const NO_TOOLS = /** @type {any} */ ({ entries: () => [] });
 export const LABELS = Object.freeze({
   sleeping: t`Tap to talk`, opening: t`One moment…`, thinking: t`Thinking · tap to stop`, speaking: t`Tap to interrupt`, listening: t`Listening`, ignoring: t`Ignoring sound · tap to talk`, hearing: t`Hearing you`, waiting: t`Waiting for your OK`,
   away: t`Working on …`, offline: t`Offline · reminders still work`,
+  /** Thinking's words while her call's photos, PDF or recording go up (State.sending). */
+  sending: t`Sending… · tap to stop`,
 });
 /** What she is away doing while she tidies up the conversation: the dock's words are made from it. */
 const TIDYING = 'tidying';
@@ -492,6 +495,8 @@ export class Agent {
   #lastTurn = 0;
   /** @type {AbortController | null} cuts the model call running now, not the turn */
   #callCut = null;
+  /** Her turn's call is sending a photo's, a PDF's or a recording's bytes, as callOnce's sending events say: Thinking says Sending… meanwhile. Each send ends with its own off, so nothing here clears it. */
+  #up = false;
   /** A note cut her speech: speak says so, and doesn't listen. */
   #noteCut = false;
   /** A turn runs. */
@@ -738,8 +743,9 @@ export class Agent {
 
   /** @param {StateName} name @param {{ detail?: string, wait?: 'ask' | 'wait' }} [o] detail: what she is away doing; wait: what a waiting waits for */
   #setState(name, { detail, wait } = {}) {
-    const label = name === 'waiting' && wait === 'wait' ? t`Your turn` : name !== 'away' || !detail ? LABELS[name] : detail === TIDYING ? t`Working on tidying up the conversation` : t`Working on ${detail}`;
-    this.state = { name, label, ...(detail ? { detail } : {}), ...(wait ? { wait } : {}) };
+    const up = name === 'thinking' && this.#up;
+    const label = up ? LABELS.sending : name === 'waiting' && wait === 'wait' ? t`Your turn` : name !== 'away' || !detail ? LABELS[name] : detail === TIDYING ? t`Working on tidying up the conversation` : t`Working on ${detail}`;
+    this.state = { name, label, ...(detail ? { detail } : {}), ...(wait ? { wait } : {}), ...(up ? { sending: /** @type {const} */ (true) } : {}) };
     this.#emit('state', this.state);
     this.poke(); // a turn waiting while the user speaks looks again
   }
@@ -759,7 +765,7 @@ export class Agent {
     const s = (await readAppSettings(this.ws)).shiori ?? {};
     return {
       personality: s.personality ?? 'shiori', cacheTtl: wantedTtl(s.cacheTtl), askBeforeTuning: Boolean(s.askBeforeTuning),
-      budgets: s.budgets ?? {}, compaction: { threshold: 0.7, maxRequestMiB: 8, ...(s.compaction ?? {}) },
+      budgets: s.budgets ?? {}, compaction: { threshold: s.compaction?.threshold ?? 0.7 }, // a stored maxRequestMiB (Largest request, until 2026-11-26) is read as nothing
     };
   }
 
@@ -1891,7 +1897,7 @@ export class Agent {
     // Her mark (mark_done) since the last compaction: what the exchanges after it hold is kept, when that is less; never fewer exchanges than
     // the floor (three, one when forced), so a mark in the last ones keeps them, and an old one changes nothing. Its result as it ran (not a refused or cut call's).
     const mark = events.findLast((e) => e.type === 'tool.result' && e.data?.name === 'mark_done' && e.data?.ok !== false && e.data?.wake !== 'housekeeping' && e.seq > (latest?.seq ?? 0));
-    // A third of where it is due stays word for word (by tokens: the request size's due point is never nearer, 149,796 tokens at Settings' least, half of 1 MiB at 3.5 characters a token).
+    // A third of where it is due stays word for word.
     const keep = Math.min(o.keepTokens ?? dueTokens(window, settings.compaction.threshold) / 3, mark ? tokensAfter(items, mark.seq) : Infinity);
     const cut = cutAt(items, { keepTokens: keep, minExchanges: o.forced ? 1 : KEEP_EXCHANGES });
     if (cut === null) return false;
@@ -2650,13 +2656,10 @@ export class Agent {
       if (force && !reachedUser) forced++;
       const fingerprint = await prefixFingerprint(request, this.transcript.compaction);
       const window = (await this.#mainModel())?.contextWindow ?? null;
-      const maxBytes = settings.compaction.maxRequestMiB * 2 ** 20;
       // What the main models are sent: their photo limit of the pictures, each once.
       const sent = { ...request, messages: limitMedia(request.messages, (await this.#mainImages()).maxCount, request.photosFrom) };
       const estimate = estimateTokens(sent, (await this.#mainModel())?.providerId);
-      // The size weighs what a summary can make smaller, not the window's pictures and PDFs (bytesLessFiles): a request over it by them goes as it is, and one
-      // over it by words is summarized, in a later step again only while two or more exchanges are left (cutAt).
-      const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window, bytes: bytesLessFiles(sent), maxBytes, threshold: settings.compaction.threshold }) : null;
+      const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window, threshold: settings.compaction.threshold }) : null;
       const tidy = coldStart;
       coldStart = false; // once a turn: its first request
       if (need === 'forced') {
@@ -2796,7 +2799,7 @@ export class Agent {
       spent += result.cost ?? 0;
       const model = await this.#model(result.modelId);
       if (model) this.#warmth.note(result.modelId, fingerprint, TTL_MS[ttlFor(model, settings.cacheTtl)], this.now());
-      if (this.#half.housekeeping && compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window: model?.contextWindow ?? null, bytes: bytesLessFiles(sent), maxBytes, threshold: settings.compaction.threshold })) this.#due = true;
+      if (this.#half.housekeeping && compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window: model?.contextWindow ?? null, threshold: settings.compaction.threshold })) this.#due = true;
       // A request whose thinking couldn't go (something before it changed) or was refused stops it for the rest of the turn; else this
       // reply keeps the now block its request ended with and the reply as it came, until the turn ends or the requests have carried KEPT_SENT_MAX.
       if (result.reply.natives) stopThinking();
@@ -3707,12 +3710,26 @@ export class Agent {
   }
 
   /**
+   * Her call's photos, PDF or recording start going up (on), or no longer are (off: the uploads done, the request's answer's headers come, or the
+   * send failed or was stopped: callOnce says it at its own end): Thinking says Sending… meanwhile, on the dock now and at each return to Thinking
+   * (a sound heard while it goes up) (spec §16.3). @param {boolean} on
+   */
+  #sendingNow(on) {
+    this.#up = on;
+    if (this.state.name === 'thinking') this.#setState('thinking');
+  }
+
+  /**
    * Speech streams in while the model writes it, and plays sentence by sentence (spec §10.1). A
-   * call that starts over (another model) drops what it had begun to say. Her turn is one reply: each utterance it begins (here, #say, #askAloud)
+   * call that starts over (another model) drops what it had begun to say. Its sending events are the dock's (#sendingNow). Her turn is one reply: each utterance it begins (here, #say, #askAloud)
    * names its wake (Speaker.begin).
    * @param {any} ev a stream event @param {string} wakeId
    */
   #streamed(ev, wakeId) {
+    if (ev.type === 'sending') {
+      if (ev.on !== this.#up) this.#sendingNow(ev.on);
+      return;
+    }
     if (ev.type === 'restart') {
       this.#cutSpeech(wakeId, ev.by ?? null).catch((e) => this.#notSaved(e)); // what she said aloud, for her transcript: nobody waits on it
       return;
@@ -3819,8 +3836,10 @@ export class Agent {
     if (this.#aloudOnly) return `${before} Voice mode is off, so you didn't listen; the user may type.`;
     const got = await this.#listenFor(call, 'wait', silenceSeconds, false, Boolean(call.last));
     const answer = await this.#answer(before, got, call, /* en */ `Heard nothing (${silenceSeconds} seconds).`);
-    // Its window passed in silence: she would only call sleep, so the turn ends here, for no model call.
-    return call.last && Object.keys(got).length === 0 && typeof answer === 'string' ? { content: answer, endTurn: true } : answer;
+    // Its window passed in silence, or with Keep my music playing nothing listened (a tap's microphone would have): she would only call sleep, so the turn
+    // ends here, for no model call.
+    const nothing = Object.keys(got).length === 0 || (got.deaf !== undefined && voice.keepMusic);
+    return call.last && nothing && typeof answer === 'string' ? { content: answer, endTurn: true } : answer;
   }
 
   /**
@@ -3975,6 +3994,8 @@ export class Agent {
       if (owner === 'tap') Object.assign(this.#ear, { tap: true }, this.#ear.owner === 'after' ? { owner } : {});
       return null;
     }
+    // Keep my music playing: play-and-record pauses the music, so only a tap opens a microphone (spec §10.1, §10.4); her own listening hears in a tap's, as above.
+    if (owner !== 'tap' && voice.keepMusic) return /* en */ 'the user keeps their music playing, so the microphone opens only when they tap you.';
     // Nothing of a turn's own listens in another conversation, opening or opened since it asked or since the setup read.
     const moved = () => owner !== 'tap' && (this.#opens || scope !== (this.#target ?? ME));
     if (moved()) return /* en */ 'another conversation is opening.';
@@ -4042,7 +4063,7 @@ export class Agent {
         this.#noted();
       });
     }
-    if (next === 'playback') this.voice?.platform?.session('playback'); // full-quality Bluetooth audio again (spec §10.1)
+    if (next === 'playback') this.voice?.session('playback'); // full-quality Bluetooth audio again (spec §10.1)
   }
 
   /**
@@ -4365,8 +4386,9 @@ export class Agent {
     for (const u of this.#utterances.values()) u.stop();
     this.#utterances.clear();
     // She spoke and didn't sleep: she listens on (the second-drive design), through the gate, while its time is left; sleep, the user's Stop, or none left closes it.
+    // Not with Keep my music playing on: a tap's microphone ends with her turn too, and none opens by itself (spec §10.4).
     const listens = ok && !this.#userStop && this.#facts.aloud && !this.#facts.closed && !this.#wentToSleep && !this.#aloudOnly && !this.#cut && this.#half.voice() && Boolean(this.voice?.on)
-      && this.#afterBy > Date.now();
+      && !this.voice?.keepMusic && this.#afterBy > Date.now();
     if (this.#ear?.owner === 'turn' || (this.#ear?.owner === 'after' && this.#facts.closed)) {
       if (listens && this.#ear) this.#after(this.#ear); // the deadline stands: her last words plus the silence
       else this.#closeEar();
@@ -4384,7 +4406,7 @@ export class Agent {
         else this.#setState('listening');
         this.#after(this.#ear); // its deadline stands under a turn too: #drain's end arms it (#armEar)
       });
-    } else if (!this.#ear && this.#voiceNow) this.voice?.platform?.session('playback'); // after speaking (spec §10.1)
+    } else if (!this.#ear && this.#voiceNow) this.voice?.session('playback'); // after speaking (spec §10.1)
     await this.#writeChatter(wakeId);
     if (ok && this.#half.voice()) await this.#writeDown(wakeId, undefined, { counts: true });
   }
