@@ -510,7 +510,7 @@ test("a tool that crashes twice, works, then crashes twice stays on; so does a h
   assert.deepEqual([loops, control.registry.isDisabled('stuck'), control.lines()], [3, true, [1, 2, 3]], 'the control');
 });
 
-test("a hook handed crash, crash, works, crash in one delivery stays on, sync or async; crash, crash, crash in one delivery is off at the third (hook-batch-next: a call that returns no promise ends the run before the batch's next entry is called)", async () => {
+test("a hook handed crash, crash, works, crash in one delivery stays on when its calls return no promise (an async one, the same on main, beside it); crash, crash, crash in one delivery is off at the third (hook-batch-next: a call that returns no promise ends the run before the batch's next entry is called)", async () => {
   const bug = () => new TypeError("Cannot read properties of undefined (reading 'x')");
   const batch = (/** @type {number} */ n) => Array.from({ length: n }, (_, i) => ({ scope: SYS, seq: i + 1, ts: 1, type: 'x', actor: 'system' }));
   const sync = watched();
@@ -524,6 +524,8 @@ test("a hook handed crash, crash, works, crash in one delivery stays on, sync or
   late.registry.add('ebb', 'hook', { fn: async () => { if (++asyncCalls !== 3) throw bug(); } });
   deliverHooks(late.registry, batch(4), () => 1_000);
   await tick();
+  // An async hook's outcomes settle in the batch's order, so it stayed on before the fix too. A plain hook that returns a promise on some entries
+  // and throws on others counts in the order its outcomes are known, a promise's when it settles, as every call of a plugin's does.
   assert.deepEqual([asyncCalls, late.registry.isDisabled('ebb'), late.lines()], [4, false, [1, 2, 1]], 'an async hook');
   // The control: no call of it works, so the batch's third crash switches it off and the fourth entry is not handed to it.
   const control = watched();
