@@ -288,9 +288,11 @@ test("a hook that throws what the engine throws for a program that does somethin
   deliverHooks(registry, [1, 2, 3, 4].map(ev), () => 1_000);
   await settle();
   assert.deepEqual(Object.fromEntries(Object.keys(hooks).map((id) => [id, [calls[id], registry.isDisabled(id)]])), Object.fromEntries(Object.keys(hooks).map((id) => [id, id.startsWith('crash-') ? [3, true] : [4, false]])));
-  assert.deepEqual(logged.filter((e) => e.type === 'plugin.error' && e.actor === 'plugin:answer-AbortError').map((e) => 'count' in e.data), Array(4).fill(false));
+  for (const id of Object.keys(hooks).filter((x) => x.startsWith('answer-'))) {
+    assert.deepEqual(logged.filter((e) => e.type === 'plugin.error' && e.actor === `plugin:${id}`).map((e) => 'count' in e.data), Array(4).fill(false), `${id}: four lines with no count`);
+  }
 });
-test("a hook that crashed twice and then hits the loop limit is switched off for the loop: its card and its log say so, not 'failed 3 times in a row' (plugin-link-fix1)", async () => {
+test("a hook that crashed on its last two entries before the loop limit is switched off for the loop: its card and its log say so, not 'failed 3 times in a row' (plugin-link-fix1; the crashes come last, so the order is pinned whatever the timing of the resets between)", async () => {
   /** @type {any[]} */
   const logged = [];
   const registry = new Registry({ log: (ev) => logged.push(ev) });
@@ -298,7 +300,7 @@ test("a hook that crashed twice and then hits the loop limit is switched off for
   const told = [];
   registry.onDisabled((info) => told.push(info));
   let n = 0;
-  registry.add('looper', 'hook', { fn: () => { if (++n <= 2) throw new TypeError('x is not a function'); } });
+  registry.add('looper', 'hook', { fn: () => { if (++n >= HOOK_LIMIT - 1 && n <= HOOK_LIMIT) throw new TypeError('x is not a function'); } });
   const ev = (/** @type {number} */ seq) => ({ scope: SYS, seq, ts: 1, type: 'x', actor: 'system' });
   deliverHooks(registry, Array.from({ length: HOOK_LIMIT + 1 }, (_, i) => ev(i + 1)), () => 1_000);
   await settle();

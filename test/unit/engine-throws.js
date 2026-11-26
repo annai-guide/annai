@@ -1,7 +1,10 @@
 /**
- * What an engine throws, as the code that throws it (the real thing where Node has one; a browser's DOM gives the rest), keyed by the error's
- * name: a crash is a program doing something wrong, and some of those the engine throws as a DOMException, so no `instanceof TypeError` matches
- * them (plugin-link-fix1: isPluginBug counts these by name). Used by the tests of a start, a hook and a drawing.
+ * What an engine throws, as the code that throws it, keyed by the error's name: a crash is a program doing something wrong, and some of those the
+ * engine throws as a DOMException, so no `instanceof TypeError` matches them (plugin-link-fix1: isPluginBug counts these by name). Used by the tests
+ * of a start, a tool, a hook, a drawing and the rule itself.
+ * Thrown for real by Node: URIError, InvalidCharacterError and DataCloneError. Built by hand, `new DOMException(message, name)`, because Node has
+ * no DOM to throw them: SyntaxError, HierarchyRequestError and IndexSizeError, and every name in ANSWER_CODE. For those the name is the DOM spec's
+ * (a browser gives a bad selector a SyntaxError), not something the test measured, so a test that asserts the name proves only that it is passed on.
  */
 /** @type {Record<string, string>} what counts against a plugin */
 export const CRASH_CODE = {

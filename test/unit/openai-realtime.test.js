@@ -7,6 +7,7 @@ import { ProviderError } from '../../src/core/llm/contract.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { toBase64, fromBase64 } from '../../src/core/bytes.js';
 import { openLive } from '../../src/core/realtime/open.js';
+import { Registry } from '../../src/core/registry.js';
 import { activate, usageOf } from '../../plugins-official/openai-realtime/index.js';
 import { g711, pcmToUlaw as muLaw, ulawToPcm as fromMuLaw } from '../../src/core/voice/g711.js';
 import { startRealtimeServer } from '../fakes/realtime-server.js';
@@ -322,6 +323,36 @@ test('after it is ready, what OpenAI refuses is noted in the trace with the key 
   ]);
   assert.deepEqual(events, []);
   driver.close();
+});
+
+test("audio that isn't base64 is skipped like a bad frame: the session goes on, the next chunk is heard, and nothing counts against the plugin, however many come (fix round 2)", async () => {
+  const { type, notes } = openaiRealtime();
+  /** @type {any[]} */
+  const logged = [];
+  const registry = new Registry({ log: (ev) => { logged.push(ev); } });
+  /** @type {Record<string, ((e: any) => void)[]>} */
+  const on = {};
+  const ws = { binaryType: 'blob', send() {}, close() {}, addEventListener: (/** @type {string} */ t, /** @type {any} */ fn) => { (on[t] ??= []).push(fn); } };
+  const session = openLive({ type, endpoint: endpoint('https://live.test/v1'), model: model(), key: KEY, tunables: type.tunables, setup: setup(), trace: null, socket: () => ws, registry });
+  /** @type {any[]} */
+  const events = [];
+  session.on((e) => events.push(e));
+  on.open?.forEach((fn) => fn({}));
+  const say = (/** @type {any} */ m) => on.message?.forEach((fn) => fn({ data: JSON.stringify(m) }));
+  say({ type: 'session.created', session: {} });
+  say({ type: 'session.updated', session: {} });
+  await session.ready;
+  // Five chunks that aren't base64 (more than the three that switch a plugin off), then one that is.
+  for (let i = 0; i < 5; i++) say({ type: 'response.output_audio.delta', item_id: 'item_1', delta: '%%% not base64 %%%' });
+  say({ type: 'response.output_audio.delta', item_id: 'item_1', delta: toBase64(voice(10)) });
+  say({ type: 'conversation.item.input_audio_transcription.completed', item_id: 'item_0', transcript: 'Still here.' });
+  assert.deepEqual(events.filter((e) => e.type === 'audio').map((e) => e.data.byteLength), [voice(10).byteLength], 'the good chunk is heard');
+  assert.ok(events.some((e) => e.type === 'heard' && e.text === 'Still here.'), 'the session goes on');
+  assert.equal(registry.isDisabled('openai-realtime'), false, 'nothing was counted');
+  assert.deepEqual(logged, [], 'and no error line');
+  await sleep(10);
+  assert.deepEqual(notes.filter((n) => n[1] === 'live.skipped').map((n) => n[2]), Array(5).fill({ bytes: 18 }), 'each skipped chunk is noted');
+  session.close();
 });
 
 test("openai-realtime is a protocol in annai's catalog: a keyed name, reserved as annai's", async () => {

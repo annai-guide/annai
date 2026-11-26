@@ -863,10 +863,10 @@ wq5ezj	ok	Its name, "{0}", is annai's own name, or the name of one of its parts.
 masbkh	ok	A skill with this id is installed already. Remove it first.	已安装了相同 ID 的技能，请先移除。	src/core/plugins.js:192	
 1idb6oe	ok	{0} is handed the keys you give it, so the one used is annai's own, else the one installed first.	{0} 会拿到你提供的密钥，所以会优先使用 annai 自带的；没有的话，就用最先安装的那个。	src/core/plugins.js:243	{0} = name
 7ot8m8	ok	{0} is annai's own, so no plugin replaces it.	{0} 是 annai 自带的，插件不能替换它。	src/core/plugins.js:245	{0} = name
-1863007	ok	It is being removed.	正在移除。	src/core/plugins.js:442	
-u30lhr	ok	It was updated. Restart annai to run the new version.	已更新。请重新启动 annai 来运行新版本。	src/core/plugins.js:443	
-12roxwh	ok	It keeps MCP servers, not settings: remove a server on its own screen.	保存的是 MCP 服务器，而不是设置。要移除服务器，请前往该服务器的页面。	src/core/plugins.js:613	
-1k8fwg2#other	ok	It didn't finish within # seconds.	# 秒内未完成。	src/core/plugins.js:810	plural; # = s; English: "It didn't finish within # second." (one), "It didn't finish within # seconds." (other); Note: a sentence of its own, under the card's "didn't start" title; after "Starting failed:" it is the reason.
+1863007	ok	It is being removed.	正在移除。	src/core/plugins.js:444	
+u30lhr	ok	It was updated. Restart annai to run the new version.	已更新。请重新启动 annai 来运行新版本。	src/core/plugins.js:445	
+12roxwh	ok	It keeps MCP servers, not settings: remove a server on its own screen.	保存的是 MCP 服务器，而不是设置。要移除服务器，请前往该服务器的页面。	src/core/plugins.js:615	
+1k8fwg2#other	ok	It didn't finish within # seconds.	# 秒内未完成。	src/core/plugins.js:812	plural; # = s; English: "It didn't finish within # second." (one), "It didn't finish within # seconds." (other); Note: a sentence of its own, under the card's "didn't start" title; after "Starting failed:" it is the reason.
 u8bf72	ok	Notifications are on. Reminders come like this while annai is closed.	通知已开启。annai 关闭时，提醒会像这样推送过来。	src/core/push/mirror.js:75	
 1dxa9va	ok	Notifications are on again: reminders come like this while annai is closed.	通知已重新开启：annai 关闭时，提醒会像这样推送过来。	src/core/push/mirror.js:76	
 dcq7bh	ok	annai has a reminder for you. Open annai to see it.	你有一条提醒，打开 annai 即可查看。	src/core/push/mirror.js:83	Note: a notification for a reminder the phone couldn't read.
@@ -893,17 +893,17 @@ ido0tg	ok	The phone's push service says this subscription no longer exists.	手�
 1eeb6fm	ok	There's no annai push relay at {0} (it answered 404). Check the relay address.	{0} 上没有 annai 推送中继（返回 404）。请检查中继地址。	src/core/push/relay-client.js:41	{0} = host
 12gfn9	ok	The relay at {0} sent a key annai can't use. Is this the address of an annai push relay?	中继 {0} 发来了 annai 无法使用的密钥。这是 annai 推送中继的地址吗？	src/core/push/relay-client.js:42	{0} = host
 n5y19n	ok	The relay at {0} refused it ({1}).	中继 {0} 拒绝了请求（{1}）。	src/core/push/relay-client.js:43	{0} = host; {1} = status
-3hb2ch	ok	The key works.	密钥有效。	src/core/realtime/open.js:272	
-r6odk7	ok	annai can open a live session at this address from the browser.	浏览器可以在此地址开启实时会话。	src/core/realtime/open.js:272	
-4u7tr8	ok	It answered aloud: {0}	它用语音回答了：“{0}”	src/core/realtime/open.js:303	{0} = words; Note: the stop after the quote is the screens' own (asSentence), left off here so a "?" or "!" the model ended with is not followed by a second one.
-ip7w4y#other	ok	It didn't answer aloud within # seconds.	# 秒内没有语音回答。	src/core/realtime/open.js:303	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
-1x3q9c3	ok	The session closed before it answered.	还没回答，会话就关闭了。	src/core/realtime/open.js:304	
-9sqs1k	ok	It answered, but not aloud in words.	它回答了，但没有用语音说出来。	src/core/realtime/open.js:304	
+3hb2ch	ok	The key works.	密钥有效。	src/core/realtime/open.js:276	
+r6odk7	ok	annai can open a live session at this address from the browser.	浏览器可以在此地址开启实时会话。	src/core/realtime/open.js:276	
+4u7tr8	ok	It answered aloud: {0}	它用语音回答了：“{0}”	src/core/realtime/open.js:307	{0} = words; Note: the stop after the quote is the screens' own (asSentence), left off here so a "?" or "!" the model ended with is not followed by a second one.
+ip7w4y#other	ok	It didn't answer aloud within # seconds.	# 秒内没有语音回答。	src/core/realtime/open.js:307	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
+1x3q9c3	ok	The session closed before it answered.	还没回答，会话就关闭了。	src/core/realtime/open.js:308	
+9sqs1k	ok	It answered, but not aloud in words.	它回答了，但没有用语音说出来。	src/core/realtime/open.js:308	
 ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	这个名称已被 annai 官方插件使用，其他来源的插件不能再用。请联系作者改名。	src/core/registry.js:17	Note: "Ask its author" is asking a person (请让作者…), not the phones' permission choice Ask (询问).
 1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	这个名称属于 annai 官方插件，但已安装的同名插件来自其他来源，因此不会使用它。请在设置 → 插件中移除它，然后重试。	src/core/registry.js:18	
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	请在设置 → 插件中开启它，然后重试。	src/core/registry.js:19	
-mzoa87	ok	It is switched off after repeated errors.	因多次出错，已自动关闭。	src/core/registry.js:264	
-dhg5k6	ok	Starting failed: {0}	启动失败：{0}	src/core/registry.js:277	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
+mzoa87	ok	It is switched off after repeated errors.	因多次出错，已自动关闭。	src/core/registry.js:265	
+dhg5k6	ok	Starting failed: {0}	启动失败：{0}	src/core/registry.js:278	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
 19bu7pw	ok	Version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	版本 {0} 会导致 {1} 无法运行，因为它需要 {2} {3}。请先更新 {4}，或保留当前版本。	src/core/requires.js:52	{0} = version; {1} = them; {2} = it; {3} = r.version; {4} = them
 1ee40s4	ok	It needs {0}, which you turned off.	需要 {0}，但你已把它关闭。	src/core/requires.js:79	{0} = shown
 8xu6se	ok	It needs {0}, which isn't installed. Install it from {1} first, then try again.	需要 {0}，但尚未安装。请先从 {1} 安装，然后再试一次。	src/core/requires.js:82	{0} = r.id; {1} = r.homepage

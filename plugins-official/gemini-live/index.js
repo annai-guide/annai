@@ -92,7 +92,19 @@ export function activate(annai) {
         if (m.setupComplete) isReady();
         const sc = m.serverContent;
         if (sc?.modelTurn) cut = false; // new audio: a new turn (transcripts can trail the cut one)
-        for (const p of sc?.modelTurn?.parts ?? []) if (p?.inlineData?.data && /^audio\//.test(p.inlineData.mimeType ?? '')) emit({ type: 'audio', data: base64.decode(p.inlineData.data) });
+        for (const p of sc?.modelTurn?.parts ?? []) {
+          if (!p?.inlineData?.data || !/^audio\//.test(p.inlineData.mimeType ?? '')) continue;
+          /** @type {Uint8Array} */
+          let pcm;
+          try {
+            pcm = base64.decode(p.inlineData.data);
+          } catch {
+            // Audio that isn't base64 (a cut or mangled chunk): skipped and noted like a bad frame, and the rest of the frame is read.
+            annai.events?.append('sys', 'live.skipped', { bytes: String(p.inlineData.data).length }).catch(() => {});
+            continue;
+          }
+          emit({ type: 'audio', data: pcm });
+        }
         if (sc?.inputTranscription?.text) emit({ type: 'heard', text: sc.inputTranscription.text, final: Boolean(sc.inputTranscription.finished) });
         if (sc?.outputTranscription?.text) emit({ type: 'said', text: sc.outputTranscription.text, final: Boolean(sc.outputTranscription.finished) });
         for (const f of m.toolCall?.functionCalls ?? []) emit({ type: 'tool', id: String(f.id ?? ''), name: String(f.name ?? ''), input: f.args ?? {} });

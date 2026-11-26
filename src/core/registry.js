@@ -40,7 +40,7 @@ export function compareRanks(a, b) {
 }
 
 /** Errors that mean a plugin's code is broken, rather than a tool saying it can't do something: the six classes the language defines for a program that
- * does something wrong (URIError is `decodeURIComponent` on a bad string). */
+ * does something wrong (URIError is what `decodeURIComponent` throws on a bad string, and `encodeURIComponent` on a lone surrogate). */
 const BUGS = [TypeError, ReferenceError, RangeError, SyntaxError, EvalError, URIError];
 
 /** DOMException names that are a programming error, by allowlist: the engine throws these as a DOMException, so no class above matches them (a bad
@@ -66,18 +66,19 @@ export function isFetchFailure(e) {
  * An address the user typed that isn't one (`new URL` throws): the user's to fix, not a plugin's bug. Where a plugin's own code makes the request
  * (isPluginBug's paths) annai has no address to check, so the engine's words are what there is: Chromium's "Invalid URL", WebKit's "cannot be parsed
  * as a URL", Firefox's "is not a valid URL". An endpoint type's call, a live open and a model list check the typed address by state, before the
- * plugin's code runs (call.js, open.js, service.js); a `run` type's call and its own list are left out, as such a type may need no address (the
- * scripted model's is empty), so what its own code throws for one is its own.
+ * plugin's code runs (call.js, open.js, service.js); a `run` type's call and its own list are left out of that check, as such a type may need no address
+ * (the scripted model's is empty). This test goes by the engine's words and knows no type, so a `run` type's own "Invalid URL" is spared like any other's.
  * @param {unknown} e
  */
 export const isBadAddress = (e) => e instanceof TypeError && /invalid url|failed to parse url|cannot be parsed as a url|is not a valid url/i.test(e.message);
 
 /**
  * Whether an error is a bug in a plugin's code (spec §5.5) rather than its answer, outside callOnce's and speechCall's calls (asProviderError):
- * the one rule for a tool, a start, a hook, a drawing and every other place annai runs a plugin's code (threw). No error class annai makes is a
- * crash class, so what annai's own APIs throw for a refusal, a limit or a link never counts; a crash class the engine throws inside one does
- * (`readJSON` on a file that isn't JSON, a wrong argument), as it would in the plugin's own code. A fetch the browser couldn't make
- * (isFetchFailure) is an answer (§17).
+ * the one rule for a tool, a start, a hook, a drawing and every other place annai runs a plugin's code (threw). annai's own error classes
+ * (AllFailedError, ProviderError, StorageFullError, ValidationError, PluginError and the rest) are no crash class, so what annai's own APIs throw for
+ * a refusal, a limit or a link never counts. Its two throws of a crash class are for a wrong argument (bytes.js) and a wrong return (call.js); and a
+ * crash class the engine throws inside one of its APIs counts too (`readJSON` on a file that isn't JSON), as it would in the plugin's own code. A
+ * fetch the browser couldn't make (isFetchFailure) is an answer (§17).
  * @param {unknown} e
  */
 export function isPluginBug(e) {
@@ -244,7 +245,7 @@ export class Registry {
 
   /**
    * What a plugin's code threw where annai called it and nothing reads its answer (a start, a hook, a drawing, a dock action, a component, heard
-   * clips): always logged, and counted only when it is a crash (isPluginBug), as a tool's is. Any other error is its answer (for want of a link, in
+   * clips, a live protocol's code): always logged, and counted only when it is a crash (isPluginBug), as a tool's is. Any other error is its answer (for want of a link, in
    * its own words, annai's start limit): it neither adds to its plugin's run of failures nor ends it, and its log line has no count.
    * @param {string} pluginId @param {string} name @param {unknown} e
    */

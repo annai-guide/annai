@@ -256,6 +256,16 @@ test('host: a plugin whose start crashes on three launches in a row is turned of
   assert.equal((await host.installed()).crashing.startFailures, 0);
 });
 
+test("host: a module that throws as it loads counts a launch whatever the error carries: with a link failure as its cause, it is off at the third launch; the cause is read only from the error guard made (plugin-link-fix2)", async () => {
+  const { host, relaunch } = await setup();
+  await host.install(inline('loading', "throw new Error('config', { cause: new TypeError('Failed to fetch') });"));
+  for (let launch = 1; launch <= 3; launch++) {
+    const failures = await relaunch().startInstalled();
+    assert.deepEqual(failures.map((f) => [f.id, f.disabled]), [['loading', launch === 3]], `launch ${launch}`);
+  }
+  assert.equal((await host.installed()).loading.enabled, false);
+});
+
 test('host: an install that runs out of space leaves nothing behind', async () => {
   const inner = createMemoryStore();
   let full = false;

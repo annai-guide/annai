@@ -6,16 +6,17 @@ import { ProviderError } from '../../src/core/llm/contract.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
 import { toBase64, fromBase64 } from '../../src/core/bytes.js';
 import { openLive } from '../../src/core/realtime/open.js';
+import { Registry } from '../../src/core/registry.js';
 import { activate } from '../../plugins-official/gemini-live/index.js';
 import { startRealtimeServer } from '../fakes/realtime-server.js';
 
 const KEY = 'AIza-gemini-live-test-0123456789';
 
-/** The type as the plugin registers it. @returns {any} */
-function geminiLive() {
+/** The type as the plugin registers it. @param {any} [more] @returns {any} */
+function geminiLive(more = {}) {
   /** @type {any} */
   let t = null;
-  activate({ providers: { register: (/** @type {any} */ x) => { t = { ...x, pluginId: 'gemini-live' }; return () => {}; } }, helpers: { ProviderError, base64: { encode: toBase64, decode: fromBase64 } } });
+  activate({ providers: { register: (/** @type {any} */ x) => { t = { ...x, pluginId: 'gemini-live' }; return () => {}; } }, helpers: { ProviderError, base64: { encode: toBase64, decode: fromBase64 } }, ...more });
   return t;
 }
 const TYPE = geminiLive();
@@ -239,6 +240,43 @@ test('a frame that is not JSON is skipped with a note in the trace, never a cras
   deliver(JSON.stringify({ serverContent: { outputTranscription: { text: 'Still here.' } } }));
   assert.deepEqual(events, [{ type: 'said', text: 'Still here.', final: false }]);
   assert.deepEqual(notes, [['sys', 'live.skipped', { bytes: 24 }], ['sys', 'live.skipped', { bytes: 17 }]]);
+});
+
+/** A socket the test drives: its handlers, what was sent, and a way to say something as the server. @returns {any} */
+function wire() {
+  /** @type {Record<string, ((e: any) => void)[]>} */
+  const on = {};
+  /** @type {any[]} */
+  const sent = [];
+  return { sent, binaryType: 'blob', send: (/** @type {any} */ d) => sent.push(d), close() {}, addEventListener: (/** @type {string} */ t, /** @type {any} */ fn) => { (on[t] ??= []).push(fn); }, emit: (/** @type {string} */ t, /** @type {any} */ e) => on[t]?.forEach((fn) => fn(e)) };
+}
+
+test("audio that isn't base64 is skipped like a bad frame: the session goes on, the rest of the frame is read, and nothing counts against the plugin, however many come (fix round 2)", async () => {
+  /** @type {any[]} */
+  const notes = [];
+  /** @type {any[]} */
+  const logged = [];
+  const type = geminiLive({ events: { append: async (/** @type {string} */ scope, /** @type {string} */ t, /** @type {any} */ data) => { notes.push([scope, t, data]); } } });
+  const registry = new Registry({ log: (ev) => { logged.push(ev); } });
+  const ws = wire();
+  const session = openLive({ type, endpoint: endpoint('https://live.test'), model: model(), key: KEY, tunables: type.tunables, setup: setup(), trace: null, socket: () => ws, registry });
+  /** @type {any[]} */
+  const events = [];
+  session.on((e) => events.push(e));
+  ws.emit('open', {});
+  const say = (/** @type {any} */ m) => ws.emit('message', { data: JSON.stringify(m) });
+  say({ setupComplete: {} });
+  await session.ready;
+  const audio = (/** @type {string} */ data) => ({ inlineData: { mimeType: 'audio/pcm;rate=24000', data } });
+  // Five chunks that aren't base64 (more than the three that switch a plugin off), each beside words that are read.
+  for (let i = 0; i < 5; i++) say({ serverContent: { modelTurn: { parts: [audio('%%% not base64 %%%')] }, outputTranscription: { text: `w${i} ` } } });
+  say({ serverContent: { modelTurn: { parts: [audio('not base64'), audio(toBase64(Uint8Array.of(1, 2, 3)))] } } });
+  assert.deepEqual(events.filter((e) => e.type === 'said').map((e) => e.text), ['w0 ', 'w1 ', 'w2 ', 'w3 ', 'w4 '], 'the words in the same frame are read');
+  assert.deepEqual(events.filter((e) => e.type === 'audio').map((e) => [...e.data]), [[1, 2, 3]], 'the good chunk after a bad one in one frame is heard');
+  assert.equal(registry.isDisabled('gemini-live'), false, 'nothing was counted');
+  assert.deepEqual(logged, [], 'and no error line');
+  assert.deepEqual(notes.map((n) => n.slice(0, 2)), Array(6).fill(['sys', 'live.skipped']), 'each skipped chunk is noted');
+  session.close();
 });
 
 test("by default a session asks for Sulafat, Shiori's voice in Classic too, so Koe sounds the same in both; a voice of the user's own wins (the user, 2026-10-23)", async () => {

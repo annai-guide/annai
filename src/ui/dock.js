@@ -419,10 +419,10 @@ export function dockAvatar(ctx) {
   const call = (/** @type {string} */ name) => (/** @type {any[]} */ ...args) => {
     if (own) return own[name](...args);
     try {
-      if (typeof a[name] === 'function') a[name](...args);
-      if (runs[name]) {
+      if (typeof a[name] === 'function') {
+        a[name](...args);
         runs[name] = 0;
-        ctx.registry?.succeeded(c.pluginId);
+        ctx.registry?.succeeded(c.pluginId); // any call that works: its plugin's run of failures is over (a Map write, cheap at setLevel's rate)
       }
     } catch (e) {
       ctx.registry?.threw(c.pluginId, `avatar ${name}`, e);

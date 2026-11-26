@@ -145,7 +145,7 @@ const PLACES = {
     const { runAction } = await import('../../src/ui/slots.js');
     runAction(ctx, { pluginId: 'tides', item: { id: 'go', run: async () => fails() } });
     await new Promise((r) => setTimeout(r, 0));
-    return true;
+    return true; // the drawing's column is whether its element was hidden; a dock action has no element, so nothing is checked in this column: the registry's state and log are
   },
   component: async (/** @type {any} */ ctx, /** @type {() => any} */ fails) => {
     const { made } = await import('../../src/ui/slots.js');
@@ -183,7 +183,7 @@ test("a drawing, a dock action or a component that throws an answer leaves its p
     }
   }
   const want = Object.fromEntries(Object.keys(seen).map((k) => [k, [[true, true, true], false, Array(3).fill(['plugin.error', false])]]));
-  assert.deepEqual(seen, want, "the drawing hidden with onFail each time (a dock action's run is async: true), still on, three lines with no count");
+  assert.deepEqual(seen, want, "the drawing hidden with onFail each time (a dock action has no element to hide: true by construction), still on, three lines with no count");
 });
 
 test("the dock's plugin avatar: a setState that crashes counts against its plugin, one that throws a link's or its own words is logged and counts nothing (plugin-link-fix1; unit: the dock's own DOM is the e2e's)", async () => {
@@ -207,6 +207,31 @@ test("the dock's plugin avatar: a setState that crashes counts against its plugi
       avatar.setState('thinking');
       assert.equal(registry.isDisabled('look'), off, what);
       assert.deepEqual(logged.filter((x) => x.type === 'plugin.error').map((x) => 'count' in x.data), [counted, counted], `${what}: logged each time`);
+    }
+  } finally {
+    if (had) Object.defineProperty(globalThis, 'Node', had);
+    else delete (/** @type {any} */ (globalThis)).Node;
+  }
+});
+
+test("the dock's plugin avatar: a call that works ends its plugin's run of failures, whichever call it is: a setState that crashes, a setLevel that works, a setState that crashes is still on (fix round 2)", async () => {
+  const { dockAvatar } = await import('../../src/ui/dock.js');
+  const had = Object.getOwnPropertyDescriptor(globalThis, 'Node');
+  Object.defineProperty(globalThis, 'Node', { value: class {}, configurable: true, writable: true }); // the dock checks the avatar's el with instanceof Node
+  try {
+    // maxFailures 2, so the dock's own limit (any three throws, then annai's own avatar, which needs a DOM) is never reached.
+    for (const [what, between, off] of /** @type {[string, ((a: any) => void) | null, boolean][]} */ ([
+      ['a setLevel that works between them', (a) => a.setLevel(0.5), false],
+      ['a glance the avatar has none of, between them (nothing was called, so nothing worked)', (a) => a.glance(), true],
+      ['nothing between them', null, true],
+    ])) {
+      const registry = new Registry({ maxFailures: 2 });
+      registry.add('look', 'ui:component', { name: 'avatar', create: () => ({ el: new (/** @type {any} */ (globalThis).Node)(), setState: () => { throw new TypeError("Cannot read properties of undefined (reading 'go')"); }, setLevel: () => {} }) });
+      const avatar = dockAvatar({ registry });
+      avatar.setState('thinking');
+      between?.(avatar);
+      avatar.setState('thinking');
+      assert.equal(registry.isDisabled('look'), off, what);
     }
   } finally {
     if (had) Object.defineProperty(globalThis, 'Node', had);

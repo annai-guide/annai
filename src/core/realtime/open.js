@@ -66,7 +66,7 @@ export function closeKind(type, code, reason) {
  * the session is ready, with the tunables its reopen() gives, twice at most.
  * @param {{ type: EndpointType, endpoint: import('../llm/config.js').Endpoint, ability?: import('../llm/config.js').Ability, model: import('../llm/config.js').Model, key: string | null,
  *   tunables: Record<string, any>, setup: Omit<LiveSetup, 'audioIn' | 'audioOut'> & Partial<LiveSetup>, trace: ReturnType<typeof import('../llm/trace.js').modelTrace> | null,
- *   socket?: (url: string, protocols: string[]) => any, registry?: { fail(id: string, what: string, e: unknown): void }, wake?: string, now?: () => number, readyMs?: number,
+ *   socket?: (url: string, protocols: string[]) => any, registry?: { threw(id: string, what: string, e: unknown): void }, wake?: string, now?: () => number, readyMs?: number,
  *   output?: { sampleRate: number, baseLatency?: number, outputLatency?: number } }} c  output: the phone's sound (its rate, and its processing and output
  *   latency in s), traced as it is ready
  * @returns {LiveSession}
@@ -79,8 +79,12 @@ export function openLive(c) {
   const forms = key ? [...new Set([key, encodeURIComponent(key), new URLSearchParams({ k: key }).toString().slice(2)])].sort((a, b) => b.length - a.length) : [];
   for (const f of forms) trace?.secret(f);
   const blank = (/** @type {string} */ s) => forms.reduce((x, f) => x.split(f).join(/* en */ '«key»'), s);
-  /** A bug in the protocol's code counts against its plugin (spec §5.5). @param {string} what @param {unknown} e */
-  const bug = (what, e) => { if (isPluginBug(e)) registry?.fail(type.pluginId, /* en */ `live ${what}`, e); };
+  /**
+   * What the protocol's code threw (spec §5.5): kept in the Trace, and counted against its plugin when it is a crash (Registry threw, whose log blanks
+   * every key annai keeps). A ProviderError is its answer, read by the session: its kind and words are the session's own, not a throw to log.
+   * @param {string} what @param {unknown} e
+   */
+  const bug = (what, e) => { if (!(e instanceof ProviderError)) registry?.threw(type.pluginId, /* en */ `live ${what}`, e); };
   /** @param {Record<string, any>} tunables @returns {{ url: string, protocols?: string[] }} */
   const build = (tunables) => {
     sameOrigin(endpoint, endpoint.baseUrl, ability); // the typed address first, as callOnce: a protocol's code is called only with one that parses
