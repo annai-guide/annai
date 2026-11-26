@@ -141,7 +141,7 @@ test("a sign-in that returns ends its plugin's run of failures: two that crash, 
   assert.deepEqual(a.failures.filter((e) => e.type === 'plugin.error').map((e) => e.data.count), [1, 2, 1, 2]);
 });
 
-test("a sign-in whose returned() throws before it returns a promise (a plain function, or an async one that is not) counts like one that rejects: three of them switch its plugin off, one line each, the card shown each time (plugin-fails-fix1, item 3)", async () => {
+test("a sign-in whose returned() throws before it returns a promise (a plain function that throws) counts like one that rejects: three of them switch its plugin off, one line each, the card shown each time (plugin-fails-fix1, item 3)", async () => {
   const storage = memoryStorage();
   const a = app(/** @type {any} */ (() => { throw new TypeError('x is not a function'); }));
   for (let i = 0; i < 3; i++) {

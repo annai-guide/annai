@@ -791,7 +791,8 @@ export class PluginHost {
 
   /**
    * Runs a start (its module's load, then activate()), giving up after startTimeout so one plugin can't keep annai from starting. A load that
-   * ends after the limit runs no activate(); an activate() that began before it and ends after it has what it set up taken down again.
+   * ends after the limit runs no activate(); an activate() that began before it and ends after it, by returning or by throwing, has what it set up
+   * taken down again.
    * @param {string} id @param {() => any} load gives its module, or a promise of it @param {(mod: any) => any} activate
    */
   #inTime(id, load, activate) {
@@ -809,14 +810,15 @@ export class PluginHost {
         over = true;
         const s = Math.round(this.startTimeout / 100) / 10;
         reject(Object.assign(new Error(/* en */ `it didn't finish starting within ${s} seconds`), { shown: plural(s, "It didn't finish within # second.", "It didn't finish within # seconds.") }));
-        work.then((r) => {
+        const takeDown = (/** @type {any} */ r) => {
           if (!began || this.active.has(id)) return;
           try {
             if (typeof r === 'function') r();
           } finally {
             this.registry.removePlugin(id);
           }
-        }).catch(() => {});
+        };
+        work.then(takeDown, () => takeDown(undefined)).catch(() => {});
       }, this.startTimeout);
     });
     return Promise.race([work, late]).finally(() => clearTimeout(timer));

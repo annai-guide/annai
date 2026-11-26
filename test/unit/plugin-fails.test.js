@@ -31,16 +31,22 @@ const inline = (id, code) => new Map([
 async function storage({ fails = {}, hangs = [], slow = {}, startTimeout } = {}) {
   const ws = new Workspace(createMemoryStore(), { schemaFor: makeSchemaFor(new Registry(), kindOf) });
   await ensureBaseScopes(ws);
+  /** @type {Record<string, () => void>} */
+  const done = {};
+  /** Resolves when the slow import of each id in `slow` has ended: a test waits for it, not for a time. @type {Record<string, Promise<void>>} */
+  const loaded = Object.fromEntries(Object.keys(slow).map((id) => [id, new Promise((r) => { done[id] = () => r(undefined); })]));
   const importModule = async (/** @type {string} */ url) => {
     const [, id, file] = /** @type {RegExpExecArray} */ (/^\/plugins\/([^/]+)\/(.+)$/.exec(url));
     if (id in fails) throw fails[id];
     if (hangs.includes(id)) return new Promise(() => {});
     if (id in slow) await new Promise((r) => setTimeout(r, slow[id]));
     const code = await ws.readText(SYS_PLUGINS, `/${id}/${file}`);
-    return import(`data:text/javascript;base64,${Buffer.from(code ?? '').toString('base64')}`);
+    const mod = await import(`data:text/javascript;base64,${Buffer.from(code ?? '').toString('base64')}`);
+    done[id]?.();
+    return mod;
   };
   const host = () => new PluginHost({ registry: new Registry(), workspace: ws, importModule, ...(startTimeout ? { startTimeout } : {}) });
-  return { ws, host, installer: host() };
+  return { ws, host, installer: host(), loaded };
 }
 
 /** Whether a promise settles within ms: its value, or 'still waiting'. @template T @param {Promise<T>} p @param {number} ms */
@@ -111,10 +117,28 @@ test('a module whose load ends after the start limit runs no activate: the start
   try {
     const got = await host.startInstalled();
     assert.deepEqual(got.map((f) => f.id), ['a-slow']);
-    await new Promise((r) => setTimeout(r, 300));
+    await s.loaded['a-slow']; // the late load has ended; its chain runs in the ticks that follow
+    await tick();
     assert.deepEqual([globalThis.__slowRan ?? 0, host.registry.list('tool').length, host.active.has('a-slow')], [0, 0, false], 'activate never ran');
   } finally {
     delete (/** @type {any} */ (globalThis)).__slowRan;
+  }
+});
+
+test('an activate() that began before the start limit and throws after it has what it set up taken down, as one that returns does (plugin-fails-fix2, item 3)', async () => {
+  const s = await storage({ startTimeout: 50 });
+  await s.installer.install(inline('a-late', "export async function activate(annai) { await globalThis.__gate; annai.tools.register({ name: 'late-tool', description: 'x', input: { type: 'object' }, run() {} }); throw new Error('The tide table is gone.'); }"));
+  let open = () => {};
+  /** @type {any} */ (globalThis).__gate = new Promise((r) => { open = () => r(undefined); });
+  const host = s.host();
+  try {
+    assert.deepEqual((await host.startInstalled()).map((f) => f.id), ['a-late'], 'given up at the limit');
+    assert.equal(host.registry.list('tool').length, 0);
+    open(); // the activate() goes on: registers a tool, then throws
+    await tick();
+    assert.deepEqual([host.registry.list('tool').length, host.active.has('a-late')], [0, false], 'what it set up after the limit is taken down');
+  } finally {
+    delete (/** @type {any} */ (globalThis)).__gate;
   }
 });
 
@@ -194,7 +218,7 @@ function watched() {
   /** @type {any[]} */
   const logged = [];
   const registry = new Registry({ log: (ev) => { logged.push(ev); } });
-  return { registry, lines: () => logged.filter((x) => x.type === 'plugin.error').map((x) => x.data.count ?? null) };
+  return { registry, lines: () => logged.filter((x) => x.type === 'plugin.error').map((x) => x.data.count ?? null), notes: () => logged.filter((x) => x.type === 'plugin.error').map((x) => x.data.message) };
 }
 
 /** A live session of the protocol, ready. @param {any} registry @param {any} [type] */
@@ -285,7 +309,7 @@ test("a session that is ready, and a driver call that returns, each end the plug
   assert.deepEqual([call.registry.isDisabled('tide-live'), call.lines()], [false, [1, 2, 1, 2]], 'a driver call that returned ended the run');
 });
 
-test("a plugin.error line the registry wrote once is written again after the plugin is turned back on (enable) (plugin-fails-fix1, Fable T1)", () => {
+test("enable (the plugin's turn-on) clears the repeat memory: a plugin.error line the registry wrote once is written again after it (plugin-fails-fix1, Fable T1)", () => {
   const { registry, lines } = watched();
   const e = new Error('The tide table is not downloaded yet.');
   registry.threw('tides', 'hook', e);
@@ -409,7 +433,7 @@ test("a hook that throws the same words on 50 entries is called 50 times, stays 
   assert.deepEqual(lines(), [null, null, null], 'another error between: written again, once');
 });
 
-test("a call that works ends a plugin's run at each place that counts one: two crashes, the call working, two crashes leave it on, for a trigger's check, a backup place's call and a provider's headers and classify (plugin-fails-next test 11; its list and sign-in in provider-setup.test.js and returns.test.js)", async () => {
+test("a call that works ends a plugin's run: two crashes, the call working, two crashes leave it on, for a trigger's check, a backup place's call and a provider's headers and classify (plugin-fails-next test 11; a tool and a hook just below, a list and a sign-in in provider-setup.test.js and returns.test.js)", async () => {
   /** @param {() => unknown} works @returns {() => unknown} two crashes, then works once, then two crashes, then works */
   const script = (works) => {
     const steps = ['crash', 'crash', 'works', 'crash', 'crash'];
@@ -447,17 +471,48 @@ test("a call that works ends a plugin's run at each place that counts one: two c
   assert.deepEqual(off, { trigger: false, backup: false, headers: false, classify: false });
 });
 
-test("a provider's headers() that returns no object (nothing, null, a string, a number) is a wrong return, not a success: three in a row switch its plugin off, no header is added, and each is a counted line (plugin-fails-fix1, item 6)", () => {
+test("a tool that crashes, works, then crashes twice stays on; so does a hook that does the same (plugin-fails-fix2, haiku-rr-tests-a F1: a tool's and a hook's call that works end the run)", async () => {
+  const s = await storage();
+  await s.installer.install(inline('flaky', `export function activate(annai) { annai.tools.register({ name: 'flaky', description: 'x', input: { type: 'object' }, run(input) { if (input.ok) return 'done'; throw new TypeError("Cannot read properties of undefined (reading 'x')"); } }); }`));
+  const host = s.host();
+  await host.start('flaky');
+  const [tool] = host.registry.list('tool');
+  for (let i = 0; i < 2; i++) await assert.rejects(tool.run({}), PluginError);
+  assert.equal((await tool.run({ ok: true })).content, 'done');
+  for (let i = 0; i < 2; i++) await assert.rejects(tool.run({}), PluginError);
+  assert.equal(host.registry.isDisabled('flaky'), false, 'the tool');
+  // One entry per delivery, as entries come: a call that works ends the run before the next entry's call starts.
+  const { registry } = watched();
+  let calls = 0;
+  registry.add('tides', 'hook', { fn: () => { if (++calls !== 3) throw new TypeError("Cannot read properties of undefined (reading 'x')"); } });
+  for (let seq = 1; seq <= 5; seq++) {
+    deliverHooks(registry, [{ scope: SYS, seq, ts: 1, type: 'x', actor: 'system' }], () => seq * 1_000_000);
+    await tick();
+  }
+  assert.deepEqual([calls, registry.isDisabled('tides')], [5, false], 'the hook');
+});
+
+test("a provider's headers() that gives no object (nothing, null, a string, a number) adds no header and leaves its plugin on, however many model calls adjust it: only a throw of it is a crash (plugin-fails-fix2, item 1)", () => {
+  // `adjusted` runs at every model call and lookup, and a working request credits the endpoint type's owner, never the provider: a count here would
+  // switch off a provider whose every request works, at its third call, for headers it has none of for an ability.
   for (const [wrong, said] of /** @type {[any, string][]} */ ([[undefined, 'undefined'], [null, 'null'], ['x-acme: 1', 'string'], [7, 'number']])) {
     const { registry, lines } = watched();
     registry.add('provider-acme', 'provider-setup', { headers: () => wrong });
     const made = [];
-    for (let i = 0; i < 3; i++) made.push(adjusted(registry, 'provider-acme', /** @type {any} */ ({ type: 'type-h' }), /** @type {any} */ ({ ability: 'chat', headers: { a: 'b' } })).endpoint.headers);
-    assert.deepEqual([registry.isDisabled('provider-acme'), lines(), made], [true, [1, 2, 3], [{ a: 'b' }, { a: 'b' }, { a: 'b' }]], said);
+    for (let i = 0; i < 6; i++) made.push(adjusted(registry, 'provider-acme', /** @type {any} */ ({ type: 'type-h' }), /** @type {any} */ ({ ability: 'chat', headers: { a: 'b' } })).endpoint.headers);
+    assert.deepEqual([registry.isDisabled('provider-acme'), lines(), made.every((h) => h.a === 'b' && Object.keys(h).length === 1)], [false, [], true], said);
   }
-  const fine = new Registry();
-  fine.add('provider-acme', 'provider-setup', { headers: () => ({ 'x-acme': '1' }) });
-  assert.deepEqual(adjusted(fine, 'provider-acme', /** @type {any} */ ({ type: 'type-h' }), /** @type {any} */ ({ ability: 'chat', headers: {} })).endpoint.headers, { 'x-acme': '1' });
+  // Nothing for one ability, a header for another: the natural `if (ability === 'image') return {...}`.
+  const some = watched();
+  some.registry.add('provider-acme', 'provider-setup', { headers: (/** @type {string} */ ability) => (ability === 'image' ? { 'x-acme-image': '1' } : undefined) });
+  const reach = (/** @type {string} */ ability) => adjusted(some.registry, 'provider-acme', /** @type {any} */ ({ type: 'type-h' }), /** @type {any} */ ({ ability, headers: {} })).endpoint.headers;
+  assert.deepEqual([reach('chat'), reach('chat'), reach('chat'), reach('chat'), reach('image')], [{}, {}, {}, {}, { 'x-acme-image': '1' }]);
+  assert.deepEqual([some.registry.isDisabled('provider-acme'), some.lines()], [false, []]);
+  // A throw is still a crash.
+  const crash = watched();
+  crash.registry.add('provider-acme', 'provider-setup', { headers: () => { throw new TypeError("Cannot read properties of undefined (reading 'x')"); } });
+  for (let i = 0; i < 3; i++) adjusted(crash.registry, 'provider-acme', /** @type {any} */ ({ type: 'type-h' }), /** @type {any} */ ({ ability: 'chat', headers: {} }));
+  assert.deepEqual([crash.registry.isDisabled('provider-acme'), crash.lines()], [true, [1, 2, 3]]);
 });
 
 test("isBadAddress and the tool path: a TypeError in WebKit's words for a fetch of an address with a name or password in it is an answer, not a crash: a tool that throws it fails each time with that error, and the plugin stays on (plugin-fails-next test 12)", async () => {
@@ -481,7 +536,16 @@ test("a browser Event a plugin rejects with (an image or script that wouldn't lo
   assert.deepEqual([registry.isDisabled('looks'), lines()], [false, [null]]);
 });
 
-test('every module that counts a plugin\'s failure also reports a call of it that worked (succeeded, settled or guard, or typeWorked called, not only defined), the hooks\' loop guard\'s own limit aside (plugin-fails-next test 13)', async () => {
+test('a browser Event is named by its type in the Trace and on the card, never "[object Event]" (plugin-fails-fix2, item 4)', async () => {
+  const { registry, notes } = watched();
+  registry.threw('looks', 'avatar setState', new Event('error'));
+  await assert.rejects(registry.guard('picky', 'starting', async () => { throw new Event('error'); })(), (e) => e instanceof PluginError && e.message === 'picky: starting failed: error event' && e.shown === 'Starting failed: error event.');
+  await assert.rejects(registry.guard('picky', 'hook', async () => { throw new Event('load'); })(), /hook failed: load event/);
+  registry.fail('picky', 'provider call', new Event('error'));
+  assert.deepEqual(notes(), ['error event', 'error event', 'load event', 'error event']);
+});
+
+test('every module that counts a plugin\'s failure also reports a call of it that worked (succeeded, settled or guard, or typeWorked called, not only defined) (plugin-fails-next test 13)', async () => {
   const root = new URL('../../src/', import.meta.url);
   /** @type {string[]} */
   const missing = [];

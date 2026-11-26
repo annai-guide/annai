@@ -75,7 +75,7 @@ export const isBadAddress = (e) => e instanceof TypeError && /invalid url|failed
 
 /**
  * Whether an error is a bug in a plugin's code (spec §5.5) rather than its answer, outside callOnce's and speechCall's calls (asProviderError):
- * the one rule for a tool, a hook, a drawing and every other place annai runs a plugin's code (threw), a start excepted (it is never counted). annai's own error classes
+ * the one rule for a tool, a hook, a drawing and every other place annai runs a plugin's code (threw), a start excepted (guard). annai's own error classes
  * (AllFailedError, ProviderError, StorageFullError, ValidationError, PluginError and the rest) are no crash class, so what annai's own APIs throw for
  * a refusal, a limit or a link never counts. Its throws of a crash class are for a wrong argument (bytes.js), a wrong return (call.js) and inflate's
  * RangeErrors (zip.js turns them into a ZipError); a crash class the engine throws inside one of its APIs counts too (`readJSON`
@@ -89,6 +89,9 @@ export function isPluginBug(e) {
   if (isFetchFailure(e) || isBadAddress(e)) return false;
   return BUGS.some((B) => e instanceof B) || (e instanceof DOMException && BUG_NAMES.has(e.name));
 }
+
+/** What a caught error says, for the card and the Trace: its message, and for a browser Event (no message) its type ("error event"). @param {unknown} e */
+const wordsOf = (e) => (e instanceof Event ? `${e.type} event` : String(/** @type {any} */ (e)?.message ?? e));
 
 export class PluginError extends Error {
   /**
@@ -262,18 +265,18 @@ export class Registry {
    * What a plugin's code threw where annai called it (a hook through guard, a drawing, a dock action, a component, an avatar's call, heard clips, a
    * live protocol's code), or what a promise such a call returned rejects with (guard, settled): always logged, once while it repeats, and counted
    * only when it is a crash (isPluginBug), as a tool's is. Any other error is its answer (for want of a link, in its own words): it neither adds to
-   * its plugin's run of failures nor ends it, and has no count. A start's failure is not here: guard logs it and never counts it (it is that launch's).
+   * its plugin's run of failures nor ends it, and has no count. A start's failure is not here (guard).
    * @param {string} pluginId @param {string} name @param {unknown} e
    */
   threw(pluginId, name, e) {
     if (isPluginBug(e)) this.#fail(pluginId, name, e);
-    else this.#note(pluginId, { name, message: String(/** @type {any} */ (e)?.message ?? e) });
+    else this.#note(pluginId, { name, message: wordsOf(e) });
   }
 
   /**
    * A function of a plugin's, as a call that frames what it throws (a PluginError carrying the plugin's id and, for a start, the card's words). It is
    * refused while the plugin is switched off, and a call that works ends the plugin's run of failures. A throw of it is a plugin.error line and
-   * counts like threw's, except a start's ('starting', the module's load and activate()): that is the launch's card and a line, never a count.
+   * counts like threw's, except a start's ('starting': the module's load and activate()).
    * @template {(...args: any[]) => any} F
    * @param {string} pluginId @param {string} name what the function is, for messages
    * @param {F} fn
@@ -289,10 +292,10 @@ export class Registry {
       } catch (e) {
         // A start's failure is that launch's: a line in the Trace and the card, never a count (annai never switches a plugin off for not starting).
         // Any other call counts when it is a crash; the error still reaches the caller.
-        if (name === 'starting') this.#note(pluginId, { name, message: String(/** @type {any} */ (e)?.message ?? e) });
+        if (name === 'starting') this.#note(pluginId, { name, message: wordsOf(e) });
         else this.threw(pluginId, name, e);
         const was = /** @type {any} */ (e);
-        const message = String(was?.message ?? e);
+        const message = wordsOf(e);
         // What went wrong: annai's words for the screens where it has them (shown), else the plugin's own, or annai's own English check (en).
         const why = typeof was?.shown === 'string' ? was.shown : message.startsWith(`${pluginId}: `) ? message.slice(pluginId.length + 2) : message;
         // annai's own words are the frame, in the screens' words; no words to frame leaves "Starting failed." (asSentence drops the colon);
@@ -320,12 +323,12 @@ export class Registry {
   /** @param {string} pluginId @param {string} name @param {any} e */
   #fail(pluginId, name, e) {
     // Switched off already (its code may still run: an open live session, a late timer): it has failed enough, so nothing more is counted.
-    if (this.#disabled.has(pluginId)) return this.#note(pluginId, { name, message: String(e?.message ?? e) });
+    if (this.#disabled.has(pluginId)) return this.#note(pluginId, { name, message: wordsOf(e) });
     const n = (this.#failures.get(pluginId) ?? 0) + 1;
     this.#failures.set(pluginId, n);
-    this.#note(pluginId, { name, message: String(e?.message ?? e), count: n });
+    this.#note(pluginId, { name, message: wordsOf(e), count: n });
     // The card's last error is annai's own words for it where it has them (shown: a sentence in the screens' language), else the message.
-    if (n >= this.maxFailures) this.disable(pluginId, { kind: 'failed', count: n }, typeof e?.shown === 'string' ? e.shown : String(e?.message ?? e));
+    if (n >= this.maxFailures) this.disable(pluginId, { kind: 'failed', count: n }, typeof e?.shown === 'string' ? e.shown : wordsOf(e));
   }
 
   /**

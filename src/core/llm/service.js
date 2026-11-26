@@ -798,12 +798,16 @@ export function createLlm({
         }
         return type.readList(await res.json());
       };
-      // A provider plugin's own list, in the protocol's place (decision 22); a bug in it counts against it, a return that is no list included.
+      // A provider plugin's own list, in the protocol's place (decision 22); a bug in it counts against it.
       const list = setupOf(plugins.registry, rec.plugin)?.list;
       if (!list) return protocolList();
       try {
         const got = await list({ ability: abilityId, endpoint, key, fetch: send, protocolList });
-        if (!Array.isArray(got)) throw new TypeError(/* en */ `its list() gave ${got === null ? 'null' : typeof got}, not an array of models`);
+        if (!Array.isArray(got)) {
+          // No list is neither a success nor a crash (the plugin's own words, as its error would be): the protocol's list answers, and the Trace says what it gave.
+          /* en */ plugins.registry.threw(rec.plugin, 'provider list', new Error(/* en */ `its list() gave ${got === null ? 'null' : typeof got}, not an array of models`));
+          return protocolList(); // not awaited: a failure of the protocol's own list is not this plugin's
+        }
         plugins.registry.succeeded(rec.plugin); // its list returned a list: its plugin's run of failures is over
         return got.filter((m) => typeof m?.providerId === 'string' && m.providerId);
       } catch (e) {

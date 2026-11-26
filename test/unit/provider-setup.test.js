@@ -245,7 +245,7 @@ test("a provider's list that returns a list ends its plugin's run of failures: t
   }
 });
 
-test("a provider's list that returns no array (nothing, null, a string, an object) is a wrong return, not a success: a crash counted against its plugin, the protocol's list answering, three in a row switching it off (plugin-fails-fix1, item 6)", async () => {
+test("a provider's list that returns no array (nothing, null, a string, an object) is neither a success nor a crash: the protocol's list answers, one plugin.error line with no count says what it gave, and the plugin stays on however often it does (plugin-fails-fix2, item 2)", async () => {
   const had = /** @type {any} */ (globalThis).acme.noHeaders;
   /** @type {any} */ (globalThis).acme.noHeaders = true;
   try {
@@ -253,10 +253,21 @@ test("a provider's list that returns no array (nothing, null, a string, an objec
       const k = await kit();
       const id = await k.llm.addProvider('provider-acme', { key: 'sk-acme-1' });
       /** @type {any} */ (globalThis).acme.list = async () => wrong;
-      for (let i = 0; i < 3; i++) assert.deepEqual(await k.llm.listModels(id, 'chat'), [{ providerId: 'listed-1' }], `${said}: the protocol's list answers`);
-      assert.equal(k.registry.isDisabled('provider-acme'), true, `${said}: switched off at the third`);
-      assert.deepEqual(k.events.filter((e) => e.type === 'plugin.error').map((e) => [e.data.count, e.data.message]), [1, 2, 3].map((n) => [n, `its list() gave ${said}, not an array of models`]));
+      for (let i = 0; i < 6; i++) assert.deepEqual(await k.llm.listModels(id, 'chat'), [{ providerId: 'listed-1' }], `${said}: the protocol's list answers`);
+      assert.equal(k.registry.isDisabled('provider-acme'), false, `${said}: not counted`);
+      assert.deepEqual(k.events.filter((e) => e.type === 'plugin.error').map((e) => [e.data.count, e.data.message]), [[undefined, `its list() gave ${said}, not an array of models`]], `${said}: one line, no count`);
     }
+    // Neither a success: two crashes, a list that gives none, one crash more are three in a row.
+    const k = await kit();
+    const id = await k.llm.addProvider('provider-acme', { key: 'sk-acme-1' });
+    const steps = ['crash', 'crash', 'none', 'crash'];
+    /** @type {any} */ (globalThis).acme.list = (/** @type {any} */ c) => {
+      const step = steps.shift();
+      if (step === 'crash') throw new TypeError("Cannot read properties of undefined (reading 'models')");
+      return step === 'none' ? undefined : c.protocolList();
+    };
+    for (let i = 0; i < 4; i++) assert.deepEqual(await k.llm.listModels(id, 'chat'), [{ providerId: 'listed-1' }]);
+    assert.equal(k.registry.isDisabled('provider-acme'), true, 'a list that gives none neither ended the run nor was one of it: the third crash switched it off');
   } finally {
     /** @type {any} */ (globalThis).acme.list = (/** @type {any} */ c) => c.protocolList();
     /** @type {any} */ (globalThis).acme.noHeaders = had;
@@ -301,7 +312,7 @@ test("the featured start's plugin installs in the background while no provider e
   const again = await k.llm.addProvider('provider-other', { key: 'sk-other' });
   assert.deepEqual(await ids(), ['proto-h', 'provider-acme', 'provider-other']);
   await k.llm.removeProvider(again);
-  await assert.rejects(k.llm.prepareStart('provider-acme'), /is turned off/);
+  await assert.rejects(k.llm.prepareStart('provider-acme'), /which is turned off, isn't switched on by (adding it|this)/);
   assert.equal((await k.host.installed())['provider-acme'].enabled, false);
   // Switched off by annai after errors: the start isn't the user's tap, so it stays off.
   await k.host.setEnabled('provider-acme', true);
@@ -402,7 +413,7 @@ test("Add on a provider whose plugin draws its own Add flow installs it, with wh
   assert.equal((await readConfig(k.ws)).providers[/** @type {string} */ (other)].plugin, 'provider-other');
   // Turned off by the user, it isn't switched on by Add.
   await k.host.setEnabled('provider-acme', false);
-  await assert.rejects(k.llm.startAdd('provider-acme', { official: true }), /turned off/);
+  await assert.rejects(k.llm.startAdd('provider-acme', { official: true }), /which is turned off, isn't switched on by (adding it|this)/);
   assert.equal((await k.host.installed())['provider-acme'].enabled, false);
 });
 

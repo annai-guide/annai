@@ -44,11 +44,7 @@ function guarded(registry, pluginId, what, fn) {
  */
 export function adjusted(registry, pluginId, type, endpoint, keyHeader = '') {
   const s = setupOf(registry, pluginId);
-  /* en */ const own = s?.headers && guarded(registry, pluginId, 'provider headers', () => {
-    const got = s.headers?.(endpoint.ability);
-    if (got === null || typeof got !== 'object') throw new TypeError(/* en */ `its headers() gave ${got === null ? 'null' : typeof got}, not an object of headers`);
-    return got;
-  });
+  /* en */ const own = s?.headers && guarded(registry, pluginId, 'provider headers', () => s.headers?.(endpoint.ability));
   const keys = ['authorization', 'x-api-key', keyHeader.toLowerCase()];
   const headers = Object.fromEntries(Object.entries(own && typeof own === 'object' ? own : {}).filter(([k, v]) => typeof v === 'string' && !keys.includes(k.toLowerCase())));
   const classify = s?.classify;

@@ -150,7 +150,7 @@ test("security review: a requirement the user switched off isn't switched on: ad
   const { host: other } = await hostKit();
   await addFromCatalog(other, 'provider-x', { fetch: s.fetch });
   await other.setEnabled('provider-x', false);
-  await assert.rejects(addFromCatalog(other, 'provider-x', { fetch: s.fetch, tap: true }), /is turned off/);
+  await assert.rejects(addFromCatalog(other, 'provider-x', { fetch: s.fetch, tap: true }), /which is turned off, isn't switched on by (adding it|this)/);
   assert.equal((await other.installed())['provider-x'].enabled, false);
 });
 

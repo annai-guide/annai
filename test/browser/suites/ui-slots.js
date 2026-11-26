@@ -153,7 +153,7 @@ export default function (test, assert) {
     const ctx = { registry, agent, notices: { card() {}, toast() {} }, go() {} };
     const theirs = document.createElement('span');
     theirs.className = 'their-avatar';
-    registry.add('look', 'ui:component', { name: 'avatar', create: () => ({ el: theirs, setState() { throw new TypeError('no state'); }, setLevel() { throw new TypeError('no level'); }, glance() { throw new TypeError('no glance'); } }) });
+    registry.add('look', 'ui:component', { name: 'avatar', create: () => ({ el: theirs, setState() { throw new TypeError('no state'); }, setLevel() {}, glance() { throw new TypeError('no glance'); } }) }); // an avatar needs a setLevel; this test never calls it
     const dock = createDock(ctx);
     assert.ok(dock.el.contains(theirs), 'their avatar is in the dock');
     assert.equal(errors.length, 1, 'the first setState, as the dock was made, counted');
