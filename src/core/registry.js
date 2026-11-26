@@ -79,19 +79,14 @@ export const isBadAddress = (e) => e instanceof TypeError && /invalid url|failed
  * (AllFailedError, ProviderError, StorageFullError, ValidationError, PluginError and the rest) are no crash class, so what annai's own APIs throw for
  * a refusal, a limit or a link never counts. Its throws of a crash class are for a wrong argument (bytes.js), a wrong return (call.js) and inflate's
  * RangeErrors (zip.js turns them into a ZipError); a crash class the engine throws inside one of its APIs counts too (`readJSON`
- * on a file that isn't JSON), as in the plugin's own code. A fetch the browser couldn't make (isFetchFailure) is an answer (§17), and so is a browser
- * Event a plugin rejects with (an image or a script that wouldn't load: the browser's account of a request it couldn't make, as a failed fetch is).
+ * on a file that isn't JSON), as in the plugin's own code. A fetch the browser couldn't make (isFetchFailure) is an answer (§17).
  * @param {unknown} e
  */
 export function isPluginBug(e) {
-  if (e instanceof Event) return false; // `img.onerror = reject`: the browser's answer
   if (!(e instanceof Error)) return true;
   if (isFetchFailure(e) || isBadAddress(e)) return false;
   return BUGS.some((B) => e instanceof B) || (e instanceof DOMException && BUG_NAMES.has(e.name));
 }
-
-/** What a caught error says, for the card and the Trace: its message, and for a browser Event (no message) its type ("error event"). @param {unknown} e */
-const wordsOf = (e) => (e instanceof Event ? `${e.type} event` : String(/** @type {any} */ (e)?.message ?? e));
 
 export class PluginError extends Error {
   /**
@@ -270,7 +265,7 @@ export class Registry {
    */
   threw(pluginId, name, e) {
     if (isPluginBug(e)) this.#fail(pluginId, name, e);
-    else this.#note(pluginId, { name, message: wordsOf(e) });
+    else this.#note(pluginId, { name, message: String(/** @type {any} */ (e)?.message ?? e) });
   }
 
   /**
@@ -292,10 +287,10 @@ export class Registry {
       } catch (e) {
         // A start's failure is that launch's: a line in the Trace and the card, never a count (annai never switches a plugin off for not starting).
         // Any other call counts when it is a crash; the error still reaches the caller.
-        if (name === 'starting') this.#note(pluginId, { name, message: wordsOf(e) });
+        if (name === 'starting') this.#note(pluginId, { name, message: String(/** @type {any} */ (e)?.message ?? e) });
         else this.threw(pluginId, name, e);
         const was = /** @type {any} */ (e);
-        const message = wordsOf(e);
+        const message = String(was?.message ?? e);
         // What went wrong: annai's words for the screens where it has them (shown), else the plugin's own, or annai's own English check (en).
         const why = typeof was?.shown === 'string' ? was.shown : message.startsWith(`${pluginId}: `) ? message.slice(pluginId.length + 2) : message;
         // annai's own words are the frame, in the screens' words; no words to frame leaves "Starting failed." (asSentence drops the colon);
@@ -323,12 +318,12 @@ export class Registry {
   /** @param {string} pluginId @param {string} name @param {any} e */
   #fail(pluginId, name, e) {
     // Switched off already (its code may still run: an open live session, a late timer): it has failed enough, so nothing more is counted.
-    if (this.#disabled.has(pluginId)) return this.#note(pluginId, { name, message: wordsOf(e) });
+    if (this.#disabled.has(pluginId)) return this.#note(pluginId, { name, message: String(e?.message ?? e) });
     const n = (this.#failures.get(pluginId) ?? 0) + 1;
     this.#failures.set(pluginId, n);
-    this.#note(pluginId, { name, message: wordsOf(e), count: n });
+    this.#note(pluginId, { name, message: String(e?.message ?? e), count: n });
     // The card's last error is annai's own words for it where it has them (shown: a sentence in the screens' language), else the message.
-    if (n >= this.maxFailures) this.disable(pluginId, { kind: 'failed', count: n }, typeof e?.shown === 'string' ? e.shown : wordsOf(e));
+    if (n >= this.maxFailures) this.disable(pluginId, { kind: 'failed', count: n }, typeof e?.shown === 'string' ? e.shown : String(e?.message ?? e));
   }
 
   /**

@@ -245,7 +245,7 @@ test("a provider's list that returns a list ends its plugin's run of failures: t
   }
 });
 
-test("a provider's list that returns no array (nothing, null, a string, an object) is neither a success nor a crash: the protocol's list answers, one plugin.error line with no count says what it gave, and the plugin stays on however often it does (plugin-fails-fix2, item 2)", async () => {
+test("a provider's list that returns no array (nothing, null, a string, an object) is neither a success nor a crash: the protocol's list answers, one plugin.error line with no count says what it gave, and the plugin stays on through six calls of it (plugin-fails-fix2, item 2)", async () => {
   const had = /** @type {any} */ (globalThis).acme.noHeaders;
   /** @type {any} */ (globalThis).acme.noHeaders = true;
   try {

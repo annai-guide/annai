@@ -280,7 +280,7 @@ test("host: a count an older annai kept is read as nothing: a plugin with startF
   assert.deepEqual([after['kept-on'].enabled, field('kept-on'), after['kept-off'].enabled, field('kept-off')], [true, 3, true, 3]);
 });
 
-test("host: four starts given up at the limit, in one run of annai, leave the plugin on: the limit's error is each launch's card, never a count (plugin-fails-fix1; the card read, plugin-fails-fix2)", async () => {
+test("host: four starts given up at the limit, in one run of annai, leave the plugin on: the limit's error is each start's card, never a count (plugin-fails-fix1; the card read, plugin-fails-fix2; four starts, not four launches, plugin-fails-fix3)", async () => {
   const { host, registry, logged } = await setup({ startTimeout: 20 });
   await host.install(inline('stalled', 'export async function activate() { await new Promise(() => {}); }'));
   for (let i = 1; i <= 4; i++) {
@@ -292,7 +292,7 @@ test("host: four starts given up at the limit, in one run of annai, leave the pl
   assert.deepEqual(logged.filter((e) => e.type === 'plugin.error').map((e) => 'count' in e.data), [false], 'one line, with no count');
 });
 
-test("host: a module that throws as it loads fails that launch alone, whatever it throws: its load is inside the guarded start (annai's frame), nothing is written, and in one run of annai a load that fails in a crash class (a syntax error, WebKit's failed import) is never counted (plugin-fails-next; before it, off at the third launch; plugin-fails-fix1: not counted in a run)", async () => {
+test("host: a module that throws as it loads fails that launch alone, whatever it throws: its load is inside the guarded start (annai's frame), nothing is written to the switch, and in one run of annai a load that fails in a crash class (a syntax error, WebKit's failed import) is never counted (plugin-fails-next; before it, off at the third launch; plugin-fails-fix1: not counted in a run)", async () => {
   const { host, relaunch } = await setup();
   await host.install(inline('loading', "throw new Error('config', { cause: new TypeError('Failed to fetch') });"));
   for (let launch = 1; launch <= 4; launch++) {
