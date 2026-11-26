@@ -243,24 +243,35 @@ export function traceUrl(url, secrets = [], unread = false) {
     // isn't either (a stored key may be in it).
     return unread || leaks(out, secrets) ? `${u.protocol}//${unread || leaks(host, secrets) ? BLANK : host}/${BLANK}` : out;
   } catch {
-    // Not an address: keep only what comes before any query or fragment and after any name or password (to the last @), if that holds no secret.
-    const out = scrub(String(url).replace(/^([a-z][a-z0-9+.-]*:\/\/)[^]*@/i, '$1').split(/[?#]/)[0], secrets);
+    // Not an address: one that may hold a name or password keeps only its scheme (which @ ends them can't be told); any other only what comes
+    // before any query or fragment, if that holds no secret.
+    if (CREDENTIALED.test(String(url))) return `${String(url).slice(0, String(url).indexOf('://'))}://${BLANK}`;
+    const out = scrub(String(url).split(/[?#]/)[0], secrets);
     return unread || leaks(out, secrets) ? BLANK : out;
   }
 }
 
+// An address with something between its scheme and an at sign: it may hold a name or password, whether or not it parses.
+const CREDENTIALED = /^[a-z][a-z0-9+.-]*:\/\/[^]*@/i;
+
 /**
  * The requested address in an engine's words (Chromium's refusal of one with a name or password quotes it whole), as given or as parsed, made
- * its traced form, so nothing of what traceUrl leaves out reaches them. @param {string} words @param {unknown} url @param {string} traced
+ * its traced form in one pass, longest first, when it may hold a name or password; any other address's words are left as they are.
+ * @param {string} words @param {unknown} url @param {string} traced
  */
 function quotedAs(words, url, traced) {
-  const forms = [String(url)];
+  const given = String(url);
+  /** @type {string[]} */
+  const forms = [given];
   try {
-    forms.push(new URL(String(url)).href);
+    const u = new URL(given);
+    if (!u.username && !u.password) return words;
+    forms.push(u.href);
   } catch {
-    // not an address: as given only
+    if (!CREDENTIALED.test(given)) return words;
   }
-  return forms.sort((a, b) => b.length - a.length).reduce((w, f) => (f ? w.split(f).join(traced) : w), words);
+  const any = new RegExp([...new Set(forms)].sort((a, b) => b.length - a.length).map((f) => f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g');
+  return words.replace(any, () => traced);
 }
 
 /**
