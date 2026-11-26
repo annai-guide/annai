@@ -58,9 +58,8 @@ async function deafKit(replies, fail) {
   const k = await agentKit([replies], { voice: { speechIn: ['m-hear'], hears: ['where should we eat'] } });
   const hears = k.llm.transcribe;
   let down = true;
-  let asked = 0;
-  k.llm.transcribe = async (/** @type {any} */ c) => { asked++; if (down) throw fail(); return hears(c); };
-  return { k, back: () => { down = false; }, asked: () => asked };
+  k.llm.transcribe = async (/** @type {any} */ c) => { if (down) throw fail(); return hears(c); };
+  return { k, back: () => { down = false; } };
 }
 
 for (const [how, fail, rests] of FAILURES) {
@@ -124,7 +123,9 @@ test('after a heard line nothing could write down, a watch firing, Try again, an
   await idleAtOnce(k);
   assert.deepEqual(heardAs(k.requests[2]), [STAND_IN], 'Try again');
   await tapAndSay(k, 'gas-station');
-  assert.deepEqual(heardAs(k.requests[3]), [STAND_IN, STAND_IN], 'a second heard line, the first still kept');
+  assert.deepEqual(heardAs(k.requests[3]), [STAND_IN, STAND_IN], 'a second heard line, beside the first');
+  assert.deepEqual(await written(k), [NOT_TRANSCRIBED], 'the first, given up at the end of the third turn that worked (Try again)');
+  assert.equal(k.voice.memory.size, 1, "the second's sound is kept");
   assert.equal(k.requests.length, 4);
   assert.deepEqual(await errors(k), []);
   assert.deepEqual((await spoken(k)).map(([, text]) => text), ['I could not hear that.', 'The time came.', 'Again: I could not hear that.', 'Nor that.']);
