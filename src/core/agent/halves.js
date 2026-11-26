@@ -86,7 +86,7 @@ const BOTH_CARD = 'model:both';
  * ready, it currently says your turn. maybe that is confusing? maybe put thinking"). No "tap to stop": a tap talks to Koe; the sign's Stop stops Kokoro.
  */
 const THINKING = Object.freeze({ name: /** @type {const} */ ('thinking'), label: t`Thinking` });
-/** The same while Kokoro's call sends its photos, PDF or recording (its own state's `sending`): the dock says Sending… until they are up (spec §16.3). */
+/** The same while Kokoro's call sends its photos, PDF or recording (its own state's `sending`): the dock says Sending… until its send ends (spec §16.3). */
 const SENDING = Object.freeze({ name: /** @type {const} */ ('thinking'), label: t`Sending…`, sending: /** @type {const} */ (true) });
 
 /** What the dock shows of a state: a change of either is told. @param {import('./loop.js').State} s */

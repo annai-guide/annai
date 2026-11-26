@@ -91,7 +91,7 @@ import { FILES_ONLY, PHOTO_ONLY, handoverOf } from '../handover.js';
  *   her voice; kept: the verdict, once it comes; h: this half's own segment
  * @typedef {{ name: StateName, label: string, detail?: string, wait?: 'ask' | 'wait', over?: StateName, sending?: true }} State  label: the dock's words for it (LABELS); detail: what she is away doing (TIDYING, or a task's words);
  *   wait: what she waits for while waiting, her question's answer (ask) or the user's turn (wait); over: Halves' dock state only, standing over Koe's own state of that name (Halves.state);
- *   sending: thinking while her call's photos, PDF or recording go up, until the send ends: the answer's headers, or its failing or stop (the dock says Sending…: callOnce's sending events)
+ *   sending: thinking while her call's photos, PDF or recording go up, until its uploads are done, the answer's headers come, or it fails or stops (the dock says Sending…: callOnce's sending events)
  * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[], key?: string, toast?: boolean, error?: unknown, said?: string }} Notice
  *   key: names a card a later turn takes down (the clear event, when that turn works): model, or silent:<its conversation>; error: what stopped it, when a screen has words of its
  *   own for that (the storage card for a full device: main.js shows it in place of this card); said: what that card says first, if not the title

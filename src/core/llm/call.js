@@ -378,7 +378,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       nativeCovers = ev.covers;
       return;
     }
-    if (ev.type === 'sending') return; // annai's own, said by this call alone (the POST below): a plugin's stream never words the dock
+    if (ev.type === 'sending') return; // annai's own, said by this call alone (its POST and its uploads, which never come through here): a plugin's stream never words the dock
     wait(firstOutputMs);
     if (firstMs === null && ev.type !== 'usage') firstMs = now() - started;
     if (ev.type === 'text') {
@@ -461,7 +461,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     if (err.said?.code === 'late' && sending && up) {
       err = sendCut(e, sending);
     }
-    sendOver(); // a send that failed (cut, stopped, no connection) is over: the dock says so before the card, or the next attempt
+    sendOver(); // a send that failed (cut, stopped, no connection) is over: the dock says so before the card
     // Output that started and then stopped is not "no output in time": it says so, and how long it waited.
     if (err.said?.code === 'late' && firstMs !== null) {
       const seconds = Math.max(1, Math.round(firstOutputMs / 1000));
@@ -710,7 +710,7 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
   if (!uploads || !type.uploadRequest || !type.readUpload || endpoint.tunables?.uploads === false || uploads.isOff(endpoint.id) || !model.input.includes('image')) return { request, expires: 0 };
   /** @type {Map<string, string>} upload ids, by the hash of the bytes uploaded */
   const ids = new Map();
-  /** A photo's upload was sent (the dock said Sending… for it): off once the uploads are done. */
+  /** A photo's upload was sent (the dock said Sending… for it): off however the uploads end (done, stopped or thrown). */
   let went = false;
   /** When each photo's upload expires, by the same hash. @type {Map<string, number>} */
   const expiry = new Map();
