@@ -3364,7 +3364,7 @@ test("the dock says Sending… while her call's photo goes up, then Thinking onc
   assert.ok(sentPhoto(link.bodies[0]), 'the photo went in the request');
 });
 
-test("a request of words alone says Thinking while it goes up and after: its send is no likelier than the model to be slow (sending-next)", async (t) => {
+test("a request of words alone says Thinking while it goes up and after (sending-next)", async (t) => {
   useClock(t);
   const link = claudeBehind();
   const k = await agentKit([CLAUDE], { fetch: link.fetch });
@@ -3378,7 +3378,7 @@ test("a request of words alone says Thinking while it goes up and after: its sen
   assert.ok(!sentPhoto(link.bodies[0]));
 });
 
-test("a photo's send cut at its time, and the next model answers: the dock says Thinking again as the call tries it (its restart), then her answer (sending-next)", async (t) => {
+test("a photo's send cut at its time, and the next model answers: the dock says Thinking again when the cut send ends, before the next model is tried, then her answer (sending-next)", async (t) => {
   useClock(t);
   const link = claudeBehind(); // never opened: no answer comes
   const k = await agentKit([CLAUDE, [say('Here.')]], { fetch: link.fetch });

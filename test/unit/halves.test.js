@@ -1806,6 +1806,7 @@ test("a stop while Kokoro's call sends the photo behind a Koe asleep, and a call
     const from = told.indexOf('thinking Sending…');
     assert.ok(from >= 0, `${how}: the dock said Sending…`);
     assert.ok(!told.slice(from + 1).some((x) => /Sending/.test(x)), `${how}: nothing says Sending… after it ended: ${told.slice(from)}`);
+    assert.match(told[from + 1] ?? '', /^thinking Thinking/, `${how}: the send's end says Thinking: ${told.slice(from)}`); // before the sleeping Koe's state hides it
     assert.deepEqual([k.agent.state.name, k.agent.state.label], ['sleeping', 'Tap to talk'], how);
     assert.equal(told.at(-1), 'sleeping Tap to talk', how);
   }

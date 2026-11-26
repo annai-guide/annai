@@ -1056,9 +1056,11 @@ test("a request that sends a photo's, a PDF's or a recording's bytes says sendin
       seen.push('asked');
       return answers(url, init).then((res) => { seen.push('headers'); return res; });
     };
-    const reply = await callOnce({ type: httpType([{ type: 'text', text: 'A pelican.' }, { type: 'stop', reason: 'end' }]), endpoint: endpoint(), model: all, key: 'k', request: /** @type {any} */ (r), fetch: /** @type {any} */ (get), firstOutputMs: 1000, onEvent });
+    // `read` says so when the call starts reading, so off at the headers (before it) is told from off at the first event (after it).
+    const read = async function* () { seen.push('read'); yield { type: 'text', text: 'A pelican.' }; yield { type: 'stop', reason: 'end' }; };
+    const reply = await callOnce({ type: httpType([], { read }), endpoint: endpoint(), model: all, key: 'k', request: /** @type {any} */ (r), fetch: /** @type {any} */ (get), firstOutputMs: 1000, onEvent });
     assert.equal(reply.text, 'A pelican.');
-    assert.deepEqual(seen, sends ? ['sending on', 'asked', 'headers', 'sending off', 'text', 'stop'] : ['asked', 'headers', 'text', 'stop'], what);
+    assert.deepEqual(seen, sends ? ['sending on', 'asked', 'headers', 'sending off', 'read', 'text', 'stop'] : ['asked', 'headers', 'read', 'text', 'stop'], what);
   }
 });
 
@@ -1117,7 +1119,7 @@ test("a photo's upload says sending as it starts going up, and off once the uplo
   assert.deepEqual(seen, ['sending on', 'upload', 'sending off', 'request', 'text', 'stop']);
 });
 
-test("a photo's upload stopped part-way says off at the uploads' own end: nothing stays on after it (sending-next)", async () => {
+test("a photo's upload stopped while it is under way says off at the uploads' own end: nothing stays on after it (sending-next)", async () => {
   const { Workspace } = await import('../../src/core/workspace.js');
   const { ensureBaseScopes } = await import('../../src/core/scopes.js');
   const { Uploads } = await import('../../src/core/llm/uploads.js');
