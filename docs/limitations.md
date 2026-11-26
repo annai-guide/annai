@@ -1500,18 +1500,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the module's import and the package checks run outside `guard` and its 10-second limit (src/core/plugins.js, the launch count), so the one rule never sees them; every start finding of fail-owner-next's and plugin-link-next's rounds landed in the kept launch count. The fix weighs: the import inside the guarded, timed start (one rule and one time limit for all of a start); or whether a start needs a kept count at all (a start that failed isn't running either way; the count saves only the repeated card). The plugin guide says meanwhile not to await the network as the module loads.
 - **Revisit when:** its row in docs/progress.md, in the next version, its design question first.
 
-### An import link whose file name holds a stray `%` fails after it downloads
-- **Kind:** deferred.
-- **What the traveller sees:** opening an `#import=` link whose last path part holds a `%` that isn't an escape (a file named `50%off.pdf`, say) downloads the file, then fails with the engine's "URI malformed". Found by plugin-link-next's re-review (2026-11-25, measured with the same expression in Node; not on a phone).
-- **Why:** src/ui/screens/import.js decodes the name with `decodeURIComponent` outside a `try`. The fix: the name as it is when it doesn't decode, as the other decodes in annai do.
-- **Revisit when:** its row in docs/progress.md, in the next version.
-
-### A typed address with a user name and password counts as a plugin's bug
-- **Kind:** deferred.
-- **What the traveller sees:** a provider or backup address typed as `https://user:pass@host/…` passes annai's address checks, and the first request a plugin makes there throws the engine's "Request cannot be constructed from a URL that includes credentials" (Node's words; a browser's not checked), which counts toward the plugin's three failures in a row. Found by plugin-link-next's second opinion (2026-11-25, probed in Node).
-- **Why:** the address checks (`sameOrigin`, `addressFault`, the WebDAV plugin's own) look at the scheme and host only. The fix: refuse a user name or password in a typed address with words the traveller can act on (put them in the key or password field).
-- **Revisit when:** its row in docs/progress.md, in the next version.
-
 ### A photo in a message Google refused can be uploaded again though it isn't sent
 - **Kind:** known limitation.
 - **What the traveller sees:** with Gemini and photo uploads on (not the user's setup), when Google refuses a message with a photo (its safety filter) and that photo has no live upload (uploads were off, its upload failed at once, or it expired), each later request in that conversation leaves the refused message out but uploads its photo once before it goes: the photo's bytes on mobile data, at most once per 47 hours (the upload's life), or on a files service that hangs one wait of up to 120 s before the request is sent; and while uploads are held after a hang, the refused photo counts as bytes sent, so a reply there lifts the hold though no photo went, and the next new photo can cost one more 120 s wait. No answer is wrong and nothing is lost.
@@ -1644,4 +1632,37 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Kind:** deferred.
 - **What the traveller sees:** with a transcription model that hangs (no answer in its send's time) and a main model that takes no audio, after her answer to a spoken line she stays busy one more hang for each line not yet written down: about 48 s after the first line, 72 s after the second, 96 s after the third at C212's 24 s, a line said meanwhile waiting behind it. Before route (c1) each line cost one hang, then the card. Found by clip-route-next's final review (2026-11-26, measured with 300 ms standing for the send time).
 - **Why:** each write-down of each line asks the hanging model again with a fresh cut list (`Voice.writeDown` → `#resolve`, src/core/voice/voice.js), and the write-down is awaited inside the turn. The fix, at source: one cut list for a whole write-down pass, so a hang costs one wait a pass.
+- **Revisit when:** its row in docs/progress.md, in the next version.
+
+### An urgent reminder that opens a Live session and is answered by a card alone is not heard in that session
+- **Kind:** known limitation.
+- **What the traveller sees:** with Live voice, an urgent reminder (a watch marked urgent) that opens a session with nobody in it, answered by Koe with only a card: the urgent mark holds the microphone shut for its 8 s with no voice, and the session it opened listens 8 s, so it closes without hearing anything (the probe: "Thinking" for 8 s, then closed); the reminder counts as told by the card. With the traveller already in the session the microphone is deaf for those 8 s, then hears (by reading). The same 8 s makes an ask once more wait after an empty answer to an urgent reminder.
+- **Why:** it is the urgent mark's recorded design (2026-11-02, section 6: "an answer with nothing or a silent tool frees the microphone at 8 s"); the two ways measured to match the mark to her turn are worse: one fails 9 of the mark's own tests, the other loses a reminder in C213's shape, written as told, never said or shown. How often Gemini answers an urgent reminder with only a card is not measured.
+- **Revisit when:** a drive shows an urgent reminder answered by a card alone.
+- **Approved:** 2026-11-26, the user picked "Accept it (Recommended)" (U145, through chief's dialog). It narrows their pick of 2026-11-03 for urgent watches ("Yes, after the mic fix (Recommended)") for a card-only answer.
+
+### A large PDF goes whole in each request of its two turns
+- **Kind:** known limitation.
+- **What the traveller sees:** a PDF Shiori reads goes in each request of her turn about it and the next, then a stub naming its file (her read brings it back). A photo's copy is capped at 256 KiB; a PDF has no cap, so a 1 MB PDF read in a turn of four steps goes up four times at about 1.4 MB each, then in each request of the next turn, the size that broke off on a car's mobile data (2026-11-21). A PDF over about three quarters of the request size stays in the follow-up turn and goes in each of its steps. The trace's PDFs (sizes only): 6 written, 80 KB to 2.0 MB, median 139 KB.
+- **Why:** most PDFs are small, and the window already took a PDF from every request down to two turns; a smaller form needs a design (a large PDF sent as its reading's words, which a model that reads PDFs then reads less well).
+- **Revisit when:** a trace shows a large PDF's turn failing on a weak link.
+- **Approved:** 2026-11-26, the user picked "Accept, with a README line" (U116, through chief's dialog). It narrows their words of 2026-10-19, "we are an agent on the go possibly with spotty internet. thus we shall make these optimizations when possible", for large PDFs.
+
+### A voice made for one language reads every sentence in it
+- **Kind:** known limitation.
+- **What the traveller sees:** a voice from a provider gets one voice name for every sentence and no language. A multilingual one follows the text; one made for one language (Kokoro's English `af_heart`, Voxtral's English voice) reads a Japanese or Chinese sentence in its own language: a Japanese sentence of about 11 s came back as a 64 s clip of noise (the probe of 2026-11-19), and nothing flags it (the clip comes back fine to annai, and Test says it works). It takes such a voice put ahead of the phone's own voice in Settings → Models → Speech out (no default does), or a Test on Japanese or Chinese screens.
+- **Why:** nothing in the defaults or the trace reaches it (none in 28 days); one voice for every sentence keeps no state that can go stale; the local speech note says each Kokoro voice speaks only its own language.
+- **Revisit when:** a traveller puts a one-language voice ahead of a multilingual one and hears it.
+- **Approved:** 2026-11-26, the user picked "Accept, with a README line (Recommended)" (U112, through chief's dialog). It narrows their words of 2026-10-23, "I personally speak english chinese and japanese so multi language in audio shall be supported", for voices made for one language.
+
+### While a request with photos or files goes up, the dock says Thinking
+- **Kind:** deferred.
+- **What the traveller sees:** a request with photos, a PDF or a recording that gets no answer shows Thinking for minutes before the card on a link that is truly dead (Kokoro with one default photo about 2 min 15 s; three main models in the chain about 6 min 45 s), since annai gives the sending the model's wait plus the request's size at 70 kbit/s.
+- **Why:** a browser can't tell a slow send from a dead one before the provider answers, and a shorter limit cuts working sends on a slow trip link. The user's pick (2026-11-26, U113, through chief's dialog): "The dock says "Sending…"": while the request goes up the dock says Sending…, not Thinking; one more state on the dock; the times stay the same.
+- **Revisit when:** its row in docs/progress.md, in the next version.
+
+### The strings tool can't keep a row only a released version still uses
+- **Kind:** deferred.
+- **What the traveller sees:** nothing. The rule (docs/translating.md: never drop a row an older version still uses while it is in use) is kept by hand: a plugin keeps an uncalled export that says the words (plugins-official/provider-another-address/probe.js, `retiredWords`, until its 2.2.3 is out of use), since scripts/strings.mjs builds the rows only from what the code says. Found by addr-small-next's fix round 2 (2026-11-26).
+- **Why:** a workaround in our own tool's gap, in one place. The fix at source: a "retired rows" marker the strings tool keeps until a stated version is out of use.
 - **Revisit when:** its row in docs/progress.md, in the next version.
