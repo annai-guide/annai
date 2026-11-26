@@ -185,25 +185,6 @@ test("the trip's case through the agent: a photo of 1 MiB goes in its own turn a
   assert.ok(at(read) >= text.messages.length, 'the photo is after the stub');
 });
 
-test('the housekeeping measure weighs what is sent: an older photo left out makes no summary forced', async () => {
-  const { updateAppSettings } = await import('../../src/core/settings.js');
-  const done = { toolCalls: [{ name: 'speak', input: { text: 'Got it.' } }, { name: 'sleep', input: {} }] };
-  /** @type {any[]} */
-  const timers = [];
-  const k = await agentKit([[done, done, done, done]], { agent: { timers: { set: (/** @type {any} */ fn) => { timers.push(fn); return timers.length; }, clear: (/** @type {number} */ h) => { timers[h - 1] = null; } } } });
-  // The largest request at 1 MiB: in the fourth turn, three turns on from the first photo's, that photo (400 KB as sent) and the new one (800 KB) together would be over it.
-  await updateAppSettings(k.ws, { shiori: { compaction: { maxRequestMiB: 1 } }, photos: { request: { maxBytes: 1024 * 1024 } } });
-  await k.ws.write(k.trip, '/files/a.webp', new TextEncoder().encode('x'.repeat(300_000)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
-  await k.ws.write(k.trip, '/files/b.webp', new TextEncoder().encode('x'.repeat(600_000)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
-  for (const [words, photos] of /** @type {[string, any[]][]} */ ([['Look', [{ path: '/trip/files/a.webp' }]], ['Nice', []], ['And?', []], ['This one', [{ path: '/trip/files/b.webp' }]]])) {
-    k.agent.send(words, { photos });
-    await idleAtOnce(k);
-  }
-  assert.equal(k.requests.length, 4);
-  assert.deepEqual(await k.events(['compaction']), [], 'no summary was forced');
-  assert.deepEqual(images(k.requests[3]).map((/** @type {any} */ p) => p.data.length), [800_000]);
-});
-
 test("housekeeping in the middle of a turn drops the cache mark but not the turn's window: its summary and the request after it send the turn's photo and the one before's, and an older one stays a stub", async () => {
   // Her last turn's second step is forced to tidy up first (the last prompt was past 90% of a window of 30,000 tokens): the kept part holds all three photos.
   const k = await agentKit([[say('1'), say('2'), say('3'),
@@ -426,4 +407,17 @@ test("a web page's PDF, through the agent: two turns on, the stub says to call t
   const last = k.requests.at(-1);
   assert.ok(holds(last.messages, "[a PDF from a tool's result, not sent again: read can't bring it back; call that tool again to see it]"));
   assert.doesNotMatch(JSON.stringify(last.messages), /"type":"document"/);
+});
+
+// The subject of the dropped "the housekeeping measure weighs what is sent" test, by tokens (size-out-next's second opinion): photos the window has left
+// out (stubs) count nothing toward housekeeping, so many old photos never make a conversation due by themselves.
+test('photos the window has left out count nothing toward housekeeping (tokens)', async () => {
+  /** @type {any[]} */ const timers = [];
+  const k = await agentKit([[say('1'), say('2'), say('3'), say('4')]], {
+    models: [{ input: ['text', 'image'], contextWindow: 13_000 }], utility: [{ text: 'Summary.' }],
+    agent: { timers: { set: (/** @type {any} */ fn) => { timers.push(fn); return timers.length; }, clear: (/** @type {number} */ h) => { timers[h - 1] = null; } } } });
+  for (let i = 0; i < 4; i++) await k.ws.write(k.trip, `/files/p${i}.webp`, new TextEncoder().encode(String(i).repeat(10)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+  for (let i = 0; i < 4; i++) { k.agent.send(`Look ${i}`, { photos: [{ path: `/trip/files/p${i}.webp` }] }); await idleAtOnce(k); }
+  assert.deepEqual(await k.events(['compaction']), [], 'no summary');
+  assert.equal(timers.some(Boolean), false, 'not due: two pictures in the window (about 3,200 tokens) on a base of about 4,000');
 });

@@ -74,7 +74,7 @@ test('Spending with Spend per day, the cache and housekeeping are on Settings â†
   await expect(page.getByLabel('Spend per day (USD)')).toHaveValue('');
   await expect(page.getByRole('radio', { name: '1 hour' })).toBeChecked(); // an hour unless you choose five minutes
   await expect(page.getByLabel('Summarize at (% of the context)')).toHaveValue('70');
-  await expect(page.getByLabel('Largest request (MiB)')).toHaveValue('8');
+  await expect(page.getByLabel('Largest request (MiB)')).toHaveCount(0); // taken out on the user's answer U141 (2026-11-26)
   await page.goto('/#/shiori');
   await expect(page.getByRole('heading', { name: 'Shiori', level: 1 })).toBeVisible();
   const own = page.getByRole('region', { name: 'How often she acts on her own' });

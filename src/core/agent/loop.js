@@ -10,7 +10,7 @@ import { fromBase64, toBase64 } from '../bytes.js';
 import { sha256Hex } from '../hash.js';
 import { record, storedTexts, TALK_TAG } from './log.js';
 import { blobBytes, canRead } from '../reach.js';
-import { compactionNeed, cutAt, replyPrompt, dueTokens, tokensAfter, bytesLessFiles, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
+import { compactionNeed, cutAt, replyPrompt, dueTokens, tokensAfter, instruction, renderForSummary, coldSystem, summaryLanguage, KEEP_EXCHANGES, WARM_LEAD_MS, SUMMARY_MAX_CHARS } from './compaction.js';
 import { Transcript, resolveEvent, repair, reaches, NOT_SAID, SAID, STOPPED, CUT, NOT_RUN, NOT_ANSWERED, NOT_HEARD, LET_GO, MOVED, OWN_LINES } from './transcript.js';
 import { toolList, definitions, runTool, Stuck, toolSwitches, resolvePath, ALWAYS_ON } from './tools.js';
 import { takeSnapshot, nextSnapshot, nowBlock, nextPlanItems, buildRequest, prefixFingerprint, systemText } from './context.js';
@@ -95,7 +95,7 @@ import { FILES_ONLY, PHOTO_ONLY, handoverOf } from '../handover.js';
  *   key: names a card a later turn takes down (the clear event, when that turn works): model, or silent:<its conversation>; error: what stopped it, when a screen has words of its
  *   own for that (the storage card for a full device: main.js shows it in place of this card); said: what that card says first, if not the title
  * @typedef {{ stepsPerWake?: number, spendPerDay?: number, wakesPerHour?: number, quietHours?: { from: string, to: string } }} Budgets
- * @typedef {{ personality: string, cacheTtl: '5m' | '1h', askBeforeTuning: boolean, budgets: Budgets, compaction: { threshold: number, maxRequestMiB: number } }} AgentSettings
+ * @typedef {{ personality: string, cacheTtl: '5m' | '1h', askBeforeTuning: boolean, budgets: Budgets, compaction: { threshold: number } }} AgentSettings
  * @typedef {import('./tools.js').Tool & { pluginId: string }} LoopTool
  * @typedef {import('./transcript.js').Resolved} Resolved
  * @typedef {object} Half  how the loop runs as a half of Shiori (the Koe and Kokoro plan, "Agent as a half")
@@ -765,7 +765,7 @@ export class Agent {
     const s = (await readAppSettings(this.ws)).shiori ?? {};
     return {
       personality: s.personality ?? 'shiori', cacheTtl: wantedTtl(s.cacheTtl), askBeforeTuning: Boolean(s.askBeforeTuning),
-      budgets: s.budgets ?? {}, compaction: { threshold: 0.7, maxRequestMiB: 8, ...(s.compaction ?? {}) },
+      budgets: s.budgets ?? {}, compaction: { threshold: s.compaction?.threshold ?? 0.7 }, // a stored maxRequestMiB (Largest request, until 2026-11-26) is read as nothing
     };
   }
 
@@ -1897,7 +1897,7 @@ export class Agent {
     // Her mark (mark_done) since the last compaction: what the exchanges after it hold is kept, when that is less; never fewer exchanges than
     // the floor (three, one when forced), so a mark in the last ones keeps them, and an old one changes nothing. Its result as it ran (not a refused or cut call's).
     const mark = events.findLast((e) => e.type === 'tool.result' && e.data?.name === 'mark_done' && e.data?.ok !== false && e.data?.wake !== 'housekeeping' && e.seq > (latest?.seq ?? 0));
-    // A third of where it is due stays word for word (by tokens: the request size's due point is never nearer, 149,796 tokens at Settings' least, half of 1 MiB at 3.5 characters a token).
+    // A third of where it is due stays word for word.
     const keep = Math.min(o.keepTokens ?? dueTokens(window, settings.compaction.threshold) / 3, mark ? tokensAfter(items, mark.seq) : Infinity);
     const cut = cutAt(items, { keepTokens: keep, minExchanges: o.forced ? 1 : KEEP_EXCHANGES });
     if (cut === null) return false;
@@ -2658,13 +2658,10 @@ export class Agent {
       if (force && !reachedUser) forced++;
       const fingerprint = await prefixFingerprint(request, this.transcript.compaction);
       const window = (await this.#mainModel())?.contextWindow ?? null;
-      const maxBytes = settings.compaction.maxRequestMiB * 2 ** 20;
       // What the main models are sent: their photo limit of the pictures, each once.
       const sent = { ...request, messages: limitMedia(request.messages, (await this.#mainImages()).maxCount, request.photosFrom) };
       const estimate = estimateTokens(sent, (await this.#mainModel())?.providerId);
-      // The size weighs what a summary can make smaller, not the window's pictures and PDFs (bytesLessFiles): a request over it by them goes as it is, and one
-      // over it by words is summarized, in a later step again only while two or more exchanges are left (cutAt).
-      const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window, bytes: bytesLessFiles(sent), maxBytes, threshold: settings.compaction.threshold }) : null;
+      const need = this.#half.housekeeping ? compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window, threshold: settings.compaction.threshold }) : null;
       const tidy = coldStart;
       coldStart = false; // once a turn: its first request
       if (need === 'forced') {
@@ -2800,7 +2797,7 @@ export class Agent {
       spent += result.cost ?? 0;
       const model = await this.#model(result.modelId);
       if (model) this.#warmth.note(result.modelId, fingerprint, TTL_MS[ttlFor(model, settings.cacheTtl)], this.now());
-      if (this.#half.housekeeping && compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window: model?.contextWindow ?? null, bytes: bytesLessFiles(sent), maxBytes, threshold: settings.compaction.threshold })) this.#due = true;
+      if (this.#half.housekeeping && compactionNeed({ tokens: Math.max(estimate, this.#lastPrompt), window: model?.contextWindow ?? null, threshold: settings.compaction.threshold })) this.#due = true;
       // A request whose thinking couldn't go (something before it changed) or was refused stops it for the rest of the turn; else this
       // reply keeps the now block its request ended with and the reply as it came, until the turn ends or the requests have carried KEPT_SENT_MAX.
       if (result.reply.natives) stopThinking();
