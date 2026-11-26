@@ -679,11 +679,62 @@ test("a photo going up slowly is not a model that never started: on a slow uplin
     await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: 64_000 });
     await page.locator('#dock-camera').setInputFiles({ name: 'IMG_0003.JPG', mimeType: 'image/jpeg', buffer: Buffer.from(noisy) });
     await expect(page.locator('.convo .you img')).toBeVisible({ timeout: 20_000 });
+    // While it goes up, the dock says so (sending-next: the user's pick of 2026-11-26, "The dock says "Sending…"").
+    await expect(page.locator('.talk-label')).toHaveText('Sending… · tap to stop', { timeout: 20_000 });
     await expect(page.locator('.convo .shiori p').last()).toHaveText('That is Bixby Bridge.', { timeout: 40_000 });
+    await expect(page.locator('.talk-label')).toHaveText('Tap to talk');
     await expect(page.locator('.notice', { hasText: "Shiori can't reach her model" })).toHaveCount(0);
     const sent = JSON.stringify(llm.bodies('/b/v1/messages').at(-1));
     expect(sent.length, 'the photo went in the request, and took longer than the wait to go up').toBeGreaterThan(2 * 64_000);
   } finally {
+    await llm.stop();
+  }
+});
+
+test("while her request, with a photo's bytes in it, waits for the provider's answer, the dock says Sending… · tap to stop; a typed line alone says Thinking · tap to stop (sending-next: the user's pick of 2026-11-26, \"The dock says \"Sending…\"\")", async ({ page }) => {
+  // The stand-in holds each answer until the test lets it go: what this measures is the dock's words while the answer is held, in both engines,
+  // not the time the body takes to go up (a browser can't tell a send still going up from an answer not given yet, and the dock says
+  // Sending… until the answer's headers come). Only Chromium can throttle an upload: the test above, which also checks the label.
+  /** @type {(() => void)[]} */
+  const held = [];
+  const answer = () => held.shift()?.();
+  const llm = await startModelServer({ '/b/v1/messages': () => ({ ...sse(anthropicToolReply([{ name: 'speak', input: { text: 'That is Bixby Bridge.' } }, { name: 'sleep', input: {} }])), until: new Promise((r) => held.push(() => r(undefined))) }) });
+  try {
+    await modelSetUp(page, llm.origin);
+    await page.goto('/#/models');
+    await page.getByRole('region', { name: 'Providers' }).getByRole('link', { name: /Stand-in/ }).click();
+    await page.getByRole('link', { name: /^b-model/ }).click();
+    await page.getByLabel('Takes photos').check();
+    await expect(savedBy(page.getByLabel('Takes photos'))).toHaveText('Saved');
+    await page.goto('/#/talk');
+    const label = page.locator('.talk-label');
+    // Words alone: Thinking while the request goes up and after.
+    await page.getByRole('button', { name: 'Type' }).click();
+    await page.getByLabel('Message to Shiori').fill('What is that bridge?');
+    await page.getByRole('button', { name: 'Send' }).click();
+    await expect.poll(() => llm.bodies('/b/v1/messages').length).toBe(1);
+    await expect(label).toHaveText('Thinking · tap to stop');
+    answer();
+    await expect(page.locator('.convo .shiori p').last()).toHaveText('That is Bixby Bridge.');
+    await expect(label).toHaveText('Tap to talk');
+    // A photo: Sending… until the provider has the request.
+    const photo = await page.evaluate(async () => {
+      const c = new OffscreenCanvas(400, 300);
+      const g = /** @type {OffscreenCanvasRenderingContext2D} */ (c.getContext('2d'));
+      g.fillStyle = '#0a7';
+      g.fillRect(0, 0, 400, 300);
+      return [...new Uint8Array(await (await c.convertToBlob({ type: 'image/jpeg', quality: 0.9 })).arrayBuffer())];
+    });
+    await page.locator('#dock-camera').setInputFiles({ name: 'IMG_0004.JPG', mimeType: 'image/jpeg', buffer: Buffer.from(photo) });
+    await expect(page.locator('.convo .you img')).toBeVisible({ timeout: 20_000 });
+    await expect.poll(() => llm.bodies('/b/v1/messages').length).toBe(2);
+    await expect(label).toHaveText('Sending… · tap to stop');
+    expect(JSON.stringify(llm.bodies('/b/v1/messages').at(-1)), 'the photo went in the request').toContain('"type":"image"');
+    answer();
+    await expect(page.locator('.convo .shiori p')).toHaveCount(2);
+    await expect(label).toHaveText('Tap to talk');
+  } finally {
+    while (held.length) answer();
     await llm.stop();
   }
 });

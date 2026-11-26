@@ -89,8 +89,9 @@ import { FILES_ONLY, PHOTO_ONLY, handoverOf } from '../handover.js';
  *   ask: annai's own card's (confirm): answer: its call's id, its heard lines' mark; armed: the newest listed no
  * @typedef {{ id: string, her?: boolean, kept?: boolean, text?: string, h?: Heard, gate?: string }} AskLine  heard while annai's card waits: her: begun over
  *   her voice; kept: the verdict, once it comes; h: this half's own segment
- * @typedef {{ name: StateName, label: string, detail?: string, wait?: 'ask' | 'wait', over?: StateName }} State  label: the dock's words for it (LABELS); detail: what she is away doing (TIDYING, or a task's words);
- *   wait: what she waits for while waiting, her question's answer (ask) or the user's turn (wait); over: Halves' dock state only, standing over Koe's own state of that name (Halves.state)
+ * @typedef {{ name: StateName, label: string, detail?: string, wait?: 'ask' | 'wait', over?: StateName, sending?: true }} State  label: the dock's words for it (LABELS); detail: what she is away doing (TIDYING, or a task's words);
+ *   wait: what she waits for while waiting, her question's answer (ask) or the user's turn (wait); over: Halves' dock state only, standing over Koe's own state of that name (Halves.state);
+ *   sending: thinking while her call's photos, PDF or recording go up, until its uploads are done, the answer's headers come, or it fails or stops (the dock says Sending…: callOnce's sending events)
  * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[], key?: string, toast?: boolean, error?: unknown, said?: string }} Notice
  *   key: names a card a later turn takes down (the clear event, when that turn works): model, or silent:<its conversation>; error: what stopped it, when a screen has words of its
  *   own for that (the storage card for a full device: main.js shows it in place of this card); said: what that card says first, if not the title
@@ -146,6 +147,8 @@ const NO_TOOLS = /** @type {any} */ ({ entries: () => [] });
 export const LABELS = Object.freeze({
   sleeping: t`Tap to talk`, opening: t`One moment…`, thinking: t`Thinking · tap to stop`, speaking: t`Tap to interrupt`, listening: t`Listening`, ignoring: t`Ignoring sound · tap to talk`, hearing: t`Hearing you`, waiting: t`Waiting for your OK`,
   away: t`Working on …`, offline: t`Offline · reminders still work`,
+  /** Thinking's words while her call's photos, PDF or recording go up (State.sending). */
+  sending: t`Sending… · tap to stop`,
 });
 /** What she is away doing while she tidies up the conversation: the dock's words are made from it. */
 const TIDYING = 'tidying';
@@ -498,6 +501,8 @@ export class Agent {
   #lastTurn = 0;
   /** @type {AbortController | null} cuts the model call running now, not the turn */
   #callCut = null;
+  /** Her turn's call is sending a photo's, a PDF's or a recording's bytes, as callOnce's sending events say: Thinking says Sending… meanwhile. Each send ends with its own off, so nothing here clears it. */
+  #up = false;
   /** A note cut her speech: speak says so, and doesn't listen. */
   #noteCut = false;
   /** A turn runs. */
@@ -744,8 +749,9 @@ export class Agent {
 
   /** @param {StateName} name @param {{ detail?: string, wait?: 'ask' | 'wait' }} [o] detail: what she is away doing; wait: what a waiting waits for */
   #setState(name, { detail, wait } = {}) {
-    const label = name === 'waiting' && wait === 'wait' ? t`Your turn` : name !== 'away' || !detail ? LABELS[name] : detail === TIDYING ? t`Working on tidying up the conversation` : t`Working on ${detail}`;
-    this.state = { name, label, ...(detail ? { detail } : {}), ...(wait ? { wait } : {}) };
+    const up = name === 'thinking' && this.#up;
+    const label = up ? LABELS.sending : name === 'waiting' && wait === 'wait' ? t`Your turn` : name !== 'away' || !detail ? LABELS[name] : detail === TIDYING ? t`Working on tidying up the conversation` : t`Working on ${detail}`;
+    this.state = { name, label, ...(detail ? { detail } : {}), ...(wait ? { wait } : {}), ...(up ? { sending: /** @type {const} */ (true) } : {}) };
     this.#emit('state', this.state);
     this.poke(); // a turn waiting while the user speaks looks again
   }
@@ -3708,12 +3714,26 @@ export class Agent {
   }
 
   /**
+   * Her call's photos, PDF or recording start going up (on), or no longer are (off: the uploads done, the request's answer's headers come, or the
+   * send failed or was stopped: callOnce says it at its own end): Thinking says Sending… meanwhile, on the dock now and at each return to Thinking
+   * (a sound heard while it goes up) (spec §16.3). @param {boolean} on
+   */
+  #sendingNow(on) {
+    this.#up = on;
+    if (this.state.name === 'thinking') this.#setState('thinking');
+  }
+
+  /**
    * Speech streams in while the model writes it, and plays sentence by sentence (spec §10.1). A
-   * call that starts over (another model) drops what it had begun to say. Her turn is one reply: each utterance it begins (here, #say, #askAloud)
+   * call that starts over (another model) drops what it had begun to say. Its sending events are the dock's (#sendingNow). Her turn is one reply: each utterance it begins (here, #say, #askAloud)
    * names its wake (Speaker.begin).
    * @param {any} ev a stream event @param {string} wakeId
    */
   #streamed(ev, wakeId) {
+    if (ev.type === 'sending') {
+      if (ev.on !== this.#up) this.#sendingNow(ev.on);
+      return;
+    }
     if (ev.type === 'restart') {
       this.#cutSpeech(wakeId, ev.by ?? null).catch((e) => this.#notSaved(e)); // what she said aloud, for her transcript: nobody waits on it
       return;

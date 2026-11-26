@@ -1,7 +1,7 @@
 // K1 Task 6: Halves, the coordinator (the Koe and Kokoro design; plan decisions 15, 16, 18, 20, 21; Review Focus 2, 3, 5).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until, rescript, watchShared, hear, idleAtOnce } from './agent-kit.js';
+import { agentKit, until, rescript, watchShared, hear, idleAtOnce, slowLink } from './agent-kit.js';
 import { tripTools } from '../../src/core/agent/trip-tools.js';
 import { channelTool } from '../../src/core/agent/halves.js';
 import { createTrip, ME } from '../../src/core/scopes.js';
@@ -1721,4 +1721,93 @@ test("Kokoro steps away to work on a task (its own state away, \"Working on …\
   assert.deepEqual([k.agent.state.name, k.agent.state.label], ['waiting', 'Your turn']);
   k.agent.interrupt();
   await idleAtOnce(k);
+});
+
+// sending-next (the user's pick U113, 2026-11-26: "The dock says "Sending…""): either half's call that sends the photo says Sending… on the
+// dock from its request's POST until the provider's answer's headers, or its end: Koe's own state says it, and Kokoro's, behind a Koe at rest,
+// stands over Koe's as Thinking does (spec §16.3). The stand-in holds each answer, as a slow uplink holds its headers: what these tests
+// measure is the dock's words while the answer is held, not the time a body takes to go up.
+
+/**
+ * Claude's stand-in behind a link that holds each answer until it opens (slowLink): it speaks and sleeps (Koe), or only sleeps (Kokoro, with
+ * nothing to add). @param {boolean} speaks
+ */
+const claudeBehind = (speaks) => {
+  let n = 0;
+  const use = (/** @type {string} */ name, /** @type {any} */ input = {}) => ({ type: 'tool_use', id: `toolu_${++n}`, name, input });
+  const claude = anthropicStandIn(() => [...(speaks ? [use('speak', { text: 'A menu.' })] : []), use('sleep')]);
+  return Object.assign(slowLink(claude.fetch), { bodies: claude.bodies });
+};
+const CLAUDE = { ability: { type: 'anthropic-messages', baseUrl: 'https://api.anthropic.com' } };
+/** A photo the fake codec reads as 1600×1200. @param {any} k */
+const storedPhoto = async (k) => {
+  const data = new Uint8Array(9).fill(0x20);
+  data.set(new TextEncoder().encode('1600x1200'));
+  await k.ws.write(k.trip, '/files/p.webp', data, { author: 'user', type: 'image/webp', meta: { width: 1600, height: 1200 } });
+};
+/** The dock's states as they change, `name label`. @param {any} k */
+const dockTold = (k) => {
+  /** @type {string[]} */
+  const told = [];
+  k.agent.on('state', (/** @type {any} */ s) => { if (told.at(-1) !== `${s.name} ${s.label}`) told.push(`${s.name} ${s.label}`); });
+  return told;
+};
+
+test("Kokoro's call sending the photo behind a Koe that has gone to sleep: the dock says Sending… over Koe's state, then Thinking once the provider has it, then Tap to talk (sending-next)", async (t) => {
+  useClock(t);
+  const link = claudeBehind(false);
+  const k = await agentKit([CLAUDE], { koe: { type: koeAsks({ name: 'sleep', input: {} }) }, fetch: link.fetch });
+  await storedPhoto(k);
+  const told = dockTold(k);
+  k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+  await until(() => link.asked === 1 && k.agent.koe.state.name === 'sleeping' && !k.agent.koe.busy, 20_000);
+  assert.deepEqual(k.agent.kokoro.state, { name: 'thinking', label: 'Sending… · tap to stop', sending: true }, "Kokoro's own");
+  assert.deepEqual(k.agent.state, { name: 'thinking', label: 'Sending…', sending: true, over: 'sleeping' }, "the dock's");
+  assert.equal(told.at(-1), 'thinking Sending…', 'the dock was told');
+  link.open();
+  await idleAtOnce(k);
+  assert.deepEqual(told.slice(told.indexOf('thinking Sending…')), ['thinking Sending…', 'thinking Thinking', 'sleeping Tap to talk']);
+  assert.ok(link.bodies[0].messages.some((/** @type {any} */ m) => m.content.some((/** @type {any} */ b) => b.type === 'image')), 'the photo went in her request');
+});
+
+test("Koe's own call sending the photo: the dock says Sending… · tap to stop, Koe's own state, then Thinking, then its answer (sending-next)", async (t) => {
+  useClock(t);
+  const link = claudeBehind(true);
+  const k = await agentKit([[sleep]], { koe: { type: CLAUDE }, fetch: link.fetch });
+  await storedPhoto(k);
+  const told = dockTold(k);
+  k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+  await until(() => link.asked === 1, 20_000);
+  assert.deepEqual(k.agent.koe.state, { name: 'thinking', label: 'Sending… · tap to stop', sending: true }, "Koe's own");
+  assert.deepEqual(k.agent.state, k.agent.koe.state, "the dock's: Koe's own");
+  link.open();
+  await idleAtOnce(k);
+  // Then Kokoro's own turn (a scripted one, which sends nothing annai sees) behind a Koe at rest: Thinking.
+  assert.deepEqual(told.slice(told.indexOf('thinking Sending… · tap to stop')), ['thinking Sending… · tap to stop', 'thinking Thinking · tap to stop', 'speaking Tap to interrupt', 'thinking Thinking', 'sleeping Tap to talk']);
+  assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['A menu.']);
+  assert.ok(link.bodies[0].messages.some((/** @type {any} */ m) => m.content.some((/** @type {any} */ b) => b.type === 'image')), "the photo went in Koe's request");
+});
+
+test("a stop while Kokoro's call sends the photo behind a Koe asleep, and a call that fails before its headers: the dock ends at Tap to talk, with no Sending… left (sending-next)", async (t) => {
+  useClock(t);
+  for (const how of /** @type {const} */ (['stopped', 'no connection'])) {
+    const link = claudeBehind(false);
+    const get = how === 'stopped' ? link.fetch : () => Promise.reject(new TypeError('Failed to fetch'));
+    const k = await agentKit([CLAUDE], { koe: { type: koeAsks({ name: 'sleep', input: {} }) }, fetch: get });
+    await storedPhoto(k);
+    const told = dockTold(k);
+    k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+    if (how === 'stopped') {
+      await until(() => link.asked === 1 && k.agent.koe.state.name === 'sleeping' && !k.agent.koe.busy, 20_000);
+      assert.equal(k.agent.state.label, 'Sending…', how);
+      k.agent.stopKokoro(); // the sign's Stop
+    }
+    await idleAtOnce(k);
+    const from = told.indexOf('thinking Sending…');
+    assert.ok(from >= 0, `${how}: the dock said Sending…`);
+    assert.ok(!told.slice(from + 1).some((x) => /Sending/.test(x)), `${how}: nothing says Sending… after it ended: ${told.slice(from)}`);
+    assert.match(told[from + 1] ?? '', /^thinking Thinking/, `${how}: the send's end says Thinking: ${told.slice(from)}`); // before the sleeping Koe's state hides it
+    assert.deepEqual([k.agent.state.name, k.agent.state.label], ['sleeping', 'Tap to talk'], how);
+    assert.equal(told.at(-1), 'sleeping Tap to talk', how);
+  }
 });

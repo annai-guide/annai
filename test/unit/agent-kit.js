@@ -307,6 +307,40 @@ export function watchShared(k) {
   return seen;
 }
 
+/**
+ * A link that holds each request's answer until open(), as a slow uplink holds the answer's headers until the whole request is up (sending-next):
+ * the request reaches fetch at once (what it records is there), and its answer is given out only once the link is open; a stop ends a held
+ * one, as it ends a browser's fetch. Never opened, it is a link that never answers. asked: the requests that came.
+ * @param {(url: string, init: any) => Promise<Response>} fetch
+ */
+export function slowLink(fetch) {
+  /** @type {(() => void)[]} */
+  const held = [];
+  let open = false;
+  const link = {
+    asked: 0,
+    /** @param {string} url @param {any} init @returns {Promise<Response>} */
+    fetch: async (url, init) => {
+      link.asked++;
+      const answer = fetch(url, init);
+      answer.catch(() => {}); // a held answer a stop ended is nobody's
+      if (!open) {
+        await new Promise((go, no) => {
+          if (init.signal?.aborted) return no(init.signal.reason); // as a real fetch's, already stopped when asked
+          held.push(() => go(undefined));
+          init.signal?.addEventListener('abort', () => no(init.signal.reason), { once: true });
+        });
+      }
+      return answer;
+    },
+    open: () => {
+      open = true;
+      for (const go of held.splice(0)) go();
+    },
+  };
+  return link;
+}
+
 /** Waits until fn() is true (every 2 ms, at most ms). @param {() => boolean} fn @param {number} [ms] */
 export async function until(fn, ms = 2000) {
   const end = Date.now() + ms;
