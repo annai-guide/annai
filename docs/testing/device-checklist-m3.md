@@ -26,6 +26,7 @@ On a real iPhone (Safari, and the installed app) and a real Android phone (Chrom
 - [ ] **Where your voice goes.** On Android Chrome and on iPhone, open Settings → Voice → Where your voice goes. Write down what it says for Phone dictation and for the browser voice. With airplane mode on, does phone dictation still write down what you say (that means it runs on the phone)? Does the browser voice still speak?
 - [ ] **Keyboard dictation.** With airplane mode on, tap the message box, then the keyboard's microphone key, and say a sentence. Does it type the words (dictation on the phone itself)? Send it: does Shiori get it as a typed message?
 - [ ] **Music after she speaks.** Play music in a music app, then have a spoken exchange (the music pauses while she talks, §10.1). After the exchange, does the music app resume by itself, or does it stay paused?
+- [ ] **Keep my music playing** (iPhone; the switch shows only where annai can set the sound, not in Chrome). Turn it on in Settings → Voice. Play music in a music app, open annai and tap around: the music keeps playing. With voice on, send a typed message: she speaks over the music, which isn't lowered, and nothing listens after her (the dock says "Tap to talk"). Silent switch on: she isn't heard. Tap Shiori: the music pauses while she listens. With Live on, a live session pauses it.
 
 ## Voice modes and the car (milestone 3c)
 

@@ -20,12 +20,12 @@ import { STAND_IN_NAMES } from './where.js';
  *   failedVoices: the voices that failed, each once, with why in the provider's own plain words, so the Voice test can say the first voice failed;
  *   failed: no voice could speak ('no-voice'), or the page may not play sound yet ('blocked', an iPhone before the first tap)
  * @typedef {{ entries: () => Promise<VoiceEntry[]>, synthesize: (entry: VoiceEntry, text: string, signal: AbortSignal) => Promise<Clip | SpeechStream>,
- *   platform: () => VoicePlatform | null, bench: (id: string, error: unknown) => void,
+ *   platform: () => VoicePlatform | null, session?: (type: import('./platform.js').SessionType) => void, bench: (id: string, error: unknown) => void,
  *   browserOptions?: (text: string, o: { before: string[] }) => Promise<{ voice?: string, rate?: number, lang?: string, system?: import('./platform.js').SystemVoice | null }>, onLevel?: (x: number) => void, locale?: string,
  *   onVoice?: (entry: VoiceEntry, system: import('./platform.js').SystemVoice | null) => void, now?: () => number, onBlocked?: () => void, stallMs?: number }} SpeakerDeps
  *   browserOptions' before: her reply's sentences before this one (Speaker.begin), not joined, so a sentence that shows no language takes her reply's; its system: the browser voice it speaks with; onVoice: a voice starts speaking an utterance (spec §11.7: the trace notes a browser voice not on this phone);
  *   synthesize: a clip, or a stream; now: the clock a stream's arrivals are timed by (ms); onBlocked: the page may not play sound now, so a tap
- *   should unlock it again; stallMs: how long past its end a stream may go unplayed (playStream)
+ *   should unlock it again; stallMs: how long past its end a stream may go unplayed (playStream); session: sets the audio session type as her first sentence starts (Voice.session, spec §10.1)
  * @typedef {{ ended: boolean, at: number, failed?: 'no-voice' | 'blocked' }} Said
  */
 
@@ -308,7 +308,7 @@ export class Utterance {
         const text = await this.#sentence(i);
         if (text === null) break;
         // Speaking: heard with the iPhone's silent switch on; music pauses (spec §10.1). Not under an open microphone, which needs play-and-record.
-        if (i === 0 && !this.#deps.platform()?.mic.inUse?.()) this.#deps.platform()?.session('playback');
+        if (i === 0 && !this.#deps.platform()?.mic.inUse?.()) this.#deps.session?.('playback');
         const r = await this.#say(i, text);
         if (r.failed) {
           failed = r.failed;

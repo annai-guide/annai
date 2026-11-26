@@ -786,13 +786,16 @@ export function browserPlatform({ limitMs = 2000 } = {}) {
       navigator.mediaDevices?.addEventListener?.('devicechange', fn);
     },
     session(type) {
-      // Where the browser has one (Safari): playback while speaking and after, play-and-record while listening (spec §10.1).
+      // Where the browser has one (Safari): playback while speaking and after (ambient with Keep my music playing on), play-and-record while listening (spec §10.1).
       try {
         const s = /** @type {any} */ (navigator).audioSession;
         if (s && s.type !== type) s.type = type;
       } catch {
         // not here
       }
+    },
+    mixes() {
+      return Boolean(/** @type {any} */ (navigator).audioSession);
     },
   };
 }

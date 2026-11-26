@@ -669,7 +669,7 @@ export class LiveKoe {
     v.endSample?.(); // a sample half taken on the last input is not the start of this one's
     input.onOutside = (pcm) => v.outside?.(pcm, input.rate);
     clearTimeout(this.#toPlayback);
-    p.session('play-and-record');
+    v.session('play-and-record');
     this.#changed(); // the microphone is being asked for: the dock shows her getting ready (view), not listening
     // She listens once it is open, not before: the glow is the user's cue to speak, and getUserMedia and the capture worklet can be slow.
     // A close (or a stop, or a newer microphone) that came meanwhile has let this one go: it listens to nothing, and a failure is its own.
@@ -711,7 +711,7 @@ export class LiveKoe {
     this.#input.stop();
     this.#input = null;
     this.listening = false;
-    this.c.voice?.platform?.session('playback');
+    this.c.voice?.session('playback');
     const p = this.c.voice?.problem(e) ?? { title: t`Listening stopped`, body: String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e) };
     this.c.notice({ tone: 'warn', title: p.title, body: p.body });
     this.#changed();
@@ -796,13 +796,14 @@ export class LiveKoe {
     clearTimeout(this.#holdTimer);
     // Playback again once her stopped voice has faded out: the session switched under the fade might be heard (unverified).
     // Unless a microphone opened meanwhile, which wants play-and-record; a page going away switches at once.
-    const p = this.c.voice?.platform;
+    const v = this.c.voice;
+    const p = v?.platform;
     clearTimeout(this.#toPlayback);
-    if (!fading || why === 'away') p?.session('playback');
+    if (!fading || why === 'away') v?.session('playback');
     else {
       const o = p?.player.output?.();
       const ms = STOP_FADE_MS + ((o?.baseLatency ?? 0) + (o?.outputLatency ?? 0)) * 1000 + FADED_MARGIN_MS;
-      this.#toPlayback = setTimeout(() => { if (!this.#input && !p?.mic.inUse?.()) p?.session('playback'); }, ms);
+      this.#toPlayback = setTimeout(() => { if (!this.#input && !p?.mic.inUse?.()) v?.session('playback'); }, ms);
     }
     s?.close(why);
     this.modelId = null;

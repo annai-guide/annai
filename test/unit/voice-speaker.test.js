@@ -5,7 +5,7 @@ import { fakePlatform, fakeVoices } from './voice-fakes.js';
 import { useClock } from './clock.js';
 
 /** @param {ReturnType<typeof fakeVoices>} v @param {ReturnType<typeof fakePlatform>} p */
-const speaker = (v, p) => new Speaker({ entries: v.entries, synthesize: v.synthesize, bench: v.bench, platform: () => /** @type {any} */ (p), locale: 'en' });
+const speaker = (v, p) => new Speaker({ entries: v.entries, synthesize: v.synthesize, bench: v.bench, platform: () => /** @type {any} */ (p), session: (t) => p.session(t), locale: 'en' });
 const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms));
 const plays = (/** @type {string[]} */ log) => log.filter((l) => l.startsWith('play ') || l.startsWith('browser ')).map((l) => l.replace(/^\S+ /, ''));
 

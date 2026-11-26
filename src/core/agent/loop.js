@@ -3823,8 +3823,10 @@ export class Agent {
     if (this.#aloudOnly) return `${before} Voice mode is off, so you didn't listen; the user may type.`;
     const got = await this.#listenFor(call, 'wait', silenceSeconds, false, Boolean(call.last));
     const answer = await this.#answer(before, got, call, /* en */ `Heard nothing (${silenceSeconds} seconds).`);
-    // Its window passed in silence: she would only call sleep, so the turn ends here, for no model call.
-    return call.last && Object.keys(got).length === 0 && typeof answer === 'string' ? { content: answer, endTurn: true } : answer;
+    // Its window passed in silence, or with Keep my music playing nothing listened (a tap's microphone would have): she would only call sleep, so the turn
+    // ends here, for no model call.
+    const nothing = Object.keys(got).length === 0 || (got.deaf !== undefined && voice.keepMusic);
+    return call.last && nothing && typeof answer === 'string' ? { content: answer, endTurn: true } : answer;
   }
 
   /**
@@ -3979,6 +3981,8 @@ export class Agent {
       if (owner === 'tap') Object.assign(this.#ear, { tap: true }, this.#ear.owner === 'after' ? { owner } : {});
       return null;
     }
+    // Keep my music playing: play-and-record pauses the music, so only a tap opens a microphone (spec §10.1, §10.4); her own listening hears in a tap's, as above.
+    if (owner !== 'tap' && voice.keepMusic) return /* en */ 'the user keeps their music playing, so the microphone opens only when they tap you.';
     // Nothing of a turn's own listens in another conversation, opening or opened since it asked or since the setup read.
     const moved = () => owner !== 'tap' && (this.#opens || scope !== (this.#target ?? ME));
     if (moved()) return /* en */ 'another conversation is opening.';
@@ -4046,7 +4050,7 @@ export class Agent {
         this.#noted();
       });
     }
-    if (next === 'playback') this.voice?.platform?.session('playback'); // full-quality Bluetooth audio again (spec §10.1)
+    if (next === 'playback') this.voice?.session('playback'); // full-quality Bluetooth audio again (spec §10.1)
   }
 
   /**
@@ -4392,7 +4396,7 @@ export class Agent {
         else this.#setState('listening');
         this.#after(this.#ear); // its deadline stands under a turn too: #drain's end arms it (#armEar)
       });
-    } else if (!this.#ear && this.#voiceNow) this.voice?.platform?.session('playback'); // after speaking (spec §10.1)
+    } else if (!this.#ear && this.#voiceNow) this.voice?.session('playback'); // after speaking (spec §10.1)
     await this.#writeChatter(wakeId);
     if (!ok) this.#pastTurn();
     else if (this.#half.voice()) {

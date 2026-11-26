@@ -30,7 +30,7 @@ export function testPanel(ctx, modelId, verified, title = t`Test`, live = false)
       /** @type {import('../core/voice/platform.js').PlayerStream | undefined} */
       let voice;
       try {
-        platform?.session('playback');
+        if (live) ctx.voice?.session('playback');
         const r = await ctx.llm.test(modelId, {
           onAudio: (/** @type {Uint8Array} */ d, /** @type {{ rate: number }} */ f) => (voice ??= platform?.player.stream?.({ rate: f.rate }))?.push(new Int16Array(d.slice().buffer)),
         });

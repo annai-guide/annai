@@ -60,6 +60,8 @@ export async function renderVoice(ctx) {
   // One setting, on by default: on a phone that can keep its screen on.
   const awake = ctx.awake?.available ? savedCheck(t`Keep the screen on while GPS is on`, ctx.awake.chosen, (on) => ctx.awake.choose(on)) : null;
   const bargeIn = savedCheck(t`Cut her off by speaking`, s.bargeIn, (on) => save({ bargeIn: on }));
+  // Only where annai can set the audio session (Safari's), the one place it does anything (spec §10.1).
+  const music = voice.platform?.mixes?.() ? savedCheck(t`Keep my music playing`, s.keepMusic, (on) => save({ keepMusic: on })) : null;
 
   const sayStatus = h('p', { class: 'sub', role: 'status' });
   const sayButton = h('button', {
@@ -147,7 +149,9 @@ export async function renderVoice(ctx) {
       mode, modeStatus,
       h('div', { class: 'row' },
         savedField(t`Listen for an answer (seconds)`, silence, () => numberIn(silence, 2, 60, t`Listen for 2 to 60 seconds.`, { whole: true, need: true }), (n) => save({ silenceSeconds: n })),
-        savedField(t`Wait for her first words (seconds)`, firstWords, () => numberIn(firstWords, 5, 120, t`Wait 5 to 120 seconds.`, { whole: true, need: true }), (n) => save({ firstWordsSeconds: n })))),
+        savedField(t`Wait for her first words (seconds)`, firstWords, () => numberIn(firstWords, 5, 120, t`Wait 5 to 120 seconds.`, { whole: true, need: true }), (n) => save({ firstWordsSeconds: n }))),
+      music?.el,
+      music && h('p', { class: 'sub', text: t`On: your music plays on at its own volume while Shiori speaks. She can't be heard while the phone is in silent mode, and she doesn't listen by herself after speaking: tap her to answer, which pauses the music. Live voice pauses it while it listens.` })),
     section(t`On the screen`,
       showWords.el,
       h('p', { class: 'sub', text: t`On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".` })),

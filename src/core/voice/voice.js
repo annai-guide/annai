@@ -81,6 +81,11 @@ export class Voice {
   unhinted = new Set();
   /** The voice mode now (spec §10.5); refresh() works it out again. @type {import('./mode.js').VoiceMode} */
   mode = { setting: 'off', on: false, why: 'off' };
+  /**
+   * Keep my music playing (Settings → Voice, spec §10.1) is on, where the platform can let other apps' music play on (mixes): her sound is the mixing
+   * kind (session), and no microphone of hers opens by itself (the agent's #openEarNow). Read with the mode (refresh), so it is as fresh as the mode.
+   */
+  keepMusic = false;
   /** A tap on the avatar holds voice on (hold). */
   #tapped = false;
   /** Voice was turned off so that it stops at once, by the user or an audio device gone: a live Koe's sentence doesn't end whole. Until voice is on again. */
@@ -128,6 +133,7 @@ export class Voice {
       entries: () => this.outEntries(),
       synthesize: (entry, text, signal) => this.#clip(entry.id, text, signal),
       platform: () => this.platform,
+      session: (type) => this.session(type),
       now: () => this.now(),
       onBlocked: () => this.soundStopped(),
       bench: (id, error) => {
@@ -203,6 +209,15 @@ export class Voice {
 
   get platform() {
     return voicePlatform(this.registry);
+  }
+
+  /**
+   * Sets the audio session type (spec §10.1), every caller's one door: playback is the mixing kind, `ambient`, with Keep my music playing on, so other
+   * apps' music plays on under her, not lowered (`transient` maps to the same in WebKit, but the Audio Session draft lets it duck other audio).
+   * @param {import('./platform.js').SessionType} type
+   */
+  session(type) {
+    this.platform?.session(type === 'playback' && this.keepMusic ? 'ambient' : type);
   }
 
   /** What this phone plays (spec §10.6); every browser plays MP3 and WAV. @returns {string[]} */
@@ -315,6 +330,8 @@ export class Voice {
     // One at a time: a tap is pointerup, touchend and click, and a tap on Shiori unlocks too; loading the silent clip
     // again over itself wedges WebKit on Linux. Taps wait on one still starting, however long.
     if (this.#trying) return this.#trying;
+    // The silent clip that unlocks would pause other apps' music while the type is still `auto` (WebKit takes an audible media element for playback): mixing from the first tap.
+    if (this.keepMusic && !this.platform?.mic.inUse?.()) this.session('playback');
     /** @type {Promise<boolean> | boolean | undefined} */
     let tried;
     try {
@@ -428,7 +445,7 @@ export class Voice {
   async sample(modelId, text) {
     const platform = this.platform;
     if (!platform) throw new Error(t`This browser can't play sound here.`);
-    platform.session('playback');
+    this.session('playback');
     const got = await this.#clip(modelId, text);
     const o = { signal: new AbortController().signal, onLevel: (/** @type {number} */ x) => this.#level(x, 'her') };
     return 'chunks' in got ? playStream(platform.player, new Arrivals(got, this.now), { ...o, estimatedS: estimateSeconds(text), now: this.now }) : platform.player.play(got, o);
@@ -483,13 +500,13 @@ export class Voice {
         done = true;
         clearTimeout(timer);
         session?.close();
-        platform.session('playback'); // afterwards: full-quality Bluetooth audio again (spec §10.1)
+        this.session('playback'); // afterwards: full-quality Bluetooth audio again (spec §10.1)
         if (err) reject(err);
         else resolve(seg);
       };
       const timer = setTimeout(() => finish(null), seconds * 1000);
       signal?.addEventListener('abort', () => finish(null), { once: true });
-      platform.session('play-and-record');
+      this.session('play-and-record');
       record({ mic: platform.mic, pauseMs, now: this.now, recording, onSpeech, onLevel: (x) => this.#level(x, 'you'), onSegment: (s) => finish(s), onError: (e) => finish(null, e) })
         .then((s) => {
           session = s;
@@ -563,6 +580,7 @@ export class Voice {
    */
   async refresh() {
     const s = await this.settings();
+    this.keepMusic = s.keepMusic && Boolean(this.platform?.mixes?.()); // shown only where it applies, so a copy restored elsewhere does nothing there
     const driving = this.#driving();
     if (driving) this.#offWhy = null; // the drive went on after all
     const next = voiceMode({ setting: s.mode, driving, tapped: this.#tapped });
@@ -806,7 +824,7 @@ export class Voice {
     const local = kind === 'dictation' && (await this.dictationLocal());
     const recording = kind === 'record' ? await this.#recordWith() : undefined;
     platform.encoder?.makes().catch(() => {}); // tried while she listens, not when the first segment goes
-    platform.session('play-and-record');
+    this.session('play-and-record');
     try {
       const session = await listen({
         // Web Speech takes one language: the first the user speaks (Settings → Languages), else the browser's own.
@@ -825,7 +843,7 @@ export class Voice {
       }
       return session;
     } catch (e) {
-      platform.session('playback'); // the microphone didn't open: full-quality Bluetooth audio again (spec §10.1); a stuck one was marked as it failed (#micStuck)
+      this.session('playback'); // the microphone didn't open: full-quality Bluetooth audio again (spec §10.1); a stuck one was marked as it failed (#micStuck)
       throw e;
     }
   }

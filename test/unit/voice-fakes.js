@@ -61,6 +61,9 @@ export function fakePlatform({ playMs = 20, blocked = false, dictation = false, 
     sessions,
     get opens() { return opens; },
     session(/** @type {string} */ t) { sessions.push(t); },
+    /** The browser has an audio session annai can set (Safari's), as the kits' iPhone does; false: one that has none (Chrome). */
+    audioSession: true,
+    mixes() { return platform.audioSession; },
     /** @type {{ kind: string, label: string, deviceId?: string }[]} */
     deviceList: devices,
     /** The input an open microphone takes (its track's label and deviceId); null: the newest audio input present, as a phone picks it. @type {{ label: string, deviceId: string } | null} */

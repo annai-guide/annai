@@ -229,3 +229,52 @@ test("kept voice clips: kept as the smallest file the phone makes and plays, pla
     await server.stop();
   }
 });
+
+test('Keep my music playing (spec §10.1): shown only where annai can set the audio session; on, she speaks over the music (ambient), a tap listens (play-and-record), and nothing listens after her', async ({ page }) => {
+  const server = await startModelServer({
+    '/b/v1/messages': [sse(anthropicToolReply([{ name: 'speak', input: { text: 'There is a taco stand two miles ahead.' } }]))],
+    '/ears/audio/transcriptions': json({ text: 'Where should we eat?' }),
+    '/voice/audio/speech': wav,
+  });
+  try {
+    await fakeMicrophone(page, [clipPath('where-eat')]);
+    // Neither test browser has an audio session (Safari's navigator.audioSession): no switch.
+    await openApp(page, '#/voice');
+    await expect(page.getByRole('heading', { level: 1, name: 'Voice' })).toBeVisible();
+    await expect(page.getByLabel('Listen for an answer (seconds)')).toBeVisible();
+    await expect(page.getByLabel('Keep my music playing')).toHaveCount(0);
+    // Safari's, as far as a test browser lets: a type annai sets, each change kept (the plugin sets one only when it changes).
+    await page.addInitScript(() => {
+      const w = /** @type {any} */ (window);
+      w.__types = [];
+      let type = 'auto';
+      const session = { get type() { return type; }, set type(t) { w.__types.push(t); type = t; } };
+      Object.defineProperty(Navigator.prototype, 'audioSession', { configurable: true, get: () => session });
+    });
+    await setUpVoice(page, server.origin);
+    await page.goto('/#/voice');
+    const music = page.getByLabel('Keep my music playing');
+    await expect(music).not.toBeChecked();
+    await expect(page.getByText('she doesn\'t listen by herself after speaking')).toBeVisible();
+    await music.check();
+    await expect(savedBy(music)).toHaveText('Saved');
+    await page.goto('/#/talk');
+    const label = page.locator('.talk-label');
+    await expect(label).toHaveText('Tap to talk');
+    await page.getByRole('button', { name: 'Shiori' }).click();
+    await expect.poll(() => server.bodies('/voice/audio/speech').length, { timeout: 30_000 }).toBe(1);
+    await expect(label).toHaveText('Tap to talk', { timeout: 30_000 });
+    const types = await page.evaluate(() => /** @type {any} */ (window).__types);
+    expect(types, 'the tap\'s microphone, then her voice mixing').toEqual(expect.arrayContaining(['play-and-record', 'ambient']));
+    expect(types.at(-1)).toBe('ambient');
+    expect(types).not.toContain('playback');
+    expect(await page.evaluate(() => /** @type {any} */ (window).__micOpens), 'the tap\'s only').toBe(1);
+    expect(server.bodies('/b/v1/messages'), 'her turn ended with her words, for no model call').toHaveLength(1);
+    // Saved: the screen shows it on, after a reload too.
+    await page.reload();
+    await page.goto('/#/voice');
+    await expect(page.getByLabel('Keep my music playing')).toBeChecked();
+  } finally {
+    await server.stop();
+  }
+});
