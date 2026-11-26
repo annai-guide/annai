@@ -73,8 +73,8 @@ test('a model nothing in the speech-in list can reach is skipped as "no-speech";
   assert.deepEqual(r.attempts.map((a) => [a.outcome, a.error ?? '']), [['no-speech', 'nothing in the speech-in list worked for model-0'], ['ok', '']]);
 });
 
-/** Audio for a model that takes it; else, in the last pass (standIn), the stand-in; else nothing could hear it (resolveSpeech's rule). @param {any} model @param {any} request @param {boolean} [_plain] @param {AbortSignal} [_signal] @param {boolean} [standIn] */
-const deafUnlessLast = async (model, request, _plain, _signal, standIn) => {
+/** Audio for a model that takes it; else, in the last pass (standIn), the stand-in; else nothing could hear it (resolveSpeech's rule). @param {any} model @param {any} request @param {{ standIn?: boolean }} [o] */
+const deafUnlessLast = async (model, request, { standIn } = {}) => {
   if (model.input.includes('audio')) return resolve(model, request);
   if (!standIn) throw Object.assign(new Error(`nothing in the speech-in list worked for ${model.name}`), { said: { code: 'not-heard', name: model.name } });
   return { ...request, messages: request.messages.map((/** @type {any} */ m) => ({ role: m.role, parts: m.parts.map((/** @type {any} */ p) => (p.type === 'speech' ? { type: 'text', text: NOT_TRANSCRIBED } : p)) })) };

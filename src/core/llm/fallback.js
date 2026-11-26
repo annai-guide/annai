@@ -516,7 +516,7 @@ export const firstWordsMs = (config, role) => (config.roles?.[role]?.firstOutput
  *   sleep?: (ms: number, signal?: AbortSignal) => Promise<void>, now?: () => number, firstOutputMs?: number, online?: () => boolean,
  *   prefer?: string, borrow?: boolean, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean, handover?: string | null, endLogged?: boolean },
  *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null>, uploads?: import('./uploads.js').Uploads,
- *   speech?: (model: Model, request: Request, plain?: boolean, signal?: AbortSignal, standIn?: boolean) => Promise<Request>, models?: string[],
+ *   speech?: (model: Model, request: Request, o?: { plain?: boolean, signal?: AbortSignal, standIn?: boolean }) => Promise<Request>, models?: string[],
  *   kept?: import('./kept.js').Kept, scope?: string, tally?: import('../workspace.js').Workspace, missing?: string, read?: ReadFor, readings?: Readings,
  *   askResting?: boolean, standIn?: boolean, keepNative?: boolean, shared?: boolean }} c
  *   models: the models to try in place of the role's list ("Try this model" passes one: no fallback); missing: why a
@@ -525,7 +525,7 @@ export const firstWordsMs = (config, role) => (config.roles?.[role]?.firstOutput
  *   repairImages: asked for a repaired request when a model refuses a photo; the same model is then tried again, at most twice (spec §9.9)
  *   uploads: photos uploaded to providers; an upload a provider no longer knows is forgotten, and the same model tried once more
  *   speech: resolves heard speech for the model about to be called (spec §10.3); a throw means nothing in the speech-in list can reach it, and the model is skipped;
- *   plain: the model refused the audio format it was sent, so send WAV; signal: the call's; standIn: the last pass's (below)
+ *   its options: plain: the model refused the audio format it was sent, so send WAV; signal: the call's; standIn: the last pass's (below)
  *   kept: turns kept on the provider's side (G2): only a conversation's own, Main's or Koe's (record.keepParts); scope: its
  *   borrow: warm housekeeping, which continues the conversation's live kept chain (if it has one) and deletes its own response, recording nothing
  *   tally: where this device counts provider tools with a monthly allowance (call.js billMonth)
@@ -673,7 +673,7 @@ export async function callRole(c) {
       let sendable = unsent;
       if (c.speech) {
         try {
-          sendable = await c.speech(model, unsent, plain, c.signal, standIn);
+          sendable = await c.speech(model, unsent, { plain, signal: c.signal, standIn });
           if (keeps) sendable = heardIds(unsent, sendable);
         } catch (e) {
           const said = /** @type {any} */ (e)?.said;

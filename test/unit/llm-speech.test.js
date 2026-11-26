@@ -250,7 +250,7 @@ test("a gate's transcription cut before its provider's headers, through the real
   const voice = new Voice({ llm, ws, registry, store, locale: 'en' });
   voice.memory.keep({ id: 's-1', source: 'mic', audio: { data: new Uint8Array(4_000), mediaType: 'audio/wav', seconds: 0.1 }, ms: 100, at: 0 }, 'trip-1');
   /** The gate's resolver (loop.js: the scope alone), then the turn's (with its wake, and shared). @param {boolean} [turn] */
-  const ask = (turn = false) => /** @type {Promise<any>} */ ((turn ? voice.resolver('trip-1', 'w-1', undefined, true) : voice.resolver('trip-1'))({ id: 'm-chat', name: 'Chat', input: ['text'] }, { messages: [{ role: 'user', parts: [{ type: 'speech', id: 's-1' }] }] }, false));
+  const ask = (turn = false) => /** @type {Promise<any>} */ ((turn ? voice.resolver('trip-1', 'w-1', undefined, true) : voice.resolver('trip-1'))({ id: 'm-chat', name: 'Chat', input: ['text'] }, { messages: [{ role: 'user', parts: [{ type: 'speech', id: 's-1' }] }] }));
   await assert.rejects(ask(), /nothing in the speech-in list worked for Chat/);
   assert.equal(llm.bench.until(m.id), 0, 'a cut send rests no model');
   assert.match((await ask(true)).messages[0].parts[0].text, /Where should we eat\?/);
