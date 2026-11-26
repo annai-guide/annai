@@ -1476,6 +1476,12 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the photo is copied by the Koe agent's `#copy`, whose `#mainImages()` (src/core/agent/loop.js) reads the `koe-classic` and `main` lists, never `koe-realtime`; src/core/koe/live.js `send` checks only that the live model takes images. The fix: Koe's half also folds in the `koe-realtime` models that take photos.
 - **Revisit when:** its row in docs/progress.md, in the next version.
 
+### A live protocol's crashes add up across sessions
+- **Kind:** deferred.
+- **What the traveller sees:** a live voice plugin (a third-party protocol; the official ones crash on no engine data since plugin-link-next) whose code crashes now and then, a session at a time, is switched off at its third crash in the run even with working sessions between them, as "failed 3 times in a row". Found by plugin-link-next's reviews (2026-11-25, by reading).
+- **Why:** the live path (src/core/realtime/open.js, the live triggers in src/core/live/live.js) never calls `registry.succeeded`, so nothing ends a run of failures there but another part of the plugin working. The fix: a handled message, or a session that opens, reports a success.
+- **Revisit when:** its row in docs/progress.md, in the next version.
+
 ### A plugin whose module fails as it loads counts a launch, whatever the failure
 - **Kind:** deferred.
 - **What the traveller sees:** a third-party plugin (no official one) whose entry module does something that can fail for want of a link as it loads (a top-level `await fetch(…)`, before `annai` is there), or whose start hits a storage read that fails, counts a launch that didn't start, as a crash would: three such launches offline turn it off until the traveller turns it on in Settings → Plugins. The same failure inside `activate` counts nothing since plugin-link-next. Main does the same. Found by plugin-link-next's reviews (2026-11-25, measured: the import rejects with `TypeError: Load failed` outside `guard`, with no `cause`).
