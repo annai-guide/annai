@@ -10,17 +10,19 @@ import { encodeWav, pcm16, resample, SEND_RATE } from './pcm.js';
  * model's words, made once per segment; or phone dictation's words. Text versions are made lazily (textVersion).
  * @typedef {{ id: string, source: 'mic' | 'dictation', audio?: { data: Uint8Array, mediaType: string, seconds: number }, text?: string, ms: number, at: number,
  *   encoded?: Map<string, Promise<Uint8Array | null>> }} Heard  audio: the microphone's 16 kHz WAV, or a kept clip; encoded: its other files, by format
- * @typedef {Heard & { transcripts: Map<string, string>, encoded: Map<string, Promise<Uint8Array | null>>, pcm?: Promise<{ pcm: Int16Array, rate: number }>, scope?: string }} Kept
- *   scope: the conversation it was heard for
+ * @typedef {Heard & { transcripts: Map<string, string>, encoded: Map<string, Promise<Uint8Array | null>>, pcm?: Promise<{ pcm: Int16Array, rate: number }>, scope?: string, failed?: number }} Kept
+ *   scope: the conversation it was heard for; failed: how many times a model really asked for its words failed to make them (Voice.writeDown; the agent's WRITE_TRIES, whose comment says which asks count)
  * @typedef {import('../llm/contract.js').Request} Request
  * @typedef {import('../llm/contract.js').Part} Part
  * @typedef {import('./platform.js').Encoder} Encoder
  * @typedef {{ id?: string, name: string, input: string[] }} Hearer  the model a request goes to
  * @typedef {{ list: string[], memory: HeardMemory, asr: (id: string) => boolean, transcribe: (id: string, kept: Kept) => Promise<string>,
  *   clip?: (hash: string) => Promise<{ data: Uint8Array, mediaType: string } | null>, onFail?: (id: string, error: unknown) => void,
- *   accepts?: (id: string) => string[], encoder?: Encoder | null, plain?: boolean }} Resolve
+ *   accepts?: (id: string) => string[], encoder?: Encoder | null, plain?: boolean, unheard?: Set<string>, carried?: Set<string> }} Resolve
  *   list: the speech-in list; asr: whether an entry is a transcription model that can work now; onFail: one failed (bench it);
- *   accepts: a model's audioIn; plain: send WAV (another format was refused)
+ *   accepts: a model's audioIn; plain: send WAV (another format was refused); unheard: segments past the turn they were heard for (a turn
+ *   that carried them didn't work), sent as not transcribed where nothing can hear them; carried: each segment this call's turn sends, added as it is
+ *   resolved, whether or not it can be heard (the agent's #pastTurn marks only these)
  */
 
 /** A segment nothing could write down (spec §10.3). */
@@ -168,7 +170,7 @@ export function listenKind({ list, model, asr, dictation, names = (n) => n }) {
 /**
  * The request as one model can take it (spec §10.3): each speech part becomes audio or words.
  * Throws when nothing in the speech-in list can hear a segment for this model, which is then
- * skipped like any capability gap (§9.6).
+ * skipped like any capability gap (§9.6); a segment in c.unheard goes as not transcribed instead.
  * @param {Request} request @param {Hearer} model @param {Resolve} c @returns {Promise<Request>}
  */
 export async function resolveSpeech(request, model, c) {
@@ -188,6 +190,7 @@ export async function resolveSpeech(request, model, c) {
 async function resolvePart(p, model, c) {
   // Words written down already are what every later request sends (spec §10.3).
   if (p.text !== undefined) return { type: 'text', text: said(p.text) };
+  c.carried?.add(p.id); // before anything here can throw: a turn that fails on it carried it
   if (!c.memory.get(p.id) && p.clip) {
     // A kept voice clip (spec §10.2) stands in for audio that has left memory.
     const got = await c.clip?.(p.clip);
@@ -217,6 +220,8 @@ async function resolvePart(p, model, c) {
       c.onFail?.(id, e);
     }
   }
+  // Past its own turn, it fails no request (a line typed after it): its sound stays for the next turn that works to write down.
+  if (c.unheard?.has(p.id)) return { type: 'text', text: NOT_TRANSCRIBED };
   // What it was goes with it, as data (contract.js's Said): the call's attempt keeps it, and a card makes the screens' words.
   throw Object.assign(new Error(/* en */ `nothing in the speech-in list worked for ${model.name}`), { said: { code: 'not-heard', name: model.name } });
 }

@@ -64,7 +64,7 @@ export function fakeCodec(formats) {
  * (all in the main role, in order), and an Agent on a fresh trip. Every request a model receives is
  * kept in `requests`.
  * @param {(any[] | Record<string, any>)[]} scripts @param {{ models?: any[], open?: boolean, ready?: Promise<void>, agent?: Record<string, any>, utility?: any[] | Record<string, any>, utilityModel?: Record<string, any>, codecFormats?: string[],
- *   voice?: { mode?: 'on' | 'off' | 'auto', speechIn?: string[], hears?: string[], failing?: string[], decide?: any[], dictation?: boolean, keepClips?: boolean, playMs?: number, micFails?: string,
+ *   voice?: { mode?: 'on' | 'off' | 'auto', speechIn?: string[], hears?: string[], failing?: string[], decide?: any[], gateHears?: boolean, dictation?: boolean, keepClips?: boolean, playMs?: number, micFails?: string,
  *     encoder?: { makes: string[] }, plays?: string[], closeAfterSeconds?: number, speechOut?: string[] },
  *   halves?: boolean, koe?: { type?: any[] | Record<string, any>, talk?: any[] | Record<string, any>, input?: string[], model?: Record<string, any> },
  *   live?: { origin: string, first?: boolean, second?: boolean, key?: string, tunables?: Record<string, any>, type?: 'gemini-live' | 'openai-realtime', made?: false }, fetch?: import('../../src/core/llm/call.js').Fetch,
@@ -74,7 +74,7 @@ export function fakeCodec(formats) {
  *   scripts: a script (or koe's type) with an ability is a model on that endpoint type (anthropic-messages, chat-completions), its requests sent through fetch (a stand-in)
  *   utility: a script for one more model, in the utility role (one with an ability as a script's is); utilityModel: what its model record has besides (its input)
  *   voice: Shiori with a voice (spec §10): a fake device; a voice (m-say) and a transcription model (m-hear) that hears hears, in turn (the last
- *   repeats); decide: a script for a quick-decision model (the gate); micFails: the microphone refuses with this error name; closeAfterSeconds: Settings →
+ *   repeats); decide: a script for a quick-decision model (the gate), gateHears: one that takes audio; micFails: the microphone refuses with this error name; closeAfterSeconds: Settings →
  *   Voice's quiet spell, saved before the agent is made (koe-live-kit's liveKit gives its own); speechOut: the speech-out list (m-say; ['browser-voice'] for the phone's voice)
  *   halves: Shiori as Halves (the Koe and Kokoro design), the scripts' models as Kokoro's (main); koe: scripts for two chat models in
  *   Koe · Classic, talk's (m-koet, model-koet) before type's (m-koe, model-koe), and the inputs Koe's models take;
@@ -152,7 +152,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
     config.roles['speech-out'] = { models: v.speechOut ?? ['m-say'], level: 'off' };
     config.roles['speech-in'] = { models: v.speechIn ?? ['send-audio', 'm-hear', 'dictation'], level: 'off' };
     if (v.decide) {
-      add('pv-d', 'm-d', 'ED', { kind: 'chat', type: 'scripted', tunables: { script: v.decide } }, { providerId: 'model-d', prices: { input: 1, output: 1 }, input: ['text'] });
+      add('pv-d', 'm-d', 'ED', { kind: 'chat', type: 'scripted', tunables: { script: v.decide } }, { providerId: 'model-d', prices: { input: 1, output: 1 }, input: v.gateHears ? ['text', 'audio'] : ['text'] });
       config.roles.decide.models = ['m-d'];
     }
   }
