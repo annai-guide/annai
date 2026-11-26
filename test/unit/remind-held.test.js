@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import { agentKit, until, idleAtOnce, inTime, holdAtDoor, holdReminders, raw } from './agent-kit.js';
 import { liveKit, soon, tone, texts, got, lives, say as sayClip } from './koe-live-kit.js';
 import { codePlugin, storedModules } from './package-kit.js';
-import { quietSession, tell, tell2, cues, notesIn, words, shown, wait, textsIn, SAID, PASS } from './live-flight-kit.js';
+import { quietSession, tell, tell2, cues, notesIn, words, lines, shown, wait, textsIn, SAID, PASS } from './live-flight-kit.js';
 import { useClock } from './clock.js';
 import { Agent } from '../../src/core/agent/loop.js';
 import { Halves } from '../../src/core/agent/halves.js';
@@ -2687,6 +2687,59 @@ test('Koe live: a card call of hers is still being answered as the quiet spell e
     await soon(async () => (await words(k)).length === 1, 30_000);
     const [line] = await k.events(['out.speak']);
     assert.deepEqual([line.data.text, Boolean(line.data.cut)], ['Here is the bridge.', false], 'written whole when her turn ends');
+  } finally {
+    link.restore();
+    await k.done();
+  }
+});
+
+// Her sound starts later than her first chunk arrived (cut-bound-next's fix round 2, the second opinion's probe P): her voice waits for her first word (#speak) or for
+// another voice (#queue), and plays from there. The guard in #quietEnd counts her sound's end from when it plays (t.playAt), not from her first chunk's arrival (t.soundAt),
+// or a healthy reply is cut while it still plays. Here her line's 4 s of sound all come at once, her first words 3.5 s after it (her voice begins then, and plays to 7.5 s), and
+// the stand-in's end 8 s after the burst, as the provider's would be (it holds a turn open until its sound would have played out, counted from the burst). The quiet spell (3 s)
+// ends at 6.5 s, 3 s into her sound: counted from the burst her end was 6 s and overdue, and she was cut ("...photographed✂"); counted from where she plays it is 9.5 s.
+// The same with the end never coming (the link dead after her last words, probe P4: the guard's other order, her whole line heard and made): it is cut where it was heard,
+// that is whole, and the session closes at the next spell.
+for (const [what, dead] of /** @type {[string, boolean][]} */ ([['her end comes at 8 s', false], ['the link dead after her last words, her end never comes', true]])) {
+  test(`Koe live: her first words come 3.5 s after her 4 s of sound, which plays from there, and ${what}: the quiet spell doesn't cut her while she plays, and her line is written whole`, async () => {
+    const link = slowLink(); // before the session opens
+    const k = await liveKit([{ said: LINE, audio: tone(4), saidAt: 3500, endAt: 8000 }], { pace: 1 });
+    try {
+      k.platform.streamSpeed = 1;
+      await k.voice.unlock();
+      if (dead) link.match = /"turnComplete"/; // her end, and all after it, never reach the page
+      k.agent.send('Tell me about the bridge');
+      await soon(async () => (await words(k)).length === 1, 30_000);
+      assert.deepEqual((await lines(k)).map((l) => [l.text, l.cut]), [[LINE, false]], 'written whole, not cut where it was heard when the spell ended');
+      if (dead) {
+        await soon(async () => (await lives(k, 'closed')).length === 1, 30_000);
+        assert.deepEqual((await lives(k, 'closed')).map((/** @type {any} */ e) => e.data.why), ['quiet'], 'closed by the quiet spell');
+        assert.equal(k.agent.live.busy, false, 'nothing of hers is left open');
+      }
+    } finally {
+      link.restore();
+      await k.done();
+    }
+  });
+}
+
+// The guard's cut of a turn whose voice has not begun (the second opinion's F-A): her sound came and her first words after it, while annai's other voice was saying something
+// (a reminder: nothing of a session's plays over it, #mayPlay), so her turn waits to be said (#pending), and then the link is dead. The cut writes her words as a close or a drop
+// does (#stop's shown), ✂ as the provider never ended it; with `#stop(t)` alone they were let go with her voice never heard, and nothing of her turn was written.
+// The other voice is a clip that never ends (voice.playMs, as live-drive2-fix2's 5a), started once the session has her turn; her sound comes at once and her first words 1.5 s after it.
+test('Koe live: her turn waits for annai\'s other voice, which is still speaking, and the link goes dead: the quiet spell cuts it, and her words are written (cut), not let go', async () => {
+  const link = slowLink(); // before the session opens
+  const k = await liveKit([{ said: LINE, audio: tone(0.3), saidAt: 1500, endAt: 20_000 }], { pace: 1, voice: { playMs: 60_000 } });
+  try {
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    link.match = /"turnComplete"/; // her end never reaches the page
+    k.agent.send('Tell me about the bridge');
+    await soon(async () => textsIn(k).length === 1, 30_000); // the session is open and has the turn (a session that opens while annai's other voice speaks waits for it)
+    k.voice.say('A reminder that never ends.').catch(() => {});
+    await soon(async () => (await lives(k, 'closed')).length === 1, 30_000);
+    assert.deepEqual((await lives(k, 'closed')).map((/** @type {any} */ e) => e.data.why), ['quiet'], 'closed by the quiet spell');
+    assert.deepEqual((await lines(k)).map((l) => [l.text, l.cut]), [[`${LINE}✂`, true]], 'her words, written cut');
   } finally {
     link.restore();
     await k.done();
