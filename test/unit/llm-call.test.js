@@ -1033,3 +1033,57 @@ test("a send that never ends is cut at the wait plus its bytes' time at the slow
     assert.equal(Date.now() - started, 100 + Math.ceil((bytes * (shared ? 2 : 1) * 8 * 1000) / SLOW_UPLINK), `shared ${shared}: the wait and the send's time`);
   }
 });
+
+// sending-next (the user's pick U113, 2026-11-26: "The dock says "Sending…""): callOnce tells its caller when a photo's, a PDF's or a
+// recording's bytes start going up and when the provider has the request, the moments the dock's Sending… starts and ends (spec §16.3).
+
+/** What a call told its caller and asked the network, in order: `sending on`/`sending off`, the other events' types, and each address asked. */
+const told = () => {
+  /** @type {string[]} */
+  const seen = [];
+  return { seen, onEvent: (/** @type {any} */ ev) => seen.push(ev.type === 'sending' ? `sending ${ev.on ? 'on' : 'off'}` : ev.type) };
+};
+
+test("a request that sends a photo's, a PDF's or a recording's bytes says sending as it starts going up, and off once its answer's headers come, before the first words; one of words alone, or with a photo by its upload's id, says nothing; a send cut before its headers says no off (sending-next)", async () => {
+  const pdf = { messages: [{ role: 'user', parts: [{ type: 'text', text: 'When is check-in?' }, { type: 'document', mediaType: 'application/pdf', data: 'J'.repeat(1_000), name: 'booking.pdf' }] }] };
+  const recording = { messages: [{ role: 'user', parts: [{ type: 'audio', mediaType: 'audio/wav', data: 'U'.repeat(1_000) }] }] };
+  const byId = { messages: [{ role: 'user', parts: [{ type: 'text', text: 'What is this?' }, { type: 'image', mediaType: 'image/jpeg', data: 'A'.repeat(1_000), hash: 'h1', fileId: 'file-1' }] }] };
+  const all = model({ input: ['text', 'image', 'pdf', 'audio'] });
+  for (const [what, r, sends] of /** @type {const} */ ([['photo', photoRequest(1_000), true], ['PDF', pdf, true], ['recording', recording, true], ['words', request, false], ['photo by id', byId, false]])) {
+    const { seen, onEvent } = told();
+    const answers = answersAfter(20);
+    const get = (/** @type {string} */ url, /** @type {any} */ init) => {
+      seen.push('asked');
+      return answers(url, init).then((res) => { seen.push('headers'); return res; });
+    };
+    const reply = await callOnce({ type: httpType([{ type: 'text', text: 'A pelican.' }, { type: 'stop', reason: 'end' }]), endpoint: endpoint(), model: all, key: 'k', request: /** @type {any} */ (r), fetch: /** @type {any} */ (get), firstOutputMs: 1000, onEvent });
+    assert.equal(reply.text, 'A pelican.');
+    assert.deepEqual(seen, sends ? ['sending on', 'asked', 'headers', 'sending off', 'text', 'stop'] : ['asked', 'headers', 'text', 'stop'], what);
+  }
+  // Cut at its send's time: the caller's call ends with the send's words, and nothing said the bytes were up (callRole's restart before the
+  // next attempt, or the call's end, ends it).
+  const { seen, onEvent } = told();
+  await assert.rejects(callOnce({ type: httpType([]), endpoint: endpoint(), model: seesPhotos, key: 'k', request: photoRequest(1_000), fetch: /** @type {any} */ (answersAfter(Infinity)), firstOutputMs: 100, onEvent }),
+    (/** @type {any} */ e) => e.said?.code === 'send');
+  assert.deepEqual(seen, ['sending on']);
+});
+
+test("a photo's upload says sending as it starts going up, and off once the uploads are done; the request after it, sending the photo by its id, says nothing more (sending-next)", async () => {
+  const { Workspace } = await import('../../src/core/workspace.js');
+  const { ensureBaseScopes } = await import('../../src/core/scopes.js');
+  const { Uploads } = await import('../../src/core/llm/uploads.js');
+  const ws = new Workspace(createMemoryStore());
+  await ensureBaseScopes(ws);
+  const t = httpType([{ type: 'text', text: 'A pelican.' }, { type: 'stop', reason: 'end' }], {
+    uploadRequest: (/** @type {any} */ c) => ({ url: `${c.endpoint.baseUrl}/v1/files`, headers: {}, body: new Blob([c.bytes]) }),
+    readUpload: (/** @type {any} */ j) => ({ id: j.id }),
+  });
+  const { seen, onEvent } = told();
+  const get = async (/** @type {string} */ url) => {
+    seen.push(url.endsWith('/v1/files') ? 'upload' : 'request');
+    return url.endsWith('/v1/files') ? Response.json({ id: 'file_1' }) : new Response('');
+  };
+  const r = { messages: [{ role: 'user', parts: [{ type: 'text', text: 'What is this?' }, { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'AAAA' }] }] };
+  await callOnce({ type: t, endpoint: endpoint(), model: seesPhotos, key: 'k', request: /** @type {any} */ (r), fetch: /** @type {any} */ (get), uploads: new Uploads(ws), onEvent });
+  assert.deepEqual(seen, ['sending on', 'upload', 'sending off', 'request', 'text', 'stop']);
+});

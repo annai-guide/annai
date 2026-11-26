@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { agentKit, until, hear, idleAtOnce, refusing } from './agent-kit.js';
+import { agentKit, until, hear, idleAtOnce, refusing, slowLink } from './agent-kit.js';
+import { anthropicStandIn } from '../fakes/anthropic-binding.js';
 import { builtinUrl } from './package-kit.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { ProviderError } from '../../src/core/llm/contract.js';
@@ -3322,4 +3323,82 @@ test("Koe's open failing while Kokoro's holds: the next line opens Koe there fir
   assert.deepEqual(await typed(k, road), ['Fuel?']);
   assert.deepEqual(await typed(k, k.trip), ['Hi']);
   k.agent.hush('away');
+});
+
+// sending-next (the user's pick U113, 2026-11-26: "The dock says "Sending…""): while her call's photo goes up the dock says Sending…, not
+// Thinking; once the provider has the request (its answer's headers), Thinking, as before (spec §16.3).
+
+/** Claude's stand-in, answering a speak and a sleep, behind a link that holds each answer until it opens (slowLink); bodies: what it was sent. */
+const claudeBehind = () => {
+  let n = 0;
+  const use = (/** @type {string} */ name, /** @type {any} */ input = {}) => ({ type: 'tool_use', id: `toolu_${++n}`, name, input });
+  const claude = anthropicStandIn(() => [use('speak', { text: 'A menu.' }), use('sleep')]);
+  return Object.assign(slowLink(claude.fetch), { bodies: claude.bodies });
+};
+/** Whether a request to Claude sent a photo's bytes. @param {any} body */
+const sentPhoto = (body) => body.messages.some((/** @type {any} */ m) => m.content.some((/** @type {any} */ b) => b.type === 'image' && b.source?.type === 'base64'));
+const CLAUDE = { ability: { type: 'anthropic-messages', baseUrl: 'https://api.anthropic.com' } };
+/** The dock's words as they change, and each card's title, in order. @param {any} k */
+const dockAndCards = (k) => {
+  /** @type {string[]} */
+  const seen = [];
+  k.agent.on('state', (/** @type {any} */ s) => { if (seen.at(-1) !== s.label) seen.push(s.label); });
+  k.agent.on('notice', (/** @type {any} */ n) => seen.push(`card: ${n.title}`));
+  return seen;
+};
+
+test("the dock says Sending… while her call's photo goes up, then Thinking once the provider has it, then her answer; the photo is in the request (sending-next)", async (t) => {
+  useClock(t);
+  const link = claudeBehind();
+  const k = await agentKit([CLAUDE], { fetch: link.fetch });
+  await storedPhoto(k, '/files/p.webp', 'image/webp');
+  const seen = dockAndCards(k);
+  k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+  await until(() => link.asked === 1);
+  assert.deepEqual(k.agent.state, { name: 'thinking', label: 'Sending… · tap to stop', sending: true });
+  link.open();
+  await idleAtOnce(k);
+  assert.deepEqual(seen, ['Thinking · tap to stop', 'Sending… · tap to stop', 'Thinking · tap to stop', 'Tap to interrupt', 'Tap to talk'], 'her answer: Tap to interrupt while she speaks');
+  assert.equal((await k.events(['out.speak']))[0]?.data.text, 'A menu.');
+  assert.ok(sentPhoto(link.bodies[0]), 'the photo went in the request');
+});
+
+test("a request of words alone says Thinking while it goes up and after: its send is no likelier than the model to be slow, as its cut says (sending-next)", async (t) => {
+  useClock(t);
+  const link = claudeBehind();
+  const k = await agentKit([CLAUDE], { fetch: link.fetch });
+  const seen = dockAndCards(k);
+  k.agent.send('Where should we eat?');
+  await until(() => link.asked === 1);
+  assert.deepEqual(k.agent.state, { name: 'thinking', label: 'Thinking · tap to stop' });
+  link.open();
+  await idleAtOnce(k);
+  assert.deepEqual(seen, ['Thinking · tap to stop', 'Tap to interrupt', 'Tap to talk']);
+  assert.ok(!sentPhoto(link.bodies[0]));
+});
+
+test("a photo's send cut at its time, and the next model answers: the dock says Thinking again as the call tries it (its restart), then her answer (sending-next)", async (t) => {
+  useClock(t);
+  const link = claudeBehind(); // never opened: no answer comes
+  const k = await agentKit([CLAUDE, [say('Here.')]], { fetch: link.fetch });
+  await storedPhoto(k, '/files/p.webp', 'image/webp');
+  const seen = dockAndCards(k);
+  k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+  await idleAtOnce(k, 600_000); // the wait (30 s) and the photo's send time, on the test's clock
+  // The second model is a scripted one, whose send annai doesn't see: Thinking while it answers.
+  assert.deepEqual(seen, ['Thinking · tap to stop', 'Sending… · tap to stop', 'Thinking · tap to stop', 'Tap to interrupt', 'Tap to talk']);
+  assert.deepEqual((await k.events(['model.turn']))[0].data.attempts.map((/** @type {any} */ a) => [a.outcome, a.said?.code]), [['timeout', 'send'], ['ok', undefined]]);
+});
+
+test("a photo's send cut at its time: the dock says Sending… until the card, which says the connection may be too slow to send photos (sending-next)", async (t) => {
+  useClock(t);
+  const link = claudeBehind(); // never opened: no answer comes
+  const k = await agentKit([CLAUDE], { fetch: link.fetch });
+  await storedPhoto(k, '/files/p.webp', 'image/webp');
+  const seen = dockAndCards(k);
+  k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+  await idleAtOnce(k, 600_000); // the wait (30 s) and the photo's send time, on the test's clock
+  assert.deepEqual(seen, ['Thinking · tap to stop', 'Sending… · tap to stop', "card: Shiori can't reach her model", 'Tap to talk'], 'Sending… until the card');
+  assert.match(JSON.stringify(k.notices), /too slow to send photos or files/);
+  assert.ok(sentPhoto(link.bodies[0]), 'the photo went in the request');
 });

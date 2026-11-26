@@ -86,6 +86,8 @@ const BOTH_CARD = 'model:both';
  * ready, it currently says your turn. maybe that is confusing? maybe put thinking"). No "tap to stop": a tap talks to Koe; the sign's Stop stops Kokoro.
  */
 const THINKING = Object.freeze({ name: /** @type {const} */ ('thinking'), label: t`Thinking` });
+/** The same while Kokoro's call sends its photos, PDF or recording (its own state's `sending`): the dock says Sending… until they are up (spec §16.3). */
+const SENDING = Object.freeze({ name: /** @type {const} */ ('thinking'), label: t`Sending…`, sending: /** @type {const} */ (true) });
 
 /** What the dock shows of a state: a change of either is told. @param {import('./loop.js').State} s */
 const shownKey = (s) => `${s.name}\n${s.label}\n${s.over ?? ''}`;
@@ -437,8 +439,8 @@ export class Halves {
   /**
    * The dock's state: the talking half's, or a live session's, as it is when no one works behind it. While the sign says Kokoro is working (kokoroWorking:
    * the one answer to that, busy before its own state says thinking) and Koe rests or waits for the user's turn, "Your turn" and "Tap to talk" would
-   * say the opposite of the sign: THINKING stands over them, and Kokoro's own state where it waits for the user (its card). `over` is Koe's own name
-   * beneath it (home shows its whole dock for Koe's states only: shell.js).
+   * say the opposite of the sign: THINKING stands over them (SENDING while Kokoro's call sends its photos, PDF or recording), and Kokoro's own state
+   * where it waits for the user (its card). `over` is Koe's own name beneath it (home shows its whole dock for Koe's states only: shell.js).
    * @returns {import('./loop.js').State}
    */
   get state() {
@@ -446,7 +448,7 @@ export class Halves {
     if (!this.kokoroWorking || !(s.name === 'sleeping' || (s.name === 'waiting' && s.wait === 'wait'))) return s;
     const k = this.kokoro.state;
     if (k.name === 'waiting') return s.name === 'sleeping' ? { ...k, over: s.name } : s; // Kokoro's card waits for the user: Koe's wait says so already
-    return k.name === 'thinking' || k.name === 'away' || k.name === 'sleeping' ? { ...THINKING, over: s.name } : s;
+    return k.name === 'thinking' || k.name === 'away' || k.name === 'sleeping' ? { ...(k.sending ? SENDING : THINKING), over: s.name } : s;
   }
   /** A live session is open or opening, which opening another conversation would close (koeState 'live' only means the route can go live). */
   get sessionOpen() { return this.live.state !== 'closed'; }

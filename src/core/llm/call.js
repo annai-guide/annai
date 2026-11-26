@@ -285,7 +285,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   /** @type {Awaited<ReturnType<typeof withUploads>>} */
   let uploaded;
   try {
-    uploaded = await withUploads(ready, { type, endpoint, model, key, uploads, get, trace, signal, now, registry, from: matched?.from ?? 0 });
+    uploaded = await withUploads(ready, { type, endpoint, model, key, uploads, get, trace, signal, now, registry, from: matched?.from ?? 0, onEvent });
   } catch (e) {
     // A stop during an upload is a stop, by the caller or its deadline (only an aborted call's upload throws): never a failure of the plugin or the model, which would bench it.
     if (signal?.aborted || /** @type {any} */ (e)?.name === 'AbortError') throw new ProviderError('cancelled', /* en */ 'Stopped.', { cause: e, said: { code: 'kind' } });
@@ -334,6 +334,8 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   let t = setTimeout(late, firstOutputMs);
   const wait = (/** @type {number} */ ms) => { clearTimeout(t); t = setTimeout(late, ms); };
   let sending = 0; // the time the request has, until the answer's headers
+  /** The request sends a photo's, a PDF's or a recording's bytes (BYTES): the dock says Sending… until its answer's headers, and a cut before them is the send's. */
+  let up = false;
   const linked = signal ? anySignal([signal, timer.signal]) : timer.signal;
   /** @type {Part[]} */
   const parts = [];
@@ -403,6 +405,10 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     ...(spec.kept ? { kept: { from: spec.kept.from } } : {}), ...(bytes ? { bytes } : {}), ...(natives ? { natives } : {}),
   });
   try {
+    // The dock's Sending… (spec §16.3), off at the headers below; a send that fails says nothing more: the next attempt's restart, or the
+    // call's end, ends it. A run type makes its own requests, whose send annai doesn't see.
+    up = !type.run && sendsBytes(spec, BYTES);
+    if (up) onEvent({ type: 'sending', on: true });
     if (type.run) {
       for await (const ev of untilAborted(type.run({ ...spec, signal: linked }), linked)) take(ev);
     } else {
@@ -423,6 +429,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
         throw cannotConnect(e, linked);
       }
       sending = 0;
+      if (up) onEvent({ type: 'sending', on: false }); // the provider has the whole request: the model's wait from here
       wait(firstOutputMs);
       status = res.status;
       noRedirect(res, endpoint);
@@ -444,7 +451,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     let err = asProviderError(e, linked, type, registry, dropped());
     // With a photo's, a PDF's or a recording's bytes in what was sent (not the turns a kept one holds), likelier the send than the model; text
     // alone stays late (a server that never streams).
-    if (err.said?.code === 'late' && sending && sendsBytes(spec, (p) => (p.type === 'image' && !p.fileId) || p.type === 'document' || p.type === 'audio')) {
+    if (err.said?.code === 'late' && sending && up) {
       err = sendCut(e, sending);
     }
     // Output that started and then stopped is not "no output in time": it says so, and how long it waited.
@@ -524,6 +531,13 @@ function utf8Length(s) {
   }
   return n;
 }
+
+/**
+ * A photo's, a PDF's or a recording's bytes, not a photo sent by its upload's id: a request that sends one (sendsBytes) is likelier slow on the
+ * link than its model, so the dock says Sending… while it goes up, and a cut before its answer's headers says the connection may be too slow
+ * (sendCut). @param {Part} p
+ */
+const BYTES = (p) => (p.type === 'image' && !p.fileId) || p.type === 'document' || p.type === 'audio';
 
 /** Whether a request sends a part as bytes, not by its id (what a kept turn already holds isn't sent). @param {CallSpec} spec @param {(p: Part) => boolean} is */
 function sendsBytes(spec, is) {
@@ -679,15 +693,17 @@ export async function photoHash(data) {
  * sent in the request.
  * @param {Request} request
  * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, uploads?: import('./uploads.js').Uploads, get: Fetch, trace?: ModelTrace, signal?: AbortSignal, now: () => number,
- *   registry?: import('../registry.js').Registry, from?: number }} c
+ *   registry?: import('../registry.js').Registry, from?: number, onEvent?: (e: StreamEvent) => void }} c
  * from: the first of request's messages (the portable ones) that is sent, the ones before it being held by a kept turn; expires: when the earliest of the photos sent by id expires (0: none);
- * registry: where a bug in the type's upload request counts (spec §5.5)
+ * registry: where a bug in the type's upload request counts (spec §5.5); onEvent: told as each photo starts going up (sending on), and once they are done (off)
  * @returns {Promise<{ request: Request, expires: number }>}
  */
-async function withUploads(request, { type, endpoint, model, key, uploads, get, trace, signal, now, registry, from = 0 }) {
+async function withUploads(request, { type, endpoint, model, key, uploads, get, trace, signal, now, registry, from = 0, onEvent = () => {} }) {
   if (!uploads || !type.uploadRequest || !type.readUpload || endpoint.tunables?.uploads === false || uploads.isOff(endpoint.id) || !model.input.includes('image')) return { request, expires: 0 };
   /** @type {Map<string, string>} upload ids, by the hash of the bytes uploaded */
   const ids = new Map();
+  /** A photo's upload was sent (the dock said Sending… for it): off once the uploads are done. */
+  let went = false;
   /** When each photo's upload expires, by the same hash. @type {Map<string, number>} */
   const expiry = new Map();
   /** @type {Map<string, string>} each photo's hash, by its data: the bytes' own, never the hash a part claims */
@@ -721,6 +737,8 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
         // bytes (Uploads.answered; or a restart, a new key or address, a Test that passes), since a try at once would wait it out again; one not made or broken off before it is the link's, which a later try may meet
         // again, for as long as that failure took. A Stop is told apart in the catch (the caller's signal aborted).
         const limit = AbortSignal.timeout(UPLOAD_MS);
+        went = true;
+        onEvent({ type: 'sending', on: true });
         const res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, signal: signal ? anySignal([signal, limit]) : limit, redirect: 'manual' }).catch((e) => {
           dropped = !limit.aborted;
           later = limit.aborted;
@@ -764,6 +782,7 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
       }
     }
   }
+  if (went) onEvent({ type: 'sending', on: false }); // the request after them says on again if it sends bytes
   if (!ids.size) return { request, expires: 0 };
   // The earliest expiry of the photos sent by id: a chain that points at them must end before it.
   const times = [...expiry.values()].filter(Boolean);

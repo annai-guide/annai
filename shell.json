@@ -1,5 +1,5 @@
 {
-  "build": "cf7581c09589",
+  "build": "7c6b36706443",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -39,11 +39,11 @@
     "/src/core/agent/budgets.js": "a7804d7ea6b2",
     "/src/core/agent/compaction.js": "a27dec310ee4",
     "/src/core/agent/context.js": "2d75cd3369f6",
-    "/src/core/agent/halves.js": "c581fcc7beb0",
+    "/src/core/agent/halves.js": "3026f0b95392",
     "/src/core/agent/instructions.js": "dc44316f3b47",
     "/src/core/agent/listen.js": "41cbb9219102",
     "/src/core/agent/log.js": "58b0e11f6639",
-    "/src/core/agent/loop.js": "e04a23752d4c",
+    "/src/core/agent/loop.js": "50f21f89079f",
     "/src/core/agent/reading.js": "5fbca7e246ac",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/her-instructions.js": "b90fb982b678",
@@ -74,10 +74,10 @@
     "/src/core/hash.js": "e3cf309df8cf",
     "/src/core/hooks.js": "b340de3a5102",
     "/src/core/html-text.js": "ad9b5709befa",
-    "/src/core/llm/call.js": "1a92c99ab864",
+    "/src/core/llm/call.js": "41e20c64a1ca",
     "/src/core/llm/check.js": "7c6996785ed9",
     "/src/core/llm/config.js": "008b753fa725",
-    "/src/core/llm/contract.js": "06bb2697903c",
+    "/src/core/llm/contract.js": "e046239858f7",
     "/src/core/llm/decide.js": "4aff39cf2ab3",
     "/src/core/llm/fallback.js": "4d0e7fda1066",
     "/src/core/llm/move-over.js": "9584243ec1f4",
@@ -302,8 +302,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "4241cd3e2bfd",
-    "/l10n/zh-Hans.json": "e316e4a36f1c",
-    "/l10n/zh-Hant.json": "80fc11768594"
+    "/l10n/ja.json": "891c8f2e378b",
+    "/l10n/zh-Hans.json": "3cb9aa4da5ec",
+    "/l10n/zh-Hant.json": "cc88fb33aed2"
   }
 }
