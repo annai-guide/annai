@@ -1575,15 +1575,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### With OpenAI Realtime, a tap while her reply is still being made with no sound yet cancels nothing there
 - **Kind:** deferred.
-- **What the traveller sees:** with Koe · Realtime on OpenAI's Realtime (not the user's), a tap that stops Koe while her reply is being made but before any of its sound has played sends OpenAI no cancel, so the reply runs on there (its tokens billed) and its calls still reach annai. Found by realtime-cut-next's reviews (2026-11-25, by reading: `interrupt()` in src/core/koe/live.js sends the cut only when her voice was sounding).
+- **What the traveller sees:** with Koe · Realtime on OpenAI's Realtime (not the user's), a tap that stops Koe while her reply is being made but before any of its sound has played sends OpenAI no cancel, so the reply runs on there (its tokens billed) and its calls still reach annai, and until that reply's `response.done` the plugin holds what Koe sends, the traveller's microphone included, so their next turn can wait behind the whole reply. Found by realtime-cut-next's reviews (2026-11-25, by reading: `interrupt()` in src/core/koe/live.js sends the cut only when her voice was sounding). Beside it, for the next change to the plugin: its header comment still states Gemini's order as fact (not measured on the real service).
 - **Why:** a tap's cut is sent from the turn's sound; a reply that has no sound yet has none to cut. The fix: a tap cuts the reply being made too; to check with the OpenAI Realtime run (its row).
 - **Revisit when:** its row in docs/progress.md, with the OpenAI Realtime run.
-
-### With OpenAI Realtime, a card's call from a cut reply can pass an urgent reminder on
-- **Kind:** deferred.
-- **What the traveller sees:** with Koe · Realtime on OpenAI's Realtime (not the user's: their Koe is Gemini Live), an urgent reminder that cuts Koe while a card's call of the cut reply is still on its way counts as told by that card, and isn't shown, then or at the next open (on main too).
-- **Why:** found by remind-first-next's second opinion (2026-11-23, probed with the stand-in): the adapter emits `interrupted` as it sends the cancel, before the cut reply's last events, so a call that arrives after it opens a new, uncut turn that passes what is in flight. The fix at source, in the adapter: emit `interrupted` for a cancelled reply when its `response.done` arrives, not when the cancel is sent (a sound-only cut keeps emitting at once). OpenAI Realtime itself is still untested against the real service (its row).
-- **Revisit when:** its row in docs/progress.md, in the next version, or with the OpenAI Realtime run.
 
 ### What "Largest request" still decides, now that it weighs words only
 - **Kind:** deferred.
