@@ -7,8 +7,9 @@ const NAMES = /** @type {Record<string, string>} */ ({ hello: 'Hello checks', ho
 const name = (/** @type {string} */ id) => NAMES[id] ?? id;
 const failed = (/** @type {string} */ id) => ({ id, error: new Error('Failed to fetch dynamically imported module.') });
 
-test('plugins that did not start get a card each, by name, at every launch they fail: none says it was turned off, as annai never turns one off for not starting (plugin-fails-next)', () => {
-  const { cards, unloaded } = startCards([failed('hello'), failed('old')], { name, taken: true });
+test('plugins that did not start get a card each, by name, at every launch they fail: none says it was turned off, as annai never turns one off for not starting; a stale `disabled` an older caller gave still reads "didn\'t start" (plugin-fails-next)', () => {
+  const stale = { ...failed('old'), disabled: true }; // the spread avoids a literal excess-property check: no caller gives it any more
+  const { cards, unloaded } = startCards([failed('hello'), stale], { name, taken: true });
   assert.deepEqual(cards.map((c) => c.title), ['The plugin "Hello checks" didn\'t start', 'The plugin "Old tool" didn\'t start']);
   assert.deepEqual(cards.map((c) => c.body), Array(2).fill('Failed to fetch dynamically imported module. You can turn it off in Settings → Plugins.'));
   assert.deepEqual(unloaded, []);

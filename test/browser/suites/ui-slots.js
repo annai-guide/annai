@@ -147,7 +147,7 @@ export default function (test, assert) {
     assert.ok(off.textContent?.includes("This card's kind (ferries) comes from a plugin that isn't on."));
   });
 
-  test("minors 12: a plugin's avatar whose setState, setLevel or glance throws counts against its plugin; three crashes in a row switch its plugin off, and the dock made again draws annai's own (plugin-fails-next: the dock keeps no count of its own)", () => {
+  test("minors 12: a plugin's avatar whose setState or glance throws counts against its plugin; three crashes in a row switch its plugin off, and the dock made again draws annai's own (plugin-fails-next: the dock keeps no count of its own; a setLevel that throws is counted in test/unit/plugin-fails.test.js, test 9)", () => {
     const { registry, errors } = kit();
     const agent = fakeAgent();
     const ctx = { registry, agent, notices: { card() {}, toast() {} }, go() {} };
@@ -174,7 +174,7 @@ export default function (test, assert) {
     again.dispose();
   });
 
-  test("small fixes 5: a plugin's avatar that throws now and then, and works between, keeps its place; so does one that keeps throwing on one call while another works (plugin-fails-next: a call that works ends its plugin's run, and the dock keeps no count of its own)", () => {
+  test("small fixes 5: a plugin's avatar that throws now and then, and returns between, keeps its place; so does one that keeps throwing on one call while another returns (plugin-fails-next: a call that returns ends its plugin's run, and the dock keeps no count of its own)", () => {
     const { registry, errors } = kit();
     const agent = fakeAgent();
     const ctx = { registry, agent, notices: { card() {}, toast() {} }, go() {} };
@@ -188,9 +188,9 @@ export default function (test, assert) {
     assert.equal(calls, 5);
     assert.equal(errors.length, 4);
     assert.ok(dock.el.contains(theirs), 'theirs stays: the throws never came three in a row');
-    assert.equal(registry.isDisabled('look'), false, 'a call that worked ended its run of failures');
+    assert.equal(registry.isDisabled('look'), false, 'a call that returned ended its run of failures');
 
-    // setState throws every time, while setLevel works between: each setState crash is the first of a run, written once while it repeats.
+    // setState throws every time, while setLevel (which does nothing) returns between: each setState crash is the first of a run, written once while it repeats.
     const second = kit();
     const mine = document.createElement('span');
     second.registry.add('look', 'ui:component', { name: 'avatar', create: () => ({ el: mine, setState() { throw new TypeError('never'); }, setLevel() {} }) });

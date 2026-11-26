@@ -438,6 +438,19 @@ test("a call that works ends a plugin's run at each place that counts one: two c
   assert.deepEqual(off, { trigger: false, backup: false, headers: false, classify: false });
 });
 
+test("a provider's headers() that returns no object (nothing, null, a string, a number) is a wrong return, not a success: three in a row switch its plugin off, no header is added, and each is a counted line (plugin-fails-fix1, item 6)", () => {
+  for (const [wrong, said] of /** @type {[any, string][]} */ ([[undefined, 'undefined'], [null, 'null'], ['x-acme: 1', 'string'], [7, 'number']])) {
+    const { registry, lines } = watched();
+    registry.add('provider-acme', 'provider-setup', { headers: () => wrong });
+    const made = [];
+    for (let i = 0; i < 3; i++) made.push(adjusted(registry, 'provider-acme', /** @type {any} */ ({ type: 'type-h' }), /** @type {any} */ ({ ability: 'chat', headers: { a: 'b' } })).endpoint.headers);
+    assert.deepEqual([registry.isDisabled('provider-acme'), lines(), made], [true, [1, 2, 3], [{ a: 'b' }, { a: 'b' }, { a: 'b' }]], said);
+  }
+  const fine = new Registry();
+  fine.add('provider-acme', 'provider-setup', { headers: () => ({ 'x-acme': '1' }) });
+  assert.deepEqual(adjusted(fine, 'provider-acme', /** @type {any} */ ({ type: 'type-h' }), /** @type {any} */ ({ ability: 'chat', headers: {} })).endpoint.headers, { 'x-acme': '1' });
+});
+
 test("isBadAddress and the tool path: a TypeError in WebKit's words for a fetch of an address with a name or password in it is an answer, not a crash: a tool that throws it fails each time with that error, and the plugin stays on (plugin-fails-next test 12)", async () => {
   const e = new TypeError('URL is not valid or contains user credentials.');
   assert.equal(isBadAddress(e), true);
