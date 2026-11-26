@@ -79,14 +79,14 @@ export function handoverOf(wakes) {
  * The files a conversation's Shiori hasn't read yet: those of its wakes (files added or moved in while it was closed, or while her turn ran) after her last
  * turn's end, still there. The question is the one the conversation asks of the log (Transcript): has her turn ended since, by the loop's own rule (`turn.end`;
  * in a log from before it was written, a reply of hers that a model answered: endsHerTurn). A turn that got no answer (no model set, none reachable on the
- * road), was stopped, or failed after its first reply has no end, so it read nothing for sure: the files stay waiting, and her next turn has their wakes in what
+ * road), was stopped, or failed after its first reply has no end, so it isn't known to have read them: the files stay waiting, and her next turn has their wakes in what
  * she reads (the transcript keeps them). Koe's wake records for a file (half: 'koe') are not asked: it neither reads files nor files them.
  * @param {import('./types.js').Store} store @param {string} scope @returns {Promise<string[]>} paths in the scope
  */
 export async function filesToRead(store, scope) {
   return store.tx(['events', 'files'], 'readonly', async (t) => {
-    // From her last turn's end on, by type: a long trip's log is never walked whole. A page of 8 holds that end unless her turns since went on or
-    // failed past it (a turn writes a record a step); then the next page is read, so the count only sets how much one read brings.
+    // From her last turn's end on, by type: a long trip's log is never walked whole. A page of 8 holds that end unless her turns since, and other roles'
+    // calls (a reading, a summary), filled it (a turn writes a record a step); then the next page is read, so the count only sets how much one read brings.
     /** @type {import('./types.js').EventRecord | undefined} */
     let last;
     /** @type {number | undefined} */
