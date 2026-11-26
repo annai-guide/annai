@@ -1561,6 +1561,12 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** `#start` (src/core/koe/live.js) sets "opening" before the reads and has no path that closes a connected socket when one throws. The fix: a throw after the connection closes the socket and sets the state to closed.
 - **Revisit when:** its row in docs/progress.md, in the next version.
 
+### Kokoro's final text for Koe is dropped when no live session can take it and Koe stays live
+- **Kind:** deferred.
+- **What the traveller sees:** with Koe · Realtime, when no session can take a note of Kokoro's meant for Koe (the day's spend reached, or an open that returns no session) and Koe stays live, Kokoro's final text is said by no one and shown nowhere, so her answer to the traveller's question is lost; "nothing to add" and "stopped" are dropped too, which loses nothing. On main since before voice-off-next. Found by the design check of `#go`'s failure path (2026-11-25, measured with the day's spend reached and with an open that returns false).
+- **Why:** `#live`'s fallback, when Koe stays live, gives a note to `#backstop`, which shows only a note's words for the traveller, and to `#annai`, which does nothing for a note without them. The fix: a final text that no session takes is shown as Kokoro's answer ("Shiori's answer"), as a note for the traveller is; plan decision 21 (Kokoro's error turns told by Koe, no card while Koe works) is about her error turns, not her answer.
+- **Revisit when:** its row in docs/progress.md, in the next version.
+
 ### A tap that stops a connecting live session doesn't keep its reminder for the next session
 - **Kind:** deferred.
 - **What the traveller sees:** with Koe · Realtime, the traveller taps Shiori to talk, a reminder joins the session while it connects, and the traveller taps again to stop it: annai shows the reminder and says it when the connection attempt ends (up to 15 s), where the user's pick says a tap's close keeps it for the next session and nothing is said at the tap. On main too. Found by voice-off-next's reviews (2026-11-25, by reading; the branch keeps main's timing for a tap).
