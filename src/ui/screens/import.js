@@ -14,6 +14,7 @@ import { keyNames } from './plugin-install.js';
 import { forgetMeTalked } from './trips.js';
 import { keepUiFrom } from '../languages.js';
 import { FOLD_OVER } from '../../core/timeline.js';
+import { decodeSafe } from '../../core/agent/net.js';
 
 /** The file to open. A Blob, never its bytes: archives are read a piece at a time (spec §12.1). @typedef {{ name: string, blob: Blob, from?: import('../import-state.js').From | null }} Source
  *   from: the backup place it came from (spec §12.4) */
@@ -90,7 +91,9 @@ async function pickSource(params, archives) {
     }
     // The server's own words for its status, as it sent them.
     if (!res.ok) throw new Error(t`The download failed (${res.status} ${res.statusText}).`);
-    const name = decodeURIComponent(new URL(params.url).pathname.split('/').pop() || t`file`);
+    // The address's last part, decoded run by run: a "%" that starts no escape ("50%off.pdf") stays as written. A link may be relative
+    // (a file beside annai's own copy): the page's address resolves it, as the fetch above did.
+    const name = decodeSafe(new URL(params.url, location.href).pathname.split('/').pop() || t`file`);
     return { name, blob: await res.blob() };
   }
   return null;

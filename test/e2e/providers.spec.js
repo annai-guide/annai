@@ -185,17 +185,25 @@ test('moving over: endpoints from before providers, with their keys, are removed
   await expect(page.locator('.notice', { hasText: 'Settings → Models changed' })).toHaveCount(0);
 });
 
-test("fix pass: an address typed without https:// isn't saved, on the provider and on an ability, and the words say what to type", async ({ page }) => {
+test("fix pass: an address typed without https://, or with a name or password before an @, isn't saved, on the provider and on an ability, and the words say what to type", async ({ page }) => {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
   await add(page, 'Custom provider');
   await page.getByLabel('Address', { exact: true }).fill('llm.example.com/v1');
   await page.getByLabel('API key').fill('sk-test-typed-address-1');
   await page.getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByText(/llm\.example\.com\/v1 isn't a web address/)).toBeVisible();
+  await expect(page.getByText("That isn't a web address: give it with https:// in front.")).toBeVisible();
+  await expect(page.getByText(/llm\.example\.com/)).toHaveCount(0); // the words don't repeat what was typed
   await page.reload();
   await expect(page.getByLabel('Address', { exact: true })).toHaveValue('');
   await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', 'not set');
+  // Chromium and WebKit make no request to an address with a name or password before an @: refused, never repeating the address.
+  await page.getByLabel('Address', { exact: true }).fill('https://someone:pw-typed@llm.example.com/v1');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText('This address holds a name or password before an @. Leave it out.')).toBeVisible();
+  await expect(page.getByText(/pw-typed/)).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByLabel('Address', { exact: true })).toHaveValue('');
   await page.getByLabel('Address', { exact: true }).fill('https://llm.example.com/v1');
   await page.getByLabel('API key').fill('sk-test-typed-address-1');
   await page.getByRole('button', { name: 'Save' }).click();
@@ -207,6 +215,13 @@ test("fix pass: an address typed without https:// isn't saved, on the provider a
   await own.fill('http://192.168.1.5:8880/v1');
   await own.blur();
   await expect(voice.getByRole('alert')).toHaveText(/must start with https:\/\/ \(http:\/\/ only for localhost or 127\.0\.0\.1\)\. Browsers block plain http .* needs one\. Tailscale Serve can give it: tailscale serve --bg --https=8443 http:\/\/localhost:8880\. The server must also allow CORS from annai\.guide\./);
+  // The same for a name and password in an ability's own address: the words, the password nowhere on the page, nothing saved.
+  await own.fill('https://someone:pw-voice-own@tts.example.com/v1');
+  await own.blur();
+  await expect(voice.getByRole('alert')).toHaveText('This address holds a name or password before an @. Leave it out.');
+  await expect(page.getByText(/pw-voice-own/)).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole('region', { name: 'Voice', exact: true }).getByLabel('Its own address')).toHaveValue('');
 });
 
 test("Add on a provider whose plugin the user turned off says so in words, with no plugin id in them (the emulator pass: \"provider-openrouter:\")", async ({ page }) => {

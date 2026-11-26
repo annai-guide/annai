@@ -161,6 +161,8 @@ test('SearXNG, against a stand-in instance: a plain GET of /search with format=j
       searxng(wrong.annai);
       const r = await wrong.provider.ready();
       assert.ok(!r.ok && why.test(r.why), r.why);
+      // What Shiori is told and the screen shows never repeat what was typed: a key pasted into the address field stays off both.
+      if (url) assert.ok(!r.why.includes(url) && !String(r.shown).includes(url), `${r.why} | ${r.shown}`);
     }
   } finally {
     await s.stop();

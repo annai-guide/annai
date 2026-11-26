@@ -211,7 +211,7 @@ function hostOf(url) {
 }
 
 /** Each run of %XX escapes decoded on its own, one that isn't text left as it is: a stray "%" ("100%") spares the rest. @param {string} text */
-function decodeSafe(text) {
+export function decodeSafe(text) {
   return text.replace(/(?:%[0-9a-f]{2})+/gi, (run) => {
     try {
       return decodeURIComponent(run);

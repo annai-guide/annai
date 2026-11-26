@@ -125,8 +125,9 @@ export function localNote(baseUrl) {
 
 /**
  * Why an address can't be one a key is sent to, as data, or null: it must parse, and be https, or http only for localhost and
- * 127.0.0.1, as annai's security policy allows (spec §15, connect-src). @param {string} url
- * @returns {{ code: 'not-url' | 'scheme' } | { code: 'http', port: string } | null}
+ * 127.0.0.1, as annai's security policy allows (spec §15, connect-src), with no name or password in it (`name:password@`), as the Fetch
+ * standard refuses a request to such an address (Chromium and WebKit do, measured 2026-11-25). @param {string} url
+ * @returns {{ code: 'not-url' | 'scheme' | 'credentials' } | { code: 'http', port: string } | null}
  */
 function addressFault(url) {
   /** @type {URL} */
@@ -136,7 +137,7 @@ function addressFault(url) {
   } catch {
     return { code: 'not-url' };
   }
-  if ((u.protocol === 'https:' && u.hostname) || (u.protocol === 'http:' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1'))) return null;
+  if ((u.protocol === 'https:' && u.hostname) || (u.protocol === 'http:' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1'))) return u.username || u.password ? { code: 'credentials' } : null;
   // A server on the user's network: say how to reach it.
   return u.protocol === 'http:' ? { code: 'http', port: u.port || '80' } : { code: 'scheme' };
 }
@@ -150,7 +151,9 @@ export function addressProblem(url) {
   /* en */
   if (!f) return null;
   /* en */
-  if (f.code === 'not-url') return `${url} isn't a web address: give it with https:// in front.`;
+  if (f.code === 'not-url') return "That isn't a web address: give it with https:// in front.";
+  /* en */
+  if (f.code === 'credentials') return 'This address holds a name or password before an @. Leave it out.';
   /* en */
   const must = 'An address must start with https:// (http:// only for localhost or 127.0.0.1).';
   /* en */
@@ -161,7 +164,8 @@ export function addressProblem(url) {
 export function addressShown(url) {
   const f = addressFault(url);
   if (!f) return null;
-  if (f.code === 'not-url') return t`${url} isn't a web address: give it with https:// in front.`;
+  if (f.code === 'not-url') return t`That isn't a web address: give it with https:// in front.`;
+  if (f.code === 'credentials') return t`This address holds a name or password before an @. Leave it out.`;
   return f.code === 'http' ? t`An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: ${serve(f.port)}. The server must also allow CORS from annai.guide.`
     : t`An address must start with https:// (http:// only for localhost or 127.0.0.1).`;
 }
