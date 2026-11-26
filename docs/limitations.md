@@ -1512,6 +1512,18 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the traveller sees:** with a provider that takes photos by upload (OpenRouter's, Gemini's, OpenAI Responses'; not the user's setup: their photos go to Anthropic, whose uploads are off by default). Not verified on an iPhone: WebKit there may end a hanging upload by itself at about 60 s, before annai's 120 s limit; that counts as a failure on the link at once, so uploads stay on and each request with a new photo (per model tried, per step) waits that long again. Since upload-rest-next (2026-11-25), annai's own cut at 120 s, or a 408, 429 or 5xx, holds uploads at that provider until a reply there that calls no tool answers a request that sent a photo's bytes (or a restart, a new key or address, a Test that passes): the photo cut goes in the request there from then on, and the next new photo is uploaded again after that reply.
 - **Why:** found by fail-owner-next's review (2026-11-23), narrowed by llm-rest-next and upload-rest-next (2026-11-25). What is left: once a phone trace shows how an iPhone ends a hanging upload (`trace.upload`'s `ms` near 60,000 with status 0), whether a failure is decided by its time rather than its place.
 - **Revisit when:** its row in docs/progress.md, with a phone trace of a hanging upload.
+### Voice going off while Koe says a recap loses the rest of it
+- **Kind:** deferred.
+- **What the traveller sees:** with Koe · Realtime, the traveller asks aloud for a recap (or a watch with no reminders fires) and voice goes off while Koe is saying the answer (the chip, or auto mode as the car stops): the answer stops where it was cut ("Recap: the museum,"), and nothing says or shows the rest. On main too. Found by voice-off-next's re-reviews (2026-11-25, probed on the branch and main).
+- **Why:** such a wake goes into the session as text (`#say`) and is tracked nowhere once it is in, so the close cuts the answer and has nothing to hand on, unlike a reminder or a note, which it keeps. The fix: the close hands a cut recap on as a reminder's copy is (Koe · Chat or Kokoro answers it in text), which needs `#say`'s items kept until their answer ends.
+- **Revisit when:** its row in docs/progress.md, in the next version.
+
+### Start fresh while a note of Kokoro's waits for Koe's open lands it below the divider
+- **Kind:** deferred.
+- **What the traveller sees:** with Koe · Realtime, Kokoro's answer for the traveller arrives while Koe's side is still opening (no session yet), and the traveller taps Start fresh in that moment: Koe later says the answer in the fresh conversation, below the "Started fresh" divider, where the spec puts Kokoro's owed words above it. On main too. Found by voice-off-next's second opinion (2026-11-25, probed on the branch and main).
+- **Why:** `#live` waits on `koe.opening` before it hands anything to the live session, so a close in that wait doesn't see the note. The fix: `#live` asks whether Start fresh came during that wait before it goes on; the switch tests lean on the order, so it is its own change.
+- **Revisit when:** its row in docs/progress.md, in the next version.
+
 ### A tap that stops a connecting live session doesn't keep its reminder for the next session
 - **Kind:** deferred.
 - **What the traveller sees:** with Koe · Realtime, the traveller taps Shiori to talk, a reminder joins the session while it connects, and the traveller taps again to stop it: annai shows the reminder and says it when the connection attempt ends (up to 15 s), where the user's pick says a tap's close keeps it for the next session and nothing is said at the tap. On main too. Found by voice-off-next's reviews (2026-11-25, by reading; the branch keeps main's timing for a tap).
