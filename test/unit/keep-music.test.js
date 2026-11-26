@@ -364,7 +364,7 @@ test('Live, the switch turned on in Settings after voice was used with it off: t
   }
 });
 
-test('Live, the switch turned on while a microphone is open: the type stays play-and-record, and the close sets the mixing kind', async () => {
+test('Live, the switch turned on while a microphone is open: no type is set under her microphone, and the close sets the mixing kind', async () => {
   const k = await liveKit([]);
   try {
     k.platform.input = { label: 'iPhone Microphone', deviceId: 'm1' }; // what an open microphone reports as in use
