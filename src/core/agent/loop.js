@@ -118,6 +118,7 @@ import { FILES_ONLY, PHOTO_ONLY, handoverOf } from '../handover.js';
  * @property {(call: { id: string, name: string, input: any, wake: string }) => Promise<import('./tools.js').ToolOutput | null>} [gate] a call not run, and its result
  * @property {(why: import('../llm/fallback.js').Why, e: unknown) => boolean | import('../llm/fallback.js').Why} [failed] true: the other half tells the user (or nobody waited), so no card;
  *   a why: the card says that instead (both halves down)
+ * @property {() => boolean} [kokoroDown] Koe's: Kokoro's last call failed and no turn of hers has worked since
  * @property {(context?: { from: number, to: number }) => void} [calling] a model call starts, with what its request holds
  * @property {() => Promise<unknown>} [ready] waited for before each turn
  * @property {(names: string[]) => void} [replied] a reply's tool calls, before they run
@@ -249,10 +250,9 @@ function goneWords(sent, gone) {
  */
 export const GATHER = Object.freeze({ quiet: 1.5, photo: 3, typing: 5, most: 20 });
 /**
- * How many write-downs of a segment may fail (Kept.failed) before it is written as not transcribed and its sound let go (spec §10.3). A write-down counts once
- * when it fails with a model asked: a model resting when it comes is not asked, and a recording the phone makes no format of the model's for is no ask. Start
- * fresh, a forced summary or HEARD_MAX_BYTES (16 MB) let the sound go sooner. Three: not measured, a guess from the first version (2026-10-16). It bounds
- * sending the recording again to a model that keeps failing it, and the sound kept meanwhile; a smaller number gives up on a hiccup of the link.
+ * How many turns that worked try to write a segment down before it is written as not transcribed and its sound let go (spec §10.3); an unforced housekeeping
+ * write-down keeps the sound and counts nothing, and a forced one lets it go at once. Three: not measured, a guess from the first version (2026-10-16); it
+ * bounds asking again for an old line.
  */
 export const WRITE_TRIES = 3;
 
@@ -480,13 +480,8 @@ export class Agent {
   /** When the window after she spoke ends (#after). */
   #afterBy = 0;
   #afterOpening = false;
-  /** The segments still unwritten when a turn of this half ended that the turn carried: past their own turn, they fail no later request (resolveSpeech). Added to at each
-   * such end, never replaced: a turn of another conversation that ends says nothing of these. @type {Set<string>} */
-  #unheard = new Set();
-  /** What this turn carried of the speech heard, for #pastTurn: the heard lines of its wakes (those that join too), each speech part a request of it resolved
-   * (resolvePart, whether or not its model could hear it), and the chatter it wrote in. New at each turn's steps. A line of the other half's that this half's
-   * transcript holds, which no request of this turn sent, is not here. @type {Set<string>} */
-  #carried = new Set();
+  /** Write-downs that failed, by segment id (WRITE_TRIES). @type {Map<string, number>} */
+  #writeTries = new Map();
   /** @type {Half} */
   #half = ONE;
   /** The last entry its transcript took. */
@@ -2467,7 +2462,6 @@ export class Agent {
    * @returns {Promise<boolean>} whether it worked: a model answered, and none failed
    */
   async #steps(wakes, wakeId, abort) {
-    this.#carried = new Set();
     // The newest hand-over among its wakes, those that join included (join); else, for a turn of the user's (Try again among them),
     // one a failed turn left owed: never a reminder's or a note's turn, whose writes Undo would then take back.
     this.#handover = wakes.some(owesAnswer) ? this.transcript.owedHandover : null;
@@ -2549,7 +2543,6 @@ export class Agent {
       this.#handover = handoverOf(more) ?? this.#handover ?? (more.some(owesAnswer) ? this.transcript.owedHandover : null);
       for (const h of [this.#handover, ...more.map((w) => w.handover)]) if (h && !this.#handovers.includes(h)) this.#handovers.push(h);
       theirs ||= more.some(owesAnswer);
-      for (const w of more) if (w.heard) this.#carried.add(w.heard.id); // carried by this turn even if it ends before any request (a Stop just before the first call)
       this.#facts.watched ||= more.some(isWatched); // someone is watching: a wake from the user began the turn or joined it; it stays so
       const read = this.#reachedTo.scope === this.scope ? this.#reachedTo.to : 0;
       notes.push(...more.filter((w) => isForUser(w) && !((w.seq ?? Infinity) <= read)));
@@ -2716,12 +2709,16 @@ export class Agent {
           record: { tag: this.#half.tag, ...this.#mark('model.turn'), wake: wakeId, prefix: fingerprint.slice(0, 16), context, keepParts: true, handover: this.#handover, endLogged: true },
           repairImages: (/** @type {ProviderError} */ err, /** @type {string} */ modelId, /** @type {any} */ req) => this.#repair(err, modelId, req, wakeId),
           onEvent: (/** @type {any} */ ev) => this.#streamed(ev, wakeId),
-          ...(this.voice ? { speech: this.voice.resolver(this.scope, wakeId, undefined, this.#shared, this.#unheard, this.#carried) } : {}),
+          ...(this.voice ? { speech: this.voice.resolver(this.scope, wakeId, undefined, this.#shared) } : {}),
           ...(this.#voiceNow ? { firstOutputMs: await this.#firstWordsMs(role) } : {}),
           // What this conversation has kept of its files, for a model that can't take one.
           readings: (/** @type {string} */ hash, /** @type {boolean} */ sees) => this.#keptNow(hash, sees),
           // Her own call: when every model she could use rests, the one rested longest is asked anyway (§9.6).
           askResting: true,
+          // And when every model was passed over for a heard line nothing could hear for it, they are asked again with it as not transcribed (§10.3):
+          // Kokoro's call always; Koe's when Kokoro's settings give her no ear (#kokoroCanHear) or her last call failed (Half.kokoroDown). Else Koe's call fails
+          // quietly, and Kokoro's call hears the line, or answers it as not transcribed.
+          standIn: this.#half.name !== 'koe' || Boolean(this.#half.kokoroDown?.()) || !(await this.#kokoroCanHear()),
           ...(this.#shared ? { shared: true } : {}),
           // The second pass reads a file for a model that can't take it, which waits on its readers' models: not Koe's, who answers at once (§7.2).
           ...(this.#half.name === 'koe' ? {} : { read: (/** @type {any} */ part, /** @type {any} */ model, /** @type {AbortSignal | undefined} */ signal) => this.#readFor(part, model, signal ?? abort.signal, wakeId, readMemo) }),
@@ -4216,10 +4213,7 @@ export class Agent {
 
   /** Chatter heard while she worked, written in now (spec §10.4: dismissed speech still goes into the transcript). @param {string} wakeId */
   async #writeChatter(wakeId) {
-    for (const h of this.#chatter.splice(0)) {
-      this.#carried.add(h.id); // heard while this turn ran: its own, whether a later step sends it or the turn ends first (#pastTurn)
-      await this.#logHeard(h, { wake: wakeId, meanwhile: true, dismissed: true, gate: 'chatter' }).catch((e) => this.#notSaved(e)); // a refused line is told, the next goes on, the turn goes on
-    }
+    for (const h of this.#chatter.splice(0)) await this.#logHeard(h, { wake: wakeId, meanwhile: true, dismissed: true, gate: 'chatter' }).catch((e) => this.#notSaved(e)); // a refused line is told, the next goes on, the turn goes on
   }
 
   /** Someone started speaking: Hearing you, and no timer runs while they speak, so a line across a time is heard to its end (#armEar, #listenFor). */
@@ -4386,8 +4380,7 @@ export class Agent {
 
   /**
    * The end of a turn: speech streamed but never said stops; the microphone closes unless the user
-   * tapped to talk (spec §6.2, §10.4); after a turn that worked, the half that hears writes down what was heard; what the turn carried that is still
-   * unwritten then, or after a turn that didn't work (and its chatter is written in), is past its turn (#pastTurn).
+   * tapped to talk (spec §6.2, §10.4); after a turn that worked, the half that hears writes down what was heard.
    * @param {boolean} ok @param {string} wakeId
    */
   async #afterTurn(ok, wakeId) {
@@ -4416,30 +4409,17 @@ export class Agent {
       });
     } else if (!this.#ear && this.#voiceNow) this.voice?.session('playback'); // after speaking (spec §10.1)
     await this.#writeChatter(wakeId);
-    if (!ok) this.#pastTurn();
-    else if (this.#half.voice()) {
-      await this.#writeDown(wakeId);
-      this.#pastTurn();
-    }
-  }
-
-  /**
-   * What this turn carried and is still unwritten is past its turn (#unheard). Not a line of the other half's that this half's transcript holds (Kokoro's holds
-   * Koe's) which no request of this turn sent: a later turn of its own still has to carry it. Nor a line heard while this turn ran whose own turn is ahead: it
-   * isn't in the transcript yet, a heard line is written to it by the turn that takes it (#logWakes).
-   */
-  #pastTurn() {
-    for (const id of this.transcript.unwritten()) if (this.#carried.has(id)) this.#unheard.add(id);
+    if (ok && this.#half.voice()) await this.#writeDown(wakeId, undefined, { counts: true });
   }
 
   /**
    * The words of what was heard are written down, and the sound is let go (spec §10.3). When nothing could write it down, the sound stays for the next turn
-   * that works; after WRITE_TRIES real tries that failed (Voice.writeDown counts them) it is written as not transcribed. final: the last chance (housekeeping that must
-   * summarize them now).
-   * @param {string} wakeId @param {string[]} [ids] @param {{ final?: boolean }} [o]
+   * that works; after WRITE_TRIES it is written as not transcribed. final: the last chance (housekeeping that must summarize them now: the sound goes at once);
+   * counts: a turn's own try (a failure of it is one of WRITE_TRIES; an unforced housekeeping write-down keeps the sound and counts nothing).
+   * @param {string} wakeId @param {string[]} [ids] @param {{ final?: boolean, counts?: boolean }} [o]
    * @returns {Promise<string[]>} the segments still not written down, whose sound is kept
    */
-  async #writeDown(wakeId, ids = this.transcript.unwritten(), { final = false } = {}) {
+  async #writeDown(wakeId, ids = this.transcript.unwritten(), { final = false, counts = false } = {}) {
     const voice = this.voice;
     if (!voice) return [];
     const { role } = this.#half;
@@ -4454,16 +4434,32 @@ export class Agent {
         continue;
       }
       const r = await voice.writeDown(id, { scope: this.scope, wake: wakeId, ...(hearer ? { hearer } : {}), ...(role === 'main' ? {} : { role }) }).catch(() => null);
-      // Nothing wrote it down this time (a rate limit, say; or the transcription model resting, which asked nothing): the sound stays, and the next turn that works tries again.
-      if (!r && !final && (voice.memory.get(id)?.failed ?? 0) < WRITE_TRIES) {
-        left.push(id);
-        continue;
+      if (!r && !final) {
+        // Nothing wrote it down this time (a rate limit, say): the sound stays, and the next turn that works tries again. Only a turn's own try counts:
+        // housekeeping's (the cold start's tidy-up, the warm timer) comes between turns and may come after a single one.
+        const tries = (this.#writeTries.get(id) ?? 0) + (counts ? 1 : 0);
+        if (counts) this.#writeTries.set(id, tries);
+        if (tries < WRITE_TRIES) {
+          left.push(id);
+          continue;
+        }
       }
+      this.#writeTries.delete(id);
       const stray = r?.text ? strayLanguage(r.text, await this.#languages()) : '';
       await this.#log({ type: 'heard.text', actor: 'system', data: { of: id, wake: wakeId, text: r ? r.text : NOT_TRANSCRIBED, by: r?.by ?? null, ...(stray ? { strayLanguage: stray } : {}) } });
       voice.memory.drop(id, r?.text);
     }
     return left;
+  }
+
+  /**
+   * Whether Kokoro's settings give her an ear for a heard line (spec §10.3): "Send audio to the model" is in the speech-in list (one list, Koe's call and hers
+   * read it alike) and a model of the main role takes audio. Whether her call will hear it is not guessed: Koe reads how her last call ended (Half.kokoroDown).
+   * @returns {Promise<boolean>}
+   */
+  async #kokoroCanHear() {
+    const cfg = await this.llm.config();
+    return (cfg.roles['speech-in']?.models ?? []).includes('send-audio') && chatCandidates(cfg, 'main').some((/** @type {string} */ id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('audio'));
   }
 
   /**

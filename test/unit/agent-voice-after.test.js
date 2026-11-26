@@ -226,7 +226,7 @@ test('a write-down that fails keeps the sound: nothing is written as not transcr
   assert.equal(k.voice.memory.size, 0);
 });
 
-test('a segment that three real asks of the model that heard it could not write down (one at the end of each of three turns that worked) is written as not transcribed, and its sound let go (spec §10.3)', async (t) => {
+test('a segment that three turns that worked could not write down is written as not transcribed, and its sound let go (spec §10.3)', async (t) => {
   useClock(t);
   const fail = { error: 'bad-request', status: 400 };
   const k = await agentKit([[say('One.'), fail, say('Two.'), fail, say('Three.'), fail]], { models: [{ input: ['text', 'image', 'audio'] }], voice: { speechIn: ['send-audio'] } });

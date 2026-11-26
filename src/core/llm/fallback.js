@@ -516,16 +516,16 @@ export const firstWordsMs = (config, role) => (config.roles?.[role]?.firstOutput
  *   sleep?: (ms: number, signal?: AbortSignal) => Promise<void>, now?: () => number, firstOutputMs?: number, online?: () => boolean,
  *   prefer?: string, borrow?: boolean, record?: { tag?: string, wake?: string, prefix?: string, context?: { from: number, to: number }, keepParts?: boolean, handover?: string | null, endLogged?: boolean },
  *   repairImages?: (err: ProviderError, modelId: string, request: Request) => Promise<Request | null>, uploads?: import('./uploads.js').Uploads,
- *   speech?: (model: Model, request: Request, plain?: boolean, signal?: AbortSignal) => Promise<Request>, models?: string[],
+ *   speech?: (model: Model, request: Request, o?: { plain?: boolean, signal?: AbortSignal, standIn?: boolean }) => Promise<Request>, models?: string[],
  *   kept?: import('./kept.js').Kept, scope?: string, tally?: import('../workspace.js').Workspace, missing?: string, read?: ReadFor, readings?: Readings,
- *   askResting?: boolean, keepNative?: boolean, shared?: boolean }} c
+ *   askResting?: boolean, standIn?: boolean, keepNative?: boolean, shared?: boolean }} c
  *   models: the models to try in place of the role's list ("Try this model" passes one: no fallback); missing: why a
  *   model's protocol plugin can't be running, when annai knows (no service worker took the page, spec §5.3)
  *   record: what the model.turn notes besides the call; keepParts keeps the reply's parts so the conversation can be rebuilt
  *   repairImages: asked for a repaired request when a model refuses a photo; the same model is then tried again, at most twice (spec §9.9)
  *   uploads: photos uploaded to providers; an upload a provider no longer knows is forgotten, and the same model tried once more
  *   speech: resolves heard speech for the model about to be called (spec §10.3); a throw means nothing in the speech-in list can reach it, and the model is skipped;
- *   plain: the model refused the audio format it was sent, so send WAV; signal: the call's
+ *   its options: plain: the model refused the audio format it was sent, so send WAV; signal: the call's; standIn: the last pass's (below)
  *   kept: turns kept on the provider's side (G2): only a conversation's own, Main's or Koe's (record.keepParts); scope: its
  *   borrow: warm housekeeping, which continues the conversation's live kept chain (if it has one) and deletes its own response, recording nothing
  *   tally: where this device counts provider tools with a monthly allowance (call.js billMonth)
@@ -536,6 +536,10 @@ export const firstWordsMs = (config, role) => (config.roles?.[role]?.firstOutput
  *   keepNative: Shiori's own turns want each reply as the provider returned it, to send back within the turn (the keep-reasoning design §4)
  *   askResting: a turn's own call (Shiori's): a resting model goes to the end of the list, whose rest ends soonest first, and at most one is asked; side jobs
  *   (readers, housekeeping, plugins', quick decisions) never are
+ *   standIn: a turn's own call (Kokoro's, and Koe's when Kokoro's settings give her no ear or her last call failed, loop.js): after every other pass, the models passed over because nothing in the speech-in list could hear
+ *   a segment for them are asked once more, in order, through both passes, with speech still resolved for each (a later model that can hear a
+ *   line still gets it: an awake one, or the one resting model a call asks) and a segment nothing can hear sent as "[audio, not transcribed]" (spec §10.3); side jobs pass none, so the gate,
+ *   compaction and a write-down never send it
  *   shared: the other half may send its request on the same link at the same time, so each send is timed on twice its bytes (callOnce)
  * @returns {Promise<{ reply: Reply, attempts: Attempt[], usage: import('./contract.js').Usage, cost: number | undefined, answeredBy: string, modelId: string,
  *   first: string | null, tried: boolean }>} first: the role's first model, by name; tried: whether it was asked (a warm model may answer first)
@@ -591,6 +595,8 @@ export async function callRole(c) {
   let began = false;
   /** The model the request last went to: what it had begun to say is its (not a model passed over since). */
   let last = '';
+  /** The last pass (c.standIn): speech nothing can hear for a model goes as not transcribed. */
+  let standIn = false;
   /**
    * The request as a model is sent it: files it can't take as their kept readings or as words, its photo limit of the pictures, each once,
    * and no required tool call for one that refused it. Shared by the passes and the hold-back's check.
@@ -667,7 +673,7 @@ export async function callRole(c) {
       let sendable = unsent;
       if (c.speech) {
         try {
-          sendable = await c.speech(model, unsent, plain, c.signal);
+          sendable = await c.speech(model, unsent, { plain, signal: c.signal, standIn });
           if (keeps) sendable = heardIds(unsent, sendable);
         } catch (e) {
           const said = /** @type {any} */ (e)?.said;
@@ -844,6 +850,14 @@ export async function callRole(c) {
     base = b.base;
     request = said ? continueAfter(base, said) : base;
     const r = await one(b.id);
+    if (r) return r;
+  }
+  // The last pass (spec §10.3): the models passed over for a line nothing could hear for them, once more, in the order they were tried, with
+  // speech resolved again for each (a line something hears now goes as heard) and a line nothing hears as not transcribed.
+  const deaf = c.standIn ? [...new Set(attempts.filter((a) => a.outcome === 'no-speech').map((a) => a.model))] : [];
+  if (deaf.length) {
+    standIn = true;
+    const r = await passes(deaf);
     if (r) return r;
   }
   await record(null, said);
