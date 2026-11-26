@@ -66,25 +66,26 @@ provider-another-address:v2y2ur	ok	Address	網址	plugins-official/provider-anot
 provider-another-address:o4uef7	ok	API key (optional)	API 金鑰（選填）	plugins-official/provider-another-address/index.js:134	
 provider-another-address:1a80tgf	ok	Give the server's address first, with https:// in front.	請先填寫伺服器網址，以 https:// 開頭。	plugins-official/provider-another-address/probe.js:55	
 provider-another-address:1alhcu6	ok	Give the address alone, without a name and password, "?…" or "#…": a key goes in its own field.	只填網址即可，不要帶使用者名稱和密碼、「?…」或「#…」。金鑰請填在專屬欄位中。	plugins-official/provider-another-address/probe.js:59	Note: "a name and password" is the user name in an address (https://user:pass@…), so 使用者名稱.
-provider-another-address:1woruwo	ok	The key has a character no key has, such as a space or a line break: paste it again.	金鑰中有不該出現的字元（例如空格或換行），請重新貼上。	plugins-official/provider-another-address/probe.js:69	
-provider-another-address:1s6f4xu#other	ok	It didn't answer within # seconds.	它沒有在 # 秒內回應。	plugins-official/provider-another-address/probe.js:137	plural; # = WAIT_MS / 1000; English: "It didn't answer within # second." (one), "It didn't answer within # seconds." (other)
-provider-another-address:1kvhiso	ok	It doesn't allow web apps like annai to call it (no CORS).	它不允許 annai 這類網頁應用程式呼叫（沒有 CORS）。	plugins-official/provider-another-address/probe.js:139	
-provider-another-address:8orynu	ok	annai couldn't reach it.	無法連線。	plugins-official/provider-another-address/probe.js:139	
-provider-another-address:1inj5x1	ok	It answered with a redirect, which annai doesn't follow.	它傳回了重新導向，annai 不會跟隨。	plugins-official/provider-another-address/probe.js:183	
-provider-another-address:1sunb46	ok	A web page answered, not an API.	傳回的是網頁，不是 API。	plugins-official/provider-another-address/probe.js:188	
-provider-another-address:1yyt9ki	ok	It answers this way at any address, even one that can't exist, so annai can't tell from it.	它對任何網址都這樣回應，連不存在的網址也一樣，所以無法據此判斷。	plugins-official/provider-another-address/probe.js:195	
-provider-another-address:j1s60j	ok	It answered, but not with a list of models.	它有回應，但不是模型清單。	plugins-official/provider-another-address/probe.js:196	
-provider-another-address:lw74rj	ok	The server says it doesn't do this.	伺服器表示不支援此功能。	plugins-official/provider-another-address/probe.js:199	
-provider-another-address:gte9jb	ok	It asks for a key before it says what it has: give the key, then look again.	它要求先填入金鑰，才會說明有哪些功能。請填入金鑰後重新偵測。	plugins-official/provider-another-address/probe.js:202	
-provider-another-address:i6mb21	ok	It refuses the key at any address, even one that can't exist, so annai can't tell from it. Check the key, then look again.	它對任何網址都拒絕這個金鑰，連不存在的網址也一樣，所以無法據此判斷。請檢查金鑰後重新偵測。	plugins-official/provider-another-address/probe.js:202	
-provider-another-address:1hf77o7	ok	It answers HTTP {0} at any address, even one that can't exist, so annai can't tell from it.	它對任何網址都傳回 HTTP {0}，連不存在的網址也一樣，所以無法據此判斷。	plugins-official/provider-another-address/probe.js:203	{0} = s
-provider-another-address:1ep83z8	ok	It asks for a key, and annai couldn't check whether it asks at every address: give the key, then look again.	它要求提供金鑰，但 annai 無法確認是否所有網址都要求金鑰。請填入金鑰後重新偵測。	plugins-official/provider-another-address/probe.js:204	
-provider-another-address:58psr2	ok	It refused the key, and annai couldn't check how it answers an address that can't exist. Check the key, then look again.	它拒絕了這個金鑰，annai 也無法確認它對不存在的網址如何回應。請檢查金鑰後重新偵測。	plugins-official/provider-another-address/probe.js:204	
-provider-another-address:13zfqol	ok	It asks for a key.	需要金鑰。	plugins-official/provider-another-address/probe.js:205	
-provider-another-address:5qskj0	ok	It didn't take the key: check it.	它不接受這個金鑰，請檢查。	plugins-official/provider-another-address/probe.js:205	
-provider-another-address:10ezguq	ok	It is busy (too many requests): look again in a minute.	它正忙（請求過多），請一分鐘後重新偵測。	plugins-official/provider-another-address/probe.js:207	
-provider-another-address:1whnma8	ok	It had a problem of its own (HTTP {0}): look again later.	它自身出了問題（HTTP {0}），請稍後重新偵測。	plugins-official/provider-another-address/probe.js:208	{0} = s
-provider-another-address:1u4njkw	ok	It answered HTTP {0}, which says neither yes nor no.	它傳回了 HTTP {0}，無法據此判斷是否支援。	plugins-official/provider-another-address/probe.js:209	{0} = s
+provider-another-address:1e7ru4g	ok	What you typed	你輸入的內容	plugins-official/provider-another-address/probe.js:69	
+provider-another-address:1woruwo	ok	The key has a character no key has, such as a space or a line break: paste it again.	金鑰中有不該出現的字元（例如空格或換行），請重新貼上。	plugins-official/provider-another-address/probe.js:77	
+provider-another-address:1s6f4xu#other	ok	It didn't answer within # seconds.	它沒有在 # 秒內回應。	plugins-official/provider-another-address/probe.js:145	plural; # = WAIT_MS / 1000; English: "It didn't answer within # second." (one), "It didn't answer within # seconds." (other)
+provider-another-address:1kvhiso	ok	It doesn't allow web apps like annai to call it (no CORS).	它不允許 annai 這類網頁應用程式呼叫（沒有 CORS）。	plugins-official/provider-another-address/probe.js:147	
+provider-another-address:8orynu	ok	annai couldn't reach it.	無法連線。	plugins-official/provider-another-address/probe.js:147	
+provider-another-address:1inj5x1	ok	It answered with a redirect, which annai doesn't follow.	它傳回了重新導向，annai 不會跟隨。	plugins-official/provider-another-address/probe.js:191	
+provider-another-address:1sunb46	ok	A web page answered, not an API.	傳回的是網頁，不是 API。	plugins-official/provider-another-address/probe.js:196	
+provider-another-address:1yyt9ki	ok	It answers this way at any address, even one that can't exist, so annai can't tell from it.	它對任何網址都這樣回應，連不存在的網址也一樣，所以無法據此判斷。	plugins-official/provider-another-address/probe.js:203	
+provider-another-address:j1s60j	ok	It answered, but not with a list of models.	它有回應，但不是模型清單。	plugins-official/provider-another-address/probe.js:204	
+provider-another-address:lw74rj	ok	The server says it doesn't do this.	伺服器表示不支援此功能。	plugins-official/provider-another-address/probe.js:207	
+provider-another-address:gte9jb	ok	It asks for a key before it says what it has: give the key, then look again.	它要求先填入金鑰，才會說明有哪些功能。請填入金鑰後重新偵測。	plugins-official/provider-another-address/probe.js:210	
+provider-another-address:i6mb21	ok	It refuses the key at any address, even one that can't exist, so annai can't tell from it. Check the key, then look again.	它對任何網址都拒絕這個金鑰，連不存在的網址也一樣，所以無法據此判斷。請檢查金鑰後重新偵測。	plugins-official/provider-another-address/probe.js:210	
+provider-another-address:1hf77o7	ok	It answers HTTP {0} at any address, even one that can't exist, so annai can't tell from it.	它對任何網址都傳回 HTTP {0}，連不存在的網址也一樣，所以無法據此判斷。	plugins-official/provider-another-address/probe.js:211	{0} = s
+provider-another-address:1ep83z8	ok	It asks for a key, and annai couldn't check whether it asks at every address: give the key, then look again.	它要求提供金鑰，但 annai 無法確認是否所有網址都要求金鑰。請填入金鑰後重新偵測。	plugins-official/provider-another-address/probe.js:212	
+provider-another-address:58psr2	ok	It refused the key, and annai couldn't check how it answers an address that can't exist. Check the key, then look again.	它拒絕了這個金鑰，annai 也無法確認它對不存在的網址如何回應。請檢查金鑰後重新偵測。	plugins-official/provider-another-address/probe.js:212	
+provider-another-address:13zfqol	ok	It asks for a key.	需要金鑰。	plugins-official/provider-another-address/probe.js:213	
+provider-another-address:5qskj0	ok	It didn't take the key: check it.	它不接受這個金鑰，請檢查。	plugins-official/provider-another-address/probe.js:213	
+provider-another-address:10ezguq	ok	It is busy (too many requests): look again in a minute.	它正忙（請求過多），請一分鐘後重新偵測。	plugins-official/provider-another-address/probe.js:215	
+provider-another-address:1whnma8	ok	It had a problem of its own (HTTP {0}): look again later.	它自身出了問題（HTTP {0}），請稍後重新偵測。	plugins-official/provider-another-address/probe.js:216	{0} = s
+provider-another-address:1u4njkw	ok	It answered HTTP {0}, which says neither yes nor no.	它傳回了 HTTP {0}，無法據此判斷是否支援。	plugins-official/provider-another-address/probe.js:217	{0} = s
 provider-anthropic:@name	ok	Anthropic	Anthropic	plugins-official/provider-anthropic/annai-plugin.json:3	
 provider-anthropic:@description	ok	Claude models through Anthropic's Messages API, with web search, and a cache that can last an hour.	透過 Anthropic 的 Messages API 使用 Claude 模型，支援網頁搜尋，快取最長可保留一小時。	plugins-official/provider-anthropic/annai-plugin.json:6	
 provider-anthropic:@provider.abilities.chat.modelDefaults.providerTools.0.name	ok	Anthropic web search	Anthropic 網頁搜尋	plugins-official/provider-anthropic/annai-plugin.json:35	Note: Anthropic's Traditional Chinese docs call the tool 網頁搜尋 (網頁搜尋工具).

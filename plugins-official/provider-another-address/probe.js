@@ -61,6 +61,14 @@ export function baseOf(address, { problem, l10n: { t } }) {
 }
 
 /**
+ * Not called. It keeps the words "What you typed" in this plugin's per-language word files (strings.mjs keeps a row only while some
+ * code says it), which serve every version: plugin 2.2.3 still says them, and docs/translating.md has a row an older version uses stay
+ * while that version is in use. Delete it, and run npm run strings and npm run catalog, when 2.2.3 is out of use.
+ * @param {Io} io
+ */
+export const retiredWords = ({ l10n: { t } }) => t`What you typed`;
+
+/**
  * Looks at an address, at no cost. @param {string} address @param {string | null} key @param {Io} io @returns {Promise<Probe>}
  */
 export async function probe(address, key, io) {

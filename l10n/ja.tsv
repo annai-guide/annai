@@ -66,25 +66,26 @@ provider-another-address:v2y2ur	ok	Address	アドレス	plugins-official/provide
 provider-another-address:o4uef7	ok	API key (optional)	APIキー（任意）	plugins-official/provider-another-address/index.js:134	
 provider-another-address:1a80tgf	ok	Give the server's address first, with https:// in front.	まず、https:// から始まるサーバーのアドレスを入力してください。	plugins-official/provider-another-address/probe.js:55	
 provider-another-address:1alhcu6	ok	Give the address alone, without a name and password, "?…" or "#…": a key goes in its own field.	アドレスだけを入力してください。ユーザー名やパスワード、「?…」「#…」は含めないでください。キーは専用の欄に入力します。	plugins-official/provider-another-address/probe.js:59	
-provider-another-address:1woruwo	ok	The key has a character no key has, such as a space or a line break: paste it again.	キーに使えない文字（スペースや改行など）が含まれています。もう一度貼り付けてください。	plugins-official/provider-another-address/probe.js:69	
-provider-another-address:1s6f4xu#other	ok	It didn't answer within # seconds.	#秒以内に応答がありませんでした。	plugins-official/provider-another-address/probe.js:137	plural; # = WAIT_MS / 1000; English: "It didn't answer within # second." (one), "It didn't answer within # seconds." (other)
-provider-another-address:1kvhiso	ok	It doesn't allow web apps like annai to call it (no CORS).	annaiのようなWebアプリからの呼び出しを許可していません（CORSなし）。	plugins-official/provider-another-address/probe.js:139	
-provider-another-address:8orynu	ok	annai couldn't reach it.	接続できませんでした。	plugins-official/provider-another-address/probe.js:139	
-provider-another-address:1inj5x1	ok	It answered with a redirect, which annai doesn't follow.	リダイレクトが返されました。annaiはリダイレクトをたどりません。	plugins-official/provider-another-address/probe.js:183	
-provider-another-address:1sunb46	ok	A web page answered, not an API.	APIではなくWebページが返されました。	plugins-official/provider-another-address/probe.js:188	
-provider-another-address:1yyt9ki	ok	It answers this way at any address, even one that can't exist, so annai can't tell from it.	存在しないはずのアドレスにも同じ応答を返すため、この応答からは判断できません。	plugins-official/provider-another-address/probe.js:195	
-provider-another-address:j1s60j	ok	It answered, but not with a list of models.	応答はありましたが、モデルの一覧ではありませんでした。	plugins-official/provider-another-address/probe.js:196	
-provider-another-address:lw74rj	ok	The server says it doesn't do this.	サーバーはこの機能に対応していないと応答しました。	plugins-official/provider-another-address/probe.js:199	
-provider-another-address:gte9jb	ok	It asks for a key before it says what it has: give the key, then look again.	対応機能を知るにはキーが必要です。キーを入力して、もう一度調べてください。	plugins-official/provider-another-address/probe.js:202	
-provider-another-address:i6mb21	ok	It refuses the key at any address, even one that can't exist, so annai can't tell from it. Check the key, then look again.	存在しないはずのアドレスでもキーを拒否するため、この応答からは判断できません。キーを確認して、もう一度調べてください。	plugins-official/provider-another-address/probe.js:202	
-provider-another-address:1hf77o7	ok	It answers HTTP {0} at any address, even one that can't exist, so annai can't tell from it.	存在しないはずのアドレスにもHTTP {0}を返すため、この応答からは判断できません。	plugins-official/provider-another-address/probe.js:203	{0} = s
-provider-another-address:1ep83z8	ok	It asks for a key, and annai couldn't check whether it asks at every address: give the key, then look again.	キーが必要です。どのアドレスでもキーを求めるのかは確認できませんでした。キーを入力して、もう一度調べてください。	plugins-official/provider-another-address/probe.js:204	
-provider-another-address:58psr2	ok	It refused the key, and annai couldn't check how it answers an address that can't exist. Check the key, then look again.	キーが拒否されました。存在しないはずのアドレスへの応答も確認できませんでした。キーを確認して、もう一度調べてください。	plugins-official/provider-another-address/probe.js:204	
-provider-another-address:13zfqol	ok	It asks for a key.	キーが必要です。	plugins-official/provider-another-address/probe.js:205	
-provider-another-address:5qskj0	ok	It didn't take the key: check it.	キーが受け付けられませんでした。キーを確認してください。	plugins-official/provider-another-address/probe.js:205	
-provider-another-address:10ezguq	ok	It is busy (too many requests): look again in a minute.	混み合っています（リクエストが多すぎます）。1分ほどしてから、もう一度調べてください。	plugins-official/provider-another-address/probe.js:207	
-provider-another-address:1whnma8	ok	It had a problem of its own (HTTP {0}): look again later.	サーバー側でエラーが起きました（HTTP {0}）。しばらくしてから、もう一度調べてください。	plugins-official/provider-another-address/probe.js:208	{0} = s
-provider-another-address:1u4njkw	ok	It answered HTTP {0}, which says neither yes nor no.	HTTP {0}が返されました。これだけでは対応しているかどうか判断できません。	plugins-official/provider-another-address/probe.js:209	{0} = s
+provider-another-address:1e7ru4g	ok	What you typed	入力した内容	plugins-official/provider-another-address/probe.js:69	
+provider-another-address:1woruwo	ok	The key has a character no key has, such as a space or a line break: paste it again.	キーに使えない文字（スペースや改行など）が含まれています。もう一度貼り付けてください。	plugins-official/provider-another-address/probe.js:77	
+provider-another-address:1s6f4xu#other	ok	It didn't answer within # seconds.	#秒以内に応答がありませんでした。	plugins-official/provider-another-address/probe.js:145	plural; # = WAIT_MS / 1000; English: "It didn't answer within # second." (one), "It didn't answer within # seconds." (other)
+provider-another-address:1kvhiso	ok	It doesn't allow web apps like annai to call it (no CORS).	annaiのようなWebアプリからの呼び出しを許可していません（CORSなし）。	plugins-official/provider-another-address/probe.js:147	
+provider-another-address:8orynu	ok	annai couldn't reach it.	接続できませんでした。	plugins-official/provider-another-address/probe.js:147	
+provider-another-address:1inj5x1	ok	It answered with a redirect, which annai doesn't follow.	リダイレクトが返されました。annaiはリダイレクトをたどりません。	plugins-official/provider-another-address/probe.js:191	
+provider-another-address:1sunb46	ok	A web page answered, not an API.	APIではなくWebページが返されました。	plugins-official/provider-another-address/probe.js:196	
+provider-another-address:1yyt9ki	ok	It answers this way at any address, even one that can't exist, so annai can't tell from it.	存在しないはずのアドレスにも同じ応答を返すため、この応答からは判断できません。	plugins-official/provider-another-address/probe.js:203	
+provider-another-address:j1s60j	ok	It answered, but not with a list of models.	応答はありましたが、モデルの一覧ではありませんでした。	plugins-official/provider-another-address/probe.js:204	
+provider-another-address:lw74rj	ok	The server says it doesn't do this.	サーバーはこの機能に対応していないと応答しました。	plugins-official/provider-another-address/probe.js:207	
+provider-another-address:gte9jb	ok	It asks for a key before it says what it has: give the key, then look again.	対応機能を知るにはキーが必要です。キーを入力して、もう一度調べてください。	plugins-official/provider-another-address/probe.js:210	
+provider-another-address:i6mb21	ok	It refuses the key at any address, even one that can't exist, so annai can't tell from it. Check the key, then look again.	存在しないはずのアドレスでもキーを拒否するため、この応答からは判断できません。キーを確認して、もう一度調べてください。	plugins-official/provider-another-address/probe.js:210	
+provider-another-address:1hf77o7	ok	It answers HTTP {0} at any address, even one that can't exist, so annai can't tell from it.	存在しないはずのアドレスにもHTTP {0}を返すため、この応答からは判断できません。	plugins-official/provider-another-address/probe.js:211	{0} = s
+provider-another-address:1ep83z8	ok	It asks for a key, and annai couldn't check whether it asks at every address: give the key, then look again.	キーが必要です。どのアドレスでもキーを求めるのかは確認できませんでした。キーを入力して、もう一度調べてください。	plugins-official/provider-another-address/probe.js:212	
+provider-another-address:58psr2	ok	It refused the key, and annai couldn't check how it answers an address that can't exist. Check the key, then look again.	キーが拒否されました。存在しないはずのアドレスへの応答も確認できませんでした。キーを確認して、もう一度調べてください。	plugins-official/provider-another-address/probe.js:212	
+provider-another-address:13zfqol	ok	It asks for a key.	キーが必要です。	plugins-official/provider-another-address/probe.js:213	
+provider-another-address:5qskj0	ok	It didn't take the key: check it.	キーが受け付けられませんでした。キーを確認してください。	plugins-official/provider-another-address/probe.js:213	
+provider-another-address:10ezguq	ok	It is busy (too many requests): look again in a minute.	混み合っています（リクエストが多すぎます）。1分ほどしてから、もう一度調べてください。	plugins-official/provider-another-address/probe.js:215	
+provider-another-address:1whnma8	ok	It had a problem of its own (HTTP {0}): look again later.	サーバー側でエラーが起きました（HTTP {0}）。しばらくしてから、もう一度調べてください。	plugins-official/provider-another-address/probe.js:216	{0} = s
+provider-another-address:1u4njkw	ok	It answered HTTP {0}, which says neither yes nor no.	HTTP {0}が返されました。これだけでは対応しているかどうか判断できません。	plugins-official/provider-another-address/probe.js:217	{0} = s
 provider-anthropic:@name	ok	Anthropic	Anthropic	plugins-official/provider-anthropic/annai-plugin.json:3	
 provider-anthropic:@description	ok	Claude models through Anthropic's Messages API, with web search, and a cache that can last an hour.	AnthropicのMessages API経由で使うClaudeのモデル。Web検索と、最長1時間保持されるキャッシュに対応しています。	plugins-official/provider-anthropic/annai-plugin.json:6	
 provider-anthropic:@provider.abilities.chat.modelDefaults.providerTools.0.name	ok	Anthropic web search	AnthropicのWeb検索	plugins-official/provider-anthropic/annai-plugin.json:35	Note: Anthropic's Japanese docs call the tool Web検索 (ウェブ検索ツール); Web検索 as annai's other lines.
