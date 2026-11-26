@@ -488,8 +488,7 @@ test("a tool that crashes twice, works, then crashes twice stays on; so does a h
   for (let i = 0; i < 2; i++) await assert.rejects(tool.run({}), PluginError);
   assert.equal(host.registry.isDisabled('flaky'), false, 'the tool');
   // One entry to a delivery, as a single write's entries come: a call that works ends the run before the next entry's call starts. A batch of
-  // several entries in one delivery does not: its working call lands after the batch's later crashes (the Deferred entry "A hook's working call in
-  // one delivery doesn't end its plugin's run before the delivery's later crashes count", docs/limitations.md).
+  // several entries in one delivery is the test below.
   const bug = () => new TypeError("Cannot read properties of undefined (reading 'x')");
   /** Five entries, one to a delivery. @param {Registry} registry */
   const deliverFive = async (registry) => {
@@ -508,6 +507,30 @@ test("a tool that crashes twice, works, then crashes twice stays on; so does a h
   let loops = 0;
   control.registry.add('stuck', 'hook', { fn: () => { loops++; throw bug(); } });
   await deliverFive(control.registry);
+  assert.deepEqual([loops, control.registry.isDisabled('stuck'), control.lines()], [3, true, [1, 2, 3]], 'the control');
+});
+
+test("a hook handed crash, crash, works, crash in one delivery stays on, sync or async; crash, crash, crash in one delivery is off at the third (hook-batch-next: a call that returns no promise ends the run before the batch's next entry is called)", async () => {
+  const bug = () => new TypeError("Cannot read properties of undefined (reading 'x')");
+  const batch = (/** @type {number} */ n) => Array.from({ length: n }, (_, i) => ({ scope: SYS, seq: i + 1, ts: 1, type: 'x', actor: 'system' }));
+  const sync = watched();
+  let calls = 0;
+  sync.registry.add('tides', 'hook', { fn: () => { if (++calls !== 3) throw bug(); } });
+  deliverHooks(sync.registry, batch(4), () => 1_000);
+  await tick();
+  assert.deepEqual([calls, sync.registry.isDisabled('tides'), sync.lines()], [4, false, [1, 2, 1]], 'a hook that returns no promise');
+  const late = watched();
+  let asyncCalls = 0;
+  late.registry.add('ebb', 'hook', { fn: async () => { if (++asyncCalls !== 3) throw bug(); } });
+  deliverHooks(late.registry, batch(4), () => 1_000);
+  await tick();
+  assert.deepEqual([asyncCalls, late.registry.isDisabled('ebb'), late.lines()], [4, false, [1, 2, 1]], 'an async hook');
+  // The control: no call of it works, so the batch's third crash switches it off and the fourth entry is not handed to it.
+  const control = watched();
+  let loops = 0;
+  control.registry.add('stuck', 'hook', { fn: () => { loops++; throw bug(); } });
+  deliverHooks(control.registry, batch(4), () => 1_000);
+  await tick();
   assert.deepEqual([loops, control.registry.isDisabled('stuck'), control.lines()], [3, true, [1, 2, 3]], 'the control');
 });
 
