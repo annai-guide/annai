@@ -146,6 +146,12 @@ const bare = (text) => {
   const t = cleanSaid(text);
   return STAGE.test(t) || BARE.includes(t.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').replace(/_/g, ' ').toLowerCase());
 };
+/** Takes an item out of the list it waits in (#go): whether it was still there; if not, a session has it. @template T @param {T[]} list @param {T} item */
+const takeOut = (list, item) => {
+  const i = list.indexOf(item);
+  if (i >= 0) list.splice(i, 1);
+  return i >= 0;
+};
 /** @param {Uint8Array} b 16-bit PCM */
 const samples = (b) => new Int16Array(b.slice(0, b.length & ~1).buffer);
 /** @returns {Turn} */
@@ -243,6 +249,13 @@ export class LiveKoe {
    * @type {{ waiting: (Wake & { line?: string })[], sent: Wake[], cued: boolean, cue: boolean, at: number }}
    */
   #owed = { waiting: [], sent: [], cued: false, cue: false, at: 0 };
+  /**
+   * What a part of Halves waits for a session to take (#go), one `leave` each while it waits; nothing waiting goes into a session meanwhile (#idle). A close, any
+   * but the traveller's tap, lets go of each at once, before it hands anything on: what is still waiting is that part's to place (#live), and one copy lands, the
+   * one it says. (Start fresh shows Kokoro's notes itself, first: close.)
+   * @type {Set<() => void>}
+   */
+  #placing = new Set();
   /** A tap stopped her: a turn of hers that begins before the next input (the user speaks, any text goes in, a close) is written as her answer, never spoken. */
   #stopped = false;
   /** @type {any} */
@@ -699,6 +712,17 @@ export class LiveKoe {
     // made, in a pause of her sound, or whose words came before any sound, or that goes on after a call, is cut: its notes are kept, or shown at a switch.
     const t = this.#sounding;
     if (t && !t.cut && this.#passes(t, this.#whole(t))) this.#passed();
+    // Start fresh shows Kokoro's notes now, what a part of Halves waits to place included: Halves reads what is shown above the divider (#startFresh) right after
+    // this, and a note it placed itself would come too late for that. Out of their lists, #go finds nothing to place.
+    if (forget && why === 'fresh') {
+      const notes = [...this.#owed.sent, ...this.#owed.waiting].filter((w) => w.kind === 'note');
+      this.#owed.sent = this.#owed.sent.filter((w) => w.kind !== 'note');
+      this.#owed.waiting = this.#owed.waiting.filter((w) => w.kind !== 'note');
+      if (notes.length) this.c.left?.(notes);
+    }
+    // What a part of Halves still waits for a session to take is let go first, and that part places it (#go): never handed on here as well. The traveller's
+    // tap lets go of nothing: the wait goes on until the session's open ends (its connection, then the microphone), as before, and nothing is placed at the tap.
+    if (why !== 'tap') for (const leave of this.#placing) leave();
     // Another conversation, or a fresh start: Kokoro's notes it owed are shown in the one left, never lost.
     if (forget && (why === 'switch' || why === 'fresh') && this.owing) this.c.left?.([...this.#owed.sent, ...this.#owed.waiting]);
     this.#closing = null;
@@ -924,7 +948,7 @@ export class LiveKoe {
     if (w.urgent && this.c.visible()) return this.#now(text, w.kind, owed, true);
     if (!owed) return this.#say(text, w.kind);
     this.#owed.waiting.push(owed);
-    return this.#go(w.kind, () => { this.#owed.waiting = this.#owed.waiting.filter((x) => x !== owed); });
+    return this.#go(w.kind, () => takeOut(this.#owed.waiting, owed));
   }
 
   /**
@@ -946,10 +970,7 @@ export class LiveKoe {
       const n = { text: note, kokoro: true };
       if (owed) this.#owed.waiting.push(owed);
       else this.#notes.push(n);
-      return this.#go('note', () => {
-        if (owed) this.#owed.waiting = this.#owed.waiting.filter((w) => w !== owed);
-        else this.#notes = this.#notes.filter((x) => x !== n);
-      });
+      return this.#go('note', () => (owed ? takeOut(this.#owed.waiting, owed) : takeOut(this.#notes, n)));
     }
     return this.#now(note, 'note', owed, false, true);
   }
@@ -966,7 +987,7 @@ export class LiveKoe {
     const mark = (this.#urgent = { sent: 0, spoke: false, timer: null });
     this.#changed();
     // No session to take it (none opened, the open failed, or it closed while the microphone opened): no mark is left, and Halves
-    // hands it on, as #go does.
+    // hands it on, as #go does. An open that throws leaves no mark either; its caller shows a note for the user and tells the failure (deliver.koe).
     let ok = false;
     try {
       ok = (await this.open(why, { mic: Boolean(this.c.voice?.unlocked) })) && this.state === 'open';
@@ -1098,22 +1119,41 @@ export class LiveKoe {
   #say(text, why) {
     const n = { text, told: true };
     this.#notes.push(n);
-    return this.#go(why, () => { this.#notes = this.#notes.filter((x) => x !== n); });
+    return this.#go(why, () => takeOut(this.#notes, n));
   }
 
   /**
-   * What waits goes in once Koe's turn and voice end, in a session opened for it that listens after where sound was unlocked;
-   * out of view, it waits (shown()). With no session, it is let go here (undo), and Halves hands it on (never twice).
-   * @param {string} why @param {() => void} undo @returns {Promise<boolean>} whether it will be said
+   * What waits goes in once Koe's turn and voice end, in a session opened for it that listens after where sound was unlocked (nothing waiting goes in before
+   * that: #idle); out of view, it waits (shown()). With no session, it is let go here (undo takes it out of its list and says whether it was still there) and Halves
+   * places it, once: a close, any but the traveller's tap, lets go of it at once, before it hands anything on (#placing), not when the connection it waited on ends.
+   * One already out of its list (Start fresh showed it, close; a newer urgent note replaced it) is never placed again. If open() throws, it is taken back too, and no later
+   * session gets it as well: its caller places what it carried (the catch below).
+   * @param {string} why @param {() => boolean} undo whether it was still waiting @returns {Promise<boolean>} false: Halves places it
    */
   async #go(why, undo) {
     if (!this.c.visible()) return true;
-    if ((await this.open(why, { mic: Boolean(this.c.voice?.unlocked) })) && this.state === 'open') {
+    let took = false; // whether undo found it still waiting, when the close let it go or the wait ended: only then is it Halves' to place
+    /** @type {() => void} */
+    let leave = () => {};
+    const left = new Promise((/** @type {(v: false) => void} */ r) => { leave = () => { took ||= undo(); r(false); }; });
+    this.#placing.add(leave);
+    let open = false;
+    try {
+      open = (await Promise.race([this.open(why, { mic: Boolean(this.c.voice?.unlocked) }), left])) && this.state === 'open';
+    } catch (e) {
+      // Taken back, so no later session gets it as well; its caller (Halves) places it: a note for the user is shown, a wake's reminders are shown, the recap asked aloud is
+      // handed to Kokoro, and the failure is told (#liveFailed, deliver.koe).
+      took ||= undo();
+      throw e;
+    } finally {
+      this.#placing.delete(leave);
+    }
+    if (open) {
       this.#idle();
       return true;
     }
-    undo();
-    return false;
+    took ||= undo();
+    return !took;
   }
 
   /** The page is back in view: what waited is said, in a session without the microphone, which a tap opens. */
@@ -1837,13 +1877,15 @@ export class LiveKoe {
    * Between turns: what waits goes in, the ask once more among it; a session told to go (GoAway) reconnects with its handle first, as what goes
    * into it now would be answered there and lost. One input at a time (spec §7.1): while a note for the user that went in is not passed on, or an
    * answer is due (to a text annai or the user put in, or to the user's spoken turn until she answers it, a tool call included), only the ask once
-   * more goes in; and one note for the user at a time. So the first whole line of hers begun after it went in is its answer (#said).
+   * more goes in; and one note for the user at a time. So the first whole line of hers begun after it went in is its answer (#said). Nothing goes in while a part
+   * of Halves waits for the session to listen (#placing, #go): what a close in the microphone's start would cut is not sent before it, and what it leaves is placed once.
    */
   #idle() {
     this.#sleepy();
     // An urgent answer first, and what she says after a call (its 8 s run in #silent): what waits goes in after it.
     if (this.busy || this.#urgent || !this.#s || this.#closing || this.#due?.more) return;
     if (this.#rotate) return void this.#reconnect('goaway').then((ok) => { if (!ok) this.#gone(false); });
+    if (this.#placing.size) return; // a part of Halves waits for the session to listen: what goes in goes in after it (#go), once
     const o = this.#owed;
     const free = !o.sent.length && !(this.#due && !this.#due.tools);
     const first = free && !this.#hearFirst; // after a tap the user has the floor first: nothing waiting goes in until #heardFirst

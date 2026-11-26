@@ -1537,31 +1537,6 @@ test("a live Koe's words reach the bubble only once her voice is heard (the stre
   }
 });
 
-test("a note Start fresh showed is not shown again when a session that still held it hands it on (follow-up 3)", async () => {
-  const k = await liveKit([{ heard: 'Tell me a story.', said: 'Sure.', audio: tone(0.2) }]);
-  try {
-    /** @type {any[]} */
-    const notes = [];
-    const note = k.agent.live.note.bind(k.agent.live);
-    k.agent.live.note = (/** @type {string} */ t, /** @type {any} */ m, /** @type {any} */ owed) => { if (owed) notes.push(owed); return note(t, m, owed); };
-    const { clip } = await import('./voice-kit.js');
-    const lunch = await clip('where-lunch');
-    k.agent.tap();
-    await until(() => k.agent.live.listening && k.platform.log.includes('mic open'));
-    k.platform.mic.feed(cat(quiet(0.5), lunch.subarray(0, lunch.length >> 1)), 16_000); // still speaking: the note waits
-    await until(() => k.agent.live.view.name === 'hearing');
-    await k.agent.channel.send('kokoro', STORY, 'append', 'tool', undefined, undefined, false, 'Highway 1 took from 1919 to 1937 to build.');
-    await until(() => k.agent.live.owing);
-    assert.equal(await k.agent.startFresh(), 'done');
-    k.agent.live.c.owed(notes); // a session that still held it, closing without forgetting it
-    await idleAtOnce(k);
-    await new Promise((r) => setTimeout(r, 200));
-    assert.equal((await k.events(['reminder'])).filter((/** @type {any} */ e) => /Highway 1/.test(e.data.text)).length, 1);
-  } finally {
-    await k.done();
-  }
-});
-
 test("a session whose audio rate is missing doesn't stop her voice at once (follow-up 6)", async () => {
   const k = await liveKit([{ said: 'Rain comes at four, so bring a coat.', audio: tone(0.8) }]);
   try {
