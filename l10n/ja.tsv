@@ -548,19 +548,19 @@ qz6v7v#other	draft	Shiori's models refused a request with PDFs in it	Shioriの�
 19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	このブラウザでは、タップしないと音が出ません。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3803	
 1h2ina6	ok	Shiori couldn't speak aloud	Shioriは声に出して話せませんでした	src/core/agent/loop.js:3804	
 1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	「設定 → モデル → 読み上げ」の声がどれも使えませんでした。理由は「記録」にあります。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3804	
-1r1dhd7	ok	Shiori can't hear you yet	Shioriはまだ声を聞き取れません	src/core/agent/loop.js:3987	
-8wd0xv	ok	Listening stopped	聞き取りが止まりました	src/core/agent/loop.js:4221	
-43klog	ok	at most {0} MB	最大{0} MB	src/core/agent/loop.js:4492	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	一辺#ピクセルまで	src/core/agent/loop.js:4493	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一度に#枚まで	src/core/agent/loop.js:4494	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	{0}のみ	src/core/agent/loop.js:4495	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず（受け付けるのは{0}）、受け付けられる形のコピーも作れませんでした。「設定 → 写真 → Shioriに送る写真」で写真を小さくするか、「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:4496	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず、受け付けられる形のコピーも作れませんでした。「設定 → 写真 → Shioriに送る写真」で写真を小さくするか、「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:4497	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	会話が長すぎて、整理するまではShioriのモデルで扱えません。「設定 → モデル」でモデルを確認するか、しばらくしてからもう一度お試しください。	src/core/agent/loop.js:4507	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	プラグイン「{0}」が、設定した上限（1時間に#回）を超えてShioriを起動しようとしました。	src/core/agent/loop.js:4517	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守り中の出来事が、設定した上限（1時間に#回）を超えてShioriを起動しようとしました（{0}）。	src/core/agent/loop.js:4518	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	追加したファイルが、設定した上限（1時間に#回）を超えてShioriを起動しようとしました（{0}）。	src/core/agent/loop.js:4519	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	何かが、設定した上限（1時間に#回）を超えてShioriを起動しようとしました。	src/core/agent/loop.js:4520	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+1r1dhd7	ok	Shiori can't hear you yet	Shioriはまだ声を聞き取れません	src/core/agent/loop.js:3991	
+8wd0xv	ok	Listening stopped	聞き取りが止まりました	src/core/agent/loop.js:4225	
+43klog	ok	at most {0} MB	最大{0} MB	src/core/agent/loop.js:4497	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	一辺#ピクセルまで	src/core/agent/loop.js:4498	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一度に#枚まで	src/core/agent/loop.js:4499	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	{0}のみ	src/core/agent/loop.js:4500	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず（受け付けるのは{0}）、受け付けられる形のコピーも作れませんでした。「設定 → 写真 → Shioriに送る写真」で写真を小さくするか、「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:4501	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず、受け付けられる形のコピーも作れませんでした。「設定 → 写真 → Shioriに送る写真」で写真を小さくするか、「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:4502	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	会話が長すぎて、整理するまではShioriのモデルで扱えません。「設定 → モデル」でモデルを確認するか、しばらくしてからもう一度お試しください。	src/core/agent/loop.js:4512	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	プラグイン「{0}」が、設定した上限（1時間に#回）を超えてShioriを起動しようとしました。	src/core/agent/loop.js:4522	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守り中の出来事が、設定した上限（1時間に#回）を超えてShioriを起動しようとしました（{0}）。	src/core/agent/loop.js:4523	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	追加したファイルが、設定した上限（1時間に#回）を超えてShioriを起動しようとしました（{0}）。	src/core/agent/loop.js:4524	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	何かが、設定した上限（1時間に#回）を超えてShioriを起動しようとしました。	src/core/agent/loop.js:4525	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	メッセージにキーが含まれていたため、表示しません。	src/core/agent/net.js:127	
 1jmdvnh	ok	annai couldn't check this message for keys, so it is not shown.	メッセージにキーが含まれていないか確認できなかったため、表示しません。	src/core/agent/net.js:128	Note: shown in place of a card's or status line's text when annai can't read the keys it keeps to blank them; worded as the "held a key" note beside it (1ptx7ob).
 157dl17	ok	Shiori wants to adjust her personality	Shioriが性格の調整を提案しています	src/core/agent/personalities.js:130	
@@ -638,8 +638,8 @@ gnrtev	ok	Shiori can't reach her model.	Shioriがモデルに接続できませ�
 13ujlu9	ok	{0} is too large (over {1}). Export only the dates you need from your calendar, and add that file.	{0}は大きすぎます（{1}超）。カレンダーから必要な期間だけをエクスポートして、そのファイルを追加してください。	src/core/imports.js:17	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:36	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Japanese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	たった今	src/core/intl.js:152	
-1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	端末のスピーカーでは、Shioriが話している間は声を聞き取れないため、重ねて話した内容は使われません。タップするとShioriが話すのをやめ、聞き取りを始めます。	src/core/koe/live.js:695	
-1ml2kgi	ok	Tap Shiori to talk over her	割り込んで話すときはShioriをタップ	src/core/koe/live.js:695	Note: names what to tap (the dock's Shiori), as the English does.
+1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	端末のスピーカーでは、Shioriが話している間は声を聞き取れないため、重ねて話した内容は使われません。タップするとShioriが話すのをやめ、聞き取りを始めます。	src/core/koe/live.js:697	
+1ml2kgi	ok	Tap Shiori to talk over her	割り込んで話すときはShioriをタップ	src/core/koe/live.js:697	Note: names what to tap (the dock's Shiori), as the English does.
 3fqfy0	ok	Languages	言語	src/core/languages.js:553	
 1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	話す言語とShioriが答える言語は、聞き取りや読み上げをするすべてのモデルに伝えます。短い返事を別の言語と取り違えないためです。	src/core/languages.js:554	Note: "Hears or speaks" as the glossary's 聞き取り / 読み上げ (Speech in, Speech out).
 1giusr1	ok	Languages you speak	話す言語	src/core/languages.js:555	
@@ -952,9 +952,9 @@ xi9ch6	ok	Shiori can't hear you: the speech-in list is empty. Add an entry in Se
 1oy92m8	ok	This browser has no phone dictation either.	このブラウザでは端末の音声入力も使えません。	src/core/voice/resolve.js:166	
 l80ifa	ok	Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	「設定 → モデル」で、OpenAIやGroqなどの文字起こしモデルか、音声を受け付けるメインのモデルを追加してください。	src/core/voice/resolve.js:166	
 m5s9f4	ok	This browser can't play a voice as it arrives.	このブラウザでは、声をストリーミング再生できません。	src/core/voice/speaker.js:128	
-jo5o9d	ok	This browser can't play sound here.	このブラウザでは、ここで音声を再生できません。	src/core/voice/voice.js:430	
-ocv5zw	ok	This browser can't use the microphone here.	このブラウザでは、ここでマイクを使えません。	src/core/voice/voice.js:473	
-55949q	ok	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	音声が止まったため、声を聞き取れません。画面をタップすると再開します。	src/core/voice/voice.js:804	
+jo5o9d	ok	This browser can't play sound here.	このブラウザでは、ここで音声を再生できません。	src/core/voice/voice.js:447	
+ocv5zw	ok	This browser can't use the microphone here.	このブラウザでは、ここでマイクを使えません。	src/core/voice/voice.js:490	
+55949q	ok	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	音声が止まったため、声を聞き取れません。画面をタップすると再開します。	src/core/voice/voice.js:827	
 pib2vo	ok	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	ブラウザに組み込まれた音声サービスが聞き取ります。Androidでは多くの場合Googleのサーバー、iPhoneではAppleのサーバーで処理されます（端末上で処理されることもあります）。このリクエストはannaiが送るものではないため、記録には表示されません。	src/core/voice/where.js:15	
 m93xm3	ok	On this phone only: the browser recognizes your speech on the device.	ブラウザがこの端末上で音声を認識します。端末の外には送られません。	src/core/voice/where.js:16	
 1m5zm0a	ok	Phone dictation	端末の音声入力	src/core/voice/where.js:18	
@@ -2713,61 +2713,63 @@ fceyoz	ok	Voice	音声	src/ui/screens/voice.js:47	context: voice mode; Note: voi
 3gprw9	ok	Keep voice clips	音声クリップを保存	src/ui/screens/voice.js:55	
 1r528n6	ok	Keep the screen on while GPS is on	GPSがオンの間は画面を消さない	src/ui/screens/voice.js:61	
 o7g54g	ok	Cut her off by speaking	話しかけて割り込む	src/ui/screens/voice.js:62	
-1maeag1	ok	Speaking…	話しています…	src/ui/screens/voice.js:70	
-1rasxdf	ok	This browser didn't let annai play sound yet. Tap anywhere on the page, then try again.	このブラウザでは、まだ音を再生できません。ページのどこかをタップしてから、もう一度お試しください。	src/ui/screens/voice.js:75	
-m6lqjc	ok	{0} couldn't speak: {1}	{0}は話せませんでした：{1}	src/ui/screens/voice.js:76	{0} = names(f.name); {1} = await speechProblem(ctx.store, f.error, true)
-39tqta	ok	No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.	どの声も再生できませんでした。各声の応答は「記録」で確認できます。「設定 → モデル」で声を確認してください。	src/ui/screens/voice.js:77	
-1v88hol	ok	{0}, then {1}	{0}、次に{1}	src/ui/screens/voice.js:78	context: one voice, then the next; {0} = a; {1} = b; Note: voices in the order they spoke: "A, then B, then C".
-1w6xnpw	ok	Spoken by {0}.	話した声：{0}。	src/ui/screens/voice.js:78	{0} = r.voices.map(names).reduce((/** @type {string} */ a, /** @type {string} */ b) => tc('one voice, then the next')`${a}, then ${b}`)
-1l6oe5c	ok	Test the voice	声をテスト	src/ui/screens/voice.js:85	
-1bbvn6f	ok	Automatic: one on this phone when there is one	自動（この端末の声があればそれを使用）	src/ui/screens/voice.js:92	
-1swzhj6	ok	{0} ({1}, online)	{0}（{1}、オンライン）	src/ui/screens/voice.js:93	{0} = v.name; {1} = v.lang; Note: a browser voice, its language code, and that it sends her words online.
-1er0uz6	ok	How loud the microphone hears you	マイクの入力レベル	src/ui/screens/voice.js:103	
-1v58i1s	ok	Say something…	何か話してください…	src/ui/screens/voice.js:109	
-bjwya4	ok	Hearing you…	聞き取り中…	src/ui/screens/voice.js:113	
-1hsov55	ok	Nothing was heard in 15 seconds. Check that the microphone is on and that no other app is using it, then try again.	15秒間、音声が聞き取れませんでした。マイクがオンになっていて、ほかのアプリが使っていないことを確認してから、もう一度お試しください。	src/ui/screens/voice.js:115	
-1plbhzy	ok	Heard {0} of speech.	{0}の音声を聞き取りました。	src/ui/screens/voice.js:118	{0} = seconds(seg.ms, 'long')
-u495xc	ok	Writing it down…	文字起こし中…	src/ui/screens/voice.js:121	
-1fnqjaw	ok	{0} heard: "{1}"	{0}の文字起こし：「{1}」	src/ui/screens/voice.js:125	{0} = name; {1} = text
-1rgfjj8	ok	{0} heard speech but wrote nothing down.	{0}は音声を受け取りましたが、文字起こしの結果は空でした。	src/ui/screens/voice.js:125	{0} = name; Note: "wrote nothing down" is the transcription: 文字にする, not 書き出す (export).
-1rec7os	ok	Add a transcription model in Settings → Models to see the words.	言葉を表示するには、「設定 → モデル」で文字起こしモデルを追加してください。	src/ui/screens/voice.js:127	
-5uf1sa	ok	Test the microphone	マイクをテスト	src/ui/screens/voice.js:138	
-1du6nik	ok	Settings → Models	設定 → モデル	src/ui/screens/voice.js:140	
-1tl20ub	ok	How Shiori speaks and hears you. Which voices and which transcription models she uses, and in what order, is in Settings → Models.	Shioriの話し方と聞き取り方の設定です。使う声と文字起こしモデル、その順番は、「設定 → モデル」で決められます。	src/ui/screens/voice.js:144	
-1nt5zac	ok	On or off	オン/オフ	src/ui/screens/voice.js:145	
-u0woti	ok	On: Shiori speaks aloud and listens for your answer. Off: she writes. A tap on Shiori always turns voice on until that exchange ends; the keyboard button is how to type. With GPS on, voice is on while driving. It goes off by itself when a drive ends or headphones disconnect. The chip on the dock changes it too.	オン：Shioriが声に出して話し、返事を聞き取ります。オフ：文字で答えます。Shioriをタップすると、どちらの設定でもそのやり取りが終わるまで音声がオンになります。文字で入力するときはキーボードのボタンを使います。GPSがオンなら、運転中は音声がオンになります。運転が終わったときやヘッドホンの接続が切れたときは、自動でオフになります。ドックの音声ボタンでも切り替えられます。	src/ui/screens/voice.js:146	
-1hwskdv	ok	Listen for 2 to 60 seconds.	2〜60秒にしてください。	src/ui/screens/voice.js:149	
-qyfmia	ok	Listen for an answer (seconds)	返事を待つ時間（秒）	src/ui/screens/voice.js:149	
-1f9vvmr	ok	Wait for her first words (seconds)	Shioriの最初の言葉を待つ時間（秒）	src/ui/screens/voice.js:150	
-1sz04rq	ok	Wait 5 to 120 seconds.	5〜120秒にしてください。	src/ui/screens/voice.js:150	
-17b2a79	ok	On the screen	画面での表示	src/ui/screens/voice.js:151	
-4xxyqf	ok	On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".	オン：Shioriが声に出して話した言葉が、「読み上げ」の印付きで会話に表示され、話している間はShioriの上に吹き出しでも表示されます。オフ：画面は静かなままです。読み上げた言葉は、「話した言葉を見る」をタップするまで会話の中でたたまれます。	src/ui/screens/voice.js:153	Note: "said aloud" and "Show what she said" are the conversation's own words: they must match those rows.
-y61lbz	ok	Shiori's voice	Shioriの声	src/ui/screens/voice.js:154	
-1879vb9	ok	Voices, tried in order: none.	声（この順に試します）：なし。	src/ui/screens/voice.js:155	
-1su08w7	ok	Voices, tried in order: {0}.	声（この順に試します）：{0}。	src/ui/screens/voice.js:155	{0} = list(entries.map((/** @type {any} */ e) => names(e.name)), 'plain')
-1oc2cqc	ok	The browser’s own voice. Some of its voices speak on this phone; those marked online send her words to their service.	ブラウザに内蔵の声です。端末内で話す声もあります。「オンライン」と表示された声は、Shioriの言葉をそのサービスに送ります。	src/ui/screens/voice.js:158	
-t9jotl	ok	This browser has no voice of its own.	このブラウザには内蔵の声がありません。	src/ui/screens/voice.js:158	
-154la7x	ok	The speed goes from 0.5 (slow) to 2 (fast); 1 is normal.	速さは0.5（ゆっくり）から2（速い）までです。1が標準です。	src/ui/screens/voice.js:161	
-1r7xlh3	ok	Speed (0.5 to 2)	速さ（0.5〜2）	src/ui/screens/voice.js:161	
-1hnhxk8	ok	Listening	聞き取り	src/ui/screens/voice.js:162	context: section; Note: Settings → Voice's section on how annai hears you (the glossary's Speech in), not Shiori's state.
-rwdfwh	ok	annai hears that you finished a sentence when you pause. A longer pause lets you think mid-sentence; a shorter one answers sooner.	少し間を置くと、annaiは文が終わったと判断します。長めにすると文の途中で考える余裕ができ、短めにすると早く答えが返ってきます。	src/ui/screens/voice.js:163	
-11q2yij	ok	Pause that ends a sentence (ms)	文の終わりとみなす間（ミリ秒）	src/ui/screens/voice.js:164	
-mfkrny	ok	The pause goes from 300 to 3000 milliseconds; 700 is the usual.	間は300〜3000ミリ秒です。標準は700です。	src/ui/screens/voice.js:164	
-d3o3oq	ok	Off: what the microphone hears is sent to be written down, then let go. On: each clip is kept with the conversation, and in backups.	オフ：マイクが拾った音は文字起こしのために送られ、その後は保存されません。オン：音声クリップを会話と一緒に保存し、バックアップにも含めます。	src/ui/screens/voice.js:167	
-1xjm3fg	ok	Live on: Shiori hears you and answers in one stream, with a live model. Live off: what you say is written down, then answered. The Live chip on the dock switches it.	ライブオン：Shioriがライブモデルを使い、1つのストリームで聞きながら答えます。ライブオフ：話した言葉を文字にしてから答えます。ドックのライブボタンで切り替えられます。	src/ui/screens/voice.js:170	
-byedp9	ok	While a live session listens, what you say goes straight to {0} as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.	ライブセッションが聞いている間、話した言葉は音声のまま{0}に直接送られます。送られるのは誰かが話している間だけで、ボタンには「ライブで聞き取り中」と表示されます。セッションは、下の時間だけやり取りがなかったとき、Shioriに休むよう頼んだとき、音声をオフにしたとき、annaiが画面から離れたときに閉じます。音楽のように音が鳴り続けるときは、いつ休むかをShioriが判断します。	src/ui/screens/voice.js:172	{0} = list(live, 'or')
-8znos	ok	While a live session listens, what you say goes straight to its provider as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.	ライブセッションが聞いている間、話した言葉は音声のままそのプロバイダーに直接送られます。送られるのは誰かが話している間だけで、ボタンには「ライブで聞き取り中」と表示されます。セッションは、下の時間だけやり取りがなかったとき、Shioriに休むよう頼んだとき、音声をオフにしたとき、annaiが画面から離れたときに閉じます。音楽のように音が鳴り続けるときは、いつ休むかをShioriが判断します。	src/ui/screens/voice.js:173	
-lqovw2	ok	While she listens, set her voice's volume with the iPhone's volume buttons: iPhone may keep it apart from the volume of music and videos.	Shioriが聞いている間に、iPhoneの音量ボタンで声の音量を調整してください。iPhoneでは、この音量が音楽やビデオの音量と別に設定されることがあります。	src/ui/screens/voice.js:175	
-18jgtvh	ok	Close after 10 to 300 seconds with no exchange.	やり取りがないまま閉じるまでの時間を、10〜300秒の範囲で入力してください。	src/ui/screens/voice.js:176	
-csv386	ok	Close a live session after (seconds with no exchange)	やり取りがないときにライブセッションを閉じるまでの時間（秒）	src/ui/screens/voice.js:176	
-w195po	ok	Only with headphones or car audio: on the phone's own speaker the microphone hears her, so there only a tap cuts her off. Off: only a tap, everywhere, for a car whose speakers echo her voice back.	ヘッドホンかカーオーディオのときだけ使えます。端末のスピーカーではマイクがShioriの声を拾ってしまうため、タップでしか割り込めません。オフ：どこでもタップだけで割り込みます。スピーカーの音がマイクに戻ってしまう車向けです。	src/ui/screens/voice.js:178	Note: car audio is the glossary's カーオーディオ, as on the voice chip.
-10ndarn	ok	GPS	GPS	src/ui/screens/voice.js:179	
-15itdyc	ok	The chip on the dock turns GPS on and off. Keeping the screen on uses more battery; without it, a locked phone stops following where you are.	ドックのGPSボタンでGPSのオン/オフを切り替えられます。画面をつけたままにするとバッテリーを多く使いますが、オフにすると、端末がロックされたときに現在地を追えなくなります。	src/ui/screens/voice.js:181	
-ph6h35	ok	Where your voice goes	声の送り先	src/ui/screens/voice.js:182	
-rfzxba	ok	What you say goes to the first of these that can hear it; what she says, to the first voice that works. To change the order, go to {0}.	話した言葉は、この中で聞き取れる最初のものに送られます。Shioriの言葉は、使える最初の声で読み上げられます。順番は「{0}」で変更できます。	src/ui/screens/voice.js:183	{0} = models
-283rev	ok	What you say	話した言葉	src/ui/screens/voice.js:184	
-127uny	ok	To keep your voice on the phone, type with your keyboard's microphone key: iPhone and most Android keyboards can dictate on the phone itself.	声を端末の外に出したくないときは、キーボードのマイクキーで音声入力してください。iPhoneと多くのAndroidのキーボードは、端末上で音声入力できます。	src/ui/screens/voice.js:186	
-bewa4v	ok	What she says	Shioriの言葉	src/ui/screens/voice.js:187	
+mylzwr	draft	Keep my music playing	音楽を流したままにする	src/ui/screens/voice.js:64	Note: a switch, so a plain verb phrase (ja-style.md rule 4); 流したまま: the music the phone already plays keeps going.
+1maeag1	ok	Speaking…	話しています…	src/ui/screens/voice.js:72	
+1rasxdf	ok	This browser didn't let annai play sound yet. Tap anywhere on the page, then try again.	このブラウザでは、まだ音を再生できません。ページのどこかをタップしてから、もう一度お試しください。	src/ui/screens/voice.js:77	
+m6lqjc	ok	{0} couldn't speak: {1}	{0}は話せませんでした：{1}	src/ui/screens/voice.js:78	{0} = names(f.name); {1} = await speechProblem(ctx.store, f.error, true)
+39tqta	ok	No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.	どの声も再生できませんでした。各声の応答は「記録」で確認できます。「設定 → モデル」で声を確認してください。	src/ui/screens/voice.js:79	
+1v88hol	ok	{0}, then {1}	{0}、次に{1}	src/ui/screens/voice.js:80	context: one voice, then the next; {0} = a; {1} = b; Note: voices in the order they spoke: "A, then B, then C".
+1w6xnpw	ok	Spoken by {0}.	話した声：{0}。	src/ui/screens/voice.js:80	{0} = r.voices.map(names).reduce((/** @type {string} */ a, /** @type {string} */ b) => tc('one voice, then the next')`${a}, then ${b}`)
+1l6oe5c	ok	Test the voice	声をテスト	src/ui/screens/voice.js:87	
+1bbvn6f	ok	Automatic: one on this phone when there is one	自動（この端末の声があればそれを使用）	src/ui/screens/voice.js:94	
+1swzhj6	ok	{0} ({1}, online)	{0}（{1}、オンライン）	src/ui/screens/voice.js:95	{0} = v.name; {1} = v.lang; Note: a browser voice, its language code, and that it sends her words online.
+1er0uz6	ok	How loud the microphone hears you	マイクの入力レベル	src/ui/screens/voice.js:105	
+1v58i1s	ok	Say something…	何か話してください…	src/ui/screens/voice.js:111	
+bjwya4	ok	Hearing you…	聞き取り中…	src/ui/screens/voice.js:115	
+1hsov55	ok	Nothing was heard in 15 seconds. Check that the microphone is on and that no other app is using it, then try again.	15秒間、音声が聞き取れませんでした。マイクがオンになっていて、ほかのアプリが使っていないことを確認してから、もう一度お試しください。	src/ui/screens/voice.js:117	
+1plbhzy	ok	Heard {0} of speech.	{0}の音声を聞き取りました。	src/ui/screens/voice.js:120	{0} = seconds(seg.ms, 'long')
+u495xc	ok	Writing it down…	文字起こし中…	src/ui/screens/voice.js:123	
+1fnqjaw	ok	{0} heard: "{1}"	{0}の文字起こし：「{1}」	src/ui/screens/voice.js:127	{0} = name; {1} = text
+1rgfjj8	ok	{0} heard speech but wrote nothing down.	{0}は音声を受け取りましたが、文字起こしの結果は空でした。	src/ui/screens/voice.js:127	{0} = name; Note: "wrote nothing down" is the transcription: 文字にする, not 書き出す (export).
+1rec7os	ok	Add a transcription model in Settings → Models to see the words.	言葉を表示するには、「設定 → モデル」で文字起こしモデルを追加してください。	src/ui/screens/voice.js:129	
+5uf1sa	ok	Test the microphone	マイクをテスト	src/ui/screens/voice.js:140	
+1du6nik	ok	Settings → Models	設定 → モデル	src/ui/screens/voice.js:142	
+1tl20ub	ok	How Shiori speaks and hears you. Which voices and which transcription models she uses, and in what order, is in Settings → Models.	Shioriの話し方と聞き取り方の設定です。使う声と文字起こしモデル、その順番は、「設定 → モデル」で決められます。	src/ui/screens/voice.js:146	
+1nt5zac	ok	On or off	オン/オフ	src/ui/screens/voice.js:147	
+u0woti	ok	On: Shiori speaks aloud and listens for your answer. Off: she writes. A tap on Shiori always turns voice on until that exchange ends; the keyboard button is how to type. With GPS on, voice is on while driving. It goes off by itself when a drive ends or headphones disconnect. The chip on the dock changes it too.	オン：Shioriが声に出して話し、返事を聞き取ります。オフ：文字で答えます。Shioriをタップすると、どちらの設定でもそのやり取りが終わるまで音声がオンになります。文字で入力するときはキーボードのボタンを使います。GPSがオンなら、運転中は音声がオンになります。運転が終わったときやヘッドホンの接続が切れたときは、自動でオフになります。ドックの音声ボタンでも切り替えられます。	src/ui/screens/voice.js:148	
+1hwskdv	ok	Listen for 2 to 60 seconds.	2〜60秒にしてください。	src/ui/screens/voice.js:151	
+qyfmia	ok	Listen for an answer (seconds)	返事を待つ時間（秒）	src/ui/screens/voice.js:151	
+1f9vvmr	ok	Wait for her first words (seconds)	Shioriの最初の言葉を待つ時間（秒）	src/ui/screens/voice.js:152	
+1sz04rq	ok	Wait 5 to 120 seconds.	5〜120秒にしてください。	src/ui/screens/voice.js:152	
+nmzc3s	draft	On: your music plays on at its own volume while Shiori speaks. She can't be heard while the phone is in silent mode, and she doesn't listen by herself after speaking: tap her to answer, which stops the music. With Live voice, a session she opens by herself doesn't listen; one you start with a tap listens until it closes, which stops the music too.	オン：Shioriが話している間も、音楽は音量を下げずに流れ続けます。消音モード中はShioriの声は聞こえず、話し終えたあとに自動で聞き取ることもありません。答えるときはShioriをタップしてください（音楽は止まります）。ライブ音声では、Shioriが自分から始めたセッションは聞き取りをせず、タップで始めたセッションは閉じるまで聞き取りを続けます（この場合も音楽は止まります）。	src/ui/screens/voice.js:154	Note: 消音モード for the phone's silent mode (not yet checked against the iPhone's own word); 音量を下げずに says the English's "at its own volume" (not lowered); 止まります says "stops" (the music doesn't start again by itself); 聞き取り is the one word for her listening in this line; 閉じるまで, "until it closes" (with music nothing goes quiet).
+17b2a79	ok	On the screen	画面での表示	src/ui/screens/voice.js:155	
+4xxyqf	ok	On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".	オン：Shioriが声に出して話した言葉が、「読み上げ」の印付きで会話に表示され、話している間はShioriの上に吹き出しでも表示されます。オフ：画面は静かなままです。読み上げた言葉は、「話した言葉を見る」をタップするまで会話の中でたたまれます。	src/ui/screens/voice.js:157	Note: "said aloud" and "Show what she said" are the conversation's own words: they must match those rows.
+y61lbz	ok	Shiori's voice	Shioriの声	src/ui/screens/voice.js:158	
+1879vb9	ok	Voices, tried in order: none.	声（この順に試します）：なし。	src/ui/screens/voice.js:159	
+1su08w7	ok	Voices, tried in order: {0}.	声（この順に試します）：{0}。	src/ui/screens/voice.js:159	{0} = list(entries.map((/** @type {any} */ e) => names(e.name)), 'plain')
+1oc2cqc	ok	The browser’s own voice. Some of its voices speak on this phone; those marked online send her words to their service.	ブラウザに内蔵の声です。端末内で話す声もあります。「オンライン」と表示された声は、Shioriの言葉をそのサービスに送ります。	src/ui/screens/voice.js:162	
+t9jotl	ok	This browser has no voice of its own.	このブラウザには内蔵の声がありません。	src/ui/screens/voice.js:162	
+154la7x	ok	The speed goes from 0.5 (slow) to 2 (fast); 1 is normal.	速さは0.5（ゆっくり）から2（速い）までです。1が標準です。	src/ui/screens/voice.js:165	
+1r7xlh3	ok	Speed (0.5 to 2)	速さ（0.5〜2）	src/ui/screens/voice.js:165	
+1hnhxk8	ok	Listening	聞き取り	src/ui/screens/voice.js:166	context: section; Note: Settings → Voice's section on how annai hears you (the glossary's Speech in), not Shiori's state.
+rwdfwh	ok	annai hears that you finished a sentence when you pause. A longer pause lets you think mid-sentence; a shorter one answers sooner.	少し間を置くと、annaiは文が終わったと判断します。長めにすると文の途中で考える余裕ができ、短めにすると早く答えが返ってきます。	src/ui/screens/voice.js:167	
+11q2yij	ok	Pause that ends a sentence (ms)	文の終わりとみなす間（ミリ秒）	src/ui/screens/voice.js:168	
+mfkrny	ok	The pause goes from 300 to 3000 milliseconds; 700 is the usual.	間は300〜3000ミリ秒です。標準は700です。	src/ui/screens/voice.js:168	
+d3o3oq	ok	Off: what the microphone hears is sent to be written down, then let go. On: each clip is kept with the conversation, and in backups.	オフ：マイクが拾った音は文字起こしのために送られ、その後は保存されません。オン：音声クリップを会話と一緒に保存し、バックアップにも含めます。	src/ui/screens/voice.js:171	
+1xjm3fg	ok	Live on: Shiori hears you and answers in one stream, with a live model. Live off: what you say is written down, then answered. The Live chip on the dock switches it.	ライブオン：Shioriがライブモデルを使い、1つのストリームで聞きながら答えます。ライブオフ：話した言葉を文字にしてから答えます。ドックのライブボタンで切り替えられます。	src/ui/screens/voice.js:174	
+byedp9	ok	While a live session listens, what you say goes straight to {0} as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.	ライブセッションが聞いている間、話した言葉は音声のまま{0}に直接送られます。送られるのは誰かが話している間だけで、ボタンには「ライブで聞き取り中」と表示されます。セッションは、下の時間だけやり取りがなかったとき、Shioriに休むよう頼んだとき、音声をオフにしたとき、annaiが画面から離れたときに閉じます。音楽のように音が鳴り続けるときは、いつ休むかをShioriが判断します。	src/ui/screens/voice.js:176	{0} = list(live, 'or')
+8znos	ok	While a live session listens, what you say goes straight to its provider as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.	ライブセッションが聞いている間、話した言葉は音声のままそのプロバイダーに直接送られます。送られるのは誰かが話している間だけで、ボタンには「ライブで聞き取り中」と表示されます。セッションは、下の時間だけやり取りがなかったとき、Shioriに休むよう頼んだとき、音声をオフにしたとき、annaiが画面から離れたときに閉じます。音楽のように音が鳴り続けるときは、いつ休むかをShioriが判断します。	src/ui/screens/voice.js:177	
+lqovw2	ok	While she listens, set her voice's volume with the iPhone's volume buttons: iPhone may keep it apart from the volume of music and videos.	Shioriが聞いている間に、iPhoneの音量ボタンで声の音量を調整してください。iPhoneでは、この音量が音楽やビデオの音量と別に設定されることがあります。	src/ui/screens/voice.js:179	
+18jgtvh	ok	Close after 10 to 300 seconds with no exchange.	やり取りがないまま閉じるまでの時間を、10〜300秒の範囲で入力してください。	src/ui/screens/voice.js:180	
+csv386	ok	Close a live session after (seconds with no exchange)	やり取りがないときにライブセッションを閉じるまでの時間（秒）	src/ui/screens/voice.js:180	
+w195po	ok	Only with headphones or car audio: on the phone's own speaker the microphone hears her, so there only a tap cuts her off. Off: only a tap, everywhere, for a car whose speakers echo her voice back.	ヘッドホンかカーオーディオのときだけ使えます。端末のスピーカーではマイクがShioriの声を拾ってしまうため、タップでしか割り込めません。オフ：どこでもタップだけで割り込みます。スピーカーの音がマイクに戻ってしまう車向けです。	src/ui/screens/voice.js:182	Note: car audio is the glossary's カーオーディオ, as on the voice chip.
+10ndarn	ok	GPS	GPS	src/ui/screens/voice.js:183	
+15itdyc	ok	The chip on the dock turns GPS on and off. Keeping the screen on uses more battery; without it, a locked phone stops following where you are.	ドックのGPSボタンでGPSのオン/オフを切り替えられます。画面をつけたままにするとバッテリーを多く使いますが、オフにすると、端末がロックされたときに現在地を追えなくなります。	src/ui/screens/voice.js:185	
+ph6h35	ok	Where your voice goes	声の送り先	src/ui/screens/voice.js:186	
+rfzxba	ok	What you say goes to the first of these that can hear it; what she says, to the first voice that works. To change the order, go to {0}.	話した言葉は、この中で聞き取れる最初のものに送られます。Shioriの言葉は、使える最初の声で読み上げられます。順番は「{0}」で変更できます。	src/ui/screens/voice.js:187	{0} = models
+283rev	ok	What you say	話した言葉	src/ui/screens/voice.js:188	
+127uny	ok	To keep your voice on the phone, type with your keyboard's microphone key: iPhone and most Android keyboards can dictate on the phone itself.	声を端末の外に出したくないときは、キーボードのマイクキーで音声入力してください。iPhoneと多くのAndroidのキーボードは、端末上で音声入力できます。	src/ui/screens/voice.js:190	
+bewa4v	ok	What she says	Shioriの言葉	src/ui/screens/voice.js:191	
 12fg67m	ok	Searching the web	Web検索	src/ui/screens/welcome.js:20	
 13sqoog	ok	Shiori, Koe and Kokoro	Shiori、Koe、Kokoro	src/ui/screens/welcome.js:20	
 1okgje1	ok	What annai can do	annaiでできること	src/ui/screens/welcome.js:20	
