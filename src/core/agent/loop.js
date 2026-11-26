@@ -2710,8 +2710,9 @@ export class Agent {
           readings: (/** @type {string} */ hash, /** @type {boolean} */ sees) => this.#keptNow(hash, sees),
           // Her own call: when every model she could use rests, the one rested longest is asked anyway (§9.6).
           askResting: true,
-          // And when every model was passed over for a heard line nothing could hear for it, they are asked again with it as not transcribed (§10.3).
-          standIn: true,
+          // And when every model was passed over for a heard line nothing could hear for it, they are asked again with it as not transcribed (§10.3):
+          // Kokoro's call always, Koe's unless Kokoro's own list hears the line (its audio model does: Koe's call fails as before, and Kokoro answers it, and writes it down).
+          standIn: this.#half.name !== 'koe' || !(await this.#kokoroHears()),
           ...(this.#shared ? { shared: true } : {}),
           // The second pass reads a file for a model that can't take it, which waits on its readers' models: not Koe's, who answers at once (§7.2).
           ...(this.#half.name === 'koe' ? {} : { read: (/** @type {any} */ part, /** @type {any} */ model, /** @type {AbortSignal | undefined} */ signal) => this.#readFor(part, model, signal ?? abort.signal, wakeId, readMemo) }),
@@ -4424,6 +4425,16 @@ export class Agent {
       voice.memory.drop(id, r?.text);
     }
     return left;
+  }
+
+  /**
+   * Whether Kokoro's own list hears a line as sound (spec §10.3): "Send audio to the model" is in the speech-in list and a model of the main role takes audio.
+   * Koe's turn is then not answered with the line as not transcribed: Kokoro hears it, and writes it down.
+   * @returns {Promise<boolean>}
+   */
+  async #kokoroHears() {
+    const cfg = await this.llm.config();
+    return (cfg.roles['speech-in']?.models ?? []).includes('send-audio') && chatCandidates(cfg, 'main').some((/** @type {string} */ id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('audio'));
   }
 
   /**

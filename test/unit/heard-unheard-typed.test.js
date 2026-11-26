@@ -353,6 +353,27 @@ test('Koe and Kokoro on text-only models, the transcription model unreachable: K
   assert.equal(k.voice.memory.size, 1, 'the sound is kept: two turns of the half that hears could not write it down');
 });
 
+// Halves, Koe on text-only models, Kokoro's main model takes audio ("Send audio to the model" is in the list), the transcription model unreachable (Fable F1 of
+// the clip-route-next review, probe P8): Kokoro's list hears the line, so Koe's turn does not take the last pass. Koe's call fails as it did before the branch,
+// Kokoro answers the line from its sound and its audio model writes the words down. (Koe answering from the stand-in left the line unwritten for good.)
+test("Halves, Koe on text-only models and Kokoro's model takes audio: Koe's turn is not answered with the line as not transcribed; Kokoro hears it, answers it aloud, and writes the words down", async (t) => {
+  useClock(t);
+  const k = await agentKit([[say('Tacos are near.'), { text: 'where should we eat' }]], {
+    models: [{ input: ['text', 'image', 'audio'] }],
+    koe: { type: { rules: [{ match: '.', reply: say('Koe: I could not hear that.') }] } },
+    voice: { speechIn: ['send-audio', 'm-hear'] },
+  });
+  k.llm.transcribe = async () => { throw new ProviderError('unreachable', 'no route to the server'); };
+  await tapAndSay(k, 'where-eat');
+  assert.deepEqual(k.sent['model-koe'] ?? [], [], "Koe's text-only model was sent nothing: no stand-in");
+  const [first] = k.sent['model-0'] ?? [];
+  assert.equal(heardAs(first)[0]?.type, 'audio', "Kokoro's audio model was sent the sound");
+  assert.deepEqual((await spoken(k)).map(([half, s]) => `${half}: ${s}`), ['kokoro: Tacos are near.']);
+  assert.deepEqual(await written(k), ['where should we eat'], 'and its audio model wrote the line down');
+  assert.equal(k.voice.memory.size, 0);
+  assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.title), [], 'no card');
+});
+
 // Halves, Koe hearing the line as sound, Kokoro text-only, and Koe's write-down slow: Kokoro's turn for Koe's answer, before the words exist, is answered
 // with the line as not transcribed, with no card (it showed the card "Nothing in the speech-in list worked" though Koe had answered).
 test("Halves, Koe hears the line as sound and Kokoro is text-only: Kokoro's turn before Koe's write-down is answered, with the line as not transcribed, and no card", async (t) => {
