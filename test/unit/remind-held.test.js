@@ -2694,9 +2694,9 @@ test('Koe live: a card call of hers is still being answered as the quiet spell e
 });
 
 // Her sound starts later than her first chunk arrived (cut-bound-next's fix round 2, the second opinion's probe P): her voice waits for her first word (#speak) or for
-// another voice (#queue), and plays from there. The guard in #quietEnd counts her sound's end from when it plays (t.playAt), not from her first chunk's arrival (t.soundAt),
+// annai's other voice (the #mayPlay hold), and plays from there. The guard in #quietEnd counts her sound's end from when it plays (t.playAt), not from her first chunk's arrival (t.soundAt),
 // or a healthy reply is cut while it still plays. Here her line's 4 s of sound all come at once, her first words 3.5 s after it (her voice begins then, and plays to 7.5 s), and
-// the stand-in's end 8 s after the burst, as the provider's would be (it holds a turn open until its sound would have played out, counted from the burst). The quiet spell (3 s)
+// the stand-in's end 8 s after the burst, a late end set so that the guard is what meets it (a provider counting from the burst would end it at 4 s). The quiet spell (3 s)
 // ends at 6.5 s, 3 s into her sound: counted from the burst her end was 6 s and overdue, and she was cut ("...photographed✂"); counted from where she plays it is 9.5 s.
 // The same with the end never coming (the link dead after her last words, probe P4: the guard's other order, her whole line heard and made): it is cut where it was heard,
 // that is whole, and the session closes at the next spell.

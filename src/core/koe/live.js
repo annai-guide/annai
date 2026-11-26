@@ -126,7 +126,7 @@ const LIFT_S = LIVE_ANSWER_S;
  * Past the end of her sound: the wait for the turnComplete of a turn whose tool call was answered silently (measured: the design, section 3, item 6), and the margin of an open
  * turn's overdue end at the quiet spell (#quietEnd). A plain turn's end is measured too: real Gemini's turnComplete came 0.19 to 0.63 s after her last audible sound (113 notes,
  * 2026-11-12: docs/lessons-full.md, "Heard whole is all made and all played"), and within -54 to +115 ms of the modelled play end (the chunks played back to back from the first,
- * waiting when the player runs dry) in all 215 replies, notes and short ones ending in a call (one-answer-real-report.md, "Gemini timing"). The line #quietEnd counts doesn't wait
+ * waiting when the player runs dry) in all 215 replies, notes and short ones ending in a call (real Gemini, 2026-11-12, 28 sessions). The line #quietEnd counts doesn't wait
  * when the player runs dry, so it sits early by a provider's pause inside a reply (9 of 234 replies, 0.10 to 1.23 s): the latest healthy end, about 1.35 s past that line, is inside 2 s.
  */
 const TURN_END_S = 2;
