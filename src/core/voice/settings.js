@@ -1,13 +1,14 @@
 /**
  * Settings → Voice (spec §10), with their defaults, from the app settings' "voice" entry.
  * @typedef {{ mode: 'on' | 'off', pauseMs: number, silenceSeconds: number, firstWordsSeconds: number, keepClips: boolean, browserVoice: string, rate: number,
- *   closeAfterSeconds: number, bargeIn: boolean }} VoiceSettings
+ *   closeAfterSeconds: number, bargeIn: boolean, keepMusic: boolean }} VoiceSettings
  *   mode: voice On or Off (§10.5; a saved 'auto', or anything else, reads as Off); pauseMs: the pause that ends a sentence (§10.2); silenceSeconds: how long speak listens for an
  *   answer (§7.1); firstWordsSeconds: how long her first words may take with voice on (§9.6); keepClips: keep what the microphone heard
  *   (§10.2); browserVoice: the system voice's id ('' for automatic: one on this phone when there is one, §11.7); rate: its speed;
- *   closeAfterSeconds: the quiet spell that closes a live session; bargeIn: speaking cuts a live Koe off with headphones or car audio only (§10.4), a tap always does
+ *   closeAfterSeconds: the quiet spell that closes a live session; bargeIn: speaking cuts a live Koe off with headphones or car audio only (§10.4), a tap always does;
+ *   keepMusic: Keep my music playing (§10.1): her sound mixes with other apps' music, and no microphone opens by itself (§10.4)
  */
-export const VOICE_DEFAULTS = Object.freeze({ mode: 'off', pauseMs: 700, silenceSeconds: 20, firstWordsSeconds: 15, keepClips: false, browserVoice: '', rate: 1, closeAfterSeconds: 30, bargeIn: true });
+export const VOICE_DEFAULTS = Object.freeze({ mode: 'off', pauseMs: 700, silenceSeconds: 20, firstWordsSeconds: 15, keepClips: false, browserVoice: '', rate: 1, closeAfterSeconds: 30, bargeIn: true, keepMusic: false });
 
 /** @param {Record<string, any>} app the app settings @returns {VoiceSettings} */
 export function voiceSettings(app) {
@@ -23,5 +24,6 @@ export function voiceSettings(app) {
     rate: within(v.rate, 0.5, 2, VOICE_DEFAULTS.rate),
     closeAfterSeconds: within(v.closeAfterSeconds, 10, 300, VOICE_DEFAULTS.closeAfterSeconds),
     bargeIn: v.bargeIn !== false,
+    keepMusic: v.keepMusic === true,
   };
 }

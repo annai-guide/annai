@@ -35,10 +35,12 @@
  *   open(o: { lang?: string, local?: boolean, onSegment: (text: string) => void, onSpeech?: () => void, onQuiet?: () => void, onError: (e: Error & { code?: string }) => void }): { close(): void } }} Dictation
  *   phone dictation (§10.2); onQuiet: what began like speech gave no words (a noise); local(): whether it can recognize speech on this
  *   phone for the language now, nothing to download (§11.7); open's local: do so
- * @typedef {'play-and-record' | 'playback'} SessionType  the audio session type (§10.1): playback while she speaks and after, play-and-record while listening
- * @typedef {{ player: Player, synth: Synth, mic: Mic, dictation: Dictation, session(type: SessionType): void, encoder?: Encoder,
+ * @typedef {'play-and-record' | 'playback' | 'ambient'} SessionType  the audio session type (§10.1): playback while she speaks and after, play-and-record while listening;
+ *   ambient in playback's place with Keep my music playing on (Voice.session): other apps' music plays on under her, not lowered, and silent mode silences her
+ * @typedef {{ player: Player, synth: Synth, mic: Mic, dictation: Dictation, session(type: SessionType): void, mixes?(): boolean, encoder?: Encoder,
  *   devices?(): Promise<{ kind: string, label: string, deviceId?: string }[]>, onDeviceChange?(fn: () => void): void }} VoicePlatform
- *   devices: the audio devices, by name, and onDeviceChange when they change (§10.5)
+ *   mixes: the browser has an audio session annai can set (Safari's), so her sound can let other apps' music play on (§10.1); devices: the audio
+ *   devices, by name, and onDeviceChange when they change (§10.5)
  */
 
 /** The voice platform a running plugin gives (built-ins are plugins, spec §5.4), or null. @param {import('../registry.js').Registry} registry @returns {VoicePlatform | null} */

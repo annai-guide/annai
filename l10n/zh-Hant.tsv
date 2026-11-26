@@ -550,19 +550,19 @@ qz6v7v#other	draft	Shiori's models refused a request with PDFs in it	Shiori 的�
 19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	這個瀏覽器要點一下才能播放聲音。她說的話在對話裡。	src/core/agent/loop.js:3823	
 1h2ina6	ok	Shiori couldn't speak aloud	Shiori 無法朗讀	src/core/agent/loop.js:3824	
 1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	設定 → 模型 → 朗讀中的聲音都無法使用，原因見「記錄」。她說的話在對話裡。	src/core/agent/loop.js:3824	
-1r1dhd7	ok	Shiori can't hear you yet	Shiori 還聽不到你	src/core/agent/loop.js:4007	
-8wd0xv	ok	Listening stopped	聆聽已停止	src/core/agent/loop.js:4241	
-43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:4512	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	每邊最多 # 畫素	src/core/agent/loop.js:4513	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一次最多 # 張照片	src/core/agent/loop.js:4514	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	僅限 {0}	src/core/agent/loop.js:4515	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受這張照片（它的要求：{0}），也無法轉換成它能接受的照片。可以在設定 → 照片 → 傳給 Shiori 的照片中把照片調小，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:4516	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受這張照片，也無法轉換成它能接受的照片。可以在設定 → 照片 → 傳給 Shiori 的照片中把照片調小，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:4517	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	對話太長，整理之前她的模型處理不了。請在設定 → 模型中檢查模型，或稍後再試。	src/core/agent/loop.js:4527	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	外掛程式 {0} 喚醒她的次數超過了你設定的上限（每小時 # 次）。	src/core/agent/loop.js:4537	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她在留意的事情喚醒她的次數超過了你設定的上限（每小時 # 次）：{0}。	src/core/agent/loop.js:4538	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你新增的檔案喚醒她的次數超過了你設定的上限（每小時 # 次）：{0}。	src/core/agent/loop.js:4539	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	她被喚醒的次數超過了你設定的上限（每小時 # 次）。	src/core/agent/loop.js:4540	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+1r1dhd7	ok	Shiori can't hear you yet	Shiori 還聽不到你	src/core/agent/loop.js:4011	
+8wd0xv	ok	Listening stopped	聆聽已停止	src/core/agent/loop.js:4245	
+43klog	ok	at most {0} MB	最多 {0} MB	src/core/agent/loop.js:4517	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	每邊最多 # 畫素	src/core/agent/loop.js:4518	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一次最多 # 張照片	src/core/agent/loop.js:4519	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	僅限 {0}	src/core/agent/loop.js:4520	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受這張照片（它的要求：{0}），也無法轉換成它能接受的照片。可以在設定 → 照片 → 傳給 Shiori 的照片中把照片調小，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:4521	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	模型不接受這張照片，也無法轉換成它能接受的照片。可以在設定 → 照片 → 傳給 Shiori 的照片中把照片調小，或在設定 → 模型中換一個模型。	src/core/agent/loop.js:4522	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	對話太長，整理之前她的模型處理不了。請在設定 → 模型中檢查模型，或稍後再試。	src/core/agent/loop.js:4532	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	外掛程式 {0} 喚醒她的次數超過了你設定的上限（每小時 # 次）。	src/core/agent/loop.js:4542	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	提醒或她在留意的事情喚醒她的次數超過了你設定的上限（每小時 # 次）：{0}。	src/core/agent/loop.js:4543	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	你新增的檔案喚醒她的次數超過了你設定的上限（每小時 # 次）：{0}。	src/core/agent/loop.js:4544	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	她被喚醒的次數超過了你設定的上限（每小時 # 次）。	src/core/agent/loop.js:4545	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	這則訊息含有金鑰，所以不顯示。	src/core/agent/net.js:127	
 1jmdvnh	ok	annai couldn't check this message for keys, so it is not shown.	無法檢查這則訊息是否含有金鑰，所以不顯示。	src/core/agent/net.js:128	Note: shown in place of a card's or status line's text when annai can't read the keys it keeps to blank them; worded as the "held a key" note beside it (1ptx7ob).
 157dl17	ok	Shiori wants to adjust her personality	Shiori 想調整自己的性格	src/core/agent/personalities.js:130	
@@ -640,8 +640,8 @@ gnrtev	ok	Shiori can't reach her model.	Shiori 無法連線到模型。	src/core
 13ujlu9	ok	{0} is too large (over {1}). Export only the dates you need from your calendar, and add that file.	{0} 太大了（超過 {1}）。請在行事曆中只匯出所需日期的活動，再新增匯出的檔案。	src/core/imports.js:17	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:36	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Chinese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	剛剛	src/core/intl.js:152	
-1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	使用手機喇叭時，Shiori 說話期間聽不到你的聲音，插話會被忽略。點一下就能讓她停下來聽你說。	src/core/koe/live.js:695	
-1ml2kgi	ok	Tap Shiori to talk over her	點一下 Shiori 即可打斷她	src/core/koe/live.js:695	Note: The dock's Shiori button: tap it to talk over her.
+1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	使用手機喇叭時，Shiori 說話期間聽不到你的聲音，插話會被忽略。點一下就能讓她停下來聽你說。	src/core/koe/live.js:697	
+1ml2kgi	ok	Tap Shiori to talk over her	點一下 Shiori 即可打斷她	src/core/koe/live.js:697	Note: The dock's Shiori button: tap it to talk over her.
 3fqfy0	ok	Languages	語言	src/core/languages.js:553	
 1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	你說的語言和 Shiori 的回答語言會告知每個負責聽和說的模型，以免簡短的回覆被誤認成其他語言。	src/core/languages.js:554	
 1giusr1	ok	Languages you speak	你說的語言	src/core/languages.js:555	
@@ -954,9 +954,9 @@ xi9ch6	ok	Shiori can't hear you: the speech-in list is empty. Add an entry in Se
 1oy92m8	ok	This browser has no phone dictation either.	這個瀏覽器也不支援手機語音輸入。	src/core/voice/resolve.js:166	
 l80ifa	ok	Add a transcription model in Settings → Models, such as OpenAI or Groq, or a main model that takes audio.	請在設定 → 模型中新增語音轉文字模型（例如 OpenAI 或 Groq），或新增一個能接受音訊的主要模型。	src/core/voice/resolve.js:166	
 m5s9f4	ok	This browser can't play a voice as it arrives.	這個瀏覽器無法邊接收邊播放聲音。	src/core/voice/speaker.js:128	
-jo5o9d	ok	This browser can't play sound here.	這個瀏覽器無法在這裡播放聲音。	src/core/voice/voice.js:430	
-ocv5zw	ok	This browser can't use the microphone here.	這個瀏覽器無法在這裡使用麥克風。	src/core/voice/voice.js:473	
-55949q	ok	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	聲音卡住了，annai 聽不到你說話。點一下螢幕即可恢復。	src/core/voice/voice.js:804	
+jo5o9d	ok	This browser can't play sound here.	這個瀏覽器無法在這裡播放聲音。	src/core/voice/voice.js:447	
+ocv5zw	ok	This browser can't use the microphone here.	這個瀏覽器無法在這裡使用麥克風。	src/core/voice/voice.js:490	
+55949q	ok	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	聲音卡住了，annai 聽不到你說話。點一下螢幕即可恢復。	src/core/voice/voice.js:827	
 pib2vo	ok	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	由瀏覽器內建的語音服務辨識：Android 上通常是 Google 的伺服器，iPhone 上是 Apple 的（有時直接在手機上完成）。這個請求不是 annai 送出的，所以「記錄」中看不到。	src/core/voice/where.js:15	
 m93xm3	ok	On this phone only: the browser recognizes your speech on the device.	只在這支手機上：瀏覽器直接在本機辨識你的語音。	src/core/voice/where.js:16	
 1m5zm0a	ok	Phone dictation	手機語音輸入	src/core/voice/where.js:18	
@@ -2715,61 +2715,63 @@ fceyoz	ok	Voice	語音	src/ui/screens/voice.js:47	context: voice mode; Note: voi
 3gprw9	ok	Keep voice clips	保留語音片段	src/ui/screens/voice.js:55	Note: Voice clips are recordings of what you said (語音片段), not a voice she speaks with (聲音).
 1r528n6	ok	Keep the screen on while GPS is on	GPS 開啟時保持螢幕開啟	src/ui/screens/voice.js:61	
 o7g54g	ok	Cut her off by speaking	說話即可打斷她	src/ui/screens/voice.js:62	
-1maeag1	ok	Speaking…	正在朗讀…	src/ui/screens/voice.js:70	
-1rasxdf	ok	This browser didn't let annai play sound yet. Tap anywhere on the page, then try again.	瀏覽器暫時不允許播放聲音。請先點一下頁面任何地方，再試一次。	src/ui/screens/voice.js:75	
-m6lqjc	ok	{0} couldn't speak: {1}	{0} 無法朗讀：{1}	src/ui/screens/voice.js:76	{0} = names(f.name); {1} = await speechProblem(ctx.store, f.error, true)
-39tqta	ok	No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.	所有聲音都無法朗讀。各聲音的回應見「記錄」，請在設定 → 模型中檢查。	src/ui/screens/voice.js:77	
-1v88hol	ok	{0}, then {1}	{0}，然後是 {1}	src/ui/screens/voice.js:78	context: one voice, then the next; {0} = a; {1} = b; Note: voices in the order they spoke: "A, then B, then C".
-1w6xnpw	ok	Spoken by {0}.	朗讀的聲音：{0}。	src/ui/screens/voice.js:78	{0} = r.voices.map(names).reduce((/** @type {string} */ a, /** @type {string} */ b) => tc('one voice, then the next')`${a}, then ${b}`)
-1l6oe5c	ok	Test the voice	測試聲音	src/ui/screens/voice.js:85	
-1bbvn6f	ok	Automatic: one on this phone when there is one	自動：優先使用本機聲音	src/ui/screens/voice.js:92	
-1swzhj6	ok	{0} ({1}, online)	{0}（{1}，線上）	src/ui/screens/voice.js:93	{0} = v.name; {1} = v.lang; Note: a browser voice, its language code, and that it sends her words online.
-1er0uz6	ok	How loud the microphone hears you	麥克風收音音量	src/ui/screens/voice.js:103	
-1v58i1s	ok	Say something…	說點什麼…	src/ui/screens/voice.js:109	
-bjwya4	ok	Hearing you…	正在聽你說…	src/ui/screens/voice.js:113	
-1hsov55	ok	Nothing was heard in 15 seconds. Check that the microphone is on and that no other app is using it, then try again.	15 秒內沒聽到聲音。請確認麥克風已開啟且沒有被別的 App 佔用，然後再試一次。	src/ui/screens/voice.js:115	Note: App, as Taiwan's iPhone says it, as the microphone's other rows say it.
-1plbhzy	ok	Heard {0} of speech.	聽到了 {0}的語音。	src/ui/screens/voice.js:118	{0} = seconds(seg.ms, 'long')
-u495xc	ok	Writing it down…	正在轉成文字…	src/ui/screens/voice.js:121	
-1fnqjaw	ok	{0} heard: "{1}"	{0} 聽到：「{1}」	src/ui/screens/voice.js:125	{0} = name; {1} = text
-1rgfjj8	ok	{0} heard speech but wrote nothing down.	{0} 聽到了語音，但沒有轉出任何文字。	src/ui/screens/voice.js:125	{0} = name
-1rec7os	ok	Add a transcription model in Settings → Models to see the words.	在設定 → 模型中新增語音轉文字模型，就能看到文字。	src/ui/screens/voice.js:127	
-5uf1sa	ok	Test the microphone	測試麥克風	src/ui/screens/voice.js:138	
-1du6nik	ok	Settings → Models	設定 → 模型	src/ui/screens/voice.js:140	
-1tl20ub	ok	How Shiori speaks and hears you. Which voices and which transcription models she uses, and in what order, is in Settings → Models.	Shiori 說話和聽你說話的方式。她使用哪些聲音和語音轉文字模型、依什麼順序使用，可在設定 → 模型中調整。	src/ui/screens/voice.js:144	
-1nt5zac	ok	On or off	開啟或關閉	src/ui/screens/voice.js:145	
-u0woti	ok	On: Shiori speaks aloud and listens for your answer. Off: she writes. A tap on Shiori always turns voice on until that exchange ends; the keyboard button is how to type. With GPS on, voice is on while driving. It goes off by itself when a drive ends or headphones disconnect. The chip on the dock changes it too.	開啟：Shiori 會出聲說話，並聽你回答。關閉：她用文字回答。不論開啟或關閉，點一下 Shiori 都會開啟語音，直到這一輪結束；要打字請用鍵盤按鈕。GPS 開啟時，駕駛期間語音會開啟；駕駛結束或耳機中斷連線時會自動關閉。底部列的語音按鈕也可以切換。	src/ui/screens/voice.js:146	Note: voice is the Voice setting (語音), not her voice (聲音).
-1hwskdv	ok	Listen for 2 to 60 seconds.	請設為 2 到 60 秒。	src/ui/screens/voice.js:149	
-qyfmia	ok	Listen for an answer (seconds)	等待回答（秒）	src/ui/screens/voice.js:149	
-1f9vvmr	ok	Wait for her first words (seconds)	等待她開口（秒）	src/ui/screens/voice.js:150	
-1sz04rq	ok	Wait 5 to 120 seconds.	請設為 5 到 120 秒。	src/ui/screens/voice.js:150	
-17b2a79	ok	On the screen	螢幕顯示	src/ui/screens/voice.js:151	
-4xxyqf	ok	On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".	開啟：她出聲說的話會顯示在對話中，並標為「已朗讀」；她說話時，上方的氣泡裡也會顯示。關閉：螢幕保持簡潔，她說過的話在對話中收合，點一下「檢視她說的話」才會顯示。	src/ui/screens/voice.js:153	Note: "said aloud" and "Show what she said" are the conversation's own words: they must match those rows.
-y61lbz	ok	Shiori's voice	Shiori 的聲音	src/ui/screens/voice.js:154	
-1879vb9	ok	Voices, tried in order: none.	依次嘗試的聲音：無。	src/ui/screens/voice.js:155	
-1su08w7	ok	Voices, tried in order: {0}.	依次嘗試的聲音：{0}。	src/ui/screens/voice.js:155	{0} = list(entries.map((/** @type {any} */ e) => names(e.name)), 'plain')
-1oc2cqc	ok	The browser’s own voice. Some of its voices speak on this phone; those marked online send her words to their service.	瀏覽器內建的聲音。部分聲音在本機朗讀；標示「線上」的會把她的話傳送到相應的服務。	src/ui/screens/voice.js:158	
-t9jotl	ok	This browser has no voice of its own.	此瀏覽器沒有內建聲音。	src/ui/screens/voice.js:158	
-154la7x	ok	The speed goes from 0.5 (slow) to 2 (fast); 1 is normal.	速度範圍為 0.5（慢）到 2（快），1 為正常速度。	src/ui/screens/voice.js:161	
-1r7xlh3	ok	Speed (0.5 to 2)	速度（0.5 到 2）	src/ui/screens/voice.js:161	
-1hnhxk8	ok	Listening	語音辨識	src/ui/screens/voice.js:162	context: section; Note: Settings → Voice's section on how annai hears you (the glossary's Speech in), not Shiori's state.
-rwdfwh	ok	annai hears that you finished a sentence when you pause. A longer pause lets you think mid-sentence; a shorter one answers sooner.	你一停頓，annai 就會認為這句話說完了。停頓時間設長一點，說到一半可以停下來想一想；設短一點，回應更快。	src/ui/screens/voice.js:163	
-11q2yij	ok	Pause that ends a sentence (ms)	斷句停頓（毫秒）	src/ui/screens/voice.js:164	
-mfkrny	ok	The pause goes from 300 to 3000 milliseconds; 700 is the usual.	停頓範圍為 300 到 3000 毫秒，一般為 700。	src/ui/screens/voice.js:164	
-d3o3oq	ok	Off: what the microphone hears is sent to be written down, then let go. On: each clip is kept with the conversation, and in backups.	關閉：麥克風錄到的聲音送去轉成文字後就會捨棄。開啟：每段語音都隨對話儲存，也會包含在備份中。	src/ui/screens/voice.js:167	
-1xjm3fg	ok	Live on: Shiori hears you and answers in one stream, with a live model. Live off: what you say is written down, then answered. The Live chip on the dock switches it.	即時開啟：Shiori 用即時模型在同一條音訊串流中聽你說話並回答。即時關閉：先把你說的話轉成文字，再回答。底部列的「即時」按鈕可以切換。	src/ui/screens/voice.js:170	
-byedp9	ok	While a live session listens, what you say goes straight to {0} as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.	即時連線收聽時，你說的話會以音訊形式直接傳送給 {0}（只在有人說話時傳送），按鈕上會顯示「正在即時收聽」。超過下方設定的時間沒有交流、你讓她睡覺、關閉語音，或 annai 離開螢幕時，連線就會結束。如果一直有聲音（例如音樂），由 Shiori 決定什麼時候睡覺。	src/ui/screens/voice.js:172	{0} = list(live, 'or'); Note: "on voice off" is the glossary's Voice off mode (關閉語音); a live session is 即時連線.
-8znos	ok	While a live session listens, what you say goes straight to its provider as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.	即時連線收聽時，你說的話會以音訊形式直接傳送給它的供應商（只在有人說話時傳送），按鈕上會顯示「正在即時收聽」。超過下方設定的時間沒有交流、你讓她睡覺、關閉語音，或 annai 離開螢幕時，連線就會結束。如果一直有聲音（例如音樂），由 Shiori 決定什麼時候睡覺。	src/ui/screens/voice.js:173	Note: "on voice off" is the glossary's Voice off mode (關閉語音); a live session is 即時連線.
-lqovw2	ok	While she listens, set her voice's volume with the iPhone's volume buttons: iPhone may keep it apart from the volume of music and videos.	她在聽的時候，請用 iPhone 的音量鍵調整她的音量。iPhone 可能會把它和音樂、影片的音量分開。	src/ui/screens/voice.js:175	
-18jgtvh	ok	Close after 10 to 300 seconds with no exchange.	請設為 10 到 300 秒。	src/ui/screens/voice.js:176	
-csv386	ok	Close a live session after (seconds with no exchange)	多久無交流後結束即時連線（秒）	src/ui/screens/voice.js:176	Note: a live session is 即時連線.
-w195po	ok	Only with headphones or car audio: on the phone's own speaker the microphone hears her, so there only a tap cuts her off. Off: only a tap, everywhere, for a car whose speakers echo her voice back.	只在使用耳機或車用音響時有效。用手機喇叭時，麥克風會聽到她的聲音，所以只能點一下打斷。關閉：不論在哪裡都只能點一下打斷，適合喇叭會把她的聲音傳回麥克風的車。	src/ui/screens/voice.js:178	
-10ndarn	ok	GPS	GPS	src/ui/screens/voice.js:179	
-15itdyc	ok	The chip on the dock turns GPS on and off. Keeping the screen on uses more battery; without it, a locked phone stops following where you are.	底部列的 GPS 按鈕可以開啟或關閉 GPS。螢幕保持開啟會比較耗電；但不開的話，手機鎖定後就無法繼續追蹤你的位置。	src/ui/screens/voice.js:181	
-ph6h35	ok	Where your voice goes	語音的去向	src/ui/screens/voice.js:182	
-rfzxba	ok	What you say goes to the first of these that can hear it; what she says, to the first voice that works. To change the order, go to {0}.	你說的話會交給下面第一個能辨識的；她說的話，由第一個能用的聲音朗讀。要調整順序，請前往{0}。	src/ui/screens/voice.js:183	{0} = models
-283rev	ok	What you say	你說的話	src/ui/screens/voice.js:184	
-127uny	ok	To keep your voice on the phone, type with your keyboard's microphone key: iPhone and most Android keyboards can dictate on the phone itself.	如果不想讓語音離開手機，請用鍵盤上的麥克風鍵輸入。iPhone 和大多數 Android 鍵盤都能在本機完成語音輸入。	src/ui/screens/voice.js:186	Note: "microphone key" is a keyboard key (麥克風鍵), not an API key (金鑰); "your voice" is your own speech.
-bewa4v	ok	What she says	她說的話	src/ui/screens/voice.js:187	
+mylzwr	draft	Keep my music playing	保持音樂播放	src/ui/screens/voice.js:64	Note: a switch label: 保持……播放, as a setting reads.
+1maeag1	ok	Speaking…	正在朗讀…	src/ui/screens/voice.js:72	
+1rasxdf	ok	This browser didn't let annai play sound yet. Tap anywhere on the page, then try again.	瀏覽器暫時不允許播放聲音。請先點一下頁面任何地方，再試一次。	src/ui/screens/voice.js:77	
+m6lqjc	ok	{0} couldn't speak: {1}	{0} 無法朗讀：{1}	src/ui/screens/voice.js:78	{0} = names(f.name); {1} = await speechProblem(ctx.store, f.error, true)
+39tqta	ok	No voice could speak. The Trace shows what each voice answered; check them in Settings → Models.	所有聲音都無法朗讀。各聲音的回應見「記錄」，請在設定 → 模型中檢查。	src/ui/screens/voice.js:79	
+1v88hol	ok	{0}, then {1}	{0}，然後是 {1}	src/ui/screens/voice.js:80	context: one voice, then the next; {0} = a; {1} = b; Note: voices in the order they spoke: "A, then B, then C".
+1w6xnpw	ok	Spoken by {0}.	朗讀的聲音：{0}。	src/ui/screens/voice.js:80	{0} = r.voices.map(names).reduce((/** @type {string} */ a, /** @type {string} */ b) => tc('one voice, then the next')`${a}, then ${b}`)
+1l6oe5c	ok	Test the voice	測試聲音	src/ui/screens/voice.js:87	
+1bbvn6f	ok	Automatic: one on this phone when there is one	自動：優先使用本機聲音	src/ui/screens/voice.js:94	
+1swzhj6	ok	{0} ({1}, online)	{0}（{1}，線上）	src/ui/screens/voice.js:95	{0} = v.name; {1} = v.lang; Note: a browser voice, its language code, and that it sends her words online.
+1er0uz6	ok	How loud the microphone hears you	麥克風收音音量	src/ui/screens/voice.js:105	
+1v58i1s	ok	Say something…	說點什麼…	src/ui/screens/voice.js:111	
+bjwya4	ok	Hearing you…	正在聽你說…	src/ui/screens/voice.js:115	
+1hsov55	ok	Nothing was heard in 15 seconds. Check that the microphone is on and that no other app is using it, then try again.	15 秒內沒聽到聲音。請確認麥克風已開啟且沒有被別的 App 佔用，然後再試一次。	src/ui/screens/voice.js:117	Note: App, as Taiwan's iPhone says it, as the microphone's other rows say it.
+1plbhzy	ok	Heard {0} of speech.	聽到了 {0}的語音。	src/ui/screens/voice.js:120	{0} = seconds(seg.ms, 'long')
+u495xc	ok	Writing it down…	正在轉成文字…	src/ui/screens/voice.js:123	
+1fnqjaw	ok	{0} heard: "{1}"	{0} 聽到：「{1}」	src/ui/screens/voice.js:127	{0} = name; {1} = text
+1rgfjj8	ok	{0} heard speech but wrote nothing down.	{0} 聽到了語音，但沒有轉出任何文字。	src/ui/screens/voice.js:127	{0} = name
+1rec7os	ok	Add a transcription model in Settings → Models to see the words.	在設定 → 模型中新增語音轉文字模型，就能看到文字。	src/ui/screens/voice.js:129	
+5uf1sa	ok	Test the microphone	測試麥克風	src/ui/screens/voice.js:140	
+1du6nik	ok	Settings → Models	設定 → 模型	src/ui/screens/voice.js:142	
+1tl20ub	ok	How Shiori speaks and hears you. Which voices and which transcription models she uses, and in what order, is in Settings → Models.	Shiori 說話和聽你說話的方式。她使用哪些聲音和語音轉文字模型、依什麼順序使用，可在設定 → 模型中調整。	src/ui/screens/voice.js:146	
+1nt5zac	ok	On or off	開啟或關閉	src/ui/screens/voice.js:147	
+u0woti	ok	On: Shiori speaks aloud and listens for your answer. Off: she writes. A tap on Shiori always turns voice on until that exchange ends; the keyboard button is how to type. With GPS on, voice is on while driving. It goes off by itself when a drive ends or headphones disconnect. The chip on the dock changes it too.	開啟：Shiori 會出聲說話，並聽你回答。關閉：她用文字回答。不論開啟或關閉，點一下 Shiori 都會開啟語音，直到這一輪結束；要打字請用鍵盤按鈕。GPS 開啟時，駕駛期間語音會開啟；駕駛結束或耳機中斷連線時會自動關閉。底部列的語音按鈕也可以切換。	src/ui/screens/voice.js:148	Note: voice is the Voice setting (語音), not her voice (聲音).
+1hwskdv	ok	Listen for 2 to 60 seconds.	請設為 2 到 60 秒。	src/ui/screens/voice.js:151	
+qyfmia	ok	Listen for an answer (seconds)	等待回答（秒）	src/ui/screens/voice.js:151	
+1f9vvmr	ok	Wait for her first words (seconds)	等待她開口（秒）	src/ui/screens/voice.js:152	
+1sz04rq	ok	Wait 5 to 120 seconds.	請設為 5 到 120 秒。	src/ui/screens/voice.js:152	
+nmzc3s	draft	On: your music plays on at its own volume while Shiori speaks. She can't be heard while the phone is in silent mode, and she doesn't listen by herself after speaking: tap her to answer, which stops the music. With Live voice, a session she opens by herself doesn't listen; one you start with a tap listens until it closes, which stops the music too.	開啟：Shiori 說話時，音樂繼續以原本的音量播放。手機處於靜音模式時聽不到她的聲音；她說完話後也不會自動聆聽，要回答時請點一下 Shiori（音樂將停止）。即時語音中，Shiori 自己開啟的即時連線不會收聽；點一下開啟的即時連線會一直收聽，直到連線結束，音樂同樣將停止。	src/ui/screens/voice.js:154	Note: 靜音模式 for the phone's silent mode (not yet checked against the iPhone's own word); 以原本的音量 says "at its own volume" (not lowered); 音樂將停止, never 音樂會停止 (read as 音樂會, a concert); 即時連線 as the style page's table; 收聽 for a live session's listening, as the Live chip (正在即時收聽), 聆聽 for the dock's; 直到連線結束, "until it closes".
+17b2a79	ok	On the screen	螢幕顯示	src/ui/screens/voice.js:155	
+4xxyqf	ok	On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".	開啟：她出聲說的話會顯示在對話中，並標為「已朗讀」；她說話時，上方的氣泡裡也會顯示。關閉：螢幕保持簡潔，她說過的話在對話中收合，點一下「檢視她說的話」才會顯示。	src/ui/screens/voice.js:157	Note: "said aloud" and "Show what she said" are the conversation's own words: they must match those rows.
+y61lbz	ok	Shiori's voice	Shiori 的聲音	src/ui/screens/voice.js:158	
+1879vb9	ok	Voices, tried in order: none.	依次嘗試的聲音：無。	src/ui/screens/voice.js:159	
+1su08w7	ok	Voices, tried in order: {0}.	依次嘗試的聲音：{0}。	src/ui/screens/voice.js:159	{0} = list(entries.map((/** @type {any} */ e) => names(e.name)), 'plain')
+1oc2cqc	ok	The browser’s own voice. Some of its voices speak on this phone; those marked online send her words to their service.	瀏覽器內建的聲音。部分聲音在本機朗讀；標示「線上」的會把她的話傳送到相應的服務。	src/ui/screens/voice.js:162	
+t9jotl	ok	This browser has no voice of its own.	此瀏覽器沒有內建聲音。	src/ui/screens/voice.js:162	
+154la7x	ok	The speed goes from 0.5 (slow) to 2 (fast); 1 is normal.	速度範圍為 0.5（慢）到 2（快），1 為正常速度。	src/ui/screens/voice.js:165	
+1r7xlh3	ok	Speed (0.5 to 2)	速度（0.5 到 2）	src/ui/screens/voice.js:165	
+1hnhxk8	ok	Listening	語音辨識	src/ui/screens/voice.js:166	context: section; Note: Settings → Voice's section on how annai hears you (the glossary's Speech in), not Shiori's state.
+rwdfwh	ok	annai hears that you finished a sentence when you pause. A longer pause lets you think mid-sentence; a shorter one answers sooner.	你一停頓，annai 就會認為這句話說完了。停頓時間設長一點，說到一半可以停下來想一想；設短一點，回應更快。	src/ui/screens/voice.js:167	
+11q2yij	ok	Pause that ends a sentence (ms)	斷句停頓（毫秒）	src/ui/screens/voice.js:168	
+mfkrny	ok	The pause goes from 300 to 3000 milliseconds; 700 is the usual.	停頓範圍為 300 到 3000 毫秒，一般為 700。	src/ui/screens/voice.js:168	
+d3o3oq	ok	Off: what the microphone hears is sent to be written down, then let go. On: each clip is kept with the conversation, and in backups.	關閉：麥克風錄到的聲音送去轉成文字後就會捨棄。開啟：每段語音都隨對話儲存，也會包含在備份中。	src/ui/screens/voice.js:171	
+1xjm3fg	ok	Live on: Shiori hears you and answers in one stream, with a live model. Live off: what you say is written down, then answered. The Live chip on the dock switches it.	即時開啟：Shiori 用即時模型在同一條音訊串流中聽你說話並回答。即時關閉：先把你說的話轉成文字，再回答。底部列的「即時」按鈕可以切換。	src/ui/screens/voice.js:174	
+byedp9	ok	While a live session listens, what you say goes straight to {0} as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.	即時連線收聽時，你說的話會以音訊形式直接傳送給 {0}（只在有人說話時傳送），按鈕上會顯示「正在即時收聽」。超過下方設定的時間沒有交流、你讓她睡覺、關閉語音，或 annai 離開螢幕時，連線就會結束。如果一直有聲音（例如音樂），由 Shiori 決定什麼時候睡覺。	src/ui/screens/voice.js:176	{0} = list(live, 'or'); Note: "on voice off" is the glossary's Voice off mode (關閉語音); a live session is 即時連線.
+8znos	ok	While a live session listens, what you say goes straight to its provider as audio, only while someone speaks, and the chip says "Listening live". It closes after the time below with no exchange, when she's asked to sleep, on voice off, or when annai leaves the screen. With sound that never stops, such as music, Shiori decides when to sleep.	即時連線收聽時，你說的話會以音訊形式直接傳送給它的供應商（只在有人說話時傳送），按鈕上會顯示「正在即時收聽」。超過下方設定的時間沒有交流、你讓她睡覺、關閉語音，或 annai 離開螢幕時，連線就會結束。如果一直有聲音（例如音樂），由 Shiori 決定什麼時候睡覺。	src/ui/screens/voice.js:177	Note: "on voice off" is the glossary's Voice off mode (關閉語音); a live session is 即時連線.
+lqovw2	ok	While she listens, set her voice's volume with the iPhone's volume buttons: iPhone may keep it apart from the volume of music and videos.	她在聽的時候，請用 iPhone 的音量鍵調整她的音量。iPhone 可能會把它和音樂、影片的音量分開。	src/ui/screens/voice.js:179	
+18jgtvh	ok	Close after 10 to 300 seconds with no exchange.	請設為 10 到 300 秒。	src/ui/screens/voice.js:180	
+csv386	ok	Close a live session after (seconds with no exchange)	多久無交流後結束即時連線（秒）	src/ui/screens/voice.js:180	Note: a live session is 即時連線.
+w195po	ok	Only with headphones or car audio: on the phone's own speaker the microphone hears her, so there only a tap cuts her off. Off: only a tap, everywhere, for a car whose speakers echo her voice back.	只在使用耳機或車用音響時有效。用手機喇叭時，麥克風會聽到她的聲音，所以只能點一下打斷。關閉：不論在哪裡都只能點一下打斷，適合喇叭會把她的聲音傳回麥克風的車。	src/ui/screens/voice.js:182	
+10ndarn	ok	GPS	GPS	src/ui/screens/voice.js:183	
+15itdyc	ok	The chip on the dock turns GPS on and off. Keeping the screen on uses more battery; without it, a locked phone stops following where you are.	底部列的 GPS 按鈕可以開啟或關閉 GPS。螢幕保持開啟會比較耗電；但不開的話，手機鎖定後就無法繼續追蹤你的位置。	src/ui/screens/voice.js:185	
+ph6h35	ok	Where your voice goes	語音的去向	src/ui/screens/voice.js:186	
+rfzxba	ok	What you say goes to the first of these that can hear it; what she says, to the first voice that works. To change the order, go to {0}.	你說的話會交給下面第一個能辨識的；她說的話，由第一個能用的聲音朗讀。要調整順序，請前往{0}。	src/ui/screens/voice.js:187	{0} = models
+283rev	ok	What you say	你說的話	src/ui/screens/voice.js:188	
+127uny	ok	To keep your voice on the phone, type with your keyboard's microphone key: iPhone and most Android keyboards can dictate on the phone itself.	如果不想讓語音離開手機，請用鍵盤上的麥克風鍵輸入。iPhone 和大多數 Android 鍵盤都能在本機完成語音輸入。	src/ui/screens/voice.js:190	Note: "microphone key" is a keyboard key (麥克風鍵), not an API key (金鑰); "your voice" is your own speech.
+bewa4v	ok	What she says	她說的話	src/ui/screens/voice.js:191	
 12fg67m	ok	Searching the web	網路搜尋	src/ui/screens/welcome.js:20	
 13sqoog	ok	Shiori, Koe and Kokoro	Shiori、Koe 和 Kokoro	src/ui/screens/welcome.js:20	
 1okgje1	ok	What annai can do	annai 能做什麼	src/ui/screens/welcome.js:20	
