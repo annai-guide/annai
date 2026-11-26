@@ -153,6 +153,9 @@ test("home's box sticks at the top of the screen with a card, and opened is at m
 });
 
 test("a booking opened at one of several blocks lands with that block's heading in view, focused, with nothing over it", async ({ page }) => {
+  // fileTrip's Anchorage is dated Nov 20-27, 2026, its flight home fixed at 13:00 on the 27th: while its reminder is due, annai's cards
+  // (the reminder, and that she can't reach a model) stick over the heading. The page's clock runs from before the trip.
+  await page.clock.install({ time: new Date('2026-11-16T12:00:00Z') });
   await openApp(page);
   const trip = await fileTrip(page);
   await page.goto(`/#/trip/${encodeURIComponent(trip)}/booking?path=${encodeURIComponent('/bookings/back.json')}`);
