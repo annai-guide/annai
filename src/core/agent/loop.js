@@ -474,6 +474,8 @@ export class Agent {
   #afterOpening = false;
   /** Write-downs that failed, by segment id (WRITE_TRIES). @type {Map<string, number>} */
   #writeTries = new Map();
+  /** The segments still unwritten when a turn of this half last didn't work: past their own turn, they fail no later request (resolveSpeech). @type {Set<string>} */
+  #unheard = new Set();
   /** @type {Half} */
   #half = ONE;
   /** The last entry its transcript took. */
@@ -2701,7 +2703,7 @@ export class Agent {
           record: { tag: this.#half.tag, ...this.#mark('model.turn'), wake: wakeId, prefix: fingerprint.slice(0, 16), context, keepParts: true, handover: this.#handover, endLogged: true },
           repairImages: (/** @type {ProviderError} */ err, /** @type {string} */ modelId, /** @type {any} */ req) => this.#repair(err, modelId, req, wakeId),
           onEvent: (/** @type {any} */ ev) => this.#streamed(ev, wakeId),
-          ...(this.voice ? { speech: this.voice.resolver(this.scope, wakeId, undefined, this.#shared) } : {}),
+          ...(this.voice ? { speech: this.voice.resolver(this.scope, wakeId, undefined, this.#shared, this.#unheard) } : {}),
           ...(this.#voiceNow ? { firstOutputMs: await this.#firstWordsMs(role) } : {}),
           // What this conversation has kept of its files, for a model that can't take one.
           readings: (/** @type {string} */ hash, /** @type {boolean} */ sees) => this.#keptNow(hash, sees),
@@ -4350,10 +4352,12 @@ export class Agent {
 
   /**
    * The end of a turn: speech streamed but never said stops; the microphone closes unless the user
-   * tapped to talk (spec §6.2, §10.4); after a turn that worked, the half that hears writes down what was heard.
+   * tapped to talk (spec §6.2, §10.4); after a turn that worked, the half that hears writes down what was heard; after one that didn't, what
+   * it carried unwritten is past its turn (#unheard).
    * @param {boolean} ok @param {string} wakeId
    */
   async #afterTurn(ok, wakeId) {
+    if (!ok) this.#unheard = new Set(this.transcript.unwritten());
     for (const u of this.#utterances.values()) u.stop();
     this.#utterances.clear();
     // She spoke and didn't sleep: she listens on (the second-drive design), through the gate, while its time is left; sleep, the user's Stop, or none left closes it.

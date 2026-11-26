@@ -836,15 +836,16 @@ export class Voice {
    * refused the audio format it was sent: WAV until annai restarts.
    * @param {string} scope @param {string} [wake] @param {string[]} [list] the speech-in list, when not the role's
    * @param {boolean} [shared] a half's turn that shares the link with the other half's: its transcriptions are timed on twice their bytes (§4.8)
+   * @param {Set<string>} [unheard] segments past the turn they were heard for: not transcribed where nothing can hear them (resolveSpeech)
    * @returns {(model: { id?: string, name: string, input: string[] }, request: import('../llm/contract.js').Request, plain?: boolean, signal?: AbortSignal) => Promise<import('../llm/contract.js').Request>}
    */
-  resolver(scope, wake, list, shared = false) {
+  resolver(scope, wake, list, shared = false, unheard) {
     /** Transcription models whose send was cut in this call, or that couldn't be reached: asked once a call, as chat asks a cut model once (fallback.js's nextStep). @type {Set<string>} */
     const cut = new Set();
     return async (model, request, plain, signal) => {
       if (plain && model.id) this.wavOnly.add(model.id);
       const c = await this.#resolve(scope, wake, signal, shared, cut);
-      return resolveSpeech(request, model, { ...c, ...(list ? { list } : {}), plain: Boolean(model.id && this.wavOnly.has(model.id)) });
+      return resolveSpeech(request, model, { ...c, ...(list ? { list } : {}), plain: Boolean(model.id && this.wavOnly.has(model.id)), ...(unheard ? { unheard } : {}) });
     };
   }
 

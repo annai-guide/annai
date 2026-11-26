@@ -4,6 +4,7 @@ import { agentKit, until, hear, idleAtOnce } from './agent-kit.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
 import { WRITE_DOWN } from '../../src/core/voice/voice.js';
 import { NOT_TRANSCRIBED } from '../../src/core/voice/resolve.js';
+import { WRITE_TRIES } from '../../src/core/agent/loop.js';
 import { record } from '../../src/core/agent/log.js';
 import { useClock } from './clock.js';
 import { updateAppSettings } from '../../src/core/settings.js';
@@ -272,9 +273,10 @@ test('a spoken line housekeeping writes down at the cut counts for the language 
 
 test('housekeeping waits while what was heard can\'t be written down, unless the conversation would overflow: then it is written as not transcribed (spec §10.3)', async (t) => {
   useClock(t);
-  const k = await agentKit([[{ text: 'never reached' }]], { utility: [{ text: 'Someone spoke.' }], voice: { speechIn: ['m-hear'], failing: ['m-hear'] } });
+  const k = await agentKit([[{ text: 'Noted.' }, { text: 'Noted.' }]], { utility: [{ text: 'Someone spoke.' }], voice: { speechIn: ['m-hear'], failing: ['m-hear'] } });
   await tapAndSay(k, 'where-eat');
-  for (let i = 0; i < 4; i++) {
+  // Answered with the line as not transcribed (its own turn failed): fewer turns that work than WRITE_TRIES, so its sound is still kept.
+  for (let i = 0; i < WRITE_TRIES - 1; i++) {
     k.agent.send(`Message ${i}`);
     await idleAtOnce(k);
   }
