@@ -1,6 +1,6 @@
 // Keep my music playing (Settings → Voice, spec §10.1, §10.4; the user's report of 2026-11-21 and their answer U114 of 2026-11-26): on, her sound is
-// the mixing kind (`ambient`) wherever it was `playback`, so other apps' music plays on under her, and no microphone opens by itself; a tap still listens,
-// and play-and-record pauses the music then. Off, everything is as before.
+// the mixing kind (`ambient`) wherever it was `playback`, so other apps' music plays on under her, and no microphone opens by itself (a session Live opens by itself has none either); a tap still listens,
+// and play-and-record stops the music then. Off, everything is as before. The round's fixes: Live's self-opened sessions, a tap's microphone at her turn's end, the calls through the door.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, until, hear, idleAtOnce } from './agent-kit.js';
