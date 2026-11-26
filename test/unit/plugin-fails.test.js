@@ -126,6 +126,7 @@ test('a module whose load ends after the start limit runs no activate: the start
 });
 
 test('an activate() that began before the start limit and throws after it has what it set up taken down (plugin-fails-fix2, item 3)', async () => {
+  // 50 ms: activate() is entered 0.03 to 1.1 ms after the start on the test host (measured 2026-11-26), so the limit leaves about 45 times that.
   const s = await storage({ startTimeout: 50 });
   await s.installer.install(inline('a-late', "export async function activate(annai) { globalThis.__began = true; await globalThis.__gate; annai.tools.register({ name: 'late-tool', description: 'x', input: { type: 'object' }, run() {} }); throw new Error('The tide table is gone.'); }"));
   let open = () => {};
