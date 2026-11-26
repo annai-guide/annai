@@ -238,7 +238,7 @@ export class Registry {
     this.#failures.set(pluginId, 0);
   }
 
-  /** Counts a failure annai has judged its plugin's itself (an endpoint type's call by position, a crash on a path that hands the answer on, the hooks' loop guard, a component's or an avatar's create() that returned the wrong thing). @param {string} pluginId @param {string} name @param {unknown} e */
+  /** Counts a failure annai has judged its plugin's itself (an endpoint type's call by position, a crash on a path that hands the answer on, a live trigger's check, the hooks' loop guard, a component's or an avatar's create() that returned the wrong thing). @param {string} pluginId @param {string} name @param {unknown} e */
   fail(pluginId, name, e) {
     this.#fail(pluginId, name, e);
   }

@@ -214,12 +214,13 @@ test("the dock's plugin avatar: a setState that crashes counts against its plugi
   }
 });
 
-test("the dock's plugin avatar: a setLevel that works ends its plugin's run of failures: a setState that crashes, a setLevel that works, a setState that crashes is still on, and a glance it has none of works nothing (fix round 2)", async () => {
+test("the dock's plugin avatar: a setLevel that works ends its plugin's run of failures: a setState that crashes, a setLevel that works, a setState that crashes: the plugin stays on; and a glance it has none of works nothing (fix round 2)", async () => {
   const { dockAvatar } = await import('../../src/ui/dock.js');
   const had = Object.getOwnPropertyDescriptor(globalThis, 'Node');
   Object.defineProperty(globalThis, 'Node', { value: class {}, configurable: true, writable: true }); // the dock checks the avatar's el with instanceof Node
   try {
-    // maxFailures 2, so the dock's own limit (three throws over its calls, then annai's own avatar, which needs a DOM) is never reached.
+    // Two throws in each case, so the dock's own limit (three throws over its calls, then annai's own avatar, which needs a DOM) is never
+    // reached; maxFailures 2 only sets when the plugin is switched off.
     for (const [what, between, off] of /** @type {[string, ((a: any) => void) | null, boolean][]} */ ([
       ['a setLevel that works between them', (a) => a.setLevel(0.5), false],
       ['a glance the avatar has none of, between them (nothing was called, so nothing worked)', (a) => a.glance(), true],
