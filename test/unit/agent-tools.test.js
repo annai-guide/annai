@@ -295,6 +295,19 @@ test('tracedFetch: every request is in the trace, with credentials in the addres
   assert.doesNotMatch(JSON.stringify(evs), /SECRET123|pw@/);
 });
 
+test("tracedFetch: the requested address's own name and password are blanked in what Chromium's refusal quotes, in the trace and in the error the plugin gets (addr-pass-next)", async () => {
+  const store = createMemoryStore();
+  // Chromium refuses an address with a name or password in it, and quotes the address whole; WebKit's words hold none.
+  const chromium = tracedFetch(store, 'trip-1', { tool: 'a-plugin' }, async (url) => { throw new TypeError(`Failed to execute 'fetch' on 'Window': Request cannot be constructed from a URL that includes credentials: ${url}`); });
+  for (const url of ['https://traveller:hunter2long@api.example.com/x', 'https://tok-12345678@api.example.com/y', 'https://traveller:hunter%32long@api.example.com/z']) {
+    await assert.rejects(chromium(url), (/** @type {any} */ e) => !/hunter2long|hunter%32long|tok-12345678|traveller:/.test(`${e.message} ${e.shown ?? ''} ${JSON.stringify(e.said ?? {})}`), url);
+  }
+  const evs = await store.tx(['events'], 'readonly', (t) => t.listEvents('trip-1', { types: ['net.request'] }));
+  assert.equal(evs.length, 3);
+  assert.doesNotMatch(JSON.stringify(evs), /hunter2long|hunter%32long|tok-12345678|traveller:/);
+  assert.match(evs[0].data.error, /includes credentials: https:\/\/«key»@api\.example\.com\/x/, 'the rest of the words are kept');
+});
+
 test("tracedFetch: a request called off with a reason says that reason in the trace, whatever the browser's words; a stop with none keeps them", async () => {
   const store = createMemoryStore();
   // As WebKit does: the same words for any abort, whatever the signal's reason.

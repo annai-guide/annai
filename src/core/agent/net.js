@@ -250,6 +250,27 @@ export function traceUrl(url, secrets = [], unread = false) {
 }
 
 /**
+ * The requested address's own name and password (`https://name:password@host/…`), as written and decoded, from 4 characters (as the model trace's
+ * urlSecrets): Chromium refuses such an address and quotes it whole in its words. @param {unknown} url @returns {string[]}
+ */
+function ownCredentials(url) {
+  const info = /^[a-z][a-z0-9+.-]*:\/\/([^/?#@]*)@/i.exec(String(url))?.[1];
+  if (!info) return [];
+  const pass = info.includes(':') ? info.slice(info.indexOf(':') + 1) : info;
+  /** @type {string[]} */
+  const out = [];
+  for (const v of [info, pass]) {
+    out.push(v);
+    try {
+      out.push(decodeURIComponent(v));
+    } catch {
+      // not valid percent-encoding: the raw form is enough
+    }
+  }
+  return out.filter((v) => v.length >= 4);
+}
+
+/**
  * @param {Store} store @param {string} scope
  * @param {{ tool: string, wake?: string, blank?: string[] }} who blank: keys that aren't secrets yet, such as those
  *   in an address being tried, blanked as secrets are
@@ -259,7 +280,7 @@ export function tracedFetch(store, scope, who, get = (url, init) => fetch(url, i
   return async (url, init = {}) => {
     const started = Date.now();
     const known = await knownSecrets(store);
-    const secrets = [...new Set([...known ?? [], ...(who.blank ?? []).filter((k) => typeof k === 'string' && k)])].sort((a, b) => b.length - a.length);
+    const secrets = [...new Set([...known ?? [], ...(who.blank ?? []).filter((k) => typeof k === 'string' && k), ...ownCredentials(url)])].sort((a, b) => b.length - a.length);
     const base = { kind: 'web', tool: who.tool, ...(who.wake ? { wake: who.wake } : {}), url: traceUrl(url, secrets, !known), method: init.method ?? 'GET' };
     try {
       const res = await get(url, init);
