@@ -12,6 +12,7 @@ import { hostKit } from './package-kit.js';
 import { officialManifests, official } from './provider-kit.js';
 import { startRealtimeServer } from '../fakes/realtime-server.js';
 import { pluginWords } from './l10n-kit.js';
+import { clockOf } from './clock.js';
 
 const root = new URL('../../', import.meta.url);
 const catalog = JSON.parse(await readFile(new URL('catalog/plugins.json', root), 'utf8')).plugins;
@@ -420,7 +421,9 @@ test('provider-gemini 2.6.0: Gemini through its own API (gemini-api), its chat m
   assert.equal(chat.note, undefined);
 });
 
-test("provider-gemini 2.2.0's Google Search (G4): a provider tool on each Gemini 3 chat model, paid only, 5,000 a month free then $0.014 each, with its switch's words for the provider's page", async () => {
+test("provider-gemini 2.2.0's Google Search (G4): a provider tool on each Gemini 3 chat model, paid only, 5,000 a month free then $0.014 each, with its switch's words for the provider's page", async (t) => {
+  // The cost below is at Flash's 2026 prices: from 2027-01-01 the description's schedule doubles them. The device's clock is in 2026.
+  clockOf(t)(Date.parse('2026-11-20T12:00:00Z') - Date.now());
   const chat = /** @type {any} */ ((await official('provider-gemini')).provider.abilities.chat);
   for (const x of chat.models) {
     assert.deepEqual(x.providerTools, [{

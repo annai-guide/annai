@@ -364,7 +364,7 @@ test("openai-realtime is a protocol in annai's catalog: a keyed name, reserved a
   assert.equal(OFFICIAL_NAMES['endpoint-type']['openai-realtime'], 'openai-realtime');
 });
 
-test('after a cut-in, what the cancelled answer still sends is dropped: its voice and its words were never heard', async () => {
+test("after a cut-in, what the cancelled answer still sends is dropped: its voice and its words were never heard; her turn ends as cut when that answer's response.done comes", async () => {
   const { type } = openaiRealtime();
   /** @type {(d: string | Uint8Array) => void} */
   let deliver = () => {};
@@ -385,11 +385,12 @@ test('after a cut-in, what the cancelled answer still sends is dropped: its voic
   say({ type: 'response.output_audio.delta', item_id: 'item_1', delta: toBase64(voice(1000)) });
   say({ type: 'response.output_audio_transcript.delta', item_id: 'item_1', delta: 'was built in steel' });
   say({ type: 'response.output_audio_transcript.done', item_id: 'item_1', transcript: 'Bixby Bridge was built in steel' });
-  assert.deepEqual(events.map((e) => e.type === 'said' ? `said:${e.text}` : e.type === 'turn' ? `turn:${e.end}` : e.type), ['audio', 'said:Bixby Bridge ', 'turn:interrupted']);
+  const seen = () => events.map((e) => e.type === 'said' ? `said:${e.text}` : e.type === 'turn' ? `turn:${e.end}` : e.type);
+  assert.deepEqual(seen(), ['audio', 'said:Bixby Bridge '], 'her turn goes on until the cancelled answer is done: more of it may be on its way');
   assert.deepEqual(sent.map((m) => m.type).slice(1), ['conversation.item.create', 'response.create', 'response.cancel', 'conversation.item.truncate']);
   say({ type: 'response.done', response: { id: 'resp_1', status: 'cancelled', output: [] } });
+  assert.deepEqual(seen(), ['audio', 'said:Bixby Bridge ', 'turn:interrupted'], 'ended once, as cut, with its response.done');
   assert.deepEqual(sent.map((m) => m.type).slice(5), ['conversation.item.create', 'response.create'], 'the note goes once the cancelled answer is done');
-  assert.equal(events.filter((e) => e.type === 'turn').length, 1);
   driver.close();
 });
 
@@ -457,7 +458,9 @@ test("a cancel that crosses an answer's natural end is no error: nothing noted, 
   say({ type: 'response.output_audio.delta', item_id: 'i1', delta: toBase64(new Uint8Array(48_000)) });
   driver.activity('start');
   assert.deepEqual(sent.slice(3).map((m) => m.type), ['response.cancel', 'conversation.item.truncate']);
+  assert.deepEqual(events.filter((e) => e.type === 'turn'), [], 'her turn ends with the answer being cancelled');
   say({ type: 'response.done', response: { id: 'r1', status: 'completed', output: [] } });
+  assert.deepEqual(events.filter((e) => e.type === 'turn' || e.type === 'made').map((e) => e.end ?? e.type), ['interrupted'], 'its end, all made after all, ends it as cut: never made, never complete');
   say({ type: 'error', error: { type: 'invalid_request_error', code: 'response_cancel_not_active', message: 'Cancellation failed: no active response found', param: null, event_id: sent[3].event_id ?? null } });
   driver.activity('end');
   say({ type: 'error', error: { type: 'invalid_request_error', code: 'input_audio_buffer_commit_empty', message: 'Error committing input audio buffer: buffer too small.', param: null, event_id: null } });
@@ -514,6 +517,7 @@ test("cut(playedMs), K5's tap on Shiori while Koe speaks: the response is cancel
   /** @type {any} */ (driver).cut(500);
   assert.deepEqual(sent.slice(-2).map((m) => m.type), ['response.cancel', 'conversation.item.truncate']);
   assert.deepEqual([sent.at(-1).item_id, sent.at(-1).audio_end_ms], ['i1', 500]);
+  say({ type: 'response.done', response: { id: 'r1', status: 'cancelled', output: [] } });
   assert.deepEqual(events.filter((e) => e.type === 'turn').map((e) => e.end), ['interrupted']);
   driver.close();
 });
@@ -543,4 +547,87 @@ test("response.done is the turn's made: before the turn completes by the clock; 
   } finally {
     await s.stop();
   }
+});
+
+// A card's call from a cut reply can pass an urgent reminder on (remind-first-next's second opinion, 2026-11-23): OpenAI sends a cancelled reply's last events
+// (a card's call it had made) before that reply's response.done (as the stand-in and OpenAI's documented order have it; not seen on the real service), so her turn ends there, after them, as Koe expects Gemini's interrupted to come (after the calls in
+// flight; not yet measured on the real service): a call that comes before it is her cut turn's, which passes nothing on. Before 0.6.3 the turn ended as the cancel was sent.
+test("a cut of an answer OpenAI is still making ends her turn when its response.done comes, after the cut answer's call on its way; a cut of one all made, her voice still playing, ends it at once", async () => {
+  const { driver, sent, events, say } = await bare();
+  const seen = () => events.filter((e) => e.type !== 'usage').map((e) => e.type === 'turn' ? `turn:${e.end}` : e.type === 'tool' ? `tool:${e.id}` : e.type);
+  driver.text('Show me the bridge.');
+  say({ type: 'response.created', response: { id: 'r1' } });
+  say({ type: 'response.output_audio.delta', item_id: 'i1', delta: toBase64(voice(3000)) });
+  driver.text('[annai] Train in 20 minutes', { interrupt: true, playedMs: 400 });
+  assert.deepEqual(sent.slice(3).map((m) => m.type), ['response.cancel', 'conversation.item.truncate'], 'cancelled at once; the reminder waits for the answer to end');
+  assert.deepEqual(seen(), ['audio'], 'her turn goes on: the cut answer is still on its way');
+  // The card's call, sent before OpenAI took the cancel, then the answer's end with it among what it made.
+  const call = { type: 'function_call', call_id: 'call_1', name: 'show', arguments: '{"card":{"title":"Bixby Bridge"}}' };
+  say({ type: 'response.function_call_arguments.done', response_id: 'r1', item_id: 'i2', call_id: 'call_1', name: 'show', arguments: call.arguments });
+  assert.deepEqual(seen(), ['audio', 'tool:call_1'], 'the call comes in her cut turn');
+  say({ type: 'response.done', response: { id: 'r1', status: 'cancelled', status_details: { type: 'cancelled', reason: 'client_cancelled' }, output: [call], usage: USAGE } });
+  assert.deepEqual(seen(), ['audio', 'tool:call_1', 'turn:interrupted'], 'her cut turn ends with its response.done, once, never made; the call told once');
+  assert.equal(events.filter((e) => e.type === 'usage').length, 1, 'the cut answer is paid for');
+  assert.deepEqual(sent.slice(5).map((m) => m.type), ['conversation.item.create', 'response.create'], 'then the reminder goes in');
+  // An answer all made, her voice still playing: nothing to cancel, so the cut ends her turn at once.
+  say({ type: 'response.created', response: { id: 'r2' } });
+  say({ type: 'response.output_audio.delta', item_id: 'i3', delta: toBase64(voice(3000)) });
+  say({ type: 'response.done', response: { id: 'r2', status: 'completed', output: [] } });
+  driver.activity('start');
+  assert.deepEqual(seen().slice(3), ['audio', 'made', 'turn:interrupted'], 'a cut of her voice alone ends her turn in the same call');
+  assert.equal(sent.filter((m) => m.type === 'response.cancel').length, 1, 'nothing to cancel');
+  driver.close();
+});
+
+test('a cut of an answer OpenAI then refuses to make ends her turn at the refusal, as cut (no response.done comes for it), and the answer to what waits behind it is heard and made', async () => {
+  const { driver, sent, events, notes, say } = await bare();
+  driver.text('Show me the bridge.');
+  driver.text('[annai] Train in 20 minutes', { interrupt: true });
+  assert.deepEqual(sent.slice(3).map((m) => m.type), ['response.cancel'], 'the answer asked for is cancelled, though OpenAI has not taken it up yet');
+  assert.deepEqual(events, [], 'nothing ends before OpenAI answers');
+  say({ type: 'error', error: { type: 'invalid_request_error', code: 'some_refusal', message: 'The response could not be created.', param: null, event_id: sent[2].event_id } });
+  say({ type: 'error', error: { type: 'invalid_request_error', code: 'response_cancel_not_active', message: 'Cancellation failed: no active response found', param: null, event_id: null } });
+  assert.deepEqual(events.map((e) => e.end), ['interrupted'], 'ended once, as cut, never complete');
+  assert.deepEqual(sent.slice(4).map((m) => m.type), ['conversation.item.create', 'response.create'], 'the reminder goes in');
+  await sleep(10);
+  assert.deepEqual(notes.filter((n) => n[1] === 'live.error').map((n) => n[2].code), ['some_refusal'], 'the refusal noted, the crossed cancel not');
+  // The cut ended with the refusal: the answer to the reminder is not the cancelled one's, so it is heard and made, never dropped or ended as cut.
+  say({ type: 'response.created', response: { id: 'r2' } });
+  say({ type: 'response.output_audio.delta', item_id: 'i2', delta: toBase64(voice(200)) });
+  say({ type: 'response.done', response: { id: 'r2', status: 'completed', output: [] } });
+  assert.deepEqual(events.map((e) => e.type === 'turn' ? `turn:${e.end}` : e.type), ['turn:interrupted', 'audio', 'made'], 'the next answer is heard and made');
+  driver.close();
+});
+
+test("a second cut while the first one's cancel is outstanding sends no second cancel: the cancelled answer ends her turn once, and the answer to what waits behind it is heard and made", async () => {
+  const { driver, sent, events, say } = await bare();
+  const seen = () => events.filter((e) => e.type !== 'usage').map((e) => e.type === 'turn' ? `turn:${e.end}` : e.type);
+  driver.text('Show me the bridge.');
+  say({ type: 'response.created', response: { id: 'r1' } });
+  say({ type: 'response.output_audio.delta', item_id: 'i1', delta: toBase64(voice(3000)) });
+  driver.text('[annai] Train in 20 minutes', { interrupt: true, playedMs: 400 });
+  // Koe's cut turn stays open until the cancelled answer's response.done, so the user speaking in that round trip cuts again.
+  driver.activity('start');
+  assert.equal(sent.filter((m) => m.type === 'response.cancel').length, 1, 'one answer, one cancel: the second cut finds it already cancelled');
+  assert.deepEqual(seen(), ['audio'], 'her turn goes on until the cancelled answer is done');
+  say({ type: 'response.done', response: { id: 'r1', status: 'cancelled', output: [] } });
+  assert.deepEqual(seen(), ['audio', 'turn:interrupted'], 'ended once, as cut');
+  say({ type: 'response.created', response: { id: 'r2' } });
+  say({ type: 'response.output_audio.delta', item_id: 'i2', delta: toBase64(voice(200)) });
+  say({ type: 'response.done', response: { id: 'r2', status: 'completed', output: [] } });
+  assert.deepEqual(seen(), ['audio', 'turn:interrupted', 'audio', 'made'], 'the next answer is not counted as cut: heard, and made');
+  driver.close();
+});
+
+test("a card's call that comes only in the cancelled answer's response.done (nothing of it was sent before) is told before her cut turn ends", async () => {
+  const { driver, events, say } = await bare();
+  const seen = () => events.filter((e) => e.type !== 'usage').map((e) => e.type === 'turn' ? `turn:${e.end}` : e.type === 'tool' ? `tool:${e.id}` : e.type);
+  driver.text('Show me the bridge.');
+  say({ type: 'response.created', response: { id: 'r1' } });
+  say({ type: 'response.output_audio.delta', item_id: 'i1', delta: toBase64(voice(3000)) });
+  driver.activity('start');
+  const call = { type: 'function_call', call_id: 'call_1', name: 'show', arguments: '{"card":{"title":"Bixby Bridge"}}' };
+  say({ type: 'response.done', response: { id: 'r1', status: 'cancelled', output: [call] } });
+  assert.deepEqual(seen(), ['audio', 'tool:call_1', 'turn:interrupted'], 'the call comes in her cut turn (where Koe lets it pass nothing on); the turn ends after it');
+  driver.close();
 });

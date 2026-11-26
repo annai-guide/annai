@@ -2198,6 +2198,76 @@ for (const [what, order] of /** @type {[string, 'with' | 'after'][]} */ ([['with
   });
 }
 
+// The same shape on OpenAI Realtime (the Deferred entry "With OpenAI Realtime, a card's call from a cut reply can pass an urgent reminder on", remind-first-next's
+// second opinion, 2026-11-23): OpenAI has no cut of its own, so the plugin cancels her reply, and her turn ends when that reply's response.done comes, after what of
+// it was already on its way. The link holds her card's call, and the cancelled reply's end behind it, until the cancel has gone out; the reminder waits in the plugin
+// meanwhile (OpenAI makes one response at a time). The card is her cut turn's, and passes nothing on; her answer to the reminder is only "Silent.", so she is asked
+// once more, and then annai shows it, never written as told. On 150b8446c the plugin ended her turn as it sent the cancel, so the call opened a new turn, which
+// wrote the reminder as told, and nothing showed it.
+test("Koe live on OpenAI Realtime: an urgent reminder cuts in while Koe talks, and the card she had already sent comes after the cancel: the card passes nothing on, and after a bare answer annai shows it, once, never written as told", async () => {
+  const card = { name: 'show', args: { card: { title: 'Bixby Bridge', text: 'About twenty minutes ahead.' } } };
+  const link = slowLink(); // before the session opens
+  const k = await liveKit([{ said: 'Here is the bridge.', audio: tone(3), tool: card }, { said: 'Silent.', audio: tone(0.3) }, { said: 'Silent.', audio: tone(0.3) }], { pace: 1, live: { type: 'openai-realtime' } });
+  const asks = () => textsIn(k).filter((x) => x.includes("hasn't reached the user")).length;
+  const reminderIn = () => textsIn(k).some((x) => x.includes('Train in 20 minutes'));
+  try {
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    /** @type {number[]} */
+    const askedAt = []; // the asks that had gone in as the reminder's card was raised
+    k.agent.on('notice', (/** @type {any} */ n) => { if (n.title === 'Reminder') askedAt.push(asks()); });
+    link.match = /"response\.function_call_arguments\./;
+    k.agent.send('Show me the bridge');
+    await until(() => link.held && k.platform.streams.length === 1, 30_000); // her words play, and her card's call is on its way
+    await k.agent.wake({ ...train(), urgent: true }); // it cuts in on her
+    await until(() => link.waiting().some((x) => x.includes('"response.done"')), 30_000); // the cancel went out: the reply's end is on the link, behind the call
+    assert.equal(reminderIn(), false, 'the reminder waits in the plugin for the cancelled reply to end');
+    link.go(); // the call comes now, then the reply's end
+    await soon(async () => (await k.events(['out.show'])).length === 1);
+    await soon(async () => reminderIn(), 30_000); // it went in once the reply ended
+    // Her answer is only "Silent.": annai shows it (on 150b8446c the card had written it as told, and nothing showed it).
+    await soon(async () => (await entries(k)).length === 1 || (await k.events(['reminder.told'])).length > 0, 30_000);
+    assert.deepEqual((await k.events(['reminder.told'])).map((/** @type {any} */ e) => e.data.reminders.map((/** @type {any} */ r) => r.text)), [], 'never written as told: the card was no answer to it');
+    assert.deepEqual(reminders(k.notices), [TRAIN], 'shown once');
+    assert.deepEqual(askedAt, [1], 'asked once more first: her cut turn missed nothing either');
+    assert.equal(asks(), 1, 'asked once, not more');
+    const next = await nextStart(k, true);
+    assert.deepEqual(reminders(next.cards), [], 'its entry settled it');
+    assert.equal(asks(), 1, 'asked once, not more, to the end');
+  } finally {
+    link.restore();
+    await k.done();
+  }
+});
+
+// What ends her cut turn when the cancelled reply's response.done never comes: the connection drops with it still on the link. The page's own close path lets her
+// turn go (#closed) and connects again, and the reminder in flight goes in again there; she says it, once, and nothing waits on the end that never came. (A guard
+// for the change above: it passes on 150b8446c too.)
+test("Koe live on OpenAI Realtime: an urgent reminder cuts in while Koe talks, and the connection drops before the cut reply's end comes: her turn ends with the drop, and the next connection gets the reminder, which she says once", async () => {
+  const card = { name: 'show', args: { card: { title: 'Bixby Bridge', text: 'About twenty minutes ahead.' } } };
+  const link = slowLink(); // before the session opens
+  const k = await liveKit([{ said: 'Here is the bridge.', audio: tone(3), tool: card }, { said, audio: tone(0.3) }, { said: 'Silent.', audio: tone(0.3) }], { pace: 1, live: { type: 'openai-realtime' } });
+  try {
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    link.match = /"response\.function_call_arguments\./;
+    k.agent.send('Show me the bridge');
+    await until(() => link.held && k.platform.streams.length === 1, 30_000); // her words play, and her card's call is on its way
+    await k.agent.wake({ ...train(), urgent: true }); // it cuts in on her
+    await until(() => link.waiting().some((x) => x.includes('"response.done"')), 30_000); // the cancel went out: the reply's end is on the link
+    k.server.close(1011, 'Internal error'); // and never comes
+    await soon(async () => (await k.events(['reminder.told'])).length + (await entries(k)).length >= 1, 30_000);
+    await idleAtOnce(k); // nothing of hers is left open
+    assert.equal(k.server.connections().length, 2, 'connected again');
+    assert.deepEqual((await k.events(['reminder.told'])).map((/** @type {any} */ e) => e.data.reminders.map((/** @type {any} */ r) => r.text)), [[TRAIN]], 'written as told, once: she said it');
+    assert.deepEqual(reminders(k.notices), [], 'no card for it');
+    assert.equal(textsIn(k).filter((x) => x.includes('Train in 20 minutes')).length, 1, 'it went in once, on the next connection');
+  } finally {
+    link.restore();
+    await k.done();
+  }
+});
+
 // A cut turn has a bound of Koe's own (realtime-cut-next's final review, findings 1 and 2): the link goes dead while the socket stays up, so the provider's end of
 // her cut turn never comes. The watchdog (SILENT_S) opens a fresh connection, which lets the left connection's turn go (#reconnect), and the reminder goes in again
 // there: she says it, written as told. A cut turn's trailing sound answers nothing (#answers), so it can't disarm the watchdog, and the quiet spell doesn't count a

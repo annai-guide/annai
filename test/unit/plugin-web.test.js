@@ -821,11 +821,15 @@ test('S4: the floor asks Nominatim no faster than places does, from one shared g
       }
       return wikiAnswer(url);
     };
+    const began = Date.now();
     await t.run('web_search', { query: 'nepenthe lunch' }, answer);
     await t.run('web_search', { query: 'bixby bridge' }, answer);
     // A places call in between takes its turn from the same gate.
     assert.equal(at.length, 2);
-    assert.ok(at[1] - at[0] >= 75, `${at[1] - at[0]} ms apart`);
+    // The gate books the first turn when the first search asks for it, after `began`, and the second one gap later. Counted from the first
+    // request instead, the test lost the time that request goes out after its turn, behind the floor's other parts: 15 to 33 ms on a loaded
+    // host with this test alone, so it failed every time (2026-11-25). Without the gate the second request came 23 to 53 ms after `began`.
+    assert.ok(at[1] - began >= 75, `${at[1] - began} ms after the first search began`);
   } finally {
     NOMINATIM_GAP.ms = 1;
   }
