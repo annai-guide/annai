@@ -428,16 +428,6 @@ export function nativeExtra(parts, i) {
   return Math.max(0, size);
 }
 
-/**
- * The characters a request's natives count twice when it is measured whole: each one's size less its extra (nativeExtra).
- * @param {Message[]} messages
- */
-export function nativeOverlap(messages) {
-  let n = 0;
-  for (const m of messages) m.parts.forEach((p, i) => { if (p.type === 'native') n += JSON.stringify(p.content).length - nativeExtra(m.parts, i); });
-  return n;
-}
-
 /** A tool-call id every provider accepts: letters, digits, "_" and "-", at most 64. @param {string} id */
 export function safeId(id) {
   return String(id).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 64) || 'call';

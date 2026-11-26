@@ -120,6 +120,20 @@ test('the utility model writes /trip/recap.md, with request copies of the photos
   assert.ok(turn, 'the call is in the trace');
 });
 
+test("the recap's photos take at most 4 MiB as base64, a number of their own: a Largest request (MiB) still stored from before doesn't change it (U141, 2026-11-26)", async () => {
+  const k = await aTrip();
+  await updateAppSettings(k.ws, { shiori: { compaction: { maxRequestMiB: 1 } }, photos: { request: { maxBytes: 1024 * 1024 } } });
+  // Eight photos of 700,000 bytes that go as they are, 933,336 characters each as base64: four fit in 4 MiB (3,733,344 of 4,194,304), a fifth would
+  // not. Before U141 the room was half the stored size, 524,288 here, and none went.
+  for (let i = 0; i < 8; i++) {
+    await k.ws.write(k.trip, `/files/2026-11-27-10${i}0.jpg`, new TextEncoder().encode(String(i).repeat(700_000)), { author: 'user', type: 'image/jpeg', meta: { taken: `2026-11-27T10:${i}0:00`, width: 1500, height: 1000 } });
+  }
+  const r = await writeRecap({ store: k.store, ws: k.ws, llm: k.llm, trip: k.trip, codec: fakeCodec(), locale: 'en-US' });
+  assert.equal(r.photos, 4);
+  const images = k.requests.at(-1).messages[0].parts.filter((/** @type {any} */ p) => p.type === 'image');
+  assert.deepEqual(images.map((/** @type {any} */ p) => p.data.length), [933_336, 933_336, 933_336, 933_336], 'four, each as it was taken');
+});
+
 // It was told "their profile says which", and a new install's profile said "Language: English", whatever the user speaks; the profile
 // has no Language line now. The language comes from the Languages setting, by the rule a summary's takes (compaction's summaryLanguage).
 test('the recap is written in the language the Languages setting and the user\'s own words give, not a profile line', async () => {
