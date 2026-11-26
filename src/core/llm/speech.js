@@ -26,7 +26,8 @@ const playable = (p) => p?.pcm instanceof Int16Array && Number.isFinite(p.rate);
  *   audio?: { data: Uint8Array, mediaType: string, seconds?: number }, text?: string, fetch?: (url: string, init: RequestInit) => Promise<Response>,
  *   signal?: AbortSignal, timeoutMs?: number, trace?: ReturnType<typeof import('./trace.js').modelTrace>, registry?: import('../registry.js').Registry,
  *   now?: () => number, wake?: string, plays?: string[], stream?: boolean, unstyled?: boolean, languages?: import('./contract.js').Languages, shared?: boolean,
- *   ability?: import('./config.js').Ability }} c  audio: transcribe it, with an 'in' type; text: say it, with an 'out' type; ability: the endpoint's, for its name where the address is wrong;
+ *   ability?: import('./config.js').Ability, onEvent?: (e: import('./contract.js').StreamEvent) => void }} c  audio: transcribe it, with an 'in' type; text: say it, with an 'out' type; ability: the endpoint's, for its name where the address is wrong;
+ *   onEvent: told `sending` on and off around a recording's send (the dock's Sending…, as callOnce tells it);
  *   plays: what the device plays; stream: the caller plays a stream; unstyled: send no style (a server refused it); languages: what the user speaks, for a
  *   transcription's language hint: a voice is given none, the voice APIs called here take none (a multilingual voice follows the text; one made for one language reads everything in it)
  * @returns {Promise<{ text?: string, clip?: Clip, stream?: SpeechStream, cost: number | undefined, ms: number }>} text from an 'in' type, a clip or a stream from an 'out' type
@@ -64,6 +65,13 @@ export async function speechCall(c) {
     t = setTimeout(() => timer.abort(new DOMException(why, 'TimeoutError')), ms);
   };
   let sending = 0; // the time the request has, until the answer's headers
+  /** The dock's Sending… is on (spec §16.3): a recording's request, from just before its POST until its send ends (`sendOver`), as callOnce says it. */
+  let up = false;
+  const sendOver = () => {
+    if (!up) return;
+    up = false;
+    c.onEvent?.({ type: 'sending', on: false });
+  };
   const signal = c.signal ? anySignal([c.signal, timer.signal]) : timer.signal;
   /** A stream's format and size so far. @type {{ format: string, bytes: number } | null} */
   let sound = null;
@@ -99,12 +107,15 @@ export async function speechCall(c) {
     /** @type {Response} */
     let res;
     sameOrigin(endpoint, built.url, c.ability); // the key goes only to the ability's address
+    up = hearing;
+    if (up) c.onEvent?.({ type: 'sending', on: true });
     try {
       res = await (c.fetch ?? ((url, init) => fetch(url, init)))(built.url, { method: 'POST', headers: built.headers, body: built.body, signal, redirect: 'manual' });
     } catch (e) {
       throw cannotConnect(e, signal);
     }
     sending = 0;
+    sendOver(); // the provider has the recording
     limit(/* en */ 'No answer in time.'); // the provider has the request
     status = res.status;
     noRedirect(res, endpoint);
@@ -128,6 +139,7 @@ export async function speechCall(c) {
     await trace('ok');
     return { ...out, cost, ms: now() - started };
   } catch (e) {
+    sendOver(); // a send that failed (cut, stopped, no connection) is over, before the next try or the card
     throw await failed(e);
   } finally {
     if (!handed) clearTimeout(t);

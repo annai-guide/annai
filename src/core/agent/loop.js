@@ -3377,7 +3377,7 @@ export class Agent {
           const r = await readFile({ kind, mediaType: m.mediaType, data, ...(m.name ? { name: m.name } : {}), ...(m.path ? { path: m.path } : {}) }, model ?? {}, {
             llm: this.llm, half: this.#half.name, pages: kind === 'pdf' ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope,
             secondMs: this.secondMs, explain: (e, role) => this.#explain(e, role), store: this.store, shared: this.#shared, copy: (p) => this.#pageCopy(p),
-            learn: (e, id) => this.#readerRefused(e, id),
+            learn: (e, id) => this.#readerRefused(e, id), onEvent: this.#sends,
           });
           return (key ? await this.#keep(scope, key, kind, r, wakeId) : null) ?? r;
         })();
@@ -3420,7 +3420,7 @@ export class Agent {
           const fresh = await readFile({ kind: pdf ? 'pdf' : 'image', mediaType: part.mediaType, data: bytes ? toBase64(bytes) : '', ...(pdf && part.name ? { name: part.name } : {}), ...(!pdf && part.path ? { path: part.path } : {}) }, model, {
             llm: this.llm, half: this.#half.name, pages: pdf ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope, secondMs: this.secondMs,
             explain: (e, role) => this.#explain(e, role), store: this.store, shared: this.#shared, copy: (p) => this.#pageCopy(p),
-            learn: (e, id) => this.#readerRefused(e, id),
+            learn: (e, id) => this.#readerRefused(e, id), onEvent: this.#sends,
           });
           return (key ? await this.#keep(this.scope, key, pdf ? 'pdf' : 'image', fresh, wakeId) : null) ?? fresh;
         })();
@@ -3720,6 +3720,11 @@ export class Agent {
     if (this.state.name === 'thinking') this.#setState('thinking');
   }
 
+  /** A call's sending events, the dock's: her turn's own and its transcriptions' (#streamed), and each reader's for her turn (readFile), whose other events aren't hers. @param {any} ev */
+  #sends = (ev) => {
+    if (ev.type === 'sending' && ev.on !== this.#up) this.#sendingNow(ev.on);
+  };
+
   /**
    * Speech streams in while the model writes it, and plays sentence by sentence (spec §10.1). A
    * call that starts over (another model) drops what it had begun to say. Its sending events are the dock's (#sendingNow). Her turn is one reply: each utterance it begins (here, #say, #askAloud)
@@ -3727,10 +3732,7 @@ export class Agent {
    * @param {any} ev a stream event @param {string} wakeId
    */
   #streamed(ev, wakeId) {
-    if (ev.type === 'sending') {
-      if (ev.on !== this.#up) this.#sendingNow(ev.on);
-      return;
-    }
+    if (ev.type === 'sending') return void this.#sends(ev);
     if (ev.type === 'restart') {
       this.#cutSpeech(wakeId, ev.by ?? null).catch((e) => this.#notSaved(e)); // what she said aloud, for her transcript: nobody waits on it
       return;

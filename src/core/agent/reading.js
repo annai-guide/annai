@@ -90,12 +90,13 @@ export function noReader(kind, { plugin = false, photos = false } = {}) {
  * @param {{ llm: { call: Function, config: () => Promise<any>, bench: import('../llm/fallback.js').Bench }, half: 'one' | 'kokoro' | 'koe', pages: import('../pdf-pages.js').PdfPages | null,
  *   signal: AbortSignal, wakeId: string, scope: string, secondMs: number, explain: (e: unknown, role: string) => string | Promise<string>, store: import('../types.js').Store,
  *   shared?: boolean, copy?: (page: import('../pdf-pages.js').PageImage) => Promise<import('../pdf-pages.js').PageImage>,
- *   learn?: (err: import('../llm/contract.js').ProviderError, modelId: string) => Promise<null> }} o
+ *   learn?: (err: import('../llm/contract.js').ProviderError, modelId: string) => Promise<null>, onEvent?: (e: import('../llm/contract.js').StreamEvent) => void }} o
  *   explain: why a reader failed, in English for the model (the loop's, which knows whether the device is online, and blanks every key annai keeps);
  *   store: whose keys the PDF pages plugin's error is blanked of; shared: the half's turn shares the link with the other half's (loop.js), and
  *   so does each reader's send; copy: a page picture as a request sends it (the loop's: under the photos' request limits, the readers'
  *   among them, by their encoder, spec §7.2), else each goes as drawn; learn: a reader's call refused for a photo (the loop's: saves the limit the
- *   provider's words state on the reader's record, and answers null, no fix: the call is not retried)
+ *   provider's words state on the reader's record, and answers null, no fix: the call is not retried); onEvent: each reader's call's events (the
+ *   loop's takes only `sending`, so her turn's dock says Sending… while a reader's photo or PDF goes up)
  * @returns {Promise<Reading>}
  */
 export async function readFile(file, model, o) {
@@ -129,7 +130,7 @@ export async function readFile(file, model, o) {
       try {
         const sent = typeof parts === 'function' ? parts(role) : parts;
         const r = await o.llm.call({
-          role, level: 'off', signal: stop.signal, scope: o.scope, record: { tag: 'describe', wake: o.wakeId }, firstOutputMs: wait(role), shared: Boolean(o.shared), repairImages: o.learn,
+          role, level: 'off', signal: stop.signal, scope: o.scope, record: { tag: 'describe', wake: o.wakeId }, firstOutputMs: wait(role), shared: Boolean(o.shared), repairImages: o.learn, ...(o.onEvent ? { onEvent: o.onEvent } : {}),
           request: { system, maxOutput, messages: [{ role: 'user', parts: [...sent, { type: 'text', text: ask }] }] },
         });
         if (r.reply.text.trim()) {
