@@ -1726,3 +1726,15 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the 3 is a guess from the first version (2026-10-16), not measured. Keeping the sound until a model can write it down would mean holding every unwritten line's sound up to the memory's cap, with no count. What it replaces was wider: before 2026-11-25 every later line failed with "Nothing in the speech-in list worked" until the model came back or annai restarted; now a line typed after it is answered, but in the few shapes with Koe and Kokoro that route (d)'s entries above name. The user's transcription model normally answers (the trace, 2026-11-23: 19 of 19). For a line a model heard as audio whose write-down failed, this has been the code's behaviour since 2026-10-16.
 - **Revisit when:** the trace is next read: count how often a heard line reaches its third turn (chief's C261); a traveller says a line they said was lost; or the user says "keep the sound until the memory cap and drop the count of three".
 - **Approved:** 2026-11-26, chief's decision C261 (not the user's words), Q-AH option (1); to undo: "keep the sound until the memory cap and drop the count of three". The user didn't ask for it.
+
+### A trigger type's validate, start, next or describe that crashes leaves no Trace line
+- **Kind:** deferred.
+- **What the traveller sees:** with a plugin's trigger type whose `validate`, `start`, `next` or `describe` throws (third-party; no official plugin's is known to): a watch whose `validate` throws never fires and watch_list says its trigger can't read it; one whose `start` throws has no start-time memory; one whose `next` throws drops out of the timer and fires only at a later position fix, late; one whose `describe` throws lists the bare type name. None of them writes a Trace line or counts against the plugin; only `check` does. The same before plugin-fails-next.
+- **Why:** plugin-fails-next's second opinion found it (2026-11-26, probed). Counting `validate` as a crash would run once per position fix per watch, so one stale watch could switch a whole plugin off within three fixes, worse than the silent watch; the right shape (one Trace line per watch, or a count only where a call of the plugin's own is made for the traveller) needs a look of its own.
+- **Revisit when:** the next version.
+
+### The official live plugins write one Trace note per audio chunk they can't decode
+- **Kind:** deferred.
+- **What the traveller sees:** when Gemini Live or OpenAI Realtime sends audio the plugin can't decode, each chunk is skipped and writes a `live.skipped` note to Trace, at audio rate while it lasts, outside the registry's repeat rule (plugin-fails-next counts and folds only the errors annai catches itself).
+- **Why:** found by plugin-fails-next's second opinion (2026-11-26, by reading); no such audio is in the user's trace. The plugins write the note themselves through `annai.events.append`, so the fix is in each plugin (one note per session, or the count of chunks skipped when the session ends).
+- **Revisit when:** the next version, or a trace shows these notes.
