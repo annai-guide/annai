@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
-import { fileURLToPath } from 'node:url';
+import { writeFile } from 'node:fs/promises';
 import { openApp, waitForServiceWorker, addProvider, pickProvider, savedBy, leaveSaved, startModelServer, anthropicToolReply, fakeMicrophone, startTrip } from './helpers.js';
 import { startRealtimeServer } from '../fakes/realtime-server.js';
+import { encodeWav } from '../../src/core/voice/pcm.js';
 
 // Koe's two lists, Koe · Live and Koe · Chat, and the Live chip's switch (the user, 2026-11-04: "also the realtime mode on and off"). Gemini Live at the stand-in realtime server, Kokoro and Koe · Chat at a stand-in
 // Anthropic server. Both browsers.
@@ -45,11 +46,16 @@ async function setUp(page, models, live) {
   await startTrip(page, 'Big Sur');
 }
 
-test("the Live chip: one tap switches which of Koe's lists talks, kept across a reload and in koeMode's stored values; shown only with a live model; a tap with Voice off and Live on opens live; Live off, Classic's microphone", async ({ page }) => {
+test("the Live chip: one tap switches which of Koe's lists talks, kept across a reload and in koeMode's stored values; shown only with a live model; a tap with Voice off and Live on opens live; Live off, Classic's microphone", async ({ page }, testInfo) => {
   const s = await startRealtimeServer({ flavour: 'gemini', key: KEY, turns: [{ said: 'Hello.', audio: new Uint8Array(4800) }] });
   const llm = await startModelServer({ '/kokoro/v1/messages': sse([sleep]), '/koe/v1/messages': sse([{ name: 'speak', input: { text: 'Classic here.' } }, sleep]) });
   try {
-    await fakeMicrophone(page, [fileURLToPath(new URL('../fixtures/voice/where-eat.wav', import.meta.url))]);
+    // A microphone with no speech in it: the microphones open here only to show which one opens. With a speech clip, Classic's kept what it
+    // heard when the second tap came late (a loaded host), and with no speech-in model Koe's list failed on that line and rested, so the
+    // typed "Hello" went to Kokoro, whose turn failed on the same clip (2026-11-25: 24 of 48 failed so).
+    const quiet = testInfo.outputPath('quiet.wav');
+    await writeFile(quiet, Buffer.from(encodeWav(new Float32Array(16000), 16000)));
+    await fakeMicrophone(page, [quiet]);
     await setUp(page, llm.origin, s.origin);
     const chip = page.locator('.voice-chip');
     const live = page.locator('.koe-live-chip');
