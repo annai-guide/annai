@@ -3520,9 +3520,10 @@ test("a reader's photo whose send is cut at its time says Thinking again when it
   await storedPhoto(k, '/files/p.webp', 'image/webp');
   const seen = dockAndCards(k);
   k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
-  await idleAtOnce(k, 600_000);
+  await idleAtOnce(k, 600_000); // past the reader's wait for its first words plus its send's time (sendMs), on the test clock
   assert.deepEqual(seen.slice(0, 3), ['Thinking · tap to stop', 'Sending… · tap to stop', 'Thinking · tap to stop']);
   assert.ok(!seen.slice(3).includes('Sending… · tap to stop'), 'no Sending… after the cut');
+  assert.match(JSON.stringify(k.sent['model-0'][0].messages), /couldn't be described/, 'her model is told the photo went undescribed');
   assert.equal(k.agent.state.label, 'Tap to talk');
 });
 

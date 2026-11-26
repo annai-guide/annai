@@ -409,3 +409,17 @@ test("a transcription says sending on before its POST and off at its answer's he
   assert.deepEqual(await run((seen) => async () => { seen.push('asked'); return new Response('no', { status: 503 }); }), ['sending on', 'asked', 'sending off', 'failed overloaded']);
   assert.deepEqual(await run((seen) => async () => { seen.push('asked'); return new Response(new Uint8Array([1]), { headers: { 'content-type': 'audio/mpeg' } }); }, { text: 'Hello.' }), ['asked'], 'a voice sends words: no Sending…');
 });
+
+test("the service hands a transcription's onEvent to its call, as the voice passes her turn's on (sending2-next)", async () => {
+  const { registry, store, ws } = await setup();
+  registry.add('test', 'endpoint-type', hears);
+  const { p, m } = speechProvider('transcription', 'test-in', 'Ears', 'https://ears.test', 'ears-1');
+  await saveProvider(ws, p, [m]);
+  const llm = createLlm({ store, ws, plugins: new PluginHost({ registry, workspace: ws }), fetch: /** @type {any} */ (async () => Response.json({ text: 'Where should we eat?' })) });
+  /** @type {string[]} */
+  const seen = [];
+  const audio = { data: new Uint8Array(4000), mediaType: 'audio/wav', seconds: 1 };
+  const r = await llm.transcribe({ modelId: m.id, audio, onEvent: (/** @type {any} */ e) => seen.push(`${e.type} ${e.on ? 'on' : 'off'}`) });
+  assert.equal(/** @type {any} */ (r).text, 'Where should we eat?');
+  assert.deepEqual(seen, ['sending on', 'sending off']);
+});
