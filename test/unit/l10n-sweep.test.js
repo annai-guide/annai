@@ -82,6 +82,8 @@ test("a typed address, prices and a server's answer: the screens' words, and Eng
   assert.equal(addressProblem('example.com'), "example.com isn't a web address: give it with https:// in front.");
   assert.equal(addressShown('example.com'), 'example.comはWebアドレスではありません。先頭に https:// を付けてください。');
   assert.equal(addressShown('https://example.com'), null);
+  assert.equal(addressShown('https://someone:pw-typed@example.com'), 'このアドレスには、@の前にユーザー名かパスワードが含まれていて、リクエストでは送信できません。その部分を削除し、キーは「APIキー」の欄に入れてください。');
+  assert.equal(addressProblem('https://someone:pw-typed@example.com'), "This address holds a name or password before an @, which a request can't carry. Leave it out, and put the key in the API key field.");
   assert.equal(pricesProblem({ input: -1 }), 'input is not a price: it is a number, not below 0.');
   assert.equal(pricesShown({ input: -1 }), 'inputが料金として正しくありません。0以上の数値にしてください。');
   const e = await answerJSON(new Response('nope', { status: 503 }), 'en.wikipedia.org').catch((x) => x);

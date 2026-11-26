@@ -185,7 +185,7 @@ test('moving over: endpoints from before providers, with their keys, are removed
   await expect(page.locator('.notice', { hasText: 'Settings → Models changed' })).toHaveCount(0);
 });
 
-test("fix pass: an address typed without https:// isn't saved, on the provider and on an ability, and the words say what to type", async ({ page }) => {
+test("fix pass: an address typed without https://, or with a name or password before an @, isn't saved, on the provider and on an ability, and the words say what to type", async ({ page }) => {
   await openApp(page, '#/models');
   await waitForServiceWorker(page);
   await add(page, 'Custom provider');
@@ -196,6 +196,11 @@ test("fix pass: an address typed without https:// isn't saved, on the provider a
   await page.reload();
   await expect(page.getByLabel('Address', { exact: true })).toHaveValue('');
   await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', 'not set');
+  // No browser makes a request to an address with a name or password before an @: refused, never repeating the address.
+  await page.getByLabel('Address', { exact: true }).fill('https://someone:pw-typed@llm.example.com/v1');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText("This address holds a name or password before an @, which a request can't carry. Leave it out, and put the key in the API key field.")).toBeVisible();
+  await expect(page.getByText(/pw-typed/)).toHaveCount(0);
   await page.getByLabel('Address', { exact: true }).fill('https://llm.example.com/v1');
   await page.getByLabel('API key').fill('sk-test-typed-address-1');
   await page.getByRole('button', { name: 'Save' }).click();

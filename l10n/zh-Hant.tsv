@@ -798,9 +798,10 @@ brqvs6	ok	{0}, which you turned off, isn't switched on by this.	你之前關閉�
 1rnb3p5	ok	The plugin didn't provide a kind of backup place {0}.	該外掛程式沒有提供備份位置類型 {0}。	src/core/llm/official.js:309	{0} = type; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
 cpehgy	ok	The plugin didn't provide an endpoint type {0}.	該外掛程式沒有提供端點類型 {0}。	src/core/llm/official.js:311	{0} = type; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
 1jtsyij	ok	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	在手機上，localhost 指的是手機本身。另一台電腦上的伺服器需要 https 網址。瀏覽器會封鎖 https 頁面發出的一般 http 請求，所以 annai 存取區域網路內的伺服器時只使用 https。其中一種方法是使用 Tailscale Serve，並讓手機加入你的 tailnet：在伺服器所在的電腦上執行 {0}，然後在 annai 中填入 {1}。伺服器還必須允許來自 annai.guide 的 CORS 請求。Chrome 142 以上版本可能會要求你允許存取區域網路。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
-557vva	ok	{0} isn't a web address: give it with https:// in front.	{0} 不是有效的網址，請在前面加上 https://。	src/core/llm/provider-desc.js:164	{0} = url
-y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	網址必須以 https:// 開頭（只有 localhost 或 127.0.0.1 可以用 http://）。瀏覽器會封鎖 https 頁面發出的一般 http 請求，而 annai 存取區域網路內的伺服器時只使用 https，所以另一台電腦上的伺服器需要 https 網址。可以用 Tailscale Serve 做到：{0}。伺服器還必須允許來自 annai.guide 的 CORS 請求。	src/core/llm/provider-desc.js:165	{0} = serve(f.port)
-1qpfdfv	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1).	網址必須以 https:// 開頭（只有 localhost 或 127.0.0.1 可以用 http://）。	src/core/llm/provider-desc.js:166	
+557vva	ok	{0} isn't a web address: give it with https:// in front.	{0} 不是有效的網址，請在前面加上 https://。	src/core/llm/provider-desc.js:167	{0} = url
+1or6zgd	ok	This address holds a name or password before an @, which a request can't carry. Leave it out, and put the key in the API key field.	這個網址的 @ 前面帶有使用者名稱或密碼，請求無法帶上這些資訊。請去掉這部分，把金鑰填到「API 金鑰」欄位中。	src/core/llm/provider-desc.js:168	Note: "API key" as the provider page names its field (API 金鑰); the words never repeat the address, which holds a password. Phrased as the MCP server row says the same.
+y6rxxs	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: {0}. The server must also allow CORS from annai.guide.	網址必須以 https:// 開頭（只有 localhost 或 127.0.0.1 可以用 http://）。瀏覽器會封鎖 https 頁面發出的一般 http 請求，而 annai 存取區域網路內的伺服器時只使用 https，所以另一台電腦上的伺服器需要 https 網址。可以用 Tailscale Serve 做到：{0}。伺服器還必須允許來自 annai.guide 的 CORS 請求。	src/core/llm/provider-desc.js:169	{0} = serve(f.port)
+1qpfdfv	ok	An address must start with https:// (http:// only for localhost or 127.0.0.1).	網址必須以 https:// 開頭（只有 localhost 或 127.0.0.1 可以用 http://）。	src/core/llm/provider-desc.js:170	
 xx043p	ok	"{0}" is already added here.	「{0}」已經新增過了。	src/core/llm/providers.js:324	{0} = providerModelId
 1xwbser	ok	It is turned off.	已關閉。	src/core/llm/service.js:301	Note: said of a plugin named before it on the screen.
 1pqsrb3	ok	It isn't running. Look at it in Settings → Plugins.	沒有在執行。請到設定 → 外掛程式查看。	src/core/llm/service.js:303	Note: said of a plugin named before it on the screen.
@@ -1763,55 +1764,55 @@ twulcv	ok	Version restored	版本已還原	src/ui/screens/file.js:257
 w8mx56	ok	Deleted by {0} {1}	{1}由 {0} 刪除	src/ui/screens/file.js:271	{0} = who; {1} = ago
 1cdkli8	ok	Saved by you {0}	{0}由你儲存	src/ui/screens/file.js:272	{0} = ago
 1xtgqpw	ok	Saved by {0} {1}	{1}由 {0} 儲存	src/ui/screens/file.js:272	{0} = who; {1} = ago
-1azyvjt	ok	Choose a file instead	改為選擇檔案	src/ui/screens/import.js:52	
-18kfutv	ok	Choose an annai file (.annai.zip or .annai) to open it.	請選擇要開啟的 annai 檔案（.annai.zip 或 .annai）。	src/ui/screens/import.js:65	
-s6np2n	ok	Choose a file	選擇檔案	src/ui/screens/import.js:65	
-9pczbj	ok	Choose another file	選擇其他檔案	src/ui/screens/import.js:69	
-vpnx22	ok	annai couldn't download that file. The site may not allow other web apps to download it.	無法下載該檔案。該網站可能不允許其他網頁應用程式下載。	src/ui/screens/import.js:89	
-9ekzd	ok	The download failed ({0} {1}).	下載失敗（{0} {1}）。	src/ui/screens/import.js:92	{0} = res.status; {1} = res.statusText
-1bf856r	ok	file	檔案	src/ui/screens/import.js:93	Note: A file's name when its address has none.
-1i00iqj	ok	Reading {0}…	正在讀取 {0}…	src/ui/screens/import.js:101	{0} = source.name
-1fn8tif	ok	This backup changed on the server while annai was getting it. Open it again from the backups.	取得備份期間，伺服器上的這個備份有了變動。請從備份清單中重新開啟。	src/ui/screens/import.js:148	
-t5o4f	ok	{0} is encrypted.	{0} 已加密。	src/ui/screens/import.js:160	{0} = source.name
-17ezgqd	ok	Unlock	解鎖	src/ui/screens/import.js:163	
-bqwneo#other	ok	# conversations	# 個對話	src/ui/screens/import.js:181	plural; # = grouped.length; English: "# conversation" (one), "# conversations" (other)
-19fmt2v	ok	Add as new ones	新增為新對話	src/ui/screens/import.js:184	
-voh4dn	ok	You already have some of them	其中有一些已經存在	src/ui/screens/import.js:184	
-w63stp	ok	Replace mine (yours move to Archived)	替換現有的（原有的移到「已封存」）	src/ui/screens/import.js:184	
-mp7avp	ok	with history	含歷史	src/ui/screens/import.js:189	
-1z02pm0	ok	You already have "{0}"	「{0}」已存在	src/ui/screens/import.js:191	{0} = trip.existingTitle
-9jpcd5	ok	Add as a new one	另外新增一份	src/ui/screens/import.js:191	
-d7gpc4	ok	Replace mine (yours moves to Archived)	替換現有的（原有的移到「已封存」）	src/ui/screens/import.js:191	Note: "yours" is the trip already here: it is archived, not lost.
-1pmufvp#other	ok	you already have # of them	其中 # 個已存在	src/ui/screens/import.js:201	plural; # = mine; English: "you already have # of them" (one), "you already have # of them" (other); Note: after the fold's count and size, how many of its rows are already on this phone (each has its choice inside the fold); "of them" is of the trips and conversations.
-1og8gcf	ok	Replace my profile and memory with the ones in this file	用此檔案中的內容替換我的個人資料和記憶	src/ui/screens/import.js:204	Note: profile → 個人資料, as elsewhere.
-rfnd00	ok	Replace my settings	替換我的設定	src/ui/screens/import.js:205	
-1ai6503	ok	Replace my plugins	替換我的外掛程式	src/ui/screens/import.js:206	
-z9765v	ok	Restore API keys (keys already on this device are kept)	還原 API 金鑰（此裝置上已有的金鑰會保留）	src/ui/screens/import.js:207	
-tlkozp	ok	Reading…	正在讀取…	src/ui/screens/import.js:216	
-jbong3	ok	Reading {0} of {1}…	正在讀取（{0}/{1}）…	src/ui/screens/import.js:229	{0} = num(Math.min(done + 1, total)); {1} = num(total)
-i4v1g5	ok	Installing the plugins your providers use…	正在安裝供應商所需的外掛程式…	src/ui/screens/import.js:244	
-3wbwnq	ok	Open it	開啟	src/ui/screens/import.js:255	
-1xgy3zf#other	ok	# older copies moved to Archived.	已將 # 個較早的副本移到「已封存」。	src/ui/screens/import.js:256	plural; # = result.archived.length; English: "# older copy moved to Archived." (one), "# older copies moved to Archived." (other)
-j0c8lo	ok	Imported plugins arrive switched off. Turn on the ones you trust in Plugins.	匯入的外掛程式預設為關閉。請在「外掛程式」中開啟你信任的外掛程式。	src/ui/screens/import.js:259	
-3qem9k	ok	annai's next backup to that place builds on this one.	下次備份到那裡時會以此為基礎。	src/ui/screens/import.js:261	
-o7fto4	ok	Import	匯入	src/ui/screens/import.js:269	
-18d2xm5	ok	A backup of everything exported {0} from annai {1}.	{0}從 annai {1} 匯出的完整備份。	src/ui/screens/import.js:272	{0} = ago; {1} = app
-6fr2dj	ok	A backup of everything exported {0} from annai {1}, encrypted.	{0}從 annai {1} 匯出的完整備份，已加密。	src/ui/screens/import.js:272	{0} = ago; {1} = app
-12hmses	ok	Exported {0} from annai {1}, encrypted.	{0}從 annai {1} 匯出，已加密。	src/ui/screens/import.js:273	{0} = ago; {1} = app
-3kii3s	ok	Exported {0} from annai {1}.	{0}從 annai {1} 匯出。	src/ui/screens/import.js:273	{0} = ago; {1} = app
-7itrym	ok	There are no trips or conversations in this file.	此檔案中沒有旅行或對話。	src/ui/screens/import.js:276	
-1y35b48	ok	Restarting…	正在重新啟動…	src/ui/screens/import.js:292	
-5wjjb4	ok	Restart annai to use the imported settings and plugins.	重新啟動 annai 後即可使用匯入的設定和外掛程式。	src/ui/screens/import.js:297	
-1p9jpyr	ok	Installed what your providers use: {0}.	已安裝供應商所需的外掛程式：{0}。	src/ui/screens/import.js:307	{0} = list(g.installed, 'plain')
-c0u62t#other	ok	Kept your own API keys for {0}; the ones in the file weren't used.	已保留原有的 {0} API 金鑰，未使用檔案中的金鑰。	src/ui/screens/import.js:316	plural; # = n; {0} = list(names, 'plain'); English: "Kept your own API key for {0}; the one in the file wasn't used." (one), "Kept your own API keys for {0}; the ones in the file weren't used." (other)
-jsttcj#other	ok	Kept your own API keys; the ones in the file weren't used.	已保留原有的 API 金鑰，未使用檔案中的金鑰。	src/ui/screens/import.js:317	plural; # = n; English: "Kept your own API key; the one in the file wasn't used." (one), "Kept your own API keys; the ones in the file weren't used." (other)
-ci7mt7	ok	Add to {0}	新增到「{0}」	src/ui/screens/import.js:365	{0} = trip.title
-f30m7u#other	ok	and # more photos	還有 # 張照片	src/ui/screens/import.js:382	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
-odevmc	ok	Adding {0} of {1}…	正在新增（{0}/{1}）…	src/ui/screens/import.js:395	{0} = num(Math.min(done + 1, total)); {1} = num(total)
-6u51xq#other	ok	Added {0}, and # itinerary items from the calendar	已新增 {0}，行事曆中的 # 個項目已加入行程	src/ui/screens/import.js:406	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); Note: {0} is what was added: a count phrase ("1 個檔案", "3 個檔案", "2 張照片"), never a path, so the space after the verb is right.
-1ol4sj	draft	Adding {0} failed	未能新增 {0}	src/ui/screens/import.js:425	{0} = what; Note: a card's title when the share screen's add failed after the traveller left it; {0} is what was being added, as in "Add {0}" ("a file", "3 files", "2 photos"); worded as "{0} wasn't added".
-1cj3r6h	ok	Add only what you just shared yourself.	只新增你自己剛剛分享的內容。	src/ui/screens/import.js:445	
-1eim38p	ok	Also here: {0}, an annai backup or export. It isn't added with the rest; open it on its own.	這裡還有 {0}，是 annai 的備份或匯出檔案。它不會和其他內容一起新增，請單獨開啟。	src/ui/screens/import.js:449	{0} = a.file.name
+1azyvjt	ok	Choose a file instead	改為選擇檔案	src/ui/screens/import.js:53	
+18kfutv	ok	Choose an annai file (.annai.zip or .annai) to open it.	請選擇要開啟的 annai 檔案（.annai.zip 或 .annai）。	src/ui/screens/import.js:66	
+s6np2n	ok	Choose a file	選擇檔案	src/ui/screens/import.js:66	
+9pczbj	ok	Choose another file	選擇其他檔案	src/ui/screens/import.js:70	
+vpnx22	ok	annai couldn't download that file. The site may not allow other web apps to download it.	無法下載該檔案。該網站可能不允許其他網頁應用程式下載。	src/ui/screens/import.js:90	
+9ekzd	ok	The download failed ({0} {1}).	下載失敗（{0} {1}）。	src/ui/screens/import.js:93	{0} = res.status; {1} = res.statusText
+1bf856r	ok	file	檔案	src/ui/screens/import.js:95	Note: A file's name when its address has none.
+1i00iqj	ok	Reading {0}…	正在讀取 {0}…	src/ui/screens/import.js:103	{0} = source.name
+1fn8tif	ok	This backup changed on the server while annai was getting it. Open it again from the backups.	取得備份期間，伺服器上的這個備份有了變動。請從備份清單中重新開啟。	src/ui/screens/import.js:150	
+t5o4f	ok	{0} is encrypted.	{0} 已加密。	src/ui/screens/import.js:162	{0} = source.name
+17ezgqd	ok	Unlock	解鎖	src/ui/screens/import.js:165	
+bqwneo#other	ok	# conversations	# 個對話	src/ui/screens/import.js:183	plural; # = grouped.length; English: "# conversation" (one), "# conversations" (other)
+19fmt2v	ok	Add as new ones	新增為新對話	src/ui/screens/import.js:186	
+voh4dn	ok	You already have some of them	其中有一些已經存在	src/ui/screens/import.js:186	
+w63stp	ok	Replace mine (yours move to Archived)	替換現有的（原有的移到「已封存」）	src/ui/screens/import.js:186	
+mp7avp	ok	with history	含歷史	src/ui/screens/import.js:191	
+1z02pm0	ok	You already have "{0}"	「{0}」已存在	src/ui/screens/import.js:193	{0} = trip.existingTitle
+9jpcd5	ok	Add as a new one	另外新增一份	src/ui/screens/import.js:193	
+d7gpc4	ok	Replace mine (yours moves to Archived)	替換現有的（原有的移到「已封存」）	src/ui/screens/import.js:193	Note: "yours" is the trip already here: it is archived, not lost.
+1pmufvp#other	ok	you already have # of them	其中 # 個已存在	src/ui/screens/import.js:203	plural; # = mine; English: "you already have # of them" (one), "you already have # of them" (other); Note: after the fold's count and size, how many of its rows are already on this phone (each has its choice inside the fold); "of them" is of the trips and conversations.
+1og8gcf	ok	Replace my profile and memory with the ones in this file	用此檔案中的內容替換我的個人資料和記憶	src/ui/screens/import.js:206	Note: profile → 個人資料, as elsewhere.
+rfnd00	ok	Replace my settings	替換我的設定	src/ui/screens/import.js:207	
+1ai6503	ok	Replace my plugins	替換我的外掛程式	src/ui/screens/import.js:208	
+z9765v	ok	Restore API keys (keys already on this device are kept)	還原 API 金鑰（此裝置上已有的金鑰會保留）	src/ui/screens/import.js:209	
+tlkozp	ok	Reading…	正在讀取…	src/ui/screens/import.js:218	
+jbong3	ok	Reading {0} of {1}…	正在讀取（{0}/{1}）…	src/ui/screens/import.js:231	{0} = num(Math.min(done + 1, total)); {1} = num(total)
+i4v1g5	ok	Installing the plugins your providers use…	正在安裝供應商所需的外掛程式…	src/ui/screens/import.js:246	
+3wbwnq	ok	Open it	開啟	src/ui/screens/import.js:257	
+1xgy3zf#other	ok	# older copies moved to Archived.	已將 # 個較早的副本移到「已封存」。	src/ui/screens/import.js:258	plural; # = result.archived.length; English: "# older copy moved to Archived." (one), "# older copies moved to Archived." (other)
+j0c8lo	ok	Imported plugins arrive switched off. Turn on the ones you trust in Plugins.	匯入的外掛程式預設為關閉。請在「外掛程式」中開啟你信任的外掛程式。	src/ui/screens/import.js:261	
+3qem9k	ok	annai's next backup to that place builds on this one.	下次備份到那裡時會以此為基礎。	src/ui/screens/import.js:263	
+o7fto4	ok	Import	匯入	src/ui/screens/import.js:271	
+18d2xm5	ok	A backup of everything exported {0} from annai {1}.	{0}從 annai {1} 匯出的完整備份。	src/ui/screens/import.js:274	{0} = ago; {1} = app
+6fr2dj	ok	A backup of everything exported {0} from annai {1}, encrypted.	{0}從 annai {1} 匯出的完整備份，已加密。	src/ui/screens/import.js:274	{0} = ago; {1} = app
+12hmses	ok	Exported {0} from annai {1}, encrypted.	{0}從 annai {1} 匯出，已加密。	src/ui/screens/import.js:275	{0} = ago; {1} = app
+3kii3s	ok	Exported {0} from annai {1}.	{0}從 annai {1} 匯出。	src/ui/screens/import.js:275	{0} = ago; {1} = app
+7itrym	ok	There are no trips or conversations in this file.	此檔案中沒有旅行或對話。	src/ui/screens/import.js:278	
+1y35b48	ok	Restarting…	正在重新啟動…	src/ui/screens/import.js:294	
+5wjjb4	ok	Restart annai to use the imported settings and plugins.	重新啟動 annai 後即可使用匯入的設定和外掛程式。	src/ui/screens/import.js:299	
+1p9jpyr	ok	Installed what your providers use: {0}.	已安裝供應商所需的外掛程式：{0}。	src/ui/screens/import.js:309	{0} = list(g.installed, 'plain')
+c0u62t#other	ok	Kept your own API keys for {0}; the ones in the file weren't used.	已保留原有的 {0} API 金鑰，未使用檔案中的金鑰。	src/ui/screens/import.js:318	plural; # = n; {0} = list(names, 'plain'); English: "Kept your own API key for {0}; the one in the file wasn't used." (one), "Kept your own API keys for {0}; the ones in the file weren't used." (other)
+jsttcj#other	ok	Kept your own API keys; the ones in the file weren't used.	已保留原有的 API 金鑰，未使用檔案中的金鑰。	src/ui/screens/import.js:319	plural; # = n; English: "Kept your own API key; the one in the file wasn't used." (one), "Kept your own API keys; the ones in the file weren't used." (other)
+ci7mt7	ok	Add to {0}	新增到「{0}」	src/ui/screens/import.js:367	{0} = trip.title
+f30m7u#other	ok	and # more photos	還有 # 張照片	src/ui/screens/import.js:384	plural; # = photos.length - shown.length; English: "and # more photo" (one), "and # more photos" (other)
+odevmc	ok	Adding {0} of {1}…	正在新增（{0}/{1}）…	src/ui/screens/import.js:397	{0} = num(Math.min(done + 1, total)); {1} = num(total)
+6u51xq#other	ok	Added {0}, and # itinerary items from the calendar	已新增 {0}，行事曆中的 # 個項目已加入行程	src/ui/screens/import.js:408	plural; # = planned.length; {0} = what; English: "Added {0}, and # itinerary item from the calendar" (one), "Added {0}, and # itinerary items from the calendar" (other); Note: {0} is what was added: a count phrase ("1 個檔案", "3 個檔案", "2 張照片"), never a path, so the space after the verb is right.
+1ol4sj	draft	Adding {0} failed	未能新增 {0}	src/ui/screens/import.js:427	{0} = what; Note: a card's title when the share screen's add failed after the traveller left it; {0} is what was being added, as in "Add {0}" ("a file", "3 files", "2 photos"); worded as "{0} wasn't added".
+1cj3r6h	ok	Add only what you just shared yourself.	只新增你自己剛剛分享的內容。	src/ui/screens/import.js:447	
+1eim38p	ok	Also here: {0}, an annai backup or export. It isn't added with the rest; open it on its own.	這裡還有 {0}，是 annai 的備份或匯出檔案。它不會和其他內容一起新增，請單獨開啟。	src/ui/screens/import.js:451	{0} = a.file.name
 qqpumv	ok	This isn't on the itinerary	這不在行程中	src/ui/screens/item.js:24	Note: Taiwan wording; Plan is 行程.
 15biluu	ok	Go to the itinerary	前往行程	src/ui/screens/item.js:25	Note: Taiwan wording; Plan is 行程.
 1wp3w0c	ok	All day, {0}	全天（{0}）	src/ui/screens/item.js:41	{0} = start; Note: Taiwan wording; {0} is the day.

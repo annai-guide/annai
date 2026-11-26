@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkProviderDesc, descOrigins, addressProblem, ABILITY_KINDS, CATEGORIES, ROLE_KINDS } from '../../src/core/llm/provider-desc.js';
+import { checkProviderDesc, descOrigins, addressProblem, addressShown, ABILITY_KINDS, CATEGORIES, ROLE_KINDS } from '../../src/core/llm/provider-desc.js';
 import { OPENAI_LIKE, LOCAL_SPEECH } from './provider-kit.js';
 
 /** @param {any} desc @param {string} id @param {any} ability */
@@ -55,6 +55,19 @@ test('fix pass: an address typed on a provider\'s page is checked by the same ru
   assert.match(String(addressProblem('api.example.com/v1')), /isn't a web address.*https:\/\//);
   assert.match(String(addressProblem('http://192.168.1.5:8080/v1')), /must start with https:\/\/ \(http:\/\/ only for localhost or 127\.0\.0\.1\)/);
   assert.match(String(addressProblem('ftp://example.com')), /must start with https/);
+});
+
+test("an address with a name or password before an @ is refused, in words that say where the key goes, never repeating the address: no browser sends a request to one", () => {
+  const WORDS = "This address holds a name or password before an @, which a request can't carry. Leave it out, and put the key in the API key field.";
+  for (const typed of ['https://someone:pw-typed@llm.example.com/v1', 'https://someone@llm.example.com/v1', 'https://:pw-typed@llm.example.com/v1', 'http://someone:pw-typed@localhost:8000/v1']) {
+    assert.equal(addressProblem(typed), WORDS, typed);
+    assert.equal(addressShown(typed), WORDS, typed);
+  }
+  // A bare @ holds neither, and the browsers send it (measured in Chromium and WebKit, 2026-11-25).
+  assert.equal(addressProblem('https://@llm.example.com/v1'), null);
+  // The scheme is said first: the name and password come out of an address that can be one.
+  assert.match(String(addressProblem('http://someone:pw-typed@192.168.1.5:8080/v1')), /^An address must start with https:\/\//);
+  assert.deepEqual(checkProviderDesc({ ...OPENAI_LIKE, baseUrl: 'https://someone:pw-typed@api.example.com/v1' }), [`$.baseUrl: ${WORDS}`]);
 });
 
 test('a server you run, at a plain http:// address on another computer, is told how to reach it: an https address, a Tailscale Serve command with its own port, and CORS; the rule stays', () => {
