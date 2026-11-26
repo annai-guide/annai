@@ -190,6 +190,21 @@ test.describe('opening a hosted archive', () => {
     await expect(page.getByText('Half-price Big Sur')).toBeVisible();
   });
 
+  test('a relative "#import=<url>" (a file beside annai\'s own copy) opens the file, named by its last part', async ({ page }) => {
+    const store = createMemoryStore();
+    const ws = new Workspace(store);
+    await ensureBaseScopes(ws);
+    const id = await createTrip(ws, { title: 'Beside Big Sur' });
+    const { blob } = await exportArchive(store, { kind: 'trip', scopes: [id], include: PRESETS.share, passphrase: 'p', iterations: 100_000, app: '0.1.0' });
+    const body = Buffer.from(await blob.arrayBuffer());
+    await page.route((url) => url.pathname.startsWith('/zz-shared/'), (route) => route.fulfill({ body, headers: { 'Content-Type': 'application/zip' } }));
+    await openApp(page, '#import=' + encodeURIComponent('/zz-shared/trip%20one.annai.zip'));
+    await expect(page.getByText('trip one.annai.zip is encrypted.')).toBeVisible();
+    await page.getByLabel('Passphrase').fill('p');
+    await page.getByRole('button', { name: 'Unlock' }).click();
+    await expect(page.getByText('Beside Big Sur')).toBeVisible();
+  });
+
   test('keys already on this device are kept on an import, and named as the screens name them, never by a key\'s id', async ({ page }) => {
     const store = createMemoryStore();
     const ws = new Workspace(store);
