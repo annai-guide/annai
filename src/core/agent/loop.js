@@ -245,7 +245,13 @@ function goneWords(sent, gone) {
  * on its own; typing: text in the box stops counting as typing this long after its last keystroke; most: the longest any turn waits, from its first wake. A turn that has started never restarts.
  */
 export const GATHER = Object.freeze({ quiet: 1.5, photo: 3, typing: 5, most: 20 });
-/** How many turns that worked try to write a segment down before it is written as not transcribed (spec §10.3). */
+/**
+ * How many times a model really asked for a segment's words and failed to make them (Kept.failed: one resting, or not in the list, asked nothing and
+ * counts for nothing) before it is written as not transcribed and its sound let go (spec §10.3). Three: not measured, a guess from the first version
+ * (2026-10-16). A rate limit or a server error that clears by itself clears within a try or two (a server error rests COOLDOWN_MS, 3 minutes, before
+ * its next ask, so a third failure is 6 minutes in), and one that fails three real asks is down, not limited; a smaller number gives up on a hiccup, a
+ * larger one keeps the sound (16 MB at most, HEARD_MAX_BYTES) for a model that is not coming back.
+ */
 export const WRITE_TRIES = 3;
 
 
@@ -472,9 +478,8 @@ export class Agent {
   /** When the window after she spoke ends (#after). */
   #afterBy = 0;
   #afterOpening = false;
-  /** Write-downs that failed, by segment id (WRITE_TRIES). @type {Map<string, number>} */
-  #writeTries = new Map();
-  /** The segments still unwritten when a turn of this half last didn't work: past their own turn, they fail no later request (resolveSpeech). @type {Set<string>} */
+  /** The segments still unwritten when a turn of this half ended: past their own turn, they fail no later request (resolveSpeech). Added to at each such end, never
+   * replaced: a turn of another conversation that ends says nothing of these. @type {Set<string>} */
   #unheard = new Set();
   /** @type {Half} */
   #half = ONE;
@@ -4352,12 +4357,12 @@ export class Agent {
 
   /**
    * The end of a turn: speech streamed but never said stops; the microphone closes unless the user
-   * tapped to talk (spec §6.2, §10.4); after a turn that worked, the half that hears writes down what was heard; after one that didn't, what
-   * it carried unwritten is past its turn (#unheard).
+   * tapped to talk (spec §6.2, §10.4); after a turn that worked, the half that hears writes down what was heard; what is still unwritten then, or
+   * after a turn that didn't work, is past its turn (#pastTurn).
    * @param {boolean} ok @param {string} wakeId
    */
   async #afterTurn(ok, wakeId) {
-    if (!ok) this.#unheard = new Set(this.transcript.unwritten());
+    if (!ok) this.#pastTurn();
     for (const u of this.#utterances.values()) u.stop();
     this.#utterances.clear();
     // She spoke and didn't sleep: she listens on (the second-drive design), through the gate, while its time is left; sleep, the user's Stop, or none left closes it.
@@ -4382,12 +4387,24 @@ export class Agent {
       });
     } else if (!this.#ear && this.#voiceNow) this.voice?.platform?.session('playback'); // after speaking (spec §10.1)
     await this.#writeChatter(wakeId);
-    if (ok && this.#half.voice()) await this.#writeDown(wakeId);
+    if (ok && this.#half.voice()) {
+      await this.#writeDown(wakeId);
+      this.#pastTurn();
+    }
+  }
+
+  /**
+   * What is still unwritten is past its turn (#unheard). A line heard while this turn ran, whose own turn is ahead, isn't in the transcript yet: a heard line
+   * is written to it by the turn that takes it (#logWakes), at its start or, for one heard while a turn runs, at its next step, which then carries it.
+   */
+  #pastTurn() {
+    for (const id of this.transcript.unwritten()) this.#unheard.add(id);
   }
 
   /**
    * The words of what was heard are written down, and the sound is let go (spec §10.3). When nothing could write it down, the sound stays for the next turn
-   * that works; after WRITE_TRIES it is written as not transcribed. final: the last chance (housekeeping that must summarize them now).
+   * that works; after WRITE_TRIES real tries that failed (Voice.writeDown counts them) it is written as not transcribed. final: the last chance (housekeeping that must
+   * summarize them now).
    * @param {string} wakeId @param {string[]} [ids] @param {{ final?: boolean }} [o]
    * @returns {Promise<string[]>} the segments still not written down, whose sound is kept
    */
@@ -4406,16 +4423,11 @@ export class Agent {
         continue;
       }
       const r = await voice.writeDown(id, { scope: this.scope, wake: wakeId, ...(hearer ? { hearer } : {}), ...(role === 'main' ? {} : { role }) }).catch(() => null);
-      if (!r && !final) {
-        // Nothing wrote it down this time (a rate limit, say): the sound stays, and the next turn that works tries again.
-        const tries = (this.#writeTries.get(id) ?? 0) + 1;
-        this.#writeTries.set(id, tries);
-        if (tries < WRITE_TRIES) {
-          left.push(id);
-          continue;
-        }
+      // Nothing wrote it down this time (a rate limit, say; or the transcription model resting, which asked nothing): the sound stays, and the next turn that works tries again.
+      if (!r && !final && (voice.memory.get(id)?.failed ?? 0) < WRITE_TRIES) {
+        left.push(id);
+        continue;
       }
-      this.#writeTries.delete(id);
       const stray = r?.text ? strayLanguage(r.text, await this.#languages()) : '';
       await this.#log({ type: 'heard.text', actor: 'system', data: { of: id, wake: wakeId, text: r ? r.text : NOT_TRANSCRIBED, by: r?.by ?? null, ...(stray ? { strayLanguage: stray } : {}) } });
       voice.memory.drop(id, r?.text);

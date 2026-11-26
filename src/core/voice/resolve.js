@@ -10,8 +10,8 @@ import { encodeWav, pcm16, resample, SEND_RATE } from './pcm.js';
  * model's words, made once per segment; or phone dictation's words. Text versions are made lazily (textVersion).
  * @typedef {{ id: string, source: 'mic' | 'dictation', audio?: { data: Uint8Array, mediaType: string, seconds: number }, text?: string, ms: number, at: number,
  *   encoded?: Map<string, Promise<Uint8Array | null>> }} Heard  audio: the microphone's 16 kHz WAV, or a kept clip; encoded: its other files, by format
- * @typedef {Heard & { transcripts: Map<string, string>, encoded: Map<string, Promise<Uint8Array | null>>, pcm?: Promise<{ pcm: Int16Array, rate: number }>, scope?: string }} Kept
- *   scope: the conversation it was heard for
+ * @typedef {Heard & { transcripts: Map<string, string>, encoded: Map<string, Promise<Uint8Array | null>>, pcm?: Promise<{ pcm: Int16Array, rate: number }>, scope?: string, failed?: number }} Kept
+ *   scope: the conversation it was heard for; failed: how many times a model really asked for its words failed to make them (Voice.writeDown; the agent's WRITE_TRIES)
  * @typedef {import('../llm/contract.js').Request} Request
  * @typedef {import('../llm/contract.js').Part} Part
  * @typedef {import('./platform.js').Encoder} Encoder

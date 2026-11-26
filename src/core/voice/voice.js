@@ -2,7 +2,7 @@ import { readAppSettings, updateAppSettings } from '../settings.js';
 import { voiceMode, routeOf, offNote } from './mode.js';
 import { SYS, SYS_DEVICE, ensureDeviceScope, newId } from '../scopes.js';
 import { ProviderError } from '../llm/contract.js';
-import { COOLDOWN_MS, chatCandidates, nextStep, restOf, noLink } from '../llm/fallback.js';
+import { COOLDOWN_MS, AllFailedError, askedBy, chatCandidates, nextStep, restOf, noLink } from '../llm/fallback.js';
 import { speechKind, modelOf, modelNames, abilityOf, STAND_INS } from '../llm/config.js';
 import { Speaker, speechOutEntries, Arrivals, playStream } from './speaker.js';
 import { estimateSeconds } from './stream-start.js';
@@ -884,7 +884,8 @@ export class Voice {
   /**
    * A segment's words, for the log (spec §10.3): a transcript made already, dictation's, or the
    * first entry that can write it down; for "Send audio to the model", the model that heard it
-   * (hearer), of its role, is asked. null when nothing could, or the segment isn't in memory.
+   * (hearer), of its role, is asked. null when nothing could, or the segment isn't in memory; a model really asked that failed counts on the
+   * segment (Kept.failed), one resting or not in the list asked nothing and counts for nothing.
    * @param {string} id @param {{ scope: string, wake?: string, hearer?: string, role?: string }} o
    * @returns {Promise<{ text: string, by: string } | null>} by: who wrote it down, by name
    */
@@ -892,21 +893,35 @@ export class Voice {
     const kept = this.memory.get(id);
     if (!kept) return null;
     let who = hearer ?? '';
+    let asked = false;
+    const c = await this.#resolve(scope, wake);
     const r = await textVersion(kept, {
-      ...(await this.#resolve(scope, wake)),
+      ...c,
+      onFail: (/** @type {string} */ m, /** @type {unknown} */ e) => {
+        asked = true;
+        c.onFail?.(m, e);
+      },
       ...(hearer ? {
         hearer: async (/** @type {import('./resolve.js').Kept} */ k) => {
-          // The sound goes as each model it reaches takes it, and only as sound.
-          const out = await this.llm.call({
-            role, prefer: hearer, level: 'off', scope, record: { tag: 'transcribe', ...(wake ? { wake } : {}) }, speech: this.resolver(scope, wake, ['send-audio']),
-            request: { system: [WRITE_DOWN, speakerLine(await this.languages())].filter(Boolean).join(' '), messages: [{ role: 'user', parts: [{ type: 'speech', id: k.id }] }], maxOutput: 400 },
-          });
-          who = out.modelId ?? hearer;
-          return String(out.reply.text ?? '').trim();
+          try {
+            // The sound goes as each model it reaches takes it, and only as sound.
+            const out = await this.llm.call({
+              role, prefer: hearer, level: 'off', scope, record: { tag: 'transcribe', ...(wake ? { wake } : {}) }, speech: this.resolver(scope, wake, ['send-audio']),
+              request: { system: [WRITE_DOWN, speakerLine(await this.languages())].filter(Boolean).join(' '), messages: [{ role: 'user', parts: [{ type: 'speech', id: k.id }] }], maxOutput: 400 },
+            });
+            who = out.modelId ?? hearer;
+            return String(out.reply.text ?? '').trim();
+          } catch (e) {
+            if (e instanceof AllFailedError && askedBy(e.attempts).length) asked = true; // a model that was passed over or resting asked nothing
+            throw e;
+          }
         },
       } : {}),
     });
-    if (!r) return null;
+    if (!r) {
+      if (asked) kept.failed = (kept.failed ?? 0) + 1;
+      return null;
+    }
     const by = r.by === 'send-audio' ? who : r.by;
     const cfg = await this.llm.config();
     return { text: r.text, by: STAND_INS[by]?.name ?? (cfg.models[by] ? modelOf(cfg.models[by]).name : by) };
