@@ -550,7 +550,7 @@ test("response.done is the turn's made: before the turn completes by the clock; 
 });
 
 // A card's call from a cut reply can pass an urgent reminder on (remind-first-next's second opinion, 2026-11-23): OpenAI sends a cancelled reply's last events
-// (a card's call it had made) before that reply's response.done, so her turn ends there, after them, as Koe expects Gemini's interrupted to come (after the calls in
+// (a card's call it had made) before that reply's response.done (as the stand-in and OpenAI's documented order have it; not seen on the real service), so her turn ends there, after them, as Koe expects Gemini's interrupted to come (after the calls in
 // flight; not yet measured on the real service): a call that comes before it is her cut turn's, which passes nothing on. Before 0.6.3 the turn ended as the cancel was sent.
 test("a cut of an answer OpenAI is still making ends her turn when its response.done comes, after the cut answer's call on its way; a cut of one all made, her voice still playing, ends it at once", async () => {
   const { driver, sent, events, say } = await bare();
@@ -628,6 +628,6 @@ test("a card's call that comes only in the cancelled answer's response.done (not
   driver.activity('start');
   const call = { type: 'function_call', call_id: 'call_1', name: 'show', arguments: '{"card":{"title":"Bixby Bridge"}}' };
   say({ type: 'response.done', response: { id: 'r1', status: 'cancelled', output: [call] } });
-  assert.deepEqual(seen(), ['audio', 'tool:call_1', 'turn:interrupted'], 'the call comes in her cut turn, so it passes nothing on; the turn ends after it');
+  assert.deepEqual(seen(), ['audio', 'tool:call_1', 'turn:interrupted'], 'the call comes in her cut turn (where Koe lets it pass nothing on); the turn ends after it');
   driver.close();
 });
