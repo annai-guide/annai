@@ -101,9 +101,9 @@ function watchSends(k) {
   };
   if (k.voice) {
     const resolver = k.voice.resolver.bind(k.voice);
-    k.voice.resolver = (/** @type {string} */ scope, /** @type {string} */ wake, /** @type {any} */ list, /** @type {any} */ shared) => {
+    k.voice.resolver = (/** @type {string} */ scope, /** @type {string} */ wake, /** @type {any} */ list, /** @type {any} */ shared, /** @type {any} */ unheard) => {
       seen.push([wake, k.agent.koeState, 'resolver', shared]);
-      return resolver(scope, wake, list, shared);
+      return resolver(scope, wake, list, shared, unheard);
     };
   }
   /** The calls seen, each with its half, Koe's state then, and what was told of the link. */
