@@ -682,11 +682,11 @@ export function createLlm({
     /**
      * Speech to text with one transcription model (spec §10.2), traced in scope.
      * languages: what the user speaks, for the model's language hint; shared: a half's turn's, while the other half sends too: its send is
-     * timed on twice its bytes (speechCall)
-     * @param {{ modelId: string, audio: { data: Uint8Array, mediaType: string, seconds?: number }, scope?: string, signal?: AbortSignal, wake?: string, languages?: import('./contract.js').Languages, shared?: boolean }} c
+     * timed on twice its bytes (speechCall); onEvent: told `sending` on and off around the recording's send (speechCall), for her turn's dock
+     * @param {{ modelId: string, audio: { data: Uint8Array, mediaType: string, seconds?: number }, scope?: string, signal?: AbortSignal, wake?: string, languages?: import('./contract.js').Languages, shared?: boolean, onEvent?: (e: import('./contract.js').StreamEvent) => void }} c
      */
-    async transcribe({ modelId, audio, scope = SYS, signal, wake, languages, shared }) {
-      return speechCall({ ...(await speechOf(modelId, 'in', scope)), audio, fetch: get, signal, registry: plugins.registry, wake, shared, ...(languages ? { languages } : {}) });
+    async transcribe({ modelId, audio, scope = SYS, signal, wake, languages, shared, onEvent }) {
+      return speechCall({ ...(await speechOf(modelId, 'in', scope)), audio, fetch: get, signal, registry: plugins.registry, wake, shared, ...(languages ? { languages } : {}), ...(onEvent ? { onEvent } : {}) });
     },
     /**
      * A voice clip of one text from one voice (spec §10.1), traced in scope. plays: what the device plays, for a format of 'auto';

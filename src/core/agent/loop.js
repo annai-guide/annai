@@ -496,7 +496,7 @@ export class Agent {
   #lastTurn = 0;
   /** @type {AbortController | null} cuts the model call running now, not the turn */
   #callCut = null;
-  /** Her turn's call is sending a photo's, a PDF's or a recording's bytes, as callOnce's sending events say: Thinking says Sending… meanwhile. Each send ends with its own off, so nothing here clears it. */
+  /** Her turn's call, or a reader's or transcription's for it, is sending a photo's, a PDF's or a recording's bytes, as their sending events say: Thinking says Sending… meanwhile. Each send ends with its own off, so nothing here clears it. */
   #up = false;
   /** A note cut her speech: speak says so, and doesn't listen. */
   #noteCut = false;
@@ -3377,7 +3377,7 @@ export class Agent {
           const r = await readFile({ kind, mediaType: m.mediaType, data, ...(m.name ? { name: m.name } : {}), ...(m.path ? { path: m.path } : {}) }, model ?? {}, {
             llm: this.llm, half: this.#half.name, pages: kind === 'pdf' ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope,
             secondMs: this.secondMs, explain: (e, role) => this.#explain(e, role), store: this.store, shared: this.#shared, copy: (p) => this.#pageCopy(p),
-            learn: (e, id) => this.#readerRefused(e, id),
+            learn: (e, id) => this.#readerRefused(e, id), onEvent: this.#sends,
           });
           return (key ? await this.#keep(scope, key, kind, r, wakeId) : null) ?? r;
         })();
@@ -3420,7 +3420,7 @@ export class Agent {
           const fresh = await readFile({ kind: pdf ? 'pdf' : 'image', mediaType: part.mediaType, data: bytes ? toBase64(bytes) : '', ...(pdf && part.name ? { name: part.name } : {}), ...(!pdf && part.path ? { path: part.path } : {}) }, model, {
             llm: this.llm, half: this.#half.name, pages: pdf ? runningPdfPages(this.registry) : null, signal, wakeId, scope: this.scope, secondMs: this.secondMs,
             explain: (e, role) => this.#explain(e, role), store: this.store, shared: this.#shared, copy: (p) => this.#pageCopy(p),
-            learn: (e, id) => this.#readerRefused(e, id),
+            learn: (e, id) => this.#readerRefused(e, id), onEvent: this.#sends,
           });
           return (key ? await this.#keep(this.scope, key, pdf ? 'pdf' : 'image', fresh, wakeId) : null) ?? fresh;
         })();
@@ -3711,14 +3711,19 @@ export class Agent {
   }
 
   /**
-   * Her call's photos, PDF or recording start going up (on), or no longer are (off: the uploads done, the request's answer's headers come, or the
-   * send failed or was stopped: callOnce says it at its own end): Thinking says Sending… meanwhile, on the dock now and at each return to Thinking
+   * Her call's (or its reader's or transcription's) photos, PDF or recording start going up (on), or no longer are (off: the uploads done, the request's answer's headers come, or the
+   * send failed or was stopped: the send says it at its own end): Thinking says Sending… meanwhile, on the dock now and at each return to Thinking
    * (a sound heard while it goes up) (spec §16.3). @param {boolean} on
    */
   #sendingNow(on) {
     this.#up = on;
     if (this.state.name === 'thinking') this.#setState('thinking');
   }
+
+  /** A call's sending events, the dock's: her turn's own and its transcriptions' (#streamed), and each reader's for her turn (readFile), whose other events aren't hers. @param {any} ev */
+  #sends = (ev) => {
+    if (ev.type === 'sending' && ev.on !== this.#up) this.#sendingNow(ev.on);
+  };
 
   /**
    * Speech streams in while the model writes it, and plays sentence by sentence (spec §10.1). A
@@ -3727,10 +3732,7 @@ export class Agent {
    * @param {any} ev a stream event @param {string} wakeId
    */
   #streamed(ev, wakeId) {
-    if (ev.type === 'sending') {
-      if (ev.on !== this.#up) this.#sendingNow(ev.on);
-      return;
-    }
+    if (ev.type === 'sending') return void this.#sends(ev);
     if (ev.type === 'restart') {
       this.#cutSpeech(wakeId, ev.by ?? null).catch((e) => this.#notSaved(e)); // what she said aloud, for her transcript: nobody waits on it
       return;
