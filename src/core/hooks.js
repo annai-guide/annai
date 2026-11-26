@@ -83,7 +83,7 @@ const windows = new WeakMap();
 
 /**
  * Hands each running plugin's hooks the entries of the types they asked for, after the current task,
- * each call guarded: an error counts against its plugin (not a request that couldn't be made for want of a link, registry.js guard) and is never thrown here. Past HOOK_LIMIT in
+ * each call guarded: an error is logged, a crash counts against its plugin (registry.js threw), and nothing is thrown here. Past HOOK_LIMIT in
  * a window, the entry is dropped, it counts as the plugin's failure, and the plugin is switched off.
  * @param {Registry} registry @param {EventRecord[]} events @param {() => number} [now]
  */
@@ -108,8 +108,9 @@ export function deliverHooks(registry, events, now = () => Date.now()) {
         if (++w.count > HOOK_LIMIT) {
           const loop = /** @type {const} */ ({ kind: 'loop', entries: HOOK_LIMIT, seconds: HOOK_WINDOW_MS / 1000 });
           const why = disabledReason(loop);
-          registry.fail(pluginId, 'hook', new Error(why));
+          // Switched off first: counted first, a hook with two crashes behind it would go off as "failed 3 times in a row", the loop's reason lost.
           registry.disable(pluginId, loop, why);
+          registry.fail(pluginId, 'hook', new Error(why));
           counts.delete(pluginId); // turned on again, it starts with a window of its own
           break;
         }

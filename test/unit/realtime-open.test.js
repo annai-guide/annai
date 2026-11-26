@@ -8,6 +8,7 @@ import { Registry } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
 import { ProviderError, explain } from '../../src/core/llm/contract.js';
 import { modelTrace } from '../../src/core/llm/trace.js';
+import { secretFreeLog } from '../../src/core/agent/net.js';
 import { readConfig, saveProvider, saveRoles, newProvider, newModel, setKey } from '../../src/core/llm/config.js';
 import { spentToday } from '../../src/core/agent/budgets.js';
 import { createLlm } from '../../src/core/llm/service.js';
@@ -97,6 +98,13 @@ const setup = { instructions: 'You are Koe.', context: '', tools: [], audioIn: P
 /** @param {any} store */
 const events = async (store) => store.tx(['events'], 'readonly', (/** @type {any} */ t) => t.listEvents(SYS, {}));
 const tick = () => new Promise((r) => setTimeout(r, 5));
+/** A real registry that keeps its log: `counted` are the plugin.error lines that count, as [plugin, what]. */
+function watched() {
+  /** @type {any[]} */
+  const logged = [];
+  const registry = new Registry({ log: (ev) => { logged.push(ev); } });
+  return { registry, logged, counted: () => logged.filter((x) => x.type === 'plugin.error' && 'count' in x.data).map((x) => [x.actor.replace(/^plugin:/, ''), x.data.name]) };
+}
 
 /** @param {any} [o] */
 function open(o = {}) {
@@ -129,11 +137,30 @@ test("a session opens only at its ability's origin (https → wss, http localhos
     }
   }
   // A protocol that crashes building its address counts against its plugin.
-  /** @type {any[]} */
-  const failed = [];
-  const registry = /** @type {any} */ ({ fail: (/** @type {string} */ id, /** @type {string} */ what) => failed.push([id, what]) });
+  const { registry, counted } = watched();
   assert.throws(() => open({ type: { ...ECHO, open: () => { throw new TypeError('oops'); } }, registry }), (e) => e instanceof ProviderError && e.kind === 'plugin');
-  assert.deepEqual(failed, [['echo', 'live open']]);
+  assert.deepEqual(counted(), [['echo', 'live open']]);
+});
+
+test("a third-party live protocol whose open() parses the typed address is never called at one that isn't an address: bad-request, no-address, the ability named, nothing counted; at a working address it opens (plugin-link-next, test 6)", () => {
+  FakeSocket.made = [];
+  let opened = 0;
+  const { registry, logged } = watched();
+  const type = { ...ECHO, open: (/** @type {any} */ { endpoint, key }) => {
+    opened++;
+    const u = new URL('/live', endpoint.baseUrl);
+    u.protocol = 'wss:';
+    return { url: `${u}?key=${key}` };
+  } };
+  const ability = { id: 'live', kind: 'realtime', name: 'Live voice', named: true };
+  for (const typed of ['', 'live.test/v1']) {
+    assert.throws(() => open({ type, endpoint: endpoint(typed), ability, registry }), (e) => e instanceof ProviderError && e.kind === 'bad-request' && e.said?.code === 'no-address'
+      && explain(e) === "Gemini's Live voice has no working address. Give its address in Settings → Models." && !(typed && explain(e).includes(typed)), JSON.stringify(typed));
+  }
+  assert.deepEqual([opened, logged, FakeSocket.made.length], [0, [], 0], "the protocol's open was never called, nothing counted or logged, nothing opened");
+  const { session } = open({ type, ability, registry });
+  assert.deepEqual([opened, FakeSocket.made.map((s) => s.url)], [1, [`wss://live.test/live?key=${KEY}`]]);
+  session.close();
 });
 
 test('the key is in no live.session or net.request entry, nor the URL or subprotocols traced', async () => {
@@ -387,9 +414,7 @@ test('a session takes the audio its protocol prefers first, or the formats its t
 
 test("a protocol's ready that fails with a ProviderError says why: its kind and words, the key blanked, never against its plugin; any other failure is the plugin's (K6)", async () => {
   FakeSocket.made = [];
-  /** @type {string[]} */
-  const failed = [];
-  const registry = { fail: (/** @type {string} */ _id, /** @type {string} */ what) => { failed.push(what); } };
+  const { registry, logged, counted } = watched();
   /** @param {unknown} e @returns {any} */
   const failing = (e) => ({ ...ECHO, attach: (/** @type {any} */ s, /** @type {any} */ c) => ({ ...ECHO.attach(s, c), ready: Promise.reject(e) }) });
   const store = createMemoryStore();
@@ -397,7 +422,7 @@ test("a protocol's ready that fails with a ProviderError says why: its kind and 
   await assert.rejects(refused.ready, (e) => e instanceof ProviderError && e.kind === 'auth' && e.message === 'Incorrect API key provided: «key».');
   assert.equal((await refused.closed).kind, 'auth');
   assert.ok(FakeSocket.made[0].closedWith, 'annai closes the socket');
-  assert.deepEqual(failed, [], "a refusal isn't the plugin's bug");
+  assert.deepEqual(logged, [], "a refusal isn't the plugin's bug, and its kind and words are the session's own: no line");
   const closed = (await events(store)).find((e) => e.type === 'live.session' && e.data.state === 'closed');
   assert.equal(closed?.data.kind, 'auth');
   assert.ok(!JSON.stringify(await events(store)).includes(KEY));
@@ -408,7 +433,28 @@ test("a protocol's ready that fails with a ProviderError says why: its kind and 
   await assert.rejects(words.ready, (e) => e instanceof ProviderError && e.shown === 'Its own words, with «key».');
   const broken = openLive({ type: failing(new TypeError("Cannot read properties of undefined (reading 'x')")), endpoint: endpoint('https://live.test'), model: model(), key: KEY, tunables: {}, setup, trace: null, socket, registry });
   await assert.rejects(broken.ready, (e) => e instanceof ProviderError && e.kind === 'plugin');
-  assert.deepEqual(failed, ['live ready']);
+  assert.deepEqual(counted(), [['echo', 'live ready']]);
+  assert.deepEqual(logged.map((x) => x.data.name), ['live ready'], 'only the crash is logged');
+});
+
+test("a live protocol's error that is no crash is kept in the Trace in its own words, with no count, and with the key blanked as every plugin.error's is (plugin-link-fix2)", async () => {
+  FakeSocket.made = [];
+  const store = createMemoryStore();
+  await setKey(store, 'pv-1', KEY);
+  const registry = new Registry({ log: secretFreeLog(store, SYS) });
+  const plain = { ...ECHO, attach: () => { throw new Error(`Only 44.1 kHz here, and ${KEY} is no way to say it.`); } };
+  const session = openLive({ type: plain, endpoint: endpoint('https://live.test'), model: model(), key: KEY, tunables: {}, setup, trace: null, socket, registry });
+  await assert.rejects(session.ready, (e) => e instanceof ProviderError && e.kind === 'plugin' && e.message === 'Echo live couldn\'t start a live session.');
+  await tick();
+  const lines = (await events(store)).filter((e) => e.type === 'plugin.error');
+  assert.deepEqual(lines.map((e) => [e.actor, e.data]), [['plugin:echo', { name: 'live attach', message: 'Only 44.1 kHz here, and «key» is no way to say it.' }]], 'its words, no count, the key blanked');
+  assert.equal(registry.isDisabled('echo'), false);
+  // Plain Errors count nothing, however many.
+  for (let i = 0; i < 3; i++) {
+    const again = openLive({ type: plain, endpoint: endpoint('https://live.test'), model: model(), key: KEY, tunables: {}, setup, trace: null, socket, registry });
+    await assert.rejects(again.ready);
+  }
+  assert.equal(registry.isDisabled('echo'), false, 'four plain Errors, and still on');
 });
 
 test('once a session has closed, nothing more is told: a protocol timer that fires late reaches no listener and no trace (K6)', async () => {

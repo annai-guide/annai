@@ -12,7 +12,7 @@ import { logEvent } from './events.js';
 import { ZipReader, ZipWriter } from './zip.js';
 import { xmlElements, xmlText } from './xml.js';
 import { TargetError, checkStorageType, backupFileName, parseBackupFileName, readAnswer } from './storage-types.js';
-import { PluginError, TAKEN, NOT_OWN, KEYED, NAMED, isPluginBug, isLinkFailure, compareRanks, takenShown, notOwnShown } from './registry.js';
+import { PluginError, TAKEN, NOT_OWN, KEYED, NAMED, isPluginBug, compareRanks, takenShown, notOwnShown } from './registry.js';
 import { t, plural, lang, dir, wordsOver } from './l10n.js';
 import { num, size, list, sentences } from './intl.js';
 import { ProviderError, errorFromResponse } from './llm/contract.js';
@@ -393,8 +393,11 @@ export class PluginHost {
         await this.start(id);
         if (s.startFailures) await this.#updateState(id, { startFailures: 0 }).catch(() => {});
       } catch (error) {
-        // A start that failed for want of a link (guard keeps the error as the cause) neither extends the run of failed launches nor breaks it.
-        const n = (s.startFailures ?? 0) + (isLinkFailure(/** @type {any} */ (error)?.cause) ? 0 : 1);
+        // Every error adds a launch to the run but a PluginError guard made (its cause: what was thrown) whose cause is no crash (isPluginBug: a missing
+        // link, its own words, annai's start limit), which neither extends the run nor ends it. Outside guard (its files, its manifest, a module that
+        // throws as it loads, a PluginError with no cause) every error counts.
+        const crash = !(error instanceof PluginError && 'cause' in error) || isPluginBug(error.cause);
+        const n = (s.startFailures ?? 0) + (crash ? 1 : 0);
         const disabled = n >= MAX_START_FAILURES;
         await this.#updateState(id, { startFailures: n, ...(disabled ? { enabled: false } : {}) }).catch(() => {});
         if (disabled) /* en */ this.#log({ type: 'plugin.disabled', actor: 'system', data: { plugin: id, reason: `didn't start on ${n} launches in a row` } });

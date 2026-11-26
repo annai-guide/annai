@@ -286,7 +286,15 @@ export function activate(annai) {
             break;
           case 'response.output_audio.delta': {
             if (cuts) break; // the cancelled answer's, on its way before the cut: never heard
-            const raw = base64.decode(String(m.delta ?? ''));
+            /** @type {Uint8Array} */
+            let raw;
+            try {
+              raw = base64.decode(String(m.delta ?? ''));
+            } catch {
+              // Audio that isn't base64 (a cut or mangled chunk): skipped and noted like a bad frame.
+              note('live.skipped', { bytes: String(m.delta).length });
+              break;
+            }
             const pcm = decode ? new Uint8Array(decode(raw).buffer) : raw;
             const ms = (pcm.byteLength / 2 / setup.audioOut.rate) * 1000;
             const now = Date.now();

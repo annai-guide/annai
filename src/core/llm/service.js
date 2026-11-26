@@ -757,6 +757,7 @@ export function createLlm({
       if (!rec || !provider || !ability) throw new ProviderError('not-found', /* en */ 'That provider or ability no longer exists.', { said: { code: 'provider-gone' } });
       await ensure(ability.type);
       const { type, endpoint, key } = /** @type {NonNullable<Awaited<ReturnType<typeof reach>>>} */ (await reach(rec, abilityId));
+      if (!type.run) sameOrigin(endpoint, endpoint.baseUrl, ability); // the typed address first, as callOnce: no list's code is called with one that doesn't parse, a run type's left out (it may need no address)
       /**
        * A list request: to the ability's address only, never following a redirect. Failing, it says in
        * words, by host, whether the server doesn't allow web apps or can't be reached (spec §9.8). @param {string} url @param {RequestInit} [init]

@@ -256,7 +256,7 @@ async function billed(usage, tools, tally) {
  * @returns {Promise<Reply>}
  */
 export async function callOnce({ type, endpoint, model, key, request, level = 'off', fetch: get = defaultFetch, signal, firstOutputMs = 30_000, onEvent = () => {}, trace, registry, now = Date.now, uploads, keep, tally, keepNative = false, shared = false, ability }) {
-  if (!type.run) sameOrigin(endpoint, endpoint.baseUrl, ability); // annai calls a type's code only with an address that parses (else bad-request, the user's to fix)
+  if (!type.run) sameOrigin(endpoint, endpoint.baseUrl, ability); // annai calls a type's code only with an address that parses (else bad-request, the user's to fix); a run type's own code is left out: it may need no address
   if (key) trace?.secret(key);
   // Credentials can also sit in an endpoint's extra headers; none may reach the trace (spec §9.9).
   for (const [name, value] of Object.entries(endpoint.headers ?? {})) {

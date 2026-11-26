@@ -494,7 +494,7 @@ export function safeId(id) {
  *   its delete call for one kept turn
  * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null, id: string }) => { url: string, headers: Record<string, string> }} [lookRequest]
  *   its look-up of one kept turn (200: it is there, 404: it is not), asked before a missing one is read as a server that stores nothing
- * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null }) => Promise<ListedModel[]>} [list]  for types with run
+ * @property {(c: { endpoint: import('./config.js').Endpoint, key: string | null }) => Promise<ListedModel[]>} [list]  its own model list, in place of listRequest and readList: any type may give one, and a type with run has no other way to list
  * @property {'in' | 'out'} [speech]  a speech type (spec §9.1, §10): 'in' transcribes speech, 'out' is a voice
  * @property {(c: SpeechSpec & { audio: { data: Uint8Array, mediaType: string }, languages?: Languages }) => { url: string, headers: Record<string, string>, body: any }} [transcribeRequest]  languages: what the user speaks
  * @property {(res: Response, c: SpeechSpec) => Promise<{ text: string }>} [readTranscript]

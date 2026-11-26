@@ -402,29 +402,30 @@ export function createDock(ctx) {
 
 /**
  * The dock's avatar: a plugin's, when one replaces it and makes one that works (spec §16.4: avatar art), else annai's own.
- * A plugin's that fails counts against it, made and on each call after: three throws in a row give annai's own back in its
- * place. A call that works ends its own run, and its plugin's; a setLevel that works doesn't end a setState's.
+ * A plugin's crash counts against it (Registry threw), made and on each call after. Each call counts its own throws in a row, reset by that call
+ * working: annai's own takes its place when they add up to three. A call that works also ends its plugin's run.
+ * Exported for the test of what its calls count (ui-slots.test.js).
  * @param {any} ctx
  */
-function dockAvatar(ctx) {
+export function dockAvatar(ctx) {
   const c = component(ctx, 'avatar');
   const a = c && made(ctx, c, 'avatar', () => c.item.create({ size: 'dock' }), (/** @type {any} */ a) =>
     a?.el instanceof Node && typeof a.setState === 'function' && typeof a.setLevel === 'function' ? null : /* en */ 'its avatar create() must return el, setState and setLevel');
   if (!a) return createAvatar({ size: 'dock' });
-  /** @type {any} annai's own, once theirs threw three times in a row */
+  /** @type {any} annai's own, once their runs of throws add up to three */
   let own = null;
   /** @type {Record<string, number>} each call's throws in a row */
   const runs = {};
   const call = (/** @type {string} */ name) => (/** @type {any[]} */ ...args) => {
     if (own) return own[name](...args);
     try {
-      if (typeof a[name] === 'function') a[name](...args);
-      if (runs[name]) {
+      if (typeof a[name] === 'function') {
+        a[name](...args);
         runs[name] = 0;
-        ctx.registry?.succeeded(c.pluginId);
+        ctx.registry?.succeeded(c.pluginId); // any call that works: its plugin's run of failures is over (a Map write, cheap at setLevel's rate)
       }
     } catch (e) {
-      ctx.registry?.fail(c.pluginId, `avatar ${name}`, e);
+      ctx.registry?.threw(c.pluginId, `avatar ${name}`, e);
       runs[name] = (runs[name] ?? 0) + 1;
       if (Object.values(runs).reduce((n, x) => n + x, 0) < 3) return;
       own = createAvatar({ size: 'dock' });

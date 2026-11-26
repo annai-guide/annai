@@ -5,11 +5,12 @@ import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace, ValidationError, StorageFullError } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, createTrip, SYS_PLUGINS } from '../../src/core/scopes.js';
-import { Registry, PluginError, isFetchFailure, isLinkFailure, isPluginBug, isBadAddress } from '../../src/core/registry.js';
-import { ProviderError } from '../../src/core/llm/contract.js';
+import { Registry, PluginError, isFetchFailure, isPluginBug, isBadAddress } from '../../src/core/registry.js';
+import { AllFailedError } from '../../src/core/llm/fallback.js';
 import { PluginHost, PLUGIN_MAX_BYTES } from '../../src/core/plugins.js';
 import { utf8 } from '../../src/core/bytes.js';
 import { messageOf } from '../../src/ui/dom.js';
+import { CRASH_CODE, ANSWER_CODE, thrownBy } from './engine-throws.js';
 
 /** @param {string} dir @param {string} [prefix] */
 async function fixture(dir, prefix = '') {
@@ -54,13 +55,13 @@ test('registry: add, list, remove one, remove a plugin, onChange', () => {
   assert.equal(changes, 5);
 });
 
-test('registry: guard logs failures and switches a plugin off after three in a row', async () => {
+test('registry: guard logs failures and switches a plugin off after three crashes in a row', async () => {
   /** @type {any[]} */
   const logged = [];
   const r = new Registry({ log: (ev) => logged.push(ev) });
   r.add('flaky', 'tool', { name: 'x' });
   let fail = true;
-  const fn = r.guard('flaky', 'tool x', async () => { if (fail) throw new Error('nope'); return 'ok'; });
+  const fn = r.guard('flaky', 'tool x', async () => { if (fail) throw new TypeError('nope'); return 'ok'; });
   await assert.rejects(fn(), PluginError);
   fail = false;
   assert.equal(await fn(), 'ok'); // success resets the count
@@ -76,7 +77,7 @@ test('registry: guard logs failures and switches a plugin off after three in a r
   assert.equal(r.list('tool').length, 1);
 });
 
-test("registry: a fetch the browser couldn't make is no failure of what guard wraps either (a plugin's start, a hook; spec §5.5, §17): the error reaches the caller, nothing is counted, and a bug still is (fail-owner-next, round 2 item 3)", async () => {
+test("registry: a fetch the browser couldn't make is no failure of what guard wraps either (a plugin's start, a hook; spec §5.5, §17): the error reaches the caller and is logged, nothing is counted, and a bug still is (fail-owner-next, round 2 item 3; logged since plugin-link-next)", async () => {
   /** @type {any[]} */
   const logged = [];
   const r = new Registry({ log: (ev) => logged.push(ev) });
@@ -85,7 +86,7 @@ test("registry: a fetch the browser couldn't make is no failure of what guard wr
     for (let i = 0; i < 4; i++) await assert.rejects(offline(), (e) => e instanceof PluginError && e.cause instanceof TypeError && e.cause.message === message);
   }
   assert.equal(r.isDisabled('poster'), false, 'twelve offline posts: still on');
-  assert.deepEqual(logged, [], 'none counted or logged');
+  assert.deepEqual(logged.map((e) => [e.type, 'count' in e.data]), Array(12).fill(['plugin.error', false]), 'each logged, none counted');
   const buggy = r.guard('buggy', 'hook', async () => { throw new TypeError('x is not a function'); });
   for (let i = 0; i < 3; i++) await assert.rejects(buggy(), PluginError);
   assert.equal(r.isDisabled('buggy'), true, 'its own bug is still counted: off at the third');
@@ -239,17 +240,30 @@ test('host: reinstalling a plugin that already ran with other files asks for a r
   assert.equal(next.active.has('hello'), true);
 });
 
-test('host: a plugin that fails to start on three launches in a row is turned off', async () => {
+test('host: a plugin whose start crashes on three launches in a row is turned off; one whose start fails in its own words stays on (plugin-link-next)', async () => {
   const { host, relaunch } = await setup();
+  await host.install(inline('crashing', 'export function activate() { return undefined.x; }'));
   await host.install(await fixture('broken'));
   for (let launch = 1; launch <= 3; launch++) {
     const failures = await relaunch().startInstalled();
-    assert.deepEqual(failures.map((f) => [f.id, f.disabled]), [['broken', launch === 3]], `launch ${launch}`);
+    // In no order: the failures come ranked by install time (a millisecond), then id, and the two installs can land in one.
+    assert.deepEqual(failures.map((f) => [f.id, f.disabled]).sort(), [['broken', false], ['crashing', launch === 3]], `launch ${launch}`);
   }
-  assert.equal((await host.installed()).broken.enabled, false);
-  assert.deepEqual(await relaunch().startInstalled(), []);
-  await assert.rejects(host.setEnabled('broken', true), PluginError); // turning it back on is a fresh start
-  assert.equal((await host.installed()).broken.startFailures, 0);
+  assert.equal((await host.installed()).crashing.enabled, false);
+  assert.equal((await host.installed()).broken.enabled, true);
+  assert.deepEqual((await relaunch().startInstalled()).map((f) => f.id), ['broken']);
+  await assert.rejects(host.setEnabled('crashing', true), PluginError); // turning it back on is a fresh start
+  assert.equal((await host.installed()).crashing.startFailures, 0);
+});
+
+test("host: a module that throws as it loads counts a launch whatever the error carries: with a link failure as its cause, it is off at the third launch; the cause is read only from the error guard made (plugin-link-fix2)", async () => {
+  const { host, relaunch } = await setup();
+  await host.install(inline('loading', "throw new Error('config', { cause: new TypeError('Failed to fetch') });"));
+  for (let launch = 1; launch <= 3; launch++) {
+    const failures = await relaunch().startInstalled();
+    assert.deepEqual(failures.map((f) => [f.id, f.disabled]), [['loading', launch === 3]], `launch ${launch}`);
+  }
+  assert.equal((await host.installed()).loading.enabled, false);
 });
 
 test('host: an install that runs out of space leaves nothing behind', async () => {
@@ -292,12 +306,12 @@ test('host: a tool keeps its own "this" when annai runs it', async () => {
   assert.deepEqual(await registry.list('tool')[0].run('there'), { content: 'hi there' });
 });
 
-test("host: a plugin whose start fetches, offline, is not counted against it: four offline starts, one past the third that switches a plugin off, leave it on, each start's error reaches the caller; a start with a bug is off at the third (fail-owner-next, round 2 item 3)", async () => {
+test("host: a plugin whose start fetches, offline, is not counted against it: four offline starts, one past the third that switches a plugin off, leave it on, each start's error reaches the caller and is logged; a start with a bug is off at the third (fail-owner-next, round 2 item 3; logged since plugin-link-next)", async () => {
   const { host, registry, logged } = await setup();
   await host.install(inline('fetcher', `export async function activate(annai) { throw new TypeError('Failed to fetch'); }`));
   for (let i = 0; i < 4; i++) await assert.rejects(host.start('fetcher'), /Failed to fetch/);
   assert.equal(registry.isDisabled('fetcher'), false);
-  assert.deepEqual(logged.filter((e) => e.type === 'plugin.error'), []);
+  assert.deepEqual(logged.filter((e) => e.type === 'plugin.error').map((e) => 'count' in e.data), [false, false, false, false], 'each logged, none counted');
   await host.install(inline('bugged', `export function activate(annai) { return undefined.x; }`));
   for (let i = 0; i < 3; i++) await assert.rejects(host.start('bugged'));
   assert.equal(registry.isDisabled('bugged'), true);
@@ -346,18 +360,135 @@ test("host: a plugin whose start fails only for want of a link stays on through 
   }
 });
 
-test("host: a start that sends through annai.net.fetch with no link is not counted in one session either: four starts, none logged, the plugin on (fail-owner-next, round 3 item 1)", async () => {
+test("host: a start that sends through annai.net.fetch with no link is not counted in one session either: four starts, each logged with no count, the plugin on (fail-owner-next, round 3 item 1; logged since plugin-link-next)", async () => {
   const { host, registry, logged } = await setup();
   host.connect({ fetch: offlineFetch });
   await host.install(inline('sender', `export async function activate(annai) { await annai.net.fetch('https://plugin.example/data'); }`));
   for (let i = 0; i < 4; i++) await assert.rejects(host.start('sender'), (e) => e instanceof PluginError && /couldn't reach plugin\.example/.test(/** @type {any} */ (e.cause).message) && /** @type {any} */ (e.cause).kind === 'network');
   assert.equal(registry.isDisabled('sender'), false);
-  assert.deepEqual(logged.filter((e) => e.type === 'plugin.error'), []);
+  assert.deepEqual(logged.filter((e) => e.type === 'plugin.error').map((e) => 'count' in e.data), [false, false, false, false]);
 });
 
-test("isLinkFailure: the browser's own fetch failure, or annai's kind for a request it couldn't make or finish (the kind `network`, which annai.net.fetch throws, or `unreachable`, which annai's own sends throw), and nothing else (fail-owner-next, round 3 item 1)", () => {
-  for (const e of [new TypeError('Failed to fetch'), new TypeError('Load failed'), Object.assign(new Error("annai couldn't reach a.test. Is the device offline?"), { kind: 'network' }), new ProviderError('unreachable', 'x'), new ProviderError('network', 'x')]) assert.equal(isLinkFailure(e), true, String(e.message));
-  for (const e of [new Error('boom'), new TypeError('x is not a function'), new ProviderError('server', 'x'), Object.assign(new Error('x'), { kind: 'auth' }), 'Failed to fetch', undefined, null]) assert.equal(isLinkFailure(e), false, String(/** @type {any} */ (e)?.message ?? e));
+/** annai.llm and annai.llm.decide with no model to reach: the AllFailedError callRole throws. */
+const noModel = { call: async () => { throw new AllFailedError([]); }, decide: async () => { throw new AllFailedError([]); } };
+/**
+ * A browser's fetch on a link that is up but dead: it waits until its signal stops it (then rejects as an engine does, with the signal's reason);
+ * at offline.example, the device is offline. @param {any} url @param {RequestInit} [init]
+ */
+const spottyFetch = (url, init) => (String(url).includes('offline.example') ? offlineFetch() : new Promise((_, reject) => {
+  const s = init?.signal;
+  if (s?.aborted) reject(s.reason);
+  s?.addEventListener('abort', () => reject(s.reason));
+}));
+/** What starts and hooks throw for want of a link, or in their own words: none of them a crash (plugin-link-next). */
+const ANSWERS = {
+  llm: "await annai.llm('main', { messages: [] });",
+  decide: "await annai.llm.decide({ question: 'Now?', options: ['yes', 'no'] });",
+  abort: "const c = new AbortController(); setTimeout(() => c.abort(), 1); await annai.net.fetch('https://dead.example/data', { signal: c.signal });",
+  words: "throw new Error('Choose a tide station in its settings first.');",
+  wrapped: "try { await annai.net.fetch('https://offline.example/data'); } catch (e) { throw new Error('The tides could not be loaded: ' + e.message); }",
+};
+
+test("host: a start that fails for want of a link (annai.llm's and annai.llm.decide's AllFailedError, its own time limit's AbortError on annai.net.fetch, a link failure it wrapped in its own Error), in its own words, or by annai's start limit while it waits on a dead link, stays on through three launches, its card listed at each, nothing counted (plugin-link-next, test 1)", async () => {
+  const { ws, host, importModule } = await setup();
+  /** @type {Record<string, string>} */
+  const starts = { ...ANSWERS, limit: "await annai.net.fetch('https://dead.example/data');" };
+  for (const [how, body] of Object.entries(starts)) await host.install(inline(`start-${how}`, `export async function activate(annai) { ${body} }`));
+  const ids = Object.keys(starts).map((how) => `start-${how}`);
+  /** @type {Record<string, any[]>} each launch: whether its card says it was turned off */
+  const seen = Object.fromEntries(ids.map((id) => [id, []]));
+  for (let launch = 1; launch <= 3; launch++) {
+    const next = new PluginHost({ registry: new Registry(), workspace: ws, importModule, startTimeout: 50 });
+    next.connect({ llm: noModel, fetch: spottyFetch });
+    const failures = await next.startInstalled();
+    for (const id of ids) seen[id].push(failures.find((f) => f.id === id)?.disabled ?? 'started');
+  }
+  const kept = await host.installed();
+  for (const id of ids) seen[id].push(kept[id].enabled, kept[id].startFailures ?? 0);
+  assert.deepEqual(seen, Object.fromEntries(ids.map((id) => [id, [false, false, false, true, 0]])), 'not turned off at any launch; still on, nothing counted');
+});
+
+test("host: a start that crashes is still turned off at the third launch, whatever set the crash off: a TypeError, a thrown value that isn't an Error, a TypeError after a link failure it swallowed (plugin-link-next, test 5: as before)", async () => {
+  const { ws, host, importModule } = await setup();
+  const starts = { type: 'return undefined.x;', thrown: "throw 'no';", swallowed: "const r = await annai.net.fetch('https://offline.example/data').catch(() => null); r.json();" };
+  for (const [how, body] of Object.entries(starts)) await host.install(inline(`crash-${how}`, `export async function activate(annai) { ${body} }`));
+  const ids = Object.keys(starts).map((how) => `crash-${how}`);
+  /** @type {Record<string, any[]>} */
+  const seen = Object.fromEntries(ids.map((id) => [id, []]));
+  for (let launch = 1; launch <= 3; launch++) {
+    const next = new PluginHost({ registry: new Registry(), workspace: ws, importModule });
+    next.connect({ fetch: spottyFetch });
+    const failures = await next.startInstalled();
+    for (const id of ids) seen[id].push(failures.find((f) => f.id === id)?.disabled ?? 'started');
+  }
+  const kept = await host.installed();
+  for (const id of ids) seen[id].push(kept[id].enabled);
+  assert.deepEqual(seen, Object.fromEntries(ids.map((id) => [id, [false, false, true, false]])));
+});
+
+test("host: a start that throws what the engine throws for a program that does something wrong counts, a DOMException by its name (SyntaxError, InvalidCharacterError, DataCloneError, HierarchyRequestError, IndexSizeError) and a URIError: off at the third launch; one that throws AbortError, TimeoutError, NetworkError, QuotaExceededError, InvalidStateError or NotFoundError stays on, nothing counted (plugin-link-fix1)", async () => {
+  const { ws, host, importModule } = await setup();
+  const starts = { ...Object.fromEntries(Object.entries(CRASH_CODE).map(([n, code]) => [`crash-${n}`, code])), ...Object.fromEntries(Object.entries(ANSWER_CODE).map(([n, code]) => [`answer-${n}`, code])) };
+  for (const [id, body] of Object.entries(starts)) await host.install(inline(id.toLowerCase(), `export async function activate() { ${body} }`));
+  /** @type {Record<string, any[]>} each launch: whether its card says it was turned off; then whether it is on, and its count */
+  const seen = Object.fromEntries(Object.keys(starts).map((id) => [id.toLowerCase(), []]));
+  for (let launch = 1; launch <= 3; launch++) {
+    const failures = await new PluginHost({ registry: new Registry(), workspace: ws, importModule }).startInstalled();
+    for (const id of Object.keys(seen)) seen[id].push(failures.find((f) => f.id === id)?.disabled ?? 'started');
+  }
+  const kept = await host.installed();
+  for (const id of Object.keys(seen)) seen[id].push(kept[id].enabled, kept[id].startFailures ?? 0);
+  assert.deepEqual(seen, Object.fromEntries(Object.keys(seen).map((id) => [id, id.startsWith('crash-') ? [false, false, true, false, 3] : [false, false, false, true, 0]])));
+});
+
+test("host: a tool that throws what the engine throws for a program doing something wrong is off at the third call, one that throws a link's, a stop's or a limit's DOMException stays on: the tool path takes the same rule (plugin-link-fix1)", async () => {
+  const { host, registry } = await setup();
+  const tools = { ...Object.fromEntries(Object.entries(CRASH_CODE).map(([n, code]) => [`crash-${n}`, code])), ...Object.fromEntries(Object.entries(ANSWER_CODE).map(([n, code]) => [`answer-${n}`, code])) };
+  for (const [id, body] of Object.entries(tools)) {
+    const name = id.toLowerCase();
+    await host.install(inline(name, `export function activate(annai) { annai.tools.register({ name: '${name}', description: 'Throws.', input: { type: 'object' }, run() { ${body} } }); }`));
+    await host.start(name);
+  }
+  /** @type {Record<string, boolean>} */
+  const off = {};
+  for (const id of Object.keys(tools)) {
+    const name = id.toLowerCase();
+    const tool = registry.list('tool').find((x) => x.name === name);
+    for (let i = 0; i < 3; i++) await assert.rejects(tool.run({}));
+    off[name] = registry.isDisabled(name);
+  }
+  assert.deepEqual(off, Object.fromEntries(Object.keys(tools).map((id) => [id.toLowerCase(), id.startsWith('crash-')])));
+});
+
+test("the rule counts the engine's crash classes by class and by DOMException name (each thrown for real where Node can, its name pinned), the other names stay answers (plugin-link-fix1)", () => {
+  for (const [name, code] of Object.entries(CRASH_CODE)) {
+    const e = thrownBy(code);
+    assert.equal(e.name, name, `${name} is what its code throws`);
+    assert.equal(isPluginBug(e), true, name);
+  }
+  for (const [name, code] of Object.entries(ANSWER_CODE)) {
+    const e = thrownBy(code);
+    assert.equal(e.name, name, `${name} is what its code throws`);
+    assert.equal(isPluginBug(e), false, name);
+  }
+  assert.equal(isPluginBug(new URIError('URI malformed')), true);
+});
+
+test("registry: only a crash counts at the one door (threw): a bug, an answer, a bug, a bug is off at the third bug, the answer logged with no count and neither ending the run nor adding to it; a bug, a success, two bugs stays on (plugin-link-next, test 4)", async () => {
+  /** @type {any[]} */
+  const logged = [];
+  const r = new Registry({ log: (ev) => logged.push(ev) });
+  const step = (/** @type {string} */ id, /** @type {string} */ how) => r.guard(id, 'hook', async () => {
+    if (how === 'bug') throw new TypeError('x.go is not a function');
+    if (how === 'answer') throw new Error('No tide station is set.');
+  })().catch(() => {});
+  for (const how of ['bug', 'answer', 'bug']) await step('p', how);
+  assert.equal(r.isDisabled('p'), false, 'two bugs and an answer: still on');
+  await step('p', 'bug');
+  assert.equal(r.isDisabled('p'), true, 'off at the third bug');
+  assert.deepEqual(logged.filter((e) => e.type === 'plugin.error').map((e) => e.data.count ?? null), [1, null, 2, 3]);
+  for (const how of ['bug', 'ok', 'bug', 'bug']) await step('q', how);
+  assert.equal(r.isDisabled('q'), false, 'a success ended the run');
 });
 
 test("host: a tool's own errors are answers Shiori sees, not crashes; a crash counts against the plugin (spec §5.5, §6.7)", async () => {
@@ -428,7 +559,7 @@ test("registry: the last error a card shows is annai's own sentence where the er
   /** @type {any[]} */
   const told = [];
   r.onDisabled((d) => told.push(d));
-  const late = r.guard('slow', 'starting', () => { throw Object.assign(new Error("it didn't finish starting within 10 seconds"), { shown: "It didn't finish within 10 seconds." }); });
+  const late = r.guard('slow', 'starting', () => { throw Object.assign(new TypeError("it didn't finish starting within 10 seconds"), { shown: "It didn't finish within 10 seconds." }); });
   for (let i = 0; i < 3; i++) await late().catch(() => {});
   assert.deepEqual(told.map((d) => d.message), ["It didn't finish within 10 seconds."]);
   // An error counted from outside guard() is told the same way.
