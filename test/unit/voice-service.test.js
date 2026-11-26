@@ -214,6 +214,16 @@ test('Settings → Voice: defaults, and values outside their range fall back', a
   assert.ok(k.platform.log.includes('play v1:Hi.'));
 });
 
+test("a heard line's clip, when the phone refuses the settings read as it is saved: no clip, and the line is still written (clip-read-next)", async () => {
+  const k = await voiceKit();
+  await updateAppSettings(k.ws, { voice: { keepClips: true } });
+  const heard = { id: 'h-1', pcm: new Int16Array(1600), rate: 16_000 };
+  const kept = await k.voice.keep(heard);
+  assert.equal(kept.blobs.length, 1, 'with the read, Keep voice clips keeps the clip');
+  k.voice.settings = async () => { throw new DOMException('The read was refused.', 'UnknownError'); };
+  assert.deepEqual(await k.voice.keep(heard), { data: {}, blobs: [] });
+});
+
 test('a microphone that fails to open sets the audio session back to playback, and the error goes on (spec §10.1)', async () => {
   const k = await voiceKit({ micFails: 'NotAllowedError' });
   await assert.rejects(k.voice.open({ kind: 'record', onSegment: () => {}, onError: () => {} }), /Permission denied/);

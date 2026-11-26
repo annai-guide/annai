@@ -1,5 +1,5 @@
 {
-  "build": "2bcedd8e902a",
+  "build": "53b361610603",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -183,7 +183,7 @@
     "/src/core/voice/settings.js": "246513dfd036",
     "/src/core/voice/speaker.js": "ce1ba5cfd9e9",
     "/src/core/voice/stream-start.js": "824d34b902ff",
-    "/src/core/voice/voice.js": "4aa418a87301",
+    "/src/core/voice/voice.js": "009fe332f22c",
     "/src/core/voice/where.js": "91b1deb9d78f",
     "/src/core/types.js": "34ef03fe15fb",
     "/src/core/ui-slots.js": "355a32f019cb",

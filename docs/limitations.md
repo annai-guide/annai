@@ -1572,12 +1572,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** `open()` (src/core/koe/live.js) reuses `#opening` while it is set, and `#start` returns false for a closed generation, so the third tap takes the stopped attempt's "no". The fix, in `open()`: a call made while a closed generation's start still runs waits for it, then starts its own.
 - **Revisit when:** its row in docs/progress.md, in the next version.
 
-### A heard line whose clip setting can't be read as it is saved isn't written
-- **Kind:** deferred.
-- **What the traveller sees:** with the turn's sound kept in memory (Keep voice clips on, or a Detailed trace asking for sound), when the phone refuses the settings read at the moment a heard line is saved (rare), the line isn't written to the conversation and the "wasn't saved" card shows; the words the traveller said are missing from the log. On main too. Found by open-reads-next's re-read (2026-11-25, by reading).
-- **Why:** `Voice.keep` (src/core/voice/voice.js) reads `keepClips` with no catch, and its rejection fails the heard line's write. The fix: a refused read means no clip, and the line is written (`(await this.settings().catch(() => null))?.keepClips`), with a test.
-- **Revisit when:** its row in docs/progress.md, in the next version.
-
 ### With every spend read refused, a live session doesn't stop at Spend per day
 - **Kind:** deferred.
 - **What the traveller sees:** with Koe · Realtime and a Spend per day set, while the phone refuses every read of today's spend (rare: the store failing its reads), a live session opens and runs past the day's cap; it stops once a read goes through. Since open-reads-next a refused read at the open counts as under the cap (one turn past it, as a running session's usage check already did on main). Found by its re-read (2026-11-25, by reading).
