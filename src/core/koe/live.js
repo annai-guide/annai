@@ -489,7 +489,8 @@ export class LiveKoe {
     this.#changed();
     await this.c.koe.opening.catch(() => {}); // its lines go into Koe's conversation
     // One that can't open rests its model, as a failed call's does: Koe's next model answers meanwhile.
-    const over = await this.#over(); // its own card says why; the model isn't at fault
+    // Spend per day reached: its own card says why, and the model isn't at fault. A refused read says nothing of the spend: it opens, and its usage check asks again (#on).
+    const over = await this.#over().catch(() => false);
     const s = over ? null : await this.#resume(id, this.#handle, why).catch((e) => { this.c.llm.bench?.bench(id, COOLDOWN_MS); return null; });
     if (s) await this.c.voiceOut?.(); // one that began while the socket connected finishes first too: the session hasn't let go of the speech pipeline yet
     if (gen !== this.#gen || !s) {
@@ -498,10 +499,13 @@ export class LiveKoe {
       if (gen === this.#gen) this.state = 'closed';
       return false;
     }
-    const settings = await this.c.voice?.settings();
-    this.#quietMs = (settings?.closeAfterSeconds ?? 30) * (this.c.secondMs ?? 1000);
+    // A refused read (null) says nothing of the settings: the session keeps the last one's (the defaults at first), as #route does. No voice: the defaults.
+    const settings = await this.c.voice?.settings().catch(() => null);
+    if (settings !== null) {
+      this.#quietMs = (settings?.closeAfterSeconds ?? 30) * (this.c.secondMs ?? 1000);
+      this.#keep = Boolean(settings?.keepClips);
+    }
     this.#answerMs = this.answerSeconds * (this.c.secondMs ?? 1000);
-    this.#keep = Boolean(settings?.keepClips);
     this.modelId = id;
     this.state = 'open';
     this.#rescued = false;
@@ -615,7 +619,7 @@ export class LiveKoe {
     const v = this.c.voice;
     const p = v?.platform;
     if (this.#input || !this.#s || !p || !v.on || !this.c.visible()) return;
-    const { pauseMs } = await v.settings();
+    const pauseMs = await v.settings().then((x) => x.pauseMs, () => this.#pauseMs); // a refused read: the last pause (the default at first), as #route does
     this.#pauseMs = pauseMs;
     await this.c.voiceOut?.(); // a reminder finishes first; a tap has stopped it
     // A close may have come meanwhile.
@@ -987,7 +991,8 @@ export class LiveKoe {
     const mark = (this.#urgent = { sent: 0, spoke: false, timer: null });
     this.#changed();
     // No session to take it (none opened, the open failed, or it closed while the microphone opened): no mark is left, and Halves
-    // hands it on, as #go does. An open that throws leaves no mark either; its caller shows a note for the user and tells the failure (deliver.koe).
+    // hands it on, as #go does. An open that throws (none is known to: a refused read doesn't, #start) leaves no mark either; its caller shows a note for the user and
+    // tells the failure (deliver.koe).
     let ok = false;
     try {
       ok = (await this.open(why, { mic: Boolean(this.c.voice?.unlocked) })) && this.state === 'open';
@@ -1126,8 +1131,8 @@ export class LiveKoe {
    * What waits goes in once Koe's turn and voice end, in a session opened for it that listens after where sound was unlocked (nothing waiting goes in before
    * that: #idle); out of view, it waits (shown()). With no session, it is let go here (undo takes it out of its list and says whether it was still there) and Halves
    * places it, once: a close, any but the traveller's tap, lets go of it at once, before it hands anything on (#placing), not when the connection it waited on ends.
-   * One already out of its list (Start fresh showed it, close; a newer urgent note replaced it) is never placed again. If open() throws, it is taken back too, and no later
-   * session gets it as well: its caller places what it carried (the catch below).
+   * One already out of its list (Start fresh showed it, close; a newer urgent note replaced it) is never placed again. If open() throws (by no cause known now: a read
+   * refused as it opens leaves the session what it holds, #start), it is taken back too, and no later session gets it as well: its caller places what it carried (the catch below).
    * @param {string} why @param {() => boolean} undo whether it was still waiting @returns {Promise<boolean>} false: Halves places it
    */
   async #go(why, undo) {

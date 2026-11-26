@@ -1124,19 +1124,21 @@ test('an urgent note answered with words and a tool she speaks after: the microp
   }
 });
 
-// Fix pass 5, 4: an open that fails for an urgent note leaves no mark: what waits still goes in, and the microphone hears.
+// Fix pass 5, 4: an open that fails for an urgent note leaves no mark: what waits still goes in, and the microphone hears. The open throws once (a refused
+// read no longer fails it: remind-held's tests of the reads).
 test('an urgent note whose session fails to open leaves no mark behind: the next note still goes in (fix 5)', async () => {
   const k = await liveKit([{ said: 'Noted.', audio: tone(0.1) }]);
-  const budgets = k.agent.live.c.budgets;
   try {
     await k.voice.unlock();
-    k.agent.live.c.budgets = () => Promise.reject(new Error('the settings could not be read'));
+    const open = k.agent.live.open.bind(k.agent.live);
+    k.agent.live.open = async () => {
+      k.agent.live.open = open;
+      throw new Error('the open failed');
+    };
     await assert.rejects(k.agent.live.note('Say now: turn left.', 'immediate'));
-    k.agent.live.c.budgets = budgets;
     await k.agent.live.note('The museum closes at five.', 'append');
     await soon(async () => texts(k).some((x) => /museum closes/.test(x)), 3000).catch(() => assert.fail('the note waited behind a mark left from the failed open'));
   } finally {
-    k.agent.live.c.budgets = budgets;
     await k.done();
   }
 });
