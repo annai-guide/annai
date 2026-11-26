@@ -305,7 +305,7 @@ test('a big photo or PDF in the window makes no housekeeping due: a summary woul
   assert.deepEqual(due, { 'a photo sent as bytes': false, 'a PDF she reads': false }, 'no housekeeping due for either');
 });
 
-test("a Largest request (MiB) stored before it went is read as nothing: a conversation of words past it is not summarized, as no token count calls for it (U141, 2026-11-26)", async () => {
+test("a Largest request (MiB) stored before it went is read as nothing: a conversation of words past it is not summarized in the turn: with no window listed nothing forces it, and the due summary waits for a pause (U141, 2026-11-26)", async () => {
   const { updateAppSettings } = await import('../../src/core/settings.js');
   // A size of 1 MiB kept in the settings from before, no window, and the cache warm, so the due summary waits for a pause; four messages of 300,000
   // characters: the fourth's request is past 1 MiB (1,048,576). Before U141 a summary was forced there, written warm by her model.
@@ -876,4 +876,21 @@ test('estimateTokens counts a native for what it adds beyond the parts it covers
   // A reply with nothing to add counts as it did.
   const same = /** @type {any} */ ({ messages: [user, { role: 'assistant', parts: [{ type: 'native', endpoint: 'e', content: [{ type: 'result', page }], covers: 1, prefix: 'p' }, ...parts] }] });
   assert.equal(estimateTokens(same) - estimateTokens(bare), 0);
+});
+
+// The subject of the dropped size test, staged by a window (size-out-next's final review): a forced summary her own model wrote warm changes what is
+// cached, so a second one in the same turn is cold, from the utility model, not her model sent the whole conversation again uncached.
+test('a forced summary in a turn leaves the request over 90% of the window: another follows while two or more exchanges are left, cold, since the first changed what was cached; then her request goes', async () => {
+  const k = await agentKit([[say('1'), say('2'), { text: 'They sent a greeting.' }, say('3')]], { models: [{ contextWindow: 306_000 }], utility: [{ text: 'They pasted a long text.' }], agent: { timers: NO_TIMERS } });
+  const last = 'c'.repeat(100_000);
+  for (const m of ['a', 'b'.repeat(900_000), last]) {
+    k.agent.send(m);
+    await idleAtOnce(k);
+  }
+  assert.deepEqual((await k.events(['compaction'])).map((/** @type {any} */ e) => e.data.mode), ['warm', 'cold'], "two summaries before her answer: her own, then the utility model's");
+  assert.equal(String(k.requests[2].tail).startsWith('[annai: housekeeping]'), true, 'the first is her own, from the cached conversation');
+  assert.equal(String(k.requests[3].system).startsWith('You summarize a conversation'), true, "the second is the utility model's");
+  assert.equal(k.requests.length, 5, 'her two answers, the two summaries and her answer after them: no third summary is tried');
+  assert.ok(JSON.stringify(k.requests.at(-1)).includes(last), 'with the last message word for word');
+  assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['1', '2', '3']);
 });

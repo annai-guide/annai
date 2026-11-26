@@ -408,3 +408,16 @@ test("a web page's PDF, through the agent: two turns on, the stub says to call t
   assert.ok(holds(last.messages, "[a PDF from a tool's result, not sent again: read can't bring it back; call that tool again to see it]"));
   assert.doesNotMatch(JSON.stringify(last.messages), /"type":"document"/);
 });
+
+// The subject of the dropped "the housekeeping measure weighs what is sent" test, by tokens (size-out-next's second opinion): photos the window has left
+// out (stubs) count nothing toward housekeeping, so many old photos never make a conversation due by themselves.
+test('photos the window has left out count nothing toward housekeeping (tokens)', async () => {
+  /** @type {any[]} */ const timers = [];
+  const k = await agentKit([[say('1'), say('2'), say('3'), say('4')]], {
+    models: [{ input: ['text', 'image'], contextWindow: 13_000 }], utility: [{ text: 'Summary.' }],
+    agent: { timers: { set: (/** @type {any} */ fn) => { timers.push(fn); return timers.length; }, clear: (/** @type {number} */ h) => { timers[h - 1] = null; } } } });
+  for (let i = 0; i < 4; i++) await k.ws.write(k.trip, `/files/p${i}.webp`, new TextEncoder().encode(String(i).repeat(10)), { author: 'user', type: 'image/webp', meta: { width: 800, height: 600 } });
+  for (let i = 0; i < 4; i++) { k.agent.send(`Look ${i}`, { photos: [{ path: `/trip/files/p${i}.webp` }] }); await idleAtOnce(k); }
+  assert.deepEqual(await k.events(['compaction']), [], 'no summary');
+  assert.equal(timers.some(Boolean), false, 'not due: two pictures in the window (about 3,200 tokens) on a base of about 4,000');
+});
