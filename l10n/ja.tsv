@@ -893,17 +893,17 @@ ido0tg	ok	The phone's push service says this subscription no longer exists.	端�
 1eeb6fm	ok	There's no annai push relay at {0} (it answered 404). Check the relay address.	{0}にannaiのプッシュ中継が見つかりません（404が返されました）。中継のアドレスを確認してください。	src/core/push/relay-client.js:41	{0} = host
 12gfn9	ok	The relay at {0} sent a key annai can't use. Is this the address of an annai push relay?	{0}の中継から、annaiで使えないキーが届きました。annaiのプッシュ中継のアドレスで合っていますか？	src/core/push/relay-client.js:42	{0} = host
 n5y19n	ok	The relay at {0} refused it ({1}).	{0}の中継に拒否されました（{1}）。	src/core/push/relay-client.js:43	{0} = host; {1} = status
-3hb2ch	ok	The key works.	キーは有効です。	src/core/realtime/open.js:276	
-r6odk7	ok	annai can open a live session at this address from the browser.	ブラウザからこのアドレスでライブセッションを開けます。	src/core/realtime/open.js:276	
-4u7tr8	ok	It answered aloud: {0}	音声で応答しました：「{0}」	src/core/realtime/open.js:307	{0} = words; Note: the stop after the quote is the screens' own (asSentence), left off here so a "?" or "!" the model ended with is not followed by a second one.
-ip7w4y#other	ok	It didn't answer aloud within # seconds.	#秒待っても音声で応答しませんでした。	src/core/realtime/open.js:307	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
-1x3q9c3	ok	The session closed before it answered.	応答がないままセッションが終了しました。	src/core/realtime/open.js:308	
-9sqs1k	ok	It answered, but not aloud in words.	応答はありましたが、声に出した言葉ではありませんでした。	src/core/realtime/open.js:308	Note: It answered, but not in spoken words (text, or sound with no words).
+3hb2ch	ok	The key works.	キーは有効です。	src/core/realtime/open.js:277	
+r6odk7	ok	annai can open a live session at this address from the browser.	ブラウザからこのアドレスでライブセッションを開けます。	src/core/realtime/open.js:277	
+4u7tr8	ok	It answered aloud: {0}	音声で応答しました：「{0}」	src/core/realtime/open.js:308	{0} = words; Note: the stop after the quote is the screens' own (asSentence), left off here so a "?" or "!" the model ended with is not followed by a second one.
+ip7w4y#other	ok	It didn't answer aloud within # seconds.	#秒待っても音声で応答しませんでした。	src/core/realtime/open.js:308	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
+1x3q9c3	ok	The session closed before it answered.	応答がないままセッションが終了しました。	src/core/realtime/open.js:309	
+9sqs1k	ok	It answered, but not aloud in words.	応答はありましたが、声に出した言葉ではありませんでした。	src/core/realtime/open.js:309	Note: It answered, but not in spoken words (text, or sound with no words).
 ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	この名前はannai公式のプラグインが使っているため、ほかから入手したパッケージには使えません。作者に名前の変更を依頼してください。	src/core/registry.js:17	Note: "Ask its author" is asking a person (頼む), not the phones' permission choice Ask (確認).
 1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	この名前はannai公式のプラグインが使っていますが、インストールされているのはほかから入手したものなので、annaiでは使いません。「設定 → プラグイン」で削除してから、もう一度お試しください。	src/core/registry.js:18	
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	「設定 → プラグイン」でオンにしてから、もう一度お試しください。	src/core/registry.js:19	
-mzoa87	ok	It is switched off after repeated errors.	エラーが続いたため、オフになっています。	src/core/registry.js:265	
-dhg5k6	ok	Starting failed: {0}	起動に失敗しました：{0}	src/core/registry.js:278	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
+mzoa87	ok	It is switched off after repeated errors.	エラーが続いたため、オフになっています。	src/core/registry.js:266	
+dhg5k6	ok	Starting failed: {0}	起動に失敗しました：{0}	src/core/registry.js:279	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
 19bu7pw	ok	Version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	バージョン{0}にすると{1}が動かなくなります（{1}には{2} {3}が必要です）。先に{4}をアップデートするか、このバージョンのままにしてください。	src/core/requires.js:52	{0} = version; {1} = them; {2} = it; {3} = r.version; {4} = them
 1ee40s4	ok	It needs {0}, which you turned off.	{0}が必要ですが、オフになっています。	src/core/requires.js:79	{0} = shown
 8xu6se	ok	It needs {0}, which isn't installed. Install it from {1} first, then try again.	{0}が必要ですが、インストールされていません。{1} からインストールしてから、もう一度お試しください。	src/core/requires.js:82	{0} = r.id; {1} = r.homepage

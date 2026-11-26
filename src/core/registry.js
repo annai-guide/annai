@@ -76,9 +76,9 @@ export const isBadAddress = (e) => e instanceof TypeError && /invalid url|failed
  * Whether an error is a bug in a plugin's code (spec §5.5) rather than its answer, outside callOnce's and speechCall's calls (asProviderError):
  * the one rule for a tool, a start, a hook, a drawing and every other place annai runs a plugin's code (threw). annai's own error classes
  * (AllFailedError, ProviderError, StorageFullError, ValidationError, PluginError and the rest) are no crash class, so what annai's own APIs throw for
- * a refusal, a limit or a link never counts. Its two throws of a crash class are for a wrong argument (bytes.js) and a wrong return (call.js); and a
- * crash class the engine throws inside one of its APIs counts too (`readJSON` on a file that isn't JSON), as it would in the plugin's own code. A
- * fetch the browser couldn't make (isFetchFailure) is an answer (§17).
+ * a refusal, a limit or a link never counts. Its throws of a crash class are for a wrong argument (bytes.js), a wrong return (call.js) and inflate's
+ * RangeErrors (zip.js turns them into a ZipError); a crash class the engine throws inside one of its APIs counts too (`readJSON`
+ * on a file that isn't JSON), as in the plugin's own code. A fetch the browser couldn't make (isFetchFailure) is an answer (§17).
  * @param {unknown} e
  */
 export function isPluginBug(e) {
@@ -238,15 +238,16 @@ export class Registry {
     this.#failures.set(pluginId, 0);
   }
 
-  /** Counts a failure annai has judged its plugin's itself (an endpoint type's call by position, a crash on a path that rethrows the answer, the hooks' loop guard, a component's or an avatar's create() that returned the wrong thing). @param {string} pluginId @param {string} name @param {unknown} e */
+  /** Counts a failure annai has judged its plugin's itself (an endpoint type's call by position, a crash on a path that hands the answer on, the hooks' loop guard, a component's or an avatar's create() that returned the wrong thing). @param {string} pluginId @param {string} name @param {unknown} e */
   fail(pluginId, name, e) {
     this.#fail(pluginId, name, e);
   }
 
   /**
-   * What a plugin's code threw where annai called it and nothing reads its answer (a start, a hook, a drawing, a dock action, a component, heard
-   * clips, a live protocol's code): always logged, and counted only when it is a crash (isPluginBug), as a tool's is. Any other error is its answer (for want of a link, in
-   * its own words, annai's start limit): it neither adds to its plugin's run of failures nor ends it, and its log line has no count.
+   * What a plugin's code threw where annai called it (a start and a hook through guard, a drawing, a dock action, a component, heard clips, a live
+   * protocol's code; a start's error goes on to startInstalled, for the launch count and the card): always logged, and counted only when it is a crash
+   * (isPluginBug), as a tool's is. A promise annai doesn't read (a live driver call's, a message handler's, an avatar call's, heard clips') never gets
+   * here. Any other error is its answer (for want of a link, in its own words): it neither adds to its plugin's run of failures nor ends it, and has no count.
    * @param {string} pluginId @param {string} name @param {unknown} e
    */
   threw(pluginId, name, e) {

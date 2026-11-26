@@ -393,9 +393,9 @@ export class PluginHost {
         await this.start(id);
         if (s.startFailures) await this.#updateState(id, { startFailures: 0 }).catch(() => {});
       } catch (error) {
-        // Only a crash in its start (guard keeps what it threw as the cause, isPluginBug) adds a launch to the run; any other error (for want of
-        // a link, in its own words, annai's start limit) neither extends the run nor ends it. An error guard didn't make (its files, its manifest, a
-        // module that throws as it loads: whatever it carries as a cause) counts as it is.
+        // Every error adds a launch to the run but a PluginError guard made (its cause: what was thrown) whose cause is no crash (isPluginBug: a missing
+        // link, its own words, annai's start limit), which neither extends the run nor ends it. Outside guard (its files, its manifest, a module that
+        // throws as it loads, a PluginError with no cause) every error counts.
         const crash = !(error instanceof PluginError && 'cause' in error) || isPluginBug(error.cause);
         const n = (s.startFailures ?? 0) + (crash ? 1 : 0);
         const disabled = n >= MAX_START_FAILURES;

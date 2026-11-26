@@ -81,7 +81,8 @@ export function openLive(c) {
   const blank = (/** @type {string} */ s) => forms.reduce((x, f) => x.split(f).join(/* en */ '«key»'), s);
   /**
    * What the protocol's code threw (spec §5.5): kept in the Trace, and counted against its plugin when it is a crash (Registry threw, whose log blanks
-   * every key annai keeps). A ProviderError is its answer, read by the session: its kind and words are the session's own, not a throw to log.
+   * every key annai keeps, 8 characters or more). A ProviderError is its answer, read by the session (but not from a message: that one is kept nowhere
+   * and ends nothing): its kind and words are the session's own, not a throw to log.
    * @param {string} what @param {unknown} e
    */
   const bug = (what, e) => { if (!(e instanceof ProviderError)) registry?.threw(type.pluginId, /* en */ `live ${what}`, e); };

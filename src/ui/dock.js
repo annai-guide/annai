@@ -402,8 +402,8 @@ export function createDock(ctx) {
 
 /**
  * The dock's avatar: a plugin's, when one replaces it and makes one that works (spec §16.4: avatar art), else annai's own.
- * A plugin's crash counts against it (Registry threw), made and on each call after; any three throws in a row give annai's own
- * back in its place. A call that works ends its own run, and its plugin's; a setLevel that works doesn't end a setState's.
+ * A plugin's crash counts against it (Registry threw), made and on each call after. Each call counts its own throws in a row, reset by that call
+ * working: annai's own takes its place when they add up to three. A call that works also ends its plugin's run.
  * Exported for the test of what its calls count (ui-slots.test.js).
  * @param {any} ctx
  */
@@ -412,7 +412,7 @@ export function dockAvatar(ctx) {
   const a = c && made(ctx, c, 'avatar', () => c.item.create({ size: 'dock' }), (/** @type {any} */ a) =>
     a?.el instanceof Node && typeof a.setState === 'function' && typeof a.setLevel === 'function' ? null : /* en */ 'its avatar create() must return el, setState and setLevel');
   if (!a) return createAvatar({ size: 'dock' });
-  /** @type {any} annai's own, once theirs threw three times in a row */
+  /** @type {any} annai's own, once their runs of throws add up to three */
   let own = null;
   /** @type {Record<string, number>} each call's throws in a row */
   const runs = {};
