@@ -487,8 +487,9 @@ test('every module that counts a plugin\'s failure also reports a call of it tha
   const missing = [];
   for (const name of await readdir(root, { recursive: true })) {
     if (!name.endsWith('.js') || name === 'core/registry.js') continue;
-    const code = await readFile(new URL(name, root), 'utf8');
-    if (/registry\??\.(fail|threw)\(/.test(code) && !/registry\??\.(succeeded|settled|guard)\(|(?<!function )typeWorked\(/.test(code)) missing.push(name);
+    // typeWorked's own definition (call.js) holds a `succeeded` call: it is no report that anything calls it
+    const code = (await readFile(new URL(name, root), 'utf8')).replace(/export function typeWorked\([^)]*\) \{[\s\S]*?\n\}\n/, '');
+    if (/registry\??\.(fail|threw)\(/.test(code) && !/registry\??\.(succeeded|settled|guard)\(|typeWorked\(/.test(code)) missing.push(name);
   }
   assert.deepEqual(missing, []);
 });

@@ -276,7 +276,8 @@ test("host: a count an older annai kept is read as nothing: a plugin with startF
   await next.setEnabled('kept-off', true);
   assert.equal(next.active.has('kept-off'), true, 'turned on by the traveller, it starts');
   const after = await host.installed();
-  assert.deepEqual([after['kept-on'].enabled, after['kept-on'].startFailures, after['kept-off'].enabled, after['kept-off'].startFailures], [true, 3, true, 3]);
+  const field = (/** @type {string} */ id) => /** @type {any} */ (after[id]).startFailures; // no longer a field of the type: an older annai's, left as it is
+  assert.deepEqual([after['kept-on'].enabled, field('kept-on'), after['kept-off'].enabled, field('kept-off')], [true, 3, true, 3]);
 });
 
 test("host: three starts given up at the limit, in one run of annai, leave the plugin on: the limit's error is that launch's card, never a count (plugin-fails-fix1)", async () => {
