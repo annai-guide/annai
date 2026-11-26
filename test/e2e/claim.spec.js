@@ -51,15 +51,15 @@ async function claimFails(page) {
   });
 }
 
-/** What annai's plugins recorded about starting. @param {import('@playwright/test').Page} page */
-const startFailures = (page) => page.evaluate(async () => {
+/** Whether each installed plugin is on, as installed.json keeps it (only the user's switch writes it). @param {import('@playwright/test').Page} page */
+const switchedOn = (page) => page.evaluate(async () => {
   const at = (/** @type {string} */ p) => p;
   const { createIdbStore } = await import(at('/src/core/store-idb.js'));
   const { Workspace } = await import(at('/src/core/workspace.js'));
   const store = await createIdbStore();
   const state = await new Workspace(store).readJSON('sys:plugins', '/installed.json');
   store.close();
-  return Object.values(state).map((/** @type {any} */ s) => s.startFailures ?? 0);
+  return Object.values(state).map((/** @type {any} */ s) => s.enabled);
 });
 
 /** Counts the page's loads from now on. @param {import('@playwright/test').Page} page */
@@ -142,7 +142,7 @@ test("a page still not taken after annai's own reload isn't reloaded again withi
   expect(await page.evaluate(() => sessionStorage.getItem('test.controlledAtStart'))).toBe('false');
   await helloRuns(page);
   await expect(page.locator('.notice')).toHaveCount(0);
-  expect(await startFailures(page)).toEqual([0, 0]);
+  expect(await switchedOn(page)).toEqual([true, true]);
 });
 
 test('annai never reloads itself over what the user has started: a page not taken waits for their Reload now', async ({ page, browserName }) => {

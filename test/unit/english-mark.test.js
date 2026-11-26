@@ -103,7 +103,7 @@ test('showError: an annai-made error\'s words are an element marked lang="en"; a
 
 test('the cards for plugins that did not start hold their errors, for the notice card to mark', () => {
   const error = new PluginError('hello', 'its module has no activate() function');
-  const { cards } = startCards([{ id: 'hello', error, disabled: false }, { id: 'old', error, disabled: true }], { name: (id) => id, taken: true });
+  const { cards } = startCards([{ id: 'hello', error }, { id: 'old', error }], { name: (id) => id, taken: true });
   assert.deepEqual(cards.map((c) => /** @type {any} */ (c).errors), [[error], [error]]);
 });
 

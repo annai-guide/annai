@@ -34,19 +34,18 @@ export function reloadCard(names, reload) {
 }
 
 /**
- * Cards for plugins that didn't start, by name. Where no service worker took the page, every import fails: those are
- * named for the reload card (unloaded), but one turned off after failing to start keeps its card.
- * @param {{ id: string, error: unknown, disabled: boolean }[]} failures @param {{ name: (id: string) => string, taken: boolean }} o
+ * Cards for plugins that didn't start, by name: one at each launch it fails, until the user turns it off. Where no service worker took
+ * the page, every import fails: those are named for the reload card (unloaded).
+ * @param {{ id: string, error: unknown }[]} failures @param {{ name: (id: string) => string, taken: boolean }} o
  */
 export function startCards(failures, { name, taken }) {
   const cards = [];
   const unloaded = [];
   for (const f of failures) {
-    const why = messageOf(f.error); // a plugin's own words (an import that failed) may have no stop: sentences() ends them
+    const why = messageOf(f.error); // words with no stop (a package's own) are ended by sentences()
     const it = name(f.id);
-    if (f.disabled) cards.push({ title: t`The plugin "${it}" was turned off`, body: sentences(t`It didn't start the last few times annai opened.`, why, t`You can turn it back on in Settings → Plugins.`), errors: [f.error] });
-    else if (taken) cards.push({ title: t`The plugin "${it}" didn't start`, body: sentences(why, t`You can turn it off in Settings → Plugins.`), errors: [f.error] });
-    else unloaded.push(name(f.id));
+    if (taken) cards.push({ title: t`The plugin "${it}" didn't start`, body: sentences(why, t`You can turn it off in Settings → Plugins.`), errors: [f.error] });
+    else unloaded.push(it);
   }
   return { cards: cards.map((c) => ({ tone: /** @type {const} */ ('warn'), ...c })), unloaded };
 }

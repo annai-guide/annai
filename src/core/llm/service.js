@@ -803,7 +803,13 @@ export function createLlm({
       if (!list) return protocolList();
       try {
         const got = await list({ ability: abilityId, endpoint, key, fetch: send, protocolList });
-        return (Array.isArray(got) ? got : []).filter((m) => typeof m?.providerId === 'string' && m.providerId);
+        if (!Array.isArray(got)) {
+          // No list is neither a success nor a crash (the plugin's own words, as its error would be): the protocol's list answers, and the Trace says what it gave.
+          /* en */ plugins.registry.threw(rec.plugin, 'provider list', new Error(/* en */ `its list() gave ${got === null ? 'null' : typeof got}, not an array of models`));
+          return protocolList(); // not awaited: a failure of the protocol's own list is not this plugin's
+        }
+        plugins.registry.succeeded(rec.plugin); // its list returned a list: its plugin's run of failures is over
+        return got.filter((m) => typeof m?.providerId === 'string' && m.providerId);
       } catch (e) {
         if (!isPluginBug(e)) throw e;
         /* en */ plugins.registry.fail(rec.plugin, 'provider list', e);

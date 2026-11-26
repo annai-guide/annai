@@ -5,25 +5,26 @@ import { PluginError, Registry } from '../../src/core/registry.js';
 
 const NAMES = /** @type {Record<string, string>} */ ({ hello: 'Hello checks', hola: 'Hola checks', old: 'Old tool' });
 const name = (/** @type {string} */ id) => NAMES[id] ?? id;
-const failed = (/** @type {string} */ id, disabled = false) => ({ id, error: new Error('Failed to fetch dynamically imported module.'), disabled });
+const failed = (/** @type {string} */ id) => ({ id, error: new Error('Failed to fetch dynamically imported module.') });
 
-test('plugins that did not start get a card each, by name; one turned off after failing to start says so', () => {
-  const { cards, unloaded } = startCards([failed('hello'), failed('old', true)], { name, taken: true });
-  assert.deepEqual(cards.map((c) => c.title), ['The plugin "Hello checks" didn\'t start', 'The plugin "Old tool" was turned off']);
-  assert.match(cards[1].body, /^It didn't start the last few times annai opened\. Failed to fetch/);
+test('plugins that did not start get a card each, by name, at every launch they fail: none says it was turned off, as annai never turns one off for not starting; a stale `disabled` an older caller gave still reads "didn\'t start" (plugin-fails-next)', () => {
+  const stale = { ...failed('old'), disabled: true }; // the spread avoids a literal excess-property check: no caller gives it any more
+  const { cards, unloaded } = startCards([failed('hello'), stale], { name, taken: true });
+  assert.deepEqual(cards.map((c) => c.title), ['The plugin "Hello checks" didn\'t start', 'The plugin "Old tool" didn\'t start']);
+  assert.deepEqual(cards.map((c) => c.body), Array(2).fill('Failed to fetch dynamically imported module. You can turn it off in Settings → Plugins.'));
   assert.deepEqual(unloaded, []);
 });
 
-test("a plugin turned off after failing to start: the lead is a sentence of its own and the start error follows it, not nested after a colon (words-next)", () => {
+test("a start that ran out of its time: annai's frame and its reason come first, then how to turn it off, not nested after a colon (words-next)", () => {
   const error = new PluginError('slow', "starting failed: it didn't finish starting within 10 seconds", { shown: "Starting failed: It didn't finish within 10 seconds." });
-  const { cards } = startCards([{ id: 'slow', error, disabled: true }], { name, taken: true });
-  assert.equal(cards[0].body, "It didn't start the last few times annai opened. Starting failed: It didn't finish within 10 seconds. You can turn it back on in Settings → Plugins.");
+  const { cards } = startCards([{ id: 'slow', error }], { name, taken: true });
+  assert.equal(cards[0].body, "Starting failed: It didn't finish within 10 seconds. You can turn it off in Settings → Plugins.");
 });
 
-test('on a page no service worker controls, those that failed share the one reload card; one turned off keeps its own', () => {
-  const { cards, unloaded } = startCards([failed('hello'), failed('hola'), failed('old', true)], { name, taken: false });
-  assert.deepEqual(cards.map((c) => c.title), ['The plugin "Old tool" was turned off']);
-  assert.deepEqual(unloaded, ['Hello checks', 'Hola checks']);
+test('on a page no service worker controls, every one that failed shares the one reload card', () => {
+  const { cards, unloaded } = startCards([failed('hello'), failed('hola'), failed('old')], { name, taken: false });
+  assert.deepEqual(cards, []);
+  assert.deepEqual(unloaded, ['Hello checks', 'Hola checks', 'Old tool']);
 });
 
 test('the reload card names the plugins, never their ids, and has Reload now; with none named, it says plugins can\'t start or be installed', () => {
@@ -39,15 +40,12 @@ test('the reload card names the plugins, never their ids, and has Reload now; wi
 });
 
 test("a start error that is a plugin's own words, with no stop of its own, is ended before the next sentence (the cards read \"boom You can turn it off\")", () => {
-  const raw = (/** @type {string} */ message, disabled = false) => [{ id: 'hello', error: new Error(message), disabled }];
+  const raw = (/** @type {string} */ message) => [{ id: 'hello', error: new Error(message) }];
   assert.equal(startCards(raw('boom'), { name, taken: true }).cards[0].body, 'boom. You can turn it off in Settings → Plugins.');
-  assert.equal(startCards(raw('boom', true), { name, taken: true }).cards[0].body,
-    "It didn't start the last few times annai opened. boom. You can turn it back on in Settings → Plugins.");
   // One that ends in a stop, a question or an ellipsis is left as it is.
   for (const message of ['boom.', 'Really?', 'wait…']) assert.equal(startCards(raw(message), { name, taken: true }).cards[0].body, `${message} You can turn it off in Settings → Plugins.`);
   // No words at all: no empty sentence.
   assert.equal(startCards(raw(''), { name, taken: true }).cards[0].body, 'You can turn it off in Settings → Plugins.');
-  assert.equal(startCards(raw('', true), { name, taken: true }).cards[0].body, "It didn't start the last few times annai opened. You can turn it back on in Settings → Plugins.");
 });
 
 test('the switched-off card leaves its last error out when there are no words for it, and ends one that ends in an ellipsis as it is', () => {

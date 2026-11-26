@@ -148,5 +148,5 @@ test("plugins the import brought switched off are left as they came, with no lin
   assert.ok(Object.values(await b.host.installed()).every((x) => x.enabled === false), 'none switched on');
   // Not from this import, a plugin the user turned off is named, as before.
   const mine = await llmB.restorePlugins();
-  assert.match(mine.failed.join(' '), /which you turned off/);
+  assert.match(mine.failed.join(' '), /which is turned off/);
 });

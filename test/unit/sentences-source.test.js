@@ -93,9 +93,7 @@ test('a plugin whose start throws an empty error: "Starting failed." on the star
   const name = () => 'Hello checks';
   const blank = await startError(new Error(''));
   assert.equal(blank.shown, 'Starting failed.');
-  assert.equal(startCards([{ id: 'hello', error: blank, disabled: false }], { name, taken: true }).cards[0].body, 'Starting failed. You can turn it off in Settings → Plugins.');
-  assert.equal(startCards([{ id: 'hello', error: blank, disabled: true }], { name, taken: true }).cards[0].body,
-    "It didn't start the last few times annai opened. Starting failed. You can turn it back on in Settings → Plugins.");
+  assert.equal(startCards([{ id: 'hello', error: blank }], { name, taken: true }).cards[0].body, 'Starting failed. You can turn it off in Settings → Plugins.');
   assert.equal((await startError(new Error(' \n'))).shown, 'Starting failed.', 'only spaces are no words');
   // Words of its own keep the frame, ended once.
   assert.equal((await startError(new Error('boom'))).shown, 'Starting failed: boom.');
@@ -104,7 +102,7 @@ test('a plugin whose start throws an empty error: "Starting failed." on the star
     screens(tag);
     const error = await startError(new Error(''));
     assert.equal(error.shown, said, tag);
-    assert.ok(startCards([{ id: 'hello', error, disabled: false }], { name, taken: true }).cards[0].body.startsWith(said), tag);
+    assert.ok(startCards([{ id: 'hello', error }], { name, taken: true }).cards[0].body.startsWith(said), tag);
   }
   // The install screen's card ("installed, but it didn't start").
   screens('en');

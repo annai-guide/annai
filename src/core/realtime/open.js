@@ -43,16 +43,17 @@ export function liveOrigin(endpoint, url, ability) {
 
 /**
  * What a close means (spec §9.9): the protocol's reading, else annai's, the words first (Gemini's 1007 is a bad field
- * and a bad key both): a refused key auth; quota rate; 1008 or "not found" not-found; 1011 server; else network.
- * @param {EndpointType} type @param {number} code @param {string} reason @returns {ErrorKind}
+ * and a bad key both): a refused key auth; quota rate; 1008 or "not found" not-found; 1011 server; else network. A reading that throws is none,
+ * told to onBug (the protocol's crash, counted against its plugin).
+ * @param {EndpointType} type @param {number} code @param {string} reason @param {(e: unknown) => void} [onBug] @returns {ErrorKind}
  */
-export function closeKind(type, code, reason) {
+export function closeKind(type, code, reason, onBug = () => {}) {
   /** @type {any} */
   let k = null;
   try {
     k = type.classifyClose?.(code, reason);
-  } catch {
-    // a broken reading is none
+  } catch (e) {
+    onBug(e); // a broken reading is none
   }
   if (KINDS.has(k)) return k;
   if (/api key|unauthenticated|permission denied/i.test(reason)) return 'auth';
@@ -66,7 +67,7 @@ export function closeKind(type, code, reason) {
  * the session is ready, with the tunables its reopen() gives, twice at most.
  * @param {{ type: EndpointType, endpoint: import('../llm/config.js').Endpoint, ability?: import('../llm/config.js').Ability, model: import('../llm/config.js').Model, key: string | null,
  *   tunables: Record<string, any>, setup: Omit<LiveSetup, 'audioIn' | 'audioOut'> & Partial<LiveSetup>, trace: ReturnType<typeof import('../llm/trace.js').modelTrace> | null,
- *   socket?: (url: string, protocols: string[]) => any, registry?: { threw(id: string, what: string, e: unknown): void }, wake?: string, now?: () => number, readyMs?: number,
+ *   socket?: (url: string, protocols: string[]) => any, registry?: Pick<import('../registry.js').Registry, 'threw' | 'settled'>, wake?: string, now?: () => number, readyMs?: number,
  *   output?: { sampleRate: number, baseLatency?: number, outputLatency?: number } }} c  output: the phone's sound (its rate, and its processing and output
  *   latency in s), traced as it is ready
  * @returns {LiveSession}
@@ -86,6 +87,11 @@ export function openLive(c) {
    * @param {string} what @param {unknown} e
    */
   const bug = (what, e) => { if (!(e instanceof ProviderError)) registry?.threw(type.pluginId, /* en */ `live ${what}`, e); };
+  /**
+   * A call of the protocol's returned: it worked, which ends its plugin's run of failures (Registry settled: a promise once it resolves; what it
+   * rejects with is kept in the Trace, and counted when it is a crash). @param {string} what @param {unknown} r
+   */
+  const worked = (what, r) => registry?.settled(type.pluginId, /* en */ `live ${what}`, r);
   /** @param {Record<string, any>} tunables @returns {{ url: string, protocols?: string[] }} */
   const build = (tunables) => {
     sameOrigin(endpoint, endpoint.baseUrl, ability); // the typed address first, as callOnce: a protocol's code is called only with one that parses
@@ -197,6 +203,7 @@ export function openLive(c) {
         Promise.resolve(driver?.ready).then(() => {
           if (done || st.up) return;
           st.up = true;
+          worked('ready', undefined);
           clearTimeout(timer);
           // The phone's sound by name: output() grows (its context's state), and must never take this line's own fields.
           const o = c.output;
@@ -209,7 +216,7 @@ export function openLive(c) {
         const d = typeof e.data === 'string' ? e.data : new Uint8Array(e.data);
         bytes.in += size(d);
         try {
-          handler?.(d);
+          if (handler) worked('message', handler(d));
         } catch (err) {
           bug('message', err);
         }
@@ -218,8 +225,8 @@ export function openLive(c) {
         clearTimeout(timer);
         const reason = String(e.reason ?? '');
         if (st.up) {
-          if (!asked) call('close', []); // its own close: the protocol lets go too (annai's called it already)
-          return finish(e.code, reason, asked ? null : closeKind(type, e.code, reason));
+          if (!asked) letGo(); // its own close: the protocol lets go too (annai's called it already)
+          return finish(e.code, reason, asked ? null : closeKind(type, e.code, reason, (err) => bug('classifyClose', err)));
         }
         try {
           const next = asked || !st.opened || tries >= MAX_REOPENS || st.late || st.broken ? null : type.reopen?.(e.code, reason, tunables);
@@ -229,7 +236,7 @@ export function openLive(c) {
           if (err instanceof ProviderError) return down(err, e.code, reason);
         }
         /** @type {ErrorKind} */
-        const kind = asked ? 'cancelled' : st.late ? 'timeout' : !st.opened ? 'unreachable' : st.broken ? 'plugin' : closeKind(type, e.code, reason);
+        const kind = asked ? 'cancelled' : st.late ? 'timeout' : !st.opened ? 'unreachable' : st.broken ? 'plugin' : closeKind(type, e.code, reason, (err) => bug('classifyClose', err));
         /* en */
         const words = { timeout: "The live session didn't start in time.", unreachable: `annai couldn't reach ${host}.`, plugin: `${type.name} couldn't start a live session.` }[/** @type {string} */ (kind)];
         /* en */
@@ -240,13 +247,22 @@ export function openLive(c) {
     attempt(first, c.tunables, 0);
   });
   ready.catch(() => {}); // read by whoever awaits it, never left unhandled
-  /** A driver call; a bug in it counts against the plugin. @param {string} what @param {any[]} a */
+  /** A driver call; a bug in it counts against the plugin, and one that returns ends its run of failures. @param {string} what @param {any[]} a */
   const call = (what, a) => {
     try {
-      if (driver && !done) /** @type {any} */ (driver)[what]?.(...a);
+      const d = /** @type {any} */ (driver);
+      if (d && !done && typeof d[what] === 'function') worked(what, d[what](...a));
     } catch (e) {
       bug(what, e);
       if (!isPluginBug(e)) throw e;
+    }
+  };
+  /** The protocol lets go. What its close() throws is kept as any throw of its code is, and never stops annai's own close: the socket closes and `closed` settles all the same. */
+  const letGo = () => {
+    try {
+      call('close', []);
+    } catch {
+      // kept by call; a close has no reader to answer
     }
   };
   const session = /** @type {LiveSession} */ ({
@@ -266,7 +282,7 @@ export function openLive(c) {
     close(why = 'closed') {
       if (done || asked) return;
       asked = why;
-      call('close', []);
+      letGo();
       ws?.close(1000);
     },
   });

@@ -153,7 +153,7 @@ const PLACES = {
   },
 };
 
-test("a drawing, a dock action or a component that throws an answer leaves its plugin on: annai.net.fetch's error and the browser's own fetch failure (Chrome's words and Safari's) for want of a link, an AllFailedError, a DOMException that is no crash (a stop, a time limit, a full phone), or its own words; three in a row of each, the drawing hidden and its onFail run each time, each logged with no count (plugin-link-next, test 3)", async () => {
+test("a drawing, a dock action or a component that throws an answer leaves its plugin on: annai.net.fetch's error and the browser's own fetch failure (Chrome's words and Safari's) for want of a link, an AllFailedError, a DOMException that is no crash (a stop, a time limit, a full phone), or its own words; three in a row of each, the drawing hidden and its onFail run each time, logged with no count, once while it repeats (plugin-link-next, test 3; once since plugin-fails-next)", async () => {
   const { tracedFetch } = await import('../../src/core/agent/net.js');
   const { AllFailedError } = await import('../../src/core/llm/fallback.js');
   const { createMemoryStore } = await import('../fakes/store-memory.js');
@@ -182,11 +182,11 @@ test("a drawing, a dock action or a component that throws an answer leaves its p
       seen[`${place}, ${what}`] = [shown, registry.isDisabled('tides'), logged.map((x) => [x.type, 'count' in x.data])];
     }
   }
-  const want = Object.fromEntries(Object.keys(seen).map((k) => [k, [[true, true, true], false, Array(3).fill(['plugin.error', false])]]));
-  assert.deepEqual(seen, want, "the drawing hidden with onFail each time (a dock action has no element to hide: true by construction), still on, three lines with no count");
+  const want = Object.fromEntries(Object.keys(seen).map((k) => [k, [[true, true, true], false, [['plugin.error', false]]]]));
+  assert.deepEqual(seen, want, "the drawing hidden with onFail each time (a dock action has no element to hide: true by construction), still on, one line with no count");
 });
 
-test("the dock's plugin avatar: a setState that crashes counts against its plugin, one that throws a link's or its own words is logged and counts nothing (plugin-link-fix1; unit: the dock's own DOM is the e2e's)", async () => {
+test("the dock's plugin avatar: a setState that crashes counts against its plugin, one that throws a link's or its own words is logged, once while it repeats, and counts nothing (plugin-link-fix1; unit: the dock's own DOM is the e2e's; once since plugin-fails-next)", async () => {
   const { dockAvatar } = await import('../../src/ui/dock.js');
   const had = Object.getOwnPropertyDescriptor(globalThis, 'Node');
   Object.defineProperty(globalThis, 'Node', { value: class {}, configurable: true, writable: true }); // the dock checks the avatar's el with instanceof Node
@@ -200,13 +200,14 @@ test("the dock's plugin avatar: a setState that crashes counts against its plugi
     for (const [what, [e, off, counted]] of Object.entries(throws)) {
       /** @type {any[]} */
       const logged = [];
-      const registry = new Registry({ maxFailures: 2, log: (ev) => logged.push(ev) }); // two throws: annai's own avatar (it needs a DOM) is only made at three
+      const registry = new Registry({ maxFailures: 2, log: (ev) => logged.push(ev) }); // off at the second crash
       registry.add('look', 'ui:component', { name: 'avatar', create: () => ({ el: new (/** @type {any} */ (globalThis).Node)(), setState: () => { throw e; }, setLevel: () => {} }) });
       const avatar = dockAvatar({ registry });
       avatar.setState('thinking');
       avatar.setState('thinking');
       assert.equal(registry.isDisabled('look'), off, what);
-      assert.deepEqual(logged.filter((x) => x.type === 'plugin.error').map((x) => 'count' in x.data), [counted, counted], `${what}: logged each time`);
+      // A crash's lines differ by their count; an answer's are one line over again, written once.
+      assert.deepEqual(logged.filter((x) => x.type === 'plugin.error').map((x) => 'count' in x.data), counted ? [true, true] : [false], `${what}: logged`);
     }
   } finally {
     if (had) Object.defineProperty(globalThis, 'Node', had);
@@ -219,8 +220,7 @@ test("the dock's plugin avatar: a setLevel that works ends its plugin's run of f
   const had = Object.getOwnPropertyDescriptor(globalThis, 'Node');
   Object.defineProperty(globalThis, 'Node', { value: class {}, configurable: true, writable: true }); // the dock checks the avatar's el with instanceof Node
   try {
-    // Two throws in each case, so the dock's own limit (three throws over its calls, then annai's own avatar, which needs a DOM) is never
-    // reached; maxFailures 2 only sets when the plugin is switched off.
+    // Two throws in each case; maxFailures 2 sets when the plugin is switched off.
     for (const [what, between, off] of /** @type {[string, ((a: any) => void) | null, boolean][]} */ ([
       ['a setLevel that works between them', (a) => a.setLevel(0.5), false],
       ['a glance the avatar has none of, between them (nothing was called, so nothing worked)', (a) => a.glance(), true],

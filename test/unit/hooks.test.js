@@ -160,7 +160,7 @@ test('8b-1 (M1): a write the store tries again reports its entries once', async 
   });
   assert.deepEqual(seen.map((evs) => evs.map((e) => e.type)), [['x']]);
 });
-test("a hook that throws the browser's own fetch failure while the device is offline is not counted: it failing three times and more leaves its plugin on, each logged with no count; a hook with a bug is off at the third (fail-owner-next, round 2 item 3; logged since plugin-link-next)", async () => {
+test("a hook that throws the browser's own fetch failure while the device is offline is not counted: it failing three times and more leaves its plugin on, logged with no count, once while it repeats; a hook with a bug is off at the third (fail-owner-next, round 2 item 3; logged since plugin-link-next; once since plugin-fails-next)", async () => {
   /** @type {any[]} */
   const logged = [];
   const registry = new Registry({ log: (ev) => logged.push(ev) });
@@ -173,11 +173,11 @@ test("a hook that throws the browser's own fetch failure while the device is off
   await settle();
   assert.equal(posts, 5, 'asked each time');
   assert.equal(registry.isDisabled('poster'), false, 'five offline posts: still on');
-  assert.deepEqual(logged.filter((e) => e.actor === 'plugin:poster').map((e) => [e.type, 'count' in e.data]), Array(5).fill(['plugin.error', false]), 'each logged, none counted');
+  assert.deepEqual(logged.filter((e) => e.actor === 'plugin:poster').map((e) => [e.type, 'count' in e.data]), [['plugin.error', false]], 'logged once while it repeats, never counted');
   assert.equal(registry.isDisabled('bugged'), true, "a hook's own bug: off");
   assert.equal(bugs, 3, 'at the third');
 });
-test("a hook that posts through annai.net.fetch while the device is offline is not counted either (the real tracedFetch's error, kind network): five entries leave the plugin on, each plugin.error with no count; the same hook with a bug is off at the third (fail-owner-next, round 3 item 1; logged since plugin-link-next)", async () => {
+test("a hook that posts through annai.net.fetch while the device is offline is not counted either (the real tracedFetch's error, kind network): five entries leave the plugin on, one plugin.error with no count while it repeats; the same hook with a bug is off at the third (fail-owner-next, round 3 item 1; logged since plugin-link-next; once since plugin-fails-next)", async () => {
   /** @type {any[]} */
   const logged = [];
   const { host, ws, registry } = await hostKit({ log: (ev) => logged.push(ev) });
@@ -213,7 +213,7 @@ test("a hook that posts through annai.net.fetch while the device is offline is n
     }
     assert.equal(g.__posts, 5, 'asked each time');
     assert.equal(registry.isDisabled('poster'), false, 'five offline posts: still on');
-    assert.deepEqual(logged.filter((e) => e.actor === 'plugin:poster').map((e) => [e.type, 'count' in e.data]), Array(5).fill(['plugin.error', false]), 'each logged, none counted');
+    assert.deepEqual(logged.filter((e) => e.actor === 'plugin:poster').map((e) => [e.type, 'count' in e.data]), [['plugin.error', false]], 'logged once while it repeats, never counted');
     assert.equal(registry.isDisabled('bugged'), true, "a hook's own bug: off");
     assert.equal(g.__bugs, 3, 'at the third');
   } finally {
@@ -221,7 +221,7 @@ test("a hook that posts through annai.net.fetch while the device is offline is n
     delete g.__bugs;
   }
 });
-test("a hook that fails for want of a link (annai.llm's and annai.llm.decide's AllFailedError, its own AbortError on annai.net.fetch, a link failure it wrapped in its own Error) or in its own words is called for every entry, each failure logged with no count, and its plugin stays on (plugin-link-next, test 2)", async () => {
+test("a hook that fails for want of a link (annai.llm's and annai.llm.decide's AllFailedError, its own AbortError on annai.net.fetch, a link failure it wrapped in its own Error) or in its own words is called for every entry, its failure logged with no count, once while it repeats, and its plugin stays on (plugin-link-next, test 2; once since plugin-fails-next)", async () => {
   /** @type {any[]} */
   const logged = [];
   const { host, ws, registry } = await hostKit({ log: (ev) => logged.push(ev) });
@@ -261,7 +261,7 @@ test("a hook that fails for want of a link (annai.llm's and annai.llm.decide's A
     }
     const seen = Object.fromEntries(Object.keys(hooks).map((how) => [how, [g.__hooked[how], registry.isDisabled(`hook-${how}`),
       logged.filter((e) => e.actor === `plugin:hook-${how}`).map((e) => [e.type, 'count' in e.data])]]));
-    assert.deepEqual(seen, Object.fromEntries(Object.keys(hooks).map((how) => [how, [4, false, Array(4).fill(['plugin.error', false])]])), 'called four times, still on, four lines with no count');
+    assert.deepEqual(seen, Object.fromEntries(Object.keys(hooks).map((how) => [how, [4, false, [['plugin.error', false]]]])), 'called four times, still on, one line with no count');
   } finally {
     delete g.__hooked;
   }
@@ -276,7 +276,7 @@ test("a hook that throws a value that isn't an Error is a crash, as before: off 
   assert.equal(registry.isDisabled('thrower'), true);
   assert.equal(calls, 3);
 });
-test("a hook that throws what the engine throws for a program that does something wrong (a DOMException by its name, a URIError) is off at the third entry; one that throws AbortError, TimeoutError, NetworkError, QuotaExceededError, InvalidStateError or NotFoundError is called for every entry and stays on, each logged with no count (plugin-link-fix1)", async () => {
+test("a hook that throws what the engine throws for a program that does something wrong (a DOMException by its name, a URIError) is off at the third entry; one that throws AbortError, TimeoutError, NetworkError, QuotaExceededError, InvalidStateError or NotFoundError is called for every entry and stays on, logged with no count, once while it repeats (plugin-link-fix1; once since plugin-fails-next)", async () => {
   /** @type {any[]} */
   const logged = [];
   const registry = new Registry({ log: (ev) => logged.push(ev) });
@@ -289,7 +289,7 @@ test("a hook that throws what the engine throws for a program that does somethin
   await settle();
   assert.deepEqual(Object.fromEntries(Object.keys(hooks).map((id) => [id, [calls[id], registry.isDisabled(id)]])), Object.fromEntries(Object.keys(hooks).map((id) => [id, id.startsWith('crash-') ? [3, true] : [4, false]])));
   for (const id of Object.keys(hooks).filter((x) => x.startsWith('answer-'))) {
-    assert.deepEqual(logged.filter((e) => e.type === 'plugin.error' && e.actor === `plugin:${id}`).map((e) => 'count' in e.data), Array(4).fill(false), `${id}: four lines with no count`);
+    assert.deepEqual(logged.filter((e) => e.type === 'plugin.error' && e.actor === `plugin:${id}`).map((e) => 'count' in e.data), [false], `${id}: one line with no count`);
   }
 });
 test("a hook that crashed on its last two entries before the loop limit is switched off for the loop: its card and its log say so, not 'failed 3 times in a row' (plugin-link-fix1; the crashes come last, so the order is pinned whatever the timing of the resets between)", async () => {

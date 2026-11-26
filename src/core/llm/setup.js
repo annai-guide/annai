@@ -22,10 +22,12 @@ export function setupOf(registry, pluginId) {
   return registry?.entries('provider-setup').find((e) => e.pluginId === pluginId)?.item ?? null;
 }
 
-/** A part of a setup run; a bug in it counts against its plugin (spec §5.5) and gives null. @param {any} registry @param {string} pluginId @param {string} what @param {() => any} fn */
+/** A part of a setup run; a bug in it counts against its plugin (spec §5.5) and gives null, and one that returns ends its run of failures. @param {any} registry @param {string} pluginId @param {string} what @param {() => any} fn */
 function guarded(registry, pluginId, what, fn) {
   try {
-    return fn();
+    const got = fn();
+    registry?.succeeded(pluginId);
+    return got;
   } catch (e) {
     if (!isPluginBug(e)) throw e;
     registry?.fail(pluginId, what, e);

@@ -560,7 +560,7 @@ test('turning an ability on installs its official protocol plugin; offline it sa
   await k.llm.setAbility(id, 'extra', true);
   await k.host.setEnabled('proto-b', false);
   await k.llm.setAbility(id, 'extra', false);
-  await assert.rejects(k.llm.setAbility(id, 'extra', true), /you turned off/);
+  await assert.rejects(k.llm.setAbility(id, 'extra', true), /which is turned off, isn't switched on by (adding it|this)/);
   assert.equal((await k.host.installed())['proto-b'].enabled, false);
 });
 

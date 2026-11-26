@@ -43,7 +43,7 @@ const ACME = {
       keyField: t.keyField,
       panel: (ui, provider) => t.panel(ui, provider),
       classify: (status, body, ability) => (/quota for today/.test(body) ? 'rate' : /odd kind/.test(body) ? 'banana' : /a number/.test(body) ? 42 : null),
-      headers: (ability) => ({ 'x-acme-ability': ability, ...t.headers }),
+      headers: t.noHeaders ? undefined : (ability) => ({ 'x-acme-ability': ability, ...t.headers }),
       list: (c) => t.list(c),
     });
   }`,
@@ -224,6 +224,56 @@ test("classify sharpens an error's kind before the protocol's; headers join the 
   assert.ok(!JSON.stringify(trace).includes('sk-acme-1'), 'the key is in no trace entry');
 });
 
+test("a provider's list that returns a list ends its plugin's run of failures: two that crash, one that works, two that crash leave the plugin on, the protocol's list answering for each crash, one counted line each time (plugin-fails-next test 11; a setup with no headers hook, so its list alone reports)", async () => {
+  const had = /** @type {any} */ (globalThis).acme.noHeaders;
+  /** @type {any} */ (globalThis).acme.noHeaders = true; // the headers hook reports a success before each list, which would hide the list's own
+  try {
+    const k = await kit();
+    const id = await k.llm.addProvider('provider-acme', { key: 'sk-acme-1' });
+    const steps = ['crash', 'crash', 'works', 'crash', 'crash'];
+    /** @type {any} */ (globalThis).acme.list = (/** @type {any} */ c) => {
+      if (steps.shift() === 'crash') throw new TypeError("Cannot read properties of undefined (reading 'models')");
+      return c.protocolList();
+    };
+    for (let i = 0; i < 5; i++) assert.deepEqual(await k.llm.listModels(id, 'chat'), [{ providerId: 'listed-1' }]);
+    assert.deepEqual(steps, [], 'every call reached the plugin\'s list');
+    assert.equal(k.registry.isDisabled('provider-acme'), false);
+    assert.deepEqual(k.events.filter((e) => e.type === 'plugin.error').map((e) => e.data.count), [1, 2, 1, 2]);
+  } finally {
+    /** @type {any} */ (globalThis).acme.list = (/** @type {any} */ c) => c.protocolList();
+    /** @type {any} */ (globalThis).acme.noHeaders = had;
+  }
+});
+
+test("a provider's list that returns no array (nothing, null, a string, an object) is neither a success nor a crash: the protocol's list answers, one plugin.error line with no count says what it gave, and the plugin stays on through six calls of it (plugin-fails-fix2, item 2)", async () => {
+  const had = /** @type {any} */ (globalThis).acme.noHeaders;
+  /** @type {any} */ (globalThis).acme.noHeaders = true;
+  try {
+    for (const [wrong, said] of /** @type {[any, string][]} */ ([[undefined, 'undefined'], [null, 'null'], ['llama', 'string'], [{ models: [] }, 'object']])) {
+      const k = await kit();
+      const id = await k.llm.addProvider('provider-acme', { key: 'sk-acme-1' });
+      /** @type {any} */ (globalThis).acme.list = async () => wrong;
+      for (let i = 0; i < 6; i++) assert.deepEqual(await k.llm.listModels(id, 'chat'), [{ providerId: 'listed-1' }], `${said}: the protocol's list answers`);
+      assert.equal(k.registry.isDisabled('provider-acme'), false, `${said}: not counted`);
+      assert.deepEqual(k.events.filter((e) => e.type === 'plugin.error').map((e) => [e.data.count, e.data.message]), [[undefined, `its list() gave ${said}, not an array of models`]], `${said}: one line, no count`);
+    }
+    // Neither a success: two crashes, a list that gives none, one crash more are three in a row.
+    const k = await kit();
+    const id = await k.llm.addProvider('provider-acme', { key: 'sk-acme-1' });
+    const steps = ['crash', 'crash', 'none', 'crash'];
+    /** @type {any} */ (globalThis).acme.list = (/** @type {any} */ c) => {
+      const step = steps.shift();
+      if (step === 'crash') throw new TypeError("Cannot read properties of undefined (reading 'models')");
+      return step === 'none' ? undefined : c.protocolList();
+    };
+    for (let i = 0; i < 4; i++) assert.deepEqual(await k.llm.listModels(id, 'chat'), [{ providerId: 'listed-1' }]);
+    assert.equal(k.registry.isDisabled('provider-acme'), true, 'a list that gives none neither ended the run nor was one of it: the third crash switched it off');
+  } finally {
+    /** @type {any} */ (globalThis).acme.list = (/** @type {any} */ c) => c.protocolList();
+    /** @type {any} */ (globalThis).acme.noHeaders = had;
+  }
+});
+
 test('a second setup from one plugin is refused, as is one from a plugin with no provider description, or one whose parts are not functions', async () => {
   const k = await hostKit();
   const plugin = (/** @type {string} */ id, /** @type {string} */ body, provider = true) => files({
@@ -262,7 +312,7 @@ test("the featured start's plugin installs in the background while no provider e
   const again = await k.llm.addProvider('provider-other', { key: 'sk-other' });
   assert.deepEqual(await ids(), ['proto-h', 'provider-acme', 'provider-other']);
   await k.llm.removeProvider(again);
-  await assert.rejects(k.llm.prepareStart('provider-acme'), /you turned off/);
+  await assert.rejects(k.llm.prepareStart('provider-acme'), /which is turned off, isn't switched on by (adding it|this)/);
   assert.equal((await k.host.installed())['provider-acme'].enabled, false);
   // Switched off by annai after errors: the start isn't the user's tap, so it stays off.
   await k.host.setEnabled('provider-acme', true);
@@ -363,7 +413,7 @@ test("Add on a provider whose plugin draws its own Add flow installs it, with wh
   assert.equal((await readConfig(k.ws)).providers[/** @type {string} */ (other)].plugin, 'provider-other');
   // Turned off by the user, it isn't switched on by Add.
   await k.host.setEnabled('provider-acme', false);
-  await assert.rejects(k.llm.startAdd('provider-acme', { official: true }), /turned off/);
+  await assert.rejects(k.llm.startAdd('provider-acme', { official: true }), /which is turned off, isn't switched on by (adding it|this)/);
   assert.equal((await k.host.installed())['provider-acme'].enabled, false);
 });
 

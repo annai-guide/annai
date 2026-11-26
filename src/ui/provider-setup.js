@@ -214,10 +214,12 @@ export async function finishReturn(ctx, env = {}) {
     to(loc.hash);
     const returned = setupOf(ctx.registry, back.plugin)?.returned;
     if (!returned) throw new Error(t`${name} isn't running. Look at it in Settings → Plugins, then sign in again.`);
-    await Promise.resolve(returned(back.params, setupUi(ctx, back.plugin))).catch((e) => {
+    const ui = setupUi(ctx, back.plugin);
+    await new Promise((resolve) => resolve(returned(back.params, ui))).catch((e) => { // a throw before it returns counts like a rejection
       if (isPluginBug(e)) ctx.registry.fail(back.plugin, 'sign-in', e);
       throw e;
     });
+    ctx.registry.succeeded(back.plugin); // its sign-in returned: its plugin's run of failures is over
   } catch (e) {
     ctx.notices.card({ tone: 'warn', title: t`Signing in with ${name} didn't finish`, body: messageOf(e) });
   } finally {

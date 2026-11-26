@@ -125,14 +125,11 @@ export function mount(ctx, entry, el, call, { group = 'screen', what = 'drawing'
  * @param {any} ctx @param {Entry} entry
  */
 export function runAction(ctx, entry) {
-  const fail = (/** @type {unknown} */ e) => ctx.registry?.threw(entry.pluginId, /* en */ `dock action ${entry.item.id}`, e);
+  const what = /* en */ `dock action ${entry.item.id}`;
   try {
-    const worked = () => ctx.registry?.succeeded(entry.pluginId);
-    const r = entry.item.run(pluginUi(ctx, entry.pluginId));
-    if (r && typeof r.then === 'function') r.then(worked, fail);
-    else worked();
+    ctx.registry?.settled(entry.pluginId, what, entry.item.run(pluginUi(ctx, entry.pluginId)));
   } catch (e) {
-    fail(e);
+    ctx.registry?.threw(entry.pluginId, what, e);
   }
 }
 

@@ -621,14 +621,14 @@ al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	{0}�
 bbv043	ok	This device is offline, so annai couldn't reach this place.	この端末はオフラインのため、このバックアップ先に接続できませんでした。	src/core/backup.js:52	
 1oqcoyx	ok	annai tries again once it's back online.	オンラインに戻ったら、自動的に再試行します。	src/core/backup.js:82	
 16b3dai	ok	That backup place was removed.	そのバックアップ先は削除されました。	src/core/backup.js:183	
-mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	この種類のバックアップ先のプラグインを起動できませんでした。もう一度お試しください。	src/core/backup.js:389	
-lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	メガバイト単位の数値を入力してください。空欄にすると上限なしになります。	src/core/backup.js:406	
-1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	ユーザー名とパスワードは、アドレスではなくそれぞれの欄に入力してください。	src/core/backup.js:417	
-tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	暗号化バックアップ用のパスフレーズを入力して、保存してください。	src/core/backup.js:425	
-230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	APIキーは暗号化したバックアップにしか含められません。先に「バックアップをパスフレーズで暗号化」にチェックを入れてください。	src/core/backup.js:426	Note: the checkbox's own words; keep them as its row says them.
-107ikf9	ok	Works.	正常に動作しています。	src/core/backup.js:470	Note: the result of Save and test when the place says nothing itself.
-1w4k6nl	ok	This backup was made by a newer annai: update annai first.	このバックアップは新しいバージョンのannaiで作成されています。先にannaiをアップデートしてください。	src/core/backup.js:520	
-173rmiu	ok	This backup is damaged.	このバックアップは壊れています。	src/core/backup.js:521	
+mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	この種類のバックアップ先のプラグインを起動できませんでした。もう一度お試しください。	src/core/backup.js:391	
+lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	メガバイト単位の数値を入力してください。空欄にすると上限なしになります。	src/core/backup.js:408	
+1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	ユーザー名とパスワードは、アドレスではなくそれぞれの欄に入力してください。	src/core/backup.js:419	
+tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	暗号化バックアップ用のパスフレーズを入力して、保存してください。	src/core/backup.js:427	
+230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	APIキーは暗号化したバックアップにしか含められません。先に「バックアップをパスフレーズで暗号化」にチェックを入れてください。	src/core/backup.js:428	Note: the checkbox's own words; keep them as its row says them.
+107ikf9	ok	Works.	正常に動作しています。	src/core/backup.js:472	Note: the result of Save and test when the place says nothing itself.
+1w4k6nl	ok	This backup was made by a newer annai: update annai first.	このバックアップは新しいバージョンのannaiで作成されています。先にannaiをアップデートしてください。	src/core/backup.js:522	
+173rmiu	ok	This backup is damaged.	このバックアップは壊れています。	src/core/backup.js:523	
 1lbu7g8	ok	Photo · {0}	写真 · {0}	src/core/chats.js:132	{0} = time
 1nqtd5y	ok	Voice · {0}	音声 · {0}	src/core/chats.js:133	{0} = time
 146ozuk	ok	New conversation	新しい会話	src/core/chats.js:134	
@@ -796,7 +796,7 @@ n9xh2y	ok	The plugin couldn't be downloaded ({0}: HTTP {1}). Try again later.	�
 16b6a3q	ok	The plugin wasn't installed: {0} doesn't match annai's catalog.	{0}がannaiのカタログと一致しないため、プラグインをインストールしませんでした。	src/core/llm/official.js:173	{0} = name; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
 1mtcl9u	ok	It isn't a kind of backup place annai knows. Install a plugin that provides it.	annaiが対応していない種類のバックアップ先です。対応するプラグインをインストールしてください。	src/core/llm/official.js:286	Note: said of a kind of backup place, whose id comes before it in the log.
 ul2t1z	ok	It isn't an endpoint type annai knows. Install a plugin that provides it.	annaiが対応していないエンドポイントの種類です。対応するプラグインをインストールしてください。	src/core/llm/official.js:288	Note: said of an endpoint type, whose id comes before it in the log.
-brqvs6	ok	{0}, which you turned off, isn't switched on by this.	オフにした{0}は、この操作ではオンになりません。	src/core/llm/official.js:300	{0} = name
+5d81o3	draft	{0}, which is turned off, isn't switched on by this.	オフになっている{0}は、この操作ではオンになりません。	src/core/llm/official.js:300	{0} = name
 1rnb3p5	ok	The plugin didn't provide a kind of backup place {0}.	このプラグインはバックアップ先の種類「{0}」に対応していませんでした。	src/core/llm/official.js:309	{0} = type; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
 cpehgy	ok	The plugin didn't provide an endpoint type {0}.	このプラグインはエンドポイントの種類「{0}」に対応していませんでした。	src/core/llm/official.js:311	{0} = type; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
 1jtsyij	ok	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	スマートフォンでは、localhostはスマートフォン自身を指します。別のコンピューターのサーバーにはhttpsのアドレスが必要です。httpsのページからの暗号化されていないhttp通信はブラウザがブロックするため、annaiはネットワーク内ではhttpsのアドレスにしか接続しません。方法の1つはTailscale Serveです。スマートフォンをtailnetに参加させ、サーバー側で{0}を実行して、annaiに{1}を入力します。サーバーは annai.guide からのCORSも許可している必要があります。Chrome 142以降では、ローカルネットワークへのアクセス許可を求められることがあります。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
@@ -858,16 +858,16 @@ d57q3n	ok	Flight	フライト	src/core/plan.js:70
 jj8u9s	ok	Stay	宿泊	src/core/plan.js:70	Note: A kind of booking: a hotel or other lodging.
 sksosh	ok	Car	レンタカー	src/core/plan.js:70	Note: A kind of booking: a car, nearly always a rental.
 1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	タイムゾーン「{0}」を認識できないため、{1}で表示しています。	src/core/plan.js:155	{0} = String(own ?? ''); {1} = fallbackTz
-o6vv9a	ok	"{0}" is a name annai uses for one of its own parts, so a skill can't have it.	「{0}」はannaiの機能で使う名前なので、スキルには使えません。	src/core/plugins.js:181	{0} = id; Note: {0} is the skill's name.
-1fdobr5	ok	It has the same id as a plugin built into annai.	annaiに組み込まれたプラグインと同じIDです。	src/core/plugins.js:182	
-wq5ezj	ok	Its name, "{0}", is annai's own name, or the name of one of its parts. Ask its author to rename it.	名前「{0}」は、annai自体かその機能の名前と同じです。作者に名前の変更を依頼してください。	src/core/plugins.js:186	{0} = pkg.name; Note: Ask here is the plain verb (to ask the author), not Safari's permission choice.
-15gukav	ok	A plugin with this id is installed already. Remove it first.	同じIDのプラグインがすでにインストールされています。先に削除してください。	src/core/plugins.js:192	
-masbkh	ok	A skill with this id is installed already. Remove it first.	同じIDのスキルがすでにインストールされています。先に削除してください。	src/core/plugins.js:192	
-1idb6oe	ok	{0} is handed the keys you give it, so the one used is annai's own, else the one installed first.	{0}には入力したキーが渡されるため、annai公式のものを使い、なければ最初にインストールしたものを使います。	src/core/plugins.js:243	{0} = name
-7ot8m8	ok	{0} is annai's own, so no plugin replaces it.	{0}はannaiに組み込まれたものなので、プラグインで置き換えることはできません。	src/core/plugins.js:245	{0} = name
-1863007	ok	It is being removed.	削除中です。	src/core/plugins.js:444	
-u30lhr	ok	It was updated. Restart annai to run the new version.	アップデートされました。新しいバージョンを使うには、annaiを再起動してください。	src/core/plugins.js:445	
-12roxwh	ok	It keeps MCP servers, not settings: remove a server on its own screen.	設定ではなくMCPサーバーを保存しています。サーバーはそれぞれの画面で削除してください。	src/core/plugins.js:615	
+o6vv9a	ok	"{0}" is a name annai uses for one of its own parts, so a skill can't have it.	「{0}」はannaiの機能で使う名前なので、スキルには使えません。	src/core/plugins.js:179	{0} = id; Note: {0} is the skill's name.
+1fdobr5	ok	It has the same id as a plugin built into annai.	annaiに組み込まれたプラグインと同じIDです。	src/core/plugins.js:180	
+wq5ezj	ok	Its name, "{0}", is annai's own name, or the name of one of its parts. Ask its author to rename it.	名前「{0}」は、annai自体かその機能の名前と同じです。作者に名前の変更を依頼してください。	src/core/plugins.js:184	{0} = pkg.name; Note: Ask here is the plain verb (to ask the author), not Safari's permission choice.
+15gukav	ok	A plugin with this id is installed already. Remove it first.	同じIDのプラグインがすでにインストールされています。先に削除してください。	src/core/plugins.js:190	
+masbkh	ok	A skill with this id is installed already. Remove it first.	同じIDのスキルがすでにインストールされています。先に削除してください。	src/core/plugins.js:190	
+1idb6oe	ok	{0} is handed the keys you give it, so the one used is annai's own, else the one installed first.	{0}には入力したキーが渡されるため、annai公式のものを使い、なければ最初にインストールしたものを使います。	src/core/plugins.js:241	{0} = name
+7ot8m8	ok	{0} is annai's own, so no plugin replaces it.	{0}はannaiに組み込まれたものなので、プラグインで置き換えることはできません。	src/core/plugins.js:243	{0} = name
+1863007	ok	It is being removed.	削除中です。	src/core/plugins.js:433	
+u30lhr	ok	It was updated. Restart annai to run the new version.	アップデートされました。新しいバージョンを使うには、annaiを再起動してください。	src/core/plugins.js:434	
+12roxwh	ok	It keeps MCP servers, not settings: remove a server on its own screen.	設定ではなくMCPサーバーを保存しています。サーバーはそれぞれの画面で削除してください。	src/core/plugins.js:603	
 1k8fwg2#other	ok	It didn't finish within # seconds.	#秒以内に完了しませんでした。	src/core/plugins.js:812	plural; # = s; English: "It didn't finish within # second." (one), "It didn't finish within # seconds." (other); Note: a sentence of its own, under the card's "didn't start" title; after "Starting failed:" it is the reason.
 u8bf72	ok	Notifications are on. Reminders come like this while annai is closed.	通知がオンになりました。annaiを閉じているときは、リマインダーがこのように届きます。	src/core/push/mirror.js:75	
 1dxa9va	ok	Notifications are on again: reminders come like this while annai is closed.	通知が再びオンになりました。annaiを閉じているときは、リマインダーがこのように届きます。	src/core/push/mirror.js:76	
@@ -895,19 +895,19 @@ ido0tg	ok	The phone's push service says this subscription no longer exists.	端�
 1eeb6fm	ok	There's no annai push relay at {0} (it answered 404). Check the relay address.	{0}にannaiのプッシュ中継が見つかりません（404が返されました）。中継のアドレスを確認してください。	src/core/push/relay-client.js:41	{0} = host
 12gfn9	ok	The relay at {0} sent a key annai can't use. Is this the address of an annai push relay?	{0}の中継から、annaiで使えないキーが届きました。annaiのプッシュ中継のアドレスで合っていますか？	src/core/push/relay-client.js:42	{0} = host
 n5y19n	ok	The relay at {0} refused it ({1}).	{0}の中継に拒否されました（{1}）。	src/core/push/relay-client.js:43	{0} = host; {1} = status
-3hb2ch	ok	The key works.	キーは有効です。	src/core/realtime/open.js:277	
-r6odk7	ok	annai can open a live session at this address from the browser.	ブラウザからこのアドレスでライブセッションを開けます。	src/core/realtime/open.js:277	
-4u7tr8	ok	It answered aloud: {0}	音声で応答しました：「{0}」	src/core/realtime/open.js:308	{0} = words; Note: the stop after the quote is the screens' own (asSentence), left off here so a "?" or "!" the model ended with is not followed by a second one.
-ip7w4y#other	ok	It didn't answer aloud within # seconds.	#秒待っても音声で応答しませんでした。	src/core/realtime/open.js:308	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
-1x3q9c3	ok	The session closed before it answered.	応答がないままセッションが終了しました。	src/core/realtime/open.js:309	
-9sqs1k	ok	It answered, but not aloud in words.	応答はありましたが、声に出した言葉ではありませんでした。	src/core/realtime/open.js:309	Note: It answered, but not in spoken words (text, or sound with no words).
+3hb2ch	ok	The key works.	キーは有効です。	src/core/realtime/open.js:293	
+r6odk7	ok	annai can open a live session at this address from the browser.	ブラウザからこのアドレスでライブセッションを開けます。	src/core/realtime/open.js:293	
+4u7tr8	ok	It answered aloud: {0}	音声で応答しました：「{0}」	src/core/realtime/open.js:324	{0} = words; Note: the stop after the quote is the screens' own (asSentence), left off here so a "?" or "!" the model ended with is not followed by a second one.
+ip7w4y#other	ok	It didn't answer aloud within # seconds.	#秒待っても音声で応答しませんでした。	src/core/realtime/open.js:324	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
+1x3q9c3	ok	The session closed before it answered.	応答がないままセッションが終了しました。	src/core/realtime/open.js:325	
+9sqs1k	ok	It answered, but not aloud in words.	応答はありましたが、声に出した言葉ではありませんでした。	src/core/realtime/open.js:325	Note: It answered, but not in spoken words (text, or sound with no words).
 ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	この名前はannai公式のプラグインが使っているため、ほかから入手したパッケージには使えません。作者に名前の変更を依頼してください。	src/core/registry.js:17	Note: "Ask its author" is asking a person (頼む), not the phones' permission choice Ask (確認).
 1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	この名前はannai公式のプラグインが使っていますが、インストールされているのはほかから入手したものなので、annaiでは使いません。「設定 → プラグイン」で削除してから、もう一度お試しください。	src/core/registry.js:18	
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	「設定 → プラグイン」でオンにしてから、もう一度お試しください。	src/core/registry.js:19	
-mzoa87	ok	It is switched off after repeated errors.	エラーが続いたため、オフになっています。	src/core/registry.js:266	
-dhg5k6	ok	Starting failed: {0}	起動に失敗しました：{0}	src/core/registry.js:279	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
+mzoa87	ok	It is switched off after repeated errors.	エラーが続いたため、オフになっています。	src/core/registry.js:282	
+dhg5k6	ok	Starting failed: {0}	起動に失敗しました：{0}	src/core/registry.js:298	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
 19bu7pw	ok	Version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	バージョン{0}にすると{1}が動かなくなります（{1}には{2} {3}が必要です）。先に{4}をアップデートするか、このバージョンのままにしてください。	src/core/requires.js:52	{0} = version; {1} = them; {2} = it; {3} = r.version; {4} = them
-1ee40s4	ok	It needs {0}, which you turned off.	{0}が必要ですが、オフになっています。	src/core/requires.js:79	{0} = shown
+14dda2r	draft	It needs {0}, which is turned off.	{0}が必要ですが、オフになっています。	src/core/requires.js:79	{0} = shown
 8xu6se	ok	It needs {0}, which isn't installed. Install it from {1} first, then try again.	{0}が必要ですが、インストールされていません。{1} からインストールしてから、もう一度お試しください。	src/core/requires.js:82	{0} = r.id; {1} = r.homepage
 1cft9l	ok	It needs {0}, which isn't installed. Install it first, then try again.	{0}が必要ですが、インストールされていません。先にインストールしてから、もう一度お試しください。	src/core/requires.js:84	{0} = r.id
 16mdg7x	ok	It needs {0} {1}, and version {2} is installed. Update it, then try again.	{0} {1}が必要ですが、インストールされているのはバージョン{2}です。アップデートしてから、もう一度お試しください。	src/core/requires.js:86	{0} = r.id; {1} = r.version; {2} = s.version
@@ -916,7 +916,7 @@ t7oyho	ok	It needs {0} {1}, and annai's catalog has version {2} ({3} is installe
 10h6x92	ok	It needs {0} {1}, and annai's catalog has version {2}. Try again once annai has a version that fits.	{0} {1}が必要ですが、annaiのカタログにあるのはバージョン{2}です。対応するバージョンがannaiに追加されてから、もう一度お試しください。	src/core/requires.js:95	{0} = shown; {1} = r.version; {2} = e.version
 ubg3u	ok	It isn't in annai's catalog.	annaiのカタログにありません。	src/core/requires.js:203	
 4umazb	ok	The one installed came from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.	インストールされているものはほかの場所から入手したもので、annai公式のものではありません。公式のものを追加するには、「設定 → プラグイン」で削除してください。	src/core/requires.js:206	
-seoih8	ok	{0}, which you turned off, isn't switched on by adding it.	{0}はオフにしてあるため、追加しただけではオンになりません。	src/core/requires.js:208	{0} = officialName(entry.id, entry.name)
+1jm9kgz	draft	{0}, which is turned off, isn't switched on by adding it.	{0}はオフになっているため、追加しただけではオンになりません。	src/core/requires.js:208	{0} = officialName(entry.id, entry.name)
 stkvyf	ok	Me	自分	src/core/scopes.js:117	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
 1imxpae	ok	System log	システムログ	src/core/scopes.js:118	
 ktdb8o	ok	Settings	設定	src/core/scopes.js:119	
@@ -1448,9 +1448,8 @@ alpox6	ok	The last error: {0}	最後のエラー：{0}	src/ui/plugin-cards.js:15
 6kkhkz#other	ok	It opened without its offline service, so these plugins can't start: {0}.	オフラインサービスなしで開いたため、次のプラグインを起動できません：{0}。	src/ui/plugin-cards.js:30	plural; # = names.length; {0} = list(names); English: "It opened without its offline service, so this plugin can't start: {0}." (one), "It opened without its offline service, so these plugins can't start: {0}." (other)
 53p50e	ok	It opened without its offline service, so plugins can't start or be installed.	オフラインサービスなしで開いたため、プラグインの起動もインストールもできません。	src/ui/plugin-cards.js:31	
 fzpt3w	ok	Reload now	今すぐ再読み込み	src/ui/plugin-cards.js:32	
-1abmsob	ok	It didn't start the last few times annai opened.	annaiを開いた直近の数回、続けて起動しませんでした。	src/ui/plugin-cards.js:47	
-11arkb9	ok	You can turn it off in Settings → Plugins.	「設定 → プラグイン」でオフにできます。	src/ui/plugin-cards.js:48	
-1jz4o49	ok	The plugin "{0}" didn't start	プラグイン「{0}」が起動しませんでした	src/ui/plugin-cards.js:48	{0} = it
+11arkb9	ok	You can turn it off in Settings → Plugins.	「設定 → プラグイン」でオフにできます。	src/ui/plugin-cards.js:47	
+1jz4o49	ok	The plugin "{0}" didn't start	プラグイン「{0}」が起動しませんでした	src/ui/plugin-cards.js:47	{0} = it
 44nn0b	ok	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（追加内容あり：アップデート前に確認します）	src/ui/plugin-updates.js:88	{0} = u.name; {1} = u.installed; {2} = u.available
 trjp65	ok	{0} (changed) (brings something new: you'll be asked first)	{0}（変更あり、追加内容あり：アップデート前に確認します）	src/ui/plugin-updates.js:88	{0} = u.name
 1kyfel6	ok	{0} (changed)	{0}（変更あり）	src/ui/plugin-updates.js:89	{0} = u.name
@@ -1508,18 +1507,18 @@ edml6o	ok	Getting the sign-in ready…	サインインの準備中…	src/ui/pro
 1rk1a1z	ok	A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.	サインインの応答が届きましたが、受付は終了していました。15分以上たったか、サインインがすでに完了しています。「設定 → モデル」からもう一度始めてください。	src/ui/provider-setup.js:202	
 sv1qqk	ok	A sign-in came back too late	サインインの応答が遅すぎました	src/ui/provider-setup.js:202	
 gkf0xx	ok	{0} isn't running. Look at it in Settings → Plugins, then sign in again.	{0}が動いていません。「設定 → プラグイン」で確認してから、もう一度サインインしてください。	src/ui/provider-setup.js:216	{0} = name
-1fbojq2	ok	Signing in with {0} didn't finish	{0}でのサインインが完了しませんでした	src/ui/provider-setup.js:222	{0} = name
-1fm7mjz	ok	Speech out	読み上げ	src/ui/provider-setup.js:230	
-v20s4a	ok	Quick decision	クイック判定	src/ui/provider-setup.js:230	
-w8niry	ok	Speech in	聞き取り	src/ui/provider-setup.js:230	
-eudybe#other	ok	{0} now use {1}'s free models.	{0}は{1}の無料モデルを使うようになりました。	src/ui/provider-setup.js:246	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
-14xff7o#other	ok	{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.	{0}は有料です。{1}には無料で始められるモデルがなく、Shioriが答えるにはモデルが必要なためです。	src/ui/provider-setup.js:247	plural; # = paid.length; {0} = list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)); {1} = name; English: "{0} costs money: {1} has no free model to start with, and Shiori needs one to answer." (one), "{0} cost money: {1} has no free model to start with, and Shiori needs one to answer." (other)
-1wdrhx6	ok	{0} {1}	{0}（{1}）	src/ui/provider-setup.js:248	{0} = ROLE_SHORT[r] ?? r; {1} = costs[r]; Note: A role and the model that costs money in it ("Main GPT-6.1 Sol"), not two sentences: the model in brackets.
-1c8it09	ok	If your key is on the free tier, switch that on, on this page: its models then cost nothing.	キーが無料枠の場合は、このページで無料枠をオンにしてください。モデルの料金がかからなくなります。	src/ui/provider-setup.js:249	
-1dsri4f	ok	Its speech in models went behind the free entries.	聞き取りのモデルは、無料の項目より後ろに追加しました。	src/ui/provider-setup.js:250	
-jvtji4	ok	Its speech in and speech out models went behind the free entries.	聞き取りと読み上げのモデルは、無料の項目より後ろに追加しました。	src/ui/provider-setup.js:250	
-1r0x31s	ok	Its speech out models went behind the free entries.	読み上げのモデルは、無料の項目より後ろに追加しました。	src/ui/provider-setup.js:251	
-1llun41	ok	The provider	プロバイダー	src/ui/provider-setup.js:258	Note: "The provider" stands where a provider's name is unknown.
+1fbojq2	ok	Signing in with {0} didn't finish	{0}でのサインインが完了しませんでした	src/ui/provider-setup.js:224	{0} = name
+1fm7mjz	ok	Speech out	読み上げ	src/ui/provider-setup.js:232	
+v20s4a	ok	Quick decision	クイック判定	src/ui/provider-setup.js:232	
+w8niry	ok	Speech in	聞き取り	src/ui/provider-setup.js:232	
+eudybe#other	ok	{0} now use {1}'s free models.	{0}は{1}の無料モデルを使うようになりました。	src/ui/provider-setup.js:248	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
+14xff7o#other	ok	{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.	{0}は有料です。{1}には無料で始められるモデルがなく、Shioriが答えるにはモデルが必要なためです。	src/ui/provider-setup.js:249	plural; # = paid.length; {0} = list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)); {1} = name; English: "{0} costs money: {1} has no free model to start with, and Shiori needs one to answer." (one), "{0} cost money: {1} has no free model to start with, and Shiori needs one to answer." (other)
+1wdrhx6	ok	{0} {1}	{0}（{1}）	src/ui/provider-setup.js:250	{0} = ROLE_SHORT[r] ?? r; {1} = costs[r]; Note: A role and the model that costs money in it ("Main GPT-6.1 Sol"), not two sentences: the model in brackets.
+1c8it09	ok	If your key is on the free tier, switch that on, on this page: its models then cost nothing.	キーが無料枠の場合は、このページで無料枠をオンにしてください。モデルの料金がかからなくなります。	src/ui/provider-setup.js:251	
+1dsri4f	ok	Its speech in models went behind the free entries.	聞き取りのモデルは、無料の項目より後ろに追加しました。	src/ui/provider-setup.js:252	
+jvtji4	ok	Its speech in and speech out models went behind the free entries.	聞き取りと読み上げのモデルは、無料の項目より後ろに追加しました。	src/ui/provider-setup.js:252	
+1r0x31s	ok	Its speech out models went behind the free entries.	読み上げのモデルは、無料の項目より後ろに追加しました。	src/ui/provider-setup.js:253	
+1llun41	ok	The provider	プロバイダー	src/ui/provider-setup.js:260	Note: "The provider" stands where a provider's name is unknown.
 1c4feqt	ok	This browser can't run annai's offline service, which shows notifications.	このブラウザでは、通知を表示するannaiのオフラインサービスを動かせません。	src/ui/push.js:19	
 1vug986	ok	The phone's push subscription has no keys. Turn notifications off and on again.	この端末のプッシュ登録にキーがありません。通知をいったんオフにして、もう一度オンにしてください。	src/ui/push.js:30	
 17sbtk9	ok	The relay's key isn't one annai can use.	プッシュ中継のキーは、annaiでは使えません。	src/ui/push.js:78	

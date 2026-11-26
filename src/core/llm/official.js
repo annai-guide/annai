@@ -297,7 +297,7 @@ async function ensureNow(host, kind, type, opts) {
     // except one the user turned off when the caller keeps it off (the model service's setup taps).
     if (!state.enabled && opts.keepOff) {
       const name = await pluginName(host, state, entry.id, entry.name);
-      throw new PluginError(entry.id, /* en */ `${entry.name}, which you turned off, isn't switched on by this. ${TURN_ON}`, { shown: sentences(t`${name}, which you turned off, isn't switched on by this.`, turnOnShown()) });
+      throw new PluginError(entry.id, /* en */ `${entry.name}, which is turned off, isn't switched on by this. ${TURN_ON}`, { shown: sentences(t`${name}, which is turned off, isn't switched on by this.`, turnOnShown()) });
     }
     if (!state.enabled || host.registry.isDisabled(entry.id)) await host.setEnabled(entry.id, true);
     else await host.start(entry.id);

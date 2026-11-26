@@ -129,6 +129,37 @@ test("a ?code= nobody expected, or one past 15 minutes, goes to no plugin, is re
   assert.notEqual(storage.getItem('annai.return'), null);
 });
 
+test("a sign-in that returns ends its plugin's run of failures: two that crash, one that works, two that crash leave the plugin on (plugin-fails-next test 11)", async () => {
+  const storage = memoryStorage();
+  const steps = ['crash', 'crash', 'works', 'crash', 'crash'];
+  const a = app(async () => { if (steps.shift() === 'crash') throw new TypeError('x is not a function'); });
+  for (let i = 0; i < 5; i++) {
+    expectReturn('provider-acme', { storage, now: 1000 });
+    await a.start('?code=abc', storage);
+  }
+  assert.equal(a.ctx.registry.isDisabled('provider-acme'), false);
+  assert.deepEqual(a.failures.filter((e) => e.type === 'plugin.error').map((e) => e.data.count), [1, 2, 1, 2]);
+});
+
+test("a sign-in whose returned() throws before it returns a promise (a plain function that throws) counts like one that rejects: three of them switch its plugin off, one line each, the card shown each time (plugin-fails-fix1, item 3)", async () => {
+  const storage = memoryStorage();
+  const a = app(/** @type {any} */ (() => { throw new TypeError('x is not a function'); }));
+  for (let i = 0; i < 3; i++) {
+    expectReturn('provider-acme', { storage, now: 1000 });
+    await a.start('?code=abc', storage);
+  }
+  assert.equal(a.ctx.registry.isDisabled('provider-acme'), true);
+  assert.deepEqual(a.failures.filter((e) => e.type === 'plugin.error').map((e) => e.data.count), [1, 2, 3]);
+  assert.equal(a.cards.length, 3, 'a card at each');
+  // A sync throw in its own words is no crash, as a rejection in them is none.
+  const words = app(/** @type {any} */ (() => { throw new Error("Acme didn't take the code."); }));
+  for (let i = 0; i < 3; i++) {
+    expectReturn('provider-acme', { storage, now: 1000 });
+    await words.start('?code=abc', storage);
+  }
+  assert.equal(words.ctx.registry.isDisabled('provider-acme'), false);
+});
+
 test('a return keeps its note and its query until plugins are up, so a page that reloads first (one no service worker took, spec §5.3) finishes it', async () => {
   const storage = memoryStorage();
   expectReturn('provider-acme', { storage, now: 1000 });

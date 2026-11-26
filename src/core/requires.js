@@ -76,7 +76,7 @@ export async function checkRequires(host, requires, catalog, { who = /* en */ 'T
     // annai's own in the screens' words; the English is the log's.
     const shown = e ? officialName(e.id, e.name) : named;
     /* en */
-    if (s?.enabled === false) throw no(`${named}, which you turned off. ${TURN_ON}`, sentences(t`It needs ${shown}, which you turned off.`, turnOnShown()));
+    if (s?.enabled === false) throw no(`${named}, which is turned off. ${TURN_ON}`, sentences(t`It needs ${shown}, which is turned off.`, turnOnShown()));
     if (!e) {
       /* en */
       if (!s && r.homepage) throw no(`${r.id}, which isn't installed. Install it from ${r.homepage} first, then try again.`, t`It needs ${r.id}, which isn't installed. Install it from ${r.homepage} first, then try again.`);
@@ -205,7 +205,7 @@ export async function addFromCatalog(host, id, env = {}) {
   /* en */
   if (s && s.source !== 'official') throw new PluginError(id, "is installed from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.", { shown: t`The one installed came from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.` });
   /* en */
-  if (s?.enabled === false) throw new PluginError(id, `${entry.name}, which you turned off, isn't switched on by adding it. ${TURN_ON}`, { shown: sentences(t`${officialName(entry.id, entry.name)}, which you turned off, isn't switched on by adding it.`, turnOnShown()) });
+  if (s?.enabled === false) throw new PluginError(id, `${entry.name}, which is turned off, isn't switched on by adding it. ${TURN_ON}`, { shown: sentences(t`${officialName(entry.id, entry.name)}, which is turned off, isn't switched on by adding it.`, turnOnShown()) });
   const requires = entry.requires ?? [];
   if (s && s.version === entry.version && (await host.verifyOfficial(id, entry))) {
     await installRequirements(host, requires, { ...env, catalog }, { who: entry.name, id });
