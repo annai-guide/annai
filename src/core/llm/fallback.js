@@ -536,8 +536,7 @@ export const firstWordsMs = (config, role) => (config.roles?.[role]?.firstOutput
  *   keepNative: Shiori's own turns want each reply as the provider returned it, to send back within the turn (the keep-reasoning design §4)
  *   askResting: a turn's own call (Shiori's): a resting model goes to the end of the list, whose rest ends soonest first, and at most one is asked; side jobs
  *   (readers, housekeeping, plugins', quick decisions) never are
- *   standIn: a turn's own call (Kokoro's, and Koe's unless Kokoro's call can hear the line as sound: "Send audio to the model" is in the speech-in list and a main model that takes
- *   audio can be asked now, loop.js's #kokoroHears): after every other pass, the models passed over because nothing in the speech-in list could hear
+ *   standIn: a turn's own call (Kokoro's, and Koe's when Kokoro's settings give her no ear or her last call failed, loop.js): after every other pass, the models passed over because nothing in the speech-in list could hear
  *   a segment for them are asked once more, in order, through both passes, with speech still resolved for each (a later model that can hear a
  *   line still gets it: an awake one, or the one resting model a call asks) and a segment nothing can hear sent as "[audio, not transcribed]" (spec §10.3); side jobs pass none, so the gate,
  *   compaction and a write-down never send it
