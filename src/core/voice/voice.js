@@ -837,15 +837,16 @@ export class Voice {
    * @param {string} scope @param {string} [wake] @param {string[]} [list] the speech-in list, when not the role's
    * @param {boolean} [shared] a half's turn that shares the link with the other half's: its transcriptions are timed on twice their bytes (§4.8)
    * @param {Set<string>} [unheard] segments past the turn they were heard for: not transcribed where nothing can hear them (resolveSpeech)
+   * @param {Set<string>} [carried] filled with each segment the turn's requests send (resolveSpeech), for the agent's #pastTurn
    * @returns {(model: { id?: string, name: string, input: string[] }, request: import('../llm/contract.js').Request, plain?: boolean, signal?: AbortSignal) => Promise<import('../llm/contract.js').Request>}
    */
-  resolver(scope, wake, list, shared = false, unheard) {
+  resolver(scope, wake, list, shared = false, unheard, carried) {
     /** Transcription models whose send was cut in this call, or that couldn't be reached: asked once a call, as chat asks a cut model once (fallback.js's nextStep). @type {Set<string>} */
     const cut = new Set();
     return async (model, request, plain, signal) => {
       if (plain && model.id) this.wavOnly.add(model.id);
       const c = await this.#resolve(scope, wake, signal, shared, cut);
-      return resolveSpeech(request, model, { ...c, ...(list ? { list } : {}), plain: Boolean(model.id && this.wavOnly.has(model.id)), ...(unheard ? { unheard } : {}) });
+      return resolveSpeech(request, model, { ...c, ...(list ? { list } : {}), plain: Boolean(model.id && this.wavOnly.has(model.id)), ...(unheard ? { unheard } : {}), ...(carried ? { carried } : {}) });
     };
   }
 
@@ -885,7 +886,7 @@ export class Voice {
    * A segment's words, for the log (spec §10.3): a transcript made already, dictation's, or the
    * first entry that can write it down; for "Send audio to the model", the model that heard it
    * (hearer), of its role, is asked. null when nothing could, or the segment isn't in memory; a model really asked that failed counts on the
-   * segment (Kept.failed), one resting or not in the list asked nothing and counts for nothing.
+   * segment (Kept.failed); one resting, not in the list, or refused before any request (no format of its the phone makes) asked nothing and counts for nothing.
    * @param {string} id @param {{ scope: string, wake?: string, hearer?: string, role?: string }} o
    * @returns {Promise<{ text: string, by: string } | null>} by: who wrote it down, by name
    */
@@ -898,7 +899,7 @@ export class Voice {
     const r = await textVersion(kept, {
       ...c,
       onFail: (/** @type {string} */ m, /** @type {unknown} */ e) => {
-        asked = true;
+        if (!(e instanceof ProviderError && e.said?.code === 'formats')) asked = true; // that phone's no-format refusal comes before any request: nothing was asked
         c.onFail?.(m, e);
       },
       ...(hearer ? {

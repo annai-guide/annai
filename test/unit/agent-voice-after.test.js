@@ -226,7 +226,7 @@ test('a write-down that fails keeps the sound: nothing is written as not transcr
   assert.equal(k.voice.memory.size, 0);
 });
 
-test('a segment that three turns in a row could not write down is written as not transcribed, and its sound let go (spec §10.3)', async (t) => {
+test('a segment that three real asks of the model that heard it could not write down (one at the end of each of three turns that worked) is written as not transcribed, and its sound let go (spec §10.3)', async (t) => {
   useClock(t);
   const fail = { error: 'bad-request', status: 400 };
   const k = await agentKit([[say('One.'), fail, say('Two.'), fail, say('Three.'), fail]], { models: [{ input: ['text', 'image', 'audio'] }], voice: { speechIn: ['send-audio'] } });
@@ -275,6 +275,9 @@ test('housekeeping waits while what was heard can\'t be written down, unless the
   // Her model is rate-limited, so no turn works and none writes the line down: its sound is at hand while the transcription model is down.
   const k = await agentKit([[{ error: 'rate', message: 'slow down' }]], { utility: [{ text: 'Someone spoke.' }], voice: { speechIn: ['m-hear'], failing: ['m-hear'] } });
   await tapAndSay(k, 'where-eat');
+  // Four typed lines, which with the heard one are five exchanges: housekeeping keeps the last KEEP_EXCHANGES (three) word for word and summarizes the rest, so
+  // the heard line is in the part it cuts from the third line on. Measured with housekeeping made never to wait for the write-down: with two lines the test
+  // passes (compact is false for want of a cut, not for the wait), with three it fails, as it should; four is one past that.
   for (let i = 0; i < 4; i++) {
     k.agent.send(`Message ${i}`);
     await idleAtOnce(k);

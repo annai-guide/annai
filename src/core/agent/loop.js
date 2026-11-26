@@ -246,11 +246,13 @@ function goneWords(sent, gone) {
  */
 export const GATHER = Object.freeze({ quiet: 1.5, photo: 3, typing: 5, most: 20 });
 /**
- * How many times a model really asked for a segment's words and failed to make them (Kept.failed: one resting, or not in the list, asked nothing and
- * counts for nothing) before it is written as not transcribed and its sound let go (spec §10.3). Three: not measured, a guess from the first version
- * (2026-10-16). A rate limit or a server error that clears by itself clears within a try or two (a server error rests COOLDOWN_MS, 3 minutes, before
- * its next ask, so a third failure is 6 minutes in), and one that fails three real asks is down, not limited; a smaller number gives up on a hiccup, a
- * larger one keeps the sound (16 MB at most, HEARD_MAX_BYTES) for a model that is not coming back.
+ * How many times a model really asked for a segment's words and failed to make them (Kept.failed) before it is written as not transcribed and its sound
+ * let go (spec §10.3). Only a model that rests nothing after failing is asked again by a write-down and counts: one that couldn't be reached (a dead link,
+ * the device offline) or refused the recording (a 400), once at each turn that works, so three typed lines can come well inside a minute. A model that rests after
+ * failing (a server error, the network, overloaded, rate limited, out of credit, auth: fallback.js nextStep) is asked by the requests and found resting by the
+ * write-down, so nothing counts and it is never given up: its sound stays until it works, Start fresh, a forced summary or HEARD_MAX_BYTES (16 MB). Three: not
+ * measured, a guess from the first version (2026-10-16). It bounds sending the recording again, at every turn that works, to a model that refuses it or can't be
+ * reached, and keeping its sound for one that is not coming back; a smaller number gives up on a hiccup of the link.
  */
 export const WRITE_TRIES = 3;
 
@@ -478,9 +480,13 @@ export class Agent {
   /** When the window after she spoke ends (#after). */
   #afterBy = 0;
   #afterOpening = false;
-  /** The segments still unwritten when a turn of this half ended: past their own turn, they fail no later request (resolveSpeech). Added to at each such end, never
-   * replaced: a turn of another conversation that ends says nothing of these. @type {Set<string>} */
+  /** The segments still unwritten when a turn of this half ended that the turn carried: past their own turn, they fail no later request (resolveSpeech). Added to at each
+   * such end, never replaced: a turn of another conversation that ends says nothing of these. @type {Set<string>} */
   #unheard = new Set();
+  /** What this turn carried of the speech heard, for #pastTurn: the heard lines of its wakes (those that join too), each speech part a request of it resolved
+   * (resolvePart, whether or not its model could hear it), and the chatter it wrote in. New at each turn's steps. A line of the other half's that this half's
+   * transcript holds, which no request of this turn sent, is not here. @type {Set<string>} */
+  #carried = new Set();
   /** @type {Half} */
   #half = ONE;
   /** The last entry its transcript took. */
@@ -2458,6 +2464,7 @@ export class Agent {
    * @returns {Promise<boolean>} whether it worked: a model answered, and none failed
    */
   async #steps(wakes, wakeId, abort) {
+    this.#carried = new Set();
     // The newest hand-over among its wakes, those that join included (join); else, for a turn of the user's (Try again among them),
     // one a failed turn left owed: never a reminder's or a note's turn, whose writes Undo would then take back.
     this.#handover = wakes.some(owesAnswer) ? this.transcript.owedHandover : null;
@@ -2539,6 +2546,7 @@ export class Agent {
       this.#handover = handoverOf(more) ?? this.#handover ?? (more.some(owesAnswer) ? this.transcript.owedHandover : null);
       for (const h of [this.#handover, ...more.map((w) => w.handover)]) if (h && !this.#handovers.includes(h)) this.#handovers.push(h);
       theirs ||= more.some(owesAnswer);
+      for (const w of more) if (w.heard) this.#carried.add(w.heard.id); // carried by this turn even if it ends before any request (a Stop just before the first call)
       this.#facts.watched ||= more.some(isWatched); // someone is watching: a wake from the user began the turn or joined it; it stays so
       const read = this.#reachedTo.scope === this.scope ? this.#reachedTo.to : 0;
       notes.push(...more.filter((w) => isForUser(w) && !((w.seq ?? Infinity) <= read)));
@@ -2708,7 +2716,7 @@ export class Agent {
           record: { tag: this.#half.tag, ...this.#mark('model.turn'), wake: wakeId, prefix: fingerprint.slice(0, 16), context, keepParts: true, handover: this.#handover, endLogged: true },
           repairImages: (/** @type {ProviderError} */ err, /** @type {string} */ modelId, /** @type {any} */ req) => this.#repair(err, modelId, req, wakeId),
           onEvent: (/** @type {any} */ ev) => this.#streamed(ev, wakeId),
-          ...(this.voice ? { speech: this.voice.resolver(this.scope, wakeId, undefined, this.#shared, this.#unheard) } : {}),
+          ...(this.voice ? { speech: this.voice.resolver(this.scope, wakeId, undefined, this.#shared, this.#unheard, this.#carried) } : {}),
           ...(this.#voiceNow ? { firstOutputMs: await this.#firstWordsMs(role) } : {}),
           // What this conversation has kept of its files, for a model that can't take one.
           readings: (/** @type {string} */ hash, /** @type {boolean} */ sees) => this.#keptNow(hash, sees),
@@ -4190,7 +4198,10 @@ export class Agent {
 
   /** Chatter heard while she worked, written in now (spec §10.4: dismissed speech still goes into the transcript). @param {string} wakeId */
   async #writeChatter(wakeId) {
-    for (const h of this.#chatter.splice(0)) await this.#logHeard(h, { wake: wakeId, meanwhile: true, dismissed: true, gate: 'chatter' }).catch((e) => this.#notSaved(e)); // a refused line is told, the next goes on, the turn goes on
+    for (const h of this.#chatter.splice(0)) {
+      this.#carried.add(h.id); // heard while this turn ran: its own, whether a later step sends it or the turn ends first (#pastTurn)
+      await this.#logHeard(h, { wake: wakeId, meanwhile: true, dismissed: true, gate: 'chatter' }).catch((e) => this.#notSaved(e)); // a refused line is told, the next goes on, the turn goes on
+    }
   }
 
   /** Someone started speaking: Hearing you, and no timer runs while they speak, so a line across a time is heard to its end (#armEar, #listenFor). */
@@ -4362,7 +4373,6 @@ export class Agent {
    * @param {boolean} ok @param {string} wakeId
    */
   async #afterTurn(ok, wakeId) {
-    if (!ok) this.#pastTurn();
     for (const u of this.#utterances.values()) u.stop();
     this.#utterances.clear();
     // She spoke and didn't sleep: she listens on (the second-drive design), through the gate, while its time is left; sleep, the user's Stop, or none left closes it.
@@ -4387,18 +4397,20 @@ export class Agent {
       });
     } else if (!this.#ear && this.#voiceNow) this.voice?.platform?.session('playback'); // after speaking (spec §10.1)
     await this.#writeChatter(wakeId);
-    if (ok && this.#half.voice()) {
+    if (!ok) this.#pastTurn();
+    else if (this.#half.voice()) {
       await this.#writeDown(wakeId);
       this.#pastTurn();
     }
   }
 
   /**
-   * What is still unwritten is past its turn (#unheard). A line heard while this turn ran, whose own turn is ahead, isn't in the transcript yet: a heard line
-   * is written to it by the turn that takes it (#logWakes), at its start or, for one heard while a turn runs, at its next step, which then carries it.
+   * What this turn carried and is still unwritten is past its turn (#unheard). Not a line of the other half's that this half's transcript holds (Kokoro's holds
+   * Koe's) which no request of this turn sent: a later turn of its own still has to carry it. Nor a line heard while this turn ran whose own turn is ahead: it
+   * isn't in the transcript yet, a heard line is written to it by the turn that takes it (#logWakes).
    */
   #pastTurn() {
-    for (const id of this.transcript.unwritten()) this.#unheard.add(id);
+    for (const id of this.transcript.unwritten()) if (this.#carried.has(id)) this.#unheard.add(id);
   }
 
   /**

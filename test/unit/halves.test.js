@@ -101,9 +101,10 @@ function watchSends(k) {
   };
   if (k.voice) {
     const resolver = k.voice.resolver.bind(k.voice);
-    k.voice.resolver = (/** @type {string} */ scope, /** @type {string} */ wake, /** @type {any} */ list, /** @type {any} */ shared, /** @type {any} */ unheard) => {
-      seen.push([wake, k.agent.koeState, 'resolver', shared]);
-      return resolver(scope, wake, list, shared, unheard);
+    // Whatever the loop hands on (the turn's unheard and carried sets too) goes on to the real one.
+    k.voice.resolver = (/** @type {Parameters<import('../../src/core/voice/voice.js').Voice['resolver']>} */ ...args) => {
+      seen.push([args[1], k.agent.koeState, 'resolver', args[3]]);
+      return resolver(...args);
     };
   }
   /** The calls seen, each with its half, Koe's state then, and what was told of the link. */
