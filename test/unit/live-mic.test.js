@@ -1135,7 +1135,7 @@ test('an urgent note whose session fails to open leaves no mark behind: the next
       k.agent.live.open = open;
       throw new Error('the open failed');
     };
-    await assert.rejects(k.agent.live.note('Say now: turn left.', 'immediate'));
+    await assert.rejects(k.agent.live.note('Say now: turn left.', 'immediate'), /the open failed/);
     await k.agent.live.note('The museum closes at five.', 'append');
     await soon(async () => texts(k).some((x) => /museum closes/.test(x)), 3000).catch(() => assert.fail('the note waited behind a mark left from the failed open'));
   } finally {

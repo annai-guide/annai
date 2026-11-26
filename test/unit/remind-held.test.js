@@ -10,7 +10,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, until, idleAtOnce, inTime, holdAtDoor, holdReminders, raw } from './agent-kit.js';
-import { liveKit, soon, tone, texts, got, lives } from './koe-live-kit.js';
+import { liveKit, soon, tone, texts, got, lives, say as sayClip } from './koe-live-kit.js';
 import { codePlugin, storedModules } from './package-kit.js';
 import { quietSession, tell, tell2, cues, notesIn, words, shown, wait, textsIn, SAID, PASS } from './live-flight-kit.js';
 import { useClock } from './clock.js';
@@ -1649,8 +1649,10 @@ function refuseRead(k, read) {
 }
 const READS = /** @type {['spend' | 'start' | 'listen', string][]} */ ([['spend', 'the spend refused as the session opens'], ['start', 'the settings refused as the session opens'], ['listen', 'the pause refused as its microphone starts']]);
 const FINAL = 'The castle gardens close at six.';
-/** The cards annai shows of its own for what no session took, and the failure's. @param {any[]} cards */
+/** The cards annai shows of its own for what no session took, and the failure's: what the tests wait on, for a card that may come. @param {any[]} cards */
 const annaiCards = (cards) => cards.filter((n) => ['Reminder', "Shiori's answer", "Something for Shiori wasn't saved"].includes(n.title)).map((n) => `${n.title}: ${n.body}`);
+/** Every card Halves showed (k.notices: its own, live Koe's and each half's), by its words: what "nothing of annai's own" asserts is that this is empty, whatever its title. @param {any} k */
+const everyCard = (k) => k.notices.map((/** @type {any} */ n) => `${n.title}: ${n.body}`);
 for (const [read, which] of READS) {
   for (const [what, send, words] of /** @type {[string, (k: any) => unknown, string][]} */ ([
     ["Kokoro's final text", (k) => k.agent.channel.send('kokoro', FINAL, 'append', 'final-text'), FINAL],
@@ -1671,14 +1673,14 @@ for (const [read, which] of READS) {
         await settled();
         await idleAtOnce(k);
         assert.equal(refused(), 1, 'the read was refused');
-        assert.deepEqual(annaiCards(cards), [], 'no failure is told, and annai shows nothing of its own');
+        assert.deepEqual(everyCard(k), [], 'no failure is told, and annai shows nothing of its own');
         assert.equal(given(), 1, 'the session was given it');
         k.agent.send('Hello there');
         await soon(async () => texts(k).some((/** @type {string} */ x) => x.includes('[typed]')));
         await settled();
         await idleAtOnce(k);
         assert.equal(given(), 1, 'and never again');
-        assert.deepEqual(annaiCards(cards), [], 'still nothing of annai\'s');
+        assert.deepEqual(everyCard(k), [], 'still nothing of annai\'s');
         assert.deepEqual([await entries(k), (await recordsIn(k, k.trip, 'wake')).filter((/** @type {any} */ e) => e.data.half === 'kokoro' && JSON.stringify(e.data).includes('Tell the recap')).length], [[], 0], 'no reminder entry, and Kokoro never had the recap');
       } finally {
         await k.done();
@@ -1700,7 +1702,7 @@ for (const read of /** @type {('spend' | 'start')[]} */ (['spend', 'start'])) {
       assert.deepEqual(texts(k), ['[typed] Hello there'], 'the session was given the line');
       await settled();
       await idleAtOnce(k);
-      assert.deepEqual(annaiCards(cards), [], 'no failure is told');
+      assert.deepEqual(everyCard(k), [], 'no failure is told, and nothing else is shown');
     } finally {
       await k.done();
     }
@@ -1739,6 +1741,95 @@ test("Koe live: a read of the settings refused as the session opens leaves it op
     await settled();
     await idleAtOnce(k);
     assert.deepEqual((await lives(k)).map((/** @type {any} */ e) => e.data.state), ['open', 'ready', 'closed', 'open', 'resumed'], 'the first closed, and the next went on from it');
+  } finally {
+    await k.done();
+  }
+});
+
+// A close that lands while #start reads the settings (open-reads-next's final review, F1; on 7b995be58 too): the read is made before the connection, so
+// nothing is awaited between #start's last look at the close and "open". On 6be3017b0 it came after, and a tap or the page going out of view inside the read
+// left the session "open" with no socket: a tap answered "listening" with no microphone, a typed line went to no session and no card said so, and the quiet
+// spell never ended it. The read takes 20 ms here, and the close comes 5 ms into it.
+for (const [how, close] of /** @type {[string, (k: any) => unknown][]} */ ([['a second tap', (k) => k.agent.tap()], ['the page going out of view', (k) => k.agent.hush('away')]])) {
+  test(`Koe live: ${how} while the session reads the settings as it opens: it is closed, not open with no socket; the next tap listens and a typed line is given`, async () => {
+    const k = await liveKit([{ said, audio: tone(1) }], { pace: 1 });
+    try {
+      await k.voice.unlock();
+      const live = k.agent.live;
+      const settings = k.voice.settings;
+      let slowed = 0;
+      k.voice.settings = async (/** @type {any[]} */ ...a) => {
+        if (live.state !== 'opening') return settings.apply(k.voice, a);
+        k.voice.settings = settings;
+        slowed++;
+        setTimeout(() => close(k), 5);
+        await new Promise((r) => setTimeout(r, 20));
+        return settings.apply(k.voice, a);
+      };
+      assert.equal(k.agent.tap(), 'listening');
+      await soon(async () => slowed === 1);
+      await new Promise((r) => setTimeout(r, 300)); // the read ends, and the open runs on: whatever it leaves is there by now
+      assert.equal(live.state, 'closed', 'the close stands: the session is not open');
+      await soon(async () => !live.busy, 5000).catch(() => assert.fail('the session is busy for ever: open, with no socket'));
+      await settled();
+      await idleAtOnce(k);
+      assert.equal(k.agent.tap(), 'listening');
+      assert.equal(await live.tapping, 'ok', 'the next tap did not fail');
+      await until(() => live.listening, 3000).catch(() => assert.fail('the next tap said "listening" and nothing listens'));
+      assert.equal(k.platform.mic.isOpen(), true, 'the microphone is open');
+      k.agent.send('Hello there');
+      await soon(async () => texts(k).some((/** @type {string} */ x) => x.includes('[typed]')), 5000).catch(() => {});
+      assert.deepEqual(texts(k), ['[typed] Hello there'], 'the session was given the line');
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+// "The settings it last had" (spec §10.8, Opening): a read refused as the next session opens leaves it the quiet spell and the pause the last one had, not the
+// defaults (30 s, 700 ms). The kit's spell is 3 s, not the default's 0.3 s; the test sets the pause to 1.5 s.
+test("Koe live: a read of the settings refused as the next session opens: it closes on the last one's quiet spell, not the default's", async () => {
+  const k = await liveKit([{ said, audio: tone(0.3) }, { said, audio: tone(0.3) }], { pace: 1 });
+  try {
+    await k.voice.unlock();
+    k.agent.send('Hi');
+    await soon(async () => texts(k).length === 1);
+    k.agent.hush('away');
+    await soon(async () => !k.agent.live.busy && k.agent.live.state === 'closed');
+    const refused = refuseRead(k, 'start');
+    k.agent.send('Hello there');
+    await soon(async () => texts(k).length === 2);
+    assert.equal(refused(), 1, 'the read was refused');
+    await new Promise((r) => setTimeout(r, 1500)); // past the default's 0.3 s after her short answer, short of the kit's 3 s
+    assert.equal(k.agent.live.state, 'open', 'still open: the default spell would have closed it');
+    await soon(async () => (await lives(k, 'closed')).length === 2, 10_000);
+    assert.deepEqual((await lives(k, 'closed')).map((/** @type {any} */ e) => e.data.why), ['away', 'quiet'], 'and it closes on the quiet spell');
+  } finally {
+    await k.done();
+  }
+});
+
+test("Koe live: a read of the pause refused as the next session's microphone starts: it ends a turn on the last one's pause, not the default's", async () => {
+  const { quiet } = await import('./voice-kit.js');
+  const k = await liveKit([{ said, audio: tone(0.3) }], { pace: 1 });
+  try {
+    await updateAppSettings(k.ws, { voice: { pauseMs: 1500 } });
+    await k.voice.unlock();
+    /** @param {any} k */
+    const turnEnds = (k) => k.server.received().filter((/** @type {any} */ m) => m.realtimeInput?.activityEnd).length;
+    k.agent.tap();
+    await until(() => k.agent.live.listening, 3000);
+    k.agent.hush('away');
+    await soon(async () => !k.agent.live.busy && k.agent.live.state === 'closed');
+    const refused = refuseRead(k, 'listen');
+    k.agent.tap();
+    await until(() => k.agent.live.listening, 3000);
+    assert.equal(refused(), 1, 'the read was refused');
+    await sayClip(k, 'where-eat'); // a sentence, then 1 s of quiet: a turn's end at 700 ms, not at 1.5 s
+    await new Promise((r) => setTimeout(r, 300));
+    assert.equal(turnEnds(k), 0, "the turn is not over: the last session's 1.5 s pause, not the default's 700 ms");
+    k.platform.mic.feed(quiet(1), 16_000);
+    await soon(async () => turnEnds(k) === 1, 5000).catch(() => assert.fail('the turn never ended'));
   } finally {
     await k.done();
   }
