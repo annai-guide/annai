@@ -150,6 +150,25 @@ test("a bug in an endpoint type counts against its plugin, and the call fails as
   assert.equal(logged[0].actor, 'plugin:run-plugin');
 });
 
+test("a run type whose own request the browser couldn't make or finish (Chromium's, WebKit's, Firefox's words) fails as 'unreachable' and counts nothing: five in a row leave its plugin on; its TypeError in other words still counts (run-type-next)", async () => {
+  /** @type {any[]} */
+  const logged = [];
+  const registry = new Registry({ log: (ev) => logged.push(ev) });
+  const words = ['Failed to fetch', 'Load failed', 'NetworkError when attempting to fetch resource.', 'network error', 'Failed to fetch'];
+  let i = 0;
+  const offline = runType(async function* () { yield { type: 'text', text: 'Kyoto is' }; throw new TypeError(words[i++]); });
+  registry.add('run-plugin', 'endpoint-type', offline);
+  for (const w of words) {
+    await assert.rejects(callOnce({ type: offline, endpoint: endpoint(), model: model(), key: null, request, registry }),
+      (e) => e instanceof ProviderError && e.kind === 'unreachable' && e.message.includes(w) && e.partial === 'Kyoto is', w);
+  }
+  assert.deepEqual([registry.isDisabled('run-plugin'), logged.filter((e) => e.type === 'plugin.error').length], [false, 0]);
+  const buggy = { ...runType(async function* () { throw new TypeError("Cannot read properties of undefined (reading 'choices')"); }), type: 'bug-run' };
+  registry.add('bug-plugin', 'endpoint-type', buggy);
+  for (let n = 0; n < 3; n++) await assert.rejects(callOnce({ type: buggy, endpoint: endpoint(), model: model(), key: null, request, registry }), (e) => e instanceof ProviderError && e.kind === 'plugin');
+  assert.deepEqual([registry.isDisabled('bug-plugin'), registry.isDisabled('run-plugin')], [true, false]);
+});
+
 test('M6 fix: the plugin blamed for a bug is the one that registered the type, never a pluginId the type carries', async () => {
   /** @type {any[]} */
   const logged = [];
