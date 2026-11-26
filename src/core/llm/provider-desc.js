@@ -151,9 +151,9 @@ export function addressProblem(url) {
   /* en */
   if (!f) return null;
   /* en */
-  if (f.code === 'not-url') return `${url} isn't a web address: give it with https:// in front.`;
+  if (f.code === 'not-url') return "What you typed isn't a web address: give it with https:// in front.";
   /* en */
-  if (f.code === 'credentials') return "This address holds a name or password before an @, which a request can't carry. Leave it out, and put the key in the API key field.";
+  if (f.code === 'credentials') return "This address holds a name or password before an @, which a request can't carry. Leave it out.";
   /* en */
   const must = 'An address must start with https:// (http:// only for localhost or 127.0.0.1).';
   /* en */
@@ -164,8 +164,8 @@ export function addressProblem(url) {
 export function addressShown(url) {
   const f = addressFault(url);
   if (!f) return null;
-  if (f.code === 'not-url') return t`${url} isn't a web address: give it with https:// in front.`;
-  if (f.code === 'credentials') return t`This address holds a name or password before an @, which a request can't carry. Leave it out, and put the key in the API key field.`;
+  if (f.code === 'not-url') return t`${t`What you typed`} isn't a web address: give it with https:// in front.`;
+  if (f.code === 'credentials') return t`This address holds a name or password before an @, which a request can't carry. Leave it out.`;
   return f.code === 'http' ? t`An address must start with https:// (http:// only for localhost or 127.0.0.1). Browsers block plain http from an https page, and annai calls only https addresses on your network, so a server on another computer needs one. Tailscale Serve can give it: ${serve(f.port)}. The server must also allow CORS from annai.guide.`
     : t`An address must start with https:// (http:// only for localhost or 127.0.0.1).`;
 }

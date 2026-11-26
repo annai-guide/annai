@@ -7,7 +7,8 @@ import { exportArchive, PRESETS } from '../../src/core/archive.js';
 
 // An "#import=<url>" link (spec §12.3) names its file by the address's last part, decoded as far as it decodes: a "%" that starts no escape
 // ("50%off") stays as written, and the escapes beside it are read (the Deferred entry "An import link whose file name holds a stray `%`
-// fails after it downloads").
+// fails after it downloads"). A run of escapes that is not text (`%E9%20`: a lone byte E9, then a space) stays whole, as the trace reads
+// one. A link may be relative (a file beside annai's own copy): its name is read against the page's address.
 
 // The least DOM the import screen's first draw touches (h, crumb, the passphrase form).
 class Node {}
@@ -32,11 +33,14 @@ class El extends Node {
 }
 const env = /** @type {any} */ (globalThis);
 const real = env.fetch;
-Object.assign(env, { Node, document: { createElement: (/** @type {string} */ t) => new El(t), createTextNode: (/** @type {string} */ text) => ({ text }) } });
+const realLocation = env.location;
+Object.assign(env, { Node, location: { href: 'https://annai.example.test/#/import' }, document: { createElement: (/** @type {string} */ t) => new El(t), createTextNode: (/** @type {string} */ text) => ({ text }) } });
 after(() => {
   env.fetch = real;
   delete env.document;
   delete env.Node;
+  if (realLocation === undefined) delete env.location;
+  else env.location = realLocation;
 });
 const { renderImport } = await import('../../src/ui/screens/import.js');
 
@@ -75,9 +79,23 @@ test('an import link whose file name holds a stray "%" opens the file, named as 
     ['https://files.example.test/100%25%20done.annai.zip', '100% done.annai.zip'],
     ['https://files.example.test/%E6%97%85.annai.zip', '旅.annai.zip'],
     ['https://files.example.test/bad%ff.annai.zip', 'bad%ff.annai.zip'],
+    ['https://files.example.test/caf%E9%20menu.annai.zip', 'caf%E9%20menu.annai.zip'],
   ]) {
     const { words, asked } = await opened(url, blob);
     assert.deepEqual(asked, [url], 'the address is downloaded as the link gave it');
+    assert.ok(words.startsWith(`${name} is encrypted.`), `${url}: ${words}`);
+  }
+});
+
+test('a relative import link downloads, and is named by its last part, read against the page', async () => {
+  const blob = await archive();
+  for (const [url, name] of [
+    ['/zz-shared/trip%20one.annai.zip', 'trip one.annai.zip'],
+    ['/zz-shared/50%off.annai.zip', '50%off.annai.zip'],
+    ['trip.annai.zip', 'trip.annai.zip'],
+  ]) {
+    const { words, asked } = await opened(url, blob);
+    assert.deepEqual(asked, [url], 'the address is downloaded as the link gave it (the browser resolves it)');
     assert.ok(words.startsWith(`${name} is encrypted.`), `${url}: ${words}`);
   }
 });

@@ -57,8 +57,18 @@ test('fix pass: an address typed on a provider\'s page is checked by the same ru
   assert.match(String(addressProblem('ftp://example.com')), /must start with https/);
 });
 
-test("an address with a name or password before an @ is refused, in words that say where the key goes, never repeating the address: no browser sends a request to one", () => {
-  const WORDS = "This address holds a name or password before an @, which a request can't carry. Leave it out, and put the key in the API key field.";
+test("a typed text that isn't an address is refused in words that never repeat it: a key pasted into an address field stays off the screen, and out of what Shiori is told and the log", () => {
+  const KEY = 'sk-live-0123456789abcdef';
+  for (const typed of [KEY, `${KEY}/v1`, 'api.example.com/v1']) {
+    for (const said of [addressProblem(typed), addressShown(typed), ...checkProviderDesc({ ...OPENAI_LIKE, baseUrl: typed })]) {
+      assert.match(String(said), /^(\$\.baseUrl: )?What you typed isn't a web address: give it with https:\/\/ in front\.$/, typed);
+      assert.ok(!String(said).includes(typed) && !String(said).includes(KEY), typed);
+    }
+  }
+});
+
+test("an address with a name or password before an @ is refused, in words that never repeat the address: no browser sends a request to one", () => {
+  const WORDS = "This address holds a name or password before an @, which a request can't carry. Leave it out.";
   for (const typed of ['https://someone:pw-typed@llm.example.com/v1', 'https://someone@llm.example.com/v1', 'https://:pw-typed@llm.example.com/v1', 'http://someone:pw-typed@localhost:8000/v1']) {
     assert.equal(addressProblem(typed), WORDS, typed);
     assert.equal(addressShown(typed), WORDS, typed);

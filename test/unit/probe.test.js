@@ -274,7 +274,7 @@ test('an address annai takes keys to, alone, is checked before anything is sent:
   // A key pasted into the address field isn't shown back.
   await assert.rejects(probe(KEY, null, counting), (/** @type {any} */ e) => /isn't a web address/.test(e.message) && !e.message.includes(KEY));
   // annai's own check says it first (helpers.addressShown); the probe's own words stay for a host from before it.
-  await assert.rejects(probe('https://me:secret@llm.example.com/v1', KEY, counting), /name or password before an @, which a request can't carry\. Leave it out, and put the key in the API key field\./);
+  await assert.rejects(probe('https://me:secret@llm.example.com/v1', KEY, counting), /name or password before an @, which a request can't carry\. Leave it out\./);
   await assert.rejects(probe('https://me:secret@llm.example.com/v1', KEY, { ...counting, problem: () => null }), /alone/);
   await assert.rejects(probe('https://llm.example.com/v1?key=abc', KEY, counting), /alone/);
   await assert.rejects(probe('', KEY, counting), /Give the server's address/);

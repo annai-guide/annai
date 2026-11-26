@@ -91,8 +91,9 @@ async function pickSource(params, archives) {
     }
     // The server's own words for its status, as it sent them.
     if (!res.ok) throw new Error(t`The download failed (${res.status} ${res.statusText}).`);
-    // The address's last part, decoded run by run: a "%" that starts no escape ("50%off.pdf") stays as written.
-    const name = decodeSafe(new URL(params.url).pathname.split('/').pop() || t`file`);
+    // The address's last part, decoded run by run: a "%" that starts no escape ("50%off.pdf") stays as written. A link may be relative
+    // (a file beside annai's own copy): the page's address resolves it, as the fetch above did.
+    const name = decodeSafe(new URL(params.url, location.href).pathname.split('/').pop() || t`file`);
     return { name, blob: await res.blob() };
   }
   return null;
