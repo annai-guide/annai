@@ -1482,6 +1482,18 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** the module's import and the package checks run outside `guard` and its 10-second limit (src/core/plugins.js, the launch count), so the one rule never sees them; every start finding of fail-owner-next's and plugin-link-next's rounds landed in the kept launch count. The fix weighs: the import inside the guarded, timed start (one rule and one time limit for all of a start); or whether a start needs a kept count at all (a start that failed isn't running either way; the count saves only the repeated card). The plugin guide says meanwhile not to await the network as the module loads.
 - **Revisit when:** its row in docs/progress.md, in the next version, its design question first.
 
+### An import link whose file name holds a stray `%` fails after it downloads
+- **Kind:** deferred.
+- **What the traveller sees:** opening an `#import=` link whose last path part holds a `%` that isn't an escape (a file named `50%off.pdf`, say) downloads the file, then fails with the engine's "URI malformed". Found by plugin-link-next's re-review (2026-11-25, measured with the same expression in Node; not on a phone).
+- **Why:** src/ui/screens/import.js decodes the name with `decodeURIComponent` outside a `try`. The fix: the name as it is when it doesn't decode, as the other decodes in annai do.
+- **Revisit when:** its row in docs/progress.md, in the next version.
+
+### A typed address with a user name and password counts as a plugin's bug
+- **Kind:** deferred.
+- **What the traveller sees:** a provider or backup address typed as `https://user:pass@host/…` passes annai's address checks, and the first request a plugin makes there throws the engine's "Request cannot be constructed from a URL that includes credentials" (Node's words; a browser's not checked), which counts toward the plugin's three failures in a row. Found by plugin-link-next's second opinion (2026-11-25, probed in Node).
+- **Why:** the address checks (`sameOrigin`, `addressFault`, the WebDAV plugin's own) look at the scheme and host only. The fix: refuse a user name or password in a typed address with words the traveller can act on (put them in the key or password field).
+- **Revisit when:** its row in docs/progress.md, in the next version.
+
 ### A plugin's start, hook or screen that fails for want of a link can still count against it
 - **Kind:** deferred.
 - **What the traveller sees:** a third-party plugin (no official plugin does any of this, by reading their code: remote-trace sends from its own timers with its own catch, OpenRouter's sign-in is on the words path) can still be switched off for a link that was missing: a start or hook that asks `annai.llm` or `annai.llm.decide` with no connection (their `AllFailedError` counts), a start that waits past annai's 10-second start limit on a weak link, a start or hook whose own time limit on `annai.net.fetch` fires as an `AbortError` (which counts; Chrome's `AbortSignal.timeout` gives a `TimeoutError`, which is spared; what Safari gives a time limit is from annai's net layer's notes and tests, not measured on a phone), and a dock action, card, screen, avatar or heard-clips function that fails offline (those count every error). Three in a row switch the plugin off, with a card, until the traveller turns it on in Settings → Plugins; a start's count is kept across launches. fail-owner-next spares only the browser's own fetch failure and annai's `network` or `unreachable` kind in a start, a hook and the launch count.
