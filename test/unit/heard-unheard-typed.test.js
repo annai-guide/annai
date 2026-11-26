@@ -1,7 +1,7 @@
 // A heard line nothing could write down, for a model that takes no audio (spec §10.3): the flake look's lead (2026-11-25), where a typed "Hello" after
 // such a clip failed with "Nothing in the speech-in list worked" until the clip left memory. The turn's own call asks the models it passed over for the line
 // once more, with it as "[audio, not transcribed]" (callRole's last pass, standIn): the line's own turn is answered, and so is every later one, while a model
-// later in the list that can hear it still gets it first. Its sound stays for a write-down; three turns that worked and couldn't write it down, its own among
+// later in the list that can hear it (an awake one, or the one resting model a call asks) still gets it first. Its sound stays for a write-down; three turns that worked and couldn't write it down, its own among
 // them, give it up (WRITE_TRIES).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -12,6 +12,7 @@ import { Agent } from '../../src/core/agent/loop.js';
 import { selfTools } from '../../src/core/agent/self-tools.js';
 import { updateAppSettings } from '../../src/core/settings.js';
 import { NOT_TRANSCRIBED } from '../../src/core/voice/resolve.js';
+import { WRITE_DOWN } from '../../src/core/voice/voice.js';
 import { useClock } from './clock.js';
 
 const say = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }] });
@@ -45,34 +46,50 @@ const STAND_IN = { type: 'text', text: NOT_TRANSCRIBED };
 
 /** The transcription model's failures, how long each rests it, and (for those that rest it not at all) how many times it is asked before her model's first
  * request: a cut send or a model that can't be reached is not asked again in the call (voice.js's cut), and a refused recording is asked once a call
- * (resolve.js's failed asks), though nothing rests either. A timeout arrives at once here: no send time passes in these tests. */
+ * (resolve.js's failed asks), though nothing rests either; for one recording either keeps it to one ask. A timeout arrives at once here: no send time
+ * passes in these tests. The row with no failure to throw is the real local refusal (voice.js's #hear): the model takes a format this phone can't make, so nothing is ever sent to it. */
 const FAILURES = /** @type {const} */ ([
   ['unreachable, as on a dead link', () => new ProviderError('unreachable', 'no route to the server'), 0, 1],
   ['cut after its send time (the timeout arrives at once here)', () => new ProviderError('timeout', 'No answer in 12 seconds.', { said: { code: 'send', seconds: 12 } }), 0, 1],
   ['refusing the recording', () => new ProviderError('bad-request', 'audio too short', { status: 400 }), 0, 1],
-  ['taking no audio format this phone makes (refused before any upload)', () => new ProviderError('bad-request', 'Hear takes no audio format this phone makes (webm).', { said: { code: 'formats', name: 'Hear', formats: ['webm'] } }), 0, 1],
+  ['taking no audio format this phone makes (refused here, before any upload)', null, 0, 0],
   ['down', () => new ProviderError('server', 'down'), COOLDOWN_MS, null],
   ['rate-limited', () => new ProviderError('rate', 'slow down', { status: 429 }), COOLDOWN_MS, null],
   ['out of credit', () => new ProviderError('credit', 'out of credit', { status: 402 }), COOLDOWN_MS, null],
 ]);
 
 /**
- * One Shiori, every chat model text-only, the transcription model failing with fail() until back() is called. The ledger: the asks the transcription model got,
- * and how many it had got when her model's first request came.
- * @param {any[]} replies @param {() => Error} fail
+ * One Shiori, every chat model text-only, the transcription model failing with fail() until back() is called; with no fail() it takes mp3 alone, and this
+ * phone's encoder makes ogg: it can't be sent anything. The ledger: the asks the transcription model got, how many of them the write-downs made, and how many
+ * it had got when her model's first request came.
+ * @param {any[]} replies @param {(() => Error) | null} fail
  */
 async function deafKit(replies, fail) {
-  /** @type {{ asks: number, beforeFirst: number | null }} */
-  const ledger = { asks: 0, beforeFirst: null };
-  const k = await agentKit([replies], { voice: { speechIn: ['m-hear'], hears: ['where should we eat'] }, hold: async () => { ledger.beforeFirst ??= ledger.asks; } });
+  /** @type {{ asks: number, writes: number, beforeFirst: number | null }} */
+  const ledger = { asks: 0, writes: 0, beforeFirst: null };
+  const k = await agentKit([replies], {
+    voice: { speechIn: ['m-hear'], hears: ['where should we eat'], ...(fail ? {} : { encoder: { makes: ['ogg'] } }) },
+    hold: async () => { ledger.beforeFirst ??= ledger.asks; },
+  });
+  if (!fail) /** @type {any} */ (k.llm.types().get('hear')).tunables = { audioIn: ['mp3'] };
   const hears = k.llm.transcribe;
   let down = true;
-  k.llm.transcribe = async (/** @type {any} */ c) => { ledger.asks++; if (down) throw fail(); return hears(c); };
+  k.llm.transcribe = async (/** @type {any} */ c) => {
+    ledger.asks++;
+    if (down) throw fail ? fail() : new Error('a model that takes no format this phone makes was sent a recording');
+    return hears(c);
+  };
+  // The asks a write-down itself makes (the turn's own call asks first): what "each turn's try asked the transcription model" is pinned through.
+  const writeDown = k.voice.writeDown.bind(k.voice);
+  k.voice.writeDown = async (/** @type {string} */ id, /** @type {any} */ o) => {
+    const before = ledger.asks;
+    try { return await writeDown(id, o); } finally { ledger.writes += ledger.asks - before; }
+  };
   return { k, back: () => { down = false; }, ledger };
 }
 
 for (const [how, fail, rests, askedBefore] of FAILURES) {
-  test(`one Shiori, every model text-only, the transcription model ${how}: the heard line's own turn is answered with it as not transcribed, so is a line typed after it, and its words come once the model hears again`, async (t) => {
+  test(`one Shiori, every model text-only, the transcription model ${how}: the heard line's own turn is answered with it as not transcribed, so is a line typed after it${fail ? ', and its words come once the model hears again' : ', and the third turn that worked gives the line up'}`, async (t) => {
     useClock(t);
     const { k, back, ledger } = await deafKit([say('I could not hear that.'), say('Hello there.'), say('Lunch is near.')], fail);
     await tapAndSay(k, 'where-eat');
@@ -88,14 +105,21 @@ for (const [how, fail, rests, askedBefore] of FAILURES) {
     assert.deepEqual(await spoken(k), [['one', 'I could not hear that.'], ['one', 'Hello there.']]);
     assert.deepEqual(await errors(k), []);
     assert.deepEqual(await written(k), []);
-    // The model hears again (after its rest, if it took one): the third turn that works is sent the words, and they are written down.
     if (rests) await new Promise((r) => setTimeout(r, rests));
     back();
     k.agent.send('And now?');
     await idleAtOnce(k);
     const [next] = holding(k.requests, 'And now?');
-    assert.deepEqual(heardAs(next), [{ type: 'text', text: 'where should we eat' }]);
-    assert.deepEqual(await written(k), ['where should we eat']);
+    if (fail) {
+      // The model hears again (after its rest, if it took one): the third turn that works is sent the words, and they are written down.
+      assert.deepEqual(heardAs(next), [{ type: 'text', text: 'where should we eat' }]);
+      assert.deepEqual(await written(k), ['where should we eat']);
+    } else {
+      // A model that takes no format this phone makes hears nothing later either: the third turn that worked gives the line up.
+      assert.deepEqual(heardAs(next), [STAND_IN]);
+      assert.deepEqual(await written(k), [NOT_TRANSCRIBED]);
+      assert.equal(ledger.asks, 0, 'nothing was ever sent');
+    }
     assert.equal(k.voice.memory.size, 0);
   });
 
@@ -107,17 +131,20 @@ for (const [how, fail, rests, askedBefore] of FAILURES) {
     await tapAndSay(k, 'where-eat');
     // Three, written out (WRITE_TRIES): the line is kept after the first and the second turn that worked, and given up at the third.
     const asks = [ledger.asks];
+    const writes = [ledger.writes];
     for (const line of ['Line 1', 'Line 2']) {
       assert.deepEqual(await written(k), [], `kept after ${asks.length} turn(s) that worked`);
       assert.equal(k.voice.memory.size, 1, 'and its sound with it');
       k.agent.send(line);
       await idleAtOnce(k);
       asks.push(ledger.asks);
+      writes.push(ledger.writes);
     }
     assert.deepEqual(await written(k), [NOT_TRANSCRIBED]);
     assert.equal(k.voice.memory.size, 0, 'its sound is let go');
     if (rests) assert.deepEqual(asks, [asks[0], asks[0], asks[0]], 'a model in its rest is asked nothing by the lines typed in it, or by their write-downs');
-    else assert.ok(asks[0] < asks[1] && asks[1] < asks[2], "each turn's try asked the transcription model, one that rests not at all");
+    else if (!fail) assert.deepEqual(asks, [0, 0, 0], 'a model that takes no format this phone makes is sent nothing, by a turn or by its write-down');
+    else assert.ok(writes[0] < writes[1] && writes[1] < writes[2], "each turn's write-down asked the transcription model itself, one that rests not at all");
     if (rests) await new Promise((r) => setTimeout(r, rests));
     back();
     k.agent.send('Can you hear me now?');
@@ -135,15 +162,19 @@ test("housekeeping's tries to write the heard line down keep its sound and count
   const k = await agentKit([[say('I could not hear that.'), refused, refused, refused, refused, say('Two.'), say('Three.')]], {
     utility: [{ text: 'Someone spoke.' }], voice: { speechIn: ['m-hear'], hears: ['where should we eat'] },
   });
-  k.llm.transcribe = async () => { throw new ProviderError('unreachable', 'no route to the server'); };
+  let asks = 0;
+  k.llm.transcribe = async () => { asks++; throw new ProviderError('unreachable', 'no route to the server'); };
   await tapAndSay(k, 'where-eat'); // the first turn that worked (1)
   // Four typed lines whose turns fail (no count), so the heard line is in the part housekeeping would summarize: five exchanges, three kept word for word.
   for (let i = 0; i < 4; i++) {
     k.agent.send(`Message ${i}`);
     await idleAtOnce(k);
   }
+  const before = asks;
   assert.equal(await k.agent.compact('cold'), false, 'the cold start\'s tidy-up: the sound is still at hand');
+  const cold = asks;
   assert.equal(await k.agent.compact('warm'), false, "the warm timer's: the same");
+  assert.ok(before < cold && cold < asks, "each of them tried: the transcription model was asked by the tidy-up's write-down and by the timer's");
   assert.equal((await k.events(['compaction'])).length, 0);
   assert.deepEqual(await written(k), [], 'not given up by housekeeping');
   assert.equal(k.voice.memory.size, 1);
@@ -239,6 +270,7 @@ test("a Stop during the heard line's transcription, then a typed line: the typed
   await idleAtOnce(k);
   const [typed] = holding(k.requests, 'Hello');
   assert.deepEqual(heardAs(typed), [STAND_IN]);
+  assert.doesNotMatch(JSON.stringify(typed.messages), /stopped/i, 'the model hears nothing of the Stop');
   assert.deepEqual(await errors(k), ['Stopped by the user.']);
   assert.deepEqual(await spoken(k), [['one', 'Again.']]);
 });
@@ -365,6 +397,7 @@ test("her audio model heard the line and its write-down failed; when it fails th
   const k = await agentKit([[say('Hello there.'), fail, fail], [say('From the other one.')]], { models: [{ input: ['text', 'image', 'audio'] }, {}], voice: { speechIn: ['send-audio'] } });
   await tapAndSay(k, 'where-eat');
   assert.equal((k.sent['model-0'] ?? []).length, 2, 'the audio model answered it, and was asked to write it down');
+  assert.ok(JSON.stringify(k.sent['model-0'][1]).includes(WRITE_DOWN), "its second request is the write-down's");
   assert.deepEqual(await written(k), [], 'its write-down failed');
   assert.equal(k.voice.memory.size, 1);
   k.agent.send('Hello');
@@ -405,7 +438,7 @@ test('Koe and Kokoro on text-only models, the transcription model unreachable: K
 });
 
 // Halves, Koe on text-only models, Kokoro's main model takes audio ("Send audio to the model" is in the list), the transcription model unreachable (Fable F1 of
-// the clip-route-next review, probe P8): Kokoro's list hears the line, so Koe's turn does not take the last pass. Koe's call fails as it did before the branch,
+// the clip-route-next review, probe P8): Kokoro's call can hear the line, so Koe's turn does not take the last pass. Koe's call fails as it did before the branch,
 // Kokoro answers the line from its sound and its audio model writes the words down. (Koe answering from the stand-in left the line unwritten for good.)
 test("Halves, Koe on text-only models and Kokoro's model takes audio: Koe's turn is not answered with the line as not transcribed; Kokoro hears it, answers it aloud, and writes the words down", async (t) => {
   useClock(t);
@@ -417,13 +450,100 @@ test("Halves, Koe on text-only models and Kokoro's model takes audio: Koe's turn
   k.llm.transcribe = async () => { throw new ProviderError('unreachable', 'no route to the server'); };
   await tapAndSay(k, 'where-eat');
   assert.deepEqual(k.sent['model-koe'] ?? [], [], "Koe's text-only model was sent nothing: no stand-in");
+  assert.equal(k.agent.koeState, 'down', "Koe's call failed quietly, as designed, and Kokoro has the voice");
   const [first] = k.sent['model-0'] ?? [];
   assert.equal(heardAs(first)[0]?.type, 'audio', "Kokoro's audio model was sent the sound");
   assert.deepEqual((await spoken(k)).map(([half, s]) => `${half}: ${s}`), ['kokoro: Tacos are near.']);
   assert.deepEqual(await written(k), ['where should we eat'], 'and its audio model wrote the line down');
   assert.equal(k.voice.memory.size, 0);
-  assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.title), [], 'no card');
+  assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.title), [], 'no notice');
+  assert.deepEqual(await errors(k), ['model-koe: Nothing in the speech-in list worked for model-koe.'], "the one error is Koe's own failure, not shown as a card");
 });
+
+// Halves, Kokoro's only main model takes audio and rests, the transcription model unreachable (the re-review's R1, probe P-C1): a model her call can't ask
+// is no ear for Koe's rule, so Koe's call takes the stand-in and answers the lines typed in the rest, as it did before the branch. Where her call can ask the
+// resting model (a rate limit it may fail again), Koe still doesn't answer until that ask has failed. Koe's own rest after a failed call is 60 s (KOE_REST_MS).
+const KOKORO_RESTS = /** @type {const} */ ([
+  ['out of credit, a rest only the user can end', { error: 'credit', status: 402, message: 'out of credit' }, 0],
+  ['rate-limited again each time it is asked (asked once in the rest, which fails it: then Koe answers)', { error: 'rate', status: 429, message: 'slow down' }, 1],
+  ['rate-limited with a long rest the provider stated', { error: 'rate', retryAfter: 18 * 3_600_000, message: 'You exceeded your current quota, please check your plan and billing details.' }, 0],
+]);
+for (const [how, failure, cards] of KOKORO_RESTS) {
+  test(`Halves, Koe on text-only models, Kokoro's one audio model ${how}, the transcription model unreachable: Koe answers the lines typed after the heard one, with it as not transcribed`, async (t) => {
+    useClock(t);
+    const k = await agentKit([[failure]], {
+      models: [{ input: ['text', 'image', 'audio'] }],
+      koe: { type: { rules: [{ match: 'the user spoke', reply: say('Koe: I could not hear that.') }, { match: 'the user wrote', reply: say('Koe here.') }] } },
+      voice: { speechIn: ['send-audio', 'm-hear'] },
+    });
+    k.llm.transcribe = async () => { throw new ProviderError('unreachable', 'no route to the server'); };
+    // The heard line, with her audio model awake: Koe takes no stand-in (it fails quietly), Kokoro's call sends her the sound and her model fails, and rests.
+    await tapAndSay(k, 'where-eat');
+    assert.deepEqual(k.sent['model-koe'] ?? [], [], "Koe's model was sent nothing on the tap");
+    assert.equal((k.sent['model-0'] ?? []).length, 1, 'her audio model was sent the sound, and failed');
+    assert.equal(k.agent.koeState, 'down');
+    // The lines typed after Koe's rest: each that her call can still ask the resting model for fails with a card, as the heard one did; then Koe answers.
+    for (let i = 0; i < cards; i++) {
+      await new Promise((r) => setTimeout(r, 61_000));
+      k.agent.send(`Hello ${i}`);
+      await idleAtOnce(k);
+      assert.deepEqual(k.sent['model-koe'] ?? [], [], `Koe was sent nothing for line ${i}: her model could still hear it`);
+      assert.equal(k.agent.koeState, 'down');
+    }
+    await new Promise((r) => setTimeout(r, 61_000));
+    k.agent.send('Hello there');
+    await idleAtOnce(k);
+    const [koe] = holding(k.sent['model-koe'] ?? [], 'Hello there');
+    assert.deepEqual(heardAs(koe), [STAND_IN], 'Koe answered it, with the heard line as not transcribed');
+    assert.deepEqual((await spoken(k)).at(-1), ['koe', 'Koe here.']);
+    assert.notEqual(k.agent.koeState, 'down');
+    assert.equal(k.voice.memory.size, 1, 'the sound is kept: nothing could write it down yet');
+  });
+}
+
+// The same, her audio model rate-limited once and answering when asked in its rest: Koe's rule counts it (it can be asked), so Koe's call still takes no
+// stand-in, and Kokoro answers the line from its sound and writes the words down: the awake-only rule (answering "could not hear" where her resting audio
+// model would have heard) would fail this.
+test("Halves, Koe on text-only models, Kokoro's one audio model rate-limited and asked again in its rest, the transcription model unreachable: Koe is sent nothing, and Kokoro answers the typed line from the sound and writes it down", async (t) => {
+  useClock(t);
+  const k = await agentKit([[{ error: 'rate', status: 429, message: 'slow down' }, say('Tacos are near.'), { text: 'where should we eat' }]], {
+    models: [{ input: ['text', 'image', 'audio'] }],
+    koe: { type: { rules: [{ match: 'the user spoke', reply: say('Koe: I could not hear that.') }, { match: 'the user wrote', reply: say('Koe here.') }] } },
+    voice: { speechIn: ['send-audio', 'm-hear'] },
+  });
+  k.llm.transcribe = async () => { throw new ProviderError('unreachable', 'no route to the server'); };
+  await tapAndSay(k, 'where-eat');
+  assert.equal((k.sent['model-0'] ?? []).length, 1, 'her audio model was sent the sound, and rate-limited');
+  await new Promise((r) => setTimeout(r, 61_000));
+  k.agent.send('Hello there');
+  await idleAtOnce(k);
+  assert.deepEqual(k.sent['model-koe'] ?? [], [], 'Koe was sent nothing: her model, resting, is asked in the call');
+  assert.deepEqual((await spoken(k)).map(([half, s]) => `${half}: ${s}`), ['kokoro: Tacos are near.']);
+  assert.deepEqual(await written(k), ['where should we eat']);
+  assert.equal(k.voice.memory.size, 0);
+});
+
+// The two halves of Koe's rule that a main model can fail: a main model that takes audio but no "Send audio to the model" in the list (it is not sent the
+// sound), and "Send audio to the model" in the list but no main model that takes audio. Koe answers at once, with the stand-in, and stays up.
+for (const [how, models, speechIn] of /** @type {[string, any[], string[]][]} */ ([
+  ['"Send audio to the model" is not in the speech-in list, though her model takes audio', [{ input: ['text', 'image', 'audio'] }], ['m-hear']],
+  ['"Send audio to the model" is in the speech-in list, but no main model takes audio', [{}], ['send-audio', 'm-hear']],
+])) {
+  test(`Halves, Koe on text-only models, the transcription model unreachable, ${how}: Koe answers the heard line with it as not transcribed, and stays up`, async (t) => {
+    useClock(t);
+    const k = await agentKit([[say('Tacos are near.'), { text: 'where should we eat' }]], {
+      models,
+      koe: { type: { rules: [{ match: 'the user spoke', reply: say('Koe: I could not hear that.') }] } },
+      voice: { speechIn },
+    });
+    k.llm.transcribe = async () => { throw new ProviderError('unreachable', 'no route to the server'); };
+    await tapAndSay(k, 'where-eat');
+    assert.deepEqual(heardAs((k.sent['model-koe'] ?? [])[0]), [STAND_IN], 'Koe was sent the line as not transcribed');
+    assert.notEqual(k.agent.koeState, 'down');
+    assert.deepEqual((await spoken(k)).map(([half, s]) => `${half}: ${s}`), ['koe: Koe: I could not hear that.']);
+    assert.deepEqual(await errors(k), [], 'no card');
+  });
+}
 
 // Halves, Koe hearing the line as sound, Kokoro text-only, and Koe's write-down slow: Kokoro's turn for Koe's answer, before the words exist, is answered
 // with the line as not transcribed, with no card (it showed the card "Nothing in the speech-in list worked" though Koe had answered).
@@ -438,7 +558,7 @@ test("Halves, Koe hears the line as sound and Kokoro is text-only: Kokoro's turn
   assert.ok(kokoro.length >= 1, 'Kokoro was asked');
   assert.deepEqual(heardAs(kokoro[0]), [STAND_IN], 'before the words were written down');
   assert.deepEqual(await errors(k), [], 'no card');
-  assert.deepEqual(await written(k), ['where should we eat'], "Koe's write-down came after");
+  assert.deepEqual(await written(k), ['where should we eat'], "Koe's write-down wrote the words");
 });
 
 // Halves, Kokoro's list a text-only model then an audio one: its turn passes the text-only model over and gives the audio one the sound.
@@ -453,5 +573,5 @@ test("Halves, Kokoro's text-only model ahead of an audio one: Kokoro's turn befo
   assert.deepEqual(k.sent['model-0'] ?? [], [], 'the text-only model was sent nothing');
   assert.equal(heardAs((k.sent['model-1'] ?? [])[0])[0]?.type, 'audio');
   assert.deepEqual(await errors(k), []);
-  assert.deepEqual(await written(k), ['where should we eat'], "Koe's write-down came after");
+  assert.deepEqual(await written(k), ['where should we eat'], "Koe's write-down wrote the words");
 });

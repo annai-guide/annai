@@ -109,10 +109,12 @@ test('the last pass asks only the models passed over for "no-speech": an audio m
   const cfg = config([{ script: [{ error: 'bad-request', status: 400 }], input: ['text', 'audio'] }, { script: [{ text: 'Sorry, I could not hear that.' }], input: ['text'] }]);
   /** @type {[string, string[]][]} */
   const sent = [];
-  const r = await callRole({ role: 'main', request: heardRequest, config: cfg, types: new Map([['scripted', keeping(sent)]]), keyFor: async () => null, sleep: async () => {}, bench: new Bench(), speech: deafUnlessLast, standIn: true });
+  const bench = new Bench();
+  const r = await callRole({ role: 'main', request: heardRequest, config: cfg, types: new Map([['scripted', keeping(sent)]]), keyFor: async () => null, sleep: async () => {}, bench, speech: deafUnlessLast, standIn: true });
   assert.equal(r.reply.text, 'Sorry, I could not hear that.');
   assert.deepEqual(r.attempts.map((a) => `${a.model}:${a.outcome}`), ['m-0:bad-request', 'm-1:no-speech', 'm-1:ok']);
   assert.deepEqual(sent, [['model-0', ['[heard]', 'audio']], ['model-1', ['[heard]', NOT_TRANSCRIBED]]], 'model-0 was sent the request once');
+  assert.equal(bench.until('m-0'), 0, 'a 400 rests nothing');
 });
 
 test('the last pass takes the second pass too: a model that sees no photos, with a photo in the newest message after a heard line, gets its reading and the line as not transcribed', async () => {

@@ -246,8 +246,9 @@ function goneWords(sent, gone) {
  */
 export const GATHER = Object.freeze({ quiet: 1.5, photo: 3, typing: 5, most: 20 });
 /**
- * How many turns that worked try to write a segment down before it is written as not transcribed and its sound let go (spec §10.3); housekeeping's own
- * tries keep the sound and count nothing. Three: not measured, a guess from the first version (2026-10-16); it bounds asking again for an old line.
+ * How many turns that worked try to write a segment down before it is written as not transcribed and its sound let go (spec §10.3); an unforced housekeeping
+ * write-down keeps the sound and counts nothing, and a forced one lets it go at once. Three: not measured, a guess from the first version (2026-10-16); it
+ * bounds asking again for an old line.
  */
 export const WRITE_TRIES = 3;
 
@@ -2711,7 +2712,8 @@ export class Agent {
           // Her own call: when every model she could use rests, the one rested longest is asked anyway (§9.6).
           askResting: true,
           // And when every model was passed over for a heard line nothing could hear for it, they are asked again with it as not transcribed (§10.3):
-          // Kokoro's call always, Koe's unless Kokoro's own list hears the line (its audio model does: Koe's call fails as before, and Kokoro answers it, and writes it down).
+          // Kokoro's call always, Koe's unless Kokoro's call can hear the line as sound (#kokoroHears: the speech-in list sends audio, and a main model that takes it can be asked now):
+          // Koe's call then fails quietly, as before, and Kokoro answers the line and writes it down.
           standIn: this.#half.name !== 'koe' || !(await this.#kokoroHears()),
           ...(this.#shared ? { shared: true } : {}),
           // The second pass reads a file for a model that can't take it, which waits on its readers' models: not Koe's, who answers at once (§7.2).
@@ -4389,8 +4391,8 @@ export class Agent {
 
   /**
    * The words of what was heard are written down, and the sound is let go (spec §10.3). When nothing could write it down, the sound stays for the next turn
-   * that works; after WRITE_TRIES it is written as not transcribed. final: the last chance (housekeeping that must summarize them now);
-   * counts: a turn's own try (a failure of it is one of WRITE_TRIES; housekeeping's keeps the sound and counts nothing).
+   * that works; after WRITE_TRIES it is written as not transcribed. final: the last chance (housekeeping that must summarize them now: the sound goes at once);
+   * counts: a turn's own try (a failure of it is one of WRITE_TRIES; an unforced housekeeping write-down keeps the sound and counts nothing).
    * @param {string} wakeId @param {string[]} [ids] @param {{ final?: boolean, counts?: boolean }} [o]
    * @returns {Promise<string[]>} the segments still not written down, whose sound is kept
    */
@@ -4428,13 +4430,20 @@ export class Agent {
   }
 
   /**
-   * Whether Kokoro's own list hears a line as sound (spec §10.3): "Send audio to the model" is in the speech-in list and a model of the main role takes audio.
-   * Koe's turn is then not answered with the line as not transcribed: Kokoro hears it, and writes it down.
+   * Whether Kokoro's call can hear a line as sound now (spec §10.3): "Send audio to the model" is in the speech-in list (there is one list, Koe's call and
+   * hers read it alike) and a model of the main role takes audio and her call can ask it: it isn't resting, or it rests and her call asks it anyway (callRole's
+   * askResting: not a rest only the user can end, not a long rest the provider stated, not one that already failed when asked in this rest). Koe's turn is then
+   * not answered with the line as not transcribed: Kokoro hears it, and writes it down. A model her call can't ask would leave Koe's call failing, and every
+   * line after it, typed ones too.
    * @returns {Promise<boolean>}
    */
   async #kokoroHears() {
     const cfg = await this.llm.config();
-    return (cfg.roles['speech-in']?.models ?? []).includes('send-audio') && chatCandidates(cfg, 'main').some((/** @type {string} */ id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('audio'));
+    if (!(cfg.roles['speech-in']?.models ?? []).includes('send-audio')) return false;
+    const bench = this.llm.bench;
+    const now = Date.now();
+    return chatCandidates(cfg, 'main').some((/** @type {string} */ id) => cfg.models[id] && modelOf(cfg.models[id]).input.includes('audio')
+      && (!(bench && bench.until(id) > now) || (!bench.usersToEnd(id) && !bench.why(id) && !bench.triedResting(id))));
   }
 
   /**
