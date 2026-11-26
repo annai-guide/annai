@@ -246,13 +246,10 @@ function goneWords(sent, gone) {
  */
 export const GATHER = Object.freeze({ quiet: 1.5, photo: 3, typing: 5, most: 20 });
 /**
- * How many times a model really asked for a segment's words and failed to make them (Kept.failed) before it is written as not transcribed and its sound
- * let go (spec §10.3). A write-down (at the end of a turn that works, housekeeping's, a question's heard line) counts once when it fails with a model asked; a
- * model resting when it comes is not asked (whether a failure rests its model is fallback.js nextStep's rule, not this count's), and a recording the phone makes
- * no format of the model's for is no ask. So how soon three come depends on the failure: a refusal or a dead link at each write-down, a resting model only once
- * it is asked again. Until then the sound stays, as it does to Start fresh, a forced summary or HEARD_MAX_BYTES (16 MB). Three: not
- * measured, a guess from the first version (2026-10-16). It bounds sending the recording again, at every turn that works, to a model that refuses it or can't be
- * reached, and keeping its sound for one that is not coming back; a smaller number gives up on a hiccup of the link.
+ * How many write-downs of a segment may fail (Kept.failed) before it is written as not transcribed and its sound let go (spec §10.3). A write-down counts once
+ * when it fails with a model asked: a model resting when it comes is not asked, and a recording the phone makes no format of the model's for is no ask. Start
+ * fresh, a forced summary or HEARD_MAX_BYTES (16 MB) let the sound go sooner. Three: not measured, a guess from the first version (2026-10-16). It bounds
+ * sending the recording again to a model that keeps failing it, and the sound kept meanwhile; a smaller number gives up on a hiccup of the link.
  */
 export const WRITE_TRIES = 3;
 
