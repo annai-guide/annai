@@ -1371,7 +1371,8 @@ for (const [mode, koe] of /** @type {[string, any][]} */ ([[' (Koe on a chat mod
 // session (no microphone) used to send the wake in while the wake's own wait was still for the microphone to start, and the typed line cut in on it, which showed it
 // (a silent card and its entry); voice then went off before the microphone had started, the wake's wait ended with the close, and #live placed a second copy: two
 // entries (on fea9ac9d9 and 4fb14e7d2). Now nothing waiting goes in until the microphone has started (#idle), so the close finds the wake still waiting and #live
-// places it, once. (#go's own check, that an item already out of its list is never placed again, is Start fresh's: the notes it shows itself, below.)
+// places it, once. The first assertion pins the gate: the typed line alone is in the session while the microphone starts (the outcome below is the same without it, the
+// session's copy being cut and placed once). (#go's own check, that an item already out of its list is never placed again, is Start fresh's: the notes it shows itself, below.)
 for (const [mode, koe] of /** @type {[string, any][]} */ ([[' (Koe on a chat model)', { koe: { type: [asleep, asleep, asleep] } }], [' (no Koe model)', {}]])) {
   test(`Koe live: a typed line and a watch's wake on one connecting session, and voice goes off while the microphone starts: its reminder is shown once${mode}`, async () => {
     const k = await liveKit([{ said, audio: tone(1) }], { pace: 1, ...koe });
@@ -1386,6 +1387,9 @@ for (const [mode, koe] of /** @type {[string, any][]} */ ([[' (Koe on a chat mod
       await until(() => k.agent.live.owing, 30_000);
       conn.open();
       await until(mic.asked, 30_000);
+      await soon(async () => texts(k).length > 0); // the typed line is in
+      await settled();
+      assert.deepEqual(texts(k), ['[typed] Hello there'], 'the typed line alone: the wake waits for the microphone'); // what pins the gate: without it the wake goes in here too
       await voiceOff(k);
       await until(() => k.agent.live.state === 'closed', 30_000); // the close has come, with the microphone still starting
       mic.open();
@@ -1540,6 +1544,77 @@ const tellKoe = (k) => k.agent.channel.send('kokoro', ANSWER, 'append', 'tool', 
  * by what Koe's chat model was asked (koeAsked) and what was said (k.said). @param {any} k @param {string} scope
  */
 const answerIn = async (k, scope) => (await entries(k, scope)).filter((/** @type {string} */ x) => x === ANSWER);
+
+// open() throws while something of Kokoro's waits on it (the re-review of fix round 2, Opus P-a, Haiku F-A, F-B, F-D: a phone that refuses a read as the session opens):
+// live.js #go takes what it waited with out of its list and rethrows, so no later session gets it, and what its route carried is placed by Halves' catch, which showed
+// only the failure: a note of Kokoro's for the user is shown now (#backstop: "Shiori's answer", said with voice on, as when no session can take it), and the recap
+// asked aloud, which Kokoro was never given, is Kokoro's (as #live hands it on when no session takes it). On 90639e58a the note's words were on no card and in no later
+// session, and the recap was answered by no one (on 4fb14e7d2 and main both stayed owed and the next session got them). An immediate note (#now) never was in a list: the same.
+/** The next open() of the live session is refused once, as a phone refuses a read as it opens. @param {any} k */
+function refuseOpenOnce(k) {
+  const open = k.agent.live.open.bind(k.agent.live);
+  k.agent.live.open = async () => {
+    k.agent.live.open = open;
+    throw new Error('the phone refused a read');
+  };
+}
+/** The cards that say a route failed (Agent.notSaved). @param {any[]} cards */
+const notSaved = (cards) => cards.filter((n) => n.title === "Something for Shiori wasn't saved").map((n) => n.body);
+for (const [mode, koe] of /** @type {[string, any][]} */ ([[' (Koe on a chat model)', { koe: { type: [asleep, asleep, asleep] } }], [' (no Koe model)', {}]])) {
+  for (const [what, send] of /** @type {[string, (k: any) => unknown][]} */ ([
+    ["a note of Kokoro's for the user", tellKoe],
+    ["an immediate note of Kokoro's for the user", (k) => k.agent.channel.send('kokoro', ANSWER, 'immediate', 'tool', undefined, undefined, false, ANSWER)],
+  ])) {
+    test(`Koe live: open() throws while ${what} waits on it: its words are shown once and said, the failure is told, and a session that opens later is never given it${mode}`, async () => {
+      const k = await liveKit([{ said, audio: tone(1) }], { pace: 1, ...koe });
+      try {
+        await k.voice.unlock();
+        const cards = raw(k);
+        refuseOpenOnce(k);
+        await send(k);
+        await soon(async () => notSaved(cards).length > 0); // the failure is told, after its words are shown
+        await settled();
+        await idleAtOnce(k);
+        k.agent.send('Hello there'); // a session opens for it, and what waits goes in with it
+        await soon(async () => texts(k).some((/** @type {string} */ x) => x.includes('[typed]')));
+        await settled();
+        await idleAtOnce(k);
+        assert.deepEqual(texts(k), ['[typed] Hello there'], 'the session was never given it');
+        assert.deepEqual(cards.map((n) => n.title).filter((x) => x === "Shiori's answer" || x === "Something for Shiori wasn't saved"), ["Shiori's answer", "Something for Shiori wasn't saved"], 'its words, then the failure');
+        assert.deepEqual(answers(cards), [ANSWER], 'one card with its words');
+        assert.deepEqual(notSaved(cards), ['the phone refused a read'], 'and the failure told once');
+        assert.deepEqual(await answerIn(k, k.trip), [ANSWER], 'one entry');
+        assert.deepEqual(k.said.filter((/** @type {string} */ x) => x.includes('Bixby')), [ANSWER], 'said once');
+      } finally {
+        await k.done();
+      }
+    });
+  }
+
+  test(`Koe live: open() throws while the recap asked aloud waits on it: Kokoro has it once, the failure is told, and a session that opens later is never given it${mode}`, async () => {
+    const k = await liveKit([{ said, audio: tone(1) }], { pace: 1, ...koe });
+    try {
+      await k.voice.unlock();
+      const cards = raw(k);
+      refuseOpenOnce(k);
+      k.agent.wake(RECAP);
+      await soon(async () => notSaved(cards).length > 0);
+      await settled();
+      await idleAtOnce(k);
+      await settled();
+      await idleAtOnce(k);
+      k.agent.send('Hello there'); // a session opens for it, and what waits goes in with it
+      await soon(async () => texts(k).some((/** @type {string} */ x) => x.includes('[typed]')));
+      await settled();
+      await idleAtOnce(k);
+      assert.deepEqual(texts(k), ['[typed] Hello there'], 'the session was never given it');
+      assert.deepEqual((await recordsIn(k, k.trip, 'wake')).filter((/** @type {any} */ e) => JSON.stringify(e.data).includes('Tell the recap')).map((/** @type {any} */ e) => e.data.half), ['kokoro'], "Kokoro's wake carries it, once");
+      assert.deepEqual(notSaved(cards), ['the phone refused a read'], 'the failure told once');
+    } finally {
+      await k.done();
+    }
+  });
+}
 
 // A note of Kokoro's for the traveller is with the session that is connecting when voice goes off, and the traveller opens another conversation just after:
 // the note carries the conversation it was written in (Channel.send), so #live, after its refresh, shows it there (#elsewhere, as a switch shows what it

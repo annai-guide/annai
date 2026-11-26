@@ -721,7 +721,7 @@ export class LiveKoe {
       if (notes.length) this.c.left?.(notes);
     }
     // What a part of Halves still waits for a session to take is let go first, and that part places it (#go): never handed on here as well. The traveller's
-    // tap lets go of nothing: the wait goes on until the connection attempt ends, as before, and nothing is placed at the tap.
+    // tap lets go of nothing: the wait goes on until the session's open ends (its connection, then the microphone), as before, and nothing is placed at the tap.
     if (why !== 'tap') for (const leave of this.#placing) leave();
     // Another conversation, or a fresh start: Kokoro's notes it owed are shown in the one left, never lost.
     if (forget && (why === 'switch' || why === 'fresh') && this.owing) this.c.left?.([...this.#owed.sent, ...this.#owed.waiting]);
@@ -987,7 +987,7 @@ export class LiveKoe {
     const mark = (this.#urgent = { sent: 0, spoke: false, timer: null });
     this.#changed();
     // No session to take it (none opened, the open failed, or it closed while the microphone opened): no mark is left, and Halves
-    // hands it on, as #go does.
+    // hands it on, as #go does. An open that throws leaves no mark either; its caller shows a note for the user and tells the failure (deliver.koe).
     let ok = false;
     try {
       ok = (await this.open(why, { mic: Boolean(this.c.voice?.unlocked) })) && this.state === 'open';
@@ -1126,8 +1126,8 @@ export class LiveKoe {
    * What waits goes in once Koe's turn and voice end, in a session opened for it that listens after where sound was unlocked (nothing waiting goes in before
    * that: #idle); out of view, it waits (shown()). With no session, it is let go here (undo takes it out of its list and says whether it was still there) and Halves
    * places it, once: a close, any but the traveller's tap, lets go of it at once, before it hands anything on (#placing), not when the connection it waited on ends.
-   * One already out of its list (Start fresh showed it, close; a newer urgent note replaced it) is never placed again. If open() throws, it is taken back too: its
-   * caller shows it or says it is gone, and no later session gets it as well.
+   * One already out of its list (Start fresh showed it, close; a newer urgent note replaced it) is never placed again. If open() throws, it is taken back too, and no later
+   * session gets it as well: its caller places what it carried (the catch below).
    * @param {string} why @param {() => boolean} undo whether it was still waiting @returns {Promise<boolean>} false: Halves places it
    */
   async #go(why, undo) {
@@ -1141,6 +1141,8 @@ export class LiveKoe {
     try {
       open = (await Promise.race([this.open(why, { mic: Boolean(this.c.voice?.unlocked) }), left])) && this.state === 'open';
     } catch (e) {
+      // Taken back, so no later session gets it as well; its caller (Halves) places it: a note for the user is shown, a wake's reminders are shown, the recap asked aloud is
+      // handed to Kokoro, and the failure is told (#liveFailed, deliver.koe).
       took ||= undo();
       throw e;
     } finally {

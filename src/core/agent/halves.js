@@ -256,7 +256,9 @@ export class Halves {
           const owed = isForUser(w) && !stretch;
           if (owed && !w.retold) this.#unsaid.push(w.text);
           this.#koeOpen();
-          if (this.koeState === 'live') this.#live(() => this.live.note(String(w.note), w.mode === 'immediate' ? 'immediate' : 'append', owed ? w : null, { stretch }), w).catch(this.#gone);
+          // A route that fails (the session's open refused a read: live.js #go took the note out of its list, and #now never had it in one) shows Kokoro's words for the user,
+          // as Agent.wakeFailed shows a wake's reminders, then tells the failure: no later session gets the note, so what is shown now is all that is left of it.
+          if (this.koeState === 'live') this.#live(() => this.live.note(String(w.note), w.mode === 'immediate' ? 'immediate' : 'append', owed ? w : null, { stretch }), w).catch(async (e) => { if (owed) await this.#backstop([w]); await this.#gone(e); });
           else this.koe.enqueue(w);
         },
         kokoro: (w) => {
@@ -707,8 +709,8 @@ export class Halves {
    * next model takes it; with none left, a card says so, and Kokoro talks directly at once, told so (with what it last told
    * Koe that didn't reach the user), the wake's reminders said by annai only if it can't; a session that closed
    * meanwhile leaves them to annai. A close while the session connects, any but a tap, leaves what the session had not taken to this part at once, and hands no
-   * copy of it on (live.js #go): this part places it, once (an urgent wake, an immediate note and a typed line wait for the attempt to end, as before; a tap's
-   * close waits for it too). Start fresh is the exception for Kokoro's notes: the close shows them above the divider itself (live.js close), and #go finds
+   * copy of it on (live.js #go): this part places it, once (an urgent wake, an immediate note and a typed line wait for the session's open to end, its connection and then the
+   * microphone, as before; a tap's close waits for it too). Start fresh is the exception for Kokoro's notes: the close shows them above the divider itself (live.js close), and #go finds
    * them gone. @param {() => Promise<boolean>} fn @param {Wake} w
    */
   async #live(fn, w) {
@@ -756,6 +758,17 @@ export class Halves {
   #annai(w, scope) {
     if (w.aloud) this.#alongside(this.kokoro.wake(w));
     else if (w.fallbacks?.length) this.#alongside(this.kokoro.remind(w.fallbacks, scope));
+  }
+
+  /**
+   * A wake on its way to a live session failed before any hand-on (its open refused a read; live.js #go took it out of its list, so no later session gets it): its
+   * reminders are shown (Agent.wakeFailed); the recap asked aloud, which has none and which Kokoro was never given, is hers now (#annai, as #live hands it on when no
+   * session takes it), and the failure is told. @param {Wake} w @param {unknown} e
+   */
+  #liveFailed(w, e) {
+    if (!w.aloud) return this.kokoro.wakeFailed(w, e);
+    this.#annai(w);
+    return this.#gone(e);
   }
 
   /**
@@ -974,7 +987,7 @@ export class Halves {
       const given = away ? { ...w, fallbacks: w.fallbacks?.filter((r) => r.cue) } : w;
       if (this.koeState === 'live') {
         // The session holds it in memory, held in the log as it came, until it passes it on (reminder.told).
-        this.#alongside(this.#live(() => this.live.wake(given), given), (e) => this.kokoro.wakeFailed(given, e)); // it fails before any hand-on (a refused read): none showed them
+        this.#alongside(this.#live(() => this.live.wake(given), given), (e) => this.#liveFailed(given, e)); // it fails before any hand-on (a refused read): none showed them
       } else this.koe.enqueue(w);
     }, (e) => this.kokoro.wakeFailed(w, e)); // a route that fails before its hand-ons (the refresh, the budgets' check): its reminders are shown, once
     return Promise.resolve();
