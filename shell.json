@@ -1,5 +1,5 @@
 {
-  "build": "b0316c5453bd",
+  "build": "ba90c2a8ccd0",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -39,7 +39,7 @@
     "/src/core/agent/budgets.js": "a7804d7ea6b2",
     "/src/core/agent/compaction.js": "86815c245a52",
     "/src/core/agent/context.js": "2d75cd3369f6",
-    "/src/core/agent/halves.js": "3558dddf2024",
+    "/src/core/agent/halves.js": "660b2686e343",
     "/src/core/agent/instructions.js": "dc44316f3b47",
     "/src/core/agent/listen.js": "41cbb9219102",
     "/src/core/agent/log.js": "be1f6eedd6f8",
@@ -111,7 +111,7 @@
     "/src/core/intl.js": "02d97f7ff33b",
     "/src/core/koe/context.js": "9b86ff4f2132",
     "/src/core/koe/instructions.js": "b5886ea21f8a",
-    "/src/core/koe/live.js": "b2327d6b43b9",
+    "/src/core/koe/live.js": "92ee49ef60df",
     "/src/core/koe/loud.js": "5ef2922e048e",
     "/src/core/koe/tools.js": "957f5c629f45",
     "/src/core/l10n-list.js": "98de5dc21171",
