@@ -343,9 +343,12 @@ export class LiveKoe {
     return this.#hers() || Boolean(this.#input?.active);
   }
 
-  /** What is going on that isn't the user's microphone turn: opening or reconnecting, Koe's turn or voice, a tool. */
-  #hers() {
-    return Boolean(this.#opening || this.#t || this.#sounding || this.#pending || this.#queue.length || this.#tools || (this.state === 'open' && !this.#s));
+  /**
+   * What is going on that isn't the user's microphone turn: opening or reconnecting, Koe's turn or voice, a tool. cut: a turn of hers that was cut off
+   * counts too, though nothing of it is heard any more: only the provider's end of it, or a close or a new connection (#reconnect), lets it go. @param {boolean} [cut]
+   */
+  #hers(cut = true) {
+    return Boolean(this.#opening || (this.#t && (cut || !this.#t.cut)) || this.#sounding || this.#pending || this.#queue.length || this.#tools || (this.state === 'open' && !this.#s));
   }
 
   /**
@@ -1420,6 +1423,9 @@ export class LiveKoe {
    */
   #answers(e) {
     const due = this.#due;
+    // Sound or words of a turn cut off for an input that went in since (any but a tap's, after which what she makes is her answer, written: #stopped) were on
+    // their way before that input: no answer to it, so its wait goes on until a turn of hers answers it, or runs out (#silent). Words go where #on puts them.
+    if ((e.type === 'audio' || e.type === 'said') && !this.#stopped && (this.#t ?? (e.type === 'said' ? this.#trail : null))?.cut) return false;
     if (e.type === 'audio' || (e.type === 'said' && realWord(e.text))) return true;
     if (e.type !== 'tool' && e.type !== 'turn') return false;
     // The cut of the turn before (an interrupted is never a reply to what went in), or the end of a turn that goes on (a provider that never says
@@ -1947,6 +1953,10 @@ export class LiveKoe {
     const gen = this.#gen;
     this.#rotate = false;
     this.#s = null; // what is said meanwhile waits for the new one, speech going on starting again there first
+    // The left connection's turn goes with it, as at a close (#closed): nothing more of it comes, so what the next one says is a turn of its own. One cut off
+    // was stopped at its cut already; one still being made is cut where it was heard.
+    if (this.#t) this.#stop(this.#t, true);
+    this.#t = null;
     if (this.#input?.active) this.#waiting.unshift((x) => x.activity('start'));
     const s = await this.#resume(/** @type {string} */ (this.modelId), fresh ? undefined : old?.handle ?? this.#handle, why).catch(() => null);
     old?.close(why);
@@ -2018,11 +2028,12 @@ export class LiveKoe {
   /**
    * The quiet spell ran out. Kokoro working on Koe's question isn't quiet: its answer is coming. Nor is her own turn, a tool call, or
    * a text turn's answer still owed (#due; #silent bounds that wait). Only the user's turn going on, or its answer, left: that turn
-   * decides (#lapsed): her answer re-arms it, a dismissed turn closes it (#complete), looking here again. Else it closes.
+   * decides (#lapsed): her answer re-arms it, a dismissed turn closes it (#complete), looking here again. Else it closes. A turn of hers
+   * cut off is no reason to stay: the provider's end of it may never come (a link gone dead with its socket up), and the close lets it go.
    */
   #quietEnd() {
     clearTimeout(this.#quiet);
-    if (this.#hers() || this.c.asked() || (this.#due && this.#due.text !== null)) return this.#poke();
+    if (this.#hers(false) || this.c.asked() || (this.#due && this.#due.text !== null)) return this.#poke();
     if (this.#input?.active || this.#due) {
       this.#lapsed = true;
       return undefined;
