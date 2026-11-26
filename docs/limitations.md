@@ -1567,6 +1567,12 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** `#live`'s fallback, when Koe stays live, gives a note to `#backstop`, which shows only a note's words for the traveller, and to `#annai`, which does nothing for a note without them. The fix: a final text that no session takes is shown as Kokoro's answer ("Shiori's answer"), as a note for the traveller is; plan decision 21 (Kokoro's error turns told by Koe, no card while Koe works) is about her error turns, not her answer.
 - **Revisit when:** its row in docs/progress.md, in the next version.
 
+### A refused read while a live session connects rests the live model for 3 minutes
+- **Kind:** deferred.
+- **What the traveller sees:** with Koe · Realtime, when the phone refuses a read of annai's own store during the session's setup (rare; two refused reads in one open since open-reads-next, which passes over a refused spend or settings read), the connection fails and the live model rests for 3 minutes; Koe's next model or Kokoro answers meanwhile, so nothing is lost, but live voice is off for that time. On main for a refused setup read alone. Found by open-reads-next's final review (2026-11-25, probed).
+- **Why:** `#start`'s catch around `#resume` (src/core/koe/live.js) rests the model for any failure. The fix: rest it only for the provider's failure (an error with a provider's `kind`), not for annai's own refused read; check first that every provider error carries one.
+- **Revisit when:** its row in docs/progress.md, in the next version, or when a trace shows a refused read beside a live open.
+
 ### A tap that stops a connecting live session doesn't keep its reminder for the next session
 - **Kind:** deferred.
 - **What the traveller sees:** with Koe · Realtime, the traveller taps Shiori to talk, a reminder joins the session while it connects, and the traveller taps again to stop it: annai shows the reminder and says it when the connection attempt ends (up to 15 s), where the user's pick says a tap's close keeps it for the next session and nothing is said at the tap. On main too. Found by voice-off-next's reviews (2026-11-25, by reading; the branch keeps main's timing for a tap).
