@@ -256,8 +256,9 @@ export class Halves {
           const owed = isForUser(w) && !stretch;
           if (owed && !w.retold) this.#unsaid.push(w.text);
           this.#koeOpen();
-          // A route that fails (the session's open refused a read: live.js #go took the note out of its list, and #now never had it in one) shows Kokoro's words for the user,
-          // as Agent.wakeFailed shows a wake's reminders, then tells the failure: no later session gets the note, so what is shown now is all that is left of it.
+          // A route that fails (the session's open threw, by no cause known now: a refused read doesn't fail it; live.js #go took the note out of its list, and #now
+          // never had it in one) shows Kokoro's words for the user, as Agent.wakeFailed shows a wake's reminders, then tells the failure: no later session gets the
+          // note, so what is shown now is all that is left of it.
           if (this.koeState === 'live') this.#live(() => this.live.note(String(w.note), w.mode === 'immediate' ? 'immediate' : 'append', owed ? w : null, { stretch }), w).catch(async (e) => { if (owed) await this.#backstop([w]); await this.#gone(e); });
           else this.koe.enqueue(w);
         },
@@ -761,9 +762,9 @@ export class Halves {
   }
 
   /**
-   * A wake on its way to a live session failed before any hand-on (its open refused a read; live.js #go took it out of its list, so no later session gets it): its
-   * reminders are shown (Agent.wakeFailed); the recap asked aloud, which has none and which Kokoro was never given, is hers now (#annai, as #live hands it on when no
-   * session takes it), and the failure is told. @param {Wake} w @param {unknown} e
+   * A wake on its way to a live session failed before any hand-on (its open threw, by no cause known now: a refused read doesn't fail it; live.js #go took it out
+   * of its list, so no later session gets it): its reminders are shown (Agent.wakeFailed); the recap asked aloud, which has none and which Kokoro was never given,
+   * is hers now (#annai, as #live hands it on when no session takes it), and the failure is told. @param {Wake} w @param {unknown} e
    */
   #liveFailed(w, e) {
     if (!w.aloud) return this.kokoro.wakeFailed(w, e);
@@ -987,7 +988,7 @@ export class Halves {
       const given = away ? { ...w, fallbacks: w.fallbacks?.filter((r) => r.cue) } : w;
       if (this.koeState === 'live') {
         // The session holds it in memory, held in the log as it came, until it passes it on (reminder.told).
-        this.#alongside(this.#live(() => this.live.wake(given), given), (e) => this.#liveFailed(given, e)); // it fails before any hand-on (a refused read): none showed them
+        this.#alongside(this.#live(() => this.live.wake(given), given), (e) => this.#liveFailed(given, e)); // it fails before any hand-on (an open that throws): none showed them
       } else this.koe.enqueue(w);
     }, (e) => this.kokoro.wakeFailed(w, e)); // a route that fails before its hand-ons (the refresh, the budgets' check): its reminders are shown, once
     return Promise.resolve();

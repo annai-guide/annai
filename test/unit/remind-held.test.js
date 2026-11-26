@@ -10,7 +10,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, until, idleAtOnce, inTime, holdAtDoor, holdReminders, raw } from './agent-kit.js';
-import { liveKit, soon, tone, texts, got, lives } from './koe-live-kit.js';
+import { liveKit, soon, tone, texts, got, lives, say as sayClip } from './koe-live-kit.js';
 import { codePlugin, storedModules } from './package-kit.js';
 import { quietSession, tell, tell2, cues, notesIn, words, shown, wait, textsIn, SAID, PASS } from './live-flight-kit.js';
 import { useClock } from './clock.js';
@@ -1478,18 +1478,19 @@ test("Koe live: something runs #idle while a watch's wake waits for the micropho
   }
 });
 
-// open() throws while a watch's wake waits on it (the re-review, Haiku src F: a phone that refuses a read as the microphone starts): the wake's failure shows its
-// reminder (Kokoro's wakeFailed), and #go takes the reminder back from the list it waited in, so the session that opens later for a typed line is never given it as well.
-// On 90e35a763 it stayed in the list, and that session said it a second time.
+// open() throws while a watch's wake waits on it (the re-review, Haiku src F; found with a read refused as the microphone starts, which no longer fails it, the
+// tests of the reads below: the open is stubbed to throw, by no cause known now): the wake's failure shows its reminder (Kokoro's wakeFailed), and #go takes the
+// reminder back from the list it waited in, so the session that opens later for a typed line is never given it as well. On 90e35a763 it stayed in the list, and
+// that session said it a second time.
 test("Koe live: open() throws while a watch's wake waits on it: its reminder is shown once, and a session that opens later is never given it", async () => {
   const k = await liveKit([{ said, audio: tone(1) }], { pace: 1 });
   try {
     await k.voice.unlock();
     const cards = raw(k);
     const open = k.agent.live.open.bind(k.agent.live);
-    k.agent.live.open = async () => { // the wake's wait finds the open refused, once
+    k.agent.live.open = async () => { // the wake's wait finds the open failing, once
       k.agent.live.open = open;
-      throw new Error('the phone refused a read');
+      throw new Error('the open failed');
     };
     k.agent.wake(train());
     await soon(async () => reminders(cards).length > 0);
@@ -1545,17 +1546,17 @@ const tellKoe = (k) => k.agent.channel.send('kokoro', ANSWER, 'append', 'tool', 
  */
 const answerIn = async (k, scope) => (await entries(k, scope)).filter((/** @type {string} */ x) => x === ANSWER);
 
-// open() throws while something of Kokoro's waits on it (the re-review of fix round 2, Opus P-a, Haiku F-A, F-B, F-D: a phone that refuses a read as the session opens):
-// live.js #go takes what it waited with out of its list and rethrows, so no later session gets it, and what its route carried is placed by Halves' catch, which showed
+// open() throws while something of Kokoro's waits on it (the re-review of fix round 2, Opus P-a, Haiku F-A, F-B, F-D; found with a read refused as the session opens,
+// which no longer fails it, the tests of the reads below: the open is stubbed to throw, by no cause known now): live.js #go takes what it waited with out of its list and rethrows, so no later session gets it, and what its route carried is placed by Halves' catch, which showed
 // only the failure: a note of Kokoro's for the user is shown now (#backstop: "Shiori's answer", said with voice on, as when no session can take it), and the recap
 // asked aloud, which Kokoro was never given, is Kokoro's (as #live hands it on when no session takes it). On 90639e58a the note's words were on no card and in no later
 // session, and the recap was answered by no one (on 4fb14e7d2 and main both stayed owed and the next session got them). An immediate note (#now) never was in a list: the same.
-/** The next open() of the live session is refused once, as a phone refuses a read as it opens. @param {any} k */
+/** The next open() of the live session throws, once. @param {any} k */
 function refuseOpenOnce(k) {
   const open = k.agent.live.open.bind(k.agent.live);
   k.agent.live.open = async () => {
     k.agent.live.open = open;
-    throw new Error('the phone refused a read');
+    throw new Error('the open failed');
   };
 }
 /** The cards that say a route failed (Agent.notSaved). @param {any[]} cards */
@@ -1582,7 +1583,7 @@ for (const [mode, koe] of /** @type {[string, any][]} */ ([[' (Koe on a chat mod
         assert.deepEqual(texts(k), ['[typed] Hello there'], 'the session was never given it');
         assert.deepEqual(cards.map((n) => n.title).filter((x) => x === "Shiori's answer" || x === "Something for Shiori wasn't saved"), ["Shiori's answer", "Something for Shiori wasn't saved"], 'its words, then the failure');
         assert.deepEqual(answers(cards), [ANSWER], 'one card with its words');
-        assert.deepEqual(notSaved(cards), ['the phone refused a read'], 'and the failure told once');
+        assert.deepEqual(notSaved(cards), ['the open failed'], 'and the failure told once');
         assert.deepEqual(await answerIn(k, k.trip), [ANSWER], 'one entry');
         assert.deepEqual(k.said.filter((/** @type {string} */ x) => x.includes('Bixby')), [ANSWER], 'said once');
       } finally {
@@ -1609,12 +1610,232 @@ for (const [mode, koe] of /** @type {[string, any][]} */ ([[' (Koe on a chat mod
       await idleAtOnce(k);
       assert.deepEqual(texts(k), ['[typed] Hello there'], 'the session was never given it');
       assert.deepEqual((await recordsIn(k, k.trip, 'wake')).filter((/** @type {any} */ e) => JSON.stringify(e.data).includes('Tell the recap')).map((/** @type {any} */ e) => e.data.half), ['kokoro'], "Kokoro's wake carries it, once");
-      assert.deepEqual(notSaved(cards), ['the phone refused a read'], 'the failure told once');
+      assert.deepEqual(notSaved(cards), ['the open failed'], 'the failure told once');
     } finally {
       await k.done();
     }
   });
 }
+
+// A read the phone refuses as a live session opens says nothing of the setting it reads, so the session opens with what it holds (the design check
+// go-fail-design, (d)): the spend (#over, which the session's usage check asks again) and the settings in #start, the pause in #listen. What waited on it goes
+// in once, as with no refusal: nothing for annai to place, and no "wasn't saved" card. On 7b995be58 open() threw at each of the three: a final text and
+// "nothing to add" were said by no one, a watch's reminder, a note for the traveller and the recap were annai's with a failure card, a typed line was never
+// answered, a tap's microphone never started, and a session refused at #start's read was left "opening" with its socket open.
+/**
+ * Refuses one of the live session's reads once: the spend's (its budgets'), the settings' in #start (the session opening) or the pause's in #listen (the
+ * session open, its microphone starting). @param {any} k @param {'spend' | 'start' | 'listen'} read @returns {() => number} how many were refused
+ */
+function refuseRead(k, read) {
+  let refused = 0;
+  const live = k.agent.live;
+  if (read === 'spend') {
+    const budgets = live.c.budgets;
+    live.c.budgets = () => {
+      live.c.budgets = budgets;
+      refused++;
+      return Promise.reject(new Error('the phone refused a read'));
+    };
+  } else {
+    const settings = k.voice.settings;
+    k.voice.settings = (/** @type {any[]} */ ...a) => {
+      if (live.state !== (read === 'start' ? 'opening' : 'open')) return settings.apply(k.voice, a);
+      k.voice.settings = settings;
+      refused++;
+      return Promise.reject(new Error('the phone refused a read'));
+    };
+  }
+  return () => refused;
+}
+const READS = /** @type {['spend' | 'start' | 'listen', string][]} */ ([['spend', 'the spend refused as the session opens'], ['start', 'the settings refused as the session opens'], ['listen', 'the pause refused as its microphone starts']]);
+const FINAL = 'The castle gardens close at six.';
+/** The cards annai shows of its own for what no session took, and the failure's: what the tests wait on, for a card that may come. @param {any[]} cards */
+const annaiCards = (cards) => cards.filter((n) => ['Reminder', "Shiori's answer", "Something for Shiori wasn't saved"].includes(n.title)).map((n) => `${n.title}: ${n.body}`);
+/** Every card Halves showed (k.notices: its own, live Koe's and each half's), by its words: what "nothing of annai's own" asserts is that this is empty, whatever its title. @param {any} k */
+const everyCard = (k) => k.notices.map((/** @type {any} */ n) => `${n.title}: ${n.body}`);
+for (const [read, which] of READS) {
+  for (const [what, send, words] of /** @type {[string, (k: any) => unknown, string][]} */ ([
+    ["Kokoro's final text", (k) => k.agent.channel.send('kokoro', FINAL, 'append', 'final-text'), FINAL],
+    ['"nothing to add"', (k) => k.agent.channel.send('kokoro', 'Kokoro has nothing to add.', 'append', 'nothing-to-add'), 'nothing to add'],
+    ["a watch's wake", (k) => k.agent.wake(train()), 'Train in 20 minutes'],
+    ["an immediate note of Kokoro's for the user", (k) => k.agent.channel.send('kokoro', ANSWER, 'immediate', 'tool', undefined, undefined, false, ANSWER), 'Bixby'],
+    ['the recap asked aloud', (k) => k.agent.wake(RECAP), 'Tell the recap'],
+  ])) {
+    test(`Koe live: a read of ${which}, for ${what}: the session is given it once, and annai shows nothing of its own`, async () => {
+      const k = await liveKit([{ said, audio: tone(1) }], { pace: 1 });
+      try {
+        await k.voice.unlock();
+        const cards = raw(k);
+        const refused = refuseRead(k, read);
+        const given = () => texts(k).filter((/** @type {string} */ x) => x.includes(words)).length;
+        await send(k);
+        await soon(async () => given() > 0 || annaiCards(cards).length > 0);
+        await settled();
+        await idleAtOnce(k);
+        assert.equal(refused(), 1, 'the read was refused');
+        assert.deepEqual(everyCard(k), [], 'no failure is told, and annai shows nothing of its own');
+        assert.equal(given(), 1, 'the session was given it');
+        k.agent.send('Hello there');
+        await soon(async () => texts(k).some((/** @type {string} */ x) => x.includes('[typed]')));
+        await settled();
+        await idleAtOnce(k);
+        assert.equal(given(), 1, 'and never again');
+        assert.deepEqual(everyCard(k), [], 'still nothing of annai\'s');
+        assert.deepEqual([await entries(k), (await recordsIn(k, k.trip, 'wake')).filter((/** @type {any} */ e) => e.data.half === 'kokoro' && JSON.stringify(e.data).includes('Tell the recap')).length], [[], 0], 'no reminder entry, and Kokoro never had the recap');
+      } finally {
+        await k.done();
+      }
+    });
+  }
+}
+
+for (const read of /** @type {('spend' | 'start')[]} */ (['spend', 'start'])) {
+  test(`Koe live: a read of ${read === 'spend' ? 'the spend' : 'the settings'} refused as the session opens for a typed line: the session is given the line`, async () => {
+    const k = await liveKit([{ said, audio: tone(1) }], { pace: 1 });
+    try {
+      await k.voice.unlock();
+      const cards = raw(k);
+      const refused = refuseRead(k, read);
+      k.agent.send('Hello there');
+      await soon(async () => texts(k).some((/** @type {string} */ x) => x.includes('[typed]')) || annaiCards(cards).length > 0);
+      assert.equal(refused(), 1, 'the read was refused');
+      assert.deepEqual(texts(k), ['[typed] Hello there'], 'the session was given the line');
+      await settled();
+      await idleAtOnce(k);
+      assert.deepEqual(everyCard(k), [], 'no failure is told, and nothing else is shown');
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+test('Koe live: a read of the pause refused as a tap starts the microphone: the microphone listens', async () => {
+  const k = await liveKit([{ said, audio: tone(1) }], { pace: 1 });
+  try {
+    await k.voice.unlock();
+    const refused = refuseRead(k, 'listen');
+    assert.equal(k.agent.tap(), 'listening');
+    const tapped = await k.agent.live.tapping;
+    assert.equal(refused(), 1, 'the read was refused');
+    assert.equal(tapped, 'ok', 'the tap did not fail');
+    await until(() => k.agent.live.listening, 30_000);
+    assert.equal(k.platform.mic.isOpen(), true, 'the microphone is open');
+  } finally {
+    await k.done();
+  }
+});
+
+test("Koe live: a read of the settings refused as the session opens leaves it open, not opening with its socket open; the next opens on the first's handle", async () => {
+  const k = await liveKit([{ said, audio: tone(1) }], { pace: 1 });
+  try {
+    await k.voice.unlock();
+    const cards = raw(k);
+    const refused = refuseRead(k, 'start');
+    await k.agent.channel.send('kokoro', FINAL, 'append', 'final-text');
+    await soon(async () => texts(k).length > 0 || annaiCards(cards).length > 0);
+    assert.equal(refused(), 1, 'the read was refused');
+    assert.equal(k.agent.live.state, 'open', 'open');
+    await soon(async () => (await lives(k, 'closed')).length > 0); // nobody asked to talk: it closes once its answer window is over
+    k.agent.send('Hello there');
+    await soon(async () => texts(k).some((/** @type {string} */ x) => x.includes('[typed]')));
+    await settled();
+    await idleAtOnce(k);
+    assert.deepEqual((await lives(k)).map((/** @type {any} */ e) => e.data.state), ['open', 'ready', 'closed', 'open', 'resumed'], 'the first closed, and the next went on from it');
+  } finally {
+    await k.done();
+  }
+});
+
+// A close that lands while #start reads the settings (open-reads-next's final review, F1; on 7b995be58 too): the read is made before the connection, so
+// nothing is awaited between #start's last look at the close and "open". On 6be3017b0 it came after, and a tap or the page going out of view inside the read
+// left the session "open" with no socket: a tap answered "listening" with no microphone, a typed line went to no session and no card said so, and the quiet
+// spell never ended it. The read takes 20 ms here, and the close comes 5 ms into it.
+for (const [how, close] of /** @type {[string, (k: any) => unknown][]} */ ([['a second tap', (k) => k.agent.tap()], ['the page going out of view', (k) => k.agent.hush('away')]])) {
+  test(`Koe live: ${how} while the session reads the settings as it opens: it is closed, not open with no socket; the next tap listens and a typed line is given`, async () => {
+    const k = await liveKit([{ said, audio: tone(1) }], { pace: 1 });
+    try {
+      await k.voice.unlock();
+      const live = k.agent.live;
+      const settings = k.voice.settings;
+      let slowed = 0;
+      k.voice.settings = async (/** @type {any[]} */ ...a) => {
+        if (live.state !== 'opening') return settings.apply(k.voice, a);
+        k.voice.settings = settings;
+        slowed++;
+        setTimeout(() => close(k), 5);
+        await new Promise((r) => setTimeout(r, 20));
+        return settings.apply(k.voice, a);
+      };
+      assert.equal(k.agent.tap(), 'listening');
+      await soon(async () => slowed === 1);
+      await new Promise((r) => setTimeout(r, 300)); // the read ends, and the open runs on: whatever it leaves is there by now
+      assert.equal(live.state, 'closed', 'the close stands: the session is not open');
+      await soon(async () => !live.busy, 5000).catch(() => assert.fail('the session is busy for ever: open, with no socket'));
+      await settled();
+      await idleAtOnce(k);
+      assert.equal(k.agent.tap(), 'listening');
+      assert.equal(await live.tapping, 'ok', 'the next tap did not fail');
+      await until(() => live.listening, 3000).catch(() => assert.fail('the next tap said "listening" and nothing listens'));
+      assert.equal(k.platform.mic.isOpen(), true, 'the microphone is open');
+      k.agent.send('Hello there');
+      await soon(async () => texts(k).some((/** @type {string} */ x) => x.includes('[typed]')), 5000).catch(() => {});
+      assert.deepEqual(texts(k), ['[typed] Hello there'], 'the session was given the line');
+      await new Promise((r) => setTimeout(r, 500));
+      assert.equal(k.server.openCount(), 1, 'one socket is open, the next tap\'s: the one the closed open made is closed');
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+// "The settings it last had" (spec §10.8, Opening): a read refused as the next session opens leaves it the quiet spell and the pause the last one had, not the
+// defaults (30 s, 700 ms). The kit's spell is 3 s, not the default's 0.3 s; the pause test below sets the pause to 1.5 s.
+test("Koe live: a read of the settings refused as the next session opens: it closes on the last one's quiet spell, not the default's", async () => {
+  const k = await liveKit([{ said, audio: tone(0.3) }, { said, audio: tone(0.3) }], { pace: 1 });
+  try {
+    await k.voice.unlock();
+    k.agent.send('Hi');
+    await soon(async () => texts(k).length === 1);
+    k.agent.hush('away');
+    await soon(async () => !k.agent.live.busy && k.agent.live.state === 'closed');
+    const refused = refuseRead(k, 'start');
+    k.agent.send('Hello there');
+    await soon(async () => texts(k).length === 2);
+    assert.equal(refused(), 1, 'the read was refused');
+    await new Promise((r) => setTimeout(r, 1500)); // past the default's 0.3 s after her short answer, short of the kit's 3 s
+    assert.equal(k.agent.live.state, 'open', 'still open: the default spell would have closed it');
+    await soon(async () => (await lives(k, 'closed')).length === 2, 10_000);
+    assert.deepEqual((await lives(k, 'closed')).map((/** @type {any} */ e) => e.data.why), ['away', 'quiet'], 'and it closes on the quiet spell');
+  } finally {
+    await k.done();
+  }
+});
+
+test("Koe live: a read of the pause refused as the next session's microphone starts: it ends a turn on the last one's pause, not the default's", async () => {
+  const { quiet } = await import('./voice-kit.js');
+  const k = await liveKit([{ said, audio: tone(0.3) }], { pace: 1 });
+  try {
+    await updateAppSettings(k.ws, { voice: { pauseMs: 1500 } });
+    await k.voice.unlock();
+    /** @param {any} k */
+    const turnEnds = (k) => k.server.received().filter((/** @type {any} */ m) => m.realtimeInput?.activityEnd).length;
+    k.agent.tap();
+    await until(() => k.agent.live.listening, 3000);
+    k.agent.hush('away');
+    await soon(async () => !k.agent.live.busy && k.agent.live.state === 'closed');
+    const refused = refuseRead(k, 'listen');
+    k.agent.tap();
+    await until(() => k.agent.live.listening, 3000);
+    assert.equal(refused(), 1, 'the read was refused');
+    await sayClip(k, 'where-eat'); // a sentence, then 1 s of quiet: a turn's end at 700 ms, not at 1.5 s
+    await new Promise((r) => setTimeout(r, 300));
+    assert.equal(turnEnds(k), 0, "the turn is not over: the last session's pause, not the default's 700 ms");
+    k.platform.mic.feed(quiet(1), 16_000);
+    await soon(async () => turnEnds(k) === 1, 5000).catch(() => assert.fail('the turn never ended'));
+  } finally {
+    await k.done();
+  }
+});
 
 // A note of Kokoro's for the traveller is with the session that is connecting when voice goes off, and the traveller opens another conversation just after:
 // the note carries the conversation it was written in (Channel.send), so #live, after its refresh, shows it there (#elsewhere, as a switch shows what it

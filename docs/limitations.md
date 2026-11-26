@@ -1549,18 +1549,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** since voice-off-next nothing that waits goes into a session while a placement still waits for its session to listen, and a tap's close leaves that wait to end by itself; `getUserMedia` (src/plugins/voice-browser/index.js) has no time limit. The fix: a time limit on the microphone's start in the plugin, as its resume already has (RESUME_MS), its number from a phone measurement (RULES 11), a stream that comes after it stopped.
 - **Revisit when:** its row in docs/progress.md, with a phone measurement of a microphone's start.
 
-### Kokoro's notes for Koe are lost when the live session's open fails
-- **Kind:** deferred.
-- **What the traveller sees:** with Koe · Realtime, when a store read is refused as the live session opens (rare: the settings, the budgets or today's spend), a note of Kokoro's for Koe that carries no words of its own for the traveller (her final text, "nothing to add", "stopped") is said by no one, and no later session gets it; a note with words for the traveller is shown, a recap asked aloud goes to Kokoro. Before voice-off-next's round 2 the next session got such a note. Found by its touch's second opinion (2026-11-25, probed).
-- **Why:** `#go`'s catch (src/core/koe/live.js) takes an item out of its list before it rethrows, and only a note for the traveller or a recap is shown or handed on by the route that catches the rejection. RULES' step back closed `#go` to further fix rounds, so the fix comes from a design check of its failure path, which weighs two verified one-liners: `#go` returns `!took` from its catch where nothing is shown (the touch's re-read: the same-tick double gone, five files green), or `#go` and `#now` don't rethrow, so `#live` places each item once through its own fallback (round 2's second opinion: 139/139).
-- **Revisit when:** its row in docs/progress.md, in the next version, its design check first.
-
-### A live session whose start is refused a read after it connects leaves its socket open
-- **Kind:** deferred.
-- **What the traveller sees:** with Koe · Realtime, a store read refused in the session's start after the connection (rare) leaves the session's state at "opening" with its socket connected and untracked; the next open connects a second session over it, and the first stays open (a paid provider bills it until its own limit). On main too. Found by voice-off-next's touch re-read (2026-11-25, probed).
-- **Why:** `#start` (src/core/koe/live.js) sets "opening" before the reads and has no path that closes a connected socket when one throws. The fix: a throw after the connection closes the socket and sets the state to closed.
-- **Revisit when:** its row in docs/progress.md, in the next version.
-
 ### Kokoro's final text for Koe is dropped when no live session can take it and Koe stays live
 - **Kind:** deferred.
 - **What the traveller sees:** with Koe · Realtime, when no session can take a note of Kokoro's meant for Koe (the day's spend reached, or an open that returns no session) and Koe stays live, Kokoro's final text is said by no one and shown nowhere, so her answer to the traveller's question is lost; "nothing to add" and "stopped" are dropped too, which loses nothing. On main since before voice-off-next. Found by the design check of `#go`'s failure path (2026-11-25, measured with the day's spend reached and with an open that returns false).
@@ -1569,8 +1557,8 @@ Each entry here was approved by the user. Reviewers read this file first and don
 
 ### A refused read while a live session connects rests the live model for 3 minutes
 - **Kind:** deferred.
-- **What the traveller sees:** with Koe · Realtime, when the phone refuses a read of annai's own store during the session's setup (rare; two refused reads in one open since open-reads-next, which passes over a refused spend or settings read), the connection fails and the live model rests for 3 minutes; Koe's next model or Kokoro answers meanwhile, so nothing is lost, but live voice is off for that time. On main for a refused setup read alone. Found by open-reads-next's final review (2026-11-25, probed).
-- **Why:** `#start`'s catch around `#resume` (src/core/koe/live.js) rests the model for any failure. The fix: rest it only for the provider's failure (an error with a provider's `kind`), not for annai's own refused read; check first that every provider error carries one.
+- **What the traveller sees:** with Koe · Realtime, when the phone refuses a read of annai's own store during the session's setup (rare; two refused reads in one open since open-reads-next, which passes over a refused spend or settings read), the connection fails and the live model rests for 3 minutes; Koe's next model or Kokoro answers meanwhile, so nothing is lost, but live voice is off for that time. On main for a refused setup read alone. Found by open-reads-next's final review (2026-11-25, probed). The same rest follows a connection that fails after the traveller's tap or the page going out of view closed the open it belonged to (its re-reviews, by reading; on main too): the close, not the provider, ended it.
+- **Why:** `#start`'s catch around `#resume` (src/core/koe/live.js) rests the model for any failure. The fix: rest it only for the provider's failure (an error with a provider's `kind`) of an open still wanted (its `gen` still current), not for annai's own refused read; check first that every provider error carries one.
 - **Revisit when:** its row in docs/progress.md, in the next version, or when a trace shows a refused read beside a live open.
 
 ### A tap that stops a connecting live session doesn't keep its reminder for the next session
@@ -1597,3 +1585,33 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** found by size-forced-next's final review and its second opinion (2026-11-24). Keeping the field, dropping its due share and its words, or dropping the field takes something off a Settings screen, so it is the user's question; whether the token rule leaves out the window's files is the same rule as size-forced-next's (a trigger weighs what its action can change). Its re-review found one more shape in the same branch: with the size set near its least and a model with a very large or no window listed, a turn whose own tool results pass the size after two forced summaries runs a third that removes almost nothing and her request still goes over (a probe: 1.1 MB sent to remove a 10,000-character exchange; main uploaded more in all, 6.4 MB against 3.7 MB). The step loop's forced branch by size is where this, a refused PDF at an overflow's brink (closed by llm-rest-next, 2026-11-25) and three earlier builds (pdf-refused-next, pdf-again-next, size-forced-next) all landed; its design check (2026-11-25, `.superpowers` notes forced-branch-design.md) found the branch by size not needed (at the default it never acts for a catalog model; the token rule and the "too long" catch cover the rest), so the question is Q-W in docs/progress.md. One more thing the field's words should say, or the code change: the size counts the request's length in characters (as it did before), so for Japanese or Chinese text a request on the wire can be about three times the size set (a CJK character is three bytes in UTF-8), about twice for accented Latin text; counting bytes would change what the field means for those (the re-read of 2026-11-24).
 - **Revisit when:** its row in docs/progress.md, in the next version: Q-W's answer first (take the field out, the recap getting its own number; keep it as a data cap without its due share; keep it as it is), then the token rule's window files.
 
+
+### A file filed in a turn that then failed still counts as waiting on the trip's card
+- **Kind:** deferred.
+- **What the traveller sees:** Shiori reads a file handed to her (or moved to another trip) and files it (a booking made from it), and her turn then fails (the reply that says so gets no answer, or a Stop): the trip's card says "1 file waiting to be read" while its Files list shows the booking. Nothing wakes her for the file again (spec §6.7), so the count stays until the traveller writes or speaks there and a turn of hers ends. Found by files-wait-next's re-review (2026-11-25, a probe on the real loop); the Fable final review's note 9 is the same shape: after a failed turn nothing wakes her for a waiting file, so the 2026-10-28 spec's "the next time the trip is opened" holds only for the first open. It leans the safe way: the row itself is right.
+- **Why:** the card (src/ui/screens/trips.js about :212) counts `filesToRead`, while the Files row (src/core/trip-files.js about :111) shows a booking made from a file before "waiting": two answers to one question (RULES 10). The fix at the source: one rule for "waiting" that both use (the card counting the rows that are waiting).
+- **Revisit when:** its row in docs/progress.md, in the next version.
+
+### When her turn has ended is stated in two places
+- **Kind:** deferred.
+- **What the traveller sees:** nothing today: `endsHerTurn` (src/core/agent/log.js), which a file's wait asks, and Transcript.apply (src/core/agent/transcript.js about :268-282), which the conversation reads, agree on every real log through the project's history (files-wait-next's re-review, 2026-11-25). A new way for a turn to end that only one of them learns would make a file's wait and the conversation disagree.
+- **Why:** one function, `endsTurn(e, half)`, used by Transcript's `turn.end` and older-reply branches with `endsHerTurn` as its Kokoro or one-Shiori case (docs/lessons.md, 2026-11-17: a second answer to the same question); about five lines in the state machine every conversation reads, so its own change and review.
+- **Revisit when:** its row in docs/progress.md, in the next version.
+
+### A tap while a stopped live open is still connecting is lost
+- **Kind:** deferred.
+- **What the traveller sees:** with Koe · Realtime, they tap Shiori, tap again to stop (or a bump taps twice), then tap a third time while the stopped attempt is still connecting: the third tap says "listening" and the dock "One moment…", then she is asleep and nothing listens; a fourth tap listens. Nothing but that tap is lost; by reading, something waiting for the page to come back waits for the next open in the same moment. On main too. Found by open-reads-next's re-reviews (2026-11-25, probed in the reads and the connection's setup read).
+- **Why:** `open()` (src/core/koe/live.js) reuses `#opening` while it is set, and `#start` returns false for a closed generation, so the third tap takes the stopped attempt's "no". The fix, in `open()`: a call made while a closed generation's start still runs waits for it, then starts its own.
+- **Revisit when:** its row in docs/progress.md, in the next version.
+
+### A heard line whose clip setting can't be read as it is saved isn't written
+- **Kind:** deferred.
+- **What the traveller sees:** with the turn's sound kept in memory (Keep voice clips on, or a Detailed trace asking for sound), when the phone refuses the settings read at the moment a heard line is saved (rare), the line isn't written to the conversation and the "wasn't saved" card shows; the words the traveller said are missing from the log. On main too. Found by open-reads-next's re-read (2026-11-25, by reading).
+- **Why:** `Voice.keep` (src/core/voice/voice.js) reads `keepClips` with no catch, and its rejection fails the heard line's write. The fix: a refused read means no clip, and the line is written (`(await this.settings().catch(() => null))?.keepClips`), with a test.
+- **Revisit when:** its row in docs/progress.md, in the next version.
+
+### With every spend read refused, a live session doesn't stop at Spend per day
+- **Kind:** deferred.
+- **What the traveller sees:** with Koe · Realtime and a Spend per day set, while the phone refuses every read of today's spend (rare: the store failing its reads), a live session opens and runs past the day's cap; it stops once a read goes through. Since open-reads-next a refused read at the open counts as under the cap (one turn past it, as a running session's usage check already did on main). Found by its re-read (2026-11-25, by reading).
+- **Why:** `#over` (src/core/koe/live.js) and the session's usage check pass over a refused read. The fix: the session counts what it spent since it opened, so a refused read can't take it past the cap by more than the day's spend before the open.
+- **Revisit when:** its row in docs/progress.md, in the next version, or when a trace shows the spend read refused.

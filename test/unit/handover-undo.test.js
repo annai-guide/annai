@@ -8,6 +8,7 @@ import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
 import { record } from '../../src/core/agent/log.js';
 import { undoHandover, undoable, filesToRead, undoEverywhere } from '../../src/core/handover.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
+import { modelTrace } from '../../src/core/llm/trace.js';
 import { readNames, syncNames } from '../../src/core/names.js';
 import { moveFile } from '../../src/core/waiting.js';
 import { utf8 } from '../../src/core/bytes.js';
@@ -161,15 +162,176 @@ test('undoable: true with something to take back, false once undone; a second un
   assert.deepEqual(await undoHandover(ws, started, 'h-2'), { undone: [], kept: [], keptKeys: [], tripEmpty: false, files: [] });
 });
 
-test('filesToRead: the files of wakes after her last turn; none once a turn has answered them', async () => {
+// filesToRead: a file's wake waits until a turn of hers has ended after it. Records as the loop writes them: a wake (Koe's marked half: 'koe'); a model.turn
+// of every role call (actor 'system', a tag; her own carry endLogged, and answeredBy null when no model answered); a turn.end when her turn ends by its own rule
+// (half 'kokoro' beside Koe, which writes its own, half 'koe').
+const TURN = { role: 'main', level: 'medium', attempts: [{ model: 'm1', outcome: 'ok' }], usage: {}, cost: 0 };
+const FAILED = { ...TURN, attempts: [], answeredBy: null };
+const filesWake = (/** @type {any} */ store, /** @type {string} */ trip, /** @type {string} */ id, /** @type {string[]} */ files, /** @type {any} */ more = {}) =>
+  record(store, trip, { type: 'wake', actor: 'system', data: { id, ...more, reasons: [{ kind: 'file', text: 'moved here', files }] } });
+/** One role call's record: her own (tag conversation, endLogged) unless the tag says another. @param {any} store @param {string} trip @param {string} wake @param {any} [more] */
+const callOf = (store, trip, wake, more = {}) => {
+  const data = { tag: 'conversation', wake, prefix: 'p', endLogged: true, answeredBy: 'm1', ...TURN, ...more };
+  if (data.tag !== 'conversation' && data.tag !== 'koe') delete data.endLogged; // only the loop's two halves write it (loop.js)
+  return record(store, trip, { type: 'model.turn', actor: 'system', data });
+};
+const endOf = (/** @type {any} */ store, /** @type {string} */ trip, /** @type {string} */ wake, /** @type {any} */ more = {}) => record(store, trip, { type: 'turn.end', actor: 'system', data: { wake, handover: null, ...more } });
+const waiting = (/** @type {any} */ store, /** @type {string} */ trip) => filesToRead(store, trip);
+
+test("filesToRead: the files of wakes after her last turn's end, those moved in while her turn ran too; none once her turn has ended", async () => {
   const { store, ws, trip } = await kit();
   await ws.write(trip, '/files/hotel.png', utf8('hotel'), { author: 'user', type: 'image/png' });
-  await record(store, trip, { type: 'wake', actor: 'system', data: { id: 'w-1', reasons: [{ kind: 'file', text: 'moved here', files: ['/files/flight.pdf'] }] } });
-  await record(store, trip, { type: 'wake', actor: 'system', data: { id: 'w-2', reasons: [{ kind: 'file', text: 'moved here', files: ['/files/hotel.png', '/files/flight.pdf'] }] } });
-  await record(store, trip, { type: 'wake', actor: 'system', data: { id: 'w-2', meanwhile: true, reasons: [{ kind: 'file', text: 'x', files: ['/files/other.pdf'] }] } });
-  assert.deepEqual(await filesToRead(store, trip), ['/files/flight.pdf', '/files/hotel.png']);
-  await record(store, trip, { type: 'model.turn', actor: 'shiori', data: { wake: 'w-2' } });
-  assert.deepEqual(await filesToRead(store, trip), []);
+  await ws.write(trip, '/files/other.pdf', utf8('%PDF other'), { author: 'user', type: 'application/pdf' });
+  await filesWake(store, trip, 'w-1', ['/files/flight.pdf']);
+  await filesWake(store, trip, 'w-2', ['/files/hotel.png', '/files/flight.pdf']);
+  await filesWake(store, trip, 'w-2', ['/files/other.pdf'], { meanwhile: true }); // moved in while her turn runs
+  assert.deepEqual(await waiting(store, trip), ['/files/flight.pdf', '/files/hotel.png', '/files/other.pdf']);
+  // A reply is not the turn's end: it can still be stopped, or its next call fail.
+  await callOf(store, trip, 'w-2');
+  assert.deepEqual(await waiting(store, trip), ['/files/flight.pdf', '/files/hotel.png', '/files/other.pdf']);
+  await endOf(store, trip, 'w-2', { half: 'kokoro' });
+  assert.deepEqual(await waiting(store, trip), []);
+  // The next file waits for the next end.
+  await filesWake(store, trip, 'w-3', ['/files/other.pdf']);
+  assert.deepEqual(await waiting(store, trip), ['/files/other.pdf']);
+  await endOf(store, trip, 'w-3');
+  assert.deepEqual(await waiting(store, trip), []);
+});
+
+test("filesToRead: a turn that got no answer (every model failed, or she was stopped) doesn't read the file", async () => {
+  const { store, trip } = await kit();
+  await filesWake(store, trip, 'w-1', ['/files/flight.pdf']);
+  // No model set, or none reachable: the trace's record of a call that nobody answered (fallback.js), and the error the loop leaves.
+  await callOf(store, trip, 'w-1', FAILED);
+  await record(store, trip, { type: 'error', actor: 'system', data: { kind: 'model', wake: 'w-1', message: 'No model is set for the main role' } });
+  assert.deepEqual(await waiting(store, trip), ['/files/flight.pdf']);
+  // Stopped: the same record, with the attempt that was cut, and the Stop's error.
+  await record(store, trip, { type: 'wake', actor: 'system', data: { id: 'w-2', reasons: [{ kind: 'user', text: 'the user wrote' }] } });
+  await callOf(store, trip, 'w-2', { ...FAILED, attempts: [{ model: 'm1', outcome: 'cancelled' }] });
+  await record(store, trip, { type: 'error', actor: 'system', data: { kind: 'stopped', wake: 'w-2', quiet: true, message: 'Stopped' } });
+  assert.deepEqual(await waiting(store, trip), ['/files/flight.pdf']);
+  // A turn that ended after them reads them.
+  await callOf(store, trip, 'w-2');
+  await endOf(store, trip, 'w-2');
+  assert.deepEqual(await waiting(store, trip), []);
+});
+
+test("filesToRead: a trip whose every turn failed still has its files waiting", async () => {
+  const { store, trip } = await kit();
+  await filesWake(store, trip, 'w-1', ['/files/flight.pdf']);
+  await callOf(store, trip, 'w-1', FAILED);
+  assert.deepEqual(await waiting(store, trip), ['/files/flight.pdf']);
+});
+
+test("filesToRead: an answered call of another role (a reader's describe, a compaction, the gate, a transcription, a recap) is not her turn's end", async () => {
+  const { store, trip } = await kit();
+  await filesWake(store, trip, 'w-1', ['/files/flight.pdf']);
+  // The file turn fails; the user sends a photo her model can't take: the reader's call answers, hers fails again.
+  await callOf(store, trip, 'w-1', FAILED);
+  for (const tag of ['describe', 'compaction', 'gate', 'transcribe', 'refusal', 'recap']) await callOf(store, trip, 'w-2', { tag });
+  await callOf(store, trip, 'w-2', FAILED);
+  assert.deepEqual(await waiting(store, trip), ['/files/flight.pdf']);
+});
+
+test("filesToRead: Koe's turn is not hers: Koe answered and Kokoro's failed, the file still waits; Kokoro's end is the end, with Koe's wake record for it after", async () => {
+  const { store, trip } = await kit();
+  // Two halves, Koe on a chat model: both are woken, Koe answers first by design, and Kokoro's turn fails.
+  await filesWake(store, trip, 'w-1', ['/files/flight.pdf'], { half: 'kokoro' });
+  await filesWake(store, trip, 'w-k1', ['/files/flight.pdf'], { half: 'koe' });
+  await callOf(store, trip, 'w-k1', { tag: 'koe', half: 'koe' });
+  await endOf(store, trip, 'w-k1', { half: 'koe' });
+  await callOf(store, trip, 'w-1', { ...FAILED, half: 'kokoro' });
+  assert.deepEqual(await waiting(store, trip), ['/files/flight.pdf']);
+  // Kokoro files them and ends her turn; Koe, in a slow turn, was woken for the same file after it: not a file waiting for Kokoro.
+  await callOf(store, trip, 'w-1', { half: 'kokoro' });
+  await endOf(store, trip, 'w-1', { half: 'kokoro' });
+  await filesWake(store, trip, 'w-k2', ['/files/flight.pdf'], { half: 'koe' });
+  assert.deepEqual(await waiting(store, trip), []);
+});
+
+test("filesToRead: a file moved in while her turn runs waits when that turn then fails, and when it is stopped after its first reply", async () => {
+  const { store, ws, trip } = await kit();
+  await ws.write(trip, '/files/other.pdf', utf8('%PDF other'), { author: 'user', type: 'application/pdf' });
+  await record(store, trip, { type: 'wake', actor: 'system', data: { id: 'w-1', reasons: [{ kind: 'user', text: 'the user wrote' }] } });
+  await callOf(store, trip, 'w-1'); // step 1 answers
+  await filesWake(store, trip, 'w-1', ['/files/other.pdf'], { meanwhile: true }); // joins the turn
+  await callOf(store, trip, 'w-1', FAILED); // step 2 fails
+  assert.deepEqual(await waiting(store, trip), ['/files/other.pdf']);
+  // The turn that ends after it reads it.
+  await callOf(store, trip, 'w-1');
+  await endOf(store, trip, 'w-1');
+  assert.deepEqual(await waiting(store, trip), []);
+  // Stopped between two steps: the first reply answered, its tool results came, the next call never went out.
+  await filesWake(store, trip, 'w-2', ['/files/flight.pdf']);
+  await callOf(store, trip, 'w-2');
+  await record(store, trip, { type: 'error', actor: 'system', data: { kind: 'stopped', wake: 'w-2', quiet: true, message: 'Stopped' } });
+  assert.deepEqual(await waiting(store, trip), ['/files/flight.pdf']);
+});
+
+test('filesToRead: only the newest file waits, past any run of failed turns (a page of the log is 8 records)', async () => {
+  for (const failed of [0, 1, 7, 8, 9, 25]) {
+    const { store, ws, trip } = await kit();
+    for (const name of ['old', 'mid', 'new']) await ws.write(trip, `/files/${name}.pdf`, utf8(`%PDF ${name}`), { author: 'user', type: 'application/pdf' });
+    // old.pdf and mid.pdf were handed and read, each in a turn of two replies; new.pdf was handed, and every turn since failed.
+    for (const name of ['old', 'mid']) {
+      await filesWake(store, trip, `w-${name}`, [`/files/${name}.pdf`]);
+      await callOf(store, trip, `w-${name}`);
+      await callOf(store, trip, `w-${name}`);
+      await endOf(store, trip, `w-${name}`);
+    }
+    await filesWake(store, trip, 'w-new', ['/files/new.pdf']);
+    for (let i = 0; i < failed; i++) await callOf(store, trip, 'w-new', FAILED);
+    assert.deepEqual(await waiting(store, trip), ['/files/new.pdf'], `${failed} failed turns`);
+    await callOf(store, trip, 'w-new');
+    await endOf(store, trip, 'w-new');
+    assert.deepEqual(await waiting(store, trip), [], `${failed} failed turns, then one that ended`);
+  }
+});
+
+// A log from before 2026-11-14 (cc3615ae3) has no turn.end and no endLogged key; the conversations the user's trip began in October are such logs.
+// As that version wrote a reply: the tag, the wake, the hand-over it carried, answeredBy.
+const olderReply = (/** @type {any} */ store, /** @type {string} */ trip, /** @type {string} */ wake, /** @type {any} */ more = {}) =>
+  record(store, trip, { type: 'model.turn', actor: 'system', data: { tag: 'conversation', wake, prefix: 'p', handover: null, ...TURN, answeredBy: 'm1', ...more } });
+
+test("filesToRead: in a log from before turn.end was written, her reply to a file handed reads as her turn's end, for the conversation and for the wait", async () => {
+  const { store, trip } = await kit();
+  await filesWake(store, trip, 'w-1', ['/files/flight.pdf']);
+  assert.deepEqual(await waiting(store, trip), ['/files/flight.pdf']);
+  assert.equal((await Transcript.load(store, trip)).unanswered, true, 'the file wake is owed before her reply');
+  // Her reply through the writer that version used (its parts, no endLogged key), so the conversation's own reading can be asked too.
+  await modelTrace(store, trip).turn(/** @type {any} */ ({ ...TURN, answeredBy: 'm1', tag: 'conversation', wake: 'w-1', prefix: 'p', handover: null }), 'Filed it.', '', /** @type {any} */ ([{ type: 'text', text: 'Filed it.' }]));
+  assert.equal((await Transcript.load(store, trip)).unanswered, false, 'the conversation reads her reply as her turn\'s end');
+  assert.deepEqual(await waiting(store, trip), [], 'and so does the wait');
+});
+
+test("filesToRead: in a log from before turn.end was written, a turn nobody answered, a role call of another tag and Koe's reply are no end", async () => {
+  const { store, ws, trip } = await kit();
+  await ws.write(trip, '/files/hotel.png', utf8('hotel'), { author: 'user', type: 'image/png' });
+  await filesWake(store, trip, 'w-1', ['/files/flight.pdf']);
+  await olderReply(store, trip, 'w-1', { half: 'kokoro' });
+  await filesWake(store, trip, 'w-2', ['/files/hotel.png']);
+  await olderReply(store, trip, 'w-2', FAILED);
+  await olderReply(store, trip, 'w-2', { tag: 'describe' });
+  await olderReply(store, trip, 'w-2', { tag: 'koe', half: 'koe' });
+  assert.deepEqual(await waiting(store, trip), ['/files/hotel.png']);
+  await olderReply(store, trip, 'w-2', { half: 'kokoro' });
+  assert.deepEqual(await waiting(store, trip), []);
+  // The two readings in one log: the older end stays an end; a reply of today's with no turn.end after it is not.
+  await filesWake(store, trip, 'w-3', ['/files/hotel.png']);
+  await callOf(store, trip, 'w-3');
+  assert.deepEqual(await waiting(store, trip), ['/files/hotel.png']);
+  await endOf(store, trip, 'w-3');
+  assert.deepEqual(await waiting(store, trip), []);
+});
+
+test('after a turn that got no answer, her next turn still has the file wake in what she reads, and the file still waits', async () => {
+  const { store, trip } = await kit();
+  await record(store, trip, { type: 'wake', actor: 'system', data: { id: 'w-1', reasons: [{ kind: 'file', text: 'The user added a file: /trip/files/flight.pdf', files: ['/files/flight.pdf'] }] } });
+  await callOf(store, trip, 'w-1', FAILED);
+  await record(store, trip, { type: 'error', actor: 'system', data: { kind: 'model', wake: 'w-1', message: 'No model is set for the main role' } });
+  const said = async () => (await Transcript.load(store, trip)).messages.flatMap((m) => m.parts.map((p) => /** @type {any} */ (p).text ?? '')).join('\n');
+  assert.match(await said(), /\[annai\] The user added a file: \/trip\/files\/flight\.pdf/);
+  assert.deepEqual(await waiting(store, trip), ['/files/flight.pdf']);
 });
 
 // The fix pass.
