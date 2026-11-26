@@ -549,10 +549,10 @@ test("response.done is the turn's made: before the turn completes by the clock; 
   }
 });
 
-// The Deferred entry "With OpenAI Realtime, a card's call from a cut reply can pass an urgent reminder on" (remind-first-next's second opinion, 2026-11-23): OpenAI
-// sends a cancelled reply's last events (a card's call it had made) before that reply's response.done, so her turn ends there, after them, as Gemini's interrupted
-// comes after the calls in flight: a call that comes before it is her cut turn's, which passes nothing on. On 150b8446c the turn ended as the cancel was sent.
-test("a cut of an answer OpenAI is still making ends her turn when its response.done comes, after the cut answer's call on its way; a cut of one all made, her voice still playing, ends it at once (realtime-cut-next)", async () => {
+// A card's call from a cut reply can pass an urgent reminder on (remind-first-next's second opinion, 2026-11-23): OpenAI sends a cancelled reply's last events
+// (a card's call it had made) before that reply's response.done, so her turn ends there, after them, as Koe expects Gemini's interrupted to come (after the calls in
+// flight; not yet measured on the real service): a call that comes before it is her cut turn's, which passes nothing on. Before 0.6.3 the turn ended as the cancel was sent.
+test("a cut of an answer OpenAI is still making ends her turn when its response.done comes, after the cut answer's call on its way; a cut of one all made, her voice still playing, ends it at once", async () => {
   const { driver, sent, events, say } = await bare();
   const seen = () => events.filter((e) => e.type !== 'usage').map((e) => e.type === 'turn' ? `turn:${e.end}` : e.type === 'tool' ? `tool:${e.id}` : e.type);
   driver.text('Show me the bridge.');
@@ -579,7 +579,7 @@ test("a cut of an answer OpenAI is still making ends her turn when its response.
   driver.close();
 });
 
-test('a cut of an answer OpenAI then refuses to make ends her turn at the refusal, as cut: no response.done comes for it (realtime-cut-next)', async () => {
+test('a cut of an answer OpenAI then refuses to make ends her turn at the refusal, as cut (no response.done comes for it), and the answer to what waits behind it is heard and made', async () => {
   const { driver, sent, events, notes, say } = await bare();
   driver.text('Show me the bridge.');
   driver.text('[annai] Train in 20 minutes', { interrupt: true });
@@ -591,5 +591,43 @@ test('a cut of an answer OpenAI then refuses to make ends her turn at the refusa
   assert.deepEqual(sent.slice(4).map((m) => m.type), ['conversation.item.create', 'response.create'], 'the reminder goes in');
   await sleep(10);
   assert.deepEqual(notes.filter((n) => n[1] === 'live.error').map((n) => n[2].code), ['some_refusal'], 'the refusal noted, the crossed cancel not');
+  // The cut ended with the refusal: the answer to the reminder is not the cancelled one's, so it is heard and made, never dropped or ended as cut.
+  say({ type: 'response.created', response: { id: 'r2' } });
+  say({ type: 'response.output_audio.delta', item_id: 'i2', delta: toBase64(voice(200)) });
+  say({ type: 'response.done', response: { id: 'r2', status: 'completed', output: [] } });
+  assert.deepEqual(events.map((e) => e.type === 'turn' ? `turn:${e.end}` : e.type), ['turn:interrupted', 'audio', 'made'], 'the next answer is heard and made');
+  driver.close();
+});
+
+test("a second cut while the first one's cancel is outstanding sends no second cancel: the cancelled answer ends her turn once, and the answer to what waits behind it is heard and made", async () => {
+  const { driver, sent, events, say } = await bare();
+  const seen = () => events.filter((e) => e.type !== 'usage').map((e) => e.type === 'turn' ? `turn:${e.end}` : e.type);
+  driver.text('Show me the bridge.');
+  say({ type: 'response.created', response: { id: 'r1' } });
+  say({ type: 'response.output_audio.delta', item_id: 'i1', delta: toBase64(voice(3000)) });
+  driver.text('[annai] Train in 20 minutes', { interrupt: true, playedMs: 400 });
+  // Koe's cut turn stays open until the cancelled answer's response.done, so the user speaking in that round trip cuts again.
+  driver.activity('start');
+  assert.equal(sent.filter((m) => m.type === 'response.cancel').length, 1, 'one answer, one cancel: the second cut finds it already cancelled');
+  assert.deepEqual(seen(), ['audio'], 'her turn goes on until the cancelled answer is done');
+  say({ type: 'response.done', response: { id: 'r1', status: 'cancelled', output: [] } });
+  assert.deepEqual(seen(), ['audio', 'turn:interrupted'], 'ended once, as cut');
+  say({ type: 'response.created', response: { id: 'r2' } });
+  say({ type: 'response.output_audio.delta', item_id: 'i2', delta: toBase64(voice(200)) });
+  say({ type: 'response.done', response: { id: 'r2', status: 'completed', output: [] } });
+  assert.deepEqual(seen(), ['audio', 'turn:interrupted', 'audio', 'made'], 'the next answer is not counted as cut: heard, and made');
+  driver.close();
+});
+
+test("a card's call that comes only in the cancelled answer's response.done (nothing of it was sent before) is told before her cut turn ends", async () => {
+  const { driver, events, say } = await bare();
+  const seen = () => events.filter((e) => e.type !== 'usage').map((e) => e.type === 'turn' ? `turn:${e.end}` : e.type === 'tool' ? `tool:${e.id}` : e.type);
+  driver.text('Show me the bridge.');
+  say({ type: 'response.created', response: { id: 'r1' } });
+  say({ type: 'response.output_audio.delta', item_id: 'i1', delta: toBase64(voice(3000)) });
+  driver.activity('start');
+  const call = { type: 'function_call', call_id: 'call_1', name: 'show', arguments: '{"card":{"title":"Bixby Bridge"}}' };
+  say({ type: 'response.done', response: { id: 'r1', status: 'cancelled', output: [call] } });
+  assert.deepEqual(seen(), ['audio', 'tool:call_1', 'turn:interrupted'], 'the call comes in her cut turn, so it passes nothing on; the turn ends after it');
   driver.close();
 });
