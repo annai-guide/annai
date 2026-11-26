@@ -542,6 +542,47 @@ test('a transcription model that refuses one recording (a 400, WAV too) rests no
   assert.deepEqual(k.llm.uploads.map((u) => u.mediaType), ['audio/webm', 'audio/wav', 'audio/webm', 'audio/wav'], 'asked again');
 });
 
+// clip-route-next fix 1: callRole's last pass walks the list again for each segment, and a refusal rests nothing, so the recording went up again in every walk.
+// The asks that failed in a call are kept by the call's resolver (nothing between calls), and the last pass doesn't make them again.
+test("a recording a transcription model refused (a 400, WAV too, which rests nothing) goes up once a call: the last pass (standIn) doesn't send it again, and the next call's resolver asks it as before", async () => {
+  const k = await phone({}, { refuses: { groq: '*' } });
+  const request = asked([{ type: 'speech', id: (await k.hear()).id }]);
+  const call = k.voice.resolver('trip-1', 'w-1');
+  await assert.rejects(call(textModel('txt'), request), /nothing in the speech-in list worked for txt/);
+  assert.deepEqual(partsOf(await call(textModel('txt'), request, { standIn: true })), [{ type: 'text', text: NOT_TRANSCRIBED }], 'the last pass makes it as not transcribed');
+  assert.equal(restLeft(k, 'groq'), 0);
+  assert.deepEqual(k.llm.uploads.map((u) => u.mediaType), ['audio/webm', 'audio/wav'], 'one ask, with its WAV retry');
+  assert.deepEqual(partsOf(await k.voice.resolver('trip-1', 'w-2')(textModel('txt'), request, { standIn: true })), [{ type: 'text', text: NOT_TRANSCRIBED }]);
+  assert.equal(k.llm.uploads.length, 4, "the next call asks it again: nothing is kept between calls");
+});
+
+// Probe N's shape: one recording refused and the next heard by the same model. The first pass stops at the first; the last pass skips the refused ask and sends the second.
+test('a recording refused beside one the same transcription model hears: the last pass sends the first as not transcribed without asking again, and the second as its words', async () => {
+  const k = await phone({});
+  const refused = await k.hear();
+  /** @type {any[]} */
+  const got = [];
+  const s = await k.voice.open({ kind: 'record', onSegment: (h) => got.push(h), onError: (e) => assert.fail(e) });
+  k.platform.mic.feed(cat(quiet(0.5), await clip('gas-station'), quiet(1)), 16_000);
+  s.stop();
+  const other = got[0];
+  assert.notEqual(refused.audio.seconds, other.audio.seconds, 'two different recordings');
+  const real = k.llm.transcribe;
+  /** Each ask the transcription model got, by the seconds of its recording and its format. @type {string[]} */
+  const asks = [];
+  k.llm.transcribe = async (/** @type {any} */ c) => {
+    asks.push(`${c.audio.seconds} ${c.audio.mediaType}`);
+    if (c.audio.seconds === refused.audio.seconds) throw new ProviderError('bad-request', 'Invalid request');
+    return real(c);
+  };
+  const request = asked([{ type: 'speech', id: refused.id }, { type: 'speech', id: other.id }]);
+  const call = k.voice.resolver('trip-1', 'w-1');
+  await assert.rejects(call(textModel('txt'), request), /nothing in the speech-in list worked for txt/);
+  assert.deepEqual(partsOf(await call(textModel('txt'), request, { standIn: true })), [{ type: 'text', text: NOT_TRANSCRIBED }, { type: 'text', text: 'what was said' }]);
+  const r = refused.audio.seconds;
+  assert.deepEqual(asks, [`${r} audio/webm`, `${r} audio/wav`, `${other.audio.seconds} audio/webm`], 'the refused one (with its WAV retry) once, the other once');
+});
+
 test("a turn's transcription stays shared through its own retries: the WAV a model that refuses the format is asked for, and the call without the user's languages (read-wait-fix1, shared through #hear)", async () => {
   const model = { id: 'txt', name: 'txt', input: ['text'] };
   const ask = (/** @type {any} */ k, /** @type {any} */ h, shared = true) => k.voice.resolver('trip-1', 'w-1', undefined, shared)(model, asked([{ type: 'speech', id: h.id }]));

@@ -842,20 +842,23 @@ export class Voice {
   resolver(scope, wake, list, shared = false) {
     /** Transcription models whose send was cut in this call, or that couldn't be reached: asked once a call, as chat asks a cut model once (fallback.js's nextStep). @type {Set<string>} */
     const cut = new Set();
+    /** The asks that failed in this call, a transcription model's for one segment: not made again in it, whether in a later pass of the list or in the last pass (resolve.js), so a recording a model refused (it rests nothing) goes up once a call. @type {Set<string>} */
+    const failed = new Set();
     return async (model, request, { plain, signal, standIn } = {}) => {
       if (plain && model.id) this.wavOnly.add(model.id);
-      const c = await this.#resolve(scope, wake, signal, shared, cut);
+      const c = await this.#resolve(scope, wake, signal, shared, cut, failed);
       return resolveSpeech(request, model, { ...c, ...(list ? { list } : {}), plain: Boolean(model.id && this.wavOnly.has(model.id)), ...(standIn ? { standIn: true } : {}) });
     };
   }
 
-  /** @param {string} scope @param {string} [wake] @param {AbortSignal} [signal] @param {boolean} [shared] @param {Set<string>} [cut] the models cut in this call (resolver's) @returns {Promise<import('./resolve.js').Resolve>} */
-  async #resolve(scope, wake, signal, shared = false, cut = new Set()) {
+  /** @param {string} scope @param {string} [wake] @param {AbortSignal} [signal] @param {boolean} [shared] @param {Set<string>} [cut] the models cut in this call (resolver's) @param {Set<string>} [failed] the asks that failed in it (resolver's) @returns {Promise<import('./resolve.js').Resolve>} */
+  async #resolve(scope, wake, signal, shared = false, cut = new Set(), failed = new Set()) {
     const cfg = await this.llm.config();
     const types = this.llm.types();
     return {
       list: cfg.roles['speech-in']?.models ?? [],
       memory: this.memory,
+      failed,
       asr: (id) => speechKind(cfg, types, id) === 'in' && this.llm.bench.until(id) <= this.now() && !cut.has(id),
       transcribe: async (id, kept) => {
         const text = await this.#hear(id, kept, scope, wake, signal, shared);

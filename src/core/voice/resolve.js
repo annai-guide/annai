@@ -18,8 +18,9 @@ import { encodeWav, pcm16, resample, SEND_RATE } from './pcm.js';
  * @typedef {{ id?: string, name: string, input: string[] }} Hearer  the model a request goes to
  * @typedef {{ list: string[], memory: HeardMemory, asr: (id: string) => boolean, transcribe: (id: string, kept: Kept) => Promise<string>,
  *   clip?: (hash: string) => Promise<{ data: Uint8Array, mediaType: string } | null>, onFail?: (id: string, error: unknown) => void,
- *   accepts?: (id: string) => string[], encoder?: Encoder | null, plain?: boolean, standIn?: boolean }} Resolve
- *   list: the speech-in list; asr: whether an entry is a transcription model that can work now; onFail: one failed (bench it);
+ *   accepts?: (id: string) => string[], encoder?: Encoder | null, plain?: boolean, standIn?: boolean, failed?: Set<string> }} Resolve
+ *   list: the speech-in list; asr: whether an entry is a transcription model that can work now; onFail: one failed (bench it); failed: the asks that
+ *   failed in this call (a transcription model's, for a segment), which a later walk of the list doesn't make again: a refused recording is an upload each time;
  *   accepts: a model's audioIn; plain: send WAV (another format was refused); standIn: a segment nothing in the list can hear for this model goes
  *   as not transcribed instead of throwing (callRole's last pass)
  */
@@ -210,11 +211,14 @@ async function resolvePart(p, model, c) {
     const had = kept.transcripts.get(id) ?? kept.transcripts.values().next().value;
     if (had !== undefined) return { type: 'text', text: said(had) };
     if (!c.asr(id)) continue;
+    const ask = JSON.stringify([id, p.id]);
+    if (c.failed?.has(ask)) continue;
     try {
       const text = await c.transcribe(id, kept);
       kept.transcripts.set(id, text);
       return { type: 'text', text: said(text) };
     } catch (e) {
+      c.failed?.add(ask);
       c.onFail?.(id, e);
     }
   }
