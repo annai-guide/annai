@@ -345,7 +345,8 @@ export class LiveKoe {
 
   /**
    * What is going on that isn't the user's microphone turn: opening or reconnecting, Koe's turn or voice, a tool. cut: a turn of hers that was cut off
-   * counts too, though nothing of it is heard any more: only the provider's end of it, or a close or a new connection (#reconnect), lets it go. @param {boolean} [cut]
+   * counts too, though nothing of it is heard any more: the provider's end of it lets it go, as Koe's own end of it after an answered call (#endNow, #endLater) or of
+   * the user's turn it was cut for that got nothing back (#silent) does, and a close or a new connection (#reconnect). @param {boolean} [cut]
    */
   #hers(cut = true) {
     return Boolean(this.#opening || (this.#t && (cut || !this.#t.cut)) || this.#sounding || this.#pending || this.#queue.length || this.#tools || (this.state === 'open' && !this.#s));
@@ -2029,10 +2030,16 @@ export class LiveKoe {
    * The quiet spell ran out. Kokoro working on Koe's question isn't quiet: its answer is coming. Nor is her own turn, a tool call, or
    * a text turn's answer still owed (#due; #silent bounds that wait). Only the user's turn going on, or its answer, left: that turn
    * decides (#lapsed): her answer re-arms it, a dismissed turn closes it (#complete), looking here again. Else it closes. A turn of hers
-   * cut off is no reason to stay: the provider's end of it may never come (a link gone dead with its socket up), and the close lets it go.
+   * cut off is no reason to stay: the provider's end of it may never come (a link gone dead with its socket up), and the close lets it go. Nor is
+   * one still open whose end is overdue: TURN_END_S past where its sound ends, in real seconds (the provider's clock, not the page's second), with no call
+   * it waits on. It is cut where it was heard, as a tap cuts it. Not before: the provider holds a turn open until its sound would have played out (pace 1,
+   * as Gemini does), a long line with no voice playing is quiet that long, and a pause inside a turn is no sign of a dead link (9 of 234 real replies, 0.10
+   * to 1.23 s).
    */
   #quietEnd() {
     clearTimeout(this.#quiet);
+    const t = this.#t;
+    if (t?.soundAt && !t.cut && !this.#tools && Date.now() >= t.soundAt + t.bytes / (this.#rate / 500) + TURN_END_S * 1000) this.#stop(t);
     if (this.#hers(false) || this.c.asked() || (this.#due && this.#due.text !== null)) return this.#poke();
     if (this.#input?.active || this.#due) {
       this.#lapsed = true;
