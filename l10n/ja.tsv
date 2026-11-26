@@ -905,7 +905,7 @@ ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't h
 1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	この名前はannai公式のプラグインが使っていますが、インストールされているのはほかから入手したものなので、annaiでは使いません。「設定 → プラグイン」で削除してから、もう一度お試しください。	src/core/registry.js:18	
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	「設定 → プラグイン」でオンにしてから、もう一度お試しください。	src/core/registry.js:19	
 mzoa87	ok	It is switched off after repeated errors.	エラーが続いたため、オフになっています。	src/core/registry.js:282	
-dhg5k6	ok	Starting failed: {0}	起動に失敗しました：{0}	src/core/registry.js:298	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
+dhg5k6	ok	Starting failed: {0}	起動に失敗しました：{0}	src/core/registry.js:300	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
 19bu7pw	ok	Version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	バージョン{0}にすると{1}が動かなくなります（{1}には{2} {3}が必要です）。先に{4}をアップデートするか、このバージョンのままにしてください。	src/core/requires.js:52	{0} = version; {1} = them; {2} = it; {3} = r.version; {4} = them
 14dda2r	draft	It needs {0}, which is turned off.	{0}が必要ですが、オフになっています。	src/core/requires.js:79	{0} = shown
 8xu6se	ok	It needs {0}, which isn't installed. Install it from {1} first, then try again.	{0}が必要ですが、インストールされていません。{1} からインストールしてから、もう一度お試しください。	src/core/requires.js:82	{0} = r.id; {1} = r.homepage

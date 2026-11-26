@@ -239,7 +239,7 @@ test('a frame that is not JSON is skipped with a note in the trace, never a cras
   await driver.ready;
   deliver(JSON.stringify({ serverContent: { outputTranscription: { text: 'Still here.' } } }));
   assert.deepEqual(events, [{ type: 'said', text: 'Still here.', final: false }]);
-  assert.deepEqual(notes, [['sys', 'live.skipped', { bytes: 24 }], ['sys', 'live.skipped', { bytes: 17 }]]);
+  assert.deepEqual(notes, [['sys', 'live.skipped', { bytes: 24 }]], 'one note a session, at the first skip (live-skip-next)');
 });
 
 /** A socket the test drives: its handlers, what was sent, and a way to say something as the server. @returns {any} */
@@ -275,7 +275,7 @@ test("audio that isn't base64 is skipped like a bad frame: the session goes on, 
   assert.deepEqual(events.filter((e) => e.type === 'audio').map((e) => [...e.data]), [[1, 2, 3]], 'the good chunk after a bad one in one frame is heard');
   assert.equal(registry.isDisabled('gemini-live'), false, 'nothing was counted');
   assert.deepEqual(logged, [], 'and no error line');
-  assert.deepEqual(notes.map((n) => n.slice(0, 2)), Array(6).fill(['sys', 'live.skipped']), 'each skipped chunk is noted');
+  assert.deepEqual(notes, [['sys', 'live.skipped', { bytes: 18 }]], 'six chunks skipped, one note: the session\'s first (live-skip-next)');
   session.close();
 });
 
