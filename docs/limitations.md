@@ -1733,6 +1733,13 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** a start's entry is released at the time limit, before its `activate()` settles (plugins.js `start`, `#inTime`). Found by plugin-fails-next's third re-review (2026-11-26, by reading).
 - **Revisit when:** the next version: keep a start's entry until its `activate()` settles.
 
+### A third-party hook whose working call returns a promise that settles after the same delivery's later crashes has them counted in a row
+- **Kind:** known limitation.
+- **What the traveller sees:** a third-party plugin's hook (a plain function, not `async`) that throws on some log entries and returns a promise on others, handed bad, bad, good, bad in one delivery (one write appends several entries), is switched off with "It failed 3 times in a row", though its good call then works; so is an async hook whose crash settles late, after a working call and two quick crashes. One entry per delivery keeps it on. No official plugin's hook does this (Remote trace's returns nothing, which hook-batch-next fixed). The same before 2026-11-26.
+- **Why:** annai counts every call of a plugin's (a tool, an avatar, a live message, a hook) in the order its outcome is known, and a promise that hasn't settled hasn't worked yet. The fix tried (waiting for each hook call in turn in `deliverHooks`) lets one call that never settles hold back the rest of that delivery to that hook, with no time limit, and makes an async hook's entries wait in turn (hook-batch-next's second opinion, 2026-11-26, probed).
+- **Revisit when:** a traveller's third-party plugin is switched off with a working call between its crashes.
+- **Approved:** 2026-11-26, chief's decision C269 (not the user's words), Q-AS option (1); to undo: "wait for each hook call in turn".
+
 ### A plugin an older annai switched off for failed starts stays off with no card
 - **Kind:** known limitation.
 - **What the traveller sees:** a plugin that an annai from before 2026-11-26 switched off at its third launch that failed to start stays off after the update, with no card, until the traveller turns it on in Settings → Plugins, like one they turned off themselves; a setup tap that needs it says it "is turned off".
