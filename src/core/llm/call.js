@@ -653,7 +653,7 @@ export function asProviderError(e, signal, type, registry, dropped) {
   if (!own && name === 'TimeoutError') return late();
   if (!own && name === 'AbortError') return stopped();
   if (own) return e;
-  if (type.run && isFetchFailure(e)) return cannotConnect(e, signal);
+  if (type.run && isFetchFailure(e)) return new ProviderError('unreachable', /** @type {TypeError} */ (e).message, { cause: e }); // as cannotConnect, a stop read above
   const by = ownerOf(type, registry);
   if (by) registry?.fail(by, /* en */ `endpoint type ${type.type}`, e);
   return new ProviderError('plugin', String(/** @type {any} */ (e)?.message ?? e), { cause: e });
