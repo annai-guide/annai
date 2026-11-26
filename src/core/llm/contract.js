@@ -242,6 +242,16 @@ const originOf = (url) => {
 };
 
 /**
+ * An ability whose address isn't one (none, not http(s), or one a run type's own code can't parse): a bad-request, the user's to fix, in the
+ * words that say so. @param {{ name?: string, ability?: string }} endpoint @param {{ named: boolean, kind: string, name: string }} [ability]
+ */
+export function noAddress(endpoint, ability) {
+  const of = ability ?? { named: true, kind: '', name: endpoint.ability ?? 'ability' };
+  return new ProviderError('bad-request', /* en */ `${endpoint.name ?? 'This provider'}'s ${of.name} has no working address. Give its address in Settings → Models.`,
+    { said: { code: 'no-address', name: endpoint.name ?? '', ...saidAbility(of) } });
+}
+
+/**
  * A request a protocol built goes only to its ability's address: tunables such as path and listPath are joined into the URL, so a
  * description could otherwise send the key to another host while every check names the right one. annai calls this before it fetches.
  * An ability's own address that isn't an http(s) one is no address, whatever is asked of it (a typed one may hold a key, so the words never repeat it).
@@ -254,10 +264,7 @@ export function sameOrigin(endpoint, url, ability) {
   if (want && got === want) return;
   const of = ability ?? { named: true, kind: '', name: endpoint.ability ?? 'ability' };
   const name = endpoint.name ?? '';
-  if (!want) {
-    throw new ProviderError('bad-request', /* en */ `${endpoint.name ?? 'This provider'}'s ${of.name} has no working address. Give its address in Settings → Models.`,
-      { said: { code: 'no-address', name, ...saidAbility(of) } });
-  }
+  if (!want) throw noAddress(endpoint, ability);
   throw new ProviderError('bad-request', /* en */ `${endpoint.name ?? 'This provider'}'s ${of.name} built a request to ${got || "an address that isn't one"}, not its address ${want}. Check its tunables.`,
     { said: { code: 'origin', name, ...saidAbility(of), to: got, want } });
 }
