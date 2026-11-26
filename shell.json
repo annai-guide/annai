@@ -1,5 +1,5 @@
 {
-  "build": "de5afd850e43",
+  "build": "fef28cabae1d",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -43,7 +43,7 @@
     "/src/core/agent/instructions.js": "dc44316f3b47",
     "/src/core/agent/listen.js": "41cbb9219102",
     "/src/core/agent/log.js": "58b0e11f6639",
-    "/src/core/agent/loop.js": "10f76d4f0f83",
+    "/src/core/agent/loop.js": "2656dda8a9b5",
     "/src/core/agent/reading.js": "5fbca7e246ac",
     "/src/core/agent/personalities.js": "20c2b7d8981a",
     "/src/core/agent/her-instructions.js": "b90fb982b678",
@@ -111,7 +111,7 @@
     "/src/core/intl.js": "02d97f7ff33b",
     "/src/core/koe/context.js": "9b86ff4f2132",
     "/src/core/koe/instructions.js": "b5886ea21f8a",
-    "/src/core/koe/live.js": "35dafbce9f42",
+    "/src/core/koe/live.js": "0b4877c7c222",
     "/src/core/koe/loud.js": "5ef2922e048e",
     "/src/core/koe/tools.js": "957f5c629f45",
     "/src/core/l10n-list.js": "98de5dc21171",
@@ -181,7 +181,7 @@
     "/src/core/voice/resolve.js": "0b9df4d59546",
     "/src/core/voice/sentences.js": "636099e2174e",
     "/src/core/voice/settings.js": "246513dfd036",
-    "/src/core/voice/speaker.js": "15c9987c95a6",
+    "/src/core/voice/speaker.js": "ce1ba5cfd9e9",
     "/src/core/voice/stream-start.js": "824d34b902ff",
     "/src/core/voice/voice.js": "701c09f4f099",
     "/src/core/voice/where.js": "91b1deb9d78f",
@@ -281,7 +281,7 @@
     "/src/ui/screens/trip.js": "16b903f6b61b",
     "/src/ui/screens/trips.js": "3d934411975e",
     "/src/ui/screens/updates.js": "663857e51861",
-    "/src/ui/screens/voice.js": "1d3d2bffde44",
+    "/src/ui/screens/voice.js": "655a0575390d",
     "/src/ui/screens/welcome.js": "f1b00d351dd3",
     "/src/ui/search-panel.js": "a611625f9ce8",
     "/src/ui/shell.js": "79d363b3e955",
@@ -302,8 +302,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "4c99fc250ddd",
-    "/l10n/zh-Hans.json": "3aa3e2756d3d",
-    "/l10n/zh-Hant.json": "0db220c8ff79"
+    "/l10n/ja.json": "f915e75bb4c7",
+    "/l10n/zh-Hans.json": "bf81b5e7414a",
+    "/l10n/zh-Hant.json": "98dbf1c8638b"
   }
 }

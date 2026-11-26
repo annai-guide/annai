@@ -151,7 +151,7 @@ export async function renderVoice(ctx) {
         savedField(t`Listen for an answer (seconds)`, silence, () => numberIn(silence, 2, 60, t`Listen for 2 to 60 seconds.`, { whole: true, need: true }), (n) => save({ silenceSeconds: n })),
         savedField(t`Wait for her first words (seconds)`, firstWords, () => numberIn(firstWords, 5, 120, t`Wait 5 to 120 seconds.`, { whole: true, need: true }), (n) => save({ firstWordsSeconds: n }))),
       music?.el,
-      music && h('p', { class: 'sub', text: t`On: your music plays on at its own volume while Shiori speaks. She can't be heard while the phone is in silent mode, and she doesn't listen by herself after speaking: tap her to answer, which pauses the music. Live voice pauses it while it listens.` })),
+      music && h('p', { class: 'sub', text: t`On: your music plays on at its own volume while Shiori speaks. She can't be heard while the phone is in silent mode, and she doesn't listen by herself after speaking: tap her to answer, which stops the music. With Live voice, a session she opens by herself doesn't listen; one you start with a tap listens until it goes quiet, which stops the music too.` })),
     section(t`On the screen`,
       showWords.el,
       h('p', { class: 'sub', text: t`On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".` })),

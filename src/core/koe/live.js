@@ -407,7 +407,8 @@ export class LiveKoe {
       });
     }
     const ok = this.#opening ? await this.#opening : this.state === 'open';
-    if (ok && mic) await this.listen();
+    // Keep my music playing: play-and-record pauses the music, so a session Live opens by itself (a reminder, a trigger, a note) opens no microphone; a tap's still does (spec §10.1, §10.4).
+    if (ok && mic && (why === 'tap' || !this.c.voice?.keepMusic)) await this.listen();
     if (ok && this.state === 'open') this.#idle(); // what waited for a session (Kokoro's notes kept at a tap's close) goes in
     return ok;
   }

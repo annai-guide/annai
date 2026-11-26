@@ -4377,8 +4377,9 @@ export class Agent {
     for (const u of this.#utterances.values()) u.stop();
     this.#utterances.clear();
     // She spoke and didn't sleep: she listens on (the second-drive design), through the gate, while its time is left; sleep, the user's Stop, or none left closes it.
+    // Not with Keep my music playing on: a tap's microphone ends with her turn too, and none opens by itself (spec §10.4).
     const listens = ok && !this.#userStop && this.#facts.aloud && !this.#facts.closed && !this.#wentToSleep && !this.#aloudOnly && !this.#cut && this.#half.voice() && Boolean(this.voice?.on)
-      && this.#afterBy > Date.now();
+      && !this.voice?.keepMusic && this.#afterBy > Date.now();
     if (this.#ear?.owner === 'turn' || (this.#ear?.owner === 'after' && this.#facts.closed)) {
       if (listens && this.#ear) this.#after(this.#ear); // the deadline stands: her last words plus the silence
       else this.#closeEar();

@@ -307,7 +307,7 @@ export class Utterance {
       for (;; i++) {
         const text = await this.#sentence(i);
         if (text === null) break;
-        // Speaking: heard with the iPhone's silent switch on; music pauses (spec §10.1). Not under an open microphone, which needs play-and-record.
+        // Speaking: heard with the iPhone's silent switch on and music pauses; with Keep my music playing on (the door maps it to ambient) she is silent in silent mode and music plays on (spec §10.1). Not under an open microphone, which needs play-and-record.
         if (i === 0 && !this.#deps.platform()?.mic.inUse?.()) this.#deps.session?.('playback');
         const r = await this.#say(i, text);
         if (r.failed) {
