@@ -243,7 +243,8 @@ test('Keep my music playing (spec §10.1): shown only where annai can set the au
     await expect(page.getByRole('heading', { level: 1, name: 'Voice' })).toBeVisible();
     await expect(page.getByLabel('Listen for an answer (seconds)')).toBeVisible();
     await expect(page.getByLabel('Keep my music playing')).toHaveCount(0);
-    // Safari's, as far as a test browser lets: a type annai sets, each change kept (the plugin sets one only when it changes).
+    // Safari's, as far as a test browser lets: a type annai sets, each change kept (the plugin sets one only when it changes). An init script runs in
+    // a new document only: a reload, since the app's own moves are within one.
     await page.addInitScript(() => {
       const w = /** @type {any} */ (window);
       w.__types = [];
@@ -251,6 +252,8 @@ test('Keep my music playing (spec §10.1): shown only where annai can set the au
       const session = { get type() { return type; }, set type(t) { w.__types.push(t); type = t; } };
       Object.defineProperty(Navigator.prototype, 'audioSession', { configurable: true, get: () => session });
     });
+    await page.reload();
+    await expect(page.getByLabel('Keep my music playing')).toBeVisible();
     await setUpVoice(page, server.origin);
     await page.goto('/#/voice');
     const music = page.getByLabel('Keep my music playing');
