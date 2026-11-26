@@ -132,6 +132,13 @@ export function activate(annai) {
       /** @type {(e: unknown) => void} */
       let refused = () => {};
       const ready = new Promise((resolve, reject) => { isReady = resolve; refused = reject; });
+      // What it skips is noted once a session: at the first skip, not at each frame or chunk, which can come at audio rate.
+      let skipped = false;
+      const skip = (/** @type {number} */ bytes) => {
+        if (skipped) return;
+        skipped = true;
+        note('live.skipped', { bytes });
+      };
       let up = false;
       /** @type {any} */
       let renew = null;
@@ -245,7 +252,7 @@ export function activate(annai) {
           m = JSON.parse(typeof d === 'string' ? d : new TextDecoder().decode(d));
         } catch {
           // Not OpenAI's JSON (a proxy's page, a cut frame): skipped and noted, never a crash that switches the plugin off.
-          note('live.skipped', { bytes: typeof d === 'string' ? d.length : d.byteLength });
+          skip(typeof d === 'string' ? d.length : d.byteLength);
           return;
         }
         switch (m?.type) {
@@ -298,7 +305,7 @@ export function activate(annai) {
               raw = base64.decode(String(m.delta ?? ''));
             } catch {
               // Audio that isn't base64 (a cut or mangled chunk): skipped and noted like a bad frame.
-              note('live.skipped', { bytes: String(m.delta).length });
+              skip(String(m.delta).length);
               break;
             }
             const pcm = decode ? new Uint8Array(decode(raw).buffer) : raw;

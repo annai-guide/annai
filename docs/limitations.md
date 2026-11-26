@@ -1715,12 +1715,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** plugin-fails-next's second opinion found it (2026-11-26, probed). Counting `validate` as a crash would run once per position fix per watch, so one stale watch could switch a whole plugin off within three fixes, worse than the silent watch; the right shape (one Trace line per watch, or a count only where a call of the plugin's own is made for the traveller) needs a look of its own.
 - **Revisit when:** the next version.
 
-### The official live plugins write one Trace note per audio chunk they can't decode
-- **Kind:** deferred.
-- **What the traveller sees:** when Gemini Live or OpenAI Realtime sends audio the plugin can't decode, each chunk is skipped and writes a `live.skipped` note to Trace, at audio rate while it lasts, outside the registry's repeat rule (plugin-fails-next counts and folds only the errors annai catches itself).
-- **Why:** found by plugin-fails-next's second opinion (2026-11-26, by reading); no such audio is in the user's trace. The plugins write the note themselves through `annai.events.append`, so the fix is in each plugin (one note per session, or the count of chunks skipped when the session ends).
-- **Revisit when:** the next version, or a trace shows these notes.
-
 ### A plugin's crash whose words name fetch or the network is read as the link's
 - **Kind:** deferred.
 - **What the traveller sees:** a third-party plugin whose code crashes with a `TypeError` that names `fetch` or `network` as a whole word (`this.fetch is not a function`, `Cannot read properties of undefined (reading 'fetch')`), in a tool, a hook, a drawing or the like, or in a `run` type's call, has it read as a request the browser couldn't make: it never counts, so the plugin is never switched off for it; a run type's model then rests 3 minutes each time, and its card says annai couldn't reach the address. No official plugin is known to. The tool path is the same on main; a run type since run-type-next (2026-11-26), which spares its "Failed to fetch" on a weak link.

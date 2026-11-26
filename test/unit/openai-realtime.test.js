@@ -351,7 +351,7 @@ test("audio that isn't base64 is skipped like a bad frame: the session goes on, 
   assert.equal(registry.isDisabled('openai-realtime'), false, 'nothing was counted');
   assert.deepEqual(logged, [], 'and no error line');
   await sleep(10);
-  assert.deepEqual(notes.filter((n) => n[1] === 'live.skipped').map((n) => n[2]), Array(5).fill({ bytes: 18 }), 'each skipped chunk is noted');
+  assert.deepEqual(notes.filter((n) => n[1] === 'live.skipped').map((n) => n[2]), [{ bytes: 18 }], 'five chunks skipped, one note: the session\'s first (live-skip-next)');
   session.close();
 });
 

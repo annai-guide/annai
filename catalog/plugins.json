@@ -81,7 +81,7 @@
     {
       "id": "gemini-live",
       "name": "Gemini Live",
-      "version": "0.5.1",
+      "version": "0.5.2",
       "description": "Talks to Gemini's Live API: a voice conversation in one stream, both ways, for Koe.",
       "category": "developer",
       "keywords": [],
@@ -89,7 +89,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 12222,
+      "size": 12438,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -97,14 +97,14 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "f2558db013af22c9f0b89cd9dc3a6f20b30d404b016e299561dcdf3d2946aa23",
-        "index.js": "87be761041e677a83b99a1fc9bd0b3b94f7a049fbf33e6cfb1d638de1ae46d48"
+        "annai-plugin.json": "95b44a72c38ed857169c3fa2d52708a5ef07a5608ff24640f23d9f3b73394a76",
+        "index.js": "0aaf7e7146bbb5f11eaf07c404fff91545d910756f71c832260f7374d80bd4c6"
       }
     },
     {
       "id": "openai-realtime",
       "name": "OpenAI Realtime",
-      "version": "0.6.3",
+      "version": "0.6.4",
       "description": "Talks to OpenAI's Realtime API: a voice conversation in one stream, both ways, for Koe. It hasn't been tried with OpenAI's service yet.",
       "category": "developer",
       "keywords": [],
@@ -112,7 +112,7 @@
       "free": false,
       "local": false,
       "code": true,
-      "size": 24301,
+      "size": 24556,
       "requires": [],
       "provides": {
         "endpoint-type": [
@@ -120,8 +120,8 @@
         ]
       },
       "files": {
-        "annai-plugin.json": "737e6134264d0d5ca0589c3f27d8dfd0b50ce06db219436ea30fd22b5e316814",
-        "index.js": "da6cd80417f301860c52f6bf43e719623481633b89f9a189faa626c0aa6d790a"
+        "annai-plugin.json": "d9d1da6c7ac58d10a9c36efe2b03ccb5e391c499d182f2033b4d62104c6212ec",
+        "index.js": "1cc790b2ef36c9b01e13b1916b054d5ae4d3fb092a2a3edb79d181514e88e8e9"
       }
     },
     {

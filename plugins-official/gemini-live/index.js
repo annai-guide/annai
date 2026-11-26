@@ -79,6 +79,13 @@ export function activate(annai) {
       const ready = new Promise((resolve) => { isReady = () => resolve(undefined); });
       // Gemini ends a cut-off turn with a turnComplete of its own, right after interrupted: that turn has ended once already.
       let cut = false;
+      // What it skips is noted once a session: at the first skip, not at each frame or chunk, which can come at audio rate.
+      let skipped = false;
+      const skip = (/** @type {number} */ bytes) => {
+        if (skipped) return;
+        skipped = true;
+        annai.events?.append('sys', 'live.skipped', { bytes }).catch(() => {});
+      };
       socket.on((/** @type {string | Uint8Array} */ d) => {
         /** @type {any} */
         let m;
@@ -86,7 +93,7 @@ export function activate(annai) {
           m = JSON.parse(typeof d === 'string' ? d : new TextDecoder().decode(d));
         } catch {
           // Not Gemini's JSON (a proxy's page, a cut frame): skipped and noted, never a crash that switches the plugin off.
-          annai.events?.append('sys', 'live.skipped', { bytes: typeof d === 'string' ? d.length : d.byteLength }).catch(() => {});
+          skip(typeof d === 'string' ? d.length : d.byteLength);
           return;
         }
         if (m.setupComplete) isReady();
@@ -100,7 +107,7 @@ export function activate(annai) {
             pcm = base64.decode(p.inlineData.data);
           } catch {
             // Audio that isn't base64 (a cut or mangled chunk): skipped and noted like a bad frame, and the rest of the frame is read.
-            annai.events?.append('sys', 'live.skipped', { bytes: String(p.inlineData.data).length }).catch(() => {});
+            skip(String(p.inlineData.data).length);
             continue;
           }
           emit({ type: 'audio', data: pcm });
