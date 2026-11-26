@@ -8,7 +8,7 @@ import { createMemoryStore } from '../fakes/store-memory.js';
 import { Workspace } from '../../src/core/workspace.js';
 import { makeSchemaFor } from '../../src/core/schema.js';
 import { kindOf, ensureBaseScopes, SYS, SYS_PLUGINS } from '../../src/core/scopes.js';
-import { Registry, isBadAddress, isPluginBug } from '../../src/core/registry.js';
+import { Registry, PluginError, isBadAddress, isPluginBug } from '../../src/core/registry.js';
 import { PluginHost } from '../../src/core/plugins.js';
 import { openLive } from '../../src/core/realtime/open.js';
 import { deliverHooks } from '../../src/core/hooks.js';
@@ -24,16 +24,18 @@ const inline = (id, code) => new Map([
 
 /**
  * Plugins installed on one storage, and each launch of annai on it: a new host with a new registry. Installed modules load from storage as data:
- * addresses (Node has no service worker); importing one listed in `fails` throws what it names, and one in `hangs` never settles.
- * @param {{ fails?: Record<string, unknown>, hangs?: string[], startTimeout?: number }} [o]
+ * addresses (Node has no service worker); importing one listed in `fails` throws what it names, one in `hangs` never settles, and one in `slow`
+ * comes after that many ms.
+ * @param {{ fails?: Record<string, unknown>, hangs?: string[], slow?: Record<string, number>, startTimeout?: number }} [o]
  */
-async function storage({ fails = {}, hangs = [], startTimeout } = {}) {
+async function storage({ fails = {}, hangs = [], slow = {}, startTimeout } = {}) {
   const ws = new Workspace(createMemoryStore(), { schemaFor: makeSchemaFor(new Registry(), kindOf) });
   await ensureBaseScopes(ws);
   const importModule = async (/** @type {string} */ url) => {
     const [, id, file] = /** @type {RegExpExecArray} */ (/^\/plugins\/([^/]+)\/(.+)$/.exec(url));
     if (id in fails) throw fails[id];
     if (hangs.includes(id)) return new Promise(() => {});
+    if (id in slow) await new Promise((r) => setTimeout(r, slow[id]));
     const code = await ws.readText(SYS_PLUGINS, `/${id}/${file}`);
     return import(`data:text/javascript;base64,${Buffer.from(code ?? '').toString('base64')}`);
   };
@@ -55,12 +57,14 @@ test('a start that crashes, a module with a syntax error, one that throws as it 
   };
   for (const [id, code] of Object.entries(shapes)) await s.installer.install(inline(id, code));
   const ids = Object.keys(shapes).sort();
+  const before = structuredClone(await s.installer.installed());
   for (let launch = 1; launch <= 4; launch++) {
     const failures = await s.host().startInstalled();
     assert.deepEqual(failures.map((f) => f.id).sort(), ids, `launch ${launch}: each tried, each failed`);
   }
   const kept = await s.installer.installed();
-  assert.deepEqual(ids.map((id) => [kept[id].enabled, 'startFailures' in kept[id]]), ids.map(() => [true, false]), 'still on, no count written');
+  assert.deepEqual(ids.map((id) => kept[id].enabled), ids.map(() => true), 'still on');
+  assert.deepEqual(kept, before, 'nothing written of it: the whole record is as the installs left it');
 });
 
 test("an official plugin whose files don't load on four launches in a row stays on, in WebKit's words for a failed import and in Chromium's (plugin-fails-next test 2)", async () => {
@@ -70,9 +74,11 @@ test("an official plugin whose files don't load on four launches in a row stays 
   };
   const s = await storage({ fails: words });
   for (const id of Object.keys(words)) await s.installer.install(inline(id, 'export function activate() {}'), { source: 'official' });
+  const before = structuredClone(await s.installer.installed());
   for (let launch = 1; launch <= 4; launch++) assert.deepEqual((await s.host().startInstalled()).map((f) => f.id).sort(), Object.keys(words).sort(), `launch ${launch}`);
   const kept = await s.installer.installed();
   assert.deepEqual(Object.keys(words).map((id) => [kept[id].source, kept[id].enabled]), [['official', true], ['official', true]]);
+  assert.deepEqual(kept, before, 'nothing written of it');
 });
 
 test('a module whose load never settles is given up on at the start limit, and the plugin after it starts (plugin-fails-next test 3)', async () => {
@@ -85,6 +91,47 @@ test('a module whose load never settles is given up on at the start limit, and t
   assert.deepEqual(got.map((/** @type {any} */ f) => f.id), ['a-hangs']);
   assert.match(String(got[0].error?.cause?.message), /didn't finish starting within 0\.1 seconds/);
   assert.equal(host.active.has('b-after'), true, 'the plugin after it is running');
+});
+
+test("a launch and two setup taps that each fail to start, in WebKit's words for a failed import and as a crash, are three failed starts in one run of annai and leave the plugin on: a start is never counted (plugin-fails-fix1, item 1)", async () => {
+  const s = await storage({ fails: { 'tap-webkit': new TypeError('Importing a module script failed.') } });
+  await s.installer.install(inline('tap-webkit', 'export function activate() {}'), { source: 'official' });
+  await s.installer.install(inline('tap-crash', 'export function activate() { return undefined.x; }'));
+  const host = s.host();
+  assert.deepEqual((await host.startInstalled()).map((f) => f.id).sort(), ['tap-crash', 'tap-webkit']);
+  for (let tap = 0; tap < 2; tap++) for (const id of ['tap-webkit', 'tap-crash']) await assert.rejects(host.start(id), /Starting failed|starting failed/i);
+  assert.deepEqual(['tap-webkit', 'tap-crash'].map((id) => host.registry.isDisabled(id)), [false, false]);
+  assert.deepEqual(Object.values(await s.installer.installed()).map((r) => r.enabled), [true, true]);
+});
+
+test('a module whose load ends after the start limit runs no activate: the start failed at the limit, and the late module sets up nothing (plugin-fails-fix1, item 2)', async () => {
+  const s = await storage({ slow: { 'a-slow': 150 }, startTimeout: 50 });
+  await s.installer.install(inline('a-slow', "export function activate(annai) { globalThis.__slowRan = (globalThis.__slowRan ?? 0) + 1; annai.tools.register({ name: 'late-tool', description: 'x', input: { type: 'object' }, run() {} }); }"));
+  const host = s.host();
+  try {
+    const got = await host.startInstalled();
+    assert.deepEqual(got.map((f) => f.id), ['a-slow']);
+    await new Promise((r) => setTimeout(r, 300));
+    assert.deepEqual([globalThis.__slowRan ?? 0, host.registry.list('tool').length, host.active.has('a-slow')], [0, 0, false], 'activate never ran');
+  } finally {
+    delete (/** @type {any} */ (globalThis)).__slowRan;
+  }
+});
+
+test("a plugin the registry switches off at run time (three crashes of a tool) writes nothing to the record: it stays on there, and the next launch starts it again (plugin-fails-fix1; U148: annai never writes the switch)", async () => {
+  const s = await storage();
+  await s.installer.install(inline('tools', "export function activate(annai) { annai.tools.register({ name: 'bad', description: 'x', input: { type: 'object' }, run() { return undefined.x; } }); }"));
+  const host = s.host();
+  await host.startInstalled();
+  const before = structuredClone(await s.installer.installed()); // as its start left it (it writes the tools it registered)
+  const [tool] = host.registry.list('tool');
+  for (let i = 0; i < 3; i++) await assert.rejects(tool.run({}), PluginError);
+  await tick();
+  assert.equal(host.registry.isDisabled('tools'), true, 'switched off for this run');
+  assert.deepEqual(await s.installer.installed(), before, 'the record is as it was: still on');
+  const next = s.host();
+  assert.deepEqual(await next.startInstalled(), []);
+  assert.deepEqual([next.active.has('tools'), next.registry.isDisabled('tools')], [true, false], 'the next launch starts it again');
 });
 
 /** A socket the test drives: it opens on the next tick, closes when asked, and the test says what the server sends and when it drops. */
@@ -209,6 +256,52 @@ test("a driver whose close() throws in its own words: annai's close closes the s
   assert.doesNotThrow(() => theirs.ws.drop(1011, 'Internal error'));
   assert.equal(/** @type {any} */ (await within(theirs.s.closed, 1_000)).kind, 'server');
   assert.deepEqual(lines(), [null], 'kept in the Trace, once, uncounted');
+});
+
+test("a session that is ready, and a driver call that returns, each end the plugin's run: two crashes, then a new ready session or a driver call that returns, then two crashes leave it on (plugin-fails-fix1, Fable T1)", async () => {
+  const type = () => protocol({ close: undefined }); // no close(): a session's end reports no success of its own
+  const ready = watched();
+  const first = await session(ready.registry, type());
+  for (let i = 0; i < 2; i++) first.ws.receive('crash');
+  first.ws.drop(1000, '');
+  await first.s.closed;
+  const second = await session(ready.registry, type());
+  for (let i = 0; i < 2; i++) second.ws.receive('crash');
+  assert.deepEqual([ready.registry.isDisabled('tide-live'), ready.lines()], [false, [1, 2, 1, 2]], 'ready began a new run');
+  const call = watched();
+  const one = await session(call.registry, type());
+  for (let i = 0; i < 2; i++) one.ws.receive('crash');
+  one.s.audio(new Uint8Array(320));
+  for (let i = 0; i < 2; i++) one.ws.receive('crash');
+  assert.deepEqual([call.registry.isDisabled('tide-live'), call.lines()], [false, [1, 2, 1, 2]], 'a driver call that returned ended the run');
+});
+
+test("a plugin.error line the registry wrote once is written again after the plugin is turned back on (enable) (plugin-fails-fix1, Fable T1)", () => {
+  const { registry, lines } = watched();
+  const e = new Error('The tide table is not downloaded yet.');
+  registry.threw('tides', 'hook', e);
+  registry.threw('tides', 'hook', e);
+  assert.deepEqual(lines(), [null]);
+  registry.enable('tides');
+  registry.threw('tides', 'hook', e);
+  assert.deepEqual(lines(), [null, null]);
+});
+
+test("a live protocol whose classifyClose throws is that plugin's crash: the session ends with annai's own reading, one line for a ready session the provider closes, and three sessions that close before they are ready switch the plugin off (plugin-fails-fix1, item 4)", async () => {
+  const type = () => ({ ...protocol(), classifyClose: () => { throw new TypeError("Cannot read properties of undefined (reading 'code')"); } });
+  const up = watched();
+  const ready = await session(up.registry, type());
+  ready.ws.drop(1011, 'Internal error');
+  assert.equal(/** @type {any} */ (await within(ready.s.closed, 1_000)).kind, 'server', "annai's own reading of 1011");
+  assert.deepEqual([up.lines(), up.registry.isDisabled('tide-live')], [[1], false]);
+  const down = watched();
+  for (let i = 0; i < 3; i++) {
+    const s = openLive({ type: type(), endpoint, model, key: null, tunables: {}, setup: SETUP, trace: null, socket: () => new Sock(), registry: down.registry });
+    await tick();
+    /** @type {Sock} */ (Sock.made.at(-1)).drop(1011, 'Internal error');
+    assert.equal(/** @type {any} */ (await within(s.closed, 1_000)).kind, 'server');
+  }
+  assert.deepEqual([down.lines(), down.registry.isDisabled('tide-live')], [[1, 2, 3], true]);
 });
 
 /** Counts the unhandled rejections while fn runs. @param {() => Promise<void>} fn */
@@ -345,20 +438,35 @@ test("a call that works ends a plugin's run at each place that counts one: two c
   assert.deepEqual(off, { trigger: false, backup: false, headers: false, classify: false });
 });
 
-test("isBadAddress and the tool path: a TypeError in WebKit's words for a fetch of an address with a name or password in it is an answer, not a crash (plugin-fails-next test 12)", () => {
+test("isBadAddress and the tool path: a TypeError in WebKit's words for a fetch of an address with a name or password in it is an answer, not a crash: a tool that throws it fails each time with that error, and the plugin stays on (plugin-fails-next test 12)", async () => {
   const e = new TypeError('URL is not valid or contains user credentials.');
   assert.equal(isBadAddress(e), true);
   assert.equal(isPluginBug(e), false);
+  const s = await storage();
+  await s.installer.install(inline('walker', "export function activate(annai) { annai.tools.register({ name: 'walk', description: 'x', input: { type: 'object' }, run() { throw new TypeError('URL is not valid or contains user credentials.'); } }); }"));
+  const host = s.host();
+  await host.start('walker');
+  const [tool] = host.registry.list('tool');
+  for (let i = 0; i < 4; i++) await assert.rejects(tool.run({}), (err) => err instanceof TypeError && err.message === e.message);
+  assert.equal(host.registry.isDisabled('walker'), false);
 });
 
-test('every module that counts a plugin\'s failure also reports a call of it that worked (succeeded, settled or guard), bar the hooks\' loop guard, whose count is a limit of its own (plugin-fails-next test 13)', async () => {
+test("a browser Event a plugin rejects with (an image or script that wouldn't load) is an answer, not a crash: three such rejections leave the plugin on, one uncounted line (plugin-fails-fix1, item 5)", async () => {
+  assert.equal(isPluginBug(new Event('error')), false);
+  const { registry, lines } = watched();
+  for (let i = 0; i < 3; i++) registry.settled('looks', 'avatar setState', Promise.reject(new Event('error')));
+  await tick();
+  assert.deepEqual([registry.isDisabled('looks'), lines()], [false, [null]]);
+});
+
+test('every module that counts a plugin\'s failure also reports a call of it that worked (succeeded, settled or guard, or typeWorked called, not only defined), the hooks\' loop guard\'s own limit aside (plugin-fails-next test 13)', async () => {
   const root = new URL('../../src/', import.meta.url);
   /** @type {string[]} */
   const missing = [];
   for (const name of await readdir(root, { recursive: true })) {
-    if (!name.endsWith('.js') || name === 'core/registry.js' || name === 'core/hooks.js') continue;
+    if (!name.endsWith('.js') || name === 'core/registry.js') continue;
     const code = await readFile(new URL(name, root), 'utf8');
-    if (/registry\??\.(fail|threw)\(/.test(code) && !/registry\??\.(succeeded|settled|guard)\(|typeWorked\(/.test(code)) missing.push(name);
+    if (/registry\??\.(fail|threw)\(/.test(code) && !/registry\??\.(succeeded|settled|guard)\(|(?<!function )typeWorked\(/.test(code)) missing.push(name);
   }
   assert.deepEqual(missing, []);
 });

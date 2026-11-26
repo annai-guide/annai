@@ -43,16 +43,17 @@ export function liveOrigin(endpoint, url, ability) {
 
 /**
  * What a close means (spec §9.9): the protocol's reading, else annai's, the words first (Gemini's 1007 is a bad field
- * and a bad key both): a refused key auth; quota rate; 1008 or "not found" not-found; 1011 server; else network.
- * @param {EndpointType} type @param {number} code @param {string} reason @returns {ErrorKind}
+ * and a bad key both): a refused key auth; quota rate; 1008 or "not found" not-found; 1011 server; else network. A reading that throws is none,
+ * told to onBug (the protocol's crash, counted against its plugin).
+ * @param {EndpointType} type @param {number} code @param {string} reason @param {(e: unknown) => void} [onBug] @returns {ErrorKind}
  */
-export function closeKind(type, code, reason) {
+export function closeKind(type, code, reason, onBug = () => {}) {
   /** @type {any} */
   let k = null;
   try {
     k = type.classifyClose?.(code, reason);
-  } catch {
-    // a broken reading is none
+  } catch (e) {
+    onBug(e); // a broken reading is none
   }
   if (KINDS.has(k)) return k;
   if (/api key|unauthenticated|permission denied/i.test(reason)) return 'auth';
@@ -225,7 +226,7 @@ export function openLive(c) {
         const reason = String(e.reason ?? '');
         if (st.up) {
           if (!asked) letGo(); // its own close: the protocol lets go too (annai's called it already)
-          return finish(e.code, reason, asked ? null : closeKind(type, e.code, reason));
+          return finish(e.code, reason, asked ? null : closeKind(type, e.code, reason, (err) => bug('classifyClose', err)));
         }
         try {
           const next = asked || !st.opened || tries >= MAX_REOPENS || st.late || st.broken ? null : type.reopen?.(e.code, reason, tunables);
@@ -235,7 +236,7 @@ export function openLive(c) {
           if (err instanceof ProviderError) return down(err, e.code, reason);
         }
         /** @type {ErrorKind} */
-        const kind = asked ? 'cancelled' : st.late ? 'timeout' : !st.opened ? 'unreachable' : st.broken ? 'plugin' : closeKind(type, e.code, reason);
+        const kind = asked ? 'cancelled' : st.late ? 'timeout' : !st.opened ? 'unreachable' : st.broken ? 'plugin' : closeKind(type, e.code, reason, (err) => bug('classifyClose', err));
         /* en */
         const words = { timeout: "The live session didn't start in time.", unreachable: `annai couldn't reach ${host}.`, plugin: `${type.name} couldn't start a live session.` }[/** @type {string} */ (kind)];
         /* en */

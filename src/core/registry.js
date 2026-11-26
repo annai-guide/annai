@@ -52,7 +52,7 @@ const BUG_NAMES = new Set(['SyntaxError', 'InvalidCharacterError', 'DataCloneErr
 /**
  * Whether an error is the browser's own account of a request it couldn't make or finish (offline: "Failed to fetch", Safari's "Load failed",
  * Chrome's "network error", Firefox's "NetworkError when attempting to fetch resource"): the link's, when a plugin's own code reads the reply (§17).
- * Part of the rule (isPluginBug) wherever annai runs a plugin's code outside an endpoint type's call (a tool, a start, a hook, a drawing, a provider's
+ * Part of the rule (isPluginBug) wherever annai runs a plugin's code outside an endpoint type's call (a tool, a hook, a drawing, a provider's
  * list, sign-in and the like), for code that calls the browser's own fetch; an endpoint type's call decides by position (call.js asProviderError).
  * By whole words, so a plugin's own TypeError that only names something with "fetch" or "network" in it (`this.fetchModels is not a function`,
  * `reading 'networkState'`) is its bug. The browsers give no code, so words are all there is.
@@ -75,14 +75,16 @@ export const isBadAddress = (e) => e instanceof TypeError && /invalid url|failed
 
 /**
  * Whether an error is a bug in a plugin's code (spec §5.5) rather than its answer, outside callOnce's and speechCall's calls (asProviderError):
- * the one rule for a tool, a start, a hook, a drawing and every other place annai runs a plugin's code (threw). annai's own error classes
+ * the one rule for a tool, a hook, a drawing and every other place annai runs a plugin's code (threw), a start excepted (it is never counted). annai's own error classes
  * (AllFailedError, ProviderError, StorageFullError, ValidationError, PluginError and the rest) are no crash class, so what annai's own APIs throw for
  * a refusal, a limit or a link never counts. Its throws of a crash class are for a wrong argument (bytes.js), a wrong return (call.js) and inflate's
  * RangeErrors (zip.js turns them into a ZipError); a crash class the engine throws inside one of its APIs counts too (`readJSON`
- * on a file that isn't JSON), as in the plugin's own code. A fetch the browser couldn't make (isFetchFailure) is an answer (§17).
+ * on a file that isn't JSON), as in the plugin's own code. A fetch the browser couldn't make (isFetchFailure) is an answer (§17), and so is a browser
+ * Event a plugin rejects with (an image or a script that wouldn't load: the browser's account of a request it couldn't make, as a failed fetch is).
  * @param {unknown} e
  */
 export function isPluginBug(e) {
+  if (e instanceof Event) return false; // `img.onerror = reject`: the browser's answer
   if (!(e instanceof Error)) return true;
   if (isFetchFailure(e) || isBadAddress(e)) return false;
   return BUGS.some((B) => e instanceof B) || (e instanceof DOMException && BUG_NAMES.has(e.name));
@@ -257,11 +259,10 @@ export class Registry {
   }
 
   /**
-   * What a plugin's code threw where annai called it (a start, its module's load included, and a hook through guard, a drawing, a dock action, a
-   * component, an avatar's call, heard clips, a live protocol's code), or what a promise such a call returned rejects with (guard, settled; a start's
-   * error goes on to startInstalled, for that launch's card): always logged, once while it repeats, and counted only when it is a crash
-   * (isPluginBug), as a tool's is. Any other error is its answer (for want of a link, in its own words): it neither adds to its plugin's run of
-   * failures nor ends it, and has no count.
+   * What a plugin's code threw where annai called it (a hook through guard, a drawing, a dock action, a component, an avatar's call, heard clips, a
+   * live protocol's code), or what a promise such a call returned rejects with (guard, settled): always logged, once while it repeats, and counted
+   * only when it is a crash (isPluginBug), as a tool's is. Any other error is its answer (for want of a link, in its own words): it neither adds to
+   * its plugin's run of failures nor ends it, and has no count. A start's failure is not here: guard logs it and never counts it (it is that launch's).
    * @param {string} pluginId @param {string} name @param {unknown} e
    */
   threw(pluginId, name, e) {
@@ -270,6 +271,9 @@ export class Registry {
   }
 
   /**
+   * A function of a plugin's, as a call that frames what it throws (a PluginError carrying the plugin's id and, for a start, the card's words). It is
+   * refused while the plugin is switched off, and a call that works ends the plugin's run of failures. A throw of it is a plugin.error line and
+   * counts like threw's, except a start's ('starting', the module's load and activate()): that is the launch's card and a line, never a count.
    * @template {(...args: any[]) => any} F
    * @param {string} pluginId @param {string} name what the function is, for messages
    * @param {F} fn
@@ -283,7 +287,10 @@ export class Registry {
         this.#failures.set(pluginId, 0);
         return result;
       } catch (e) {
-        this.threw(pluginId, name, e); // counted only when it is a crash; it still reaches the caller
+        // A start's failure is that launch's: a line in the Trace and the card, never a count (annai never switches a plugin off for not starting).
+        // Any other call counts when it is a crash; the error still reaches the caller.
+        if (name === 'starting') this.#note(pluginId, { name, message: String(/** @type {any} */ (e)?.message ?? e) });
+        else this.threw(pluginId, name, e);
         const was = /** @type {any} */ (e);
         const message = String(was?.message ?? e);
         // What went wrong: annai's words for the screens where it has them (shown), else the plugin's own, or annai's own English check (en).

@@ -770,8 +770,7 @@ export class PluginHost {
     const id = manifest.id;
     let dispose = () => {};
     try {
-      const r = await this.registry.guard(id, 'starting', (/** @type {any} */ api) => this.#inTime(id, async () => {
-        const mod = await load();
+      const r = await this.registry.guard(id, 'starting', (/** @type {any} */ api) => this.#inTime(id, load, (/** @type {any} */ mod) => {
         if (typeof mod?.activate === 'function') return mod.activate(api);
         if (manifest.entry) /* en */ throw new PluginError(id, 'Its module has no activate() function');
         return undefined;
@@ -791,20 +790,27 @@ export class PluginHost {
   }
 
   /**
-   * Runs a start (its module's load, then activate()), giving up after startTimeout so one plugin can't keep annai from
-   * starting. If it finishes later, whatever it set up is taken down again.
-   * @param {string} id @param {() => any} activate
+   * Runs a start (its module's load, then activate()), giving up after startTimeout so one plugin can't keep annai from starting. A load that
+   * ends after the limit runs no activate(); an activate() that began before it and ends after it has what it set up taken down again.
+   * @param {string} id @param {() => any} load gives its module, or a promise of it @param {(mod: any) => any} activate
    */
-  #inTime(id, activate) {
-    const work = Promise.resolve().then(activate);
+  #inTime(id, load, activate) {
+    let over = false;
+    let began = false;
+    const work = Promise.resolve().then(load).then((mod) => {
+      if (over) return undefined;
+      began = true;
+      return activate(mod);
+    });
     /** @type {ReturnType<typeof setTimeout> | undefined} */
     let timer;
     const late = new Promise((_, reject) => {
       timer = setTimeout(() => {
+        over = true;
         const s = Math.round(this.startTimeout / 100) / 10;
         reject(Object.assign(new Error(/* en */ `it didn't finish starting within ${s} seconds`), { shown: plural(s, "It didn't finish within # second.", "It didn't finish within # seconds.") }));
         work.then((r) => {
-          if (this.active.has(id)) return;
+          if (!began || this.active.has(id)) return;
           try {
             if (typeof r === 'function') r();
           } finally {
