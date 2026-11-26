@@ -1521,7 +1521,7 @@ Each entry here was approved by the user. Reviewers read this file first and don
 ### Voice going off while Koe says a recap loses the rest of it
 - **Kind:** deferred.
 - **What the traveller sees:** with Koe · Realtime, the traveller asks aloud for a recap (or a watch with no reminders fires) and voice goes off while Koe is saying the answer (the chip, or auto mode as the car stops): the answer stops where it was cut ("Recap: the museum,"), and nothing says or shows the rest. On main too. Found by voice-off-next's re-reviews (2026-11-25, probed on the branch and main).
-- **Why:** such a wake goes into the session as text (`#say`) and is tracked nowhere once it is in, so the close cuts the answer and has nothing to hand on, unlike a reminder or a note, which it keeps. The fix: the close hands a cut recap on as a reminder's copy is (Koe · Chat or Kokoro answers it in text), which needs `#say`'s items kept until their answer ends.
+- **Why:** such a wake goes into the session as text (`#say`) and is tracked nowhere once it is in, so the close cuts the answer and has nothing to hand on, unlike a reminder or a note, which it keeps. The fix: the close hands a cut recap on as a reminder's copy is (Koe · Chat or Kokoro answers it in text), which needs `#say`'s items kept until their answer ends. Beside it (voice-off-next's touch, 2026-11-25, by reading; on main too): a recap asked aloud whose wake fails before any hand-on (a refresh or the budgets' check failing in `Halves.wake`) is lost too, since that catch shows a wake's reminders only; the fix there is the touch's `#liveFailed`.
 - **Revisit when:** its row in docs/progress.md, in the next version.
 
 ### Start fresh while a note of Kokoro's waits for Koe's open lands it below the divider
