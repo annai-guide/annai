@@ -281,8 +281,7 @@ export class Registry {
     return async (...args) => {
       if (this.#disabled.has(pluginId)) throw new PluginError(pluginId, /* en */ 'is switched off after repeated errors', { shown: t`It is switched off after repeated errors.` });
       try {
-        // A call that returns no promise ends the run at once, as its throw counts at once: awaited, a hook's success in a batch would land after
-        // the batch's later entries were called.
+        // No promise: the run ends at once, as a throw counts at once (a batch's hook).
         const got = fn(...args);
         const result = typeof got?.then === 'function' ? await got : got;
         this.#failures.set(pluginId, 0);
