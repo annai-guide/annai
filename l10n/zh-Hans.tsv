@@ -796,7 +796,7 @@ n9xh2y	ok	The plugin couldn't be downloaded ({0}: HTTP {1}). Try again later.	�
 16b6a3q	ok	The plugin wasn't installed: {0} doesn't match annai's catalog.	{0} 与 annai 的目录不符，所以没有安装该插件。	src/core/llm/official.js:173	{0} = name; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
 1mtcl9u	ok	It isn't a kind of backup place annai knows. Install a plugin that provides it.	annai 不支持这种备份位置类型。请安装提供该类型的插件。	src/core/llm/official.js:286	Note: said of a kind of backup place, whose id comes before it in the log.
 ul2t1z	ok	It isn't an endpoint type annai knows. Install a plugin that provides it.	annai 不支持这种端点类型。请安装提供该类型的插件。	src/core/llm/official.js:288	Note: said of an endpoint type, whose id comes before it in the log.
-brqvs6	ok	{0}, which you turned off, isn't switched on by this.	你之前关闭了 {0}，此操作不会重新开启它。	src/core/llm/official.js:300	{0} = name
+5d81o3	draft	{0}, which is turned off, isn't switched on by this.	{0} 已处于关闭状态，此操作不会将其开启。	src/core/llm/official.js:300	{0} = name
 1rnb3p5	ok	The plugin didn't provide a kind of backup place {0}.	该插件没有提供备份位置类型 {0}。	src/core/llm/official.js:309	{0} = type; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
 cpehgy	ok	The plugin didn't provide an endpoint type {0}.	该插件没有提供端点类型 {0}。	src/core/llm/official.js:311	{0} = type; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
 1jtsyij	ok	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	在手机上，localhost 指的是手机本身。另一台电脑上的服务器需要 https 地址。浏览器会拦截 https 页面发出的普通 http 请求，所以 annai 访问局域网内的服务器时只使用 https。一种方法是使用 Tailscale Serve，并让手机加入你的 tailnet：在服务器所在的电脑上运行 {0}，然后在 annai 中填写 {1}。服务器还必须允许来自 annai.guide 的 CORS 请求。Chrome 142 及更高版本可能会询问是否允许访问本地网络。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
@@ -868,7 +868,7 @@ masbkh	ok	A skill with this id is installed already. Remove it first.	已安装�
 1863007	ok	It is being removed.	正在移除。	src/core/plugins.js:433	
 u30lhr	ok	It was updated. Restart annai to run the new version.	已更新。请重新启动 annai 来运行新版本。	src/core/plugins.js:434	
 12roxwh	ok	It keeps MCP servers, not settings: remove a server on its own screen.	保存的是 MCP 服务器，而不是设置。要移除服务器，请前往该服务器的页面。	src/core/plugins.js:603	
-1k8fwg2#other	ok	It didn't finish within # seconds.	# 秒内未完成。	src/core/plugins.js:805	plural; # = s; English: "It didn't finish within # second." (one), "It didn't finish within # seconds." (other); Note: a sentence of its own, under the card's "didn't start" title; after "Starting failed:" it is the reason.
+1k8fwg2#other	ok	It didn't finish within # seconds.	# 秒内未完成。	src/core/plugins.js:811	plural; # = s; English: "It didn't finish within # second." (one), "It didn't finish within # seconds." (other); Note: a sentence of its own, under the card's "didn't start" title; after "Starting failed:" it is the reason.
 u8bf72	ok	Notifications are on. Reminders come like this while annai is closed.	通知已开启。annai 关闭时，提醒会像这样推送过来。	src/core/push/mirror.js:75	
 1dxa9va	ok	Notifications are on again: reminders come like this while annai is closed.	通知已重新开启：annai 关闭时，提醒会像这样推送过来。	src/core/push/mirror.js:76	
 dcq7bh	ok	annai has a reminder for you. Open annai to see it.	你有一条提醒，打开 annai 即可查看。	src/core/push/mirror.js:83	Note: a notification for a reminder the phone couldn't read.
@@ -895,19 +895,19 @@ ido0tg	ok	The phone's push service says this subscription no longer exists.	手�
 1eeb6fm	ok	There's no annai push relay at {0} (it answered 404). Check the relay address.	{0} 上没有 annai 推送中继（返回 404）。请检查中继地址。	src/core/push/relay-client.js:41	{0} = host
 12gfn9	ok	The relay at {0} sent a key annai can't use. Is this the address of an annai push relay?	中继 {0} 发来了 annai 无法使用的密钥。这是 annai 推送中继的地址吗？	src/core/push/relay-client.js:42	{0} = host
 n5y19n	ok	The relay at {0} refused it ({1}).	中继 {0} 拒绝了请求（{1}）。	src/core/push/relay-client.js:43	{0} = host; {1} = status
-3hb2ch	ok	The key works.	密钥有效。	src/core/realtime/open.js:292	
-r6odk7	ok	annai can open a live session at this address from the browser.	浏览器可以在此地址开启实时会话。	src/core/realtime/open.js:292	
-4u7tr8	ok	It answered aloud: {0}	它用语音回答了：“{0}”	src/core/realtime/open.js:323	{0} = words; Note: the stop after the quote is the screens' own (asSentence), left off here so a "?" or "!" the model ended with is not followed by a second one.
-ip7w4y#other	ok	It didn't answer aloud within # seconds.	# 秒内没有语音回答。	src/core/realtime/open.js:323	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
-1x3q9c3	ok	The session closed before it answered.	还没回答，会话就关闭了。	src/core/realtime/open.js:324	
-9sqs1k	ok	It answered, but not aloud in words.	它回答了，但没有用语音说出来。	src/core/realtime/open.js:324	
+3hb2ch	ok	The key works.	密钥有效。	src/core/realtime/open.js:293	
+r6odk7	ok	annai can open a live session at this address from the browser.	浏览器可以在此地址开启实时会话。	src/core/realtime/open.js:293	
+4u7tr8	ok	It answered aloud: {0}	它用语音回答了：“{0}”	src/core/realtime/open.js:324	{0} = words; Note: the stop after the quote is the screens' own (asSentence), left off here so a "?" or "!" the model ended with is not followed by a second one.
+ip7w4y#other	ok	It didn't answer aloud within # seconds.	# 秒内没有语音回答。	src/core/realtime/open.js:324	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
+1x3q9c3	ok	The session closed before it answered.	还没回答，会话就关闭了。	src/core/realtime/open.js:325	
+9sqs1k	ok	It answered, but not aloud in words.	它回答了，但没有用语音说出来。	src/core/realtime/open.js:325	
 ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	这个名称已被 annai 官方插件使用，其他来源的插件不能再用。请联系作者改名。	src/core/registry.js:17	Note: "Ask its author" is asking a person (请让作者…), not the phones' permission choice Ask (询问).
 1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	这个名称属于 annai 官方插件，但已安装的同名插件来自其他来源，因此不会使用它。请在设置 → 插件中移除它，然后重试。	src/core/registry.js:18	
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	请在设置 → 插件中开启它，然后重试。	src/core/registry.js:19	
-mzoa87	ok	It is switched off after repeated errors.	因多次出错，已自动关闭。	src/core/registry.js:280	
-dhg5k6	ok	Starting failed: {0}	启动失败：{0}	src/core/registry.js:293	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
+mzoa87	ok	It is switched off after repeated errors.	因多次出错，已自动关闭。	src/core/registry.js:284	
+dhg5k6	ok	Starting failed: {0}	启动失败：{0}	src/core/registry.js:300	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
 19bu7pw	ok	Version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	版本 {0} 会导致 {1} 无法运行，因为它需要 {2} {3}。请先更新 {4}，或保留当前版本。	src/core/requires.js:52	{0} = version; {1} = them; {2} = it; {3} = r.version; {4} = them
-1ee40s4	ok	It needs {0}, which you turned off.	需要 {0}，但你已把它关闭。	src/core/requires.js:79	{0} = shown
+14dda2r	draft	It needs {0}, which is turned off.	需要 {0}，但它已关闭。	src/core/requires.js:79	{0} = shown
 8xu6se	ok	It needs {0}, which isn't installed. Install it from {1} first, then try again.	需要 {0}，但尚未安装。请先从 {1} 安装，然后再试一次。	src/core/requires.js:82	{0} = r.id; {1} = r.homepage
 1cft9l	ok	It needs {0}, which isn't installed. Install it first, then try again.	需要 {0}，但尚未安装。请先安装，然后再试一次。	src/core/requires.js:84	{0} = r.id
 16mdg7x	ok	It needs {0} {1}, and version {2} is installed. Update it, then try again.	需要 {0} {1}，但已安装的是版本 {2}。请更新后再试一次。	src/core/requires.js:86	{0} = r.id; {1} = r.version; {2} = s.version
@@ -916,7 +916,7 @@ t7oyho	ok	It needs {0} {1}, and annai's catalog has version {2} ({3} is installe
 10h6x92	ok	It needs {0} {1}, and annai's catalog has version {2}. Try again once annai has a version that fits.	需要 {0} {1}，但 annai 目录中的版本是 {2}。请等 annai 提供合适的版本后再试。	src/core/requires.js:95	{0} = shown; {1} = r.version; {2} = e.version
 ubg3u	ok	It isn't in annai's catalog.	不在 annai 的目录中。	src/core/requires.js:203	
 4umazb	ok	The one installed came from elsewhere, so it isn't annai's own. Remove it in Settings → Plugins to add annai's.	已安装的版本来自其他来源，不是 annai 官方的。要添加官方版本，请先在设置 → 插件中移除它。	src/core/requires.js:206	
-seoih8	ok	{0}, which you turned off, isn't switched on by adding it.	{0} 已被你关闭，添加时不会自动开启。	src/core/requires.js:208	{0} = officialName(entry.id, entry.name)
+1jm9kgz	draft	{0}, which is turned off, isn't switched on by adding it.	{0} 已关闭，添加时不会自动开启。	src/core/requires.js:208	{0} = officialName(entry.id, entry.name)
 stkvyf	ok	Me	我	src/core/scopes.js:117	Note: the conversation that is not a trip's (Shiori and you), as the Trace's list names it.
 1imxpae	ok	System log	系统日志	src/core/scopes.js:118	
 ktdb8o	ok	Settings	设置	src/core/scopes.js:119	
@@ -1507,18 +1507,18 @@ edml6o	ok	Getting the sign-in ready…	正在准备登录…	src/ui/provider-set
 1rk1a1z	ok	A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.	收到了登录结果，但 annai 已不再等待，因为已超过 15 分钟，或登录已经完成。请在设置 → 模型中重新登录。	src/ui/provider-setup.js:202	
 sv1qqk	ok	A sign-in came back too late	登录结果来得太晚	src/ui/provider-setup.js:202	
 gkf0xx	ok	{0} isn't running. Look at it in Settings → Plugins, then sign in again.	{0} 没有运行。请在设置 → 插件中检查它，然后重新登录。	src/ui/provider-setup.js:216	{0} = name
-1fbojq2	ok	Signing in with {0} didn't finish	{0} 的登录未完成	src/ui/provider-setup.js:223	{0} = name
-1fm7mjz	ok	Speech out	朗读	src/ui/provider-setup.js:231	
-v20s4a	ok	Quick decision	快速判断	src/ui/provider-setup.js:231	
-w8niry	ok	Speech in	语音识别	src/ui/provider-setup.js:231	
-eudybe#other	ok	{0} now use {1}'s free models.	{0}现在使用 {1} 的免费模型。	src/ui/provider-setup.js:247	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
-14xff7o#other	ok	{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.	{0}需要付费：{1} 没有可以先用的免费模型，而 Shiori 需要模型才能回答。	src/ui/provider-setup.js:248	plural; # = paid.length; {0} = list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)); {1} = name; English: "{0} costs money: {1} has no free model to start with, and Shiori needs one to answer." (one), "{0} cost money: {1} has no free model to start with, and Shiori needs one to answer." (other)
-1wdrhx6	ok	{0} {1}	{0}（{1}）	src/ui/provider-setup.js:249	{0} = ROLE_SHORT[r] ?? r; {1} = costs[r]; Note: A role and the model that costs money in it ("Main GPT-6.1 Sol"), not two sentences: the model in brackets.
-1c8it09	ok	If your key is on the free tier, switch that on, on this page: its models then cost nothing.	如果是免费额度的密钥，请在本页开启“此密钥属于免费额度”，这样它的模型就不会计费。	src/ui/provider-setup.js:250	Note: "switch that on" names the provider page's switch, "This key is on the free tier".
-1dsri4f	ok	Its speech in models went behind the free entries.	它的语音识别模型已排在免费选项之后。	src/ui/provider-setup.js:251	
-jvtji4	ok	Its speech in and speech out models went behind the free entries.	它的语音识别和朗读模型已排在免费选项之后。	src/ui/provider-setup.js:251	
-1r0x31s	ok	Its speech out models went behind the free entries.	它的朗读模型已排在免费选项之后。	src/ui/provider-setup.js:252	
-1llun41	ok	The provider	提供商	src/ui/provider-setup.js:259	Note: "The provider" stands where a provider's name is unknown.
+1fbojq2	ok	Signing in with {0} didn't finish	{0} 的登录未完成	src/ui/provider-setup.js:224	{0} = name
+1fm7mjz	ok	Speech out	朗读	src/ui/provider-setup.js:232	
+v20s4a	ok	Quick decision	快速判断	src/ui/provider-setup.js:232	
+w8niry	ok	Speech in	语音识别	src/ui/provider-setup.js:232	
+eudybe#other	ok	{0} now use {1}'s free models.	{0}现在使用 {1} 的免费模型。	src/ui/provider-setup.js:248	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
+14xff7o#other	ok	{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.	{0}需要付费：{1} 没有可以先用的免费模型，而 Shiori 需要模型才能回答。	src/ui/provider-setup.js:249	plural; # = paid.length; {0} = list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)); {1} = name; English: "{0} costs money: {1} has no free model to start with, and Shiori needs one to answer." (one), "{0} cost money: {1} has no free model to start with, and Shiori needs one to answer." (other)
+1wdrhx6	ok	{0} {1}	{0}（{1}）	src/ui/provider-setup.js:250	{0} = ROLE_SHORT[r] ?? r; {1} = costs[r]; Note: A role and the model that costs money in it ("Main GPT-6.1 Sol"), not two sentences: the model in brackets.
+1c8it09	ok	If your key is on the free tier, switch that on, on this page: its models then cost nothing.	如果是免费额度的密钥，请在本页开启“此密钥属于免费额度”，这样它的模型就不会计费。	src/ui/provider-setup.js:251	Note: "switch that on" names the provider page's switch, "This key is on the free tier".
+1dsri4f	ok	Its speech in models went behind the free entries.	它的语音识别模型已排在免费选项之后。	src/ui/provider-setup.js:252	
+jvtji4	ok	Its speech in and speech out models went behind the free entries.	它的语音识别和朗读模型已排在免费选项之后。	src/ui/provider-setup.js:252	
+1r0x31s	ok	Its speech out models went behind the free entries.	它的朗读模型已排在免费选项之后。	src/ui/provider-setup.js:253	
+1llun41	ok	The provider	提供商	src/ui/provider-setup.js:260	Note: "The provider" stands where a provider's name is unknown.
 1c4feqt	ok	This browser can't run annai's offline service, which shows notifications.	此浏览器无法运行 annai 用来显示通知的离线服务。	src/ui/push.js:19	
 1vug986	ok	The phone's push subscription has no keys. Turn notifications off and on again.	手机的推送订阅没有密钥。请关闭通知后再重新开启。	src/ui/push.js:30	
 17sbtk9	ok	The relay's key isn't one annai can use.	annai 无法使用中继的密钥。	src/ui/push.js:78	

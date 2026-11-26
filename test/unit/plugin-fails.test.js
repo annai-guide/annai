@@ -259,17 +259,26 @@ test("a driver whose close() throws in its own words: annai's close closes the s
 });
 
 test("a session that is ready, and a driver call that returns, each end the plugin's run: two crashes, then a new ready session or a driver call that returns, then two crashes leave it on (plugin-fails-fix1, Fable T1)", async () => {
-  const type = () => protocol({ close: undefined }); // no close(): a session's end reports no success of its own
+  // Its handler takes every message, and the session is ready by itself (no message), so only `ready` and the driver call can end a run.
+  const crashing = (/** @type {string} */ d) => { if (d === 'crash') throw new TypeError("Cannot read properties of undefined (reading 'frame')"); };
+  const type = () => protocol({ close: undefined }, crashing); // no close(): a session's end reports no success of its own
+  /** @param {any} registry */
+  const open = async (registry) => {
+    const s = openLive({ type: type(), endpoint, model, key: null, tunables: {}, setup: SETUP, trace: null, socket: () => new Sock(), registry });
+    await tick();
+    await s.ready;
+    return { s, ws: /** @type {Sock} */ (Sock.made.at(-1)) };
+  };
   const ready = watched();
-  const first = await session(ready.registry, type());
+  const first = await open(ready.registry);
   for (let i = 0; i < 2; i++) first.ws.receive('crash');
   first.ws.drop(1000, '');
   await first.s.closed;
-  const second = await session(ready.registry, type());
+  const second = await open(ready.registry);
   for (let i = 0; i < 2; i++) second.ws.receive('crash');
   assert.deepEqual([ready.registry.isDisabled('tide-live'), ready.lines()], [false, [1, 2, 1, 2]], 'ready began a new run');
   const call = watched();
-  const one = await session(call.registry, type());
+  const one = await open(call.registry);
   for (let i = 0; i < 2; i++) one.ws.receive('crash');
   one.s.audio(new Uint8Array(320));
   for (let i = 0; i < 2; i++) one.ws.receive('crash');

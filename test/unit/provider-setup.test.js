@@ -301,7 +301,7 @@ test("the featured start's plugin installs in the background while no provider e
   const again = await k.llm.addProvider('provider-other', { key: 'sk-other' });
   assert.deepEqual(await ids(), ['proto-h', 'provider-acme', 'provider-other']);
   await k.llm.removeProvider(again);
-  await assert.rejects(k.llm.prepareStart('provider-acme'), /you turned off/);
+  await assert.rejects(k.llm.prepareStart('provider-acme'), /is turned off/);
   assert.equal((await k.host.installed())['provider-acme'].enabled, false);
   // Switched off by annai after errors: the start isn't the user's tap, so it stays off.
   await k.host.setEnabled('provider-acme', true);

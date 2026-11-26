@@ -235,7 +235,7 @@ test("Add on a provider whose plugin the user turned off says so in words, with 
   await page.getByLabel('Search the catalog').fill('OpenRouter');
   await page.getByRole('button', { name: /^Add (another )?OpenRouter$/ }).click();
   const card = page.locator('.notice', { hasText: "OpenRouter wasn't added" });
-  await expect(card).toContainText('OpenRouter, which you turned off');
+  await expect(card).toContainText('OpenRouter, which is turned off');
   await expect(card).not.toContainText('provider-openrouter');
 });
 

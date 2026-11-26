@@ -341,7 +341,7 @@ test('fix pass: with ensureProvided, a storage plugin the user turned off stays 
   };
   await ensureProvided(k.host, 'storage-type', 'webdav', { fetch });
   await k.host.setEnabled('storage-webdav', false);
-  await assert.rejects(ensureProvided(k.host, 'storage-type', 'webdav', { fetch, keepOff: true }), /WebDAV, which you turned off.*Turn it on in Settings → Plugins/s);
+  await assert.rejects(ensureProvided(k.host, 'storage-type', 'webdav', { fetch, keepOff: true }), /WebDAV, which is turned off.*Turn it on in Settings → Plugins/s);
   assert.equal((await k.host.installed())['storage-webdav'].enabled, false);
   await ensureProvided(k.host, 'storage-type', 'webdav', { fetch });
   assert.equal((await k.host.installed())['storage-webdav'].enabled, true, 'Turn it on switches it on');
