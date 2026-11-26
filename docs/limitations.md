@@ -1721,12 +1721,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** found by plugin-fails-next's second opinion (2026-11-26, by reading); no such audio is in the user's trace. The plugins write the note themselves through `annai.events.append`, so the fix is in each plugin (one note per session, or the count of chunks skipped when the session ends).
 - **Revisit when:** the next version, or a trace shows these notes.
 
-### A hook's working call in one delivery doesn't end its plugin's run before the delivery's later crashes count
-- **Kind:** deferred.
-- **What the traveller sees:** a third-party hook handed several log entries in one delivery (one write appends them), which throws a crash on some and returns on others: crash, crash, works, crash in one batch switches its plugin off with "It failed 3 times in a row", though a call of it worked between the crashes. One entry per delivery keeps it on. The same on main.
-- **Why:** `guard` awaits a hook's return, so its success lands a microtask later, after the loop has called the batch's later entries (registry.js `guard`, hooks.js `deliverHooks`). Found by plugin-fails-next's third re-review (2026-11-26, measured); RULES' step back stopped further code rounds on the registry's run in that branch.
-- **Revisit when:** the next version: end the run at once when a call returns no promise (one line in `guard`), with a test that delivers a batch.
-
 ### A browser Event a plugin rejects with counts as a crash, and its words read "[object Event]"
 - **Kind:** deferred.
 - **What the traveller sees:** a third-party plugin whose code rejects with the browser's own event (an image or a script that wouldn't load, `img.onerror = reject`) counts a crash each time, so three with nothing of it working between switch it off; its card and Trace line read "[object Event]", and a tool's answer to Shiori "Error: [object Event]". The same on main; no official plugin rejects with an Event.
