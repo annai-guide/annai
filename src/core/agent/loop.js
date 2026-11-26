@@ -4368,8 +4368,8 @@ export class Agent {
 
   /**
    * The end of a turn: speech streamed but never said stops; the microphone closes unless the user
-   * tapped to talk (spec §6.2, §10.4); after a turn that worked, the half that hears writes down what was heard; what is still unwritten then, or
-   * after a turn that didn't work, is past its turn (#pastTurn).
+   * tapped to talk (spec §6.2, §10.4); after a turn that worked, the half that hears writes down what was heard; what the turn carried that is still
+   * unwritten then, or after a turn that didn't work (and its chatter is written in), is past its turn (#pastTurn).
    * @param {boolean} ok @param {string} wakeId
    */
   async #afterTurn(ok, wakeId) {
