@@ -1780,6 +1780,8 @@ for (const [how, close] of /** @type {[string, (k: any) => unknown][]} */ ([['a 
       k.agent.send('Hello there');
       await soon(async () => texts(k).some((/** @type {string} */ x) => x.includes('[typed]')), 5000).catch(() => {});
       assert.deepEqual(texts(k), ['[typed] Hello there'], 'the session was given the line');
+      await new Promise((r) => setTimeout(r, 500));
+      assert.equal(k.server.openCount(), 1, 'one socket is open, the next tap\'s: the one the closed open made is closed');
     } finally {
       await k.done();
     }
@@ -1787,7 +1789,7 @@ for (const [how, close] of /** @type {[string, (k: any) => unknown][]} */ ([['a 
 }
 
 // "The settings it last had" (spec §10.8, Opening): a read refused as the next session opens leaves it the quiet spell and the pause the last one had, not the
-// defaults (30 s, 700 ms). The kit's spell is 3 s, not the default's 0.3 s; the test sets the pause to 1.5 s.
+// defaults (30 s, 700 ms). The kit's spell is 3 s, not the default's 0.3 s; the pause test below sets the pause to 1.5 s.
 test("Koe live: a read of the settings refused as the next session opens: it closes on the last one's quiet spell, not the default's", async () => {
   const k = await liveKit([{ said, audio: tone(0.3) }, { said, audio: tone(0.3) }], { pace: 1 });
   try {
@@ -1827,7 +1829,7 @@ test("Koe live: a read of the pause refused as the next session's microphone sta
     assert.equal(refused(), 1, 'the read was refused');
     await sayClip(k, 'where-eat'); // a sentence, then 1 s of quiet: a turn's end at 700 ms, not at 1.5 s
     await new Promise((r) => setTimeout(r, 300));
-    assert.equal(turnEnds(k), 0, "the turn is not over: the last session's 1.5 s pause, not the default's 700 ms");
+    assert.equal(turnEnds(k), 0, "the turn is not over: the last session's pause, not the default's 700 ms");
     k.platform.mic.feed(quiet(1), 16_000);
     await soon(async () => turnEnds(k) === 1, 5000).catch(() => assert.fail('the turn never ended'));
   } finally {

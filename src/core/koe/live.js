@@ -1133,7 +1133,7 @@ export class LiveKoe {
    * that: #idle); out of view, it waits (shown()). With no session, it is let go here (undo takes it out of its list and says whether it was still there) and Halves
    * places it, once: a close, any but the traveller's tap, lets go of it at once, before it hands anything on (#placing), not when the connection it waited on ends.
    * One already out of its list (Start fresh showed it, close; a newer urgent note replaced it) is never placed again. If open() throws (by no cause known now: a read
-   * the phone refuses doesn't fail it, #start: the spend's opens it as under the cap, the settings' keep the last quiet spell and clips switch, the pause's the last pause),
+   * the phone refuses doesn't throw, #start: the setup's fails the open, the spend's opens it as under the cap, the settings' keep the last quiet spell and clips switch, the pause's the last pause),
    * it is taken back too, and no later session gets it as well: its caller places what it carried (the catch below).
    * @param {string} why @param {() => boolean} undo whether it was still waiting @returns {Promise<boolean>} false: Halves places it
    */
@@ -2055,7 +2055,7 @@ export class LiveKoe {
 
   /**
    * Today's spend reached (Spend per day): none opens, and one open closes, with the budget card. A read the phone refuses says nothing of the spend: not over (the
-   * session's usage check, #on, asks again); an error of the card's own is not a refused read, and surfaces. @returns {Promise<boolean>}
+   * session's usage check, #on, asks again); an error of the card's own is not a refused read: it surfaces at the open, and the usage check (#on) drops it. @returns {Promise<boolean>}
    */
   async #over() {
     let stop = null;
