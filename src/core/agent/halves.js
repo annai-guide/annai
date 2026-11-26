@@ -707,14 +707,14 @@ export class Halves {
    * next model takes it; with none left, a card says so, and Kokoro talks directly at once, told so (with what it last told
    * Koe that didn't reach the user), the wake's reminders said by annai only if it can't; a session that closed
    * meanwhile leaves them to annai. A close while the session connects, any but a tap, leaves what the session had not taken to this part at once, and hands no
-   * copy of it on (live.js #go): this part places it, once (an urgent wake and a typed line wait for the attempt to end, as before; a tap's close waits for it
-   * too). @param {() => Promise<boolean>} fn @param {Wake} w
+   * copy of it on (live.js #go): this part places it, once (an urgent wake, an immediate note and a typed line wait for the attempt to end, as before; a tap's
+   * close waits for it too). Start fresh is the exception for Kokoro's notes: the close shows them above the divider itself (live.js close), and #go finds
+   * them gone. @param {() => Promise<boolean>} fn @param {Wake} w
    */
   async #live(fn, w) {
     await this.koe.opening.catch(() => {});
     if (this.#elsewhere(w)) return;
     if (await fn()) return;
-    if (this.#fresh && w.kind === 'note') return this.#leftUnsaid([w]); // Start fresh closed the session it waited on: its words are shown above the divider, as the close showed them before
     const failed = this.#liveId;
     await this.#refresh();
     if (this.#elsewhere(w)) return;
@@ -1112,7 +1112,7 @@ export class Halves {
 
   async #startFresh() {
     try {
-      this.live.close('fresh', { forget: true }); // its owed notes are shown (left)
+      this.live.close('fresh', { forget: true }); // its owed notes, a connecting session's too, are shown (left) before anything here waits: read below
       this.#leftUnsaid(this.koe.takeOwed()); // Koe · Classic's, before its turn is stopped
       this.#unsaid = [];
       this.#retell = [];

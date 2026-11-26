@@ -908,6 +908,8 @@ function hidden(on) {
   else delete (/** @type {any} */ (globalThis).document);
 }
 const train = () => ({ kind: 'trigger', text: 'Train in 20 minutes', fallbacks: [{ watch: 'train', text: TRAIN }] });
+/** The recap the traveller asked to hear aloud: a wake with no reminders, which Kokoro is not given while a session can take it. */
+const RECAP = { kind: 'recap', aloud: true, text: 'Tell the recap of this trip, aloud.' };
 
 test('Koe live: the session has the reminder and is still saying it as the page is killed: the next start shows it once, by Kokoro\'s half', async () => {
   // Her answer plays for 20 s at the server's own pace: the next page starts while it does (the first is not frozen: its session goes on), before her line is written.
@@ -1366,9 +1368,10 @@ for (const [mode, koe] of /** @type {[string, any][]} */ ([[' (Koe on a chat mod
 }
 
 // A typed line and a watch's wake on one connecting session (voice-off-next's final review, F3, older than this build): as the connection opens, the typed line's
-// session (no microphone) sends the wake in while the wake's own wait is still for the microphone to start, and the typed line cuts in on it, which shows it
-// (a silent card and its entry). Voice then goes off before the microphone has started: the wake's wait ends with the close. What had already gone in is the
-// session's, so #go says so (undo: it was no longer waiting) and #live places no second copy. On fea9ac9d9 it placed one: two entries (on 4fb14e7d2 too).
+// session (no microphone) used to send the wake in while the wake's own wait was still for the microphone to start, and the typed line cut in on it, which showed it
+// (a silent card and its entry); voice then went off before the microphone had started, the wake's wait ended with the close, and #live placed a second copy: two
+// entries (on fea9ac9d9 and 4fb14e7d2). Now nothing waiting goes in until the microphone has started (#idle), so the close finds the wake still waiting and #live
+// places it, once. (#go's own check, that an item already out of its list is never placed again, is Start fresh's: the notes it shows itself, below.)
 for (const [mode, koe] of /** @type {[string, any][]} */ ([[' (Koe on a chat model)', { koe: { type: [asleep, asleep, asleep] } }], [' (no Koe model)', {}]])) {
   test(`Koe live: a typed line and a watch's wake on one connecting session, and voice goes off while the microphone starts: its reminder is shown once${mode}`, async () => {
     const k = await liveKit([{ said, audio: tone(1) }], { pace: 1, ...koe });
@@ -1399,6 +1402,71 @@ for (const [mode, koe] of /** @type {[string, any][]} */ ([[' (Koe on a chat mod
     }
   });
 }
+
+// The recap asked aloud on a typed line's connecting session (voice-off-next's re-review, Haiku src item 3: a regression against 4fb14e7d2): the typed line's session has
+// no microphone, so it sent the recap in as it opened, while the recap's own wait was still for the microphone to start; voice going off, or the page going out of view,
+// then closed the session in that window, which cut her answer to it, and nothing placed the recap again. Nothing waiting goes in while a part of Halves waits for the
+// session to listen (#idle): the typed line goes in alone, the close lets go of the recap's wait, and Halves places it once (Koe · Chat has it, else Kokoro).
+for (const [mode, koe] of /** @type {[string, any][]} */ ([[' (Koe on a chat model)', { koe: { type: [asleep, asleep, asleep] } }], [' (no Koe model)', {}]])) {
+  for (const [how, close] of /** @type {[string, (k: any) => unknown][]} */ ([['voice goes off', (k) => voiceOff(k)], ['the page goes out of view', (k) => k.agent.hush('away')]])) {
+    test(`Koe live: the recap asked aloud on a typed line's connecting session, and ${how} while the microphone starts: the session never gets it, and it is placed once${mode}`, async () => {
+      const k = await liveKit([{ said, audio: tone(1) }], { pace: 1, ...koe });
+      try {
+        await k.voice.unlock();
+        const mic = slowMic(k);
+        const conn = slowConnection(k);
+        k.agent.send('Hello there');
+        await until(conn.reached, 30_000);
+        k.agent.wake(RECAP);
+        await settled();
+        conn.open();
+        await until(mic.asked, 30_000);
+        await soon(async () => texts(k).length > 0); // the typed line is in
+        await settled();
+        assert.deepEqual(texts(k), ['[typed] Hello there'], 'the typed line alone: the recap waits for the microphone');
+        await close(k);
+        await until(() => k.agent.live.state === 'closed', 30_000); // the close has come, with the microphone still starting
+        mic.open();
+        await settled();
+        await idleAtOnce(k);
+        await settled();
+        await idleAtOnce(k);
+        assert.deepEqual(texts(k), ['[typed] Hello there'], 'the session never got it');
+        assert.equal((await recordsIn(k, k.trip, 'wake')).filter((/** @type {any} */ e) => JSON.stringify(e.data).includes('Tell the recap')).length, 1, 'placed once: one wake carries it');
+      } finally {
+        await k.done();
+      }
+    });
+  }
+}
+
+// open() throws while a watch's wake waits on it (the re-review, Haiku src F: a phone that refuses a read as the microphone starts): the wake's failure shows its
+// reminder (Kokoro's wakeFailed), and #go takes the reminder back from the list it waited in, so the session that opens later for a typed line is never given it as well.
+// On 90e35a763 it stayed in the list, and that session said it a second time.
+test("Koe live: open() throws while a watch's wake waits on it: its reminder is shown once, and a session that opens later is never given it", async () => {
+  const k = await liveKit([{ said, audio: tone(1) }], { pace: 1 });
+  try {
+    await k.voice.unlock();
+    const cards = raw(k);
+    const open = k.agent.live.open.bind(k.agent.live);
+    k.agent.live.open = async () => { // the wake's wait finds the open refused, once
+      k.agent.live.open = open;
+      throw new Error('the phone refused a read');
+    };
+    k.agent.wake(train());
+    await soon(async () => reminders(cards).length > 0);
+    await settled();
+    k.agent.send('Hello there'); // a session opens for it, and what waits goes in with it
+    await soon(async () => texts(k).some((/** @type {string} */ x) => x.includes('[typed]')));
+    await settled();
+    await idleAtOnce(k);
+    assert.deepEqual(texts(k), ['[typed] Hello there'], 'the session was never given the reminder');
+    assert.deepEqual(reminders(cards), [TRAIN], 'one card');
+    assert.deepEqual(await entries(k), [TRAIN], 'one entry');
+  } finally {
+    await k.done();
+  }
+});
 
 // The traveller's tap stops the session a first tap opened while a watch's wake waits on it (the review's second opinions, F8; the user's floor pick, "annai neither
 // shows nor says anything of it at the tap", is older than this branch and the main session's own entry): the close for a tap lets go of nothing, so the wake's wait
@@ -1518,13 +1586,15 @@ for (const [mode, chat] of /** @type {[string, boolean][]} */ ([[' (Koe live)', 
 /** Kokoro's question for the traveller (a gated ask): logged in the conversation open, then given to Koe. @param {any} k */
 const askKoe = (k) => k.agent.channel.send('kokoro', 'Kokoro wants to ask: Which bridge first?', 'append', 'gated:ask', 'wk1', { name: 'ask', input: { question: 'Which bridge first?', options: ['Bixby', 'Golden Gate'] } });
 
-// Start fresh while the session is connecting with a note of Kokoro's for the traveller (voice-off-next's final review, F1): the close Start fresh makes lets go
-// of the note #live waits to place, and #live shows it above the divider, silently, as the close showed it before (Kokoro's words for the user that Koe
-// still owes are shown above the divider, spec §6.8); a question of Kokoro's is let go there, with a Trace line, never a live card below it. Without the
-// check in #live (a Start fresh is running) the note fell to #backstop, which says it aloud and writes it below the divider, and the question became a card.
+// Start fresh while the session is connecting with a note of Kokoro's for the traveller (voice-off-next's final review, F1; its re-review, Haiku src item 2): the
+// close Start fresh makes shows Kokoro's notes itself, silently, above the divider (Kokoro's words for the user that Koe still owes are shown above it, spec §6.8),
+// the one a part of Halves waits to place included, and takes them out of their lists; Halves' read of what is shown (#startFresh) holds them, whatever #live awaits
+// (round 1's check in #live won that race by about two microtask ticks), and #go finds them gone and places no second copy. A question of Kokoro's is let go there,
+// with a Trace line, never a live card below it. On 4fb14e7d2 the close showed it, and without this the note fell to #backstop, which says it aloud and writes it
+// below the divider, and the question became a card.
 for (const [mode, koe] of /** @type {[string, any][]} */ ([[' (Koe on a chat model)', { koe: { type: [asleep, asleep, asleep] } }], [' (no Koe model)', {}]])) {
   for (const [what, send] of /** @type {[string, (k: any) => Promise<string>][]} */ ([["a note of Kokoro's for the user", tellKoe], ["a question of Kokoro's", askKoe]])) {
-    test(`Koe live: ${what} with the session connecting when Start fresh runs: it is shown above the divider, silently${what.includes('question') ? ' (a question is let go, with a Trace line)' : ''}, and nothing of it below${mode}`, async () => {
+    test(`Koe live: ${what} with the session connecting when Start fresh runs: ${what.includes('question') ? 'it is let go above the divider, with a Trace line and no card' : 'it is shown above the divider, silently'}, and nothing of it below${mode}`, async () => {
       const k = await liveKit([{ said, audio: tone(1) }], { pace: 1, ...koe });
       try {
         await k.voice.unlock();
@@ -1555,6 +1625,56 @@ for (const [mode, koe] of /** @type {[string, any][]} */ ([[' (Koe on a chat mod
   }
 }
 
+// What Start fresh's own rule leaves alone (the re-review, Haiku src item 2: the close shows Kokoro's notes itself, so Halves' read of what is shown above the divider holds
+// them): a watch's reminder that the session was connecting to take is still placed by #live, and said once, above the divider; and the recap asked aloud is still
+// handed to Kokoro, which the close would have lost had it shown it (Start fresh forgets the session's notes). Both as on 90e35a763: guards for the rule's reach.
+for (const [mode, koe] of /** @type {[string, any][]} */ ([[' (Koe on a chat model)', { koe: { type: [asleep, asleep, asleep] } }], [' (no Koe model)', {}]])) {
+  test(`Koe live: a watch's wake with the session connecting when Start fresh runs: its reminder is shown once and said once, above the divider${mode}`, async () => {
+    const k = await liveKit([{ said, audio: tone(1) }], { pace: 1, ...koe });
+    try {
+      await k.voice.unlock();
+      const cards = raw(k);
+      const conn = slowConnection(k);
+      k.agent.wake(train());
+      await until(conn.reached, 30_000);
+      await until(() => k.agent.live.owing, 30_000);
+      assert.equal(await k.agent.startFresh(), 'done');
+      conn.open();
+      await settled();
+      await idleAtOnce(k);
+      await settled();
+      await idleAtOnce(k);
+      const all = await k.events(['reminder', 'compaction']);
+      assert.deepEqual(all.map((/** @type {any} */ e) => e.type), ['reminder', 'compaction'], 'above the divider, nothing below');
+      assert.deepEqual(reminders(cards), [TRAIN], 'one card');
+      assert.deepEqual(k.said.filter((/** @type {string} */ x) => x.includes(TRAIN)), [TRAIN], 'said once');
+      assert.equal(texts(k).length, 0, 'the session never got it');
+    } finally {
+      await k.done();
+    }
+  });
+
+  test(`Koe live: the recap asked aloud with the session connecting when Start fresh runs: Kokoro has it, and the session never does${mode}`, async () => {
+    const k = await liveKit([{ said, audio: tone(1) }], { pace: 1, ...koe });
+    try {
+      await k.voice.unlock();
+      const conn = slowConnection(k);
+      k.agent.wake(RECAP);
+      await until(conn.reached, 30_000);
+      await k.agent.startFresh();
+      conn.open();
+      await settled();
+      await idleAtOnce(k);
+      await settled();
+      await idleAtOnce(k);
+      assert.deepEqual((await recordsIn(k, k.trip, 'wake')).filter((/** @type {any} */ e) => JSON.stringify(e.data).includes('Tell the recap')).map((/** @type {any} */ e) => e.data.half), ['kokoro'], "Kokoro's wake carries it, once");
+      assert.equal(texts(k).length, 0, 'the session never got it');
+    } finally {
+      await k.done();
+    }
+  });
+}
+
 // The session has the reminder, or Kokoro's note for the traveller, and is saying it when voice goes off, and another conversation opens just after (voice-off-next's
 // final review, F2: #handOn's own check, which no other test reaches: what #go waited for is let go to #live, so only a copy the session already had comes here). The
 // close hands it on, and #handOn, after its refresh, shows it in its own conversation (#elsewhere); without that, Koe · Chat's text turn in the one opened was given it.
@@ -1575,7 +1695,7 @@ for (const [what, send, own] of /** @type {[string, (k: any) => unknown, (k: any
       await new Promise((r) => setTimeout(r, 600));
       const { opening } = await voiceOff(k, other);
       await inTime(/** @type {Promise<void>} */ (opening), 'the open did not finish', 5000);
-      await soon(async () => (await own(k, k.trip)).length > 0);
+      await soon(async () => (await own(k, k.trip)).length > 0 || (await own(k, other)).length > 0); // wherever it lands, so a regression fails at the assertions below
       await settled();
       await idleAtOnce(k);
       assert.deepEqual(await own(k, k.trip), [what.includes('note') ? ANSWER : TRAIN], 'shown in its own conversation, once');
@@ -1593,7 +1713,7 @@ for (const [what, send, own] of /** @type {[string, (k: any) => unknown, (k: any
 // An immediate note of Kokoro's for the conversation the traveller has left (its write was still in flight when the other opened) stays there, and cuts nothing in the
 // one opened (the review's second opinion, src F3): Koe · Chat's answer to a line typed in the one opened is not stopped by it. On fea9ac9d9 Channel.send cut Koe
 // after the delivery that had put the note elsewhere.
-test("Koe · Chat: an immediate note of Kokoro's for the user, for the conversation left, arrives while Koe answers a line typed in the one opened: Koe's answer is not cut", async () => {
+test("Koe · Chat: an immediate note of Kokoro's for the user, for the conversation left, arrives while Koe answers a line typed in the one opened: Koe is not cut in on (cutIn is never called), and the note is shown in its own conversation", async () => {
   /** @type {() => void} */
   let release = () => {};
   const held = new Promise((r) => { release = () => r(undefined); });
