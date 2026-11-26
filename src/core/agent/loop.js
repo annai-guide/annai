@@ -91,7 +91,7 @@ import { FILES_ONLY, PHOTO_ONLY, handoverOf } from '../handover.js';
  *   her voice; kept: the verdict, once it comes; h: this half's own segment
  * @typedef {{ name: StateName, label: string, detail?: string, wait?: 'ask' | 'wait', over?: StateName, sending?: true }} State  label: the dock's words for it (LABELS); detail: what she is away doing (TIDYING, or a task's words);
  *   wait: what she waits for while waiting, her question's answer (ask) or the user's turn (wait); over: Halves' dock state only, standing over Koe's own state of that name (Halves.state);
- *   sending: thinking while her call's photos, PDF or recording go up, until the answer's headers (the dock says Sending…: callOnce's sending event)
+ *   sending: thinking while her call's photos, PDF or recording go up, until the send ends: the answer's headers, or its failing or stop (the dock says Sending…: callOnce's sending events)
  * @typedef {{ tone: 'warn' | 'info', title: string, body: string, actions?: { label: string, primary?: boolean, run: () => void | Promise<void> }[], key?: string, toast?: boolean, error?: unknown, said?: string }} Notice
  *   key: names a card a later turn takes down (the clear event, when that turn works): model, or silent:<its conversation>; error: what stopped it, when a screen has words of its
  *   own for that (the storage card for a full device: main.js shows it in place of this card); said: what that card says first, if not the title
@@ -501,7 +501,7 @@ export class Agent {
   #lastTurn = 0;
   /** @type {AbortController | null} cuts the model call running now, not the turn */
   #callCut = null;
-  /** Her turn's call is sending a photo's, a PDF's or a recording's bytes (callOnce's sending event): Thinking says Sending… meanwhile. */
+  /** Her turn's call is sending a photo's, a PDF's or a recording's bytes, as callOnce's sending events say: Thinking says Sending… meanwhile. Each send ends with its own off, so nothing here clears it. */
   #up = false;
   /** A note cut her speech: speak says so, and doesn't listen. */
   #noteCut = false;
@@ -2726,11 +2726,9 @@ export class Agent {
           // The second pass reads a file for a model that can't take it, which waits on its readers' models: not Koe's, who answers at once (§7.2).
           ...(this.#half.name === 'koe' ? {} : { read: (/** @type {any} */ part, /** @type {any} */ model, /** @type {AbortSignal | undefined} */ signal) => this.#readFor(part, model, signal ?? abort.signal, wakeId, readMemo) }),
         });
-        this.#up = false; // its last request's headers came
         // Who answered: Shiori's lines from this call's tools carry it (the Conversation names the model under each).
         this.#by = { name: result.answeredBy, first: result.first ?? null, tried: Boolean(result.tried) };
       } catch (e) {
-        this.#up = false; // the dock says so at its next state: Sending… stays until the card, or what the turn does next
         this.#callCut = null;
         this.#calling = false;
         this.#flush();
@@ -3716,9 +3714,9 @@ export class Agent {
   }
 
   /**
-   * Her call's photos, PDF or recording start going up (on), or are up (off: the uploads done, the request's answer's headers come), or the send
-   * failed and the call tries again (restart): Thinking says Sending… meanwhile, on the dock now and at each return to Thinking (a sound heard
-   * while it goes up), and never past the call's end (spec §16.3). @param {boolean} on
+   * Her call's photos, PDF or recording start going up (on), or no longer are (off: the uploads done, the request's answer's headers come, or the
+   * send failed or was stopped: callOnce says it at its own end): Thinking says Sending… meanwhile, on the dock now and at each return to Thinking
+   * (a sound heard while it goes up) (spec §16.3). @param {boolean} on
    */
   #sendingNow(on) {
     this.#up = on;
@@ -3737,7 +3735,6 @@ export class Agent {
       return;
     }
     if (ev.type === 'restart') {
-      if (this.#up) this.#sendingNow(false); // a send that failed: the next attempt's says Sending… again if it sends bytes
       this.#cutSpeech(wakeId, ev.by ?? null).catch((e) => this.#notSaved(e)); // what she said aloud, for her transcript: nobody waits on it
       return;
     }

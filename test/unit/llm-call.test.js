@@ -1037,14 +1037,14 @@ test("a send that never ends is cut at the wait plus its bytes' time at the slow
 // sending-next (the user's pick U113, 2026-11-26: "The dock says "Sending…""): callOnce tells its caller when a photo's, a PDF's or a
 // recording's bytes start going up and when the provider has the request, the moments the dock's Sending… starts and ends (spec §16.3).
 
-/** What a call told its caller and asked the network, in order: `sending on`/`sending off`, the other events' types, and each address asked. */
+/** What a call told its caller, in order: `sending on`/`sending off`, and the other events' types (a test's own `get` adds what it asks). */
 const told = () => {
   /** @type {string[]} */
   const seen = [];
   return { seen, onEvent: (/** @type {any} */ ev) => seen.push(ev.type === 'sending' ? `sending ${ev.on ? 'on' : 'off'}` : ev.type) };
 };
 
-test("a request that sends a photo's, a PDF's or a recording's bytes says sending as it starts going up, and off once its answer's headers come, before the first words; one of words alone, or with a photo by its upload's id, says nothing; a send cut before its headers says no off (sending-next)", async () => {
+test("a request that sends a photo's, a PDF's or a recording's bytes says sending as it starts going up, and off once its answer's headers come, before the first words; one of words alone, or with a photo by its upload's id, says nothing (sending-next)", async () => {
   const pdf = { messages: [{ role: 'user', parts: [{ type: 'text', text: 'When is check-in?' }, { type: 'document', mediaType: 'application/pdf', data: 'J'.repeat(1_000), name: 'booking.pdf' }] }] };
   const recording = { messages: [{ role: 'user', parts: [{ type: 'audio', mediaType: 'audio/wav', data: 'U'.repeat(1_000) }] }] };
   const byId = { messages: [{ role: 'user', parts: [{ type: 'text', text: 'What is this?' }, { type: 'image', mediaType: 'image/jpeg', data: 'A'.repeat(1_000), hash: 'h1', fileId: 'file-1' }] }] };
@@ -1060,12 +1060,41 @@ test("a request that sends a photo's, a PDF's or a recording's bytes says sendin
     assert.equal(reply.text, 'A pelican.');
     assert.deepEqual(seen, sends ? ['sending on', 'asked', 'headers', 'sending off', 'text', 'stop'] : ['asked', 'headers', 'text', 'stop'], what);
   }
-  // Cut at its send's time: the caller's call ends with the send's words, and nothing said the bytes were up (callRole's restart before the
-  // next attempt, or the call's end, ends it).
+});
+
+test("a send that ends before its answer's headers says off at its own end, every way it ends: cut at its time, stopped, or no connection; a request that can't be built, or whose address is elsewhere, says nothing, and a run type's request, whose send annai doesn't see, none (sending-next)", async () => {
+  const hung = answersAfter(Infinity);
+  const stop = new AbortController();
+  const noLink = () => Promise.reject(new TypeError('Failed to fetch'));
+  const cases = /** @type {const} */ ([
+    ['cut at its time', { get: hung, kind: 'timeout', events: ['sending on', 'asked', 'sending off'] }],
+    ['stopped', { get: hung, stop, kind: 'cancelled', events: ['sending on', 'asked', 'sending off'] }],
+    ['no connection', { get: noLink, kind: 'unreachable', events: ['sending on', 'asked', 'sending off'] }],
+  ]);
+  for (const [how, c] of cases) {
+    const { seen, onEvent } = told();
+    const get = (/** @type {string} */ url, /** @type {any} */ init) => { seen.push('asked'); if (c.stop) queueMicrotask(() => c.stop.abort()); return c.get(url, init); };
+    await assert.rejects(callOnce({ type: httpType([]), endpoint: endpoint(), model: seesPhotos, key: 'k', request: photoRequest(1_000), fetch: /** @type {any} */ (get), firstOutputMs: 100, onEvent, ...(c.stop ? { signal: c.stop.signal } : {}) }),
+      (/** @type {any} */ e) => e.kind === c.kind, how);
+    assert.deepEqual(seen, c.events, how);
+  }
+  // Not made, or not to its own address: nothing went up, so nothing is told.
+  for (const [how, type] of /** @type {const} */ ([
+    ["a request that can't be built", httpType([], { build: () => { throw new TypeError('no request'); } })],
+    ['an address elsewhere', httpType([], { build: () => ({ url: 'https://elsewhere.test/v1/chat', headers: {}, body: {} }) })],
+  ])) {
+    const { seen, onEvent } = told();
+    await assert.rejects(callOnce({ type, endpoint: endpoint(), model: seesPhotos, key: 'k', request: photoRequest(1_000), fetch: /** @type {any} */ (answersAfter(0)), firstOutputMs: 100, onEvent }), how);
+    assert.deepEqual(seen, [], how);
+  }
+  // A run type makes its own requests: annai tells nothing of them, and a plugin's own stream can't word the dock either.
   const { seen, onEvent } = told();
-  await assert.rejects(callOnce({ type: httpType([]), endpoint: endpoint(), model: seesPhotos, key: 'k', request: photoRequest(1_000), fetch: /** @type {any} */ (answersAfter(Infinity)), firstOutputMs: 100, onEvent }),
-    (/** @type {any} */ e) => e.said?.code === 'send');
-  assert.deepEqual(seen, ['sending on']);
+  const reply = await callOnce({
+    type: runType(async function* () { yield { type: 'sending', on: true }; yield { type: 'text', text: 'A pelican.' }; yield { type: 'stop', reason: 'end' }; }),
+    endpoint: endpoint(), model: seesPhotos, key: 'k', request: photoRequest(1_000), firstOutputMs: 1000, onEvent,
+  });
+  assert.equal(reply.text, 'A pelican.');
+  assert.deepEqual(seen, ['text', 'stop'], 'a run type: nothing told');
 });
 
 test("a photo's upload says sending as it starts going up, and off once the uploads are done; the request after it, sending the photo by its id, says nothing more (sending-next)", async () => {
@@ -1086,4 +1115,26 @@ test("a photo's upload says sending as it starts going up, and off once the uplo
   const r = { messages: [{ role: 'user', parts: [{ type: 'text', text: 'What is this?' }, { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'AAAA' }] }] };
   await callOnce({ type: t, endpoint: endpoint(), model: seesPhotos, key: 'k', request: /** @type {any} */ (r), fetch: /** @type {any} */ (get), uploads: new Uploads(ws), onEvent });
   assert.deepEqual(seen, ['sending on', 'upload', 'sending off', 'request', 'text', 'stop']);
+});
+
+test("a photo's upload stopped part-way says off at the uploads' own end: nothing stays on after it (sending-next)", async () => {
+  const { Workspace } = await import('../../src/core/workspace.js');
+  const { ensureBaseScopes } = await import('../../src/core/scopes.js');
+  const { Uploads } = await import('../../src/core/llm/uploads.js');
+  const ws = new Workspace(createMemoryStore());
+  await ensureBaseScopes(ws);
+  const t = httpType([{ type: 'text', text: 'A pelican.' }, { type: 'stop', reason: 'end' }], {
+    uploadRequest: (/** @type {any} */ c) => ({ url: `${c.endpoint.baseUrl}/v1/files`, headers: {}, body: new Blob([c.bytes]) }),
+    readUpload: (/** @type {any} */ j) => ({ id: j.id }),
+  });
+  const { seen, onEvent } = told();
+  const stop = new AbortController();
+  const get = (/** @type {string} */ url, /** @type {any} */ init) => new Promise((_, fail) => {
+    seen.push(url.endsWith('/v1/files') ? 'upload' : 'request');
+    init.signal?.addEventListener('abort', () => fail(init.signal.reason), { once: true });
+    stop.abort(); // the upload is under way when the user stops
+  });
+  const r = { messages: [{ role: 'user', parts: [{ type: 'text', text: 'What is this?' }, { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'AAAA' }] }] };
+  await assert.rejects(callOnce({ type: t, endpoint: endpoint(), model: seesPhotos, key: 'k', request: /** @type {any} */ (r), fetch: /** @type {any} */ (get), uploads: new Uploads(ws), onEvent, signal: stop.signal }), (/** @type {any} */ e) => e.kind === 'cancelled');
+  assert.deepEqual(seen, ['sending on', 'upload', 'sending off'], 'no request after the stop');
 });

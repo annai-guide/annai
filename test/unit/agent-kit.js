@@ -326,6 +326,7 @@ export function slowLink(fetch) {
       answer.catch(() => {}); // a held answer a stop ended is nobody's
       if (!open) {
         await new Promise((go, no) => {
+          if (init.signal?.aborted) return no(init.signal.reason); // as a real fetch's, already stopped when asked
           held.push(() => go(undefined));
           init.signal?.addEventListener('abort', () => no(init.signal.reason), { once: true });
         });

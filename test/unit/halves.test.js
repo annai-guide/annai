@@ -1724,7 +1724,9 @@ test("Kokoro steps away to work on a task (its own state away, \"Working on …\
 });
 
 // sending-next (the user's pick U113, 2026-11-26: "The dock says "Sending…""): either half's call that sends the photo says Sending… on the
-// dock while it goes up: Koe's own state says it, and Kokoro's, behind a Koe at rest, stands over Koe's as Thinking does (spec §16.3).
+// dock from its request's POST until the provider's answer's headers, or its end: Koe's own state says it, and Kokoro's, behind a Koe at rest,
+// stands over Koe's as Thinking does (spec §16.3). The stand-in holds each answer, as a slow uplink holds its headers: what these tests
+// measure is the dock's words while the answer is held, not the time a body takes to go up.
 
 /**
  * Claude's stand-in behind a link that holds each answer until it opens (slowLink): it speaks and sleeps (Koe), or only sleeps (Kokoro, with
@@ -1784,4 +1786,27 @@ test("Koe's own call sending the photo: the dock says Sending… · tap to stop,
   assert.deepEqual(told.slice(told.indexOf('thinking Sending… · tap to stop')), ['thinking Sending… · tap to stop', 'thinking Thinking · tap to stop', 'speaking Tap to interrupt', 'thinking Thinking', 'sleeping Tap to talk']);
   assert.deepEqual((await k.events(['out.speak'])).map((/** @type {any} */ e) => e.data.text), ['A menu.']);
   assert.ok(link.bodies[0].messages.some((/** @type {any} */ m) => m.content.some((/** @type {any} */ b) => b.type === 'image')), "the photo went in Koe's request");
+});
+
+test("a stop while Kokoro's call sends the photo behind a Koe asleep, and a call that fails before its headers: the dock ends at Tap to talk, with no Sending… left (sending-next)", async (t) => {
+  useClock(t);
+  for (const how of /** @type {const} */ (['stopped', 'no connection'])) {
+    const link = claudeBehind(false);
+    const get = how === 'stopped' ? link.fetch : () => Promise.reject(new TypeError('Failed to fetch'));
+    const k = await agentKit([CLAUDE], { koe: { type: koeAsks({ name: 'sleep', input: {} }) }, fetch: get });
+    await storedPhoto(k);
+    const told = dockTold(k);
+    k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+    if (how === 'stopped') {
+      await until(() => link.asked === 1 && k.agent.koe.state.name === 'sleeping' && !k.agent.koe.busy, 20_000);
+      assert.equal(k.agent.state.label, 'Sending…', how);
+      k.agent.stopKokoro(); // the sign's Stop
+    }
+    await idleAtOnce(k);
+    const from = told.indexOf('thinking Sending…');
+    assert.ok(from >= 0, `${how}: the dock said Sending…`);
+    assert.ok(!told.slice(from + 1).some((x) => /Sending/.test(x)), `${how}: nothing says Sending… after it ended: ${told.slice(from)}`);
+    assert.deepEqual([k.agent.state.name, k.agent.state.label], ['sleeping', 'Tap to talk'], how);
+    assert.equal(told.at(-1), 'sleeping Tap to talk', how);
+  }
 });

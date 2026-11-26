@@ -1257,3 +1257,28 @@ test("a resting model switched off holds no awake model back: the text model's a
   assert.equal(r.attempts.find((a) => a.model === 'm-1')?.outcome, 'off');
   assert.equal(r.attempts.find((a) => a.model === 'm-2')?.outcome, 'benched');
 });
+
+// sending-next (the dock's Sending…, spec §16.3): a send that failed says it is over at its own end, so what the call does before its next
+// attempt (here, a reading of the photo for the next model, which can't see photos) is told after the send's off.
+test("a photo's send cut before its headers is over when the call goes on: the reading made for the next model, which sees no photos, comes after sending off, then restart (sending-next)", async () => {
+  /** @type {string[]} */
+  const seen = [];
+  const link = /** @type {any} */ ({
+    type: 'link', name: 'Link', pluginId: 'link',
+    build: (/** @type {any} */ c) => ({ url: `${c.endpoint.baseUrl}/chat`, headers: {}, body: { model: c.model.providerId } }),
+    read: async function* () {},
+  });
+  const s = setup([[], [{ text: 'A menu.' }]], { types: [['link', link]], endpointTypes: ['link', 'scripted'], models: [{ input: ['text', 'image'] }, { input: ['text'] }] });
+  s.config.providers['pv-0'].user = { ...s.config.providers['pv-0'].user, baseUrl: 'https://llm.example/v1' };
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'A'.repeat(1_000), hash: 'h1', path: '/trip/files/menu.webp' };
+  const request = { messages: [{ role: 'user', parts: [photo, { type: 'text', text: 'What does the menu say?' }] }] };
+  const never = (/** @type {string} */ _url, /** @type {any} */ init) => new Promise((_, fail) => init.signal?.addEventListener('abort', () => fail(init.signal.reason), { once: true }));
+  const read = async () => { seen.push('read'); return [{ type: 'text', text: '[a photo: /trip/files/menu.webp] What it shows (described by model-u, as you can\'t see photos): a menu.' }]; };
+  const r = await call(s, {
+    request, read, fetch: never, firstOutputMs: 50, askResting: true,
+    onEvent: (/** @type {any} */ ev) => seen.push(ev.type === 'sending' ? `sending ${ev.on ? 'on' : 'off'}` : ev.type),
+  });
+  assert.equal(r.answeredBy, 'model-1');
+  assert.deepEqual(r.attempts.map((a) => [a.model, a.outcome]).slice(0, 1), [['m-0', 'timeout']]);
+  assert.deepEqual(seen.slice(0, 4), ['sending on', 'sending off', 'read', 'restart']);
+});

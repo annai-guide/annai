@@ -691,10 +691,10 @@ test("a photo going up slowly is not a model that never started: on a slow uplin
   }
 });
 
-test("while her request's photo goes up the dock says Sending… · tap to stop, until the provider has it; a typed line alone says Thinking · tap to stop (sending-next: the user's pick of 2026-11-26, \"The dock says \"Sending…\"\")", async ({ page }) => {
-  // The stand-in holds each answer until the test lets it go. A browser can't tell a send still going up from an answer not given yet, and
-  // the dock says Sending… until the answer's headers come, so this is that wait in both engines (only Chromium can throttle an upload: the
-  // test above).
+test("while her request, with a photo's bytes in it, waits for the provider's answer, the dock says Sending… · tap to stop; a typed line alone says Thinking · tap to stop (sending-next: the user's pick of 2026-11-26, \"The dock says \"Sending…\"\")", async ({ page }) => {
+  // The stand-in holds each answer until the test lets it go: what this measures is the dock's words while the answer is held, in both engines,
+  // not the time the body takes to go up (a browser can't tell a send still going up from an answer not given yet, and the dock says
+  // Sending… until the answer's headers come). Only Chromium can throttle an upload: the test above, which also checks the label.
   /** @type {(() => void)[]} */
   const held = [];
   const answer = () => held.shift()?.();

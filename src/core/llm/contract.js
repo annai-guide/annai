@@ -69,9 +69,9 @@ import { list } from '../intl.js';
  *   reasoning is one whole block; reasoning_delta is a piece of it as it streams and tool_input a tool call's
  *   arguments so far, both to show progress: a model that is thinking is not a model that never started. restart: annai starts over, on another
  *   model or the same one; what streamed before is void (only callRole sends it). sending: on, a photo's, a PDF's or a recording's bytes start
- *   going up (a photo's upload, or a request that sends them); off, they are up (the uploads are done, or the request's answer's headers came); a
- *   send that fails says nothing more, and the restart before the next attempt, or the call's end, ends it (only callOnce sends it; spec §16.3,
- *   the dock's Sending…). kept: the provider keeps this turn under id (G2), for annai alone.
+ *   going up (a photo's upload, or a request that sends them); off, they no longer are, however the send ended: the uploads are done, the
+ *   request's answer's headers came, or it failed or was stopped (only callOnce sends it, and drops a plugin's own; spec §16.3, the dock's
+ *   Sending…). kept: the provider keeps this turn under id (G2), for annai alone.
  *   native: the whole reply as the provider returned it, once, at the end of a reply that finished, for annai to send back within the turn
  *   (Reply.native); opaque to the core, which never shows or stores it. covers: how many of the reply's parts it stands in for when sent back (default
  *   all of them, as Anthropic Messages sends it); 0 for a native sent beside the parts (Chat Completions' reasoning_details), so its whole size counts.

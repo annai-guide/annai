@@ -334,8 +334,14 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
   let t = setTimeout(late, firstOutputMs);
   const wait = (/** @type {number} */ ms) => { clearTimeout(t); t = setTimeout(late, ms); };
   let sending = 0; // the time the request has, until the answer's headers
-  /** The request sends a photo's, a PDF's or a recording's bytes (BYTES): the dock says Sending… until its answer's headers, and a cut before them is the send's. */
+  /** The dock's Sending… is on: from just before the POST of a request that sends a photo's, a PDF's or a recording's bytes (BYTES) until the send ends (`sendOver`); a cut before then is the send's. */
   let up = false;
+  /** The send is over, by its answer's headers or by its failing: the dock's Sending… ends (spec §16.3). Said once, at its own end, every way it ends. */
+  const sendOver = () => {
+    if (!up) return;
+    up = false;
+    onEvent({ type: 'sending', on: false });
+  };
   const linked = signal ? anySignal([signal, timer.signal]) : timer.signal;
   /** @type {Part[]} */
   const parts = [];
@@ -372,6 +378,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       nativeCovers = ev.covers;
       return;
     }
+    if (ev.type === 'sending') return; // annai's own, said by this call alone (the POST below): a plugin's stream never words the dock
     wait(firstOutputMs);
     if (firstMs === null && ev.type !== 'usage') firstMs = now() - started;
     if (ev.type === 'text') {
@@ -405,10 +412,6 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     ...(spec.kept ? { kept: { from: spec.kept.from } } : {}), ...(bytes ? { bytes } : {}), ...(natives ? { natives } : {}),
   });
   try {
-    // The dock's Sending… (spec §16.3), off at the headers below; a send that fails says nothing more: the next attempt's restart, or the
-    // call's end, ends it. A run type makes its own requests, whose send annai doesn't see.
-    up = !type.run && sendsBytes(spec, BYTES);
-    if (up) onEvent({ type: 'sending', on: true });
     if (type.run) {
       for await (const ev of untilAborted(type.run({ ...spec, signal: linked }), linked)) take(ev);
     } else {
@@ -423,13 +426,17 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
       // that when `shared` (the other half may send on the same link).
       sending = firstOutputMs + sendMs(bytes, shared);
       wait(sending);
+      // The dock's Sending… (spec §16.3): from here, with the request built and its address checked, until the send ends. A run type makes its own
+      // requests, whose send annai doesn't see.
+      up = sendsBytes(spec, BYTES);
+      if (up) onEvent({ type: 'sending', on: true });
       try {
         res = await get(built.url, { method: 'POST', headers: built.headers, body, signal: linked, redirect: 'manual' });
       } catch (e) {
         throw cannotConnect(e, linked);
       }
       sending = 0;
-      if (up) onEvent({ type: 'sending', on: false }); // the provider has the whole request: the model's wait from here
+      sendOver(); // the provider has the whole request: the model's wait from here
       wait(firstOutputMs);
       status = res.status;
       noRedirect(res, endpoint);
@@ -454,6 +461,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     if (err.said?.code === 'late' && sending && up) {
       err = sendCut(e, sending);
     }
+    sendOver(); // a send that failed (cut, stopped, no connection) is over: the dock says so before the card, or the next attempt
     // Output that started and then stopped is not "no output in time": it says so, and how long it waited.
     if (err.said?.code === 'late' && firstMs !== null) {
       const seconds = Math.max(1, Math.round(firstOutputMs / 1000));
@@ -695,7 +703,7 @@ export async function photoHash(data) {
  * @param {{ type: EndpointType, endpoint: Endpoint, model: Model, key: string | null, uploads?: import('./uploads.js').Uploads, get: Fetch, trace?: ModelTrace, signal?: AbortSignal, now: () => number,
  *   registry?: import('../registry.js').Registry, from?: number, onEvent?: (e: StreamEvent) => void }} c
  * from: the first of request's messages (the portable ones) that is sent, the ones before it being held by a kept turn; expires: when the earliest of the photos sent by id expires (0: none);
- * registry: where a bug in the type's upload request counts (spec §5.5); onEvent: told as each photo starts going up (sending on), and once they are done (off)
+ * registry: where a bug in the type's upload request counts (spec §5.5); onEvent: told as each photo starts going up (sending on), and once the uploads end (off), whether they are done or a stop or a throw ended them
  * @returns {Promise<{ request: Request, expires: number }>}
  */
 async function withUploads(request, { type, endpoint, model, key, uploads, get, trace, signal, now, registry, from = 0, onEvent = () => {} }) {
@@ -712,77 +720,81 @@ async function withUploads(request, { type, endpoint, model, key, uploads, get, 
   /** An upload of this request failed on the link at once (not made, or its answer broke off before its limit): its other new photos go as bytes without a try, and uploads stay on. */
   let dropped = false;
   // A photo in the turns a kept turn already holds is left as it is (a message a type leaves out, a refused one at Gemini, isn't seen here).
-  for (const m of request.messages.slice(from)) {
-    for (const p of m.parts) {
-      if (p.type !== 'image' || !p.hash || !p.data || uploads.isOff(endpoint.id)) continue;
-      const hash = /** @type {string} */ (await hashOf(p.data));
-      if (ids.has(hash)) continue;
-      const known = await uploads.get(endpoint.id, hash, now());
-      if (known) {
-        ids.set(hash, known);
-        expiry.set(hash, (await uploads.expires?.(endpoint.id, hash)) || 0);
-        continue;
-      }
-      if (dropped || uploads.held(endpoint.id, hash)) continue;
-      let r;
-      const started = now();
-      let traced = false;
-      /** Cut at UPLOAD_MS, or answered 408, 429 or a server error: a later try may work, so uploads are held there (Uploads.hold), not turned off. */
-      let later = false;
-      try {
-        r = type.uploadRequest({ endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(p.data), mediaType: p.mediaType, name: uploadName(hash, p.mediaType), expiresInSeconds: UPLOAD_TTL_S });
-        if (typeof r?.url !== 'string') throw new TypeError(/* en */ `${type.type}'s uploadRequest gave no request (a result with a url, not a promise)`);
-        sameOrigin(endpoint, r.url); // elsewhere: never sent, and the photo goes in the request
-        // Its own time limit, body included: one cut by it (a hang) holds uploads there until a reply that calls no tool answers a request that sent a photo's
-        // bytes (Uploads.answered; or a restart, a new key or address, a Test that passes), since a try at once would wait it out again; one not made or broken off before it is the link's, which a later try may meet
-        // again, for as long as that failure took. A Stop is told apart in the catch (the caller's signal aborted).
-        const limit = AbortSignal.timeout(UPLOAD_MS);
-        went = true;
-        onEvent({ type: 'sending', on: true });
-        const res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, signal: signal ? anySignal([signal, limit]) : limit, redirect: 'manual' }).catch((e) => {
-          dropped = !limit.aborted;
-          later = limit.aborted;
-          throw e;
-        });
-        traced = true;
-        await trace?.upload({ endpoint: endpoint.name, url: r.url, status: res.status, ms: now() - started, ...(res.ok ? {} : { error: (await res.text().catch(() => '')).slice(0, 300) }) });
-        noRedirect(res, endpoint);
-        if (!res.ok) {
-          later = res.status === 408 || res.status === 429 || res.status >= 500; // asks for a later try, as a sweep reads it; any other is a refusal
-          throw new Error(`HTTP ${res.status}`);
-        }
-        const reply = watched(res);
-        const body = await reply.res.json().catch((e) => {
-          dropped = reply.dropped() !== undefined && !limit.aborted; // a body that broke off before the limit; one that isn't JSON is the provider's
-          later = limit.aborted; // one that stalled until it
-          throw e;
-        });
-        const up = type.readUpload(body);
-        if (uploads.isOff(endpoint.id)) {
-          // Answered after uploads went off here (a refused upload, a refused key, a list annai can't read), or while a removal, a key or
-          // address change or Erase is under way: no more files are made there, and the workspace may be let go, so this one is deleted now.
-          await deleteUpload({ type, endpoint, key, fetch: get, trace, now, id: up.id });
+  try {
+    for (const m of request.messages.slice(from)) {
+      for (const p of m.parts) {
+        if (p.type !== 'image' || !p.hash || !p.data || uploads.isOff(endpoint.id)) continue;
+        const hash = /** @type {string} */ (await hashOf(p.data));
+        if (ids.has(hash)) continue;
+        const known = await uploads.get(endpoint.id, hash, now());
+        if (known) {
+          ids.set(hash, known);
+          expiry.set(hash, (await uploads.expires?.(endpoint.id, hash)) || 0);
           continue;
         }
-        const expiresAt = up.expiresAt ?? now() + UPLOAD_TTL_S * 1000;
-        await uploads.set(endpoint.id, hash, up.id, expiresAt, now());
-        ids.set(hash, up.id);
-        expiry.set(hash, expiresAt);
-      } catch (e) {
-        if (signal?.aborted) throw e;
-        // A request the type couldn't build (it threw, or gave no url) is its plugin's bug, counted once; a refusal or an unreadable reply is not.
-        const by = typeof r?.url !== 'string' && !(e instanceof ProviderError) ? ownerOf(type, registry) : undefined;
-        if (by) {
-          registry?.fail(by, /* en */ `endpoint type ${type.type}`, e);
-          Promise.resolve(r).catch(() => {}); // an async builder's rejection: not the page's to report
+        if (dropped || uploads.held(endpoint.id, hash)) continue;
+        let r;
+        const started = now();
+        let traced = false;
+        /** Cut at UPLOAD_MS, or answered 408, 429 or a server error: a later try may work, so uploads are held there (Uploads.hold), not turned off. */
+        let later = false;
+        try {
+          r = type.uploadRequest({ endpoint, key, tunables: { ...endpoint.tunables, ...model.tunables }, bytes: fromBase64(p.data), mediaType: p.mediaType, name: uploadName(hash, p.mediaType), expiresInSeconds: UPLOAD_TTL_S });
+          if (typeof r?.url !== 'string') throw new TypeError(/* en */ `${type.type}'s uploadRequest gave no request (a result with a url, not a promise)`);
+          sameOrigin(endpoint, r.url); // elsewhere: never sent, and the photo goes in the request
+          // Its own time limit, body included: one cut by it (a hang) holds uploads there until a reply that calls no tool answers a request that sent a photo's
+          // bytes (Uploads.answered; or a restart, a new key or address, a Test that passes), since a try at once would wait it out again; one not made or broken off before it is the link's, which a later try may meet
+          // again, for as long as that failure took. A Stop is told apart in the catch (the caller's signal aborted).
+          const limit = AbortSignal.timeout(UPLOAD_MS);
+          went = true;
+          onEvent({ type: 'sending', on: true });
+          const res = await get(r.url, { method: 'POST', headers: r.headers, body: r.body, signal: signal ? anySignal([signal, limit]) : limit, redirect: 'manual' }).catch((e) => {
+            dropped = !limit.aborted;
+            later = limit.aborted;
+            throw e;
+          });
+          traced = true;
+          await trace?.upload({ endpoint: endpoint.name, url: r.url, status: res.status, ms: now() - started, ...(res.ok ? {} : { error: (await res.text().catch(() => '')).slice(0, 300) }) });
+          noRedirect(res, endpoint);
+          if (!res.ok) {
+            later = res.status === 408 || res.status === 429 || res.status >= 500; // asks for a later try, as a sweep reads it; any other is a refusal
+            throw new Error(`HTTP ${res.status}`);
+          }
+          const reply = watched(res);
+          const body = await reply.res.json().catch((e) => {
+            dropped = reply.dropped() !== undefined && !limit.aborted; // a body that broke off before the limit; one that isn't JSON is the provider's
+            later = limit.aborted; // one that stalled until it
+            throw e;
+          });
+          const up = type.readUpload(body);
+          if (uploads.isOff(endpoint.id)) {
+            // Answered after uploads went off here (a refused upload, a refused key, a list annai can't read), or while a removal, a key or
+            // address change or Erase is under way: no more files are made there, and the workspace may be let go, so this one is deleted now.
+            await deleteUpload({ type, endpoint, key, fetch: get, trace, now, id: up.id });
+            continue;
+          }
+          const expiresAt = up.expiresAt ?? now() + UPLOAD_TTL_S * 1000;
+          await uploads.set(endpoint.id, hash, up.id, expiresAt, now());
+          ids.set(hash, up.id);
+          expiry.set(hash, expiresAt);
+        } catch (e) {
+          if (signal?.aborted) throw e;
+          // A request the type couldn't build (it threw, or gave no url) is its plugin's bug, counted once; a refusal or an unreadable reply is not.
+          const by = typeof r?.url !== 'string' && !(e instanceof ProviderError) ? ownerOf(type, registry) : undefined;
+          if (by) {
+            registry?.fail(by, /* en */ `endpoint type ${type.type}`, e);
+            Promise.resolve(r).catch(() => {}); // an async builder's rejection: not the page's to report
+          }
+          if (!traced) await trace?.upload({ endpoint: endpoint.name, url: typeof r?.url === 'string' ? r.url : `${type.type}:`, status: 0, ms: now() - started, error: String(/** @type {any} */ (e)?.message ?? e) });
+          if (later) uploads.hold(endpoint.id, hash); // this photo, and the new ones until a reply there that calls no tool answers a request that sent a photo's bytes (or a restart, a new key or address, a Test that passes), go as bytes there from then on
+          else if (!dropped) uploads.off(endpoint.id); // a refusal, a redirect, the plugin's failure or an unreadable reply: until annai restarts, or a new key or address, or a Test that passes
         }
-        if (!traced) await trace?.upload({ endpoint: endpoint.name, url: typeof r?.url === 'string' ? r.url : `${type.type}:`, status: 0, ms: now() - started, error: String(/** @type {any} */ (e)?.message ?? e) });
-        if (later) uploads.hold(endpoint.id, hash); // this photo, and the new ones until a reply there that calls no tool answers a request that sent a photo's bytes (or a restart, a new key or address, a Test that passes), go as bytes there from then on
-        else if (!dropped) uploads.off(endpoint.id); // a refusal, a redirect, the plugin's failure or an unreadable reply: until annai restarts, or a new key or address, or a Test that passes
       }
     }
+  } finally {
+    // The request after them says on again if it sends bytes. Said at the uploads' own end, every way it ends: done, or a stop or a throw part-way.
+    if (went) onEvent({ type: 'sending', on: false });
   }
-  if (went) onEvent({ type: 'sending', on: false }); // the request after them says on again if it sends bytes
   if (!ids.size) return { request, expires: 0 };
   // The earliest expiry of the photos sent by id: a chain that points at them must end before it.
   const times = [...expiry.values()].filter(Boolean);
