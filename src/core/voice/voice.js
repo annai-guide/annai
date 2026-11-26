@@ -243,7 +243,8 @@ export class Voice {
    */
   async keep(h) {
     const seg = segmentOf(h);
-    const kept = seg.audio && (await this.settings()).keepClips ? await this.clipOf(/** @type {any} */ (seg)).catch(() => null) : null;
+    // A settings read the phone refuses means no clip: the line is still written (a rejection here failed its write).
+    const kept = seg.audio && (await this.settings().catch(() => null))?.keepClips ? await this.clipOf(/** @type {any} */ (seg)).catch(() => null) : null;
     if (!kept) return { data: {}, blobs: [] };
     const hash = await sha256Hex(kept.data);
     return { data: { clip: hash, clipFormat: kept.format, clipBytes: kept.data.length }, blobs: [{ hash, bytes: kept.data, type: kept.mediaType }] };

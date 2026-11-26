@@ -1572,11 +1572,11 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** `open()` (src/core/koe/live.js) reuses `#opening` while it is set, and `#start` returns false for a closed generation, so the third tap takes the stopped attempt's "no". The fix, in `open()`: a call made while a closed generation's start still runs waits for it, then starts its own.
 - **Revisit when:** its row in docs/progress.md, in the next version.
 
-### A heard line whose clip setting can't be read as it is saved isn't written
+### With the app settings read refused as her turn starts, the turn fails and a heard line it carries isn't written
 - **Kind:** deferred.
-- **What the traveller sees:** with the turn's sound kept in memory (Keep voice clips on, or a Detailed trace asking for sound), when the phone refuses the settings read at the moment a heard line is saved (rare), the line isn't written to the conversation and the "wasn't saved" card shows; the words the traveller said are missing from the log. On main too. Found by open-reads-next's re-read (2026-11-25, by reading).
-- **Why:** `Voice.keep` (src/core/voice/voice.js) reads `keepClips` with no catch, and its rejection fails the heard line's write. The fix: a refused read means no clip, and the line is written (`(await this.settings().catch(() => null))?.keepClips`), with a test.
-- **Revisit when:** its row in docs/progress.md, in the next version.
+- **What the traveller sees:** when the phone refuses every read of annai's settings file (rare), a turn of Shiori's fails as it starts (whether voice is on, `Voice.refresh`; her first words' limit), so a heard line that turn would have saved isn't written and the traveller says it again; the turn's transcription reads the languages too (`Voice.languages`), so a refused read there leaves the line's words not written down. The reads made as a heard line is saved and written down by the loop no longer fail it (clip-read-next, 2026-11-26), and a line written after such a refused read is checked against the default languages, so one word in a language the traveller listed can be noted as stray. On main too.
+- **Why:** found by clip-read-next's own test and its second opinion's re-read (2026-11-26, measured with the settings reads refused; RULES' step back: three rounds in the same reads, so no further code round there). Many places read the settings (about 70 calls of `readAppSettings`), each with no catch. A catch in `readAppSettings` itself would hand the defaults to callers that read a list, change it and save it back: `setSearchOn` (src/ui/search-panel.js) saves the switched-off search services whole, so a refused read there would turn the others back on. So the fix needs a look first: what a refused settings read means in a turn (the defaults, or the last settings read), in one place.
+- **Revisit when:** the next version, a look first; or a trace shows a refused settings read.
 
 ### With every spend read refused, a live session doesn't stop at Spend per day
 - **Kind:** deferred.

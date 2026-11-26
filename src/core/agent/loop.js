@@ -610,9 +610,9 @@ export class Agent {
     for (const type of ['online', 'offline']) globalThis.addEventListener?.(type, () => this.#connection());
   }
 
-  /** The languages setting (phase 2), the browser's language where none is chosen. */
+  /** The languages setting (phase 2), the browser's language where none is chosen, or the phone refuses the read (a heard line is still written). */
   async #languages() {
-    return languageSettings(await readAppSettings(this.ws), this.voice?.locale);
+    return languageSettings(await readAppSettings(this.ws).catch(() => ({})), this.voice?.locale);
   }
 
   /** While she rests, her state follows the connection (spec §16.3). */
