@@ -386,3 +386,26 @@ test('a plugin registers a speech type only with what its direction needs', asyn
   const bad = { manifest: { ...manifest, id: 'speechy-bad' }, activate: (/** @type {any} */ a) => a.providers.register({ type: 'bad-in', speech: 'in', speechRequest() {} }) };
   await assert.rejects(new PluginHost({ registry, workspace: ws, importModule: async () => bad }).addBuiltin('bad'), /a speech type needs transcribeRequest\(\) and readTranscript\(\)/);
 });
+
+// sending2-next (the user's pick U113, 2026-11-26: "The dock says "Sending…""): a transcription's recording says sending on just before its
+// POST and off once its send ends, every way it ends, as callOnce does; a voice's text says nothing.
+test("a transcription says sending on before its POST and off at its answer's headers, or when its send fails or is stopped; a voice says nothing (sending2-next)", async () => {
+  const { store } = await setup();
+  const audio = { data: new Uint8Array(4000), mediaType: 'audio/wav', seconds: 1 };
+  /** @param {(seen: string[]) => (url: string, init: any) => Promise<Response>} fetchOf @param {any} [more] */
+  const run = async (fetchOf, more = { audio }) => {
+    /** @type {string[]} */
+    const seen = [];
+    const fetch = fetchOf(seen);
+    await speechCall({ type: /** @type {any} */ (more.audio ? hears : speaks), endpoint: endpoint(more.audio ? 'test-in' : 'test-out'), model: model({}), key: 'k', trace: modelTrace(store, SYS), fetch,
+      onEvent: (/** @type {any} */ e) => seen.push(`sending ${e.on ? 'on' : 'off'}`), ...more }).catch((/** @type {any} */ e) => seen.push(`failed ${e.kind}`));
+    return seen;
+  };
+  const answer = (/** @type {string[]} */ seen) => async () => { seen.push('asked'); return Response.json({ text: 'hello' }); };
+  assert.deepEqual(await run(answer), ['sending on', 'asked', 'sending off']);
+  assert.deepEqual(await run((seen) => async () => { seen.push('asked'); throw new TypeError('Failed to fetch'); }), ['sending on', 'asked', 'sending off', 'failed unreachable']);
+  const stop = new AbortController();
+  assert.deepEqual(await run((seen) => async (_, init) => { seen.push('asked'); stop.abort(); return new Promise((_, no) => init.signal.aborted ? no(init.signal.reason) : init.signal.addEventListener('abort', () => no(init.signal.reason))); }, { audio, signal: stop.signal }), ['sending on', 'asked', 'sending off', 'failed cancelled']);
+  assert.deepEqual(await run((seen) => async () => { seen.push('asked'); return new Response('no', { status: 503 }); }), ['sending on', 'asked', 'sending off', 'failed overloaded']);
+  assert.deepEqual(await run((seen) => async () => { seen.push('asked'); return new Response(new Uint8Array([1]), { headers: { 'content-type': 'audio/mpeg' } }); }, { text: 'Hello.' }), ['asked'], 'a voice sends words: no Sending…');
+});

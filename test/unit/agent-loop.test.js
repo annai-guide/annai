@@ -3474,3 +3474,54 @@ test("a retry's wait says Thinking, as nothing goes up while it waits; the send 
   assert.deepEqual(seen, ['Thinking · tap to stop', 'Sending… · tap to stop', 'Thinking · tap to stop', 'Sending… · tap to stop', 'Thinking · tap to stop', 'Tap to interrupt', 'Tap to talk'], 'sends, the 503, the wait, sends again, the provider has it, her answer');
   assert.ok(sentPhoto(claude.bodies[0]), 'the photo went again');
 });
+
+// sending2-next (U113's rest): a reader's request made for her turn says Sending… while its photo's or PDF's bytes go up, by her own request's rule.
+
+/** Claude's stand-in as a reader, answering in words, behind a link that holds each answer until it opens (slowLink). */
+const readerBehind = () => {
+  const claude = anthropicStandIn(() => [{ type: 'text', text: 'A menu; the fish is circled.' }]);
+  return Object.assign(slowLink(claude.fetch), { bodies: claude.bodies });
+};
+
+test("a reader's photo for a model that sees none says Sending… while it goes up, then Thinking, then her answer (sending2-next)", async (t) => {
+  useClock(t);
+  const link = readerBehind();
+  const k = await agentKit([[say('A menu.')]], { models: [{ input: ['text'] }], utility: CLAUDE, fetch: link.fetch });
+  await storedPhoto(k, '/files/p.webp', 'image/webp');
+  const seen = dockAndCards(k);
+  k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+  await until(() => link.asked === 1);
+  assert.deepEqual(k.agent.state, { name: 'thinking', label: 'Sending… · tap to stop', sending: true });
+  link.open();
+  await idleAtOnce(k);
+  assert.deepEqual(seen, ['Thinking · tap to stop', 'Sending… · tap to stop', 'Thinking · tap to stop', 'Tap to interrupt', 'Tap to talk']);
+  assert.ok(sentPhoto(link.bodies[0]), "the photo went in the reader's request");
+  assert.match(JSON.stringify(k.sent['model-0'][0].messages), /the fish is circled/);
+});
+
+test("a tool's PDF read for a model that reads none says Sending… while it goes up to the reader, then Thinking (sending2-next)", async (t) => {
+  useClock(t);
+  const link = readerBehind();
+  const k = await bookingKit([[readPdf, say('Done.')]], { models: [{ input: ['text'] }], utility: CLAUDE, fetch: link.fetch }, ['text', 'pdf']);
+  const seen = dockAndCards(k);
+  k.agent.send('Read it');
+  await until(() => link.asked === 1);
+  assert.deepEqual(k.agent.state, { name: 'thinking', label: 'Sending… · tap to stop', sending: true });
+  link.open();
+  await idleAtOnce(k);
+  assert.deepEqual(seen, ['Thinking · tap to stop', 'Sending… · tap to stop', 'Thinking · tap to stop', 'Tap to interrupt', 'Tap to talk']);
+  assert.ok(link.bodies[0].messages[0].content.some((/** @type {any} */ b) => b.type === 'document'), "the PDF went in the reader's request");
+});
+
+test("a reader's photo whose send is cut at its time says Thinking again when it ends, and the answer says it couldn't be described (sending2-next)", async (t) => {
+  useClock(t);
+  const link = readerBehind(); // never opened
+  const k = await agentKit([[say('A menu.')]], { models: [{ input: ['text'] }], utility: CLAUDE, fetch: link.fetch });
+  await storedPhoto(k, '/files/p.webp', 'image/webp');
+  const seen = dockAndCards(k);
+  k.agent.send("What's this?", { photos: [{ path: '/trip/files/p.webp' }] });
+  await idleAtOnce(k, 600_000);
+  assert.deepEqual(seen.slice(0, 3), ['Thinking · tap to stop', 'Sending… · tap to stop', 'Thinking · tap to stop']);
+  assert.ok(!seen.slice(3).includes('Sending… · tap to stop'), 'no Sending… after the cut');
+  assert.equal(k.agent.state.label, 'Tap to talk');
+});
