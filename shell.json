@@ -1,5 +1,5 @@
 {
-  "build": "57f2b97f0a13",
+  "build": "0704fc732c56",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -50,7 +50,7 @@
     "/src/core/agent/refusals.js": "5d12a5980e98",
     "/src/core/agent/self-tools.js": "75847defd5bf",
     "/src/core/agent/spoken-yes.js": "728ad4b1b0e6",
-    "/src/core/agent/net.js": "c467a5b73427",
+    "/src/core/agent/net.js": "0d7bf7ce91a2",
     "/src/core/agent/tools.js": "03ffdc7f3e06",
     "/src/core/agent/trip-tools.js": "a7c97e6e35fa",
     "/src/core/agent/transcript.js": "62c2efe146d6",

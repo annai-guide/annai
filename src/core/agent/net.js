@@ -243,28 +243,24 @@ export function traceUrl(url, secrets = [], unread = false) {
     // isn't either (a stored key may be in it).
     return unread || leaks(out, secrets) ? `${u.protocol}//${unread || leaks(host, secrets) ? BLANK : host}/${BLANK}` : out;
   } catch {
-    // Not an address: keep only what comes before any query or fragment, if that holds no secret.
-    const out = scrub(String(url).split(/[?#]/)[0], secrets);
+    // Not an address: keep only what comes before any query or fragment and after any name or password (to the last @), if that holds no secret.
+    const out = scrub(String(url).replace(/^([a-z][a-z0-9+.-]*:\/\/)[^]*@/i, '$1').split(/[?#]/)[0], secrets);
     return unread || leaks(out, secrets) ? BLANK : out;
   }
 }
 
-/** An address's own name:password and password, as written and decoded, from 4 characters (urlSecrets'): Chromium's refusal quotes it. @param {unknown} url */
-function ownCredentials(url) {
-  const info = /^[a-z][a-z0-9+.-]*:\/\/([^/?#@]*)@/i.exec(String(url))?.[1];
-  if (!info) return [];
-  const pass = info.includes(':') ? info.slice(info.indexOf(':') + 1) : info;
-  /** @type {string[]} */
-  const out = [];
-  for (const v of [info, pass]) {
-    out.push(v);
-    try {
-      out.push(decodeURIComponent(v));
-    } catch {
-      // not valid percent-encoding: the raw form is enough
-    }
+/**
+ * The requested address in an engine's words (Chromium's refusal of one with a name or password quotes it whole), as given or as parsed, made
+ * its traced form, so nothing of what traceUrl leaves out reaches them. @param {string} words @param {unknown} url @param {string} traced
+ */
+function quotedAs(words, url, traced) {
+  const forms = [String(url)];
+  try {
+    forms.push(new URL(String(url)).href);
+  } catch {
+    // not an address: as given only
   }
-  return out.filter((v) => v.length >= 4);
+  return forms.sort((a, b) => b.length - a.length).reduce((w, f) => (f ? w.split(f).join(traced) : w), words);
 }
 
 /**
@@ -277,7 +273,7 @@ export function tracedFetch(store, scope, who, get = (url, init) => fetch(url, i
   return async (url, init = {}) => {
     const started = Date.now();
     const known = await knownSecrets(store);
-    const secrets = [...new Set([...known ?? [], ...(who.blank ?? []).filter((k) => typeof k === 'string' && k), ...ownCredentials(url)])].sort((a, b) => b.length - a.length);
+    const secrets = [...new Set([...known ?? [], ...(who.blank ?? []).filter((k) => typeof k === 'string' && k)])].sort((a, b) => b.length - a.length);
     const base = { kind: 'web', tool: who.tool, ...(who.wake ? { wake: who.wake } : {}), url: traceUrl(url, secrets, !known), method: init.method ?? 'GET' };
     try {
       const res = await get(url, init);
@@ -289,7 +285,7 @@ export function tracedFetch(store, scope, who, get = (url, init) => fetch(url, i
       // with none (the engine's plain AbortError) keeps the browser's words.
       const why = init.signal?.aborted ? /** @type {any} */ (init.signal.reason) : undefined;
       const own = typeof why?.message === 'string' && !(why instanceof DOMException && why.name === 'AbortError');
-      const said = blankAll(String(/** @type {any} */ (own ? why : e)?.message ?? e), secrets);
+      const said = blankAll(quotedAs(String(/** @type {any} */ (own ? why : e)?.message ?? e), url, base.url), secrets);
       // Not kept when it held a secret, or when the keys couldn't be read to check it.
       const held = !known || leaks(said, secrets);
       /* en */

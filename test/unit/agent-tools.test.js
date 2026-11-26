@@ -295,19 +295,26 @@ test('tracedFetch: every request is in the trace, with credentials in the addres
   assert.doesNotMatch(JSON.stringify(evs), /SECRET123|pw@/);
 });
 
-test("tracedFetch: the requested address's own name and password are blanked in what Chromium's refusal quotes, in the trace and in the error the plugin gets (addr-pass-next)", async () => {
+test("tracedFetch: the requested address in Chromium's words is its traced form, with no name or password, whatever they hold, in the trace and in the error the plugin gets (addr-pass-next)", async () => {
   const store = createMemoryStore();
-  // Chromium refuses an address with a name or password in it, and quotes the address whole; WebKit's words hold none.
-  const chromium = tracedFetch(store, 'trip-1', { tool: 'a-plugin' }, async (url) => { throw new TypeError(`Failed to execute 'fetch' on 'Window': Request cannot be constructed from a URL that includes credentials: ${url}`); });
-  /** An address with a name and a password, made here (a written one would read as a leaked password). @param {string} path @param {string} name @param {string} [pass] */
-  const withCredentials = (path, name, pass) => { const u = new URL(path, 'https://api.example.com'); u.username = name; if (pass) u.password = pass; return String(u); };
-  for (const url of [withCredentials('/x', 'traveller', 'hunter2long'), withCredentials('/y', 'tok-12345678'), withCredentials('/z', 'traveller', 'hunter%32long')]) {
-    await assert.rejects(chromium(url), (/** @type {any} */ e) => !/hunter2long|hunter%32long|tok-12345678|traveller:/.test(`${e.message} ${e.shown ?? ''} ${JSON.stringify(e.said ?? {})}`), url);
+  // Chromium refuses an address with a name or password in it and quotes it whole (as parsed; one that doesn't parse, as given); WebKit's words hold none.
+  const chromium = tracedFetch(store, 'trip-1', { tool: 'a-plugin' }, async (url) => {
+    let parsed = null;
+    try { parsed = new URL(String(url)).href; } catch { /* as given */ }
+    throw new TypeError(parsed ? `Failed to execute 'fetch' on 'Window': Request cannot be constructed from a URL that includes credentials: ${parsed}` : `Failed to execute 'fetch' on 'Window': Failed to parse URL from ${url}`);
+  });
+  // Made here: a written one would read as a leaked password. A raw @ in it, a / or # that stops it parsing, a short one, a name that is a word of the address.
+  const at = (/** @type {string} */ info, /** @type {string} */ rest) => `https://${info}@${rest}`;
+  const cases = [[['traveller', 'hunter2long'].join(':'), 'hunter2long'], [['ann', 'P@ss-word'].join(':'), 'ss-word'], [['ann', 'pa/ss#word'].join(':'), 'ss#word'],
+    [['a', 'b9'].join(':'), 'a:b9'], ['tok-12345678', 'tok-12345678'], [['api', 'x7'].join(':'), 'api:x7']];
+  for (const [info, part] of cases) {
+    await assert.rejects(chromium(at(info, 'api.example.com/x')), (/** @type {any} */ e) => !`${e.message} ${e.shown ?? ''} ${JSON.stringify(e.said ?? {})}`.includes(part), info);
   }
   const evs = await store.tx(['events'], 'readonly', (t) => t.listEvents('trip-1', { types: ['net.request'] }));
-  assert.equal(evs.length, 3);
-  assert.doesNotMatch(JSON.stringify(evs), /hunter2long|hunter%32long|tok-12345678|traveller:/);
-  assert.match(evs[0].data.error, /includes credentials: https:\/\/«key»@api\.example\.com\/x/, 'the rest of the words are kept');
+  assert.equal(evs.length, cases.length);
+  for (const [, part] of cases) assert.ok(!JSON.stringify(evs).includes(part), part);
+  assert.equal(evs[0].data.error, "Failed to execute 'fetch' on 'Window': Request cannot be constructed from a URL that includes credentials: https://api.example.com/x", 'the rest of the words are kept, the address as traced');
+  assert.equal(evs[2].data.url, 'https://api.example.com/x', "an address that doesn't parse is traced after its last @");
 });
 
 test("tracedFetch: a request called off with a reason says that reason in the trace, whatever the browser's words; a stop with none keeps them", async () => {
