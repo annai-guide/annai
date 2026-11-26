@@ -1440,6 +1440,40 @@ for (const [mode, koe] of /** @type {[string, any][]} */ ([[' (Koe on a chat mod
   }
 }
 
+// A reminder waiting on the microphone's start while something runs #idle in that window (the re-review, Opus N1: `shown()`, or #heardFirst as the user's first turn
+// after a tap ends): the reminder went into the session, and the page going out of view then put it back in its list (kept for the page's return) while #go's second
+// look took it out again and placed it at once: said into a page going away, and not owed when the page was back. Nothing waiting goes in while a part of Halves waits
+// for the session to listen, so the session is never given it; the close lets go of its wait and Halves places it once, as for any reminder a connecting session
+// was to take (on 4fb14e7d2 too, which never sent it in: the same one copy).
+test("Koe live: something runs #idle while a watch's wake waits for the microphone to start, and the page goes out of view: the session is never given the reminder, and it is shown once, nothing owed when the page is back", async () => {
+  const k = await liveKit([{ said, audio: tone(1) }], { pace: 1, koe: { type: [asleep, asleep, asleep] } });
+  try {
+    await k.voice.unlock();
+    const cards = raw(k);
+    const mic = slowMic(k);
+    k.agent.wake(train());
+    await until(mic.asked, 30_000);
+    await k.agent.live.shown(); // what runs in that window: it would send what waits in
+    await settled();
+    assert.equal(texts(k).length, 0, 'the session was not given the reminder');
+    hidden(true);
+    k.agent.hush('away');
+    await until(() => k.agent.live.state === 'closed', 30_000);
+    mic.open();
+    await settled();
+    await idleAtOnce(k);
+    assert.deepEqual([reminders(cards), await entries(k), k.agent.live.owing], [[TRAIN], [TRAIN], false], 'shown once, and nothing owed');
+    hidden(false);
+    await k.agent.shown();
+    await settled();
+    await idleAtOnce(k);
+    assert.deepEqual([reminders(cards), await entries(k), texts(k).length], [[TRAIN], [TRAIN], 0], 'nothing more when the page is back');
+  } finally {
+    hidden(false);
+    await k.done();
+  }
+});
+
 // open() throws while a watch's wake waits on it (the re-review, Haiku src F: a phone that refuses a read as the microphone starts): the wake's failure shows its
 // reminder (Kokoro's wakeFailed), and #go takes the reminder back from the list it waited in, so the session that opens later for a typed line is never given it as well.
 // On 90e35a763 it stayed in the list, and that session said it a second time.
