@@ -1629,12 +1629,6 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Revisit when:** a traveller puts a one-language voice ahead of a multilingual one and hears it.
 - **Approved:** 2026-11-26, the user picked "Accept, with a README line (Recommended)" (U112, through chief's dialog). It narrows their words of 2026-10-23, "I personally speak english chinese and japanese so multi language in audio shall be supported", for voices made for one language.
 
-### While a reader's or a transcription's bytes go up for her turn, the dock says Thinking
-- **Kind:** deferred.
-- **What the traveller sees:** since U113's build the dock says "Sending… · tap to stop" while her turn's own request carries a photo's, a PDF's or a recording's bytes up. Requests made for her turn by others still say Thinking while their bytes go up on a slow or dead link: a reader that reads a PDF or describes a photo for a model that can't take it (also after a cut send, for the next model in the chain), and a transcription of a recording for a model that takes no audio (Claude takes none, so with voice on in the user's setup every recording goes up through one, bounded by its own 15 s wait). Housekeeping's calls never say Sending… either: their dock says "Working on tidying up the conversation". A plugin's own run type says nothing. Koe · Live's photo goes up its own socket and its states are its own.
-- **Why:** only her turn's call reports to the dock, and callOnce says `sending` only for a request it makes itself (sending-next's reviews, 2026-11-26). The reader's part is small (the loop passes its `onEvent`, filtered to `sending`, to `readFile`'s calls); the transcription's is speech.js and voice.js telling the loop, in voice files clip-route-next changes too.
-- **Revisit when:** its row in docs/progress.md, in the next version, after clip-route-next is merged.
-
 ### The strings tool can't keep a row only a released version still uses
 - **Kind:** deferred.
 - **What the traveller sees:** nothing. The rule (docs/translating.md: never drop a row an older version still uses while it is in use) is kept by hand: a plugin keeps an uncalled export that says the words (plugins-official/provider-another-address/probe.js, `retiredWords`, until its 2.2.3 is out of use), since scripts/strings.mjs builds the rows only from what the code says. Found by addr-small-next's fix round 2 (2026-11-26).
