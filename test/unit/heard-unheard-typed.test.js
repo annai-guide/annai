@@ -150,6 +150,27 @@ test('one recording the transcription model refuses and the next it hears: the n
   assert.deepEqual(await errors(k), []);
 });
 
+// A Stop while the heard line's transcription is under way: the last pass meets the Stop as any later model does, and the turn ends as stopped, with no card
+// for the line beside "Stopped by the user." (one came before the last pass: "Nothing in the speech-in list worked").
+test("the user's Stop during the heard line's transcription ends the turn as stopped, with no card for the line", async (t) => {
+  useClock(t);
+  const k = await agentKit([[say('Hello there.')]], { voice: { speechIn: ['m-hear'] } });
+  let asked = false;
+  k.llm.transcribe = (/** @type {any} */ c) => new Promise((_, reject) => {
+    asked = true;
+    c.signal?.addEventListener('abort', () => reject(new ProviderError('cancelled', 'Stopped.')));
+  });
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  await hear(k, 'where-eat');
+  await until(() => asked);
+  k.agent.interrupt();
+  await idleAtOnce(k);
+  assert.deepEqual(await errors(k), ['Stopped by the user.']);
+  assert.deepEqual(k.notices.map((/** @type {any} */ n) => n.title), []);
+  assert.deepEqual(await spoken(k), []);
+});
+
 // Her question, answered by voice: the answer is heard inside her turn, and the turn's next request is answered with it as not transcribed.
 test('a spoken answer to her question nothing could write down is answered in that turn', async (t) => {
   useClock(t);
