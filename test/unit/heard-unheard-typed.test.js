@@ -111,6 +111,35 @@ for (const [how, fail, rests] of FAILURES) {
   });
 }
 
+// The count is of turns that worked (WRITE_TRIES): housekeeping's write-down, in the cold start's tidy-up and the warm timer, keeps the sound and counts nothing,
+// so a line is not given up after one turn that worked and a quiet spell (Haiku src-b F1 of the clip-route-next review).
+test("housekeeping's tries to write the heard line down keep its sound and count nothing: after one turn that worked, the cold tidy-up and the warm timer leave it, and the third turn that worked gives it up", async (t) => {
+  useClock(t);
+  const refused = { error: 'bad-request', status: 400 };
+  const k = await agentKit([[say('I could not hear that.'), refused, refused, refused, refused, say('Two.'), say('Three.')]], {
+    utility: [{ text: 'Someone spoke.' }], voice: { speechIn: ['m-hear'], hears: ['where should we eat'] },
+  });
+  k.llm.transcribe = async () => { throw new ProviderError('unreachable', 'no route to the server'); };
+  await tapAndSay(k, 'where-eat'); // the first turn that worked (1)
+  // Four typed lines whose turns fail (no count), so the heard line is in the part housekeeping would summarize: five exchanges, three kept word for word.
+  for (let i = 0; i < 4; i++) {
+    k.agent.send(`Message ${i}`);
+    await idleAtOnce(k);
+  }
+  assert.equal(await k.agent.compact('cold'), false, 'the cold start\'s tidy-up: the sound is still at hand');
+  assert.equal(await k.agent.compact('warm'), false, "the warm timer's: the same");
+  assert.equal((await k.events(['compaction'])).length, 0);
+  assert.deepEqual(await written(k), [], 'not given up by housekeeping');
+  assert.equal(k.voice.memory.size, 1);
+  k.agent.send('Line two');
+  await idleAtOnce(k); // the second turn that worked (2)
+  assert.deepEqual(await written(k), [], 'kept after the second');
+  k.agent.send('Line three');
+  await idleAtOnce(k); // the third (3)
+  assert.deepEqual(await written(k), [NOT_TRANSCRIBED]);
+  assert.equal(k.voice.memory.size, 0);
+});
+
 // Every later turn, whatever woke it, goes the same way: a watch's wake, the user's Try again, two lines nothing could hear.
 test('after a heard line nothing could write down, a watch firing, Try again, and a second such line are each answered, the lines as not transcribed', async (t) => {
   useClock(t);

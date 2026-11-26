@@ -247,7 +247,7 @@ function goneWords(sent, gone) {
 export const GATHER = Object.freeze({ quiet: 1.5, photo: 3, typing: 5, most: 20 });
 /**
  * How many turns that worked try to write a segment down before it is written as not transcribed and its sound let go (spec §10.3); housekeeping's own
- * tries count too. Three: not measured, a guess from the first version (2026-10-16); it bounds asking again for an old line.
+ * tries keep the sound and count nothing. Three: not measured, a guess from the first version (2026-10-16); it bounds asking again for an old line.
  */
 export const WRITE_TRIES = 3;
 
@@ -4383,16 +4383,17 @@ export class Agent {
       });
     } else if (!this.#ear && this.#voiceNow) this.voice?.platform?.session('playback'); // after speaking (spec §10.1)
     await this.#writeChatter(wakeId);
-    if (ok && this.#half.voice()) await this.#writeDown(wakeId);
+    if (ok && this.#half.voice()) await this.#writeDown(wakeId, undefined, { counts: true });
   }
 
   /**
    * The words of what was heard are written down, and the sound is let go (spec §10.3). When nothing could write it down, the sound stays for the next turn
-   * that works; after WRITE_TRIES it is written as not transcribed. final: the last chance (housekeeping that must summarize them now).
-   * @param {string} wakeId @param {string[]} [ids] @param {{ final?: boolean }} [o]
+   * that works; after WRITE_TRIES it is written as not transcribed. final: the last chance (housekeeping that must summarize them now);
+   * counts: a turn's own try (a failure of it is one of WRITE_TRIES; housekeeping's keeps the sound and counts nothing).
+   * @param {string} wakeId @param {string[]} [ids] @param {{ final?: boolean, counts?: boolean }} [o]
    * @returns {Promise<string[]>} the segments still not written down, whose sound is kept
    */
-  async #writeDown(wakeId, ids = this.transcript.unwritten(), { final = false } = {}) {
+  async #writeDown(wakeId, ids = this.transcript.unwritten(), { final = false, counts = false } = {}) {
     const voice = this.voice;
     if (!voice) return [];
     const { role } = this.#half;
@@ -4408,9 +4409,10 @@ export class Agent {
       }
       const r = await voice.writeDown(id, { scope: this.scope, wake: wakeId, ...(hearer ? { hearer } : {}), ...(role === 'main' ? {} : { role }) }).catch(() => null);
       if (!r && !final) {
-        // Nothing wrote it down this time (a rate limit, say): the sound stays, and the next turn that works tries again.
-        const tries = (this.#writeTries.get(id) ?? 0) + 1;
-        this.#writeTries.set(id, tries);
+        // Nothing wrote it down this time (a rate limit, say): the sound stays, and the next turn that works tries again. Only a turn's own try counts:
+        // housekeeping's (the cold start's tidy-up, the warm timer) comes between turns and may come after a single one.
+        const tries = (this.#writeTries.get(id) ?? 0) + (counts ? 1 : 0);
+        if (counts) this.#writeTries.set(id, tries);
         if (tries < WRITE_TRIES) {
           left.push(id);
           continue;
