@@ -638,8 +638,8 @@ gnrtev	ok	Shiori can't reach her model.	Shioriがモデルに接続できませ�
 13ujlu9	ok	{0} is too large (over {1}). Export only the dates you need from your calendar, and add that file.	{0}は大きすぎます（{1}超）。カレンダーから必要な期間だけをエクスポートして、そのファイルを追加してください。	src/core/imports.js:17	{0} = path; {1} = size(MAX_ICS_BYTES)
 1tw617t	ok	{0} {1}	{0}{1}	src/core/intl.js:36	context: sentences; {0} = a; {1} = b; Note: Two sentences side by side (sentences() in intl.js): no space between them in Japanese. sentenceGap() takes what is between {0} and {1}, for a bold first sentence.
 1acz027	ok	just now	たった今	src/core/intl.js:152	
-1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	端末のスピーカーでは、Shioriが話している間は声を聞き取れないため、重ねて話した内容は使われません。タップするとShioriが話すのをやめ、聞き取りを始めます。	src/core/koe/live.js:696	
-1ml2kgi	ok	Tap Shiori to talk over her	割り込んで話すときはShioriをタップ	src/core/koe/live.js:696	Note: names what to tap (the dock's Shiori), as the English does.
+1g1ud28	ok	On the phone's speaker, annai can't hear you while she speaks, so what you say over her is let go. A tap stops her and listens.	端末のスピーカーでは、Shioriが話している間は声を聞き取れないため、重ねて話した内容は使われません。タップするとShioriが話すのをやめ、聞き取りを始めます。	src/core/koe/live.js:697	
+1ml2kgi	ok	Tap Shiori to talk over her	割り込んで話すときはShioriをタップ	src/core/koe/live.js:697	Note: names what to tap (the dock's Shiori), as the English does.
 3fqfy0	ok	Languages	言語	src/core/languages.js:553	
 1an5v4b	ok	The languages you speak, and the language Shiori answers in, are told to every model that hears or speaks, so a short reply is not taken for another language.	話す言語とShioriが答える言語は、聞き取りや読み上げをするすべてのモデルに伝えます。短い返事を別の言語と取り違えないためです。	src/core/languages.js:554	Note: "Hears or speaks" as the glossary's 聞き取り / 読み上げ (Speech in, Speech out).
 1giusr1	ok	Languages you speak	話す言語	src/core/languages.js:555	
@@ -954,7 +954,7 @@ l80ifa	ok	Add a transcription model in Settings → Models, such as OpenAI or Gr
 m5s9f4	ok	This browser can't play a voice as it arrives.	このブラウザでは、声をストリーミング再生できません。	src/core/voice/speaker.js:128	
 jo5o9d	ok	This browser can't play sound here.	このブラウザでは、ここで音声を再生できません。	src/core/voice/voice.js:447	
 ocv5zw	ok	This browser can't use the microphone here.	このブラウザでは、ここでマイクを使えません。	src/core/voice/voice.js:490	
-55949q	ok	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	音声が止まったため、声を聞き取れません。画面をタップすると再開します。	src/core/voice/voice.js:822	
+55949q	ok	Sound got stuck, so annai can't hear you. Tap the screen to bring it back.	音声が止まったため、声を聞き取れません。画面をタップすると再開します。	src/core/voice/voice.js:827	
 pib2vo	ok	Your browser's own speech service hears it: on Android usually Google's servers, on iPhone Apple's (sometimes on the phone itself). annai doesn't send this request, so the trace can't show it.	ブラウザに組み込まれた音声サービスが聞き取ります。Androidでは多くの場合Googleのサーバー、iPhoneではAppleのサーバーで処理されます（端末上で処理されることもあります）。このリクエストはannaiが送るものではないため、記録には表示されません。	src/core/voice/where.js:15	
 m93xm3	ok	On this phone only: the browser recognizes your speech on the device.	ブラウザがこの端末上で音声を認識します。端末の外には送られません。	src/core/voice/where.js:16	
 1m5zm0a	ok	Phone dictation	端末の音声入力	src/core/voice/where.js:18	
@@ -2741,7 +2741,7 @@ u0woti	ok	On: Shiori speaks aloud and listens for your answer. Off: she writes. 
 qyfmia	ok	Listen for an answer (seconds)	返事を待つ時間（秒）	src/ui/screens/voice.js:151	
 1f9vvmr	ok	Wait for her first words (seconds)	Shioriの最初の言葉を待つ時間（秒）	src/ui/screens/voice.js:152	
 1sz04rq	ok	Wait 5 to 120 seconds.	5〜120秒にしてください。	src/ui/screens/voice.js:152	
-1ynto6f	draft	On: your music plays on at its own volume while Shiori speaks. She can't be heard while the phone is in silent mode, and she doesn't listen by herself after speaking: tap her to answer, which stops the music. With Live voice, a session she opens by herself doesn't listen; one you start with a tap listens until it goes quiet, which stops the music too.	オン：Shioriが話している間も、音楽は音量を下げずに流れ続けます。消音モード中はShioriの声は聞こえず、話し終えたあとに自動で聞き取ることもありません。答えるときはShioriをタップしてください（音楽は止まります）。ライブ音声では、Shioriが自分から始めたセッションは聞き取りをせず、タップで始めたセッションは静かになるまで聞き取りを続け、その間も音楽は止まります。	src/ui/screens/voice.js:154	Note: 消音モード is iOS's own name for silent mode; 音量を下げずに says the English's "at its own volume" (not lowered); 止まります says "stops" (the music doesn't start again by itself); 聞き取り is the one word for her listening (ja-style.md).
+1ynto6f	draft	On: your music plays on at its own volume while Shiori speaks. She can't be heard while the phone is in silent mode, and she doesn't listen by herself after speaking: tap her to answer, which stops the music. With Live voice, a session she opens by herself doesn't listen; one you start with a tap listens until it goes quiet, which stops the music too.	オン：Shioriが話している間も、音楽は音量を下げずに流れ続けます。消音モード中はShioriの声は聞こえず、話し終えたあとに自動で聞き取ることもありません。答えるときはShioriをタップしてください（音楽は止まります）。ライブ音声では、Shioriが自分から始めたセッションは聞き取りをせず、タップで始めたセッションは静かになるまで聞き取りを続けます（この場合も音楽は止まります）。	src/ui/screens/voice.js:154	Note: 消音モード is iOS's own name for silent mode; 音量を下げずに says the English's "at its own volume" (not lowered); 止まります says "stops" (the music doesn't start again by itself); 聞き取り is the one word for her listening in this line.
 17b2a79	ok	On the screen	画面での表示	src/ui/screens/voice.js:155	
 4xxyqf	ok	On: the words of what she says aloud show in the conversation, marked "said aloud", and in a bubble above her while she speaks. Off: a quiet screen. Her spoken lines fold away in the conversation until you tap "Show what she said".	オン：Shioriが声に出して話した言葉が、「読み上げ」の印付きで会話に表示され、話している間はShioriの上に吹き出しでも表示されます。オフ：画面は静かなままです。読み上げた言葉は、「話した言葉を見る」をタップするまで会話の中でたたまれます。	src/ui/screens/voice.js:157	Note: "said aloud" and "Show what she said" are the conversation's own words: they must match those rows.
 y61lbz	ok	Shiori's voice	Shioriの声	src/ui/screens/voice.js:158	

@@ -394,7 +394,8 @@ export class LiveKoe {
   }
 
   /**
-   * Opens a session, or keeps the one open. mic: the microphone too, where voice is on and the page in view.
+   * Opens a session, or keeps the one open. mic: the microphone too, where voice is on and the page in view; with Keep my music playing on, only for a tap
+   * (any other caller's `mic` is let go, spec §10.1).
    * @param {string} why @param {{ mic?: boolean }} [o] @returns {Promise<boolean>} whether one is open
    */
   async open(why, { mic = false } = {}) {

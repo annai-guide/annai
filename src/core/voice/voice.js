@@ -83,7 +83,7 @@ export class Voice {
   mode = { setting: 'off', on: false, why: 'off' };
   /**
    * Keep my music playing (Settings → Voice, spec §10.1) is on, where the platform can let other apps' music play on (mixes): her sound is the mixing
-   * kind (session), and no microphone of hers opens by itself (the agent's #openEarNow). Read with the mode (refresh), so it is as fresh as the mode.
+   * kind (session), and no microphone of hers opens by itself (the agent's #openEarNow). Read with the mode (refresh), so it is as fresh as the mode; a change sets the type at once.
    */
   keepMusic = false;
   /** A tap on the avatar holds voice on (hold). */
@@ -330,7 +330,7 @@ export class Voice {
     // One at a time: a tap is pointerup, touchend and click, and a tap on Shiori unlocks too; loading the silent clip
     // again over itself wedges WebKit on Linux. Taps wait on one still starting, however long.
     if (this.#trying) return this.#trying;
-    // The silent clip that unlocks would pause other apps' music while the type is still `auto` (WebKit takes an audible media element for playback): mixing from the first tap.
+    // The silent clip that unlocks would pause other apps' music while the type is still `auto` (WebKit takes an audible media element for playback): mixing from the first tap. refresh() already set it, but a type set before any tap is not verified on iOS, so it is set here too.
     if (this.keepMusic && !this.platform?.mic.inUse?.()) this.session('playback');
     /** @type {Promise<boolean> | boolean | undefined} */
     let tried;
@@ -580,7 +580,12 @@ export class Voice {
    */
   async refresh() {
     const s = await this.settings();
-    this.keepMusic = s.keepMusic && Boolean(this.platform?.mixes?.()); // shown only where it applies, so a copy restored elsewhere does nothing there
+    const keep = s.keepMusic && Boolean(this.platform?.mixes?.()); // shown only where it applies, so a copy restored elsewhere does nothing there
+    if (keep !== this.keepMusic) {
+      this.keepMusic = keep;
+      // Sound that sets no type of its own (Live's reminders and typed lines) plays under whatever type is set, so the flip sets it now, not at the next sentence; never under a microphone.
+      if (!this.platform?.mic.inUse?.()) this.session('playback');
+    }
     const driving = this.#driving();
     if (driving) this.#offWhy = null; // the drive went on after all
     const next = voiceMode({ setting: s.mode, driving, tapped: this.#tapped });

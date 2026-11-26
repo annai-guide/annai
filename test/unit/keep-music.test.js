@@ -1,6 +1,6 @@
 // Keep my music playing (Settings → Voice, spec §10.1, §10.4; the user's report of 2026-11-21 and their answer U114 of 2026-11-26): on, her sound is
 // the mixing kind (`ambient`) wherever it was `playback`, so other apps' music plays on under her, and no microphone opens by itself (a session Live opens by itself has none either); a tap still listens,
-// and play-and-record stops the music then. Off, everything is as before. The round's fixes: Live's self-opened sessions, a tap's microphone at her turn's end, the calls through the door.
+// and play-and-record stops the music then. Off, everything is as before. Turning it on sets the type at once, because Live's own sound sets none.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agentKit, until, hear, idleAtOnce } from './agent-kit.js';
@@ -13,6 +13,11 @@ import { voiceSettings } from '../../src/core/voice/settings.js';
 const keep = async (k, on) => {
   await updateAppSettings(k.ws, { voice: { keepMusic: on } });
   await k.voice.refresh();
+};
+/** The same, with the flip's own session type forgotten: the test sees only what the sound after it sets. @param {any} k @param {boolean} on */
+const keepClear = async (k, on) => {
+  await keep(k, on);
+  k.platform.sessions.length = 0;
 };
 const speak = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }] });
 const say = (/** @type {string} */ text) => ({ toolCalls: [{ name: 'speak', input: { text } }, { name: 'sleep', input: {} }] });
@@ -52,7 +57,7 @@ test('off: speak, then her listening, a tap and the first tap set the audio sess
 test('on: she speaks with the mixing kind, no microphone opens, and the turn ends with her words, for no model call', async (t) => {
   useClock(t);
   const k = await agentKit([[speak('Anything else?'), say('unused')]], { voice: { speechIn: ['m-hear'] } });
-  await keep(k, true);
+  await keepClear(k, true);
   /** @type {string[]} */
   const states = [];
   k.agent.on('state', (/** @type {any} */ s) => states.push(s.name));
@@ -68,10 +73,10 @@ test('on: she speaks with the mixing kind, no microphone opens, and the turn end
   assert.equal(k.agent.state.name, 'sleeping');
 });
 
-test('on: a tap still listens (play-and-record, which pauses the music), her answer is the mixing kind again, and she does not listen on after it', async (t) => {
+test('on: a tap still listens (play-and-record, which stops the music), her answer is the mixing kind again, and she does not listen on after it', async (t) => {
   useClock(t);
   const k = await agentKit([[speak('Yes, there is a café ahead.'), say('unused')]], { voice: { speechIn: ['m-hear'], hears: ['is there coffee nearby'] } });
-  await keep(k, true);
+  await keepClear(k, true);
   assert.equal(k.agent.tap(), 'listening');
   await until(() => k.agent.state.name === 'listening');
   await hear(k, 'gas-station');
@@ -144,7 +149,7 @@ test('turned on while she listens: voice off and on again does not open her micr
 test('on: the first tap sets the mixing kind before the silent clip that unlocks sound plays, but never under an open microphone', async (t) => {
   useClock(t);
   const k = await agentKit([[say('x')]], { voice: {} });
-  await keep(k, true);
+  await keepClear(k, true);
   /** @type {string[][]} */
   const at = [];
   const unlock = k.platform.player.unlock;
@@ -175,7 +180,7 @@ test("where the browser has no audio session (Chrome), a saved switch does nothi
   assert.equal((await results(k, 'speak'))[0].data.content, 'Said aloud. Heard nothing (20 seconds).');
 });
 
-test('Live with the switch on: its microphone is play-and-record for the session as before (it pauses the music), and its close is the mixing kind', async () => {
+test('Live with the switch on: a tap\'s microphone is play-and-record for the session as before (it stops the music), and its close is the mixing kind', async () => {
   const k = await liveKit([]);
   try {
     await keep(k, true);
@@ -190,7 +195,7 @@ test('Live with the switch on: its microphone is play-and-record for the session
   }
 });
 
-// Her turn with a call after speak, then words with no sleep: the window after she spoke would open here (switch off); with it on, nothing does.
+// Her turn with a call after speak, then words with no sleep: with the switch off her speak listens (the turn's own listening), with it on nothing opens.
 const SPEAK_SHOW = { toolCalls: [{ name: 'speak', input: { text: 'Here it is.' } }, { name: 'show', input: { card: { title: 'Bixby Bridge', text: 'Ahead.' } } }] };
 
 test('on: the window after she spoke stays shut: speak with another call after it, then words with no sleep, and no microphone opens at all', async (t) => {
@@ -209,7 +214,7 @@ test('on: the window after she spoke stays shut: speak with another call after i
   assert.deepEqual(mics(k), []);
   assert.ok(!states.includes('listening'), `the dock never said Listening: ${states}`);
   assert.equal(k.agent.state.name, 'sleeping');
-  // The same turn with the switch off: she listens (speak's listening, and the window after her words), so this turn does reach those doors.
+  // The same turn with the switch off: speak's own listening opens a microphone, so the zero above is not for want of a turn that listens. The window after she spoke itself is the tap test's below.
   const off = await agentKit([[SPEAK_SHOW, { text: 'Done.' }]], { voice: { speechIn: ['m-hear'] } });
   await keep(off, false);
   off.agent.send('What is ahead?');
@@ -238,7 +243,7 @@ test('on: a tap answers her wait, and her reply has no speech: the tap\'s microp
 test('on: a tap\'s microphone that hears nothing closes on its time with the mixing kind, never playback', async (t) => {
   useClock(t);
   const k = await agentKit([[say('x')]], { voice: { speechIn: ['m-hear'] } });
-  await keep(k, true);
+  await keepClear(k, true);
   k.agent.tap();
   await until(() => k.agent.state.name === 'listening');
   await until(() => k.platform.sessions.at(-1) === 'ambient' && mics(k).length === 2, 3000); // its 8 s: 80 ms here
@@ -248,7 +253,7 @@ test('on: a tap\'s microphone that hears nothing closes on its time with the mix
 
 test('on: a voice\'s Test, a microphone test and a microphone that failed to open all leave the mixing kind, never playback', async () => {
   const k = await agentKit([[say('x')]], { voice: { speechIn: ['m-hear'] } });
-  await keep(k, true);
+  await keepClear(k, true);
   await k.voice.sample('m-say', 'Hello there.');
   assert.deepEqual(k.platform.sessions, ['ambient'], 'a voice\'s Test (Voice.sample)');
   k.platform.sessions.length = 0;
@@ -266,7 +271,7 @@ const kinds = (k) => [...new Set(k.platform.sessions)];
 const REMINDER = { kind: 'trigger', text: 'Sunset in 30 minutes', fallbacks: [{ watch: 'sun', text: 'Sunset at 18:40' }] };
 const URGENT = { kind: 'trigger', text: 'Leave now', fallbacks: [{ watch: 'ferry', text: 'Leave now for the ferry.' }], urgent: true };
 
-for (const [name, wake] of /** @type {[string, any][]} */ ([['a trigger', REMINDER], ['an urgent note', URGENT]])) {
+for (const [name, wake] of /** @type {[string, any][]} */ ([['a trigger', REMINDER], ['an urgent watch', URGENT]])) {
   test(`Live, the switch on and sound unlocked: ${name} opens a session by itself that speaks, listens to nothing, and closes by itself; a tap on it then listens`, async () => {
     const k = await liveKit([{ said: 'The sun sets soon.', audio: tone(0.1) }, { said: 'Go ahead.', audio: tone(0.1) }]);
     try {
@@ -282,9 +287,10 @@ for (const [name, wake] of /** @type {[string, any][]} */ ([['a trigger', REMIND
       assert.deepEqual(mics(k), []);
       // A tap on one still open: it listens (play-and-record, which stops the music), and its close sets the mixing kind.
       const again = k.agent.wake(wake);
-      await until(() => k.agent.live.state === 'open', 3000);
+      await soon(async () => (await k.events(['out.speak'])).length === 2, 5000);
+      await until(() => k.agent.live.state === 'open' && k.agent.live.view.name === 'sleeping', 3000); // "Go ahead." has ended: the tap opens a microphone on the open session
       assert.equal(k.platform.opens, 0);
-      k.agent.tap();
+      assert.equal(k.agent.tap(), 'listening');
       await until(() => k.agent.live.listening, 3000);
       assert.equal(k.platform.opens, 1, 'the tap\'s');
       assert.equal(k.platform.sessions.at(-1), 'play-and-record');
@@ -313,10 +319,72 @@ for (const [name, wake] of /** @type {[string, any][]} */ ([['a trigger', REMIND
   });
 }
 
+for (const [name, mode] of /** @type {[string, 'immediate' | 'append'][]} */ ([['said at once', 'immediate'], ['said when it is her turn', 'append']])) {
+  test(`Live, the switch on and sound unlocked: a Kokoro note ${name} opens no microphone`, async () => {
+    const k = await liveKit([{ said: 'Ferry at nine.', audio: tone(0.1) }]);
+    try {
+      await keep(k, true);
+      await k.voice.unlock();
+      await k.agent.live.note('Ferry at nine.', mode);
+      await soon(async () => (await k.events(['out.speak'])).length === 1, 5000);
+      await new Promise((r) => setTimeout(r, 300));
+      assert.equal(k.platform.opens, 0, 'no microphone');
+      assert.deepEqual(kinds(k), ['ambient']);
+    } finally {
+      await k.done();
+    }
+  });
+}
+
+test('Live, the switch turned on in Settings after voice was used with it off: the type is the mixing kind at once, so her next reminder and typed answer play over the music; off again, it is playback', async () => {
+  const k = await liveKit([{ said: 'The sun sets soon.', audio: tone(0.1) }, { said: 'It is on your left.', audio: tone(0.1) }]);
+  try {
+    await keep(k, false);
+    k.agent.tap(); // voice used with the switch off: a tap's live session and its close leave the type at playback
+    await until(() => k.agent.live.listening, 3000);
+    k.agent.live.close('voice');
+    await until(() => k.platform.sessions.at(-1) === 'playback', 1000); // at once, or once her voice has faded out
+    k.platform.sessions.length = 0;
+    await keep(k, true);
+    assert.deepEqual(k.platform.sessions, ['ambient'], 'set at the flip: Live\'s own sound sets no type');
+    await k.agent.wake(REMINDER);
+    await soon(async () => (await k.events(['out.speak'])).length === 1, 5000);
+    assert.deepEqual(kinds(k), ['ambient'], 'a reminder: never playback while she speaks');
+    await until(() => k.agent.live.state === 'closed', 3000);
+    k.agent.send('Where is it?');
+    await soon(async () => (await k.events(['out.speak'])).length === 2, 5000);
+    assert.deepEqual(kinds(k), ['ambient'], 'a typed answer: the same');
+    assert.equal(k.platform.opens, 1, 'only the first tap\'s microphone');
+    await keep(k, false);
+    assert.equal(k.platform.sessions.at(-1), 'playback', 'off again: as before');
+    await keep(k, true);
+    assert.equal(k.platform.sessions.at(-1), 'ambient');
+  } finally {
+    await k.done();
+  }
+});
+
+test('Live, the switch turned on while a microphone is open: the type stays play-and-record, and the close sets the mixing kind', async () => {
+  const k = await liveKit([]);
+  try {
+    k.platform.input = { label: 'iPhone Microphone', deviceId: 'm1' }; // what an open microphone reports as in use
+    await keep(k, false);
+    k.agent.tap();
+    await until(() => k.agent.live.listening, 3000);
+    k.platform.sessions.length = 0;
+    await keep(k, true);
+    assert.deepEqual(k.platform.sessions, [], 'nothing set under her microphone');
+    k.agent.live.close('voice');
+    assert.equal(k.platform.sessions.at(-1), 'ambient');
+  } finally {
+    await k.done();
+  }
+});
+
 test('Live with the switch on: a microphone that failed leaves the mixing kind, and the close of a session whose voice is still fading too, never playback', async () => {
   const failing = await liveKit([], { voice: { micFails: 'NotAllowedError' } });
   try {
-    await keep(failing, true);
+    await keepClear(failing, true);
     failing.agent.tap();
     await until(() => failing.notices.some((/** @type {any} */ n) => n.tone === 'warn'), 3000);
     assert.deepEqual(failing.platform.sessions.slice(0, 3), ['ambient', 'play-and-record', 'ambient'], 'the first tap, the microphone asked for, the failure (#deaf)');

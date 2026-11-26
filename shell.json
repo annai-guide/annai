@@ -1,5 +1,5 @@
 {
-  "build": "bdc92ec77fea",
+  "build": "1db6fd254d2d",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -111,7 +111,7 @@
     "/src/core/intl.js": "02d97f7ff33b",
     "/src/core/koe/context.js": "9b86ff4f2132",
     "/src/core/koe/instructions.js": "b5886ea21f8a",
-    "/src/core/koe/live.js": "0b4877c7c222",
+    "/src/core/koe/live.js": "7941c6a804ce",
     "/src/core/koe/loud.js": "5ef2922e048e",
     "/src/core/koe/tools.js": "957f5c629f45",
     "/src/core/l10n-list.js": "98de5dc21171",
@@ -183,7 +183,7 @@
     "/src/core/voice/settings.js": "246513dfd036",
     "/src/core/voice/speaker.js": "ce1ba5cfd9e9",
     "/src/core/voice/stream-start.js": "824d34b902ff",
-    "/src/core/voice/voice.js": "701c09f4f099",
+    "/src/core/voice/voice.js": "a06dd290a8e5",
     "/src/core/voice/where.js": "91b1deb9d78f",
     "/src/core/types.js": "34ef03fe15fb",
     "/src/core/ui-slots.js": "355a32f019cb",
@@ -302,8 +302,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "5d687eb68459",
-    "/l10n/zh-Hans.json": "e1cb1d8c853a",
-    "/l10n/zh-Hant.json": "500be4f7e1e3"
+    "/l10n/ja.json": "af8a42d4c1f5",
+    "/l10n/zh-Hans.json": "2f8dfdd90f45",
+    "/l10n/zh-Hant.json": "1c15c207cb46"
   }
 }
