@@ -68,21 +68,21 @@ test('a transcription model that fails is benched and the next one hears it; wit
   await assert.rejects(resolveSpeech(asked([{ type: 'speech', id: 's-2' }]), model('M2', ['text']), none.c), /nothing in the speech-in list worked for M2/);
 });
 
-test('a segment past its own turn (unheard) goes as not transcribed where nothing can hear it, and as sound or words where something can', async () => {
+test("with standIn (callRole's last pass), a segment nothing can hear for the model goes as not transcribed; the list is still walked for each, so one something hears goes as its words, and a model that takes audio gets the sound", async () => {
   const memory = new HeardMemory();
   memory.keep(segment('s-1'));
   memory.keep(segment('s-2'));
-  const { c } = deps(memory, { failing: ['asr-a', 'asr-b'] });
+  const { c } = deps(memory);
+  /** @type {string[]} */
+  const asks = [];
+  // A recording the transcription models refuse (s-1), and one they hear (s-2): a refusal rests nothing, so each is asked again.
+  const refusing = { ...c, onFail: () => {}, transcribe: async (/** @type {string} */ id, /** @type {any} */ kept) => { asks.push(`${id} ${kept.id}`); if (kept.id === 's-1') throw new Error('refused'); return `words of ${kept.id} by ${id}`; } };
   const req = asked([{ type: 'speech', id: 's-1' }, { type: 'speech', id: 's-2' }, { type: 'text', text: '[typed] Hello' }]);
-  const unheard = new Set(['s-1']);
-  // s-2, heard for this turn, still fails it: a later model may hear it.
-  await assert.rejects(resolveSpeech(req, model('M2', ['text']), { ...c, unheard }), /nothing in the speech-in list worked for M2/);
-  unheard.add('s-2');
-  assert.deepEqual(partsOf(await resolveSpeech(req, model('M2', ['text']), { ...c, unheard })), [{ type: 'text', text: NOT_TRANSCRIBED }, { type: 'text', text: NOT_TRANSCRIBED }, { type: 'text', text: '[typed] Hello' }]);
-  assert.equal(partsOf(await resolveSpeech(req, model('M1', ['text', 'audio']), { ...c, unheard }))[0].type, 'audio', 'a model that takes audio still hears it');
+  await assert.rejects(resolveSpeech(req, model('M2', ['text']), refusing), /nothing in the speech-in list worked for M2/, 'without it, the model is skipped');
+  assert.deepEqual(partsOf(await resolveSpeech(req, model('M2', ['text']), { ...refusing, standIn: true })), [{ type: 'text', text: NOT_TRANSCRIBED }, { type: 'text', text: 'words of s-2 by asr-a' }, { type: 'text', text: '[typed] Hello' }]);
+  assert.deepEqual(asks, ['asr-a s-1', 'asr-b s-1', 'asr-a s-1', 'asr-b s-1', 'asr-a s-2'], 'each entry was asked for s-1 again before the stand-in');
+  assert.equal(partsOf(await resolveSpeech(req, model('M1', ['text', 'audio']), { ...refusing, standIn: true }))[0].type, 'audio', 'a model that takes audio still hears it');
   assert.equal(memory.size, 2, 'the sound stays, to be written down');
-  const back = deps(memory);
-  assert.deepEqual(partsOf(await resolveSpeech(req, model('M2', ['text']), { ...back.c, unheard }))[0], { type: 'text', text: 'words of s-1 by asr-a' }, 'and its words, once a transcription model hears');
 });
 
 test("dictation's words go to every model; words written down win; a kept clip still works; nothing left is said so", async () => {
@@ -190,7 +190,7 @@ async function phone({ makes = ['ogg', 'webm'], records, fails, plays } = {}, o 
   /** The heard segment as one model gets it. @param {any} h @param {string} id @param {boolean} [plain] */
   const to = async (h, id, plain) => {
     const m = /** @type {any} */ ({ gem: ['text', 'audio'], or: ['text', 'audio'], txt: ['text'] })[id];
-    return /** @type {any} */ ((await voice.resolver('trip-1', 'w-1')({ id, name: id, input: m }, asked([{ type: 'speech', id: h.id }]), plain)).messages[0].parts[0]);
+    return /** @type {any} */ ((await voice.resolver('trip-1', 'w-1')({ id, name: id, input: m }, asked([{ type: 'speech', id: h.id }]), { plain })).messages[0].parts[0]);
   };
   return { voice, platform, llm, store, ws, hear, to, ownSleep, encodes: () => platform.log.filter((/** @type {string} */ l) => l.startsWith('encode ')) };
 }
@@ -269,10 +269,10 @@ test("a recording that never went up in its send's time rests no transcription m
   const h = await k.hear();
   const chat = { id: 'txt', name: 'txt', input: ['text'] };
   // The gate's transcription (the quick-decision call: loop.js's resolver(scope), no wake) goes first: cut, and with nothing else in the speech-in list it fails safe.
-  await assert.rejects(k.voice.resolver('trip-1')(chat, asked([{ type: 'speech', id: h.id }]), false), /nothing in the speech-in list worked for/);
+  await assert.rejects(k.voice.resolver('trip-1')(chat, asked([{ type: 'speech', id: h.id }])), /nothing in the speech-in list worked for/);
   assert.equal(k.llm.bench.until('groq'), 0, 'a cut send rests no model');
   // The turn's own (shared, with the call's wake, as the turn's call makes it).
-  assert.equal(partsOf(await k.voice.resolver('trip-1', 'w-1', undefined, true)(chat, asked([{ type: 'speech', id: h.id }]), false))[0].text, 'what was said', "the turn's transcription asks the same model, and it hears");
+  assert.equal(partsOf(await k.voice.resolver('trip-1', 'w-1', undefined, true)(chat, asked([{ type: 'speech', id: h.id }])))[0].text, 'what was said', "the turn's transcription asks the same model, and it hears");
   assert.deepEqual(k.llm.uploads.map((u) => [u.modelId, u.shared]), [['groq', false], ['groq', true]]);
   // A transcription that failed in another way still rests it.
   const down = await phone({}, { failing: ['groq'] });
@@ -286,11 +286,11 @@ test("a call asks a transcription model whose recording was cut once, as chat as
   const text = (/** @type {string} */ id) => ({ id, name: id, input: ['text'] });
   const request = asked([{ type: 'speech', id: h.id }]);
   const call = k.voice.resolver('trip-1', 'w-1');
-  await assert.rejects(call(text('txt'), request, false), /nothing in the speech-in list worked for txt/);
-  await assert.rejects(call(text('txt2'), request, false), /nothing in the speech-in list worked for txt2/);
+  await assert.rejects(call(text('txt'), request), /nothing in the speech-in list worked for txt/);
+  await assert.rejects(call(text('txt2'), request), /nothing in the speech-in list worked for txt2/);
   assert.deepEqual(k.llm.uploads.map((u) => u.modelId), ['groq'], 'asked once for the call');
   assert.equal(k.llm.bench.until('groq'), 0, 'and not rested');
-  assert.equal(partsOf(await k.voice.resolver('trip-1', 'w-1')(text('txt'), request, false))[0].text, 'what was said', "the next call's resolver asks it again, and it hears");
+  assert.equal(partsOf(await k.voice.resolver('trip-1', 'w-1')(text('txt'), request))[0].text, 'what was said', "the next call's resolver asks it again, and it hears");
   assert.deepEqual(k.llm.uploads.map((u) => u.modelId), ['groq', 'groq']);
 });
 
@@ -312,8 +312,8 @@ test("a transcription model cut every time rests once another heard the recordin
   const k = await phone({}, { asr: ['groq', 'g2'], speechIn: ['send-audio', 'groq', 'g2'], cut: { groq: 99 } });
   for (let i = 0; i < 3; i++) {
     const request = asked([{ type: 'speech', id: (await k.hear()).id }]);
-    assert.equal(partsOf(await k.voice.resolver('trip-1')(textModel('txt'), request, false))[0].text, 'what was said', "the gate's");
-    assert.equal(partsOf(await k.voice.resolver('trip-1', 'w-1', undefined, true)(textModel('txt'), request, false))[0].text, 'what was said', "the turn's");
+    assert.equal(partsOf(await k.voice.resolver('trip-1')(textModel('txt'), request))[0].text, 'what was said', "the gate's");
+    assert.equal(partsOf(await k.voice.resolver('trip-1', 'w-1', undefined, true)(textModel('txt'), request))[0].text, 'what was said', "the turn's");
   }
   assert.deepEqual(k.llm.uploads.map((u) => u.modelId), ['groq', 'g2', 'g2', 'g2'], 'the cut one is not asked again while it rests');
   const left = restLeft(k, 'groq');
@@ -326,10 +326,10 @@ test("a Stop on a transcription's upload rests no model: the next call asks it a
   const request = asked([{ type: 'speech', id: (await k.hear()).id }]);
   const hears = k.llm.transcribe;
   k.llm.transcribe = async () => { throw new ProviderError('cancelled', 'Stopped.'); };
-  await assert.rejects(k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request, false), /nothing in the speech-in list worked for txt/);
+  await assert.rejects(k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request), /nothing in the speech-in list worked for txt/);
   assert.equal(restLeft(k, 'groq'), 0);
   k.llm.transcribe = hears;
-  assert.equal(partsOf(await k.voice.resolver('trip-1', 'w-2')(textModel('txt'), request, false))[0].text, 'what was said');
+  assert.equal(partsOf(await k.voice.resolver('trip-1', 'w-2')(textModel('txt'), request))[0].text, 'what was said');
 });
 
 test("a Stop on the wait between a transcription's retries rests no model, as chat's does, whatever failure it waited out; a failure with nobody stopping still rests it (cut-send-next, 5b)", async () => {
@@ -340,7 +340,7 @@ test("a Stop on the wait between a transcription's retries rests no model, as ch
     const request = asked([{ type: 'speech', id: (await k.hear()).id }]);
     k.llm.transcribe = async (/** @type {any} */ c) => { /** @type {any[]} */ (k.llm.uploads).push({ modelId: c.modelId }); throw new ProviderError(kind, kind); };
     const stop = new AbortController();
-    const asking = k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request, false, stop.signal);
+    const asking = k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request, { signal: stop.signal });
     await new Promise((r) => setTimeout(r, 20));
     stop.abort();
     await assert.rejects(asking);
@@ -352,11 +352,11 @@ test("a Stop on the wait between a transcription's retries rests no model, as ch
   const heard = asked([{ type: 'speech', id: (await late.hear()).id }]);
   const stopped = new AbortController();
   late.llm.transcribe = async () => { stopped.abort(); throw new ProviderError('server', 'down'); };
-  await assert.rejects(late.voice.resolver('trip-1', 'w-1')(textModel('txt'), heard, false, stopped.signal));
+  await assert.rejects(late.voice.resolver('trip-1', 'w-1')(textModel('txt'), heard, { signal: stopped.signal }));
   assert.equal(restLeft(late, 'groq'), 0, 'a failure that lands as the Stop does rests nothing');
   // With nobody stopping, the failure is real.
   const down = await phone({}, { failing: ['groq'] });
-  await assert.rejects(down.voice.resolver('trip-1', 'w-1')(textModel('txt'), asked([{ type: 'speech', id: (await down.hear()).id }]), false, new AbortController().signal));
+  await assert.rejects(down.voice.resolver('trip-1', 'w-1')(textModel('txt'), asked([{ type: 'speech', id: (await down.hear()).id }]), { signal: new AbortController().signal }));
   assert.ok(restLeft(down, 'groq') > 180_000 - 1000, 'no Stop: it rests');
 });
 
@@ -372,7 +372,7 @@ test("a Stop while a transcription waits to be sent again ends it at once, not w
     const at = Date.now();
     setTimeout(() => stop.abort(), 20); // 20 ms on the test clock: the first try failed, and inside the shortest wait (0.5 s)
     // The Stop's own error (kind cancelled) goes to onFail, which rests nothing for it (asserted below); the caller gets the list's "nobody heard it".
-    await assert.rejects(k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request, false, stop.signal), (/** @type {any} */ e) => e?.said?.code === 'not-heard', failure.kind);
+    await assert.rejects(k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request, { signal: stop.signal }), (/** @type {any} */ e) => e?.said?.code === 'not-heard', failure.kind);
     assert.equal(Date.now() - at, 20, `${failure.kind}: over as the Stop came (main: at the wait's end, 500 to 10,000)`);
     assert.equal(k.llm.uploads.length, 1, `${failure.kind}: one upload, then the Stop`);
     assert.equal(restLeft(k, 'groq'), 0, `${failure.kind}: nothing rests`);
@@ -386,7 +386,7 @@ test("a Stop that lands as any try of a transcription fails, the last one too (i
     const stop = new AbortController();
     let tries = 0;
     k.llm.transcribe = async () => { if (++tries === at) stop.abort(); throw new ProviderError('server', 'down'); };
-    await assert.rejects(k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request, false, stop.signal));
+    await assert.rejects(k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request, { signal: stop.signal }));
     assert.equal(tries, at, `stopped at try ${at}: no more`);
     assert.equal(restLeft(k, 'groq'), 0, `stopped at try ${at}: nothing rests`);
   }
@@ -401,13 +401,13 @@ test("offline, a transcription that can't connect (unreachable) or whose connect
     k.llm.transcribe = async () => { throw new ProviderError(kind, 'Load failed'); };
     Object.defineProperty(globalThis.navigator, 'onLine', { value: false, configurable: true });
     try {
-      await assert.rejects(k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request, false), /nothing in the speech-in list worked for txt/);
+      await assert.rejects(k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request), /nothing in the speech-in list worked for txt/);
     } finally {
       delete (/** @type {any} */ (globalThis.navigator)).onLine;
     }
     assert.equal(restLeft(k, 'groq'), 0, `${kind}, offline: nothing rests`);
     if (kind === 'network') {
-      await assert.rejects(k.voice.resolver('trip-1', 'w-2')(textModel('txt'), request, false), /nothing in the speech-in list worked for txt/);
+      await assert.rejects(k.voice.resolver('trip-1', 'w-2')(textModel('txt'), request), /nothing in the speech-in list worked for txt/);
       assert.ok(restLeft(k, 'groq') > 180_000 - 1000, 'network, online: it rests');
     }
   }
@@ -425,7 +425,7 @@ test("a transcription's retries are chat's one rule (fallback.js nextStep), not 
     k.llm.transcribe = async () => { tries++; throw error; };
     if (!online) Object.defineProperty(globalThis.navigator, 'onLine', { value: false, configurable: true });
     try {
-      await assert.rejects(k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request, false), /nothing in the speech-in list worked for txt/);
+      await assert.rejects(k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request), /nothing in the speech-in list worked for txt/);
     } finally {
       delete (/** @type {any} */ (globalThis.navigator)).onLine;
     }
@@ -469,7 +469,7 @@ test("a transcription whose reply dropped (network) while the device is offline 
     k.llm.transcribe = async () => { tries++; throw new ProviderError('network', 'The connection dropped.'); };
     if (!online) Object.defineProperty(globalThis.navigator, 'onLine', { value: false, configurable: true });
     try {
-      await assert.rejects(k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request, false), /nothing in the speech-in list worked for txt/);
+      await assert.rejects(k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request), /nothing in the speech-in list worked for txt/);
     } finally {
       delete (/** @type {any} */ (globalThis.navigator)).onLine;
     }
@@ -491,34 +491,34 @@ test("a transcription that can't connect while the phone says it is online is a 
   const two = await phone({}, { asr: ['groq', 'g2'], speechIn: ['send-audio', 'groq', 'g2'] });
   unreachable(two);
   const heard = asked([{ type: 'speech', id: (await two.hear()).id }]);
-  assert.equal(partsOf(await two.voice.resolver('trip-1', 'w-1')(textModel('txt'), heard, false))[0].text, 'what was said');
+  assert.equal(partsOf(await two.voice.resolver('trip-1', 'w-1')(textModel('txt'), heard))[0].text, 'what was said');
   assert.deepEqual(two.llm.uploads.map((/** @type {any} */ u) => u.modelId), ['groq', 'g2']);
   assert.ok(restLeft(two, 'groq') > 180_000 - 1000, 'another heard in its place: it rests');
   const one = await phone({});
   unreachable(one);
   const request = asked([{ type: 'speech', id: (await one.hear()).id }]);
   const call = one.voice.resolver('trip-1', 'w-1');
-  await assert.rejects(call(textModel('txt'), request, false), /nothing in the speech-in list worked for txt/);
-  await assert.rejects(call(textModel('txt2'), request, false), /nothing in the speech-in list worked for txt2/);
+  await assert.rejects(call(textModel('txt'), request), /nothing in the speech-in list worked for txt/);
+  await assert.rejects(call(textModel('txt2'), request), /nothing in the speech-in list worked for txt2/);
   assert.equal(one.llm.uploads.length, 1, 'asked once in the call');
   assert.equal(restLeft(one, 'groq'), 0, 'nothing else heard: it rests nothing');
-  await assert.rejects(one.voice.resolver('trip-1', 'w-2')(textModel('txt'), request, false), /nothing in the speech-in list worked for txt/);
+  await assert.rejects(one.voice.resolver('trip-1', 'w-2')(textModel('txt'), request), /nothing in the speech-in list worked for txt/);
   assert.equal(one.llm.uploads.length, 2, 'the next call asks it again');
 });
 
 test("words a transcription model made for a segment are used while every transcription entry rests, and by an earlier entry once it rests no more: made once (cut-send-next, 7)", async () => {
   const k = await phone({});
   const request = asked([{ type: 'speech', id: (await k.hear()).id }]);
-  assert.equal(partsOf(await k.voice.resolver('trip-1')(textModel('txt'), request, false))[0].text, 'what was said');
+  assert.equal(partsOf(await k.voice.resolver('trip-1')(textModel('txt'), request))[0].text, 'what was said');
   k.llm.bench.bench('groq', 180_000, Date.now());
-  assert.equal(partsOf(await k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request, false))[0].text, 'what was said');
+  assert.equal(partsOf(await k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request))[0].text, 'what was said');
   assert.deepEqual(k.llm.uploads.map((u) => u.modelId), ['groq']);
   // The first entry cut, the second's words; the first's rest over, the next call takes the second's words and doesn't ask the first.
   const two = await phone({}, { asr: ['groq', 'g2'], speechIn: ['send-audio', 'groq', 'g2'], cut: { groq: 1 } });
   const heard = asked([{ type: 'speech', id: (await two.hear()).id }]);
-  assert.equal(partsOf(await two.voice.resolver('trip-1')(textModel('txt'), heard, false))[0].text, 'what was said');
+  assert.equal(partsOf(await two.voice.resolver('trip-1')(textModel('txt'), heard))[0].text, 'what was said');
   two.llm.bench.clear('groq');
-  assert.equal(partsOf(await two.voice.resolver('trip-1', 'w-1')(textModel('txt'), heard, false))[0].text, 'what was said');
+  assert.equal(partsOf(await two.voice.resolver('trip-1', 'w-1')(textModel('txt'), heard))[0].text, 'what was said');
   assert.deepEqual(two.llm.uploads.map((u) => u.modelId), ['groq', 'g2']);
 });
 
@@ -526,9 +526,9 @@ test("a call whose only transcription model was cut uses the words another call 
   const k = await phone({}, { cut: { groq: 1 } });
   const request = asked([{ type: 'speech', id: (await k.hear()).id }]);
   const koe = k.voice.resolver('trip-1', 'w-1', undefined, true);
-  await assert.rejects(koe(textModel('txt'), request, false), /nothing in the speech-in list worked for txt/);
-  assert.equal(partsOf(await k.voice.resolver('trip-1', 'w-2', undefined, true)(textModel('txt'), request, false))[0].text, 'what was said', "another call's transcription hears it");
-  assert.equal(partsOf(await koe(textModel('txt2'), request, false))[0].text, 'what was said', 'the first call takes its words');
+  await assert.rejects(koe(textModel('txt'), request), /nothing in the speech-in list worked for txt/);
+  assert.equal(partsOf(await k.voice.resolver('trip-1', 'w-2', undefined, true)(textModel('txt'), request))[0].text, 'what was said', "another call's transcription hears it");
+  assert.equal(partsOf(await koe(textModel('txt2'), request))[0].text, 'what was said', 'the first call takes its words');
   assert.deepEqual(k.llm.uploads.map((u) => u.modelId), ['groq', 'groq']);
   assert.equal(restLeft(k, 'groq'), 0, 'nothing heard in its place in the call that cut it: it rests nothing');
 });
@@ -536,15 +536,56 @@ test("a call whose only transcription model was cut uses the words another call 
 test('a transcription model that refuses one recording (a 400, WAV too) rests nothing, as a chat model refusing a request does: the next call asks it (cut-send-next, 10)', async () => {
   const k = await phone({}, { refuses: { groq: '*' } });
   const request = asked([{ type: 'speech', id: (await k.hear()).id }]);
-  await assert.rejects(k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request, false), /nothing in the speech-in list worked for txt/);
+  await assert.rejects(k.voice.resolver('trip-1', 'w-1')(textModel('txt'), request), /nothing in the speech-in list worked for txt/);
   assert.equal(restLeft(k, 'groq'), 0);
-  await assert.rejects(k.voice.resolver('trip-1', 'w-2')(textModel('txt'), request, false), /nothing in the speech-in list worked for txt/);
+  await assert.rejects(k.voice.resolver('trip-1', 'w-2')(textModel('txt'), request), /nothing in the speech-in list worked for txt/);
   assert.deepEqual(k.llm.uploads.map((u) => u.mediaType), ['audio/webm', 'audio/wav', 'audio/webm', 'audio/wav'], 'asked again');
+});
+
+// clip-route-next fix 1: callRole's last pass walks the list again for each segment, and a refusal rests nothing, so the recording went up again in every walk.
+// The asks that failed in a call are kept by the call's resolver (nothing between calls), and the last pass doesn't make them again.
+test("a recording a transcription model refused (a 400, WAV too, which rests nothing) goes up once a call: the last pass (standIn) doesn't send it again, and the next call's resolver asks it as before", async () => {
+  const k = await phone({}, { refuses: { groq: '*' } });
+  const request = asked([{ type: 'speech', id: (await k.hear()).id }]);
+  const call = k.voice.resolver('trip-1', 'w-1');
+  await assert.rejects(call(textModel('txt'), request), /nothing in the speech-in list worked for txt/);
+  assert.deepEqual(partsOf(await call(textModel('txt'), request, { standIn: true })), [{ type: 'text', text: NOT_TRANSCRIBED }], 'the last pass makes it as not transcribed');
+  assert.equal(restLeft(k, 'groq'), 0);
+  assert.deepEqual(k.llm.uploads.map((u) => u.mediaType), ['audio/webm', 'audio/wav'], 'one ask, with its WAV retry');
+  assert.deepEqual(partsOf(await k.voice.resolver('trip-1', 'w-2')(textModel('txt'), request, { standIn: true })), [{ type: 'text', text: NOT_TRANSCRIBED }]);
+  assert.equal(k.llm.uploads.length, 4, "the next call asks it again: nothing is kept between calls");
+});
+
+// Probe N's shape: one recording refused and the next heard by the same model. The first pass stops at the first; the last pass skips the refused ask and sends the second.
+test('a recording refused beside one the same transcription model hears: the last pass sends the first as not transcribed without asking again, and the second as its words', async () => {
+  const k = await phone({});
+  const refused = await k.hear();
+  /** @type {any[]} */
+  const got = [];
+  const s = await k.voice.open({ kind: 'record', onSegment: (h) => got.push(h), onError: (e) => assert.fail(e) });
+  k.platform.mic.feed(cat(quiet(0.5), await clip('gas-station'), quiet(1)), 16_000);
+  s.stop();
+  const other = got[0];
+  assert.notEqual(refused.audio.seconds, other.audio.seconds, 'two different recordings');
+  const real = k.llm.transcribe;
+  /** Each ask the transcription model got, by the seconds of its recording and its format. @type {string[]} */
+  const asks = [];
+  k.llm.transcribe = async (/** @type {any} */ c) => {
+    asks.push(`${c.audio.seconds} ${c.audio.mediaType}`);
+    if (c.audio.seconds === refused.audio.seconds) throw new ProviderError('bad-request', 'Invalid request');
+    return real(c);
+  };
+  const request = asked([{ type: 'speech', id: refused.id }, { type: 'speech', id: other.id }]);
+  const call = k.voice.resolver('trip-1', 'w-1');
+  await assert.rejects(call(textModel('txt'), request), /nothing in the speech-in list worked for txt/);
+  assert.deepEqual(partsOf(await call(textModel('txt'), request, { standIn: true })), [{ type: 'text', text: NOT_TRANSCRIBED }, { type: 'text', text: 'what was said' }]);
+  const r = refused.audio.seconds;
+  assert.deepEqual(asks, [`${r} audio/webm`, `${r} audio/wav`, `${other.audio.seconds} audio/webm`], 'the refused one (with its WAV retry) once, the other once');
 });
 
 test("a turn's transcription stays shared through its own retries: the WAV a model that refuses the format is asked for, and the call without the user's languages (read-wait-fix1, shared through #hear)", async () => {
   const model = { id: 'txt', name: 'txt', input: ['text'] };
-  const ask = (/** @type {any} */ k, /** @type {any} */ h, shared = true) => k.voice.resolver('trip-1', 'w-1', undefined, shared)(model, asked([{ type: 'speech', id: h.id }]), false);
+  const ask = (/** @type {any} */ k, /** @type {any} */ h, shared = true) => k.voice.resolver('trip-1', 'w-1', undefined, shared)(model, asked([{ type: 'speech', id: h.id }]));
   const wav = await phone({}, { refuses: { groq: 'audio/webm' } });
   assert.equal(partsOf(await ask(wav, await wav.hear()))[0].text, 'what was said');
   assert.deepEqual(wav.llm.uploads.map((u) => [u.mediaType, u.shared]), [['audio/webm', true], ['audio/wav', true]], 'the WAV retry is shared');
@@ -562,7 +603,7 @@ test("a turn that stops stops the transcription's retries: the signal goes with 
   k.voice.sleep = () => new Promise((r) => setTimeout(r, 50));
   const h = await k.hear();
   const stop = new AbortController();
-  const asking = k.voice.resolver('trip-1', 'w-1')({ id: 'txt', name: 'txt', input: ['text'] }, asked([{ type: 'speech', id: h.id }]), false, stop.signal);
+  const asking = k.voice.resolver('trip-1', 'w-1')({ id: 'txt', name: 'txt', input: ['text'] }, asked([{ type: 'speech', id: h.id }]), { signal: stop.signal });
   await new Promise((r) => setTimeout(r, 10));
   stop.abort();
   await assert.rejects(asking);

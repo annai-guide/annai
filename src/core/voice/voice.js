@@ -2,7 +2,7 @@ import { readAppSettings, updateAppSettings } from '../settings.js';
 import { voiceMode, routeOf, offNote } from './mode.js';
 import { SYS, SYS_DEVICE, ensureDeviceScope, newId } from '../scopes.js';
 import { ProviderError } from '../llm/contract.js';
-import { COOLDOWN_MS, AllFailedError, askedBy, chatCandidates, nextStep, restOf, noLink } from '../llm/fallback.js';
+import { COOLDOWN_MS, chatCandidates, nextStep, restOf, noLink } from '../llm/fallback.js';
 import { speechKind, modelOf, modelNames, abilityOf, STAND_INS } from '../llm/config.js';
 import { Speaker, speechOutEntries, Arrivals, playStream } from './speaker.js';
 import { estimateSeconds } from './stream-start.js';
@@ -855,31 +855,33 @@ export class Voice {
 
   /**
    * The speech hook for llm.call (spec §10.3): heard speech resolved for each model attempt.
-   * Transcriptions are traced in scope, for the wake, and stop with the call's signal. plain: the model
-   * refused the audio format it was sent: WAV until annai restarts.
+   * Transcriptions are traced in scope, for the wake, and stop with the call's signal. The function's options: plain: the model
+   * refused the audio format it was sent: WAV until annai restarts; signal: the call's; standIn: callRole's last pass, where a segment nothing can hear
+   * for the model goes as not transcribed (resolveSpeech).
    * @param {string} scope @param {string} [wake] @param {string[]} [list] the speech-in list, when not the role's
    * @param {boolean} [shared] a half's turn that shares the link with the other half's: its transcriptions are timed on twice their bytes (§4.8)
-   * @param {Set<string>} [unheard] segments past the turn they were heard for: not transcribed where nothing can hear them (resolveSpeech)
-   * @param {Set<string>} [carried] filled with each segment the turn's requests send (resolveSpeech), for the agent's #pastTurn
-   * @returns {(model: { id?: string, name: string, input: string[] }, request: import('../llm/contract.js').Request, plain?: boolean, signal?: AbortSignal) => Promise<import('../llm/contract.js').Request>}
+   * @returns {(model: { id?: string, name: string, input: string[] }, request: import('../llm/contract.js').Request, o?: { plain?: boolean, signal?: AbortSignal, standIn?: boolean }) => Promise<import('../llm/contract.js').Request>}
    */
-  resolver(scope, wake, list, shared = false, unheard, carried) {
+  resolver(scope, wake, list, shared = false) {
     /** Transcription models whose send was cut in this call, or that couldn't be reached: asked once a call, as chat asks a cut model once (fallback.js's nextStep). @type {Set<string>} */
     const cut = new Set();
-    return async (model, request, plain, signal) => {
+    /** The asks that failed in this call, a transcription model's for one segment: not made again in it, whether in a later pass of the list or in the last pass (resolve.js), so a recording a model refused (it rests nothing) goes up once a call. @type {Set<string>} */
+    const failed = new Set();
+    return async (model, request, { plain, signal, standIn } = {}) => {
       if (plain && model.id) this.wavOnly.add(model.id);
-      const c = await this.#resolve(scope, wake, signal, shared, cut);
-      return resolveSpeech(request, model, { ...c, ...(list ? { list } : {}), plain: Boolean(model.id && this.wavOnly.has(model.id)), ...(unheard ? { unheard } : {}), ...(carried ? { carried } : {}) });
+      const c = await this.#resolve(scope, wake, signal, shared, cut, failed);
+      return resolveSpeech(request, model, { ...c, ...(list ? { list } : {}), plain: Boolean(model.id && this.wavOnly.has(model.id)), ...(standIn ? { standIn: true } : {}) });
     };
   }
 
-  /** @param {string} scope @param {string} [wake] @param {AbortSignal} [signal] @param {boolean} [shared] @param {Set<string>} [cut] the models cut in this call (resolver's) @returns {Promise<import('./resolve.js').Resolve>} */
-  async #resolve(scope, wake, signal, shared = false, cut = new Set()) {
+  /** @param {string} scope @param {string} [wake] @param {AbortSignal} [signal] @param {boolean} [shared] @param {Set<string>} [cut] the models cut in this call (resolver's) @param {Set<string>} [failed] the asks that failed in it (resolver's) @returns {Promise<import('./resolve.js').Resolve>} */
+  async #resolve(scope, wake, signal, shared = false, cut = new Set(), failed = new Set()) {
     const cfg = await this.llm.config();
     const types = this.llm.types();
     return {
       list: cfg.roles['speech-in']?.models ?? [],
       memory: this.memory,
+      failed,
       asr: (id) => speechKind(cfg, types, id) === 'in' && this.llm.bench.until(id) <= this.now() && !cut.has(id),
       transcribe: async (id, kept) => {
         const text = await this.#hear(id, kept, scope, wake, signal, shared);
@@ -908,8 +910,7 @@ export class Voice {
   /**
    * A segment's words, for the log (spec §10.3): a transcript made already, dictation's, or the
    * first entry that can write it down; for "Send audio to the model", the model that heard it
-   * (hearer), of its role, is asked. null when nothing could, or the segment isn't in memory; a model really asked that failed counts on the
-   * segment (Kept.failed); one resting, not in the list, or refused before any request (no format of its the phone makes) asked nothing and counts for nothing.
+   * (hearer), of its role, is asked. null when nothing could, or the segment isn't in memory.
    * @param {string} id @param {{ scope: string, wake?: string, hearer?: string, role?: string }} o
    * @returns {Promise<{ text: string, by: string } | null>} by: who wrote it down, by name
    */
@@ -917,35 +918,21 @@ export class Voice {
     const kept = this.memory.get(id);
     if (!kept) return null;
     let who = hearer ?? '';
-    let asked = false;
-    const c = await this.#resolve(scope, wake);
     const r = await textVersion(kept, {
-      ...c,
-      onFail: (/** @type {string} */ m, /** @type {unknown} */ e) => {
-        if (!(e instanceof ProviderError && e.said?.code === 'formats')) asked = true; // that phone's no-format refusal comes before any request: nothing was asked
-        c.onFail?.(m, e);
-      },
+      ...(await this.#resolve(scope, wake)),
       ...(hearer ? {
         hearer: async (/** @type {import('./resolve.js').Kept} */ k) => {
-          try {
-            // The sound goes as each model it reaches takes it, and only as sound.
-            const out = await this.llm.call({
-              role, prefer: hearer, level: 'off', scope, record: { tag: 'transcribe', ...(wake ? { wake } : {}) }, speech: this.resolver(scope, wake, ['send-audio']),
-              request: { system: [WRITE_DOWN, speakerLine(await this.languages())].filter(Boolean).join(' '), messages: [{ role: 'user', parts: [{ type: 'speech', id: k.id }] }], maxOutput: 400 },
-            });
-            who = out.modelId ?? hearer;
-            return String(out.reply.text ?? '').trim();
-          } catch (e) {
-            if (e instanceof AllFailedError && askedBy(e.attempts).length) asked = true; // a model that was passed over or resting asked nothing
-            throw e;
-          }
+          // The sound goes as each model it reaches takes it, and only as sound.
+          const out = await this.llm.call({
+            role, prefer: hearer, level: 'off', scope, record: { tag: 'transcribe', ...(wake ? { wake } : {}) }, speech: this.resolver(scope, wake, ['send-audio']),
+            request: { system: [WRITE_DOWN, speakerLine(await this.languages())].filter(Boolean).join(' '), messages: [{ role: 'user', parts: [{ type: 'speech', id: k.id }] }], maxOutput: 400 },
+          });
+          who = out.modelId ?? hearer;
+          return String(out.reply.text ?? '').trim();
         },
       } : {}),
     });
-    if (!r) {
-      if (asked) kept.failed = (kept.failed ?? 0) + 1;
-      return null;
-    }
+    if (!r) return null;
     const by = r.by === 'send-audio' ? who : r.by;
     const cfg = await this.llm.config();
     return { text: r.text, by: STAND_INS[by]?.name ?? (cfg.models[by] ? modelOf(cfg.models[by]).name : by) };

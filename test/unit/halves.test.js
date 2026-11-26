@@ -101,7 +101,7 @@ function watchSends(k) {
   };
   if (k.voice) {
     const resolver = k.voice.resolver.bind(k.voice);
-    // Whatever the loop hands on (the turn's unheard and carried sets too) goes on to the real one.
+    // Whatever the loop hands on goes on to the real one.
     k.voice.resolver = (/** @type {Parameters<import('../../src/core/voice/voice.js').Voice['resolver']>} */ ...args) => {
       seen.push([args[1], k.agent.koeState, 'resolver', args[3]]);
       return resolver(...args);

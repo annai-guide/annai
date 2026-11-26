@@ -340,6 +340,8 @@ export class Halves {
         calling: (context) => { if (context && context.to >= this.#stopped.seq) this.#stopped.on = false; },
         hold: () => 0, // Koe answers at once (GATHER)
         paused: () => !this.#kokoroCut,
+        // How Kokoro's last call ended (#down, #up): when it failed, Koe answers a line nothing can hear, with it as not transcribed (loop.js, the turn's standIn).
+        kokoroDown: () => Boolean(this.#lost.kokoro),
         failed: (why, e) => {
           const both = this.#down('koe', why, e);
           return this.#koeFailed() && (both ?? true);

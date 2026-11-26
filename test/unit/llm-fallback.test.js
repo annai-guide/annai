@@ -546,8 +546,8 @@ test('a model that refuses the audio format it was sent gets the same request ag
   const s = setup([[refusal, { text: 'Heard you.' }], [{ text: 'B heard you.' }]], { models: [{ input: ['text', 'audio'] }, { input: ['text', 'audio'] }] });
   /** @type {boolean[]} */
   const plain = [];
-  /** The heard speech as a resolver gives it: Ogg, or WAV when plain. @param {any} _m @param {any} _r @param {boolean} [wav] */
-  const speech = async (_m, _r, wav) => {
+  /** The heard speech as a resolver gives it: Ogg, or WAV when plain. @param {any} _m @param {any} _r @param {{ plain?: boolean }} [o] */
+  const speech = async (_m, _r, { plain: wav } = {}) => {
     plain.push(Boolean(wav));
     return { messages: [{ role: 'user', parts: [{ type: 'audio', mediaType: wav ? 'audio/wav' : 'audio/ogg', data: wav ? 'UklGRgAAAAA=' : 'T2dnUw==' }] }] };
   };
