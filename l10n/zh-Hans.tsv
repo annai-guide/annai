@@ -796,7 +796,7 @@ n9xh2y	ok	The plugin couldn't be downloaded ({0}: HTTP {1}). Try again later.	�
 16b6a3q	ok	The plugin wasn't installed: {0} doesn't match annai's catalog.	{0} 与 annai 的目录不符，所以没有安装该插件。	src/core/llm/official.js:173	{0} = name; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
 1mtcl9u	ok	It isn't a kind of backup place annai knows. Install a plugin that provides it.	annai 不支持这种备份位置类型。请安装提供该类型的插件。	src/core/llm/official.js:286	Note: said of a kind of backup place, whose id comes before it in the log.
 ul2t1z	ok	It isn't an endpoint type annai knows. Install a plugin that provides it.	annai 不支持这种端点类型。请安装提供该类型的插件。	src/core/llm/official.js:288	Note: said of an endpoint type, whose id comes before it in the log.
-5d81o3	draft	{0}, which is turned off, isn't switched on by this.	{0} 已处于关闭状态，此操作不会将其开启。	src/core/llm/official.js:300	{0} = name
+5d81o3	draft	{0}, which is turned off, isn't switched on by this.	{0} 已关闭，此操作不会将其开启。	src/core/llm/official.js:300	{0} = name
 1rnb3p5	ok	The plugin didn't provide a kind of backup place {0}.	该插件没有提供备份位置类型 {0}。	src/core/llm/official.js:309	{0} = type; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
 cpehgy	ok	The plugin didn't provide an endpoint type {0}.	该插件没有提供端点类型 {0}。	src/core/llm/official.js:311	{0} = type; Note: said of a plugin, and names it: the backups' Add shows it with no title to say whose it is.
 1jtsyij	ok	On a phone, localhost is the phone itself. A server on another computer needs an https address: annai calls only https addresses on your network, since browsers block plain http from an https page. One way is Tailscale Serve, with the phone on your tailnet: run {0} where the server is, then give annai {1}. The server must also allow CORS from annai.guide. Chrome 142 and later may ask you to allow local network access.	在手机上，localhost 指的是手机本身。另一台电脑上的服务器需要 https 地址。浏览器会拦截 https 页面发出的普通 http 请求，所以 annai 访问局域网内的服务器时只使用 https。一种方法是使用 Tailscale Serve，并让手机加入你的 tailnet：在服务器所在的电脑上运行 {0}，然后在 annai 中填写 {1}。服务器还必须允许来自 annai.guide 的 CORS 请求。Chrome 142 及更高版本可能会询问是否允许访问本地网络。	src/core/llm/provider-desc.js:123	{0} = serve(port); {1} = address
@@ -868,7 +868,7 @@ masbkh	ok	A skill with this id is installed already. Remove it first.	已安装�
 1863007	ok	It is being removed.	正在移除。	src/core/plugins.js:433	
 u30lhr	ok	It was updated. Restart annai to run the new version.	已更新。请重新启动 annai 来运行新版本。	src/core/plugins.js:434	
 12roxwh	ok	It keeps MCP servers, not settings: remove a server on its own screen.	保存的是 MCP 服务器，而不是设置。要移除服务器，请前往该服务器的页面。	src/core/plugins.js:603	
-1k8fwg2#other	ok	It didn't finish within # seconds.	# 秒内未完成。	src/core/plugins.js:811	plural; # = s; English: "It didn't finish within # second." (one), "It didn't finish within # seconds." (other); Note: a sentence of its own, under the card's "didn't start" title; after "Starting failed:" it is the reason.
+1k8fwg2#other	ok	It didn't finish within # seconds.	# 秒内未完成。	src/core/plugins.js:812	plural; # = s; English: "It didn't finish within # second." (one), "It didn't finish within # seconds." (other); Note: a sentence of its own, under the card's "didn't start" title; after "Starting failed:" it is the reason.
 u8bf72	ok	Notifications are on. Reminders come like this while annai is closed.	通知已开启。annai 关闭时，提醒会像这样推送过来。	src/core/push/mirror.js:75	
 1dxa9va	ok	Notifications are on again: reminders come like this while annai is closed.	通知已重新开启：annai 关闭时，提醒会像这样推送过来。	src/core/push/mirror.js:76	
 dcq7bh	ok	annai has a reminder for you. Open annai to see it.	你有一条提醒，打开 annai 即可查看。	src/core/push/mirror.js:83	Note: a notification for a reminder the phone couldn't read.
@@ -904,8 +904,8 @@ ip7w4y#other	ok	It didn't answer aloud within # seconds.	# 秒内没有语音回
 ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	这个名称已被 annai 官方插件使用，其他来源的插件不能再用。请联系作者改名。	src/core/registry.js:17	Note: "Ask its author" is asking a person (请让作者…), not the phones' permission choice Ask (询问).
 1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	这个名称属于 annai 官方插件，但已安装的同名插件来自其他来源，因此不会使用它。请在设置 → 插件中移除它，然后重试。	src/core/registry.js:18	
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	请在设置 → 插件中开启它，然后重试。	src/core/registry.js:19	
-mzoa87	ok	It is switched off after repeated errors.	因多次出错，已自动关闭。	src/core/registry.js:284	
-dhg5k6	ok	Starting failed: {0}	启动失败：{0}	src/core/registry.js:300	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
+mzoa87	ok	It is switched off after repeated errors.	因多次出错，已自动关闭。	src/core/registry.js:287	
+dhg5k6	ok	Starting failed: {0}	启动失败：{0}	src/core/registry.js:303	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
 19bu7pw	ok	Version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	版本 {0} 会导致 {1} 无法运行，因为它需要 {2} {3}。请先更新 {4}，或保留当前版本。	src/core/requires.js:52	{0} = version; {1} = them; {2} = it; {3} = r.version; {4} = them
 14dda2r	draft	It needs {0}, which is turned off.	需要 {0}，但它已关闭。	src/core/requires.js:79	{0} = shown
 8xu6se	ok	It needs {0}, which isn't installed. Install it from {1} first, then try again.	需要 {0}，但尚未安装。请先从 {1} 安装，然后再试一次。	src/core/requires.js:82	{0} = r.id; {1} = r.homepage

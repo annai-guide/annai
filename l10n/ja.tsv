@@ -868,7 +868,7 @@ masbkh	ok	A skill with this id is installed already. Remove it first.	同じID�
 1863007	ok	It is being removed.	削除中です。	src/core/plugins.js:433	
 u30lhr	ok	It was updated. Restart annai to run the new version.	アップデートされました。新しいバージョンを使うには、annaiを再起動してください。	src/core/plugins.js:434	
 12roxwh	ok	It keeps MCP servers, not settings: remove a server on its own screen.	設定ではなくMCPサーバーを保存しています。サーバーはそれぞれの画面で削除してください。	src/core/plugins.js:603	
-1k8fwg2#other	ok	It didn't finish within # seconds.	#秒以内に完了しませんでした。	src/core/plugins.js:811	plural; # = s; English: "It didn't finish within # second." (one), "It didn't finish within # seconds." (other); Note: a sentence of its own, under the card's "didn't start" title; after "Starting failed:" it is the reason.
+1k8fwg2#other	ok	It didn't finish within # seconds.	#秒以内に完了しませんでした。	src/core/plugins.js:812	plural; # = s; English: "It didn't finish within # second." (one), "It didn't finish within # seconds." (other); Note: a sentence of its own, under the card's "didn't start" title; after "Starting failed:" it is the reason.
 u8bf72	ok	Notifications are on. Reminders come like this while annai is closed.	通知がオンになりました。annaiを閉じているときは、リマインダーがこのように届きます。	src/core/push/mirror.js:75	
 1dxa9va	ok	Notifications are on again: reminders come like this while annai is closed.	通知が再びオンになりました。annaiを閉じているときは、リマインダーがこのように届きます。	src/core/push/mirror.js:76	
 dcq7bh	ok	annai has a reminder for you. Open annai to see it.	リマインダーがあります。annaiを開いて確認してください。	src/core/push/mirror.js:83	Note: a notification for a reminder the phone couldn't read.
@@ -904,8 +904,8 @@ ip7w4y#other	ok	It didn't answer aloud within # seconds.	#秒待っても音声�
 ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	この名前はannai公式のプラグインが使っているため、ほかから入手したパッケージには使えません。作者に名前の変更を依頼してください。	src/core/registry.js:17	Note: "Ask its author" is asking a person (頼む), not the phones' permission choice Ask (確認).
 1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	この名前はannai公式のプラグインが使っていますが、インストールされているのはほかから入手したものなので、annaiでは使いません。「設定 → プラグイン」で削除してから、もう一度お試しください。	src/core/registry.js:18	
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	「設定 → プラグイン」でオンにしてから、もう一度お試しください。	src/core/registry.js:19	
-mzoa87	ok	It is switched off after repeated errors.	エラーが続いたため、オフになっています。	src/core/registry.js:284	
-dhg5k6	ok	Starting failed: {0}	起動に失敗しました：{0}	src/core/registry.js:300	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
+mzoa87	ok	It is switched off after repeated errors.	エラーが続いたため、オフになっています。	src/core/registry.js:287	
+dhg5k6	ok	Starting failed: {0}	起動に失敗しました：{0}	src/core/registry.js:303	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
 19bu7pw	ok	Version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	バージョン{0}にすると{1}が動かなくなります（{1}には{2} {3}が必要です）。先に{4}をアップデートするか、このバージョンのままにしてください。	src/core/requires.js:52	{0} = version; {1} = them; {2} = it; {3} = r.version; {4} = them
 14dda2r	draft	It needs {0}, which is turned off.	{0}が必要ですが、オフになっています。	src/core/requires.js:79	{0} = shown
 8xu6se	ok	It needs {0}, which isn't installed. Install it from {1} first, then try again.	{0}が必要ですが、インストールされていません。{1} からインストールしてから、もう一度お試しください。	src/core/requires.js:82	{0} = r.id; {1} = r.homepage
