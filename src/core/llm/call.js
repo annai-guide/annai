@@ -11,7 +11,7 @@ import { formatOf } from '../voice/formats.js';
 import { SYS_DEVICE, ensureDeviceScope } from '../scopes.js';
 import { forget as forgetHistory } from '../forget.js';
 import { anySignal } from '../signals.js';
-import { isFetchFailure } from '../registry.js';
+import { isFetchFailure, isBadAddress } from '../registry.js';
 
 /**
  * One model call (spec §9.1): the endpoint type builds the request, annai merges in the
@@ -638,8 +638,9 @@ export function typeWorked(type, registry) {
  * of time "timeout", stopped "cancelled", whatever was thrown as it stopped); then a reply whose body annai couldn't read (watched), "network",
  * whatever the type made of it or the browser calls it (Firefox: annai's read of a body cut mid-way gives a TypeError, the type's `res.json()` an AbortError); then an AbortError or TimeoutError the call's
  * signal didn't cause, by its name (the type's own timer, say); then the type's own ProviderError. A `run` type makes its own requests, so annai
- * has no position for them: one the browser couldn't make or finish (isFetchFailure, by the engines' words, as for a tool) is "unreachable", the
- * link's, as annai's own request is (cannotConnect). Anything else is a bug in its plugin, counted (spec §5.5). @param {unknown} e @param {AbortSignal} signal @param {EndpointType} type
+ * has no position for them: one the browser couldn't make or finish (isFetchFailure, by its words, as for a tool) is "unreachable", the
+ * link's, as annai's own request is (cannotConnect), and an address as typed that isn't one (isBadAddress) "bad-request", the user's to fix
+ * (annai checks no address for a run type). Anything else is a bug in its plugin, counted (spec §5.5). @param {unknown} e @param {AbortSignal} signal @param {EndpointType} type
  * @param {import('../registry.js').Registry} [registry] @param {unknown} [dropped] the error the reply's body failed with (watched)
  */
 export function asProviderError(e, signal, type, registry, dropped) {
@@ -654,6 +655,7 @@ export function asProviderError(e, signal, type, registry, dropped) {
   if (!own && name === 'AbortError') return stopped();
   if (own) return e;
   if (type.run && isFetchFailure(e)) return new ProviderError('unreachable', /** @type {TypeError} */ (e).message, { cause: e }); // as cannotConnect, a stop read above
+  if (type.run && isBadAddress(e)) return new ProviderError('bad-request', /** @type {TypeError} */ (e).message, { cause: e }); // the address as typed, the user's to fix
   const by = ownerOf(type, registry);
   if (by) registry?.fail(by, /* en */ `endpoint type ${type.type}`, e);
   return new ProviderError('plugin', String(/** @type {any} */ (e)?.message ?? e), { cause: e });

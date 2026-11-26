@@ -150,7 +150,7 @@ test("a bug in an endpoint type counts against its plugin, and the call fails as
   assert.equal(logged[0].actor, 'plugin:run-plugin');
 });
 
-test("a run type whose own request the browser couldn't make or finish (Chromium's, WebKit's, Firefox's words) fails as 'unreachable' and counts nothing: five in a row leave its plugin on; its TypeError in other words still counts (run-type-next)", async () => {
+test("a run type whose own request the browser couldn't make or finish (Chromium's, WebKit's, Firefox's words) fails as 'unreachable' and counts nothing: five in a row leave its plugin on; its TypeError in other words still counts; its own Invalid URL is a 'bad-request', counted nothing (run-type-next)", async () => {
   /** @type {any[]} */
   const logged = [];
   const registry = new Registry({ log: (ev) => logged.push(ev) });
@@ -167,6 +167,11 @@ test("a run type whose own request the browser couldn't make or finish (Chromium
   registry.add('bug-plugin', 'endpoint-type', buggy);
   for (let n = 0; n < 3; n++) await assert.rejects(callOnce({ type: buggy, endpoint: endpoint(), model: model(), key: null, request, registry }), (e) => e instanceof ProviderError && e.kind === 'plugin');
   assert.deepEqual([registry.isDisabled('bug-plugin'), registry.isDisabled('run-plugin')], [true, false]);
+  // Its own `new URL` of an address as typed that isn't one (annai checks no address for a run type): the user's to fix, counted nothing.
+  const typed = { ...runType(async function* () { new URL('llm.example/v1'); }), type: 'typed-run' };
+  registry.add('typed-plugin', 'endpoint-type', typed);
+  for (let n = 0; n < 3; n++) await assert.rejects(callOnce({ type: typed, endpoint: endpoint(), model: model(), key: null, request, registry }), (e) => e instanceof ProviderError && e.kind === 'bad-request');
+  assert.equal(registry.isDisabled('typed-plugin'), false);
 });
 
 test('M6 fix: the plugin blamed for a bug is the one that registered the type, never a pluginId the type carries', async () => {
