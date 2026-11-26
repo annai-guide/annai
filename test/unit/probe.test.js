@@ -273,8 +273,12 @@ test('an address annai takes keys to, alone, is checked before anything is sent:
   await assert.rejects(probe('llm.example.com/v1', KEY, counting), /isn't a web address/);
   // A key pasted into the address field isn't shown back.
   await assert.rejects(probe(KEY, null, counting), (/** @type {any} */ e) => /isn't a web address/.test(e.message) && !e.message.includes(KEY));
+  // The words are annai's as they are, never rewritten around the typed text: a text that is a piece of them reads right too.
+  for (const typed of ['https://', 'e', 'a web address']) {
+    await assert.rejects(probe(typed, null, counting), { message: "That isn't a web address: give it with https:// in front." }, typed);
+  }
   // annai's own check says it first (helpers.addressShown); the probe's own words stay for a host from before it.
-  await assert.rejects(probe('https://me:secret@llm.example.com/v1', KEY, counting), /name or password before an @, which a request can't carry\. Leave it out\./);
+  await assert.rejects(probe('https://me:secret@llm.example.com/v1', KEY, counting), /name or password before an @\. Leave it out\.$/);
   await assert.rejects(probe('https://me:secret@llm.example.com/v1', KEY, { ...counting, problem: () => null }), /alone/);
   await assert.rejects(probe('https://llm.example.com/v1?key=abc', KEY, counting), /alone/);
   await assert.rejects(probe('', KEY, counting), /Give the server's address/);

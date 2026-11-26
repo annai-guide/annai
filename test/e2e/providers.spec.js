@@ -192,15 +192,15 @@ test("fix pass: an address typed without https://, or with a name or password be
   await page.getByLabel('Address', { exact: true }).fill('llm.example.com/v1');
   await page.getByLabel('API key').fill('sk-test-typed-address-1');
   await page.getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByText(/What you typed isn't a web address/)).toBeVisible();
+  await expect(page.getByText("That isn't a web address: give it with https:// in front.")).toBeVisible();
   await expect(page.getByText(/llm\.example\.com/)).toHaveCount(0); // the words don't repeat what was typed
   await page.reload();
   await expect(page.getByLabel('Address', { exact: true })).toHaveValue('');
   await expect(page.getByLabel('API key')).toHaveAttribute('placeholder', 'not set');
-  // No browser makes a request to an address with a name or password before an @: refused, never repeating the address.
+  // Chromium and WebKit make no request to an address with a name or password before an @: refused, never repeating the address.
   await page.getByLabel('Address', { exact: true }).fill('https://someone:pw-typed@llm.example.com/v1');
   await page.getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByText("This address holds a name or password before an @, which a request can't carry. Leave it out.")).toBeVisible();
+  await expect(page.getByText('This address holds a name or password before an @. Leave it out.')).toBeVisible();
   await expect(page.getByText(/pw-typed/)).toHaveCount(0);
   await page.reload();
   await expect(page.getByLabel('Address', { exact: true })).toHaveValue('');
@@ -218,7 +218,7 @@ test("fix pass: an address typed without https://, or with a name or password be
   // The same for a name and password in an ability's own address: the words, the password nowhere on the page, nothing saved.
   await own.fill('https://someone:pw-voice-own@tts.example.com/v1');
   await own.blur();
-  await expect(voice.getByRole('alert')).toHaveText("This address holds a name or password before an @, which a request can't carry. Leave it out.");
+  await expect(voice.getByRole('alert')).toHaveText('This address holds a name or password before an @. Leave it out.');
   await expect(page.getByText(/pw-voice-own/)).toHaveCount(0);
   await page.reload();
   await expect(page.getByRole('region', { name: 'Voice', exact: true }).getByLabel('Its own address')).toHaveValue('');

@@ -79,11 +79,11 @@ test("a provider error annai writes keeps what it was: a card makes Japanese fro
 });
 
 test("a typed address, prices and a server's answer: the screens' words, and English for a description's errors and the log", async () => {
-  assert.equal(addressProblem('example.com'), "What you typed isn't a web address: give it with https:// in front.");
-  assert.equal(addressShown('example.com'), '入力した内容はWebアドレスではありません。先頭に https:// を付けてください。');
+  assert.equal(addressProblem('example.com'), "That isn't a web address: give it with https:// in front.");
+  assert.equal(addressShown('example.com'), 'Webアドレスではありません。先頭に https:// を付けてください。');
   assert.equal(addressShown('https://example.com'), null);
-  assert.equal(addressShown('https://someone:pw-typed@example.com'), 'このアドレスには、@の前にユーザー名かパスワードが含まれていて、リクエストでは送信できません。その部分を削除してください。');
-  assert.equal(addressProblem('https://someone:pw-typed@example.com'), "This address holds a name or password before an @, which a request can't carry. Leave it out.");
+  assert.equal(addressShown('https://someone:pw-typed@example.com'), 'このアドレスには、@の前にユーザー名かパスワードが含まれています。その部分を削除してください。');
+  assert.equal(addressProblem('https://someone:pw-typed@example.com'), 'This address holds a name or password before an @. Leave it out.');
   assert.equal(pricesProblem({ input: -1 }), 'input is not a price: it is a number, not below 0.');
   assert.equal(pricesShown({ input: -1 }), 'inputが料金として正しくありません。0以上の数値にしてください。');
   const e = await answerJSON(new Response('nope', { status: 503 }), 'en.wikipedia.org').catch((x) => x);

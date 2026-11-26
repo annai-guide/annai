@@ -61,14 +61,14 @@ test("a typed text that isn't an address is refused in words that never repeat i
   const KEY = 'sk-live-0123456789abcdef';
   for (const typed of [KEY, `${KEY}/v1`, 'api.example.com/v1']) {
     for (const said of [addressProblem(typed), addressShown(typed), ...checkProviderDesc({ ...OPENAI_LIKE, baseUrl: typed })]) {
-      assert.match(String(said), /^(\$\.baseUrl: )?What you typed isn't a web address: give it with https:\/\/ in front\.$/, typed);
+      assert.match(String(said), /^(\$\.baseUrl: )?That isn't a web address: give it with https:\/\/ in front\.$/, typed);
       assert.ok(!String(said).includes(typed) && !String(said).includes(KEY), typed);
     }
   }
 });
 
-test("an address with a name or password before an @ is refused, in words that never repeat the address: no browser sends a request to one", () => {
-  const WORDS = "This address holds a name or password before an @, which a request can't carry. Leave it out.";
+test("an address with a name or password before an @ is refused, in words that never repeat the address: Chromium and WebKit send no request to one", () => {
+  const WORDS = 'This address holds a name or password before an @. Leave it out.';
   for (const typed of ['https://someone:pw-typed@llm.example.com/v1', 'https://someone@llm.example.com/v1', 'https://:pw-typed@llm.example.com/v1', 'http://someone:pw-typed@localhost:8000/v1']) {
     assert.equal(addressProblem(typed), WORDS, typed);
     assert.equal(addressShown(typed), WORDS, typed);

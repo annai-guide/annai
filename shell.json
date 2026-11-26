@@ -1,5 +1,5 @@
 {
-  "build": "7f099db6b931",
+  "build": "1390334a5ca0",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -82,7 +82,7 @@
     "/src/core/llm/fallback.js": "4d0e7fda1066",
     "/src/core/llm/move-over.js": "9584243ec1f4",
     "/src/core/llm/official.js": "43a4783de11b",
-    "/src/core/llm/provider-desc.js": "c0d83c45bd21",
+    "/src/core/llm/provider-desc.js": "472c12d34b5d",
     "/src/core/llm/providers.js": "f6a6163ddf08",
     "/src/core/llm/setup.js": "8691e7d5248f",
     "/src/core/llm/cost.js": "96142e038b97",
@@ -302,8 +302,8 @@
     "/src/ui/voice-chip.js": "4e6d1d08b59c",
     "/src/ui/wake-lock.js": "b6348174ee6f",
     "/src/ui/welcome.js": "80a43482358a",
-    "/l10n/ja.json": "dba7e4a3d7d8",
-    "/l10n/zh-Hans.json": "b7453d5511b5",
-    "/l10n/zh-Hant.json": "76ac1b4bac2c"
+    "/l10n/ja.json": "2f5a2655db5d",
+    "/l10n/zh-Hans.json": "0403945ec6ae",
+    "/l10n/zh-Hant.json": "bbd1df5168b4"
   }
 }

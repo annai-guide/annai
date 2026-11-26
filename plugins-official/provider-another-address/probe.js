@@ -54,8 +54,7 @@ export function baseOf(address, { problem, l10n: { t } }) {
   const typed = String(address ?? '').trim();
   if (!typed) throw new Error(t`Give the server's address first, with https:// in front.`);
   const wrong = problem(typed);
-  // In words that don't show what was typed: a key pasted into the address field stays off the screen.
-  if (wrong) throw new Error(wrong.split(typed).join(t`What you typed`));
+  if (wrong) throw new Error(wrong);
   const u = new URL(typed);
   if (u.username || u.password || u.search || u.hash) throw new Error(t`Give the address alone, without a name and password, "?…" or "#…": a key goes in its own field.`);
   return `${u.origin}${u.pathname.replace(/\/{2,}/g, '/').replace(/\/+$/, '')}`;
