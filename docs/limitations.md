@@ -1744,3 +1744,10 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the traveller sees:** a third-party plugin whose `activate()` runs past the 10-second start limit, turned on again (or installed, or updated) while that `activate()` still runs: when the old one settles, annai takes down its registrations by the plugin's id, the new start's tools among them, so the plugin is on without its tools until annai starts again. Rare: it needs an `activate()` over 10 seconds and a start during it.
 - **Why:** a start's entry is released at the time limit, before its `activate()` settles (plugins.js `start`, `#inTime`). Found by plugin-fails-next's third re-review (2026-11-26, by reading).
 - **Revisit when:** the next version: keep a start's entry until its `activate()` settles.
+
+### A plugin an older annai switched off for failed starts stays off with no card
+- **Kind:** known limitation.
+- **What the traveller sees:** a plugin that an annai from before 2026-11-26 switched off at its third launch that failed to start stays off after the update, with no card, until the traveller turns it on in Settings → Plugins, like one they turned off themselves; a setup tap that needs it says it "is turned off".
+- **Why:** that annai wrote the switch-off into the traveller's own on/off switch; since plugin-fails-next annai never writes it and keeps no launch count, so nothing tells such a plugin from one the traveller turned off. A card would need the stored count the user's answer U148 had go. The user's trace (counts only, 2026-11-26) has no plugin switch-off events, so probably no such plugin is on their phone.
+- **Revisit when:** a traveller finds a plugin off that they didn't turn off.
+- **Approved:** 2026-11-26, chief's decision C262 (not the user's words), Q-AQ option (1); to undo: "one card at the next launch for a plugin an older annai switched off".
