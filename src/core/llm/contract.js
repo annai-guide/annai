@@ -241,10 +241,7 @@ const originOf = (url) => {
   }
 };
 
-/**
- * An ability whose address isn't one (none, not http(s), or one a run type's own code can't parse): a bad-request, the user's to fix, in the
- * words that say so. @param {{ name?: string, ability?: string }} endpoint @param {{ named: boolean, kind: string, name: string }} [ability]
- */
+/** An ability's address that isn't one: the user's to fix. @param {{ name?: string, ability?: string }} endpoint @param {{ named: boolean, kind: string, name: string }} [ability] */
 export function noAddress(endpoint, ability) {
   const of = ability ?? { named: true, kind: '', name: endpoint.ability ?? 'ability' };
   return new ProviderError('bad-request', /* en */ `${endpoint.name ?? 'This provider'}'s ${of.name} has no working address. Give its address in Settings → Models.`,

@@ -456,7 +456,7 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     }
   } catch (e) {
     clearTimeout(t);
-    // A run type's own code given the address as typed (annai checks none for it) that can't parse it: the user's to fix, as sameOrigin's.
+    // A run type's own unparsable address (annai checks none for it): the user's, as sameOrigin's.
     let err = type.run && isBadAddress(e) ? noAddress(endpoint, ability) : asProviderError(e, linked, type, registry, dropped());
     // With a photo's, a PDF's or a recording's bytes in what was sent (not the turns a kept one holds), likelier the send than the model; text
     // alone stays late (a server that never streams).

@@ -249,10 +249,7 @@ export function traceUrl(url, secrets = [], unread = false) {
   }
 }
 
-/**
- * The requested address's own name and password (`https://name:password@host/…`), as written and decoded, from 4 characters (as the model trace's
- * urlSecrets): Chromium refuses such an address and quotes it whole in its words. @param {unknown} url @returns {string[]}
- */
+/** An address's own name:password and password, as written and decoded, from 4 characters (urlSecrets'): Chromium's refusal quotes it. @param {unknown} url */
 function ownCredentials(url) {
   const info = /^[a-z][a-z0-9+.-]*:\/\/([^/?#@]*)@/i.exec(String(url))?.[1];
   if (!info) return [];
