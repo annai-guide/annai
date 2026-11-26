@@ -3525,3 +3525,33 @@ test("a reader's photo whose send is cut at its time says Thinking again when it
   assert.ok(!seen.slice(3).includes('Sending… · tap to stop'), 'no Sending… after the cut');
   assert.equal(k.agent.state.label, 'Tap to talk');
 });
+
+test("a recording that goes up to the transcription model for her turn says Sending…, then Thinking, then her answer (sending2-next)", async (t) => {
+  useClock(t);
+  const k = await agentKit([[say('Ramen is near.')]], { voice: { speechIn: ['m-hear'], hears: ['where should we eat'] } });
+  const hears = k.llm.transcribe;
+  /** @type {() => void} */
+  let open = () => {};
+  const opened = new Promise((r) => { open = () => r(undefined); });
+  let asked = 0;
+  // speechCall's own sending (on before the recording's POST, off at its headers: llm-speech.test.js), behind a link held until it opens.
+  k.llm.transcribe = async (/** @type {any} */ c) => {
+    asked++;
+    c.onEvent?.({ type: 'sending', on: true });
+    await opened;
+    c.onEvent?.({ type: 'sending', on: false });
+    return hears(c);
+  };
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  const seen = dockAndCards(k);
+  await hear(k, 'where-eat');
+  await until(() => asked === 1);
+  assert.deepEqual(k.agent.state, { name: 'thinking', label: 'Sending… · tap to stop', sending: true }, "her turn's transcription is going up");
+  open();
+  await idleAtOnce(k);
+  const at = seen.indexOf('Sending… · tap to stop');
+  assert.deepEqual(seen.slice(at - 1, at + 2), ['Thinking · tap to stop', 'Sending… · tap to stop', 'Thinking · tap to stop'], 'Thinking, the recording going up, then Thinking once it is heard');
+  assert.equal(seen.filter((s) => s === 'Sending… · tap to stop').length, 1, 'her own request of words says Thinking');
+  assert.match(JSON.stringify(k.requests[0].messages), /where should we eat/, 'her model got the words');
+});
