@@ -187,7 +187,7 @@ export async function agentKit(scripts, { models = [], open = true, agent: agent
     call: async (c) => callRole({
       role: c.role ?? 'main', request: c.request, level: c.level, config: await readConfig(ws), types, keyFor: async () => null, bench,
       signal: c.signal, onEvent: c.onEvent, prefer: c.prefer, record: c.record, repairImages: c.repairImages, ...(waits ? {} : { sleep: async () => {} }), trace: modelTrace(store, c.scope ?? SYS),
-      speech: c.speech, firstOutputMs: c.firstOutputMs, read: c.read, readings: c.readings, askResting: c.askResting, keepNative: c.keepNative, shared: c.shared, fetch,
+      speech: c.speech, firstOutputMs: c.firstOutputMs, read: c.read, readings: c.readings, askResting: c.askResting, standIn: c.standIn, keepNative: c.keepNative, shared: c.shared, fetch,
     }),
     types: () => types,
     /** @param {{ modelId: string, text: string }} c */

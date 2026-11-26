@@ -7,6 +7,7 @@ import { sse } from '../../src/core/llm/sse.js';
 import { parsePartialJSON } from '../../src/core/llm/partial-json.js';
 import { retry } from '../../src/core/llm/retry.js';
 import { modelOf } from '../../src/core/llm/config.js';
+import { NOT_TRANSCRIBED } from '../../src/core/voice/resolve.js';
 import { activate as scripted } from '../../plugins-official/scripted-model/index.js';
 import { activate as chat } from '../../plugins-official/chat-completions/index.js';
 
@@ -70,6 +71,55 @@ test('a model nothing in the speech-in list can reach is skipped as "no-speech";
   });
   assert.equal(r.reply.text, 'ok');
   assert.deepEqual(r.attempts.map((a) => [a.outcome, a.error ?? '']), [['no-speech', 'nothing in the speech-in list worked for model-0'], ['ok', '']]);
+});
+
+/** Audio for a model that takes it; else, in the last pass (standIn), the stand-in; else nothing could hear it (resolveSpeech's rule). @param {any} model @param {any} request @param {boolean} [_plain] @param {AbortSignal} [_signal] @param {boolean} [standIn] */
+const deafUnlessLast = async (model, request, _plain, _signal, standIn) => {
+  if (model.input.includes('audio')) return resolve(model, request);
+  if (!standIn) throw Object.assign(new Error(`nothing in the speech-in list worked for ${model.name}`), { said: { code: 'not-heard', name: model.name } });
+  return { ...request, messages: request.messages.map((/** @type {any} */ m) => ({ role: m.role, parts: m.parts.map((/** @type {any} */ p) => (p.type === 'speech' ? { type: 'text', text: NOT_TRANSCRIBED } : p)) })) };
+};
+/** The scripted type, keeping what each model was sent. @param {[string, string[]][]} sent */
+const keeping = (sent) => ({ ...scriptedType, run: (/** @type {any} */ c) => { sent.push([c.model.providerId, c.request.messages.flatMap((/** @type {any} */ m) => m.parts.map((/** @type {any} */ p) => p.text ?? p.type))]); return scriptedType.run(c); } });
+
+test('the last pass (standIn): once every model was passed over for "no-speech", they are asked again in the order they were tried, the speech as not transcribed; without it the call fails as before', async () => {
+  const cfg = config([{ script: [{ error: 'bad-request', status: 400 }], input: ['text'] }, { script: [{ text: 'Sorry, I could not hear that.' }], input: ['text'] }]);
+  /** @type {[string, string[]][]} */
+  const sent = [];
+  const c = { role: 'main', request: heardRequest, config: cfg, types: new Map([['scripted', keeping(sent)]]), keyFor: async () => null, sleep: async () => {}, speech: deafUnlessLast };
+  await assert.rejects(callRole({ ...c, bench: new Bench() }), (/** @type {any} */ e) => e.attempts.map((/** @type {any} */ a) => a.outcome).join() === 'no-speech,no-speech', 'a side job passes no standIn');
+  assert.deepEqual(sent, [], 'nothing was sent');
+  const r = await callRole({ ...c, bench: new Bench(), standIn: true });
+  assert.equal(r.reply.text, 'Sorry, I could not hear that.');
+  assert.deepEqual(r.attempts.map((a) => `${a.model}:${a.outcome}`), ['m-0:no-speech', 'm-1:no-speech', 'm-0:bad-request', 'm-1:ok'], 'the first one failed for its own reason, and the next was asked');
+  assert.deepEqual(sent, [['model-0', ['[heard]', NOT_TRANSCRIBED]], ['model-1', ['[heard]', NOT_TRANSCRIBED]]]);
+});
+
+test('the last pass comes only after every model was tried: a later model that takes audio gets the sound, and the one before it is sent nothing', async () => {
+  const cfg = config([{ script: [{ text: 'never' }], input: ['text'] }, { script: [{ text: 'I hear you.' }], input: ['text', 'audio'] }]);
+  /** @type {[string, string[]][]} */
+  const sent = [];
+  const r = await callRole({ role: 'main', request: heardRequest, config: cfg, types: new Map([['scripted', keeping(sent)]]), keyFor: async () => null, bench: new Bench(), speech: deafUnlessLast, standIn: true });
+  assert.equal(r.reply.text, 'I hear you.');
+  assert.deepEqual(r.attempts.map((a) => `${a.model}:${a.outcome}`), ['m-0:no-speech', 'm-1:ok']);
+  assert.deepEqual(sent, [['model-1', ['[heard]', 'audio']]]);
+});
+
+test('the last pass takes the second pass too: a model that sees no photos, with a photo in the newest message after a heard line, gets its reading and the line as not transcribed', async () => {
+  const cfg = config([{ script: [{ text: 'A menu, and I could not hear you.' }], input: ['text'] }]);
+  /** @type {[string, string[]][]} */
+  const sent = [];
+  const photo = { type: 'image', mediaType: 'image/webp', data: 'AAAA', hash: 'h1', path: '/trip/files/menu.webp' };
+  /** @type {any} */
+  const request = { newestPhoto: true, messages: [heardRequest.messages[0], { role: 'assistant', parts: [{ type: 'text', text: 'Hm?' }] }, { role: 'user', parts: [{ type: 'text', text: 'What is this?' }, photo] }] };
+  /** @type {string[]} */
+  const reads = [];
+  const read = async (/** @type {any} */ part) => { reads.push(part.path); return /** @type {any[]} */ ([{ type: 'text', text: '[a photo] What it shows: a menu.' }]); };
+  const r = await callRole({ role: 'main', request, config: cfg, types: new Map([['scripted', keeping(sent)]]), keyFor: async () => null, bench: new Bench(), speech: deafUnlessLast, read, standIn: true });
+  assert.equal(r.reply.text, 'A menu, and I could not hear you.');
+  assert.deepEqual(r.attempts.map((a) => a.outcome), ['no-images', 'no-speech', 'no-images', 'ok']);
+  assert.deepEqual(sent, [['model-0', ['[heard]', NOT_TRANSCRIBED, 'Hm?', 'What is this?', '[a photo] What it shows: a menu.']]]);
+  assert.deepEqual(reads, ['/trip/files/menu.webp', '/trip/files/menu.webp'], 'read in its second pass and in the last (a turn keeps one reading a call: the loop\'s readMemo)');
 });
 
 test('audio goes only to a model that takes audio, and speech never reaches a provider unresolved', () => {

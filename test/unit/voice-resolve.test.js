@@ -68,21 +68,21 @@ test('a transcription model that fails is benched and the next one hears it; wit
   await assert.rejects(resolveSpeech(asked([{ type: 'speech', id: 's-2' }]), model('M2', ['text']), none.c), /nothing in the speech-in list worked for M2/);
 });
 
-test('a segment past its own turn (unheard) goes as not transcribed where nothing can hear it, and as sound or words where something can', async () => {
+test("with standIn (callRole's last pass), a segment nothing can hear for the model goes as not transcribed; the list is still walked for each, so one something hears goes as its words, and a model that takes audio gets the sound", async () => {
   const memory = new HeardMemory();
   memory.keep(segment('s-1'));
   memory.keep(segment('s-2'));
-  const { c } = deps(memory, { failing: ['asr-a', 'asr-b'] });
+  const { c } = deps(memory);
+  /** @type {string[]} */
+  const asks = [];
+  // A recording the transcription models refuse (s-1), and one they hear (s-2): a refusal rests nothing, so each is asked again.
+  const refusing = { ...c, onFail: () => {}, transcribe: async (/** @type {string} */ id, /** @type {any} */ kept) => { asks.push(`${id} ${kept.id}`); if (kept.id === 's-1') throw new Error('refused'); return `words of ${kept.id} by ${id}`; } };
   const req = asked([{ type: 'speech', id: 's-1' }, { type: 'speech', id: 's-2' }, { type: 'text', text: '[typed] Hello' }]);
-  const unheard = new Set(['s-1']);
-  // s-2, heard for this turn, still fails it: a later model may hear it.
-  await assert.rejects(resolveSpeech(req, model('M2', ['text']), { ...c, unheard }), /nothing in the speech-in list worked for M2/);
-  unheard.add('s-2');
-  assert.deepEqual(partsOf(await resolveSpeech(req, model('M2', ['text']), { ...c, unheard })), [{ type: 'text', text: NOT_TRANSCRIBED }, { type: 'text', text: NOT_TRANSCRIBED }, { type: 'text', text: '[typed] Hello' }]);
-  assert.equal(partsOf(await resolveSpeech(req, model('M1', ['text', 'audio']), { ...c, unheard }))[0].type, 'audio', 'a model that takes audio still hears it');
+  await assert.rejects(resolveSpeech(req, model('M2', ['text']), refusing), /nothing in the speech-in list worked for M2/, 'without it, the model is skipped');
+  assert.deepEqual(partsOf(await resolveSpeech(req, model('M2', ['text']), { ...refusing, standIn: true })), [{ type: 'text', text: NOT_TRANSCRIBED }, { type: 'text', text: 'words of s-2 by asr-a' }, { type: 'text', text: '[typed] Hello' }]);
+  assert.deepEqual(asks, ['asr-a s-1', 'asr-b s-1', 'asr-a s-1', 'asr-b s-1', 'asr-a s-2'], 'each entry was asked for s-1 again before the stand-in');
+  assert.equal(partsOf(await resolveSpeech(req, model('M1', ['text', 'audio']), { ...refusing, standIn: true }))[0].type, 'audio', 'a model that takes audio still hears it');
   assert.equal(memory.size, 2, 'the sound stays, to be written down');
-  const back = deps(memory);
-  assert.deepEqual(partsOf(await resolveSpeech(req, model('M2', ['text']), { ...back.c, unheard }))[0], { type: 'text', text: 'words of s-1 by asr-a' }, 'and its words, once a transcription model hears');
 });
 
 test("dictation's words go to every model; words written down win; a kept clip still works; nothing left is said so", async () => {
