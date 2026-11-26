@@ -13,6 +13,8 @@ import { openApp, waitForServiceWorker, pickProvider } from './helpers.js';
 const key = process.env.ANNAI_LIVE_OPENROUTER_KEY;
 test.skip(!key, 'ANNAI_LIVE_OPENROUTER_KEY is not set');
 test.use({ trace: 'off', video: 'off', screenshot: 'off' });
+// OpenRouter is this test's one outside host: the proxy of playwright.config.js still refuses every other.
+test.use({ proxy: async ({ proxy }, use) => use({ ...proxy, bypass: `${proxy.bypass},openrouter.ai` }) });
 
 const BASE = 'https://openrouter.ai/api/v1';
 const SWITCH = 'Upload photos to this provider (annai deletes each once it is 48 hours old, the next time annai starts or comes online)';

@@ -122,11 +122,16 @@ test('cancelled while the relay sends it: no crash, sent at most once, nothing l
   /** @type {() => void} */
   let release = () => {};
   let calls = 0;
-  const k = await relayKit({ send: async () => { calls++; await new Promise((r) => { release = () => r(undefined); }); return new Response(null, { status: 503 }); } });
+  // The cancel goes in once the send has begun, not after a fixed 10 ms of real time: under load the alarm's run hadn't reached the
+  // send by then, so the cancel came first, or release() ran before the send had set it and the send waited for ever.
+  /** @type {(v?: unknown) => void} */
+  let began = () => {};
+  const begun = new Promise((r) => { began = r; });
+  const k = await relayKit({ send: async () => { calls++; if (calls > 1) return new Response(null, { status: 503 }); const held = new Promise((r) => { release = () => r(undefined); }); began(); await held; return new Response(null, { status: 503 }); } });
   const tok = token();
   const { body } = await k.call('POST', '/v1/schedule', { body: k.reminder(), token: tok });
   const sending = k.after(10 * MIN);
-  await new Promise((r) => setTimeout(r, 10));
+  await Promise.race([begun, sending]); // a run that never reaches the send fails at once, not at the time limit
   assert.equal((await k.call('DELETE', `/v1/schedule/${body.id}`, { token: tok })).status, 204);
   release();
   await sending;
