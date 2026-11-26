@@ -75,13 +75,25 @@ export function handoverOf(wakes) {
 }
 
 /**
- * The files a conversation's Shiori hasn't read yet: those of its wakes after her last turn (files added or moved in while it was
- * closed), still there. @param {import('./types.js').Store} store @param {string} scope @returns {Promise<string[]>} paths in the scope
+ * The files a conversation's Shiori hasn't read yet: those of its wakes after her last answered turn (files added or moved in while it was
+ * closed), still there. A turn nobody answered (no model set, none reachable on the road, a Stop) wrote a model.turn too, but she read
+ * nothing in it: the files stay waiting, and her next answered turn has their wakes in what she reads (the transcript keeps them).
+ * @param {import('./types.js').Store} store @param {string} scope @returns {Promise<string[]>} paths in the scope
  */
 export async function filesToRead(store, scope) {
   return store.tx(['events', 'files'], 'readonly', async (t) => {
-    // From her last turn on, by type: a long trip's log is never walked whole.
-    const [last] = await t.listEvents(scope, { types: ['model.turn'], reverse: true, limit: 1 });
+    // From her last answered turn on, by type: a long trip's log is never walked whole. A page of 8 turns holds an answered one unless her
+    // last 8 all got no answer (a tap each); then the next page is read, so the count only sets how much one read brings.
+    /** @type {import('./types.js').EventRecord | undefined} */
+    let last;
+    /** @type {number | undefined} */
+    let before;
+    for (;;) {
+      const page = await t.listEvents(scope, { types: ['model.turn'], reverse: true, limit: 8, ...(before ? { before } : {}) });
+      last = page.find((e) => e.data?.answeredBy);
+      if (last || page.length < 8) break;
+      before = page[page.length - 1].seq;
+    }
     const after = await t.listEvents(scope, { types: ['wake'], ...(last ? { after: last.seq } : {}) });
     /** @type {string[]} */
     const out = [];

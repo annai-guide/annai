@@ -168,8 +168,46 @@ test('filesToRead: the files of wakes after her last turn; none once a turn has 
   await record(store, trip, { type: 'wake', actor: 'system', data: { id: 'w-2', reasons: [{ kind: 'file', text: 'moved here', files: ['/files/hotel.png', '/files/flight.pdf'] }] } });
   await record(store, trip, { type: 'wake', actor: 'system', data: { id: 'w-2', meanwhile: true, reasons: [{ kind: 'file', text: 'x', files: ['/files/other.pdf'] }] } });
   assert.deepEqual(await filesToRead(store, trip), ['/files/flight.pdf', '/files/hotel.png']);
-  await record(store, trip, { type: 'model.turn', actor: 'shiori', data: { wake: 'w-2' } });
+  await record(store, trip, { type: 'model.turn', actor: 'shiori', data: { wake: 'w-2', answeredBy: 'm1' } });
   assert.deepEqual(await filesToRead(store, trip), []);
+});
+
+test("filesToRead: a turn that got no answer (every model failed, or she was stopped) doesn't read the file; an answered one does", async () => {
+  const { store, trip } = await kit();
+  const turn = (/** @type {string} */ wake, /** @type {any} */ data) => record(store, trip, { type: 'model.turn', actor: 'shiori', data: { wake, ...data } });
+  await record(store, trip, { type: 'wake', actor: 'system', data: { id: 'w-1', reasons: [{ kind: 'file', text: 'moved here', files: ['/files/flight.pdf'] }] } });
+  // No model set, or none reachable: the trace's record of a call that nobody answered (fallback.js).
+  await turn('w-1', { answeredBy: null, attempts: [] });
+  assert.deepEqual(await filesToRead(store, trip), ['/files/flight.pdf']);
+  // Stopped: the same record, with the attempt that was cut.
+  await record(store, trip, { type: 'wake', actor: 'system', data: { id: 'w-2', reasons: [{ kind: 'user', text: 'the user wrote' }] } });
+  await turn('w-2', { answeredBy: null, attempts: [{ model: 'm1', outcome: 'cancelled' }] });
+  assert.deepEqual(await filesToRead(store, trip), ['/files/flight.pdf']);
+  // A file handed after an answered turn waits too, and the failed turns after it leave it there.
+  await turn('w-2', { answeredBy: 'm1' });
+  assert.deepEqual(await filesToRead(store, trip), []);
+  await record(store, trip, { type: 'wake', actor: 'system', data: { id: 'w-3', reasons: [{ kind: 'file', text: 'x', files: ['/files/flight.pdf'] }] } });
+  assert.deepEqual(await filesToRead(store, trip), ['/files/flight.pdf']);
+  for (let i = 0; i < 25; i++) await turn('w-3', { answeredBy: null, attempts: [] }); // more than a page of failed turns in a row
+  assert.deepEqual(await filesToRead(store, trip), ['/files/flight.pdf']);
+  await turn('w-3', { answeredBy: 'm2' });
+  assert.deepEqual(await filesToRead(store, trip), []);
+});
+
+test("filesToRead: a trip whose every turn failed still has its files waiting", async () => {
+  const { store, trip } = await kit();
+  await record(store, trip, { type: 'wake', actor: 'system', data: { id: 'w-1', reasons: [{ kind: 'file', text: 'moved here', files: ['/files/flight.pdf'] }] } });
+  await record(store, trip, { type: 'model.turn', actor: 'shiori', data: { wake: 'w-1', answeredBy: null, attempts: [] } });
+  assert.deepEqual(await filesToRead(store, trip), ['/files/flight.pdf']);
+});
+
+test('after a turn that got no answer, her next answered turn still has the file wake in what she reads', async () => {
+  const { store, trip } = await kit();
+  await record(store, trip, { type: 'wake', actor: 'system', data: { id: 'w-1', reasons: [{ kind: 'file', text: 'The user added a file: /trip/files/flight.pdf', files: ['/files/flight.pdf'] }] } });
+  await record(store, trip, { type: 'model.turn', actor: 'system', data: { tag: 'conversation', wake: 'w-1', answeredBy: null, attempts: [] }, texts: [['reply', '']] });
+  const said = async () => (await Transcript.load(store, trip)).messages.flatMap((m) => m.parts.map((p) => /** @type {any} */ (p).text ?? '')).join('\n');
+  assert.match(await said(), /\[annai\] The user added a file: \/trip\/files\/flight\.pdf/);
+  assert.equal((await Transcript.load(store, trip)).unanswered, true);
 });
 
 // The fix pass.
