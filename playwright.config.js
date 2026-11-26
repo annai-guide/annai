@@ -1,13 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// No test reaches a real outside service. Every browser goes through a proxy on a port nothing listens on (9, as the specs'
-// own "nothing there" addresses), with this machine's addresses bypassed: page.route and routeWebSocket stand-ins and the
+// No browser in a test reaches a real outside service (Node's own fetch in a spec or a fake is not proxied: those call only the
+// local stand-ins). Every browser goes through a proxy on a port nothing listens on (9, as the specs' own "nothing there"
+// addresses), with the loopback addresses (127.0.0.1, localhost, ::1) bypassed: page.route and routeWebSocket stand-ins and the
 // local servers answer as before, and a request for any other host fails where it is made, with net::ERR_PROXY_CONNECTION_FAILED
 // in Chromium and "Could not connect to proxy server 127.0.0.1: Connection refused" in WebKit (ECONNREFUSED 127.0.0.1:9 for the
 // request fixture and route.fetch). Why: on 2026-11-25 a voice test's failure path sent about ten requests to Gemini's real
 // address with the test's fake key and a fixture clip. `docker run --network none` (or an internal Docker network) stops that
 // too, but the browsers then read offline (navigator.onLine false) and six voice tests fail. Naming 127.0.0.1 keeps Chromium's
-// own loopback bypass (Playwright otherwise adds <-loopback>); WebKit bypasses only what is listed.
+// own loopback bypass (Playwright otherwise adds <-loopback>); WebKit bypasses only what is listed, and their subdomains.
 const NOWHERE = { server: 'http://127.0.0.1:9', bypass: '127.0.0.1,localhost,::1,[::1]' };
 
 export default defineConfig({
