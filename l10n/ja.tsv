@@ -450,17 +450,17 @@ gt9ssw	ok	annai couldn't start	annaiを起動できませんでした	src/app/ma
 6v646m	ok	If this keeps happening, your browser may be blocking storage (for example, in a private window).	繰り返し起きる場合は、ブラウザがデータの保存をブロックしている可能性があります（プライベートウインドウなど）。	src/app/main.js:479	
 982hh6	ok	Try again	再試行	src/app/main.js:480	
 1u3dm1p	ok	This address holds a name or password before an @. Leave it out.	このアドレスには、@の前にユーザー名かパスワードが含まれています。その部分を削除してください。	src/core/address.js:68	
-1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	滞在した場所と滞在時間（場所は名前で。名前がなければ約100 m単位に丸めた位置で）。GPSの軌跡そのものは送りません。	src/core/after/recap.js:61	Note: a stay is any stop in the record, so 滞在した, not 泊まった (overnight).
-imb4zw	ok	How far you drove or walked between, the stamps, and the itinerary.	滞在した場所の間を車や徒歩で移動した距離、スタンプ、旅程。	src/core/after/recap.js:62	
-5lqjwd	ok	Shiori's cards and your words, typed or spoken, each shortened.	Shioriのカードと、入力したり話したりした言葉（それぞれ短くしたもの）。	src/core/after/recap.js:63	
-10xm6na	ok	This conversation's notes and memory, and your profile.	この会話のメモと記憶、プロフィール。	src/core/after/recap.js:64	
-1nvz32n	ok	Up to {0} photos, if the model takes photos. A photo kept as taken (Settings → Photos → Keep originals) can still hold where it was taken.	モデルが写真を受け付ける場合、写真を最大{0}枚。オリジナルのまま保存した写真（「設定 → 写真 → オリジナルを残す」）には、撮影場所の情報が残っていることがあります。	src/core/after/recap.js:65	{0} = RECAP_PHOTOS; Note: the setting's own label, オリジナルを残す.
-rntcrc	ok	No model is set for the utility or main role. Add one in Settings → Models.	補助とメインのどちらの役割にもモデルが設定されていません。「設定 → モデル」で追加してください。	src/core/after/recap.js:175	
-1hy1f74	ok	No model could write it.	どのモデルも振り返りを書けませんでした。	src/core/after/recap.js:176	Note: "it" is the recap (振り返り / 回顾).
-h5o9ec	ok	Check Settings → Models, then try again.	「設定 → モデル」を確認してから、もう一度お試しください。	src/core/after/recap.js:176	
-1ocmp3v	ok	Try again in a while.	しばらくしてからもう一度お試しください。	src/core/after/recap.js:178	
-11vzyc7	ok	No model is set up to write the recap. Add one in Settings → Models.	振り返りを書くモデルが設定されていません。「設定 → モデル」で追加してください。	src/core/after/recap.js:194	
-tbxeeg	ok	The model sent back an empty recap. Try again, or put another model first in the utility role (Settings → Models).	モデルから空の振り返りが返ってきました。もう一度試すか、「設定 → モデル」で補助の役割の先頭に別のモデルを置いてください。	src/core/after/recap.js:240	
+1f8b0m5	ok	Where you stayed and for how long, by name; a place without one as its position, rounded to about 100 m. Never the GPS track itself.	滞在した場所と滞在時間（場所は名前で。名前がなければ約100 m単位に丸めた位置で）。GPSの軌跡そのものは送りません。	src/core/after/recap.js:65	Note: a stay is any stop in the record, so 滞在した, not 泊まった (overnight).
+imb4zw	ok	How far you drove or walked between, the stamps, and the itinerary.	滞在した場所の間を車や徒歩で移動した距離、スタンプ、旅程。	src/core/after/recap.js:66	
+5lqjwd	ok	Shiori's cards and your words, typed or spoken, each shortened.	Shioriのカードと、入力したり話したりした言葉（それぞれ短くしたもの）。	src/core/after/recap.js:67	
+10xm6na	ok	This conversation's notes and memory, and your profile.	この会話のメモと記憶、プロフィール。	src/core/after/recap.js:68	
+1nvz32n	ok	Up to {0} photos, if the model takes photos. A photo kept as taken (Settings → Photos → Keep originals) can still hold where it was taken.	モデルが写真を受け付ける場合、写真を最大{0}枚。オリジナルのまま保存した写真（「設定 → 写真 → オリジナルを残す」）には、撮影場所の情報が残っていることがあります。	src/core/after/recap.js:69	{0} = RECAP_PHOTOS; Note: the setting's own label, オリジナルを残す.
+rntcrc	ok	No model is set for the utility or main role. Add one in Settings → Models.	補助とメインのどちらの役割にもモデルが設定されていません。「設定 → モデル」で追加してください。	src/core/after/recap.js:179	
+1hy1f74	ok	No model could write it.	どのモデルも振り返りを書けませんでした。	src/core/after/recap.js:180	Note: "it" is the recap (振り返り / 回顾).
+h5o9ec	ok	Check Settings → Models, then try again.	「設定 → モデル」を確認してから、もう一度お試しください。	src/core/after/recap.js:180	
+1ocmp3v	ok	Try again in a while.	しばらくしてからもう一度お試しください。	src/core/after/recap.js:182	
+11vzyc7	ok	No model is set up to write the recap. Add one in Settings → Models.	振り返りを書くモデルが設定されていません。「設定 → モデル」で追加してください。	src/core/after/recap.js:198	
+tbxeeg	ok	The model sent back an empty recap. Try again, or put another model first in the utility role (Settings → Models).	モデルから空の振り返りが返ってきました。もう一度試すか、「設定 → モデル」で補助の役割の先頭に別のモデルを置いてください。	src/core/after/recap.js:243	
 1sob3wf	ok	1 hour a second	1秒で1時間	src/core/after/replay.js:22	Note: a playback speed: one hour of the trip a second.
 6jq1bh	ok	1 minute a second	1秒で1分	src/core/after/replay.js:22	
 7013qq	ok	10 minutes a second	1秒で10分	src/core/after/replay.js:22	
@@ -533,34 +533,34 @@ nxpady	ok	The message went without it.	メッセージは写真なしで送ら�
 sp1muy	ok	{0}: {1}	{0}：{1}	src/core/agent/loop.js:2359	{0} = p.path; {1} = String(/** @type {any} */ (e)?.shown ?? /** @type {any} */ (e)?.message ?? e); Note: A label, then what it is: a reminder's title and words, or the stamps' count and their places.
 ssozn1	ok	A photo wasn't sent to Shiori	写真をShioriに送れませんでした	src/core/agent/loop.js:2359	
 311xl2	ok	Shiori was in the middle of something. She picks it up when you come back.	Shioriは作業の途中でした。戻ったら続きから再開します。	src/core/agent/loop.js:2456	
-1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	同じツールを3回呼び出して同じ結果が続いたため、このやり取りを終了しました。言い方を変えて、もう一度聞いてみてください。	src/core/agent/loop.js:2867	Note: "Ask again" is asking Shiori (聞いて), not the glossary's Ask (Safari's permission choice, 確認).
-pydksy	ok	Shiori stopped repeating herself	Shioriは同じことの繰り返しをやめました	src/core/agent/loop.js:2867	
-1nvuxc8	ok	Her model finished without saying anything to you.	Shioriのモデルが、何も返事をしないまま終了しました。	src/core/agent/loop.js:2911	Note: "Her" is Shiori's in ja.
-2bgbpn	ok	Shiori didn't answer	Shioriから返事がありませんでした	src/core/agent/loop.js:2915	
-1mjdfzn	ok	Shiori can't reach her model	Shioriがモデルに接続できません	src/core/agent/loop.js:3004	
-12qfj9m	ok	This model takes photos only as {0}, which this browser can't make. Try another model in Settings → Models.	このモデルが受け付ける写真の形式は{0}だけですが、このブラウザでは作成できません。「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:3065	{0} = names
-plw9ns	draft	a PDF without a name	名前のないPDF	src/core/agent/loop.js:3134	Note: a PDF with neither a name nor a path, named on the card in its list (a trip's files have names, so rare).
-pw7lmw#other	draft	She goes on without them until the conversation is next summarized or started fresh.	会話を次に要約するか新しく始めるまで、ShioriはそのPDFなしで続けます。	src/core/agent/loop.js:3135	plural; # = n; English: "She goes on without it until the conversation is next summarized or started fresh." (one), "She goes on without them until the conversation is next summarized or started fresh." (other); Note: one text for one PDF and for several (ja has no plural): そのPDF names the PDFs of the sentence before.
-z09dhs	draft	The models refused a request that held {0}.	{0}を含むリクエストを、モデルが受け付けませんでした。	src/core/agent/loop.js:3135	{0} = list(files); Note: on that card; {0} is the PDFs' file names as a list (manual.pdf, ticket.pdf). The models refused the request, not each file: it is said of the request.
-ib7y1w	draft	To show her a page, send it as a photo.	見てほしいページがあれば、そのページを写真で送ってください。	src/core/agent/loop.js:3136	
-qz6v7v#other	draft	Shiori's models refused a request with PDFs in it	ShioriのモデルがPDFを含むリクエストを受け付けませんでした	src/core/agent/loop.js:3137	plural; # = n; English: "Shiori's models refused a request with a PDF in it" (one), "Shiori's models refused a request with PDFs in it" (other); Note: a card's title: the models refused a request that held PDFs, so Shiori goes without them until the next summary or Start fresh. One text for one PDF and for several.
-1uhz9dg	ok	Shiori couldn't send the photo	Shioriは写真を送れませんでした	src/core/agent/loop.js:3144	
-19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	このブラウザでは、タップしないと音が出ません。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3806	
-1h2ina6	ok	Shiori couldn't speak aloud	Shioriは声に出して話せませんでした	src/core/agent/loop.js:3807	
-1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	「設定 → モデル → 読み上げ」の声がどれも使えませんでした。理由は「記録」にあります。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3807	
-1r1dhd7	ok	Shiori can't hear you yet	Shioriはまだ声を聞き取れません	src/core/agent/loop.js:3990	
-8wd0xv	ok	Listening stopped	聞き取りが止まりました	src/core/agent/loop.js:4224	
-43klog	ok	at most {0} MB	最大{0} MB	src/core/agent/loop.js:4495	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-1kuidu6#other	ok	at most # pixels on a side	一辺#ピクセルまで	src/core/agent/loop.js:4496	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
-1u7e776#other	ok	at most # photos at a time	一度に#枚まで	src/core/agent/loop.js:4497	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
-5a8qix	ok	only {0}	{0}のみ	src/core/agent/loop.js:4498	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
-1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず（受け付けるのは{0}）、受け付けられる形のコピーも作れませんでした。「設定 → 写真 → Shioriに送る写真」で写真を小さくするか、「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:4499	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
-8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず、受け付けられる形のコピーも作れませんでした。「設定 → 写真 → Shioriに送る写真」で写真を小さくするか、「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:4500	
-vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	会話が長すぎて、整理するまではShioriのモデルで扱えません。「設定 → モデル」でモデルを確認するか、しばらくしてからもう一度お試しください。	src/core/agent/loop.js:4510	
-1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	プラグイン「{0}」が、設定した上限（1時間に#回）を超えてShioriを起動しようとしました。	src/core/agent/loop.js:4520	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
-1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守り中の出来事が、設定した上限（1時間に#回）を超えてShioriを起動しようとしました（{0}）。	src/core/agent/loop.js:4521	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
-1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	追加したファイルが、設定した上限（1時間に#回）を超えてShioriを起動しようとしました（{0}）。	src/core/agent/loop.js:4522	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
-pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	何かが、設定した上限（1時間に#回）を超えてShioriを起動しようとしました。	src/core/agent/loop.js:4523	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
+1b4988h	ok	She called the same tool three times with the same result, so this turn ended. Ask again in other words.	同じツールを3回呼び出して同じ結果が続いたため、このやり取りを終了しました。言い方を変えて、もう一度聞いてみてください。	src/core/agent/loop.js:2864	Note: "Ask again" is asking Shiori (聞いて), not the glossary's Ask (Safari's permission choice, 確認).
+pydksy	ok	Shiori stopped repeating herself	Shioriは同じことの繰り返しをやめました	src/core/agent/loop.js:2864	
+1nvuxc8	ok	Her model finished without saying anything to you.	Shioriのモデルが、何も返事をしないまま終了しました。	src/core/agent/loop.js:2908	Note: "Her" is Shiori's in ja.
+2bgbpn	ok	Shiori didn't answer	Shioriから返事がありませんでした	src/core/agent/loop.js:2912	
+1mjdfzn	ok	Shiori can't reach her model	Shioriがモデルに接続できません	src/core/agent/loop.js:3001	
+12qfj9m	ok	This model takes photos only as {0}, which this browser can't make. Try another model in Settings → Models.	このモデルが受け付ける写真の形式は{0}だけですが、このブラウザでは作成できません。「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:3062	{0} = names
+plw9ns	draft	a PDF without a name	名前のないPDF	src/core/agent/loop.js:3131	Note: a PDF with neither a name nor a path, named on the card in its list (a trip's files have names, so rare).
+pw7lmw#other	draft	She goes on without them until the conversation is next summarized or started fresh.	会話を次に要約するか新しく始めるまで、ShioriはそのPDFなしで続けます。	src/core/agent/loop.js:3132	plural; # = n; English: "She goes on without it until the conversation is next summarized or started fresh." (one), "She goes on without them until the conversation is next summarized or started fresh." (other); Note: one text for one PDF and for several (ja has no plural): そのPDF names the PDFs of the sentence before.
+z09dhs	draft	The models refused a request that held {0}.	{0}を含むリクエストを、モデルが受け付けませんでした。	src/core/agent/loop.js:3132	{0} = list(files); Note: on that card; {0} is the PDFs' file names as a list (manual.pdf, ticket.pdf). The models refused the request, not each file: it is said of the request.
+ib7y1w	draft	To show her a page, send it as a photo.	見てほしいページがあれば、そのページを写真で送ってください。	src/core/agent/loop.js:3133	
+qz6v7v#other	draft	Shiori's models refused a request with PDFs in it	ShioriのモデルがPDFを含むリクエストを受け付けませんでした	src/core/agent/loop.js:3134	plural; # = n; English: "Shiori's models refused a request with a PDF in it" (one), "Shiori's models refused a request with PDFs in it" (other); Note: a card's title: the models refused a request that held PDFs, so Shiori goes without them until the next summary or Start fresh. One text for one PDF and for several.
+1uhz9dg	ok	Shiori couldn't send the photo	Shioriは写真を送れませんでした	src/core/agent/loop.js:3141	
+19tfckg	ok	This browser plays sound only after a tap. Her words are in the conversation.	このブラウザでは、タップしないと音が出ません。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3803	
+1h2ina6	ok	Shiori couldn't speak aloud	Shioriは声に出して話せませんでした	src/core/agent/loop.js:3804	
+1mfe42u	ok	No voice in Settings → Models → Speech out worked; the Trace says why. Her words are in the conversation.	「設定 → モデル → 読み上げ」の声がどれも使えませんでした。理由は「記録」にあります。Shioriの言葉は会話に残っています。	src/core/agent/loop.js:3804	
+1r1dhd7	ok	Shiori can't hear you yet	Shioriはまだ声を聞き取れません	src/core/agent/loop.js:3987	
+8wd0xv	ok	Listening stopped	聞き取りが止まりました	src/core/agent/loop.js:4221	
+43klog	ok	at most {0} MB	最大{0} MB	src/core/agent/loop.js:4492	{0} = num(learned.maxBytes / 1_000_000, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+1kuidu6#other	ok	at most # pixels on a side	一辺#ピクセルまで	src/core/agent/loop.js:4493	plural; # = learned.maxEdge; English: "at most # pixel on a side" (one), "at most # pixels on a side" (other)
+1u7e776#other	ok	at most # photos at a time	一度に#枚まで	src/core/agent/loop.js:4494	plural; # = learned.maxCount; English: "at most # photo at a time" (one), "at most # photos at a time" (other)
+5a8qix	ok	only {0}	{0}のみ	src/core/agent/loop.js:4495	{0} = list(learned.formats.map((x) => x.replace('image/', '').toUpperCase()), 'or')
+1ekvk87	ok	The model refused a photo (it takes {0}), and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず（受け付けるのは{0}）、受け付けられる形のコピーも作れませんでした。「設定 → 写真 → Shioriに送る写真」で写真を小さくするか、「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:4496	{0} = list(takes, 'plain'); Note: {0} is a list of limits ("at most 5.0 MB, at most 8,000 pixels on a side").
+8cw9ut	ok	The model refused a photo, and annai couldn't make a copy it takes. Try smaller photos in Settings → Photos → Photos for Shiori, or another model in Settings → Models.	モデルが写真を受け付けず、受け付けられる形のコピーも作れませんでした。「設定 → 写真 → Shioriに送る写真」で写真を小さくするか、「設定 → モデル」で別のモデルを試してください。	src/core/agent/loop.js:4497	
+vbsaso	ok	Until it is tidied up, the conversation is too long for her model. Check the models in Settings → Models, or try again later.	会話が長すぎて、整理するまではShioriのモデルで扱えません。「設定 → モデル」でモデルを確認するか、しばらくしてからもう一度お試しください。	src/core/agent/loop.js:4507	
+1bwbvkk#other	ok	The plugin {0} woke her more than the # times an hour you allow.	プラグイン「{0}」が、設定した上限（1時間に#回）を超えてShioriを起動しようとしました。	src/core/agent/loop.js:4517	plural; # = n; {0} = w.plugin; English: "The plugin {0} woke her more than the # time an hour you allow." (one), "The plugin {0} woke her more than the # times an hour you allow." (other)
+1pk3esu#other	ok	A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}.	リマインダーか見守り中の出来事が、設定した上限（1時間に#回）を超えてShioriを起動しようとしました（{0}）。	src/core/agent/loop.js:4518	plural; # = n; {0} = list(titles); English: "A reminder, or something she watches for, woke her more than the # time an hour you allow: {0}." (one), "A reminder, or something she watches for, woke her more than the # times an hour you allow: {0}." (other)
+1vvddnu#other	ok	Files you added woke her more than the # times an hour you allow: {0}.	追加したファイルが、設定した上限（1時間に#回）を超えてShioriを起動しようとしました（{0}）。	src/core/agent/loop.js:4519	plural; # = n; {0} = list(files); English: "Files you added woke her more than the # time an hour you allow: {0}." (one), "Files you added woke her more than the # times an hour you allow: {0}." (other)
+pwlrjy#other	ok	Something woke her more than the # times an hour you allow.	何かが、設定した上限（1時間に#回）を超えてShioriを起動しようとしました。	src/core/agent/loop.js:4520	plural; # = n; English: "Something woke her more than the # time an hour you allow." (one), "Something woke her more than the # times an hour you allow." (other); Note: the card's title says the wake was skipped, so ja says she was about to be woken (起動しようとしました).
 1ptx7ob	ok	The message held a key, so it is not shown.	メッセージにキーが含まれていたため、表示しません。	src/core/agent/net.js:127	
 1jmdvnh	ok	annai couldn't check this message for keys, so it is not shown.	メッセージにキーが含まれていないか確認できなかったため、表示しません。	src/core/agent/net.js:128	Note: shown in place of a card's or status line's text when annai can't read the keys it keeps to blank them; worded as the "held a key" note beside it (1ptx7ob).
 157dl17	ok	Shiori wants to adjust her personality	Shioriが性格の調整を提案しています	src/core/agent/personalities.js:130	
@@ -1902,52 +1902,50 @@ xy0wl5	draft	30 days	過去30日間	src/ui/screens/models.js:34	Note: a range in
 1w4m41d	ok	the browser's own; some voices go online	ブラウザの機能。オンラインで動く声もあります	src/ui/screens/models.js:36	Note: オンラインで動く: some voices run online (not "come online").
 ce8br5	ok	when the model takes audio	モデルが音声を受け付けるとき	src/ui/screens/models.js:36	
 jrbfa0	ok	Where Shiori thinks: the providers annai calls, their models, which models each role tries, in order, and what her requests may cost.	Shioriが考えるためのしくみ：annaiが呼び出すプロバイダーとそのモデル、各役割が順に試すモデル、リクエストにかけられる費用。	src/ui/screens/models.js:53	
-o0a9z9	draft	Spending	利用額	src/ui/screens/models.js:77	Note: the section of Settings → Models with what was spent and Spend per day; 利用額 as in the glossary's 1日の利用額.
-1ernebb	draft	What Shiori's model calls, voices and live talk have cost on this phone, in all your trips and conversations; annai's own calls, such as Try this model, count too. A day starts at midnight here.	Shioriのモデル利用、声、ライブ音声にかかった金額です（この端末での、すべての旅と会話、「このモデルを試す」などannai自身の利用の合計）。日付は、この端末の時刻の午前0時で切り替わります。	src/ui/screens/models.js:78	Note: "voices and live talk": her voice (声, the glossary's word for a voice she speaks with) and live voice sessions (ライブ音声); "here": the phone's own clock and time zone; "annai's own calls, such as Try this model": the System log's calls (Try this model, Test, plugins'), which Spend per day counts too. "in all your trips and conversations": すべての旅と会話 (Me and the chats are counted too); 利用 as in the glossary's 1日の利用額 and the card's 今日のモデル、声、ライブ音声の利用額, not 呼び出し.
-5eo22y#other	draft	Not counted: # calls to models with no prices. A model's page takes its prices, 0 for a server of your own.	料金が設定されていないモデルの利用#回は含まれていません。料金は各モデルのページで入力できます。自分のサーバーなら0にしてください。	src/ui/screens/models.js:80	plural; # = spent.unpriced; English: "Not counted: # call to a model with no prices. A model's page takes its prices, 0 for a server of your own." (one), "Not counted: # calls to models with no prices. A model's page takes its prices, 0 for a server of your own." (other); Note: the point last, as Japanese puts it; 0 is the price to type for a server the traveller runs. The count is #回 (times a model was used, ja-style rule 6; 利用 as in the Spending line), not #件.
-glwyow	draft	What Shiori's model calls, voices and live talk may cost in a day, in all your trips and conversations; annai's own calls, such as Try this model, count too. Once it is spent, her turn ends with a card, and she goes on the next day. Empty: no limit.	Shioriのモデル利用、声、ライブ音声の1日の上限額です（すべての旅と会話、「このモデルを試す」などannai自身の利用の合計）。使い切ると、Shioriはカードを表示してそのやり取りを終え、翌日から再開します。空欄なら上限はありません。	src/ui/screens/models.js:82	Note: "her" is written as Shiori: 彼女 reads distant in Japanese. "annai's own calls, such as Try this model": the System log's calls, which count too; the same words as the Spending line above it. "model calls, voices and live talk" and "in all your trips and conversations": the same words as the Spending line above it; 利用 not 呼び出し.
-3bernd	ok	Spend per day (USD)	1日の利用額（USD）	src/ui/screens/models.js:83	
-yp0c9i	ok	A day costs at least $0.01; leave it empty for no limit.	0.01ドル以上で入力してください。空欄にすると上限なしになります。	src/ui/screens/models.js:83	
-1kmogw5	ok	Cache	キャッシュ	src/ui/screens/models.js:84	
-el1opd	ok	Providers keep the start of the conversation for a while, so her next request costs less. An hour costs more to write than five minutes, and pays off when you talk less often than every few minutes. A model that keeps it only five minutes is asked for five.	プロバイダーは会話の冒頭をしばらく保持するため、次のリクエストが安くなります。1時間の保持は5分より書き込み料金が高くなりますが、数分以上間を空けて話すことが多いなら得になります。5分しか保持できないモデルでは、保持時間は5分になります。	src/ui/screens/models.js:85	
-1bz9ywx	ok	5 minutes	5分	src/ui/screens/models.js:86	
-3eima2	ok	1 hour	1時間	src/ui/screens/models.js:86	
-kl14fu	ok	Keep it for	保持する時間	src/ui/screens/models.js:86	
-uw7pcm	ok	Housekeeping	会話の整理	src/ui/screens/models.js:87	
-bsmo7	draft	When a conversation gets long, Shiori summarizes its older part: at this share of her model's context or of the largest request below, or at 100,000 tokens if that comes first. She does it when you come back after her cache has run out, or just before it runs out if annai stays open. A request that would pass the largest size, or 90% of her model's context, is summarized at once. Photos and PDFs don't count toward the largest request: a summary can't make them smaller. Empty: the usual.	会話が長くなると、Shioriは古い部分を要約します。モデルのコンテキストかリクエストの最大サイズの、この割合に達したとき、または10万トークンに達したとき（どちらか早い方）に要約を始めます。要約は、キャッシュの期限が切れたあとに戻ったとき、annaiを開いたままなら期限が切れる直前に行います。リクエストが最大サイズ、またはモデルのコンテキストの90%を超えそうなときは、すぐに要約します。写真とPDFは最大サイズに数えません。要約しても小さくならないためです。空欄の場合は標準の値を使います。	src/ui/screens/models.js:88	
-1sywcgn	ok	Summarize at a share from 50 to 90%.	50〜90%の範囲で指定してください。	src/ui/screens/models.js:90	
-5gbpvm	ok	Summarize at (% of the context)	要約を始める割合（コンテキストの%）	src/ui/screens/models.js:90	
-gbbwof	ok	The largest request is from 1 to 64 MiB.	1〜64 MiBの範囲で指定してください。	src/ui/screens/models.js:91	
-jg9kdh	ok	Largest request (MiB)	リクエストの最大サイズ（MiB）	src/ui/screens/models.js:91	
-9ubpo0	ok	Nothing switched on	オンの機能なし	src/ui/screens/models.js:108	
-y7dwt8#other	ok	# models	モデル#個	src/ui/screens/models.js:108	plural; # = n; English: "# model" (one), "# models" (other)
-awnddp	ok	Providers	プロバイダー	src/ui/screens/models.js:110	
-rwmbqk	ok	No providers yet. Add one below.	プロバイダーはまだありません。下で追加してください。	src/ui/screens/models.js:112	
-1cjfpwc	ok	Add a provider	プロバイダーを追加	src/ui/screens/models.js:113	
-hbz43i	ok	Roles	役割	src/ui/screens/models.js:143	
-1r5c1sj	ok	Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list, except Koe's.	各役割は上から順にモデルを試し、失敗すると次のモデルが答えます。空の役割はメインのリストを使います（Koeの役割を除く）。	src/ui/screens/models.js:145	
-7uxkel	ok	The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.	音声のリストも上から順に試します。聞き取りは聞いているモデルで使える最初の項目を、読み上げは最初に応答した声を使います。	src/ui/screens/models.js:148	
-1erapbm	ok	Remove {0} from {1}	{1}から{0}を削除	src/ui/screens/models.js:172	{0} = nameOf(id); {1} = called
-1w3dq5v	ok	No models yet. Add one.	モデルはまだありません。追加してください。	src/ui/screens/models.js:178	
-14zzm1c	ok	Empty: Koe has no live voice, so Koe · Chat answers. Add one, such as Gemini Live, from a provider with live voice.	ライブ音声のモデルがないため、Koe · チャットが答えます。ライブ音声に対応したプロバイダーから、Gemini Liveなどを追加してください。	src/ui/screens/models.js:179	
-12bm0vn	ok	Empty: with Live off, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.	モデルがないため、ライブがオフのときは、Shioriはメインのモデルだけを使って一人で動きます。ここに速いモデルを追加すると、メインより先に素早く話す声になります。	src/ui/screens/models.js:180	Note: "one half" is 一人で, per the glossary's halves note. The main model in brackets: it is her one half, not half of the main model.
-wer5y9	ok	Nothing here, so annai can't hear you. Add an entry.	何も登録されていないため、声を聞き取れません。項目を追加してください。	src/ui/screens/models.js:181	
-1n694n2	ok	Nothing here, so Shiori can't speak aloud. Add a voice.	何も登録されていないため、Shioriは声に出して話せません。声を追加してください。	src/ui/screens/models.js:182	
-el9rbx	ok	Uses the main list.	メインのリストを使います。	src/ui/screens/models.js:183	
-1rqw64m	ok	Wait for the voice (seconds)	声を待つ時間（秒）	src/ui/screens/models.js:184	
-48wtk9	ok	Wait for the words (seconds)	聞き取り結果を待つ時間（秒）	src/ui/screens/models.js:184	
-796n77	ok	Wait for the first words (seconds)	最初の応答を待つ時間（秒）	src/ui/screens/models.js:184	
-1xx9c0t	ok	When Shiori's model can't see a photo or read a PDF, a model of Koe's that can reads it, else one here, else Main's. With the PDF pages plugin, a model that sees photos reads a PDF's pages.	Shioriのモデルが写真を見たりPDFを読んだりできないときは、それができるKoeのモデルが代わりに読みます。なければこのリストのモデル、それもなければメインのモデルが読みます。「PDFページ」プラグインを入れると、写真を見られるモデルがPDFのページを読めるようになります。	src/ui/screens/models.js:189	Note: "one here" is a model of this role (補助), so ここにあるモデル; PDF ページ is the plugin's name in Japanese (its pdf-pages:@name).
-14w2ppx	ok	Add a provider for {0}	{0}のプロバイダーを追加	src/ui/screens/models.js:191	{0} = called
-17olz31	ok	Add a model to {0}	{0}にモデルを追加	src/ui/screens/models.js:193	{0} = called
-58mvoq	ok	Reasoning for {0}	{0}の推論レベル	src/ui/screens/models.js:201	{0} = called
-1cwghfv	ok	Wait from 1 to 600 seconds; leave it empty for the usual.	1〜600秒で指定してください。空欄の場合は標準の時間になります。	src/ui/screens/models.js:202	
-8nhvom	ok	Reorder {0}, {1} of {2}	{0}を並べ替え、{2}個中{1}番目	src/ui/screens/models.js:217	{0} = name; {1} = num(i + 1); {2} = num(n)
-17wwgww	ok	 ({0})	（{0}）	src/ui/screens/models.js:230	{0} = note; Note: no space before the full-width bracket.
-1r8iepd	ok	Drag, or use the arrow keys	ドラッグまたは矢印キーで移動	src/ui/screens/models.js:235	
-1ln5v12	ok	Move {0}	{0}を移動	src/ui/screens/models.js:237	{0} = name
-1rvkqip	ok	Move up	上へ移動	src/ui/screens/models.js:238	
-c2tjmw	ok	Move down	下へ移動	src/ui/screens/models.js:239	
+o0a9z9	draft	Spending	利用額	src/ui/screens/models.js:75	Note: the section of Settings → Models with what was spent and Spend per day; 利用額 as in the glossary's 1日の利用額.
+1ernebb	draft	What Shiori's model calls, voices and live talk have cost on this phone, in all your trips and conversations; annai's own calls, such as Try this model, count too. A day starts at midnight here.	Shioriのモデル利用、声、ライブ音声にかかった金額です（この端末での、すべての旅と会話、「このモデルを試す」などannai自身の利用の合計）。日付は、この端末の時刻の午前0時で切り替わります。	src/ui/screens/models.js:76	Note: "voices and live talk": her voice (声, the glossary's word for a voice she speaks with) and live voice sessions (ライブ音声); "here": the phone's own clock and time zone; "annai's own calls, such as Try this model": the System log's calls (Try this model, Test, plugins'), which Spend per day counts too. "in all your trips and conversations": すべての旅と会話 (Me and the chats are counted too); 利用 as in the glossary's 1日の利用額 and the card's 今日のモデル、声、ライブ音声の利用額, not 呼び出し.
+5eo22y#other	draft	Not counted: # calls to models with no prices. A model's page takes its prices, 0 for a server of your own.	料金が設定されていないモデルの利用#回は含まれていません。料金は各モデルのページで入力できます。自分のサーバーなら0にしてください。	src/ui/screens/models.js:78	plural; # = spent.unpriced; English: "Not counted: # call to a model with no prices. A model's page takes its prices, 0 for a server of your own." (one), "Not counted: # calls to models with no prices. A model's page takes its prices, 0 for a server of your own." (other); Note: the point last, as Japanese puts it; 0 is the price to type for a server the traveller runs. The count is #回 (times a model was used, ja-style rule 6; 利用 as in the Spending line), not #件.
+glwyow	draft	What Shiori's model calls, voices and live talk may cost in a day, in all your trips and conversations; annai's own calls, such as Try this model, count too. Once it is spent, her turn ends with a card, and she goes on the next day. Empty: no limit.	Shioriのモデル利用、声、ライブ音声の1日の上限額です（すべての旅と会話、「このモデルを試す」などannai自身の利用の合計）。使い切ると、Shioriはカードを表示してそのやり取りを終え、翌日から再開します。空欄なら上限はありません。	src/ui/screens/models.js:80	Note: "her" is written as Shiori: 彼女 reads distant in Japanese. "annai's own calls, such as Try this model": the System log's calls, which count too; the same words as the Spending line above it. "model calls, voices and live talk" and "in all your trips and conversations": the same words as the Spending line above it; 利用 not 呼び出し.
+3bernd	ok	Spend per day (USD)	1日の利用額（USD）	src/ui/screens/models.js:81	
+yp0c9i	ok	A day costs at least $0.01; leave it empty for no limit.	0.01ドル以上で入力してください。空欄にすると上限なしになります。	src/ui/screens/models.js:81	
+1kmogw5	ok	Cache	キャッシュ	src/ui/screens/models.js:82	
+el1opd	ok	Providers keep the start of the conversation for a while, so her next request costs less. An hour costs more to write than five minutes, and pays off when you talk less often than every few minutes. A model that keeps it only five minutes is asked for five.	プロバイダーは会話の冒頭をしばらく保持するため、次のリクエストが安くなります。1時間の保持は5分より書き込み料金が高くなりますが、数分以上間を空けて話すことが多いなら得になります。5分しか保持できないモデルでは、保持時間は5分になります。	src/ui/screens/models.js:83	
+1bz9ywx	ok	5 minutes	5分	src/ui/screens/models.js:84	
+3eima2	ok	1 hour	1時間	src/ui/screens/models.js:84	
+kl14fu	ok	Keep it for	保持する時間	src/ui/screens/models.js:84	
+uw7pcm	ok	Housekeeping	会話の整理	src/ui/screens/models.js:85	
+3iix7u	draft	When a conversation gets long, Shiori summarizes its older part: at this share of her model's context, or at 100,000 tokens if that comes first. She does it when you come back after her cache has run out, or just before it runs out if annai stays open. A request that would pass 90% of her model's context is summarized at once. Empty: the usual.	会話が長くなると、Shioriは古い部分を要約します。モデルのコンテキストのこの割合に達したとき、または10万トークンに達したとき（どちらか早い方）に要約を始めます。要約は、キャッシュの期限が切れたあとに戻ったとき、annaiを開いたままなら期限が切れる直前に行います。リクエストがモデルのコンテキストの90%を超えそうなときは、すぐに要約します。空欄の場合は標準の値を使います。	src/ui/screens/models.js:86	
+1sywcgn	ok	Summarize at a share from 50 to 90%.	50〜90%の範囲で指定してください。	src/ui/screens/models.js:87	
+5gbpvm	ok	Summarize at (% of the context)	要約を始める割合（コンテキストの%）	src/ui/screens/models.js:87	
+9ubpo0	ok	Nothing switched on	オンの機能なし	src/ui/screens/models.js:104	
+y7dwt8#other	ok	# models	モデル#個	src/ui/screens/models.js:104	plural; # = n; English: "# model" (one), "# models" (other)
+awnddp	ok	Providers	プロバイダー	src/ui/screens/models.js:106	
+rwmbqk	ok	No providers yet. Add one below.	プロバイダーはまだありません。下で追加してください。	src/ui/screens/models.js:108	
+1cjfpwc	ok	Add a provider	プロバイダーを追加	src/ui/screens/models.js:109	
+hbz43i	ok	Roles	役割	src/ui/screens/models.js:139	
+1r5c1sj	ok	Each role tries its models from the top. When one fails, the next one answers. An empty role uses the main list, except Koe's.	各役割は上から順にモデルを試し、失敗すると次のモデルが答えます。空の役割はメインのリストを使います（Koeの役割を除く）。	src/ui/screens/models.js:141	
+7uxkel	ok	The speech lists are tried from the top too: the first entry that works for the model hearing you, and the first voice that answers.	音声のリストも上から順に試します。聞き取りは聞いているモデルで使える最初の項目を、読み上げは最初に応答した声を使います。	src/ui/screens/models.js:144	
+1erapbm	ok	Remove {0} from {1}	{1}から{0}を削除	src/ui/screens/models.js:168	{0} = nameOf(id); {1} = called
+1w3dq5v	ok	No models yet. Add one.	モデルはまだありません。追加してください。	src/ui/screens/models.js:174	
+14zzm1c	ok	Empty: Koe has no live voice, so Koe · Chat answers. Add one, such as Gemini Live, from a provider with live voice.	ライブ音声のモデルがないため、Koe · チャットが答えます。ライブ音声に対応したプロバイダーから、Gemini Liveなどを追加してください。	src/ui/screens/models.js:175	
+12bm0vn	ok	Empty: with Live off, Shiori is one half, the main model. Add a fast model here to give her a quick voice in front.	モデルがないため、ライブがオフのときは、Shioriはメインのモデルだけを使って一人で動きます。ここに速いモデルを追加すると、メインより先に素早く話す声になります。	src/ui/screens/models.js:176	Note: "one half" is 一人で, per the glossary's halves note. The main model in brackets: it is her one half, not half of the main model.
+wer5y9	ok	Nothing here, so annai can't hear you. Add an entry.	何も登録されていないため、声を聞き取れません。項目を追加してください。	src/ui/screens/models.js:177	
+1n694n2	ok	Nothing here, so Shiori can't speak aloud. Add a voice.	何も登録されていないため、Shioriは声に出して話せません。声を追加してください。	src/ui/screens/models.js:178	
+el9rbx	ok	Uses the main list.	メインのリストを使います。	src/ui/screens/models.js:179	
+1rqw64m	ok	Wait for the voice (seconds)	声を待つ時間（秒）	src/ui/screens/models.js:180	
+48wtk9	ok	Wait for the words (seconds)	聞き取り結果を待つ時間（秒）	src/ui/screens/models.js:180	
+796n77	ok	Wait for the first words (seconds)	最初の応答を待つ時間（秒）	src/ui/screens/models.js:180	
+1xx9c0t	ok	When Shiori's model can't see a photo or read a PDF, a model of Koe's that can reads it, else one here, else Main's. With the PDF pages plugin, a model that sees photos reads a PDF's pages.	Shioriのモデルが写真を見たりPDFを読んだりできないときは、それができるKoeのモデルが代わりに読みます。なければこのリストのモデル、それもなければメインのモデルが読みます。「PDFページ」プラグインを入れると、写真を見られるモデルがPDFのページを読めるようになります。	src/ui/screens/models.js:185	Note: "one here" is a model of this role (補助), so ここにあるモデル; PDF ページ is the plugin's name in Japanese (its pdf-pages:@name).
+14w2ppx	ok	Add a provider for {0}	{0}のプロバイダーを追加	src/ui/screens/models.js:187	{0} = called
+17olz31	ok	Add a model to {0}	{0}にモデルを追加	src/ui/screens/models.js:189	{0} = called
+58mvoq	ok	Reasoning for {0}	{0}の推論レベル	src/ui/screens/models.js:197	{0} = called
+1cwghfv	ok	Wait from 1 to 600 seconds; leave it empty for the usual.	1〜600秒で指定してください。空欄の場合は標準の時間になります。	src/ui/screens/models.js:198	
+8nhvom	ok	Reorder {0}, {1} of {2}	{0}を並べ替え、{2}個中{1}番目	src/ui/screens/models.js:213	{0} = name; {1} = num(i + 1); {2} = num(n)
+17wwgww	ok	 ({0})	（{0}）	src/ui/screens/models.js:226	{0} = note; Note: no space before the full-width bracket.
+1r8iepd	ok	Drag, or use the arrow keys	ドラッグまたは矢印キーで移動	src/ui/screens/models.js:231	
+1ln5v12	ok	Move {0}	{0}を移動	src/ui/screens/models.js:233	{0} = name
+1rvkqip	ok	Move up	上へ移動	src/ui/screens/models.js:234	
+c2tjmw	ok	Move down	下へ移動	src/ui/screens/models.js:235	
 1yveacd	ok	Notifications are turned off for annai on this iPhone. Turn them on in Settings → Notifications → annai, then come back here.	このiPhoneではannaiの通知がオフになっています。「設定 → 通知 → annai」でオンにしてから、ここに戻ってください。	src/ui/screens/notifications.js:9	
 x5n8yx	ok	Notifications are blocked for annai. Touch and hold annai's icon, then App info → Notifications, and allow them; then come back here.	annaiの通知がブロックされています。annaiのアイコンを長押しして、「アプリ情報 → 通知」で許可してから、ここに戻ってください。	src/ui/screens/notifications.js:10	
 3e712g	ok	Notifications are blocked for this site. Allow them in the browser's site settings (the icon beside the address), then come back here.	このサイトの通知がブロックされています。ブラウザのサイトの設定（アドレスの横のアイコン）で許可してから、ここに戻ってください。	src/ui/screens/notifications.js:11	Note: "site settings" as the glossary's Site settings (サイトの設定 / 网站设置).
