@@ -1573,6 +1573,12 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** a typed line carries no conversation (`Halves.send` passes none to `#live`), so `#elsewhere` can't see it has left; the entry `live.write` returns has its `scope`, so the stamp is one line. The fix: stamp it and keep it in its own conversation (unanswered there), as a note is.
 - **Revisit when:** its row in docs/progress.md, in the next version.
 
+### With OpenAI Realtime, a tap while her reply is still being made with no sound yet cancels nothing there
+- **Kind:** deferred.
+- **What the traveller sees:** with Koe · Realtime on OpenAI's Realtime (not the user's), a tap that stops Koe while her reply is being made but before any of its sound has played sends OpenAI no cancel, so the reply runs on there (its tokens billed) and its calls still reach annai. Found by realtime-cut-next's reviews (2026-11-25, by reading: `interrupt()` in src/core/koe/live.js sends the cut only when her voice was sounding).
+- **Why:** a tap's cut is sent from the turn's sound; a reply that has no sound yet has none to cut. The fix: a tap cuts the reply being made too; to check with the OpenAI Realtime run (its row).
+- **Revisit when:** its row in docs/progress.md, with the OpenAI Realtime run.
+
 ### With OpenAI Realtime, a card's call from a cut reply can pass an urgent reminder on
 - **Kind:** deferred.
 - **What the traveller sees:** with Koe · Realtime on OpenAI's Realtime (not the user's: their Koe is Gemini Live), an urgent reminder that cuts Koe while a card's call of the cut reply is still on its way counts as told by that card, and isn't shown, then or at the next open (on main too).
