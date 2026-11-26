@@ -2440,6 +2440,38 @@ test('Koe live: her first words are heard and the link goes dead inside her turn
   }
 });
 
+// The same, with a call of hers still being answered (a slow write, say): her turn is open, its end overdue, and the quiet spell ends, yet it is not cut, as the call's answer
+// is still to go to the provider and her turn goes on after it (#quietEnd waits for #tools). The test holds the call's answer, and her turn's end on the link, past the spell
+// (3 s here) and the overdue end (2 s past her 0.3 s of sound); a turn cut at the spell would write her line cut, at once.
+test('Koe live: a card call of hers is still being answered as the quiet spell ends and her turn\'s end is overdue: her turn is not cut, and it is written whole when it ends', async () => {
+  const card = { name: 'show', args: { card: { title: 'Bixby Bridge', text: 'About twenty minutes ahead.' } } };
+  const link = slowLink(); // before the session opens
+  const k = await liveKit([{ said: 'Here is the bridge.', audio: tone(0.3), tool: card }], { pace: 1 });
+  try {
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    const koe = k.agent.live.c.koe;
+    const real = koe.liveCall.bind(koe);
+    /** @type {() => void} */
+    let release = () => {};
+    const gate = new Promise((r) => { release = () => r(undefined); });
+    koe.liveCall = async (/** @type {any[]} */ ...a) => { await gate; return real(...a); };
+    link.match = /"generationComplete"/; // her turn's end, and all after it, wait on the link
+    k.agent.send('Show me the bridge');
+    await until(() => link.held && k.platform.streams.length === 1, 30_000); // her words played, her card's call is being answered
+    await wait(4500); // past the quiet spell and her turn's overdue end
+    assert.deepEqual(await words(k), [], 'her turn is open: nothing of it is written yet');
+    release();
+    link.go();
+    await soon(async () => (await words(k)).length === 1, 30_000);
+    const [line] = await k.events(['out.speak']);
+    assert.deepEqual([line.data.text, Boolean(line.data.cut)], ['Here is the bridge.', false], 'written whole when her turn ends');
+  } finally {
+    link.restore();
+    await k.done();
+  }
+});
+
 // A card answered as her whole reply (#tool: a call alone, answered silently, ends her turn at the page's answer, #endNow) while the provider's end of that turn is still
 // on its way, and a note or an urgent reminder that goes in after it: her turn began before it went in, so its end is no miss of it (#settle), and the provider's end,
 // when it comes, is swallowed as the end of a turn annai ended itself (#endedEarly). The stand-in sends the turn's generationComplete and turnComplete right after
