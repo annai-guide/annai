@@ -224,6 +224,22 @@ test("classify sharpens an error's kind before the protocol's; headers join the 
   assert.ok(!JSON.stringify(trace).includes('sk-acme-1'), 'the key is in no trace entry');
 });
 
+test("a provider's list that returns ends its plugin's run of failures: two that crash, one that works, two that crash leave the plugin on, the protocol's list answering for each crash (plugin-fails-next test 11)", async () => {
+  const k = await kit();
+  const id = await k.llm.addProvider('provider-acme', { key: 'sk-acme-1' });
+  const steps = ['crash', 'crash', 'works', 'crash', 'crash'];
+  /** @type {any} */ (globalThis).acme.list = (/** @type {any} */ c) => {
+    if (steps.shift() === 'crash') throw new TypeError("Cannot read properties of undefined (reading 'models')");
+    return c.protocolList();
+  };
+  try {
+    for (let i = 0; i < 5; i++) assert.deepEqual(await k.llm.listModels(id, 'chat'), [{ providerId: 'listed-1' }]);
+    assert.equal(k.registry.isDisabled('provider-acme'), false);
+  } finally {
+    /** @type {any} */ (globalThis).acme.list = (/** @type {any} */ c) => c.protocolList();
+  }
+});
+
 test('a second setup from one plugin is refused, as is one from a plugin with no provider description, or one whose parts are not functions', async () => {
   const k = await hostKit();
   const plugin = (/** @type {string} */ id, /** @type {string} */ body, provider = true) => files({

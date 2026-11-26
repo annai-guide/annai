@@ -218,6 +218,7 @@ export async function finishReturn(ctx, env = {}) {
       if (isPluginBug(e)) ctx.registry.fail(back.plugin, 'sign-in', e);
       throw e;
     });
+    ctx.registry.succeeded(back.plugin); // its sign-in returned: its plugin's run of failures is over
   } catch (e) {
     ctx.notices.card({ tone: 'warn', title: t`Signing in with ${name} didn't finish`, body: messageOf(e) });
   } finally {

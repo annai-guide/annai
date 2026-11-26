@@ -402,8 +402,8 @@ export function createDock(ctx) {
 
 /**
  * The dock's avatar: a plugin's, when one replaces it and makes one that works (spec §16.4: avatar art), else annai's own.
- * A plugin's crash counts against it (Registry threw), made and on each call after. Each call counts its own throws in a row, reset by that call
- * working: annai's own takes its place when they add up to three. A call that works also ends its plugin's run.
+ * What a call of it throws, or a promise one returns rejects with, meets the one rule (Registry threw); a call that works ends its plugin's run of
+ * failures (Registry settled). A plugin switched off loses its avatar with the rest of it: the shell makes the dock again, with annai's own.
  * Exported for the test of what its calls count (ui-slots.test.js).
  * @param {any} ctx
  */
@@ -412,27 +412,12 @@ export function dockAvatar(ctx) {
   const a = c && made(ctx, c, 'avatar', () => c.item.create({ size: 'dock' }), (/** @type {any} */ a) =>
     a?.el instanceof Node && typeof a.setState === 'function' && typeof a.setLevel === 'function' ? null : /* en */ 'its avatar create() must return el, setState and setLevel');
   if (!a) return createAvatar({ size: 'dock' });
-  /** @type {any} annai's own, once their runs of throws add up to three */
-  let own = null;
-  /** @type {Record<string, number>} each call's throws in a row */
-  const runs = {};
   const call = (/** @type {string} */ name) => (/** @type {any[]} */ ...args) => {
-    if (own) return own[name](...args);
     try {
-      if (typeof a[name] === 'function') {
-        a[name](...args);
-        runs[name] = 0;
-        ctx.registry?.succeeded(c.pluginId); // any call that works: its plugin's run of failures is over (a Map write, cheap at setLevel's rate)
-      }
+      if (typeof a[name] === 'function') ctx.registry?.settled(c.pluginId, `avatar ${name}`, a[name](...args)); // a Map write, cheap at setLevel's rate
     } catch (e) {
       ctx.registry?.threw(c.pluginId, `avatar ${name}`, e);
-      runs[name] = (runs[name] ?? 0) + 1;
-      if (Object.values(runs).reduce((n, x) => n + x, 0) < 3) return;
-      own = createAvatar({ size: 'dock' });
-      own.setState(ctx.agent.state.name);
-      own[name](...args);
-      /** @type {any} */ (a.el).replaceWith?.(own.el);
     }
   };
-  return { get el() { return own?.el ?? a.el; }, setState: call('setState'), setLevel: call('setLevel'), glance: call('glance'), blink: call('blink') };
+  return { el: a.el, setState: call('setState'), setLevel: call('setLevel'), glance: call('glance'), blink: call('blink') };
 }

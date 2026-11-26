@@ -115,6 +115,25 @@ test('three clips that crash a plugin switch it off; a plain Error, however ofte
   }
 });
 
+test("a heard-clips function whose promise rejects with a crash, three times: off at the third, three counted lines, no unhandled rejection (plugin-fails-next test 8)", async () => {
+  const k = await liveKit([], { voice: VOICE });
+  let unhandled = 0;
+  const count = () => { unhandled++; };
+  process.on('unhandledRejection', count);
+  try {
+    /** @type {any[]} */
+    const logged = [];
+    k.registry.log = (/** @type {any} */ ev) => { logged.push(ev); };
+    k.registry.add('crashing', 'heard-clips', { clip: async () => { throw new TypeError('broken'); } });
+    for (let i = 0; i < 3; i++) await k.voice.tell({ id: `c${i}`, pcm: new Int16Array(8000).fill(300), rate: 16_000 }, 'kept');
+    await new Promise((r) => setTimeout(r, 20));
+    assert.deepEqual([k.registry.isDisabled('crashing'), logged.filter((e) => e.type === 'plugin.error').map((e) => e.data.count), unhandled], [true, [1, 2, 3], 0]);
+  } finally {
+    process.off('unhandledRejection', count);
+    await k.done();
+  }
+});
+
 test('the level check\'s sample: the next 3 s of sound outside a turn, at most one a minute, only while a plugin listens', async () => {
   const k = await liveKit([], { voice: VOICE });
   try {

@@ -35,10 +35,8 @@ import { encodeWav, pcm16 } from './voice/pcm.js';
 
 export { MANIFEST_FILE, PLUGIN_MAX_BYTES, PLUGIN_MANIFEST_SCHEMA } from './packages.js';
 export { isPluginBug } from './registry.js';
-/** How long a plugin's activate() may take before annai gives up on it. */
+/** How long a plugin's start (its module's load, then activate()) may take before annai gives up on it: one plugin must not hold annai's start. */
 export const START_TIMEOUT = 10_000;
-/** Launches in a row a plugin may fail to start on before annai turns it off. */
-export const MAX_START_FAILURES = 3;
 const STATE = '/installed.json';
 /** Where a package's translations are, inside it: l10n/<tag>.json. */
 const WORDS = 'l10n/';
@@ -151,7 +149,7 @@ export class PluginHost {
     const mod = await this.importModule(moduleUrl);
     checkManifest(mod.manifest);
     this.builtins.set(mod.manifest.id, mod.manifest);
-    await this.#start(mod.manifest, mod, true);
+    await this.#start(mod.manifest, () => mod, true);
     return mod.manifest;
   }
 
@@ -160,7 +158,7 @@ export class PluginHost {
    * or 'file' (before milestone 8, the file's name); skills: the skill names it claims; tools: its tools' names as of its last start;
    * origins: where its provider sends keys, as installed; provides: what its manifest provides.
    * @returns {Promise<Record<string, { version: string, name: string, enabled: boolean, installed: number, source: string, kind?: string,
-   *   file?: string, url?: string, fingerprint?: string, skills?: string[], tools?: string[], startFailures?: number, origins?: string[], provides?: Record<string, string[]> }>>}
+   *   file?: string, url?: string, fingerprint?: string, skills?: string[], tools?: string[], origins?: string[], provides?: Record<string, string[]> }>>}
    */
   async installed() {
     return (this.#known = (await this.ws.readJSON(SYS_PLUGINS, STATE)) ?? {});
@@ -371,9 +369,9 @@ export class PluginHost {
 
   /**
    * Starts every enabled installed plugin, in rank order (official first, then by when each was first
-   * installed), and returns the ones that failed. A plugin that fails on MAX_START_FAILURES
-   * launches in a row is turned off (disabled: true).
-   * @returns {Promise<{ id: string, error: unknown, disabled: boolean }[]>}
+   * installed), and returns the ones that failed: each isn't running, and is tried again at the next launch. Nothing is kept of a
+   * failed start: on or off is the user's alone (a startFailures an older annai wrote is read as nothing).
+   * @returns {Promise<{ id: string, error: unknown }[]>}
    */
   async startInstalled() {
     const failures = [];
@@ -391,17 +389,8 @@ export class PluginHost {
       if (!s.enabled) continue;
       try {
         await this.start(id);
-        if (s.startFailures) await this.#updateState(id, { startFailures: 0 }).catch(() => {});
       } catch (error) {
-        // Every error adds a launch to the run but a PluginError guard made (its cause: what was thrown) whose cause is no crash (isPluginBug: a missing
-        // link, its own words, annai's start limit), which neither extends the run nor ends it. Outside guard (its files, its manifest, a module that
-        // throws as it loads, a PluginError with no cause) every error counts.
-        const crash = !(error instanceof PluginError && 'cause' in error) || isPluginBug(error.cause);
-        const n = (s.startFailures ?? 0) + (crash ? 1 : 0);
-        const disabled = n >= MAX_START_FAILURES;
-        await this.#updateState(id, { startFailures: n, ...(disabled ? { enabled: false } : {}) }).catch(() => {});
-        if (disabled) /* en */ this.#log({ type: 'plugin.disabled', actor: 'system', data: { plugin: id, reason: `didn't start on ${n} launches in a row` } });
-        failures.push({ id, error, disabled });
+        failures.push({ id, error });
       }
     }
     // Once every plugin has started (else the next start tries again).
@@ -447,8 +436,7 @@ export class PluginHost {
     const state = await this.installed();
     this.#words.set(id, await this.words(id, manifest));
     if (manifest.entry) this.#loaded.set(id, state[id]?.fingerprint);
-    const mod = manifest.entry ? await this.importModule(this.pluginUrl(id, manifest.entry)) : {};
-    await this.#start(manifest, mod, false);
+    await this.#start(manifest, () => (manifest.entry ? this.importModule(this.pluginUrl(id, manifest.entry)) : {}), false);
     // Its tools' names, kept so removing it removes their switches even while it is off (choice 4).
     const tools = this.registry.entries('tool', { all: true }).filter((e) => e.pluginId === id).map((e) => String(e.item?.name)).sort();
     const had = (await this.installed())[id]?.tools ?? [];
@@ -529,7 +517,7 @@ export class PluginHost {
 
   /** @param {string} id @param {boolean} enabled */
   async setEnabled(id, enabled) {
-    await this.#updateState(id, enabled ? { enabled, startFailures: 0 } : { enabled });
+    await this.#updateState(id, { enabled });
     if (enabled) {
       this.registry.enable(id);
       await this.start(id);
@@ -773,17 +761,22 @@ export class PluginHost {
     return manifest;
   }
 
-  /** @param {any} manifest @param {any} mod @param {boolean} builtin */
-  async #start(manifest, mod, builtin) {
+  /**
+   * A start: its module's load and its activate(), one guarded call under one time limit, so whatever either throws meets the one rule
+   * (Registry.threw) and a load that never ends is given up on as an activate() that never does.
+   * @param {any} manifest @param {() => any} load its module, or a promise of it @param {boolean} builtin
+   */
+  async #start(manifest, load, builtin) {
     const id = manifest.id;
     let dispose = () => {};
     try {
-      if (typeof mod?.activate === 'function') {
-        const r = await this.registry.guard(id, 'starting', (/** @type {any} */ api) => this.#inTime(id, () => mod.activate(api)))(this.#api(id, manifest));
-        if (typeof r === 'function') dispose = r;
-      } else if (manifest.entry) {
-        /* en */ throw new PluginError(id, 'Its module has no activate() function');
-      }
+      const r = await this.registry.guard(id, 'starting', (/** @type {any} */ api) => this.#inTime(id, async () => {
+        const mod = await load();
+        if (typeof mod?.activate === 'function') return mod.activate(api);
+        if (manifest.entry) /* en */ throw new PluginError(id, 'Its module has no activate() function');
+        return undefined;
+      }))(this.#api(id, manifest));
+      if (typeof r === 'function') dispose = r;
       if (!builtin) await this.#content(id, manifest);
     } catch (e) {
       try {
@@ -798,7 +791,7 @@ export class PluginHost {
   }
 
   /**
-   * Runs activate(), giving up after startTimeout so one plugin can't keep annai from
+   * Runs a start (its module's load, then activate()), giving up after startTimeout so one plugin can't keep annai from
    * starting. If it finishes later, whatever it set up is taken down again.
    * @param {string} id @param {() => any} activate
    */
@@ -1034,15 +1027,6 @@ export class PluginHost {
         blank: (/** @type {any} */ value) => withoutSecretsIn(this.ws.store, value, { strict: true }),
       }),
     });
-  }
-
-  /** @param {{ type: string, actor: string, data: any }} ev */
-  #log(ev) {
-    try {
-      Promise.resolve(this.registry.log(ev)).catch(() => {});
-    } catch {
-      // logging must never break the caller
-    }
   }
 
   /** A plugin's start, when one is under way, over (whether it worked or not). @param {string} id */

@@ -129,6 +129,18 @@ test("a ?code= nobody expected, or one past 15 minutes, goes to no plugin, is re
   assert.notEqual(storage.getItem('annai.return'), null);
 });
 
+test("a sign-in that returns ends its plugin's run of failures: two that crash, one that works, two that crash leave the plugin on (plugin-fails-next test 11)", async () => {
+  const storage = memoryStorage();
+  const steps = ['crash', 'crash', 'works', 'crash', 'crash'];
+  const a = app(async () => { if (steps.shift() === 'crash') throw new TypeError('x is not a function'); });
+  for (let i = 0; i < 5; i++) {
+    expectReturn('provider-acme', { storage, now: 1000 });
+    await a.start('?code=abc', storage);
+  }
+  assert.equal(a.ctx.registry.isDisabled('provider-acme'), false);
+  assert.deepEqual(a.failures.filter((e) => e.type === 'plugin.error').map((e) => e.data.count), [1, 2, 1, 2]);
+});
+
 test('a return keeps its note and its query until plugins are up, so a page that reloads first (one no service worker took, spec §5.3) finishes it', async () => {
   const storage = memoryStorage();
   expectReturn('provider-acme', { storage, now: 1000 });

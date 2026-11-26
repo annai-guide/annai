@@ -1380,7 +1380,9 @@ export class Live {
   #try(type, w, scope, m) {
     const mem = this.#memFor(type, w, scope, m);
     try {
-      return type.check(w.when, m, mem) ?? null;
+      const fire = type.check(w.when, m, mem) ?? null;
+      if (type.pluginId) this.registry.succeeded(type.pluginId); // a check that returned: its plugin's run of failures is over
+      return fire;
     } catch (e) {
       if (type.pluginId && isPluginBug(e)) this.registry.fail(type.pluginId, `trigger ${type.type}`, e);
       else this.#noteOnce(scope, { type: type.type, watch: w.id, ...(planned({ watch: w.id }) ? { title: String(w.when.title ?? '') } : { reminder: w.fallback }), why: String(/** @type {any} */ (e)?.message ?? e) });

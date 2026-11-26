@@ -264,7 +264,7 @@ export class Voice {
     if (!clip) return;
     for (const { pluginId, item } of this.registry.entries('heard-clips')) {
       try {
-        item.clip({ id: seg.id, kind, format: clip.format, mediaType: clip.mediaType, data: clip.data, ms: Math.round((seg.audio?.seconds ?? 0) * 1000) });
+        this.registry.settled(pluginId, /* en */ 'heard-clips', item.clip({ id: seg.id, kind, format: clip.format, mediaType: clip.mediaType, data: clip.data, ms: Math.round((seg.audio?.seconds ?? 0) * 1000) }));
       } catch (e) {
         this.registry.threw(pluginId, /* en */ 'heard-clips', e);
       }

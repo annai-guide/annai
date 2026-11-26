@@ -802,6 +802,7 @@ export function createLlm({
       if (!list) return protocolList();
       try {
         const got = await list({ ability: abilityId, endpoint, key, fetch: send, protocolList });
+        plugins.registry.succeeded(rec.plugin); // its list returned: its plugin's run of failures is over
         return (Array.isArray(got) ? got : []).filter((m) => typeof m?.providerId === 'string' && m.providerId);
       } catch (e) {
         if (!isPluginBug(e)) throw e;

@@ -241,15 +241,17 @@ export function createBackups({ store, ws, registry, plugins = null, app, label,
     // Offline, no place answers, whatever it would guess why (browser access, its address): said so, and tried again once back.
     const offline = () => own('other', /* en */ `This ${noun} is offline.`, { code: 'offline', noun }, { retryAt: now() });
     if (!online()) throw offline();
+    const by = registry.owner('storage-type', type.type)?.pluginId; // the plugin that registered it, never a field it carries
     try {
-      return await fn(type, { config: { ...rec.config }, secret: await targetSecret(store, rec.id), device: { id: await deviceId(ws), label }, app });
+      const got = await fn(type, { config: { ...rec.config }, secret: await targetSecret(store, rec.id), device: { id: await deviceId(ws), label }, app });
+      if (by) registry.succeeded(by); // the place's call returned: its plugin's run of failures is over
+      return got;
     } catch (e) {
       // A stop is a stop, in annai's own words: whatever the plugin's error said may hold a secret.
       if (stopped(e)) throw /* en */ new DOMException('The backup was stopped.', 'AbortError');
       if (!online()) throw offline();
       const cleaned = await clean(e, rec);
       // A bug counts against the plugin (spec §5.5), told without any secret its message echoed.
-      const by = registry.owner('storage-type', type.type)?.pluginId; // the plugin that registered it, never a field it carries
       if (isPluginBug(e) && by) registry.fail(by, /* en */ `backup ${what}`, cleaned);
       throw cleaned;
     }

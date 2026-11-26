@@ -65,12 +65,13 @@ export function isFetchFailure(e) {
 /**
  * An address the user typed that isn't one (`new URL` throws): the user's to fix, not a plugin's bug. Where a plugin's own code makes the request
  * (isPluginBug's paths) annai has no address to check, so the engine's words are what there is: Chromium's "Invalid URL", WebKit's "cannot be parsed
- * as a URL", Firefox's "is not a valid URL". An endpoint type's call, a live open and a model list check the typed address by state, before the
- * plugin's code runs (call.js, open.js, service.js); a `run` type's call and its own list are left out of that check, as such a type may need no address
+ * as a URL" (and its fetch's "URL is not valid or contains user credentials."), Firefox's "is not a valid URL". A sentence this list doesn't know
+ * counts as a crash, for that run of annai only: nothing of a plugin's failures is kept. An endpoint type's call, a live open and a model list
+ * check the typed address by state, before the plugin's code runs (call.js, open.js, service.js); a `run` type's call and its own list are left out of that check, as such a type may need no address
  * (the scripted model's is empty). This test goes by the engine's words and knows no type, so a `run` type's own "Invalid URL" is spared like any other's.
  * @param {unknown} e
  */
-export const isBadAddress = (e) => e instanceof TypeError && /invalid url|failed to parse url|cannot be parsed as a url|is not a valid url/i.test(e.message);
+export const isBadAddress = (e) => e instanceof TypeError && /invalid url|failed to parse url|cannot be parsed as a url|is not a valid url|url is not valid/i.test(e.message);
 
 /**
  * Whether an error is a bug in a plugin's code (spec §5.5) rather than its answer, outside callOnce's and speechCall's calls (asProviderError):
@@ -105,10 +106,10 @@ export class PluginError extends Error {
 }
 
 /**
- * Everything plugins contribute, grouped by kind ("schema", "tool", …).
- * Functions plugins hand over go through guard(): what they throw becomes a
- * plugin.error event (threw), and a plugin that crashes (isPluginBug)
- * maxFailures times in a row is switched off until enable() is called (spec §5.5).
+ * Everything plugins contribute, grouped by kind ("schema", "tool", …), and the one answer to "has this plugin failed enough" (spec §5.5):
+ * what a call of its code throws, or a promise annai reads rejects with, is a plugin.error event (threw), written once while it repeats; a plugin
+ * that crashes (isPluginBug) maxFailures times in a row, with no call of it annai made returning in between (succeeded, settled, guard), is
+ * switched off until enable() is called or annai starts again. Nothing of it is kept: on or off in installed.json is the user's alone.
  */
 /**
  * Why a plugin was switched off, as data: it failed count times in a row, or its hooks were handed more than entries log entries in
@@ -124,6 +125,7 @@ export class Registry {
   /** @type {Rules} */ #rules = FIRST;
   /** @type {Map<string, number>} */ #failures = new Map();
   /** @type {Set<string>} */ #disabled = new Set();
+  /** @type {Map<string, string>} each plugin's last plugin.error line: one that repeats is written once */ #said = new Map();
   /** @type {Set<() => void>} */ #listeners = new Set();
   /** @type {Set<(info: { pluginId: string, why: DisabledWhy, message: string }) => void>} */ #offs = new Set();
 
@@ -230,6 +232,7 @@ export class Registry {
   /** Clears a plugin's failure count and switches it back on. @param {string} pluginId */
   enable(pluginId) {
     this.#failures.delete(pluginId);
+    this.#said.delete(pluginId);
     if (this.#disabled.delete(pluginId)) this.#emit();
   }
 
@@ -238,21 +241,32 @@ export class Registry {
     this.#failures.set(pluginId, 0);
   }
 
+  /**
+   * What a call into a plugin returned, where annai reads no answer of it (a live message or driver call, an avatar's call, heard clips, a dock
+   * action): the call worked (succeeded), and a promise once it resolves; what a promise rejects with is the call's own throw, late (threw).
+   * @param {string} pluginId @param {string} name what was called, for the log @param {unknown} r
+   */
+  settled(pluginId, name, r) {
+    if (typeof (/** @type {any} */ (r))?.then === 'function') /** @type {any} */ (r).then(() => this.succeeded(pluginId), (/** @type {unknown} */ e) => this.threw(pluginId, name, e));
+    else this.succeeded(pluginId);
+  }
+
   /** Counts a failure annai has judged its plugin's itself (an endpoint type's call by position, a crash on a path that hands the answer on, a live trigger's check, the hooks' loop guard, a component's or an avatar's create() that returned the wrong thing). @param {string} pluginId @param {string} name @param {unknown} e */
   fail(pluginId, name, e) {
     this.#fail(pluginId, name, e);
   }
 
   /**
-   * What a plugin's code threw where annai called it (a start and a hook through guard, a drawing, a dock action, a component, heard clips, a live
-   * protocol's code; a start's error goes on to startInstalled, for the launch count and the card): always logged, and counted only when it is a crash
-   * (isPluginBug), as a tool's is. A promise annai doesn't read (a live driver call's, a message handler's, an avatar call's, heard clips') never gets
-   * here. Any other error is its answer (for want of a link, in its own words): it neither adds to its plugin's run of failures nor ends it, and has no count.
+   * What a plugin's code threw where annai called it (a start, its module's load included, and a hook through guard, a drawing, a dock action, a
+   * component, an avatar's call, heard clips, a live protocol's code), or what a promise such a call returned rejects with (guard, settled; a start's
+   * error goes on to startInstalled, for that launch's card): always logged, once while it repeats, and counted only when it is a crash
+   * (isPluginBug), as a tool's is. Any other error is its answer (for want of a link, in its own words): it neither adds to its plugin's run of
+   * failures nor ends it, and has no count.
    * @param {string} pluginId @param {string} name @param {unknown} e
    */
   threw(pluginId, name, e) {
     if (isPluginBug(e)) this.#fail(pluginId, name, e);
-    else this.#safeLog({ type: 'plugin.error', actor: `plugin:${pluginId}`, data: { name, message: String(/** @type {any} */ (e)?.message ?? e) } });
+    else this.#note(pluginId, { name, message: String(/** @type {any} */ (e)?.message ?? e) });
   }
 
   /**
@@ -298,9 +312,11 @@ export class Registry {
 
   /** @param {string} pluginId @param {string} name @param {any} e */
   #fail(pluginId, name, e) {
+    // Switched off already (its code may still run: an open live session, a late timer): it has failed enough, so nothing more is counted.
+    if (this.#disabled.has(pluginId)) return this.#note(pluginId, { name, message: String(e?.message ?? e) });
     const n = (this.#failures.get(pluginId) ?? 0) + 1;
     this.#failures.set(pluginId, n);
-    this.#safeLog({ type: 'plugin.error', actor: `plugin:${pluginId}`, data: { name, message: String(e?.message ?? e), count: n } });
+    this.#note(pluginId, { name, message: String(e?.message ?? e), count: n });
     // The card's last error is annai's own words for it where it has them (shown: a sentence in the screens' language), else the message.
     if (n >= this.maxFailures) this.disable(pluginId, { kind: 'failed', count: n }, typeof e?.shown === 'string' ? e.shown : String(e?.message ?? e));
   }
@@ -323,6 +339,17 @@ export class Registry {
       }
     }
     this.#emit();
+  }
+
+  /**
+   * A plugin.error line, written unless it is its plugin's last one over again (an error at every frame or entry is one line, not one each; a crash
+   * between working calls is the same line with the same count). @param {string} pluginId @param {{ name: string, message: string, count?: number }} data
+   */
+  #note(pluginId, data) {
+    const line = JSON.stringify(data);
+    if (this.#said.get(pluginId) === line) return;
+    this.#said.set(pluginId, line);
+    this.#safeLog({ type: 'plugin.error', actor: `plugin:${pluginId}`, data });
   }
 
   /** @param {{ type: string, actor: string, data: any }} ev */

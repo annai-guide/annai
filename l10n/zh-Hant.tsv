@@ -621,14 +621,14 @@ al82au	ok	Type the passphrase for the encrypted backups at {0}, then save.	請�
 bbv043	ok	This device is offline, so annai couldn't reach this place.	這台裝置已離線，無法連線到這個備份位置。	src/core/backup.js:52	
 1oqcoyx	ok	annai tries again once it's back online.	恢復連網後會自動重試。	src/core/backup.js:82	
 16b3dai	ok	That backup place was removed.	該備份位置已被移除。	src/core/backup.js:183	
-mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	無法啟動這類備份位置的外掛程式。請重試。	src/core/backup.js:389	
-lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	請輸入以 MB 為單位的數字，留空則不限。	src/core/backup.js:406	
-1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	請把使用者名稱和密碼填在各自的欄位中，不要寫進網址裡。	src/core/backup.js:417	
-tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	請輸入加密備份的密碼片語，然後儲存。	src/core/backup.js:425	
-230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API 金鑰只能放在加密備份中。請先勾選「用密碼片語加密備份」。	src/core/backup.js:426	Note: the checkbox's own words; keep them as its row says them.
-107ikf9	ok	Works.	測試通過。	src/core/backup.js:470	Note: the result of Save and test when the place says nothing itself.
-1w4k6nl	ok	This backup was made by a newer annai: update annai first.	這個備份是用較新版本的 annai 建立的，請先更新 annai。	src/core/backup.js:520	
-173rmiu	ok	This backup is damaged.	此備份已損壞。	src/core/backup.js:521	
+mdqb8a	ok	annai couldn't start the plugin for this kind of backup place. Try again.	無法啟動這類備份位置的外掛程式。請重試。	src/core/backup.js:391	
+lpnyhw	ok	Type a number of megabytes, or leave it empty for no limit.	請輸入以 MB 為單位的數字，留空則不限。	src/core/backup.js:408	
+1t8pkx9	ok	Put the user name and the password in their own fields, not in the address.	請把使用者名稱和密碼填在各自的欄位中，不要寫進網址裡。	src/core/backup.js:419	
+tzkuq7	ok	Type a passphrase for the encrypted backups, then save.	請輸入加密備份的密碼片語，然後儲存。	src/core/backup.js:427	
+230717	ok	API keys go only in encrypted backups: tick "Encrypt backups with a passphrase" first.	API 金鑰只能放在加密備份中。請先勾選「用密碼片語加密備份」。	src/core/backup.js:428	Note: the checkbox's own words; keep them as its row says them.
+107ikf9	ok	Works.	測試通過。	src/core/backup.js:472	Note: the result of Save and test when the place says nothing itself.
+1w4k6nl	ok	This backup was made by a newer annai: update annai first.	這個備份是用較新版本的 annai 建立的，請先更新 annai。	src/core/backup.js:522	
+173rmiu	ok	This backup is damaged.	此備份已損壞。	src/core/backup.js:523	
 1lbu7g8	ok	Photo · {0}	照片 · {0}	src/core/chats.js:132	{0} = time
 1nqtd5y	ok	Voice · {0}	語音 · {0}	src/core/chats.js:133	{0} = time
 146ozuk	ok	New conversation	新對話	src/core/chats.js:134	
@@ -858,17 +858,17 @@ d57q3n	ok	Flight	航班	src/core/plan.js:70
 jj8u9s	ok	Stay	住宿	src/core/plan.js:70	Note: A kind of booking: a hotel or other lodging.
 sksosh	ok	Car	租車	src/core/plan.js:70	Note: A kind of booking: a car, nearly always a rental.
 1nz795c	ok	Its time zone "{0}" isn't one annai knows; shown in {1}.	無法辨識時區「{0}」，改以 {1} 顯示。	src/core/plan.js:155	{0} = String(own ?? ''); {1} = fallbackTz
-o6vv9a	ok	"{0}" is a name annai uses for one of its own parts, so a skill can't have it.	「{0}」已被 annai 自身的某個部分使用，不能用作技能名稱。	src/core/plugins.js:181	{0} = id; Note: {0} is the skill's name.
-1fdobr5	ok	It has the same id as a plugin built into annai.	與 annai 內建外掛程式的 ID 相同。	src/core/plugins.js:182	
-wq5ezj	ok	Its name, "{0}", is annai's own name, or the name of one of its parts. Ask its author to rename it.	名稱「{0}」與 annai 或其某個部分的名稱相同。請聯絡作者改名。	src/core/plugins.js:186	{0} = pkg.name; Note: Ask here is the plain verb (to ask the author), not Safari's permission choice.
-15gukav	ok	A plugin with this id is installed already. Remove it first.	已安裝了相同 ID 的外掛程式，請先移除。	src/core/plugins.js:192	
-masbkh	ok	A skill with this id is installed already. Remove it first.	已安裝了相同 ID 的技能，請先移除。	src/core/plugins.js:192	
-1idb6oe	ok	{0} is handed the keys you give it, so the one used is annai's own, else the one installed first.	{0} 會拿到你提供的金鑰，所以會優先使用 annai 內建的；沒有的話，就用最先安裝的那個。	src/core/plugins.js:243	{0} = name
-7ot8m8	ok	{0} is annai's own, so no plugin replaces it.	{0} 是 annai 內建的，外掛程式不能取代它。	src/core/plugins.js:245	{0} = name
-1863007	ok	It is being removed.	正在移除。	src/core/plugins.js:444	Note: Remove → 移除, as annai's Remove buttons say.
-u30lhr	ok	It was updated. Restart annai to run the new version.	已更新。請重新啟動 annai 來執行新版本。	src/core/plugins.js:445	
-12roxwh	ok	It keeps MCP servers, not settings: remove a server on its own screen.	儲存的是 MCP 伺服器，而不是設定。要移除伺服器，請前往該伺服器的頁面。	src/core/plugins.js:615	Note: Remove → 移除, as annai's Remove buttons say.
-1k8fwg2#other	ok	It didn't finish within # seconds.	# 秒內未完成。	src/core/plugins.js:812	plural; # = s; English: "It didn't finish within # second." (one), "It didn't finish within # seconds." (other); Note: a sentence of its own, under the card's "didn't start" title; after "Starting failed:" it is the reason.
+o6vv9a	ok	"{0}" is a name annai uses for one of its own parts, so a skill can't have it.	「{0}」已被 annai 自身的某個部分使用，不能用作技能名稱。	src/core/plugins.js:179	{0} = id; Note: {0} is the skill's name.
+1fdobr5	ok	It has the same id as a plugin built into annai.	與 annai 內建外掛程式的 ID 相同。	src/core/plugins.js:180	
+wq5ezj	ok	Its name, "{0}", is annai's own name, or the name of one of its parts. Ask its author to rename it.	名稱「{0}」與 annai 或其某個部分的名稱相同。請聯絡作者改名。	src/core/plugins.js:184	{0} = pkg.name; Note: Ask here is the plain verb (to ask the author), not Safari's permission choice.
+15gukav	ok	A plugin with this id is installed already. Remove it first.	已安裝了相同 ID 的外掛程式，請先移除。	src/core/plugins.js:190	
+masbkh	ok	A skill with this id is installed already. Remove it first.	已安裝了相同 ID 的技能，請先移除。	src/core/plugins.js:190	
+1idb6oe	ok	{0} is handed the keys you give it, so the one used is annai's own, else the one installed first.	{0} 會拿到你提供的金鑰，所以會優先使用 annai 內建的；沒有的話，就用最先安裝的那個。	src/core/plugins.js:241	{0} = name
+7ot8m8	ok	{0} is annai's own, so no plugin replaces it.	{0} 是 annai 內建的，外掛程式不能取代它。	src/core/plugins.js:243	{0} = name
+1863007	ok	It is being removed.	正在移除。	src/core/plugins.js:433	Note: Remove → 移除, as annai's Remove buttons say.
+u30lhr	ok	It was updated. Restart annai to run the new version.	已更新。請重新啟動 annai 來執行新版本。	src/core/plugins.js:434	
+12roxwh	ok	It keeps MCP servers, not settings: remove a server on its own screen.	儲存的是 MCP 伺服器，而不是設定。要移除伺服器，請前往該伺服器的頁面。	src/core/plugins.js:603	Note: Remove → 移除, as annai's Remove buttons say.
+1k8fwg2#other	ok	It didn't finish within # seconds.	# 秒內未完成。	src/core/plugins.js:805	plural; # = s; English: "It didn't finish within # second." (one), "It didn't finish within # seconds." (other); Note: a sentence of its own, under the card's "didn't start" title; after "Starting failed:" it is the reason.
 u8bf72	ok	Notifications are on. Reminders come like this while annai is closed.	通知已開啟。annai 關閉時，提醒會像這樣推播給你。	src/core/push/mirror.js:75	
 1dxa9va	ok	Notifications are on again: reminders come like this while annai is closed.	通知已重新開啟：annai 關閉時，提醒會像這樣推播給你。	src/core/push/mirror.js:76	
 dcq7bh	ok	annai has a reminder for you. Open annai to see it.	你有一則提醒，開啟 annai 即可查看。	src/core/push/mirror.js:83	Note: a notification for a reminder the phone couldn't read.
@@ -895,17 +895,17 @@ ido0tg	ok	The phone's push service says this subscription no longer exists.	手�
 1eeb6fm	ok	There's no annai push relay at {0} (it answered 404). Check the relay address.	{0} 上沒有 annai 推播中繼（傳回 404）。請檢查中繼網址。	src/core/push/relay-client.js:41	{0} = host
 12gfn9	ok	The relay at {0} sent a key annai can't use. Is this the address of an annai push relay?	中繼 {0} 傳來了 annai 無法使用的金鑰。這是 annai 推播中繼的網址嗎？	src/core/push/relay-client.js:42	{0} = host
 n5y19n	ok	The relay at {0} refused it ({1}).	中繼 {0} 拒絕了請求（{1}）。	src/core/push/relay-client.js:43	{0} = host; {1} = status
-3hb2ch	ok	The key works.	金鑰有效。	src/core/realtime/open.js:277	
-r6odk7	ok	annai can open a live session at this address from the browser.	瀏覽器可以在這個網址開啟即時連線。	src/core/realtime/open.js:277	Note: a live session is 即時連線; 會話 reads as a spoken conversation in Taiwan.
-4u7tr8	ok	It answered aloud: {0}	它用語音回答了：「{0}」	src/core/realtime/open.js:308	{0} = words; Note: the stop after the quote is the screens' own (asSentence), left off here so a "?" or "!" the model ended with is not followed by a second one.
-ip7w4y#other	ok	It didn't answer aloud within # seconds.	# 秒內沒有語音回答。	src/core/realtime/open.js:308	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
-1x3q9c3	ok	The session closed before it answered.	還沒回答，連線就關閉了。	src/core/realtime/open.js:309	Note: a live session is 即時連線; 會話 reads as a spoken conversation in Taiwan.
-9sqs1k	ok	It answered, but not aloud in words.	它回答了，但沒有用語音說出來。	src/core/realtime/open.js:309	
+3hb2ch	ok	The key works.	金鑰有效。	src/core/realtime/open.js:292	
+r6odk7	ok	annai can open a live session at this address from the browser.	瀏覽器可以在這個網址開啟即時連線。	src/core/realtime/open.js:292	Note: a live session is 即時連線; 會話 reads as a spoken conversation in Taiwan.
+4u7tr8	ok	It answered aloud: {0}	它用語音回答了：「{0}」	src/core/realtime/open.js:323	{0} = words; Note: the stop after the quote is the screens' own (asSentence), left off here so a "?" or "!" the model ended with is not followed by a second one.
+ip7w4y#other	ok	It didn't answer aloud within # seconds.	# 秒內沒有語音回答。	src/core/realtime/open.js:323	plural; # = ms / 1000; English: "It didn't answer aloud within # second." (one), "It didn't answer aloud within # seconds." (other)
+1x3q9c3	ok	The session closed before it answered.	還沒回答，連線就關閉了。	src/core/realtime/open.js:324	Note: a live session is 即時連線; 會話 reads as a spoken conversation in Taiwan.
+9sqs1k	ok	It answered, but not aloud in words.	它回答了，但沒有用語音說出來。	src/core/realtime/open.js:324	
 ntqu7n	ok	annai's own plugin uses this name, so a package from elsewhere can't have it. Ask its author to rename it.	這個名稱已被 annai 官方外掛程式使用，其他來源的外掛程式不能再用。請聯絡作者改名。	src/core/registry.js:17	Note: "Ask its author" is asking a person (請讓作者…), not the phones' permission choice Ask (詢問).
 1euv2cd	ok	annai's own plugin uses this name, but the one installed came from elsewhere, so annai won't use it. Remove it in Settings → Plugins, then try again.	這個名稱屬於 annai 官方外掛程式，但已安裝的同名外掛程式來自其他來源，因此不會使用它。請在設定 → 外掛程式中移除它，然後重試。	src/core/registry.js:18	Note: Remove → 移除, as annai's Remove buttons say.
 oabrye	ok	Turn it on in Settings → Plugins, then try again.	請在設定 → 外掛程式中開啟它，然後重試。	src/core/registry.js:19	
-mzoa87	ok	It is switched off after repeated errors.	因多次出錯，已自動關閉。	src/core/registry.js:266	
-dhg5k6	ok	Starting failed: {0}	啟動失敗：{0}	src/core/registry.js:279	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
+mzoa87	ok	It is switched off after repeated errors.	因多次出錯，已自動關閉。	src/core/registry.js:280	
+dhg5k6	ok	Starting failed: {0}	啟動失敗：{0}	src/core/registry.js:293	{0} = why; Note: the frame of a plugin's start error, in the screens' words; {0} is annai's own sentence, or the plugin's own words as it wrote them (English), after the full-width colon.
 19bu7pw	ok	Version {0} would stop {1} working: it needs {2} {3}. Update {4} first, or keep this version.	版本 {0} 會導致 {1} 無法運作，因為它需要 {2} {3}。請先更新 {4}，或保留目前的版本。	src/core/requires.js:52	{0} = version; {1} = them; {2} = it; {3} = r.version; {4} = them
 1ee40s4	ok	It needs {0}, which you turned off.	需要 {0}，但你已把它關閉。	src/core/requires.js:79	{0} = shown
 8xu6se	ok	It needs {0}, which isn't installed. Install it from {1} first, then try again.	需要 {0}，但尚未安裝。請先從 {1} 安裝，然後再試一次。	src/core/requires.js:82	{0} = r.id; {1} = r.homepage
@@ -1448,9 +1448,8 @@ alpox6	ok	The last error: {0}	最後一次錯誤：{0}	src/ui/plugin-cards.js:15
 6kkhkz#other	ok	It opened without its offline service, so these plugins can't start: {0}.	annai 啟動時缺少離線服務，因此以下外掛程式無法啟動：{0}。	src/ui/plugin-cards.js:30	plural; # = names.length; {0} = list(names); English: "It opened without its offline service, so this plugin can't start: {0}." (one), "It opened without its offline service, so these plugins can't start: {0}." (other)
 53p50e	ok	It opened without its offline service, so plugins can't start or be installed.	annai 啟動時缺少離線服務，因此外掛程式無法啟動，也無法安裝。	src/ui/plugin-cards.js:31	
 fzpt3w	ok	Reload now	立即重新載入	src/ui/plugin-cards.js:32	
-1abmsob	ok	It didn't start the last few times annai opened.	最近幾次開啟 annai 時，它都沒有啟動。	src/ui/plugin-cards.js:47	
-11arkb9	ok	You can turn it off in Settings → Plugins.	可以在設定 → 外掛程式中關閉它。	src/ui/plugin-cards.js:48	
-1jz4o49	ok	The plugin "{0}" didn't start	外掛程式「{0}」沒有啟動	src/ui/plugin-cards.js:48	{0} = it
+11arkb9	ok	You can turn it off in Settings → Plugins.	可以在設定 → 外掛程式中關閉它。	src/ui/plugin-cards.js:47	
+1jz4o49	ok	The plugin "{0}" didn't start	外掛程式「{0}」沒有啟動	src/ui/plugin-cards.js:47	{0} = it
 44nn0b	ok	{0} {1} → {2} (brings something new: you'll be asked first)	{0} {1} → {2}（有新內容，更新前會先詢問你）	src/ui/plugin-updates.js:88	{0} = u.name; {1} = u.installed; {2} = u.available
 trjp65	ok	{0} (changed) (brings something new: you'll be asked first)	{0}（已變更，有新內容，更新前會先詢問你）	src/ui/plugin-updates.js:88	{0} = u.name
 1kyfel6	ok	{0} (changed)	{0}（已變更）	src/ui/plugin-updates.js:89	{0} = u.name
@@ -1508,18 +1507,18 @@ edml6o	ok	Getting the sign-in ready…	正在準備登入…	src/ui/provider-set
 1rk1a1z	ok	A sign-in came back, but annai no longer expected it: more than 15 minutes passed, or it was finished already. Start it again from Settings → Models.	收到了登入結果，但 annai 已不再等待，因為已超過 15 分鐘，或登入已經完成。請在設定 → 模型中重新登入。	src/ui/provider-setup.js:202	
 sv1qqk	ok	A sign-in came back too late	登入結果來得太晚	src/ui/provider-setup.js:202	
 gkf0xx	ok	{0} isn't running. Look at it in Settings → Plugins, then sign in again.	{0} 沒有在執行。請在設定 → 外掛程式中檢查，然後重新登入。	src/ui/provider-setup.js:216	{0} = name
-1fbojq2	ok	Signing in with {0} didn't finish	{0} 的登入未完成	src/ui/provider-setup.js:222	{0} = name
-1fm7mjz	ok	Speech out	朗讀	src/ui/provider-setup.js:230	
-v20s4a	ok	Quick decision	快速判斷	src/ui/provider-setup.js:230	
-w8niry	ok	Speech in	語音辨識	src/ui/provider-setup.js:230	
-eudybe#other	ok	{0} now use {1}'s free models.	{0}現在使用 {1} 的免費模型。	src/ui/provider-setup.js:246	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
-14xff7o#other	ok	{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.	{0}需要付費：{1} 沒有可以先用的免費模型，而 Shiori 需要模型才能回答。	src/ui/provider-setup.js:247	plural; # = paid.length; {0} = list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)); {1} = name; English: "{0} costs money: {1} has no free model to start with, and Shiori needs one to answer." (one), "{0} cost money: {1} has no free model to start with, and Shiori needs one to answer." (other)
-1wdrhx6	ok	{0} {1}	{0}（{1}）	src/ui/provider-setup.js:248	{0} = ROLE_SHORT[r] ?? r; {1} = costs[r]; Note: A role and the model that costs money in it ("Main GPT-6.1 Sol"), not two sentences: the model in brackets.
-1c8it09	ok	If your key is on the free tier, switch that on, on this page: its models then cost nothing.	如果是免費額度的金鑰，請在本頁開啟「此金鑰屬於免費額度」，這樣它的模型就不會計費。	src/ui/provider-setup.js:249	Note: "switch that on" names the provider page's switch, "This key is on the free tier".
-1dsri4f	ok	Its speech in models went behind the free entries.	它的語音辨識模型已排在免費選項之後。	src/ui/provider-setup.js:250	
-jvtji4	ok	Its speech in and speech out models went behind the free entries.	它的語音辨識和朗讀模型已排在免費選項之後。	src/ui/provider-setup.js:250	
-1r0x31s	ok	Its speech out models went behind the free entries.	它的朗讀模型已排在免費選項之後。	src/ui/provider-setup.js:251	
-1llun41	ok	The provider	供應商	src/ui/provider-setup.js:258	Note: "The provider" stands where a provider's name is unknown.
+1fbojq2	ok	Signing in with {0} didn't finish	{0} 的登入未完成	src/ui/provider-setup.js:223	{0} = name
+1fm7mjz	ok	Speech out	朗讀	src/ui/provider-setup.js:231	
+v20s4a	ok	Quick decision	快速判斷	src/ui/provider-setup.js:231	
+w8niry	ok	Speech in	語音辨識	src/ui/provider-setup.js:231	
+eudybe#other	ok	{0} now use {1}'s free models.	{0}現在使用 {1} 的免費模型。	src/ui/provider-setup.js:247	plural; # = free.length; {0} = list(free.map((r) => ROLE_SHORT[r] ?? r)); {1} = name; English: "{0} now uses {1}'s free models." (one), "{0} now use {1}'s free models." (other)
+14xff7o#other	ok	{0} cost money: {1} has no free model to start with, and Shiori needs one to answer.	{0}需要付費：{1} 沒有可以先用的免費模型，而 Shiori 需要模型才能回答。	src/ui/provider-setup.js:248	plural; # = paid.length; {0} = list(paid.map((r) => t`${ROLE_SHORT[r] ?? r} ${costs[r]}`)); {1} = name; English: "{0} costs money: {1} has no free model to start with, and Shiori needs one to answer." (one), "{0} cost money: {1} has no free model to start with, and Shiori needs one to answer." (other)
+1wdrhx6	ok	{0} {1}	{0}（{1}）	src/ui/provider-setup.js:249	{0} = ROLE_SHORT[r] ?? r; {1} = costs[r]; Note: A role and the model that costs money in it ("Main GPT-6.1 Sol"), not two sentences: the model in brackets.
+1c8it09	ok	If your key is on the free tier, switch that on, on this page: its models then cost nothing.	如果是免費額度的金鑰，請在本頁開啟「此金鑰屬於免費額度」，這樣它的模型就不會計費。	src/ui/provider-setup.js:250	Note: "switch that on" names the provider page's switch, "This key is on the free tier".
+1dsri4f	ok	Its speech in models went behind the free entries.	它的語音辨識模型已排在免費選項之後。	src/ui/provider-setup.js:251	
+jvtji4	ok	Its speech in and speech out models went behind the free entries.	它的語音辨識和朗讀模型已排在免費選項之後。	src/ui/provider-setup.js:251	
+1r0x31s	ok	Its speech out models went behind the free entries.	它的朗讀模型已排在免費選項之後。	src/ui/provider-setup.js:252	
+1llun41	ok	The provider	供應商	src/ui/provider-setup.js:259	Note: "The provider" stands where a provider's name is unknown.
 1c4feqt	ok	This browser can't run annai's offline service, which shows notifications.	此瀏覽器無法執行 annai 用來顯示通知的離線服務。	src/ui/push.js:19	
 1vug986	ok	The phone's push subscription has no keys. Turn notifications off and on again.	手機的推播訂閱沒有金鑰。請關閉通知後再重新開啟。	src/ui/push.js:30	
 17sbtk9	ok	The relay's key isn't one annai can use.	annai 無法使用中繼的金鑰。	src/ui/push.js:78	
