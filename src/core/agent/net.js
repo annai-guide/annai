@@ -243,10 +243,35 @@ export function traceUrl(url, secrets = [], unread = false) {
     // isn't either (a stored key may be in it).
     return unread || leaks(out, secrets) ? `${u.protocol}//${unread || leaks(host, secrets) ? BLANK : host}/${BLANK}` : out;
   } catch {
-    // Not an address: keep only what comes before any query or fragment, if that holds no secret.
+    // Not an address: one that may hold a name or password keeps only its scheme (which @ ends them can't be told); any other only what comes
+    // before any query or fragment, if that holds no secret.
+    if (CREDENTIALED.test(String(url))) return `${String(url).slice(0, String(url).indexOf('://'))}://${BLANK}`;
     const out = scrub(String(url).split(/[?#]/)[0], secrets);
     return unread || leaks(out, secrets) ? BLANK : out;
   }
+}
+
+// An address with something between its scheme and an at sign: it may hold a name or password, whether or not it parses.
+const CREDENTIALED = /^[a-z][a-z0-9+.-]*:\/\/[^]*@/i;
+
+/**
+ * The requested address in an engine's words (Chromium's refusal of one with a name or password quotes it whole), as given or as parsed, made
+ * its traced form in one pass, longest first, when it may hold a name or password; any other address's words are left as they are.
+ * @param {string} words @param {unknown} url @param {string} traced
+ */
+function quotedAs(words, url, traced) {
+  const given = String(url);
+  /** @type {string[]} */
+  const forms = [given];
+  try {
+    const u = new URL(given);
+    if (!u.username && !u.password) return words;
+    forms.push(u.href);
+  } catch {
+    if (!CREDENTIALED.test(given)) return words;
+  }
+  const any = new RegExp([...new Set(forms)].sort((a, b) => b.length - a.length).map((f) => f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g');
+  return words.replace(any, () => traced);
 }
 
 /**
@@ -271,7 +296,7 @@ export function tracedFetch(store, scope, who, get = (url, init) => fetch(url, i
       // with none (the engine's plain AbortError) keeps the browser's words.
       const why = init.signal?.aborted ? /** @type {any} */ (init.signal.reason) : undefined;
       const own = typeof why?.message === 'string' && !(why instanceof DOMException && why.name === 'AbortError');
-      const said = blankAll(String(/** @type {any} */ (own ? why : e)?.message ?? e), secrets);
+      const said = blankAll(quotedAs(String(/** @type {any} */ (own ? why : e)?.message ?? e), url, base.url), secrets);
       // Not kept when it held a secret, or when the keys couldn't be read to check it.
       const held = !known || leaks(said, secrets);
       /* en */

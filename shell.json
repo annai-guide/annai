@@ -1,5 +1,5 @@
 {
-  "build": "60ec2db39338",
+  "build": "2bcedd8e902a",
   "files": {
     "/": "14dafa28c7d1",
     "/index.html": "14dafa28c7d1",
@@ -50,7 +50,7 @@
     "/src/core/agent/refusals.js": "5d12a5980e98",
     "/src/core/agent/self-tools.js": "75847defd5bf",
     "/src/core/agent/spoken-yes.js": "728ad4b1b0e6",
-    "/src/core/agent/net.js": "8abb65589204",
+    "/src/core/agent/net.js": "be3839bba753",
     "/src/core/agent/tools.js": "03ffdc7f3e06",
     "/src/core/agent/trip-tools.js": "a7c97e6e35fa",
     "/src/core/agent/transcript.js": "62c2efe146d6",
@@ -74,10 +74,10 @@
     "/src/core/hash.js": "e3cf309df8cf",
     "/src/core/hooks.js": "b340de3a5102",
     "/src/core/html-text.js": "ad9b5709befa",
-    "/src/core/llm/call.js": "f274683c8a0f",
+    "/src/core/llm/call.js": "7e5f312ca311",
     "/src/core/llm/check.js": "7c6996785ed9",
     "/src/core/llm/config.js": "008b753fa725",
-    "/src/core/llm/contract.js": "92872d521c13",
+    "/src/core/llm/contract.js": "f2cde968a794",
     "/src/core/llm/decide.js": "4aff39cf2ab3",
     "/src/core/llm/fallback.js": "8a5316c256be",
     "/src/core/llm/move-over.js": "9584243ec1f4",

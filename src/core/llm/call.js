@@ -1,4 +1,4 @@
-import { ProviderError, typeError, portable, sameOrigin, noRedirect, saidWords } from './contract.js';
+import { ProviderError, typeError, portable, sameOrigin, noAddress, noRedirect, saidWords } from './contract.js';
 import { mergePatch } from '../patch.js';
 import { levelPatch } from './reasoning.js';
 import { NO_USAGE, mergeUsage, costOf } from './cost.js';
@@ -456,7 +456,8 @@ export async function callOnce({ type, endpoint, model, key, request, level = 'o
     }
   } catch (e) {
     clearTimeout(t);
-    let err = asProviderError(e, linked, type, registry, dropped());
+    // A run type's own unparsable address (annai checks none for it): the user's, as sameOrigin's.
+    let err = type.run && isBadAddress(e) ? noAddress(endpoint, ability) : asProviderError(e, linked, type, registry, dropped());
     // With a photo's, a PDF's or a recording's bytes in what was sent (not the turns a kept one holds), likelier the send than the model; text
     // alone stays late (a server that never streams).
     if (err.said?.code === 'late' && sending && up) {
@@ -638,8 +639,8 @@ export function typeWorked(type, registry) {
  * of time "timeout", stopped "cancelled", whatever was thrown as it stopped); then a reply whose body annai couldn't read (watched), "network",
  * whatever the type made of it or the browser calls it (Firefox: annai's read of a body cut mid-way gives a TypeError, the type's `res.json()` an AbortError); then an AbortError or TimeoutError the call's
  * signal didn't cause, by its name (the type's own timer, say); then the type's own ProviderError. A `run` type makes its own requests, so annai
- * has no position for them: a fetch the browser couldn't make (isFetchFailure, as for a tool) is the link's, as cannotConnect's, and an
- * address as typed that isn't one (isBadAddress) the user's (a run type's address is unchecked). Anything else is a bug in its plugin, counted (spec §5.5). @param {unknown} e @param {AbortSignal} signal @param {EndpointType} type
+ * has no position for them: a fetch the browser couldn't make (isFetchFailure, as for a tool) is the link's, as cannotConnect's (its
+ * own address as typed that can't parse is callOnce's noAddress). Anything else is a bug in its plugin, counted (spec §5.5). @param {unknown} e @param {AbortSignal} signal @param {EndpointType} type
  * @param {import('../registry.js').Registry} [registry] @param {unknown} [dropped] the error the reply's body failed with (watched)
  */
 export function asProviderError(e, signal, type, registry, dropped) {
@@ -654,7 +655,6 @@ export function asProviderError(e, signal, type, registry, dropped) {
   if (!own && name === 'AbortError') return stopped();
   if (own) return e;
   if (type.run && isFetchFailure(e)) return new ProviderError('unreachable', /** @type {TypeError} */ (e).message, { cause: e });
-  if (type.run && isBadAddress(e)) return new ProviderError('bad-request', /** @type {TypeError} */ (e).message, { cause: e });
   const by = ownerOf(type, registry);
   if (by) registry?.fail(by, /* en */ `endpoint type ${type.type}`, e);
   return new ProviderError('plugin', String(/** @type {any} */ (e)?.message ?? e), { cause: e });

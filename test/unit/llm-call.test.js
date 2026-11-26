@@ -170,7 +170,7 @@ test("a run type whose own request the browser couldn't make or finish (Chromium
   // Its own `new URL` of an address as typed that isn't one (annai checks no address for a run type): the user's to fix, counted nothing.
   const typed = { ...runType(async function* () { new URL('llm.example/v1'); }), type: 'typed-run' };
   registry.add('typed-plugin', 'endpoint-type', typed);
-  for (let n = 0; n < 3; n++) await assert.rejects(callOnce({ type: typed, endpoint: endpoint(), model: model(), key: null, request, registry }), (e) => e instanceof ProviderError && e.kind === 'bad-request');
+  for (let n = 0; n < 3; n++) await assert.rejects(callOnce({ type: typed, endpoint: endpoint(), model: model(), key: null, request, registry }), (e) => e instanceof ProviderError && e.kind === 'bad-request' && e.said?.code === 'no-address' && /has no working address/.test(e.message));
   assert.equal(registry.isDisabled('typed-plugin'), false);
 });
 
