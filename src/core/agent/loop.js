@@ -247,10 +247,12 @@ function goneWords(sent, gone) {
 export const GATHER = Object.freeze({ quiet: 1.5, photo: 3, typing: 5, most: 20 });
 /**
  * How many times a model really asked for a segment's words and failed to make them (Kept.failed) before it is written as not transcribed and its sound
- * let go (spec §10.3). Only a model that rests nothing after failing is asked again by a write-down and counts: one that couldn't be reached (a dead link,
- * the device offline) or refused the recording (a 400), once at each turn that works, so three typed lines can come well inside a minute. A model that rests after
- * failing (a server error, the network, overloaded, rate limited, out of credit, auth: fallback.js nextStep) is asked by the requests and found resting by the
- * write-down, so nothing counts and it is never given up: its sound stays until it works, Start fresh, a forced summary or HEARD_MAX_BYTES (16 MB). Three: not
+ * let go (spec §10.3). Each write-down ask that fails counts (a model resting when it comes is not asked; a recording the phone makes no format of the model's
+ * for is no ask). One that rests nothing after failing (it couldn't be reached, refused the recording with a 400, or didn't take it in its send's time) is asked
+ * again at each turn that works, so three typed lines can come well inside a minute. One the turn's requests asked first and that rests after failing (a server
+ * error, the network, overloaded, rate limited, out of credit, auth: fallback.js nextStep) is found resting by the write-down, so nothing counts and its sound
+ * stays until it works, Start fresh, a forced summary or HEARD_MAX_BYTES (16 MB); one only the write-down asks (the requests sent the sound to a model that
+ * takes it) counts each such failure once its rest is over. Three: not
  * measured, a guess from the first version (2026-10-16). It bounds sending the recording again, at every turn that works, to a model that refuses it or can't be
  * reached, and keeping its sound for one that is not coming back; a smaller number gives up on a hiccup of the link.
  */
