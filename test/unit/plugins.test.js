@@ -92,13 +92,13 @@ test("registry: a fetch the browser couldn't make is no failure of what guard wr
   }
   assert.equal(r.isDisabled('poster'), false, 'twelve offline posts: still on');
   assert.deepEqual(logged.map((e) => [e.type, e.data.message, 'count' in e.data]), ['Failed to fetch', 'Load failed', 'network error'].map((m) => ['plugin.error', m, false]), 'each kind logged once while it repeats, none counted');
-  const buggy = r.guard('buggy', 'hook', async () => { throw new TypeError('x is not a function'); });
-  for (let i = 0; i < 3; i++) await assert.rejects(buggy(), PluginError);
-  assert.equal(r.isDisabled('buggy'), true, 'its own bug is still counted: off at the third');
   // The memory of a repeat is each plugin's own: another plugin's first error in the same words is its own line.
   const other = r.guard('poster-two', 'hook', async () => { throw new TypeError('network error'); });
   for (let i = 0; i < 2; i++) await assert.rejects(other(), PluginError);
   assert.deepEqual(logged.filter((e) => e.actor === 'plugin:poster-two').map((e) => e.data.message), ['network error']);
+  const buggy = r.guard('buggy', 'hook', async () => { throw new TypeError('x is not a function'); });
+  for (let i = 0; i < 3; i++) await assert.rejects(buggy(), PluginError);
+  assert.equal(r.isDisabled('buggy'), true, 'its own bug is still counted: off at the third');
 });
 
 test('host: built-in core schemas take effect', async () => {
