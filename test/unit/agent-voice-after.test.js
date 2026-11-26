@@ -112,17 +112,19 @@ test("a heard line is written when the phone refuses the settings reads made as 
   k.agent.tap();
   await until(() => k.agent.state.name === 'listening');
   const read = k.ws.readJSON.bind(k.ws);
-  let refused = 0;
+  /** Where the refused reads came from. @type {Set<string>} */
+  const refused = new Set();
   k.ws.readJSON = async (/** @type {string} */ scope, /** @type {string} */ path) => {
     // Only the reads made as the heard line is saved and written down (a refused read as her turn starts is its own Deferred entry).
-    if (scope === SYS_SETTINGS && path === APP && /logHeard|writeDown|Voice\.keep/.test(String(new Error().stack))) { refused++; throw new DOMException('The read was refused.', 'UnknownError'); }
+    const at = /writeDown|Voice\.keep/.exec(String(new Error().stack))?.[0];
+    if (scope === SYS_SETTINGS && path === APP && at) { refused.add(at); throw new DOMException('The read was refused.', 'UnknownError'); }
     return read(scope, path);
   };
   await hear(k, 'where-eat');
   await idleAtOnce(k);
   k.ws.readJSON = read;
   const [heard] = await k.events(['heard']);
-  assert.ok(refused > 0, 'the settings reads were refused');
+  assert.deepEqual([...refused].sort(), ['Voice.keep', 'writeDown'], 'the reads as the line is saved and as it is written down were refused');
   assert.equal(heard.data.clip, undefined, 'no clip');
   const [written] = await k.events(['heard.text']);
   assert.equal(written?.data.text, 'where should we eat', 'its words are written down');
