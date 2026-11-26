@@ -1621,3 +1621,9 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **What the traveller sees:** a third-party plugin (no official one) fetching, through `annai.net.fetch`, an address its own setting holds as `https://name:password@host/…`: in Chromium the request is refused and the engine's words, which quote the address whole, are kept in the trace's error field and in the error the plugin gets, and so in what Shiori is told if a tool's answer carries it (the trace's `url` field is blanked). WebKit's words hold no address. Since addr-small-next no typed address of annai's or of an official plugin gets that far. Found by its final review (2026-11-25, measured in Node through the real `tracedFetch` with Chromium's measured words).
 - **Why:** `tracedFetch` (src/core/agent/net.js) blanks stored secrets and credential shapes, not the requested address's own name and password. The fix, at source: blank them as `src/core/llm/trace.js`'s `urlSecrets` already does for a model call, with its own review.
 - **Revisit when:** its row in docs/progress.md, in the next version.
+
+### A plugin switched off mid-session keeps driving its open live session
+- **Kind:** deferred.
+- **What the traveller sees:** a third-party live voice plugin (no official one) switched off for crashing while one of its sessions is open: the card says it was turned off, and its open session goes on talking until it closes, every message still handled by the plugin's driver. Found by the plugin-failure design check (2026-11-26, measured: 50 crashes in one session all handled by the same driver after the switch-off at the third).
+- **Why:** the registry stops the plugin and takes its type out, but the session holds the type. The fix: the live service closes a session whose plugin is switched off.
+- **Revisit when:** its row in docs/progress.md, in the next version.
