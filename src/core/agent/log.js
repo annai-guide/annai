@@ -20,10 +20,13 @@ export const TALK_TAG = 'conversation';
 export const KOE_TAG = 'koe';
 
 /**
- * Whether a record ends a turn of hers (one Shiori's, or Kokoro's: Koe's records carry half: 'koe' and never count, it neither reads files nor files them),
- * as the conversation is read (Transcript.apply): the loop's `turn.end`, or, in a log from before the loop wrote one (cc3615ae3, 2026-11-14: its replies
- * have no `endLogged` key), a reply of hers that a model answered. A turn that was stopped, cut at its work or failed has neither, whatever it answered
- * before. @param {{ type: string, data?: any }} e
+ * Whether a record ends a turn of hers (one Shiori's, or Kokoro's: Koe's records carry half: 'koe' and never count, it neither reads files nor files them)
+ * as a finished turn, by the record the conversation reads one from (Transcript.apply): the loop's `turn.end`, or, in a log from before the loop wrote one
+ * (before cc3615ae3, 2026-11-14: replies since then carry an `endLogged` key, older ones none), a reply of hers that a model answered (the approved entry
+ * "Turns the version before this update left unfinished are read as finished"). An error with its wake isn't asked: the conversation takes it as the
+ * close of her turn (nothing wakes her again for it), but a turn that failed or was stopped isn't known to have read what it was handed. So in a log of
+ * this version a stopped, cut or failed turn has no end here, whatever it answered before; in an older log an answered reply before the failure still
+ * reads as its end. @param {{ type: string, data?: any }} e
  */
 export function endsHerTurn(e) {
   const d = e.data ?? {};

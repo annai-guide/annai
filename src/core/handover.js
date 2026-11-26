@@ -77,10 +77,11 @@ export function handoverOf(wakes) {
 
 /**
  * The files a conversation's Shiori hasn't read yet: those of its wakes (files added or moved in while it was closed, or while her turn ran) after her last
- * turn's end, still there. The question is the one the conversation asks of the log (Transcript): has her turn ended since, by the loop's own rule (`turn.end`;
- * in a log from before it was written, a reply of hers that a model answered: endsHerTurn). A turn that got no answer (no model set, none reachable on the
- * road), was stopped, or failed after its first reply has no end, so it isn't known to have read them: the files stay waiting, and her next turn has their wakes in what
- * she reads (the transcript keeps them). Koe's wake records for a file (half: 'koe') are not asked: it neither reads files nor files them.
+ * turn's end, still there. The question is whether her turn has ended since, by the record the conversation reads a finished turn from (`turn.end`; in a
+ * log from before it was written, a reply of hers that a model answered: endsHerTurn). A turn that got no answer (no model set, none reachable on the
+ * road), was stopped, or failed after its first reply has no such end in a log of this version, so it isn't known to have read them: the files stay
+ * waiting, though the conversation takes the error as that turn's close and doesn't wake her for it, and her next turn has their wakes in what she reads
+ * (the transcript keeps them). Koe's wake records for a file (half: 'koe') are not asked: it neither reads files nor files them.
  * @param {import('./types.js').Store} store @param {string} scope @returns {Promise<string[]>} paths in the scope
  */
 export async function filesToRead(store, scope) {

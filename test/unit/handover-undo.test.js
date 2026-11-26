@@ -8,6 +8,7 @@ import { CORE_SCHEMAS } from '../../src/plugins/core-schemas/schemas.js';
 import { record } from '../../src/core/agent/log.js';
 import { undoHandover, undoable, filesToRead, undoEverywhere } from '../../src/core/handover.js';
 import { Transcript } from '../../src/core/agent/transcript.js';
+import { modelTrace } from '../../src/core/llm/trace.js';
 import { readNames, syncNames } from '../../src/core/names.js';
 import { moveFile } from '../../src/core/waiting.js';
 import { utf8 } from '../../src/core/bytes.js';
@@ -296,8 +297,10 @@ test("filesToRead: in a log from before turn.end was written, a file handed and 
   const { store, trip } = await kit();
   await filesWake(store, trip, 'w-1', ['/files/flight.pdf']);
   assert.deepEqual(await waiting(store, trip), ['/files/flight.pdf']);
-  await olderReply(store, trip, 'w-1');
-  assert.deepEqual(await waiting(store, trip), [], 'her reply is read as her turn\'s end, as the conversation reads it');
+  // Her reply as that version wrote it, through the real writer (its parts, no endLogged key), so the conversation's own reading can be asked too.
+  await modelTrace(store, trip).turn(/** @type {any} */ ({ ...TURN, answeredBy: 'm1', tag: 'conversation', wake: 'w-1', prefix: 'p', handover: null }), 'Filed it.', '', /** @type {any} */ ([{ type: 'text', text: 'Filed it.' }]));
+  assert.equal((await Transcript.load(store, trip)).unanswered, false, 'the conversation reads her reply as her turn\'s end');
+  assert.deepEqual(await waiting(store, trip), [], 'and so does the wait');
 });
 
 test("filesToRead: in a log from before turn.end was written, a turn nobody answered, a role call of another tag and Koe's reply are no end", async () => {
