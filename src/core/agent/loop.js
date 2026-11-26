@@ -496,7 +496,7 @@ export class Agent {
   #lastTurn = 0;
   /** @type {AbortController | null} cuts the model call running now, not the turn */
   #callCut = null;
-  /** Her turn's call is sending a photo's, a PDF's or a recording's bytes, as callOnce's sending events say: Thinking says Sending… meanwhile. Each send ends with its own off, so nothing here clears it. */
+  /** Her turn's call, or a reader's or transcription's for it, is sending a photo's, a PDF's or a recording's bytes, as their sending events say: Thinking says Sending… meanwhile. Each send ends with its own off, so nothing here clears it. */
   #up = false;
   /** A note cut her speech: speak says so, and doesn't listen. */
   #noteCut = false;
@@ -3711,8 +3711,8 @@ export class Agent {
   }
 
   /**
-   * Her call's photos, PDF or recording start going up (on), or no longer are (off: the uploads done, the request's answer's headers come, or the
-   * send failed or was stopped: callOnce says it at its own end): Thinking says Sending… meanwhile, on the dock now and at each return to Thinking
+   * Her call's (or its reader's or transcription's) photos, PDF or recording start going up (on), or no longer are (off: the uploads done, the request's answer's headers come, or the
+   * send failed or was stopped: the send says it at its own end): Thinking says Sending… meanwhile, on the dock now and at each return to Thinking
    * (a sound heard while it goes up) (spec §16.3). @param {boolean} on
    */
   #sendingNow(on) {
