@@ -14,7 +14,10 @@
  * - turns are annai's (turn_detection null): its detector's cut commits the audio and asks for a response;
  * - a response is made faster than it plays: annai plays it as it comes, and the turn is complete when playing it
  *   would end, as Gemini's is. A cut-in cancels the response still being made and truncates what wasn't heard,
- *   where annai's player says it stopped (playedMs), else by the clock;
+ *   where annai's player says it stopped (playedMs), else by the clock. The cut turn ends (interrupted) when the
+ *   cancelled response's response.done comes, after what of it was already on its way (a card's call is still that
+ *   turn's), as Gemini's interrupted comes after the calls in flight; a cut of one all made, its voice still playing,
+ *   ends it at once;
  * - a tool's answer starts no response unless one is asked for (`silent` asks for none); while a response is being
  *   made, what annai sends next waits for it to end, as OpenAI takes one response at a time; a response.create
  *   OpenAI refuses (its error names the create's event_id) ends that turn, and what waited goes;
@@ -157,7 +160,7 @@ export function activate(annai) {
       let items = [];
       let clock = 0;
       let responses = 0;
-      /** Cancels sent whose response hasn't ended: that turn has ended as interrupted already. */
+      /** Cancels sent whose response hasn't ended: its response.done (or OpenAI's refusal to make it) ends that turn, as interrupted. */
       let cuts = 0;
       /** Turns that end when their voice would have played. @type {Set<any>} */
       const ending = new Set();
@@ -189,6 +192,7 @@ export function activate(annai) {
       /**
        * Cuts off Koe's turn, if one is going on: the response being made is cancelled, and what wasn't heard truncated, where
        * annai's player says it stopped (playedMs: of the turn it plays, the newest response's items in order), else by the clock.
+       * A cancelled one's turn ends at its response.done (done), once nothing more of it can come; one all made ends here.
        * @param {number} [playedMs]
        */
       const cut = (playedMs) => {
@@ -212,7 +216,7 @@ export function activate(annai) {
         clock = now;
         for (const x of ending) clearTimeout(x);
         ending.clear();
-        if (live) emit({ type: 'turn', end: 'interrupted' });
+        if (live && !making) emit({ type: 'turn', end: 'interrupted' });
       };
       /** The response is done: its tools, its usage, and its turn's end. @param {any} r */
       const done = (r) => {
@@ -220,9 +224,11 @@ export function activate(annai) {
         if (r?.usage) emit({ type: 'usage', usage: usageOf(r.usage) });
         if (r?.status === 'failed' || r?.status === 'incomplete') note('live.error', { code: r.status, message: String(r.status_details?.error?.message ?? r.status_details?.reason ?? '') });
         responding = false;
-        if (cuts) cuts--;
-        else if (r?.status === 'cancelled') emit({ type: 'turn', end: 'interrupted' });
-        else {
+        // One annai cancelled ends here, cut, whatever its status (all made, where the cancel crossed its end): after all of it that came.
+        if (cuts || r?.status === 'cancelled') {
+          if (cuts) cuts--;
+          emit({ type: 'turn', end: 'interrupted' });
+        } else {
           emit({ type: 'made' });
           const x = setTimeout(() => {
             ending.delete(x);
@@ -271,8 +277,8 @@ export function activate(annai) {
                 if (e.code === 'conversation_already_has_active_response') held.unshift({ type: 'response.create' });
                 else {
                   responding = false;
-                  if (cuts) cuts = 0;
-                  else emit({ type: 'turn', end: 'complete' });
+                  emit({ type: 'turn', end: cuts ? 'interrupted' : 'complete' }); // one cancelled first gets no response.done: its cut ends here
+                  cuts = 0;
                   flush();
                 }
               }
