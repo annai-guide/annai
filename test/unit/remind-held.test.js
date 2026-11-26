@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import { agentKit, until, idleAtOnce, inTime, holdAtDoor, holdReminders, raw } from './agent-kit.js';
 import { liveKit, soon, tone, texts, got, lives, say as sayClip } from './koe-live-kit.js';
 import { codePlugin, storedModules } from './package-kit.js';
-import { quietSession, tell, tell2, cues, notesIn, words, shown, wait, textsIn, SAID, PASS } from './live-flight-kit.js';
+import { quietSession, tell, tell2, cues, notesIn, words, lines, shown, wait, textsIn, SAID, PASS } from './live-flight-kit.js';
 import { useClock } from './clock.js';
 import { Agent } from '../../src/core/agent/loop.js';
 import { Halves } from '../../src/core/agent/halves.js';
@@ -2483,6 +2483,263 @@ test("Koe live on OpenAI Realtime: an urgent reminder cuts in while Koe talks, a
     assert.deepEqual((await k.events(['reminder.told'])).map((/** @type {any} */ e) => e.data.reminders.map((/** @type {any} */ r) => r.text)), [[TRAIN]], 'written as told, once: she said it');
     assert.deepEqual(reminders(k.notices), [], 'no card for it');
     assert.equal(textsIn(k).filter((x) => x.includes('Train in 20 minutes')).length, 1, 'it went in once, on the next connection');
+  } finally {
+    link.restore();
+    await k.done();
+  }
+});
+
+// A cut turn has a bound of Koe's own (realtime-cut-next's final review, findings 1 and 2): the link goes dead while the socket stays up, so the provider's end of
+// her cut turn never comes. The watchdog (SILENT_S) opens a fresh connection, which lets the left connection's turn go (#reconnect), and the reminder goes in again
+// there: she says it, written as told. A cut turn's trailing sound answers nothing (#answers), so it can't disarm the watchdog, and the quiet spell doesn't count a
+// cut turn as hers (#quietEnd). Measured on 7bd084e06: H, her answer on the fresh connection went into the stale cut turn, never written, and the reminder showed as
+// a card at the quiet spell's close; G, the trailing sound counted as her answer, and Koe stayed open and busy with the reminder neither said nor shown.
+const LINE = 'Here is Bixby Bridge, one of the most photographed bridges on the coast.';
+/** What the session wrote as told, by the reminders' words. @param {any} k */
+const toldIn = async (k) => (await k.events(['reminder.told'])).map((/** @type {any} */ e) => e.data.reminders.map((/** @type {any} */ r) => r.text));
+for (const [what, trailing] of /** @type {[string, boolean][]} */ ([['the link dead from that instant', false], ['a last piece of her cut line arriving after it went in, the link dead from the cut on', true]])) {
+  test(`Koe live: Koe talks, an urgent reminder cuts in, ${what}: the watchdog's fresh connection gets it again, and she says it there, written as told`, async () => {
+    const link = slowLink(); // before the session opens
+    // pace 3: the stand-in's own end of her line comes 9 s in, long after the cut, however loaded the host
+    const k = await liveKit([{ said: LINE, audio: tone(3) }, { said, audio: tone(0.3) }], { pace: 3 });
+    try {
+      k.platform.streamSpeed = 1;
+      await k.voice.unlock();
+      // H: nothing after her burst reaches the page (the cut, or her line's own end). G: the burst's last pieces wait on the link, from the words "photographed".
+      link.match = trailing ? /photographed/ : /"interrupted"|"turnComplete"/;
+      k.agent.send('Tell me about the bridge');
+      // She talks. H: all her line's sound is in, and the last words and generationComplete that follow it in the same burst (a few ms; 200 ms of room)
+      await until(() => k.platform.streams.length === 1 && (trailing ? link.held : k.platform.streams[0].ms >= 3000), 30_000);
+      if (!trailing) await wait(200);
+      await k.agent.wake({ ...train(), urgent: true }); // it cuts in on her
+      if (trailing) {
+        await until(() => link.waiting().some((x) => x.includes('"interrupted"')), 30_000); // the stand-in took the reminder: its cut of her turn is on the link
+        link.go('after'); // her line's last pieces come now, after the reminder went in; the cut and all after it never do
+      }
+      await soon(async () => (await toldIn(k)).length + (await entries(k)).length >= 1, 30_000);
+      await idleAtOnce(k); // nothing of hers is left open
+      assert.equal(k.server.connections().length, 2, 'the watchdog connected again');
+      assert.deepEqual(await toldIn(k), [[TRAIN]], 'she said it on the fresh connection: written as told, once');
+      assert.deepEqual(reminders(k.notices), [], 'no card for it');
+      assert.equal((await words(k)).at(-1), said, 'her answer there is a line of its own, written whole');
+      assert.equal(texts(k).filter((/** @type {string} */ x) => x.includes('Train in 20 minutes')).length, 2, 'it went in again on the fresh connection');
+    } finally {
+      link.restore();
+      await k.done();
+    }
+  });
+}
+
+// A turn of hers not cut yet goes with the left connection too, cut where it was heard (#reconnect, as #closed): a line the user typed goes in while she talks,
+// and the link goes dead before the provider's cut of her turn comes. On 7bd084e06 her answer on the fresh connection went on in that turn, one line of both.
+test('Koe live: a line typed while Koe talks, the link dead from then on: her line is written cut at the watchdog\'s fresh connection, and her answer there is a line of its own', async () => {
+  const link = slowLink(); // before the session opens
+  const answer = 'The creek runs out to the sea just below it.';
+  const k = await liveKit([{ said: LINE, audio: tone(3) }, { said: answer, audio: tone(0.3) }], { pace: 3 });
+  try {
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    link.match = /"interrupted"|"turnComplete"/; // nothing after her burst reaches the page
+    k.agent.send('Tell me about the bridge');
+    await until(() => k.platform.streams.length === 1 && k.platform.streams[0].ms >= 3000, 30_000);
+    await wait(200); // the burst's last words and its generationComplete are in too
+    k.agent.send('And the creek below it?'); // no note in flight: it goes in without cutting her, and the provider's cut never comes
+    await soon(async () => (await words(k)).some((x) => x.includes('creek runs out')), 30_000); // her answer is written
+    await idleAtOnce(k);
+    assert.equal(k.server.connections().length, 2, 'the watchdog connected again');
+    const [first, ...rest] = await words(k);
+    assert.ok(first.endsWith('✂') && LINE.startsWith(first.slice(0, -1)), `the line she was saying is written cut: ${first}`);
+    assert.deepEqual(rest, [answer], 'her answer is a line of its own');
+  } finally {
+    link.restore();
+    await k.done();
+  }
+});
+
+// The same on OpenAI Realtime, whose plugin ends her cut turn only when the cancelled reply's response.done comes (realtime-cut-next): that response.done, and all
+// after it, never reach the page. A: the reminder waits in the plugin behind that reply, the watchdog's fresh connection gets it, and she says it. Her cut turn stays
+// open on the page until the response.done that never comes, so the reconnect has to let it go (#reconnect): without that, A fails at "written as told".
+test('Koe live on OpenAI Realtime: Koe talks, an urgent reminder cuts in, and the cancelled reply never ends: the watchdog\'s fresh connection gets it, and she says it there, written as told', async () => {
+  const link = slowLink(); // before the session opens
+  const k = await liveKit([{ said: LINE, audio: tone(3) }, { said, audio: tone(0.3) }], { pace: 3, live: { type: 'openai-realtime' } });
+  try {
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    k.agent.send('Tell me about the bridge');
+    await until(() => k.platform.streams.length === 1, 30_000); // she talks
+    link.match = /"response\.done"/; // the cancelled reply's end, and all after it on this connection, never reach the page
+    await k.agent.wake({ ...train(), urgent: true }); // it cuts in on her
+    await soon(async () => (await toldIn(k)).length + (await entries(k)).length >= 1, 30_000);
+    await idleAtOnce(k);
+    assert.equal(k.server.connections().length, 2, 'the watchdog connected again');
+    assert.deepEqual(await toldIn(k), [[TRAIN]], 'she said it on the fresh connection: written as told, once');
+    assert.deepEqual(reminders(k.notices), [], 'no card for it');
+    assert.equal((await words(k)).at(-1), said, 'her answer there is a line of its own, written whole');
+    assert.equal(textsIn(k).filter((x) => x.includes('Train in 20 minutes')).length, 1, 'it went in once, on the fresh connection: the plugin held it behind the cancelled reply');
+  } finally {
+    link.restore();
+    await k.done();
+  }
+});
+
+// B: a tap stops her while her reply is being made, the end of that reply never reaches the page, and the user says nothing: the quiet spell closes the session.
+// Gemini isn't told of a tap, so her turn's own end is what would end it (the stand-in sends it as her line would have played out, 9 s in); OpenAI's is the
+// cancelled reply's response.done, which the plugin waits for to end her cut turn (realtime-cut-next). On 7bd084e06 the Gemini order stayed open, "Listening" and busy,
+// for as long as the socket lasted, and so does the OpenAI one when the quiet spell counts her cut turn as hers (#hers() instead of #hers(false) in #quietEnd).
+for (const [what, live, end] of /** @type {[string, any, RegExp][]} */ ([['Gemini Live', undefined, /"turnComplete"/], ['OpenAI Realtime', { type: 'openai-realtime' }, /"response\.done"/]])) {
+  test(`Koe live on ${what}: a tap stops her while her reply is being made, its end never comes, and the user says nothing: the session closes at the quiet spell`, async () => {
+    const link = slowLink(); // before the session opens
+    const k = await liveKit([{ said: LINE, audio: tone(3) }], { pace: 3, ...(live ? { live } : {}) });
+    try {
+      k.platform.streamSpeed = 1;
+      await k.voice.unlock();
+      k.agent.send('Tell me about the bridge');
+      await until(() => k.platform.streams.length === 1, 30_000); // she talks, her reply still being made
+      link.match = end; // the end of her reply, and all after it on this connection, never reach the page
+      assert.equal(k.agent.tap(), 'cut', 'the tap stops her and listens');
+      await soon(async () => (await lives(k, 'closed')).length === 1, 30_000);
+      assert.deepEqual((await lives(k, 'closed')).map((/** @type {any} */ e) => e.data.why), ['quiet'], 'closed by the quiet spell');
+      assert.equal(k.server.connections().length, 1, 'no other connection');
+      assert.equal(k.agent.live.busy, false, 'nothing of hers is left open');
+    } finally {
+      link.restore();
+      await k.done();
+    }
+  });
+}
+
+// The cut line's last words come after the provider's cut (the Gemini plugin: "transcripts can trail the cut one"), and then the link is dead: those words answer nothing
+// either (#answers: the words go into her cut turn, or after its end into #trail), so the watchdog's fresh connection gets the reminder again and she says it there.
+// The stand-in's turn ends only at `endAt`, so the reminder meets it open: the cut, then the turn's last words, as Gemini sends them, and all after that is held.
+// Without the #trail half of that rule those words answered the wait: no second connection, and the reminder showed as a card when the quiet spell closed the session.
+test('Koe live: Koe talks, an urgent reminder cuts in, the provider\'s cut comes and then the last words of her cut line, and the link goes dead: the watchdog\'s fresh connection gets it again, and she says it there, written as told', async () => {
+  const link = slowLink(); // before the session opens
+  const k = await liveKit([{ said: LINE, audio: tone(3), endAt: 9000, saidAfter: ' It is a lovely sight.' }, { said, audio: tone(0.3) }], { pace: 3 });
+  try {
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    k.agent.send('Tell me about the bridge');
+    await until(() => k.platform.streams.length === 1 && k.platform.streams[0].ms >= 3000, 30_000); // she talks, her line's sound all in
+    link.match = /inlineData/; // her answer to the reminder, and all after it on this connection, never reach the page
+    await k.agent.wake({ ...train(), urgent: true }); // it cuts in on her: the cut comes, then her line's last words
+    await soon(async () => (await toldIn(k)).length + (await entries(k)).length >= 1, 30_000);
+    await idleAtOnce(k); // nothing of hers is left open
+    assert.equal(k.server.connections().length, 2, 'the watchdog connected again');
+    assert.deepEqual(await toldIn(k), [[TRAIN]], 'she said it on the fresh connection: written as told, once');
+    assert.deepEqual(reminders(k.notices), [], 'no card for it');
+    assert.equal((await words(k)).at(-1), said, 'her answer there is a line of its own, written whole');
+  } finally {
+    link.restore();
+    await k.done();
+  }
+});
+
+// An uncut turn of hers whose link dies inside it (cut-bound-next's fix round 1, the second opinion's F1; the same on main): her first words are heard, and then the
+// link is dead with the socket up. Her turn is not cut and its end never comes, so the quiet spell found it hers and ran again, for as long as the socket lasted: "Speaking",
+// busy, until a tap. At the spell (#quietEnd) it lets her turn go once its end is overdue (TURN_END_S past where the sound she had ends: 1.6 s of it here) and no call of
+// hers is being answered, and the session closes at the next spell. A healthy turn is not cut that way: live-drive2-fix's H1 (a stalled stream) and the two tests above on a note
+// the session passed on in no words (a turn longer than the note's answer window) fail with a guard that doesn't wait for the overdue end.
+test('Koe live: her first words are heard and the link goes dead inside her turn, and the user says nothing: the session closes at the quiet spell, her line written cut', async () => {
+  const link = slowLink(); // before the session opens
+  const k = await liveKit([{ said: LINE, audio: tone(3) }], { pace: 3 });
+  try {
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    link.match = /photographed/; // the burst from the words "photographed" on, and her line's end, never reach the page
+    k.agent.send('Tell me about the bridge');
+    await until(() => k.platform.streams.length === 1 && link.held, 30_000); // she talks, her first words heard
+    await soon(async () => (await lives(k, 'closed')).length === 1, 30_000);
+    assert.deepEqual((await lives(k, 'closed')).map((/** @type {any} */ e) => e.data.why), ['quiet'], 'closed by the quiet spell');
+    assert.equal(k.server.connections().length, 1, 'no other connection');
+    assert.equal(k.agent.live.busy, false, 'nothing of hers is left open');
+    const [first, ...rest] = await words(k);
+    assert.ok(first.endsWith('✂') && LINE.startsWith(first.slice(0, -1)), `what she had said is written cut: ${first}`);
+    assert.deepEqual(rest, [], 'nothing else');
+  } finally {
+    link.restore();
+    await k.done();
+  }
+});
+
+// The same, with a call of hers still being answered (a slow write, say): her turn is open, its end overdue, and the quiet spell ends, yet it is not cut, as the call's answer
+// is still to go to the provider and her turn goes on after it (#quietEnd waits for #tools). The test holds the call's answer, and her turn's end on the link, past the spell
+// (3 s here) and the overdue end (2 s past her 0.3 s of sound); a turn cut at the spell would write her line cut, at once.
+test('Koe live: a card call of hers is still being answered as the quiet spell ends and her turn\'s end is overdue: her turn is not cut, and it is written whole when it ends', async () => {
+  const card = { name: 'show', args: { card: { title: 'Bixby Bridge', text: 'About twenty minutes ahead.' } } };
+  const link = slowLink(); // before the session opens
+  const k = await liveKit([{ said: 'Here is the bridge.', audio: tone(0.3), tool: card }], { pace: 1 });
+  try {
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    const koe = k.agent.live.c.koe;
+    const real = koe.liveCall.bind(koe);
+    /** @type {() => void} */
+    let release = () => {};
+    const gate = new Promise((r) => { release = () => r(undefined); });
+    koe.liveCall = async (/** @type {any[]} */ ...a) => { await gate; return real(...a); };
+    link.match = /"generationComplete"/; // her turn's end, and all after it, wait on the link
+    k.agent.send('Show me the bridge');
+    await until(() => link.held && k.platform.streams.length === 1, 30_000); // her words played, her card's call is being answered
+    await wait(4500); // past the quiet spell and her turn's overdue end
+    assert.deepEqual(await words(k), [], 'her turn is open: nothing of it is written yet');
+    release();
+    link.go();
+    await soon(async () => (await words(k)).length === 1, 30_000);
+    const [line] = await k.events(['out.speak']);
+    assert.deepEqual([line.data.text, Boolean(line.data.cut)], ['Here is the bridge.', false], 'written whole when her turn ends');
+  } finally {
+    link.restore();
+    await k.done();
+  }
+});
+
+// Her sound starts later than her first chunk arrived (cut-bound-next's fix round 2, the second opinion's probe P): her voice waits for her first word (#speak) or for
+// annai's other voice (the #mayPlay hold), and plays from there. The guard in #quietEnd counts her sound's end from when it plays (t.playAt), not from her first chunk's arrival (t.soundAt),
+// or a healthy reply is cut while it still plays. Here her line's 4 s of sound all come at once, her first words 3.5 s after it (her voice begins then, and plays to 7.5 s), and
+// the stand-in's end 8 s after the burst, a late end set so that the guard is what meets it (a provider counting from the burst would end it at 4 s). The quiet spell (3 s)
+// ends at 6.5 s, 3 s into her sound: counted from the burst her end was 6 s and overdue, and she was cut ("...photographed✂"); counted from where she plays it is 9.5 s.
+// The same with the end never coming (the link dead after her last words, probe P4: the guard's other order, her whole line heard and made): it is cut where it was heard,
+// that is whole, and the session closes at the next spell.
+for (const [what, dead] of /** @type {[string, boolean][]} */ ([['her end comes at 8 s', false], ['the link dead after her last words, her end never comes', true]])) {
+  test(`Koe live: her first words come 3.5 s after her 4 s of sound, which plays from there, and ${what}: the quiet spell doesn't cut her while she plays, and her line is written whole`, async () => {
+    const link = slowLink(); // before the session opens
+    const k = await liveKit([{ said: LINE, audio: tone(4), saidAt: 3500, endAt: 8000 }], { pace: 1 });
+    try {
+      k.platform.streamSpeed = 1;
+      await k.voice.unlock();
+      if (dead) link.match = /"turnComplete"/; // her end, and all after it, never reach the page
+      k.agent.send('Tell me about the bridge');
+      await soon(async () => (await words(k)).length === 1, 30_000);
+      assert.deepEqual((await lines(k)).map((l) => [l.text, l.cut]), [[LINE, false]], 'written whole, not cut where it was heard when the spell ended');
+      if (dead) {
+        await soon(async () => (await lives(k, 'closed')).length === 1, 30_000);
+        assert.deepEqual((await lives(k, 'closed')).map((/** @type {any} */ e) => e.data.why), ['quiet'], 'closed by the quiet spell');
+        assert.equal(k.agent.live.busy, false, 'nothing of hers is left open');
+      }
+    } finally {
+      link.restore();
+      await k.done();
+    }
+  });
+}
+
+// The guard's cut of a turn whose voice has not begun (the second opinion's F-A): her sound came and her first words after it, while annai's other voice was saying something
+// (a reminder: nothing of a session's plays over it, #mayPlay), so her turn waits to be said (#pending), and then the link is dead. The cut writes her words as a close or a drop
+// does (#stop's shown), ✂ as the provider never ended it; with `#stop(t)` alone they were let go with her voice never heard, and nothing of her turn was written.
+// The other voice is a clip that never ends (voice.playMs, as live-drive2-fix2's 5a), started once the session has her turn; her sound comes at once and her first words 1.5 s after it.
+test('Koe live: her turn waits for annai\'s other voice, which is still speaking, and the link goes dead: the quiet spell cuts it, and her words are written (cut), not let go', async () => {
+  const link = slowLink(); // before the session opens
+  const k = await liveKit([{ said: LINE, audio: tone(0.3), saidAt: 1500, endAt: 20_000 }], { pace: 1, voice: { playMs: 60_000 } });
+  try {
+    k.platform.streamSpeed = 1;
+    await k.voice.unlock();
+    link.match = /"turnComplete"/; // her end never reaches the page
+    k.agent.send('Tell me about the bridge');
+    await soon(async () => textsIn(k).length === 1, 30_000); // the session is open and has the turn (a session that opens while annai's other voice speaks waits for it)
+    k.voice.say('A reminder that never ends.').catch(() => {});
+    await soon(async () => (await lives(k, 'closed')).length === 1, 30_000);
+    assert.deepEqual((await lives(k, 'closed')).map((/** @type {any} */ e) => e.data.why), ['quiet'], 'closed by the quiet spell');
+    assert.deepEqual((await lines(k)).map((l) => [l.text, l.cut]), [[`${LINE}✂`, true]], 'her words, written cut');
   } finally {
     link.restore();
     await k.done();

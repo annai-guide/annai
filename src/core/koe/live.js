@@ -19,12 +19,12 @@ import { t } from '../l10n.js';
  * @typedef {import('../realtime/open.js').LiveSession} LiveSession
  * @typedef {import('../agent/loop.js').Wake} Wake
  * @typedef {{ said: string, bytes: number, held: Uint8Array[], stream: import('../voice/platform.js').PlayerStream | null, spoken: boolean, wordAt: number, soundAt: number,
- *   tools: boolean, cut: boolean, whole: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean, loud: import('./loud.js').Loud, made?: boolean, playedMs?: number, stalled?: boolean, audible?: boolean, endBy?: any, first?: Wake }} Turn  one of Koe's; held: its sound until a real word;
+ *   tools: boolean, cut: boolean, whole: boolean, logged: boolean, goesOn: boolean, calls: number, done: boolean, loud: import('./loud.js').Loud, made?: boolean, playedMs?: number, stalled?: boolean, audible?: boolean, playAt?: number, endBy?: any, first?: Wake }} Turn  one of Koe's; held: its sound until a real word;
  *   stalled: its sound stopped coming out, so its stream was let go, and its words are said by the speech voice;
  *   goesOn: it called a tool it speaks after; calls: its tool calls not answered yet; done: the provider ended it; made: the provider said all of it is made
  *   (its `made`), so no more of it comes (what a call answered without `silent` brings is the next turn, #endNow); loud: where its last loud frame of sound ends (#whole);
  *   playedMs: how much was heard, once its stream was stopped (#heardMs); whole: cut, but all of it was heard (#whole); audible: its sound has started playing, so its words may show; endBy: the timer that ends it if no turnComplete comes (#endLater);
- *   soundAt: when its sound began; first: the first of Kokoro's notes in flight as it began (#settle)
+ *   soundAt: when its sound began to arrive; playAt: when its voice began, its stream made (#play), later when it waited for her first word or another voice; first: the first of Kokoro's notes in flight as it began (#settle)
  * @typedef {{ sent: number, spoke: boolean, timer: any, idle?: boolean }} Mark  an urgent note's (LiveKoe's #urgent); idle: what waited, going in with nothing before it, so its turn is the next to end
  * @typedef {{ text: string, told?: boolean, kokoro?: boolean }} Waiting  what waits to go in (LiveKoe's #notes); told: annai's own line, which the log holds none of; kokoro: Kokoro's own note, which its immediate note replaces
  * @typedef {{ text: string, of: object, by: number, more: boolean, timer: any }} Late  the stretch's note waiting (LiveKoe's #late)
@@ -122,7 +122,13 @@ export const LIVE_ANSWER_S = 8;
 const IGNORING_HOLD_S = 3;
 /** How long a tap lifts the level check: for a time, not a turn, as the next lyric would take a turn's lift and leave the soft word out. */
 const LIFT_S = LIVE_ANSWER_S;
-/** Past the end of her sound, the wait for the turnComplete of a turn whose tool call was answered silently (measured: the design, section 3, item 6). */
+/**
+ * Past the end of her sound: the wait for the turnComplete of a turn whose tool call was answered silently (measured: the design, section 3, item 6), and the margin of an open
+ * turn's overdue end at the quiet spell (#quietEnd). A plain turn's end is measured too: real Gemini's turnComplete came 0.19 to 0.63 s after her last audible sound (113 notes,
+ * 2026-11-12: docs/lessons-full.md, "Heard whole is all made and all played"), and within -54 to +115 ms of the modelled play end (the chunks played back to back from the first,
+ * waiting when the player runs dry) in all 215 replies, notes and short ones ending in a call (real Gemini, 2026-11-12, 28 sessions). The line #quietEnd counts doesn't wait
+ * when the player runs dry, so it sits early by a provider's pause inside a reply (9 of 234 replies, 0.10 to 1.23 s): the latest healthy end, about 1.35 s past that line, is inside 2 s.
+ */
 const TURN_END_S = 2;
 
 /**
@@ -343,9 +349,13 @@ export class LiveKoe {
     return this.#hers() || Boolean(this.#input?.active);
   }
 
-  /** What is going on that isn't the user's microphone turn: opening or reconnecting, Koe's turn or voice, a tool. */
-  #hers() {
-    return Boolean(this.#opening || this.#t || this.#sounding || this.#pending || this.#queue.length || this.#tools || (this.state === 'open' && !this.#s));
+  /**
+   * What is going on that isn't the user's microphone turn: opening or reconnecting, Koe's turn or voice, a tool. cut: a turn of hers that was cut off
+   * counts too, though nothing of it is heard any more: the provider's end of it lets it go, as Koe's own end of it after an answered call (#endNow, #endLater) or of
+   * the user's turn it was cut for that got nothing back (#silent) does, and a close or a new connection (#reconnect). @param {boolean} [cut]
+   */
+  #hers(cut = true) {
+    return Boolean(this.#opening || (this.#t && (cut || !this.#t.cut)) || this.#sounding || this.#pending || this.#queue.length || this.#tools || (this.state === 'open' && !this.#s));
   }
 
   /**
@@ -1427,6 +1437,9 @@ export class LiveKoe {
    */
   #answers(e) {
     const due = this.#due;
+    // Sound or words of a turn cut off for an input that went in since (any but a tap's, after which what she makes is her answer, written: #stopped) were on
+    // their way before that input: no answer to it, so its wait goes on until a turn of hers answers it, or runs out (#silent). Words go where #on puts them.
+    if ((e.type === 'audio' || e.type === 'said') && !this.#stopped && (this.#t ?? (e.type === 'said' ? this.#trail : null))?.cut) return false;
     if (e.type === 'audio' || (e.type === 'said' && realWord(e.text))) return true;
     if (e.type !== 'tool' && e.type !== 'turn') return false;
     // The cut of the turn before (an interrupted is never a reply to what went in), or the end of a turn that goes on (a provider that never says
@@ -1496,6 +1509,7 @@ export class LiveKoe {
     const v = this.c.voice;
     if (this.voiced && v?.platform?.player.stream && !t.cut) {
       t.stream = v.platform.player.stream({ rate: this.#rate, onLevel: (x) => v.level(x, 'her') });
+      t.playAt = Date.now();
       for (const a of t.held) t.stream.push(samples(a));
       this.#sounding = t;
       t.stream.done.then((r) => {
@@ -1954,6 +1968,10 @@ export class LiveKoe {
     const gen = this.#gen;
     this.#rotate = false;
     this.#s = null; // what is said meanwhile waits for the new one, speech going on starting again there first
+    // The left connection's turn goes with it, as at a close (#closed): nothing more of it comes, so what the next one says is a turn of its own. One cut off
+    // was stopped at its cut already; one still being made is cut where it was heard.
+    if (this.#t) this.#stop(this.#t, true);
+    this.#t = null;
     if (this.#input?.active) this.#waiting.unshift((x) => x.activity('start'));
     const s = await this.#resume(/** @type {string} */ (this.modelId), fresh ? undefined : old?.handle ?? this.#handle, why).catch(() => null);
     old?.close(why);
@@ -2025,11 +2043,20 @@ export class LiveKoe {
   /**
    * The quiet spell ran out. Kokoro working on Koe's question isn't quiet: its answer is coming. Nor is her own turn, a tool call, or
    * a text turn's answer still owed (#due; #silent bounds that wait). Only the user's turn going on, or its answer, left: that turn
-   * decides (#lapsed): her answer re-arms it, a dismissed turn closes it (#complete), looking here again. Else it closes.
+   * decides (#lapsed): her answer re-arms it, a dismissed turn closes it (#complete), looking here again. Else it closes. A turn of hers
+   * cut off is no reason to stay: the provider's end of it may never come (a link gone dead with its socket up), and the close lets it go. Nor is
+   * one still open whose end is overdue: TURN_END_S past where its sound ends, in real seconds (her sound plays in real time, whatever the page's second is), with no call
+   * it waits on. Her sound plays from the later of its first chunk's arrival and her voice's start (playAt: her voice waits for her first word, or for annai's other
+   * voice), so it ends no earlier than that plus its length. It is cut where it was heard, as a tap's stop cuts it, and her words written (✂) even if her voice was
+   * yet to start (#stop's shown, as a close or a drop does); unlike a tap, it tells the provider nothing. Not before: the provider holds a turn open until its sound
+   * would have played out (pace 1, as Gemini does), a long line with no voice playing is quiet that long, and a pause inside a turn is no sign of a dead link
+   * (9 of 234 real replies, 0.10 to 1.23 s).
    */
   #quietEnd() {
     clearTimeout(this.#quiet);
-    if (this.#hers() || this.c.asked() || (this.#due && this.#due.text !== null)) return this.#poke();
+    const t = this.#t;
+    if (t?.soundAt && !t.cut && !this.#tools && Date.now() >= Math.max(t.soundAt, t.playAt ?? 0) + t.bytes / (this.#rate / 500) + TURN_END_S * 1000) this.#stop(t, true);
+    if (this.#hers(false) || this.c.asked() || (this.#due && this.#due.text !== null)) return this.#poke();
     if (this.#input?.active || this.#due) {
       this.#lapsed = true;
       return undefined;
