@@ -1572,6 +1572,12 @@ Each entry here was approved by the user. Reviewers read this file first and don
 - **Why:** `open()` (src/core/koe/live.js) reuses `#opening` while it is set, and `#start` returns false for a closed generation, so the third tap takes the stopped attempt's "no". The fix, in `open()`: a call made while a closed generation's start still runs waits for it, then starts its own.
 - **Revisit when:** its row in docs/progress.md, in the next version.
 
+### With the app settings read refused as her turn starts, the turn fails and a heard line it carries isn't written
+- **Kind:** deferred.
+- **What the traveller sees:** when the phone refuses every read of annai's settings file (rare), a turn of Shiori's fails as it starts (whether voice is on, `Voice.refresh`; her first words' limit), so a heard line that turn would have saved isn't written and the traveller says it again. The reads made as a heard line is saved and written down no longer fail it (clip-read-next, 2026-11-26). On main too.
+- **Why:** found by clip-read-next's own test (2026-11-26, measured with every settings read refused). Many places read the settings, each with no catch; a catch in `readAppSettings` itself would let `updateAppSettings` merge a change into nothing and write that over the traveller's settings, so the fix needs a look first: what a refused settings read means in a turn (the defaults, or the last settings read), in one place.
+- **Revisit when:** the next version, a look first; or a trace shows a refused settings read.
+
 ### With every spend read refused, a live session doesn't stop at Spend per day
 - **Kind:** deferred.
 - **What the traveller sees:** with Koe · Realtime and a Spend per day set, while the phone refuses every read of today's spend (rare: the store failing its reads), a live session opens and runs past the day's cap; it stops once a read goes through. Since open-reads-next a refused read at the open counts as under the cap (one turn past it, as a running session's usage check already did on main). Found by its re-read (2026-11-25, by reading).

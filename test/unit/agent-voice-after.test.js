@@ -6,7 +6,8 @@ import { WRITE_DOWN } from '../../src/core/voice/voice.js';
 import { NOT_TRANSCRIBED } from '../../src/core/voice/resolve.js';
 import { record } from '../../src/core/agent/log.js';
 import { useClock } from './clock.js';
-import { updateAppSettings } from '../../src/core/settings.js';
+import { updateAppSettings, APP } from '../../src/core/settings.js';
+import { SYS_SETTINGS } from '../../src/core/scopes.js';
 import { clip, quiet, cat } from './voice-kit.js';
 import { ProviderError } from '../../src/core/llm/contract.js';
 
@@ -103,6 +104,28 @@ test('keep voice clips: each clip is kept with the conversation, named by its he
   const types = [];
   for (const b of await plain.store.tx(['blobs'], 'readonly', (/** @type {any} */ t) => t.listBlobs())) types.push((await plain.store.tx(['blobs'], 'readonly', (/** @type {any} */ t) => t.getBlob(b.hash)))?.type);
   assert.ok(!types.some((t) => String(t).startsWith('audio/')), 'no sound is stored');
+});
+
+test("a heard line is written when the phone refuses the settings reads made as it is saved and written down, with Keep voice clips on: no clip, its words written down (clip-read-next)", async (t) => {
+  useClock(t);
+  const k = await agentKit([[say('Tacos are close.')]], { voice: { speechIn: ['m-hear'], hears: ['where should we eat'], keepClips: true } });
+  k.agent.tap();
+  await until(() => k.agent.state.name === 'listening');
+  const read = k.ws.readJSON.bind(k.ws);
+  let refused = 0;
+  k.ws.readJSON = async (/** @type {string} */ scope, /** @type {string} */ path) => {
+    // Only the reads made as the heard line is saved and written down (a refused read as her turn starts is its own Deferred entry).
+    if (scope === SYS_SETTINGS && path === APP && /logHeard|writeDown|Voice\.keep/.test(String(new Error().stack))) { refused++; throw new DOMException('The read was refused.', 'UnknownError'); }
+    return read(scope, path);
+  };
+  await hear(k, 'where-eat');
+  await idleAtOnce(k);
+  k.ws.readJSON = read;
+  const [heard] = await k.events(['heard']);
+  assert.ok(refused > 0, 'the settings reads were refused');
+  assert.equal(heard.data.clip, undefined, 'no clip');
+  const [written] = await k.events(['heard.text']);
+  assert.equal(written?.data.text, 'where should we eat', 'its words are written down');
 });
 
 test('a kept clip is stored as the smallest format the device makes and plays, named by its heard event (§4.9); after a restart it is heard again from that file', async (t) => {
